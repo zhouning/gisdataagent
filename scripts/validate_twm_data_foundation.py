@@ -117,7 +117,80 @@ PRODUCTION_POLICY_HISTORY_MINIMUM_COLUMNS = [
     "action_mask_allowed or feasibility_label",
     "region_code/DKXZQDM/XZQDM or cluster",
     "period/time_index or approval_date",
+    "split/dataset_split plus policy_effective_date or policy_version",
 ]
+
+PRODUCTION_OBSERVED_HISTORY_TEMPLATE_FIELDS = [
+    "unit_id",
+    "approval_id",
+    "project_id",
+    "approval_status",
+    "outcome",
+    "approved_area_m2",
+    "area_m2",
+    "stratum",
+    "cluster",
+    "neighbors",
+    "x",
+    "y",
+    "quality_score",
+    "baseline_risk_score",
+    "risk_score",
+    "rule_hit_count",
+    "review_task_count",
+    "action_type",
+    "action_mask_policy",
+    "action_mask_allowed",
+    "action_mask_required_reviews",
+    "action_mask_hard_blocks",
+    "region_code",
+    "period",
+    "split",
+    "time_index",
+    "policy_effective_date",
+    "policy_version",
+    "propensity_score",
+    "evidence_weight",
+    "synthetic",
+    "not_for_production",
+    "source_path",
+]
+
+PRODUCTION_OBSERVED_HISTORY_FIELD_ALIASES: dict[str, tuple[str, ...]] = {
+    "unit_id": ("unit_id", "causal_unit_id", "sample_id", "project_id", "XMDM", "xmdm", "approval_id", "AJBH"),
+    "approval_id": ("approval_id", "AJBH", "case_id", "review_id"),
+    "project_id": ("project_id", "XMDM", "xmdm", "project_code"),
+    "approval_status": ("approval_status", "decision_result", "DKZT", "status", "task_status", "review_result"),
+    "outcome": ("outcome", "planning_utility_delta", "utility_delta", "ranking_score", "observed_utility_delta", "reviewed_planning_utility_delta"),
+    "approved_area_m2": ("approved_area_m2", "ZDZMJ"),
+    "area_m2": ("area_m2", "planned_area_m2", "DKMJ", "ZYZMJ"),
+    "stratum": ("stratum", "cluster", "spatial_cluster", "block_id", "township_id"),
+    "cluster": ("cluster", "spatial_cluster", "block_id", "township_id", "region_code", "county_code", "DKXZQDM", "XZQDM"),
+    "neighbors": ("neighbors", "neighbor_unit_ids"),
+    "x": ("x", "lon", "longitude"),
+    "y": ("y", "lat", "latitude"),
+    "quality_score": ("quality_score",),
+    "baseline_risk_score": ("baseline_risk_score",),
+    "risk_score": ("risk_score",),
+    "rule_hit_count": ("rule_hit_count", "rule_eval_count", "confirmed_violation_count"),
+    "review_task_count": ("review_task_count", "open_review_count"),
+    "action_type": ("action_type", "action", "decision_action", "planning_action"),
+    "action_mask_policy": ("action_mask_policy", "policy_code", "policy_label", "feasibility_policy"),
+    "action_mask_allowed": ("action_mask_allowed", "feasibility_allowed", "allowed", "is_allowed", "feasibility_label", "action_mask_label", "mask_label"),
+    "action_mask_required_reviews": ("action_mask_required_reviews", "required_reviews"),
+    "action_mask_hard_blocks": ("action_mask_hard_blocks", "hard_blocks"),
+    "region_code": ("region_code", "cluster", "spatial_cluster", "block_id", "township_id", "county_code", "DKXZQDM", "XZQDM"),
+    "period": ("period", "time_index", "approval_date", "decision_date", "year", "quarter"),
+    "split": ("split", "dataset_split", "validation_split", "train_test_split"),
+    "time_index": ("time_index",),
+    "policy_effective_date": ("policy_effective_date", "policy_effective_at", "effective_date", "rule_effective_date"),
+    "policy_version": ("policy_version", "rule_version", "planning_version", "standard_version", "land_policy_version"),
+    "propensity_score": ("propensity_score",),
+    "evidence_weight": ("evidence_weight",),
+    "synthetic": ("synthetic", "is_synthetic"),
+    "not_for_production": ("not_for_production", "not_for_prod", "not_for_training"),
+    "source_path": ("source_path",),
+}
 
 TWM_EVIDENCE_MATCHING_COVARIATES = [
     "DKMJ",
@@ -203,6 +276,8 @@ def main() -> None:
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT), help="JSON report output path.")
     parser.add_argument("--markdown-output", default=str(DEFAULT_MARKDOWN_OUTPUT), help="Markdown health report output path.")
     parser.add_argument("--production-observed-history", default="", help="Optional non-synthetic approval/review history CSV to preflight.")
+    parser.add_argument("--normalize-production-observed-history-source", default="", help="Optional raw approval/review export CSV to normalize into the TWM production observed-history template.")
+    parser.add_argument("--normalized-production-observed-history-output", default="", help="Optional output path for the normalized production observed-history CSV.")
     parser.add_argument("--schema-template-output", default="", help="Optional CSV template output path for production observed histories.")
     parser.add_argument("--sample-limit", type=int, default=0, help="Optional maximum Paper7 records to read; 0 means all rows.")
     parser.add_argument("--paper7-match-caliper", type=float, default=2.0, help="Maximum standardized distance for Paper7 caliper matching.")
@@ -217,10 +292,23 @@ def main() -> None:
     parser.add_argument("--skip-synthetic-experiment", action="store_true", help="Skip synthetic experiment foundation generation and validation.")
     args = parser.parse_args()
 
+    output = Path(args.output).expanduser()
+    markdown_output = Path(args.markdown_output).expanduser()
     twm_dataset = Path(args.twm_dataset).expanduser()
     paper7_dataset = Path(args.paper7_causal_dataset).expanduser()
     paper7_calibration = Path(args.paper7_calibration).expanduser()
     production_observed_history = Path(args.production_observed_history).expanduser() if args.production_observed_history else None
+    normalization_report: dict[str, Any] = {"status": "not_requested"}
+    if args.normalize_production_observed_history_source:
+        normalize_source = Path(args.normalize_production_observed_history_source).expanduser()
+        normalize_output = (
+            Path(args.normalized_production_observed_history_output).expanduser()
+            if args.normalized_production_observed_history_output
+            else output.parent / "twm_normalized_production_observed_history.csv"
+        )
+        normalization_report = normalize_production_observed_history_export(normalize_source, normalize_output)
+        if production_observed_history is None:
+            production_observed_history = normalize_output
     twm_evidence_match_caliper = max(0.0, float(args.twm_evidence_match_caliper or 0.0)) or None
     structural_observed_history = Path(args.structural_observed_history_output).expanduser() if not args.skip_structural_fixture else None
     structural_fixture_summary = (
@@ -255,11 +343,16 @@ def main() -> None:
             "paper7_causal_dataset": str(paper7_dataset),
             "paper7_calibration": str(paper7_calibration),
             "production_observed_history": str(production_observed_history) if production_observed_history else None,
+            "normalize_production_observed_history_source": args.normalize_production_observed_history_source or None,
+            "normalized_production_observed_history_output": (
+                normalization_report.get("output_path") if normalization_report.get("status") != "not_requested" else None
+            ),
             "twm_evidence_match_caliper": twm_evidence_match_caliper,
             "structural_validation_observed_history": str(structural_observed_history) if structural_observed_history else None,
             "synthetic_experiment_foundation": str(synthetic_experiment_path) if synthetic_experiment_path else None,
         },
         "production_observed_history_contract": production_observed_history_contract(),
+        "production_observed_history_normalization": normalization_report,
         "twm_dataset_audit": audit_twm_dataset(twm_dataset),
         "twm_observed_history_schema_audit": audit_observed_history_schema(twm_dataset / "tables" / "approval_records.csv"),
         "production_observed_history_schema_audit": (
@@ -336,15 +429,16 @@ def main() -> None:
     )
     report["summary"] = summarize_validation(report)
 
-    output = Path(args.output).expanduser()
     output.parent.mkdir(parents=True, exist_ok=True)
-    markdown_output = Path(args.markdown_output).expanduser()
     template_output = Path(args.schema_template_output).expanduser() if args.schema_template_output else output.parent / "twm_production_observed_history_template.csv"
     write_observed_history_template(template_output)
     report["outputs"] = {
         "report": str(output),
         "markdown_report": str(markdown_output),
         "production_observed_history_template": str(template_output),
+        "normalized_production_observed_history": (
+            normalization_report.get("output_path") if normalization_report.get("status") != "not_requested" else None
+        ),
         "structural_validation_observed_history": str(structural_observed_history) if structural_observed_history else None,
         "synthetic_experiment_foundation": str(synthetic_experiment_path) if synthetic_experiment_path else None,
     }
@@ -411,6 +505,8 @@ def production_observed_history_contract() -> dict[str, Any]:
                 "both allowed and blocked feasibility labels",
                 "mixed-risk allowed policies such as allowed_with_conditions/protect_allowed/restore_allowed when available",
                 "multiple region-policy and region-action-policy combinations",
+                "explicit train/holdout split support for out-of-sample validation",
+                "policy version or effective-date metadata for every production candidate row",
             ],
             "claim_boundary": "policy-history coverage only prepares real-data feasibility validation; it does not prove simulator accuracy by itself",
         },
@@ -425,6 +521,7 @@ def audit_observed_history_schema(path: Path | None) -> dict[str, Any]:
             "expected_minimum_columns": PRODUCTION_OBSERVED_HISTORY_MINIMUM_COLUMNS,
             "expected_policy_history_columns": PRODUCTION_POLICY_HISTORY_MINIMUM_COLUMNS,
             "policy_history_quality": _empty_observed_policy_history_quality("not_provided"),
+            "temporal_validation_quality": _empty_temporal_validation_quality("not_provided"),
         }
     if not path.exists():
         return {
@@ -433,6 +530,7 @@ def audit_observed_history_schema(path: Path | None) -> dict[str, Any]:
             "expected_minimum_columns": PRODUCTION_OBSERVED_HISTORY_MINIMUM_COLUMNS,
             "expected_policy_history_columns": PRODUCTION_POLICY_HISTORY_MINIMUM_COLUMNS,
             "policy_history_quality": _empty_observed_policy_history_quality("missing"),
+            "temporal_validation_quality": _empty_temporal_validation_quality("missing"),
         }
 
     rows = read_csv(path)
@@ -456,6 +554,7 @@ def audit_observed_history_schema(path: Path | None) -> dict[str, Any]:
 
     row_quality = _observed_history_row_quality(rows)
     policy_history_quality = _observed_policy_history_quality(rows)
+    temporal_validation_quality = _observed_history_temporal_validation_quality(rows)
     missing_data_gates = []
     if row_quality["production_candidate_row_count"] <= 0:
         missing_data_gates.append("production_usable_rows")
@@ -471,6 +570,14 @@ def audit_observed_history_schema(path: Path | None) -> dict[str, Any]:
         missing_data_gates.append("adjustment_covariates")
     if row_quality["explicit_production_flag_row_count"] < row_quality["row_count"]:
         missing_data_gates.append("explicit_production_flags")
+    if temporal_validation_quality["status"] != "pass":
+        missing = set(temporal_validation_quality.get("missing_temporal_gates") or [])
+        if "production_temporal_rows" in missing:
+            missing_data_gates.append("production_temporal_rows")
+        if "temporal_periods" in missing or "explicit_train_holdout_split" in missing:
+            missing_data_gates.append("temporal_holdout_support")
+        if "policy_effective_version" in missing:
+            missing_data_gates.append("policy_effective_version")
 
     status = "pass" if not missing_groups and not missing_data_gates else "review"
     return {
@@ -484,6 +591,7 @@ def audit_observed_history_schema(path: Path | None) -> dict[str, Any]:
         "missing_required_groups": missing_groups,
         "row_quality": row_quality,
         "policy_history_quality": policy_history_quality,
+        "temporal_validation_quality": temporal_validation_quality,
         "missing_data_gates": missing_data_gates,
         "expected_minimum_columns": PRODUCTION_OBSERVED_HISTORY_MINIMUM_COLUMNS,
         "expected_policy_history_columns": PRODUCTION_POLICY_HISTORY_MINIMUM_COLUMNS,
@@ -493,41 +601,149 @@ def audit_observed_history_schema(path: Path | None) -> dict[str, Any]:
 
 def write_observed_history_template(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    fields = [
-        "unit_id",
-        "approval_id",
-        "project_id",
-        "approval_status",
-        "outcome",
-        "approved_area_m2",
-        "area_m2",
-        "stratum",
-        "cluster",
-        "neighbors",
-        "x",
-        "y",
-        "quality_score",
-        "baseline_risk_score",
-        "risk_score",
-        "rule_hit_count",
-        "review_task_count",
-        "action_type",
-        "action_mask_policy",
-        "action_mask_allowed",
-        "action_mask_required_reviews",
-        "action_mask_hard_blocks",
-        "region_code",
-        "period",
-        "time_index",
-        "propensity_score",
-        "evidence_weight",
-        "synthetic",
-        "not_for_production",
-        "source_path",
-    ]
     with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fields, lineterminator="\n")
+        writer = csv.DictWriter(handle, fieldnames=PRODUCTION_OBSERVED_HISTORY_TEMPLATE_FIELDS, lineterminator="\n")
         writer.writeheader()
+
+
+def normalize_production_observed_history_export(source_path: Path | str, output_path: Path | str) -> dict[str, Any]:
+    source = Path(source_path).expanduser()
+    output = Path(output_path).expanduser()
+    if not source.exists():
+        return {
+            "schema": "territory_world_model.production_observed_history_normalization.v1",
+            "status": "missing",
+            "source_path": str(source),
+            "output_path": str(output),
+            "row_count": 0,
+            "audit": audit_observed_history_schema(None),
+        }
+    rows = read_csv(source)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    normalized_rows = [_normalize_production_observed_history_row(row, source_path=str(source)) for row in rows]
+    with output.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=PRODUCTION_OBSERVED_HISTORY_TEMPLATE_FIELDS, lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(normalized_rows)
+    audit = audit_observed_history_schema(output)
+    non_empty_counts = {
+        field: sum(1 for row in normalized_rows if str(row.get(field) or "").strip())
+        for field in PRODUCTION_OBSERVED_HISTORY_TEMPLATE_FIELDS
+    }
+    field_mapping, unmapped_source_fields = _production_observed_history_field_mapping(
+        source_fields=list(rows[0].keys()) if rows else [],
+        normalized_rows=normalized_rows,
+        non_empty_counts=non_empty_counts,
+    )
+    return {
+        "schema": "territory_world_model.production_observed_history_normalization.v1",
+        "status": audit.get("status", "review"),
+        "source_path": str(source),
+        "output_path": str(output),
+        "row_count": len(normalized_rows),
+        "source_fields": list(rows[0].keys()) if rows else [],
+        "output_fields": PRODUCTION_OBSERVED_HISTORY_TEMPLATE_FIELDS,
+        "field_mapping": field_mapping,
+        "unmapped_source_fields": unmapped_source_fields,
+        "non_empty_output_field_counts": non_empty_counts,
+        "audit": {
+            "schema": audit.get("schema"),
+            "status": audit.get("status"),
+            "missing_required_groups": list(audit.get("missing_required_groups") or []),
+            "missing_data_gates": list(audit.get("missing_data_gates") or []),
+            "row_quality": audit.get("row_quality") or {},
+            "policy_history_quality": audit.get("policy_history_quality") or {},
+            "temporal_validation_quality": audit.get("temporal_validation_quality") or {},
+        },
+        "claim_boundary": "normalization only maps exported fields into the TWM contract; it does not certify authenticity or production accuracy",
+    }
+
+
+def _production_observed_history_field_mapping(
+    *,
+    source_fields: list[str],
+    normalized_rows: list[dict[str, str]],
+    non_empty_counts: dict[str, int],
+) -> tuple[dict[str, dict[str, Any]], list[str]]:
+    source_lookup = {field.lower(): field for field in source_fields}
+    used_source_fields: set[str] = set()
+    mapping: dict[str, dict[str, Any]] = {}
+    row_count = len(normalized_rows)
+    for field in PRODUCTION_OBSERVED_HISTORY_TEMPLATE_FIELDS:
+        aliases = PRODUCTION_OBSERVED_HISTORY_FIELD_ALIASES.get(field, (field,))
+        matched = []
+        for alias in aliases:
+            source = source_lookup.get(alias.lower())
+            if source and source not in matched:
+                matched.append(source)
+                used_source_fields.add(source)
+        non_empty = int(non_empty_counts.get(field, 0) or 0)
+        if matched:
+            status = "mapped"
+        elif non_empty:
+            status = "generated"
+        else:
+            status = "empty"
+        mapping[field] = {
+            "status": status,
+            "aliases": list(aliases),
+            "matched_source_fields": matched,
+            "primary_source_field": matched[0] if matched else "",
+            "non_empty_count": non_empty,
+            "empty_count": max(0, row_count - non_empty),
+        }
+    unmapped = [field for field in source_fields if field not in used_source_fields]
+    return mapping, unmapped
+
+
+def _normalize_production_observed_history_row(row: dict[str, Any], *, source_path: str) -> dict[str, str]:
+    allowed = _observed_policy_allowed(row)
+    split = _observed_history_split(row)
+    return {
+        "unit_id": _text(_row_attr(row, "unit_id", "causal_unit_id", "sample_id", "project_id", "XMDM", "xmdm", "approval_id", "AJBH")),
+        "approval_id": _text(_row_attr(row, "approval_id", "AJBH", "case_id", "review_id")),
+        "project_id": _text(_row_attr(row, "project_id", "XMDM", "xmdm", "project_code")),
+        "approval_status": _text(_row_attr(row, "approval_status", "decision_result", "DKZT", "status", "task_status", "review_result")),
+        "outcome": _text(
+            _row_attr(
+                row,
+                "outcome",
+                "planning_utility_delta",
+                "utility_delta",
+                "ranking_score",
+                "observed_utility_delta",
+                "reviewed_planning_utility_delta",
+            )
+        ),
+        "approved_area_m2": _text(_row_attr(row, "approved_area_m2", "ZDZMJ")),
+        "area_m2": _text(_row_attr(row, "area_m2", "planned_area_m2", "DKMJ", "ZYZMJ")),
+        "stratum": _text(_row_attr(row, "stratum", "cluster", "spatial_cluster", "block_id", "township_id")),
+        "cluster": _text(_row_attr(row, "cluster", "spatial_cluster", "block_id", "township_id", "region_code", "county_code", "DKXZQDM", "XZQDM")),
+        "neighbors": _text(_row_attr(row, "neighbors", "neighbor_unit_ids")),
+        "x": _text(_row_attr(row, "x", "lon", "longitude")),
+        "y": _text(_row_attr(row, "y", "lat", "latitude")),
+        "quality_score": _text(_row_attr(row, "quality_score")),
+        "baseline_risk_score": _text(_row_attr(row, "baseline_risk_score")),
+        "risk_score": _text(_row_attr(row, "risk_score")),
+        "rule_hit_count": _text(_row_attr(row, "rule_hit_count", "rule_eval_count", "confirmed_violation_count")),
+        "review_task_count": _text(_row_attr(row, "review_task_count", "open_review_count")),
+        "action_type": _observed_policy_action_type(row),
+        "action_mask_policy": _observed_policy_label(row),
+        "action_mask_allowed": "" if allowed is None else ("true" if allowed else "false"),
+        "action_mask_required_reviews": _text(_row_attr(row, "action_mask_required_reviews", "required_reviews")),
+        "action_mask_hard_blocks": _text(_row_attr(row, "action_mask_hard_blocks", "hard_blocks")),
+        "region_code": _observed_policy_region(row),
+        "period": _observed_policy_time_key(row),
+        "split": split,
+        "time_index": _text(_row_attr(row, "time_index")),
+        "policy_effective_date": _text(_row_attr(row, "policy_effective_date", "policy_effective_at", "effective_date", "rule_effective_date")),
+        "policy_version": _text(_row_attr(row, "policy_version", "rule_version", "planning_version", "standard_version", "land_policy_version")),
+        "propensity_score": _text(_row_attr(row, "propensity_score")),
+        "evidence_weight": _text(_row_attr(row, "evidence_weight")),
+        "synthetic": _text(_row_attr(row, "synthetic", "is_synthetic")),
+        "not_for_production": _text(_row_attr(row, "not_for_production", "not_for_prod", "not_for_training")),
+        "source_path": _text(_row_attr(row, "source_path")) or source_path,
+    }
 
 
 def write_twm_structural_validation_observed_history(path: Path, dataset_root: Path, *, pair_count: int = 24) -> dict[str, Any]:
@@ -1353,16 +1569,7 @@ def _observed_history_row_quality(rows: list[dict[str, Any]]) -> dict[str, Any]:
             rows_with_neighbors += 1
         if spatial_support["has_coordinates"]:
             rows_with_coordinates += 1
-        production_ready = bool(
-            synthetic_present
-            and nfp_present
-            and not is_synthetic
-            and not is_nfp
-            and treatment is not None
-            and has_outcome
-            and has_covariates
-            and spatial_support["has_any"]
-        )
+        production_ready = _observed_history_production_ready(row)
         if production_ready:
             production_candidates += 1
             if treatment == 1:
@@ -1385,6 +1592,80 @@ def _observed_history_row_quality(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "production_candidate_row_count": production_candidates,
         "production_treated_count": production_treated_count,
         "production_control_count": production_control_count,
+    }
+
+
+def _observed_history_production_ready(row: dict[str, Any]) -> bool:
+    synthetic_present = _row_has_any(row, "synthetic")
+    nfp_present = _row_has_any(row, "not_for_production", "not_for_prod")
+    if not synthetic_present or not nfp_present:
+        return False
+    if truthy(_row_attr(row, "synthetic")) or truthy(_row_attr(row, "not_for_production", "not_for_prod")):
+        return False
+    return bool(
+        _observed_history_treatment(row) is not None
+        and _observed_history_has_outcome(row)
+        and _observed_history_has_covariates(row)
+        and _observed_history_spatial_support(row)["has_any"]
+    )
+
+
+def _observed_history_temporal_validation_quality(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    production_rows = [row for row in rows if _observed_history_production_ready(row)]
+    split_counts: Counter = Counter()
+    periods: set[str] = set()
+    holdout_periods: set[str] = set()
+    policy_versions: set[str] = set()
+    rows_with_split = 0
+    train_row_count = 0
+    holdout_row_count = 0
+    rows_with_policy_effective_version = 0
+    for row in production_rows:
+        period = _observed_policy_time_key(row)
+        if period:
+            periods.add(period)
+        split = _observed_history_split(row)
+        if split:
+            rows_with_split += 1
+            split_counts[split] += 1
+            if split == "train":
+                train_row_count += 1
+            if split == "holdout":
+                holdout_row_count += 1
+                if period:
+                    holdout_periods.add(period)
+        version = _observed_history_policy_effective_version(row)
+        if version:
+            rows_with_policy_effective_version += 1
+            policy_versions.add(version)
+
+    missing: list[str] = []
+    if not production_rows:
+        missing.append("production_temporal_rows")
+    if len(periods) < 2:
+        missing.append("temporal_periods")
+    if train_row_count <= 0 or holdout_row_count <= 0:
+        missing.append("explicit_train_holdout_split")
+    if rows_with_policy_effective_version < len(production_rows):
+        missing.append("policy_effective_version")
+    return {
+        "schema": "territory_world_model.production_temporal_validation_quality.v1",
+        "status": "pass" if not missing else "review",
+        "row_count": len(rows),
+        "production_temporal_row_count": len(production_rows),
+        "period_count": len(periods),
+        "periods": sorted(periods)[:24],
+        "holdout_period_count": len(holdout_periods),
+        "holdout_periods": sorted(holdout_periods)[:24],
+        "rows_with_split": rows_with_split,
+        "train_row_count": train_row_count,
+        "holdout_row_count": holdout_row_count,
+        "split_counts": dict(sorted(split_counts.items())),
+        "rows_with_policy_effective_version": rows_with_policy_effective_version,
+        "policy_effective_version_count": len(policy_versions),
+        "sample_policy_effective_versions": sorted(policy_versions)[:12],
+        "missing_temporal_gates": missing,
+        "claim_boundary": "preflight for out-of-sample temporal validation and policy-version traceability only; it does not prove simulator accuracy",
     }
 
 
@@ -1495,6 +1776,28 @@ def _observed_policy_history_quality(rows: list[dict[str, Any]]) -> dict[str, An
     }
 
 
+def _empty_temporal_validation_quality(status: str) -> dict[str, Any]:
+    return {
+        "schema": "territory_world_model.production_temporal_validation_quality.v1",
+        "status": status,
+        "row_count": 0,
+        "production_temporal_row_count": 0,
+        "period_count": 0,
+        "periods": [],
+        "holdout_period_count": 0,
+        "holdout_periods": [],
+        "rows_with_split": 0,
+        "train_row_count": 0,
+        "holdout_row_count": 0,
+        "split_counts": {},
+        "rows_with_policy_effective_version": 0,
+        "policy_effective_version_count": 0,
+        "sample_policy_effective_versions": [],
+        "missing_temporal_gates": ["production_temporal_history_not_provided" if status == "not_provided" else "production_temporal_history_missing"],
+        "claim_boundary": "preflight for out-of-sample temporal validation and policy-version traceability only; it does not prove simulator accuracy",
+    }
+
+
 def _empty_observed_policy_history_quality(status: str) -> dict[str, Any]:
     return {
         "schema": "territory_world_model.production_policy_history_quality.v1",
@@ -1600,6 +1903,10 @@ def _observed_policy_history_production_ready(row: dict[str, Any]) -> bool:
     return bool(_observed_policy_action_type(row) or _observed_policy_label(row) or _observed_policy_allowed(row) is not None)
 
 
+def _text(value: Any) -> str:
+    return "" if value is None else str(value).strip()
+
+
 def _observed_policy_action_type(row: dict[str, Any]) -> str:
     return str(_row_attr(row, "action_type", "action", "decision_action", "planning_action") or "").strip()
 
@@ -1641,6 +1948,33 @@ def _observed_policy_time_key(row: dict[str, Any]) -> str:
     return str(_row_attr(row, "period", "time_index", "approval_date", "decision_date", "year", "quarter") or "").strip()
 
 
+def _observed_history_split(row: dict[str, Any]) -> str:
+    raw = str(_row_attr(row, "split", "dataset_split", "validation_split", "train_test_split") or "").strip().lower()
+    if raw in {"train", "training", "candidate", "fit", "calibration"}:
+        return "train"
+    if raw in {"holdout", "test", "validation", "valid", "eval", "evaluation"}:
+        return "holdout"
+    return ""
+
+
+def _observed_history_policy_effective_version(row: dict[str, Any]) -> str:
+    for key in (
+        "policy_effective_date",
+        "policy_effective_at",
+        "effective_date",
+        "rule_effective_date",
+        "policy_version",
+        "rule_version",
+        "planning_version",
+        "standard_version",
+        "land_policy_version",
+    ):
+        value = row.get(key)
+        if value not in (None, ""):
+            return str(value).strip()
+    return ""
+
+
 def _observed_policy_is_mixed_allowed(policy: str) -> bool:
     normalized = policy.strip().lower()
     return bool(
@@ -1665,6 +1999,10 @@ def _observed_history_schema_recommendations(missing_groups: list[str], missing_
         recommendations.append("add numeric pre-treatment covariates such as area, quality, risk, rule-hit and evidence-coverage measures")
     if "explicit_production_flags" in missing_data_gates:
         recommendations.append("include explicit synthetic and not_for_production columns so review gates can block demo rows")
+    if "temporal_holdout_support" in missing_data_gates:
+        recommendations.append("add explicit train/holdout split labels across at least two periods before upgrading production validation claims")
+    if "policy_effective_version" in missing_data_gates:
+        recommendations.append("add policy_effective_date, policy_version, rule_version, planning_version or equivalent legal-version metadata to each production candidate row")
     return recommendations
 
 

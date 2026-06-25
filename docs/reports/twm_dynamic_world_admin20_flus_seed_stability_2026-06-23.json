@@ -1,0 +1,1055 @@
+{
+  "schema": "territory_world_model.dynamic_world_flus_seed_stability.v1",
+  "status": "pass",
+  "seed_count": 3,
+  "seeds": [
+    20260623,
+    20260624,
+    20260625
+  ],
+  "case_count_per_seed": 100,
+  "evaluated_case_count_per_seed": 100,
+  "seed_reports": [
+    {
+      "path": "docs/reports/twm_dynamic_world_admin20_flus_direct_all20_seed20260623_2026-06-23.json",
+      "flus_seed": 20260623,
+      "case_count": 100,
+      "evaluated_case_count": 100,
+      "max_iterations": 30
+    },
+    {
+      "path": "docs/reports/twm_dynamic_world_admin20_flus_direct_all20_seed20260624_2026-06-23.json",
+      "flus_seed": 20260624,
+      "case_count": 100,
+      "evaluated_case_count": 100,
+      "max_iterations": 30
+    },
+    {
+      "path": "docs/reports/twm_dynamic_world_admin20_flus_direct_all20_seed20260625_2026-06-23.json",
+      "flus_seed": 20260625,
+      "case_count": 100,
+      "evaluated_case_count": 100,
+      "max_iterations": 30
+    }
+  ],
+  "candidate_stability": {
+    "markov_transition_projection": {
+      "seed_count": 3,
+      "change_fom_delta": {
+        "count": 3,
+        "mean": -0.005818,
+        "median": -0.005873,
+        "min": -0.006173,
+        "max": -0.005408,
+        "positive_seed_count": 0,
+        "negative_seed_count": 3,
+        "zero_seed_count": 0
+      },
+      "median_change_fom_delta": {
+        "count": 3,
+        "mean": -0.00868,
+        "median": -0.007708,
+        "min": -0.010666,
+        "max": -0.007666,
+        "positive_seed_count": 0,
+        "negative_seed_count": 3,
+        "zero_seed_count": 0
+      },
+      "overall_accuracy_delta": {
+        "count": 3,
+        "mean": -0.015393,
+        "median": -0.015411,
+        "min": -0.015429,
+        "max": -0.01534,
+        "positive_seed_count": 0,
+        "negative_seed_count": 3,
+        "zero_seed_count": 0
+      },
+      "macro_f1_delta": {
+        "count": 3,
+        "mean": -0.043651,
+        "median": -0.043493,
+        "min": -0.044431,
+        "max": -0.04303,
+        "positive_seed_count": 0,
+        "negative_seed_count": 3,
+        "zero_seed_count": 0
+      },
+      "target_demand_abs_error_delta": {
+        "count": 3,
+        "mean": -117752.666667,
+        "median": -117718.0,
+        "min": -117986.0,
+        "max": -117554.0,
+        "positive_seed_count": 0,
+        "negative_seed_count": 3,
+        "zero_seed_count": 0
+      },
+      "change_fom_win_count": {
+        "count": 3,
+        "mean": 30.333333,
+        "median": 29.0,
+        "min": 29.0,
+        "max": 33.0,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "change_fom_loss_count": {
+        "count": 3,
+        "mean": 69.666667,
+        "median": 71.0,
+        "min": 67.0,
+        "max": 71.0,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "candidate_mean_change_fom": {
+        "count": 3,
+        "mean": 0.045569,
+        "median": 0.045569,
+        "min": 0.045569,
+        "max": 0.045569,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "flus_mean_change_fom": {
+        "count": 3,
+        "mean": 0.051387,
+        "median": 0.051442,
+        "min": 0.050977,
+        "max": 0.051742,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "candidate_mean_overall_accuracy": {
+        "count": 3,
+        "mean": 0.903706,
+        "median": 0.903706,
+        "min": 0.903706,
+        "max": 0.903706,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "flus_mean_overall_accuracy": {
+        "count": 3,
+        "mean": 0.9191,
+        "median": 0.919117,
+        "min": 0.919047,
+        "max": 0.919135,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      }
+    },
+    "persistence": {
+      "seed_count": 3,
+      "change_fom_delta": {
+        "count": 3,
+        "mean": -0.051387,
+        "median": -0.051442,
+        "min": -0.051742,
+        "max": -0.050977,
+        "positive_seed_count": 0,
+        "negative_seed_count": 3,
+        "zero_seed_count": 0
+      },
+      "median_change_fom_delta": {
+        "count": 3,
+        "mean": -0.046522,
+        "median": -0.046391,
+        "min": -0.046883,
+        "max": -0.046292,
+        "positive_seed_count": 0,
+        "negative_seed_count": 3,
+        "zero_seed_count": 0
+      },
+      "overall_accuracy_delta": {
+        "count": 3,
+        "mean": 0.006119,
+        "median": 0.006101,
+        "min": 0.006083,
+        "max": 0.006172,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "macro_f1_delta": {
+        "count": 3,
+        "mean": 0.032195,
+        "median": 0.032353,
+        "min": 0.031415,
+        "max": 0.032816,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "target_demand_abs_error_delta": {
+        "count": 3,
+        "mean": 72109.333333,
+        "median": 72144.0,
+        "min": 71876.0,
+        "max": 72308.0,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "change_fom_win_count": {
+        "count": 3,
+        "mean": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "positive_seed_count": 0,
+        "negative_seed_count": 0,
+        "zero_seed_count": 3
+      },
+      "change_fom_loss_count": {
+        "count": 3,
+        "mean": 100.0,
+        "median": 100.0,
+        "min": 100.0,
+        "max": 100.0,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "candidate_mean_change_fom": {
+        "count": 3,
+        "mean": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "positive_seed_count": 0,
+        "negative_seed_count": 0,
+        "zero_seed_count": 3
+      },
+      "flus_mean_change_fom": {
+        "count": 3,
+        "mean": 0.051387,
+        "median": 0.051442,
+        "min": 0.050977,
+        "max": 0.051742,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "candidate_mean_overall_accuracy": {
+        "count": 3,
+        "mean": 0.925218,
+        "median": 0.925218,
+        "min": 0.925218,
+        "max": 0.925218,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "flus_mean_overall_accuracy": {
+        "count": 3,
+        "mean": 0.9191,
+        "median": 0.919117,
+        "min": 0.919047,
+        "max": 0.919135,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      }
+    },
+    "twm_ablation_no_drivers_forecast_demand": {
+      "seed_count": 3,
+      "change_fom_delta": {
+        "count": 3,
+        "mean": 0.021188,
+        "median": 0.021133,
+        "min": 0.020833,
+        "max": 0.021598,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "median_change_fom_delta": {
+        "count": 3,
+        "mean": 0.016528,
+        "median": 0.016034,
+        "min": 0.015681,
+        "max": 0.017869,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "overall_accuracy_delta": {
+        "count": 3,
+        "mean": -0.010806,
+        "median": -0.010824,
+        "min": -0.010842,
+        "max": -0.010753,
+        "positive_seed_count": 0,
+        "negative_seed_count": 3,
+        "zero_seed_count": 0
+      },
+      "macro_f1_delta": {
+        "count": 3,
+        "mean": -0.033702,
+        "median": -0.033544,
+        "min": -0.034482,
+        "max": -0.033081,
+        "positive_seed_count": 0,
+        "negative_seed_count": 3,
+        "zero_seed_count": 0
+      },
+      "target_demand_abs_error_delta": {
+        "count": 3,
+        "mean": -117752.666667,
+        "median": -117718.0,
+        "min": -117986.0,
+        "max": -117554.0,
+        "positive_seed_count": 0,
+        "negative_seed_count": 3,
+        "zero_seed_count": 0
+      },
+      "change_fom_win_count": {
+        "count": 3,
+        "mean": 83.666667,
+        "median": 83.0,
+        "min": 82.0,
+        "max": 86.0,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "change_fom_loss_count": {
+        "count": 3,
+        "mean": 16.333333,
+        "median": 17.0,
+        "min": 14.0,
+        "max": 18.0,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "candidate_mean_change_fom": {
+        "count": 3,
+        "mean": 0.072575,
+        "median": 0.072575,
+        "min": 0.072575,
+        "max": 0.072575,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "flus_mean_change_fom": {
+        "count": 3,
+        "mean": 0.051387,
+        "median": 0.051442,
+        "min": 0.050977,
+        "max": 0.051742,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "candidate_mean_overall_accuracy": {
+        "count": 3,
+        "mean": 0.908293,
+        "median": 0.908293,
+        "min": 0.908293,
+        "max": 0.908293,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "flus_mean_overall_accuracy": {
+        "count": 3,
+        "mean": 0.9191,
+        "median": 0.919117,
+        "min": 0.919047,
+        "max": 0.919135,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      }
+    },
+    "twm_ablation_no_neighborhood_forecast_demand": {
+      "seed_count": 3,
+      "change_fom_delta": {
+        "count": 3,
+        "mean": 0.002403,
+        "median": 0.002347,
+        "min": 0.002048,
+        "max": 0.002813,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "median_change_fom_delta": {
+        "count": 3,
+        "mean": -0.003244,
+        "median": -0.002653,
+        "min": -0.004433,
+        "max": -0.002646,
+        "positive_seed_count": 0,
+        "negative_seed_count": 3,
+        "zero_seed_count": 0
+      },
+      "overall_accuracy_delta": {
+        "count": 3,
+        "mean": -0.013952,
+        "median": -0.01397,
+        "min": -0.013988,
+        "max": -0.013899,
+        "positive_seed_count": 0,
+        "negative_seed_count": 3,
+        "zero_seed_count": 0
+      },
+      "macro_f1_delta": {
+        "count": 3,
+        "mean": -0.041286,
+        "median": -0.041128,
+        "min": -0.042066,
+        "max": -0.040665,
+        "positive_seed_count": 0,
+        "negative_seed_count": 3,
+        "zero_seed_count": 0
+      },
+      "target_demand_abs_error_delta": {
+        "count": 3,
+        "mean": -117752.666667,
+        "median": -117718.0,
+        "min": -117986.0,
+        "max": -117554.0,
+        "positive_seed_count": 0,
+        "negative_seed_count": 3,
+        "zero_seed_count": 0
+      },
+      "change_fom_win_count": {
+        "count": 3,
+        "mean": 43.333333,
+        "median": 43.0,
+        "min": 41.0,
+        "max": 46.0,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "change_fom_loss_count": {
+        "count": 3,
+        "mean": 56.666667,
+        "median": 57.0,
+        "min": 54.0,
+        "max": 59.0,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "candidate_mean_change_fom": {
+        "count": 3,
+        "mean": 0.053789,
+        "median": 0.053789,
+        "min": 0.053789,
+        "max": 0.053789,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "flus_mean_change_fom": {
+        "count": 3,
+        "mean": 0.051387,
+        "median": 0.051442,
+        "min": 0.050977,
+        "max": 0.051742,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "candidate_mean_overall_accuracy": {
+        "count": 3,
+        "mean": 0.905147,
+        "median": 0.905147,
+        "min": 0.905147,
+        "max": 0.905147,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "flus_mean_overall_accuracy": {
+        "count": 3,
+        "mean": 0.9191,
+        "median": 0.919117,
+        "min": 0.919047,
+        "max": 0.919135,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      }
+    },
+    "twm_ablation_no_transition_prior_forecast_demand": {
+      "seed_count": 3,
+      "change_fom_delta": {
+        "count": 3,
+        "mean": 0.021219,
+        "median": 0.021164,
+        "min": 0.020864,
+        "max": 0.021629,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "median_change_fom_delta": {
+        "count": 3,
+        "mean": 0.016548,
+        "median": 0.01635,
+        "min": 0.015619,
+        "max": 0.017675,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "overall_accuracy_delta": {
+        "count": 3,
+        "mean": -0.01081,
+        "median": -0.010828,
+        "min": -0.010845,
+        "max": -0.010757,
+        "positive_seed_count": 0,
+        "negative_seed_count": 3,
+        "zero_seed_count": 0
+      },
+      "macro_f1_delta": {
+        "count": 3,
+        "mean": -0.03387,
+        "median": -0.033712,
+        "min": -0.03465,
+        "max": -0.033249,
+        "positive_seed_count": 0,
+        "negative_seed_count": 3,
+        "zero_seed_count": 0
+      },
+      "target_demand_abs_error_delta": {
+        "count": 3,
+        "mean": -117752.666667,
+        "median": -117718.0,
+        "min": -117986.0,
+        "max": -117554.0,
+        "positive_seed_count": 0,
+        "negative_seed_count": 3,
+        "zero_seed_count": 0
+      },
+      "change_fom_win_count": {
+        "count": 3,
+        "mean": 83.333333,
+        "median": 82.0,
+        "min": 82.0,
+        "max": 86.0,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "change_fom_loss_count": {
+        "count": 3,
+        "mean": 16.666667,
+        "median": 18.0,
+        "min": 14.0,
+        "max": 18.0,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "candidate_mean_change_fom": {
+        "count": 3,
+        "mean": 0.072606,
+        "median": 0.072606,
+        "min": 0.072606,
+        "max": 0.072606,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "flus_mean_change_fom": {
+        "count": 3,
+        "mean": 0.051387,
+        "median": 0.051442,
+        "min": 0.050977,
+        "max": 0.051742,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "candidate_mean_overall_accuracy": {
+        "count": 3,
+        "mean": 0.90829,
+        "median": 0.90829,
+        "min": 0.90829,
+        "max": 0.90829,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "flus_mean_overall_accuracy": {
+        "count": 3,
+        "mean": 0.9191,
+        "median": 0.919117,
+        "min": 0.919047,
+        "max": 0.919135,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      }
+    },
+    "twm_calibrated_hierarchical_transition_forecast_demand": {
+      "seed_count": 3,
+      "change_fom_delta": {
+        "count": 3,
+        "mean": 0.021163,
+        "median": 0.021107,
+        "min": 0.020808,
+        "max": 0.021573,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "median_change_fom_delta": {
+        "count": 3,
+        "mean": 0.016908,
+        "median": 0.016626,
+        "min": 0.015991,
+        "max": 0.018106,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "overall_accuracy_delta": {
+        "count": 3,
+        "mean": -0.01081,
+        "median": -0.010828,
+        "min": -0.010845,
+        "max": -0.010757,
+        "positive_seed_count": 0,
+        "negative_seed_count": 3,
+        "zero_seed_count": 0
+      },
+      "macro_f1_delta": {
+        "count": 3,
+        "mean": -0.034042,
+        "median": -0.033884,
+        "min": -0.034822,
+        "max": -0.033421,
+        "positive_seed_count": 0,
+        "negative_seed_count": 3,
+        "zero_seed_count": 0
+      },
+      "target_demand_abs_error_delta": {
+        "count": 3,
+        "mean": -117752.666667,
+        "median": -117718.0,
+        "min": -117986.0,
+        "max": -117554.0,
+        "positive_seed_count": 0,
+        "negative_seed_count": 3,
+        "zero_seed_count": 0
+      },
+      "change_fom_win_count": {
+        "count": 3,
+        "mean": 82.0,
+        "median": 81.0,
+        "min": 81.0,
+        "max": 84.0,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "change_fom_loss_count": {
+        "count": 3,
+        "mean": 18.0,
+        "median": 19.0,
+        "min": 16.0,
+        "max": 19.0,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "candidate_mean_change_fom": {
+        "count": 3,
+        "mean": 0.072549,
+        "median": 0.072549,
+        "min": 0.072549,
+        "max": 0.072549,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "flus_mean_change_fom": {
+        "count": 3,
+        "mean": 0.051387,
+        "median": 0.051442,
+        "min": 0.050977,
+        "max": 0.051742,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "candidate_mean_overall_accuracy": {
+        "count": 3,
+        "mean": 0.90829,
+        "median": 0.90829,
+        "min": 0.90829,
+        "max": 0.90829,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "flus_mean_overall_accuracy": {
+        "count": 3,
+        "mean": 0.9191,
+        "median": 0.919117,
+        "min": 0.919047,
+        "max": 0.919135,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      }
+    },
+    "twm_cross_region_smoothed_transition_forecast_demand": {
+      "seed_count": 3,
+      "change_fom_delta": {
+        "count": 3,
+        "mean": 0.021188,
+        "median": 0.021133,
+        "min": 0.020833,
+        "max": 0.021598,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "median_change_fom_delta": {
+        "count": 3,
+        "mean": 0.016528,
+        "median": 0.016034,
+        "min": 0.015681,
+        "max": 0.017869,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "overall_accuracy_delta": {
+        "count": 3,
+        "mean": -0.010806,
+        "median": -0.010824,
+        "min": -0.010842,
+        "max": -0.010753,
+        "positive_seed_count": 0,
+        "negative_seed_count": 3,
+        "zero_seed_count": 0
+      },
+      "macro_f1_delta": {
+        "count": 3,
+        "mean": -0.033702,
+        "median": -0.033544,
+        "min": -0.034482,
+        "max": -0.033081,
+        "positive_seed_count": 0,
+        "negative_seed_count": 3,
+        "zero_seed_count": 0
+      },
+      "target_demand_abs_error_delta": {
+        "count": 3,
+        "mean": -117752.666667,
+        "median": -117718.0,
+        "min": -117986.0,
+        "max": -117554.0,
+        "positive_seed_count": 0,
+        "negative_seed_count": 3,
+        "zero_seed_count": 0
+      },
+      "change_fom_win_count": {
+        "count": 3,
+        "mean": 83.666667,
+        "median": 83.0,
+        "min": 82.0,
+        "max": 86.0,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "change_fom_loss_count": {
+        "count": 3,
+        "mean": 16.333333,
+        "median": 17.0,
+        "min": 14.0,
+        "max": 18.0,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "candidate_mean_change_fom": {
+        "count": 3,
+        "mean": 0.072575,
+        "median": 0.072575,
+        "min": 0.072575,
+        "max": 0.072575,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "flus_mean_change_fom": {
+        "count": 3,
+        "mean": 0.051387,
+        "median": 0.051442,
+        "min": 0.050977,
+        "max": 0.051742,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "candidate_mean_overall_accuracy": {
+        "count": 3,
+        "mean": 0.908293,
+        "median": 0.908293,
+        "min": 0.908293,
+        "max": 0.908293,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "flus_mean_overall_accuracy": {
+        "count": 3,
+        "mean": 0.9191,
+        "median": 0.919117,
+        "min": 0.919047,
+        "max": 0.919135,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      }
+    },
+    "twm_hierarchical_transition_forecast_demand": {
+      "seed_count": 3,
+      "change_fom_delta": {
+        "count": 3,
+        "mean": 0.021008,
+        "median": 0.020953,
+        "min": 0.020654,
+        "max": 0.021418,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "median_change_fom_delta": {
+        "count": 3,
+        "mean": 0.016653,
+        "median": 0.016179,
+        "min": 0.01591,
+        "max": 0.017869,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "overall_accuracy_delta": {
+        "count": 3,
+        "mean": -0.010809,
+        "median": -0.010827,
+        "min": -0.010844,
+        "max": -0.010756,
+        "positive_seed_count": 0,
+        "negative_seed_count": 3,
+        "zero_seed_count": 0
+      },
+      "macro_f1_delta": {
+        "count": 3,
+        "mean": -0.034586,
+        "median": -0.034428,
+        "min": -0.035366,
+        "max": -0.033965,
+        "positive_seed_count": 0,
+        "negative_seed_count": 3,
+        "zero_seed_count": 0
+      },
+      "target_demand_abs_error_delta": {
+        "count": 3,
+        "mean": -117752.666667,
+        "median": -117718.0,
+        "min": -117986.0,
+        "max": -117554.0,
+        "positive_seed_count": 0,
+        "negative_seed_count": 3,
+        "zero_seed_count": 0
+      },
+      "change_fom_win_count": {
+        "count": 3,
+        "mean": 82.0,
+        "median": 82.0,
+        "min": 80.0,
+        "max": 84.0,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "change_fom_loss_count": {
+        "count": 3,
+        "mean": 18.0,
+        "median": 18.0,
+        "min": 16.0,
+        "max": 20.0,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "candidate_mean_change_fom": {
+        "count": 3,
+        "mean": 0.072395,
+        "median": 0.072395,
+        "min": 0.072395,
+        "max": 0.072395,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "flus_mean_change_fom": {
+        "count": 3,
+        "mean": 0.051387,
+        "median": 0.051442,
+        "min": 0.050977,
+        "max": 0.051742,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "candidate_mean_overall_accuracy": {
+        "count": 3,
+        "mean": 0.908291,
+        "median": 0.908291,
+        "min": 0.908291,
+        "max": 0.908291,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "flus_mean_overall_accuracy": {
+        "count": 3,
+        "mean": 0.9191,
+        "median": 0.919117,
+        "min": 0.919047,
+        "max": 0.919135,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      }
+    },
+    "twm_independent_transition_forecast_demand": {
+      "seed_count": 3,
+      "change_fom_delta": {
+        "count": 3,
+        "mean": 0.021188,
+        "median": 0.021133,
+        "min": 0.020833,
+        "max": 0.021598,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "median_change_fom_delta": {
+        "count": 3,
+        "mean": 0.016528,
+        "median": 0.016034,
+        "min": 0.015681,
+        "max": 0.017869,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "overall_accuracy_delta": {
+        "count": 3,
+        "mean": -0.010806,
+        "median": -0.010824,
+        "min": -0.010842,
+        "max": -0.010753,
+        "positive_seed_count": 0,
+        "negative_seed_count": 3,
+        "zero_seed_count": 0
+      },
+      "macro_f1_delta": {
+        "count": 3,
+        "mean": -0.033702,
+        "median": -0.033544,
+        "min": -0.034482,
+        "max": -0.033081,
+        "positive_seed_count": 0,
+        "negative_seed_count": 3,
+        "zero_seed_count": 0
+      },
+      "target_demand_abs_error_delta": {
+        "count": 3,
+        "mean": -117752.666667,
+        "median": -117718.0,
+        "min": -117986.0,
+        "max": -117554.0,
+        "positive_seed_count": 0,
+        "negative_seed_count": 3,
+        "zero_seed_count": 0
+      },
+      "change_fom_win_count": {
+        "count": 3,
+        "mean": 83.666667,
+        "median": 83.0,
+        "min": 82.0,
+        "max": 86.0,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "change_fom_loss_count": {
+        "count": 3,
+        "mean": 16.333333,
+        "median": 17.0,
+        "min": 14.0,
+        "max": 18.0,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "candidate_mean_change_fom": {
+        "count": 3,
+        "mean": 0.072575,
+        "median": 0.072575,
+        "min": 0.072575,
+        "max": 0.072575,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "flus_mean_change_fom": {
+        "count": 3,
+        "mean": 0.051387,
+        "median": 0.051442,
+        "min": 0.050977,
+        "max": 0.051742,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "candidate_mean_overall_accuracy": {
+        "count": 3,
+        "mean": 0.908293,
+        "median": 0.908293,
+        "min": 0.908293,
+        "max": 0.908293,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      },
+      "flus_mean_overall_accuracy": {
+        "count": 3,
+        "mean": 0.9191,
+        "median": 0.919117,
+        "min": 0.919047,
+        "max": 0.919135,
+        "positive_seed_count": 3,
+        "negative_seed_count": 0,
+        "zero_seed_count": 0
+      }
+    }
+  },
+  "claim_boundary": "Fixed-seed direct FLUS CA stability summary. FLUS suitability remains adapter-supplied transition-prior probability, not full FLUS ANN training."
+}

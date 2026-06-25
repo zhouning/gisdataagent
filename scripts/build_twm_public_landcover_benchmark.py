@@ -138,7 +138,31 @@ def run_public_landcover_benchmark(
             "candidate_ids": [
                 "persistence",
                 "markov_transition_projection",
+                "twm_learned_suitability_forecast_demand",
                 "twm_independent_transition_forecast_demand",
+                "twm_conservative_map_mode_forecast_demand",
+                "twm_change_budget_calibrated_forecast_demand",
+                "twm_transition_reliability_change_budget_forecast_demand",
+                "twm_transition_reliability_swap_change_budget_forecast_demand",
+                "twm_temporal_activity_change_budget_forecast_demand",
+                "twm_temporal_activity_reliability_change_budget_forecast_demand",
+                "twm_temporal_activity_replay_precision_change_budget_forecast_demand",
+                "twm_temporal_activity_neighborhood_change_budget_forecast_demand",
+                "twm_temporal_activity_neighborhood_replay_precision_change_budget_forecast_demand",
+                "twm_temporal_activity_target_neighborhood_replay_precision_change_budget_forecast_demand",
+                "twm_balanced_strict_overprediction_churn50_forecast_demand",
+                "twm_balanced_strict_overprediction_churn75_forecast_demand",
+                "twm_balanced_strict_overprediction_churn90_forecast_demand",
+                "twm_balanced_strict_overprediction_churn75_markov_forecast_demand",
+                "twm_balanced_strict_overprediction_churn50_persistence_forecast_demand",
+                "twm_balanced_strict_overprediction_churn75_persistence_forecast_demand",
+                "twm_balanced_strict_overprediction_churn90_persistence_forecast_demand",
+                "twm_region_false_alarm_guarded_persistence_forecast_demand",
+                "twm_pair_false_alarm_guarded_persistence_forecast_demand",
+                "twm_change_budget_scale_025_forecast_demand",
+                "twm_change_budget_scale_050_forecast_demand",
+                "twm_change_budget_scale_075_forecast_demand",
+                "twm_change_budget_adaptive_churn75_forecast_demand",
                 "twm_hierarchical_transition_forecast_demand",
                 "twm_calibrated_hierarchical_transition_forecast_demand",
                 "twm_cross_region_smoothed_transition_forecast_demand",
@@ -542,6 +566,83 @@ def project_class_counts(
     return {int(cls): int(floors[cls]) for cls in classes}
 
 
+def project_markov_class_counts(
+    start: np.ndarray,
+    end: np.ndarray,
+    valid: np.ndarray,
+    classes: list[int],
+    *,
+    train_years: int,
+    horizon_years: int,
+) -> tuple[dict[int, int], dict[str, Any]]:
+    class_to_idx = {int(cls): idx for idx, cls in enumerate(classes)}
+    transition_counts = np.zeros((len(classes), len(classes)), dtype=np.float64)
+    start_values = start[valid].astype(int)
+    end_values = end[valid].astype(int)
+    for source, target in zip(start_values.tolist(), end_values.tolist(), strict=False):
+        if source in class_to_idx and target in class_to_idx:
+            transition_counts[class_to_idx[source], class_to_idx[target]] += 1.0
+
+    probability = np.zeros_like(transition_counts)
+    for source in classes:
+        source_idx = class_to_idx[int(source)]
+        row_total = float(transition_counts[source_idx].sum())
+        if row_total > 0:
+            probability[source_idx] = transition_counts[source_idx] / row_total
+        else:
+            probability[source_idx, source_idx] = 1.0
+
+    train_years = max(1, int(train_years))
+    horizon_years = max(1, int(horizon_years))
+    horizon_steps = max(1, int(round(float(horizon_years) / float(train_years))))
+    current_counts = class_counts(end, valid, classes)
+    projected = np.array([float(current_counts[int(cls)]) for cls in classes], dtype=np.float64)
+    transition_power = np.linalg.matrix_power(probability, horizon_steps)
+    raw_values = projected @ transition_power
+
+    total = int(valid.sum())
+    raw_total = float(raw_values.sum())
+    if raw_total <= 0:
+        raw_values = projected
+        raw_total = float(raw_values.sum())
+    if raw_total > 0:
+        raw_values = raw_values * float(total) / raw_total
+
+    floors = {int(cls): int(math.floor(float(raw_values[idx]))) for idx, cls in enumerate(classes)}
+    remaining = total - sum(floors.values())
+    fractional_order = sorted(
+        classes,
+        key=lambda cls: (float(raw_values[class_to_idx[int(cls)]]) - floors[int(cls)], current_counts[int(cls)]),
+        reverse=True,
+    )
+    if remaining >= 0:
+        for cls in fractional_order[:remaining]:
+            floors[int(cls)] += 1
+    else:
+        for cls in sorted(
+            classes,
+            key=lambda cls: (floors[int(cls)], -(float(raw_values[class_to_idx[int(cls)]]) - floors[int(cls)])),
+            reverse=True,
+        ):
+            if remaining == 0:
+                break
+            take = min(floors[int(cls)], -remaining)
+            floors[int(cls)] -= take
+            remaining += take
+
+    diagnostics = {
+        "schema": "territory_world_model.markov_demand_projection.v1",
+        "demand_projection_source": "train_start_train_end_markov_transition_counts",
+        "uses_holdout_labels_for_training": False,
+        "train_years": train_years,
+        "horizon_years": horizon_years,
+        "horizon_steps": horizon_steps,
+        "transition_counts": transition_counts.astype(int).tolist(),
+        "projected_raw_counts": {str(cls): round(float(raw_values[idx]), 6) for idx, cls in enumerate(classes)},
+    }
+    return {int(cls): int(floors[int(cls)]) for cls in classes}, diagnostics
+
+
 def build_candidates(
     model_inputs: dict[str, Any],
     forecast_counts: dict[int, int],
@@ -551,6 +652,86 @@ def build_candidates(
 ) -> tuple[dict[str, np.ndarray], dict[str, Any]]:
     probability, training_diagnostics = train_transition_probability_cube(model_inputs, include_drivers=True, include_neighborhood=True)
     score = transition_score_cube(model_inputs, probability, include_neighborhood=True, include_prior=True)
+    reliability_score, reliability_diagnostics = apply_train_transition_reliability_to_score(model_inputs, score)
+    activity_score, activity_diagnostics = apply_train_temporal_activity_to_score(model_inputs, score)
+    activity_neighborhood_score, activity_neighborhood_diagnostics = apply_train_temporal_activity_to_score(
+        model_inputs,
+        score,
+        neighborhood_activity_weight=0.08,
+    )
+    activity_target_neighborhood_score, activity_target_neighborhood_diagnostics = (
+        apply_train_target_transition_neighborhood_to_score(
+            model_inputs,
+            activity_neighborhood_score,
+            target_transition_neighborhood_weight=0.08,
+        )
+    )
+    activity_reliability_score, activity_reliability_diagnostics = apply_train_transition_reliability_to_score(
+        model_inputs,
+        activity_score,
+    )
+    activity_replay_precision_score, activity_replay_precision_diagnostics = build_train_replay_transition_precision_score(
+        model_inputs,
+        activity_score,
+    )
+    activity_neighborhood_replay_precision_score, activity_neighborhood_replay_precision_diagnostics = (
+        build_train_replay_transition_precision_score(
+            model_inputs,
+            activity_neighborhood_score,
+            neighborhood_activity_weight=0.08,
+        )
+    )
+    activity_target_neighborhood_replay_precision_score, activity_target_neighborhood_replay_precision_diagnostics = (
+        build_train_replay_transition_precision_score(
+            model_inputs,
+            activity_target_neighborhood_score,
+            neighborhood_activity_weight=0.08,
+            target_transition_neighborhood_weight=0.08,
+        )
+    )
+    activity_target_neighborhood_strict_replay_precision_score, activity_target_neighborhood_strict_replay_precision_diagnostics = (
+        build_train_replay_transition_precision_score(
+            model_inputs,
+            activity_target_neighborhood_score,
+            neighborhood_activity_weight=0.08,
+            target_transition_neighborhood_weight=0.08,
+            precision_floor=0.35,
+            penalty_weight=0.20,
+            min_predicted_count=10,
+            include_replay_transition_pair_metrics=True,
+        )
+    )
+    (
+        activity_target_neighborhood_strict_replay_precision_overprediction_score,
+        activity_target_neighborhood_strict_replay_precision_overprediction_diagnostics,
+    ) = apply_train_replay_transition_overprediction_to_score(
+        model_inputs,
+        activity_target_neighborhood_strict_replay_precision_score,
+        activity_target_neighborhood_strict_replay_precision_diagnostics["replay_transition_pair_metrics"],
+        overprediction_ratio_ceiling=1.5,
+        precision_floor=0.35,
+        penalty_weight=0.15,
+        min_predicted_count=10,
+    )
+    (
+        activity_target_neighborhood_strict_replay_precision_overprediction_false_alarm_score,
+        activity_target_neighborhood_strict_replay_precision_overprediction_false_alarm_diagnostics,
+    ) = apply_train_replay_transition_false_alarm_pressure_to_score(
+        model_inputs,
+        activity_target_neighborhood_strict_replay_precision_overprediction_score,
+        activity_target_neighborhood_strict_replay_precision_diagnostics["replay_transition_pair_metrics"],
+        false_alarm_rate_ceiling=0.6,
+        precision_floor=0.35,
+        penalty_weight=0.25,
+        min_predicted_count=10,
+    )
+    (
+        activity_target_neighborhood_replay_precision_reliability_score,
+        activity_target_neighborhood_replay_precision_reliability_diagnostics,
+    ) = apply_train_transition_reliability_to_score(
+        model_inputs,
+        activity_target_neighborhood_replay_precision_score,
+    )
     cross_region_probability, cross_region_diagnostics = apply_cross_region_smoothed_transition_probability_cube(
         model_inputs,
         base_probability=probability,
@@ -585,10 +766,260 @@ def build_candidates(
     no_neighborhood_probability, no_neighborhood_diagnostics = train_transition_probability_cube(model_inputs, include_drivers=True, include_neighborhood=False)
     no_neighborhood_score = transition_score_cube(model_inputs, no_neighborhood_probability, include_neighborhood=False, include_prior=True)
     no_prior_score = transition_score_cube(model_inputs, probability, include_neighborhood=True, include_prior=False)
+    learned_suitability_probability, learned_suitability_diagnostics = train_pooled_suitability_probability_cube(
+        model_inputs,
+        include_drivers=True,
+        include_neighborhood=True,
+    )
+    learned_suitability_score = transition_score_cube(
+        model_inputs,
+        learned_suitability_probability,
+        include_neighborhood=True,
+        include_prior=True,
+    )
+    change_budget_prediction, change_budget_diagnostics = allocate_score_projection_with_change_budget(
+        model_inputs,
+        forecast_counts,
+        score,
+    )
+    reliability_change_budget_prediction, reliability_change_budget_diagnostics = allocate_score_projection_with_change_budget(
+        model_inputs,
+        forecast_counts,
+        reliability_score,
+    )
+    reliability_swap_change_budget_prediction, reliability_swap_change_budget_diagnostics = allocate_score_projection_with_change_budget(
+        model_inputs,
+        forecast_counts,
+        score,
+        swap_score=reliability_score,
+    )
+    activity_change_budget_prediction, activity_change_budget_diagnostics = allocate_score_projection_with_change_budget(
+        model_inputs,
+        forecast_counts,
+        activity_score,
+    )
+    activity_neighborhood_change_budget_prediction, activity_neighborhood_change_budget_diagnostics = (
+        allocate_score_projection_with_change_budget(
+            model_inputs,
+            forecast_counts,
+            activity_neighborhood_score,
+        )
+    )
+    activity_reliability_change_budget_prediction, activity_reliability_change_budget_diagnostics = (
+        allocate_score_projection_with_change_budget(
+            model_inputs,
+            forecast_counts,
+            activity_reliability_score,
+        )
+    )
+    activity_replay_precision_change_budget_prediction, activity_replay_precision_change_budget_diagnostics = (
+        allocate_score_projection_with_change_budget(
+            model_inputs,
+            forecast_counts,
+            activity_replay_precision_score,
+        )
+    )
+    (
+        activity_neighborhood_replay_precision_change_budget_prediction,
+        activity_neighborhood_replay_precision_change_budget_diagnostics,
+    ) = allocate_score_projection_with_change_budget(
+        model_inputs,
+        forecast_counts,
+        activity_neighborhood_replay_precision_score,
+    )
+    (
+        activity_target_neighborhood_replay_precision_change_budget_prediction,
+        activity_target_neighborhood_replay_precision_change_budget_diagnostics,
+    ) = allocate_score_projection_with_change_budget(
+        model_inputs,
+        forecast_counts,
+        activity_target_neighborhood_replay_precision_score,
+    )
+    (
+        activity_target_neighborhood_strict_replay_precision_change_budget_prediction,
+        activity_target_neighborhood_strict_replay_precision_change_budget_diagnostics,
+    ) = allocate_score_projection_with_change_budget(
+        model_inputs,
+        forecast_counts,
+        activity_target_neighborhood_strict_replay_precision_score,
+    )
+    (
+        activity_target_neighborhood_strict_replay_precision_overprediction_change_budget_prediction,
+        activity_target_neighborhood_strict_replay_precision_overprediction_change_budget_diagnostics,
+    ) = allocate_score_projection_with_change_budget(
+        model_inputs,
+        forecast_counts,
+        activity_target_neighborhood_strict_replay_precision_overprediction_score,
+    )
+    (
+        activity_target_neighborhood_replay_precision_reliability_change_budget_prediction,
+        activity_target_neighborhood_replay_precision_reliability_change_budget_diagnostics,
+    ) = allocate_score_projection_with_change_budget(
+        model_inputs,
+        forecast_counts,
+        activity_target_neighborhood_replay_precision_reliability_score,
+    )
+    change_budget_scaled_outputs = {
+        "twm_change_budget_scale_025_forecast_demand": allocate_score_projection_with_change_budget_scale(
+            model_inputs,
+            forecast_counts,
+            score,
+            budget_scale=0.25,
+        ),
+        "twm_change_budget_scale_050_forecast_demand": allocate_score_projection_with_change_budget_scale(
+            model_inputs,
+            forecast_counts,
+            score,
+            budget_scale=0.5,
+        ),
+        "twm_change_budget_scale_075_forecast_demand": allocate_score_projection_with_change_budget_scale(
+            model_inputs,
+            forecast_counts,
+            score,
+            budget_scale=0.75,
+        ),
+    }
+    adaptive_churn75_prediction, adaptive_churn75_diagnostics = allocate_score_projection_with_adaptive_change_budget_scale(
+        model_inputs,
+        forecast_counts,
+        score,
+        churn_fraction=0.75,
+    )
+    balanced_strict_overprediction_churn_outputs = {
+        "twm_balanced_strict_overprediction_churn50_forecast_demand": allocate_score_projection_with_adaptive_change_budget_scale(
+            model_inputs,
+            forecast_counts,
+            activity_target_neighborhood_strict_replay_precision_overprediction_score,
+            churn_fraction=0.5,
+        ),
+        "twm_balanced_strict_overprediction_churn75_forecast_demand": allocate_score_projection_with_adaptive_change_budget_scale(
+            model_inputs,
+            forecast_counts,
+            activity_target_neighborhood_strict_replay_precision_overprediction_score,
+            churn_fraction=0.75,
+        ),
+        "twm_balanced_strict_overprediction_churn90_forecast_demand": allocate_score_projection_with_adaptive_change_budget_scale(
+            model_inputs,
+            forecast_counts,
+            activity_target_neighborhood_strict_replay_precision_overprediction_score,
+            churn_fraction=0.9,
+        ),
+    }
+    markov_forecast_counts, markov_forecast_diagnostics = project_markov_class_counts(
+        model_inputs["train_start"],
+        model_inputs["train_end"],
+        model_inputs["valid"],
+        list(model_inputs["classes"]),
+        train_years=int(model_inputs.get("train_years", 1)),
+        horizon_years=int(model_inputs.get("horizon_years", 1)),
+    )
+    (
+        balanced_strict_overprediction_churn75_markov_prediction,
+        balanced_strict_overprediction_churn75_markov_diagnostics,
+    ) = allocate_score_projection_with_adaptive_change_budget_scale(
+        model_inputs,
+        markov_forecast_counts,
+        activity_target_neighborhood_strict_replay_precision_overprediction_score,
+        churn_fraction=0.75,
+    )
+    persistence_forecast_counts = class_counts(
+        model_inputs["train_end"],
+        model_inputs["valid"],
+        list(model_inputs["classes"]),
+    )
+    persistence_forecast_diagnostics = {
+        "schema": "territory_world_model.persistence_demand_projection.v1",
+        "demand_projection_source": "train_end_class_counts",
+        "uses_holdout_labels_for_training": False,
+        "train_end_year": int(model_inputs.get("train_end_year", 0)),
+        "horizon_years": int(model_inputs.get("horizon_years", 1)),
+    }
+    balanced_strict_overprediction_persistence_churn_outputs = {
+        "twm_balanced_strict_overprediction_churn50_persistence_forecast_demand": allocate_score_projection_with_adaptive_change_budget_scale(
+            model_inputs,
+            persistence_forecast_counts,
+            activity_target_neighborhood_strict_replay_precision_overprediction_score,
+            churn_fraction=0.5,
+        ),
+        "twm_balanced_strict_overprediction_churn75_persistence_forecast_demand": allocate_score_projection_with_adaptive_change_budget_scale(
+            model_inputs,
+            persistence_forecast_counts,
+            activity_target_neighborhood_strict_replay_precision_overprediction_score,
+            churn_fraction=0.75,
+        ),
+        "twm_balanced_strict_overprediction_churn90_persistence_forecast_demand": allocate_score_projection_with_adaptive_change_budget_scale(
+            model_inputs,
+            persistence_forecast_counts,
+            activity_target_neighborhood_strict_replay_precision_overprediction_score,
+            churn_fraction=0.9,
+        ),
+    }
+    region_false_alarm_guard = false_alarm_guarded_churn_fraction(
+        activity_target_neighborhood_strict_replay_precision_diagnostics["replay_metrics"],
+        base_churn_fraction=0.9,
+        min_churn_fraction=0.5,
+        precision_target=0.45,
+        precision_floor=0.25,
+    )
+    (
+        region_false_alarm_guarded_persistence_prediction,
+        region_false_alarm_guarded_persistence_diagnostics,
+    ) = allocate_score_projection_with_adaptive_change_budget_scale(
+        model_inputs,
+        persistence_forecast_counts,
+        activity_target_neighborhood_strict_replay_precision_overprediction_score,
+        churn_fraction=float(region_false_alarm_guard["churn_fraction"]),
+    )
+    (
+        pair_false_alarm_guarded_persistence_prediction,
+        pair_false_alarm_guarded_persistence_diagnostics,
+    ) = allocate_score_projection_with_adaptive_change_budget_scale(
+        model_inputs,
+        persistence_forecast_counts,
+        activity_target_neighborhood_strict_replay_precision_overprediction_false_alarm_score,
+        churn_fraction=0.9,
+    )
     predictions = {
         "persistence": model_inputs["initial"].copy(),
         "markov_transition_projection": allocate_markov_projection(model_inputs, forecast_counts),
+        "twm_learned_suitability_forecast_demand": allocate_score_projection(
+            model_inputs,
+            forecast_counts,
+            learned_suitability_score,
+        ),
         "twm_independent_transition_forecast_demand": allocate_score_projection(model_inputs, forecast_counts, score),
+        "twm_conservative_map_mode_forecast_demand": allocate_score_projection(model_inputs, forecast_counts, score),
+        "twm_change_budget_calibrated_forecast_demand": change_budget_prediction,
+        "twm_transition_reliability_change_budget_forecast_demand": reliability_change_budget_prediction,
+        "twm_transition_reliability_swap_change_budget_forecast_demand": reliability_swap_change_budget_prediction,
+        "twm_temporal_activity_change_budget_forecast_demand": activity_change_budget_prediction,
+        "twm_temporal_activity_reliability_change_budget_forecast_demand": activity_reliability_change_budget_prediction,
+        "twm_temporal_activity_replay_precision_change_budget_forecast_demand": activity_replay_precision_change_budget_prediction,
+        "twm_temporal_activity_neighborhood_change_budget_forecast_demand": activity_neighborhood_change_budget_prediction,
+        "twm_temporal_activity_neighborhood_replay_precision_change_budget_forecast_demand": (
+            activity_neighborhood_replay_precision_change_budget_prediction
+        ),
+        "twm_temporal_activity_target_neighborhood_replay_precision_change_budget_forecast_demand": (
+            activity_target_neighborhood_replay_precision_change_budget_prediction
+        ),
+        "twm_temporal_activity_target_neighborhood_strict_replay_precision_change_budget_forecast_demand": (
+            activity_target_neighborhood_strict_replay_precision_change_budget_prediction
+        ),
+        "twm_temporal_activity_target_neighborhood_strict_replay_precision_overprediction_change_budget_forecast_demand": (
+            activity_target_neighborhood_strict_replay_precision_overprediction_change_budget_prediction
+        ),
+        **{name: output[0] for name, output in balanced_strict_overprediction_churn_outputs.items()},
+        "twm_balanced_strict_overprediction_churn75_markov_forecast_demand": (
+            balanced_strict_overprediction_churn75_markov_prediction
+        ),
+        **{name: output[0] for name, output in balanced_strict_overprediction_persistence_churn_outputs.items()},
+        "twm_region_false_alarm_guarded_persistence_forecast_demand": region_false_alarm_guarded_persistence_prediction,
+        "twm_pair_false_alarm_guarded_persistence_forecast_demand": pair_false_alarm_guarded_persistence_prediction,
+        "twm_temporal_activity_target_neighborhood_replay_precision_reliability_change_budget_forecast_demand": (
+            activity_target_neighborhood_replay_precision_reliability_change_budget_prediction
+        ),
+        **{name: output[0] for name, output in change_budget_scaled_outputs.items()},
+        "twm_change_budget_adaptive_churn75_forecast_demand": adaptive_churn75_prediction,
         "twm_hierarchical_transition_forecast_demand": allocate_score_projection(model_inputs, forecast_counts, hierarchical_score),
         "twm_calibrated_hierarchical_transition_forecast_demand": allocate_score_projection(
             model_inputs,
@@ -621,6 +1052,20 @@ def build_candidates(
             "uses_holdout_labels_for_training": False,
             "target_counts": forecast_counts,
         },
+        "twm_learned_suitability_forecast_demand": {
+            "backend": "pooled_source_conditioned_suitability_logit",
+            "demand_mode": "forecast_demand",
+            "uses_holdout_labels_for_training": False,
+            "component_flags": {
+                "learned_suitability": True,
+                "driver_features": True,
+                "neighborhood_features": True,
+                "transition_prior": True,
+                "demand_projection": True,
+            },
+            "training_diagnostics": learned_suitability_diagnostics,
+            "target_counts": forecast_counts,
+        },
         "twm_independent_transition_forecast_demand": {
             "backend": "action_conditioned_logit_neighborhood_transition",
             "demand_mode": "forecast_demand",
@@ -632,6 +1077,472 @@ def build_candidates(
                 "demand_projection": True,
             },
             "training_diagnostics": training_diagnostics,
+            "target_counts": forecast_counts,
+        },
+        "twm_conservative_map_mode_forecast_demand": {
+            "backend": "conservative_map_mode_alias_of_independent_transition_forecast",
+            "alias_of": "twm_independent_transition_forecast_demand",
+            "demand_mode": "forecast_demand",
+            "uses_holdout_labels_for_training": False,
+            "component_flags": {
+                "driver_features": True,
+                "neighborhood_features": True,
+                "transition_prior": True,
+                "demand_projection": True,
+                "conservative_map_mode": True,
+            },
+            "training_diagnostics": training_diagnostics,
+            "target_counts": forecast_counts,
+        },
+        "twm_change_budget_calibrated_forecast_demand": {
+            "backend": "score_allocation_with_training_change_budget",
+            "demand_mode": "forecast_demand",
+            "uses_holdout_labels_for_training": False,
+            "component_flags": {
+                "driver_features": True,
+                "neighborhood_features": True,
+                "transition_prior": True,
+                "demand_projection": True,
+                "change_budget_calibration": True,
+            },
+            "training_diagnostics": training_diagnostics,
+            "training_change_budget": change_budget_diagnostics,
+            "target_counts": forecast_counts,
+        },
+        "twm_transition_reliability_change_budget_forecast_demand": {
+            "backend": "train_transition_reliability_calibrated_score_allocation",
+            "demand_mode": "forecast_demand",
+            "uses_holdout_labels_for_training": False,
+            "component_flags": {
+                "driver_features": True,
+                "neighborhood_features": True,
+                "transition_prior": True,
+                "transition_reliability_calibration": True,
+                "demand_projection": True,
+                "change_budget_calibration": True,
+            },
+            "training_diagnostics": training_diagnostics,
+            "training_transition_reliability": reliability_diagnostics,
+            "training_change_budget": reliability_change_budget_diagnostics,
+            "target_counts": forecast_counts,
+        },
+        "twm_transition_reliability_swap_change_budget_forecast_demand": {
+            "backend": "train_transition_reliability_count_neutral_swap_allocation",
+            "demand_mode": "forecast_demand",
+            "uses_holdout_labels_for_training": False,
+            "component_flags": {
+                "driver_features": True,
+                "neighborhood_features": True,
+                "transition_prior": True,
+                "transition_reliability_swap_scoring": True,
+                "demand_projection": True,
+                "change_budget_calibration": True,
+            },
+            "training_diagnostics": training_diagnostics,
+            "training_transition_reliability": reliability_diagnostics,
+            "training_change_budget": reliability_swap_change_budget_diagnostics,
+            "target_counts": forecast_counts,
+        },
+        "twm_temporal_activity_change_budget_forecast_demand": {
+            "backend": "train_temporal_activity_calibrated_score_allocation",
+            "demand_mode": "forecast_demand",
+            "uses_holdout_labels_for_training": False,
+            "component_flags": {
+                "driver_features": True,
+                "neighborhood_features": True,
+                "transition_prior": True,
+                "temporal_activity_calibration": True,
+                "demand_projection": True,
+                "change_budget_calibration": True,
+            },
+            "training_diagnostics": training_diagnostics,
+            "training_temporal_activity": activity_diagnostics,
+            "training_change_budget": activity_change_budget_diagnostics,
+            "target_counts": forecast_counts,
+        },
+        "twm_temporal_activity_reliability_change_budget_forecast_demand": {
+            "backend": "train_temporal_activity_and_transition_reliability_score_allocation",
+            "demand_mode": "forecast_demand",
+            "uses_holdout_labels_for_training": False,
+            "component_flags": {
+                "driver_features": True,
+                "neighborhood_features": True,
+                "transition_prior": True,
+                "temporal_activity_calibration": True,
+                "transition_reliability_calibration": True,
+                "demand_projection": True,
+                "change_budget_calibration": True,
+            },
+            "training_diagnostics": training_diagnostics,
+            "training_temporal_activity": activity_diagnostics,
+            "training_transition_reliability": activity_reliability_diagnostics,
+            "training_change_budget": activity_reliability_change_budget_diagnostics,
+            "target_counts": forecast_counts,
+        },
+        "twm_temporal_activity_replay_precision_change_budget_forecast_demand": {
+            "backend": "train_temporal_activity_and_replay_precision_score_allocation",
+            "demand_mode": "forecast_demand",
+            "uses_holdout_labels_for_training": False,
+            "component_flags": {
+                "driver_features": True,
+                "neighborhood_features": True,
+                "transition_prior": True,
+                "temporal_activity_calibration": True,
+                "train_replay_transition_precision_guard": True,
+                "demand_projection": True,
+                "change_budget_calibration": True,
+            },
+            "training_diagnostics": training_diagnostics,
+            "training_temporal_activity": activity_diagnostics,
+            "training_replay_transition_precision": activity_replay_precision_diagnostics,
+            "training_change_budget": activity_replay_precision_change_budget_diagnostics,
+            "target_counts": forecast_counts,
+        },
+        "twm_temporal_activity_neighborhood_change_budget_forecast_demand": {
+            "backend": "train_temporal_activity_neighborhood_score_allocation",
+            "demand_mode": "forecast_demand",
+            "uses_holdout_labels_for_training": False,
+            "component_flags": {
+                "driver_features": True,
+                "neighborhood_features": True,
+                "transition_prior": True,
+                "temporal_activity_calibration": True,
+                "temporal_activity_neighborhood": True,
+                "demand_projection": True,
+                "change_budget_calibration": True,
+            },
+            "training_diagnostics": training_diagnostics,
+            "training_temporal_activity": activity_neighborhood_diagnostics,
+            "training_change_budget": activity_neighborhood_change_budget_diagnostics,
+            "target_counts": forecast_counts,
+        },
+        "twm_temporal_activity_neighborhood_replay_precision_change_budget_forecast_demand": {
+            "backend": "train_temporal_activity_neighborhood_and_replay_precision_score_allocation",
+            "demand_mode": "forecast_demand",
+            "uses_holdout_labels_for_training": False,
+            "component_flags": {
+                "driver_features": True,
+                "neighborhood_features": True,
+                "transition_prior": True,
+                "temporal_activity_calibration": True,
+                "temporal_activity_neighborhood": True,
+                "train_replay_transition_precision_guard": True,
+                "demand_projection": True,
+                "change_budget_calibration": True,
+            },
+            "training_diagnostics": training_diagnostics,
+            "training_temporal_activity": activity_neighborhood_diagnostics,
+            "training_replay_transition_precision": activity_neighborhood_replay_precision_diagnostics,
+            "training_change_budget": activity_neighborhood_replay_precision_change_budget_diagnostics,
+            "target_counts": forecast_counts,
+        },
+        "twm_temporal_activity_target_neighborhood_replay_precision_change_budget_forecast_demand": {
+            "backend": "train_temporal_activity_target_neighborhood_and_replay_precision_score_allocation",
+            "demand_mode": "forecast_demand",
+            "uses_holdout_labels_for_training": False,
+            "component_flags": {
+                "driver_features": True,
+                "neighborhood_features": True,
+                "transition_prior": True,
+                "temporal_activity_calibration": True,
+                "temporal_activity_neighborhood": True,
+                "target_transition_neighborhood": True,
+                "train_replay_transition_precision_guard": True,
+                "demand_projection": True,
+                "change_budget_calibration": True,
+            },
+            "training_diagnostics": training_diagnostics,
+            "training_temporal_activity": activity_neighborhood_diagnostics,
+            "training_target_transition_neighborhood": activity_target_neighborhood_diagnostics,
+            "training_replay_transition_precision": activity_target_neighborhood_replay_precision_diagnostics,
+            "training_change_budget": activity_target_neighborhood_replay_precision_change_budget_diagnostics,
+            "target_counts": forecast_counts,
+        },
+        "twm_temporal_activity_target_neighborhood_strict_replay_precision_change_budget_forecast_demand": {
+            "backend": "train_temporal_activity_target_neighborhood_strict_replay_precision_score_allocation",
+            "demand_mode": "forecast_demand",
+            "uses_holdout_labels_for_training": False,
+            "component_flags": {
+                "driver_features": True,
+                "neighborhood_features": True,
+                "transition_prior": True,
+                "temporal_activity_calibration": True,
+                "temporal_activity_neighborhood": True,
+                "target_transition_neighborhood": True,
+                "train_replay_transition_precision_guard": True,
+                "strict_train_replay_transition_precision_guard": True,
+                "demand_projection": True,
+                "change_budget_calibration": True,
+            },
+            "training_diagnostics": training_diagnostics,
+            "training_temporal_activity": activity_neighborhood_diagnostics,
+            "training_target_transition_neighborhood": activity_target_neighborhood_diagnostics,
+            "training_replay_transition_precision": activity_target_neighborhood_strict_replay_precision_diagnostics,
+            "training_change_budget": activity_target_neighborhood_strict_replay_precision_change_budget_diagnostics,
+            "target_counts": forecast_counts,
+        },
+        "twm_temporal_activity_target_neighborhood_strict_replay_precision_overprediction_change_budget_forecast_demand": {
+            "backend": "train_temporal_activity_target_neighborhood_strict_replay_precision_overprediction_score_allocation",
+            "demand_mode": "forecast_demand",
+            "uses_holdout_labels_for_training": False,
+            "component_flags": {
+                "driver_features": True,
+                "neighborhood_features": True,
+                "transition_prior": True,
+                "temporal_activity_calibration": True,
+                "temporal_activity_neighborhood": True,
+                "target_transition_neighborhood": True,
+                "train_replay_transition_precision_guard": True,
+                "strict_train_replay_transition_precision_guard": True,
+                "train_replay_transition_overprediction_guard": True,
+                "demand_projection": True,
+                "change_budget_calibration": True,
+            },
+            "training_diagnostics": training_diagnostics,
+            "training_temporal_activity": activity_neighborhood_diagnostics,
+            "training_target_transition_neighborhood": activity_target_neighborhood_diagnostics,
+            "training_replay_transition_precision": activity_target_neighborhood_strict_replay_precision_diagnostics,
+            "training_replay_transition_overprediction": activity_target_neighborhood_strict_replay_precision_overprediction_diagnostics,
+            "training_change_budget": activity_target_neighborhood_strict_replay_precision_overprediction_change_budget_diagnostics,
+            "target_counts": forecast_counts,
+        },
+        **{
+            name: {
+                "backend": (
+                    "train_temporal_activity_target_neighborhood_strict_replay_precision_overprediction_"
+                    f"adaptive_churn{int(round(output[1]['churn_fraction'] * 100))}_score_allocation"
+                ),
+                "demand_mode": "forecast_demand",
+                "uses_holdout_labels_for_training": False,
+                "component_flags": {
+                    "driver_features": True,
+                    "neighborhood_features": True,
+                    "transition_prior": True,
+                    "temporal_activity_calibration": True,
+                    "temporal_activity_neighborhood": True,
+                    "target_transition_neighborhood": True,
+                    "train_replay_transition_precision_guard": True,
+                    "strict_train_replay_transition_precision_guard": True,
+                    "train_replay_transition_overprediction_guard": True,
+                    "demand_projection": True,
+                    "change_budget_calibration": True,
+                    "adaptive_change_budget_scale": True,
+                    "balanced_map_mode": True,
+                },
+                "training_diagnostics": training_diagnostics,
+                "training_temporal_activity": activity_neighborhood_diagnostics,
+                "training_target_transition_neighborhood": activity_target_neighborhood_diagnostics,
+                "training_replay_transition_precision": activity_target_neighborhood_strict_replay_precision_diagnostics,
+                "training_replay_transition_overprediction": (
+                    activity_target_neighborhood_strict_replay_precision_overprediction_diagnostics
+                ),
+                "training_change_budget": output[1],
+                "target_counts": forecast_counts,
+            }
+            for name, output in balanced_strict_overprediction_churn_outputs.items()
+        },
+        "twm_balanced_strict_overprediction_churn75_markov_forecast_demand": {
+            "backend": (
+                "train_temporal_activity_target_neighborhood_strict_replay_precision_overprediction_"
+                "adaptive_churn75_markov_demand_score_allocation"
+            ),
+            "demand_mode": "forecast_demand",
+            "uses_holdout_labels_for_training": False,
+            "component_flags": {
+                "driver_features": True,
+                "neighborhood_features": True,
+                "transition_prior": True,
+                "temporal_activity_calibration": True,
+                "temporal_activity_neighborhood": True,
+                "target_transition_neighborhood": True,
+                "train_replay_transition_precision_guard": True,
+                "strict_train_replay_transition_precision_guard": True,
+                "train_replay_transition_overprediction_guard": True,
+                "demand_projection": True,
+                "markov_demand_projection": True,
+                "change_budget_calibration": True,
+                "adaptive_change_budget_scale": True,
+                "balanced_map_mode": True,
+            },
+            "training_diagnostics": training_diagnostics,
+            "training_temporal_activity": activity_neighborhood_diagnostics,
+            "training_target_transition_neighborhood": activity_target_neighborhood_diagnostics,
+            "training_replay_transition_precision": activity_target_neighborhood_strict_replay_precision_diagnostics,
+            "training_replay_transition_overprediction": (
+                activity_target_neighborhood_strict_replay_precision_overprediction_diagnostics
+            ),
+            "training_demand_projection": markov_forecast_diagnostics,
+            "training_change_budget": balanced_strict_overprediction_churn75_markov_diagnostics,
+            "target_counts": markov_forecast_counts,
+        },
+        **{
+            name: {
+                "backend": (
+                    "train_temporal_activity_target_neighborhood_strict_replay_precision_overprediction_"
+                    f"adaptive_churn{int(round(output[1]['churn_fraction'] * 100))}_persistence_demand_score_allocation"
+                ),
+                "demand_mode": "forecast_demand",
+                "uses_holdout_labels_for_training": False,
+                "component_flags": {
+                    "driver_features": True,
+                    "neighborhood_features": True,
+                    "transition_prior": True,
+                    "temporal_activity_calibration": True,
+                    "temporal_activity_neighborhood": True,
+                    "target_transition_neighborhood": True,
+                    "train_replay_transition_precision_guard": True,
+                    "strict_train_replay_transition_precision_guard": True,
+                    "train_replay_transition_overprediction_guard": True,
+                    "demand_projection": True,
+                    "persistence_demand_projection": True,
+                    "change_budget_calibration": True,
+                    "adaptive_change_budget_scale": True,
+                    "balanced_map_mode": True,
+                },
+                "training_diagnostics": training_diagnostics,
+                "training_temporal_activity": activity_neighborhood_diagnostics,
+                "training_target_transition_neighborhood": activity_target_neighborhood_diagnostics,
+                "training_replay_transition_precision": activity_target_neighborhood_strict_replay_precision_diagnostics,
+                "training_replay_transition_overprediction": (
+                    activity_target_neighborhood_strict_replay_precision_overprediction_diagnostics
+                ),
+                "training_demand_projection": persistence_forecast_diagnostics,
+                "training_change_budget": output[1],
+                "target_counts": persistence_forecast_counts,
+            }
+            for name, output in balanced_strict_overprediction_persistence_churn_outputs.items()
+        },
+        "twm_region_false_alarm_guarded_persistence_forecast_demand": {
+            "backend": (
+                "train_temporal_activity_target_neighborhood_strict_replay_precision_overprediction_"
+                "region_false_alarm_guarded_persistence_demand_score_allocation"
+            ),
+            "demand_mode": "forecast_demand",
+            "uses_holdout_labels_for_training": False,
+            "component_flags": {
+                "driver_features": True,
+                "neighborhood_features": True,
+                "transition_prior": True,
+                "temporal_activity_calibration": True,
+                "temporal_activity_neighborhood": True,
+                "target_transition_neighborhood": True,
+                "train_replay_transition_precision_guard": True,
+                "strict_train_replay_transition_precision_guard": True,
+                "train_replay_transition_overprediction_guard": True,
+                "demand_projection": True,
+                "persistence_demand_projection": True,
+                "change_budget_calibration": True,
+                "adaptive_change_budget_scale": True,
+                "balanced_map_mode": True,
+                "region_false_alarm_guard": True,
+            },
+            "training_diagnostics": training_diagnostics,
+            "training_temporal_activity": activity_neighborhood_diagnostics,
+            "training_target_transition_neighborhood": activity_target_neighborhood_diagnostics,
+            "training_replay_transition_precision": activity_target_neighborhood_strict_replay_precision_diagnostics,
+            "training_replay_transition_overprediction": (
+                activity_target_neighborhood_strict_replay_precision_overprediction_diagnostics
+            ),
+            "training_false_alarm_guard": region_false_alarm_guard,
+            "training_demand_projection": persistence_forecast_diagnostics,
+            "training_change_budget": region_false_alarm_guarded_persistence_diagnostics,
+            "target_counts": persistence_forecast_counts,
+        },
+        "twm_pair_false_alarm_guarded_persistence_forecast_demand": {
+            "backend": (
+                "train_temporal_activity_target_neighborhood_strict_replay_precision_overprediction_"
+                "pair_false_alarm_guarded_persistence_demand_score_allocation"
+            ),
+            "demand_mode": "forecast_demand",
+            "uses_holdout_labels_for_training": False,
+            "component_flags": {
+                "driver_features": True,
+                "neighborhood_features": True,
+                "transition_prior": True,
+                "temporal_activity_calibration": True,
+                "temporal_activity_neighborhood": True,
+                "target_transition_neighborhood": True,
+                "train_replay_transition_precision_guard": True,
+                "strict_train_replay_transition_precision_guard": True,
+                "train_replay_transition_overprediction_guard": True,
+                "train_replay_transition_false_alarm_guard": True,
+                "demand_projection": True,
+                "persistence_demand_projection": True,
+                "change_budget_calibration": True,
+                "adaptive_change_budget_scale": True,
+                "balanced_map_mode": True,
+            },
+            "training_diagnostics": training_diagnostics,
+            "training_temporal_activity": activity_neighborhood_diagnostics,
+            "training_target_transition_neighborhood": activity_target_neighborhood_diagnostics,
+            "training_replay_transition_precision": activity_target_neighborhood_strict_replay_precision_diagnostics,
+            "training_replay_transition_overprediction": (
+                activity_target_neighborhood_strict_replay_precision_overprediction_diagnostics
+            ),
+            "training_replay_transition_false_alarm": (
+                activity_target_neighborhood_strict_replay_precision_overprediction_false_alarm_diagnostics
+            ),
+            "training_demand_projection": persistence_forecast_diagnostics,
+            "training_change_budget": pair_false_alarm_guarded_persistence_diagnostics,
+            "target_counts": persistence_forecast_counts,
+        },
+        "twm_temporal_activity_target_neighborhood_replay_precision_reliability_change_budget_forecast_demand": {
+            "backend": "train_temporal_activity_target_neighborhood_replay_precision_and_reliability_score_allocation",
+            "demand_mode": "forecast_demand",
+            "uses_holdout_labels_for_training": False,
+            "component_flags": {
+                "driver_features": True,
+                "neighborhood_features": True,
+                "transition_prior": True,
+                "temporal_activity_calibration": True,
+                "temporal_activity_neighborhood": True,
+                "target_transition_neighborhood": True,
+                "train_replay_transition_precision_guard": True,
+                "transition_reliability_calibration": True,
+                "demand_projection": True,
+                "change_budget_calibration": True,
+            },
+            "training_diagnostics": training_diagnostics,
+            "training_temporal_activity": activity_neighborhood_diagnostics,
+            "training_target_transition_neighborhood": activity_target_neighborhood_diagnostics,
+            "training_replay_transition_precision": activity_target_neighborhood_replay_precision_diagnostics,
+            "training_transition_reliability": activity_target_neighborhood_replay_precision_reliability_diagnostics,
+            "training_change_budget": activity_target_neighborhood_replay_precision_reliability_change_budget_diagnostics,
+            "target_counts": forecast_counts,
+        },
+        **{
+            name: {
+                "backend": "score_allocation_with_fixed_training_change_budget_scale",
+                "demand_mode": "forecast_demand",
+                "uses_holdout_labels_for_training": False,
+                "component_flags": {
+                    "driver_features": True,
+                    "neighborhood_features": True,
+                    "transition_prior": True,
+                    "demand_projection": True,
+                    "change_budget_calibration": True,
+                    "fixed_change_budget_scale": True,
+                },
+                "training_diagnostics": training_diagnostics,
+                "training_change_budget": output[1],
+                "target_counts": forecast_counts,
+            }
+            for name, output in change_budget_scaled_outputs.items()
+        },
+        "twm_change_budget_adaptive_churn75_forecast_demand": {
+            "backend": "score_allocation_with_adaptive_training_change_budget_scale",
+            "demand_mode": "forecast_demand",
+            "uses_holdout_labels_for_training": False,
+            "component_flags": {
+                "driver_features": True,
+                "neighborhood_features": True,
+                "transition_prior": True,
+                "demand_projection": True,
+                "change_budget_calibration": True,
+                "adaptive_change_budget_scale": True,
+            },
+            "training_diagnostics": training_diagnostics,
+            "training_change_budget": adaptive_churn75_diagnostics,
             "target_counts": forecast_counts,
         },
         "twm_hierarchical_transition_forecast_demand": {
@@ -1273,6 +2184,96 @@ def fit_hierarchical_transition_models(
     }
 
 
+def train_pooled_suitability_probability_cube(
+    model_inputs: dict[str, Any],
+    *,
+    include_drivers: bool,
+    include_neighborhood: bool,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    try:
+        from sklearn.exceptions import ConvergenceWarning
+    except Exception:
+        return transition_prior_probability_cube(model_inputs), {
+            "schema": "territory_world_model.public_landcover_training_diagnostics.v1",
+            "backend": "transition_prior_probability_cube",
+            "status": "fallback",
+            "reason": "sklearn_unavailable",
+        }
+
+    train_start = model_inputs["train_start"]
+    train_end = model_inputs["train_end"]
+    initial = model_inputs["initial"]
+    valid = model_inputs["valid"]
+    classes = list(model_inputs["classes"])
+    features_train = source_conditioned_feature_stack(
+        train_start,
+        valid,
+        classes,
+        model_inputs["drivers"],
+        include_drivers=include_drivers,
+        include_neighborhood=include_neighborhood,
+    )
+    features_apply = source_conditioned_feature_stack(
+        initial,
+        valid,
+        classes,
+        model_inputs["drivers"],
+        include_drivers=include_drivers,
+        include_neighborhood=include_neighborhood,
+    )
+    rows, cols = np.indices(train_start.shape)
+    sample_stride = 2 if int(valid.sum()) > 25000 else 1
+    train_mask = valid & (((rows + cols) % sample_stride) == 0)
+    if int(train_mask.sum()) < max(64, len(classes) * 8) or len(np.unique(train_end[train_mask])) < 2:
+        probability = transition_prior_probability_cube(model_inputs)
+        return probability, {
+            "schema": "territory_world_model.public_landcover_training_diagnostics.v1",
+            "backend": "pooled_source_conditioned_suitability_logit",
+            "status": "fallback",
+            "reason": "insufficient_training_samples",
+            "sample_stride": int(sample_stride),
+            "train_sample_count": int(train_mask.sum()),
+        }
+    model, report = fit_transition_classifier(
+        features_train[train_mask],
+        train_end[train_mask].astype(int),
+        source_class=-1,
+        train_sample_count=int(train_mask.sum()),
+        apply_cell_count=int(valid.sum()),
+        convergence_warning=ConvergenceWarning,
+    )
+    if model is None:
+        probability = transition_prior_probability_cube(model_inputs)
+        return probability, build_training_diagnostics(
+            include_drivers=include_drivers,
+            include_neighborhood=include_neighborhood,
+            sample_stride=sample_stride,
+            source_reports=[{**report, "status": "fallback_transition_prior"}],
+            backend="pooled_source_conditioned_suitability_logit",
+        )
+    out = np.zeros((len(classes), train_start.shape[0], train_start.shape[1]), dtype=np.float32)
+    fill_probability_from_model(
+        out=out,
+        source_apply=valid,
+        model=model,
+        features_apply=features_apply,
+        classes=classes,
+    )
+    totals = out.sum(axis=0, keepdims=True)
+    np.divide(out, totals, out=out, where=totals > 0)
+    fallback = transition_prior_probability_cube(model_inputs)
+    missing = valid & (totals[0] <= 0)
+    out[:, missing] = fallback[:, missing]
+    out[:, ~valid] = 0.0
+    return out, build_training_diagnostics(
+        include_drivers=include_drivers,
+        include_neighborhood=include_neighborhood,
+        sample_stride=sample_stride,
+        source_reports=[{**report, "role": "pooled_suitability_model"}],
+        backend="pooled_source_conditioned_suitability_logit",
+    )
+
+
 def render_hierarchical_transition_probability_cube(
     shared: dict[str, Any],
     *,
@@ -1744,6 +2745,425 @@ def transition_score_cube(
     return np.stack(scores)
 
 
+def apply_train_transition_reliability_to_score(
+    model_inputs: dict[str, Any],
+    score: np.ndarray,
+    *,
+    penalty_weight: float = 0.12,
+    smoothing: float = 1.0,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    train_start = model_inputs["train_start"]
+    train_end = model_inputs["train_end"]
+    initial = model_inputs["initial"]
+    valid = model_inputs["valid"]
+    classes = list(model_inputs["classes"])
+    class_to_idx = {cls: idx for idx, cls in enumerate(classes)}
+    adjusted = score.copy()
+    safe_smoothing = max(0.0, float(smoothing))
+    clipped_weight = max(0.0, float(penalty_weight))
+    global_prior = global_target_prior(train_end, valid, classes).astype(np.float64)
+    pair_counts: Counter[tuple[int, int]] = Counter(zip(train_start[valid].astype(int), train_end[valid].astype(int)))
+    source_counts = Counter(train_start[valid].astype(int).tolist())
+    transition_rows: list[dict[str, Any]] = []
+    for source in classes:
+        source_count = int(source_counts.get(int(source), 0))
+        denominator = max(1e-12, float(source_count) + safe_smoothing)
+        probabilities = {
+            int(target): (float(pair_counts.get((int(source), int(target)), 0)) + safe_smoothing * float(global_prior[class_to_idx[target]]))
+            / denominator
+            for target in classes
+        }
+        change_targets = [target for target in classes if target != source]
+        best_change_probability = max([probabilities[int(target)] for target in change_targets], default=0.0)
+        source_apply = valid & (initial == source)
+        for target in classes:
+            if target == source:
+                continue
+            probability = float(probabilities[int(target)])
+            relative_probability = probability / max(1e-12, best_change_probability)
+            score_adjustment = -clipped_weight * max(0.0, 1.0 - min(1.0, relative_probability))
+            if int(source_apply.sum()) > 0:
+                adjusted[class_to_idx[target], source_apply] = adjusted[class_to_idx[target], source_apply] + np.float32(
+                    score_adjustment
+                )
+            transition_rows.append(
+                {
+                    "source_class": int(source),
+                    "target_class": int(target),
+                    "train_source_count": source_count,
+                    "train_pair_count": int(pair_counts.get((int(source), int(target)), 0)),
+                    "smoothed_reliability": round(probability, 8),
+                    "relative_reliability": round(float(min(1.0, relative_probability)), 8),
+                    "score_adjustment": round(float(score_adjustment), 8),
+                }
+            )
+    adjusted[:, ~valid] = -1e9
+    return adjusted.astype(np.float32), {
+        "schema": "territory_world_model.train_transition_reliability_score_calibration.v1",
+        "selection_metric": "train_start_train_end_source_target_empirical_reliability",
+        "uses_holdout_labels_for_training": False,
+        "penalty_weight": clipped_weight,
+        "smoothing": safe_smoothing,
+        "transition_rows": transition_rows,
+    }
+
+
+def apply_train_temporal_activity_to_score(
+    model_inputs: dict[str, Any],
+    score: np.ndarray,
+    *,
+    activity_weight: float = 0.12,
+    neighborhood_activity_weight: float = 0.0,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    train_start = model_inputs["train_start"]
+    train_end = model_inputs["train_end"]
+    initial = model_inputs["initial"]
+    valid = model_inputs["valid"]
+    classes = list(model_inputs["classes"])
+    adjusted = score.copy()
+    clipped_weight = max(0.0, float(activity_weight))
+    clipped_neighborhood_weight = max(0.0, float(neighborhood_activity_weight))
+    recent_change = valid & (train_start != train_end)
+    recent_change_neighbor_density = neighborhood_mean(recent_change, valid)
+    for target_idx, target in enumerate(classes):
+        non_persistence_recent = recent_change & (initial != target)
+        if int(non_persistence_recent.sum()) > 0:
+            adjusted[target_idx, non_persistence_recent] = adjusted[target_idx, non_persistence_recent] + np.float32(clipped_weight)
+        if clipped_neighborhood_weight > 0.0:
+            non_persistence = valid & (initial != target)
+            if int(non_persistence.sum()) > 0:
+                adjusted[target_idx, non_persistence] = adjusted[target_idx, non_persistence] + (
+                    np.float32(clipped_neighborhood_weight) * recent_change_neighbor_density[non_persistence]
+                )
+    adjusted[:, ~valid] = -1e9
+    return adjusted.astype(np.float32), {
+        "schema": "territory_world_model.train_temporal_activity_score_calibration.v1",
+        "selection_metric": "train_start_train_end_recent_cell_change_activity",
+        "uses_holdout_labels_for_training": False,
+        "activity_weight": clipped_weight,
+        "neighborhood_activity_weight": clipped_neighborhood_weight,
+        "recent_change_cell_count": int(recent_change.sum()),
+        "valid_cell_count": int(valid.sum()),
+        "recent_change_cell_rate": round(float(recent_change.sum()) / max(1, int(valid.sum())), 6),
+        "mean_recent_change_neighbor_density": round(float(np.mean(recent_change_neighbor_density[valid])) if int(valid.sum()) else 0.0, 6),
+    }
+
+
+def apply_train_replay_transition_precision_to_score(
+    model_inputs: dict[str, Any],
+    score: np.ndarray,
+    transition_pair_metrics: list[dict[str, Any]],
+    *,
+    precision_floor: float = 0.20,
+    penalty_weight: float = 0.10,
+    min_predicted_count: int = 25,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    initial = model_inputs["initial"]
+    valid = model_inputs["valid"]
+    classes = list(model_inputs["classes"])
+    class_to_idx = {cls: idx for idx, cls in enumerate(classes)}
+    adjusted = score.copy()
+    safe_floor = max(1e-12, float(precision_floor))
+    clipped_weight = max(0.0, float(penalty_weight))
+    min_count = max(0, int(min_predicted_count))
+    rows: list[dict[str, Any]] = []
+    for metric in transition_pair_metrics:
+        source = int(metric["source_class"])
+        target = int(metric["target_class"])
+        if source not in class_to_idx or target not in class_to_idx or source == target:
+            continue
+        predicted_count = int(metric.get("predicted_count") or 0)
+        precision = max(0.0, min(1.0, float(metric.get("precision") or 0.0)))
+        score_penalty = 0.0
+        if predicted_count >= min_count and precision < safe_floor:
+            score_penalty = clipped_weight * (safe_floor - precision) / safe_floor
+            source_apply = valid & (initial == source)
+            if int(source_apply.sum()) > 0:
+                adjusted[class_to_idx[target], source_apply] = adjusted[class_to_idx[target], source_apply] - np.float32(
+                    score_penalty
+                )
+        rows.append(
+            {
+                "source_class": source,
+                "target_class": target,
+                "train_replay_predicted_count": predicted_count,
+                "train_replay_precision": round(precision, 6),
+                "score_penalty": round(float(score_penalty), 8),
+            }
+        )
+    adjusted[:, ~valid] = -1e9
+    penalized = [row for row in rows if float(row["score_penalty"]) > 0.0]
+    return adjusted.astype(np.float32), {
+        "schema": "territory_world_model.train_replay_transition_precision_score_guard.v1",
+        "selection_metric": "train_replay_source_target_transition_precision",
+        "uses_holdout_labels_for_training": False,
+        "precision_floor": float(precision_floor),
+        "penalty_weight": clipped_weight,
+        "min_predicted_count": min_count,
+        "penalized_transition_count": len(penalized),
+        "transition_rows": rows,
+    }
+
+
+def apply_train_replay_transition_overprediction_to_score(
+    model_inputs: dict[str, Any],
+    score: np.ndarray,
+    transition_pair_metrics: list[dict[str, Any]],
+    *,
+    overprediction_ratio_ceiling: float = 1.5,
+    precision_floor: float = 0.35,
+    penalty_weight: float = 0.15,
+    min_predicted_count: int = 10,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    initial = model_inputs["initial"]
+    valid = model_inputs["valid"]
+    classes = list(model_inputs["classes"])
+    class_to_idx = {cls: idx for idx, cls in enumerate(classes)}
+    adjusted = score.copy()
+    safe_ceiling = max(1.0, float(overprediction_ratio_ceiling))
+    safe_floor = max(1e-12, float(precision_floor))
+    clipped_weight = max(0.0, float(penalty_weight))
+    min_count = max(0, int(min_predicted_count))
+    rows: list[dict[str, Any]] = []
+    for metric in transition_pair_metrics:
+        source = int(metric["source_class"])
+        target = int(metric["target_class"])
+        if source not in class_to_idx or target not in class_to_idx or source == target:
+            continue
+        predicted_count = int(metric.get("predicted_count") or 0)
+        actual_count = int(metric.get("actual_count") or 0)
+        precision = max(0.0, min(1.0, float(metric.get("precision") or 0.0)))
+        overprediction_ratio = float(predicted_count) / max(1.0, float(actual_count))
+        score_penalty = 0.0
+        if predicted_count >= min_count and overprediction_ratio > safe_ceiling and precision < safe_floor:
+            excess_ratio = min(1.0, (overprediction_ratio - safe_ceiling) / safe_ceiling)
+            precision_gap = (safe_floor - precision) / safe_floor
+            score_penalty = clipped_weight * excess_ratio * precision_gap
+            source_apply = valid & (initial == source)
+            if int(source_apply.sum()) > 0:
+                adjusted[class_to_idx[target], source_apply] = adjusted[class_to_idx[target], source_apply] - np.float32(
+                    score_penalty
+                )
+        rows.append(
+            {
+                "source_class": source,
+                "target_class": target,
+                "train_replay_actual_count": actual_count,
+                "train_replay_predicted_count": predicted_count,
+                "train_replay_precision": round(precision, 6),
+                "overprediction_ratio": round(overprediction_ratio, 6),
+                "score_penalty": round(float(score_penalty), 8),
+            }
+        )
+    adjusted[:, ~valid] = -1e9
+    penalized = [row for row in rows if float(row["score_penalty"]) > 0.0]
+    return adjusted.astype(np.float32), {
+        "schema": "territory_world_model.train_replay_transition_overprediction_score_guard.v1",
+        "selection_metric": "train_replay_source_target_transition_overprediction",
+        "uses_holdout_labels_for_training": False,
+        "overprediction_ratio_ceiling": safe_ceiling,
+        "precision_floor": safe_floor,
+        "penalty_weight": clipped_weight,
+        "min_predicted_count": min_count,
+        "penalized_transition_count": len(penalized),
+        "transition_rows": rows,
+    }
+
+
+def apply_train_replay_transition_false_alarm_pressure_to_score(
+    model_inputs: dict[str, Any],
+    score: np.ndarray,
+    transition_pair_metrics: list[dict[str, Any]],
+    *,
+    false_alarm_rate_ceiling: float = 0.6,
+    precision_floor: float = 0.35,
+    penalty_weight: float = 0.25,
+    min_predicted_count: int = 10,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    initial = model_inputs["initial"]
+    valid = model_inputs["valid"]
+    classes = list(model_inputs["classes"])
+    class_to_idx = {cls: idx for idx, cls in enumerate(classes)}
+    adjusted = score.copy()
+    safe_ceiling = max(0.0, min(1.0, float(false_alarm_rate_ceiling)))
+    safe_floor = max(1e-12, min(1.0, float(precision_floor)))
+    clipped_weight = max(0.0, float(penalty_weight))
+    min_count = max(0, int(min_predicted_count))
+    rows: list[dict[str, Any]] = []
+    for metric in transition_pair_metrics:
+        source = int(metric["source_class"])
+        target = int(metric["target_class"])
+        if source not in class_to_idx or target not in class_to_idx or source == target:
+            continue
+        predicted_count = int(metric.get("predicted_count") or 0)
+        hit_count = int(metric.get("hit_count") or 0)
+        false_alarm_count = int(metric.get("false_alarm_count") or 0)
+        precision = max(0.0, min(1.0, float(metric.get("precision") or 0.0)))
+        false_alarm_rate = 0.0 if predicted_count <= 0 else float(false_alarm_count) / float(predicted_count)
+        score_penalty = 0.0
+        if predicted_count >= min_count and false_alarm_rate > safe_ceiling and precision < safe_floor:
+            false_alarm_excess = (false_alarm_rate - safe_ceiling) / max(1e-12, 1.0 - safe_ceiling)
+            precision_gap = (safe_floor - precision) / safe_floor
+            score_penalty = clipped_weight * min(1.0, false_alarm_excess) * min(1.0, precision_gap)
+            source_apply = valid & (initial == source)
+            if int(source_apply.sum()) > 0:
+                adjusted[class_to_idx[target], source_apply] = adjusted[class_to_idx[target], source_apply] - np.float32(
+                    score_penalty
+                )
+        rows.append(
+            {
+                "source_class": source,
+                "target_class": target,
+                "train_replay_predicted_count": predicted_count,
+                "train_replay_hit_count": hit_count,
+                "train_replay_false_alarm_count": false_alarm_count,
+                "train_replay_precision": round(precision, 6),
+                "train_replay_false_alarm_rate": round(false_alarm_rate, 6),
+                "score_penalty": round(float(score_penalty), 8),
+            }
+        )
+    adjusted[:, ~valid] = -1e9
+    penalized = [row for row in rows if float(row["score_penalty"]) > 0.0]
+    return adjusted.astype(np.float32), {
+        "schema": "territory_world_model.train_replay_transition_false_alarm_score_guard.v1",
+        "selection_metric": "train_replay_source_target_transition_false_alarm_pressure",
+        "uses_holdout_labels_for_training": False,
+        "false_alarm_rate_ceiling": safe_ceiling,
+        "precision_floor": safe_floor,
+        "penalty_weight": clipped_weight,
+        "min_predicted_count": min_count,
+        "penalized_transition_count": len(penalized),
+        "transition_rows": rows,
+    }
+
+
+def apply_train_target_transition_neighborhood_to_score(
+    model_inputs: dict[str, Any],
+    score: np.ndarray,
+    *,
+    target_transition_neighborhood_weight: float = 0.08,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    train_start = model_inputs["train_start"]
+    train_end = model_inputs["train_end"]
+    initial = model_inputs["initial"]
+    valid = model_inputs["valid"]
+    classes = list(model_inputs["classes"])
+    adjusted = score.copy()
+    clipped_weight = max(0.0, float(target_transition_neighborhood_weight))
+    rows: list[dict[str, Any]] = []
+    density_values: list[float] = []
+    for target_idx, target in enumerate(classes):
+        changed_to_target = valid & (train_start != train_end) & (train_end == target)
+        density = neighborhood_mean(changed_to_target, valid)
+        non_persistence = valid & (initial != target)
+        if clipped_weight > 0.0 and int(non_persistence.sum()) > 0:
+            adjusted[target_idx, non_persistence] = adjusted[target_idx, non_persistence] + (
+                np.float32(clipped_weight) * density[non_persistence]
+            )
+        if int(valid.sum()) > 0:
+            density_values.append(float(np.mean(density[valid])))
+        rows.append(
+            {
+                "target_class": int(target),
+                "train_transition_to_target_count": int(changed_to_target.sum()),
+                "mean_transition_neighbor_density": round(float(np.mean(density[valid])) if int(valid.sum()) else 0.0, 6),
+            }
+        )
+    adjusted[:, ~valid] = -1e9
+    return adjusted.astype(np.float32), {
+        "schema": "territory_world_model.train_target_transition_neighborhood_score_calibration.v1",
+        "selection_metric": "train_start_train_end_target_transition_neighborhood_activity",
+        "uses_holdout_labels_for_training": False,
+        "target_transition_neighborhood_weight": clipped_weight,
+        "mean_target_transition_neighbor_density": round(float(np.mean(density_values)) if density_values else 0.0, 6),
+        "target_rows": rows,
+    }
+
+
+def build_train_replay_transition_precision_score(
+    model_inputs: dict[str, Any],
+    forecast_score: np.ndarray,
+    *,
+    activity_weight: float = 0.12,
+    neighborhood_activity_weight: float = 0.0,
+    target_transition_neighborhood_weight: float = 0.0,
+    precision_floor: float = 0.20,
+    penalty_weight: float = 0.10,
+    min_predicted_count: int = 25,
+    include_replay_transition_pair_metrics: bool = False,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    replay_inputs = {
+        **model_inputs,
+        "initial": model_inputs["train_start"],
+        "actual": model_inputs["train_end"],
+    }
+    classes = list(model_inputs["classes"])
+    valid = model_inputs["valid"]
+    replay_probability, replay_training_diagnostics = train_transition_probability_cube(
+        replay_inputs,
+        include_drivers=True,
+        include_neighborhood=True,
+    )
+    replay_score = transition_score_cube(replay_inputs, replay_probability, include_neighborhood=True, include_prior=True)
+    replay_activity_score, replay_activity_diagnostics = apply_train_temporal_activity_to_score(
+        replay_inputs,
+        replay_score,
+        activity_weight=activity_weight,
+        neighborhood_activity_weight=neighborhood_activity_weight,
+    )
+    if target_transition_neighborhood_weight > 0.0:
+        replay_activity_score, _target_neighborhood_diagnostics = apply_train_target_transition_neighborhood_to_score(
+            replay_inputs,
+            replay_activity_score,
+            target_transition_neighborhood_weight=target_transition_neighborhood_weight,
+        )
+    replay_target_counts = class_counts(model_inputs["train_end"], valid, classes)
+    replay_prediction, replay_change_budget = allocate_score_projection_with_change_budget(
+        replay_inputs,
+        replay_target_counts,
+        replay_activity_score,
+    )
+    replay_metric = pixel_metrics(
+        prediction=replay_prediction,
+        actual=model_inputs["train_end"],
+        initial=model_inputs["train_start"],
+        valid=valid,
+        classes=classes,
+        cell_area_ha=1.0,
+        target_counts=replay_target_counts,
+    )
+    adjusted, precision_guard = apply_train_replay_transition_precision_to_score(
+        model_inputs,
+        forecast_score,
+        replay_metric["transition_pair_metrics"],
+        precision_floor=precision_floor,
+        penalty_weight=penalty_weight,
+        min_predicted_count=min_predicted_count,
+    )
+    diagnostics = {
+        "schema": "territory_world_model.train_replay_transition_precision_calibration.v1",
+        "uses_holdout_labels_for_training": False,
+        "replay_target": "train_start_to_train_end",
+        "replay_training_diagnostics": replay_training_diagnostics,
+        "replay_temporal_activity": replay_activity_diagnostics,
+        "replay_change_budget": replay_change_budget,
+        "precision_guard": precision_guard,
+        "replay_metrics": {
+            "change_fom": replay_metric["change_fom"],
+            "change_f1": replay_metric["change_f1"],
+            "macro_f1": replay_metric["macro_f1"],
+            "predicted_change_count": replay_metric["predicted_change_count"],
+            "actual_change_count": replay_metric["actual_change_count"],
+            "change_hit_count": replay_metric["change_hit_count"],
+            "change_false_alarm_count": replay_metric["change_false_alarm_count"],
+            "change_miss_count": replay_metric["change_miss_count"],
+        },
+    }
+    if include_replay_transition_pair_metrics:
+        diagnostics["replay_transition_pair_metrics"] = replay_metric["transition_pair_metrics"]
+    return adjusted, diagnostics
+
+
 def transition_prior_score_fields(model_inputs: dict[str, Any]) -> dict[int, np.ndarray]:
     train_start = model_inputs["train_start"]
     train_end = model_inputs["train_end"]
@@ -1844,6 +3264,389 @@ def allocate_score_projection(model_inputs: dict[str, Any], target_counts: dict[
             remaining -= 1
     pred[~valid] = 0
     pred = balance_to_target_counts(pred=pred, initial=initial, valid=valid, classes=classes, target_counts=target_counts, score=score)
+    pred[~valid] = 0
+    return pred
+
+
+def training_change_budget(model_inputs: dict[str, Any]) -> dict[str, Any]:
+    train_start = model_inputs["train_start"]
+    train_end = model_inputs["train_end"]
+    valid = model_inputs["valid"]
+    train_years = max(1, int(model_inputs.get("train_years", 1)))
+    horizon_years = max(1, int(model_inputs.get("horizon_years", 1)))
+    observed = int(((train_start != train_end) & valid).sum())
+    projected = int(round(float(observed) * float(horizon_years) / float(train_years)))
+    target_min = min(int(valid.sum()), max(0, projected))
+    return {
+        "schema": "territory_world_model.training_change_budget.v1",
+        "observed_train_change_count": observed,
+        "train_years": train_years,
+        "horizon_years": horizon_years,
+        "target_min_change_count": target_min,
+    }
+
+
+def allocate_score_projection_with_change_budget(
+    model_inputs: dict[str, Any],
+    target_counts: dict[int, int],
+    score: np.ndarray,
+    *,
+    swap_score: np.ndarray | None = None,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    budget = training_change_budget(model_inputs)
+    target_min_change_count = int(budget["target_min_change_count"])
+    pred = allocate_score_projection_with_explicit_change_budget(
+        model_inputs,
+        target_counts,
+        allocation_score=score,
+        swap_score=score if swap_score is None else swap_score,
+        target_min_change_count=target_min_change_count,
+    )
+    final_change_count = int(((pred != model_inputs["initial"]) & model_inputs["valid"]).sum())
+    return pred, {
+        **budget,
+        "final_predicted_change_count": final_change_count,
+        "met_change_budget": bool(final_change_count >= target_min_change_count),
+    }
+
+
+def allocate_score_projection_with_change_budget_scale(
+    model_inputs: dict[str, Any],
+    target_counts: dict[int, int],
+    score: np.ndarray,
+    *,
+    budget_scale: float,
+    swap_score: np.ndarray | None = None,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    budget = training_change_budget(model_inputs)
+    clipped_scale = max(0.0, min(1.0, float(budget_scale)))
+    scaled_target = int(round(int(budget["target_min_change_count"]) * clipped_scale))
+    pred = allocate_score_projection_with_explicit_change_budget(
+        model_inputs,
+        target_counts,
+        allocation_score=score,
+        swap_score=score if swap_score is None else swap_score,
+        target_min_change_count=scaled_target,
+    )
+    final_change_count = int(((pred != model_inputs["initial"]) & model_inputs["valid"]).sum())
+    return pred, {
+        **budget,
+        "budget_scale": clipped_scale,
+        "unscaled_target_min_change_count": int(budget["target_min_change_count"]),
+        "target_min_change_count": scaled_target,
+        "final_predicted_change_count": final_change_count,
+        "met_change_budget": bool(final_change_count >= scaled_target),
+    }
+
+
+def adaptive_training_change_budget_scale(
+    model_inputs: dict[str, Any],
+    *,
+    churn_fraction: float,
+) -> dict[str, Any]:
+    classes = list(model_inputs["classes"])
+    valid = model_inputs["valid"]
+    train_start = model_inputs["train_start"]
+    train_end = model_inputs["train_end"]
+    budget = training_change_budget(model_inputs)
+    observed = int(budget["observed_train_change_count"])
+    start_counts = class_counts(train_start, valid, classes)
+    end_counts = class_counts(train_end, valid, classes)
+    net_demand_change = int(round(sum(abs(int(end_counts[cls]) - int(start_counts[cls])) for cls in classes) / 2.0))
+    count_neutral_churn = max(0, observed - net_demand_change)
+    clipped_churn_fraction = max(0.0, min(1.0, float(churn_fraction)))
+    scaled_train_change = float(net_demand_change) + clipped_churn_fraction * float(count_neutral_churn)
+    budget_scale = 0.0 if observed <= 0 else max(0.0, min(1.0, scaled_train_change / float(observed)))
+    return {
+        "scale_selection_rule": f"net_demand_change_plus_{int(round(clipped_churn_fraction * 100))}pct_count_neutral_churn",
+        "scale_selection_source": "train_start_train_end_class_counts",
+        "churn_fraction": clipped_churn_fraction,
+        "train_net_demand_change_count": net_demand_change,
+        "train_count_neutral_churn_count": count_neutral_churn,
+        "adaptive_train_change_count": int(round(scaled_train_change)),
+        "budget_scale": budget_scale,
+    }
+
+
+def false_alarm_guarded_churn_fraction(
+    replay_metrics: dict[str, Any],
+    *,
+    base_churn_fraction: float = 0.9,
+    min_churn_fraction: float = 0.5,
+    precision_target: float = 0.45,
+    precision_floor: float = 0.25,
+) -> dict[str, Any]:
+    hit_count = int(replay_metrics.get("change_hit_count", 0))
+    false_alarm_count = int(replay_metrics.get("change_false_alarm_count", 0))
+    miss_count = int(replay_metrics.get("change_miss_count", 0))
+    predicted_change_count = hit_count + false_alarm_count
+    precision = 1.0 if predicted_change_count <= 0 else float(hit_count) / float(predicted_change_count)
+    clipped_base = max(0.0, min(1.0, float(base_churn_fraction)))
+    clipped_min = max(0.0, min(clipped_base, float(min_churn_fraction)))
+    safe_target = max(0.0, min(1.0, float(precision_target)))
+    safe_floor = max(0.0, min(safe_target, float(precision_floor)))
+    if precision >= safe_target:
+        churn_fraction = clipped_base
+    elif precision <= safe_floor or safe_target == safe_floor:
+        churn_fraction = clipped_min
+    else:
+        recovery = (precision - safe_floor) / (safe_target - safe_floor)
+        churn_fraction = clipped_min + recovery * (clipped_base - clipped_min)
+    return {
+        "schema": "territory_world_model.train_replay_false_alarm_guard.v1",
+        "selection_rule": "linearly_reduce_churn_when_train_replay_change_precision_falls_below_target",
+        "uses_holdout_labels_for_training": False,
+        "base_churn_fraction": round(clipped_base, 6),
+        "min_churn_fraction": round(clipped_min, 6),
+        "precision_target": round(safe_target, 6),
+        "precision_floor": round(safe_floor, 6),
+        "train_replay_change_precision": round(float(precision), 6),
+        "train_replay_change_false_alarm_rate": round(
+            0.0 if predicted_change_count <= 0 else float(false_alarm_count) / float(predicted_change_count),
+            6,
+        ),
+        "train_replay_change_hit_count": hit_count,
+        "train_replay_change_false_alarm_count": false_alarm_count,
+        "train_replay_change_miss_count": miss_count,
+        "churn_fraction": round(float(churn_fraction), 6),
+    }
+
+
+def allocate_score_projection_with_adaptive_change_budget_scale(
+    model_inputs: dict[str, Any],
+    target_counts: dict[int, int],
+    score: np.ndarray,
+    *,
+    churn_fraction: float,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    selection = adaptive_training_change_budget_scale(model_inputs, churn_fraction=churn_fraction)
+    pred, diagnostics = allocate_score_projection_with_change_budget_scale(
+        model_inputs,
+        target_counts,
+        score,
+        budget_scale=float(selection["budget_scale"]),
+    )
+    return pred, {
+        **diagnostics,
+        **selection,
+    }
+
+
+def allocate_score_projection_with_explicit_change_budget(
+    model_inputs: dict[str, Any],
+    target_counts: dict[int, int],
+    *,
+    allocation_score: np.ndarray,
+    swap_score: np.ndarray,
+    target_min_change_count: int,
+) -> np.ndarray:
+    pred = allocate_score_projection(model_inputs, target_counts, allocation_score)
+    return increase_change_count_with_count_neutral_swaps(
+        pred=pred,
+        initial=model_inputs["initial"],
+        valid=model_inputs["valid"],
+        classes=list(model_inputs["classes"]),
+        score=swap_score,
+        target_min_change_count=target_min_change_count,
+    )
+
+
+def increase_change_count_with_count_neutral_swaps(
+    *,
+    pred: np.ndarray,
+    initial: np.ndarray,
+    valid: np.ndarray,
+    classes: list[int],
+    score: np.ndarray,
+    target_min_change_count: int,
+) -> np.ndarray:
+    pred = pred.copy()
+    class_to_idx = {cls: idx for idx, cls in enumerate(classes)}
+    need = max(0, int(target_min_change_count) - int((valid & (pred != initial)).sum()))
+    if need <= 0:
+        pred[~valid] = 0
+        return pred
+
+    def max_pair_matched_cells(counts: dict[int, int]) -> int:
+        total = int(sum(counts.values()))
+        if total < 2:
+            return 0
+        largest = max(counts.values()) if counts else 0
+        matched = total if largest <= total - largest else 2 * (total - largest)
+        return int(matched - (matched % 2))
+
+    pair_options: list[dict[str, Any]] = []
+    available_counts: dict[int, int] = {}
+    for source in classes:
+        source_mask = valid & (initial == source) & (pred == source)
+        available_counts[int(source)] = int(source_mask.sum())
+    current_change_count = int((valid & (pred != initial)).sum())
+    effective_target_change_count = min(
+        int(target_min_change_count),
+        current_change_count + max_pair_matched_cells(available_counts),
+    )
+    for source_index, source in enumerate(classes):
+        source_mask = valid & (initial == source) & (pred == source)
+        source_rows, source_cols = np.where(source_mask)
+        if source_rows.size == 0:
+            continue
+        for target in classes[source_index + 1 :]:
+            target_mask = valid & (initial == target) & (pred == target)
+            target_rows, target_cols = np.where(target_mask)
+            if target_rows.size == 0:
+                continue
+            candidate_pool = max(1, int(math.ceil(max(0, effective_target_change_count - current_change_count) / 2.0)))
+            source_take = min(candidate_pool, source_rows.size)
+            target_take = min(candidate_pool, target_rows.size)
+            if source_take <= 0 or target_take <= 0:
+                continue
+            source_delta = score[class_to_idx[target]][source_rows, source_cols] - score[class_to_idx[source]][source_rows, source_cols]
+            target_delta = score[class_to_idx[source]][target_rows, target_cols] - score[class_to_idx[target]][target_rows, target_cols]
+            source_selected = np.argpartition(source_delta, -source_take)[-source_take:]
+            target_selected = np.argpartition(target_delta, -target_take)[-target_take:]
+            source_order = source_selected[np.argsort(source_delta[source_selected])[::-1]]
+            target_order = target_selected[np.argsort(target_delta[target_selected])[::-1]]
+            pair_options.append(
+                {
+                    "source": int(source),
+                    "target": int(target),
+                    "source_rows": source_rows[source_order],
+                    "source_cols": source_cols[source_order],
+                    "source_delta": source_delta[source_order],
+                    "source_pos": 0,
+                    "target_rows": target_rows[target_order],
+                    "target_cols": target_cols[target_order],
+                    "target_delta": target_delta[target_order],
+                    "target_pos": 0,
+                }
+            )
+
+    used = np.zeros(pred.shape, dtype=bool)
+
+    def next_unused_cell(option: dict[str, Any], prefix: str) -> tuple[int, int, float] | None:
+        rows = option[f"{prefix}_rows"]
+        cols = option[f"{prefix}_cols"]
+        deltas = option[f"{prefix}_delta"]
+        pos_key = f"{prefix}_pos"
+        pos = int(option[pos_key])
+        while pos < len(rows) and used[int(rows[pos]), int(cols[pos])]:
+            pos += 1
+        option[pos_key] = pos
+        if pos >= len(rows):
+            return None
+        return int(rows[pos]), int(cols[pos]), float(deltas[pos])
+
+    while current_change_count < effective_target_change_count:
+        best: tuple[float, int, int, int, int, int] | None = None
+        for option_index, option in enumerate(pair_options):
+            source_cell = next_unused_cell(option, "source")
+            target_cell = next_unused_cell(option, "target")
+            if source_cell is None or target_cell is None:
+                continue
+            source = int(option["source"])
+            target = int(option["target"])
+            counts_after = dict(available_counts)
+            counts_after[source] -= 1
+            counts_after[target] -= 1
+            if counts_after[source] < 0 or counts_after[target] < 0:
+                continue
+            if current_change_count + 2 + max_pair_matched_cells(counts_after) < effective_target_change_count:
+                continue
+            score_delta = source_cell[2] + target_cell[2]
+            candidate = (float(score_delta), option_index, source_cell[0], source_cell[1], target_cell[0], target_cell[1])
+            if best is None or candidate[0] > best[0]:
+                best = candidate
+        if best is None:
+            break
+        _, option_index, source_row, source_col, target_row, target_col = best
+        option = pair_options[option_index]
+        source = int(option["source"])
+        target = int(option["target"])
+        pred[source_row, source_col] = target
+        pred[target_row, target_col] = source
+        used[source_row, source_col] = True
+        used[target_row, target_col] = True
+        available_counts[source] -= 1
+        available_counts[target] -= 1
+        current_change_count += 2
+
+    if current_change_count < int(target_min_change_count):
+        exchange_options: list[dict[str, Any]] = []
+        candidate_pool = max(1, int(target_min_change_count) - current_change_count)
+        for unchanged_class in classes:
+            unchanged_mask = valid & (~used) & (initial == unchanged_class) & (pred == unchanged_class)
+            unchanged_rows, unchanged_cols = np.where(unchanged_mask)
+            if unchanged_rows.size == 0:
+                continue
+            for carried_label in classes:
+                if carried_label == unchanged_class:
+                    continue
+                changed_mask = (
+                    valid
+                    & (~used)
+                    & (pred == carried_label)
+                    & (pred != initial)
+                    & (initial != unchanged_class)
+                )
+                changed_rows, changed_cols = np.where(changed_mask)
+                if changed_rows.size == 0:
+                    continue
+                unchanged_take = min(candidate_pool, unchanged_rows.size)
+                changed_take = min(candidate_pool, changed_rows.size)
+                unchanged_delta = (
+                    score[class_to_idx[carried_label]][unchanged_rows, unchanged_cols]
+                    - score[class_to_idx[unchanged_class]][unchanged_rows, unchanged_cols]
+                )
+                changed_delta = (
+                    score[class_to_idx[unchanged_class]][changed_rows, changed_cols]
+                    - score[class_to_idx[carried_label]][changed_rows, changed_cols]
+                )
+                unchanged_selected = np.argpartition(unchanged_delta, -unchanged_take)[-unchanged_take:]
+                changed_selected = np.argpartition(changed_delta, -changed_take)[-changed_take:]
+                unchanged_order = unchanged_selected[np.argsort(unchanged_delta[unchanged_selected])[::-1]]
+                changed_order = changed_selected[np.argsort(changed_delta[changed_selected])[::-1]]
+                exchange_options.append(
+                    {
+                        "unchanged_class": int(unchanged_class),
+                        "carried_label": int(carried_label),
+                        "unchanged_rows": unchanged_rows[unchanged_order],
+                        "unchanged_cols": unchanged_cols[unchanged_order],
+                        "unchanged_delta": unchanged_delta[unchanged_order],
+                        "unchanged_pos": 0,
+                        "changed_rows": changed_rows[changed_order],
+                        "changed_cols": changed_cols[changed_order],
+                        "changed_delta": changed_delta[changed_order],
+                        "changed_pos": 0,
+                    }
+                )
+
+        while current_change_count < int(target_min_change_count):
+            best_exchange: tuple[float, int, int, int, int, int] | None = None
+            for option_index, option in enumerate(exchange_options):
+                unchanged_cell = next_unused_cell(option, "unchanged")
+                changed_cell = next_unused_cell(option, "changed")
+                if unchanged_cell is None or changed_cell is None:
+                    continue
+                score_delta = unchanged_cell[2] + changed_cell[2]
+                candidate = (
+                    float(score_delta),
+                    option_index,
+                    unchanged_cell[0],
+                    unchanged_cell[1],
+                    changed_cell[0],
+                    changed_cell[1],
+                )
+                if best_exchange is None or candidate[0] > best_exchange[0]:
+                    best_exchange = candidate
+            if best_exchange is None:
+                break
+            _, option_index, unchanged_row, unchanged_col, changed_row, changed_col = best_exchange
+            option = exchange_options[option_index]
+            pred[unchanged_row, unchanged_col] = int(option["carried_label"])
+            pred[changed_row, changed_col] = int(option["unchanged_class"])
+            used[unchanged_row, unchanged_col] = True
+            used[changed_row, changed_col] = True
+            current_change_count += 1
     pred[~valid] = 0
     return pred
 
@@ -1982,6 +3785,37 @@ def pixel_metrics(
         precision = cls_tp / max(1, cls_tp + cls_fp)
         recall = cls_tp / max(1, cls_tp + cls_fn)
         per_class_f1[str(cls)] = round(harmonic(precision, recall), 6)
+    transition_pair_metrics: list[dict[str, Any]] = []
+    for source in classes:
+        source_mask = base == source
+        for target in classes:
+            if target == source:
+                continue
+            actual_mask = source_mask & (truth == target)
+            predicted_mask = source_mask & (pred == target)
+            actual_count = int(actual_mask.sum())
+            predicted_count = int(predicted_mask.sum())
+            if actual_count <= 0 and predicted_count <= 0:
+                continue
+            hit_count = int((actual_mask & predicted_mask).sum())
+            false_alarm_count = int((predicted_mask & ~actual_mask).sum())
+            miss_count = int((actual_mask & ~predicted_mask).sum())
+            precision = hit_count / max(1, hit_count + false_alarm_count)
+            recall = hit_count / max(1, hit_count + miss_count)
+            transition_pair_metrics.append(
+                {
+                    "source_class": int(source),
+                    "target_class": int(target),
+                    "actual_count": actual_count,
+                    "predicted_count": predicted_count,
+                    "hit_count": hit_count,
+                    "false_alarm_count": false_alarm_count,
+                    "miss_count": miss_count,
+                    "precision": round(precision, 6),
+                    "recall": round(recall, 6),
+                    "f1": round(harmonic(precision, recall), 6),
+                }
+            )
     demand_abs_error = {str(cls): abs(int(pred_counts.get(cls, 0)) - int(target_counts.get(cls, 0))) for cls in classes}
     oracle_abs_error = {str(cls): abs(int(pred_counts.get(cls, 0)) - int(truth_counts.get(cls, 0))) for cls in classes}
     return {
@@ -2006,6 +3840,7 @@ def pixel_metrics(
         "oracle_total_demand_abs_error": int(sum(oracle_abs_error.values())),
         "macro_f1": round(float(np.mean(list(per_class_f1.values()))) if per_class_f1 else 0.0, 6),
         "per_class_f1": per_class_f1,
+        "transition_pair_metrics": transition_pair_metrics,
     }
 
 
@@ -2458,13 +4293,18 @@ def render_markdown_report(report: dict[str, Any]) -> str:
 
 def neighbor_density(arr: np.ndarray, cls: int, valid: np.ndarray) -> np.ndarray:
     mask = ((arr == cls) & valid).astype(np.float32)
+    return neighborhood_mean(mask, valid)
+
+
+def neighborhood_mean(mask: np.ndarray, valid: np.ndarray) -> np.ndarray:
+    mask = (mask.astype(bool) & valid).astype(np.float32)
     padded = np.pad(mask, 1, mode="constant", constant_values=0.0)
-    total = np.zeros(arr.shape, dtype=np.float32)
+    total = np.zeros(mask.shape, dtype=np.float32)
     for dr in (0, 1, 2):
         for dc in (0, 1, 2):
             if dr == 1 and dc == 1:
                 continue
-            total += padded[dr : dr + arr.shape[0], dc : dc + arr.shape[1]]
+            total += padded[dr : dr + mask.shape[0], dc : dc + mask.shape[1]]
     return total / 8.0
 
 

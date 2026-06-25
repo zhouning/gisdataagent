@@ -15,6 +15,7 @@ from data_agent.territory_world_model import TerritoryWorldModelService, TwmRepo
 from data_agent.territory_world_model.utils import read_csv, read_json
 from scripts.validate_twm_data_foundation import (
     audit_observed_history_schema,
+    normalize_production_observed_history_export,
     production_policy_history_alignment,
     synthetic_experiment_foundation_summary,
 )
@@ -44,6 +45,8 @@ def main() -> None:
     parser.add_argument("--scca-result-json", default="", help="Optional SCCA result JSON payload path.")
     parser.add_argument("--require-scca-pass", action="store_true", help="Require passing SCCA evidence before spatial causal claim promotion.")
     parser.add_argument("--production-observed-history", default="", help="Optional real non-synthetic observed approval/review history CSV.")
+    parser.add_argument("--normalize-production-observed-history-source", default="", help="Optional raw approval/review export CSV to normalize before production preflight.")
+    parser.add_argument("--normalized-production-observed-history-output", default="", help="Optional normalized production observed-history CSV output path.")
     parser.add_argument("--synthetic-experiment-foundation", default=str(DEFAULT_SYNTHETIC_EXPERIMENT_FOUNDATION), help="Synthetic experiment CSV used only as a policy-coverage benchmark.")
     parser.add_argument("--production-scale-profile", default="", help="Optional JSON profile describing real layer/table scale and distributed lakehouse readiness.")
     parser.add_argument("--scale-profile-template-output", default=str(DEFAULT_SCALE_PROFILE_TEMPLATE), help="JSON template output path for sanitized production scale profiles.")
@@ -64,6 +67,8 @@ def main() -> None:
         scca_result_json=Path(args.scca_result_json).expanduser() if args.scca_result_json else None,
         require_scca_pass=bool(args.require_scca_pass),
         production_observed_history=Path(args.production_observed_history).expanduser() if args.production_observed_history else None,
+        normalize_production_observed_history_source=Path(args.normalize_production_observed_history_source).expanduser() if args.normalize_production_observed_history_source else None,
+        normalized_production_observed_history_output=Path(args.normalized_production_observed_history_output).expanduser() if args.normalized_production_observed_history_output else None,
         synthetic_experiment_foundation=Path(args.synthetic_experiment_foundation).expanduser() if args.synthetic_experiment_foundation else None,
         production_scale_profile=Path(args.production_scale_profile).expanduser() if args.production_scale_profile else None,
         require_production_readiness=bool(args.require_production_readiness),
@@ -107,6 +112,8 @@ def run_validation_bundle(
     scca_result_json: Path | str | None = None,
     require_scca_pass: bool = False,
     production_observed_history: Path | str | None = None,
+    normalize_production_observed_history_source: Path | str | None = None,
+    normalized_production_observed_history_output: Path | str | None = None,
     synthetic_experiment_foundation: Path | str | None = DEFAULT_SYNTHETIC_EXPERIMENT_FOUNDATION,
     production_scale_profile: Path | str | None = None,
     require_production_readiness: bool = False,
@@ -117,7 +124,11 @@ def run_validation_bundle(
     optimization_path = Path(optimization_dir).expanduser() if optimization_dir else None
     scca_output_path = Path(scca_output_dir).expanduser() if scca_output_dir else None
     scca_json_path = Path(scca_result_json).expanduser() if scca_result_json else None
-    production_history_path = Path(production_observed_history).expanduser() if production_observed_history else None
+    production_history_path, production_normalization = prepare_production_observed_history_for_bundle(
+        production_observed_history=production_observed_history,
+        normalize_production_observed_history_source=normalize_production_observed_history_source,
+        normalized_production_observed_history_output=normalized_production_observed_history_output,
+    )
     synthetic_foundation_path = Path(synthetic_experiment_foundation).expanduser() if synthetic_experiment_foundation else None
     scale_profile_path = Path(production_scale_profile).expanduser() if production_scale_profile else None
 
@@ -202,6 +213,8 @@ def run_validation_bundle(
             "scca_output_dir": str(scca_output_path) if scca_output_path else None,
             "scca_result_json": str(scca_json_path) if scca_json_path else None,
             "production_observed_history": str(production_history_path) if production_history_path else None,
+            "normalize_production_observed_history_source": str(normalize_production_observed_history_source) if normalize_production_observed_history_source else None,
+            "normalized_production_observed_history_output": production_normalization.get("output_path") if production_normalization.get("status") != "not_requested" else None,
             "synthetic_experiment_foundation": str(synthetic_foundation_path) if synthetic_foundation_path else None,
             "production_scale_profile": str(scale_profile_path) if scale_profile_path else None,
             "require_scca_pass": bool(require_scca_pass),
@@ -219,6 +232,7 @@ def run_validation_bundle(
         "validation_summary": summarize_validation_report(validation_report),
         "claim_ladder": summarize_claim_ladder(claim_ladder),
         "scca_summary": summarize_scca_report(scca_report, require_scca_pass=require_scca_pass),
+        "production_observed_history_normalization": production_normalization,
         "production_observed_history_preflight": production_preflight,
         "production_scale_profile_contract": production_scale_profile_contract(),
         "production_scale_readiness": scale_readiness,
@@ -240,6 +254,30 @@ def run_validation_bundle(
         ),
     }
     return jsonable(report)
+
+
+def prepare_production_observed_history_for_bundle(
+    *,
+    production_observed_history: Path | str | None = None,
+    normalize_production_observed_history_source: Path | str | None = None,
+    normalized_production_observed_history_output: Path | str | None = None,
+) -> tuple[Path | None, dict[str, Any]]:
+    production_path = Path(production_observed_history).expanduser() if production_observed_history else None
+    normalize_source = (
+        Path(normalize_production_observed_history_source).expanduser()
+        if normalize_production_observed_history_source
+        else None
+    )
+    if normalize_source is None:
+        return production_path, {"status": "not_requested"}
+
+    normalize_output = (
+        Path(normalized_production_observed_history_output).expanduser()
+        if normalized_production_observed_history_output
+        else normalize_source.with_name("twm_normalized_production_observed_history.csv")
+    )
+    normalization = normalize_production_observed_history_export(normalize_source, normalize_output)
+    return normalize_output, normalization
 
 
 def build_offline_validation_service() -> TerritoryWorldModelService:
@@ -301,6 +339,7 @@ def build_production_observed_history_preflight(
     synthetic_path = Path(synthetic_experiment_foundation).expanduser() if synthetic_experiment_foundation else None
     schema_audit = audit_observed_history_schema(production_path)
     policy_quality = schema_audit.get("policy_history_quality") or {}
+    temporal_quality = schema_audit.get("temporal_validation_quality") or {}
     benchmark = load_synthetic_policy_coverage_benchmark(synthetic_path)
     alignment = production_policy_history_alignment(policy_quality, benchmark)
 
@@ -308,7 +347,7 @@ def build_production_observed_history_preflight(
         status = "blocked"
     elif production_path is None:
         status = "not_provided"
-    elif schema_audit.get("status") == "pass" and alignment.get("status") == "pass":
+    elif schema_audit.get("status") == "pass" and alignment.get("status") == "pass" and temporal_quality.get("status") == "pass":
         status = "pass"
     else:
         status = "review"
@@ -320,6 +359,7 @@ def build_production_observed_history_preflight(
         "synthetic_experiment_foundation": str(synthetic_path) if synthetic_path else None,
         "schema_audit": summarize_observed_history_schema_audit(schema_audit),
         "policy_history_quality": summarize_policy_history_quality(policy_quality),
+        "temporal_validation_quality": summarize_temporal_validation_quality(temporal_quality),
         "policy_history_alignment": alignment,
         "synthetic_policy_coverage_benchmark": summarize_synthetic_policy_benchmark(benchmark),
         "claim_boundary": "data-readiness preflight only; observed-history coverage does not by itself prove TWM production accuracy",
@@ -369,6 +409,24 @@ def summarize_observed_history_schema_audit(audit: dict[str, Any]) -> dict[str, 
     }
 
 
+def summarize_temporal_validation_quality(quality: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "schema": quality.get("schema", "territory_world_model.production_temporal_validation_quality.v1"),
+        "status": quality.get("status"),
+        "production_temporal_row_count": quality.get("production_temporal_row_count", 0),
+        "period_count": quality.get("period_count", 0),
+        "holdout_period_count": quality.get("holdout_period_count", 0),
+        "rows_with_split": quality.get("rows_with_split", 0),
+        "train_row_count": quality.get("train_row_count", 0),
+        "holdout_row_count": quality.get("holdout_row_count", 0),
+        "split_counts": dict(quality.get("split_counts") or {}),
+        "rows_with_policy_effective_version": quality.get("rows_with_policy_effective_version", 0),
+        "policy_effective_version_count": quality.get("policy_effective_version_count", 0),
+        "missing_temporal_gates": list(quality.get("missing_temporal_gates") or []),
+        "claim_boundary": quality.get("claim_boundary"),
+    }
+
+
 def summarize_policy_history_quality(quality: dict[str, Any]) -> dict[str, Any]:
     return {
         "schema": quality.get("schema", "territory_world_model.production_policy_history_quality.v1"),
@@ -387,6 +445,28 @@ def summarize_policy_history_quality(quality: dict[str, Any]) -> dict[str, Any]:
         "mixed_allowed_policy_counts": dict(quality.get("mixed_allowed_policy_counts") or {}),
         "missing_policy_gates": list(quality.get("missing_policy_gates") or []),
         "claim_boundary": quality.get("claim_boundary"),
+    }
+
+
+def summarize_production_observed_history_normalization(normalization: dict[str, Any]) -> dict[str, Any]:
+    field_mapping = normalization.get("field_mapping") or {}
+    mapped_field_examples = []
+    for field, mapping in field_mapping.items():
+        if not isinstance(mapping, dict):
+            continue
+        primary_source_field = mapping.get("primary_source_field")
+        if primary_source_field:
+            mapped_field_examples.append(f"{field}<-{primary_source_field}")
+    return {
+        "schema": normalization.get("schema", "territory_world_model.production_observed_history_normalization.v1"),
+        "status": normalization.get("status"),
+        "source_path": normalization.get("source_path"),
+        "output_path": normalization.get("output_path"),
+        "row_count": normalization.get("row_count", 0),
+        "mapped_field_count": len(mapped_field_examples),
+        "mapped_field_examples": mapped_field_examples[:4],
+        "unmapped_source_fields": list(normalization.get("unmapped_source_fields") or []),
+        "audit_status": (normalization.get("audit") or {}).get("status"),
     }
 
 
@@ -1215,11 +1295,22 @@ def render_validation_bundle_markdown(report: dict[str, Any]) -> str:
     validation = report.get("validation_summary") or {}
     claim = report.get("claim_ladder") or {}
     scca = report.get("scca_summary") or {}
+    production_normalization = summarize_production_observed_history_normalization(
+        report.get("production_observed_history_normalization")
+        or {
+            "schema": "territory_world_model.production_observed_history_normalization.v1",
+            "status": "not_requested",
+            "field_mapping": {},
+            "unmapped_source_fields": [],
+            "audit": {"status": "not_requested"},
+        }
+    )
     production = report.get("production_observed_history_preflight") or {}
     scale = report.get("production_scale_readiness") or {}
     readiness = report.get("production_readiness_gate") or {}
     production_schema = production.get("schema_audit") or {}
     production_policy = production.get("policy_history_quality") or {}
+    production_temporal = production.get("temporal_validation_quality") or {}
     production_alignment = production.get("policy_history_alignment") or {}
     lines = [
         "# TWM Offline Validation Bundle",
@@ -1243,6 +1334,17 @@ def render_validation_bundle_markdown(report: dict[str, Any]) -> str:
         f"- Synthetic policy benchmark: `{inputs.get('synthetic_experiment_foundation')}`",
         f"- Production scale profile: `{inputs.get('production_scale_profile')}`",
         f"- Require production readiness: `{inputs.get('require_production_readiness')}`",
+        "",
+        "## Production Observed-History Normalization",
+        "",
+        f"- Normalization status: `{production_normalization.get('status')}`",
+        f"- Source path: `{production_normalization.get('source_path')}`",
+        f"- Output path: `{production_normalization.get('output_path')}`",
+        f"- Row count: `{production_normalization.get('row_count', 0)}`",
+        f"- Audit status: `{production_normalization.get('audit_status')}`",
+        f"- Mapped fields: `{production_normalization.get('mapped_field_count', 0)}`",
+        f"- Mapping examples: `{', '.join(production_normalization.get('mapped_field_examples') or []) or 'none'}`",
+        f"- Unmapped source fields: `{', '.join(production_normalization.get('unmapped_source_fields') or []) or 'none'}`",
         "",
         "## State Build",
         "",
@@ -1284,6 +1386,9 @@ def render_validation_bundle_markdown(report: dict[str, Any]) -> str:
         f"- Preflight status: `{production.get('status')}`",
         f"- Schema status: `{production_schema.get('status')}`",
         f"- Production-ready rows: `{(production_schema.get('row_quality') or {}).get('production_candidate_row_count', 0)}`",
+        f"- Temporal validation status: `{production_temporal.get('status')}`",
+        f"- Train/holdout rows: `{production_temporal.get('train_row_count', 0)}` / `{production_temporal.get('holdout_row_count', 0)}`",
+        f"- Temporal missing gates: `{production_temporal.get('missing_temporal_gates', [])}`",
         f"- Policy-history status: `{production_policy.get('status')}`",
         f"- Policy allowed/blocked rows: `{production_policy.get('allowed_count', 0)}` / `{production_policy.get('blocked_count', 0)}`",
         f"- Region-policy keys: `{production_policy.get('region_policy_key_count', 0)}`",

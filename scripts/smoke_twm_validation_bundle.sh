@@ -26,6 +26,8 @@ MARKDOWN_OUTPUT="${TWM_VALIDATION_MARKDOWN_OUTPUT:-docs/reports/twm_validation_b
 SCENARIO="${TWM_VALIDATION_SCENARIO:-offline_validation_bundle}"
 HORIZON="${TWM_VALIDATION_HORIZON:-3}"
 SYNTHETIC_FOUNDATION="${TWM_SYNTHETIC_EXPERIMENT_FOUNDATION:-docs/reports/twm_synthetic_experiment_foundation.csv}"
+NORMALIZE_PRODUCTION_OBSERVED_HISTORY_SOURCE="${TWM_NORMALIZE_PRODUCTION_OBSERVED_HISTORY_SOURCE:-}"
+NORMALIZED_PRODUCTION_OBSERVED_HISTORY_OUTPUT="${TWM_NORMALIZED_PRODUCTION_OBSERVED_HISTORY_OUTPUT:-}"
 
 ARGS=(
   "--bundle-dir" "$BUNDLE_DIR"
@@ -39,6 +41,14 @@ ARGS=(
 
 if [ -n "${TWM_PRODUCTION_OBSERVED_HISTORY:-}" ]; then
   ARGS+=("--production-observed-history" "$TWM_PRODUCTION_OBSERVED_HISTORY")
+fi
+
+if [ -n "${NORMALIZE_PRODUCTION_OBSERVED_HISTORY_SOURCE}" ]; then
+  ARGS+=("--normalize-production-observed-history-source" "$NORMALIZE_PRODUCTION_OBSERVED_HISTORY_SOURCE")
+fi
+
+if [ -n "${NORMALIZED_PRODUCTION_OBSERVED_HISTORY_OUTPUT}" ]; then
+  ARGS+=("--normalized-production-observed-history-output" "$NORMALIZED_PRODUCTION_OBSERVED_HISTORY_OUTPUT")
 fi
 
 if [ -n "${TWM_PRODUCTION_SCALE_PROFILE:-}" ]; then
@@ -78,6 +88,8 @@ echo "[twm-validation] output=${OUTPUT}"
 echo "[twm-validation] markdown=${MARKDOWN_OUTPUT}"
 echo "[twm-validation] scenario=${SCENARIO}"
 echo "[twm-validation] production_observed_history=${TWM_PRODUCTION_OBSERVED_HISTORY:-not_provided}"
+echo "[twm-validation] normalize_production_observed_history_source=${NORMALIZE_PRODUCTION_OBSERVED_HISTORY_SOURCE:-not_provided}"
+echo "[twm-validation] normalized_production_observed_history_output=${NORMALIZED_PRODUCTION_OBSERVED_HISTORY_OUTPUT:-not_provided}"
 echo "[twm-validation] production_scale_profile=${TWM_PRODUCTION_SCALE_PROFILE:-not_provided}"
 echo "[twm-validation] require_production_readiness=${TWM_REQUIRE_PRODUCTION_READINESS:-0}"
 

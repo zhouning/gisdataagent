@@ -2,6 +2,7 @@ from pathlib import Path
 
 import importlib.util
 import json
+import subprocess
 
 
 SCRIPT = Path("scripts/validate_twm_data_foundation.py")
@@ -61,7 +62,7 @@ def _write_policy_benchmark_csv(path: Path) -> None:
 def _write_production_policy_history_csv(path: Path, *, include_all_policies: bool = True) -> None:
     header = (
         "unit_id,approval_id,project_id,approval_status,outcome,cluster,neighbors,x,y,area_m2,quality_score,"
-        "action_type,action_mask_policy,action_mask_allowed,region_code,period,synthetic,not_for_production"
+        "action_type,action_mask_policy,action_mask_allowed,region_code,period,split,policy_effective_date,policy_version,synthetic,not_for_production"
     )
     rows = [header]
     policies = [
@@ -80,9 +81,10 @@ def _write_production_policy_history_csv(path: Path, *, include_all_policies: bo
             policies[3],
         ]
     for idx, (policy, action, allowed, approval_status) in enumerate(selected):
+        split = "train" if idx < max(1, len(selected) // 2) else "holdout"
         rows.append(
             f"P-{idx},APR-P-{idx},PRJ-P-{idx},{approval_status},0.{30 + idx},block-{idx},,106.{idx},29.{idx},1000,0.82,"
-            f"{action},{policy},{allowed},PROD-R{idx},2026Q{1 + idx},False,False"
+            f"{action},{policy},{allowed},PROD-R{idx},2026Q{1 + idx},{split},2026-01-01,POLICY-V{idx % 3},False,False"
         )
     path.write_text("\n".join(rows) + "\n", encoding="utf-8")
 
@@ -167,9 +169,9 @@ def test_audit_observed_history_schema_accepts_production_ready_rows(tmp_path):
     path.write_text(
         "\n".join(
             [
-                "unit_id,approval_id,project_id,approval_status,outcome,cluster,neighbors,x,y,area_m2,quality_score,action_type,action_mask_policy,action_mask_allowed,region_code,period,synthetic,not_for_production",
-                "C-1,APR-C-1,PRJ-C-1,in_review,0.10,block-1,T-1,106.20,29.60,1000,0.82,approve_with_conditions,mixed_risk_blocked_condition_review,False,SYN-R00,2026Q1,False,False",
-                "T-1,APR-T-1,PRJ-T-1,approved,0.20,block-1,C-1,106.21,29.61,1000,0.82,restore,mixed_risk_restore_allowed,True,SYN-R03,2026Q1,False,False",
+                "unit_id,approval_id,project_id,approval_status,outcome,cluster,neighbors,x,y,area_m2,quality_score,action_type,action_mask_policy,action_mask_allowed,region_code,period,split,policy_effective_date,policy_version,synthetic,not_for_production",
+                "C-1,APR-C-1,PRJ-C-1,in_review,0.10,block-1,T-1,106.20,29.60,1000,0.82,approve_with_conditions,mixed_risk_blocked_condition_review,False,SYN-R00,2026Q1,train,2026-01-01,POLICY-V1,False,False",
+                "T-1,APR-T-1,PRJ-T-1,approved,0.20,block-1,C-1,106.21,29.61,1000,0.82,restore,mixed_risk_restore_allowed,True,SYN-R03,2026Q2,holdout,2026-04-01,POLICY-V2,False,False",
             ]
         )
         + "\n",
@@ -193,6 +195,38 @@ def test_audit_observed_history_schema_accepts_production_ready_rows(tmp_path):
     assert audit["policy_history_quality"]["region_policy_key_count"] == 2
     assert audit["policy_history_quality"]["region_action_policy_key_count"] == 2
     assert audit["policy_history_quality"]["mixed_allowed_policy_counts"] == {"mixed_risk_restore_allowed": 1}
+    assert audit["temporal_validation_quality"]["status"] == "pass"
+    assert audit["temporal_validation_quality"]["train_row_count"] == 1
+    assert audit["temporal_validation_quality"]["holdout_row_count"] == 1
+
+
+def test_audit_observed_history_schema_reviews_missing_temporal_holdout_and_policy_version(tmp_path):
+    module = _load_script_module()
+    path = tmp_path / "production_observed_history_no_temporal_gate.csv"
+    path.write_text(
+        "\n".join(
+            [
+                "unit_id,approval_id,project_id,approval_status,outcome,cluster,neighbors,x,y,area_m2,quality_score,action_type,action_mask_policy,action_mask_allowed,region_code,period,synthetic,not_for_production",
+                "C-1,APR-C-1,PRJ-C-1,in_review,0.10,block-1,T-1,106.20,29.60,1000,0.82,approve_with_conditions,mixed_risk_blocked_condition_review,False,PROD-R01,2026Q1,False,False",
+                "T-1,APR-T-1,PRJ-T-1,approved,0.20,block-1,C-1,106.21,29.61,1000,0.82,restore,mixed_risk_restore_allowed,True,PROD-R02,2026Q2,False,False",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    audit = module.audit_observed_history_schema(path)
+
+    assert audit["status"] == "review"
+    temporal_quality = audit["temporal_validation_quality"]
+    assert temporal_quality["schema"] == "territory_world_model.production_temporal_validation_quality.v1"
+    assert temporal_quality["status"] == "review"
+    assert temporal_quality["period_count"] == 2
+    assert temporal_quality["holdout_row_count"] == 0
+    assert "explicit_train_holdout_split" in temporal_quality["missing_temporal_gates"]
+    assert "policy_effective_version" in temporal_quality["missing_temporal_gates"]
+    assert "temporal_holdout_support" in audit["missing_data_gates"]
+    assert "policy_effective_version" in audit["missing_data_gates"]
 
 
 def test_audit_observed_history_schema_keeps_policy_history_gate_separate(tmp_path):
@@ -201,9 +235,9 @@ def test_audit_observed_history_schema_keeps_policy_history_gate_separate(tmp_pa
     path.write_text(
         "\n".join(
             [
-                "unit_id,approval_id,project_id,approval_status,outcome,cluster,neighbors,x,y,area_m2,quality_score,synthetic,not_for_production",
-                "C-1,APR-C-1,PRJ-C-1,in_review,0.10,block-1,T-1,106.20,29.60,1000,0.82,False,False",
-                "T-1,APR-T-1,PRJ-T-1,approved,0.20,block-1,C-1,106.21,29.61,1000,0.82,False,False",
+                "unit_id,approval_id,project_id,approval_status,outcome,cluster,neighbors,x,y,area_m2,quality_score,period,split,policy_version,synthetic,not_for_production",
+                "C-1,APR-C-1,PRJ-C-1,in_review,0.10,block-1,T-1,106.20,29.60,1000,0.82,2026Q1,train,POLICY-V1,False,False",
+                "T-1,APR-T-1,PRJ-T-1,approved,0.20,block-1,C-1,106.21,29.61,1000,0.82,2026Q2,holdout,POLICY-V1,False,False",
             ]
         )
         + "\n",
@@ -342,8 +376,76 @@ def test_write_observed_history_template_outputs_expected_columns(tmp_path):
     assert "action_mask_allowed" in header
     assert "region_code" in header
     assert "period" in header
+    assert "split" in header
+    assert "policy_effective_date" in header
+    assert "policy_version" in header
     assert "synthetic" in header
     assert "not_for_production" in header
+
+
+def test_normalize_production_observed_history_export_maps_aliases_and_audits(tmp_path):
+    module = _load_script_module()
+    raw_path = tmp_path / "raw_approval_export.csv"
+    output_path = tmp_path / "normalized_production_observed_history.csv"
+    raw_path.write_text(
+        "\n".join(
+            [
+                "AJBH,XMDM,review_result,observed_utility_delta,DKXZQDM,DKMJ,quality_score,decision_action,policy_code,feasibility_label,year,dataset_split,rule_version,synthetic,not_for_prod,operator_note",
+                "APR-1,PRJ-1,approved,0.31,500227,1000,0.82,approve_with_conditions,mixed_risk_allowed_with_conditions,allowed,2026Q1,training,RULE-2026-A,False,False,manual check",
+                "APR-2,PRJ-2,in_review,0.08,500227,1200,0.80,protect,mixed_risk_protect_blocked,blocked,2026Q2,test,RULE-2026-B,False,False,manual check",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    report = module.normalize_production_observed_history_export(raw_path, output_path)
+    audit = module.audit_observed_history_schema(output_path)
+
+    assert report["schema"] == "territory_world_model.production_observed_history_normalization.v1"
+    assert report["status"] == "pass"
+    assert report["row_count"] == 2
+    assert report["audit"]["status"] == "pass"
+    assert audit["status"] == "pass"
+    rows = module.read_csv(output_path)
+    assert rows[0]["approval_id"] == "APR-1"
+    assert rows[0]["project_id"] == "PRJ-1"
+    assert rows[0]["approval_status"] == "approved"
+    assert rows[0]["outcome"] == "0.31"
+    assert rows[0]["area_m2"] == "1000"
+    assert rows[0]["action_mask_allowed"] == "true"
+    assert rows[0]["split"] == "train"
+    assert rows[1]["split"] == "holdout"
+    assert rows[1]["policy_version"] == "RULE-2026-B"
+    assert report["field_mapping"]["approval_id"]["primary_source_field"] == "AJBH"
+    assert report["field_mapping"]["approval_id"]["non_empty_count"] == 2
+    assert report["field_mapping"]["action_mask_allowed"]["primary_source_field"] == "feasibility_label"
+    assert report["field_mapping"]["policy_version"]["primary_source_field"] == "rule_version"
+    assert report["field_mapping"]["split"]["primary_source_field"] == "dataset_split"
+    assert "operator_note" in report["unmapped_source_fields"]
+
+
+def test_normalize_production_observed_history_export_keeps_incomplete_exports_review_only(tmp_path):
+    module = _load_script_module()
+    raw_path = tmp_path / "raw_incomplete_export.csv"
+    output_path = tmp_path / "normalized_incomplete.csv"
+    raw_path.write_text(
+        "\n".join(
+            [
+                "AJBH,XMDM,review_result,DKMJ,synthetic,not_for_prod",
+                "APR-1,PRJ-1,approved,1000,False,False",
+                "APR-2,PRJ-2,in_review,1200,False,False",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    report = module.normalize_production_observed_history_export(raw_path, output_path)
+
+    assert report["status"] == "review"
+    assert "spatial_support" in report["audit"]["missing_data_gates"]
+    assert "temporal_holdout_support" in report["audit"]["missing_data_gates"]
 
 
 def test_write_twm_structural_validation_observed_history_generates_balanced_fixture(tmp_path):
@@ -2520,6 +2622,66 @@ def test_twm_validation_bundle_runner_executes_offline_demo_pipeline(tmp_path):
     assert "raw geometries" in markdown_path.read_text(encoding="utf-8")
 
 
+def test_twm_validation_bundle_markdown_includes_production_normalization_summary():
+    runner = _load_validation_bundle_module()
+
+    report = {
+        "inputs": {
+            "bundle_dir": "/tmp/bundle",
+            "optimization_dir": None,
+            "scenario": "pytest_bundle",
+            "require_scca_pass": False,
+            "scca_output_dir": None,
+            "scca_result_json": None,
+            "production_observed_history": "/tmp/normalized_production_observed_history.csv",
+            "synthetic_experiment_foundation": "/tmp/synthetic_policy_benchmark.csv",
+            "production_scale_profile": None,
+            "require_production_readiness": False,
+        },
+        "state_summary": {},
+        "rule_summary": {},
+        "audit_summary": {},
+        "selected_plan_evaluation_bundle": {},
+        "validation_summary": {},
+        "claim_ladder": {},
+        "scca_summary": {},
+        "production_observed_history_normalization": {
+            "schema": "territory_world_model.production_observed_history_normalization.v1",
+            "status": "pass",
+            "source_path": "/tmp/raw_approval_export.csv",
+            "output_path": "/tmp/normalized_production_observed_history.csv",
+            "row_count": 10,
+            "field_mapping": {
+                "approval_id": {"primary_source_field": "AJBH"},
+                "policy_version": {"primary_source_field": "rule_version"},
+            },
+            "unmapped_source_fields": ["review_result"],
+            "audit": {"status": "pass"},
+        },
+        "production_observed_history_preflight": {
+            "schema": "territory_world_model.production_observed_history_preflight.v1",
+            "status": "pass",
+            "schema_audit": {"status": "pass", "row_quality": {"production_candidate_row_count": 10}},
+            "policy_history_quality": {"status": "pass", "allowed_count": 6, "blocked_count": 4},
+            "temporal_validation_quality": {"status": "pass", "train_row_count": 6, "holdout_row_count": 4, "missing_temporal_gates": []},
+            "policy_history_alignment": {"status": "pass", "missing": []},
+        },
+        "production_scale_readiness": {},
+        "production_readiness_gate": {},
+        "claim_boundary": {},
+        "recommendations": [],
+    }
+
+    markdown = runner.render_validation_bundle_markdown(report)
+
+    assert "Production Observed-History Normalization" in markdown
+    assert "Normalization status" in markdown
+    assert "/tmp/normalized_production_observed_history.csv" in markdown
+    assert "approval_id<-AJBH" in markdown
+    assert "policy_version<-rule_version" in markdown
+    assert "review_result" in markdown
+
+
 def test_twm_validation_bundle_runner_requires_scca_stage_when_configured():
     runner = _load_validation_bundle_module()
 
@@ -2735,6 +2897,50 @@ def test_twm_validation_bundle_production_preflight_reports_not_provided():
     assert "production_policy_history_not_provided" in report["policy_history_alignment"]["missing"]
 
 
+def test_twm_validation_bundle_prepares_normalized_raw_production_history(tmp_path):
+    runner = _load_validation_bundle_module()
+    benchmark_path = tmp_path / "synthetic_policy_benchmark.csv"
+    raw_path = tmp_path / "raw_approval_export.csv"
+    normalized_path = tmp_path / "normalized_production_observed_history.csv"
+    _write_policy_benchmark_csv(benchmark_path)
+    raw_path.write_text(
+        "\n".join(
+            [
+                "AJBH,XMDM,review_result,observed_utility_delta,DKXZQDM,DKMJ,quality_score,decision_action,policy_code,feasibility_label,year,dataset_split,rule_version,synthetic,not_for_prod",
+                "APR-1,PRJ-1,approved,0.31,PROD-R01,1000,0.82,approve_with_conditions,mixed_risk_allowed_with_conditions,allowed,2026Q1,training,RULE-2026-A,False,False",
+                "APR-2,PRJ-2,approved,0.28,PROD-R02,1100,0.80,protect,mixed_risk_protect_allowed,allowed,2026Q1,training,RULE-2026-B,False,False",
+                "APR-3,PRJ-3,approved,0.34,PROD-R03,1200,0.78,restore,mixed_risk_restore_allowed,allowed,2026Q2,training,RULE-2026-C,False,False",
+                "APR-4,PRJ-4,in_review,0.08,PROD-R04,1300,0.76,approve_with_conditions,mixed_risk_blocked_condition_review,blocked,2026Q2,training,RULE-2026-D,False,False",
+                "APR-5,PRJ-5,in_review,0.07,PROD-R05,1400,0.74,protect,mixed_risk_protect_blocked,blocked,2026Q3,training,RULE-2026-E,False,False",
+                "APR-6,PRJ-6,approved,0.36,PROD-R06,1500,0.73,approve_with_conditions,mixed_risk_allowed_with_conditions,allowed,2026Q3,holdout,RULE-2026-F,False,False",
+                "APR-7,PRJ-7,approved,0.37,PROD-R07,1600,0.72,protect,mixed_risk_protect_allowed,allowed,2026Q4,holdout,RULE-2026-G,False,False",
+                "APR-8,PRJ-8,approved,0.38,PROD-R08,1700,0.71,restore,mixed_risk_restore_allowed,allowed,2026Q4,holdout,RULE-2026-H,False,False",
+                "APR-9,PRJ-9,in_review,0.09,PROD-R09,1800,0.70,approve_with_conditions,mixed_risk_blocked_condition_review,blocked,2026Q4,holdout,RULE-2026-I,False,False",
+                "APR-10,PRJ-10,in_review,0.06,PROD-R10,1900,0.69,protect,mixed_risk_protect_blocked,blocked,2026Q4,holdout,RULE-2026-J,False,False",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    prepared_path, normalization = runner.prepare_production_observed_history_for_bundle(
+        production_observed_history=tmp_path / "already_normalized_input.csv",
+        normalize_production_observed_history_source=raw_path,
+        normalized_production_observed_history_output=normalized_path,
+    )
+    preflight = runner.build_production_observed_history_preflight(
+        production_observed_history=prepared_path,
+        synthetic_experiment_foundation=benchmark_path,
+    )
+
+    assert prepared_path == normalized_path
+    assert normalization["status"] == "pass"
+    assert normalization["field_mapping"]["approval_id"]["primary_source_field"] == "AJBH"
+    assert normalization["field_mapping"]["policy_version"]["primary_source_field"] == "rule_version"
+    assert preflight["status"] == "pass"
+    assert preflight["schema_audit"]["path"] == str(normalized_path)
+
+
 def test_twm_validation_bundle_production_preflight_passes_real_policy_coverage(tmp_path):
     runner = _load_validation_bundle_module()
     benchmark_path = tmp_path / "synthetic_policy_benchmark.csv"
@@ -2756,6 +2962,96 @@ def test_twm_validation_bundle_production_preflight_passes_real_policy_coverage(
     assert report["policy_history_alignment"]["status"] == "pass"
     assert report["policy_history_alignment"]["missing"] == []
     assert report["synthetic_policy_coverage_benchmark"]["required_region_policy_key_count"] == 10
+
+
+def test_validate_twm_data_foundation_cli_normalizes_raw_production_history(tmp_path):
+    raw_path = tmp_path / "raw_approval_export.csv"
+    normalized_path = tmp_path / "normalized_production_observed_history.csv"
+    output_path = tmp_path / "twm_data_foundation_validation.json"
+    markdown_path = tmp_path / "twm_data_foundation_health.md"
+    raw_path.write_text(
+        "\n".join(
+            [
+                "AJBH,XMDM,review_result,observed_utility_delta,DKXZQDM,DKMJ,quality_score,decision_action,policy_code,feasibility_label,year,dataset_split,rule_version,synthetic,not_for_prod",
+                "APR-1,PRJ-1,approved,0.31,PROD-R01,1000,0.82,approve_with_conditions,mixed_risk_allowed_with_conditions,allowed,2026Q1,training,RULE-2026-A,False,False",
+                "APR-2,PRJ-2,approved,0.28,PROD-R02,1100,0.80,protect,mixed_risk_protect_allowed,allowed,2026Q1,training,RULE-2026-B,False,False",
+                "APR-3,PRJ-3,approved,0.34,PROD-R03,1200,0.78,restore,mixed_risk_restore_allowed,allowed,2026Q2,training,RULE-2026-C,False,False",
+                "APR-4,PRJ-4,in_review,0.08,PROD-R04,1300,0.76,approve_with_conditions,mixed_risk_blocked_condition_review,blocked,2026Q2,training,RULE-2026-D,False,False",
+                "APR-5,PRJ-5,in_review,0.07,PROD-R05,1400,0.74,protect,mixed_risk_protect_blocked,blocked,2026Q3,training,RULE-2026-E,False,False",
+                "APR-6,PRJ-6,approved,0.36,PROD-R06,1500,0.73,approve_with_conditions,mixed_risk_allowed_with_conditions,allowed,2026Q3,holdout,RULE-2026-F,False,False",
+                "APR-7,PRJ-7,approved,0.37,PROD-R07,1600,0.72,protect,mixed_risk_protect_allowed,allowed,2026Q4,holdout,RULE-2026-G,False,False",
+                "APR-8,PRJ-8,approved,0.38,PROD-R08,1700,0.71,restore,mixed_risk_restore_allowed,allowed,2026Q4,holdout,RULE-2026-H,False,False",
+                "APR-9,PRJ-9,in_review,0.09,PROD-R09,1800,0.70,approve_with_conditions,mixed_risk_blocked_condition_review,blocked,2026Q4,holdout,RULE-2026-I,False,False",
+                "APR-10,PRJ-10,in_review,0.06,PROD-R10,1900,0.69,protect,mixed_risk_protect_blocked,blocked,2026Q4,holdout,RULE-2026-J,False,False",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    subprocess.run(
+        [
+            "/Users/zhouning/gisdataagent/.venv/bin/python",
+            str(SCRIPT),
+            "--output",
+            str(output_path),
+            "--markdown-output",
+            str(markdown_path),
+            "--normalize-production-observed-history-source",
+            str(raw_path),
+            "--normalized-production-observed-history-output",
+            str(normalized_path),
+        ],
+        cwd=Path("/Users/zhouning/gisdataagent"),
+        check=True,
+    )
+
+    report = json.loads(output_path.read_text(encoding="utf-8"))
+    assert normalized_path.exists()
+    assert markdown_path.exists()
+    assert report["inputs"]["normalize_production_observed_history_source"] == str(raw_path)
+    assert report["inputs"]["normalized_production_observed_history_output"] == str(normalized_path)
+    assert report["production_observed_history_normalization"]["status"] == "pass"
+    assert report["production_observed_history_schema_audit"]["status"] == "pass"
+    assert report["production_observed_history_schema_audit"]["path"] == str(normalized_path)
+    assert report["outputs"]["normalized_production_observed_history"] == str(normalized_path)
+
+
+def test_twm_validation_bundle_production_preflight_requires_temporal_holdout_and_policy_version(tmp_path):
+    runner = _load_validation_bundle_module()
+    benchmark_path = tmp_path / "synthetic_policy_benchmark.csv"
+    production_path = tmp_path / "production_without_temporal_gate.csv"
+    _write_policy_benchmark_csv(benchmark_path)
+    production_path.write_text(
+        "\n".join(
+            [
+                "unit_id,approval_id,project_id,approval_status,outcome,cluster,neighbors,x,y,area_m2,quality_score,action_type,action_mask_policy,action_mask_allowed,region_code,period,synthetic,not_for_production",
+                "P-1,APR-P-1,PRJ-P-1,approved,0.31,block-1,,106.20,29.60,1000,0.82,approve_with_conditions,mixed_risk_allowed_with_conditions,True,PROD-R01,2026Q1,False,False",
+                "P-2,APR-P-2,PRJ-P-2,approved,0.28,block-2,,106.21,29.61,1100,0.80,protect,mixed_risk_protect_allowed,True,PROD-R02,2026Q1,False,False",
+                "P-3,APR-P-3,PRJ-P-3,approved,0.34,block-3,,106.22,29.62,1200,0.78,restore,mixed_risk_restore_allowed,True,PROD-R03,2026Q2,False,False",
+                "P-4,APR-P-4,PRJ-P-4,in_review,0.08,block-4,,106.23,29.63,1300,0.76,approve_with_conditions,mixed_risk_blocked_condition_review,False,PROD-R04,2026Q2,False,False",
+                "P-5,APR-P-5,PRJ-P-5,in_review,0.07,block-5,,106.24,29.64,1400,0.74,protect,mixed_risk_protect_blocked,False,PROD-R05,2026Q3,False,False",
+                "P-6,APR-P-6,PRJ-P-6,approved,0.36,block-6,,106.25,29.65,1500,0.73,approve_with_conditions,mixed_risk_allowed_with_conditions,True,PROD-R06,2026Q3,False,False",
+                "P-7,APR-P-7,PRJ-P-7,approved,0.37,block-7,,106.26,29.66,1600,0.72,protect,mixed_risk_protect_allowed,True,PROD-R07,2026Q4,False,False",
+                "P-8,APR-P-8,PRJ-P-8,approved,0.38,block-8,,106.27,29.67,1700,0.71,restore,mixed_risk_restore_allowed,True,PROD-R08,2026Q4,False,False",
+                "P-9,APR-P-9,PRJ-P-9,in_review,0.09,block-9,,106.28,29.68,1800,0.70,approve_with_conditions,mixed_risk_blocked_condition_review,False,PROD-R09,2026Q4,False,False",
+                "P-10,APR-P-10,PRJ-P-10,in_review,0.06,block-10,,106.29,29.69,1900,0.69,protect,mixed_risk_protect_blocked,False,PROD-R10,2026Q4,False,False",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    report = runner.build_production_observed_history_preflight(
+        production_observed_history=production_path,
+        synthetic_experiment_foundation=benchmark_path,
+    )
+
+    assert report["status"] == "review"
+    assert report["schema_audit"]["status"] == "review"
+    assert report["temporal_validation_quality"]["status"] == "review"
+    assert "explicit_train_holdout_split" in report["temporal_validation_quality"]["missing_temporal_gates"]
+    assert "policy_effective_version" in report["temporal_validation_quality"]["missing_temporal_gates"]
 
 
 def test_twm_validation_bundle_production_preflight_reviews_undercovered_policy_history(tmp_path):

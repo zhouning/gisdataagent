@@ -1,0 +1,235 @@
+"""Smoke tests for the TWM production onboarding runner."""
+
+from __future__ import annotations
+
+import json
+import subprocess
+from pathlib import Path
+
+
+SCRIPT = Path("scripts/run_twm_production_onboarding.py")
+
+
+def _write_raw_approval_export(path: Path) -> None:
+    path.write_text(
+        "\n".join(
+            [
+                "AJBH,XMDM,review_result,observed_utility_delta,DKXZQDM,DKMJ,quality_score,decision_action,policy_code,feasibility_label,year,dataset_split,rule_version,synthetic,not_for_prod",
+                "APR-1,PRJ-1,approved,0.31,PROD-R01,1000,0.82,approve_with_conditions,mixed_risk_allowed_with_conditions,allowed,2026Q1,training,RULE-2026-A,False,False",
+                "APR-2,PRJ-2,approved,0.28,PROD-R02,1100,0.80,protect,mixed_risk_protect_allowed,allowed,2026Q1,training,RULE-2026-B,False,False",
+                "APR-3,PRJ-3,approved,0.34,PROD-R03,1200,0.78,restore,mixed_risk_restore_allowed,allowed,2026Q2,training,RULE-2026-C,False,False",
+                "APR-4,PRJ-4,in_review,0.08,PROD-R04,1300,0.76,approve_with_conditions,mixed_risk_blocked_condition_review,blocked,2026Q2,training,RULE-2026-D,False,False",
+                "APR-5,PRJ-5,in_review,0.07,PROD-R05,1400,0.74,protect,mixed_risk_protect_blocked,blocked,2026Q3,training,RULE-2026-E,False,False",
+                "APR-6,PRJ-6,approved,0.36,PROD-R06,1500,0.73,approve_with_conditions,mixed_risk_allowed_with_conditions,allowed,2026Q3,holdout,RULE-2026-F,False,False",
+                "APR-7,PRJ-7,approved,0.37,PROD-R07,1600,0.72,protect,mixed_risk_protect_allowed,allowed,2026Q4,holdout,RULE-2026-G,False,False",
+                "APR-8,PRJ-8,approved,0.38,PROD-R08,1700,0.71,restore,mixed_risk_restore_allowed,allowed,2026Q4,holdout,RULE-2026-H,False,False",
+                "APR-9,PRJ-9,in_review,0.09,PROD-R09,1800,0.70,approve_with_conditions,mixed_risk_blocked_condition_review,blocked,2026Q4,holdout,RULE-2026-I,False,False",
+                "APR-10,PRJ-10,in_review,0.06,PROD-R10,1900,0.69,protect,mixed_risk_protect_blocked,blocked,2026Q4,holdout,RULE-2026-J,False,False",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def _write_normalized_observed_history(path: Path) -> None:
+    path.write_text(
+        "\n".join(
+            [
+                "unit_id,approval_id,project_id,approval_status,outcome,cluster,neighbors,x,y,area_m2,quality_score,action_type,action_mask_policy,action_mask_allowed,region_code,period,split,policy_effective_date,policy_version,synthetic,not_for_production",
+                "PRJ-1,APR-1,PRJ-1,approved,0.31,PROD-R01,,106.20,29.60,1000,0.82,approve_with_conditions,mixed_risk_allowed_with_conditions,True,PROD-R01,2026Q1,training,2026Q1,RULE-2026-A,False,False",
+                "PRJ-2,APR-2,PRJ-2,approved,0.28,PROD-R02,,106.21,29.61,1100,0.80,protect,mixed_risk_protect_allowed,True,PROD-R02,2026Q1,training,2026Q1,RULE-2026-B,False,False",
+                "PRJ-3,APR-3,PRJ-3,approved,0.34,PROD-R03,,106.22,29.62,1200,0.78,restore,mixed_risk_restore_allowed,True,PROD-R03,2026Q2,training,2026Q2,RULE-2026-C,False,False",
+                "PRJ-4,APR-4,PRJ-4,in_review,0.08,PROD-R04,,106.23,29.63,1300,0.76,approve_with_conditions,mixed_risk_blocked_condition_review,False,PROD-R04,2026Q2,training,2026Q2,RULE-2026-D,False,False",
+                "PRJ-5,APR-5,PRJ-5,in_review,0.07,PROD-R05,,106.24,29.64,1400,0.74,protect,mixed_risk_protect_blocked,False,PROD-R05,2026Q3,training,2026Q3,RULE-2026-E,False,False",
+                "PRJ-6,APR-6,PRJ-6,approved,0.36,PROD-R06,,106.25,29.65,1500,0.73,approve_with_conditions,mixed_risk_allowed_with_conditions,True,PROD-R06,2026Q3,holdout,2026Q3,RULE-2026-F,False,False",
+                "PRJ-7,APR-7,PRJ-7,approved,0.37,PROD-R07,,106.26,29.66,1600,0.72,protect,mixed_risk_protect_allowed,True,PROD-R07,2026Q4,holdout,2026Q4,RULE-2026-G,False,False",
+                "PRJ-8,APR-8,PRJ-8,approved,0.38,PROD-R08,,106.27,29.67,1700,0.71,restore,mixed_risk_restore_allowed,True,PROD-R08,2026Q4,holdout,2026Q4,RULE-2026-H,False,False",
+                "PRJ-9,APR-9,PRJ-9,in_review,0.09,PROD-R09,,106.28,29.68,1800,0.70,approve_with_conditions,mixed_risk_blocked_condition_review,False,PROD-R09,2026Q4,holdout,2026Q4,RULE-2026-I,False,False",
+                "PRJ-10,APR-10,PRJ-10,in_review,0.06,PROD-R10,,106.29,29.69,1900,0.69,protect,mixed_risk_protect_blocked,False,PROD-R10,2026Q4,holdout,2026Q4,RULE-2026-J,False,False",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def test_twm_production_onboarding_runs_foundation_and_bundle_from_raw_export(tmp_path):
+    raw_path = tmp_path / "raw_approval_export.csv"
+    output_dir = tmp_path / "onboarding"
+    normalized_path = output_dir / "normalized_production_observed_history.csv"
+    _write_raw_approval_export(raw_path)
+
+    subprocess.run(
+        [
+            "/Users/zhouning/gisdataagent/.venv/bin/python",
+            str(SCRIPT),
+            "--raw-production-observed-history",
+            str(raw_path),
+            "--normalized-production-observed-history-output",
+            str(normalized_path),
+            "--output-dir",
+            str(output_dir),
+        ],
+        cwd=Path("/Users/zhouning/gisdataagent"),
+        check=True,
+    )
+
+    summary_path = output_dir / "twm_production_onboarding_summary.json"
+    markdown_path = output_dir / "twm_production_onboarding_summary.md"
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+
+    assert normalized_path.exists()
+    assert markdown_path.exists()
+    assert summary["schema"] == "territory_world_model.production_onboarding_summary.v1"
+    assert summary["status"] == "review"
+    assert summary["observed_history"]["normalized_output"] == str(normalized_path)
+    assert summary["observed_history"]["same_normalized_output"] is True
+    assert summary["data_foundation"]["production_schema_status"] == "pass"
+    assert summary["validation_bundle"]["production_preflight_status"] == "pass"
+    assert summary["validation_bundle"]["readiness_gate_status"] == "review"
+    assert summary["outputs"]["data_foundation_report"] == str(output_dir / "twm_data_foundation_validation.json")
+    assert summary["outputs"]["validation_bundle_report"] == str(output_dir / "twm_validation_bundle.json")
+
+
+def test_twm_production_onboarding_accepts_already_normalized_observed_history(tmp_path):
+    production_path = tmp_path / "production_observed_history.csv"
+    output_dir = tmp_path / "onboarding_normalized"
+    _write_normalized_observed_history(production_path)
+
+    subprocess.run(
+        [
+            "/Users/zhouning/gisdataagent/.venv/bin/python",
+            str(SCRIPT),
+            "--production-observed-history",
+            str(production_path),
+            "--output-dir",
+            str(output_dir),
+        ],
+        cwd=Path("/Users/zhouning/gisdataagent"),
+        check=True,
+    )
+
+    summary = json.loads((output_dir / "twm_production_onboarding_summary.json").read_text(encoding="utf-8"))
+    assert summary["status"] == "review"
+    assert summary["observed_history"]["raw_source"] is None
+    assert summary["observed_history"]["production_observed_history"] == str(production_path)
+    assert summary["observed_history"]["normalized_output"] is None
+    assert summary["observed_history"]["same_normalized_output"] is None
+    assert summary["data_foundation"]["production_schema_status"] == "pass"
+    assert summary["validation_bundle"]["production_preflight_status"] == "pass"
+    assert summary["validation_bundle"]["production_preflight_history"] == str(production_path)
+
+
+def test_twm_production_onboarding_writes_summary_when_strict_readiness_blocks(tmp_path):
+    raw_path = tmp_path / "raw_approval_export.csv"
+    output_dir = tmp_path / "onboarding_strict"
+    normalized_path = output_dir / "normalized_production_observed_history.csv"
+    _write_raw_approval_export(raw_path)
+
+    subprocess.run(
+        [
+            "/Users/zhouning/gisdataagent/.venv/bin/python",
+            str(SCRIPT),
+            "--raw-production-observed-history",
+            str(raw_path),
+            "--normalized-production-observed-history-output",
+            str(normalized_path),
+            "--output-dir",
+            str(output_dir),
+            "--require-production-readiness",
+        ],
+        cwd=Path("/Users/zhouning/gisdataagent"),
+        check=True,
+    )
+
+    summary = json.loads((output_dir / "twm_production_onboarding_summary.json").read_text(encoding="utf-8"))
+    assert summary["status"] == "blocked"
+    assert summary["validation_bundle"]["readiness_gate_status"] == "blocked"
+    assert "production_scale_readiness_pass" in summary["validation_bundle"]["readiness_missing"]
+    assert summary["commands"][1]["returncode"] == 2
+
+
+def test_twm_production_onboarding_fail_on_blocked_returns_nonzero_after_summary(tmp_path):
+    raw_path = tmp_path / "raw_approval_export.csv"
+    output_dir = tmp_path / "onboarding_fail_on_blocked"
+    normalized_path = output_dir / "normalized_production_observed_history.csv"
+    _write_raw_approval_export(raw_path)
+
+    completed = subprocess.run(
+        [
+            "/Users/zhouning/gisdataagent/.venv/bin/python",
+            str(SCRIPT),
+            "--raw-production-observed-history",
+            str(raw_path),
+            "--normalized-production-observed-history-output",
+            str(normalized_path),
+            "--output-dir",
+            str(output_dir),
+            "--require-production-readiness",
+            "--fail-on-blocked",
+        ],
+        cwd=Path("/Users/zhouning/gisdataagent"),
+        check=False,
+    )
+
+    summary = json.loads((output_dir / "twm_production_onboarding_summary.json").read_text(encoding="utf-8"))
+    assert completed.returncode == 2
+    assert summary["status"] == "blocked"
+    assert summary["validation_bundle"]["readiness_gate_status"] == "blocked"
+
+
+def test_twm_production_onboarding_rejects_ambiguous_raw_and_normalized_inputs(tmp_path):
+    raw_path = tmp_path / "raw_approval_export.csv"
+    production_path = tmp_path / "production_observed_history.csv"
+    output_dir = tmp_path / "onboarding_ambiguous"
+    _write_raw_approval_export(raw_path)
+    _write_normalized_observed_history(production_path)
+
+    completed = subprocess.run(
+        [
+            "/Users/zhouning/gisdataagent/.venv/bin/python",
+            str(SCRIPT),
+            "--raw-production-observed-history",
+            str(raw_path),
+            "--production-observed-history",
+            str(production_path),
+            "--output-dir",
+            str(output_dir),
+        ],
+        cwd=Path("/Users/zhouning/gisdataagent"),
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        check=False,
+    )
+
+    assert completed.returncode == 2
+    assert "choose exactly one observed-history input" in completed.stdout
+    assert not (output_dir / "twm_production_onboarding_summary.json").exists()
+
+
+def test_twm_production_onboarding_requires_explicit_normalized_output_for_raw_input(tmp_path):
+    raw_path = tmp_path / "raw_approval_export.csv"
+    output_dir = tmp_path / "onboarding_missing_normalized_output"
+    _write_raw_approval_export(raw_path)
+
+    completed = subprocess.run(
+        [
+            "/Users/zhouning/gisdataagent/.venv/bin/python",
+            str(SCRIPT),
+            "--raw-production-observed-history",
+            str(raw_path),
+            "--output-dir",
+            str(output_dir),
+        ],
+        cwd=Path("/Users/zhouning/gisdataagent"),
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        check=False,
+    )
+
+    assert completed.returncode == 2
+    assert "--normalized-production-observed-history-output is required" in completed.stdout
+    assert not (output_dir / "twm_production_onboarding_summary.json").exists()

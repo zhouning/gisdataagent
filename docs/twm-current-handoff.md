@@ -1,6 +1,6 @@
 # TWM Current Handoff
 
-Last updated: 2026-06-22
+Last updated: 2026-06-25
 
 This document is the continuation entry point for Territory World Model (TWM)
 development in this repository.
@@ -53,6 +53,32 @@ TWM has an end-to-end prototype surface in `data_agent/territory_world_model/`:
 The implementation remains a rigorous scaffold/candidate implementation, not a
 final production-scale territorial world model. Claim upgrade is still governed
 by readiness, backend, objective, causal, GeoFM and validation gates.
+
+## 2026-06-25 Continuation Checkpoint
+
+If a new window opens, start here:
+
+- branch: `feat/v12-extensible-platform`
+- primary next step: run `scripts/run_twm_production_onboarding.py` against real
+  or sanitized observed history, then inspect the onboarding summary before
+  touching any claim language
+- current verified direction: TWM is ahead of Markov on change allocation in
+  the 20-region Dynamic World benchmark, and ahead of the current direct FLUS
+  CA adapter on change FoM, but not on OA or macro F1
+- current production blocker set:
+  - real observed approval/review history is still missing
+  - authoritative policy-history / action-feasibility labels are still missing
+  - production scale profile is still missing
+  - full FLUS ANN suitability workflow has not been reproduced, so no blanket
+    superiority claim over GeoSOS-FLUS is justified yet
+- current engineering additions that should stay visible:
+  - raw observed-history normalization in the validation stack
+  - `scripts/run_twm_production_onboarding.py`
+  - `to_spatial_policy_rule` derivation strategy and tests
+  - Dynamic World admin20 comparison scripts and fixed-seed FLUS evidence
+
+The safest continuation rule is unchanged: keep TWM focused on real usable
+territorial workflow support, not paper-first overclaiming.
 
 ## Public Land-Cover Benchmark Progress
 
@@ -2215,6 +2241,55 @@ Current data-validation continuation implemented:
      - `bash scripts/smoke_twm_validation_bundle.sh`
      - Result: refreshed validation bundle reports and generated the scale profile template, exit code `0`.
 
+128. Added raw approval/review export normalization to the validation-bundle smoke wrapper:
+   - Files: `scripts/run_twm_validation_bundle.py`, `scripts/smoke_twm_validation_bundle.sh`, `data_agent/test_twm_data_foundation_validation.py`, `data_agent/test_twm_validation_bundle_smoke_script.py`, `docs/reports/twm_validation_bundle.json`, `docs/reports/twm_validation_bundle.md`, `docs/twm-current-handoff.md`.
+   - New CLI arguments:
+     - `--normalize-production-observed-history-source <raw.csv>`
+     - `--normalized-production-observed-history-output <normalized.csv>`
+   - New smoke environment variables:
+     - `TWM_NORMALIZE_PRODUCTION_OBSERVED_HISTORY_SOURCE`
+     - `TWM_NORMALIZED_PRODUCTION_OBSERVED_HISTORY_OUTPUT`
+   - Behavior:
+     - when raw export is supplied, the bundle normalizes it first and runs observed-history preflight on the normalized file.
+     - Markdown now includes a normalization summary section alongside the preflight summary.
+   - Regression:
+     - `/Users/zhouning/gisdataagent/.venv/bin/python -m pytest -q data_agent/test_twm_validation_bundle_smoke_script.py -k "can_normalize_raw_production_history or exposes_inner_network_controls"`
+     - `/Users/zhouning/gisdataagent/.venv/bin/python -m pytest -q data_agent/test_twm_validation_bundle_smoke_script.py`
+     - `TWM_NORMALIZE_PRODUCTION_OBSERVED_HISTORY_SOURCE=/private/tmp/raw_approval_export.csv TWM_NORMALIZED_PRODUCTION_OBSERVED_HISTORY_OUTPUT=/private/tmp/normalized_production_observed_history.csv TWM_VALIDATION_OUTPUT=/private/tmp/twm_validation_bundle_smoke.json TWM_VALIDATION_MARKDOWN_OUTPUT=/private/tmp/twm_validation_bundle_smoke.md bash scripts/smoke_twm_validation_bundle.sh`
+     - Result: wrapper wrote both temp reports, returned exit code `0`, and the bundle preflight used the normalized file.
+
+129. Added a direct CLI smoke test for raw production observed-history normalization:
+   - Files: `scripts/validate_twm_data_foundation.py`, `data_agent/test_twm_data_foundation_validation.py`, `docs/twm-current-handoff.md`.
+   - New CLI flow:
+     - `scripts/validate_twm_data_foundation.py --normalize-production-observed-history-source <raw.csv> --normalized-production-observed-history-output <normalized.csv>`
+     - when raw export is supplied, the script rewrites `production_observed_history` to the normalized file before preflight.
+   - Regression:
+     - `/Users/zhouning/gisdataagent/.venv/bin/python -m pytest -q data_agent/test_twm_data_foundation_validation.py -k "validate_twm_data_foundation_cli_normalizes_raw_production_history"`
+     - `/Users/zhouning/gisdataagent/.venv/bin/python -m pytest -q data_agent/test_twm_data_foundation_validation.py`
+     - Result: `63 passed in 155.22s (0:02:35)`.
+
+130. Added a production onboarding runner that executes data foundation and validation bundle together:
+   - Files: `scripts/run_twm_production_onboarding.py`, `data_agent/test_twm_production_onboarding.py`, `docs/twm-current-handoff.md`.
+   - New CLI flow:
+     - `scripts/run_twm_production_onboarding.py --raw-production-observed-history <raw.csv> --normalized-production-observed-history-output <normalized.csv> --output-dir <dir>`
+     - `--production-observed-history <normalized.csv>` can be used instead when the observed-history CSV is already in the TWM contract.
+   - Output:
+     - `twm_data_foundation_validation.json` / `.md`
+     - `twm_validation_bundle.json` / `.md`
+     - `twm_production_onboarding_summary.json` / `.md`
+   - Purpose:
+     - replace the manual "run both commands and compare fields" procedure with a single reproducible onboarding smoke.
+     - verify that both subreports use the same normalized observed-history file.
+     - support both raw-export normalization and already-normalized production observed-history input.
+     - reject ambiguous runs that pass both raw and already-normalized observed-history inputs.
+     - require an explicit normalized-output path for raw-export onboarding so batch jobs know exactly which CSV both subreports consumed.
+     - keep production claims conservative; missing scale profile or readiness gates still leave the summary in `review`.
+     - in strict readiness mode, accept the bundle runner's blocked exit code after it has written reports, then write a combined `blocked` summary.
+     - with `--fail-on-blocked`, write the summary first and then return exit code `2` for CI/inner-network batch jobs.
+   - Regression:
+     - `/Users/zhouning/gisdataagent/.venv/bin/python -m pytest -q data_agent/test_twm_production_onboarding.py`
+     - Result: `6 passed in 158.47s (0:02:38)`.
+
 ## 2026-06-22 Frontend and Roadmap Continuation
 
 This continuation moved TWM from API/tool-only access toward an operator-facing
@@ -3476,7 +3551,7 @@ Boundary:
 
 Next session should continue with:
 
-1. In the inner-network environment, run `scripts/smoke_twm_validation_bundle.sh` with `TWM_PRODUCTION_OBSERVED_HISTORY=<real.csv>`, `TWM_PRODUCTION_SCALE_PROFILE=<profile.json>` and `TWM_REQUIRE_PRODUCTION_READINESS=1`; also run `scripts/validate_twm_data_foundation.py --production-observed-history <real.csv>` against the same real non-synthetic approval/review export; compare selected-plan validation, production observed-history preflight, production scale readiness and `production_policy_history_alignment`.
+1. In the inner-network environment, run `scripts/run_twm_production_onboarding.py --raw-production-observed-history <raw.csv> --normalized-production-observed-history-output <normalized.csv> --production-scale-profile <profile.json> --output-dir <dir>`; use `--production-observed-history <real.csv>` instead of the raw/normalized pair when the CSV already matches the TWM observed-history contract. Inspect `twm_production_onboarding_summary.json` first, then drill into `twm_data_foundation_validation.json` and `twm_validation_bundle.json` for exact diagnostics.
 2. Continue seed-stability work for raw learned-head calibration. Current status: the first two-seed stable synthetic config is `epoch=100`, `learning_rate=0.008`, `weight_decay=0.004`, `dropout=0.0`, `contextual_weight=3.8`, risk weights `1.0,1.1,1.2,1.3,1.4`, seeds `19,23`; the same config over seeds `19,23,29,31,37` reaches `4/5` passing seeds, with seed `31` failing only by tiny positive constraint/holdout gaps and raw selected `false_allow=0`. Do not change defaults until this is reproduced across a broader seed set and real observed-history validation.
 3. Keep conditional feasibility diagnostics separate from risk-head error metrics and from transparent-baseline results.
 4. Keep `twm_structural_validation_observed_history.csv` as a regression fixture only; never use it to claim deployment causal support.

@@ -1,0 +1,86 @@
+{
+  "status": "pass",
+  "asset_dir": "/Users/zhouning/gisdataagent/docs/assets/twm_flus_comparison_2026_06_24",
+  "generated": {
+    "profile": "/Users/zhouning/gisdataagent/docs/assets/twm_flus_comparison_2026_06_24/fig6_experiment_data_profile.png",
+    "workflow": "/Users/zhouning/gisdataagent/docs/assets/twm_flus_comparison_2026_06_24/fig7_landuse_simulation_workflow.png",
+    "cases": [
+      "/Users/zhouning/gisdataagent/docs/assets/twm_flus_comparison_2026_06_24/fig8_strong-win_landuse_process_maps.png",
+      "/Users/zhouning/gisdataagent/docs/assets/twm_flus_comparison_2026_06_24/fig8_typical-win_landuse_process_maps.png",
+      "/Users/zhouning/gisdataagent/docs/assets/twm_flus_comparison_2026_06_24/fig8_flus-win_landuse_process_maps.png"
+    ]
+  },
+  "profile_rows": [
+    {
+      "metric": "regions",
+      "value": 20
+    },
+    {
+      "metric": "rolling_cases",
+      "value": 100
+    },
+    {
+      "metric": "years",
+      "value": "2017-2023"
+    },
+    {
+      "metric": "classes",
+      "value": 9
+    },
+    {
+      "metric": "cell_area_ha",
+      "value": 1.0
+    },
+    {
+      "metric": "valid_cells_per_case_mean",
+      "value": 31824.6
+    },
+    {
+      "metric": "valid_cells_per_case_min_max",
+      "value": "20161 - 45703"
+    },
+    {
+      "metric": "actual_changed_cells_per_case_mean",
+      "value": 2481.1
+    },
+    {
+      "metric": "actual_change_rate_median",
+      "value": 0.0608
+    },
+    {
+      "metric": "total_case_cell_observations",
+      "value": 3182460
+    }
+  ],
+  "metric_checks": [
+    {
+      "case_id": "西安市_周至县_陈河镇_2017_2018_2019",
+      "twm_generated_change_fom": 0.368317,
+      "twm_locked_change_fom": 0.368317,
+      "flus_generated_change_fom": 0.063691,
+      "flus_locked_change_fom": 0.063691,
+      "flus_ann_status": "pass",
+      "flus_sim_status": "pass"
+    },
+    {
+      "case_id": "东莞市_东莞市_虎门镇_2017_2018_2019",
+      "twm_generated_change_fom": 0.165985,
+      "twm_locked_change_fom": 0.165985,
+      "flus_generated_change_fom": 0.108576,
+      "flus_locked_change_fom": 0.108576,
+      "flus_ann_status": "pass",
+      "flus_sim_status": "pass"
+    },
+    {
+      "case_id": "杭州市_淳安县_界首乡_2021_2022_2023",
+      "twm_generated_change_fom": 0.176686,
+      "twm_locked_change_fom": 0.176686,
+      "flus_generated_change_fom": 0.378535,
+      "flus_locked_change_fom": 0.378535,
+      "flus_ann_status": "pass",
+      "flus_sim_status": "pass"
+    }
+  ],
+  "font": "Arial Unicode MS",
+  "formal_best": "twm_pair_false_alarm_guarded_persistence_forecast_demand"
+}

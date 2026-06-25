@@ -5,6 +5,8 @@
     "paper7_causal_dataset": "/Users/zhouning/paper7-causal-mbrl-farmland-consolidation/paper7/results/causal_dataset.csv",
     "paper7_calibration": "/Users/zhouning/paper7-causal-mbrl-farmland-consolidation/paper7/results/causal_calibration.json",
     "production_observed_history": null,
+    "normalize_production_observed_history_source": null,
+    "normalized_production_observed_history_output": null,
     "twm_evidence_match_caliper": null,
     "structural_validation_observed_history": "/Users/zhouning/gisdataagent/docs/reports/twm_structural_validation_observed_history.csv",
     "synthetic_experiment_foundation": "/Users/zhouning/gisdataagent/docs/reports/twm_synthetic_experiment_foundation.csv"
@@ -135,16 +137,22 @@
         "action_mask_policy or policy_code",
         "action_mask_allowed or feasibility_label",
         "region_code/DKXZQDM/XZQDM or cluster",
-        "period/time_index or approval_date"
+        "period/time_index or approval_date",
+        "split/dataset_split plus policy_effective_date or policy_version"
       ],
       "required_coverage": [
         "both allowed and blocked feasibility labels",
         "mixed-risk allowed policies such as allowed_with_conditions/protect_allowed/restore_allowed when available",
-        "multiple region-policy and region-action-policy combinations"
+        "multiple region-policy and region-action-policy combinations",
+        "explicit train/holdout split support for out-of-sample validation",
+        "policy version or effective-date metadata for every production candidate row"
       ],
       "claim_boundary": "policy-history coverage only prepares real-data feasibility validation; it does not prove simulator accuracy by itself"
     },
     "claim_boundary": "schema conformance only prepares data for evidence gates; it does not upgrade TWM claims without causal_calibration_report pass"
+  },
+  "production_observed_history_normalization": {
+    "status": "not_requested"
   },
   "twm_dataset_audit": {
     "dataset_root": "/Users/zhouning/gisdataagent/data_agent/test_data/twm_bishan_multi_admin_eval",
@@ -513,10 +521,35 @@
       ],
       "claim_boundary": "preflight for production-observed action-mask feasibility validation only; not a production accuracy claim"
     },
+    "temporal_validation_quality": {
+      "schema": "territory_world_model.production_temporal_validation_quality.v1",
+      "status": "review",
+      "row_count": 90,
+      "production_temporal_row_count": 0,
+      "period_count": 0,
+      "periods": [],
+      "holdout_period_count": 0,
+      "holdout_periods": [],
+      "rows_with_split": 0,
+      "train_row_count": 0,
+      "holdout_row_count": 0,
+      "split_counts": {},
+      "rows_with_policy_effective_version": 0,
+      "policy_effective_version_count": 0,
+      "sample_policy_effective_versions": [],
+      "missing_temporal_gates": [
+        "production_temporal_rows",
+        "temporal_periods",
+        "explicit_train_holdout_split"
+      ],
+      "claim_boundary": "preflight for out-of-sample temporal validation and policy-version traceability only; it does not prove simulator accuracy"
+    },
     "missing_data_gates": [
       "production_usable_rows",
       "production_treated_rows",
-      "production_control_rows"
+      "production_control_rows",
+      "production_temporal_rows",
+      "temporal_holdout_support"
     ],
     "expected_minimum_columns": [
       "unit_id or project_id",
@@ -532,11 +565,13 @@
       "action_mask_policy or policy_code",
       "action_mask_allowed or feasibility_label",
       "region_code/DKXZQDM/XZQDM or cluster",
-      "period/time_index or approval_date"
+      "period/time_index or approval_date",
+      "split/dataset_split plus policy_effective_date or policy_version"
     ],
     "recommendations": [
       "provide rows with synthetic=false and not_for_production=false plus parseable treatment, outcome, spatial support and covariates",
-      "include both approved/treated and review/rejected/control approval outcomes"
+      "include both approved/treated and review/rejected/control approval outcomes",
+      "add explicit train/holdout split labels across at least two periods before upgrading production validation claims"
     ]
   },
   "production_observed_history_schema_audit": {
@@ -555,7 +590,8 @@
       "action_mask_policy or policy_code",
       "action_mask_allowed or feasibility_label",
       "region_code/DKXZQDM/XZQDM or cluster",
-      "period/time_index or approval_date"
+      "period/time_index or approval_date",
+      "split/dataset_split plus policy_effective_date or policy_version"
     ],
     "policy_history_quality": {
       "schema": "territory_world_model.production_policy_history_quality.v1",
@@ -585,6 +621,27 @@
         "production_policy_history_not_provided"
       ],
       "claim_boundary": "preflight for production-observed action-mask feasibility validation only; not a production accuracy claim"
+    },
+    "temporal_validation_quality": {
+      "schema": "territory_world_model.production_temporal_validation_quality.v1",
+      "status": "not_provided",
+      "row_count": 0,
+      "production_temporal_row_count": 0,
+      "period_count": 0,
+      "periods": [],
+      "holdout_period_count": 0,
+      "holdout_periods": [],
+      "rows_with_split": 0,
+      "train_row_count": 0,
+      "holdout_row_count": 0,
+      "split_counts": {},
+      "rows_with_policy_effective_version": 0,
+      "policy_effective_version_count": 0,
+      "sample_policy_effective_versions": [],
+      "missing_temporal_gates": [
+        "production_temporal_history_not_provided"
+      ],
+      "claim_boundary": "preflight for out-of-sample temporal validation and policy-version traceability only; it does not prove simulator accuracy"
     },
     "note": "pass --production-observed-history with a non-synthetic approval/review export to preflight production calibration data"
   },
@@ -845,10 +902,35 @@
       ],
       "claim_boundary": "preflight for production-observed action-mask feasibility validation only; not a production accuracy claim"
     },
+    "temporal_validation_quality": {
+      "schema": "territory_world_model.production_temporal_validation_quality.v1",
+      "status": "review",
+      "row_count": 48,
+      "production_temporal_row_count": 0,
+      "period_count": 0,
+      "periods": [],
+      "holdout_period_count": 0,
+      "holdout_periods": [],
+      "rows_with_split": 0,
+      "train_row_count": 0,
+      "holdout_row_count": 0,
+      "split_counts": {},
+      "rows_with_policy_effective_version": 0,
+      "policy_effective_version_count": 0,
+      "sample_policy_effective_versions": [],
+      "missing_temporal_gates": [
+        "production_temporal_rows",
+        "temporal_periods",
+        "explicit_train_holdout_split"
+      ],
+      "claim_boundary": "preflight for out-of-sample temporal validation and policy-version traceability only; it does not prove simulator accuracy"
+    },
     "missing_data_gates": [
       "production_usable_rows",
       "production_treated_rows",
-      "production_control_rows"
+      "production_control_rows",
+      "production_temporal_rows",
+      "temporal_holdout_support"
     ],
     "expected_minimum_columns": [
       "unit_id or project_id",
@@ -864,11 +946,13 @@
       "action_mask_policy or policy_code",
       "action_mask_allowed or feasibility_label",
       "region_code/DKXZQDM/XZQDM or cluster",
-      "period/time_index or approval_date"
+      "period/time_index or approval_date",
+      "split/dataset_split plus policy_effective_date or policy_version"
     ],
     "recommendations": [
       "provide rows with synthetic=false and not_for_production=false plus parseable treatment, outcome, spatial support and covariates",
-      "include both approved/treated and review/rejected/control approval outcomes"
+      "include both approved/treated and review/rejected/control approval outcomes",
+      "add explicit train/holdout split labels across at least two periods before upgrading production validation claims"
     ]
   },
   "twm_structural_validation_gate": {
@@ -884,7 +968,7 @@
       ],
       "source_path_count": 1,
       "source_paths": [
-        "/Users/zhouning/gisdataagent/docs/reports/twm_structural_validation_observed_history.csv"
+        "/Users/zhouning/gisdataagent/data_agent/test_data/twm_bishan_multi_admin_eval"
       ],
       "treated_count": 24,
       "control_count": 24,
@@ -1012,6 +1096,11 @@
         "not_for_production_records"
       ],
       "record_source": "observed_approval_review_history",
+      "scca_causal_evidence": {
+        "provided": false,
+        "status": "not_provided",
+        "used_as_required_gate": false
+      },
       "synthetic_record_count": 48,
       "not_for_production_record_count": 48,
       "thresholds": {
@@ -1087,7 +1176,7 @@
       ],
       "source_path_count": 1,
       "source_paths": [
-        "/Users/zhouning/gisdataagent/docs/reports/twm_structural_validation_observed_history.csv"
+        "/Users/zhouning/gisdataagent/data_agent/test_data/twm_bishan_multi_admin_eval"
       ],
       "treated_count": 24,
       "control_count": 24,
@@ -1877,6 +1966,11 @@
       "blocked": false,
       "missing": [],
       "record_source": "observed_approval_review_history",
+      "scca_causal_evidence": {
+        "provided": false,
+        "status": "not_provided",
+        "used_as_required_gate": false
+      },
       "synthetic_record_count": 48,
       "not_for_production_record_count": 48,
       "thresholds": {
@@ -2411,10 +2505,35 @@
       ],
       "claim_boundary": "preflight for production-observed action-mask feasibility validation only; not a production accuracy claim"
     },
+    "temporal_validation_quality": {
+      "schema": "territory_world_model.production_temporal_validation_quality.v1",
+      "status": "review",
+      "row_count": 256,
+      "production_temporal_row_count": 0,
+      "period_count": 0,
+      "periods": [],
+      "holdout_period_count": 0,
+      "holdout_periods": [],
+      "rows_with_split": 0,
+      "train_row_count": 0,
+      "holdout_row_count": 0,
+      "split_counts": {},
+      "rows_with_policy_effective_version": 0,
+      "policy_effective_version_count": 0,
+      "sample_policy_effective_versions": [],
+      "missing_temporal_gates": [
+        "production_temporal_rows",
+        "temporal_periods",
+        "explicit_train_holdout_split"
+      ],
+      "claim_boundary": "preflight for out-of-sample temporal validation and policy-version traceability only; it does not prove simulator accuracy"
+    },
     "missing_data_gates": [
       "production_usable_rows",
       "production_treated_rows",
-      "production_control_rows"
+      "production_control_rows",
+      "production_temporal_rows",
+      "temporal_holdout_support"
     ],
     "expected_minimum_columns": [
       "unit_id or project_id",
@@ -2430,11 +2549,13 @@
       "action_mask_policy or policy_code",
       "action_mask_allowed or feasibility_label",
       "region_code/DKXZQDM/XZQDM or cluster",
-      "period/time_index or approval_date"
+      "period/time_index or approval_date",
+      "split/dataset_split plus policy_effective_date or policy_version"
     ],
     "recommendations": [
       "provide rows with synthetic=false and not_for_production=false plus parseable treatment, outcome, spatial support and covariates",
-      "include both approved/treated and review/rejected/control approval outcomes"
+      "include both approved/treated and review/rejected/control approval outcomes",
+      "add explicit train/holdout split labels across at least two periods before upgrading production validation claims"
     ]
   },
   "twm_synthetic_experiment_gate": {
@@ -2450,7 +2571,7 @@
       ],
       "source_path_count": 1,
       "source_paths": [
-        "/Users/zhouning/gisdataagent/docs/reports/twm_synthetic_experiment_foundation.csv"
+        "/Users/zhouning/gisdataagent/data_agent/test_data/twm_bishan_multi_admin_eval"
       ],
       "treated_count": 128,
       "control_count": 128,
@@ -2474,12 +2595,20 @@
         "syn_component_r00_t02_c02",
         "syn_component_r00_t02_c03"
       ],
-      "stratum_count": 4,
+      "stratum_count": 12,
       "strata": [
-        "SYN-R00",
-        "SYN-R01",
-        "SYN-R02",
-        "SYN-R03"
+        "SYN-R00:township_0",
+        "SYN-R00:township_1",
+        "SYN-R00:township_2",
+        "SYN-R01:township_0",
+        "SYN-R01:township_1",
+        "SYN-R01:township_2",
+        "SYN-R02:township_0",
+        "SYN-R02:township_1",
+        "SYN-R02:township_2",
+        "SYN-R03:township_0",
+        "SYN-R03:township_1",
+        "SYN-R03:township_2"
       ],
       "neighbor_record_count": 256,
       "coordinate_record_count": 256,
@@ -2578,6 +2707,11 @@
         "not_for_production_records"
       ],
       "record_source": "observed_approval_review_history",
+      "scca_causal_evidence": {
+        "provided": false,
+        "status": "not_provided",
+        "used_as_required_gate": false
+      },
       "synthetic_record_count": 256,
       "not_for_production_record_count": 256,
       "thresholds": {
@@ -2855,7 +2989,7 @@
       ],
       "source_path_count": 1,
       "source_paths": [
-        "/Users/zhouning/gisdataagent/docs/reports/twm_synthetic_experiment_foundation.csv"
+        "/Users/zhouning/gisdataagent/data_agent/test_data/twm_bishan_multi_admin_eval"
       ],
       "treated_count": 128,
       "control_count": 128,
@@ -2879,12 +3013,20 @@
         "syn_component_r00_t02_c02",
         "syn_component_r00_t02_c03"
       ],
-      "stratum_count": 4,
+      "stratum_count": 12,
       "strata": [
-        "SYN-R00",
-        "SYN-R01",
-        "SYN-R02",
-        "SYN-R03"
+        "SYN-R00:township_0",
+        "SYN-R00:township_1",
+        "SYN-R00:township_2",
+        "SYN-R01:township_0",
+        "SYN-R01:township_1",
+        "SYN-R01:township_2",
+        "SYN-R02:township_0",
+        "SYN-R02:township_1",
+        "SYN-R02:township_2",
+        "SYN-R03:township_0",
+        "SYN-R03:township_1",
+        "SYN-R03:township_2"
       ],
       "neighbor_record_count": 256,
       "coordinate_record_count": 256,
@@ -5510,7 +5652,7 @@
         },
         "residual_spatial_autocorrelation": {
           "status": "pass",
-          "moran_like_i": -0.298839,
+          "moran_like_i": -0.211675,
           "edge_count": 128
         },
         "thresholds": {
@@ -6349,6 +6491,11 @@
       "blocked": false,
       "missing": [],
       "record_source": "observed_approval_review_history",
+      "scca_causal_evidence": {
+        "provided": false,
+        "status": "not_provided",
+        "used_as_required_gate": false
+      },
       "synthetic_record_count": 256,
       "not_for_production_record_count": 256,
       "thresholds": {
@@ -6728,6 +6875,11 @@
         "not_for_production_records"
       ],
       "record_source": "observed_approval_review_history",
+      "scca_causal_evidence": {
+        "provided": false,
+        "status": "not_provided",
+        "used_as_required_gate": false
+      },
       "synthetic_record_count": 90,
       "not_for_production_record_count": 90,
       "thresholds": {
@@ -6891,6 +7043,11 @@
         "not_for_production_records"
       ],
       "record_source": "observed_approval_review_history",
+      "scca_causal_evidence": {
+        "provided": false,
+        "status": "not_provided",
+        "used_as_required_gate": false
+      },
       "synthetic_record_count": 90,
       "not_for_production_record_count": 90,
       "thresholds": {
@@ -7604,6 +7761,11 @@
         "spatial_estimator"
       ],
       "record_source": "observed_approval_review_history",
+      "scca_causal_evidence": {
+        "provided": false,
+        "status": "not_provided",
+        "used_as_required_gate": false
+      },
       "synthetic_record_count": 90,
       "not_for_production_record_count": 90,
       "thresholds": {
@@ -7667,20 +7829,9 @@
       "model_effect_count": 0,
       "synthetic_record_count": 90,
       "not_for_production_record_count": 90,
-      "cluster_count": 25,
+      "cluster_count": 1,
       "clusters": [
-        "500227",
-        "shared_parcel_component_000",
-        "shared_parcel_component_001",
-        "shared_parcel_component_002",
-        "shared_parcel_component_003",
-        "shared_parcel_component_004",
-        "shared_parcel_component_005",
-        "shared_parcel_component_006",
-        "shared_parcel_component_007",
-        "shared_parcel_component_008",
-        "shared_parcel_component_009",
-        "shared_parcel_component_010"
+        "500227"
       ],
       "stratum_count": 1,
       "strata": [
@@ -7780,6 +7931,11 @@
         "not_for_production_records"
       ],
       "record_source": "observed_approval_review_history",
+      "scca_causal_evidence": {
+        "provided": false,
+        "status": "not_provided",
+        "used_as_required_gate": false
+      },
       "synthetic_record_count": 90,
       "not_for_production_record_count": 90,
       "thresholds": {
@@ -7902,20 +8058,9 @@
       "model_effect_count": 0,
       "synthetic_record_count": 90,
       "not_for_production_record_count": 90,
-      "cluster_count": 25,
+      "cluster_count": 1,
       "clusters": [
-        "500227",
-        "shared_parcel_component_000",
-        "shared_parcel_component_001",
-        "shared_parcel_component_002",
-        "shared_parcel_component_003",
-        "shared_parcel_component_004",
-        "shared_parcel_component_005",
-        "shared_parcel_component_006",
-        "shared_parcel_component_007",
-        "shared_parcel_component_008",
-        "shared_parcel_component_009",
-        "shared_parcel_component_010"
+        "500227"
       ],
       "stratum_count": 1,
       "strata": [
@@ -7963,10 +8108,10 @@
         "max_abs_standardized_mean_difference": 1.895332
       },
       "spatial": {
-        "status": "review",
+        "status": "pass",
         "spatial_record_count": 90,
         "neighbor_edge_count": 79,
-        "spatial_cluster_count": 25,
+        "spatial_cluster_count": 1,
         "neighborhood_exposure": {
           "status": "pass",
           "max_abs_exposure_gap": 0.75,
@@ -8486,158 +8631,14 @@
         },
         "cluster_balance": {
           "status": "pass",
-          "spatial_cluster_count": 25,
-          "max_abs_treatment_share_gap": 0.633333,
+          "spatial_cluster_count": 1,
+          "max_abs_treatment_share_gap": 0.0,
           "diagnostics": [
             {
               "cluster": "500227",
-              "record_count": 17,
-              "treatment_share": 0.647059,
-              "global_treatment_share_gap": 0.280392
-            },
-            {
-              "cluster": "shared_parcel_component_000",
-              "record_count": 2,
-              "treatment_share": 0.0,
-              "global_treatment_share_gap": -0.366667
-            },
-            {
-              "cluster": "shared_parcel_component_001",
-              "record_count": 2,
-              "treatment_share": 0.0,
-              "global_treatment_share_gap": -0.366667
-            },
-            {
-              "cluster": "shared_parcel_component_002",
-              "record_count": 3,
-              "treatment_share": 0.0,
-              "global_treatment_share_gap": -0.366667
-            },
-            {
-              "cluster": "shared_parcel_component_003",
-              "record_count": 5,
-              "treatment_share": 0.4,
-              "global_treatment_share_gap": 0.033333
-            },
-            {
-              "cluster": "shared_parcel_component_004",
-              "record_count": 3,
-              "treatment_share": 1.0,
-              "global_treatment_share_gap": 0.633333
-            },
-            {
-              "cluster": "shared_parcel_component_005",
-              "record_count": 4,
-              "treatment_share": 0.0,
-              "global_treatment_share_gap": -0.366667
-            },
-            {
-              "cluster": "shared_parcel_component_006",
-              "record_count": 5,
-              "treatment_share": 0.6,
-              "global_treatment_share_gap": 0.233333
-            },
-            {
-              "cluster": "shared_parcel_component_007",
-              "record_count": 2,
-              "treatment_share": 0.0,
-              "global_treatment_share_gap": -0.366667
-            },
-            {
-              "cluster": "shared_parcel_component_008",
-              "record_count": 3,
-              "treatment_share": 0.0,
-              "global_treatment_share_gap": -0.366667
-            },
-            {
-              "cluster": "shared_parcel_component_009",
-              "record_count": 2,
-              "treatment_share": 0.0,
-              "global_treatment_share_gap": -0.366667
-            },
-            {
-              "cluster": "shared_parcel_component_010",
-              "record_count": 4,
-              "treatment_share": 0.5,
-              "global_treatment_share_gap": 0.133333
-            },
-            {
-              "cluster": "shared_parcel_component_011",
-              "record_count": 2,
-              "treatment_share": 1.0,
-              "global_treatment_share_gap": 0.633333
-            },
-            {
-              "cluster": "shared_parcel_component_012",
-              "record_count": 6,
-              "treatment_share": 0.333333,
-              "global_treatment_share_gap": -0.033333
-            },
-            {
-              "cluster": "shared_parcel_component_013",
-              "record_count": 2,
-              "treatment_share": 0.0,
-              "global_treatment_share_gap": -0.366667
-            },
-            {
-              "cluster": "shared_parcel_component_014",
-              "record_count": 2,
-              "treatment_share": 0.0,
-              "global_treatment_share_gap": -0.366667
-            },
-            {
-              "cluster": "shared_parcel_component_015",
-              "record_count": 4,
-              "treatment_share": 0.5,
-              "global_treatment_share_gap": 0.133333
-            },
-            {
-              "cluster": "shared_parcel_component_016",
-              "record_count": 2,
-              "treatment_share": 1.0,
-              "global_treatment_share_gap": 0.633333
-            },
-            {
-              "cluster": "shared_parcel_component_017",
-              "record_count": 6,
-              "treatment_share": 0.0,
-              "global_treatment_share_gap": -0.366667
-            },
-            {
-              "cluster": "shared_parcel_component_018",
-              "record_count": 2,
-              "treatment_share": 0.0,
-              "global_treatment_share_gap": -0.366667
-            },
-            {
-              "cluster": "shared_parcel_component_019",
-              "record_count": 3,
-              "treatment_share": 0.0,
-              "global_treatment_share_gap": -0.366667
-            },
-            {
-              "cluster": "shared_parcel_component_020",
-              "record_count": 2,
-              "treatment_share": 1.0,
-              "global_treatment_share_gap": 0.633333
-            },
-            {
-              "cluster": "shared_parcel_component_021",
-              "record_count": 3,
-              "treatment_share": 0.0,
-              "global_treatment_share_gap": -0.366667
-            },
-            {
-              "cluster": "shared_parcel_component_022",
-              "record_count": 2,
-              "treatment_share": 0.0,
-              "global_treatment_share_gap": -0.366667
-            },
-            {
-              "cluster": "shared_parcel_component_023",
-              "record_count": 2,
-              "treatment_share": 1.0,
-              "global_treatment_share_gap": 0.633333
+              "record_count": 90,
+              "treatment_share": 0.366667,
+              "global_treatment_share_gap": 0.0
             }
           ]
         },
@@ -8654,85 +8655,31 @@
       },
       "spatial_estimator": {
         "status": "review",
-        "effect": 0.645981,
-        "standard_error": 0.011719,
+        "effect": 0.619062,
+        "standard_error": 0.009425,
         "support": {
           "spatial_record_count": 90,
-          "spatial_unit_count": 25,
-          "mixed_spatial_unit_count": 6,
+          "spatial_unit_count": 1,
+          "mixed_spatial_unit_count": 1,
           "cross_treatment_neighbor_edge_count": 26,
           "treated_count": 33,
           "control_count": 57
         },
         "review_reasons": [
-          "spatial_treatment_concentration"
+          "insufficient_mixed_spatial_unit_pairs"
         ],
         "uncertainty": {
           "spatial_block_bootstrap": {
-            "status": "pass",
-            "method": "deterministic_spatial_unit_block_bootstrap",
-            "sample_count": 64,
-            "spatial_unit_count": 6,
-            "mean_effect": 0.694482,
-            "interval_95": [
-              0.6,
-              0.88125
-            ],
-            "interval_width": 0.28125,
-            "sign_stability": 1.0,
-            "thresholds": {
-              "max_spatial_bootstrap_interval_width": 1.0,
-              "min_spatial_bootstrap_sign_stability": 0.8
-            }
+            "status": "not_applicable",
+            "spatial_unit_count": 1,
+            "min_spatial_bootstrap_units": 3,
+            "note": "insufficient mixed spatial units for block bootstrap"
           },
           "geographic_holdout": {
-            "status": "pass",
-            "method": "leave_one_spatial_unit_out",
-            "spatial_unit_count": 6,
-            "max_abs_delta_from_full_effect": 0.114733,
-            "sign_agreement": 1.0,
-            "thresholds": {
-              "max_spatial_holdout_delta": 1.0,
-              "min_spatial_holdout_sign_agreement": 0.8
-            },
-            "diagnostics": [
-              {
-                "held_out_spatial_unit": "500227",
-                "effect_without_unit": 0.6,
-                "delta_from_full_effect": -0.045981,
-                "same_sign_as_full": true
-              },
-              {
-                "held_out_spatial_unit": "shared_parcel_component_003",
-                "effect_without_unit": 0.760714,
-                "delta_from_full_effect": 0.114733,
-                "same_sign_as_full": true
-              },
-              {
-                "held_out_spatial_unit": "shared_parcel_component_006",
-                "effect_without_unit": 0.760714,
-                "delta_from_full_effect": 0.114733,
-                "same_sign_as_full": true
-              },
-              {
-                "held_out_spatial_unit": "shared_parcel_component_010",
-                "effect_without_unit": 0.760714,
-                "delta_from_full_effect": 0.114733,
-                "same_sign_as_full": true
-              },
-              {
-                "held_out_spatial_unit": "shared_parcel_component_012",
-                "effect_without_unit": 0.760714,
-                "delta_from_full_effect": 0.114733,
-                "same_sign_as_full": true
-              },
-              {
-                "held_out_spatial_unit": "shared_parcel_component_015",
-                "effect_without_unit": 0.760714,
-                "delta_from_full_effect": 0.114733,
-                "same_sign_as_full": true
-              }
-            ]
+            "status": "not_applicable",
+            "spatial_unit_count": 1,
+            "min_spatial_holdout_units": 3,
+            "note": "insufficient mixed spatial units for geographic holdout"
           }
         }
       }
@@ -8752,10 +8699,14 @@
       "blocked": false,
       "missing": [
         "covariate_balance",
-        "spatial_interference",
         "spatial_estimator"
       ],
       "record_source": "observed_approval_review_history",
+      "scca_causal_evidence": {
+        "provided": false,
+        "status": "not_provided",
+        "used_as_required_gate": false
+      },
       "synthetic_record_count": 90,
       "not_for_production_record_count": 90,
       "thresholds": {
@@ -8795,7 +8746,6 @@
     "recommendations": [
       "collect balanced treated/control observational records before upgrading causal planning claims",
       "reduce treated/control covariate imbalance or add better adjustment covariates before upgrading causal claims",
-      "spatial spillover or clustered treatment concentration is too strong; add spatial adjustment or redefine causal units before upgrading claims",
       "spatial treatment-effect estimator did not pass support or uncertainty checks; keep causal scaling in review"
     ],
     "evidence_augmentation": {
@@ -8878,20 +8828,9 @@
       "model_effect_count": 0,
       "synthetic_record_count": 66,
       "not_for_production_record_count": 66,
-      "cluster_count": 17,
+      "cluster_count": 1,
       "clusters": [
-        "500227",
-        "shared_parcel_component_000",
-        "shared_parcel_component_001",
-        "shared_parcel_component_002",
-        "shared_parcel_component_003",
-        "shared_parcel_component_004",
-        "shared_parcel_component_005",
-        "shared_parcel_component_006",
-        "shared_parcel_component_007",
-        "shared_parcel_component_008",
-        "shared_parcel_component_010",
-        "shared_parcel_component_011"
+        "500227"
       ],
       "stratum_count": 1,
       "strata": [
@@ -8991,6 +8930,11 @@
         "not_for_production_records"
       ],
       "record_source": "observed_approval_review_history",
+      "scca_causal_evidence": {
+        "provided": false,
+        "status": "not_provided",
+        "used_as_required_gate": false
+      },
       "synthetic_record_count": 66,
       "not_for_production_record_count": 66,
       "thresholds": {
@@ -9146,20 +9090,9 @@
       "model_effect_count": 0,
       "synthetic_record_count": 66,
       "not_for_production_record_count": 66,
-      "cluster_count": 17,
+      "cluster_count": 1,
       "clusters": [
-        "500227",
-        "shared_parcel_component_000",
-        "shared_parcel_component_001",
-        "shared_parcel_component_002",
-        "shared_parcel_component_003",
-        "shared_parcel_component_004",
-        "shared_parcel_component_005",
-        "shared_parcel_component_006",
-        "shared_parcel_component_007",
-        "shared_parcel_component_008",
-        "shared_parcel_component_010",
-        "shared_parcel_component_011"
+        "500227"
       ],
       "stratum_count": 1,
       "strata": [
@@ -9207,10 +9140,10 @@
         "max_abs_standardized_mean_difference": 1.761542
       },
       "spatial": {
-        "status": "review",
+        "status": "pass",
         "spatial_record_count": 66,
         "neighbor_edge_count": 59,
-        "spatial_cluster_count": 17,
+        "spatial_cluster_count": 1,
         "neighborhood_exposure": {
           "status": "pass",
           "max_abs_exposure_gap": 0.75,
@@ -9555,110 +9488,14 @@
         },
         "cluster_balance": {
           "status": "pass",
-          "spatial_cluster_count": 17,
-          "max_abs_treatment_share_gap": 0.5,
+          "spatial_cluster_count": 1,
+          "max_abs_treatment_share_gap": 0.0,
           "diagnostics": [
             {
               "cluster": "500227",
-              "record_count": 17,
-              "treatment_share": 0.647059,
-              "global_treatment_share_gap": 0.147059
-            },
-            {
-              "cluster": "shared_parcel_component_000",
-              "record_count": 2,
-              "treatment_share": 0.0,
-              "global_treatment_share_gap": -0.5
-            },
-            {
-              "cluster": "shared_parcel_component_001",
-              "record_count": 2,
-              "treatment_share": 0.0,
-              "global_treatment_share_gap": -0.5
-            },
-            {
-              "cluster": "shared_parcel_component_002",
-              "record_count": 3,
-              "treatment_share": 0.0,
-              "global_treatment_share_gap": -0.5
-            },
-            {
-              "cluster": "shared_parcel_component_003",
-              "record_count": 5,
-              "treatment_share": 0.4,
-              "global_treatment_share_gap": -0.1
-            },
-            {
-              "cluster": "shared_parcel_component_004",
-              "record_count": 3,
-              "treatment_share": 1.0,
-              "global_treatment_share_gap": 0.5
-            },
-            {
-              "cluster": "shared_parcel_component_005",
-              "record_count": 4,
-              "treatment_share": 0.0,
-              "global_treatment_share_gap": -0.5
-            },
-            {
-              "cluster": "shared_parcel_component_006",
-              "record_count": 5,
-              "treatment_share": 0.6,
-              "global_treatment_share_gap": 0.1
-            },
-            {
-              "cluster": "shared_parcel_component_007",
-              "record_count": 2,
-              "treatment_share": 0.0,
-              "global_treatment_share_gap": -0.5
-            },
-            {
-              "cluster": "shared_parcel_component_008",
-              "record_count": 1,
-              "treatment_share": 0.0,
-              "global_treatment_share_gap": -0.5
-            },
-            {
-              "cluster": "shared_parcel_component_010",
-              "record_count": 4,
+              "record_count": 66,
               "treatment_share": 0.5,
               "global_treatment_share_gap": 0.0
-            },
-            {
-              "cluster": "shared_parcel_component_011",
-              "record_count": 2,
-              "treatment_share": 1.0,
-              "global_treatment_share_gap": 0.5
-            },
-            {
-              "cluster": "shared_parcel_component_012",
-              "record_count": 6,
-              "treatment_share": 0.333333,
-              "global_treatment_share_gap": -0.166667
-            },
-            {
-              "cluster": "shared_parcel_component_015",
-              "record_count": 4,
-              "treatment_share": 0.5,
-              "global_treatment_share_gap": 0.0
-            },
-            {
-              "cluster": "shared_parcel_component_016",
-              "record_count": 2,
-              "treatment_share": 1.0,
-              "global_treatment_share_gap": 0.5
-            },
-            {
-              "cluster": "shared_parcel_component_020",
-              "record_count": 2,
-              "treatment_share": 1.0,
-              "global_treatment_share_gap": 0.5
-            },
-            {
-              "cluster": "shared_parcel_component_023",
-              "record_count": 2,
-              "treatment_share": 1.0,
-              "global_treatment_share_gap": 0.5
             }
           ]
         },
@@ -9675,85 +9512,31 @@
       },
       "spatial_estimator": {
         "status": "review",
-        "effect": 0.645981,
-        "standard_error": 0.011719,
+        "effect": 0.619691,
+        "standard_error": 0.009736,
         "support": {
           "spatial_record_count": 66,
-          "spatial_unit_count": 17,
-          "mixed_spatial_unit_count": 6,
+          "spatial_unit_count": 1,
+          "mixed_spatial_unit_count": 1,
           "cross_treatment_neighbor_edge_count": 26,
           "treated_count": 33,
           "control_count": 33
         },
         "review_reasons": [
-          "spatial_treatment_concentration"
+          "insufficient_mixed_spatial_unit_pairs"
         ],
         "uncertainty": {
           "spatial_block_bootstrap": {
-            "status": "pass",
-            "method": "deterministic_spatial_unit_block_bootstrap",
-            "sample_count": 64,
-            "spatial_unit_count": 6,
-            "mean_effect": 0.694482,
-            "interval_95": [
-              0.6,
-              0.88125
-            ],
-            "interval_width": 0.28125,
-            "sign_stability": 1.0,
-            "thresholds": {
-              "max_spatial_bootstrap_interval_width": 1.0,
-              "min_spatial_bootstrap_sign_stability": 0.8
-            }
+            "status": "not_applicable",
+            "spatial_unit_count": 1,
+            "min_spatial_bootstrap_units": 3,
+            "note": "insufficient mixed spatial units for block bootstrap"
           },
           "geographic_holdout": {
-            "status": "pass",
-            "method": "leave_one_spatial_unit_out",
-            "spatial_unit_count": 6,
-            "max_abs_delta_from_full_effect": 0.114733,
-            "sign_agreement": 1.0,
-            "thresholds": {
-              "max_spatial_holdout_delta": 1.0,
-              "min_spatial_holdout_sign_agreement": 0.8
-            },
-            "diagnostics": [
-              {
-                "held_out_spatial_unit": "500227",
-                "effect_without_unit": 0.6,
-                "delta_from_full_effect": -0.045981,
-                "same_sign_as_full": true
-              },
-              {
-                "held_out_spatial_unit": "shared_parcel_component_003",
-                "effect_without_unit": 0.760714,
-                "delta_from_full_effect": 0.114733,
-                "same_sign_as_full": true
-              },
-              {
-                "held_out_spatial_unit": "shared_parcel_component_006",
-                "effect_without_unit": 0.760714,
-                "delta_from_full_effect": 0.114733,
-                "same_sign_as_full": true
-              },
-              {
-                "held_out_spatial_unit": "shared_parcel_component_010",
-                "effect_without_unit": 0.760714,
-                "delta_from_full_effect": 0.114733,
-                "same_sign_as_full": true
-              },
-              {
-                "held_out_spatial_unit": "shared_parcel_component_012",
-                "effect_without_unit": 0.760714,
-                "delta_from_full_effect": 0.114733,
-                "same_sign_as_full": true
-              },
-              {
-                "held_out_spatial_unit": "shared_parcel_component_015",
-                "effect_without_unit": 0.760714,
-                "delta_from_full_effect": 0.114733,
-                "same_sign_as_full": true
-              }
-            ]
+            "status": "not_applicable",
+            "spatial_unit_count": 1,
+            "min_spatial_holdout_units": 3,
+            "note": "insufficient mixed spatial units for geographic holdout"
           }
         }
       }
@@ -9773,10 +9556,14 @@
       "blocked": false,
       "missing": [
         "covariate_balance",
-        "spatial_interference",
         "spatial_estimator"
       ],
       "record_source": "observed_approval_review_history",
+      "scca_causal_evidence": {
+        "provided": false,
+        "status": "not_provided",
+        "used_as_required_gate": false
+      },
       "synthetic_record_count": 66,
       "not_for_production_record_count": 66,
       "thresholds": {
@@ -9816,7 +9603,6 @@
     "recommendations": [
       "collect balanced treated/control observational records before upgrading causal planning claims",
       "reduce treated/control covariate imbalance or add better adjustment covariates before upgrading causal claims",
-      "spatial spillover or clustered treatment concentration is too strong; add spatial adjustment or redefine causal units before upgrading claims",
       "spatial treatment-effect estimator did not pass support or uncertainty checks; keep causal scaling in review"
     ],
     "matching": {
@@ -10221,6 +10007,11 @@
         "spatial_estimator"
       ],
       "record_source": "payload_observations",
+      "scca_causal_evidence": {
+        "provided": false,
+        "status": "not_provided",
+        "used_as_required_gate": false
+      },
       "synthetic_record_count": 0,
       "not_for_production_record_count": 0,
       "thresholds": {
@@ -10580,6 +10371,11 @@
         "covariate_balance"
       ],
       "record_source": "payload_observations",
+      "scca_causal_evidence": {
+        "provided": false,
+        "status": "not_provided",
+        "used_as_required_gate": false
+      },
       "synthetic_record_count": 0,
       "not_for_production_record_count": 0,
       "thresholds": {
@@ -10961,6 +10757,11 @@
       "blocked": false,
       "missing": [],
       "record_source": "payload_observations",
+      "scca_causal_evidence": {
+        "provided": false,
+        "status": "not_provided",
+        "used_as_required_gate": false
+      },
       "synthetic_record_count": 0,
       "not_for_production_record_count": 0,
       "thresholds": {
@@ -11100,7 +10901,9 @@
     "twm_observed_history_schema_missing_data_gates": [
       "production_usable_rows",
       "production_treated_rows",
-      "production_control_rows"
+      "production_control_rows",
+      "production_temporal_rows",
+      "temporal_holdout_support"
     ],
     "twm_observed_history_schema_production_candidate_rows": 0,
     "production_observed_history_schema_status": "not_provided",
@@ -11291,7 +11094,6 @@
     "twm_evidence_matched_structural_status": "review",
     "twm_evidence_matched_structural_missing": [
       "covariate_balance",
-      "spatial_interference",
       "spatial_estimator"
     ],
     "twm_evidence_matched_structural_neighbor_edge_count": 59,
@@ -11331,6 +11133,7 @@
     "report": "/Users/zhouning/gisdataagent/docs/reports/twm_data_foundation_validation.json",
     "markdown_report": "/Users/zhouning/gisdataagent/docs/reports/twm_data_foundation_health.md",
     "production_observed_history_template": "/Users/zhouning/gisdataagent/docs/reports/twm_production_observed_history_template.csv",
+    "normalized_production_observed_history": null,
     "structural_validation_observed_history": "/Users/zhouning/gisdataagent/docs/reports/twm_structural_validation_observed_history.csv",
     "synthetic_experiment_foundation": "/Users/zhouning/gisdataagent/docs/reports/twm_synthetic_experiment_foundation.csv"
   }

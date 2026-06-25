@@ -11,6 +11,7 @@ from .strategies.defect_taxonomy import DefectTaxonomyStrategy
 from .strategies.data_model import DataModelStrategy
 from .strategies.qc_rule import QcRuleStrategy
 from .strategies.semantic_hint import SemanticHintStrategy
+from .strategies.spatial_policy_rule import SpatialPolicyRuleStrategy
 from .strategies.synonym import SynonymStrategy
 from .strategies.value_domain import ValueDomainStrategy
 from .strategy_base import DerivationStrategy
@@ -23,6 +24,7 @@ _REGISTRY: dict[str, Optional[DerivationStrategy]] = {
     "to_qc_rule": QcRuleStrategy(),
     "to_defect_code": DefectTaxonomyStrategy(),
     "to_data_model": DataModelStrategy(),
+    "to_spatial_policy_rule": SpatialPolicyRuleStrategy(),
 }
 
 # Friendly descriptions for UI
@@ -33,6 +35,7 @@ _DESCRIPTIONS: dict[str, str] = {
     "to_qc_rule": "派生标准 data_element 到 agent_quality_rules (mandatory→completeness, value_domain→field_check)",
     "to_defect_code": "派生标准 data_element 到 agent_defect_code_bindings (mandatory→MIS-001, enum/range→NRM-003, pattern→NRM-002)",
     "to_data_model": "派生标准 data_element 到 CDM/LDM/PDM 三层模型 + PostgreSQL DDL",
+    "to_spatial_policy_rule": "派生标准空间管控 data_element 到 TWM policy-rule 候选 (disabled/review_required)",
 }
 
 

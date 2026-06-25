@@ -1,0 +1,57 @@
+{
+  "status": "pass",
+  "font": "Arial Unicode MS",
+  "checks": [
+    {
+      "case_id": "西安市_周至县_陈河镇_2017_2018_2019",
+      "paths": [
+        "/Users/zhouning/gisdataagent/docs/assets/twm_flus_comparison_2026_06_24/fig8_strong-win_landuse_process_maps.png",
+        "/Users/zhouning/gisdataagent/docs/assets/twm_flus_comparison_2026_06_24/fig8_strong-win_landuse_process_maps.pdf",
+        "/Users/zhouning/gisdataagent/docs/assets/twm_flus_comparison_2026_06_24/fig8_strong-win_landuse_process_maps.svg"
+      ],
+      "component_cells": 36867,
+      "total_valid_cells": 36910,
+      "component_fraction": 0.998835,
+      "crop_shape": [
+        241,
+        333
+      ],
+      "twm_generated_change_fom": 0.368317,
+      "flus_generated_change_fom": 0.063691
+    },
+    {
+      "case_id": "东莞市_东莞市_虎门镇_2017_2018_2019",
+      "paths": [
+        "/Users/zhouning/gisdataagent/docs/assets/twm_flus_comparison_2026_06_24/fig8_typical-win_landuse_process_maps.png",
+        "/Users/zhouning/gisdataagent/docs/assets/twm_flus_comparison_2026_06_24/fig8_typical-win_landuse_process_maps.pdf",
+        "/Users/zhouning/gisdataagent/docs/assets/twm_flus_comparison_2026_06_24/fig8_typical-win_landuse_process_maps.svg"
+      ],
+      "component_cells": 20833,
+      "total_valid_cells": 20833,
+      "component_fraction": 1.0,
+      "crop_shape": [
+        191,
+        226
+      ],
+      "twm_generated_change_fom": 0.165985,
+      "flus_generated_change_fom": 0.108576
+    },
+    {
+      "case_id": "杭州市_淳安县_界首乡_2021_2022_2023",
+      "paths": [
+        "/Users/zhouning/gisdataagent/docs/assets/twm_flus_comparison_2026_06_24/fig8_flus-win_landuse_process_maps.png",
+        "/Users/zhouning/gisdataagent/docs/assets/twm_flus_comparison_2026_06_24/fig8_flus-win_landuse_process_maps.pdf",
+        "/Users/zhouning/gisdataagent/docs/assets/twm_flus_comparison_2026_06_24/fig8_flus-win_landuse_process_maps.svg"
+      ],
+      "component_cells": 34665,
+      "total_valid_cells": 34665,
+      "component_fraction": 1.0,
+      "crop_shape": [
+        203,
+        288
+      ],
+      "twm_generated_change_fom": 0.176686,
+      "flus_generated_change_fom": 0.378535
+    }
+  ]
+}

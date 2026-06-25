@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="416.16pt" height="191.808pt" viewBox="0 0 416.16 191.808" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-06-24T22:45:52.155758</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.10.9, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 191.808
+L 416.16 191.808
+L 416.16 0
+L 0 0
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 24.87744 82.30272
+L 130.13856 82.30272
+Q 133.35264 82.30272 133.35264 79.93728
+L 133.35264 46.82112
+Q 133.35264 44.45568 130.13856 44.45568
+L 24.87744 44.45568
+Q 21.66336 44.45568 21.66336 46.82112
+L 21.66336 79.93728
+Q 21.66336 82.30272 24.87744 82.30272
+z
+" clip-path="url(#p9fb2724b8a)" style="fill: #f3f4f6; stroke: #334155; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 286.02144 82.30272
+L 391.28256 82.30272
+Q 394.49664 82.30272 394.49664 79.93728
+L 394.49664 46.82112
+Q 394.49664 44.45568 391.28256 44.45568
+L 286.02144 44.45568
+Q 282.80736 44.45568 282.80736 46.82112
+L 282.80736 79.93728
+Q 282.80736 82.30272 286.02144 82.30272
+z
+" clip-path="url(#p9fb2724b8a)" style="fill: #eaf4ff; stroke: #334155; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 151.43184 123.69792
+L 264.72816 123.69792
+Q 267.94224 123.69792 267.94224 121.33248
+L 267.94224 83.78112
+Q 267.94224 81.41568 264.72816 81.41568
+L 151.43184 81.41568
+Q 148.21776 81.41568 148.21776 83.78112
+L 148.21776 121.33248
+Q 148.21776 123.69792 151.43184 123.69792
+z
+" clip-path="url(#p9fb2724b8a)" style="fill: #e8f6ef; stroke: #218a4a; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 151.43184 169.52832
+L 264.72816 169.52832
+Q 267.94224 169.52832 267.94224 167.16288
+L 267.94224 142.91712
+Q 267.94224 140.55168 264.72816 140.55168
+L 151.43184 140.55168
+Q 148.21776 140.55168 148.21776 142.91712
+L 148.21776 167.16288
+Q 148.21776 169.52832 151.43184 169.52832
+z
+" clip-path="url(#p9fb2724b8a)" style="fill: #fff3e6; stroke: #c46a00; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; fill: #111827" transform="translate(46.006594 60.958903)">GeoSOS-FLUS</text>
+    <text style="font-weight: 700; font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; fill: #111827" transform="translate(16.506281 70.465434)">CA/ANN land-use simulation</text>
+   </g>
+   <g id="text_2">
+    <text style="font-weight: 700; font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; fill: #111827" transform="translate(327.907547 60.893091)">TWM</text>
+    <text style="font-weight: 700; font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; fill: #111827" transform="translate(287.896219 70.531247)">Geospatial world model</text>
+   </g>
+   <g id="text_3">
+    <text style="font-weight: 700; font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; fill: #111827" transform="translate(176.7375 95.258362)">Task A overlap</text>
+    <text style="font-weight: 700; font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; fill: #111827" transform="translate(147.326484 104.764894)">Land-use change simulation</text>
+    <text style="font-weight: 700; font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; fill: #111827" transform="translate(151.316016 114.521175)">Scenario spatial allocation</text>
+   </g>
+   <g id="text_4">
+    <text style="font-weight: 700; font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; fill: #111827" transform="translate(172.076484 152.494828)">Evaluation focus</text>
+    <text style="font-weight: 700; font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; fill: #111827" transform="translate(118.584844 162.132984)">Change FoM / Change F1 / Transition FoM</text>
+   </g>
+   <g id="patch_6">
+    <path d="M 132.596373 65.188038
+Q 140.784713 82.597364 148.402031 98.792634
+" style="fill: none; stroke: #475569; stroke-width: 1.2; stroke-linecap: round"/>
+    <path d="M 148.487911 95.215956
+L 148.402031 98.792634
+L 145.592216 96.577923
+" style="fill: none; stroke: #475569; stroke-width: 1.2; stroke-linecap: round"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 283.563627 65.188038
+Q 275.375287 82.597364 267.757969 98.792634
+" style="fill: none; stroke: #475569; stroke-width: 1.2; stroke-linecap: round"/>
+    <path d="M 270.567784 96.577923
+L 267.757969 98.792634
+L 267.672089 95.215956
+" style="fill: none; stroke: #475569; stroke-width: 1.2; stroke-linecap: round"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 208.08 124.518764
+Q 208.08 132.128361 208.08 138.396317
+" style="fill: none; stroke: #475569; stroke-width: 1.2; stroke-linecap: round"/>
+    <path d="M 209.68 135.196317
+L 208.08 138.396317
+L 206.48 135.196317
+" style="fill: none; stroke: #475569; stroke-width: 1.2; stroke-linecap: round"/>
+   </g>
+   <g id="text_5">
+    <text style="font-weight: 700; font-size: 10px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle" x="208.08" y="23.0931" transform="rotate(-0 208.08 23.0931)">Comparison target: GeoSOS-FLUS core task, not remote-sensing classification</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p9fb2724b8a">
+   <rect x="7.2" y="7.2" width="401.76" height="177.408"/>
+  </clipPath>
+ </defs>
+</svg>

@@ -7,7 +7,6 @@ import pytest
 from sqlalchemy import text
 
 from data_agent.standards_platform.derivation import runner
-from data_agent.standards_platform import handlers as std_handlers
 
 
 def _seed_bound_element(engine, ver_id):
@@ -51,17 +50,18 @@ def _cleanup(engine, ver_id):
             ), {"ids": snap_ids})
 
 
-def test_get_strategy_status_lists_six(engine):
+def test_get_strategy_status_lists_seven(engine):
     statuses = runner.get_strategy_status()
     names = {s["name"] for s in statuses}
     assert "to_semantic_hint" in names
     assert "to_synonym" in names
     active_names = {s["name"] for s in statuses if s["status"] == "active"}
     coming_names = {s["name"] for s in statuses if s["status"] == "coming_soon"}
-    # Wave 8 to_data_model: 6 active strategies, 0 coming_soon — 100% coverage.
+    # TWM Phase 6: 7 active strategies, 0 coming_soon.
     assert active_names == {
         "to_semantic_hint", "to_value_semantics", "to_synonym",
         "to_qc_rule", "to_defect_code", "to_data_model",
+        "to_spatial_policy_rule",
     }
     assert len(coming_names) == 0
 
@@ -137,6 +137,9 @@ def test_dispatch_isolates_strategy_failure(engine, fresh_clause, monkeypatch):
 
 
 def test_handlers_dispatch_routes_version_released(engine, fresh_clause):
+    pytest.importorskip("fitz")
+    from data_agent.standards_platform import handlers as std_handlers
+
     cid, doc_id, ver_id = fresh_clause
     _seed_bound_element(engine, ver_id)
     try:
