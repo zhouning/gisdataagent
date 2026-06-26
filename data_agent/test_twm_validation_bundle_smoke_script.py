@@ -9,6 +9,17 @@ from pathlib import Path
 SCRIPT = Path("scripts/smoke_twm_validation_bundle.sh")
 
 
+def _load_validation_bundle_module():
+    import importlib.util
+
+    script = Path("scripts/run_twm_validation_bundle.py")
+    spec = importlib.util.spec_from_file_location("run_twm_validation_bundle", script)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
 def test_twm_validation_bundle_smoke_script_is_valid_bash():
     subprocess.run(["bash", "-n", str(SCRIPT)], check=True)
 
@@ -30,6 +41,97 @@ def test_twm_validation_bundle_smoke_script_exposes_inner_network_controls():
     assert "--require-production-readiness" in text
     assert "--fail-on-blocked" in text
     assert ".venv/bin/python" in text
+
+
+def test_production_scale_readiness_reports_check_diagnostics_for_partial_profile(tmp_path):
+    module = _load_validation_bundle_module()
+    profile = tmp_path / "partial_scale_profile.json"
+    profile.write_text(
+        json.dumps(
+            {
+                "schema": "territory_world_model.production_scale_profile.v1",
+                "example_only": False,
+                "not_for_production": False,
+                "layers": [{"name": "parcel", "row_count": 12000000, "storage_format": "csv"}],
+                "compute": {"engine": "single_node_python", "distributed": False},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    readiness = module.build_production_scale_readiness(production_scale_profile=profile)
+    diagnostics = {item["gate"]: item for item in readiness["check_diagnostics"]}
+
+    assert readiness["status"] == "review"
+    assert diagnostics["lakehouse_storage"]["phase"] == "production_scale"
+    assert diagnostics["partition_strategy"]["status"] == "missing"
+    assert "partitioning" in diagnostics["partition_strategy"]["remediation"]
+    assert diagnostics["distributed_compute"]["status"] == "missing"
+    assert readiness["data_owner_summary"]["missing_gate_count"] >= 3
+
+
+def test_validation_bundle_markdown_lists_scale_diagnostic_table():
+    module = _load_validation_bundle_module()
+    report = {
+        "inputs": {},
+        "production_observed_history_normalization": {"status": "not_requested", "field_mapping": {}},
+        "production_observed_history_preflight": {
+            "status": "review",
+            "schema_audit": {"status": "review", "row_quality": {"production_candidate_row_count": 0}},
+            "policy_history_quality": {"status": "review"},
+            "temporal_validation_quality": {
+                "status": "review",
+                "missing_temporal_gates": ["explicit_train_holdout_split"],
+            },
+            "policy_history_alignment": {
+                "status": "review",
+                "missing": ["production_policy_history_quality"],
+            },
+        },
+        "production_scale_readiness": {
+            "status": "review",
+            "scale_tier": "ten_million_scale",
+            "observed": {"max_layer_row_count": 12000000, "total_row_count": 12000000, "layer_count": 1},
+            "missing": ["partition_strategy"],
+            "check_diagnostics": [
+                {
+                    "gate": "partition_strategy",
+                    "phase": "production_scale",
+                    "status": "missing",
+                    "observed": [],
+                    "requirement": "million-scale layers require explicit partitioning",
+                    "remediation": "Add administrative, temporal, or spatial partition columns.",
+                }
+            ],
+        },
+        "production_readiness_gate": {
+            "required": False,
+            "status": "review",
+            "missing": ["production_scale_readiness_pass"],
+        },
+        "deployment_punch_list": {
+            "status": "review",
+            "required": False,
+            "open_action_count": 1,
+            "blocking_action_count": 0,
+            "actions": [],
+        },
+        "state_summary": {},
+        "rule_summary": {},
+        "audit_summary": {},
+        "selected_plan_evaluation_bundle": {},
+        "validation_summary": {},
+        "claim_ladder": {},
+        "scca_summary": {},
+        "claim_boundary": {},
+        "recommendations": [],
+    }
+
+    markdown = module.render_validation_bundle_markdown(report)
+
+    assert "## Production Scale Check Diagnostics" in markdown
+    assert "| `partition_strategy` | `missing` |" in markdown
+    assert "Add administrative, temporal, or spatial partition columns." in markdown
 
 
 def test_twm_validation_bundle_smoke_script_can_normalize_raw_production_history(tmp_path):

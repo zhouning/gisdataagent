@@ -571,6 +571,48 @@ def build_production_readiness_gate(
     }
 
 
+PRODUCTION_SCALE_REMEDIATIONS: dict[str, str] = {
+    "production_scale_profile_provided": "Provide a sanitized production scale profile with row counts, storage formats, partitioning, spatial index, and compute metadata.",
+    "production_scale_profile_readable": "Correct the production scale profile path or place the sanitized profile where the runner can read it.",
+    "production_scale_profile_not_example": "Replace the example template values with sanitized production metadata and set example_only=false and not_for_production=false.",
+    "production_layer_inventory": "List each production layer or table with a sanitized name and row, feature, record, or object count.",
+    "lakehouse_storage": "Use columnar lakehouse storage such as GeoParquet, Iceberg, Delta, Hudi, Parquet, or ORC for million-scale layers.",
+    "partition_strategy": "Add administrative, temporal, or spatial partitioning columns for million-scale layers.",
+    "spatial_index_strategy": "Add a spatial index, grid, tile, Hilbert, S2, H3, or quadkey strategy for spatial layers.",
+    "distributed_compute": "Use distributed compute such as Spark/Sedona, Flink, Dask, Ray, Trino, Presto, or distributed SQL for ten-million-scale layers.",
+    "national_scale_sampling_or_tiling": "Add tiling, sampling, chunking, or pyramid strategy for hundred-million-scale validation and serving.",
+}
+
+
+def production_scale_check_diagnostics(checks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    diagnostics: list[dict[str, Any]] = []
+    for check in checks:
+        gate = str(check.get("gate") or "")
+        diagnostics.append(
+            {
+                "gate": gate,
+                "phase": "production_scale",
+                "status": "pass" if check.get("status") == "pass" else "missing",
+                "observed": check.get("observed"),
+                "requirement": check.get("requirement"),
+                "remediation": PRODUCTION_SCALE_REMEDIATIONS.get(gate, f"Provide evidence for {gate}."),
+            }
+        )
+    return diagnostics
+
+
+def production_scale_data_owner_summary(checks: list[dict[str, Any]]) -> dict[str, Any]:
+    diagnostics = production_scale_check_diagnostics(checks)
+    missing = [item for item in diagnostics if item.get("status") != "pass"]
+    return {
+        "phase": "production_scale",
+        "status": "pass" if not missing else "review",
+        "missing_gate_count": len(missing),
+        "missing_gates": [item.get("gate") for item in missing],
+        "remediations": [item.get("remediation") for item in missing],
+    }
+
+
 def build_production_scale_readiness(
     *,
     production_scale_profile: Path | str | None = None,
@@ -582,6 +624,14 @@ def build_production_scale_readiness(
             int((state_summary or {}).get("object_count") or 0),
             int((state_summary or {}).get("relation_count") or 0),
         )
+        checks = [
+            readiness_check(
+                "production_scale_profile_provided",
+                False,
+                "not_provided",
+                "provide a sanitized production-scale profile before claiming national or million-scale readiness",
+            )
+        ]
         return {
             "schema": "territory_world_model.production_scale_readiness.v1",
             "status": "not_provided",
@@ -594,32 +644,30 @@ def build_production_scale_readiness(
                 "local_state_object_count": int((state_summary or {}).get("object_count") or 0),
                 "local_state_relation_count": int((state_summary or {}).get("relation_count") or 0),
             },
-            "checks": [
-                readiness_check(
-                    "production_scale_profile_provided",
-                    False,
-                    "not_provided",
-                    "provide a sanitized production-scale profile before claiming national or million-scale readiness",
-                )
-            ],
+            "checks": checks,
+            "check_diagnostics": production_scale_check_diagnostics(checks),
+            "data_owner_summary": production_scale_data_owner_summary(checks),
             "missing": ["production_scale_profile_provided"],
             "claim_boundary": "local/demo state size does not prove readiness for million- or hundred-million-scale production layers",
         }
     if not profile_path.exists():
+        checks = [
+            readiness_check(
+                "production_scale_profile_readable",
+                False,
+                "missing",
+                "production scale profile path must exist",
+            )
+        ]
         return {
             "schema": "territory_world_model.production_scale_readiness.v1",
             "status": "blocked",
             "profile_path": str(profile_path),
             "scale_tier": "unknown",
             "observed": {"max_layer_row_count": 0, "total_row_count": 0, "layer_count": 0},
-            "checks": [
-                readiness_check(
-                    "production_scale_profile_readable",
-                    False,
-                    "missing",
-                    "production scale profile path must exist",
-                )
-            ],
+            "checks": checks,
+            "check_diagnostics": production_scale_check_diagnostics(checks),
+            "data_owner_summary": production_scale_data_owner_summary(checks),
             "missing": ["production_scale_profile_readable"],
             "claim_boundary": "scale readiness cannot be evaluated when the supplied profile is missing",
         }
@@ -701,6 +749,8 @@ def build_production_scale_readiness(
             "requires_national_scale_controls": needs_national_controls,
         },
         "checks": checks,
+        "check_diagnostics": production_scale_check_diagnostics(checks),
+        "data_owner_summary": production_scale_data_owner_summary(checks),
         "missing": [check["gate"] for check in failed],
         "claim_boundary": "scale readiness checks architecture evidence only; they do not prove model accuracy, rule correctness or planning optimality",
     }
@@ -1431,6 +1481,25 @@ def render_validation_bundle_markdown(report: dict[str, Any]) -> str:
         "| Gate | Phase | Status | Resolution |",
         "|---|---|---|---|",
     ]
+    scale_diagnostic_table = [
+        "",
+        "## Production Scale Check Diagnostics",
+        "",
+        "| Gate | Status | Observed | Requirement | Remediation |",
+        "|---|---|---|---|---|",
+    ]
+    for diagnostic in scale.get("check_diagnostics") or []:
+        observed = str(
+            diagnostic.get("observed") if diagnostic.get("observed") is not None else "not_provided"
+        ).replace("|", "\\|")
+        requirement = str(diagnostic.get("requirement") or "").replace("|", "\\|")
+        remediation = str(diagnostic.get("remediation") or "").replace("|", "\\|")
+        scale_diagnostic_table.append(
+            f"| `{diagnostic.get('gate')}` | `{diagnostic.get('status')}` | `{observed}` | {requirement} | {remediation} |"
+        )
+    scale_diagnostic_table.append("")
+    readiness_heading_index = lines.index("## Production Readiness Gate")
+    lines[readiness_heading_index:readiness_heading_index] = scale_diagnostic_table
     for action in punch_list.get("actions") or []:
         resolution = str(action.get("resolution") or "").replace("|", "\\|")
         lines.append(
