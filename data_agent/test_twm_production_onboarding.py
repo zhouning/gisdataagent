@@ -159,6 +159,13 @@ def test_twm_production_onboarding_writes_summary_when_strict_readiness_blocks(t
     assert summary["validation_bundle"]["readiness_gate_status"] == "blocked"
     assert "production_scale_readiness_pass" in summary["validation_bundle"]["readiness_missing"]
     punch_list = summary["deployment_punch_list"]
+    assert punch_list["phase_counts"]["production_scale"] >= 1
+    assert punch_list["severity_counts"]["blocking"] >= 1
+    assert "production_scale" in summary["data_owner_next_steps"]
+    assert any("sanitized production scale profile" in item for item in summary["data_owner_next_steps"]["production_scale"])
+    markdown = (output_dir / "twm_production_onboarding_summary.md").read_text(encoding="utf-8")
+    assert "## Data Owner Next Steps" in markdown
+    assert "### production_scale" in markdown
     assert punch_list["status"] == "blocked"
     assert punch_list["blocking_action_count"] >= 1
     assert any(

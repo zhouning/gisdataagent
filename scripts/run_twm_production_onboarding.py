@@ -201,6 +201,19 @@ def run_command(command: list[str], *, allowed_returncodes: set[int] | None = No
     return result
 
 
+def build_data_owner_next_steps(deployment_punch_list: dict[str, Any]) -> dict[str, list[str]]:
+    grouped: dict[str, list[str]] = {}
+    for action in deployment_punch_list.get("actions") or []:
+        phase = str(action.get("phase") or "deployment")
+        resolution = str(action.get("resolution") or "").strip()
+        if not resolution:
+            resolution = f"Resolve {action.get('gate')} before production readiness can be promoted."
+        grouped.setdefault(phase, [])
+        if resolution not in grouped[phase]:
+            grouped[phase].append(resolution)
+    return grouped
+
+
 def build_onboarding_summary(
     *,
     raw_history: Path | None,
@@ -223,6 +236,7 @@ def build_onboarding_summary(
         status=onboarding_status(data_foundation_summary, validation_bundle_report),
         readiness_gate=readiness,
     )
+    data_owner_next_steps = build_data_owner_next_steps(deployment_punch_list)
     data_normalized = data_foundation_normalization.get("output_path")
     bundle_normalized = validation_normalization.get("output_path")
     normalized_output = data_normalized or bundle_normalized or (str(normalized_history) if normalized_history else None)
@@ -261,6 +275,7 @@ def build_onboarding_summary(
         },
         "production_scale_profile": str(production_scale_profile) if production_scale_profile else None,
         "deployment_punch_list": deployment_punch_list,
+        "data_owner_next_steps": data_owner_next_steps,
         "commands": commands,
         "outputs": {key: str(value) for key, value in outputs.items()},
         "claim_boundary": "onboarding summary checks ingestion and validation wiring only; it does not certify production accuracy or legal approval readiness",
@@ -334,6 +349,16 @@ def render_onboarding_markdown(summary: dict[str, Any]) -> str:
         lines.append(
             f"| `{action.get('gate')}` | `{action.get('phase')}` | `{action.get('status')}` | {resolution} |"
         )
+    next_steps = summary.get("data_owner_next_steps") or {}
+    lines.extend(["", "## Data Owner Next Steps", ""])
+    if not next_steps:
+        lines.append("- No open data-owner next steps.")
+    for phase, items in next_steps.items():
+        lines.append(f"### {phase}")
+        lines.append("")
+        for item in items:
+            lines.append(f"- {item}")
+        lines.append("")
     lines.extend(
         [
             "",
