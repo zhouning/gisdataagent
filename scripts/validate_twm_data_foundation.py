@@ -514,6 +514,79 @@ def production_observed_history_contract() -> dict[str, Any]:
     }
 
 
+OBSERVED_HISTORY_GROUP_REMEDIATIONS: dict[str, str] = {
+    "causal_unit_identity": "Provide unit_id, project_id, approval_id, AJBH, XMDM, or another stable causal unit identifier.",
+    "treatment_assignment": "Provide approval_status, treatment, review_result, decision_result, approved_area_m2, or another treatment/status field.",
+    "observed_outcome": "Provide outcome, observed_utility_delta, approved_area_m2, DKMJ, or another audited outcome/proxy field.",
+    "production_flags": "Provide explicit synthetic and not_for_production flags for every row.",
+    "spatial_support": "Provide at least one spatial support field such as cluster, region_code, DKXZQDM, neighbors, x/y, or lon/lat.",
+    "adjustment_covariates": "Provide at least one numeric pre-decision covariate such as area_m2, DKMJ, quality_score, risk_score, rule_hit_count, or review_task_count.",
+}
+
+OBSERVED_HISTORY_DATA_GATE_REMEDIATIONS: dict[str, str] = {
+    "production_usable_rows": "Set synthetic=false and not_for_production=false only for real production-usable rows; synthetic/demo rows must remain review-only.",
+    "production_treated_rows": "Include at least one approved, passed, granted, or treated production row.",
+    "production_control_rows": "Include at least one in_review, returned, rejected, pending, or untreated production row.",
+    "observed_outcome": "Populate an audited outcome or acceptable area/utility proxy for production candidate rows.",
+    "spatial_support": "Populate spatial support with region, cluster, neighbor IDs, or complete coordinates.",
+    "adjustment_covariates": "Populate numeric adjustment covariates that were known before or at decision time.",
+    "explicit_production_flags": "Every row must explicitly include synthetic and not_for_production flags.",
+    "production_temporal_rows": "Production rows need period, time_index, approval_date, decision_date, year, or quarter.",
+    "temporal_holdout_support": "Provide explicit train and holdout/test splits across at least two periods.",
+    "policy_effective_version": "Provide policy_effective_date, policy_version, rule_version, planning_version, or standard_version.",
+}
+
+
+def _observed_history_gate_diagnostics(
+    *,
+    group_reports: list[dict[str, Any]],
+    missing_data_gates: list[str],
+    row_quality: dict[str, Any],
+    temporal_quality: dict[str, Any],
+) -> list[dict[str, Any]]:
+    diagnostics: list[dict[str, Any]] = []
+    observed_values = {
+        "production_usable_rows": row_quality.get("production_usable_row_count", 0),
+        "production_treated_rows": row_quality.get("production_treated_count", 0),
+        "production_control_rows": row_quality.get("production_control_count", 0),
+        "observed_outcome": row_quality.get("rows_with_outcome", 0),
+        "spatial_support": row_quality.get("rows_with_spatial_support", 0),
+        "adjustment_covariates": row_quality.get("rows_with_covariates", 0),
+        "explicit_production_flags": row_quality.get("explicit_production_flag_row_count", 0),
+        "production_temporal_rows": temporal_quality.get("production_temporal_row_count", 0),
+        "temporal_holdout_support": {
+            "period_count": temporal_quality.get("period_count", 0),
+            "train_row_count": temporal_quality.get("train_row_count", 0),
+            "holdout_row_count": temporal_quality.get("holdout_row_count", 0),
+        },
+        "policy_effective_version": temporal_quality.get("rows_with_policy_effective_version", 0),
+    }
+    missing = set(missing_data_gates)
+    for gate, remediation in OBSERVED_HISTORY_DATA_GATE_REMEDIATIONS.items():
+        diagnostics.append(
+            {
+                "gate": gate,
+                "phase": "observed_history_data",
+                "status": "missing" if gate in missing else "pass",
+                "observed": observed_values.get(gate),
+                "remediation": remediation,
+            }
+        )
+    for group in group_reports:
+        gate = str(group.get("group") or "")
+        diagnostics.append(
+            {
+                "gate": gate,
+                "phase": "observed_history_schema",
+                "status": "pass" if group.get("status") == "pass" else "missing",
+                "observed": list(group.get("matched_fields") or []),
+                "accepted_fields": list(group.get("accepted_aliases") or []),
+                "remediation": OBSERVED_HISTORY_GROUP_REMEDIATIONS.get(gate, f"Provide fields for {gate}."),
+            }
+        )
+    return diagnostics
+
+
 def audit_observed_history_schema(path: Path | None) -> dict[str, Any]:
     if path is None:
         return {
@@ -556,7 +629,7 @@ def audit_observed_history_schema(path: Path | None) -> dict[str, Any]:
     policy_history_quality = _observed_policy_history_quality(rows)
     temporal_validation_quality = _observed_history_temporal_validation_quality(rows)
     missing_data_gates = []
-    if row_quality["production_candidate_row_count"] <= 0:
+    if row_quality["production_usable_row_count"] <= 0:
         missing_data_gates.append("production_usable_rows")
     if row_quality["production_treated_count"] <= 0:
         missing_data_gates.append("production_treated_rows")
@@ -593,6 +666,12 @@ def audit_observed_history_schema(path: Path | None) -> dict[str, Any]:
         "policy_history_quality": policy_history_quality,
         "temporal_validation_quality": temporal_validation_quality,
         "missing_data_gates": missing_data_gates,
+        "gate_diagnostics": _observed_history_gate_diagnostics(
+            group_reports=group_reports,
+            missing_data_gates=missing_data_gates,
+            row_quality=row_quality,
+            temporal_quality=temporal_validation_quality,
+        ),
         "expected_minimum_columns": PRODUCTION_OBSERVED_HISTORY_MINIMUM_COLUMNS,
         "expected_policy_history_columns": PRODUCTION_POLICY_HISTORY_MINIMUM_COLUMNS,
         "recommendations": _observed_history_schema_recommendations(missing_groups, missing_data_gates),
@@ -1525,6 +1604,7 @@ def synthetic_experiment_oracle_score(row: dict[str, Any]) -> float:
 def _observed_history_row_quality(rows: list[dict[str, Any]]) -> dict[str, Any]:
     row_count = len(rows)
     explicit_flag_rows = 0
+    production_usable_count = 0
     production_candidates = 0
     treated_count = 0
     control_count = 0
@@ -1549,6 +1629,7 @@ def _observed_history_row_quality(rows: list[dict[str, Any]]) -> dict[str, Any]:
             synthetic_count += 1
         if is_nfp:
             nfp_count += 1
+        production_usable = synthetic_present and nfp_present and not is_synthetic and not is_nfp
         treatment = _observed_history_treatment(row)
         has_outcome = _observed_history_has_outcome(row)
         has_covariates = _observed_history_has_covariates(row)
@@ -1569,13 +1650,15 @@ def _observed_history_row_quality(rows: list[dict[str, Any]]) -> dict[str, Any]:
             rows_with_neighbors += 1
         if spatial_support["has_coordinates"]:
             rows_with_coordinates += 1
-        production_ready = _observed_history_production_ready(row)
-        if production_ready:
-            production_candidates += 1
+        if production_usable:
+            production_usable_count += 1
             if treatment == 1:
                 production_treated_count += 1
             if treatment == 0:
                 production_control_count += 1
+        production_ready = _observed_history_production_ready(row)
+        if production_ready:
+            production_candidates += 1
     return {
         "row_count": row_count,
         "treated_count": treated_count,
@@ -1589,6 +1672,7 @@ def _observed_history_row_quality(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "synthetic_count": synthetic_count,
         "not_for_production_count": nfp_count,
         "explicit_production_flag_row_count": explicit_flag_rows,
+        "production_usable_row_count": production_usable_count,
         "production_candidate_row_count": production_candidates,
         "production_treated_count": production_treated_count,
         "production_control_count": production_control_count,

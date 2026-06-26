@@ -448,6 +448,58 @@ def test_normalize_production_observed_history_export_keeps_incomplete_exports_r
     assert "temporal_holdout_support" in report["audit"]["missing_data_gates"]
 
 
+def test_audit_observed_history_schema_reports_gate_diagnostics_for_incomplete_export(tmp_path):
+    module = _load_script_module()
+    path = tmp_path / "production_missing_spatial_temporal.csv"
+    path.write_text(
+        "\n".join(
+            [
+                "unit_id,approval_status,outcome,area_m2,synthetic,not_for_production",
+                "P-1,approved,0.31,1000,False,False",
+                "P-2,in_review,0.08,1200,False,False",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    audit = module.audit_observed_history_schema(path)
+    diagnostics = {item["gate"]: item for item in audit["gate_diagnostics"]}
+
+    assert audit["status"] == "review"
+    assert diagnostics["spatial_support"]["status"] == "missing"
+    assert diagnostics["spatial_support"]["phase"] == "observed_history_schema"
+    assert "cluster" in diagnostics["spatial_support"]["accepted_fields"]
+    assert "Provide at least one spatial support field" in diagnostics["spatial_support"]["remediation"]
+    assert diagnostics["temporal_holdout_support"]["status"] == "missing"
+    assert diagnostics["explicit_production_flags"]["status"] == "pass"
+    assert diagnostics["production_usable_rows"]["observed"] == 2
+
+
+def test_audit_observed_history_schema_reports_synthetic_rows_as_non_production(tmp_path):
+    module = _load_script_module()
+    path = tmp_path / "synthetic_rows.csv"
+    path.write_text(
+        "\n".join(
+            [
+                "unit_id,approval_status,outcome,cluster,area_m2,period,split,policy_version,synthetic,not_for_production",
+                "P-1,approved,0.31,R01,1000,2026Q1,train,V1,True,True",
+                "P-2,in_review,0.08,R02,1200,2026Q2,holdout,V1,True,True",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    audit = module.audit_observed_history_schema(path)
+    diagnostics = {item["gate"]: item for item in audit["gate_diagnostics"]}
+
+    assert audit["status"] == "review"
+    assert diagnostics["production_usable_rows"]["status"] == "missing"
+    assert diagnostics["production_usable_rows"]["observed"] == 0
+    assert diagnostics["production_usable_rows"]["remediation"].startswith("Set synthetic=false")
+
+
 def test_write_twm_structural_validation_observed_history_generates_balanced_fixture(tmp_path):
     module = _load_script_module()
     dataset_root = tmp_path / "dataset"
