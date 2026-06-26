@@ -471,6 +471,11 @@ def test_audit_observed_history_schema_reports_gate_diagnostics_for_incomplete_e
     production_usable_data = diagnostics[("production_usable_rows", "observed_history_data")]
 
     assert audit["status"] == "review"
+    assert "production_usable_rows" in audit["missing_data_gates"]
+    assert audit["row_quality"]["production_usable_row_count"] == 2
+    assert audit["row_quality"]["production_candidate_row_count"] == 0
+    assert audit["row_quality"]["production_treated_count"] == 0
+    assert audit["row_quality"]["production_control_count"] == 0
     assert spatial_schema["status"] == "missing"
     assert "cluster" in spatial_schema["accepted_fields"]
     assert "Provide at least one spatial support field" in spatial_schema["remediation"]
@@ -479,7 +484,7 @@ def test_audit_observed_history_schema_reports_gate_diagnostics_for_incomplete_e
     assert "Provide explicit train and holdout/test splits" in temporal_holdout_data["remediation"]
     assert production_flags_data["status"] == "pass"
     assert production_flags_data["observed"] == 2
-    assert production_usable_data["status"] == "pass"
+    assert production_usable_data["status"] == "missing"
     assert production_usable_data["observed"] == 2
     assert production_usable_data["remediation"].startswith("Set synthetic=false")
 

@@ -595,6 +595,7 @@ def audit_observed_history_schema(path: Path | None) -> dict[str, Any]:
             "expected_policy_history_columns": PRODUCTION_POLICY_HISTORY_MINIMUM_COLUMNS,
             "policy_history_quality": _empty_observed_policy_history_quality("not_provided"),
             "temporal_validation_quality": _empty_temporal_validation_quality("not_provided"),
+            "gate_diagnostics": [],
         }
     if not path.exists():
         return {
@@ -604,6 +605,7 @@ def audit_observed_history_schema(path: Path | None) -> dict[str, Any]:
             "expected_policy_history_columns": PRODUCTION_POLICY_HISTORY_MINIMUM_COLUMNS,
             "policy_history_quality": _empty_observed_policy_history_quality("missing"),
             "temporal_validation_quality": _empty_temporal_validation_quality("missing"),
+            "gate_diagnostics": [],
         }
 
     rows = read_csv(path)
@@ -629,7 +631,7 @@ def audit_observed_history_schema(path: Path | None) -> dict[str, Any]:
     policy_history_quality = _observed_policy_history_quality(rows)
     temporal_validation_quality = _observed_history_temporal_validation_quality(rows)
     missing_data_gates = []
-    if row_quality["production_usable_row_count"] <= 0:
+    if row_quality["production_candidate_row_count"] <= 0:
         missing_data_gates.append("production_usable_rows")
     if row_quality["production_treated_count"] <= 0:
         missing_data_gates.append("production_treated_rows")
@@ -1652,13 +1654,13 @@ def _observed_history_row_quality(rows: list[dict[str, Any]]) -> dict[str, Any]:
             rows_with_coordinates += 1
         if production_usable:
             production_usable_count += 1
+        production_ready = _observed_history_production_ready(row)
+        if production_ready:
+            production_candidates += 1
             if treatment == 1:
                 production_treated_count += 1
             if treatment == 0:
                 production_control_count += 1
-        production_ready = _observed_history_production_ready(row)
-        if production_ready:
-            production_candidates += 1
     return {
         "row_count": row_count,
         "treated_count": treated_count,
