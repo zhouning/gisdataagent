@@ -402,6 +402,7 @@ def summarize_observed_history_schema_audit(audit: dict[str, Any]) -> dict[str, 
         "field_count": audit.get("field_count", 0),
         "missing_required_groups": list(audit.get("missing_required_groups") or []),
         "missing_data_gates": list(audit.get("missing_data_gates") or []),
+        "gate_diagnostics": list(audit.get("gate_diagnostics") or []),
         "row_quality": {
             "production_candidate_row_count": row_quality.get("production_candidate_row_count", 0),
             "production_treated_count": row_quality.get("production_treated_count", 0),

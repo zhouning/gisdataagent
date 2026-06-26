@@ -732,6 +732,7 @@ def normalize_production_observed_history_export(source_path: Path | str, output
             "status": audit.get("status"),
             "missing_required_groups": list(audit.get("missing_required_groups") or []),
             "missing_data_gates": list(audit.get("missing_data_gates") or []),
+            "gate_diagnostics": list(audit.get("gate_diagnostics") or []),
             "row_quality": audit.get("row_quality") or {},
             "policy_history_quality": audit.get("policy_history_quality") or {},
             "temporal_validation_quality": audit.get("temporal_validation_quality") or {},

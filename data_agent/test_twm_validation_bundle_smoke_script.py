@@ -134,6 +134,43 @@ def test_validation_bundle_markdown_lists_scale_diagnostic_table():
     assert "Add administrative, temporal, or spatial partition columns." in markdown
 
 
+def test_validation_bundle_preserves_observed_history_gate_diagnostics_for_incomplete_export(tmp_path):
+    module = _load_validation_bundle_module()
+    raw_path = tmp_path / "raw_incomplete_approval_export.csv"
+    normalized_path = tmp_path / "normalized_incomplete_observed_history.csv"
+    raw_path.write_text(
+        "\n".join(
+            [
+                "AJBH,XMDM,review_result,observed_utility_delta,DKMJ,synthetic,not_for_prod",
+                "APR-1,PRJ-1,approved,0.31,1000,False,False",
+                "APR-2,PRJ-2,in_review,0.08,1200,False,False",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    prepared_path, normalization = module.prepare_production_observed_history_for_bundle(
+        normalize_production_observed_history_source=raw_path,
+        normalized_production_observed_history_output=normalized_path,
+    )
+    preflight = module.build_production_observed_history_preflight(
+        production_observed_history=prepared_path,
+        synthetic_experiment_foundation=None,
+    )
+
+    normalization_diagnostics = normalization["audit"]["gate_diagnostics"]
+    preflight_diagnostics = preflight["schema_audit"]["gate_diagnostics"]
+
+    assert normalization_diagnostics
+    assert preflight_diagnostics
+    assert any(
+        "spatial support" in str(item.get("remediation", "")).lower()
+        or "holdout" in str(item.get("remediation", "")).lower()
+        for item in preflight_diagnostics
+    )
+
+
 def test_twm_validation_bundle_smoke_script_can_normalize_raw_production_history(tmp_path):
     raw_path = tmp_path / "raw_approval_export.csv"
     normalized_path = tmp_path / "normalized_production_observed_history.csv"
