@@ -464,16 +464,24 @@ def test_audit_observed_history_schema_reports_gate_diagnostics_for_incomplete_e
     )
 
     audit = module.audit_observed_history_schema(path)
-    diagnostics = {item["gate"]: item for item in audit["gate_diagnostics"]}
+    diagnostics = {(item["gate"], item["phase"]): item for item in audit["gate_diagnostics"]}
+    spatial_schema = diagnostics[("spatial_support", "observed_history_schema")]
+    temporal_holdout_data = diagnostics[("temporal_holdout_support", "observed_history_data")]
+    production_flags_data = diagnostics[("explicit_production_flags", "observed_history_data")]
+    production_usable_data = diagnostics[("production_usable_rows", "observed_history_data")]
 
     assert audit["status"] == "review"
-    assert diagnostics["spatial_support"]["status"] == "missing"
-    assert diagnostics["spatial_support"]["phase"] == "observed_history_schema"
-    assert "cluster" in diagnostics["spatial_support"]["accepted_fields"]
-    assert "Provide at least one spatial support field" in diagnostics["spatial_support"]["remediation"]
-    assert diagnostics["temporal_holdout_support"]["status"] == "missing"
-    assert diagnostics["explicit_production_flags"]["status"] == "pass"
-    assert diagnostics["production_usable_rows"]["observed"] == 2
+    assert spatial_schema["status"] == "missing"
+    assert "cluster" in spatial_schema["accepted_fields"]
+    assert "Provide at least one spatial support field" in spatial_schema["remediation"]
+    assert temporal_holdout_data["status"] == "missing"
+    assert temporal_holdout_data["observed"]["period_count"] == 0
+    assert "Provide explicit train and holdout/test splits" in temporal_holdout_data["remediation"]
+    assert production_flags_data["status"] == "pass"
+    assert production_flags_data["observed"] == 2
+    assert production_usable_data["status"] == "pass"
+    assert production_usable_data["observed"] == 2
+    assert production_usable_data["remediation"].startswith("Set synthetic=false")
 
 
 def test_audit_observed_history_schema_reports_synthetic_rows_as_non_production(tmp_path):
@@ -492,12 +500,13 @@ def test_audit_observed_history_schema_reports_synthetic_rows_as_non_production(
     )
 
     audit = module.audit_observed_history_schema(path)
-    diagnostics = {item["gate"]: item for item in audit["gate_diagnostics"]}
+    diagnostics = {(item["gate"], item["phase"]): item for item in audit["gate_diagnostics"]}
+    production_usable_data = diagnostics[("production_usable_rows", "observed_history_data")]
 
     assert audit["status"] == "review"
-    assert diagnostics["production_usable_rows"]["status"] == "missing"
-    assert diagnostics["production_usable_rows"]["observed"] == 0
-    assert diagnostics["production_usable_rows"]["remediation"].startswith("Set synthetic=false")
+    assert production_usable_data["status"] == "missing"
+    assert production_usable_data["observed"] == 0
+    assert production_usable_data["remediation"].startswith("Set synthetic=false")
 
 
 def test_write_twm_structural_validation_observed_history_generates_balanced_fixture(tmp_path):
