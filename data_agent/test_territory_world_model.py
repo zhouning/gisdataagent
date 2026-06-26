@@ -1,5 +1,6 @@
 import asyncio
 import json
+from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -183,6 +184,29 @@ def _minimal_observed_dynamics_dataset(state_version_id: str, project_id: str, *
             },
         },
     }
+
+
+def _capture_twm_trace(monkeypatch):
+    import data_agent.territory_world_model.service as twm_service_module
+
+    captured = []
+
+    class FakeSpan:
+        def __init__(self, attrs):
+            self.attrs = attrs
+
+        def set_attribute(self, key, value):
+            self.attrs[key] = value
+
+    @contextmanager
+    def fake_trace(operation, **attrs):
+        span_attrs = {}
+        record = {"operation": operation, "attrs": dict(attrs), "span_attrs": span_attrs}
+        captured.append(record)
+        yield {"span": FakeSpan(span_attrs)}
+
+    monkeypatch.setattr(twm_service_module, "trace_twm_operation", fake_trace, raising=False)
+    return captured
 
 
 def test_state_build_loads_mmfe_bundle_and_auxiliary_tables():
@@ -1831,6 +1855,79 @@ def test_train_dynamics_candidate_emits_scaffold_candidate_and_backend_report():
     assert report["evidence_gate"]["status"] in {"review", "blocked"}
 
 
+def test_twm_service_operations_emit_dedicated_otel_spans(monkeypatch):
+    captured = _capture_twm_trace(monkeypatch)
+    svc = _build_service()
+    project, state = _save_lightweight_twm_state(svc)
+    dataset = _minimal_observed_dynamics_dataset(state.id, project.id)
+
+    train_report = svc.train_dynamics_candidate(
+        state.id,
+        {
+            "dataset": dataset,
+            "trainer": {
+                "trainer_id": "otel-trainer",
+                "model_name": "hierarchical_trainable_dynamics_scaffold",
+                "model_version": "otel",
+            },
+            "thresholds": {
+                "min_total_examples": 6,
+                "min_usable_examples": 6,
+                "min_observed_temporal_examples": 3,
+                "min_holdout_examples": 2,
+                "max_scaffold_ratio": 0.0,
+                "max_review_ratio": 0.0,
+            },
+        },
+    )
+    rollout_report = svc.counterfactual_rollout(
+        state.id,
+        {
+            "scenario": "otel_rollout",
+            "horizon": 2,
+            "evidence_coverage": 0.8,
+            "baseline_action": {"action_type": "inspect", "target_role": "parcel"},
+            "intervention_actions": [{"action_type": "protect", "target_role": "parcel"}],
+        },
+    )
+    records = []
+    for idx in range(4):
+        records.append({"unit_id": f"c-{idx}", "treatment": 0, "outcome": 0.1 + idx * 0.01, "stratum": "parcel"})
+        records.append({"unit_id": f"t-{idx}", "treatment": 1, "outcome": 0.2 + idx * 0.01, "stratum": "parcel"})
+    calibration_report = svc.causal_calibration_report(
+        state.id,
+        {
+            "records": records,
+            "model_effect": 0.05,
+            "thresholds": {"min_records": 8, "min_treated": 4, "min_control": 4},
+        },
+    )
+
+    by_operation = {item["operation"]: item for item in captured}
+    assert set(by_operation) >= {
+        "train_dynamics_candidate",
+        "counterfactual_rollout",
+        "estimate_observational_treatment_effect",
+    }
+    train_span = by_operation["train_dynamics_candidate"]
+    assert train_span["attrs"]["state_version_id"] == state.id
+    assert train_span["attrs"]["backend"] == "hierarchical_trainable_dynamics_scaffold"
+    assert train_span["attrs"]["sample_count"] == 6
+    assert train_span["span_attrs"]["twm.gate_status"] == train_report["evidence_gate"]["status"]
+
+    rollout_span = by_operation["counterfactual_rollout"]
+    assert rollout_span["attrs"]["state_version_id"] == state.id
+    assert rollout_span["attrs"]["backend"] == "planner"
+    assert rollout_span["attrs"]["sample_count"] == 4
+    assert rollout_span["span_attrs"]["twm.gate_status"] == rollout_report["evidence_gate"]["status"]
+
+    causal_span = by_operation["estimate_observational_treatment_effect"]
+    assert causal_span["attrs"]["state_version_id"] == state.id
+    assert causal_span["attrs"]["backend"] == "observational_causal_calibration"
+    assert causal_span["attrs"]["sample_count"] == 8
+    assert causal_span["span_attrs"]["twm.gate_status"] == calibration_report["evidence_gate"]["status"]
+
+
 def test_train_dynamics_candidate_supports_neural_multi_head_trainer_contract():
     svc = _build_service()
     _project, state = _build_project_and_state(svc)
@@ -2652,6 +2749,8 @@ def test_causal_calibration_report_passes_with_balanced_observations():
 
     assert report["schema"] == "territory_world_model.causal_calibration_report.v1"
     assert report["status"] == "pass"
+    assert report["identification_strength"] == "observational"
+    assert "not randomized" in report["identification_note"]
     assert report["estimate"]["treated_count"] == 6
     assert report["estimate"]["control_count"] == 6
     assert report["estimate"]["att"] > 0
@@ -2838,6 +2937,7 @@ def test_causal_calibration_report_embeds_scca_causal_evidence_without_replacing
     )
 
     assert report["status"] == "pass"
+    assert report["identification_strength"] == "observational"
     assert report["estimate"]["estimator"]["primary"] == "augmented_ipw_ate"
     assert report["evidence_gate"]["scca_causal_evidence"]["provided"] is True
     assert report["evidence_gate"]["scca_causal_evidence"]["status"] == "pass"

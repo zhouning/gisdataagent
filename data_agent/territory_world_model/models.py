@@ -655,6 +655,8 @@ class TwmCausalCalibrationReport:
     schema: str = "territory_world_model.causal_calibration_report.v1"
     status: str = "review"
     method: str = "stratified_observational_calibration"
+    identification_strength: str = "observational"
+    identification_note: str = "local calibration uses observed treatment/control histories and does not by itself prove randomized intervention effects"
     treatment: dict[str, Any] = field(default_factory=dict)
     outcome: dict[str, Any] = field(default_factory=dict)
     estimate: dict[str, Any] = field(default_factory=dict)

@@ -66,6 +66,7 @@ from .repository import TwmRepository, get_twm_repository
 from .rule_evaluator import RuleEvaluator, evaluate_rules
 from .state_builder import StateBuilder, build_state_from_bundle
 from .utils import compact_text, read_csv, read_json, safe_float, safe_int, truthy
+from ..otel_tracing import trace_twm_operation
 
 
 _INSTANCE_LOCK = threading.Lock()
@@ -75,6 +76,16 @@ TWM_BASELINE_EXPORT_MAX_BYTES = 5 * 1024 * 1024
 
 def _json(data: Any) -> str:
     return json.dumps(jsonable(data), ensure_ascii=False, default=str)
+
+
+def _set_trace_attribute(trace_ctx: dict[str, Any], key: str, value: Any) -> None:
+    span = (trace_ctx or {}).get("span")
+    if span is None:
+        return
+    try:
+        span.set_attribute(key, value)
+    except Exception:
+        return
 
 
 TWM_BUSINESS_SCENARIOS: tuple[dict[str, Any], ...] = (
@@ -2879,102 +2890,115 @@ class TerritoryWorldModelService:
 
     def train_dynamics_candidate(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(payload or {})
-        state = self.repository.get_state_version(state_version_id)
-        if state is None or self.repository.get_state_bundle(state_version_id) is None:
-            raise LookupError(f"state not found: {state_version_id}")
-        dataset_payload = payload.get("dataset")
-        dataset = dict(dataset_payload) if isinstance(dataset_payload, dict) else self.dynamics_training_examples(state_version_id, payload)
-        readiness = self.dynamics_readiness_report(state_version_id, {"dataset": dataset, **payload})
         trainer = self._train_dynamics_trainer_descriptor(payload)
-        seed_objective = self.training_objective_report(state_version_id, {"dataset": dataset, **payload})
-        if readiness.get("status") != "pass" or seed_objective.get("evidence_gate", {}).get("status") == "blocked":
+        dataset_payload = payload.get("dataset")
+        initial_sample_count = len(dataset_payload.get("examples") or []) if isinstance(dataset_payload, dict) else None
+        with trace_twm_operation(
+            "train_dynamics_candidate",
+            state_version_id=state_version_id,
+            backend=str(trainer.get("model_name") or trainer.get("model_family") or trainer.get("trainer_id") or ""),
+            sample_count=initial_sample_count,
+            gate_status="pending",
+        ) as trace_ctx:
+            state = self.repository.get_state_version(state_version_id)
+            if state is None or self.repository.get_state_bundle(state_version_id) is None:
+                raise LookupError(f"state not found: {state_version_id}")
+            dataset = dict(dataset_payload) if isinstance(dataset_payload, dict) else self.dynamics_training_examples(state_version_id, payload)
+            _set_trace_attribute(trace_ctx, "twm.sample_count", len(dataset.get("examples") or []))
+            readiness = self.dynamics_readiness_report(state_version_id, {"dataset": dataset, **payload})
+            seed_objective = self.training_objective_report(state_version_id, {"dataset": dataset, **payload})
+            if readiness.get("status") != "pass" or seed_objective.get("evidence_gate", {}).get("status") == "blocked":
+                evidence_gate = self._train_dynamics_evidence_gate(
+                    readiness=readiness,
+                    backend_report={},
+                    objective_report=seed_objective,
+                    trainer=trainer,
+                )
+                report = TwmTrainDynamicsReport(
+                    state_version_id=state_version_id,
+                    project_id=state.project_id,
+                    status=evidence_gate.get("status", "blocked"),
+                    trainer=trainer,
+                    objective=seed_objective,
+                    learned_parameters={},
+                    predictions={},
+                    candidate_report={},
+                    backend_report={},
+                    evidence_gate=evidence_gate,
+                    recommendations=self._train_dynamics_recommendations(evidence_gate, trainer),
+                )
+                result = report.to_dict()
+                _set_trace_attribute(trace_ctx, "twm.gate_status", result.get("evidence_gate", {}).get("status", result.get("status", "review")))
+                return result
+
+            if self._use_spatiotemporal_transformer_dynamics_trainer(trainer):
+                train_result = train_spatiotemporal_transformer_dynamics(dataset, trainer, seed_objective, payload)
+                learned_parameters = dict(train_result.get("learned_parameters") or {})
+                predictions = dict(train_result.get("predictions") or {})
+                candidate_report = self._neural_dynamics_candidate_report(trainer, learned_parameters, predictions, dict(train_result.get("diagnostics") or {}))
+            elif self._use_hierarchical_graph_dynamics_trainer(trainer):
+                train_result = train_hierarchical_graph_dynamics(dataset, trainer, seed_objective, payload)
+                learned_parameters = dict(train_result.get("learned_parameters") or {})
+                predictions = dict(train_result.get("predictions") or {})
+                candidate_report = self._neural_dynamics_candidate_report(trainer, learned_parameters, predictions, dict(train_result.get("diagnostics") or {}))
+            elif self._use_neural_dynamics_trainer(trainer):
+                train_result = train_neural_multi_head_dynamics(dataset, trainer, seed_objective, payload)
+                learned_parameters = dict(train_result.get("learned_parameters") or {})
+                predictions = dict(train_result.get("predictions") or {})
+                candidate_report = self._neural_dynamics_candidate_report(trainer, learned_parameters, predictions, dict(train_result.get("diagnostics") or {}))
+            else:
+                learned_parameters = self._train_dynamics_parameters(dataset, seed_objective, trainer)
+                predictions = self._predict_with_baseline_dynamics(dataset, learned_parameters)
+                candidate_report = self._train_dynamics_candidate_report(trainer, learned_parameters, predictions)
+            backend_payload = {
+                "dataset": dataset,
+                "backend": {
+                    "backend_id": trainer["trainer_id"],
+                    "backend_type": "trainable_candidate_scaffold",
+                    "model_name": trainer["model_name"],
+                    "model_version": trainer["model_version"],
+                    "model_family": trainer["model_family"],
+                    "trainable": True,
+                    "action_conditioned": True,
+                    "uses_geofm": trainer.get("uses_geofm", False),
+                    "uses_causal_calibration": trainer.get("uses_causal_calibration", False),
+                },
+                "candidate_report": candidate_report,
+                "thresholds": payload.get("thresholds") or {},
+                "geofm_gate_report": payload.get("geofm_gate_report") or {},
+                "causal_calibration_report": payload.get("causal_calibration_report") or {},
+            }
+            backend_report = self.dynamics_backend_report(state_version_id, backend_payload)
+            objective_report = self.training_objective_report(
+                state_version_id,
+                {
+                    "dataset": dataset,
+                    "dynamics_backend_report": backend_report,
+                    "predictions": predictions,
+                },
+            )
             evidence_gate = self._train_dynamics_evidence_gate(
                 readiness=readiness,
-                backend_report={},
-                objective_report=seed_objective,
+                backend_report=backend_report,
+                objective_report=objective_report,
                 trainer=trainer,
             )
             report = TwmTrainDynamicsReport(
                 state_version_id=state_version_id,
                 project_id=state.project_id,
-                status=evidence_gate.get("status", "blocked"),
+                status=evidence_gate.get("status", "review"),
                 trainer=trainer,
-                objective=seed_objective,
-                learned_parameters={},
-                predictions={},
-                candidate_report={},
-                backend_report={},
+                objective=objective_report,
+                learned_parameters=learned_parameters,
+                predictions=predictions,
+                candidate_report=candidate_report,
+                backend_report=backend_report,
                 evidence_gate=evidence_gate,
                 recommendations=self._train_dynamics_recommendations(evidence_gate, trainer),
             )
-            return report.to_dict()
-
-        if self._use_spatiotemporal_transformer_dynamics_trainer(trainer):
-            train_result = train_spatiotemporal_transformer_dynamics(dataset, trainer, seed_objective, payload)
-            learned_parameters = dict(train_result.get("learned_parameters") or {})
-            predictions = dict(train_result.get("predictions") or {})
-            candidate_report = self._neural_dynamics_candidate_report(trainer, learned_parameters, predictions, dict(train_result.get("diagnostics") or {}))
-        elif self._use_hierarchical_graph_dynamics_trainer(trainer):
-            train_result = train_hierarchical_graph_dynamics(dataset, trainer, seed_objective, payload)
-            learned_parameters = dict(train_result.get("learned_parameters") or {})
-            predictions = dict(train_result.get("predictions") or {})
-            candidate_report = self._neural_dynamics_candidate_report(trainer, learned_parameters, predictions, dict(train_result.get("diagnostics") or {}))
-        elif self._use_neural_dynamics_trainer(trainer):
-            train_result = train_neural_multi_head_dynamics(dataset, trainer, seed_objective, payload)
-            learned_parameters = dict(train_result.get("learned_parameters") or {})
-            predictions = dict(train_result.get("predictions") or {})
-            candidate_report = self._neural_dynamics_candidate_report(trainer, learned_parameters, predictions, dict(train_result.get("diagnostics") or {}))
-        else:
-            learned_parameters = self._train_dynamics_parameters(dataset, seed_objective, trainer)
-            predictions = self._predict_with_baseline_dynamics(dataset, learned_parameters)
-            candidate_report = self._train_dynamics_candidate_report(trainer, learned_parameters, predictions)
-        backend_payload = {
-            "dataset": dataset,
-            "backend": {
-                "backend_id": trainer["trainer_id"],
-                "backend_type": "trainable_candidate_scaffold",
-                "model_name": trainer["model_name"],
-                "model_version": trainer["model_version"],
-                "model_family": trainer["model_family"],
-                "trainable": True,
-                "action_conditioned": True,
-                "uses_geofm": trainer.get("uses_geofm", False),
-                "uses_causal_calibration": trainer.get("uses_causal_calibration", False),
-            },
-            "candidate_report": candidate_report,
-            "thresholds": payload.get("thresholds") or {},
-            "geofm_gate_report": payload.get("geofm_gate_report") or {},
-            "causal_calibration_report": payload.get("causal_calibration_report") or {},
-        }
-        backend_report = self.dynamics_backend_report(state_version_id, backend_payload)
-        objective_report = self.training_objective_report(
-            state_version_id,
-            {
-                "dataset": dataset,
-                "dynamics_backend_report": backend_report,
-                "predictions": predictions,
-            },
-        )
-        evidence_gate = self._train_dynamics_evidence_gate(
-            readiness=readiness,
-            backend_report=backend_report,
-            objective_report=objective_report,
-            trainer=trainer,
-        )
-        report = TwmTrainDynamicsReport(
-            state_version_id=state_version_id,
-            project_id=state.project_id,
-            status=evidence_gate.get("status", "review"),
-            trainer=trainer,
-            objective=objective_report,
-            learned_parameters=learned_parameters,
-            predictions=predictions,
-            candidate_report=candidate_report,
-            backend_report=backend_report,
-            evidence_gate=evidence_gate,
-            recommendations=self._train_dynamics_recommendations(evidence_gate, trainer),
-        )
-        return report.to_dict()
+            result = report.to_dict()
+            _set_trace_attribute(trace_ctx, "twm.gate_status", result.get("evidence_gate", {}).get("status", result.get("status", "review")))
+            return result
 
     # ------------------------------------------------------------------
     # Rules / reviews / evidence
@@ -3332,27 +3356,37 @@ class TerritoryWorldModelService:
                     }
                 )
             ]
-        scenario_context = dict(payload.get("scenario_context") or {})
-        scenario_context = self._scenario_context_with_causal_calibration(state_version_id, payload, scenario_context)
-        rollout = self.planner.counterfactual_rollout(
-            {
-                "state_version": state,
-                "objects": state_bundle["objects"],
-                "relations": state_bundle["relations"],
-                "quality_summary": state.quality_summary,
-                "warnings": [],
-                "hierarchy_tokens": state.summary,
-            },
-            baseline_action=baseline_action,
-            intervention_actions=intervention_actions,
-            scenario=payload.get("scenario") or baseline_action.scenario,
-            horizon=int(payload.get("horizon") or 3),
-            rule_hits=self.repository.list_rule_hits(state_version_id=state_version_id),
-            evidence_coverage=payload.get("evidence_coverage"),
-            scenario_context=scenario_context,
-        )
-        result = rollout.to_dict()
-        return self._counterfactual_with_dynamics_candidate(result, payload)
+        horizon = int(payload.get("horizon") or 3)
+        sample_count = horizon * (1 + len(intervention_actions))
+        with trace_twm_operation(
+            "counterfactual_rollout",
+            state_version_id=state_version_id,
+            backend="planner",
+            sample_count=sample_count,
+            gate_status="pending",
+        ) as trace_ctx:
+            scenario_context = dict(payload.get("scenario_context") or {})
+            scenario_context = self._scenario_context_with_causal_calibration(state_version_id, payload, scenario_context)
+            rollout = self.planner.counterfactual_rollout(
+                {
+                    "state_version": state,
+                    "objects": state_bundle["objects"],
+                    "relations": state_bundle["relations"],
+                    "quality_summary": state.quality_summary,
+                    "warnings": [],
+                    "hierarchy_tokens": state.summary,
+                },
+                baseline_action=baseline_action,
+                intervention_actions=intervention_actions,
+                scenario=payload.get("scenario") or baseline_action.scenario,
+                horizon=horizon,
+                rule_hits=self.repository.list_rule_hits(state_version_id=state_version_id),
+                evidence_coverage=payload.get("evidence_coverage"),
+                scenario_context=scenario_context,
+            )
+            result = self._counterfactual_with_dynamics_candidate(rollout.to_dict(), payload)
+            _set_trace_attribute(trace_ctx, "twm.gate_status", result.get("evidence_gate", {}).get("status", "review"))
+            return result
 
     def beam_plan(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(payload or {})
@@ -4815,57 +4849,70 @@ class TerritoryWorldModelService:
         outcome_name = str(payload.get("outcome") or payload.get("outcome_name") or "planning_utility_delta")
         records, record_source = self._causal_records_for_calibration(state_version_id, payload)
         thresholds = self._causal_calibration_thresholds(payload)
-        estimate = self._estimate_observational_treatment_effect(records, thresholds=thresholds)
-        model_effect = safe_float(payload.get("model_effect"), None)
-        if model_effect is None:
-            model_effect = self._model_effect_from_rollout(state_version_id, payload)
-        calibration = self._causal_calibration_from_estimate(estimate, model_effect)
-        scca_report = self._payload_scca_causal_evidence_report(payload)
-        evidence_gate = self._causal_evidence_gate(
-            records=records,
-            estimate=estimate,
-            calibration=calibration,
-            thresholds=thresholds,
-            record_source=record_source,
-            scca_report=scca_report,
-        )
-        recommendations = self._causal_calibration_recommendations(evidence_gate, estimate, calibration, record_source)
-        if scca_report:
-            recommendations.extend(self._scca_causal_evidence_recommendations(scca_report))
-        status = "pass" if evidence_gate.get("status") == "pass" else "review"
-        if evidence_gate.get("blocked"):
-            status = "blocked"
-
-        report = TwmCausalCalibrationReport(
+        with trace_twm_operation(
+            "estimate_observational_treatment_effect",
             state_version_id=state_version_id,
-            project_id=state.project_id,
-            status=status,
-            treatment={
-                "name": treatment_name,
-                "positive_label": payload.get("positive_label", 1),
-                "assignment": "observational",
-            },
-            outcome={
-                "name": outcome_name,
-                "direction": str(payload.get("outcome_direction") or "higher_better"),
-            },
-            estimate=estimate,
-            calibration=calibration,
-            evidence_gate=evidence_gate,
-            provenance={
-                "state_version_id": state_version_id,
-                "record_source": record_source,
-                "record_count": len(records),
-                "rule_hit_count": len(self.repository.list_rule_hits(state_version_id=state_version_id)),
-                "record_inventory": self._causal_record_inventory(records),
-                "scca_causal_evidence_report": scca_report or None,
-                "method_note": "primary estimator comes from the local causal calibration backend and remains observational rather than randomized identification",
-            },
-            recommendations=recommendations,
-        )
-        result = report.to_dict()
-        self._cache_set(self._causal_calibration_cache, cache_key, result)
-        return deepcopy(result)
+            backend="observational_causal_calibration",
+            sample_count=len(records),
+            gate_status="pending",
+        ) as trace_ctx:
+            estimate = self._estimate_observational_treatment_effect(records, thresholds=thresholds)
+            model_effect = safe_float(payload.get("model_effect"), None)
+            if model_effect is None:
+                model_effect = self._model_effect_from_rollout(state_version_id, payload)
+            calibration = self._causal_calibration_from_estimate(estimate, model_effect)
+            scca_report = self._payload_scca_causal_evidence_report(payload)
+            evidence_gate = self._causal_evidence_gate(
+                records=records,
+                estimate=estimate,
+                calibration=calibration,
+                thresholds=thresholds,
+                record_source=record_source,
+                scca_report=scca_report,
+            )
+            recommendations = self._causal_calibration_recommendations(evidence_gate, estimate, calibration, record_source)
+            if scca_report:
+                recommendations.extend(self._scca_causal_evidence_recommendations(scca_report))
+            status = "pass" if evidence_gate.get("status") == "pass" else "review"
+            if evidence_gate.get("blocked"):
+                status = "blocked"
+
+            report = TwmCausalCalibrationReport(
+                state_version_id=state_version_id,
+                project_id=state.project_id,
+                status=status,
+                identification_strength="observational",
+                identification_note=(
+                    "local TWM calibration estimates observational treatment effects from "
+                    "approved/reviewed histories; it is not randomized or do-intervention identification"
+                ),
+                treatment={
+                    "name": treatment_name,
+                    "positive_label": payload.get("positive_label", 1),
+                    "assignment": "observational",
+                },
+                outcome={
+                    "name": outcome_name,
+                    "direction": str(payload.get("outcome_direction") or "higher_better"),
+                },
+                estimate=estimate,
+                calibration=calibration,
+                evidence_gate=evidence_gate,
+                provenance={
+                    "state_version_id": state_version_id,
+                    "record_source": record_source,
+                    "record_count": len(records),
+                    "rule_hit_count": len(self.repository.list_rule_hits(state_version_id=state_version_id)),
+                    "record_inventory": self._causal_record_inventory(records),
+                    "scca_causal_evidence_report": scca_report or None,
+                    "method_note": "primary estimator comes from the local causal calibration backend and remains observational rather than randomized identification",
+                },
+                recommendations=recommendations,
+            )
+            result = report.to_dict()
+            _set_trace_attribute(trace_ctx, "twm.gate_status", result.get("evidence_gate", {}).get("status", result.get("status", "review")))
+            self._cache_set(self._causal_calibration_cache, cache_key, result)
+            return deepcopy(result)
 
     def scca_causal_evidence_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(payload or {})
