@@ -78,6 +78,28 @@ def _json(data: Any) -> str:
     return json.dumps(jsonable(data), ensure_ascii=False, default=str)
 
 
+def _mapping_payload(value: Any, *, raw_key: str = "raw") -> dict[str, Any]:
+    if value is None:
+        return {}
+    if isinstance(value, dict):
+        return dict(value)
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return {}
+        try:
+            parsed = json.loads(text)
+        except Exception:
+            return {raw_key: value}
+        if isinstance(parsed, dict):
+            return dict(parsed)
+        return {raw_key: parsed}
+    try:
+        return dict(value)
+    except (TypeError, ValueError):
+        return {raw_key: value}
+
+
 def _set_trace_attribute(trace_ctx: dict[str, Any], key: str, value: Any) -> None:
     span = (trace_ctx or {}).get("span")
     if span is None:
@@ -2545,6 +2567,263 @@ class TerritoryWorldModelService:
         }
         return json.loads(_json(result))
 
+    def _update_data_foundation_bbox(self, coords: Any, bbox: list[float | None]) -> None:
+        if (
+            isinstance(coords, list)
+            and len(coords) >= 2
+            and isinstance(coords[0], (int, float))
+            and isinstance(coords[1], (int, float))
+        ):
+            lng = float(coords[0])
+            lat = float(coords[1])
+            bbox[0] = lng if bbox[0] is None else min(float(bbox[0]), lng)
+            bbox[1] = lat if bbox[1] is None else min(float(bbox[1]), lat)
+            bbox[2] = lng if bbox[2] is None else max(float(bbox[2]), lng)
+            bbox[3] = lat if bbox[3] is None else max(float(bbox[3]), lat)
+            return
+        if isinstance(coords, list):
+            for item in coords:
+                self._update_data_foundation_bbox(item, bbox)
+
+    def _data_foundation_crs_diagnostic(self, layer_bbox: list[float | None] | None) -> dict[str, Any]:
+        if not layer_bbox or not all(value is not None for value in layer_bbox):
+            return {
+                "status": "unknown",
+                "coordinate_space": "unknown",
+                "map_overlay_ready": False,
+                "warning_code": "missing_spatial_extent",
+                "suggested_action": "inspect_geometry_before_map_overlay",
+                "message": "空间范围缺失，不能确认是否可直接叠加到经纬度底图。",
+            }
+        min_x, min_y, max_x, max_y = [float(value) for value in layer_bbox]
+        is_lonlat = -180.0 <= min_x <= 180.0 and -180.0 <= max_x <= 180.0 and -90.0 <= min_y <= 90.0 and -90.0 <= max_y <= 90.0
+        if is_lonlat:
+            return {
+                "status": "wgs84_lonlat",
+                "coordinate_space": "lonlat_degrees",
+                "map_overlay_ready": True,
+                "warning_code": None,
+                "suggested_action": "ready_for_map_overlay",
+                "message": "坐标范围符合经纬度范围，可直接用于当前演示地图叠加。",
+            }
+        return {
+            "status": "projected_or_non_wgs84",
+            "coordinate_space": "projected_or_large_numeric",
+            "map_overlay_ready": False,
+            "warning_code": "requires_crs_conversion",
+            "suggested_action": "convert_to_wgs84_before_map_overlay",
+            "message": "坐标范围超出经纬度范围，直接叠加到当前地图前需要做 CRS 识别和转换。",
+        }
+
+    def _data_foundation_map_overlay_readiness(self, layers: list[dict[str, Any]]) -> dict[str, Any]:
+        ready_layer_count = sum(1 for layer in layers if (layer.get("crs_diagnostic") or {}).get("map_overlay_ready") is True)
+        blocked_layer_count = len(layers) - ready_layer_count
+        warning_codes = sorted({
+            str((layer.get("crs_diagnostic") or {}).get("warning_code"))
+            for layer in layers
+            if (layer.get("crs_diagnostic") or {}).get("warning_code")
+        })
+        return {
+            "status": "ready" if layers and blocked_layer_count == 0 else "blocked" if blocked_layer_count else "empty",
+            "ready_layer_count": ready_layer_count,
+            "blocked_layer_count": blocked_layer_count,
+            "warning_codes": warning_codes,
+            "suggested_action": "load_on_map" if layers and blocked_layer_count == 0 else "fix_crs_before_map_overlay" if blocked_layer_count else "add_spatial_layers",
+            "message": (
+                "全部空间图层可直接叠加到当前地图。"
+                if layers and blocked_layer_count == 0
+                else "部分或全部空间图层不是经纬度坐标，直接叠加前需要 CRS 转换。"
+                if blocked_layer_count
+                else "未发现可预览空间图层。"
+            ),
+        }
+
+    def _data_foundation_property_value_type(self, value: Any) -> str:
+        if value is None:
+            return "null"
+        if isinstance(value, bool):
+            return "boolean"
+        if isinstance(value, (int, float)):
+            return "number"
+        if isinstance(value, str):
+            return "string"
+        if isinstance(value, list):
+            return "array"
+        if isinstance(value, dict):
+            return "object"
+        return type(value).__name__
+
+    def _data_foundation_layer_property_profile(self, features: list[Any]) -> dict[str, Any]:
+        field_order: list[str] = []
+        field_counts: dict[str, int] = {}
+        field_types: dict[str, str] = {}
+        sample_properties: dict[str, Any] = {}
+        for feature in features:
+            if not isinstance(feature, dict):
+                continue
+            properties = feature.get("properties")
+            if not isinstance(properties, dict):
+                continue
+            for raw_name, value in properties.items():
+                name = str(raw_name)
+                if name not in field_counts:
+                    field_order.append(name)
+                    field_types[name] = self._data_foundation_property_value_type(value)
+                field_counts[name] = field_counts.get(name, 0) + 1
+                if len(sample_properties) < 12 and name not in sample_properties:
+                    sample_properties[name] = value
+        return {
+            "property_field_count": len(field_order),
+            "property_fields": [
+                {
+                    "name": name,
+                    "value_type": field_types.get(name, "unknown"),
+                    "observed_count": field_counts.get(name, 0),
+                }
+                for name in field_order[:48]
+            ],
+            "sample_properties": sample_properties,
+        }
+
+    def _data_foundation_spatial_layer_catalog(self, root: Path, files: dict[str, Any]) -> list[dict[str, Any]]:
+        catalog: list[dict[str, Any]] = []
+        for rel_path, unit in files.items():
+            if unit != "feature" or not str(rel_path).endswith(".geojson"):
+                continue
+            path = root / str(rel_path)
+            if not path.exists():
+                continue
+            try:
+                payload = read_json(path)
+            except Exception:
+                continue
+            features = payload.get("features") if isinstance(payload, dict) and payload.get("type") == "FeatureCollection" else None
+            if not isinstance(features, list):
+                continue
+            layer_bbox: list[float | None] = [None, None, None, None]
+            for feature in features:
+                if isinstance(feature, dict):
+                    self._update_data_foundation_bbox((feature.get("geometry") or {}).get("coordinates"), layer_bbox)
+            bbox = layer_bbox if all(value is not None for value in layer_bbox) else None
+            property_profile = self._data_foundation_layer_property_profile(features)
+            catalog.append({
+                "path": str(rel_path),
+                "label": str(rel_path).replace("synthetic_", "").replace(".geojson", ""),
+                "unit": unit,
+                "feature_count": len(features),
+                "bbox": bbox,
+                **property_profile,
+                "crs_diagnostic": self._data_foundation_crs_diagnostic(bbox),
+                "not_for_production": True,
+            })
+        return catalog
+
+    def data_foundation_map_preview(
+        self,
+        dataset_id: str,
+        max_features_per_layer: Any = 500,
+        layer_path: Any = None,
+    ) -> dict[str, Any]:
+        dataset_id = compact_text(dataset_id)
+        raw_limit = compact_text(max_features_per_layer)
+        selected_layer_path = compact_text(layer_path)
+        full_load = raw_limit.lower() in {"all", "full", "true"} or safe_int(max_features_per_layer, 500) <= 0
+        max_features = None if full_load else max(1, min(safe_int(max_features_per_layer, 500), 2000))
+        spec = next((item for item in TWM_DATA_FOUNDATION_DATASETS if item.get("id") == dataset_id), None)
+        if spec is None:
+            raise LookupError(f"data foundation dataset not found: {dataset_id}")
+
+        def sample_features(features: list[Any]) -> list[Any]:
+            if max_features is None:
+                return features
+            if len(features) <= max_features:
+                return features
+            if max_features == 1:
+                return [features[0]]
+            step = (len(features) - 1) / (max_features - 1)
+            return [features[round(idx * step)] for idx in range(max_features)]
+
+        root = self._repo_root() / str(spec["path"])
+        layers: list[dict[str, Any]] = []
+        overall_bbox: list[float | None] = [None, None, None, None]
+        total_source_feature_count = 0
+        total_preview_feature_count = 0
+        for rel_path, unit in dict(spec.get("files") or {}).items():
+            if unit != "feature" or not str(rel_path).endswith(".geojson"):
+                continue
+            if selected_layer_path and str(rel_path) != selected_layer_path:
+                continue
+            path = root / str(rel_path)
+            if not path.exists():
+                continue
+            payload = read_json(path)
+            if not isinstance(payload, dict):
+                continue
+            features = payload.get("features") if payload.get("type") == "FeatureCollection" else None
+            if not isinstance(features, list):
+                continue
+            sampled_features = []
+            layer_bbox: list[float | None] = [None, None, None, None]
+            total_source_feature_count += len(features)
+            for feature in sample_features(features):
+                if not isinstance(feature, dict):
+                    continue
+                cloned = deepcopy(feature)
+                properties = dict(cloned.get("properties") or {})
+                properties["_twm_dataset_id"] = dataset_id
+                properties["_twm_source_file"] = str(rel_path)
+                properties["_twm_preview"] = True
+                cloned["properties"] = properties
+                self._update_data_foundation_bbox(cloned.get("geometry", {}).get("coordinates"), layer_bbox)
+                self._update_data_foundation_bbox(cloned.get("geometry", {}).get("coordinates"), overall_bbox)
+                sampled_features.append(cloned)
+            total_preview_feature_count += len(sampled_features)
+            layer_bbox_value = layer_bbox if all(value is not None for value in layer_bbox) else None
+            layer_crs_diagnostic = self._data_foundation_crs_diagnostic(layer_bbox_value)
+            layers.append({
+                "name": str(rel_path),
+                "label": str(rel_path).replace("synthetic_", "").replace(".geojson", ""),
+                "unit": unit,
+                "delivery_mode": "full_geojson" if full_load else "sampled_geojson",
+                "source_feature_count": len(features),
+                "preview_feature_count": len(sampled_features),
+                "not_for_production": True,
+                "bbox": layer_bbox_value,
+                "crs_diagnostic": layer_crs_diagnostic,
+                "geojson": {
+                    "type": "FeatureCollection",
+                    "features": sampled_features,
+                },
+            })
+        center = None
+        bbox = overall_bbox if all(value is not None for value in overall_bbox) else None
+        if selected_layer_path and not layers:
+            raise LookupError(f"data foundation spatial layer not found: {dataset_id}/{selected_layer_path}")
+        if bbox:
+            center = [
+                (float(bbox[1]) + float(bbox[3])) / 2,
+                (float(bbox[0]) + float(bbox[2])) / 2,
+            ]
+
+        map_overlay_readiness = self._data_foundation_map_overlay_readiness(layers)
+
+        return json.loads(_json({
+            "schema": "territory_world_model.data_foundation_map_preview.v1",
+            "dataset_id": dataset_id,
+            "label": spec.get("label"),
+            "positioning": spec.get("positioning"),
+            "not_for_production": True,
+            "max_features_per_layer": max_features,
+            "delivery_mode": "full_geojson" if full_load else "sampled_geojson",
+            "layer_count": len(layers),
+            "total_source_feature_count": total_source_feature_count,
+            "total_preview_feature_count": total_preview_feature_count,
+            "bbox": bbox,
+            "center": center,
+            "map_overlay_readiness": map_overlay_readiness,
+            "layers": layers,
+        }))
+
     def _load_data_foundation_validation(self) -> dict[str, Any]:
         path = self._repo_root() / "docs" / "reports" / "twm_data_foundation_validation.json"
         if not path.exists():
@@ -2572,6 +2851,7 @@ class TerritoryWorldModelService:
                 "unit": unit,
                 **audit,
             })
+        spatial_layer_catalog = self._data_foundation_spatial_layer_catalog(root, dict(spec.get("files") or {}))
         return {
             "id": spec["id"],
             "label": spec["label"],
@@ -2586,6 +2866,8 @@ class TerritoryWorldModelService:
             "synthetic_count": synthetic_count,
             "not_for_production_count": not_for_production_count,
             "files": files,
+            "spatial_layer_catalog": spatial_layer_catalog,
+            "map_overlay_readiness": self._data_foundation_map_overlay_readiness(spatial_layer_catalog),
             "claim_boundary": "该数据包用于测试和适配验证；not_for_production=true 时不得作为真实治理结论依据。",
         }
 
@@ -3198,7 +3480,7 @@ class TerritoryWorldModelService:
             parameters=dict(payload.get("parameters") or {}),
             treatment=str(payload.get("treatment") or ""),
         )
-        scenario_context = dict(payload.get("scenario_context") or {})
+        scenario_context = _mapping_payload(payload.get("scenario_context"))
         scenario_context = self._scenario_context_with_causal_calibration(state_version_id, payload, scenario_context)
         plan = self.planner.plan(
             {
@@ -3365,7 +3647,7 @@ class TerritoryWorldModelService:
             sample_count=sample_count,
             gate_status="pending",
         ) as trace_ctx:
-            scenario_context = dict(payload.get("scenario_context") or {})
+            scenario_context = _mapping_payload(payload.get("scenario_context"))
             scenario_context = self._scenario_context_with_causal_calibration(state_version_id, payload, scenario_context)
             rollout = self.planner.counterfactual_rollout(
                 {
@@ -3833,7 +4115,7 @@ class TerritoryWorldModelService:
             "evidence_coverage": payload.get("evidence_coverage"),
             "treatment": payload.get("treatment") or "",
             "parameters": dict(payload.get("parameters") or {}),
-            "scenario_context": dict(payload.get("scenario_context") or {}),
+            "scenario_context": _mapping_payload(payload.get("scenario_context")),
         }
         self._copy_dynamics_candidate_payload(payload, forecast_payload)
         forecast = self.forecast(state_version_id, forecast_payload)
@@ -3855,7 +4137,7 @@ class TerritoryWorldModelService:
                     "parameters": dict(payload.get("parameters") or {}),
                 }
             ],
-            "scenario_context": dict(payload.get("scenario_context") or {}),
+            "scenario_context": _mapping_payload(payload.get("scenario_context")),
         }
         self._copy_dynamics_candidate_payload(payload, rollout_payload)
         rollout = self.counterfactual_rollout(state_version_id, rollout_payload)
@@ -4159,7 +4441,7 @@ class TerritoryWorldModelService:
                 "scenario": scenario,
                 "horizon": horizon,
                 "evidence_coverage": evidence_coverage,
-                "scenario_context": dict(payload.get("scenario_context") or {}),
+                "scenario_context": _mapping_payload(payload.get("scenario_context")),
             },
         )
         source_transition_examples = self._temporal_transition_examples_from_state_snapshots(
@@ -4194,7 +4476,7 @@ class TerritoryWorldModelService:
                 scenario=scenario,
                 rule_hits=rule_hits,
                 evidence_coverage=evidence_coverage,
-                scenario_context=dict(payload.get("scenario_context") or {}),
+                scenario_context=_mapping_payload(payload.get("scenario_context")),
             )
             action_mask = (forecast.evidence_gate or {}).get("action_mask") or {}
             not_for_training: list[str] = []
@@ -4216,7 +4498,7 @@ class TerritoryWorldModelService:
                 scenario_context={
                     "scenario": scenario,
                     "horizon": horizon,
-                    "scenario_context": dict(payload.get("scenario_context") or {}),
+                    "scenario_context": _mapping_payload(payload.get("scenario_context")),
                     "temporal_holdout": self._temporal_holdout_policy(payload),
                 },
                 targets={
@@ -6132,7 +6414,7 @@ class TerritoryWorldModelService:
             "evidence_coverage": payload.get("evidence_coverage"),
             "baseline_action": baseline_action,
             "intervention_actions": [intervention],
-            "scenario_context": dict(payload.get("scenario_context") or {}),
+            "scenario_context": _mapping_payload(payload.get("scenario_context")),
         }
         self._copy_dynamics_candidate_payload(payload, rollout_payload)
         if payload.get("causal_calibration"):
@@ -6156,7 +6438,7 @@ class TerritoryWorldModelService:
             "magnitude": selected_action.get("magnitude") or payload.get("magnitude") or 1.0,
             "baseline_action": rollout_payload.get("baseline_action"),
             "intervention_actions": rollout_payload.get("intervention_actions"),
-            "scenario_context": dict(payload.get("scenario_context") or {}),
+            "scenario_context": _mapping_payload(payload.get("scenario_context")),
             "parameters": dict(selected_action.get("parameters") or payload.get("parameters") or {}),
         }
         for key in (
@@ -7949,7 +8231,7 @@ class TerritoryWorldModelService:
                         "parameters": dict(payload.get("parameters") or {}),
                     }
                 ],
-                "scenario_context": dict(payload.get("scenario_context") or {}),
+                "scenario_context": _mapping_payload(payload.get("scenario_context")),
             },
         )
         return safe_float(((rollout.get("deltas") or {}).get("final") or {}).get("utility_delta_lift"), None)
@@ -8063,9 +8345,9 @@ class TerritoryWorldModelService:
             scenario=scenario,
             rule_hits=rule_hits,
             evidence_coverage=evidence_coverage,
-            scenario_context=dict(payload.get("scenario_context") or {}),
+            scenario_context=_mapping_payload(payload.get("scenario_context")),
         )
-        geofm_context = dict(payload.get("scenario_context") or {})
+        geofm_context = _mapping_payload(payload.get("scenario_context"))
         # Availability alone gives only a small candidate prior; explicit downstream
         # metrics are still required before the gate can retain GeoFM.
         if vector_inventory.get("available"):
@@ -8695,7 +8977,7 @@ class TerritoryWorldModelService:
     def _geofm_example_region(self, example: dict[str, Any]) -> str:
         labels = dict(example.get("labels") or {})
         provenance = dict(example.get("provenance") or {})
-        scenario_context = dict(example.get("scenario_context") or {})
+        scenario_context = _mapping_payload(example.get("scenario_context"))
         spatial_scope = dict(scenario_context.get("spatial_scope") or {}) if isinstance(scenario_context.get("spatial_scope"), dict) else {}
         current_state = dict(example.get("current_state_summary") or {})
         for source in (labels, provenance, spatial_scope, scenario_context, current_state):

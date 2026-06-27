@@ -157,6 +157,25 @@ async def twm_data_foundation_assessment(request: Request):
         return JSONResponse({"error": str(exc)}, status_code=500)
 
 
+async def twm_data_foundation_map_preview(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        return JSONResponse(
+            get_territory_world_model_service().data_foundation_map_preview(
+                request.path_params["dataset_id"],
+                max_features_per_layer=request.query_params.get("max_features_per_layer", "500"),
+                layer_path=request.query_params.get("layer"),
+            )
+        )
+    except LookupError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=500)
+
+
 async def twm_projects(request: Request):
     user = _get_user_from_request(request)
     if not user:
@@ -833,6 +852,7 @@ def get_territory_world_model_routes() -> list[Route]:
         Route("/api/twm/baseline-comparison-report", endpoint=twm_baseline_comparison_report, methods=["POST"]),
         Route("/api/twm/baseline-evidence-pipeline-report", endpoint=twm_baseline_evidence_pipeline_report, methods=["POST"]),
         Route("/api/twm/data-foundation-assessment", endpoint=twm_data_foundation_assessment, methods=["GET"]),
+        Route("/api/twm/data-foundation-map-preview/{dataset_id}", endpoint=twm_data_foundation_map_preview, methods=["GET"]),
         Route("/api/twm/projects", endpoint=twm_projects, methods=["GET", "POST"]),
         Route("/api/twm/projects/{id}", endpoint=twm_project_detail, methods=["GET"]),
         Route("/api/twm/projects/{id}/layer-bindings", endpoint=twm_project_bindings, methods=["GET", "POST"]),

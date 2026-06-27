@@ -1,12 +1,53 @@
 # GIS Data Agent — Roadmap
 
-**Last updated**: 2026-06-19 &nbsp;|&nbsp; **Current version**: v25.20 &nbsp;|&nbsp; **Next**: P5 remaining (影响范围联动 + 订阅更新提醒增强) + Self-Evolution regression gate &nbsp;|&nbsp; **ADK**: v1.27.2
+**Last updated**: 2026-06-27 &nbsp;|&nbsp; **Current version**: v25.21-twm-demo &nbsp;|&nbsp; **Next**: TWM 权威数据接入试点 + CRS/瓦片化治理 + Self-Evolution regression gate + Standards P5 remaining &nbsp;|&nbsp; **ADK**: v1.27.2
 
 > 参照标杆：SeerAI Geodesic、OpenClaw、Frontier、CoWork、**DeerFlow v2.0（ByteDance 通用 Agent Harness）**、**SIGMOD 2026 Data Agent Levels（L0-L5 自主性分级）**、**AgentArts（华为云企业级智能体平台）**、**Datus.ai（上下文工程 + 反馈飞轮）**、**Hermes Agent（通用 Agent Runtime）**、**Atlan / Alation / Ataccama（Agentic Governance + Active Metadata）**、**DataWorks / Dataphin（数据开发治理一体化 + Agent）**、**袋鼠云（多模态数据中台）**
 >
 > 核心战略：**Agentic Spatial Data Governance Platform（智能体驱动的时空数据治理平台）**——保持智能层 + 交互层领先，把空间数据治理、活跃元数据、声明式治理、数据产品化和多模态治理做成面向行业客户的产品能力；从"用户带数据来"转向"Agent 主动发现、治理、编排和运营数据"，从"一次性回答"转向"越用越准、越用越能沉淀的数据治理飞轮"。
 >
 > **Data Agent Level**: v25.0 = **L4 — Agentic Governance**（标准全生命周期闭环 + 单向派生 + 双层世界模型 + NL2SQL 列名反查 + 跨家族评估），从场景驱动升级为**标准驱动**
+
+---
+
+## v25.21 — TWM 自然资源部演示闭环 + 数据基础地图化 (自动化验证通过, 待人工确认, 2026-06-27)
+
+> **主题**: Territory World Model 从后台工具和技术验证，推进到面向自然资源原型汇报的前端交互闭环。当前目标是证明“数据基础、地图定位、规则证据、风险推演、方案比选、基线对比、技术载荷”可以在同一条可审计链路中运行，同时严格保留非生产数据和证据门控边界。
+
+- [x] **TWM 前端中文化与子 tab 组织** — TWM 操作页改为中文优先，拆分为 `总览地图`、`数据证据`、`操作推演`、`技术载荷`，避免给自然资源部演示时出现中英文混杂和信息堆叠。
+- [x] **数据基础浏览器 + 空间图层目录** — `数据证据` 页展示主演示数据包、空间图层目录、图层 bbox、字段数量、代表性字段、样例属性、图层级坐标诊断、完整数据清单、验证快照、问题-数据适配、阻断项和来源报告；默认主演示包为 `twm_bishan_multi_admin_eval`。
+- [x] **逐层上图 + 全量空间数据加载 + 坐标诊断 + 图层开关** — 新增 `GET /api/twm/data-foundation-map-preview/{dataset_id}`，支持 `max_features_per_layer=all` 返回 full GeoJSON，并支持 `layer=` 只加载指定空间图层；主演示包空间 GeoJSON 全量为 `21,603` 个要素，`synthetic_projects.geojson` 单图层为 `90` 个要素；接口返回 `map_overlay_readiness` 和图层级 `crs_diagnostic`，前端会阻断明显非经纬度图层直接叠加，并支持在全量加载后逐图层隐藏/显示。
+- [x] **地图叙事范围修正** — 修复此前总览地图审查区和数据基础空间范围不一致的问题。主演示 bbox 固定为 `[106.152182211, 29.667518609, 106.367539714, 29.886844144]`，审查区、风险命中和推荐方案均与该范围对齐。
+- [x] **总览地图联动** — `定位审查区`、`展示风险命中`、`展示推荐方案` 可向主地图推送 TWM 图层，演示中可以直接看到空间证据，而不是只看文字框。
+- [x] **端到端演示脚本与测试报告** — 新增自然资源部演示脚本和 E2E 测试报告，自动化测试覆盖登录、TWM 子 tab、全量加载、项目构建、规则审查、预测、验证、审计、方案比选、基线对比和技术载荷。
+- [x] **空间一致性防回归** — Playwright E2E 不再只检查页面状态文字，而是捕获推送给地图的 GeoJSON bbox，确认全量数据、定位审查区、风险命中和推荐方案均与主演示数据包 bbox 相交。
+- [x] **理论与发展边界文档** — 新增全国权威数据能力上限判断、TWM 作为 geospatial world model 的理论创新判断、TWM 后续完善与迭代规划。
+
+已验证证据：
+
+- 后端数据基础 focused tests：`9 passed in 32.13s`
+- 前端 build：通过，保留既有 Vite chunk size 和 loaders.gl browser external 警告
+- 本地容器健康检查：`http://127.0.0.1:8000/` 返回 `200`
+- TWM 演示 Playwright E2E：`1 passed (3.9m)`
+- 测试报告：`docs/reports/twm_e2e_test_report_2026-06-27.md`
+- 演示脚本：`docs/reports/twm_natural_resources_demo_script_2026-06-27.md`
+- 迭代规划：`docs/reports/twm_iteration_improvement_plan_2026-06-27.md`
+
+当前边界：
+
+- 当前数据仍是演示/非生产数据，不能包装成自然资源部门权威结论。
+- `twm_one_map_village_standard_sample` 当前坐标不是 WGS84 经纬度，不应和主演示样例直接混合叠加。
+- 当前验证证明的是演示链路、空间一致性和工程闭环，不等于证明真实预测效果、全国泛化或规划增益。
+- TWM simulator、trainable dynamics、planner 和 baseline comparison 已具备工程雏形，但生产级主张仍需要真实历史、政策动作标签、同案 baseline 和跨期/跨区 holdout。
+
+下一阶段 TWM roadmap：
+
+- [ ] **1 周内：演示冻结与人工验收** — 按演示脚本完成手工确认，冻结主演示数据包，保留地图截图和测试报告；任何地图范围不一致均阻断演示。
+- [ ] **1 个月内：数据基础产品化** — 增加 CRS 检测/转换提示、图层目录、字段浏览、图层开关、透明度、属性查看、lineage 和数据 readiness 报告。
+- [ ] **1 个月内：规模化地图加载路线** — 将 full GeoJSON 演示路径升级为分层加载、向量瓦片或服务端分块预览，避免全国级数据直接走浏览器全量 GeoJSON。
+- [ ] **3 个月内：真实试点验证** — 接入至少一个真实或脱敏试点区域的权威边界、审批/复核/执法/后续变化历史，建立同案 baseline 和跨期/跨区 holdout。
+- [ ] **3 个月内：TWM-native dynamics/suitability learner** — 在保留需求约束、规则解释和证据门控的前提下，训练更强的 action-conditioned dynamics 或 suitability learner，并与 FLUS/GeoSOS、人工 GIS 和规则引擎同案比较。
+- [ ] **6-12 个月：生产化治理闭环** — 完成 TWM 服务拆分、模型注册/版本固定/回滚、权限脱敏、内网部署、审计链和全国级多尺度状态图。
 
 ---
 

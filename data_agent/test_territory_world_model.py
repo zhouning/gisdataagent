@@ -46,12 +46,19 @@ def _build_project_and_state(service: TerritoryWorldModelService):
     return project, state
 
 
-def _fake_request(method="GET", body=b"{}", path_params=None):
+def _fake_request(method="GET", body=b"{}", path_params=None, query_string=b""):
     async def receive():
         return {"type": "http.request", "body": body, "more_body": False}
 
     return Request(
-        {"type": "http", "method": method, "path": "/", "headers": [], "path_params": path_params or {}},
+        {
+            "type": "http",
+            "method": method,
+            "path": "/",
+            "headers": [],
+            "path_params": path_params or {},
+            "query_string": query_string,
+        },
         receive,
     )
 
@@ -326,6 +333,29 @@ def test_forecast_returns_multi_head_outputs_with_gate_and_calibration():
     assert forecast["future_latent_state"]["projected"]["action_mask"]["target_object_count"] == 1
     assert forecast["evidence_gate"]["action_mask"]["required_reviews"] == ["planning_committee"]
     assert forecast["evidence_gate"]["status"] in {"pass", "review"}
+
+
+def test_forecast_and_validation_accept_frontend_string_scenario_context():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+
+    payload = {
+        "action_type": "protect",
+        "target_role": "project",
+        "scenario": "farmland_protection_review",
+        "evidence_coverage": 0.78,
+        "treatment": "causal_calibrated",
+        "scenario_context": "拟建项目是否触碰永久基本农田、生态红线，或造成耕地保护目标风险？",
+    }
+
+    forecast = svc.forecast(state_id, payload)
+    validation = svc.validation_report(state_id, {**payload, "horizon": 3})
+
+    assert forecast["forecast"]["constraint_violation_probability"] >= 0
+    assert validation["summary"]["stage_count"] >= 1
 
 
 def test_forecast_action_mask_blocks_unsupported_claims():
@@ -4243,10 +4273,163 @@ def test_data_foundation_assessment_states_current_data_boundary():
     multi_admin = next(item for item in assessment["datasets"] if item["id"] == "twm_bishan_multi_admin_eval")
     assert multi_admin["not_for_production"] is True
     assert any(item["path"] == "tables/approval_records.csv" and item["count"] == 90 for item in multi_admin["files"])
+    assert multi_admin["map_overlay_readiness"]["status"] == "ready"
+    assert multi_admin["map_overlay_readiness"]["blocked_layer_count"] == 0
+    assert len(multi_admin["spatial_layer_catalog"]) == 6
+    parcel_layer = next(item for item in multi_admin["spatial_layer_catalog"] if item["path"] == "parcel_current.geojson")
+    assert parcel_layer["feature_count"] == 21218
+    assert parcel_layer["crs_diagnostic"]["status"] == "wgs84_lonlat"
+    project_layer = next(item for item in multi_admin["spatial_layer_catalog"] if item["path"] == "synthetic_projects.geojson")
+    project_field_names = {field["name"] for field in project_layer["property_fields"]}
+    assert project_layer["property_field_count"] >= 30
+    assert {"XMMC", "YDMJ", "approval_status"}.issubset(project_field_names)
+    assert project_layer["sample_properties"]["XMMC"] == "璧山世界模型合成项目01"
+    assert len(project_layer["sample_properties"]) <= 12
+    village = next(item for item in assessment["datasets"] if item["id"] == "twm_one_map_village_standard_sample")
+    assert village["map_overlay_readiness"]["status"] == "blocked"
+    assert "requires_crs_conversion" in village["map_overlay_readiness"]["warning_codes"]
+    assert any(item["crs_diagnostic"]["status"] == "projected_or_non_wgs84" for item in village["spatial_layer_catalog"])
     assert any(item["problem"] == "工程 MVP 与回归测试" for item in assessment["supported_problems"])
     assert any(item["claim"] == "生产级审批结论" for item in assessment["unsupported_claims"])
     assert assessment["required_next_data"][0]["priority"] == "P0"
     assert "工程和研究假设验证" in assessment["mentor_answer"]["short_answer"]
+
+
+def test_data_foundation_map_preview_returns_sampled_geojson_layers():
+    svc = _build_service()
+    preview = svc.data_foundation_map_preview("twm_bishan_multi_admin_eval", max_features_per_layer=12)
+
+    assert preview["schema"] == "territory_world_model.data_foundation_map_preview.v1"
+    assert preview["dataset_id"] == "twm_bishan_multi_admin_eval"
+    assert preview["not_for_production"] is True
+    assert len(preview["center"]) == 2
+    assert preview["bbox"][0] < preview["bbox"][2]
+    assert preview["bbox"][1] < preview["bbox"][3]
+    layer_names = {layer["name"] for layer in preview["layers"]}
+    assert "parcel_current.geojson" in layer_names
+    assert "synthetic_projects.geojson" in layer_names
+    parcel_layer = next(layer for layer in preview["layers"] if layer["name"] == "parcel_current.geojson")
+    assert parcel_layer["source_feature_count"] == 21218
+    assert 1 <= parcel_layer["preview_feature_count"] <= 12
+    assert parcel_layer["geojson"]["type"] == "FeatureCollection"
+    assert len(parcel_layer["geojson"]["features"]) == parcel_layer["preview_feature_count"]
+
+
+def test_data_foundation_map_preview_reports_wgs84_overlay_readiness():
+    svc = _build_service()
+    preview = svc.data_foundation_map_preview("twm_bishan_multi_admin_eval", max_features_per_layer=12)
+
+    readiness = preview["map_overlay_readiness"]
+    assert readiness["status"] == "ready"
+    assert readiness["ready_layer_count"] == preview["layer_count"]
+    assert readiness["blocked_layer_count"] == 0
+    assert readiness["warning_codes"] == []
+    for layer in preview["layers"]:
+        diagnostic = layer["crs_diagnostic"]
+        assert diagnostic["status"] == "wgs84_lonlat"
+        assert diagnostic["coordinate_space"] == "lonlat_degrees"
+        assert diagnostic["map_overlay_ready"] is True
+
+
+def test_data_foundation_map_preview_blocks_projected_coordinate_layers():
+    svc = _build_service()
+    preview = svc.data_foundation_map_preview("twm_one_map_village_standard_sample", max_features_per_layer=4)
+
+    readiness = preview["map_overlay_readiness"]
+    assert readiness["status"] == "blocked"
+    assert readiness["blocked_layer_count"] > 0
+    assert "requires_crs_conversion" in readiness["warning_codes"]
+    projected_layer = next(layer for layer in preview["layers"] if layer["crs_diagnostic"]["status"] == "projected_or_non_wgs84")
+    assert projected_layer["crs_diagnostic"]["coordinate_space"] == "projected_or_large_numeric"
+    assert projected_layer["crs_diagnostic"]["map_overlay_ready"] is False
+    assert projected_layer["crs_diagnostic"]["suggested_action"] == "convert_to_wgs84_before_map_overlay"
+    assert projected_layer["bbox"][0] > 1000
+
+
+def test_data_foundation_map_preview_accepts_full_geojson_layers():
+    svc = _build_service()
+    preview = svc.data_foundation_map_preview("twm_bishan_multi_admin_eval", max_features_per_layer="all")
+
+    parcel_layer = next(layer for layer in preview["layers"] if layer["name"] == "parcel_current.geojson")
+    project_layer = next(layer for layer in preview["layers"] if layer["name"] == "synthetic_projects.geojson")
+
+    assert preview["delivery_mode"] == "full_geojson"
+    assert preview["max_features_per_layer"] is None
+    assert preview["total_source_feature_count"] == 21603
+    assert preview["total_preview_feature_count"] == preview["total_source_feature_count"]
+    assert parcel_layer["source_feature_count"] == 21218
+    assert parcel_layer["preview_feature_count"] == parcel_layer["source_feature_count"]
+    assert len(parcel_layer["geojson"]["features"]) == 21218
+    assert project_layer["preview_feature_count"] == project_layer["source_feature_count"]
+
+
+def test_data_foundation_map_preview_filters_to_requested_layer():
+    svc = _build_service()
+    preview = svc.data_foundation_map_preview(
+        "twm_bishan_multi_admin_eval",
+        max_features_per_layer="all",
+        layer_path="synthetic_projects.geojson",
+    )
+
+    assert preview["delivery_mode"] == "full_geojson"
+    assert preview["layer_count"] == 1
+    assert preview["total_source_feature_count"] == 90
+    assert preview["total_preview_feature_count"] == 90
+    assert preview["map_overlay_readiness"]["status"] == "ready"
+    assert [layer["name"] for layer in preview["layers"]] == ["synthetic_projects.geojson"]
+    layer = preview["layers"][0]
+    assert layer["source_feature_count"] == 90
+    assert layer["preview_feature_count"] == 90
+    assert layer["crs_diagnostic"]["map_overlay_ready"] is True
+
+
+def test_data_foundation_map_preview_route_returns_layers(monkeypatch):
+    svc = _build_service()
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+
+    response = asyncio.run(routes.twm_data_foundation_map_preview(_fake_request(path_params={"dataset_id": "twm_bishan_multi_admin_eval"})))
+    body = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert body["schema"] == "territory_world_model.data_foundation_map_preview.v1"
+    assert body["dataset_id"] == "twm_bishan_multi_admin_eval"
+    assert any(layer["name"] == "synthetic_projects.geojson" for layer in body["layers"])
+
+
+def test_data_foundation_map_preview_route_accepts_all_query(monkeypatch):
+    svc = _build_service()
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+
+    response = asyncio.run(routes.twm_data_foundation_map_preview(_fake_request(
+        path_params={"dataset_id": "twm_bishan_multi_admin_eval"},
+        query_string=b"max_features_per_layer=all",
+    )))
+    body = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert body["delivery_mode"] == "full_geojson"
+    parcel_layer = next(layer for layer in body["layers"] if layer["name"] == "parcel_current.geojson")
+    assert parcel_layer["preview_feature_count"] == 21218
+
+
+def test_data_foundation_map_preview_route_accepts_layer_query(monkeypatch):
+    svc = _build_service()
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+
+    response = asyncio.run(routes.twm_data_foundation_map_preview(_fake_request(
+        path_params={"dataset_id": "twm_bishan_multi_admin_eval"},
+        query_string=b"max_features_per_layer=all&layer=synthetic_projects.geojson",
+    )))
+    body = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert body["delivery_mode"] == "full_geojson"
+    assert body["layer_count"] == 1
+    assert body["total_source_feature_count"] == 90
+    assert [layer["name"] for layer in body["layers"]] == ["synthetic_projects.geojson"]
 
 
 def test_data_foundation_assessment_route_returns_json(monkeypatch):
