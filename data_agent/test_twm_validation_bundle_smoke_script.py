@@ -361,3 +361,30 @@ def test_paper58_external_benchmark_without_baseline_stays_review(tmp_path):
     assert summary["metric_summary"]["baseline_method"] is None
     assert "baseline_method_not_found" in summary["missing"]
     assert summary["metric_summary"]["paper58_vs_baseline_wins"] == 0
+
+
+def test_paper58_external_benchmark_malformed_metric_summary_reports_diagnostic(tmp_path):
+    module = _load_validation_bundle_module()
+    fixture = tmp_path / "paper58_bad_metrics"
+    fixture.mkdir()
+    (fixture / "metric_summary_by_method.csv").write_text(
+        "\n".join(
+            [
+                "method,n",
+                "geosos_flus_console,43",
+                "paper58_semantic_keep_loo_selector,43",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (fixture / "manifest.json").write_text(
+        json.dumps({"method": "paper58_semantic_keep_loo_selector", "summary": {"n": 43}}),
+        encoding="utf-8",
+    )
+
+    summary = module.build_paper58_external_benchmark(fixture)
+
+    assert summary["status"] == "review"
+    assert "metric_summary_required_columns_missing" in summary["missing"]
+    assert summary["blocks_validation"] is False

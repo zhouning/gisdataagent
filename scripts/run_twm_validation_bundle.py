@@ -311,6 +311,14 @@ def build_scca_report_if_requested(
 
 
 PAPER58_EXTERNAL_BENCHMARK_SCHEMA = "territory_world_model.paper58_external_benchmark.v1"
+PAPER58_REQUIRED_METRIC_SUMMARY_COLUMNS = {
+    "method",
+    "n",
+    "mean_change_f1",
+    "mean_fom",
+    "mean_transition_accuracy",
+    "mean_allocation_disagreement",
+}
 
 
 def build_paper58_external_benchmark(paper58_benchmark_dir: Path | str | None = None) -> dict[str, Any]:
@@ -366,6 +374,8 @@ def build_paper58_external_benchmark(paper58_benchmark_dir: Path | str | None = 
         manifest_missing = "manifest.json_unreadable" if any(item.get("path") == str(manifest_path) for item in read_errors) else "manifest.json"
         if manifest_missing not in missing:
             missing.append(manifest_missing)
+    if metric_rows and not paper58_metric_summary_has_required_columns(metric_rows):
+        missing.append("metric_summary_required_columns_missing")
 
     metric_summary = summarize_paper58_metric_rows(metric_rows, per_region_rows)
     if metric_summary.get("best_paper58_method") and not metric_summary.get("baseline_method"):
@@ -408,6 +418,13 @@ def safe_read_paper58_json(path: Path, missing: list[str], read_errors: list[dic
         missing.append(f"{path.name}_unreadable")
         read_errors.append({"path": str(path), "error": str(exc)})
         return {}
+
+
+def paper58_metric_summary_has_required_columns(metric_rows: list[dict[str, Any]]) -> bool:
+    columns: set[str] = set()
+    for row in metric_rows:
+        columns.update(str(key) for key in row.keys())
+    return PAPER58_REQUIRED_METRIC_SUMMARY_COLUMNS.issubset(columns)
 
 
 def summarize_paper58_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
