@@ -1624,6 +1624,7 @@ def render_validation_bundle_markdown(report: dict[str, Any]) -> str:
     validation = report.get("validation_summary") or {}
     claim = report.get("claim_ladder") or {}
     scca = report.get("scca_summary") or {}
+    paper58 = report.get("paper58_external_benchmark") or build_paper58_external_benchmark(None)
     production_normalization = summarize_production_observed_history_normalization(
         report.get("production_observed_history_normalization")
         or {
@@ -1660,6 +1661,7 @@ def render_validation_bundle_markdown(report: dict[str, Any]) -> str:
         f"- Scenario: `{inputs.get('scenario')}`",
         f"- Require SCCA pass: `{inputs.get('require_scca_pass')}`",
         f"- SCCA output: `{inputs.get('scca_output_dir') or inputs.get('scca_result_json')}`",
+        f"- Paper58 external benchmark: `{inputs.get('paper58_benchmark_dir')}`",
         f"- Production observed history: `{inputs.get('production_observed_history')}`",
         f"- Synthetic policy benchmark: `{inputs.get('synthetic_experiment_foundation')}`",
         f"- Production scale profile: `{inputs.get('production_scale_profile')}`",
@@ -1710,6 +1712,21 @@ def render_validation_bundle_markdown(report: dict[str, Any]) -> str:
         f"- Stages: `{validation.get('passed_stage_count', 0)}` pass / `{validation.get('review_stage_count', 0)}` review / `{validation.get('blocked_stage_count', 0)}` blocked",
         f"- Claim level: `{claim.get('current_level')}` (`{claim.get('current_claim')}`)",
         f"- SCCA: required=`{scca.get('required')}`, provided=`{scca.get('provided')}`, status=`{scca.get('status')}`",
+        "",
+        "## External Benchmark Evidence",
+        "",
+        f"- Paper58 status: `{paper58.get('status')}`",
+        f"- Provided: `{paper58.get('provided')}`",
+        f"- Claim scope: `{paper58.get('claim_scope')}`",
+        f"- Runtime dependency: `{paper58.get('runtime_dependency')}`",
+        f"- GeoFM runtime allowed: `{paper58.get('geofm_runtime_allowed')}`",
+        f"- TWM generator role: `{paper58.get('twm_generator_role')}`",
+        f"- Primary TWM route: `{paper58.get('primary_twm_route')}`",
+        f"- Best Paper58 method: `{((paper58.get('metric_summary') or {}).get('best_paper58_method'))}`",
+        f"- Baseline method: `{((paper58.get('metric_summary') or {}).get('baseline_method'))}`",
+        f"- Paper58 wins vs baseline: `{((paper58.get('metric_summary') or {}).get('paper58_vs_baseline_wins'))}`",
+        f"- Area count: `{((paper58.get('metric_summary') or {}).get('area_count'))}`",
+        f"- Boundary: {paper58.get('claim_boundary')}",
         "",
         "## Production Observed-History Preflight",
         "",

@@ -610,3 +610,58 @@ def test_paper58_external_benchmark_selects_strongest_baseline_row(tmp_path):
     assert summary["metric_summary"]["baseline_method"] == "geosos_flus_strong"
     assert summary["metric_summary"]["paper58_vs_baseline_wins"] == 0
     assert summary["metric_summary"]["deltas"]["mean_change_f1"] < 0
+
+
+def test_validation_bundle_markdown_renders_paper58_external_boundary():
+    module = _load_validation_bundle_module()
+    report = {
+        "inputs": {"paper58_benchmark_dir": "/tmp/paper58_fixture"},
+        "production_observed_history_normalization": {"status": "not_requested", "field_mapping": {}},
+        "production_observed_history_preflight": {
+            "status": "review",
+            "schema_audit": {"status": "review", "row_quality": {"production_candidate_row_count": 0}},
+            "policy_history_quality": {"status": "review"},
+            "temporal_validation_quality": {"status": "review"},
+            "policy_history_alignment": {"status": "review"},
+        },
+        "production_scale_readiness": {"status": "not_provided", "observed": {}, "check_diagnostics": []},
+        "production_readiness_gate": {"required": False, "status": "review", "missing": []},
+        "deployment_punch_list": {"status": "review", "required": False, "open_action_count": 0, "blocking_action_count": 0, "actions": []},
+        "paper58_external_benchmark": {
+            "status": "supporting_evidence",
+            "provided": True,
+            "claim_scope": "external_benchmark_support_only",
+            "runtime_dependency": "none",
+            "geofm_runtime_allowed": False,
+            "twm_generator_role": "not_a_runtime_generator",
+            "primary_twm_route": "twm_native_generation_and_planning",
+            "metric_summary": {
+                "best_paper58_method": "paper58_semantic_keep_loo_selector",
+                "baseline_method": "geosos_flus_console",
+                "paper58_vs_baseline_wins": 4,
+                "area_count": 43,
+            },
+            "claim_boundary": "Paper58 is external benchmark support only.",
+        },
+        "state_summary": {},
+        "rule_summary": {},
+        "audit_summary": {},
+        "selected_plan_evaluation_bundle": {},
+        "validation_summary": {},
+        "claim_ladder": {},
+        "scca_summary": {},
+        "claim_boundary": {},
+        "recommendations": [],
+    }
+
+    markdown = module.render_validation_bundle_markdown(report)
+
+    assert "## External Benchmark Evidence" in markdown
+    assert "Paper58 status: `supporting_evidence`" in markdown
+    assert "Claim scope: `external_benchmark_support_only`" in markdown
+    assert "Runtime dependency: `none`" in markdown
+    assert "GeoFM runtime allowed: `False`" in markdown
+    assert "TWM generator role: `not_a_runtime_generator`" in markdown
+    assert "Best Paper58 method: `paper58_semantic_keep_loo_selector`" in markdown
+    assert "Baseline method: `geosos_flus_console`" in markdown
+    assert "Paper58 is external benchmark support only." in markdown
