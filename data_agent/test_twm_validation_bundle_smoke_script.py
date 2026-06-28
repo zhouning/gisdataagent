@@ -7,6 +7,7 @@ from pathlib import Path
 
 
 SCRIPT = Path("scripts/smoke_twm_validation_bundle.sh")
+RUNNER = Path("scripts/run_twm_validation_bundle.py")
 
 
 def _load_validation_bundle_module():
@@ -43,6 +44,12 @@ def test_twm_validation_bundle_smoke_script_exposes_inner_network_controls():
     assert "--require-production-readiness" in text
     assert "--fail-on-blocked" in text
     assert ".venv/bin/python" in text
+
+
+def test_twm_validation_bundle_runner_exposes_paper58_benchmark_cli_option():
+    text = RUNNER.read_text(encoding="utf-8")
+
+    assert "--paper58-benchmark-dir" in text
 
 
 def test_production_scale_readiness_reports_check_diagnostics_for_partial_profile(tmp_path):

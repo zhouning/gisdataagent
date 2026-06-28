@@ -45,6 +45,7 @@ def main() -> None:
     parser.add_argument("--scca-output-dir", default="", help="Optional SCCA output directory or manifest path.")
     parser.add_argument("--scca-result-json", default="", help="Optional SCCA result JSON payload path.")
     parser.add_argument("--require-scca-pass", action="store_true", help="Require passing SCCA evidence before spatial causal claim promotion.")
+    parser.add_argument("--paper58-benchmark-dir", default="", help="Optional sanitized Paper58 benchmark summary directory or manifest path.")
     parser.add_argument("--production-observed-history", default="", help="Optional real non-synthetic observed approval/review history CSV.")
     parser.add_argument("--normalize-production-observed-history-source", default="", help="Optional raw approval/review export CSV to normalize before production preflight.")
     parser.add_argument("--normalized-production-observed-history-output", default="", help="Optional normalized production observed-history CSV output path.")
