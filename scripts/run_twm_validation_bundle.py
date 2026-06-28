@@ -356,21 +356,31 @@ def build_paper58_external_benchmark(paper58_benchmark_dir: Path | str | None = 
     metric_summary_path = root / "metric_summary_by_method.csv"
     per_region_path = root / "metrics_by_method.csv"
     missing = []
+    read_errors = []
     if not metric_summary_path.exists():
         missing.append("metric_summary_by_method.csv")
-    metric_rows = read_csv(metric_summary_path) if metric_summary_path.exists() else []
-    per_region_rows = read_csv(per_region_path) if per_region_path.exists() else []
-    manifest = read_json(manifest_path) if manifest_path.exists() else {}
+    metric_rows = safe_read_paper58_csv(metric_summary_path, missing, read_errors) if metric_summary_path.exists() else []
+    per_region_rows = safe_read_paper58_csv(per_region_path, missing, read_errors) if per_region_path.exists() else []
+    manifest = safe_read_paper58_json(manifest_path, missing, read_errors) if manifest_path.exists() else {}
     if not manifest:
-        missing.append("manifest.json")
+        manifest_missing = "manifest.json_unreadable" if any(item.get("path") == str(manifest_path) for item in read_errors) else "manifest.json"
+        if manifest_missing not in missing:
+            missing.append(manifest_missing)
 
     metric_summary = summarize_paper58_metric_rows(metric_rows, per_region_rows)
-    status = "supporting_evidence" if metric_summary.get("best_paper58_method") and not missing else "review"
+    if metric_summary.get("best_paper58_method") and not metric_summary.get("baseline_method"):
+        missing.append("baseline_method_not_found")
+    status = (
+        "supporting_evidence"
+        if metric_summary.get("best_paper58_method") and metric_summary.get("baseline_method") and not missing
+        else "review"
+    )
     return {
         **boundary,
         "status": status,
         "provided": True,
         "missing": missing,
+        "read_errors": read_errors,
         "source_files": {
             "paper58_benchmark_dir": str(root),
             "metric_summary_by_method": str(metric_summary_path) if metric_summary_path.exists() else None,
@@ -380,6 +390,24 @@ def build_paper58_external_benchmark(paper58_benchmark_dir: Path | str | None = 
         "metric_summary": metric_summary,
         "manifest_summary": summarize_paper58_manifest(manifest),
     }
+
+
+def safe_read_paper58_csv(path: Path, missing: list[str], read_errors: list[dict[str, str]]) -> list[dict[str, Any]]:
+    try:
+        return read_csv(path)
+    except Exception as exc:
+        missing.append(f"{path.name}_unreadable")
+        read_errors.append({"path": str(path), "error": str(exc)})
+        return []
+
+
+def safe_read_paper58_json(path: Path, missing: list[str], read_errors: list[dict[str, str]]) -> dict[str, Any]:
+    try:
+        return read_json(path)
+    except Exception as exc:
+        missing.append(f"{path.name}_unreadable")
+        read_errors.append({"path": str(path), "error": str(exc)})
+        return {}
 
 
 def summarize_paper58_manifest(manifest: dict[str, Any]) -> dict[str, Any]:

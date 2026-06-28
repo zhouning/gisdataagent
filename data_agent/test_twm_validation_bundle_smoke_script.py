@@ -308,3 +308,56 @@ def test_paper58_external_benchmark_fixture_is_supporting_evidence_only(tmp_path
     assert summary["runtime_dependency"] == "none"
     assert summary["geofm_runtime_allowed"] is False
     assert summary["can_promote_claim_ladder"] is False
+
+
+def test_paper58_external_benchmark_malformed_manifest_returns_review(tmp_path):
+    module = _load_validation_bundle_module()
+    fixture = tmp_path / "paper58_bad_manifest"
+    fixture.mkdir()
+    (fixture / "metric_summary_by_method.csv").write_text(
+        "\n".join(
+            [
+                "method,n,mean_change_f1,mean_fom,mean_transition_accuracy,mean_allocation_disagreement",
+                "geosos_flus_console,43,0.2688,0.1323,0.3423,0.0741",
+                "paper58_semantic_keep_loo_selector,43,0.2929,0.1471,0.3520,0.0721",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (fixture / "manifest.json").write_text("{bad json", encoding="utf-8")
+
+    summary = module.build_paper58_external_benchmark(fixture)
+
+    assert summary["status"] == "review"
+    assert summary["provided"] is True
+    assert "manifest.json_unreadable" in summary["missing"]
+    assert summary["blocks_validation"] is False
+
+
+def test_paper58_external_benchmark_without_baseline_stays_review(tmp_path):
+    module = _load_validation_bundle_module()
+    fixture = tmp_path / "paper58_no_baseline"
+    fixture.mkdir()
+    (fixture / "metric_summary_by_method.csv").write_text(
+        "\n".join(
+            [
+                "method,n,mean_change_f1,mean_fom,mean_transition_accuracy,mean_allocation_disagreement",
+                "paper58_semantic_keep_loo_selector,43,0.2929,0.1471,0.3520,0.0721",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (fixture / "manifest.json").write_text(
+        json.dumps({"method": "paper58_semantic_keep_loo_selector", "summary": {"n": 43}}),
+        encoding="utf-8",
+    )
+
+    summary = module.build_paper58_external_benchmark(fixture)
+
+    assert summary["status"] == "review"
+    assert summary["metric_summary"]["best_paper58_method"] == "paper58_semantic_keep_loo_selector"
+    assert summary["metric_summary"]["baseline_method"] is None
+    assert "baseline_method_not_found" in summary["missing"]
+    assert summary["metric_summary"]["paper58_vs_baseline_wins"] == 0
