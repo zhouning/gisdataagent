@@ -30,6 +30,7 @@ def test_twm_validation_bundle_smoke_script_exposes_inner_network_controls():
     assert "TWM_PRODUCTION_OBSERVED_HISTORY" in text
     assert "TWM_NORMALIZE_PRODUCTION_OBSERVED_HISTORY_SOURCE" in text
     assert "TWM_NORMALIZED_PRODUCTION_OBSERVED_HISTORY_OUTPUT" in text
+    assert "TWM_PAPER58_BENCHMARK_DIR" in text
     assert "TWM_PRODUCTION_SCALE_PROFILE" in text
     assert "TWM_REQUIRE_PRODUCTION_READINESS" in text
     assert "TWM_FAIL_ON_BLOCKED" in text
@@ -37,6 +38,7 @@ def test_twm_validation_bundle_smoke_script_exposes_inner_network_controls():
     assert "--production-observed-history" in text
     assert "--normalize-production-observed-history-source" in text
     assert "--normalized-production-observed-history-output" in text
+    assert "--paper58-benchmark-dir" in text
     assert "--production-scale-profile" in text
     assert "--require-production-readiness" in text
     assert "--fail-on-blocked" in text

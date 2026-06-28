@@ -28,6 +28,7 @@ HORIZON="${TWM_VALIDATION_HORIZON:-3}"
 SYNTHETIC_FOUNDATION="${TWM_SYNTHETIC_EXPERIMENT_FOUNDATION:-docs/reports/twm_synthetic_experiment_foundation.csv}"
 NORMALIZE_PRODUCTION_OBSERVED_HISTORY_SOURCE="${TWM_NORMALIZE_PRODUCTION_OBSERVED_HISTORY_SOURCE:-}"
 NORMALIZED_PRODUCTION_OBSERVED_HISTORY_OUTPUT="${TWM_NORMALIZED_PRODUCTION_OBSERVED_HISTORY_OUTPUT:-}"
+PAPER58_BENCHMARK_DIR="${TWM_PAPER58_BENCHMARK_DIR:-}"
 
 ARGS=(
   "--bundle-dir" "$BUNDLE_DIR"
@@ -63,6 +64,10 @@ if [ -n "${TWM_SCCA_RESULT_JSON:-}" ]; then
   ARGS+=("--scca-result-json" "$TWM_SCCA_RESULT_JSON")
 fi
 
+if [ -n "${PAPER58_BENCHMARK_DIR}" ]; then
+  ARGS+=("--paper58-benchmark-dir" "$PAPER58_BENCHMARK_DIR")
+fi
+
 if truthy "${TWM_REQUIRE_SCCA_PASS:-0}"; then
   ARGS+=("--require-scca-pass")
 fi
@@ -90,6 +95,7 @@ echo "[twm-validation] scenario=${SCENARIO}"
 echo "[twm-validation] production_observed_history=${TWM_PRODUCTION_OBSERVED_HISTORY:-not_provided}"
 echo "[twm-validation] normalize_production_observed_history_source=${NORMALIZE_PRODUCTION_OBSERVED_HISTORY_SOURCE:-not_provided}"
 echo "[twm-validation] normalized_production_observed_history_output=${NORMALIZED_PRODUCTION_OBSERVED_HISTORY_OUTPUT:-not_provided}"
+echo "[twm-validation] paper58_benchmark_dir=${PAPER58_BENCHMARK_DIR:-not_provided}"
 echo "[twm-validation] production_scale_profile=${TWM_PRODUCTION_SCALE_PROFILE:-not_provided}"
 echo "[twm-validation] require_production_readiness=${TWM_REQUIRE_PRODUCTION_READINESS:-0}"
 
