@@ -381,6 +381,8 @@ def build_paper58_external_benchmark(paper58_benchmark_dir: Path | str | None = 
         manifest_missing = "manifest.json_unreadable" if any(item.get("path") == str(manifest_path) for item in read_errors) else "manifest.json"
         if manifest_missing not in missing:
             missing.append(manifest_missing)
+    elif not is_paper58_manifest_method(manifest.get("method")):
+        missing.append("manifest_method_not_paper58")
     has_required_metric_columns = paper58_metric_summary_has_required_columns(metric_rows) if metric_rows else False
     if metric_rows and not has_required_metric_columns:
         missing.append("metric_summary_required_columns_missing")
@@ -509,6 +511,11 @@ def is_paper58_baseline_method(method: Any) -> bool:
 
 def is_paper58_method(method: Any) -> bool:
     return "paper58" in str(method or "").lower()
+
+
+def is_paper58_manifest_method(method: Any) -> bool:
+    text = str(method or "").strip().lower()
+    return bool(text) and "paper58" in text and not text.startswith("not_")
 
 
 def paper58_metric_score(row: dict[str, Any]) -> tuple[float, float, float, float]:
