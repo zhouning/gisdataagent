@@ -444,6 +444,33 @@ def test_paper58_external_benchmark_invalid_metric_values_stay_review(tmp_path):
     assert summary["blocks_validation"] is False
 
 
+def test_paper58_external_benchmark_non_finite_metric_values_stay_review(tmp_path):
+    module = _load_validation_bundle_module()
+    fixture = tmp_path / "paper58_non_finite_values"
+    fixture.mkdir()
+    (fixture / "metric_summary_by_method.csv").write_text(
+        "\n".join(
+            [
+                "method,n,mean_change_f1,mean_fom,mean_transition_accuracy,mean_allocation_disagreement",
+                "geosos_flus_console,43,0.2688,0.1323,0.3423,0.0741",
+                "paper58_semantic_keep_loo_selector,43,NaN,0.1471,0.3520,0.0721",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (fixture / "manifest.json").write_text(
+        json.dumps({"method": "paper58_semantic_keep_loo_selector", "summary": {"n": 43}}),
+        encoding="utf-8",
+    )
+
+    summary = module.build_paper58_external_benchmark(fixture)
+
+    assert summary["status"] == "review"
+    assert "metric_summary_invalid_numeric_values" in summary["missing"]
+    assert summary["blocks_validation"] is False
+
+
 def test_paper58_external_benchmark_selects_strongest_baseline_row(tmp_path):
     module = _load_validation_bundle_module()
     fixture = tmp_path / "paper58_multi_baseline"

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from pathlib import Path
 from typing import Any
@@ -449,7 +450,7 @@ def paper58_metric_summary_has_invalid_numeric_values(metric_rows: list[dict[str
         if safe_int(row.get("n"), None) is None:
             return True
         for key in PAPER58_REQUIRED_NUMERIC_METRIC_COLUMNS - {"n"}:
-            if safe_float(row.get(key), None) is None:
+            if paper58_finite_float(row.get(key), None) is None:
                 return True
     return False
 
@@ -463,10 +464,10 @@ def summarize_paper58_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
         "selection_rule": manifest.get("selection_rule"),
         "summary": {
             "n": safe_int(summary.get("n"), 0),
-            "mean_change_f1": safe_float(summary.get("mean_change_f1"), None),
-            "mean_fom": safe_float(summary.get("mean_fom"), None),
-            "mean_transition_accuracy": safe_float(summary.get("mean_transition_accuracy"), None),
-            "mean_allocation_disagreement": safe_float(summary.get("mean_allocation_disagreement"), None),
+            "mean_change_f1": paper58_finite_float(summary.get("mean_change_f1"), None),
+            "mean_fom": paper58_finite_float(summary.get("mean_fom"), None),
+            "mean_transition_accuracy": paper58_finite_float(summary.get("mean_transition_accuracy"), None),
+            "mean_allocation_disagreement": paper58_finite_float(summary.get("mean_allocation_disagreement"), None),
         },
     }
 
@@ -520,11 +521,18 @@ def is_paper58_manifest_method(method: Any) -> bool:
 
 def paper58_metric_score(row: dict[str, Any]) -> tuple[float, float, float, float]:
     return (
-        safe_float(row.get("mean_change_f1"), 0.0) or 0.0,
-        safe_float(row.get("mean_fom"), 0.0) or 0.0,
-        safe_float(row.get("mean_transition_accuracy"), 0.0) or 0.0,
-        -(safe_float(row.get("mean_allocation_disagreement"), 999.0) or 999.0),
+        paper58_finite_float(row.get("mean_change_f1"), 0.0) or 0.0,
+        paper58_finite_float(row.get("mean_fom"), 0.0) or 0.0,
+        paper58_finite_float(row.get("mean_transition_accuracy"), 0.0) or 0.0,
+        -(paper58_finite_float(row.get("mean_allocation_disagreement"), 999.0) or 999.0),
     )
+
+
+def paper58_finite_float(value: Any, default: float | None = None) -> float | None:
+    parsed = safe_float(value, None)
+    if parsed is None or not math.isfinite(parsed):
+        return default
+    return parsed
 
 
 def sanitize_paper58_metrics(row: dict[str, Any]) -> dict[str, Any]:
@@ -533,10 +541,10 @@ def sanitize_paper58_metrics(row: dict[str, Any]) -> dict[str, Any]:
     return {
         "method": row.get("method"),
         "n": safe_int(row.get("n"), 0),
-        "mean_change_f1": safe_float(row.get("mean_change_f1"), None),
-        "mean_fom": safe_float(row.get("mean_fom"), None),
-        "mean_transition_accuracy": safe_float(row.get("mean_transition_accuracy"), None),
-        "mean_allocation_disagreement": safe_float(row.get("mean_allocation_disagreement"), None),
+        "mean_change_f1": paper58_finite_float(row.get("mean_change_f1"), None),
+        "mean_fom": paper58_finite_float(row.get("mean_fom"), None),
+        "mean_transition_accuracy": paper58_finite_float(row.get("mean_transition_accuracy"), None),
+        "mean_allocation_disagreement": paper58_finite_float(row.get("mean_allocation_disagreement"), None),
     }
 
 
@@ -549,8 +557,8 @@ def paper58_metric_deltas(best: dict[str, Any], baseline: dict[str, Any]) -> dic
     ]
     deltas: dict[str, float | None] = {}
     for key in keys:
-        left = safe_float(best.get(key), None)
-        right = safe_float(baseline.get(key), None)
+        left = paper58_finite_float(best.get(key), None)
+        right = paper58_finite_float(baseline.get(key), None)
         deltas[key] = None if left is None or right is None else left - right
     return deltas
 
