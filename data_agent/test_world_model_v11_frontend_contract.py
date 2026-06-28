@@ -33,5 +33,34 @@ def test_world_model_v11_tab_file_contains_boundary_contract():
     assert "geofm_runtime_allowed=false" in text
     assert "not_a_runtime_generator" in text
     assert "刷新证据" in text
-    assert "disabled" in text
-    assert "Task 3 wires the local evidence refresh endpoint" in text
+    assert "statusBadgeClass" in text
+    assert "BOUNDARY_DEFAULTS" in text
+    assert "normalizeEvidence" in text
+    assert "claim_scope: BOUNDARY_DEFAULTS.claim_scope" in text
+    assert "runtime_dependency: BOUNDARY_DEFAULTS.runtime_dependency" in text
+    assert "geofm_runtime_allowed: BOUNDARY_DEFAULTS.geofm_runtime_allowed" in text
+    assert "twm_generator_role: BOUNDARY_DEFAULTS.twm_generator_role" in text
+    assert "primary_twm_route: BOUNDARY_DEFAULTS.primary_twm_route" in text
+    assert "blocks_validation: BOUNDARY_DEFAULTS.blocks_validation" in text
+    assert "can_promote_claim_ladder: BOUNDARY_DEFAULTS.can_promote_claim_ladder" in text
+    assert "claim_boundary: BOUNDARY_DEFAULTS.claim_boundary" in text
+    assert "Array.isArray" in text
+    assert "isRecord" in text
+    assert "loadEvidence" in text
+    assert "refreshEvidence" in text
+    assert "method: 'POST'" in text
+    assert "body: JSON.stringify({})" in text
+    assert "metric_summary" in text
+    assert "best_paper58_metrics" in text
+    assert "baseline_metrics" in text
+    assert "normalizeMetricValues" in text
+    assert "mean_change_f1" in text
+    assert "mean_fom" in text
+    assert "mean_transition_accuracy" in text
+    assert "mean_allocation_disagreement" in text
+    assert "<th>Paper58</th>" in text
+    assert "<th>GeoSOS-FLUS</th>" in text
+    assert "<th>Delta</th>" in text
+    assert "source_files" in text
+    assert "paper58_benchmark_dir" in text
+    assert "read_errors" in text
