@@ -319,6 +319,13 @@ PAPER58_REQUIRED_METRIC_SUMMARY_COLUMNS = {
     "mean_transition_accuracy",
     "mean_allocation_disagreement",
 }
+PAPER58_REQUIRED_NUMERIC_METRIC_COLUMNS = {
+    "n",
+    "mean_change_f1",
+    "mean_fom",
+    "mean_transition_accuracy",
+    "mean_allocation_disagreement",
+}
 
 
 def build_paper58_external_benchmark(paper58_benchmark_dir: Path | str | None = None) -> dict[str, Any]:
@@ -374,8 +381,11 @@ def build_paper58_external_benchmark(paper58_benchmark_dir: Path | str | None = 
         manifest_missing = "manifest.json_unreadable" if any(item.get("path") == str(manifest_path) for item in read_errors) else "manifest.json"
         if manifest_missing not in missing:
             missing.append(manifest_missing)
-    if metric_rows and not paper58_metric_summary_has_required_columns(metric_rows):
+    has_required_metric_columns = paper58_metric_summary_has_required_columns(metric_rows) if metric_rows else False
+    if metric_rows and not has_required_metric_columns:
         missing.append("metric_summary_required_columns_missing")
+    if has_required_metric_columns and paper58_metric_summary_has_invalid_numeric_values(metric_rows):
+        missing.append("metric_summary_invalid_numeric_values")
 
     metric_summary = summarize_paper58_metric_rows(metric_rows, per_region_rows)
     if metric_summary.get("best_paper58_method") and not metric_summary.get("baseline_method"):
@@ -427,6 +437,21 @@ def paper58_metric_summary_has_required_columns(metric_rows: list[dict[str, Any]
     return PAPER58_REQUIRED_METRIC_SUMMARY_COLUMNS.issubset(columns)
 
 
+def paper58_metric_summary_has_invalid_numeric_values(metric_rows: list[dict[str, Any]]) -> bool:
+    candidates = [
+        row
+        for row in metric_rows
+        if is_paper58_baseline_method(row.get("method")) or is_paper58_method(row.get("method"))
+    ]
+    for row in candidates:
+        if safe_int(row.get("n"), None) is None:
+            return True
+        for key in PAPER58_REQUIRED_NUMERIC_METRIC_COLUMNS - {"n"}:
+            if safe_float(row.get(key), None) is None:
+                return True
+    return False
+
+
 def summarize_paper58_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
     if not manifest:
         return {}
@@ -450,7 +475,8 @@ def summarize_paper58_metric_rows(
 ) -> dict[str, Any]:
     if not metric_rows:
         return {}
-    baseline = next((row for row in metric_rows if is_paper58_baseline_method(row.get("method"))), None)
+    baseline_rows = [row for row in metric_rows if is_paper58_baseline_method(row.get("method"))]
+    baseline = max(baseline_rows, key=paper58_metric_score, default=None)
     paper58_rows = [row for row in metric_rows if is_paper58_method(row.get("method"))]
     best = max(paper58_rows, key=paper58_metric_score, default=None)
     summary: dict[str, Any] = {
