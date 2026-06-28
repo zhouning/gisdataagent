@@ -28,6 +28,7 @@ import VirtualSourcesTab from './datapanel/VirtualSourcesTab';
 import MarketplaceTab from './datapanel/MarketplaceTab';
 import GeoJsonEditorTab from './datapanel/GeoJsonEditorTab';
 import WorldModelTab from './datapanel/WorldModelTab';
+import WorldModelV11Tab from './datapanel/WorldModelV11Tab';
 import WorldModelV2Tab from './datapanel/WorldModelV2Tab';
 import WorldModelV21Tab from './datapanel/WorldModelV21Tab';
 import TerritoryWorldModelTab from './datapanel/TerritoryWorldModelTab';
@@ -54,7 +55,7 @@ interface DataPanelProps {
   username?: string;
 }
 
-type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'agent_logs' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'worldmodel' | 'worldmodel_v2' | 'worldmodel_v21' | 'twm' | 'causal' | 'optimization' | 'qcmonitor' | 'fusion_quality' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'std_platform' | 'semantic' | 'agents' | 'intake' | 'classification';
+type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'agent_logs' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'worldmodel' | 'worldmodel_v11' | 'worldmodel_v2' | 'worldmodel_v21' | 'twm' | 'causal' | 'optimization' | 'qcmonitor' | 'fusion_quality' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'std_platform' | 'semantic' | 'agents' | 'intake' | 'classification';
 
 type GroupKey = 'data' | 'intelligence' | 'ops';
 
@@ -91,6 +92,7 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: ReactNode; tabs: TabDef[
       { key: 'memory', label: '记忆', icon: <Brain size={ICON_SIZE} /> },
       { key: 'market', label: '市场', icon: <Store size={ICON_SIZE} /> },
       { key: 'worldmodel', label: '世界模型', icon: <Globe size={ICON_SIZE} /> },
+      { key: 'worldmodel_v11', label: '世界模型v1.1', icon: <Globe size={ICON_SIZE} /> },
       { key: 'worldmodel_v2', label: '世界模型v2', icon: <Globe size={ICON_SIZE} /> },
       { key: 'worldmodel_v21', label: '世界模型v2.1', icon: <Globe size={ICON_SIZE} /> },
       { key: 'twm', label: 'TWM', icon: <Shield size={ICON_SIZE} /> },
@@ -233,6 +235,7 @@ export default function DataPanel({ dataFile, userRole, username }: DataPanelPro
         {activeTab === 'geojson' && <GeoJsonEditorTab />}
         {activeTab === 'charts' && <ChartsTab />}
         {activeTab === 'worldmodel' && <WorldModelTab />}
+        {activeTab === 'worldmodel_v11' && <WorldModelV11Tab />}
         {activeTab === 'worldmodel_v2' && <WorldModelV2Tab />}
         {activeTab === 'worldmodel_v21' && <WorldModelV21Tab />}
         {activeTab === 'twm' && <TerritoryWorldModelTab />}
