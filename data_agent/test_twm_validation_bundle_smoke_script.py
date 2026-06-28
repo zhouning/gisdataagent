@@ -225,3 +225,86 @@ def test_twm_validation_bundle_smoke_script_can_normalize_raw_production_history
     assert payload["production_observed_history_normalization"]["status"] == "pass"
     assert payload["production_observed_history_preflight"]["status"] == "pass"
     assert payload["production_observed_history_preflight"]["production_observed_history"] == str(normalized_path)
+
+
+def test_paper58_external_benchmark_missing_is_non_blocking():
+    module = _load_validation_bundle_module()
+
+    summary = module.build_paper58_external_benchmark(None)
+
+    assert summary["schema"] == "territory_world_model.paper58_external_benchmark.v1"
+    assert summary["status"] == "missing"
+    assert summary["provided"] is False
+    assert summary["claim_scope"] == "external_benchmark_support_only"
+    assert summary["runtime_dependency"] == "none"
+    assert summary["geofm_runtime_allowed"] is False
+    assert summary["twm_generator_role"] == "not_a_runtime_generator"
+    assert summary["primary_twm_route"] == "twm_native_generation_and_planning"
+    assert summary["blocks_validation"] is False
+    assert summary["can_promote_claim_ladder"] is False
+
+
+def test_paper58_external_benchmark_fixture_is_supporting_evidence_only(tmp_path):
+    module = _load_validation_bundle_module()
+    fixture = tmp_path / "paper58_fixture"
+    fixture.mkdir()
+    (fixture / "metric_summary_by_method.csv").write_text(
+        "\n".join(
+            [
+                "method,n,mean_change_f1,mean_fom,mean_transition_accuracy,mean_allocation_disagreement",
+                "geosos_flus_console,43,0.2688382600,0.1323193715,0.3423004034,0.0741466570",
+                "paper58_semantic_keep_loo_selector,43,0.2928996378,0.1471426105,0.3520592721,0.0721105174",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (fixture / "metrics_by_method.csv").write_text(
+        "\n".join(
+            [
+                "method,area,change_f1,fom,transition_accuracy,allocation_disagreement",
+                "geosos_flus_console,region_a,0.26,0.13,0.34,0.07",
+                "paper58_semantic_keep_loo_selector,region_a,0.29,0.15,0.35,0.06",
+                "geosos_flus_console,region_b,0.25,0.12,0.31,0.08",
+                "paper58_semantic_keep_loo_selector,region_b,0.30,0.16,0.36,0.07",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (fixture / "manifest.json").write_text(
+        json.dumps(
+            {
+                "method": "paper58_semantic_keep_loo_selector",
+                "selection_rule": "leave-one-area-out selector over sanitized metrics",
+                "summary": {
+                    "n": 43,
+                    "mean_change_f1": 0.2928996378,
+                    "mean_fom": 0.1471426105,
+                    "mean_transition_accuracy": 0.3520592721,
+                    "mean_allocation_disagreement": 0.0721105174,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    summary = module.build_paper58_external_benchmark(fixture)
+
+    assert summary["status"] == "supporting_evidence"
+    assert summary["provided"] is True
+    assert summary["metric_summary"]["area_count"] == 43
+    assert summary["metric_summary"]["best_paper58_method"] == "paper58_semantic_keep_loo_selector"
+    assert summary["metric_summary"]["baseline_method"] == "geosos_flus_console"
+    assert summary["metric_summary"]["paper58_vs_baseline_wins"] == 4
+    assert summary["metric_summary"]["deltas"]["mean_change_f1"] > 0
+    assert summary["metric_summary"]["deltas"]["mean_fom"] > 0
+    assert summary["metric_summary"]["deltas"]["mean_transition_accuracy"] > 0
+    assert summary["metric_summary"]["deltas"]["mean_allocation_disagreement"] < 0
+    assert summary["source_files"]["metric_summary_by_method"].endswith("metric_summary_by_method.csv")
+    assert summary["source_files"]["metrics_by_method"].endswith("metrics_by_method.csv")
+    assert summary["source_files"]["manifest"].endswith("manifest.json")
+    assert "Paper58 is external benchmark support only" in summary["claim_boundary"]
+    assert summary["runtime_dependency"] == "none"
+    assert summary["geofm_runtime_allowed"] is False
+    assert summary["can_promote_claim_ladder"] is False

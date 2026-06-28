@@ -13,7 +13,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from data_agent.territory_world_model import TerritoryWorldModelService, TwmRepository, jsonable, now_utc_iso
 from data_agent.territory_world_model.deployment_punch_list import build_deployment_punch_list
-from data_agent.territory_world_model.utils import read_csv, read_json
+from data_agent.territory_world_model.utils import read_csv, read_json, safe_float, safe_int
 from scripts.validate_twm_data_foundation import (
     audit_observed_history_schema,
     normalize_production_observed_history_export,
@@ -308,6 +308,173 @@ def build_scca_report_if_requested(
     if scca_result_json is not None:
         payload["scca_result"] = read_json(scca_result_json)
     return svc.scca_causal_evidence_report(state_id, payload)
+
+
+PAPER58_EXTERNAL_BENCHMARK_SCHEMA = "territory_world_model.paper58_external_benchmark.v1"
+
+
+def build_paper58_external_benchmark(paper58_benchmark_dir: Path | str | None = None) -> dict[str, Any]:
+    boundary = {
+        "schema": PAPER58_EXTERNAL_BENCHMARK_SCHEMA,
+        "claim_scope": "external_benchmark_support_only",
+        "runtime_dependency": "none",
+        "geofm_runtime_allowed": False,
+        "twm_generator_role": "not_a_runtime_generator",
+        "primary_twm_route": "twm_native_generation_and_planning",
+        "blocks_validation": False,
+        "can_promote_claim_ladder": False,
+        "claim_boundary": (
+            "Paper58 is external benchmark support only. It does not make AlphaEarth/GeoFM a TWM runtime "
+            "dependency, does not replace TWM-native generation, and does not prove TWM production accuracy."
+        ),
+    }
+    if paper58_benchmark_dir is None:
+        return {
+            **boundary,
+            "status": "missing",
+            "provided": False,
+            "missing": ["paper58_benchmark_dir_not_provided"],
+            "source_files": {},
+            "metric_summary": {},
+            "manifest_summary": {},
+        }
+
+    path = Path(paper58_benchmark_dir).expanduser()
+    if not path.exists():
+        return {
+            **boundary,
+            "status": "blocked",
+            "provided": False,
+            "missing": ["paper58_benchmark_path_not_found"],
+            "source_files": {"paper58_benchmark_dir": str(path)},
+            "metric_summary": {},
+            "manifest_summary": {},
+        }
+
+    root = path.parent if path.is_file() else path
+    manifest_path = path if path.is_file() and path.suffix.lower() == ".json" else root / "manifest.json"
+    metric_summary_path = root / "metric_summary_by_method.csv"
+    per_region_path = root / "metrics_by_method.csv"
+    missing = []
+    if not metric_summary_path.exists():
+        missing.append("metric_summary_by_method.csv")
+    metric_rows = read_csv(metric_summary_path) if metric_summary_path.exists() else []
+    per_region_rows = read_csv(per_region_path) if per_region_path.exists() else []
+    manifest = read_json(manifest_path) if manifest_path.exists() else {}
+    if not manifest:
+        missing.append("manifest.json")
+
+    metric_summary = summarize_paper58_metric_rows(metric_rows, per_region_rows)
+    status = "supporting_evidence" if metric_summary.get("best_paper58_method") and not missing else "review"
+    return {
+        **boundary,
+        "status": status,
+        "provided": True,
+        "missing": missing,
+        "source_files": {
+            "paper58_benchmark_dir": str(root),
+            "metric_summary_by_method": str(metric_summary_path) if metric_summary_path.exists() else None,
+            "metrics_by_method": str(per_region_path) if per_region_path.exists() else None,
+            "manifest": str(manifest_path) if manifest_path.exists() else None,
+        },
+        "metric_summary": metric_summary,
+        "manifest_summary": summarize_paper58_manifest(manifest),
+    }
+
+
+def summarize_paper58_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
+    if not manifest:
+        return {}
+    summary = manifest.get("summary") if isinstance(manifest.get("summary"), dict) else {}
+    return {
+        "method": manifest.get("method"),
+        "selection_rule": manifest.get("selection_rule"),
+        "summary": {
+            "n": safe_int(summary.get("n"), 0),
+            "mean_change_f1": safe_float(summary.get("mean_change_f1"), None),
+            "mean_fom": safe_float(summary.get("mean_fom"), None),
+            "mean_transition_accuracy": safe_float(summary.get("mean_transition_accuracy"), None),
+            "mean_allocation_disagreement": safe_float(summary.get("mean_allocation_disagreement"), None),
+        },
+    }
+
+
+def summarize_paper58_metric_rows(
+    metric_rows: list[dict[str, Any]],
+    per_region_rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    if not metric_rows:
+        return {}
+    baseline = next((row for row in metric_rows if is_paper58_baseline_method(row.get("method"))), None)
+    paper58_rows = [row for row in metric_rows if is_paper58_method(row.get("method"))]
+    best = max(paper58_rows, key=paper58_metric_score, default=None)
+    summary: dict[str, Any] = {
+        "method_count": len(metric_rows),
+        "per_region_row_count": len(per_region_rows),
+        "baseline_method": baseline.get("method") if baseline else None,
+        "best_paper58_method": best.get("method") if best else None,
+        "area_count": safe_int((best or baseline or {}).get("n"), 0),
+        "paper58_vs_baseline_wins": 0,
+        "deltas": {},
+        "best_paper58_metrics": sanitize_paper58_metrics(best or {}),
+        "baseline_metrics": sanitize_paper58_metrics(baseline or {}),
+    }
+    if baseline and best:
+        deltas = paper58_metric_deltas(best, baseline)
+        summary["deltas"] = deltas
+        summary["paper58_vs_baseline_wins"] = sum(
+            1
+            for key, value in deltas.items()
+            if value is not None
+            and ((key == "mean_allocation_disagreement" and value < 0) or (key != "mean_allocation_disagreement" and value > 0))
+        )
+    return summary
+
+
+def is_paper58_baseline_method(method: Any) -> bool:
+    text = str(method or "").lower()
+    return "geosos" in text or "flus" in text
+
+
+def is_paper58_method(method: Any) -> bool:
+    return "paper58" in str(method or "").lower()
+
+
+def paper58_metric_score(row: dict[str, Any]) -> tuple[float, float, float, float]:
+    return (
+        safe_float(row.get("mean_change_f1"), 0.0) or 0.0,
+        safe_float(row.get("mean_fom"), 0.0) or 0.0,
+        safe_float(row.get("mean_transition_accuracy"), 0.0) or 0.0,
+        -(safe_float(row.get("mean_allocation_disagreement"), 999.0) or 999.0),
+    )
+
+
+def sanitize_paper58_metrics(row: dict[str, Any]) -> dict[str, Any]:
+    if not row:
+        return {}
+    return {
+        "method": row.get("method"),
+        "n": safe_int(row.get("n"), 0),
+        "mean_change_f1": safe_float(row.get("mean_change_f1"), None),
+        "mean_fom": safe_float(row.get("mean_fom"), None),
+        "mean_transition_accuracy": safe_float(row.get("mean_transition_accuracy"), None),
+        "mean_allocation_disagreement": safe_float(row.get("mean_allocation_disagreement"), None),
+    }
+
+
+def paper58_metric_deltas(best: dict[str, Any], baseline: dict[str, Any]) -> dict[str, float | None]:
+    keys = [
+        "mean_change_f1",
+        "mean_fom",
+        "mean_transition_accuracy",
+        "mean_allocation_disagreement",
+    ]
+    deltas: dict[str, float | None] = {}
+    for key in keys:
+        left = safe_float(best.get(key), None)
+        right = safe_float(baseline.get(key), None)
+        deltas[key] = None if left is None or right is None else left - right
+    return deltas
 
 
 def validation_bundle_status(
