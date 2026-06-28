@@ -261,14 +261,14 @@ def run_validation_bundle(
             "raw_data_policy": "raw objects, geometries and row-level attributes are not exported by this report",
         },
         "recommendations": validation_bundle_recommendations(
-            selected_bundle,
-            validation_report,
-            scca_report,
-            require_scca_pass,
-            paper58_external_benchmark,
-            production_preflight,
-            scale_readiness,
-            readiness_gate,
+            selected_bundle=selected_bundle,
+            validation_report=validation_report,
+            scca_report=scca_report,
+            require_scca_pass=require_scca_pass,
+            production_preflight=production_preflight,
+            production_scale_readiness=scale_readiness,
+            production_readiness_gate=readiness_gate,
+            paper58_external_benchmark=paper58_external_benchmark,
         ),
     }
     return jsonable(report)
@@ -1566,10 +1566,11 @@ def validation_bundle_recommendations(
     validation_report: dict[str, Any],
     scca_report: dict[str, Any],
     require_scca_pass: bool,
-    paper58_external_benchmark: dict[str, Any] | None = None,
     production_preflight: dict[str, Any] | None = None,
     production_scale_readiness: dict[str, Any] | None = None,
     production_readiness_gate: dict[str, Any] | None = None,
+    *,
+    paper58_external_benchmark: dict[str, Any] | None = None,
 ) -> list[str]:
     recommendations: list[str] = []
     recommendations.extend(str(item) for item in selected_bundle.get("recommendations") or [])

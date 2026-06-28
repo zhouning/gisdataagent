@@ -364,6 +364,34 @@ def test_validation_bundle_includes_paper58_without_promoting_claims(tmp_path):
         == without_paper58["production_observed_history_preflight"]["status"]
     )
     assert with_paper58["production_readiness_gate"]["status"] == without_paper58["production_readiness_gate"]["status"]
+    selected_plan_text = json.dumps(with_paper58["selected_plan_evaluation_bundle"], default=str).lower()
+    assert "paper58_external_benchmark" not in selected_plan_text
+    assert "paper58_benchmark_dir" not in selected_plan_text
+    assert (
+        "use Paper58 only as external benchmark support; keep TWM-native generation and planning as the runtime route"
+        in with_paper58["recommendations"]
+    )
+
+
+def test_validation_bundle_recommendations_preserve_legacy_positional_production_args():
+    module = _load_validation_bundle_module()
+
+    recommendations = module.validation_bundle_recommendations(
+        {"recommendations": []},
+        {"summary": {}},
+        {},
+        False,
+        {"status": "blocked"},
+        {"status": "pass"},
+        {"status": "blocked"},
+    )
+
+    assert "fix the production observed-history path before running production readiness gates" in recommendations
+    assert (
+        "production readiness is blocked; use the production_readiness_gate missing list as the deployment punch list"
+        in recommendations
+    )
+    assert not any("Paper58 evidence is optional" in recommendation for recommendation in recommendations)
 
 
 def test_paper58_external_benchmark_malformed_manifest_returns_review(tmp_path):
