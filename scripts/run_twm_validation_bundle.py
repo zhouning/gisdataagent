@@ -507,7 +507,7 @@ def summarize_paper58_metric_rows(
 
 def is_paper58_baseline_method(method: Any) -> bool:
     text = str(method or "").lower()
-    return "geosos" in text or "flus" in text
+    return ("geosos" in text or "flus" in text) and "paper58" not in text
 
 
 def is_paper58_method(method: Any) -> bool:

@@ -403,6 +403,34 @@ def test_paper58_external_benchmark_without_baseline_stays_review(tmp_path):
     assert summary["metric_summary"]["paper58_vs_baseline_wins"] == 0
 
 
+def test_paper58_external_benchmark_paper58_flus_method_is_not_baseline(tmp_path):
+    module = _load_validation_bundle_module()
+    fixture = tmp_path / "paper58_overlap_method"
+    fixture.mkdir()
+    (fixture / "metric_summary_by_method.csv").write_text(
+        "\n".join(
+            [
+                "method,n,mean_change_f1,mean_fom,mean_transition_accuracy,mean_allocation_disagreement",
+                "paper58_flus_selector,43,0.2929,0.1471,0.3520,0.0721",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (fixture / "manifest.json").write_text(
+        json.dumps({"method": "paper58_flus_selector", "summary": {"n": 43}}),
+        encoding="utf-8",
+    )
+
+    summary = module.build_paper58_external_benchmark(fixture)
+
+    assert summary["status"] == "review"
+    assert summary["metric_summary"]["best_paper58_method"] == "paper58_flus_selector"
+    assert summary["metric_summary"]["baseline_method"] is None
+    assert "baseline_method_not_found" in summary["missing"]
+    assert summary["metric_summary"]["paper58_vs_baseline_wins"] == 0
+
+
 def test_paper58_external_benchmark_malformed_metric_summary_reports_diagnostic(tmp_path):
     module = _load_validation_bundle_module()
     fixture = tmp_path / "paper58_bad_metrics"
