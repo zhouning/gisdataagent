@@ -335,6 +335,20 @@ PAPER58_REQUIRED_NUMERIC_METRIC_COLUMNS = {
     "mean_transition_accuracy",
     "mean_allocation_disagreement",
 }
+PAPER58_REQUIRED_PER_REGION_METRIC_COLUMNS = {
+    "method",
+    "area",
+    "change_f1",
+    "fom",
+    "transition_accuracy",
+    "allocation_disagreement",
+}
+PAPER58_REQUIRED_PER_REGION_NUMERIC_COLUMNS = {
+    "change_f1",
+    "fom",
+    "transition_accuracy",
+    "allocation_disagreement",
+}
 
 
 def build_paper58_external_benchmark(paper58_benchmark_dir: Path | str | None = None) -> dict[str, Any]:
@@ -385,18 +399,26 @@ def build_paper58_external_benchmark(paper58_benchmark_dir: Path | str | None = 
         missing.append("metric_summary_by_method.csv")
     metric_rows = safe_read_paper58_csv(metric_summary_path, missing, read_errors) if metric_summary_path.exists() else []
     per_region_rows = safe_read_paper58_csv(per_region_path, missing, read_errors) if per_region_path.exists() else []
-    manifest = safe_read_paper58_json(manifest_path, missing, read_errors) if manifest_path.exists() else {}
-    if not manifest:
+    manifest_exists = manifest_path.exists()
+    manifest = safe_read_paper58_json(manifest_path, missing, read_errors) if manifest_exists else {}
+    if manifest_exists and not manifest:
         manifest_missing = "manifest.json_unreadable" if any(item.get("path") == str(manifest_path) for item in read_errors) else "manifest.json"
         if manifest_missing not in missing:
             missing.append(manifest_missing)
-    elif not is_paper58_manifest_method(manifest.get("method")):
+    elif manifest_exists and not is_paper58_manifest_method(manifest.get("method")):
         missing.append("manifest_method_not_paper58")
     has_required_metric_columns = paper58_metric_summary_has_required_columns(metric_rows) if metric_rows else False
     if metric_rows and not has_required_metric_columns:
         missing.append("metric_summary_required_columns_missing")
     if has_required_metric_columns and paper58_metric_summary_has_invalid_numeric_values(metric_rows):
         missing.append("metric_summary_invalid_numeric_values")
+    per_region_read_failed = any(item.get("path") == str(per_region_path) for item in read_errors)
+    if per_region_path.exists() and not per_region_read_failed:
+        has_required_per_region_columns = paper58_per_region_has_required_columns(per_region_rows) if per_region_rows else False
+        if not has_required_per_region_columns:
+            missing.append("metrics_by_method_required_columns_missing")
+        elif paper58_per_region_has_invalid_numeric_values(per_region_rows):
+            missing.append("metrics_by_method_invalid_numeric_values")
 
     metric_summary = summarize_paper58_metric_rows(metric_rows, per_region_rows)
     if metric_summary.get("best_paper58_method") and not metric_summary.get("baseline_method"):
@@ -463,6 +485,26 @@ def paper58_metric_summary_has_invalid_numeric_values(metric_rows: list[dict[str
     return False
 
 
+def paper58_per_region_has_required_columns(per_region_rows: list[dict[str, Any]]) -> bool:
+    columns: set[str] = set()
+    for row in per_region_rows:
+        columns.update(str(key) for key in row.keys())
+    return PAPER58_REQUIRED_PER_REGION_METRIC_COLUMNS.issubset(columns)
+
+
+def paper58_per_region_has_invalid_numeric_values(per_region_rows: list[dict[str, Any]]) -> bool:
+    candidates = [
+        row
+        for row in per_region_rows
+        if is_paper58_baseline_method(row.get("method")) or is_paper58_method(row.get("method"))
+    ]
+    for row in candidates:
+        for key in PAPER58_REQUIRED_PER_REGION_NUMERIC_COLUMNS:
+            if paper58_finite_float(row.get(key), None) is None:
+                return True
+    return False
+
+
 def summarize_paper58_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
     if not manifest:
         return {}
@@ -487,9 +529,9 @@ def summarize_paper58_metric_rows(
     if not metric_rows:
         return {}
     baseline_rows = [row for row in metric_rows if is_paper58_baseline_method(row.get("method"))]
-    baseline = max(baseline_rows, key=paper58_metric_score, default=None)
+    baseline = select_paper58_best_metric_row(baseline_rows)
     paper58_rows = [row for row in metric_rows if is_paper58_method(row.get("method"))]
-    best = max(paper58_rows, key=paper58_metric_score, default=None)
+    best = select_paper58_best_metric_row(paper58_rows)
     summary: dict[str, Any] = {
         "method_count": len(metric_rows),
         "per_region_row_count": len(per_region_rows),
@@ -534,6 +576,17 @@ def paper58_metric_score(row: dict[str, Any]) -> tuple[float, float, float, floa
         paper58_finite_float(row.get("mean_transition_accuracy"), 0.0) or 0.0,
         -(paper58_finite_float(row.get("mean_allocation_disagreement"), 999.0) or 999.0),
     )
+
+
+def select_paper58_best_metric_row(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
+    if not rows:
+        return None
+    return sorted(rows, key=paper58_metric_rank_key)[0]
+
+
+def paper58_metric_rank_key(row: dict[str, Any]) -> tuple[float, float, float, float, str]:
+    score = paper58_metric_score(row)
+    return (-score[0], -score[1], -score[2], -score[3], str(row.get("method") or ""))
 
 
 def paper58_finite_float(value: Any, default: float | None = None) -> float | None:

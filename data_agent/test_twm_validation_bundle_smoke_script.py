@@ -323,6 +323,32 @@ def test_paper58_external_benchmark_fixture_is_supporting_evidence_only(tmp_path
     assert summary["can_promote_claim_ladder"] is False
 
 
+def test_paper58_external_benchmark_manifest_is_optional_for_sanitized_summary(tmp_path):
+    module = _load_validation_bundle_module()
+    fixture = tmp_path / "paper58_no_manifest"
+    fixture.mkdir()
+    (fixture / "metric_summary_by_method.csv").write_text(
+        "\n".join(
+            [
+                "method,n,mean_change_f1,mean_fom,mean_transition_accuracy,mean_allocation_disagreement",
+                "geosos_flus_console,43,0.2688,0.1323,0.3423,0.0741",
+                "paper58_semantic_keep_loo_selector,43,0.2929,0.1471,0.3520,0.0721",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    summary = module.build_paper58_external_benchmark(fixture)
+
+    assert summary["status"] == "supporting_evidence"
+    assert "manifest.json" not in summary["missing"]
+    assert summary["source_files"]["manifest"] is None
+    assert summary["manifest_summary"] == {}
+    assert summary["blocks_validation"] is False
+    assert summary["can_promote_claim_ladder"] is False
+
+
 def test_validation_bundle_includes_paper58_without_promoting_claims(tmp_path):
     module = _load_validation_bundle_module()
     fixture = tmp_path / "paper58_fixture"
@@ -529,6 +555,44 @@ def test_paper58_external_benchmark_malformed_metric_summary_reports_diagnostic(
     assert summary["blocks_validation"] is False
 
 
+def test_paper58_external_benchmark_malformed_per_region_metrics_stay_review(tmp_path):
+    module = _load_validation_bundle_module()
+    fixture = tmp_path / "paper58_bad_per_region_metrics"
+    fixture.mkdir()
+    (fixture / "metric_summary_by_method.csv").write_text(
+        "\n".join(
+            [
+                "method,n,mean_change_f1,mean_fom,mean_transition_accuracy,mean_allocation_disagreement",
+                "geosos_flus_console,43,0.2688,0.1323,0.3423,0.0741",
+                "paper58_semantic_keep_loo_selector,43,0.2929,0.1471,0.3520,0.0721",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (fixture / "metrics_by_method.csv").write_text(
+        "\n".join(
+            [
+                "method,area",
+                "geosos_flus_console,region_a",
+                "paper58_semantic_keep_loo_selector,region_a",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (fixture / "manifest.json").write_text(
+        json.dumps({"method": "paper58_semantic_keep_loo_selector", "summary": {"n": 43}}),
+        encoding="utf-8",
+    )
+
+    summary = module.build_paper58_external_benchmark(fixture)
+
+    assert summary["status"] == "review"
+    assert "metrics_by_method_required_columns_missing" in summary["missing"]
+    assert summary["blocks_validation"] is False
+
+
 def test_paper58_external_benchmark_invalid_metric_values_stay_review(tmp_path):
     module = _load_validation_bundle_module()
     fixture = tmp_path / "paper58_bad_values"
@@ -554,6 +618,45 @@ def test_paper58_external_benchmark_invalid_metric_values_stay_review(tmp_path):
     assert summary["status"] == "review"
     assert "metric_summary_invalid_numeric_values" in summary["missing"]
     assert summary["blocks_validation"] is False
+
+
+def test_paper58_external_benchmark_non_finite_per_region_metrics_stay_review(tmp_path):
+    module = _load_validation_bundle_module()
+    fixture = tmp_path / "paper58_bad_per_region_values"
+    fixture.mkdir()
+    (fixture / "metric_summary_by_method.csv").write_text(
+        "\n".join(
+            [
+                "method,n,mean_change_f1,mean_fom,mean_transition_accuracy,mean_allocation_disagreement",
+                "geosos_flus_console,43,0.2688,0.1323,0.3423,0.0741",
+                "paper58_semantic_keep_loo_selector,43,0.2929,0.1471,0.3520,0.0721",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (fixture / "metrics_by_method.csv").write_text(
+        "\n".join(
+            [
+                "method,area,change_f1,fom,transition_accuracy,allocation_disagreement",
+                "geosos_flus_console,region_a,0.26,0.13,0.34,0.07",
+                "paper58_semantic_keep_loo_selector,region_a,NaN,0.15,0.35,0.06",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (fixture / "manifest.json").write_text(
+        json.dumps({"method": "paper58_semantic_keep_loo_selector", "summary": {"n": 43}}),
+        encoding="utf-8",
+    )
+
+    summary = module.build_paper58_external_benchmark(fixture)
+
+    assert summary["status"] == "review"
+    assert "metrics_by_method_invalid_numeric_values" in summary["missing"]
+    assert summary["blocks_validation"] is False
+    json.dumps(summary, allow_nan=False)
 
 
 def test_paper58_external_benchmark_non_finite_metric_values_stay_review(tmp_path):
@@ -610,6 +713,32 @@ def test_paper58_external_benchmark_selects_strongest_baseline_row(tmp_path):
     assert summary["metric_summary"]["baseline_method"] == "geosos_flus_strong"
     assert summary["metric_summary"]["paper58_vs_baseline_wins"] == 0
     assert summary["metric_summary"]["deltas"]["mean_change_f1"] < 0
+
+
+def test_paper58_external_benchmark_tied_baseline_selection_is_deterministic(tmp_path):
+    module = _load_validation_bundle_module()
+    fixture = tmp_path / "paper58_tied_baseline"
+    fixture.mkdir()
+    (fixture / "metric_summary_by_method.csv").write_text(
+        "\n".join(
+            [
+                "method,n,mean_change_f1,mean_fom,mean_transition_accuracy,mean_allocation_disagreement",
+                "geosos_flus_b,43,0.2688,0.1323,0.3423,0.0741",
+                "paper58_semantic_keep_loo_selector,43,0.2929,0.1471,0.3520,0.0721",
+                "geosos_flus_a,43,0.2688,0.1323,0.3423,0.0741",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (fixture / "manifest.json").write_text(
+        json.dumps({"method": "paper58_semantic_keep_loo_selector", "summary": {"n": 43}}),
+        encoding="utf-8",
+    )
+
+    summary = module.build_paper58_external_benchmark(fixture)
+
+    assert summary["metric_summary"]["baseline_method"] == "geosos_flus_a"
 
 
 def test_validation_bundle_markdown_renders_paper58_external_boundary():
