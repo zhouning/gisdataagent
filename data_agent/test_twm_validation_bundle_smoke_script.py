@@ -244,6 +244,19 @@ def test_paper58_external_benchmark_missing_is_non_blocking():
     assert summary["can_promote_claim_ladder"] is False
 
 
+def test_paper58_external_benchmark_bad_path_is_non_blocking_diagnostic(tmp_path):
+    module = _load_validation_bundle_module()
+    missing_path = tmp_path / "does_not_exist"
+
+    summary = module.build_paper58_external_benchmark(missing_path)
+
+    assert summary["status"] == "blocked"
+    assert summary["provided"] is False
+    assert "paper58_benchmark_path_not_found" in summary["missing"]
+    assert summary["blocks_validation"] is False
+    assert summary["can_promote_claim_ladder"] is False
+
+
 def test_paper58_external_benchmark_fixture_is_supporting_evidence_only(tmp_path):
     module = _load_validation_bundle_module()
     fixture = tmp_path / "paper58_fixture"
@@ -469,6 +482,7 @@ def test_paper58_external_benchmark_non_finite_metric_values_stay_review(tmp_pat
     assert summary["status"] == "review"
     assert "metric_summary_invalid_numeric_values" in summary["missing"]
     assert summary["blocks_validation"] is False
+    json.dumps(summary, allow_nan=False)
 
 
 def test_paper58_external_benchmark_selects_strongest_baseline_row(tmp_path):
