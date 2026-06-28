@@ -45,6 +45,17 @@ async def twm_research_positioning(request: Request):
         return JSONResponse({"error": str(exc)}, status_code=500)
 
 
+async def twm_roadmap_status(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        return JSONResponse(get_territory_world_model_service().roadmap_status_report())
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=500)
+
+
 async def twm_research_claim_matrix(request: Request):
     user = _get_user_from_request(request)
     if not user:
@@ -172,6 +183,73 @@ async def twm_data_foundation_map_preview(request: Request):
         )
     except LookupError as exc:
         return JSONResponse({"error": str(exc)}, status_code=404)
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=500)
+
+
+async def twm_data_foundation_layer_detail(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    layer_path = request.query_params.get("layer")
+    if not layer_path:
+        return JSONResponse({"error": "layer query parameter is required"}, status_code=400)
+    try:
+        return JSONResponse(
+            get_territory_world_model_service().data_foundation_layer_detail(
+                request.path_params["dataset_id"],
+                layer_path,
+                sample_limit=request.query_params.get("sample_limit", "5"),
+            )
+        )
+    except LookupError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=500)
+
+
+async def twm_data_foundation_lineage(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        return JSONResponse(
+            get_territory_world_model_service().data_foundation_lineage_report(
+                request.path_params["dataset_id"],
+            )
+        )
+    except LookupError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=500)
+
+
+async def twm_data_foundation_crs_remediation(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        return JSONResponse(
+            get_territory_world_model_service().data_foundation_crs_remediation_plan(
+                request.path_params["dataset_id"],
+            )
+        )
+    except LookupError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=500)
+
+
+async def twm_data_foundation_authoritative_templates(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        return JSONResponse(get_territory_world_model_service().data_foundation_authoritative_templates())
     except Exception as exc:
         return JSONResponse({"error": str(exc)}, status_code=500)
 
@@ -717,6 +795,26 @@ async def twm_dynamics_evaluation_report(request: Request):
         return JSONResponse({"error": str(exc)}, status_code=400)
 
 
+async def twm_dynamics_model_registry_report(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    svc = get_territory_world_model_service()
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "JSON body must be an object"}, status_code=400)
+    try:
+        return JSONResponse(svc.dynamics_model_registry_report(request.path_params["id"], body))
+    except LookupError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+
+
 async def twm_fit_dynamics_candidate(request: Request):
     user = _get_user_from_request(request)
     if not user:
@@ -844,6 +942,7 @@ def get_territory_world_model_routes() -> list[Route]:
         Route("/api/twm/status", endpoint=twm_status, methods=["GET"]),
         Route("/api/twm/business-scenarios", endpoint=twm_business_scenarios, methods=["GET"]),
         Route("/api/twm/research-positioning", endpoint=twm_research_positioning, methods=["GET"]),
+        Route("/api/twm/roadmap-status", endpoint=twm_roadmap_status, methods=["GET"]),
         Route("/api/twm/research-claim-matrix", endpoint=twm_research_claim_matrix, methods=["GET"]),
         Route("/api/twm/baseline-export-schema", endpoint=twm_baseline_export_schema, methods=["GET"]),
         Route("/api/twm/baseline-export-templates", endpoint=twm_baseline_export_templates, methods=["GET"]),
@@ -853,6 +952,10 @@ def get_territory_world_model_routes() -> list[Route]:
         Route("/api/twm/baseline-evidence-pipeline-report", endpoint=twm_baseline_evidence_pipeline_report, methods=["POST"]),
         Route("/api/twm/data-foundation-assessment", endpoint=twm_data_foundation_assessment, methods=["GET"]),
         Route("/api/twm/data-foundation-map-preview/{dataset_id}", endpoint=twm_data_foundation_map_preview, methods=["GET"]),
+        Route("/api/twm/data-foundation-layer-detail/{dataset_id}", endpoint=twm_data_foundation_layer_detail, methods=["GET"]),
+        Route("/api/twm/data-foundation-lineage/{dataset_id}", endpoint=twm_data_foundation_lineage, methods=["GET"]),
+        Route("/api/twm/data-foundation-crs-remediation/{dataset_id}", endpoint=twm_data_foundation_crs_remediation, methods=["GET"]),
+        Route("/api/twm/data-foundation-authoritative-templates", endpoint=twm_data_foundation_authoritative_templates, methods=["GET"]),
         Route("/api/twm/projects", endpoint=twm_projects, methods=["GET", "POST"]),
         Route("/api/twm/projects/{id}", endpoint=twm_project_detail, methods=["GET"]),
         Route("/api/twm/projects/{id}/layer-bindings", endpoint=twm_project_bindings, methods=["GET", "POST"]),
@@ -880,6 +983,7 @@ def get_territory_world_model_routes() -> list[Route]:
         Route("/api/twm/states/{id}/dynamics-training-examples", endpoint=twm_dynamics_training_examples, methods=["POST"]),
         Route("/api/twm/states/{id}/dynamics-readiness-report", endpoint=twm_dynamics_readiness_report, methods=["POST"]),
         Route("/api/twm/states/{id}/dynamics-evaluation-report", endpoint=twm_dynamics_evaluation_report, methods=["POST"]),
+        Route("/api/twm/states/{id}/dynamics-model-registry-report", endpoint=twm_dynamics_model_registry_report, methods=["POST"]),
         Route("/api/twm/states/{id}/fit-dynamics-candidate", endpoint=twm_fit_dynamics_candidate, methods=["POST"]),
         Route("/api/twm/states/{id}/train-dynamics-candidate", endpoint=twm_train_dynamics_candidate, methods=["POST"]),
         Route("/api/twm/states/{id}/geofm-ablation-gate", endpoint=twm_geofm_ablation_gate, methods=["POST"]),

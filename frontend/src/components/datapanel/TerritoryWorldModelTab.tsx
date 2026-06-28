@@ -28,6 +28,11 @@ type RunKey =
   | 'baselinePipeline'
   | 'baselineCompare'
   | 'dataFoundation'
+  | 'roadmapStatus'
+  | 'layerDetail'
+  | 'lineage'
+  | 'crsRemediation'
+  | 'authoritativeTemplates'
   | 'baselineCards'
   | 'projects'
   | 'create'
@@ -228,6 +233,155 @@ interface TwmDataFoundationMapPreview {
     message?: string;
   };
   layers?: TwmDataFoundationMapPreviewLayer[];
+}
+
+interface TwmDataFoundationLayerDetail {
+  schema?: string;
+  dataset_id?: string;
+  dataset_label?: string;
+  layer_path?: string;
+  label?: string;
+  unit?: string;
+  not_for_production?: boolean;
+  feature_count?: number;
+  bbox?: number[] | null;
+  crs_diagnostic?: TwmDataFoundationCrsDiagnostic;
+  property_field_count?: number;
+  property_fields?: TwmDataFoundationPropertyField[];
+  sample_record_count?: number;
+  sample_records?: Array<{ feature_index?: number; properties?: Record<string, any> }>;
+  delivery_mode?: string;
+  claim_boundary?: string;
+}
+
+interface TwmDataFoundationLineageReport {
+  schema?: string;
+  dataset_id?: string;
+  dataset_label?: string;
+  dataset_root?: string;
+  source_nature?: string;
+  positioning?: string;
+  not_for_production?: boolean;
+  file_count?: number;
+  spatial_layer_count?: number;
+  table_count?: number;
+  total_record_count?: number;
+  synthetic_record_count?: number;
+  not_for_production_record_count?: number;
+  lineage_coverage?: {
+    status?: string;
+    file_count?: number;
+    existing_file_count?: number;
+    missing_file_count?: number;
+    authoritative_source_count?: number;
+    review_only_source_count?: number;
+  };
+  map_overlay_readiness?: TwmDataFoundationMapPreview['map_overlay_readiness'];
+  readiness_gates?: Array<{ id: string; status?: string; current_value?: any; required_value?: any }>;
+  files?: Array<{
+    path: string;
+    unit?: string;
+    source_role?: string;
+    exists?: boolean;
+    count?: number;
+    synthetic_count?: number;
+    not_for_production_count?: number;
+    lineage_status?: string;
+    source_nature?: string;
+    crs_diagnostic?: TwmDataFoundationCrsDiagnostic;
+    property_field_count?: number;
+  }>;
+  required_next_data?: Array<{ priority?: string; data: string; minimum?: string; unlocks?: string }>;
+  claim_boundary?: string;
+}
+
+interface TwmDataFoundationCrsRemediationPlan {
+  schema?: string;
+  dataset_id?: string;
+  dataset_label?: string;
+  dataset_root?: string;
+  source_nature?: string;
+  positioning?: string;
+  target_crs?: string;
+  status?: string;
+  layer_count?: number;
+  ready_layer_count?: number;
+  blocked_layer_count?: number;
+  map_overlay_readiness?: TwmDataFoundationMapPreview['map_overlay_readiness'];
+  layers?: Array<{
+    path: string;
+    label?: string;
+    status?: string;
+    feature_count?: number;
+    bbox?: number[] | null;
+    source_crs_assumption?: string;
+    target_crs?: string;
+    crs_diagnostic?: TwmDataFoundationCrsDiagnostic;
+    suggested_action?: string;
+    conversion_steps?: Array<{ action: string; status?: string; target_crs?: string; method?: string; acceptance?: string; output_suffix?: string }>;
+    output_policy?: { write_new_file?: boolean; suffix?: string; target_crs?: string; overwrite_source?: boolean; lineage_fields?: string[] };
+    not_for_production?: boolean;
+  }>;
+  execution_policy?: Record<string, any>;
+  acceptance_criteria?: string[];
+  claim_boundary?: string;
+}
+
+interface TwmDataFoundationAuthoritativeTemplates {
+  schema?: string;
+  generated_at?: string;
+  status?: string;
+  production_deployment_supported?: boolean;
+  template_count?: number;
+  templates?: Array<{
+    template_id: string;
+    label?: string;
+    role?: string;
+    unit?: string;
+    accepted_formats?: string[];
+    required_fields?: string[];
+    recommended_fields?: string[];
+    minimum_quality_gates?: string[];
+    production_use?: string;
+  }>;
+  shared_lineage_fields?: string[];
+  readiness_gates?: Array<{ id: string; status?: string; current_value?: any; required_value?: any }>;
+  onboarding_steps?: string[];
+  claim_boundary_notes?: string[];
+  claim_boundary?: string;
+}
+
+interface TwmRoadmapStatusReport {
+  schema?: string;
+  generated_at?: string;
+  overall_status?: string;
+  claim_boundary?: string;
+  data_gate?: {
+    status?: string;
+    production_ready_observed_history_rows?: number;
+    production_policy_history_row_count?: number;
+    predictive_or_causal_claim_supported?: boolean;
+  };
+  phases?: Array<{
+    id: string;
+    label?: string;
+    status?: string;
+    completion_ratio?: number;
+    evidence?: string[];
+    remaining?: string[];
+  }>;
+  blockers?: Array<{
+    id: string;
+    priority?: string;
+    status?: string;
+    current_value?: any;
+    required_value?: any;
+  }>;
+  next_actions?: Array<{
+    priority?: string;
+    action: string;
+    roadmap_phase?: string;
+  }>;
 }
 
 interface TwmResearchClaimMatrix {
@@ -948,9 +1102,9 @@ function fmt(value: any, digits = 2) {
 
 function statusClass(status?: string) {
   const normalized = String(status || '').toLowerCase();
-  if (['pass', 'ready', 'ok', 'success', 'completed', 'legal_feasible', 'built'].includes(normalized)) return 'success';
+  if (['pass', 'ready', 'ok', 'success', 'complete', 'completed', 'legal_feasible', 'built'].includes(normalized)) return 'success';
   if (['blocked', 'error', 'failed', 'failure'].includes(normalized)) return 'error';
-  if (['review', 'warning', 'draft', 'open', 'pending'].includes(normalized)) return 'warning';
+  if (['review', 'warning', 'draft', 'open', 'pending', 'partial', 'action_required', 'requires_conversion', 'required'].includes(normalized)) return 'warning';
   return 'proposed';
 }
 
@@ -966,7 +1120,10 @@ const STATUS_LABELS: Record<string, string> = {
   pass: '通过',
   ok: '正常',
   success: '成功',
+  complete: '完成',
   completed: '完成',
+  partial: '部分完成',
+  candidate: '候选',
   built: '已构建',
   legal_feasible: '合法可行',
   blocked: '阻断',
@@ -982,6 +1139,13 @@ const STATUS_LABELS: Record<string, string> = {
   info: '提示',
   blocking: '阻断',
   prototype_scaffold: '原型脚手架',
+  prototype_complete_review_only: '原型完成，生产需复核',
+  action_required: '需要处理',
+  requires_conversion: '需转换',
+  required: '必需',
+  recommended: '建议',
+  no_spatial_layers: '无空间图层',
+  template_ready_review_only: '模板就绪，生产需复核',
 };
 
 const ACTION_LABELS: Record<string, string> = {
@@ -1006,8 +1170,8 @@ const DISPLAY_LABELS: Record<string, string> = {
   'Evidence-gated and causally calibrated claim ladder': '证据门控与因果校准主张阶梯',
   'TWM represents parcels, projects, control boundaries, planning zones, approvals, evidence and rules as a linked state rather than as a flat feature table.':
     'TWM 把图斑、项目、管控边界、规划分区、审批、证据和规则组织成可追溯的关联状态，而不是扁平要素表。',
-  'TWM forecasts future latent state, constraint-risk, planning utility, uncertainty and action-mask feasibility conditional on review/protect/convert/restore actions.':
-    'TWM 围绕复核、保护、转换、恢复等治理动作预测潜在状态、约束风险、规划效用、不确定性和动作可行性。',
+  'TWM forecasts future area/key indicators, constraint-risk, planning utility, uncertainty and action-mask feasibility conditional on review/protect/convert/restore actions; future_latent_state remains a compatibility field, not a full parcel-geometry latent.':
+    'TWM 围绕复核、保护、转换、恢复等治理动作预测未来面积/关键指标、约束风险、规划效用、不确定性和动作可行性；future_latent_state 仅保留为兼容字段，不声称完整图斑几何潜在状态。',
   'TWM separates deterministic rule evidence, observational causal calibration and validation gates before upgrading any operational claim.':
     'TWM 在升级任何业务主张前，先区分确定性规则证据、观察性因果校准和验证门槛。',
   'The novelty is architectural integration, not that GIS simulation itself is new.':
@@ -1086,12 +1250,83 @@ const DISPLAY_LABELS: Record<string, string> = {
   'Bishan demo engineering fixture': '璧山演示工程样例',
   'Bishan multi-admin evaluation fixture': '璧山多行政单元评估样例',
   'One Map village standard sample': '一张图村庄规划标准样例',
+  'Natural resources demo closure': '自然资源演示闭环',
+  'Auditable TWM engineering scaffold': '可审计 TWM 工程脚手架',
+  'Data foundation productization': '数据基础产品化',
+  'Trusted pilot validation': '可信试点验证',
+  'Production and air-gapped deployment': '生产与离线部署',
+  'Chinese-first TWM frontend tabs are implemented': '中文优先 TWM 前端分区已实现',
+  'data foundation map preview and bbox-aligned overview map are implemented': '数据基础地图预览和 bbox 对齐总览地图已实现',
+  'automated E2E evidence exists for the demo workflow': '演示工作流已有自动化端到端证据',
+  'manual acceptance and demo freeze before external presentation': '外部汇报前还需人工验收和演示冻结',
+  'state/rule/evidence/audit pipeline': '状态、规则、证据、审计管线',
+  'forecast, counterfactual rollout, validation ladder and beam planning consumer': '预测、反事实 rollout、验证阶梯和 beam 方案消费者',
+  'trainable dynamics candidates and observational causal calibration reports': '可训练动态候选和观察性因果校准报告',
+  'dynamics model registry release gate report is implemented': '动态模型注册发布门禁报告已实现',
+  'service decomposition': '服务拆分',
+  'model registry/version rollback': '模型注册和版本回滚',
+  'persistent model registry/version rollback': '持久化模型注册和版本回滚',
+  'production-scale storage/index review': '生产规模存储和索引复核',
+  'demo dataset catalog, CRS diagnostics and map overlay readiness are exposed': '演示数据目录、CRS 诊断和地图叠加 readiness 已暴露',
+  'full GeoJSON preview is available for the current demo scale': '当前演示规模支持完整 GeoJSON 预览',
+  'lineage and field drilldown reports are exposed through API, tools and frontend': 'lineage 和字段 drilldown 报告已通过 API、工具和前端暴露',
+  'CRS remediation plan is exposed through API, tools and frontend': 'CRS 修复方案已通过 API、工具和前端暴露',
+  'authoritative production data templates are exposed through API, tools and frontend': '权威生产数据模板已通过 API、工具和前端暴露',
+  'authoritative data templates': '权威数据模板',
+  'lineage browser': 'lineage 浏览器',
+  'vector tiles or server-side chunking': '矢量瓦片或服务端分块',
+  'CRS conversion workflow': 'CRS 转换流程',
+  'production CRS conversion ETL': '生产级 CRS 转换 ETL',
+  'production lineage ingestion templates': '生产 lineage 接入模板',
+  custodian_signoff: '数据责任方签核',
+  not_for_production_flag_clearance: '非生产标记清除',
+  same_case_join_keys: '同案关联键',
+  crs_and_geometry_acceptance: 'CRS 和几何验收',
+  parcel_current_authoritative: '权威现状图斑',
+  planning_zone_authoritative: '权威规划分区',
+  approval_records_authoritative: '权威审批历史',
+  policy_action_history_authoritative: '权威政策动作历史',
+  evidence_index_authoritative: '权威证据索引',
+  rule_evaluation_authoritative: '权威规则评价',
+  'public Dynamic World and GeoSOS/FLUS benchmark evidence exists': '已有公开 Dynamic World 与 GeoSOS/FLUS 基准证据',
+  'claim ladder and baseline comparison contracts exist': '主张阶梯和基线对比契约已存在',
+  'real observed approval/review history': '真实观察审批/复核历史',
+  'policy/action feasibility labels': '政策/动作可行性标签',
+  'same-case baseline and holdout evaluation': '同案基线和留出集评估',
+  'air-gapped deployment strategy exists': '已有离线部署策略',
+  'offline deployment package': '离线部署包',
+  'permissioned audit trail': '权限化审计链',
+  'model/rule/version comparison': '模型、规则和版本对比',
+  'sanitized diagnostic export': '脱敏诊断导出',
   mixed_real_imagery_plus_synthetic_governance_fixture: '真实影像加合成治理样例',
   synthetic_multi_admin_governance_fixture: '合成多行政单元治理样例',
   standard_structure_sample_with_synthetic_substitutes: '含合成替代数据的标准结构样例',
   production_observed_history: '生产观察历史',
   named_real_workflow_baseline: '明确的真实工作流基线',
   production_policy_action_labels: '生产政策动作标签',
+  policy_action_history: '政策动作历史',
+  service_decomposition: '服务拆分',
+  full_flus_and_holdout_baselines: '完整 FLUS 与留出基线',
+  review_not_for_production: '非生产复核',
+  candidate_authoritative: '候选权威来源',
+  authoritative_source_lineage: '权威来源 lineage',
+  map_overlay_crs: '地图叠加 CRS',
+  spatial_layer: '空间图层',
+  auxiliary_table: '辅助表格',
+  supporting_file: '支撑文件',
+  'one pilot region with multi-year observed approval/review history': '一个试点区域的多年观察审批/复核历史',
+  'authoritative policy/action feasibility labels': '权威政策/动作可行性标签',
+  'large facade service': '大型 facade 服务',
+  'state, dynamics, calibration, planner, evidence/audit and readiness services': '状态、动态、校准、规划器、证据/审计和 readiness 服务',
+  'public benchmark and simplified/direct adapters': '公开基准和简化/直接适配器',
+  'same-case full FLUS/GeoSOS baseline plus cross-region/cross-year holdout': '同案完整 FLUS/GeoSOS 基线加跨区域/跨年份留出验证',
+  'secure real or sanitized observed history and policy/action labels for one pilot region': '为一个试点区域获取真实或脱敏观察历史与政策/动作标签',
+  'freeze and manually accept the current natural-resources demo workflow': '冻结并人工验收当前自然资源演示工作流',
+  'split the TWM facade service along state/dynamics/calibration/planner/evidence boundaries': '按状态、动态、校准、规划器和证据边界拆分 TWM facade 服务',
+  'productize data foundation browsing with lineage, field drilldown and CRS conversion workflow': '产品化数据基础浏览，补齐 lineage、字段 drilldown 和 CRS 转换流程',
+  'finish authoritative data templates, vector tiles or chunked preview, and CRS conversion workflow': '完成权威数据模板、矢量瓦片或分块预览，以及 CRS 转换流程',
+  'finish authoritative data templates, vector tiles or chunked preview, and production CRS conversion ETL': '完成权威数据模板、矢量瓦片或分块预览，以及生产级 CRS 转换 ETL',
+  'finish vector tiles or chunked preview, production CRS conversion ETL, and production lineage ingestion templates': '完成矢量瓦片或分块预览、生产级 CRS 转换 ETL 和生产 lineage 接入模板',
   baseline_metrics: '基线指标',
   twm_metrics: 'TWM 指标',
   comparable_metrics: '可比指标',
@@ -1105,6 +1340,14 @@ const DISPLAY_LABELS: Record<string, string> = {
   ready_for_map_overlay: '可直接叠加',
   convert_to_wgs84_before_map_overlay: '转换为 WGS84 后叠加',
   inspect_geometry_before_map_overlay: '先检查几何范围',
+  no_conversion_required: '无需转换',
+  identify_source_crs: '识别源 CRS',
+  reproject_to_target_crs: '重投影到目标 CRS',
+  validate_bbox_and_geometry: '校验范围和几何',
+  write_lineage_preserving_output: '写出带 lineage 的结果',
+  verify_declared_crs: '核验声明 CRS',
+  preserve_source_layer: '保留源图层',
+  unknown_projected_or_non_wgs84: '未知投影或非 WGS84',
   payload: '请求载荷',
   none: '无',
   hard_constraint_conflict_recall: '硬约束冲突召回率',
@@ -1307,6 +1550,12 @@ export default function TerritoryWorldModelTab() {
   const [dataMapPreviewSummary, setDataMapPreviewSummary] = useState('');
   const [dataMapPreview, setDataMapPreview] = useState<TwmDataFoundationMapPreview | null>(null);
   const [visibleDataMapLayerNames, setVisibleDataMapLayerNames] = useState<string[]>([]);
+  const [roadmapStatus, setRoadmapStatus] = useState<TwmRoadmapStatusReport | null>(null);
+  const [selectedLayerDetail, setSelectedLayerDetail] = useState<TwmDataFoundationLayerDetail | null>(null);
+  const [selectedLayerDetailPath, setSelectedLayerDetailPath] = useState('');
+  const [dataLineage, setDataLineage] = useState<TwmDataFoundationLineageReport | null>(null);
+  const [crsRemediationPlan, setCrsRemediationPlan] = useState<TwmDataFoundationCrsRemediationPlan | null>(null);
+  const [authoritativeTemplates, setAuthoritativeTemplates] = useState<TwmDataFoundationAuthoritativeTemplates | null>(null);
 
   const [projectName, setProjectName] = useState('TWM 璧山演示工作空间');
   const [regionCode, setRegionCode] = useState('500227');
@@ -1354,6 +1603,28 @@ export default function TerritoryWorldModelTab() {
     dataPackages.find(item => item.id === selectedDataPackageId) || dataPackages[0] || null
   );
   const selectedSpatialLayerCatalog = selectedDataPackage?.spatial_layer_catalog || [];
+  const roadmapPhases = roadmapStatus?.phases || [];
+  const roadmapCompletion = roadmapPhases.length
+    ? roadmapPhases.reduce((sum, phase) => sum + clampRatio(phase.completion_ratio, 0), 0) / roadmapPhases.length
+    : 0;
+  const roadmapCompleteCount = roadmapPhases.filter(phase => ['complete', 'completed'].includes(String(phase.status || '').toLowerCase())).length;
+  const roadmapProgressCount = roadmapPhases.filter(phase => ['partial', 'candidate', 'open'].includes(String(phase.status || '').toLowerCase())).length;
+  const roadmapBlockedCount = roadmapPhases.filter(phase => String(phase.status || '').toLowerCase() === 'blocked').length;
+  const visibleLayerDetail = (
+    selectedLayerDetail?.dataset_id && selectedLayerDetail.dataset_id === selectedDataPackage?.id
+      ? selectedLayerDetail
+      : null
+  );
+  const visibleDataLineage = (
+    dataLineage?.dataset_id && dataLineage.dataset_id === selectedDataPackage?.id
+      ? dataLineage
+      : null
+  );
+  const visibleCrsRemediationPlan = (
+    crsRemediationPlan?.dataset_id && crsRemediationPlan.dataset_id === selectedDataPackage?.id
+      ? crsRemediationPlan
+      : null
+  );
   const claimDataGate = claimMatrix.current_data_gate || FALLBACK_CLAIM_MATRIX.current_data_gate || {};
   const readiness = useMemo(() => {
     const repository = status?.repository || {};
@@ -1463,6 +1734,14 @@ export default function TerritoryWorldModelTab() {
     });
   };
 
+  const loadRoadmapStatus = async () => {
+    await withRun('roadmapStatus', async () => {
+      const data = await api('/api/twm/roadmap-status');
+      if (data?.phases) setRoadmapStatus(data);
+      return data;
+    });
+  };
+
   const loadProjects = async () => {
     await withRun('projects', async () => {
       const data = await api('/api/twm/projects');
@@ -1522,6 +1801,7 @@ export default function TerritoryWorldModelTab() {
     await loadClaimMatrix();
     await loadBaselineTemplates();
     await loadDataFoundation();
+    await loadRoadmapStatus();
     await loadProjects();
   };
 
@@ -1580,6 +1860,10 @@ export default function TerritoryWorldModelTab() {
     setDataMapPreview(null);
     setVisibleDataMapLayerNames([]);
     setDataMapPreviewSummary('');
+    setSelectedLayerDetail(null);
+    setSelectedLayerDetailPath('');
+    setDataLineage(null);
+    setCrsRemediationPlan(null);
   };
 
   const syncTwmMap = (stage: TwmMapStage) => {
@@ -1707,6 +1991,58 @@ export default function TerritoryWorldModelTab() {
     } finally {
       setDataMapPreviewLoading(false);
     }
+  };
+
+  const loadDataFoundationLayerDetail = async (layerPath: string) => {
+    if (!selectedDataPackage) {
+      setError('没有可查看的数据包');
+      return;
+    }
+    const normalizedLayerPath = String(layerPath || '').trim();
+    if (!normalizedLayerPath) {
+      setError('没有可查看的空间图层');
+      return;
+    }
+    setSelectedLayerDetailPath(normalizedLayerPath);
+    await withRun('layerDetail', async () => {
+      const data = await api(
+        `/api/twm/data-foundation-layer-detail/${encodeURIComponent(selectedDataPackage.id)}?layer=${encodeURIComponent(normalizedLayerPath)}&sample_limit=5`
+      );
+      setSelectedLayerDetail(data);
+      return data;
+    });
+  };
+
+  const loadDataFoundationLineage = async () => {
+    if (!selectedDataPackage) {
+      setError('没有可查看 lineage 的数据包');
+      return;
+    }
+    await withRun('lineage', async () => {
+      const data = await api(`/api/twm/data-foundation-lineage/${encodeURIComponent(selectedDataPackage.id)}`);
+      setDataLineage(data);
+      return data;
+    });
+  };
+
+  const loadDataFoundationCrsRemediation = async () => {
+    if (!selectedDataPackage) {
+      setError('没有可查看 CRS 方案的数据包');
+      return;
+    }
+    await withRun('crsRemediation', async () => {
+      const data = await api(`/api/twm/data-foundation-crs-remediation/${encodeURIComponent(selectedDataPackage.id)}`);
+      setCrsRemediationPlan(data);
+      return data;
+    });
+  };
+
+  const loadDataFoundationAuthoritativeTemplates = async () => {
+    await withRun('authoritativeTemplates', async () => {
+      const data = await api('/api/twm/data-foundation-authoritative-templates');
+      setAuthoritativeTemplates(data);
+      return data;
+    });
   };
 
   const applyClaimFixture = (claimId: string) => {
@@ -2130,6 +2466,60 @@ export default function TerritoryWorldModelTab() {
           id="twm-subtab-data"
           aria-labelledby="twm-subtab-control-data"
         >
+      <section className="twm-section twm-roadmap-status-panel">
+        <div className="twm-section-head">
+          <GitBranch size={14} />
+          <h4>路线图状态</h4>
+          <span className={`status-badge ${statusClass(roadmapStatus?.overall_status)}`}>
+            {running === 'roadmapStatus' ? '加载中' : statusText(roadmapStatus?.overall_status, '待加载')}
+          </span>
+        </div>
+        <div className="twm-roadmap-boundary">
+          <strong>当前完成情况</strong>
+          <p>{displayText(roadmapStatus?.claim_boundary || '当前 TWM 是严谨的原型和复核脚手架；生产级预测主张必须依赖真实观察历史、明确基线对比和外部验证。')}</p>
+        </div>
+        <div className="twm-roadmap-kpis">
+          <div><span>平均完成度</span><strong>{fmt(roadmapCompletion * 100, 0)}%</strong></div>
+          <div><span>已完成阶段</span><strong>{fmt(roadmapCompleteCount, 0)}</strong></div>
+          <div><span>推进中</span><strong>{fmt(roadmapProgressCount, 0)}</strong></div>
+          <div><span>阻断阶段</span><strong>{fmt(roadmapBlockedCount, 0)}</strong></div>
+        </div>
+        <div className="twm-roadmap-phase-list">
+          {roadmapPhases.map(phase => (
+            <article key={phase.id}>
+              <div>
+                <span className={`status-badge ${statusClass(phase.status)}`}>{statusText(phase.status, '待复核')}</span>
+                <strong>{displayText(phase.label || phase.id)}</strong>
+                <em>{fmt(clampRatio(phase.completion_ratio, 0) * 100, 0)}%</em>
+              </div>
+              <p>已具备：{compactDisplayList(phase.evidence, '暂无证据')}</p>
+              <p>剩余：{compactDisplayList(phase.remaining, '暂无剩余项')}</p>
+            </article>
+          ))}
+          {!roadmapPhases.length && <div className="twm-empty">路线图状态尚未加载</div>}
+        </div>
+        <div className="twm-roadmap-bottom">
+          <article>
+            <strong>关键阻断</strong>
+            {(roadmapStatus?.blockers || []).slice(0, 4).map(item => (
+              <p key={`roadmap-blocker-${item.id}`}>
+                {item.priority ? `${item.priority} · ` : ''}{displayText(item.id)}：{statusText(item.status, '待处理')}，当前 {typeof item.current_value === 'number' ? fmt(item.current_value, 0) : displayText(item.current_value)}；目标 {displayText(item.required_value)}
+              </p>
+            ))}
+            {!(roadmapStatus?.blockers || []).length && <p>暂无阻断项</p>}
+          </article>
+          <article>
+            <strong>下一步动作</strong>
+            {(roadmapStatus?.next_actions || []).slice(0, 4).map(item => (
+              <p key={`roadmap-action-${item.priority}-${item.action}`}>
+                {item.priority ? `${item.priority} · ` : ''}{displayText(item.action)}
+              </p>
+            ))}
+            {!(roadmapStatus?.next_actions || []).length && <p>暂无下一步动作</p>}
+          </article>
+        </div>
+      </section>
+
       <section className="twm-section twm-data-browser-panel">
         <div className="twm-section-head">
           <FileCheck2 size={14} />
@@ -2161,8 +2551,163 @@ export default function TerritoryWorldModelTab() {
             {dataMapPreviewLoading ? <Loader2 size={13} className="twm-spin" /> : <MapPin size={13} />}
             全量加载空间数据
           </button>
+          <button type="button" className="twm-secondary-action" onClick={loadDataFoundationLineage} disabled={busy || !selectedDataPackage}>
+            {running === 'lineage' ? <Loader2 size={13} className="twm-spin" /> : <GitBranch size={13} />}
+            lineage 报告
+          </button>
+          <button type="button" className="twm-secondary-action" onClick={loadDataFoundationCrsRemediation} disabled={busy || !selectedDataPackage}>
+            {running === 'crsRemediation' ? <Loader2 size={13} className="twm-spin" /> : <RefreshCw size={13} />}
+            CRS 方案
+          </button>
+          <button type="button" className="twm-secondary-action" onClick={loadDataFoundationAuthoritativeTemplates} disabled={busy}>
+            {running === 'authoritativeTemplates' ? <Loader2 size={13} className="twm-spin" /> : <ShieldCheck size={13} />}
+            权威模板
+          </button>
           <span>{dataMapPreviewSummary || '将选中数据包的 GeoJSON 空间图层全量联动到中间地图；大图层由 3D 渲染路径承载。'}</span>
         </div>
+        {visibleDataLineage && (
+          <div className="twm-lineage-panel">
+            <div className="twm-lineage-head">
+              <div>
+                <strong>lineage 报告</strong>
+                <span>{displayText(visibleDataLineage.dataset_label)} · <code>{visibleDataLineage.dataset_root}</code></span>
+              </div>
+              <span className={`status-badge ${statusClass(visibleDataLineage.lineage_coverage?.status)}`}>
+                {statusText(visibleDataLineage.lineage_coverage?.status, '需复核')}
+              </span>
+            </div>
+            <div className="twm-lineage-kpis">
+              <div><span>文件</span><strong>{fmt(visibleDataLineage.file_count, 0)}</strong></div>
+              <div><span>空间图层</span><strong>{fmt(visibleDataLineage.spatial_layer_count, 0)}</strong></div>
+              <div><span>表格</span><strong>{fmt(visibleDataLineage.table_count, 0)}</strong></div>
+              <div><span>非生产记录</span><strong>{fmt(visibleDataLineage.not_for_production_record_count, 0)}</strong></div>
+            </div>
+            <div className="twm-lineage-gates">
+              {(visibleDataLineage.readiness_gates || []).slice(0, 4).map(gate => (
+                <article key={`lineage-gate-${gate.id}`}>
+                  <span className={`status-badge ${statusClass(gate.status)}`}>{statusText(gate.status, '待处理')}</span>
+                  <strong>{displayText(gate.id)}</strong>
+                  <p>当前：{typeof gate.current_value === 'number' ? fmt(gate.current_value, 0) : displayText(gate.current_value)}；目标：{displayText(gate.required_value)}</p>
+                </article>
+              ))}
+            </div>
+            <div className="twm-lineage-file-list">
+              {(visibleDataLineage.files || []).slice(0, 10).map(file => (
+                <article key={`lineage-file-${file.path}`}>
+                  <div>
+                    <code>{file.path}</code>
+                    <span className={`status-badge ${statusClass(file.lineage_status)}`}>{statusText(file.lineage_status, '需复核')}</span>
+                  </div>
+                  <p>{displayText(file.source_role)} · {fmt(file.count, 0)} {file.unit || '条'} · 合成 {fmt(file.synthetic_count, 0)} · 非生产 {fmt(file.not_for_production_count, 0)}</p>
+                  {file.crs_diagnostic && <p>CRS：{crsDiagnosticText(file.crs_diagnostic.status)} · 字段 {fmt(file.property_field_count, 0)}</p>}
+                </article>
+              ))}
+            </div>
+            <p className="twm-lineage-boundary">{displayText(visibleDataLineage.claim_boundary)}</p>
+          </div>
+        )}
+        {visibleCrsRemediationPlan && (
+          <div className="twm-crs-remediation-panel">
+            <div className="twm-crs-remediation-head">
+              <div>
+                <strong>CRS 方案</strong>
+                <span>{displayText(visibleCrsRemediationPlan.dataset_label)} · 目标 {visibleCrsRemediationPlan.target_crs || 'EPSG:4326'}</span>
+              </div>
+              <span className={`status-badge ${statusClass(visibleCrsRemediationPlan.status)}`}>
+                {statusText(visibleCrsRemediationPlan.status, '需复核')}
+              </span>
+            </div>
+            <div className="twm-crs-remediation-kpis">
+              <div><span>图层</span><strong>{fmt(visibleCrsRemediationPlan.layer_count, 0)}</strong></div>
+              <div><span>可叠加</span><strong>{fmt(visibleCrsRemediationPlan.ready_layer_count, 0)}</strong></div>
+              <div><span>需转换</span><strong>{fmt(visibleCrsRemediationPlan.blocked_layer_count, 0)}</strong></div>
+              <div><span>输出策略</span><strong>{visibleCrsRemediationPlan.execution_policy?.default_output_suffix || '_wgs84.geojson'}</strong></div>
+            </div>
+            <div className="twm-crs-remediation-layer-list">
+              {(visibleCrsRemediationPlan.layers || []).slice(0, 8).map(layer => (
+                <article key={`crs-plan-${layer.path}`}>
+                  <div>
+                    <code>{layer.path}</code>
+                    <span className={`status-badge ${statusClass(layer.status)}`}>
+                      {statusText(layer.status, '需复核')}
+                    </span>
+                  </div>
+                  <p>
+                    源 CRS：{displayText(layer.source_crs_assumption)}
+                    {' · '}目标：{layer.target_crs || visibleCrsRemediationPlan.target_crs || 'EPSG:4326'}
+                    {' · '}要素 {fmt(layer.feature_count, 0)}
+                  </p>
+                  <p>
+                    输出：{layer.output_policy?.write_new_file
+                      ? `${layer.path.replace(/\.geojson$/i, '')}${layer.output_policy?.suffix || '_wgs84.geojson'}`
+                      : '源图层可直接叠加'}
+                  </p>
+                  <div>
+                    {(layer.conversion_steps || []).slice(0, 4).map((step, idx) => (
+                      <span key={`crs-step-${layer.path}-${step.action}-${idx}`}>
+                        {idx + 1}. {displayText(step.action)} · {statusText(step.status, '待处理')}
+                      </span>
+                    ))}
+                  </div>
+                </article>
+              ))}
+              {!(visibleCrsRemediationPlan.layers || []).length && <div className="twm-empty">暂无空间图层需要处理</div>}
+            </div>
+            <div className="twm-crs-remediation-criteria">
+              {(visibleCrsRemediationPlan.acceptance_criteria || []).slice(0, 4).map(item => (
+                <p key={`crs-criteria-${item}`}>{displayText(item)}</p>
+              ))}
+            </div>
+            <p className="twm-crs-remediation-boundary">{displayText(visibleCrsRemediationPlan.claim_boundary)}</p>
+          </div>
+        )}
+        {authoritativeTemplates && (
+          <div className="twm-authoritative-template-panel">
+            <div className="twm-authoritative-template-head">
+              <div>
+                <strong>权威模板</strong>
+                <span>生产数据接入字段、lineage 和质量门禁模板</span>
+              </div>
+              <span className={`status-badge ${statusClass(authoritativeTemplates.status)}`}>
+                {statusText(authoritativeTemplates.status, '需复核')}
+              </span>
+            </div>
+            <div className="twm-authoritative-template-kpis">
+              <div><span>模板</span><strong>{fmt(authoritativeTemplates.template_count, 0)}</strong></div>
+              <div><span>生产部署</span><strong>{yesNo(authoritativeTemplates.production_deployment_supported)}</strong></div>
+              <div><span>lineage 字段</span><strong>{fmt(authoritativeTemplates.shared_lineage_fields?.length, 0)}</strong></div>
+              <div><span>门禁</span><strong>{fmt(authoritativeTemplates.readiness_gates?.length, 0)}</strong></div>
+            </div>
+            <div className="twm-authoritative-gates">
+              {(authoritativeTemplates.readiness_gates || []).slice(0, 4).map(gate => (
+                <article key={`authoritative-gate-${gate.id}`}>
+                  <span className={`status-badge ${statusClass(gate.status)}`}>{statusText(gate.status, '待处理')}</span>
+                  <strong>{displayText(gate.id)}</strong>
+                  <p>当前：{displayText(gate.current_value)}；目标：{displayText(gate.required_value)}</p>
+                </article>
+              ))}
+            </div>
+            <div className="twm-authoritative-template-list">
+              {(authoritativeTemplates.templates || []).slice(0, 6).map(template => (
+                <article key={`authoritative-template-${template.template_id}`}>
+                  <div>
+                    <strong>{displayText(template.template_id)}</strong>
+                    <code>{template.role || '-'}</code>
+                  </div>
+                  <p>{displayText(template.production_use)} · {displayText(template.unit)} · {compactDisplayList(template.accepted_formats, '未限定格式')}</p>
+                  <p>必填：{compactDisplayList((template.required_fields || []).slice(0, 8), '无')}</p>
+                  <p>门禁：{compactDisplayList((template.minimum_quality_gates || []).slice(0, 4), '无')}</p>
+                </article>
+              ))}
+            </div>
+            <div className="twm-authoritative-lineage">
+              {(authoritativeTemplates.shared_lineage_fields || []).slice(0, 12).map(field => (
+                <code key={`authoritative-lineage-${field}`}>{field}</code>
+              ))}
+            </div>
+            <p className="twm-authoritative-boundary">{displayText(authoritativeTemplates.claim_boundary)}</p>
+          </div>
+        )}
         {dataMapPreview && (
           <div className="twm-crs-diagnostic-panel">
             <div className="twm-crs-diagnostic-head">
@@ -2245,19 +2790,33 @@ export default function TerritoryWorldModelTab() {
                 <div className="twm-spatial-catalog-list">
                   {selectedSpatialLayerCatalog.slice(0, 8).map(layer => {
                     const layerPath = layer.name || layer.path || '';
+                    const detailLoading = running === 'layerDetail' && selectedLayerDetailPath === layerPath;
                     return (
                       <div key={`spatial-catalog-${selectedDataPackage.id}-${layerPath}`}>
-                        <button
-                          type="button"
-                          className="twm-spatial-catalog-action"
-                          onClick={() => syncDataFoundationLayerMapPreview(layerPath)}
-                          disabled={dataMapPreviewLoading || !layerPath}
-                          aria-label={`上图 ${layerPath}`}
-                          title="加载该图层到地图"
-                        >
-                          <MapPin size={12} />
-                          <span>上图</span>
-                        </button>
+                        <div className="twm-spatial-catalog-actions">
+                          <button
+                            type="button"
+                            className="twm-spatial-catalog-action"
+                            onClick={() => syncDataFoundationLayerMapPreview(layerPath)}
+                            disabled={dataMapPreviewLoading || !layerPath}
+                            aria-label={`上图 ${layerPath}`}
+                            title="加载该图层到地图"
+                          >
+                            <MapPin size={12} />
+                            <span>上图</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="twm-spatial-catalog-action secondary"
+                            onClick={() => loadDataFoundationLayerDetail(layerPath)}
+                            disabled={busy || !layerPath}
+                            aria-label={`字段明细 ${layerPath}`}
+                            title="查看字段明细和样例记录"
+                          >
+                            {detailLoading ? <Loader2 size={12} className="twm-spin" /> : <FileCheck2 size={12} />}
+                            <span>字段明细</span>
+                          </button>
+                        </div>
                         <div className="twm-spatial-catalog-main">
                           <code>{layerPath}</code>
                           <span>{fmt(layer.source_feature_count ?? layer.feature_count, 0)} 要素</span>
@@ -2274,6 +2833,44 @@ export default function TerritoryWorldModelTab() {
                     );
                   })}
                 </div>
+                {visibleLayerDetail && (
+                  <div className="twm-layer-detail-panel">
+                    <div className="twm-layer-detail-head">
+                      <div>
+                        <strong>字段明细</strong>
+                        <span>{displayText(visibleLayerDetail.dataset_label)} · <code>{visibleLayerDetail.layer_path}</code></span>
+                      </div>
+                      <span className={`status-badge ${visibleLayerDetail.not_for_production ? 'warning' : 'success'}`}>
+                        {visibleLayerDetail.not_for_production ? '演示/非生产' : '生产候选'}
+                      </span>
+                    </div>
+                    <div className="twm-layer-detail-kpis">
+                      <div><span>要素数</span><strong>{fmt(visibleLayerDetail.feature_count, 0)}</strong></div>
+                      <div><span>字段数</span><strong>{fmt(visibleLayerDetail.property_field_count, 0)}</strong></div>
+                      <div><span>样例记录</span><strong>{fmt(visibleLayerDetail.sample_record_count, 0)}</strong></div>
+                      <div><span>坐标</span><strong>{crsDiagnosticText(visibleLayerDetail.crs_diagnostic?.status)}</strong></div>
+                    </div>
+                    <div className="twm-layer-detail-fields">
+                      {(visibleLayerDetail.property_fields || []).slice(0, 14).map(field => (
+                        <span key={`layer-field-${visibleLayerDetail.layer_path}-${field.name}`}>
+                          <code>{field.name}</code>
+                          {displayText(field.value_type, 'unknown')} · {fmt(field.observed_count, 0)}
+                        </span>
+                      ))}
+                      {!(visibleLayerDetail.property_fields || []).length && <div className="twm-empty">暂无字段明细</div>}
+                    </div>
+                    <div className="twm-layer-detail-records">
+                      {(visibleLayerDetail.sample_records || []).slice(0, 5).map(record => (
+                        <article key={`sample-record-${visibleLayerDetail.layer_path}-${record.feature_index}`}>
+                          <strong>#{fmt(record.feature_index, 0)}</strong>
+                          <p>{compactSampleProperties(record.properties)}</p>
+                        </article>
+                      ))}
+                      {!(visibleLayerDetail.sample_records || []).length && <div className="twm-empty">暂无样例记录</div>}
+                    </div>
+                    <p className="twm-layer-detail-boundary">{displayText(visibleLayerDetail.claim_boundary)}</p>
+                  </div>
+                )}
               </div>
             )}
             <div className="twm-data-browser-table" role="table" aria-label="数据基础文件清单">

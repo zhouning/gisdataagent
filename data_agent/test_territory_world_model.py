@@ -1504,6 +1504,45 @@ def test_dynamics_evaluation_report_passes_candidate_predictions_on_observed_hol
     assert report["target_head_metrics"]["planning_utility_delta"]["ranking_correlation_proxy"] == 1.0
 
 
+def test_dynamics_model_registry_report_blocks_review_only_candidate_promotion():
+    svc = _build_service()
+    report = svc.dynamics_model_registry_report(
+        "state-registry",
+        {
+            "candidate_report": {
+                "status": "pass",
+                "candidate": {
+                    "model_name": "hierarchical_neural_multi_head_dynamics",
+                    "model_version": "neural_candidate_v1",
+                    "model_family": "action_conditioned_hierarchical_neural_dynamics",
+                    "is_scaffold_baseline": False,
+                    "is_scaffold_trainer": False,
+                },
+                "evidence_gate": {"status": "pass"},
+                "learned_parameters": {"metadata": {"training_dataset_hash": "sha256:test"}},
+            },
+            "readiness_report": {
+                "status": "review",
+                "gates": {"summary": {"blocked_gates": ["observed_temporal_support"]}},
+            },
+            "evaluation_report": {
+                "status": "review",
+                "evidence_gate": {"status": "review"},
+            },
+        },
+    )
+
+    assert report["schema"] == "territory_world_model.dynamics_model_registry_report.v1"
+    assert report["registry_entry"]["registry_key"] == "hierarchical_neural_multi_head_dynamics:neural_candidate_v1"
+    assert report["promotion_decision"] == "review_only_not_promoted"
+    assert report["gates"]["readiness_gate"]["status"] == "review"
+    assert report["gates"]["production_data_gate"]["status"] == "blocked"
+    assert "production_observed_history" in report["missing_for_promotion"]
+    assert "state_contract_version" in report["missing_registry_metadata"]
+    assert report["rollback_plan"]["action"] == "keep_current_production_version"
+    assert "review-only" in report["claim_boundary"]
+
+
 def test_fit_dynamics_candidate_blocks_when_readiness_fails():
     svc = _build_service()
     _project, state = _build_project_and_state(svc)
@@ -1944,12 +1983,17 @@ def test_twm_service_operations_emit_dedicated_otel_spans(monkeypatch):
     assert train_span["attrs"]["backend"] == "hierarchical_trainable_dynamics_scaffold"
     assert train_span["attrs"]["sample_count"] == 6
     assert train_span["span_attrs"]["twm.gate_status"] == train_report["evidence_gate"]["status"]
+    assert train_span["span_attrs"]["twm.backend_gate_status"] == train_report["backend_report"]["evidence_gate"]["status"]
+    assert train_span["span_attrs"]["twm.prediction_count"] == len(train_report["predictions"])
 
     rollout_span = by_operation["counterfactual_rollout"]
     assert rollout_span["attrs"]["state_version_id"] == state.id
     assert rollout_span["attrs"]["backend"] == "planner"
     assert rollout_span["attrs"]["sample_count"] == 4
     assert rollout_span["span_attrs"]["twm.gate_status"] == rollout_report["evidence_gate"]["status"]
+    assert rollout_span["span_attrs"]["twm.horizon"] == 2
+    assert rollout_span["span_attrs"]["twm.intervention_action_count"] == 1
+    assert rollout_span["span_attrs"]["twm.rollout_step_count"] == 4
 
     causal_span = by_operation["estimate_observational_treatment_effect"]
     assert causal_span["attrs"]["state_version_id"] == state.id
@@ -2004,6 +2048,7 @@ def test_train_dynamics_candidate_supports_neural_multi_head_trainer_contract():
     assert report["objective"]["schema"] == "territory_world_model.training_objective_report.v1"
     assert report["candidate_report"]["candidate"]["is_scaffold_trainer"] is False
     assert report["learned_parameters"]["training_diagnostics"]["prediction_count"] >= 1
+    assert "future_area_and_key_indicators.total_area_m2" in report["learned_parameters"]["architecture"]["heads"]
     assert report["learned_parameters"]["feature_contract"]["action_mask_context_feature_names"]
     assert "action_mask_context.risk_proxy" in report["learned_parameters"]["feature_contract"]["action_mask_context_feature_names"]
     assert report["evidence_gate"]["status"] in {"pass", "review", "blocked"}
@@ -2057,6 +2102,7 @@ def test_train_dynamics_candidate_supports_hierarchical_graph_token_trainer_cont
     assert report["learned_parameters"]["architecture"]["temporal_message_passing"] is True
     assert report["learned_parameters"]["architecture"]["temporal_feature_count"] >= 1
     assert report["learned_parameters"]["architecture"]["action_mask_context_feature_count"] >= 1
+    assert "future_area_and_key_indicators.total_area_m2" in report["learned_parameters"]["architecture"]["heads"]
     assert report["learned_parameters"]["feature_contract"]["flat_vector_allowed"] is False
     assert report["learned_parameters"]["feature_contract"]["temporal_feature_names"]
     assert report["learned_parameters"]["feature_contract"]["action_mask_context_feature_names"]
@@ -2125,6 +2171,7 @@ def test_train_dynamics_candidate_supports_spatiotemporal_transformer_trainer_co
     assert set(architecture["constraint_risk_context_tokens"]) == {"action", "context", "temporal"}
     assert architecture["action_mask_feasibility_head"] == "context_residual"
     assert set(architecture["action_mask_feasibility_context_tokens"]) == {"action", "context", "temporal"}
+    assert "future_area_and_key_indicators.total_area_m2" in architecture["heads"]
     assert report["learned_parameters"]["feature_contract"]["flat_vector_allowed"] is False
     assert "temporal" in report["learned_parameters"]["feature_contract"]["sequence_feature_names"]
     assert report["learned_parameters"]["feature_contract"]["action_mask_context_feature_names"]
@@ -3629,6 +3676,29 @@ def test_forecast_consumes_passed_causal_calibration_report():
     assert calibrated["forecast"]["planning_utility_delta"] > base["forecast"]["planning_utility_delta"]
     assert calibrated["forecast"]["calibration"]["utility_scale_adjustment"] == 2.0
     assert calibrated["forecast"]["future_latent_state"]["projected"]["causal_adjustment"]["source"]["status"] == "pass"
+    assert calibrated["forecast"]["calibration"]["causal_calibration"]["identification_strength"] == "observational"
+    assert calibrated["forecast"]["future_latent_state"]["projected"]["causal_adjustment"]["source"]["identification_strength"] == "observational"
+
+
+def test_neural_dynamics_prediction_exposes_area_indicator_contract():
+    from data_agent.territory_world_model.neural_dynamics import _prediction_from_outputs
+
+    prediction = _prediction_from_outputs(
+        example={"id": "contract-example", "action": {"action_type": "protect", "target_role": "parcel"}},
+        area_total=1234.5,
+        constraint_probability=0.24,
+        utility_delta=0.31,
+        confidence=0.72,
+        calibrated_utility=0.28,
+        action_allowed_probability=0.82,
+        source="unit_test_candidate",
+    )
+
+    indicators = prediction["future_area_and_key_indicators"]
+    assert indicators["schema"] == "territory_world_model.future_area_and_key_indicators.v1"
+    assert indicators["representation_boundary"] == "compact_indicator_proxy_not_full_parcel_geometry"
+    assert indicators["projected"]["total_area_m2"] == 1234.5
+    assert prediction["future_latent_state"]["representation_boundary"] == "compatibility_alias_for_future_area_and_key_indicators"
 
 
 def test_forecast_ignores_review_causal_calibration_report():
@@ -3707,6 +3777,9 @@ def test_research_positioning_states_core_claims_and_falsification_conditions():
     core_names = {item["name"] for item in positioning["core_technology"]}
     assert "Hierarchical GIS object-relation-rule-evidence state" in core_names
     assert "Action-conditioned multi-head territorial dynamics" in core_names
+    dynamics_claim = next(item["claim"] for item in positioning["core_technology"] if item["name"] == "Action-conditioned multi-head territorial dynamics")
+    assert "future area/key indicators" in dynamics_claim
+    assert "future latent state" not in dynamics_claim
     assert positioning["unmet_need_hypotheses"]
     assert "Rule-only spatial compliance engine" in positioning["baselines_to_beat"]
     assert any("stopped" in item for item in positioning["falsification_conditions"])
@@ -3723,6 +3796,59 @@ def test_research_positioning_route_returns_json(monkeypatch):
 
     assert response.status_code == 200
     assert body["research_question"].startswith("Can a governance-oriented geospatial world model")
+
+
+def test_roadmap_status_report_summarizes_completion_and_blockers():
+    svc = _build_service()
+    report = svc.roadmap_status_report()
+
+    assert report["schema"] == "territory_world_model.roadmap_status_report.v1"
+    assert report["overall_status"] == "prototype_complete_review_only"
+    phase_status = {item["id"]: item["status"] for item in report["phases"]}
+    assert phase_status["demo_closure"] == "complete"
+    assert phase_status["trusted_poc"] == "blocked"
+    assert phase_status["productionization"] == "blocked"
+    assert report["data_gate"]["production_ready_observed_history_rows"] == 0
+    assert any(item["id"] == "production_observed_history" for item in report["blockers"])
+    assert report["next_actions"][0]["priority"] == "P0"
+    assert "observed history" in report["next_actions"][0]["action"]
+    assert "review-only" in report["claim_boundary"]
+
+
+def test_roadmap_status_report_reflects_lineage_and_registry_gate_progress():
+    svc = _build_service()
+    report = svc.roadmap_status_report()
+    phases = {item["id"]: item for item in report["phases"]}
+
+    engineering = phases["engineering_scaffold"]
+    assert engineering["completion_ratio"] >= 0.74
+    assert any("model registry release gate" in item for item in engineering["evidence"])
+    assert "persistent model registry/version rollback" in engineering["remaining"]
+    assert "model registry/version rollback" not in engineering["remaining"]
+
+    data_foundation = phases["data_foundation_productization"]
+    assert data_foundation["completion_ratio"] >= 0.68
+    assert any("lineage and field drilldown" in item for item in data_foundation["evidence"])
+    assert any("CRS remediation plan" in item for item in data_foundation["evidence"])
+    assert any("authoritative production data templates" in item for item in data_foundation["evidence"])
+    assert "lineage browser" not in data_foundation["remaining"]
+    assert "CRS conversion workflow" not in data_foundation["remaining"]
+    assert "authoritative data templates" not in data_foundation["remaining"]
+    assert "production CRS conversion ETL" in data_foundation["remaining"]
+    assert "production lineage ingestion templates" in data_foundation["remaining"]
+
+
+def test_roadmap_status_route_returns_json(monkeypatch):
+    svc = _build_service()
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+
+    response = asyncio.run(routes.twm_roadmap_status(_fake_request()))
+    body = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert body["schema"] == "territory_world_model.roadmap_status_report.v1"
+    assert body["overall_status"] == "prototype_complete_review_only"
     assert body["claim_boundary"].startswith("Current TWM is a rigorous prototype")
 
 
@@ -4432,6 +4558,160 @@ def test_data_foundation_map_preview_route_accepts_layer_query(monkeypatch):
     assert [layer["name"] for layer in body["layers"]] == ["synthetic_projects.geojson"]
 
 
+def test_data_foundation_layer_detail_returns_fields_and_sample_records():
+    svc = _build_service()
+    detail = svc.data_foundation_layer_detail("twm_bishan_multi_admin_eval", "synthetic_projects.geojson", sample_limit=3)
+
+    assert detail["schema"] == "territory_world_model.data_foundation_layer_detail.v1"
+    assert detail["dataset_id"] == "twm_bishan_multi_admin_eval"
+    assert detail["layer_path"] == "synthetic_projects.geojson"
+    assert detail["feature_count"] == 90
+    assert detail["sample_record_count"] == 3
+    assert "geojson" not in detail
+    field_names = {field["name"] for field in detail["property_fields"]}
+    assert {"XMMC", "YDMJ", "approval_status"}.issubset(field_names)
+    assert detail["sample_records"][0]["properties"]["XMMC"] == "璧山世界模型合成项目01"
+    assert detail["crs_diagnostic"]["map_overlay_ready"] is True
+
+
+def test_data_foundation_layer_detail_route_returns_json(monkeypatch):
+    svc = _build_service()
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+
+    response = asyncio.run(routes.twm_data_foundation_layer_detail(_fake_request(
+        path_params={"dataset_id": "twm_bishan_multi_admin_eval"},
+        query_string=b"layer=synthetic_projects.geojson&sample_limit=2",
+    )))
+    body = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert body["schema"] == "territory_world_model.data_foundation_layer_detail.v1"
+    assert body["layer_path"] == "synthetic_projects.geojson"
+    assert body["sample_record_count"] == 2
+
+
+def test_data_foundation_lineage_report_summarizes_sources_and_readiness():
+    svc = _build_service()
+    report = svc.data_foundation_lineage_report("twm_bishan_multi_admin_eval")
+
+    assert report["schema"] == "territory_world_model.data_foundation_lineage_report.v1"
+    assert report["dataset_id"] == "twm_bishan_multi_admin_eval"
+    assert report["lineage_coverage"]["status"] == "review_not_for_production"
+    assert report["file_count"] == 11
+    assert report["spatial_layer_count"] == 6
+    assert report["table_count"] == 5
+    assert report["total_record_count"] == 22401
+    assert "geojson" not in report
+
+    by_path = {item["path"]: item for item in report["files"]}
+    assert by_path["parcel_current.geojson"]["source_role"] == "spatial_layer"
+    assert by_path["parcel_current.geojson"]["crs_diagnostic"]["map_overlay_ready"] is True
+    assert by_path["tables/approval_records.csv"]["source_role"] == "auxiliary_table"
+    assert by_path["tables/approval_records.csv"]["lineage_status"] == "review_not_for_production"
+    gate_status = {item["id"]: item["status"] for item in report["readiness_gates"]}
+    assert gate_status["production_observed_history"] == "blocked"
+    assert gate_status["authoritative_source_lineage"] == "blocked"
+    assert report["required_next_data"][0]["priority"] == "P0"
+
+
+def test_data_foundation_lineage_route_returns_json(monkeypatch):
+    svc = _build_service()
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+
+    response = asyncio.run(routes.twm_data_foundation_lineage(_fake_request(
+        path_params={"dataset_id": "twm_bishan_multi_admin_eval"},
+    )))
+    body = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert body["schema"] == "territory_world_model.data_foundation_lineage_report.v1"
+    assert body["dataset_id"] == "twm_bishan_multi_admin_eval"
+    assert body["file_count"] == 11
+
+
+def test_data_foundation_crs_remediation_plan_flags_non_wgs84_layers():
+    svc = _build_service()
+    plan = svc.data_foundation_crs_remediation_plan("twm_one_map_village_standard_sample")
+
+    assert plan["schema"] == "territory_world_model.data_foundation_crs_remediation_plan.v1"
+    assert plan["dataset_id"] == "twm_one_map_village_standard_sample"
+    assert plan["status"] == "action_required"
+    assert plan["blocked_layer_count"] >= 1
+    assert plan["target_crs"] == "EPSG:4326"
+    assert "geojson" not in plan
+    blocked = [item for item in plan["layers"] if item["status"] == "requires_conversion"]
+    assert blocked
+    assert blocked[0]["output_policy"]["suffix"] == "_wgs84.geojson"
+    assert blocked[0]["conversion_steps"][0]["action"] == "identify_source_crs"
+    assert any(step["action"] == "reproject_to_target_crs" for step in blocked[0]["conversion_steps"])
+
+
+def test_data_foundation_crs_remediation_route_returns_json(monkeypatch):
+    svc = _build_service()
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+
+    response = asyncio.run(routes.twm_data_foundation_crs_remediation(_fake_request(
+        path_params={"dataset_id": "twm_one_map_village_standard_sample"},
+    )))
+    body = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert body["schema"] == "territory_world_model.data_foundation_crs_remediation_plan.v1"
+    assert body["status"] == "action_required"
+
+
+def test_data_foundation_authoritative_templates_define_production_contracts():
+    svc = _build_service()
+    report = svc.data_foundation_authoritative_templates()
+
+    assert report["schema"] == "territory_world_model.data_foundation_authoritative_templates.v1"
+    assert report["status"] == "template_ready_review_only"
+    assert report["production_deployment_supported"] is False
+    assert report["template_count"] >= 5
+    assert "geojson" not in report
+    by_id = {item["template_id"]: item for item in report["templates"]}
+    assert "parcel_current_authoritative" in by_id
+    assert "approval_records_authoritative" in by_id
+    assert "policy_action_history_authoritative" in by_id
+    assert "geometry" in by_id["parcel_current_authoritative"]["required_fields"]
+    assert "final_decision" in by_id["approval_records_authoritative"]["required_fields"]
+    assert "action_allowed" in by_id["policy_action_history_authoritative"]["required_fields"]
+    assert "custodian_signoff" in report["readiness_gates"][0]["id"]
+    assert any("not-for-production" in item for item in report["claim_boundary_notes"])
+
+
+def test_data_foundation_authoritative_templates_route_returns_json(monkeypatch):
+    svc = _build_service()
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+
+    response = asyncio.run(routes.twm_data_foundation_authoritative_templates(_fake_request()))
+    body = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert body["schema"] == "territory_world_model.data_foundation_authoritative_templates.v1"
+    assert body["status"] == "template_ready_review_only"
+
+
+def test_twm_frontend_exposes_roadmap_status_and_layer_detail_drilldown():
+    component = Path("frontend/src/components/datapanel/TerritoryWorldModelTab.tsx").read_text()
+
+    assert "/api/twm/roadmap-status" in component
+    assert "/api/twm/data-foundation-layer-detail/" in component
+    assert "/api/twm/data-foundation-lineage/" in component
+    assert "/api/twm/data-foundation-crs-remediation/" in component
+    assert "/api/twm/data-foundation-authoritative-templates" in component
+    assert "路线图状态" in component
+    assert "lineage 报告" in component
+    assert "CRS 方案" in component
+    assert "权威模板" in component
+    assert "字段明细" in component
+    assert "样例记录" in component
+
+
 def test_data_foundation_assessment_route_returns_json(monkeypatch):
     svc = _build_service()
     monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
@@ -4454,6 +4734,11 @@ def test_twm_toolset_lists_sync_and_long_running_tools():
     names = {tool.name for tool in tools}
 
     assert "twm_status" in names
+    assert "twm_roadmap_status" in names
+    assert "twm_data_foundation_layer_detail" in names
+    assert "twm_data_foundation_lineage" in names
+    assert "twm_data_foundation_crs_remediation" in names
+    assert "twm_data_foundation_authoritative_templates" in names
     assert "twm_create_project" in names
     assert "twm_build_state_async" in names
     assert "twm_evaluate_rules_async" in names
@@ -4490,6 +4775,8 @@ def test_twm_toolset_lists_sync_and_long_running_tools():
     assert "twm_dynamics_readiness_report_async" in names
     assert "twm_dynamics_evaluation_report" in names
     assert "twm_dynamics_evaluation_report_async" in names
+    assert "twm_dynamics_model_registry_report" in names
+    assert "twm_dynamics_model_registry_report_async" in names
     assert "twm_fit_dynamics_candidate" in names
     assert "twm_fit_dynamics_candidate_async" in names
     assert "twm_geofm_ablation_gate" in names
@@ -4500,6 +4787,94 @@ def test_twm_toolset_lists_sync_and_long_running_tools():
     assert "twm_causal_calibration_report_async" in names
     assert "twm_scca_causal_evidence_report" in names
     assert "twm_scca_causal_evidence_report_async" in names
+
+
+def test_twm_roadmap_status_tool_returns_machine_readable_report(monkeypatch):
+    from data_agent.toolsets import territory_world_model_tools as tools
+
+    svc = _build_service()
+    monkeypatch.setattr(tools, "get_territory_world_model_service", lambda: svc)
+
+    payload = json.loads(tools.twm_roadmap_status())
+
+    assert payload["schema"] == "territory_world_model.roadmap_status_report.v1"
+    assert payload["overall_status"] == "prototype_complete_review_only"
+    assert any(item["id"] == "trusted_poc" and item["status"] == "blocked" for item in payload["phases"])
+
+
+def test_twm_data_foundation_layer_detail_tool_returns_fields(monkeypatch):
+    from data_agent.toolsets import territory_world_model_tools as tools
+
+    svc = _build_service()
+    monkeypatch.setattr(tools, "get_territory_world_model_service", lambda: svc)
+
+    payload = json.loads(tools.twm_data_foundation_layer_detail("twm_bishan_multi_admin_eval", "synthetic_projects.geojson", sample_limit="2"))
+
+    assert payload["schema"] == "territory_world_model.data_foundation_layer_detail.v1"
+    assert payload["sample_record_count"] == 2
+    assert any(field["name"] == "approval_status" for field in payload["property_fields"])
+
+
+def test_twm_data_foundation_lineage_tool_returns_lineage_report(monkeypatch):
+    from data_agent.toolsets import territory_world_model_tools as tools
+
+    svc = _build_service()
+    monkeypatch.setattr(tools, "get_territory_world_model_service", lambda: svc)
+
+    payload = json.loads(tools.twm_data_foundation_lineage("twm_bishan_multi_admin_eval"))
+
+    assert payload["schema"] == "territory_world_model.data_foundation_lineage_report.v1"
+    assert payload["lineage_coverage"]["status"] == "review_not_for_production"
+    assert payload["file_count"] == 11
+
+
+def test_twm_data_foundation_crs_remediation_tool_returns_plan(monkeypatch):
+    from data_agent.toolsets import territory_world_model_tools as tools
+
+    svc = _build_service()
+    monkeypatch.setattr(tools, "get_territory_world_model_service", lambda: svc)
+
+    payload = json.loads(tools.twm_data_foundation_crs_remediation("twm_one_map_village_standard_sample"))
+
+    assert payload["schema"] == "territory_world_model.data_foundation_crs_remediation_plan.v1"
+    assert payload["status"] == "action_required"
+    assert payload["blocked_layer_count"] >= 1
+
+
+def test_twm_data_foundation_authoritative_templates_tool_returns_contracts(monkeypatch):
+    from data_agent.toolsets import territory_world_model_tools as tools
+
+    svc = _build_service()
+    monkeypatch.setattr(tools, "get_territory_world_model_service", lambda: svc)
+
+    payload = json.loads(tools.twm_data_foundation_authoritative_templates())
+
+    assert payload["schema"] == "territory_world_model.data_foundation_authoritative_templates.v1"
+    assert payload["template_count"] >= 5
+    assert payload["production_deployment_supported"] is False
+
+
+def test_twm_dynamics_model_registry_tool_returns_gate_report(monkeypatch):
+    from data_agent.toolsets import territory_world_model_tools as tools
+
+    svc = _build_service()
+    monkeypatch.setattr(tools, "get_territory_world_model_service", lambda: svc)
+
+    payload = json.loads(tools.twm_dynamics_model_registry_report(
+        "state-registry",
+        json.dumps({
+            "candidate_report": {
+                "candidate": {"model_name": "model_a", "model_version": "v1"},
+                "evidence_gate": {"status": "pass"},
+            },
+            "readiness_report": {"status": "review"},
+            "evaluation_report": {"evidence_gate": {"status": "review"}},
+        }),
+    ))
+
+    assert payload["schema"] == "territory_world_model.dynamics_model_registry_report.v1"
+    assert payload["registry_entry"]["registry_key"] == "model_a:v1"
+    assert payload["promotion_decision"] == "review_only_not_promoted"
 
 
 def test_twm_forecast_tool_accepts_dynamics_candidate_report(monkeypatch):
@@ -4621,6 +4996,24 @@ def test_twm_routes_create_list_and_forecast(monkeypatch):
     eval_payload = json.loads(eval_resp.body)
     assert eval_payload["schema"] == "territory_world_model.dynamics_evaluation_report.v1"
     assert eval_payload["evidence_gate"]["status"] in {"review", "blocked"}
+
+    registry_req = _fake_request(
+        "POST",
+        json.dumps({
+            "candidate_report": {
+                "candidate": {"model_name": "route_candidate", "model_version": "v1"},
+                "evidence_gate": {"status": "pass"},
+            },
+            "readiness_report": readiness_payload,
+            "evaluation_report": eval_payload,
+        }).encode("utf-8"),
+        path_params={"id": state["state_version"]["id"]},
+    )
+    registry_resp = asyncio.run(routes.twm_dynamics_model_registry_report(registry_req))
+    assert registry_resp.status_code == 200
+    registry_payload = json.loads(registry_resp.body)
+    assert registry_payload["schema"] == "territory_world_model.dynamics_model_registry_report.v1"
+    assert registry_payload["registry_entry"]["registry_key"] == "route_candidate:v1"
 
     fit_req = _fake_request(
         "POST",

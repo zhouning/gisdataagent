@@ -131,6 +131,7 @@ def train_neural_multi_head_dynamics(
             "model_type": "torch_multi_head_mlp",
             "input_feature_groups": ["hierarchy_summary", "explicit_gis_state", "action", "scenario", "constraint_context", "action_mask_context"],
             "heads": [
+                "future_area_and_key_indicators.total_area_m2",
                 "future_latent_state.area_total",
                 "constraint_violation_probability",
                 "planning_utility_delta",
@@ -165,7 +166,7 @@ def train_neural_multi_head_dynamics(
         "model_state_dict": _serializable_state_dict(model),
         "limitations": [
             "local trainable MLP candidate; not yet the final graph/transformer hierarchical TWM",
-            "future_latent_state currently predicts compact area-level latent outputs rather than full parcel geometry",
+            "future_latent_state is a compatibility alias for compact area/key-indicator predictions, not full parcel geometry",
             "claim upgrade still depends on readiness, backend, objective, causal, GeoFM and validation gates",
         ],
     }
@@ -371,6 +372,7 @@ def train_hierarchical_graph_dynamics(
             "hidden_dim": cfg["hidden_dim"],
             "dropout": cfg["dropout"],
             "heads": [
+                "future_area_and_key_indicators.total_area_m2",
                 "future_latent_state.area_total",
                 "constraint_violation_probability",
                 "planning_utility_delta",
@@ -603,6 +605,7 @@ def train_spatiotemporal_transformer_dynamics(
             "hidden_dim": cfg["hidden_dim"],
             "dropout": cfg["dropout"],
             "heads": [
+                "future_area_and_key_indicators.total_area_m2",
                 "future_latent_state.area_total",
                 "constraint_violation_probability",
                 "planning_utility_delta",
@@ -1458,17 +1461,38 @@ def _prediction_from_outputs(
     action = dict(example.get("action") or {})
     allowed = action_allowed_probability >= 0.5
     latent_observed = {"total_area_m2": round(max(0.0, float(area_total)), 6)}
+    indicators = {
+        "schema": "territory_world_model.future_area_and_key_indicators.v1",
+        "representation_boundary": "compact_indicator_proxy_not_full_parcel_geometry",
+        "action": action,
+        "observed_next": dict(latent_observed),
+        "projected": {
+            "total_area_m2": latent_observed["total_area_m2"],
+            "projected_risk_pressure": round(_clamp01(constraint_probability), 6),
+            "projected_utility_delta": round(float(utility_delta), 6),
+            "calibrated_utility_delta": round(float(calibrated_utility), 6),
+            "action_allowed_probability": round(_clamp01(action_allowed_probability), 6),
+            "confidence": round(_clamp01(confidence), 6),
+        },
+        "dimensions": [
+            "total_area_m2",
+            "projected_risk_pressure",
+            "projected_utility_delta",
+            "calibrated_utility_delta",
+            "action_allowed_probability",
+            "confidence",
+        ],
+        "source": source,
+    }
     return {
         "action": action,
+        "future_area_and_key_indicators": indicators,
         "future_latent_state": {
             "schema": "territory_world_model.predicted_latent_state.v1",
-            "observed_next": latent_observed,
-            "projected": {
-                "total_area_m2": latent_observed["total_area_m2"],
-                "projected_risk_pressure": round(_clamp01(constraint_probability), 6),
-                "projected_utility_delta": round(float(utility_delta), 6),
-            },
-            "latent_head_scope": "area_total_plus_planning_heads",
+            "observed_next": dict(indicators["observed_next"]),
+            "projected": dict(indicators["projected"]),
+            "latent_head_scope": "compact_area_and_key_indicator_proxy",
+            "representation_boundary": "compatibility_alias_for_future_area_and_key_indicators",
         },
         "constraint_violation_probability": round(_clamp01(constraint_probability), 6),
         "planning_utility_delta": round(float(utility_delta), 6),

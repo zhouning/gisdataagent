@@ -173,7 +173,7 @@ TWM_RESEARCH_POSITIONING: dict[str, Any] = {
         },
         {
             "name": "Action-conditioned multi-head territorial dynamics",
-            "claim": "TWM forecasts future latent state, constraint-risk, planning utility, uncertainty and action-mask feasibility conditional on review/protect/convert/restore actions.",
+            "claim": "TWM forecasts future area/key indicators, constraint-risk, planning utility, uncertainty and action-mask feasibility conditional on review/protect/convert/restore actions; future_latent_state remains a compatibility field, not a full parcel-geometry latent.",
             "why_it_matters": "The decision object is not only land-use change, but the consequence of governance actions under hard constraints and evidence limits.",
         },
         {
@@ -1268,6 +1268,140 @@ class TerritoryWorldModelService:
 
     def research_positioning(self) -> dict[str, Any]:
         return json.loads(_json(TWM_RESEARCH_POSITIONING))
+
+    def roadmap_status_report(self) -> dict[str, Any]:
+        data_foundation = self.data_foundation_assessment()
+        validation = dict(data_foundation.get("validation_snapshot") or {})
+        production_rows = safe_int(validation.get("production_ready_observed_history_rows"), 0)
+        policy_rows = safe_int(validation.get("production_policy_history_row_count"), 0)
+        engineering_mvp = bool((data_foundation.get("landing_readiness") or {}).get("engineering_mvp_supported"))
+        phases = [
+            {
+                "id": "demo_closure",
+                "label": "Natural resources demo closure",
+                "status": "complete",
+                "completion_ratio": 0.9,
+                "evidence": [
+                    "Chinese-first TWM frontend tabs are implemented",
+                    "data foundation map preview and bbox-aligned overview map are implemented",
+                    "automated E2E evidence exists for the demo workflow",
+                ],
+                "remaining": ["manual acceptance and demo freeze before external presentation"],
+            },
+            {
+                "id": "engineering_scaffold",
+                "label": "Auditable TWM engineering scaffold",
+                "status": "partial" if engineering_mvp else "review",
+                "completion_ratio": 0.76 if engineering_mvp else 0.55,
+                "evidence": [
+                    "state/rule/evidence/audit pipeline",
+                    "forecast, counterfactual rollout, validation ladder and beam planning consumer",
+                    "trainable dynamics candidates and observational causal calibration reports",
+                    "dynamics model registry release gate report is implemented",
+                ],
+                "remaining": ["service decomposition", "persistent model registry/version rollback", "production-scale storage/index review"],
+            },
+            {
+                "id": "data_foundation_productization",
+                "label": "Data foundation productization",
+                "status": "partial",
+                "completion_ratio": 0.7,
+                "evidence": [
+                    "demo dataset catalog, CRS diagnostics and map overlay readiness are exposed",
+                    "full GeoJSON preview is available for the current demo scale",
+                    "lineage and field drilldown reports are exposed through API, tools and frontend",
+                    "CRS remediation plan is exposed through API, tools and frontend",
+                    "authoritative production data templates are exposed through API, tools and frontend",
+                ],
+                "remaining": ["vector tiles or server-side chunking", "production CRS conversion ETL", "production lineage ingestion templates"],
+            },
+            {
+                "id": "trusted_poc",
+                "label": "Trusted pilot validation",
+                "status": "candidate" if production_rows > 0 and policy_rows > 0 else "blocked",
+                "completion_ratio": 0.4 if production_rows > 0 and policy_rows > 0 else 0.25,
+                "evidence": [
+                    "public Dynamic World and GeoSOS/FLUS benchmark evidence exists",
+                    "claim ladder and baseline comparison contracts exist",
+                ],
+                "remaining": ["real observed approval/review history", "policy/action feasibility labels", "same-case baseline and holdout evaluation"],
+            },
+            {
+                "id": "productionization",
+                "label": "Production and air-gapped deployment",
+                "status": "blocked",
+                "completion_ratio": 0.15,
+                "evidence": ["air-gapped deployment strategy exists"],
+                "remaining": ["offline deployment package", "permissioned audit trail", "model/rule/version comparison", "sanitized diagnostic export"],
+            },
+        ]
+        blockers = [
+            {
+                "id": "production_observed_history",
+                "priority": "P0",
+                "status": "blocked" if production_rows <= 0 else "partial",
+                "current_value": production_rows,
+                "required_value": "one pilot region with multi-year observed approval/review history",
+            },
+            {
+                "id": "policy_action_history",
+                "priority": "P0",
+                "status": "blocked" if policy_rows <= 0 else "partial",
+                "current_value": policy_rows,
+                "required_value": "authoritative policy/action feasibility labels",
+            },
+            {
+                "id": "service_decomposition",
+                "priority": "P1",
+                "status": "open",
+                "current_value": "large facade service",
+                "required_value": "state, dynamics, calibration, planner, evidence/audit and readiness services",
+            },
+            {
+                "id": "full_flus_and_holdout_baselines",
+                "priority": "P2",
+                "status": "open",
+                "current_value": "public benchmark and simplified/direct adapters",
+                "required_value": "same-case full FLUS/GeoSOS baseline plus cross-region/cross-year holdout",
+            },
+        ]
+        next_actions = [
+            {
+                "priority": "P0",
+                "action": "secure real or sanitized observed history and policy/action labels for one pilot region",
+                "roadmap_phase": "trusted_poc",
+            },
+            {
+                "priority": "P0",
+                "action": "freeze and manually accept the current natural-resources demo workflow",
+                "roadmap_phase": "demo_closure",
+            },
+            {
+                "priority": "P1",
+                "action": "split the TWM facade service along state/dynamics/calibration/planner/evidence boundaries",
+                "roadmap_phase": "engineering_scaffold",
+            },
+            {
+                "priority": "P1",
+                "action": "finish vector tiles or chunked preview, production CRS conversion ETL, and production lineage ingestion templates",
+                "roadmap_phase": "data_foundation_productization",
+            },
+        ]
+        return {
+            "schema": "territory_world_model.roadmap_status_report.v1",
+            "generated_at": now_utc_iso(),
+            "overall_status": "prototype_complete_review_only",
+            "claim_boundary": "Current TWM is a rigorous prototype: demo-complete and engineering-reviewable, but production, prediction and causal claims remain review-only until real observed history, policy labels and same-case baselines pass.",
+            "data_gate": {
+                "status": data_foundation.get("status", "review"),
+                "production_ready_observed_history_rows": production_rows,
+                "production_policy_history_row_count": policy_rows,
+                "predictive_or_causal_claim_supported": bool((data_foundation.get("landing_readiness") or {}).get("predictive_or_causal_claim_supported")),
+            },
+            "phases": phases,
+            "blockers": blockers,
+            "next_actions": next_actions,
+        }
 
     def research_claim_matrix(self) -> dict[str, Any]:
         data_foundation = self.data_foundation_assessment()
@@ -2567,6 +2701,461 @@ class TerritoryWorldModelService:
         }
         return json.loads(_json(result))
 
+    def data_foundation_lineage_report(self, dataset_id: str) -> dict[str, Any]:
+        dataset_id = compact_text(dataset_id)
+        spec = next((item for item in TWM_DATA_FOUNDATION_DATASETS if item.get("id") == dataset_id), None)
+        if spec is None:
+            raise LookupError(f"data foundation dataset not found: {dataset_id}")
+
+        assessment = self.data_foundation_assessment()
+        validation = dict(assessment.get("validation_snapshot") or {})
+        summary = next((item for item in assessment.get("datasets", []) if item.get("id") == dataset_id), None)
+        if summary is None:
+            summary = self._data_foundation_dataset_summary(spec)
+
+        spatial_by_path = {
+            str(layer.get("path") or layer.get("name") or ""): layer
+            for layer in summary.get("spatial_layer_catalog", [])
+            if layer.get("path") or layer.get("name")
+        }
+        files: list[dict[str, Any]] = []
+        for item in summary.get("files", []):
+            rel_path = str(item.get("path") or "")
+            unit = str(item.get("unit") or "")
+            exists = bool(item.get("exists"))
+            count = safe_int(item.get("count"), 0)
+            synthetic_count = safe_int(item.get("synthetic_count"), 0)
+            not_for_production_count = safe_int(item.get("not_for_production_count"), 0)
+            spatial_layer = spatial_by_path.get(rel_path) or {}
+            source_role = "spatial_layer" if unit == "feature" else "auxiliary_table" if unit == "row" else "supporting_file"
+            if not exists:
+                lineage_status = "missing"
+            elif bool(summary.get("not_for_production", True)) or synthetic_count > 0 or not_for_production_count > 0:
+                lineage_status = "review_not_for_production"
+            else:
+                lineage_status = "candidate_authoritative"
+            row = {
+                "path": rel_path,
+                "unit": unit,
+                "source_role": source_role,
+                "exists": exists,
+                "count": count,
+                "synthetic_count": synthetic_count,
+                "not_for_production_count": not_for_production_count,
+                "lineage_status": lineage_status,
+                "source_nature": spec.get("nature"),
+                "dataset_root": spec.get("path"),
+                "not_for_production": bool(summary.get("not_for_production", True)) or not_for_production_count > 0,
+                "readiness_note": (
+                    "可用于字段、空间范围和链路回归核查；not_for_production 数据不得作为生产治理结论。"
+                    if lineage_status == "review_not_for_production"
+                    else "缺失文件需先补齐后才能进入数据基础核查。"
+                    if lineage_status == "missing"
+                    else "候选权威来源仍需人工验收数据版本、来源证明和权限边界。"
+                ),
+            }
+            if spatial_layer:
+                row.update({
+                    "bbox": spatial_layer.get("bbox"),
+                    "crs_diagnostic": spatial_layer.get("crs_diagnostic"),
+                    "property_field_count": spatial_layer.get("property_field_count"),
+                    "sample_properties": spatial_layer.get("sample_properties"),
+                })
+            files.append(row)
+
+        production_rows = safe_int(validation.get("production_ready_observed_history_rows"), 0)
+        policy_rows = safe_int(validation.get("production_policy_history_row_count"), 0)
+        map_overlay_readiness = summary.get("map_overlay_readiness") or {}
+        nonproduction_count = safe_int(summary.get("not_for_production_count"), 0)
+        synthetic_count = safe_int(summary.get("synthetic_count"), 0)
+        lineage_status = "review_not_for_production" if bool(summary.get("not_for_production", True)) or nonproduction_count > 0 else "candidate_authoritative"
+        readiness_gates = [
+            {
+                "id": "authoritative_source_lineage",
+                "status": "blocked" if lineage_status == "review_not_for_production" else "review",
+                "current_value": f"{nonproduction_count} not-for-production records; {synthetic_count} synthetic records",
+                "required_value": "source authority, data version, update time, permission boundary and custodian sign-off for each production layer/table",
+            },
+            {
+                "id": "production_observed_history",
+                "status": "blocked" if production_rows <= 0 else "partial",
+                "current_value": production_rows,
+                "required_value": "real or sanitized approval/review/remediation/enforcement history with final outcomes",
+            },
+            {
+                "id": "production_policy_action_labels",
+                "status": "blocked" if policy_rows <= 0 else "partial",
+                "current_value": policy_rows,
+                "required_value": "authoritative policy/action feasibility labels for TWM action-conditioned validation",
+            },
+            {
+                "id": "map_overlay_crs",
+                "status": "ready" if map_overlay_readiness.get("status") == "ready" else "blocked",
+                "current_value": map_overlay_readiness.get("message", ""),
+                "required_value": "all spatial layers have known CRS and can be converted to the map display CRS",
+            },
+        ]
+        return json.loads(_json({
+            "schema": "territory_world_model.data_foundation_lineage_report.v1",
+            "generated_at": now_utc_iso(),
+            "dataset_id": dataset_id,
+            "dataset_label": spec.get("label"),
+            "dataset_root": spec.get("path"),
+            "source_nature": spec.get("nature"),
+            "positioning": spec.get("positioning"),
+            "not_for_production": bool(summary.get("not_for_production", True)),
+            "file_count": safe_int(summary.get("file_count"), len(files)),
+            "spatial_layer_count": sum(1 for item in files if item.get("source_role") == "spatial_layer"),
+            "table_count": sum(1 for item in files if item.get("source_role") == "auxiliary_table"),
+            "total_record_count": safe_int(summary.get("total_count"), 0),
+            "synthetic_record_count": synthetic_count,
+            "not_for_production_record_count": nonproduction_count,
+            "lineage_coverage": {
+                "status": lineage_status,
+                "file_count": len(files),
+                "existing_file_count": sum(1 for item in files if item.get("exists")),
+                "missing_file_count": sum(1 for item in files if not item.get("exists")),
+                "authoritative_source_count": sum(1 for item in files if item.get("lineage_status") == "candidate_authoritative"),
+                "review_only_source_count": sum(1 for item in files if item.get("lineage_status") == "review_not_for_production"),
+            },
+            "map_overlay_readiness": map_overlay_readiness,
+            "readiness_gates": readiness_gates,
+            "files": files,
+            "required_next_data": list(TWM_DATA_FOUNDATION_REQUIRED_NEXT_DATA),
+            "claim_boundary": (
+                "Lineage report supports source review, field mapping, CRS readiness and production onboarding planning; "
+                "it does not upgrade not-for-production datasets into authoritative evidence."
+            ),
+        }))
+
+    def data_foundation_crs_remediation_plan(self, dataset_id: str) -> dict[str, Any]:
+        dataset_id = compact_text(dataset_id)
+        spec = next((item for item in TWM_DATA_FOUNDATION_DATASETS if item.get("id") == dataset_id), None)
+        if spec is None:
+            raise LookupError(f"data foundation dataset not found: {dataset_id}")
+
+        assessment = self.data_foundation_assessment()
+        summary = next((item for item in assessment.get("datasets", []) if item.get("id") == dataset_id), None)
+        if summary is None:
+            summary = self._data_foundation_dataset_summary(spec)
+
+        target_crs = "EPSG:4326"
+        layers: list[dict[str, Any]] = []
+        for layer in summary.get("spatial_layer_catalog", []):
+            layer_path = str(layer.get("path") or layer.get("name") or "")
+            if not layer_path:
+                continue
+            crs_diagnostic = dict(layer.get("crs_diagnostic") or {})
+            map_overlay_ready = crs_diagnostic.get("map_overlay_ready") is True
+            source_crs_assumption = (
+                target_crs
+                if map_overlay_ready
+                else "unknown_projected_or_non_wgs84"
+                if crs_diagnostic.get("status") == "projected_or_non_wgs84"
+                else "unknown"
+            )
+            if map_overlay_ready:
+                status = "ready"
+                conversion_steps = [
+                    {
+                        "action": "verify_declared_crs",
+                        "status": "recommended",
+                        "source_crs_assumption": source_crs_assumption,
+                        "acceptance": "dataset custodian or metadata confirms EPSG:4326 / WGS84 lonlat",
+                    },
+                    {
+                        "action": "preserve_source_layer",
+                        "status": "ready",
+                        "reason": "bbox already falls within longitude/latitude bounds for the current demo map overlay",
+                    },
+                ]
+                output_policy = {
+                    "write_new_file": False,
+                    "suffix": "",
+                    "target_crs": target_crs,
+                    "lineage_fields": [],
+                }
+            else:
+                status = "requires_conversion"
+                conversion_steps = [
+                    {
+                        "action": "identify_source_crs",
+                        "status": "required",
+                        "source_crs_assumption": source_crs_assumption,
+                        "method": "read CRS metadata, dataset manifest, sidecar .prj, or obtain custodian confirmation before transformation",
+                    },
+                    {
+                        "action": "reproject_to_target_crs",
+                        "status": "required",
+                        "target_crs": target_crs,
+                        "tooling": "GDAL/ogr2ogr, pyproj/geopandas, or an approved spatial ETL job",
+                    },
+                    {
+                        "action": "validate_bbox_and_geometry",
+                        "status": "required",
+                        "acceptance": "converted bbox is within lon/lat bounds, feature count matches source, and invalid geometries are reported",
+                    },
+                    {
+                        "action": "write_lineage_preserving_output",
+                        "status": "required",
+                        "output_suffix": "_wgs84.geojson",
+                        "lineage_fields": ["_twm_source_file", "_twm_source_crs", "_twm_target_crs", "_twm_conversion_time"],
+                    },
+                ]
+                output_policy = {
+                    "write_new_file": True,
+                    "suffix": "_wgs84.geojson",
+                    "target_crs": target_crs,
+                    "overwrite_source": False,
+                    "lineage_fields": ["_twm_source_file", "_twm_source_crs", "_twm_target_crs", "_twm_conversion_time"],
+                }
+
+            layers.append({
+                "path": layer_path,
+                "label": layer.get("label") or layer_path.replace("synthetic_", "").replace(".geojson", ""),
+                "status": status,
+                "feature_count": safe_int(layer.get("feature_count") or layer.get("source_feature_count"), 0),
+                "bbox": layer.get("bbox"),
+                "source_crs_assumption": source_crs_assumption,
+                "target_crs": target_crs,
+                "crs_diagnostic": crs_diagnostic,
+                "suggested_action": "no_conversion_required" if map_overlay_ready else "convert_to_wgs84_before_map_overlay",
+                "conversion_steps": conversion_steps,
+                "output_policy": output_policy,
+                "not_for_production": bool(layer.get("not_for_production", summary.get("not_for_production", True))),
+            })
+
+        blocked_layer_count = sum(1 for layer in layers if layer.get("status") == "requires_conversion")
+        ready_layer_count = sum(1 for layer in layers if layer.get("status") == "ready")
+        status = "action_required" if blocked_layer_count else "ready" if layers else "no_spatial_layers"
+        return json.loads(_json({
+            "schema": "territory_world_model.data_foundation_crs_remediation_plan.v1",
+            "generated_at": now_utc_iso(),
+            "dataset_id": dataset_id,
+            "dataset_label": spec.get("label"),
+            "dataset_root": spec.get("path"),
+            "source_nature": spec.get("nature"),
+            "positioning": spec.get("positioning"),
+            "target_crs": target_crs,
+            "status": status,
+            "layer_count": len(layers),
+            "ready_layer_count": ready_layer_count,
+            "blocked_layer_count": blocked_layer_count,
+            "map_overlay_readiness": summary.get("map_overlay_readiness"),
+            "layers": layers,
+            "execution_policy": {
+                "plan_only": True,
+                "transform_geometry_in_this_api": False,
+                "require_authoritative_source_crs": True,
+                "require_lineage_preserving_output": True,
+                "default_output_suffix": "_wgs84.geojson",
+            },
+            "acceptance_criteria": [
+                "每个待处理空间图层必须先确认 source CRS，不能仅凭 bbox 猜测直接转换。",
+                "转换后 bbox 必须落入 EPSG:4326 经纬度范围，且要素数量与源文件一致。",
+                "输出文件必须保留源文件、源 CRS、目标 CRS、转换时间和工具版本 lineage。",
+                "not-for-production 数据仅可用于演示和回归；CRS 转换不会提升其生产权威性。",
+            ],
+            "claim_boundary": (
+                "This CRS remediation plan is an onboarding and map-overlay readiness artifact. "
+                "It does not transform geometries in the API response, certify source authority, or support production decision claims."
+            ),
+        }))
+
+    def data_foundation_authoritative_templates(self) -> dict[str, Any]:
+        shared_lineage_fields = [
+            "source_agency",
+            "source_system",
+            "source_dataset_name",
+            "source_dataset_version",
+            "source_crs",
+            "target_crs",
+            "valid_from",
+            "valid_to",
+            "ingested_at",
+            "custodian",
+            "custodian_signoff_id",
+            "permission_scope",
+            "not_for_production",
+        ]
+        templates = [
+            {
+                "template_id": "parcel_current_authoritative",
+                "label": "Current land parcel authoritative layer",
+                "role": "parcel",
+                "unit": "feature",
+                "accepted_formats": ["GeoPackage layer", "GeoJSON after approved CRS conversion", "PostGIS table"],
+                "required_fields": [
+                    "geometry",
+                    "parcel_id",
+                    "admin_code",
+                    "land_use_code",
+                    "area_m2",
+                    "source_crs",
+                    "data_version",
+                    "valid_from",
+                    "custodian_signoff_id",
+                ],
+                "recommended_fields": ["owner_type", "farmland_grade", "protection_status", "source_update_time"],
+                "minimum_quality_gates": ["known_crs", "valid_geometry", "unique_parcel_id", "area_positive", "custodian_signoff"],
+                "production_use": "state_object_build_and_rule_overlay",
+            },
+            {
+                "template_id": "planning_zone_authoritative",
+                "label": "Territorial planning zone authoritative layer",
+                "role": "planning_zone",
+                "unit": "feature",
+                "accepted_formats": ["GeoPackage layer", "PostGIS table"],
+                "required_fields": [
+                    "geometry",
+                    "zone_id",
+                    "admin_code",
+                    "zone_type",
+                    "control_rule_code",
+                    "source_crs",
+                    "data_version",
+                    "custodian_signoff_id",
+                ],
+                "recommended_fields": ["control_intensity", "approval_doc_id", "valid_from", "valid_to"],
+                "minimum_quality_gates": ["known_crs", "valid_geometry", "zone_type_domain_check", "custodian_signoff"],
+                "production_use": "policy_constraint_and_action_mask",
+            },
+            {
+                "template_id": "approval_records_authoritative",
+                "label": "Approval and review history authoritative table",
+                "role": "approval_record",
+                "unit": "row",
+                "accepted_formats": ["CSV", "Parquet", "database view"],
+                "required_fields": [
+                    "case_id",
+                    "project_id",
+                    "admin_code",
+                    "review_stage",
+                    "submitted_at",
+                    "final_decision",
+                    "decision_at",
+                    "decision_reason_code",
+                    "custodian_signoff_id",
+                ],
+                "recommended_fields": ["reviewer_role", "required_remediation", "linked_document_id", "sanitization_level"],
+                "minimum_quality_gates": ["unique_case_id", "final_decision_domain_check", "decision_time_order", "custodian_signoff"],
+                "production_use": "claim_gate_observed_history_and_same_case_baseline",
+            },
+            {
+                "template_id": "policy_action_history_authoritative",
+                "label": "Policy action feasibility authoritative table",
+                "role": "policy_action_history",
+                "unit": "row",
+                "accepted_formats": ["CSV", "Parquet", "database view"],
+                "required_fields": [
+                    "case_id",
+                    "action_id",
+                    "action_type",
+                    "target_role",
+                    "target_id",
+                    "action_allowed",
+                    "blocking_rule_code",
+                    "decision_context_time",
+                    "custodian_signoff_id",
+                ],
+                "recommended_fields": ["human_override_reason", "expected_utility_delta", "policy_version", "evidence_bundle_id"],
+                "minimum_quality_gates": ["case_action_key_unique", "action_allowed_boolean", "blocking_rule_traceable", "custodian_signoff"],
+                "production_use": "action_conditioned_dynamics_validation_and_planner_evaluation",
+            },
+            {
+                "template_id": "evidence_index_authoritative",
+                "label": "Evidence document and media index authoritative table",
+                "role": "evidence_item",
+                "unit": "row",
+                "accepted_formats": ["CSV", "Parquet", "database view"],
+                "required_fields": [
+                    "evidence_id",
+                    "case_id",
+                    "source_type",
+                    "document_uri",
+                    "content_hash",
+                    "evidence_time",
+                    "permission_scope",
+                    "custodian_signoff_id",
+                ],
+                "recommended_fields": ["redaction_status", "ocr_status", "linked_rule_code", "human_review_required"],
+                "minimum_quality_gates": ["content_hash_present", "permission_scope_present", "case_link_valid", "custodian_signoff"],
+                "production_use": "audit_trail_and_evidence_gate",
+            },
+            {
+                "template_id": "rule_evaluation_authoritative",
+                "label": "Rule evaluation authoritative table",
+                "role": "rule_evaluation",
+                "unit": "row",
+                "accepted_formats": ["CSV", "Parquet", "database view"],
+                "required_fields": [
+                    "case_id",
+                    "rule_code",
+                    "subject_id",
+                    "target_id",
+                    "severity",
+                    "hit_status",
+                    "evaluated_at",
+                    "policy_version",
+                    "custodian_signoff_id",
+                ],
+                "recommended_fields": ["geometry_overlap_area_m2", "evidence_id", "review_task_id", "resolution_status"],
+                "minimum_quality_gates": ["rule_code_versioned", "severity_domain_check", "hit_status_domain_check", "custodian_signoff"],
+                "production_use": "hard_constraint_recall_and_audit_defensibility_metrics",
+            },
+        ]
+        readiness_gates = [
+            {
+                "id": "custodian_signoff",
+                "status": "blocked",
+                "required_value": "each authoritative source has named custodian, sign-off id, source version and permission scope",
+                "current_value": "templates defined; no production custodian sign-off loaded",
+            },
+            {
+                "id": "not_for_production_flag_clearance",
+                "status": "blocked",
+                "required_value": "production datasets must explicitly set not_for_production=false after governance approval",
+                "current_value": "demo fixtures remain not-for-production",
+            },
+            {
+                "id": "same_case_join_keys",
+                "status": "open",
+                "required_value": "case_id/project_id/action_id keys join across approval, action, evidence and rule tables",
+                "current_value": "template contract only",
+            },
+            {
+                "id": "crs_and_geometry_acceptance",
+                "status": "open",
+                "required_value": "known CRS, validated geometry and EPSG:4326 map-overlay derivative where needed",
+                "current_value": "CRS remediation plan exists; production ETL not implemented",
+            },
+        ]
+        return json.loads(_json({
+            "schema": "territory_world_model.data_foundation_authoritative_templates.v1",
+            "generated_at": now_utc_iso(),
+            "status": "template_ready_review_only",
+            "production_deployment_supported": False,
+            "template_count": len(templates),
+            "templates": templates,
+            "shared_lineage_fields": shared_lineage_fields,
+            "readiness_gates": readiness_gates,
+            "onboarding_steps": [
+                "map authoritative source fields to the template required_fields and shared_lineage_fields",
+                "run schema, CRS, domain, uniqueness and join-key validation before TWM state build",
+                "load sanitized same-case approval/action/evidence history for baseline comparison",
+                "keep not-for-production fixtures separate from production candidate datasets",
+            ],
+            "claim_boundary_notes": [
+                "Templates define what production onboarding must provide; they are not production data.",
+                "Passing these templates requires custodian sign-off and not-for-production flag clearance.",
+                "The template report does not validate predictive, causal or approval automation claims.",
+            ],
+            "claim_boundary": (
+                "Authoritative templates support production data onboarding planning and review. "
+                "They do not by themselves certify authority, data rights, model performance or production deployment readiness."
+            ),
+        }))
+
     def _update_data_foundation_bbox(self, coords: Any, bbox: list[float | None]) -> None:
         if (
             isinstance(coords, list)
@@ -2822,6 +3411,62 @@ class TerritoryWorldModelService:
             "center": center,
             "map_overlay_readiness": map_overlay_readiness,
             "layers": layers,
+        }))
+
+    def data_foundation_layer_detail(
+        self,
+        dataset_id: str,
+        layer_path: str,
+        sample_limit: Any = 5,
+    ) -> dict[str, Any]:
+        dataset_id = compact_text(dataset_id)
+        selected_layer_path = compact_text(layer_path)
+        if not selected_layer_path:
+            raise LookupError("data foundation spatial layer path is required")
+        sample_count = max(1, min(safe_int(sample_limit, 5), 25))
+        spec = next((item for item in TWM_DATA_FOUNDATION_DATASETS if item.get("id") == dataset_id), None)
+        if spec is None:
+            raise LookupError(f"data foundation dataset not found: {dataset_id}")
+        files = dict(spec.get("files") or {})
+        if files.get(selected_layer_path) != "feature" or not selected_layer_path.endswith(".geojson"):
+            raise LookupError(f"data foundation spatial layer not found: {dataset_id}/{selected_layer_path}")
+        root = self._repo_root() / str(spec["path"])
+        path = root / selected_layer_path
+        if not path.exists():
+            raise LookupError(f"data foundation spatial layer not found: {dataset_id}/{selected_layer_path}")
+        payload = read_json(path)
+        features = payload.get("features") if isinstance(payload, dict) and payload.get("type") == "FeatureCollection" else None
+        if not isinstance(features, list):
+            raise LookupError(f"data foundation spatial layer is not a FeatureCollection: {dataset_id}/{selected_layer_path}")
+        layer_bbox: list[float | None] = [None, None, None, None]
+        sample_records: list[dict[str, Any]] = []
+        for idx, feature in enumerate(features):
+            if not isinstance(feature, dict):
+                continue
+            self._update_data_foundation_bbox((feature.get("geometry") or {}).get("coordinates"), layer_bbox)
+            if len(sample_records) < sample_count:
+                sample_records.append({
+                    "feature_index": idx,
+                    "properties": dict(feature.get("properties") or {}),
+                })
+        bbox = layer_bbox if all(value is not None for value in layer_bbox) else None
+        property_profile = self._data_foundation_layer_property_profile(features)
+        return json.loads(_json({
+            "schema": "territory_world_model.data_foundation_layer_detail.v1",
+            "dataset_id": dataset_id,
+            "dataset_label": spec.get("label"),
+            "layer_path": selected_layer_path,
+            "label": selected_layer_path.replace("synthetic_", "").replace(".geojson", ""),
+            "unit": "feature",
+            "not_for_production": True,
+            "feature_count": len(features),
+            "bbox": bbox,
+            "crs_diagnostic": self._data_foundation_crs_diagnostic(bbox),
+            **property_profile,
+            "sample_record_count": len(sample_records),
+            "sample_records": sample_records,
+            "delivery_mode": "properties_only",
+            "claim_boundary": "Layer detail is for data readiness, field inspection and evidence browsing; it is not production authority evidence by itself.",
         }))
 
     def _load_data_foundation_validation(self) -> dict[str, Any]:
@@ -3211,6 +3856,7 @@ class TerritoryWorldModelService:
                 )
                 result = report.to_dict()
                 _set_trace_attribute(trace_ctx, "twm.gate_status", result.get("evidence_gate", {}).get("status", result.get("status", "review")))
+                _set_trace_attribute(trace_ctx, "twm.prediction_count", 0)
                 return result
 
             if self._use_spatiotemporal_transformer_dynamics_trainer(trainer):
@@ -3251,6 +3897,7 @@ class TerritoryWorldModelService:
                 "causal_calibration_report": payload.get("causal_calibration_report") or {},
             }
             backend_report = self.dynamics_backend_report(state_version_id, backend_payload)
+            _set_trace_attribute(trace_ctx, "twm.backend_gate_status", (backend_report.get("evidence_gate") or {}).get("status", backend_report.get("status", "review")))
             objective_report = self.training_objective_report(
                 state_version_id,
                 {
@@ -3280,6 +3927,7 @@ class TerritoryWorldModelService:
             )
             result = report.to_dict()
             _set_trace_attribute(trace_ctx, "twm.gate_status", result.get("evidence_gate", {}).get("status", result.get("status", "review")))
+            _set_trace_attribute(trace_ctx, "twm.prediction_count", len(predictions))
             return result
 
     # ------------------------------------------------------------------
@@ -3668,6 +4316,13 @@ class TerritoryWorldModelService:
             )
             result = self._counterfactual_with_dynamics_candidate(rollout.to_dict(), payload)
             _set_trace_attribute(trace_ctx, "twm.gate_status", result.get("evidence_gate", {}).get("status", "review"))
+            _set_trace_attribute(trace_ctx, "twm.horizon", int(result.get("horizon") or horizon))
+            _set_trace_attribute(trace_ctx, "twm.intervention_action_count", len(intervention_actions))
+            _set_trace_attribute(
+                trace_ctx,
+                "twm.rollout_step_count",
+                len(result.get("baseline_steps") or []) + len(result.get("intervention_steps") or []),
+            )
             return result
 
     def beam_plan(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -4265,7 +4920,7 @@ class TerritoryWorldModelService:
                 core_algorithm={
                     "role_in_taxonomy": "simulator",
                     "algorithm_family": "action-conditioned territorial dynamics",
-                    "core_algorithm": "multi-head forecast + counterfactual rollout over future_latent_state / constraint / utility / uncertainty, backed by deterministic scaffold, trainable MLP candidate, hierarchical graph-temporal candidate, or lightweight spatiotemporal transformer candidate",
+                    "core_algorithm": "multi-head forecast + counterfactual rollout over future area/key indicators, compatibility future_latent_state, constraint, utility and uncertainty, backed by deterministic scaffold, trainable MLP candidate, hierarchical graph-temporal candidate, or lightweight spatiotemporal transformer candidate",
                     "current_implementation": [
                         "deterministic forecast scaffold",
                         "counterfactual rollout",
@@ -4276,7 +4931,7 @@ class TerritoryWorldModelService:
                     "note": "The current trainable simulator includes small candidate backends, not yet the final production-scale territorial graph transformer.",
                 },
                 implemented_components=[
-                    "future latent state forecast",
+                    "future area/key-indicator forecast with future_latent_state compatibility field",
                     "constraint violation probability",
                     "counterfactual rollout",
                     "uncertainty and calibration metadata",
@@ -4747,6 +5402,125 @@ class TerritoryWorldModelService:
             recommendations=self._dynamics_evaluation_recommendations(evidence_gate, candidate, eval_inventory),
         )
         return report.to_dict()
+
+    def dynamics_model_registry_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        candidate_report = self._payload_mapping(payload.get("candidate_report") or payload.get("dynamics_candidate_report"))
+        readiness_report = self._payload_mapping(payload.get("readiness_report") or payload.get("dynamics_readiness_report"))
+        evaluation_report = self._payload_mapping(payload.get("evaluation_report") or payload.get("dynamics_evaluation_report"))
+        registry_metadata = self._payload_mapping(payload.get("registry_metadata") or payload.get("metadata"))
+        candidate = self._payload_mapping(candidate_report.get("candidate") or payload.get("candidate"))
+        if not candidate:
+            candidate = self._dynamics_candidate_descriptor(payload)
+        model_name = compact_text(candidate.get("model_name") or payload.get("model_name") or "unnamed_dynamics_candidate")
+        model_version = compact_text(candidate.get("model_version") or payload.get("model_version") or "unversioned")
+        model_family = compact_text(candidate.get("model_family") or payload.get("model_family") or "twm_dynamics")
+        registry_key = f"{model_name}:{model_version}"
+
+        candidate_gate = self._payload_mapping(candidate_report.get("evidence_gate"))
+        candidate_gate_status = compact_text(candidate_gate.get("status") or candidate_report.get("status") or "review")
+        readiness_status = compact_text(readiness_report.get("status") or "review")
+        evaluation_gate = self._payload_mapping(evaluation_report.get("evidence_gate"))
+        evaluation_status = compact_text(evaluation_gate.get("status") or evaluation_report.get("status") or "review")
+        production_gate = self._payload_mapping(payload.get("production_data_gate") or payload.get("production_gate"))
+        production_status = compact_text(production_gate.get("status") or "blocked")
+
+        missing_for_promotion: list[str] = []
+        if candidate_gate_status != "pass":
+            missing_for_promotion.append("candidate_evidence_gate_pass")
+        if readiness_status != "pass":
+            missing_for_promotion.append("readiness_pass")
+        if evaluation_status != "pass":
+            missing_for_promotion.append("evaluation_pass")
+        if production_status != "pass":
+            missing_for_promotion.append("production_observed_history")
+        if bool(candidate.get("is_scaffold_baseline")) or bool(candidate.get("is_scaffold_trainer")):
+            missing_for_promotion.append("non_scaffold_candidate")
+
+        learned_metadata = self._payload_mapping(self._payload_mapping(candidate_report.get("learned_parameters")).get("metadata"))
+        combined_metadata = {
+            **self._payload_mapping(candidate.get("metadata")),
+            **learned_metadata,
+            **registry_metadata,
+        }
+        required_registry_metadata = [
+            "state_contract_version",
+            "training_dataset_hash",
+            "training_dataset_snapshot",
+            "training_run_id",
+            "model_artifact_uri",
+            "evaluation_report_id",
+        ]
+        missing_registry_metadata = [
+            name for name in required_registry_metadata
+            if not compact_text(combined_metadata.get(name))
+        ]
+
+        if not missing_for_promotion and not missing_registry_metadata:
+            promotion_decision = "candidate_for_registry_promotion"
+        elif "non_scaffold_candidate" in missing_for_promotion:
+            promotion_decision = "blocked_scaffold_not_promoted"
+        else:
+            promotion_decision = "review_only_not_promoted"
+        current_registry_key = compact_text(payload.get("current_registry_key") or payload.get("production_registry_key") or "")
+        rollback_plan = {
+            "action": "pin_candidate_with_previous_version_rollback" if promotion_decision == "candidate_for_registry_promotion" else "keep_current_production_version",
+            "current_registry_key": current_registry_key,
+            "candidate_registry_key": registry_key,
+            "rollback_available": bool(current_registry_key),
+            "reason": (
+                "all registry gates and required metadata passed"
+                if promotion_decision == "candidate_for_registry_promotion"
+                else "candidate remains review-only until gates and registry metadata pass"
+            ),
+        }
+        return json.loads(_json({
+            "schema": "territory_world_model.dynamics_model_registry_report.v1",
+            "generated_at": now_utc_iso(),
+            "state_version_id": state_version_id,
+            "registry_entry": {
+                "registry_key": registry_key,
+                "model_name": model_name,
+                "model_version": model_version,
+                "model_family": model_family,
+                "candidate_status": candidate_report.get("status", "review"),
+                "version_pin_policy": "immutable_model_name_version_plus_training_dataset_hash",
+                "metadata": combined_metadata,
+            },
+            "gates": {
+                "candidate_gate": {
+                    "status": candidate_gate_status,
+                    "passed": candidate_gate_status == "pass",
+                },
+                "readiness_gate": {
+                    "status": readiness_status,
+                    "passed": readiness_status == "pass",
+                    "blocked_gates": list(((readiness_report.get("gates") or {}).get("summary") or {}).get("blocked_gates") or []),
+                },
+                "evaluation_gate": {
+                    "status": evaluation_status,
+                    "passed": evaluation_status == "pass",
+                },
+                "production_data_gate": {
+                    "status": production_status,
+                    "passed": production_status == "pass",
+                },
+            },
+            "required_registry_metadata": required_registry_metadata,
+            "missing_registry_metadata": missing_registry_metadata,
+            "missing_for_promotion": sorted(set(missing_for_promotion)),
+            "promotion_decision": promotion_decision,
+            "rollback_plan": rollback_plan,
+            "recommendations": [
+                "pin model_name, model_version, training dataset hash, state contract version and evaluation report id before promotion",
+                "keep review-only candidates out of production forecast defaults until readiness, evaluation and production data gates pass",
+                "retain the previous production registry key for rollback before switching forecast consumers",
+            ],
+            "claim_boundary": (
+                "This registry report is a release gate for TWM dynamics candidates. "
+                "A review-only candidate may be used for experiments or demos, but must not become the production default until all registry, readiness, evaluation and production-data gates pass."
+            ),
+        }))
 
     def fit_dynamics_candidate(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(payload or {})

@@ -622,6 +622,8 @@ class TerritoryWorldModelPlanner:
             "source": {
                 "status": status or "not_provided",
                 "schema": raw.get("schema", ""),
+                "identification_strength": raw.get("identification_strength") or ("observational" if raw else ""),
+                "identification_note": raw.get("identification_note", ""),
                 "estimate": raw.get("estimate", {}),
             },
         }

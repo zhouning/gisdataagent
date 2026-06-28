@@ -24,6 +24,38 @@ def twm_status() -> str:
     return _json(_svc().status())
 
 
+def twm_roadmap_status() -> str:
+    return _json(_svc().roadmap_status_report())
+
+
+def twm_data_foundation_layer_detail(dataset_id: str, layer_path: str, sample_limit: str = "5") -> str:
+    try:
+        return _json(_svc().data_foundation_layer_detail(dataset_id, layer_path, sample_limit=sample_limit))
+    except Exception as exc:
+        return _json({"error": str(exc), "dataset_id": dataset_id, "layer_path": layer_path})
+
+
+def twm_data_foundation_lineage(dataset_id: str) -> str:
+    try:
+        return _json(_svc().data_foundation_lineage_report(dataset_id))
+    except Exception as exc:
+        return _json({"error": str(exc), "dataset_id": dataset_id})
+
+
+def twm_data_foundation_crs_remediation(dataset_id: str) -> str:
+    try:
+        return _json(_svc().data_foundation_crs_remediation_plan(dataset_id))
+    except Exception as exc:
+        return _json({"error": str(exc), "dataset_id": dataset_id})
+
+
+def twm_data_foundation_authoritative_templates() -> str:
+    try:
+        return _json(_svc().data_foundation_authoritative_templates())
+    except Exception as exc:
+        return _json({"error": str(exc)})
+
+
 def twm_create_project(name: str = "", description: str = "", region_code: str = "", business_scenario: str = "planning_supervision") -> str:
     payload = {
         "name": name,
@@ -457,6 +489,24 @@ async def twm_dynamics_evaluation_report_async(state_version_id: str, payload_js
     return await asyncio.to_thread(twm_dynamics_evaluation_report, state_version_id, payload_json)
 
 
+def twm_dynamics_model_registry_report(state_version_id: str, payload_json: str = "") -> str:
+    payload: dict[str, Any] = {}
+    if payload_json:
+        try:
+            parsed = json.loads(payload_json)
+            payload = parsed if isinstance(parsed, dict) else {"raw": parsed}
+        except Exception:
+            payload = {"raw": payload_json}
+    try:
+        return _json(_svc().dynamics_model_registry_report(state_version_id, payload))
+    except Exception as exc:
+        return _json({"error": str(exc), "state_version_id": state_version_id})
+
+
+async def twm_dynamics_model_registry_report_async(state_version_id: str, payload_json: str = "") -> str:
+    return await asyncio.to_thread(twm_dynamics_model_registry_report, state_version_id, payload_json)
+
+
 def twm_fit_dynamics_candidate(state_version_id: str, payload_json: str = "") -> str:
     payload: dict[str, Any] = {}
     if payload_json:
@@ -575,6 +625,11 @@ def twm_status_detail() -> str:
 
 _SYNC_FUNCS = [
     twm_status,
+    twm_roadmap_status,
+    twm_data_foundation_layer_detail,
+    twm_data_foundation_lineage,
+    twm_data_foundation_crs_remediation,
+    twm_data_foundation_authoritative_templates,
     twm_create_project,
     twm_list_projects,
     twm_bind_layer,
@@ -599,6 +654,7 @@ _SYNC_FUNCS = [
     twm_dynamics_training_examples,
     twm_dynamics_readiness_report,
     twm_dynamics_evaluation_report,
+    twm_dynamics_model_registry_report,
     twm_fit_dynamics_candidate,
     twm_train_dynamics_candidate,
     twm_geofm_ablation_gate,
@@ -628,6 +684,7 @@ _LONG_RUNNING_FUNCS = [
     twm_dynamics_training_examples_async,
     twm_dynamics_readiness_report_async,
     twm_dynamics_evaluation_report_async,
+    twm_dynamics_model_registry_report_async,
     twm_fit_dynamics_candidate_async,
     twm_train_dynamics_candidate_async,
     twm_geofm_ablation_gate_async,
