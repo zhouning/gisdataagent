@@ -69,6 +69,7 @@ def main() -> None:
         scca_output_dir=Path(args.scca_output_dir).expanduser() if args.scca_output_dir else None,
         scca_result_json=Path(args.scca_result_json).expanduser() if args.scca_result_json else None,
         require_scca_pass=bool(args.require_scca_pass),
+        paper58_benchmark_dir=Path(args.paper58_benchmark_dir).expanduser() if args.paper58_benchmark_dir else None,
         production_observed_history=Path(args.production_observed_history).expanduser() if args.production_observed_history else None,
         normalize_production_observed_history_source=Path(args.normalize_production_observed_history_source).expanduser() if args.normalize_production_observed_history_source else None,
         normalized_production_observed_history_output=Path(args.normalized_production_observed_history_output).expanduser() if args.normalized_production_observed_history_output else None,
@@ -114,6 +115,7 @@ def run_validation_bundle(
     scca_output_dir: Path | str | None = None,
     scca_result_json: Path | str | None = None,
     require_scca_pass: bool = False,
+    paper58_benchmark_dir: Path | str | None = None,
     production_observed_history: Path | str | None = None,
     normalize_production_observed_history_source: Path | str | None = None,
     normalized_production_observed_history_output: Path | str | None = None,
@@ -127,6 +129,7 @@ def run_validation_bundle(
     optimization_path = Path(optimization_dir).expanduser() if optimization_dir else None
     scca_output_path = Path(scca_output_dir).expanduser() if scca_output_dir else None
     scca_json_path = Path(scca_result_json).expanduser() if scca_result_json else None
+    paper58_benchmark_path = Path(paper58_benchmark_dir).expanduser() if paper58_benchmark_dir else None
     production_history_path, production_normalization = prepare_production_observed_history_for_bundle(
         production_observed_history=production_observed_history,
         normalize_production_observed_history_source=normalize_production_observed_history_source,
@@ -184,6 +187,8 @@ def run_validation_bundle(
     if scca_report:
         selected_plan_payload["scca_causal_evidence_report"] = scca_report
 
+    paper58_external_benchmark = build_paper58_external_benchmark(paper58_benchmark_path)
+
     selected_bundle = svc.selected_plan_evaluation_bundle(state_id, selected_plan_payload)
     validation_report = selected_bundle.get("validation_report") or {}
     claim_ladder = ((validation_report.get("summary") or {}).get("claim_ladder") or {})
@@ -221,6 +226,7 @@ def run_validation_bundle(
             "optimization_dir": str(optimization_path) if optimization_path else None,
             "scca_output_dir": str(scca_output_path) if scca_output_path else None,
             "scca_result_json": str(scca_json_path) if scca_json_path else None,
+            "paper58_benchmark_dir": str(paper58_benchmark_path) if paper58_benchmark_path else None,
             "production_observed_history": str(production_history_path) if production_history_path else None,
             "normalize_production_observed_history_source": str(normalize_production_observed_history_source) if normalize_production_observed_history_source else None,
             "normalized_production_observed_history_output": production_normalization.get("output_path") if production_normalization.get("status") != "not_requested" else None,
@@ -241,6 +247,7 @@ def run_validation_bundle(
         "validation_summary": summarize_validation_report(validation_report),
         "claim_ladder": summarize_claim_ladder(claim_ladder),
         "scca_summary": summarize_scca_report(scca_report, require_scca_pass=require_scca_pass),
+        "paper58_external_benchmark": paper58_external_benchmark,
         "production_observed_history_normalization": production_normalization,
         "production_observed_history_preflight": production_preflight,
         "production_scale_profile_contract": production_scale_profile_contract(),
@@ -258,6 +265,7 @@ def run_validation_bundle(
             validation_report,
             scca_report,
             require_scca_pass,
+            paper58_external_benchmark,
             production_preflight,
             scale_readiness,
             readiness_gate,
@@ -1558,6 +1566,7 @@ def validation_bundle_recommendations(
     validation_report: dict[str, Any],
     scca_report: dict[str, Any],
     require_scca_pass: bool,
+    paper58_external_benchmark: dict[str, Any] | None = None,
     production_preflight: dict[str, Any] | None = None,
     production_scale_readiness: dict[str, Any] | None = None,
     production_readiness_gate: dict[str, Any] | None = None,
@@ -1571,6 +1580,11 @@ def validation_bundle_recommendations(
         recommendations.append("provide SCCA causal evidence output or disable require_scca_pass for non-causal offline smoke validation")
     if scca_report and (scca_report.get("evidence_gate") or {}).get("status") != "pass":
         recommendations.append("keep spatial causal claims in review until the SCCA evidence gate passes")
+    paper58_status = str((paper58_external_benchmark or {}).get("status") or "missing")
+    if paper58_status == "supporting_evidence":
+        recommendations.append("use Paper58 only as external benchmark support; keep TWM-native generation and planning as the runtime route")
+    elif paper58_status == "blocked":
+        recommendations.append("fix the sanitized Paper58 benchmark path or omit it; Paper58 evidence is optional and must not block TWM-native validation")
     production_status = str((production_preflight or {}).get("status") or "not_provided")
     if production_status == "not_provided":
         recommendations.append("provide real non-synthetic observed history to move beyond offline smoke validation")
