@@ -4198,6 +4198,7 @@ def get_frontend_api_routes():
     from .api.world_model_routes import get_world_model_routes
     from .api.causal_routes import get_causal_routes
     from .api.causal_world_model_routes import get_causal_world_model_routes
+    from .api.world_model_v11_routes import get_world_model_v11_routes
     from .api.world_model_v2_routes import get_world_model_v2_routes
     from .api.world_model_v21_routes import get_world_model_v21_routes
     from .api.territory_world_model_routes import get_territory_world_model_routes
@@ -4343,6 +4344,8 @@ def get_frontend_api_routes():
         *get_virtual_source_routes(),
         # World Model (Tech Preview)
         *get_world_model_routes(),
+        # World Model v1.1 (Paper58 external benchmark evidence)
+        *get_world_model_v11_routes(),
         # World Model v2 (Bishan county — Dual-Layer Geospatial Dreamer)
         *get_world_model_v2_routes(),
         # World Model v2.1 (Paper9 arcgis-farmland-mpc Tool 4)
