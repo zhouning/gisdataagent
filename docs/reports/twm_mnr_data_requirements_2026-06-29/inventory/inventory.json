@@ -1,0 +1,235 @@
+{
+  "generated_at": "2026-06-29T09:21:40.140164+00:00",
+  "cwd": "/Users/zhouning/gisdataagent",
+  "docx": null,
+  "code_roots": [
+    {
+      "path": "/Users/zhouning/gisdataagent",
+      "exists": true,
+      "git_commit": "583699b6ca9c1bd68f36556f2f139ada9f5ae812",
+      "file_count": 8393,
+      "total_bytes": 6034042004,
+      "extensions": {
+        ".md": 2577,
+        ".py": 2233,
+        ".json": 538,
+        ".npy": 524,
+        ".csv": 280,
+        ".tif": 245,
+        ".png": 221,
+        ".sql": 190,
+        ".tsx": 176,
+        ".yaml": 159,
+        ".geojson": 90,
+        ".atx": 85,
+        ".xml": 74,
+        ".dita": 66,
+        ".pdf": 57,
+        "[no extension]": 54,
+        ".txt": 43,
+        ".dbf": 42,
+        ".gdbtable": 41,
+        ".gdbtablx": 41,
+        ".prj": 40,
+        ".shp": 40,
+        ".shx": 40,
+        ".docx": 38,
+        ".gdbindexes": 36,
+        ".jpg": 34,
+        ".sbn": 31,
+        ".sbx": 31,
+        ".cpg": 29,
+        ".svg": 26,
+        ".parquet": 22,
+        ".sh": 22,
+        ".ts": 18,
+        ".dwg": 17,
+        ".html": 16,
+        ".yml": 16,
+        ".xlsx": 14,
+        ".original": 12,
+        ".properties": 12,
+        ".jar": 11
+      },
+      "marker_files": [
+        {
+          "path": "requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": "Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": "pyproject.toml",
+          "kind": "python"
+        },
+        {
+          "path": "docker-compose.yml",
+          "kind": "docker-compose"
+        },
+        {
+          "path": "docker/mmfe-spark-runtime/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": "docker/postgis-pgvector/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": "frontend/package.json",
+          "kind": "node"
+        },
+        {
+          "path": "k8s/overlays/local-kind/kustomization.yaml",
+          "kind": "kustomize"
+        },
+        {
+          "path": "k8s/overlays/docker-desktop/kustomization.yaml",
+          "kind": "kustomize"
+        },
+        {
+          "path": "k8s/base/kustomization.yaml",
+          "kind": "kustomize"
+        },
+        {
+          "path": "gis-skill-sdk/pyproject.toml",
+          "kind": "python"
+        },
+        {
+          "path": "subsystems/tool-mcp-servers/blender-mcp/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": "subsystems/tool-mcp-servers/qgis-mcp/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": "subsystems/tool-mcp-servers/arcgis-mcp/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": "subsystems/reference-data/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": "subsystems/reference-data/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": "subsystems/cad-parser/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": "subsystems/cad-parser/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": "subsystems/cv-service/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": "subsystems/cv-service/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": ".tmp/twm_standard_1128/自然资源一张图数据库标准1128/pyproject.toml",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/twm-future-latent-state-v2/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/twm-future-latent-state-v2/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": ".worktrees/twm-future-latent-state-v2/pyproject.toml",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/twm-future-latent-state-v2/docker-compose.yml",
+          "kind": "docker-compose"
+        },
+        {
+          "path": ".worktrees/twm-future-latent-state-v2/docker/mmfe-spark-runtime/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": ".worktrees/twm-future-latent-state-v2/docker/postgis-pgvector/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": ".worktrees/twm-future-latent-state-v2/frontend/package.json",
+          "kind": "node"
+        },
+        {
+          "path": ".worktrees/twm-future-latent-state-v2/k8s/overlays/local-kind/kustomization.yaml",
+          "kind": "kustomize"
+        },
+        {
+          "path": ".worktrees/twm-future-latent-state-v2/k8s/overlays/docker-desktop/kustomization.yaml",
+          "kind": "kustomize"
+        },
+        {
+          "path": ".worktrees/twm-future-latent-state-v2/k8s/base/kustomization.yaml",
+          "kind": "kustomize"
+        },
+        {
+          "path": ".worktrees/twm-future-latent-state-v2/gis-skill-sdk/pyproject.toml",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/twm-future-latent-state-v2/subsystems/tool-mcp-servers/blender-mcp/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/twm-future-latent-state-v2/subsystems/tool-mcp-servers/qgis-mcp/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/twm-future-latent-state-v2/subsystems/tool-mcp-servers/arcgis-mcp/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/twm-future-latent-state-v2/subsystems/reference-data/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/twm-future-latent-state-v2/subsystems/reference-data/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": ".worktrees/twm-future-latent-state-v2/subsystems/cad-parser/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/twm-future-latent-state-v2/subsystems/cad-parser/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": ".worktrees/twm-future-latent-state-v2/subsystems/cv-service/requirements.txt",
+          "kind": "python"
+        },
+        {
+          "path": ".worktrees/twm-future-latent-state-v2/subsystems/cv-service/Dockerfile",
+          "kind": "docker"
+        },
+        {
+          "path": ".worktrees/twm-future-latent-state-v2/helm/gis-data-agent/Chart.yaml",
+          "kind": "helm"
+        },
+        {
+          "path": "helm/gis-data-agent/Chart.yaml",
+          "kind": "helm"
+        }
+      ],
+      "java_annotations": {},
+      "top_packages": [],
+      "sample_declared_types": [],
+      "api_hints": []
+    }
+  ],
+  "ea_artifacts": []
+}

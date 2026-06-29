@@ -443,6 +443,50 @@ def test_forecast_consumes_passed_dynamics_candidate_report():
     assert forecast["calibration"]["dynamics_backend"]["candidate"]["model_name"] == "hierarchical_baseline_dynamics"
 
 
+def test_forecast_requires_active_registry_when_production_candidate_is_required():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+    candidate = {
+        "schema": "territory_world_model.dynamics_fit_report.v1",
+        "status": "pass",
+        "candidate": {
+            "model_name": "hierarchical_baseline_dynamics",
+            "model_version": "unit",
+        },
+        "predictions": {
+            "selected": {
+                "constraint_violation_probability": 0.22,
+                "planning_utility_delta": 0.41,
+                "uncertainty": {"confidence": 0.76},
+            }
+        },
+        "evaluation": {"status": "pass", "evidence_gate": {"status": "pass"}},
+        "evidence_gate": {"status": "pass"},
+    }
+
+    result = svc.forecast(
+        state_id,
+        {
+            "action_type": "protect",
+            "target_role": "project",
+            "scenario": "candidate_forecast_registry_required",
+            "evidence_coverage": 0.72,
+            "dynamics_candidate_report": candidate,
+            "dynamics_prediction_id": "selected",
+            "require_active_dynamics_registry": True,
+        },
+    )
+
+    gate = result["forecast"]["evidence_gate"]["dynamics_candidate"]["gate"]
+    assert gate["status"] == "review"
+    assert gate["registry_required"] is True
+    assert "active_dynamics_model_registry" in gate["missing"]
+    assert result["forecast"]["evidence_gate"]["dynamics_candidate"]["prediction_applied"] is False
+
+
 def test_forecast_rejects_review_dynamics_candidate_report_by_default():
     svc = _build_service()
     _project, state = _build_project_and_state(svc)
@@ -702,6 +746,46 @@ def test_beam_plan_ranks_candidate_actions_with_dynamics_backend_and_gate():
     assert report["selected"]["forecast"]["planning_utility_delta"] == 0.42
     assert report["evidence_gate"]["candidate_count"] == 3
     assert report["candidates"][-1]["candidate_id"] == "a2"
+
+
+def test_beam_plan_propagates_active_registry_requirement_to_candidate_forecasts():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+    candidate = {
+        "schema": "territory_world_model.dynamics_fit_report.v1",
+        "status": "pass",
+        "candidate": {"model_name": "beam_candidate", "model_version": "unit"},
+        "predictions": {
+            "candidate:0": {
+                "constraint_violation_probability": 0.18,
+                "planning_utility_delta": 0.42,
+                "uncertainty": {"confidence": 0.74},
+            },
+        },
+        "evaluation": {"status": "pass", "evidence_gate": {"status": "pass"}},
+        "evidence_gate": {"status": "pass"},
+    }
+
+    report = svc.beam_plan(
+        state_id,
+        {
+            "scenario": "beam_candidate_registry_required",
+            "evidence_coverage": 0.72,
+            "dynamics_candidate_report": candidate,
+            "require_active_dynamics_registry": True,
+            "actions": [
+                {"candidate_id": "a0", "action_type": "protect", "target_role": "project"},
+            ],
+        },
+    )
+
+    gate = report["candidates"][0]["forecast"]["evidence_gate"]["dynamics_candidate"]["gate"]
+    assert gate["status"] == "review"
+    assert "active_dynamics_model_registry" in gate["missing"]
+    assert report["candidates"][0]["forecast"]["evidence_gate"]["dynamics_candidate"]["prediction_applied"] is False
 
 
 def test_beam_plan_accepts_custom_ranking_policy_for_experimental_selection():
@@ -969,6 +1053,202 @@ def test_state_contract_report_exposes_hierarchical_token_boundary():
     assert report["claim_ladder"]["current_level"] in {"L0", "L1"}
     assert report["claim_boundary"]["claim_level"] == report["claim_ladder"]["current_level"]
     assert report["claim_boundary"]["status"] in {"review", "blocked", "pass"}
+
+
+def test_state_snapshot_lakehouse_manifest_maps_state_to_production_storage_layers():
+    svc = _build_service()
+    _project, state = _save_lightweight_twm_state(svc)
+
+    manifest = svc.state_snapshot_lakehouse_manifest(
+        state.id,
+        {
+            "lakehouse_uri": "s3://gis-agent-lakehouse",
+            "namespace": "twm_prod",
+            "include_vector_sidecar": True,
+        },
+    )
+
+    assert manifest["schema"] == "territory_world_model.state_snapshot_lakehouse_manifest.v1"
+    assert manifest["storage"]["object_store_uri"] == "s3://gis-agent-lakehouse"
+    assert manifest["storage"]["table_format"] == "iceberg"
+    assert manifest["storage"]["vector_sidecar"]["format"] == "lance"
+    assert manifest["snapshot"]["state_version_id"] == state.id
+    assert manifest["snapshot"]["object_count"] == 1
+    assert manifest["artifacts"]["state_objects"]["format"] == "geoparquet"
+    assert manifest["artifacts"]["state_objects"]["table"] == "twm_prod.state_objects"
+    assert "canonical_role" in manifest["artifacts"]["state_objects"]["partitioning"]
+    assert manifest["artifacts"]["state_relations"]["format"] == "geoparquet"
+    assert manifest["artifacts"]["rule_hits"]["format"] == "parquet"
+    assert manifest["artifacts"]["dynamics_model_registry"]["format"] == "parquet"
+    assert manifest["readiness"]["sedona_batch_ready"] is True
+    assert manifest["readiness"]["twm_training_snapshot_ready"] is True
+    assert manifest["claim_boundary"].startswith("Manifest only")
+
+
+def test_materialize_state_snapshot_lakehouse_writes_readable_parquet_artifacts(tmp_path):
+    import pyarrow.parquet as pq
+
+    svc = _build_service()
+    _project, state = _save_lightweight_twm_state(svc)
+
+    export = svc.materialize_state_snapshot_lakehouse(
+        state.id,
+        {
+            "lakehouse_uri": tmp_path.as_uri(),
+            "namespace": "twm_prod",
+            "include_vector_sidecar": True,
+        },
+    )
+
+    objects_artifact = export["artifacts"]["state_objects"]
+    objects_path = Path(objects_artifact["local_path"])
+    manifest_path = Path(export["manifest_local_path"])
+    table = pq.read_table(objects_path)
+
+    assert export["schema"] == "territory_world_model.state_snapshot_lakehouse_materialization.v1"
+    assert export["written_artifact_count"] >= 7
+    assert manifest_path.exists()
+    assert objects_path.exists()
+    assert table.num_rows == 1
+    assert set(["state_version_id", "object_code", "canonical_role", "attributes_json", "geometry_wkb"]).issubset(table.column_names)
+    assert table.column("canonical_role").to_pylist() == ["parcel"]
+    assert export["readiness"]["local_parquet_written"] is True
+    assert export["readiness"]["sedona_geoparquet_read_ready"] is True
+    assert export["claim_boundary"].startswith("Materialization only")
+
+
+def test_state_snapshot_lakehouse_publish_plan_builds_iceberg_and_sedona_specs(tmp_path):
+    svc = _build_service()
+    _project, state = _save_lightweight_twm_state(svc)
+    materialization = svc.materialize_state_snapshot_lakehouse(
+        state.id,
+        {
+            "lakehouse_uri": tmp_path.as_uri(),
+            "namespace": "twm_prod",
+        },
+    )
+
+    plan = svc.state_snapshot_lakehouse_publish_plan(
+        state.id,
+        {
+            "materialization": materialization,
+            "catalog": "prod",
+            "namespace": "twm_prod",
+            "warehouse_uri": "s3://gis-agent-lakehouse/warehouse/iceberg",
+            "geohash_precision": 8,
+        },
+    )
+
+    publish_by_name = {item["artifact"]: item for item in plan["iceberg_publish_specs"]}
+    object_index = next(item for item in plan["sedona_spatial_index_specs"] if item["artifact"] == "state_objects")
+
+    assert plan["schema"] == "territory_world_model.state_snapshot_lakehouse_publish_plan.v1"
+    assert plan["target"]["catalog"] == "prod"
+    assert plan["target"]["warehouse_uri"] == "s3://gis-agent-lakehouse/warehouse/iceberg"
+    assert len(plan["iceberg_publish_specs"]) >= 7
+    assert publish_by_name["state_objects"]["table_identifier"] == "prod.twm_prod.state_objects"
+    assert publish_by_name["state_objects"]["source_uri"].startswith("file://")
+    assert "USING iceberg" in publish_by_name["state_objects"]["ddl"]
+    assert "CREATE NAMESPACE IF NOT EXISTS prod.twm_prod" in plan["ddl_statements"][0]
+    assert object_index["output_table"] == "prod.twm_prod.state_objects_spatial_index"
+    assert "ST_GeomFromWKB" in object_index["sql"]
+    assert "geohash_8" in object_index["sql"]
+    assert plan["validation_gates"]["publish_spec_gate"]["status"] == "pass"
+    assert plan["validation_gates"]["sedona_spatial_index_gate"]["status"] == "pass"
+    assert plan["claim_boundary"].startswith("Publish plan only")
+
+
+def test_execute_state_snapshot_lakehouse_publish_plan_validates_snapshots_and_counts(tmp_path):
+    svc = _build_service()
+    _project, state = _save_lightweight_twm_state(svc)
+    materialization = svc.materialize_state_snapshot_lakehouse(
+        state.id,
+        {"lakehouse_uri": tmp_path.as_uri(), "namespace": "twm_prod"},
+    )
+    calls = []
+
+    def executor(task):
+        calls.append(task)
+        if task["kind"] == "iceberg_publish":
+            return {
+                "returncode": 0,
+                "snapshot_id": f"snap-{task['artifact']}",
+                "rows_written": task["expected_row_count"],
+                "table_identifier": task["table_identifier"],
+            }
+        if task["kind"] == "sedona_spatial_index":
+            return {
+                "returncode": 0,
+                "snapshot_id": f"idx-{task['artifact']}",
+                "rows_written": 1,
+                "output_table": task["output_table"],
+            }
+        return {"returncode": 0}
+
+    execution = svc.execute_state_snapshot_lakehouse_publish_plan(
+        state.id,
+        {
+            "materialization": materialization,
+            "catalog": "prod",
+            "namespace": "twm_prod",
+            "warehouse_uri": "s3://gis-agent-lakehouse/warehouse/iceberg",
+        },
+        executor=executor,
+    )
+
+    publish_results = {item["artifact"]: item for item in execution["iceberg_publish_results"]}
+    index_results = {item["artifact"]: item for item in execution["sedona_spatial_index_results"]}
+
+    assert execution["schema"] == "territory_world_model.state_snapshot_lakehouse_publish_execution.v1"
+    assert execution["status"] == "pass"
+    assert any(call["kind"] == "iceberg_publish" and call["artifact"] == "state_objects" for call in calls)
+    assert any(call["kind"] == "sedona_spatial_index" and call["artifact"] == "state_objects" for call in calls)
+    assert publish_results["state_objects"]["snapshot_id"] == "snap-state_objects"
+    assert publish_results["state_objects"]["row_count_status"] == "pass"
+    assert index_results["state_objects"]["snapshot_id"] == "idx-state_objects"
+    assert execution["validation_gates"]["iceberg_snapshot_gate"]["status"] == "pass"
+    assert execution["validation_gates"]["sedona_spatial_index_gate"]["status"] == "pass"
+    assert execution["validation_gates"]["consumer_switch_gate"]["status"] == "pass"
+    assert execution["claim_boundary"].startswith("Execution report")
+
+
+def test_state_snapshot_lakehouse_spark_submit_bundle_writes_executor_package(tmp_path):
+    svc = _build_service()
+    _project, state = _save_lightweight_twm_state(svc)
+    materialization = svc.materialize_state_snapshot_lakehouse(
+        state.id,
+        {"lakehouse_uri": tmp_path.joinpath("lake").as_uri(), "namespace": "twm_prod"},
+    )
+
+    bundle = svc.state_snapshot_lakehouse_spark_submit_bundle(
+        state.id,
+        {
+            "materialization": materialization,
+            "catalog": "prod",
+            "namespace": "twm_prod",
+            "warehouse_uri": "s3://gis-agent-lakehouse/warehouse/iceberg",
+            "output_dir": str(tmp_path / "spark_bundle"),
+            "spark_master": "k8s://https://spark.example.local",
+            "deploy_mode": "cluster",
+            "executor_image": "registry.local/gisdataagent/twm-spark:latest",
+        },
+    )
+
+    command = bundle["spark_submit"]["command"]
+
+    assert bundle["schema"] == "territory_world_model.state_snapshot_lakehouse_spark_submit_bundle.v1"
+    assert Path(bundle["plan_path"]).exists()
+    assert Path(bundle["executor_script"]).exists()
+    assert command[0] == "spark-submit"
+    assert "--master" in command
+    assert "k8s://https://spark.example.local" in command
+    assert "--deploy-mode" in command
+    assert "cluster" in command
+    assert any("spark.sql.catalog.prod.warehouse=s3://gis-agent-lakehouse/warehouse/iceberg" in item for item in command)
+    assert any(item.endswith("twm_state_snapshot_lakehouse_publish_job.py") for item in command)
+    assert bundle["execution_contract"]["expected_publish_task_count"] >= 7
+    assert bundle["execution_contract"]["expected_spatial_index_task_count"] >= 2
+    assert bundle["claim_boundary"].startswith("Spark submit bundle")
 
 
 def test_validation_report_outputs_layered_evidence_ladder():
@@ -1504,6 +1784,121 @@ def test_dynamics_evaluation_report_passes_candidate_predictions_on_observed_hol
     assert report["target_head_metrics"]["planning_utility_delta"]["ranking_correlation_proxy"] == 1.0
 
 
+def test_latent_transition_error_detects_land_type_mismatch_when_total_area_matches():
+    svc = _build_service()
+    target = {
+        "observed_next": {
+            "total_area_m2": 1000.0,
+            "total_feature_count": 10,
+            "land_space_types": {
+                "agricultural_space": {"area_m2": 600.0, "feature_count": 6, "area_delta_m2": -50.0},
+                "ecological_space": {"area_m2": 400.0, "feature_count": 4, "area_delta_m2": 50.0},
+            },
+        },
+        "delta": {
+            "total_area_delta_m2": 0.0,
+            "total_abs_area_delta_m2": 100.0,
+        },
+    }
+    predicted = {
+        "decoded_state": {
+            "total_area_m2": 1000.0,
+            "total_feature_count": 10,
+            "land_space_types": {
+                "agricultural_space": {"area_m2": 400.0, "feature_count": 4, "area_delta_m2": 50.0},
+                "ecological_space": {"area_m2": 600.0, "feature_count": 6, "area_delta_m2": -50.0},
+            },
+        },
+        "transition_delta": {
+            "total_area_delta_m2": 0.0,
+            "total_abs_area_delta_m2": 100.0,
+        },
+        "latent_vector": {
+            "observed_next.land_space_types.agricultural_space.area_m2": 400.0,
+            "observed_next.land_space_types.ecological_space.area_m2": 600.0,
+        },
+    }
+
+    components = svc._latent_transition_error_components(predicted=predicted, target=target)
+
+    assert components["total_area_error"] == 0.0
+    assert components["land_type_area_mae"] > 0.0
+    assert components["aggregate_error"] > 0.0
+    assert svc._latent_transition_error(predicted=predicted, target=target) == components["aggregate_error"]
+
+
+def test_dynamics_evaluation_reports_future_latent_state_v2_quality():
+    svc = _build_service()
+    target_latent = {
+        "observed_next": {
+            "total_area_m2": 1000.0,
+            "total_feature_count": 10,
+            "land_space_types": {
+                "agricultural_space": {"area_m2": 580.0, "feature_count": 6, "area_delta_m2": -20.0},
+                "ecological_space": {"area_m2": 420.0, "feature_count": 4, "area_delta_m2": 20.0},
+            },
+        },
+        "delta": {
+            "total_area_delta_m2": 0.0,
+            "total_abs_area_delta_m2": 40.0,
+            "by_land_type": {
+                "agricultural_space": {"area_delta_m2": -20.0},
+                "ecological_space": {"area_delta_m2": 20.0},
+            },
+        },
+        "latent_vector": {
+            "observed_next.total_area_m2": 1000.0,
+            "observed_next.land_space_types.agricultural_space.area_m2": 580.0,
+            "observed_next.land_space_types.ecological_space.area_m2": 420.0,
+            "delta.total_abs_area_delta_m2": 40.0,
+        },
+    }
+    predicted_latent = {
+        "schema": "territory_world_model.predicted_latent_state.v2",
+        "latent_head_scope": "multi_dimensional_hierarchical_state",
+        "representation_boundary": "multi_dimensional_hierarchical_state_latent_not_full_geometry",
+        "dimensions": list(target_latent["latent_vector"].keys()),
+        "latent_vector": dict(target_latent["latent_vector"]),
+        "decoded_state": dict(target_latent["observed_next"]),
+        "transition_delta": dict(target_latent["delta"]),
+    }
+    dataset = {
+        "examples": [
+            {
+                "id": "latent-v2-quality-1",
+                "split": "holdout",
+                "provenance": {"ground_truth": True},
+                "targets": {
+                    "future_latent_state": target_latent,
+                    "constraint_violation_probability": 0.2,
+                    "planning_utility_delta": 0.4,
+                },
+                "labels": {"ranking_score": 0.5},
+            }
+        ]
+    }
+    predictions = {
+        "latent-v2-quality-1": {
+            "future_latent_state": predicted_latent,
+            "constraint_violation_probability": 0.2,
+            "planning_utility_delta": 0.4,
+            "uncertainty": {"confidence": 0.8},
+        }
+    }
+
+    _metrics, head_metrics, _inventory = svc._dynamics_evaluation_metrics(dataset, predictions)
+    quality = head_metrics["future_latent_state"]["latent_v2_quality"]
+
+    assert quality["schema"] == "territory_world_model.future_latent_state_v2_quality.v1"
+    assert quality["status"] == "pass"
+    assert quality["coverage"]["v2_prediction_count"] == 1
+    assert quality["coverage"]["decoded_state_count"] == 1
+    assert quality["coverage"]["transition_delta_count"] == 1
+    assert quality["coverage"]["latent_vector_count"] == 1
+    assert quality["dimension_coverage"]["missing_target_dimensions"] == []
+    assert quality["missing"] == []
+
+
 def test_dynamics_model_registry_report_blocks_review_only_candidate_promotion():
     svc = _build_service()
     report = svc.dynamics_model_registry_report(
@@ -1541,6 +1936,162 @@ def test_dynamics_model_registry_report_blocks_review_only_candidate_promotion()
     assert "state_contract_version" in report["missing_registry_metadata"]
     assert report["rollback_plan"]["action"] == "keep_current_production_version"
     assert "review-only" in report["claim_boundary"]
+
+
+def test_dynamics_model_registry_promotes_passed_latent_v2_candidate_with_dataset_hash_lineage():
+    svc = _build_service()
+    dataset = {
+        "schema": "territory_world_model.dynamics_training_dataset.v1",
+        "state_version_id": "state-registry",
+        "project_id": "project-registry",
+        "summary": {
+            "example_count": 2,
+            "usable_example_count": 2,
+            "temporal_transition_example_count": 2,
+            "loss_contract": {"transition_loss": "targets.future_latent_state"},
+        },
+        "examples": [
+            {
+                "id": "train-1",
+                "split": "candidate",
+                "targets": {
+                    "future_latent_state": {
+                        "observed_next": {"total_area_m2": 1000.0},
+                    },
+                },
+            },
+            {
+                "id": "holdout-1",
+                "split": "holdout",
+                "provenance": {"ground_truth": True},
+                "targets": {
+                    "future_latent_state": {
+                        "observed_next": {"total_area_m2": 1008.0},
+                    },
+                },
+            },
+        ],
+    }
+    latent_quality = {
+        "schema": "territory_world_model.future_latent_state_v2_quality.v1",
+        "status": "pass",
+        "coverage": {"v2_prediction_count": 2, "prediction_count": 2},
+        "dimension_coverage": {"missing_target_dimensions": []},
+        "missing": [],
+    }
+
+    report = svc.dynamics_model_registry_report(
+        "state-registry",
+        {
+            "dynamics_training_dataset": dataset,
+            "candidate_report": {
+                "status": "pass",
+                "candidate": {
+                    "model_name": "hierarchical_neural_multi_head_dynamics",
+                    "model_version": "latent-v2-prod-candidate",
+                    "model_family": "action_conditioned_hierarchical_neural_dynamics",
+                    "is_scaffold_baseline": False,
+                    "is_scaffold_trainer": False,
+                },
+                "evidence_gate": {"status": "pass"},
+                "learned_parameters": {
+                    "metadata": {
+                        "state_contract_version": "state_contract_v1",
+                        "training_dataset_snapshot": "iceberg://twm/dynamics_training_dataset@snapshot-42",
+                        "training_run_id": "run-latent-v2-001",
+                        "model_artifact_uri": "s3://gis-agent-lakehouse/artifacts/twm/models/latent-v2.pt",
+                        "evaluation_report_id": "eval-latent-v2-001",
+                    },
+                },
+            },
+            "readiness_report": {"status": "pass", "gates": {"summary": {"blocked_gates": []}}},
+            "evaluation_report": {
+                "status": "pass",
+                "evidence_gate": {"status": "pass"},
+                "target_head_metrics": {
+                    "future_latent_state": {
+                        "latent_v2_quality": latent_quality,
+                    },
+                },
+            },
+            "production_data_gate": {"status": "pass"},
+            "current_registry_key": "previous_model:v1",
+        },
+    )
+
+    training_hash = report["registry_entry"]["metadata"]["training_dataset_hash"]
+    assert report["promotion_decision"] == "candidate_for_registry_promotion"
+    assert training_hash.startswith("sha256:")
+    assert len(training_hash) == len("sha256:") + 64
+    assert report["registry_entry"]["lineage"]["training_dataset_hash"] == training_hash
+    assert report["registry_entry"]["lineage"]["state_contract_version"] == "state_contract_v1"
+    assert report["registry_entry"]["latent_v2_quality"]["status"] == "pass"
+    assert report["gates"]["latent_v2_quality_gate"]["passed"] is True
+    assert report["missing_registry_metadata"] == []
+    assert report["missing_for_promotion"] == []
+    assert report["rollback_plan"]["action"] == "pin_candidate_with_previous_version_rollback"
+
+
+def test_dynamics_model_registry_can_activate_and_rollback_persistent_versions():
+    svc = _build_service()
+    project, state = _save_lightweight_twm_state(svc)
+
+    def payload_for(version: str) -> dict:
+        dataset = _minimal_observed_dynamics_dataset(state.id, project.id, count=4)
+        latent_quality = {
+            "schema": "territory_world_model.future_latent_state_v2_quality.v1",
+            "status": "pass",
+            "coverage": {"v2_prediction_count": 4, "prediction_count": 4},
+            "dimension_coverage": {"missing_target_dimensions": []},
+            "missing": [],
+        }
+        return {
+            "dynamics_training_dataset": dataset,
+            "candidate_report": {
+                "status": "pass",
+                "candidate": {
+                    "model_name": "hierarchical_neural_multi_head_dynamics",
+                    "model_version": version,
+                    "model_family": "action_conditioned_hierarchical_neural_dynamics",
+                    "is_scaffold_baseline": False,
+                    "is_scaffold_trainer": False,
+                },
+                "evidence_gate": {"status": "pass"},
+                "learned_parameters": {
+                    "metadata": {
+                        "state_contract_version": "state_contract_v1",
+                        "training_dataset_snapshot": f"iceberg://twm/dynamics_training_dataset@{version}",
+                        "training_run_id": f"run-{version}",
+                        "model_artifact_uri": f"s3://gis-agent-lakehouse/artifacts/twm/models/{version}.pt",
+                        "evaluation_report_id": f"eval-{version}",
+                    },
+                },
+            },
+            "readiness_report": {"status": "pass", "gates": {"summary": {"blocked_gates": []}}},
+            "evaluation_report": {
+                "status": "pass",
+                "evidence_gate": {"status": "pass"},
+                "target_head_metrics": {"future_latent_state": {"latent_v2_quality": latent_quality}},
+            },
+            "production_data_gate": {"status": "pass"},
+        }
+
+    first = svc.activate_dynamics_model_registry_entry(state.id, payload_for("v1"))
+    second = svc.activate_dynamics_model_registry_entry(state.id, payload_for("v2"))
+    active_before = svc.list_dynamics_model_registry_entries(state.id, {"status": "active"})
+    rollback = svc.rollback_dynamics_model_registry(state.id, {})
+    active_after = svc.list_dynamics_model_registry_entries(state.id, {"status": "active"})
+
+    assert first["schema"] == "territory_world_model.dynamics_model_registry_activation.v1"
+    assert first["active_entry"]["registry_key"] == "hierarchical_neural_multi_head_dynamics:v1"
+    assert first["previous_active_entry"] is None
+    assert second["active_entry"]["registry_key"] == "hierarchical_neural_multi_head_dynamics:v2"
+    assert second["previous_active_entry"]["registry_key"] == "hierarchical_neural_multi_head_dynamics:v1"
+    assert active_before["entries"][0]["registry_key"] == "hierarchical_neural_multi_head_dynamics:v2"
+    assert rollback["schema"] == "territory_world_model.dynamics_model_registry_rollback.v1"
+    assert rollback["restored_entry"]["registry_key"] == "hierarchical_neural_multi_head_dynamics:v1"
+    assert rollback["rolled_back_entry"]["registry_key"] == "hierarchical_neural_multi_head_dynamics:v2"
+    assert active_after["entries"][0]["registry_key"] == "hierarchical_neural_multi_head_dynamics:v1"
 
 
 def test_fit_dynamics_candidate_blocks_when_readiness_fails():
@@ -1924,6 +2475,55 @@ def test_train_dynamics_candidate_emits_scaffold_candidate_and_backend_report():
     assert report["evidence_gate"]["status"] in {"review", "blocked"}
 
 
+def test_train_dynamics_candidate_attaches_registry_gate_with_dataset_hash_lineage():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+    seed = svc.dynamics_training_examples(state_id, {"scenario": "trainer_registry_seed", "horizon": 2, "evidence_coverage": 0.72})
+    dataset = _observed_dynamics_dataset(seed)
+
+    report = svc.train_dynamics_candidate(
+        state_id,
+        {
+            "dataset": dataset,
+            "trainer": {
+                "trainer_id": "trainer-registry-scaffold",
+                "model_name": "hierarchical_trainable_dynamics_scaffold",
+                "model_version": "registry-unit",
+            },
+            "thresholds": {
+                "min_total_examples": 6,
+                "min_usable_examples": 6,
+                "min_observed_temporal_examples": 3,
+                "min_holdout_examples": 2,
+                "max_scaffold_ratio": 0.0,
+                "max_review_ratio": 0.0,
+            },
+            "registry_metadata": {
+                "state_contract_version": "state_contract_v1",
+                "training_dataset_snapshot": "iceberg://twm/dynamics_training_dataset@snapshot-train",
+                "training_run_id": "run-train-registry-001",
+                "model_artifact_uri": "s3://gis-agent-lakehouse/artifacts/twm/models/train-registry.pt",
+                "evaluation_report_id": "eval-train-registry-001",
+            },
+            "production_data_gate": {"status": "pass"},
+            "geofm_gate_report": {"gate_status": "review", "decision": "review_required"},
+            "causal_calibration_report": {"status": "review", "method": "payload_stub"},
+        },
+    )
+
+    registry = report["registry_report"]
+    training_hash = registry["registry_entry"]["metadata"]["training_dataset_hash"]
+    assert registry["schema"] == "territory_world_model.dynamics_model_registry_report.v1"
+    assert training_hash.startswith("sha256:")
+    assert registry["registry_entry"]["lineage"]["training_dataset_hash"] == training_hash
+    assert registry["gates"]["latent_v2_quality_gate"]["status"] in {"pass", "review"}
+    assert registry["promotion_decision"] in {"review_only_not_promoted", "blocked_scaffold_not_promoted"}
+    assert "non_scaffold_candidate" in registry["missing_for_promotion"]
+
+
 def test_twm_service_operations_emit_dedicated_otel_spans(monkeypatch):
     captured = _capture_twm_trace(monkeypatch)
     svc = _build_service()
@@ -2048,10 +2648,59 @@ def test_train_dynamics_candidate_supports_neural_multi_head_trainer_contract():
     assert report["objective"]["schema"] == "territory_world_model.training_objective_report.v1"
     assert report["candidate_report"]["candidate"]["is_scaffold_trainer"] is False
     assert report["learned_parameters"]["training_diagnostics"]["prediction_count"] >= 1
-    assert "future_area_and_key_indicators.total_area_m2" in report["learned_parameters"]["architecture"]["heads"]
+    assert "future_latent_state.latent_vector" in report["learned_parameters"]["architecture"]["heads"]
+    assert "future_latent_state.area_total" not in report["learned_parameters"]["architecture"]["heads"]
+    assert report["learned_parameters"]["latent_contract"]["dimension_count"] >= 1
     assert report["learned_parameters"]["feature_contract"]["action_mask_context_feature_names"]
     assert "action_mask_context.risk_proxy" in report["learned_parameters"]["feature_contract"]["action_mask_context_feature_names"]
     assert report["evidence_gate"]["status"] in {"pass", "review", "blocked"}
+
+
+def test_neural_multi_head_dynamics_trains_future_latent_state_v2_head():
+    from data_agent.territory_world_model.neural_dynamics import train_neural_multi_head_dynamics
+
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    seed = svc.dynamics_training_examples(state_id, {"scenario": "latent_v2_contract", "horizon": 2, "evidence_coverage": 0.72})
+    observed = _observed_dynamics_dataset(seed, count=6)
+    for idx, example in enumerate(observed["examples"]):
+        example["targets"]["future_latent_state"] = {
+            "observed_next": {
+                "total_area_m2": 1000.0,
+                "total_feature_count": 10,
+                "land_space_types": {
+                    "agricultural_space": {"area_m2": 600.0 - idx * 3.0, "feature_count": 6, "area_delta_m2": -idx * 3.0},
+                    "ecological_space": {"area_m2": 400.0 + idx * 3.0, "feature_count": 4, "area_delta_m2": idx * 3.0},
+                },
+            },
+            "delta": {
+                "total_area_delta_m2": 0.0,
+                "total_abs_area_delta_m2": idx * 6.0,
+                "by_land_type": {
+                    "agricultural_space": {"area_delta_m2": -idx * 3.0},
+                    "ecological_space": {"area_delta_m2": idx * 3.0},
+                },
+            },
+        }
+
+    report = train_neural_multi_head_dynamics(
+        observed,
+        {"trainer_type": "torch_multi_head_mlp", "is_scaffold_baseline": False},
+        {"objective_contract": {"multi_head_required": ["future_latent_state"]}, "loss_components": {}},
+        {"training_config": {"epochs": 2, "hidden_dim": 8, "seed": 7}},
+    )
+
+    assert report["diagnostics"]["status"] == "pass"
+    heads = report["learned_parameters"]["architecture"]["heads"]
+    assert "future_latent_state.latent_vector" in heads
+    assert "future_latent_state.decoded_state" in heads
+    assert "future_latent_state.transition_delta" in heads
+    assert "future_latent_state.area_total" not in heads
+    assert report["learned_parameters"]["latent_contract"]["dimension_count"] >= 8
+    first_prediction = next(iter(report["predictions"].values()))
+    assert first_prediction["future_latent_state"]["schema"] == "territory_world_model.predicted_latent_state.v2"
+    assert first_prediction["future_latent_state"]["decoded_state"]["land_space_types"]
 
 
 def test_train_dynamics_candidate_supports_hierarchical_graph_token_trainer_contract():
@@ -2102,7 +2751,9 @@ def test_train_dynamics_candidate_supports_hierarchical_graph_token_trainer_cont
     assert report["learned_parameters"]["architecture"]["temporal_message_passing"] is True
     assert report["learned_parameters"]["architecture"]["temporal_feature_count"] >= 1
     assert report["learned_parameters"]["architecture"]["action_mask_context_feature_count"] >= 1
-    assert "future_area_and_key_indicators.total_area_m2" in report["learned_parameters"]["architecture"]["heads"]
+    assert "future_latent_state.latent_vector" in report["learned_parameters"]["architecture"]["heads"]
+    assert "future_latent_state.area_total" not in report["learned_parameters"]["architecture"]["heads"]
+    assert report["learned_parameters"]["latent_contract"]["dimension_count"] >= 1
     assert report["learned_parameters"]["feature_contract"]["flat_vector_allowed"] is False
     assert report["learned_parameters"]["feature_contract"]["temporal_feature_names"]
     assert report["learned_parameters"]["feature_contract"]["action_mask_context_feature_names"]
@@ -2171,7 +2822,9 @@ def test_train_dynamics_candidate_supports_spatiotemporal_transformer_trainer_co
     assert set(architecture["constraint_risk_context_tokens"]) == {"action", "context", "temporal"}
     assert architecture["action_mask_feasibility_head"] == "context_residual"
     assert set(architecture["action_mask_feasibility_context_tokens"]) == {"action", "context", "temporal"}
-    assert "future_area_and_key_indicators.total_area_m2" in architecture["heads"]
+    assert "future_latent_state.latent_vector" in architecture["heads"]
+    assert "future_latent_state.area_total" not in architecture["heads"]
+    assert report["learned_parameters"]["latent_contract"]["dimension_count"] >= 1
     assert report["learned_parameters"]["feature_contract"]["flat_vector_allowed"] is False
     assert "temporal" in report["learned_parameters"]["feature_contract"]["sequence_feature_names"]
     assert report["learned_parameters"]["feature_contract"]["action_mask_context_feature_names"]
@@ -2191,6 +2844,73 @@ def test_train_dynamics_candidate_supports_spatiotemporal_transformer_trainer_co
     assert report["backend_report"]["schema"] == "territory_world_model.dynamics_backend_report.v1"
     assert report["objective"]["schema"] == "territory_world_model.training_objective_report.v1"
     assert report["evidence_gate"]["status"] in {"pass", "review", "blocked"}
+
+
+def test_trainable_graph_and_transformer_backends_report_latent_v2_heads():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+    seed = svc.dynamics_training_examples(state_id, {"scenario": "latent_v2_backend_contract", "horizon": 2, "evidence_coverage": 0.72})
+    observed = _observed_dynamics_dataset(seed, count=6)
+
+    graph_report = svc.train_dynamics_candidate(
+        state_id,
+        {
+            "dataset": observed,
+            "trainer": {
+                "trainer_id": "latent-v2-graph",
+                "model_name": "hierarchical_graph_token_dynamics",
+                "model_version": "unit",
+                "training_method": "torch_hierarchical_graph",
+            },
+            "training_config": {"epochs": 2, "hidden_dim": 8, "seed": 11},
+            "thresholds": {
+                "min_total_examples": 6,
+                "min_usable_examples": 6,
+                "min_observed_temporal_examples": 3,
+                "min_holdout_examples": 2,
+                "max_scaffold_ratio": 0.0,
+                "max_review_ratio": 0.0,
+            },
+            "geofm_gate_report": {"gate_status": "review", "decision": "review_required"},
+            "causal_calibration_report": {"status": "review", "method": "payload_stub"},
+        },
+    )
+    transformer_report = svc.train_dynamics_candidate(
+        state_id,
+        {
+            "dataset": observed,
+            "trainer": {
+                "trainer_id": "latent-v2-transformer",
+                "model_name": "spatiotemporal_transformer_dynamics",
+                "model_version": "unit",
+                "training_method": "torch_spatiotemporal_transformer",
+            },
+            "training_config": {"epochs": 2, "hidden_dim": 8, "seed": 13},
+            "thresholds": {
+                "min_total_examples": 6,
+                "min_usable_examples": 6,
+                "min_observed_temporal_examples": 3,
+                "min_holdout_examples": 2,
+                "max_scaffold_ratio": 0.0,
+                "max_review_ratio": 0.0,
+            },
+            "geofm_gate_report": {"gate_status": "review", "decision": "review_required"},
+            "causal_calibration_report": {"status": "review", "method": "payload_stub"},
+        },
+    )
+
+    for report in (graph_report, transformer_report):
+        if report["status"] == "blocked" and "torch_unavailable" in json.dumps(report):
+            continue
+        heads = report["learned_parameters"]["architecture"]["heads"]
+        assert "future_latent_state.latent_vector" in heads
+        assert "future_latent_state.area_total" not in heads
+        assert report["learned_parameters"]["latent_contract"]["dimension_count"] >= 1
+        first_prediction = next(iter(report["predictions"].values()))
+        assert first_prediction["future_latent_state"]["schema"] == "territory_world_model.predicted_latent_state.v2"
 
 
 def test_geofm_ablation_gate_defaults_to_review_without_explicit_downstream_metrics():
@@ -3696,9 +4416,65 @@ def test_neural_dynamics_prediction_exposes_area_indicator_contract():
 
     indicators = prediction["future_area_and_key_indicators"]
     assert indicators["schema"] == "territory_world_model.future_area_and_key_indicators.v1"
-    assert indicators["representation_boundary"] == "compact_indicator_proxy_not_full_parcel_geometry"
     assert indicators["projected"]["total_area_m2"] == 1234.5
-    assert prediction["future_latent_state"]["representation_boundary"] == "compatibility_alias_for_future_area_and_key_indicators"
+    assert prediction["future_latent_state"]["schema"] == "territory_world_model.predicted_latent_state.v2"
+    assert prediction["future_latent_state"]["decoded_state"]["total_area_m2"] == 1234.5
+    assert prediction["future_latent_state"]["representation_boundary"] == "multi_dimensional_hierarchical_state_latent_not_full_geometry"
+    assert indicators["representation_boundary"] == "derived_from_multi_dimensional_hierarchical_state_latent"
+
+
+def test_latent_v2_decoder_outputs_multi_dimensional_state_contract():
+    from data_agent.territory_world_model.neural_dynamics import (
+        _decode_latent_vector,
+        _prediction_from_outputs,
+    )
+
+    dimensions = [
+        "observed_next.total_area_m2",
+        "observed_next.total_feature_count",
+        "observed_next.land_space_types.agricultural_space.area_m2",
+        "observed_next.land_space_types.agricultural_space.feature_count",
+        "observed_next.land_space_types.agricultural_space.area_delta_m2",
+        "observed_next.land_space_types.ecological_space.area_m2",
+        "observed_next.land_space_types.ecological_space.feature_count",
+        "observed_next.land_space_types.ecological_space.area_delta_m2",
+        "delta.total_area_delta_m2",
+        "delta.total_abs_area_delta_m2",
+        "delta.by_land_type.agricultural_space.area_delta_m2",
+        "delta.by_land_type.ecological_space.area_delta_m2",
+    ]
+    values = [1000.0, 10.0, 580.0, 6.0, -20.0, 420.0, 4.0, 20.0, 0.0, 40.0, -20.0, 20.0]
+
+    latent = _decode_latent_vector(dimensions, values, source="unit_test_candidate")
+
+    assert latent["schema"] == "territory_world_model.predicted_latent_state.v2"
+    assert latent["latent_head_scope"] == "multi_dimensional_hierarchical_state"
+    assert latent["representation_boundary"] == "multi_dimensional_hierarchical_state_latent_not_full_geometry"
+    assert latent["latent_vector"]["observed_next.total_area_m2"] == 1000.0
+    assert latent["decoded_state"]["total_area_m2"] == 1000.0
+    assert latent["decoded_state"]["total_feature_count"] == 10
+    assert latent["decoded_state"]["land_space_types"]["agricultural_space"]["area_m2"] == 580.0
+    assert latent["decoded_state"]["land_space_types"]["agricultural_space"]["feature_count"] == 6
+    assert latent["decoded_state"]["land_space_types"]["agricultural_space"]["area_delta_m2"] == -20.0
+    assert latent["transition_delta"]["total_abs_area_delta_m2"] == 40.0
+    assert latent["transition_delta"]["by_land_type"]["ecological_space"]["area_delta_m2"] == 20.0
+
+    prediction = _prediction_from_outputs(
+        example={"id": "contract-example", "action": {"action_type": "protect", "target_role": "parcel"}},
+        latent_dimensions=dimensions,
+        latent_values=values,
+        constraint_probability=0.24,
+        utility_delta=0.31,
+        confidence=0.72,
+        calibrated_utility=0.28,
+        action_allowed_probability=0.82,
+        source="unit_test_candidate",
+    )
+
+    assert prediction["future_latent_state"]["schema"] == "territory_world_model.predicted_latent_state.v2"
+    assert prediction["future_latent_state"]["decoded_state"]["total_area_m2"] == 1000.0
+    assert prediction["future_area_and_key_indicators"]["projected"]["total_area_m2"] == 1000.0
+    assert prediction["future_latent_state"]["representation_boundary"] != "compatibility_alias_for_future_area_and_key_indicators"
 
 
 def test_forecast_ignores_review_causal_calibration_report():
@@ -3778,8 +4554,8 @@ def test_research_positioning_states_core_claims_and_falsification_conditions():
     assert "Hierarchical GIS object-relation-rule-evidence state" in core_names
     assert "Action-conditioned multi-head territorial dynamics" in core_names
     dynamics_claim = next(item["claim"] for item in positioning["core_technology"] if item["name"] == "Action-conditioned multi-head territorial dynamics")
-    assert "future area/key indicators" in dynamics_claim
-    assert "future latent state" not in dynamics_claim
+    assert "multi-dimensional hierarchical future-state latent" in dynamics_claim
+    assert "full parcel geometry" in dynamics_claim
     assert positioning["unmet_need_hypotheses"]
     assert "Rule-only spatial compliance engine" in positioning["baselines_to_beat"]
     assert any("stopped" in item for item in positioning["falsification_conditions"])
@@ -3821,10 +4597,22 @@ def test_roadmap_status_report_reflects_lineage_and_registry_gate_progress():
     phases = {item["id"]: item for item in report["phases"]}
 
     engineering = phases["engineering_scaffold"]
-    assert engineering["completion_ratio"] >= 0.74
+    assert engineering["completion_ratio"] >= 0.78
     assert any("model registry release gate" in item for item in engineering["evidence"])
-    assert "persistent model registry/version rollback" in engineering["remaining"]
+    assert any("persistent model registry/version rollback" in item for item in engineering["evidence"])
+    assert any("state snapshot lakehouse manifest" in item for item in engineering["evidence"])
+    assert any("state snapshot lakehouse materializer" in item for item in engineering["evidence"])
+    assert any("Iceberg/Sedona publish plan" in item for item in engineering["evidence"])
+    assert any("Spark executor contract" in item for item in engineering["evidence"])
+    assert any("spark-submit execution bundle" in item for item in engineering["evidence"])
+    assert "persistent model registry/version rollback" not in engineering["remaining"]
     assert "model registry/version rollback" not in engineering["remaining"]
+    assert "production-scale storage/index review" not in engineering["remaining"]
+    assert "production lakehouse writer and spatial index build" not in engineering["remaining"]
+    assert "Iceberg table registration and distributed spatial index build" not in engineering["remaining"]
+    assert "production Spark executor and Iceberg snapshot validation" not in engineering["remaining"]
+    assert "production Spark cluster wiring and external Iceberg audit" not in engineering["remaining"]
+    assert "credentialed production Spark run and external Iceberg audit acceptance" in engineering["remaining"]
 
     data_foundation = phases["data_foundation_productization"]
     assert data_foundation["completion_ratio"] >= 0.68
@@ -4763,6 +5551,16 @@ def test_twm_toolset_lists_sync_and_long_running_tools():
     assert "twm_world_model_profile_async" in names
     assert "twm_state_contract_report" in names
     assert "twm_state_contract_report_async" in names
+    assert "twm_state_snapshot_lakehouse_manifest" in names
+    assert "twm_state_snapshot_lakehouse_manifest_async" in names
+    assert "twm_materialize_state_snapshot_lakehouse" in names
+    assert "twm_materialize_state_snapshot_lakehouse_async" in names
+    assert "twm_state_snapshot_lakehouse_publish_plan" in names
+    assert "twm_state_snapshot_lakehouse_publish_plan_async" in names
+    assert "twm_execute_state_snapshot_lakehouse_publish_plan" in names
+    assert "twm_execute_state_snapshot_lakehouse_publish_plan_async" in names
+    assert "twm_state_snapshot_lakehouse_spark_submit_bundle" in names
+    assert "twm_state_snapshot_lakehouse_spark_submit_bundle_async" in names
     assert "twm_dynamics_backend_report" in names
     assert "twm_dynamics_backend_report_async" in names
     assert "twm_training_objective_report" in names
@@ -4777,6 +5575,12 @@ def test_twm_toolset_lists_sync_and_long_running_tools():
     assert "twm_dynamics_evaluation_report_async" in names
     assert "twm_dynamics_model_registry_report" in names
     assert "twm_dynamics_model_registry_report_async" in names
+    assert "twm_activate_dynamics_model_registry_entry" in names
+    assert "twm_activate_dynamics_model_registry_entry_async" in names
+    assert "twm_list_dynamics_model_registry_entries" in names
+    assert "twm_list_dynamics_model_registry_entries_async" in names
+    assert "twm_rollback_dynamics_model_registry" in names
+    assert "twm_rollback_dynamics_model_registry_async" in names
     assert "twm_fit_dynamics_candidate" in names
     assert "twm_fit_dynamics_candidate_async" in names
     assert "twm_geofm_ablation_gate" in names
@@ -4875,6 +5679,160 @@ def test_twm_dynamics_model_registry_tool_returns_gate_report(monkeypatch):
     assert payload["schema"] == "territory_world_model.dynamics_model_registry_report.v1"
     assert payload["registry_entry"]["registry_key"] == "model_a:v1"
     assert payload["promotion_decision"] == "review_only_not_promoted"
+
+
+def test_twm_dynamics_model_registry_routes_expose_activation_listing_and_rollback(monkeypatch):
+    svc = _build_service()
+    _project, state = _save_lightweight_twm_state(svc)
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+
+    activate_resp = asyncio.run(routes.twm_activate_dynamics_model_registry_entry(_fake_request(
+        "POST",
+        b"{}",
+        path_params={"id": state.id},
+    )))
+    activate_body = json.loads(activate_resp.body)
+    list_resp = asyncio.run(routes.twm_dynamics_model_registry_entries(_fake_request(
+        "POST",
+        b'{"status":"review_only"}',
+        path_params={"id": state.id},
+    )))
+    list_body = json.loads(list_resp.body)
+    rollback_resp = asyncio.run(routes.twm_rollback_dynamics_model_registry(_fake_request(
+        "POST",
+        b"{}",
+        path_params={"id": state.id},
+    )))
+    rollback_body = json.loads(rollback_resp.body)
+
+    assert activate_resp.status_code == 200
+    assert activate_body["schema"] == "territory_world_model.dynamics_model_registry_activation.v1"
+    assert activate_body["status"] == "review_only"
+    assert list_resp.status_code == 200
+    assert list_body["schema"] == "territory_world_model.dynamics_model_registry_entries.v1"
+    assert list_body["entries"][0]["status"] == "review_only"
+    assert rollback_resp.status_code == 200
+    assert rollback_body["schema"] == "territory_world_model.dynamics_model_registry_rollback.v1"
+    assert rollback_body["status"] == "blocked"
+    assert "active_registry_entry" in rollback_body["missing"]
+
+
+def test_twm_state_snapshot_lakehouse_manifest_route_returns_storage_contract(monkeypatch):
+    svc = _build_service()
+    _project, state = _save_lightweight_twm_state(svc)
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+
+    response = asyncio.run(routes.twm_state_snapshot_lakehouse_manifest(_fake_request(
+        "POST",
+        b'{"lakehouse_uri":"s3://gis-agent-lakehouse","namespace":"twm_prod","include_vector_sidecar":true}',
+        path_params={"id": state.id},
+    )))
+    body = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert body["schema"] == "territory_world_model.state_snapshot_lakehouse_manifest.v1"
+    assert body["storage"]["table_format"] == "iceberg"
+    assert body["storage"]["vector_sidecar"]["format"] == "lance"
+    assert body["artifacts"]["state_objects"]["table"] == "twm_prod.state_objects"
+    assert body["artifacts"]["state_objects"]["format"] == "geoparquet"
+
+
+def test_twm_state_snapshot_lakehouse_materialization_route_writes_parquet(tmp_path, monkeypatch):
+    svc = _build_service()
+    _project, state = _save_lightweight_twm_state(svc)
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+
+    response = asyncio.run(routes.twm_materialize_state_snapshot_lakehouse(_fake_request(
+        "POST",
+        json.dumps({"lakehouse_uri": tmp_path.as_uri(), "namespace": "twm_prod"}).encode("utf-8"),
+        path_params={"id": state.id},
+    )))
+    body = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert body["schema"] == "territory_world_model.state_snapshot_lakehouse_materialization.v1"
+    assert body["written_artifact_count"] >= 7
+    assert Path(body["artifacts"]["state_objects"]["local_path"]).exists()
+    assert body["readiness"]["local_parquet_written"] is True
+
+
+def test_twm_state_snapshot_lakehouse_publish_plan_route_returns_iceberg_and_sedona_specs(tmp_path, monkeypatch):
+    svc = _build_service()
+    _project, state = _save_lightweight_twm_state(svc)
+    materialization = svc.materialize_state_snapshot_lakehouse(
+        state.id,
+        {"lakehouse_uri": tmp_path.as_uri(), "namespace": "twm_prod"},
+    )
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+
+    response = asyncio.run(routes.twm_state_snapshot_lakehouse_publish_plan(_fake_request(
+        "POST",
+        json.dumps({
+            "materialization": materialization,
+            "catalog": "prod",
+            "namespace": "twm_prod",
+            "warehouse_uri": "s3://gis-agent-lakehouse/warehouse/iceberg",
+        }).encode("utf-8"),
+        path_params={"id": state.id},
+    )))
+    body = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert body["schema"] == "territory_world_model.state_snapshot_lakehouse_publish_plan.v1"
+    assert body["iceberg_publish_specs"][0]["schema"] == "territory_world_model.iceberg_artifact_publish_spec.v1"
+    assert any(item["schema"] == "territory_world_model.sedona_spatial_index_job.v1" for item in body["sedona_spatial_index_specs"])
+    assert body["validation_gates"]["publish_spec_gate"]["status"] == "pass"
+
+
+def test_twm_state_snapshot_lakehouse_execute_route_blocks_without_executor(monkeypatch):
+    svc = _build_service()
+    _project, state = _save_lightweight_twm_state(svc)
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+
+    response = asyncio.run(routes.twm_execute_state_snapshot_lakehouse_publish_plan(_fake_request(
+        "POST",
+        b'{"catalog":"prod","namespace":"twm_prod"}',
+        path_params={"id": state.id},
+    )))
+    body = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert body["schema"] == "territory_world_model.state_snapshot_lakehouse_publish_execution.v1"
+    assert body["status"] == "blocked"
+    assert body["validation_gates"]["spark_executor_gate"]["missing"] == ["executor"]
+    assert body["publish_plan"]["schema"] == "territory_world_model.state_snapshot_lakehouse_publish_plan.v1"
+
+
+def test_twm_state_snapshot_lakehouse_spark_submit_bundle_route_returns_command(tmp_path, monkeypatch):
+    svc = _build_service()
+    _project, state = _save_lightweight_twm_state(svc)
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+
+    response = asyncio.run(routes.twm_state_snapshot_lakehouse_spark_submit_bundle(_fake_request(
+        "POST",
+        json.dumps({
+            "lakehouse_uri": tmp_path.joinpath("lake").as_uri(),
+            "namespace": "twm_prod",
+            "catalog": "prod",
+            "warehouse_uri": "s3://gis-agent-lakehouse/warehouse/iceberg",
+            "output_dir": str(tmp_path / "bundle"),
+            "spark_master": "local[2]",
+        }).encode("utf-8"),
+        path_params={"id": state.id},
+    )))
+    body = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert body["schema"] == "territory_world_model.state_snapshot_lakehouse_spark_submit_bundle.v1"
+    assert body["spark_submit"]["command"][0] == "spark-submit"
+    assert Path(body["plan_path"]).exists()
+    assert Path(body["executor_script"]).exists()
 
 
 def test_twm_forecast_tool_accepts_dynamics_candidate_report(monkeypatch):

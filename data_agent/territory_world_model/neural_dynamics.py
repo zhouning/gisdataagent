@@ -10,6 +10,8 @@ from .utils import safe_float, safe_int
 NEURAL_DYNAMICS_SCHEMA = "territory_world_model.neural_multi_head_dynamics_parameters.v1"
 HIERARCHICAL_GRAPH_DYNAMICS_SCHEMA = "territory_world_model.hierarchical_graph_dynamics_parameters.v1"
 SPATIOTEMPORAL_TRANSFORMER_DYNAMICS_SCHEMA = "territory_world_model.spatiotemporal_transformer_dynamics_parameters.v1"
+LATENT_STATE_V2_SCHEMA = "territory_world_model.predicted_latent_state.v2"
+LATENT_STATE_V2_BOUNDARY = "multi_dimensional_hierarchical_state_latent_not_full_geometry"
 
 
 def train_neural_multi_head_dynamics(
@@ -50,6 +52,8 @@ def train_neural_multi_head_dynamics(
     feature_rows = [_feature_row(item) for item in usable]
     feature_names = sorted({key for row in feature_rows for key in row})
     target_rows = [_target_row(item) for item in usable]
+    latent_dimensions = _latent_dimension_names(usable)
+    latent_width = max(1, len(latent_dimensions))
     all_x = [_vectorize(_feature_row(item), feature_names) for item in usable]
     train_ids = {str(item.get("id") or "") for item in train_examples}
     train_indices = [idx for idx, item in enumerate(usable) if str(item.get("id") or "") in train_ids]
@@ -61,9 +65,14 @@ def train_neural_multi_head_dynamics(
     y_stats = _target_stats([target_rows[idx] for idx in train_indices])
     x_train = _normalize_matrix([all_x[idx] for idx in train_indices], x_stats)
     y_train = [target_rows[idx] for idx in train_indices]
+    y_latent_values = [
+        _latent_target_vector(dict(usable[idx].get("targets") or {}), latent_dimensions)
+        for idx in train_indices
+    ]
+    y_latent_stats = _normalization_stats(y_latent_values)
 
     x_tensor = torch.tensor(x_train, dtype=torch.float32)
-    y_area = torch.tensor([_normalize_value(row["area_total"], y_stats["area_total"]) for row in y_train], dtype=torch.float32).unsqueeze(1)
+    y_latent = torch.tensor(_normalize_matrix(y_latent_values, y_latent_stats), dtype=torch.float32)
     y_constraint = torch.tensor([row["constraint_probability"] for row in y_train], dtype=torch.float32).unsqueeze(1)
     y_utility = torch.tensor([_normalize_value(row["utility_delta"], y_stats["utility_delta"]) for row in y_train], dtype=torch.float32).unsqueeze(1)
     y_confidence = torch.tensor([row["confidence"] for row in y_train], dtype=torch.float32).unsqueeze(1)
@@ -71,7 +80,13 @@ def train_neural_multi_head_dynamics(
     y_allowed = torch.tensor([row["action_allowed"] for row in y_train], dtype=torch.float32).unsqueeze(1)
     y_ranking = torch.tensor([row["ranking_score"] for row in y_train], dtype=torch.float32)
 
-    model = _MultiHeadDynamicsMLP(input_dim=len(feature_names), hidden_dim=cfg["hidden_dim"], dropout=cfg["dropout"], nn=nn)
+    model = _MultiHeadDynamicsMLP(
+        input_dim=len(feature_names),
+        hidden_dim=cfg["hidden_dim"],
+        dropout=cfg["dropout"],
+        output_dim=latent_width + 5,
+        nn=nn,
+    )
     optimizer = torch.optim.AdamW(model.parameters(), lr=cfg["learning_rate"], weight_decay=cfg["weight_decay"])
     bce = nn.BCEWithLogitsLoss()
     mse = nn.MSELoss()
@@ -80,16 +95,21 @@ def train_neural_multi_head_dynamics(
         model.train()
         optimizer.zero_grad()
         out = model(x_tensor)
-        utility_pred = out[:, 2:3]
-        constraint_prob = torch.sigmoid(out[:, 1:2])
+        latent_pred = out[:, :latent_width]
+        constraint_logit = out[:, latent_width:latent_width + 1]
+        utility_pred = out[:, latent_width + 1:latent_width + 2]
+        confidence_logit = out[:, latent_width + 2:latent_width + 3]
+        calibration_pred = out[:, latent_width + 3:latent_width + 4]
+        allowed_logit = out[:, latent_width + 4:latent_width + 5]
+        constraint_prob = torch.sigmoid(constraint_logit)
         loss = (
-            mse(out[:, 0:1], y_area)
-            + bce(out[:, 1:2], y_constraint)
+            mse(latent_pred, y_latent)
+            + bce(constraint_logit, y_constraint)
             + cfg["constraint_risk_calibration_weight"] * mse(constraint_prob, y_constraint)
             + 1.2 * mse(utility_pred, y_utility)
-            + 0.7 * bce(out[:, 3:4], y_confidence)
-            + 0.8 * mse(out[:, 4:5], y_calibration)
-            + 0.6 * bce(out[:, 5:6], y_allowed)
+            + 0.7 * bce(confidence_logit, y_confidence)
+            + 0.8 * mse(calibration_pred, y_calibration)
+            + 0.6 * bce(allowed_logit, y_allowed)
             + cfg["ranking_weight"] * _pairwise_ranking_loss(utility_pred.squeeze(1), y_ranking, torch)
         )
         loss.backward()
@@ -106,15 +126,16 @@ def train_neural_multi_head_dynamics(
     for idx, example in enumerate(usable):
         example_id = str(example.get("id") or f"example:{idx}")
         row = raw[idx].tolist()
-        area = _denormalize_value(row[0], y_stats["area_total"])
-        constraint = _sigmoid(row[1])
-        utility = _denormalize_value(row[2], y_stats["utility_delta"])
-        confidence = _sigmoid(row[3])
-        calibration = _denormalize_value(row[4], y_stats["calibrated_utility_delta"])
-        allowed_probability = _sigmoid(row[5])
+        latent_values = _denormalize_vector(row[:latent_width], y_latent_stats)
+        constraint = _sigmoid(row[latent_width])
+        utility = _denormalize_value(row[latent_width + 1], y_stats["utility_delta"])
+        confidence = _sigmoid(row[latent_width + 2])
+        calibration = _denormalize_value(row[latent_width + 3], y_stats["calibrated_utility_delta"])
+        allowed_probability = _sigmoid(row[latent_width + 4])
         predictions[example_id] = _prediction_from_outputs(
             example=example,
-            area_total=area,
+            latent_dimensions=latent_dimensions,
+            latent_values=latent_values,
             constraint_probability=constraint,
             utility_delta=utility,
             confidence=confidence,
@@ -131,8 +152,9 @@ def train_neural_multi_head_dynamics(
             "model_type": "torch_multi_head_mlp",
             "input_feature_groups": ["hierarchy_summary", "explicit_gis_state", "action", "scenario", "constraint_context", "action_mask_context"],
             "heads": [
-                "future_area_and_key_indicators.total_area_m2",
-                "future_latent_state.area_total",
+                "future_latent_state.latent_vector",
+                "future_latent_state.decoded_state",
+                "future_latent_state.transition_delta",
                 "constraint_violation_probability",
                 "planning_utility_delta",
                 "uncertainty.confidence",
@@ -151,6 +173,13 @@ def train_neural_multi_head_dynamics(
             "normalization": x_stats,
         },
         "target_normalization": y_stats,
+        "latent_contract": {
+            "schema": "territory_world_model.future_latent_state_v2_contract.v1",
+            "dimension_count": len(latent_dimensions),
+            "dimensions": list(latent_dimensions),
+            "target_normalization": y_latent_stats,
+            "representation_boundary": LATENT_STATE_V2_BOUNDARY,
+        },
         "objective_contract": dict(objective_report.get("objective_contract") or {}),
         "loss_components": dict(objective_report.get("loss_components") or {}),
         "training_config": cfg,
@@ -166,7 +195,7 @@ def train_neural_multi_head_dynamics(
         "model_state_dict": _serializable_state_dict(model),
         "limitations": [
             "local trainable MLP candidate; not yet the final graph/transformer hierarchical TWM",
-            "future_latent_state is a compatibility alias for compact area/key-indicator predictions, not full parcel geometry",
+            "future_latent_state is a decoded multi-dimensional summary latent, not full parcel geometry",
             "claim upgrade still depends on readiness, backend, objective, causal, GeoFM and validation gates",
         ],
     }
@@ -220,6 +249,9 @@ def train_hierarchical_graph_dynamics(
     token_keys = _token_group_keys(token_rows)
     relation_keys = _relation_feature_keys(token_rows)
     target_rows = [_target_row(item) for item in usable]
+    latent_dimensions = _latent_dimension_names(usable)
+    latent_width = max(1, len(latent_dimensions))
+    latent_area_index = _latent_total_area_dimension_index(latent_dimensions)
     train_ids = {str(item.get("id") or "") for item in train_examples}
     train_indices = [idx for idx, item in enumerate(usable) if str(item.get("id") or "") in train_ids]
 
@@ -253,6 +285,11 @@ def train_hierarchical_graph_dynamics(
     context_train = _normalize_matrix([context_matrix[idx] for idx in train_indices], context_stats) if context_keys else [[0.0] for _ in train_indices]
     temporal_train = _normalize_matrix([temporal_matrix[idx] for idx in train_indices], temporal_stats) if temporal_keys else [[0.0] for _ in train_indices]
     y_train = [target_rows[idx] for idx in train_indices]
+    y_latent_values = [
+        _latent_target_vector(dict(usable[idx].get("targets") or {}), latent_dimensions)
+        for idx in train_indices
+    ]
+    y_latent_stats = _normalization_stats(y_latent_values)
 
     token_tensors = {
         group: torch.tensor(rows, dtype=torch.float32)
@@ -263,11 +300,18 @@ def train_hierarchical_graph_dynamics(
     scenario_tensor = torch.tensor(scenario_train, dtype=torch.float32)
     context_tensor = torch.tensor(context_train, dtype=torch.float32)
     temporal_tensor = torch.tensor(temporal_train, dtype=torch.float32)
-    y_area = torch.tensor([_normalize_value(row["area_total"], y_stats["area_total"]) for row in y_train], dtype=torch.float32).unsqueeze(1)
-    temporal_area_target = torch.tensor(
-        [_normalize_value(_temporal_next_area_proxy(token_rows[idx], target_rows[idx]), y_stats["area_total"]) for idx in train_indices],
-        dtype=torch.float32,
-    ).unsqueeze(1)
+    y_latent = torch.tensor(_normalize_matrix(y_latent_values, y_latent_stats), dtype=torch.float32)
+    if latent_area_index is not None:
+        latent_area_stats = {
+            "mean": y_latent_stats["mean"][latent_area_index],
+            "std": y_latent_stats["std"][latent_area_index],
+        }
+        temporal_area_target = torch.tensor(
+            [_normalize_value(_temporal_next_area_proxy(token_rows[idx], target_rows[idx]), latent_area_stats) for idx in train_indices],
+            dtype=torch.float32,
+        ).unsqueeze(1)
+    else:
+        temporal_area_target = None
     y_constraint = torch.tensor([row["constraint_probability"] for row in y_train], dtype=torch.float32).unsqueeze(1)
     y_utility = torch.tensor([_normalize_value(row["utility_delta"], y_stats["utility_delta"]) for row in y_train], dtype=torch.float32).unsqueeze(1)
     y_confidence = torch.tensor([row["confidence"] for row in y_train], dtype=torch.float32).unsqueeze(1)
@@ -284,6 +328,7 @@ def train_hierarchical_graph_dynamics(
         temporal_dim=len(temporal_keys) or 1,
         hidden_dim=cfg["hidden_dim"],
         dropout=cfg["dropout"],
+        output_dim=latent_width + 5,
         nn=nn,
         torch=torch,
     )
@@ -295,19 +340,28 @@ def train_hierarchical_graph_dynamics(
         model.train()
         optimizer.zero_grad()
         out = model(token_tensors, action_tensor, scenario_tensor, relation_tensor, context_tensor, temporal_tensor)
-        utility_pred = out[:, 2:3]
-        area_pred = out[:, 0:1]
-        constraint_prob = torch.sigmoid(out[:, 1:2])
+        latent_pred = out[:, :latent_width]
+        constraint_logit = out[:, latent_width:latent_width + 1]
+        utility_pred = out[:, latent_width + 1:latent_width + 2]
+        confidence_logit = out[:, latent_width + 2:latent_width + 3]
+        calibration_pred = out[:, latent_width + 3:latent_width + 4]
+        allowed_logit = out[:, latent_width + 4:latent_width + 5]
+        constraint_prob = torch.sigmoid(constraint_logit)
+        temporal_loss = (
+            _temporal_consistency_loss(latent_pred[:, latent_area_index:latent_area_index + 1], temporal_area_target, torch)
+            if latent_area_index is not None and temporal_area_target is not None
+            else torch.tensor(0.0, dtype=latent_pred.dtype)
+        )
         loss = (
-            mse(area_pred, y_area)
-            + bce(out[:, 1:2], y_constraint)
+            mse(latent_pred, y_latent)
+            + bce(constraint_logit, y_constraint)
             + cfg["constraint_risk_calibration_weight"] * mse(constraint_prob, y_constraint)
             + 1.25 * mse(utility_pred, y_utility)
-            + 0.7 * bce(out[:, 3:4], y_confidence)
-            + 0.85 * mse(out[:, 4:5], y_calibration)
-            + 0.7 * bce(out[:, 5:6], y_allowed)
+            + 0.7 * bce(confidence_logit, y_confidence)
+            + 0.85 * mse(calibration_pred, y_calibration)
+            + 0.7 * bce(allowed_logit, y_allowed)
             + cfg["ranking_weight"] * _pairwise_ranking_loss(utility_pred.squeeze(1), y_ranking, torch)
-            + cfg["temporal_consistency_weight"] * _temporal_consistency_loss(area_pred, temporal_area_target, torch)
+            + cfg["temporal_consistency_weight"] * temporal_loss
         )
         loss.backward()
         optimizer.step()
@@ -331,15 +385,16 @@ def train_hierarchical_graph_dynamics(
     for idx, example in enumerate(usable):
         example_id = str(example.get("id") or f"example:{idx}")
         row = raw[idx].tolist()
-        area = _denormalize_value(row[0], y_stats["area_total"])
-        constraint = _sigmoid(row[1])
-        utility = _denormalize_value(row[2], y_stats["utility_delta"])
-        confidence = _sigmoid(row[3])
-        calibration = _denormalize_value(row[4], y_stats["calibrated_utility_delta"])
-        allowed_probability = _sigmoid(row[5])
+        latent_values = _denormalize_vector(row[:latent_width], y_latent_stats)
+        constraint = _sigmoid(row[latent_width])
+        utility = _denormalize_value(row[latent_width + 1], y_stats["utility_delta"])
+        confidence = _sigmoid(row[latent_width + 2])
+        calibration = _denormalize_value(row[latent_width + 3], y_stats["calibrated_utility_delta"])
+        allowed_probability = _sigmoid(row[latent_width + 4])
         prediction = _prediction_from_outputs(
             example=example,
-            area_total=area,
+            latent_dimensions=latent_dimensions,
+            latent_values=latent_values,
             constraint_probability=constraint,
             utility_delta=utility,
             confidence=confidence,
@@ -372,8 +427,9 @@ def train_hierarchical_graph_dynamics(
             "hidden_dim": cfg["hidden_dim"],
             "dropout": cfg["dropout"],
             "heads": [
-                "future_area_and_key_indicators.total_area_m2",
-                "future_latent_state.area_total",
+                "future_latent_state.latent_vector",
+                "future_latent_state.decoded_state",
+                "future_latent_state.transition_delta",
                 "constraint_violation_probability",
                 "planning_utility_delta",
                 "uncertainty.confidence",
@@ -401,6 +457,13 @@ def train_hierarchical_graph_dynamics(
             },
         },
         "target_normalization": y_stats,
+        "latent_contract": {
+            "schema": "territory_world_model.future_latent_state_v2_contract.v1",
+            "dimension_count": len(latent_dimensions),
+            "dimensions": list(latent_dimensions),
+            "target_normalization": y_latent_stats,
+            "representation_boundary": LATENT_STATE_V2_BOUNDARY,
+        },
         "objective_contract": dict(objective_report.get("objective_contract") or {}),
         "loss_components": dict(objective_report.get("loss_components") or {}),
         "training_config": cfg,
@@ -475,6 +538,10 @@ def train_spatiotemporal_transformer_dynamics(
     token_rows = [_hierarchical_feature_groups(item) for item in usable]
     token_feature_keys = _sequence_feature_keys(token_rows)
     target_rows = [_target_row(item) for item in usable]
+    latent_dimensions = _latent_dimension_names(usable)
+    latent_width = max(1, len(latent_dimensions))
+    scalar_start = latent_width
+    latent_area_index = _latent_total_area_dimension_index(latent_dimensions)
     train_ids = {str(item.get("id") or "") for item in train_examples}
     train_indices = [idx for idx, item in enumerate(usable) if str(item.get("id") or "") in train_ids]
 
@@ -492,16 +559,28 @@ def train_spatiotemporal_transformer_dynamics(
     }
     y_stats = _target_stats([target_rows[idx] for idx in train_indices])
     y_train = [target_rows[idx] for idx in train_indices]
+    y_latent_values = [
+        _latent_target_vector(dict(usable[idx].get("targets") or {}), latent_dimensions)
+        for idx in train_indices
+    ]
+    y_latent_stats = _normalization_stats(y_latent_values)
 
     token_tensors = {
         name: torch.tensor(rows, dtype=torch.float32)
         for name, rows in token_train.items()
     }
-    y_area = torch.tensor([_normalize_value(row["area_total"], y_stats["area_total"]) for row in y_train], dtype=torch.float32).unsqueeze(1)
-    temporal_area_target = torch.tensor(
-        [_normalize_value(_temporal_next_area_proxy(token_rows[idx], target_rows[idx]), y_stats["area_total"]) for idx in train_indices],
-        dtype=torch.float32,
-    ).unsqueeze(1)
+    y_latent = torch.tensor(_normalize_matrix(y_latent_values, y_latent_stats), dtype=torch.float32)
+    if latent_area_index is not None:
+        latent_area_stats = {
+            "mean": y_latent_stats["mean"][latent_area_index],
+            "std": y_latent_stats["std"][latent_area_index],
+        }
+        temporal_area_target = torch.tensor(
+            [_normalize_value(_temporal_next_area_proxy(token_rows[idx], target_rows[idx]), latent_area_stats) for idx in train_indices],
+            dtype=torch.float32,
+        ).unsqueeze(1)
+    else:
+        temporal_area_target = None
     y_constraint = torch.tensor([row["constraint_probability"] for row in y_train], dtype=torch.float32).unsqueeze(1)
     y_utility = torch.tensor([_normalize_value(row["utility_delta"], y_stats["utility_delta"]) for row in y_train], dtype=torch.float32).unsqueeze(1)
     y_confidence = torch.tensor([row["confidence"] for row in y_train], dtype=torch.float32).unsqueeze(1)
@@ -515,6 +594,8 @@ def train_spatiotemporal_transformer_dynamics(
         dropout=cfg["dropout"],
         risk_head_mode=cfg["risk_head_mode"],
         feasibility_head_mode=cfg["feasibility_head_mode"],
+        output_dim=latent_width + 5,
+        scalar_start=scalar_start,
         nn=nn,
         torch=torch,
     )
@@ -528,21 +609,30 @@ def train_spatiotemporal_transformer_dynamics(
         model.train()
         optimizer.zero_grad()
         out = model(token_tensors)
-        utility_pred = out[:, 2:3]
-        area_pred = out[:, 0:1]
-        constraint_prob = torch.sigmoid(out[:, 1:2])
-        constraint_bce = _weighted_binary_loss(out[:, 1:2], y_constraint, constraint_risk_weights, nn)
+        latent_pred = out[:, :latent_width]
+        constraint_logit = out[:, scalar_start:scalar_start + 1]
+        utility_pred = out[:, scalar_start + 1:scalar_start + 2]
+        confidence_logit = out[:, scalar_start + 2:scalar_start + 3]
+        calibration_pred = out[:, scalar_start + 3:scalar_start + 4]
+        allowed_logit = out[:, scalar_start + 4:scalar_start + 5]
+        constraint_prob = torch.sigmoid(constraint_logit)
+        constraint_bce = _weighted_binary_loss(constraint_logit, y_constraint, constraint_risk_weights, nn)
         constraint_mse = _weighted_mse_loss(constraint_prob, y_constraint, constraint_risk_weights, torch)
+        temporal_loss = (
+            _temporal_consistency_loss(latent_pred[:, latent_area_index:latent_area_index + 1], temporal_area_target, torch)
+            if latent_area_index is not None and temporal_area_target is not None
+            else torch.tensor(0.0, dtype=latent_pred.dtype)
+        )
         loss = (
-            mse(area_pred, y_area)
+            mse(latent_pred, y_latent)
             + constraint_bce
             + cfg["constraint_risk_calibration_weight"] * constraint_mse
             + 1.25 * mse(utility_pred, y_utility)
-            + 0.7 * bce(out[:, 3:4], y_confidence)
-            + 0.85 * mse(out[:, 4:5], y_calibration)
-            + 0.7 * _weighted_action_mask_loss(out[:, 5:6], y_allowed, action_mask_weights, nn)
+            + 0.7 * bce(confidence_logit, y_confidence)
+            + 0.85 * mse(calibration_pred, y_calibration)
+            + 0.7 * _weighted_action_mask_loss(allowed_logit, y_allowed, action_mask_weights, nn)
             + cfg["ranking_weight"] * _pairwise_ranking_loss(utility_pred.squeeze(1), y_ranking, torch)
-            + cfg["temporal_consistency_weight"] * _temporal_consistency_loss(area_pred, temporal_area_target, torch)
+            + cfg["temporal_consistency_weight"] * temporal_loss
         )
         loss.backward()
         optimizer.step()
@@ -561,15 +651,16 @@ def train_spatiotemporal_transformer_dynamics(
     for idx, example in enumerate(usable):
         example_id = str(example.get("id") or f"example:{idx}")
         row = raw[idx].tolist()
-        area = _denormalize_value(row[0], y_stats["area_total"])
-        constraint = _sigmoid(row[1])
-        utility = _denormalize_value(row[2], y_stats["utility_delta"])
-        confidence = _sigmoid(row[3])
-        calibration = _denormalize_value(row[4], y_stats["calibrated_utility_delta"])
-        allowed_probability = _sigmoid(row[5])
+        latent_values = _denormalize_vector(row[:latent_width], y_latent_stats)
+        constraint = _sigmoid(row[scalar_start])
+        utility = _denormalize_value(row[scalar_start + 1], y_stats["utility_delta"])
+        confidence = _sigmoid(row[scalar_start + 2])
+        calibration = _denormalize_value(row[scalar_start + 3], y_stats["calibrated_utility_delta"])
+        allowed_probability = _sigmoid(row[scalar_start + 4])
         prediction = _prediction_from_outputs(
             example=example,
-            area_total=area,
+            latent_dimensions=latent_dimensions,
+            latent_values=latent_values,
             constraint_probability=constraint,
             utility_delta=utility,
             confidence=confidence,
@@ -605,8 +696,9 @@ def train_spatiotemporal_transformer_dynamics(
             "hidden_dim": cfg["hidden_dim"],
             "dropout": cfg["dropout"],
             "heads": [
-                "future_area_and_key_indicators.total_area_m2",
-                "future_latent_state.area_total",
+                "future_latent_state.latent_vector",
+                "future_latent_state.decoded_state",
+                "future_latent_state.transition_delta",
                 "constraint_violation_probability",
                 "planning_utility_delta",
                 "uncertainty.confidence",
@@ -622,6 +714,13 @@ def train_spatiotemporal_transformer_dynamics(
             "normalization": {"token_stats": token_stats},
         },
         "target_normalization": y_stats,
+        "latent_contract": {
+            "schema": "territory_world_model.future_latent_state_v2_contract.v1",
+            "dimension_count": len(latent_dimensions),
+            "dimensions": list(latent_dimensions),
+            "target_normalization": y_latent_stats,
+            "representation_boundary": LATENT_STATE_V2_BOUNDARY,
+        },
         "objective_contract": dict(objective_report.get("objective_contract") or {}),
         "loss_components": dict(objective_report.get("loss_components") or {}),
         "training_config": cfg,
@@ -677,7 +776,7 @@ def _blocked_parameters(trainer: dict[str, Any], objective_report: dict[str, Any
 
 
 class _MultiHeadDynamicsMLP:
-    def __new__(cls, *, input_dim: int, hidden_dim: int, dropout: float, nn: Any):
+    def __new__(cls, *, input_dim: int, hidden_dim: int, dropout: float, output_dim: int, nn: Any):
         return nn.Sequential(
             nn.Linear(input_dim, hidden_dim),
             nn.LayerNorm(hidden_dim),
@@ -685,7 +784,7 @@ class _MultiHeadDynamicsMLP:
             nn.Dropout(dropout),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, 6),
+            nn.Linear(hidden_dim, output_dim),
         )
 
 
@@ -701,6 +800,7 @@ class _HierarchicalGraphDynamicsModel:
         temporal_dim: int,
         hidden_dim: int,
         dropout: float,
+        output_dim: int,
         nn: Any,
         torch: Any,
     ):
@@ -755,7 +855,7 @@ class _HierarchicalGraphDynamicsModel:
                     nn.Dropout(dropout),
                     nn.Linear(hidden_dim * 2, hidden_dim),
                     nn.ReLU(),
-                    nn.Linear(hidden_dim, 6),
+                    nn.Linear(hidden_dim, output_dim),
                 )
 
             def forward(
@@ -795,6 +895,8 @@ class _SpatiotemporalTransformerDynamicsModel:
         dropout: float,
         risk_head_mode: str,
         feasibility_head_mode: str,
+        output_dim: int,
+        scalar_start: int,
         nn: Any,
         torch: Any,
     ):
@@ -838,7 +940,7 @@ class _SpatiotemporalTransformerDynamicsModel:
                     nn.Linear(hidden_dim * 2, hidden_dim),
                     nn.ReLU(),
                 )
-                self.head = nn.Linear(hidden_dim, 6)
+                self.head = nn.Linear(hidden_dim, output_dim)
                 if self.risk_head_mode == "context_residual":
                     self.constraint_risk_residual_head = nn.Sequential(
                         nn.Linear(hidden_dim * (1 + len(self.risk_head_context_tokens)), hidden_dim),
@@ -887,19 +989,32 @@ class _SpatiotemporalTransformerDynamicsModel:
                     for name in self.risk_head_context_tokens:
                         risk_inputs.append(attended[:, token_index[name], :])
                     risk_residual = self.constraint_risk_residual_head(torch.cat(risk_inputs, dim=1))
-                    out = torch.cat([out[:, 0:1], out[:, 1:2] + risk_residual, out[:, 2:]], dim=1)
+                    out = torch.cat([
+                        out[:, :scalar_start],
+                        out[:, scalar_start:scalar_start + 1] + risk_residual,
+                        out[:, scalar_start + 1:],
+                    ], dim=1)
                 if self.constraint_risk_direct_head is not None:
                     risk_inputs = [pooled]
                     for name in self.risk_head_context_tokens:
                         risk_inputs.append(attended[:, token_index[name], :])
                     risk_logit = self.constraint_risk_direct_head(torch.cat(risk_inputs, dim=1))
-                    out = torch.cat([out[:, 0:1], risk_logit, out[:, 2:]], dim=1)
+                    out = torch.cat([
+                        out[:, :scalar_start],
+                        risk_logit,
+                        out[:, scalar_start + 1:],
+                    ], dim=1)
                 if self.action_mask_feasibility_residual_head is not None:
                     feasibility_inputs = [pooled]
                     for name in self.feasibility_head_context_tokens:
                         feasibility_inputs.append(attended[:, token_index[name], :])
                     feasibility_residual = self.action_mask_feasibility_residual_head(torch.cat(feasibility_inputs, dim=1))
-                    out = torch.cat([out[:, :5], out[:, 5:6] + feasibility_residual], dim=1)
+                    allowed_index = scalar_start + 4
+                    out = torch.cat([
+                        out[:, :allowed_index],
+                        out[:, allowed_index:allowed_index + 1] + feasibility_residual,
+                        out[:, allowed_index + 1:],
+                    ], dim=1)
                 return out
 
         return _SpatiotemporalTransformerDynamicsModule()
@@ -1393,6 +1508,128 @@ def _target_area_total(targets: dict[str, Any]) -> float:
     return total
 
 
+def _latent_dimension_names(examples: list[dict[str, Any]]) -> list[str]:
+    names: set[str] = set()
+    for example in examples:
+        targets = dict(example.get("targets") or {})
+        latent = dict(targets.get("future_latent_state") or {})
+        _collect_latent_dimensions("observed_next", dict(latent.get("observed_next") or latent.get("projected") or {}), names)
+        _collect_latent_dimensions("delta", dict(latent.get("delta") or {}), names)
+    ordered = sorted(names)
+    return ordered or ["observed_next.total_area_m2"]
+
+
+def _collect_latent_dimensions(prefix: str, payload: dict[str, Any], names: set[str]) -> None:
+    for key in ("total_area_m2", "total_feature_count", "total_area_delta_m2", "total_abs_area_delta_m2", "change_intensity"):
+        if key in payload:
+            names.add(f"{prefix}.{key}")
+    for land_type, metrics in sorted(dict(payload.get("land_space_types") or {}).items(), key=lambda item: str(item[0])):
+        safe_type = _safe_feature_key(str(land_type))
+        metric_payload = dict(metrics or {})
+        for metric in ("area_m2", "feature_count", "area_delta_m2"):
+            if metric in metric_payload:
+                names.add(f"{prefix}.land_space_types.{safe_type}.{metric}")
+    for land_type, metrics in sorted(dict(payload.get("by_land_type") or {}).items(), key=lambda item: str(item[0])):
+        safe_type = _safe_feature_key(str(land_type))
+        metric_payload = dict(metrics or {})
+        for metric in ("area_m2", "feature_count", "area_delta_m2"):
+            if metric in metric_payload:
+                names.add(f"{prefix}.by_land_type.{safe_type}.{metric}")
+
+
+def _latent_target_vector(targets: dict[str, Any], dimensions: list[str]) -> list[float]:
+    latent = dict(targets.get("future_latent_state") or {})
+    observed_next = dict(latent.get("observed_next") or latent.get("projected") or {})
+    delta = dict(latent.get("delta") or {})
+    flat: dict[str, float] = {}
+    _flatten_latent_payload("observed_next", observed_next, flat)
+    _flatten_latent_payload("delta", delta, flat)
+    return [float(flat.get(name, 0.0)) for name in dimensions]
+
+
+def _latent_total_area_dimension_index(dimensions: list[str]) -> int | None:
+    try:
+        return dimensions.index("observed_next.total_area_m2")
+    except ValueError:
+        return None
+
+
+def _flatten_latent_payload(prefix: str, payload: dict[str, Any], out: dict[str, float]) -> None:
+    for key in ("total_area_m2", "total_feature_count", "total_area_delta_m2", "total_abs_area_delta_m2", "change_intensity"):
+        value = safe_float(payload.get(key), None)
+        if value is not None:
+            out[f"{prefix}.{key}"] = float(value)
+    for land_type, metrics in sorted(dict(payload.get("land_space_types") or {}).items(), key=lambda item: str(item[0])):
+        safe_type = _safe_feature_key(str(land_type))
+        metric_payload = dict(metrics or {})
+        for metric in ("area_m2", "feature_count", "area_delta_m2"):
+            value = safe_float(metric_payload.get(metric), None)
+            if value is not None:
+                out[f"{prefix}.land_space_types.{safe_type}.{metric}"] = float(value)
+    for land_type, metrics in sorted(dict(payload.get("by_land_type") or {}).items(), key=lambda item: str(item[0])):
+        safe_type = _safe_feature_key(str(land_type))
+        metric_payload = dict(metrics or {})
+        for metric in ("area_m2", "feature_count", "area_delta_m2"):
+            value = safe_float(metric_payload.get(metric), None)
+            if value is not None:
+                out[f"{prefix}.by_land_type.{safe_type}.{metric}"] = float(value)
+
+
+def _decode_latent_vector(dimension_names: list[str], values: list[float], *, source: str) -> dict[str, Any]:
+    vector = {
+        name: round(float(values[idx] if idx < len(values) else 0.0), 6)
+        for idx, name in enumerate(dimension_names)
+    }
+    decoded_state: dict[str, Any] = {"land_space_types": {}}
+    transition_delta: dict[str, Any] = {"by_land_type": {}}
+    for name, value in vector.items():
+        parts = name.split(".")
+        if name == "observed_next.total_area_m2":
+            decoded_state["total_area_m2"] = round(max(0.0, value), 6)
+        elif name == "observed_next.total_feature_count":
+            decoded_state["total_feature_count"] = int(round(max(0.0, value)))
+        elif len(parts) == 4 and parts[:2] == ["observed_next", "land_space_types"]:
+            land_type = parts[2]
+            metric = parts[3]
+            target = decoded_state.setdefault("land_space_types", {}).setdefault(land_type, {})
+            if metric == "feature_count":
+                target[metric] = int(round(max(0.0, value)))
+            elif metric == "area_m2":
+                target[metric] = round(max(0.0, value), 6)
+            else:
+                target[metric] = round(value, 6)
+        elif name == "delta.total_area_delta_m2":
+            transition_delta["total_area_delta_m2"] = round(value, 6)
+        elif name == "delta.total_abs_area_delta_m2":
+            transition_delta["total_abs_area_delta_m2"] = round(max(0.0, value), 6)
+        elif name == "delta.change_intensity":
+            transition_delta["change_intensity"] = round(_clamp01(value), 6)
+        elif len(parts) == 4 and parts[:2] == ["delta", "by_land_type"]:
+            land_type = parts[2]
+            metric = parts[3]
+            target = transition_delta.setdefault("by_land_type", {}).setdefault(land_type, {})
+            target[metric] = round(value, 6)
+    if "total_area_m2" not in decoded_state:
+        decoded_state["total_area_m2"] = round(
+            sum(float((item or {}).get("area_m2") or 0.0) for item in decoded_state["land_space_types"].values()),
+            6,
+        )
+    if "total_feature_count" not in decoded_state:
+        decoded_state["total_feature_count"] = int(
+            sum(int((item or {}).get("feature_count") or 0) for item in decoded_state["land_space_types"].values())
+        )
+    return {
+        "schema": LATENT_STATE_V2_SCHEMA,
+        "latent_head_scope": "multi_dimensional_hierarchical_state",
+        "representation_boundary": LATENT_STATE_V2_BOUNDARY,
+        "dimensions": list(dimension_names),
+        "latent_vector": vector,
+        "decoded_state": decoded_state,
+        "transition_delta": transition_delta,
+        "source": source,
+    }
+
+
 def _vectorize(row: dict[str, float], feature_names: list[str]) -> list[float]:
     return [float(row.get(name, 0.0)) for name in feature_names]
 
@@ -1436,6 +1673,15 @@ def _denormalize_value(value: float, stats: dict[str, float]) -> float:
     return round(float(value) * (float(stats.get("std") or 1.0) or 1.0) + float(stats.get("mean") or 0.0), 6)
 
 
+def _denormalize_vector(values: list[float], stats: dict[str, list[float]]) -> list[float]:
+    means = list(stats.get("mean") or [])
+    stds = list(stats.get("std") or [])
+    return [
+        round(float(value) * (float(stds[idx]) or 1.0) + float(means[idx]), 6)
+        for idx, value in enumerate(values)
+    ]
+
+
 def _pairwise_ranking_loss(pred_utility: Any, ranking: Any, torch: Any) -> Any:
     if pred_utility.numel() < 2:
         return torch.tensor(0.0, dtype=pred_utility.dtype)
@@ -1450,50 +1696,49 @@ def _pairwise_ranking_loss(pred_utility: Any, ranking: Any, torch: Any) -> Any:
 def _prediction_from_outputs(
     *,
     example: dict[str, Any],
-    area_total: float,
     constraint_probability: float,
     utility_delta: float,
     confidence: float,
     calibrated_utility: float,
     action_allowed_probability: float,
     source: str,
+    latent_dimensions: list[str] | None = None,
+    latent_values: list[float] | None = None,
+    area_total: float | None = None,
 ) -> dict[str, Any]:
     action = dict(example.get("action") or {})
     allowed = action_allowed_probability >= 0.5
-    latent_observed = {"total_area_m2": round(max(0.0, float(area_total)), 6)}
+    if latent_dimensions and latent_values is not None:
+        latent = _decode_latent_vector(latent_dimensions, list(latent_values), source=source)
+    else:
+        fallback_area = round(max(0.0, float(area_total or 0.0)), 6)
+        latent = _decode_latent_vector(["observed_next.total_area_m2"], [fallback_area], source=source)
+    decoded = dict(latent.get("decoded_state") or {})
+    total_area = float(safe_float(decoded.get("total_area_m2"), 0.0) or 0.0)
     indicators = {
         "schema": "territory_world_model.future_area_and_key_indicators.v1",
-        "representation_boundary": "compact_indicator_proxy_not_full_parcel_geometry",
+        "representation_boundary": "derived_from_multi_dimensional_hierarchical_state_latent",
         "action": action,
-        "observed_next": dict(latent_observed),
+        "observed_next": {
+            "total_area_m2": round(total_area, 6),
+            "total_feature_count": int(decoded.get("total_feature_count") or 0),
+            "land_space_types": dict(decoded.get("land_space_types") or {}),
+        },
         "projected": {
-            "total_area_m2": latent_observed["total_area_m2"],
+            "total_area_m2": round(total_area, 6),
             "projected_risk_pressure": round(_clamp01(constraint_probability), 6),
             "projected_utility_delta": round(float(utility_delta), 6),
             "calibrated_utility_delta": round(float(calibrated_utility), 6),
             "action_allowed_probability": round(_clamp01(action_allowed_probability), 6),
             "confidence": round(_clamp01(confidence), 6),
         },
-        "dimensions": [
-            "total_area_m2",
-            "projected_risk_pressure",
-            "projected_utility_delta",
-            "calibrated_utility_delta",
-            "action_allowed_probability",
-            "confidence",
-        ],
+        "dimensions": list(latent.get("dimensions") or []),
         "source": source,
     }
     return {
         "action": action,
         "future_area_and_key_indicators": indicators,
-        "future_latent_state": {
-            "schema": "territory_world_model.predicted_latent_state.v1",
-            "observed_next": dict(indicators["observed_next"]),
-            "projected": dict(indicators["projected"]),
-            "latent_head_scope": "compact_area_and_key_indicator_proxy",
-            "representation_boundary": "compatibility_alias_for_future_area_and_key_indicators",
-        },
+        "future_latent_state": latent,
         "constraint_violation_probability": round(_clamp01(constraint_probability), 6),
         "planning_utility_delta": round(float(utility_delta), 6),
         "uncertainty": {

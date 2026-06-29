@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import hashlib
 import json
 import re
 import threading
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
+from urllib.parse import unquote, urlparse
 
 from .models import (
     StateBuildResult,
@@ -19,6 +21,7 @@ from .models import (
     TwmDynamicsBackendReport,
     TwmDynamicsEvaluationReport,
     TwmDynamicsFitReport,
+    TwmDynamicsModelRegistryEntry,
     TwmDynamicsReadinessReport,
     TwmDynamicsTrainingDataset,
     TwmDynamicsTrainingExample,
@@ -76,6 +79,11 @@ TWM_BASELINE_EXPORT_MAX_BYTES = 5 * 1024 * 1024
 
 def _json(data: Any) -> str:
     return json.dumps(jsonable(data), ensure_ascii=False, default=str)
+
+
+def _stable_sha256(value: Any) -> str:
+    material = json.dumps(jsonable(value), ensure_ascii=False, default=str, sort_keys=True, separators=(",", ":"))
+    return "sha256:" + hashlib.sha256(material.encode("utf-8")).hexdigest()
 
 
 def _mapping_payload(value: Any, *, raw_key: str = "raw") -> dict[str, Any]:
@@ -173,7 +181,7 @@ TWM_RESEARCH_POSITIONING: dict[str, Any] = {
         },
         {
             "name": "Action-conditioned multi-head territorial dynamics",
-            "claim": "TWM forecasts future area/key indicators, constraint-risk, planning utility, uncertainty and action-mask feasibility conditional on review/protect/convert/restore actions; future_latent_state remains a compatibility field, not a full parcel-geometry latent.",
+            "claim": "TWM forecasts a multi-dimensional hierarchical future-state latent, constraint-risk, planning utility, uncertainty and action-mask feasibility conditional on review/protect/convert/restore actions; the latent is decoded into state summaries and does not generate full parcel geometry.",
             "why_it_matters": "The decision object is not only land-use change, but the consequence of governance actions under hard constraints and evidence limits.",
         },
         {
@@ -1292,14 +1300,20 @@ class TerritoryWorldModelService:
                 "id": "engineering_scaffold",
                 "label": "Auditable TWM engineering scaffold",
                 "status": "partial" if engineering_mvp else "review",
-                "completion_ratio": 0.76 if engineering_mvp else 0.55,
+                "completion_ratio": 0.9 if engineering_mvp else 0.7,
                 "evidence": [
                     "state/rule/evidence/audit pipeline",
                     "forecast, counterfactual rollout, validation ladder and beam planning consumer",
                     "trainable dynamics candidates and observational causal calibration reports",
                     "dynamics model registry release gate report is implemented",
+                    "persistent model registry/version rollback is implemented in service, repository, API and Agent tools",
+                    "state snapshot lakehouse manifest maps TWM state, rule, evidence and registry layers to Iceberg/GeoParquet/Parquet storage",
+                    "state snapshot lakehouse materializer writes local Parquet/GeoParquet-compatible artifacts through service, API and Agent tools",
+                    "Iceberg/Sedona publish plan generates table DDL, artifact publish specs and geohash spatial index jobs",
+                    "Spark executor contract validates Iceberg snapshot ids, row counts and Sedona spatial index job results",
+                    "spark-submit execution bundle writes a production Spark/Sedona/Iceberg plan file and command package",
                 ],
-                "remaining": ["service decomposition", "persistent model registry/version rollback", "production-scale storage/index review"],
+                "remaining": ["service decomposition", "credentialed production Spark run and external Iceberg audit acceptance"],
             },
             {
                 "id": "data_foundation_productization",
@@ -3647,6 +3661,1045 @@ class TerritoryWorldModelService:
             "review_tasks": [item.to_dict() for item in bundle["review_tasks"]],
         }
 
+    def state_snapshot_lakehouse_manifest(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        state = self.repository.get_state_version(state_version_id)
+        bundle = self.repository.get_state_bundle(state_version_id)
+        if state is None or bundle is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        object_store_uri = compact_text(payload.get("lakehouse_uri") or payload.get("object_store_uri") or "s3://gis-agent-lakehouse").rstrip("/")
+        namespace = compact_text(payload.get("namespace") or "twm").replace("-", "_").replace("/", "_")
+        warehouse_uri = f"{object_store_uri}/warehouse/iceberg/{namespace}"
+        state_uri = f"{object_store_uri}/curated/twm/state_snapshots/state_version_id={state_version_id}"
+        objects = list(bundle.get("objects") or [])
+        relations = list(bundle.get("relations") or [])
+        rule_hits = self.repository.list_rule_hits(state_version_id=state_version_id)
+        evidence_items = self.repository.list_evidence_items(state_version_id=state_version_id)
+        review_tasks = self.repository.list_review_tasks(state_version_id=state_version_id)
+        registry_entries = self.repository.list_dynamics_model_registry_entries(state_version_id)
+        include_vector_sidecar = truthy(payload.get("include_vector_sidecar"))
+        vector_sidecar = {
+            "enabled": include_vector_sidecar,
+            "format": "lance" if include_vector_sidecar else "",
+            "uri": f"{object_store_uri}/features/lance/twm_state_features/state_version_id={state_version_id}" if include_vector_sidecar else "",
+            "role": "optional high-dimensional embedding sidecar; authoritative facts remain in Iceberg/PostGIS",
+        }
+        artifacts = {
+            "state_metadata": self._lakehouse_manifest_artifact(
+                namespace=namespace,
+                table="state_metadata",
+                fmt="parquet",
+                uri=f"{state_uri}/state_metadata",
+                partitioning=["state_version_id"],
+                row_count=1,
+            ),
+            "state_objects": self._lakehouse_manifest_artifact(
+                namespace=namespace,
+                table="state_objects",
+                fmt="geoparquet",
+                uri=f"{state_uri}/state_objects",
+                partitioning=["state_version_id", "canonical_role"],
+                row_count=len(objects),
+            ),
+            "state_relations": self._lakehouse_manifest_artifact(
+                namespace=namespace,
+                table="state_relations",
+                fmt="geoparquet",
+                uri=f"{state_uri}/state_relations",
+                partitioning=["state_version_id", "relation_type"],
+                row_count=len(relations),
+            ),
+            "rule_hits": self._lakehouse_manifest_artifact(
+                namespace=namespace,
+                table="rule_hits",
+                fmt="parquet",
+                uri=f"{state_uri}/rule_hits",
+                partitioning=["state_version_id", "severity", "hit_status"],
+                row_count=len(rule_hits),
+            ),
+            "evidence_items": self._lakehouse_manifest_artifact(
+                namespace=namespace,
+                table="evidence_items",
+                fmt="parquet",
+                uri=f"{state_uri}/evidence_items",
+                partitioning=["state_version_id", "evidence_type"],
+                row_count=len(evidence_items),
+            ),
+            "review_tasks": self._lakehouse_manifest_artifact(
+                namespace=namespace,
+                table="review_tasks",
+                fmt="parquet",
+                uri=f"{state_uri}/review_tasks",
+                partitioning=["state_version_id", "status"],
+                row_count=len(review_tasks),
+            ),
+            "dynamics_model_registry": self._lakehouse_manifest_artifact(
+                namespace=namespace,
+                table="dynamics_model_registry",
+                fmt="parquet",
+                uri=f"{state_uri}/dynamics_model_registry",
+                partitioning=["state_version_id", "status"],
+                row_count=len(registry_entries),
+            ),
+        }
+        return json.loads(_json({
+            "schema": "territory_world_model.state_snapshot_lakehouse_manifest.v1",
+            "generated_at": now_utc_iso(),
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "storage": {
+                "object_store_uri": object_store_uri,
+                "warehouse_uri": warehouse_uri,
+                "table_format": "iceberg",
+                "primary_file_formats": ["geoparquet", "parquet"],
+                "spatial_compute": "apache_sedona",
+                "vector_sidecar": vector_sidecar,
+            },
+            "snapshot": {
+                "state_version_id": state_version_id,
+                "object_count": len(objects),
+                "relation_count": len(relations),
+                "rule_hit_count": len(rule_hits),
+                "evidence_item_count": len(evidence_items),
+                "review_task_count": len(review_tasks),
+                "dynamics_model_registry_entry_count": len(registry_entries),
+                "quality_summary": dict(state.quality_summary or {}),
+            },
+            "artifacts": artifacts,
+            "readiness": {
+                "sedona_batch_ready": len(objects) >= 1,
+                "twm_training_snapshot_ready": len(objects) >= 1 and "state_objects" in artifacts,
+                "iceberg_snapshot_ready": True,
+                "requires_external_writer": True,
+            },
+            "write_plan": [
+                "materialize each artifact as Parquet/GeoParquet under its target_uri",
+                "register or append each artifact into the named Iceberg table",
+                "preserve state_version_id and lineage columns for temporal training and rollback",
+                "write high-dimensional vectors to the Lance sidecar only when vector_sidecar.enabled is true",
+            ],
+            "claim_boundary": "Manifest only: this report defines the production lakehouse snapshot contract; it does not write Iceberg tables or prove production data quality.",
+        }))
+
+    def _lakehouse_manifest_artifact(
+        self,
+        *,
+        namespace: str,
+        table: str,
+        fmt: str,
+        uri: str,
+        partitioning: list[str],
+        row_count: int,
+    ) -> dict[str, Any]:
+        namespace_name = compact_text(namespace or "twm").replace("-", "_").replace("/", "_")
+        table_name = compact_text(table).replace("-", "_").replace("/", "_")
+        return {
+            "table": f"{namespace_name}.{table_name}",
+            "format": compact_text(fmt),
+            "target_uri": compact_text(uri).rstrip("/"),
+            "partitioning": list(partitioning or []),
+            "row_count": max(0, int(row_count or 0)),
+            "write_mode": "replace_partitions_by_state_version",
+            "lineage_columns": ["state_version_id", "project_id", "generated_at"],
+            "iceberg": {
+                "namespace": namespace_name,
+                "table": table_name,
+                "snapshot_isolation_key": "state_version_id",
+            },
+        }
+
+    def materialize_state_snapshot_lakehouse(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        manifest = self.state_snapshot_lakehouse_manifest(state_version_id, payload)
+        state = self.repository.get_state_version(state_version_id)
+        bundle = self.repository.get_state_bundle(state_version_id)
+        if state is None or bundle is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        rows_by_artifact = self._state_snapshot_lakehouse_artifact_rows(
+            state,
+            bundle,
+            self.repository.list_rule_hits(state_version_id=state_version_id),
+            self.repository.list_evidence_items(state_version_id=state_version_id),
+            self.repository.list_review_tasks(state_version_id=state_version_id),
+            self.repository.list_dynamics_model_registry_entries(state_version_id),
+        )
+        artifacts: dict[str, Any] = {}
+        skipped: list[dict[str, Any]] = []
+        written_count = 0
+        for artifact_name, artifact in dict(manifest.get("artifacts") or {}).items():
+            target_uri = compact_text(artifact.get("target_uri") or "")
+            target_dir = self._local_path_from_lakehouse_uri(target_uri)
+            if target_dir is None:
+                skipped.append({
+                    "artifact": artifact_name,
+                    "target_uri": target_uri,
+                    "reason": "non_local_uri_requires_object_store_writer",
+                })
+                continue
+            rows, columns, geo_metadata = rows_by_artifact.get(artifact_name, ([], ["state_version_id"], False))
+            target_dir.mkdir(parents=True, exist_ok=True)
+            local_path = target_dir / "part-00000.parquet"
+            self._write_lakehouse_parquet(local_path, rows, columns, geo_metadata=geo_metadata)
+            materialized = dict(artifact)
+            materialized.update({
+                "materialized": True,
+                "local_path": str(local_path),
+                "local_uri": local_path.as_uri(),
+                "record_count": len(rows),
+                "bytes": local_path.stat().st_size,
+            })
+            artifacts[artifact_name] = materialized
+            manifest["artifacts"][artifact_name] = materialized
+            written_count += 1
+
+        manifest_uri = compact_text(
+            payload.get("manifest_uri")
+            or f"{manifest['storage']['object_store_uri']}/manifests/twm/state_snapshot_lakehouse_manifest/state_version_id={state_version_id}/manifest.json"
+        )
+        manifest_local_path = self._local_path_from_lakehouse_uri(manifest_uri)
+        if manifest_local_path is not None:
+            if manifest_local_path.suffix.lower() != ".json":
+                manifest_local_path = manifest_local_path / "manifest.json"
+            manifest_local_path.parent.mkdir(parents=True, exist_ok=True)
+            manifest_local_path.write_text(_json(manifest) + "\n", encoding="utf-8")
+
+        return json.loads(_json({
+            "schema": "territory_world_model.state_snapshot_lakehouse_materialization.v1",
+            "generated_at": now_utc_iso(),
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "manifest_uri": manifest_uri,
+            "manifest_local_path": str(manifest_local_path) if manifest_local_path is not None else "",
+            "written_artifact_count": written_count,
+            "skipped_artifacts": skipped,
+            "artifacts": artifacts,
+            "manifest": manifest,
+            "readiness": {
+                "local_parquet_written": written_count > 0,
+                "sedona_geoparquet_read_ready": all(
+                    name in artifacts for name in ("state_objects", "state_relations")
+                ),
+                "iceberg_registration_required": True,
+                "object_store_writer_required": bool(skipped),
+            },
+            "iceberg_registration_plan": [
+                "CREATE NAMESPACE IF NOT EXISTS for the manifest namespace",
+                "CREATE OR REPLACE Iceberg tables with Parquet/GeoParquet source files",
+                "replace partitions by state_version_id for repeatable snapshot rollback",
+                "run Sedona spatial index jobs on state_objects and state_relations geometry columns",
+            ],
+            "claim_boundary": "Materialization only: this writes local Parquet/GeoParquet-compatible snapshot artifacts and a manifest; it does not register Iceberg tables or build distributed spatial indexes.",
+        }))
+
+    def state_snapshot_lakehouse_publish_plan(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        state = self.repository.get_state_version(state_version_id)
+        if state is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        materialization = self._payload_mapping(payload.get("materialization"))
+        manifest = self._payload_mapping(materialization.get("manifest") or payload.get("manifest"))
+        if not manifest:
+            manifest = self.state_snapshot_lakehouse_manifest(state_version_id, payload)
+        manifest_artifacts = self._payload_mapping(manifest.get("artifacts"))
+        materialized_artifacts = self._payload_mapping(materialization.get("artifacts"))
+        catalog = self._sql_identifier_part(payload.get("catalog") or payload.get("iceberg_catalog") or "twm", "twm")
+        namespace = self._sql_namespace(payload.get("namespace") or self._manifest_namespace(manifest) or "twm")
+        warehouse_uri = compact_text(
+            payload.get("warehouse_uri")
+            or payload.get("iceberg_warehouse_uri")
+            or (manifest.get("storage") or {}).get("warehouse_uri")
+            or "s3://gis-agent-lakehouse/warehouse/iceberg"
+        )
+        geohash_precision = min(12, max(1, safe_int(payload.get("geohash_precision"), 8)))
+        spark_conf = self._iceberg_sedona_spark_conf(catalog, warehouse_uri, payload.get("spark_conf"))
+        ddl_statements = [f"CREATE NAMESPACE IF NOT EXISTS {catalog}.{namespace}"]
+        publish_specs: list[dict[str, Any]] = []
+        sedona_specs: list[dict[str, Any]] = []
+        missing_sources: list[str] = []
+        for artifact_name, artifact in manifest_artifacts.items():
+            if not isinstance(artifact, dict):
+                continue
+            materialized = materialized_artifacts.get(artifact_name) if isinstance(materialized_artifacts.get(artifact_name), dict) else {}
+            merged = {**artifact, **materialized}
+            table_name = self._artifact_table_name(artifact_name, merged)
+            table_identifier = f"{catalog}.{namespace}.{table_name}"
+            source_uri = compact_text(merged.get("local_uri") or merged.get("source_uri") or merged.get("target_uri") or "")
+            if not source_uri:
+                missing_sources.append(str(artifact_name))
+            partition_by = [
+                self._sql_identifier_part(item, "")
+                for item in list(merged.get("partitioning") or [])
+                if self._sql_identifier_part(item, "")
+            ]
+            partition_sql = f"\nPARTITIONED BY ({', '.join(partition_by)})" if partition_by else ""
+            source_sql = self._spark_parquet_source(source_uri)
+            ddl = (
+                f"CREATE OR REPLACE TABLE {table_identifier}\n"
+                f"USING iceberg{partition_sql}\n"
+                f"AS SELECT * FROM {source_sql}"
+            )
+            ddl_statements.append(ddl)
+            publish_specs.append({
+                "schema": "territory_world_model.iceberg_artifact_publish_spec.v1",
+                "artifact": artifact_name,
+                "table_identifier": table_identifier,
+                "catalog": catalog,
+                "namespace": namespace,
+                "table": table_name,
+                "warehouse_uri": warehouse_uri,
+                "source_uri": source_uri,
+                "source_format": compact_text(merged.get("format") or "parquet"),
+                "partition_by": partition_by,
+                "row_count": safe_int(merged.get("record_count"), safe_int(merged.get("row_count"), 0)),
+                "write_mode": compact_text(merged.get("write_mode") or "replace_partitions_by_state_version"),
+                "ddl": ddl,
+                "spark_conf": spark_conf,
+            })
+            if self._artifact_has_geometry(artifact_name, merged):
+                sedona_specs.append(self._sedona_spatial_index_spec(
+                    artifact_name=artifact_name,
+                    table_identifier=table_identifier,
+                    warehouse_uri=warehouse_uri,
+                    catalog=catalog,
+                    geohash_precision=geohash_precision,
+                    spark_conf=spark_conf,
+                ))
+        publish_status = "pass" if publish_specs and not missing_sources and warehouse_uri else "blocked"
+        sedona_status = "pass" if sedona_specs else "review"
+        return json.loads(_json({
+            "schema": "territory_world_model.state_snapshot_lakehouse_publish_plan.v1",
+            "generated_at": now_utc_iso(),
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "target": {
+                "catalog": catalog,
+                "namespace": namespace,
+                "warehouse_uri": warehouse_uri,
+                "table_format": "iceberg",
+                "spatial_engine": "apache_sedona",
+            },
+            "source_manifest_schema": manifest.get("schema", ""),
+            "iceberg_publish_specs": publish_specs,
+            "sedona_spatial_index_specs": sedona_specs,
+            "ddl_statements": ddl_statements,
+            "validation_gates": {
+                "publish_spec_gate": {
+                    "status": publish_status,
+                    "missing_sources": missing_sources,
+                    "spec_count": len(publish_specs),
+                },
+                "sedona_spatial_index_gate": {
+                    "status": sedona_status,
+                    "index_spec_count": len(sedona_specs),
+                    "strategy": {"type": "geohash", "precision": geohash_precision},
+                },
+            },
+            "execution_order": [
+                "create Iceberg namespace",
+                "publish each Parquet/GeoParquet artifact as an Iceberg table",
+                "build Sedona geohash spatial index tables for geometry-bearing artifacts",
+                "validate row counts and snapshot ids before switching consumers",
+            ],
+            "claim_boundary": "Publish plan only: this creates Iceberg and Sedona execution specifications but does not run Spark, register tables, or build distributed indexes.",
+        }))
+
+    def execute_state_snapshot_lakehouse_publish_plan(
+        self,
+        state_version_id: str,
+        payload: dict[str, Any] | None = None,
+        *,
+        executor: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        payload = dict(payload or {})
+        state = self.repository.get_state_version(state_version_id)
+        if state is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        plan = self._payload_mapping(payload.get("publish_plan") or payload.get("plan"))
+        if not plan:
+            plan = self.state_snapshot_lakehouse_publish_plan(state_version_id, payload)
+        if executor is None:
+            return json.loads(_json({
+                "schema": "territory_world_model.state_snapshot_lakehouse_publish_execution.v1",
+                "generated_at": now_utc_iso(),
+                "state_version_id": state_version_id,
+                "project_id": state.project_id,
+                "status": "blocked",
+                "publish_plan": plan,
+                "iceberg_publish_results": [],
+                "sedona_spatial_index_results": [],
+                "validation_gates": {
+                    "spark_executor_gate": {"status": "blocked", "missing": ["executor"]},
+                    "iceberg_snapshot_gate": {"status": "blocked", "missing": ["executor"]},
+                    "sedona_spatial_index_gate": {"status": "blocked", "missing": ["executor"]},
+                    "consumer_switch_gate": {"status": "blocked", "missing": ["executor"]},
+                },
+                "claim_boundary": "Execution report only: no Spark executor was supplied, so no Iceberg table or Sedona spatial index was created.",
+            }))
+
+        publish_results: list[dict[str, Any]] = []
+        for spec in list(plan.get("iceberg_publish_specs") or []):
+            if not isinstance(spec, dict):
+                continue
+            task = {
+                "kind": "iceberg_publish",
+                "artifact": spec.get("artifact", ""),
+                "table_identifier": spec.get("table_identifier", ""),
+                "ddl": spec.get("ddl", ""),
+                "source_uri": spec.get("source_uri", ""),
+                "expected_row_count": safe_int(spec.get("row_count"), 0),
+                "spark_conf": dict(spec.get("spark_conf") or {}),
+                "spec": spec,
+            }
+            raw = self._call_twm_publish_executor(executor, task)
+            publish_results.append(self._normalize_iceberg_publish_result(task, raw))
+
+        sedona_results: list[dict[str, Any]] = []
+        for spec in list(plan.get("sedona_spatial_index_specs") or []):
+            if not isinstance(spec, dict):
+                continue
+            task = {
+                "kind": "sedona_spatial_index",
+                "artifact": spec.get("artifact", ""),
+                "output_table": spec.get("output_table", ""),
+                "input_tables": list(spec.get("input_tables") or []),
+                "sql": spec.get("sql", ""),
+                "index_strategy": dict(spec.get("index_strategy") or {}),
+                "spark_conf": dict(spec.get("spark_conf") or {}),
+                "spec": spec,
+            }
+            raw = self._call_twm_publish_executor(executor, task)
+            sedona_results.append(self._normalize_sedona_spatial_index_result(task, raw))
+
+        publish_gate = self._iceberg_snapshot_gate(publish_results)
+        sedona_gate = self._sedona_spatial_index_execution_gate(sedona_results, plan)
+        executor_gate = {
+            "status": "pass" if publish_gate["status"] == "pass" and sedona_gate["status"] == "pass" else "blocked",
+            "publish_task_count": len(publish_results),
+            "sedona_task_count": len(sedona_results),
+        }
+        consumer_gate_status = "pass" if executor_gate["status"] == "pass" else "blocked"
+        overall = "pass" if consumer_gate_status == "pass" else "blocked"
+        return json.loads(_json({
+            "schema": "territory_world_model.state_snapshot_lakehouse_publish_execution.v1",
+            "generated_at": now_utc_iso(),
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "status": overall,
+            "publish_plan": plan,
+            "iceberg_publish_results": publish_results,
+            "sedona_spatial_index_results": sedona_results,
+            "validation_gates": {
+                "spark_executor_gate": executor_gate,
+                "iceberg_snapshot_gate": publish_gate,
+                "sedona_spatial_index_gate": sedona_gate,
+                "consumer_switch_gate": {
+                    "status": consumer_gate_status,
+                    "required_gates": ["spark_executor_gate", "iceberg_snapshot_gate", "sedona_spatial_index_gate"],
+                },
+            },
+            "claim_boundary": "Execution report only: this records executor results and validation gates; forecast consumers should switch only when all gates pass and the reported Iceberg snapshots are externally auditable.",
+        }))
+
+    def state_snapshot_lakehouse_spark_submit_bundle(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        state = self.repository.get_state_version(state_version_id)
+        if state is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        plan = self._payload_mapping(payload.get("publish_plan") or payload.get("plan"))
+        if not plan:
+            plan = self.state_snapshot_lakehouse_publish_plan(state_version_id, payload)
+        output_dir = Path(compact_text(payload.get("output_dir") or "")) if payload.get("output_dir") else Path("outputs/twm_lakehouse_spark") / state_version_id
+        output_dir = output_dir.expanduser()
+        output_dir.mkdir(parents=True, exist_ok=True)
+        plan_path = output_dir / "state_snapshot_lakehouse_publish_plan.json"
+        report_path = output_dir / "state_snapshot_lakehouse_publish_execution_report.json"
+        plan_path.write_text(_json(plan) + "\n", encoding="utf-8")
+        script_path = self._spark_submit_script_path()
+        spark_conf = self._spark_submit_conf_from_plan(plan)
+        executor_image = compact_text(payload.get("executor_image") or payload.get("spark_kubernetes_image") or "")
+        if executor_image:
+            spark_conf["spark.kubernetes.container.image"] = executor_image
+        extra_conf = self._payload_mapping(payload.get("spark_conf"))
+        for key, value in extra_conf.items():
+            if key:
+                spark_conf[str(key)] = str(value)
+        command = self._spark_submit_command(
+            script_path=script_path,
+            plan_path=plan_path,
+            report_path=report_path,
+            spark_master=compact_text(payload.get("spark_master") or "local[*]"),
+            deploy_mode=compact_text(payload.get("deploy_mode") or "client"),
+            spark_conf=spark_conf,
+            packages=compact_text(
+                payload.get("spark_packages")
+                or "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.8.1,org.apache.sedona:sedona-spark-shaded-3.5_2.12:1.9.0"
+            ),
+        )
+        return json.loads(_json({
+            "schema": "territory_world_model.state_snapshot_lakehouse_spark_submit_bundle.v1",
+            "generated_at": now_utc_iso(),
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "plan_path": str(plan_path),
+            "execution_report_path": str(report_path),
+            "executor_script": str(script_path),
+            "spark_submit": {
+                "command": command,
+                "master": compact_text(payload.get("spark_master") or "local[*]"),
+                "deploy_mode": compact_text(payload.get("deploy_mode") or "client"),
+                "conf": spark_conf,
+            },
+            "execution_contract": {
+                "expected_publish_task_count": len(list(plan.get("iceberg_publish_specs") or [])),
+                "expected_spatial_index_task_count": len(list(plan.get("sedona_spatial_index_specs") or [])),
+                "required_output": str(report_path),
+                "required_gates": ["iceberg_snapshot_gate", "sedona_spatial_index_gate", "consumer_switch_gate"],
+            },
+            "claim_boundary": "Spark submit bundle only: this writes the executable plan and command for a Spark/Sedona/Iceberg runtime; it does not submit the job or verify external cluster execution.",
+        }))
+
+    def _spark_submit_script_path(self) -> Path:
+        return Path(__file__).resolve().parents[2] / "scripts" / "twm_state_snapshot_lakehouse_publish_job.py"
+
+    def _spark_submit_conf_from_plan(self, plan: dict[str, Any]) -> dict[str, str]:
+        for spec in list(plan.get("iceberg_publish_specs") or []):
+            if isinstance(spec, dict) and isinstance(spec.get("spark_conf"), dict):
+                return {str(key): str(value) for key, value in dict(spec.get("spark_conf") or {}).items()}
+        return {}
+
+    def _spark_submit_command(
+        self,
+        *,
+        script_path: Path,
+        plan_path: Path,
+        report_path: Path,
+        spark_master: str,
+        deploy_mode: str,
+        spark_conf: dict[str, str],
+        packages: str,
+    ) -> list[str]:
+        command = ["spark-submit", "--master", spark_master, "--deploy-mode", deploy_mode]
+        if packages:
+            command.extend(["--packages", packages])
+        for key in sorted(spark_conf):
+            command.extend(["--conf", f"{key}={spark_conf[key]}"])
+        command.extend([str(script_path), "--plan", str(plan_path), "--output", str(report_path)])
+        return command
+
+    def _call_twm_publish_executor(
+        self,
+        executor: Callable[[dict[str, Any]], dict[str, Any]],
+        task: dict[str, Any],
+    ) -> dict[str, Any]:
+        try:
+            result = executor(task)
+        except Exception as exc:
+            return {"returncode": 1, "error": str(exc)}
+        return self._payload_mapping(result)
+
+    def _normalize_iceberg_publish_result(self, task: dict[str, Any], raw: dict[str, Any]) -> dict[str, Any]:
+        expected = safe_int(task.get("expected_row_count"), 0)
+        rows_written = safe_int(raw.get("rows_written"), -1)
+        returncode = safe_int(raw.get("returncode"), 0 if raw.get("snapshot_id") else 1)
+        snapshot_id = compact_text(raw.get("snapshot_id") or raw.get("iceberg_snapshot_id") or "")
+        row_count_status = "pass" if rows_written == expected else "fail"
+        return {
+            "artifact": compact_text(task.get("artifact") or ""),
+            "table_identifier": compact_text(raw.get("table_identifier") or task.get("table_identifier") or ""),
+            "returncode": returncode,
+            "snapshot_id": snapshot_id,
+            "expected_row_count": expected,
+            "rows_written": rows_written,
+            "row_count_status": row_count_status,
+            "status": "pass" if returncode == 0 and snapshot_id and row_count_status == "pass" else "fail",
+            "raw_result": raw,
+        }
+
+    def _normalize_sedona_spatial_index_result(self, task: dict[str, Any], raw: dict[str, Any]) -> dict[str, Any]:
+        returncode = safe_int(raw.get("returncode"), 0 if raw.get("snapshot_id") else 1)
+        snapshot_id = compact_text(raw.get("snapshot_id") or raw.get("iceberg_snapshot_id") or "")
+        rows_written = safe_int(raw.get("rows_written"), safe_int(raw.get("indexed_rows"), -1))
+        return {
+            "artifact": compact_text(task.get("artifact") or ""),
+            "output_table": compact_text(raw.get("output_table") or task.get("output_table") or ""),
+            "returncode": returncode,
+            "snapshot_id": snapshot_id,
+            "rows_written": rows_written,
+            "index_strategy": dict(task.get("index_strategy") or {}),
+            "status": "pass" if returncode == 0 and snapshot_id else "fail",
+            "raw_result": raw,
+        }
+
+    def _iceberg_snapshot_gate(self, results: list[dict[str, Any]]) -> dict[str, Any]:
+        missing = []
+        failed = []
+        for item in results:
+            artifact = compact_text(item.get("artifact") or "artifact")
+            if not item.get("snapshot_id"):
+                missing.append(f"{artifact}.snapshot_id")
+            if item.get("row_count_status") != "pass":
+                failed.append(f"{artifact}.row_count")
+            if item.get("status") != "pass":
+                failed.append(f"{artifact}.execution")
+        return {
+            "status": "pass" if results and not missing and not failed else "blocked",
+            "snapshot_count": sum(1 for item in results if item.get("snapshot_id")),
+            "missing": missing,
+            "failed": sorted(set(failed)),
+        }
+
+    def _sedona_spatial_index_execution_gate(self, results: list[dict[str, Any]], plan: dict[str, Any]) -> dict[str, Any]:
+        expected_count = len(list(plan.get("sedona_spatial_index_specs") or []))
+        missing = []
+        failed = []
+        for item in results:
+            artifact = compact_text(item.get("artifact") or "artifact")
+            if not item.get("snapshot_id"):
+                missing.append(f"{artifact}.snapshot_id")
+            if item.get("status") != "pass":
+                failed.append(f"{artifact}.execution")
+        return {
+            "status": "pass" if expected_count > 0 and len(results) == expected_count and not missing and not failed else "blocked",
+            "expected_index_count": expected_count,
+            "completed_index_count": len(results),
+            "missing": missing,
+            "failed": sorted(set(failed)),
+        }
+
+    def _manifest_namespace(self, manifest: dict[str, Any]) -> str:
+        artifacts = self._payload_mapping(manifest.get("artifacts"))
+        for artifact in artifacts.values():
+            if not isinstance(artifact, dict):
+                continue
+            table = compact_text(artifact.get("table") or "")
+            if "." in table:
+                return table.rsplit(".", 1)[0]
+        return ""
+
+    def _artifact_table_name(self, artifact_name: str, artifact: dict[str, Any]) -> str:
+        table = compact_text(artifact.get("table") or artifact_name)
+        if "." in table:
+            table = table.rsplit(".", 1)[-1]
+        return self._sql_identifier_part(table, self._sql_identifier_part(artifact_name, "artifact"))
+
+    def _artifact_has_geometry(self, artifact_name: str, artifact: dict[str, Any]) -> bool:
+        fmt = compact_text(artifact.get("format") or "").lower()
+        return fmt == "geoparquet" or artifact_name in {"state_objects", "state_relations", "rule_hits"}
+
+    def _sedona_spatial_index_spec(
+        self,
+        *,
+        artifact_name: str,
+        table_identifier: str,
+        warehouse_uri: str,
+        catalog: str,
+        geohash_precision: int,
+        spark_conf: dict[str, str],
+    ) -> dict[str, Any]:
+        output_table = f"{table_identifier}_spatial_index"
+        sql = (
+            f"CREATE OR REPLACE TABLE {output_table}\n"
+            "USING iceberg\n"
+            "AS\n"
+            "SELECT *,\n"
+            "       ST_GeomFromWKB(geometry_wkb) AS geometry,\n"
+            f"       ST_GeoHash(ST_GeomFromWKB(geometry_wkb), {geohash_precision}) AS geohash_{geohash_precision}\n"
+            f"FROM {table_identifier}\n"
+            "WHERE geometry_wkb IS NOT NULL"
+        )
+        return {
+            "schema": "territory_world_model.sedona_spatial_index_job.v1",
+            "artifact": artifact_name,
+            "task": "geohash_spatial_index",
+            "catalog": catalog,
+            "warehouse_uri": warehouse_uri,
+            "input_tables": [table_identifier],
+            "output_table": output_table,
+            "geometry_column": "geometry_wkb",
+            "index_strategy": {"type": "geohash", "precision": geohash_precision},
+            "sql": sql,
+            "spark_conf": spark_conf,
+        }
+
+    def _iceberg_sedona_spark_conf(self, catalog: str, warehouse_uri: str, extra: Any = None) -> dict[str, str]:
+        conf = {
+            "spark.sql.extensions": "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
+            f"spark.sql.catalog.{catalog}": "org.apache.iceberg.spark.SparkCatalog",
+            f"spark.sql.catalog.{catalog}.type": "hadoop",
+            f"spark.sql.catalog.{catalog}.warehouse": warehouse_uri,
+            "spark.serializer": "org.apache.spark.serializer.KryoSerializer",
+            "spark.kryo.registrator": "org.apache.sedona.core.serde.SedonaKryoRegistrator",
+        }
+        extra_conf = self._payload_mapping(extra)
+        for key, value in extra_conf.items():
+            if key:
+                conf[str(key)] = str(value)
+        return conf
+
+    def _spark_parquet_source(self, uri: str) -> str:
+        escaped = compact_text(uri).replace("`", "")
+        return f"parquet.`{escaped}`" if escaped else "parquet.``"
+
+    def _sql_namespace(self, namespace: Any) -> str:
+        parts = [self._sql_identifier_part(part, "") for part in compact_text(namespace).split(".")]
+        clean = [part for part in parts if part]
+        return ".".join(clean) if clean else "twm"
+
+    def _sql_identifier_part(self, value: Any, default: str = "item") -> str:
+        text = compact_text(value or default).replace("-", "_").replace("/", "_")
+        text = re.sub(r"[^0-9A-Za-z_]", "_", text)
+        text = re.sub(r"_+", "_", text).strip("_")
+        if not text:
+            text = default or "item"
+        if text[0].isdigit():
+            text = f"_{text}"
+        return text
+
+    def _state_snapshot_lakehouse_artifact_rows(
+        self,
+        state: TwmStateVersion,
+        bundle: dict[str, Any],
+        rule_hits: list[TwmRuleHit],
+        evidence_items: list[TwmEvidenceItem],
+        review_tasks: list[TwmReviewTask],
+        registry_entries: list[TwmDynamicsModelRegistryEntry],
+    ) -> dict[str, tuple[list[dict[str, Any]], list[str], bool]]:
+        objects = list(bundle.get("objects") or [])
+        relations = list(bundle.get("relations") or [])
+        generated_at = now_utc_iso()
+        return {
+            "state_metadata": (
+                [{
+                    "state_version_id": state.id,
+                    "project_id": state.project_id,
+                    "state_time": state.state_time,
+                    "label": state.label,
+                    "rule_set_id": state.rule_set_id or "",
+                    "object_count": len(objects),
+                    "relation_count": len(relations),
+                    "build_status": state.build_status,
+                    "quality_summary_json": self._json_cell(state.quality_summary),
+                    "summary_json": self._json_cell(state.summary),
+                    "source_manifest_json": self._json_cell(state.source_manifest),
+                    "generated_at": generated_at,
+                }],
+                [
+                    "state_version_id",
+                    "project_id",
+                    "state_time",
+                    "label",
+                    "rule_set_id",
+                    "object_count",
+                    "relation_count",
+                    "build_status",
+                    "quality_summary_json",
+                    "summary_json",
+                    "source_manifest_json",
+                    "generated_at",
+                ],
+                False,
+            ),
+            "state_objects": (
+                [self._lakehouse_state_object_row(item) for item in objects],
+                [
+                    "state_version_id",
+                    "object_id",
+                    "object_code",
+                    "object_type",
+                    "source_role",
+                    "source_asset_id",
+                    "source_feature_id",
+                    "source_path",
+                    "canonical_role",
+                    "quality_score",
+                    "synthetic",
+                    "not_for_production",
+                    "qa_use_for_rules",
+                    "geometry_crs",
+                    "geometry_wkb",
+                    "bbox_json",
+                    "attributes_json",
+                    "semantic_tags_json",
+                ],
+                True,
+            ),
+            "state_relations": (
+                [self._lakehouse_state_relation_row(item) for item in relations],
+                [
+                    "state_version_id",
+                    "relation_id",
+                    "subject_object_id",
+                    "predicate",
+                    "object_object_id",
+                    "relation_type",
+                    "confidence",
+                    "source_subject_role",
+                    "source_target_role",
+                    "synthetic",
+                    "not_for_production",
+                    "geometry_wkb",
+                    "metrics_json",
+                    "evidence_json",
+                ],
+                True,
+            ),
+            "rule_hits": (
+                [self._lakehouse_rule_hit_row(item) for item in rule_hits],
+                [
+                    "state_version_id",
+                    "rule_hit_id",
+                    "rule_id",
+                    "subject_object_id",
+                    "target_object_id",
+                    "hit_status",
+                    "severity",
+                    "risk_score",
+                    "explanation",
+                    "review_task_id",
+                    "created_at",
+                    "reviewed_at",
+                    "geometry_wkb",
+                    "metrics_json",
+                ],
+                True,
+            ),
+            "evidence_items": (
+                [self._lakehouse_evidence_item_row(item) for item in evidence_items],
+                [
+                    "evidence_item_id",
+                    "rule_hit_id",
+                    "evidence_type",
+                    "source_system",
+                    "source_ref",
+                    "checksum",
+                    "created_at",
+                    "payload_json",
+                ],
+                False,
+            ),
+            "review_tasks": (
+                [self._lakehouse_review_task_row(item) for item in review_tasks],
+                [
+                    "review_task_id",
+                    "rule_hit_id",
+                    "assignee",
+                    "status",
+                    "decision",
+                    "comment",
+                    "created_at",
+                    "updated_at",
+                ],
+                False,
+            ),
+            "dynamics_model_registry": (
+                [self._lakehouse_registry_entry_row(item) for item in registry_entries],
+                [
+                    "registry_entry_id",
+                    "state_version_id",
+                    "project_id",
+                    "registry_key",
+                    "model_name",
+                    "model_version",
+                    "model_family",
+                    "status",
+                    "promotion_decision",
+                    "previous_active_registry_key",
+                    "activated_at",
+                    "created_at",
+                    "updated_at",
+                    "lineage_json",
+                    "metadata_json",
+                    "registry_report_json",
+                ],
+                False,
+            ),
+        }
+
+    def _lakehouse_state_object_row(self, item: TwmStateObject) -> dict[str, Any]:
+        return {
+            "state_version_id": item.state_version_id,
+            "object_id": item.id,
+            "object_code": item.object_code,
+            "object_type": item.object_type,
+            "source_role": item.source_role,
+            "source_asset_id": item.source_asset_id,
+            "source_feature_id": item.source_feature_id or "",
+            "source_path": item.source_path,
+            "canonical_role": item.canonical_role,
+            "quality_score": item.quality_score,
+            "synthetic": item.synthetic,
+            "not_for_production": item.not_for_production,
+            "qa_use_for_rules": item.qa_use_for_rules,
+            "geometry_crs": item.geometry_crs,
+            "geometry_wkb": self._geometry_wkb(item.geom),
+            "bbox_json": self._json_cell(item.bbox),
+            "attributes_json": self._json_cell(item.attributes),
+            "semantic_tags_json": self._json_cell(item.semantic_tags),
+        }
+
+    def _lakehouse_state_relation_row(self, item: TwmStateRelation) -> dict[str, Any]:
+        return {
+            "state_version_id": item.state_version_id,
+            "relation_id": item.id,
+            "subject_object_id": item.subject_object_id,
+            "predicate": item.predicate,
+            "object_object_id": item.object_object_id,
+            "relation_type": item.relation_type,
+            "confidence": item.confidence,
+            "source_subject_role": item.source_subject_role,
+            "source_target_role": item.source_target_role,
+            "synthetic": item.synthetic,
+            "not_for_production": item.not_for_production,
+            "geometry_wkb": self._geometry_wkb(item.geom),
+            "metrics_json": self._json_cell(item.metrics),
+            "evidence_json": self._json_cell(item.evidence),
+        }
+
+    def _lakehouse_rule_hit_row(self, item: TwmRuleHit) -> dict[str, Any]:
+        return {
+            "state_version_id": item.state_version_id,
+            "rule_hit_id": item.id,
+            "rule_id": item.rule_id,
+            "subject_object_id": item.subject_object_id,
+            "target_object_id": item.target_object_id or "",
+            "hit_status": item.hit_status,
+            "severity": item.severity,
+            "risk_score": item.risk_score,
+            "explanation": item.explanation,
+            "review_task_id": item.review_task_id or "",
+            "created_at": item.created_at,
+            "reviewed_at": item.reviewed_at or "",
+            "geometry_wkb": self._geometry_wkb(item.geom),
+            "metrics_json": self._json_cell(item.metrics),
+        }
+
+    def _lakehouse_evidence_item_row(self, item: TwmEvidenceItem) -> dict[str, Any]:
+        return {
+            "evidence_item_id": item.id,
+            "rule_hit_id": item.rule_hit_id,
+            "evidence_type": item.evidence_type,
+            "source_system": item.source_system,
+            "source_ref": item.source_ref,
+            "checksum": item.checksum or "",
+            "created_at": item.created_at,
+            "payload_json": self._json_cell(item.payload),
+        }
+
+    def _lakehouse_review_task_row(self, item: TwmReviewTask) -> dict[str, Any]:
+        return {
+            "review_task_id": item.id,
+            "rule_hit_id": item.rule_hit_id,
+            "assignee": item.assignee or "",
+            "status": item.status,
+            "decision": item.decision,
+            "comment": item.comment,
+            "created_at": item.created_at,
+            "updated_at": item.updated_at,
+        }
+
+    def _lakehouse_registry_entry_row(self, item: TwmDynamicsModelRegistryEntry) -> dict[str, Any]:
+        return {
+            "registry_entry_id": item.id,
+            "state_version_id": item.state_version_id,
+            "project_id": item.project_id,
+            "registry_key": item.registry_key,
+            "model_name": item.model_name,
+            "model_version": item.model_version,
+            "model_family": item.model_family,
+            "status": item.status,
+            "promotion_decision": item.promotion_decision,
+            "previous_active_registry_key": item.previous_active_registry_key,
+            "activated_at": item.activated_at,
+            "created_at": item.created_at,
+            "updated_at": item.updated_at,
+            "lineage_json": self._json_cell(item.lineage),
+            "metadata_json": self._json_cell(item.metadata),
+            "registry_report_json": self._json_cell(item.registry_report),
+        }
+
+    def _write_lakehouse_parquet(
+        self,
+        path: Path,
+        rows: list[dict[str, Any]],
+        columns: list[str],
+        *,
+        geo_metadata: bool,
+    ) -> None:
+        try:
+            import pyarrow as pa
+            import pyarrow.parquet as pq
+        except Exception as exc:  # pragma: no cover - exercised only in missing optional dependency envs
+            raise RuntimeError("pyarrow is required to materialize TWM lakehouse Parquet artifacts") from exc
+        hive_partition_columns = self._hive_partition_columns(path)
+        file_columns = [column for column in columns if column not in hive_partition_columns]
+        normalized = [{column: row.get(column) for column in file_columns} for row in rows]
+        if normalized:
+            table = pa.Table.from_pylist(normalized).select(file_columns)
+        else:
+            table = pa.table({column: pa.array([], type=pa.string()) for column in file_columns})
+        if geo_metadata:
+            metadata = dict(table.schema.metadata or {})
+            metadata[b"geo"] = json.dumps(
+                {
+                    "version": "1.1.0",
+                    "primary_column": "geometry_wkb",
+                    "columns": {
+                        "geometry_wkb": {
+                            "encoding": "WKB",
+                            "crs": {"type": "name", "properties": {"name": "EPSG:4326"}},
+                            "geometry_types": [],
+                        }
+                    },
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+            ).encode("utf-8")
+            table = table.replace_schema_metadata(metadata)
+        pq.write_table(table, path)
+
+    def _local_path_from_lakehouse_uri(self, uri: str) -> Path | None:
+        text = compact_text(uri)
+        if not text:
+            return None
+        parsed = urlparse(text)
+        if parsed.scheme == "file":
+            return Path(unquote(parsed.path))
+        if parsed.scheme:
+            return None
+        return Path(text).expanduser()
+
+    def _hive_partition_columns(self, path: Path) -> set[str]:
+        columns: set[str] = set()
+        for part in path.parent.parts:
+            if "=" not in part:
+                continue
+            name, value = part.split("=", 1)
+            if name and value:
+                columns.add(name)
+        return columns
+
+    def _json_cell(self, value: Any) -> str:
+        return json.dumps(jsonable(value), ensure_ascii=False, default=str, sort_keys=True)
+
+    def _geometry_wkb(self, geom: Any) -> bytes | None:
+        if geom is None:
+            return None
+        if isinstance(geom, bytes):
+            return geom
+        try:
+            if hasattr(geom, "wkb"):
+                return bytes(geom.wkb)
+            from shapely import wkt as shapely_wkt
+            from shapely.geometry import shape as shapely_shape
+
+            if isinstance(geom, dict):
+                return bytes(shapely_shape(geom).wkb)
+            if isinstance(geom, str) and geom.strip():
+                return bytes(shapely_wkt.loads(geom).wkb)
+        except Exception:
+            return None
+        return None
+
     def state_contract_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(payload or {})
         cache_key = self._report_cache_key(
@@ -3912,6 +4965,26 @@ class TerritoryWorldModelService:
                 objective_report=objective_report,
                 trainer=trainer,
             )
+            registry_report = self.dynamics_model_registry_report(
+                state_version_id,
+                {
+                    "dynamics_training_dataset": dataset,
+                    "candidate_report": candidate_report,
+                    "readiness_report": readiness,
+                    "evaluation_report": payload.get("evaluation_report")
+                    or payload.get("dynamics_evaluation_report")
+                    or backend_report,
+                    "registry_metadata": payload.get("registry_metadata")
+                    or payload.get("metadata")
+                    or {},
+                    "production_data_gate": payload.get("production_data_gate")
+                    or payload.get("production_gate")
+                    or {},
+                    "current_registry_key": payload.get("current_registry_key")
+                    or payload.get("production_registry_key")
+                    or "",
+                },
+            )
             report = TwmTrainDynamicsReport(
                 state_version_id=state_version_id,
                 project_id=state.project_id,
@@ -3922,6 +4995,7 @@ class TerritoryWorldModelService:
                 predictions=predictions,
                 candidate_report=candidate_report,
                 backend_report=backend_report,
+                registry_report=registry_report,
                 evidence_gate=evidence_gate,
                 recommendations=self._train_dynamics_recommendations(evidence_gate, trainer),
             )
@@ -4148,7 +5222,8 @@ class TerritoryWorldModelService:
             scenario_context=scenario_context,
         )
         result = plan.to_dict()
-        return self._forecast_with_dynamics_candidate(result, payload)
+        candidate_payload = {**payload, "_state_version_id": state_version_id}
+        return self._forecast_with_dynamics_candidate(result, candidate_payload)
 
     def action_mask_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(payload or {})
@@ -4920,7 +5995,7 @@ class TerritoryWorldModelService:
                 core_algorithm={
                     "role_in_taxonomy": "simulator",
                     "algorithm_family": "action-conditioned territorial dynamics",
-                    "core_algorithm": "multi-head forecast + counterfactual rollout over future area/key indicators, compatibility future_latent_state, constraint, utility and uncertainty, backed by deterministic scaffold, trainable MLP candidate, hierarchical graph-temporal candidate, or lightweight spatiotemporal transformer candidate",
+                    "core_algorithm": "multi-head forecast + counterfactual rollout over a future-state latent decoded into area, feature-count, land-space-type and transition-delta summaries, plus constraint, utility and uncertainty, backed by deterministic scaffold, trainable MLP candidate, hierarchical graph-temporal candidate, or lightweight spatiotemporal transformer candidate",
                     "current_implementation": [
                         "deterministic forecast scaffold",
                         "counterfactual rollout",
@@ -4931,7 +6006,7 @@ class TerritoryWorldModelService:
                     "note": "The current trainable simulator includes small candidate backends, not yet the final production-scale territorial graph transformer.",
                 },
                 implemented_components=[
-                    "future area/key-indicator forecast with future_latent_state compatibility field",
+                    "future-state latent decoded into area, feature-count, land-space-type and transition-delta summaries",
                     "constraint violation probability",
                     "counterfactual rollout",
                     "uncertainty and calibration metadata",
@@ -5409,6 +6484,7 @@ class TerritoryWorldModelService:
         readiness_report = self._payload_mapping(payload.get("readiness_report") or payload.get("dynamics_readiness_report"))
         evaluation_report = self._payload_mapping(payload.get("evaluation_report") or payload.get("dynamics_evaluation_report"))
         registry_metadata = self._payload_mapping(payload.get("registry_metadata") or payload.get("metadata"))
+        training_dataset = self._payload_mapping(payload.get("dynamics_training_dataset") or payload.get("dataset"))
         candidate = self._payload_mapping(candidate_report.get("candidate") or payload.get("candidate"))
         if not candidate:
             candidate = self._dynamics_candidate_descriptor(payload)
@@ -5424,6 +6500,23 @@ class TerritoryWorldModelService:
         evaluation_status = compact_text(evaluation_gate.get("status") or evaluation_report.get("status") or "review")
         production_gate = self._payload_mapping(payload.get("production_data_gate") or payload.get("production_gate"))
         production_status = compact_text(production_gate.get("status") or "blocked")
+        target_head_metrics = self._payload_mapping(evaluation_report.get("target_head_metrics"))
+        future_latent_metrics = self._payload_mapping(target_head_metrics.get("future_latent_state"))
+        candidate_evaluation = self._payload_mapping(candidate_report.get("evaluation"))
+        candidate_eval_head_metrics = self._payload_mapping(candidate_evaluation.get("target_head_metrics"))
+        candidate_eval_future_latent_metrics = self._payload_mapping(candidate_eval_head_metrics.get("future_latent_state"))
+        latent_v2_quality = self._payload_mapping(
+            future_latent_metrics.get("latent_v2_quality")
+            or evaluation_report.get("latent_v2_quality")
+            or candidate_eval_future_latent_metrics.get("latent_v2_quality")
+        )
+        if not latent_v2_quality:
+            latent_v2_quality = {
+                "schema": "territory_world_model.future_latent_state_v2_quality.v1",
+                "status": "review",
+                "missing": ["latent_v2_quality_report"],
+            }
+        latent_v2_quality_status = compact_text(latent_v2_quality.get("status") or "review")
 
         missing_for_promotion: list[str] = []
         if candidate_gate_status != "pass":
@@ -5436,6 +6529,8 @@ class TerritoryWorldModelService:
             missing_for_promotion.append("production_observed_history")
         if bool(candidate.get("is_scaffold_baseline")) or bool(candidate.get("is_scaffold_trainer")):
             missing_for_promotion.append("non_scaffold_candidate")
+        if latent_v2_quality_status != "pass":
+            missing_for_promotion.append("latent_v2_quality_pass")
 
         learned_metadata = self._payload_mapping(self._payload_mapping(candidate_report.get("learned_parameters")).get("metadata"))
         combined_metadata = {
@@ -5443,6 +6538,8 @@ class TerritoryWorldModelService:
             **learned_metadata,
             **registry_metadata,
         }
+        if training_dataset and not compact_text(combined_metadata.get("training_dataset_hash")):
+            combined_metadata["training_dataset_hash"] = _stable_sha256(training_dataset)
         required_registry_metadata = [
             "state_contract_version",
             "training_dataset_hash",
@@ -5463,6 +6560,19 @@ class TerritoryWorldModelService:
         else:
             promotion_decision = "review_only_not_promoted"
         current_registry_key = compact_text(payload.get("current_registry_key") or payload.get("production_registry_key") or "")
+        lineage_keys = [
+            "state_contract_version",
+            "training_dataset_hash",
+            "training_dataset_snapshot",
+            "training_run_id",
+            "model_artifact_uri",
+            "evaluation_report_id",
+        ]
+        registry_lineage = {
+            key: combined_metadata.get(key)
+            for key in lineage_keys
+            if compact_text(combined_metadata.get(key))
+        }
         rollback_plan = {
             "action": "pin_candidate_with_previous_version_rollback" if promotion_decision == "candidate_for_registry_promotion" else "keep_current_production_version",
             "current_registry_key": current_registry_key,
@@ -5486,6 +6596,8 @@ class TerritoryWorldModelService:
                 "candidate_status": candidate_report.get("status", "review"),
                 "version_pin_policy": "immutable_model_name_version_plus_training_dataset_hash",
                 "metadata": combined_metadata,
+                "lineage": registry_lineage,
+                "latent_v2_quality": latent_v2_quality,
             },
             "gates": {
                 "candidate_gate": {
@@ -5505,6 +6617,11 @@ class TerritoryWorldModelService:
                     "status": production_status,
                     "passed": production_status == "pass",
                 },
+                "latent_v2_quality_gate": {
+                    "status": latent_v2_quality_status,
+                    "passed": latent_v2_quality_status == "pass",
+                    "missing": list(latent_v2_quality.get("missing") or []),
+                },
             },
             "required_registry_metadata": required_registry_metadata,
             "missing_registry_metadata": missing_registry_metadata,
@@ -5521,6 +6638,102 @@ class TerritoryWorldModelService:
                 "A review-only candidate may be used for experiments or demos, but must not become the production default until all registry, readiness, evaluation and production-data gates pass."
             ),
         }))
+
+    def activate_dynamics_model_registry_entry(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        report = self.dynamics_model_registry_report(state_version_id, payload)
+        entry = self._dynamics_model_registry_entry_from_report(state_version_id, report)
+        previous_active = self.repository.get_active_dynamics_model_registry_entry(state_version_id)
+        previous_active_payload = previous_active.to_dict() if previous_active else None
+        if report.get("promotion_decision") == "candidate_for_registry_promotion":
+            if previous_active and previous_active.registry_key != entry.registry_key:
+                previous_active.status = "superseded"
+                previous_active.updated_at = now_utc_iso()
+                self.repository.save_dynamics_model_registry_entry(previous_active)
+            entry.status = "active"
+            entry.previous_active_registry_key = previous_active.registry_key if previous_active else ""
+            entry.activated_at = now_utc_iso()
+        else:
+            entry.status = "review_only"
+        saved = self.repository.save_dynamics_model_registry_entry(entry)
+        return json.loads(_json({
+            "schema": "territory_world_model.dynamics_model_registry_activation.v1",
+            "state_version_id": state_version_id,
+            "status": "active" if saved.status == "active" else "review_only",
+            "active_entry": saved.to_dict() if saved.status == "active" else None,
+            "saved_entry": saved.to_dict(),
+            "previous_active_entry": previous_active_payload,
+            "registry_report": report,
+            "claim_boundary": "Only entries with candidate_for_registry_promotion are activated; review-only entries are saved for audit but not used as production defaults.",
+        }))
+
+    def list_dynamics_model_registry_entries(self, state_version_id: str | None = None, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        status = compact_text(payload.get("status") or "")
+        entries = self.repository.list_dynamics_model_registry_entries(state_version_id, status=status or None)
+        return json.loads(_json({
+            "schema": "territory_world_model.dynamics_model_registry_entries.v1",
+            "state_version_id": state_version_id or "",
+            "status_filter": status,
+            "entry_count": len(entries),
+            "entries": [entry.to_dict() for entry in entries],
+        }))
+
+    def rollback_dynamics_model_registry(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        current = self.repository.get_active_dynamics_model_registry_entry(state_version_id)
+        if current is None:
+            return {
+                "schema": "territory_world_model.dynamics_model_registry_rollback.v1",
+                "state_version_id": state_version_id,
+                "status": "blocked",
+                "missing": ["active_registry_entry"],
+            }
+        target_key = compact_text(payload.get("target_registry_key") or current.previous_active_registry_key)
+        candidates = self.repository.list_dynamics_model_registry_entries(state_version_id)
+        target = next((entry for entry in candidates if entry.registry_key == target_key), None)
+        if target is None:
+            return {
+                "schema": "territory_world_model.dynamics_model_registry_rollback.v1",
+                "state_version_id": state_version_id,
+                "status": "blocked",
+                "missing": ["rollback_target_registry_entry"],
+                "rolled_back_entry": current.to_dict(),
+                "target_registry_key": target_key,
+            }
+        current.status = "rolled_back"
+        current.updated_at = now_utc_iso()
+        self.repository.save_dynamics_model_registry_entry(current)
+        target.status = "active"
+        target.previous_active_registry_key = current.registry_key
+        target.activated_at = now_utc_iso()
+        target.updated_at = now_utc_iso()
+        restored = self.repository.save_dynamics_model_registry_entry(target)
+        return json.loads(_json({
+            "schema": "territory_world_model.dynamics_model_registry_rollback.v1",
+            "state_version_id": state_version_id,
+            "status": "pass",
+            "restored_entry": restored.to_dict(),
+            "rolled_back_entry": current.to_dict(),
+            "claim_boundary": "Rollback only changes the active registry pointer; it does not retrain, alter model artifacts, or bypass registry gates.",
+        }))
+
+    def _dynamics_model_registry_entry_from_report(self, state_version_id: str, report: dict[str, Any]) -> TwmDynamicsModelRegistryEntry:
+        state = self.repository.get_state_version(state_version_id)
+        registry_entry = self._payload_mapping(report.get("registry_entry"))
+        return TwmDynamicsModelRegistryEntry(
+            state_version_id=state_version_id,
+            project_id=state.project_id if state else compact_text(report.get("project_id") or ""),
+            registry_key=compact_text(registry_entry.get("registry_key") or ""),
+            model_name=compact_text(registry_entry.get("model_name") or ""),
+            model_version=compact_text(registry_entry.get("model_version") or ""),
+            model_family=compact_text(registry_entry.get("model_family") or ""),
+            status="candidate",
+            promotion_decision=compact_text(report.get("promotion_decision") or "review_only_not_promoted"),
+            registry_report=report,
+            lineage=self._payload_mapping(registry_entry.get("lineage")),
+            metadata=self._payload_mapping(registry_entry.get("metadata")),
+        )
 
     def fit_dynamics_candidate(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(payload or {})
@@ -8064,6 +9277,7 @@ class TerritoryWorldModelService:
         evidence_gate = dict(candidate_report.get("evidence_gate") or {})
         evaluation = dict(candidate_report.get("evaluation") or {})
         evaluation_gate = dict(evaluation.get("evidence_gate") or {})
+        candidate = dict(candidate_report.get("candidate") or {})
         missing: list[str] = []
         if required_status == "pass" and report_status != "pass":
             missing.append("dynamics_candidate_pass")
@@ -8073,15 +9287,31 @@ class TerritoryWorldModelService:
             missing.append("dynamics_candidate_evaluation")
         if evaluation_gate and evaluation_gate.get("status") != "pass":
             missing.append("dynamics_candidate_evaluation_gate")
+        active_registry: dict[str, Any] | None = None
+        registry_required = truthy(payload.get("require_active_dynamics_registry"))
+        if registry_required:
+            state_version_id = compact_text(payload.get("_state_version_id") or payload.get("state_version_id") or "")
+            active_entry = self.repository.get_active_dynamics_model_registry_entry(state_version_id) if state_version_id else None
+            if active_entry is None:
+                missing.append("active_dynamics_model_registry")
+            else:
+                active_registry = active_entry.to_dict()
+                candidate_key = f"{compact_text(candidate.get('model_name') or '')}:{compact_text(candidate.get('model_version') or '')}"
+                if candidate_key != active_entry.registry_key:
+                    missing.append("dynamics_candidate_active_registry_match")
         allow_review = bool(payload.get("allow_review_dynamics_candidate", False))
         passed = not missing or (allow_review and report_status in {"review", "pass"})
-        return {
+        gate = {
             "passed": passed,
             "status": "pass" if passed else "review",
             "missing": [] if passed else missing,
             "required_status": required_status,
             "report_status": report_status,
+            "registry_required": registry_required,
         }
+        if active_registry is not None:
+            gate["active_registry_entry"] = active_registry
+        return gate
 
     def _select_candidate_prediction(self, candidate_report: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         explicit = payload.get("dynamics_candidate_prediction")
@@ -11261,6 +12491,8 @@ class TerritoryWorldModelService:
         examples = [dict(item) for item in dataset.get("examples") or [] if isinstance(item, dict)]
         scored_examples = []
         transition_errors: list[float] = []
+        transition_component_rows: list[dict[str, Any]] = []
+        latent_quality_rows: list[tuple[dict[str, Any], dict[str, Any]]] = []
         constraint_errors: list[float] = []
         utility_errors: list[float] = []
         uncertainty_confidences: list[float] = []
@@ -11284,12 +12516,18 @@ class TerritoryWorldModelService:
                 holdout_count += 1
             if provenance.get("ground_truth"):
                 ground_truth_count += 1
-            transition_error = self._latent_transition_error(
-                predicted=dict(prediction.get("future_latent_state") or {}),
-                target=dict(targets.get("future_latent_state") or {}),
+            predicted_latent = dict(prediction.get("future_latent_state") or {})
+            target_latent = dict(targets.get("future_latent_state") or {})
+            if predicted_latent or target_latent:
+                latent_quality_rows.append((predicted_latent, target_latent))
+            transition_components = self._latent_transition_error_components(
+                predicted=predicted_latent,
+                target=target_latent,
             )
+            transition_error = transition_components.get("aggregate_error")
             if transition_error is not None:
-                transition_errors.append(transition_error)
+                transition_errors.append(float(transition_error))
+                transition_component_rows.append(transition_components)
             if "constraint_violation_probability" in prediction and "constraint_violation_probability" in targets:
                 constraint_errors.append(abs(float(safe_float(prediction.get("constraint_violation_probability"), 0.0) or 0.0) - float(safe_float(targets.get("constraint_violation_probability"), 0.0) or 0.0)))
             if "planning_utility_delta" in prediction and "planning_utility_delta" in targets:
@@ -11316,8 +12554,17 @@ class TerritoryWorldModelService:
             "mean_confidence": self._mean(uncertainty_confidences),
             "action_mask_accuracy": round(action_mask_matches / max(1, action_mask_count), 4) if action_mask_count else None,
         }
+        transition_component_metrics = {}
+        for key in sorted({key for row in transition_component_rows for key in row if key != "aggregate_error"}):
+            values = [float(row[key]) for row in transition_component_rows if row.get(key) is not None]
+            transition_component_metrics[key] = self._mean(values)
         head_metrics = {
-            "future_latent_state": {"count": len(transition_errors), "mean_error": metrics["mean_transition_error"]},
+            "future_latent_state": {
+                "count": len(transition_errors),
+                "mean_error": metrics["mean_transition_error"],
+                "components": transition_component_metrics,
+                "latent_v2_quality": self._future_latent_state_v2_quality_report(latent_quality_rows),
+            },
             "constraint_violation_probability": {"count": len(constraint_errors), "mae": metrics["mean_constraint_error"]},
             "planning_utility_delta": {"count": len(utility_errors), "mae": metrics["mean_utility_error"], "ranking_correlation_proxy": metrics["ranking_correlation_proxy"]},
             "uncertainty": {"count": len(uncertainty_confidences), "mean_confidence": metrics["mean_confidence"]},
@@ -11332,23 +12579,154 @@ class TerritoryWorldModelService:
         }
         return metrics, head_metrics, inventory
 
-    def _latent_transition_error(self, *, predicted: dict[str, Any], target: dict[str, Any]) -> float | None:
-        observed = dict(target.get("observed_next") or target.get("projected") or {})
-        pred = dict(predicted.get("observed_next") or predicted.get("projected") or predicted)
+    def _latent_transition_error_components(self, *, predicted: dict[str, Any], target: dict[str, Any]) -> dict[str, Any]:
+        observed = dict(target.get("observed_next") or target.get("projected") or target.get("decoded_state") or {})
+        pred = dict(predicted.get("decoded_state") or predicted.get("observed_next") or predicted.get("projected") or predicted)
+        observed_delta = dict(target.get("delta") or {})
+        pred_delta = dict(predicted.get("transition_delta") or predicted.get("delta") or {})
+        components: dict[str, Any] = {}
+
         observed_area = safe_float(observed.get("total_area_m2"), None)
         pred_area = safe_float(pred.get("total_area_m2"), None)
         if observed_area is not None and pred_area is not None:
-            return round(abs(float(pred_area) - float(observed_area)) / max(abs(float(observed_area)), 1.0), 6)
+            components["total_area_error"] = round(abs(float(pred_area) - float(observed_area)) / max(abs(float(observed_area)), 1.0), 6)
+
         observed_types = dict(observed.get("land_space_types") or {})
         pred_types = dict(pred.get("land_space_types") or {})
-        if observed_types and pred_types:
-            errors = []
-            for key in sorted(set(observed_types) | set(pred_types)):
-                target_area = float(safe_float((observed_types.get(key) or {}).get("area_m2"), 0.0) or 0.0)
-                pred_area_value = float(safe_float((pred_types.get(key) or {}).get("area_m2"), 0.0) or 0.0)
-                errors.append(abs(pred_area_value - target_area) / max(abs(target_area), 1.0))
-            return self._mean(errors)
-        return None
+        area_errors = []
+        count_errors = []
+        delta_errors = []
+        for key in sorted(set(observed_types) | set(pred_types)):
+            target_payload = dict(observed_types.get(key) or {})
+            pred_payload = dict(pred_types.get(key) or {})
+            target_area = float(safe_float(target_payload.get("area_m2"), 0.0) or 0.0)
+            pred_area_value = float(safe_float(pred_payload.get("area_m2"), 0.0) or 0.0)
+            area_errors.append(abs(pred_area_value - target_area) / max(abs(target_area), 1.0))
+            target_count = float(safe_float(target_payload.get("feature_count"), 0.0) or 0.0)
+            pred_count = float(safe_float(pred_payload.get("feature_count"), 0.0) or 0.0)
+            count_errors.append(abs(pred_count - target_count) / max(abs(target_count), 1.0))
+            target_delta = float(safe_float(target_payload.get("area_delta_m2"), 0.0) or 0.0)
+            pred_delta_value = float(safe_float(pred_payload.get("area_delta_m2"), 0.0) or 0.0)
+            delta_errors.append(abs(pred_delta_value - target_delta) / max(abs(target_delta), 1.0))
+        if area_errors:
+            components["land_type_area_mae"] = self._mean(area_errors)
+        if count_errors:
+            components["land_type_feature_count_mae"] = self._mean(count_errors)
+        if delta_errors:
+            components["land_type_delta_mae"] = self._mean(delta_errors)
+
+        delta_component_errors = []
+        for key in ("total_area_delta_m2", "total_abs_area_delta_m2", "change_intensity"):
+            target_value = safe_float(observed_delta.get(key), None)
+            pred_value = safe_float(pred_delta.get(key), None)
+            if target_value is not None and pred_value is not None:
+                delta_component_errors.append(abs(float(pred_value) - float(target_value)) / max(abs(float(target_value)), 1.0))
+        if delta_component_errors:
+            components["delta_mae"] = self._mean(delta_component_errors)
+
+        observed_vector = dict(target.get("latent_vector") or {})
+        pred_vector = dict(predicted.get("latent_vector") or {})
+        if observed_vector and pred_vector:
+            vector_errors = []
+            for key in sorted(set(observed_vector) | set(pred_vector)):
+                target_value = float(safe_float(observed_vector.get(key), 0.0) or 0.0)
+                pred_value = float(safe_float(pred_vector.get(key), 0.0) or 0.0)
+                vector_errors.append(abs(pred_value - target_value) / max(abs(target_value), 1.0))
+            components["latent_vector_mae"] = self._mean(vector_errors)
+
+        numeric = [float(value) for key, value in components.items() if key.endswith("_error") or key.endswith("_mae")]
+        components["aggregate_error"] = self._mean(numeric) if numeric else None
+        return components
+
+    def _future_latent_state_v2_quality_report(
+        self,
+        rows: list[tuple[dict[str, Any], dict[str, Any]]],
+    ) -> dict[str, Any]:
+        expected_schema = "territory_world_model.predicted_latent_state.v2"
+        expected_boundary = "multi_dimensional_hierarchical_state_latent_not_full_geometry"
+        prediction_count = 0
+        target_count = 0
+        v2_prediction_count = 0
+        decoded_state_count = 0
+        transition_delta_count = 0
+        latent_vector_count = 0
+        boundary_count = 0
+        predicted_dimensions: set[str] = set()
+        target_dimensions: set[str] = set()
+        for predicted, target in rows:
+            predicted = dict(predicted or {})
+            target = dict(target or {})
+            if predicted:
+                prediction_count += 1
+                if predicted.get("schema") == expected_schema:
+                    v2_prediction_count += 1
+                if isinstance(predicted.get("decoded_state"), dict) and predicted.get("decoded_state"):
+                    decoded_state_count += 1
+                if isinstance(predicted.get("transition_delta"), dict) and predicted.get("transition_delta"):
+                    transition_delta_count += 1
+                pred_vector = dict(predicted.get("latent_vector") or {})
+                if pred_vector:
+                    latent_vector_count += 1
+                    predicted_dimensions.update(str(key) for key in pred_vector)
+                predicted_dimensions.update(str(key) for key in list(predicted.get("dimensions") or []) if str(key))
+                if predicted.get("representation_boundary") == expected_boundary:
+                    boundary_count += 1
+            if target:
+                target_count += 1
+                target_vector = dict(target.get("latent_vector") or {})
+                target_dimensions.update(str(key) for key in target_vector)
+                target_dimensions.update(str(key) for key in list(target.get("dimensions") or []) if str(key))
+
+        missing: list[str] = []
+        if prediction_count == 0:
+            missing.append("future_latent_state_predictions")
+        if prediction_count and v2_prediction_count < prediction_count:
+            missing.append("predicted_latent_state_v2_schema")
+        if prediction_count and decoded_state_count < prediction_count:
+            missing.append("decoded_state")
+        if prediction_count and transition_delta_count < prediction_count:
+            missing.append("transition_delta")
+        if prediction_count and latent_vector_count < prediction_count:
+            missing.append("latent_vector")
+        if v2_prediction_count and boundary_count < v2_prediction_count:
+            missing.append("representation_boundary")
+
+        missing_target_dimensions = sorted(target_dimensions - predicted_dimensions)
+        extra_predicted_dimensions = sorted(predicted_dimensions - target_dimensions)
+        if missing_target_dimensions:
+            missing.append("target_dimension_coverage")
+
+        return {
+            "schema": "territory_world_model.future_latent_state_v2_quality.v1",
+            "status": "pass" if not missing else "review",
+            "coverage": {
+                "prediction_count": prediction_count,
+                "target_count": target_count,
+                "v2_prediction_count": v2_prediction_count,
+                "decoded_state_count": decoded_state_count,
+                "transition_delta_count": transition_delta_count,
+                "latent_vector_count": latent_vector_count,
+                "representation_boundary_count": boundary_count,
+                "v2_prediction_ratio": round(v2_prediction_count / max(1, prediction_count), 4),
+                "decoded_state_ratio": round(decoded_state_count / max(1, prediction_count), 4),
+                "transition_delta_ratio": round(transition_delta_count / max(1, prediction_count), 4),
+                "latent_vector_ratio": round(latent_vector_count / max(1, prediction_count), 4),
+            },
+            "dimension_coverage": {
+                "target_dimension_count": len(target_dimensions),
+                "predicted_dimension_count": len(predicted_dimensions),
+                "shared_dimension_count": len(target_dimensions & predicted_dimensions),
+                "missing_target_dimensions": missing_target_dimensions,
+                "extra_predicted_dimensions": extra_predicted_dimensions[:50],
+            },
+            "missing": missing,
+            "claim_boundary": "quality gate for decoded multi-dimensional future latent summaries; it does not prove full parcel geometry generation or production accuracy",
+        }
+
+    def _latent_transition_error(self, *, predicted: dict[str, Any], target: dict[str, Any]) -> float | None:
+        components = self._latent_transition_error_components(predicted=predicted, target=target)
+        aggregate = components.get("aggregate_error")
+        return float(aggregate) if aggregate is not None else None
 
     def _dynamics_evaluation_gate(
         self,

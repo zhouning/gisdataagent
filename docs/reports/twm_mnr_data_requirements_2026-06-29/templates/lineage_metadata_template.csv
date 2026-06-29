@@ -1,0 +1,2 @@
+﻿dataset_id,dataset_name,source_system,source_version,extract_time,update_frequency,security_level,desensitization_method,owner_department,contact_role,notes
+DATASET-001,production_observed_history,approval_review_system,2025-v1,2026-06-29T00:00:00,quarterly,internal,ids_aliasing_and_geometry_retained_in_inner_network,natural_resource_data_owner,data_steward,no raw geometry exported outside inner network

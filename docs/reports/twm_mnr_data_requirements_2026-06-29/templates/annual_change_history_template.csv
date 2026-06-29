@@ -1,0 +1,2 @@
+﻿unit_id,parcel_id,from_period,to_period,from_land_use_code,to_land_use_code,change_area_m2,change_reason,confirmed_by,source_version,synthetic,not_for_production
+UNIT-001,PARCEL-001,2024,2025,0101,0201,300,annual_change_survey_confirmed,authorized_department_or_role,ANNUAL-2025-A,false,false

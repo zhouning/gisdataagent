@@ -52,6 +52,8 @@ def main() -> None:
     parser.add_argument("--normalized-production-observed-history-output", default="", help="Optional normalized production observed-history CSV output path.")
     parser.add_argument("--synthetic-experiment-foundation", default=str(DEFAULT_SYNTHETIC_EXPERIMENT_FOUNDATION), help="Synthetic experiment CSV used only as a policy-coverage benchmark.")
     parser.add_argument("--production-scale-profile", default="", help="Optional JSON profile describing real layer/table scale and distributed lakehouse readiness.")
+    parser.add_argument("--txpoint10m-lakehouse-summary", default="", help="Optional TxPoint10M lakehouse summary JSON to convert into a TWM production scale profile.")
+    parser.add_argument("--txpoint10m-scale-profile-output", default="", help="Optional output path for the TxPoint10M-derived TWM production scale profile.")
     parser.add_argument("--scale-profile-template-output", default=str(DEFAULT_SCALE_PROFILE_TEMPLATE), help="JSON template output path for sanitized production scale profiles.")
     parser.add_argument("--require-production-readiness", action="store_true", help="Promote missing production evidence from review-only diagnostics to a blocked readiness gate.")
     parser.add_argument("--fail-on-blocked", action="store_true", help="Exit non-zero after writing outputs when the validation bundle status is blocked.")
@@ -75,6 +77,8 @@ def main() -> None:
         normalized_production_observed_history_output=Path(args.normalized_production_observed_history_output).expanduser() if args.normalized_production_observed_history_output else None,
         synthetic_experiment_foundation=Path(args.synthetic_experiment_foundation).expanduser() if args.synthetic_experiment_foundation else None,
         production_scale_profile=Path(args.production_scale_profile).expanduser() if args.production_scale_profile else None,
+        txpoint10m_lakehouse_summary=Path(args.txpoint10m_lakehouse_summary).expanduser() if args.txpoint10m_lakehouse_summary else None,
+        txpoint10m_scale_profile_output=Path(args.txpoint10m_scale_profile_output).expanduser() if args.txpoint10m_scale_profile_output else None,
         require_production_readiness=bool(args.require_production_readiness),
         include_auxiliary_tables=bool(args.include_auxiliary_tables),
     )
@@ -121,6 +125,8 @@ def run_validation_bundle(
     normalized_production_observed_history_output: Path | str | None = None,
     synthetic_experiment_foundation: Path | str | None = DEFAULT_SYNTHETIC_EXPERIMENT_FOUNDATION,
     production_scale_profile: Path | str | None = None,
+    txpoint10m_lakehouse_summary: Path | str | None = None,
+    txpoint10m_scale_profile_output: Path | str | None = None,
     require_production_readiness: bool = False,
     include_auxiliary_tables: bool = True,
     service: TerritoryWorldModelService | None = None,
@@ -136,7 +142,17 @@ def run_validation_bundle(
         normalized_production_observed_history_output=normalized_production_observed_history_output,
     )
     synthetic_foundation_path = Path(synthetic_experiment_foundation).expanduser() if synthetic_experiment_foundation else None
-    scale_profile_path = Path(production_scale_profile).expanduser() if production_scale_profile else None
+    scale_profile_path = prepare_txpoint10m_scale_profile(
+        production_scale_profile=production_scale_profile,
+        txpoint10m_lakehouse_summary=txpoint10m_lakehouse_summary,
+        txpoint10m_scale_profile_output=txpoint10m_scale_profile_output,
+    )
+    txpoint10m_summary_path = Path(txpoint10m_lakehouse_summary).expanduser() if txpoint10m_lakehouse_summary else None
+    txpoint10m_generated_profile_path = txpoint10m_generated_scale_profile_output(
+        production_scale_profile=production_scale_profile,
+        txpoint10m_lakehouse_summary=txpoint10m_lakehouse_summary,
+        txpoint10m_scale_profile_output=txpoint10m_scale_profile_output,
+    )
 
     svc = service or build_offline_validation_service()
     project = svc.create_project(
@@ -232,6 +248,8 @@ def run_validation_bundle(
             "normalized_production_observed_history_output": production_normalization.get("output_path") if production_normalization.get("status") != "not_requested" else None,
             "synthetic_experiment_foundation": str(synthetic_foundation_path) if synthetic_foundation_path else None,
             "production_scale_profile": str(scale_profile_path) if scale_profile_path else None,
+            "txpoint10m_lakehouse_summary": str(txpoint10m_summary_path) if txpoint10m_summary_path else None,
+            "txpoint10m_scale_profile_output": str(txpoint10m_generated_profile_path) if txpoint10m_generated_profile_path else None,
             "require_scca_pass": bool(require_scca_pass),
             "require_production_readiness": bool(require_production_readiness),
             "include_auxiliary_tables": bool(include_auxiliary_tables),
@@ -296,6 +314,42 @@ def prepare_production_observed_history_for_bundle(
     )
     normalization = normalize_production_observed_history_export(normalize_source, normalize_output)
     return normalize_output, normalization
+
+
+def prepare_txpoint10m_scale_profile(
+    *,
+    production_scale_profile: Path | str | None = None,
+    txpoint10m_lakehouse_summary: Path | str | None = None,
+    txpoint10m_scale_profile_output: Path | str | None = None,
+) -> Path | None:
+    if production_scale_profile:
+        return Path(production_scale_profile).expanduser()
+    output_path = txpoint10m_generated_scale_profile_output(
+        production_scale_profile=production_scale_profile,
+        txpoint10m_lakehouse_summary=txpoint10m_lakehouse_summary,
+        txpoint10m_scale_profile_output=txpoint10m_scale_profile_output,
+    )
+    if output_path is None or not txpoint10m_lakehouse_summary:
+        return None
+
+    summary_path = Path(txpoint10m_lakehouse_summary).expanduser()
+    from scripts.txpoint10m_lakehouse_analysis import write_twm_production_scale_profile
+
+    write_twm_production_scale_profile(read_json(summary_path), output_path)
+    return output_path
+
+
+def txpoint10m_generated_scale_profile_output(
+    *,
+    production_scale_profile: Path | str | None = None,
+    txpoint10m_lakehouse_summary: Path | str | None = None,
+    txpoint10m_scale_profile_output: Path | str | None = None,
+) -> Path | None:
+    if production_scale_profile or not txpoint10m_lakehouse_summary:
+        return None
+    if txpoint10m_scale_profile_output:
+        return Path(txpoint10m_scale_profile_output).expanduser()
+    return Path(txpoint10m_lakehouse_summary).expanduser().with_name("txpoint10m_twm_production_scale_profile.json")
 
 
 def build_offline_validation_service() -> TerritoryWorldModelService:

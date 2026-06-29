@@ -695,6 +695,106 @@ async def twm_state_contract_report(request: Request):
         return JSONResponse({"error": str(exc)}, status_code=400)
 
 
+async def twm_state_snapshot_lakehouse_manifest(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    svc = get_territory_world_model_service()
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "JSON body must be an object"}, status_code=400)
+    try:
+        return JSONResponse(svc.state_snapshot_lakehouse_manifest(request.path_params["id"], body))
+    except LookupError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+
+
+async def twm_materialize_state_snapshot_lakehouse(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    svc = get_territory_world_model_service()
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "JSON body must be an object"}, status_code=400)
+    try:
+        return JSONResponse(svc.materialize_state_snapshot_lakehouse(request.path_params["id"], body))
+    except LookupError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+
+
+async def twm_state_snapshot_lakehouse_publish_plan(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    svc = get_territory_world_model_service()
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "JSON body must be an object"}, status_code=400)
+    try:
+        return JSONResponse(svc.state_snapshot_lakehouse_publish_plan(request.path_params["id"], body))
+    except LookupError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+
+
+async def twm_execute_state_snapshot_lakehouse_publish_plan(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    svc = get_territory_world_model_service()
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "JSON body must be an object"}, status_code=400)
+    try:
+        return JSONResponse(svc.execute_state_snapshot_lakehouse_publish_plan(request.path_params["id"], body))
+    except LookupError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+
+
+async def twm_state_snapshot_lakehouse_spark_submit_bundle(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    svc = get_territory_world_model_service()
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "JSON body must be an object"}, status_code=400)
+    try:
+        return JSONResponse(svc.state_snapshot_lakehouse_spark_submit_bundle(request.path_params["id"], body))
+    except LookupError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+
+
 async def twm_dynamics_backend_report(request: Request):
     user = _get_user_from_request(request)
     if not user:
@@ -809,6 +909,66 @@ async def twm_dynamics_model_registry_report(request: Request):
         return JSONResponse({"error": "JSON body must be an object"}, status_code=400)
     try:
         return JSONResponse(svc.dynamics_model_registry_report(request.path_params["id"], body))
+    except LookupError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+
+
+async def twm_activate_dynamics_model_registry_entry(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    svc = get_territory_world_model_service()
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "JSON body must be an object"}, status_code=400)
+    try:
+        return JSONResponse(svc.activate_dynamics_model_registry_entry(request.path_params["id"], body))
+    except LookupError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+
+
+async def twm_dynamics_model_registry_entries(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    svc = get_territory_world_model_service()
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "JSON body must be an object"}, status_code=400)
+    try:
+        return JSONResponse(svc.list_dynamics_model_registry_entries(request.path_params["id"], body))
+    except LookupError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+
+
+async def twm_rollback_dynamics_model_registry(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    svc = get_territory_world_model_service()
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "JSON body must be an object"}, status_code=400)
+    try:
+        return JSONResponse(svc.rollback_dynamics_model_registry(request.path_params["id"], body))
     except LookupError as exc:
         return JSONResponse({"error": str(exc)}, status_code=404)
     except Exception as exc:
@@ -978,12 +1138,20 @@ def get_territory_world_model_routes() -> list[Route]:
         Route("/api/twm/states/{id}/validation-report", endpoint=twm_validation_report, methods=["POST"]),
         Route("/api/twm/states/{id}/world-model-profile", endpoint=twm_world_model_profile, methods=["POST"]),
         Route("/api/twm/states/{id}/state-contract-report", endpoint=twm_state_contract_report, methods=["POST"]),
+        Route("/api/twm/states/{id}/state-snapshot-lakehouse-manifest", endpoint=twm_state_snapshot_lakehouse_manifest, methods=["POST"]),
+        Route("/api/twm/states/{id}/state-snapshot-lakehouse-materialize", endpoint=twm_materialize_state_snapshot_lakehouse, methods=["POST"]),
+        Route("/api/twm/states/{id}/state-snapshot-lakehouse-publish-plan", endpoint=twm_state_snapshot_lakehouse_publish_plan, methods=["POST"]),
+        Route("/api/twm/states/{id}/state-snapshot-lakehouse-publish-execute", endpoint=twm_execute_state_snapshot_lakehouse_publish_plan, methods=["POST"]),
+        Route("/api/twm/states/{id}/state-snapshot-lakehouse-spark-submit-bundle", endpoint=twm_state_snapshot_lakehouse_spark_submit_bundle, methods=["POST"]),
         Route("/api/twm/states/{id}/dynamics-backend-report", endpoint=twm_dynamics_backend_report, methods=["POST"]),
         Route("/api/twm/states/{id}/training-objective-report", endpoint=twm_training_objective_report, methods=["POST"]),
         Route("/api/twm/states/{id}/dynamics-training-examples", endpoint=twm_dynamics_training_examples, methods=["POST"]),
         Route("/api/twm/states/{id}/dynamics-readiness-report", endpoint=twm_dynamics_readiness_report, methods=["POST"]),
         Route("/api/twm/states/{id}/dynamics-evaluation-report", endpoint=twm_dynamics_evaluation_report, methods=["POST"]),
         Route("/api/twm/states/{id}/dynamics-model-registry-report", endpoint=twm_dynamics_model_registry_report, methods=["POST"]),
+        Route("/api/twm/states/{id}/dynamics-model-registry", endpoint=twm_dynamics_model_registry_entries, methods=["GET", "POST"]),
+        Route("/api/twm/states/{id}/dynamics-model-registry/activate", endpoint=twm_activate_dynamics_model_registry_entry, methods=["POST"]),
+        Route("/api/twm/states/{id}/dynamics-model-registry/rollback", endpoint=twm_rollback_dynamics_model_registry, methods=["POST"]),
         Route("/api/twm/states/{id}/fit-dynamics-candidate", endpoint=twm_fit_dynamics_candidate, methods=["POST"]),
         Route("/api/twm/states/{id}/train-dynamics-candidate", endpoint=twm_train_dynamics_candidate, methods=["POST"]),
         Route("/api/twm/states/{id}/geofm-ablation-gate", endpoint=twm_geofm_ablation_gate, methods=["POST"]),

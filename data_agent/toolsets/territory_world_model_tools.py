@@ -399,6 +399,96 @@ async def twm_state_contract_report_async(state_version_id: str, payload_json: s
     return await asyncio.to_thread(twm_state_contract_report, state_version_id, payload_json)
 
 
+def twm_state_snapshot_lakehouse_manifest(state_version_id: str, payload_json: str = "") -> str:
+    payload: dict[str, Any] = {}
+    if payload_json:
+        try:
+            parsed = json.loads(payload_json)
+            payload = parsed if isinstance(parsed, dict) else {"raw": parsed}
+        except Exception:
+            payload = {"raw": payload_json}
+    try:
+        return _json(_svc().state_snapshot_lakehouse_manifest(state_version_id, payload))
+    except Exception as exc:
+        return _json({"error": str(exc), "state_version_id": state_version_id})
+
+
+async def twm_state_snapshot_lakehouse_manifest_async(state_version_id: str, payload_json: str = "") -> str:
+    return await asyncio.to_thread(twm_state_snapshot_lakehouse_manifest, state_version_id, payload_json)
+
+
+def twm_materialize_state_snapshot_lakehouse(state_version_id: str, payload_json: str = "") -> str:
+    payload: dict[str, Any] = {}
+    if payload_json:
+        try:
+            parsed = json.loads(payload_json)
+            payload = parsed if isinstance(parsed, dict) else {"raw": parsed}
+        except Exception:
+            payload = {"raw": payload_json}
+    try:
+        return _json(_svc().materialize_state_snapshot_lakehouse(state_version_id, payload))
+    except Exception as exc:
+        return _json({"error": str(exc), "state_version_id": state_version_id})
+
+
+async def twm_materialize_state_snapshot_lakehouse_async(state_version_id: str, payload_json: str = "") -> str:
+    return await asyncio.to_thread(twm_materialize_state_snapshot_lakehouse, state_version_id, payload_json)
+
+
+def twm_state_snapshot_lakehouse_publish_plan(state_version_id: str, payload_json: str = "") -> str:
+    payload: dict[str, Any] = {}
+    if payload_json:
+        try:
+            parsed = json.loads(payload_json)
+            payload = parsed if isinstance(parsed, dict) else {"raw": parsed}
+        except Exception:
+            payload = {"raw": payload_json}
+    try:
+        return _json(_svc().state_snapshot_lakehouse_publish_plan(state_version_id, payload))
+    except Exception as exc:
+        return _json({"error": str(exc), "state_version_id": state_version_id})
+
+
+async def twm_state_snapshot_lakehouse_publish_plan_async(state_version_id: str, payload_json: str = "") -> str:
+    return await asyncio.to_thread(twm_state_snapshot_lakehouse_publish_plan, state_version_id, payload_json)
+
+
+def twm_execute_state_snapshot_lakehouse_publish_plan(state_version_id: str, payload_json: str = "") -> str:
+    payload: dict[str, Any] = {}
+    if payload_json:
+        try:
+            parsed = json.loads(payload_json)
+            payload = parsed if isinstance(parsed, dict) else {"raw": parsed}
+        except Exception:
+            payload = {"raw": payload_json}
+    try:
+        return _json(_svc().execute_state_snapshot_lakehouse_publish_plan(state_version_id, payload))
+    except Exception as exc:
+        return _json({"error": str(exc), "state_version_id": state_version_id})
+
+
+async def twm_execute_state_snapshot_lakehouse_publish_plan_async(state_version_id: str, payload_json: str = "") -> str:
+    return await asyncio.to_thread(twm_execute_state_snapshot_lakehouse_publish_plan, state_version_id, payload_json)
+
+
+def twm_state_snapshot_lakehouse_spark_submit_bundle(state_version_id: str, payload_json: str = "") -> str:
+    payload: dict[str, Any] = {}
+    if payload_json:
+        try:
+            parsed = json.loads(payload_json)
+            payload = parsed if isinstance(parsed, dict) else {"raw": parsed}
+        except Exception:
+            payload = {"raw": payload_json}
+    try:
+        return _json(_svc().state_snapshot_lakehouse_spark_submit_bundle(state_version_id, payload))
+    except Exception as exc:
+        return _json({"error": str(exc), "state_version_id": state_version_id})
+
+
+async def twm_state_snapshot_lakehouse_spark_submit_bundle_async(state_version_id: str, payload_json: str = "") -> str:
+    return await asyncio.to_thread(twm_state_snapshot_lakehouse_spark_submit_bundle, state_version_id, payload_json)
+
+
 def twm_dynamics_backend_report(state_version_id: str, payload_json: str = "") -> str:
     payload: dict[str, Any] = {}
     if payload_json:
@@ -505,6 +595,60 @@ def twm_dynamics_model_registry_report(state_version_id: str, payload_json: str 
 
 async def twm_dynamics_model_registry_report_async(state_version_id: str, payload_json: str = "") -> str:
     return await asyncio.to_thread(twm_dynamics_model_registry_report, state_version_id, payload_json)
+
+
+def twm_activate_dynamics_model_registry_entry(state_version_id: str, payload_json: str = "") -> str:
+    payload: dict[str, Any] = {}
+    if payload_json:
+        try:
+            parsed = json.loads(payload_json)
+            payload = parsed if isinstance(parsed, dict) else {"raw": parsed}
+        except Exception:
+            payload = {"raw": payload_json}
+    try:
+        return _json(_svc().activate_dynamics_model_registry_entry(state_version_id, payload))
+    except Exception as exc:
+        return _json({"error": str(exc), "state_version_id": state_version_id})
+
+
+async def twm_activate_dynamics_model_registry_entry_async(state_version_id: str, payload_json: str = "") -> str:
+    return await asyncio.to_thread(twm_activate_dynamics_model_registry_entry, state_version_id, payload_json)
+
+
+def twm_list_dynamics_model_registry_entries(state_version_id: str = "", payload_json: str = "") -> str:
+    payload: dict[str, Any] = {}
+    if payload_json:
+        try:
+            parsed = json.loads(payload_json)
+            payload = parsed if isinstance(parsed, dict) else {"raw": parsed}
+        except Exception:
+            payload = {"raw": payload_json}
+    try:
+        return _json(_svc().list_dynamics_model_registry_entries(state_version_id or None, payload))
+    except Exception as exc:
+        return _json({"error": str(exc), "state_version_id": state_version_id})
+
+
+async def twm_list_dynamics_model_registry_entries_async(state_version_id: str = "", payload_json: str = "") -> str:
+    return await asyncio.to_thread(twm_list_dynamics_model_registry_entries, state_version_id, payload_json)
+
+
+def twm_rollback_dynamics_model_registry(state_version_id: str, payload_json: str = "") -> str:
+    payload: dict[str, Any] = {}
+    if payload_json:
+        try:
+            parsed = json.loads(payload_json)
+            payload = parsed if isinstance(parsed, dict) else {"raw": parsed}
+        except Exception:
+            payload = {"raw": payload_json}
+    try:
+        return _json(_svc().rollback_dynamics_model_registry(state_version_id, payload))
+    except Exception as exc:
+        return _json({"error": str(exc), "state_version_id": state_version_id})
+
+
+async def twm_rollback_dynamics_model_registry_async(state_version_id: str, payload_json: str = "") -> str:
+    return await asyncio.to_thread(twm_rollback_dynamics_model_registry, state_version_id, payload_json)
 
 
 def twm_fit_dynamics_candidate(state_version_id: str, payload_json: str = "") -> str:
@@ -649,12 +793,20 @@ _SYNC_FUNCS = [
     twm_validation_report,
     twm_world_model_profile,
     twm_state_contract_report,
+    twm_state_snapshot_lakehouse_manifest,
+    twm_materialize_state_snapshot_lakehouse,
+    twm_state_snapshot_lakehouse_publish_plan,
+    twm_execute_state_snapshot_lakehouse_publish_plan,
+    twm_state_snapshot_lakehouse_spark_submit_bundle,
     twm_dynamics_backend_report,
     twm_training_objective_report,
     twm_dynamics_training_examples,
     twm_dynamics_readiness_report,
     twm_dynamics_evaluation_report,
     twm_dynamics_model_registry_report,
+    twm_activate_dynamics_model_registry_entry,
+    twm_list_dynamics_model_registry_entries,
+    twm_rollback_dynamics_model_registry,
     twm_fit_dynamics_candidate,
     twm_train_dynamics_candidate,
     twm_geofm_ablation_gate,
@@ -679,12 +831,20 @@ _LONG_RUNNING_FUNCS = [
     twm_validation_report_async,
     twm_world_model_profile_async,
     twm_state_contract_report_async,
+    twm_state_snapshot_lakehouse_manifest_async,
+    twm_materialize_state_snapshot_lakehouse_async,
+    twm_state_snapshot_lakehouse_publish_plan_async,
+    twm_execute_state_snapshot_lakehouse_publish_plan_async,
+    twm_state_snapshot_lakehouse_spark_submit_bundle_async,
     twm_dynamics_backend_report_async,
     twm_training_objective_report_async,
     twm_dynamics_training_examples_async,
     twm_dynamics_readiness_report_async,
     twm_dynamics_evaluation_report_async,
     twm_dynamics_model_registry_report_async,
+    twm_activate_dynamics_model_registry_entry_async,
+    twm_list_dynamics_model_registry_entries_async,
+    twm_rollback_dynamics_model_registry_async,
     twm_fit_dynamics_candidate_async,
     twm_train_dynamics_candidate_async,
     twm_geofm_ablation_gate_async,

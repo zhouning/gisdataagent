@@ -572,9 +572,33 @@ class TwmTrainDynamicsReport:
     predictions: dict[str, Any] = field(default_factory=dict)
     candidate_report: dict[str, Any] = field(default_factory=dict)
     backend_report: dict[str, Any] = field(default_factory=dict)
+    registry_report: dict[str, Any] = field(default_factory=dict)
     evidence_gate: dict[str, Any] = field(default_factory=dict)
     recommendations: list[str] = field(default_factory=list)
     created_at: str = field(default_factory=now_utc_iso)
+
+    def to_dict(self) -> dict[str, Any]:
+        return jsonable(self)
+
+
+@dataclass
+class TwmDynamicsModelRegistryEntry:
+    id: str = field(default_factory=_uuid)
+    state_version_id: str = ""
+    project_id: str = ""
+    registry_key: str = ""
+    model_name: str = ""
+    model_version: str = ""
+    model_family: str = ""
+    status: str = "candidate"
+    promotion_decision: str = "review_only_not_promoted"
+    registry_report: dict[str, Any] = field(default_factory=dict)
+    lineage: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
+    previous_active_registry_key: str = ""
+    activated_at: str = ""
+    created_at: str = field(default_factory=now_utc_iso)
+    updated_at: str = field(default_factory=now_utc_iso)
 
     def to_dict(self) -> dict[str, Any]:
         return jsonable(self)

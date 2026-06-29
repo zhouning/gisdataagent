@@ -1,0 +1,90 @@
+﻿data_object_id,data_object_name,field_name,field_type,required_level,description,twm_usage
+D01,现状地块/图斑与地类空间底座,parcel_id,string,必需,稳定空间单元 ID，可映射至图斑编号/地块编号。,构建 parcel/block/township/county 层级状态；计算面积、邻接、控制线冲突、规划适宜性；为 future_latent_state 和规划方案提供空间承载单元。
+D01,现状地块/图斑与地类空间底座,geometry,geometry,内网必需,面几何；对外材料不导出原始几何。,构建 parcel/block/township/county 层级状态；计算面积、邻接、控制线冲突、规划适宜性；为 future_latent_state 和规划方案提供空间承载单元。
+D01,现状地块/图斑与地类空间底座,area_m2,number,必需,权威面积或可复算面积。,构建 parcel/block/township/county 层级状态；计算面积、邻接、控制线冲突、规划适宜性；为 future_latent_state 和规划方案提供空间承载单元。
+D01,现状地块/图斑与地类空间底座,land_use_code,string,必需,现状地类/用途编码。,构建 parcel/block/township/county 层级状态；计算面积、邻接、控制线冲突、规划适宜性；为 future_latent_state 和规划方案提供空间承载单元。
+D01,现状地块/图斑与地类空间底座,admin_code,string,必需,行政区代码。,构建 parcel/block/township/county 层级状态；计算面积、邻接、控制线冲突、规划适宜性；为 future_latent_state 和规划方案提供空间承载单元。
+D01,现状地块/图斑与地类空间底座,snapshot_date,date,必需,数据时相。,构建 parcel/block/township/county 层级状态；计算面积、邻接、控制线冲突、规划适宜性；为 future_latent_state 和规划方案提供空间承载单元。
+D01,现状地块/图斑与地类空间底座,source_version,string,必需,源数据版本或批次。,构建 parcel/block/township/county 层级状态；计算面积、邻接、控制线冲突、规划适宜性；为 future_latent_state 和规划方案提供空间承载单元。
+D01,现状地块/图斑与地类空间底座,crs,string,必需,坐标参考系统。,构建 parcel/block/township/county 层级状态；计算面积、邻接、控制线冲突、规划适宜性；为 future_latent_state 和规划方案提供空间承载单元。
+D02,法定控制线/规划管控图层,control_id,string,必需,控制线/管控单元 ID。,判断永久基本农田、生态保护红线、城镇开发边界、用途管制分区等冲突；生成 rule_evaluation、hard_blocks 和 required_reviews。
+D02,法定控制线/规划管控图层,control_type,enum,必需,pbf/ecological_redline/urban_boundary/planning_zone/use_control 等。,判断永久基本农田、生态保护红线、城镇开发边界、用途管制分区等冲突；生成 rule_evaluation、hard_blocks 和 required_reviews。
+D02,法定控制线/规划管控图层,geometry,geometry,内网必需,控制线或管控区几何。,判断永久基本农田、生态保护红线、城镇开发边界、用途管制分区等冲突；生成 rule_evaluation、hard_blocks 和 required_reviews。
+D02,法定控制线/规划管控图层,severity,enum,必需,hard_block/requires_review/info。,判断永久基本农田、生态保护红线、城镇开发边界、用途管制分区等冲突；生成 rule_evaluation、hard_blocks 和 required_reviews。
+D02,法定控制线/规划管控图层,rule_code,string,必需,适用规则代码。,判断永久基本农田、生态保护红线、城镇开发边界、用途管制分区等冲突；生成 rule_evaluation、hard_blocks 和 required_reviews。
+D02,法定控制线/规划管控图层,effective_date,date,必需,生效日期。,判断永久基本农田、生态保护红线、城镇开发边界、用途管制分区等冲突；生成 rule_evaluation、hard_blocks 和 required_reviews。
+D02,法定控制线/规划管控图层,version,string,必需,管控边界版本。,判断永久基本农田、生态保护红线、城镇开发边界、用途管制分区等冲突；生成 rule_evaluation、hard_blocks 和 required_reviews。
+D03,项目/审批/审查/复核业务对象,project_id,string,推荐,项目/事项编号；没有项目概念时可为空。,构建 project、approval、review_task 对象；连接空间单元、审批状态、审查任务、规则命中和证据项。
+D03,项目/审批/审查/复核业务对象,approval_id,string,必需,审批件/案卷/事项编号。,构建 project、approval、review_task 对象；连接空间单元、审批状态、审查任务、规则命中和证据项。
+D03,项目/审批/审查/复核业务对象,unit_id,string,必需,可观测样本 ID，可映射到项目、审批件、地块或图斑。,构建 project、approval、review_task 对象；连接空间单元、审批状态、审查任务、规则命中和证据项。
+D03,项目/审批/审查/复核业务对象,approval_status,enum,必需,approved/in_review/rejected/returned/approved_with_conditions 等。,构建 project、approval、review_task 对象；连接空间单元、审批状态、审查任务、规则命中和证据项。
+D03,项目/审批/审查/复核业务对象,decision_date,date,必需,审批或处置时间。,构建 project、approval、review_task 对象；连接空间单元、审批状态、审查任务、规则命中和证据项。
+D03,项目/审批/审查/复核业务对象,approved_area_m2,number,推荐,批准面积。,构建 project、approval、review_task 对象；连接空间单元、审批状态、审查任务、规则命中和证据项。
+D03,项目/审批/审查/复核业务对象,review_task_id,string,推荐,复核/补正任务编号。,构建 project、approval、review_task 对象；连接空间单元、审批状态、审查任务、规则命中和证据项。
+D03,项目/审批/审查/复核业务对象,review_result,string,推荐,复核结论。,构建 project、approval、review_task 对象；连接空间单元、审批状态、审查任务、规则命中和证据项。
+D04,生产观察历史 observed_history,unit_id,string,必需,样本 ID。,生产 observed-history preflight、因果校准、holdout 验证、action-conditioned dynamics 训练/评估、claim ladder 升级。
+D04,生产观察历史 observed_history,approval_id,string,推荐,审批件 ID。,生产 observed-history preflight、因果校准、holdout 验证、action-conditioned dynamics 训练/评估、claim ladder 升级。
+D04,生产观察历史 observed_history,approval_status,enum,必需,处理/决策状态。,生产 observed-history preflight、因果校准、holdout 验证、action-conditioned dynamics 训练/评估、claim ladder 升级。
+D04,生产观察历史 observed_history,outcome,number,必需,业务结果或效用代理。,生产 observed-history preflight、因果校准、holdout 验证、action-conditioned dynamics 训练/评估、claim ladder 升级。
+D04,生产观察历史 observed_history,area_m2,number,必需,面积协变量。,生产 observed-history preflight、因果校准、holdout 验证、action-conditioned dynamics 训练/评估、claim ladder 升级。
+D04,生产观察历史 observed_history,cluster,string,推荐,空间簇/行政区/分组。,生产 observed-history preflight、因果校准、holdout 验证、action-conditioned dynamics 训练/评估、claim ladder 升级。
+D04,生产观察历史 observed_history,neighbors,string,推荐,邻接样本 ID，分号分隔。,生产 observed-history preflight、因果校准、holdout 验证、action-conditioned dynamics 训练/评估、claim ladder 升级。
+D04,生产观察历史 observed_history,x,number,条件必需,代表点经度或投影 X。,生产 observed-history preflight、因果校准、holdout 验证、action-conditioned dynamics 训练/评估、claim ladder 升级。
+D04,生产观察历史 observed_history,y,number,条件必需,代表点纬度或投影 Y。,生产 observed-history preflight、因果校准、holdout 验证、action-conditioned dynamics 训练/评估、claim ladder 升级。
+D04,生产观察历史 observed_history,quality_score,number,推荐,质量/适宜性协变量。,生产 observed-history preflight、因果校准、holdout 验证、action-conditioned dynamics 训练/评估、claim ladder 升级。
+D04,生产观察历史 observed_history,baseline_risk_score,number,推荐,决策前风险。,生产 observed-history preflight、因果校准、holdout 验证、action-conditioned dynamics 训练/评估、claim ladder 升级。
+D04,生产观察历史 observed_history,risk_score,number,推荐,审查时风险。,生产 observed-history preflight、因果校准、holdout 验证、action-conditioned dynamics 训练/评估、claim ladder 升级。
+D04,生产观察历史 observed_history,split,enum,必需,train/holdout。,生产 observed-history preflight、因果校准、holdout 验证、action-conditioned dynamics 训练/评估、claim ladder 升级。
+D04,生产观察历史 observed_history,period,string,必需,时期。,生产 observed-history preflight、因果校准、holdout 验证、action-conditioned dynamics 训练/评估、claim ladder 升级。
+D04,生产观察历史 observed_history,synthetic,boolean,必需,生产数据必须 false。,生产 observed-history preflight、因果校准、holdout 验证、action-conditioned dynamics 训练/评估、claim ladder 升级。
+D04,生产观察历史 observed_history,not_for_production,boolean,必需,生产数据必须 false。,生产 observed-history preflight、因果校准、holdout 验证、action-conditioned dynamics 训练/评估、claim ladder 升级。
+D05,政策/动作可行性历史 policy_history,unit_id,string,必需,关联 observed_history 的样本 ID。,校验 allowed/blocked 标签、region_policy、region_action_policy、mixed-risk allowed policy 覆盖，避免模型把高风险动作一律误判为禁止。
+D05,政策/动作可行性历史 policy_history,action_type,enum,必需,protect/restore/approve_with_conditions/defer_review/reject 等。,校验 allowed/blocked 标签、region_policy、region_action_policy、mixed-risk allowed policy 覆盖，避免模型把高风险动作一律误判为禁止。
+D05,政策/动作可行性历史 policy_history,action_mask_policy,string,必需,政策/规则/动作掩码标签。,校验 allowed/blocked 标签、region_policy、region_action_policy、mixed-risk allowed policy 覆盖，避免模型把高风险动作一律误判为禁止。
+D05,政策/动作可行性历史 policy_history,action_mask_allowed,boolean,必需,该动作在当时政策下是否允许。,校验 allowed/blocked 标签、region_policy、region_action_policy、mixed-risk allowed policy 覆盖，避免模型把高风险动作一律误判为禁止。
+D05,政策/动作可行性历史 policy_history,action_mask_required_reviews,string,推荐,需要的复核事项。,校验 allowed/blocked 标签、region_policy、region_action_policy、mixed-risk allowed policy 覆盖，避免模型把高风险动作一律误判为禁止。
+D05,政策/动作可行性历史 policy_history,action_mask_hard_blocks,string,推荐,硬阻断原因。,校验 allowed/blocked 标签、region_policy、region_action_policy、mixed-risk allowed policy 覆盖，避免模型把高风险动作一律误判为禁止。
+D05,政策/动作可行性历史 policy_history,region_code,string,必需,区域代码。,校验 allowed/blocked 标签、region_policy、region_action_policy、mixed-risk allowed policy 覆盖，避免模型把高风险动作一律误判为禁止。
+D05,政策/动作可行性历史 policy_history,period,string,必需,时期。,校验 allowed/blocked 标签、region_policy、region_action_policy、mixed-risk allowed policy 覆盖，避免模型把高风险动作一律误判为禁止。
+D05,政策/动作可行性历史 policy_history,policy_effective_date,date,必需,政策生效日期。,校验 allowed/blocked 标签、region_policy、region_action_policy、mixed-risk allowed policy 覆盖，避免模型把高风险动作一律误判为禁止。
+D05,政策/动作可行性历史 policy_history,policy_version,string,必需,政策版本。,校验 allowed/blocked 标签、region_policy、region_action_policy、mixed-risk allowed policy 覆盖，避免模型把高风险动作一律误判为禁止。
+D05,政策/动作可行性历史 policy_history,split,enum,必需,train/holdout。,校验 allowed/blocked 标签、region_policy、region_action_policy、mixed-risk allowed policy 覆盖，避免模型把高风险动作一律误判为禁止。
+D06,年度变更/时序快照,unit_id,string,必需,空间单元或样本 ID。,构建 current/observed_next latent，训练 transition_delta，做 temporal holdout 和多期回放。
+D06,年度变更/时序快照,from_period,string,必需,起始时期。,构建 current/observed_next latent，训练 transition_delta，做 temporal holdout 和多期回放。
+D06,年度变更/时序快照,to_period,string,必需,目标时期。,构建 current/observed_next latent，训练 transition_delta，做 temporal holdout 和多期回放。
+D06,年度变更/时序快照,from_land_use_code,string,必需,变化前地类。,构建 current/observed_next latent，训练 transition_delta，做 temporal holdout 和多期回放。
+D06,年度变更/时序快照,to_land_use_code,string,必需,变化后地类。,构建 current/observed_next latent，训练 transition_delta，做 temporal holdout 和多期回放。
+D06,年度变更/时序快照,change_area_m2,number,必需,变化面积。,构建 current/observed_next latent，训练 transition_delta，做 temporal holdout 和多期回放。
+D06,年度变更/时序快照,change_reason,string,推荐,变化原因或确认依据。,构建 current/observed_next latent，训练 transition_delta，做 temporal holdout 和多期回放。
+D06,年度变更/时序快照,source_version,string,必需,数据版本。,构建 current/observed_next latent，训练 transition_delta，做 temporal holdout 和多期回放。
+D07,证据项目录 evidence_item,evidence_id,string,必需,证据项 ID。,连接影像、照片、现场核查、文书附件、规则命中依据和人工复核结论。
+D07,证据项目录 evidence_item,unit_id,string,必需,关联样本/项目/地块。,连接影像、照片、现场核查、文书附件、规则命中依据和人工复核结论。
+D07,证据项目录 evidence_item,evidence_type,enum,必需,satellite_image/photo/document/field_check/rule_hit。,连接影像、照片、现场核查、文书附件、规则命中依据和人工复核结论。
+D07,证据项目录 evidence_item,capture_time,datetime,推荐,采集时间。,连接影像、照片、现场核查、文书附件、规则命中依据和人工复核结论。
+D07,证据项目录 evidence_item,source_system,string,必需,来源系统。,连接影像、照片、现场核查、文书附件、规则命中依据和人工复核结论。
+D07,证据项目录 evidence_item,quality_score,number,推荐,质量评分。,连接影像、照片、现场核查、文书附件、规则命中依据和人工复核结论。
+D07,证据项目录 evidence_item,uri_or_reference,string,内网必需,内网引用路径或档案号；跨环境需脱敏。,连接影像、照片、现场核查、文书附件、规则命中依据和人工复核结论。
+D08,空间关系与拓扑关系,relation_id,string,必需,关系 ID。,支撑 relation-aware graph dynamics、spatial causal diagnostics、邻接暴露、控制线重叠和项目-地块关联。
+D08,空间关系与拓扑关系,source_id,string,必需,源对象。,支撑 relation-aware graph dynamics、spatial causal diagnostics、邻接暴露、控制线重叠和项目-地块关联。
+D08,空间关系与拓扑关系,target_id,string,必需,目标对象。,支撑 relation-aware graph dynamics、spatial causal diagnostics、邻接暴露、控制线重叠和项目-地块关联。
+D08,空间关系与拓扑关系,relation_type,enum,必需,adjacent/contains/intersects/overlaps/buffered_by。,支撑 relation-aware graph dynamics、spatial causal diagnostics、邻接暴露、控制线重叠和项目-地块关联。
+D08,空间关系与拓扑关系,overlap_area_m2,number,条件必需,相交/重叠面积。,支撑 relation-aware graph dynamics、spatial causal diagnostics、邻接暴露、控制线重叠和项目-地块关联。
+D08,空间关系与拓扑关系,distance_m,number,条件必需,距离。,支撑 relation-aware graph dynamics、spatial causal diagnostics、邻接暴露、控制线重叠和项目-地块关联。
+D08,空间关系与拓扑关系,source_version,string,推荐,计算批次或版本。,支撑 relation-aware graph dynamics、spatial causal diagnostics、邻接暴露、控制线重叠和项目-地块关联。
+D09,生产规模画像 scale_profile,schema,string,必需,territory_world_model.production_scale_profile.v1。,production_scale_readiness gate；判断是否需要 MinIO/Iceberg/Sedona/GeoParquet/Trino 等 lakehouse 路径和抽样/切片策略。
+D09,生产规模画像 scale_profile,example_only,boolean,必需,真实画像必须 false。,production_scale_readiness gate；判断是否需要 MinIO/Iceberg/Sedona/GeoParquet/Trino 等 lakehouse 路径和抽样/切片策略。
+D09,生产规模画像 scale_profile,not_for_production,boolean,必需,真实画像必须 false。,production_scale_readiness gate；判断是否需要 MinIO/Iceberg/Sedona/GeoParquet/Trino 等 lakehouse 路径和抽样/切片策略。
+D09,生产规模画像 scale_profile,layers[].name,string,必需,脱敏图层别名。,production_scale_readiness gate；判断是否需要 MinIO/Iceberg/Sedona/GeoParquet/Trino 等 lakehouse 路径和抽样/切片策略。
+D09,生产规模画像 scale_profile,layers[].row_count,integer,必需,行数/对象数。,production_scale_readiness gate；判断是否需要 MinIO/Iceberg/Sedona/GeoParquet/Trino 等 lakehouse 路径和抽样/切片策略。
+D09,生产规模画像 scale_profile,layers[].storage_format,string,必需,parquet/geoparquet/iceberg/delta/hudi/orc 等。,production_scale_readiness gate；判断是否需要 MinIO/Iceberg/Sedona/GeoParquet/Trino 等 lakehouse 路径和抽样/切片策略。
+D09,生产规模画像 scale_profile,layers[].partition_columns,array,必需,分区字段。,production_scale_readiness gate；判断是否需要 MinIO/Iceberg/Sedona/GeoParquet/Trino 等 lakehouse 路径和抽样/切片策略。
+D09,生产规模画像 scale_profile,layers[].spatial_index,string,必需,s2/h3/hilbert/quadkey/grid 等。,production_scale_readiness gate；判断是否需要 MinIO/Iceberg/Sedona/GeoParquet/Trino 等 lakehouse 路径和抽样/切片策略。
+D09,生产规模画像 scale_profile,compute.distributed,boolean,千万级必需,是否分布式计算。,production_scale_readiness gate；判断是否需要 MinIO/Iceberg/Sedona/GeoParquet/Trino 等 lakehouse 路径和抽样/切片策略。
+D10,数据血缘、版本和脱敏说明,dataset_id,string,必需,数据集 ID。,支撑 audit report、human review、模型版本和数据版本对应关系。
+D10,数据血缘、版本和脱敏说明,source_system,string,必需,源系统。,支撑 audit report、human review、模型版本和数据版本对应关系。
+D10,数据血缘、版本和脱敏说明,source_version,string,必需,源版本。,支撑 audit report、human review、模型版本和数据版本对应关系。
+D10,数据血缘、版本和脱敏说明,extract_time,datetime,必需,抽取时间。,支撑 audit report、human review、模型版本和数据版本对应关系。
+D10,数据血缘、版本和脱敏说明,update_frequency,string,推荐,刷新频率。,支撑 audit report、human review、模型版本和数据版本对应关系。
+D10,数据血缘、版本和脱敏说明,security_level,string,必需,安全/保密等级。,支撑 audit report、human review、模型版本和数据版本对应关系。
+D10,数据血缘、版本和脱敏说明,desensitization_method,string,必需,脱敏方式。,支撑 audit report、human review、模型版本和数据版本对应关系。
+D10,数据血缘、版本和脱敏说明,owner_department,string,推荐,责任部门或角色。,支撑 audit report、human review、模型版本和数据版本对应关系。

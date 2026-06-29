@@ -94,11 +94,17 @@ engineering debt and claim-boundary addendum:
   a 10K+ line facade. The next structural implementation phase should split it
   into state, dynamics, calibration, planner, evidence/audit and production
   readiness services before adding another large TWM feature surface.
-- Confirmed and adopted: the neural trainable backends preserve a
-  multi-head contract, but the `future_latent_state` neural target is currently
-  a compact area-level proxy (`future_latent_state.area_total`), not a full
-  parcel/state latent representation. Until this is upgraded, external wording
-  must say compact future-state indicators rather than full latent state.
+- Updated: the neural trainable backends now preserve a multi-head contract with
+  a trainable `future_latent_state` v2 vector head decoded into area,
+  feature-count, land-space-type and transition-delta summaries. This is no
+  longer an area-total compatibility proxy, but it still is not full
+  parcel-geometry generation; external wording must keep that boundary explicit.
+- Continued: dynamics evaluation now reports
+  `target_head_metrics.future_latent_state.latent_v2_quality`, checking whether
+  predictions are true v2 latents, include decoded state, transition delta,
+  latent vector, representation boundary, and target-dimension coverage. This
+  turns the v2 latent head into an auditable quality surface rather than only a
+  prediction payload.
 - Confirmed and adopted: local causal calibration remains observational. Code
   now exposes this as first-class `identification_strength="observational"` on
   `causal_calibration_report`, not only as a provenance note. SCCA evidence is
@@ -3803,6 +3809,41 @@ Important local-data note:
   downloader and benchmark reports are committed; use
   `scripts/download_twm_gee_dynamic_world_benchmark.py` with GEE project
   `ee-zn19860115` if the raster stack must be recreated.
+
+## TxPoint10M Lakehouse Scale Evidence 2026-06-29
+
+Completed continuation:
+
+- `scripts/txpoint10m_lakehouse_analysis.py` can convert the MinIO/Iceberg/Sedona
+  TxPoint10M summary into `territory_world_model.production_scale_profile.v1`.
+- `scripts/run_twm_validation_bundle.py` now accepts
+  `--txpoint10m-lakehouse-summary` and optional
+  `--txpoint10m-scale-profile-output`.
+- If `--production-scale-profile` is provided, it remains the explicit
+  override. Otherwise, the TxPoint10M summary is converted into
+  `txpoint10m_twm_production_scale_profile.json` and used by
+  `build_production_scale_readiness`.
+- Regression coverage:
+  `data_agent/test_twm_data_foundation_validation.py::test_twm_validation_bundle_prepares_scale_profile_from_txpoint10m_summary`.
+
+Current local evidence:
+
+- Existing summary:
+  `outputs/txpoint10m_lakehouse/txpoint10m_summary.json`
+- Existing map:
+  `outputs/txpoint10m_lakehouse/txpoint10m_leaflet_map.html`
+- Observed scale: 10,000,000 transaction rows, 6,578 0.25-degree grid cells.
+- Observed benchmark wall time in the summary: 36.31 seconds.
+- TWM readiness from generated profile: `status=pass`,
+  `scale_tier=ten_million_scale`, `missing=[]`.
+
+Boundary:
+
+- This is a real ten-million-row lakehouse analytics readiness gate for TWM's
+  production-scale data path.
+- It proves MinIO/Iceberg/Sedona storage and spatial aggregation can supply
+  TWM scale metadata; it does not prove national cluster capacity, model
+  accuracy, simulator quality or planning optimality.
 
 Recommended next TWM tasks:
 

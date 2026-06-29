@@ -1,0 +1,2 @@
+﻿relation_id,source_id,target_id,relation_type,overlap_area_m2,distance_m,source_version,synthetic,not_for_production
+REL-001,PRJ-001,PARCEL-001,PROJECT_OVERLAPS_PARCEL,1200,,REL-2025-A,false,false

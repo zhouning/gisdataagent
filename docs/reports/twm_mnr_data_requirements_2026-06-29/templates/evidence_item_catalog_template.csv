@@ -1,0 +1,2 @@
+﻿evidence_id,unit_id,project_id,approval_id,evidence_type,capture_time,source_system,quality_score,uri_or_reference,export_policy,synthetic,not_for_production
+EVD-001,UNIT-001,PRJ-001,APR-001,satellite_image,2025-05-01T10:00:00,inner_network_image_catalog,0.92,inner-network-reference-only,metadata_only_for_cross_environment,false,false
