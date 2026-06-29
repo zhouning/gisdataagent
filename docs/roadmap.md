@@ -1,6 +1,6 @@
 # GIS Data Agent — Roadmap
 
-**Last updated**: 2026-06-27 &nbsp;|&nbsp; **Current version**: v25.21-twm-demo &nbsp;|&nbsp; **Next**: TWM 权威数据接入试点 + CRS/瓦片化治理 + Self-Evolution regression gate + Standards P5 remaining &nbsp;|&nbsp; **ADK**: v1.27.2
+**Last updated**: 2026-06-30 &nbsp;|&nbsp; **Current version**: v25.21-twm-demo &nbsp;|&nbsp; **Next**: TWM 算法模型路线刷新 + 权威数据接入试点 + CRS/瓦片化治理 + Self-Evolution regression gate + Standards P5 remaining &nbsp;|&nbsp; **ADK**: v1.27.2
 
 > 参照标杆：SeerAI Geodesic、OpenClaw、Frontier、CoWork、**DeerFlow v2.0（ByteDance 通用 Agent Harness）**、**SIGMOD 2026 Data Agent Levels（L0-L5 自主性分级）**、**AgentArts（华为云企业级智能体平台）**、**Datus.ai（上下文工程 + 反馈飞轮）**、**Hermes Agent（通用 Agent Runtime）**、**Atlan / Alation / Ataccama（Agentic Governance + Active Metadata）**、**DataWorks / Dataphin（数据开发治理一体化 + Agent）**、**袋鼠云（多模态数据中台）**
 >
@@ -42,12 +42,13 @@
 
 下一阶段 TWM roadmap：
 
-- [ ] **1 周内：演示冻结与人工验收** — 按演示脚本完成手工确认，冻结主演示数据包，保留地图截图和测试报告；任何地图范围不一致均阻断演示。
-- [ ] **1 个月内：数据基础产品化** — 增加 CRS 检测/转换提示、图层目录、字段浏览、图层开关、透明度、属性查看、lineage 和数据 readiness 报告。
-- [ ] **1 个月内：规模化地图加载路线** — 将 full GeoJSON 演示路径升级为分层加载、向量瓦片或服务端分块预览，避免全国级数据直接走浏览器全量 GeoJSON。
-- [ ] **3 个月内：真实试点验证** — 接入至少一个真实或脱敏试点区域的权威边界、审批/复核/执法/后续变化历史，建立同案 baseline 和跨期/跨区 holdout。
-- [ ] **3 个月内：TWM-native dynamics/suitability learner** — 在保留需求约束、规则解释和证据门控的前提下，训练更强的 action-conditioned dynamics 或 suitability learner，并与 FLUS/GeoSOS、人工 GIS 和规则引擎同案比较。
-- [ ] **6-12 个月：生产化治理闭环** — 完成 TWM 服务拆分、模型注册/版本固定/回滚、权限脱敏、内网部署、审计链和全国级多尺度状态图。
+- [ ] **算法模型路线刷新** — 新增 [TWM Algorithm Model Roadmap](twm-algorithm-model-roadmap-2026-06-30.md)，把后续优化从“演示闭环”转向“生产证据门、状态/action/next-state 契约、action-conditioned dynamics、planner-coupled evaluation、因果/GeoFM gate、模型注册与 L3 promotion gate”。
+- [ ] **2-4 周：Production evidence gate** — 接入至少一个真实或脱敏试点包，补齐审批/复核/执法/后续变化历史、政策动作标签、action feasibility、same-case baseline 和 MREP trace；无生产 observed history 时阻断模型 promotion。
+- [ ] **2-6 周：State/action/next-state contract** — 固化 `future_latent_state` v2、时间/空间 holdout、数据集 hash、规则/状态/模型版本和失败分类，避免只看 total-area 的虚假通过。
+- [ ] **1-3 个月：Dynamics model optimization** — 在同一数据契约下比较 MLP、hierarchical graph、spatiotemporal transformer、TWM-native suitability learner 与 Markov/FLUS/GeoSOS baseline；按 metric-specific 结果表述，不做 blanket superiority claim。
+- [ ] **2-4 个月：Planner-coupled evaluation** — 用 legal-feasible top-k、blocked-action recall、planner regret、ranking lift、review workload 和 selected-plan audit 衡量 TWM 是否真的改进规划/审查决策。
+- [ ] **3-6 个月：Causal/evidence/GeoFM upgrade** — 将 causal calibration 默认标注为 observational，只有在识别设计、空间诊断、SCCA 外部证据和 GeoFM B0/B1/D2/D3/D4 gate 通过时才升级相关 claim。
+- [ ] **6-12 个月：Production promotion + L3 path** — 完成服务拆分、模型注册/版本固定/回滚、replay/regression gate、权限脱敏、内网部署、lakehouse/瓦片化和全国级多尺度状态图；L3 self-evolution 保持 review-only 直到真实反馈闭环通过审计。
 
 ---
 
