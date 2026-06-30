@@ -2780,6 +2780,149 @@ def test_dynamics_readiness_report_strict_production_gate_cache_keys_preflight_p
     assert passing["gate_results"]["production_observed_history"]["missing"] == []
 
 
+def test_dynamics_readiness_report_blocks_strict_same_case_baseline_when_missing():
+    svc = _build_service()
+    project, state_version = _save_lightweight_twm_state(svc)
+    dataset = _minimal_observed_dynamics_dataset(state_version.id, project.id)
+
+    report = svc.dynamics_readiness_report(
+        state_version.id,
+        {
+            "dataset": dataset,
+            "require_same_case_baseline": True,
+        },
+    )
+
+    gate = report["gate_results"]["same_case_baseline"]
+    assert report["status"] == "blocked"
+    assert gate["required"] is True
+    assert gate["passed"] is False
+    assert gate["status"] == "missing"
+    assert "same_case_baseline" in report["gate_results"]["summary"]["blocked_gates"]
+
+
+def test_dynamics_readiness_report_passes_strict_same_case_baseline_with_validation_report():
+    svc = _build_service()
+    project, state_version = _save_lightweight_twm_state(svc)
+    dataset = _minimal_observed_dynamics_dataset(state_version.id, project.id)
+    baseline_report = svc.baseline_evidence_pipeline_report(
+        {
+            "claim_id": "C1_state_conflict_recall",
+            "baseline_id": "manual_gis_overlay_checklist",
+            "twm_case_output_path": "data_agent/test_data/twm_baseline_metrics/twm_case_outputs.csv",
+            "baseline_case_output_path": "data_agent/test_data/twm_baseline_metrics/manual_overlay_case_outputs.csv",
+        }
+    )
+
+    report = svc.dynamics_readiness_report(
+        state_version.id,
+        {
+            "dataset": dataset,
+            "require_same_case_baseline": True,
+            "baseline_evidence_pipeline_report": baseline_report,
+        },
+    )
+
+    gate = report["gate_results"]["same_case_baseline"]
+    assert gate["passed"] is True
+    assert gate["status"] == "pass"
+    assert gate["overlap_count"] == 10
+    assert gate["coverage_ratio"] == 1.0
+    assert report["status"] == "pass"
+
+
+def test_dynamics_readiness_report_cache_keys_strict_same_case_baseline_inputs():
+    svc = _build_service()
+    project, state_version = _save_lightweight_twm_state(svc)
+    dataset = _minimal_observed_dynamics_dataset(state_version.id, project.id)
+
+    non_strict = svc.dynamics_readiness_report(state_version.id, {"dataset": dataset})
+    strict_missing = svc.dynamics_readiness_report(
+        state_version.id,
+        {
+            "dataset": dataset,
+            "require_same_case_baseline": True,
+        },
+    )
+
+    assert non_strict["status"] == "pass"
+    assert strict_missing["status"] == "blocked"
+    assert non_strict["gate_results"]["same_case_baseline"]["status"] == "not_required"
+    assert strict_missing["gate_results"]["same_case_baseline"]["status"] == "missing"
+
+
+def test_dynamics_readiness_report_strict_same_case_baseline_cache_keys_validation_payload():
+    svc = _build_service()
+    project, state_version = _save_lightweight_twm_state(svc)
+    dataset = _minimal_observed_dynamics_dataset(state_version.id, project.id)
+    baseline_report = svc.baseline_evidence_pipeline_report(
+        {
+            "claim_id": "C1_state_conflict_recall",
+            "baseline_id": "manual_gis_overlay_checklist",
+            "twm_case_output_path": "data_agent/test_data/twm_baseline_metrics/twm_case_outputs.csv",
+            "baseline_case_output_path": "data_agent/test_data/twm_baseline_metrics/manual_overlay_case_outputs.csv",
+        }
+    )
+
+    missing = svc.dynamics_readiness_report(
+        state_version.id,
+        {
+            "dataset": dataset,
+            "require_same_case_baseline": True,
+        },
+    )
+    passing = svc.dynamics_readiness_report(
+        state_version.id,
+        {
+            "dataset": dataset,
+            "require_same_case_baseline": True,
+            "baseline_evidence_pipeline_report": baseline_report,
+        },
+    )
+
+    assert missing["status"] == "blocked"
+    assert passing["status"] == "pass"
+    assert missing["gate_results"]["same_case_baseline"]["status"] == "missing"
+    assert passing["gate_results"]["same_case_baseline"]["missing"] == []
+
+
+def test_dynamics_readiness_report_optional_failing_same_case_baseline_is_not_blocked():
+    svc = _build_service()
+    project, state_version = _save_lightweight_twm_state(svc)
+    dataset = _minimal_observed_dynamics_dataset(state_version.id, project.id)
+    baseline_report = svc.baseline_evidence_pipeline_report(
+        {
+            "claim_id": "C1_state_conflict_recall",
+            "baseline_id": "manual_gis_overlay_checklist",
+            "twm_case_output_path": "data_agent/test_data/twm_baseline_metrics/twm_case_outputs.csv",
+            "baseline_case_output_path": "data_agent/test_data/twm_baseline_metrics/manual_overlay_case_outputs.csv",
+        }
+    )
+    baseline_report = {**baseline_report, "status": "review"}
+    validation_report = {
+        **(baseline_report.get("export_validation") or {}),
+        "status": "review",
+        "coverage": {"coverage_ratio": 0.2, "overlap_count": 1},
+        "blocking_errors": ["low_same_case_overlap"],
+        "schema": "territory_world_model.baseline_export_validation_report.v1",
+    }
+
+    report = svc.dynamics_readiness_report(
+        state_version.id,
+        {
+            "dataset": dataset,
+            "baseline_evidence_pipeline_report": baseline_report,
+            "baseline_export_validation_report": validation_report,
+        },
+    )
+
+    gate = report["gate_results"]["same_case_baseline"]
+    assert gate["passed"] is False
+    assert gate["required"] is False
+    assert gate["status"] == "blocked"
+    assert "same_case_baseline" not in report["gate_results"]["summary"]["blocked_gates"]
+
+
 def test_dynamics_readiness_report_computes_explicitly_required_optional_gates(monkeypatch):
     svc = _build_service()
     project, state_version = _save_lightweight_twm_state(svc)

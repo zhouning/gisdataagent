@@ -6375,10 +6375,14 @@ class TerritoryWorldModelService:
                 "require_causal_pass",
                 "require_production_observed_history",
                 "require_production_readiness",
+                "require_same_case_baseline",
                 "min_production_ready_observed_history_rows",
+                "min_same_case_overlap_ratio",
                 "production_observed_history_preflight",
                 "observed_history_preflight",
                 "production_history_preflight",
+                "baseline_evidence_pipeline_report",
+                "baseline_export_validation_report",
                 "uses_geofm",
                 "geofm_required",
                 "uses_causal_calibration",
@@ -11771,6 +11775,12 @@ class TerritoryWorldModelService:
                 or truthy(payload.get("require_production_observed_history"))
                 or truthy(payload.get("require_production_readiness"))
             ),
+            "require_same_case_baseline": (
+                truthy(raw.get("require_same_case_baseline"))
+                or truthy(raw.get("require_production_readiness"))
+                or truthy(payload.get("require_same_case_baseline"))
+                or truthy(payload.get("require_production_readiness"))
+            ),
             "min_production_ready_observed_history_rows": max(
                 1,
                 safe_int(
@@ -11781,6 +11791,19 @@ class TerritoryWorldModelService:
                     1,
                 )
                 or 1,
+            ),
+            "min_same_case_overlap_ratio": min(
+                1.0,
+                max(
+                    0.0,
+                    float(
+                        safe_float(
+                            raw.get("min_same_case_overlap_ratio", payload.get("min_same_case_overlap_ratio")),
+                            0.8,
+                        )
+                        or 0.8
+                    ),
+                ),
             ),
         }
 
@@ -11938,6 +11961,50 @@ class TerritoryWorldModelService:
             "production_ready_observed_history_rows": production_rows,
             "policy_history_status": policy_quality.get("status", "not_provided"),
             "temporal_validation_status": temporal_quality.get("status", "not_provided"),
+        }
+
+    def _dynamics_same_case_baseline_gate(self, payload: dict[str, Any], thresholds: dict[str, Any]) -> dict[str, Any]:
+        required = bool(thresholds.get("require_same_case_baseline"))
+        pipeline = self._payload_mapping(payload.get("baseline_evidence_pipeline_report"))
+        validation = self._payload_mapping(
+            payload.get("baseline_export_validation_report")
+            or pipeline.get("export_validation")
+            or (pipeline.get("steps") or {}).get("export_validation")
+        )
+        if not validation:
+            return {
+                "passed": not required,
+                "required": required,
+                "status": "missing" if required else "not_required",
+                "source": "payload",
+                "missing": ["baseline_evidence_pipeline_report"] if required else [],
+                "coverage_ratio": 0.0,
+                "overlap_count": 0,
+            }
+        coverage = self._payload_mapping(validation.get("coverage"))
+        blocking_errors = list(validation.get("blocking_errors") or [])
+        coverage_ratio = float(safe_float(coverage.get("coverage_ratio"), 0.0) or 0.0)
+        overlap_count = safe_int(coverage.get("overlap_count"), 0)
+        missing: list[str] = []
+        if validation.get("schema") != "territory_world_model.baseline_export_validation_report.v1":
+            missing.append("baseline_export_validation_schema")
+        if validation.get("status") != "pass":
+            missing.append("same_case_validation_pass")
+        if blocking_errors:
+            missing.extend(str(item) for item in blocking_errors)
+        if coverage_ratio < float(thresholds.get("min_same_case_overlap_ratio") or 0.8):
+            missing.append("same_case_overlap_ratio")
+        status = "pass" if not missing else "blocked"
+        return {
+            "passed": status == "pass",
+            "required": required,
+            "status": status,
+            "source": "payload",
+            "missing": sorted(set(missing)),
+            "coverage_ratio": coverage_ratio,
+            "overlap_count": overlap_count,
+            "claim_id": (validation.get("claim") or {}).get("claim_id") or pipeline.get("claim_id"),
+            "baseline_id": (validation.get("claim") or {}).get("baseline_id") or pipeline.get("baseline_id"),
         }
 
     def _dynamics_dataset_mrep_trace(
@@ -12328,6 +12395,7 @@ class TerritoryWorldModelService:
             "source": causal_source,
         }
         gates["production_observed_history"] = self._dynamics_production_observed_history_gate(payload, thresholds)
+        gates["same_case_baseline"] = self._dynamics_same_case_baseline_gate(payload, thresholds)
         trainable_gates = [
             "sample_volume",
             "usable_volume",
@@ -12344,6 +12412,8 @@ class TerritoryWorldModelService:
             trainable_gates.append("causal_calibration")
         if thresholds["require_production_observed_history"]:
             trainable_gates.append("production_observed_history")
+        if thresholds["require_same_case_baseline"]:
+            trainable_gates.append("same_case_baseline")
         blocked = [name for name in trainable_gates if not gates[name].get("passed")]
         review_only = [item.get("id") for item in examples if item.get("not_for_training_reasons")]
         gates["summary"] = {
@@ -12357,7 +12427,14 @@ class TerritoryWorldModelService:
         blocked = list((gate_results.get("summary") or {}).get("blocked_gates") or [])
         if not blocked:
             return "pass"
-        hard = {"sample_volume", "usable_volume", "multi_head_targets", "loss_contract", "production_observed_history"}
+        hard = {
+            "sample_volume",
+            "usable_volume",
+            "multi_head_targets",
+            "loss_contract",
+            "production_observed_history",
+            "same_case_baseline",
+        }
         return "blocked" if any(item in hard for item in blocked) else "review"
 
     def _dynamics_training_scope(self, gate_results: dict[str, Any]) -> str:
@@ -12432,6 +12509,8 @@ class TerritoryWorldModelService:
                 "provide production observed-history preflight with real treated/control rows, temporal holdout "
                 "and policy-action labels before strict model promotion"
             )
+        if "same_case_baseline" in blocked:
+            recommendations.append("provide same-case baseline export validation with sufficient overlap before strict model promotion")
         if not recommendations:
             recommendations.append("start with a small train/holdout dynamics run and report planning lift separately from one-step fit")
         recommendations.append(
