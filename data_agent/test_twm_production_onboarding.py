@@ -217,6 +217,42 @@ def test_twm_production_onboarding_runs_same_case_baseline_pipeline(tmp_path):
     assert "manual_gis_overlay_checklist" in markdown
 
 
+def test_twm_production_onboarding_strict_model_gate_uses_history_and_baseline(tmp_path):
+    production_path = tmp_path / "production_observed_history.csv"
+    output_dir = tmp_path / "onboarding_strict_model_gate"
+    output_dir.mkdir()
+    _write_normalized_observed_history(production_path)
+    twm_path, baseline_path = _write_same_case_baseline_exports(output_dir)
+
+    subprocess.run(
+        [
+            "/Users/zhouning/gisdataagent/.venv/bin/python",
+            str(SCRIPT),
+            "--production-observed-history",
+            str(production_path),
+            "--output-dir",
+            str(output_dir),
+            "--claim-id",
+            "C1_state_conflict_recall",
+            "--baseline-id",
+            "manual_gis_overlay_checklist",
+            "--twm-case-output",
+            str(twm_path),
+            "--baseline-case-output",
+            str(baseline_path),
+            "--require-production-readiness",
+        ],
+        cwd=REPO_ROOT,
+        check=True,
+    )
+
+    summary = json.loads((output_dir / "twm_production_onboarding_summary.json").read_text(encoding="utf-8"))
+    assert summary["model_promotion_gate"]["schema"] == "territory_world_model.model_promotion_gate.v1"
+    assert summary["model_promotion_gate"]["production_observed_history_status"] == "pass"
+    assert summary["model_promotion_gate"]["same_case_baseline_status"] == "pass"
+    assert summary["model_promotion_gate"]["decision"] == "blocked_by_production_scale_or_other_bundle_gates"
+
+
 def test_twm_production_onboarding_same_basename_external_files_do_not_collide(tmp_path):
     production_path = tmp_path / "production_observed_history.csv"
     output_dir = tmp_path / "onboarding_same_basename"

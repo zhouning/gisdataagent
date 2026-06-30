@@ -99,6 +99,7 @@ def main() -> None:
         data_foundation_report=data_foundation_report,
         validation_bundle_report=validation_bundle_report,
         baseline_evidence_report=baseline_evidence_report,
+        require_production_readiness=bool(args.require_production_readiness),
     )
     write_json(outputs["summary_report"], summary)
     write_markdown(outputs["summary_markdown"], render_onboarding_markdown(summary))
@@ -290,6 +291,51 @@ def build_data_owner_next_steps(deployment_punch_list: dict[str, Any]) -> dict[s
     return grouped
 
 
+def build_model_promotion_gate(
+    *,
+    validation_bundle_report: dict[str, Any],
+    baseline_evidence_report: dict[str, Any],
+    require_production_readiness: bool,
+) -> dict[str, Any]:
+    preflight = validation_bundle_report.get("production_observed_history_preflight") or {}
+    readiness = validation_bundle_report.get("production_readiness_gate") or {}
+    export_validation = baseline_evidence_report.get("export_validation") or {}
+    baseline_coverage = export_validation.get("coverage") or {}
+    production_status = preflight.get("status", "not_provided")
+    baseline_status = "not_requested"
+    if baseline_evidence_report.get("status") != "not_requested":
+        baseline_status = (
+            "pass" if export_validation.get("status") == "pass" and not export_validation.get("blocking_errors") else "blocked"
+        )
+    missing: list[str] = []
+    if production_status != "pass":
+        missing.append("production_observed_history_preflight")
+    if require_production_readiness and baseline_status != "pass":
+        missing.append("same_case_baseline")
+    if readiness.get("status") == "blocked":
+        missing.extend(str(item) for item in readiness.get("missing") or [])
+    decision = "strict_model_promotion_inputs_pass"
+    if readiness.get("status") == "blocked":
+        decision = "blocked_by_production_scale_or_other_bundle_gates"
+    elif missing:
+        decision = "blocked_by_missing_model_promotion_inputs"
+    return {
+        "schema": "territory_world_model.model_promotion_gate.v1",
+        "required": require_production_readiness,
+        "status": "pass" if not missing else "blocked",
+        "decision": decision,
+        "missing": sorted(set(missing)),
+        "production_observed_history_status": production_status,
+        "same_case_baseline_status": baseline_status,
+        "same_case_overlap_count": baseline_coverage.get("overlap_count", 0),
+        "same_case_coverage_ratio": baseline_coverage.get("coverage_ratio", 0.0),
+        "claim_boundary": (
+            "strict promotion gate checks data and baseline evidence; production deployment still requires bundle "
+            "readiness and human audit"
+        ),
+    }
+
+
 def build_onboarding_summary(
     *,
     raw_history: Path | None,
@@ -301,6 +347,7 @@ def build_onboarding_summary(
     data_foundation_report: dict[str, Any],
     validation_bundle_report: dict[str, Any],
     baseline_evidence_report: dict[str, Any],
+    require_production_readiness: bool,
 ) -> dict[str, Any]:
     data_foundation_summary = data_foundation_report.get("summary") or {}
     data_foundation_normalization = data_foundation_report.get("production_observed_history_normalization") or {}
@@ -314,6 +361,11 @@ def build_onboarding_summary(
         schema="territory_world_model.production_onboarding_punch_list.v1",
         status=onboarding_status(data_foundation_summary, validation_bundle_report),
         readiness_gate=readiness,
+    )
+    model_promotion_gate = build_model_promotion_gate(
+        validation_bundle_report=validation_bundle_report,
+        baseline_evidence_report=baseline_evidence_report,
+        require_production_readiness=require_production_readiness,
     )
     data_owner_next_steps = build_data_owner_next_steps(deployment_punch_list)
     data_normalized = data_foundation_normalization.get("output_path")
@@ -362,6 +414,7 @@ def build_onboarding_summary(
             "coverage_ratio": coverage.get("coverage_ratio", 0.0),
         },
         "production_scale_profile": str(production_scale_profile) if production_scale_profile else None,
+        "model_promotion_gate": model_promotion_gate,
         "deployment_punch_list": deployment_punch_list,
         "data_owner_next_steps": data_owner_next_steps,
         "commands": commands,
@@ -393,6 +446,7 @@ def render_onboarding_markdown(summary: dict[str, Any]) -> str:
     data_foundation = summary.get("data_foundation") or {}
     bundle = summary.get("validation_bundle") or {}
     baseline = summary.get("baseline_evidence") or {}
+    promotion = summary.get("model_promotion_gate") or {}
     punch_list = summary.get("deployment_punch_list") or {}
     outputs = summary.get("outputs") or {}
     lines = [
@@ -439,6 +493,14 @@ def render_onboarding_markdown(summary: dict[str, Any]) -> str:
         f"- Export validation: `{baseline.get('export_validation_status')}`",
         f"- Overlap count: `{baseline.get('overlap_count', 0)}`",
         f"- Coverage ratio: `{baseline.get('coverage_ratio', 0.0)}`",
+        "",
+        "## Model Promotion Gate",
+        "",
+        f"- Status: `{promotion.get('status')}`",
+        f"- Decision: `{promotion.get('decision')}`",
+        f"- Missing: `{promotion.get('missing', [])}`",
+        f"- Production observed history: `{promotion.get('production_observed_history_status')}`",
+        f"- Same-case baseline: `{promotion.get('same_case_baseline_status')}`",
         "",
         "## Deployment Punch List",
         "",
