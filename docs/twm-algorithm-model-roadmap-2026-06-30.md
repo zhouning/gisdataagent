@@ -366,3 +366,12 @@ The next implementation slice should not add another large feature surface first
 It should choose one pilot data package and make the production-data gate,
 dynamics dataset contract and same-case baseline report unavoidable. Only after
 that should model architecture complexity increase.
+
+## Implementation Checkpoint: P0/P1 Gate Hardening
+
+Plan: `docs/superpowers/plans/2026-06-30-twm-p0-p1-production-evidence-contract.md`
+
+The first implementation slice is intentionally gate-focused. It should make
+production observed-history preflight, same-case baseline evidence and MREP
+traceability visible in strict readiness and onboarding reports before adding
+more model architecture complexity.
