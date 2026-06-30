@@ -11838,7 +11838,7 @@ class TerritoryWorldModelService:
         examples: list[TwmDynamicsTrainingExample],
         state_contract: dict[str, Any],
     ) -> dict[str, Any]:
-        examples_payload = [item.to_dict() for item in examples]
+        examples_payload = [self._dynamics_training_example_semantic_payload(item) for item in examples]
         review_only_count = sum(1 for item in examples if item.not_for_training_reasons)
         synthetic_or_not_for_production = sum(
             1
@@ -11864,13 +11864,14 @@ class TerritoryWorldModelService:
             "dataset_snapshot_hash": _stable_sha256(examples_payload),
             "state_contract_version": state_contract.get("schema", ""),
             "state_contract_status": state_contract.get("status", "review"),
-            "rule_version": str(payload.get("rule_version") or payload.get("policy_version") or "current_repository_rules"),
+            "rule_version": str(payload.get("rule_version") or "current_repository_rules"),
+            "policy_version": str(payload.get("policy_version") or "current_policy"),
             "model_version": str(payload.get("model_version") or "deterministic_twm_scaffold_current"),
             "baseline_version": str(payload.get("baseline_version") or "deterministic_twm_scaffold_current"),
             "random_seed": payload.get("random_seed"),
             "split_definition": {
                 "split": str(payload.get("split") or "default"),
-                "temporal_holdout": payload.get("temporal_holdout") or {},
+                "temporal_holdout": self._temporal_holdout_policy(payload),
                 "holdout_example_count": holdout_count,
             },
             "target_heads": target_heads,
@@ -11894,6 +11895,23 @@ class TerritoryWorldModelService:
                 "synthetic_or_not_for_production_rows": synthetic_or_not_for_production,
                 "claim_boundary": "dataset trace supports reproducibility; it does not certify production accuracy",
             },
+        }
+
+    def _dynamics_training_example_semantic_payload(self, item: TwmDynamicsTrainingExample) -> dict[str, Any]:
+        return {
+            "state_version_id": item.state_version_id,
+            "project_id": item.project_id,
+            "split": item.split,
+            "sample_type": item.sample_type,
+            "current_state_summary": item.current_state_summary,
+            "action": item.action.to_dict(),
+            "scenario_context": item.scenario_context,
+            "targets": item.targets,
+            "labels": item.labels,
+            "losses": item.losses,
+            "evidence_gate": item.evidence_gate,
+            "provenance": item.provenance,
+            "not_for_training_reasons": item.not_for_training_reasons,
         }
 
     def _dynamics_sample_inventory(self, dataset: dict[str, Any]) -> dict[str, Any]:

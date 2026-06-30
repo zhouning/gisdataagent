@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
 from starlette.requests import Request
 
 from data_agent.territory_world_model import (
@@ -1551,8 +1552,10 @@ def test_dynamics_training_examples_emit_mrep_trace_for_reproducibility():
         "evidence_coverage": 0.72,
         "split": "temporal_holdout",
         "rule_version": "ruleset-mrep-v3",
+        "policy_version": "policy-mrep-v2",
         "model_version": "dynamics-model-v7",
         "random_seed": 42,
+        "holdout_year": 2025,
     }
 
     dataset = svc.dynamics_training_examples(state_id, payload)
@@ -1566,9 +1569,15 @@ def test_dynamics_training_examples_emit_mrep_trace_for_reproducibility():
     assert trace["state_contract_version"] == "territory_world_model.state_contract_report.v1"
     assert trace["state_contract_status"] == state_contract["status"]
     assert trace["rule_version"] == "ruleset-mrep-v3"
+    assert trace["policy_version"] == "policy-mrep-v2"
     assert trace["model_version"] == "dynamics-model-v7"
     assert trace["random_seed"] == 42
     assert trace["split_definition"]["split"] == "temporal_holdout"
+    assert trace["split_definition"]["temporal_holdout"] == {
+        "strategy": "last_year_holdout",
+        "holdout_year": 2025,
+        "train_until_year": None,
+    }
     assert trace["baseline_version"] == "deterministic_twm_scaffold_current"
     assert trace["source_counts"] == dataset["summary"]["supervision_sources"]
     assert trace["tail_statistics"]["example_count"] == dataset["summary"]["example_count"]
@@ -1577,6 +1586,34 @@ def test_dynamics_training_examples_emit_mrep_trace_for_reproducibility():
     assert trace["boundary_conditions"]["synthetic_or_not_for_production_rows"] >= 1
     assert trace["failure_taxonomy"]["review_only_examples"] >= 1
     assert "future_latent_state" in trace["target_heads"]
+
+
+def test_dynamics_training_examples_mrep_trace_hash_is_semantic_across_cache_clears():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+    payload = {
+        "scenario": "mrep_trace_hash_stability",
+        "horizon": 2,
+        "evidence_coverage": 0.72,
+        "split": "temporal_holdout",
+        "rule_version": "rules-stable",
+        "policy_version": "policy-stable",
+        "model_version": "model-stable",
+        "baseline_version": "baseline-stable",
+        "random_seed": 99,
+    }
+
+    first = svc.dynamics_training_examples(state_id, payload)
+    svc._dynamics_training_cache.clear()
+    second = svc.dynamics_training_examples(state_id, payload)
+
+    first_trace = first["summary"]["mrep_trace"]
+    second_trace = second["summary"]["mrep_trace"]
+    assert first["examples"][0]["id"] != second["examples"][0]["id"]
+    assert first_trace["dataset_snapshot_hash"] == second_trace["dataset_snapshot_hash"]
 
 
 def test_dynamics_training_examples_cache_keys_mrep_trace_lineage_metadata():
@@ -1644,8 +1681,47 @@ def test_dynamics_training_examples_cache_keys_mrep_trace_lineage_metadata():
         },
     )
 
-    assert policy_first["summary"]["mrep_trace"]["rule_version"] == "policy-a"
-    assert policy_second["summary"]["mrep_trace"]["rule_version"] == "policy-b"
+    assert policy_first["summary"]["mrep_trace"]["policy_version"] == "policy-a"
+    assert policy_second["summary"]["mrep_trace"]["policy_version"] == "policy-b"
+
+
+@pytest.mark.parametrize(
+    ("lineage_key", "first_value", "second_value", "trace_key"),
+    [
+        ("rule_version", "rules-a", "rules-b", "rule_version"),
+        ("policy_version", "policy-a", "policy-b", "policy_version"),
+        ("model_version", "model-a", "model-b", "model_version"),
+        ("baseline_version", "baseline-a", "baseline-b", "baseline_version"),
+        ("random_seed", 101, 202, "random_seed"),
+    ],
+)
+def test_dynamics_training_examples_mrep_trace_cache_keys_each_lineage_field_independently(
+    lineage_key,
+    first_value,
+    second_value,
+    trace_key,
+):
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+    base_payload = {
+        "scenario": f"mrep_trace_cache_{lineage_key}",
+        "horizon": 2,
+        "evidence_coverage": 0.72,
+        "rule_version": "rules-static",
+        "policy_version": "policy-static",
+        "model_version": "model-static",
+        "baseline_version": "baseline-static",
+        "random_seed": 7,
+    }
+
+    first = svc.dynamics_training_examples(state_id, {**base_payload, lineage_key: first_value})
+    second = svc.dynamics_training_examples(state_id, {**base_payload, lineage_key: second_value})
+
+    assert first["summary"]["mrep_trace"][trace_key] == first_value
+    assert second["summary"]["mrep_trace"][trace_key] == second_value
 
 
 def test_dynamics_readiness_report_blocks_synthetic_or_scaffold_only_training_claims():
