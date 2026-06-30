@@ -11972,10 +11972,20 @@ class TerritoryWorldModelService:
                 "missing": ["baseline_evidence_pipeline_report"] if required else [],
                 "coverage_ratio": 0.0,
                 "overlap_count": 0,
-            }
+        }
         claim = self._payload_mapping(validation.get("claim"))
         coverage = self._payload_mapping(validation.get("coverage"))
-        blocking_errors = list(validation.get("blocking_errors") or [])
+        raw_blocking_errors = validation.get("blocking_errors")
+        blocking_error_shape_invalid = False
+        if raw_blocking_errors is None:
+            blocking_errors: list[str] = []
+        elif isinstance(raw_blocking_errors, str):
+            blocking_errors = [raw_blocking_errors]
+        elif isinstance(raw_blocking_errors, (list, tuple, set)):
+            blocking_errors = [str(item) for item in raw_blocking_errors]
+        else:
+            blocking_errors = []
+            blocking_error_shape_invalid = True
         raw_coverage_ratio = safe_float(coverage.get("coverage_ratio"), 0.0)
         coverage_ratio = float(raw_coverage_ratio or 0.0)
         overlap_count = safe_int(coverage.get("overlap_count"), 0)
@@ -11984,6 +11994,8 @@ class TerritoryWorldModelService:
             missing.append("baseline_export_validation_schema")
         if validation.get("status") != "pass":
             missing.append("same_case_validation_pass")
+        if blocking_error_shape_invalid:
+            missing.append("baseline_export_validation_blocking_errors_shape")
         if blocking_errors:
             missing.extend(str(item) for item in blocking_errors)
         if not math.isfinite(coverage_ratio):

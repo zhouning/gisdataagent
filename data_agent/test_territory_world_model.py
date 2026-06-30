@@ -3067,6 +3067,38 @@ def test_dynamics_readiness_report_malformed_same_case_nested_fields_fail_closed
     assert gate["baseline_id"] is None
 
 
+def test_dynamics_readiness_report_malformed_same_case_blocking_errors_fail_closed():
+    svc = _build_service()
+    project, state_version = _save_lightweight_twm_state(svc)
+    dataset = _minimal_observed_dynamics_dataset(state_version.id, project.id)
+
+    report = svc.dynamics_readiness_report(
+        state_version.id,
+        {
+            "dataset": dataset,
+            "require_same_case_baseline": True,
+            "baseline_export_validation_report": {
+                "schema": "territory_world_model.baseline_export_validation_report.v1",
+                "status": "pass",
+                "claim": {
+                    "claim_id": "C1_state_conflict_recall",
+                    "baseline_id": "manual_gis_overlay_checklist",
+                },
+                "coverage": {
+                    "coverage_ratio": 1.0,
+                    "overlap_count": 10,
+                },
+                "blocking_errors": 1,
+            },
+        },
+    )
+
+    gate = report["gate_results"]["same_case_baseline"]
+    assert report["status"] == "blocked"
+    assert gate["passed"] is False
+    assert "baseline_export_validation_blocking_errors_shape" in gate["missing"]
+
+
 def test_dynamics_readiness_report_ignores_same_case_pipeline_step_summary_as_evidence():
     svc = _build_service()
     project, state_version = _save_lightweight_twm_state(svc)
