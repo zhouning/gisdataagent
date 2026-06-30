@@ -11771,7 +11771,8 @@ class TerritoryWorldModelService:
                 or truthy(payload.get("require_production_observed_history"))
                 or truthy(payload.get("require_production_readiness"))
             ),
-            "min_production_ready_observed_history_rows": (
+            "min_production_ready_observed_history_rows": max(
+                1,
                 safe_int(
                     raw.get(
                         "min_production_ready_observed_history_rows",
@@ -11779,7 +11780,7 @@ class TerritoryWorldModelService:
                     ),
                     1,
                 )
-                or 1
+                or 1,
             ),
         }
 
@@ -11913,6 +11914,8 @@ class TerritoryWorldModelService:
         policy_quality = self._payload_mapping(schema_audit.get("policy_history_quality"))
         production_rows = safe_int(row_quality.get("production_candidate_row_count"), 0)
         missing: list[str] = []
+        if preflight.get("schema") != "territory_world_model.production_observed_history_preflight.v1":
+            missing.append("production_observed_history_preflight_schema")
         if preflight.get("status") != "pass" or schema_audit.get("status") != "pass":
             missing.append("preflight_pass")
         if production_rows < safe_int(thresholds.get("min_production_ready_observed_history_rows"), 1):
@@ -11927,7 +11930,7 @@ class TerritoryWorldModelService:
             missing.append("policy_action_history")
         status = "pass" if not missing else "blocked"
         return {
-            "passed": status == "pass" or not required,
+            "passed": status == "pass",
             "required": required,
             "status": status,
             "source": "payload",
