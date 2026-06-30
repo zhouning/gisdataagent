@@ -6373,6 +6373,12 @@ class TerritoryWorldModelService:
                 "thresholds",
                 "require_geofm_pass",
                 "require_causal_pass",
+                "require_production_observed_history",
+                "require_production_readiness",
+                "min_production_ready_observed_history_rows",
+                "production_observed_history_preflight",
+                "observed_history_preflight",
+                "production_history_preflight",
                 "uses_geofm",
                 "geofm_required",
                 "uses_causal_calibration",
@@ -11759,6 +11765,22 @@ class TerritoryWorldModelService:
             "max_review_ratio": float(safe_float(raw.get("max_review_ratio"), 0.35) or 0.35),
             "require_geofm_pass": truthy(raw.get("require_geofm_pass")) or truthy(payload.get("require_geofm_pass")),
             "require_causal_pass": truthy(raw.get("require_causal_pass")) or truthy(payload.get("require_causal_pass")),
+            "require_production_observed_history": (
+                truthy(raw.get("require_production_observed_history"))
+                or truthy(raw.get("require_production_readiness"))
+                or truthy(payload.get("require_production_observed_history"))
+                or truthy(payload.get("require_production_readiness"))
+            ),
+            "min_production_ready_observed_history_rows": (
+                safe_int(
+                    raw.get(
+                        "min_production_ready_observed_history_rows",
+                        payload.get("min_production_ready_observed_history_rows"),
+                    ),
+                    1,
+                )
+                or 1
+            ),
         }
 
     def _dynamics_payload_value_provided(self, value: Any) -> bool:
@@ -11863,6 +11885,57 @@ class TerritoryWorldModelService:
             "scca_manifest_path",
         )
         return any(self._dynamics_payload_value_provided(payload.get(key)) for key in evidence_keys)
+
+    def _dynamics_production_observed_history_gate(
+        self,
+        payload: dict[str, Any],
+        thresholds: dict[str, Any],
+    ) -> dict[str, Any]:
+        required = bool(thresholds.get("require_production_observed_history"))
+        preflight = self._payload_mapping(
+            payload.get("production_observed_history_preflight")
+            or payload.get("observed_history_preflight")
+            or payload.get("production_history_preflight")
+        )
+        if not preflight:
+            return {
+                "passed": not required,
+                "required": required,
+                "status": "missing" if required else "not_required",
+                "source": "payload",
+                "missing": ["production_observed_history_preflight"] if required else [],
+                "production_ready_observed_history_rows": 0,
+            }
+
+        schema_audit = self._payload_mapping(preflight.get("schema_audit") or preflight.get("audit"))
+        row_quality = self._payload_mapping(schema_audit.get("row_quality"))
+        temporal_quality = self._payload_mapping(schema_audit.get("temporal_validation_quality"))
+        policy_quality = self._payload_mapping(schema_audit.get("policy_history_quality"))
+        production_rows = safe_int(row_quality.get("production_candidate_row_count"), 0)
+        missing: list[str] = []
+        if preflight.get("status") != "pass" or schema_audit.get("status") != "pass":
+            missing.append("preflight_pass")
+        if production_rows < safe_int(thresholds.get("min_production_ready_observed_history_rows"), 1):
+            missing.append("production_ready_observed_history_rows")
+        if safe_int(row_quality.get("production_treated_count"), 0) <= 0:
+            missing.append("production_treated_rows")
+        if safe_int(row_quality.get("production_control_count"), 0) <= 0:
+            missing.append("production_control_rows")
+        if temporal_quality.get("status") != "pass":
+            missing.append("temporal_holdout_support")
+        if policy_quality.get("status") != "pass":
+            missing.append("policy_action_history")
+        status = "pass" if not missing else "blocked"
+        return {
+            "passed": status == "pass" or not required,
+            "required": required,
+            "status": status,
+            "source": "payload",
+            "missing": missing,
+            "production_ready_observed_history_rows": production_rows,
+            "policy_history_status": policy_quality.get("status", "not_provided"),
+            "temporal_validation_status": temporal_quality.get("status", "not_provided"),
+        }
 
     def _dynamics_dataset_mrep_trace(
         self,
@@ -12251,6 +12324,7 @@ class TerritoryWorldModelService:
             "method": causal_gate.get("method", ""),
             "source": causal_source,
         }
+        gates["production_observed_history"] = self._dynamics_production_observed_history_gate(payload, thresholds)
         trainable_gates = [
             "sample_volume",
             "usable_volume",
@@ -12265,6 +12339,8 @@ class TerritoryWorldModelService:
             trainable_gates.append("geofm_gate")
         if thresholds["require_causal_pass"]:
             trainable_gates.append("causal_calibration")
+        if thresholds["require_production_observed_history"]:
+            trainable_gates.append("production_observed_history")
         blocked = [name for name in trainable_gates if not gates[name].get("passed")]
         review_only = [item.get("id") for item in examples if item.get("not_for_training_reasons")]
         gates["summary"] = {
@@ -12278,7 +12354,7 @@ class TerritoryWorldModelService:
         blocked = list((gate_results.get("summary") or {}).get("blocked_gates") or [])
         if not blocked:
             return "pass"
-        hard = {"sample_volume", "usable_volume", "multi_head_targets", "loss_contract"}
+        hard = {"sample_volume", "usable_volume", "multi_head_targets", "loss_contract", "production_observed_history"}
         return "blocked" if any(item in hard for item in blocked) else "review"
 
     def _dynamics_training_scope(self, gate_results: dict[str, Any]) -> str:
@@ -12348,6 +12424,11 @@ class TerritoryWorldModelService:
             recommendations.append("keep GeoFM gated out of the trainable core until B0/B1 downstream planning lift passes")
         if "causal_calibration" in blocked:
             recommendations.append("use balanced treated/control observations or a causal backend before upgrading counterfactual utility claims")
+        if "production_observed_history" in blocked:
+            recommendations.append(
+                "provide production observed-history preflight with real treated/control rows, temporal holdout "
+                "and policy-action labels before strict model promotion"
+            )
         if not recommendations:
             recommendations.append("start with a small train/holdout dynamics run and report planning lift separately from one-step fit")
         recommendations.append(

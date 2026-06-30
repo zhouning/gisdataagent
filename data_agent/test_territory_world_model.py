@@ -2534,6 +2534,94 @@ def test_dynamics_readiness_report_skips_optional_geofm_and_causal_gates(monkeyp
     assert report["gate_results"]["summary"]["blocked_gates"] == []
 
 
+def test_dynamics_readiness_report_blocks_strict_production_gate_when_history_missing():
+    svc = _build_service()
+    project, state_version = _save_lightweight_twm_state(svc)
+    dataset = _minimal_observed_dynamics_dataset(state_version.id, project.id)
+
+    report = svc.dynamics_readiness_report(
+        state_version.id,
+        {
+            "dataset": dataset,
+            "require_production_observed_history": True,
+        },
+    )
+
+    assert report["status"] == "blocked"
+    gate = report["gate_results"]["production_observed_history"]
+    assert gate["required"] is True
+    assert gate["passed"] is False
+    assert gate["status"] == "missing"
+    assert "production_observed_history" in report["gate_results"]["summary"]["blocked_gates"]
+
+
+def test_dynamics_readiness_report_passes_strict_production_gate_with_preflight():
+    svc = _build_service()
+    project, state_version = _save_lightweight_twm_state(svc)
+    dataset = _minimal_observed_dynamics_dataset(state_version.id, project.id)
+
+    report = svc.dynamics_readiness_report(
+        state_version.id,
+        {
+            "dataset": dataset,
+            "require_production_observed_history": True,
+            "production_observed_history_preflight": {
+                "schema": "territory_world_model.production_observed_history_preflight.v1",
+                "status": "pass",
+                "schema_audit": {
+                    "status": "pass",
+                    "row_quality": {
+                        "production_candidate_row_count": 10,
+                        "production_treated_count": 5,
+                        "production_control_count": 5,
+                        "rows_with_outcome": 10,
+                        "rows_with_spatial_support": 10,
+                        "rows_with_covariates": 10,
+                    },
+                    "temporal_validation_quality": {
+                        "status": "pass",
+                        "period_count": 4,
+                        "train_row_count": 5,
+                        "holdout_row_count": 5,
+                        "rows_with_policy_effective_version": 10,
+                    },
+                    "policy_history_quality": {
+                        "status": "pass",
+                        "allowed_count": 5,
+                        "blocked_count": 5,
+                    },
+                },
+            },
+        },
+    )
+
+    gate = report["gate_results"]["production_observed_history"]
+    assert report["status"] == "pass"
+    assert gate["passed"] is True
+    assert gate["status"] == "pass"
+    assert gate["production_ready_observed_history_rows"] == 10
+
+
+def test_dynamics_readiness_report_cache_keys_strict_production_gate_inputs():
+    svc = _build_service()
+    project, state_version = _save_lightweight_twm_state(svc)
+    dataset = _minimal_observed_dynamics_dataset(state_version.id, project.id)
+
+    non_strict = svc.dynamics_readiness_report(state_version.id, {"dataset": dataset})
+    strict = svc.dynamics_readiness_report(
+        state_version.id,
+        {
+            "dataset": dataset,
+            "require_production_observed_history": True,
+        },
+    )
+
+    assert non_strict["status"] == "pass"
+    assert strict["status"] == "blocked"
+    assert non_strict["gate_results"]["production_observed_history"]["status"] == "not_required"
+    assert strict["gate_results"]["production_observed_history"]["status"] == "missing"
+
+
 def test_dynamics_readiness_report_computes_explicitly_required_optional_gates(monkeypatch):
     svc = _build_service()
     project, state_version = _save_lightweight_twm_state(svc)
