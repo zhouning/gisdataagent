@@ -3,6 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 import hashlib
 import json
+import math
 import re
 import threading
 from pathlib import Path
@@ -11760,14 +11761,12 @@ class TerritoryWorldModelService:
 
     def _dynamics_readiness_thresholds(self, payload: dict[str, Any]) -> dict[str, Any]:
         raw = dict(payload.get("thresholds") or {})
-        min_same_case_overlap_ratio = float(
-            safe_float(
-                raw.get("min_same_case_overlap_ratio", payload.get("min_same_case_overlap_ratio")),
-                0.8,
-            )
-            or 0.8
+        min_same_case_overlap_ratio_raw = safe_float(
+            raw.get("min_same_case_overlap_ratio", payload.get("min_same_case_overlap_ratio")),
+            0.8,
         )
-        if min_same_case_overlap_ratio <= 0:
+        min_same_case_overlap_ratio = float(min_same_case_overlap_ratio_raw or 0.8)
+        if not math.isfinite(min_same_case_overlap_ratio) or min_same_case_overlap_ratio <= 0:
             min_same_case_overlap_ratio = 0.8
         return {
             "min_total_examples": safe_int(raw.get("min_total_examples"), 6) or 6,
@@ -11963,11 +11962,7 @@ class TerritoryWorldModelService:
     def _dynamics_same_case_baseline_gate(self, payload: dict[str, Any], thresholds: dict[str, Any]) -> dict[str, Any]:
         required = bool(thresholds.get("require_same_case_baseline"))
         pipeline = self._payload_mapping(payload.get("baseline_evidence_pipeline_report"))
-        validation = self._payload_mapping(
-            payload.get("baseline_export_validation_report")
-            or pipeline.get("export_validation")
-            or (pipeline.get("steps") or {}).get("export_validation")
-        )
+        validation = self._payload_mapping(payload.get("baseline_export_validation_report") or pipeline.get("export_validation"))
         if not validation:
             return {
                 "passed": not required,
@@ -11978,9 +11973,11 @@ class TerritoryWorldModelService:
                 "coverage_ratio": 0.0,
                 "overlap_count": 0,
             }
+        claim = self._payload_mapping(validation.get("claim"))
         coverage = self._payload_mapping(validation.get("coverage"))
         blocking_errors = list(validation.get("blocking_errors") or [])
-        coverage_ratio = float(safe_float(coverage.get("coverage_ratio"), 0.0) or 0.0)
+        raw_coverage_ratio = safe_float(coverage.get("coverage_ratio"), 0.0)
+        coverage_ratio = float(raw_coverage_ratio or 0.0)
         overlap_count = safe_int(coverage.get("overlap_count"), 0)
         missing: list[str] = []
         if validation.get("schema") != "territory_world_model.baseline_export_validation_report.v1":
@@ -11989,7 +11986,17 @@ class TerritoryWorldModelService:
             missing.append("same_case_validation_pass")
         if blocking_errors:
             missing.extend(str(item) for item in blocking_errors)
-        if coverage_ratio < float(thresholds.get("min_same_case_overlap_ratio") or 0.8):
+        if not math.isfinite(coverage_ratio):
+            missing.append("same_case_coverage_ratio_finite")
+        elif coverage_ratio < 0.0 or coverage_ratio > 1.0:
+            missing.append("same_case_coverage_ratio_range")
+        if overlap_count <= 0:
+            missing.append("same_case_overlap_count")
+        if (
+            math.isfinite(coverage_ratio)
+            and 0.0 <= coverage_ratio <= 1.0
+            and coverage_ratio < float(thresholds.get("min_same_case_overlap_ratio") or 0.8)
+        ):
             missing.append("same_case_overlap_ratio")
         status = "pass" if not missing else "blocked"
         return {
@@ -12000,8 +12007,8 @@ class TerritoryWorldModelService:
             "missing": sorted(set(missing)),
             "coverage_ratio": coverage_ratio,
             "overlap_count": overlap_count,
-            "claim_id": (validation.get("claim") or {}).get("claim_id") or pipeline.get("claim_id"),
-            "baseline_id": (validation.get("claim") or {}).get("baseline_id") or pipeline.get("baseline_id"),
+            "claim_id": claim.get("claim_id") or pipeline.get("claim_id"),
+            "baseline_id": claim.get("baseline_id") or pipeline.get("baseline_id"),
         }
 
     def _dynamics_dataset_mrep_trace(
