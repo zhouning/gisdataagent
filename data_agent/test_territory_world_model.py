@@ -146,6 +146,63 @@ def _save_lightweight_twm_state(service: TerritoryWorldModelService):
     return project, state_version
 
 
+def _save_semantic_target_state(service: TerritoryWorldModelService):
+    project = TwmProject(name="Semantic target project", region_code="500227")
+    state_version = TwmStateVersion(
+        project_id=project.id,
+        object_count=2,
+        relation_count=1,
+        build_status="ready",
+        summary={
+            "hierarchy_tokens": {"county": ["500227"]},
+            "object_counts_by_role": {"project": 2},
+            "relation_counts_by_type": {"project_adjacent_to_project": 1},
+        },
+        quality_summary={"evidence_coverage": 0.9},
+    )
+    first = TwmStateObject(
+        state_version_id=state_version.id,
+        object_type="feature",
+        object_code="PRJ-SEMANTIC-001",
+        source_feature_id="SRC-SEMANTIC-001",
+        source_role="project",
+        canonical_role="project",
+        attributes={"admin_code": "500227", "area_m2": 1000.0},
+        quality_score=0.95,
+    )
+    second = TwmStateObject(
+        state_version_id=state_version.id,
+        object_type="feature",
+        object_code="PRJ-SEMANTIC-002",
+        source_feature_id="SRC-SEMANTIC-002",
+        source_role="project",
+        canonical_role="project",
+        attributes={"admin_code": "500227", "area_m2": 1200.0},
+        quality_score=0.95,
+    )
+    relation = TwmStateRelation(
+        state_version_id=state_version.id,
+        subject_object_id=first.id,
+        object_object_id=second.id,
+        predicate="project_adjacent_to_project",
+        relation_type="project_adjacent_to_project",
+        confidence=0.9,
+    )
+    service.repository.save_state_bundle(
+        StateBuildResult(
+            project=project,
+            state_version=state_version,
+            objects=[first, second],
+            relations=[relation],
+            object_counts_by_role={"project": 2},
+            relation_counts_by_type={"project_adjacent_to_project": 1},
+            hierarchy_tokens={"county": ["500227"]},
+            quality_summary=state_version.quality_summary,
+        )
+    )
+    return project, state_version, first, second
+
+
 def _save_passable_state_contract_state(service: TerritoryWorldModelService, tmp_path: Path):
     bundle_dir = tmp_path / "contract_bundle"
     tables_dir = bundle_dir / "tables"
@@ -1801,7 +1858,90 @@ def test_dynamics_training_examples_mrep_trace_hash_excludes_generated_action_ta
     assert _stable_sha256([base_payload]) == _stable_sha256([generated_payload])
 
 
-def test_dynamics_training_examples_mrep_trace_hash_strips_unmapped_generated_action_target_refs():
+def test_dynamics_training_examples_mrep_trace_hash_normalizes_live_object_id_targets():
+    svc = _build_service()
+    _first_project, first_state, first_object, _first_other = _save_semantic_target_state(svc)
+    _second_project, second_state, second_object, _second_other = _save_semantic_target_state(svc)
+    payload = {
+        "scenario": "mrep_live_target_uuid_normalization",
+        "horizon": 2,
+        "evidence_coverage": 0.9,
+        "actions": [
+            {
+                "action_type": "inspect",
+                "target_role": "project",
+                "target_objects": [first_object.id],
+            }
+        ],
+    }
+    second_payload = deepcopy(payload)
+    second_payload["actions"][0]["target_objects"] = [second_object.id]
+
+    first = svc.dynamics_training_examples(first_state.id, payload)
+    second = svc.dynamics_training_examples(second_state.id, second_payload)
+    first_forecast = next(
+        item for item in first["examples"] if item["sample_type"] == "action_conditioned_forecast"
+    )
+    second_forecast = next(
+        item for item in second["examples"] if item["sample_type"] == "action_conditioned_forecast"
+    )
+    first_forecast["action"] = TerritoryWorldModelAction(**first_forecast["action"])
+    second_forecast["action"] = TerritoryWorldModelAction(**second_forecast["action"])
+    first_payload = svc._dynamics_training_example_semantic_payload(
+        TwmDynamicsTrainingExample(**first_forecast)
+    )
+    second_payload_semantic = svc._dynamics_training_example_semantic_payload(
+        TwmDynamicsTrainingExample(**second_forecast)
+    )
+
+    assert first_object.id != second_object.id
+    assert first["summary"]["mrep_trace"]["dataset_snapshot_hash"] == second["summary"]["mrep_trace"]["dataset_snapshot_hash"]
+    assert first_payload["action"]["target_objects"] == ["PRJ-SEMANTIC-001"]
+    assert second_payload_semantic["action"]["target_objects"] == ["PRJ-SEMANTIC-001"]
+
+
+def test_dynamics_training_examples_mrep_trace_hash_distinguishes_different_live_targets():
+    svc = _build_service()
+    _project, state, first_object, second_object = _save_semantic_target_state(svc)
+    base_payload = {
+        "scenario": "mrep_live_target_uuid_distinction",
+        "horizon": 2,
+        "evidence_coverage": 0.9,
+        "actions": [
+            {
+                "action_type": "inspect",
+                "target_role": "project",
+                "target_objects": [first_object.id],
+            }
+        ],
+    }
+    second_payload = deepcopy(base_payload)
+    second_payload["actions"][0]["target_objects"] = [second_object.id]
+
+    first = svc.dynamics_training_examples(state.id, base_payload)
+    second = svc.dynamics_training_examples(state.id, second_payload)
+    first_forecast = next(
+        item for item in first["examples"] if item["sample_type"] == "action_conditioned_forecast"
+    )
+    second_forecast = next(
+        item for item in second["examples"] if item["sample_type"] == "action_conditioned_forecast"
+    )
+    first_forecast["action"] = TerritoryWorldModelAction(**first_forecast["action"])
+    second_forecast["action"] = TerritoryWorldModelAction(**second_forecast["action"])
+    first_payload = svc._dynamics_training_example_semantic_payload(
+        TwmDynamicsTrainingExample(**first_forecast)
+    )
+    second_payload_semantic = svc._dynamics_training_example_semantic_payload(
+        TwmDynamicsTrainingExample(**second_forecast)
+    )
+
+    assert first_payload["action"]["target_objects"] == ["PRJ-SEMANTIC-001"]
+    assert second_payload_semantic["action"]["target_objects"] == ["PRJ-SEMANTIC-002"]
+    assert _stable_sha256([first_payload]) != _stable_sha256([second_payload_semantic])
+    assert first["summary"]["mrep_trace"]["dataset_snapshot_hash"] != second["summary"]["mrep_trace"]["dataset_snapshot_hash"]
+
+
+def test_dynamics_training_examples_mrep_trace_hash_preserves_unmapped_generated_action_target_refs():
     svc = _build_service()
     base = TwmDynamicsTrainingExample(
         id="generated-example-a",
@@ -1834,10 +1974,10 @@ def test_dynamics_training_examples_mrep_trace_hash_strips_unmapped_generated_ac
     generated_payload = svc._dynamics_training_example_semantic_payload(generated_target_id_changed)
     semantic_payload = svc._dynamics_training_example_semantic_payload(semantic_target)
 
-    assert base_payload["action"]["target_objects"] == []
-    assert generated_payload["action"]["target_objects"] == []
-    assert base_payload == generated_payload
-    assert _stable_sha256([base_payload]) == _stable_sha256([generated_payload])
+    assert base_payload["action"]["target_objects"] == ["3f31f5e1-17e4-4263-99fd-892d86af17a6"]
+    assert generated_payload["action"]["target_objects"] == ["c0904d7b-1fa8-4b96-a883-d795c64a54ed"]
+    assert base_payload != generated_payload
+    assert _stable_sha256([base_payload]) != _stable_sha256([generated_payload])
     assert semantic_payload["action"]["target_objects"] == ["PRJ-DEMO-001"]
     assert _stable_sha256([base_payload]) != _stable_sha256([semantic_payload])
 

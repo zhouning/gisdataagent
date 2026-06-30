@@ -6293,6 +6293,10 @@ class TerritoryWorldModelService:
                 evidence_gate=forecast.evidence_gate,
                 provenance={
                     "state_version_id": state_version_id,
+                    "action_target_objects": self._dynamics_action_target_object_provenance(
+                        action,
+                        list(state_bundle["objects"]),
+                    ),
                     "rule_hit_count": len(rule_hits),
                     "evidence_item_count": len(evidence_items),
                     "validation_overall_status": validation.get("overall_status"),
@@ -11929,7 +11933,14 @@ class TerritoryWorldModelService:
 
     def _dynamics_training_example_semantic_payload(self, item: TwmDynamicsTrainingExample) -> dict[str, Any]:
         action_payload = item.action.to_dict()
-        action_payload["target_objects"] = self._dynamics_semantic_action_target_objects(item)
+        semantic_target_objects = self._dynamics_semantic_action_target_objects(item)
+        action_payload["target_objects"] = semantic_target_objects
+        targets_payload = deepcopy(item.targets)
+        future_latent_state = targets_payload.get("future_latent_state")
+        if isinstance(future_latent_state, dict):
+            action_signature = future_latent_state.get("action_signature")
+            if isinstance(action_signature, dict) and "target_objects" in action_signature:
+                action_signature["target_objects"] = semantic_target_objects
         payload = {
             "state_version_id": item.state_version_id,
             "project_id": item.project_id,
@@ -11938,7 +11949,7 @@ class TerritoryWorldModelService:
             "current_state_summary": item.current_state_summary,
             "action": action_payload,
             "scenario_context": item.scenario_context,
-            "targets": item.targets,
+            "targets": targets_payload,
             "labels": item.labels,
             "losses": item.losses,
             "evidence_gate": item.evidence_gate,
@@ -11951,7 +11962,7 @@ class TerritoryWorldModelService:
         targets = [str(target) for target in item.action.target_objects or [] if str(target)]
         provenance_targets = item.provenance.get("action_target_objects")
         if not isinstance(provenance_targets, list):
-            return [target for target in targets if not self._dynamics_generated_action_target_reference(target)]
+            return targets
         semantic_by_id: dict[str, str] = {}
         ordered_semantic: list[str] = []
         for raw_target in provenance_targets:
@@ -11971,8 +11982,40 @@ class TerritoryWorldModelService:
         return [
             semantic_by_id.get(target, target)
             for target in targets
-            if target in semantic_by_id or not self._dynamics_generated_action_target_reference(target)
         ]
+
+    def _dynamics_action_target_object_provenance(
+        self,
+        action: TerritoryWorldModelAction,
+        objects: list[TwmStateObject],
+    ) -> list[dict[str, Any]]:
+        requested = [str(item) for item in action.target_objects or [] if str(item)]
+        if not requested:
+            return []
+        role = action.target_role or ""
+        index: dict[str, TwmStateObject] = {}
+        for obj in objects:
+            for key in (obj.id, obj.object_code, obj.source_feature_id):
+                if key:
+                    index[str(key)] = obj
+        matched: list[dict[str, Any]] = []
+        for key in requested:
+            obj = index.get(key)
+            if obj is None:
+                continue
+            if role and role not in {obj.canonical_role, obj.source_role, obj.object_type}:
+                continue
+            matched.append(
+                {
+                    "id": obj.id,
+                    "object_code": obj.object_code,
+                    "source_feature_id": obj.source_feature_id,
+                    "canonical_role": obj.canonical_role,
+                    "source_role": obj.source_role,
+                    "object_type": obj.object_type,
+                }
+            )
+        return matched
 
     def _dynamics_semantic_action_target_reference(self, target: dict[str, Any]) -> str:
         for key in (
@@ -12007,6 +12050,8 @@ class TerritoryWorldModelService:
         if not path and key in _DYNAMICS_TOP_LEVEL_GENERATED_SEMANTIC_KEYS:
             return True
         if path == ("provenance",) and key in _DYNAMICS_FLAT_PROVENANCE_GENERATED_SEMANTIC_KEYS:
+            return True
+        if path == ("provenance", "action_target_objects") and key == "id":
             return True
         return path == ("targets", "future_latent_state") and key in _DYNAMICS_GENERATED_FUTURE_LATENT_STATE_KEYS
 
