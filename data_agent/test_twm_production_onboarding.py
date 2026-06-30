@@ -62,11 +62,11 @@ def _write_same_case_baseline_exports(output_dir: Path) -> tuple[Path, Path]:
         "\n".join(
             [
                 "case_id,ground_truth_conflict,detected_conflict,evidence_linked,unsupported_recommendation,not_for_production,sanitization_level",
-                "c001,true,true,true,false,false,real_sanitized",
-                "c002,true,true,true,false,false,real_sanitized",
-                "c003,false,false,true,false,false,real_sanitized",
-                "c004,true,false,true,false,false,real_sanitized",
-                "c005,false,false,true,false,false,real_sanitized",
+                "c001,true,true,true,false,true,real_sanitized",
+                "c002,true,true,true,false,true,real_sanitized",
+                "c003,false,false,true,false,true,real_sanitized",
+                "c004,true,false,true,false,true,real_sanitized",
+                "c005,false,false,true,false,true,real_sanitized",
             ]
         )
         + "\n",
@@ -76,17 +76,26 @@ def _write_same_case_baseline_exports(output_dir: Path) -> tuple[Path, Path]:
         "\n".join(
             [
                 "case_id,ground_truth_conflict,detected_conflict,evidence_linked,unsupported_recommendation,not_for_production,sanitization_level",
-                "c001,true,true,true,false,false,real_sanitized",
-                "c002,true,false,true,false,false,real_sanitized",
-                "c003,false,false,true,false,false,real_sanitized",
-                "c004,true,false,true,false,false,real_sanitized",
-                "c005,false,false,true,false,false,real_sanitized",
+                "c001,true,true,true,false,true,real_sanitized",
+                "c002,true,false,true,false,true,real_sanitized",
+                "c003,false,false,true,false,true,real_sanitized",
+                "c004,true,false,true,false,true,real_sanitized",
+                "c005,false,false,true,false,true,real_sanitized",
             ]
         )
         + "\n",
         encoding="utf-8",
     )
     return twm_path, baseline_path
+
+
+def _write_case_output(path: Path, case_ids: list[str]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    rows = [
+        "case_id,ground_truth_conflict,detected_conflict,evidence_linked,unsupported_recommendation,not_for_production,sanitization_level"
+    ]
+    rows.extend(f"{case_id},true,true,true,false,true,real_sanitized" for case_id in case_ids)
+    path.write_text("\n".join(rows) + "\n", encoding="utf-8")
 
 
 def test_twm_production_onboarding_runs_foundation_and_bundle_from_raw_export(tmp_path):
@@ -201,9 +210,48 @@ def test_twm_production_onboarding_runs_same_case_baseline_pipeline(tmp_path):
     assert summary["baseline_evidence"]["overlap_count"] == 5
     assert summary["baseline_evidence"]["coverage_ratio"] == 1.0
     assert "baseline_evidence_pipeline_report" in summary["outputs"]
+    pipeline_report = json.loads((output_dir / "twm_baseline_evidence_pipeline.json").read_text(encoding="utf-8"))
+    assert summary["baseline_evidence"]["export_validation_status"] == pipeline_report["export_validation"]["status"]
     markdown = (output_dir / "twm_production_onboarding_summary.md").read_text(encoding="utf-8")
     assert "## Same-Case Baseline Evidence" in markdown
     assert "manual_gis_overlay_checklist" in markdown
+
+
+def test_twm_production_onboarding_same_basename_external_files_do_not_collide(tmp_path):
+    production_path = tmp_path / "production_observed_history.csv"
+    output_dir = tmp_path / "onboarding_same_basename"
+    twm_path = tmp_path / "twm" / "cases.csv"
+    baseline_path = tmp_path / "baseline" / "cases.csv"
+    _write_normalized_observed_history(production_path)
+    _write_case_output(twm_path, ["t001", "t002"])
+    _write_case_output(baseline_path, ["b001", "b002"])
+
+    subprocess.run(
+        [
+            "/Users/zhouning/gisdataagent/.venv/bin/python",
+            str(SCRIPT),
+            "--production-observed-history",
+            str(production_path),
+            "--output-dir",
+            str(output_dir),
+            "--claim-id",
+            "C1_state_conflict_recall",
+            "--baseline-id",
+            "manual_gis_overlay_checklist",
+            "--twm-case-output",
+            str(twm_path),
+            "--baseline-case-output",
+            str(baseline_path),
+        ],
+        cwd=REPO_ROOT,
+        check=True,
+    )
+
+    summary = json.loads((output_dir / "twm_production_onboarding_summary.json").read_text(encoding="utf-8"))
+    assert summary["baseline_evidence"]["status"] == "blocked"
+    assert summary["baseline_evidence"]["pipeline_decision"] == "export_validation_blocked"
+    assert summary["baseline_evidence"]["export_validation_status"] == "blocked"
+    assert summary["baseline_evidence"]["overlap_count"] == 0
 
 
 def test_twm_production_onboarding_writes_summary_when_strict_readiness_blocks(tmp_path):
@@ -333,6 +381,44 @@ def test_twm_production_onboarding_requires_complete_baseline_arguments(tmp_path
 
     assert completed.returncode == 2
     assert "baseline evidence requires --claim-id, --baseline-id, --twm-case-output and --baseline-case-output together" in completed.stdout
+    assert not (output_dir / "twm_production_onboarding_summary.json").exists()
+
+
+def test_twm_production_onboarding_missing_external_baseline_file_errors_cleanly(tmp_path):
+    production_path = tmp_path / "production_observed_history.csv"
+    output_dir = tmp_path / "onboarding_missing_external_baseline"
+    twm_path = tmp_path / "twm" / "cases.csv"
+    missing_baseline_path = tmp_path / "baseline" / "missing_cases.csv"
+    _write_normalized_observed_history(production_path)
+    _write_case_output(twm_path, ["c001", "c002"])
+
+    completed = subprocess.run(
+        [
+            "/Users/zhouning/gisdataagent/.venv/bin/python",
+            str(SCRIPT),
+            "--production-observed-history",
+            str(production_path),
+            "--output-dir",
+            str(output_dir),
+            "--claim-id",
+            "C1_state_conflict_recall",
+            "--baseline-id",
+            "manual_gis_overlay_checklist",
+            "--twm-case-output",
+            str(twm_path),
+            "--baseline-case-output",
+            str(missing_baseline_path),
+        ],
+        cwd=REPO_ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        check=False,
+    )
+
+    assert completed.returncode == 2
+    assert "baseline evidence file not found" in completed.stdout
+    assert str(missing_baseline_path) in completed.stdout
     assert not (output_dir / "twm_production_onboarding_summary.json").exists()
 
 

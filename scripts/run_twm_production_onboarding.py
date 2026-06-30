@@ -224,11 +224,9 @@ def build_baseline_evidence_pipeline_report(
     with tempfile.TemporaryDirectory(prefix="twm_onboarding_baseline_", dir=REPO_ROOT) as stage_dir:
         stage_path = Path(stage_dir)
         if not is_repo_local_path(twm_case_output):
-            twm_service_path = stage_path / twm_case_output.name
-            shutil.copyfile(twm_case_output, twm_service_path)
+            twm_service_path = stage_baseline_evidence_file(twm_case_output, stage_path, role="twm")
         if not is_repo_local_path(baseline_case_output):
-            baseline_service_path = stage_path / baseline_case_output.name
-            shutil.copyfile(baseline_case_output, baseline_service_path)
+            baseline_service_path = stage_baseline_evidence_file(baseline_case_output, stage_path, role="baseline")
         report = get_territory_world_model_service().baseline_evidence_pipeline_report(
             {
                 "claim_id": claim_id,
@@ -239,6 +237,16 @@ def build_baseline_evidence_pipeline_report(
         )
     write_json(output_path, report)
     return report
+
+
+def stage_baseline_evidence_file(path: Path, stage_path: Path, *, role: str) -> Path:
+    if not path.exists():
+        raise ValueError(f"baseline evidence file not found: {path}")
+    role_dir = stage_path / role
+    role_dir.mkdir(parents=True, exist_ok=True)
+    staged_path = role_dir / path.name
+    shutil.copyfile(path, staged_path)
+    return staged_path
 
 
 def is_repo_local_path(path: Path) -> bool:
@@ -302,7 +310,6 @@ def build_onboarding_summary(
     scale = validation_bundle_report.get("production_scale_readiness") or {}
     export_validation = baseline_evidence_report.get("export_validation") or {}
     coverage = export_validation.get("coverage") or {}
-    export_validation_status = onboarding_baseline_export_validation_status(export_validation)
     deployment_punch_list = build_deployment_punch_list(
         schema="territory_world_model.production_onboarding_punch_list.v1",
         status=onboarding_status(data_foundation_summary, validation_bundle_report),
@@ -350,7 +357,7 @@ def build_onboarding_summary(
             "pipeline_decision": baseline_evidence_report.get("pipeline_decision", "not_requested"),
             "claim_id": baseline_evidence_report.get("claim_id"),
             "baseline_id": baseline_evidence_report.get("baseline_id"),
-            "export_validation_status": export_validation_status,
+            "export_validation_status": export_validation.get("status"),
             "overlap_count": coverage.get("overlap_count", 0),
             "coverage_ratio": coverage.get("coverage_ratio", 0.0),
         },
@@ -369,22 +376,6 @@ def build_onboarding_summary(
         "claim_boundary": "onboarding summary checks ingestion and validation wiring only; it does not certify production accuracy or legal approval readiness",
     }
     return summary
-
-
-def onboarding_baseline_export_validation_status(export_validation: dict[str, Any]) -> str | None:
-    status = export_validation.get("status")
-    warnings = list(export_validation.get("warnings") or [])
-    if (
-        status == "review"
-        and not export_validation.get("blocking_errors")
-        and warnings == ["not_for_production_or_sanitization_flag_missing"]
-    ):
-        inventory = export_validation.get("column_inventory") or {}
-        twm_columns = set((inventory.get("twm") or {}).get("columns") or [])
-        baseline_columns = set((inventory.get("baseline") or {}).get("columns") or [])
-        if "sanitization_level" in twm_columns and "sanitization_level" in baseline_columns:
-            return "pass"
-    return status
 
 
 def onboarding_status(data_foundation_summary: dict[str, Any], validation_bundle_report: dict[str, Any]) -> str:
