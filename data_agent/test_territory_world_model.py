@@ -10,9 +10,12 @@ from starlette.requests import Request
 from data_agent.territory_world_model import (
     StateBuildResult,
     TerritoryWorldModelService,
+    TwmEvidenceItem,
     TwmProject,
     TwmRepository,
+    TwmRuleHit,
     TwmRuleEvaluationResult,
+    TwmStateRelation,
     TwmStateObject,
     TwmStateVersion,
 )
@@ -134,6 +137,112 @@ def _save_lightweight_twm_state(service: TerritoryWorldModelService):
             relation_counts_by_type={},
             hierarchy_tokens={"county": ["500227"]},
             quality_summary=state_version.quality_summary,
+        )
+    )
+    return project, state_version
+
+
+def _save_passable_state_contract_state(service: TerritoryWorldModelService, tmp_path: Path):
+    bundle_dir = tmp_path / "contract_bundle"
+    tables_dir = bundle_dir / "tables"
+    tables_dir.mkdir(parents=True)
+    (tables_dir / "state_snapshots.csv").write_text(
+        "\n".join(
+            [
+                "snapshot_year,land_space_type,area_m2,area_delta_m2,feature_count,source_dataset,synthetic,not_for_production,temporal_stage",
+                "2023,agricultural_space,1000,0,1,observed,false,false,baseline",
+                "2024,agricultural_space,1010,10,1,observed,false,false,followup",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    project = TwmProject(name="Passable contract project", region_code="500227")
+    state_version = TwmStateVersion(
+        project_id=project.id,
+        object_count=3,
+        relation_count=2,
+        build_status="ready",
+        source_manifest={"bundle_dir": str(bundle_dir)},
+        summary={
+            "object_counts_by_role": {"parcel": 1, "block": 1, "township": 1},
+            "relation_counts_by_type": {"annual_change_of_parcel": 1, "project_overlaps_planning_zone": 1},
+            "metric_crs": "EPSG:3857",
+        },
+        quality_summary={"evidence_coverage": 0.9},
+    )
+    parcel = TwmStateObject(
+        state_version_id=state_version.id,
+        object_type="feature",
+        object_code="PARCEL-CACHE-001",
+        source_role="parcel",
+        canonical_role="parcel",
+        attributes={"area_m2": 1000.0},
+        quality_score=0.95,
+    )
+    block = TwmStateObject(
+        state_version_id=state_version.id,
+        object_type="feature",
+        object_code="BLOCK-CACHE-001",
+        source_role="block",
+        canonical_role="block",
+        attributes={"area_m2": 5000.0},
+        quality_score=0.95,
+    )
+    township = TwmStateObject(
+        state_version_id=state_version.id,
+        object_type="feature",
+        object_code="TOWNSHIP-CACHE-001",
+        source_role="township",
+        canonical_role="township",
+        attributes={"admin_code": "500227001"},
+        quality_score=0.95,
+    )
+    relations = [
+        TwmStateRelation(
+            state_version_id=state_version.id,
+            subject_object_id=parcel.id,
+            object_object_id=parcel.id,
+            predicate="annual_change_of_parcel",
+            relation_type="annual_change_of_parcel",
+            confidence=0.95,
+        ),
+        TwmStateRelation(
+            state_version_id=state_version.id,
+            subject_object_id=parcel.id,
+            object_object_id=block.id,
+            predicate="project_overlaps_planning_zone",
+            relation_type="project_overlaps_planning_zone",
+            confidence=0.95,
+        ),
+    ]
+    service.repository.save_state_bundle(
+        StateBuildResult(
+            project=project,
+            state_version=state_version,
+            objects=[parcel, block, township],
+            relations=relations,
+            object_counts_by_role={"parcel": 1, "block": 1, "township": 1},
+            relation_counts_by_type={"annual_change_of_parcel": 1, "project_overlaps_planning_zone": 1},
+            hierarchy_tokens={"county": ["500227"]},
+            quality_summary=state_version.quality_summary,
+        )
+    )
+    rule_hit = service.repository.save_rule_hit(
+        TwmRuleHit(
+            state_version_id=state_version.id,
+            rule_id="CONTRACT-CACHE-EVIDENCE",
+            subject_object_id=parcel.id,
+            hit_status="closed",
+            severity="low",
+            risk_score=0.0,
+        )
+    )
+    service.repository.save_evidence_item(
+        TwmEvidenceItem(
+            rule_hit_id=rule_hit.id,
+            evidence_type="contract_fixture",
+            source_ref="state_snapshots.csv",
+            payload={"state_version_id": state_version.id},
         )
     )
     return project, state_version
@@ -1683,6 +1792,53 @@ def test_dynamics_training_examples_cache_keys_mrep_trace_lineage_metadata():
 
     assert policy_first["summary"]["mrep_trace"]["policy_version"] == "policy-a"
     assert policy_second["summary"]["mrep_trace"]["policy_version"] == "policy-b"
+
+
+def test_dynamics_training_examples_mrep_trace_cache_keys_top_level_holdout_year():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+    base_payload = {
+        "scenario": "mrep_trace_holdout_year_cache",
+        "horizon": 2,
+        "evidence_coverage": 0.72,
+        "split": "temporal_holdout",
+    }
+
+    first = svc.dynamics_training_examples(state_id, {**base_payload, "holdout_year": 2025})
+    second = svc.dynamics_training_examples(state_id, {**base_payload, "holdout_year": 2030})
+
+    assert first["summary"]["mrep_trace"]["split_definition"]["temporal_holdout"]["holdout_year"] == 2025
+    assert second["summary"]["mrep_trace"]["split_definition"]["temporal_holdout"]["holdout_year"] == 2030
+
+
+def test_dynamics_training_examples_mrep_trace_cache_keys_geofm_gate_report_status(tmp_path):
+    svc = _build_service()
+    _project, state = _save_passable_state_contract_state(svc, tmp_path)
+    state_id = state.id
+    base_payload = {
+        "scenario": "mrep_trace_geofm_gate_cache",
+        "horizon": 2,
+        "evidence_coverage": 0.9,
+    }
+    review_payload = {
+        **base_payload,
+        "geofm_gate_report": {"gate_status": "review", "decision": "review_required"},
+    }
+    pass_payload = {
+        **base_payload,
+        "geofm_gate_report": {"gate_status": "pass", "decision": "retain_geofm_for_downstream_planning"},
+    }
+
+    first = svc.dynamics_training_examples(state_id, review_payload)
+    assert first["summary"]["mrep_trace"]["state_contract_status"] == "review"
+    assert svc.state_contract_report(state_id, pass_payload)["status"] == "pass"
+
+    second = svc.dynamics_training_examples(state_id, pass_payload)
+
+    assert second["summary"]["mrep_trace"]["state_contract_status"] == "pass"
 
 
 @pytest.mark.parametrize(
