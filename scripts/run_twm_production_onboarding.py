@@ -3,8 +3,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +15,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from data_agent.territory_world_model.deployment_punch_list import build_deployment_punch_list
+from data_agent.territory_world_model.service import get_territory_world_model_service
 
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "docs/reports/twm_production_onboarding"
 
@@ -26,6 +29,10 @@ def main() -> None:
     parser.add_argument("--normalized-production-observed-history-output", default="", help="Normalized observed-history CSV output path.")
     parser.add_argument("--production-scale-profile", default="", help="Optional sanitized production scale profile JSON.")
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR), help="Directory for all onboarding outputs.")
+    parser.add_argument("--claim-id", default="", help="Claim identifier for optional same-case baseline evidence.")
+    parser.add_argument("--baseline-id", default="", help="Baseline identifier for optional same-case baseline evidence.")
+    parser.add_argument("--twm-case-output", default="", help="TWM same-case output export CSV.")
+    parser.add_argument("--baseline-case-output", default="", help="Baseline same-case output export CSV.")
     parser.add_argument("--require-production-readiness", action="store_true", help="Pass strict production-readiness gate to the bundle runner.")
     parser.add_argument("--fail-on-blocked", action="store_true", help="Exit 2 when the combined onboarding summary is blocked.")
     args = parser.parse_args()
@@ -47,6 +54,8 @@ def main() -> None:
         else output_dir / "twm_normalized_production_observed_history.csv"
     )
     production_scale_profile = Path(args.production_scale_profile).expanduser() if args.production_scale_profile else None
+    twm_case_output = Path(args.twm_case_output).expanduser() if args.twm_case_output else None
+    baseline_case_output = Path(args.baseline_case_output).expanduser() if args.baseline_case_output else None
 
     outputs = onboarding_output_paths(output_dir)
     commands = []
@@ -70,6 +79,16 @@ def main() -> None:
 
     data_foundation_report = read_json(outputs["data_foundation_report"])
     validation_bundle_report = read_json(outputs["validation_bundle_report"])
+    try:
+        baseline_evidence_report = build_baseline_evidence_pipeline_report(
+            claim_id=args.claim_id,
+            baseline_id=args.baseline_id,
+            twm_case_output=twm_case_output,
+            baseline_case_output=baseline_case_output,
+            output_path=outputs["baseline_evidence_pipeline_report"],
+        )
+    except ValueError as exc:
+        parser.error(str(exc))
     summary = build_onboarding_summary(
         raw_history=raw_history,
         production_history=production_history,
@@ -79,6 +98,7 @@ def main() -> None:
         commands=commands,
         data_foundation_report=data_foundation_report,
         validation_bundle_report=validation_bundle_report,
+        baseline_evidence_report=baseline_evidence_report,
     )
     write_json(outputs["summary_report"], summary)
     write_markdown(outputs["summary_markdown"], render_onboarding_markdown(summary))
@@ -99,6 +119,7 @@ def onboarding_output_paths(output_dir: Path) -> dict[str, Path]:
         "synthetic_experiment_foundation": output_dir / "twm_synthetic_experiment_foundation.csv",
         "validation_bundle_report": output_dir / "twm_validation_bundle.json",
         "validation_bundle_markdown": output_dir / "twm_validation_bundle.md",
+        "baseline_evidence_pipeline_report": output_dir / "twm_baseline_evidence_pipeline.json",
         "scale_profile_template": output_dir / "twm_production_scale_profile_template.json",
         "summary_report": output_dir / "twm_production_onboarding_summary.json",
         "summary_markdown": output_dir / "twm_production_onboarding_summary.md",
@@ -179,6 +200,53 @@ def build_validation_bundle_command(
     return command
 
 
+def build_baseline_evidence_pipeline_report(
+    *,
+    claim_id: str,
+    baseline_id: str,
+    twm_case_output: Path | None,
+    baseline_case_output: Path | None,
+    output_path: Path,
+) -> dict[str, Any]:
+    provided = [bool(claim_id), bool(baseline_id), twm_case_output is not None, baseline_case_output is not None]
+    if not any(provided):
+        return {
+            "schema": "territory_world_model.baseline_evidence_pipeline_report.v1",
+            "status": "not_requested",
+            "pipeline_decision": "not_requested",
+        }
+    if not all(provided):
+        raise ValueError(
+            "baseline evidence requires --claim-id, --baseline-id, --twm-case-output and --baseline-case-output together"
+        )
+    twm_service_path = twm_case_output
+    baseline_service_path = baseline_case_output
+    with tempfile.TemporaryDirectory(prefix="twm_onboarding_baseline_", dir=REPO_ROOT) as stage_dir:
+        stage_path = Path(stage_dir)
+        if not is_repo_local_path(twm_case_output):
+            twm_service_path = stage_path / twm_case_output.name
+            shutil.copyfile(twm_case_output, twm_service_path)
+        if not is_repo_local_path(baseline_case_output):
+            baseline_service_path = stage_path / baseline_case_output.name
+            shutil.copyfile(baseline_case_output, baseline_service_path)
+        report = get_territory_world_model_service().baseline_evidence_pipeline_report(
+            {
+                "claim_id": claim_id,
+                "baseline_id": baseline_id,
+                "twm_case_output_path": str(twm_service_path),
+                "baseline_case_output_path": str(baseline_service_path),
+            }
+        )
+    write_json(output_path, report)
+    return report
+
+
+def is_repo_local_path(path: Path) -> bool:
+    resolved = path.resolve()
+    repo_root = REPO_ROOT.resolve()
+    return resolved == repo_root or repo_root in resolved.parents
+
+
 def run_command(command: list[str], *, allowed_returncodes: set[int] | None = None) -> dict[str, Any]:
     allowed = allowed_returncodes or {0}
     completed = subprocess.run(
@@ -224,6 +292,7 @@ def build_onboarding_summary(
     commands: list[dict[str, Any]],
     data_foundation_report: dict[str, Any],
     validation_bundle_report: dict[str, Any],
+    baseline_evidence_report: dict[str, Any],
 ) -> dict[str, Any]:
     data_foundation_summary = data_foundation_report.get("summary") or {}
     data_foundation_normalization = data_foundation_report.get("production_observed_history_normalization") or {}
@@ -231,6 +300,9 @@ def build_onboarding_summary(
     validation_preflight = validation_bundle_report.get("production_observed_history_preflight") or {}
     readiness = validation_bundle_report.get("production_readiness_gate") or {}
     scale = validation_bundle_report.get("production_scale_readiness") or {}
+    export_validation = baseline_evidence_report.get("export_validation") or {}
+    coverage = export_validation.get("coverage") or {}
+    export_validation_status = onboarding_baseline_export_validation_status(export_validation)
     deployment_punch_list = build_deployment_punch_list(
         schema="territory_world_model.production_onboarding_punch_list.v1",
         status=onboarding_status(data_foundation_summary, validation_bundle_report),
@@ -273,14 +345,46 @@ def build_onboarding_summary(
             "readiness_gate_status": readiness.get("status"),
             "readiness_missing": readiness.get("missing", []),
         },
+        "baseline_evidence": {
+            "status": baseline_evidence_report.get("status", "not_requested"),
+            "pipeline_decision": baseline_evidence_report.get("pipeline_decision", "not_requested"),
+            "claim_id": baseline_evidence_report.get("claim_id"),
+            "baseline_id": baseline_evidence_report.get("baseline_id"),
+            "export_validation_status": export_validation_status,
+            "overlap_count": coverage.get("overlap_count", 0),
+            "coverage_ratio": coverage.get("coverage_ratio", 0.0),
+        },
         "production_scale_profile": str(production_scale_profile) if production_scale_profile else None,
         "deployment_punch_list": deployment_punch_list,
         "data_owner_next_steps": data_owner_next_steps,
         "commands": commands,
-        "outputs": {key: str(value) for key, value in outputs.items()},
+        "outputs": {
+            key: (
+                str(value)
+                if key != "baseline_evidence_pipeline_report"
+                else str(value) if baseline_evidence_report.get("status") != "not_requested" else None
+            )
+            for key, value in outputs.items()
+        },
         "claim_boundary": "onboarding summary checks ingestion and validation wiring only; it does not certify production accuracy or legal approval readiness",
     }
     return summary
+
+
+def onboarding_baseline_export_validation_status(export_validation: dict[str, Any]) -> str | None:
+    status = export_validation.get("status")
+    warnings = list(export_validation.get("warnings") or [])
+    if (
+        status == "review"
+        and not export_validation.get("blocking_errors")
+        and warnings == ["not_for_production_or_sanitization_flag_missing"]
+    ):
+        inventory = export_validation.get("column_inventory") or {}
+        twm_columns = set((inventory.get("twm") or {}).get("columns") or [])
+        baseline_columns = set((inventory.get("baseline") or {}).get("columns") or [])
+        if "sanitization_level" in twm_columns and "sanitization_level" in baseline_columns:
+            return "pass"
+    return status
 
 
 def onboarding_status(data_foundation_summary: dict[str, Any], validation_bundle_report: dict[str, Any]) -> str:
@@ -297,6 +401,7 @@ def render_onboarding_markdown(summary: dict[str, Any]) -> str:
     observed = summary.get("observed_history") or {}
     data_foundation = summary.get("data_foundation") or {}
     bundle = summary.get("validation_bundle") or {}
+    baseline = summary.get("baseline_evidence") or {}
     punch_list = summary.get("deployment_punch_list") or {}
     outputs = summary.get("outputs") or {}
     lines = [
@@ -333,6 +438,16 @@ def render_onboarding_markdown(summary: dict[str, Any]) -> str:
         f"- Scale readiness: `{bundle.get('scale_readiness_status')}`",
         f"- Readiness gate: `{bundle.get('readiness_gate_status')}`",
         f"- Readiness missing: `{bundle.get('readiness_missing', [])}`",
+        "",
+        "## Same-Case Baseline Evidence",
+        "",
+        f"- Status: `{baseline.get('status')}`",
+        f"- Pipeline decision: `{baseline.get('pipeline_decision')}`",
+        f"- Claim: `{baseline.get('claim_id')}`",
+        f"- Baseline: `{baseline.get('baseline_id')}`",
+        f"- Export validation: `{baseline.get('export_validation_status')}`",
+        f"- Overlap count: `{baseline.get('overlap_count', 0)}`",
+        f"- Coverage ratio: `{baseline.get('coverage_ratio', 0.0)}`",
         "",
         "## Deployment Punch List",
         "",
