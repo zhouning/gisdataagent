@@ -11760,6 +11760,15 @@ class TerritoryWorldModelService:
 
     def _dynamics_readiness_thresholds(self, payload: dict[str, Any]) -> dict[str, Any]:
         raw = dict(payload.get("thresholds") or {})
+        min_same_case_overlap_ratio = float(
+            safe_float(
+                raw.get("min_same_case_overlap_ratio", payload.get("min_same_case_overlap_ratio")),
+                0.8,
+            )
+            or 0.8
+        )
+        if min_same_case_overlap_ratio <= 0:
+            min_same_case_overlap_ratio = 0.8
         return {
             "min_total_examples": safe_int(raw.get("min_total_examples"), 6) or 6,
             "min_usable_examples": safe_int(raw.get("min_usable_examples"), 4) or 4,
@@ -11792,19 +11801,7 @@ class TerritoryWorldModelService:
                 )
                 or 1,
             ),
-            "min_same_case_overlap_ratio": min(
-                1.0,
-                max(
-                    0.0,
-                    float(
-                        safe_float(
-                            raw.get("min_same_case_overlap_ratio", payload.get("min_same_case_overlap_ratio")),
-                            0.8,
-                        )
-                        or 0.8
-                    ),
-                ),
-            ),
+            "min_same_case_overlap_ratio": min(1.0, min_same_case_overlap_ratio),
         }
 
     def _dynamics_payload_value_provided(self, value: Any) -> bool:

@@ -2923,6 +2923,44 @@ def test_dynamics_readiness_report_optional_failing_same_case_baseline_is_not_bl
     assert "same_case_baseline" not in report["gate_results"]["summary"]["blocked_gates"]
 
 
+def test_dynamics_readiness_report_clamps_negative_same_case_overlap_ratio_to_floor():
+    svc = _build_service()
+    project, state_version = _save_lightweight_twm_state(svc)
+    dataset = _minimal_observed_dynamics_dataset(state_version.id, project.id)
+
+    report = svc.dynamics_readiness_report(
+        state_version.id,
+        {
+            "dataset": dataset,
+            "require_same_case_baseline": True,
+            "thresholds": {
+                "min_same_case_overlap_ratio": -5,
+            },
+            "baseline_export_validation_report": {
+                "schema": "territory_world_model.baseline_export_validation_report.v1",
+                "status": "pass",
+                "claim": {
+                    "claim_id": "C1_state_conflict_recall",
+                    "baseline_id": "manual_gis_overlay_checklist",
+                },
+                "coverage": {
+                    "coverage_ratio": 0.75,
+                    "overlap_count": 7,
+                },
+                "blocking_errors": [],
+            },
+        },
+    )
+
+    gate = report["gate_results"]["same_case_baseline"]
+    assert report["thresholds"]["min_same_case_overlap_ratio"] == 0.8
+    assert gate["required"] is True
+    assert gate["passed"] is False
+    assert gate["status"] == "blocked"
+    assert "same_case_overlap_ratio" in gate["missing"]
+    assert report["status"] == "blocked"
+
+
 def test_dynamics_readiness_report_computes_explicitly_required_optional_gates(monkeypatch):
     svc = _build_service()
     project, state_version = _save_lightweight_twm_state(svc)
