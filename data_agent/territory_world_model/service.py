@@ -75,10 +75,14 @@ from ..otel_tracing import trace_twm_operation
 _INSTANCE_LOCK = threading.Lock()
 _INSTANCE: "TerritoryWorldModelService | None" = None
 TWM_BASELINE_EXPORT_MAX_BYTES = 5 * 1024 * 1024
-_DYNAMICS_GENERATED_SEMANTIC_KEYS = {
+_DYNAMICS_TOP_LEVEL_GENERATED_SEMANTIC_KEYS = {
     "id",
     "created_at",
     "updated_at",
+    "state_version_id",
+    "project_id",
+}
+_DYNAMICS_GENERATED_REFERENCE_SEMANTIC_KEYS = {
     "state_version_id",
     "project_id",
     "review_task_id",
@@ -11927,17 +11931,22 @@ class TerritoryWorldModelService:
         }
         return self._strip_dynamics_generated_semantic_keys(payload)
 
-    def _strip_dynamics_generated_semantic_keys(self, value: Any) -> Any:
+    def _strip_dynamics_generated_semantic_keys(self, value: Any, *, _path: tuple[str, ...] = ()) -> Any:
         normalized = jsonable(value)
         if isinstance(normalized, dict):
             return {
-                key: self._strip_dynamics_generated_semantic_keys(item)
+                key: self._strip_dynamics_generated_semantic_keys(item, _path=(*_path, str(key)))
                 for key, item in normalized.items()
-                if key not in _DYNAMICS_GENERATED_SEMANTIC_KEYS
+                if not self._dynamics_generated_semantic_key(str(key), _path)
             }
         if isinstance(normalized, list):
-            return [self._strip_dynamics_generated_semantic_keys(item) for item in normalized]
+            return [self._strip_dynamics_generated_semantic_keys(item, _path=_path) for item in normalized]
         return normalized
+
+    def _dynamics_generated_semantic_key(self, key: str, path: tuple[str, ...]) -> bool:
+        if not path and key in _DYNAMICS_TOP_LEVEL_GENERATED_SEMANTIC_KEYS:
+            return True
+        return key in _DYNAMICS_GENERATED_REFERENCE_SEMANTIC_KEYS
 
     def _dynamics_sample_inventory(self, dataset: dict[str, Any]) -> dict[str, Any]:
         examples = [dict(item) for item in dataset.get("examples") or [] if isinstance(item, dict)]

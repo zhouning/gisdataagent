@@ -1,6 +1,7 @@
 import asyncio
 import json
 from contextlib import contextmanager
+from copy import deepcopy
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -9,7 +10,9 @@ from starlette.requests import Request
 
 from data_agent.territory_world_model import (
     StateBuildResult,
+    TerritoryWorldModelAction,
     TerritoryWorldModelService,
+    TwmDynamicsTrainingExample,
     TwmEvidenceItem,
     TwmProject,
     TwmRepository,
@@ -20,6 +23,7 @@ from data_agent.territory_world_model import (
     TwmStateVersion,
 )
 from data_agent.api import territory_world_model_routes as routes
+from data_agent.territory_world_model.service import _stable_sha256
 
 
 MMFE_DIR = Path("data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion")
@@ -1753,6 +1757,66 @@ def test_dynamics_training_examples_mrep_trace_hash_excludes_generated_state_ide
 
     assert first_trace["state_version_id"] != second_trace["state_version_id"]
     assert first_trace["dataset_snapshot_hash"] == second_trace["dataset_snapshot_hash"]
+
+
+def test_dynamics_training_examples_mrep_trace_hash_preserves_nested_semantic_ids():
+    svc = _build_service()
+    base = TwmDynamicsTrainingExample(
+        id="generated-example-a",
+        state_version_id="generated-state-a",
+        project_id="generated-project-a",
+        split="candidate",
+        sample_type="action_conditioned_forecast",
+        current_state_summary={"object_count": 1},
+        action=TerritoryWorldModelAction(
+            action_type="inspect",
+            target_role="parcel",
+            spatial_scope={"id": "scope-semantic-001", "kind": "planning_area"},
+            parameters={"id": "domain-semantic-001", "approval_status": "pending"},
+        ),
+        scenario_context={"id": "scenario-semantic-001", "scenario": "mrep_nested_id"},
+        targets={
+            "domain_payload": {"id": "target-semantic-001", "score": 0.42},
+            "future_latent_state": {"total_area_m2": 1000.0},
+        },
+        labels={"ranking_score": 0.1, "supervision_source": "fixture"},
+        provenance={
+            "state_version_id": "generated-state-a",
+            "project_id": "generated-project-a",
+            "review_task_id": "generated-review-a",
+            "rule_hit_id": "generated-rule-a",
+            "evidence_item_id": "generated-evidence-a",
+            "source": "fixture",
+        },
+    )
+    generated_identity_changed = deepcopy(base)
+    generated_identity_changed.id = "generated-example-b"
+    generated_identity_changed.state_version_id = "generated-state-b"
+    generated_identity_changed.project_id = "generated-project-b"
+    generated_identity_changed.provenance = {
+        **generated_identity_changed.provenance,
+        "state_version_id": "generated-state-b",
+        "project_id": "generated-project-b",
+        "review_task_id": "generated-review-b",
+        "rule_hit_id": "generated-rule-b",
+        "evidence_item_id": "generated-evidence-b",
+    }
+    semantic_id_changed = deepcopy(base)
+    semantic_id_changed.action.parameters["id"] = "domain-semantic-002"
+
+    base_payload = svc._dynamics_training_example_semantic_payload(base)
+    generated_payload = svc._dynamics_training_example_semantic_payload(generated_identity_changed)
+    semantic_payload = svc._dynamics_training_example_semantic_payload(semantic_id_changed)
+
+    assert base_payload == generated_payload
+    assert _stable_sha256([base_payload]) == _stable_sha256([generated_payload])
+    assert base_payload["action"]["parameters"]["id"] == "domain-semantic-001"
+    assert base_payload["action"]["spatial_scope"]["id"] == "scope-semantic-001"
+    assert base_payload["scenario_context"]["id"] == "scenario-semantic-001"
+    assert base_payload["targets"]["domain_payload"]["id"] == "target-semantic-001"
+    assert base_payload != semantic_payload
+    assert _stable_sha256([base_payload]) != _stable_sha256([semantic_payload])
+    assert semantic_payload["action"]["parameters"]["id"] == "domain-semantic-002"
 
 
 def test_dynamics_training_examples_cache_keys_mrep_trace_lineage_metadata():
