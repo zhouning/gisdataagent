@@ -1801,6 +1801,47 @@ def test_dynamics_training_examples_mrep_trace_hash_excludes_generated_action_ta
     assert _stable_sha256([base_payload]) == _stable_sha256([generated_payload])
 
 
+def test_dynamics_training_examples_mrep_trace_hash_strips_unmapped_generated_action_target_refs():
+    svc = _build_service()
+    base = TwmDynamicsTrainingExample(
+        id="generated-example-a",
+        state_version_id="generated-state-a",
+        project_id="generated-project-a",
+        split="candidate",
+        sample_type="action_conditioned_forecast",
+        current_state_summary={"object_count": 1},
+        action=TerritoryWorldModelAction(
+            action_type="inspect",
+            target_role="project",
+            target_objects=["3f31f5e1-17e4-4263-99fd-892d86af17a6"],
+            parameters={"approval_status": "pending"},
+        ),
+        scenario_context={"scenario": "mrep_unmapped_generated_action_target_object"},
+        targets={"future_latent_state": {"total_area_m2": 1000.0}},
+        labels={"ranking_score": 0.1, "supervision_source": "fixture"},
+        provenance={
+            "state_version_id": "generated-state-a",
+            "project_id": "generated-project-a",
+            "source": "fixture",
+        },
+    )
+    generated_target_id_changed = deepcopy(base)
+    generated_target_id_changed.action.target_objects = ["c0904d7b-1fa8-4b96-a883-d795c64a54ed"]
+    semantic_target = deepcopy(base)
+    semantic_target.action.target_objects = ["PRJ-DEMO-001"]
+
+    base_payload = svc._dynamics_training_example_semantic_payload(base)
+    generated_payload = svc._dynamics_training_example_semantic_payload(generated_target_id_changed)
+    semantic_payload = svc._dynamics_training_example_semantic_payload(semantic_target)
+
+    assert base_payload["action"]["target_objects"] == []
+    assert generated_payload["action"]["target_objects"] == []
+    assert base_payload == generated_payload
+    assert _stable_sha256([base_payload]) == _stable_sha256([generated_payload])
+    assert semantic_payload["action"]["target_objects"] == ["PRJ-DEMO-001"]
+    assert _stable_sha256([base_payload]) != _stable_sha256([semantic_payload])
+
+
 def test_dynamics_training_examples_mrep_trace_hash_preserves_nested_semantic_ids():
     svc = _build_service()
     base = TwmDynamicsTrainingExample(
@@ -2159,6 +2200,30 @@ def test_review_hit_invalidates_dynamics_training_examples_mrep_trace_cache(tmp_
     }
     original_get_state_bundle = svc.repository.get_state_bundle
     bundle_calls = {"count": 0}
+    cache_key = svc._report_cache_key(
+        state_id,
+        payload,
+        include=(
+            "scenario",
+            "evidence_coverage",
+            "horizon",
+            "actions",
+            "scenario_context",
+            "split",
+            "temporal_holdout",
+            "holdout_year",
+            "rule_version",
+            "policy_version",
+            "model_version",
+            "baseline_version",
+            "random_seed",
+            "thresholds",
+            "geofm_gate_report",
+            "include_synthetic",
+            "max_examples",
+            "limit",
+        ),
+    )
 
     def counted_get_state_bundle(state_version_id):
         bundle_calls["count"] += 1
@@ -2172,8 +2237,10 @@ def test_review_hit_invalidates_dynamics_training_examples_mrep_trace_cache(tmp_
     cached = svc.dynamics_training_examples(state_id, payload)
     assert cached == first
     assert bundle_calls["count"] == first_call_count
+    assert cache_key in svc._dynamics_training_cache
 
     svc.review_hit(rule_hit.id, {"decision": "dismissed", "comment": "false positive"})
+    assert cache_key not in svc._dynamics_training_cache
     second = svc.dynamics_training_examples(state_id, payload)
 
     assert second["summary"]["mrep_trace"]["state_contract_status"] == "review"

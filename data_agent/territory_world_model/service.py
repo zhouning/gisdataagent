@@ -75,6 +75,9 @@ from ..otel_tracing import trace_twm_operation
 _INSTANCE_LOCK = threading.Lock()
 _INSTANCE: "TerritoryWorldModelService | None" = None
 TWM_BASELINE_EXPORT_MAX_BYTES = 5 * 1024 * 1024
+_UUID_REFERENCE_RE = re.compile(
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+)
 _DYNAMICS_TOP_LEVEL_GENERATED_SEMANTIC_KEYS = {
     "id",
     "created_at",
@@ -11948,7 +11951,7 @@ class TerritoryWorldModelService:
         targets = [str(target) for target in item.action.target_objects or [] if str(target)]
         provenance_targets = item.provenance.get("action_target_objects")
         if not isinstance(provenance_targets, list):
-            return targets
+            return [target for target in targets if not self._dynamics_generated_action_target_reference(target)]
         semantic_by_id: dict[str, str] = {}
         ordered_semantic: list[str] = []
         for raw_target in provenance_targets:
@@ -11965,7 +11968,11 @@ class TerritoryWorldModelService:
             return ordered_semantic
         if len(targets) == len(ordered_semantic):
             return ordered_semantic
-        return [semantic_by_id.get(target, target) for target in targets]
+        return [
+            semantic_by_id.get(target, target)
+            for target in targets
+            if target in semantic_by_id or not self._dynamics_generated_action_target_reference(target)
+        ]
 
     def _dynamics_semantic_action_target_reference(self, target: dict[str, Any]) -> str:
         for key in (
@@ -11980,6 +11987,9 @@ class TerritoryWorldModelService:
             if value:
                 return str(value)
         return ""
+
+    def _dynamics_generated_action_target_reference(self, value: str) -> bool:
+        return bool(_UUID_REFERENCE_RE.fullmatch(str(value).strip()))
 
     def _strip_dynamics_generated_semantic_keys(self, value: Any, *, _path: tuple[str, ...] = ()) -> Any:
         normalized = jsonable(value)
