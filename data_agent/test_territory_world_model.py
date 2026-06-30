@@ -1819,6 +1819,91 @@ def test_dynamics_training_examples_mrep_trace_hash_preserves_nested_semantic_id
     assert semantic_payload["action"]["parameters"]["id"] == "domain-semantic-002"
 
 
+def test_dynamics_training_examples_mrep_trace_hash_preserves_nested_semantic_reference_ids():
+    svc = _build_service()
+    base = TwmDynamicsTrainingExample(
+        id="generated-example-a",
+        state_version_id="generated-state-a",
+        project_id="generated-project-a",
+        split="candidate",
+        sample_type="action_conditioned_forecast",
+        current_state_summary={"object_count": 1},
+        action=TerritoryWorldModelAction(
+            action_type="inspect",
+            target_role="parcel",
+            parameters={
+                "project_id": "domain-project-a",
+                "rule_hit_id": "domain-rule-hit-a",
+                "approval_status": "pending",
+            },
+        ),
+        scenario_context={"scenario": "mrep_nested_semantic_reference_id"},
+        targets={"future_latent_state": {"total_area_m2": 1000.0}},
+        labels={"ranking_score": 0.1, "supervision_source": "fixture"},
+        provenance={
+            "state_version_id": "generated-state-a",
+            "project_id": "generated-project-a",
+            "source": "fixture",
+        },
+    )
+    project_changed = deepcopy(base)
+    project_changed.action.parameters["project_id"] = "domain-project-b"
+    rule_hit_changed = deepcopy(base)
+    rule_hit_changed.action.parameters["rule_hit_id"] = "domain-rule-hit-b"
+
+    base_payload = svc._dynamics_training_example_semantic_payload(base)
+    project_payload = svc._dynamics_training_example_semantic_payload(project_changed)
+    rule_hit_payload = svc._dynamics_training_example_semantic_payload(rule_hit_changed)
+
+    assert base_payload["action"]["parameters"]["project_id"] == "domain-project-a"
+    assert base_payload["action"]["parameters"]["rule_hit_id"] == "domain-rule-hit-a"
+    assert project_payload["action"]["parameters"]["project_id"] == "domain-project-b"
+    assert rule_hit_payload["action"]["parameters"]["rule_hit_id"] == "domain-rule-hit-b"
+    assert base_payload != project_payload
+    assert base_payload != rule_hit_payload
+    assert _stable_sha256([base_payload]) != _stable_sha256([project_payload])
+    assert _stable_sha256([base_payload]) != _stable_sha256([rule_hit_payload])
+
+
+def test_dynamics_training_examples_mrep_trace_hash_excludes_generated_provenance_references():
+    svc = _build_service()
+    base = TwmDynamicsTrainingExample(
+        id="generated-example-a",
+        state_version_id="generated-state-a",
+        project_id="generated-project-a",
+        split="candidate",
+        sample_type="action_conditioned_forecast",
+        current_state_summary={"object_count": 1},
+        action=TerritoryWorldModelAction(
+            action_type="inspect",
+            target_role="parcel",
+            parameters={"approval_status": "pending"},
+        ),
+        scenario_context={"scenario": "mrep_generated_provenance_reference"},
+        targets={"future_latent_state": {"total_area_m2": 1000.0}},
+        labels={"ranking_score": 0.1, "supervision_source": "fixture"},
+        provenance={
+            "state_version_id": "generated-state-a",
+            "project_id": "generated-project-a",
+            "source": "fixture",
+        },
+    )
+    generated_provenance_changed = deepcopy(base)
+    generated_provenance_changed.provenance = {
+        **generated_provenance_changed.provenance,
+        "state_version_id": "generated-state-b",
+        "project_id": "generated-project-b",
+    }
+
+    base_payload = svc._dynamics_training_example_semantic_payload(base)
+    generated_payload = svc._dynamics_training_example_semantic_payload(generated_provenance_changed)
+
+    assert base_payload == generated_payload
+    assert "state_version_id" not in base_payload["provenance"]
+    assert "project_id" not in base_payload["provenance"]
+    assert _stable_sha256([base_payload]) == _stable_sha256([generated_payload])
+
+
 def test_dynamics_training_examples_cache_keys_mrep_trace_lineage_metadata():
     svc = _build_service()
     _project, state = _build_project_and_state(svc)
