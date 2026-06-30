@@ -5108,6 +5108,7 @@ class TerritoryWorldModelService:
         )
         if hit is None or task is None:
             raise LookupError(f"rule hit not found: {hit_id}")
+        self._clear_report_cache(state_version_id=hit.state_version_id)
         return {
             "hit": hit.to_dict(),
             "review_task": task.to_dict(),
@@ -11924,13 +11925,15 @@ class TerritoryWorldModelService:
         }
 
     def _dynamics_training_example_semantic_payload(self, item: TwmDynamicsTrainingExample) -> dict[str, Any]:
+        action_payload = item.action.to_dict()
+        action_payload["target_objects"] = self._dynamics_semantic_action_target_objects(item)
         payload = {
             "state_version_id": item.state_version_id,
             "project_id": item.project_id,
             "split": item.split,
             "sample_type": item.sample_type,
             "current_state_summary": item.current_state_summary,
-            "action": item.action.to_dict(),
+            "action": action_payload,
             "scenario_context": item.scenario_context,
             "targets": item.targets,
             "labels": item.labels,
@@ -11940,6 +11943,43 @@ class TerritoryWorldModelService:
             "not_for_training_reasons": item.not_for_training_reasons,
         }
         return self._strip_dynamics_generated_semantic_keys(payload)
+
+    def _dynamics_semantic_action_target_objects(self, item: TwmDynamicsTrainingExample) -> list[str]:
+        targets = [str(target) for target in item.action.target_objects or [] if str(target)]
+        provenance_targets = item.provenance.get("action_target_objects")
+        if not isinstance(provenance_targets, list):
+            return targets
+        semantic_by_id: dict[str, str] = {}
+        ordered_semantic: list[str] = []
+        for raw_target in provenance_targets:
+            if not isinstance(raw_target, dict):
+                continue
+            semantic_id = self._dynamics_semantic_action_target_reference(raw_target)
+            if not semantic_id:
+                continue
+            generated_id = raw_target.get("id")
+            if generated_id:
+                semantic_by_id[str(generated_id)] = semantic_id
+            ordered_semantic.append(semantic_id)
+        if not targets:
+            return ordered_semantic
+        if len(targets) == len(ordered_semantic):
+            return ordered_semantic
+        return [semantic_by_id.get(target, target) for target in targets]
+
+    def _dynamics_semantic_action_target_reference(self, target: dict[str, Any]) -> str:
+        for key in (
+            "object_code",
+            "source_feature_id",
+            "reference_id",
+            "source_ref",
+            "code",
+            "semantic_id",
+        ):
+            value = target.get(key)
+            if value:
+                return str(value)
+        return ""
 
     def _strip_dynamics_generated_semantic_keys(self, value: Any, *, _path: tuple[str, ...] = ()) -> Any:
         normalized = jsonable(value)

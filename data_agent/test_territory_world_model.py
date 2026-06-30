@@ -1759,6 +1759,48 @@ def test_dynamics_training_examples_mrep_trace_hash_excludes_generated_state_ide
     assert first_trace["dataset_snapshot_hash"] == second_trace["dataset_snapshot_hash"]
 
 
+def test_dynamics_training_examples_mrep_trace_hash_excludes_generated_action_target_object_ids():
+    svc = _build_service()
+    base = TwmDynamicsTrainingExample(
+        id="generated-example-a",
+        state_version_id="generated-state-a",
+        project_id="generated-project-a",
+        split="candidate",
+        sample_type="action_conditioned_forecast",
+        current_state_summary={"object_count": 1},
+        action=TerritoryWorldModelAction(
+            action_type="inspect",
+            target_role="project",
+            target_objects=["generated-target-a"],
+            parameters={"approval_status": "pending"},
+        ),
+        scenario_context={"scenario": "mrep_generated_action_target_object"},
+        targets={"future_latent_state": {"total_area_m2": 1000.0}},
+        labels={"ranking_score": 0.1, "supervision_source": "fixture"},
+        provenance={
+            "state_version_id": "generated-state-a",
+            "project_id": "generated-project-a",
+            "action_target_objects": [
+                {
+                    "object_code": "PRJ-SEMANTIC-001",
+                    "canonical_role": "project",
+                }
+            ],
+            "source": "fixture",
+        },
+    )
+    generated_target_id_changed = deepcopy(base)
+    generated_target_id_changed.action.target_objects = ["generated-target-b"]
+
+    base_payload = svc._dynamics_training_example_semantic_payload(base)
+    generated_payload = svc._dynamics_training_example_semantic_payload(generated_target_id_changed)
+
+    assert base_payload["action"]["target_objects"] == ["PRJ-SEMANTIC-001"]
+    assert generated_payload["action"]["target_objects"] == ["PRJ-SEMANTIC-001"]
+    assert base_payload == generated_payload
+    assert _stable_sha256([base_payload]) == _stable_sha256([generated_payload])
+
+
 def test_dynamics_training_examples_mrep_trace_hash_preserves_nested_semantic_ids():
     svc = _build_service()
     base = TwmDynamicsTrainingExample(
@@ -2092,6 +2134,50 @@ def test_dynamics_training_examples_mrep_trace_cache_keys_geofm_gate_report_stat
     second = svc.dynamics_training_examples(state_id, pass_payload)
 
     assert second["summary"]["mrep_trace"]["state_contract_status"] == "pass"
+
+
+def test_review_hit_invalidates_dynamics_training_examples_mrep_trace_cache(tmp_path):
+    svc = _build_service()
+    _project, state = _save_passable_state_contract_state(svc, tmp_path)
+    state_id = state.id
+    state_bundle = svc.repository.get_state_bundle(state_id) or {}
+    parcel = next(obj for obj in state_bundle["objects"] if obj.canonical_role == "parcel")
+    rule_hit = svc.repository.save_rule_hit(
+        TwmRuleHit(
+            state_version_id=state_id,
+            rule_id="CONTRACT-CACHE-BLOCKING",
+            subject_object_id=parcel.id,
+            hit_status="open",
+            severity="blocking",
+            risk_score=0.95,
+        )
+    )
+    payload = {
+        "scenario": "mrep_trace_review_cache_invalidation",
+        "horizon": 2,
+        "evidence_coverage": 0.9,
+    }
+    original_get_state_bundle = svc.repository.get_state_bundle
+    bundle_calls = {"count": 0}
+
+    def counted_get_state_bundle(state_version_id):
+        bundle_calls["count"] += 1
+        return original_get_state_bundle(state_version_id)
+
+    svc.repository.get_state_bundle = counted_get_state_bundle
+
+    first = svc.dynamics_training_examples(state_id, payload)
+    assert first["summary"]["mrep_trace"]["state_contract_status"] == "review"
+    first_call_count = bundle_calls["count"]
+    cached = svc.dynamics_training_examples(state_id, payload)
+    assert cached == first
+    assert bundle_calls["count"] == first_call_count
+
+    svc.review_hit(rule_hit.id, {"decision": "dismissed", "comment": "false positive"})
+    second = svc.dynamics_training_examples(state_id, payload)
+
+    assert second["summary"]["mrep_trace"]["state_contract_status"] == "review"
+    assert bundle_calls["count"] > first_call_count
 
 
 @pytest.mark.parametrize(
