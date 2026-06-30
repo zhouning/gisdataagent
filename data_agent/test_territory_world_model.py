@@ -1540,28 +1540,40 @@ def test_dynamics_training_examples_define_multi_head_training_contract():
 
 def test_dynamics_training_examples_emit_mrep_trace_for_reproducibility():
     svc = _build_service()
-    _project, state = _build_project_and_state(svc)
+    project, state = _build_project_and_state(svc)
     state_id = state["state_version"]["id"]
     svc.ensure_default_rules()
     svc.evaluate_rules(state_id, {"include_default_rules": True})
 
-    dataset = svc.dynamics_training_examples(
-        state_id,
-        {
-            "scenario": "mrep_trace",
-            "horizon": 2,
-            "evidence_coverage": 0.72,
-            "split": "temporal_holdout",
-        },
-    )
+    payload = {
+        "scenario": "mrep_trace",
+        "horizon": 2,
+        "evidence_coverage": 0.72,
+        "split": "temporal_holdout",
+        "rule_version": "ruleset-mrep-v3",
+        "model_version": "dynamics-model-v7",
+        "random_seed": 42,
+    }
+
+    dataset = svc.dynamics_training_examples(state_id, payload)
+    state_contract = svc.state_contract_report(state_id, payload)
 
     trace = dataset["summary"]["mrep_trace"]
     assert trace["schema"] == "territory_world_model.mrep_trace.v1"
     assert trace["state_version_id"] == state_id
+    assert trace["project_id"] == project["id"]
     assert trace["dataset_snapshot_hash"]
     assert trace["state_contract_version"] == "territory_world_model.state_contract_report.v1"
+    assert trace["state_contract_status"] == state_contract["status"]
+    assert trace["rule_version"] == "ruleset-mrep-v3"
+    assert trace["model_version"] == "dynamics-model-v7"
+    assert trace["random_seed"] == 42
     assert trace["split_definition"]["split"] == "temporal_holdout"
     assert trace["baseline_version"] == "deterministic_twm_scaffold_current"
+    assert trace["source_counts"] == dataset["summary"]["supervision_sources"]
+    assert trace["tail_statistics"]["example_count"] == dataset["summary"]["example_count"]
+    assert trace["tail_statistics"]["holdout_example_count"] >= 1
+    assert trace["tail_statistics"]["review_only_example_count"] == trace["failure_taxonomy"]["review_only_examples"]
     assert trace["boundary_conditions"]["synthetic_or_not_for_production_rows"] >= 1
     assert trace["failure_taxonomy"]["review_only_examples"] >= 1
     assert "future_latent_state" in trace["target_heads"]
@@ -1580,6 +1592,9 @@ def test_dynamics_training_examples_cache_keys_mrep_trace_lineage_metadata():
             "scenario": "mrep_trace_cache",
             "horizon": 2,
             "evidence_coverage": 0.72,
+            "rule_version": "rules-a",
+            "policy_version": "policy-a",
+            "model_version": "model-a",
             "baseline_version": "baseline-a",
             "random_seed": 11,
         },
@@ -1590,6 +1605,9 @@ def test_dynamics_training_examples_cache_keys_mrep_trace_lineage_metadata():
             "scenario": "mrep_trace_cache",
             "horizon": 2,
             "evidence_coverage": 0.72,
+            "rule_version": "rules-b",
+            "policy_version": "policy-b",
+            "model_version": "model-b",
             "baseline_version": "baseline-b",
             "random_seed": 22,
         },
@@ -1597,11 +1615,37 @@ def test_dynamics_training_examples_cache_keys_mrep_trace_lineage_metadata():
 
     first_trace = first["summary"]["mrep_trace"]
     second_trace = second["summary"]["mrep_trace"]
+    assert first_trace["rule_version"] == "rules-a"
+    assert first_trace["model_version"] == "model-a"
     assert first_trace["baseline_version"] == "baseline-a"
     assert first_trace["random_seed"] == 11
+    assert second_trace["rule_version"] == "rules-b"
+    assert second_trace["model_version"] == "model-b"
     assert second_trace["baseline_version"] == "baseline-b"
     assert second_trace["random_seed"] == 22
     assert first_trace != second_trace
+
+    policy_first = svc.dynamics_training_examples(
+        state_id,
+        {
+            "scenario": "mrep_trace_policy_cache",
+            "horizon": 2,
+            "evidence_coverage": 0.72,
+            "policy_version": "policy-a",
+        },
+    )
+    policy_second = svc.dynamics_training_examples(
+        state_id,
+        {
+            "scenario": "mrep_trace_policy_cache",
+            "horizon": 2,
+            "evidence_coverage": 0.72,
+            "policy_version": "policy-b",
+        },
+    )
+
+    assert policy_first["summary"]["mrep_trace"]["rule_version"] == "policy-a"
+    assert policy_second["summary"]["mrep_trace"]["rule_version"] == "policy-b"
 
 
 def test_dynamics_readiness_report_blocks_synthetic_or_scaffold_only_training_claims():
