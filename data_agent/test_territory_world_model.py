@@ -1865,6 +1865,56 @@ def test_dynamics_training_examples_mrep_trace_hash_preserves_nested_semantic_re
     assert _stable_sha256([base_payload]) != _stable_sha256([rule_hit_payload])
 
 
+def test_dynamics_training_examples_mrep_trace_hash_preserves_nested_provenance_reference_ids():
+    svc = _build_service()
+    base = TwmDynamicsTrainingExample(
+        id="generated-example-a",
+        state_version_id="generated-state-a",
+        project_id="generated-project-a",
+        split="candidate",
+        sample_type="action_conditioned_forecast",
+        current_state_summary={"object_count": 1},
+        action=TerritoryWorldModelAction(
+            action_type="inspect",
+            target_role="parcel",
+            parameters={"approval_status": "pending"},
+        ),
+        scenario_context={"scenario": "mrep_nested_provenance_reference_id"},
+        targets={"future_latent_state": {"total_area_m2": 1000.0}},
+        labels={"ranking_score": 0.1, "supervision_source": "fixture"},
+        provenance={
+            "state_version_id": "generated-state-a",
+            "project_id": "generated-project-a",
+            "source": "fixture",
+            "source_record": {
+                "project_id": "semantic-source-project-a",
+                "record_code": "source-record-001",
+            },
+            "supporting_rule": {
+                "rule_hit_id": "semantic-rule-hit-a",
+                "rule_code": "setback",
+            },
+        },
+    )
+    project_changed = deepcopy(base)
+    project_changed.provenance["source_record"]["project_id"] = "semantic-source-project-b"
+    rule_hit_changed = deepcopy(base)
+    rule_hit_changed.provenance["supporting_rule"]["rule_hit_id"] = "semantic-rule-hit-b"
+
+    base_payload = svc._dynamics_training_example_semantic_payload(base)
+    project_payload = svc._dynamics_training_example_semantic_payload(project_changed)
+    rule_hit_payload = svc._dynamics_training_example_semantic_payload(rule_hit_changed)
+
+    assert base_payload["provenance"]["source_record"]["project_id"] == "semantic-source-project-a"
+    assert base_payload["provenance"]["supporting_rule"]["rule_hit_id"] == "semantic-rule-hit-a"
+    assert project_payload["provenance"]["source_record"]["project_id"] == "semantic-source-project-b"
+    assert rule_hit_payload["provenance"]["supporting_rule"]["rule_hit_id"] == "semantic-rule-hit-b"
+    assert base_payload != project_payload
+    assert base_payload != rule_hit_payload
+    assert _stable_sha256([base_payload]) != _stable_sha256([project_payload])
+    assert _stable_sha256([base_payload]) != _stable_sha256([rule_hit_payload])
+
+
 def test_dynamics_training_examples_mrep_trace_hash_excludes_generated_provenance_references():
     svc = _build_service()
     base = TwmDynamicsTrainingExample(
@@ -1885,6 +1935,13 @@ def test_dynamics_training_examples_mrep_trace_hash_excludes_generated_provenanc
         provenance={
             "state_version_id": "generated-state-a",
             "project_id": "generated-project-a",
+            "review_task_id": "generated-review-a",
+            "rule_hit_id": "generated-rule-a",
+            "evidence_item_id": "generated-evidence-a",
+            "created_at": "2026-06-30T01:00:00Z",
+            "updated_at": "2026-06-30T01:01:00Z",
+            "generated_at": "2026-06-30T01:02:00Z",
+            "timestamp": "2026-06-30T01:03:00Z",
             "source": "fixture",
         },
     )
@@ -1893,14 +1950,31 @@ def test_dynamics_training_examples_mrep_trace_hash_excludes_generated_provenanc
         **generated_provenance_changed.provenance,
         "state_version_id": "generated-state-b",
         "project_id": "generated-project-b",
+        "review_task_id": "generated-review-b",
+        "rule_hit_id": "generated-rule-b",
+        "evidence_item_id": "generated-evidence-b",
+        "created_at": "2026-06-30T02:00:00Z",
+        "updated_at": "2026-06-30T02:01:00Z",
+        "generated_at": "2026-06-30T02:02:00Z",
+        "timestamp": "2026-06-30T02:03:00Z",
     }
 
     base_payload = svc._dynamics_training_example_semantic_payload(base)
     generated_payload = svc._dynamics_training_example_semantic_payload(generated_provenance_changed)
 
     assert base_payload == generated_payload
-    assert "state_version_id" not in base_payload["provenance"]
-    assert "project_id" not in base_payload["provenance"]
+    for generated_key in (
+        "state_version_id",
+        "project_id",
+        "review_task_id",
+        "rule_hit_id",
+        "evidence_item_id",
+        "created_at",
+        "updated_at",
+        "generated_at",
+        "timestamp",
+    ):
+        assert generated_key not in base_payload["provenance"]
     assert _stable_sha256([base_payload]) == _stable_sha256([generated_payload])
 
 

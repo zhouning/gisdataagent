@@ -89,8 +89,11 @@ _DYNAMICS_GENERATED_REFERENCE_SEMANTIC_KEYS = {
     "rule_hit_id",
     "evidence_item_id",
 }
-_DYNAMICS_GENERATED_REFERENCE_PATH_PREFIXES = {
-    ("provenance",),
+_DYNAMICS_FLAT_PROVENANCE_GENERATED_SEMANTIC_KEYS = _DYNAMICS_GENERATED_REFERENCE_SEMANTIC_KEYS | {
+    "created_at",
+    "updated_at",
+    "generated_at",
+    "timestamp",
 }
 _DYNAMICS_GENERATED_FUTURE_LATENT_STATE_KEYS = {
     "state_version_id",
@@ -11953,9 +11956,7 @@ class TerritoryWorldModelService:
     def _dynamics_generated_semantic_key(self, key: str, path: tuple[str, ...]) -> bool:
         if not path and key in _DYNAMICS_TOP_LEVEL_GENERATED_SEMANTIC_KEYS:
             return True
-        if key in _DYNAMICS_GENERATED_REFERENCE_SEMANTIC_KEYS and any(
-            path[: len(prefix)] == prefix for prefix in _DYNAMICS_GENERATED_REFERENCE_PATH_PREFIXES
-        ):
+        if path == ("provenance",) and key in _DYNAMICS_FLAT_PROVENANCE_GENERATED_SEMANTIC_KEYS:
             return True
         return path == ("targets", "future_latent_state") and key in _DYNAMICS_GENERATED_FUTURE_LATENT_STATE_KEYS
 
