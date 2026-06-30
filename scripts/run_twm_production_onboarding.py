@@ -308,17 +308,20 @@ def build_model_promotion_gate(
             "pass" if export_validation.get("status") == "pass" and not export_validation.get("blocking_errors") else "blocked"
         )
     missing: list[str] = []
-    if production_status != "pass":
+    if require_production_readiness and production_status != "pass":
         missing.append("production_observed_history_preflight")
     if require_production_readiness and baseline_status != "pass":
         missing.append("same_case_baseline")
     if readiness.get("status") == "blocked":
         missing.extend(str(item) for item in readiness.get("missing") or [])
-    decision = "strict_model_promotion_inputs_pass"
     if readiness.get("status") == "blocked":
         decision = "blocked_by_production_scale_or_other_bundle_gates"
     elif missing:
         decision = "blocked_by_missing_model_promotion_inputs"
+    elif not require_production_readiness:
+        decision = "model_promotion_gate_not_required"
+    else:
+        decision = "strict_model_promotion_inputs_pass"
     return {
         "schema": "territory_world_model.model_promotion_gate.v1",
         "required": require_production_readiness,
@@ -496,6 +499,7 @@ def render_onboarding_markdown(summary: dict[str, Any]) -> str:
         "",
         "## Model Promotion Gate",
         "",
+        f"- Required: `{promotion.get('required')}`",
         f"- Status: `{promotion.get('status')}`",
         f"- Decision: `{promotion.get('decision')}`",
         f"- Missing: `{promotion.get('missing', [])}`",

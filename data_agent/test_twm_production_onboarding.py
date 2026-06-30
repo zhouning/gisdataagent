@@ -6,6 +6,8 @@ import json
 import subprocess
 from pathlib import Path
 
+from scripts.run_twm_production_onboarding import build_model_promotion_gate
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = REPO_ROOT / "scripts/run_twm_production_onboarding.py"
@@ -96,6 +98,21 @@ def _write_case_output(path: Path, case_ids: list[str]) -> None:
     ]
     rows.extend(f"{case_id},true,true,true,false,true,real_sanitized" for case_id in case_ids)
     path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+
+def test_model_promotion_gate_non_strict_missing_inputs_are_diagnostic_only():
+    gate = build_model_promotion_gate(
+        validation_bundle_report={"production_readiness_gate": {"status": "review"}},
+        baseline_evidence_report={"status": "not_requested"},
+        require_production_readiness=False,
+    )
+
+    assert gate["required"] is False
+    assert gate["status"] == "pass"
+    assert gate["decision"] == "model_promotion_gate_not_required"
+    assert gate["missing"] == []
+    assert gate["production_observed_history_status"] == "not_provided"
+    assert gate["same_case_baseline_status"] == "not_requested"
 
 
 def test_twm_production_onboarding_runs_foundation_and_bundle_from_raw_export(tmp_path):
