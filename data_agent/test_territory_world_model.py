@@ -1725,6 +1725,36 @@ def test_dynamics_training_examples_mrep_trace_hash_is_semantic_across_cache_cle
     assert first_trace["dataset_snapshot_hash"] == second_trace["dataset_snapshot_hash"]
 
 
+def test_dynamics_training_examples_mrep_trace_hash_excludes_generated_state_identity():
+    svc = _build_service()
+    _first_project, first_state = _build_project_and_state(svc)
+    _second_project, second_state = _build_project_and_state(svc)
+    first_state_id = first_state["state_version"]["id"]
+    second_state_id = second_state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(first_state_id, {"include_default_rules": True})
+    svc.evaluate_rules(second_state_id, {"include_default_rules": True})
+    payload = {
+        "scenario": "mrep_trace_semantic_identity",
+        "horizon": 2,
+        "evidence_coverage": 0.72,
+        "split": "temporal_holdout",
+        "rule_version": "rules-semantic",
+        "policy_version": "policy-semantic",
+        "model_version": "model-semantic",
+        "baseline_version": "baseline-semantic",
+        "random_seed": 77,
+    }
+
+    first = svc.dynamics_training_examples(first_state_id, payload)
+    second = svc.dynamics_training_examples(second_state_id, payload)
+    first_trace = first["summary"]["mrep_trace"]
+    second_trace = second["summary"]["mrep_trace"]
+
+    assert first_trace["state_version_id"] != second_trace["state_version_id"]
+    assert first_trace["dataset_snapshot_hash"] == second_trace["dataset_snapshot_hash"]
+
+
 def test_dynamics_training_examples_cache_keys_mrep_trace_lineage_metadata():
     svc = _build_service()
     _project, state = _build_project_and_state(svc)
