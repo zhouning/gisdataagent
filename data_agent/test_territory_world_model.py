@@ -1567,6 +1567,43 @@ def test_dynamics_training_examples_emit_mrep_trace_for_reproducibility():
     assert "future_latent_state" in trace["target_heads"]
 
 
+def test_dynamics_training_examples_cache_keys_mrep_trace_lineage_metadata():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+
+    first = svc.dynamics_training_examples(
+        state_id,
+        {
+            "scenario": "mrep_trace_cache",
+            "horizon": 2,
+            "evidence_coverage": 0.72,
+            "baseline_version": "baseline-a",
+            "random_seed": 11,
+        },
+    )
+    second = svc.dynamics_training_examples(
+        state_id,
+        {
+            "scenario": "mrep_trace_cache",
+            "horizon": 2,
+            "evidence_coverage": 0.72,
+            "baseline_version": "baseline-b",
+            "random_seed": 22,
+        },
+    )
+
+    first_trace = first["summary"]["mrep_trace"]
+    second_trace = second["summary"]["mrep_trace"]
+    assert first_trace["baseline_version"] == "baseline-a"
+    assert first_trace["random_seed"] == 11
+    assert second_trace["baseline_version"] == "baseline-b"
+    assert second_trace["random_seed"] == 22
+    assert first_trace != second_trace
+
+
 def test_dynamics_readiness_report_blocks_synthetic_or_scaffold_only_training_claims():
     svc = _build_service()
     _project, state = _build_project_and_state(svc)
