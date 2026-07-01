@@ -1,8 +1,8 @@
 # TWM Algorithm Model Roadmap
 
-Date: 2026-06-30
+Date: 2026-07-01
 Project: GIS Data Agent / Territory World Model
-Status: roadmap refresh, approved design direction
+Status: post-P0/P1 optimization roadmap
 
 ## Executive Position
 
@@ -39,7 +39,18 @@ Current TWM is already beyond a rule engine or map demo:
   Dynamic World / GeoSOS / FLUS benchmark adapters and model-registry gates
   exist as engineering surfaces.
 
-The production blocker is still evidence, not ambition:
+The first strict evidence-gate slice is now implemented:
+
+- dynamics datasets emit MREP-style trace metadata with semantic dataset hashes,
+  lineage fields, split definitions, baseline versions and failure taxonomy;
+- strict readiness can require production observed-history preflight;
+- strict readiness can require same-case baseline evidence;
+- production onboarding can run same-case baseline export validation and expose
+  baseline evidence in JSON and Markdown;
+- onboarding now summarizes a strict model-promotion gate while keeping
+  non-strict runs diagnostic-only.
+
+The remaining production blocker is pilot evidence quality, not gate plumbing:
 
 - no authoritative production approval/review history is available yet;
 - policy-action and action-feasibility labels are not available yet;
@@ -311,26 +322,38 @@ Acceptance gate:
 
 ### 30 Days
 
-- freeze one pilot data intake template;
-- run production onboarding against real or sanitized records;
-- finish future latent v2 contract checks in evaluation reports;
-- add temporal/spatial split metadata to dynamics datasets;
-- document same-case baseline requirements.
+- freeze one pilot data package that satisfies production observed-history
+  preflight and same-case baseline export requirements;
+- publish `dynamics_evaluation_bundle.v1` with MREP trace, temporal split,
+  spatial split, seed stability and failure taxonomy;
+- finish future latent v2 contract checks for area, land-space type allocation,
+  transition deltas, risk and uncertainty;
+- add explicit action-mask false allow / false block reporting;
+- convert the onboarding model-promotion summary into the standard evidence
+  checklist for all algorithm experiments.
 
 ### 60 Days
 
-- train and compare MLP, graph and transformer candidates on pilot or sanitized
-  data;
-- add explicit action-mask false allow / false block reporting;
-- publish a dynamics evaluation bundle with seed stability and holdout results;
-- report FLUS/GeoSOS comparison as metric-specific evidence only.
+- train and compare MLP multi-head, hierarchical graph and spatiotemporal
+  transformer dynamics on the same pilot package;
+- add persistence, Markov, rule-only and deterministic TWM scaffold baselines to
+  every dynamics report;
+- run same-case planner replay against manual GIS, rule-only and comparable
+  FLUS/GeoSOS outputs;
+- report uncertainty calibration, tail-case failures, action-mask errors and
+  cross-region/cross-time degradation;
+- keep GeoFM and causal upgrades behind separate evidence gates.
 
 ### 90 Days
 
-- run planner-coupled evaluation on at least one pilot workflow;
-- produce selected-plan reports with recommendation / block / review classes;
-- connect causal/evidence diagnostics to claim-ladder status;
-- define the first model promotion candidate and its rollback evidence.
+- nominate one strict model-promotion candidate with complete evidence bundle,
+  model registry entry, rollback target and replay test;
+- produce selected-plan reports with recommendation / block / review classes and
+  human audit outcomes;
+- connect causal/evidence diagnostics and planner replay results to claim-ladder
+  status;
+- define the first canary protocol, drift dashboard and regression suite;
+- keep L3 self-evolution review-only until feedback-loop audits pass.
 
 ## Claim Upgrade Ladder
 
@@ -371,7 +394,141 @@ that should model architecture complexity increase.
 
 Plan: `docs/superpowers/plans/2026-06-30-twm-p0-p1-production-evidence-contract.md`
 
-The first implementation slice is intentionally gate-focused. It should make
+The first implementation slice was intentionally gate-focused. It made
 production observed-history preflight, same-case baseline evidence and MREP
 traceability visible in strict readiness and onboarding reports before adding
 more model architecture complexity.
+
+## Post-P0/P1 Optimization Roadmap
+
+The next development phase should optimize the model under the strict evidence
+contract that now exists. The priority is not adding another broad surface area;
+it is making each candidate dynamics model win or fail under the same pilot data,
+same-case baselines and promotion gates.
+
+### P2A. Pilot Dataset And Dynamics Bundle Hardening
+
+Goal: make one pilot package the canonical training/evaluation unit.
+
+Work items:
+
+- define `pilot_package.v1` with:
+  - observed approval/review history;
+  - policy-action and feasibility labels;
+  - same-case baseline exports;
+  - state/rule/model version references;
+  - temporal and spatial split definitions;
+  - not-for-production and sanitization flags.
+- add `dynamics_evaluation_bundle.v1`:
+  - MREP trace;
+  - target-head metrics;
+  - temporal/spatial holdout metrics;
+  - seed stability;
+  - action-mask false allow / false block;
+  - failure taxonomy and tail statistics.
+- require every model comparison to reference the same dataset snapshot and
+  baseline versions.
+
+Acceptance gate:
+
+- a dynamics report cannot be promoted unless it links production onboarding,
+  same-case baseline evidence, MREP trace and split definitions.
+
+### P2B. Multi-Head Dynamics Model Shootout
+
+Goal: compare model families on the same action-conditioned next-state contract.
+
+Candidates:
+
+- deterministic TWM scaffold and rule-only baseline;
+- persistence / Markov transition baseline;
+- MLP multi-head dynamics;
+- hierarchical graph dynamics;
+- spatiotemporal transformer dynamics;
+- optional TWM-native suitability learner;
+- optional GeoFM-augmented representation.
+
+Required heads:
+
+- decoded future-state summaries;
+- land-space type area and count allocation;
+- transition deltas;
+- constraint-risk probability;
+- utility delta;
+- review workload / intervention need;
+- uncertainty and calibration.
+
+Acceptance gate:
+
+- graph or transformer models must beat the MLP baseline on temporal holdout,
+  at least one spatial holdout and planner-coupled metrics before their added
+  complexity is justified.
+
+### P3A. Same-Case Planner Replay
+
+Goal: prove decision value on historical cases, not only predictive fit.
+
+Replay outputs:
+
+- legal-feasible top-k precision;
+- planner regret against human or rule-only choices;
+- blocked-action recall;
+- false allow and false block rates;
+- review workload reduction;
+- explanation coverage for recommended, blocked and review-only candidates;
+- loss cases where TWM underperforms manual GIS or rule-only workflows.
+
+Acceptance gate:
+
+- a decision-support claim remains `review` unless same-case replay shows where
+  TWM improves, ties and loses, with human-auditable evidence.
+
+### P3B. Promotion Candidate Evidence Bundle
+
+Goal: prepare the first controlled promotion candidate without claiming
+production readiness prematurely.
+
+Bundle contents:
+
+- model artifact URI;
+- training dataset hash;
+- state/rule/evidence version;
+- evaluation bundle ID;
+- same-case planner replay report;
+- baseline comparison report;
+- causal/evidence diagnostics;
+- rollback target;
+- canary scope;
+- known failure taxonomy.
+
+Acceptance gate:
+
+- promotion is blocked if any required evidence is missing, stale, synthetic-only
+  or not-for-production.
+
+### P4A. Reliability, Drift And Tail-Case Gates
+
+Goal: make model improvement durable across updates.
+
+Work items:
+
+- add cross-version metric drift checks;
+- maintain high-risk tail-case replay suites;
+- track action-mask false allow / false block drift;
+- report uncertainty calibration drift;
+- preserve boundary conditions in every release note;
+- add failure replay cases whenever a planner or reviewer rejects a TWM output.
+
+Acceptance gate:
+
+- no candidate can move from review to controlled pilot if it regresses high-risk
+  tail cases or legal constraint gates.
+
+### Explicit Non-Goals For The Next Slice
+
+- do not claim full future parcel geometry generation;
+- do not claim broad FLUS/GeoSOS superiority from metric-specific wins;
+- do not enable autonomous L3 self-evolution;
+- do not promote GeoFM or causal claims without their own evidence gates;
+- do not add new model complexity before the pilot package and evaluation bundle
+  are stable.
