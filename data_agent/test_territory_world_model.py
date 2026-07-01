@@ -3376,6 +3376,68 @@ def test_dynamics_evaluation_bundle_links_trace_readiness_evaluation_and_registr
     assert "full_future_geometry_generation" in report["claim_boundary"]["non_goals"]
 
 
+def test_pilot_package_report_links_mrep_bundle_trajectory_and_lance_sidecar():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+    seed = svc.dynamics_training_examples(
+        state_id,
+        {"scenario": "pilot_package_seed", "horizon": 2, "evidence_coverage": 0.72, "split": "temporal_holdout"},
+    )
+    dataset = _observed_dynamics_dataset(seed)
+    baseline_validation = {
+        "schema": "territory_world_model.baseline_export_validation_report.v1",
+        "status": "pass",
+        "coverage": {"coverage_ratio": 0.9, "overlap_count": 6},
+        "blocking_errors": [],
+        "warnings": [],
+        "claim": {"claim_id": "C1_state_conflict_recall", "baseline_id": "manual_gis_overlay"},
+    }
+
+    report = svc.pilot_package_report(
+        state_id,
+        {
+            "package_id": "bishan-pilot-package-v1",
+            "dataset": dataset,
+            "baseline_export_validation_report": baseline_validation,
+            "production_data_gate": {"status": "pass", "source": "unit_test_gate"},
+            "include_lance_sidecar": True,
+            "spatial_split": {"strategy": "admin_holdout", "holdout_region": "500227"},
+        },
+    )
+
+    assert report["schema"] == "territory_world_model.pilot_package.v1"
+    assert report["package_id"] == "bishan-pilot-package-v1"
+    assert report["state_contract"]["schema"] == "territory_world_model.state_contract_report.v1"
+    assert report["dynamics_evaluation_bundle"]["schema"] == "territory_world_model.dynamics_evaluation_bundle.v1"
+    assert report["trajectory_dataset_manifest"]["schema"] == "territory_world_model.trajectory_dataset_manifest.v1"
+    assert report["trajectory_dataset_manifest"]["dataset_snapshot_hash"] == report["mrep_trace"]["dataset_snapshot_hash"]
+    assert report["trajectory_dataset_manifest"]["example_count"] == len(dataset["examples"])
+    assert "future_latent_state" in report["trajectory_dataset_manifest"]["target_heads"]
+    assert report["package_gates"]["same_case_baseline"]["status"] == "pass"
+    assert report["package_gates"]["production_data"]["status"] == "pass"
+    assert report["lance_sidecar_manifest"]["schema"] == "territory_world_model.lance_sidecar_manifest.v1"
+    assert report["lance_sidecar_manifest"]["storage_boundary"] == "derived_sidecar_not_authoritative"
+    assert report["evidence_summary"]["dataset_snapshot_hash"] == report["mrep_trace"]["dataset_snapshot_hash"]
+
+
+def test_pilot_package_report_blocks_when_required_same_case_baseline_missing():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+
+    report = svc.pilot_package_report(
+        state["state_version"]["id"],
+        {"scenario": "pilot_package_missing_same_case", "require_same_case_baseline": True},
+    )
+
+    assert report["schema"] == "territory_world_model.pilot_package.v1"
+    assert report["status"] == "blocked"
+    assert report["package_gates"]["same_case_baseline"]["status"] == "missing"
+    assert "same_case_baseline_evidence" in report["promotion_blockers"]
+
+
 def test_latent_transition_error_detects_land_type_mismatch_when_total_area_matches():
     svc = _build_service()
     target = {

@@ -6651,6 +6651,324 @@ class TerritoryWorldModelService:
             recommendations.append("keep this model review-only until registry promotion decision passes")
         return recommendations
 
+    def pilot_package_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        state = self.repository.get_state_version(state_version_id)
+        if state is None or self.repository.get_state_bundle(state_version_id) is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        dataset_payload = payload.get("dataset")
+        dataset = dict(dataset_payload) if isinstance(dataset_payload, dict) else self.dynamics_training_examples(state_version_id, payload)
+        state_contract = self.state_contract_report(state_version_id, {**payload, "dataset": dataset})
+        dynamics_bundle = self.dynamics_evaluation_bundle(state_version_id, {**payload, "dataset": dataset})
+        summary = self._payload_mapping(dataset.get("summary"))
+        mrep_trace = self._payload_mapping(summary.get("mrep_trace"))
+        trajectory_manifest = self._pilot_package_trajectory_dataset_manifest(dataset, mrep_trace)
+        package_gates = self._pilot_package_gate_summary(
+            state_contract=state_contract,
+            mrep_trace=mrep_trace,
+            dynamics_bundle=dynamics_bundle,
+            payload=payload,
+        )
+        promotion_blockers = self._pilot_package_promotion_blockers(package_gates, trajectory_manifest)
+        strict_blocked = any(
+            bool(gate.get("required")) and gate.get("status") != "pass"
+            for gate in package_gates.values()
+        )
+        if dynamics_bundle.get("status") == "blocked" or package_gates["mrep_trace"].get("status") != "pass":
+            strict_blocked = True
+        status = "blocked" if strict_blocked else "pass" if not promotion_blockers else "review"
+        dataset_hash = compact_text(mrep_trace.get("dataset_snapshot_hash") or trajectory_manifest.get("dataset_snapshot_hash"))
+        package_id = compact_text(payload.get("package_id") or payload.get("pilot_package_id") or "")
+        if not package_id:
+            package_id = f"pilot:{state.project_id}:{dataset_hash[:12] or state_version_id[:12]}"
+        result = {
+            "schema": "territory_world_model.pilot_package.v1",
+            "generated_at": now_utc_iso(),
+            "package_id": package_id,
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "status": status,
+            "state_contract": state_contract,
+            "dataset": {
+                "schema": dataset.get("schema"),
+                "example_count": summary.get("example_count", len(dataset.get("examples") or [])),
+                "usable_example_count": summary.get("usable_example_count", 0),
+                "review_example_count": summary.get("review_example_count", 0),
+            },
+            "mrep_trace": mrep_trace,
+            "trajectory_dataset_manifest": trajectory_manifest,
+            "dynamics_evaluation_bundle": dynamics_bundle,
+            "split_summary": {
+                "temporal": self._payload_mapping(mrep_trace.get("split_definition")),
+                "spatial": self._payload_mapping(payload.get("spatial_split")),
+            },
+            "package_gates": package_gates,
+            "evidence_summary": {
+                "package_id": package_id,
+                "dataset_snapshot_hash": dataset_hash,
+                "state_contract_status": state_contract.get("status", "review"),
+                "dynamics_evaluation_bundle_status": dynamics_bundle.get("status", "review"),
+                "same_case_baseline_status": package_gates["same_case_baseline"].get("status"),
+                "production_data_status": package_gates["production_data"].get("status"),
+                "baseline_reference": package_gates["same_case_baseline"].get("baseline_reference"),
+            },
+            "promotion_blockers": promotion_blockers,
+            "lance_sidecar_manifest": (
+                self._pilot_package_lance_sidecar_manifest(package_id, trajectory_manifest)
+                if truthy(payload.get("include_lance_sidecar") or payload.get("lance_sidecar"))
+                else None
+            ),
+            "recommendations": self._pilot_package_recommendations(status, promotion_blockers),
+            "claim_boundary": {
+                "status": "pilot_package_is_evidence_contract_not_model_promotion",
+                "non_goals": [
+                    "model_family_superiority",
+                    "production_readiness",
+                    "full_future_geometry_generation",
+                    "autonomous_l3_self_evolution",
+                ],
+            },
+        }
+        return json.loads(_json(result))
+
+    def _pilot_package_trajectory_dataset_manifest(
+        self,
+        dataset: dict[str, Any],
+        mrep_trace: dict[str, Any],
+    ) -> dict[str, Any]:
+        examples = [self._payload_mapping(item) for item in dataset.get("examples") or []]
+        split_counts: dict[str, int] = {}
+        source_counts: dict[str, int] = {}
+        target_heads: set[str] = set()
+        row_refs: list[dict[str, Any]] = []
+        for item in examples:
+            split = compact_text(item.get("split") or "unknown")
+            split_counts[split] = split_counts.get(split, 0) + 1
+            labels = self._payload_mapping(item.get("labels"))
+            source = compact_text(labels.get("supervision_source") or "unknown")
+            source_counts[source] = source_counts.get(source, 0) + 1
+            targets = self._payload_mapping(item.get("targets"))
+            target_heads.update(str(key) for key in targets.keys())
+            if len(row_refs) < 5:
+                action = self._payload_mapping(item.get("action"))
+                provenance = self._payload_mapping(item.get("provenance"))
+                row_refs.append(
+                    {
+                        "example_id": compact_text(item.get("id") or item.get("example_id") or ""),
+                        "state_t_ref": compact_text(item.get("state_version_id") or provenance.get("state_version_id") or ""),
+                        "state_t_plus_1_ref": "targets.future_latent_state.observed_next",
+                        "action_ref": compact_text(action.get("action_id") or action.get("action_type") or ""),
+                        "split": split,
+                    }
+                )
+        mrep_target_heads = [
+            str(item)
+            for item in mrep_trace.get("target_heads") or []
+            if str(item)
+        ]
+        if mrep_target_heads:
+            target_heads.update(mrep_target_heads)
+        return {
+            "schema": "territory_world_model.trajectory_dataset_manifest.v1",
+            "dataset_schema": dataset.get("schema"),
+            "dataset_snapshot_hash": mrep_trace.get("dataset_snapshot_hash"),
+            "state_contract_version": mrep_trace.get("state_contract_version"),
+            "example_count": len(examples),
+            "target_heads": sorted(target_heads),
+            "split_counts": split_counts,
+            "source_lineage": {
+                "supervision_sources": source_counts,
+                "rule_version": mrep_trace.get("rule_version"),
+                "policy_version": mrep_trace.get("policy_version"),
+                "model_version": mrep_trace.get("model_version"),
+                "baseline_version": mrep_trace.get("baseline_version"),
+            },
+            "row_contract": {
+                "required_fields": [
+                    "state_t_ref",
+                    "state_t_plus_1_ref",
+                    "action_ref",
+                    "scenario_context",
+                    "evidence_context",
+                    "constraint_outcome",
+                    "utility_outcome",
+                    "review_outcome",
+                    "dataset_snapshot_hash",
+                    "split",
+                    "source_lineage",
+                ],
+                "optional_sidecar_fields": ["vector_feature_ref", "trajectory_lance_ref"],
+            },
+            "row_reference_examples": row_refs,
+            "storage_boundary": "manifest_only_no_authoritative_rows_written",
+        }
+
+    def _pilot_package_gate_summary(
+        self,
+        *,
+        state_contract: dict[str, Any],
+        mrep_trace: dict[str, Any],
+        dynamics_bundle: dict[str, Any],
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        mrep_status = (
+            "pass"
+            if mrep_trace.get("schema") == "territory_world_model.mrep_trace.v1"
+            and compact_text(mrep_trace.get("dataset_snapshot_hash"))
+            else "missing"
+        )
+        state_status = compact_text(state_contract.get("status") or "review")
+        dynamics_status = compact_text(dynamics_bundle.get("status") or "review")
+        return {
+            "mrep_trace": {
+                "status": mrep_status,
+                "passed": mrep_status == "pass",
+                "required": True,
+                "dataset_snapshot_hash": mrep_trace.get("dataset_snapshot_hash"),
+            },
+            "state_contract": {
+                "status": state_status,
+                "passed": state_status == "pass",
+                "required": False,
+            },
+            "dynamics_evaluation_bundle": {
+                "status": dynamics_status,
+                "passed": dynamics_status == "pass",
+                "required": False,
+                "promotion_decision": self._payload_mapping(dynamics_bundle.get("registry")).get("promotion_decision"),
+            },
+            "production_data": self._pilot_package_production_gate(payload),
+            "same_case_baseline": self._pilot_package_same_case_gate(payload),
+        }
+
+    def _pilot_package_production_gate(self, payload: dict[str, Any]) -> dict[str, Any]:
+        required = truthy(payload.get("require_production_onboarding") or payload.get("require_production_gate"))
+        gate = self._payload_mapping(
+            payload.get("production_data_gate")
+            or payload.get("production_gate")
+            or payload.get("production_onboarding_report")
+        )
+        if not gate:
+            return {
+                "status": "missing" if required else "not_provided",
+                "passed": False,
+                "required": required,
+                "missing": ["production_data_gate"] if required else [],
+                "source": "missing",
+            }
+        status = compact_text(gate.get("status") or gate.get("overall_status") or gate.get("gate_status") or "review")
+        return {
+            "status": status,
+            "passed": status == "pass",
+            "required": required,
+            "missing": [] if status == "pass" else ["production_data_gate_pass"],
+            "source": compact_text(gate.get("source") or "payload"),
+        }
+
+    def _pilot_package_same_case_gate(self, payload: dict[str, Any]) -> dict[str, Any]:
+        required = truthy(payload.get("require_same_case_baseline") or payload.get("require_same_case_baseline_gate"))
+        pipeline = self._payload_mapping(payload.get("baseline_evidence_pipeline_report"))
+        validation = self._payload_mapping(payload.get("baseline_export_validation_report") or pipeline.get("export_validation"))
+        if not validation:
+            return {
+                "status": "missing" if required else "not_provided",
+                "passed": False,
+                "required": required,
+                "missing": ["baseline_export_validation_report"] if required else [],
+                "source": "missing",
+                "baseline_reference": {},
+            }
+        missing: list[str] = []
+        if validation.get("schema") != "territory_world_model.baseline_export_validation_report.v1":
+            missing.append("baseline_export_validation_schema")
+        blocking_errors = validation.get("blocking_errors")
+        if not isinstance(blocking_errors, list):
+            missing.append("baseline_export_validation_blocking_errors_shape")
+            blocking_errors = []
+        if blocking_errors:
+            missing.append("baseline_export_validation_blocking_errors")
+        coverage = self._payload_mapping(validation.get("coverage"))
+        overlap_count = safe_int(coverage.get("overlap_count"), 0)
+        if overlap_count <= 0:
+            missing.append("same_case_overlap_count")
+        validation_status = compact_text(validation.get("status") or "review")
+        if validation_status != "pass":
+            missing.append("baseline_export_validation_pass")
+        claim = self._payload_mapping(validation.get("claim"))
+        status = "pass" if not missing else "blocked" if required else "review"
+        return {
+            "status": status,
+            "passed": status == "pass",
+            "required": required,
+            "missing": sorted(set(missing)),
+            "source": "baseline_export_validation_report",
+            "coverage": coverage,
+            "baseline_reference": {
+                "claim_id": claim.get("claim_id"),
+                "baseline_id": claim.get("baseline_id"),
+            },
+        }
+
+    def _pilot_package_promotion_blockers(
+        self,
+        gates: dict[str, dict[str, Any]],
+        trajectory_manifest: dict[str, Any],
+    ) -> list[str]:
+        blockers: list[str] = []
+        if not compact_text(trajectory_manifest.get("dataset_snapshot_hash")):
+            blockers.append("trajectory_dataset_manifest")
+        if gates["mrep_trace"].get("status") != "pass":
+            blockers.append("mrep_trace")
+        if gates["state_contract"].get("status") != "pass":
+            blockers.append("state_contract_pass")
+        if gates["dynamics_evaluation_bundle"].get("status") != "pass":
+            blockers.append("dynamics_evaluation_bundle_pass")
+        if gates["production_data"].get("status") != "pass":
+            blockers.append("production_observed_history_gate")
+        if gates["same_case_baseline"].get("status") != "pass":
+            blockers.append("same_case_baseline_evidence")
+        return sorted(set(blockers))
+
+    def _pilot_package_lance_sidecar_manifest(
+        self,
+        package_id: str,
+        trajectory_manifest: dict[str, Any],
+    ) -> dict[str, Any]:
+        dataset_hash = compact_text(trajectory_manifest.get("dataset_snapshot_hash") or "")
+        return {
+            "schema": "territory_world_model.lance_sidecar_manifest.v1",
+            "package_id": package_id,
+            "dataset_snapshot_hash": dataset_hash,
+            "status": "declared",
+            "storage_boundary": "derived_sidecar_not_authoritative",
+            "authoritative_store": "Iceberg + PostGIS + MinIO + Sedona",
+            "sidecar_role": "derived vectors, latent tensors, evidence embeddings and random-access trajectory windows",
+            "required_link_keys": [
+                "state_snapshot_id",
+                "object_id",
+                "evidence_id",
+                "dataset_snapshot_hash",
+                "feature_version",
+            ],
+            "trajectory_row_count": trajectory_manifest.get("example_count", 0),
+        }
+
+    def _pilot_package_recommendations(self, status: str, promotion_blockers: list[str]) -> list[str]:
+        if status == "pass":
+            return [
+                "use this pilot package as the fixed dataset unit for P2B model-family comparisons",
+                "pin package_id and dataset_snapshot_hash in every candidate registry report",
+            ]
+        recommendations = [
+            "keep model comparisons review-only until pilot package blockers are resolved",
+            "run every dynamics candidate against the same package_id and dataset_snapshot_hash",
+        ]
+        if "same_case_baseline_evidence" in promotion_blockers:
+            recommendations.append("attach a passing baseline_export_validation_report before planner or model promotion claims")
+        if "production_observed_history_gate" in promotion_blockers:
+            recommendations.append("attach production observed-history onboarding evidence before controlled pilot promotion")
+        return recommendations
+
     def dynamics_model_registry_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(payload or {})
         candidate_report = self._payload_mapping(payload.get("candidate_report") or payload.get("dynamics_candidate_report"))
