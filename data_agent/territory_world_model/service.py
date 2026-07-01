@@ -6535,6 +6535,122 @@ class TerritoryWorldModelService:
         )
         return report.to_dict()
 
+    def dynamics_evaluation_bundle(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        state = self.repository.get_state_version(state_version_id)
+        if state is None or self.repository.get_state_bundle(state_version_id) is None:
+            raise LookupError(f"state not found: {state_version_id}")
+        dataset_payload = payload.get("dataset")
+        dataset = dict(dataset_payload) if isinstance(dataset_payload, dict) else self.dynamics_training_examples(state_version_id, payload)
+        readiness = self.dynamics_readiness_report(state_version_id, {**payload, "dataset": dataset})
+        evaluation = self.dynamics_evaluation_report(state_version_id, {**payload, "dataset": dataset})
+        registry = self.dynamics_model_registry_report(
+            state_version_id,
+            {
+                "dynamics_training_dataset": dataset,
+                "candidate_report": payload.get("candidate_report") or {
+                    "candidate": evaluation.get("candidate") or {},
+                    "status": evaluation.get("status", "review"),
+                    "evidence_gate": evaluation.get("evidence_gate") or {},
+                    "evaluation": evaluation,
+                },
+                "readiness_report": readiness,
+                "evaluation_report": evaluation,
+                "registry_metadata": payload.get("registry_metadata") or payload.get("metadata") or {},
+                "production_data_gate": payload.get("production_data_gate") or payload.get("production_gate") or {},
+                "current_registry_key": payload.get("current_registry_key") or payload.get("production_registry_key") or "",
+            },
+        )
+        evidence_summary = self._dynamics_evaluation_bundle_evidence_summary(dataset, readiness, evaluation, registry)
+        status = "pass" if not evidence_summary["blocking_missing"] else "review"
+        if readiness.get("status") == "blocked" or evaluation.get("status") == "blocked":
+            status = "blocked"
+        summary = self._payload_mapping(dataset.get("summary"))
+        return json.loads(_json({
+            "schema": "territory_world_model.dynamics_evaluation_bundle.v1",
+            "generated_at": now_utc_iso(),
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "status": status,
+            "dataset": {
+                "schema": dataset.get("schema"),
+                "example_count": summary.get("example_count", len(dataset.get("examples") or [])),
+                "usable_example_count": summary.get("usable_example_count", 0),
+                "review_example_count": summary.get("review_example_count", 0),
+                "mrep_trace": summary.get("mrep_trace") or {},
+            },
+            "readiness": readiness,
+            "evaluation": evaluation,
+            "registry": registry,
+            "split_summary": self._dynamics_evaluation_bundle_split_summary(dataset),
+            "evidence_summary": evidence_summary,
+            "promotion_blockers": list(registry.get("missing_for_promotion") or []),
+            "recommendations": self._dynamics_evaluation_bundle_recommendations(evidence_summary, registry),
+            "claim_boundary": {
+                "status": "review_only_until_promotion_gates_pass",
+                "non_goals": [
+                    "full_future_geometry_generation",
+                    "broad_flus_geosos_superiority",
+                    "autonomous_l3_self_evolution",
+                ],
+            },
+        }))
+
+    def _dynamics_evaluation_bundle_split_summary(self, dataset: dict[str, Any]) -> dict[str, Any]:
+        summary = self._payload_mapping(dataset.get("summary"))
+        mrep_trace = self._payload_mapping(summary.get("mrep_trace"))
+        split_definition = self._payload_mapping(mrep_trace.get("split_definition"))
+        examples = list(dataset.get("examples") or [])
+        split_counts: dict[str, int] = {}
+        for item in examples:
+            split = compact_text(self._payload_mapping(item).get("split") or "unknown")
+            split_counts[split] = split_counts.get(split, 0) + 1
+        return {
+            "split": split_definition.get("split") or "default",
+            "temporal_holdout": split_definition.get("temporal_holdout") or summary.get("temporal_holdout") or {},
+            "holdout_example_count": split_definition.get(
+                "holdout_example_count",
+                sum(1 for item in examples if self._payload_mapping(item).get("split") == "holdout"),
+            ),
+            "split_counts": split_counts,
+        }
+
+    def _dynamics_evaluation_bundle_evidence_summary(
+        self,
+        dataset: dict[str, Any],
+        readiness: dict[str, Any],
+        evaluation: dict[str, Any],
+        registry: dict[str, Any],
+    ) -> dict[str, Any]:
+        summary = self._payload_mapping(dataset.get("summary"))
+        mrep_trace = self._payload_mapping(summary.get("mrep_trace"))
+        registry_missing = list(registry.get("missing_for_promotion") or [])
+        missing_registry_metadata = list(registry.get("missing_registry_metadata") or [])
+        blocking_missing = sorted(set(registry_missing + missing_registry_metadata))
+        return {
+            "dataset_snapshot_hash": mrep_trace.get("dataset_snapshot_hash"),
+            "mrep_trace_status": "pass"
+            if mrep_trace.get("schema") == "territory_world_model.mrep_trace.v1" and mrep_trace.get("dataset_snapshot_hash")
+            else "missing",
+            "readiness_status": readiness.get("status", "review"),
+            "evaluation_status": evaluation.get("status", "review"),
+            "registry_promotion_decision": registry.get("promotion_decision", "review_only_not_promoted"),
+            "registry_missing": registry_missing,
+            "missing_registry_metadata": missing_registry_metadata,
+            "blocking_missing": blocking_missing,
+        }
+
+    def _dynamics_evaluation_bundle_recommendations(self, evidence_summary: dict[str, Any], registry: dict[str, Any]) -> list[str]:
+        recommendations = [
+            "use this bundle as the required evidence packet for P2A dynamics model comparisons",
+            "compare model families only when they share the same dataset snapshot hash and split summary",
+        ]
+        if evidence_summary.get("blocking_missing"):
+            recommendations.append("resolve promotion blockers before nominating this candidate for controlled pilot")
+        if registry.get("promotion_decision") != "candidate_for_registry_promotion":
+            recommendations.append("keep this model review-only until registry promotion decision passes")
+        return recommendations
+
     def dynamics_model_registry_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(payload or {})
         candidate_report = self._payload_mapping(payload.get("candidate_report") or payload.get("dynamics_candidate_report"))

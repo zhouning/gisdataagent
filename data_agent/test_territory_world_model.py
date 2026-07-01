@@ -3294,6 +3294,88 @@ def test_dynamics_evaluation_report_passes_candidate_predictions_on_observed_hol
     assert report["target_head_metrics"]["planning_utility_delta"]["ranking_correlation_proxy"] == 1.0
 
 
+def test_dynamics_evaluation_bundle_links_trace_readiness_evaluation_and_registry():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+    seed = svc.dynamics_training_examples(
+        state_id,
+        {
+            "scenario": "bundle_seed",
+            "horizon": 2,
+            "evidence_coverage": 0.72,
+            "split": "temporal_holdout",
+        },
+    )
+    dataset = _observed_dynamics_dataset(seed)
+    predictions = {
+        item["id"]: {
+            "future_latent_state": item["targets"]["future_latent_state"],
+            "constraint_violation_probability": item["targets"]["constraint_violation_probability"],
+            "planning_utility_delta": item["targets"]["planning_utility_delta"],
+            "uncertainty": {"confidence": 0.82},
+            "action_mask": item["targets"]["action_mask"],
+        }
+        for item in dataset["examples"]
+    }
+
+    report = svc.dynamics_evaluation_bundle(
+        state_id,
+        {
+            "dataset": dataset,
+            "predictions": predictions,
+            "candidate": {
+                "model_name": "hierarchical_twm_candidate",
+                "model_version": "bundle-v1",
+                "model_family": "hierarchical_graph_dynamics",
+            },
+            "thresholds": {
+                "min_total_examples": 6,
+                "min_usable_examples": 6,
+                "min_observed_temporal_examples": 3,
+                "min_holdout_examples": 2,
+                "max_scaffold_ratio": 0.0,
+                "max_review_ratio": 0.0,
+            },
+            "evaluation_thresholds": {
+                "min_ground_truth_examples": 3,
+                "max_mean_transition_error": 0.001,
+                "max_mean_constraint_error": 0.001,
+                "max_mean_utility_error": 0.001,
+                "min_ranking_correlation_proxy": 0.5,
+            },
+            "registry_metadata": {
+                "training_run_id": "bundle-run-001",
+                "model_artifact_uri": "file:///models/hierarchical_twm_candidate/bundle-v1",
+                "training_dataset_snapshot": "pilot-package-dev",
+                "state_contract_version": "territory_world_model.state_contract_report.v1",
+                "evaluation_report_id": "eval-bundle-001",
+            },
+            "production_data_gate": {"status": "pass"},
+            "geofm_gate_report": {"gate_status": "review", "decision": "review_required"},
+            "causal_calibration_report": {"status": "review", "method": "payload_stub"},
+        },
+    )
+
+    assert report["schema"] == "territory_world_model.dynamics_evaluation_bundle.v1"
+    assert report["status"] in {"review", "pass"}
+    assert report["dataset"]["schema"] == "territory_world_model.dynamics_training_dataset.v1"
+    assert report["dataset"]["mrep_trace"]["schema"] == "territory_world_model.mrep_trace.v1"
+    assert report["dataset"]["mrep_trace"]["dataset_snapshot_hash"]
+    assert report["readiness"]["schema"] == "territory_world_model.dynamics_readiness_report.v1"
+    assert report["evaluation"]["schema"] == "territory_world_model.dynamics_evaluation_report.v1"
+    assert report["registry"]["schema"] == "territory_world_model.dynamics_model_registry_report.v1"
+    assert report["evidence_summary"]["dataset_snapshot_hash"] == report["dataset"]["mrep_trace"]["dataset_snapshot_hash"]
+    assert report["evidence_summary"]["readiness_status"] == report["readiness"]["status"]
+    assert report["evidence_summary"]["evaluation_status"] == report["evaluation"]["status"]
+    assert report["evidence_summary"]["registry_promotion_decision"] == report["registry"]["promotion_decision"]
+    assert report["split_summary"]["split"] == "temporal_holdout"
+    assert report["promotion_blockers"] == report["registry"]["missing_for_promotion"]
+    assert "full_future_geometry_generation" in report["claim_boundary"]["non_goals"]
+
+
 def test_latent_transition_error_detects_land_type_mismatch_when_total_area_matches():
     svc = _build_service()
     target = {
