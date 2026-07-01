@@ -532,3 +532,10 @@ Acceptance gate:
 - do not promote GeoFM or causal claims without their own evidence gates;
 - do not add new model complexity before the pilot package and evaluation bundle
   are stable.
+
+## Implementation Checkpoint: P2A Dynamics Evaluation Bundle
+
+The next TWM development slice creates `dynamics_evaluation_bundle.v1` as the
+canonical evidence packet for model-family comparisons. It should connect MREP
+trace, readiness, evaluation metrics, registry metadata and promotion blockers
+without changing neural training behavior.
