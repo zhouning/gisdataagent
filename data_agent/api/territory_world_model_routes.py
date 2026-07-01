@@ -895,6 +895,26 @@ async def twm_dynamics_evaluation_report(request: Request):
         return JSONResponse({"error": str(exc)}, status_code=400)
 
 
+async def twm_dynamics_evaluation_bundle(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    svc = get_territory_world_model_service()
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "JSON body must be an object"}, status_code=400)
+    try:
+        return JSONResponse(svc.dynamics_evaluation_bundle(request.path_params["id"], body))
+    except LookupError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+
+
 async def twm_dynamics_model_registry_report(request: Request):
     user = _get_user_from_request(request)
     if not user:
@@ -1148,6 +1168,7 @@ def get_territory_world_model_routes() -> list[Route]:
         Route("/api/twm/states/{id}/dynamics-training-examples", endpoint=twm_dynamics_training_examples, methods=["POST"]),
         Route("/api/twm/states/{id}/dynamics-readiness-report", endpoint=twm_dynamics_readiness_report, methods=["POST"]),
         Route("/api/twm/states/{id}/dynamics-evaluation-report", endpoint=twm_dynamics_evaluation_report, methods=["POST"]),
+        Route("/api/twm/states/{id}/dynamics-evaluation-bundle", endpoint=twm_dynamics_evaluation_bundle, methods=["POST"]),
         Route("/api/twm/states/{id}/dynamics-model-registry-report", endpoint=twm_dynamics_model_registry_report, methods=["POST"]),
         Route("/api/twm/states/{id}/dynamics-model-registry", endpoint=twm_dynamics_model_registry_entries, methods=["GET", "POST"]),
         Route("/api/twm/states/{id}/dynamics-model-registry/activate", endpoint=twm_activate_dynamics_model_registry_entry, methods=["POST"]),

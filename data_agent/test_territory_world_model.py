@@ -7165,6 +7165,8 @@ def test_twm_toolset_lists_sync_and_long_running_tools():
     assert "twm_dynamics_readiness_report_async" in names
     assert "twm_dynamics_evaluation_report" in names
     assert "twm_dynamics_evaluation_report_async" in names
+    assert "twm_dynamics_evaluation_bundle" in names
+    assert "twm_dynamics_evaluation_bundle_async" in names
     assert "twm_dynamics_model_registry_report" in names
     assert "twm_dynamics_model_registry_report_async" in names
     assert "twm_activate_dynamics_model_registry_entry" in names
@@ -7273,6 +7275,24 @@ def test_twm_dynamics_model_registry_tool_returns_gate_report(monkeypatch):
     assert payload["promotion_decision"] == "review_only_not_promoted"
 
 
+def test_twm_dynamics_evaluation_bundle_tool_returns_evidence_packet(monkeypatch):
+    from data_agent.toolsets import territory_world_model_tools as tools
+
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    monkeypatch.setattr(tools, "get_territory_world_model_service", lambda: svc)
+
+    payload = json.loads(tools.twm_dynamics_evaluation_bundle(
+        state["state_version"]["id"],
+        json.dumps({"scenario": "tool_bundle", "evidence_coverage": 0.72}),
+    ))
+
+    assert payload["schema"] == "territory_world_model.dynamics_evaluation_bundle.v1"
+    assert payload["dataset"]["mrep_trace"]["schema"] == "territory_world_model.mrep_trace.v1"
+    assert payload["readiness"]["schema"] == "territory_world_model.dynamics_readiness_report.v1"
+    assert payload["evaluation"]["schema"] == "territory_world_model.dynamics_evaluation_report.v1"
+
+
 def test_twm_dynamics_model_registry_routes_expose_activation_listing_and_rollback(monkeypatch):
     svc = _build_service()
     _project, state = _save_lightweight_twm_state(svc)
@@ -7308,6 +7328,62 @@ def test_twm_dynamics_model_registry_routes_expose_activation_listing_and_rollba
     assert rollback_body["schema"] == "territory_world_model.dynamics_model_registry_rollback.v1"
     assert rollback_body["status"] == "blocked"
     assert "active_registry_entry" in rollback_body["missing"]
+
+
+def test_twm_dynamics_reports_routes_return_contracts(monkeypatch):
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+    state_id = state["state_version"]["id"]
+
+    readiness_req = _fake_request(
+        "POST",
+        b'{"scenario":"route_readiness","evidence_coverage":0.72}',
+        path_params={"id": state_id},
+    )
+    readiness_resp = asyncio.run(routes.twm_dynamics_readiness_report(readiness_req))
+    assert readiness_resp.status_code == 200
+    readiness_payload = json.loads(readiness_resp.body)
+    assert readiness_payload["schema"] == "territory_world_model.dynamics_readiness_report.v1"
+
+    eval_req = _fake_request(
+        "POST",
+        b'{"scenario":"route_evaluation","evidence_coverage":0.72}',
+        path_params={"id": state_id},
+    )
+    eval_resp = asyncio.run(routes.twm_dynamics_evaluation_report(eval_req))
+    assert eval_resp.status_code == 200
+    eval_payload = json.loads(eval_resp.body)
+    assert eval_payload["schema"] == "territory_world_model.dynamics_evaluation_report.v1"
+
+    bundle_req = _fake_request(
+        "POST",
+        b'{"scenario":"route_bundle","evidence_coverage":0.72}',
+        path_params={"id": state_id},
+    )
+    bundle_resp = asyncio.run(routes.twm_dynamics_evaluation_bundle(bundle_req))
+    assert bundle_resp.status_code == 200
+    bundle_payload = json.loads(bundle_resp.body)
+    assert bundle_payload["schema"] == "territory_world_model.dynamics_evaluation_bundle.v1"
+    assert bundle_payload["dataset"]["mrep_trace"]["schema"] == "territory_world_model.mrep_trace.v1"
+
+    registry_req = _fake_request(
+        "POST",
+        json.dumps({
+            "candidate_report": {
+                "candidate": {"model_name": "route_candidate", "model_version": "v1"},
+                "evidence_gate": {"status": "pass"},
+            },
+            "readiness_report": readiness_payload,
+            "evaluation_report": eval_payload,
+        }).encode("utf-8"),
+        path_params={"id": state_id},
+    )
+    registry_resp = asyncio.run(routes.twm_dynamics_model_registry_report(registry_req))
+    assert registry_resp.status_code == 200
+    registry_payload = json.loads(registry_resp.body)
+    assert registry_payload["schema"] == "territory_world_model.dynamics_model_registry_report.v1"
 
 
 def test_twm_state_snapshot_lakehouse_manifest_route_returns_storage_contract(monkeypatch):

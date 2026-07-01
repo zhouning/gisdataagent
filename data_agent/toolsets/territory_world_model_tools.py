@@ -579,6 +579,24 @@ async def twm_dynamics_evaluation_report_async(state_version_id: str, payload_js
     return await asyncio.to_thread(twm_dynamics_evaluation_report, state_version_id, payload_json)
 
 
+def twm_dynamics_evaluation_bundle(state_version_id: str, payload_json: str = "") -> str:
+    payload: dict[str, Any] = {}
+    if payload_json:
+        try:
+            parsed = json.loads(payload_json)
+            payload = parsed if isinstance(parsed, dict) else {"raw": parsed}
+        except Exception:
+            payload = {"raw": payload_json}
+    try:
+        return _json(_svc().dynamics_evaluation_bundle(state_version_id, payload))
+    except Exception as exc:
+        return _json({"error": str(exc), "state_version_id": state_version_id})
+
+
+async def twm_dynamics_evaluation_bundle_async(state_version_id: str, payload_json: str = "") -> str:
+    return await asyncio.to_thread(twm_dynamics_evaluation_bundle, state_version_id, payload_json)
+
+
 def twm_dynamics_model_registry_report(state_version_id: str, payload_json: str = "") -> str:
     payload: dict[str, Any] = {}
     if payload_json:
@@ -803,6 +821,7 @@ _SYNC_FUNCS = [
     twm_dynamics_training_examples,
     twm_dynamics_readiness_report,
     twm_dynamics_evaluation_report,
+    twm_dynamics_evaluation_bundle,
     twm_dynamics_model_registry_report,
     twm_activate_dynamics_model_registry_entry,
     twm_list_dynamics_model_registry_entries,
@@ -841,6 +860,7 @@ _LONG_RUNNING_FUNCS = [
     twm_dynamics_training_examples_async,
     twm_dynamics_readiness_report_async,
     twm_dynamics_evaluation_report_async,
+    twm_dynamics_evaluation_bundle_async,
     twm_dynamics_model_registry_report_async,
     twm_activate_dynamics_model_registry_entry_async,
     twm_list_dynamics_model_registry_entries_async,
