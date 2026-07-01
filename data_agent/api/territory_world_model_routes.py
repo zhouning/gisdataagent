@@ -715,6 +715,26 @@ async def twm_state_snapshot_lakehouse_manifest(request: Request):
         return JSONResponse({"error": str(exc)}, status_code=400)
 
 
+async def twm_pilot_package_report(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    svc = get_territory_world_model_service()
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "JSON body must be an object"}, status_code=400)
+    try:
+        return JSONResponse(svc.pilot_package_report(request.path_params["id"], body))
+    except LookupError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+
+
 async def twm_materialize_state_snapshot_lakehouse(request: Request):
     user = _get_user_from_request(request)
     if not user:
@@ -1159,6 +1179,7 @@ def get_territory_world_model_routes() -> list[Route]:
         Route("/api/twm/states/{id}/world-model-profile", endpoint=twm_world_model_profile, methods=["POST"]),
         Route("/api/twm/states/{id}/state-contract-report", endpoint=twm_state_contract_report, methods=["POST"]),
         Route("/api/twm/states/{id}/state-snapshot-lakehouse-manifest", endpoint=twm_state_snapshot_lakehouse_manifest, methods=["POST"]),
+        Route("/api/twm/states/{id}/pilot-package-report", endpoint=twm_pilot_package_report, methods=["POST"]),
         Route("/api/twm/states/{id}/state-snapshot-lakehouse-materialize", endpoint=twm_materialize_state_snapshot_lakehouse, methods=["POST"]),
         Route("/api/twm/states/{id}/state-snapshot-lakehouse-publish-plan", endpoint=twm_state_snapshot_lakehouse_publish_plan, methods=["POST"]),
         Route("/api/twm/states/{id}/state-snapshot-lakehouse-publish-execute", endpoint=twm_execute_state_snapshot_lakehouse_publish_plan, methods=["POST"]),

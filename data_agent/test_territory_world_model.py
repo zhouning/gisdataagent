@@ -7207,6 +7207,8 @@ def test_twm_toolset_lists_sync_and_long_running_tools():
     assert "twm_state_contract_report_async" in names
     assert "twm_state_snapshot_lakehouse_manifest" in names
     assert "twm_state_snapshot_lakehouse_manifest_async" in names
+    assert "twm_pilot_package_report" in names
+    assert "twm_pilot_package_report_async" in names
     assert "twm_materialize_state_snapshot_lakehouse" in names
     assert "twm_materialize_state_snapshot_lakehouse_async" in names
     assert "twm_state_snapshot_lakehouse_publish_plan" in names
@@ -7446,6 +7448,36 @@ def test_twm_dynamics_reports_routes_return_contracts(monkeypatch):
     assert registry_resp.status_code == 200
     registry_payload = json.loads(registry_resp.body)
     assert registry_payload["schema"] == "territory_world_model.dynamics_model_registry_report.v1"
+
+
+def test_twm_pilot_package_route_and_tool_return_manifest_contract(monkeypatch):
+    from data_agent.toolsets import territory_world_model_tools as tools
+
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+    monkeypatch.setattr(tools, "get_territory_world_model_service", lambda: svc)
+
+    route_req = _fake_request(
+        "POST",
+        b'{"scenario":"route_pilot_package","include_lance_sidecar":true}',
+        path_params={"id": state_id},
+    )
+    route_resp = asyncio.run(routes.twm_pilot_package_report(route_req))
+    route_payload = json.loads(route_resp.body)
+    assert route_resp.status_code == 200
+    assert route_payload["schema"] == "territory_world_model.pilot_package.v1"
+    assert route_payload["trajectory_dataset_manifest"]["schema"] == "territory_world_model.trajectory_dataset_manifest.v1"
+    assert route_payload["lance_sidecar_manifest"]["storage_boundary"] == "derived_sidecar_not_authoritative"
+
+    tool_payload = json.loads(tools.twm_pilot_package_report(
+        state_id,
+        json.dumps({"scenario": "tool_pilot_package"}),
+    ))
+    assert tool_payload["schema"] == "territory_world_model.pilot_package.v1"
+    assert tool_payload["trajectory_dataset_manifest"]["dataset_snapshot_hash"]
 
 
 def test_twm_state_snapshot_lakehouse_manifest_route_returns_storage_contract(monkeypatch):
