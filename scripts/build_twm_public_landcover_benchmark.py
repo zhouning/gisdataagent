@@ -159,6 +159,12 @@ def run_public_landcover_benchmark(
                 "twm_balanced_strict_overprediction_churn90_persistence_forecast_demand",
                 "twm_region_false_alarm_guarded_persistence_forecast_demand",
                 "twm_pair_false_alarm_guarded_persistence_forecast_demand",
+                "twm_topology_stability_guarded_persistence_forecast_demand",
+                "twm_topology_stability_false_alarm_churn_guarded_persistence_forecast_demand",
+                "twm_topology_stability_strict_false_alarm_churn_guarded_persistence_forecast_demand",
+                "twm_topology_support_strict_false_alarm_churn_guarded_persistence_forecast_demand",
+                "twm_pair_topology_support_strict_false_alarm_churn_guarded_persistence_forecast_demand",
+                "twm_pair_topology_support_contrast_strict_false_alarm_churn_guarded_persistence_forecast_demand",
                 "twm_change_budget_scale_025_forecast_demand",
                 "twm_change_budget_scale_050_forecast_demand",
                 "twm_change_budget_scale_075_forecast_demand",
@@ -427,15 +433,16 @@ def run_region_cases(region: BenchmarkRegion, *, cross_region_priors: dict[str, 
         train_start = frames[idx]
         train_end = frames[idx + 1]
         holdout = frames[idx + 2]
-        valid = valid_mask(train_start, train_end, holdout, region.classes)
-        if int(valid.sum()) == 0:
+        prediction_valid = transition_pair_valid_mask(train_start, train_end, region.classes)
+        evaluation_valid = valid_mask(train_start, train_end, holdout, region.classes)
+        if int(prediction_valid.sum()) == 0 or int(evaluation_valid.sum()) == 0:
             continue
         model_inputs = {
             "train_start": train_start.array,
             "train_end": train_end.array,
             "initial": train_end.array,
             "actual": holdout.array,
-            "valid": valid,
+            "valid": prediction_valid,
             "classes": list(region.classes),
             "drivers": region.drivers,
             "train_years": max(1, train_end.year - train_start.year),
@@ -448,12 +455,20 @@ def run_region_cases(region: BenchmarkRegion, *, cross_region_priors: dict[str, 
         forecast_counts = project_class_counts(
             train_start.array,
             train_end.array,
-            valid,
+            prediction_valid,
             list(region.classes),
             train_years=model_inputs["train_years"],
             horizon_years=model_inputs["horizon_years"],
         )
-        oracle_counts = class_counts(holdout.array, valid, list(region.classes))
+        evaluation_forecast_counts = project_class_counts(
+            train_start.array,
+            train_end.array,
+            evaluation_valid,
+            list(region.classes),
+            train_years=model_inputs["train_years"],
+            horizon_years=model_inputs["horizon_years"],
+        )
+        oracle_counts = class_counts(holdout.array, evaluation_valid, list(region.classes))
         predictions, metadata = build_candidates(
             model_inputs,
             forecast_counts,
@@ -465,7 +480,7 @@ def run_region_cases(region: BenchmarkRegion, *, cross_region_priors: dict[str, 
                 prediction=pred,
                 actual=holdout.array,
                 initial=train_end.array,
-                valid=valid,
+                valid=evaluation_valid,
                 classes=list(region.classes),
                 cell_area_ha=region.cell_area_ha,
                 target_counts=metadata[name]["target_counts"],
@@ -486,11 +501,19 @@ def run_region_cases(region: BenchmarkRegion, *, cross_region_priors: dict[str, 
                 "region_id": region.region_id,
                 "train_period": f"{train_start.year}->{train_end.year}",
                 "holdout_period": f"{train_end.year}->{holdout.year}",
-                "valid_cell_count": int(valid.sum()),
+                "valid_cell_count": int(evaluation_valid.sum()),
+                "prediction_valid_cell_count": int(prediction_valid.sum()),
+                "evaluation_valid_cell_count": int(evaluation_valid.sum()),
+                "mask_protocol": {
+                    "schema": "territory_world_model.prediction_evaluation_valid_mask_split.v1",
+                    "prediction_valid_source": "train_start_train_end_class_and_nodata_mask",
+                    "evaluation_valid_source": "train_start_train_end_holdout_class_and_nodata_mask",
+                },
                 "cell_area_ha": region.cell_area_ha,
                 "class_labels": {str(key): value for key, value in region.class_labels.items()},
                 "demand": {
                     "forecast_counts": {str(key): value for key, value in forecast_counts.items()},
+                    "evaluation_forecast_counts": {str(key): value for key, value in evaluation_forecast_counts.items()},
                     "oracle_counts": {str(key): value for key, value in oracle_counts.items()},
                     "forecast_total_abs_error_against_oracle": int(
                         sum(abs(int(forecast_counts.get(cls, 0)) - int(oracle_counts.get(cls, 0))) for cls in region.classes)
@@ -723,6 +746,53 @@ def build_candidates(
         false_alarm_rate_ceiling=0.6,
         precision_floor=0.35,
         penalty_weight=0.25,
+        min_predicted_count=10,
+    )
+    (
+        topology_stability_guarded_score,
+        topology_stability_guarded_diagnostics,
+    ) = apply_train_topology_stability_to_score(
+        model_inputs,
+        activity_target_neighborhood_strict_replay_precision_overprediction_false_alarm_score,
+        stable_interior_density_floor=0.65,
+        stable_interior_penalty=0.18,
+        frontier_support_weight=0.08,
+        target_neighborhood_support_weight=0.06,
+    )
+    (
+        topology_support_guarded_score,
+        topology_support_guarded_diagnostics,
+    ) = apply_train_unsupported_transition_pressure_to_score(
+        model_inputs,
+        topology_stability_guarded_score,
+        support_floor=0.20,
+        unsupported_penalty=0.08,
+    )
+    (
+        pair_topology_support_guarded_score,
+        pair_topology_support_guarded_diagnostics,
+    ) = apply_train_pair_unsupported_transition_pressure_to_score(
+        model_inputs,
+        topology_support_guarded_score,
+        activity_target_neighborhood_strict_replay_precision_diagnostics["replay_transition_pair_metrics"],
+        support_floor=0.20,
+        false_alarm_rate_floor=0.50,
+        precision_floor=0.35,
+        penalty_weight=0.12,
+        min_predicted_count=10,
+    )
+    (
+        pair_topology_support_contrast_score,
+        pair_topology_support_contrast_diagnostics,
+    ) = apply_train_pair_topology_support_contrast_to_score(
+        model_inputs,
+        pair_topology_support_guarded_score,
+        activity_target_neighborhood_strict_replay_precision_diagnostics["replay_transition_pair_metrics"],
+        support_floor=0.20,
+        false_alarm_rate_floor=0.50,
+        precision_floor=0.35,
+        penalty_weight=0.04,
+        bonus_weight=0.08,
         min_predicted_count=10,
     )
     (
@@ -979,6 +1049,74 @@ def build_candidates(
         activity_target_neighborhood_strict_replay_precision_overprediction_false_alarm_score,
         churn_fraction=0.9,
     )
+    (
+        topology_stability_guarded_persistence_prediction,
+        topology_stability_guarded_persistence_diagnostics,
+    ) = allocate_score_projection_with_adaptive_change_budget_scale(
+        model_inputs,
+        persistence_forecast_counts,
+        topology_stability_guarded_score,
+        churn_fraction=0.9,
+    )
+    topology_false_alarm_churn_guard = false_alarm_guarded_churn_fraction(
+        activity_target_neighborhood_strict_replay_precision_diagnostics["replay_metrics"],
+        base_churn_fraction=0.9,
+        min_churn_fraction=0.5,
+        precision_target=0.45,
+        precision_floor=0.25,
+    )
+    (
+        topology_false_alarm_churn_guarded_persistence_prediction,
+        topology_false_alarm_churn_guarded_persistence_diagnostics,
+    ) = allocate_score_projection_with_adaptive_change_budget_scale(
+        model_inputs,
+        persistence_forecast_counts,
+        topology_stability_guarded_score,
+        churn_fraction=float(topology_false_alarm_churn_guard["churn_fraction"]),
+    )
+    topology_strict_false_alarm_churn_guard = false_alarm_guarded_churn_fraction(
+        activity_target_neighborhood_strict_replay_precision_diagnostics["replay_metrics"],
+        base_churn_fraction=0.9,
+        min_churn_fraction=0.45,
+        precision_target=0.60,
+        precision_floor=0.30,
+    )
+    (
+        topology_strict_false_alarm_churn_guarded_persistence_prediction,
+        topology_strict_false_alarm_churn_guarded_persistence_diagnostics,
+    ) = allocate_score_projection_with_adaptive_change_budget_scale(
+        model_inputs,
+        persistence_forecast_counts,
+        topology_stability_guarded_score,
+        churn_fraction=float(topology_strict_false_alarm_churn_guard["churn_fraction"]),
+    )
+    (
+        topology_support_strict_false_alarm_churn_guarded_persistence_prediction,
+        topology_support_strict_false_alarm_churn_guarded_persistence_diagnostics,
+    ) = allocate_score_projection_with_adaptive_change_budget_scale(
+        model_inputs,
+        persistence_forecast_counts,
+        topology_support_guarded_score,
+        churn_fraction=float(topology_strict_false_alarm_churn_guard["churn_fraction"]),
+    )
+    (
+        pair_topology_support_strict_false_alarm_churn_guarded_persistence_prediction,
+        pair_topology_support_strict_false_alarm_churn_guarded_persistence_diagnostics,
+    ) = allocate_score_projection_with_adaptive_change_budget_scale(
+        model_inputs,
+        persistence_forecast_counts,
+        pair_topology_support_guarded_score,
+        churn_fraction=float(topology_strict_false_alarm_churn_guard["churn_fraction"]),
+    )
+    (
+        pair_topology_support_contrast_strict_false_alarm_churn_guarded_persistence_prediction,
+        pair_topology_support_contrast_strict_false_alarm_churn_guarded_persistence_diagnostics,
+    ) = allocate_score_projection_with_adaptive_change_budget_scale(
+        model_inputs,
+        persistence_forecast_counts,
+        pair_topology_support_contrast_score,
+        churn_fraction=float(topology_strict_false_alarm_churn_guard["churn_fraction"]),
+    )
     predictions = {
         "persistence": model_inputs["initial"].copy(),
         "markov_transition_projection": allocate_markov_projection(model_inputs, forecast_counts),
@@ -1015,6 +1153,22 @@ def build_candidates(
         **{name: output[0] for name, output in balanced_strict_overprediction_persistence_churn_outputs.items()},
         "twm_region_false_alarm_guarded_persistence_forecast_demand": region_false_alarm_guarded_persistence_prediction,
         "twm_pair_false_alarm_guarded_persistence_forecast_demand": pair_false_alarm_guarded_persistence_prediction,
+        "twm_topology_stability_guarded_persistence_forecast_demand": topology_stability_guarded_persistence_prediction,
+        "twm_topology_stability_false_alarm_churn_guarded_persistence_forecast_demand": (
+            topology_false_alarm_churn_guarded_persistence_prediction
+        ),
+        "twm_topology_stability_strict_false_alarm_churn_guarded_persistence_forecast_demand": (
+            topology_strict_false_alarm_churn_guarded_persistence_prediction
+        ),
+        "twm_topology_support_strict_false_alarm_churn_guarded_persistence_forecast_demand": (
+            topology_support_strict_false_alarm_churn_guarded_persistence_prediction
+        ),
+        "twm_pair_topology_support_strict_false_alarm_churn_guarded_persistence_forecast_demand": (
+            pair_topology_support_strict_false_alarm_churn_guarded_persistence_prediction
+        ),
+        "twm_pair_topology_support_contrast_strict_false_alarm_churn_guarded_persistence_forecast_demand": (
+            pair_topology_support_contrast_strict_false_alarm_churn_guarded_persistence_prediction
+        ),
         "twm_temporal_activity_target_neighborhood_replay_precision_reliability_change_budget_forecast_demand": (
             activity_target_neighborhood_replay_precision_reliability_change_budget_prediction
         ),
@@ -1484,6 +1638,253 @@ def build_candidates(
             ),
             "training_demand_projection": persistence_forecast_diagnostics,
             "training_change_budget": pair_false_alarm_guarded_persistence_diagnostics,
+            "target_counts": persistence_forecast_counts,
+        },
+        "twm_topology_stability_guarded_persistence_forecast_demand": {
+            "backend": "train_topology_stability_guarded_persistence_demand_score_allocation",
+            "demand_mode": "forecast_demand",
+            "uses_holdout_labels_for_training": False,
+            "component_flags": {
+                "driver_features": True,
+                "neighborhood_features": True,
+                "transition_prior": True,
+                "temporal_activity_calibration": True,
+                "temporal_activity_neighborhood": True,
+                "target_transition_neighborhood": True,
+                "train_replay_transition_precision_guard": True,
+                "strict_train_replay_transition_precision_guard": True,
+                "train_replay_transition_overprediction_guard": True,
+                "train_replay_transition_false_alarm_guard": True,
+                "topology_stability_guard": True,
+                "demand_projection": True,
+                "persistence_demand_projection": True,
+                "change_budget_calibration": True,
+                "adaptive_change_budget_scale": True,
+                "balanced_map_mode": True,
+            },
+            "training_diagnostics": training_diagnostics,
+            "training_temporal_activity": activity_neighborhood_diagnostics,
+            "training_target_transition_neighborhood": activity_target_neighborhood_diagnostics,
+            "training_replay_transition_precision": activity_target_neighborhood_strict_replay_precision_diagnostics,
+            "training_replay_transition_overprediction": (
+                activity_target_neighborhood_strict_replay_precision_overprediction_diagnostics
+            ),
+            "training_replay_transition_false_alarm": (
+                activity_target_neighborhood_strict_replay_precision_overprediction_false_alarm_diagnostics
+            ),
+            "training_topology_stability": topology_stability_guarded_diagnostics,
+            "training_demand_projection": persistence_forecast_diagnostics,
+            "training_change_budget": topology_stability_guarded_persistence_diagnostics,
+            "target_counts": persistence_forecast_counts,
+        },
+        "twm_topology_stability_false_alarm_churn_guarded_persistence_forecast_demand": {
+            "backend": "train_topology_stability_false_alarm_churn_guarded_persistence_demand_score_allocation",
+            "demand_mode": "forecast_demand",
+            "uses_holdout_labels_for_training": False,
+            "component_flags": {
+                "driver_features": True,
+                "neighborhood_features": True,
+                "transition_prior": True,
+                "temporal_activity_calibration": True,
+                "temporal_activity_neighborhood": True,
+                "target_transition_neighborhood": True,
+                "train_replay_transition_precision_guard": True,
+                "strict_train_replay_transition_precision_guard": True,
+                "train_replay_transition_overprediction_guard": True,
+                "train_replay_transition_false_alarm_guard": True,
+                "topology_stability_guard": True,
+                "train_replay_false_alarm_churn_guard": True,
+                "demand_projection": True,
+                "persistence_demand_projection": True,
+                "change_budget_calibration": True,
+                "adaptive_change_budget_scale": True,
+                "balanced_map_mode": True,
+            },
+            "training_diagnostics": training_diagnostics,
+            "training_temporal_activity": activity_neighborhood_diagnostics,
+            "training_target_transition_neighborhood": activity_target_neighborhood_diagnostics,
+            "training_replay_transition_precision": activity_target_neighborhood_strict_replay_precision_diagnostics,
+            "training_replay_transition_overprediction": (
+                activity_target_neighborhood_strict_replay_precision_overprediction_diagnostics
+            ),
+            "training_replay_transition_false_alarm": (
+                activity_target_neighborhood_strict_replay_precision_overprediction_false_alarm_diagnostics
+            ),
+            "training_topology_stability": topology_stability_guarded_diagnostics,
+            "training_churn_guard": topology_false_alarm_churn_guard,
+            "training_demand_projection": persistence_forecast_diagnostics,
+            "training_change_budget": topology_false_alarm_churn_guarded_persistence_diagnostics,
+            "target_counts": persistence_forecast_counts,
+        },
+        "twm_topology_stability_strict_false_alarm_churn_guarded_persistence_forecast_demand": {
+            "backend": "train_topology_stability_strict_false_alarm_churn_guarded_persistence_demand_score_allocation",
+            "demand_mode": "forecast_demand",
+            "uses_holdout_labels_for_training": False,
+            "component_flags": {
+                "driver_features": True,
+                "neighborhood_features": True,
+                "transition_prior": True,
+                "temporal_activity_calibration": True,
+                "temporal_activity_neighborhood": True,
+                "target_transition_neighborhood": True,
+                "train_replay_transition_precision_guard": True,
+                "strict_train_replay_transition_precision_guard": True,
+                "train_replay_transition_overprediction_guard": True,
+                "train_replay_transition_false_alarm_guard": True,
+                "topology_stability_guard": True,
+                "strict_train_replay_false_alarm_churn_guard": True,
+                "demand_projection": True,
+                "persistence_demand_projection": True,
+                "change_budget_calibration": True,
+                "adaptive_change_budget_scale": True,
+                "balanced_map_mode": True,
+            },
+            "training_diagnostics": training_diagnostics,
+            "training_temporal_activity": activity_neighborhood_diagnostics,
+            "training_target_transition_neighborhood": activity_target_neighborhood_diagnostics,
+            "training_replay_transition_precision": activity_target_neighborhood_strict_replay_precision_diagnostics,
+            "training_replay_transition_overprediction": (
+                activity_target_neighborhood_strict_replay_precision_overprediction_diagnostics
+            ),
+            "training_replay_transition_false_alarm": (
+                activity_target_neighborhood_strict_replay_precision_overprediction_false_alarm_diagnostics
+            ),
+            "training_topology_stability": topology_stability_guarded_diagnostics,
+            "training_churn_guard": topology_strict_false_alarm_churn_guard,
+            "training_demand_projection": persistence_forecast_diagnostics,
+            "training_change_budget": topology_strict_false_alarm_churn_guarded_persistence_diagnostics,
+            "target_counts": persistence_forecast_counts,
+        },
+        "twm_topology_support_strict_false_alarm_churn_guarded_persistence_forecast_demand": {
+            "backend": "train_topology_support_strict_false_alarm_churn_guarded_persistence_demand_score_allocation",
+            "demand_mode": "forecast_demand",
+            "uses_holdout_labels_for_training": False,
+            "component_flags": {
+                "driver_features": True,
+                "neighborhood_features": True,
+                "transition_prior": True,
+                "temporal_activity_calibration": True,
+                "temporal_activity_neighborhood": True,
+                "target_transition_neighborhood": True,
+                "train_replay_transition_precision_guard": True,
+                "strict_train_replay_transition_precision_guard": True,
+                "train_replay_transition_overprediction_guard": True,
+                "train_replay_transition_false_alarm_guard": True,
+                "topology_stability_guard": True,
+                "unsupported_transition_pressure_guard": True,
+                "strict_train_replay_false_alarm_churn_guard": True,
+                "demand_projection": True,
+                "persistence_demand_projection": True,
+                "change_budget_calibration": True,
+                "adaptive_change_budget_scale": True,
+                "balanced_map_mode": True,
+            },
+            "training_diagnostics": training_diagnostics,
+            "training_temporal_activity": activity_neighborhood_diagnostics,
+            "training_target_transition_neighborhood": activity_target_neighborhood_diagnostics,
+            "training_replay_transition_precision": activity_target_neighborhood_strict_replay_precision_diagnostics,
+            "training_replay_transition_overprediction": (
+                activity_target_neighborhood_strict_replay_precision_overprediction_diagnostics
+            ),
+            "training_replay_transition_false_alarm": (
+                activity_target_neighborhood_strict_replay_precision_overprediction_false_alarm_diagnostics
+            ),
+            "training_topology_stability": topology_stability_guarded_diagnostics,
+            "training_unsupported_transition_pressure": topology_support_guarded_diagnostics,
+            "training_churn_guard": topology_strict_false_alarm_churn_guard,
+            "training_demand_projection": persistence_forecast_diagnostics,
+            "training_change_budget": topology_support_strict_false_alarm_churn_guarded_persistence_diagnostics,
+            "target_counts": persistence_forecast_counts,
+        },
+        "twm_pair_topology_support_strict_false_alarm_churn_guarded_persistence_forecast_demand": {
+            "backend": "train_pair_topology_support_strict_false_alarm_churn_guarded_persistence_demand_score_allocation",
+            "demand_mode": "forecast_demand",
+            "uses_holdout_labels_for_training": False,
+            "component_flags": {
+                "driver_features": True,
+                "neighborhood_features": True,
+                "transition_prior": True,
+                "temporal_activity_calibration": True,
+                "temporal_activity_neighborhood": True,
+                "target_transition_neighborhood": True,
+                "train_replay_transition_precision_guard": True,
+                "strict_train_replay_transition_precision_guard": True,
+                "train_replay_transition_overprediction_guard": True,
+                "train_replay_transition_false_alarm_guard": True,
+                "topology_stability_guard": True,
+                "unsupported_transition_pressure_guard": True,
+                "pair_unsupported_transition_pressure_guard": True,
+                "strict_train_replay_false_alarm_churn_guard": True,
+                "demand_projection": True,
+                "persistence_demand_projection": True,
+                "change_budget_calibration": True,
+                "adaptive_change_budget_scale": True,
+                "balanced_map_mode": True,
+            },
+            "training_diagnostics": training_diagnostics,
+            "training_temporal_activity": activity_neighborhood_diagnostics,
+            "training_target_transition_neighborhood": activity_target_neighborhood_diagnostics,
+            "training_replay_transition_precision": activity_target_neighborhood_strict_replay_precision_diagnostics,
+            "training_replay_transition_overprediction": (
+                activity_target_neighborhood_strict_replay_precision_overprediction_diagnostics
+            ),
+            "training_replay_transition_false_alarm": (
+                activity_target_neighborhood_strict_replay_precision_overprediction_false_alarm_diagnostics
+            ),
+            "training_topology_stability": topology_stability_guarded_diagnostics,
+            "training_unsupported_transition_pressure": topology_support_guarded_diagnostics,
+            "training_pair_unsupported_transition_pressure": pair_topology_support_guarded_diagnostics,
+            "training_churn_guard": topology_strict_false_alarm_churn_guard,
+            "training_demand_projection": persistence_forecast_diagnostics,
+            "training_change_budget": pair_topology_support_strict_false_alarm_churn_guarded_persistence_diagnostics,
+            "target_counts": persistence_forecast_counts,
+        },
+        "twm_pair_topology_support_contrast_strict_false_alarm_churn_guarded_persistence_forecast_demand": {
+            "backend": (
+                "train_pair_topology_support_contrast_strict_false_alarm_churn_guarded_persistence_"
+                "demand_score_allocation"
+            ),
+            "demand_mode": "forecast_demand",
+            "uses_holdout_labels_for_training": False,
+            "component_flags": {
+                "driver_features": True,
+                "neighborhood_features": True,
+                "transition_prior": True,
+                "temporal_activity_calibration": True,
+                "temporal_activity_neighborhood": True,
+                "target_transition_neighborhood": True,
+                "train_replay_transition_precision_guard": True,
+                "strict_train_replay_transition_precision_guard": True,
+                "train_replay_transition_overprediction_guard": True,
+                "train_replay_transition_false_alarm_guard": True,
+                "topology_stability_guard": True,
+                "unsupported_transition_pressure_guard": True,
+                "pair_unsupported_transition_pressure_guard": True,
+                "pair_topology_support_contrast_guard": True,
+                "strict_train_replay_false_alarm_churn_guard": True,
+                "demand_projection": True,
+                "persistence_demand_projection": True,
+                "change_budget_calibration": True,
+                "adaptive_change_budget_scale": True,
+                "balanced_map_mode": True,
+            },
+            "training_diagnostics": training_diagnostics,
+            "training_temporal_activity": activity_neighborhood_diagnostics,
+            "training_target_transition_neighborhood": activity_target_neighborhood_diagnostics,
+            "training_replay_transition_precision": activity_target_neighborhood_strict_replay_precision_diagnostics,
+            "training_replay_transition_overprediction": (
+                activity_target_neighborhood_strict_replay_precision_overprediction_diagnostics
+            ),
+            "training_replay_transition_false_alarm": (
+                activity_target_neighborhood_strict_replay_precision_overprediction_false_alarm_diagnostics
+            ),
+            "training_topology_stability": topology_stability_guarded_diagnostics,
+            "training_unsupported_transition_pressure": topology_support_guarded_diagnostics,
+            "training_pair_unsupported_transition_pressure": pair_topology_support_guarded_diagnostics,
+            "training_pair_topology_support_contrast": pair_topology_support_contrast_diagnostics,
+            "training_churn_guard": topology_strict_false_alarm_churn_guard,
+            "training_demand_projection": persistence_forecast_diagnostics,
+            "training_change_budget": pair_topology_support_contrast_strict_false_alarm_churn_guarded_persistence_diagnostics,
             "target_counts": persistence_forecast_counts,
         },
         "twm_temporal_activity_target_neighborhood_replay_precision_reliability_change_budget_forecast_demand": {
@@ -3080,6 +3481,355 @@ def apply_train_target_transition_neighborhood_to_score(
     }
 
 
+def apply_train_topology_stability_to_score(
+    model_inputs: dict[str, Any],
+    score: np.ndarray,
+    *,
+    stable_interior_density_floor: float = 0.65,
+    stable_interior_penalty: float = 0.18,
+    frontier_support_weight: float = 0.08,
+    target_neighborhood_support_weight: float = 0.06,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    train_start = model_inputs["train_start"]
+    train_end = model_inputs["train_end"]
+    initial = model_inputs["initial"]
+    valid = model_inputs["valid"]
+    classes = list(model_inputs["classes"])
+    adjusted = score.copy()
+
+    density_floor = max(0.0, min(1.0, float(stable_interior_density_floor)))
+    penalty = max(0.0, float(stable_interior_penalty))
+    frontier_weight = max(0.0, float(frontier_support_weight))
+    target_weight = max(0.0, float(target_neighborhood_support_weight))
+    train_change = valid & (train_start != train_end)
+    frontier_strength = np.maximum(train_change.astype(np.float32), neighborhood_mean(train_change, valid))
+
+    stable_interior_any = np.zeros(initial.shape, dtype=bool)
+    same_class_density_values: list[np.ndarray] = []
+    stable_interior_by_class: dict[int, np.ndarray] = {}
+    for source in classes:
+        same_class_density = neighbor_density(initial, int(source), valid)
+        stable_interior = (
+            valid
+            & (train_start == int(source))
+            & (train_end == int(source))
+            & (initial == int(source))
+            & (same_class_density >= density_floor)
+        )
+        stable_interior_by_class[int(source)] = stable_interior
+        stable_interior_any |= stable_interior
+        if int((valid & (initial == int(source))).sum()) > 0:
+            same_class_density_values.append(same_class_density[valid & (initial == int(source))])
+
+    for target_idx, target in enumerate(classes):
+        target_density = neighbor_density(initial, int(target), valid)
+        non_persistence = valid & (initial != int(target))
+        if int(non_persistence.sum()) == 0:
+            continue
+        source_stable = stable_interior_any & non_persistence
+        if int(source_stable.sum()) > 0 and penalty > 0.0:
+            stable_penalty = penalty * (1.0 - np.clip(frontier_strength[source_stable], 0.0, 1.0))
+            adjusted[target_idx, source_stable] = adjusted[target_idx, source_stable] - stable_penalty.astype(np.float32)
+        if frontier_weight > 0.0:
+            adjusted[target_idx, non_persistence] = adjusted[target_idx, non_persistence] + (
+                np.float32(frontier_weight) * frontier_strength[non_persistence]
+            )
+        if target_weight > 0.0:
+            adjusted[target_idx, non_persistence] = adjusted[target_idx, non_persistence] + (
+                np.float32(target_weight) * target_density[non_persistence]
+            )
+
+    adjusted[:, ~valid] = -1e9
+    mean_same_density = (
+        float(np.mean(np.concatenate(same_class_density_values)))
+        if same_class_density_values
+        else 0.0
+    )
+    return adjusted.astype(np.float32), {
+        "schema": "territory_world_model.train_topology_stability_score_guard.v1",
+        "selection_metric": "train_stable_interior_frontier_target_neighborhood_support",
+        "uses_holdout_labels_for_training": False,
+        "stable_interior_density_floor": round(float(density_floor), 6),
+        "stable_interior_penalty": round(float(penalty), 6),
+        "frontier_support_weight": round(float(frontier_weight), 6),
+        "target_neighborhood_support_weight": round(float(target_weight), 6),
+        "stable_interior_cell_count": int(stable_interior_any.sum()),
+        "frontier_cell_count": int((valid & (frontier_strength > 0.0)).sum()),
+        "train_change_cell_count": int(train_change.sum()),
+        "mean_same_class_neighbor_density": round(mean_same_density, 6),
+        "stable_interior_by_class": {
+            str(cls): int(mask.sum())
+            for cls, mask in sorted(stable_interior_by_class.items())
+        },
+    }
+
+
+def apply_train_unsupported_transition_pressure_to_score(
+    model_inputs: dict[str, Any],
+    score: np.ndarray,
+    *,
+    support_floor: float = 0.20,
+    unsupported_penalty: float = 0.08,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    train_start = model_inputs["train_start"]
+    train_end = model_inputs["train_end"]
+    initial = model_inputs["initial"]
+    valid = model_inputs["valid"]
+    classes = list(model_inputs["classes"])
+    adjusted = score.copy()
+
+    floor = max(1e-6, min(1.0, float(support_floor)))
+    penalty_weight = max(0.0, float(unsupported_penalty))
+    train_change = valid & (train_start != train_end)
+    frontier_strength = np.maximum(train_change.astype(np.float32), neighborhood_mean(train_change, valid))
+    unsupported_any = np.zeros(initial.shape, dtype=bool)
+    rows: list[dict[str, Any]] = []
+    for target_idx, target in enumerate(classes):
+        target_density = neighbor_density(initial, int(target), valid)
+        support = np.maximum(frontier_strength, target_density)
+        non_persistence = valid & (initial != int(target))
+        unsupported = non_persistence & (support < floor)
+        unsupported_any |= unsupported
+        if int(unsupported.sum()) > 0 and penalty_weight > 0.0:
+            pressure = penalty_weight * (1.0 - np.clip(support[unsupported] / floor, 0.0, 1.0))
+            adjusted[target_idx, unsupported] = adjusted[target_idx, unsupported] - pressure.astype(np.float32)
+        rows.append(
+            {
+                "target_class": int(target),
+                "unsupported_cell_count": int(unsupported.sum()),
+                "mean_support": round(float(np.mean(support[non_persistence])) if int(non_persistence.sum()) else 0.0, 6),
+            }
+        )
+
+    adjusted[:, ~valid] = -1e9
+    return adjusted.astype(np.float32), {
+        "schema": "territory_world_model.train_unsupported_transition_pressure_score_guard.v1",
+        "selection_metric": "train_frontier_or_target_neighborhood_support_for_non_persistence",
+        "uses_holdout_labels_for_training": False,
+        "support_floor": round(float(floor), 6),
+        "unsupported_penalty": round(float(penalty_weight), 6),
+        "train_change_cell_count": int(train_change.sum()),
+        "unsupported_cell_count": int(unsupported_any.sum()),
+        "target_rows": rows,
+    }
+
+
+def apply_train_pair_unsupported_transition_pressure_to_score(
+    model_inputs: dict[str, Any],
+    score: np.ndarray,
+    transition_pair_metrics: list[dict[str, Any]],
+    *,
+    support_floor: float = 0.20,
+    false_alarm_rate_floor: float = 0.50,
+    precision_floor: float = 0.35,
+    penalty_weight: float = 0.12,
+    min_predicted_count: int = 10,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    train_start = model_inputs["train_start"]
+    train_end = model_inputs["train_end"]
+    initial = model_inputs["initial"]
+    valid = model_inputs["valid"]
+    classes = list(model_inputs["classes"])
+    class_to_idx = {int(cls): idx for idx, cls in enumerate(classes)}
+    adjusted = score.copy()
+
+    safe_support_floor = max(1e-6, min(1.0, float(support_floor)))
+    safe_false_alarm_floor = max(0.0, min(1.0, float(false_alarm_rate_floor)))
+    safe_precision_floor = max(1e-12, min(1.0, float(precision_floor)))
+    clipped_weight = max(0.0, float(penalty_weight))
+    min_count = max(0, int(min_predicted_count))
+    train_change = valid & (train_start != train_end)
+    frontier_strength = np.maximum(train_change.astype(np.float32), neighborhood_mean(train_change, valid))
+
+    rows: list[dict[str, Any]] = []
+    penalized_cell_count = 0
+    for metric in transition_pair_metrics:
+        source = int(metric["source_class"])
+        target = int(metric["target_class"])
+        if source not in class_to_idx or target not in class_to_idx or source == target:
+            continue
+        predicted_count = int(metric.get("predicted_count") or 0)
+        hit_count = int(metric.get("hit_count") or 0)
+        false_alarm_count = int(metric.get("false_alarm_count") or 0)
+        precision = max(0.0, min(1.0, float(metric.get("precision") or 0.0)))
+        false_alarm_rate = 0.0 if predicted_count <= 0 else float(false_alarm_count) / float(predicted_count)
+
+        target_density = neighbor_density(initial, target, valid)
+        support = np.maximum(frontier_strength, target_density)
+        candidate_mask = valid & (initial == source)
+        unsupported = candidate_mask & (support < safe_support_floor)
+        unsupported_count = int(unsupported.sum())
+        score_penalty = 0.0
+        applied_cell_count = 0
+        if (
+            predicted_count >= min_count
+            and false_alarm_rate > safe_false_alarm_floor
+            and precision < safe_precision_floor
+            and unsupported_count > 0
+            and clipped_weight > 0.0
+        ):
+            false_alarm_excess = (false_alarm_rate - safe_false_alarm_floor) / max(1e-12, 1.0 - safe_false_alarm_floor)
+            precision_gap = (safe_precision_floor - precision) / safe_precision_floor
+            support_gap = 1.0 - np.clip(support[unsupported] / safe_support_floor, 0.0, 1.0)
+            pressure = clipped_weight * min(1.0, false_alarm_excess) * min(1.0, precision_gap) * support_gap
+            adjusted[class_to_idx[target], unsupported] = adjusted[class_to_idx[target], unsupported] - pressure.astype(
+                np.float32
+            )
+            score_penalty = float(np.max(pressure)) if pressure.size else 0.0
+            applied_cell_count = unsupported_count
+            penalized_cell_count += applied_cell_count
+
+        rows.append(
+            {
+                "source_class": source,
+                "target_class": target,
+                "train_replay_predicted_count": predicted_count,
+                "train_replay_hit_count": hit_count,
+                "train_replay_false_alarm_count": false_alarm_count,
+                "train_replay_precision": round(precision, 6),
+                "train_replay_false_alarm_rate": round(false_alarm_rate, 6),
+                "unsupported_cell_count": unsupported_count,
+                "applied_cell_count": applied_cell_count,
+                "max_score_penalty": round(float(score_penalty), 8),
+            }
+        )
+
+    adjusted[:, ~valid] = -1e9
+    penalized = [row for row in rows if int(row["applied_cell_count"]) > 0]
+    return adjusted.astype(np.float32), {
+        "schema": "territory_world_model.train_pair_unsupported_transition_pressure_score_guard.v1",
+        "selection_metric": "train_replay_pair_false_alarm_pressure_with_train_topology_support",
+        "uses_holdout_labels_for_training": False,
+        "support_floor": round(float(safe_support_floor), 6),
+        "false_alarm_rate_floor": round(float(safe_false_alarm_floor), 6),
+        "precision_floor": round(float(safe_precision_floor), 6),
+        "penalty_weight": round(float(clipped_weight), 6),
+        "min_predicted_count": min_count,
+        "train_change_cell_count": int(train_change.sum()),
+        "penalized_transition_count": len(penalized),
+        "penalized_cell_count": int(penalized_cell_count),
+        "transition_rows": rows,
+    }
+
+
+def apply_train_pair_topology_support_contrast_to_score(
+    model_inputs: dict[str, Any],
+    score: np.ndarray,
+    transition_pair_metrics: list[dict[str, Any]],
+    *,
+    support_floor: float = 0.20,
+    false_alarm_rate_floor: float = 0.50,
+    precision_floor: float = 0.35,
+    penalty_weight: float = 0.08,
+    bonus_weight: float = 0.06,
+    min_predicted_count: int = 10,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    train_start = model_inputs["train_start"]
+    train_end = model_inputs["train_end"]
+    initial = model_inputs["initial"]
+    valid = model_inputs["valid"]
+    classes = list(model_inputs["classes"])
+    class_to_idx = {int(cls): idx for idx, cls in enumerate(classes)}
+    adjusted = score.copy()
+
+    safe_support_floor = max(1e-6, min(1.0, float(support_floor)))
+    safe_false_alarm_floor = max(0.0, min(1.0, float(false_alarm_rate_floor)))
+    safe_precision_floor = max(1e-12, min(1.0, float(precision_floor)))
+    clipped_penalty_weight = max(0.0, float(penalty_weight))
+    clipped_bonus_weight = max(0.0, float(bonus_weight))
+    min_count = max(0, int(min_predicted_count))
+    train_change = valid & (train_start != train_end)
+    frontier_strength = np.maximum(train_change.astype(np.float32), neighborhood_mean(train_change, valid))
+
+    rows: list[dict[str, Any]] = []
+    penalized_cell_count = 0
+    boosted_cell_count = 0
+    for metric in transition_pair_metrics:
+        source = int(metric["source_class"])
+        target = int(metric["target_class"])
+        if source not in class_to_idx or target not in class_to_idx or source == target:
+            continue
+        predicted_count = int(metric.get("predicted_count") or 0)
+        hit_count = int(metric.get("hit_count") or 0)
+        false_alarm_count = int(metric.get("false_alarm_count") or 0)
+        precision = max(0.0, min(1.0, float(metric.get("precision") or 0.0)))
+        false_alarm_rate = 0.0 if predicted_count <= 0 else float(false_alarm_count) / float(predicted_count)
+        target_density = neighbor_density(initial, target, valid)
+        support = np.maximum(frontier_strength, target_density)
+        candidate_mask = valid & (initial == source)
+        unsupported = candidate_mask & (support < safe_support_floor)
+        supported = candidate_mask & (support >= safe_support_floor)
+
+        apply_contrast = (
+            predicted_count >= min_count
+            and false_alarm_rate > safe_false_alarm_floor
+            and precision < safe_precision_floor
+        )
+        max_penalty = 0.0
+        max_bonus = 0.0
+        applied_penalty_count = 0
+        applied_bonus_count = 0
+        if apply_contrast:
+            false_alarm_excess = (false_alarm_rate - safe_false_alarm_floor) / max(1e-12, 1.0 - safe_false_alarm_floor)
+            precision_gap = (safe_precision_floor - precision) / safe_precision_floor
+            contrast_scale = min(1.0, false_alarm_excess) * min(1.0, precision_gap)
+            if clipped_penalty_weight > 0.0 and int(unsupported.sum()) > 0:
+                support_gap = 1.0 - np.clip(support[unsupported] / safe_support_floor, 0.0, 1.0)
+                pressure = clipped_penalty_weight * contrast_scale * support_gap
+                adjusted[class_to_idx[target], unsupported] = adjusted[class_to_idx[target], unsupported] - pressure.astype(
+                    np.float32
+                )
+                max_penalty = float(np.max(pressure)) if pressure.size else 0.0
+                applied_penalty_count = int(unsupported.sum())
+                penalized_cell_count += applied_penalty_count
+            if clipped_bonus_weight > 0.0 and int(supported.sum()) > 0:
+                support_bonus = np.clip((support[supported] - safe_support_floor) / (1.0 - safe_support_floor), 0.0, 1.0)
+                bonus = clipped_bonus_weight * contrast_scale * support_bonus
+                adjusted[class_to_idx[target], supported] = adjusted[class_to_idx[target], supported] + bonus.astype(np.float32)
+                max_bonus = float(np.max(bonus)) if bonus.size else 0.0
+                applied_bonus_count = int(supported.sum())
+                boosted_cell_count += applied_bonus_count
+
+        rows.append(
+            {
+                "source_class": source,
+                "target_class": target,
+                "train_replay_predicted_count": predicted_count,
+                "train_replay_hit_count": hit_count,
+                "train_replay_false_alarm_count": false_alarm_count,
+                "train_replay_precision": round(precision, 6),
+                "train_replay_false_alarm_rate": round(false_alarm_rate, 6),
+                "unsupported_cell_count": int(unsupported.sum()),
+                "supported_cell_count": int(supported.sum()),
+                "penalized_cell_count": applied_penalty_count,
+                "boosted_cell_count": applied_bonus_count,
+                "max_score_penalty": round(float(max_penalty), 8),
+                "max_score_bonus": round(float(max_bonus), 8),
+            }
+        )
+
+    adjusted[:, ~valid] = -1e9
+    penalized = [row for row in rows if int(row["penalized_cell_count"]) > 0]
+    boosted = [row for row in rows if int(row["boosted_cell_count"]) > 0]
+    return adjusted.astype(np.float32), {
+        "schema": "territory_world_model.train_pair_topology_support_contrast_score_guard.v1",
+        "selection_metric": "train_replay_pair_false_alarm_pressure_with_supported_cell_bonus",
+        "uses_holdout_labels_for_training": False,
+        "support_floor": round(float(safe_support_floor), 6),
+        "false_alarm_rate_floor": round(float(safe_false_alarm_floor), 6),
+        "precision_floor": round(float(safe_precision_floor), 6),
+        "penalty_weight": round(float(clipped_penalty_weight), 6),
+        "bonus_weight": round(float(clipped_bonus_weight), 6),
+        "min_predicted_count": min_count,
+        "train_change_cell_count": int(train_change.sum()),
+        "penalized_transition_count": len(penalized),
+        "boosted_transition_count": len(boosted),
+        "penalized_cell_count": int(penalized_cell_count),
+        "boosted_cell_count": int(boosted_cell_count),
+        "transition_rows": rows,
+    }
+
+
 def build_train_replay_transition_precision_score(
     model_inputs: dict[str, Any],
     forecast_score: np.ndarray,
@@ -4113,7 +4863,8 @@ def rebuild_case_predictions(region: BenchmarkRegion, years: list[int]) -> dict[
     train_start = frames[years[0]]
     train_end = frames[years[1]]
     holdout = frames[years[2]]
-    valid = valid_mask(train_start, train_end, holdout, region.classes)
+    valid = transition_pair_valid_mask(train_start, train_end, region.classes)
+    evaluation_valid = valid_mask(train_start, train_end, holdout, region.classes)
     model_inputs = {
         "train_start": train_start.array,
         "train_end": train_end.array,
@@ -4137,7 +4888,7 @@ def rebuild_case_predictions(region: BenchmarkRegion, years: list[int]) -> dict[
         train_years=model_inputs["train_years"],
         horizon_years=model_inputs["horizon_years"],
     )
-    oracle_counts = class_counts(holdout.array, valid, list(region.classes))
+    oracle_counts = class_counts(holdout.array, evaluation_valid, list(region.classes))
     predictions, _ = build_candidates(model_inputs, forecast_counts, oracle_counts)
     return predictions
 

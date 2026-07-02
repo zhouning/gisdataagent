@@ -28,6 +28,7 @@ from scripts.build_twm_public_landcover_benchmark import (  # noqa: E402
     load_manifest_regions,
     pixel_metrics,
     project_class_counts,
+    transition_pair_valid_mask,
     transition_prior_probability_cube,
     valid_mask,
 )
@@ -55,6 +56,16 @@ class FlusComparisonCase:
     class_labels: dict[int, str]
     cell_area_ha: float
     target_counts: dict[int, int]
+    evaluation_valid: np.ndarray | None = None
+    evaluation_target_counts: dict[int, int] | None = None
+
+
+def case_evaluation_valid(case: FlusComparisonCase) -> np.ndarray:
+    return case.evaluation_valid if case.evaluation_valid is not None else case.valid
+
+
+def case_evaluation_target_counts(case: FlusComparisonCase) -> dict[int, int]:
+    return case.evaluation_target_counts if case.evaluation_target_counts is not None else case.target_counts
 
 
 def main() -> None:
@@ -231,13 +242,22 @@ def select_cases(
             train_start = frames[idx]
             train_end = frames[idx + 1]
             holdout = frames[idx + 2]
-            valid = valid_mask(train_start, train_end, holdout, region.classes)
-            if int(valid.sum()) <= 0:
+            prediction_valid = transition_pair_valid_mask(train_start, train_end, region.classes)
+            evaluation_valid = valid_mask(train_start, train_end, holdout, region.classes)
+            if int(prediction_valid.sum()) <= 0 or int(evaluation_valid.sum()) <= 0:
                 continue
             target_counts = project_class_counts(
                 train_start.array,
                 train_end.array,
-                valid,
+                prediction_valid,
+                list(region.classes),
+                train_years=max(1, train_end.year - train_start.year),
+                horizon_years=max(1, holdout.year - train_end.year),
+            )
+            evaluation_target_counts = project_class_counts(
+                train_start.array,
+                train_end.array,
+                evaluation_valid,
                 list(region.classes),
                 train_years=max(1, train_end.year - train_start.year),
                 horizon_years=max(1, holdout.year - train_end.year),
@@ -252,11 +272,13 @@ def select_cases(
                     train_start=train_start,
                     train_end=train_end,
                     holdout=holdout,
-                    valid=valid,
+                    valid=prediction_valid,
                     classes=tuple(int(cls) for cls in region.classes),
                     class_labels=dict(region.class_labels),
                     cell_area_ha=float(region.cell_area_ha),
                     target_counts=target_counts,
+                    evaluation_valid=evaluation_valid,
+                    evaluation_target_counts=evaluation_target_counts,
                 )
             )
             region_case_count += 1
@@ -604,15 +626,16 @@ def evaluate_flus_output(case: FlusComparisonCase, output_path: Path) -> dict[st
 
     with rasterio.open(output_path) as src:
         encoded = src.read(1)
+    evaluation_valid = case_evaluation_valid(case)
     prediction = flus_to_dynamic_world_classes(encoded, classes=case.classes, valid=case.valid)
     metrics = pixel_metrics(
         prediction=prediction,
         actual=case.holdout.array,
         initial=case.train_end.array,
-        valid=case.valid,
+        valid=evaluation_valid,
         classes=list(case.classes),
         cell_area_ha=case.cell_area_ha,
-        target_counts=case.target_counts,
+        target_counts=case_evaluation_target_counts(case),
     )
     return {
         "status": "evaluated",
@@ -628,6 +651,8 @@ def build_case_experiment(
     evaluation: dict[str, Any] | None,
 ) -> dict[str, Any]:
     twm_metrics, twm_metadata = build_twm_case_metrics(case)
+    evaluation_valid = case_evaluation_valid(case)
+    evaluation_target_counts = case_evaluation_target_counts(case)
     metrics = dict(twm_metrics)
     if evaluation:
         metrics[FLUS_CANDIDATE_ID] = evaluation["metrics"]
@@ -651,13 +676,25 @@ def build_case_experiment(
         "region_id": case.region_id,
         "train_period": f"{case.train_start_year}->{case.train_end_year}",
         "holdout_period": f"{case.train_end_year}->{case.holdout_year}",
-        "valid_cell_count": int(case.valid.sum()),
+        "valid_cell_count": int(evaluation_valid.sum()),
+        "prediction_valid_cell_count": int(case.valid.sum()),
+        "evaluation_valid_cell_count": int(evaluation_valid.sum()),
+        "mask_protocol": {
+            "schema": "territory_world_model.prediction_evaluation_valid_mask_split.v1",
+            "prediction_valid_source": "train_start_train_end_class_and_nodata_mask",
+            "evaluation_valid_source": "train_start_train_end_holdout_class_and_nodata_mask",
+        },
         "cell_area_ha": case.cell_area_ha,
         "class_labels": {str(key): value for key, value in case.class_labels.items()},
         "demand": {
             "forecast_counts": {str(key): int(value) for key, value in case.target_counts.items()},
-            "initial_counts": {str(key): int(value) for key, value in class_counts(case.train_end.array, case.valid, list(case.classes)).items()},
-            "oracle_counts": {str(key): int(value) for key, value in class_counts(case.holdout.array, case.valid, list(case.classes)).items()},
+            "evaluation_forecast_counts": {str(key): int(value) for key, value in evaluation_target_counts.items()},
+            "initial_counts": {
+                str(key): int(value) for key, value in class_counts(case.train_end.array, evaluation_valid, list(case.classes)).items()
+            },
+            "oracle_counts": {
+                str(key): int(value) for key, value in class_counts(case.holdout.array, evaluation_valid, list(case.classes)).items()
+            },
         },
         "candidate_metadata": candidate_metadata,
         "metrics": metrics,
@@ -683,6 +720,8 @@ def build_case_experiment_from_reused_flus(
     existing_experiment: dict[str, Any],
 ) -> dict[str, Any]:
     twm_metrics, twm_metadata = build_twm_case_metrics(case)
+    evaluation_valid = case_evaluation_valid(case)
+    evaluation_target_counts = case_evaluation_target_counts(case)
     metrics = dict(twm_metrics)
     existing_metrics = existing_experiment.get("metrics") or {}
     flus_metric = existing_metrics.get(FLUS_CANDIDATE_ID)
@@ -710,13 +749,25 @@ def build_case_experiment_from_reused_flus(
         "region_id": case.region_id,
         "train_period": f"{case.train_start_year}->{case.train_end_year}",
         "holdout_period": f"{case.train_end_year}->{case.holdout_year}",
-        "valid_cell_count": int(case.valid.sum()),
+        "valid_cell_count": int(evaluation_valid.sum()),
+        "prediction_valid_cell_count": int(case.valid.sum()),
+        "evaluation_valid_cell_count": int(evaluation_valid.sum()),
+        "mask_protocol": {
+            "schema": "territory_world_model.prediction_evaluation_valid_mask_split.v1",
+            "prediction_valid_source": "train_start_train_end_class_and_nodata_mask",
+            "evaluation_valid_source": "train_start_train_end_holdout_class_and_nodata_mask",
+        },
         "cell_area_ha": case.cell_area_ha,
         "class_labels": {str(key): value for key, value in case.class_labels.items()},
         "demand": {
             "forecast_counts": {str(key): int(value) for key, value in case.target_counts.items()},
-            "initial_counts": {str(key): int(value) for key, value in class_counts(case.train_end.array, case.valid, list(case.classes)).items()},
-            "oracle_counts": {str(key): int(value) for key, value in class_counts(case.holdout.array, case.valid, list(case.classes)).items()},
+            "evaluation_forecast_counts": {str(key): int(value) for key, value in evaluation_target_counts.items()},
+            "initial_counts": {
+                str(key): int(value) for key, value in class_counts(case.train_end.array, evaluation_valid, list(case.classes)).items()
+            },
+            "oracle_counts": {
+                str(key): int(value) for key, value in class_counts(case.holdout.array, evaluation_valid, list(case.classes)).items()
+            },
         },
         "candidate_metadata": candidate_metadata,
         "metrics": metrics,
@@ -1411,6 +1462,7 @@ def _exact_two_sided_sign_test_p_value(*, wins: int, losses: int) -> float:
 
 
 def build_twm_case_metrics(case: FlusComparisonCase) -> tuple[dict[str, Any], dict[str, Any]]:
+    evaluation_valid = case_evaluation_valid(case)
     model_inputs = {
         "train_start": case.train_start.array,
         "train_end": case.train_end.array,
@@ -1426,7 +1478,7 @@ def build_twm_case_metrics(case: FlusComparisonCase) -> tuple[dict[str, Any], di
         "train_end_year": case.train_end_year,
         "holdout_year": case.holdout_year,
     }
-    oracle_counts = class_counts(case.holdout.array, case.valid, list(case.classes))
+    oracle_counts = class_counts(case.holdout.array, evaluation_valid, list(case.classes))
     predictions, metadata = build_candidates(
         model_inputs,
         case.target_counts,
@@ -1438,7 +1490,7 @@ def build_twm_case_metrics(case: FlusComparisonCase) -> tuple[dict[str, Any], di
             prediction=pred,
             actual=case.holdout.array,
             initial=case.train_end.array,
-            valid=case.valid,
+            valid=evaluation_valid,
             classes=list(case.classes),
             cell_area_ha=case.cell_area_ha,
             target_counts=metadata[name]["target_counts"],
