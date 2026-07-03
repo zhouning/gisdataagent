@@ -28,6 +28,14 @@ def twm_roadmap_status() -> str:
     return _json(_svc().roadmap_status_report())
 
 
+def twm_pilot_readiness_matrix() -> str:
+    return _json(_svc().pilot_readiness_matrix_report())
+
+
+def twm_rule_fixture_coverage_matrix() -> str:
+    return _json(_svc().rule_fixture_coverage_matrix_report())
+
+
 def twm_data_foundation_layer_detail(dataset_id: str, layer_path: str, sample_limit: str = "5") -> str:
     try:
         return _json(_svc().data_foundation_layer_detail(dataset_id, layer_path, sample_limit=sample_limit))
@@ -615,6 +623,240 @@ async def twm_dynamics_evaluation_bundle_async(state_version_id: str, payload_js
     return await asyncio.to_thread(twm_dynamics_evaluation_bundle, state_version_id, payload_json)
 
 
+def twm_dynamics_model_shootout_report(state_version_id: str, payload_json: str = "") -> str:
+    payload: dict[str, Any] = {}
+    if payload_json:
+        try:
+            parsed = json.loads(payload_json)
+            payload = parsed if isinstance(parsed, dict) else {"raw": parsed}
+        except Exception:
+            payload = {"raw": payload_json}
+    try:
+        return _json(_svc().dynamics_model_shootout_report(state_version_id, payload))
+    except Exception as exc:
+        return _json({"error": str(exc), "state_version_id": state_version_id})
+
+
+async def twm_dynamics_model_shootout_report_async(state_version_id: str, payload_json: str = "") -> str:
+    return await asyncio.to_thread(twm_dynamics_model_shootout_report, state_version_id, payload_json)
+
+
+def twm_same_case_planner_replay_report(state_version_id: str, payload_json: str = "") -> str:
+    payload: dict[str, Any] = {}
+    if payload_json:
+        try:
+            parsed = json.loads(payload_json)
+            payload = parsed if isinstance(parsed, dict) else {"raw": parsed}
+        except Exception:
+            payload = {"raw": payload_json}
+    try:
+        return _json(_svc().same_case_planner_replay_report(state_version_id, payload))
+    except Exception as exc:
+        return _json({"error": str(exc), "state_version_id": state_version_id})
+
+
+async def twm_same_case_planner_replay_report_async(state_version_id: str, payload_json: str = "") -> str:
+    return await asyncio.to_thread(twm_same_case_planner_replay_report, state_version_id, payload_json)
+
+
+def twm_dynamics_promotion_evidence_bundle(state_version_id: str, payload_json: str = "") -> str:
+    payload: dict[str, Any] = {}
+    if payload_json:
+        try:
+            parsed = json.loads(payload_json)
+            payload = parsed if isinstance(parsed, dict) else {"raw": parsed}
+        except Exception:
+            payload = {"raw": payload_json}
+    try:
+        return _json(_svc().dynamics_promotion_evidence_bundle(state_version_id, payload))
+    except Exception as exc:
+        return _json({"error": str(exc), "state_version_id": state_version_id})
+
+
+async def twm_dynamics_promotion_evidence_bundle_async(state_version_id: str, payload_json: str = "") -> str:
+    return await asyncio.to_thread(twm_dynamics_promotion_evidence_bundle, state_version_id, payload_json)
+
+
+def twm_dynamics_reliability_drift_report(state_version_id: str, payload_json: str = "") -> str:
+    payload: dict[str, Any] = {}
+    if payload_json:
+        try:
+            parsed = json.loads(payload_json)
+            payload = parsed if isinstance(parsed, dict) else {"raw": parsed}
+        except Exception:
+            payload = {"raw": payload_json}
+    try:
+        return _json(_svc().dynamics_reliability_drift_report(state_version_id, payload))
+    except Exception as exc:
+        return _json({"error": str(exc), "state_version_id": state_version_id})
+
+
+async def twm_dynamics_reliability_drift_report_async(state_version_id: str, payload_json: str = "") -> str:
+    return await asyncio.to_thread(twm_dynamics_reliability_drift_report, state_version_id, payload_json)
+
+
+def twm_dynamics_regression_suite_manifest(state_version_id: str, payload_json: str = "") -> str:
+    payload: dict[str, Any] = {}
+    if payload_json:
+        try:
+            parsed = json.loads(payload_json)
+            payload = parsed if isinstance(parsed, dict) else {"raw": parsed}
+        except Exception:
+            payload = {"raw": payload_json}
+    try:
+        return _json(_svc().dynamics_regression_suite_manifest(state_version_id, payload))
+    except Exception as exc:
+        return _json({"error": str(exc), "state_version_id": state_version_id})
+
+
+async def twm_dynamics_regression_suite_manifest_async(state_version_id: str, payload_json: str = "") -> str:
+    return await asyncio.to_thread(twm_dynamics_regression_suite_manifest, state_version_id, payload_json)
+
+
+def twm_dynamics_geospatial_hard_negative_mining_report(state_version_id: str, payload_json: str = "") -> str:
+    payload: dict[str, Any] = {}
+    if payload_json:
+        try:
+            parsed = json.loads(payload_json)
+            payload = parsed if isinstance(parsed, dict) else {"raw": parsed}
+        except Exception:
+            payload = {"raw": payload_json}
+    try:
+        return _json(_svc().dynamics_geospatial_hard_negative_mining_report(state_version_id, payload))
+    except Exception as exc:
+        return _json({"error": str(exc), "state_version_id": state_version_id})
+
+
+async def twm_dynamics_geospatial_hard_negative_mining_report_async(state_version_id: str, payload_json: str = "") -> str:
+    return await asyncio.to_thread(twm_dynamics_geospatial_hard_negative_mining_report, state_version_id, payload_json)
+
+
+def twm_dynamics_canary_failure_memory_protocol(state_version_id: str, payload_json: str = "") -> str:
+    payload: dict[str, Any] = {}
+    if payload_json:
+        try:
+            parsed = json.loads(payload_json)
+            payload = parsed if isinstance(parsed, dict) else {"raw": parsed}
+        except Exception:
+            payload = {"raw": payload_json}
+    try:
+        return _json(_svc().dynamics_canary_failure_memory_protocol(state_version_id, payload))
+    except Exception as exc:
+        return _json({"error": str(exc), "state_version_id": state_version_id})
+
+
+async def twm_dynamics_canary_failure_memory_protocol_async(state_version_id: str, payload_json: str = "") -> str:
+    return await asyncio.to_thread(twm_dynamics_canary_failure_memory_protocol, state_version_id, payload_json)
+
+
+def twm_dynamics_reviewer_feedback_ingestion_report(state_version_id: str, payload_json: str = "") -> str:
+    payload: dict[str, Any] = {}
+    if payload_json:
+        try:
+            parsed = json.loads(payload_json)
+            payload = parsed if isinstance(parsed, dict) else {"raw": parsed}
+        except Exception:
+            payload = {"raw": payload_json}
+    try:
+        return _json(_svc().dynamics_reviewer_feedback_ingestion_report(state_version_id, payload))
+    except Exception as exc:
+        return _json({"error": str(exc), "state_version_id": state_version_id})
+
+
+async def twm_dynamics_reviewer_feedback_ingestion_report_async(state_version_id: str, payload_json: str = "") -> str:
+    return await asyncio.to_thread(twm_dynamics_reviewer_feedback_ingestion_report, state_version_id, payload_json)
+
+
+def twm_dynamics_hard_negative_replay_scheduler_report(state_version_id: str, payload_json: str = "") -> str:
+    payload: dict[str, Any] = {}
+    if payload_json:
+        try:
+            parsed = json.loads(payload_json)
+            payload = parsed if isinstance(parsed, dict) else {"raw": parsed}
+        except Exception:
+            payload = {"raw": payload_json}
+    try:
+        return _json(_svc().dynamics_hard_negative_replay_scheduler_report(state_version_id, payload))
+    except Exception as exc:
+        return _json({"error": str(exc), "state_version_id": state_version_id})
+
+
+async def twm_dynamics_hard_negative_replay_scheduler_report_async(state_version_id: str, payload_json: str = "") -> str:
+    return await asyncio.to_thread(twm_dynamics_hard_negative_replay_scheduler_report, state_version_id, payload_json)
+
+
+def twm_dynamics_failure_memory_materialization(state_version_id: str, payload_json: str = "") -> str:
+    payload: dict[str, Any] = {}
+    if payload_json:
+        try:
+            parsed = json.loads(payload_json)
+            payload = parsed if isinstance(parsed, dict) else {"raw": parsed}
+        except Exception:
+            payload = {"raw": payload_json}
+    try:
+        return _json(_svc().dynamics_failure_memory_materialization(state_version_id, payload))
+    except Exception as exc:
+        return _json({"error": str(exc), "state_version_id": state_version_id})
+
+
+async def twm_dynamics_failure_memory_materialization_async(state_version_id: str, payload_json: str = "") -> str:
+    return await asyncio.to_thread(twm_dynamics_failure_memory_materialization, state_version_id, payload_json)
+
+
+def twm_dynamics_accepted_feedback_suite_update_report(state_version_id: str, payload_json: str = "") -> str:
+    payload: dict[str, Any] = {}
+    if payload_json:
+        try:
+            parsed = json.loads(payload_json)
+            payload = parsed if isinstance(parsed, dict) else {"raw": parsed}
+        except Exception:
+            payload = {"raw": payload_json}
+    try:
+        return _json(_svc().dynamics_accepted_feedback_suite_update_report(state_version_id, payload))
+    except Exception as exc:
+        return _json({"error": str(exc), "state_version_id": state_version_id})
+
+
+async def twm_dynamics_accepted_feedback_suite_update_report_async(state_version_id: str, payload_json: str = "") -> str:
+    return await asyncio.to_thread(twm_dynamics_accepted_feedback_suite_update_report, state_version_id, payload_json)
+
+
+def twm_dynamics_canary_replay_execution_report(state_version_id: str, payload_json: str = "") -> str:
+    payload: dict[str, Any] = {}
+    if payload_json:
+        try:
+            parsed = json.loads(payload_json)
+            payload = parsed if isinstance(parsed, dict) else {"raw": parsed}
+        except Exception:
+            payload = {"raw": payload_json}
+    try:
+        return _json(_svc().dynamics_canary_replay_execution_report(state_version_id, payload))
+    except Exception as exc:
+        return _json({"error": str(exc), "state_version_id": state_version_id})
+
+
+async def twm_dynamics_canary_replay_execution_report_async(state_version_id: str, payload_json: str = "") -> str:
+    return await asyncio.to_thread(twm_dynamics_canary_replay_execution_report, state_version_id, payload_json)
+
+
+def twm_dynamics_failure_memory_registration_plan(state_version_id: str, payload_json: str = "") -> str:
+    payload: dict[str, Any] = {}
+    if payload_json:
+        try:
+            parsed = json.loads(payload_json)
+            payload = parsed if isinstance(parsed, dict) else {"raw": parsed}
+        except Exception:
+            payload = {"raw": payload_json}
+    try:
+        return _json(_svc().dynamics_failure_memory_registration_plan(state_version_id, payload))
+    except Exception as exc:
+        return _json({"error": str(exc), "state_version_id": state_version_id})
+
+
+async def twm_dynamics_failure_memory_registration_plan_async(state_version_id: str, payload_json: str = "") -> str:
+    return await asyncio.to_thread(twm_dynamics_failure_memory_registration_plan, state_version_id, payload_json)
+
+
 def twm_dynamics_model_registry_report(state_version_id: str, payload_json: str = "") -> str:
     payload: dict[str, Any] = {}
     if payload_json:
@@ -806,6 +1048,8 @@ def twm_status_detail() -> str:
 _SYNC_FUNCS = [
     twm_status,
     twm_roadmap_status,
+    twm_pilot_readiness_matrix,
+    twm_rule_fixture_coverage_matrix,
     twm_data_foundation_layer_detail,
     twm_data_foundation_lineage,
     twm_data_foundation_crs_remediation,
@@ -841,6 +1085,19 @@ _SYNC_FUNCS = [
     twm_dynamics_readiness_report,
     twm_dynamics_evaluation_report,
     twm_dynamics_evaluation_bundle,
+    twm_dynamics_model_shootout_report,
+    twm_same_case_planner_replay_report,
+    twm_dynamics_promotion_evidence_bundle,
+    twm_dynamics_reliability_drift_report,
+    twm_dynamics_regression_suite_manifest,
+    twm_dynamics_geospatial_hard_negative_mining_report,
+    twm_dynamics_canary_failure_memory_protocol,
+    twm_dynamics_reviewer_feedback_ingestion_report,
+    twm_dynamics_hard_negative_replay_scheduler_report,
+    twm_dynamics_failure_memory_materialization,
+    twm_dynamics_accepted_feedback_suite_update_report,
+    twm_dynamics_canary_replay_execution_report,
+    twm_dynamics_failure_memory_registration_plan,
     twm_dynamics_model_registry_report,
     twm_activate_dynamics_model_registry_entry,
     twm_list_dynamics_model_registry_entries,
@@ -881,6 +1138,19 @@ _LONG_RUNNING_FUNCS = [
     twm_dynamics_readiness_report_async,
     twm_dynamics_evaluation_report_async,
     twm_dynamics_evaluation_bundle_async,
+    twm_dynamics_model_shootout_report_async,
+    twm_same_case_planner_replay_report_async,
+    twm_dynamics_promotion_evidence_bundle_async,
+    twm_dynamics_reliability_drift_report_async,
+    twm_dynamics_regression_suite_manifest_async,
+    twm_dynamics_geospatial_hard_negative_mining_report_async,
+    twm_dynamics_canary_failure_memory_protocol_async,
+    twm_dynamics_reviewer_feedback_ingestion_report_async,
+    twm_dynamics_hard_negative_replay_scheduler_report_async,
+    twm_dynamics_failure_memory_materialization_async,
+    twm_dynamics_accepted_feedback_suite_update_report_async,
+    twm_dynamics_canary_replay_execution_report_async,
+    twm_dynamics_failure_memory_registration_plan_async,
     twm_dynamics_model_registry_report_async,
     twm_activate_dynamics_model_registry_entry_async,
     twm_list_dynamics_model_registry_entries_async,

@@ -3438,6 +3438,1906 @@ def test_pilot_package_report_blocks_when_required_same_case_baseline_missing():
     assert "same_case_baseline_evidence" in report["promotion_blockers"]
 
 
+def test_dynamics_model_shootout_report_binds_candidates_to_pilot_package():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+    seed = svc.dynamics_training_examples(
+        state_id,
+        {"scenario": "shootout_seed", "horizon": 2, "evidence_coverage": 0.72, "split": "temporal_holdout"},
+    )
+    dataset = _observed_dynamics_dataset(seed)
+    baseline_validation = {
+        "schema": "territory_world_model.baseline_export_validation_report.v1",
+        "status": "pass",
+        "coverage": {"coverage_ratio": 0.9, "overlap_count": 6},
+        "blocking_errors": [],
+        "claim": {"claim_id": "C1_state_conflict_recall", "baseline_id": "manual_gis_overlay"},
+    }
+    pilot_package = svc.pilot_package_report(
+        state_id,
+        {
+            "package_id": "bishan-shootout-package-v1",
+            "dataset": dataset,
+            "baseline_export_validation_report": baseline_validation,
+            "production_data_gate": {"status": "pass", "source": "unit_test_gate"},
+            "spatial_split": {"strategy": "admin_holdout", "holdout_region": "500227"},
+        },
+    )
+    dataset_hash = pilot_package["mrep_trace"]["dataset_snapshot_hash"]
+    split_summary = pilot_package["split_summary"]
+
+    candidates = [
+        {
+            "candidate_id": "rule-baseline",
+            "package_id": "bishan-shootout-package-v1",
+            "dataset_snapshot_hash": dataset_hash,
+            "split_summary": split_summary,
+            "candidate": {"model_family": "deterministic_rule_baseline", "model_name": "rule_baseline", "model_version": "v1"},
+            "status": "pass",
+            "target_head_metrics": {
+                "future_latent_state": {"mean_transition_error": 0.18},
+                "planning_utility_delta": {"ranking_correlation_proxy": 0.41},
+                "constraint_violation_probability": {"mean_constraint_error": 0.13},
+                "uncertainty": {"calibration_error": 0.2},
+                "action_mask": {"false_allow_rate": 0.08, "false_block_rate": 0.05},
+            },
+            "holdout_metrics": {"temporal": {"mean_transition_error": 0.2}, "spatial": {"mean_transition_error": 0.22}},
+            "seed_stability": {"stddev_score": 0.05},
+            "same_case_replay": {"status": "pass", "planner_lift": 0.01},
+        },
+        {
+            "candidate_id": "graph-candidate",
+            "package_id": "bishan-shootout-package-v1",
+            "dataset_snapshot_hash": dataset_hash,
+            "split_summary": split_summary,
+            "candidate": {"model_family": "hierarchical_graph_dynamics", "model_name": "graph_candidate", "model_version": "v2"},
+            "status": "pass",
+            "target_head_metrics": {
+                "future_latent_state": {"mean_transition_error": 0.07},
+                "planning_utility_delta": {"ranking_correlation_proxy": 0.73},
+                "constraint_violation_probability": {"mean_constraint_error": 0.04},
+                "uncertainty": {"calibration_error": 0.08},
+                "action_mask": {"false_allow_rate": 0.02, "false_block_rate": 0.03},
+            },
+            "holdout_metrics": {"temporal": {"mean_transition_error": 0.08}, "spatial": {"mean_transition_error": 0.09}},
+            "seed_stability": {"stddev_score": 0.01},
+            "same_case_replay": {"status": "pass", "planner_lift": 0.07},
+            "fov_stress_tests": [
+                {"factor": "region", "status": "pass", "metric": "mean_transition_error", "value": 0.08, "threshold": 0.12},
+            ],
+        },
+        {
+            "candidate_id": "mlp-replay-ready",
+            "package_id": "bishan-shootout-package-v1",
+            "dataset_snapshot_hash": dataset_hash,
+            "split_summary": split_summary,
+            "candidate": {"model_family": "mlp_multi_head_dynamics", "model_name": "mlp_candidate", "model_version": "v1"},
+            "status": "pass",
+            "target_head_metrics": {
+                "future_latent_state": {"mean_transition_error": 0.09},
+                "planning_utility_delta": {"ranking_correlation_proxy": 0.66},
+                "constraint_violation_probability": {"mean_constraint_error": 0.08},
+                "uncertainty": {"calibration_error": 0.12},
+                "action_mask": {"false_allow_rate": 0.04, "false_block_rate": 0.04},
+            },
+            "holdout_metrics": {"temporal": {"mean_transition_error": 0.1}, "spatial": {"mean_transition_error": 0.12}},
+            "seed_stability": {"stddev_score": 0.02},
+        },
+        {
+            "candidate_id": "stale-mlp",
+            "package_id": "other-package",
+            "dataset_snapshot_hash": "stale-hash",
+            "split_summary": {"temporal": {"split": "random"}},
+            "candidate": {"model_family": "mlp_multi_head_dynamics", "model_name": "mlp_candidate", "model_version": "v1"},
+            "status": "pass",
+            "target_head_metrics": {
+                "future_latent_state": {"mean_transition_error": 0.01},
+                "planning_utility_delta": {"ranking_correlation_proxy": 0.99},
+            },
+            "same_case_replay": {"status": "missing"},
+        },
+    ]
+
+    report = svc.dynamics_model_shootout_report(
+        state_id,
+        {
+            "pilot_package_report": pilot_package,
+            "candidate_reports": candidates,
+        },
+    )
+
+    assert report["schema"] == "territory_world_model.dynamics_model_shootout_report.v1"
+    assert report["package_integrity"]["package_id"] == "bishan-shootout-package-v1"
+    assert report["package_integrity"]["dataset_snapshot_hash"] == dataset_hash
+    assert report["candidate_count"] == 4
+    assert report["eligible_candidate_count"] == 3
+    assert report["ranked_candidates"][0]["candidate_id"] == "graph-candidate"
+    assert report["ranked_candidates"][0]["recommendation"] == "promotion_candidate_review"
+    replay_ready = next(item for item in report["candidate_summaries"] if item["candidate_id"] == "mlp-replay-ready")
+    assert replay_ready["recommendation"] == "replay_ready"
+    assert replay_ready["blockers"] == []
+    stale = next(item for item in report["candidate_summaries"] if item["candidate_id"] == "stale-mlp")
+    assert stale["recommendation"] == "blocked"
+    assert "dataset_snapshot_hash_mismatch" in stale["blockers"]
+    assert "package_id_mismatch" in stale["blockers"]
+    assert report["promotion_recommendation"]["candidate_id"] == "graph-candidate"
+    assert report["claim_boundary"]["status"] == "shootout_is_algorithm_selection_not_production_promotion"
+    assert "autonomous_l3_self_evolution" in report["claim_boundary"]["non_goals"]
+
+
+def test_dynamics_model_shootout_report_auto_trains_candidate_reports_for_same_package():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+    seed = svc.dynamics_training_examples(
+        state_id,
+        {"scenario": "shootout_auto_train_seed", "horizon": 2, "evidence_coverage": 0.72, "split": "temporal_holdout"},
+    )
+    dataset = _observed_dynamics_dataset(seed, count=8)
+    for idx, item in enumerate(dataset["examples"]):
+        item.setdefault("provenance", {})
+        item["provenance"]["region_code"] = "county-a" if idx % 2 == 0 else "county-b"
+    baseline_validation = {
+        "schema": "territory_world_model.baseline_export_validation_report.v1",
+        "status": "pass",
+        "coverage": {"coverage_ratio": 0.9, "overlap_count": 8},
+        "blocking_errors": [],
+        "claim": {"claim_id": "C1_state_conflict_recall", "baseline_id": "manual_gis_overlay"},
+    }
+    pilot_package = svc.pilot_package_report(
+        state_id,
+        {
+            "package_id": "auto-shootout-package-v1",
+            "dataset": dataset,
+            "baseline_export_validation_report": baseline_validation,
+            "production_data_gate": {"status": "pass", "source": "unit_test_gate"},
+        },
+    )
+
+    report = svc.dynamics_model_shootout_report(
+        state_id,
+        {
+            "pilot_package_report": pilot_package,
+            "dataset": dataset,
+            "auto_trainers": [
+                {
+                    "trainer_id": "auto-mlp",
+                    "model_name": "auto_mlp_dynamics",
+                    "model_version": "unit",
+                    "training_method": "torch_multi_head_mlp",
+                },
+                {
+                    "trainer_id": "auto-graph",
+                    "model_name": "auto_graph_dynamics",
+                    "model_version": "unit",
+                    "training_method": "torch_hierarchical_graph",
+                },
+            ],
+            "training_config": {"epochs": 2, "hidden_dim": 8, "learning_rate": 0.02, "seed": 7},
+            "thresholds": {
+                "min_total_examples": 6,
+                "min_usable_examples": 6,
+                "min_observed_temporal_examples": 3,
+                "min_holdout_examples": 2,
+                "max_scaffold_ratio": 0.0,
+                "max_review_ratio": 0.0,
+            },
+            "auto_fov_stress": True,
+            "fov_factors": ["region"],
+            "geofm_gate_report": {"gate_status": "review", "decision": "review_required"},
+            "causal_calibration_report": {"status": "review", "method": "payload_stub"},
+        },
+    )
+
+    assert report["schema"] == "territory_world_model.dynamics_model_shootout_report.v1"
+    assert report["auto_training"]["requested_trainer_count"] == 2
+    assert report["auto_training"]["generated_candidate_count"] == 2
+    assert {item["model_name"] for item in report["candidate_summaries"]} == {"auto_mlp_dynamics", "auto_graph_dynamics"}
+    assert report["candidate_count"] == 2
+    assert report["eligible_candidate_count"] == 2
+    assert all(item["package_binding"]["package_id"] == "auto-shootout-package-v1" for item in report["candidate_summaries"])
+    assert all(item["package_binding"]["dataset_snapshot_hash"] == pilot_package["mrep_trace"]["dataset_snapshot_hash"] for item in report["candidate_summaries"])
+    assert all("target_head_metrics_missing" not in item["blockers"] for item in report["candidate_summaries"])
+    assert report["auto_fov_stress_generation"]["metric_enriched_stress_row_count"] == 2
+    assert report["auto_fov_stress_generation"]["candidate_count_metric_enriched"] == 2
+    assert all(item["fov_stress"]["tests"][0]["metric_summary"]["source"] == "candidate_predictions" for item in report["candidate_summaries"])
+    assert report["ranked_candidates"][0]["recommendation"] == "replay_ready"
+
+
+def test_dynamics_model_shootout_report_auto_generates_required_baselines_for_same_package():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+    seed = svc.dynamics_training_examples(
+        state_id,
+        {"scenario": "shootout_auto_baseline_seed", "horizon": 2, "evidence_coverage": 0.72, "split": "temporal_holdout"},
+    )
+    dataset = _observed_dynamics_dataset(seed, count=8)
+    for idx, item in enumerate(dataset["examples"]):
+        item.setdefault("provenance", {})
+        item["provenance"]["region_code"] = "county-a" if idx % 2 == 0 else "county-b"
+    baseline_validation = {
+        "schema": "territory_world_model.baseline_export_validation_report.v1",
+        "status": "pass",
+        "coverage": {"coverage_ratio": 0.9, "overlap_count": 8},
+        "blocking_errors": [],
+        "claim": {"claim_id": "C1_state_conflict_recall", "baseline_id": "manual_gis_overlay"},
+    }
+    pilot_package = svc.pilot_package_report(
+        state_id,
+        {
+            "package_id": "baseline-shootout-package-v1",
+            "dataset": dataset,
+            "baseline_export_validation_report": baseline_validation,
+            "production_data_gate": {"status": "pass", "source": "unit_test_gate"},
+        },
+    )
+
+    report = svc.dynamics_model_shootout_report(
+        state_id,
+        {
+            "pilot_package_report": pilot_package,
+            "dataset": dataset,
+            "include_baselines": ["deterministic_rule", "persistence", "markov"],
+            "auto_fov_stress": True,
+            "fov_factors": ["region"],
+        },
+    )
+
+    assert report["schema"] == "territory_world_model.dynamics_model_shootout_report.v1"
+    assert report["auto_baselines"]["requested_baseline_count"] == 3
+    assert report["auto_baselines"]["generated_candidate_count"] == 3
+    assert report["candidate_count"] == 3
+    assert report["eligible_candidate_count"] == 3
+    families = {item["model_family"] for item in report["candidate_summaries"]}
+    assert families == {"deterministic_rule_baseline", "persistence_baseline", "markov_transition_baseline"}
+    assert all(item["package_binding"]["package_id"] == "baseline-shootout-package-v1" for item in report["candidate_summaries"])
+    assert all(item["package_binding"]["dataset_snapshot_hash"] == pilot_package["mrep_trace"]["dataset_snapshot_hash"] for item in report["candidate_summaries"])
+    assert all("target_head_metrics_missing" not in item["blockers"] for item in report["candidate_summaries"])
+    assert report["auto_fov_stress_generation"]["metric_enriched_stress_row_count"] == 3
+    assert report["auto_fov_stress_generation"]["candidate_count_metric_enriched"] == 3
+    assert all(item["fov_stress"]["tests"][0]["metric_summary"]["source"] == "candidate_predictions" for item in report["candidate_summaries"])
+    assert all(item["recommendation"] == "replay_ready" for item in report["candidate_summaries"])
+
+
+def test_dynamics_model_shootout_report_summarizes_fov_stress_tests():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+    seed = svc.dynamics_training_examples(
+        state_id,
+        {"scenario": "shootout_fov_seed", "horizon": 2, "evidence_coverage": 0.72, "split": "temporal_holdout"},
+    )
+    dataset = _observed_dynamics_dataset(seed, count=8)
+    baseline_validation = {
+        "schema": "territory_world_model.baseline_export_validation_report.v1",
+        "status": "pass",
+        "coverage": {"coverage_ratio": 0.9, "overlap_count": 8},
+        "blocking_errors": [],
+        "claim": {"claim_id": "C1_state_conflict_recall", "baseline_id": "manual_gis_overlay"},
+    }
+    pilot_package = svc.pilot_package_report(
+        state_id,
+        {
+            "package_id": "fov-shootout-package-v1",
+            "dataset": dataset,
+            "baseline_export_validation_report": baseline_validation,
+            "production_data_gate": {"status": "pass", "source": "unit_test_gate"},
+        },
+    )
+    dataset_hash = pilot_package["mrep_trace"]["dataset_snapshot_hash"]
+    split_summary = pilot_package["split_summary"]
+    base_metrics = {
+        "future_latent_state": {"mean_transition_error": 0.06},
+        "planning_utility_delta": {"ranking_correlation_proxy": 0.72},
+        "constraint_violation_probability": {"mean_constraint_error": 0.04},
+        "uncertainty": {"calibration_error": 0.08},
+        "action_mask": {"false_allow_rate": 0.02, "false_block_rate": 0.03},
+    }
+    candidates = [
+        {
+            "candidate_id": "graph-fov",
+            "package_id": "fov-shootout-package-v1",
+            "dataset_snapshot_hash": dataset_hash,
+            "split_summary": split_summary,
+            "candidate": {"model_family": "hierarchical_graph_dynamics", "model_name": "graph_fov", "model_version": "v1"},
+            "status": "pass",
+            "target_head_metrics": base_metrics,
+            "holdout_metrics": {"temporal": {"mean_transition_error": 0.04}, "spatial": {"mean_transition_error": 0.04}},
+            "same_case_replay": {"status": "pass", "planner_lift": 0.08},
+            "fov_stress_tests": [
+                {"factor": "region", "status": "pass", "metric": "mean_transition_error", "value": 0.08, "threshold": 0.12},
+                {"factor": "evidence_completeness", "status": "review", "metric": "planner_lift", "value": 0.03, "threshold": 0.02},
+            ],
+        },
+        {
+            "candidate_id": "mlp-no-fov",
+            "package_id": "fov-shootout-package-v1",
+            "dataset_snapshot_hash": dataset_hash,
+            "split_summary": split_summary,
+            "candidate": {"model_family": "mlp_multi_head_dynamics", "model_name": "mlp_no_fov", "model_version": "v1"},
+            "status": "pass",
+            "target_head_metrics": base_metrics,
+            "holdout_metrics": {"temporal": {"mean_transition_error": 0.09}, "spatial": {"mean_transition_error": 0.09}},
+            "same_case_replay": {"status": "pass", "planner_lift": 0.07},
+        },
+    ]
+
+    report = svc.dynamics_model_shootout_report(
+        state_id,
+        {
+            "pilot_package_report": pilot_package,
+            "candidate_reports": candidates,
+        },
+    )
+
+    assert report["fov_stress_summary"]["schema"] == "territory_world_model.fov_stress_summary.v1"
+    assert report["fov_stress_summary"]["candidate_count_with_fov"] == 1
+    assert report["fov_stress_summary"]["candidate_count_missing_fov"] == 1
+    assert report["fov_stress_summary"]["factors"] == ["evidence_completeness", "region"]
+    graph = next(item for item in report["candidate_summaries"] if item["candidate_id"] == "graph-fov")
+    mlp = next(item for item in report["candidate_summaries"] if item["candidate_id"] == "mlp-no-fov")
+    assert graph["recommendation"] == "promotion_candidate_review"
+    assert graph["fov_stress"]["status"] == "review"
+    assert graph["fov_stress"]["stress_test_count"] == 2
+    assert mlp["recommendation"] == "replay_ready"
+    assert mlp["fov_stress"]["status"] == "missing"
+    assert "fov_stress_tests" in mlp["promotion_limits"]
+    assert report["promotion_recommendation"]["candidate_id"] == "graph-fov"
+
+
+def test_dynamics_model_shootout_report_auto_generates_fov_stress_from_dataset_partitions():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+    seed = svc.dynamics_training_examples(
+        state_id,
+        {"scenario": "shootout_auto_fov_seed", "horizon": 2, "evidence_coverage": 0.72, "split": "temporal_holdout"},
+    )
+    dataset = _observed_dynamics_dataset(seed, count=8)
+    for idx, item in enumerate(dataset["examples"]):
+        item.setdefault("provenance", {})
+        item["provenance"]["region_code"] = "county-a" if idx % 2 == 0 else "county-b"
+        item["provenance"]["current_year"] = 2024 if idx < 4 else 2025
+        item["provenance"]["rule_version"] = "rules-a" if idx % 2 == 0 else "rules-b"
+        item["labels"]["evidence_supported"] = idx % 2 == 0
+    baseline_validation = {
+        "schema": "territory_world_model.baseline_export_validation_report.v1",
+        "status": "pass",
+        "coverage": {"coverage_ratio": 0.9, "overlap_count": 8},
+        "blocking_errors": [],
+        "claim": {"claim_id": "C1_state_conflict_recall", "baseline_id": "manual_gis_overlay"},
+    }
+    pilot_package = svc.pilot_package_report(
+        state_id,
+        {
+            "package_id": "auto-fov-shootout-package-v1",
+            "dataset": dataset,
+            "baseline_export_validation_report": baseline_validation,
+            "production_data_gate": {"status": "pass", "source": "unit_test_gate"},
+        },
+    )
+    dataset_hash = pilot_package["mrep_trace"]["dataset_snapshot_hash"]
+    split_summary = pilot_package["split_summary"]
+    candidate = {
+        "candidate_id": "graph-auto-fov",
+        "package_id": "auto-fov-shootout-package-v1",
+        "dataset_snapshot_hash": dataset_hash,
+        "split_summary": split_summary,
+        "candidate": {"model_family": "hierarchical_graph_dynamics", "model_name": "graph_auto_fov", "model_version": "v1"},
+        "status": "pass",
+        "target_head_metrics": {
+            "future_latent_state": {"mean_transition_error": 0.06},
+            "planning_utility_delta": {"ranking_correlation_proxy": 0.72},
+            "constraint_violation_probability": {"mean_constraint_error": 0.04},
+            "uncertainty": {"calibration_error": 0.08},
+            "action_mask": {"false_allow_rate": 0.02, "false_block_rate": 0.03},
+        },
+        "same_case_replay": {"status": "pass", "planner_lift": 0.08},
+    }
+
+    report = svc.dynamics_model_shootout_report(
+        state_id,
+        {
+            "pilot_package_report": pilot_package,
+            "dataset": dataset,
+            "candidate_reports": [candidate],
+            "auto_fov_stress": True,
+            "fov_factors": ["region", "year", "rule_version", "evidence_completeness"],
+        },
+    )
+
+    assert report["auto_fov_stress_generation"]["schema"] == "territory_world_model.auto_fov_stress_generation.v1"
+    assert report["auto_fov_stress_generation"]["status"] == "pass"
+    assert report["auto_fov_stress_generation"]["generated_stress_row_count"] == 4
+    assert set(report["auto_fov_stress_generation"]["factors"]) == {"region", "year", "rule_version", "evidence_completeness"}
+    summary = report["candidate_summaries"][0]
+    assert summary["candidate_id"] == "graph-auto-fov"
+    assert summary["fov_stress"]["status"] == "pass"
+    assert summary["fov_stress"]["stress_test_count"] == 4
+    assert set(summary["fov_stress"]["factors"]) == {"region", "year", "rule_version", "evidence_completeness"}
+    assert {row["source"] for row in summary["fov_stress"]["tests"]} == {"dataset_partition_auto_fov"}
+    assert "fov_stress_tests" not in summary["promotion_limits"]
+    assert "complexity_gain_gate" in summary["promotion_limits"]
+    assert summary["recommendation"] == "replay_ready"
+
+
+def test_dynamics_model_shootout_report_auto_fov_adds_partition_metric_deltas_from_predictions():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+    seed = svc.dynamics_training_examples(
+        state_id,
+        {"scenario": "shootout_auto_fov_metric_seed", "horizon": 2, "evidence_coverage": 0.72, "split": "temporal_holdout"},
+    )
+    dataset = _observed_dynamics_dataset(seed, count=6)
+    predictions = {}
+    for idx, item in enumerate(dataset["examples"]):
+        item.setdefault("provenance", {})
+        item["provenance"]["region_code"] = "county-a" if idx < 3 else "county-b"
+        targets = item["targets"]
+        predicted_latent = json.loads(json.dumps(targets["future_latent_state"]))
+        constraint_offset = 0.0
+        utility_offset = 0.0
+        targets["action_mask"] = {"allowed": True, "reason": "candidate_action_feasible"}
+        if item["provenance"]["region_code"] == "county-b":
+            observed = predicted_latent["observed_next"]
+            observed["total_area_m2"] += 250.0
+            observed["land_space_types"]["agricultural_space"]["area_m2"] += 250.0
+            targets["action_mask"] = {"allowed": False, "reason": "county_b_control_line"}
+            constraint_offset = 0.18
+            utility_offset = 0.16
+        predictions[item["id"]] = {
+            "future_latent_state": predicted_latent,
+            "constraint_violation_probability": round(
+                float(targets.get("constraint_violation_probability") or 0.0) + constraint_offset,
+                4,
+            ),
+            "planning_utility_delta": round(float(targets.get("planning_utility_delta") or 0.0) + utility_offset, 4),
+            "uncertainty": {"confidence": 0.8},
+            "action_mask": {"allowed": True, "reason": "model_allows_candidate_action"},
+        }
+    baseline_validation = {
+        "schema": "territory_world_model.baseline_export_validation_report.v1",
+        "status": "pass",
+        "coverage": {"coverage_ratio": 0.9, "overlap_count": 6},
+        "blocking_errors": [],
+        "claim": {"claim_id": "C1_state_conflict_recall", "baseline_id": "manual_gis_overlay"},
+    }
+    pilot_package = svc.pilot_package_report(
+        state_id,
+        {
+            "package_id": "auto-fov-metric-package-v1",
+            "dataset": dataset,
+            "baseline_export_validation_report": baseline_validation,
+            "production_data_gate": {"status": "pass", "source": "unit_test_gate"},
+        },
+    )
+    candidate = {
+        "candidate_id": "graph-auto-fov-metrics",
+        "package_id": "auto-fov-metric-package-v1",
+        "dataset_snapshot_hash": pilot_package["mrep_trace"]["dataset_snapshot_hash"],
+        "split_summary": pilot_package["split_summary"],
+        "candidate": {"model_family": "hierarchical_graph_dynamics", "model_name": "graph_auto_fov_metrics", "model_version": "v1"},
+        "status": "pass",
+        "target_head_metrics": {
+            "future_latent_state": {"mean_transition_error": 0.12},
+            "planning_utility_delta": {"ranking_correlation_proxy": 0.61},
+            "constraint_violation_probability": {"mean_constraint_error": 0.09},
+            "uncertainty": {"calibration_error": 0.08},
+            "action_mask": {"false_allow_rate": 0.02, "false_block_rate": 0.03},
+        },
+        "same_case_replay": {"status": "pass", "planner_lift": 0.05},
+        "predictions": predictions,
+    }
+
+    report = svc.dynamics_model_shootout_report(
+        state_id,
+        {
+            "pilot_package_report": pilot_package,
+            "dataset": dataset,
+            "candidate_reports": [candidate],
+            "auto_fov_stress": True,
+            "fov_factors": ["region"],
+            "fov_metric_thresholds": {"max_transition_error_delta": 0.05},
+        },
+    )
+
+    assert report["auto_fov_stress_generation"]["metric_enriched_stress_row_count"] == 1
+    assert report["auto_fov_stress_generation"]["tail_case_count"] >= 1
+    assert report["auto_fov_stress_generation"]["loss_case_count"] >= 1
+    assert report["auto_fov_stress_generation"]["action_mask_loss_case_count"] >= 1
+    summary = report["candidate_summaries"][0]
+    region_row = summary["fov_stress"]["tests"][0]
+    partitions = {row["value"]: row for row in region_row["partitions"]}
+    assert region_row["status"] == "review"
+    assert region_row["metric_summary"]["source"] == "candidate_predictions"
+    assert region_row["metric_summary"]["worst_partition"]["value"] == "county-b"
+    assert region_row["metric_summary"]["max_transition_error_delta"] > 0.05
+    assert partitions["county-b"]["metrics"]["mean_transition_error"] > partitions["county-a"]["metrics"]["mean_transition_error"]
+    assert "partition_transition_error_delta" in region_row["review_reasons"]
+    tail_example = region_row["tail_examples"][0]
+    assert tail_example["partition_value"] == "county-b"
+    assert tail_example["metrics"]["transition_error"] > 0.05
+    assert tail_example["action_mask_error"]["class"] == "false_allow"
+    assert tail_example["action_mask_error"]["target_allowed"] is False
+    assert tail_example["action_mask_error"]["predicted_allowed"] is True
+    assert tail_example["target_vs_prediction_delta"]["total_area_m2_delta"] == 250.0
+
+
+def test_dynamics_model_shootout_report_complexity_gate_demotes_graph_without_decision_gain():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+    seed = svc.dynamics_training_examples(
+        state_id,
+        {"scenario": "shootout_complexity_gate_seed", "horizon": 2, "evidence_coverage": 0.72, "split": "temporal_holdout"},
+    )
+    dataset = _observed_dynamics_dataset(seed, count=8)
+    baseline_validation = {
+        "schema": "territory_world_model.baseline_export_validation_report.v1",
+        "status": "pass",
+        "coverage": {"coverage_ratio": 0.9, "overlap_count": 8},
+        "blocking_errors": [],
+        "claim": {"claim_id": "C1_state_conflict_recall", "baseline_id": "manual_gis_overlay"},
+    }
+    pilot_package = svc.pilot_package_report(
+        state_id,
+        {
+            "package_id": "complexity-gate-package-v1",
+            "dataset": dataset,
+            "baseline_export_validation_report": baseline_validation,
+            "production_data_gate": {"status": "pass", "source": "unit_test_gate"},
+        },
+    )
+    dataset_hash = pilot_package["mrep_trace"]["dataset_snapshot_hash"]
+    split_summary = pilot_package["split_summary"]
+    mlp_metrics = {
+        "future_latent_state": {"mean_transition_error": 0.1},
+        "planning_utility_delta": {"ranking_correlation_proxy": 0.68},
+        "constraint_violation_probability": {"mean_constraint_error": 0.06},
+        "uncertainty": {"calibration_error": 0.08},
+        "action_mask": {"false_allow_rate": 0.02, "false_block_rate": 0.03},
+    }
+    graph_metrics = {
+        "future_latent_state": {"mean_transition_error": 0.05},
+        "planning_utility_delta": {"ranking_correlation_proxy": 0.69},
+        "constraint_violation_probability": {"mean_constraint_error": 0.06},
+        "uncertainty": {"calibration_error": 0.08},
+        "action_mask": {"false_allow_rate": 0.02, "false_block_rate": 0.03},
+    }
+    candidates = [
+        {
+            "candidate_id": "mlp-reference",
+            "package_id": "complexity-gate-package-v1",
+            "dataset_snapshot_hash": dataset_hash,
+            "split_summary": split_summary,
+            "candidate": {"model_family": "mlp_multi_head_dynamics", "model_name": "mlp_reference", "model_version": "v1"},
+            "status": "pass",
+            "target_head_metrics": mlp_metrics,
+            "holdout_metrics": {"temporal": {"mean_transition_error": 0.1}, "spatial": {"mean_transition_error": 0.1}},
+            "same_case_replay": {"status": "pass", "planner_lift": 0.05},
+            "fov_stress_tests": [{"factor": "region", "status": "pass", "partition_count": 2, "source": "unit_test"}],
+        },
+        {
+            "candidate_id": "graph-future-only",
+            "package_id": "complexity-gate-package-v1",
+            "dataset_snapshot_hash": dataset_hash,
+            "split_summary": split_summary,
+            "candidate": {"model_family": "hierarchical_graph_dynamics", "model_name": "graph_future_only", "model_version": "v1"},
+            "status": "pass",
+            "target_head_metrics": graph_metrics,
+            "holdout_metrics": {"temporal": {"mean_transition_error": 0.15}, "spatial": {"mean_transition_error": 0.16}},
+            "same_case_replay": {"status": "pass", "planner_lift": 0.03},
+            "fov_stress_tests": [{"factor": "region", "status": "pass", "partition_count": 2, "source": "unit_test"}],
+        },
+    ]
+
+    report = svc.dynamics_model_shootout_report(
+        state_id,
+        {
+            "pilot_package_report": pilot_package,
+            "candidate_reports": candidates,
+        },
+    )
+
+    gate = report["complexity_gain_gate"]
+    graph_gate = next(item for item in gate["candidate_gates"] if item["candidate_id"] == "graph-future-only")
+    graph_summary = next(item for item in report["candidate_summaries"] if item["candidate_id"] == "graph-future-only")
+    assert gate["schema"] == "territory_world_model.complexity_gain_gate.v1"
+    assert graph_gate["status"] == "review"
+    assert "temporal_holdout_gain" in graph_gate["missing"]
+    assert "decision_metric_gain" in graph_gate["missing"]
+    assert "complexity_gain_gate" in graph_summary["promotion_limits"]
+    assert graph_summary["recommendation"] == "replay_ready"
+
+
+def test_same_case_planner_replay_report_scores_shootout_winner_against_baseline():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+    seed = svc.dynamics_training_examples(
+        state_id,
+        {"scenario": "same_case_replay_seed", "horizon": 2, "evidence_coverage": 0.72, "split": "temporal_holdout"},
+    )
+    dataset = _observed_dynamics_dataset(seed, count=8)
+    baseline_validation = {
+        "schema": "territory_world_model.baseline_export_validation_report.v1",
+        "status": "pass",
+        "coverage": {"coverage_ratio": 0.9, "overlap_count": 8},
+        "blocking_errors": [],
+        "claim": {"claim_id": "C1_state_conflict_recall", "baseline_id": "manual_gis_overlay"},
+    }
+    pilot_package = svc.pilot_package_report(
+        state_id,
+        {
+            "package_id": "same-case-replay-package-v1",
+            "dataset": dataset,
+            "baseline_export_validation_report": baseline_validation,
+            "production_data_gate": {"status": "pass", "source": "unit_test_gate"},
+        },
+    )
+    dataset_hash = pilot_package["mrep_trace"]["dataset_snapshot_hash"]
+    split_summary = pilot_package["split_summary"]
+    candidates = [
+        {
+            "candidate_id": "rule-baseline",
+            "package_id": "same-case-replay-package-v1",
+            "dataset_snapshot_hash": dataset_hash,
+            "split_summary": split_summary,
+            "candidate": {"model_family": "deterministic_rule_baseline", "model_name": "rule_baseline", "model_version": "v1"},
+            "status": "pass",
+            "target_head_metrics": {
+                "future_latent_state": {"mean_transition_error": 0.18},
+                "planning_utility_delta": {"ranking_correlation_proxy": 0.42},
+                "constraint_violation_probability": {"mean_constraint_error": 0.13},
+                "action_mask": {"false_allow_rate": 0.08, "false_block_rate": 0.05},
+            },
+            "holdout_metrics": {"temporal": {"mean_transition_error": 0.19}, "spatial": {"mean_transition_error": 0.21}},
+            "same_case_replay": {"status": "pass", "planner_lift": 0.01},
+            "fov_stress_tests": [{"factor": "region", "status": "pass", "partition_count": 2, "source": "unit_test"}],
+        },
+        {
+            "candidate_id": "graph-candidate",
+            "package_id": "same-case-replay-package-v1",
+            "dataset_snapshot_hash": dataset_hash,
+            "split_summary": split_summary,
+            "candidate": {"model_family": "hierarchical_graph_dynamics", "model_name": "graph_candidate", "model_version": "v2"},
+            "status": "pass",
+            "target_head_metrics": {
+                "future_latent_state": {"mean_transition_error": 0.06},
+                "planning_utility_delta": {"ranking_correlation_proxy": 0.76},
+                "constraint_violation_probability": {"mean_constraint_error": 0.04},
+                "action_mask": {"false_allow_rate": 0.02, "false_block_rate": 0.03},
+            },
+            "holdout_metrics": {"temporal": {"mean_transition_error": 0.07}, "spatial": {"mean_transition_error": 0.08}},
+            "same_case_replay": {"status": "pass", "planner_lift": 0.08},
+            "fov_stress_tests": [{"factor": "region", "status": "pass", "partition_count": 2, "source": "unit_test"}],
+        },
+    ]
+    shootout = svc.dynamics_model_shootout_report(
+        state_id,
+        {
+            "pilot_package_report": pilot_package,
+            "candidate_reports": candidates,
+        },
+    )
+    replay_cases = [
+        {
+            "case_id": "case-a",
+            "region_code": "county-a",
+            "split": "temporal_holdout",
+            "target_decision": {"allowed": True, "utility": 1.0, "review_required": False},
+            "candidate_decision": {"allowed": True, "rank": 1, "utility": 0.88, "review_required": False},
+            "baseline_decision": {"allowed": True, "rank": 2, "utility": 0.71, "review_required": True},
+        },
+        {
+            "case_id": "case-b",
+            "region_code": "county-b",
+            "split": "spatial_holdout",
+            "target_decision": {"allowed": False, "utility": 0.0, "review_required": True},
+            "candidate_decision": {"allowed": False, "rank": 1, "utility": -0.05, "review_required": False},
+            "baseline_decision": {"allowed": True, "rank": 1, "utility": -0.35, "review_required": True},
+        },
+        {
+            "case_id": "case-c",
+            "region_code": "county-c",
+            "split": "temporal_holdout",
+            "target_decision": {"allowed": True, "utility": 0.9, "review_required": False},
+            "candidate_decision": {"allowed": False, "rank": 1, "utility": 0.75, "review_required": True},
+            "baseline_decision": {"allowed": True, "rank": 1, "utility": 0.83, "review_required": False},
+        },
+    ]
+
+    report = svc.same_case_planner_replay_report(
+        state_id,
+        {
+            "pilot_package_report": pilot_package,
+            "dynamics_model_shootout_report": shootout,
+            "replay_cases": replay_cases,
+            "top_k": 1,
+        },
+    )
+
+    assert report["schema"] == "territory_world_model.same_case_planner_replay_report.v1"
+    assert report["selected_candidate"]["candidate_id"] == "graph-candidate"
+    assert report["package_binding"]["dataset_snapshot_hash"] == dataset_hash
+    assert report["replay_metrics"]["case_count"] == 3
+    assert report["replay_metrics"]["legal_feasible_top_k_precision"] == pytest.approx(1 / 3)
+    assert report["replay_metrics"]["blocked_action_recall"] == pytest.approx(1.0)
+    assert report["replay_metrics"]["false_allow_rate"] == pytest.approx(0.0)
+    assert report["replay_metrics"]["false_block_rate"] == pytest.approx(0.5)
+    assert report["replay_metrics"]["planner_regret"]["regret_reduction_vs_baseline"] > 0
+    assert report["replay_metrics"]["ranking_lift"] > 0
+    assert report["replay_metrics"]["review_workload_impact"]["review_reduction"] == 1
+    assert report["outcome_summary"]["improves"] == 2
+    assert report["outcome_summary"]["loses"] == 1
+    assert report["loss_cases"][0]["case_id"] == "case-c"
+    assert report["loss_cases"][0]["loss_type"] == "false_block"
+    assert report["promotion_gate"]["status"] == "review"
+    assert report["claim_boundary"]["status"] == "same_case_replay_is_decision_evidence_not_production_promotion"
+
+
+def test_dynamics_promotion_evidence_bundle_links_replay_registry_and_rollback_evidence():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    svc.ensure_default_rules()
+    svc.evaluate_rules(state_id, {"include_default_rules": True})
+    seed = svc.dynamics_training_examples(
+        state_id,
+        {"scenario": "promotion_bundle_seed", "horizon": 2, "evidence_coverage": 0.72, "split": "temporal_holdout"},
+    )
+    dataset = _observed_dynamics_dataset(seed, count=8)
+    baseline_validation = {
+        "schema": "territory_world_model.baseline_export_validation_report.v1",
+        "status": "pass",
+        "coverage": {"coverage_ratio": 0.9, "overlap_count": 8},
+        "blocking_errors": [],
+        "claim": {"claim_id": "C1_state_conflict_recall", "baseline_id": "manual_gis_overlay"},
+    }
+    pilot_package = svc.pilot_package_report(
+        state_id,
+        {
+            "package_id": "promotion-bundle-package-v1",
+            "dataset": dataset,
+            "baseline_export_validation_report": baseline_validation,
+            "production_data_gate": {"status": "pass", "source": "unit_test_gate"},
+        },
+    )
+    dataset_hash = pilot_package["mrep_trace"]["dataset_snapshot_hash"]
+    split_summary = pilot_package["split_summary"]
+    candidate_report = {
+        "candidate_id": "graph-promotion-candidate",
+        "package_id": "promotion-bundle-package-v1",
+        "dataset_snapshot_hash": dataset_hash,
+        "split_summary": split_summary,
+        "candidate": {"model_family": "hierarchical_graph_dynamics", "model_name": "graph_promotion", "model_version": "v3"},
+        "status": "pass",
+        "target_head_metrics": {
+            "future_latent_state": {"mean_transition_error": 0.05},
+            "planning_utility_delta": {"ranking_correlation_proxy": 0.78},
+            "constraint_violation_probability": {"mean_constraint_error": 0.04},
+            "action_mask": {"false_allow_rate": 0.02, "false_block_rate": 0.02},
+        },
+        "holdout_metrics": {"temporal": {"mean_transition_error": 0.06}, "spatial": {"mean_transition_error": 0.07}},
+        "same_case_replay": {"status": "pass", "planner_lift": 0.08},
+        "fov_stress_tests": [
+            {
+                "factor": "region",
+                "status": "review",
+                "source": "unit_test_tail",
+                "tail_examples": [
+                    {"example_id": "case-tail-1", "loss_case": True, "not_for_production": True},
+                ],
+            },
+        ],
+    }
+    shootout = svc.dynamics_model_shootout_report(
+        state_id,
+        {
+            "pilot_package_report": pilot_package,
+            "candidate_reports": [candidate_report],
+        },
+    )
+    replay = svc.same_case_planner_replay_report(
+        state_id,
+        {
+            "pilot_package_report": pilot_package,
+            "dynamics_model_shootout_report": shootout,
+            "replay_cases": [
+                {
+                    "case_id": "bundle-case-a",
+                    "target_decision": {"allowed": True, "utility": 1.0},
+                    "candidate_decision": {"allowed": True, "rank": 1, "utility": 0.9},
+                    "baseline_decision": {"allowed": True, "rank": 2, "utility": 0.7, "review_required": True},
+                },
+                {
+                    "case_id": "bundle-case-b",
+                    "target_decision": {"allowed": False, "utility": 0.0},
+                    "candidate_decision": {"allowed": False, "rank": 1, "utility": -0.05},
+                    "baseline_decision": {"allowed": True, "rank": 1, "utility": -0.3, "review_required": True},
+                },
+            ],
+        },
+    )
+    registry = svc.dynamics_model_registry_report(
+        state_id,
+        {
+            "candidate_report": {
+                "candidate": candidate_report["candidate"],
+                "status": "pass",
+                "evidence_gate": {"status": "pass"},
+            },
+            "readiness_report": {"status": "pass", "gates": {"summary": {"blocked_gates": []}}},
+            "evaluation_report": {
+                "status": "pass",
+                "evidence_gate": {"status": "pass"},
+                "target_head_metrics": {
+                    "future_latent_state": {
+                        "latent_v2_quality": {"schema": "territory_world_model.future_latent_state_v2_quality.v1", "status": "pass", "missing": []},
+                    },
+                },
+            },
+            "production_data_gate": {"status": "pass"},
+            "registry_metadata": {
+                "state_contract_version": "state-contract-v1",
+                "training_dataset_hash": dataset_hash,
+                "training_dataset_snapshot": dataset_hash,
+                "training_run_id": "run-promotion-bundle",
+                "model_artifact_uri": "s3://models/graph-promotion/v3",
+                "evaluation_report_id": "eval-promotion-bundle",
+            },
+            "current_registry_key": "graph_promotion:v2",
+        },
+    )
+    rollback_evidence = {
+        "schema": "territory_world_model.rollback_evidence.v1",
+        "status": "pass",
+        "current_registry_key": "graph_promotion:v2",
+        "rollback_target_registry_key": "graph_promotion:v1",
+    }
+
+    bundle = svc.dynamics_promotion_evidence_bundle(
+        state_id,
+        {
+            "pilot_package_report": pilot_package,
+            "dynamics_model_shootout_report": shootout,
+            "same_case_planner_replay_report": replay,
+            "dynamics_model_registry_report": registry,
+            "rollback_evidence": rollback_evidence,
+            "canary_scope": {"region_codes": ["county-a"], "max_case_count": 25},
+        },
+    )
+
+    assert bundle["schema"] == "territory_world_model.dynamics_promotion_evidence_bundle.v1"
+    assert bundle["status"] == "review"
+    assert bundle["selected_candidate"]["candidate_id"] == "graph-promotion-candidate"
+    assert bundle["evidence_summary"]["dataset_snapshot_hash"] == dataset_hash
+    assert bundle["evidence_summary"]["fov_tail_case_count"] == 1
+    assert bundle["evidence_gates"]["same_case_replay"]["status"] == "pass"
+    assert bundle["evidence_gates"]["registry"]["status"] == "pass"
+    assert bundle["evidence_gates"]["rollback"]["status"] == "pass"
+    assert bundle["promotion_decision"]["max_recommendation"] == "promotion_candidate_review"
+    assert bundle["promotion_decision"]["missing"] == []
+    assert bundle["claim_boundary"]["status"] == "promotion_evidence_bundle_is_not_production_activation"
+
+    blocked = svc.dynamics_promotion_evidence_bundle(
+        state_id,
+        {
+            "pilot_package_report": pilot_package,
+            "dynamics_model_shootout_report": shootout,
+            "same_case_planner_replay_report": replay,
+            "dynamics_model_registry_report": registry,
+        },
+    )
+    assert blocked["status"] == "blocked"
+    assert "rollback_evidence" in blocked["promotion_decision"]["missing"]
+    assert blocked["evidence_gates"]["rollback"]["status"] == "missing"
+
+
+def test_dynamics_reliability_drift_report_blocks_regressed_candidate_bundle():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    previous_bundle = {
+        "schema": "territory_world_model.dynamics_promotion_evidence_bundle.v1",
+        "status": "review",
+        "selected_candidate": {"candidate_id": "graph-v2", "model_name": "graph_model", "model_version": "v2"},
+        "evidence_summary": {
+            "package_id": "drift-package-v1",
+            "dataset_snapshot_hash": "dataset-hash-v1",
+            "fov_tail_case_count": 1,
+            "same_case_replay_case_count": 20,
+        },
+        "replay_metrics": {
+            "false_allow_rate": 0.01,
+            "false_block_rate": 0.03,
+            "ranking_lift": 0.08,
+            "planner_regret": {"regret_reduction_vs_baseline": 0.12},
+        },
+        "same_case_loss_cases": [
+            {"case_id": "loss-old", "loss_type": "planner_regret", "risk_level": "medium"},
+        ],
+        "fov_tail_cases": [
+            {"example_id": "tail-old", "factor": "region", "risk_level": "medium"},
+        ],
+        "evidence_gates": {"rollback": {"status": "pass"}},
+    }
+    candidate_bundle = {
+        "schema": "territory_world_model.dynamics_promotion_evidence_bundle.v1",
+        "status": "review",
+        "selected_candidate": {"candidate_id": "graph-v3", "model_name": "graph_model", "model_version": "v3"},
+        "evidence_summary": {
+            "package_id": "drift-package-v1",
+            "dataset_snapshot_hash": "dataset-hash-v1",
+            "fov_tail_case_count": 3,
+            "same_case_replay_case_count": 20,
+        },
+        "replay_metrics": {
+            "false_allow_rate": 0.04,
+            "false_block_rate": 0.02,
+            "ranking_lift": 0.04,
+            "planner_regret": {"regret_reduction_vs_baseline": 0.03},
+        },
+        "same_case_loss_cases": [
+            {"case_id": "loss-old", "loss_type": "planner_regret", "risk_level": "medium"},
+            {"case_id": "loss-new-a", "loss_type": "false_allow", "risk_level": "high"},
+            {"case_id": "loss-new-b", "loss_type": "false_allow", "risk_level": "critical"},
+        ],
+        "fov_tail_cases": [
+            {"example_id": "tail-old", "factor": "region", "risk_level": "medium"},
+            {"example_id": "tail-new-a", "factor": "evidence_completeness", "risk_level": "high"},
+            {"example_id": "tail-new-b", "factor": "region", "risk_level": "critical"},
+        ],
+        "evidence_gates": {"rollback": {"status": "missing"}},
+    }
+
+    report = svc.dynamics_reliability_drift_report(
+        state_id,
+        {
+            "previous_promotion_evidence_bundle": previous_bundle,
+            "candidate_promotion_evidence_bundle": candidate_bundle,
+            "thresholds": {
+                "max_false_allow_rate_delta": 0.0,
+                "max_fov_tail_case_delta": 0,
+                "max_high_risk_loss_case_delta": 0,
+                "min_ranking_lift_delta": 0.0,
+            },
+        },
+    )
+
+    assert report["schema"] == "territory_world_model.dynamics_reliability_drift_report.v1"
+    assert report["status"] == "blocked"
+    assert report["comparison_binding"]["dataset_snapshot_hash"] == "dataset-hash-v1"
+    assert report["metric_deltas"]["false_allow_rate_delta"] == pytest.approx(0.03)
+    assert report["metric_deltas"]["fov_tail_case_count_delta"] == 2
+    assert report["metric_deltas"]["high_risk_loss_case_count_delta"] == 2
+    assert report["regression_gates"]["action_mask_false_allow"]["status"] == "blocked"
+    assert report["regression_gates"]["fov_tail_cases"]["status"] == "blocked"
+    assert report["regression_gates"]["high_risk_loss_cases"]["status"] == "blocked"
+    assert report["regression_gates"]["rollback"]["status"] == "blocked"
+    assert "action_mask_false_allow_regression" in report["promotion_decision"]["missing"]
+    assert "tail-new-b" in {item["case_id"] for item in report["regression_cases"]}
+    assert report["claim_boundary"]["status"] == "reliability_drift_gate_is_not_production_activation"
+
+
+def test_dynamics_regression_suite_manifest_persists_drift_and_bundle_cases():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    promotion_bundle = {
+        "schema": "territory_world_model.dynamics_promotion_evidence_bundle.v1",
+        "selected_candidate": {"candidate_id": "graph-v3", "model_name": "graph_model", "model_version": "v3"},
+        "evidence_summary": {"package_id": "suite-package-v1", "dataset_snapshot_hash": "suite-dataset-hash"},
+        "same_case_loss_cases": [
+            {"case_id": "loss-new-a", "loss_type": "false_allow", "risk_level": "high", "region_code": "county-a"},
+            {"case_id": "loss-repeat", "loss_type": "planner_regret", "risk_level": "medium", "region_code": "county-b"},
+        ],
+        "fov_tail_cases": [
+            {"example_id": "tail-new-a", "factor": "evidence_completeness", "risk_level": "critical", "partition_value": "missing_evidence"},
+            {"example_id": "loss-repeat", "factor": "region", "risk_level": "medium", "partition_value": "county-b"},
+        ],
+    }
+    drift_report = {
+        "schema": "territory_world_model.dynamics_reliability_drift_report.v1",
+        "status": "blocked",
+        "comparison_binding": {"package_id": "suite-package-v1", "dataset_snapshot_hash": "suite-dataset-hash"},
+        "regression_cases": [
+            {"case_id": "loss-new-a", "source": "same_case_loss_cases", "loss_type": "false_allow", "risk_level": "high"},
+            {"case_id": "tail-new-b", "source": "fov_tail_cases", "loss_type": "region", "risk_level": "critical"},
+        ],
+    }
+    explicit_case = {
+        "case_id": "manual-legal-frontier",
+        "source": "manual_regression_case",
+        "loss_type": "false_allow",
+        "risk_level": "high",
+        "region_code": "county-c",
+        "target_decision": {"allowed": False},
+        "candidate_decision": {"allowed": True},
+    }
+
+    manifest = svc.dynamics_regression_suite_manifest(
+        state_id,
+        {
+            "promotion_evidence_bundle": promotion_bundle,
+            "dynamics_reliability_drift_report": drift_report,
+            "regression_cases": [explicit_case],
+            "suite_id": "suite-p4b-unit",
+        },
+    )
+
+    assert manifest["schema"] == "territory_world_model.dynamics_regression_suite_manifest.v1"
+    assert manifest["suite_id"] == "suite-p4b-unit"
+    assert manifest["status"] == "active_review_suite"
+    assert manifest["package_binding"]["dataset_snapshot_hash"] == "suite-dataset-hash"
+    case_ids = {item["case_id"] for item in manifest["cases"]}
+    assert case_ids == {"loss-new-a", "loss-repeat", "tail-new-a", "tail-new-b", "manual-legal-frontier"}
+    assert manifest["case_count"] == 5
+    assert manifest["case_type_counts"]["same_case_loss"] == 2
+    assert manifest["case_type_counts"]["fov_tail"] == 2
+    assert manifest["case_type_counts"]["manual_regression"] == 1
+    assert manifest["risk_summary"]["high_or_critical_count"] == 4
+    assert manifest["replay_suite"]["required_for"]["same_case_planner_replay_report"] is True
+    assert manifest["replay_suite"]["required_for"]["dynamics_reliability_drift_report"] is True
+    assert manifest["claim_boundary"]["status"] == "regression_suite_manifest_is_replay_contract_not_training_ground_truth"
+
+
+def test_dynamics_model_shootout_report_active_regression_suite_downgrades_uncovered_candidate():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    pilot_package = {
+        "schema": "territory_world_model.pilot_package.v1",
+        "package_id": "active-suite-package-v1",
+        "status": "pass",
+        "mrep_trace": {"dataset_snapshot_hash": "active-suite-hash"},
+        "split_summary": {"temporal": {"split": "temporal_holdout"}},
+        "package_gates": {
+            "production_data": {"status": "pass"},
+            "same_case_baseline": {"status": "pass"},
+        },
+        "promotion_blockers": [],
+    }
+    manifest = {
+        "schema": "territory_world_model.dynamics_regression_suite_manifest.v1",
+        "status": "active_review_suite",
+        "suite_id": "active-suite-v1",
+        "package_binding": {"status": "pass", "package_id": "active-suite-package-v1", "dataset_snapshot_hash": "active-suite-hash"},
+        "cases": [
+            {"case_id": "legal-frontier-a", "case_type": "manual_regression", "risk_level": "high", "loss_type": "false_allow"},
+        ],
+    }
+    candidate = {
+        "candidate_id": "graph-active-suite",
+        "package_id": "active-suite-package-v1",
+        "dataset_snapshot_hash": "active-suite-hash",
+        "split_summary": pilot_package["split_summary"],
+        "candidate": {"model_family": "hierarchical_graph_dynamics", "model_name": "graph_active_suite", "model_version": "v1"},
+        "status": "pass",
+        "target_head_metrics": {
+            "future_latent_state": {"mean_transition_error": 0.03},
+            "planning_utility_delta": {"ranking_correlation_proxy": 0.82},
+            "constraint_violation_probability": {"mean_constraint_error": 0.03},
+            "action_mask": {"false_allow_rate": 0.01, "false_block_rate": 0.01},
+        },
+        "holdout_metrics": {"temporal": {"mean_transition_error": 0.04}, "spatial": {"mean_transition_error": 0.05}},
+        "same_case_replay": {"status": "pass", "planner_lift": 0.09},
+        "fov_stress_tests": [{"factor": "region", "status": "pass", "partition_count": 2}],
+    }
+
+    blocked = svc.dynamics_model_shootout_report(
+        state_id,
+        {
+            "pilot_package_report": pilot_package,
+            "candidate_reports": [candidate],
+            "dynamics_regression_suite_manifest": manifest,
+        },
+    )
+
+    blocked_summary = blocked["candidate_summaries"][0]
+    assert blocked["active_regression_suite_gate"]["status"] == "blocked"
+    assert blocked_summary["active_regression_suite_gate"]["missing_case_ids"] == ["legal-frontier-a"]
+    assert "active_regression_suite" in blocked_summary["promotion_limits"]
+    assert blocked_summary["recommendation"] == "replay_ready"
+    assert blocked["promotion_recommendation"]["recommendation"] == "replay_ready"
+
+    covered = svc.dynamics_model_shootout_report(
+        state_id,
+        {
+            "pilot_package_report": pilot_package,
+            "candidate_reports": [
+                {
+                    **candidate,
+                    "regression_suite_replay": {"status": "pass", "case_ids": ["legal-frontier-a"]},
+                }
+            ],
+            "dynamics_regression_suite_manifest": manifest,
+        },
+    )
+    covered_summary = covered["candidate_summaries"][0]
+    assert covered["active_regression_suite_gate"]["status"] == "pass"
+    assert covered_summary["active_regression_suite_gate"]["status"] == "pass"
+    assert "active_regression_suite" not in covered_summary["promotion_limits"]
+
+
+def test_same_case_planner_replay_report_requires_active_regression_suite_cases():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    pilot_package = {
+        "schema": "territory_world_model.pilot_package.v1",
+        "package_id": "replay-suite-package-v1",
+        "status": "pass",
+        "mrep_trace": {"dataset_snapshot_hash": "replay-suite-hash"},
+        "split_summary": {"temporal": {"split": "temporal_holdout"}},
+        "package_gates": {
+            "production_data": {"status": "pass"},
+            "same_case_baseline": {"status": "pass"},
+        },
+        "promotion_blockers": [],
+    }
+    shootout = {
+        "schema": "territory_world_model.dynamics_model_shootout_report.v1",
+        "package_integrity": {"package_id": "replay-suite-package-v1", "dataset_snapshot_hash": "replay-suite-hash", "split_summary": pilot_package["split_summary"]},
+        "promotion_recommendation": {"candidate_id": "graph-replay-suite", "recommendation": "promotion_candidate_review"},
+        "candidate_summaries": [
+            {"candidate_id": "graph-replay-suite", "model_family": "hierarchical_graph_dynamics", "recommendation": "promotion_candidate_review"},
+        ],
+    }
+    manifest = {
+        "schema": "territory_world_model.dynamics_regression_suite_manifest.v1",
+        "status": "active_review_suite",
+        "suite_id": "replay-suite-v1",
+        "package_binding": {"status": "pass", "package_id": "replay-suite-package-v1", "dataset_snapshot_hash": "replay-suite-hash"},
+        "cases": [
+            {"case_id": "replay-frontier-a", "case_type": "same_case_loss", "risk_level": "critical", "loss_type": "false_allow"},
+            {"case_id": "replay-frontier-b", "case_type": "fov_tail", "risk_level": "high", "loss_type": "region"},
+        ],
+    }
+    replay_case = {
+        "case_id": "replay-frontier-a",
+        "target_decision": {"allowed": False, "utility": 0.0},
+        "candidate_decision": {"allowed": False, "rank": 1, "utility": -0.05},
+        "baseline_decision": {"allowed": True, "rank": 1, "utility": -0.3, "review_required": True},
+    }
+
+    report = svc.same_case_planner_replay_report(
+        state_id,
+        {
+            "pilot_package_report": pilot_package,
+            "dynamics_model_shootout_report": shootout,
+            "replay_cases": [replay_case],
+            "dynamics_regression_suite_manifest": manifest,
+        },
+    )
+
+    assert report["active_regression_suite_gate"]["status"] == "blocked"
+    assert report["active_regression_suite_gate"]["missing_case_ids"] == ["replay-frontier-b"]
+    assert report["status"] == "blocked"
+    assert "active_regression_suite_cases" in report["promotion_gate"]["missing"]
+
+    covered = svc.same_case_planner_replay_report(
+        state_id,
+        {
+            "pilot_package_report": pilot_package,
+            "dynamics_model_shootout_report": shootout,
+            "replay_cases": [
+                replay_case,
+                {
+                    "case_id": "replay-frontier-b",
+                    "target_decision": {"allowed": True, "utility": 1.0},
+                    "candidate_decision": {"allowed": True, "rank": 1, "utility": 0.9},
+                    "baseline_decision": {"allowed": True, "rank": 2, "utility": 0.7, "review_required": True},
+                },
+            ],
+            "dynamics_regression_suite_manifest": manifest,
+        },
+    )
+    assert covered["active_regression_suite_gate"]["status"] == "pass"
+    assert "active_regression_suite_cases" not in covered["promotion_gate"]["missing"]
+
+
+def test_dynamics_reliability_drift_report_requires_active_regression_suite_replay_evidence():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    previous_bundle = {
+        "schema": "territory_world_model.dynamics_promotion_evidence_bundle.v1",
+        "selected_candidate": {"candidate_id": "graph-v1"},
+        "evidence_summary": {"package_id": "drift-suite-package-v1", "dataset_snapshot_hash": "drift-suite-hash", "fov_tail_case_count": 0},
+        "replay_metrics": {"false_allow_rate": 0.01, "false_block_rate": 0.01, "ranking_lift": 0.08, "planner_regret": {"regret_reduction_vs_baseline": 0.1}},
+        "same_case_loss_cases": [],
+        "fov_tail_cases": [],
+        "evidence_gates": {"rollback": {"status": "pass"}},
+        "regression_suite_replay": {"case_ids": ["drift-frontier-a"]},
+    }
+    candidate_bundle = {
+        "schema": "territory_world_model.dynamics_promotion_evidence_bundle.v1",
+        "selected_candidate": {"candidate_id": "graph-v2"},
+        "evidence_summary": {"package_id": "drift-suite-package-v1", "dataset_snapshot_hash": "drift-suite-hash", "fov_tail_case_count": 0},
+        "replay_metrics": {"false_allow_rate": 0.01, "false_block_rate": 0.01, "ranking_lift": 0.08, "planner_regret": {"regret_reduction_vs_baseline": 0.1}},
+        "same_case_loss_cases": [],
+        "fov_tail_cases": [],
+        "evidence_gates": {"rollback": {"status": "pass"}},
+        "regression_suite_replay": {"case_ids": []},
+    }
+    manifest = {
+        "schema": "territory_world_model.dynamics_regression_suite_manifest.v1",
+        "status": "active_review_suite",
+        "suite_id": "drift-suite-v1",
+        "package_binding": {"status": "pass", "package_id": "drift-suite-package-v1", "dataset_snapshot_hash": "drift-suite-hash"},
+        "cases": [
+            {"case_id": "drift-frontier-a", "case_type": "manual_regression", "risk_level": "high", "loss_type": "false_allow"},
+        ],
+    }
+
+    blocked = svc.dynamics_reliability_drift_report(
+        state_id,
+        {
+            "previous_promotion_evidence_bundle": previous_bundle,
+            "candidate_promotion_evidence_bundle": candidate_bundle,
+            "dynamics_regression_suite_manifest": manifest,
+        },
+    )
+
+    assert blocked["active_regression_suite_gate"]["status"] == "blocked"
+    assert blocked["active_regression_suite_gate"]["missing_case_ids"] == ["drift-frontier-a"]
+    assert "active_regression_suite_cases" in blocked["promotion_decision"]["missing"]
+    assert blocked["promotion_decision"]["max_recommendation"] == "replay_ready"
+
+    candidate_bundle["regression_suite_replay"] = {"case_ids": ["drift-frontier-a"]}
+    passed = svc.dynamics_reliability_drift_report(
+        state_id,
+        {
+            "previous_promotion_evidence_bundle": previous_bundle,
+            "candidate_promotion_evidence_bundle": candidate_bundle,
+            "dynamics_regression_suite_manifest": manifest,
+        },
+    )
+    assert passed["active_regression_suite_gate"]["status"] == "pass"
+    assert "active_regression_suite_cases" not in passed["promotion_decision"]["missing"]
+
+
+def test_dynamics_geospatial_hard_negative_mining_report_clusters_suite_failures_by_governance_axes():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    manifest = {
+        "schema": "territory_world_model.dynamics_regression_suite_manifest.v1",
+        "status": "active_review_suite",
+        "suite_id": "hard-negative-suite-v1",
+        "package_binding": {"status": "pass", "package_id": "hard-negative-package", "dataset_snapshot_hash": "hard-negative-hash"},
+        "cases": [
+            {
+                "case_id": "hn-a1",
+                "case_type": "manual_regression",
+                "loss_type": "false_allow",
+                "risk_level": "critical",
+                "source_lineage": {
+                    "region_code": "county-a",
+                    "rule_version": "rule-v3",
+                    "evidence_gap": "missing_evidence",
+                    "action_type": "expand",
+                },
+            },
+            {
+                "case_id": "hn-a2",
+                "case_type": "same_case_loss",
+                "loss_type": "false_allow",
+                "risk_level": "high",
+                "source_lineage": {
+                    "region_code": "county-a",
+                    "rule_version": "rule-v3",
+                    "evidence_gap": "missing_evidence",
+                    "action_type": "expand",
+                },
+            },
+            {
+                "case_id": "hn-b1",
+                "case_type": "fov_tail",
+                "loss_type": "region",
+                "risk_level": "medium",
+                "source_lineage": {
+                    "region_code": "county-b",
+                    "rule_version": "rule-v2",
+                    "evidence_gap": "complete",
+                    "action_type": "inspect",
+                },
+            },
+        ],
+    }
+
+    report = svc.dynamics_geospatial_hard_negative_mining_report(
+        state_id,
+        {"dynamics_regression_suite_manifest": manifest},
+    )
+
+    assert report["schema"] == "territory_world_model.dynamics_geospatial_hard_negative_mining_report.v1"
+    assert report["status"] == "review"
+    assert report["suite_binding"]["suite_id"] == "hard-negative-suite-v1"
+    assert report["case_summary"]["case_count"] == 3
+    assert report["case_summary"]["high_or_critical_count"] == 2
+    top_cluster = report["hard_negative_clusters"][0]
+    assert top_cluster["axis"] == "region_code"
+    assert top_cluster["value"] == "county-a"
+    assert top_cluster["case_count"] == 2
+    cluster_ids = {item["cluster_id"] for item in report["hard_negative_clusters"]}
+    assert "rule_version:rule-v3" in cluster_ids
+    assert "evidence_gap:missing_evidence" in cluster_ids
+    assert "action_type:expand" in cluster_ids
+    assert "loss_type:false_allow" in cluster_ids
+    assert report["sampling_plan"]["case_weights"]["hn-a1"] > report["sampling_plan"]["case_weights"]["hn-b1"]
+    assert "region_code" in report["retraining_diagnostics"]["target_axes"]
+    assert report["claim_boundary"]["status"] == "hard_negative_mining_is_sampling_diagnostic_not_training_ground_truth"
+
+
+def test_dynamics_canary_failure_memory_protocol_versions_suite_mining_and_scope():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    manifest = {
+        "schema": "territory_world_model.dynamics_regression_suite_manifest.v1",
+        "status": "active_review_suite",
+        "suite_id": "canary-suite-v1",
+        "package_binding": {"status": "pass", "package_id": "canary-package", "dataset_snapshot_hash": "canary-hash"},
+        "cases": [
+            {
+                "case_id": "canary-hn-a",
+                "case_type": "manual_regression",
+                "loss_type": "false_allow",
+                "risk_level": "critical",
+                "source_lineage": {"region_code": "county-a", "rule_version": "rule-v3", "evidence_gap": "missing_evidence", "action_type": "expand"},
+            },
+            {
+                "case_id": "canary-hn-b",
+                "case_type": "fov_tail",
+                "loss_type": "region",
+                "risk_level": "high",
+                "source_lineage": {"region_code": "county-b", "rule_version": "rule-v2", "evidence_gap": "complete", "action_type": "inspect"},
+            },
+        ],
+    }
+    mining = svc.dynamics_geospatial_hard_negative_mining_report(
+        state_id,
+        {"dynamics_regression_suite_manifest": manifest},
+    )
+
+    protocol = svc.dynamics_canary_failure_memory_protocol(
+        state_id,
+        {
+            "dynamics_regression_suite_manifest": manifest,
+            "dynamics_geospatial_hard_negative_mining_report": mining,
+            "canary_scope": {
+                "region_codes": ["county-a", "county-b"],
+                "rule_versions": ["rule-v3"],
+                "max_case_count": 20,
+            },
+            "lakehouse_namespace": "twm_failure_memory",
+            "registry_namespace": "twm_model_registry",
+        },
+    )
+
+    assert protocol["schema"] == "territory_world_model.dynamics_canary_failure_memory_protocol.v1"
+    assert protocol["status"] == "review"
+    assert protocol["failure_memory_version"]["suite_id"] == "canary-suite-v1"
+    assert protocol["failure_memory_version"]["dataset_snapshot_hash"] == "canary-hash"
+    assert protocol["canary_scope"]["region_codes"] == ["county-a", "county-b"]
+    assert protocol["storage_plan"]["boundary"] == "protocol_only_no_tables_written"
+    assert protocol["storage_plan"]["lakehouse_tables"]["regression_suite_cases"] == "twm_failure_memory.regression_suite_cases"
+    assert protocol["registry_pointer"]["registry_key"].startswith("failure_memory:canary-suite-v1:")
+    assert protocol["resolution_contract"]["required_reports"]["dynamics_reliability_drift_report"] is True
+    assert protocol["resolution_contract"]["required_reports"]["rollback_evidence"] is True
+    assert "region_code" in protocol["scheduler_seed"]["target_axes"]
+    assert protocol["claim_boundary"]["status"] == "canary_failure_memory_protocol_is_review_only_not_l3_activation"
+
+
+def test_dynamics_reviewer_feedback_ingestion_proposes_regression_cases_with_provenance():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    manifest = {
+        "schema": "territory_world_model.dynamics_regression_suite_manifest.v1",
+        "status": "active_review_suite",
+        "suite_id": "feedback-suite-v1",
+        "package_binding": {"status": "pass", "package_id": "feedback-package", "dataset_snapshot_hash": "feedback-hash"},
+        "cases": [
+            {"case_id": "existing-case", "case_type": "manual_regression", "loss_type": "false_allow", "risk_level": "high"},
+        ],
+    }
+    feedback_rows = [
+        {
+            "feedback_id": "review-feedback-a",
+            "review_status": "audited",
+            "reviewer_id": "reviewer-7",
+            "review_task_id": "task-42",
+            "region_code": "county-a",
+            "rule_version": "rule-v4",
+            "evidence_ids": ["evidence-1", "evidence-2"],
+            "action_type": "expand",
+            "model_decision": {"allowed": True},
+            "corrected_decision": {"allowed": False},
+            "risk_level": "critical",
+            "comment": "legal frontier false allow",
+        },
+        {
+            "feedback_id": "existing-case",
+            "review_status": "audited",
+            "reviewer_id": "reviewer-8",
+            "model_decision": {"allowed": True},
+            "corrected_decision": {"allowed": False},
+            "risk_level": "high",
+        },
+        {
+            "feedback_id": "draft-feedback",
+            "review_status": "draft",
+            "reviewer_id": "reviewer-9",
+            "model_decision": {"allowed": False},
+            "corrected_decision": {"allowed": True},
+            "risk_level": "medium",
+        },
+    ]
+
+    report = svc.dynamics_reviewer_feedback_ingestion_report(
+        state_id,
+        {
+            "dynamics_regression_suite_manifest": manifest,
+            "reviewer_feedback": feedback_rows,
+        },
+    )
+
+    assert report["schema"] == "territory_world_model.dynamics_reviewer_feedback_ingestion_report.v1"
+    assert report["status"] == "review"
+    assert report["suite_binding"]["suite_id"] == "feedback-suite-v1"
+    assert report["feedback_summary"]["feedback_count"] == 3
+    assert report["feedback_summary"]["audited_feedback_count"] == 2
+    assert report["proposal_gate"]["proposed_case_count"] == 1
+    assert report["proposal_gate"]["duplicate_case_ids"] == ["existing-case"]
+    proposed = report["proposed_regression_cases"][0]
+    assert proposed["case_id"] == "review-feedback-a"
+    assert proposed["loss_type"] == "false_allow"
+    assert proposed["risk_level"] == "critical"
+    assert proposed["source_lineage"]["reviewer_id"] == "reviewer-7"
+    assert proposed["source_lineage"]["review_task_id"] == "task-42"
+    assert proposed["source_lineage"]["evidence_ids"] == ["evidence-1", "evidence-2"]
+    assert proposed["source_lineage"]["region_code"] == "county-a"
+    assert proposed["not_for_training_ground_truth"] is True
+    assert report["activation_policy"]["automatic_suite_update_allowed"] is False
+    assert report["claim_boundary"]["status"] == "reviewer_feedback_ingestion_is_proposal_not_training_ground_truth"
+
+
+def test_dynamics_hard_negative_replay_scheduler_builds_versioned_replay_schedule():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    manifest = {
+        "schema": "territory_world_model.dynamics_regression_suite_manifest.v1",
+        "status": "active_review_suite",
+        "suite_id": "scheduler-suite-v1",
+        "package_binding": {"status": "pass", "package_id": "scheduler-package", "dataset_snapshot_hash": "scheduler-hash"},
+        "cases": [
+            {
+                "case_id": "scheduler-a1",
+                "case_type": "manual_regression",
+                "loss_type": "false_allow",
+                "risk_level": "critical",
+                "source_lineage": {"region_code": "county-a", "rule_version": "rule-v3", "evidence_gap": "missing_evidence", "action_type": "expand"},
+            },
+            {
+                "case_id": "scheduler-b1",
+                "case_type": "fov_tail",
+                "loss_type": "region",
+                "risk_level": "medium",
+                "source_lineage": {"region_code": "county-b", "rule_version": "rule-v2", "evidence_gap": "complete", "action_type": "inspect"},
+            },
+        ],
+    }
+    mining = svc.dynamics_geospatial_hard_negative_mining_report(
+        state_id,
+        {"dynamics_regression_suite_manifest": manifest},
+    )
+    protocol = svc.dynamics_canary_failure_memory_protocol(
+        state_id,
+        {
+            "dynamics_regression_suite_manifest": manifest,
+            "dynamics_geospatial_hard_negative_mining_report": mining,
+            "canary_scope": {"region_codes": ["county-a", "county-b"], "max_case_count": 5},
+        },
+    )
+
+    schedule = svc.dynamics_hard_negative_replay_scheduler_report(
+        state_id,
+        {
+            "dynamics_geospatial_hard_negative_mining_report": mining,
+            "dynamics_canary_failure_memory_protocol": protocol,
+            "max_replay_cases": 2,
+        },
+    )
+
+    assert schedule["schema"] == "territory_world_model.dynamics_hard_negative_replay_scheduler_report.v1"
+    assert schedule["status"] == "review"
+    assert schedule["schedule_binding"]["failure_memory_version_id"] == protocol["failure_memory_version"]["version_id"]
+    assert schedule["schedule_binding"]["dataset_snapshot_hash"] == "scheduler-hash"
+    assert schedule["schedule_summary"]["scheduled_case_count"] == 2
+    first = schedule["replay_schedule"][0]
+    assert first["case_id"] == "scheduler-a1"
+    assert first["cluster_ids"][0] == "region_code:county-a"
+    assert first["sampling_weight"] > schedule["replay_schedule"][1]["sampling_weight"]
+    assert first["required_reports"]["dynamics_model_shootout_report"] is True
+    assert first["required_reports"]["same_case_planner_replay_report"] is True
+    assert first["required_reports"]["dynamics_reliability_drift_report"] is True
+    assert schedule["claim_boundary"]["status"] == "hard_negative_replay_schedule_is_review_only_not_ground_truth"
+
+
+def test_dynamics_failure_memory_materialization_writes_versioned_geospatial_artifacts(tmp_path):
+    import pyarrow.parquet as pq
+
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    manifest = {
+        "schema": "territory_world_model.dynamics_regression_suite_manifest.v1",
+        "status": "active_review_suite",
+        "suite_id": "materialize-suite-v1",
+        "package_binding": {"status": "pass", "package_id": "materialize-package", "dataset_snapshot_hash": "materialize-hash"},
+        "cases": [
+            {
+                "case_id": "materialize-a1",
+                "case_type": "manual_regression",
+                "loss_type": "false_allow",
+                "risk_level": "critical",
+                "source_lineage": {"region_code": "county-a", "rule_version": "rule-v3", "evidence_gap": "missing_evidence", "action_type": "expand"},
+            },
+            {
+                "case_id": "materialize-b1",
+                "case_type": "fov_tail",
+                "loss_type": "region",
+                "risk_level": "medium",
+                "source_lineage": {"region_code": "county-b", "rule_version": "rule-v2", "evidence_gap": "complete", "action_type": "inspect"},
+            },
+        ],
+    }
+    mining = svc.dynamics_geospatial_hard_negative_mining_report(
+        state_id,
+        {"dynamics_regression_suite_manifest": manifest},
+    )
+    protocol = svc.dynamics_canary_failure_memory_protocol(
+        state_id,
+        {
+            "dynamics_regression_suite_manifest": manifest,
+            "dynamics_geospatial_hard_negative_mining_report": mining,
+            "canary_scope": {"region_codes": ["county-a", "county-b"], "max_case_count": 5},
+            "lakehouse_namespace": "materialize_failure_memory",
+        },
+    )
+    schedule = svc.dynamics_hard_negative_replay_scheduler_report(
+        state_id,
+        {
+            "dynamics_geospatial_hard_negative_mining_report": mining,
+            "dynamics_canary_failure_memory_protocol": protocol,
+            "max_replay_cases": 2,
+        },
+    )
+
+    materialization = svc.dynamics_failure_memory_materialization(
+        state_id,
+        {
+            "dynamics_regression_suite_manifest": manifest,
+            "dynamics_geospatial_hard_negative_mining_report": mining,
+            "dynamics_canary_failure_memory_protocol": protocol,
+            "dynamics_hard_negative_replay_scheduler_report": schedule,
+            "lakehouse_uri": tmp_path.as_uri(),
+            "namespace": "materialize_failure_memory",
+        },
+    )
+
+    case_artifact = materialization["artifacts"]["regression_suite_cases"]
+    schedule_artifact = materialization["artifacts"]["replay_schedules"]
+    case_table = pq.read_table(Path(case_artifact["local_path"]))
+    schedule_table = pq.read_table(Path(schedule_artifact["local_path"]))
+
+    assert materialization["schema"] == "territory_world_model.dynamics_failure_memory_materialization.v1"
+    assert materialization["status"] == "materialized"
+    assert materialization["failure_memory_binding"]["failure_memory_version_id"] == protocol["failure_memory_version"]["version_id"]
+    assert materialization["failure_memory_binding"]["dataset_snapshot_hash"] == "materialize-hash"
+    assert case_artifact["record_count"] == 2
+    assert materialization["artifacts"]["hard_negative_clusters"]["record_count"] >= 1
+    assert schedule_artifact["record_count"] == 2
+    assert materialization["artifacts"]["registry_pointers"]["record_count"] == 1
+    assert case_table.column("case_id").to_pylist() == ["materialize-a1", "materialize-b1"]
+    assert case_table.column("region_code").to_pylist()[0] == "county-a"
+    assert schedule_table.column("failure_memory_version_id").to_pylist()[0] == protocol["failure_memory_version"]["version_id"]
+    assert materialization["readiness"]["local_parquet_written"] is True
+    assert materialization["readiness"]["object_store_writer_required"] is False
+    assert materialization["claim_boundary"]["status"] == "failure_memory_materialization_is_versioned_storage_boundary_not_activation"
+
+
+def test_dynamics_accepted_feedback_suite_update_versions_human_accepted_proposals():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    manifest = {
+        "schema": "territory_world_model.dynamics_regression_suite_manifest.v1",
+        "status": "active_review_suite",
+        "suite_id": "accepted-feedback-suite-v1",
+        "package_binding": {"status": "pass", "package_id": "accepted-feedback-package", "dataset_snapshot_hash": "accepted-feedback-hash"},
+        "cases": [
+            {"case_id": "existing-case", "case_type": "manual_regression", "loss_type": "false_allow", "risk_level": "high"},
+        ],
+    }
+    feedback_report = svc.dynamics_reviewer_feedback_ingestion_report(
+        state_id,
+        {
+            "dynamics_regression_suite_manifest": manifest,
+            "reviewer_feedback": [
+                {
+                    "feedback_id": "accepted-feedback-a",
+                    "review_status": "audited",
+                    "reviewer_id": "reviewer-accepted",
+                    "review_task_id": "task-accepted",
+                    "region_code": "county-a",
+                    "rule_version": "rule-v4",
+                    "evidence_ids": ["evidence-a"],
+                    "action_type": "expand",
+                    "model_decision": {"allowed": True},
+                    "corrected_decision": {"allowed": False},
+                    "risk_level": "critical",
+                },
+                {
+                    "feedback_id": "unaccepted-feedback-b",
+                    "review_status": "audited",
+                    "reviewer_id": "reviewer-other",
+                    "region_code": "county-b",
+                    "model_decision": {"allowed": False},
+                    "corrected_decision": {"allowed": True},
+                    "risk_level": "medium",
+                },
+            ],
+        },
+    )
+
+    update = svc.dynamics_accepted_feedback_suite_update_report(
+        state_id,
+        {
+            "dynamics_regression_suite_manifest": manifest,
+            "dynamics_reviewer_feedback_ingestion_report": feedback_report,
+            "accepted_proposal_ids": ["accepted-feedback-a"],
+            "next_suite_id": "accepted-feedback-suite-v2",
+            "acceptance_review": {
+                "accepted_by": "review-lead",
+                "approval_ticket": "approval-77",
+                "acceptance_reason": "legal frontier false allow must replay",
+            },
+        },
+    )
+
+    assert update["schema"] == "territory_world_model.dynamics_accepted_feedback_suite_update_report.v1"
+    assert update["status"] == "review"
+    assert update["suite_lineage"]["previous_suite_id"] == "accepted-feedback-suite-v1"
+    assert update["suite_lineage"]["next_suite_id"] == "accepted-feedback-suite-v2"
+    assert update["acceptance_gate"]["accepted_case_count"] == 1
+    assert update["acceptance_gate"]["unaccepted_proposal_ids"] == ["unaccepted-feedback-b"]
+    new_manifest = update["updated_suite_manifest"]
+    assert new_manifest["schema"] == "territory_world_model.dynamics_regression_suite_manifest.v1"
+    assert new_manifest["status"] == "active_review_suite_proposal"
+    assert [case["case_id"] for case in new_manifest["cases"]] == ["existing-case", "accepted-feedback-a"]
+    accepted_case = new_manifest["cases"][1]
+    assert accepted_case["source_lineage"]["reviewer_id"] == "reviewer-accepted"
+    assert accepted_case["source_lineage"]["review_task_id"] == "task-accepted"
+    assert accepted_case["source_lineage"]["evidence_ids"] == ["evidence-a"]
+    assert accepted_case["source_lineage"]["region_code"] == "county-a"
+    assert accepted_case["source_lineage"]["accepted_by"] == "review-lead"
+    assert accepted_case["source_lineage"]["approval_ticket"] == "approval-77"
+    assert accepted_case["not_for_training_ground_truth"] is True
+    assert update["activation_policy"]["automatic_suite_activation_allowed"] is False
+    assert update["activation_policy"]["automatic_training_ground_truth_allowed"] is False
+    assert update["claim_boundary"]["status"] == "accepted_feedback_suite_update_is_human_accepted_memory_not_training_ground_truth"
+
+
+def test_dynamics_canary_replay_execution_report_emits_versioned_drift_dashboard_inputs():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    manifest = {
+        "schema": "territory_world_model.dynamics_regression_suite_manifest.v1",
+        "status": "active_review_suite",
+        "suite_id": "canary-replay-suite-v1",
+        "package_binding": {"status": "pass", "package_id": "canary-replay-package", "dataset_snapshot_hash": "canary-replay-hash"},
+        "cases": [
+            {
+                "case_id": "canary-replay-a1",
+                "case_type": "manual_regression",
+                "loss_type": "false_allow",
+                "risk_level": "critical",
+                "source_lineage": {"region_code": "county-a", "rule_version": "rule-v3", "evidence_gap": "missing_evidence", "action_type": "expand"},
+            },
+            {
+                "case_id": "canary-replay-b1",
+                "case_type": "fov_tail",
+                "loss_type": "region",
+                "risk_level": "medium",
+                "source_lineage": {"region_code": "county-b", "rule_version": "rule-v2", "evidence_gap": "complete", "action_type": "inspect"},
+            },
+        ],
+    }
+    mining = svc.dynamics_geospatial_hard_negative_mining_report(
+        state_id,
+        {"dynamics_regression_suite_manifest": manifest},
+    )
+    protocol = svc.dynamics_canary_failure_memory_protocol(
+        state_id,
+        {
+            "dynamics_regression_suite_manifest": manifest,
+            "dynamics_geospatial_hard_negative_mining_report": mining,
+            "canary_scope": {"region_codes": ["county-a", "county-b"], "max_case_count": 5},
+        },
+    )
+    schedule = svc.dynamics_hard_negative_replay_scheduler_report(
+        state_id,
+        {
+            "dynamics_geospatial_hard_negative_mining_report": mining,
+            "dynamics_canary_failure_memory_protocol": protocol,
+            "max_replay_cases": 2,
+        },
+    )
+
+    report = svc.dynamics_canary_replay_execution_report(
+        state_id,
+        {
+            "dynamics_canary_failure_memory_protocol": protocol,
+            "dynamics_hard_negative_replay_scheduler_report": schedule,
+            "candidate_bundle": {
+                "candidate_id": "candidate-v2",
+                "rollback_evidence": {
+                    "rollback_registry_key": "registry:baseline-v1",
+                    "rollback_model_id": "baseline-v1",
+                },
+            },
+            "replay_results": [
+                {
+                    "case_id": "canary-replay-a1",
+                    "candidate_decision": {"allowed": True},
+                    "target_decision": {"allowed": False},
+                },
+                {
+                    "case_id": "canary-replay-b1",
+                    "candidate_decision": {"allowed": False},
+                    "target_decision": {"allowed": False},
+                },
+            ],
+        },
+    )
+
+    assert report["schema"] == "territory_world_model.dynamics_canary_replay_execution_report.v1"
+    assert report["status"] == "controlled_pilot_review"
+    assert report["execution_binding"]["failure_memory_version_id"] == protocol["failure_memory_version"]["version_id"]
+    assert report["execution_binding"]["dataset_snapshot_hash"] == "canary-replay-hash"
+    assert report["rollback_evidence"]["rollback_registry_key"] == "registry:baseline-v1"
+    assert report["replay_summary"]["scheduled_case_count"] == 2
+    assert report["replay_summary"]["replayed_case_count"] == 2
+    assert report["replay_summary"]["failed_case_count"] == 1
+    assert report["replay_summary"]["false_allow_count"] == 1
+    assert report["drift_dashboard_inputs"]["cluster_failure_counts"]["region_code:county-a"] == 1
+    assert report["drift_dashboard_inputs"]["risk_level_failure_counts"]["critical"] == 1
+    assert report["promotion_gate"]["status"] == "blocked"
+    assert report["promotion_gate"]["automatic_model_activation_allowed"] is False
+    assert report["claim_boundary"]["status"] == "canary_replay_execution_is_controlled_pilot_review_not_autonomous_activation"
+
+
+def test_dynamics_failure_memory_registration_plan_preserves_version_and_rollback_contract(tmp_path):
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    manifest = {
+        "schema": "territory_world_model.dynamics_regression_suite_manifest.v1",
+        "status": "active_review_suite",
+        "suite_id": "registration-suite-v1",
+        "package_binding": {"status": "pass", "package_id": "registration-package", "dataset_snapshot_hash": "registration-hash"},
+        "cases": [
+            {
+                "case_id": "registration-a1",
+                "case_type": "manual_regression",
+                "loss_type": "false_allow",
+                "risk_level": "critical",
+                "source_lineage": {"region_code": "county-a", "rule_version": "rule-v3", "evidence_gap": "missing_evidence", "action_type": "expand"},
+            }
+        ],
+    }
+    mining = svc.dynamics_geospatial_hard_negative_mining_report(
+        state_id,
+        {"dynamics_regression_suite_manifest": manifest},
+    )
+    protocol = svc.dynamics_canary_failure_memory_protocol(
+        state_id,
+        {
+            "dynamics_regression_suite_manifest": manifest,
+            "dynamics_geospatial_hard_negative_mining_report": mining,
+            "canary_scope": {"region_codes": ["county-a"], "max_case_count": 1},
+            "lakehouse_namespace": "registration_failure_memory",
+        },
+    )
+    schedule = svc.dynamics_hard_negative_replay_scheduler_report(
+        state_id,
+        {
+            "dynamics_geospatial_hard_negative_mining_report": mining,
+            "dynamics_canary_failure_memory_protocol": protocol,
+            "max_replay_cases": 1,
+        },
+    )
+    materialization = svc.dynamics_failure_memory_materialization(
+        state_id,
+        {
+            "dynamics_regression_suite_manifest": manifest,
+            "dynamics_geospatial_hard_negative_mining_report": mining,
+            "dynamics_canary_failure_memory_protocol": protocol,
+            "dynamics_hard_negative_replay_scheduler_report": schedule,
+            "lakehouse_uri": tmp_path.as_uri(),
+            "namespace": "registration_failure_memory",
+        },
+    )
+    canary = svc.dynamics_canary_replay_execution_report(
+        state_id,
+        {
+            "dynamics_canary_failure_memory_protocol": protocol,
+            "dynamics_hard_negative_replay_scheduler_report": schedule,
+            "candidate_bundle": {
+                "candidate_id": "registration-candidate",
+                "rollback_evidence": {"rollback_registry_key": "registration-baseline"},
+            },
+            "replay_results": [
+                {
+                    "case_id": "registration-a1",
+                    "candidate_decision": {"allowed": False},
+                    "target_decision": {"allowed": False},
+                }
+            ],
+        },
+    )
+
+    plan = svc.dynamics_failure_memory_registration_plan(
+        state_id,
+        {
+            "dynamics_failure_memory_materialization": materialization,
+            "dynamics_canary_replay_execution_report": canary,
+            "catalog": "prod",
+            "postgis_schema": "registration_failure_memory",
+        },
+    )
+
+    table_by_artifact = {item["artifact"]: item for item in plan["iceberg_tables"]}
+    assert plan["schema"] == "territory_world_model.dynamics_failure_memory_registration_plan.v1"
+    assert plan["status"] == "review"
+    assert plan["registration_binding"]["failure_memory_version_id"] == protocol["failure_memory_version"]["version_id"]
+    assert table_by_artifact["regression_suite_cases"]["iceberg_table"] == "prod.registration_failure_memory.regression_suite_cases"
+    assert "failure_memory_version_id" in table_by_artifact["regression_suite_cases"]["ddl"]
+    assert table_by_artifact["replay_schedules"]["version_resolution"]["dataset_snapshot_hash"] == "registration-hash"
+    assert any(
+        item["artifact"] == "regression_suite_cases" and "region_code" in item["columns"]
+        for item in plan["postgis_indexes"]
+    )
+    assert plan["registry_commit_preconditions"]["rollback_evidence"]["rollback_registry_key"] == "registration-baseline"
+    assert plan["registry_commit_preconditions"]["automatic_model_activation_allowed"] is False
+    assert plan["claim_boundary"]["status"] == "failure_memory_registration_plan_is_query_contract_not_activation"
+
+
 def test_latent_transition_error_detects_land_type_mismatch_when_total_area_matches():
     svc = _build_service()
     target = {
@@ -6280,6 +8180,57 @@ def test_roadmap_status_report_reflects_lineage_and_registry_gate_progress():
     assert "production lineage ingestion templates" in data_foundation["remaining"]
 
 
+def test_pilot_readiness_matrix_blocks_without_authoritative_history():
+    svc = _build_service()
+    report = svc.pilot_readiness_matrix_report()
+
+    assert report["schema"] == "territory_world_model.pilot_readiness_matrix.v1"
+    assert report["overall_status"] == "blocked"
+    assert report["claim_boundary"]["production_claim"] == "blocked_until_authoritative_history_and_policy_labels_pass"
+    assert [item["id"] for item in report["dimensions"]] == [
+        "data_foundation",
+        "policy_rules",
+        "simulator",
+        "planner",
+        "evidence_audit",
+        "production_gate",
+    ]
+
+    by_id = {item["id"]: item for item in report["dimensions"]}
+    assert by_id["production_gate"]["status"] == "blocked"
+    assert by_id["production_gate"]["score"] == 0.0
+    assert "production_observed_history_rows=0" in by_id["production_gate"]["missing"]
+    assert "production_policy_history_rows=0" in by_id["production_gate"]["missing"]
+    assert any("authoritative observed-history" in item for item in by_id["production_gate"]["test_data_work"])
+    assert by_id["simulator"]["status"] in {"review", "pass"}
+    assert by_id["planner"]["status"] in {"review", "pass"}
+    assert report["test_data_plan"]["status"] == "action_required"
+    assert any(item["priority"] == "P0" for item in report["test_data_plan"]["items"])
+    assert report["strict_policy"]["synthetic_data_can_satisfy_production_gate"] is False
+
+
+def test_rule_fixture_coverage_matrix_flags_boundary_fixture_gaps():
+    svc = _build_service()
+    report = svc.rule_fixture_coverage_matrix_report()
+
+    assert report["schema"] == "territory_world_model.rule_fixture_coverage_matrix.v1"
+    assert report["overall_status"] == "action_required"
+    assert report["coverage_policy"]["synthetic_fixture_can_satisfy_production_acceptance"] is False
+    assert report["summary"]["hard_rule_count"] == 4
+    assert report["summary"]["production_ready_fixture_count"] == 0
+
+    by_rule = {item["rule_code"]: item for item in report["rules"]}
+    assert set(by_rule) == {"TWM-FARM-001", "TWM-ECO-001", "TWM-PLAN-001", "TWM-URBAN-001"}
+    for rule in by_rule.values():
+        assert set(rule["categories"]) == {"positive_violation", "negative_pass", "boundary_case"}
+        assert rule["categories"]["positive_violation"]["covered"] is True
+        assert rule["categories"]["negative_pass"]["covered"] is True
+        assert rule["categories"]["boundary_case"]["covered"] is False
+        assert "boundary_case" in rule["missing_categories"]
+        assert any("boundary" in item for item in rule["test_data_work"])
+        assert rule["production_ready_fixture_count"] == 0
+
+
 def test_roadmap_status_route_returns_json(monkeypatch):
     svc = _build_service()
     monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
@@ -6292,6 +8243,34 @@ def test_roadmap_status_route_returns_json(monkeypatch):
     assert body["schema"] == "territory_world_model.roadmap_status_report.v1"
     assert body["overall_status"] == "prototype_complete_review_only"
     assert body["claim_boundary"].startswith("Current TWM is a rigorous prototype")
+
+
+def test_pilot_readiness_matrix_route_returns_json(monkeypatch):
+    svc = _build_service()
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+
+    response = asyncio.run(routes.twm_pilot_readiness_matrix(_fake_request()))
+    body = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert body["schema"] == "territory_world_model.pilot_readiness_matrix.v1"
+    assert body["overall_status"] == "blocked"
+    assert any(item["id"] == "production_gate" and item["status"] == "blocked" for item in body["dimensions"])
+
+
+def test_rule_fixture_coverage_matrix_route_returns_json(monkeypatch):
+    svc = _build_service()
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+
+    response = asyncio.run(routes.twm_rule_fixture_coverage_matrix(_fake_request()))
+    body = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert body["schema"] == "territory_world_model.rule_fixture_coverage_matrix.v1"
+    assert body["overall_status"] == "action_required"
+    assert any(item["rule_code"] == "TWM-FARM-001" for item in body["rules"])
 
 
 def test_research_claim_matrix_binds_claims_to_baselines_and_falsification():
@@ -7177,6 +9156,7 @@ def test_twm_toolset_lists_sync_and_long_running_tools():
 
     assert "twm_status" in names
     assert "twm_roadmap_status" in names
+    assert "twm_pilot_readiness_matrix" in names
     assert "twm_data_foundation_layer_detail" in names
     assert "twm_data_foundation_lineage" in names
     assert "twm_data_foundation_crs_remediation" in names
@@ -7231,6 +9211,32 @@ def test_twm_toolset_lists_sync_and_long_running_tools():
     assert "twm_dynamics_evaluation_report_async" in names
     assert "twm_dynamics_evaluation_bundle" in names
     assert "twm_dynamics_evaluation_bundle_async" in names
+    assert "twm_dynamics_model_shootout_report" in names
+    assert "twm_dynamics_model_shootout_report_async" in names
+    assert "twm_same_case_planner_replay_report" in names
+    assert "twm_same_case_planner_replay_report_async" in names
+    assert "twm_dynamics_promotion_evidence_bundle" in names
+    assert "twm_dynamics_promotion_evidence_bundle_async" in names
+    assert "twm_dynamics_reliability_drift_report" in names
+    assert "twm_dynamics_reliability_drift_report_async" in names
+    assert "twm_dynamics_regression_suite_manifest" in names
+    assert "twm_dynamics_regression_suite_manifest_async" in names
+    assert "twm_dynamics_geospatial_hard_negative_mining_report" in names
+    assert "twm_dynamics_geospatial_hard_negative_mining_report_async" in names
+    assert "twm_dynamics_canary_failure_memory_protocol" in names
+    assert "twm_dynamics_canary_failure_memory_protocol_async" in names
+    assert "twm_dynamics_reviewer_feedback_ingestion_report" in names
+    assert "twm_dynamics_reviewer_feedback_ingestion_report_async" in names
+    assert "twm_dynamics_hard_negative_replay_scheduler_report" in names
+    assert "twm_dynamics_hard_negative_replay_scheduler_report_async" in names
+    assert "twm_dynamics_failure_memory_materialization" in names
+    assert "twm_dynamics_failure_memory_materialization_async" in names
+    assert "twm_dynamics_accepted_feedback_suite_update_report" in names
+    assert "twm_dynamics_accepted_feedback_suite_update_report_async" in names
+    assert "twm_dynamics_canary_replay_execution_report" in names
+    assert "twm_dynamics_canary_replay_execution_report_async" in names
+    assert "twm_dynamics_failure_memory_registration_plan" in names
+    assert "twm_dynamics_failure_memory_registration_plan_async" in names
     assert "twm_dynamics_model_registry_report" in names
     assert "twm_dynamics_model_registry_report_async" in names
     assert "twm_activate_dynamics_model_registry_entry" in names
@@ -7249,6 +9255,7 @@ def test_twm_toolset_lists_sync_and_long_running_tools():
     assert "twm_causal_calibration_report_async" in names
     assert "twm_scca_causal_evidence_report" in names
     assert "twm_scca_causal_evidence_report_async" in names
+    assert "twm_rule_fixture_coverage_matrix" in names
 
 
 def test_twm_roadmap_status_tool_returns_machine_readable_report(monkeypatch):
@@ -7262,6 +9269,32 @@ def test_twm_roadmap_status_tool_returns_machine_readable_report(monkeypatch):
     assert payload["schema"] == "territory_world_model.roadmap_status_report.v1"
     assert payload["overall_status"] == "prototype_complete_review_only"
     assert any(item["id"] == "trusted_poc" and item["status"] == "blocked" for item in payload["phases"])
+
+
+def test_twm_pilot_readiness_matrix_tool_returns_report(monkeypatch):
+    from data_agent.toolsets import territory_world_model_tools as tools
+
+    svc = _build_service()
+    monkeypatch.setattr(tools, "get_territory_world_model_service", lambda: svc)
+
+    payload = json.loads(tools.twm_pilot_readiness_matrix())
+
+    assert payload["schema"] == "territory_world_model.pilot_readiness_matrix.v1"
+    assert payload["overall_status"] == "blocked"
+    assert any(item["id"] == "production_gate" and item["status"] == "blocked" for item in payload["dimensions"])
+
+
+def test_twm_rule_fixture_coverage_matrix_tool_returns_report(monkeypatch):
+    from data_agent.toolsets import territory_world_model_tools as tools
+
+    svc = _build_service()
+    monkeypatch.setattr(tools, "get_territory_world_model_service", lambda: svc)
+
+    payload = json.loads(tools.twm_rule_fixture_coverage_matrix())
+
+    assert payload["schema"] == "territory_world_model.rule_fixture_coverage_matrix.v1"
+    assert payload["overall_status"] == "action_required"
+    assert any(item["rule_code"] == "TWM-FARM-001" for item in payload["rules"])
 
 
 def test_twm_data_foundation_layer_detail_tool_returns_fields(monkeypatch):
@@ -7478,6 +9511,935 @@ def test_twm_pilot_package_route_and_tool_return_manifest_contract(monkeypatch):
     ))
     assert tool_payload["schema"] == "territory_world_model.pilot_package.v1"
     assert tool_payload["trajectory_dataset_manifest"]["dataset_snapshot_hash"]
+
+
+def test_twm_dynamics_model_shootout_route_and_tool_return_report(monkeypatch):
+    from data_agent.toolsets import territory_world_model_tools as tools
+
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    seed = svc.dynamics_training_examples(
+        state_id,
+        {"scenario": "route_shootout_seed", "horizon": 2, "evidence_coverage": 0.72, "split": "temporal_holdout"},
+    )
+    dataset = _observed_dynamics_dataset(seed)
+    baseline_validation = {
+        "schema": "territory_world_model.baseline_export_validation_report.v1",
+        "status": "pass",
+        "coverage": {"coverage_ratio": 0.9, "overlap_count": 6},
+        "blocking_errors": [],
+        "claim": {"claim_id": "C1_state_conflict_recall", "baseline_id": "manual_gis_overlay"},
+    }
+    pilot_package = svc.pilot_package_report(
+        state_id,
+        {
+            "package_id": "route-shootout-package-v1",
+            "dataset": dataset,
+            "baseline_export_validation_report": baseline_validation,
+            "production_data_gate": {"status": "pass"},
+        },
+    )
+    candidate = {
+        "candidate_id": "route-graph",
+        "package_id": pilot_package["package_id"],
+        "dataset_snapshot_hash": pilot_package["mrep_trace"]["dataset_snapshot_hash"],
+        "split_summary": pilot_package["split_summary"],
+        "candidate": {"model_family": "hierarchical_graph_dynamics", "model_name": "route_graph", "model_version": "v1"},
+        "status": "pass",
+        "target_head_metrics": {
+            "future_latent_state": {"mean_transition_error": 0.05},
+            "planning_utility_delta": {"ranking_correlation_proxy": 0.7},
+            "constraint_violation_probability": {"mean_constraint_error": 0.04},
+            "action_mask": {"false_allow_rate": 0.02, "false_block_rate": 0.02},
+        },
+        "same_case_replay": {"status": "pass", "planner_lift": 0.05},
+    }
+    payload = {"pilot_package_report": pilot_package, "candidate_reports": [candidate]}
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+    monkeypatch.setattr(tools, "get_territory_world_model_service", lambda: svc)
+
+    route_resp = asyncio.run(routes.twm_dynamics_model_shootout_report(_fake_request(
+        "POST",
+        json.dumps(payload).encode("utf-8"),
+        path_params={"id": state_id},
+    )))
+    route_payload = json.loads(route_resp.body)
+    assert route_resp.status_code == 200
+    assert route_payload["schema"] == "territory_world_model.dynamics_model_shootout_report.v1"
+    assert route_payload["promotion_recommendation"]["candidate_id"] == "route-graph"
+
+    tool_payload = json.loads(tools.twm_dynamics_model_shootout_report(
+        state_id,
+        json.dumps(payload),
+    ))
+    assert tool_payload["schema"] == "territory_world_model.dynamics_model_shootout_report.v1"
+    assert tool_payload["ranked_candidates"][0]["candidate_id"] == "route-graph"
+
+
+def test_twm_same_case_planner_replay_route_and_tool_return_report(monkeypatch):
+    from data_agent.toolsets import territory_world_model_tools as tools
+
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    seed = svc.dynamics_training_examples(
+        state_id,
+        {"scenario": "route_same_case_replay_seed", "horizon": 2, "evidence_coverage": 0.72, "split": "temporal_holdout"},
+    )
+    dataset = _observed_dynamics_dataset(seed)
+    baseline_validation = {
+        "schema": "territory_world_model.baseline_export_validation_report.v1",
+        "status": "pass",
+        "coverage": {"coverage_ratio": 0.9, "overlap_count": 6},
+        "blocking_errors": [],
+        "claim": {"claim_id": "C1_state_conflict_recall", "baseline_id": "manual_gis_overlay"},
+    }
+    pilot_package = svc.pilot_package_report(
+        state_id,
+        {
+            "package_id": "route-replay-package-v1",
+            "dataset": dataset,
+            "baseline_export_validation_report": baseline_validation,
+            "production_data_gate": {"status": "pass"},
+        },
+    )
+    candidate = {
+        "candidate_id": "route-replay-graph",
+        "package_id": pilot_package["package_id"],
+        "dataset_snapshot_hash": pilot_package["mrep_trace"]["dataset_snapshot_hash"],
+        "split_summary": pilot_package["split_summary"],
+        "candidate": {"model_family": "hierarchical_graph_dynamics", "model_name": "route_replay_graph", "model_version": "v1"},
+        "status": "pass",
+        "target_head_metrics": {
+            "future_latent_state": {"mean_transition_error": 0.05},
+            "planning_utility_delta": {"ranking_correlation_proxy": 0.75},
+            "constraint_violation_probability": {"mean_constraint_error": 0.04},
+            "action_mask": {"false_allow_rate": 0.02, "false_block_rate": 0.02},
+        },
+        "holdout_metrics": {"temporal": {"mean_transition_error": 0.06}, "spatial": {"mean_transition_error": 0.07}},
+        "same_case_replay": {"status": "pass", "planner_lift": 0.06},
+        "fov_stress_tests": [{"factor": "region", "status": "pass", "partition_count": 2, "source": "unit_test"}],
+    }
+    shootout = svc.dynamics_model_shootout_report(
+        state_id,
+        {
+            "pilot_package_report": pilot_package,
+            "candidate_reports": [candidate],
+        },
+    )
+    payload = {
+        "pilot_package_report": pilot_package,
+        "dynamics_model_shootout_report": shootout,
+        "replay_cases": [
+            {
+                "case_id": "route-case-a",
+                "target_decision": {"allowed": True, "utility": 1.0},
+                "candidate_decision": {"allowed": True, "rank": 1, "utility": 0.9},
+                "baseline_decision": {"allowed": True, "rank": 2, "utility": 0.7, "review_required": True},
+            },
+            {
+                "case_id": "route-case-b",
+                "target_decision": {"allowed": False, "utility": 0.0},
+                "candidate_decision": {"allowed": False, "rank": 1, "utility": -0.05},
+                "baseline_decision": {"allowed": True, "rank": 1, "utility": -0.3, "review_required": True},
+            },
+        ],
+    }
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+    monkeypatch.setattr(tools, "get_territory_world_model_service", lambda: svc)
+
+    route_resp = asyncio.run(routes.twm_same_case_planner_replay_report(_fake_request(
+        "POST",
+        json.dumps(payload).encode("utf-8"),
+        path_params={"id": state_id},
+    )))
+    route_payload = json.loads(route_resp.body)
+    assert route_resp.status_code == 200
+    assert route_payload["schema"] == "territory_world_model.same_case_planner_replay_report.v1"
+    assert route_payload["selected_candidate"]["candidate_id"] == "route-replay-graph"
+
+    tool_payload = json.loads(tools.twm_same_case_planner_replay_report(
+        state_id,
+        json.dumps(payload),
+    ))
+    assert tool_payload["schema"] == "territory_world_model.same_case_planner_replay_report.v1"
+    assert tool_payload["replay_metrics"]["blocked_action_recall"] == pytest.approx(1.0)
+
+
+def test_twm_dynamics_promotion_evidence_bundle_route_and_tool_return_report(monkeypatch):
+    from data_agent.toolsets import territory_world_model_tools as tools
+
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    dataset_hash = "route-promotion-dataset-hash"
+    split_summary = {"temporal": {"split": "temporal_holdout"}, "spatial": {"strategy": "admin_holdout"}}
+    pilot_package = {
+        "schema": "territory_world_model.pilot_package.v1",
+        "package_id": "route-promotion-package-v1",
+        "state_version_id": state_id,
+        "status": "pass",
+        "mrep_trace": {"schema": "territory_world_model.mrep_trace.v1", "dataset_snapshot_hash": dataset_hash},
+        "trajectory_dataset_manifest": {"dataset_snapshot_hash": dataset_hash},
+        "split_summary": split_summary,
+        "package_gates": {
+            "production_data": {"status": "pass"},
+            "same_case_baseline": {"status": "pass"},
+        },
+        "promotion_blockers": [],
+    }
+    shootout = {
+        "schema": "territory_world_model.dynamics_model_shootout_report.v1",
+        "package_integrity": {"package_id": "route-promotion-package-v1", "dataset_snapshot_hash": dataset_hash, "split_summary": split_summary},
+        "candidate_count": 1,
+        "candidate_summaries": [
+            {
+                "candidate_id": "route-promotion-graph",
+                "model_family": "hierarchical_graph_dynamics",
+                "model_name": "route_promotion_graph",
+                "model_version": "v1",
+                "recommendation": "promotion_candidate_review",
+                "promotion_limits": [],
+                "fov_stress": {"tests": [{"factor": "region", "tail_examples": [{"example_id": "tail-route", "loss_case": True}]}]},
+            },
+        ],
+        "promotion_recommendation": {"candidate_id": "route-promotion-graph"},
+    }
+    replay = {
+        "schema": "territory_world_model.same_case_planner_replay_report.v1",
+        "status": "review",
+        "package_binding": {"status": "pass", "package_id": "route-promotion-package-v1", "dataset_snapshot_hash": dataset_hash},
+        "selected_candidate": {"candidate_id": "route-promotion-graph", "model_name": "route_promotion_graph", "model_version": "v1"},
+        "replay_metrics": {"case_count": 2},
+        "promotion_gate": {"status": "review"},
+        "loss_cases": [],
+    }
+    registry = {
+        "schema": "territory_world_model.dynamics_model_registry_report.v1",
+        "registry_entry": {
+            "registry_key": "route_promotion_graph:v1",
+            "model_name": "route_promotion_graph",
+            "model_version": "v1",
+            "model_family": "hierarchical_graph_dynamics",
+            "metadata": {
+                "training_dataset_hash": dataset_hash,
+                "training_dataset_snapshot": dataset_hash,
+                "state_contract_version": "state-contract-v1",
+                "model_artifact_uri": "s3://models/route-promotion/v1",
+                "evaluation_report_id": "eval-route-promotion",
+            },
+        },
+        "missing_for_promotion": [],
+        "missing_registry_metadata": [],
+        "promotion_decision": "candidate_for_registry_promotion",
+        "rollback_plan": {"rollback_available": True, "current_registry_key": "route_promotion_graph:v0"},
+    }
+    payload = {
+        "pilot_package_report": pilot_package,
+        "dynamics_model_shootout_report": shootout,
+        "same_case_planner_replay_report": replay,
+        "dynamics_model_registry_report": registry,
+        "rollback_evidence": {"status": "pass", "current_registry_key": "route_promotion_graph:v0", "rollback_target_registry_key": "route_promotion_graph:v0"},
+    }
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+    monkeypatch.setattr(tools, "get_territory_world_model_service", lambda: svc)
+
+    route_resp = asyncio.run(routes.twm_dynamics_promotion_evidence_bundle(_fake_request(
+        "POST",
+        json.dumps(payload).encode("utf-8"),
+        path_params={"id": state_id},
+    )))
+    route_payload = json.loads(route_resp.body)
+    assert route_resp.status_code == 200
+    assert route_payload["schema"] == "territory_world_model.dynamics_promotion_evidence_bundle.v1"
+    assert route_payload["promotion_decision"]["max_recommendation"] == "promotion_candidate_review"
+
+    tool_payload = json.loads(tools.twm_dynamics_promotion_evidence_bundle(
+        state_id,
+        json.dumps(payload),
+    ))
+    assert tool_payload["schema"] == "territory_world_model.dynamics_promotion_evidence_bundle.v1"
+    assert tool_payload["evidence_summary"]["fov_tail_case_count"] == 1
+
+
+def test_twm_dynamics_reliability_drift_route_and_tool_return_report(monkeypatch):
+    from data_agent.toolsets import territory_world_model_tools as tools
+
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    previous_bundle = {
+        "schema": "territory_world_model.dynamics_promotion_evidence_bundle.v1",
+        "selected_candidate": {"candidate_id": "route-v1"},
+        "evidence_summary": {"package_id": "route-drift-package", "dataset_snapshot_hash": "route-hash", "fov_tail_case_count": 0},
+        "replay_metrics": {"false_allow_rate": 0.0, "false_block_rate": 0.01, "ranking_lift": 0.06, "planner_regret": {"regret_reduction_vs_baseline": 0.08}},
+        "same_case_loss_cases": [],
+        "fov_tail_cases": [],
+        "evidence_gates": {"rollback": {"status": "pass"}},
+    }
+    candidate_bundle = {
+        "schema": "territory_world_model.dynamics_promotion_evidence_bundle.v1",
+        "selected_candidate": {"candidate_id": "route-v2"},
+        "evidence_summary": {"package_id": "route-drift-package", "dataset_snapshot_hash": "route-hash", "fov_tail_case_count": 1},
+        "replay_metrics": {"false_allow_rate": 0.02, "false_block_rate": 0.01, "ranking_lift": 0.05, "planner_regret": {"regret_reduction_vs_baseline": 0.07}},
+        "same_case_loss_cases": [{"case_id": "route-loss", "loss_type": "false_allow", "risk_level": "high"}],
+        "fov_tail_cases": [{"example_id": "route-tail", "risk_level": "high"}],
+        "evidence_gates": {"rollback": {"status": "pass"}},
+    }
+    payload = {
+        "previous_promotion_evidence_bundle": previous_bundle,
+        "candidate_promotion_evidence_bundle": candidate_bundle,
+        "thresholds": {"max_false_allow_rate_delta": 0.0, "max_fov_tail_case_delta": 0, "max_high_risk_loss_case_delta": 0},
+    }
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+    monkeypatch.setattr(tools, "get_territory_world_model_service", lambda: svc)
+
+    route_resp = asyncio.run(routes.twm_dynamics_reliability_drift_report(_fake_request(
+        "POST",
+        json.dumps(payload).encode("utf-8"),
+        path_params={"id": state_id},
+    )))
+    route_payload = json.loads(route_resp.body)
+    assert route_resp.status_code == 200
+    assert route_payload["schema"] == "territory_world_model.dynamics_reliability_drift_report.v1"
+    assert route_payload["status"] == "blocked"
+
+    tool_payload = json.loads(tools.twm_dynamics_reliability_drift_report(
+        state_id,
+        json.dumps(payload),
+    ))
+    assert tool_payload["schema"] == "territory_world_model.dynamics_reliability_drift_report.v1"
+    assert "action_mask_false_allow_regression" in tool_payload["promotion_decision"]["missing"]
+
+
+def test_twm_dynamics_regression_suite_manifest_route_and_tool_return_report(monkeypatch):
+    from data_agent.toolsets import territory_world_model_tools as tools
+
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    promotion_bundle = {
+        "schema": "territory_world_model.dynamics_promotion_evidence_bundle.v1",
+        "selected_candidate": {"candidate_id": "route-suite-v2"},
+        "evidence_summary": {"package_id": "route-suite-package", "dataset_snapshot_hash": "route-suite-hash"},
+        "same_case_loss_cases": [
+            {"case_id": "route-loss-a", "loss_type": "false_allow", "risk_level": "high", "region_code": "county-a"},
+        ],
+        "fov_tail_cases": [
+            {"example_id": "route-tail-a", "factor": "evidence_completeness", "risk_level": "critical", "partition_value": "missing_evidence"},
+        ],
+    }
+    drift_report = {
+        "schema": "territory_world_model.dynamics_reliability_drift_report.v1",
+        "status": "blocked",
+        "comparison_binding": {"package_id": "route-suite-package", "dataset_snapshot_hash": "route-suite-hash"},
+        "regression_cases": [
+            {"case_id": "route-loss-a", "source": "same_case_loss_cases", "loss_type": "false_allow", "risk_level": "high"},
+            {"case_id": "route-tail-b", "source": "fov_tail_cases", "loss_type": "region", "risk_level": "critical"},
+        ],
+    }
+    payload = {
+        "suite_id": "route-suite-manifest",
+        "promotion_evidence_bundle": promotion_bundle,
+        "dynamics_reliability_drift_report": drift_report,
+        "regression_cases": [
+            {
+                "case_id": "route-manual-frontier",
+                "source": "manual_regression_case",
+                "loss_type": "false_allow",
+                "risk_level": "high",
+                "region_code": "county-c",
+                "target_decision": {"allowed": False},
+                "candidate_decision": {"allowed": True},
+            }
+        ],
+    }
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+    monkeypatch.setattr(tools, "get_territory_world_model_service", lambda: svc)
+
+    route_resp = asyncio.run(routes.twm_dynamics_regression_suite_manifest(_fake_request(
+        "POST",
+        json.dumps(payload).encode("utf-8"),
+        path_params={"id": state_id},
+    )))
+    route_payload = json.loads(route_resp.body)
+    assert route_resp.status_code == 200
+    assert route_payload["schema"] == "territory_world_model.dynamics_regression_suite_manifest.v1"
+    assert route_payload["suite_id"] == "route-suite-manifest"
+    assert route_payload["case_count"] == 4
+    assert route_payload["case_type_counts"]["fov_tail"] == 2
+
+    tool_payload = json.loads(tools.twm_dynamics_regression_suite_manifest(
+        state_id,
+        json.dumps(payload),
+    ))
+    assert tool_payload["schema"] == "territory_world_model.dynamics_regression_suite_manifest.v1"
+    assert tool_payload["risk_summary"]["high_or_critical_count"] == 4
+    assert tool_payload["replay_suite"]["required_for"]["dynamics_model_shootout_report"] is True
+
+
+def test_twm_dynamics_geospatial_hard_negative_mining_route_and_tool_return_report(monkeypatch):
+    from data_agent.toolsets import territory_world_model_tools as tools
+
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    payload = {
+        "dynamics_regression_suite_manifest": {
+            "schema": "territory_world_model.dynamics_regression_suite_manifest.v1",
+            "status": "active_review_suite",
+            "suite_id": "route-hard-negative-suite",
+            "package_binding": {"status": "pass", "package_id": "route-hard-negative-package", "dataset_snapshot_hash": "route-hard-negative-hash"},
+            "cases": [
+                {
+                    "case_id": "route-hn-a",
+                    "case_type": "manual_regression",
+                    "loss_type": "false_allow",
+                    "risk_level": "critical",
+                    "source_lineage": {"region_code": "county-a", "evidence_gap": "missing_evidence", "action_type": "expand"},
+                },
+                {
+                    "case_id": "route-hn-b",
+                    "case_type": "fov_tail",
+                    "loss_type": "region",
+                    "risk_level": "medium",
+                    "source_lineage": {"region_code": "county-b", "evidence_gap": "complete", "action_type": "inspect"},
+                },
+            ],
+        }
+    }
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+    monkeypatch.setattr(tools, "get_territory_world_model_service", lambda: svc)
+
+    route_resp = asyncio.run(routes.twm_dynamics_geospatial_hard_negative_mining_report(_fake_request(
+        "POST",
+        json.dumps(payload).encode("utf-8"),
+        path_params={"id": state_id},
+    )))
+    route_payload = json.loads(route_resp.body)
+    assert route_resp.status_code == 200
+    assert route_payload["schema"] == "territory_world_model.dynamics_geospatial_hard_negative_mining_report.v1"
+    assert route_payload["hard_negative_clusters"][0]["axis"] == "region_code"
+
+    tool_payload = json.loads(tools.twm_dynamics_geospatial_hard_negative_mining_report(
+        state_id,
+        json.dumps(payload),
+    ))
+    assert tool_payload["schema"] == "territory_world_model.dynamics_geospatial_hard_negative_mining_report.v1"
+    assert tool_payload["sampling_plan"]["case_weights"]["route-hn-a"] > tool_payload["sampling_plan"]["case_weights"]["route-hn-b"]
+
+
+def test_twm_dynamics_canary_failure_memory_protocol_route_and_tool_return_report(monkeypatch):
+    from data_agent.toolsets import territory_world_model_tools as tools
+
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    payload = {
+        "dynamics_regression_suite_manifest": {
+            "schema": "territory_world_model.dynamics_regression_suite_manifest.v1",
+            "status": "active_review_suite",
+            "suite_id": "route-canary-suite",
+            "package_binding": {"status": "pass", "package_id": "route-canary-package", "dataset_snapshot_hash": "route-canary-hash"},
+            "cases": [
+                {
+                    "case_id": "route-canary-a",
+                    "case_type": "manual_regression",
+                    "loss_type": "false_allow",
+                    "risk_level": "critical",
+                    "source_lineage": {"region_code": "county-a", "rule_version": "rule-v3", "evidence_gap": "missing_evidence", "action_type": "expand"},
+                }
+            ],
+        },
+        "canary_scope": {"region_codes": ["county-a"], "max_case_count": 10},
+        "lakehouse_namespace": "route_failure_memory",
+    }
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+    monkeypatch.setattr(tools, "get_territory_world_model_service", lambda: svc)
+
+    route_resp = asyncio.run(routes.twm_dynamics_canary_failure_memory_protocol(_fake_request(
+        "POST",
+        json.dumps(payload).encode("utf-8"),
+        path_params={"id": state_id},
+    )))
+    route_payload = json.loads(route_resp.body)
+    assert route_resp.status_code == 200
+    assert route_payload["schema"] == "territory_world_model.dynamics_canary_failure_memory_protocol.v1"
+    assert route_payload["storage_plan"]["lakehouse_tables"]["regression_suite_cases"] == "route_failure_memory.regression_suite_cases"
+
+    tool_payload = json.loads(tools.twm_dynamics_canary_failure_memory_protocol(
+        state_id,
+        json.dumps(payload),
+    ))
+    assert tool_payload["schema"] == "territory_world_model.dynamics_canary_failure_memory_protocol.v1"
+    assert tool_payload["canary_scope"]["region_codes"] == ["county-a"]
+
+
+def test_twm_dynamics_reviewer_feedback_ingestion_route_and_tool_return_report(monkeypatch):
+    from data_agent.toolsets import territory_world_model_tools as tools
+
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    payload = {
+        "dynamics_regression_suite_manifest": {
+            "schema": "territory_world_model.dynamics_regression_suite_manifest.v1",
+            "status": "active_review_suite",
+            "suite_id": "route-feedback-suite",
+            "package_binding": {"status": "pass", "package_id": "route-feedback-package", "dataset_snapshot_hash": "route-feedback-hash"},
+            "cases": [],
+        },
+        "reviewer_feedback": [
+            {
+                "feedback_id": "route-feedback-a",
+                "review_status": "audited",
+                "reviewer_id": "reviewer-route",
+                "region_code": "county-a",
+                "action_type": "expand",
+                "model_decision": {"allowed": True},
+                "corrected_decision": {"allowed": False},
+                "risk_level": "high",
+            }
+        ],
+    }
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+    monkeypatch.setattr(tools, "get_territory_world_model_service", lambda: svc)
+
+    route_resp = asyncio.run(routes.twm_dynamics_reviewer_feedback_ingestion_report(_fake_request(
+        "POST",
+        json.dumps(payload).encode("utf-8"),
+        path_params={"id": state_id},
+    )))
+    route_payload = json.loads(route_resp.body)
+    assert route_resp.status_code == 200
+    assert route_payload["schema"] == "territory_world_model.dynamics_reviewer_feedback_ingestion_report.v1"
+    assert route_payload["proposed_regression_cases"][0]["case_id"] == "route-feedback-a"
+
+    tool_payload = json.loads(tools.twm_dynamics_reviewer_feedback_ingestion_report(
+        state_id,
+        json.dumps(payload),
+    ))
+    assert tool_payload["schema"] == "territory_world_model.dynamics_reviewer_feedback_ingestion_report.v1"
+    assert tool_payload["activation_policy"]["automatic_suite_update_allowed"] is False
+
+
+def test_twm_dynamics_hard_negative_replay_scheduler_route_and_tool_return_report(monkeypatch):
+    from data_agent.toolsets import territory_world_model_tools as tools
+
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    manifest = {
+        "schema": "territory_world_model.dynamics_regression_suite_manifest.v1",
+        "status": "active_review_suite",
+        "suite_id": "route-scheduler-suite",
+        "package_binding": {
+            "status": "pass",
+            "package_id": "route-scheduler-package",
+            "dataset_snapshot_hash": "route-scheduler-hash",
+        },
+        "cases": [
+            {
+                "case_id": "route-scheduler-a",
+                "case_type": "manual_regression",
+                "loss_type": "false_allow",
+                "risk_level": "critical",
+                "source_lineage": {
+                    "region_code": "county-a",
+                    "rule_version": "rule-v3",
+                    "evidence_gap": "missing_evidence",
+                    "action_type": "expand",
+                },
+            }
+        ],
+    }
+    mining = svc.dynamics_geospatial_hard_negative_mining_report(
+        state_id,
+        {"dynamics_regression_suite_manifest": manifest},
+    )
+    protocol = svc.dynamics_canary_failure_memory_protocol(
+        state_id,
+        {
+            "dynamics_regression_suite_manifest": manifest,
+            "dynamics_geospatial_hard_negative_mining_report": mining,
+            "canary_scope": {"region_codes": ["county-a"], "max_case_count": 3},
+        },
+    )
+    payload = {
+        "dynamics_geospatial_hard_negative_mining_report": mining,
+        "dynamics_canary_failure_memory_protocol": protocol,
+        "max_replay_cases": 1,
+    }
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+    monkeypatch.setattr(tools, "get_territory_world_model_service", lambda: svc)
+
+    route_resp = asyncio.run(routes.twm_dynamics_hard_negative_replay_scheduler_report(_fake_request(
+        "POST",
+        json.dumps(payload).encode("utf-8"),
+        path_params={"id": state_id},
+    )))
+    route_payload = json.loads(route_resp.body)
+    assert route_resp.status_code == 200
+    assert route_payload["schema"] == "territory_world_model.dynamics_hard_negative_replay_scheduler_report.v1"
+    assert route_payload["schedule_binding"]["failure_memory_version_id"] == protocol["failure_memory_version"]["version_id"]
+
+    tool_payload = json.loads(tools.twm_dynamics_hard_negative_replay_scheduler_report(
+        state_id,
+        json.dumps(payload),
+    ))
+    assert tool_payload["schema"] == "territory_world_model.dynamics_hard_negative_replay_scheduler_report.v1"
+    assert tool_payload["schedule_summary"]["scheduled_case_count"] == 1
+
+
+def test_twm_dynamics_failure_memory_materialization_route_and_tool_write_artifacts(tmp_path, monkeypatch):
+    from data_agent.toolsets import territory_world_model_tools as tools
+
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    manifest = {
+        "schema": "territory_world_model.dynamics_regression_suite_manifest.v1",
+        "status": "active_review_suite",
+        "suite_id": "route-materialize-suite",
+        "package_binding": {
+            "status": "pass",
+            "package_id": "route-materialize-package",
+            "dataset_snapshot_hash": "route-materialize-hash",
+        },
+        "cases": [
+            {
+                "case_id": "route-materialize-a",
+                "case_type": "manual_regression",
+                "loss_type": "false_allow",
+                "risk_level": "critical",
+                "source_lineage": {
+                    "region_code": "county-a",
+                    "rule_version": "rule-v3",
+                    "evidence_gap": "missing_evidence",
+                    "action_type": "expand",
+                },
+            }
+        ],
+    }
+    mining = svc.dynamics_geospatial_hard_negative_mining_report(
+        state_id,
+        {"dynamics_regression_suite_manifest": manifest},
+    )
+    protocol = svc.dynamics_canary_failure_memory_protocol(
+        state_id,
+        {
+            "dynamics_regression_suite_manifest": manifest,
+            "dynamics_geospatial_hard_negative_mining_report": mining,
+            "canary_scope": {"region_codes": ["county-a"], "max_case_count": 3},
+            "lakehouse_namespace": "route_failure_memory",
+        },
+    )
+    schedule = svc.dynamics_hard_negative_replay_scheduler_report(
+        state_id,
+        {
+            "dynamics_geospatial_hard_negative_mining_report": mining,
+            "dynamics_canary_failure_memory_protocol": protocol,
+            "max_replay_cases": 1,
+        },
+    )
+    payload = {
+        "dynamics_regression_suite_manifest": manifest,
+        "dynamics_geospatial_hard_negative_mining_report": mining,
+        "dynamics_canary_failure_memory_protocol": protocol,
+        "dynamics_hard_negative_replay_scheduler_report": schedule,
+        "lakehouse_uri": tmp_path.joinpath("route").as_uri(),
+        "namespace": "route_failure_memory",
+    }
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+    monkeypatch.setattr(tools, "get_territory_world_model_service", lambda: svc)
+
+    route_resp = asyncio.run(routes.twm_dynamics_failure_memory_materialization(_fake_request(
+        "POST",
+        json.dumps(payload).encode("utf-8"),
+        path_params={"id": state_id},
+    )))
+    route_payload = json.loads(route_resp.body)
+    assert route_resp.status_code == 200
+    assert route_payload["schema"] == "territory_world_model.dynamics_failure_memory_materialization.v1"
+    assert route_payload["artifacts"]["replay_schedules"]["record_count"] == 1
+
+    tool_payload = json.loads(tools.twm_dynamics_failure_memory_materialization(
+        state_id,
+        json.dumps(payload),
+    ))
+    assert tool_payload["schema"] == "territory_world_model.dynamics_failure_memory_materialization.v1"
+    assert tool_payload["failure_memory_binding"]["failure_memory_version_id"] == protocol["failure_memory_version"]["version_id"]
+
+
+def test_twm_dynamics_accepted_feedback_suite_update_route_and_tool_return_report(monkeypatch):
+    from data_agent.toolsets import territory_world_model_tools as tools
+
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    manifest = {
+        "schema": "territory_world_model.dynamics_regression_suite_manifest.v1",
+        "status": "active_review_suite",
+        "suite_id": "route-accepted-suite-v1",
+        "package_binding": {
+            "status": "pass",
+            "package_id": "route-accepted-package",
+            "dataset_snapshot_hash": "route-accepted-hash",
+        },
+        "cases": [],
+    }
+    feedback_report = svc.dynamics_reviewer_feedback_ingestion_report(
+        state_id,
+        {
+            "dynamics_regression_suite_manifest": manifest,
+            "reviewer_feedback": [
+                {
+                    "feedback_id": "route-accepted-feedback",
+                    "review_status": "audited",
+                    "reviewer_id": "route-reviewer",
+                    "review_task_id": "route-task",
+                    "region_code": "county-a",
+                    "rule_version": "rule-v5",
+                    "evidence_ids": ["route-evidence"],
+                    "action_type": "inspect",
+                    "model_decision": {"allowed": True},
+                    "corrected_decision": {"allowed": False},
+                    "risk_level": "high",
+                }
+            ],
+        },
+    )
+    payload = {
+        "dynamics_regression_suite_manifest": manifest,
+        "dynamics_reviewer_feedback_ingestion_report": feedback_report,
+        "accepted_proposal_ids": ["route-accepted-feedback"],
+        "acceptance_review": {"accepted_by": "route-lead", "approval_ticket": "route-ticket"},
+    }
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+    monkeypatch.setattr(tools, "get_territory_world_model_service", lambda: svc)
+
+    route_resp = asyncio.run(routes.twm_dynamics_accepted_feedback_suite_update_report(_fake_request(
+        "POST",
+        json.dumps(payload).encode("utf-8"),
+        path_params={"id": state_id},
+    )))
+    route_payload = json.loads(route_resp.body)
+    assert route_resp.status_code == 200
+    assert route_payload["schema"] == "territory_world_model.dynamics_accepted_feedback_suite_update_report.v1"
+    assert route_payload["acceptance_gate"]["accepted_case_count"] == 1
+
+    tool_payload = json.loads(tools.twm_dynamics_accepted_feedback_suite_update_report(
+        state_id,
+        json.dumps(payload),
+    ))
+    assert tool_payload["schema"] == "territory_world_model.dynamics_accepted_feedback_suite_update_report.v1"
+    assert tool_payload["updated_suite_manifest"]["cases"][0]["source_lineage"]["accepted_by"] == "route-lead"
+
+
+def test_twm_dynamics_canary_replay_execution_route_and_tool_return_report(monkeypatch):
+    from data_agent.toolsets import territory_world_model_tools as tools
+
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    manifest = {
+        "schema": "territory_world_model.dynamics_regression_suite_manifest.v1",
+        "status": "active_review_suite",
+        "suite_id": "route-canary-replay-suite",
+        "package_binding": {
+            "status": "pass",
+            "package_id": "route-canary-replay-package",
+            "dataset_snapshot_hash": "route-canary-replay-hash",
+        },
+        "cases": [
+            {
+                "case_id": "route-canary-replay-a",
+                "case_type": "manual_regression",
+                "loss_type": "false_allow",
+                "risk_level": "high",
+                "source_lineage": {
+                    "region_code": "county-a",
+                    "rule_version": "rule-v3",
+                    "evidence_gap": "missing_evidence",
+                    "action_type": "expand",
+                },
+            }
+        ],
+    }
+    mining = svc.dynamics_geospatial_hard_negative_mining_report(
+        state_id,
+        {"dynamics_regression_suite_manifest": manifest},
+    )
+    protocol = svc.dynamics_canary_failure_memory_protocol(
+        state_id,
+        {
+            "dynamics_regression_suite_manifest": manifest,
+            "dynamics_geospatial_hard_negative_mining_report": mining,
+            "canary_scope": {"region_codes": ["county-a"], "max_case_count": 1},
+        },
+    )
+    schedule = svc.dynamics_hard_negative_replay_scheduler_report(
+        state_id,
+        {
+            "dynamics_geospatial_hard_negative_mining_report": mining,
+            "dynamics_canary_failure_memory_protocol": protocol,
+            "max_replay_cases": 1,
+        },
+    )
+    payload = {
+        "dynamics_canary_failure_memory_protocol": protocol,
+        "dynamics_hard_negative_replay_scheduler_report": schedule,
+        "candidate_bundle": {
+            "candidate_id": "route-candidate",
+            "rollback_evidence": {"rollback_registry_key": "route-registry-baseline"},
+        },
+        "replay_results": [
+            {
+                "case_id": "route-canary-replay-a",
+                "candidate_decision": {"allowed": False},
+                "target_decision": {"allowed": False},
+            }
+        ],
+    }
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+    monkeypatch.setattr(tools, "get_territory_world_model_service", lambda: svc)
+
+    route_resp = asyncio.run(routes.twm_dynamics_canary_replay_execution_report(_fake_request(
+        "POST",
+        json.dumps(payload).encode("utf-8"),
+        path_params={"id": state_id},
+    )))
+    route_payload = json.loads(route_resp.body)
+    assert route_resp.status_code == 200
+    assert route_payload["schema"] == "territory_world_model.dynamics_canary_replay_execution_report.v1"
+    assert route_payload["promotion_gate"]["status"] == "controlled_pilot_review"
+
+    tool_payload = json.loads(tools.twm_dynamics_canary_replay_execution_report(
+        state_id,
+        json.dumps(payload),
+    ))
+    assert tool_payload["schema"] == "territory_world_model.dynamics_canary_replay_execution_report.v1"
+    assert tool_payload["execution_binding"]["failure_memory_version_id"] == protocol["failure_memory_version"]["version_id"]
+
+
+def test_twm_dynamics_failure_memory_registration_plan_route_and_tool_return_report(tmp_path, monkeypatch):
+    from data_agent.toolsets import territory_world_model_tools as tools
+
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+    manifest = {
+        "schema": "territory_world_model.dynamics_regression_suite_manifest.v1",
+        "status": "active_review_suite",
+        "suite_id": "route-registration-suite",
+        "package_binding": {
+            "status": "pass",
+            "package_id": "route-registration-package",
+            "dataset_snapshot_hash": "route-registration-hash",
+        },
+        "cases": [
+            {
+                "case_id": "route-registration-a",
+                "case_type": "manual_regression",
+                "loss_type": "false_allow",
+                "risk_level": "high",
+                "source_lineage": {
+                    "region_code": "county-a",
+                    "rule_version": "rule-v3",
+                    "evidence_gap": "missing_evidence",
+                    "action_type": "expand",
+                },
+            }
+        ],
+    }
+    mining = svc.dynamics_geospatial_hard_negative_mining_report(
+        state_id,
+        {"dynamics_regression_suite_manifest": manifest},
+    )
+    protocol = svc.dynamics_canary_failure_memory_protocol(
+        state_id,
+        {
+            "dynamics_regression_suite_manifest": manifest,
+            "dynamics_geospatial_hard_negative_mining_report": mining,
+            "canary_scope": {"region_codes": ["county-a"], "max_case_count": 1},
+        },
+    )
+    schedule = svc.dynamics_hard_negative_replay_scheduler_report(
+        state_id,
+        {
+            "dynamics_geospatial_hard_negative_mining_report": mining,
+            "dynamics_canary_failure_memory_protocol": protocol,
+            "max_replay_cases": 1,
+        },
+    )
+    materialization = svc.dynamics_failure_memory_materialization(
+        state_id,
+        {
+            "dynamics_regression_suite_manifest": manifest,
+            "dynamics_geospatial_hard_negative_mining_report": mining,
+            "dynamics_canary_failure_memory_protocol": protocol,
+            "dynamics_hard_negative_replay_scheduler_report": schedule,
+            "lakehouse_uri": tmp_path.as_uri(),
+            "namespace": "route_registration_failure_memory",
+        },
+    )
+    canary = svc.dynamics_canary_replay_execution_report(
+        state_id,
+        {
+            "dynamics_canary_failure_memory_protocol": protocol,
+            "dynamics_hard_negative_replay_scheduler_report": schedule,
+            "candidate_bundle": {
+                "candidate_id": "route-registration-candidate",
+                "rollback_evidence": {"rollback_registry_key": "route-registration-baseline"},
+            },
+            "replay_results": [
+                {
+                    "case_id": "route-registration-a",
+                    "candidate_decision": {"allowed": False},
+                    "target_decision": {"allowed": False},
+                }
+            ],
+        },
+    )
+    payload = {
+        "dynamics_failure_memory_materialization": materialization,
+        "dynamics_canary_replay_execution_report": canary,
+        "catalog": "prod",
+        "postgis_schema": "route_registration_failure_memory",
+    }
+    monkeypatch.setattr(routes, "get_territory_world_model_service", lambda: svc)
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda _request: SimpleNamespace(identifier="tester", metadata={"role": "analyst"}))
+    monkeypatch.setattr(tools, "get_territory_world_model_service", lambda: svc)
+
+    route_resp = asyncio.run(routes.twm_dynamics_failure_memory_registration_plan(_fake_request(
+        "POST",
+        json.dumps(payload).encode("utf-8"),
+        path_params={"id": state_id},
+    )))
+    route_payload = json.loads(route_resp.body)
+    assert route_resp.status_code == 200
+    assert route_payload["schema"] == "territory_world_model.dynamics_failure_memory_registration_plan.v1"
+    assert route_payload["registration_binding"]["failure_memory_version_id"] == protocol["failure_memory_version"]["version_id"]
+
+    tool_payload = json.loads(tools.twm_dynamics_failure_memory_registration_plan(
+        state_id,
+        json.dumps(payload),
+    ))
+    assert tool_payload["schema"] == "territory_world_model.dynamics_failure_memory_registration_plan.v1"
+    assert tool_payload["registry_commit_preconditions"]["automatic_model_activation_allowed"] is False
 
 
 def test_twm_state_snapshot_lakehouse_manifest_route_returns_storage_contract(monkeypatch):
