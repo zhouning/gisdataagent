@@ -253,6 +253,11 @@ test.describe('TWM prototype demo workflow', () => {
     await expect(page.locator('.twm-data-foundation-panel')).toContainText('自动审批通过/不通过');
     await expect(page.locator('.twm-data-foundation-panel')).toContainText('来源报告');
     await expect(page.locator('.twm-data-foundation-panel')).toContainText('twm_data_foundation_health.md');
+    await expect(page.locator('.twm-pilot-readiness-panel')).toContainText('试点就绪矩阵');
+    await expect(page.locator('.twm-pilot-readiness-panel')).toContainText('生产门槛');
+    await expect(page.locator('.twm-rule-fixture-panel')).toContainText('规则样例覆盖');
+    await expect(page.locator('.twm-rule-fixture-panel')).toContainText('TWM-FARM-001');
+    await expect(page.locator('.twm-rule-fixture-panel')).toContainText('boundary_case');
     await page.locator('.twm-data-detail-section', { hasText: '完整数据清单' }).scrollIntoViewIfNeeded();
     await page.screenshot({
       path: path.join(SCREENSHOT_DIR, 'twm_data_evidence.png'),

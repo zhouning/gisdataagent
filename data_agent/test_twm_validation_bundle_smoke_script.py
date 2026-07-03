@@ -227,6 +227,39 @@ def test_twm_validation_bundle_smoke_script_can_normalize_raw_production_history
     assert payload["production_observed_history_preflight"]["production_observed_history"] == str(normalized_path)
 
 
+def test_validation_bundle_includes_demo_readiness_and_rule_fixture_matrices(tmp_path):
+    module = _load_validation_bundle_module()
+    output_path = tmp_path / "twm_validation_bundle.json"
+    markdown_path = tmp_path / "twm_validation_bundle.md"
+
+    subprocess.run(
+        [
+            "bash",
+            str(SCRIPT),
+        ],
+        cwd=Path("/Users/zhouning/gisdataagent"),
+        env={
+            **os.environ.copy(),
+            "TWM_VALIDATION_OUTPUT": str(output_path),
+            "TWM_VALIDATION_MARKDOWN_OUTPUT": str(markdown_path),
+        },
+        check=True,
+    )
+
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    markdown = markdown_path.read_text(encoding="utf-8")
+
+    assert payload["pilot_readiness_matrix"]["schema"] == "territory_world_model.pilot_readiness_matrix.v1"
+    assert payload["pilot_readiness_matrix"]["overall_status"] == "blocked"
+    assert payload["rule_fixture_coverage_matrix"]["schema"] == "territory_world_model.rule_fixture_coverage_matrix.v1"
+    assert payload["rule_fixture_coverage_matrix"]["overall_status"] == "action_required"
+    assert payload["rule_fixture_coverage_matrix"]["summary"]["rules_with_boundary_gap"] == 4
+    assert "## Pilot Readiness Matrix" in markdown
+    assert "## Rule Fixture Coverage Matrix" in markdown
+    assert "`production_gate`" in markdown
+    assert "`TWM-FARM-001`" in markdown
+
+
 def test_paper58_external_benchmark_missing_is_non_blocking():
     module = _load_validation_bundle_module()
 

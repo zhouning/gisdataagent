@@ -29,6 +29,8 @@ type RunKey =
   | 'baselineCompare'
   | 'dataFoundation'
   | 'roadmapStatus'
+  | 'pilotReadiness'
+  | 'ruleFixtureCoverage'
   | 'layerDetail'
   | 'lineage'
   | 'crsRemediation'
@@ -381,6 +383,47 @@ interface TwmRoadmapStatusReport {
     priority?: string;
     action: string;
     roadmap_phase?: string;
+  }>;
+}
+
+interface TwmPilotReadinessMatrix {
+  schema?: string;
+  generated_at?: string;
+  overall_status?: string;
+  dimensions?: Array<{
+    id: string;
+    label?: string;
+    status?: string;
+    score?: number;
+    evidence?: string[];
+    missing?: string[];
+    test_data_work?: string[];
+  }>;
+  claim_boundary?: Record<string, string>;
+  strict_policy?: Record<string, boolean>;
+  test_data_plan?: { status?: string; items?: Array<{ priority?: string; dimension?: string; action?: string; why?: string }> };
+}
+
+interface TwmRuleFixtureCoverageMatrix {
+  schema?: string;
+  generated_at?: string;
+  overall_status?: string;
+  summary?: {
+    hard_rule_count?: number;
+    rules_with_boundary_gap?: number;
+    production_ready_fixture_count?: number;
+    rule_eval_row_count?: number;
+    scenario_constraint_row_count?: number;
+  };
+  coverage_policy?: Record<string, any>;
+  rules?: Array<{
+    rule_code: string;
+    rule_name_zh?: string;
+    status?: string;
+    missing_categories?: string[];
+    production_ready_fixture_count?: number;
+    categories?: Record<string, { covered?: boolean; fixture_count?: number }>;
+    test_data_work?: string[];
   }>;
 }
 
@@ -1551,6 +1594,8 @@ export default function TerritoryWorldModelTab() {
   const [dataMapPreview, setDataMapPreview] = useState<TwmDataFoundationMapPreview | null>(null);
   const [visibleDataMapLayerNames, setVisibleDataMapLayerNames] = useState<string[]>([]);
   const [roadmapStatus, setRoadmapStatus] = useState<TwmRoadmapStatusReport | null>(null);
+  const [pilotReadinessMatrix, setPilotReadinessMatrix] = useState<TwmPilotReadinessMatrix | null>(null);
+  const [ruleFixtureCoverageMatrix, setRuleFixtureCoverageMatrix] = useState<TwmRuleFixtureCoverageMatrix | null>(null);
   const [selectedLayerDetail, setSelectedLayerDetail] = useState<TwmDataFoundationLayerDetail | null>(null);
   const [selectedLayerDetailPath, setSelectedLayerDetailPath] = useState('');
   const [dataLineage, setDataLineage] = useState<TwmDataFoundationLineageReport | null>(null);
@@ -1604,6 +1649,8 @@ export default function TerritoryWorldModelTab() {
   );
   const selectedSpatialLayerCatalog = selectedDataPackage?.spatial_layer_catalog || [];
   const roadmapPhases = roadmapStatus?.phases || [];
+  const pilotReadinessDimensions = pilotReadinessMatrix?.dimensions || [];
+  const ruleFixtureRows = ruleFixtureCoverageMatrix?.rules || [];
   const roadmapCompletion = roadmapPhases.length
     ? roadmapPhases.reduce((sum, phase) => sum + clampRatio(phase.completion_ratio, 0), 0) / roadmapPhases.length
     : 0;
@@ -1742,6 +1789,22 @@ export default function TerritoryWorldModelTab() {
     });
   };
 
+  const loadPilotReadinessMatrix = async () => {
+    await withRun('pilotReadiness', async () => {
+      const data = await api('/api/twm/pilot-readiness-matrix');
+      if (data?.dimensions) setPilotReadinessMatrix(data);
+      return data;
+    });
+  };
+
+  const loadRuleFixtureCoverageMatrix = async () => {
+    await withRun('ruleFixtureCoverage', async () => {
+      const data = await api('/api/twm/rule-fixture-coverage-matrix');
+      if (data?.rules) setRuleFixtureCoverageMatrix(data);
+      return data;
+    });
+  };
+
   const loadProjects = async () => {
     await withRun('projects', async () => {
       const data = await api('/api/twm/projects');
@@ -1802,6 +1865,8 @@ export default function TerritoryWorldModelTab() {
     await loadBaselineTemplates();
     await loadDataFoundation();
     await loadRoadmapStatus();
+    await loadPilotReadinessMatrix();
+    await loadRuleFixtureCoverageMatrix();
     await loadProjects();
   };
 
@@ -3560,6 +3625,92 @@ export default function TerritoryWorldModelTab() {
             <p>{displayText(dataFoundation.mentor_answer?.research_judgment)}</p>
           </div>
         )}
+      </section>
+
+      <section className="twm-section twm-pilot-readiness-panel">
+        <div className="twm-section-head">
+          <CheckCircle2 size={14} />
+          <h4>试点就绪矩阵</h4>
+          <span className={`status-badge ${statusClass(pilotReadinessMatrix?.overall_status)}`}>
+            {running === 'pilotReadiness' ? '加载中' : statusText(pilotReadinessMatrix?.overall_status, '待加载')}
+          </span>
+        </div>
+        <div className="twm-data-kpis">
+          <div>
+            <span>维度</span>
+            <strong>{fmt(pilotReadinessDimensions.length, 0)}</strong>
+          </div>
+          <div>
+            <span>生产门槛</span>
+            <strong>{statusText(pilotReadinessDimensions.find(item => item.id === 'production_gate')?.status, '待加载')}</strong>
+          </div>
+          <div>
+            <span>合成替代生产</span>
+            <strong>{yesNo(pilotReadinessMatrix?.strict_policy?.synthetic_data_can_satisfy_production_gate)}</strong>
+          </div>
+          <div>
+            <span>测试数据计划</span>
+            <strong>{statusText(pilotReadinessMatrix?.test_data_plan?.status, '待加载')}</strong>
+          </div>
+        </div>
+        <div className="twm-data-fit-list">
+          {pilotReadinessDimensions.map(item => (
+            <article key={`pilot-readiness-${item.id}`}>
+              <div>
+                <strong>{item.id === 'production_gate' ? '生产门槛' : displayText(item.label || item.id)}</strong>
+                <span className={`status-badge ${statusClass(item.status)}`}>{statusText(item.status, '需复核')}</span>
+              </div>
+              <p>score {fmt(item.score, 2)} · {compactDisplayList((item.missing || []).slice(0, 3), '无缺口')}</p>
+              <div>
+                {(item.test_data_work || []).slice(0, 2).map(work => (
+                  <span key={`pilot-readiness-${item.id}-${work}`}>{displayText(work)}</span>
+                ))}
+              </div>
+            </article>
+          ))}
+          {!pilotReadinessDimensions.length && <div className="twm-empty">试点就绪矩阵尚未加载</div>}
+        </div>
+      </section>
+
+      <section className="twm-section twm-rule-fixture-panel">
+        <div className="twm-section-head">
+          <ShieldCheck size={14} />
+          <h4>规则样例覆盖</h4>
+          <span className={`status-badge ${statusClass(ruleFixtureCoverageMatrix?.overall_status)}`}>
+            {running === 'ruleFixtureCoverage' ? '加载中' : statusText(ruleFixtureCoverageMatrix?.overall_status, '待加载')}
+          </span>
+        </div>
+        <div className="twm-data-kpis">
+          <div>
+            <span>硬规则</span>
+            <strong>{fmt(ruleFixtureCoverageMatrix?.summary?.hard_rule_count, 0)}</strong>
+          </div>
+          <div>
+            <span>boundary_case 缺口</span>
+            <strong>{fmt(ruleFixtureCoverageMatrix?.summary?.rules_with_boundary_gap, 0)}</strong>
+          </div>
+          <div>
+            <span>生产样例</span>
+            <strong>{fmt(ruleFixtureCoverageMatrix?.summary?.production_ready_fixture_count, 0)}</strong>
+          </div>
+          <div>
+            <span>合成可验收</span>
+            <strong>{yesNo(ruleFixtureCoverageMatrix?.coverage_policy?.synthetic_fixture_can_satisfy_production_acceptance)}</strong>
+          </div>
+        </div>
+        <div className="twm-data-file-grid">
+          {ruleFixtureRows.map(rule => {
+            const categories = Object.entries(rule.categories || {});
+            return (
+              <div key={`rule-fixture-${rule.rule_code}`}>
+                <code>{rule.rule_code}</code>
+                <span>{displayText(rule.rule_name_zh || rule.status)} · 缺口 {compactDisplayList(rule.missing_categories, '无')}</span>
+                <span>{categories.map(([name, item]) => `${name}=${item.covered ? fmt(item.fixture_count, 0) : '缺'}`).join(' · ')}</span>
+              </div>
+            );
+          })}
+          {!ruleFixtureRows.length && <div className="twm-empty">规则样例覆盖矩阵尚未加载</div>}
+        </div>
       </section>
         </div>
       )}

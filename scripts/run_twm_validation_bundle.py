@@ -204,6 +204,8 @@ def run_validation_bundle(
         selected_plan_payload["scca_causal_evidence_report"] = scca_report
 
     paper58_external_benchmark = build_paper58_external_benchmark(paper58_benchmark_path)
+    pilot_readiness_matrix = svc.pilot_readiness_matrix_report()
+    rule_fixture_coverage_matrix = svc.rule_fixture_coverage_matrix_report()
 
     selected_bundle = svc.selected_plan_evaluation_bundle(state_id, selected_plan_payload)
     validation_report = selected_bundle.get("validation_report") or {}
@@ -266,6 +268,8 @@ def run_validation_bundle(
         "claim_ladder": summarize_claim_ladder(claim_ladder),
         "scca_summary": summarize_scca_report(scca_report, require_scca_pass=require_scca_pass),
         "paper58_external_benchmark": paper58_external_benchmark,
+        "pilot_readiness_matrix": pilot_readiness_matrix,
+        "rule_fixture_coverage_matrix": rule_fixture_coverage_matrix,
         "production_observed_history_normalization": production_normalization,
         "production_observed_history_preflight": production_preflight,
         "production_scale_profile_contract": production_scale_profile_contract(),
@@ -1732,6 +1736,8 @@ def render_validation_bundle_markdown(report: dict[str, Any]) -> str:
     claim = report.get("claim_ladder") or {}
     scca = report.get("scca_summary") or {}
     paper58 = report.get("paper58_external_benchmark") or build_paper58_external_benchmark(None)
+    pilot = report.get("pilot_readiness_matrix") or {}
+    fixture = report.get("rule_fixture_coverage_matrix") or {}
     production_normalization = summarize_production_observed_history_normalization(
         report.get("production_observed_history_normalization")
         or {
@@ -1835,46 +1841,82 @@ def render_validation_bundle_markdown(report: dict[str, Any]) -> str:
         f"- Area count: `{((paper58.get('metric_summary') or {}).get('area_count'))}`",
         f"- Boundary: {paper58.get('claim_boundary')}",
         "",
-        "## Production Observed-History Preflight",
+        "## Pilot Readiness Matrix",
         "",
-        f"- Preflight status: `{production.get('status')}`",
-        f"- Schema status: `{production_schema.get('status')}`",
-        f"- Production-ready rows: `{(production_schema.get('row_quality') or {}).get('production_candidate_row_count', 0)}`",
-        f"- Temporal validation status: `{production_temporal.get('status')}`",
-        f"- Train/holdout rows: `{production_temporal.get('train_row_count', 0)}` / `{production_temporal.get('holdout_row_count', 0)}`",
-        f"- Temporal missing gates: `{production_temporal.get('missing_temporal_gates', [])}`",
-        f"- Policy-history status: `{production_policy.get('status')}`",
-        f"- Policy allowed/blocked rows: `{production_policy.get('allowed_count', 0)}` / `{production_policy.get('blocked_count', 0)}`",
-        f"- Region-policy keys: `{production_policy.get('region_policy_key_count', 0)}`",
-        f"- Region-action-policy keys: `{production_policy.get('region_action_policy_key_count', 0)}`",
-        f"- Alignment status: `{production_alignment.get('status')}`",
-        f"- Alignment missing: `{production_alignment.get('missing', [])}`",
+        f"- Overall status: `{pilot.get('overall_status')}`",
+        f"- Production claim: `{((pilot.get('claim_boundary') or {}).get('production_claim'))}`",
+        f"- Synthetic can satisfy production gate: `{((pilot.get('strict_policy') or {}).get('synthetic_data_can_satisfy_production_gate'))}`",
         "",
-        "## Production Scale Readiness",
-        "",
-        f"- Scale status: `{scale.get('status')}`",
-        f"- Scale tier: `{scale.get('scale_tier')}`",
-        f"- Max layer rows: `{(scale.get('observed') or {}).get('max_layer_row_count', 0)}`",
-        f"- Total rows: `{(scale.get('observed') or {}).get('total_row_count', 0)}`",
-        f"- Layer count: `{(scale.get('observed') or {}).get('layer_count', 0)}`",
-        f"- Missing gates: `{scale.get('missing', [])}`",
-        "",
-        "## Production Readiness Gate",
-        "",
-        f"- Required: `{readiness.get('required')}`",
-        f"- Status: `{readiness.get('status')}`",
-        f"- Missing gates: `{readiness.get('missing', [])}`",
-        "",
-        "## Deployment Punch List",
-        "",
-        f"- Status: `{punch_list.get('status')}`",
-        f"- Required: `{punch_list.get('required')}`",
-        f"- Open actions: `{punch_list.get('open_action_count', 0)}`",
-        f"- Blocking actions: `{punch_list.get('blocking_action_count', 0)}`",
-        "",
-        "| Gate | Phase | Status | Resolution |",
-        "|---|---|---|---|",
     ]
+    for item in (pilot.get("dimensions") or []):
+        lines.append(
+            f"- `{item.get('id')}`: status=`{item.get('status')}`, score=`{item.get('score')}`, missing=`{item.get('missing')}`"
+        )
+    lines.extend(
+        [
+            "",
+            "## Rule Fixture Coverage Matrix",
+            "",
+            f"- Overall status: `{fixture.get('overall_status')}`",
+            f"- Hard rule count: `{((fixture.get('summary') or {}).get('hard_rule_count', 0))}`",
+            f"- Rules with boundary gap: `{((fixture.get('summary') or {}).get('rules_with_boundary_gap', 0))}`",
+            f"- Production-ready fixtures: `{((fixture.get('summary') or {}).get('production_ready_fixture_count', 0))}`",
+            f"- Synthetic can satisfy production acceptance: `{((fixture.get('coverage_policy') or {}).get('synthetic_fixture_can_satisfy_production_acceptance'))}`",
+            "",
+        ]
+    )
+    for item in (fixture.get("rules") or []):
+        lines.append(
+            f"- `{item.get('rule_code')}`: status=`{item.get('status')}`, missing=`{item.get('missing_categories')}`"
+        )
+    lines.extend(
+        [
+            "",
+            "## Production Observed-History Preflight",
+            "",
+            f"- Preflight status: `{production.get('status')}`",
+            f"- Schema status: `{production_schema.get('status')}`",
+            f"- Production-ready rows: `{(production_schema.get('row_quality') or {}).get('production_candidate_row_count', 0)}`",
+            f"- Temporal validation status: `{production_temporal.get('status')}`",
+            f"- Train/holdout rows: `{production_temporal.get('train_row_count', 0)}` / `{production_temporal.get('holdout_row_count', 0)}`",
+            f"- Temporal missing gates: `{production_temporal.get('missing_temporal_gates', [])}`",
+            f"- Policy-history status: `{production_policy.get('status')}`",
+            f"- Policy allowed/blocked rows: `{production_policy.get('allowed_count', 0)}` / `{production_policy.get('blocked_count', 0)}`",
+            f"- Region-policy keys: `{production_policy.get('region_policy_key_count', 0)}`",
+            f"- Region-action-policy keys: `{production_policy.get('region_action_policy_key_count', 0)}`",
+            f"- Alignment status: `{production_alignment.get('status')}`",
+            f"- Alignment missing: `{production_alignment.get('missing', [])}`",
+            "",
+        ]
+    )
+    lines.extend(
+        [
+            "## Production Scale Readiness",
+            "",
+            f"- Scale status: `{scale.get('status')}`",
+            f"- Scale tier: `{scale.get('scale_tier')}`",
+            f"- Max layer rows: `{(scale.get('observed') or {}).get('max_layer_row_count', 0)}`",
+            f"- Total rows: `{(scale.get('observed') or {}).get('total_row_count', 0)}`",
+            f"- Layer count: `{(scale.get('observed') or {}).get('layer_count', 0)}`",
+            f"- Missing gates: `{scale.get('missing', [])}`",
+            "",
+            "## Production Readiness Gate",
+            "",
+            f"- Required: `{readiness.get('required')}`",
+            f"- Status: `{readiness.get('status')}`",
+            f"- Missing gates: `{readiness.get('missing', [])}`",
+            "",
+            "## Deployment Punch List",
+            "",
+            f"- Status: `{punch_list.get('status')}`",
+            f"- Required: `{punch_list.get('required')}`",
+            f"- Open actions: `{punch_list.get('open_action_count', 0)}`",
+            f"- Blocking actions: `{punch_list.get('blocking_action_count', 0)}`",
+            "",
+            "| Gate | Phase | Status | Resolution |",
+            "|---|---|---|---|",
+        ]
+    )
     scale_diagnostic_table = [
         "",
         "## Production Scale Check Diagnostics",

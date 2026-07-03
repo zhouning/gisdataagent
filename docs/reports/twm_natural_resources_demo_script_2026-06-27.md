@@ -1,6 +1,6 @@
 # TWM 自然资源部原型演示脚本
 
-版本日期：2026-06-27
+版本日期：2026-07-03（自然资源部现场演示前复核版）
 演示入口：`http://127.0.0.1:8000/`
 主演示数据包：`twm_bishan_multi_admin_eval`（璧山多行政单元评估样例）
 数据边界：演示/非生产数据，不能作为权威审批结论。
@@ -175,16 +175,21 @@
 2. 查看 `数据基础浏览器`。
 3. 向下查看 `关键阻断项`、`完整数据清单`、`完整验证快照`、`问题-数据适配`、`来源报告`。
 4. 查看 `生产声明` 和 `主张矩阵`。
-5. 点击 `基线对比`。
+5. 查看 `试点就绪矩阵`：重点看 `生产门槛`、合成数据不能替代生产验收、测试数据计划。
+6. 查看 `规则样例覆盖`：重点看 `TWM-FARM-001`、`TWM-ECO-001`、`TWM-PLAN-001`、`TWM-URBAN-001` 是否有正例/反例样例，以及 `boundary_case` 缺口。
+7. 点击 `基线对比`。
 
 预期看到：
 - `完整数据清单` 中包含 `twm_bishan_multi_admin_eval`。
 - 文件清单中能看到 `parcel_current.geojson`、`synthetic_projects.geojson`、`tables/approval_records.csv`、`tables/rule_evaluation.csv` 等。
 - `问题-数据适配` 中明确说明哪些输出安全、哪些不能承诺。
+- `试点就绪矩阵` 显示当前总体仍受生产观察历史和政策动作标签阻断；`生产门槛` 不应显示为通过。
+- `规则样例覆盖` 显示四类硬约束规则；现有演示/合成数据可支撑回归覆盖，但 `boundary_case` 缺口应被明确列出。
 - `基线对比` 返回 TWM 和基线对比内容。
 
 讲解要点：
 > 最后看能力边界。TWM 当前证明的是端到端链路、证据台账、规则-预测-方案闭环和方法框架；真实生产结论必须等权威数据接入后再验证。
+> 新增的试点就绪矩阵和规则样例覆盖矩阵，是为了防止演示现场只讲“能做什么”而忽略“还缺什么”。当前可演示的是工程闭环和可审计验证流程；不能把合成样例、公开 benchmark 或 demo e2e 结果说成自然资源部生产验收。
 
 体现的 TWM 能力：
 - 主张边界管理：明确哪些能力已有数据支撑，哪些仍是原型主张。
@@ -217,5 +222,27 @@
 3. `定位审查区` 与全量数据图层明显不在同一空间范围。
 4. `风险命中` 或 `推荐方案` 只显示状态文字，地图没有联动变化。
 5. 数据证据中看不到 `twm_bishan_multi_admin_eval` 或完整数据清单。
-6. `基线对比` 没有返回对比结果。
-7. 技术载荷无法展开或没有 JSON 内容。
+6. `试点就绪矩阵` 或 `规则样例覆盖` 没有出现，或合成数据被显示为可满足生产验收。
+7. `基线对比` 没有返回对比结果。
+8. 技术载荷无法展开或没有 JSON 内容。
+
+## 11. 演示前自动验证命令
+
+在现场演示前，至少执行以下命令并确认通过：
+
+```bash
+PROJ_DATA=/Users/zhouning/miniconda3/envs/farmland-mpc/share/proj \
+/Users/zhouning/gisdataagent/.venv/bin/python -m pytest \
+  data_agent/test_twm_validation_bundle_smoke_script.py \
+  data_agent/test_territory_world_model.py \
+  -k "demo_readiness_and_rule_fixture_matrices or pilot_readiness_matrix or rule_fixture_coverage_matrix or toolset_lists" -q
+
+TWM_VALIDATION_OUTPUT=/tmp/twm_mnr_demo_validation_bundle.json \
+TWM_VALIDATION_MARKDOWN_OUTPUT=/tmp/twm_mnr_demo_validation_bundle.md \
+bash scripts/smoke_twm_validation_bundle.sh
+```
+
+验证输出应包含：
+- JSON 中有 `pilot_readiness_matrix` 和 `rule_fixture_coverage_matrix`。
+- Markdown 中有 `Pilot Readiness Matrix` 和 `Rule Fixture Coverage Matrix`。
+- 试点就绪总体仍应体现生产门槛阻断，不应显示生产可用。
