@@ -416,6 +416,7 @@ class TestRouteMount(unittest.TestCase):
         self.assertIn("/api/twm/baseline-comparison-report", paths)
         self.assertIn("/api/twm/data-foundation-assessment", paths)
         self.assertIn("/api/twm/states/{id}/forecast", paths)
+        self.assertIn("/api/twm/states/{id}/state-graph", paths)
 
     def test_mount_before_catchall(self):
         from data_agent.frontend_api import mount_frontend_api

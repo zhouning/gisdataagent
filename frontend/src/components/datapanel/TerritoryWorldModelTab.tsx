@@ -39,6 +39,7 @@ type RunKey =
   | 'projects'
   | 'create'
   | 'states'
+  | 'stateGraph'
   | 'build'
   | 'evaluate'
   | 'forecast'
@@ -48,7 +49,7 @@ type RunKey =
   | 'beam';
 
 type TwmMapStage = 'locate' | 'risk' | 'plan';
-type TwmSubTab = 'overview' | 'data' | 'operate' | 'payload';
+type TwmSubTab = 'overview' | 'data' | 'operate' | 'graph' | 'payload';
 
 interface TwmProject {
   id: string;
@@ -70,6 +71,69 @@ interface TwmStateVersion {
   quality_summary?: Record<string, any>;
   summary?: Record<string, any>;
   created_at?: string;
+}
+
+interface TwmStateGraphNode {
+  id: string;
+  kind?: string;
+  role?: string;
+  label?: string;
+  severity?: string;
+  status?: string;
+  bbox?: number[] | null;
+  map_stage?: TwmMapStage | 'none';
+  summary?: Record<string, any> | string;
+  [key: string]: any;
+}
+
+interface TwmStateGraphEdge {
+  id: string;
+  source: string;
+  target: string;
+  kind?: string;
+  label?: string;
+  [key: string]: any;
+}
+
+interface TwmStateGraphReport {
+  schema?: string;
+  state_version_id?: string;
+  graph_store?: {
+    backend?: string;
+    full_graph_persisted?: boolean;
+    production_policy?: string;
+  };
+  full_graph_counts?: {
+    state_object_count?: number;
+    state_relation_count?: number;
+    rule_hit_count?: number;
+    support_material_count?: number;
+    review_task_count?: number;
+    total_node_count?: number;
+    total_edge_count?: number;
+  };
+  object_counts_by_role?: Record<string, number>;
+  relation_counts_by_type?: Record<string, number>;
+  support_material_counts_by_type?: Record<string, number>;
+  visual_graph?: {
+    nodes?: TwmStateGraphNode[];
+    edges?: TwmStateGraphEdge[];
+    render_policy?: {
+      rendered_node_count?: number;
+      rendered_edge_count?: number;
+      full_graph_node_count?: number;
+      full_graph_edge_count?: number;
+      visual_subset_only?: boolean;
+      full_graph_counts_available?: boolean;
+      focus_node_id?: string;
+    };
+  };
+  full_graph?: {
+    included?: boolean;
+    nodes?: TwmStateGraphNode[];
+    edges?: TwmStateGraphEdge[];
+  };
+  terminology?: Record<string, string>;
 }
 
 interface TwmStatus {
@@ -646,7 +710,7 @@ const FALLBACK_BUSINESS_SCENARIOS: TwmBusinessScenario[] = [
     id: 'farmland_protection_review',
     label: '耕地保护与占补平衡审查',
     decision_question: '拟建或调整项目是否触碰永久基本农田、生态红线，或造成耕地保护目标风险？',
-    operator_goal: '在审查前暴露项目合规风险、证据缺口和可替代空间方案。',
+    operator_goal: '在审查前暴露项目合规风险、依据缺口和可替代空间方案。',
     primary_roles: ['project', 'parcel', 'permanent_basic_farmland', 'eco_redline', 'planning_zone'],
     required_evidence: ['项目范围', '现状地类图斑', '永久基本农田', '生态保护红线', '审批/补正记录'],
     default_action_type: 'protect',
@@ -654,8 +718,8 @@ const FALLBACK_BUSINESS_SCENARIOS: TwmBusinessScenario[] = [
     default_scenario: 'farmland_protection_review',
     default_evidence_coverage: 0.78,
     default_horizon: 3,
-    decision_outputs: ['风险命中优先级', '证据审计包', '合法可行备选方案'],
-    guardrails: ['硬约束命中不直接给通过建议', '合成数据只能作为演示和回归证据'],
+    decision_outputs: ['风险命中优先级', '依据核查包', '合法可行备选方案'],
+    guardrails: ['硬约束命中不直接给通过建议', '合成数据只能作为演示和回归依据'],
   },
   {
     id: 'construction_project_compliance',
@@ -669,14 +733,14 @@ const FALLBACK_BUSINESS_SCENARIOS: TwmBusinessScenario[] = [
     default_scenario: 'construction_project_compliance',
     default_evidence_coverage: 0.72,
     default_horizon: 2,
-    decision_outputs: ['审批一致性风险', '补正证据清单', '人工复核任务'],
+    decision_outputs: ['审批一致性风险', '补正依据清单', '人工复核任务'],
     guardrails: ['缺少审批记录时只给复核建议', '边界外建设风险必须保留人工审查'],
   },
   {
     id: 'territorial_plan_adjustment',
     label: '国土空间用途调整推演',
     decision_question: '用途调整或空间优化方案会怎样影响保护约束、规划效用和后续监管压力？',
-    operator_goal: '在方案比选阶段比较调整收益、约束风险和可解释证据，而不是只输出最优数值。',
+    operator_goal: '在方案比选阶段比较调整收益、约束风险和可解释依据，而不是只输出最优数值。',
     primary_roles: ['scenario', 'parcel', 'planning_zone', 'project', 'control_boundary'],
     required_evidence: ['现状空间格局', '规划分区', '硬约束边界', '候选调整方案', '历史监管样本'],
     default_action_type: 'convert',
@@ -685,28 +749,28 @@ const FALLBACK_BUSINESS_SCENARIOS: TwmBusinessScenario[] = [
     default_evidence_coverage: 0.68,
     default_horizon: 5,
     decision_outputs: ['方案效用/风险排序', '反事实推演摘要', '不可推荐方案原因'],
-    guardrails: ['硬约束方案不得进入推荐集', '预测结论必须带证据覆盖和不确定性'],
+    guardrails: ['硬约束方案不得进入推荐集', '预测结论必须带依据完整度和不确定性'],
   },
 ];
 
 const FALLBACK_RESEARCH_POSITIONING: TwmResearchPositioning = {
-  research_question: '面向治理的国土空间世界模型，能否把分层 GIS 状态、政策约束、证据来源和行动条件预测放进同一条可审计决策链路，从而改进国土空间规划审查？',
+  research_question: '面向治理的国土空间世界模型，能否把分层 GIS 状态、政策约束、依据来源和行动条件预测放进同一条可审计决策链路，从而改进国土空间规划审查？',
   core_technology: [
     {
-      name: '分层 GIS 对象-关系-规则-证据状态',
-      claim: '把图斑、项目、管控边界、规划分区、审批证据和规则作为同一个可追溯状态，而不是扁平图层集合。',
+      name: '分层 GIS 对象-关系-规则-依据状态',
+      claim: '把图斑、项目、管控边界、规划分区、审批材料和规则作为同一个可追溯状态，而不是扁平图层集合。',
     },
     {
       name: '行动条件国土空间动态预测',
       claim: '围绕复核、保护、转换、恢复等治理动作预测约束风险、规划效用、不确定性和可行动作。',
     },
     {
-      name: '证据门控与因果校准主张阶梯',
-      claim: '证据不足或因果不可识别时降级为人工复核，不把合成数据结果包装成生产结论。',
+      name: '依据门控与因果校准主张阶梯',
+      claim: '依据不足或因果不可识别时降级为人工复核，不把合成数据结果包装成生产结论。',
     },
   ],
   unmet_need_hypotheses: [
-    '空间叠加、政策核查、审批证据和方案比选仍常分散在不同工具链中。',
+    '空间叠加、政策核查、审批材料和方案比选仍常分散在不同工具链中。',
     '传统土地利用模拟更关注格局转移，业务审查更需要动作后果、规则有效性和审计边界。',
   ],
   falsification_conditions: [
@@ -720,7 +784,7 @@ const FALLBACK_DATA_FOUNDATION: TwmDataFoundationAssessment = {
   status: 'review',
   landing_readiness: {
     status: 'review',
-    verdict: '当前数据基础足以支撑 TWM 工程原型、规则/证据/审计链路和合成实验验证；不足以支撑生产级审批结论、真实预测效果或真实因果改进声明。',
+    verdict: '当前数据基础足以支撑 TWM 工程原型、规则/依据/审计链路和合成实验验证；不足以支撑生产级审批结论、真实预测效果或真实因果改进声明。',
     production_deployment_supported: false,
     engineering_mvp_supported: true,
     business_review_scaffold_supported: true,
@@ -834,7 +898,7 @@ const FALLBACK_DATA_FOUNDATION: TwmDataFoundationAssessment = {
     },
   },
   supported_problems: [
-    { problem: '工程 MVP 与回归测试', support: '验证状态构建、角色绑定、规则评价、证据链、审计报告和 TWM 前端工作流。' },
+    { problem: '工程 MVP 与回归测试', support: '验证状态构建、角色绑定、规则评价、依据链、审计报告和 TWM 前端工作流。' },
     { problem: '业务审查脚手架', support: '模拟耕地保护、生态红线、用途管制、审批一致性和复核任务风险暴露。' },
     { problem: '优化/规划消费者链路', support: '测试候选方案载入、硬约束过滤、beam ranking 和 action-mask 安全头。' },
   ],
@@ -846,8 +910,8 @@ const FALLBACK_DATA_FOUNDATION: TwmDataFoundationAssessment = {
     {
       business_problem: '耕地保护与占补平衡审查',
       current_fit: 'partial',
-      why: '图斑、永久基本农田、生态红线、项目、规则命中和证据链结构齐备，但关键边界和审批记录仍非生产数据。',
-      safe_output: '风险暴露、证据缺口、人工复核任务和候选方案审计。',
+      why: '图斑、永久基本农田、生态红线、项目、规则命中和依据链结构齐备，但关键边界和审批记录仍非生产数据。',
+      safe_output: '风险暴露、依据缺口、人工复核任务和候选方案审计。',
       unsafe_output: '自动审批通过/不通过或真实政策效果承诺。',
     },
     {
@@ -881,7 +945,7 @@ const FALLBACK_DATA_FOUNDATION: TwmDataFoundationAssessment = {
 
 const FALLBACK_CLAIM_MATRIX: TwmResearchClaimMatrix = {
   status: 'review',
-  claim_boundary: '每一项 TWM 研究主张都必须说明未满足业务需求、可对比的简单基线、最低真实数据证据、评价指标和可证伪条件，之后才可能从原型状态升级。',
+  claim_boundary: '每一项 TWM 研究主张都必须说明未满足业务需求、可对比的简单基线、最低真实数据依据、评价指标和可证伪条件，之后才可能从原型状态升级。',
   current_data_gate: {
     production_ready_observed_history_rows: 0,
     production_policy_history_row_count: 0,
@@ -891,7 +955,7 @@ const FALLBACK_CLAIM_MATRIX: TwmResearchClaimMatrix = {
   claims: [
     {
       claim_id: 'C1_state_conflict_recall',
-      claim: '对象-关系-规则-证据状态相比逐图层人工 GIS 审查，能够减少硬约束冲突漏检。',
+      claim: '对象-关系-规则-依据状态相比逐图层人工 GIS 审查，能够减少硬约束冲突漏检。',
       baseline: 'manual_gis_overlay_checklist',
       current_status: 'engineering_supported_production_unvalidated',
       current_evidence: '合成样例验证了链路行为；真实冲突召回率尚未验证。',
@@ -900,7 +964,7 @@ const FALLBACK_CLAIM_MATRIX: TwmResearchClaimMatrix = {
     },
     {
       claim_id: 'C2_audit_defensibility',
-      claim: '证据门控复核相比单纯空间合规规则引擎，能够提升审计可辩护性。',
+      claim: '依据门控复核相比单纯空间合规规则引擎，能够提升审计可辩护性。',
       baseline: 'rule_only_spatial_compliance_engine',
       current_status: 'scaffold_supported_real_audit_unvalidated',
       gate: { status: 'review', claim_level: 'prototype_scaffold', missing: ['production_observed_history', 'named_real_workflow_baseline'] },
@@ -957,8 +1021,9 @@ const TWM_MAP_STAGE_LABELS: Record<TwmMapStage | 'none', string> = {
 
 const TWM_SUB_TABS: Array<{ id: TwmSubTab; label: string; summary: string }> = [
   { id: 'overview', label: '总览地图', summary: '先看范围和空间联动' },
-  { id: 'data', label: '数据证据', summary: '主张、数据和基线' },
+  { id: 'data', label: '数据依据', summary: '主张、数据和基线' },
   { id: 'operate', label: '操作推演', summary: '规则、预测和方案' },
+  { id: 'graph', label: '状态图谱', summary: '全量关系和地图联动' },
   { id: 'payload', label: '技术载荷', summary: '给技术人员复核' },
 ];
 
@@ -1031,10 +1096,10 @@ const TWM_MAP_FEATURES = {
   ),
   evidenceGap: twmMapFeature(
     'risk_hit_evidence_01',
-    '证据不足复核区',
+    '依据不足复核区',
     '规则命中',
     bboxRing(106.245, 29.760, 106.262, 29.780),
-    { 风险等级: '中', 命中规则: '证据覆盖不足', 建议动作: '补正材料' },
+    { 风险等级: '中', 命中规则: '依据完整度不足', 建议动作: '补正材料' },
   ),
   recommended: twmMapFeature(
     'candidate_recommended_01',
@@ -1207,70 +1272,70 @@ const ROLE_LABELS: Record<string, string> = {
 
 const DISPLAY_LABELS: Record<string, string> = {
   'Can a governance-oriented geospatial world model improve territorial planning decisions by coupling hierarchical GIS state, policy constraints, evidence provenance and action-conditioned forecast in one auditable loop?':
-    '面向治理的国土空间世界模型，能否把分层 GIS 状态、政策约束、证据来源和行动条件预测放进同一条可审计决策链路，从而改进国土空间规划审查？',
-  'Hierarchical GIS object-relation-rule-evidence state': '分层 GIS 对象-关系-规则-证据状态',
+    '面向治理的国土空间世界模型，能否把分层 GIS 状态、政策约束、依据来源和行动条件预测放进同一条可审计决策链路，从而改进国土空间规划审查？',
+  'Hierarchical GIS object-relation-rule-evidence state': '分层 GIS 对象-关系-规则-依据状态',
   'Action-conditioned multi-head territorial dynamics': '行动条件国土空间动态预测',
-  'Evidence-gated and causally calibrated claim ladder': '证据门控与因果校准主张阶梯',
+  'Evidence-gated and causally calibrated claim ladder': '依据门控与因果校准主张阶梯',
   'TWM represents parcels, projects, control boundaries, planning zones, approvals, evidence and rules as a linked state rather than as a flat feature table.':
-    'TWM 把图斑、项目、管控边界、规划分区、审批、证据和规则组织成可追溯的关联状态，而不是扁平要素表。',
+    'TWM 把图斑、项目、管控边界、规划分区、审批、依据和规则组织成可追溯的关联状态，而不是扁平要素表。',
   'TWM forecasts future area/key indicators, constraint-risk, planning utility, uncertainty and action-mask feasibility conditional on review/protect/convert/restore actions; future_latent_state remains a compatibility field, not a full parcel-geometry latent.':
     'TWM 围绕复核、保护、转换、恢复等治理动作预测未来面积/关键指标、约束风险、规划效用、不确定性和动作可行性；future_latent_state 仅保留为兼容字段，不声称完整图斑几何潜在状态。',
   'TWM separates deterministic rule evidence, observational causal calibration and validation gates before upgrading any operational claim.':
-    'TWM 在升级任何业务主张前，先区分确定性规则证据、观察性因果校准和验证门槛。',
+    'TWM 在升级任何业务主张前，先区分确定性规则依据、观察性因果校准和验证门槛。',
   'The novelty is architectural integration, not that GIS simulation itself is new.':
     '创新点是面向业务决策的架构集成，而不是声称 GIS 模拟本身是新问题。',
   'Compare against land-use simulators, GIS rule engines and optimization tools on whether they jointly expose action-conditioned forecast, policy evidence and audit-ready claim boundaries.':
-    '与土地利用模拟、GIS 规则引擎和优化工具对比，看其是否同时给出行动条件预测、政策证据和可审计主张边界。',
+    '与土地利用模拟、GIS 规则引擎和优化工具对比，看其是否同时给出行动条件预测、政策依据和可审计主张边界。',
   'Object-relation-rule-evidence state reduces missed compliance conflicts compared with layer-by-layer manual review.':
-    '对象-关系-规则-证据状态相比逐图层人工审查，减少合规冲突漏检。',
+    '对象-关系-规则-依据状态相比逐图层人工审查，减少合规冲突漏检。',
   'Measure hard-constraint conflict recall and false review burden on held-out real approval/review cases.':
     '在留出的真实审批/复核案例上度量硬约束冲突召回和误复核负担。',
   'Evidence-gated forecasts improve decision defensibility compared with black-box planning scores.':
-    '证据门控预测相比黑箱规划分数，提升决策可辩护性。',
+    '依据门控预测相比黑箱规划分数，提升决策可辩护性。',
   'Audit whether every recommended or rejected option carries source evidence, rule clause, uncertainty and human-review reason.':
-    '审计每个推荐或拒绝方案是否带有来源证据、规则条款、不确定性和人工复核原因。',
+    '审计每个推荐或拒绝方案是否带有来源依据、规则条款、不确定性和人工复核原因。',
   'Planning and land-use review workflows still fragment spatial overlays, policy checks, approval evidence and scenario comparison across separate tools.':
-    '规划和用地审查中，空间叠加、政策核查、审批证据和方案比较仍常分散在不同工具中。',
+    '规划和用地审查中，空间叠加、政策核查、审批材料和方案比较仍常分散在不同工具中。',
   'Existing land-use simulators emphasize spatial pattern transition, while operational review needs action consequences, rule validity and audit boundaries.':
     '现有土地利用模拟更强调空间格局转移，而业务审查需要动作后果、规则有效性和审计边界。',
   'Optimization tools can rank candidates, but often do not preserve why a candidate is illegal, under-evidenced or only reviewable rather than approvable.':
-    '优化工具可以排序候选方案，但往往不能保留“为什么违法、证据不足或只能复核不能审批”的理由。',
+    '优化工具可以排序候选方案，但往往不能保留“为什么违法、依据不足或只能复核不能审批”的理由。',
   'Manual GIS overlay plus checklist review': '人工 GIS 叠加加清单审查',
   'Rule-only spatial compliance engine': '单纯空间合规规则引擎',
   'Land-use simulation models such as FLUS/PLUS/CLUE-S/CA-Markov for pattern transition':
     '用于格局转移的 FLUS/PLUS/CLUE-S/CA-Markov 等土地利用模拟模型',
   'Optimization-only farmland or planning candidate ranking without evidence-gated claim validation':
-    '不带证据门控主张验证的耕地或规划候选方案优化排序',
+    '不带依据门控主张验证的耕地或规划候选方案优化排序',
   'If real workflow interviews show the target decisions are already well solved by existing tools, TWM should be narrowed or stopped.':
     '如果真实业务访谈显示目标决策已被现有工具很好解决，TWM 应收窄或停止。',
   'If TWM does not improve hard-constraint conflict recall, evidence completeness or audit-trail quality over baselines, the claimed contribution is not supported.':
-    '如果 TWM 相比基线不能提升硬约束冲突召回、证据完整性或审计链质量，则贡献主张不成立。',
+    '如果 TWM 相比基线不能提升硬约束冲突召回、依据完整性或审计链质量，则贡献主张不成立。',
   'If action-conditioned dynamics cannot be validated beyond synthetic fixtures, TWM must remain a review scaffold rather than a production decision model.':
     '如果行动条件动态只能在合成样例上验证，TWM 必须保持复核脚手架定位，而不能作为生产决策模型。',
   'Collect real or sanitized approval/review histories with project geometry, rule outcomes, evidence links and final decisions.':
-    '收集带项目几何、规则结果、证据链接和最终决策的真实或脱敏审批/复核历史。',
+    '收集带项目几何、规则结果、依据链接和最终决策的真实或脱敏审批/复核历史。',
   'Benchmark against manual overlay, rule-only engine and at least one land-use simulation or optimization baseline where appropriate.':
     '按场景与人工叠加、单纯规则引擎，以及至少一种土地利用模拟或优化基线对比。',
   'Report missed hard-constraint conflicts, review-task precision, evidence completeness, candidate rejection reason coverage and audit-trail completeness.':
-    '报告硬约束漏检、复核任务精度、证据完整性、候选方案拒绝原因覆盖和审计链完整性。',
+    '报告硬约束漏检、复核任务精度、依据完整性、候选方案拒绝原因覆盖和审计链完整性。',
   'Keep synthetic fixtures for regression only; do not use them as production-effect evidence.':
-    '合成样例只用于回归测试，不作为生产效果证据。',
+    '合成样例只用于回归测试，不作为生产效果依据。',
   'Current TWM is a rigorous prototype and review scaffold. Its defensible near-term claim is auditable decision support for territorial governance workflows; production-grade predictive claims require real observed histories, baseline comparisons and external validation.':
     '当前 TWM 是严谨的原型和复核脚手架；近期可辩护主张是为国土治理流程提供可审计决策支持，生产级预测主张仍需真实观察历史、基线对比和外部验证。',
   'Object-relation-rule-evidence state reduces missed hard-constraint conflicts compared with layer-by-layer manual GIS review.':
-    '对象-关系-规则-证据状态相比逐图层人工 GIS 审查，能够减少硬约束冲突漏检。',
+    '对象-关系-规则-依据状态相比逐图层人工 GIS 审查，能够减少硬约束冲突漏检。',
   'Evidence-gated review improves audit defensibility compared with rule-only spatial compliance engines.':
-    '证据门控复核相比单纯空间合规规则引擎，能够提升审计可辩护性。',
+    '依据门控复核相比单纯空间合规规则引擎，能够提升审计可辩护性。',
   'Action-conditioned dynamics improves plan-option triage compared with land-use simulators or optimization-only candidate ranking.':
     '行动条件动态推演相比土地利用模拟或单纯优化排序，能够改进方案预筛和解释。',
   'Synthetic fixtures verify the pipeline and rule/evidence object model, but do not validate real conflict recall.':
-    '合成样例验证了流程和规则/证据对象模型，但尚未验证真实冲突召回率。',
+    '合成样例验证了流程和规则/依据对象模型，但尚未验证真实冲突召回率。',
   'Current rule hits, evidence items and review tasks are synthetic/not-for-production; useful for regression, not for audit quality proof.':
-    '当前规则命中、证据项和复核任务为合成或非生产数据，可用于回归测试，不能证明真实审计质量。',
+    '当前规则命中、依据项和复核任务为合成或非生产数据，可用于回归测试，不能证明真实审计质量。',
   'Synthetic experiment foundation supports action-mask and beam-plan plumbing; no real action-conditioned dynamics validation yet.':
     '合成实验基础支撑动作可行性掩码和方案比选链路，但尚未完成真实行动条件动态验证。',
   'Every TWM research claim must name the unmet business need, a simpler baseline, minimum real-data evidence, metrics and falsification conditions before it can be upgraded beyond prototype status.':
-    '每一项 TWM 研究主张都必须说明未满足业务需求、可对比的简单基线、最低真实数据证据、评价指标和可证伪条件，之后才可能从原型状态升级。',
+    '每一项 TWM 研究主张都必须说明未满足业务需求、可对比的简单基线、最低真实数据依据、评价指标和可证伪条件，之后才可能从原型状态升级。',
   'This report can compare metrics against a named baseline, but it does not upgrade TWM claims unless real-data gates and metric thresholds both pass.':
     '该报告可以与明确基线做指标对比；只有真实数据门槛和指标阈值同时通过，才允许升级 TWM 主张。',
   manual_gis_overlay_checklist: '人工 GIS 叠加清单',
@@ -1300,9 +1365,9 @@ const DISPLAY_LABELS: Record<string, string> = {
   'Production and air-gapped deployment': '生产与离线部署',
   'Chinese-first TWM frontend tabs are implemented': '中文优先 TWM 前端分区已实现',
   'data foundation map preview and bbox-aligned overview map are implemented': '数据基础地图预览和 bbox 对齐总览地图已实现',
-  'automated E2E evidence exists for the demo workflow': '演示工作流已有自动化端到端证据',
+  'automated E2E evidence exists for the demo workflow': '演示工作流已有自动化端到端依据',
   'manual acceptance and demo freeze before external presentation': '外部汇报前还需人工验收和演示冻结',
-  'state/rule/evidence/audit pipeline': '状态、规则、证据、审计管线',
+  'state/rule/evidence/audit pipeline': '状态、规则、依据、审计管线',
   'forecast, counterfactual rollout, validation ladder and beam planning consumer': '预测、反事实 rollout、验证阶梯和 beam 方案消费者',
   'trainable dynamics candidates and observational causal calibration reports': '可训练动态候选和观察性因果校准报告',
   'dynamics model registry release gate report is implemented': '动态模型注册发布门禁报告已实现',
@@ -1329,9 +1394,9 @@ const DISPLAY_LABELS: Record<string, string> = {
   planning_zone_authoritative: '权威规划分区',
   approval_records_authoritative: '权威审批历史',
   policy_action_history_authoritative: '权威政策动作历史',
-  evidence_index_authoritative: '权威证据索引',
+  evidence_index_authoritative: '权威依据索引',
   rule_evaluation_authoritative: '权威规则评价',
-  'public Dynamic World and GeoSOS/FLUS benchmark evidence exists': '已有公开 Dynamic World 与 GeoSOS/FLUS 基准证据',
+  'public Dynamic World and GeoSOS/FLUS benchmark evidence exists': '已有公开 Dynamic World 与 GeoSOS/FLUS 基准依据',
   'claim ladder and baseline comparison contracts exist': '主张阶梯和基线对比契约已存在',
   'real observed approval/review history': '真实观察审批/复核历史',
   'policy/action feasibility labels': '政策/动作可行性标签',
@@ -1360,12 +1425,12 @@ const DISPLAY_LABELS: Record<string, string> = {
   'one pilot region with multi-year observed approval/review history': '一个试点区域的多年观察审批/复核历史',
   'authoritative policy/action feasibility labels': '权威政策/动作可行性标签',
   'large facade service': '大型 facade 服务',
-  'state, dynamics, calibration, planner, evidence/audit and readiness services': '状态、动态、校准、规划器、证据/审计和 readiness 服务',
+  'state, dynamics, calibration, planner, evidence/audit and readiness services': '状态、动态、校准、规划器、依据/审计和 readiness 服务',
   'public benchmark and simplified/direct adapters': '公开基准和简化/直接适配器',
   'same-case full FLUS/GeoSOS baseline plus cross-region/cross-year holdout': '同案完整 FLUS/GeoSOS 基线加跨区域/跨年份留出验证',
   'secure real or sanitized observed history and policy/action labels for one pilot region': '为一个试点区域获取真实或脱敏观察历史与政策/动作标签',
   'freeze and manually accept the current natural-resources demo workflow': '冻结并人工验收当前自然资源演示工作流',
-  'split the TWM facade service along state/dynamics/calibration/planner/evidence boundaries': '按状态、动态、校准、规划器和证据边界拆分 TWM facade 服务',
+  'split the TWM facade service along state/dynamics/calibration/planner/evidence boundaries': '按状态、动态、校准、规划器和依据边界拆分 TWM facade 服务',
   'productize data foundation browsing with lineage, field drilldown and CRS conversion workflow': '产品化数据基础浏览，补齐 lineage、字段 drilldown 和 CRS 转换流程',
   'finish authoritative data templates, vector tiles or chunked preview, and CRS conversion workflow': '完成权威数据模板、矢量瓦片或分块预览，以及 CRS 转换流程',
   'finish authoritative data templates, vector tiles or chunked preview, and production CRS conversion ETL': '完成权威数据模板、矢量瓦片或分块预览，以及生产级 CRS 转换 ETL',
@@ -1395,9 +1460,9 @@ const DISPLAY_LABELS: Record<string, string> = {
   none: '无',
   hard_constraint_conflict_recall: '硬约束冲突召回率',
   missed_blocking_conflict_rate: '阻断性冲突漏检率',
-  evidence_link_completeness: '证据链接完整性',
+  evidence_link_completeness: '依据链接完整性',
   audit_trail_completeness: '审计链完整性',
-  unsupported_recommendation_rate: '无证据建议率',
+  unsupported_recommendation_rate: '无依据建议率',
   review_task_precision: '复核任务精度',
   candidate_rejection_reason_coverage: '候选方案拒绝原因覆盖率',
   legal_feasible_topk_precision: '合法可行 Top-K 精度',
@@ -1410,7 +1475,7 @@ const DISPLAY_LABELS: Record<string, string> = {
   experimental_synthetic_only: '仅合成实验',
   standard_structure_supported_cross_region_unvalidated: '标准结构已验证，跨区域生产效果未验证',
   remain_prototype_scaffold: '保持原型脚手架',
-  baseline_evidence_not_provided: '基线证据未提供',
+  baseline_evidence_not_provided: '基线依据未提供',
   eligible_for_retrospective_evidence: '可进入历史回放验证',
   metrics_pass_but_data_gate_blocks_upgrade: '指标通过但真实数据门槛阻止升级',
   no_metric_lift_over_baseline: '相对基线没有指标增益',
@@ -1419,7 +1484,7 @@ const DISPLAY_LABELS: Record<string, string> = {
   baseline_export_validation_run_card: '基线导出校验运行卡片',
   baseline_comparison_run_card: '基线对比运行卡片',
   review_required: '需要复核',
-  claim_supported: '主张有证据支撑',
+  claim_supported: '主张有依据支撑',
   hard_blocked: '硬约束阻断',
   eligible: '可进入后续流程',
   export_validation: '导出校验',
@@ -1429,7 +1494,7 @@ const DISPLAY_LABELS: Record<string, string> = {
   coverage_below_minimum: '重叠覆盖不足',
   no_overlap: '没有同案重叠',
   parser_metric_missing: '解析指标缺失',
-  'package case-level evidence and baseline outputs for external review': '打包案例级证据和基线输出，供外部复核',
+  'package case-level evidence and baseline outputs for external review': '打包案例级依据和基线输出，供外部复核',
   'repeat on a held-out region/time split before pilot claim': '在留出的区域/时间切分上重复验证后，再提出试点主张',
   'collect real or sanitized production history required by the claim gate': '收集主张门槛要求的真实或脱敏生产历史',
   'inspect failed metrics and simplify the TWM claim': '检查未通过指标，并收窄 TWM 主张',
@@ -1572,6 +1637,66 @@ function compactSampleProperties(sample?: Record<string, any>) {
   return ranked.map(([name, value]) => `${name}=${compactSamplePropertyValue(value)}`).join('；');
 }
 
+function stateGraphNodeLabel(node: TwmStateGraphNode) {
+  return displayText(node.label || node.role || node.kind || node.id);
+}
+
+function stateGraphNodeClass(node: TwmStateGraphNode) {
+  const kind = String(node.kind || '');
+  const role = String(node.role || '');
+  if (kind === 'rule_hit') return 'risk';
+  if (kind === 'support_material') return 'support';
+  if (kind === 'review_task') return 'review';
+  if (role.includes('farmland') || role.includes('eco') || role.includes('constraint')) return 'constraint';
+  if (role.includes('project')) return 'project';
+  if (role.includes('candidate') || role.includes('scenario')) return 'plan';
+  return 'object';
+}
+
+function stateGraphSummaryText(node: TwmStateGraphNode) {
+  const summary = node.summary;
+  if (!summary) return displayText(node.role || node.kind || '节点');
+  if (typeof summary === 'string') return displayText(summary);
+  const entries = Object.entries(summary).slice(0, 3);
+  if (!entries.length) return displayText(node.role || node.kind || '节点');
+  return entries.map(([key, value]) => `${displayText(key)}=${compactSamplePropertyValue(value)}`).join('；');
+}
+
+function stateGraphLayout(nodes: TwmStateGraphNode[], edges: TwmStateGraphEdge[]) {
+  const width = 720;
+  const columns = [
+    ['project', 'parcel', 'permanent_basic_farmland', 'ecological', 'planning'],
+    ['rule_hit'],
+    ['support_material', 'review_task'],
+    ['candidate', 'scenario'],
+  ];
+  const byColumn = columns.map(() => [] as TwmStateGraphNode[]);
+  const fallback: TwmStateGraphNode[] = [];
+  nodes.forEach(node => {
+    const role = String(node.role || node.kind || '').toLowerCase();
+    const idx = columns.findIndex(group => group.some(item => role.includes(item)));
+    if (idx >= 0) byColumn[idx].push(node);
+    else fallback.push(node);
+  });
+  fallback.forEach((node, idx) => byColumn[idx % Math.max(1, byColumn.length)].push(node));
+  const maxColumnCount = Math.max(1, ...byColumn.map(items => items.length));
+  const height = Math.max(300, 96 + maxColumnCount * 52);
+  const positioned = new Map<string, TwmStateGraphNode & { x: number; y: number }>();
+  byColumn.forEach((items, columnIdx) => {
+    const x = 78 + columnIdx * ((width - 156) / Math.max(1, byColumn.length - 1));
+    const step = height / (items.length + 1);
+    items.forEach((node, idx) => positioned.set(node.id, { ...node, x, y: step * (idx + 1) }));
+  });
+  return {
+    width,
+    height,
+    nodes: Array.from(positioned.values()),
+    edges: edges
+      .map(edge => ({ ...edge, sourceNode: positioned.get(edge.source), targetNode: positioned.get(edge.target) }))
+      .filter(edge => edge.sourceNode && edge.targetNode),
+  };
+}
+
 export default function TerritoryWorldModelTab() {
   const [status, setStatus] = useState<TwmStatus | null>(null);
   const [businessScenarios, setBusinessScenarios] = useState<TwmBusinessScenario[]>(FALLBACK_BUSINESS_SCENARIOS);
@@ -1615,6 +1740,8 @@ export default function TerritoryWorldModelTab() {
   const [horizon, setHorizon] = useState(3);
 
   const [stateDetail, setStateDetail] = useState<any | null>(null);
+  const [stateGraph, setStateGraph] = useState<TwmStateGraphReport | null>(null);
+  const [stateGraphFocusNodeId, setStateGraphFocusNodeId] = useState('');
   const [ruleResult, setRuleResult] = useState<any | null>(null);
   const [forecastResult, setForecastResult] = useState<any | null>(null);
   const [validationResult, setValidationResult] = useState<any | null>(null);
@@ -1640,7 +1767,7 @@ export default function TerritoryWorldModelTab() {
   );
   const selectedProject = projects.find(item => item.id === selectedProjectId) || null;
   const selectedState = states.find(item => item.id === selectedStateId) || null;
-  const latestResult = beamResult || validationResult || forecastResult || auditResult || ruleResult || stateDetail;
+  const latestResult = stateGraph || beamResult || validationResult || forecastResult || auditResult || ruleResult || stateDetail;
   const dataReadiness = dataFoundation.landing_readiness || FALLBACK_DATA_FOUNDATION.landing_readiness || {};
   const validationSnapshot = dataFoundation.validation_snapshot || FALLBACK_DATA_FOUNDATION.validation_snapshot || {};
   const dataPackages = dataFoundation.datasets || FALLBACK_DATA_FOUNDATION.datasets || [];
@@ -1892,6 +2019,8 @@ export default function TerritoryWorldModelTab() {
     if (!selectedStateId) {
       setStateDetail(null);
       setHits([]);
+      setStateGraph(null);
+      setStateGraphFocusNodeId('');
       return;
     }
     const stateSummary = states.find(item => item.id === selectedStateId);
@@ -1902,6 +2031,8 @@ export default function TerritoryWorldModelTab() {
           : { state_version: stateSummary, hits: [], evidence_items: [], review_tasks: [] }
       ));
       setHits([]);
+      setStateGraph(null);
+      setStateGraphFocusNodeId('');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedStateId, states]);
@@ -1955,6 +2086,64 @@ export default function TerritoryWorldModelTab() {
         layers: twmMapLayers(stage),
       });
     }
+  };
+
+  const syncStateGraphNodeToMap = (node: TwmStateGraphNode) => {
+    const stage = (node.map_stage && node.map_stage !== 'none' ? node.map_stage : 'locate') as TwmMapStage;
+    const bbox = Array.isArray(node.bbox) ? node.bbox.map(Number) : [];
+    if (bbox.length === 4 && bbox.every(Number.isFinite)) {
+      setMapStage(stage);
+      const [minLng, minLat, maxLng, maxLat] = bbox;
+      const handler = (window as any).__handleMapUpdate;
+      if (typeof handler === 'function') {
+        handler({
+          center: [(minLat + maxLat) / 2, (minLng + maxLng) / 2],
+          zoom: 13,
+          layers: [
+            ...twmMapLayers(stage),
+            {
+              name: `状态图谱 · ${stateGraphNodeLabel(node)}`,
+              type: 'polygon',
+              geojsonData: featureCollection([
+                twmMapFeature(
+                  `state_graph_${node.id}`,
+                  stateGraphNodeLabel(node),
+                  displayText(node.role || node.kind),
+                  bboxRing(minLng, minLat, maxLng, maxLat),
+                  { 说明: stateGraphSummaryText(node) },
+                ),
+              ]),
+              style: { color: '#0f766e', fillColor: '#14b8a6', fillOpacity: 0.28, weight: 3 },
+            },
+          ],
+        });
+      }
+      return;
+    }
+    syncTwmMap(stage);
+  };
+
+  const loadStateGraph = async (focusNodeId = stateGraphFocusNodeId) => {
+    if (!selectedStateId) return setError('请先构建或选择状态');
+    await withRun('stateGraph', async () => {
+      const params = new URLSearchParams({
+        include_full_graph: 'false',
+        visual_node_limit: '48',
+      });
+      if (focusNodeId) {
+        params.set('focus_node_id', focusNodeId);
+        params.set('focus_object_id', focusNodeId);
+      }
+      const data = await api(`/api/twm/states/${encodeURIComponent(selectedStateId)}/state-graph?${params.toString()}`);
+      setStateGraph(data);
+      return data;
+    });
+  };
+
+  const focusStateGraphNode = async (node: TwmStateGraphNode) => {
+    setStateGraphFocusNodeId(node.id);
+    syncStateGraphNodeToMap(node);
+    await loadStateGraph(node.id);
   };
 
   const dataFoundationLayerKey = (layer: TwmDataFoundationMapPreviewLayer) => String(layer.name || layer.path || '').trim();
@@ -2292,6 +2481,13 @@ export default function TerritoryWorldModelTab() {
     return claimId === baselineCardFilter;
   });
   const selectedBaselineTemplate = (baselineTemplates?.templates || []).find(item => item.claim_id === selectedClaimId) || null;
+  const stateGraphCounts = stateGraph?.full_graph_counts || {};
+  const stateGraphVisual = stateGraph?.visual_graph || {};
+  const stateGraphNodes = stateGraphVisual.nodes || [];
+  const stateGraphEdges = stateGraphVisual.edges || [];
+  const stateGraphRenderPolicy = stateGraphVisual.render_policy || {};
+  const stateGraphPositioned = stateGraphLayout(stateGraphNodes, stateGraphEdges);
+  const stateGraphFullLoaded = Boolean(stateGraph?.full_graph?.included);
 
   const runBaselineExportValidation = async () => {
     const claims = claimMatrix.claims || [];
@@ -2419,7 +2615,7 @@ export default function TerritoryWorldModelTab() {
           <ShieldCheck size={16} />
           <div>
             <strong>国土空间世界模型（TWM）</strong>
-            <span>围绕国土业务决策组织规则证据、预测验证和方案比选</span>
+            <span>围绕国土业务决策组织规则依据、预测验证和方案比选</span>
           </div>
         </div>
         <button type="button" className="twm-icon-button" onClick={refreshAll} disabled={busy} title="刷新 TWM 状态">
@@ -2480,7 +2676,7 @@ export default function TerritoryWorldModelTab() {
           </span>
         </div>
         <p className="twm-map-story-copy">
-          先在中间地图看位置，再回到右侧看规则、证据和方案。当前图层为演示空间图层，用于说明 TWM 如何把“看图、查规则、推演、比选”串成一条业务链。
+          先在中间地图看位置，再回到右侧看规则、依据和方案。当前图层为演示空间图层，用于说明 TWM 如何把“看图、查规则、推演、比选”串成一条业务链。
         </p>
         <div className="twm-map-story-actions">
           <button type="button" className="twm-secondary-action" onClick={() => syncTwmMap('locate')} disabled={busy}>
@@ -2526,7 +2722,7 @@ export default function TerritoryWorldModelTab() {
         </div>
         <div className="twm-business-grid">
           <div className="twm-business-list">
-            <span>关键证据</span>
+            <span>关键依据</span>
             <div>{(selectedBusinessScenario.required_evidence || []).map(item => <code key={item}>{item}</code>)}</div>
           </div>
           <div className="twm-business-list">
@@ -2571,7 +2767,7 @@ export default function TerritoryWorldModelTab() {
                 <strong>{displayText(phase.label || phase.id)}</strong>
                 <em>{fmt(clampRatio(phase.completion_ratio, 0) * 100, 0)}%</em>
               </div>
-              <p>已具备：{compactDisplayList(phase.evidence, '暂无证据')}</p>
+              <p>已具备：{compactDisplayList(phase.evidence, '暂无依据')}</p>
               <p>剩余：{compactDisplayList(phase.remaining, '暂无剩余项')}</p>
             </article>
           ))}
@@ -3205,7 +3401,7 @@ export default function TerritoryWorldModelTab() {
           </button>
           <button type="button" className="twm-secondary-action" onClick={runBaselinePipeline} disabled={busy}>
             {running === 'baselinePipeline' ? <Loader2 size={13} className="twm-spin" /> : <Route size={13} />}
-            证据流水线
+            依据流水线
           </button>
           <button type="button" className="twm-secondary-action" onClick={runBaselineComparison} disabled={busy}>
             {running === 'baselineCompare' ? <Loader2 size={13} className="twm-spin" /> : <BarChart3 size={13} />}
@@ -3341,7 +3537,7 @@ export default function TerritoryWorldModelTab() {
             {baselineComparison.scenario_card?.scenario_id && (
               <p>运行卡片：{baselineComparison.scenario_card.scenario_id} · {statusText(baselineComparison.scenario_card.status, '需复核')}</p>
             )}
-            <p>{compactDisplayList((baselineComparison.evidence_gate?.missing || []).slice(0, 4), '无证据门槛缺口')}</p>
+            <p>{compactDisplayList((baselineComparison.evidence_gate?.missing || []).slice(0, 4), '无依据要求缺口')}</p>
           </div>
         )}
         <div className="twm-baseline-cards">
@@ -3386,7 +3582,7 @@ export default function TerritoryWorldModelTab() {
                     <span>基线 {fmt(sources.baseline_case_count ?? validationSources.baseline?.row_count, 0)}</span>
                     <span>{isExportValidation ? `重叠 ${fmt(meta.coverage?.overlap_count, 0)}` : errors.length ? `${errors.length} 个解析错误` : '解析正常'}</span>
                   </div>
-                  <p>{isExportValidation ? `关联 ${meta.column_inventory?.join_key || '-'} · ${fmt(meta.coverage?.coverage_ratio, 3)}` : compactDisplayList((meta.evidence_gate?.missing || []).slice(0, 3), '无证据门槛缺口')}</p>
+                  <p>{isExportValidation ? `关联 ${meta.column_inventory?.join_key || '-'} · ${fmt(meta.coverage?.coverage_ratio, 3)}` : compactDisplayList((meta.evidence_gate?.missing || []).slice(0, 3), '无依据要求缺口')}</p>
                   {expanded && (
                     <div className="twm-baseline-card-detail">
                       {isExportValidation ? (
@@ -3418,8 +3614,8 @@ export default function TerritoryWorldModelTab() {
                             </div>
                           ))}
                           <div>
-                            <span>证据门槛</span>
-                            <p>{compactDisplayList(meta.evidence_gate?.missing, '无证据门槛缺口')}</p>
+                            <span>依据要求</span>
+                            <p>{compactDisplayList(meta.evidence_gate?.missing, '无依据要求缺口')}</p>
                           </div>
                         </>
                       )}
@@ -3850,7 +4046,7 @@ export default function TerritoryWorldModelTab() {
 
           <div className="twm-result-strip">
             <div><span>命中</span><strong>{fmt(summary.hit_count ?? hits.length, 0)}</strong></div>
-            <div><span>证据</span><strong>{fmt(summary.evidence_item_count ?? auditResult?.evidence_gate_summary?.evidence_item_count, 0)}</strong></div>
+            <div><span>依据</span><strong>{fmt(summary.evidence_item_count ?? auditResult?.evidence_gate_summary?.evidence_item_count, 0)}</strong></div>
             <div><span>数据风险</span><strong>{fmt(summary.data_quality_hit_count, 0)}</strong></div>
             <div><span>审批风险</span><strong>{fmt(summary.approval_consistency_hit_count, 0)}</strong></div>
           </div>
@@ -3875,7 +4071,7 @@ export default function TerritoryWorldModelTab() {
               </select>
             </label>
             <label>
-              <span>证据覆盖</span>
+              <span>依据完整度</span>
               <input
                 type="number"
                 min={0}
@@ -3915,7 +4111,7 @@ export default function TerritoryWorldModelTab() {
             </button>
             <button type="button" className="twm-secondary-action" onClick={runAudit} disabled={busy || !selectedStateId}>
               {running === 'audit' ? <Loader2 size={13} className="twm-spin" /> : <FileCheck2 size={13} />}
-              证据审计
+              依据核查
             </button>
           </div>
 
@@ -3994,6 +4190,151 @@ export default function TerritoryWorldModelTab() {
           </div>
         </section>
       </div>
+        </div>
+      )}
+
+      {activeSubTab === 'graph' && (
+        <div
+          className="twm-subtab-panel"
+          role="tabpanel"
+          id="twm-subtab-graph"
+          aria-labelledby="twm-subtab-control-graph"
+        >
+          <section className="twm-section twm-state-graph-panel">
+            <div className="twm-section-head">
+              <GitBranch size={14} />
+              <h4>状态图谱</h4>
+              <span className={`status-badge ${stateGraph?.graph_store?.full_graph_persisted ? 'success' : 'proposed'}`}>
+                {stateGraph?.graph_store?.full_graph_persisted ? '全量图谱已入库' : '待加载'}
+              </span>
+            </div>
+            <div className="twm-state-graph-actions">
+              <button type="button" className="twm-primary-action" onClick={() => loadStateGraph('')} disabled={busy || !selectedStateId}>
+                {running === 'stateGraph' ? <Loader2 size={13} className="twm-spin" /> : <GitBranch size={13} />}
+                加载全量图谱
+              </button>
+              <span>
+                后端从全量 TWM 状态对象、关系、规则判断、支撑材料和复核任务生成图谱；浏览器只渲染可读的聚焦子图。
+              </span>
+            </div>
+
+            <div className="twm-state-graph-kpis">
+              <div><span>全量节点</span><strong>{fmt(stateGraphCounts.total_node_count, 0)}</strong></div>
+              <div><span>全量关系</span><strong>{fmt(stateGraphCounts.total_edge_count, 0)}</strong></div>
+              <div><span>状态对象</span><strong>{fmt(stateGraphCounts.state_object_count, 0)}</strong></div>
+              <div><span>状态关系</span><strong>{fmt(stateGraphCounts.state_relation_count, 0)}</strong></div>
+              <div><span>规则判断</span><strong>{fmt(stateGraphCounts.rule_hit_count, 0)}</strong></div>
+              <div><span>支撑材料</span><strong>{fmt(stateGraphCounts.support_material_count, 0)}</strong></div>
+              <div><span>复核任务</span><strong>{fmt(stateGraphCounts.review_task_count, 0)}</strong></div>
+              <div><span>浏览器载荷</span><strong>{stateGraphFullLoaded ? '完整载荷' : '聚焦子图'}</strong></div>
+            </div>
+
+            {stateGraph && (
+              <div className="twm-state-graph-layout">
+                <div className="twm-state-graph-canvas">
+                  <div className="twm-state-graph-canvas-head">
+                    <strong>地图-图谱联动视图</strong>
+                    <span>
+                      当前渲染 {fmt(stateGraphRenderPolicy.rendered_node_count, 0)}/{fmt(stateGraphRenderPolicy.full_graph_node_count, 0)} 个节点，
+                      {fmt(stateGraphRenderPolicy.rendered_edge_count, 0)}/{fmt(stateGraphRenderPolicy.full_graph_edge_count, 0)} 条关系
+                    </span>
+                  </div>
+                  <svg
+                    className="twm-state-graph-svg"
+                    viewBox={`0 0 ${stateGraphPositioned.width} ${stateGraphPositioned.height}`}
+                    height={stateGraphPositioned.height}
+                    role="img"
+                    aria-label="TWM 状态图谱"
+                  >
+                    {stateGraphPositioned.edges.map((edge: any) => (
+                      <g key={edge.id || `${edge.source}-${edge.target}`}>
+                        <line
+                          x1={edge.sourceNode.x}
+                          y1={edge.sourceNode.y}
+                          x2={edge.targetNode.x}
+                          y2={edge.targetNode.y}
+                          className={`twm-state-graph-edge ${edge.kind || ''}`}
+                        />
+                        <text
+                          x={(edge.sourceNode.x + edge.targetNode.x) / 2}
+                          y={(edge.sourceNode.y + edge.targetNode.y) / 2 - 3}
+                          className="twm-state-graph-edge-label"
+                        >
+                          {displayText(edge.label || edge.kind)}
+                        </text>
+                      </g>
+                    ))}
+                    {stateGraphPositioned.nodes.map(node => (
+                      <g
+                        key={node.id}
+                        className={`twm-state-graph-node ${stateGraphNodeClass(node)} ${stateGraphFocusNodeId === node.id ? 'active' : ''}`}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => focusStateGraphNode(node)}
+                        onKeyDown={event => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            focusStateGraphNode(node);
+                          }
+                        }}
+                      >
+                        <rect
+                          className="twm-state-graph-hitbox"
+                          x={node.x - 18}
+                          y={node.y - 18}
+                          width={168}
+                          height={36}
+                          rx={6}
+                        />
+                        <circle cx={node.x} cy={node.y} r={15} />
+                        <text x={node.x} y={node.y + 3} textAnchor="middle">{stateGraphNodeLabel(node).slice(0, 2)}</text>
+                        <text x={node.x + 21} y={node.y - 4} className="node-title">{stateGraphNodeLabel(node).slice(0, 18)}</text>
+                        <text x={node.x + 21} y={node.y + 10} className="node-meta">{displayText(node.role || node.kind)}</text>
+                      </g>
+                    ))}
+                  </svg>
+                  <div className="twm-state-graph-legend">
+                    <span><i className="project" />项目/对象</span>
+                    <span><i className="constraint" />管控边界</span>
+                    <span><i className="risk" />规则判断</span>
+                    <span><i className="support" />支撑材料</span>
+                    <span><i className="review" />复核任务</span>
+                  </div>
+                </div>
+
+                <div className="twm-state-graph-side">
+                  <article>
+                    <strong>图谱数据库口径</strong>
+                    <p>{displayText(stateGraph.graph_store?.production_policy || '全量状态图已持久化；浏览器按焦点渲染。')}</p>
+                    <code>{stateGraph.graph_store?.backend || 'twm_repository_state_graph'}</code>
+                  </article>
+                  <article>
+                    <strong>对象角色</strong>
+                    {Object.entries(stateGraph.object_counts_by_role || {}).slice(0, 8).map(([role, count]) => (
+                      <p key={`graph-role-${role}`}><span>{displayText(role)}</span><em>{fmt(count, 0)}</em></p>
+                    ))}
+                  </article>
+                  <article>
+                    <strong>关系类型</strong>
+                    {Object.entries(stateGraph.relation_counts_by_type || {}).slice(0, 8).map(([relation, count]) => (
+                      <p key={`graph-relation-${relation}`}><span>{displayText(relation)}</span><em>{fmt(count, 0)}</em></p>
+                    ))}
+                  </article>
+                  <article>
+                    <strong>支撑材料类型</strong>
+                    {Object.entries(stateGraph.support_material_counts_by_type || {}).slice(0, 6).map(([kind, count]) => (
+                      <p key={`graph-support-${kind}`}><span>{displayText(kind)}</span><em>{fmt(count, 0)}</em></p>
+                    ))}
+                    {!Object.keys(stateGraph.support_material_counts_by_type || {}).length && <p><span>尚未生成支撑材料</span><em>0</em></p>}
+                  </article>
+                </div>
+              </div>
+            )}
+
+            {!stateGraph && (
+              <div className="twm-empty">尚未加载状态图谱。先在“操作推演”构建状态，再加载全量图谱。</div>
+            )}
+          </section>
         </div>
       )}
 

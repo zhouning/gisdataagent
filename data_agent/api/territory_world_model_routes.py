@@ -372,6 +372,27 @@ async def twm_state_detail(request: Request):
     return JSONResponse(state)
 
 
+async def twm_state_graph(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    svc = get_territory_world_model_service()
+    payload = {
+        "include_full_graph": request.query_params.get("include_full_graph", "false"),
+        "visual_node_limit": request.query_params.get("visual_node_limit", "160"),
+        "focus_object_id": request.query_params.get("focus_object_id", ""),
+        "focus_node_id": request.query_params.get("focus_node_id", ""),
+    }
+    try:
+        result = await asyncio.to_thread(svc.state_graph_report, request.path_params["id"], payload)
+        return JSONResponse(result)
+    except LookupError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+
+
 async def twm_evaluate_rules(request: Request):
     user = _get_user_from_request(request)
     if not user:
@@ -1446,6 +1467,7 @@ def get_territory_world_model_routes() -> list[Route]:
         Route("/api/twm/projects/{id}/states", endpoint=twm_project_states, methods=["GET"]),
         Route("/api/twm/projects/{id}/build-state", endpoint=twm_build_state, methods=["POST"]),
         Route("/api/twm/states/{id}", endpoint=twm_state_detail, methods=["GET"]),
+        Route("/api/twm/states/{id}/state-graph", endpoint=twm_state_graph, methods=["GET"]),
         Route("/api/twm/states/{id}/evaluate-rules", endpoint=twm_evaluate_rules, methods=["POST"]),
         Route("/api/twm/states/{id}/rule-hits", endpoint=twm_rule_hits, methods=["GET"]),
         Route("/api/twm/rule-hits/{id}", endpoint=twm_rule_hit_detail, methods=["GET"]),

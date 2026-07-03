@@ -16,6 +16,7 @@ from data_agent.territory_world_model import (
     TwmEvidenceItem,
     TwmProject,
     TwmRepository,
+    TwmReviewTask,
     TwmRuleHit,
     TwmRuleEvaluationResult,
     TwmStateRelation,
@@ -201,6 +202,132 @@ def _save_semantic_target_state(service: TerritoryWorldModelService):
         )
     )
     return project, state_version, first, second
+
+
+def test_state_graph_report_uses_full_state_graph_not_demo_subset():
+    svc = _build_service()
+    project = TwmProject(name="Full graph project", region_code="500227")
+    state_version = TwmStateVersion(
+        project_id=project.id,
+        object_count=3,
+        relation_count=2,
+        build_status="ready",
+        summary={
+            "object_counts_by_role": {"project": 1, "parcel": 1, "permanent_basic_farmland": 1},
+            "relation_counts_by_type": {
+                "project_overlaps_parcel": 1,
+                "project_overlaps_permanent_basic_farmland": 1,
+            },
+        },
+        quality_summary={"support_material_completeness": 0.8},
+    )
+    project_object = TwmStateObject(
+        state_version_id=state_version.id,
+        object_type="feature",
+        object_code="PRJ-FULL-001",
+        source_role="project",
+        canonical_role="project",
+        attributes={"XMMC": "全量图谱测试项目", "approval_status": "review"},
+        bbox=[106.20, 29.70, 106.21, 29.71],
+    )
+    parcel_object = TwmStateObject(
+        state_version_id=state_version.id,
+        object_type="feature",
+        object_code="PARCEL-FULL-001",
+        source_role="parcel_current",
+        canonical_role="parcel",
+        attributes={"DLMC": "耕地", "area_m2": 1200.0},
+        bbox=[106.20, 29.70, 106.22, 29.72],
+    )
+    farmland_object = TwmStateObject(
+        state_version_id=state_version.id,
+        object_type="feature",
+        object_code="PBF-FULL-001",
+        source_role="permanent_basic_farmland",
+        canonical_role="permanent_basic_farmland",
+        attributes={"管控类型": "永久基本农田"},
+        bbox=[106.205, 29.705, 106.225, 29.725],
+    )
+    relations = [
+        TwmStateRelation(
+            state_version_id=state_version.id,
+            subject_object_id=project_object.id,
+            object_object_id=parcel_object.id,
+            predicate="project_overlaps_parcel",
+            relation_type="project_overlaps_parcel",
+            confidence=0.93,
+            metrics={"overlap_area_m2": 350.0},
+        ),
+        TwmStateRelation(
+            state_version_id=state_version.id,
+            subject_object_id=project_object.id,
+            object_object_id=farmland_object.id,
+            predicate="project_overlaps_permanent_basic_farmland",
+            relation_type="project_overlaps_permanent_basic_farmland",
+            confidence=0.88,
+            metrics={"overlap_area_m2": 80.0},
+        ),
+    ]
+    svc.repository.save_state_bundle(
+        StateBuildResult(
+            project=project,
+            state_version=state_version,
+            objects=[project_object, parcel_object, farmland_object],
+            relations=relations,
+            object_counts_by_role=state_version.summary["object_counts_by_role"],
+            relation_counts_by_type=state_version.summary["relation_counts_by_type"],
+            hierarchy_tokens={},
+            quality_summary=state_version.quality_summary,
+        )
+    )
+    hit = svc.repository.save_rule_hit(
+        TwmRuleHit(
+            state_version_id=state_version.id,
+            rule_id="TWM-FARM-001",
+            subject_object_id=project_object.id,
+            target_object_id=farmland_object.id,
+            severity="blocking",
+            risk_score=0.97,
+            explanation="项目触碰永久基本农田",
+        )
+    )
+    support_item = svc.repository.save_evidence_item(
+        TwmEvidenceItem(
+            rule_hit_id=hit.id,
+            evidence_type="spatial_overlay",
+            source_ref="project_overlaps_permanent_basic_farmland",
+            payload={"source_layer": "permanent_basic_farmland.geojson"},
+            checksum="support-checksum",
+        )
+    )
+    review_task = svc.repository.save_review_task(
+        TwmReviewTask(rule_hit_id=hit.id, status="pending", decision="needs_manual_review")
+    )
+
+    report = svc.state_graph_report(
+        state_version.id,
+        {"include_full_graph": True, "visual_node_limit": 2, "focus_object_id": project_object.id},
+    )
+
+    assert report["schema"] == "territory_world_model.state_graph.v1"
+    assert report["graph_store"]["full_graph_persisted"] is True
+    assert report["graph_store"]["backend"] == "twm_repository_state_graph"
+    assert report["full_graph_counts"]["state_object_count"] == 3
+    assert report["full_graph_counts"]["state_relation_count"] == 2
+    assert report["full_graph_counts"]["rule_hit_count"] == 1
+    assert report["full_graph_counts"]["support_material_count"] == 1
+    assert report["full_graph_counts"]["review_task_count"] == 1
+    assert report["full_graph_counts"]["total_node_count"] == 6
+    assert report["full_graph_counts"]["total_edge_count"] == 6
+    assert report["object_counts_by_role"]["project"] == 1
+    assert report["relation_counts_by_type"]["project_overlaps_permanent_basic_farmland"] == 1
+    assert len(report["full_graph"]["nodes"]) == 6
+    assert len(report["full_graph"]["edges"]) == 6
+    assert len(report["visual_graph"]["nodes"]) <= 2
+    assert report["visual_graph"]["render_policy"]["visual_subset_only"] is True
+    assert report["visual_graph"]["render_policy"]["full_graph_counts_available"] is True
+    assert any(node["id"] == f"support:{support_item.id}" for node in report["full_graph"]["nodes"])
+    assert any(node["id"] == f"review:{review_task.id}" for node in report["full_graph"]["nodes"])
 
 
 def _save_passable_state_contract_state(service: TerritoryWorldModelService, tmp_path: Path):
@@ -9131,6 +9258,24 @@ def test_twm_frontend_exposes_roadmap_status_and_layer_detail_drilldown():
     assert "权威模板" in component
     assert "字段明细" in component
     assert "样例记录" in component
+
+
+def test_twm_frontend_exposes_full_state_graph_and_plain_support_wording():
+    component = Path("frontend/src/components/datapanel/TerritoryWorldModelTab.tsx").read_text()
+    styles = Path("frontend/src/styles/layout.css").read_text()
+
+    assert "/state-graph" in component
+    assert "include_full_graph: 'false'" in component
+    assert "include_full_graph: 'true'" not in component
+    assert "visual_node_limit: '48'" in component
+    assert "twm-state-graph-hitbox" in component
+    assert "pointer-events: visiblePainted" in styles
+    assert "overflow: auto" in styles
+    assert "状态图谱" in component
+    assert "全量图谱" in component
+    assert "支撑材料" in component
+    assert "依据核查" in component
+    assert "证据审计" not in component
 
 
 def test_data_foundation_assessment_route_returns_json(monkeypatch):

@@ -135,8 +135,9 @@ test.describe('TWM prototype demo workflow', () => {
 
     await expect(page.locator('.twm-title')).toContainText('国土空间世界模型', { timeout: 30000 });
     await expect(page.getByRole('tab', { name: '总览地图' })).toHaveAttribute('aria-selected', 'true');
-    await expect(page.getByRole('tab', { name: '数据证据' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: '数据依据' })).toBeVisible();
     await expect(page.getByRole('tab', { name: '操作推演' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: '状态图谱' })).toBeVisible();
     await expect(page.getByRole('tab', { name: '技术载荷' })).toBeVisible();
     await expect(page.locator('.twm-map-story')).toContainText('地图联动');
     await expect(page.locator('.twm-claim-matrix-panel')).toHaveCount(0);
@@ -149,7 +150,7 @@ test.describe('TWM prototype demo workflow', () => {
         return undefined;
       };
     });
-    await page.getByRole('tab', { name: '数据证据' }).click();
+    await page.getByRole('tab', { name: '数据依据' }).click();
     await expect(page.locator('.twm-data-browser-panel')).toContainText('数据基础浏览器');
     await expect(page.locator('.twm-data-browser-panel')).toContainText('当前结论');
     await page.getByRole('button', { name: '浏览 璧山多行政单元评估样例' }).click();
@@ -369,7 +370,7 @@ test.describe('TWM prototype demo workflow', () => {
       && response.url().endsWith('/audit-report')
       && response.request().method() === 'GET'
     ), { timeout: 60000 });
-    await page.getByRole('button', { name: '证据审计' }).click();
+    await page.getByRole('button', { name: '依据核查' }).click();
     const auditResponse = await auditResponsePromise;
     expectJsonResponse(auditResponse, '/audit-report');
     const auditPayload = await responseJsonOrNull(auditResponse);
@@ -378,6 +379,32 @@ test.describe('TWM prototype demo workflow', () => {
     }
     await expectNoTwmError(page);
 
+    await page.getByRole('tab', { name: '状态图谱' }).click();
+    const graphResponsePromise = page.waitForResponse((response) => (
+      response.url().includes('/api/twm/states/')
+      && response.url().includes('/state-graph')
+      && response.request().method() === 'GET'
+    ), { timeout: 60000 });
+    await page.getByRole('button', { name: '加载全量图谱' }).click();
+    const graphResponse = await graphResponsePromise;
+    expectJsonResponse(graphResponse, '/state-graph');
+    const graphPayload = await responseJsonOrNull(graphResponse);
+    if (graphPayload) {
+      expect(graphPayload.graph_store?.full_graph_persisted).toBe(true);
+      expect(graphPayload.full_graph_counts?.state_object_count).toBeGreaterThan(100);
+      expect(graphPayload.full_graph_counts?.state_relation_count).toBeGreaterThan(100);
+      expect(graphPayload.full_graph?.included).toBe(false);
+      expect(graphPayload.visual_graph?.render_policy?.full_graph_counts_available).toBe(true);
+      expect(graphPayload.visual_graph?.render_policy?.visual_subset_only).toBe(true);
+    }
+    await expect(page.locator('.twm-state-graph-panel')).toContainText('全量图谱', { timeout: 30000 });
+    await expect(page.locator('.twm-state-graph-panel')).toContainText('支撑材料', { timeout: 30000 });
+    await page.locator('.twm-state-graph-hitbox').first().click();
+    await expect(page.locator('.twm-map-story, .twm-state-graph-panel')).toContainText(/全量图谱|状态图谱/, { timeout: 30000 });
+    await expectNoTwmError(page);
+
+    await page.getByRole('tab', { name: '操作推演' }).click();
+    await expect(page.getByRole('button', { name: '载入候选' })).toBeVisible({ timeout: 30000 });
     const candidatesResponsePromise = page.waitForResponse((response) => (
       response.url().includes('/api/twm/states/')
       && response.url().endsWith('/farmland-layout-candidates')
@@ -418,7 +445,7 @@ test.describe('TWM prototype demo workflow', () => {
     });
     await expectNoTwmError(page);
 
-    await page.getByRole('tab', { name: '数据证据' }).click();
+    await page.getByRole('tab', { name: '数据依据' }).click();
     const comparisonResponsePromise = page.waitForResponse((response) => (
       response.url().endsWith('/api/twm/baseline-comparison-report')
       && response.request().method() === 'POST'

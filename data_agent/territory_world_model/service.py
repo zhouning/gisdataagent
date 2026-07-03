@@ -4133,6 +4133,335 @@ class TerritoryWorldModelService:
             "review_tasks": [item.to_dict() for item in bundle["review_tasks"]],
         }
 
+    def state_graph_report(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = dict(payload or {})
+        bundle = self.repository.get_state_bundle(state_version_id)
+        state = self.repository.get_state_version(state_version_id)
+        if bundle is None or state is None:
+            raise LookupError(f"state not found: {state_version_id}")
+
+        objects: list[TwmStateObject] = list(bundle.get("objects") or [])
+        relations: list[TwmStateRelation] = list(bundle.get("relations") or [])
+        rule_hits: list[TwmRuleHit] = self.repository.list_rule_hits(state_version_id=state_version_id)
+        support_materials: list[TwmEvidenceItem] = self.repository.list_evidence_items(state_version_id=state_version_id)
+        review_tasks: list[TwmReviewTask] = self.repository.list_review_tasks(state_version_id=state_version_id)
+
+        object_by_id = {item.id: item for item in objects}
+        hit_by_id = {item.id: item for item in rule_hits}
+        support_by_hit: dict[str, list[TwmEvidenceItem]] = {}
+        for item in support_materials:
+            support_by_hit.setdefault(item.rule_hit_id, []).append(item)
+        review_by_hit: dict[str, list[TwmReviewTask]] = {}
+        for item in review_tasks:
+            review_by_hit.setdefault(item.rule_hit_id, []).append(item)
+
+        object_counts: dict[str, int] = {}
+        for obj in objects:
+            role = self._state_graph_object_role(obj)
+            object_counts[role] = object_counts.get(role, 0) + 1
+        relation_counts: dict[str, int] = {}
+        for rel in relations:
+            rel_type = compact_text(rel.relation_type or rel.predicate or "unknown")
+            relation_counts[rel_type] = relation_counts.get(rel_type, 0) + 1
+        support_counts: dict[str, int] = {}
+        for item in support_materials:
+            support_type = compact_text(item.evidence_type or "support_material")
+            support_counts[support_type] = support_counts.get(support_type, 0) + 1
+
+        nodes: list[dict[str, Any]] = []
+        edges: list[dict[str, Any]] = []
+        node_ids: set[str] = set()
+
+        def add_node(node: dict[str, Any]) -> None:
+            node_id = compact_text(node.get("id"))
+            if not node_id or node_id in node_ids:
+                return
+            node_ids.add(node_id)
+            nodes.append(node)
+
+        def add_edge(edge: dict[str, Any]) -> None:
+            source = compact_text(edge.get("source"))
+            target = compact_text(edge.get("target"))
+            if not source or not target or source not in node_ids or target not in node_ids:
+                return
+            edges.append(edge)
+
+        for obj in objects:
+            add_node(self._state_graph_object_node(obj))
+        for hit in rule_hits:
+            add_node(self._state_graph_rule_hit_node(hit))
+        for item in support_materials:
+            add_node(self._state_graph_support_material_node(item))
+        for task in review_tasks:
+            add_node(self._state_graph_review_task_node(task))
+
+        for rel in relations:
+            add_edge({
+                "id": f"relation:{rel.id}",
+                "source": rel.subject_object_id,
+                "target": rel.object_object_id,
+                "kind": "state_relation",
+                "label": compact_text(rel.relation_type or rel.predicate or "关联"),
+                "predicate": compact_text(rel.predicate or rel.relation_type),
+                "confidence": safe_float(rel.confidence, 0.0),
+                "metrics": jsonable(rel.metrics or {}),
+            })
+        for hit in rule_hits:
+            hit_node_id = f"rule_hit:{hit.id}"
+            if hit.subject_object_id in node_ids:
+                add_edge({
+                    "id": f"rule_subject:{hit.id}",
+                    "source": hit.subject_object_id,
+                    "target": hit_node_id,
+                    "kind": "rule_subject",
+                    "label": "触发规则判断",
+                    "severity": hit.severity,
+                })
+            if hit.target_object_id and hit.target_object_id in node_ids:
+                add_edge({
+                    "id": f"rule_target:{hit.id}",
+                    "source": hit_node_id,
+                    "target": hit.target_object_id,
+                    "kind": "rule_target",
+                    "label": "涉及管控对象",
+                    "severity": hit.severity,
+                })
+            for item in support_by_hit.get(hit.id, []):
+                add_edge({
+                    "id": f"support:{item.id}:hit:{hit.id}",
+                    "source": f"support:{item.id}",
+                    "target": hit_node_id,
+                    "kind": "support_material",
+                    "label": "支撑判断",
+                    "support_type": item.evidence_type,
+                })
+            for task in review_by_hit.get(hit.id, []):
+                add_edge({
+                    "id": f"review:{task.id}:hit:{hit.id}",
+                    "source": hit_node_id,
+                    "target": f"review:{task.id}",
+                    "kind": "review_task",
+                    "label": "形成复核任务",
+                    "status": task.status,
+                })
+
+        visual_limit = max(1, safe_int(payload.get("visual_node_limit"), 160))
+        focus_object_id = compact_text(payload.get("focus_object_id") or payload.get("focus_node_id"))
+        visual_graph = self._state_graph_visual_subset(nodes, edges, visual_limit=visual_limit, focus_node_id=focus_object_id)
+        include_full_graph = truthy(payload.get("include_full_graph"))
+
+        full_counts = {
+            "state_object_count": len(objects),
+            "state_relation_count": len(relations),
+            "rule_hit_count": len(rule_hits),
+            "support_material_count": len(support_materials),
+            "review_task_count": len(review_tasks),
+            "total_node_count": len(nodes),
+            "total_edge_count": len(edges),
+        }
+        return {
+            "schema": "territory_world_model.state_graph.v1",
+            "state_version_id": state_version_id,
+            "project_id": state.project_id,
+            "generated_at": now_utc_iso(),
+            "graph_store": {
+                "backend": "twm_repository_state_graph",
+                "full_graph_persisted": True,
+                "node_tables": ["twm_state_object", "twm_rule_hit", "twm_evidence_item", "twm_review_task"],
+                "edge_tables": ["twm_state_relation", "derived_rule_support_review_edges"],
+                "production_policy": "full state graph is persisted; browser visualization may render a focus subset for usability",
+            },
+            "full_graph_counts": full_counts,
+            "object_counts_by_role": object_counts,
+            "relation_counts_by_type": relation_counts,
+            "support_material_counts_by_type": support_counts,
+            "visual_graph": visual_graph,
+            "full_graph": {
+                "included": include_full_graph,
+                "nodes": nodes if include_full_graph else [],
+                "edges": edges if include_full_graph else [],
+            },
+            "terminology": {
+                "support_material": "界面和汇报中使用“支撑材料/判断依据”，后端兼容字段仍可能叫 evidence。",
+                "simulator": "状态 + 动作 -> 下一状态摘要、约束风险、收益和可信度。",
+                "planner": "在模拟器评价的动作或候选方案中，按约束、收益、风险和支撑材料完整度选择下一步。",
+            },
+        }
+
+    def _state_graph_visual_subset(
+        self,
+        nodes: list[dict[str, Any]],
+        edges: list[dict[str, Any]],
+        *,
+        visual_limit: int,
+        focus_node_id: str = "",
+    ) -> dict[str, Any]:
+        node_by_id = {compact_text(node.get("id")): node for node in nodes}
+        selected: list[str] = []
+        selected_set: set[str] = set()
+
+        def select(node_id: str) -> None:
+            if not node_id or node_id in selected_set or node_id not in node_by_id:
+                return
+            if len(selected) >= visual_limit:
+                return
+            selected_set.add(node_id)
+            selected.append(node_id)
+
+        if focus_node_id:
+            select(focus_node_id)
+            for edge in edges:
+                source = compact_text(edge.get("source"))
+                target = compact_text(edge.get("target"))
+                if source == focus_node_id:
+                    select(target)
+                elif target == focus_node_id:
+                    select(source)
+                if len(selected) >= visual_limit:
+                    break
+
+        severity_rank = {"blocking": 5, "critical": 4, "high": 3, "medium": 2, "low": 1}
+        ranked_nodes = sorted(
+            nodes,
+            key=lambda node: (
+                0 if compact_text(node.get("id")) in selected_set else 1,
+                -severity_rank.get(compact_text(node.get("severity")), 0),
+                0 if node.get("kind") == "rule_hit" else 1,
+                0 if node.get("kind") == "state_object" and node.get("role") == "project" else 1,
+                compact_text(node.get("label")),
+            ),
+        )
+        for node in ranked_nodes:
+            select(compact_text(node.get("id")))
+            if len(selected) >= visual_limit:
+                break
+
+        visual_nodes = [node_by_id[node_id] for node_id in selected]
+        visual_node_ids = set(selected)
+        visual_edges = [
+            edge for edge in edges
+            if compact_text(edge.get("source")) in visual_node_ids and compact_text(edge.get("target")) in visual_node_ids
+        ]
+        return {
+            "nodes": visual_nodes,
+            "edges": visual_edges,
+            "render_policy": {
+                "visual_node_limit": visual_limit,
+                "rendered_node_count": len(visual_nodes),
+                "rendered_edge_count": len(visual_edges),
+                "full_graph_node_count": len(nodes),
+                "full_graph_edge_count": len(edges),
+                "visual_subset_only": len(visual_nodes) < len(nodes),
+                "full_graph_counts_available": True,
+                "focus_node_id": focus_node_id,
+            },
+        }
+
+    def _state_graph_object_role(self, obj: TwmStateObject) -> str:
+        return compact_text(obj.canonical_role or obj.source_role or obj.object_type or "unknown")
+
+    def _state_graph_object_node(self, obj: TwmStateObject) -> dict[str, Any]:
+        attrs = dict(obj.attributes or {})
+        label = (
+            compact_text(attrs.get("XMMC"))
+            or compact_text(attrs.get("project_name"))
+            or compact_text(attrs.get("name"))
+            or compact_text(attrs.get("DLMC"))
+            or compact_text(attrs.get("zone_type"))
+            or compact_text(obj.object_code)
+            or compact_text(obj.source_feature_id)
+            or obj.id
+        )
+        role = self._state_graph_object_role(obj)
+        return {
+            "id": obj.id,
+            "kind": "state_object",
+            "role": role,
+            "label": label,
+            "object_code": obj.object_code,
+            "source_role": obj.source_role,
+            "source_path": obj.source_path,
+            "bbox": jsonable(obj.bbox),
+            "quality_score": obj.quality_score,
+            "synthetic": obj.synthetic,
+            "not_for_production": obj.not_for_production,
+            "map_stage": self._state_graph_map_stage_for_role(role),
+            "summary": self._state_graph_compact_attributes(attrs),
+        }
+
+    def _state_graph_rule_hit_node(self, hit: TwmRuleHit) -> dict[str, Any]:
+        return {
+            "id": f"rule_hit:{hit.id}",
+            "kind": "rule_hit",
+            "role": "rule_hit",
+            "label": compact_text(hit.rule_id or "规则判断"),
+            "severity": hit.severity,
+            "risk_score": hit.risk_score,
+            "status": hit.hit_status,
+            "summary": compact_text(hit.explanation),
+            "map_stage": "risk",
+        }
+
+    def _state_graph_support_material_node(self, item: TwmEvidenceItem) -> dict[str, Any]:
+        payload = dict(item.payload or {})
+        return {
+            "id": f"support:{item.id}",
+            "kind": "support_material",
+            "role": "support_material",
+            "label": compact_text(item.source_ref or item.evidence_type or "支撑材料"),
+            "support_type": item.evidence_type,
+            "source_system": item.source_system,
+            "source_ref": item.source_ref,
+            "has_checksum": bool(item.checksum),
+            "summary": self._state_graph_compact_attributes(payload),
+            "map_stage": "risk",
+        }
+
+    def _state_graph_review_task_node(self, task: TwmReviewTask) -> dict[str, Any]:
+        return {
+            "id": f"review:{task.id}",
+            "kind": "review_task",
+            "role": "review_task",
+            "label": compact_text(task.decision or task.status or "人工复核"),
+            "status": task.status,
+            "summary": compact_text(task.comment),
+            "map_stage": "risk",
+        }
+
+    def _state_graph_compact_attributes(self, attrs: dict[str, Any], limit: int = 5) -> dict[str, Any]:
+        priority = [
+            "XMMC",
+            "project_name",
+            "YDMJ",
+            "approval_status",
+            "risk_scenario",
+            "DLMC",
+            "TDYTMC",
+            "zone_type",
+            "source_layer",
+            "overlap_area_m2",
+        ]
+        result: dict[str, Any] = {}
+        for key in priority:
+            if key in attrs and len(result) < limit:
+                result[key] = jsonable(attrs[key])
+        for key, value in attrs.items():
+            if len(result) >= limit:
+                break
+            if key not in result:
+                result[str(key)] = jsonable(value)
+        return result
+
+    def _state_graph_map_stage_for_role(self, role: str) -> str:
+        normalized = role.lower()
+        if "candidate" in normalized or "scenario" in normalized:
+            return "plan"
+        if "rule" in normalized or "review" in normalized:
+            return "risk"
+        if "farmland" in normalized or "eco" in normalized or "constraint" in normalized:
+            return "risk"
+        return "locate"
+
     def state_snapshot_lakehouse_manifest(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(payload or {})
         state = self.repository.get_state_version(state_version_id)
