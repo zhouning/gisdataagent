@@ -1844,7 +1844,10 @@ export default function TerritoryWorldModelTab() {
       const data = await api(`/api/twm/projects/${encodeURIComponent(projectId)}/states`);
       const rows = firstArray<TwmStateVersion>(data, 'states');
       setStates(rows);
-      if (!selectedStateId && rows[0]?.id) setSelectedStateId(rows[0].id);
+      setSelectedStateId((current: string) => {
+        if (current && rows.some(item => item.id === current)) return current;
+        return rows[0]?.id || '';
+      });
       return rows;
     });
   };
@@ -1886,11 +1889,22 @@ export default function TerritoryWorldModelTab() {
   }, [selectedProjectId]);
 
   useEffect(() => {
-    if (selectedStateId) {
-      withRun('states', () => loadStateDetail(selectedStateId));
+    if (!selectedStateId) {
+      setStateDetail(null);
+      setHits([]);
+      return;
+    }
+    const stateSummary = states.find(item => item.id === selectedStateId);
+    if (stateSummary) {
+      setStateDetail((current: any | null) => (
+        current?.state_version?.id === selectedStateId
+          ? current
+          : { state_version: stateSummary, hits: [], evidence_items: [], review_tasks: [] }
+      ));
+      setHits([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedStateId]);
+  }, [selectedStateId, states]);
 
   useEffect(() => {
     const claims = claimMatrix.claims || [];

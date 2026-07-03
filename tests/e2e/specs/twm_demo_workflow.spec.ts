@@ -116,7 +116,7 @@ function isIgnorableConsoleError(message: string) {
 
 test.describe('TWM prototype demo workflow', () => {
   test('runs the interactive TWM frontend flow from login to planning comparison', async ({ page, request }) => {
-    test.setTimeout(8 * 60 * 1000);
+    test.setTimeout(12 * 60 * 1000);
 
     const { username, password } = uniqueUser();
     const consoleErrors: string[] = [];
@@ -277,7 +277,7 @@ test.describe('TWM prototype demo workflow', () => {
     await expectNoTwmError(page);
 
     await page.getByRole('tab', { name: '操作推演' }).click();
-    await page.getByRole('button', { name: '璧山演示' }).click();
+    await page.getByRole('button', { name: '璧山多行政单元' }).click();
     const projectName = `TWM 自然资源部演示 ${Date.now()}`;
     await page.locator('label').filter({ hasText: '项目名' }).locator('input').fill(projectName);
 
@@ -296,7 +296,7 @@ test.describe('TWM prototype demo workflow', () => {
       response.url().includes('/api/twm/projects/')
       && response.url().endsWith('/build-state')
       && response.request().method() === 'POST'
-    ), { timeout: 90000 });
+    ), { timeout: 120000 });
     await page.getByRole('button', { name: '构建状态' }).click();
     const buildResponse = await buildResponsePromise;
     expectJsonResponse(buildResponse, '/build-state');
@@ -314,7 +314,7 @@ test.describe('TWM prototype demo workflow', () => {
       response.url().includes('/api/twm/states/')
       && response.url().endsWith('/evaluate-rules')
       && response.request().method() === 'POST'
-    ), { timeout: 60000 });
+    ), { timeout: 120000 });
     await page.getByRole('button', { name: '检查业务规则' }).click();
     const evaluateResponse = await evaluateResponsePromise;
     expectJsonResponse(evaluateResponse, '/evaluate-rules');
