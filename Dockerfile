@@ -53,6 +53,11 @@ RUN pip install --no-cache-dir --upgrade pip \
     pip install --no-cache-dir -r requirements.txt \
         --index-url "${PIP_INDEX_URL}"
 
+# pyproj 3.7+ can lose the PROJ database context in worker threads unless the
+# data directory is explicit. TWM state builds run through FastAPI's threadpool.
+ENV PROJ_DATA=/app/.venv/lib/python3.12/site-packages/pyproj/proj_dir/share/proj
+ENV PROJ_LIB=/app/.venv/lib/python3.12/site-packages/pyproj/proj_dir/share/proj
+
 # ---- Rebuild matplotlib font cache (pick up CJK fonts) ---------------------
 RUN python -c "import matplotlib.font_manager; matplotlib.font_manager._load_fontmanager(try_read_cache=False)"
 
