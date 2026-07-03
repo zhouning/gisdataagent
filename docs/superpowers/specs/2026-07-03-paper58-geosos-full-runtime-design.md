@@ -1,8 +1,8 @@
-# Paper58 and GeoSOS Full Runtime Design
+# Paper58 and GeoSOS-FLUS Full Runtime Design
 
 ## Goal
 
-Build a real World Model v1.1 runtime workflow in GIS Data Agent, so the tab can run Paper58 and a GeoSOS comparison model end to end, evaluate the outputs, and load the generated results onto the map.
+Build a real World Model v1.1 runtime workflow in GIS Data Agent, so the tab can run Paper58 and GeoSOS-FLUS end to end, evaluate the outputs, and load the generated results onto the map.
 
 The current World Model v1.1 tab is still primarily a visualization surface for precomputed Paper58 benchmark artifacts. The new workflow must let an operator start a fresh run from a same-grid sample, track execution, inspect metrics, and view Paper58 and GeoSOS outputs as map layers.
 
@@ -22,13 +22,13 @@ The runnable GeoSOS-FLUS console is:
 
 `/Users/zhouning/FLUS_console_crossplatform/build/flus_console`
 
-No local GeoSOS-PLUS executable, Docker image, Python package, or command-line contract has been confirmed. GeoSOS-FLUS must therefore be implemented as a real first-stage comparison engine. GeoSOS-PLUS must be represented by a full adapter contract and a clear "not configured" runtime status until a runnable PLUS engine is provided.
+GeoSOS-FLUS is the confirmed comparison model for this workflow. Product text, API fields, manifests, tests, and implementation should use the GeoSOS-FLUS name consistently.
 
 ## Non-Goals
 
 - Do not treat precomputed benchmark visualization as a full runtime run.
 - Do not call long-running model scripts directly from the frontend request path.
-- Do not label GeoSOS-FLUS as GeoSOS-PLUS.
+- Do not introduce a separate GeoSOS comparison model.
 - Do not claim that Paper58 is a general production replacement for all TWM generation routes.
 - Do not require online AlphaEarth or external cloud access for the first runnable version.
 - Do not hide failed, missing, or unconfigured engines behind successful-looking UI states.
@@ -46,16 +46,11 @@ Use a staged runtime framework:
    - Export generated map layers.
    - Display run status, logs, metrics, and map actions in the World Model v1.1 tab.
 
-2. **Stage 2: GeoSOS-PLUS integration**
-   - Keep the same engine adapter interface.
-   - Enable PLUS only when a real executable, container, or library entry point is configured.
-   - Store the configured PLUS command, version, stdout, stderr, input hashes, and outputs in the same run directory.
-
-3. **Stage 3: custom-region runs**
+2. **Stage 2: custom-region runs**
    - Add upload or registered-dataset inputs for start-year LULC, target-year LULC, drivers, constraints, demand, and optional masks.
    - Reuse the same case validation, model adapters, metrics, and map export pipeline.
 
-The first implementation should deliver Stage 1 completely and make Stage 2 honest and visible. That gives the user an actual runnable effect inside GIS Data Agent without pretending that GeoSOS-PLUS is available before it is configured.
+The first implementation should deliver Stage 1 completely. That gives the user an actual runnable Paper58 versus GeoSOS-FLUS effect inside GIS Data Agent before broadening the input contract.
 
 ## Backend Architecture
 
@@ -79,12 +74,11 @@ Create a focused runtime package:
 - Produces a Paper58 prediction raster, metrics-ready arrays, logs, and an adapter manifest.
 - Records the Paper58 repository path, script path, input sample, method name, random seed, and output hashes.
 
-`data_agent/paper58_runtime/geosos_adapter.py`
+`data_agent/paper58_runtime/flus_adapter.py`
 
-- Defines a common engine interface with `probe()`, `prepare_case()`, `run()`, `collect_outputs()`, and `build_manifest()`.
+- Defines a GeoSOS-FLUS adapter interface with `probe()`, `prepare_case()`, `run()`, `collect_outputs()`, and `build_manifest()`.
 - Implements `GeoSOSFLUSAdapter` against `/Users/zhouning/FLUS_console_crossplatform/build/flus_console`.
-- Implements `GeoSOSPLUSAdapter` as a real contract that returns `not_configured` unless a configured PLUS command exists.
-- Keeps FLUS and PLUS names separate in API responses, UI labels, manifests, and output directories.
+- Records the GeoSOS-FLUS source path, console path, case directory, command, return code, stdout, stderr, and output hashes.
 
 `data_agent/paper58_runtime/metrics.py`
 
@@ -106,10 +100,9 @@ Create a focused runtime package:
   - observed target-year land use
   - Paper58 predicted target-year land use
   - GeoSOS-FLUS predicted target-year land use
-  - GeoSOS-PLUS predicted target-year land use when configured
   - Paper58 error map
-  - GeoSOS error map
-  - Paper58 versus GeoSOS disagreement map
+  - GeoSOS-FLUS error map
+  - Paper58 versus GeoSOS-FLUS disagreement map
 - Ensures exported layer bounds stay on the source study area and do not drift into the ocean because of pixel-space coordinates.
 
 `data_agent/paper58_runtime/runner.py`
@@ -133,7 +126,6 @@ Each run directory contains:
 - `case/`
 - `paper58/`
 - `geosos_flus/`
-- `geosos_plus/`
 - `layers/`
 - `logs/`
 
@@ -159,14 +151,14 @@ Add runtime routes alongside the existing visualization routes:
 `GET /api/twm/world-model-v11/runtime/cases`
 
 - Returns available same-grid samples and engine availability.
-- Includes separate statuses for `paper58`, `geosos_flus`, and `geosos_plus`.
+- Includes separate statuses for `paper58` and `geosos_flus`.
 
 `POST /api/twm/world-model-v11/runtime/runs`
 
 - Starts a run for one case.
-- Accepts Paper58 method, comparison engine, seed, and run mode.
+- Accepts Paper58 method, GeoSOS-FLUS run options, seed, and run mode.
 - Returns `run_id`, initial status, and polling URL.
-- Rejects `geosos_plus` with a clear configuration error when no PLUS engine is configured.
+- Rejects requests when Paper58 or GeoSOS-FLUS prerequisites are unavailable.
 
 `GET /api/twm/world-model-v11/runtime/runs/{run_id}`
 
@@ -188,9 +180,8 @@ Revise the World Model v1.1 tab into two clear modes:
 
 2. **全流程运行**
    - Lets the user select a sample area.
-   - Lets the user choose Paper58 method and comparison engine.
+   - Lets the user choose Paper58 method and GeoSOS-FLUS run options.
    - Shows `GeoSOS-FLUS 可运行` when the local console probe succeeds.
-   - Shows `GeoSOS-PLUS 未配置` until a real PLUS command is configured.
    - Starts a run and polls stage status.
    - Shows a compact timeline:
      - 输入检查
@@ -208,7 +199,6 @@ All visible text in the tab should be Chinese. Font size, spacing, cards, table 
 
 - Missing Paper58 repository: return `paper58 unavailable` with the missing path.
 - Missing FLUS console binary: return `geosos_flus unavailable` with the expected path.
-- Missing PLUS command: return `geosos_plus not_configured`; do not start a fake run.
 - Raster shape mismatch: fail during input validation before any model starts.
 - Missing CRS or transform: fail map export and keep the run artifacts available for inspection.
 - Model execution failure: store stdout, stderr, return code, stage name, and command.
@@ -222,7 +212,6 @@ Backend unit tests:
 - Case validation rejects mismatched rasters and missing georeferencing.
 - Paper58 adapter builds a manifest and output paths from a fixture run.
 - GeoSOS-FLUS adapter probes the local console path and supports a fake executable in tests.
-- GeoSOS-PLUS adapter returns `not_configured` when no command is supplied.
 - Metrics compute accuracy, change F1, figure of merit, transition accuracy, and demand residual on small arrays.
 - Map export uses raster georeferencing and never emits pixel-space ocean-shifted bounds.
 - Runtime routes start, poll, and map a completed fixture run.
@@ -230,8 +219,7 @@ Backend unit tests:
 Frontend and contract tests:
 
 - The World Model v1.1 tab exposes `结果查看` and `全流程运行`.
-- The full-run form shows Paper58, GeoSOS-FLUS, and GeoSOS-PLUS availability separately.
-- The UI blocks GeoSOS-PLUS execution when the backend reports `not_configured`.
+- The full-run form shows Paper58 and GeoSOS-FLUS availability separately.
 - The UI shows stage status and metrics after a completed fixture run.
 - The map button appears only after generated layers are available.
 
@@ -248,15 +236,14 @@ End-to-end smoke test:
 
 ## Acceptance Criteria
 
-- A user can start a new Paper58 plus GeoSOS-FLUS run from the World Model v1.1 tab.
+- A user can start a new Paper58 and GeoSOS-FLUS run from the World Model v1.1 tab.
 - The run creates a durable output directory with manifest, logs, metrics, and layers.
 - The UI clearly distinguishes precomputed benchmark viewing from newly executed runtime runs.
 - GeoSOS-FLUS is called through the local `/Users/zhouning/FLUS_console_crossplatform` implementation.
-- GeoSOS-PLUS is not presented as runnable until a real PLUS engine is configured.
 - Failed stages surface actionable error messages and preserve logs.
 - Generated map layers use source georeferencing and stay over the study area.
 - Automated tests cover backend services, route contracts, frontend contract behavior, and one local e2e smoke path.
 
 ## Implementation Boundary
 
-The first implementation should focus on same-grid Paper58 samples and local GeoSOS-FLUS execution. It should not add custom raster upload, online AlphaEarth retrieval, or a simulated PLUS implementation. Those are separate follow-up increments after the core runtime contract is stable.
+The first implementation should focus on same-grid Paper58 samples and local GeoSOS-FLUS execution. It should not add custom raster upload, online AlphaEarth retrieval, or any additional GeoSOS engine abstraction. Those are separate follow-up increments after the core runtime contract is stable.
