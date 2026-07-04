@@ -11,14 +11,21 @@ TARGET_COLUMNS = {
     "planning_utility_delta",
     "outcome",
 }
+ACTION_MASK_LABEL_COLUMNS = {
+    "action_mask_allowed",
+    "action_mask_required_reviews",
+    "action_mask_hard_blocks",
+    "action_mask_policy",
+}
+EXCLUDED_SIMULATOR_INPUT_COLUMNS = TARGET_COLUMNS | ACTION_MASK_LABEL_COLUMNS
 
 
 def build_runtime_observation(measurements: dict[str, Any], dataset_snapshot_hash: str) -> dict[str, Any]:
     """Build a canonical TWM observation contract for simulator consumption."""
 
     trajectory_columns = set(measurements.get("trajectory_columns") or [])
-    excluded_target_columns = sorted(trajectory_columns.intersection(TARGET_COLUMNS))
-    input_feature_columns = sorted(trajectory_columns.difference(TARGET_COLUMNS))
+    excluded_target_columns = sorted(trajectory_columns.intersection(EXCLUDED_SIMULATOR_INPUT_COLUMNS))
+    input_feature_columns = sorted(trajectory_columns.difference(EXCLUDED_SIMULATOR_INPUT_COLUMNS))
     observation_seed = {
         "schema": RUNTIME_OBSERVATION_SCHEMA,
         "dataset_snapshot_hash": dataset_snapshot_hash,
@@ -68,7 +75,9 @@ def build_runtime_observation(measurements: dict[str, Any], dataset_snapshot_has
             "schema": "territory_world_model.runtime_feature_vector_contract.v1",
             "input_feature_columns": input_feature_columns,
             "excluded_target_columns": excluded_target_columns,
-            "target_columns": sorted(TARGET_COLUMNS),
+            "target_columns": sorted(EXCLUDED_SIMULATOR_INPUT_COLUMNS),
+            "future_outcome_columns": sorted(TARGET_COLUMNS),
+            "label_explanation_columns": sorted(ACTION_MASK_LABEL_COLUMNS),
             "target_columns_excluded_from_input": set(excluded_target_columns).isdisjoint(input_feature_columns),
             "raw_source_may_contain_targets": bool(excluded_target_columns),
         },
@@ -91,7 +100,8 @@ def build_runtime_observation(measurements: dict[str, Any], dataset_snapshot_has
                 "support_material_context",
                 "review_context",
             ],
-            "action_fields": ["action_type", "action_mask_allowed", "action_mask_required_reviews", "action_mask_policy"],
+            "action_fields": ["action_type"],
+            "label_fields_excluded": sorted(ACTION_MASK_LABEL_COLUMNS),
             "target_fields_excluded": excluded_target_columns,
         },
     }

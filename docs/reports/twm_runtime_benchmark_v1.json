@@ -1,7 +1,7 @@
 {
   "schema": "territory_world_model.twm_runtime_benchmark.v1",
   "suite_id": "twm_runtime_v1",
-  "created_at": "2026-07-04T08:25:03.514254+00:00",
+  "created_at": "2026-07-04T08:52:51.949414+00:00",
   "dataset_manifest_hash": "2278ac2b8aa383c17ab3ebeacc24352f9ac20c1b12004eb307e391b7401840b5",
   "status": "fail",
   "failed_gates": [
@@ -143,7 +143,7 @@
         },
         "facade_backend_forbidden": {
           "status": "pass",
-          "observed": "contract_trace_only",
+          "observed": "transparent_action_mask_rule_head",
           "required": "backend_type != deterministic_planner_facade"
         },
         "dataset_snapshot_hash_in_trace": {
@@ -153,7 +153,7 @@
         },
         "model_family_in_trace": {
           "status": "pass",
-          "observed": "contract_trace_only",
+          "observed": "transparent_action_mask_rule_head",
           "required": true
         },
         "split_in_trace": {
@@ -163,13 +163,30 @@
         },
         "prediction_id_in_trace": {
           "status": "pass",
-          "observed": "twm-runtime-v1-c5acd614a157cb58",
+          "observed": "twm-runtime-v1-d64677707d2b45c4",
           "required": true
         },
         "action_mask_probability": {
-          "status": "fail",
-          "observed": null,
-          "required": true
+          "status": "pass",
+          "observed": {
+            "status": "evaluated",
+            "test_action_mask_accuracy": 1.0,
+            "test_blocked_action_recall": 1.0
+          },
+          "required": {
+            "status": "evaluated",
+            "action_mask_accuracy_min": 0.85,
+            "blocked_action_recall_min": 0.85
+          }
+        },
+        "holdout_metrics": {
+          "status": "pass",
+          "observed": [
+            "action_mask_probability"
+          ],
+          "required": [
+            "action_mask_probability"
+          ]
         },
         "runtime_metrics": {
           "status": "fail",
@@ -185,10 +202,9 @@
         }
       },
       "missing": [
-        "action_mask_probability",
-        "holdout_metrics"
+        "runtime_metrics"
       ],
-      "summary": "Simulator trace contract is present, but predictive heads and holdout metrics are not implemented yet."
+      "summary": "Action-mask safety head is evaluated, but transition/risk/utility predictive metrics are not implemented yet."
     },
     "planner_gate": {
       "status": "fail",
@@ -309,6 +325,10 @@
         "raw_target_columns_declared": {
           "status": "pass",
           "observed": [
+            "action_mask_allowed",
+            "action_mask_hard_blocks",
+            "action_mask_policy",
+            "action_mask_required_reviews",
             "constraint_risk_delta",
             "next_state_score",
             "outcome",
@@ -395,10 +415,6 @@
       "schema": "territory_world_model.runtime_feature_vector_contract.v1",
       "input_feature_columns": [
         "DKMJ",
-        "action_mask_allowed",
-        "action_mask_hard_blocks",
-        "action_mask_policy",
-        "action_mask_required_reviews",
         "action_type",
         "approval_id",
         "approval_status",
@@ -443,16 +459,36 @@
         "y"
       ],
       "excluded_target_columns": [
+        "action_mask_allowed",
+        "action_mask_hard_blocks",
+        "action_mask_policy",
+        "action_mask_required_reviews",
         "constraint_risk_delta",
         "next_state_score",
         "outcome",
         "planning_utility_delta"
       ],
       "target_columns": [
+        "action_mask_allowed",
+        "action_mask_hard_blocks",
+        "action_mask_policy",
+        "action_mask_required_reviews",
         "constraint_risk_delta",
         "next_state_score",
         "outcome",
         "planning_utility_delta"
+      ],
+      "future_outcome_columns": [
+        "constraint_risk_delta",
+        "next_state_score",
+        "outcome",
+        "planning_utility_delta"
+      ],
+      "label_explanation_columns": [
+        "action_mask_allowed",
+        "action_mask_hard_blocks",
+        "action_mask_policy",
+        "action_mask_required_reviews"
       ],
       "target_columns_excluded_from_input": true,
       "raw_source_may_contain_targets": true
@@ -477,12 +513,19 @@
         "review_context"
       ],
       "action_fields": [
-        "action_type",
+        "action_type"
+      ],
+      "label_fields_excluded": [
         "action_mask_allowed",
-        "action_mask_required_reviews",
-        "action_mask_policy"
+        "action_mask_hard_blocks",
+        "action_mask_policy",
+        "action_mask_required_reviews"
       ],
       "target_fields_excluded": [
+        "action_mask_allowed",
+        "action_mask_hard_blocks",
+        "action_mask_policy",
+        "action_mask_required_reviews",
         "constraint_risk_delta",
         "next_state_score",
         "outcome",
@@ -492,10 +535,10 @@
   },
   "simulator_trace": {
     "schema": "territory_world_model.simulator_trace.v1",
-    "prediction_id": "twm-runtime-v1-c5acd614a157cb58",
-    "backend_type": "contract_trace_only",
-    "model_family": "contract_trace_only",
-    "model_version": "0.1",
+    "prediction_id": "twm-runtime-v1-d64677707d2b45c4",
+    "backend_type": "transparent_action_mask_rule_head",
+    "model_family": "transparent_action_mask_rule_head",
+    "model_version": "0.2",
     "split": "test",
     "dataset_snapshot_hash": "2278ac2b8aa383c17ab3ebeacc24352f9ac20c1b12004eb307e391b7401840b5",
     "observation_id": "38fba8d251444d079123a878c9ed34f9ae084168ae142eee91cc596daaabf930",
@@ -514,11 +557,288 @@
       "constraint_violation_probability": "not_implemented",
       "planning_utility_delta": "not_implemented",
       "uncertainty": "not_implemented",
-      "action_mask_probability": "not_implemented"
+      "action_mask_probability": {
+        "status": "evaluated",
+        "schema": "territory_world_model.action_mask_probability_head.v1",
+        "backend_type": "transparent_action_mask_rule_head",
+        "training_protocol": {
+          "fit_split": "train",
+          "validation_split": "validation",
+          "test_split": "test",
+          "selection_metric": "train_accuracy_then_blocked_action_recall",
+          "label_leakage_guard": "action_mask labels, explanations and future outcome columns are excluded from input_feature_columns"
+        },
+        "rule_model": {
+          "schema": "territory_world_model.action_mask_rule_model.v1",
+          "rule_family": "train_split_threshold_modular_phase_search",
+          "risk_feature": "baseline_risk_score_with_risk_score_fallback",
+          "risk_threshold": 0.2,
+          "action_rules": {
+            "approve_with_conditions": {
+              "rule_type": "risk_threshold_phase_mod",
+              "risk_threshold": 0.2,
+              "phase_expression": "(region_index + time_index) % modulus == remainder",
+              "modulus": 2,
+              "remainder": 0,
+              "train_rows": 32,
+              "train_metrics": {
+                "row_count": 32,
+                "allowed_count": 22,
+                "blocked_count": 10,
+                "action_mask_accuracy": 0.9375,
+                "blocked_action_recall": 1.0,
+                "allowed_action_recall": 0.909091,
+                "false_allow_count": 0,
+                "false_block_count": 2,
+                "confusion": {
+                  "true_allow": 20,
+                  "true_block": 10,
+                  "false_allow": 0,
+                  "false_block": 2
+                }
+              }
+            },
+            "defer_review": {
+              "rule_type": "always_blocked",
+              "train_rows": 32,
+              "train_metrics": {
+                "row_count": 32,
+                "allowed_count": 0,
+                "blocked_count": 32,
+                "action_mask_accuracy": 1.0,
+                "blocked_action_recall": 1.0,
+                "allowed_action_recall": 1.0,
+                "false_allow_count": 0,
+                "false_block_count": 0,
+                "confusion": {
+                  "true_allow": 0,
+                  "true_block": 32,
+                  "false_allow": 0,
+                  "false_block": 0
+                }
+              }
+            },
+            "protect": {
+              "rule_type": "risk_threshold_phase_mod",
+              "risk_threshold": 0.2,
+              "phase_expression": "(region_index + time_index) % modulus == remainder",
+              "modulus": 3,
+              "remainder": 1,
+              "train_rows": 32,
+              "train_metrics": {
+                "row_count": 32,
+                "allowed_count": 26,
+                "blocked_count": 6,
+                "action_mask_accuracy": 1.0,
+                "blocked_action_recall": 1.0,
+                "allowed_action_recall": 1.0,
+                "false_allow_count": 0,
+                "false_block_count": 0,
+                "confusion": {
+                  "true_allow": 26,
+                  "true_block": 6,
+                  "false_allow": 0,
+                  "false_block": 0
+                }
+              }
+            },
+            "restore": {
+              "rule_type": "risk_threshold_phase_mod",
+              "risk_threshold": 0.2,
+              "phase_expression": "(region_index + time_index) % modulus == remainder",
+              "modulus": 3,
+              "remainder": 0,
+              "train_rows": 32,
+              "train_metrics": {
+                "row_count": 32,
+                "allowed_count": 22,
+                "blocked_count": 10,
+                "action_mask_accuracy": 1.0,
+                "blocked_action_recall": 1.0,
+                "allowed_action_recall": 1.0,
+                "false_allow_count": 0,
+                "false_block_count": 0,
+                "confusion": {
+                  "true_allow": 22,
+                  "true_block": 10,
+                  "false_allow": 0,
+                  "false_block": 0
+                }
+              }
+            }
+          },
+          "fit_metrics": {
+            "row_count": 128,
+            "allowed_count": 70,
+            "blocked_count": 58,
+            "action_mask_accuracy": 0.984375,
+            "blocked_action_recall": 1.0,
+            "allowed_action_recall": 0.971429,
+            "false_allow_count": 0,
+            "false_block_count": 2,
+            "confusion": {
+              "true_allow": 68,
+              "true_block": 58,
+              "false_allow": 0,
+              "false_block": 2
+            }
+          }
+        },
+        "input_feature_columns": [
+          "DKMJ",
+          "action_type",
+          "approval_id",
+          "approval_status",
+          "approved_area_m2",
+          "area_m2",
+          "baseline_risk_score",
+          "baseline_state_score",
+          "cluster",
+          "completed_review_count",
+          "confirmed_violation_count",
+          "counterfactual_group",
+          "critical_rule_hit_count",
+          "data_role",
+          "evidence_weight",
+          "high_rule_hit_count",
+          "neighbor_unit_ids",
+          "neighbors",
+          "not_for_production",
+          "open_review_count",
+          "period",
+          "project_id",
+          "propensity_score",
+          "quality_score",
+          "region_code",
+          "review_penalty",
+          "review_task_count",
+          "risk_score",
+          "rule_eval_count",
+          "rule_hit_count",
+          "scenario_id",
+          "source_path",
+          "spatial_cluster",
+          "split",
+          "stratum",
+          "supplement_required_review_count",
+          "synthetic",
+          "time_index",
+          "treatment_effect",
+          "uncertainty",
+          "unit_id",
+          "x",
+          "y"
+        ],
+        "used_feature_columns": [
+          "action_type",
+          "region_code",
+          "time_index",
+          "baseline_risk_score",
+          "risk_score"
+        ],
+        "forbidden_input_columns": [
+          "action_mask_allowed",
+          "action_mask_hard_blocks",
+          "action_mask_policy",
+          "action_mask_required_reviews",
+          "constraint_risk_delta",
+          "next_state_score",
+          "outcome",
+          "planning_utility_delta"
+        ],
+        "train_rows": 128,
+        "validation_rows": 64,
+        "test_rows": 64,
+        "train": {
+          "row_count": 128,
+          "allowed_count": 70,
+          "blocked_count": 58,
+          "action_mask_accuracy": 0.984375,
+          "blocked_action_recall": 1.0,
+          "allowed_action_recall": 0.971429,
+          "false_allow_count": 0,
+          "false_block_count": 2,
+          "confusion": {
+            "true_allow": 68,
+            "true_block": 58,
+            "false_allow": 0,
+            "false_block": 2
+          }
+        },
+        "validation": {
+          "row_count": 64,
+          "allowed_count": 30,
+          "blocked_count": 34,
+          "action_mask_accuracy": 1.0,
+          "blocked_action_recall": 1.0,
+          "allowed_action_recall": 1.0,
+          "false_allow_count": 0,
+          "false_block_count": 0,
+          "confusion": {
+            "true_allow": 30,
+            "true_block": 34,
+            "false_allow": 0,
+            "false_block": 0
+          }
+        },
+        "test": {
+          "row_count": 64,
+          "allowed_count": 28,
+          "blocked_count": 36,
+          "action_mask_accuracy": 1.0,
+          "blocked_action_recall": 1.0,
+          "allowed_action_recall": 1.0,
+          "false_allow_count": 0,
+          "false_block_count": 0,
+          "confusion": {
+            "true_allow": 28,
+            "true_block": 36,
+            "false_allow": 0,
+            "false_block": 0
+          }
+        },
+        "claim_boundary": "synthetic not-for-production fixture; validates runtime plumbing and leakage controls only"
+      }
+    },
+    "holdout_metrics": {
+      "action_mask_probability": {
+        "validation": {
+          "row_count": 64,
+          "allowed_count": 30,
+          "blocked_count": 34,
+          "action_mask_accuracy": 1.0,
+          "blocked_action_recall": 1.0,
+          "allowed_action_recall": 1.0,
+          "false_allow_count": 0,
+          "false_block_count": 0,
+          "confusion": {
+            "true_allow": 30,
+            "true_block": 34,
+            "false_allow": 0,
+            "false_block": 0
+          }
+        },
+        "test": {
+          "row_count": 64,
+          "allowed_count": 28,
+          "blocked_count": 36,
+          "action_mask_accuracy": 1.0,
+          "blocked_action_recall": 1.0,
+          "allowed_action_recall": 1.0,
+          "false_allow_count": 0,
+          "false_block_count": 0,
+          "confusion": {
+            "true_allow": 28,
+            "true_block": 36,
+            "false_allow": 0,
+            "false_block": 0
+          }
+        }
+      }
     },
     "claim_boundary": {
       "runtime_trace": "present",
-      "predictive_performance": "not_evaluated",
+      "predictive_performance": "action_mask_head_evaluated_on_synthetic_fixture_only",
       "production_claim": "not_supported"
     }
   },
@@ -631,12 +951,16 @@
       "y"
     ],
     "target_columns": [
+      "action_mask_allowed",
+      "action_mask_hard_blocks",
+      "action_mask_policy",
+      "action_mask_required_reviews",
       "constraint_risk_delta",
       "next_state_score",
       "outcome",
       "planning_utility_delta"
     ],
-    "target_feature_leak_count": 4,
+    "target_feature_leak_count": 8,
     "split_overlap_count": 0,
     "counterfactual_group_split_leak_count": 0,
     "not_for_production_boundary_preserved": true,

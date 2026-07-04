@@ -8,11 +8,19 @@
 
 - `dataset_integrity_gate`: `pass`; missing/review: none
 - `renderer_gate`: `pass`; missing/review: none
-- `simulator_gate`: `fail`; missing/review: action_mask_probability, holdout_metrics
+- `simulator_gate`: `fail`; missing/review: runtime_metrics
 - `planner_gate`: `fail`; missing/review: planner_consumes_simulator_trace, simulator_trace_bound_to_each_candidate, planner_regret_against_human_oracle
 - `evidence_claim_gate`: `pass`; missing/review: none
 - `negative_control_gate`: `fail`; missing/review: negative_control_runtime_results, shuffled_action_control, shuffled_label_control
 - `leakage_guard_gate`: `pass`; missing/review: none
+
+## Action-Mask Head
+
+- Status: `evaluated`
+- Test action-mask accuracy: `1.0`
+- Test blocked-action recall: `1.0`
+- Used features: `action_type, region_code, time_index, baseline_risk_score, risk_score`
+- Boundary: Synthetic not-for-production fixture; no production accuracy claim.
 
 ## Claim Boundary
 

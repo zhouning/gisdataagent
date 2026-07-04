@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from data_agent.territory_world_model.runtime_observation import (
+    EXCLUDED_SIMULATOR_INPUT_COLUMNS,
     RUNTIME_OBSERVATION_SCHEMA,
     TARGET_COLUMNS,
     build_runtime_observation,
@@ -48,9 +49,10 @@ def run_twm_runtime_benchmark(
 
     paths = _benchmark_paths(manifest)
     measurements = _measure_datasets(paths)
+    trajectory_rows = _read_csv(_path(paths["synthetic_experiment_foundation"]))
     dataset_hash = _dataset_manifest_hash(paths)
     canonical_observation = build_runtime_observation(measurements, dataset_hash)
-    simulator_trace = build_simulator_trace(canonical_observation, suite_id=suite)
+    simulator_trace = build_simulator_trace(canonical_observation, suite_id=suite, trajectory_rows=trajectory_rows)
     gates = {
         "dataset_integrity_gate": _dataset_integrity_gate(measurements, thresholds["dataset_integrity_gate"]),
         "renderer_gate": _renderer_gate(measurements, thresholds["renderer_gate"], canonical_observation),
@@ -130,7 +132,7 @@ def _measure_datasets(paths: dict[str, Path | list[Path]]) -> dict[str, Any]:
     synthetic_flags: set[str] = set()
     not_for_production_flags: set[str] = set()
     split_groups: dict[str, set[str]] = {}
-    target_fields = {"next_state_score", "constraint_risk_delta", "planning_utility_delta", "outcome"}
+    target_fields = set(EXCLUDED_SIMULATOR_INPUT_COLUMNS)
     feature_fields = set(trajectory_rows[0].keys()) if trajectory_rows else set()
     for row in trajectory_rows:
         split = str(row.get("split") or "")
@@ -246,6 +248,17 @@ def _renderer_gate(
 def _simulator_gate(thresholds: dict[str, Any], simulator_trace: dict[str, Any]) -> dict[str, Any]:
     backend_type = simulator_trace.get("backend_type")
     trace_present = simulator_trace.get("schema") == SIMULATOR_TRACE_SCHEMA
+    predictive_heads = simulator_trace.get("predictive_heads") or {}
+    action_mask_head = predictive_heads.get("action_mask_probability")
+    if not isinstance(action_mask_head, dict):
+        action_mask_head = {}
+    test_metrics = action_mask_head.get("test") or {}
+    holdout_metrics = simulator_trace.get("holdout_metrics") or {}
+    action_mask_pass = (
+        action_mask_head.get("status") == "evaluated"
+        and float(test_metrics.get("action_mask_accuracy") or 0.0) >= thresholds["action_mask_accuracy_min"]
+        and float(test_metrics.get("blocked_action_recall") or 0.0) >= thresholds["blocked_action_recall_min"]
+    )
     checks = {
         "simulator_trace_present": {"status": "pass" if trace_present else "fail", "observed": trace_present, "required": True},
         "facade_backend_forbidden": {
@@ -273,21 +286,37 @@ def _simulator_gate(thresholds: dict[str, Any], simulator_trace: dict[str, Any])
             "observed": simulator_trace.get("prediction_id"),
             "required": True,
         },
-        "action_mask_probability": {"status": "fail", "observed": None, "required": True},
+        "action_mask_probability": {
+            "status": "pass" if action_mask_pass else "fail",
+            "observed": {
+                "status": action_mask_head.get("status"),
+                "test_action_mask_accuracy": test_metrics.get("action_mask_accuracy"),
+                "test_blocked_action_recall": test_metrics.get("blocked_action_recall"),
+            },
+            "required": {
+                "status": "evaluated",
+                "action_mask_accuracy_min": thresholds["action_mask_accuracy_min"],
+                "blocked_action_recall_min": thresholds["blocked_action_recall_min"],
+            },
+        },
+        "holdout_metrics": {
+            "status": "pass" if holdout_metrics.get("action_mask_probability") else "fail",
+            "observed": sorted(holdout_metrics),
+            "required": ["action_mask_probability"],
+        },
         "runtime_metrics": {"status": "fail", "observed": {}, "required": thresholds},
     }
+    if action_mask_pass:
+        summary = "Action-mask safety head is evaluated, but transition/risk/utility predictive metrics are not implemented yet."
+    elif backend_type == CONTRACT_TRACE_BACKEND_TYPE:
+        summary = "Simulator trace contract is present, but predictive heads and holdout metrics are not implemented yet."
+    else:
+        summary = "Current simulator gate is missing traceable runtime outputs."
     return _gate(
         "fail",
         checks=checks,
-        missing=[
-            "action_mask_probability",
-            "holdout_metrics",
-        ],
-        summary=(
-            "Simulator trace contract is present, but predictive heads and holdout metrics are not implemented yet."
-            if backend_type == CONTRACT_TRACE_BACKEND_TYPE
-            else "Current simulator gate is missing traceable runtime outputs."
-        ),
+        missing=_failed_check_names(checks),
+        summary=summary,
     )
 
 
@@ -537,6 +566,24 @@ def _write_markdown(path: Path, report: dict[str, Any]) -> None:
     for name, gate in report["gates"].items():
         missing = ", ".join(gate.get("missing") or []) or "none"
         lines.append(f"- `{name}`: `{gate['status']}`; missing/review: {missing}")
+    action_mask_head = (
+        ((report.get("simulator_trace") or {}).get("predictive_heads") or {}).get("action_mask_probability")
+    )
+    if isinstance(action_mask_head, dict) and action_mask_head.get("status") == "evaluated":
+        test_metrics = action_mask_head.get("test") or {}
+        used_features = ", ".join(action_mask_head.get("used_feature_columns") or []) or "none"
+        lines.extend(
+            [
+                "",
+                "## Action-Mask Head",
+                "",
+                f"- Status: `{action_mask_head.get('status')}`",
+                f"- Test action-mask accuracy: `{test_metrics.get('action_mask_accuracy')}`",
+                f"- Test blocked-action recall: `{test_metrics.get('blocked_action_recall')}`",
+                f"- Used features: `{used_features}`",
+                "- Boundary: Synthetic not-for-production fixture; no production accuracy claim.",
+            ]
+        )
     lines.extend(
         [
             "",
