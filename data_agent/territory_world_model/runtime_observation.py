@@ -17,7 +17,11 @@ ACTION_MASK_LABEL_COLUMNS = {
     "action_mask_hard_blocks",
     "action_mask_policy",
 }
-EXCLUDED_SIMULATOR_INPUT_COLUMNS = TARGET_COLUMNS | ACTION_MASK_LABEL_COLUMNS
+DERIVED_SIMULATOR_LABEL_COLUMNS = {
+    "treatment_effect",
+    "uncertainty",
+}
+EXCLUDED_SIMULATOR_INPUT_COLUMNS = TARGET_COLUMNS | ACTION_MASK_LABEL_COLUMNS | DERIVED_SIMULATOR_LABEL_COLUMNS
 
 
 def build_runtime_observation(measurements: dict[str, Any], dataset_snapshot_hash: str) -> dict[str, Any]:
@@ -78,6 +82,7 @@ def build_runtime_observation(measurements: dict[str, Any], dataset_snapshot_has
             "target_columns": sorted(EXCLUDED_SIMULATOR_INPUT_COLUMNS),
             "future_outcome_columns": sorted(TARGET_COLUMNS),
             "label_explanation_columns": sorted(ACTION_MASK_LABEL_COLUMNS),
+            "derived_label_columns": sorted(DERIVED_SIMULATOR_LABEL_COLUMNS),
             "target_columns_excluded_from_input": set(excluded_target_columns).isdisjoint(input_feature_columns),
             "raw_source_may_contain_targets": bool(excluded_target_columns),
         },

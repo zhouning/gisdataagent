@@ -1,18 +1,17 @@
 {
   "schema": "territory_world_model.twm_runtime_benchmark.v1",
   "suite_id": "twm_runtime_v1",
-  "created_at": "2026-07-04T08:52:51.949414+00:00",
+  "created_at": "2026-07-04T09:18:57.554980+00:00",
   "dataset_manifest_hash": "2278ac2b8aa383c17ab3ebeacc24352f9ac20c1b12004eb307e391b7401840b5",
   "status": "fail",
   "failed_gates": [
-    "simulator_gate",
     "planner_gate",
     "negative_control_gate"
   ],
   "scores": {
     "dataset_integrity_score": 1.0,
     "renderer_score": 1.0,
-    "simulator_score": 0.0,
+    "simulator_score": 1.0,
     "planner_score": 0.0,
     "evidence_claim_score": 1.0,
     "negative_control_score": 0.0,
@@ -134,7 +133,7 @@
       "summary": "State data is present, but no canonical simulator observation contract is exposed yet."
     },
     "simulator_gate": {
-      "status": "fail",
+      "status": "pass",
       "checks": {
         "simulator_trace_present": {
           "status": "pass",
@@ -143,7 +142,7 @@
         },
         "facade_backend_forbidden": {
           "status": "pass",
-          "observed": "transparent_action_mask_rule_head",
+          "observed": "transparent_runtime_heads",
           "required": "backend_type != deterministic_planner_facade"
         },
         "dataset_snapshot_hash_in_trace": {
@@ -153,7 +152,7 @@
         },
         "model_family_in_trace": {
           "status": "pass",
-          "observed": "transparent_action_mask_rule_head",
+          "observed": "transparent_runtime_heads",
           "required": true
         },
         "split_in_trace": {
@@ -163,7 +162,7 @@
         },
         "prediction_id_in_trace": {
           "status": "pass",
-          "observed": "twm-runtime-v1-d64677707d2b45c4",
+          "observed": "twm-runtime-v1-e5def1dfa4951a37",
           "required": true
         },
         "action_mask_probability": {
@@ -182,29 +181,32 @@
         "holdout_metrics": {
           "status": "pass",
           "observed": [
-            "action_mask_probability"
+            "action_mask_probability",
+            "dynamics_runtime"
           ],
           "required": [
-            "action_mask_probability"
+            "action_mask_probability",
+            "dynamics_runtime"
           ]
         },
         "runtime_metrics": {
-          "status": "fail",
-          "observed": {},
+          "status": "pass",
+          "observed": {
+            "transition_mae": 0.009031,
+            "constraint_risk_mae": 0.004748,
+            "planning_utility_mae": 0.0101,
+            "ranking_correlation_proxy": 0.973369
+          },
           "required": {
             "transition_mae_max": 0.05,
             "constraint_risk_mae_max": 0.05,
             "planning_utility_mae_max": 0.05,
-            "ranking_correlation_proxy_min": 0.6,
-            "action_mask_accuracy_min": 0.85,
-            "blocked_action_recall_min": 0.85
+            "ranking_correlation_proxy_min": 0.6
           }
         }
       },
-      "missing": [
-        "runtime_metrics"
-      ],
-      "summary": "Action-mask safety head is evaluated, but transition/risk/utility predictive metrics are not implemented yet."
+      "missing": [],
+      "summary": "Simulator emits traceable action-mask and dynamics heads with synthetic-fixture holdout metrics."
     },
     "planner_gate": {
       "status": "fail",
@@ -332,7 +334,9 @@
             "constraint_risk_delta",
             "next_state_score",
             "outcome",
-            "planning_utility_delta"
+            "planning_utility_delta",
+            "treatment_effect",
+            "uncertainty"
           ],
           "required": "raw target columns must be explicit and excluded from simulator inputs"
         },
@@ -452,8 +456,6 @@
         "supplement_required_review_count",
         "synthetic",
         "time_index",
-        "treatment_effect",
-        "uncertainty",
         "unit_id",
         "x",
         "y"
@@ -466,7 +468,9 @@
         "constraint_risk_delta",
         "next_state_score",
         "outcome",
-        "planning_utility_delta"
+        "planning_utility_delta",
+        "treatment_effect",
+        "uncertainty"
       ],
       "target_columns": [
         "action_mask_allowed",
@@ -476,7 +480,9 @@
         "constraint_risk_delta",
         "next_state_score",
         "outcome",
-        "planning_utility_delta"
+        "planning_utility_delta",
+        "treatment_effect",
+        "uncertainty"
       ],
       "future_outcome_columns": [
         "constraint_risk_delta",
@@ -489,6 +495,10 @@
         "action_mask_hard_blocks",
         "action_mask_policy",
         "action_mask_required_reviews"
+      ],
+      "derived_label_columns": [
+        "treatment_effect",
+        "uncertainty"
       ],
       "target_columns_excluded_from_input": true,
       "raw_source_may_contain_targets": true
@@ -529,16 +539,18 @@
         "constraint_risk_delta",
         "next_state_score",
         "outcome",
-        "planning_utility_delta"
+        "planning_utility_delta",
+        "treatment_effect",
+        "uncertainty"
       ]
     }
   },
   "simulator_trace": {
     "schema": "territory_world_model.simulator_trace.v1",
-    "prediction_id": "twm-runtime-v1-d64677707d2b45c4",
-    "backend_type": "transparent_action_mask_rule_head",
-    "model_family": "transparent_action_mask_rule_head",
-    "model_version": "0.2",
+    "prediction_id": "twm-runtime-v1-e5def1dfa4951a37",
+    "backend_type": "transparent_runtime_heads",
+    "model_family": "transparent_runtime_heads",
+    "model_version": "0.3",
     "split": "test",
     "dataset_snapshot_hash": "2278ac2b8aa383c17ab3ebeacc24352f9ac20c1b12004eb307e391b7401840b5",
     "observation_id": "38fba8d251444d079123a878c9ed34f9ae084168ae142eee91cc596daaabf930",
@@ -553,9 +565,348 @@
       "feature_vector_contract"
     ],
     "predictive_heads": {
-      "future_state_delta": "not_implemented",
-      "constraint_violation_probability": "not_implemented",
-      "planning_utility_delta": "not_implemented",
+      "future_state_delta": {
+        "status": "evaluated",
+        "schema": "territory_world_model.dynamics_regression_head.v1",
+        "backend_type": "transparent_linear_regression_heads",
+        "target": "next_state_score_minus_baseline_state_score",
+        "fit_split": "train",
+        "input_feature_columns": [
+          "DKMJ",
+          "action_type",
+          "approval_id",
+          "approval_status",
+          "approved_area_m2",
+          "area_m2",
+          "baseline_risk_score",
+          "baseline_state_score",
+          "cluster",
+          "completed_review_count",
+          "confirmed_violation_count",
+          "counterfactual_group",
+          "critical_rule_hit_count",
+          "data_role",
+          "evidence_weight",
+          "high_rule_hit_count",
+          "neighbor_unit_ids",
+          "neighbors",
+          "not_for_production",
+          "open_review_count",
+          "period",
+          "project_id",
+          "propensity_score",
+          "quality_score",
+          "region_code",
+          "review_penalty",
+          "review_task_count",
+          "risk_score",
+          "rule_eval_count",
+          "rule_hit_count",
+          "scenario_id",
+          "source_path",
+          "spatial_cluster",
+          "split",
+          "stratum",
+          "supplement_required_review_count",
+          "synthetic",
+          "time_index",
+          "unit_id",
+          "x",
+          "y"
+        ],
+        "used_feature_columns": [
+          "approval_status",
+          "approved_area_m2",
+          "area_m2",
+          "DKMJ",
+          "x",
+          "y",
+          "quality_score",
+          "baseline_risk_score",
+          "risk_score",
+          "review_penalty",
+          "rule_eval_count",
+          "rule_hit_count",
+          "critical_rule_hit_count",
+          "high_rule_hit_count",
+          "review_task_count",
+          "open_review_count",
+          "completed_review_count",
+          "supplement_required_review_count",
+          "confirmed_violation_count",
+          "propensity_score",
+          "evidence_weight",
+          "time_index",
+          "baseline_state_score",
+          "region_code",
+          "action_type"
+        ],
+        "forbidden_input_columns": [
+          "action_mask_allowed",
+          "action_mask_hard_blocks",
+          "action_mask_policy",
+          "action_mask_required_reviews",
+          "constraint_risk_delta",
+          "next_state_score",
+          "outcome",
+          "planning_utility_delta",
+          "treatment_effect",
+          "uncertainty"
+        ],
+        "encoded_feature_count": 32,
+        "train_rows": 128,
+        "validation_rows": 64,
+        "test_rows": 64,
+        "train": {
+          "row_count": 128,
+          "mae": 0.008194,
+          "mean_actual": 0.017106,
+          "mean_predicted": 0.017106,
+          "pearson_correlation": 0.889253
+        },
+        "validation": {
+          "row_count": 64,
+          "mae": 0.008037,
+          "mean_actual": 0.019837,
+          "mean_predicted": 0.017829,
+          "pearson_correlation": 0.893587
+        },
+        "test": {
+          "row_count": 64,
+          "mae": 0.009031,
+          "mean_actual": 0.015501,
+          "mean_predicted": 0.020073,
+          "pearson_correlation": 0.892942
+        }
+      },
+      "constraint_violation_probability": {
+        "status": "evaluated",
+        "schema": "territory_world_model.dynamics_regression_head.v1",
+        "backend_type": "transparent_linear_regression_heads",
+        "target": "constraint_risk_delta",
+        "fit_split": "train",
+        "input_feature_columns": [
+          "DKMJ",
+          "action_type",
+          "approval_id",
+          "approval_status",
+          "approved_area_m2",
+          "area_m2",
+          "baseline_risk_score",
+          "baseline_state_score",
+          "cluster",
+          "completed_review_count",
+          "confirmed_violation_count",
+          "counterfactual_group",
+          "critical_rule_hit_count",
+          "data_role",
+          "evidence_weight",
+          "high_rule_hit_count",
+          "neighbor_unit_ids",
+          "neighbors",
+          "not_for_production",
+          "open_review_count",
+          "period",
+          "project_id",
+          "propensity_score",
+          "quality_score",
+          "region_code",
+          "review_penalty",
+          "review_task_count",
+          "risk_score",
+          "rule_eval_count",
+          "rule_hit_count",
+          "scenario_id",
+          "source_path",
+          "spatial_cluster",
+          "split",
+          "stratum",
+          "supplement_required_review_count",
+          "synthetic",
+          "time_index",
+          "unit_id",
+          "x",
+          "y"
+        ],
+        "used_feature_columns": [
+          "approval_status",
+          "approved_area_m2",
+          "area_m2",
+          "DKMJ",
+          "x",
+          "y",
+          "quality_score",
+          "baseline_risk_score",
+          "risk_score",
+          "review_penalty",
+          "rule_eval_count",
+          "rule_hit_count",
+          "critical_rule_hit_count",
+          "high_rule_hit_count",
+          "review_task_count",
+          "open_review_count",
+          "completed_review_count",
+          "supplement_required_review_count",
+          "confirmed_violation_count",
+          "propensity_score",
+          "evidence_weight",
+          "time_index",
+          "baseline_state_score",
+          "region_code",
+          "action_type"
+        ],
+        "forbidden_input_columns": [
+          "action_mask_allowed",
+          "action_mask_hard_blocks",
+          "action_mask_policy",
+          "action_mask_required_reviews",
+          "constraint_risk_delta",
+          "next_state_score",
+          "outcome",
+          "planning_utility_delta",
+          "treatment_effect",
+          "uncertainty"
+        ],
+        "encoded_feature_count": 32,
+        "train_rows": 128,
+        "validation_rows": 64,
+        "test_rows": 64,
+        "train": {
+          "row_count": 128,
+          "mae": 0.003737,
+          "mean_actual": -0.016,
+          "mean_predicted": -0.016,
+          "pearson_correlation": 0.9857
+        },
+        "validation": {
+          "row_count": 64,
+          "mae": 0.003902,
+          "mean_actual": -0.016,
+          "mean_predicted": -0.014292,
+          "pearson_correlation": 0.987807
+        },
+        "test": {
+          "row_count": 64,
+          "mae": 0.004748,
+          "mean_actual": -0.016,
+          "mean_predicted": -0.019373,
+          "pearson_correlation": 0.984696
+        }
+      },
+      "planning_utility_delta": {
+        "status": "evaluated",
+        "schema": "territory_world_model.dynamics_regression_head.v1",
+        "backend_type": "transparent_linear_regression_heads",
+        "target": "planning_utility_delta",
+        "fit_split": "train",
+        "input_feature_columns": [
+          "DKMJ",
+          "action_type",
+          "approval_id",
+          "approval_status",
+          "approved_area_m2",
+          "area_m2",
+          "baseline_risk_score",
+          "baseline_state_score",
+          "cluster",
+          "completed_review_count",
+          "confirmed_violation_count",
+          "counterfactual_group",
+          "critical_rule_hit_count",
+          "data_role",
+          "evidence_weight",
+          "high_rule_hit_count",
+          "neighbor_unit_ids",
+          "neighbors",
+          "not_for_production",
+          "open_review_count",
+          "period",
+          "project_id",
+          "propensity_score",
+          "quality_score",
+          "region_code",
+          "review_penalty",
+          "review_task_count",
+          "risk_score",
+          "rule_eval_count",
+          "rule_hit_count",
+          "scenario_id",
+          "source_path",
+          "spatial_cluster",
+          "split",
+          "stratum",
+          "supplement_required_review_count",
+          "synthetic",
+          "time_index",
+          "unit_id",
+          "x",
+          "y"
+        ],
+        "used_feature_columns": [
+          "approval_status",
+          "approved_area_m2",
+          "area_m2",
+          "DKMJ",
+          "x",
+          "y",
+          "quality_score",
+          "baseline_risk_score",
+          "risk_score",
+          "review_penalty",
+          "rule_eval_count",
+          "rule_hit_count",
+          "critical_rule_hit_count",
+          "high_rule_hit_count",
+          "review_task_count",
+          "open_review_count",
+          "completed_review_count",
+          "supplement_required_review_count",
+          "confirmed_violation_count",
+          "propensity_score",
+          "evidence_weight",
+          "time_index",
+          "baseline_state_score",
+          "region_code",
+          "action_type"
+        ],
+        "forbidden_input_columns": [
+          "action_mask_allowed",
+          "action_mask_hard_blocks",
+          "action_mask_policy",
+          "action_mask_required_reviews",
+          "constraint_risk_delta",
+          "next_state_score",
+          "outcome",
+          "planning_utility_delta",
+          "treatment_effect",
+          "uncertainty"
+        ],
+        "encoded_feature_count": 32,
+        "train_rows": 128,
+        "validation_rows": 64,
+        "test_rows": 64,
+        "train": {
+          "row_count": 128,
+          "mae": 0.006742,
+          "mean_actual": 0.028561,
+          "mean_predicted": 0.028561,
+          "pearson_correlation": 0.977808
+        },
+        "validation": {
+          "row_count": 64,
+          "mae": 0.007031,
+          "mean_actual": 0.028292,
+          "mean_predicted": 0.026574,
+          "pearson_correlation": 0.979083
+        },
+        "test": {
+          "row_count": 64,
+          "mae": 0.0101,
+          "mean_actual": 0.027956,
+          "mean_predicted": 0.036548,
+          "pearson_correlation": 0.973369
+        }
+      },
       "uncertainty": "not_implemented",
       "action_mask_probability": {
         "status": "evaluated",
@@ -723,8 +1074,6 @@
           "supplement_required_review_count",
           "synthetic",
           "time_index",
-          "treatment_effect",
-          "uncertainty",
           "unit_id",
           "x",
           "y"
@@ -744,7 +1093,9 @@
           "constraint_risk_delta",
           "next_state_score",
           "outcome",
-          "planning_utility_delta"
+          "planning_utility_delta",
+          "treatment_effect",
+          "uncertainty"
         ],
         "train_rows": 128,
         "validation_rows": 64,
@@ -834,11 +1185,65 @@
             "false_block": 0
           }
         }
+      },
+      "dynamics_runtime": {
+        "validation": {
+          "future_state_delta": {
+            "row_count": 64,
+            "mae": 0.008037,
+            "mean_actual": 0.019837,
+            "mean_predicted": 0.017829,
+            "pearson_correlation": 0.893587
+          },
+          "constraint_violation_probability": {
+            "row_count": 64,
+            "mae": 0.003902,
+            "mean_actual": -0.016,
+            "mean_predicted": -0.014292,
+            "pearson_correlation": 0.987807
+          },
+          "planning_utility_delta": {
+            "row_count": 64,
+            "mae": 0.007031,
+            "mean_actual": 0.028292,
+            "mean_predicted": 0.026574,
+            "pearson_correlation": 0.979083
+          }
+        },
+        "test": {
+          "future_state_delta": {
+            "row_count": 64,
+            "mae": 0.009031,
+            "mean_actual": 0.015501,
+            "mean_predicted": 0.020073,
+            "pearson_correlation": 0.892942
+          },
+          "constraint_violation_probability": {
+            "row_count": 64,
+            "mae": 0.004748,
+            "mean_actual": -0.016,
+            "mean_predicted": -0.019373,
+            "pearson_correlation": 0.984696
+          },
+          "planning_utility_delta": {
+            "row_count": 64,
+            "mae": 0.0101,
+            "mean_actual": 0.027956,
+            "mean_predicted": 0.036548,
+            "pearson_correlation": 0.973369
+          }
+        }
       }
+    },
+    "runtime_metrics": {
+      "transition_mae": 0.009031,
+      "constraint_risk_mae": 0.004748,
+      "planning_utility_mae": 0.0101,
+      "ranking_correlation_proxy": 0.973369
     },
     "claim_boundary": {
       "runtime_trace": "present",
-      "predictive_performance": "action_mask_head_evaluated_on_synthetic_fixture_only",
+      "predictive_performance": "runtime_heads_evaluated_on_synthetic_fixture_only",
       "production_claim": "not_supported"
     }
   },
@@ -958,9 +1363,11 @@
       "constraint_risk_delta",
       "next_state_score",
       "outcome",
-      "planning_utility_delta"
+      "planning_utility_delta",
+      "treatment_effect",
+      "uncertainty"
     ],
-    "target_feature_leak_count": 8,
+    "target_feature_leak_count": 10,
     "split_overlap_count": 0,
     "counterfactual_group_split_leak_count": 0,
     "not_for_production_boundary_preserved": true,
@@ -979,7 +1386,6 @@
     "not_for_production_boundary_preserved": true
   },
   "recommendations": [
-    "Implement a traceable simulator backend that emits simulator_trace for every forecast and rollout.",
     "Force planner ranking to consume simulator_trace and action-mask outputs for each candidate.",
     "Execute impossible-action, support-missing, policy-conflict and shuffled-control tests in the benchmark loop."
   ]

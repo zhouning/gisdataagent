@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import math
 import re
 from typing import Any
 
@@ -8,6 +9,8 @@ from typing import Any
 SIMULATOR_TRACE_SCHEMA = "territory_world_model.simulator_trace.v1"
 CONTRACT_TRACE_BACKEND_TYPE = "contract_trace_only"
 ACTION_MASK_RULE_BACKEND_TYPE = "transparent_action_mask_rule_head"
+DYNAMICS_REGRESSION_BACKEND_TYPE = "transparent_linear_regression_heads"
+TRANSPARENT_RUNTIME_BACKEND_TYPE = "transparent_runtime_heads"
 ACTION_MASK_USED_FEATURE_COLUMNS = [
     "action_type",
     "region_code",
@@ -15,6 +18,62 @@ ACTION_MASK_USED_FEATURE_COLUMNS = [
     "baseline_risk_score",
     "risk_score",
 ]
+DYNAMICS_USED_FEATURE_COLUMNS = [
+    "approval_status",
+    "approved_area_m2",
+    "area_m2",
+    "DKMJ",
+    "x",
+    "y",
+    "quality_score",
+    "baseline_risk_score",
+    "risk_score",
+    "review_penalty",
+    "rule_eval_count",
+    "rule_hit_count",
+    "critical_rule_hit_count",
+    "high_rule_hit_count",
+    "review_task_count",
+    "open_review_count",
+    "completed_review_count",
+    "supplement_required_review_count",
+    "confirmed_violation_count",
+    "propensity_score",
+    "evidence_weight",
+    "time_index",
+    "baseline_state_score",
+    "region_code",
+    "action_type",
+]
+NUMERIC_DYNAMICS_FEATURE_COLUMNS = {
+    "approved_area_m2",
+    "area_m2",
+    "DKMJ",
+    "x",
+    "y",
+    "quality_score",
+    "baseline_risk_score",
+    "risk_score",
+    "review_penalty",
+    "rule_eval_count",
+    "rule_hit_count",
+    "critical_rule_hit_count",
+    "high_rule_hit_count",
+    "review_task_count",
+    "open_review_count",
+    "completed_review_count",
+    "supplement_required_review_count",
+    "confirmed_violation_count",
+    "propensity_score",
+    "evidence_weight",
+    "time_index",
+    "baseline_state_score",
+}
+DYNAMICS_TARGETS = {
+    "future_state_delta": "next_state_score_minus_baseline_state_score",
+    "constraint_violation_probability": "constraint_risk_delta",
+    "planning_utility_delta": "planning_utility_delta",
+}
 
 
 def build_simulator_trace(
@@ -29,11 +88,13 @@ def build_simulator_trace(
     observation_id = str(canonical_observation.get("observation_id") or "")
     split = "test"
     action_mask_head = build_action_mask_probability_head(canonical_observation, trajectory_rows or [])
-    backend_type = (
-        ACTION_MASK_RULE_BACKEND_TYPE
-        if action_mask_head.get("status") == "evaluated"
-        else CONTRACT_TRACE_BACKEND_TYPE
-    )
+    dynamics_heads = build_dynamics_regression_heads(canonical_observation, trajectory_rows or [])
+    if action_mask_head.get("status") == "evaluated" and dynamics_heads.get("status") == "evaluated":
+        backend_type = TRANSPARENT_RUNTIME_BACKEND_TYPE
+    elif action_mask_head.get("status") == "evaluated":
+        backend_type = ACTION_MASK_RULE_BACKEND_TYPE
+    else:
+        backend_type = CONTRACT_TRACE_BACKEND_TYPE
     prediction_seed = f"{suite_id}:{dataset_hash}:{observation_id}:{split}:{backend_type}"
     prediction_id = f"twm-runtime-v1-{hashlib.sha256(prediction_seed.encode('utf-8')).hexdigest()[:16]}"
     simulator_input = canonical_observation.get("simulator_input") or {}
@@ -43,38 +104,156 @@ def build_simulator_trace(
             "validation": dict(action_mask_head.get("validation") or {}),
             "test": dict(action_mask_head.get("test") or {}),
         }
+    if dynamics_heads.get("status") == "evaluated":
+        holdout_metrics["dynamics_runtime"] = dict(dynamics_heads.get("holdout_metrics") or {})
+    predictive_heads = {
+        "future_state_delta": "not_implemented",
+        "constraint_violation_probability": "not_implemented",
+        "planning_utility_delta": "not_implemented",
+        "uncertainty": "not_implemented",
+        "action_mask_probability": action_mask_head,
+    }
+    if dynamics_heads.get("status") == "evaluated":
+        predictive_heads.update(dynamics_heads.get("heads") or {})
     return {
         "schema": SIMULATOR_TRACE_SCHEMA,
         "prediction_id": prediction_id,
         "backend_type": backend_type,
-        "model_family": (
-            "transparent_action_mask_rule_head"
-            if action_mask_head.get("status") == "evaluated"
-            else "contract_trace_only"
-        ),
-        "model_version": "0.2",
+        "model_family": backend_type,
+        "model_version": "0.3",
         "split": split,
         "dataset_snapshot_hash": dataset_hash,
         "observation_id": observation_id,
         "consumed_observation_schema": canonical_observation.get("schema"),
         "consumed_contexts": list(simulator_input.get("required_contexts") or []),
-        "predictive_heads": {
-            "future_state_delta": "not_implemented",
-            "constraint_violation_probability": "not_implemented",
-            "planning_utility_delta": "not_implemented",
-            "uncertainty": "not_implemented",
-            "action_mask_probability": action_mask_head,
-        },
+        "predictive_heads": predictive_heads,
         "holdout_metrics": holdout_metrics,
+        "runtime_metrics": dict(dynamics_heads.get("runtime_metrics") or {}),
         "claim_boundary": {
             "runtime_trace": "present",
             "predictive_performance": (
-                "action_mask_head_evaluated_on_synthetic_fixture_only"
+                "runtime_heads_evaluated_on_synthetic_fixture_only"
+                if dynamics_heads.get("status") == "evaluated"
+                else "action_mask_head_evaluated_on_synthetic_fixture_only"
                 if action_mask_head.get("status") == "evaluated"
                 else "not_evaluated"
             ),
             "production_claim": "not_supported",
         },
+    }
+
+
+def build_dynamics_regression_heads(
+    canonical_observation: dict[str, Any],
+    trajectory_rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Fit transparent dynamics heads and report holdout metrics."""
+
+    feature_contract = canonical_observation.get("feature_vector_contract") or {}
+    input_feature_columns = set(feature_contract.get("input_feature_columns") or [])
+    forbidden_columns = set(feature_contract.get("excluded_target_columns") or [])
+    used_feature_columns = [
+        column for column in DYNAMICS_USED_FEATURE_COLUMNS if column in input_feature_columns
+    ]
+    missing_features = [
+        column
+        for column in ["baseline_state_score", "baseline_risk_score", "review_penalty", "action_type", "region_code", "time_index"]
+        if column not in used_feature_columns
+    ]
+    if missing_features:
+        return {
+            "status": "not_evaluated",
+            "reason": "missing_required_non_leaky_dynamics_features",
+            "missing_features": missing_features,
+            "used_feature_columns": used_feature_columns,
+            "forbidden_input_columns": sorted(forbidden_columns),
+        }
+
+    rows = [row for row in trajectory_rows if _has_dynamics_targets(row)]
+    split_rows = {
+        split: [row for row in rows if str(row.get("split") or "").strip().lower() == split]
+        for split in ("train", "validation", "test")
+    }
+    if not split_rows["train"] or not split_rows["test"]:
+        return {
+            "status": "not_evaluated",
+            "reason": "missing_train_or_test_rows",
+            "split_counts": {split: len(items) for split, items in split_rows.items()},
+            "used_feature_columns": used_feature_columns,
+            "forbidden_input_columns": sorted(forbidden_columns),
+        }
+
+    try:
+        from sklearn.feature_extraction import DictVectorizer
+        from sklearn.linear_model import Ridge
+    except ImportError as exc:
+        return {
+            "status": "not_evaluated",
+            "reason": "sklearn_unavailable",
+            "error": str(exc),
+            "used_feature_columns": used_feature_columns,
+            "forbidden_input_columns": sorted(forbidden_columns),
+        }
+
+    vectorizer = DictVectorizer(sparse=False)
+    train_features = [_dynamics_feature_record(row, used_feature_columns) for row in split_rows["train"]]
+    train_matrix = vectorizer.fit_transform(train_features)
+    feature_names = list(vectorizer.get_feature_names_out())
+    heads: dict[str, dict[str, Any]] = {}
+    for head_name, target_name in DYNAMICS_TARGETS.items():
+        train_targets = [_dynamics_target(row, head_name) for row in split_rows["train"]]
+        model = Ridge(alpha=1e-6)
+        model.fit(train_matrix, train_targets)
+        split_metrics = {}
+        for split, items in split_rows.items():
+            matrix = vectorizer.transform([_dynamics_feature_record(row, used_feature_columns) for row in items])
+            labels = [_dynamics_target(row, head_name) for row in items]
+            predictions = [float(value) for value in model.predict(matrix)]
+            split_metrics[split] = _regression_metrics(labels, predictions)
+        heads[head_name] = {
+            "status": "evaluated",
+            "schema": "territory_world_model.dynamics_regression_head.v1",
+            "backend_type": DYNAMICS_REGRESSION_BACKEND_TYPE,
+            "target": target_name,
+            "fit_split": "train",
+            "input_feature_columns": sorted(input_feature_columns),
+            "used_feature_columns": used_feature_columns,
+            "forbidden_input_columns": sorted(forbidden_columns),
+            "encoded_feature_count": len(feature_names),
+            "train_rows": len(split_rows["train"]),
+            "validation_rows": len(split_rows["validation"]),
+            "test_rows": len(split_rows["test"]),
+            "train": split_metrics["train"],
+            "validation": split_metrics["validation"],
+            "test": split_metrics["test"],
+        }
+    runtime_metrics = {
+        "transition_mae": heads["future_state_delta"]["test"]["mae"],
+        "constraint_risk_mae": heads["constraint_violation_probability"]["test"]["mae"],
+        "planning_utility_mae": heads["planning_utility_delta"]["test"]["mae"],
+        "ranking_correlation_proxy": heads["planning_utility_delta"]["test"]["pearson_correlation"],
+    }
+    return {
+        "status": "evaluated",
+        "schema": "territory_world_model.dynamics_regression_heads.v1",
+        "backend_type": DYNAMICS_REGRESSION_BACKEND_TYPE,
+        "training_protocol": {
+            "fit_split": "train",
+            "validation_split": "validation",
+            "test_split": "test",
+            "model": "ridge_regression_alpha_1e-6_with_dict_vectorizer",
+            "label_leakage_guard": "future outcomes, action-mask labels, treatment effect and uncertainty are excluded from input_feature_columns",
+        },
+        "used_feature_columns": used_feature_columns,
+        "forbidden_input_columns": sorted(forbidden_columns),
+        "encoded_feature_count": len(feature_names),
+        "heads": heads,
+        "runtime_metrics": runtime_metrics,
+        "holdout_metrics": {
+            "validation": {name: head["validation"] for name, head in heads.items()},
+            "test": {name: head["test"] for name, head in heads.items()},
+        },
+        "claim_boundary": "synthetic not-for-production fixture; validates runtime plumbing and leakage controls only",
     }
 
 
@@ -317,6 +496,58 @@ def _rule_complexity(rule: dict[str, Any]) -> int:
 
 def _has_action_mask_label(row: dict[str, Any]) -> bool:
     return str(row.get("action_mask_allowed") or "").strip() != ""
+
+
+def _has_dynamics_targets(row: dict[str, Any]) -> bool:
+    return all(
+        str(row.get(column) or "").strip() != ""
+        for column in ["next_state_score", "baseline_state_score", "constraint_risk_delta", "planning_utility_delta"]
+    )
+
+
+def _dynamics_feature_record(row: dict[str, Any], used_feature_columns: list[str]) -> dict[str, Any]:
+    record: dict[str, Any] = {}
+    for column in used_feature_columns:
+        if column in NUMERIC_DYNAMICS_FEATURE_COLUMNS:
+            record[column] = _safe_float(row.get(column))
+        else:
+            record[column] = str(row.get(column) or "")
+    return record
+
+
+def _dynamics_target(row: dict[str, Any], head_name: str) -> float:
+    if head_name == "future_state_delta":
+        return _safe_float(row.get("next_state_score")) - _safe_float(row.get("baseline_state_score"))
+    if head_name == "constraint_violation_probability":
+        return _safe_float(row.get("constraint_risk_delta"))
+    if head_name == "planning_utility_delta":
+        return _safe_float(row.get("planning_utility_delta"))
+    return 0.0
+
+
+def _regression_metrics(labels: list[float], predictions: list[float]) -> dict[str, Any]:
+    errors = [abs(label - prediction) for label, prediction in zip(labels, predictions)]
+    return {
+        "row_count": len(labels),
+        "mae": round(sum(errors) / len(errors), 6) if errors else 0.0,
+        "mean_actual": round(sum(labels) / len(labels), 6) if labels else 0.0,
+        "mean_predicted": round(sum(predictions) / len(predictions), 6) if predictions else 0.0,
+        "pearson_correlation": _correlation(labels, predictions),
+    }
+
+
+def _correlation(left: list[float], right: list[float]) -> float:
+    if len(left) != len(right) or len(left) < 2:
+        return 0.0
+    left_mean = sum(left) / len(left)
+    right_mean = sum(right) / len(right)
+    numerator = sum((a - left_mean) * (b - right_mean) for a, b in zip(left, right))
+    left_var = sum((a - left_mean) ** 2 for a in left)
+    right_var = sum((b - right_mean) ** 2 for b in right)
+    denominator = math.sqrt(left_var * right_var)
+    if denominator == 0:
+        return 0.0
+    return round(numerator / denominator, 6)
 
 
 def _risk_value(row: dict[str, Any]) -> float:

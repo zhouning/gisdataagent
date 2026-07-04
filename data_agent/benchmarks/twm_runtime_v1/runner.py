@@ -254,10 +254,18 @@ def _simulator_gate(thresholds: dict[str, Any], simulator_trace: dict[str, Any])
         action_mask_head = {}
     test_metrics = action_mask_head.get("test") or {}
     holdout_metrics = simulator_trace.get("holdout_metrics") or {}
+    runtime_metrics = simulator_trace.get("runtime_metrics") or {}
     action_mask_pass = (
         action_mask_head.get("status") == "evaluated"
         and float(test_metrics.get("action_mask_accuracy") or 0.0) >= thresholds["action_mask_accuracy_min"]
         and float(test_metrics.get("blocked_action_recall") or 0.0) >= thresholds["blocked_action_recall_min"]
+    )
+    runtime_metrics_pass = (
+        float(runtime_metrics.get("transition_mae") or 1.0) <= thresholds["transition_mae_max"]
+        and float(runtime_metrics.get("constraint_risk_mae") or 1.0) <= thresholds["constraint_risk_mae_max"]
+        and float(runtime_metrics.get("planning_utility_mae") or 1.0) <= thresholds["planning_utility_mae_max"]
+        and float(runtime_metrics.get("ranking_correlation_proxy") or 0.0)
+        >= thresholds["ranking_correlation_proxy_min"]
     )
     checks = {
         "simulator_trace_present": {"status": "pass" if trace_present else "fail", "observed": trace_present, "required": True},
@@ -300,20 +308,34 @@ def _simulator_gate(thresholds: dict[str, Any], simulator_trace: dict[str, Any])
             },
         },
         "holdout_metrics": {
-            "status": "pass" if holdout_metrics.get("action_mask_probability") else "fail",
+            "status": "pass"
+            if holdout_metrics.get("action_mask_probability") and holdout_metrics.get("dynamics_runtime")
+            else "fail",
             "observed": sorted(holdout_metrics),
-            "required": ["action_mask_probability"],
+            "required": ["action_mask_probability", "dynamics_runtime"],
         },
-        "runtime_metrics": {"status": "fail", "observed": {}, "required": thresholds},
+        "runtime_metrics": {
+            "status": "pass" if runtime_metrics_pass else "fail",
+            "observed": runtime_metrics,
+            "required": {
+                "transition_mae_max": thresholds["transition_mae_max"],
+                "constraint_risk_mae_max": thresholds["constraint_risk_mae_max"],
+                "planning_utility_mae_max": thresholds["planning_utility_mae_max"],
+                "ranking_correlation_proxy_min": thresholds["ranking_correlation_proxy_min"],
+            },
+        },
     }
-    if action_mask_pass:
+    status = "pass" if _all_checks_pass(checks) else "fail"
+    if status == "pass":
+        summary = "Simulator emits traceable action-mask and dynamics heads with synthetic-fixture holdout metrics."
+    elif action_mask_pass:
         summary = "Action-mask safety head is evaluated, but transition/risk/utility predictive metrics are not implemented yet."
     elif backend_type == CONTRACT_TRACE_BACKEND_TYPE:
         summary = "Simulator trace contract is present, but predictive heads and holdout metrics are not implemented yet."
     else:
         summary = "Current simulator gate is missing traceable runtime outputs."
     return _gate(
-        "fail",
+        status,
         checks=checks,
         missing=_failed_check_names(checks),
         summary=summary,
@@ -581,6 +603,20 @@ def _write_markdown(path: Path, report: dict[str, Any]) -> None:
                 f"- Test action-mask accuracy: `{test_metrics.get('action_mask_accuracy')}`",
                 f"- Test blocked-action recall: `{test_metrics.get('blocked_action_recall')}`",
                 f"- Used features: `{used_features}`",
+                "- Boundary: Synthetic not-for-production fixture; no production accuracy claim.",
+            ]
+        )
+    runtime_metrics = ((report.get("simulator_trace") or {}).get("runtime_metrics") or {})
+    if runtime_metrics:
+        lines.extend(
+            [
+                "",
+                "## Dynamics Heads",
+                "",
+                f"- Test transition MAE: `{runtime_metrics.get('transition_mae')}`",
+                f"- Test constraint-risk MAE: `{runtime_metrics.get('constraint_risk_mae')}`",
+                f"- Test planning-utility MAE: `{runtime_metrics.get('planning_utility_mae')}`",
+                f"- Planning utility ranking correlation proxy: `{runtime_metrics.get('ranking_correlation_proxy')}`",
                 "- Boundary: Synthetic not-for-production fixture; no production accuracy claim.",
             ]
         )

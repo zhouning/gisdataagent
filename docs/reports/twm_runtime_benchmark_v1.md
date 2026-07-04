@@ -2,13 +2,13 @@
 
 - Status: `fail`
 - Dataset manifest hash: `2278ac2b8aa383c17ab3ebeacc24352f9ac20c1b12004eb307e391b7401840b5`
-- Failed gates: `simulator_gate, planner_gate, negative_control_gate`
+- Failed gates: `planner_gate, negative_control_gate`
 
 ## Gates
 
 - `dataset_integrity_gate`: `pass`; missing/review: none
 - `renderer_gate`: `pass`; missing/review: none
-- `simulator_gate`: `fail`; missing/review: runtime_metrics
+- `simulator_gate`: `pass`; missing/review: none
 - `planner_gate`: `fail`; missing/review: planner_consumes_simulator_trace, simulator_trace_bound_to_each_candidate, planner_regret_against_human_oracle
 - `evidence_claim_gate`: `pass`; missing/review: none
 - `negative_control_gate`: `fail`; missing/review: negative_control_runtime_results, shuffled_action_control, shuffled_label_control
@@ -22,6 +22,14 @@
 - Used features: `action_type, region_code, time_index, baseline_risk_score, risk_score`
 - Boundary: Synthetic not-for-production fixture; no production accuracy claim.
 
+## Dynamics Heads
+
+- Test transition MAE: `0.009031`
+- Test constraint-risk MAE: `0.004748`
+- Test planning-utility MAE: `0.0101`
+- Planning utility ranking correlation proxy: `0.973369`
+- Boundary: Synthetic not-for-production fixture; no production accuracy claim.
+
 ## Claim Boundary
 
 - Runtime benchmark: `fail`
@@ -31,6 +39,5 @@
 
 ## Recommendations
 
-- Implement a traceable simulator backend that emits simulator_trace for every forecast and rollout.
 - Force planner ranking to consume simulator_trace and action-mask outputs for each candidate.
 - Execute impossible-action, support-missing, policy-conflict and shuffled-control tests in the benchmark loop.

@@ -8,7 +8,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_twm_runtime_benchmark_blocks_current_simulator_without_transition_metrics(tmp_path):
+def test_twm_runtime_benchmark_blocks_planner_and_negative_controls_after_simulator_passes(tmp_path):
     from data_agent.benchmarks.twm_runtime_v1.runner import run_twm_runtime_benchmark
 
     output = tmp_path / "twm_runtime_benchmark_v1.json"
@@ -23,25 +23,26 @@ def test_twm_runtime_benchmark_blocks_current_simulator_without_transition_metri
     assert report["schema"] == "territory_world_model.twm_runtime_benchmark.v1"
     assert report["suite_id"] == "twm_runtime_v1"
     assert report["status"] == "fail"
-    assert "simulator_gate" in report["failed_gates"]
+    assert "simulator_gate" not in report["failed_gates"]
     assert "planner_gate" in report["failed_gates"]
+    assert "negative_control_gate" in report["failed_gates"]
 
     simulator_gate = report["gates"]["simulator_gate"]
-    assert simulator_gate["status"] == "fail"
+    assert simulator_gate["status"] == "pass"
     assert "simulator_trace" not in simulator_gate["missing"]
-    assert "runtime_metrics" in simulator_gate["missing"]
+    assert "runtime_metrics" not in simulator_gate["missing"]
     assert "action_mask_probability" not in simulator_gate["missing"]
     assert "holdout_metrics" not in simulator_gate["missing"]
     assert simulator_gate["checks"]["simulator_trace_present"]["status"] == "pass"
     assert simulator_gate["checks"]["facade_backend_forbidden"]["status"] == "pass"
-    assert simulator_gate["checks"]["runtime_metrics"]["status"] == "fail"
+    assert simulator_gate["checks"]["runtime_metrics"]["status"] == "pass"
     assert simulator_gate["checks"]["action_mask_probability"]["status"] == "pass"
 
     simulator_trace = report["simulator_trace"]
     assert simulator_trace["schema"] == "territory_world_model.simulator_trace.v1"
     assert simulator_trace["backend_type"] != "deterministic_planner_facade"
     assert simulator_trace["dataset_snapshot_hash"] == report["dataset_manifest_hash"]
-    assert simulator_trace["model_family"] == "transparent_action_mask_rule_head"
+    assert simulator_trace["model_family"] == "transparent_runtime_heads"
     assert simulator_trace["split"] == "test"
     assert simulator_trace["prediction_id"].startswith("twm-runtime-v1-")
 
@@ -137,6 +138,8 @@ def test_twm_runtime_benchmark_leakage_guard_passes_with_explicit_feature_contra
         "constraint_risk_delta",
         "planning_utility_delta",
         "outcome",
+        "treatment_effect",
+        "uncertainty",
     }
     assert forbidden.isdisjoint(set(feature_contract["input_feature_columns"]))
     assert forbidden.issubset(set(feature_contract["excluded_target_columns"]))
@@ -167,6 +170,8 @@ def test_twm_runtime_benchmark_evaluates_action_mask_head_without_label_leakage(
         "constraint_risk_delta",
         "planning_utility_delta",
         "outcome",
+        "treatment_effect",
+        "uncertainty",
     }
     assert forbidden.isdisjoint(set(feature_contract["input_feature_columns"]))
     assert forbidden.issubset(set(feature_contract["excluded_target_columns"]))
@@ -187,3 +192,51 @@ def test_twm_runtime_benchmark_evaluates_action_mask_head_without_label_leakage(
     assert "## Action-Mask Head" in markdown
     assert "Test action-mask accuracy: `1.0`" in markdown
     assert "Synthetic not-for-production fixture" in markdown
+
+
+def test_twm_runtime_benchmark_evaluates_dynamics_heads_without_target_leakage(tmp_path):
+    from data_agent.benchmarks.twm_runtime_v1.runner import run_twm_runtime_benchmark
+
+    markdown_output = tmp_path / "report.md"
+    report = run_twm_runtime_benchmark(
+        output_path=tmp_path / "report.json",
+        markdown_output_path=markdown_output,
+    )
+
+    feature_contract = report["canonical_observation"]["feature_vector_contract"]
+    forbidden = {
+        "next_state_score",
+        "constraint_risk_delta",
+        "planning_utility_delta",
+        "outcome",
+        "treatment_effect",
+        "uncertainty",
+    }
+    assert forbidden.isdisjoint(set(feature_contract["input_feature_columns"]))
+    assert forbidden.issubset(set(feature_contract["excluded_target_columns"]))
+
+    predictive_heads = report["simulator_trace"]["predictive_heads"]
+    for name in [
+        "future_state_delta",
+        "constraint_violation_probability",
+        "planning_utility_delta",
+    ]:
+        assert predictive_heads[name]["status"] == "evaluated"
+        assert predictive_heads[name]["test"]["mae"] <= 0.05
+        assert forbidden.isdisjoint(set(predictive_heads[name]["used_feature_columns"]))
+
+    runtime_metrics = report["simulator_trace"]["runtime_metrics"]
+    assert runtime_metrics["transition_mae"] <= 0.05
+    assert runtime_metrics["constraint_risk_mae"] <= 0.05
+    assert runtime_metrics["planning_utility_mae"] <= 0.05
+    assert runtime_metrics["ranking_correlation_proxy"] >= 0.6
+
+    simulator_gate = report["gates"]["simulator_gate"]
+    assert simulator_gate["status"] == "pass"
+    assert simulator_gate["checks"]["runtime_metrics"]["status"] == "pass"
+    assert "simulator_gate" not in report["failed_gates"]
+
+    markdown = markdown_output.read_text(encoding="utf-8")
+    assert "## Dynamics Heads" in markdown
+    assert "Test transition MAE:" in markdown
+    assert "Planning utility ranking correlation proxy:" in markdown
