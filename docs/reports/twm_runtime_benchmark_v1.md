@@ -8,7 +8,7 @@
 
 - `dataset_integrity_gate`: `pass`; missing/review: none
 - `renderer_gate`: `pass`; missing/review: none
-- `simulator_gate`: `fail`; missing/review: simulator_trace, dataset_snapshot_hash, model_family, split, prediction_id, action_mask_probability, holdout_metrics
+- `simulator_gate`: `fail`; missing/review: action_mask_probability, holdout_metrics
 - `planner_gate`: `fail`; missing/review: planner_consumes_simulator_trace, simulator_trace_bound_to_each_candidate, planner_regret_against_human_oracle
 - `evidence_claim_gate`: `pass`; missing/review: none
 - `negative_control_gate`: `fail`; missing/review: negative_control_runtime_results, shuffled_action_control, shuffled_label_control

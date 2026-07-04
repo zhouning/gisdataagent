@@ -1,7 +1,7 @@
 {
   "schema": "territory_world_model.twm_runtime_benchmark.v1",
   "suite_id": "twm_runtime_v1",
-  "created_at": "2026-07-04T08:13:07.907637+00:00",
+  "created_at": "2026-07-04T08:25:03.514254+00:00",
   "dataset_manifest_hash": "2278ac2b8aa383c17ab3ebeacc24352f9ac20c1b12004eb307e391b7401840b5",
   "status": "fail",
   "failed_gates": [
@@ -137,33 +137,33 @@
       "status": "fail",
       "checks": {
         "simulator_trace_present": {
-          "status": "fail",
-          "observed": false,
+          "status": "pass",
+          "observed": true,
           "required": true
         },
         "facade_backend_forbidden": {
-          "status": "fail",
-          "observed": "deterministic_planner_facade",
+          "status": "pass",
+          "observed": "contract_trace_only",
           "required": "backend_type != deterministic_planner_facade"
         },
         "dataset_snapshot_hash_in_trace": {
-          "status": "fail",
-          "observed": null,
+          "status": "pass",
+          "observed": "2278ac2b8aa383c17ab3ebeacc24352f9ac20c1b12004eb307e391b7401840b5",
           "required": true
         },
         "model_family_in_trace": {
-          "status": "fail",
-          "observed": null,
+          "status": "pass",
+          "observed": "contract_trace_only",
           "required": true
         },
         "split_in_trace": {
-          "status": "fail",
-          "observed": null,
+          "status": "pass",
+          "observed": "test",
           "required": "train/validation/test"
         },
         "prediction_id_in_trace": {
-          "status": "fail",
-          "observed": null,
+          "status": "pass",
+          "observed": "twm-runtime-v1-c5acd614a157cb58",
           "required": true
         },
         "action_mask_probability": {
@@ -185,15 +185,10 @@
         }
       },
       "missing": [
-        "simulator_trace",
-        "dataset_snapshot_hash",
-        "model_family",
-        "split",
-        "prediction_id",
         "action_mask_probability",
         "holdout_metrics"
       ],
-      "summary": "Current forecasts are deterministic planner-facade outputs, not traceable simulator rollouts."
+      "summary": "Simulator trace contract is present, but predictive heads and holdout metrics are not implemented yet."
     },
     "planner_gate": {
       "status": "fail",
@@ -493,6 +488,38 @@
         "outcome",
         "planning_utility_delta"
       ]
+    }
+  },
+  "simulator_trace": {
+    "schema": "territory_world_model.simulator_trace.v1",
+    "prediction_id": "twm-runtime-v1-c5acd614a157cb58",
+    "backend_type": "contract_trace_only",
+    "model_family": "contract_trace_only",
+    "model_version": "0.1",
+    "split": "test",
+    "dataset_snapshot_hash": "2278ac2b8aa383c17ab3ebeacc24352f9ac20c1b12004eb307e391b7401840b5",
+    "observation_id": "38fba8d251444d079123a878c9ed34f9ae084168ae142eee91cc596daaabf930",
+    "consumed_observation_schema": "territory_world_model.runtime_observation.v1",
+    "consumed_contexts": [
+      "object_summary",
+      "relation_summary",
+      "rule_context",
+      "support_material_context",
+      "review_context",
+      "trajectory_context",
+      "feature_vector_contract"
+    ],
+    "predictive_heads": {
+      "future_state_delta": "not_implemented",
+      "constraint_violation_probability": "not_implemented",
+      "planning_utility_delta": "not_implemented",
+      "uncertainty": "not_implemented",
+      "action_mask_probability": "not_implemented"
+    },
+    "claim_boundary": {
+      "runtime_trace": "present",
+      "predictive_performance": "not_evaluated",
+      "production_claim": "not_supported"
     }
   },
   "measurements": {

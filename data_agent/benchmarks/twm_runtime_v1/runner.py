@@ -12,6 +12,11 @@ from data_agent.territory_world_model.runtime_observation import (
     TARGET_COLUMNS,
     build_runtime_observation,
 )
+from data_agent.territory_world_model.runtime_simulator import (
+    CONTRACT_TRACE_BACKEND_TYPE,
+    SIMULATOR_TRACE_SCHEMA,
+    build_simulator_trace,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -45,10 +50,11 @@ def run_twm_runtime_benchmark(
     measurements = _measure_datasets(paths)
     dataset_hash = _dataset_manifest_hash(paths)
     canonical_observation = build_runtime_observation(measurements, dataset_hash)
+    simulator_trace = build_simulator_trace(canonical_observation, suite_id=suite)
     gates = {
         "dataset_integrity_gate": _dataset_integrity_gate(measurements, thresholds["dataset_integrity_gate"]),
         "renderer_gate": _renderer_gate(measurements, thresholds["renderer_gate"], canonical_observation),
-        "simulator_gate": _simulator_gate(thresholds["simulator_gate"]),
+        "simulator_gate": _simulator_gate(thresholds["simulator_gate"], simulator_trace),
         "planner_gate": _planner_gate(thresholds["planner_gate"]),
         "evidence_claim_gate": _claim_gate(measurements, manifest["claim_boundary"]),
         "negative_control_gate": _negative_control_gate(negative_controls, thresholds["negative_control_gate"]),
@@ -73,6 +79,7 @@ def run_twm_runtime_benchmark(
         "scores": _scores_from_gates(gates),
         "gates": gates,
         "canonical_observation": canonical_observation,
+        "simulator_trace": simulator_trace,
         "measurements": measurements,
         "claim_boundary": claim_boundary,
         "recommendations": _recommendations(failed_gates),
@@ -236,18 +243,36 @@ def _renderer_gate(
     )
 
 
-def _simulator_gate(thresholds: dict[str, Any]) -> dict[str, Any]:
+def _simulator_gate(thresholds: dict[str, Any], simulator_trace: dict[str, Any]) -> dict[str, Any]:
+    backend_type = simulator_trace.get("backend_type")
+    trace_present = simulator_trace.get("schema") == SIMULATOR_TRACE_SCHEMA
     checks = {
-        "simulator_trace_present": {"status": "fail", "observed": False, "required": True},
+        "simulator_trace_present": {"status": "pass" if trace_present else "fail", "observed": trace_present, "required": True},
         "facade_backend_forbidden": {
-            "status": "fail",
-            "observed": "deterministic_planner_facade",
+            "status": "pass" if backend_type and backend_type != "deterministic_planner_facade" else "fail",
+            "observed": backend_type,
             "required": "backend_type != deterministic_planner_facade",
         },
-        "dataset_snapshot_hash_in_trace": {"status": "fail", "observed": None, "required": True},
-        "model_family_in_trace": {"status": "fail", "observed": None, "required": True},
-        "split_in_trace": {"status": "fail", "observed": None, "required": "train/validation/test"},
-        "prediction_id_in_trace": {"status": "fail", "observed": None, "required": True},
+        "dataset_snapshot_hash_in_trace": {
+            "status": "pass" if simulator_trace.get("dataset_snapshot_hash") else "fail",
+            "observed": simulator_trace.get("dataset_snapshot_hash"),
+            "required": True,
+        },
+        "model_family_in_trace": {
+            "status": "pass" if simulator_trace.get("model_family") else "fail",
+            "observed": simulator_trace.get("model_family"),
+            "required": True,
+        },
+        "split_in_trace": {
+            "status": "pass" if simulator_trace.get("split") in {"train", "validation", "test"} else "fail",
+            "observed": simulator_trace.get("split"),
+            "required": "train/validation/test",
+        },
+        "prediction_id_in_trace": {
+            "status": "pass" if simulator_trace.get("prediction_id") else "fail",
+            "observed": simulator_trace.get("prediction_id"),
+            "required": True,
+        },
         "action_mask_probability": {"status": "fail", "observed": None, "required": True},
         "runtime_metrics": {"status": "fail", "observed": {}, "required": thresholds},
     }
@@ -255,15 +280,14 @@ def _simulator_gate(thresholds: dict[str, Any]) -> dict[str, Any]:
         "fail",
         checks=checks,
         missing=[
-            "simulator_trace",
-            "dataset_snapshot_hash",
-            "model_family",
-            "split",
-            "prediction_id",
             "action_mask_probability",
             "holdout_metrics",
         ],
-        summary="Current forecasts are deterministic planner-facade outputs, not traceable simulator rollouts.",
+        summary=(
+            "Simulator trace contract is present, but predictive heads and holdout metrics are not implemented yet."
+            if backend_type == CONTRACT_TRACE_BACKEND_TYPE
+            else "Current simulator gate is missing traceable runtime outputs."
+        ),
     )
 
 

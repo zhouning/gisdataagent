@@ -8,7 +8,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_twm_runtime_benchmark_blocks_current_facade_without_simulator_trace(tmp_path):
+def test_twm_runtime_benchmark_blocks_current_simulator_without_holdout_metrics(tmp_path):
     from data_agent.benchmarks.twm_runtime_v1.runner import run_twm_runtime_benchmark
 
     output = tmp_path / "twm_runtime_benchmark_v1.json"
@@ -28,9 +28,20 @@ def test_twm_runtime_benchmark_blocks_current_facade_without_simulator_trace(tmp
 
     simulator_gate = report["gates"]["simulator_gate"]
     assert simulator_gate["status"] == "fail"
-    assert "simulator_trace" in simulator_gate["missing"]
-    assert simulator_gate["checks"]["facade_backend_forbidden"]["status"] == "fail"
-    assert simulator_gate["checks"]["facade_backend_forbidden"]["observed"] == "deterministic_planner_facade"
+    assert "simulator_trace" not in simulator_gate["missing"]
+    assert "holdout_metrics" in simulator_gate["missing"]
+    assert simulator_gate["checks"]["simulator_trace_present"]["status"] == "pass"
+    assert simulator_gate["checks"]["facade_backend_forbidden"]["status"] == "pass"
+    assert simulator_gate["checks"]["runtime_metrics"]["status"] == "fail"
+    assert simulator_gate["checks"]["action_mask_probability"]["status"] == "fail"
+
+    simulator_trace = report["simulator_trace"]
+    assert simulator_trace["schema"] == "territory_world_model.simulator_trace.v1"
+    assert simulator_trace["backend_type"] != "deterministic_planner_facade"
+    assert simulator_trace["dataset_snapshot_hash"] == report["dataset_manifest_hash"]
+    assert simulator_trace["model_family"] == "contract_trace_only"
+    assert simulator_trace["split"] == "test"
+    assert simulator_trace["prediction_id"].startswith("twm-runtime-v1-")
 
     planner_gate = report["gates"]["planner_gate"]
     assert planner_gate["status"] == "fail"
