@@ -1,0 +1,89 @@
+from __future__ import annotations
+
+import subprocess
+import sys
+from pathlib import Path
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_twm_runtime_benchmark_blocks_current_facade_without_simulator_trace(tmp_path):
+    from data_agent.benchmarks.twm_runtime_v1.runner import run_twm_runtime_benchmark
+
+    output = tmp_path / "twm_runtime_benchmark_v1.json"
+    markdown_output = tmp_path / "twm_runtime_benchmark_v1.md"
+
+    report = run_twm_runtime_benchmark(
+        output_path=output,
+        markdown_output_path=markdown_output,
+        fail_on_failed=False,
+    )
+
+    assert report["schema"] == "territory_world_model.twm_runtime_benchmark.v1"
+    assert report["suite_id"] == "twm_runtime_v1"
+    assert report["status"] == "fail"
+    assert "simulator_gate" in report["failed_gates"]
+    assert "planner_gate" in report["failed_gates"]
+
+    simulator_gate = report["gates"]["simulator_gate"]
+    assert simulator_gate["status"] == "fail"
+    assert "simulator_trace" in simulator_gate["missing"]
+    assert simulator_gate["checks"]["facade_backend_forbidden"]["status"] == "fail"
+    assert simulator_gate["checks"]["facade_backend_forbidden"]["observed"] == "deterministic_planner_facade"
+
+    planner_gate = report["gates"]["planner_gate"]
+    assert planner_gate["status"] == "fail"
+    assert "planner_consumes_simulator_trace" in planner_gate["missing"]
+
+    claim_boundary = report["claim_boundary"]
+    assert claim_boundary["production_decision"] == "blocked_without_real_observed_history"
+    assert claim_boundary["production_accuracy"] == "not_supported"
+    assert claim_boundary["flus_superiority"] == "not_evaluated_by_this_benchmark"
+    assert claim_boundary["not_for_production_boundary_preserved"] is True
+
+    assert output.exists()
+    assert markdown_output.exists()
+
+
+def test_twm_runtime_benchmark_cli_writes_outputs_and_exits_nonzero_on_failed(tmp_path):
+    output = tmp_path / "cli_report.json"
+    markdown_output = tmp_path / "cli_report.md"
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "scripts/run_twm_runtime_benchmark.py"),
+            "--suite",
+            "twm_runtime_v1",
+            "--output",
+            str(output),
+            "--markdown-output",
+            str(markdown_output),
+            "--fail-on-failed",
+        ],
+        cwd=REPO_ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert completed.returncode == 1
+    assert output.exists()
+    assert markdown_output.exists()
+    assert "status=fail" in completed.stdout
+
+
+def test_twm_runtime_benchmark_requires_explicit_leakage_guard_contract(tmp_path):
+    from data_agent.benchmarks.twm_runtime_v1.runner import run_twm_runtime_benchmark
+
+    report = run_twm_runtime_benchmark(
+        output_path=tmp_path / "report.json",
+        markdown_output_path=tmp_path / "report.md",
+    )
+
+    leakage_gate = report["gates"]["leakage_guard_gate"]
+    assert leakage_gate["status"] == "fail"
+    assert "feature_vector_contract" in leakage_gate["missing"]
+    assert leakage_gate["checks"]["target_feature_columns_present_in_source"]["status"] == "review"
+    assert "leakage_guard_gate" in report["failed_gates"]

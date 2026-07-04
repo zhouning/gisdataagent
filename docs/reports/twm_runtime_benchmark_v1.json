@@ -1,0 +1,421 @@
+{
+  "schema": "territory_world_model.twm_runtime_benchmark.v1",
+  "suite_id": "twm_runtime_v1",
+  "created_at": "2026-07-04T08:00:16.650496+00:00",
+  "dataset_manifest_hash": "2278ac2b8aa383c17ab3ebeacc24352f9ac20c1b12004eb307e391b7401840b5",
+  "status": "fail",
+  "failed_gates": [
+    "renderer_gate",
+    "simulator_gate",
+    "planner_gate",
+    "negative_control_gate",
+    "leakage_guard_gate"
+  ],
+  "scores": {
+    "dataset_integrity_score": 1.0,
+    "renderer_score": 0.0,
+    "simulator_score": 0.0,
+    "planner_score": 0.0,
+    "evidence_claim_score": 1.0,
+    "negative_control_score": 0.0,
+    "leakage_guard_score": 0.0
+  },
+  "gates": {
+    "dataset_integrity_gate": {
+      "status": "pass",
+      "checks": {
+        "relation_rows": {
+          "status": "pass",
+          "observed": 1797,
+          "required_min": 1700
+        },
+        "support_material_rows": {
+          "status": "pass",
+          "observed": 224,
+          "required_min": 200
+        },
+        "synthetic_experiment_rows": {
+          "status": "pass",
+          "observed": 256,
+          "required": 256
+        },
+        "counterfactual_pairs": {
+          "status": "pass",
+          "observed": 128,
+          "required": 128
+        },
+        "train_rows": {
+          "status": "pass",
+          "observed": 128,
+          "required": 128
+        },
+        "validation_rows": {
+          "status": "pass",
+          "observed": 64,
+          "required": 64
+        },
+        "test_rows": {
+          "status": "pass",
+          "observed": 64,
+          "required": 64
+        },
+        "action_type_count": {
+          "status": "pass",
+          "observed": 4,
+          "required": 4
+        },
+        "allowed_rows": {
+          "status": "pass",
+          "observed": 128,
+          "required": 128
+        },
+        "blocked_rows": {
+          "status": "pass",
+          "observed": 128,
+          "required": 128
+        },
+        "repo_internal_paths": {
+          "status": "pass",
+          "observed": true,
+          "required": true
+        }
+      },
+      "missing": [],
+      "summary": ""
+    },
+    "renderer_gate": {
+      "status": "fail",
+      "checks": {
+        "object_count": {
+          "status": "pass",
+          "observed": 21629,
+          "required_min": 21000
+        },
+        "relation_count": {
+          "status": "pass",
+          "observed": 1797,
+          "required_min": 1700
+        },
+        "project_count": {
+          "status": "pass",
+          "observed": 90,
+          "required_min": 90
+        },
+        "rule_evaluation_count": {
+          "status": "pass",
+          "observed": 360,
+          "required_min": 360
+        },
+        "review_task_count": {
+          "status": "pass",
+          "observed": 114,
+          "required_min": 100
+        },
+        "support_material_count": {
+          "status": "pass",
+          "observed": 224,
+          "required_min": 200
+        },
+        "canonical_observation_schema_present": {
+          "status": "fail",
+          "observed": false,
+          "required": "territory_world_model.runtime_observation.v1"
+        },
+        "simulator_consumable_observation": {
+          "status": "fail",
+          "observed": false,
+          "required": true
+        },
+        "not_for_production_boundary_preserved": {
+          "status": "pass",
+          "observed": true,
+          "required": true
+        }
+      },
+      "missing": [
+        "canonical_observation_schema_present",
+        "simulator_consumable_observation"
+      ],
+      "summary": "State data is present, but no canonical simulator observation contract is exposed yet."
+    },
+    "simulator_gate": {
+      "status": "fail",
+      "checks": {
+        "simulator_trace_present": {
+          "status": "fail",
+          "observed": false,
+          "required": true
+        },
+        "facade_backend_forbidden": {
+          "status": "fail",
+          "observed": "deterministic_planner_facade",
+          "required": "backend_type != deterministic_planner_facade"
+        },
+        "dataset_snapshot_hash_in_trace": {
+          "status": "fail",
+          "observed": null,
+          "required": true
+        },
+        "model_family_in_trace": {
+          "status": "fail",
+          "observed": null,
+          "required": true
+        },
+        "split_in_trace": {
+          "status": "fail",
+          "observed": null,
+          "required": "train/validation/test"
+        },
+        "prediction_id_in_trace": {
+          "status": "fail",
+          "observed": null,
+          "required": true
+        },
+        "action_mask_probability": {
+          "status": "fail",
+          "observed": null,
+          "required": true
+        },
+        "runtime_metrics": {
+          "status": "fail",
+          "observed": {},
+          "required": {
+            "transition_mae_max": 0.05,
+            "constraint_risk_mae_max": 0.05,
+            "planning_utility_mae_max": 0.05,
+            "ranking_correlation_proxy_min": 0.6,
+            "action_mask_accuracy_min": 0.85,
+            "blocked_action_recall_min": 0.85
+          }
+        }
+      },
+      "missing": [
+        "simulator_trace",
+        "dataset_snapshot_hash",
+        "model_family",
+        "split",
+        "prediction_id",
+        "action_mask_probability",
+        "holdout_metrics"
+      ],
+      "summary": "Current forecasts are deterministic planner-facade outputs, not traceable simulator rollouts."
+    },
+    "planner_gate": {
+      "status": "fail",
+      "checks": {
+        "planner_consumes_simulator_trace": {
+          "status": "fail",
+          "observed": false,
+          "required": true
+        },
+        "simulator_trace_bound_to_each_candidate": {
+          "status": "fail",
+          "observed": false,
+          "required": true
+        },
+        "hard_blocked_selected_count": {
+          "status": "review",
+          "observed": null,
+          "required": 0
+        },
+        "planner_metrics": {
+          "status": "fail",
+          "observed": {},
+          "required": {
+            "legal_feasible_topk_precision_min": 0.8,
+            "candidate_rejection_reason_coverage_min": 0.85,
+            "planner_regret_against_human_oracle_max": 0.15
+          }
+        }
+      },
+      "missing": [
+        "planner_consumes_simulator_trace",
+        "simulator_trace_bound_to_each_candidate",
+        "planner_regret_against_human_oracle"
+      ],
+      "summary": "Planner scoring is not yet forced to consume simulator traces only."
+    },
+    "evidence_claim_gate": {
+      "status": "pass",
+      "checks": {
+        "runtime_scope_limited": {
+          "status": "pass",
+          "observed": "development_runtime_contract",
+          "required": "development_runtime_contract"
+        },
+        "production_accuracy_not_supported": {
+          "status": "pass",
+          "observed": "not_supported",
+          "required": "not_supported"
+        },
+        "production_decision_blocked": {
+          "status": "pass",
+          "observed": "blocked_without_real_observed_history",
+          "required": "blocked_without_real_observed_history"
+        },
+        "not_for_production_boundary_preserved": {
+          "status": "pass",
+          "observed": true,
+          "required": true
+        }
+      },
+      "missing": [],
+      "summary": ""
+    },
+    "negative_control_gate": {
+      "status": "fail",
+      "checks": {
+        "negative_control_manifest_present": {
+          "status": "pass",
+          "observed": 5,
+          "required": 5
+        },
+        "impossible_action_block_rate": {
+          "status": "fail",
+          "observed": null,
+          "required": 0.95
+        },
+        "support_missing_review_rate": {
+          "status": "fail",
+          "observed": null,
+          "required": 0.95
+        },
+        "policy_conflict_block_recall": {
+          "status": "fail",
+          "observed": null,
+          "required": 0.9
+        },
+        "shuffled_action_performance_drop": {
+          "status": "fail",
+          "observed": null,
+          "required": 0.15
+        },
+        "shuffled_label_gate_status": {
+          "status": "fail",
+          "observed": "not_run",
+          "required": "fail"
+        }
+      },
+      "missing": [
+        "negative_control_runtime_results",
+        "shuffled_action_control",
+        "shuffled_label_control"
+      ],
+      "summary": "Negative controls are declared but not executed by a runtime simulator/planner loop yet."
+    },
+    "leakage_guard_gate": {
+      "status": "fail",
+      "checks": {
+        "split_overlap_count": {
+          "status": "pass",
+          "observed": 0,
+          "required": 0
+        },
+        "counterfactual_group_split_leak_count": {
+          "status": "pass",
+          "observed": 0,
+          "required": 0
+        },
+        "target_feature_columns_present_in_source": {
+          "status": "review",
+          "observed": 4,
+          "required": 0
+        },
+        "feature_vector_contract": {
+          "status": "fail",
+          "observed": null,
+          "required": "explicit input_feature_columns excluding target/outcome fields"
+        },
+        "dataset_snapshot_hash_stable": {
+          "status": "pass",
+          "observed": true,
+          "required": true
+        }
+      },
+      "missing": [
+        "target_feature_columns_present_in_source",
+        "feature_vector_contract"
+      ],
+      "summary": ""
+    }
+  },
+  "measurements": {
+    "dataset_id": "twm_bishan_multi_admin_eval",
+    "paths": {
+      "state_dataset_dir": "/Users/zhouning/gisdataagent/data_agent/test_data/twm_bishan_multi_admin_eval",
+      "data_quality_report": "/Users/zhouning/gisdataagent/data_agent/test_data/twm_bishan_multi_admin_eval/data_quality_report.json",
+      "dataset_manifest": "/Users/zhouning/gisdataagent/data_agent/test_data/twm_bishan_multi_admin_eval/dataset_manifest.json",
+      "relations_dir": "/Users/zhouning/gisdataagent/data_agent/test_data/twm_bishan_multi_admin_eval/relations",
+      "rule_evaluation": "/Users/zhouning/gisdataagent/data_agent/test_data/twm_bishan_multi_admin_eval/tables/rule_evaluation.csv",
+      "review_tasks": "/Users/zhouning/gisdataagent/data_agent/test_data/twm_bishan_multi_admin_eval/tables/review_tasks.csv",
+      "support_materials": "/Users/zhouning/gisdataagent/data_agent/test_data/twm_bishan_multi_admin_eval/tables/multimodal_evidence_index.csv",
+      "synthetic_experiment_foundation": "/Users/zhouning/gisdataagent/docs/reports/twm_synthetic_experiment_foundation.csv",
+      "structural_validation_history": "/Users/zhouning/gisdataagent/docs/reports/twm_structural_validation_observed_history.csv",
+      "same_case_baselines": [
+        "/Users/zhouning/gisdataagent/data_agent/test_data/twm_baseline_metrics/twm_candidate_triage_same_case_outputs.csv",
+        "/Users/zhouning/gisdataagent/data_agent/test_data/twm_baseline_metrics/optimization_only_candidate_triage_same_case_outputs.csv"
+      ]
+    },
+    "layer_counts": {
+      "parcel_current": 21218,
+      "synthetic_pbf": 14,
+      "synthetic_eco_redline": 10,
+      "admin_units": 11,
+      "synthetic_annual_change": 266,
+      "synthetic_projects": 90,
+      "synthetic_planning_zones": 5,
+      "synthetic_urban_boundary": 5,
+      "synthetic_remote_sensing_tiles": 10
+    },
+    "object_count": 21629,
+    "relation_count": 1797,
+    "project_count": 90,
+    "rule_evaluation_count": 360,
+    "review_task_count": 114,
+    "support_material_count": 224,
+    "synthetic_experiment_rows": 256,
+    "counterfactual_pairs": 128,
+    "split_counts": {
+      "train": 128,
+      "validation": 64,
+      "test": 64
+    },
+    "action_type_count": 4,
+    "action_types": [
+      "approve_with_conditions",
+      "defer_review",
+      "protect",
+      "restore"
+    ],
+    "allowed_rows": 128,
+    "blocked_rows": 128,
+    "structural_validation_rows": 48,
+    "same_case_baseline_rows": [
+      5,
+      5
+    ],
+    "target_feature_leak_count": 4,
+    "split_overlap_count": 0,
+    "counterfactual_group_split_leak_count": 0,
+    "not_for_production_boundary_preserved": true,
+    "synthetic_flags": [
+      "True"
+    ],
+    "not_for_production_flags": [
+      "True"
+    ]
+  },
+  "claim_boundary": {
+    "runtime_benchmark": "fail",
+    "production_accuracy": "not_supported",
+    "production_decision": "blocked_without_real_observed_history",
+    "flus_superiority": "not_evaluated_by_this_benchmark",
+    "not_for_production_boundary_preserved": true
+  },
+  "recommendations": [
+    "Expose canonical_observation with schema territory_world_model.runtime_observation.v1.",
+    "Implement a traceable simulator backend that emits simulator_trace for every forecast and rollout.",
+    "Force planner ranking to consume simulator_trace and action-mask outputs for each candidate.",
+    "Execute impossible-action, support-missing, policy-conflict and shuffled-control tests in the benchmark loop."
+  ]
+}

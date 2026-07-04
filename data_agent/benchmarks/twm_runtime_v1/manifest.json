@@ -1,0 +1,18 @@
+{
+  "schema": "territory_world_model.twm_runtime_benchmark_manifest.v1",
+  "suite_id": "twm_runtime_v1",
+  "created_at": "2026-07-03",
+  "state_dataset_dir": "data_agent/test_data/twm_bishan_multi_admin_eval",
+  "synthetic_experiment_foundation": "docs/reports/twm_synthetic_experiment_foundation.csv",
+  "structural_validation_history": "docs/reports/twm_structural_validation_observed_history.csv",
+  "same_case_baselines": [
+    "data_agent/test_data/twm_baseline_metrics/twm_candidate_triage_same_case_outputs.csv",
+    "data_agent/test_data/twm_baseline_metrics/optimization_only_candidate_triage_same_case_outputs.csv"
+  ],
+  "claim_boundary": {
+    "benchmark_scope": "development_runtime_contract",
+    "production_accuracy": "not_supported",
+    "production_decision": "blocked_without_real_observed_history",
+    "flus_superiority": "not_evaluated_by_this_benchmark"
+  }
+}
