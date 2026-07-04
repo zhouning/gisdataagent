@@ -1,24 +1,22 @@
 {
   "schema": "territory_world_model.twm_runtime_benchmark.v1",
   "suite_id": "twm_runtime_v1",
-  "created_at": "2026-07-04T08:00:16.650496+00:00",
+  "created_at": "2026-07-04T08:13:07.907637+00:00",
   "dataset_manifest_hash": "2278ac2b8aa383c17ab3ebeacc24352f9ac20c1b12004eb307e391b7401840b5",
   "status": "fail",
   "failed_gates": [
-    "renderer_gate",
     "simulator_gate",
     "planner_gate",
-    "negative_control_gate",
-    "leakage_guard_gate"
+    "negative_control_gate"
   ],
   "scores": {
     "dataset_integrity_score": 1.0,
-    "renderer_score": 0.0,
+    "renderer_score": 1.0,
     "simulator_score": 0.0,
     "planner_score": 0.0,
     "evidence_claim_score": 1.0,
     "negative_control_score": 0.0,
-    "leakage_guard_score": 0.0
+    "leakage_guard_score": 1.0
   },
   "gates": {
     "dataset_integrity_gate": {
@@ -84,7 +82,7 @@
       "summary": ""
     },
     "renderer_gate": {
-      "status": "fail",
+      "status": "pass",
       "checks": {
         "object_count": {
           "status": "pass",
@@ -117,13 +115,13 @@
           "required_min": 200
         },
         "canonical_observation_schema_present": {
-          "status": "fail",
-          "observed": false,
+          "status": "pass",
+          "observed": "territory_world_model.runtime_observation.v1",
           "required": "territory_world_model.runtime_observation.v1"
         },
         "simulator_consumable_observation": {
-          "status": "fail",
-          "observed": false,
+          "status": "pass",
+          "observed": true,
           "required": true
         },
         "not_for_production_boundary_preserved": {
@@ -132,10 +130,7 @@
           "required": true
         }
       },
-      "missing": [
-        "canonical_observation_schema_present",
-        "simulator_consumable_observation"
-      ],
+      "missing": [],
       "summary": "State data is present, but no canonical simulator observation contract is exposed yet."
     },
     "simulator_gate": {
@@ -304,7 +299,7 @@
       "summary": "Negative controls are declared but not executed by a runtime simulator/planner loop yet."
     },
     "leakage_guard_gate": {
-      "status": "fail",
+      "status": "pass",
       "checks": {
         "split_overlap_count": {
           "status": "pass",
@@ -316,15 +311,25 @@
           "observed": 0,
           "required": 0
         },
-        "target_feature_columns_present_in_source": {
-          "status": "review",
-          "observed": 4,
-          "required": 0
+        "raw_target_columns_declared": {
+          "status": "pass",
+          "observed": [
+            "constraint_risk_delta",
+            "next_state_score",
+            "outcome",
+            "planning_utility_delta"
+          ],
+          "required": "raw target columns must be explicit and excluded from simulator inputs"
         },
         "feature_vector_contract": {
-          "status": "fail",
-          "observed": null,
-          "required": "explicit input_feature_columns excluding target/outcome fields"
+          "status": "pass",
+          "observed": "territory_world_model.runtime_feature_vector_contract.v1",
+          "required": "territory_world_model.runtime_feature_vector_contract.v1"
+        },
+        "target_feature_columns_excluded": {
+          "status": "pass",
+          "observed": [],
+          "required": []
         },
         "dataset_snapshot_hash_stable": {
           "status": "pass",
@@ -332,11 +337,162 @@
           "required": true
         }
       },
-      "missing": [
-        "target_feature_columns_present_in_source",
+      "missing": [],
+      "summary": ""
+    }
+  },
+  "canonical_observation": {
+    "schema": "territory_world_model.runtime_observation.v1",
+    "observation_id": "38fba8d251444d079123a878c9ed34f9ae084168ae142eee91cc596daaabf930",
+    "dataset_snapshot_hash": "2278ac2b8aa383c17ab3ebeacc24352f9ac20c1b12004eb307e391b7401840b5",
+    "dataset_id": "twm_bishan_multi_admin_eval",
+    "boundary": {
+      "synthetic": true,
+      "not_for_production": true,
+      "production_claim": "not_supported"
+    },
+    "object_summary": {
+      "object_count": 21629,
+      "project_count": 90,
+      "layer_counts": {
+        "parcel_current": 21218,
+        "synthetic_pbf": 14,
+        "synthetic_eco_redline": 10,
+        "admin_units": 11,
+        "synthetic_annual_change": 266,
+        "synthetic_projects": 90,
+        "synthetic_planning_zones": 5,
+        "synthetic_urban_boundary": 5,
+        "synthetic_remote_sensing_tiles": 10
+      }
+    },
+    "relation_summary": {
+      "relation_count": 1797
+    },
+    "rule_context": {
+      "rule_evaluation_count": 360
+    },
+    "support_material_context": {
+      "support_material_count": 224,
+      "legacy_source_name": "multimodal_evidence_index"
+    },
+    "review_context": {
+      "review_task_count": 114
+    },
+    "trajectory_context": {
+      "row_count": 256,
+      "counterfactual_pairs": 128,
+      "split_counts": {
+        "train": 128,
+        "validation": 64,
+        "test": 64
+      },
+      "action_types": [
+        "approve_with_conditions",
+        "defer_review",
+        "protect",
+        "restore"
+      ],
+      "allowed_rows": 128,
+      "blocked_rows": 128
+    },
+    "feature_vector_contract": {
+      "schema": "territory_world_model.runtime_feature_vector_contract.v1",
+      "input_feature_columns": [
+        "DKMJ",
+        "action_mask_allowed",
+        "action_mask_hard_blocks",
+        "action_mask_policy",
+        "action_mask_required_reviews",
+        "action_type",
+        "approval_id",
+        "approval_status",
+        "approved_area_m2",
+        "area_m2",
+        "baseline_risk_score",
+        "baseline_state_score",
+        "cluster",
+        "completed_review_count",
+        "confirmed_violation_count",
+        "counterfactual_group",
+        "critical_rule_hit_count",
+        "data_role",
+        "evidence_weight",
+        "high_rule_hit_count",
+        "neighbor_unit_ids",
+        "neighbors",
+        "not_for_production",
+        "open_review_count",
+        "period",
+        "project_id",
+        "propensity_score",
+        "quality_score",
+        "region_code",
+        "review_penalty",
+        "review_task_count",
+        "risk_score",
+        "rule_eval_count",
+        "rule_hit_count",
+        "scenario_id",
+        "source_path",
+        "spatial_cluster",
+        "split",
+        "stratum",
+        "supplement_required_review_count",
+        "synthetic",
+        "time_index",
+        "treatment_effect",
+        "uncertainty",
+        "unit_id",
+        "x",
+        "y"
+      ],
+      "excluded_target_columns": [
+        "constraint_risk_delta",
+        "next_state_score",
+        "outcome",
+        "planning_utility_delta"
+      ],
+      "target_columns": [
+        "constraint_risk_delta",
+        "next_state_score",
+        "outcome",
+        "planning_utility_delta"
+      ],
+      "target_columns_excluded_from_input": true,
+      "raw_source_may_contain_targets": true
+    },
+    "simulator_input": {
+      "consumable": true,
+      "encoding": "tabular_state_action_context",
+      "required_contexts": [
+        "object_summary",
+        "relation_summary",
+        "rule_context",
+        "support_material_context",
+        "review_context",
+        "trajectory_context",
         "feature_vector_contract"
       ],
-      "summary": ""
+      "state_feature_groups": [
+        "object_summary",
+        "relation_summary",
+        "rule_context",
+        "support_material_context",
+        "review_context"
+      ],
+      "action_fields": [
+        "action_type",
+        "action_mask_allowed",
+        "action_mask_required_reviews",
+        "action_mask_policy"
+      ],
+      "target_fields_excluded": [
+        "constraint_risk_delta",
+        "next_state_score",
+        "outcome",
+        "planning_utility_delta"
+      ]
     }
   },
   "measurements": {
@@ -394,6 +550,65 @@
       5,
       5
     ],
+    "trajectory_columns": [
+      "DKMJ",
+      "action_mask_allowed",
+      "action_mask_hard_blocks",
+      "action_mask_policy",
+      "action_mask_required_reviews",
+      "action_type",
+      "approval_id",
+      "approval_status",
+      "approved_area_m2",
+      "area_m2",
+      "baseline_risk_score",
+      "baseline_state_score",
+      "cluster",
+      "completed_review_count",
+      "confirmed_violation_count",
+      "constraint_risk_delta",
+      "counterfactual_group",
+      "critical_rule_hit_count",
+      "data_role",
+      "evidence_weight",
+      "high_rule_hit_count",
+      "neighbor_unit_ids",
+      "neighbors",
+      "next_state_score",
+      "not_for_production",
+      "open_review_count",
+      "outcome",
+      "period",
+      "planning_utility_delta",
+      "project_id",
+      "propensity_score",
+      "quality_score",
+      "region_code",
+      "review_penalty",
+      "review_task_count",
+      "risk_score",
+      "rule_eval_count",
+      "rule_hit_count",
+      "scenario_id",
+      "source_path",
+      "spatial_cluster",
+      "split",
+      "stratum",
+      "supplement_required_review_count",
+      "synthetic",
+      "time_index",
+      "treatment_effect",
+      "uncertainty",
+      "unit_id",
+      "x",
+      "y"
+    ],
+    "target_columns": [
+      "constraint_risk_delta",
+      "next_state_score",
+      "outcome",
+      "planning_utility_delta"
+    ],
     "target_feature_leak_count": 4,
     "split_overlap_count": 0,
     "counterfactual_group_split_leak_count": 0,
@@ -413,7 +628,6 @@
     "not_for_production_boundary_preserved": true
   },
   "recommendations": [
-    "Expose canonical_observation with schema territory_world_model.runtime_observation.v1.",
     "Implement a traceable simulator backend that emits simulator_trace for every forecast and rollout.",
     "Force planner ranking to consume simulator_trace and action-mask outputs for each candidate.",
     "Execute impossible-action, support-missing, policy-conflict and shuffled-control tests in the benchmark loop."

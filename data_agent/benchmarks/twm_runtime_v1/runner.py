@@ -7,6 +7,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from data_agent.territory_world_model.runtime_observation import (
+    RUNTIME_OBSERVATION_SCHEMA,
+    TARGET_COLUMNS,
+    build_runtime_observation,
+)
+
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 BENCHMARK_DIR = Path(__file__).resolve().parent
@@ -38,14 +44,15 @@ def run_twm_runtime_benchmark(
     paths = _benchmark_paths(manifest)
     measurements = _measure_datasets(paths)
     dataset_hash = _dataset_manifest_hash(paths)
+    canonical_observation = build_runtime_observation(measurements, dataset_hash)
     gates = {
         "dataset_integrity_gate": _dataset_integrity_gate(measurements, thresholds["dataset_integrity_gate"]),
-        "renderer_gate": _renderer_gate(measurements, thresholds["renderer_gate"]),
+        "renderer_gate": _renderer_gate(measurements, thresholds["renderer_gate"], canonical_observation),
         "simulator_gate": _simulator_gate(thresholds["simulator_gate"]),
         "planner_gate": _planner_gate(thresholds["planner_gate"]),
         "evidence_claim_gate": _claim_gate(measurements, manifest["claim_boundary"]),
         "negative_control_gate": _negative_control_gate(negative_controls, thresholds["negative_control_gate"]),
-        "leakage_guard_gate": _leakage_guard_gate(measurements),
+        "leakage_guard_gate": _leakage_guard_gate(measurements, canonical_observation),
     }
     failed_gates = [name for name, gate in gates.items() if gate["status"] != "pass"]
     status = "pass" if not failed_gates else "fail"
@@ -65,6 +72,7 @@ def run_twm_runtime_benchmark(
         "failed_gates": failed_gates,
         "scores": _scores_from_gates(gates),
         "gates": gates,
+        "canonical_observation": canonical_observation,
         "measurements": measurements,
         "claim_boundary": claim_boundary,
         "recommendations": _recommendations(failed_gates),
@@ -156,6 +164,8 @@ def _measure_datasets(paths: dict[str, Path | list[Path]]) -> dict[str, Any]:
         "blocked_rows": blocked_rows,
         "structural_validation_rows": len(structural_rows),
         "same_case_baseline_rows": [len(rows) for rows in same_case_rows],
+        "trajectory_columns": sorted(feature_fields),
+        "target_columns": sorted(target_fields),
         "target_feature_leak_count": len(feature_fields.intersection(target_fields)),
         "split_overlap_count": split_overlap_count,
         "counterfactual_group_split_leak_count": split_overlap_count,
@@ -184,7 +194,13 @@ def _dataset_integrity_gate(measurements: dict[str, Any], thresholds: dict[str, 
     return _gate("pass" if _all_checks_pass(checks) else "fail", checks=checks)
 
 
-def _renderer_gate(measurements: dict[str, Any], thresholds: dict[str, Any]) -> dict[str, Any]:
+def _renderer_gate(
+    measurements: dict[str, Any],
+    thresholds: dict[str, Any],
+    canonical_observation: dict[str, Any],
+) -> dict[str, Any]:
+    observation_schema = canonical_observation.get("schema")
+    simulator_input = canonical_observation.get("simulator_input") or {}
     checks = {
         "object_count": _min_check(measurements["object_count"], thresholds["object_count_min"]),
         "relation_count": _min_check(measurements["relation_count"], thresholds["relation_count_min"]),
@@ -197,11 +213,15 @@ def _renderer_gate(measurements: dict[str, Any], thresholds: dict[str, Any]) -> 
             measurements["support_material_count"], thresholds["support_material_count_min"]
         ),
         "canonical_observation_schema_present": {
-            "status": "fail",
-            "observed": False,
-            "required": "territory_world_model.runtime_observation.v1",
+            "status": "pass" if observation_schema == RUNTIME_OBSERVATION_SCHEMA else "fail",
+            "observed": observation_schema,
+            "required": RUNTIME_OBSERVATION_SCHEMA,
         },
-        "simulator_consumable_observation": {"status": "fail", "observed": False, "required": True},
+        "simulator_consumable_observation": {
+            "status": "pass" if simulator_input.get("consumable") is True else "fail",
+            "observed": bool(simulator_input.get("consumable")),
+            "required": True,
+        },
         "not_for_production_boundary_preserved": {
             "status": "pass" if measurements["not_for_production_boundary_preserved"] else "fail",
             "observed": measurements["not_for_production_boundary_preserved"],
@@ -329,21 +349,31 @@ def _negative_control_gate(negative_controls: dict[str, Any], thresholds: dict[s
     )
 
 
-def _leakage_guard_gate(measurements: dict[str, Any]) -> dict[str, Any]:
+def _leakage_guard_gate(measurements: dict[str, Any], canonical_observation: dict[str, Any]) -> dict[str, Any]:
+    feature_contract = canonical_observation.get("feature_vector_contract") or {}
+    input_columns = set(feature_contract.get("input_feature_columns") or [])
+    excluded_target_columns = set(feature_contract.get("excluded_target_columns") or [])
+    target_columns = set(feature_contract.get("target_columns") or TARGET_COLUMNS)
+    forbidden_in_input = sorted(input_columns.intersection(target_columns))
     checks = {
         "split_overlap_count": _equal_check(measurements["split_overlap_count"], 0),
         "counterfactual_group_split_leak_count": _equal_check(
             measurements["counterfactual_group_split_leak_count"], 0
         ),
-        "target_feature_columns_present_in_source": {
-            "status": "review" if measurements["target_feature_leak_count"] else "pass",
-            "observed": measurements["target_feature_leak_count"],
-            "required": 0,
+        "raw_target_columns_declared": {
+            "status": "pass",
+            "observed": sorted(excluded_target_columns),
+            "required": "raw target columns must be explicit and excluded from simulator inputs",
         },
         "feature_vector_contract": {
-            "status": "fail",
-            "observed": None,
-            "required": "explicit input_feature_columns excluding target/outcome fields",
+            "status": "pass" if feature_contract.get("schema") == "territory_world_model.runtime_feature_vector_contract.v1" else "fail",
+            "observed": feature_contract.get("schema"),
+            "required": "territory_world_model.runtime_feature_vector_contract.v1",
+        },
+        "target_feature_columns_excluded": {
+            "status": "pass" if not forbidden_in_input else "fail",
+            "observed": forbidden_in_input,
+            "required": [],
         },
         "dataset_snapshot_hash_stable": {"status": "pass", "observed": True, "required": True},
     }

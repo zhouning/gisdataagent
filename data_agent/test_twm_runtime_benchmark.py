@@ -46,6 +46,38 @@ def test_twm_runtime_benchmark_blocks_current_facade_without_simulator_trace(tmp
     assert markdown_output.exists()
 
 
+def test_twm_runtime_benchmark_builds_canonical_observation_for_renderer_gate(tmp_path):
+    from data_agent.benchmarks.twm_runtime_v1.runner import run_twm_runtime_benchmark
+
+    report = run_twm_runtime_benchmark(
+        output_path=tmp_path / "report.json",
+        markdown_output_path=tmp_path / "report.md",
+    )
+
+    renderer_gate = report["gates"]["renderer_gate"]
+    assert renderer_gate["status"] == "pass"
+    assert "renderer_gate" not in report["failed_gates"]
+
+    observation = report["canonical_observation"]
+    assert observation["schema"] == "territory_world_model.runtime_observation.v1"
+    assert observation["dataset_snapshot_hash"] == report["dataset_manifest_hash"]
+    assert observation["boundary"]["not_for_production"] is True
+    assert observation["object_summary"]["object_count"] >= 21000
+    assert observation["relation_summary"]["relation_count"] >= 1700
+    assert observation["rule_context"]["rule_evaluation_count"] >= 360
+    assert observation["support_material_context"]["support_material_count"] >= 200
+    assert observation["review_context"]["review_task_count"] >= 100
+    assert observation["simulator_input"]["consumable"] is True
+    assert set(observation["simulator_input"]["required_contexts"]) >= {
+        "object_summary",
+        "relation_summary",
+        "rule_context",
+        "support_material_context",
+        "review_context",
+        "trajectory_context",
+    }
+
+
 def test_twm_runtime_benchmark_cli_writes_outputs_and_exits_nonzero_on_failed(tmp_path):
     output = tmp_path / "cli_report.json"
     markdown_output = tmp_path / "cli_report.md"
@@ -74,7 +106,7 @@ def test_twm_runtime_benchmark_cli_writes_outputs_and_exits_nonzero_on_failed(tm
     assert "status=fail" in completed.stdout
 
 
-def test_twm_runtime_benchmark_requires_explicit_leakage_guard_contract(tmp_path):
+def test_twm_runtime_benchmark_leakage_guard_passes_with_explicit_feature_contract(tmp_path):
     from data_agent.benchmarks.twm_runtime_v1.runner import run_twm_runtime_benchmark
 
     report = run_twm_runtime_benchmark(
@@ -82,8 +114,18 @@ def test_twm_runtime_benchmark_requires_explicit_leakage_guard_contract(tmp_path
         markdown_output_path=tmp_path / "report.md",
     )
 
+    feature_contract = report["canonical_observation"]["feature_vector_contract"]
+    forbidden = {
+        "next_state_score",
+        "constraint_risk_delta",
+        "planning_utility_delta",
+        "outcome",
+    }
+    assert forbidden.isdisjoint(set(feature_contract["input_feature_columns"]))
+    assert forbidden.issubset(set(feature_contract["excluded_target_columns"]))
+
     leakage_gate = report["gates"]["leakage_guard_gate"]
-    assert leakage_gate["status"] == "fail"
-    assert "feature_vector_contract" in leakage_gate["missing"]
-    assert leakage_gate["checks"]["target_feature_columns_present_in_source"]["status"] == "review"
-    assert "leakage_guard_gate" in report["failed_gates"]
+    assert leakage_gate["status"] == "pass"
+    assert leakage_gate["checks"]["feature_vector_contract"]["status"] == "pass"
+    assert leakage_gate["checks"]["target_feature_columns_excluded"]["status"] == "pass"
+    assert "leakage_guard_gate" not in report["failed_gates"]
