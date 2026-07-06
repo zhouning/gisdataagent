@@ -1,0 +1,50 @@
+{
+  "schema": "uwm.public_proxy_snapshot_manifest.v1",
+  "dataset_id": "tap_pm25_external_spatiotemporal_dynamics_chongqing_2018_2024",
+  "source_dataset_ids": [
+    "tap_pm25_observed_gridded_chongqing_2018_2024"
+  ],
+  "source_root": "/Users/zhouning/Downloads/tap_uwm",
+  "created_at": "2026-07-06T02:10:00Z",
+  "files": {
+    "tap_external_dynamics_report": "tap_external_dynamics_report.json"
+  },
+  "sampling_config": {
+    "train_days": 3,
+    "max_grid_series_per_period": 5000,
+    "neighbor_count": 4,
+    "neighbor_mode": "lonlat_nearest_neighbors_v1",
+    "ridge": 0.001
+  },
+  "training_summary": {
+    "series_count": 10000,
+    "train_count": 20000,
+    "holdout_count": 40000
+  },
+  "overall_results": {
+    "best_spatial_method": "spatial_message_ridge",
+    "best_traditional_static_method": "static_train_mean",
+    "best_non_spatial_dynamic_method": "adaptive_online_state_update",
+    "best_spatial_mae": 16.653886,
+    "best_traditional_static_mae": 9.309192,
+    "best_non_spatial_dynamic_mae": 7.011689,
+    "spatial_mae_reduction_vs_best_static": -7.344694,
+    "spatial_mae_reduction_vs_best_non_spatial_dynamic": -9.642197,
+    "paired_win_rate_vs_best_non_spatial_dynamic": 0.18865,
+    "spatial_negative_control_passed": false
+  },
+  "supported_claim": "no_tap_external_dynamics_advantage_claim_supported",
+  "claim_boundary": {
+    "max_claim_level": "not_for_claim",
+    "reason": "TAP gridded PM2.5 supports external state-dynamics validation. It is not station-observed policy intervention outcome evidence."
+  },
+  "limitations": [
+    "tap_gridded_product_not_station_observation",
+    "not_policy_intervention_outcome",
+    "action_free_exogenous_air_pollution_dynamics_only",
+    "short_daily_holdout_window",
+    "sampled_grid_series_for_runtime_control"
+  ],
+  "empirical_superiority_claim": false,
+  "observed_policy_outcome_superiority_claim": false
+}
