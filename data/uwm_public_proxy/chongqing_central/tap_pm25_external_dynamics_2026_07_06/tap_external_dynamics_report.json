@@ -11,7 +11,9 @@
     "max_grid_series_per_period": 5000,
     "neighbor_count": 4,
     "neighbor_mode": "lonlat_nearest_neighbors_v1",
-    "ridge": 0.001
+    "ridge": 0.001,
+    "residual_delta_ridge": 1000.0,
+    "residual_delta_correction_clip": 0.5
   },
   "feature_schema": {
     "feature_names": [
@@ -25,6 +27,30 @@
       "tile_previous_anomaly",
       "day_index_norm"
     ],
+    "spatial_method_feature_schemas": {
+      "spatial_message_ridge": [
+        "bias",
+        "target_previous_pm25",
+        "target_train_mean",
+        "tile_train_mean",
+        "neighbor_previous_mean",
+        "neighbor_previous_median",
+        "target_neighbor_previous_contrast",
+        "tile_previous_anomaly",
+        "day_index_norm"
+      ],
+      "spatial_residual_delta_ridge": [
+        "bias",
+        "target_previous_pm25",
+        "neighbor_previous_mean",
+        "target_neighbor_previous_contrast",
+        "tile_previous_anomaly",
+        "target_previous_delta",
+        "neighbor_previous_delta_mean",
+        "neighbor_target_delta_contrast",
+        "day_index_norm"
+      ]
+    },
     "target": "next_day_pm25_ugm3",
     "feature_time_rule": "features_for_day_t_use_only_values_strictly_before_day_t"
   },
@@ -72,22 +98,77 @@
       "paired_tie_count_vs_best_non_spatial_dynamic": 0,
       "paired_win_rate_vs_best_non_spatial_dynamic": 0.18865,
       "coefficient_count": 9
+    },
+    "spatial_residual_delta_ridge": {
+      "mae": 7.003808,
+      "case_count": 40000,
+      "paired_win_count_vs_best_non_spatial_dynamic": 20308,
+      "paired_loss_count_vs_best_non_spatial_dynamic": 19672,
+      "paired_tie_count_vs_best_non_spatial_dynamic": 20,
+      "paired_win_rate_vs_best_non_spatial_dynamic": 0.5077,
+      "coefficient_count": 9,
+      "base_dynamic_method": "adaptive_online_state_update",
+      "residual_delta_ridge": 1000.0,
+      "residual_delta_correction_clip": 0.5
     }
   },
   "negative_control_results": {
     "neighbor_shuffle_control": {
-      "mae": 16.978098,
+      "mae": 7.001213,
       "case_count": 40000,
-      "real_spatial_advantage": 0.324212
+      "real_spatial_advantage": -0.002595,
+      "spatial_method": "spatial_residual_delta_ridge"
     },
     "non_spatial_feature_ablation_control": {
-      "mae": 16.644687,
+      "mae": 7.004209,
       "case_count": 40000,
-      "real_spatial_advantage": -0.009199
+      "real_spatial_advantage": 0.000401,
+      "spatial_method": "spatial_residual_delta_ridge"
     },
     "temporal_order_rotation_control": {
-      "mae": 16.04144,
-      "ordered_advantage": -0.612446
+      "mae": 8.589741,
+      "ordered_mae": 7.003808,
+      "ordered_advantage": 1.585932,
+      "case_count": 40000,
+      "spatial_method": "spatial_residual_delta_ridge"
+    },
+    "by_spatial_method": {
+      "spatial_message_ridge": {
+        "neighbor_shuffle_control": {
+          "mae": 16.978098,
+          "case_count": 40000,
+          "real_spatial_advantage": 0.324212
+        },
+        "non_spatial_feature_ablation_control": {
+          "mae": 16.644687,
+          "case_count": 40000,
+          "real_spatial_advantage": -0.009199
+        },
+        "temporal_order_rotation_control": {
+          "mae": 16.04144,
+          "ordered_mae": 16.653886,
+          "ordered_advantage": -0.612446,
+          "case_count": 40000
+        }
+      },
+      "spatial_residual_delta_ridge": {
+        "neighbor_shuffle_control": {
+          "mae": 7.001213,
+          "case_count": 40000,
+          "real_spatial_advantage": -0.002595
+        },
+        "non_spatial_feature_ablation_control": {
+          "mae": 7.004209,
+          "case_count": 40000,
+          "real_spatial_advantage": 0.000401
+        },
+        "temporal_order_rotation_control": {
+          "mae": 8.589741,
+          "ordered_mae": 7.003808,
+          "ordered_advantage": 1.585932,
+          "case_count": 40000
+        }
+      }
     },
     "future_label_leakage_guard": {
       "passed": true,
@@ -143,23 +224,77 @@
           "paired_tie_count_vs_best_non_spatial_dynamic": 0,
           "paired_win_rate_vs_best_non_spatial_dynamic": 0.234,
           "coefficient_count": 9
+        },
+        "spatial_residual_delta_ridge": {
+          "mae": 10.159059,
+          "case_count": 20000,
+          "paired_win_count_vs_best_non_spatial_dynamic": 10116,
+          "paired_loss_count_vs_best_non_spatial_dynamic": 9883,
+          "paired_tie_count_vs_best_non_spatial_dynamic": 1,
+          "paired_win_rate_vs_best_non_spatial_dynamic": 0.5058,
+          "coefficient_count": 9,
+          "base_dynamic_method": "adaptive_online_state_update",
+          "residual_delta_ridge": 1000.0,
+          "residual_delta_correction_clip": 0.5
         }
       },
       "negative_control_results": {
         "neighbor_shuffle_control": {
-          "mae": 25.017115,
+          "mae": 10.161112,
           "case_count": 20000,
-          "real_spatial_advantage": 0.572061
+          "real_spatial_advantage": 0.002053,
+          "spatial_method": "spatial_residual_delta_ridge"
         },
         "non_spatial_feature_ablation_control": {
-          "mae": 24.427082,
+          "mae": 10.159015,
           "case_count": 20000,
-          "real_spatial_advantage": -0.017972
+          "real_spatial_advantage": -4.4e-05,
+          "spatial_method": "spatial_residual_delta_ridge"
         },
         "temporal_order_rotation_control": {
-          "mae": 24.760627,
-          "ordered_mae": 24.445054,
-          "ordered_advantage": 0.315573
+          "mae": 11.242894,
+          "ordered_mae": 10.159059,
+          "ordered_advantage": 1.083835,
+          "case_count": 20000,
+          "spatial_method": "spatial_residual_delta_ridge"
+        },
+        "by_spatial_method": {
+          "spatial_message_ridge": {
+            "neighbor_shuffle_control": {
+              "mae": 25.017115,
+              "case_count": 20000,
+              "real_spatial_advantage": 0.572061
+            },
+            "non_spatial_feature_ablation_control": {
+              "mae": 24.427082,
+              "case_count": 20000,
+              "real_spatial_advantage": -0.017972
+            },
+            "temporal_order_rotation_control": {
+              "mae": 24.760627,
+              "ordered_mae": 24.445054,
+              "ordered_advantage": 0.315573,
+              "case_count": 20000
+            }
+          },
+          "spatial_residual_delta_ridge": {
+            "neighbor_shuffle_control": {
+              "mae": 10.161112,
+              "case_count": 20000,
+              "real_spatial_advantage": 0.002053
+            },
+            "non_spatial_feature_ablation_control": {
+              "mae": 10.159015,
+              "case_count": 20000,
+              "real_spatial_advantage": -4.4e-05
+            },
+            "temporal_order_rotation_control": {
+              "mae": 11.242894,
+              "ordered_mae": 10.159059,
+              "ordered_advantage": 1.083835,
+              "case_count": 20000
+            }
+          }
         },
         "future_label_leakage_guard": {
           "passed": true,
@@ -215,23 +350,77 @@
           "paired_tie_count_vs_best_non_spatial_dynamic": 0,
           "paired_win_rate_vs_best_non_spatial_dynamic": 0.1433,
           "coefficient_count": 9
+        },
+        "spatial_residual_delta_ridge": {
+          "mae": 3.848558,
+          "case_count": 20000,
+          "paired_win_count_vs_best_non_spatial_dynamic": 10192,
+          "paired_loss_count_vs_best_non_spatial_dynamic": 9789,
+          "paired_tie_count_vs_best_non_spatial_dynamic": 19,
+          "paired_win_rate_vs_best_non_spatial_dynamic": 0.5096,
+          "coefficient_count": 9,
+          "base_dynamic_method": "adaptive_online_state_update",
+          "residual_delta_ridge": 1000.0,
+          "residual_delta_correction_clip": 0.5
         }
       },
       "negative_control_results": {
         "neighbor_shuffle_control": {
-          "mae": 8.939082,
+          "mae": 3.841315,
           "case_count": 20000,
-          "real_spatial_advantage": 0.076363
+          "real_spatial_advantage": -0.007243,
+          "spatial_method": "spatial_residual_delta_ridge"
         },
         "non_spatial_feature_ablation_control": {
-          "mae": 8.862293,
+          "mae": 3.849404,
           "case_count": 20000,
-          "real_spatial_advantage": -0.000426
+          "real_spatial_advantage": 0.000846,
+          "spatial_method": "spatial_residual_delta_ridge"
         },
         "temporal_order_rotation_control": {
-          "mae": 7.322253,
-          "ordered_mae": 8.862719,
-          "ordered_advantage": -1.540466
+          "mae": 5.936588,
+          "ordered_mae": 3.848558,
+          "ordered_advantage": 2.08803,
+          "case_count": 20000,
+          "spatial_method": "spatial_residual_delta_ridge"
+        },
+        "by_spatial_method": {
+          "spatial_message_ridge": {
+            "neighbor_shuffle_control": {
+              "mae": 8.939082,
+              "case_count": 20000,
+              "real_spatial_advantage": 0.076363
+            },
+            "non_spatial_feature_ablation_control": {
+              "mae": 8.862293,
+              "case_count": 20000,
+              "real_spatial_advantage": -0.000426
+            },
+            "temporal_order_rotation_control": {
+              "mae": 7.322253,
+              "ordered_mae": 8.862719,
+              "ordered_advantage": -1.540466,
+              "case_count": 20000
+            }
+          },
+          "spatial_residual_delta_ridge": {
+            "neighbor_shuffle_control": {
+              "mae": 3.841315,
+              "case_count": 20000,
+              "real_spatial_advantage": -0.007243
+            },
+            "non_spatial_feature_ablation_control": {
+              "mae": 3.849404,
+              "case_count": 20000,
+              "real_spatial_advantage": 0.000846
+            },
+            "temporal_order_rotation_control": {
+              "mae": 5.936588,
+              "ordered_mae": 3.848558,
+              "ordered_advantage": 2.08803,
+              "case_count": 20000
+            }
+          }
         },
         "future_label_leakage_guard": {
           "passed": true,
@@ -243,20 +432,20 @@
     }
   ],
   "overall_results": {
-    "best_spatial_method": "spatial_message_ridge",
+    "best_spatial_method": "spatial_residual_delta_ridge",
     "best_traditional_static_method": "static_train_mean",
     "best_non_spatial_dynamic_method": "adaptive_online_state_update",
-    "best_spatial_mae": 16.653886,
+    "best_spatial_mae": 7.003808,
     "best_traditional_static_mae": 9.309192,
     "best_non_spatial_dynamic_mae": 7.011689,
-    "spatial_mae_reduction_vs_best_static": -7.344694,
-    "spatial_mae_reduction_vs_best_non_spatial_dynamic": -9.642197,
-    "paired_win_rate_vs_best_non_spatial_dynamic": 0.18865,
+    "spatial_mae_reduction_vs_best_static": 2.305384,
+    "spatial_mae_reduction_vs_best_non_spatial_dynamic": 0.007881,
+    "paired_win_rate_vs_best_non_spatial_dynamic": 0.5077,
     "spatial_negative_control_passed": false
   },
-  "supported_claim": "no_tap_external_dynamics_advantage_claim_supported",
+  "supported_claim": "tap_external_temporal_dynamics_advantage_without_spatial_claim",
   "claim_boundary": {
-    "max_claim_level": "not_for_claim",
+    "max_claim_level": "bounded_support",
     "reason": "TAP gridded PM2.5 supports external state-dynamics validation. It is not station-observed policy intervention outcome evidence."
   },
   "limitations": [

@@ -1,0 +1,962 @@
+{
+  "schema": "uwm.livability_intervention_package.v1",
+  "package_id": "admin-livability-spatial-graph-intervention-package-2026-07-05",
+  "created_at": "2026-07-05T10:05:00+00:00",
+  "source_report_schema": "uwm.model_based_graph_search_report.v1",
+  "source_learned_rollout_schema": "uwm.offline_world_model_rollout_planner_report.v1",
+  "source_synthetic_policy_outcome_schema": "uwm.synthetic_policy_outcome_benchmark.v1",
+  "source_tap_like_pm25_scene_schema": "uwm.synthetic_snapshot_manifest.v1",
+  "business_theory_alignment": {
+    "theory_basis": [
+      "environmental_health_risk",
+      "public_service_accessibility",
+      "spatial_equity_and_environmental_justice",
+      "urban_complex_system_dynamics",
+      "planning_feasibility_constraints"
+    ],
+    "result_shape": [
+      "low_livability_area_identification",
+      "mechanism_explanation",
+      "intervention_suitability_map",
+      "multi_step_action_sequence",
+      "before_after_indicator_delta",
+      "equity_conclusion",
+      "evidence_boundary"
+    ],
+    "indicator_contract": {
+      "heat_risk_delta": "target_decrease",
+      "air_pollution_exposure_delta": "target_decrease",
+      "service_accessibility_delta": "target_increase",
+      "equity_delta": "target_increase",
+      "livability_delta": "target_increase"
+    },
+    "planning_action_contract": {
+      "service_accessibility_deficit": "add_community_service",
+      "heat_risk_exposure": "increase_green_infrastructure",
+      "air_pollution_exposure": "traffic_emission_control",
+      "equity_priority": "add_community_service"
+    }
+  },
+  "low_livability_units": [
+    {
+      "rank": 1,
+      "unit_id": "九龙坡区|九龙镇|77",
+      "indicators": {
+        "heat_risk": 1.0,
+        "air_pollution_exposure": 0.749076,
+        "service_accessibility": 0.0,
+        "equity": 1.0,
+        "livability": 0.0
+      },
+      "livability_gap": 1.0,
+      "priority_score": 0.9623614,
+      "dominant_mechanisms": [
+        "service_accessibility_deficit",
+        "heat_risk_exposure",
+        "air_pollution_exposure",
+        "equity_priority"
+      ]
+    },
+    {
+      "rank": 2,
+      "unit_id": "南岸区|南坪镇|299",
+      "indicators": {
+        "heat_risk": 0.776147,
+        "air_pollution_exposure": 0.703339,
+        "service_accessibility": 0.02439,
+        "equity": 0.880756,
+        "livability": 0.119244
+      },
+      "livability_gap": 0.880756,
+      "priority_score": 0.85693515,
+      "dominant_mechanisms": [
+        "service_accessibility_deficit",
+        "heat_risk_exposure",
+        "air_pollution_exposure",
+        "equity_priority"
+      ]
+    },
+    {
+      "rank": 3,
+      "unit_id": "渝北区|龙溪街道|696",
+      "indicators": {
+        "heat_risk": 0.757436,
+        "air_pollution_exposure": 0.699516,
+        "service_accessibility": 0.02439,
+        "equity": 0.871401,
+        "livability": 0.128599
+      },
+      "livability_gap": 0.871401,
+      "priority_score": 0.8488775,
+      "dominant_mechanisms": [
+        "service_accessibility_deficit",
+        "heat_risk_exposure",
+        "air_pollution_exposure",
+        "equity_priority"
+      ]
+    },
+    {
+      "rank": 4,
+      "unit_id": "南岸区|南山街道|921",
+      "indicators": {
+        "heat_risk": 0.660317,
+        "air_pollution_exposure": 0.679673,
+        "service_accessibility": 0.0,
+        "equity": 0.830159,
+        "livability": 0.169841
+      },
+      "livability_gap": 0.830159,
+      "priority_score": 0.81607795,
+      "dominant_mechanisms": [
+        "service_accessibility_deficit",
+        "air_pollution_exposure",
+        "equity_priority"
+      ]
+    },
+    {
+      "rank": 5,
+      "unit_id": "江北区|大石坝街道|647",
+      "indicators": {
+        "heat_risk": 0.653646,
+        "air_pollution_exposure": 0.67831,
+        "service_accessibility": 0.0,
+        "equity": 0.826823,
+        "livability": 0.173177
+      },
+      "livability_gap": 0.826823,
+      "priority_score": 0.8132049,
+      "dominant_mechanisms": [
+        "service_accessibility_deficit",
+        "air_pollution_exposure",
+        "equity_priority"
+      ]
+    },
+    {
+      "rank": 6,
+      "unit_id": "渝中区|菜园坝街道|614",
+      "indicators": {
+        "heat_risk": 0.572919,
+        "air_pollution_exposure": 0.661816,
+        "service_accessibility": 0.0,
+        "equity": 0.786459,
+        "livability": 0.213541
+      },
+      "livability_gap": 0.786459,
+      "priority_score": 0.7784398,
+      "dominant_mechanisms": [
+        "service_accessibility_deficit",
+        "air_pollution_exposure",
+        "equity_priority"
+      ]
+    },
+    {
+      "rank": 7,
+      "unit_id": "渝北区|龙山街道|695",
+      "indicators": {
+        "heat_risk": 0.541702,
+        "air_pollution_exposure": 0.655438,
+        "service_accessibility": 0.0,
+        "equity": 0.770851,
+        "livability": 0.229149
+      },
+      "livability_gap": 0.770851,
+      "priority_score": 0.7649965,
+      "dominant_mechanisms": [
+        "service_accessibility_deficit",
+        "air_pollution_exposure",
+        "equity_priority"
+      ]
+    },
+    {
+      "rank": 8,
+      "unit_id": "九龙坡区|杨家坪街道|781",
+      "indicators": {
+        "heat_risk": 0.553302,
+        "air_pollution_exposure": 0.657808,
+        "service_accessibility": 0.02439,
+        "equity": 0.769334,
+        "livability": 0.230666
+      },
+      "livability_gap": 0.769334,
+      "priority_score": 0.7609677,
+      "dominant_mechanisms": [
+        "service_accessibility_deficit",
+        "air_pollution_exposure",
+        "equity_priority"
+      ]
+    },
+    {
+      "rank": 9,
+      "unit_id": "九龙坡区|渝州路街道|783",
+      "indicators": {
+        "heat_risk": 0.482314,
+        "air_pollution_exposure": 0.643304,
+        "service_accessibility": 0.0,
+        "equity": 0.741157,
+        "livability": 0.258843
+      },
+      "livability_gap": 0.741157,
+      "priority_score": 0.7394212,
+      "dominant_mechanisms": [
+        "service_accessibility_deficit",
+        "air_pollution_exposure",
+        "equity_priority"
+      ]
+    },
+    {
+      "rank": 10,
+      "unit_id": "南岸区|花园路街道|143",
+      "indicators": {
+        "heat_risk": 0.602515,
+        "air_pollution_exposure": 0.667863,
+        "service_accessibility": 0.195122,
+        "equity": 0.742721,
+        "livability": 0.257279
+      },
+      "livability_gap": 0.742721,
+      "priority_score": 0.71899035,
+      "dominant_mechanisms": [
+        "service_accessibility_deficit",
+        "air_pollution_exposure",
+        "equity_priority"
+      ]
+    }
+  ],
+  "mechanism_explanations": [
+    {
+      "unit_id": "九龙坡区|九龙镇|77",
+      "primary_mechanism": "service_accessibility_deficit",
+      "dominant_mechanisms": [
+        "service_accessibility_deficit",
+        "heat_risk_exposure",
+        "air_pollution_exposure",
+        "equity_priority"
+      ],
+      "mechanism_summary": "low livability is primarily explained by insufficient daily service access",
+      "indicator_evidence": {
+        "heat_risk": 1.0,
+        "air_pollution_exposure": 0.749076,
+        "service_accessibility": 0.0,
+        "equity": 1.0,
+        "livability": 0.0
+      }
+    },
+    {
+      "unit_id": "南岸区|南坪镇|299",
+      "primary_mechanism": "service_accessibility_deficit",
+      "dominant_mechanisms": [
+        "service_accessibility_deficit",
+        "heat_risk_exposure",
+        "air_pollution_exposure",
+        "equity_priority"
+      ],
+      "mechanism_summary": "low livability is primarily explained by insufficient daily service access",
+      "indicator_evidence": {
+        "heat_risk": 0.776147,
+        "air_pollution_exposure": 0.703339,
+        "service_accessibility": 0.02439,
+        "equity": 0.880756,
+        "livability": 0.119244
+      }
+    },
+    {
+      "unit_id": "渝北区|龙溪街道|696",
+      "primary_mechanism": "service_accessibility_deficit",
+      "dominant_mechanisms": [
+        "service_accessibility_deficit",
+        "heat_risk_exposure",
+        "air_pollution_exposure",
+        "equity_priority"
+      ],
+      "mechanism_summary": "low livability is primarily explained by insufficient daily service access",
+      "indicator_evidence": {
+        "heat_risk": 0.757436,
+        "air_pollution_exposure": 0.699516,
+        "service_accessibility": 0.02439,
+        "equity": 0.871401,
+        "livability": 0.128599
+      }
+    },
+    {
+      "unit_id": "南岸区|南山街道|921",
+      "primary_mechanism": "service_accessibility_deficit",
+      "dominant_mechanisms": [
+        "service_accessibility_deficit",
+        "air_pollution_exposure",
+        "equity_priority"
+      ],
+      "mechanism_summary": "low livability is primarily explained by insufficient daily service access",
+      "indicator_evidence": {
+        "heat_risk": 0.660317,
+        "air_pollution_exposure": 0.679673,
+        "service_accessibility": 0.0,
+        "equity": 0.830159,
+        "livability": 0.169841
+      }
+    },
+    {
+      "unit_id": "江北区|大石坝街道|647",
+      "primary_mechanism": "service_accessibility_deficit",
+      "dominant_mechanisms": [
+        "service_accessibility_deficit",
+        "air_pollution_exposure",
+        "equity_priority"
+      ],
+      "mechanism_summary": "low livability is primarily explained by insufficient daily service access",
+      "indicator_evidence": {
+        "heat_risk": 0.653646,
+        "air_pollution_exposure": 0.67831,
+        "service_accessibility": 0.0,
+        "equity": 0.826823,
+        "livability": 0.173177
+      }
+    },
+    {
+      "unit_id": "渝中区|菜园坝街道|614",
+      "primary_mechanism": "service_accessibility_deficit",
+      "dominant_mechanisms": [
+        "service_accessibility_deficit",
+        "air_pollution_exposure",
+        "equity_priority"
+      ],
+      "mechanism_summary": "low livability is primarily explained by insufficient daily service access",
+      "indicator_evidence": {
+        "heat_risk": 0.572919,
+        "air_pollution_exposure": 0.661816,
+        "service_accessibility": 0.0,
+        "equity": 0.786459,
+        "livability": 0.213541
+      }
+    },
+    {
+      "unit_id": "渝北区|龙山街道|695",
+      "primary_mechanism": "service_accessibility_deficit",
+      "dominant_mechanisms": [
+        "service_accessibility_deficit",
+        "air_pollution_exposure",
+        "equity_priority"
+      ],
+      "mechanism_summary": "low livability is primarily explained by insufficient daily service access",
+      "indicator_evidence": {
+        "heat_risk": 0.541702,
+        "air_pollution_exposure": 0.655438,
+        "service_accessibility": 0.0,
+        "equity": 0.770851,
+        "livability": 0.229149
+      }
+    },
+    {
+      "unit_id": "九龙坡区|杨家坪街道|781",
+      "primary_mechanism": "service_accessibility_deficit",
+      "dominant_mechanisms": [
+        "service_accessibility_deficit",
+        "air_pollution_exposure",
+        "equity_priority"
+      ],
+      "mechanism_summary": "low livability is primarily explained by insufficient daily service access",
+      "indicator_evidence": {
+        "heat_risk": 0.553302,
+        "air_pollution_exposure": 0.657808,
+        "service_accessibility": 0.02439,
+        "equity": 0.769334,
+        "livability": 0.230666
+      }
+    },
+    {
+      "unit_id": "九龙坡区|渝州路街道|783",
+      "primary_mechanism": "service_accessibility_deficit",
+      "dominant_mechanisms": [
+        "service_accessibility_deficit",
+        "air_pollution_exposure",
+        "equity_priority"
+      ],
+      "mechanism_summary": "low livability is primarily explained by insufficient daily service access",
+      "indicator_evidence": {
+        "heat_risk": 0.482314,
+        "air_pollution_exposure": 0.643304,
+        "service_accessibility": 0.0,
+        "equity": 0.741157,
+        "livability": 0.258843
+      }
+    },
+    {
+      "unit_id": "南岸区|花园路街道|143",
+      "primary_mechanism": "service_accessibility_deficit",
+      "dominant_mechanisms": [
+        "service_accessibility_deficit",
+        "air_pollution_exposure",
+        "equity_priority"
+      ],
+      "mechanism_summary": "low livability is primarily explained by insufficient daily service access",
+      "indicator_evidence": {
+        "heat_risk": 0.602515,
+        "air_pollution_exposure": 0.667863,
+        "service_accessibility": 0.195122,
+        "equity": 0.742721,
+        "livability": 0.257279
+      }
+    }
+  ],
+  "intervention_suitability": [
+    {
+      "unit_id": "九龙坡区|九龙镇|77",
+      "recommended_action_type": "add_community_service",
+      "recommended_action_id": "add_community_service-九龙坡区|九龙镇|77",
+      "suitability_score": 0.9623614,
+      "mechanism_basis": [
+        "service_accessibility_deficit",
+        "heat_risk_exposure",
+        "air_pollution_exposure",
+        "equity_priority"
+      ],
+      "candidate_actions": [
+        {
+          "action_id": "add_community_service-九龙坡区|九龙镇|77",
+          "action_type": "add_community_service",
+          "target_units": [
+            "九龙坡区|九龙镇|77"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "service_accessibility_below_threshold"
+        }
+      ],
+      "alternative_actions": [
+        {
+          "action_id": "increase_green_infrastructure-九龙坡区|九龙镇|77",
+          "action_type": "increase_green_infrastructure",
+          "target_units": [
+            "九龙坡区|九龙镇|77"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "heat_risk_above_threshold"
+        },
+        {
+          "action_id": "traffic_emission_control-九龙坡区|九龙镇|77",
+          "action_type": "traffic_emission_control",
+          "target_units": [
+            "九龙坡区|九龙镇|77"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "air_pollution_exposure_above_threshold"
+        }
+      ],
+      "evidence_status": "action_mask_supported"
+    },
+    {
+      "unit_id": "南岸区|南坪镇|299",
+      "recommended_action_type": "add_community_service",
+      "recommended_action_id": "add_community_service-南岸区|南坪镇|299",
+      "suitability_score": 0.85693515,
+      "mechanism_basis": [
+        "service_accessibility_deficit",
+        "heat_risk_exposure",
+        "air_pollution_exposure",
+        "equity_priority"
+      ],
+      "candidate_actions": [
+        {
+          "action_id": "add_community_service-南岸区|南坪镇|299",
+          "action_type": "add_community_service",
+          "target_units": [
+            "南岸区|南坪镇|299"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "service_accessibility_below_threshold"
+        }
+      ],
+      "alternative_actions": [
+        {
+          "action_id": "increase_green_infrastructure-南岸区|南坪镇|299",
+          "action_type": "increase_green_infrastructure",
+          "target_units": [
+            "南岸区|南坪镇|299"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "heat_risk_above_threshold"
+        },
+        {
+          "action_id": "traffic_emission_control-南岸区|南坪镇|299",
+          "action_type": "traffic_emission_control",
+          "target_units": [
+            "南岸区|南坪镇|299"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "air_pollution_exposure_above_threshold"
+        }
+      ],
+      "evidence_status": "action_mask_supported"
+    },
+    {
+      "unit_id": "渝北区|龙溪街道|696",
+      "recommended_action_type": "add_community_service",
+      "recommended_action_id": "add_community_service-渝北区|龙溪街道|696",
+      "suitability_score": 0.8488775,
+      "mechanism_basis": [
+        "service_accessibility_deficit",
+        "heat_risk_exposure",
+        "air_pollution_exposure",
+        "equity_priority"
+      ],
+      "candidate_actions": [
+        {
+          "action_id": "add_community_service-渝北区|龙溪街道|696",
+          "action_type": "add_community_service",
+          "target_units": [
+            "渝北区|龙溪街道|696"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "service_accessibility_below_threshold"
+        }
+      ],
+      "alternative_actions": [
+        {
+          "action_id": "increase_green_infrastructure-渝北区|龙溪街道|696",
+          "action_type": "increase_green_infrastructure",
+          "target_units": [
+            "渝北区|龙溪街道|696"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "heat_risk_above_threshold"
+        },
+        {
+          "action_id": "traffic_emission_control-渝北区|龙溪街道|696",
+          "action_type": "traffic_emission_control",
+          "target_units": [
+            "渝北区|龙溪街道|696"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "air_pollution_exposure_above_threshold"
+        }
+      ],
+      "evidence_status": "action_mask_supported"
+    },
+    {
+      "unit_id": "南岸区|南山街道|921",
+      "recommended_action_type": "add_community_service",
+      "recommended_action_id": "add_community_service-南岸区|南山街道|921",
+      "suitability_score": 0.81607795,
+      "mechanism_basis": [
+        "service_accessibility_deficit",
+        "air_pollution_exposure",
+        "equity_priority"
+      ],
+      "candidate_actions": [
+        {
+          "action_id": "add_community_service-南岸区|南山街道|921",
+          "action_type": "add_community_service",
+          "target_units": [
+            "南岸区|南山街道|921"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "service_accessibility_below_threshold"
+        }
+      ],
+      "alternative_actions": [
+        {
+          "action_id": "traffic_emission_control-南岸区|南山街道|921",
+          "action_type": "traffic_emission_control",
+          "target_units": [
+            "南岸区|南山街道|921"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "air_pollution_exposure_above_threshold"
+        }
+      ],
+      "evidence_status": "action_mask_supported"
+    },
+    {
+      "unit_id": "江北区|大石坝街道|647",
+      "recommended_action_type": "add_community_service",
+      "recommended_action_id": "add_community_service-江北区|大石坝街道|647",
+      "suitability_score": 0.8132049,
+      "mechanism_basis": [
+        "service_accessibility_deficit",
+        "air_pollution_exposure",
+        "equity_priority"
+      ],
+      "candidate_actions": [
+        {
+          "action_id": "add_community_service-江北区|大石坝街道|647",
+          "action_type": "add_community_service",
+          "target_units": [
+            "江北区|大石坝街道|647"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "service_accessibility_below_threshold"
+        }
+      ],
+      "alternative_actions": [
+        {
+          "action_id": "traffic_emission_control-江北区|大石坝街道|647",
+          "action_type": "traffic_emission_control",
+          "target_units": [
+            "江北区|大石坝街道|647"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "air_pollution_exposure_above_threshold"
+        }
+      ],
+      "evidence_status": "action_mask_supported"
+    },
+    {
+      "unit_id": "渝中区|菜园坝街道|614",
+      "recommended_action_type": "add_community_service",
+      "recommended_action_id": "add_community_service-渝中区|菜园坝街道|614",
+      "suitability_score": 0.7784398,
+      "mechanism_basis": [
+        "service_accessibility_deficit",
+        "air_pollution_exposure",
+        "equity_priority"
+      ],
+      "candidate_actions": [
+        {
+          "action_id": "add_community_service-渝中区|菜园坝街道|614",
+          "action_type": "add_community_service",
+          "target_units": [
+            "渝中区|菜园坝街道|614"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "service_accessibility_below_threshold"
+        }
+      ],
+      "alternative_actions": [
+        {
+          "action_id": "traffic_emission_control-渝中区|菜园坝街道|614",
+          "action_type": "traffic_emission_control",
+          "target_units": [
+            "渝中区|菜园坝街道|614"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "air_pollution_exposure_above_threshold"
+        }
+      ],
+      "evidence_status": "action_mask_supported"
+    },
+    {
+      "unit_id": "渝北区|龙山街道|695",
+      "recommended_action_type": "add_community_service",
+      "recommended_action_id": "add_community_service-渝北区|龙山街道|695",
+      "suitability_score": 0.7649965,
+      "mechanism_basis": [
+        "service_accessibility_deficit",
+        "air_pollution_exposure",
+        "equity_priority"
+      ],
+      "candidate_actions": [
+        {
+          "action_id": "add_community_service-渝北区|龙山街道|695",
+          "action_type": "add_community_service",
+          "target_units": [
+            "渝北区|龙山街道|695"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "service_accessibility_below_threshold"
+        }
+      ],
+      "alternative_actions": [
+        {
+          "action_id": "traffic_emission_control-渝北区|龙山街道|695",
+          "action_type": "traffic_emission_control",
+          "target_units": [
+            "渝北区|龙山街道|695"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "air_pollution_exposure_above_threshold"
+        }
+      ],
+      "evidence_status": "action_mask_supported"
+    },
+    {
+      "unit_id": "九龙坡区|杨家坪街道|781",
+      "recommended_action_type": "add_community_service",
+      "recommended_action_id": "add_community_service-九龙坡区|杨家坪街道|781",
+      "suitability_score": 0.7609677,
+      "mechanism_basis": [
+        "service_accessibility_deficit",
+        "air_pollution_exposure",
+        "equity_priority"
+      ],
+      "candidate_actions": [
+        {
+          "action_id": "add_community_service-九龙坡区|杨家坪街道|781",
+          "action_type": "add_community_service",
+          "target_units": [
+            "九龙坡区|杨家坪街道|781"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "service_accessibility_below_threshold"
+        }
+      ],
+      "alternative_actions": [
+        {
+          "action_id": "traffic_emission_control-九龙坡区|杨家坪街道|781",
+          "action_type": "traffic_emission_control",
+          "target_units": [
+            "九龙坡区|杨家坪街道|781"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "air_pollution_exposure_above_threshold"
+        }
+      ],
+      "evidence_status": "action_mask_supported"
+    },
+    {
+      "unit_id": "九龙坡区|渝州路街道|783",
+      "recommended_action_type": "add_community_service",
+      "recommended_action_id": "add_community_service-九龙坡区|渝州路街道|783",
+      "suitability_score": 0.7394212,
+      "mechanism_basis": [
+        "service_accessibility_deficit",
+        "air_pollution_exposure",
+        "equity_priority"
+      ],
+      "candidate_actions": [
+        {
+          "action_id": "add_community_service-九龙坡区|渝州路街道|783",
+          "action_type": "add_community_service",
+          "target_units": [
+            "九龙坡区|渝州路街道|783"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "service_accessibility_below_threshold"
+        }
+      ],
+      "alternative_actions": [
+        {
+          "action_id": "traffic_emission_control-九龙坡区|渝州路街道|783",
+          "action_type": "traffic_emission_control",
+          "target_units": [
+            "九龙坡区|渝州路街道|783"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "air_pollution_exposure_above_threshold"
+        }
+      ],
+      "evidence_status": "action_mask_supported"
+    },
+    {
+      "unit_id": "南岸区|花园路街道|143",
+      "recommended_action_type": "add_community_service",
+      "recommended_action_id": "add_community_service-南岸区|花园路街道|143",
+      "suitability_score": 0.71899035,
+      "mechanism_basis": [
+        "service_accessibility_deficit",
+        "air_pollution_exposure",
+        "equity_priority"
+      ],
+      "candidate_actions": [
+        {
+          "action_id": "add_community_service-南岸区|花园路街道|143",
+          "action_type": "add_community_service",
+          "target_units": [
+            "南岸区|花园路街道|143"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "service_accessibility_below_threshold"
+        }
+      ],
+      "alternative_actions": [
+        {
+          "action_id": "traffic_emission_control-南岸区|花园路街道|143",
+          "action_type": "traffic_emission_control",
+          "target_units": [
+            "南岸区|花园路街道|143"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "air_pollution_exposure_above_threshold"
+        }
+      ],
+      "evidence_status": "action_mask_supported"
+    }
+  ],
+  "multi_step_plan": {
+    "action_count": 2,
+    "action_sequence": [
+      {
+        "action_id": "increase_green_infrastructure-江北区|观音桥街道|653",
+        "action_type": "increase_green_infrastructure",
+        "target_units": [
+          "江北区|观音桥街道|653"
+        ],
+        "intensity": 1.0,
+        "mask_reason": "heat_risk_above_threshold"
+      },
+      {
+        "action_id": "add_community_service-九龙坡区|谢家湾街道|785",
+        "action_type": "add_community_service",
+        "target_units": [
+          "九龙坡区|谢家湾街道|785"
+        ],
+        "intensity": 1.0,
+        "mask_reason": "service_accessibility_below_threshold"
+      }
+    ],
+    "imagined_cumulative_predicted_reward": 0.011795423,
+    "imagined_cumulative_conservative_reward": 0.011528613,
+    "planning_mode": "learned_world_model_multi_step_rollout"
+  },
+  "before_after_indicators": {
+    "directions": {
+      "heat_risk_delta": "target_decrease",
+      "air_pollution_exposure_delta": "target_decrease",
+      "service_accessibility_delta": "target_increase",
+      "equity_delta": "target_increase",
+      "livability_delta": "target_increase"
+    },
+    "predicted_delta": {
+      "heat_risk_delta": -1.027807246,
+      "air_pollution_exposure_delta": -0.411081019,
+      "service_accessibility_delta": 0.965080014,
+      "equity_delta": 0.552991953,
+      "livability_delta": 0.786721588
+    },
+    "direction_check": {
+      "heat_risk_delta": true,
+      "air_pollution_exposure_delta": true,
+      "service_accessibility_delta": true,
+      "equity_delta": true,
+      "livability_delta": true
+    },
+    "target_unit_before_after": [
+      {
+        "action_id": "increase_green_infrastructure-江北区|观音桥街道|653",
+        "action_type": "increase_green_infrastructure",
+        "unit_id": "江北区|观音桥街道|653",
+        "before": {
+          "heat_risk": 0.91404,
+          "air_pollution_exposure": 0.731513,
+          "service_accessibility": 0.707317,
+          "equity": 0.644825,
+          "livability": 0.355175
+        },
+        "after": {
+          "heat_risk": 0.284628821,
+          "air_pollution_exposure": 0.523164724,
+          "service_accessibility": 0.749167737,
+          "equity": 0.774331558,
+          "livability": 0.65744465
+        },
+        "delta": {
+          "heat_risk_delta": -0.629411179,
+          "air_pollution_exposure_delta": -0.208348276,
+          "service_accessibility_delta": 0.041850737,
+          "equity_delta": 0.129506558,
+          "livability_delta": 0.30226965
+        }
+      },
+      {
+        "action_id": "add_community_service-九龙坡区|谢家湾街道|785",
+        "action_type": "add_community_service",
+        "unit_id": "九龙坡区|谢家湾街道|785",
+        "before": {
+          "heat_risk": 0.368731,
+          "air_pollution_exposure": 0.620097,
+          "service_accessibility": 0.073171,
+          "equity": 0.662414,
+          "livability": 0.337586
+        },
+        "after": {
+          "heat_risk": 0.0,
+          "air_pollution_exposure": 0.417364257,
+          "service_accessibility": 0.996400277,
+          "equity": 1.0,
+          "livability": 0.822037938
+        },
+        "delta": {
+          "heat_risk_delta": -0.398396067,
+          "air_pollution_exposure_delta": -0.202732743,
+          "service_accessibility_delta": 0.923229277,
+          "equity_delta": 0.423485395,
+          "livability_delta": 0.484451938
+        }
+      }
+    ],
+    "evidence_grade": "learned_world_model_imagined_rollout"
+  },
+  "equity_conclusion": {
+    "status": "equity_improves",
+    "equity_delta": 0.552991953,
+    "low_livability_units_targeted": [],
+    "low_livability_unit_count": 10,
+    "targeted_low_livability_unit_count": 0,
+    "interpretation": "learned rollout predicts positive equity gain"
+  },
+  "traditional_method_comparison": {
+    "traditional_baseline": "static_single_step_priority_heuristic",
+    "world_model_policy": "multi_step_action_conditioned_learned_rollout",
+    "learned_rollout_conservative_reward": 0.011528613,
+    "static_single_step_conservative_reward": 0.00124898,
+    "one_step_policy_conservative_reward": 0.002012933,
+    "learned_rollout_advantage_over_static": 0.010279633,
+    "learned_rollout_advantage_over_one_step": 0.00951568,
+    "synthetic_policy_outcome_learned_advantage_over_static": 0.010907049,
+    "comparison_status": "proxy_and_synthetic_scaffold_only"
+  },
+  "supported_claim": "business_theory_aligned_learned_rollout_beats_static_proxy_baseline",
+  "empirical_superiority_claim": false,
+  "synthetic_status": "synthetic",
+  "quality_status": "business_theory_aligned_proxy_and_synthetic_intervention_package",
+  "claim_boundary": {
+    "max_claim_level": "exploratory_only",
+    "reason": "package includes simulator or semi-synthetic policy-outcome evidence; observed intervention outcomes and authoritative air-quality holdout remain required"
+  },
+  "evidence_boundary": {
+    "max_claim_level": "exploratory_only",
+    "empirical_superiority_claim": false,
+    "supported_claim": "business_theory_aligned_learned_rollout_beats_static_proxy_baseline",
+    "evidence_sources": [
+      {
+        "role": "graph_mdp_and_known_effect_replay",
+        "schema": "uwm.model_based_graph_search_report.v1",
+        "claim_level": "bounded_support"
+      },
+      {
+        "role": "learned_action_conditioned_world_model_rollout",
+        "schema": "uwm.offline_world_model_rollout_planner_report.v1",
+        "claim_level": "bounded_support"
+      },
+      {
+        "role": "synthetic_policy_outcome_scaffold",
+        "schema": "uwm.synthetic_policy_outcome_benchmark.v1",
+        "synthetic_status": "synthetic",
+        "claim_level": "exploratory_only"
+      },
+      {
+        "role": "tap_like_pm25_scene",
+        "schema": "uwm.synthetic_snapshot_manifest.v1",
+        "synthetic_status": "semi_synthetic",
+        "quality_status": "tap_like_pm25_scene_not_observed_holdout",
+        "claim_level": "exploratory_only"
+      }
+    ],
+    "remaining_gates": [
+      "causal_policy_effect_validation_required",
+      "external_air_pollution_holdout_required",
+      "external_observed_holdout_required",
+      "observed_policy_outcome_holdout_required",
+      "observed_policy_outcome_required",
+      "off_policy_evaluation_on_observed_or_counterfactual_policy_data_required",
+      "off_policy_evaluation_on_observed_or_quasi_observed_data_required",
+      "tap_or_authoritative_air_quality_required"
+    ],
+    "not_supported_claims": [
+      "observed_policy_outcome_superiority",
+      "tap_based_air_pollution_holdout_superiority",
+      "causal_policy_effect"
+    ]
+  },
+  "remaining_gates": [
+    "causal_policy_effect_validation_required",
+    "external_air_pollution_holdout_required",
+    "external_observed_holdout_required",
+    "observed_policy_outcome_holdout_required",
+    "observed_policy_outcome_required",
+    "off_policy_evaluation_on_observed_or_counterfactual_policy_data_required",
+    "off_policy_evaluation_on_observed_or_quasi_observed_data_required",
+    "tap_or_authoritative_air_quality_required"
+  ],
+  "source_graph_search_path": "data/uwm_public_proxy/chongqing_central/model_based_rl_graph_search_2026_07_05/uwm_model_based_graph_search_admin_livability_spatial_graph_proxy.json",
+  "source_learned_rollout_path": "data/uwm_public_proxy/chongqing_central/model_based_rl_graph_search_2026_07_05/uwm_offline_world_model_rollout_planner_admin_livability_spatial_graph_proxy.json",
+  "source_synthetic_policy_outcome_path": "data/uwm_public_proxy/chongqing_central/model_based_rl_graph_search_2026_07_05/uwm_synthetic_policy_outcome_benchmark_admin_livability_spatial_graph.json",
+  "source_tap_like_pm25_scene_manifest_path": "data/uwm_public_proxy/chongqing_central/tap_like_pm25_scene_v2_2024_07_01_07/snapshot_manifest.json"
+}

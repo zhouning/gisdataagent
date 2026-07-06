@@ -1,0 +1,300 @@
+{
+  "schema": "uwm.data_foundation_evidence_gate.v1",
+  "gate_id": "uwm-data-foundation-evidence-gate-2026-07-05",
+  "created_at": "2026-07-05T22:45:00Z",
+  "data_foundation_scope": {
+    "manifest_row_count": 66,
+    "accepted_synthetic_statuses": [
+      "real",
+      "public_proxy",
+      "fitted_proxy",
+      "semi_synthetic",
+      "synthetic",
+      "restricted_expected"
+    ],
+    "synthetic_status_counts": {
+      "real": 18,
+      "public_proxy": 39,
+      "fitted_proxy": 2,
+      "semi_synthetic": 3,
+      "synthetic": 3,
+      "restricted_expected": 1
+    },
+    "source_type_counts": {
+      "paper58": 1,
+      "paper6": 2,
+      "planning_sample": 15,
+      "public": 32,
+      "restricted_expected": 1,
+      "restricted_local": 8,
+      "synthetic": 7
+    },
+    "access_status_counts": {
+      "api_reachable_2026-07-04": 2,
+      "available": 60,
+      "planned": 1,
+      "planned_public_download": 1,
+      "raw_public_proxy_available": 1,
+      "registration_pending_user_account_under_review": 1
+    },
+    "scope_note": "all prepared UWM data-foundation assets may be used, but claims are gated by synthetic_status, source_type, access_status and artifact-level evidence"
+  },
+  "evidence_slices": {
+    "openaq_observed_temporal_state": {
+      "source_artifact_exists": true,
+      "schema": "uwm.openaq_observed_temporal_benchmark.v1",
+      "scope": "observed_temporal_state_prediction_not_policy_outcome",
+      "source_dataset_ids": [
+        "openaq_air_quality_station_observation_proxy"
+      ],
+      "pollutant_count": 6,
+      "observation_count": 600,
+      "holdout_count": 180,
+      "overall_holdout_win_count": 150,
+      "overall_holdout_win_rate": 0.833333,
+      "overall_sign_tests": {
+        "static_train_mean": {
+          "wins": 150,
+          "losses": 25,
+          "ties": 5,
+          "effective_n": 175,
+          "one_sided_p_value": 3.169461318928462e-23
+        },
+        "static_last_train_observation": {
+          "wins": 141,
+          "losses": 14,
+          "ties": 25,
+          "effective_n": 155,
+          "one_sided_p_value": 7.023485467083628e-28
+        }
+      },
+      "temporal_order_negative_control_passed": true,
+      "pm25_dynamic_mae": 2.4,
+      "pm25_best_static_mae": 9.466667,
+      "supported_claim": "observed_temporal_state_prediction_advantage_over_static_baseline_suite",
+      "claim_level": "bounded_support",
+      "limitations": [
+        "not_policy_intervention_outcome",
+        "single_station_sensor_sample",
+        "short_historical_holdout_window",
+        "dynamic_persistence_is_baseline_world_model_state_update"
+      ],
+      "empirical_superiority_claim": false
+    },
+    "tap_external_temporal_transition": {
+      "source_artifact_exists": true,
+      "schema": "uwm.tap_external_spatiotemporal_dynamics_report.v1",
+      "scope": "tap_external_temporal_transition_without_spatial_claim",
+      "source_dataset_ids": [
+        "tap_pm25_observed_gridded_chongqing_2018_2024"
+      ],
+      "series_count": 10000,
+      "holdout_count": 40000,
+      "best_spatial_method": "spatial_residual_delta_ridge",
+      "best_transition_mae": 7.003808,
+      "best_traditional_static_mae": 9.309192,
+      "best_non_spatial_dynamic_mae": 7.011689,
+      "mae_reduction_vs_best_static": 2.305384,
+      "mae_reduction_vs_best_non_spatial_dynamic": 0.007881,
+      "paired_win_rate_vs_best_non_spatial_dynamic": 0.5077,
+      "spatial_negative_control_passed": false,
+      "temporal_order_negative_control_passed": true,
+      "future_label_leakage_guard_passed": true,
+      "supported_claim": "tap_external_temporal_dynamics_advantage_without_spatial_claim",
+      "claim_level": "bounded_support",
+      "spatial_attribution_claim": false,
+      "policy_outcome_claim": false,
+      "empirical_superiority_claim": false,
+      "limitations": [
+        "tap_gridded_product_not_station_observation",
+        "not_policy_intervention_outcome",
+        "action_free_exogenous_air_pollution_dynamics_only",
+        "short_daily_holdout_window",
+        "sampled_grid_series_for_runtime_control"
+      ]
+    },
+    "learned_world_model_rollout": {
+      "source_artifact_exists": true,
+      "schema": "uwm.offline_world_model_rollout_planner_report.v1",
+      "scope": "simulator_replay_learned_dynamics_not_observed_policy_outcome",
+      "transition_count": 355,
+      "holdout_count": 71,
+      "holdout_reward_mae": 0.000165324,
+      "train_mean_reward_mae": 0.002418188,
+      "reward_win_count_vs_train_mean": 68,
+      "imagined_advantage_over_static": 0.010279633,
+      "imagined_advantage_over_one_step": 0.00951568,
+      "selected_sequence": [
+        {
+          "action_id": "increase_green_infrastructure-江北区|观音桥街道|653",
+          "action_type": "increase_green_infrastructure",
+          "target_units": [
+            "江北区|观音桥街道|653"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "heat_risk_above_threshold"
+        },
+        {
+          "action_id": "add_community_service-九龙坡区|谢家湾街道|785",
+          "action_type": "add_community_service",
+          "target_units": [
+            "九龙坡区|谢家湾街道|785"
+          ],
+          "intensity": 1.0,
+          "mask_reason": "service_accessibility_below_threshold"
+        }
+      ],
+      "supported_claim": "learned_world_model_rollout_improves_imagined_static_and_one_step_baselines",
+      "claim_level": "bounded_support",
+      "empirical_superiority_claim": false
+    },
+    "livability_intervention_package": {
+      "source_artifact_exists": true,
+      "schema": "uwm.livability_intervention_package.v1",
+      "scope": "business_theory_aligned_proxy_package_not_observed_policy_outcome",
+      "synthetic_status": "synthetic",
+      "supported_claim": "business_theory_aligned_learned_rollout_beats_static_proxy_baseline",
+      "claim_level": "exploratory_only",
+      "action_count": 2,
+      "predicted_delta": {
+        "heat_risk_delta": -1.027807246,
+        "air_pollution_exposure_delta": -0.411081019,
+        "service_accessibility_delta": 0.965080014,
+        "equity_delta": 0.552991953,
+        "livability_delta": 0.786721588
+      },
+      "equity_status": "equity_improves",
+      "reported_remaining_gates": [
+        "causal_policy_effect_validation_required",
+        "external_air_pollution_holdout_required",
+        "external_observed_holdout_required",
+        "observed_policy_outcome_holdout_required",
+        "observed_policy_outcome_required",
+        "off_policy_evaluation_on_observed_or_counterfactual_policy_data_required",
+        "off_policy_evaluation_on_observed_or_quasi_observed_data_required",
+        "tap_or_authoritative_air_quality_required"
+      ],
+      "remaining_gates": [
+        "causal_policy_effect_validation_required",
+        "external_air_pollution_holdout_required",
+        "external_observed_holdout_required",
+        "observed_policy_outcome_holdout_required",
+        "observed_policy_outcome_required",
+        "off_policy_evaluation_on_observed_or_counterfactual_policy_data_required",
+        "off_policy_evaluation_on_observed_or_quasi_observed_data_required"
+      ],
+      "empirical_superiority_claim": false
+    },
+    "local_planning_data_foundation": {
+      "source_artifact_exists": true,
+      "scope": "prepared_local_planning_data_foundation",
+      "asset_counts": {
+        "chongqing_osm_roads_2021": {
+          "asset_kind": "vector",
+          "status": "already_manifested_now_profiled",
+          "feature_count": 50366,
+          "row_count": 0,
+          "geometry_type": "LineString",
+          "crs": "EPSG:4326",
+          "uwm_roles": "mobility_graph;mobility_activity;renderer;baseline"
+        },
+        "chongqing_central_buildings_2021": {
+          "asset_kind": "vector",
+          "status": "already_manifested_now_profiled",
+          "feature_count": 107452,
+          "row_count": 0,
+          "geometry_type": "Polygon",
+          "crs": "EPSG:4326",
+          "uwm_roles": "urban_form;renderer;baseline"
+        },
+        "gaode_poi_2024": {
+          "asset_kind": "vector",
+          "status": "already_manifested_now_profiled",
+          "feature_count": 1194351,
+          "row_count": 0,
+          "geometry_type": "Point",
+          "crs": "EPSG:4490",
+          "uwm_roles": "service_accessibility;baseline;planner_targeting"
+        },
+        "chongqing_unicom_commuting_2023_local": {
+          "asset_kind": "table",
+          "status": "newly_recognized",
+          "feature_count": 0,
+          "row_count": 2120,
+          "geometry_type": "",
+          "crs": "",
+          "uwm_roles": "mobility_activity;commuting_od;population_vulnerability;simulator_context;planner_targeting"
+        }
+      },
+      "claim_level": "fragile",
+      "empirical_superiority_claim": false,
+      "limitations": [
+        "restricted_local_sample_terms_pending",
+        "not_policy_intervention_outcome"
+      ]
+    },
+    "admin_spatial_adjacency_graph": {
+      "source_artifact_exists": true,
+      "schema": "uwm.admin_spatial_adjacency_graph.v1",
+      "scope": "prepared_admin_boundary_adjacency_graph_not_mobility_graph",
+      "node_count": 1017,
+      "edge_count": 2847,
+      "isolated_node_count": 0,
+      "edge_rule": "polygon_boundary_touch_or_shared_boundary_v0",
+      "claim_level": "bounded_support",
+      "empirical_superiority_claim": false
+    }
+  },
+  "observed_state_prediction_superiority_claim": true,
+  "external_temporal_transition_superiority_claim": true,
+  "observed_policy_outcome_superiority_claim": false,
+  "empirical_superiority_claim": false,
+  "supported_claims": [
+    {
+      "claim": "observed_temporal_state_prediction_advantage_over_static_baseline_suite",
+      "scope": "observed_temporal_state_prediction_not_policy_outcome",
+      "claim_level": "bounded_support",
+      "policy_outcome_claim": false
+    },
+    {
+      "claim": "tap_external_temporal_dynamics_advantage_without_spatial_claim",
+      "scope": "tap_external_temporal_transition_without_spatial_claim",
+      "claim_level": "bounded_support",
+      "policy_outcome_claim": false,
+      "spatial_attribution_claim": false
+    },
+    {
+      "claim": "learned_world_model_rollout_improves_imagined_static_and_one_step_baselines",
+      "scope": "simulator_replay_learned_dynamics_not_observed_policy_outcome",
+      "claim_level": "bounded_support",
+      "policy_outcome_claim": false
+    },
+    {
+      "claim": "business_theory_aligned_learned_rollout_beats_static_proxy_baseline",
+      "scope": "business_theory_aligned_proxy_package_not_observed_policy_outcome",
+      "claim_level": "exploratory_only",
+      "policy_outcome_claim": false
+    }
+  ],
+  "claim_guard": {
+    "synthetic_or_smoke_blocked_from_empirical_policy_claim": true,
+    "blocked_dataset_ids": [
+      "epa_greenbook_policy_structure",
+      "semi_synthetic_air_quality_scene_2024_07",
+      "synthetic_air_quality_placeholder",
+      "tap_like_pm25_scene_v2_2024_07",
+      "uwm_fitted_admin_population_downscaling_2021",
+      "uwm_livability_intervention_package_admin_livability_spatial_graph",
+      "uwm_synthetic_policy_outcome_benchmark_admin_livability_spatial_graph",
+      "uwm_unicom_latent_mobility_graph_2023"
+    ],
+    "rule": "synthetic, semi_synthetic, fitted_proxy and smoke-only assets may support development or exploratory scaffolds, but cannot support observed policy outcome superiority claims"
+  },
+  "remaining_gates": [
+    "observed_policy_outcome_required",
+    "scene_aligned_station_calibrated_air_quality_holdout_required",
+    "causal_policy_effect_validation_required",
+    "external_observed_holdout_required",
+    "synthetic_proxy_boundary_must_remain_visible"
+  ]
+}

@@ -1,0 +1,2 @@
+unit_id,region_code,period,split,holdout_reason,policy_version,source_version
+SH-U-001,310000,2025Q4,holdout,temporal_and_spatial_holdout_for_policy_outcome_validation,POLICY-2025-A,SPLIT-2025-A

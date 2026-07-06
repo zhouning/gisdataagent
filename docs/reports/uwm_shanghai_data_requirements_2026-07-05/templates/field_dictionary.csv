@@ -1,0 +1,18 @@
+data_object_id,data_object_name,field_name,field_type,required_level,description,uwm_usage
+D01,城市空间单元底座,unit_id,string,必需,稳定空间单元 ID，可为脱敏别名。,构建 UWM 空间层级状态；关联环境、服务、人口、交通、干预和 outcome。
+D01,城市空间单元底座,unit_type,enum,必需,district/subdistrict/community/grid/block/building/site。,确定空间尺度和聚合逻辑。
+D01,城市空间单元底座,geometry,geometry,内网必需,面/点/线几何；对外材料默认不导出原始几何。,空间叠加、邻接、服务半径、暴露和图构建。
+D02,规划约束和建设管控,constraint_type,enum,必需,planning_zone/urban_renewal_unit/historic_conservation/ecological_space 等。,生成 action mask、hard block 和 required review。
+D03,城市形态数据,feature_type,enum,必需,building/road/green_space/water/public_space。,构建 urban_form、heat context、walkability 和 green-blue state。
+D04,公共服务设施,service_type,enum,必需,education/healthcare/eldercare/childcare/culture/sports/park/commercial/community_service/transit 等。,计算 service_accessibility 和公共服务补短板。
+D05,环境观测,observation_type,enum,必需,temperature/pm25/no2/o3/lst/ndvi/heat_index 等。,构建 heat_risk、air_pollution_exposure 和 temporal holdout。
+D06,人口脆弱性,population_total,number,必需,空间单元汇总人口。,计算 exposure、equity 和受益人群。
+D06,人口脆弱性,privacy_aggregation_level,string,必需,聚合级别，避免个人识别。,数据安全和隐私边界。
+D07,交通可达性,travel_time_min,number,推荐,出行时间或阻抗。,计算 network travel-time accessibility。
+D08,城市治理干预,action_type,enum,必需,increase_green_infrastructure/traffic_emission_control/add_community_service/cool_roof/walkability_improvement/urban_renewal 等。,构建 action-conditioned rollout 和 planner 动作集合。
+D09,干预可行性,action_allowed,boolean,必需,动作在空间、时期、政策版本下是否允许。,验证 action mask 和 planner feasibility gate。
+D10,真实 outcome,treated,boolean,必需,是否干预组。,历史回放、对照组和因果门控。
+D10,真实 outcome,outcome_type,enum,必需,heat_risk/air_pollution/service_accessibility/equity/livability/complaint_rate/usage_count 等。,验证干预前后真实结果。
+D11,生产规模画像,row_count,integer,必需,脱敏行数/对象数。,判断 lakehouse、分区、空间索引和分布式计算门槛。
+D12,数据血缘,authorization_scope,string,必需,授权用途和边界。,审计、合规和 claim boundary。
+D13,证据项目录,export_policy,string,必需,metadata_only/inner_network_only/desensitized_export_allowed。,控制跨环境证据导出。

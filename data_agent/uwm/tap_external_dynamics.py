@@ -27,7 +27,7 @@ NON_SPATIAL_DYNAMIC_BASELINES = [
     "online_persistence_state_update",
     "adaptive_online_state_update",
 ]
-SPATIAL_METHODS = ["spatial_message_ridge"]
+SPATIAL_METHODS = ["spatial_message_ridge", "spatial_residual_delta_ridge"]
 FEATURE_NAMES = [
     "bias",
     "target_previous_pm25",
@@ -39,6 +39,20 @@ FEATURE_NAMES = [
     "tile_previous_anomaly",
     "day_index_norm",
 ]
+RESIDUAL_DELTA_FEATURE_NAMES = [
+    "bias",
+    "target_previous_pm25",
+    "neighbor_previous_mean",
+    "target_neighbor_previous_contrast",
+    "tile_previous_anomaly",
+    "target_previous_delta",
+    "neighbor_previous_delta_mean",
+    "neighbor_target_delta_contrast",
+    "day_index_norm",
+]
+RESIDUAL_DELTA_BASELINE_METHOD = "adaptive_online_state_update"
+DEFAULT_RESIDUAL_DELTA_RIDGE = 1000.0
+DEFAULT_RESIDUAL_DELTA_CORRECTION_CLIP = 0.5
 
 
 def build_tap_external_dynamics_report(
@@ -50,6 +64,8 @@ def build_tap_external_dynamics_report(
     max_grid_series_per_period: int = 5000,
     neighbor_count: int = 4,
     ridge: float = 0.001,
+    residual_delta_ridge: float = DEFAULT_RESIDUAL_DELTA_RIDGE,
+    residual_delta_correction_clip: float = DEFAULT_RESIDUAL_DELTA_CORRECTION_CLIP,
     include_feature_audit: bool = False,
 ) -> dict[str, Any]:
     root = Path(tap_root)
@@ -62,6 +78,8 @@ def build_tap_external_dynamics_report(
             max_series=max_grid_series_per_period,
             neighbor_count=neighbor_count,
             ridge=ridge,
+            residual_delta_ridge=residual_delta_ridge,
+            residual_delta_correction_clip=residual_delta_correction_clip,
             include_feature_audit=include_feature_audit,
         )
         for period_dir in _period_dirs(root)
@@ -83,9 +101,15 @@ def build_tap_external_dynamics_report(
             "neighbor_count": neighbor_count,
             "neighbor_mode": "lonlat_nearest_neighbors_v1",
             "ridge": ridge,
+            "residual_delta_ridge": residual_delta_ridge,
+            "residual_delta_correction_clip": residual_delta_correction_clip,
         },
         "feature_schema": {
             "feature_names": FEATURE_NAMES,
+            "spatial_method_feature_schemas": {
+                "spatial_message_ridge": FEATURE_NAMES,
+                "spatial_residual_delta_ridge": RESIDUAL_DELTA_FEATURE_NAMES,
+            },
             "target": "next_day_pm25_ugm3",
             "feature_time_rule": "features_for_day_t_use_only_values_strictly_before_day_t",
         },
@@ -163,6 +187,8 @@ def _build_period_report(
     max_series: int,
     neighbor_count: int,
     ridge: float,
+    residual_delta_ridge: float,
+    residual_delta_correction_clip: float,
     include_feature_audit: bool,
 ) -> dict[str, Any]:
     all_series = _load_period_series_with_lonlat(period_dir)
@@ -186,11 +212,29 @@ def _build_period_report(
 
     baseline_predictions = _predict_baselines(holdout_rows)
     spatial_predictions, coefficients = _predict_spatial(train_rows, holdout_rows, ridge)
+    residual_predictions, residual_coefficients = _predict_spatial_residual_delta(
+        train_rows,
+        holdout_rows,
+        residual_delta_ridge,
+        residual_delta_correction_clip,
+    )
     shuffled_rows = _neighbor_shuffle_rows(holdout_rows)
     shuffled_predictions, _ = _predict_spatial(train_rows, shuffled_rows, ridge)
+    shuffled_residual_predictions, _ = _predict_spatial_residual_delta(
+        train_rows,
+        shuffled_rows,
+        residual_delta_ridge,
+        residual_delta_correction_clip,
+    )
     ablated_train_rows = _non_spatial_feature_ablation_rows(train_rows)
     ablated_holdout_rows = _non_spatial_feature_ablation_rows(holdout_rows)
     ablated_predictions, _ = _predict_spatial(ablated_train_rows, ablated_holdout_rows, ridge)
+    ablated_residual_predictions, _ = _predict_spatial_residual_delta(
+        ablated_train_rows,
+        ablated_holdout_rows,
+        residual_delta_ridge,
+        residual_delta_correction_clip,
+    )
     baseline_results = {
         "traditional_static": {
             method: _evaluate_predictions(holdout_rows, predictions)
@@ -206,11 +250,59 @@ def _build_period_report(
         key=lambda method: baseline_results["non_spatial_dynamic"][method]["mae"],
     )
     non_spatial_best_predictions = baseline_predictions["non_spatial_dynamic"][non_spatial_best_method]
-    spatial_eval = _evaluate_predictions(holdout_rows, spatial_predictions)
-    spatial_eval.update(_paired_wins(holdout_rows, spatial_predictions, non_spatial_best_predictions))
-    shuffled_eval = _evaluate_predictions(holdout_rows, shuffled_predictions)
-    ablated_eval = _evaluate_predictions(holdout_rows, ablated_predictions)
-    temporal_control = _temporal_order_rotation_control(holdout_rows, spatial_predictions)
+    predictions_by_method = {
+        "spatial_message_ridge": spatial_predictions,
+        "spatial_residual_delta_ridge": residual_predictions,
+    }
+    coefficients_by_method = {
+        "spatial_message_ridge": coefficients,
+        "spatial_residual_delta_ridge": residual_coefficients,
+    }
+    shuffled_predictions_by_method = {
+        "spatial_message_ridge": shuffled_predictions,
+        "spatial_residual_delta_ridge": shuffled_residual_predictions,
+    }
+    ablated_predictions_by_method = {
+        "spatial_message_ridge": ablated_predictions,
+        "spatial_residual_delta_ridge": ablated_residual_predictions,
+    }
+    spatial_results: dict[str, dict[str, Any]] = {}
+    controls_by_method: dict[str, dict[str, Any]] = {}
+    for method in SPATIAL_METHODS:
+        method_predictions = predictions_by_method[method]
+        method_eval = _evaluate_predictions(holdout_rows, method_predictions)
+        method_eval.update(_paired_wins(holdout_rows, method_predictions, non_spatial_best_predictions))
+        method_eval["coefficient_count"] = int(len(coefficients_by_method[method]))
+        if method == "spatial_residual_delta_ridge":
+            method_eval.update(
+                {
+                    "base_dynamic_method": RESIDUAL_DELTA_BASELINE_METHOD,
+                    "residual_delta_ridge": residual_delta_ridge,
+                    "residual_delta_correction_clip": residual_delta_correction_clip,
+                }
+            )
+        spatial_results[method] = method_eval
+        shuffled_eval = _evaluate_predictions(holdout_rows, shuffled_predictions_by_method[method])
+        ablated_eval = _evaluate_predictions(holdout_rows, ablated_predictions_by_method[method])
+        controls_by_method[method] = {
+            "neighbor_shuffle_control": {
+                **shuffled_eval,
+                "real_spatial_advantage": _round(shuffled_eval["mae"] - method_eval["mae"]),
+            },
+            "non_spatial_feature_ablation_control": {
+                **ablated_eval,
+                "real_spatial_advantage": _round(ablated_eval["mae"] - method_eval["mae"]),
+            },
+            "temporal_order_rotation_control": _temporal_order_rotation_control(
+                holdout_rows,
+                method_predictions,
+            ),
+        }
+    best_period_spatial_method = min(
+        spatial_results,
+        key=lambda method: spatial_results[method]["mae"],
+    )
+    best_period_controls = controls_by_method[best_period_spatial_method]
     feature_audit_sample = [
         {
             "period_id": period_dir.name,
@@ -229,22 +321,21 @@ def _build_period_report(
             "holdout_count": len(holdout_rows),
         },
         "baseline_results": baseline_results,
-        "spatial_world_model_results": {
-            "spatial_message_ridge": {
-                **spatial_eval,
-                "coefficient_count": int(len(coefficients)),
-            }
-        },
+        "spatial_world_model_results": spatial_results,
         "negative_control_results": {
             "neighbor_shuffle_control": {
-                **shuffled_eval,
-                "real_spatial_advantage": _round(shuffled_eval["mae"] - spatial_eval["mae"]),
+                **best_period_controls["neighbor_shuffle_control"],
+                "spatial_method": best_period_spatial_method,
             },
             "non_spatial_feature_ablation_control": {
-                **ablated_eval,
-                "real_spatial_advantage": _round(ablated_eval["mae"] - spatial_eval["mae"]),
+                **best_period_controls["non_spatial_feature_ablation_control"],
+                "spatial_method": best_period_spatial_method,
             },
-            "temporal_order_rotation_control": temporal_control,
+            "temporal_order_rotation_control": {
+                **best_period_controls["temporal_order_rotation_control"],
+                "spatial_method": best_period_spatial_method,
+            },
+            "by_spatial_method": controls_by_method,
             "future_label_leakage_guard": _future_label_leakage_guard(rows),
         },
     }
@@ -345,6 +436,7 @@ def _feature_rows_for_period(
         for day_index in range(1, len(all_doys)):
             target_doy = all_doys[day_index]
             previous_doy = all_doys[day_index - 1]
+            previous_previous_doy = all_doys[day_index - 2] if day_index >= 2 else None
             if target_doy not in values or previous_doy not in values:
                 continue
             neighbor_previous_values = [
@@ -355,7 +447,25 @@ def _feature_rows_for_period(
             if not neighbor_previous_values:
                 continue
             target_previous = values[previous_doy]
+            target_previous_delta = (
+                target_previous - values[previous_previous_doy]
+                if previous_previous_doy is not None and previous_previous_doy in values
+                else 0.0
+            )
             neighbor_mean = fmean(neighbor_previous_values)
+            neighbor_previous_delta_values = [
+                selected_series[neighbor]["values_by_doy"][previous_doy]
+                - selected_series[neighbor]["values_by_doy"][previous_previous_doy]
+                for neighbor in neighbors_by_key.get(key, [])
+                if previous_previous_doy is not None
+                and previous_doy in selected_series[neighbor]["values_by_doy"]
+                and previous_previous_doy in selected_series[neighbor]["values_by_doy"]
+            ]
+            neighbor_delta_mean = (
+                fmean(neighbor_previous_delta_values)
+                if neighbor_previous_delta_values
+                else 0.0
+            )
             tile_previous_values = [
                 other["values_by_doy"][previous_doy]
                 for other_key, other in selected_series.items()
@@ -373,6 +483,17 @@ def _feature_rows_for_period(
                 tile_previous_mean - tile_train_mean,
                 day_index / max(1, len(all_doys) - 1),
             ]
+            residual_delta_features = [
+                1.0,
+                target_previous,
+                neighbor_mean,
+                target_previous - neighbor_mean,
+                tile_previous_mean - tile_train_mean,
+                target_previous_delta,
+                neighbor_delta_mean,
+                neighbor_delta_mean - target_previous_delta,
+                day_index / max(1, len(all_doys) - 1),
+            ]
             rows.append(
                 {
                     "key": key,
@@ -380,6 +501,7 @@ def _feature_rows_for_period(
                     "target_value": values[target_doy],
                     "is_holdout": day_index >= train_days,
                     "features": features,
+                    "residual_delta_features": residual_delta_features,
                     "max_feature_doy": previous_doy,
                     "baselines": {
                         "static_train_mean": target_train_mean,
@@ -450,6 +572,35 @@ def _predict_spatial(
     return ([float(value) for value in predictions], coefficients)
 
 
+def _predict_spatial_residual_delta(
+    train_rows: list[dict[str, Any]],
+    holdout_rows: list[dict[str, Any]],
+    ridge: float,
+    correction_clip: float,
+) -> tuple[list[float], np.ndarray]:
+    base_holdout = [row["baselines"][RESIDUAL_DELTA_BASELINE_METHOD] for row in holdout_rows]
+    if len(train_rows) < 2:
+        return (base_holdout, np.array([]))
+    x_train = np.array([row["residual_delta_features"] for row in train_rows], dtype=float)
+    y_train = np.array(
+        [
+            row["target_value"] - row["baselines"][RESIDUAL_DELTA_BASELINE_METHOD]
+            for row in train_rows
+        ],
+        dtype=float,
+    )
+    x_holdout = np.array([row["residual_delta_features"] for row in holdout_rows], dtype=float)
+    coefficients = _fit_ridge(x_train, y_train, ridge)
+    corrections = x_holdout @ coefficients
+    if correction_clip >= 0:
+        corrections = np.clip(corrections, -correction_clip, correction_clip)
+    predictions = [
+        float(base + correction)
+        for base, correction in zip(base_holdout, corrections)
+    ]
+    return (predictions, coefficients)
+
+
 def _fit_ridge(x: np.ndarray, y: np.ndarray, ridge: float) -> np.ndarray:
     penalty = np.eye(x.shape[1]) * ridge
     penalty[0, 0] = 0.0
@@ -492,17 +643,27 @@ def _neighbor_shuffle_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     if not rows:
         return []
     shuffled_neighbor_features = [
-        (row["features"][4], row["features"][5])
+        (
+            row["features"][4],
+            row["features"][5],
+            row["residual_delta_features"][6],
+        )
         for row in rows[1:] + rows[:1]
     ]
     shuffled = []
-    for row, (neighbor_mean, neighbor_median) in zip(rows, shuffled_neighbor_features):
+    for row, (neighbor_mean, neighbor_median, neighbor_delta_mean) in zip(rows, shuffled_neighbor_features):
         new_row = dict(row)
         features = list(row["features"])
         features[4] = neighbor_mean
         features[5] = neighbor_median
         features[6] = features[1] - neighbor_mean
+        residual_delta_features = list(row["residual_delta_features"])
+        residual_delta_features[2] = neighbor_mean
+        residual_delta_features[3] = residual_delta_features[1] - neighbor_mean
+        residual_delta_features[6] = neighbor_delta_mean
+        residual_delta_features[7] = neighbor_delta_mean - residual_delta_features[5]
         new_row["features"] = features
+        new_row["residual_delta_features"] = residual_delta_features
         shuffled.append(new_row)
     return shuffled
 
@@ -515,7 +676,13 @@ def _non_spatial_feature_ablation_rows(rows: list[dict[str, Any]]) -> list[dict[
         features[4] = features[1]
         features[5] = features[1]
         features[6] = 0.0
+        residual_delta_features = list(row["residual_delta_features"])
+        residual_delta_features[2] = residual_delta_features[1]
+        residual_delta_features[3] = 0.0
+        residual_delta_features[6] = residual_delta_features[5]
+        residual_delta_features[7] = 0.0
         new_row["features"] = features
+        new_row["residual_delta_features"] = residual_delta_features
         ablated.append(new_row)
     return ablated
 
@@ -532,6 +699,7 @@ def _temporal_order_rotation_control(rows: list[dict[str, Any]], spatial_predict
         "mae": _round(rotated_mae),
         "ordered_mae": _round(ordered_mae),
         "ordered_advantage": _round(rotated_mae - ordered_mae),
+        "case_count": len(rows),
     }
 
 
@@ -563,17 +731,23 @@ def _combine_overall(period_reports: list[dict[str, Any]]) -> dict[str, Any]:
             for method in NON_SPATIAL_DYNAMIC_BASELINES
         },
     }
-    spatial_result = _weighted_metric(period_reports, ["spatial_world_model_results", "spatial_message_ridge"])
-    neighbor_shuffle = _weighted_metric(period_reports, ["negative_control_results", "neighbor_shuffle_control"])
-    non_spatial_ablation = _weighted_metric(period_reports, ["negative_control_results", "non_spatial_feature_ablation_control"])
-    temporal_controls = [
-        report["negative_control_results"]["temporal_order_rotation_control"]
-        for report in period_reports
-    ]
-    temporal_control = {
-        "mae": _round(fmean([control["mae"] for control in temporal_controls])),
-        "ordered_advantage": _round(fmean([control["ordered_advantage"] for control in temporal_controls])),
+    spatial_results = {
+        method: _weighted_metric(period_reports, ["spatial_world_model_results", method])
+        for method in SPATIAL_METHODS
     }
+    controls_by_method = {}
+    for method in SPATIAL_METHODS:
+        controls_by_method[method] = {
+            "neighbor_shuffle_control": _weighted_metric(
+                period_reports,
+                ["negative_control_results", "by_spatial_method", method, "neighbor_shuffle_control"],
+            ),
+            "non_spatial_feature_ablation_control": _weighted_metric(
+                period_reports,
+                ["negative_control_results", "by_spatial_method", method, "non_spatial_feature_ablation_control"],
+            ),
+            "temporal_order_rotation_control": _weighted_temporal_control(period_reports, method),
+        }
     leakage_rows = sum(
         report["negative_control_results"]["future_label_leakage_guard"]["audited_feature_rows"]
         for report in period_reports
@@ -590,19 +764,42 @@ def _combine_overall(period_reports: list[dict[str, Any]]) -> dict[str, Any]:
         baseline_results["non_spatial_dynamic"],
         key=lambda method: baseline_results["non_spatial_dynamic"][method]["mae"],
     )
-    best_spatial_mae = spatial_result["mae"]
+    for method in SPATIAL_METHODS:
+        spatial_results[method].update(_weighted_paired_counts(period_reports, method))
+    best_spatial_method = min(
+        spatial_results,
+        key=lambda method: spatial_results[method]["mae"],
+    )
+    best_spatial_result = spatial_results[best_spatial_method]
+    best_spatial_mae = best_spatial_result["mae"]
     best_traditional_mae = baseline_results["traditional_static"][best_traditional]["mae"]
     best_non_spatial_mae = baseline_results["non_spatial_dynamic"][best_non_spatial]["mae"]
-    neighbor_shuffle["real_spatial_advantage"] = _round(neighbor_shuffle["mae"] - best_spatial_mae)
-    non_spatial_ablation["real_spatial_advantage"] = _round(non_spatial_ablation["mae"] - best_spatial_mae)
+    for method in SPATIAL_METHODS:
+        method_spatial_mae = spatial_results[method]["mae"]
+        controls_by_method[method]["neighbor_shuffle_control"]["real_spatial_advantage"] = _round(
+            controls_by_method[method]["neighbor_shuffle_control"]["mae"] - method_spatial_mae
+        )
+        controls_by_method[method]["non_spatial_feature_ablation_control"]["real_spatial_advantage"] = _round(
+            controls_by_method[method]["non_spatial_feature_ablation_control"]["mae"] - method_spatial_mae
+        )
+    neighbor_shuffle = {
+        **controls_by_method[best_spatial_method]["neighbor_shuffle_control"],
+        "spatial_method": best_spatial_method,
+    }
+    non_spatial_ablation = {
+        **controls_by_method[best_spatial_method]["non_spatial_feature_ablation_control"],
+        "spatial_method": best_spatial_method,
+    }
+    temporal_control = {
+        **controls_by_method[best_spatial_method]["temporal_order_rotation_control"],
+        "spatial_method": best_spatial_method,
+    }
     spatial_negative_control_passed = (
         neighbor_shuffle["mae"] > best_spatial_mae
         and non_spatial_ablation["mae"] > best_spatial_mae
     )
-    paired_counts = _weighted_paired_counts(period_reports)
-    spatial_result.update(paired_counts)
     overall_results = {
-        "best_spatial_method": "spatial_message_ridge",
+        "best_spatial_method": best_spatial_method,
         "best_traditional_static_method": best_traditional,
         "best_non_spatial_dynamic_method": best_non_spatial,
         "best_spatial_mae": best_spatial_mae,
@@ -610,7 +807,9 @@ def _combine_overall(period_reports: list[dict[str, Any]]) -> dict[str, Any]:
         "best_non_spatial_dynamic_mae": best_non_spatial_mae,
         "spatial_mae_reduction_vs_best_static": _round(best_traditional_mae - best_spatial_mae),
         "spatial_mae_reduction_vs_best_non_spatial_dynamic": _round(best_non_spatial_mae - best_spatial_mae),
-        "paired_win_rate_vs_best_non_spatial_dynamic": paired_counts["paired_win_rate_vs_best_non_spatial_dynamic"],
+        "paired_win_rate_vs_best_non_spatial_dynamic": best_spatial_result[
+            "paired_win_rate_vs_best_non_spatial_dynamic"
+        ],
         "spatial_negative_control_passed": spatial_negative_control_passed,
     }
     return {
@@ -620,11 +819,12 @@ def _combine_overall(period_reports: list[dict[str, Any]]) -> dict[str, Any]:
             "holdout_count": holdout_count,
         },
         "baseline_results": baseline_results,
-        "spatial_world_model_results": {"spatial_message_ridge": spatial_result},
+        "spatial_world_model_results": spatial_results,
         "negative_control_results": {
             "neighbor_shuffle_control": neighbor_shuffle,
             "non_spatial_feature_ablation_control": non_spatial_ablation,
             "temporal_order_rotation_control": temporal_control,
+            "by_spatial_method": controls_by_method,
             "future_label_leakage_guard": {
                 "passed": leakage_violations == 0,
                 "audited_feature_rows": leakage_rows,
@@ -653,10 +853,27 @@ def _weighted_metric(period_reports: list[dict[str, Any]], path: list[str]) -> d
     return {"mae": _round(weighted_sum / case_count) if case_count else 0.0, "case_count": case_count, **merged}
 
 
-def _weighted_paired_counts(period_reports: list[dict[str, Any]]) -> dict[str, Any]:
+def _weighted_temporal_control(period_reports: list[dict[str, Any]], method: str) -> dict[str, Any]:
+    weighted: dict[str, float] = defaultdict(float)
+    case_count = 0
+    for report in period_reports:
+        metric = report["negative_control_results"]["by_spatial_method"][method]["temporal_order_rotation_control"]
+        cases = int(metric.get("case_count", report["training_summary"]["holdout_count"]))
+        case_count += cases
+        for key in ["mae", "ordered_mae", "ordered_advantage"]:
+            weighted[key] += float(metric.get(key, 0.0)) * cases
+    return {
+        "mae": _round(weighted["mae"] / case_count) if case_count else 0.0,
+        "ordered_mae": _round(weighted["ordered_mae"] / case_count) if case_count else 0.0,
+        "ordered_advantage": _round(weighted["ordered_advantage"] / case_count) if case_count else 0.0,
+        "case_count": case_count,
+    }
+
+
+def _weighted_paired_counts(period_reports: list[dict[str, Any]], method: str) -> dict[str, Any]:
     wins = losses = ties = total = 0
     for report in period_reports:
-        metric = report["spatial_world_model_results"]["spatial_message_ridge"]
+        metric = report["spatial_world_model_results"][method]
         wins += int(metric.get("paired_win_count_vs_best_non_spatial_dynamic", 0))
         losses += int(metric.get("paired_loss_count_vs_best_non_spatial_dynamic", 0))
         ties += int(metric.get("paired_tie_count_vs_best_non_spatial_dynamic", 0))

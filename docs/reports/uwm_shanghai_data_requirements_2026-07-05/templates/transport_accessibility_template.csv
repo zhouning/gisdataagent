@@ -1,0 +1,2 @@
+network_id,network_type,source_unit_id,target_unit_id,geometry_reference,travel_time_min,distance_m,flow_or_activity,period,privacy_aggregation_level,source_system,source_version,synthetic,not_for_production,notes
+NET-001,transit,SH-U-001,SH-U-002,inner-network-reference,18,3500,12000,2025Q3,subdistrict_aggregate,transport_or_authorized_mobility_system,2025-v1,false,false,no individual trajectory exported

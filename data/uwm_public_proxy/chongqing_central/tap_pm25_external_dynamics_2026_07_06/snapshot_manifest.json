@@ -14,7 +14,9 @@
     "max_grid_series_per_period": 5000,
     "neighbor_count": 4,
     "neighbor_mode": "lonlat_nearest_neighbors_v1",
-    "ridge": 0.001
+    "ridge": 0.001,
+    "residual_delta_ridge": 1000.0,
+    "residual_delta_correction_clip": 0.5
   },
   "training_summary": {
     "series_count": 10000,
@@ -22,20 +24,20 @@
     "holdout_count": 40000
   },
   "overall_results": {
-    "best_spatial_method": "spatial_message_ridge",
+    "best_spatial_method": "spatial_residual_delta_ridge",
     "best_traditional_static_method": "static_train_mean",
     "best_non_spatial_dynamic_method": "adaptive_online_state_update",
-    "best_spatial_mae": 16.653886,
+    "best_spatial_mae": 7.003808,
     "best_traditional_static_mae": 9.309192,
     "best_non_spatial_dynamic_mae": 7.011689,
-    "spatial_mae_reduction_vs_best_static": -7.344694,
-    "spatial_mae_reduction_vs_best_non_spatial_dynamic": -9.642197,
-    "paired_win_rate_vs_best_non_spatial_dynamic": 0.18865,
+    "spatial_mae_reduction_vs_best_static": 2.305384,
+    "spatial_mae_reduction_vs_best_non_spatial_dynamic": 0.007881,
+    "paired_win_rate_vs_best_non_spatial_dynamic": 0.5077,
     "spatial_negative_control_passed": false
   },
-  "supported_claim": "no_tap_external_dynamics_advantage_claim_supported",
+  "supported_claim": "tap_external_temporal_dynamics_advantage_without_spatial_claim",
   "claim_boundary": {
-    "max_claim_level": "not_for_claim",
+    "max_claim_level": "bounded_support",
     "reason": "TAP gridded PM2.5 supports external state-dynamics validation. It is not station-observed policy intervention outcome evidence."
   },
   "limitations": [

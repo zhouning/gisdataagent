@@ -1,0 +1,282 @@
+{
+  "schema": "uwm.track2_submission_readiness.v1",
+  "competition": "Urban Cup 2026 Track 2 Vibe Research",
+  "initial_review_deadline": "2026-07-22",
+  "days_to_initial_review_deadline": 16,
+  "initial_feedback_date": "2026-07-29",
+  "final_presentation_dates": [
+    "2026-08-08",
+    "2026-08-09"
+  ],
+  "ready_for_initial_submission": false,
+  "missing_required_artifacts": [],
+  "partial_required_artifacts": [
+    "research_report"
+  ],
+  "deliverables": {
+    "research_report": {
+      "label": "research report",
+      "required": true,
+      "status": "partial",
+      "path": "docs/reports/uwm_track2_initial_report.md",
+      "must_cover": [
+        "research_question",
+        "data_sources",
+        "methods",
+        "main_findings",
+        "urban_science_significance"
+      ],
+      "notes": "research log exists, but a complete initial research report is still required"
+    },
+    "data_description": {
+      "label": "data description",
+      "required": true,
+      "status": "available",
+      "path": "docs/reports/uwm_data_foundation_manifest.md",
+      "must_cover": [
+        "data_sources",
+        "licenses_or_access_boundaries",
+        "claim_boundaries",
+        "synthetic_or_proxy_flags"
+      ],
+      "notes": ""
+    },
+    "reproducible_code": {
+      "label": "reproducible code",
+      "required": true,
+      "status": "available",
+      "path": "data_agent/uwm",
+      "must_cover": [
+        "runtime_contracts",
+        "tests",
+        "manifest_audit",
+        "evaluation_gates"
+      ],
+      "notes": ""
+    },
+    "ai_collaboration_log": {
+      "label": "AI collaboration process record",
+      "required": true,
+      "status": "available",
+      "path": "docs/reports/uwm_track2_research_log.md",
+      "must_cover": [
+        "research_log",
+        "tool_or_dialogue_record",
+        "modeling_decisions",
+        "failed_or_rejected_claims"
+      ],
+      "notes": ""
+    }
+  },
+  "ai_urban_scientist_alignment": {
+    "idea_generation": {
+      "source_tool_stage": "Idea Generation",
+      "uwm_usage": "livability research question and novelty framing"
+    },
+    "data_seeking": {
+      "source_tool_stage": "Data Seeking",
+      "uwm_usage": "data foundation manifest and MMFE ingestion"
+    },
+    "paper_planning": {
+      "source_tool_stage": "Paper Planning",
+      "uwm_usage": "world-model evaluation design and claim boundary planning"
+    },
+    "paper_writing": {
+      "source_tool_stage": "Paper Writing",
+      "uwm_usage": "initial report, data statement, reproducibility package, research log"
+    }
+  },
+  "next_actions": [
+    "draft_initial_research_report",
+    "advance_data_driven_holdout_validation",
+    "download_or_mount_air_pollution_public_proxy",
+    "advance_observed_policy_outcome_holdout_validation",
+    "expand_scene_aligned_station_holdout_validation",
+    "complete_world_model_evidence_readiness_section",
+    "collect_observed_policy_outcome_validation_data",
+    "build_scene_aligned_station_calibrated_air_quality_holdout",
+    "design_causal_policy_effect_validation"
+  ],
+  "data_foundation_readiness": {
+    "claim_ceiling": "fragile",
+    "required_roles_complete": true,
+    "empirical_superiority_ready": false,
+    "missing_required_roles": [],
+    "empirical_superiority_blockers": [
+      "air_pollution_exposure"
+    ],
+    "public_acquisition_queue": [
+      "download_or_mount_air_pollution_public_proxy"
+    ]
+  },
+  "observed_validation_readiness": {
+    "schema": "uwm.observed_validation_readiness.v1",
+    "benchmark_id": "uwm-openaq-observed-temporal-benchmark-chongqing-2018-10",
+    "temporal_state_prediction_ready": true,
+    "temporal_state_prediction_suite_ready": true,
+    "temporal_state_prediction_suite_significant_at_0_05": true,
+    "temporal_order_negative_control_passed": true,
+    "supported_claim": "observed_temporal_state_prediction_advantage_over_static_baseline_suite",
+    "claim_boundary": {
+      "max_claim_level": "bounded_support",
+      "reason": "OpenAQ observed holdout supports temporal state-prediction comparison only; it is not a policy intervention outcome benchmark."
+    },
+    "pollutant_count": 6,
+    "observation_count": 600,
+    "holdout_count": 180,
+    "traditional_baseline_suite": [
+      "static_train_mean",
+      "static_last_train_observation"
+    ],
+    "overall_sign_tests": {
+      "static_train_mean": {
+        "wins": 150,
+        "losses": 25,
+        "ties": 5,
+        "effective_n": 175,
+        "one_sided_p_value": 3.169461318928462e-23
+      },
+      "static_last_train_observation": {
+        "wins": 141,
+        "losses": 14,
+        "ties": 25,
+        "effective_n": 155,
+        "one_sided_p_value": 7.023485467083628e-28
+      }
+    },
+    "temporal_order_negative_control_summary": {
+      "pollutant_count": 6,
+      "ordered_advantage_count": 6,
+      "ordered_advantage_rate": 1.0,
+      "mean_ordered_mae_advantage": 2.572222,
+      "all_pollutants_ordered_temporal_state_advantage": true
+    },
+    "overall_holdout_win_count": 150,
+    "overall_holdout_win_rate": 0.833333,
+    "pm25_holdout_win_count": 29,
+    "pm25_holdout_count": 30,
+    "pm25_holdout_win_rate": 0.966667,
+    "pm25_static_mean_baseline_mae": 12.895238,
+    "pm25_uwm_dynamic_persistence_mae": 2.4,
+    "pm25_best_static_baseline_method": "static_last_train_observation",
+    "pm25_best_static_baseline_mae": 9.466667,
+    "pm25_sign_test_vs_best_static_p_value": 2.823770046234131e-06,
+    "pm25_ordered_mae_advantage_over_shuffled": 0.6,
+    "pm25_beats_all_traditional_static_baselines": true,
+    "policy_outcome_superiority_ready": false,
+    "empirical_superiority_claim": false,
+    "validation_errors": [],
+    "limitations": [
+      "not_policy_intervention_outcome",
+      "single_station_sensor_sample",
+      "short_historical_holdout_window",
+      "dynamic_persistence_is_baseline_world_model_state_update"
+    ],
+    "remaining_gates": [
+      "observed_policy_outcome_holdout_required",
+      "planner_regret_observed_outcome_required",
+      "causal_policy_effect_validation_required"
+    ],
+    "next_actions": [
+      "advance_observed_policy_outcome_holdout_validation",
+      "expand_scene_aligned_station_holdout_validation"
+    ]
+  },
+  "world_model_evidence_readiness": {
+    "schema": "uwm.world_model_evidence_readiness.v1",
+    "overall_claim_ceiling": "bounded_support",
+    "system_level_superiority_summary": "bounded_state_prediction_and_transition_advantage_without_policy_outcome_superiority",
+    "traditional_method_comparison_ready": true,
+    "policy_outcome_superiority_ready": false,
+    "empirical_superiority_claim": false,
+    "architecture_evidence": {
+      "renderer": {
+        "ready": true,
+        "evidence": [
+          "prepared_local_planning_data_foundation",
+          "admin_spatial_adjacency_graph"
+        ],
+        "claim_level": "fragile"
+      },
+      "simulator": {
+        "ready": true,
+        "observed_temporal_state_ready": true,
+        "external_temporal_transition_ready": true,
+        "learned_rollout_ready": true,
+        "spatial_attribution_ready": false,
+        "claim_level": "bounded_support"
+      },
+      "planner": {
+        "ready": true,
+        "learned_rollout_planner_ready": true,
+        "livability_intervention_package_ready": true,
+        "claim_level": "exploratory_only",
+        "policy_outcome_claim": false
+      },
+      "policy_outcome_evaluator": {
+        "ready": false,
+        "claim_level": "not_for_claim",
+        "remaining_gates": [
+          "observed_policy_outcome_required",
+          "scene_aligned_station_calibrated_air_quality_holdout_required",
+          "causal_policy_effect_validation_required",
+          "external_observed_holdout_required",
+          "synthetic_proxy_boundary_must_remain_visible"
+        ],
+        "policy_outcome_claim": false
+      }
+    },
+    "claim_ladder": [
+      {
+        "claim": "observed_temporal_state_prediction_advantage_over_static_baseline_suite",
+        "scope": "observed_temporal_state_prediction_not_policy_outcome",
+        "claim_level": "bounded_support",
+        "allowed_in_report": true,
+        "policy_outcome_claim": false,
+        "spatial_attribution_claim": false
+      },
+      {
+        "claim": "tap_external_temporal_dynamics_advantage_without_spatial_claim",
+        "scope": "tap_external_temporal_transition_without_spatial_claim",
+        "claim_level": "bounded_support",
+        "allowed_in_report": true,
+        "policy_outcome_claim": false,
+        "spatial_attribution_claim": false
+      },
+      {
+        "claim": "learned_world_model_rollout_improves_imagined_static_and_one_step_baselines",
+        "scope": "simulator_replay_learned_dynamics_not_observed_policy_outcome",
+        "claim_level": "bounded_support",
+        "allowed_in_report": true,
+        "policy_outcome_claim": false,
+        "spatial_attribution_claim": false
+      },
+      {
+        "claim": "business_theory_aligned_learned_rollout_beats_static_proxy_baseline",
+        "scope": "business_theory_aligned_proxy_package_not_observed_policy_outcome",
+        "claim_level": "exploratory_only",
+        "allowed_in_report": false,
+        "policy_outcome_claim": false,
+        "spatial_attribution_claim": false
+      }
+    ],
+    "forbidden_claims": [
+      "observed_policy_outcome_superiority",
+      "spatial_attribution_for_tap_external_transition",
+      "overall_empirical_policy_superiority"
+    ],
+    "remaining_gates": [
+      "observed_policy_outcome_required",
+      "scene_aligned_station_calibrated_air_quality_holdout_required",
+      "causal_policy_effect_validation_required",
+      "external_observed_holdout_required",
+      "synthetic_proxy_boundary_must_remain_visible"
+    ],
+    "next_actions": [
+      "complete_world_model_evidence_readiness_section",
+      "collect_observed_policy_outcome_validation_data",
+      "build_scene_aligned_station_calibrated_air_quality_holdout",
+      "design_causal_policy_effect_validation"
+    ]
+  }
+}

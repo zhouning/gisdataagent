@@ -1,0 +1,2 @@
+source_dataset,source_field,target_template,target_field,required_level,transform_rule,owner_note
+raw_spatial_unit_export,JD_ID,urban_spatial_unit_inventory_template.csv,unit_id,必需,alias_or_copy_as_string,街镇或空间单元编号映射

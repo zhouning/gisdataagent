@@ -1,0 +1,2 @@
+service_id,service_name,service_type,service_level,unit_id,geometry_reference,capacity,opening_status,service_radius_m,source_system,source_version,sensitivity_level,synthetic,not_for_production,notes
+SVC-001,脱敏社区服务设施001,community_service,neighborhood,SH-U-001,inner-network-reference,500,existing,800,public_service_facility_system,2026-v1,internal,false,false,no raw coordinates exported outside authorized environment

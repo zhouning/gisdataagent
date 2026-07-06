@@ -15,9 +15,10 @@ TAP status update on 2026-07-06: local TAP PM2.5 package is now parsed and regis
 from TAP-pending to TAP gridded available and supports a bounded gridded temporal
 state-prediction benchmark. It does not close the observed policy outcome gate because TAP is
 a multisource gridded product, not a station-observed intervention outcome.
-The TAP external dynamics holdout is now also registered, but it is a negative transition-layer
-gate: current spatial ridge does not beat the adaptive non-spatial online baseline, so it is
-`not_for_claim` and points to the next UWM dynamics iteration.
+The TAP external dynamics holdout is now also registered as a bounded transition-layer
+gate: residual-delta transition ridge slightly beats the adaptive non-spatial online baseline
+(MAE 7.003808 vs 7.011689; paired win rate 0.5077), but neighbor shuffle is not worse,
+so it supports only temporal transition improvement, not spatial attribution or policy-outcome superiority.
 
 UWM 已经形成可运行的世界模型链条：
 
@@ -50,7 +51,7 @@ UWM planner 在真实政策 outcome 上优于传统方法。
 | Roadmap 模块 | 当前状态 | 已完成事实 | 不能过度宣称 |
 | --- | --- | --- | --- |
 | UWM 契约层 | 已完成 v0 | `UwmCanonicalObservation.v1`、`UwmRolloutTrace.v1`、`UwmPlanPackage.v1` 和 MMFE state input 已有测试 | 只是契约可运行，不等于实证有效 |
-| Data foundation manifest | 已完成 v0，持续扩展 | manifest 66 行；核心角色不缺项；新增本地区县人口统计、联通职住通勤、百度搜索指数、历史文化街区、璧山 DLTB/台账/边界、村规数据库、CHAP PM2.5、NOAA ISD 观测气象、OSM complete bbox 服务/道路抽取、UWM fitted 人口下推和联通潜在通勤图、learned rollout planner、graph-aware world model、synthetic policy outcome scaffold、livability intervention package、data-foundation evidence gate、TAP-like PM2.5 v2、TAP observed gridded PM2.5、TAP external dynamics no-claim gate；来源、synthetic/proxy、claim boundary 可审计 | claim ceiling 仍为 `fragile` |
+| Data foundation manifest | 已完成 v0，持续扩展 | manifest 66 行；核心角色不缺项；新增本地区县人口统计、联通职住通勤、百度搜索指数、历史文化街区、璧山 DLTB/台账/边界、村规数据库、CHAP PM2.5、NOAA ISD 观测气象、OSM complete bbox 服务/道路抽取、UWM fitted 人口下推和联通潜在通勤图、learned rollout planner、graph-aware world model、synthetic policy outcome scaffold、livability intervention package、data-foundation evidence gate、TAP-like PM2.5 v2、TAP observed gridded PM2.5、TAP external dynamics bounded transition gate；来源、synthetic/proxy、claim boundary 可审计 | claim ceiling 仍为 `fragile` |
 | Renderer | 已完成 v0 | 可把 MMFE state input 转成 canonical observation，并保留 trace、claim boundary、proxy flags | 不是完整城市数字孪生 |
 | Scene state | 已完成 v0 | 可把 GHSL、Open-Meteo、GEE/CAMS、OpenAQ 等证据转为 simulator controls | 部分环境仍是 point/representative-point proxy |
 | Simulator | 已完成 known-effect v0 | action-conditioned rollout、邻接溢出、情景控制、negative control 已实现 | 参数还不是 data-calibrated mechanism table |
@@ -61,9 +62,9 @@ UWM planner 在真实政策 outcome 上优于传统方法。
 | Learned world-model rollout planner | 已完成 v0 | 使用同一个 action-conditioned reward+dynamics model 做 2-step imagined rollout，逐步写回 latent state；selected sequence 为 `increase_green_infrastructure-江北区|观音桥街道|653` -> `add_community_service-九龙坡区|谢家湾街道|785`；imagined conservative score 0.011528613 vs static 0.00124898 and one-step learned policy 0.002012933 | 这是 learned dynamics imagination 上的规划优势，不是真实政策 outcome，也不是在线 PPO |
 | Graph-aware world model | 已完成 v0 | 在 36 个空间候选单元和 96 条行政邻接边上训练 graph-aware action-conditioned reward+dynamics model；holdout reward MAE 0.000103937 vs target-only baseline 0.000844982 vs train-mean baseline 0.002418188；reward win rate vs target-only = 0.957746479 | 证明的是 prepared spatial Graph-MDP replay holdout 上的 graph-aware dynamics 优势，不是真实政策 outcome |
 | Livability intervention package | 已完成 v0 | 把 low-livability area identification、mechanism explanation、intervention suitability map、multi-step action sequence、before/after indicator deltas、equity conclusion 和 evidence boundary 组织成证据门控方案包；综合 deltas 为 heat -1.027807246、air -0.411081019、service +0.965080014、equity +0.552991953、livability +0.786721588；supported proxy claim 为 `business_theory_aligned_learned_rollout_beats_static_proxy_baseline` | 依赖 learned rollout、synthetic policy outcome 和 TAP-like PM2.5 v2；只能作 exploratory/proxy 方案，不是 observed intervention outcome |
-| Data-foundation evidence gate | 已完成 v0 | 读取完整 UWM 数据基础和实际产物，不限于 `real` 标签；接受 real/public_proxy/fitted_proxy/semi_synthetic/synthetic/restricted_expected，但按 claim boundary 分层。OpenAQ observed temporal holdout：600 observations、180 holdout、150 wins、win rate 0.833333、PM2.5 dynamic MAE 2.4 vs best static 9.466667 | 只允许声明 observed temporal state prediction 强于传统静态 baseline；observed policy outcome superiority 仍为 false |
+| Data-foundation evidence gate | 已完成 v1 | 读取完整 UWM 数据基础和实际产物，不限于 `real` 标签；接受 real/public_proxy/fitted_proxy/semi_synthetic/synthetic/restricted_expected，但按 claim boundary 分层。OpenAQ observed temporal holdout：600 observations、180 holdout、150 wins、win rate 0.833333、PM2.5 dynamic MAE 2.4 vs best static 9.466667；TAP external transition：40,000 holdout、residual-delta MAE 7.003808 vs adaptive online 7.011689、paired win rate 0.5077 | 只允许声明 observed temporal state prediction 和 TAP external temporal transition 优于相应传统/动态基线；observed policy outcome superiority 仍为 false |
 | OpenAQ observed temporal validation | 已完成当前最强实证切片 | 6 个污染物全部击败 `static_train_mean` 和 `static_last_train_observation`；sign test 显著；时间顺序负控通过 | 只证明状态预测层，不证明政策 outcome |
-| TAP external spatiotemporal dynamics validation | 已完成 transition gate v0 | 10,000 grid series / 40,000 holdout points；future leakage guard 通过；spatial ridge MAE 16.653886，adaptive online dynamic baseline MAE 7.011689，paired win rate 0.18865 | 当前不支持空间消息优于非空间动态基线；supported claim 为 `no_tap_external_dynamics_advantage_claim_supported` |
+| TAP external spatiotemporal dynamics validation | 已完成 transition gate v1 | 10,000 grid series / 40,000 holdout points；future leakage guard 通过；residual-delta transition ridge MAE 7.003808 vs adaptive online dynamic baseline 7.011689；paired win rate 0.5077；时间顺序旋转负控变差 1.585932 MAE | 支持 `tap_external_temporal_dynamics_advantage_without_spatial_claim`；neighbor shuffle 不变差，因此不支持空间归因或政策 outcome 优越性 |
 | Track 2 readiness | 部分完成 | 数据说明、代码、AI 协作记录已具备；readiness gate 可机器判定边界 | 完整初评研究报告仍未完成 |
 | 真实政策 outcome / 因果验证 | 未完成 | 当前只记录为 gate/blocker | 不得宣称真实政策效果优于传统方法 |
 
@@ -75,7 +76,7 @@ UWM planner 在真实政策 outcome 上优于传统方法。
 | --- | ---: | --- |
 | manifest rows | 66 | 当前 UWM 数据基础登记行数 |
 | real | 18 个 manifest 条目 | 本地/项目已有真实资产或论文资产；这里统计的是资产登记条目，不是要素/记录数量 |
-| public_proxy | 39 | 公开下载、API、GEE、OSM、GHSL、OpenAQ、Open-Meteo、CHAP、NOAA ISD、Graph-MDP proxy search、offline value model、offline world-model policy、learned rollout planner、graph-aware world model、data-foundation evidence gate、TAP external dynamics no-claim gate 等代理/证据门控产物 |
+| public_proxy | 39 | 公开下载、API、GEE、OSM、GHSL、OpenAQ、Open-Meteo、CHAP、NOAA ISD、Graph-MDP proxy search、offline value model、offline world-model policy、learned rollout planner、graph-aware world model、data-foundation evidence gate、TAP external dynamics bounded transition gate 等代理/证据门控产物 |
 | fitted_proxy | 2 | 本轮由真实/代理输入拟合生成的人口总量守恒下推层和联通潜在通勤图；只作 simulator/planner scaffold |
 | restricted_expected | 1 | 保留 TAP 账号/授权跟踪历史行；真实 TAP 本地包已另登记为 public_proxy |
 | semi_synthetic | 3 | EPA Green Book policy-structure benchmark；scene-aligned PM2.5 半合成压力测试面板；CHAP 锚定 TAP-like PM2.5 v2 |
@@ -173,7 +174,7 @@ empirical_superiority_blockers = [air_pollution_exposure]
 | Learned world-model rollout planner report | spatial Graph-MDP replay | action-conditioned reward+dynamics model + 2-step imagined rollout；selected sequence 为 `increase_green_infrastructure-江北区|观音桥街道|653` -> `add_community_service-九龙坡区|谢家湾街道|785`；imagined conservative score 0.011528613 vs static 0.00124898 and one-step learned policy 0.002012933 | offline world model / learned rollout planner / policy improvement | 只证明 learned dynamics imagination 上的多步规划优势，不是真实政策 outcome |
 | Graph-aware world model report | spatial Graph-MDP replay + admin adjacency | 使用 target features + neighbor means + target-neighbor contrasts + action-neighborhood pressure 训练空间感知 action-conditioned dynamics；reward MAE 0.000103937，target-only baseline 0.000844982，train-mean baseline 0.002418188 | graph-aware dynamics / offline world model / spatial planner scaffold | 只证明 spatial replay holdout 上 graph-aware model 优于 target-only baseline，不是真实政策 outcome |
 | Livability intervention package | spatial Graph-MDP replay + learned rollout + synthetic outcome scaffold + TAP-like PM2.5 v2 | 证据门控城市干预方案包；识别低宜居单元、解释机制、给出干预适宜性、多步 action sequence、前后指标 delta、公平性结论和证据边界；claim boundary 为 `exploratory_only` | livability intervention package / planner output / evidence gate | 不是 observed intervention outcome；不能解除真实政策 outcome gate |
-| Data-foundation evidence gate | 完整 UWM manifest + OpenAQ observed benchmark + local planning inventory + admin graph + learned rollout + intervention package | 接受完整数据基础的各类资产并分层；observed state prediction superiority = true；observed policy outcome superiority = false；synthetic/proxy boundary 显式保留 | data foundation / evidence gate / claim boundary | 证明的是真实 OpenAQ 时间状态预测优于静态 baseline，不是政策干预 outcome |
+| Data-foundation evidence gate | 完整 UWM manifest + OpenAQ observed benchmark + TAP external dynamics + local planning inventory + admin graph + learned rollout + intervention package | 接受完整数据基础的各类资产并分层；observed state prediction superiority = true；external temporal transition superiority = true；observed policy outcome superiority = false；synthetic/proxy boundary 显式保留 | data foundation / evidence gate / claim boundary | 证明的是真实 OpenAQ 时间状态预测优于静态 baseline、TAP external residual-delta transition 优于 adaptive dynamic baseline；不是政策干预 outcome |
 | UWM fitted population downscaling | 本地区县人口统计 + GHSL admin alignment | 852 fitted rows；3290.08 万输入人口 = 3290.08 万输出人口；845 个 GHSL 权重乡镇/街道行 + 7 个区县 fallback 行 | population_vulnerability / planner scaffold | fitted_proxy，不是乡镇/街道人口普查、格网人口或 2024 场景人口 |
 | UWM Unicom latent mobility graph | 本地联通职住通勤 CSV 聚合 | 1,067 directed edges；756 nodes；expanded population 29,634.796667；work_grid=0 权重 12,933.005191 | mobility_activity / simulator_context | fitted_proxy；缺格网几何字典，不是空间 OD 面、travel-time surface 或交通流 |
 
@@ -182,7 +183,7 @@ empirical_superiority_blockers = [air_pollution_exposure]
 | 数据 | 当前状态 | 下一步 | 边界 |
 | --- | --- | --- | --- |
 | TAP observed gridded PM2.5 | 本地包 `/Users/zhouning/Downloads/tap_uwm` 已解析并登记为 `tap_pm25_observed_gridded_chongqing_2018_2024` | 1km PM2.5 rows = 9,451,218；valid rows = 9,422,882；10km species rows = 23,746；gridded temporal benchmark 支撑 bounded state-prediction claim | TAP 是多源融合格网产品，不是 station observation 或 observed intervention outcome |
-| TAP external spatiotemporal dynamics holdout | 同一 TAP 本地包派生 | 10,000 grid series / 40,000 holdout；spatial ridge MAE 16.653886 vs adaptive online dynamic MAE 7.011689；future leakage guard passed；supported claim = no claim | transition-layer negative evidence；不支持空间动态优势，不替代 station/policy outcome holdout |
+| TAP external spatiotemporal dynamics holdout | 同一 TAP 本地包派生 | 10,000 grid series / 40,000 holdout；residual-delta transition ridge MAE 7.003808 vs adaptive online dynamic MAE 7.011689；future leakage guard passed；supported claim = `tap_external_temporal_dynamics_advantage_without_spatial_claim` | bounded temporal transition evidence；neighbor shuffle 不支持空间归因，不替代 station/policy outcome holdout |
 
 ### 4.3 API 可达但不能当 holdout 的数据
 
@@ -219,7 +220,7 @@ empirical_superiority_blockers = [air_pollution_exposure]
 | remote_sensing_state | 有 | CLCD、AlphaEarth/Paper58、GHSL | 仍缺更完整城市遥感状态栅格链 |
 | heat_exposure | 有 | DEM、Paper6 UHI、admin panel | 仍缺全城长期热暴露 observed holdout |
 | meteorology | proxy_available + observed station | ERA5/Open-Meteo/GEE admin representative point/GEE candidate zonal proxy；NOAA ISD 江北站 2024-07 观测 | 硬 blocker 已解除；仍缺全城格网/面状气象校准 |
-| air_pollution_exposure | proxy_available | CAMS/Open-Meteo/OpenAQ/CHAP/TAP/GEE admin representative point/GEE candidate zonal proxy；TAP gridded PM2.5 已解析可用；TAP external dynamics no-claim gate 已登记 | 仍是 empirical blocker：OpenAQ 2024-07 attempt 为 0 measurements，TAP 是多源融合格网产品，当前 TAP external dynamics 不支持空间消息优势，缺 station-calibrated/policy outcome holdout |
+| air_pollution_exposure | proxy_available | CAMS/Open-Meteo/OpenAQ/CHAP/TAP/GEE admin representative point/GEE candidate zonal proxy；TAP gridded PM2.5 已解析可用；TAP external dynamics bounded transition gate 已登记 | 仍是 empirical blocker：OpenAQ 2024-07 attempt 为 0 measurements，TAP 是多源融合格网产品，TAP external dynamics 当前只支持 temporal transition improvement，不支持空间消息归因优势，缺 station-calibrated/policy outcome holdout |
 | population_vulnerability | usable_real + proxy_available + fitted_proxy | 本地区县人口统计 2021；GHSL admin alignment；UWM fitted population downscaling；WorldPop metadata downloaded but population raster not downloaded | 仍缺乡镇/街道级权威人口、脆弱人群细分和 2024 场景人口；WorldPop 旧 100m 中国 GeoTIFF 约 4.98GB、Global2 raster zip 约 5.2GB，均未下载 |
 | service_accessibility | proxy_available | Gaode/Baidu local + OSM 200 点历史样本 + OSM complete bbox service extract | 仍缺全市完整 POI、权威服务目录和 network travel-time accessibility surface |
 | mobility_graph / mobility_activity | 有基础 + 新增真实活动表 + fitted_proxy | local roads、OSM complete bbox highway topology、联通职住通勤、百度搜索指数、UWM Unicom latent mobility graph | 缺格网几何字典、真实出行时间、交通流和网络阻抗；搜索指数不是出行观测；latent graph 不是空间 OD 面 |
@@ -260,6 +261,7 @@ livability intervention package supported claim = business_theory_aligned_learne
 livability intervention package claim boundary = exploratory_only
 livability intervention package predicted deltas = heat -1.027807246; air -0.411081019; service +0.965080014; equity +0.552991953; livability +0.786721588
 data-foundation evidence gate observed state prediction superiority = true
+data-foundation evidence gate external temporal transition superiority = true
 data-foundation evidence gate observed policy outcome superiority = false
 TAP observed gridded temporal benchmark series = 10000
 TAP observed gridded temporal benchmark holdout = 40000
@@ -268,10 +270,11 @@ TAP best static MAE = 9.309192
 TAP dynamic MAE reduction vs static = 2.297503
 TAP external dynamics holdout series = 10000
 TAP external dynamics holdout points = 40000
-TAP external spatial ridge MAE = 16.653886
+TAP external best method = spatial_residual_delta_ridge
+TAP external residual-delta transition MAE = 7.003808
 TAP external adaptive online dynamic baseline MAE = 7.011689
-TAP external paired win rate vs best non-spatial dynamic = 0.18865
-TAP external supported claim = no_tap_external_dynamics_advantage_claim_supported
+TAP external paired win rate vs best non-spatial dynamic = 0.5077
+TAP external supported claim = tap_external_temporal_dynamics_advantage_without_spatial_claim
 TAP-like PM2.5 v2 records = 6048
 TAP-like PM2.5 v2 CHAP anchor max abs error = 0.0
 TAP-like PM2.5 v2 PM2.5 mean = 16.433

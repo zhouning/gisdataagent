@@ -1,0 +1,2 @@
+constraint_id,constraint_name,constraint_type,severity,allowed_actions,blocked_actions,effective_date,version,admin_code,source_system,source_path_or_reference,synthetic,not_for_production
+CON-001,城市更新单元脱敏别名,urban_renewal_unit,requires_review,"increase_green_infrastructure;public_space_improvement","",2025-01-01,CON-2025-A,310000,planning_constraint_system,inner-network-reference,false,false

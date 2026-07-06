@@ -1,0 +1,2 @@
+observation_id,unit_id,station_or_grid_id,observation_type,observed_value,unit,observed_time,quality_flag,source_system,source_version,spatial_support,synthetic,not_for_production,source_path_or_reference
+ENV-001,SH-U-001,GRID-001,pm25,24.5,ug_m3,2025-07-01T10:00:00,valid,environment_monitoring_system,2025-v1,grid,false,false,inner-network-source-or-desensitized-reference

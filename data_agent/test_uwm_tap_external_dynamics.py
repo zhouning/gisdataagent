@@ -31,6 +31,8 @@ def test_spatial_message_model_beats_static_and_non_spatial_baselines(tmp_path):
 
     overall = report["overall_results"]
     assert overall["best_spatial_method"] == "spatial_message_ridge"
+    assert "spatial_message_ridge" in report["spatial_world_model_results"]
+    assert "spatial_residual_delta_ridge" in report["spatial_world_model_results"]
     assert overall["best_spatial_mae"] < overall["best_traditional_static_mae"]
     assert overall["best_spatial_mae"] < overall["best_non_spatial_dynamic_mae"]
     assert overall["paired_win_rate_vs_best_non_spatial_dynamic"] > 0.5
@@ -43,6 +45,32 @@ def test_spatial_message_model_beats_static_and_non_spatial_baselines(tmp_path):
         "tap_external_spatiotemporal_dynamics_advantage_over_static_and_non_spatial_baselines"
     )
     assert report["claim_boundary"]["max_claim_level"] == "bounded_support"
+
+
+def test_residual_delta_model_beats_direct_spatial_and_dynamic_when_velocity_matters(tmp_path):
+    tap_root = _write_spatial_residual_delta_fixture(tmp_path)
+
+    report = build_tap_external_dynamics_report(
+        tap_root=tap_root,
+        model_id="tap-external-dynamics-residual-delta-fixture",
+        created_at="2026-07-06T02:00:00Z",
+        train_days=5,
+        max_grid_series_per_period=4,
+        neighbor_count=2,
+        ridge=0.001,
+        residual_delta_ridge=0.1,
+        residual_delta_correction_clip=2.0,
+    )
+
+    residual = report["spatial_world_model_results"]["spatial_residual_delta_ridge"]
+    direct = report["spatial_world_model_results"]["spatial_message_ridge"]
+    overall = report["overall_results"]
+    assert residual["case_count"] == 16
+    assert residual["mae"] < direct["mae"]
+    assert residual["mae"] < overall["best_non_spatial_dynamic_mae"]
+    assert residual["paired_win_rate_vs_best_non_spatial_dynamic"] > 0.5
+    assert overall["best_spatial_method"] == "spatial_residual_delta_ridge"
+    assert overall["best_spatial_mae"] == residual["mae"]
 
 
 def test_spatial_claim_downgrades_when_neighbors_do_not_help(tmp_path):
@@ -145,6 +173,23 @@ def _write_spatial_diffusion_fixture(tmp_path: Path) -> Path:
             "186": ["30", "10", "10", "30"],
             "187": ["10", "30", "30", "10"],
             "188": ["30", "10", "10", "30"],
+        },
+    )
+
+
+def _write_spatial_residual_delta_fixture(tmp_path: Path) -> Path:
+    return _write_fixture(
+        tmp_path,
+        values_by_doy={
+            "183": ["20", "20", "20", "20"],
+            "184": ["18", "22", "18", "22"],
+            "185": ["20", "20", "20", "20"],
+            "186": ["22", "18", "22", "18"],
+            "187": ["20", "20", "20", "20"],
+            "188": ["18", "22", "18", "22"],
+            "189": ["20", "20", "20", "20"],
+            "190": ["22", "18", "22", "18"],
+            "191": ["20", "20", "20", "20"],
         },
     )
 
