@@ -44,25 +44,25 @@
     }
   },
   "benchmark_summary": {
-    "series_count": 500,
-    "holdout_count": 2000,
+    "series_count": 10000,
+    "holdout_count": 40000,
     "best_uwm_method": "adaptive_online_state_update",
     "best_static_baseline_method": "static_train_mean",
     "uwm_mae_by_method": {
-      "online_persistence_state_update": 7.03275,
-      "adaptive_online_state_update": 6.556565
+      "online_persistence_state_update": 7.52508,
+      "adaptive_online_state_update": 7.01169
     },
     "static_baseline_mae_by_method": {
-      "static_train_mean": 9.255467,
-      "static_last_train_observation": 10.0527,
-      "period_static_mean": 9.404623
+      "static_train_mean": 9.309192,
+      "static_last_train_observation": 10.625137,
+      "period_static_mean": 9.331763
     },
-    "best_uwm_mae": 6.556565,
-    "best_static_baseline_mae": 9.255467,
-    "best_uwm_mae_reduction": 2.698902,
+    "best_uwm_mae": 7.01169,
+    "best_static_baseline_mae": 9.309192,
+    "best_uwm_mae_reduction": 2.297502,
     "beats_all_traditional_static_baselines": true,
-    "series_beats_all_traditional_static_baselines_count": 296,
-    "series_beats_all_traditional_static_baselines_rate": 0.592
+    "series_beats_all_traditional_static_baselines_count": 6318,
+    "series_beats_all_traditional_static_baselines_rate": 0.6318
   },
   "claim_boundary": {
     "max_claim_level": "bounded_support",
