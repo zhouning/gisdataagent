@@ -165,11 +165,13 @@ def _benchmark_series(
         "uwm_state_updates": {
             "online_persistence_state_update": {
                 "mae": _round(online_mae),
+                "errors": online_errors,
                 "uses_prior_holdout_observations_online": True,
                 "uses_current_or_future_holdout_labels": False,
             },
             "adaptive_online_state_update": {
                 "mae": _round(adaptive_mae),
+                "errors": adaptive_errors,
                 "alpha": 0.7,
                 "uses_prior_holdout_observations_online": True,
                 "uses_current_or_future_holdout_labels": False,
@@ -188,16 +190,28 @@ def _benchmark_series(
 
 def _period_result(period_id: str, series_results: list[dict[str, Any]]) -> dict[str, Any]:
     holdout_count = sum(row["holdout_count"] for row in series_results)
-    best_uwm_errors = [row["best_uwm_mae"] for row in series_results]
-    best_static_errors = [row["best_traditional_static_baseline"]["mae"] for row in series_results]
+    method_maes = _aggregate_method_maes(series_results)
+    best_uwm_method = min(UWM_STATE_UPDATE_SUITE, key=lambda method: method_maes["uwm"][method]) if series_results else ""
+    best_static_method = min(TRADITIONAL_STATIC_BASELINE_SUITE, key=lambda method: method_maes["static"][method]) if series_results else ""
+    best_uwm_mae = method_maes["uwm"].get(best_uwm_method)
+    best_static_mae = method_maes["static"].get(best_static_method)
+    series_beats_count = len([row for row in series_results if row["beats_all_traditional_static_baselines"]])
     return {
         "period_id": period_id,
         "series_count": len(series_results),
         "holdout_count": holdout_count,
         "series_results": series_results,
-        "best_uwm_mae": _round(fmean(best_uwm_errors)) if best_uwm_errors else None,
-        "best_static_baseline_mae": _round(fmean(best_static_errors)) if best_static_errors else None,
-        "beats_all_traditional_static_baselines": bool(series_results) and all(row["beats_all_traditional_static_baselines"] for row in series_results),
+        "uwm_mae_by_method": method_maes["uwm"],
+        "static_baseline_mae_by_method": method_maes["static"],
+        "best_uwm_method": best_uwm_method,
+        "best_static_baseline_method": best_static_method,
+        "best_uwm_mae": best_uwm_mae,
+        "best_static_baseline_mae": best_static_mae,
+        "best_uwm_mae_reduction": _round(best_static_mae - best_uwm_mae) if best_uwm_mae is not None and best_static_mae is not None else None,
+        "beats_all_traditional_static_baselines": bool(series_results)
+        and all(best_uwm_mae < method_mae for method_mae in method_maes["static"].values()),
+        "series_beats_all_traditional_static_baselines_count": series_beats_count,
+        "series_beats_all_traditional_static_baselines_rate": _round(series_beats_count / len(series_results)) if series_results else 0.0,
     }
 
 
@@ -222,22 +236,40 @@ def _baseline_suite(train_values: list[float], holdout_values: list[float], peri
 
 def _overall_results(period_results: list[dict[str, Any]]) -> dict[str, Any]:
     series_results = [series for period in period_results for series in period["series_results"]]
-    best_uwm_method_counts: dict[str, int] = defaultdict(int)
-    for series in series_results:
-        best_uwm_method_counts[series["best_uwm_method"]] += 1
-    best_method = max(best_uwm_method_counts, key=best_uwm_method_counts.get) if best_uwm_method_counts else ""
-    best_uwm_maes = [series["best_uwm_mae"] for series in series_results]
-    best_static_maes = [series["best_traditional_static_baseline"]["mae"] for series in series_results]
-    best_uwm_mae = _round(fmean(best_uwm_maes)) if best_uwm_maes else None
-    best_static_mae = _round(fmean(best_static_maes)) if best_static_maes else None
+    method_maes = _aggregate_method_maes(series_results)
+    best_method = min(UWM_STATE_UPDATE_SUITE, key=lambda method: method_maes["uwm"][method]) if series_results else ""
+    best_static_method = min(TRADITIONAL_STATIC_BASELINE_SUITE, key=lambda method: method_maes["static"][method]) if series_results else ""
+    best_uwm_mae = method_maes["uwm"].get(best_method)
+    best_static_mae = method_maes["static"].get(best_static_method)
+    series_beats_count = len([series for series in series_results if series["beats_all_traditional_static_baselines"]])
     return {
         "series_count": len(series_results),
         "holdout_count": sum(series["holdout_count"] for series in series_results),
         "best_uwm_method": best_method,
+        "best_static_baseline_method": best_static_method,
+        "uwm_mae_by_method": method_maes["uwm"],
+        "static_baseline_mae_by_method": method_maes["static"],
         "best_uwm_mae": best_uwm_mae,
         "best_static_baseline_mae": best_static_mae,
         "best_uwm_mae_reduction": _round(best_static_mae - best_uwm_mae) if best_uwm_mae is not None and best_static_mae is not None else None,
-        "beats_all_traditional_static_baselines": bool(series_results) and all(series["beats_all_traditional_static_baselines"] for series in series_results),
+        "beats_all_traditional_static_baselines": bool(series_results)
+        and all(best_uwm_mae < method_mae for method_mae in method_maes["static"].values()),
+        "series_beats_all_traditional_static_baselines_count": series_beats_count,
+        "series_beats_all_traditional_static_baselines_rate": _round(series_beats_count / len(series_results)) if series_results else 0.0,
+    }
+
+
+def _aggregate_method_maes(series_results: list[dict[str, Any]]) -> dict[str, dict[str, float]]:
+    uwm_errors = {method: [] for method in UWM_STATE_UPDATE_SUITE}
+    static_errors = {method: [] for method in TRADITIONAL_STATIC_BASELINE_SUITE}
+    for series in series_results:
+        for method in UWM_STATE_UPDATE_SUITE:
+            uwm_errors[method].extend(series["uwm_state_updates"][method]["errors"])
+        for method in TRADITIONAL_STATIC_BASELINE_SUITE:
+            static_errors[method].extend(series["traditional_static_baseline_suite"][method]["errors"])
+    return {
+        "uwm": {method: _round(_mean(errors)) for method, errors in uwm_errors.items()},
+        "static": {method: _round(_mean(errors)) for method, errors in static_errors.items()},
     }
 
 

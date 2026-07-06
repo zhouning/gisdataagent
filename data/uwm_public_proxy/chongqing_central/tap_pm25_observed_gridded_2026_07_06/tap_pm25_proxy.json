@@ -1,0 +1,359 @@
+{
+  "schema": "uwm.tap_pm25_proxy.v1",
+  "version": "0.1",
+  "proxy_id": "uwm-tap-pm25-observed-gridded-chongqing-2018-2024",
+  "created_at": "2026-07-06T00:00:00Z",
+  "source_dataset_ids": [
+    "tap_pm25_observed_gridded_chongqing_2018_2024"
+  ],
+  "source_root": "/Users/zhouning/Downloads/tap_uwm",
+  "periods_1km": [
+    {
+      "period_id": "chongqing_pm25_2018_10_17_23",
+      "year": "2018",
+      "doy_values": [
+        "290",
+        "291",
+        "292",
+        "293",
+        "294",
+        "295",
+        "296"
+      ],
+      "tile_ids": [
+        "074",
+        "075",
+        "076",
+        "095",
+        "096",
+        "097"
+      ],
+      "pm_file_count": 42,
+      "tile_lonlat_file_count": 6,
+      "pm_total_rows": 4725609,
+      "pm_missing_values": 14168,
+      "pm_row_count_min": 110823,
+      "pm_row_count_max": 114209,
+      "join_missing_row_count": 0,
+      "pm25_summary": {
+        "count": 4711441,
+        "min": 1.0,
+        "max": 87.0,
+        "mean": 20.999021
+      },
+      "joined_extent": {
+        "lon_min": 103.001,
+        "lon_max": 111.999,
+        "lat_min": 26.7042,
+        "lat_max": 32.6958
+      },
+      "tile_extents": {
+        "074": {
+          "rows": 114203,
+          "lon_min": 103.001,
+          "lon_max": 106.0,
+          "lat_min": 26.7042,
+          "lat_max": 29.6958
+        },
+        "075": {
+          "rows": 114167,
+          "lon_min": 106.001,
+          "lon_max": 108.999,
+          "lat_min": 26.7042,
+          "lat_max": 29.6958
+        },
+        "076": {
+          "rows": 114209,
+          "lon_min": 109.0,
+          "lon_max": 111.999,
+          "lat_min": 26.7042,
+          "lat_max": 29.6958
+        },
+        "095": {
+          "rows": 110823,
+          "lon_min": 103.001,
+          "lon_max": 106.0,
+          "lat_min": 29.7042,
+          "lat_max": 32.6958
+        },
+        "096": {
+          "rows": 110835,
+          "lon_min": 106.0,
+          "lon_max": 108.999,
+          "lat_min": 29.7042,
+          "lat_max": 32.6958
+        },
+        "097": {
+          "rows": 110850,
+          "lon_min": 109.0,
+          "lon_max": 111.999,
+          "lat_min": 29.7042,
+          "lat_max": 32.6958
+        }
+      }
+    },
+    {
+      "period_id": "chongqing_pm25_2024_07_01_07",
+      "year": "2024",
+      "doy_values": [
+        "183",
+        "184",
+        "185",
+        "186",
+        "187",
+        "188",
+        "189"
+      ],
+      "tile_ids": [
+        "074",
+        "075",
+        "076",
+        "095",
+        "096",
+        "097"
+      ],
+      "pm_file_count": 42,
+      "tile_lonlat_file_count": 6,
+      "pm_total_rows": 4725609,
+      "pm_missing_values": 14168,
+      "pm_row_count_min": 110823,
+      "pm_row_count_max": 114209,
+      "join_missing_row_count": 0,
+      "pm25_summary": {
+        "count": 4711441,
+        "min": 1.0,
+        "max": 60.8,
+        "mean": 9.219774
+      },
+      "joined_extent": {
+        "lon_min": 103.001,
+        "lon_max": 111.999,
+        "lat_min": 26.7042,
+        "lat_max": 32.6958
+      },
+      "tile_extents": {
+        "074": {
+          "rows": 114203,
+          "lon_min": 103.001,
+          "lon_max": 106.0,
+          "lat_min": 26.7042,
+          "lat_max": 29.6958
+        },
+        "075": {
+          "rows": 114167,
+          "lon_min": 106.001,
+          "lon_max": 108.999,
+          "lat_min": 26.7042,
+          "lat_max": 29.6958
+        },
+        "076": {
+          "rows": 114209,
+          "lon_min": 109.0,
+          "lon_max": 111.999,
+          "lat_min": 26.7042,
+          "lat_max": 29.6958
+        },
+        "095": {
+          "rows": 110823,
+          "lon_min": 103.001,
+          "lon_max": 106.0,
+          "lat_min": 29.7042,
+          "lat_max": 32.6958
+        },
+        "096": {
+          "rows": 110835,
+          "lon_min": 106.0,
+          "lon_max": 108.999,
+          "lat_min": 29.7042,
+          "lat_max": 32.6958
+        },
+        "097": {
+          "rows": 110850,
+          "lon_min": 109.0,
+          "lon_max": 111.999,
+          "lat_min": 29.7042,
+          "lat_max": 32.6958
+        }
+      }
+    }
+  ],
+  "species_10km": {
+    "file_count": 31,
+    "date_values": [
+      "20240701",
+      "20240702",
+      "20240703",
+      "20240704",
+      "20240705",
+      "20240706",
+      "20240707",
+      "20240708",
+      "20240709",
+      "20240710",
+      "20240711",
+      "20240712",
+      "20240713",
+      "20240714",
+      "20240715",
+      "20240716",
+      "20240717",
+      "20240718",
+      "20240719",
+      "20240720",
+      "20240721",
+      "20240722",
+      "20240723",
+      "20240724",
+      "20240725",
+      "20240726",
+      "20240727",
+      "20240728",
+      "20240729",
+      "20240730",
+      "20240731"
+    ],
+    "record_count": 23746,
+    "fields": [
+      "GridID",
+      "X_Lon",
+      "Y_Lat",
+      "PM2.5",
+      "SO4",
+      "NO3",
+      "NH4",
+      "OM",
+      "BC"
+    ],
+    "overall_extent": {
+      "lon_min": 105.35,
+      "lon_max": 110.15,
+      "lat_min": 28.25,
+      "lat_max": 32.15
+    },
+    "overall_metrics": {
+      "PM2.5": {
+        "count": 23746,
+        "min": 1.0,
+        "max": 58.7,
+        "mean": 11.064832
+      },
+      "SO4": {
+        "count": 23746,
+        "min": 0.14,
+        "max": 11.67,
+        "mean": 2.228067
+      },
+      "NO3": {
+        "count": 23746,
+        "min": 0.09,
+        "max": 9.38,
+        "mean": 1.676161
+      },
+      "NH4": {
+        "count": 23746,
+        "min": 0.06,
+        "max": 8.36,
+        "mean": 1.281455
+      },
+      "OM": {
+        "count": 23746,
+        "min": 0.21,
+        "max": 18.12,
+        "mean": 3.445591
+      },
+      "BC": {
+        "count": 23746,
+        "min": 0.03,
+        "max": 3.72,
+        "mean": 0.676314
+      }
+    },
+    "first7_metrics": {
+      "PM2.5": {
+        "count": 5362,
+        "min": 1.0,
+        "max": 58.7,
+        "mean": 12.273853
+      },
+      "SO4": {
+        "count": 5362,
+        "min": 0.14,
+        "max": 11.67,
+        "mean": 2.564004
+      },
+      "NO3": {
+        "count": 5362,
+        "min": 0.09,
+        "max": 9.38,
+        "mean": 1.815265
+      },
+      "NH4": {
+        "count": 5362,
+        "min": 0.06,
+        "max": 8.36,
+        "mean": 1.389222
+      },
+      "OM": {
+        "count": 5362,
+        "min": 0.21,
+        "max": 18.12,
+        "mean": 3.769567
+      },
+      "BC": {
+        "count": 5362,
+        "min": 0.03,
+        "max": 3.72,
+        "mean": 0.75506
+      }
+    }
+  },
+  "record_counts": {
+    "periods_1km": 2,
+    "pm25_1km_rows": 9451218,
+    "valid_pm25_1km_rows": 9422882,
+    "species_10km_rows": 23746
+  },
+  "coverage": {
+    "spatial_projection": "EPSG:4326",
+    "grid_resolution": {
+      "pm25_1km": "1 km",
+      "species_10km": "10 km"
+    },
+    "pm25_1km_extent": {
+      "lon_min": 103.001,
+      "lon_max": 111.999,
+      "lat_min": 26.7042,
+      "lat_max": 32.6958
+    }
+  },
+  "summary": {
+    "pm25_1km": {
+      "count": 9422882,
+      "min": 1.0,
+      "max": 87.0,
+      "mean": 15.109397
+    },
+    "species_10km_pm25": {
+      "count": 23746,
+      "min": 1.0,
+      "max": 58.7,
+      "mean": 11.064832
+    }
+  },
+  "synthetic_flags": [
+    {
+      "dataset_id": "tap_pm25_observed_gridded_chongqing_2018_2024",
+      "status": "public_proxy"
+    }
+  ],
+  "claim_boundary": {
+    "max_claim_level": "bounded_support",
+    "reason": "TAP PM2.5 is a gridded multisource retrieval/fusion product suitable for bounded air-pollution exposure and temporal state-prediction evidence; it is not a station-observed policy intervention outcome."
+  },
+  "limitations": [
+    "tap_gridded_multisource_fusion_product_not_station_observation",
+    "not_policy_intervention_outcome",
+    "tap_terms_noncommercial_no_redistribution"
+  ],
+  "empirical_superiority_claim": false
+}
