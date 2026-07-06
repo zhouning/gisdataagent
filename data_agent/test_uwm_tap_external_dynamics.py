@@ -108,6 +108,33 @@ def test_external_dynamics_feature_rows_do_not_use_current_or_future_labels(tmp_
         assert int(row["max_feature_doy"]) < int(row["target_doy"])
 
 
+def test_external_dynamics_aggregates_paired_counts_across_periods(tmp_path):
+    first_root = _write_spatial_diffusion_fixture(tmp_path / "first")
+    second_root = _write_spatial_diffusion_fixture(tmp_path / "second")
+    tap_root = tmp_path / "combined_tap"
+    tap_root.mkdir()
+    for period_dir in first_root.iterdir():
+        period_dir.rename(tap_root / "chongqing_pm25_2024_07_01_07")
+    for period_dir in second_root.iterdir():
+        period_dir.rename(tap_root / "chongqing_pm25_2018_10_17_23")
+
+    report = build_tap_external_dynamics_report(
+        tap_root=tap_root,
+        model_id="tap-external-dynamics-two-period-fixture",
+        created_at="2026-07-06T02:00:00Z",
+        train_days=3,
+        max_grid_series_per_period=4,
+        neighbor_count=2,
+        ridge=0.001,
+    )
+
+    spatial = report["spatial_world_model_results"]["spatial_message_ridge"]
+    assert spatial["case_count"] == 24
+    assert spatial["paired_win_count_vs_best_non_spatial_dynamic"] == 24
+    assert spatial["paired_loss_count_vs_best_non_spatial_dynamic"] == 0
+    assert spatial["paired_tie_count_vs_best_non_spatial_dynamic"] == 0
+
+
 def _write_spatial_diffusion_fixture(tmp_path: Path) -> Path:
     return _write_fixture(
         tmp_path,

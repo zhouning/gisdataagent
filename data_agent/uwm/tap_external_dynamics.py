@@ -599,7 +599,8 @@ def _combine_overall(period_reports: list[dict[str, Any]]) -> dict[str, Any]:
         neighbor_shuffle["mae"] > best_spatial_mae
         and non_spatial_ablation["mae"] > best_spatial_mae
     )
-    spatial_result["paired_win_rate_vs_best_non_spatial_dynamic"] = _weighted_win_rate(period_reports)
+    paired_counts = _weighted_paired_counts(period_reports)
+    spatial_result.update(paired_counts)
     overall_results = {
         "best_spatial_method": "spatial_message_ridge",
         "best_traditional_static_method": best_traditional,
@@ -609,7 +610,7 @@ def _combine_overall(period_reports: list[dict[str, Any]]) -> dict[str, Any]:
         "best_non_spatial_dynamic_mae": best_non_spatial_mae,
         "spatial_mae_reduction_vs_best_static": _round(best_traditional_mae - best_spatial_mae),
         "spatial_mae_reduction_vs_best_non_spatial_dynamic": _round(best_non_spatial_mae - best_spatial_mae),
-        "paired_win_rate_vs_best_non_spatial_dynamic": spatial_result["paired_win_rate_vs_best_non_spatial_dynamic"],
+        "paired_win_rate_vs_best_non_spatial_dynamic": paired_counts["paired_win_rate_vs_best_non_spatial_dynamic"],
         "spatial_negative_control_passed": spatial_negative_control_passed,
     }
     return {
@@ -652,13 +653,20 @@ def _weighted_metric(period_reports: list[dict[str, Any]], path: list[str]) -> d
     return {"mae": _round(weighted_sum / case_count) if case_count else 0.0, "case_count": case_count, **merged}
 
 
-def _weighted_win_rate(period_reports: list[dict[str, Any]]) -> float:
-    wins = total = 0
+def _weighted_paired_counts(period_reports: list[dict[str, Any]]) -> dict[str, Any]:
+    wins = losses = ties = total = 0
     for report in period_reports:
         metric = report["spatial_world_model_results"]["spatial_message_ridge"]
         wins += int(metric.get("paired_win_count_vs_best_non_spatial_dynamic", 0))
+        losses += int(metric.get("paired_loss_count_vs_best_non_spatial_dynamic", 0))
+        ties += int(metric.get("paired_tie_count_vs_best_non_spatial_dynamic", 0))
         total += int(metric.get("case_count", 0))
-    return _round(wins / total) if total else 0.0
+    return {
+        "paired_win_count_vs_best_non_spatial_dynamic": wins,
+        "paired_loss_count_vs_best_non_spatial_dynamic": losses,
+        "paired_tie_count_vs_best_non_spatial_dynamic": ties,
+        "paired_win_rate_vs_best_non_spatial_dynamic": _round(wins / total) if total else 0.0,
+    }
 
 
 def _supported_claim(overall: dict[str, Any]) -> str:
