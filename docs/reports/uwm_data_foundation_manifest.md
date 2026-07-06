@@ -9,6 +9,11 @@ TAP status update on 2026-07-06: local TAP PM2.5 package is now parsed and regis
 from TAP-pending to TAP gridded available and supports a bounded gridded temporal
 state-prediction benchmark. It does not close the observed policy outcome gate because TAP is
 a multisource gridded product, not a station-observed intervention outcome.
+The TAP external spatiotemporal dynamics holdout is also registered as a transition-layer
+evidence gate. On 10,000 sampled grid series / 40,000 holdout points, the current spatial
+message ridge does not beat the adaptive non-spatial online baseline, so this artifact is
+`not_for_claim` and is used to constrain the next UWM dynamics iteration rather than to
+support a superiority claim.
 
 `uwm_data_foundation_manifest.csv` 是 UWM-Livability 的第一版数据基础清单。它用于约束后续 UWM 实现：没有进入 manifest、没有来源和 claim boundary 的数据，不应进入 renderer、simulator 或 planner。
 
@@ -34,7 +39,7 @@ a multisource gridded product, not a station-observed intervention outcome.
 - 本地 `xiangzhen.shp` 提取的重庆乡镇/街道行政单元；
 - Paper6 重庆 UHI 分析案例。
 
-本轮对“你提供的数据是不是只有 8 行”做了口径修正：`8` 是早期 manifest 中 `synthetic_status=real` 的资产组数量，不是数据量。2026-07-05 重新复核并加入 fitted gap filling、offline world-model policy、learned rollout planner、graph-aware world model、synthetic policy outcome scaffold、livability intervention package、data-foundation evidence gate 与 TAP-like PM2.5 v2 后，manifest 为 65 行，其中 `synthetic_status=real` 为 18 个资产组，`synthetic_status=fitted_proxy` 为 2 个资产组。已核对到的本地源规模包括：
+本轮对“你提供的数据是不是只有 8 行”做了口径修正：`8` 是早期 manifest 中 `synthetic_status=real` 的资产组数量，不是数据量。2026-07-05 重新复核并加入 fitted gap filling、offline world-model policy、learned rollout planner、graph-aware world model、synthetic policy outcome scaffold、livability intervention package、data-foundation evidence gate 与 TAP-like PM2.5 v2，2026-07-06 进一步加入 TAP observed gridded PM2.5 和 TAP external dynamics no-claim gate 后，manifest 为 66 行，其中 `synthetic_status=real` 为 18 个资产组，`synthetic_status=fitted_proxy` 为 2 个资产组。已核对到的本地源规模包括：
 
 - `/Users/zhouning/Downloads/规划院提供数据样例及Demo系统功能演示建议.zip`：447 MB 压缩包；解压后的 `01数据样例` 实扫 584 个文件，其中包含 FileGDB 内部文件；
 - 规划院 zip 中建筑轮廓 shapefile：按 `.shx` record index 推算为 107,452 条记录；
@@ -103,6 +108,7 @@ docs/reports/uwm_local_planning_zip_audit_2026-07-05.md
 - UWM semi-synthetic scene-aligned PM2.5 panel，当前基于 GEE/CAMS 2024 zonal PM2.5 空间基底和 OpenAQ 2018 真实 PM2.5 小时扰动结构生成 36 个候选行政单元 x 168 小时 = 6048 条记录；仅用于 stress test 和 negative control，不是 observed holdout；
 - 后续可补充 Sentinel、Landsat、MODIS、OpenAQ 等。
 - TAP Tracking Air Pollution in China 本地包已解析为 `tap_pm25_observed_gridded_chongqing_2018_2024`，包含 2018-10-17 至 2018-10-23 与 2024-07-01 至 2024-07-07 重庆 1km 日 PM2.5 栅格窗口，以及 2024-07 10km PM2.5 species 月包；它是 TAP 多源融合格网产品，不是站点观测或政策 outcome。
+- TAP external spatiotemporal dynamics holdout 已生成 `tap_pm25_external_spatiotemporal_dynamics_chongqing_2018_2024`：10,000 grid series / 40,000 holdout points，spatial ridge MAE 16.653886，adaptive online dynamic baseline MAE 7.011689，static train mean MAE 9.309192；未来标签泄漏检查通过，但非空间特征消融没有变差，因此 supported claim 为 `no_tap_external_dynamics_advantage_claim_supported`，claim boundary 为 `not_for_claim`。
 
 公开代理数据可以支持 bounded support，但不能在没有本地校准和证据门控的情况下升级为 core support。
 
@@ -190,7 +196,7 @@ docs/reports/uwm_data_foundation_coverage_audit.md
 
 ```text
 manifest_valid = true
-manifest_row_count = 65
+manifest_row_count = 66
 missing_required_roles = []
 claim_ceiling = fragile
 empirical_superiority_blockers = [
@@ -220,7 +226,7 @@ Open-Meteo historical weather 已下载 2018-10-17 至 2018-10-23 重庆中心�
 OpenAQ v3 已用运行时 X-API-Key 完成下载，key 未写入仓库；当前可用站点观测覆盖 2018-10-17 至 2021-08-09，不覆盖 2024-07 场景 holdout；本轮使用 scene datetime window 重新尝试 2024-07-01 至 2024-07-07，结果为 0 measurements；已派生 temporal state benchmark，但不能替代政策 outcome holdout；
 CHAP ChinaHighPM2.5 2024-07 月均 1km NetCDF 已下载并生成 `data/uwm_public_proxy/chongqing_central/chap_pm25_2024_07/chap_pm25_admin_proxy.json`；
 NOAA ISD 575160-99999 2024 文件与 station history 已下载并生成 `data/uwm_public_proxy/chongqing_central/noaa_isd_weather_2024_07_01_07/noaa_isd_weather_proxy.json`；
-TAP 本地包 `/Users/zhouning/Downloads/tap_uwm` 已解析为 gridded public_proxy artifact；账号/授权和 TAP 非商业不可再分发条款仍需合规跟踪，且该数据不替代 station-calibrated observed holdout 或政策 outcome；
+TAP 本地包 `/Users/zhouning/Downloads/tap_uwm` 已解析为 gridded public_proxy artifact；账号/授权和 TAP 非商业不可再分发条款仍需合规跟踪，且该数据不替代 station-calibrated observed holdout 或政策 outcome；TAP external dynamics holdout 已作为 transition-layer no-claim gate 登记，约束下一步空间动态模型迭代；
 GEE ERA5/CAMS 已进一步下载 36 个 admin livability 候选行政面的 simplified-polygon zonal proxy，可改善 scene context，但仍是 reanalysis/model proxy，不是 observed holdout；
 WorldPop 国家目录已下载，但 2020 中国 100m GeoTIFF 约 4.98GB，当前只记录目录和文件规模，未下载全国大文件；已通过 7897 代理探测 WorldPop Global2 R2025A，完整人口 raster zip 为 5.2GB，未下载；已下载 15KB country/type metadata CSV，China 行显示 c.2020 round data type 为 Census，但该 CSV 不含人口值，不能作为 UWM 人口数据使用；
 本地规划样例中的 `08重庆市各区县人口规模表格数据/重庆市各区县人口规模数据.xlsx` 已核实并生成 UWM 资产：40 行，其中 39 个区县、1 个全市总计；2021 年区县常住人口合计 3290.08 万人，最大常住人口区县为渝北区 220.58 万人；这是区县级统计，不是乡镇/街道或格网人口；
