@@ -22,6 +22,8 @@ def simulate_livability_rollout(
     *,
     scenario: dict[str, Any] | None = None,
     backend: str = DEFAULT_SIMULATOR_BACKEND,
+    mechanism_table: dict[str, Any] | None = None,
+    spatial_spillover_kernel: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Roll a canonical urban observation forward under planned actions."""
 
@@ -49,6 +51,25 @@ def simulate_livability_rollout(
             "vulnerability_multiplier": _safe_float(scenario.get("vulnerability_multiplier"), default=1.0),
         }
     )
+    mechanism_source = "hardcoded_mechanistic_coefficients"
+    active_mechanism_table = None
+    if mechanism_table is not None:
+        mechanism_validation = _validate_mechanism_table(mechanism_table)
+        simulator_trace.append(
+            {
+                "step": "read_data_calibrated_mechanism_table",
+                "mechanism_table_id": mechanism_table.get("table_id"),
+                "valid": mechanism_validation["valid"],
+                "errors": mechanism_validation["errors"],
+                "claim_level": (mechanism_table.get("claim_boundary") or {}).get("max_claim_level"),
+                "observed_policy_outcome_superiority_claim": mechanism_table.get(
+                    "observed_policy_outcome_superiority_claim"
+                ),
+            }
+        )
+        if mechanism_validation["valid"]:
+            active_mechanism_table = mechanism_table
+            mechanism_source = "data_calibrated_mechanism_table"
     initial_state_ref = str(observation.get("observation_id") or "unknown_observation")
     if not validation["valid"]:
         return _not_for_claim_rollout(initial_state_ref, action_sequence, scenario, backend, simulator_trace)
@@ -56,11 +77,39 @@ def simulate_livability_rollout(
     units = _units_by_id(observation.get("spatial_units") or [])
     deltas = {unit_id: _zero_unit_delta() for unit_id in units}
     adjacency = _adjacency(observation.get("graph_edges") or [])
+    active_spatial_kernel = None
+    if spatial_spillover_kernel is not None:
+        kernel_validation = _validate_spatial_spillover_kernel(
+            spatial_spillover_kernel
+        )
+        simulator_trace.append(
+            {
+                "step": "read_data_calibrated_spatial_spillover_kernel",
+                "kernel_id": spatial_spillover_kernel.get("kernel_id"),
+                "valid": kernel_validation["valid"],
+                "errors": kernel_validation["errors"],
+                "claim_level": (
+                    spatial_spillover_kernel.get("claim_boundary") or {}
+                ).get("max_claim_level"),
+                "observed_policy_outcome_superiority_claim": (
+                    spatial_spillover_kernel.get(
+                        "observed_policy_outcome_superiority_claim"
+                    )
+                ),
+            }
+        )
+        if kernel_validation["valid"]:
+            active_spatial_kernel = spatial_spillover_kernel
 
     for action in action_sequence:
         action_type = str(action.get("action_type") or "")
         target_units = _target_units(action, units)
-        effect = _action_effect(action_type, _action_intensity(action), scenario)
+        effect = _action_effect(
+            action_type,
+            _action_intensity(action),
+            scenario,
+            mechanism_table=active_mechanism_table,
+        )
         simulator_trace.append(
             {
                 "step": "apply_action_effects",
@@ -68,6 +117,7 @@ def simulate_livability_rollout(
                 "action_type": action_type,
                 "target_units": target_units,
                 "direct_effect": effect,
+                "mechanism_source": mechanism_source,
             }
         )
         if not any(effect.values()):
@@ -76,9 +126,53 @@ def simulate_livability_rollout(
             if unit_id not in deltas:
                 continue
             _accumulate(deltas[unit_id], effect, 1.0)
-            for neighbour_id, weight in adjacency.get(unit_id, {}).items():
-                if neighbour_id in deltas:
-                    _accumulate(deltas[neighbour_id], effect, 0.35 * weight)
+            if active_spatial_kernel is not None:
+                kernel_neighbors = _kernel_neighbors(active_spatial_kernel, unit_id)
+                applied_neighbors = []
+                total_factor = 0.0
+                for neighbour in kernel_neighbors:
+                    neighbour_id = str(neighbour.get("target_unit_id"))
+                    if neighbour_id not in deltas:
+                        continue
+                    factor = _safe_float(
+                        neighbour.get("spillover_factor"),
+                        default=0.0,
+                    )
+                    if factor <= 0.0:
+                        continue
+                    _accumulate(deltas[neighbour_id], effect, factor)
+                    total_factor += factor
+                    applied_neighbors.append(
+                        {
+                            "target_unit_id": neighbour_id,
+                            "spillover_factor": factor,
+                            "boundary_share": _safe_float(
+                                neighbour.get("boundary_share"),
+                                default=0.0,
+                            ),
+                            "target_livability_need_score": _safe_float(
+                                neighbour.get("target_livability_need_score"),
+                                default=0.0,
+                            ),
+                        }
+                    )
+                simulator_trace.append(
+                    {
+                        "step": "apply_spatial_spillover_kernel",
+                        "action_id": action.get("action_id"),
+                        "source_unit_id": unit_id,
+                        "kernel_id": active_spatial_kernel.get("kernel_id"),
+                        "neighbor_count": len(kernel_neighbors),
+                        "applied_neighbor_count": len(applied_neighbors),
+                        "total_spillover_factor": round(total_factor, 9),
+                        "top_applied_neighbors": applied_neighbors[:5],
+                        "mechanism_source": "data_calibrated_spatial_spillover_kernel",
+                    }
+                )
+            else:
+                for neighbour_id, weight in adjacency.get(unit_id, {}).items():
+                    if neighbour_id in deltas:
+                        _accumulate(deltas[neighbour_id], effect, 0.35 * weight)
 
     for unit_delta in deltas.values():
         unit_delta["livability_delta"] = _livability_delta(unit_delta)
@@ -175,11 +269,42 @@ def _action_intensity(action: dict[str, Any]) -> float:
     return max(0.0, min(intensity, 1.0))
 
 
-def _action_effect(action_type: str, intensity: float, scenario: dict[str, Any]) -> dict[str, float]:
+def _action_effect(
+    action_type: str,
+    intensity: float,
+    scenario: dict[str, Any],
+    *,
+    mechanism_table: dict[str, Any] | None = None,
+) -> dict[str, float]:
     heat_multiplier = _safe_float(scenario.get("heat_stress_multiplier"), default=1.0)
     air_multiplier = _safe_float(scenario.get("air_pollution_stress_multiplier"), default=1.0)
     vulnerability_multiplier = _safe_float(scenario.get("vulnerability_multiplier"), default=1.0)
     action_key = action_type.lower()
+    mechanism_key = _canonical_mechanism_action_key(action_key)
+    if mechanism_table is not None and mechanism_key is not None:
+        coefficients = (mechanism_table.get("mechanism_coefficients") or {}).get(mechanism_key) or {}
+        return {
+            "heat_risk_delta": _safe_float(
+                coefficients.get("heat_risk_delta"),
+                default=0.0,
+            )
+            * intensity
+            * heat_multiplier,
+            "air_pollution_exposure_delta": _safe_float(
+                coefficients.get("air_pollution_exposure_delta"),
+                default=0.0,
+            )
+            * intensity
+            * air_multiplier,
+            "service_accessibility_delta": _safe_float(
+                coefficients.get("service_accessibility_delta"),
+                default=0.0,
+            )
+            * intensity,
+            "equity_delta": _safe_float(coefficients.get("equity_delta"), default=0.0)
+            * intensity
+            * vulnerability_multiplier,
+        }
     if action_key in {"increase_green", "increase_green_infrastructure", "urban_greening"}:
         return {
             "heat_risk_delta": -0.18 * intensity * heat_multiplier,
@@ -209,6 +334,51 @@ def _action_effect(action_type: str, intensity: float, scenario: dict[str, Any])
             "equity_delta": 0.06 * intensity * vulnerability_multiplier,
         }
     return _zero_unit_delta(include_livability=False)
+
+
+def _canonical_mechanism_action_key(action_key: str) -> str | None:
+    if action_key in {"increase_green", "increase_green_infrastructure", "urban_greening"}:
+        return "increase_green_infrastructure"
+    if action_key in {"cool_roof", "cool_roofs", "building_cooling_retrofit"}:
+        return "cool_roofs"
+    if action_key in {"traffic_emission_control", "low_emission_zone"}:
+        return "traffic_emission_control"
+    if action_key in {"add_community_service", "service_accessibility_improvement"}:
+        return "add_community_service"
+    return None
+
+
+def _validate_mechanism_table(mechanism_table: dict[str, Any]) -> dict[str, Any]:
+    try:
+        from .data_calibrated_mechanism_table import (
+            validate_uwm_data_calibrated_mechanism_table,
+        )
+    except ImportError:
+        return {"valid": False, "errors": ["mechanism_table_validator_unavailable"]}
+    return validate_uwm_data_calibrated_mechanism_table(mechanism_table)
+
+
+def _validate_spatial_spillover_kernel(
+    spatial_spillover_kernel: dict[str, Any],
+) -> dict[str, Any]:
+    try:
+        from .spatial_spillover_kernel import (
+            validate_uwm_data_calibrated_spatial_spillover_kernel,
+        )
+    except ImportError:
+        return {"valid": False, "errors": ["spatial_spillover_kernel_validator_unavailable"]}
+    return validate_uwm_data_calibrated_spatial_spillover_kernel(
+        spatial_spillover_kernel
+    )
+
+
+def _kernel_neighbors(
+    spatial_spillover_kernel: dict[str, Any],
+    source_unit_id: str,
+) -> list[dict[str, Any]]:
+    neighbors = spatial_spillover_kernel.get("neighbors") or {}
+    rows = neighbors.get(str(source_unit_id)) or []
+    return [row for row in rows if isinstance(row, dict)]
 
 
 def _adjacency(graph_edges: list[dict[str, Any]]) -> dict[str, dict[str, float]]:

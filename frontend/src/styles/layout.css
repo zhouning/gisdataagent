@@ -7773,6 +7773,38 @@ body {
   color: #047857;
 }
 
+.v11-mode-switch {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.v11-mode-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 5px 8px;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.v11-mode-switch button.active {
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 700;
+}
+
 .v11-controls {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -7939,6 +7971,53 @@ body {
   overflow-wrap: anywhere;
 }
 
+.v11-stage-list {
+  display: grid;
+  gap: 7px;
+}
+
+.v11-stage-item {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 6px 8px;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 12px;
+}
+
+.v11-stage-item strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.v11-stage-item > span:last-child {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.v11-stage-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #9ca3af;
+}
+
+.v11-stage-item.completed .v11-stage-dot {
+  background: #16a34a;
+}
+
+.v11-stage-item.error .v11-stage-dot {
+  background: #dc2626;
+}
+
+.v11-stage-item.running .v11-stage-dot {
+  background: #2563eb;
+}
+
 .v11-boundary summary {
   cursor: pointer;
   margin-bottom: 0;
@@ -7989,5 +8068,607 @@ body {
   .v11-kpi-grid,
   .v11-boundary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ============================================================
+   UWM Traditional Livability Tab
+   ============================================================ */
+.traditional-livability-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  padding-bottom: 12px;
+}
+
+.traditional-livability-tab .datapanel-section-header {
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.traditional-livability-tab .datapanel-section-header h3 {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.traditional-livability-tab .datapanel-section-header p {
+  margin: 3px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.traditional-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+  justify-content: flex-end;
+}
+
+.traditional-header-actions .primary-button,
+.traditional-header-actions .secondary-button {
+  min-height: 30px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.traditional-control {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 88px;
+  font-size: 11px;
+  line-height: 1.25;
+  color: var(--text-secondary);
+}
+
+.traditional-control select {
+  min-height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 5px 8px;
+  font-size: 12px;
+}
+
+.traditional-message,
+.traditional-empty {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.traditional-message.error {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.22);
+  color: #b91c1c;
+}
+
+.traditional-message.success {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.22);
+  color: #047857;
+}
+
+.traditional-empty {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+}
+
+.traditional-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.traditional-kpi,
+.traditional-panel {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-elevated);
+}
+
+.traditional-kpi {
+  padding: 9px;
+}
+
+.traditional-kpi span,
+.traditional-boundary-grid span,
+.traditional-source-grid span,
+.traditional-indicator-grid span,
+.traditional-action-list span,
+.traditional-diagnosis-item span {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--text-secondary);
+}
+
+.traditional-kpi strong,
+.traditional-boundary-grid strong,
+.traditional-source-grid strong,
+.traditional-indicator-grid strong {
+  display: block;
+  min-width: 0;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--text);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.traditional-kpi strong {
+  font-size: 18px;
+}
+
+.traditional-kpi.grade.a strong,
+.traditional-kpi.grade.b strong { color: #047857; }
+.traditional-kpi.grade.c strong { color: #0f766e; }
+.traditional-kpi.grade.d strong { color: #92400e; }
+.traditional-kpi.grade.e strong { color: #b91c1c; }
+
+.traditional-panel {
+  padding: 10px;
+}
+
+.traditional-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 9px;
+  color: var(--text);
+}
+
+.traditional-panel-title strong {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.traditional-bar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.traditional-bar-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(90px, 1.2fr) 46px;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.traditional-bar-row strong {
+  display: block;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.traditional-bar-row span {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--text-secondary);
+}
+
+.traditional-bar-row b {
+  font-size: 12px;
+  color: var(--text);
+  text-align: right;
+}
+
+.traditional-bar-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--border-light);
+  overflow: hidden;
+}
+
+.traditional-bar-track div {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #0f766e, #22c55e);
+}
+
+.traditional-indicator-grid,
+.traditional-boundary-grid,
+.traditional-source-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.traditional-source-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 0;
+}
+
+.traditional-indicator-grid > div,
+.traditional-boundary-grid > div,
+.traditional-source-grid > div {
+  min-width: 0;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 8px;
+}
+
+.traditional-table-wrap {
+  overflow-x: auto;
+}
+
+.traditional-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+}
+
+.traditional-table th,
+.traditional-table td {
+  border-bottom: 1px solid var(--border-light);
+  padding: 7px 6px;
+  text-align: left;
+  vertical-align: top;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.traditional-table th {
+  color: var(--text-secondary);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.traditional-table td {
+  color: var(--text);
+}
+
+.traditional-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+
+.traditional-tag {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  border-radius: 6px;
+  background: rgba(245, 158, 11, 0.12);
+  color: #92400e;
+  padding: 2px 6px;
+  font-size: 11px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.traditional-two-col {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  gap: 10px;
+}
+
+.traditional-diagnosis-list,
+.traditional-action-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.traditional-diagnosis-item,
+.traditional-action-list > div {
+  min-width: 0;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 8px;
+}
+
+.traditional-diagnosis-item > div:first-child {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.traditional-diagnosis-item strong,
+.traditional-action-list strong {
+  display: block;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1080px) {
+  .traditional-kpi-grid,
+  .traditional-source-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .traditional-two-col {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .traditional-kpi-grid,
+  .traditional-indicator-grid,
+  .traditional-boundary-grid,
+  .traditional-source-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .traditional-bar-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .traditional-bar-row b {
+    text-align: left;
+  }
+}
+
+/* ============================================================
+   UWM Livability World Model Tab
+   ============================================================ */
+.uwm-livability-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  padding-bottom: 12px;
+}
+
+.uwm-livability-tab .datapanel-section-header {
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.uwm-livability-tab .datapanel-section-header h3 {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.uwm-livability-tab .datapanel-section-header p {
+  margin: 3px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.uwm-livability-message,
+.uwm-livability-empty {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.uwm-livability-message.error {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.22);
+  color: #b91c1c;
+}
+
+.uwm-livability-empty {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+}
+
+.uwm-livability-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.uwm-livability-two-col {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.uwm-livability-kpi,
+.uwm-livability-panel {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-elevated);
+}
+
+.uwm-livability-kpi {
+  padding: 9px;
+}
+
+.uwm-livability-panel {
+  padding: 10px;
+}
+
+.uwm-livability-kpi span,
+.uwm-component-row span,
+.uwm-compare-grid span,
+.uwm-evidence-grid span,
+.uwm-boundary-grid span,
+.uwm-action-list span {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--text-secondary);
+}
+
+.uwm-livability-kpi strong,
+.uwm-component-row strong,
+.uwm-compare-grid strong,
+.uwm-evidence-grid strong,
+.uwm-boundary-grid strong,
+.uwm-action-list strong {
+  display: block;
+  min-width: 0;
+  color: var(--text);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.uwm-livability-kpi strong {
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.uwm-livability-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.uwm-livability-panel-title strong {
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.uwm-component-row,
+.uwm-compare-grid,
+.uwm-evidence-grid,
+.uwm-boundary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.uwm-component-row div,
+.uwm-compare-grid div,
+.uwm-evidence-grid div,
+.uwm-boundary-grid div {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  padding: 8px;
+}
+
+.uwm-component-row div.active {
+  border-color: rgba(5, 150, 105, 0.35);
+  background: rgba(5, 150, 105, 0.07);
+}
+
+.uwm-action-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.uwm-action-list > div {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 48px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  padding: 8px;
+}
+
+.uwm-action-list b {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.10);
+  color: #1d4ed8;
+  font-size: 12px;
+}
+
+.uwm-action-list em {
+  justify-self: end;
+  font-style: normal;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.uwm-priority-table-wrap {
+  max-height: 260px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+}
+
+.uwm-priority-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.uwm-priority-table th,
+.uwm-priority-table td {
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.uwm-priority-table th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.uwm-priority-table td {
+  color: var(--text);
+}
+
+.uwm-capability-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.uwm-capability-tags span {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  padding: 5px 8px;
+  font-size: 11px;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+  .uwm-livability-kpi-grid,
+  .uwm-livability-two-col,
+  .uwm-component-row,
+  .uwm-compare-grid,
+  .uwm-evidence-grid,
+  .uwm-boundary-grid {
+    grid-template-columns: 1fr;
   }
 }

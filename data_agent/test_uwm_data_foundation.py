@@ -264,7 +264,8 @@ def test_current_manifest_includes_tap_external_dynamics_without_unblocking_clai
     air_ids = set(audit["role_coverage"]["air_pollution_exposure"]["dataset_ids"])
 
     assert "tap_pm25_external_spatiotemporal_dynamics_chongqing_2018_2024" in air_ids
-    assert audit["manifest_audit"]["row_count"] == 66
-    assert audit["manifest_audit"]["claim_boundary_counts"]["bounded_support"] >= 46
+    assert "uwm_scene_aligned_gridded_air_quality_holdout_2026_07_06" in air_ids
+    assert audit["manifest_audit"]["row_count"] == 75
+    assert audit["manifest_audit"]["claim_boundary_counts"]["bounded_support"] >= 55
     assert audit["role_coverage"]["air_pollution_exposure"]["claim_ceiling"] == "bounded_support"
     assert "air_pollution_exposure" in audit["empirical_superiority_blockers"]

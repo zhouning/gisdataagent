@@ -4202,6 +4202,9 @@ def get_frontend_api_routes():
     from .api.world_model_v2_routes import get_world_model_v2_routes
     from .api.world_model_v21_routes import get_world_model_v21_routes
     from .api.territory_world_model_routes import get_territory_world_model_routes
+    from .api.uwm_traditional_livability_routes import get_uwm_traditional_livability_routes
+    from .api.uwm_livability_decision_routes import get_uwm_livability_decision_routes
+    from .api.uwm_livability_data_catalog_routes import get_uwm_livability_data_catalog_routes
     from .api.quality_routes import get_quality_routes
     from .api.domain_standard_routes import get_domain_standard_routes
     from .api.distribution_routes import get_distribution_routes
@@ -4352,6 +4355,12 @@ def get_frontend_api_routes():
         *get_world_model_v21_routes(),
         # Territory World Model (TWM)
         *get_territory_world_model_routes(),
+        # UWM traditional static livability analysis
+        *get_uwm_traditional_livability_routes(),
+        # UWM livability world-model decision package
+        *get_uwm_livability_decision_routes(),
+        # UWM livability data catalog and MMFE/RL readiness boundary
+        *get_uwm_livability_data_catalog_routes(),
         # Causal Reasoning (Angle B) + Causal World Model (Angle C)
         *get_causal_routes(),
         *get_causal_world_model_routes(),

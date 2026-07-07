@@ -12,6 +12,10 @@ from typing import Any
 
 from .contracts import validate_uwm_observation
 from .simulator import simulate_livability_rollout
+from .data_calibrated_mechanism_table import validate_uwm_data_calibrated_mechanism_table
+from .spatial_spillover_kernel import (
+    validate_uwm_data_calibrated_spatial_spillover_kernel,
+)
 
 
 GRAPH_MDP_STATE_SCHEMA = "uwm.graph_mdp_state.v1"
@@ -189,6 +193,9 @@ def plan_with_model_based_graph_search(
     horizon: int = 2,
     beam_width: int = 3,
     thresholds: dict[str, float] | None = None,
+    mechanism_table: dict[str, Any] | None = None,
+    air_quality_uncertainty_context: dict[str, Any] | None = None,
+    spatial_spillover_kernel: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Search over masked graph actions using simulator rollouts as the model."""
 
@@ -201,6 +208,21 @@ def plan_with_model_based_graph_search(
     candidates = list(graph_state["available_actions"])
     if not candidates:
         raise ValueError("model-based graph search requires at least one masked candidate action")
+    mechanism_summary = _mechanism_table_summary(mechanism_table)
+    active_mechanism_table = mechanism_table if mechanism_summary["valid"] else None
+    air_quality_uncertainty_summary = _air_quality_uncertainty_summary(
+        air_quality_uncertainty_context
+    )
+    spatial_spillover_kernel_summary = _spatial_spillover_kernel_summary(
+        spatial_spillover_kernel
+    )
+    active_spatial_spillover_kernel = (
+        spatial_spillover_kernel
+        if spatial_spillover_kernel_summary[
+            "data_calibrated_spatial_spillover_kernel_ready"
+        ]
+        else None
+    )
 
     replay_transitions: list[dict[str, Any]] = []
     beams = [
@@ -220,7 +242,13 @@ def plan_with_model_based_graph_search(
                 if action["action_id"] in used_action_ids:
                     continue
                 sequence = [*beam["action_sequence"], action]
-                rollout = simulate_livability_rollout(observation, sequence, scenario=scenario)
+                rollout = simulate_livability_rollout(
+                    observation,
+                    sequence,
+                    scenario=scenario,
+                    mechanism_table=active_mechanism_table,
+                    spatial_spillover_kernel=active_spatial_spillover_kernel,
+                )
                 prefix_reward = _rollout_reward(rollout)
                 transition_reward = prefix_reward - float(beam["cumulative_reward"])
                 transition = _replay_transition(
@@ -248,12 +276,29 @@ def plan_with_model_based_graph_search(
 
     best = beams[0]
     static_action = _static_single_step_action(graph_state)
-    static_rollout = simulate_livability_rollout(observation, [static_action], scenario=scenario)
+    static_rollout = simulate_livability_rollout(
+        observation,
+        [static_action],
+        scenario=scenario,
+        mechanism_table=active_mechanism_table,
+        spatial_spillover_kernel=active_spatial_spillover_kernel,
+    )
     static_reward = _rollout_reward(static_rollout)
     advantage = float(best["cumulative_reward"]) - static_reward
+    risk_adjusted_evaluation = _risk_adjusted_planner_evaluation(
+        best_rollout=best["rollout_trace"] or {},
+        static_rollout=static_rollout,
+        best_reward=float(best["cumulative_reward"]),
+        static_reward=static_reward,
+        air_quality_uncertainty_summary=air_quality_uncertainty_summary,
+    )
     evidence_grade = str((best["rollout_trace"] or {}).get("evidence_grade") or "not_for_claim")
     supported_claim = (
-        "known_effect_model_based_graph_search_advantage"
+        (
+            "data_calibrated_model_based_graph_search_advantage_over_static_heuristic"
+            if mechanism_summary["data_calibrated_mechanism_ready"]
+            else "known_effect_model_based_graph_search_advantage"
+        )
         if advantage > 0 and evidence_grade != "not_for_claim"
         else "no_model_based_graph_search_advantage_claim_supported"
     )
@@ -262,6 +307,9 @@ def plan_with_model_based_graph_search(
         "schema": MODEL_BASED_GRAPH_SEARCH_REPORT_SCHEMA,
         "planner_backend": DEFAULT_GRAPH_SEARCH_BACKEND,
         "state_encoder": DEFAULT_STATE_ENCODER,
+        "mechanism_table_summary": mechanism_summary,
+        "spatial_spillover_kernel_summary": spatial_spillover_kernel_summary,
+        "air_quality_uncertainty_calibration_summary": air_quality_uncertainty_summary,
         "graph_mdp_state": graph_state,
         "search_config": {
             "horizon": horizon,
@@ -289,11 +337,18 @@ def plan_with_model_based_graph_search(
             "transitions": replay_transitions,
         },
         "advantage_over_static_single_step": round(advantage, 9),
+        "risk_adjusted_planner_evaluation": risk_adjusted_evaluation,
         "supported_claim": supported_claim,
+        "observed_policy_outcome_superiority_claim": False,
         "empirical_superiority_claim": False,
         "claim_boundary": {
             "max_claim_level": evidence_grade if advantage > 0 else "not_for_claim",
-            "reason": "model-based graph search uses simulator rollouts; observed policy outcome gates remain open",
+            "reason": (
+                "model-based graph search uses data-calibrated simulator rollouts; observed policy "
+                "outcome gates remain open"
+                if mechanism_summary["data_calibrated_mechanism_ready"]
+                else "model-based graph search uses simulator rollouts; observed policy outcome gates remain open"
+            ),
         },
         "remaining_gates": [
             "observed_policy_outcome_holdout_required",
@@ -455,6 +510,13 @@ def _replay_transition(
             "evidence_grade": rollout.get("evidence_grade"),
             "claim_boundary": rollout.get("claim_boundary"),
             "simulator_trace_steps": [step.get("step") for step in rollout.get("simulator_trace") or []],
+            "simulator_mechanism_sources": sorted(
+                {
+                    str(step.get("mechanism_source"))
+                    for step in rollout.get("simulator_trace") or []
+                    if step.get("mechanism_source")
+                }
+            ),
         },
     }
 
@@ -477,8 +539,262 @@ def _static_priority_score(action: dict[str, Any]) -> float:
     return reason_weight.get(str(action.get("mask_reason")), 0.0)
 
 
+def _mechanism_table_summary(mechanism_table: dict[str, Any] | None) -> dict[str, Any]:
+    if mechanism_table is None:
+        return {
+            "mechanism_source": "hardcoded_mechanistic_coefficients",
+            "mechanism_table_id": None,
+            "valid": False,
+            "validation_errors": ["mechanism_table_not_supplied"],
+            "data_calibrated_mechanism_ready": False,
+            "hardcoded_mechanism_replacement_ready": False,
+        }
+    validation = validate_uwm_data_calibrated_mechanism_table(mechanism_table)
+    ready = (
+        validation.get("valid") is True
+        and mechanism_table.get("data_calibrated_mechanism_ready") is True
+        and mechanism_table.get("observed_policy_outcome_superiority_claim") is False
+        and (mechanism_table.get("claim_boundary") or {}).get("max_claim_level")
+        == "bounded_support"
+    )
+    return {
+        "mechanism_source": (
+            "data_calibrated_mechanism_table"
+            if ready
+            else "invalid_data_calibrated_mechanism_table"
+        ),
+        "mechanism_table_id": mechanism_table.get("table_id"),
+        "valid": validation.get("valid") is True,
+        "validation_errors": validation.get("errors") or [],
+        "data_calibrated_mechanism_ready": ready,
+        "hardcoded_mechanism_replacement_ready": bool(
+            mechanism_table.get("hardcoded_mechanism_replacement_ready")
+        )
+        and ready,
+        "claim_level": (mechanism_table.get("claim_boundary") or {}).get("max_claim_level"),
+        "policy_outcome_claim": False,
+    }
+
+
+def _spatial_spillover_kernel_summary(
+    spatial_spillover_kernel: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if spatial_spillover_kernel is None:
+        return {
+            "kernel_id": None,
+            "valid": False,
+            "validation_errors": ["spatial_spillover_kernel_not_supplied"],
+            "data_calibrated_spatial_spillover_kernel_ready": False,
+            "directional_edge_count": 0,
+            "kernel_source_unit_count": 0,
+            "mechanism_source": "graph_edge_constant_neighbor_factor",
+        }
+    validation = validate_uwm_data_calibrated_spatial_spillover_kernel(
+        spatial_spillover_kernel
+    )
+    ready = (
+        validation.get("valid") is True
+        and spatial_spillover_kernel.get(
+            "data_calibrated_spatial_spillover_kernel_ready"
+        )
+        is True
+        and spatial_spillover_kernel.get("observed_policy_outcome_superiority_claim")
+        is False
+        and (spatial_spillover_kernel.get("claim_boundary") or {}).get(
+            "max_claim_level"
+        )
+        == "bounded_support"
+    )
+    summary = spatial_spillover_kernel.get("summary") or {}
+    return {
+        "kernel_id": spatial_spillover_kernel.get("kernel_id"),
+        "valid": validation.get("valid") is True,
+        "validation_errors": validation.get("errors") or [],
+        "data_calibrated_spatial_spillover_kernel_ready": ready,
+        "directional_edge_count": _int(summary.get("directional_edge_count")),
+        "kernel_source_unit_count": _int(summary.get("kernel_source_unit_count")),
+        "min_spillover_factor": _float(summary.get("min_spillover_factor")),
+        "max_spillover_factor": _float(summary.get("max_spillover_factor")),
+        "mean_spillover_factor": _float(summary.get("mean_spillover_factor")),
+        "mechanism_source": (
+            "data_calibrated_spatial_spillover_kernel"
+            if ready
+            else "invalid_data_calibrated_spatial_spillover_kernel"
+        ),
+        "policy_outcome_claim": False,
+    }
+
+
+def _air_quality_uncertainty_summary(
+    context: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if context is None:
+        return {
+            "uwm_uncertainty_calibration_ready": False,
+            "source_benchmark_id": None,
+            "source_schema": None,
+            "method": None,
+            "confidence_level": 0.0,
+            "calibration_count": 0,
+            "holdout_count": 0,
+            "uwm_interval_score": 0.0,
+            "static_interval_score": 0.0,
+            "uwm_interval_score_reduction": 0.0,
+            "pm25_scene_range_ugm3": 0.0,
+            "scene_aligned_station_calibrated_air_quality_holdout_ready": False,
+            "observed_policy_outcome_superiority_claim": False,
+            "ready_reason": "air_quality_uncertainty_context_not_supplied",
+        }
+
+    calibration = context.get("uncertainty_calibration") or context
+    pm25_values = _scene_pm25_values(context)
+    pm25_min = min(pm25_values) if pm25_values else 0.0
+    pm25_max = max(pm25_values) if pm25_values else 0.0
+    pm25_range = pm25_max - pm25_min
+    gridded_ready = bool(
+        context.get("scene_aligned_gridded_air_quality_holdout_ready", True)
+    )
+    station_ready = bool(
+        context.get("scene_aligned_station_calibrated_air_quality_holdout_ready")
+    )
+    policy_claim = bool(context.get("observed_policy_outcome_superiority_claim"))
+    interval_score = _float(calibration.get("uwm_interval_score"))
+    static_interval_score = _float(calibration.get("static_interval_score"))
+    score_reduction = _float(calibration.get("uwm_interval_score_reduction"))
+    ready = (
+        gridded_ready
+        and not station_ready
+        and not policy_claim
+        and calibration.get("uwm_uncertainty_calibration_ready") is True
+        and interval_score > 0.0
+        and static_interval_score > interval_score
+        and pm25_range > 0.0
+    )
+    return {
+        "uwm_uncertainty_calibration_ready": ready,
+        "source_benchmark_id": context.get("benchmark_id"),
+        "source_schema": context.get("schema"),
+        "source_scope": "scene_aligned_gridded_air_quality_uncertainty_calibration_not_station_or_policy_outcome",
+        "method": calibration.get("method"),
+        "confidence_level": _float(calibration.get("confidence_level")),
+        "calibration_count": int(_float(calibration.get("calibration_count"))),
+        "holdout_count": int(_float(calibration.get("holdout_count"))),
+        "best_uwm_method": calibration.get("best_uwm_method"),
+        "static_baseline_method": calibration.get("static_baseline_method"),
+        "uwm_interval_radius": _float(calibration.get("uwm_interval_radius")),
+        "static_interval_radius": _float(calibration.get("static_interval_radius")),
+        "uwm_interval_coverage": _float(calibration.get("uwm_interval_coverage")),
+        "static_interval_coverage": _float(calibration.get("static_interval_coverage")),
+        "uwm_interval_score": interval_score,
+        "static_interval_score": static_interval_score,
+        "uwm_interval_score_reduction": score_reduction,
+        "pm25_scene_min_ugm3": round(pm25_min, 9),
+        "pm25_scene_max_ugm3": round(pm25_max, 9),
+        "pm25_scene_range_ugm3": round(pm25_range, 9),
+        "scene_aligned_gridded_air_quality_holdout_ready": gridded_ready,
+        "scene_aligned_station_calibrated_air_quality_holdout_ready": station_ready,
+        "observed_policy_outcome_superiority_claim": policy_claim,
+        "empirical_superiority_claim": bool(context.get("empirical_superiority_claim")),
+        "limitations": [
+            *[str(item) for item in context.get("limitations") or []],
+            *[str(item) for item in calibration.get("limitations") or []],
+        ],
+        "ready_reason": (
+            "scene_aligned_gridded_split_conformal_pm25_uncertainty_ready"
+            if ready
+            else "scene_aligned_gridded_pm25_uncertainty_not_ready_for_planner_risk"
+        ),
+    }
+
+
+def _risk_adjusted_planner_evaluation(
+    *,
+    best_rollout: dict[str, Any],
+    static_rollout: dict[str, Any],
+    best_reward: float,
+    static_reward: float,
+    air_quality_uncertainty_summary: dict[str, Any],
+) -> dict[str, Any]:
+    interval_score = _float(air_quality_uncertainty_summary.get("uwm_interval_score"))
+    pm25_range = _float(air_quality_uncertainty_summary.get("pm25_scene_range_ugm3"))
+    normalized_interval_score = interval_score / pm25_range if pm25_range > 0.0 else 0.0
+    best_dependency = _air_quality_reward_dependency(best_rollout)
+    static_dependency = _air_quality_reward_dependency(static_rollout)
+    best_penalty = best_dependency * normalized_interval_score
+    static_penalty = static_dependency * normalized_interval_score
+    best_risk_adjusted = best_reward - best_penalty
+    static_risk_adjusted = static_reward - static_penalty
+    risk_adjusted_advantage = best_risk_adjusted - static_risk_adjusted
+    ready = (
+        air_quality_uncertainty_summary.get("uwm_uncertainty_calibration_ready") is True
+        and risk_adjusted_advantage > 0.0
+    )
+    return {
+        "method": "same_conformal_pm25_uncertainty_penalty",
+        "uses_same_calibrated_uncertainty_for_planner_and_static": True,
+        "air_quality_reward_weight": 0.25,
+        "pm25_scene_range_ugm3": round(pm25_range, 9),
+        "uwm_interval_score": round(interval_score, 9),
+        "normalized_uwm_interval_score": round(normalized_interval_score, 9),
+        "best_sequence_raw_reward": round(best_reward, 9),
+        "static_single_step_raw_reward": round(static_reward, 9),
+        "best_sequence_air_quality_dependency": round(best_dependency, 9),
+        "static_single_step_air_quality_dependency": round(static_dependency, 9),
+        "best_sequence_uncertainty_penalty": round(best_penalty, 9),
+        "static_single_step_uncertainty_penalty": round(static_penalty, 9),
+        "best_sequence_risk_adjusted_reward": round(best_risk_adjusted, 9),
+        "static_single_step_risk_adjusted_reward": round(static_risk_adjusted, 9),
+        "risk_adjusted_advantage_over_static_single_step": round(
+            risk_adjusted_advantage,
+            9,
+        ),
+        "risk_calibrated_planner_replay_ready": ready,
+        "supported_claim": (
+            "risk_calibrated_data_calibrated_planner_replay_advantage_over_static_heuristic"
+            if ready
+            else "no_risk_calibrated_planner_replay_claim_supported"
+        ),
+        "claim_boundary": {
+            "max_claim_level": "bounded_support" if ready else "not_for_claim",
+            "reason": (
+                "risk-adjusted planner replay uses the same scene-aligned gridded "
+                "split-conformal PM2.5 uncertainty penalty for model-based and static plans"
+                if ready
+                else "risk-adjusted planner replay is not claim-ready"
+            ),
+        },
+        "observed_policy_outcome_superiority_claim": False,
+        "empirical_superiority_claim": False,
+    }
+
+
+def _air_quality_reward_dependency(rollout: dict[str, Any]) -> float:
+    return 0.25 * abs(_float(rollout.get("air_pollution_exposure_delta")))
+
+
+def _scene_pm25_values(context: dict[str, Any]) -> list[float]:
+    values: list[float] = []
+    for series in context.get("series_results") or []:
+        if not isinstance(series, dict):
+            continue
+        for record in series.get("daily_pm25") or []:
+            if not isinstance(record, dict):
+                continue
+            values.append(_float(record.get("pm25_ugm3")))
+    return values
+
+
 def _float(value: Any, default: float = 0.0) -> float:
     try:
         return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _int(value: Any, default: int = 0) -> int:
+    if value in {None, ""}:
+        return default
+    try:
+        return int(float(value))
     except (TypeError, ValueError):
         return default

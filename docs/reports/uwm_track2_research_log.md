@@ -1032,3 +1032,650 @@ policy_outcome_evaluator.ready = false
 可以说：UWM 的 renderer/simulator/planner/evidence gate 已形成可审计 claim ladder。
 不能说：UWM 已经证明城市政策干预 outcome 或总体经验优越性。
 ```
+
+## 22. 2026-07-06 Paper6 causal diagnostic evidence 接入 UWM policy evaluator
+
+本轮重新审查更新后的 Paper6 仓库后，没有把 SCCA/ArcGIS SCI Plus 误用为 UWM 主 dynamics；而是把它作为 policy evaluator 的因果诊断证据层接入。
+
+新增代码与产物：
+
+```text
+data_agent/uwm/causal_policy_evidence.py
+data_agent/test_uwm_causal_policy_evidence.py
+scripts/build_uwm_causal_policy_evidence.py
+data/uwm_public_proxy/chongqing_central/causal_policy_evidence_2026_07_06/uwm_causal_policy_evidence_gate.json
+data/uwm_public_proxy/chongqing_central/causal_policy_evidence_2026_07_06/snapshot_manifest.json
+```
+
+真实输入证据：
+
+```text
+Paper6 IJGIS result root = /Users/zhouning/paper6-spatial-causal-inference/paper/ijgis_submission_20260605/07_results
+ArcGIS SCI Plus county input_rows = 3108
+ArcGIS SCI Plus county trimmed_rows = 3044
+ArcGIS 3.7 documented ERF parity MAE = 0.015153286175193017
+SCCA county credibility decision = strong_support
+Chongqing UHI sample_size = 5000
+Chongqing buildings_total = 107035
+```
+
+机器门控结论：
+
+```text
+algorithmic_causal_diagnostic_ready = true
+observed_local_policy_outcome_ready = false
+observed_policy_outcome_superiority_claim = false
+empirical_superiority_claim = false
+```
+
+对 roadmap 的影响：
+
+```text
+causal_policy_effect_validation_required 已从 data foundation evidence gate 的 remaining_gates 中移除。
+当时 observed_policy_outcome_required、scene_aligned_station_calibrated_air_quality_holdout_required、external_observed_holdout_required 仍然保留；后续 external observed holdout suite 单独处理。
+Paper6 证明的是因果诊断工作流和 ArcGIS documented mode algorithmic parity，不是 UWM 策略实施后的观测 outcome。
+```
+
+## 23. 2026-07-06 External observed holdout suite 接入
+
+本轮新增双源外部观测 holdout suite，用真实 OpenAQ station temporal benchmark 和 TAP gridded temporal benchmark 支撑 state-prediction over static baseline 的 bounded claim。
+
+新增代码与产物：
+
+```text
+data_agent/uwm/external_observed_holdout.py
+data_agent/test_uwm_external_observed_holdout.py
+scripts/build_uwm_external_observed_holdout_suite.py
+data/uwm_public_proxy/chongqing_central/external_observed_holdout_suite_2026_07_06/uwm_external_observed_holdout_suite.json
+data/uwm_public_proxy/chongqing_central/external_observed_holdout_suite_2026_07_06/snapshot_manifest.json
+```
+
+真实输入证据：
+
+```text
+OpenAQ station temporal benchmark: observation_count = 600, holdout_count = 180, dynamic win count = 150, PM2.5 dynamic MAE = 2.4, best static PM2.5 MAE = 9.466667
+TAP gridded temporal benchmark: series_count = 10000, holdout_count = 40000, adaptive online state update MAE = 7.01169, static train mean MAE = 9.309192, series beats all static baselines rate = 0.6318
+```
+
+机器门控结论：
+
+```text
+external_observed_holdout_ready = true
+external_observed_state_prediction_superiority_claim = true
+scene_aligned_station_calibrated_air_quality_holdout_ready = false
+observed_policy_outcome_superiority_claim = false
+empirical_superiority_claim = false
+```
+
+对 roadmap 的影响：
+
+```text
+external_observed_holdout_required 已从 data foundation evidence gate 的 remaining_gates 中移除。
+observed_policy_outcome_required、scene_aligned_station_calibrated_air_quality_holdout_required 仍然保留。
+这个结果能证明 UWM-style online state update 在真实外部观测 holdout 上强于传统静态 baseline suite；不能证明 2024 场景 station-calibrated air-quality，也不能证明政策 outcome 或总体经验优越性。
+```
+
+## 24. 2026-07-06 Historical station-aligned air-quality holdout
+
+本轮继续补 scene-aligned station-calibrated air-quality holdout 时，先复核了本地 OpenAQ 2024-07 场景尝试结果：重庆中心 25 km 内 15 个 locations、90 个 sensors，但 2024-07-01 至 2024-07-07 measurements = 0。因此本轮没有把 2024 场景硬伪造成 station holdout，而是构造了一个历史站点对齐验证层：用 OpenAQ 2018-10 真实 PM2.5 站点观测对齐最近 TAP 1km PM2.5 grid，验证格网状态对真实站点 holdout 的预测能力。
+
+新增代码与产物：
+
+```text
+data_agent/uwm/station_aligned_air_quality_holdout.py
+data_agent/test_uwm_station_aligned_air_quality_holdout.py
+scripts/build_uwm_station_aligned_air_quality_holdout.py
+data/uwm_public_proxy/chongqing_central/station_aligned_air_quality_holdout_2026_07_06/uwm_station_aligned_air_quality_holdout.json
+data/uwm_public_proxy/chongqing_central/station_aligned_air_quality_holdout_2026_07_06/snapshot_manifest.json
+```
+
+真实输入证据：
+
+```text
+OpenAQ station = 上清寺
+OpenAQ PM2.5 hourly station observations = 100
+nearest TAP tile = 075
+nearest TAP grid = 62722
+nearest TAP grid distance = 446.95923 m
+train_count = 70
+holdout_count = 30
+```
+
+机器评估结果：
+
+```text
+best_station_aligned_method = raw_tap_nearest_grid
+raw_tap_mae = 5.463333
+static_train_mean_mae = 12.895238
+static_last_observation_mae = 9.466667
+linear_station_calibrated_tap_mae = 9.608119
+raw_tap_beats_static_station_baselines = true
+linear_calibration_beats_raw_tap = false
+historical_station_aligned_holdout_ready = true
+scene_aligned_station_calibrated_air_quality_holdout_ready = false
+observed_policy_outcome_superiority_claim = false
+empirical_superiority_claim = false
+```
+
+对 roadmap 的影响：
+
+```text
+可以新增 bounded claim：
+historical_station_aligned_tap_pm25_beats_static_station_baselines
+
+仍不能关闭：
+scene_aligned_station_calibrated_air_quality_holdout_required
+observed_policy_outcome_required
+synthetic_proxy_boundary_must_remain_visible
+```
+
+严格解释：
+
+可以说：历史 2018 OpenAQ 上清寺站 PM2.5 holdout 上，TAP nearest-grid 状态优于两个 station static baselines。
+不能说：已经完成 2024-07 场景 station-calibrated air-quality holdout。
+不能说：已经证明政策 outcome 或总体实证优越性。
+
+## 25. 2026-07-06 Data-calibrated simulator mechanism table
+
+本轮继续推进 UWM simulator 的世界模型技术架构，把 action-effect 机制从纯硬编码 `_action_effect` 系数推进到由真实观测/公开代理证据校准的机制表。这个机制表不是政策干预后的 observed outcome，也不是因果政策效果；它的作用是让 simulator 的 action-conditioned priors 带有可审计数据来源和 evidence gate，而不是停留在不可追踪常数。
+
+新增代码与产物：
+
+```text
+data_agent/uwm/data_calibrated_mechanism_table.py
+data_agent/test_uwm_data_calibrated_mechanism_table.py
+scripts/build_uwm_data_calibrated_mechanism_table.py
+data/uwm_public_proxy/chongqing_central/data_calibrated_mechanism_table_2026_07_06/uwm_data_calibrated_mechanism_table.json
+data/uwm_public_proxy/chongqing_central/data_calibrated_mechanism_table_2026_07_06/snapshot_manifest.json
+```
+
+真实输入证据：
+
+```text
+OpenAQ observation_count = 600
+OpenAQ holdout_count = 180
+OpenAQ PM2.5 dynamic MAE = 2.4
+OpenAQ PM2.5 best static MAE = 9.466667
+TAP holdout_count = 40000
+TAP best transition MAE = 7.003808
+TAP best static MAE = 9.309192
+station-aligned OpenAQ/TAP observations = 100
+station-aligned raw TAP MAE = 5.463333
+station-aligned best static MAE = 9.466667
+NOAA ISD scene weather observations = 224
+NOAA temperature range = 13.6 C
+admin livability rows = 36
+admin service gap mean = 0.760073
+admin livability need mean = 0.56574
+```
+
+机制表输出：
+
+```text
+air_pollution_scale = 1.35
+heat_scale = 1.28
+service_scale = 1.228022
+equity_scale = 1.141435
+
+traffic_emission_control.air_pollution_exposure_delta = -0.216
+increase_green_infrastructure.heat_risk_delta = -0.2304
+add_community_service.service_accessibility_delta = 0.221044
+data_calibrated_mechanism_ready = true
+hardcoded_mechanism_replacement_ready = true
+observed_policy_outcome_superiority_claim = false
+empirical_superiority_claim = false
+```
+
+Simulator 接入方式：
+
+```text
+simulate_livability_rollout(..., mechanism_table=table)
+```
+
+当机制表验证通过时，simulator trace 会新增：
+
+```text
+read_data_calibrated_mechanism_table
+apply_action_effects.mechanism_source = data_calibrated_mechanism_table
+```
+
+对 roadmap 的影响：
+
+```text
+新增 allowed bounded claim：
+data_calibrated_simulator_mechanism_replaces_hardcoded_coefficients
+
+仍不能关闭：
+observed_policy_outcome_required
+scene_aligned_station_calibrated_air_quality_holdout_required
+synthetic_proxy_boundary_must_remain_visible
+```
+
+严格解释：
+
+可以说：UWM simulator 的 greening、traffic、service action-effect 机制表已经由真实观测 state/transition evidence 和公开代理 admin panel 校准，替代了不可追踪硬编码常数。
+可以说：UWM 在 observed state prediction 和 external transition holdout 上已有 bounded evidence 强于传统静态 baseline suite。
+不能说：机制表证明真实政策干预 outcome 优于传统方法。
+
+## 26. 2026-07-06 Data-calibrated Graph-MDP planner replay
+
+本轮继续把 UWM planner 从 known-effect simulator scaffold 推进到数据校准世界模型回放：Graph-MDP planner 不再只读取硬编码 simulator coefficients，而是显式读取 `uwm_data_calibrated_mechanism_table_2026_07_06`，并把机制来源写入 simulator trace 与 replay transition。该结果仍是 model-internal replay，不是已实施政策的 observed outcome。
+
+新增代码与产物：
+
+```text
+data_agent/test_uwm_data_calibrated_planner_replay.py
+scripts/build_uwm_data_calibrated_planner_replay.py
+data/uwm_public_proxy/chongqing_central/data_calibrated_planner_replay_2026_07_06/uwm_data_calibrated_model_based_graph_search.json
+data/uwm_public_proxy/chongqing_central/data_calibrated_planner_replay_2026_07_06/uwm_data_calibrated_offline_world_model_rollout_planner.json
+data/uwm_public_proxy/chongqing_central/data_calibrated_planner_replay_2026_07_06/snapshot_manifest.json
+```
+
+真实输入证据：
+
+```text
+admin spatial graph nodes = 1017
+admin spatial graph edges = 2847
+admin livability panel rows = 36
+data-calibrated mechanism table id = uwm-data-calibrated-mechanism-table-2026-07-06
+mechanism table OpenAQ observations = 600
+mechanism table TAP holdout = 40000
+mechanism table station-aligned observations = 100
+mechanism table NOAA scene weather observations = 224
+```
+
+Graph-MDP replay 输出：
+
+```text
+transition_count = 355
+best_sequence_reward = 0.017180838
+static_single_step_reward = 0.003837146
+advantage_over_static_single_step = 0.013343692
+supported_claim = data_calibrated_model_based_graph_search_advantage_over_static_heuristic
+observed_policy_outcome_superiority_claim = false
+empirical_superiority_claim = false
+```
+
+Offline learned rollout 输出：
+
+```text
+holdout_reward_mae = 0.0001991
+train_mean_reward_mae = 0.002339847
+learned_rollout_supported_claim = learned_world_model_rollout_improves_imagined_static_and_one_step_baselines
+```
+
+对 roadmap 的影响：
+
+```text
+新增 allowed bounded claim：
+data_calibrated_planner_replay_advantage_over_static_heuristic
+
+仍不能关闭：
+observed_policy_outcome_required
+scene_aligned_station_calibrated_air_quality_holdout_required
+synthetic_proxy_boundary_must_remain_visible
+```
+
+严格解释：
+
+可以说：在同一 admin livability graph 和同一数据校准 simulator 下，UWM Graph-MDP 多步搜索的 model-internal reward 高于 static single-step heuristic，并且 learned rollout 对 replay reward 的 holdout MAE 优于 train-mean baseline。
+不能说：这已经证明真实城市政策 outcome 优于传统方法。
+不能说：这已经替代 scene-aligned station-calibrated air-quality holdout 或 observed policy outcome validation。
+
+## 27. 2026-07-06 Paper58/Paper6 最新更新复核与 scene-aligned gridded PM2.5 holdout
+
+本轮在继续 UWM 开发前重新审查了本地最新同步的两个相关仓库：
+
+```text
+Paper58 repo = /Users/zhouning/paper58-geofm-world-model-rl
+Paper58 HEAD = 1c029d8 submission: add SRS competing interests declaration
+Paper6 repo = /Users/zhouning/paper6-spatial-causal-inference
+Paper6 HEAD = d3c63c0 fix: remove duplicate references heading
+```
+
+对 UWM roadmap 的判断：
+
+```text
+Paper58 对 UWM 有用，但主要是 remote_sensing_state / latent suitability / spatial allocation baseline / benchmark discipline。
+最新主分支提交主要是 SRS 投稿材料和图表清理，不直接提供新的 UWM 城市宜居性 policy outcome 数据。
+可迁移的技术点是：高维遥感 embedding state prior、evidence-gated allocation、多尺度 spatial ranking、与 GeoSOS-FLUS 同网格对照的审计方式。
+不能迁移的结论是：Paper58 在土地利用分配 benchmark 上优于 GeoSOS-FLUS，不能自动证明 UWM 在城市宜居性政策 outcome 上优于传统方法。
+
+Paper6 对 UWM 有用，但主要是 causal policy evaluator / SCCA diagnostics / ArcGIS parity / UHI exposure evidence。
+最新主分支提交主要是 IJGIS 投稿包修正和图件/引用审计，不直接提供 UWM 干预后的真实政策 outcome。
+可迁移的技术点是：AnalysisRequest 统一算法边界、空间诊断、bootstrap、placebo、ERF 反演、ArcGIS/QGIS thin-adapter discipline。
+不能迁移的结论是：Paper6 的 SCCA/ArcGIS SCI Plus 诊断不能替代 UWM planner 的 observed policy outcome validation。
+```
+
+因此本轮没有把 Paper58/Paper6 的论文结论直接写成 UWM 优越性，而是把它们分别保留为状态表征/空间分配先验和因果诊断证据层。随后继续补 UWM 自身的真实数据 holdout。
+
+新增代码与产物：
+
+```text
+data_agent/uwm/scene_aligned_gridded_air_quality_holdout.py
+data_agent/test_uwm_scene_aligned_gridded_air_quality_holdout.py
+scripts/build_uwm_scene_aligned_gridded_air_quality_holdout.py
+data/uwm_public_proxy/chongqing_central/scene_aligned_gridded_air_quality_holdout_2026_07_06/uwm_scene_aligned_gridded_air_quality_holdout.json
+data/uwm_public_proxy/chongqing_central/scene_aligned_gridded_air_quality_holdout_2026_07_06/snapshot_manifest.json
+```
+
+真实输入：
+
+```text
+CHAP admin PM2.5 proxy = data/uwm_public_proxy/chongqing_central/chap_pm25_2024_07/chap_pm25_admin_proxy.json
+TAP root = /Users/zhouning/Downloads/tap_uwm
+scene period = 2024-07-01_to_2024-07-07
+admin_unit_count = 36
+holdout_count = 144
+```
+
+失败记录：
+
+```text
+初始 temporal persistence/adaptive online 方案在真实 TAP/CHAP scene-aligned 数据上失败。
+adaptive online MAE = 4.036
+best static baseline MAE = 2.783102
+temporal negative control failed
+```
+
+处理原则：
+
+```text
+该失败结果没有被包装成 UWM 优势，也没有形成 supported claim。
+由于真实数据表明单点时间更新弱于静态基线，本轮转向符合世界模型消息传递结构的 leave-one-admin-out spatial message reconstruction：
+隐藏目标 admin point 的 same-day PM2.5；
+用同日其它 admin points 的 gridded observations 作为空间上下文；
+比较 scene mean message、spatial IDW message 与 static baselines；
+用 reverse-coordinate IDW 做 spatial shuffle negative control。
+```
+
+真实 gridded holdout 结果：
+
+```text
+best_uwm_method = spatial_idw_message_reconstruction
+best_uwm_mae = 1.058085
+best_static_baseline_method = static_train_mean
+best_static_baseline_mae = 2.783102
+best_uwm_mae_reduction = 1.725017
+spatial_shuffle_negative_control_passed = true
+scene_aligned_gridded_air_quality_holdout_ready = true
+scene_aligned_station_calibrated_air_quality_holdout_ready = false
+observed_policy_outcome_superiority_claim = false
+empirical_superiority_claim = false
+```
+
+对 roadmap 的影响：
+
+```text
+新增 allowed bounded claim：
+scene_aligned_gridded_pm25_spatial_message_advantage_over_static_baselines
+
+继续保留 remaining gates：
+observed_policy_outcome_required
+scene_aligned_station_calibrated_air_quality_holdout_required
+synthetic_proxy_boundary_must_remain_visible
+```
+
+严格解释：
+
+可以说：在 2024-07 scene-aligned gridded TAP/CHAP PM2.5 state reconstruction 任务上，UWM spatial message reconstruction 明显优于 traditional static baseline suite。
+不能说：这是 station-calibrated observed air-quality holdout。
+不能说：这是真实政策 outcome。
+不能说：这证明 UWM planner 在真实治理结果上已经优于传统方法。
+
+## 28. 2026-07-06 Scene-aligned gridded PM2.5 conformal uncertainty head
+
+本轮继续沿世界模型技术架构补齐 `uncertainty` 头，而不是只停留在点预测 MAE。实现采用 split-conformal calibration：用训练期 same-day leave-one-admin spatial IDW residuals 校准 UWM interval radius，用训练期 leave-one-day static residuals 校准传统静态 baseline interval radius，然后在同一 144 个 TAP/CHAP scene-aligned gridded holdout predictions 上比较 coverage、interval width 和 interval score。
+
+TDD 记录：
+
+```text
+RED:
+uv run pytest data_agent/test_uwm_scene_aligned_gridded_air_quality_holdout.py -q
+失败原因：
+KeyError: 'uncertainty_calibration'
+KeyError: 'uwm_uncertainty_calibration_ready'
+
+GREEN:
+uv run pytest data_agent/test_uwm_scene_aligned_gridded_air_quality_holdout.py -q
+2 passed in 2.76s
+```
+
+新增实现：
+
+```text
+data_agent/uwm/scene_aligned_gridded_air_quality_holdout.py
+_uncertainty_calibration(...)
+_conformal_radius(...)
+_interval_scores(...)
+```
+
+真实 gridded uncertainty 结果：
+
+```text
+confidence_level = 0.9
+calibration_count = 108
+holdout_count = 144
+best_uwm_method = spatial_idw_message_reconstruction
+static_baseline_method = static_train_mean
+uwm_interval_radius = 2.291251
+static_interval_radius = 6.85
+uwm_interval_coverage = 0.944444
+static_interval_coverage = 1.0
+uwm_mean_interval_width = 4.582503
+static_mean_interval_width = 13.7
+uwm_interval_score = 5.559385
+static_interval_score = 13.7
+uwm_interval_score_reduction = 8.140615
+```
+
+新增 allowed bounded claim：
+
+```text
+scene_aligned_gridded_pm25_conformal_uncertainty_advantage_over_static_baseline
+```
+
+严格解释：
+
+可以说：在 TAP/CHAP 2024-07 scene-aligned gridded PM2.5 reconstruction 任务上，UWM spatial message head 的 conformal interval 达到 0.944444 coverage，并以更窄区间和更低 interval score 优于 static train-mean baseline。
+不能说：这是 station-calibrated observed holdout。
+不能说：这是 observed policy outcome。
+不能说：这关闭了 `scene_aligned_station_calibrated_air_quality_holdout_required` 或 `observed_policy_outcome_required`。
+
+## 30. 2026-07-06 Multisource livability scene renderer
+
+本轮回应“为什么没有把足够多的数据源都用上”的问题，把 UWM 从局部空气质量/Planner replay 推进到 multisource renderer。新 renderer 将 36 个 admin livability candidate 与 exposure/equity、service accessibility、GHSL population/built surface、GEE admin environment、TAP/CHAP scene-aligned PM2.5、admin spatial graph、Unicom latent mobility graph 和 OSM mobility network proxy 放入同一个 admin-unit scene。Unicom/OSM mobility 当前作为 scene context 使用，因缺少 grid/road-to-admin crosswalk，不硬投影到单元级分数。
+
+TDD 记录：
+
+```text
+RED:
+uv run pytest data_agent/test_uwm_multisource_livability_scene.py -q
+失败原因：
+ModuleNotFoundError: No module named 'data_agent.uwm.multisource_livability_scene'
+
+GREEN:
+uv run pytest data_agent/test_uwm_multisource_livability_scene.py -q
+3 passed in 0.09s
+```
+
+新增实现与产物：
+
+```text
+data_agent/uwm/multisource_livability_scene.py
+data_agent/test_uwm_multisource_livability_scene.py
+scripts/build_uwm_multisource_livability_scene.py
+data/uwm_public_proxy/chongqing_central/multisource_livability_scene_2026_07_06/uwm_multisource_livability_scene.json
+data/uwm_public_proxy/chongqing_central/multisource_livability_scene_2026_07_06/snapshot_manifest.json
+```
+
+真实多源 renderer 覆盖：
+
+```text
+admin_unit_count = 36
+data_source_count = 9
+admin_exposure_equity matched = 36/36
+ghsl_admin_alignment matched = 36/36
+service_accessibility matched = 36/36
+gee_admin_environment matched = 36/36
+scene_aligned_gridded_pm25 matched = 36/36
+admin_spatial_graph source_node_count = 1017
+unicom_latent_mobility_graph edge_count = 1067
+osm_mobility_network edge_count = 45468
+```
+
+真实 source-gated air-quality head 结果：
+
+```text
+target = tap_scene_pm25_mean_ugm3
+model = chap_cams_standardized_ridge
+holdout = leave-one-admin-out, 36 admin units
+multisource_mae = 0.949891
+chap_only_mae = 0.952794
+cams_only_mae = 1.010687
+loo_city_mean_mae = 1.009252
+mae_reduction_vs_best_single_source = 0.002903
+paired_win_count_vs_chap = 20
+paired_loss_count_vs_chap = 16
+spatial_interaction_negative_control_passed = false
+observed_policy_outcome_superiority_claim = false
+```
+
+新增 allowed bounded claim：
+
+```text
+multisource_livability_scene_air_quality_head_beats_single_source_baselines
+```
+
+严格解释：
+
+可以说：UWM renderer 已把多源数据真正对齐到统一 admin-unit scene，并且其中的空气质量 source-gated head 在真实 TAP scene PM2.5 mean 的 leave-one-admin-out 任务上略优于 CHAP-only、CAMS-only 和 LOO city-mean baseline。
+不能说：所有数据源直接融合后都提高了每个任务；服务可达性外生多源预测没有稳定优于均值 baseline，不能强行写优势。
+不能说：这是完整宜居性 observed outcome。
+不能说：这是 observed policy outcome 或真实政策反事实。
+
+## 31. 2026-07-06 OSM admin mobility crosswalk
+
+本轮继续把 mobility 从 scene context 推进到真正的 admin-unit state。实现使用 OSM Overpass raw highway nodes/ways 和 admin spatial graph bbox，对 road segment midpoint 做单归属：若 midpoint 落入多个 candidate admin bbox，选择 bbox area 最小的行政单元，避免重复计数。这个 crosswalk 仍是 bbox proxy，不是精确 polygon overlay，也不是出行时间网络。
+
+TDD 记录：
+
+```text
+RED:
+uv run pytest data_agent/test_uwm_osm_admin_mobility_crosswalk.py -q
+失败原因：
+ModuleNotFoundError: No module named 'data_agent.uwm.osm_admin_mobility_crosswalk'
+
+GREEN:
+uv run pytest data_agent/test_uwm_osm_admin_mobility_crosswalk.py -q
+3 passed in 0.39s
+```
+
+新增实现与产物：
+
+```text
+data_agent/uwm/osm_admin_mobility_crosswalk.py
+data_agent/test_uwm_osm_admin_mobility_crosswalk.py
+scripts/build_uwm_osm_admin_mobility_crosswalk.py
+data/uwm_public_proxy/chongqing_central/osm_admin_mobility_crosswalk_2026_07_06/uwm_osm_admin_mobility_crosswalk.json
+data/uwm_public_proxy/chongqing_central/osm_admin_mobility_crosswalk_2026_07_06/snapshot_manifest.json
+```
+
+真实 crosswalk 结果：
+
+```text
+admin_unit_count = 36
+osm_raw_node_count = 42058
+osm_highway_way_count = 6762
+assigned_road_segment_count = 45449
+unassigned_road_segment_count = 19
+assignment_rule = segment_midpoint_inside_admin_bbox_choose_smallest_bbox_area
+```
+
+真实服务可达性 head 结果：
+
+```text
+target = osm_service_point_count
+model = osm_road_segment_count_standardized_ridge
+holdout = leave-one-admin-out, 36 admin units
+mobility_crosswalk_mae = 12.887057
+city_mean_mae = 14.152381
+ghsl_population_proxy_mae = 14.760068
+ghsl_built_surface_proxy_mae = 14.028006
+mae_reduction_vs_best_traditional_static = 1.140949
+paired_win_count_vs_best_traditional = 20
+paired_loss_count_vs_best_traditional = 16
+observed_policy_outcome_superiority_claim = false
+```
+
+新增 allowed bounded claim：
+
+```text
+osm_admin_mobility_crosswalk_service_accessibility_head_beats_static_baselines
+```
+
+严格解释：
+
+可以说：OSM road segment count 的 admin-unit crosswalk 在真实 OSM service point count 的 LOO 任务上优于 city mean、GHSL population 和 GHSL built-surface static baseline。
+不能说：这是精确道路网络可达性、出行时间或交通流观测。
+不能说：这是完整宜居性 observed outcome。
+不能说：这是 observed policy outcome 或真实政策反事实。
+
+## 29. 2026-07-06 Risk-calibrated data-calibrated planner replay
+
+本轮继续推进 planner boundary：不改变 Graph-MDP raw reward，也不把 gridded state holdout 伪装成政策 outcome；只把上一轮真实 TAP/CHAP scene-aligned gridded PM2.5 split-conformal uncertainty 接入 planner replay 的风险评估层。风险惩罚使用同一个 UWM PM2.5 interval score 同时作用于 model-based plan 和 static single-step baseline，避免通过给 baseline 施加额外不确定性来制造优势。
+
+TDD 记录：
+
+```text
+RED:
+uv run pytest data_agent/test_uwm_data_calibrated_planner_replay.py::test_data_calibrated_graph_search_uses_scene_aligned_conformal_uncertainty_for_risk_adjustment -q
+失败原因：
+TypeError: plan_with_model_based_graph_search() got an unexpected keyword argument 'air_quality_uncertainty_context'
+
+GREEN:
+uv run pytest data_agent/test_uwm_data_calibrated_planner_replay.py -q
+5 passed in 0.26s
+```
+
+新增实现与产物：
+
+```text
+data_agent/uwm/model_based_rl.py
+data_agent/uwm/data_foundation_evidence_gate.py
+data_agent/uwm/world_model_evidence_readiness.py
+scripts/build_uwm_data_calibrated_planner_replay.py
+data/uwm_public_proxy/chongqing_central/data_calibrated_planner_replay_2026_07_06/uwm_data_calibrated_model_based_graph_search.json
+data/uwm_public_proxy/chongqing_central/data_foundation_evidence_gate_2026_07_05/uwm_data_foundation_evidence_gate.json
+docs/reports/uwm_track2_readiness_2026_07_06/uwm_track2_readiness_matrix.json
+```
+
+真实风险校准结果：
+
+```text
+air_quality_uncertainty_calibration_ready = true
+uwm_interval_score = 5.559385
+static_interval_score = 13.7
+pm25_scene_range_ugm3 = 16.4
+normalized_uwm_interval_score = 0.33898689
+best_sequence_raw_reward = 0.017180838
+static_single_step_raw_reward = 0.003837146
+best_sequence_risk_adjusted_reward = 0.016111838
+static_single_step_risk_adjusted_reward = 0.003334625
+risk_adjusted_advantage_over_static_single_step = 0.012777213
+risk_calibrated_planner_replay_ready = true
+observed_policy_outcome_superiority_claim = false
+```
+
+新增 allowed bounded claim：
+
+```text
+risk_calibrated_planner_replay_advantage_over_static_heuristic
+```
+
+严格解释：
+
+可以说：在 data-calibrated simulator replay 中，UWM Graph-MDP best two-step sequence 在使用同一 scene-aligned gridded PM2.5 conformal uncertainty penalty 后仍优于 static single-step heuristic。
+不能说：这是 station-calibrated PM2.5 outcome。
+不能说：这是 observed policy outcome。
+不能说：这关闭了 `scene_aligned_station_calibrated_air_quality_holdout_required` 或 `observed_policy_outcome_required`。

@@ -18,7 +18,21 @@ __pycache__/
 data_agent/.env
 data_agent/.adk/
 data_agent/uploads/
+data_agent/test_data/
+data_agent/__pycache__/
+data_agent/nl2sql_eval_results/
+data_agent/experiments/output/
 v7/
+
+# Frontend build artifacts are generated inside the frontend-builder stage
+frontend/node_modules/
+frontend/dist/
+frontend/tsconfig.tsbuildinfo
+
+# Local notebooks and generated run outputs are not runtime image inputs
+outputs/
+notebooks/
+gis_data_agent.egg-info/
 
 # Generated output files
 enhanced_*.shp

@@ -55,9 +55,149 @@ def test_default_track2_readiness_matrix_loads_real_world_model_evidence_gate():
     assert matrix["observed_validation_readiness"]["temporal_state_prediction_suite_ready"] is True
     readiness = matrix["world_model_evidence_readiness"]
     assert readiness["overall_claim_ceiling"] == "bounded_support"
+    assert readiness["system_level_superiority_summary"] == (
+        "bounded_final_endpoint_and_endpoint_aligned_planner_advantage_without_policy_outcome_superiority"
+    )
     assert readiness["traditional_method_comparison_ready"] is True
+    assert readiness["bounded_final_system_superiority_ready"] is True
     assert readiness["policy_outcome_superiority_ready"] is False
     assert readiness["architecture_evidence"]["simulator"]["external_temporal_transition_ready"] is True
+    assert (
+        readiness["architecture_evidence"]["renderer"][
+            "multisource_livability_scene_ready"
+        ]
+        is True
+    )
+    assert (
+        readiness["architecture_evidence"]["renderer"][
+            "multisource_air_quality_mae_reduction"
+        ]
+        == 0.002903
+    )
+    assert (
+        readiness["architecture_evidence"]["renderer"][
+            "osm_admin_mobility_crosswalk_ready"
+        ]
+        is True
+    )
+    assert (
+        readiness["architecture_evidence"]["renderer"][
+            "osm_admin_mobility_crosswalk_projected_in_scene"
+        ]
+        is True
+    )
+    assert (
+        readiness["architecture_evidence"]["renderer"][
+            "osm_assigned_road_segment_count_in_scene"
+        ]
+        == 45449
+    )
+    assert (
+        readiness["architecture_evidence"]["renderer"][
+            "osm_service_accessibility_mae_reduction"
+        ]
+        == 1.140949
+    )
+    assert (
+        readiness["architecture_evidence"]["renderer"][
+            "building_floor_morphology_ready"
+        ]
+        is True
+    )
+    assert (
+        readiness["architecture_evidence"]["renderer"][
+            "building_floor_assigned_building_count"
+        ]
+        == 44887
+    )
+    assert (
+        readiness["architecture_evidence"]["renderer"][
+            "building_floor_total_floor_count"
+        ]
+        == 322665
+    )
+    assert (
+        readiness["architecture_evidence"]["renderer"][
+            "building_floor_max_floor"
+        ]
+        == 66
+    )
+    assert (
+        readiness["architecture_evidence"]["renderer"][
+            "building_floor_ready_endpoint_count"
+        ]
+        == 2
+    )
+    assert (
+        readiness["architecture_evidence"]["renderer"][
+            "building_floor_true_3d_claim"
+        ]
+        is False
+    )
+    final_evaluator = readiness["architecture_evidence"][
+        "final_livability_endpoint_evaluator"
+    ]
+    assert final_evaluator["ready"] is True
+    assert final_evaluator["endpoint_count"] == 3
+    assert final_evaluator["ready_endpoint_count"] == 3
+    assert final_evaluator["mean_relative_mae_reduction_vs_best_traditional"] == 0.115337
+    assert (
+        readiness["architecture_evidence"]["planner"][
+            "risk_calibrated_planner_replay_ready"
+        ]
+        is True
+    )
+    assert (
+        readiness["architecture_evidence"]["planner"][
+            "endpoint_aligned_planner_evaluator_ready"
+        ]
+        is True
+    )
+    assert (
+        readiness["architecture_evidence"]["planner"][
+            "endpoint_aligned_advantage_over_static"
+        ]
+        == 0.0007457
+    )
+    assert (
+        readiness["architecture_evidence"]["planner"][
+            "spatial_spillover_planner_evaluator_ready"
+        ]
+        is True
+    )
+    assert (
+        readiness["architecture_evidence"]["planner"][
+            "neighbor_livability_delta_advantage"
+        ]
+        == 0.272680076
+    )
+    assert (
+        readiness["architecture_evidence"]["planner"][
+            "risk_calibrated_planner_advantage_over_static"
+        ]
+        == 0.012777213
+    )
+    final_decision = readiness["architecture_evidence"][
+        "final_livability_decision_package"
+    ]
+    assert final_decision["ready"] is True
+    assert final_decision["action_count"] == 2
+    assert final_decision["target_unit_count"] == 2
+    assert final_decision["endpoint_aligned_advantage_over_static"] == 0.0007457
+    assert final_decision["risk_adjusted_advantage_over_static"] == 0.012777213
+    assert final_decision["neighbor_livability_delta_advantage"] == 0.272680076
+    assert final_decision["graph_drl_training_ready"] is True
+    assert final_decision["graph_drl_algorithm"] == "graph_dqn_fitted_q_model_based_rl"
+    assert final_decision["graph_drl_training_sample_count"] == 3600
+    graph_drl = readiness["architecture_evidence"]["graph_drl_training"]
+    assert graph_drl["ready"] is True
+    assert graph_drl["algorithm"] == "graph_dqn_fitted_q_model_based_rl"
+    assert graph_drl["is_deep_rl"] is True
+    assert graph_drl["uses_graph_message_passing"] is True
+    assert graph_drl["policy_or_value_network_trained"] is True
+    assert graph_drl["training_sample_count"] == 3600
+    assert graph_drl["q_return_mae"] == 0.000109541
+    assert graph_drl["advantage_over_traditional_static"] == 0.005131954
     assert "observed_policy_outcome_required" in readiness["remaining_gates"]
 
 
@@ -322,6 +462,7 @@ def test_track2_readiness_integrates_world_model_evidence_gate_claim_ladder():
     assert readiness["system_level_superiority_summary"] == (
         "bounded_state_prediction_and_transition_advantage_without_policy_outcome_superiority"
     )
+    assert readiness["bounded_final_system_superiority_ready"] is False
     assert readiness["traditional_method_comparison_ready"] is True
     assert readiness["policy_outcome_superiority_ready"] is False
     assert readiness["empirical_superiority_claim"] is False

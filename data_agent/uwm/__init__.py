@@ -10,9 +10,32 @@ from .contracts import (
     UWM_PLAN_PACKAGE_SCHEMA,
     UWM_ROLLOUT_TRACE_SCHEMA,
 )
+from .causal_policy_evidence import (
+    UWM_CAUSAL_POLICY_EVIDENCE_GATE_SCHEMA,
+    build_uwm_causal_policy_evidence_gate,
+    validate_uwm_causal_policy_evidence_gate,
+)
+from .building_floor_morphology import (
+    UWM_BUILDING_FLOOR_MORPHOLOGY_SCHEMA,
+    build_uwm_building_floor_morphology,
+)
+from .data_calibrated_mechanism_table import (
+    UWM_DATA_CALIBRATED_MECHANISM_TABLE_SCHEMA,
+    build_uwm_data_calibrated_mechanism_table,
+    validate_uwm_data_calibrated_mechanism_table,
+)
 from .data_acquisition import build_uwm_public_data_acquisition_plan, summarize_acquisition_blockers
 from .data_foundation import audit_uwm_data_foundation_manifest, audit_uwm_data_foundation_roles
 from .evaluation import UWM_DYNAMIC_ADVANTAGE_EVALUATION_SCHEMA, UWM_PLANNER_ADVANTAGE_EVALUATION_SCHEMA
+from .external_observed_holdout import (
+    UWM_EXTERNAL_OBSERVED_HOLDOUT_SUITE_SCHEMA,
+    build_uwm_external_observed_holdout_suite,
+    validate_uwm_external_observed_holdout_suite,
+)
+from .endpoint_aligned_planner_evaluator import (
+    UWM_ENDPOINT_ALIGNED_PLANNER_EVALUATOR_SCHEMA,
+    build_uwm_endpoint_aligned_planner_evaluator,
+)
 from .ghsl_alignment import (
     GHSL_ADMIN_ALIGNMENT_SCHEMA,
     align_ghsl_tiles_to_admin_units,
@@ -20,6 +43,30 @@ from .ghsl_alignment import (
     validate_ghsl_admin_alignment,
 )
 from .mmfe_state_input import MMFE_UWM_STATE_INPUT_SCHEMA
+from .multisource_livability_scene import (
+    UWM_MULTISOURCE_LIVABILITY_SCENE_SCHEMA,
+    build_uwm_multisource_livability_scene,
+)
+from .livability_endpoint_suite import (
+    UWM_LIVABILITY_ENDPOINT_SUITE_SCHEMA,
+    build_uwm_livability_endpoint_suite,
+)
+from .livability_decision_package import (
+    UWM_LIVABILITY_DECISION_PACKAGE_SCHEMA,
+    build_uwm_livability_decision_package,
+)
+from .livability_graph_mdp_env import (
+    LIVABILITY_GRAPH_MDP_ENV_SCHEMA,
+    build_livability_graph_mdp_env,
+)
+from .livability_rl_training import (
+    UWM_LIVABILITY_RL_TRAINING_REPORT_SCHEMA,
+    train_livability_model_based_q_agent,
+)
+from .livability_graph_drl import (
+    UWM_LIVABILITY_GRAPH_DRL_TRAINING_REPORT_SCHEMA,
+    train_livability_graph_dqn_agent,
+)
 from .openmeteo_history import (
     OPENMETEO_HISTORICAL_PROXY_SCHEMA,
     build_mmfe_state_input_from_openmeteo_historical_proxy,
@@ -28,6 +75,10 @@ from .openmeteo_history import (
     write_openmeteo_historical_snapshot,
 )
 from .openmeteo_proxy import OPENMETEO_ENVIRONMENTAL_PROXY_SCHEMA, build_openmeteo_environmental_proxy
+from .osm_admin_mobility_crosswalk import (
+    UWM_OSM_ADMIN_MOBILITY_CROSSWALK_SCHEMA,
+    build_uwm_osm_admin_mobility_crosswalk,
+)
 from .planner import DEFAULT_PLANNER_BACKEND, build_evidence_gated_plan
 from .scene_state import (
     UWM_SCENE_STATE_SCHEMA,
@@ -36,10 +87,32 @@ from .scene_state import (
     validate_scene_state,
 )
 from .simulator import DEFAULT_SIMULATOR_BACKEND, simulate_livability_rollout
+from .scene_aligned_gridded_air_quality_holdout import (
+    UWM_SCENE_ALIGNED_GRIDDED_AIR_QUALITY_HOLDOUT_SCHEMA,
+    build_uwm_scene_aligned_gridded_air_quality_holdout,
+    validate_uwm_scene_aligned_gridded_air_quality_holdout,
+)
+from .station_aligned_air_quality_holdout import (
+    UWM_STATION_ALIGNED_AIR_QUALITY_HOLDOUT_SCHEMA,
+    build_uwm_station_aligned_air_quality_holdout,
+    validate_uwm_station_aligned_air_quality_holdout,
+)
+from .spatial_spillover_planner_evaluator import (
+    UWM_SPATIAL_SPILLOVER_PLANNER_EVALUATOR_SCHEMA,
+    build_uwm_spatial_spillover_planner_evaluator,
+)
 from .track2_submission import (
     build_track2_readiness_matrix,
     build_uwm_default_artifact_inventory,
     build_uwm_default_track2_readiness_matrix,
+)
+from .traditional_livability_baseline import (
+    UWM_TRADITIONAL_LIVABILITY_BASELINE_SCHEMA,
+    build_traditional_livability_baseline,
+)
+from .traditional_vs_world_model_demo import (
+    UWM_TRADITIONAL_VS_WORLD_MODEL_DEMO_SCHEMA,
+    build_traditional_vs_world_model_demo,
 )
 from .world_model_evidence_readiness import (
     UWM_WORLD_MODEL_EVIDENCE_READINESS_SCHEMA,
@@ -53,12 +126,29 @@ __all__ = [
     "MMFE_UWM_STATE_INPUT_SCHEMA",
     "OPENMETEO_ENVIRONMENTAL_PROXY_SCHEMA",
     "OPENMETEO_HISTORICAL_PROXY_SCHEMA",
+    "UWM_BUILDING_FLOOR_MORPHOLOGY_SCHEMA",
+    "UWM_CAUSAL_POLICY_EVIDENCE_GATE_SCHEMA",
+    "UWM_DATA_CALIBRATED_MECHANISM_TABLE_SCHEMA",
     "UWM_DYNAMIC_ADVANTAGE_EVALUATION_SCHEMA",
+    "UWM_ENDPOINT_ALIGNED_PLANNER_EVALUATOR_SCHEMA",
+    "UWM_EXTERNAL_OBSERVED_HOLDOUT_SUITE_SCHEMA",
+    "UWM_LIVABILITY_ENDPOINT_SUITE_SCHEMA",
+    "UWM_LIVABILITY_DECISION_PACKAGE_SCHEMA",
+    "UWM_LIVABILITY_GRAPH_DRL_TRAINING_REPORT_SCHEMA",
+    "LIVABILITY_GRAPH_MDP_ENV_SCHEMA",
+    "UWM_LIVABILITY_RL_TRAINING_REPORT_SCHEMA",
+    "UWM_MULTISOURCE_LIVABILITY_SCENE_SCHEMA",
     "UWM_OBSERVATION_SCHEMA",
+    "UWM_OSM_ADMIN_MOBILITY_CROSSWALK_SCHEMA",
     "UWM_PLAN_PACKAGE_SCHEMA",
     "UWM_PLANNER_ADVANTAGE_EVALUATION_SCHEMA",
     "UWM_ROLLOUT_TRACE_SCHEMA",
+    "UWM_SCENE_ALIGNED_GRIDDED_AIR_QUALITY_HOLDOUT_SCHEMA",
     "UWM_SCENE_STATE_SCHEMA",
+    "UWM_SPATIAL_SPILLOVER_PLANNER_EVALUATOR_SCHEMA",
+    "UWM_STATION_ALIGNED_AIR_QUALITY_HOLDOUT_SCHEMA",
+    "UWM_TRADITIONAL_LIVABILITY_BASELINE_SCHEMA",
+    "UWM_TRADITIONAL_VS_WORLD_MODEL_DEMO_SCHEMA",
     "UWM_WORLD_MODEL_EVIDENCE_READINESS_SCHEMA",
     "audit_uwm_data_foundation_manifest",
     "audit_uwm_data_foundation_roles",
@@ -67,18 +157,40 @@ __all__ = [
     "build_mmfe_state_input_from_openmeteo_historical_proxy",
     "build_mmfe_state_input_from_ghsl_admin_alignment",
     "build_track2_readiness_matrix",
+    "build_uwm_building_floor_morphology",
+    "build_uwm_causal_policy_evidence_gate",
+    "build_uwm_data_calibrated_mechanism_table",
+    "build_uwm_endpoint_aligned_planner_evaluator",
+    "build_uwm_external_observed_holdout_suite",
+    "build_uwm_livability_endpoint_suite",
+    "build_uwm_livability_decision_package",
+    "build_livability_graph_mdp_env",
+    "build_uwm_multisource_livability_scene",
+    "build_uwm_osm_admin_mobility_crosswalk",
+    "build_uwm_scene_aligned_gridded_air_quality_holdout",
+    "build_uwm_spatial_spillover_planner_evaluator",
+    "build_uwm_station_aligned_air_quality_holdout",
     "build_uwm_default_artifact_inventory",
     "build_uwm_default_track2_readiness_matrix",
     "build_uwm_public_data_acquisition_plan",
+    "build_traditional_livability_baseline",
+    "build_traditional_vs_world_model_demo",
     "build_openmeteo_environmental_proxy",
     "build_openmeteo_historical_environmental_proxy",
     "build_openmeteo_historical_urls",
     "build_scene_state_from_proxy_artifacts",
     "simulate_livability_rollout",
+    "train_livability_model_based_q_agent",
+    "train_livability_graph_dqn_agent",
     "build_world_model_evidence_readiness",
     "summarize_acquisition_blockers",
     "derive_simulator_scenario_from_scene_state",
     "validate_ghsl_admin_alignment",
     "validate_scene_state",
+    "validate_uwm_causal_policy_evidence_gate",
+    "validate_uwm_data_calibrated_mechanism_table",
+    "validate_uwm_external_observed_holdout_suite",
+    "validate_uwm_scene_aligned_gridded_air_quality_holdout",
+    "validate_uwm_station_aligned_air_quality_holdout",
     "write_openmeteo_historical_snapshot",
 ]
