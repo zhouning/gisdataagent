@@ -79,6 +79,13 @@ def _assert_policy_improvement_claim(benchmark: dict) -> None:
     ]
 
     policies = benchmark["policy_variant_metrics"]
+    expected_gamma = benchmark["policy_improvement_config"]["gamma"]
+    for policy in policies.values():
+        assert policy["return_convention"] == {
+            "discount": "gamma",
+            "gamma": expected_gamma,
+        }
+
     improved = policies["world_model_policy_improvement"]
     assert improved["action_count"] == benchmark["policy_improvement_config"]["horizon"]
     assert improved["action_count"] == 2

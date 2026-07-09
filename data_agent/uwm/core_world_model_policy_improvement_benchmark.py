@@ -183,6 +183,7 @@ def build_uwm_core_world_model_policy_improvement_benchmark(
             degree_by_unit,
             node_count,
             full_dynamics,
+            gamma,
             uncertainty_penalty,
         ),
         "one_step_world_model_greedy": _one_step_greedy_sequence(
@@ -191,6 +192,7 @@ def build_uwm_core_world_model_policy_improvement_benchmark(
             degree_by_unit,
             node_count,
             full_dynamics,
+            gamma,
             uncertainty_penalty,
         ),
         "multi_step_beam_search": _beam_search_sequence(
@@ -200,6 +202,7 @@ def build_uwm_core_world_model_policy_improvement_benchmark(
             node_count,
             full_dynamics,
             horizon,
+            gamma,
             beam_width,
             uncertainty_penalty,
         ),
@@ -423,6 +426,7 @@ def _one_step_greedy_sequence(
     degree_by_unit: dict[str, int],
     node_count: int,
     dynamics: DynamicsVariant,
+    gamma: float,
     uncertainty_penalty: float,
 ) -> dict[str, Any]:
     return _tree_sequence(
@@ -433,7 +437,7 @@ def _one_step_greedy_sequence(
         node_count,
         dynamics,
         horizon=1,
-        gamma=1.0,
+        gamma=gamma,
         beam_width=1,
         uncertainty_penalty=uncertainty_penalty,
         ranking="immediate_conservative_reward",
@@ -446,6 +450,7 @@ def _static_single_step_sequence(
     degree_by_unit: dict[str, int],
     node_count: int,
     dynamics: DynamicsVariant,
+    gamma: float,
     uncertainty_penalty: float,
 ) -> dict[str, Any]:
     return _evaluate_fixed_sequence(
@@ -454,7 +459,7 @@ def _static_single_step_sequence(
         degree_by_unit,
         node_count,
         dynamics,
-        gamma=1.0,
+        gamma=gamma,
         uncertainty_penalty=uncertainty_penalty,
         policy_variant="static_single_step_baseline",
     )
@@ -467,6 +472,7 @@ def _beam_search_sequence(
     node_count: int,
     dynamics: DynamicsVariant,
     horizon: int,
+    gamma: float,
     beam_width: int,
     uncertainty_penalty: float,
 ) -> dict[str, Any]:
@@ -478,10 +484,10 @@ def _beam_search_sequence(
         node_count,
         dynamics,
         horizon=horizon,
-        gamma=1.0,
+        gamma=gamma,
         beam_width=max(1, min(beam_width, 5)),
         uncertainty_penalty=uncertainty_penalty,
-        ranking="undiscounted_conservative_return",
+        ranking="discounted_conservative_return",
     )
 
 
@@ -523,6 +529,7 @@ def _evaluate_fixed_sequence(
         imagined_steps,
         predicted_return,
         conservative_return,
+        gamma,
     )
 
 
@@ -618,6 +625,7 @@ def _tree_sequence(
         best["imagined_steps"],
         float(best["predicted_return"]),
         float(best["conservative_return"]),
+        gamma,
     )
 
 
@@ -758,6 +766,7 @@ def _policy_metric_row(
     imagined_steps: list[dict[str, Any]],
     predicted_return: float,
     conservative_return: float,
+    gamma: float,
 ) -> dict[str, Any]:
     return {
         "policy_variant": policy_variant,
@@ -770,6 +779,10 @@ def _policy_metric_row(
             float(conservative_return),
             9,
         ),
+        "return_convention": {
+            "discount": "gamma",
+            "gamma": gamma,
+        },
     }
 
 
