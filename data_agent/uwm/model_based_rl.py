@@ -17,6 +17,11 @@ from .geographic_similarity_kernel import validate_uwm_geographic_similarity_ker
 from .spatial_spillover_kernel import (
     validate_uwm_data_calibrated_spatial_spillover_kernel,
 )
+from .spatial_causal_action_binding import (
+    action_with_spatial_causal_contract,
+    causal_contracts_by_action_type,
+    spatial_causal_action_binding_summary,
+)
 
 
 GRAPH_MDP_STATE_SCHEMA = "uwm.graph_mdp_state.v1"
@@ -232,6 +237,7 @@ def plan_with_model_based_graph_search(
     air_quality_uncertainty_context: dict[str, Any] | None = None,
     spatial_spillover_kernel: dict[str, Any] | None = None,
     transition_storage: str = "full",
+    spatial_causal_question_registry: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Search over masked graph actions using simulator rollouts as the model."""
 
@@ -242,8 +248,27 @@ def plan_with_model_based_graph_search(
     if transition_storage not in {"full", "compact"}:
         raise ValueError("transition_storage must be 'full' or 'compact'")
 
-    graph_state = build_graph_mdp_state(observation, action_types=action_types, thresholds=thresholds)
-    candidates = list(graph_state["available_actions"])
+    graph_state = build_graph_mdp_state(
+        observation,
+        action_types=action_types,
+        thresholds=thresholds,
+    )
+    causal_contracts = causal_contracts_by_action_type(
+        spatial_causal_question_registry or {}
+    )
+    candidates = [
+        action_with_spatial_causal_contract(action, causal_contracts)
+        for action in graph_state["available_actions"]
+    ]
+    graph_state = {
+        **graph_state,
+        "available_actions": candidates,
+    }
+    spatial_causal_binding = spatial_causal_action_binding_summary(
+        spatial_causal_question_registry=spatial_causal_question_registry or {},
+        actions=candidates,
+        total_action_count_key="feasible_action_count",
+    )
     if not candidates:
         raise ValueError("model-based graph search requires at least one masked candidate action")
     mechanism_summary = _mechanism_table_summary(mechanism_table)
@@ -332,15 +357,25 @@ def plan_with_model_based_graph_search(
         air_quality_uncertainty_summary=air_quality_uncertainty_summary,
     )
     evidence_grade = str((best["rollout_trace"] or {}).get("evidence_grade") or "not_for_claim")
+    binding_ready = spatial_causal_binding["binding_ready"] is True
     supported_claim = (
         (
             "data_calibrated_model_based_graph_search_advantage_over_static_heuristic"
             if mechanism_summary["data_calibrated_mechanism_ready"]
             else "known_effect_model_based_graph_search_advantage"
         )
-        if advantage > 0 and evidence_grade != "not_for_claim"
+        if advantage > 0 and evidence_grade != "not_for_claim" and binding_ready
         else "no_model_based_graph_search_advantage_claim_supported"
     )
+    claim_level = evidence_grade if advantage > 0 and binding_ready else "not_for_claim"
+    remaining_gates = [
+        "observed_policy_outcome_holdout_required",
+        "learned_dynamics_model_required",
+        "offline_policy_evaluation_required",
+        "causal_policy_effect_validation_required",
+    ]
+    if not binding_ready:
+        remaining_gates.append("spatial_causal_question_registry_binding_required")
 
     return {
         "schema": MODEL_BASED_GRAPH_SEARCH_REPORT_SCHEMA,
@@ -349,6 +384,7 @@ def plan_with_model_based_graph_search(
         "mechanism_table_summary": mechanism_summary,
         "spatial_spillover_kernel_summary": spatial_spillover_kernel_summary,
         "air_quality_uncertainty_calibration_summary": air_quality_uncertainty_summary,
+        "spatial_causal_contract_binding": spatial_causal_binding,
         "graph_mdp_state": graph_state,
             "search_config": {
                 "horizon": horizon,
@@ -382,20 +418,17 @@ def plan_with_model_based_graph_search(
         "observed_policy_outcome_superiority_claim": False,
         "empirical_superiority_claim": False,
         "claim_boundary": {
-            "max_claim_level": evidence_grade if advantage > 0 else "not_for_claim",
+            "max_claim_level": claim_level,
             "reason": (
                 "model-based graph search uses data-calibrated simulator rollouts; observed policy "
                 "outcome gates remain open"
-                if mechanism_summary["data_calibrated_mechanism_ready"]
+                if mechanism_summary["data_calibrated_mechanism_ready"] and binding_ready
+                else "model-based graph search lacks required spatial causal action binding"
+                if not binding_ready
                 else "model-based graph search uses simulator rollouts; observed policy outcome gates remain open"
             ),
         },
-        "remaining_gates": [
-            "observed_policy_outcome_holdout_required",
-            "learned_dynamics_model_required",
-            "offline_policy_evaluation_required",
-            "causal_policy_effect_validation_required",
-        ],
+        "remaining_gates": remaining_gates,
     }
 
 

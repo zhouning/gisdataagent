@@ -31,6 +31,10 @@ SCENE_ALIGNED_GRIDDED_AIR_QUALITY_HOLDOUT_PATH = (
     ROOT
     / "data/uwm_public_proxy/chongqing_central/scene_aligned_gridded_air_quality_holdout_2026_07_06/uwm_scene_aligned_gridded_air_quality_holdout.json"
 )
+SPATIAL_CAUSAL_REGISTRY_PATH = (
+    ROOT
+    / "data/uwm_public_proxy/chongqing_central/spatial_causal_question_registry_2026_07_09/uwm_spatial_causal_question_registry.json"
+)
 
 
 def _load_json(path: Path) -> dict:
@@ -40,6 +44,7 @@ def _load_json(path: Path) -> dict:
 def _build_calibrated_report(
     *,
     air_quality_uncertainty_context: dict | None = None,
+    spatial_causal_question_registry: dict | None = None,
 ) -> dict:
     graph = _load_json(ADMIN_GRAPH_PATH)
     panel = _load_json(ADMIN_PANEL_PATH)
@@ -54,6 +59,8 @@ def _build_calibrated_report(
     kwargs = {}
     if air_quality_uncertainty_context is not None:
         kwargs["air_quality_uncertainty_context"] = air_quality_uncertainty_context
+    if spatial_causal_question_registry is not None:
+        kwargs["spatial_causal_question_registry"] = spatial_causal_question_registry
     return plan_with_model_based_graph_search(
         observation,
         action_types=[
@@ -80,7 +87,9 @@ def _build_calibrated_report(
 
 
 def test_data_calibrated_graph_search_uses_mechanism_table_and_beats_static():
-    report = _build_calibrated_report()
+    report = _build_calibrated_report(
+        spatial_causal_question_registry=_load_json(SPATIAL_CAUSAL_REGISTRY_PATH)
+    )
 
     assert report["schema"] == "uwm.model_based_graph_search_report.v1"
     assert report["mechanism_table_summary"]["mechanism_table_id"] == (
@@ -116,10 +125,75 @@ def test_data_calibrated_graph_search_uses_mechanism_table_and_beats_static():
     )
 
 
+def test_data_calibrated_graph_search_binds_actions_to_spatial_causal_contracts():
+    registry = _load_json(SPATIAL_CAUSAL_REGISTRY_PATH)
+    report = _build_calibrated_report(spatial_causal_question_registry=registry)
+
+    binding = report["spatial_causal_contract_binding"]
+    candidate_count = report["search_config"]["candidate_action_count"]
+    assert binding["binding_ready"] is True
+    assert binding["registry_ready"] is True
+    assert binding["feasible_action_count"] == candidate_count
+    assert binding["attached_action_count"] == candidate_count
+    assert binding["missing_contract_action_count"] == 0
+    assert binding["underidentified_policy_effect_action_count"] == candidate_count
+    assert binding["identified_policy_effect_action_count"] == 0
+    assert binding["policy_outcome_claim_allowed_action_count"] == 0
+
+    for action in report["best_sequence"]["action_sequence"]:
+        assert action["causal_question_id"]
+        assert "do(" in action["causal_query"]
+        assert action["primary_outcome"]
+        assert action["identification_status"] == (
+            "underidentified_for_observed_policy_effect"
+        )
+        assert action["required_authoritative_tables"] == [
+            "policy_project_history",
+            "action_constraint_cost_model",
+            "observed_outcome_validation_panel",
+            "causal_effect_calibration_panel",
+            "human_governance_review_log",
+        ]
+        assert action["policy_outcome_claim_allowed"] is False
+        assert action["observed_policy_outcome_superiority_claim"] is False
+        assert action["empirical_superiority_claim"] is False
+
+    static_action = report["static_single_step_baseline"]["action_sequence"][0]
+    assert static_action["action_id"].startswith("static-")
+    assert static_action["causal_question_id"]
+    assert static_action["policy_outcome_claim_allowed"] is False
+
+    first_transition_action = report["trajectory_dataset"]["transitions"][0]["action"]
+    assert first_transition_action["causal_question_id"]
+    assert first_transition_action["policy_outcome_claim_allowed"] is False
+
+
+def test_graph_search_without_spatial_causal_registry_blocks_planner_advantage_claim():
+    report = _build_calibrated_report()
+
+    assert report["advantage_over_static_single_step"] > 0
+    binding = report["spatial_causal_contract_binding"]
+    assert binding["binding_ready"] is False
+    assert binding["registry_ready"] is False
+    assert binding["missing_contract_action_count"] == report["search_config"][
+        "candidate_action_count"
+    ]
+    assert report["supported_claim"] == (
+        "no_model_based_graph_search_advantage_claim_supported"
+    )
+    assert report["claim_boundary"]["max_claim_level"] == "not_for_claim"
+    assert "spatial_causal_question_registry_binding_required" in report[
+        "remaining_gates"
+    ]
+    assert report["observed_policy_outcome_superiority_claim"] is False
+    assert report["empirical_superiority_claim"] is False
+
+
 def test_data_calibrated_graph_search_uses_scene_aligned_conformal_uncertainty_for_risk_adjustment():
     scene_holdout = _load_json(SCENE_ALIGNED_GRIDDED_AIR_QUALITY_HOLDOUT_PATH)
     report = _build_calibrated_report(
         air_quality_uncertainty_context=scene_holdout,
+        spatial_causal_question_registry=_load_json(SPATIAL_CAUSAL_REGISTRY_PATH),
     )
 
     summary = report["air_quality_uncertainty_calibration_summary"]
@@ -158,7 +232,9 @@ def test_data_calibrated_graph_search_uses_scene_aligned_conformal_uncertainty_f
 
 
 def test_data_calibrated_replay_can_train_learned_rollout_without_policy_claim():
-    report = _build_calibrated_report()
+    report = _build_calibrated_report(
+        spatial_causal_question_registry=_load_json(SPATIAL_CAUSAL_REGISTRY_PATH)
+    )
     learned = plan_with_offline_world_model_rollouts(
         report,
         model_id="data-calibrated-learned-rollout-test",
@@ -188,7 +264,9 @@ def test_data_calibrated_replay_can_train_learned_rollout_without_policy_claim()
 
 
 def test_data_foundation_gate_tracks_calibrated_planner_replay(tmp_path: Path):
-    report = _build_calibrated_report()
+    report = _build_calibrated_report(
+        spatial_causal_question_registry=_load_json(SPATIAL_CAUSAL_REGISTRY_PATH)
+    )
     report_path = tmp_path / "uwm_data_calibrated_graph_search.json"
     report_path.write_text(json.dumps(report, ensure_ascii=False), encoding="utf-8")
 
@@ -232,6 +310,7 @@ def test_data_foundation_gate_tracks_risk_calibrated_planner_replay(tmp_path: Pa
     scene_holdout = _load_json(SCENE_ALIGNED_GRIDDED_AIR_QUALITY_HOLDOUT_PATH)
     report = _build_calibrated_report(
         air_quality_uncertainty_context=scene_holdout,
+        spatial_causal_question_registry=_load_json(SPATIAL_CAUSAL_REGISTRY_PATH),
     )
     report_path = tmp_path / "uwm_risk_calibrated_graph_search.json"
     report_path.write_text(json.dumps(report, ensure_ascii=False), encoding="utf-8")
