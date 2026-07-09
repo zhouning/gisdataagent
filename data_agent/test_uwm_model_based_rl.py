@@ -1,4 +1,7 @@
 from data_agent.uwm.admin_spatial_graph import build_admin_spatial_adjacency_graph
+from data_agent.uwm.geographic_similarity_kernel import (
+    build_uwm_geographic_similarity_kernel,
+)
 from data_agent.uwm.model_based_rl import (
     build_admin_livability_graph_observation,
     build_graph_mdp_state,
@@ -114,6 +117,38 @@ def test_model_based_graph_search_exports_replay_and_beats_static_single_step_he
     assert "observed_policy_outcome_holdout_required" in report["remaining_gates"]
 
 
+def test_model_based_graph_search_can_store_compact_replay_transitions():
+    report = plan_with_model_based_graph_search(
+        _observation(),
+        action_types=[
+            "increase_green_infrastructure",
+            "traffic_emission_control",
+            "add_community_service",
+        ],
+        scenario={
+            "scenario_id": "heat_pollution_service_stress",
+            "heat_stress_multiplier": 1.2,
+            "air_pollution_stress_multiplier": 1.15,
+            "vulnerability_multiplier": 1.1,
+        },
+        horizon=2,
+        beam_width=3,
+        thresholds={
+            "heat_risk": 0.7,
+            "air_pollution_exposure": 0.6,
+            "service_accessibility": 0.5,
+        },
+        transition_storage="compact",
+    )
+
+    transition = report["trajectory_dataset"]["transitions"][0]
+    assert report["search_config"]["transition_storage"] == "compact"
+    assert "next_state_delta" not in transition
+    assert transition["next_state_delta_summary"]["changed_units"] >= 1
+    assert "aggregate" in transition["next_state_delta_summary"]
+    assert "top_changed_units" in transition["next_state_delta_summary"]
+
+
 def test_build_admin_livability_graph_observation_maps_proxy_panel_to_model_features():
     panel = {
         "schema": "uwm.admin_livability_target_panel.v1",
@@ -168,6 +203,46 @@ def test_build_admin_livability_graph_observation_maps_proxy_panel_to_model_feat
     assert observation["spatial_units"][0]["livability"] == 0.0
     assert observation["graph_edges"][0]["edge_type"] == "proxy_priority_similarity_not_spatial_adjacency"
     assert any("not true spatial adjacency" in flag["message"] for flag in observation["quality_flags"])
+
+
+def test_admin_livability_graph_observation_defaults_to_full_panel_without_truncation():
+    panel = {
+        "schema": "uwm.admin_livability_target_panel.v1",
+        "panel_id": "admin-livability-full-default-test",
+        "created_at": "2026-07-08T10:05:00+00:00",
+        "experiment_scope": "full_admin_graph",
+        "admin_livability_target_rows": [
+            {
+                "admin_unit_id": f"A|unit|{index}",
+                "county": "A",
+                "township": f"unit-{index}",
+                "exposure_priority_score": 0.9 - index * 0.1,
+                "service_point_count": float(index),
+                "essential_service_count": 0.0,
+                "livability_need_score": 1.0 - index * 0.1,
+                "score_components": {
+                    "exposure_norm": 1.0 - index * 0.1,
+                    "service_gap_norm": 1.0,
+                    "essential_gap_norm": 1.0,
+                },
+            }
+            for index in range(12)
+        ],
+        "claim_boundary": {"max_claim_level": "bounded_support"},
+        "limitations": [],
+    }
+
+    observation = build_admin_livability_graph_observation(
+        panel,
+        observation_id="admin-graph-mdp-obs-full-default-test",
+        created_at="2026-07-08T10:10:00+00:00",
+    )
+
+    assert observation["experiment_scope"] == "full_admin_graph"
+    assert len(observation["spatial_units"]) == 12
+    assert observation["renderer_trace"][0]["source_row_count"] == 12
+    assert observation["renderer_trace"][-1]["selected_unit_count"] == 12
+    assert observation["renderer_trace"][-1]["selection_mode"] == "all_rows"
 
 
 def test_build_admin_spatial_adjacency_graph_from_touching_admin_polygons():
@@ -280,6 +355,79 @@ def test_admin_livability_observation_uses_spatial_adjacency_graph_when_availabl
     assert not any("not true spatial adjacency" in flag["message"] for flag in observation["quality_flags"])
 
 
+def test_admin_livability_observation_adds_geographic_similarity_edges_when_available():
+    panel = {
+        "schema": "uwm.admin_livability_target_panel.v1",
+        "panel_id": "admin-livability-similarity-test",
+        "created_at": "2026-07-08T15:10:00+00:00",
+        "admin_livability_target_rows": [
+            _similarity_panel_row("A|one|1", "A", need=0.9, exposure=0.8, service=0.2),
+            _similarity_panel_row("B|two|2", "B", need=0.88, exposure=0.79, service=0.22),
+            _similarity_panel_row("C|three|3", "C", need=0.2, exposure=0.1, service=0.9),
+        ],
+        "claim_boundary": {"max_claim_level": "bounded_support"},
+    }
+    graph = build_admin_spatial_adjacency_graph(
+        admin_features=[
+            _admin_feature(
+                "A|one|1",
+                "A",
+                "one",
+                [(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)],
+            ),
+            _admin_feature(
+                "C|three|3",
+                "C",
+                "three",
+                [(1, 0), (2, 0), (2, 1), (1, 1), (1, 0)],
+            ),
+            _admin_feature(
+                "B|two|2",
+                "B",
+                "two",
+                [(4, 0), (5, 0), (5, 1), (4, 1), (4, 0)],
+            ),
+        ],
+        graph_id="admin-spatial-similarity-graph-test",
+        created_at="2026-07-08T15:11:00+00:00",
+    )
+    kernel = build_uwm_geographic_similarity_kernel(
+        admin_livability_panel=panel,
+        admin_spatial_graph=graph,
+        kernel_id="uwm-geographic-similarity-observation-test",
+        created_at="2026-07-08T15:12:00Z",
+        top_k=1,
+    )
+
+    observation = build_admin_livability_graph_observation(
+        panel,
+        observation_id="admin-graph-mdp-obs-geographic-similarity-test",
+        created_at="2026-07-08T15:13:00+00:00",
+        admin_spatial_graph=graph,
+        geographic_similarity_kernel=kernel,
+    )
+    state = build_graph_mdp_state(
+        observation,
+        action_types=["increase_green_infrastructure"],
+        thresholds={"heat_risk": 0.7},
+    )
+
+    edge_types = {edge["edge_type"] for edge in observation["graph_edges"]}
+    assert "admin_boundary_adjacency" in edge_types
+    assert "geographic_configuration_similarity" in edge_types
+    assert any(
+        edge["source"] == "A|one|1"
+        and edge["target"] == "B|two|2"
+        and edge["boundary_adjacent"] is False
+        for edge in observation["graph_edges"]
+    )
+    assert state["graph_statistics"]["edge_count"] == len(observation["graph_edges"])
+    assert observation["renderer_trace"][-1]["step"] == (
+        "append_geographic_configuration_similarity_edges"
+    )
+    assert observation["renderer_trace"][-1]["selected_similarity_edge_count"] > 0
+
+
 def test_train_offline_graph_value_model_learns_from_replay_without_empirical_claim():
     report = _offline_value_report_fixture()
 
@@ -318,6 +466,37 @@ def _admin_feature(
         "geometry": {
             "type": "Polygon",
             "coordinates": [[list(point) for point in coordinates]],
+        },
+    }
+
+
+def _similarity_panel_row(
+    unit_id: str,
+    county: str,
+    *,
+    need: float,
+    exposure: float,
+    service: float,
+) -> dict:
+    return {
+        "admin_unit_id": unit_id,
+        "county": county,
+        "township": unit_id.split("|")[1],
+        "exposure_priority_score": exposure,
+        "service_point_count": service * 100.0,
+        "essential_service_count": service * 10.0,
+        "service_accessibility_score": service,
+        "service_gap_score": 1.0 - service,
+        "nearest_essential_service_distance_m": (1.0 - service) * 1000.0,
+        "estimated_nearest_essential_travel_time_min": (1.0 - service) * 8.0,
+        "road_segment_count": service * 100.0,
+        "road_length_km": service * 80.0,
+        "mean_road_speed_kmh": 40.0,
+        "livability_need_score": need,
+        "score_components": {
+            "exposure_norm": exposure,
+            "service_gap_norm": 1.0 - service,
+            "essential_gap_norm": 1.0 - service,
         },
     }
 

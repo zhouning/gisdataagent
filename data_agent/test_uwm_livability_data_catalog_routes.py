@@ -40,10 +40,12 @@ def test_livability_data_catalog_payload_exposes_mmfe_and_rl_training_boundaries
     assert catalog["model_based_rl_boundary"]["model_based_rl_training_completed"] is True
     assert catalog["model_based_rl_boundary"]["trained_model_based_q_agent_completed"] is True
     assert catalog["model_based_rl_boundary"]["graph_drl_training_completed"] is True
+    assert catalog["model_based_rl_boundary"]["energy_regularized_planner_completed"] is True
     assert catalog["model_based_rl_boundary"]["policy_or_value_network_trained"] is False
     assert catalog["model_based_rl_boundary"]["graph_policy_or_value_network_trained"] is True
+    assert catalog["model_based_rl_boundary"]["conservative_search_guard_ready"] is True
     assert catalog["model_based_rl_boundary"]["current_planning_mode"] == (
-        "trained_graph_dqn_value_network_over_real_data_graph_mdp"
+        "energy_regularized_conservative_action_sequence_planner_over_real_data_graph_mdp"
     )
     assert catalog["claim_boundary"]["max_claim_level"] == "bounded_support"
     assert payload["observed_policy_outcome_superiority_claim"] is False

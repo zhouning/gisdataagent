@@ -54,6 +54,36 @@ def test_data_foundation_evidence_gate_uses_prepared_artifacts_without_smoke_cla
         / "data/uwm_public_proxy/chongqing_central/livability_rl_training_2026_07_07/uwm_livability_rl_training_report.json",
         livability_graph_drl_training_report_path=ROOT
         / "data/uwm_public_proxy/chongqing_central/livability_graph_drl_training_2026_07_07/uwm_livability_graph_drl_training_report.json",
+        full_admin_service_accessibility_surface_path=ROOT
+        / "data/uwm_public_proxy/chongqing_central/full_admin_service_accessibility_surface_2026_07_08/uwm_full_admin_service_accessibility_surface.json",
+        full_admin_service_surface_quality_audit_path=ROOT
+        / "data/uwm_public_proxy/chongqing_central/full_admin_service_surface_quality_audit_2026_07_08/uwm_full_admin_service_surface_quality_audit.json",
+        geographic_similarity_kernel_path=ROOT
+        / "data/uwm_public_proxy/chongqing_central/geographic_similarity_kernel_2026_07_08/uwm_geographic_similarity_kernel.json",
+        full_admin_action_inventory_path=ROOT
+        / "data/uwm_public_proxy/chongqing_central/full_admin_action_inventory_2026_07_08/uwm_full_admin_action_inventory.json",
+        production_action_catalog_path=ROOT
+        / "data/uwm_public_proxy/chongqing_central/production_action_catalog_2026_07_08/uwm_production_action_catalog.json",
+        production_governance_data_contract_path=ROOT
+        / "data/uwm_public_proxy/chongqing_central/production_governance_data_contract_2026_07_08/uwm_production_governance_data_contract.json",
+        production_governance_data_adapter_readiness_path=ROOT
+        / "data/uwm_public_proxy/chongqing_central/production_governance_data_adapter_readiness_2026_07_08/uwm_production_governance_data_adapter_readiness.json",
+        production_governance_input_templates_path=ROOT
+        / "data/uwm_public_proxy/chongqing_central/production_governance_input_templates_2026_07_08/uwm_production_governance_input_templates.json",
+        production_governance_linkage_audit_path=ROOT
+        / "data/uwm_public_proxy/chongqing_central/production_governance_linkage_audit_2026_07_08/uwm_production_governance_linkage_audit.json",
+        production_governance_planner_binding_gate_path=ROOT
+        / "data/uwm_public_proxy/chongqing_central/production_governance_planner_binding_gate_2026_07_08/uwm_production_governance_planner_binding_gate.json",
+        spatial_causal_question_registry_path=ROOT
+        / "data/uwm_public_proxy/chongqing_central/spatial_causal_question_registry_2026_07_09/uwm_spatial_causal_question_registry.json",
+        full_admin_graph_planner_replay_path=ROOT
+        / "data/uwm_public_proxy/chongqing_central/data_calibrated_planner_replay_full_admin_graph_2026_07_08/uwm_full_admin_graph_model_based_graph_search.json",
+        full_admin_graph_drl_training_report_path=ROOT
+        / "data/uwm_public_proxy/chongqing_central/livability_graph_drl_training_full_admin_graph_2026_07_08/uwm_full_admin_graph_livability_graph_drl_training_report.json",
+        full_admin_learned_world_model_rollout_path=ROOT
+        / "data/uwm_public_proxy/chongqing_central/learned_world_model_rollout_full_admin_graph_2026_07_08/uwm_full_admin_graph_learned_world_model_rollout.json",
+        full_admin_livability_decision_package_path=ROOT
+        / "data/uwm_public_proxy/chongqing_central/full_admin_livability_decision_package_2026_07_08/uwm_full_admin_livability_decision_package.json",
         gate_id="uwm-data-foundation-evidence-gate-real-artifacts-test",
         created_at="2026-07-05T22:30:00Z",
     )
@@ -138,6 +168,258 @@ def test_data_foundation_evidence_gate_uses_prepared_artifacts_without_smoke_cla
     assert admin_graph["edge_count"] == 2847
     assert admin_graph["isolated_node_count"] == 0
 
+    full_service_surface = gate["evidence_slices"][
+        "full_admin_service_accessibility_surface"
+    ]
+    assert full_service_surface["source_artifact_exists"] is True
+    assert full_service_surface[
+        "full_admin_service_accessibility_surface_ready"
+    ] is True
+    assert full_service_surface["admin_unit_count"] == 1017
+    assert full_service_surface["source_admin_unit_count"] == 1017
+    assert full_service_surface["source_poi_point_count"] == 1194351
+    assert full_service_surface["source_road_count"] == 50366
+    assert full_service_surface["service_missing_admin_count"] == 0
+    assert full_service_surface["admin_units_with_accessibility_score"] == 1017
+    assert full_service_surface["admin_units_with_road_context"] > 900
+    assert full_service_surface["total_service_point_count"] > 1000000
+    assert full_service_surface["total_essential_service_count"] > 10000
+    assert full_service_surface["observed_policy_outcome_superiority_claim"] is False
+    assert full_service_surface["empirical_superiority_claim"] is False
+
+    full_service_quality = gate["evidence_slices"][
+        "full_admin_service_surface_quality_audit"
+    ]
+    assert full_service_quality["source_artifact_exists"] is True
+    assert full_service_quality[
+        "full_admin_service_surface_quality_audit_ready"
+    ] is True
+    assert full_service_quality["admin_unit_count"] == 1017
+    assert full_service_quality["endpoint_count"] == 2
+    assert full_service_quality["ready_endpoint_count"] == 2
+    assert full_service_quality["essential_service_model_mae"] == 16.728755
+    assert full_service_quality["essential_service_best_baseline_mae"] == 57.472199
+    assert full_service_quality["travel_time_model_mae"] == 2.17547
+    assert full_service_quality["travel_time_best_baseline_mae"] == 2.192174
+    assert full_service_quality["target_rotation_negative_controls_passed"] is True
+    assert full_service_quality["observed_trip_time_claim"] is False
+    assert full_service_quality["observed_policy_outcome_superiority_claim"] is False
+
+    geographic_similarity = gate["evidence_slices"]["geographic_similarity_kernel"]
+    assert geographic_similarity["source_artifact_exists"] is True
+    assert geographic_similarity["geographic_similarity_kernel_ready"] is True
+    assert geographic_similarity["panel_unit_count"] == 1017
+    assert geographic_similarity["similarity_edge_count"] == 5085
+    assert geographic_similarity["non_adjacent_similarity_edge_count"] == 4835
+    assert geographic_similarity["rotated_target_similarity_control_passed"] is True
+    assert geographic_similarity["uses_coordinates_as_similarity_features"] is False
+    assert geographic_similarity["observed_policy_outcome_superiority_claim"] is False
+
+    full_admin_actions = gate["evidence_slices"]["full_admin_action_inventory"]
+    assert full_admin_actions["source_artifact_exists"] is True
+    assert full_admin_actions["full_admin_action_inventory_ready"] is True
+    assert full_admin_actions["schema"] == "uwm.full_admin_action_inventory.v1"
+    assert full_admin_actions["experiment_scope"] == "full_admin_graph"
+    assert full_admin_actions["graph_node_count"] == 1017
+    assert full_admin_actions["graph_edge_count"] == 7932
+    assert full_admin_actions["available_action_count"] == 1137
+    assert full_admin_actions["candidate_action_mask_trace_count"] == 3051
+    assert full_admin_actions["action_type_counts"] == {
+        "increase_green_infrastructure": 81,
+        "traffic_emission_control": 77,
+        "add_community_service": 979,
+    }
+    assert full_admin_actions["mask_reason_counts"] == {
+        "heat_risk_above_threshold": 81,
+        "air_pollution_exposure_above_threshold": 77,
+        "service_accessibility_below_threshold": 979,
+    }
+    assert full_admin_actions["spatial_causal_contract_binding_ready"] is True
+    assert full_admin_actions["spatial_causal_feasible_action_count"] == 1137
+    assert full_admin_actions["spatial_causal_attached_action_count"] == 1137
+    assert full_admin_actions["spatial_causal_missing_contract_action_count"] == 0
+    assert (
+        full_admin_actions[
+            "spatial_causal_underidentified_policy_effect_action_count"
+        ]
+        == 1137
+    )
+    assert full_admin_actions["spatial_causal_policy_outcome_claim_action_count"] == 0
+    assert set(full_admin_actions["action_type_definitions"]) == {
+        "increase_green_infrastructure",
+        "traffic_emission_control",
+        "add_community_service",
+    }
+    assert (
+        full_admin_actions["action_type_definitions"]["increase_green_infrastructure"][
+            "state_trigger"
+        ]
+        == "heat_risk >= 0.7"
+    )
+    assert (
+        full_admin_actions["action_type_definitions"]["traffic_emission_control"][
+            "state_trigger"
+        ]
+        == "air_pollution_exposure >= 0.6"
+    )
+    assert (
+        full_admin_actions["action_type_definitions"]["add_community_service"][
+            "state_trigger"
+        ]
+        == "service_accessibility <= 0.5"
+    )
+    assert full_admin_actions["sample_action_ids"] == [
+        "increase_green_infrastructure-涪陵区|蔺市镇|498",
+        "traffic_emission_control-涪陵区|蔺市镇|498",
+        "add_community_service-涪陵区|蔺市镇|498",
+    ]
+    assert full_admin_actions["observed_policy_outcome_superiority_claim"] is False
+    assert full_admin_actions["empirical_superiority_claim"] is False
+
+    production_action_catalog = gate["evidence_slices"]["production_action_catalog"]
+    assert production_action_catalog["source_artifact_exists"] is True
+    assert production_action_catalog["production_action_catalog_ready"] is True
+    assert production_action_catalog["schema"] == "uwm.production_action_catalog.v1"
+    assert production_action_catalog["experiment_scope"] == "full_admin_graph"
+    assert production_action_catalog["production_action_type_count"] == 57
+    assert production_action_catalog["currently_bound_action_type_count"] == 3
+    assert production_action_catalog["currently_bound_feasible_action_count"] == 1137
+    assert production_action_catalog["current_candidate_binding_count"] == 1137
+    assert production_action_catalog["planner_production_action_ready"] is False
+    assert production_action_catalog["constraint_cost_model_ready"] is False
+    assert production_action_catalog["policy_project_history_ready"] is False
+    assert production_action_catalog["observed_policy_outcome_panel_ready"] is False
+    assert production_action_catalog["observed_policy_outcome_superiority_claim"] is False
+    assert production_action_catalog["empirical_superiority_claim"] is False
+
+    governance_contract = gate["evidence_slices"][
+        "production_governance_data_contract"
+    ]
+    assert governance_contract["source_artifact_exists"] is True
+    assert governance_contract["production_governance_data_contract_ready"] is True
+    assert governance_contract["schema"] == (
+        "uwm.production_governance_data_contract.v1"
+    )
+    assert governance_contract["experiment_scope"] == "full_admin_graph"
+    assert governance_contract["production_action_type_count"] == 57
+    assert governance_contract["currently_bound_feasible_action_count"] == 1137
+    assert governance_contract["required_governance_table_count"] == 5
+    assert governance_contract["ready_governance_table_count"] == 0
+    assert governance_contract["planning_sample_source_count"] == 15
+    assert governance_contract["planner_governance_binding_ready"] is False
+    assert governance_contract["policy_project_history_ready"] is False
+    assert governance_contract["constraint_cost_model_ready"] is False
+    assert governance_contract["observed_outcome_panel_ready"] is False
+    assert governance_contract["observed_policy_outcome_superiority_claim"] is False
+    assert governance_contract["empirical_superiority_claim"] is False
+
+    governance_adapter = gate["evidence_slices"][
+        "production_governance_data_adapter_readiness"
+    ]
+    assert governance_adapter["source_artifact_exists"] is True
+    assert governance_adapter["production_governance_data_adapter_readiness_ready"] is True
+    assert governance_adapter["schema"] == (
+        "uwm.production_governance_data_adapter_readiness.v1"
+    )
+    assert governance_adapter["experiment_scope"] == "full_admin_graph"
+    assert governance_adapter["expected_table_count"] == 5
+    assert governance_adapter["ready_table_count"] == 0
+    assert governance_adapter["missing_source_table_count"] == 5
+    assert governance_adapter["accepted_authoritative_row_count"] == 0
+    assert governance_adapter["all_required_tables_ready"] is False
+    assert governance_adapter["planner_governance_binding_ready"] is False
+    assert governance_adapter["observed_policy_outcome_superiority_claim"] is False
+    assert governance_adapter["empirical_superiority_claim"] is False
+
+    governance_templates = gate["evidence_slices"][
+        "production_governance_input_templates"
+    ]
+    assert governance_templates["source_artifact_exists"] is True
+    assert governance_templates["production_governance_input_templates_ready"] is True
+    assert governance_templates["schema"] == (
+        "uwm.production_governance_input_templates.v1"
+    )
+    assert governance_templates["experiment_scope"] == "full_admin_graph"
+    assert governance_templates["template_count"] == 5
+    assert governance_templates["required_field_count"] == 54
+    assert governance_templates["adapter_ready_table_count"] == 0
+    assert governance_templates["adapter_missing_source_table_count"] == 5
+    assert governance_templates["template_dir_is_adapter_input_dir"] is False
+    assert governance_templates["authoritative_input_claim"] is False
+    assert governance_templates["observed_policy_outcome_superiority_claim"] is False
+    assert governance_templates["empirical_superiority_claim"] is False
+
+    governance_linkage = gate["evidence_slices"][
+        "production_governance_linkage_audit"
+    ]
+    assert governance_linkage["source_artifact_exists"] is True
+    assert governance_linkage["production_governance_linkage_audit_ready"] is True
+    assert governance_linkage["schema"] == (
+        "uwm.production_governance_linkage_audit.v1"
+    )
+    assert governance_linkage["experiment_scope"] == "full_admin_graph"
+    assert governance_linkage["expected_table_count"] == 5
+    assert governance_linkage["present_table_count"] == 0
+    assert governance_linkage["missing_table_count"] == 5
+    assert governance_linkage["linked_project_count"] == 0
+    assert governance_linkage["unlinked_project_count"] == 0
+    assert governance_linkage["all_required_tables_present"] is False
+    assert governance_linkage["governance_linkage_ready"] is False
+    assert governance_linkage["planner_governance_binding_ready"] is False
+    assert governance_linkage["observed_policy_outcome_superiority_claim"] is False
+    assert governance_linkage["empirical_superiority_claim"] is False
+
+    governance_binding_gate = gate["evidence_slices"][
+        "production_governance_planner_binding_gate"
+    ]
+    assert governance_binding_gate["source_artifact_exists"] is True
+    assert governance_binding_gate[
+        "production_governance_planner_binding_gate_ready"
+    ] is True
+    assert governance_binding_gate["schema"] == (
+        "uwm.production_governance_planner_binding_gate.v1"
+    )
+    assert governance_binding_gate["experiment_scope"] == "full_admin_graph"
+    assert governance_binding_gate["binding_gate_ready"] is True
+    assert governance_binding_gate["authoritative_governance_data_closure_ready"] is False
+    assert governance_binding_gate["planner_governance_binding_ready"] is False
+    assert governance_binding_gate["required_gate_count"] == 9
+    assert governance_binding_gate["passed_gate_count"] == 2
+    assert governance_binding_gate["blocking_gate_count"] == 7
+    assert governance_binding_gate["missing_table_count"] == 5
+    assert governance_binding_gate["accepted_authoritative_row_count"] == 0
+    assert governance_binding_gate["linked_project_count"] == 0
+    assert governance_binding_gate["observed_policy_outcome_superiority_claim"] is False
+    assert governance_binding_gate["empirical_superiority_claim"] is False
+
+    spatial_causal_registry = gate["evidence_slices"][
+        "spatial_causal_question_registry"
+    ]
+    assert spatial_causal_registry["source_artifact_exists"] is True
+    assert spatial_causal_registry["spatial_causal_question_registry_ready"] is True
+    assert spatial_causal_registry["schema"] == (
+        "uwm.spatial_causal_question_registry.v1"
+    )
+    assert spatial_causal_registry["experiment_scope"] == "full_admin_graph"
+    assert spatial_causal_registry["active_causal_question_count"] == 3
+    assert spatial_causal_registry["currently_bound_feasible_action_count"] == 1137
+    assert spatial_causal_registry["authoritative_required_table_count"] == 5
+    assert spatial_causal_registry["ready_authoritative_table_count"] == 0
+    assert spatial_causal_registry["identified_policy_effect_question_count"] == 0
+    assert spatial_causal_registry["underidentified_policy_effect_question_count"] == 3
+    assert spatial_causal_registry["algorithmic_causal_diagnostic_ready"] is True
+    assert spatial_causal_registry["observed_outcome_panel_ready"] is False
+    assert spatial_causal_registry["causal_effect_calibration_ready"] is False
+    assert spatial_causal_registry["planner_governance_binding_ready"] is False
+    assert spatial_causal_registry["observed_policy_outcome_superiority_claim"] is False
+    assert spatial_causal_registry["empirical_superiority_claim"] is False
+    assert spatial_causal_registry["claim_level"] == "spatial_causal_question_contract_only"
+    assert set(spatial_causal_registry["active_action_types"]) == {
+        "increase_green_infrastructure",
+        "traffic_emission_control",
+        "add_community_service",
+    }
+
     mechanism = gate["evidence_slices"]["data_calibrated_mechanism_table"]
     assert mechanism["source_artifact_exists"] is True
     assert mechanism["data_calibrated_mechanism_ready"] is True
@@ -160,6 +442,79 @@ def test_data_foundation_evidence_gate_uses_prepared_artifacts_without_smoke_cla
     assert calibrated_replay["static_single_step_reward"] == 0.003837146
     assert calibrated_replay["advantage_over_static_single_step"] == 0.013343692
     assert calibrated_replay["risk_calibrated_planner_replay_ready"] is True
+
+    full_admin_replay = gate["evidence_slices"]["full_admin_graph_planner_replay"]
+    assert full_admin_replay["full_admin_graph_planner_replay_ready"] is True
+    assert full_admin_replay["experiment_scope"] == "full_admin_graph"
+    assert full_admin_replay["graph_node_count"] == 1017
+    assert full_admin_replay["graph_edge_count"] == 7932
+    assert full_admin_replay["geographic_similarity_edge_count"] == 5085
+    assert full_admin_replay["non_adjacent_similarity_edge_count"] == 4835
+    assert full_admin_replay["available_action_count"] == 1137
+    assert full_admin_replay["transition_count"] == 6817
+    assert full_admin_replay["advantage_over_static_single_step"] > 0
+    assert full_admin_replay["air_quality_uncertainty_calibration_ready"] is True
+    assert full_admin_replay["risk_calibrated_planner_replay_ready"] is True
+    assert full_admin_replay["risk_adjusted_advantage_over_static_single_step"] > 0
+    assert full_admin_replay["observed_policy_outcome_superiority_claim"] is False
+
+    full_admin_drl = gate["evidence_slices"]["full_admin_graph_drl_training"]
+    assert full_admin_drl["full_admin_graph_drl_training_ready"] is True
+    assert full_admin_drl["experiment_scope"] == "full_admin_graph"
+    assert full_admin_drl["graph_node_count"] == 1017
+    assert full_admin_drl["graph_edge_count"] == 7932
+    assert full_admin_drl["geographic_similarity_edge_count"] == 5085
+    assert full_admin_drl["available_action_count"] == 1137
+    assert full_admin_drl["training_sample_count"] == 1248
+    assert full_admin_drl["sampled_first_action_count"] == 96
+    assert full_admin_drl["sampled_second_action_limit"] == 12
+    assert full_admin_drl["q_return_mae"] < full_admin_drl["train_mean_return_mae"]
+    assert full_admin_drl["advantage_over_traditional_static"] > 0
+    assert full_admin_drl["observed_policy_outcome_superiority_claim"] is False
+
+    full_admin_learned = gate["evidence_slices"][
+        "full_admin_learned_world_model_rollout"
+    ]
+    assert full_admin_learned[
+        "full_admin_learned_world_model_rollout_ready"
+    ] is True
+    assert full_admin_learned["experiment_scope"] == "full_admin_graph"
+    assert full_admin_learned["graph_node_count"] == 1017
+    assert full_admin_learned["graph_edge_count"] == 7932
+    assert full_admin_learned["available_action_count"] == 1137
+    assert full_admin_learned["transition_count"] == 6817
+    assert full_admin_learned["reward_mae"] < full_admin_learned[
+        "train_mean_reward_mae"
+    ]
+    assert full_admin_learned["imagined_advantage_over_static_single_step"] > 0
+    assert full_admin_learned["imagined_advantage_over_one_step_policy"] > 0
+    assert full_admin_learned["observed_policy_outcome_superiority_claim"] is False
+
+    full_admin_decision = gate["evidence_slices"][
+        "full_admin_livability_decision_package"
+    ]
+    assert full_admin_decision["source_artifact_exists"] is True
+    assert full_admin_decision[
+        "full_admin_livability_decision_package_ready"
+    ] is True
+    assert full_admin_decision["experiment_scope"] == "full_admin_graph"
+    assert full_admin_decision["graph_node_count"] == 1017
+    assert full_admin_decision["graph_edge_count"] == 7932
+    assert full_admin_decision["available_action_count"] == 1137
+    assert full_admin_decision["transition_count"] == 6817
+    assert full_admin_decision["planner_governance_binding_ready"] is False
+    assert full_admin_decision["spatial_causal_contract_binding_ready"] is True
+    assert full_admin_decision["spatial_causal_attached_action_count"] == 6
+    assert full_admin_decision["spatial_causal_missing_contract_action_count"] == 0
+    assert (
+        full_admin_decision[
+            "spatial_causal_underidentified_policy_effect_action_count"
+        ]
+        == 6
+    )
+    assert full_admin_decision["spatial_causal_policy_outcome_claim_action_count"] == 0
+    assert full_admin_decision["observed_policy_outcome_superiority_claim"] is False
+    assert full_admin_decision["empirical_superiority_claim"] is False
     assert calibrated_replay["air_quality_uncertainty_calibration_ready"] is True
     assert calibrated_replay["air_quality_uncertainty_source_benchmark_id"] == (
         "uwm-scene-aligned-gridded-air-quality-holdout-2026-07-06"
@@ -309,10 +664,23 @@ def test_data_foundation_evidence_gate_uses_prepared_artifacts_without_smoke_cla
     assert gate["data_foundation_scope"]["source_type_counts"]["planning_sample"] == 15
     assert gate["empirical_superiority_claim"] is False
     claims = {claim["claim"] for claim in gate["supported_claims"]}
+    assert (
+        "full_admin_service_accessibility_surface_covers_all_admin_units_from_local_poi_and_road_assets"
+        in claims
+    )
+    assert (
+        "full_admin_service_surface_proxy_quality_beats_static_and_negative_controls"
+        in claims
+    )
     assert "tap_external_temporal_dynamics_advantage_without_spatial_claim" in claims
     assert "data_calibrated_simulator_mechanism_replaces_hardcoded_coefficients" in claims
     assert "data_calibrated_planner_replay_advantage_over_static_heuristic" in claims
     assert "risk_calibrated_planner_replay_advantage_over_static_heuristic" in claims
+    assert "full_admin_graph_planner_replay_advantage_over_static_heuristic" in claims
+    assert (
+        "full_admin_graph_risk_calibrated_planner_replay_advantage_over_static_heuristic"
+        in claims
+    )
     assert "scene_aligned_gridded_pm25_spatial_message_advantage_over_static_baselines" in claims
     assert (
         "scene_aligned_gridded_pm25_conformal_uncertainty_advantage_over_static_baseline"
@@ -352,5 +720,45 @@ def test_data_foundation_evidence_gate_uses_prepared_artifacts_without_smoke_cla
     )
     assert (
         "graph_dqn_value_network_improves_same_scene_static_livability_baseline"
+        in claims
+    )
+    assert (
+        "full_admin_graph_dqn_value_network_improves_same_scene_static_livability_baseline"
+        in claims
+    )
+    assert (
+        "full_admin_graph_learned_world_model_rollout_improves_imagined_static_and_one_step_baselines"
+        in claims
+    )
+    assert (
+        "full_admin_graph_feasible_action_inventory_enumerates_real_data_graph_mdp_actions"
+        in claims
+    )
+    assert (
+        "production_action_catalog_contract_binds_current_full_admin_actions_and_blocks_unverified_targets"
+        in claims
+    )
+    assert (
+        "production_governance_data_contract_defines_non_smoke_policy_constraint_outcome_requirements"
+        in claims
+    )
+    assert (
+        "production_governance_data_adapter_readiness_audits_authoritative_table_availability_without_fake_rows"
+        in claims
+    )
+    assert (
+        "production_governance_input_templates_define_authoritative_table_headers_without_fake_rows"
+        in claims
+    )
+    assert (
+        "production_governance_linkage_audit_checks_cross_table_policy_constraint_outcome_closure"
+        in claims
+    )
+    assert (
+        "production_governance_planner_binding_gate_blocks_search_until_authoritative_data_closure"
+        in claims
+    )
+    assert (
+        "spatial_causal_question_contracts_define_do_queries_and_block_policy_overclaims"
         in claims
     )

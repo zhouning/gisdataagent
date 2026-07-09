@@ -13,6 +13,7 @@ from typing import Any
 from .contracts import validate_uwm_observation
 from .simulator import simulate_livability_rollout
 from .data_calibrated_mechanism_table import validate_uwm_data_calibrated_mechanism_table
+from .geographic_similarity_kernel import validate_uwm_geographic_similarity_kernel
 from .spatial_spillover_kernel import (
     validate_uwm_data_calibrated_spatial_spillover_kernel,
 )
@@ -30,8 +31,9 @@ def build_admin_livability_graph_observation(
     *,
     observation_id: str,
     created_at: str,
-    max_units: int = 10,
+    max_units: int | None = None,
     admin_spatial_graph: dict[str, Any] | None = None,
+    geographic_similarity_kernel: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Map an admin livability proxy panel into a graph-MDP observation.
 
@@ -42,7 +44,12 @@ def build_admin_livability_graph_observation(
 
     rows = list(panel.get("admin_livability_target_rows") or [])
     rows.sort(key=lambda row: _float(row.get("livability_need_score")), reverse=True)
-    selected_rows = [row for row in rows[:max_units] if row.get("admin_unit_id")]
+    selection_mode = "all_rows"
+    selected_source_rows = rows
+    if max_units is not None:
+        selection_mode = f"top_{max_units}_rows"
+        selected_source_rows = rows[:max_units]
+    selected_rows = [row for row in selected_source_rows if row.get("admin_unit_id")]
     spatial_units = [_admin_spatial_unit(row) for row in selected_rows]
     if admin_spatial_graph:
         graph_edges = _spatial_edges_for_units(admin_spatial_graph, [unit["unit_id"] for unit in spatial_units])
@@ -51,8 +58,10 @@ def build_admin_livability_graph_observation(
             "source_graph_id": admin_spatial_graph.get("graph_id"),
             "source_node_count": (admin_spatial_graph.get("summary") or {}).get("node_count"),
             "source_edge_count": (admin_spatial_graph.get("summary") or {}).get("edge_count"),
+            "source_row_count": len(rows),
             "selected_unit_count": len(spatial_units),
             "selected_spatial_edge_count": len(graph_edges),
+            "selection_mode": selection_mode,
             "edge_type": "admin_boundary_adjacency",
         }
         graph_quality_flags = [
@@ -72,7 +81,9 @@ def build_admin_livability_graph_observation(
         graph_edges = _proxy_priority_edges(spatial_units)
         graph_trace = {
             "step": "derive_proxy_graph_mdp_observation",
+            "source_row_count": len(rows),
             "selected_unit_count": len(spatial_units),
+            "selection_mode": selection_mode,
             "edge_type": "proxy_priority_similarity_not_spatial_adjacency",
         }
         graph_quality_flags = [
@@ -81,11 +92,32 @@ def build_admin_livability_graph_observation(
                 "message": "proxy priority graph is not true spatial adjacency; use only for bounded model-based planning tests",
             }
         ]
+    renderer_trace = [
+        {
+            "step": "load_admin_livability_target_panel",
+            "source_panel_id": panel.get("panel_id"),
+            "source_row_count": len(rows),
+            "selected_unit_count": len(spatial_units),
+            "selection_mode": selection_mode,
+        },
+        graph_trace,
+    ]
+    similarity_edges, similarity_trace, similarity_quality_flags = (
+        _geographic_similarity_edges_for_units(
+            geographic_similarity_kernel,
+            [unit["unit_id"] for unit in spatial_units],
+        )
+    )
+    if similarity_trace:
+        renderer_trace.append(similarity_trace)
+    graph_edges = [*graph_edges, *similarity_edges]
+    graph_quality_flags = [*graph_quality_flags, *similarity_quality_flags]
     limitations = [str(item) for item in panel.get("limitations") or []]
     return {
         "schema": "uwm.canonical_observation.v1",
         "observation_id": observation_id,
         "created_at": created_at,
+        "experiment_scope": _observation_scope(panel, selection_mode),
         "spatial_units": spatial_units,
         "object_layers": [
             {
@@ -114,20 +146,23 @@ def build_admin_livability_graph_observation(
             "source_panel_id": panel.get("panel_id"),
             "source_schema": panel.get("schema"),
             "source_admin_spatial_graph_id": (admin_spatial_graph or {}).get("graph_id"),
+            "source_geographic_similarity_kernel_id": (
+                geographic_similarity_kernel or {}
+            ).get("kernel_id"),
         },
         "claim_boundary": {
             "max_claim_level": (panel.get("claim_boundary") or {}).get("max_claim_level", "bounded_support"),
             "reason": "admin livability graph observation is derived from proxy target panel",
         },
-        "renderer_trace": [
-            {
-                "step": "load_admin_livability_target_panel",
-                "source_panel_id": panel.get("panel_id"),
-                "source_row_count": len(rows),
-            },
-            graph_trace,
-        ],
+        "renderer_trace": renderer_trace,
     }
+
+
+def _observation_scope(panel: dict[str, Any], selection_mode: str) -> str:
+    panel_scope = str(panel.get("experiment_scope") or "full_admin_graph")
+    if selection_mode == "all_rows":
+        return panel_scope
+    return f"subset_{selection_mode}"
 
 
 def build_graph_mdp_state(
@@ -196,6 +231,7 @@ def plan_with_model_based_graph_search(
     mechanism_table: dict[str, Any] | None = None,
     air_quality_uncertainty_context: dict[str, Any] | None = None,
     spatial_spillover_kernel: dict[str, Any] | None = None,
+    transition_storage: str = "full",
 ) -> dict[str, Any]:
     """Search over masked graph actions using simulator rollouts as the model."""
 
@@ -203,6 +239,8 @@ def plan_with_model_based_graph_search(
         raise ValueError("horizon must be positive")
     if beam_width <= 0:
         raise ValueError("beam_width must be positive")
+    if transition_storage not in {"full", "compact"}:
+        raise ValueError("transition_storage must be 'full' or 'compact'")
 
     graph_state = build_graph_mdp_state(observation, action_types=action_types, thresholds=thresholds)
     candidates = list(graph_state["available_actions"])
@@ -258,6 +296,7 @@ def plan_with_model_based_graph_search(
                     rollout=rollout,
                     step_index=step_index,
                     cumulative_reward=prefix_reward,
+                    transition_storage=transition_storage,
                 )
                 replay_transitions.append(transition)
                 transition_index = len(replay_transitions) - 1
@@ -311,11 +350,12 @@ def plan_with_model_based_graph_search(
         "spatial_spillover_kernel_summary": spatial_spillover_kernel_summary,
         "air_quality_uncertainty_calibration_summary": air_quality_uncertainty_summary,
         "graph_mdp_state": graph_state,
-        "search_config": {
-            "horizon": horizon,
-            "beam_width": beam_width,
-            "candidate_action_count": len(candidates),
-        },
+            "search_config": {
+                "horizon": horizon,
+                "beam_width": beam_width,
+                "candidate_action_count": len(candidates),
+                "transition_storage": transition_storage,
+            },
         "best_sequence": {
             "action_count": len(best["action_sequence"]),
             "action_sequence": best["action_sequence"],
@@ -442,6 +482,78 @@ def _spatial_edges_for_units(admin_spatial_graph: dict[str, Any], unit_ids: list
     return edges
 
 
+def _geographic_similarity_edges_for_units(
+    geographic_similarity_kernel: dict[str, Any] | None,
+    unit_ids: list[str],
+) -> tuple[list[dict[str, Any]], dict[str, Any] | None, list[dict[str, str]]]:
+    if geographic_similarity_kernel is None:
+        return [], None, []
+    validation = validate_uwm_geographic_similarity_kernel(geographic_similarity_kernel)
+    if not validation.get("valid"):
+        return (
+            [],
+            {
+                "step": "reject_geographic_configuration_similarity_kernel",
+                "validation_errors": validation.get("errors") or [],
+            },
+            [
+                {
+                    "level": "warning",
+                    "message": "geographic similarity kernel was supplied but failed validation",
+                }
+            ],
+        )
+    selected = {str(unit_id) for unit_id in unit_ids}
+    edges = []
+    for edge in geographic_similarity_kernel.get("similarity_edges") or []:
+        source = str(edge.get("source") or edge.get("source_unit_id") or "")
+        target = str(edge.get("target") or edge.get("target_unit_id") or "")
+        if source not in selected or target not in selected:
+            continue
+        edges.append(
+            {
+                "edge_type": "geographic_configuration_similarity",
+                "source": source,
+                "target": target,
+                "weight": _float(edge.get("weight"), default=0.0),
+                "rank": _int(edge.get("rank")),
+                "configuration_similarity": _float(
+                    edge.get("configuration_similarity"),
+                    default=0.0,
+                ),
+                "standardized_feature_distance": _float(
+                    edge.get("standardized_feature_distance"),
+                    default=0.0,
+                ),
+                "boundary_adjacent": bool(edge.get("boundary_adjacent")),
+                "same_county": bool(edge.get("same_county")),
+            }
+        )
+    return (
+        edges,
+        {
+            "step": "append_geographic_configuration_similarity_edges",
+            "source_kernel_id": geographic_similarity_kernel.get("kernel_id"),
+            "source_similarity_edge_count": (
+                geographic_similarity_kernel.get("summary") or {}
+            ).get("similarity_edge_count"),
+            "selected_unit_count": len(selected),
+            "selected_similarity_edge_count": len(edges),
+            "edge_type": "geographic_configuration_similarity",
+        },
+        [
+            {
+                "level": "info",
+                "message": (
+                    "geographic configuration similarity edges are derived from "
+                    "service, road, exposure and livability-need features, not "
+                    "from coordinate proximity"
+                ),
+            }
+        ],
+    )
+
+
 def _action_allowed(
     node: dict[str, Any],
     action_type: str,
@@ -492,8 +604,9 @@ def _replay_transition(
     rollout: dict[str, Any],
     step_index: int,
     cumulative_reward: float,
+    transition_storage: str = "full",
 ) -> dict[str, Any]:
-    return {
+    transition = {
         "tuple_keys": ["state", "action", "reward", "next_state_delta", "transition"],
         "state": {
             "state_id": graph_state["state_id"],
@@ -503,7 +616,6 @@ def _replay_transition(
         },
         "action": action,
         "reward": round(reward, 9),
-        "next_state_delta": rollout.get("future_state_delta"),
         "transition": {
             "step_index": step_index,
             "cumulative_reward": round(cumulative_reward, 9),
@@ -519,6 +631,51 @@ def _replay_transition(
             ),
         },
     }
+    if transition_storage == "compact":
+        transition["tuple_keys"] = [
+            "state",
+            "action",
+            "reward",
+            "next_state_delta_summary",
+            "transition",
+        ]
+        transition["next_state_delta_summary"] = _compact_state_delta(
+            rollout.get("future_state_delta") or {}
+        )
+    else:
+        transition["next_state_delta"] = rollout.get("future_state_delta")
+    return transition
+
+
+def _compact_state_delta(delta: dict[str, Any]) -> dict[str, Any]:
+    per_unit = delta.get("per_unit") or {}
+    changed_units = [
+        {"unit_id": unit_id, **unit_delta}
+        for unit_id, unit_delta in per_unit.items()
+        if isinstance(unit_delta, dict) and _unit_delta_changed(unit_delta)
+    ]
+    changed_units.sort(
+        key=lambda row: abs(_float(row.get("livability_delta"))),
+        reverse=True,
+    )
+    return {
+        "changed_units": delta.get("changed_units", len(changed_units)),
+        "aggregate": delta.get("aggregate") or {},
+        "top_changed_units": changed_units[:10],
+    }
+
+
+def _unit_delta_changed(unit_delta: dict[str, Any]) -> bool:
+    return any(
+        abs(_float(unit_delta.get(key))) > 0.0
+        for key in [
+            "heat_risk_delta",
+            "air_pollution_exposure_delta",
+            "service_accessibility_delta",
+            "equity_delta",
+            "livability_delta",
+        ]
+    )
 
 
 def _static_single_step_action(graph_state: dict[str, Any]) -> dict[str, Any]:

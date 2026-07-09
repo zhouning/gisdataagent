@@ -42,6 +42,16 @@ class GraphDrlTensors:
     holdout_indices: list[int]
 
 
+@dataclass(frozen=True)
+class GraphDrlActionSamplePlan:
+    strategy: str
+    first_action_indices: list[int]
+    second_action_indices_by_first: dict[int, list[int]]
+    policy_action_indices: list[int] | None
+    exhaustive_action_pair_training: bool
+    sampled_second_action_limit: int | None
+
+
 class GraphDQNValueNetwork(nn.Module):
     """Minimal message-passing Q network over fixed UWM admin graph state."""
 
@@ -91,6 +101,12 @@ def train_livability_graph_dqn_agent(
     learning_rate: float = 0.01,
     discount_factor: float = 0.9,
     holdout_stride: int = 7,
+    experiment_scope: str = "candidate_admin_graph",
+    required_graph_node_count: int | None = None,
+    max_first_actions: int | None = None,
+    max_second_actions_per_first: int | None = None,
+    action_sampling_strategy: str = "exhaustive",
+    policy_action_scope: str = "all_available_actions",
 ) -> dict[str, Any]:
     """Train graph-aware fitted Q network from simulator-generated returns."""
 
@@ -100,11 +116,61 @@ def train_livability_graph_dqn_agent(
         raise ValueError("hidden_dim must be positive")
     if holdout_stride < 2:
         raise ValueError("holdout_stride must be at least 2")
+    if max_first_actions is not None and max_first_actions <= 0:
+        raise ValueError("max_first_actions must be positive when provided")
+    if (
+        max_second_actions_per_first is not None
+        and max_second_actions_per_first <= 0
+    ):
+        raise ValueError(
+            "max_second_actions_per_first must be positive when provided"
+        )
+    if action_sampling_strategy not in {"exhaustive", "stratified_priority"}:
+        raise ValueError(
+            "action_sampling_strategy must be 'exhaustive' or 'stratified_priority'"
+        )
+    if policy_action_scope not in {
+        "all_available_actions",
+        "sampled_training_candidate_pool",
+    }:
+        raise ValueError(
+            "policy_action_scope must be 'all_available_actions' or "
+            "'sampled_training_candidate_pool'"
+        )
+
+    graph_node_count = int(env.metadata["real_data_sources"]["admin_unit_count"])
+    full_data_guard = {
+        "required_scope": experiment_scope,
+        "required_graph_node_count": required_graph_node_count,
+        "observed_graph_node_count": graph_node_count,
+        "passed": (
+            True
+            if required_graph_node_count is None
+            else graph_node_count == required_graph_node_count
+        ),
+    }
+    if full_data_guard["passed"] is not True:
+        raise ValueError(
+            "required_graph_node_count guard failed: "
+            f"required_graph_node_count={required_graph_node_count}, "
+            f"observed_graph_node_count={graph_node_count}"
+        )
 
     random.seed(seed)
     torch.manual_seed(seed)
 
-    samples = _generate_two_step_q_samples(env, discount_factor=discount_factor)
+    action_sample_plan = _build_action_sample_plan(
+        env,
+        strategy=action_sampling_strategy,
+        max_first_actions=max_first_actions,
+        max_second_actions_per_first=max_second_actions_per_first,
+        policy_action_scope=policy_action_scope,
+    )
+    samples = _generate_two_step_q_samples(
+        env,
+        discount_factor=discount_factor,
+        action_sample_plan=action_sample_plan,
+    )
     tensors, node_index_by_unit = _build_training_tensors(
         env,
         samples,
@@ -157,20 +223,35 @@ def train_livability_graph_dqn_agent(
         node_index_by_unit=node_index_by_unit,
         node_features=tensors.node_features,
         adjacency=tensors.adjacency,
+        policy_action_indices=action_sample_plan.policy_action_indices,
+        policy_action_scope=policy_action_scope,
     )
     static_baseline = _evaluate_traditional_static_baseline(env)
     advantage = (
         learned_policy["cumulative_reward"] - static_baseline["cumulative_reward"]
     )
     ready = (
-        advantage > 0.0
+        full_data_guard["passed"] is True
+        and advantage > 0.0
         and holdout_metrics["q_return_mae"] < holdout_metrics["train_mean_return_mae"]
         and holdout_metrics["q_return_rmse"] < holdout_metrics["train_mean_return_rmse"]
+    )
+    sampled_unique_actions = sorted(
+        {
+            *action_sample_plan.first_action_indices,
+            *[
+                action_index
+                for indices in action_sample_plan.second_action_indices_by_first.values()
+                for action_index in indices
+            ],
+        }
     )
     return {
         "schema": UWM_LIVABILITY_GRAPH_DRL_TRAINING_REPORT_SCHEMA,
         "report_id": report_id,
         "created_at": created_at,
+        "experiment_scope": experiment_scope,
+        "full_data_guard": full_data_guard,
         "source_environment_schema": env.metadata["schema"],
         "source_observation_id": env.metadata["source_observation_id"],
         "drl_algorithm": {
@@ -207,6 +288,13 @@ def train_livability_graph_dqn_agent(
             "real_data_available_action_count": env.metadata["real_data_sources"][
                 "available_action_count"
             ],
+            "action_sampling_strategy": action_sample_plan.strategy,
+            "exhaustive_action_pair_training": action_sample_plan.exhaustive_action_pair_training,
+            "sampled_first_action_count": len(action_sample_plan.first_action_indices),
+            "sampled_second_action_limit": action_sample_plan.sampled_second_action_limit,
+            "sampled_unique_action_count": len(sampled_unique_actions),
+            "sampled_unique_action_indices": sampled_unique_actions[:200],
+            "policy_action_scope": policy_action_scope,
             "spatial_spillover_directional_edge_count": env.metadata["real_data_sources"][
                 "spatial_spillover_directional_edge_count"
             ],
@@ -214,6 +302,7 @@ def train_livability_graph_dqn_agent(
         "holdout_metrics": holdout_metrics,
         "learned_policy_evaluation": {
             "policy": "greedy_policy_from_trained_graph_q_network",
+            "policy_action_scope": policy_action_scope,
             "action_count": len(learned_policy["action_sequence"]),
             "action_sequence": learned_policy["action_sequence"],
             "predicted_q_values": learned_policy["predicted_q_values"],
@@ -260,19 +349,159 @@ def train_livability_graph_dqn_agent(
     }
 
 
+def _build_action_sample_plan(
+    env: LivabilityGraphMDPEnv,
+    *,
+    strategy: str,
+    max_first_actions: int | None,
+    max_second_actions_per_first: int | None,
+    policy_action_scope: str,
+) -> GraphDrlActionSamplePlan:
+    action_count = len(env.available_actions)
+    if max_first_actions is None and max_second_actions_per_first is None:
+        first_action_indices = list(range(action_count))
+        second_action_indices_by_first = {
+            first_index: [
+                second_index
+                for second_index in range(action_count)
+                if second_index != first_index
+            ]
+            for first_index in first_action_indices
+        }
+        return GraphDrlActionSamplePlan(
+            strategy=strategy,
+            first_action_indices=first_action_indices,
+            second_action_indices_by_first=second_action_indices_by_first,
+            policy_action_indices=None,
+            exhaustive_action_pair_training=True,
+            sampled_second_action_limit=None,
+        )
+
+    first_limit = min(max_first_actions or action_count, action_count)
+    first_action_indices = _ranked_action_indices(
+        env,
+        strategy=strategy,
+        max_count=first_limit,
+    )
+    if len(first_action_indices) < 2 and action_count > 1:
+        raise ValueError("sampled action training requires at least two actions")
+
+    second_limit = max_second_actions_per_first
+    if second_limit is None:
+        second_limit = max(0, len(first_action_indices) - 1)
+    second_limit = min(second_limit, max(0, len(first_action_indices) - 1))
+
+    second_action_indices_by_first = {}
+    for first_index in first_action_indices:
+        second_action_indices_by_first[first_index] = [
+            action_index
+            for action_index in first_action_indices
+            if action_index != first_index
+        ][:second_limit]
+
+    policy_action_indices = (
+        first_action_indices
+        if policy_action_scope == "sampled_training_candidate_pool"
+        else None
+    )
+    return GraphDrlActionSamplePlan(
+        strategy=strategy,
+        first_action_indices=first_action_indices,
+        second_action_indices_by_first=second_action_indices_by_first,
+        policy_action_indices=policy_action_indices,
+        exhaustive_action_pair_training=False,
+        sampled_second_action_limit=second_limit,
+    )
+
+
+def _ranked_action_indices(
+    env: LivabilityGraphMDPEnv,
+    *,
+    strategy: str,
+    max_count: int,
+) -> list[int]:
+    if strategy == "exhaustive":
+        ranked = [
+            (index, _action_sampling_score(env, env.available_actions[index]))
+            for index in range(len(env.available_actions))
+        ]
+        ranked.sort(key=lambda item: (item[1], -item[0]), reverse=True)
+        return [index for index, _score in ranked[:max_count]]
+
+    grouped: dict[str, list[tuple[int, float]]] = {}
+    for index, action in enumerate(env.available_actions):
+        action_type = str(action.get("action_type") or "unknown")
+        grouped.setdefault(action_type, []).append(
+            (index, _action_sampling_score(env, action))
+        )
+    for rows in grouped.values():
+        rows.sort(key=lambda item: (item[1], -item[0]), reverse=True)
+
+    action_type_order = [
+        action_type
+        for action_type in ACTION_TYPES
+        if grouped.get(action_type)
+    ] + sorted(
+        action_type
+        for action_type in grouped
+        if action_type not in set(ACTION_TYPES)
+    )
+    selected: list[int] = []
+    cursor = 0
+    while len(selected) < max_count and action_type_order:
+        action_type = action_type_order[cursor % len(action_type_order)]
+        rows = grouped.get(action_type) or []
+        if rows:
+            selected.append(rows.pop(0)[0])
+        action_type_order = [
+            item for item in action_type_order if grouped.get(item)
+        ]
+        cursor += 1
+    return selected
+
+
+def _action_sampling_score(env: LivabilityGraphMDPEnv, action: dict[str, Any]) -> float:
+    unit_features = _unit_feature_lookup(env).get(_target_unit(action), {})
+    heat = _float(unit_features.get("heat_risk"))
+    air = _float(unit_features.get("air_pollution_exposure"))
+    service_gap = 1.0 - _float(unit_features.get("service_accessibility"))
+    equity_gap = 1.0 - _float(unit_features.get("equity"))
+    livability_gap = 1.0 - _float(unit_features.get("livability"))
+    degree = _degree_by_unit(env).get(_target_unit(action), 0)
+    degree_score = float(degree) / max(1.0, float(len(env.graph_state.get("nodes") or [])))
+    action_type = str(action.get("action_type") or "")
+    if action_type == "increase_green_infrastructure":
+        action_need = heat + 0.35 * air + 0.20 * livability_gap
+    elif action_type == "traffic_emission_control":
+        action_need = air + 0.25 * equity_gap + 0.15 * livability_gap
+    elif action_type == "add_community_service":
+        action_need = service_gap + 0.35 * equity_gap + 0.20 * livability_gap
+    else:
+        action_need = livability_gap
+    return (
+        _static_priority_score(action)
+        + action_need
+        + 0.10 * degree_score
+        + 0.01 * _float(action.get("intensity"), default=1.0)
+    )
+
+
 def _generate_two_step_q_samples(
     env: LivabilityGraphMDPEnv,
     *,
     discount_factor: float,
+    action_sample_plan: GraphDrlActionSamplePlan,
 ) -> list[dict[str, Any]]:
     samples: list[dict[str, Any]] = []
-    action_count = len(env.available_actions)
-    for first_index in range(action_count):
+    for first_index in action_sample_plan.first_action_indices:
         env.reset()
         first_result = env.step(first_index)
         first_reward = float(first_result["reward"])
         second_rewards: list[float] = []
-        for second_index in range(action_count):
+        for second_index in action_sample_plan.second_action_indices_by_first.get(
+            first_index,
+            [],
+        ):
             if second_index == first_index:
                 continue
             env.reset()
@@ -308,7 +537,9 @@ def _build_training_tensors(
     holdout_stride: int,
 ) -> tuple[GraphDrlTensors, dict[str, int]]:
     node_index_by_unit = _node_index_by_unit(env)
-    node_features = torch.tensor(_node_feature_rows(env), dtype=torch.float32)
+    node_feature_rows = _node_feature_rows(env)
+    node_features_by_unit = _node_features_by_unit(env, node_feature_rows)
+    node_features = torch.tensor(node_feature_rows, dtype=torch.float32)
     adjacency = torch.tensor(_normalised_adjacency(env, node_index_by_unit), dtype=torch.float32)
     action_features = torch.tensor(
         [
@@ -316,6 +547,7 @@ def _build_training_tensors(
                 env,
                 sample,
                 node_index_by_unit=node_index_by_unit,
+                node_features_by_unit=node_features_by_unit,
             )
             for sample in samples
         ],
@@ -363,13 +595,24 @@ def _evaluate_graph_dqn_policy(
     node_index_by_unit: dict[str, int],
     node_features: torch.Tensor,
     adjacency: torch.Tensor,
+    policy_action_indices: list[int] | None,
+    policy_action_scope: str,
 ) -> dict[str, Any]:
     env.reset()
     predicted_q_values: list[dict[str, Any]] = []
     done = False
     selected_action_index = -1
+    policy_action_set = (
+        set(policy_action_indices) if policy_action_indices is not None else None
+    )
     while not done:
         valid_indices = env.valid_action_indices()
+        if policy_action_set is not None:
+            valid_indices = [
+                index for index in valid_indices if index in policy_action_set
+            ]
+        if not valid_indices:
+            break
         scored = _predict_q_for_actions(
             env,
             model,
@@ -412,6 +655,7 @@ def _predict_q_for_actions(
     node_features: torch.Tensor,
     adjacency: torch.Tensor,
 ) -> list[dict[str, Any]]:
+    node_features_by_unit = _node_features_by_unit(env, _node_feature_rows(env))
     samples = [
         {
             "step_index": len(env.action_sequence()),
@@ -427,6 +671,7 @@ def _predict_q_for_actions(
                 env,
                 sample,
                 node_index_by_unit=node_index_by_unit,
+                node_features_by_unit=node_features_by_unit,
             )
             for sample in samples
         ],
@@ -528,6 +773,16 @@ def _node_feature_rows(env: LivabilityGraphMDPEnv) -> list[list[float]]:
     return rows
 
 
+def _node_features_by_unit(
+    env: LivabilityGraphMDPEnv,
+    node_feature_rows: list[list[float]],
+) -> dict[str, list[float]]:
+    return {
+        str(node.get("unit_id") or node.get("node_id")): node_feature_rows[index]
+        for index, node in enumerate(env.graph_state.get("nodes") or [])
+    }
+
+
 def _normalised_adjacency(
     env: LivabilityGraphMDPEnv,
     node_index_by_unit: dict[str, int],
@@ -557,6 +812,7 @@ def _action_feature_row(
     sample: dict[str, Any],
     *,
     node_index_by_unit: dict[str, int],
+    node_features_by_unit: dict[str, list[float]],
 ) -> list[float]:
     action = env.available_actions[int(sample["action_index"])]
     selected_index = int(sample.get("selected_action_index", -1))
@@ -568,9 +824,12 @@ def _action_feature_row(
     action_type = str(action.get("action_type") or "")
     mask_reason = str(action.get("mask_reason") or "")
     selected_action_type = str(selected_action.get("action_type") or "")
-    target_node_features = _node_features_for_action(env, action, node_index_by_unit)
+    target_node_features = _node_features_for_action(
+        action,
+        node_features_by_unit,
+    )
     selected_node_features = (
-        _node_features_for_action(env, selected_action, node_index_by_unit)
+        _node_features_for_action(selected_action, node_features_by_unit)
         if selected_action
         else [0.0] * 6
     )
@@ -589,15 +848,11 @@ def _action_feature_row(
 
 
 def _node_features_for_action(
-    env: LivabilityGraphMDPEnv,
     action: dict[str, Any],
-    node_index_by_unit: dict[str, int],
+    node_features_by_unit: dict[str, list[float]],
 ) -> list[float]:
     unit_id = _target_unit(action)
-    index = node_index_by_unit.get(unit_id)
-    if index is None:
-        return [0.0] * 6
-    return _node_feature_rows(env)[index]
+    return list(node_features_by_unit.get(unit_id) or [0.0] * 6)
 
 
 def _target_node_index(action: dict[str, Any], node_index_by_unit: dict[str, int]) -> int:
@@ -623,6 +878,13 @@ def _degree_by_unit(env: LivabilityGraphMDPEnv) -> dict[str, int]:
         if target:
             degree[target] = degree.get(target, 0) + 1
     return degree
+
+
+def _unit_feature_lookup(env: LivabilityGraphMDPEnv) -> dict[str, dict[str, Any]]:
+    return {
+        str(node.get("unit_id") or node.get("node_id")): dict(node.get("features") or {})
+        for node in env.graph_state.get("nodes") or []
+    }
 
 
 def _static_action_index(actions: list[dict[str, Any]]) -> int:

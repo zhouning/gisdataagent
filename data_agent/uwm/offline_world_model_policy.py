@@ -183,6 +183,7 @@ def train_offline_world_model_policy(
             "actual_replay_evaluation": actual_replay_evaluation,
         },
         "supported_claim": supported_claim,
+        "observed_policy_outcome_superiority_claim": False,
         "empirical_superiority_claim": False,
         "claim_boundary": {
             "max_claim_level": "bounded_support"
@@ -389,6 +390,7 @@ def plan_with_offline_world_model_rollouts(
             "imagined_advantage_over_static_single_step": round(selected_score - static_score, 9),
         },
         "supported_claim": supported_claim,
+        "observed_policy_outcome_superiority_claim": False,
         "empirical_superiority_claim": False,
         "claim_boundary": {
             "max_claim_level": "bounded_support"
@@ -721,7 +723,11 @@ def _features_for_action(
 
 
 def _targets_for_transition(transition: dict[str, Any]) -> list[float]:
-    aggregate = _aggregate_delta(transition.get("next_state_delta") or {})
+    aggregate = _aggregate_delta(
+        transition.get("next_state_delta")
+        or transition.get("next_state_delta_summary")
+        or {}
+    )
     return [
         _float(transition.get("reward")),
         aggregate["heat_risk_delta"],
@@ -740,6 +746,12 @@ def _aggregate_delta(next_state_delta: dict[str, Any]) -> dict[str, float]:
         "equity_delta": 0.0,
         "livability_delta": 0.0,
     }
+    aggregate = next_state_delta.get("aggregate") or {}
+    if isinstance(aggregate, dict) and aggregate:
+        return {
+            key: round(_float(aggregate.get(key)), 9)
+            for key in totals
+        }
     per_unit = next_state_delta.get("per_unit") or {}
     for row in per_unit.values():
         if not isinstance(row, dict):

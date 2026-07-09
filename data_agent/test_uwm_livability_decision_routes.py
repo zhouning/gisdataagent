@@ -82,3 +82,119 @@ def test_livability_decision_payload_uses_real_same_data_world_model_artifacts()
     assert payload["claim_boundary"]["max_claim_level"] == "bounded_support"
     assert payload["observed_policy_outcome_superiority_claim"] is False
     assert payload["empirical_superiority_claim"] is False
+
+
+def test_livability_decision_payload_exposes_full_admin_governance_binding_gate():
+    payload = routes.load_uwm_livability_decision_payload()
+
+    full_admin = payload["full_admin_decision_package"]
+    governance = payload["production_governance_binding_evidence"]
+
+    assert full_admin["schema"] == "uwm.full_admin_livability_decision_package.v1"
+    assert full_admin["full_admin_decision_package_ready"] is True
+    assert full_admin["full_data_guard"]["graph_node_count"] == 1017
+    assert full_admin["full_data_guard"]["graph_edge_count"] == 7932
+    assert full_admin["full_data_guard"]["available_action_count"] == 1137
+    assert full_admin["source_schemas"]["production_governance_planner_binding_gate"] == (
+        "uwm.production_governance_planner_binding_gate.v1"
+    )
+    assert governance == full_admin["production_governance_binding_evidence"]
+    assert governance["production_governance_binding_gate_ready"] is True
+    assert governance["planner_governance_binding_ready"] is False
+    assert governance["production_planner_binding_blocked"] is True
+    assert governance["blocking_gate_count"] == 7
+    assert governance["missing_table_count"] == 5
+    assert governance["accepted_authoritative_row_count"] == 0
+    assert payload["planner_governance_binding_ready"] is False
+    assert payload["active_decision_package_scope"] == "full_admin_graph"
+    assert payload["observed_policy_outcome_superiority_claim"] is False
+    assert payload["empirical_superiority_claim"] is False
+
+
+def test_livability_decision_payload_exposes_spatial_causal_question_registry():
+    payload = routes.load_uwm_livability_decision_payload()
+
+    registry = payload["spatial_causal_question_registry_evidence"]
+    readiness = payload["world_model_evidence_readiness"]
+    spatial_readiness = readiness["architecture_evidence"]["spatial_causal_questions"]
+
+    assert registry["spatial_causal_question_registry_ready"] is True
+    assert registry["active_causal_question_count"] == 3
+    assert registry["currently_bound_feasible_action_count"] == 1137
+    assert registry["underidentified_policy_effect_question_count"] == 3
+    assert registry["identified_policy_effect_question_count"] == 0
+    assert registry["ready_authoritative_table_count"] == 0
+    assert registry["observed_policy_outcome_superiority_claim"] is False
+    assert registry["empirical_superiority_claim"] is False
+    assert set(registry["active_action_types"]) == {
+        "increase_green_infrastructure",
+        "traffic_emission_control",
+        "add_community_service",
+    }
+
+    assert spatial_readiness["ready"] is True
+    assert spatial_readiness["claim_level"] == "spatial_causal_question_contract_only"
+    assert spatial_readiness["active_causal_question_count"] == 3
+    assert spatial_readiness["underidentified_policy_effect_question_count"] == 3
+    assert spatial_readiness["policy_outcome_claim"] is False
+    assert "build_spatial_causal_question_registry" not in readiness["next_actions"]
+
+
+def test_livability_decision_payload_binds_spatial_causal_contracts_to_full_admin_actions():
+    payload = routes.load_uwm_livability_decision_payload()
+
+    full_admin = payload["full_admin_decision_package"]
+    binding = full_admin["spatial_causal_contract_binding"]
+
+    assert binding["binding_ready"] is True
+    assert binding["attached_action_count"] == 6
+    assert binding["missing_contract_action_count"] == 0
+    assert binding["underidentified_policy_effect_action_count"] == 6
+    assert binding["policy_outcome_claim_allowed_action_count"] == 0
+
+    outputs = full_admin["final_outputs"]
+    for sequence_key in [
+        "planner_recommended_sequence",
+        "graph_dqn_recommended_sequence",
+        "learned_rollout_recommended_sequence",
+    ]:
+        for action in outputs[sequence_key]["action_sequence"]:
+            assert action["causal_question_id"] == "uwm-cq-green-heat-livability"
+            assert action["causal_query"] == (
+                "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)"
+            )
+            assert action["primary_outcome"] == "heat_risk"
+            assert action["identification_status"] == (
+                "underidentified_for_observed_policy_effect"
+            )
+            assert action["required_authoritative_tables"] == [
+                "policy_project_history",
+                "action_constraint_cost_model",
+                "observed_outcome_validation_panel",
+                "causal_effect_calibration_panel",
+                "human_governance_review_log",
+            ]
+            assert action["policy_outcome_claim_allowed"] is False
+            assert action["observed_policy_outcome_superiority_claim"] is False
+
+
+def test_livability_decision_payload_exposes_full_action_space_causal_binding():
+    payload = routes.load_uwm_livability_decision_payload()
+
+    inventory = payload["full_admin_action_inventory_evidence"]
+
+    assert inventory["full_admin_action_inventory_ready"] is True
+    assert inventory["available_action_count"] == 1137
+    assert inventory["action_type_counts"] == {
+        "increase_green_infrastructure": 81,
+        "traffic_emission_control": 77,
+        "add_community_service": 979,
+    }
+    assert inventory["spatial_causal_contract_binding_ready"] is True
+    assert inventory["spatial_causal_feasible_action_count"] == 1137
+    assert inventory["spatial_causal_attached_action_count"] == 1137
+    assert inventory["spatial_causal_missing_contract_action_count"] == 0
+    assert inventory["spatial_causal_underidentified_policy_effect_action_count"] == 1137
+    assert inventory["spatial_causal_policy_outcome_claim_action_count"] == 0
+    assert inventory["observed_policy_outcome_superiority_claim"] is False
+    assert inventory["empirical_superiority_claim"] is False

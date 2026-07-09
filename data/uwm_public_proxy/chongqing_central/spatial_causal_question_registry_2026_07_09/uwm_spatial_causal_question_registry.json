@@ -1,0 +1,386 @@
+{
+  "schema": "uwm.spatial_causal_question_registry.v1",
+  "registry_id": "uwm-spatial-causal-question-registry-2026-07-09",
+  "created_at": "2026-07-09T09:15:00Z",
+  "experiment_scope": "full_admin_graph",
+  "source_artifacts": {
+    "production_action_catalog_schema": "uwm.production_action_catalog.v1",
+    "governance_data_contract_schema": "uwm.production_governance_data_contract.v1",
+    "causal_policy_evidence_gate_schema": "uwm.causal_policy_evidence_gate.v1",
+    "data_foundation_evidence_gate_schema": "uwm.data_foundation_evidence_gate.v1"
+  },
+  "registry_ready": true,
+  "algorithmic_causal_diagnostic_ready": true,
+  "observed_outcome_panel_ready": false,
+  "causal_effect_calibration_ready": false,
+  "planner_governance_binding_ready": false,
+  "summary": {
+    "production_action_type_count": 57,
+    "currently_bound_action_type_count": 3,
+    "currently_bound_feasible_action_count": 1137,
+    "active_causal_question_count": 3,
+    "authoritative_required_table_count": 5,
+    "ready_authoritative_table_count": 0,
+    "identified_policy_effect_question_count": 0,
+    "underidentified_policy_effect_question_count": 3,
+    "manifest_row_count": 75
+  },
+  "causal_question_contracts": [
+    {
+      "question_id": "uwm-cq-green-heat-livability",
+      "query_type": "intervention_effect",
+      "action_type": "increase_green_infrastructure",
+      "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+      "treatment": {
+        "variable": "policy_action",
+        "action_type": "increase_green_infrastructure",
+        "target_unit_type": "admin_unit",
+        "current_feasible_action_count": 81,
+        "current_binding_status": "implemented_bounded_support"
+      },
+      "outcomes": {
+        "primary_outcome": "heat_risk",
+        "secondary_outcomes": [
+          "livability",
+          "equity",
+          "air_pollution_exposure"
+        ],
+        "expected_direction": {
+          "heat_risk": "decrease",
+          "livability": "increase",
+          "equity": "non_decrease"
+        }
+      },
+      "adjustment_set": {
+        "confounders": [
+          "baseline_heat_risk",
+          "baseline_green_access",
+          "building_density",
+          "population_density_proxy",
+          "impervious_surface_proxy",
+          "baseline_service_accessibility",
+          "topography"
+        ],
+        "spatial_confounders": [
+          "neighbor_heat_risk",
+          "neighbor_green_access",
+          "geographic_similarity_cluster"
+        ],
+        "colliders_to_avoid": [
+          "planner_priority_rank",
+          "post_action_livability_score"
+        ]
+      },
+      "mechanism_path": {
+        "mediators": [
+          "green_accessibility_change",
+          "surface_cooling_change",
+          "neighbor_spillover_cooling"
+        ],
+        "scm_edges": [
+          [
+            "increase_green_infrastructure",
+            "green_accessibility_change"
+          ],
+          [
+            "green_accessibility_change",
+            "surface_cooling_change"
+          ],
+          [
+            "surface_cooling_change",
+            "heat_risk"
+          ],
+          [
+            "heat_risk",
+            "livability"
+          ],
+          [
+            "neighbor_spillover_cooling",
+            "neighbor_heat_risk"
+          ]
+        ]
+      },
+      "estimand_contract": {
+        "target_estimand": "ATT_on_eligible_admin_units",
+        "formal_question": "E[Y(do(action)) - Y(do(no_action)) | eligible spatial units, spatial context, governance constraints]",
+        "unit_of_analysis": "full_admin_graph_admin_unit",
+        "time_horizon": "action_rollout_horizon",
+        "counterfactual_baseline": "do(no_action_or_static_baseline)",
+        "observational_shortcut_allowed": false,
+        "requires_backdoor_or_spatial_adjustment_set": true,
+        "requires_interference_diagnostics": true
+      },
+      "identification": {
+        "status": "underidentified_for_observed_policy_effect",
+        "algorithmic_causal_diagnostic_ready": true,
+        "observed_outcome_panel_ready": false,
+        "causal_effect_calibration_ready": false,
+        "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+        "blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration"
+      },
+      "required_authoritative_tables": [
+        "policy_project_history",
+        "action_constraint_cost_model",
+        "observed_outcome_validation_panel",
+        "causal_effect_calibration_panel",
+        "human_governance_review_log"
+      ],
+      "testable_implications": [
+        "pre_action_balance_or_overlap_required",
+        "placebo_pretrend_or_preperiod_stability_required",
+        "negative_control_no_effect_on_unrelated_outcome",
+        "spatial_autocorrelation_residual_diagnostic_required",
+        "neighbor_or_similarity_spillover_sensitivity_required"
+      ],
+      "policy_outcome_claim_allowed": false,
+      "claim_level": "conditional_simulation_contract"
+    },
+    {
+      "question_id": "uwm-cq-traffic-air-livability",
+      "query_type": "intervention_effect",
+      "action_type": "traffic_emission_control",
+      "causal_query": "P(air_pollution_exposure, livability | do(traffic_emission_control), spatial_context)",
+      "treatment": {
+        "variable": "policy_action",
+        "action_type": "traffic_emission_control",
+        "target_unit_type": "admin_unit",
+        "current_feasible_action_count": 77,
+        "current_binding_status": "implemented_bounded_support"
+      },
+      "outcomes": {
+        "primary_outcome": "air_pollution_exposure",
+        "secondary_outcomes": [
+          "livability",
+          "heat_risk",
+          "equity"
+        ],
+        "expected_direction": {
+          "air_pollution_exposure": "decrease",
+          "livability": "increase",
+          "equity": "non_decrease"
+        }
+      },
+      "adjustment_set": {
+        "confounders": [
+          "baseline_air_pollution_exposure",
+          "road_density",
+          "traffic_activity_proxy",
+          "population_density_proxy",
+          "building_density",
+          "meteorology",
+          "topography"
+        ],
+        "spatial_confounders": [
+          "neighbor_air_pollution_exposure",
+          "upwind_or_regional_background_proxy",
+          "geographic_similarity_cluster"
+        ],
+        "colliders_to_avoid": [
+          "planner_priority_rank",
+          "post_action_air_quality_score"
+        ]
+      },
+      "mechanism_path": {
+        "mediators": [
+          "traffic_emission_intensity_change",
+          "road_exposure_change",
+          "neighbor_air_spillover_change"
+        ],
+        "scm_edges": [
+          [
+            "traffic_emission_control",
+            "traffic_emission_intensity_change"
+          ],
+          [
+            "traffic_emission_intensity_change",
+            "air_pollution_exposure"
+          ],
+          [
+            "meteorology",
+            "air_pollution_exposure"
+          ],
+          [
+            "air_pollution_exposure",
+            "livability"
+          ],
+          [
+            "neighbor_air_spillover_change",
+            "neighbor_air_pollution_exposure"
+          ]
+        ]
+      },
+      "estimand_contract": {
+        "target_estimand": "ATT_on_eligible_admin_units",
+        "formal_question": "E[Y(do(action)) - Y(do(no_action)) | eligible spatial units, spatial context, governance constraints]",
+        "unit_of_analysis": "full_admin_graph_admin_unit",
+        "time_horizon": "action_rollout_horizon",
+        "counterfactual_baseline": "do(no_action_or_static_baseline)",
+        "observational_shortcut_allowed": false,
+        "requires_backdoor_or_spatial_adjustment_set": true,
+        "requires_interference_diagnostics": true
+      },
+      "identification": {
+        "status": "underidentified_for_observed_policy_effect",
+        "algorithmic_causal_diagnostic_ready": true,
+        "observed_outcome_panel_ready": false,
+        "causal_effect_calibration_ready": false,
+        "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+        "blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration"
+      },
+      "required_authoritative_tables": [
+        "policy_project_history",
+        "action_constraint_cost_model",
+        "observed_outcome_validation_panel",
+        "causal_effect_calibration_panel",
+        "human_governance_review_log"
+      ],
+      "testable_implications": [
+        "pre_action_balance_or_overlap_required",
+        "placebo_pretrend_or_preperiod_stability_required",
+        "negative_control_no_effect_on_unrelated_outcome",
+        "spatial_autocorrelation_residual_diagnostic_required",
+        "neighbor_or_similarity_spillover_sensitivity_required"
+      ],
+      "policy_outcome_claim_allowed": false,
+      "claim_level": "conditional_simulation_contract"
+    },
+    {
+      "question_id": "uwm-cq-service-equity-livability",
+      "query_type": "intervention_effect",
+      "action_type": "add_community_service",
+      "causal_query": "P(service_accessibility, livability | do(add_community_service), spatial_context)",
+      "treatment": {
+        "variable": "policy_action",
+        "action_type": "add_community_service",
+        "target_unit_type": "admin_unit",
+        "current_feasible_action_count": 979,
+        "current_binding_status": "implemented_bounded_support"
+      },
+      "outcomes": {
+        "primary_outcome": "service_accessibility",
+        "secondary_outcomes": [
+          "livability",
+          "equity",
+          "population_served"
+        ],
+        "expected_direction": {
+          "service_accessibility": "increase",
+          "livability": "increase",
+          "equity": "increase"
+        }
+      },
+      "adjustment_set": {
+        "confounders": [
+          "baseline_service_accessibility",
+          "population_need",
+          "population_density_proxy",
+          "road_accessibility",
+          "existing_service_capacity_proxy",
+          "urban_density",
+          "land_availability_proxy"
+        ],
+        "spatial_confounders": [
+          "neighbor_service_accessibility",
+          "neighbor_population_need",
+          "geographic_similarity_cluster"
+        ],
+        "colliders_to_avoid": [
+          "planner_priority_rank",
+          "post_action_service_score"
+        ]
+      },
+      "mechanism_path": {
+        "mediators": [
+          "service_capacity_change",
+          "travel_impedance_change",
+          "neighbor_service_spillover"
+        ],
+        "scm_edges": [
+          [
+            "add_community_service",
+            "service_capacity_change"
+          ],
+          [
+            "service_capacity_change",
+            "service_accessibility"
+          ],
+          [
+            "road_accessibility",
+            "service_accessibility"
+          ],
+          [
+            "service_accessibility",
+            "livability"
+          ],
+          [
+            "neighbor_service_spillover",
+            "neighbor_service_accessibility"
+          ]
+        ]
+      },
+      "estimand_contract": {
+        "target_estimand": "ATT_on_eligible_admin_units",
+        "formal_question": "E[Y(do(action)) - Y(do(no_action)) | eligible spatial units, spatial context, governance constraints]",
+        "unit_of_analysis": "full_admin_graph_admin_unit",
+        "time_horizon": "action_rollout_horizon",
+        "counterfactual_baseline": "do(no_action_or_static_baseline)",
+        "observational_shortcut_allowed": false,
+        "requires_backdoor_or_spatial_adjustment_set": true,
+        "requires_interference_diagnostics": true
+      },
+      "identification": {
+        "status": "underidentified_for_observed_policy_effect",
+        "algorithmic_causal_diagnostic_ready": true,
+        "observed_outcome_panel_ready": false,
+        "causal_effect_calibration_ready": false,
+        "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+        "blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration"
+      },
+      "required_authoritative_tables": [
+        "policy_project_history",
+        "action_constraint_cost_model",
+        "observed_outcome_validation_panel",
+        "causal_effect_calibration_panel",
+        "human_governance_review_log"
+      ],
+      "testable_implications": [
+        "pre_action_balance_or_overlap_required",
+        "placebo_pretrend_or_preperiod_stability_required",
+        "negative_control_no_effect_on_unrelated_outcome",
+        "spatial_autocorrelation_residual_diagnostic_required",
+        "neighbor_or_similarity_spillover_sensitivity_required"
+      ],
+      "policy_outcome_claim_allowed": false,
+      "claim_level": "conditional_simulation_contract"
+    }
+  ],
+  "estimand_registry_policy": {
+    "estimand_language_required": true,
+    "treat_P_y_given_x_as_policy_effect": false,
+    "require_do_query_for_policy_claim": true,
+    "require_identification_before_observed_policy_claim": true,
+    "require_project_linkage_before_planner_governance_binding": true
+  },
+  "supported_claim": "spatial_causal_question_contracts_define_do_queries_and_block_policy_overclaims",
+  "claim_boundary": {
+    "max_claim_level": "spatial_causal_question_contract_only",
+    "policy_outcome_claim": false,
+    "reason": "The registry turns current UWM actions into explicit spatial causal questions and estimand contracts. Existing data support algorithmic causal diagnostics and conditional simulation, but not observed policy-effect identification."
+  },
+  "remaining_gates": [
+    "authoritative_policy_project_history_required",
+    "action_constraint_cost_model_required",
+    "observed_policy_outcome_validation_panel_required",
+    "causal_effect_calibration_panel_required",
+    "human_governance_review_log_required"
+  ],
+  "limitations": [
+    "no_authoritative_policy_project_history_rows",
+    "no_observed_post_intervention_outcome_panel",
+    "current_do_queries_are_conditional_simulation_contracts",
+    "paper6_scca_is_algorithmic_diagnostic_not_uwm_policy_outcome"
+  ],
+  "production_readiness_claim": false,
+  "observed_policy_outcome_superiority_claim": false,
+  "empirical_superiority_claim": false
+}

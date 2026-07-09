@@ -55,6 +55,12 @@ def build_world_model_evidence_readiness(
     livability_graph_drl_training = (
         evidence_slices.get("livability_graph_drl_training") or {}
     )
+    energy_regularized_planner = (
+        evidence_slices.get("energy_regularized_planner") or {}
+    )
+    spatial_causal_question_registry = (
+        evidence_slices.get("spatial_causal_question_registry") or {}
+    )
 
     claim_ladder = _claim_ladder(data_foundation_evidence_gate)
     forbidden_claims = _forbidden_claims(data_foundation_evidence_gate, tap)
@@ -110,6 +116,7 @@ def build_world_model_evidence_readiness(
                 data_calibrated_planner_replay,
                 endpoint_aligned_planner_evaluator,
                 spatial_spillover_planner_evaluator,
+                energy_regularized_planner,
             ),
             "final_livability_endpoint_evaluator": _final_livability_endpoint_evaluator_evidence(
                 livability_endpoint_suite
@@ -124,6 +131,9 @@ def build_world_model_evidence_readiness(
                 livability_graph_drl_training
             ),
             "causal_policy_evidence": _causal_policy_evidence(causal_policy),
+            "spatial_causal_questions": _spatial_causal_questions_evidence(
+                spatial_causal_question_registry
+            ),
             "policy_outcome_evaluator": _policy_outcome_evaluator_evidence(
                 data_foundation_evidence_gate,
                 causal_policy,
@@ -871,6 +881,7 @@ def _planner_evidence(
     data_calibrated_planner_replay: dict[str, Any],
     endpoint_aligned_planner_evaluator: dict[str, Any],
     spatial_spillover_planner_evaluator: dict[str, Any],
+    energy_regularized_planner: dict[str, Any],
 ) -> dict[str, Any]:
     rollout_advantage_ready = (
         bool(rollout.get("source_artifact_exists"))
@@ -946,12 +957,69 @@ def _planner_evidence(
         )
         > 0.0
     )
+    energy_regularized_ready = (
+        bool(energy_regularized_planner.get("source_artifact_exists"))
+        and bool(
+            energy_regularized_planner.get("energy_regularized_planner_ready")
+        )
+        and str(energy_regularized_planner.get("claim_level")) == "bounded_support"
+        and bool(
+            energy_regularized_planner.get("planner_exploitation_guard_passed")
+        )
+        and bool(energy_regularized_planner.get("search_value_alignment_ready"))
+        and _safe_float(
+            energy_regularized_planner.get("advantage_over_traditional_static")
+        )
+        > 0.0
+        and _safe_float(
+            energy_regularized_planner.get("selected_sequence_energy")
+        )
+        <= _safe_float(energy_regularized_planner.get("energy_threshold"))
+        and _safe_float(
+            energy_regularized_planner.get("selected_sequence_ood_action_drift")
+        )
+        <= 0.0
+    )
     return {
         "ready": rollout_advantage_ready and intervention_ready,
         "learned_rollout_planner_ready": rollout_advantage_ready,
         "livability_intervention_package_ready": intervention_ready,
         "data_calibrated_planner_replay_ready": calibrated_replay_ready,
         "risk_calibrated_planner_replay_ready": risk_calibrated_replay_ready,
+        "energy_regularized_planner_ready": energy_regularized_ready,
+        "energy_regularized_algorithm": energy_regularized_planner.get("algorithm"),
+        "energy_regularized_evaluated_sequence_count": _safe_int(
+            energy_regularized_planner.get("evaluated_sequence_count")
+        ),
+        "energy_regularized_advantage_over_traditional_static": _safe_float(
+            energy_regularized_planner.get("advantage_over_traditional_static")
+        ),
+        "energy_regularized_selected_sequence_reward": _safe_float(
+            energy_regularized_planner.get("selected_sequence_reward")
+        ),
+        "energy_regularized_traditional_static_reward": _safe_float(
+            energy_regularized_planner.get("traditional_static_cumulative_reward")
+        ),
+        "energy_regularized_selected_sequence_energy": _safe_float(
+            energy_regularized_planner.get("selected_sequence_energy")
+        ),
+        "energy_regularized_energy_threshold": _safe_float(
+            energy_regularized_planner.get("energy_threshold")
+        ),
+        "energy_regularized_ood_action_drift": _safe_float(
+            energy_regularized_planner.get("selected_sequence_ood_action_drift")
+        ),
+        "energy_regularized_exploitation_guard_passed": bool(
+            energy_regularized_planner.get("planner_exploitation_guard_passed")
+        ),
+        "energy_regularized_search_value_alignment_ready": bool(
+            energy_regularized_planner.get("search_value_alignment_ready")
+        ),
+        "energy_regularized_graph_dqn_holdout_win_rate": _safe_float(
+            energy_regularized_planner.get(
+                "graph_dqn_holdout_win_rate_vs_train_mean"
+            )
+        ),
         "endpoint_aligned_planner_evaluator_ready": endpoint_aligned_ready,
         "endpoint_aligned_advantage_over_static": _safe_float(
             endpoint_aligned_planner_evaluator.get(
@@ -1035,6 +1103,48 @@ def _causal_policy_evidence(causal_policy: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _spatial_causal_questions_evidence(registry: dict[str, Any]) -> dict[str, Any]:
+    ready = (
+        bool(registry.get("source_artifact_exists"))
+        and bool(registry.get("spatial_causal_question_registry_ready"))
+        and str(registry.get("claim_level"))
+        == "spatial_causal_question_contract_only"
+        and not bool(registry.get("observed_policy_outcome_superiority_claim"))
+    )
+    return {
+        "ready": ready,
+        "claim_level": (
+            "spatial_causal_question_contract_only" if ready else "not_for_claim"
+        ),
+        "active_causal_question_count": _safe_int(
+            registry.get("active_causal_question_count")
+        ),
+        "underidentified_policy_effect_question_count": _safe_int(
+            registry.get("underidentified_policy_effect_question_count")
+        ),
+        "identified_policy_effect_question_count": _safe_int(
+            registry.get("identified_policy_effect_question_count")
+        ),
+        "authoritative_required_table_count": _safe_int(
+            registry.get("authoritative_required_table_count")
+        ),
+        "ready_authoritative_table_count": _safe_int(
+            registry.get("ready_authoritative_table_count")
+        ),
+        "algorithmic_causal_diagnostic_ready": bool(
+            registry.get("algorithmic_causal_diagnostic_ready")
+        ),
+        "observed_outcome_panel_ready": bool(
+            registry.get("observed_outcome_panel_ready")
+        ),
+        "causal_effect_calibration_ready": bool(
+            registry.get("causal_effect_calibration_ready")
+        ),
+        "active_action_types": list(registry.get("active_action_types") or []),
+        "policy_outcome_claim": False,
+    }
+
+
 def _policy_outcome_evaluator_evidence(
     gate: dict[str, Any],
     causal_policy: dict[str, Any],
@@ -1077,6 +1187,12 @@ def _forbidden_claims(gate: dict[str, Any], tap: dict[str, Any]) -> list[str]:
 def _next_actions(gate: dict[str, Any]) -> list[str]:
     actions = ["complete_world_model_evidence_readiness_section"]
     remaining_gates = set(gate.get("remaining_gates") or [])
+    spatial_registry = (
+        (gate.get("evidence_slices") or {}).get("spatial_causal_question_registry")
+        or {}
+    )
+    if not bool(spatial_registry.get("spatial_causal_question_registry_ready")):
+        actions.append("build_spatial_causal_question_registry")
     if "observed_policy_outcome_required" in remaining_gates:
         actions.append("collect_observed_policy_outcome_validation_data")
     if "scene_aligned_station_calibrated_air_quality_holdout_required" in remaining_gates:

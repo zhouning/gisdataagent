@@ -13,11 +13,21 @@ from .data_calibrated_mechanism_table import (
     validate_uwm_data_calibrated_mechanism_table,
 )
 from .external_observed_holdout import validate_uwm_external_observed_holdout_suite
+from .full_admin_service_accessibility_surface import (
+    validate_full_admin_service_accessibility_surface,
+)
+from .full_admin_service_surface_quality import (
+    validate_full_admin_service_surface_quality_audit,
+)
+from .geographic_similarity_kernel import validate_uwm_geographic_similarity_kernel
 from .scene_aligned_gridded_air_quality_holdout import (
     validate_uwm_scene_aligned_gridded_air_quality_holdout,
 )
 from .station_aligned_air_quality_holdout import (
     validate_uwm_station_aligned_air_quality_holdout,
+)
+from .spatial_causal_question_registry import (
+    validate_uwm_spatial_causal_question_registry,
 )
 
 
@@ -57,6 +67,23 @@ def build_uwm_data_foundation_evidence_gate(
     livability_decision_package_path: str | Path | None = None,
     livability_rl_training_report_path: str | Path | None = None,
     livability_graph_drl_training_report_path: str | Path | None = None,
+    energy_regularized_planner_report_path: str | Path | None = None,
+    full_admin_service_accessibility_surface_path: str | Path | None = None,
+    full_admin_service_surface_quality_audit_path: str | Path | None = None,
+    geographic_similarity_kernel_path: str | Path | None = None,
+    full_admin_action_inventory_path: str | Path | None = None,
+    production_action_catalog_path: str | Path | None = None,
+    production_governance_data_contract_path: str | Path | None = None,
+    production_governance_data_adapter_readiness_path: str | Path | None = None,
+    production_governance_input_templates_path: str | Path | None = None,
+    production_governance_linkage_audit_path: str | Path | None = None,
+    production_governance_planner_binding_gate_path: str | Path | None = None,
+    spatial_causal_question_registry_path: str | Path | None = None,
+    full_admin_graph_planner_replay_path: str | Path | None = None,
+    full_admin_graph_drl_training_report_path: str | Path | None = None,
+    full_admin_learned_world_model_rollout_path: str | Path | None = None,
+    full_admin_livability_decision_package_path: str | Path | None = None,
+    full_admin_energy_regularized_planner_report_path: str | Path | None = None,
     gate_id: str,
     created_at: str,
 ) -> dict[str, Any]:
@@ -142,6 +169,91 @@ def build_uwm_data_foundation_evidence_gate(
     livability_graph_drl_training_report = (
         _read_json(livability_graph_drl_training_report_path)
         if livability_graph_drl_training_report_path is not None
+        else {}
+    )
+    energy_regularized_planner_report = (
+        _read_json(energy_regularized_planner_report_path)
+        if energy_regularized_planner_report_path is not None
+        else {}
+    )
+    full_admin_service_accessibility_surface = (
+        _read_json(full_admin_service_accessibility_surface_path)
+        if full_admin_service_accessibility_surface_path is not None
+        else {}
+    )
+    full_admin_service_surface_quality_audit = (
+        _read_json(full_admin_service_surface_quality_audit_path)
+        if full_admin_service_surface_quality_audit_path is not None
+        else {}
+    )
+    geographic_similarity_kernel = (
+        _read_json(geographic_similarity_kernel_path)
+        if geographic_similarity_kernel_path is not None
+        else {}
+    )
+    full_admin_action_inventory = (
+        _read_json(full_admin_action_inventory_path)
+        if full_admin_action_inventory_path is not None
+        else {}
+    )
+    production_action_catalog = (
+        _read_json(production_action_catalog_path)
+        if production_action_catalog_path is not None
+        else {}
+    )
+    production_governance_data_contract = (
+        _read_json(production_governance_data_contract_path)
+        if production_governance_data_contract_path is not None
+        else {}
+    )
+    production_governance_data_adapter_readiness = (
+        _read_json(production_governance_data_adapter_readiness_path)
+        if production_governance_data_adapter_readiness_path is not None
+        else {}
+    )
+    production_governance_input_templates = (
+        _read_json(production_governance_input_templates_path)
+        if production_governance_input_templates_path is not None
+        else {}
+    )
+    production_governance_linkage_audit = (
+        _read_json(production_governance_linkage_audit_path)
+        if production_governance_linkage_audit_path is not None
+        else {}
+    )
+    production_governance_planner_binding_gate = (
+        _read_json(production_governance_planner_binding_gate_path)
+        if production_governance_planner_binding_gate_path is not None
+        else {}
+    )
+    spatial_causal_question_registry = (
+        _read_json(spatial_causal_question_registry_path)
+        if spatial_causal_question_registry_path is not None
+        else {}
+    )
+    full_admin_graph_planner_replay = (
+        _read_json(full_admin_graph_planner_replay_path)
+        if full_admin_graph_planner_replay_path is not None
+        else {}
+    )
+    full_admin_graph_drl_training_report = (
+        _read_json(full_admin_graph_drl_training_report_path)
+        if full_admin_graph_drl_training_report_path is not None
+        else {}
+    )
+    full_admin_learned_world_model_rollout = (
+        _read_json(full_admin_learned_world_model_rollout_path)
+        if full_admin_learned_world_model_rollout_path is not None
+        else {}
+    )
+    full_admin_livability_decision_package = (
+        _read_json(full_admin_livability_decision_package_path)
+        if full_admin_livability_decision_package_path is not None
+        else {}
+    )
+    full_admin_energy_regularized_planner_report = (
+        _read_json(full_admin_energy_regularized_planner_report_path)
+        if full_admin_energy_regularized_planner_report_path is not None
         else {}
     )
 
@@ -288,6 +400,164 @@ def build_uwm_data_foundation_evidence_gate(
             else False
         ),
     )
+    energy_regularized_planner_slice = _energy_regularized_planner_slice(
+        energy_regularized_planner_report,
+        source_artifact_exists=(
+            Path(energy_regularized_planner_report_path).exists()
+            if energy_regularized_planner_report_path is not None
+            else False
+        ),
+    )
+    full_admin_service_accessibility_surface_slice = (
+        _full_admin_service_accessibility_surface_slice(
+            full_admin_service_accessibility_surface,
+            source_artifact_exists=(
+                Path(full_admin_service_accessibility_surface_path).exists()
+                if full_admin_service_accessibility_surface_path is not None
+                else False
+            ),
+        )
+    )
+    full_admin_service_surface_quality_audit_slice = (
+        _full_admin_service_surface_quality_audit_slice(
+            full_admin_service_surface_quality_audit,
+            source_artifact_exists=(
+                Path(full_admin_service_surface_quality_audit_path).exists()
+                if full_admin_service_surface_quality_audit_path is not None
+                else False
+            ),
+        )
+    )
+    geographic_similarity_kernel_slice = _geographic_similarity_kernel_slice(
+        geographic_similarity_kernel,
+        source_artifact_exists=(
+            Path(geographic_similarity_kernel_path).exists()
+            if geographic_similarity_kernel_path is not None
+            else False
+        ),
+    )
+    full_admin_action_inventory_slice = _full_admin_action_inventory_slice(
+        full_admin_action_inventory,
+        source_artifact_exists=(
+            Path(full_admin_action_inventory_path).exists()
+            if full_admin_action_inventory_path is not None
+            else False
+        ),
+    )
+    production_action_catalog_slice = _production_action_catalog_slice(
+        production_action_catalog,
+        source_artifact_exists=(
+            Path(production_action_catalog_path).exists()
+            if production_action_catalog_path is not None
+            else False
+        ),
+    )
+    production_governance_data_contract_slice = (
+        _production_governance_data_contract_slice(
+            production_governance_data_contract,
+            source_artifact_exists=(
+                Path(production_governance_data_contract_path).exists()
+                if production_governance_data_contract_path is not None
+                else False
+            ),
+        )
+    )
+    production_governance_data_adapter_readiness_slice = (
+        _production_governance_data_adapter_readiness_slice(
+            production_governance_data_adapter_readiness,
+            source_artifact_exists=(
+                Path(production_governance_data_adapter_readiness_path).exists()
+                if production_governance_data_adapter_readiness_path is not None
+                else False
+            ),
+        )
+    )
+    production_governance_input_templates_slice = (
+        _production_governance_input_templates_slice(
+            production_governance_input_templates,
+            source_artifact_exists=(
+                Path(production_governance_input_templates_path).exists()
+                if production_governance_input_templates_path is not None
+                else False
+            ),
+        )
+    )
+    production_governance_linkage_audit_slice = (
+        _production_governance_linkage_audit_slice(
+            production_governance_linkage_audit,
+            source_artifact_exists=(
+                Path(production_governance_linkage_audit_path).exists()
+                if production_governance_linkage_audit_path is not None
+                else False
+            ),
+        )
+    )
+    production_governance_planner_binding_gate_slice = (
+        _production_governance_planner_binding_gate_slice(
+            production_governance_planner_binding_gate,
+            source_artifact_exists=(
+                Path(production_governance_planner_binding_gate_path).exists()
+                if production_governance_planner_binding_gate_path is not None
+                else False
+            ),
+        )
+    )
+    spatial_causal_question_registry_slice = (
+        _spatial_causal_question_registry_slice(
+            spatial_causal_question_registry,
+            source_artifact_exists=(
+                Path(spatial_causal_question_registry_path).exists()
+                if spatial_causal_question_registry_path is not None
+                else False
+            ),
+        )
+    )
+    full_admin_graph_planner_replay_slice = _full_admin_graph_planner_replay_slice(
+        full_admin_graph_planner_replay,
+        source_artifact_exists=(
+            Path(full_admin_graph_planner_replay_path).exists()
+            if full_admin_graph_planner_replay_path is not None
+            else False
+        ),
+    )
+    full_admin_graph_drl_training_slice = _full_admin_graph_drl_training_slice(
+        full_admin_graph_drl_training_report,
+        source_artifact_exists=(
+            Path(full_admin_graph_drl_training_report_path).exists()
+            if full_admin_graph_drl_training_report_path is not None
+            else False
+        ),
+    )
+    full_admin_learned_world_model_rollout_slice = (
+        _full_admin_learned_world_model_rollout_slice(
+            full_admin_learned_world_model_rollout,
+            source_artifact_exists=(
+                Path(full_admin_learned_world_model_rollout_path).exists()
+                if full_admin_learned_world_model_rollout_path is not None
+                else False
+            ),
+        )
+    )
+    full_admin_livability_decision_package_slice = (
+        _full_admin_livability_decision_package_slice(
+            full_admin_livability_decision_package,
+            source_artifact_exists=(
+                Path(full_admin_livability_decision_package_path).exists()
+                if full_admin_livability_decision_package_path is not None
+                else False
+            ),
+        )
+    )
+    full_admin_energy_regularized_planner_slice = (
+        _full_admin_energy_regularized_planner_slice(
+            full_admin_energy_regularized_planner_report,
+            source_artifact_exists=(
+                Path(full_admin_energy_regularized_planner_report_path).exists()
+                if full_admin_energy_regularized_planner_report_path is not None
+                else False
+            ),
+        )
+    )
     claim_guard = _claim_guard(manifest_rows)
     bounded_final_system_superiority_claim = _bounded_final_system_superiority_claim(
         openaq_slice,
@@ -296,6 +566,78 @@ def build_uwm_data_foundation_evidence_gate(
         multisource_livability_scene_slice,
         livability_endpoint_suite_slice,
         endpoint_aligned_planner_evaluator_slice,
+    )
+    supported_claims = _supported_claims(
+        openaq_slice,
+        tap_transition_slice,
+        rollout_slice,
+        intervention_slice,
+        causal_policy_slice,
+        external_observed_slice,
+        station_aligned_slice,
+        data_calibrated_mechanism_slice,
+        data_calibrated_planner_replay_slice,
+        scene_aligned_gridded_slice,
+        multisource_livability_scene_slice,
+        osm_admin_mobility_crosswalk_slice,
+        building_floor_morphology_slice,
+        livability_endpoint_suite_slice,
+        endpoint_aligned_planner_evaluator_slice,
+        spatial_spillover_planner_evaluator_slice,
+        livability_decision_package_slice,
+        livability_rl_training_slice,
+        livability_graph_drl_training_slice,
+        energy_regularized_planner_slice,
+    )
+    supported_claims.extend(
+        full_admin_service_accessibility_surface_slice.get("supported_claims") or []
+    )
+    supported_claims.extend(
+        full_admin_service_surface_quality_audit_slice.get("supported_claims") or []
+    )
+    supported_claims.extend(
+        geographic_similarity_kernel_slice.get("supported_claims") or []
+    )
+    supported_claims.extend(
+        full_admin_action_inventory_slice.get("supported_claims") or []
+    )
+    supported_claims.extend(
+        production_action_catalog_slice.get("supported_claims") or []
+    )
+    supported_claims.extend(
+        production_governance_data_contract_slice.get("supported_claims") or []
+    )
+    supported_claims.extend(
+        production_governance_data_adapter_readiness_slice.get("supported_claims")
+        or []
+    )
+    supported_claims.extend(
+        production_governance_input_templates_slice.get("supported_claims") or []
+    )
+    supported_claims.extend(
+        production_governance_linkage_audit_slice.get("supported_claims") or []
+    )
+    supported_claims.extend(
+        production_governance_planner_binding_gate_slice.get("supported_claims")
+        or []
+    )
+    supported_claims.extend(
+        spatial_causal_question_registry_slice.get("supported_claims") or []
+    )
+    supported_claims.extend(
+        full_admin_graph_planner_replay_slice.get("supported_claims") or []
+    )
+    supported_claims.extend(
+        full_admin_graph_drl_training_slice.get("supported_claims") or []
+    )
+    supported_claims.extend(
+        full_admin_learned_world_model_rollout_slice.get("supported_claims") or []
+    )
+    supported_claims.extend(
+        full_admin_livability_decision_package_slice.get("supported_claims") or []
+    )
+    supported_claims.extend(
+        full_admin_energy_regularized_planner_slice.get("supported_claims") or []
     )
     return {
         "schema": UWM_DATA_FOUNDATION_EVIDENCE_GATE_SCHEMA,
@@ -334,6 +676,45 @@ def build_uwm_data_foundation_evidence_gate(
             "livability_decision_package": livability_decision_package_slice,
             "livability_rl_training": livability_rl_training_slice,
             "livability_graph_drl_training": livability_graph_drl_training_slice,
+            "energy_regularized_planner": energy_regularized_planner_slice,
+            "full_admin_service_accessibility_surface": (
+                full_admin_service_accessibility_surface_slice
+            ),
+            "full_admin_service_surface_quality_audit": (
+                full_admin_service_surface_quality_audit_slice
+            ),
+            "geographic_similarity_kernel": geographic_similarity_kernel_slice,
+            "full_admin_action_inventory": full_admin_action_inventory_slice,
+            "production_action_catalog": production_action_catalog_slice,
+            "production_governance_data_contract": (
+                production_governance_data_contract_slice
+            ),
+            "production_governance_data_adapter_readiness": (
+                production_governance_data_adapter_readiness_slice
+            ),
+            "production_governance_input_templates": (
+                production_governance_input_templates_slice
+            ),
+            "production_governance_linkage_audit": (
+                production_governance_linkage_audit_slice
+            ),
+            "production_governance_planner_binding_gate": (
+                production_governance_planner_binding_gate_slice
+            ),
+            "spatial_causal_question_registry": (
+                spatial_causal_question_registry_slice
+            ),
+            "full_admin_graph_planner_replay": full_admin_graph_planner_replay_slice,
+            "full_admin_graph_drl_training": full_admin_graph_drl_training_slice,
+            "full_admin_learned_world_model_rollout": (
+                full_admin_learned_world_model_rollout_slice
+            ),
+            "full_admin_livability_decision_package": (
+                full_admin_livability_decision_package_slice
+            ),
+            "full_admin_energy_regularized_planner": (
+                full_admin_energy_regularized_planner_slice
+            ),
         },
         "observed_state_prediction_superiority_claim": _observed_state_prediction_superiority(
             openaq_slice
@@ -349,27 +730,7 @@ def build_uwm_data_foundation_evidence_gate(
             bounded_final_system_superiority_claim
         ),
         "empirical_superiority_claim": False,
-        "supported_claims": _supported_claims(
-            openaq_slice,
-            tap_transition_slice,
-            rollout_slice,
-            intervention_slice,
-            causal_policy_slice,
-            external_observed_slice,
-            station_aligned_slice,
-            data_calibrated_mechanism_slice,
-            data_calibrated_planner_replay_slice,
-            scene_aligned_gridded_slice,
-            multisource_livability_scene_slice,
-            osm_admin_mobility_crosswalk_slice,
-            building_floor_morphology_slice,
-            livability_endpoint_suite_slice,
-            endpoint_aligned_planner_evaluator_slice,
-            spatial_spillover_planner_evaluator_slice,
-            livability_decision_package_slice,
-            livability_rl_training_slice,
-            livability_graph_drl_training_slice,
-        ),
+        "supported_claims": supported_claims,
         "claim_guard": claim_guard,
         "remaining_gates": _remaining_gates(
             claim_guard,
@@ -1787,6 +2148,1841 @@ def _livability_graph_drl_training_slice(
     }
 
 
+def _energy_regularized_planner_slice(
+    report: dict[str, Any],
+    *,
+    source_artifact_exists: bool,
+) -> dict[str, Any]:
+    selected = report.get("selected_sequence") or {}
+    static = report.get("traditional_static_baseline") or {}
+    audit = report.get("conservative_search_audit") or {}
+    alignment = report.get("search_value_alignment") or {}
+    summary = report.get("real_data_graph_mdp_summary") or {}
+    algorithm = report.get("planner_algorithm") or {}
+    ready = (
+        source_artifact_exists
+        and report.get("schema")
+        == "uwm.energy_regularized_action_sequence_planner.v1"
+        and algorithm.get("algorithm")
+        == "energy_regularized_model_based_action_sequence_planner"
+        and algorithm.get("is_model_based") is True
+        and algorithm.get("uses_behavior_prior_energy") is True
+        and algorithm.get("uses_ood_action_drift_guard") is True
+        and _float(selected.get("advantage_over_traditional_static")) > 0.0
+        and _float(selected.get("mean_behavior_energy"))
+        <= _float((report.get("behavior_prior") or {}).get("energy_threshold"))
+        and _float(selected.get("ood_action_drift")) <= 0.0
+        and audit.get("planner_exploitation_guard_passed") is True
+        and alignment.get("search_value_alignment_ready") is True
+        and report.get("supported_claim")
+        == "energy_regularized_model_based_action_sequence_planner_advantage_over_traditional_static"
+        and report.get("observed_policy_outcome_superiority_claim") is False
+    )
+    return {
+        "source_artifact_exists": source_artifact_exists,
+        "schema": report.get("schema"),
+        "scope": "energy_regularized_model_based_planner_replay_not_policy_outcome",
+        "energy_regularized_planner_ready": ready,
+        "algorithm": algorithm.get("algorithm"),
+        "is_model_based": bool(algorithm.get("is_model_based")),
+        "uses_behavior_prior_energy": bool(
+            algorithm.get("uses_behavior_prior_energy")
+        ),
+        "uses_ood_action_drift_guard": bool(
+            algorithm.get("uses_ood_action_drift_guard")
+        ),
+        "uses_graph_dqn_alignment_evidence": bool(
+            algorithm.get("uses_graph_dqn_alignment_evidence")
+        ),
+        "real_data_graph_node_count": _int(
+            summary.get("real_data_graph_node_count")
+        ),
+        "real_data_graph_edge_count": _int(
+            summary.get("real_data_graph_edge_count")
+        ),
+        "real_data_available_action_count": _int(
+            summary.get("real_data_available_action_count")
+        ),
+        "spatial_spillover_directional_edge_count": _int(
+            summary.get("spatial_spillover_directional_edge_count")
+        ),
+        "evaluated_sequence_count": _int(audit.get("evaluated_sequence_count")),
+        "selected_sequence_reward": _float(selected.get("raw_cumulative_reward")),
+        "traditional_static_cumulative_reward": _float(
+            static.get("cumulative_reward")
+        ),
+        "advantage_over_traditional_static": _float(
+            selected.get("advantage_over_traditional_static")
+        ),
+        "selected_sequence_energy": _float(selected.get("mean_behavior_energy")),
+        "energy_threshold": _float(
+            (report.get("behavior_prior") or {}).get("energy_threshold")
+        ),
+        "selected_sequence_ood_action_drift": _float(
+            selected.get("ood_action_drift")
+        ),
+        "planner_exploitation_guard_passed": bool(
+            audit.get("planner_exploitation_guard_passed")
+        ),
+        "search_value_alignment_ready": bool(
+            alignment.get("search_value_alignment_ready")
+        ),
+        "graph_dqn_holdout_win_rate_vs_train_mean": _float(
+            alignment.get("graph_dqn_holdout_win_rate_vs_train_mean")
+        ),
+        "claim_level": "bounded_support" if ready else "not_for_claim",
+        "supported_claims": [
+            {
+                "claim": "energy_regularized_model_based_action_sequence_planner_advantage_over_traditional_static",
+                "scope": "energy_regularized_model_based_planner_replay_not_policy_outcome",
+                "claim_level": "bounded_support",
+                "policy_outcome_claim": False,
+                "spatial_attribution_claim": False,
+            }
+        ]
+        if ready
+        else [],
+        "policy_outcome_claim": False,
+        "observed_policy_outcome_superiority_claim": False,
+        "empirical_superiority_claim": False,
+        "limitations": [
+            "energy_regularized_planner_uses_simulator_rollouts_not_observed_intervention_logs",
+            "behavior_prior_is_feasible_action_geometry_not_historical_policy_log_prior",
+        ],
+    }
+
+
+def _full_admin_graph_planner_replay_slice(
+    report: dict[str, Any],
+    *,
+    source_artifact_exists: bool,
+) -> dict[str, Any]:
+    graph_statistics = (report.get("graph_mdp_state") or {}).get(
+        "graph_statistics"
+    ) or {}
+    full_guard = report.get("full_data_guard") or {}
+    search_config = report.get("search_config") or {}
+    air_quality = report.get("air_quality_uncertainty_calibration_summary") or {}
+    risk_adjusted = report.get("risk_adjusted_planner_evaluation") or {}
+    similarity_summary = report.get("source_geographic_similarity_kernel_summary") or {}
+    ready = (
+        source_artifact_exists
+        and report.get("schema") == "uwm.model_based_graph_search_report.v1"
+        and report.get("experiment_scope") == "full_admin_graph"
+        and full_guard.get("passed") is True
+        and _int(graph_statistics.get("node_count")) == 1017
+        and _int(graph_statistics.get("edge_count")) == 7932
+        and _int(similarity_summary.get("similarity_edge_count")) == 5085
+        and _int(graph_statistics.get("available_action_count")) > 60
+        and _float(report.get("advantage_over_static_single_step")) > 0.0
+        and search_config.get("transition_storage") == "compact"
+        and report.get("observed_policy_outcome_superiority_claim") is False
+        and report.get("empirical_superiority_claim") is False
+    )
+    supported_claims = []
+    if ready:
+        supported_claims.append(
+            {
+                "claim": "full_admin_graph_planner_replay_advantage_over_static_heuristic",
+                "scope": "full_admin_graph_model_based_planner_replay_not_policy_outcome",
+                "claim_level": "bounded_support",
+                "policy_outcome_claim": False,
+                "spatial_attribution_claim": False,
+            }
+        )
+    risk_ready = (
+        ready
+        and air_quality.get("uwm_uncertainty_calibration_ready") is True
+        and risk_adjusted.get("risk_calibrated_planner_replay_ready") is True
+        and _float(
+            risk_adjusted.get("risk_adjusted_advantage_over_static_single_step")
+        )
+        > 0.0
+        and risk_adjusted.get("observed_policy_outcome_superiority_claim") is False
+    )
+    if risk_ready:
+        supported_claims.append(
+            {
+                "claim": "full_admin_graph_risk_calibrated_planner_replay_advantage_over_static_heuristic",
+                "scope": "full_admin_graph_risk_calibrated_model_based_planner_replay_not_policy_outcome",
+                "claim_level": "bounded_support",
+                "policy_outcome_claim": False,
+                "spatial_attribution_claim": False,
+            }
+        )
+    return {
+        "scope": "full_admin_graph_model_based_planner_replay_not_policy_outcome",
+        "source_artifact_exists": source_artifact_exists,
+        "full_admin_graph_planner_replay_ready": ready,
+        "experiment_scope": report.get("experiment_scope"),
+        "graph_node_count": _int(graph_statistics.get("node_count")),
+        "graph_edge_count": _int(graph_statistics.get("edge_count")),
+        "geographic_similarity_edge_count": _int(
+            similarity_summary.get("similarity_edge_count")
+        ),
+        "non_adjacent_similarity_edge_count": _int(
+            similarity_summary.get("non_adjacent_similarity_edge_count")
+        ),
+        "available_action_count": _int(
+            graph_statistics.get("available_action_count")
+        ),
+        "transition_count": _int(
+            (report.get("trajectory_dataset") or {}).get("transition_count")
+        ),
+        "transition_storage": search_config.get("transition_storage"),
+        "advantage_over_static_single_step": round(
+            _float(report.get("advantage_over_static_single_step")),
+            9,
+        ),
+        "full_data_guard": full_guard,
+        "air_quality_uncertainty_calibration_ready": bool(
+            air_quality.get("uwm_uncertainty_calibration_ready")
+        ),
+        "air_quality_uncertainty_source_benchmark_id": air_quality.get(
+            "source_benchmark_id"
+        ),
+        "air_quality_uncertainty_confidence_level": _float(
+            air_quality.get("confidence_level")
+        ),
+        "air_quality_uwm_interval_score": _float(
+            air_quality.get("uwm_interval_score")
+        ),
+        "air_quality_static_interval_score": _float(
+            air_quality.get("static_interval_score")
+        ),
+        "pm25_scene_range_ugm3": _float(air_quality.get("pm25_scene_range_ugm3")),
+        "risk_calibrated_planner_replay_ready": risk_ready,
+        "best_sequence_risk_adjusted_reward": _float(
+            risk_adjusted.get("best_sequence_risk_adjusted_reward")
+        ),
+        "static_single_step_risk_adjusted_reward": _float(
+            risk_adjusted.get("static_single_step_risk_adjusted_reward")
+        ),
+        "risk_adjusted_advantage_over_static_single_step": _float(
+            risk_adjusted.get("risk_adjusted_advantage_over_static_single_step")
+        ),
+        "observed_policy_outcome_superiority_claim": False,
+        "empirical_superiority_claim": False,
+        "supported_claims": supported_claims,
+        "claim_boundary": {
+            "max_claim_level": "bounded_support" if ready else "not_for_claim",
+            "reason": (
+                "Full-admin planner replay uses all current admin graph nodes "
+                "and simulator rollouts; it is not observed policy-outcome evidence."
+            ),
+        },
+        "remaining_gates": [
+            "observed_policy_outcome_holdout_required",
+            "off_policy_evaluation_on_real_intervention_logs_required",
+            "causal_policy_effect_validation_required",
+        ],
+    }
+
+
+def _full_admin_service_accessibility_surface_slice(
+    surface: dict[str, Any],
+    *,
+    source_artifact_exists: bool,
+) -> dict[str, Any]:
+    if source_artifact_exists:
+        validation = validate_full_admin_service_accessibility_surface(surface)
+    else:
+        validation = {"valid": False, "errors": ["source_artifact_missing"]}
+    counts = surface.get("source_feature_counts") or {}
+    coverage = surface.get("coverage") or {}
+    ready = (
+        source_artifact_exists
+        and validation.get("valid") is True
+        and surface.get("schema") == "uwm.full_admin_service_accessibility_surface.v1"
+        and surface.get("experiment_scope") == "full_admin_graph"
+        and _int(surface.get("admin_unit_count")) == 1017
+        and _int(counts.get("admin_units")) == 1017
+        and _int(counts.get("poi_points")) == 1194351
+        and _int(counts.get("roads")) == 50366
+        and _int(coverage.get("service_missing_admin_count")) == 0
+        and _int(coverage.get("admin_units_with_accessibility_score")) == 1017
+        and surface.get("supported_claim")
+        == "full_admin_service_accessibility_surface_covers_all_admin_units_from_local_poi_and_road_assets"
+        and (surface.get("claim_boundary") or {}).get("max_claim_level")
+        == "bounded_support"
+        and surface.get("observed_policy_outcome_superiority_claim") is False
+        and surface.get("empirical_superiority_claim") is False
+    )
+    return {
+        "source_artifact_exists": source_artifact_exists,
+        "schema": surface.get("schema"),
+        "scope": "full_admin_local_poi_road_service_accessibility_surface_not_observed_trip_time_or_policy_outcome",
+        "full_admin_service_accessibility_surface_ready": ready,
+        "experiment_scope": surface.get("experiment_scope"),
+        "admin_unit_count": _int(surface.get("admin_unit_count")),
+        "source_admin_unit_count": _int(counts.get("admin_units")),
+        "source_poi_point_count": _int(counts.get("poi_points")),
+        "source_road_count": _int(counts.get("roads")),
+        "service_missing_admin_count": _int(
+            coverage.get("service_missing_admin_count")
+        ),
+        "admin_units_with_service_points": _int(
+            coverage.get("admin_units_with_service_points")
+        ),
+        "admin_units_with_road_context": _int(
+            coverage.get("admin_units_with_road_context")
+        ),
+        "admin_units_with_accessibility_score": _int(
+            coverage.get("admin_units_with_accessibility_score")
+        ),
+        "total_service_point_count": _int(surface.get("total_service_point_count")),
+        "total_essential_service_count": _int(
+            surface.get("total_essential_service_count")
+        ),
+        "supported_claim": surface.get("supported_claim"),
+        "supported_claims": [
+            {
+                "claim": "full_admin_service_accessibility_surface_covers_all_admin_units_from_local_poi_and_road_assets",
+                "scope": "full_admin_local_poi_road_service_accessibility_surface_not_observed_trip_time_or_policy_outcome",
+                "claim_level": "bounded_support",
+                "policy_outcome_claim": False,
+                "observed_trip_time_claim": False,
+                "authoritative_service_inventory_claim": False,
+            }
+        ]
+        if ready
+        else [],
+        "claim_level": "bounded_support" if ready else "not_for_claim",
+        "policy_outcome_claim": False,
+        "observed_policy_outcome_superiority_claim": False,
+        "empirical_superiority_claim": False,
+        "validation": validation,
+        "limitations": surface.get("limitations") or [],
+    }
+
+
+def _geographic_similarity_kernel_slice(
+    kernel: dict[str, Any],
+    *,
+    source_artifact_exists: bool,
+) -> dict[str, Any]:
+    if source_artifact_exists:
+        validation = validate_uwm_geographic_similarity_kernel(kernel)
+    else:
+        validation = {"valid": False, "errors": ["source_artifact_missing"]}
+    summary = kernel.get("summary") or {}
+    features = kernel.get("configuration_features") or {}
+    controls = kernel.get("negative_controls") or {}
+    ready = (
+        source_artifact_exists
+        and validation.get("valid") is True
+        and kernel.get("schema") == "uwm.geographic_similarity_kernel.v1"
+        and kernel.get("geographic_similarity_kernel_ready") is True
+        and _int(summary.get("panel_unit_count")) == 1017
+        and _int(summary.get("kernel_source_unit_count")) == 1017
+        and _int(summary.get("similarity_edge_count")) == 5085
+        and _int(summary.get("non_adjacent_similarity_edge_count")) == 4835
+        and controls.get("rotated_target_similarity_control_passed") is True
+        and features.get("uses_coordinates_as_similarity_features") is False
+        and kernel.get("observed_policy_outcome_superiority_claim") is False
+        and kernel.get("empirical_superiority_claim") is False
+    )
+    return {
+        "source_artifact_exists": source_artifact_exists,
+        "schema": kernel.get("schema"),
+        "scope": "full_admin_geographic_configuration_similarity_kernel_not_policy_outcome",
+        "geographic_similarity_kernel_ready": ready,
+        "panel_unit_count": _int(summary.get("panel_unit_count")),
+        "kernel_source_unit_count": _int(summary.get("kernel_source_unit_count")),
+        "top_k": _int(summary.get("top_k")),
+        "similarity_edge_count": _int(summary.get("similarity_edge_count")),
+        "adjacent_similarity_edge_count": _int(
+            summary.get("adjacent_similarity_edge_count")
+        ),
+        "non_adjacent_similarity_edge_count": _int(
+            summary.get("non_adjacent_similarity_edge_count")
+        ),
+        "mean_configuration_similarity": _float(
+            summary.get("mean_configuration_similarity")
+        ),
+        "uses_coordinates_as_similarity_features": bool(
+            features.get("uses_coordinates_as_similarity_features")
+        ),
+        "uses_admin_boundary_adjacency_as_similarity_feature": bool(
+            features.get("uses_admin_boundary_adjacency_as_similarity_feature")
+        ),
+        "rotated_target_similarity_control_passed": bool(
+            controls.get("rotated_target_similarity_control_passed")
+        ),
+        "real_topk_mean_similarity": _float(
+            controls.get("real_topk_mean_similarity")
+        ),
+        "rotated_target_mean_similarity": _float(
+            controls.get("rotated_target_mean_similarity")
+        ),
+        "supported_claim": kernel.get("supported_claim"),
+        "supported_claims": [
+            {
+                "claim": "geographic_similarity_configuration_kernel_ready",
+                "scope": "full_admin_geographic_configuration_similarity_kernel_not_policy_outcome",
+                "claim_level": "bounded_support",
+                "policy_outcome_claim": False,
+                "spatial_attribution_claim": False,
+            }
+        ]
+        if ready
+        else [],
+        "claim_level": "bounded_support" if ready else "not_for_claim",
+        "policy_outcome_claim": False,
+        "observed_policy_outcome_superiority_claim": False,
+        "empirical_superiority_claim": False,
+        "validation": validation,
+        "limitations": kernel.get("limitations") or [],
+    }
+
+
+def _full_admin_action_inventory_slice(
+    inventory: dict[str, Any],
+    *,
+    source_artifact_exists: bool,
+) -> dict[str, Any]:
+    guard = inventory.get("full_data_guard") or {}
+    summary = inventory.get("summary") or {}
+    actions = [
+        action
+        for action in inventory.get("actions") or []
+        if isinstance(action, dict)
+    ]
+    action_type_counts = dict(summary.get("action_type_counts") or {})
+    mask_reason_counts = dict(summary.get("mask_reason_counts") or {})
+    action_type_definitions = dict(inventory.get("action_type_definitions") or {})
+    causal_binding = inventory.get("spatial_causal_contract_binding") or {}
+    graph_node_count = _int(summary.get("graph_node_count"))
+    graph_edge_count = _int(summary.get("graph_edge_count"))
+    available_action_count = _int(summary.get("available_action_count"))
+    expected_action_type_counts = {
+        "increase_green_infrastructure": 81,
+        "traffic_emission_control": 77,
+        "add_community_service": 979,
+    }
+    expected_mask_reason_counts = {
+        "heat_risk_above_threshold": 81,
+        "air_pollution_exposure_above_threshold": 77,
+        "service_accessibility_below_threshold": 979,
+    }
+    validation_errors = []
+    if not source_artifact_exists:
+        validation_errors.append("source_artifact_missing")
+    if inventory.get("schema") != "uwm.full_admin_action_inventory.v1":
+        validation_errors.append("unexpected_schema")
+    if inventory.get("experiment_scope") != "full_admin_graph":
+        validation_errors.append("unexpected_experiment_scope")
+    if guard.get("passed") is not True:
+        validation_errors.append("full_data_guard_not_passed")
+    if graph_node_count != 1017:
+        validation_errors.append("graph_node_count_not_full_admin")
+    if graph_edge_count != 7932:
+        validation_errors.append("graph_edge_count_not_full_admin_similarity_graph")
+    if available_action_count != 1137:
+        validation_errors.append("available_action_count_mismatch")
+    if len(actions) != available_action_count:
+        validation_errors.append("action_record_count_mismatch")
+    if action_type_counts != expected_action_type_counts:
+        validation_errors.append("action_type_counts_mismatch")
+    if mask_reason_counts != expected_mask_reason_counts:
+        validation_errors.append("mask_reason_counts_mismatch")
+    if causal_binding.get("binding_ready") is not True:
+        validation_errors.append("spatial_causal_contract_binding_not_ready")
+    if _int(causal_binding.get("feasible_action_count")) != 1137:
+        validation_errors.append("spatial_causal_feasible_action_count_mismatch")
+    if _int(causal_binding.get("attached_action_count")) != 1137:
+        validation_errors.append("spatial_causal_attached_action_count_mismatch")
+    if _int(causal_binding.get("missing_contract_action_count")) != 0:
+        validation_errors.append("spatial_causal_missing_contract_action_count_nonzero")
+    if _int(causal_binding.get("policy_outcome_claim_allowed_action_count")) != 0:
+        validation_errors.append(
+            "spatial_causal_policy_outcome_claim_action_count_nonzero"
+        )
+    if (
+        inventory.get("supported_claim")
+        != "full_admin_graph_feasible_action_inventory_enumerates_real_data_graph_mdp_actions"
+    ):
+        validation_errors.append("supported_claim_mismatch")
+    if inventory.get("observed_policy_outcome_superiority_claim") is not False:
+        validation_errors.append("policy_outcome_claim_not_blocked")
+    if inventory.get("empirical_superiority_claim") is not False:
+        validation_errors.append("empirical_superiority_claim_not_blocked")
+    ready = not validation_errors
+    return {
+        "source_artifact_exists": source_artifact_exists,
+        "schema": inventory.get("schema"),
+        "scope": "full_admin_graph_feasible_action_inventory_not_historical_policy_log",
+        "full_admin_action_inventory_ready": ready,
+        "experiment_scope": inventory.get("experiment_scope"),
+        "source_environment_schema": inventory.get("source_environment_schema"),
+        "graph_node_count": graph_node_count,
+        "graph_edge_count": graph_edge_count,
+        "available_action_count": available_action_count,
+        "candidate_action_mask_trace_count": _int(
+            summary.get("candidate_action_mask_trace_count")
+        ),
+        "action_record_count": len(actions),
+        "action_type_counts": action_type_counts,
+        "mask_reason_counts": mask_reason_counts,
+        "thresholds": dict(summary.get("thresholds") or {}),
+        "spatial_causal_contract_binding_ready": bool(
+            causal_binding.get("binding_ready")
+        ),
+        "spatial_causal_active_question_count": _int(
+            causal_binding.get("active_causal_question_count")
+        ),
+        "spatial_causal_feasible_action_count": _int(
+            causal_binding.get("feasible_action_count")
+        ),
+        "spatial_causal_attached_action_count": _int(
+            causal_binding.get("attached_action_count")
+        ),
+        "spatial_causal_missing_contract_action_count": _int(
+            causal_binding.get("missing_contract_action_count")
+        ),
+        "spatial_causal_underidentified_policy_effect_action_count": _int(
+            causal_binding.get("underidentified_policy_effect_action_count")
+        ),
+        "spatial_causal_identified_policy_effect_action_count": _int(
+            causal_binding.get("identified_policy_effect_action_count")
+        ),
+        "spatial_causal_policy_outcome_claim_action_count": _int(
+            causal_binding.get("policy_outcome_claim_allowed_action_count")
+        ),
+        "action_type_definitions": action_type_definitions,
+        "sample_action_ids": [
+            str(action.get("action_id"))
+            for action in actions[:3]
+            if action.get("action_id") is not None
+        ],
+        "supported_claim": inventory.get("supported_claim"),
+        "claim_level": "bounded_support" if ready else "not_for_claim",
+        "supported_claims": [
+            {
+                "claim": "full_admin_graph_feasible_action_inventory_enumerates_real_data_graph_mdp_actions",
+                "scope": "full_admin_graph_feasible_action_inventory_not_historical_policy_log",
+                "claim_level": "bounded_support",
+                "policy_outcome_claim": False,
+                "observed_intervention_log_claim": False,
+            }
+        ]
+        if ready
+        else [],
+        "policy_outcome_claim": False,
+        "observed_policy_outcome_superiority_claim": False,
+        "empirical_superiority_claim": False,
+        "validation": {
+            "valid": ready,
+            "errors": validation_errors,
+        },
+        "limitations": inventory.get("limitations") or [],
+    }
+
+
+def _production_action_catalog_slice(
+    catalog: dict[str, Any],
+    *,
+    source_artifact_exists: bool,
+) -> dict[str, Any]:
+    summary = catalog.get("summary") or {}
+    candidate_bindings = [
+        binding
+        for binding in catalog.get("current_candidate_bindings") or []
+        if isinstance(binding, dict)
+    ]
+    validation_errors = []
+    if not source_artifact_exists:
+        validation_errors.append("source_artifact_missing")
+    if catalog.get("schema") != "uwm.production_action_catalog.v1":
+        validation_errors.append("unexpected_schema")
+    if catalog.get("experiment_scope") != "full_admin_graph":
+        validation_errors.append("unexpected_experiment_scope")
+    if catalog.get("action_catalog_contract_ready") is not True:
+        validation_errors.append("action_catalog_contract_not_ready")
+    if catalog.get("future_authoritative_data_extension_ready") is not True:
+        validation_errors.append("future_extension_contract_not_ready")
+    if _int(summary.get("production_action_family_count")) != 8:
+        validation_errors.append("production_action_family_count_mismatch")
+    if _int(summary.get("production_action_type_count")) != 57:
+        validation_errors.append("production_action_type_count_mismatch")
+    if _int(summary.get("currently_bound_action_type_count")) != 3:
+        validation_errors.append("currently_bound_action_type_count_mismatch")
+    if _int(summary.get("currently_bound_feasible_action_count")) != 1137:
+        validation_errors.append("currently_bound_feasible_action_count_mismatch")
+    if _int(summary.get("unbound_production_action_type_count")) != 54:
+        validation_errors.append("unbound_production_action_type_count_mismatch")
+    if len(candidate_bindings) != 1137:
+        validation_errors.append("current_candidate_binding_count_mismatch")
+    if catalog.get("planner_production_action_ready") is not False:
+        validation_errors.append("planner_production_action_claim_not_blocked")
+    if catalog.get("constraint_cost_model_ready") is not False:
+        validation_errors.append("constraint_cost_model_claim_not_blocked")
+    if catalog.get("policy_project_history_ready") is not False:
+        validation_errors.append("policy_project_history_claim_not_blocked")
+    if catalog.get("observed_policy_outcome_panel_ready") is not False:
+        validation_errors.append("observed_outcome_panel_claim_not_blocked")
+    if catalog.get("production_readiness_claim") is not False:
+        validation_errors.append("production_readiness_claim_not_blocked")
+    if catalog.get("observed_policy_outcome_superiority_claim") is not False:
+        validation_errors.append("policy_outcome_claim_not_blocked")
+    if catalog.get("empirical_superiority_claim") is not False:
+        validation_errors.append("empirical_superiority_claim_not_blocked")
+    ready = not validation_errors
+    return {
+        "source_artifact_exists": source_artifact_exists,
+        "schema": catalog.get("schema"),
+        "scope": "production_action_contract_and_current_full_admin_binding_not_policy_outcome",
+        "production_action_catalog_ready": ready,
+        "experiment_scope": catalog.get("experiment_scope"),
+        "action_catalog_contract_ready": bool(
+            catalog.get("action_catalog_contract_ready")
+        ),
+        "future_authoritative_data_extension_ready": bool(
+            catalog.get("future_authoritative_data_extension_ready")
+        ),
+        "planner_production_action_ready": bool(
+            catalog.get("planner_production_action_ready")
+        ),
+        "constraint_cost_model_ready": bool(
+            catalog.get("constraint_cost_model_ready")
+        ),
+        "policy_project_history_ready": bool(
+            catalog.get("policy_project_history_ready")
+        ),
+        "observed_policy_outcome_panel_ready": bool(
+            catalog.get("observed_policy_outcome_panel_ready")
+        ),
+        "production_action_family_count": _int(
+            summary.get("production_action_family_count")
+        ),
+        "production_action_type_count": _int(
+            summary.get("production_action_type_count")
+        ),
+        "currently_bound_action_type_count": _int(
+            summary.get("currently_bound_action_type_count")
+        ),
+        "currently_bound_feasible_action_count": _int(
+            summary.get("currently_bound_feasible_action_count")
+        ),
+        "unbound_production_action_type_count": _int(
+            summary.get("unbound_production_action_type_count")
+        ),
+        "raw_candidate_action_count": _int(summary.get("raw_candidate_action_count")),
+        "current_candidate_binding_count": len(candidate_bindings),
+        "current_feasible_action_counts": dict(
+            summary.get("current_feasible_action_counts") or {}
+        ),
+        "supported_claim": catalog.get("supported_claim"),
+        "claim_level": (
+            "contract_and_current_bounded_action_binding"
+            if ready
+            else "not_for_claim"
+        ),
+        "supported_claims": [
+            {
+                "claim": "production_action_catalog_contract_binds_current_full_admin_actions_and_blocks_unverified_targets",
+                "scope": "production_action_contract_and_current_full_admin_binding_not_policy_outcome",
+                "claim_level": "contract_and_current_bounded_action_binding",
+                "policy_outcome_claim": False,
+                "production_readiness_claim": False,
+            }
+        ]
+        if ready
+        else [],
+        "policy_outcome_claim": False,
+        "observed_policy_outcome_superiority_claim": False,
+        "empirical_superiority_claim": False,
+        "validation": {
+            "valid": ready,
+            "errors": validation_errors,
+        },
+        "limitations": catalog.get("limitations") or [],
+    }
+
+
+def _production_governance_data_contract_slice(
+    contract: dict[str, Any],
+    *,
+    source_artifact_exists: bool,
+) -> dict[str, Any]:
+    summary = contract.get("summary") or {}
+    validation_errors = []
+    if not source_artifact_exists:
+        validation_errors.append("source_artifact_missing")
+    if contract.get("schema") != "uwm.production_governance_data_contract.v1":
+        validation_errors.append("unexpected_schema")
+    if contract.get("experiment_scope") != "full_admin_graph":
+        validation_errors.append("unexpected_experiment_scope")
+    if contract.get("governance_data_contract_ready") is not True:
+        validation_errors.append("governance_data_contract_not_ready")
+    if contract.get("future_authoritative_data_extension_ready") is not True:
+        validation_errors.append("future_extension_contract_not_ready")
+    if _int(summary.get("production_action_type_count")) != 57:
+        validation_errors.append("production_action_type_count_mismatch")
+    if _int(summary.get("currently_bound_feasible_action_count")) != 1137:
+        validation_errors.append("currently_bound_feasible_action_count_mismatch")
+    if _int(summary.get("required_governance_table_count")) != 5:
+        validation_errors.append("required_governance_table_count_mismatch")
+    if _int(summary.get("ready_governance_table_count")) != 0:
+        validation_errors.append("ready_governance_table_count_must_be_zero")
+    if _int(summary.get("planning_sample_source_count")) != 15:
+        validation_errors.append("planning_sample_source_count_mismatch")
+    if summary.get("local_planning_sample_is_policy_history") is not False:
+        validation_errors.append("local_planning_sample_policy_history_shortcut")
+    if contract.get("planner_governance_binding_ready") is not False:
+        validation_errors.append("planner_governance_binding_claim_not_blocked")
+    if contract.get("policy_project_history_ready") is not False:
+        validation_errors.append("policy_project_history_claim_not_blocked")
+    if contract.get("constraint_cost_model_ready") is not False:
+        validation_errors.append("constraint_cost_model_claim_not_blocked")
+    if contract.get("observed_outcome_panel_ready") is not False:
+        validation_errors.append("observed_outcome_panel_claim_not_blocked")
+    if contract.get("production_readiness_claim") is not False:
+        validation_errors.append("production_readiness_claim_not_blocked")
+    if contract.get("observed_policy_outcome_superiority_claim") is not False:
+        validation_errors.append("policy_outcome_claim_not_blocked")
+    if contract.get("empirical_superiority_claim") is not False:
+        validation_errors.append("empirical_superiority_claim_not_blocked")
+    ready = not validation_errors
+    return {
+        "source_artifact_exists": source_artifact_exists,
+        "schema": contract.get("schema"),
+        "scope": "production_governance_policy_constraint_outcome_contract_gap_only",
+        "production_governance_data_contract_ready": ready,
+        "experiment_scope": contract.get("experiment_scope"),
+        "governance_data_contract_ready": bool(
+            contract.get("governance_data_contract_ready")
+        ),
+        "future_authoritative_data_extension_ready": bool(
+            contract.get("future_authoritative_data_extension_ready")
+        ),
+        "planner_governance_binding_ready": bool(
+            contract.get("planner_governance_binding_ready")
+        ),
+        "policy_project_history_ready": bool(
+            contract.get("policy_project_history_ready")
+        ),
+        "constraint_cost_model_ready": bool(
+            contract.get("constraint_cost_model_ready")
+        ),
+        "observed_outcome_panel_ready": bool(
+            contract.get("observed_outcome_panel_ready")
+        ),
+        "causal_effect_calibration_ready": bool(
+            contract.get("causal_effect_calibration_ready")
+        ),
+        "human_governance_review_ready": bool(
+            contract.get("human_governance_review_ready")
+        ),
+        "production_action_type_count": _int(
+            summary.get("production_action_type_count")
+        ),
+        "currently_bound_feasible_action_count": _int(
+            summary.get("currently_bound_feasible_action_count")
+        ),
+        "required_governance_table_count": _int(
+            summary.get("required_governance_table_count")
+        ),
+        "ready_governance_table_count": _int(
+            summary.get("ready_governance_table_count")
+        ),
+        "planning_sample_source_count": _int(
+            summary.get("planning_sample_source_count")
+        ),
+        "authoritative_policy_project_history_row_count": _int(
+            summary.get("authoritative_policy_project_history_row_count")
+        ),
+        "authoritative_constraint_cost_row_count": _int(
+            summary.get("authoritative_constraint_cost_row_count")
+        ),
+        "observed_outcome_validation_row_count": _int(
+            summary.get("observed_outcome_validation_row_count")
+        ),
+        "supported_claim": contract.get("supported_claim"),
+        "claim_level": "governance_data_contract_gap_only"
+        if ready
+        else "not_for_claim",
+        "supported_claims": [
+            {
+                "claim": "production_governance_data_contract_defines_non_smoke_policy_constraint_outcome_requirements",
+                "scope": "production_governance_policy_constraint_outcome_contract_gap_only",
+                "claim_level": "governance_data_contract_gap_only",
+                "policy_outcome_claim": False,
+                "production_readiness_claim": False,
+            }
+        ]
+        if ready
+        else [],
+        "policy_outcome_claim": False,
+        "observed_policy_outcome_superiority_claim": False,
+        "empirical_superiority_claim": False,
+        "validation": {
+            "valid": ready,
+            "errors": validation_errors,
+        },
+        "limitations": contract.get("limitations") or [],
+    }
+
+
+def _production_governance_data_adapter_readiness_slice(
+    readiness: dict[str, Any],
+    *,
+    source_artifact_exists: bool,
+) -> dict[str, Any]:
+    summary = readiness.get("summary") or {}
+    validation_errors = []
+    if not source_artifact_exists:
+        validation_errors.append("source_artifact_missing")
+    if (
+        readiness.get("schema")
+        != "uwm.production_governance_data_adapter_readiness.v1"
+    ):
+        validation_errors.append("unexpected_schema")
+    if readiness.get("experiment_scope") != "full_admin_graph":
+        validation_errors.append("unexpected_experiment_scope")
+    if readiness.get("adapter_contract_ready") is not True:
+        validation_errors.append("adapter_contract_not_ready")
+    if _int(summary.get("expected_table_count")) != 5:
+        validation_errors.append("expected_table_count_mismatch")
+    if _int(summary.get("ready_table_count")) != 0:
+        validation_errors.append("ready_table_count_must_be_zero_without_inputs")
+    if _int(summary.get("missing_source_table_count")) != 5:
+        validation_errors.append("missing_source_table_count_mismatch")
+    if _int(summary.get("accepted_authoritative_row_count")) != 0:
+        validation_errors.append("accepted_authoritative_rows_must_be_zero")
+    if readiness.get("all_required_tables_ready") is not False:
+        validation_errors.append("all_required_tables_ready_claim_not_blocked")
+    if readiness.get("planner_governance_binding_ready") is not False:
+        validation_errors.append("planner_governance_binding_claim_not_blocked")
+    if readiness.get("production_readiness_claim") is not False:
+        validation_errors.append("production_readiness_claim_not_blocked")
+    if readiness.get("observed_policy_outcome_superiority_claim") is not False:
+        validation_errors.append("policy_outcome_claim_not_blocked")
+    if readiness.get("empirical_superiority_claim") is not False:
+        validation_errors.append("empirical_superiority_claim_not_blocked")
+    ready = not validation_errors
+    return {
+        "source_artifact_exists": source_artifact_exists,
+        "schema": readiness.get("schema"),
+        "scope": "authoritative_governance_table_adapter_readiness_audit_only",
+        "production_governance_data_adapter_readiness_ready": ready,
+        "experiment_scope": readiness.get("experiment_scope"),
+        "adapter_contract_ready": bool(readiness.get("adapter_contract_ready")),
+        "all_required_tables_ready": bool(
+            readiness.get("all_required_tables_ready")
+        ),
+        "planner_governance_binding_ready": bool(
+            readiness.get("planner_governance_binding_ready")
+        ),
+        "expected_table_count": _int(summary.get("expected_table_count")),
+        "ready_table_count": _int(summary.get("ready_table_count")),
+        "missing_source_table_count": _int(
+            summary.get("missing_source_table_count")
+        ),
+        "schema_invalid_table_count": _int(
+            summary.get("schema_invalid_table_count")
+        ),
+        "total_row_count": _int(summary.get("total_row_count")),
+        "accepted_authoritative_row_count": _int(
+            summary.get("accepted_authoritative_row_count")
+        ),
+        "rejected_row_count": _int(summary.get("rejected_row_count")),
+        "supported_claim": readiness.get("supported_claim"),
+        "claim_level": "adapter_readiness_audit_only" if ready else "not_for_claim",
+        "supported_claims": [
+            {
+                "claim": "production_governance_data_adapter_readiness_audits_authoritative_table_availability_without_fake_rows",
+                "scope": "authoritative_governance_table_adapter_readiness_audit_only",
+                "claim_level": "adapter_readiness_audit_only",
+                "policy_outcome_claim": False,
+                "production_readiness_claim": False,
+            }
+        ]
+        if ready
+        else [],
+        "policy_outcome_claim": False,
+        "observed_policy_outcome_superiority_claim": False,
+        "empirical_superiority_claim": False,
+        "validation": {
+            "valid": ready,
+            "errors": validation_errors,
+        },
+        "limitations": readiness.get("limitations") or [],
+    }
+
+
+def _production_governance_input_templates_slice(
+    templates: dict[str, Any],
+    *,
+    source_artifact_exists: bool,
+) -> dict[str, Any]:
+    summary = templates.get("summary") or {}
+    validation_errors = []
+    if not source_artifact_exists:
+        validation_errors.append("source_artifact_missing")
+    if templates.get("schema") != "uwm.production_governance_input_templates.v1":
+        validation_errors.append("unexpected_schema")
+    if templates.get("experiment_scope") != "full_admin_graph":
+        validation_errors.append("unexpected_experiment_scope")
+    if templates.get("template_pack_ready") is not True:
+        validation_errors.append("template_pack_not_ready")
+    if _int(summary.get("template_count")) != 5:
+        validation_errors.append("template_count_mismatch")
+    if _int(summary.get("required_field_count")) != 54:
+        validation_errors.append("required_field_count_mismatch")
+    if _int(summary.get("adapter_ready_table_count")) != 0:
+        validation_errors.append("adapter_ready_table_count_must_remain_zero")
+    if _int(summary.get("adapter_missing_source_table_count")) != 5:
+        validation_errors.append("adapter_missing_source_table_count_mismatch")
+    if summary.get("template_dir_is_adapter_input_dir") is not False:
+        validation_errors.append("template_dir_must_not_equal_adapter_input_dir")
+    if templates.get("authoritative_input_claim") is not False:
+        validation_errors.append("authoritative_input_claim_not_blocked")
+    if templates.get("production_readiness_claim") is not False:
+        validation_errors.append("production_readiness_claim_not_blocked")
+    if templates.get("observed_policy_outcome_superiority_claim") is not False:
+        validation_errors.append("policy_outcome_claim_not_blocked")
+    if templates.get("empirical_superiority_claim") is not False:
+        validation_errors.append("empirical_superiority_claim_not_blocked")
+    ready = not validation_errors
+    return {
+        "source_artifact_exists": source_artifact_exists,
+        "schema": templates.get("schema"),
+        "scope": "authoritative_governance_input_templates_not_data",
+        "production_governance_input_templates_ready": ready,
+        "experiment_scope": templates.get("experiment_scope"),
+        "template_pack_ready": bool(templates.get("template_pack_ready")),
+        "template_count": _int(summary.get("template_count")),
+        "required_field_count": _int(summary.get("required_field_count")),
+        "adapter_ready_table_count": _int(
+            summary.get("adapter_ready_table_count")
+        ),
+        "adapter_missing_source_table_count": _int(
+            summary.get("adapter_missing_source_table_count")
+        ),
+        "template_dir_is_adapter_input_dir": bool(
+            summary.get("template_dir_is_adapter_input_dir")
+        ),
+        "authoritative_input_claim": bool(
+            templates.get("authoritative_input_claim")
+        ),
+        "supported_claim": templates.get("supported_claim"),
+        "claim_level": "input_template_contract_only" if ready else "not_for_claim",
+        "supported_claims": [
+            {
+                "claim": "production_governance_input_templates_define_authoritative_table_headers_without_fake_rows",
+                "scope": "authoritative_governance_input_templates_not_data",
+                "claim_level": "input_template_contract_only",
+                "policy_outcome_claim": False,
+                "production_readiness_claim": False,
+            }
+        ]
+        if ready
+        else [],
+        "policy_outcome_claim": False,
+        "observed_policy_outcome_superiority_claim": False,
+        "empirical_superiority_claim": False,
+        "validation": {
+            "valid": ready,
+            "errors": validation_errors,
+        },
+    }
+
+
+def _production_governance_linkage_audit_slice(
+    audit: dict[str, Any],
+    *,
+    source_artifact_exists: bool,
+) -> dict[str, Any]:
+    summary = audit.get("summary") or {}
+    validation_errors = []
+    if not source_artifact_exists:
+        validation_errors.append("source_artifact_missing")
+    if audit.get("schema") != "uwm.production_governance_linkage_audit.v1":
+        validation_errors.append("unexpected_schema")
+    if audit.get("experiment_scope") != "full_admin_graph":
+        validation_errors.append("unexpected_experiment_scope")
+    if (
+        audit.get("source_adapter_readiness_schema")
+        != "uwm.production_governance_data_adapter_readiness.v1"
+    ):
+        validation_errors.append("unexpected_source_adapter_readiness_schema")
+    if audit.get("linkage_audit_ready") is not True:
+        validation_errors.append("linkage_audit_not_ready")
+    if _int(summary.get("expected_table_count")) != 5:
+        validation_errors.append("expected_table_count_mismatch")
+    if _int(summary.get("present_table_count")) != 0:
+        validation_errors.append("present_table_count_must_be_zero_without_inputs")
+    if _int(summary.get("missing_table_count")) != 5:
+        validation_errors.append("missing_table_count_mismatch")
+    if _int(summary.get("linked_project_count")) != 0:
+        validation_errors.append("linked_project_count_must_be_zero_without_inputs")
+    if _int(summary.get("unlinked_project_count")) != 0:
+        validation_errors.append("unlinked_project_count_must_be_zero_without_inputs")
+    if audit.get("all_required_tables_present") is not False:
+        validation_errors.append("all_required_tables_present_claim_not_blocked")
+    if audit.get("governance_linkage_ready") is not False:
+        validation_errors.append("governance_linkage_ready_claim_not_blocked")
+    if audit.get("planner_governance_binding_ready") is not False:
+        validation_errors.append("planner_governance_binding_claim_not_blocked")
+    if audit.get("production_readiness_claim") is not False:
+        validation_errors.append("production_readiness_claim_not_blocked")
+    if audit.get("observed_policy_outcome_superiority_claim") is not False:
+        validation_errors.append("policy_outcome_claim_not_blocked")
+    if audit.get("empirical_superiority_claim") is not False:
+        validation_errors.append("empirical_superiority_claim_not_blocked")
+    ready = not validation_errors
+    return {
+        "source_artifact_exists": source_artifact_exists,
+        "schema": audit.get("schema"),
+        "scope": "authoritative_governance_cross_table_linkage_audit_only",
+        "production_governance_linkage_audit_ready": ready,
+        "experiment_scope": audit.get("experiment_scope"),
+        "source_adapter_readiness_schema": audit.get(
+            "source_adapter_readiness_schema"
+        ),
+        "linkage_audit_ready": bool(audit.get("linkage_audit_ready")),
+        "all_required_tables_present": bool(
+            audit.get("all_required_tables_present")
+        ),
+        "governance_linkage_ready": bool(audit.get("governance_linkage_ready")),
+        "planner_governance_binding_ready": bool(
+            audit.get("planner_governance_binding_ready")
+        ),
+        "expected_table_count": _int(summary.get("expected_table_count")),
+        "present_table_count": _int(summary.get("present_table_count")),
+        "missing_table_count": _int(summary.get("missing_table_count")),
+        "policy_project_count": _int(summary.get("policy_project_count")),
+        "linked_project_count": _int(summary.get("linked_project_count")),
+        "unlinked_project_count": _int(summary.get("unlinked_project_count")),
+        "project_with_constraint_count": _int(
+            summary.get("project_with_constraint_count")
+        ),
+        "project_with_observed_outcome_count": _int(
+            summary.get("project_with_observed_outcome_count")
+        ),
+        "project_with_causal_effect_count": _int(
+            summary.get("project_with_causal_effect_count")
+        ),
+        "project_with_human_review_count": _int(
+            summary.get("project_with_human_review_count")
+        ),
+        "supported_claim": audit.get("supported_claim"),
+        "claim_level": "governance_linkage_audit_only" if ready else "not_for_claim",
+        "supported_claims": [
+            {
+                "claim": "production_governance_linkage_audit_checks_cross_table_policy_constraint_outcome_closure",
+                "scope": "authoritative_governance_cross_table_linkage_audit_only",
+                "claim_level": "governance_linkage_audit_only",
+                "policy_outcome_claim": False,
+                "production_readiness_claim": False,
+            }
+        ]
+        if ready
+        else [],
+        "policy_outcome_claim": False,
+        "observed_policy_outcome_superiority_claim": False,
+        "empirical_superiority_claim": False,
+        "validation": {
+            "valid": ready,
+            "errors": validation_errors,
+        },
+        "claim_boundary": audit.get("claim_boundary") or {},
+    }
+
+
+def _production_governance_planner_binding_gate_slice(
+    gate: dict[str, Any],
+    *,
+    source_artifact_exists: bool,
+) -> dict[str, Any]:
+    summary = gate.get("summary") or {}
+    validation_errors = []
+    if not source_artifact_exists:
+        validation_errors.append("source_artifact_missing")
+    if gate.get("schema") != "uwm.production_governance_planner_binding_gate.v1":
+        validation_errors.append("unexpected_schema")
+    if gate.get("experiment_scope") != "full_admin_graph":
+        validation_errors.append("unexpected_experiment_scope")
+    if gate.get("binding_gate_ready") is not True:
+        validation_errors.append("binding_gate_not_ready")
+    if _int(summary.get("required_gate_count")) != 9:
+        validation_errors.append("required_gate_count_mismatch")
+    if _int(summary.get("passed_gate_count")) != 2:
+        validation_errors.append("passed_gate_count_must_match_current_inputs")
+    if _int(summary.get("blocking_gate_count")) != 7:
+        validation_errors.append("blocking_gate_count_must_match_current_inputs")
+    if _int(summary.get("missing_table_count")) != 5:
+        validation_errors.append("missing_table_count_mismatch")
+    if _int(summary.get("accepted_authoritative_row_count")) != 0:
+        validation_errors.append("accepted_authoritative_rows_must_be_zero")
+    if _int(summary.get("linked_project_count")) != 0:
+        validation_errors.append("linked_project_count_must_be_zero")
+    if gate.get("authoritative_governance_data_closure_ready") is not False:
+        validation_errors.append("authoritative_data_closure_claim_not_blocked")
+    if gate.get("planner_governance_binding_ready") is not False:
+        validation_errors.append("planner_governance_binding_claim_not_blocked")
+    if gate.get("production_readiness_claim") is not False:
+        validation_errors.append("production_readiness_claim_not_blocked")
+    if gate.get("observed_policy_outcome_superiority_claim") is not False:
+        validation_errors.append("policy_outcome_claim_not_blocked")
+    if gate.get("empirical_superiority_claim") is not False:
+        validation_errors.append("empirical_superiority_claim_not_blocked")
+    ready = not validation_errors
+    return {
+        "source_artifact_exists": source_artifact_exists,
+        "schema": gate.get("schema"),
+        "scope": "authoritative_governance_planner_binding_gate_only",
+        "production_governance_planner_binding_gate_ready": ready,
+        "experiment_scope": gate.get("experiment_scope"),
+        "binding_gate_ready": bool(gate.get("binding_gate_ready")),
+        "authoritative_governance_data_closure_ready": bool(
+            gate.get("authoritative_governance_data_closure_ready")
+        ),
+        "planner_governance_binding_ready": bool(
+            gate.get("planner_governance_binding_ready")
+        ),
+        "required_gate_count": _int(summary.get("required_gate_count")),
+        "passed_gate_count": _int(summary.get("passed_gate_count")),
+        "blocking_gate_count": _int(summary.get("blocking_gate_count")),
+        "expected_table_count": _int(summary.get("expected_table_count")),
+        "ready_table_count": _int(summary.get("ready_table_count")),
+        "missing_table_count": _int(summary.get("missing_table_count")),
+        "accepted_authoritative_row_count": _int(
+            summary.get("accepted_authoritative_row_count")
+        ),
+        "policy_project_count": _int(summary.get("policy_project_count")),
+        "linked_project_count": _int(summary.get("linked_project_count")),
+        "unlinked_project_count": _int(summary.get("unlinked_project_count")),
+        "blocking_gate_ids": gate.get("blocking_gate_ids") or [],
+        "supported_claim": gate.get("supported_claim"),
+        "claim_level": (
+            "planner_governance_binding_gate_only" if ready else "not_for_claim"
+        ),
+        "supported_claims": [
+            {
+                "claim": "production_governance_planner_binding_gate_blocks_search_until_authoritative_data_closure",
+                "scope": "authoritative_governance_planner_binding_gate_only",
+                "claim_level": "planner_governance_binding_gate_only",
+                "policy_outcome_claim": False,
+                "production_readiness_claim": False,
+            }
+        ]
+        if ready
+        else [],
+        "policy_outcome_claim": False,
+        "observed_policy_outcome_superiority_claim": False,
+        "empirical_superiority_claim": False,
+        "validation": {
+            "valid": ready,
+            "errors": validation_errors,
+        },
+        "claim_boundary": gate.get("claim_boundary") or {},
+    }
+
+
+def _spatial_causal_question_registry_slice(
+    registry: dict[str, Any],
+    *,
+    source_artifact_exists: bool,
+) -> dict[str, Any]:
+    summary = registry.get("summary") or {}
+    validation = (
+        validate_uwm_spatial_causal_question_registry(registry)
+        if registry
+        else {"valid": False, "errors": ["source_artifact_missing"]}
+    )
+    validation_errors = list(validation.get("errors") or [])
+    if not source_artifact_exists and "source_artifact_missing" not in validation_errors:
+        validation_errors.append("source_artifact_missing")
+    if registry.get("schema") != "uwm.spatial_causal_question_registry.v1":
+        validation_errors.append("unexpected_schema")
+    if registry.get("experiment_scope") != "full_admin_graph":
+        validation_errors.append("unexpected_experiment_scope")
+    if registry.get("registry_ready") is not True:
+        validation_errors.append("registry_not_ready")
+    if _int(summary.get("active_causal_question_count")) != 3:
+        validation_errors.append("active_causal_question_count_mismatch")
+    if _int(summary.get("currently_bound_feasible_action_count")) != 1137:
+        validation_errors.append("currently_bound_feasible_action_count_mismatch")
+    if _int(summary.get("authoritative_required_table_count")) != 5:
+        validation_errors.append("required_authoritative_table_count_mismatch")
+    if _int(summary.get("ready_authoritative_table_count")) != 0:
+        validation_errors.append("ready_authoritative_table_count_must_be_zero")
+    if _int(summary.get("identified_policy_effect_question_count")) != 0:
+        validation_errors.append("identified_policy_effect_question_count_must_be_zero")
+    if _int(summary.get("underidentified_policy_effect_question_count")) != 3:
+        validation_errors.append("underidentified_question_count_mismatch")
+    if registry.get("observed_policy_outcome_superiority_claim") is not False:
+        validation_errors.append("policy_outcome_claim_not_blocked")
+    if registry.get("empirical_superiority_claim") is not False:
+        validation_errors.append("empirical_superiority_claim_not_blocked")
+    ready = not validation_errors
+    question_contracts = [
+        question
+        for question in registry.get("causal_question_contracts") or []
+        if isinstance(question, dict)
+    ]
+    claim_level = (
+        (registry.get("claim_boundary") or {}).get("max_claim_level")
+        or "spatial_causal_question_contract_only"
+    )
+    return {
+        "source_artifact_exists": source_artifact_exists,
+        "schema": registry.get("schema"),
+        "scope": "spatial_causal_question_contract_not_policy_outcome",
+        "spatial_causal_question_registry_ready": ready,
+        "experiment_scope": registry.get("experiment_scope"),
+        "registry_ready": bool(registry.get("registry_ready")),
+        "algorithmic_causal_diagnostic_ready": bool(
+            registry.get("algorithmic_causal_diagnostic_ready")
+        ),
+        "observed_outcome_panel_ready": bool(
+            registry.get("observed_outcome_panel_ready")
+        ),
+        "causal_effect_calibration_ready": bool(
+            registry.get("causal_effect_calibration_ready")
+        ),
+        "planner_governance_binding_ready": bool(
+            registry.get("planner_governance_binding_ready")
+        ),
+        "production_action_type_count": _int(
+            summary.get("production_action_type_count")
+        ),
+        "currently_bound_action_type_count": _int(
+            summary.get("currently_bound_action_type_count")
+        ),
+        "currently_bound_feasible_action_count": _int(
+            summary.get("currently_bound_feasible_action_count")
+        ),
+        "active_causal_question_count": _int(
+            summary.get("active_causal_question_count")
+        ),
+        "authoritative_required_table_count": _int(
+            summary.get("authoritative_required_table_count")
+        ),
+        "ready_authoritative_table_count": _int(
+            summary.get("ready_authoritative_table_count")
+        ),
+        "identified_policy_effect_question_count": _int(
+            summary.get("identified_policy_effect_question_count")
+        ),
+        "underidentified_policy_effect_question_count": _int(
+            summary.get("underidentified_policy_effect_question_count")
+        ),
+        "active_action_types": [
+            str(question.get("action_type"))
+            for question in question_contracts
+            if question.get("action_type")
+        ],
+        "supported_claim": registry.get("supported_claim"),
+        "claim_level": claim_level if ready else "not_for_claim",
+        "supported_claims": [
+            {
+                "claim": "spatial_causal_question_contracts_define_do_queries_and_block_policy_overclaims",
+                "scope": "spatial_causal_question_contract_not_policy_outcome",
+                "claim_level": claim_level,
+                "policy_outcome_claim": False,
+                "production_readiness_claim": False,
+            }
+        ]
+        if ready
+        else [],
+        "policy_outcome_claim": False,
+        "observed_policy_outcome_superiority_claim": False,
+        "empirical_superiority_claim": False,
+        "production_readiness_claim": False,
+        "validation": {
+            "valid": ready,
+            "errors": validation_errors,
+        },
+        "claim_boundary": registry.get("claim_boundary") or {},
+        "remaining_gates": registry.get("remaining_gates") or [],
+    }
+
+
+def _full_admin_service_surface_quality_audit_slice(
+    audit: dict[str, Any],
+    *,
+    source_artifact_exists: bool,
+) -> dict[str, Any]:
+    if source_artifact_exists:
+        validation = validate_full_admin_service_surface_quality_audit(audit)
+    else:
+        validation = {"valid": False, "errors": ["source_artifact_missing"]}
+    endpoints = {
+        str(endpoint.get("endpoint_id")): endpoint
+        for endpoint in audit.get("endpoint_evaluations") or []
+        if isinstance(endpoint, dict)
+    }
+    essential = endpoints.get("essential_service_count_proxy") or {}
+    travel = endpoints.get("estimated_nearest_essential_travel_time_proxy") or {}
+    controls_passed = bool(endpoints) and all(
+        endpoint.get("target_rotation_negative_control_passed") is True
+        for endpoint in endpoints.values()
+    )
+    beats_baselines = bool(endpoints) and all(
+        endpoint.get("beats_best_baseline") is True
+        for endpoint in endpoints.values()
+    )
+    ready = (
+        source_artifact_exists
+        and validation.get("valid") is True
+        and audit.get("schema") == "uwm.full_admin_service_surface_quality_audit.v1"
+        and audit.get("experiment_scope") == "full_admin_graph"
+        and _int(audit.get("admin_unit_count")) == 1017
+        and _int(audit.get("endpoint_count")) == 2
+        and _int(audit.get("ready_endpoint_count")) == 2
+        and audit.get("full_admin_service_surface_quality_audit_ready") is True
+        and beats_baselines
+        and controls_passed
+        and audit.get("supported_claim")
+        == "full_admin_service_surface_proxy_quality_beats_static_and_negative_controls"
+        and audit.get("observed_trip_time_claim") is False
+        and audit.get("authoritative_service_inventory_claim") is False
+        and audit.get("observed_policy_outcome_superiority_claim") is False
+        and audit.get("empirical_superiority_claim") is False
+    )
+    return {
+        "source_artifact_exists": source_artifact_exists,
+        "schema": audit.get("schema"),
+        "scope": "full_admin_service_surface_proxy_quality_holdout_not_observed_trip_time_or_policy_outcome",
+        "full_admin_service_surface_quality_audit_ready": ready,
+        "experiment_scope": audit.get("experiment_scope"),
+        "admin_unit_count": _int(audit.get("admin_unit_count")),
+        "endpoint_count": _int(audit.get("endpoint_count")),
+        "ready_endpoint_count": _int(audit.get("ready_endpoint_count")),
+        "essential_service_model_mae": _float(essential.get("model_mae")),
+        "essential_service_best_baseline_mae": _float(
+            essential.get("best_baseline_mae")
+        ),
+        "essential_service_negative_control_mae": _float(
+            essential.get("target_rotation_negative_control_mae")
+        ),
+        "travel_time_model_mae": _float(travel.get("model_mae")),
+        "travel_time_best_baseline_mae": _float(travel.get("best_baseline_mae")),
+        "travel_time_negative_control_mae": _float(
+            travel.get("target_rotation_negative_control_mae")
+        ),
+        "beats_best_baselines": beats_baselines,
+        "target_rotation_negative_controls_passed": controls_passed,
+        "supported_claim": audit.get("supported_claim"),
+        "supported_claims": [
+            {
+                "claim": "full_admin_service_surface_proxy_quality_beats_static_and_negative_controls",
+                "scope": "full_admin_service_surface_proxy_quality_holdout_not_observed_trip_time_or_policy_outcome",
+                "claim_level": "bounded_support",
+                "policy_outcome_claim": False,
+                "observed_trip_time_claim": False,
+                "authoritative_service_inventory_claim": False,
+            }
+        ]
+        if ready
+        else [],
+        "claim_level": "bounded_support" if ready else "not_for_claim",
+        "observed_trip_time_claim": False,
+        "policy_outcome_claim": False,
+        "observed_policy_outcome_superiority_claim": False,
+        "empirical_superiority_claim": False,
+        "validation": validation,
+        "limitations": audit.get("limitations") or [],
+    }
+
+
+def _full_admin_learned_world_model_rollout_slice(
+    report: dict[str, Any],
+    *,
+    source_artifact_exists: bool,
+) -> dict[str, Any]:
+    training = report.get("training_summary") or {}
+    holdout = report.get("holdout_metrics") or {}
+    baseline = report.get("baseline_metrics") or {}
+    planner = report.get("learned_rollout_planner") or {}
+    full_guard = report.get("full_data_guard") or {}
+    dynamics_mae = holdout.get("dynamics_mae_by_target") or {}
+    train_mean_mae = baseline.get("train_mean_mae_by_target") or {}
+    dynamics_targets = [
+        "heat_risk_delta",
+        "air_pollution_exposure_delta",
+        "service_accessibility_delta",
+        "equity_delta",
+        "livability_delta",
+    ]
+    dynamics_holdout_beats_train_mean = all(
+        _float(dynamics_mae.get(target), default=float("inf"))
+        < _float(train_mean_mae.get(target), default=0.0)
+        for target in dynamics_targets
+    )
+    reward_holdout_beats_train_mean = _float(holdout.get("reward_mae")) < _float(
+        baseline.get("train_mean_reward_mae")
+    )
+    ready = (
+        source_artifact_exists
+        and report.get("schema") == "uwm.offline_world_model_rollout_planner_report.v1"
+        and report.get("experiment_scope") == "full_admin_graph"
+        and report.get("source_report_schema") == "uwm.model_based_graph_search_report.v1"
+        and full_guard.get("passed") is True
+        and _int(training.get("source_graph_node_count")) == 1017
+        and _int(training.get("source_graph_edge_count")) == 7932
+        and _int(training.get("source_available_action_count")) > 60
+        and _int(training.get("transition_count")) > 0
+        and reward_holdout_beats_train_mean
+        and dynamics_holdout_beats_train_mean
+        and _float(planner.get("imagined_advantage_over_static_single_step")) > 0.0
+        and _float(planner.get("imagined_advantage_over_one_step_policy")) > 0.0
+        and report.get("supported_claim")
+        == "full_admin_graph_learned_world_model_rollout_improves_imagined_static_and_one_step_baselines"
+        and report.get("observed_policy_outcome_superiority_claim") is False
+        and report.get("empirical_superiority_claim") is False
+    )
+    supported_claims = []
+    if ready:
+        supported_claims.append(
+            {
+                "claim": "full_admin_graph_learned_world_model_rollout_improves_imagined_static_and_one_step_baselines",
+                "scope": "full_admin_graph_learned_dynamics_rollout_planning_not_policy_outcome",
+                "claim_level": "bounded_support",
+                "policy_outcome_claim": False,
+                "spatial_attribution_claim": False,
+            }
+        )
+    return {
+        "source_artifact_exists": source_artifact_exists,
+        "schema": report.get("schema"),
+        "scope": "full_admin_graph_learned_dynamics_rollout_planning_not_policy_outcome",
+        "full_admin_learned_world_model_rollout_ready": ready,
+        "experiment_scope": report.get("experiment_scope"),
+        "source_report_schema": report.get("source_report_schema"),
+        "backend": report.get("backend"),
+        "world_model_class": (report.get("world_model") or {}).get("model_class"),
+        "graph_node_count": _int(training.get("source_graph_node_count")),
+        "graph_edge_count": _int(training.get("source_graph_edge_count")),
+        "available_action_count": _int(training.get("source_available_action_count")),
+        "transition_count": _int(training.get("transition_count")),
+        "train_count": _int(training.get("train_count")),
+        "holdout_count": _int(training.get("holdout_count")),
+        "reward_mae": _float(holdout.get("reward_mae")),
+        "train_mean_reward_mae": _float(baseline.get("train_mean_reward_mae")),
+        "reward_holdout_beats_train_mean": reward_holdout_beats_train_mean,
+        "dynamics_mae_by_target": dynamics_mae,
+        "train_mean_mae_by_target": train_mean_mae,
+        "dynamics_holdout_beats_train_mean": dynamics_holdout_beats_train_mean,
+        "imagined_advantage_over_static_single_step": _float(
+            planner.get("imagined_advantage_over_static_single_step")
+        ),
+        "imagined_advantage_over_one_step_policy": _float(
+            planner.get("imagined_advantage_over_one_step_policy")
+        ),
+        "selected_sequence": (
+            (planner.get("selected_sequence") or {}).get("action_sequence") or []
+        ),
+        "full_data_guard": full_guard,
+        "claim_level": "bounded_support" if ready else "not_for_claim",
+        "supported_claims": supported_claims,
+        "policy_outcome_claim": False,
+        "observed_policy_outcome_superiority_claim": False,
+        "empirical_superiority_claim": False,
+        "limitations": [
+            "full_admin_learned_world_model_uses_compact_simulator_replay_aggregate_dynamics_not_observed_intervention_logs",
+            "imagined_advantage_is_rollout_planner_evidence_not_observed_policy_outcome",
+            "service_accessibility_surface_is_proxy_not_observed_trip_time",
+        ],
+        "remaining_gates": [
+            "observed_policy_outcome_holdout_required",
+            "off_policy_evaluation_on_real_intervention_logs_required",
+            "causal_policy_effect_validation_required",
+            "scene_aligned_station_calibrated_air_quality_holdout_required",
+        ],
+    }
+
+
+def _full_admin_graph_drl_training_slice(
+    report: dict[str, Any],
+    *,
+    source_artifact_exists: bool,
+) -> dict[str, Any]:
+    training = report.get("training_summary") or {}
+    holdout = report.get("holdout_metrics") or {}
+    learned = report.get("learned_policy_evaluation") or {}
+    baseline = report.get("baseline_evaluation") or {}
+    algorithm = report.get("drl_algorithm") or {}
+    full_guard = report.get("full_data_guard") or {}
+    similarity_summary = report.get("source_geographic_similarity_kernel_summary") or {}
+    ready = (
+        source_artifact_exists
+        and report.get("schema") == "uwm.livability_graph_drl_training_report.v1"
+        and report.get("experiment_scope") == "full_admin_graph"
+        and full_guard.get("passed") is True
+        and algorithm.get("algorithm") == "graph_dqn_fitted_q_model_based_rl"
+        and algorithm.get("is_deep_rl") is True
+        and algorithm.get("is_model_based") is True
+        and algorithm.get("is_model_free") is False
+        and algorithm.get("uses_graph_message_passing") is True
+        and algorithm.get("policy_or_value_network_trained") is True
+        and _int(training.get("real_data_graph_node_count")) == 1017
+        and _int(training.get("real_data_graph_edge_count")) == 7932
+        and _int(similarity_summary.get("similarity_edge_count")) == 5085
+        and _int(training.get("real_data_available_action_count")) > 60
+        and _int(training.get("training_sample_count")) > 0
+        and _float(holdout.get("q_return_mae")) < _float(
+            holdout.get("train_mean_return_mae")
+        )
+        and _float(learned.get("advantage_over_traditional_static")) > 0.0
+        and report.get("supported_claim")
+        == "graph_dqn_value_network_improves_same_scene_static_livability_baseline"
+        and report.get("observed_policy_outcome_superiority_claim") is False
+        and report.get("empirical_superiority_claim") is False
+    )
+    supported_claims = []
+    if ready:
+        supported_claims.append(
+            {
+                "claim": "full_admin_graph_dqn_value_network_improves_same_scene_static_livability_baseline",
+                "scope": "full_admin_graph_simulator_grounded_graph_drl_training_not_policy_outcome",
+                "claim_level": "bounded_support",
+                "policy_outcome_claim": False,
+                "spatial_attribution_claim": False,
+            }
+        )
+    return {
+        "source_artifact_exists": source_artifact_exists,
+        "schema": report.get("schema"),
+        "scope": "full_admin_graph_simulator_grounded_graph_drl_training_not_policy_outcome",
+        "full_admin_graph_drl_training_ready": ready,
+        "experiment_scope": report.get("experiment_scope"),
+        "algorithm": algorithm.get("algorithm"),
+        "is_deep_rl": bool(algorithm.get("is_deep_rl")),
+        "is_model_based": bool(algorithm.get("is_model_based")),
+        "is_model_free": bool(algorithm.get("is_model_free")),
+        "uses_graph_message_passing": bool(
+            algorithm.get("uses_graph_message_passing")
+        ),
+        "policy_or_value_network_trained": bool(
+            algorithm.get("policy_or_value_network_trained")
+        ),
+        "graph_node_count": _int(training.get("real_data_graph_node_count")),
+        "graph_edge_count": _int(training.get("real_data_graph_edge_count")),
+        "geographic_similarity_edge_count": _int(
+            similarity_summary.get("similarity_edge_count")
+        ),
+        "available_action_count": _int(
+            training.get("real_data_available_action_count")
+        ),
+        "training_sample_count": _int(training.get("training_sample_count")),
+        "train_count": _int(training.get("train_count")),
+        "holdout_count": _int(training.get("holdout_count")),
+        "action_sampling_strategy": training.get("action_sampling_strategy"),
+        "exhaustive_action_pair_training": bool(
+            training.get("exhaustive_action_pair_training")
+        ),
+        "sampled_first_action_count": _int(
+            training.get("sampled_first_action_count")
+        ),
+        "sampled_second_action_limit": _int(
+            training.get("sampled_second_action_limit")
+        ),
+        "sampled_unique_action_count": _int(
+            training.get("sampled_unique_action_count")
+        ),
+        "policy_action_scope": learned.get("policy_action_scope"),
+        "q_return_mae": _float(holdout.get("q_return_mae")),
+        "train_mean_return_mae": _float(holdout.get("train_mean_return_mae")),
+        "q_return_rmse": _float(holdout.get("q_return_rmse")),
+        "train_mean_return_rmse": _float(
+            holdout.get("train_mean_return_rmse")
+        ),
+        "graph_dqn_policy_cumulative_reward": _float(
+            learned.get("graph_dqn_policy_cumulative_reward")
+        ),
+        "traditional_static_cumulative_reward": _float(
+            baseline.get("traditional_static_cumulative_reward")
+        ),
+        "advantage_over_traditional_static": _float(
+            learned.get("advantage_over_traditional_static")
+        ),
+        "full_data_guard": full_guard,
+        "claim_level": "bounded_support" if ready else "not_for_claim",
+        "supported_claims": supported_claims,
+        "policy_outcome_claim": False,
+        "observed_policy_outcome_superiority_claim": False,
+        "empirical_superiority_claim": False,
+        "limitations": [
+            "full_admin_graph_dqn_uses_simulator_generated_returns_not_observed_intervention_logs",
+            "action_training_replay_is_deterministically_sampled_from_full_action_space_not_exhaustive_pair_enumeration",
+            "service_accessibility_surface_is_proxy_not_observed_trip_time",
+        ],
+    }
+
+
+def _full_admin_livability_decision_package_slice(
+    package: dict[str, Any],
+    *,
+    source_artifact_exists: bool,
+) -> dict[str, Any]:
+    guard = package.get("full_data_guard") or {}
+    comparison = package.get("comparison_against_traditional_static_baselines") or {}
+    planner = package.get("planner_replay_evidence") or {}
+    graph_dqn = package.get("graph_dqn_training_evidence") or {}
+    learned = package.get("learned_world_model_rollout_evidence") or {}
+    similarity = package.get("geographic_similarity_evidence") or {}
+    service = package.get("service_accessibility_evidence") or {}
+    governance = package.get("production_governance_binding_evidence") or {}
+    causal_binding = package.get("spatial_causal_contract_binding") or {}
+    ready = (
+        source_artifact_exists
+        and package.get("schema") == "uwm.full_admin_livability_decision_package.v1"
+        and package.get("experiment_scope") == "full_admin_graph"
+        and package.get("full_admin_decision_package_ready") is True
+        and guard.get("passed") is True
+        and _int(guard.get("graph_node_count")) == 1017
+        and _int(guard.get("graph_edge_count")) == 7932
+        and _int(guard.get("geographic_similarity_edge_count")) == 5085
+        and _int(guard.get("non_adjacent_similarity_edge_count")) == 4835
+        and _int(guard.get("available_action_count")) == 1137
+        and _int(guard.get("transition_count")) == 6817
+        and _int(guard.get("service_surface_admin_unit_count")) == 1017
+        and _int(guard.get("service_surface_missing_admin_count")) == 0
+        and planner.get("planner_replay_ready") is True
+        and graph_dqn.get("graph_dqn_training_ready") is True
+        and learned.get("learned_world_model_rollout_ready") is True
+        and similarity.get("geographic_similarity_kernel_ready") is True
+        and service.get("service_accessibility_surface_ready") is True
+        and service.get("service_surface_quality_audit_ready") is True
+        and governance.get("production_governance_binding_gate_ready") is True
+        and governance.get("planner_governance_binding_ready") is False
+        and _int(governance.get("blocking_gate_count")) == 7
+        and causal_binding.get("binding_ready") is True
+        and _int(causal_binding.get("attached_action_count")) > 0
+        and _int(causal_binding.get("missing_contract_action_count")) == 0
+        and _int(causal_binding.get("policy_outcome_claim_allowed_action_count")) == 0
+        and comparison.get("all_world_model_advantages_positive") is True
+        and _float(comparison.get("planner_advantage_over_static")) > 0.0
+        and _float(comparison.get("planner_risk_adjusted_advantage_over_static"))
+        > 0.0
+        and _float(comparison.get("graph_dqn_advantage_over_static")) > 0.0
+        and _float(comparison.get("learned_rollout_advantage_over_static")) > 0.0
+        and _float(comparison.get("learned_rollout_advantage_over_one_step_policy"))
+        > 0.0
+        and package.get("supported_claim")
+        == "full_admin_livability_decision_package_supports_world_model_advantage_over_static_baselines"
+        and package.get("planner_governance_binding_ready") is False
+        and package.get("observed_policy_outcome_superiority_claim") is False
+        and package.get("empirical_superiority_claim") is False
+    )
+    return {
+        "source_artifact_exists": source_artifact_exists,
+        "schema": package.get("schema"),
+        "scope": "full_admin_livability_decision_package_not_policy_outcome",
+        "full_admin_livability_decision_package_ready": ready,
+        "experiment_scope": package.get("experiment_scope"),
+        "graph_node_count": _int(guard.get("graph_node_count")),
+        "graph_edge_count": _int(guard.get("graph_edge_count")),
+        "geographic_similarity_edge_count": _int(
+            guard.get("geographic_similarity_edge_count")
+        ),
+        "non_adjacent_similarity_edge_count": _int(
+            guard.get("non_adjacent_similarity_edge_count")
+        ),
+        "available_action_count": _int(guard.get("available_action_count")),
+        "transition_count": _int(guard.get("transition_count")),
+        "service_surface_admin_unit_count": _int(
+            guard.get("service_surface_admin_unit_count")
+        ),
+        "service_surface_missing_admin_count": _int(
+            guard.get("service_surface_missing_admin_count")
+        ),
+        "planner_advantage_over_static": _float(
+            comparison.get("planner_advantage_over_static")
+        ),
+        "planner_risk_adjusted_advantage_over_static": _float(
+            comparison.get("planner_risk_adjusted_advantage_over_static")
+        ),
+        "graph_dqn_advantage_over_static": _float(
+            comparison.get("graph_dqn_advantage_over_static")
+        ),
+        "learned_rollout_advantage_over_static": _float(
+            comparison.get("learned_rollout_advantage_over_static")
+        ),
+        "learned_rollout_advantage_over_one_step_policy": _float(
+            comparison.get("learned_rollout_advantage_over_one_step_policy")
+        ),
+        "planner_governance_binding_ready": bool(
+            package.get("planner_governance_binding_ready")
+        ),
+        "production_governance_binding_gate_ready": bool(
+            governance.get("production_governance_binding_gate_ready")
+        ),
+        "production_governance_binding_blocking_gate_count": _int(
+            governance.get("blocking_gate_count")
+        ),
+        "production_governance_binding_passed_gate_count": _int(
+            governance.get("passed_gate_count")
+        ),
+        "spatial_causal_contract_binding_ready": bool(
+            causal_binding.get("binding_ready")
+        ),
+        "spatial_causal_active_question_count": _int(
+            causal_binding.get("active_causal_question_count")
+        ),
+        "spatial_causal_attached_action_count": _int(
+            causal_binding.get("attached_action_count")
+        ),
+        "spatial_causal_missing_contract_action_count": _int(
+            causal_binding.get("missing_contract_action_count")
+        ),
+        "spatial_causal_underidentified_policy_effect_action_count": _int(
+            causal_binding.get("underidentified_policy_effect_action_count")
+        ),
+        "spatial_causal_identified_policy_effect_action_count": _int(
+            causal_binding.get("identified_policy_effect_action_count")
+        ),
+        "spatial_causal_policy_outcome_claim_action_count": _int(
+            causal_binding.get("policy_outcome_claim_allowed_action_count")
+        ),
+        "all_world_model_advantages_positive": bool(
+            comparison.get("all_world_model_advantages_positive")
+        ),
+        "planner_target_units": list(planner.get("target_units") or []),
+        "graph_dqn_target_units": list(graph_dqn.get("target_units") or []),
+        "learned_rollout_target_units": list(learned.get("target_units") or []),
+        "supported_claim": package.get("supported_claim"),
+        "claim_level": "bounded_support" if ready else "not_for_claim",
+        "supported_claims": [
+            {
+                "claim": "full_admin_livability_decision_package_supports_world_model_advantage_over_static_baselines",
+                "scope": "full_admin_livability_decision_package_not_policy_outcome",
+                "claim_level": "bounded_support",
+                "policy_outcome_claim": False,
+                "spatial_attribution_claim": False,
+            }
+        ]
+        if ready
+        else [],
+        "policy_outcome_claim": False,
+        "observed_policy_outcome_superiority_claim": False,
+        "empirical_superiority_claim": False,
+        "limitations": [
+            "full_admin_decision_package_uses_simulator_replay_and_learned_rollout_not_observed_policy_outcomes",
+            "production_governance_binding_gate_blocks_production_planner_binding_until_authoritative_data_closure",
+            "spatial_causal_contracts_are_bound_to_actions_but_underidentified_for_observed_policy_effect",
+            "service_accessibility_surface_is_proxy_not_observed_trip_time",
+            "graph_dqn_training_uses_sampled_action_pairs_from_full_action_space",
+        ],
+    }
+
+
+def _full_admin_energy_regularized_planner_slice(
+    report: dict[str, Any],
+    *,
+    source_artifact_exists: bool,
+) -> dict[str, Any]:
+    guard = report.get("full_data_guard") or {}
+    search = report.get("search_config") or {}
+    prior = report.get("behavior_prior") or {}
+    selected = report.get("selected_sequence") or {}
+    static = report.get("traditional_static_baseline") or {}
+    audit = report.get("conservative_search_audit") or {}
+    alignment = report.get("search_value_alignment") or {}
+    ready = (
+        source_artifact_exists
+        and report.get("schema")
+        == "uwm.full_admin_energy_regularized_action_sequence_planner.v1"
+        and report.get("experiment_scope") == "full_admin_graph"
+        and report.get("full_admin_energy_regularized_planner_ready") is True
+        and guard.get("passed") is True
+        and _int(guard.get("graph_node_count")) == 1017
+        and _int(guard.get("graph_edge_count")) == 7932
+        and _int(guard.get("available_action_count")) == 1137
+        and _int(guard.get("geographic_similarity_edge_count")) == 5085
+        and _int(guard.get("non_adjacent_similarity_edge_count")) == 4835
+        and _int(search.get("candidate_action_count")) == 1137
+        and _int(search.get("evaluated_sequence_count")) > 1000
+        and _float(selected.get("advantage_over_traditional_static")) > 0.0
+        and _float(selected.get("mean_behavior_energy"))
+        <= _float(prior.get("energy_threshold"))
+        and _float(selected.get("ood_action_drift")) <= 0.0
+        and audit.get("planner_exploitation_guard_passed") is True
+        and alignment.get("search_value_alignment_ready") is True
+        and alignment.get("full_admin_graph_dqn_alignment_ready") is True
+        and prior.get("observed_intervention_log_prior") is False
+        and report.get("supported_claim")
+        == "full_admin_energy_regularized_model_based_action_sequence_planner_advantage_over_traditional_static"
+        and report.get("observed_policy_outcome_superiority_claim") is False
+        and report.get("empirical_superiority_claim") is False
+    )
+    return {
+        "source_artifact_exists": source_artifact_exists,
+        "schema": report.get("schema"),
+        "scope": "full_admin_energy_regularized_model_based_planner_replay_not_policy_outcome",
+        "full_admin_energy_regularized_planner_ready": ready,
+        "experiment_scope": report.get("experiment_scope"),
+        "graph_node_count": _int(guard.get("graph_node_count")),
+        "graph_edge_count": _int(guard.get("graph_edge_count")),
+        "available_action_count": _int(guard.get("available_action_count")),
+        "geographic_similarity_edge_count": _int(
+            guard.get("geographic_similarity_edge_count")
+        ),
+        "non_adjacent_similarity_edge_count": _int(
+            guard.get("non_adjacent_similarity_edge_count")
+        ),
+        "top_k_per_step": _int(search.get("top_k_per_step")),
+        "candidate_action_count": _int(search.get("candidate_action_count")),
+        "evaluated_sequence_count": _int(search.get("evaluated_sequence_count")),
+        "selected_sequence_reward": _float(selected.get("raw_cumulative_reward")),
+        "traditional_static_cumulative_reward": _float(
+            static.get("cumulative_reward")
+        ),
+        "advantage_over_traditional_static": _float(
+            selected.get("advantage_over_traditional_static")
+        ),
+        "selected_sequence_energy": _float(selected.get("mean_behavior_energy")),
+        "energy_threshold": _float(prior.get("energy_threshold")),
+        "selected_sequence_ood_action_drift": _float(
+            selected.get("ood_action_drift")
+        ),
+        "observed_intervention_log_prior": bool(
+            prior.get("observed_intervention_log_prior")
+        ),
+        "planner_exploitation_guard_passed": bool(
+            audit.get("planner_exploitation_guard_passed")
+        ),
+        "search_value_alignment_ready": bool(
+            alignment.get("search_value_alignment_ready")
+        ),
+        "full_admin_graph_dqn_alignment_ready": bool(
+            alignment.get("full_admin_graph_dqn_alignment_ready")
+        ),
+        "graph_dqn_training_sample_count": _int(
+            alignment.get("graph_dqn_training_sample_count")
+        ),
+        "graph_dqn_q_return_mae": _float(alignment.get("graph_dqn_q_return_mae")),
+        "graph_dqn_train_mean_return_mae": _float(
+            alignment.get("graph_dqn_train_mean_return_mae")
+        ),
+        "supported_claim": report.get("supported_claim"),
+        "claim_level": "bounded_support" if ready else "not_for_claim",
+        "supported_claims": [
+            {
+                "claim": "full_admin_energy_regularized_model_based_action_sequence_planner_advantage_over_traditional_static",
+                "scope": "full_admin_energy_regularized_model_based_planner_replay_not_policy_outcome",
+                "claim_level": "bounded_support",
+                "policy_outcome_claim": False,
+                "spatial_attribution_claim": False,
+            }
+        ]
+        if ready
+        else [],
+        "policy_outcome_claim": False,
+        "observed_policy_outcome_superiority_claim": False,
+        "empirical_superiority_claim": False,
+        "limitations": [
+            "full_admin_energy_regularized_planner_uses_simulator_rollouts_not_observed_intervention_logs",
+            "behavior_prior_is_feasible_action_geometry_not_historical_policy_log_prior",
+            "same_scene_full_admin_graph_validation_not_cross_time_or_cross_city_holdout",
+        ],
+    }
+
+
 def _supported_claims(
     openaq_slice: dict[str, Any],
     tap_transition_slice: dict[str, Any],
@@ -1807,6 +4003,7 @@ def _supported_claims(
     livability_decision_package_slice: dict[str, Any],
     livability_rl_training_slice: dict[str, Any],
     livability_graph_drl_training_slice: dict[str, Any],
+    energy_regularized_planner_slice: dict[str, Any],
 ) -> list[dict[str, Any]]:
     claims = []
     if _observed_state_prediction_superiority(openaq_slice):
@@ -2045,6 +4242,20 @@ def _supported_claims(
                     "claim": graph_drl_claim.get("claim"),
                     "scope": graph_drl_claim.get("scope"),
                     "claim_level": graph_drl_claim.get("claim_level"),
+                    "policy_outcome_claim": False,
+                    "spatial_attribution_claim": False,
+                }
+            )
+    if (
+        energy_regularized_planner_slice.get("energy_regularized_planner_ready")
+        is True
+    ):
+        for energy_claim in energy_regularized_planner_slice.get("supported_claims") or []:
+            claims.append(
+                {
+                    "claim": energy_claim.get("claim"),
+                    "scope": energy_claim.get("scope"),
+                    "claim_level": energy_claim.get("claim_level"),
                     "policy_outcome_claim": False,
                     "spatial_attribution_claim": False,
                 }

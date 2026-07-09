@@ -71,6 +71,74 @@ LIVABILITY_GRAPH_DRL_TRAINING_REPORT_PATH = (
     REPO_ROOT
     / "data/uwm_public_proxy/chongqing_central/livability_graph_drl_training_2026_07_07/uwm_livability_graph_drl_training_report.json"
 )
+ENERGY_REGULARIZED_PLANNER_REPORT_PATH = (
+    REPO_ROOT
+    / "data/uwm_public_proxy/chongqing_central/energy_regularized_planner_2026_07_07/uwm_energy_regularized_planner_report.json"
+)
+FULL_ADMIN_SERVICE_ACCESSIBILITY_SURFACE_PATH = (
+    REPO_ROOT
+    / "data/uwm_public_proxy/chongqing_central/full_admin_service_accessibility_surface_2026_07_08/uwm_full_admin_service_accessibility_surface.json"
+)
+FULL_ADMIN_SERVICE_SURFACE_QUALITY_AUDIT_PATH = (
+    REPO_ROOT
+    / "data/uwm_public_proxy/chongqing_central/full_admin_service_surface_quality_audit_2026_07_08/uwm_full_admin_service_surface_quality_audit.json"
+)
+GEOGRAPHIC_SIMILARITY_KERNEL_PATH = (
+    REPO_ROOT
+    / "data/uwm_public_proxy/chongqing_central/geographic_similarity_kernel_2026_07_08/uwm_geographic_similarity_kernel.json"
+)
+FULL_ADMIN_ACTION_INVENTORY_PATH = (
+    REPO_ROOT
+    / "data/uwm_public_proxy/chongqing_central/full_admin_action_inventory_2026_07_08/uwm_full_admin_action_inventory.json"
+)
+PRODUCTION_ACTION_CATALOG_PATH = (
+    REPO_ROOT
+    / "data/uwm_public_proxy/chongqing_central/production_action_catalog_2026_07_08/uwm_production_action_catalog.json"
+)
+PRODUCTION_GOVERNANCE_DATA_CONTRACT_PATH = (
+    REPO_ROOT
+    / "data/uwm_public_proxy/chongqing_central/production_governance_data_contract_2026_07_08/uwm_production_governance_data_contract.json"
+)
+PRODUCTION_GOVERNANCE_DATA_ADAPTER_READINESS_PATH = (
+    REPO_ROOT
+    / "data/uwm_public_proxy/chongqing_central/production_governance_data_adapter_readiness_2026_07_08/uwm_production_governance_data_adapter_readiness.json"
+)
+PRODUCTION_GOVERNANCE_INPUT_TEMPLATES_PATH = (
+    REPO_ROOT
+    / "data/uwm_public_proxy/chongqing_central/production_governance_input_templates_2026_07_08/uwm_production_governance_input_templates.json"
+)
+PRODUCTION_GOVERNANCE_LINKAGE_AUDIT_PATH = (
+    REPO_ROOT
+    / "data/uwm_public_proxy/chongqing_central/production_governance_linkage_audit_2026_07_08/uwm_production_governance_linkage_audit.json"
+)
+PRODUCTION_GOVERNANCE_PLANNER_BINDING_GATE_PATH = (
+    REPO_ROOT
+    / "data/uwm_public_proxy/chongqing_central/production_governance_planner_binding_gate_2026_07_08/uwm_production_governance_planner_binding_gate.json"
+)
+SPATIAL_CAUSAL_QUESTION_REGISTRY_PATH = (
+    REPO_ROOT
+    / "data/uwm_public_proxy/chongqing_central/spatial_causal_question_registry_2026_07_09/uwm_spatial_causal_question_registry.json"
+)
+FULL_ADMIN_GRAPH_PLANNER_REPLAY_PATH = (
+    REPO_ROOT
+    / "data/uwm_public_proxy/chongqing_central/data_calibrated_planner_replay_full_admin_graph_2026_07_08/uwm_full_admin_graph_model_based_graph_search.json"
+)
+FULL_ADMIN_GRAPH_DRL_TRAINING_REPORT_PATH = (
+    REPO_ROOT
+    / "data/uwm_public_proxy/chongqing_central/livability_graph_drl_training_full_admin_graph_2026_07_08/uwm_full_admin_graph_livability_graph_drl_training_report.json"
+)
+FULL_ADMIN_LEARNED_WORLD_MODEL_ROLLOUT_PATH = (
+    REPO_ROOT
+    / "data/uwm_public_proxy/chongqing_central/learned_world_model_rollout_full_admin_graph_2026_07_08/uwm_full_admin_graph_learned_world_model_rollout.json"
+)
+FULL_ADMIN_LIVABILITY_DECISION_PACKAGE_PATH = (
+    REPO_ROOT
+    / "data/uwm_public_proxy/chongqing_central/full_admin_livability_decision_package_2026_07_08/uwm_full_admin_livability_decision_package.json"
+)
+FULL_ADMIN_ENERGY_REGULARIZED_PLANNER_REPORT_PATH = (
+    REPO_ROOT
+    / "data/uwm_public_proxy/chongqing_central/energy_regularized_planner_full_admin_graph_2026_07_08/uwm_full_admin_graph_energy_regularized_planner_report.json"
+)
 
 
 def main() -> None:
@@ -159,6 +227,91 @@ def main() -> None:
         livability_graph_drl_training_report_path=(
             LIVABILITY_GRAPH_DRL_TRAINING_REPORT_PATH
             if LIVABILITY_GRAPH_DRL_TRAINING_REPORT_PATH.exists()
+            else None
+        ),
+        energy_regularized_planner_report_path=(
+            ENERGY_REGULARIZED_PLANNER_REPORT_PATH
+            if ENERGY_REGULARIZED_PLANNER_REPORT_PATH.exists()
+            else None
+        ),
+        full_admin_service_accessibility_surface_path=(
+            FULL_ADMIN_SERVICE_ACCESSIBILITY_SURFACE_PATH
+            if FULL_ADMIN_SERVICE_ACCESSIBILITY_SURFACE_PATH.exists()
+            else None
+        ),
+        full_admin_service_surface_quality_audit_path=(
+            FULL_ADMIN_SERVICE_SURFACE_QUALITY_AUDIT_PATH
+            if FULL_ADMIN_SERVICE_SURFACE_QUALITY_AUDIT_PATH.exists()
+            else None
+        ),
+        geographic_similarity_kernel_path=(
+            GEOGRAPHIC_SIMILARITY_KERNEL_PATH
+            if GEOGRAPHIC_SIMILARITY_KERNEL_PATH.exists()
+            else None
+        ),
+        full_admin_action_inventory_path=(
+            FULL_ADMIN_ACTION_INVENTORY_PATH
+            if FULL_ADMIN_ACTION_INVENTORY_PATH.exists()
+            else None
+        ),
+        production_action_catalog_path=(
+            PRODUCTION_ACTION_CATALOG_PATH
+            if PRODUCTION_ACTION_CATALOG_PATH.exists()
+            else None
+        ),
+        production_governance_data_contract_path=(
+            PRODUCTION_GOVERNANCE_DATA_CONTRACT_PATH
+            if PRODUCTION_GOVERNANCE_DATA_CONTRACT_PATH.exists()
+            else None
+        ),
+        production_governance_data_adapter_readiness_path=(
+            PRODUCTION_GOVERNANCE_DATA_ADAPTER_READINESS_PATH
+            if PRODUCTION_GOVERNANCE_DATA_ADAPTER_READINESS_PATH.exists()
+            else None
+        ),
+        production_governance_input_templates_path=(
+            PRODUCTION_GOVERNANCE_INPUT_TEMPLATES_PATH
+            if PRODUCTION_GOVERNANCE_INPUT_TEMPLATES_PATH.exists()
+            else None
+        ),
+        production_governance_linkage_audit_path=(
+            PRODUCTION_GOVERNANCE_LINKAGE_AUDIT_PATH
+            if PRODUCTION_GOVERNANCE_LINKAGE_AUDIT_PATH.exists()
+            else None
+        ),
+        production_governance_planner_binding_gate_path=(
+            PRODUCTION_GOVERNANCE_PLANNER_BINDING_GATE_PATH
+            if PRODUCTION_GOVERNANCE_PLANNER_BINDING_GATE_PATH.exists()
+            else None
+        ),
+        spatial_causal_question_registry_path=(
+            SPATIAL_CAUSAL_QUESTION_REGISTRY_PATH
+            if SPATIAL_CAUSAL_QUESTION_REGISTRY_PATH.exists()
+            else None
+        ),
+        full_admin_graph_planner_replay_path=(
+            FULL_ADMIN_GRAPH_PLANNER_REPLAY_PATH
+            if FULL_ADMIN_GRAPH_PLANNER_REPLAY_PATH.exists()
+            else None
+        ),
+        full_admin_graph_drl_training_report_path=(
+            FULL_ADMIN_GRAPH_DRL_TRAINING_REPORT_PATH
+            if FULL_ADMIN_GRAPH_DRL_TRAINING_REPORT_PATH.exists()
+            else None
+        ),
+        full_admin_learned_world_model_rollout_path=(
+            FULL_ADMIN_LEARNED_WORLD_MODEL_ROLLOUT_PATH
+            if FULL_ADMIN_LEARNED_WORLD_MODEL_ROLLOUT_PATH.exists()
+            else None
+        ),
+        full_admin_livability_decision_package_path=(
+            FULL_ADMIN_LIVABILITY_DECISION_PACKAGE_PATH
+            if FULL_ADMIN_LIVABILITY_DECISION_PACKAGE_PATH.exists()
+            else None
+        ),
+        full_admin_energy_regularized_planner_report_path=(
+            FULL_ADMIN_ENERGY_REGULARIZED_PLANNER_REPORT_PATH
+            if FULL_ADMIN_ENERGY_REGULARIZED_PLANNER_REPORT_PATH.exists()
             else None
         ),
         gate_id="uwm-data-foundation-evidence-gate-2026-07-06",
@@ -339,6 +492,232 @@ def main() -> None:
                 "livability_graph_drl_advantage": gate["evidence_slices"][
                     "livability_graph_drl_training"
                 ]["advantage_over_traditional_static"],
+                "full_admin_graph_drl_training_ready": gate["evidence_slices"][
+                    "full_admin_graph_drl_training"
+                ]["full_admin_graph_drl_training_ready"],
+                "geographic_similarity_kernel_ready": gate["evidence_slices"][
+                    "geographic_similarity_kernel"
+                ]["geographic_similarity_kernel_ready"],
+                "geographic_similarity_edge_count": gate["evidence_slices"][
+                    "geographic_similarity_kernel"
+                ]["similarity_edge_count"],
+                "geographic_similarity_non_adjacent_edge_count": gate[
+                    "evidence_slices"
+                ]["geographic_similarity_kernel"][
+                    "non_adjacent_similarity_edge_count"
+                ],
+                "geographic_similarity_rotated_control_passed": gate[
+                    "evidence_slices"
+                ]["geographic_similarity_kernel"][
+                    "rotated_target_similarity_control_passed"
+                ],
+                "full_admin_action_inventory_ready": gate["evidence_slices"][
+                    "full_admin_action_inventory"
+                ]["full_admin_action_inventory_ready"],
+                "full_admin_action_inventory_node_count": gate["evidence_slices"][
+                    "full_admin_action_inventory"
+                ]["graph_node_count"],
+                "full_admin_action_inventory_available_action_count": gate[
+                    "evidence_slices"
+                ]["full_admin_action_inventory"]["available_action_count"],
+                "full_admin_action_inventory_action_type_counts": gate[
+                    "evidence_slices"
+                ]["full_admin_action_inventory"]["action_type_counts"],
+                "production_action_catalog_ready": gate["evidence_slices"][
+                    "production_action_catalog"
+                ]["production_action_catalog_ready"],
+                "production_action_type_count": gate["evidence_slices"][
+                    "production_action_catalog"
+                ]["production_action_type_count"],
+                "production_action_catalog_bound_action_count": gate[
+                    "evidence_slices"
+                ]["production_action_catalog"]["currently_bound_feasible_action_count"],
+                "production_governance_data_contract_ready": gate[
+                    "evidence_slices"
+                ]["production_governance_data_contract"][
+                    "production_governance_data_contract_ready"
+                ],
+                "production_governance_ready_table_count": gate["evidence_slices"][
+                    "production_governance_data_contract"
+                ]["ready_governance_table_count"],
+                "production_governance_planning_sample_source_count": gate[
+                    "evidence_slices"
+                ]["production_governance_data_contract"][
+                    "planning_sample_source_count"
+                ],
+                "production_governance_adapter_ready_table_count": gate[
+                    "evidence_slices"
+                ]["production_governance_data_adapter_readiness"][
+                    "ready_table_count"
+                ],
+                "production_governance_adapter_missing_table_count": gate[
+                    "evidence_slices"
+                ]["production_governance_data_adapter_readiness"][
+                    "missing_source_table_count"
+                ],
+                "production_governance_input_template_count": gate[
+                    "evidence_slices"
+                ]["production_governance_input_templates"]["template_count"],
+                "production_governance_input_templates_are_data": gate[
+                    "evidence_slices"
+                ]["production_governance_input_templates"][
+                    "authoritative_input_claim"
+                ],
+                "production_governance_linkage_ready": gate["evidence_slices"][
+                    "production_governance_linkage_audit"
+                ]["governance_linkage_ready"],
+                "production_governance_linkage_missing_table_count": gate[
+                    "evidence_slices"
+                ]["production_governance_linkage_audit"]["missing_table_count"],
+                "production_governance_linked_project_count": gate[
+                    "evidence_slices"
+                ]["production_governance_linkage_audit"]["linked_project_count"],
+                "production_governance_binding_gate_passed_gate_count": gate[
+                    "evidence_slices"
+                ]["production_governance_planner_binding_gate"]["passed_gate_count"],
+                "production_governance_binding_gate_blocking_gate_count": gate[
+                    "evidence_slices"
+                ]["production_governance_planner_binding_gate"][
+                    "blocking_gate_count"
+                ],
+                "production_governance_binding_ready": gate["evidence_slices"][
+                    "production_governance_planner_binding_gate"
+                ]["planner_governance_binding_ready"],
+                "spatial_causal_question_registry_ready": gate["evidence_slices"][
+                    "spatial_causal_question_registry"
+                ]["spatial_causal_question_registry_ready"],
+                "spatial_causal_active_question_count": gate["evidence_slices"][
+                    "spatial_causal_question_registry"
+                ]["active_causal_question_count"],
+                "spatial_causal_underidentified_question_count": gate[
+                    "evidence_slices"
+                ]["spatial_causal_question_registry"][
+                    "underidentified_policy_effect_question_count"
+                ],
+                "full_admin_graph_drl_training_sample_count": gate["evidence_slices"][
+                    "full_admin_graph_drl_training"
+                ]["training_sample_count"],
+                "full_admin_graph_drl_advantage": gate["evidence_slices"][
+                    "full_admin_graph_drl_training"
+                ]["advantage_over_traditional_static"],
+                "full_admin_graph_risk_calibrated_planner_ready": gate[
+                    "evidence_slices"
+                ]["full_admin_graph_planner_replay"][
+                    "risk_calibrated_planner_replay_ready"
+                ],
+                "full_admin_graph_risk_adjusted_planner_advantage": gate[
+                    "evidence_slices"
+                ]["full_admin_graph_planner_replay"][
+                    "risk_adjusted_advantage_over_static_single_step"
+                ],
+                "full_admin_learned_world_model_rollout_ready": gate[
+                    "evidence_slices"
+                ]["full_admin_learned_world_model_rollout"][
+                    "full_admin_learned_world_model_rollout_ready"
+                ],
+                "full_admin_learned_world_model_rollout_reward_mae": gate[
+                    "evidence_slices"
+                ]["full_admin_learned_world_model_rollout"]["reward_mae"],
+                "full_admin_learned_world_model_rollout_advantage": gate[
+                    "evidence_slices"
+                ]["full_admin_learned_world_model_rollout"][
+                    "imagined_advantage_over_static_single_step"
+                ],
+                "full_admin_livability_decision_package_ready": gate[
+                    "evidence_slices"
+                ]["full_admin_livability_decision_package"][
+                    "full_admin_livability_decision_package_ready"
+                ],
+                "full_admin_livability_decision_package_graph_node_count": gate[
+                    "evidence_slices"
+                ]["full_admin_livability_decision_package"]["graph_node_count"],
+                "full_admin_livability_decision_package_planner_advantage": gate[
+                    "evidence_slices"
+                ]["full_admin_livability_decision_package"][
+                    "planner_advantage_over_static"
+                ],
+                "full_admin_livability_decision_package_graph_dqn_advantage": gate[
+                    "evidence_slices"
+                ]["full_admin_livability_decision_package"][
+                    "graph_dqn_advantage_over_static"
+                ],
+                "full_admin_livability_decision_package_learned_rollout_advantage": gate[
+                    "evidence_slices"
+                ]["full_admin_livability_decision_package"][
+                    "learned_rollout_advantage_over_static"
+                ],
+                "full_admin_energy_regularized_planner_ready": gate["evidence_slices"][
+                    "full_admin_energy_regularized_planner"
+                ]["full_admin_energy_regularized_planner_ready"],
+                "full_admin_energy_regularized_graph_node_count": gate[
+                    "evidence_slices"
+                ]["full_admin_energy_regularized_planner"]["graph_node_count"],
+                "full_admin_energy_regularized_available_action_count": gate[
+                    "evidence_slices"
+                ]["full_admin_energy_regularized_planner"]["available_action_count"],
+                "full_admin_energy_regularized_evaluated_sequence_count": gate[
+                    "evidence_slices"
+                ]["full_admin_energy_regularized_planner"]["evaluated_sequence_count"],
+                "full_admin_energy_regularized_planner_advantage": gate[
+                    "evidence_slices"
+                ]["full_admin_energy_regularized_planner"][
+                    "advantage_over_traditional_static"
+                ],
+                "full_admin_energy_regularized_exploitation_guard_passed": gate[
+                    "evidence_slices"
+                ]["full_admin_energy_regularized_planner"][
+                    "planner_exploitation_guard_passed"
+                ],
+                "full_admin_energy_regularized_search_value_alignment_ready": gate[
+                    "evidence_slices"
+                ]["full_admin_energy_regularized_planner"][
+                    "search_value_alignment_ready"
+                ],
+                "energy_regularized_planner_ready": gate["evidence_slices"][
+                    "energy_regularized_planner"
+                ]["energy_regularized_planner_ready"],
+                "energy_regularized_planner_advantage": gate["evidence_slices"][
+                    "energy_regularized_planner"
+                ]["advantage_over_traditional_static"],
+                "energy_regularized_exploitation_guard_passed": gate[
+                    "evidence_slices"
+                ]["energy_regularized_planner"][
+                    "planner_exploitation_guard_passed"
+                ],
+                "full_admin_service_accessibility_surface_ready": gate[
+                    "evidence_slices"
+                ]["full_admin_service_accessibility_surface"][
+                    "full_admin_service_accessibility_surface_ready"
+                ],
+                "full_admin_service_surface_admin_unit_count": gate[
+                    "evidence_slices"
+                ]["full_admin_service_accessibility_surface"]["admin_unit_count"],
+                "full_admin_service_surface_poi_point_count": gate[
+                    "evidence_slices"
+                ]["full_admin_service_accessibility_surface"]["source_poi_point_count"],
+                "full_admin_service_surface_road_count": gate["evidence_slices"][
+                    "full_admin_service_accessibility_surface"
+                ]["source_road_count"],
+                "full_admin_service_surface_missing_admin_count": gate[
+                    "evidence_slices"
+                ]["full_admin_service_accessibility_surface"][
+                    "service_missing_admin_count"
+                ],
+                "full_admin_service_surface_quality_audit_ready": gate[
+                    "evidence_slices"
+                ]["full_admin_service_surface_quality_audit"][
+                    "full_admin_service_surface_quality_audit_ready"
+                ],
+                "full_admin_service_quality_essential_model_mae": gate[
+                    "evidence_slices"
+                ]["full_admin_service_surface_quality_audit"][
+                    "essential_service_model_mae"
+                ],
+                "full_admin_service_quality_travel_time_model_mae": gate[
+                    "evidence_slices"
+                ]["full_admin_service_surface_quality_audit"][
+                    "travel_time_model_mae"
+                ],
                 "remaining_gates": gate["remaining_gates"],
             },
             ensure_ascii=False,

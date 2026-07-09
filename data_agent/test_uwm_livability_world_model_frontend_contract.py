@@ -60,4 +60,32 @@ def test_uwm_livability_tab_exposes_world_model_decision_contract():
     assert "model_based_rl_training_completed" in text
     assert "policy_or_value_network_trained" in text
     assert "数据治理与训练边界" in text
+    assert "生产治理绑定门控" in text
+    assert "production_governance_binding_evidence" in text
+    assert "planner_governance_binding_ready" in text
+    assert "production_planner_binding_blocked" in text
+    assert "production_governance_binding_blocking_gate_count" in text
+    assert "spatial_causal_question_registry_evidence" in text
+    assert "world_model_evidence_readiness" in text
+    assert "空间因果问题契约" in text
+    assert "spatial_causal_question_registry_ready" in text
+    assert "active_causal_question_count" in text
+    assert "underidentified_policy_effect_question_count" in text
+    assert "identified_policy_effect_question_count" in text
+    assert "ready_authoritative_table_count" in text
+    assert "spatial_causal_questions" in text
+    assert "policy_outcome_claim" in text
+    assert "full_admin_action_inventory_evidence" in text
+    assert "spatial_causal_feasible_action_count" in text
+    assert "spatial_causal_attached_action_count" in text
+    assert "spatial_causal_missing_contract_action_count" in text
+    assert "spatial_causal_underidentified_policy_effect_action_count" in text
+    assert "spatial_causal_policy_outcome_claim_action_count" in text
+    assert "动作因果契约" in text
+    assert "causal_question_id" in text
+    assert "causal_query" in text
+    assert "primary_outcome" in text
+    assert "identification_status" in text
+    assert "required_authoritative_tables" in text
+    assert "policy_outcome_claim_allowed" in text
     assert "同一数据" in text

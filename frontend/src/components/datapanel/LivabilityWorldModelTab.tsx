@@ -118,6 +118,35 @@ export default function LivabilityWorldModelTab() {
   }, []);
 
   const decision = isRecord(payload?.decision_package) ? payload.decision_package : {};
+  const fullAdminDecision = isRecord(payload?.full_admin_decision_package)
+    ? payload.full_admin_decision_package
+    : {};
+  const fullAdminGuard = isRecord(fullAdminDecision.full_data_guard)
+    ? fullAdminDecision.full_data_guard
+    : {};
+  const fullAdminComparison = isRecord(fullAdminDecision.comparison_against_traditional_static_baselines)
+    ? fullAdminDecision.comparison_against_traditional_static_baselines
+    : {};
+  const governanceBinding = isRecord(payload?.production_governance_binding_evidence)
+    ? payload.production_governance_binding_evidence
+    : isRecord(fullAdminDecision.production_governance_binding_evidence)
+      ? fullAdminDecision.production_governance_binding_evidence
+      : {};
+  const fullAdminActionInventory = isRecord(payload?.full_admin_action_inventory_evidence)
+    ? payload.full_admin_action_inventory_evidence
+    : {};
+  const spatialCausalRegistry = isRecord(payload?.spatial_causal_question_registry_evidence)
+    ? payload.spatial_causal_question_registry_evidence
+    : {};
+  const worldModelReadiness = isRecord(payload?.world_model_evidence_readiness)
+    ? payload.world_model_evidence_readiness
+    : {};
+  const readinessArchitecture = isRecord(worldModelReadiness.architecture_evidence)
+    ? worldModelReadiness.architecture_evidence
+    : {};
+  const spatialCausalReadiness = isRecord(readinessArchitecture.spatial_causal_questions)
+    ? readinessArchitecture.spatial_causal_questions
+    : {};
   const comparison = isRecord(decision.comparison_against_traditional_static_heuristic)
     ? decision.comparison_against_traditional_static_heuristic
     : {};
@@ -133,6 +162,39 @@ export default function LivabilityWorldModelTab() {
     : {};
   const actionPortfolio = isRecord(decision.action_portfolio) ? decision.action_portfolio : {};
   const finalOutputs = isRecord(decision.final_outputs) ? decision.final_outputs : {};
+  const fullAdminFinalOutputs = isRecord(fullAdminDecision.final_outputs)
+    ? fullAdminDecision.final_outputs
+    : {};
+  const fullAdminActionSequences = [
+    {
+      source: 'planner_replay',
+      label: 'planner',
+      sequence: isRecord(fullAdminFinalOutputs.planner_recommended_sequence)
+        ? fullAdminFinalOutputs.planner_recommended_sequence
+        : {},
+    },
+    {
+      source: 'graph_dqn',
+      label: 'GraphDQN',
+      sequence: isRecord(fullAdminFinalOutputs.graph_dqn_recommended_sequence)
+        ? fullAdminFinalOutputs.graph_dqn_recommended_sequence
+        : {},
+    },
+    {
+      source: 'learned_rollout',
+      label: 'learned rollout',
+      sequence: isRecord(fullAdminFinalOutputs.learned_rollout_recommended_sequence)
+        ? fullAdminFinalOutputs.learned_rollout_recommended_sequence
+        : {},
+    },
+  ];
+  const fullAdminCausalActions: AnyRecord[] = fullAdminActionSequences.flatMap(item =>
+    asArray<AnyRecord>(item.sequence.action_sequence).map(action => ({
+      ...(action as AnyRecord),
+      sequence_source: item.source,
+      sequence_label: item.label,
+    })),
+  );
   const priorityUnits = asArray<AnyRecord>(finalOutputs.priority_admin_units);
   const shared = isRecord(payload?.shared_data_contract) ? payload.shared_data_contract : {};
   const traditional = isRecord(payload?.traditional_method_output) ? payload.traditional_method_output : {};
@@ -151,6 +213,7 @@ export default function LivabilityWorldModelTab() {
   const components = asArray<string>(payload?.world_model_components_used);
   const actions = asArray<AnyRecord>(actionPortfolio.actions);
   const observedClaim = Boolean(payload?.observed_policy_outcome_superiority_claim);
+  const plannerGovernanceBindingReady = Boolean(payload?.planner_governance_binding_ready);
 
   return (
     <div className="uwm-livability-tab">
@@ -201,6 +264,147 @@ export default function LivabilityWorldModelTab() {
                   <strong>{components.includes(component) ? '已使用' : '未使用'}</strong>
                 </div>
               ))}
+            </div>
+          </div>
+
+          <div className="uwm-livability-two-col">
+            <div className="uwm-livability-panel">
+              <div className="uwm-livability-panel-title">
+                <GitBranch size={15} />
+                <strong>Full-admin 最终决策包</strong>
+              </div>
+              <div className="uwm-evidence-grid">
+                <div>
+                  <span>active_decision_package_scope</span>
+                  <strong>{String(payload.active_decision_package_scope || fullAdminDecision.experiment_scope || '-')}</strong>
+                </div>
+                <div>
+                  <span>graph_node_count</span>
+                  <strong>{fmtInt(fullAdminGuard.graph_node_count)}</strong>
+                </div>
+                <div>
+                  <span>graph_edge_count</span>
+                  <strong>{fmtInt(fullAdminGuard.graph_edge_count)}</strong>
+                </div>
+                <div>
+                  <span>available_action_count</span>
+                  <strong>{fmtInt(fullAdminGuard.available_action_count)}</strong>
+                </div>
+                <div>
+                  <span>transition_count</span>
+                  <strong>{fmtInt(fullAdminGuard.transition_count)}</strong>
+                </div>
+                <div>
+                  <span>planner_advantage_over_static</span>
+                  <strong>{fmt(fullAdminComparison.planner_advantage_over_static)}</strong>
+                </div>
+                <div>
+                  <span>graph_dqn_advantage_over_static</span>
+                  <strong>{fmt(fullAdminComparison.graph_dqn_advantage_over_static)}</strong>
+                </div>
+                <div>
+                  <span>learned_rollout_advantage_over_static</span>
+                  <strong>{fmt(fullAdminComparison.learned_rollout_advantage_over_static)}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="uwm-livability-panel">
+              <div className="uwm-livability-panel-title">
+                <Shield size={15} />
+                <strong>生产治理绑定门控</strong>
+              </div>
+              <div className="uwm-boundary-grid">
+                <div>
+                  <span>production_governance_binding_evidence</span>
+                  <strong>{String(Boolean(governanceBinding.production_governance_binding_gate_ready))}</strong>
+                </div>
+                <div>
+                  <span>planner_governance_binding_ready</span>
+                  <strong>{String(plannerGovernanceBindingReady)}</strong>
+                </div>
+                <div>
+                  <span>production_planner_binding_blocked</span>
+                  <strong>{String(Boolean(governanceBinding.production_planner_binding_blocked))}</strong>
+                </div>
+                <div>
+                  <span>production_governance_binding_blocking_gate_count</span>
+                  <strong>{fmtInt(governanceBinding.blocking_gate_count)}</strong>
+                </div>
+                <div>
+                  <span>missing_table_count</span>
+                  <strong>{fmtInt(governanceBinding.missing_table_count)}</strong>
+                </div>
+                <div>
+                  <span>accepted_authoritative_row_count</span>
+                  <strong>{fmtInt(governanceBinding.accepted_authoritative_row_count)}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="uwm-livability-panel">
+              <div className="uwm-livability-panel-title">
+                <Brain size={15} />
+                <strong>空间因果问题契约</strong>
+              </div>
+              <div className="uwm-boundary-grid">
+                <div>
+                  <span>spatial_causal_question_registry_evidence</span>
+                  <strong>{String(Boolean(spatialCausalRegistry.spatial_causal_question_registry_ready))}</strong>
+                </div>
+                <div>
+                  <span>world_model_evidence_readiness.spatial_causal_questions</span>
+                  <strong>{String(Boolean(spatialCausalReadiness.ready))}</strong>
+                </div>
+                <div>
+                  <span>spatial_causal_question_registry_ready</span>
+                  <strong>{String(Boolean(spatialCausalRegistry.spatial_causal_question_registry_ready))}</strong>
+                </div>
+                <div>
+                  <span>active_causal_question_count</span>
+                  <strong>{fmtInt(spatialCausalRegistry.active_causal_question_count)}</strong>
+                </div>
+                <div>
+                  <span>underidentified_policy_effect_question_count</span>
+                  <strong>{fmtInt(spatialCausalRegistry.underidentified_policy_effect_question_count)}</strong>
+                </div>
+                <div>
+                  <span>identified_policy_effect_question_count</span>
+                  <strong>{fmtInt(spatialCausalRegistry.identified_policy_effect_question_count)}</strong>
+                </div>
+                <div>
+                  <span>ready_authoritative_table_count</span>
+                  <strong>{fmtInt(spatialCausalRegistry.ready_authoritative_table_count)}</strong>
+                </div>
+                <div>
+                  <span>policy_outcome_claim</span>
+                  <strong>{String(Boolean(spatialCausalReadiness.policy_outcome_claim))}</strong>
+                </div>
+                <div>
+                  <span>full_admin_action_inventory_evidence</span>
+                  <strong>{String(Boolean(fullAdminActionInventory.full_admin_action_inventory_ready))}</strong>
+                </div>
+                <div>
+                  <span>spatial_causal_feasible_action_count</span>
+                  <strong>{fmtInt(fullAdminActionInventory.spatial_causal_feasible_action_count)}</strong>
+                </div>
+                <div>
+                  <span>spatial_causal_attached_action_count</span>
+                  <strong>{fmtInt(fullAdminActionInventory.spatial_causal_attached_action_count)}</strong>
+                </div>
+                <div>
+                  <span>spatial_causal_missing_contract_action_count</span>
+                  <strong>{fmtInt(fullAdminActionInventory.spatial_causal_missing_contract_action_count)}</strong>
+                </div>
+                <div>
+                  <span>spatial_causal_underidentified_policy_effect_action_count</span>
+                  <strong>{fmtInt(fullAdminActionInventory.spatial_causal_underidentified_policy_effect_action_count)}</strong>
+                </div>
+                <div>
+                  <span>spatial_causal_policy_outcome_claim_action_count</span>
+                  <strong>{fmtInt(fullAdminActionInventory.spatial_causal_policy_outcome_claim_action_count)}</strong>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -272,6 +476,43 @@ export default function LivabilityWorldModelTab() {
                   <em>{fmt(action.intensity, 2)}</em>
                 </div>
               ))}
+            </div>
+          </div>
+
+          <div className="uwm-livability-panel">
+            <div className="uwm-livability-panel-title">
+              <Brain size={15} />
+              <strong>动作因果契约</strong>
+            </div>
+            <div className="uwm-priority-table-wrap">
+              <table className="uwm-priority-table">
+                <thead>
+                  <tr>
+                    <th>序列</th>
+                    <th>动作</th>
+                    <th>causal_question_id</th>
+                    <th>primary_outcome</th>
+                    <th>identification_status</th>
+                    <th>policy_outcome_claim_allowed</th>
+                    <th>required_authoritative_tables</th>
+                    <th>causal_query</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fullAdminCausalActions.map((action, index) => (
+                    <tr key={`${action.sequence_source}-${action.action_id || index}`}>
+                      <td>{action.sequence_label || '-'}</td>
+                      <td>{actionLabel(action.action_type)}</td>
+                      <td>{action.causal_question_id || '-'}</td>
+                      <td>{action.primary_outcome || '-'}</td>
+                      <td>{action.identification_status || '-'}</td>
+                      <td>{String(Boolean(action.policy_outcome_claim_allowed))}</td>
+                      <td>{asArray<string>(action.required_authoritative_tables).join(', ') || '-'}</td>
+                      <td>{action.causal_query || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
 

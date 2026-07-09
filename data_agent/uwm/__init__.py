@@ -55,6 +55,10 @@ from .livability_decision_package import (
     UWM_LIVABILITY_DECISION_PACKAGE_SCHEMA,
     build_uwm_livability_decision_package,
 )
+from .full_admin_livability_decision_package import (
+    UWM_FULL_ADMIN_LIVABILITY_DECISION_PACKAGE_SCHEMA,
+    build_uwm_full_admin_livability_decision_package,
+)
 from .livability_graph_mdp_env import (
     LIVABILITY_GRAPH_MDP_ENV_SCHEMA,
     build_livability_graph_mdp_env,
@@ -66,6 +70,22 @@ from .livability_rl_training import (
 from .livability_graph_drl import (
     UWM_LIVABILITY_GRAPH_DRL_TRAINING_REPORT_SCHEMA,
     train_livability_graph_dqn_agent,
+)
+from .energy_regularized_planner import (
+    UWM_ENERGY_REGULARIZED_ACTION_SEQUENCE_PLANNER_SCHEMA,
+    plan_with_energy_regularized_action_sequences,
+)
+from .full_admin_energy_regularized_planner import (
+    UWM_FULL_ADMIN_ENERGY_REGULARIZED_ACTION_SEQUENCE_PLANNER_SCHEMA,
+    plan_full_admin_energy_regularized_action_sequences,
+)
+from .full_admin_action_inventory import (
+    UWM_FULL_ADMIN_ACTION_INVENTORY_SCHEMA,
+    build_full_admin_action_inventory,
+)
+from .production_state_action_space import (
+    UWM_PRODUCTION_STATE_ACTION_SPACE_ASSESSMENT_SCHEMA,
+    build_uwm_production_state_action_space_assessment,
 )
 from .openmeteo_history import (
     OPENMETEO_HISTORICAL_PROXY_SCHEMA,
@@ -101,6 +121,11 @@ from .spatial_spillover_planner_evaluator import (
     UWM_SPATIAL_SPILLOVER_PLANNER_EVALUATOR_SCHEMA,
     build_uwm_spatial_spillover_planner_evaluator,
 )
+from .spatial_causal_question_registry import (
+    UWM_SPATIAL_CAUSAL_QUESTION_REGISTRY_SCHEMA,
+    build_uwm_spatial_causal_question_registry,
+    validate_uwm_spatial_causal_question_registry,
+)
 from .track2_submission import (
     build_track2_readiness_matrix,
     build_uwm_default_artifact_inventory,
@@ -130,10 +155,15 @@ __all__ = [
     "UWM_CAUSAL_POLICY_EVIDENCE_GATE_SCHEMA",
     "UWM_DATA_CALIBRATED_MECHANISM_TABLE_SCHEMA",
     "UWM_DYNAMIC_ADVANTAGE_EVALUATION_SCHEMA",
+    "UWM_ENERGY_REGULARIZED_ACTION_SEQUENCE_PLANNER_SCHEMA",
+    "UWM_FULL_ADMIN_ENERGY_REGULARIZED_ACTION_SEQUENCE_PLANNER_SCHEMA",
+    "UWM_FULL_ADMIN_ACTION_INVENTORY_SCHEMA",
+    "UWM_PRODUCTION_STATE_ACTION_SPACE_ASSESSMENT_SCHEMA",
     "UWM_ENDPOINT_ALIGNED_PLANNER_EVALUATOR_SCHEMA",
     "UWM_EXTERNAL_OBSERVED_HOLDOUT_SUITE_SCHEMA",
     "UWM_LIVABILITY_ENDPOINT_SUITE_SCHEMA",
     "UWM_LIVABILITY_DECISION_PACKAGE_SCHEMA",
+    "UWM_FULL_ADMIN_LIVABILITY_DECISION_PACKAGE_SCHEMA",
     "UWM_LIVABILITY_GRAPH_DRL_TRAINING_REPORT_SCHEMA",
     "LIVABILITY_GRAPH_MDP_ENV_SCHEMA",
     "UWM_LIVABILITY_RL_TRAINING_REPORT_SCHEMA",
@@ -145,6 +175,7 @@ __all__ = [
     "UWM_ROLLOUT_TRACE_SCHEMA",
     "UWM_SCENE_ALIGNED_GRIDDED_AIR_QUALITY_HOLDOUT_SCHEMA",
     "UWM_SCENE_STATE_SCHEMA",
+    "UWM_SPATIAL_CAUSAL_QUESTION_REGISTRY_SCHEMA",
     "UWM_SPATIAL_SPILLOVER_PLANNER_EVALUATOR_SCHEMA",
     "UWM_STATION_ALIGNED_AIR_QUALITY_HOLDOUT_SCHEMA",
     "UWM_TRADITIONAL_LIVABILITY_BASELINE_SCHEMA",
@@ -164,10 +195,14 @@ __all__ = [
     "build_uwm_external_observed_holdout_suite",
     "build_uwm_livability_endpoint_suite",
     "build_uwm_livability_decision_package",
+    "build_uwm_full_admin_livability_decision_package",
+    "build_full_admin_action_inventory",
+    "build_uwm_production_state_action_space_assessment",
     "build_livability_graph_mdp_env",
     "build_uwm_multisource_livability_scene",
     "build_uwm_osm_admin_mobility_crosswalk",
     "build_uwm_scene_aligned_gridded_air_quality_holdout",
+    "build_uwm_spatial_causal_question_registry",
     "build_uwm_spatial_spillover_planner_evaluator",
     "build_uwm_station_aligned_air_quality_holdout",
     "build_uwm_default_artifact_inventory",
@@ -179,6 +214,8 @@ __all__ = [
     "build_openmeteo_historical_environmental_proxy",
     "build_openmeteo_historical_urls",
     "build_scene_state_from_proxy_artifacts",
+    "plan_with_energy_regularized_action_sequences",
+    "plan_full_admin_energy_regularized_action_sequences",
     "simulate_livability_rollout",
     "train_livability_model_based_q_agent",
     "train_livability_graph_dqn_agent",
@@ -191,6 +228,7 @@ __all__ = [
     "validate_uwm_data_calibrated_mechanism_table",
     "validate_uwm_external_observed_holdout_suite",
     "validate_uwm_scene_aligned_gridded_air_quality_holdout",
+    "validate_uwm_spatial_causal_question_registry",
     "validate_uwm_station_aligned_air_quality_holdout",
     "write_openmeteo_historical_snapshot",
 ]
