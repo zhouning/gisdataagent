@@ -42,6 +42,70 @@ def test_full_admin_graph_planner_replay_uses_all_admin_nodes():
     assert report["empirical_superiority_claim"] is False
 
 
+def test_full_admin_graph_planner_replay_binds_all_feasible_actions_to_causal_contracts():
+    assert REPORT_PATH.exists()
+    report = json.loads(REPORT_PATH.read_text(encoding="utf-8"))
+
+    binding = report["spatial_causal_contract_binding"]
+    assert binding["binding_ready"] is True
+    assert binding["registry_ready"] is True
+    assert binding["feasible_action_count"] == 1137
+    assert binding["attached_action_count"] == 1137
+    assert binding["missing_contract_action_count"] == 0
+    assert binding["underidentified_policy_effect_action_count"] == 1137
+    assert binding["identified_policy_effect_action_count"] == 0
+    assert binding["policy_outcome_claim_allowed_action_count"] == 0
+    assert binding["action_type_counts"] == {
+        "increase_green_infrastructure": 81,
+        "traffic_emission_control": 77,
+        "add_community_service": 979,
+    }
+    assert binding["required_authoritative_tables"] == [
+        "policy_project_history",
+        "action_constraint_cost_model",
+        "observed_outcome_validation_panel",
+        "causal_effect_calibration_panel",
+        "human_governance_review_log",
+    ]
+    assert report["supported_claim"] == (
+        "data_calibrated_model_based_graph_search_advantage_over_static_heuristic"
+    )
+    assert "spatial_causal_question_registry_binding_required" not in report[
+        "remaining_gates"
+    ]
+
+
+def test_full_admin_graph_planner_replay_action_traces_are_causally_auditable():
+    assert REPORT_PATH.exists()
+    report = json.loads(REPORT_PATH.read_text(encoding="utf-8"))
+
+    actions = []
+    actions.extend(report["best_sequence"]["action_sequence"])
+    actions.extend(report["static_single_step_baseline"]["action_sequence"])
+    actions.append(report["trajectory_dataset"]["transitions"][0]["action"])
+
+    for action in actions:
+        assert action["causal_question_id"]
+        assert "do(" in action["causal_query"]
+        assert action["primary_outcome"]
+        assert action["identification_status"] == (
+            "underidentified_for_observed_policy_effect"
+        )
+        assert action["required_authoritative_tables"] == [
+            "policy_project_history",
+            "action_constraint_cost_model",
+            "observed_outcome_validation_panel",
+            "causal_effect_calibration_panel",
+            "human_governance_review_log",
+        ]
+        assert action["policy_outcome_claim_allowed"] is False
+        assert action["observed_policy_outcome_superiority_claim"] is False
+        assert action["empirical_superiority_claim"] is False
+
+    assert report["observed_policy_outcome_superiority_claim"] is False
+    assert report["empirical_superiority_claim"] is False
+
+
 def test_full_admin_graph_planner_replay_is_scene_pm25_risk_calibrated():
     assert REPORT_PATH.exists()
     report = json.loads(REPORT_PATH.read_text(encoding="utf-8"))

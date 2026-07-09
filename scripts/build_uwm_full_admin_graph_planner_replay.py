@@ -33,6 +33,10 @@ SCENE_AIR_QUALITY_HOLDOUT_PATH = (
     DATA_ROOT
     / "scene_aligned_gridded_air_quality_holdout_2026_07_06/uwm_scene_aligned_gridded_air_quality_holdout.json"
 )
+SPATIAL_CAUSAL_REGISTRY_PATH = (
+    DATA_ROOT
+    / "spatial_causal_question_registry_2026_07_09/uwm_spatial_causal_question_registry.json"
+)
 OUTPUT_DIR = DATA_ROOT / "data_calibrated_planner_replay_full_admin_graph_2026_07_08"
 REPORT_PATH = OUTPUT_DIR / "uwm_full_admin_graph_model_based_graph_search.json"
 MANIFEST_PATH = OUTPUT_DIR / "snapshot_manifest.json"
@@ -44,6 +48,7 @@ def main() -> None:
     geographic_similarity_kernel = _read_json(GEOGRAPHIC_SIMILARITY_KERNEL_PATH)
     mechanism_table = _read_json(MECHANISM_TABLE_PATH)
     air_quality_holdout = _read_json(SCENE_AIR_QUALITY_HOLDOUT_PATH)
+    spatial_causal_registry = _read_json(SPATIAL_CAUSAL_REGISTRY_PATH)
     _validate_full_inputs(panel, admin_graph)
 
     observation = build_admin_livability_graph_observation(
@@ -79,6 +84,7 @@ def main() -> None:
         mechanism_table=mechanism_table,
         air_quality_uncertainty_context=air_quality_holdout,
         transition_storage="compact",
+        spatial_causal_question_registry=spatial_causal_registry,
     )
     report["experiment_scope"] = "full_admin_graph"
     report["source_admin_livability_panel_path"] = str(
@@ -107,6 +113,12 @@ def main() -> None:
     )
     report["source_air_quality_holdout_path"] = str(
         SCENE_AIR_QUALITY_HOLDOUT_PATH.relative_to(REPO_ROOT)
+    )
+    report["source_spatial_causal_question_registry_path"] = str(
+        SPATIAL_CAUSAL_REGISTRY_PATH.relative_to(REPO_ROOT)
+    )
+    report["source_spatial_causal_question_registry_summary"] = (
+        spatial_causal_registry.get("summary") or {}
     )
     report["full_data_guard"] = {
         "required_scope": "full_admin_graph",
@@ -156,10 +168,16 @@ def main() -> None:
                 ],
                 "mechanism_table": report["source_mechanism_table_path"],
                 "air_quality_holdout": report["source_air_quality_holdout_path"],
+                "spatial_causal_question_registry": report[
+                    "source_spatial_causal_question_registry_path"
+                ],
             },
             "full_data_guard": report["full_data_guard"],
             "graph_statistics": report["graph_mdp_state"]["graph_statistics"],
             "search_config": report["search_config"],
+            "spatial_causal_contract_binding": report[
+                "spatial_causal_contract_binding"
+            ],
             "advantage_over_static_single_step": report[
                 "advantage_over_static_single_step"
             ],
