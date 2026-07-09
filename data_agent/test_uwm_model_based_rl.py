@@ -113,8 +113,11 @@ def test_model_based_graph_search_exports_replay_and_beats_static_single_step_he
     assert report["best_sequence"]["cumulative_reward"] > report["static_single_step_baseline"]["cumulative_reward"]
     assert report["advantage_over_static_single_step"] > 0
     assert report["empirical_superiority_claim"] is False
-    assert report["supported_claim"] == "known_effect_model_based_graph_search_advantage"
+    assert report["spatial_causal_contract_binding"]["binding_ready"] is False
+    assert report["supported_claim"] == "no_model_based_graph_search_advantage_claim_supported"
+    assert report["claim_boundary"]["max_claim_level"] == "not_for_claim"
     assert "observed_policy_outcome_holdout_required" in report["remaining_gates"]
+    assert "spatial_causal_question_registry_binding_required" in report["remaining_gates"]
 
 
 def test_model_based_graph_search_can_store_compact_replay_transitions():
