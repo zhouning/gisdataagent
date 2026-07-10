@@ -27,6 +27,24 @@ def test_full_admin_graph_planner_replay_uses_all_admin_nodes():
     assert report["graph_mdp_state"]["graph_statistics"]["node_count"] == 1017
     assert report["graph_mdp_state"]["graph_statistics"]["edge_count"] == 7932
     assert report["graph_mdp_state"]["graph_statistics"]["available_action_count"] > 60
+    assert report["graph_mdp_state"]["feature_schema"]["mobility_feature_names"] == [
+        "estimated_nearest_essential_travel_time_min",
+        "road_segment_count",
+        "road_length_km",
+        "mean_road_speed_kmh",
+        "capacity_norm",
+        "essential_norm",
+        "travel_time_inverse_norm",
+        "service_gap",
+    ]
+    assert report["graph_mdp_state"]["graph_statistics"][
+        "mobility_feature_node_count"
+    ] == 1017
+    first_node = report["graph_mdp_state"]["nodes"][0]
+    assert first_node["feature_schema"] == "uwm.graph_node_features.mobility_accessibility.v1"
+    assert "estimated_nearest_essential_travel_time_min" in first_node["features"]
+    assert "road_segment_count" in first_node["features"]
+    assert "service_gap" in first_node["features"]
     edge_types = {
         edge["edge_type"] for edge in report["graph_mdp_state"]["edges"]
     }

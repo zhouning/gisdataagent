@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from data_agent.uwm.livability_graph_drl import (
+    GRAPH_NODE_FEATURE_NAMES,
     UWM_LIVABILITY_GRAPH_DRL_TRAINING_REPORT_SCHEMA,
     train_livability_graph_dqn_agent,
 )
@@ -85,6 +86,14 @@ def test_real_data_graph_dqn_trains_neural_value_model_over_graph_mdp():
     assert report["drl_algorithm"]["is_model_free"] is False
     assert report["drl_algorithm"]["uses_graph_message_passing"] is True
     assert report["drl_algorithm"]["policy_or_value_network_trained"] is True
+
+    architecture = report["network_architecture"]
+    assert architecture["node_feature_names"] == GRAPH_NODE_FEATURE_NAMES
+    assert "estimated_nearest_essential_travel_time_min" in architecture[
+        "node_feature_names"
+    ]
+    assert "travel_time_inverse_norm" in architecture["node_feature_names"]
+    assert architecture["node_feature_dim"] == len(GRAPH_NODE_FEATURE_NAMES)
 
     summary = report["training_summary"]
     assert summary["real_data_graph_node_count"] == 36

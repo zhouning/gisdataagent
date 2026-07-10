@@ -1,0 +1,40 @@
+{
+  "artifact_path": "data/uwm_public_proxy/chongqing_central/full_admin_world_model_superiority_dossier_2026_07_09/uwm_full_admin_world_model_superiority_dossier.json",
+  "claim_boundary": {
+    "max_claim_level": "bounded_support",
+    "reason": "Full-admin dossier aggregates real prepared renderer, Graph-MDP, simulator, planner, learned value/rollout, endpoint and governance evidence. It supports bounded same-scene world-model advantage over traditional methods, not observed policy-outcome superiority."
+  },
+  "created_at": "2026-07-09T13:00:00Z",
+  "empirical_superiority_claim": false,
+  "full_admin_scope_guard": {
+    "admin_boundary_edge_count": 2847,
+    "available_action_count": 1137,
+    "geographic_similarity_edge_count": 5085,
+    "graph_edge_count": 7932,
+    "graph_node_count": 1017,
+    "local_poi_point_count": 1194351,
+    "local_road_count": 50366,
+    "mismatches": [],
+    "passed": true,
+    "required_scope": "full_admin_graph",
+    "service_missing_admin_count": 0,
+    "service_surface_admin_unit_count": 1017,
+    "transition_count": 6817
+  },
+  "observed_policy_outcome_superiority_claim": false,
+  "schema": "uwm.snapshot_manifest.v1",
+  "snapshot_id": "uwm_full_admin_world_model_superiority_dossier_2026_07_09",
+  "source_artifact_paths": {
+    "full_admin_energy_regularized_planner_report": "data/uwm_public_proxy/chongqing_central/energy_regularized_planner_full_admin_graph_2026_07_08/uwm_full_admin_graph_energy_regularized_planner_report.json",
+    "full_admin_graph_drl_training_report": "data/uwm_public_proxy/chongqing_central/livability_graph_drl_training_full_admin_graph_2026_07_08/uwm_full_admin_graph_livability_graph_drl_training_report.json",
+    "full_admin_graph_planner_replay": "data/uwm_public_proxy/chongqing_central/data_calibrated_planner_replay_full_admin_graph_2026_07_08/uwm_full_admin_graph_model_based_graph_search.json",
+    "full_admin_learned_world_model_rollout": "data/uwm_public_proxy/chongqing_central/learned_world_model_rollout_full_admin_graph_2026_07_08/uwm_full_admin_graph_learned_world_model_rollout.json",
+    "full_admin_livability_decision_package": "data/uwm_public_proxy/chongqing_central/full_admin_livability_decision_package_2026_07_08/uwm_full_admin_livability_decision_package.json",
+    "full_admin_service_accessibility_surface": "data/uwm_public_proxy/chongqing_central/full_admin_service_accessibility_surface_2026_07_08/uwm_full_admin_service_accessibility_surface.json",
+    "geographic_similarity_kernel": "data/uwm_public_proxy/chongqing_central/geographic_similarity_kernel_2026_07_08/uwm_geographic_similarity_kernel.json",
+    "livability_endpoint_suite": "data/uwm_public_proxy/chongqing_central/livability_endpoint_suite_2026_07_07/uwm_livability_endpoint_suite.json",
+    "production_governance_planner_binding_gate": "data/uwm_public_proxy/chongqing_central/production_governance_planner_binding_gate_2026_07_08/uwm_production_governance_planner_binding_gate.json",
+    "spatial_causal_question_registry": "data/uwm_public_proxy/chongqing_central/spatial_causal_question_registry_2026_07_09/uwm_spatial_causal_question_registry.json"
+  },
+  "supported_claim": "bounded_full_admin_world_model_advantage_over_traditional_methods"
+}

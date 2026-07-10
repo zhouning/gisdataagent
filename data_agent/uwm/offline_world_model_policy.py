@@ -26,6 +26,13 @@ FEATURE_NAMES = [
     "target_equity",
     "target_livability_gap",
     "target_degree_norm",
+    "target_travel_time_min_norm",
+    "target_road_segment_count_norm",
+    "target_road_length_km_norm",
+    "target_mean_road_speed_kmh_norm",
+    "target_capacity_norm",
+    "target_essential_norm",
+    "target_travel_time_inverse_norm",
     "mask_heat_risk",
     "mask_air_pollution",
     "mask_service_gap",
@@ -591,8 +598,16 @@ def _apply_predicted_dynamics_to_state(
                 "heat_risk": 0.0,
                 "air_pollution_exposure": 0.0,
                 "service_accessibility": 0.0,
+                "service_gap": 1.0,
                 "equity": 0.0,
                 "livability": 0.0,
+                "travel_time_min_norm": 0.0,
+                "road_segment_count_norm": 0.0,
+                "road_length_km_norm": 0.0,
+                "mean_road_speed_kmh_norm": 0.0,
+                "capacity_norm": 0.0,
+                "essential_norm": 0.0,
+                "travel_time_inverse_norm": 0.0,
             },
         )
         features["heat_risk"] = _clamp01(features["heat_risk"] + predicted_dynamics["heat_risk_delta"])
@@ -602,6 +617,7 @@ def _apply_predicted_dynamics_to_state(
         features["service_accessibility"] = _clamp01(
             features["service_accessibility"] + predicted_dynamics["service_accessibility_delta"]
         )
+        features["service_gap"] = _clamp01(1.0 - features["service_accessibility"])
         features["equity"] = _clamp01(features["equity"] + predicted_dynamics["equity_delta"])
         features["livability"] = _clamp01(features["livability"] + predicted_dynamics["livability_delta"])
     return next_state
@@ -629,8 +645,19 @@ def _clone_node_features(node_features: dict[str, dict[str, float]]) -> dict[str
             "heat_risk": _float(features.get("heat_risk")),
             "air_pollution_exposure": _float(features.get("air_pollution_exposure")),
             "service_accessibility": _float(features.get("service_accessibility")),
+            "service_gap": _float(
+                features.get("service_gap"),
+                default=max(0.0, 1.0 - _float(features.get("service_accessibility"))),
+            ),
             "equity": _float(features.get("equity")),
             "livability": _float(features.get("livability")),
+            "travel_time_min_norm": _float(features.get("travel_time_min_norm")),
+            "road_segment_count_norm": _float(features.get("road_segment_count_norm")),
+            "road_length_km_norm": _float(features.get("road_length_km_norm")),
+            "mean_road_speed_kmh_norm": _float(features.get("mean_road_speed_kmh_norm")),
+            "capacity_norm": _float(features.get("capacity_norm")),
+            "essential_norm": _float(features.get("essential_norm")),
+            "travel_time_inverse_norm": _float(features.get("travel_time_inverse_norm")),
         }
         for unit_id, features in node_features.items()
     }
@@ -715,6 +742,13 @@ def _features_for_action(
         _float(features.get("equity")),
         max(0.0, 1.0 - _float(features.get("livability"))),
         _float(degree_by_unit.get(target_unit)) / max(1.0, float(node_count - 1)),
+        _float(features.get("travel_time_min_norm")),
+        _float(features.get("road_segment_count_norm")),
+        _float(features.get("road_length_km_norm")),
+        _float(features.get("mean_road_speed_kmh_norm")),
+        _float(features.get("capacity_norm")),
+        _float(features.get("essential_norm")),
+        _float(features.get("travel_time_inverse_norm")),
         1.0 if "heat" in mask_reason else 0.0,
         1.0 if "air_pollution" in mask_reason else 0.0,
         1.0 if "service" in mask_reason else 0.0,
@@ -763,18 +797,87 @@ def _aggregate_delta(next_state_delta: dict[str, Any]) -> dict[str, float]:
 
 def _node_features_by_unit(graph_state: dict[str, Any]) -> dict[str, dict[str, float]]:
     nodes = {}
+    scalers = _node_feature_scalers(graph_state)
     for node in graph_state.get("nodes") or []:
         unit_id = str(node.get("unit_id") or node.get("node_id") or "")
         features = node.get("features") or {}
         if unit_id:
+            service_accessibility = _clamp01(_float(features.get("service_accessibility")))
             nodes[unit_id] = {
-                "heat_risk": _float(features.get("heat_risk")),
-                "air_pollution_exposure": _float(features.get("air_pollution_exposure")),
-                "service_accessibility": _float(features.get("service_accessibility")),
-                "equity": _float(features.get("equity")),
-                "livability": _float(features.get("livability")),
+                "heat_risk": _clamp01(_float(features.get("heat_risk"))),
+                "air_pollution_exposure": _clamp01(
+                    _float(features.get("air_pollution_exposure"))
+                ),
+                "service_accessibility": service_accessibility,
+                "service_gap": _clamp01(
+                    _float(
+                        features.get("service_gap"),
+                        default=1.0 - service_accessibility,
+                    )
+                ),
+                "equity": _clamp01(_float(features.get("equity"))),
+                "livability": _clamp01(_float(features.get("livability"))),
+                "travel_time_min_norm": _scale_observed(
+                    features.get("estimated_nearest_essential_travel_time_min"),
+                    scalers["estimated_nearest_essential_travel_time_min"],
+                ),
+                "road_segment_count_norm": _scale_observed(
+                    features.get("road_segment_count"),
+                    scalers["road_segment_count"],
+                ),
+                "road_length_km_norm": _scale_observed(
+                    features.get("road_length_km"),
+                    scalers["road_length_km"],
+                ),
+                "mean_road_speed_kmh_norm": _scale_observed(
+                    features.get("mean_road_speed_kmh"),
+                    scalers["mean_road_speed_kmh"],
+                ),
+                "capacity_norm": _clamp01(_float(features.get("capacity_norm"))),
+                "essential_norm": _clamp01(_float(features.get("essential_norm"))),
+                "travel_time_inverse_norm": _travel_time_inverse_feature(
+                    features,
+                    scalers,
+                ),
             }
     return nodes
+
+
+def _node_feature_scalers(graph_state: dict[str, Any]) -> dict[str, float]:
+    raw_feature_names = [
+        "estimated_nearest_essential_travel_time_min",
+        "road_segment_count",
+        "road_length_km",
+        "mean_road_speed_kmh",
+    ]
+    scalers: dict[str, float] = {}
+    for feature_name in raw_feature_names:
+        values = [
+            abs(_float((node.get("features") or {}).get(feature_name)))
+            for node in graph_state.get("nodes") or []
+        ]
+        scalers[feature_name] = max([value for value in values if value > 0.0] or [1.0])
+    return scalers
+
+
+def _scale_observed(value: Any, scale: float) -> float:
+    if scale <= 0.0:
+        return 0.0
+    return _clamp01(_float(value) / scale)
+
+
+def _travel_time_inverse_feature(
+    features: dict[str, Any],
+    scalers: dict[str, float],
+) -> float:
+    explicit = _float(features.get("travel_time_inverse_norm"))
+    if explicit > 0.0:
+        return _clamp01(explicit)
+    travel_time = _float(features.get("estimated_nearest_essential_travel_time_min"))
+    max_travel_time = scalers.get("estimated_nearest_essential_travel_time_min", 1.0)
+    if travel_time <= 0.0 or max_travel_time <= 0.0:
+        return 0.0
+    return _clamp01(1.0 - (travel_time / max_travel_time))
 
 
 def _degree_by_unit(graph_state: dict[str, Any]) -> dict[str, int]:

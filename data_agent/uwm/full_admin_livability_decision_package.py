@@ -10,6 +10,7 @@ from .full_admin_service_accessibility_surface import (
 from .full_admin_service_surface_quality import (
     validate_full_admin_service_surface_quality_audit,
 )
+from .full_admin_mobility_graph import validate_full_admin_mobility_graph
 from .geographic_similarity_kernel import validate_uwm_geographic_similarity_kernel
 from .spatial_causal_question_registry import (
     validate_uwm_spatial_causal_question_registry,
@@ -35,6 +36,7 @@ def build_uwm_full_admin_livability_decision_package(
     geographic_similarity_kernel: dict[str, Any],
     full_admin_service_accessibility_surface: dict[str, Any],
     full_admin_service_surface_quality_audit: dict[str, Any],
+    full_admin_mobility_graph: dict[str, Any] | None = None,
     production_governance_planner_binding_gate: dict[str, Any] | None = None,
     spatial_causal_question_registry: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -61,6 +63,7 @@ def build_uwm_full_admin_livability_decision_package(
         full_admin_service_accessibility_surface,
         full_admin_service_surface_quality_audit,
     )
+    mobility_evidence = _mobility_graph_evidence(full_admin_mobility_graph or {})
     governance_evidence = _production_governance_binding_evidence(governance_gate)
     final_outputs = _final_outputs(
         planner_evidence,
@@ -68,6 +71,7 @@ def build_uwm_full_admin_livability_decision_package(
         learned_rollout_evidence,
         similarity_evidence,
         service_evidence,
+        mobility_evidence,
         spatial_causal_question_registry or {},
     )
     spatial_causal_binding = _spatial_causal_contract_binding_evidence(
@@ -97,6 +101,7 @@ def build_uwm_full_admin_livability_decision_package(
         and similarity_evidence["geographic_similarity_kernel_ready"] is True
         and service_evidence["service_accessibility_surface_ready"] is True
         and service_evidence["service_surface_quality_audit_ready"] is True
+        and mobility_evidence["full_admin_mobility_graph_ready"] is True
         and spatial_causal_binding["binding_ready"] is True
         and comparison["all_world_model_advantages_positive"] is True
     )
@@ -125,6 +130,9 @@ def build_uwm_full_admin_livability_decision_package(
             "full_admin_service_surface_quality_audit": (
                 full_admin_service_surface_quality_audit.get("schema")
             ),
+            "full_admin_mobility_graph": (full_admin_mobility_graph or {}).get(
+                "schema"
+            ),
             "production_governance_planner_binding_gate": governance_gate.get(
                 "schema"
             ),
@@ -134,6 +142,7 @@ def build_uwm_full_admin_livability_decision_package(
         },
         "full_data_guard": full_data_guard,
         "service_accessibility_evidence": service_evidence,
+        "mobility_graph_evidence": mobility_evidence,
         "geographic_similarity_evidence": similarity_evidence,
         "planner_replay_evidence": planner_evidence,
         "graph_dqn_training_evidence": graph_dqn_evidence,
@@ -341,6 +350,7 @@ def _graph_dqn_training_evidence(report: dict[str, Any]) -> dict[str, Any]:
     learned = report.get("learned_policy_evaluation") or {}
     baseline = report.get("baseline_evaluation") or {}
     algorithm = report.get("drl_algorithm") or {}
+    architecture = report.get("network_architecture") or {}
     similarity = report.get("source_geographic_similarity_kernel_summary") or {}
     actions = list(learned.get("action_sequence") or [])
     ready = (
@@ -378,6 +388,10 @@ def _graph_dqn_training_evidence(report: dict[str, Any]) -> dict[str, Any]:
         "policy_or_value_network_trained": bool(
             algorithm.get("policy_or_value_network_trained")
         ),
+        "node_feature_names": list(architecture.get("node_feature_names") or []),
+        "node_feature_transforms": architecture.get("node_feature_transforms") or {},
+        "node_feature_dim": _int(architecture.get("node_feature_dim")),
+        "action_feature_dim": _int(architecture.get("action_feature_dim")),
         "graph_node_count": _int(training.get("real_data_graph_node_count")),
         "graph_edge_count": _int(training.get("real_data_graph_edge_count")),
         "available_action_count": _int(
@@ -425,6 +439,7 @@ def _learned_world_model_rollout_evidence(report: dict[str, Any]) -> dict[str, A
     holdout = report.get("holdout_metrics") or {}
     baseline = report.get("baseline_metrics") or {}
     planner = report.get("learned_rollout_planner") or {}
+    world_model = report.get("world_model") or {}
     selected = planner.get("selected_sequence") or {}
     actions = list(selected.get("action_sequence") or [])
     dynamics = holdout.get("dynamics_mae_by_target") or {}
@@ -460,7 +475,9 @@ def _learned_world_model_rollout_evidence(report: dict[str, Any]) -> dict[str, A
         "schema": report.get("schema"),
         "experiment_scope": report.get("experiment_scope"),
         "backend": report.get("backend"),
-        "world_model_class": (report.get("world_model") or {}).get("model_class"),
+        "world_model_class": world_model.get("model_class"),
+        "world_model_feature_names": list(world_model.get("feature_names") or []),
+        "world_model_target_names": list(world_model.get("target_names") or []),
         "graph_node_count": _int(training.get("source_graph_node_count")),
         "graph_edge_count": _int(training.get("source_graph_edge_count")),
         "available_action_count": _int(training.get("source_available_action_count")),
@@ -629,6 +646,62 @@ def _service_accessibility_evidence(
     }
 
 
+def _mobility_graph_evidence(graph: dict[str, Any]) -> dict[str, Any]:
+    validation = validate_full_admin_mobility_graph(graph) if graph else {
+        "valid": False,
+        "errors": ["full_admin_mobility_graph_not_supplied"],
+    }
+    summary = graph.get("summary") or {}
+    context = summary.get("mobility_activity_context") or {}
+    ready = (
+        validation.get("valid") is True
+        and graph.get("schema") == "uwm.full_admin_mobility_graph.v1"
+        and graph.get("experiment_scope") == "full_admin_graph"
+        and graph.get("full_admin_mobility_graph_ready") is True
+        and _int(graph.get("node_count")) == 1017
+        and _int(graph.get("edge_count")) == 5085
+        and _int(summary.get("mobility_similarity_edge_count")) == 5085
+        and _float(summary.get("travel_time_min_mean")) > 0.0
+        and _int(summary.get("road_segment_count_sum")) > 50000
+        and _int(context.get("unicom_directed_edge_count")) == 1067
+        and _int(context.get("osm_highway_edge_count")) == 45468
+        and _int(context.get("osm_crosswalk_assigned_road_segment_count")) == 45449
+        and graph.get("observed_policy_outcome_superiority_claim") is False
+        and graph.get("empirical_superiority_claim") is False
+    )
+    return {
+        "full_admin_mobility_graph_ready": ready,
+        "graph_id": graph.get("graph_id"),
+        "validation_errors": validation.get("errors") or [],
+        "node_count": _int(graph.get("node_count")),
+        "edge_count": _int(graph.get("edge_count")),
+        "mobility_similarity_edge_count": _int(
+            summary.get("mobility_similarity_edge_count")
+        ),
+        "travel_time_min_mean": _float(summary.get("travel_time_min_mean")),
+        "travel_time_min_max": _float(summary.get("travel_time_min_max")),
+        "road_segment_count_sum": _int(summary.get("road_segment_count_sum")),
+        "road_length_km_sum": _float(summary.get("road_length_km_sum")),
+        "mean_road_speed_kmh_mean": _float(
+            summary.get("mean_road_speed_kmh_mean")
+        ),
+        "unicom_directed_edge_count": _int(context.get("unicom_directed_edge_count")),
+        "unicom_total_expanded_population": _float(
+            context.get("unicom_total_expanded_population")
+        ),
+        "osm_highway_edge_count": _int(context.get("osm_highway_edge_count")),
+        "osm_crosswalk_assigned_road_segment_count": _int(
+            context.get("osm_crosswalk_assigned_road_segment_count")
+        ),
+        "supported_claim": graph.get("supported_claim"),
+        "claim_level": "bounded_support" if ready else "not_for_claim",
+        "observed_od_flow_claim": False,
+        "observed_trip_time_claim": False,
+        "observed_policy_outcome_superiority_claim": False,
+        "empirical_superiority_claim": False,
+    }
+
+
 def _comparison_against_traditional_static_baselines(
     planner: dict[str, Any],
     graph_dqn: dict[str, Any],
@@ -707,6 +780,7 @@ def _final_outputs(
     learned_rollout: dict[str, Any],
     similarity: dict[str, Any],
     service: dict[str, Any],
+    mobility: dict[str, Any],
     spatial_causal_question_registry: dict[str, Any],
 ) -> dict[str, Any]:
     causal_contracts = _causal_contracts_by_action_type(
@@ -752,6 +826,11 @@ def _final_outputs(
             *(
                 ["full_admin_service_surface_proxy_quality_controls"]
                 if service.get("service_surface_quality_audit_ready") is True
+                else []
+            ),
+            *(
+                ["full_admin_mobility_travel_time_similarity_projection"]
+                if mobility.get("full_admin_mobility_graph_ready") is True
                 else []
             ),
         ],

@@ -1026,6 +1026,54 @@
         "negative_control_is_diagnostic_not_policy_validation"
       ]
     },
+    "full_admin_mobility_graph": {
+      "source_artifact_exists": true,
+      "schema": "uwm.full_admin_mobility_graph.v1",
+      "scope": "full_admin_mobility_travel_time_similarity_projection_not_observed_od",
+      "full_admin_mobility_graph_ready": true,
+      "graph_id": "uwm-full-admin-mobility-graph-2026-07-10",
+      "node_count": 1017,
+      "edge_count": 5085,
+      "mobility_similarity_edge_count": 5085,
+      "travel_time_min_mean": 3.365864,
+      "travel_time_min_min": 0.011,
+      "travel_time_min_max": 48.271,
+      "road_segment_count_sum": 50332,
+      "road_length_km_sum": 58887.996598,
+      "mean_road_speed_kmh_mean": 41.141598,
+      "service_accessibility_score_mean": 0.233089,
+      "mean_configuration_similarity": 0.741347419,
+      "unicom_directed_edge_count": 1067,
+      "unicom_total_expanded_population": 29634.796667,
+      "osm_highway_edge_count": 45468,
+      "osm_crosswalk_assigned_road_segment_count": 45449,
+      "supported_claim": "full_admin_mobility_graph_travel_time_similarity_projection_ready",
+      "supported_claims": [
+        {
+          "claim": "full_admin_mobility_graph_travel_time_similarity_projection_ready",
+          "scope": "full_admin_mobility_travel_time_similarity_projection_not_observed_od",
+          "claim_level": "bounded_support",
+          "policy_outcome_claim": false,
+          "spatial_attribution_claim": false
+        }
+      ],
+      "claim_level": "bounded_support",
+      "observed_od_flow_claim": false,
+      "observed_trip_time_claim": false,
+      "observed_policy_outcome_superiority_claim": false,
+      "empirical_superiority_claim": false,
+      "validation": {
+        "valid": true,
+        "errors": []
+      },
+      "limitations": [
+        "mobility_graph_uses_travel_time_and_road_context_proxies_not_observed_trip_times",
+        "mobility_graph_is_similarity_projection_not_true_od_geometry",
+        "unicom_grid_geometry_dictionary_missing",
+        "osm_mobility_network_is_bbox_proxy_not_citywide_observed_mobility_flow",
+        "not_observed_policy_outcome"
+      ]
+    },
     "full_admin_action_inventory": {
       "source_artifact_exists": true,
       "schema": "uwm.full_admin_action_inventory.v1",
@@ -1512,13 +1560,13 @@
       "sampled_second_action_limit": 12,
       "sampled_unique_action_count": 96,
       "policy_action_scope": "sampled_training_candidate_pool",
-      "q_return_mae": 9.54e-05,
+      "q_return_mae": 5.3133e-05,
       "train_mean_return_mae": 0.000994236,
-      "q_return_rmse": 0.000115682,
+      "q_return_rmse": 6.769e-05,
       "train_mean_return_rmse": 0.001866426,
-      "graph_dqn_policy_cumulative_reward": -0.00644243,
+      "graph_dqn_policy_cumulative_reward": -0.006482013,
       "traditional_static_cumulative_reward": -0.007255052,
-      "advantage_over_traditional_static": 0.000812622,
+      "advantage_over_traditional_static": 0.000773039,
       "full_data_guard": {
         "required_scope": "full_admin_graph",
         "required_graph_node_count": 1017,
@@ -1559,15 +1607,15 @@
       "transition_count": 6817,
       "train_count": 5844,
       "holdout_count": 973,
-      "reward_mae": 3.3499e-05,
+      "reward_mae": 3.2363e-05,
       "train_mean_reward_mae": 0.00222562,
       "reward_holdout_beats_train_mean": true,
       "dynamics_mae_by_target": {
-        "heat_risk_delta": 4.7259e-05,
-        "air_pollution_exposure_delta": 2.3918e-05,
-        "service_accessibility_delta": 7.2159e-05,
-        "equity_delta": 2.4204e-05,
-        "livability_delta": 2.9205e-05
+        "heat_risk_delta": 4.7398e-05,
+        "air_pollution_exposure_delta": 2.3891e-05,
+        "service_accessibility_delta": 7.0409e-05,
+        "equity_delta": 2.3583e-05,
+        "livability_delta": 2.8648e-05
       },
       "train_mean_mae_by_target": {
         "reward": 0.00222562,
@@ -1578,8 +1626,8 @@
         "livability_delta": 0.000241026
       },
       "dynamics_holdout_beats_train_mean": true,
-      "imagined_advantage_over_static_single_step": 0.00121167,
-      "imagined_advantage_over_one_step_policy": 0.000900135,
+      "imagined_advantage_over_static_single_step": 0.001192103,
+      "imagined_advantage_over_one_step_policy": 0.00089763,
       "selected_sequence": [
         {
           "action_id": "increase_green_infrastructure-沙坪坝区|石井坡街道|793",
@@ -1588,7 +1636,24 @@
             "沙坪坝区|石井坡街道|793"
           ],
           "intensity": 1.0,
-          "mask_reason": "heat_risk_above_threshold"
+          "mask_reason": "heat_risk_above_threshold",
+          "causal_question_id": "uwm-cq-green-heat-livability",
+          "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+          "primary_outcome": "heat_risk",
+          "identification_status": "underidentified_for_observed_policy_effect",
+          "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+          "causal_blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration",
+          "required_authoritative_tables": [
+            "policy_project_history",
+            "action_constraint_cost_model",
+            "observed_outcome_validation_panel",
+            "causal_effect_calibration_panel",
+            "human_governance_review_log"
+          ],
+          "policy_outcome_claim_allowed": false,
+          "causal_claim_level": "conditional_simulation_contract",
+          "observed_policy_outcome_superiority_claim": false,
+          "empirical_superiority_claim": false
         },
         {
           "action_id": "increase_green_infrastructure-九龙坡区|中梁山街道|91",
@@ -1597,7 +1662,24 @@
             "九龙坡区|中梁山街道|91"
           ],
           "intensity": 1.0,
-          "mask_reason": "heat_risk_above_threshold"
+          "mask_reason": "heat_risk_above_threshold",
+          "causal_question_id": "uwm-cq-green-heat-livability",
+          "causal_query": "P(heat_risk, livability | do(increase_green_infrastructure), spatial_context)",
+          "primary_outcome": "heat_risk",
+          "identification_status": "underidentified_for_observed_policy_effect",
+          "allowed_current_query_level": "conditional_simulation_with_algorithmic_causal_diagnostic",
+          "causal_blocked_reason": "missing_authoritative_policy_history_outcome_and_causal_calibration",
+          "required_authoritative_tables": [
+            "policy_project_history",
+            "action_constraint_cost_model",
+            "observed_outcome_validation_panel",
+            "causal_effect_calibration_panel",
+            "human_governance_review_log"
+          ],
+          "policy_outcome_claim_allowed": false,
+          "causal_claim_level": "conditional_simulation_contract",
+          "observed_policy_outcome_superiority_claim": false,
+          "empirical_superiority_claim": false
         }
       ],
       "full_data_guard": {
@@ -1648,9 +1730,9 @@
       "service_surface_missing_admin_count": 0,
       "planner_advantage_over_static": 0.001436437,
       "planner_risk_adjusted_advantage_over_static": 0.0013756,
-      "graph_dqn_advantage_over_static": 0.000812622,
-      "learned_rollout_advantage_over_static": 0.00121167,
-      "learned_rollout_advantage_over_one_step_policy": 0.000900135,
+      "graph_dqn_advantage_over_static": 0.000773039,
+      "learned_rollout_advantage_over_static": 0.001192103,
+      "learned_rollout_advantage_over_one_step_policy": 0.00089763,
       "planner_governance_binding_ready": false,
       "production_governance_binding_gate_ready": true,
       "production_governance_binding_blocking_gate_count": 7,
@@ -1668,8 +1750,8 @@
         "大渡口区|八桥镇|964"
       ],
       "graph_dqn_target_units": [
-        "沙坪坝区|覃家岗街道|973",
-        "涪陵区|蔺市镇|498"
+        "江北区|观音桥街道|653",
+        "沙坪坝区|覃家岗街道|973"
       ],
       "learned_rollout_target_units": [
         "沙坪坝区|石井坡街道|793",
@@ -1743,7 +1825,142 @@
         "behavior_prior_is_feasible_action_geometry_not_historical_policy_log_prior",
         "same_scene_full_admin_graph_validation_not_cross_time_or_cross_city_holdout"
       ]
+    },
+    "core_action_conditioned_dynamics_benchmark": {
+      "source_artifact_exists": true,
+      "schema": "uwm.core_action_conditioned_dynamics_benchmark.v1",
+      "scope": "full_admin_graph_action_conditioned_dynamics_not_policy_outcome",
+      "core_action_conditioned_dynamics_ready": true,
+      "experiment_scope": "full_admin_graph",
+      "graph_node_count": 1017,
+      "graph_edge_count": 7932,
+      "available_action_count": 1137,
+      "transition_count": 6817,
+      "transition_row_count": 6817,
+      "train_count": 5844,
+      "holdout_count": 973,
+      "action_conditioning_gate_passed": true,
+      "required_baselines": [
+        "train_mean_static",
+        "no_action_signal",
+        "shuffled_action_signal"
+      ],
+      "target_count": 6,
+      "model_class": "linear_ridge_action_conditioned_graph_dynamics",
+      "supported_claim": "core_action_conditioned_dynamics_beats_static_and_no_action_baselines",
+      "claim_level": "bounded_support",
+      "supported_claims": [
+        {
+          "claim": "core_action_conditioned_dynamics_beats_static_and_no_action_baselines",
+          "scope": "full_admin_graph_action_conditioned_dynamics_not_policy_outcome",
+          "claim_level": "bounded_support",
+          "policy_outcome_claim": false,
+          "spatial_attribution_claim": false
+        }
+      ],
+      "observed_policy_outcome_superiority_claim": false,
+      "empirical_superiority_claim": false,
+      "validation": {
+        "valid": true,
+        "errors": []
+      },
+      "remaining_gates": [
+        "observed_policy_outcome_holdout_required",
+        "causal_policy_effect_validation_required",
+        "external_cross_city_or_cross_time_holdout_required",
+        "authoritative_operational_data_closure_required"
+      ]
+    },
+    "core_world_model_policy_improvement_benchmark": {
+      "source_artifact_exists": true,
+      "schema": "uwm.core_world_model_policy_improvement_benchmark.v1",
+      "scope": "full_admin_graph_learned_dynamics_policy_improvement_not_policy_outcome",
+      "core_world_model_policy_improvement_ready": true,
+      "experiment_scope": "full_admin_graph",
+      "graph_node_count": 1017,
+      "graph_edge_count": 7932,
+      "available_action_count": 1137,
+      "transition_count": 6817,
+      "transition_row_count": 6817,
+      "train_count": 5844,
+      "holdout_count": 973,
+      "policy_improvement_gate_passed": true,
+      "required_policy_baselines": [
+        "static_single_step_baseline",
+        "one_step_world_model_greedy",
+        "no_action_signal_world_model_policy",
+        "shuffled_action_signal_world_model_policy"
+      ],
+      "policy_advantage_over_static": 0.00110234,
+      "policy_advantage_over_one_step": 0.000807867,
+      "algorithm": "finite_horizon_model_based_value_backup",
+      "model_class": "linear_ridge_action_conditioned_graph_dynamics",
+      "supported_claim": "core_world_model_policy_improvement_beats_static_and_action_ablation_baselines",
+      "claim_level": "bounded_support",
+      "supported_claims": [
+        {
+          "claim": "core_world_model_policy_improvement_beats_static_and_action_ablation_baselines",
+          "scope": "full_admin_graph_learned_dynamics_policy_improvement_not_policy_outcome",
+          "claim_level": "bounded_support",
+          "policy_outcome_claim": false,
+          "spatial_attribution_claim": false
+        }
+      ],
+      "observed_policy_outcome_superiority_claim": false,
+      "empirical_superiority_claim": false,
+      "validation": {
+        "valid": true,
+        "errors": []
+      },
+      "remaining_gates": [
+        "observed_policy_outcome_holdout_required",
+        "off_policy_evaluation_on_real_intervention_logs_required",
+        "causal_policy_effect_validation_required",
+        "external_cross_city_or_cross_time_policy_holdout_required"
+      ]
     }
+  },
+  "production_world_model_readiness": {
+    "scope": "production_world_model_hard_gate_from_technical_review",
+    "production_ready": false,
+    "production_readiness_claim": false,
+    "bounded_research_world_model_ready": true,
+    "base_simulator_backend": "mechanistic_urban_livability_v0",
+    "mechanistic_rollout_backend_allowed_for_bounded_research_only": true,
+    "hardcoded_mechanism_replacement_ready": true,
+    "full_admin_learned_world_model_rollout_ready": true,
+    "core_action_conditioned_dynamics_ready": true,
+    "core_world_model_policy_improvement_ready": true,
+    "bounded_mobility_projection_graph_ready": true,
+    "observed_mobility_or_travel_time_graph_ready": false,
+    "scene_aligned_station_calibrated_air_quality_holdout_ready": false,
+    "observed_policy_outcome_ready": false,
+    "planner_governance_binding_ready": false,
+    "required_gate_status": {
+      "hardcoded_mechanism_replacement_required": true,
+      "full_admin_learned_rollout_required": true,
+      "core_action_conditioned_dynamics_required": true,
+      "core_world_model_policy_improvement_required": true,
+      "observed_mobility_or_travel_time_graph_required": false,
+      "scene_aligned_station_calibrated_air_quality_holdout_required": false,
+      "observed_policy_outcome_holdout_required": false,
+      "planner_governance_binding_required": false
+    },
+    "blocking_gates": [
+      "observed_mobility_or_travel_time_graph_required",
+      "scene_aligned_station_calibrated_air_quality_holdout_required",
+      "observed_policy_outcome_holdout_required",
+      "planner_governance_binding_required"
+    ],
+    "claim_level": "bounded_support",
+    "allowed_claim": "bounded_full_admin_research_world_model_not_production",
+    "limitations": [
+      "base_simulator_backend_remains_transparent_mechanistic_contract_backend",
+      "full_admin_core_benchmarks_are_same_scene_replay_not_observed_intervention_logs",
+      "full_admin_mobility_graph_is_travel_time_similarity_projection_not_observed_od_or_trip_time",
+      "service_accessibility_surface_is_proxy_not_observed_trip_time",
+      "policy_outcome_superiority_requires_observed_before_after_or_quasi_experimental_outcome_panel"
+    ]
   },
   "observed_state_prediction_superiority_claim": true,
   "external_temporal_transition_superiority_claim": true,
@@ -1934,6 +2151,13 @@
       "spatial_attribution_claim": false
     },
     {
+      "claim": "full_admin_mobility_graph_travel_time_similarity_projection_ready",
+      "scope": "full_admin_mobility_travel_time_similarity_projection_not_observed_od",
+      "claim_level": "bounded_support",
+      "policy_outcome_claim": false,
+      "spatial_attribution_claim": false
+    },
+    {
       "claim": "full_admin_graph_feasible_action_inventory_enumerates_real_data_graph_mdp_actions",
       "scope": "full_admin_graph_feasible_action_inventory_not_historical_policy_log",
       "claim_level": "bounded_support",
@@ -2030,6 +2254,20 @@
       "claim_level": "bounded_support",
       "policy_outcome_claim": false,
       "spatial_attribution_claim": false
+    },
+    {
+      "claim": "core_action_conditioned_dynamics_beats_static_and_no_action_baselines",
+      "scope": "full_admin_graph_action_conditioned_dynamics_not_policy_outcome",
+      "claim_level": "bounded_support",
+      "policy_outcome_claim": false,
+      "spatial_attribution_claim": false
+    },
+    {
+      "claim": "core_world_model_policy_improvement_beats_static_and_action_ablation_baselines",
+      "scope": "full_admin_graph_learned_dynamics_policy_improvement_not_policy_outcome",
+      "claim_level": "bounded_support",
+      "policy_outcome_claim": false,
+      "spatial_attribution_claim": false
     }
   ],
   "claim_guard": {
@@ -2049,6 +2287,9 @@
   "remaining_gates": [
     "observed_policy_outcome_required",
     "scene_aligned_station_calibrated_air_quality_holdout_required",
-    "synthetic_proxy_boundary_must_remain_visible"
+    "synthetic_proxy_boundary_must_remain_visible",
+    "observed_mobility_or_travel_time_graph_required",
+    "observed_policy_outcome_holdout_required",
+    "planner_governance_binding_required"
   ]
 }

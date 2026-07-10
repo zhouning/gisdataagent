@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from data_agent.uwm.offline_world_model_policy import (
+    FEATURE_NAMES,
     OFFLINE_WORLD_MODEL_ROLLOUT_PLANNER_REPORT_SCHEMA,
     plan_with_offline_world_model_rollouts,
 )
@@ -36,6 +37,9 @@ def test_full_admin_compact_replay_trains_learned_rollout_from_aggregate_dynamic
     )
 
     assert learned["schema"] == OFFLINE_WORLD_MODEL_ROLLOUT_PLANNER_REPORT_SCHEMA
+    assert learned["world_model"]["feature_names"] == FEATURE_NAMES
+    assert "target_travel_time_min_norm" in learned["world_model"]["feature_names"]
+    assert "target_travel_time_inverse_norm" in learned["world_model"]["feature_names"]
     assert learned["training_summary"]["transition_count"] == 6817
     assert learned["holdout_metrics"]["reward_mae"] < learned["baseline_metrics"][
         "train_mean_reward_mae"
@@ -72,6 +76,9 @@ def test_full_admin_learned_rollout_artifact_is_full_scope_and_claim_gated():
     assert report["training_summary"]["source_graph_node_count"] == 1017
     assert report["training_summary"]["source_graph_edge_count"] == 7932
     assert report["training_summary"]["source_available_action_count"] == 1137
+    assert report["world_model"]["feature_names"] == FEATURE_NAMES
+    assert "target_travel_time_min_norm" in report["world_model"]["feature_names"]
+    assert "target_travel_time_inverse_norm" in report["world_model"]["feature_names"]
     assert report["holdout_metrics"]["reward_mae"] < report["baseline_metrics"][
         "train_mean_reward_mae"
     ]

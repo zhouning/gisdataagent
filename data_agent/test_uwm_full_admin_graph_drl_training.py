@@ -3,7 +3,10 @@ from pathlib import Path
 
 import pytest
 
-from data_agent.uwm.livability_graph_drl import train_livability_graph_dqn_agent
+from data_agent.uwm.livability_graph_drl import (
+    GRAPH_NODE_FEATURE_NAMES,
+    train_livability_graph_dqn_agent,
+)
 from data_agent.uwm.livability_graph_mdp_env import build_livability_graph_mdp_env
 from data_agent.uwm.model_based_rl import build_admin_livability_graph_observation
 
@@ -141,6 +144,15 @@ def test_full_admin_graph_dqn_trains_over_full_graph_with_explicit_action_sampli
     assert summary["sampled_unique_action_count"] == 6
     assert summary["training_sample_count"] == 24
     assert summary["holdout_count"] > 0
+    assert report["network_architecture"]["node_feature_names"] == (
+        GRAPH_NODE_FEATURE_NAMES
+    )
+    assert "estimated_nearest_essential_travel_time_min" in report[
+        "network_architecture"
+    ]["node_feature_names"]
+    assert "travel_time_inverse_norm" in report["network_architecture"][
+        "node_feature_names"
+    ]
 
     learned = report["learned_policy_evaluation"]
     assert learned["policy_action_scope"] == "sampled_training_candidate_pool"
@@ -188,6 +200,15 @@ def test_full_admin_graph_dqn_training_report_artifact_is_full_scope():
     assert report["training_summary"]["sampled_first_action_count"] >= 48
     assert report["training_summary"]["sampled_second_action_limit"] >= 8
     assert report["training_summary"]["training_sample_count"] >= 432
+    assert report["network_architecture"]["node_feature_names"] == (
+        GRAPH_NODE_FEATURE_NAMES
+    )
+    assert "estimated_nearest_essential_travel_time_min" in report[
+        "network_architecture"
+    ]["node_feature_names"]
+    assert "travel_time_inverse_norm" in report["network_architecture"][
+        "node_feature_names"
+    ]
     assert (
         report["learned_policy_evaluation"]["policy_action_scope"]
         == "sampled_training_candidate_pool"

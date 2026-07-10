@@ -208,6 +208,118 @@ def test_build_admin_livability_graph_observation_maps_proxy_panel_to_model_feat
     assert any("not true spatial adjacency" in flag["message"] for flag in observation["quality_flags"])
 
 
+def test_graph_mdp_state_encodes_mobility_accessibility_features():
+    panel = {
+        "schema": "uwm.admin_livability_target_panel.v1",
+        "panel_id": "admin-livability-mobility-feature-test",
+        "created_at": "2026-07-10T09:00:00+00:00",
+        "admin_livability_target_rows": [
+            {
+                "admin_unit_id": "A|one|1",
+                "county": "A",
+                "township": "one",
+                "exposure_priority_score": 0.9,
+                "service_point_count": 1.0,
+                "essential_service_count": 0.0,
+                "livability_need_score": 0.95,
+                "estimated_nearest_essential_travel_time_min": 12.5,
+                "road_segment_count": 3.0,
+                "road_length_km": 5.75,
+                "mean_road_speed_kmh": 31.0,
+                "capacity_norm": 0.25,
+                "essential_norm": 0.0,
+                "travel_time_inverse_norm": 0.12,
+                "score_components": {
+                    "exposure_norm": 0.95,
+                    "service_gap_norm": 0.9,
+                    "essential_gap_norm": 1.0,
+                },
+            },
+            {
+                "admin_unit_id": "B|two|2",
+                "county": "B",
+                "township": "two",
+                "exposure_priority_score": 0.1,
+                "service_point_count": 9.0,
+                "essential_service_count": 3.0,
+                "livability_need_score": 0.15,
+                "estimated_nearest_essential_travel_time_min": 2.0,
+                "road_segment_count": 11.0,
+                "road_length_km": 19.5,
+                "mean_road_speed_kmh": 42.0,
+                "capacity_norm": 0.85,
+                "essential_norm": 0.75,
+                "travel_time_inverse_norm": 0.82,
+                "score_components": {
+                    "exposure_norm": 0.1,
+                    "service_gap_norm": 0.1,
+                    "essential_gap_norm": 0.0,
+                },
+            },
+        ],
+        "claim_boundary": {"max_claim_level": "bounded_support"},
+        "limitations": [],
+    }
+    mobility_graph = {
+        "schema": "uwm.full_admin_mobility_graph.v1",
+        "graph_id": "mobility-feature-test",
+        "edge_count": 1,
+        "mobility_edges": [
+            {
+                "edge_type": "mobility_accessibility_similarity",
+                "source": "A|one|1",
+                "target": "B|two|2",
+                "weight": 0.74,
+                "rank": 1,
+                "configuration_similarity": 0.74,
+                "standardized_feature_distance": 0.35,
+                "boundary_adjacent": False,
+                "same_county": False,
+                "travel_time_difference_min": 10.5,
+                "road_segment_difference": 8,
+                "road_length_difference_km": 13.75,
+                "road_speed_difference_kmh": 11.0,
+            }
+        ],
+    }
+
+    observation = build_admin_livability_graph_observation(
+        panel,
+        observation_id="admin-graph-mdp-mobility-feature-test",
+        created_at="2026-07-10T09:10:00+00:00",
+        mobility_graph=mobility_graph,
+        graph_edge_mode="mobility_similarity_only",
+    )
+    state = build_graph_mdp_state(
+        observation,
+        action_types=["add_community_service"],
+        thresholds={"service_accessibility": 0.5},
+    )
+
+    assert observation["graph_edges"][0]["edge_type"] == "mobility_accessibility_similarity"
+    node = state["nodes"][0]
+    assert node["feature_schema"] == "uwm.graph_node_features.mobility_accessibility.v1"
+    assert node["features"]["estimated_nearest_essential_travel_time_min"] == 12.5
+    assert node["features"]["road_segment_count"] == 3.0
+    assert node["features"]["road_length_km"] == 5.75
+    assert node["features"]["mean_road_speed_kmh"] == 31.0
+    assert node["features"]["travel_time_inverse_norm"] == 0.12
+    assert node["features"]["service_gap"] == 0.9
+    assert state["edges"][0]["travel_time_difference_min"] == 10.5
+    assert state["graph_statistics"]["mobility_similarity_edge_count"] == 1
+    assert state["graph_statistics"]["mobility_feature_node_count"] == 2
+    assert state["feature_schema"]["mobility_feature_names"] == [
+        "estimated_nearest_essential_travel_time_min",
+        "road_segment_count",
+        "road_length_km",
+        "mean_road_speed_kmh",
+        "capacity_norm",
+        "essential_norm",
+        "travel_time_inverse_norm",
+        "service_gap",
+    ]
+
+
 def test_admin_livability_graph_observation_defaults_to_full_panel_without_truncation():
     panel = {
         "schema": "uwm.admin_livability_target_panel.v1",

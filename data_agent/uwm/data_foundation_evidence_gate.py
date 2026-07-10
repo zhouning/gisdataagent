@@ -9,6 +9,12 @@ from pathlib import Path
 from typing import Any
 
 from .causal_policy_evidence import validate_uwm_causal_policy_evidence_gate
+from .core_action_conditioned_dynamics_benchmark import (
+    validate_uwm_core_action_conditioned_dynamics_benchmark,
+)
+from .core_world_model_policy_improvement_benchmark import (
+    validate_uwm_core_world_model_policy_improvement_benchmark,
+)
 from .data_calibrated_mechanism_table import (
     validate_uwm_data_calibrated_mechanism_table,
 )
@@ -16,6 +22,7 @@ from .external_observed_holdout import validate_uwm_external_observed_holdout_su
 from .full_admin_service_accessibility_surface import (
     validate_full_admin_service_accessibility_surface,
 )
+from .full_admin_mobility_graph import validate_full_admin_mobility_graph
 from .full_admin_service_surface_quality import (
     validate_full_admin_service_surface_quality_audit,
 )
@@ -29,6 +36,7 @@ from .station_aligned_air_quality_holdout import (
 from .spatial_causal_question_registry import (
     validate_uwm_spatial_causal_question_registry,
 )
+from .simulator import DEFAULT_SIMULATOR_BACKEND
 
 
 UWM_DATA_FOUNDATION_EVIDENCE_GATE_SCHEMA = "uwm.data_foundation_evidence_gate.v1"
@@ -71,6 +79,7 @@ def build_uwm_data_foundation_evidence_gate(
     full_admin_service_accessibility_surface_path: str | Path | None = None,
     full_admin_service_surface_quality_audit_path: str | Path | None = None,
     geographic_similarity_kernel_path: str | Path | None = None,
+    full_admin_mobility_graph_path: str | Path | None = None,
     full_admin_action_inventory_path: str | Path | None = None,
     production_action_catalog_path: str | Path | None = None,
     production_governance_data_contract_path: str | Path | None = None,
@@ -84,6 +93,8 @@ def build_uwm_data_foundation_evidence_gate(
     full_admin_learned_world_model_rollout_path: str | Path | None = None,
     full_admin_livability_decision_package_path: str | Path | None = None,
     full_admin_energy_regularized_planner_report_path: str | Path | None = None,
+    core_action_conditioned_dynamics_benchmark_path: str | Path | None = None,
+    core_world_model_policy_improvement_benchmark_path: str | Path | None = None,
     gate_id: str,
     created_at: str,
 ) -> dict[str, Any]:
@@ -191,6 +202,11 @@ def build_uwm_data_foundation_evidence_gate(
         if geographic_similarity_kernel_path is not None
         else {}
     )
+    full_admin_mobility_graph = (
+        _read_json(full_admin_mobility_graph_path)
+        if full_admin_mobility_graph_path is not None
+        else {}
+    )
     full_admin_action_inventory = (
         _read_json(full_admin_action_inventory_path)
         if full_admin_action_inventory_path is not None
@@ -254,6 +270,16 @@ def build_uwm_data_foundation_evidence_gate(
     full_admin_energy_regularized_planner_report = (
         _read_json(full_admin_energy_regularized_planner_report_path)
         if full_admin_energy_regularized_planner_report_path is not None
+        else {}
+    )
+    core_action_conditioned_dynamics_benchmark = (
+        _read_json(core_action_conditioned_dynamics_benchmark_path)
+        if core_action_conditioned_dynamics_benchmark_path is not None
+        else {}
+    )
+    core_world_model_policy_improvement_benchmark = (
+        _read_json(core_world_model_policy_improvement_benchmark_path)
+        if core_world_model_policy_improvement_benchmark_path is not None
         else {}
     )
 
@@ -436,6 +462,14 @@ def build_uwm_data_foundation_evidence_gate(
             else False
         ),
     )
+    full_admin_mobility_graph_slice = _full_admin_mobility_graph_slice(
+        full_admin_mobility_graph,
+        source_artifact_exists=(
+            Path(full_admin_mobility_graph_path).exists()
+            if full_admin_mobility_graph_path is not None
+            else False
+        ),
+    )
     full_admin_action_inventory_slice = _full_admin_action_inventory_slice(
         full_admin_action_inventory,
         source_artifact_exists=(
@@ -558,6 +592,26 @@ def build_uwm_data_foundation_evidence_gate(
             ),
         )
     )
+    core_action_conditioned_dynamics_slice = (
+        _core_action_conditioned_dynamics_benchmark_slice(
+            core_action_conditioned_dynamics_benchmark,
+            source_artifact_exists=(
+                Path(core_action_conditioned_dynamics_benchmark_path).exists()
+                if core_action_conditioned_dynamics_benchmark_path is not None
+                else False
+            ),
+        )
+    )
+    core_world_model_policy_improvement_slice = (
+        _core_world_model_policy_improvement_benchmark_slice(
+            core_world_model_policy_improvement_benchmark,
+            source_artifact_exists=(
+                Path(core_world_model_policy_improvement_benchmark_path).exists()
+                if core_world_model_policy_improvement_benchmark_path is not None
+                else False
+            ),
+        )
+    )
     claim_guard = _claim_guard(manifest_rows)
     bounded_final_system_superiority_claim = _bounded_final_system_superiority_claim(
         openaq_slice,
@@ -599,6 +653,9 @@ def build_uwm_data_foundation_evidence_gate(
         geographic_similarity_kernel_slice.get("supported_claims") or []
     )
     supported_claims.extend(
+        full_admin_mobility_graph_slice.get("supported_claims") or []
+    )
+    supported_claims.extend(
         full_admin_action_inventory_slice.get("supported_claims") or []
     )
     supported_claims.extend(
@@ -638,6 +695,49 @@ def build_uwm_data_foundation_evidence_gate(
     )
     supported_claims.extend(
         full_admin_energy_regularized_planner_slice.get("supported_claims") or []
+    )
+    supported_claims.extend(
+        core_action_conditioned_dynamics_slice.get("supported_claims") or []
+    )
+    supported_claims.extend(
+        core_world_model_policy_improvement_slice.get("supported_claims") or []
+    )
+    production_world_model_readiness = _production_world_model_readiness(
+        data_calibrated_mechanism_slice=data_calibrated_mechanism_slice,
+        full_admin_learned_world_model_rollout_slice=(
+            full_admin_learned_world_model_rollout_slice
+        ),
+        core_action_conditioned_dynamics_slice=core_action_conditioned_dynamics_slice,
+        core_world_model_policy_improvement_slice=(
+            core_world_model_policy_improvement_slice
+        ),
+        full_admin_service_surface_quality_audit_slice=(
+            full_admin_service_surface_quality_audit_slice
+        ),
+        full_admin_mobility_graph_slice=full_admin_mobility_graph_slice,
+        station_aligned_slice=station_aligned_slice,
+        causal_policy_slice=causal_policy_slice,
+        production_governance_planner_binding_gate_slice=(
+            production_governance_planner_binding_gate_slice
+        ),
+    )
+    remaining_gates = _merge_remaining_gates(
+        _remaining_gates(
+            claim_guard,
+            tap_external_temporal_transition_ready=_external_temporal_transition_superiority(
+                tap_transition_slice
+            ),
+            causal_policy_diagnostic_ready=_causal_policy_diagnostic_ready(
+                causal_policy_slice
+            ),
+            external_observed_holdout_ready=_external_observed_holdout_ready(
+                external_observed_slice
+            ),
+            scene_aligned_station_calibrated_air_quality_holdout_ready=_scene_aligned_station_calibrated_ready(
+                station_aligned_slice
+            ),
+        ),
+        production_world_model_readiness.get("blocking_gates") or [],
     )
     return {
         "schema": UWM_DATA_FOUNDATION_EVIDENCE_GATE_SCHEMA,
@@ -684,6 +784,7 @@ def build_uwm_data_foundation_evidence_gate(
                 full_admin_service_surface_quality_audit_slice
             ),
             "geographic_similarity_kernel": geographic_similarity_kernel_slice,
+            "full_admin_mobility_graph": full_admin_mobility_graph_slice,
             "full_admin_action_inventory": full_admin_action_inventory_slice,
             "production_action_catalog": production_action_catalog_slice,
             "production_governance_data_contract": (
@@ -715,7 +816,14 @@ def build_uwm_data_foundation_evidence_gate(
             "full_admin_energy_regularized_planner": (
                 full_admin_energy_regularized_planner_slice
             ),
+            "core_action_conditioned_dynamics_benchmark": (
+                core_action_conditioned_dynamics_slice
+            ),
+            "core_world_model_policy_improvement_benchmark": (
+                core_world_model_policy_improvement_slice
+            ),
         },
+        "production_world_model_readiness": production_world_model_readiness,
         "observed_state_prediction_superiority_claim": _observed_state_prediction_superiority(
             openaq_slice
         ),
@@ -732,21 +840,7 @@ def build_uwm_data_foundation_evidence_gate(
         "empirical_superiority_claim": False,
         "supported_claims": supported_claims,
         "claim_guard": claim_guard,
-        "remaining_gates": _remaining_gates(
-            claim_guard,
-            tap_external_temporal_transition_ready=_external_temporal_transition_superiority(
-                tap_transition_slice
-            ),
-            causal_policy_diagnostic_ready=_causal_policy_diagnostic_ready(
-                causal_policy_slice
-            ),
-            external_observed_holdout_ready=_external_observed_holdout_ready(
-                external_observed_slice
-            ),
-            scene_aligned_station_calibrated_air_quality_holdout_ready=_scene_aligned_station_calibrated_ready(
-                station_aligned_slice
-            ),
-        ),
+        "remaining_gates": remaining_gates,
     }
 
 
@@ -2536,6 +2630,89 @@ def _geographic_similarity_kernel_slice(
     }
 
 
+def _full_admin_mobility_graph_slice(
+    graph: dict[str, Any],
+    *,
+    source_artifact_exists: bool,
+) -> dict[str, Any]:
+    validation = (
+        validate_full_admin_mobility_graph(graph)
+        if source_artifact_exists
+        else {"valid": False, "errors": ["source_artifact_missing"]}
+    )
+    summary = graph.get("summary") or {}
+    context = summary.get("mobility_activity_context") or {}
+    ready = (
+        source_artifact_exists
+        and validation.get("valid") is True
+        and graph.get("schema") == "uwm.full_admin_mobility_graph.v1"
+        and graph.get("full_admin_mobility_graph_ready") is True
+        and _int(graph.get("node_count")) == 1017
+        and _int(graph.get("edge_count")) == 5085
+        and _int(summary.get("mobility_similarity_edge_count")) == 5085
+        and _float(summary.get("travel_time_min_mean")) > 0.0
+        and _int(summary.get("road_segment_count_sum")) > 50000
+        and _int(context.get("unicom_directed_edge_count")) == 1067
+        and _int(context.get("osm_highway_edge_count")) == 45468
+        and _int(context.get("osm_crosswalk_assigned_road_segment_count")) == 45449
+        and graph.get("observed_policy_outcome_superiority_claim") is False
+        and graph.get("empirical_superiority_claim") is False
+    )
+    return {
+        "source_artifact_exists": source_artifact_exists,
+        "schema": graph.get("schema"),
+        "scope": "full_admin_mobility_travel_time_similarity_projection_not_observed_od",
+        "full_admin_mobility_graph_ready": ready,
+        "graph_id": graph.get("graph_id"),
+        "node_count": _int(graph.get("node_count")),
+        "edge_count": _int(graph.get("edge_count")),
+        "mobility_similarity_edge_count": _int(
+            summary.get("mobility_similarity_edge_count")
+        ),
+        "travel_time_min_mean": _float(summary.get("travel_time_min_mean")),
+        "travel_time_min_min": _float(summary.get("travel_time_min_min")),
+        "travel_time_min_max": _float(summary.get("travel_time_min_max")),
+        "road_segment_count_sum": _int(summary.get("road_segment_count_sum")),
+        "road_length_km_sum": _float(summary.get("road_length_km_sum")),
+        "mean_road_speed_kmh_mean": _float(
+            summary.get("mean_road_speed_kmh_mean")
+        ),
+        "service_accessibility_score_mean": _float(
+            summary.get("service_accessibility_score_mean")
+        ),
+        "mean_configuration_similarity": _float(
+            summary.get("mean_configuration_similarity")
+        ),
+        "unicom_directed_edge_count": _int(context.get("unicom_directed_edge_count")),
+        "unicom_total_expanded_population": _float(
+            context.get("unicom_total_expanded_population")
+        ),
+        "osm_highway_edge_count": _int(context.get("osm_highway_edge_count")),
+        "osm_crosswalk_assigned_road_segment_count": _int(
+            context.get("osm_crosswalk_assigned_road_segment_count")
+        ),
+        "supported_claim": graph.get("supported_claim"),
+        "supported_claims": [
+            {
+                "claim": "full_admin_mobility_graph_travel_time_similarity_projection_ready",
+                "scope": "full_admin_mobility_travel_time_similarity_projection_not_observed_od",
+                "claim_level": "bounded_support",
+                "policy_outcome_claim": False,
+                "spatial_attribution_claim": False,
+            }
+        ]
+        if ready
+        else [],
+        "claim_level": "bounded_support" if ready else "not_for_claim",
+        "observed_od_flow_claim": False,
+        "observed_trip_time_claim": False,
+        "observed_policy_outcome_superiority_claim": False,
+        "empirical_superiority_claim": False,
+        "validation": validation,
+        "limitations": list(graph.get("limitations") or []),
+    }
+
+
 def _full_admin_action_inventory_slice(
     inventory: dict[str, Any],
     *,
@@ -3983,6 +4160,276 @@ def _full_admin_energy_regularized_planner_slice(
     }
 
 
+def _core_action_conditioned_dynamics_benchmark_slice(
+    benchmark: dict[str, Any],
+    *,
+    source_artifact_exists: bool,
+) -> dict[str, Any]:
+    if source_artifact_exists:
+        validation = validate_uwm_core_action_conditioned_dynamics_benchmark(
+            benchmark
+        )
+    else:
+        validation = {"valid": False, "errors": ["source_artifact_missing"]}
+    scope_guard = benchmark.get("full_admin_scope_guard") or {}
+    holdout = benchmark.get("holdout_summary") or {}
+    action_gate = benchmark.get("action_conditioning_gate") or {}
+    ready = (
+        source_artifact_exists
+        and validation.get("valid") is True
+        and benchmark.get("schema")
+        == "uwm.core_action_conditioned_dynamics_benchmark.v1"
+        and benchmark.get("experiment_scope") == "full_admin_graph"
+        and scope_guard.get("passed") is True
+        and action_gate.get("passed") is True
+        and _int(scope_guard.get("graph_node_count")) == 1017
+        and _int(scope_guard.get("graph_edge_count")) == 7932
+        and _int(scope_guard.get("available_action_count")) == 1137
+        and _int(scope_guard.get("transition_count")) == 6817
+        and _int(holdout.get("holdout_count")) > 0
+        and benchmark.get("supported_claim")
+        == "core_action_conditioned_dynamics_beats_static_and_no_action_baselines"
+        and (benchmark.get("claim_boundary") or {}).get("max_claim_level")
+        == "bounded_support"
+        and benchmark.get("observed_policy_outcome_superiority_claim") is False
+        and benchmark.get("empirical_superiority_claim") is False
+    )
+    return {
+        "source_artifact_exists": source_artifact_exists,
+        "schema": benchmark.get("schema"),
+        "scope": "full_admin_graph_action_conditioned_dynamics_not_policy_outcome",
+        "core_action_conditioned_dynamics_ready": ready,
+        "experiment_scope": benchmark.get("experiment_scope"),
+        "graph_node_count": _int(scope_guard.get("graph_node_count")),
+        "graph_edge_count": _int(scope_guard.get("graph_edge_count")),
+        "available_action_count": _int(scope_guard.get("available_action_count")),
+        "transition_count": _int(scope_guard.get("transition_count")),
+        "transition_row_count": _int(scope_guard.get("transition_row_count")),
+        "train_count": _int(holdout.get("train_count")),
+        "holdout_count": _int(holdout.get("holdout_count")),
+        "action_conditioning_gate_passed": bool(action_gate.get("passed")),
+        "required_baselines": list(action_gate.get("required_baselines") or []),
+        "target_count": len(action_gate.get("target_rows") or []),
+        "model_class": (benchmark.get("audit_trace") or {}).get("model_class"),
+        "supported_claim": benchmark.get("supported_claim"),
+        "claim_level": "bounded_support" if ready else "not_for_claim",
+        "supported_claims": [
+            {
+                "claim": "core_action_conditioned_dynamics_beats_static_and_no_action_baselines",
+                "scope": "full_admin_graph_action_conditioned_dynamics_not_policy_outcome",
+                "claim_level": "bounded_support",
+                "policy_outcome_claim": False,
+                "spatial_attribution_claim": False,
+            }
+        ]
+        if ready
+        else [],
+        "observed_policy_outcome_superiority_claim": False,
+        "empirical_superiority_claim": False,
+        "validation": validation,
+        "remaining_gates": benchmark.get("remaining_gates") or [],
+    }
+
+
+def _core_world_model_policy_improvement_benchmark_slice(
+    benchmark: dict[str, Any],
+    *,
+    source_artifact_exists: bool,
+) -> dict[str, Any]:
+    if source_artifact_exists:
+        validation = validate_uwm_core_world_model_policy_improvement_benchmark(
+            benchmark
+        )
+    else:
+        validation = {"valid": False, "errors": ["source_artifact_missing"]}
+    scope_guard = benchmark.get("full_admin_scope_guard") or {}
+    training = benchmark.get("training_summary") or {}
+    policy_gate = benchmark.get("policy_improvement_gate") or {}
+    ready = (
+        source_artifact_exists
+        and validation.get("valid") is True
+        and benchmark.get("schema")
+        == "uwm.core_world_model_policy_improvement_benchmark.v1"
+        and benchmark.get("experiment_scope") == "full_admin_graph"
+        and scope_guard.get("passed") is True
+        and policy_gate.get("passed") is True
+        and _int(scope_guard.get("graph_node_count")) == 1017
+        and _int(scope_guard.get("graph_edge_count")) == 7932
+        and _int(scope_guard.get("available_action_count")) == 1137
+        and _int(scope_guard.get("transition_count")) == 6817
+        and _int(training.get("holdout_count")) > 0
+        and _policy_advantage(policy_gate, "static_single_step_baseline") > 0.0
+        and _policy_advantage(policy_gate, "one_step_world_model_greedy") > 0.0
+        and benchmark.get("supported_claim")
+        == "core_world_model_policy_improvement_beats_static_and_action_ablation_baselines"
+        and (benchmark.get("claim_boundary") or {}).get("max_claim_level")
+        == "bounded_support"
+        and benchmark.get("observed_policy_outcome_superiority_claim") is False
+        and benchmark.get("empirical_superiority_claim") is False
+    )
+    return {
+        "source_artifact_exists": source_artifact_exists,
+        "schema": benchmark.get("schema"),
+        "scope": "full_admin_graph_learned_dynamics_policy_improvement_not_policy_outcome",
+        "core_world_model_policy_improvement_ready": ready,
+        "experiment_scope": benchmark.get("experiment_scope"),
+        "graph_node_count": _int(scope_guard.get("graph_node_count")),
+        "graph_edge_count": _int(scope_guard.get("graph_edge_count")),
+        "available_action_count": _int(scope_guard.get("available_action_count")),
+        "transition_count": _int(scope_guard.get("transition_count")),
+        "transition_row_count": _int(scope_guard.get("transition_row_count")),
+        "train_count": _int(training.get("train_count")),
+        "holdout_count": _int(training.get("holdout_count")),
+        "policy_improvement_gate_passed": bool(policy_gate.get("passed")),
+        "required_policy_baselines": list(
+            policy_gate.get("required_policy_baselines") or []
+        ),
+        "policy_advantage_over_static": _policy_advantage(
+            policy_gate,
+            "static_single_step_baseline",
+        ),
+        "policy_advantage_over_one_step": _policy_advantage(
+            policy_gate,
+            "one_step_world_model_greedy",
+        ),
+        "algorithm": (
+            benchmark.get("policy_improvement_config") or {}
+        ).get("algorithm"),
+        "model_class": (benchmark.get("audit_trace") or {}).get("model_class"),
+        "supported_claim": benchmark.get("supported_claim"),
+        "claim_level": "bounded_support" if ready else "not_for_claim",
+        "supported_claims": [
+            {
+                "claim": "core_world_model_policy_improvement_beats_static_and_action_ablation_baselines",
+                "scope": "full_admin_graph_learned_dynamics_policy_improvement_not_policy_outcome",
+                "claim_level": "bounded_support",
+                "policy_outcome_claim": False,
+                "spatial_attribution_claim": False,
+            }
+        ]
+        if ready
+        else [],
+        "observed_policy_outcome_superiority_claim": False,
+        "empirical_superiority_claim": False,
+        "validation": validation,
+        "remaining_gates": benchmark.get("remaining_gates") or [],
+    }
+
+
+def _production_world_model_readiness(
+    *,
+    data_calibrated_mechanism_slice: dict[str, Any],
+    full_admin_learned_world_model_rollout_slice: dict[str, Any],
+    core_action_conditioned_dynamics_slice: dict[str, Any],
+    core_world_model_policy_improvement_slice: dict[str, Any],
+    full_admin_service_surface_quality_audit_slice: dict[str, Any],
+    full_admin_mobility_graph_slice: dict[str, Any],
+    station_aligned_slice: dict[str, Any],
+    causal_policy_slice: dict[str, Any],
+    production_governance_planner_binding_gate_slice: dict[str, Any],
+) -> dict[str, Any]:
+    hardcoded_replacement_ready = bool(
+        data_calibrated_mechanism_slice.get("hardcoded_mechanism_replacement_ready")
+    )
+    learned_rollout_ready = bool(
+        full_admin_learned_world_model_rollout_slice.get(
+            "full_admin_learned_world_model_rollout_ready"
+        )
+    )
+    core_dynamics_ready = bool(
+        core_action_conditioned_dynamics_slice.get(
+            "core_action_conditioned_dynamics_ready"
+        )
+    )
+    core_policy_ready = bool(
+        core_world_model_policy_improvement_slice.get(
+            "core_world_model_policy_improvement_ready"
+        )
+    )
+    observed_mobility_ready = bool(
+        full_admin_service_surface_quality_audit_slice.get(
+            "observed_trip_time_claim"
+        )
+    )
+    bounded_mobility_projection_ready = bool(
+        full_admin_mobility_graph_slice.get("full_admin_mobility_graph_ready")
+    )
+    station_scene_ready = bool(
+        station_aligned_slice.get(
+            "scene_aligned_station_calibrated_air_quality_holdout_ready"
+        )
+    )
+    observed_policy_ready = bool(
+        causal_policy_slice.get("observed_policy_outcome_superiority_claim")
+    )
+    planner_governance_ready = bool(
+        production_governance_planner_binding_gate_slice.get(
+            "planner_governance_binding_ready"
+        )
+    )
+    bounded_research_ready = (
+        hardcoded_replacement_ready
+        and learned_rollout_ready
+        and core_dynamics_ready
+        and core_policy_ready
+    )
+    required = {
+        "hardcoded_mechanism_replacement_required": hardcoded_replacement_ready,
+        "full_admin_learned_rollout_required": learned_rollout_ready,
+        "core_action_conditioned_dynamics_required": core_dynamics_ready,
+        "core_world_model_policy_improvement_required": core_policy_ready,
+        "observed_mobility_or_travel_time_graph_required": observed_mobility_ready,
+        "scene_aligned_station_calibrated_air_quality_holdout_required": station_scene_ready,
+        "observed_policy_outcome_holdout_required": observed_policy_ready,
+        "planner_governance_binding_required": planner_governance_ready,
+    }
+    blocking_gates = [gate for gate, passed in required.items() if not passed]
+    production_ready = not blocking_gates
+    return {
+        "scope": "production_world_model_hard_gate_from_technical_review",
+        "production_ready": production_ready,
+        "production_readiness_claim": production_ready,
+        "bounded_research_world_model_ready": bounded_research_ready,
+        "base_simulator_backend": DEFAULT_SIMULATOR_BACKEND,
+        "mechanistic_rollout_backend_allowed_for_bounded_research_only": True,
+        "hardcoded_mechanism_replacement_ready": hardcoded_replacement_ready,
+        "full_admin_learned_world_model_rollout_ready": learned_rollout_ready,
+        "core_action_conditioned_dynamics_ready": core_dynamics_ready,
+        "core_world_model_policy_improvement_ready": core_policy_ready,
+        "bounded_mobility_projection_graph_ready": bounded_mobility_projection_ready,
+        "observed_mobility_or_travel_time_graph_ready": observed_mobility_ready,
+        "scene_aligned_station_calibrated_air_quality_holdout_ready": station_scene_ready,
+        "observed_policy_outcome_ready": observed_policy_ready,
+        "planner_governance_binding_ready": planner_governance_ready,
+        "required_gate_status": required,
+        "blocking_gates": blocking_gates,
+        "claim_level": "core_support" if production_ready else "bounded_support"
+        if bounded_research_ready
+        else "not_for_claim",
+        "allowed_claim": (
+            "production_world_model_ready"
+            if production_ready
+            else "bounded_full_admin_research_world_model_not_production"
+            if bounded_research_ready
+            else "no_world_model_production_or_core_research_claim"
+        ),
+        "limitations": [
+            "base_simulator_backend_remains_transparent_mechanistic_contract_backend",
+            "full_admin_core_benchmarks_are_same_scene_replay_not_observed_intervention_logs",
+            "full_admin_mobility_graph_is_travel_time_similarity_projection_not_observed_od_or_trip_time",
+            "service_accessibility_surface_is_proxy_not_observed_trip_time",
+            "policy_outcome_superiority_requires_observed_before_after_or_quasi_experimental_outcome_panel",
+        ],
+    }
+
+
+def _policy_advantage(policy_gate: dict[str, Any], baseline_name: str) -> float:
+    for row in policy_gate.get("baseline_rows") or []:
+        if row.get("policy_baseline") == baseline_name:
+            return _float(row.get("world_model_policy_improvement_advantage"))
+    return 0.0
+
+
 def _supported_claims(
     openaq_slice: dict[str, Any],
     tap_transition_slice: dict[str, Any],
@@ -4439,6 +4886,21 @@ def _remaining_gates(
     if claim_guard.get("blocked_dataset_ids"):
         gates.append("synthetic_proxy_boundary_must_remain_visible")
     return gates
+
+
+def _merge_remaining_gates(
+    base_gates: list[str],
+    production_blocking_gates: list[Any],
+) -> list[str]:
+    merged = list(base_gates)
+    seen = set(merged)
+    for gate in production_blocking_gates:
+        gate_name = str(gate)
+        if not gate_name or gate_name in seen:
+            continue
+        merged.append(gate_name)
+        seen.add(gate_name)
+    return merged
 
 
 def _pollutant_result(benchmark: dict[str, Any], pollutant: str) -> dict[str, Any]:

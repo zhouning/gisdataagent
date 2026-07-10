@@ -60,6 +60,8 @@ def test_data_foundation_evidence_gate_uses_prepared_artifacts_without_smoke_cla
         / "data/uwm_public_proxy/chongqing_central/full_admin_service_surface_quality_audit_2026_07_08/uwm_full_admin_service_surface_quality_audit.json",
         geographic_similarity_kernel_path=ROOT
         / "data/uwm_public_proxy/chongqing_central/geographic_similarity_kernel_2026_07_08/uwm_geographic_similarity_kernel.json",
+        full_admin_mobility_graph_path=ROOT
+        / "data/uwm_public_proxy/chongqing_central/full_admin_mobility_graph_2026_07_10/full_admin_mobility_graph.json",
         full_admin_action_inventory_path=ROOT
         / "data/uwm_public_proxy/chongqing_central/full_admin_action_inventory_2026_07_08/uwm_full_admin_action_inventory.json",
         production_action_catalog_path=ROOT
@@ -84,6 +86,10 @@ def test_data_foundation_evidence_gate_uses_prepared_artifacts_without_smoke_cla
         / "data/uwm_public_proxy/chongqing_central/learned_world_model_rollout_full_admin_graph_2026_07_08/uwm_full_admin_graph_learned_world_model_rollout.json",
         full_admin_livability_decision_package_path=ROOT
         / "data/uwm_public_proxy/chongqing_central/full_admin_livability_decision_package_2026_07_08/uwm_full_admin_livability_decision_package.json",
+        core_action_conditioned_dynamics_benchmark_path=ROOT
+        / "data/uwm_public_proxy/chongqing_central/core_action_conditioned_dynamics_benchmark_2026_07_09/uwm_core_action_conditioned_dynamics_benchmark.json",
+        core_world_model_policy_improvement_benchmark_path=ROOT
+        / "data/uwm_public_proxy/chongqing_central/core_world_model_policy_improvement_benchmark_2026_07_09/uwm_core_world_model_policy_improvement_benchmark.json",
         gate_id="uwm-data-foundation-evidence-gate-real-artifacts-test",
         created_at="2026-07-05T22:30:00Z",
     )
@@ -214,6 +220,22 @@ def test_data_foundation_evidence_gate_uses_prepared_artifacts_without_smoke_cla
     assert geographic_similarity["rotated_target_similarity_control_passed"] is True
     assert geographic_similarity["uses_coordinates_as_similarity_features"] is False
     assert geographic_similarity["observed_policy_outcome_superiority_claim"] is False
+
+    full_admin_mobility = gate["evidence_slices"]["full_admin_mobility_graph"]
+    assert full_admin_mobility["source_artifact_exists"] is True
+    assert full_admin_mobility["full_admin_mobility_graph_ready"] is True
+    assert full_admin_mobility["claim_level"] == "bounded_support"
+    assert full_admin_mobility["node_count"] == 1017
+    assert full_admin_mobility["edge_count"] == 5085
+    assert full_admin_mobility["mobility_similarity_edge_count"] == 5085
+    assert full_admin_mobility["travel_time_min_mean"] > 0.0
+    assert full_admin_mobility["road_segment_count_sum"] > 50000
+    assert full_admin_mobility["unicom_directed_edge_count"] == 1067
+    assert full_admin_mobility["osm_highway_edge_count"] == 45468
+    assert full_admin_mobility["osm_crosswalk_assigned_road_segment_count"] == 45449
+    assert full_admin_mobility["observed_od_flow_claim"] is False
+    assert full_admin_mobility["observed_trip_time_claim"] is False
+    assert full_admin_mobility["observed_policy_outcome_superiority_claim"] is False
 
     full_admin_actions = gate["evidence_slices"]["full_admin_action_inventory"]
     assert full_admin_actions["source_artifact_exists"] is True
@@ -490,6 +512,58 @@ def test_data_foundation_evidence_gate_uses_prepared_artifacts_without_smoke_cla
     assert full_admin_learned["imagined_advantage_over_one_step_policy"] > 0
     assert full_admin_learned["observed_policy_outcome_superiority_claim"] is False
 
+    core_dynamics = gate["evidence_slices"]["core_action_conditioned_dynamics_benchmark"]
+    assert core_dynamics["source_artifact_exists"] is True
+    assert core_dynamics["core_action_conditioned_dynamics_ready"] is True
+    assert core_dynamics["experiment_scope"] == "full_admin_graph"
+    assert core_dynamics["graph_node_count"] == 1017
+    assert core_dynamics["graph_edge_count"] == 7932
+    assert core_dynamics["available_action_count"] == 1137
+    assert core_dynamics["transition_count"] == 6817
+    assert core_dynamics["holdout_count"] == 973
+    assert core_dynamics["action_conditioning_gate_passed"] is True
+    assert core_dynamics["observed_policy_outcome_superiority_claim"] is False
+
+    core_policy = gate["evidence_slices"][
+        "core_world_model_policy_improvement_benchmark"
+    ]
+    assert core_policy["source_artifact_exists"] is True
+    assert core_policy["core_world_model_policy_improvement_ready"] is True
+    assert core_policy["experiment_scope"] == "full_admin_graph"
+    assert core_policy["graph_node_count"] == 1017
+    assert core_policy["graph_edge_count"] == 7932
+    assert core_policy["available_action_count"] == 1137
+    assert core_policy["transition_count"] == 6817
+    assert core_policy["holdout_count"] == 973
+    assert core_policy["policy_improvement_gate_passed"] is True
+    assert core_policy["policy_advantage_over_static"] > 0
+    assert core_policy["policy_advantage_over_one_step"] > 0
+    assert core_policy["observed_policy_outcome_superiority_claim"] is False
+
+    production_world_model = gate["production_world_model_readiness"]
+    assert production_world_model["bounded_research_world_model_ready"] is True
+    assert production_world_model["production_ready"] is False
+    assert production_world_model["production_readiness_claim"] is False
+    assert production_world_model["base_simulator_backend"] == (
+        "mechanistic_urban_livability_v0"
+    )
+    assert production_world_model[
+        "mechanistic_rollout_backend_allowed_for_bounded_research_only"
+    ] is True
+    assert production_world_model["core_action_conditioned_dynamics_ready"] is True
+    assert production_world_model["core_world_model_policy_improvement_ready"] is True
+    assert production_world_model["bounded_mobility_projection_graph_ready"] is True
+    assert production_world_model["observed_mobility_or_travel_time_graph_ready"] is False
+    assert production_world_model["observed_policy_outcome_ready"] is False
+    assert production_world_model["scene_aligned_station_calibrated_air_quality_holdout_ready"] is False
+    assert production_world_model["planner_governance_binding_ready"] is False
+    assert "observed_mobility_or_travel_time_graph_required" in production_world_model[
+        "blocking_gates"
+    ]
+    assert "observed_policy_outcome_holdout_required" in production_world_model[
+        "blocking_gates"
+    ]
+
     full_admin_decision = gate["evidence_slices"][
         "full_admin_livability_decision_package"
     ]
@@ -654,6 +728,8 @@ def test_data_foundation_evidence_gate_uses_prepared_artifacts_without_smoke_cla
     assert gate["external_temporal_transition_superiority_claim"] is True
     assert gate["observed_policy_outcome_superiority_claim"] is False
     assert "observed_policy_outcome_required" in gate["remaining_gates"]
+    assert "observed_mobility_or_travel_time_graph_required" in gate["remaining_gates"]
+    assert "planner_governance_binding_required" in gate["remaining_gates"]
     assert "tap_or_authoritative_air_quality_required" not in gate["remaining_gates"]
     assert "scene_aligned_station_calibrated_air_quality_holdout_required" in gate["remaining_gates"]
     assert gate["claim_guard"]["synthetic_or_smoke_blocked_from_empirical_policy_claim"] is True

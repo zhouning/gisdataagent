@@ -1,0 +1,125 @@
+{
+  "action_conditioning_gate": {
+    "diagnostic_only_variants": [
+      "no_graph_degree"
+    ],
+    "passed": true,
+    "required_baselines": [
+      "train_mean_static",
+      "no_action_signal",
+      "shuffled_action_signal"
+    ],
+    "target_rows": [
+      {
+        "beats_no_action_signal": true,
+        "beats_shuffled_action_signal": true,
+        "beats_train_mean_static": true,
+        "full_action_state_graph_mae": 3.2363e-05,
+        "no_action_signal_mae": 5.0925e-05,
+        "relative_mae_reduction_vs_no_action_signal": 0.364496809,
+        "relative_mae_reduction_vs_shuffled_action_signal": 0.3648585,
+        "shuffled_action_signal_mae": 5.0954e-05,
+        "target": "reward",
+        "train_mean_static_mae": 0.00222562
+      },
+      {
+        "beats_no_action_signal": true,
+        "beats_shuffled_action_signal": true,
+        "beats_train_mean_static": true,
+        "full_action_state_graph_mae": 4.7398e-05,
+        "no_action_signal_mae": 0.000166544,
+        "relative_mae_reduction_vs_no_action_signal": 0.715402536,
+        "relative_mae_reduction_vs_shuffled_action_signal": 0.715387156,
+        "shuffled_action_signal_mae": 0.000166535,
+        "target": "heat_risk_delta",
+        "train_mean_static_mae": 0.000515613
+      },
+      {
+        "beats_no_action_signal": true,
+        "beats_shuffled_action_signal": true,
+        "beats_train_mean_static": true,
+        "full_action_state_graph_mae": 2.3891e-05,
+        "no_action_signal_mae": 0.000133698,
+        "relative_mae_reduction_vs_no_action_signal": 0.821306227,
+        "relative_mae_reduction_vs_shuffled_action_signal": 0.821232687,
+        "shuffled_action_signal_mae": 0.000133643,
+        "target": "air_pollution_exposure_delta",
+        "train_mean_static_mae": 0.00019195
+      },
+      {
+        "beats_no_action_signal": true,
+        "beats_shuffled_action_signal": true,
+        "beats_train_mean_static": true,
+        "full_action_state_graph_mae": 7.0409e-05,
+        "no_action_signal_mae": 0.000166277,
+        "relative_mae_reduction_vs_no_action_signal": 0.576555988,
+        "relative_mae_reduction_vs_shuffled_action_signal": 0.576634918,
+        "shuffled_action_signal_mae": 0.000166308,
+        "target": "service_accessibility_delta",
+        "train_mean_static_mae": 0.000278574
+      },
+      {
+        "beats_no_action_signal": true,
+        "beats_shuffled_action_signal": true,
+        "beats_train_mean_static": true,
+        "full_action_state_graph_mae": 2.3583e-05,
+        "no_action_signal_mae": 3.3746e-05,
+        "relative_mae_reduction_vs_no_action_signal": 0.301161619,
+        "relative_mae_reduction_vs_shuffled_action_signal": 0.301720309,
+        "shuffled_action_signal_mae": 3.3773e-05,
+        "target": "equity_delta",
+        "train_mean_static_mae": 0.000112498
+      },
+      {
+        "beats_no_action_signal": true,
+        "beats_shuffled_action_signal": true,
+        "beats_train_mean_static": true,
+        "full_action_state_graph_mae": 2.8648e-05,
+        "no_action_signal_mae": 4.9349e-05,
+        "relative_mae_reduction_vs_no_action_signal": 0.419481651,
+        "relative_mae_reduction_vs_shuffled_action_signal": 0.42017487,
+        "shuffled_action_signal_mae": 4.9408e-05,
+        "target": "livability_delta",
+        "train_mean_static_mae": 0.000241026
+      }
+    ]
+  },
+  "artifact_path": "data/uwm_public_proxy/chongqing_central/core_action_conditioned_dynamics_benchmark_2026_07_09/uwm_core_action_conditioned_dynamics_benchmark.json",
+  "claim_boundary": {
+    "max_claim_level": "bounded_support",
+    "reason": "The benchmark tests same-scene full-admin replay dynamics prediction: an action-conditioned graph-state model must beat static, no-action, and shuffled-action baselines on every modeled target. It does not claim observed intervention or policy-outcome superiority."
+  },
+  "created_at": "2026-07-09T14:00:00Z",
+  "empirical_superiority_claim": false,
+  "full_admin_scope_guard": {
+    "available_action_count": 1137,
+    "failed_count_fields": [],
+    "graph_edge_count": 7932,
+    "graph_node_count": 1017,
+    "passed": true,
+    "required_counts": {
+      "available_action_count": 1137,
+      "graph_edge_count": 7932,
+      "graph_node_count": 1017,
+      "transition_count": 6817,
+      "transition_row_count": 6817
+    },
+    "required_scope": "full_admin_graph",
+    "transition_count": 6817,
+    "transition_row_count": 6817
+  },
+  "holdout_summary": {
+    "first_holdout_index": 6,
+    "holdout_count": 973,
+    "holdout_stride": 7,
+    "last_holdout_index": 6810,
+    "ridge": 0.001,
+    "row_count": 6817,
+    "train_count": 5844
+  },
+  "observed_policy_outcome_superiority_claim": false,
+  "schema": "uwm.snapshot_manifest.v1",
+  "snapshot_id": "uwm_core_action_conditioned_dynamics_benchmark_2026_07_09",
+  "source_artifact_path": "data/uwm_public_proxy/chongqing_central/data_calibrated_planner_replay_full_admin_graph_2026_07_08/uwm_full_admin_graph_model_based_graph_search.json",
+  "supported_claim": "core_action_conditioned_dynamics_beats_static_and_no_action_baselines"
+}

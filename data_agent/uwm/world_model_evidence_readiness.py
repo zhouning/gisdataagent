@@ -36,6 +36,9 @@ def build_world_model_evidence_readiness(
     osm_admin_mobility_crosswalk = (
         evidence_slices.get("osm_admin_mobility_crosswalk") or {}
     )
+    full_admin_mobility_graph = (
+        evidence_slices.get("full_admin_mobility_graph") or {}
+    )
     building_floor_morphology = (
         evidence_slices.get("building_floor_morphology") or {}
     )
@@ -60,6 +63,9 @@ def build_world_model_evidence_readiness(
     )
     spatial_causal_question_registry = (
         evidence_slices.get("spatial_causal_question_registry") or {}
+    )
+    production_world_model = (
+        data_foundation_evidence_gate.get("production_world_model_readiness") or {}
     )
 
     claim_ladder = _claim_ladder(data_foundation_evidence_gate)
@@ -93,6 +99,7 @@ def build_world_model_evidence_readiness(
                 admin_graph,
                 multisource_livability_scene,
                 osm_admin_mobility_crosswalk,
+                full_admin_mobility_graph,
                 building_floor_morphology,
             ),
             "simulator": _simulator_evidence(
@@ -133,6 +140,9 @@ def build_world_model_evidence_readiness(
             "causal_policy_evidence": _causal_policy_evidence(causal_policy),
             "spatial_causal_questions": _spatial_causal_questions_evidence(
                 spatial_causal_question_registry
+            ),
+            "production_world_model": _production_world_model_evidence(
+                production_world_model
             ),
             "policy_outcome_evaluator": _policy_outcome_evaluator_evidence(
                 data_foundation_evidence_gate,
@@ -195,6 +205,7 @@ def _renderer_evidence(
     admin_graph: dict[str, Any],
     multisource_livability_scene: dict[str, Any],
     osm_admin_mobility_crosswalk: dict[str, Any],
+    full_admin_mobility_graph: dict[str, Any],
     building_floor_morphology: dict[str, Any],
 ) -> dict[str, Any]:
     local_ready = bool(local_foundation.get("source_artifact_exists"))
@@ -234,6 +245,19 @@ def _renderer_evidence(
     osm_crosswalk_projected_in_scene = bool(
         multisource_livability_scene.get("osm_admin_mobility_crosswalk_projected")
     )
+    full_admin_mobility_ready = (
+        bool(full_admin_mobility_graph.get("source_artifact_exists"))
+        and bool(full_admin_mobility_graph.get("full_admin_mobility_graph_ready"))
+        and str(full_admin_mobility_graph.get("claim_level")) == "bounded_support"
+        and _safe_int(full_admin_mobility_graph.get("node_count")) == 1017
+        and _safe_int(full_admin_mobility_graph.get("edge_count")) == 5085
+        and _safe_int(
+            full_admin_mobility_graph.get("mobility_similarity_edge_count")
+        )
+        == 5085
+        and full_admin_mobility_graph.get("observed_trip_time_claim") is False
+        and full_admin_mobility_graph.get("observed_od_flow_claim") is False
+    )
     building_floor_ready = (
         bool(building_floor_morphology.get("source_artifact_exists"))
         and bool(
@@ -258,6 +282,10 @@ def _renderer_evidence(
         claim_levels.append(
             str(osm_admin_mobility_crosswalk.get("claim_level") or "not_for_claim")
         )
+    if full_admin_mobility_graph.get("source_artifact_exists"):
+        claim_levels.append(
+            str(full_admin_mobility_graph.get("claim_level") or "not_for_claim")
+        )
     if building_floor_morphology.get("source_artifact_exists"):
         claim_levels.append(
             str(building_floor_morphology.get("claim_level") or "not_for_claim")
@@ -269,6 +297,7 @@ def _renderer_evidence(
             "admin_spatial_adjacency_graph" if graph_ready else "admin_spatial_graph_missing",
             "multisource_livability_scene" if multisource_ready else "multisource_livability_scene_missing",
             "osm_admin_mobility_crosswalk" if osm_mobility_ready else "osm_admin_mobility_crosswalk_missing",
+            "full_admin_mobility_projection_graph" if full_admin_mobility_ready else "full_admin_mobility_projection_graph_missing",
             "building_floor_25d_morphology" if building_floor_ready else "building_floor_25d_morphology_missing",
         ],
         "multisource_livability_scene_ready": multisource_ready,
@@ -309,6 +338,22 @@ def _renderer_evidence(
         ),
         "osm_service_accessibility_mae_reduction": _safe_float(
             osm_admin_mobility_crosswalk.get("service_accessibility_mae_reduction")
+        ),
+        "full_admin_mobility_graph_ready": full_admin_mobility_ready,
+        "full_admin_mobility_graph_node_count": _safe_int(
+            full_admin_mobility_graph.get("node_count")
+        ),
+        "full_admin_mobility_graph_edge_count": _safe_int(
+            full_admin_mobility_graph.get("edge_count")
+        ),
+        "full_admin_mobility_similarity_edge_count": _safe_int(
+            full_admin_mobility_graph.get("mobility_similarity_edge_count")
+        ),
+        "full_admin_mobility_observed_trip_time_claim": bool(
+            full_admin_mobility_graph.get("observed_trip_time_claim")
+        ),
+        "full_admin_mobility_observed_od_flow_claim": bool(
+            full_admin_mobility_graph.get("observed_od_flow_claim")
         ),
         "building_floor_morphology_ready": building_floor_ready,
         "building_floor_admin_unit_count": _safe_int(
@@ -1173,6 +1218,59 @@ def _policy_outcome_evaluator_evidence(
     }
 
 
+def _production_world_model_evidence(
+    production_world_model: dict[str, Any],
+) -> dict[str, Any]:
+    blocking_gates = list(production_world_model.get("blocking_gates") or [])
+    production_ready = bool(production_world_model.get("production_ready"))
+    return {
+        "ready": production_ready,
+        "production_ready": production_ready,
+        "production_readiness_claim": bool(
+            production_world_model.get("production_readiness_claim")
+        ),
+        "bounded_research_world_model_ready": bool(
+            production_world_model.get("bounded_research_world_model_ready")
+        ),
+        "base_simulator_backend": production_world_model.get(
+            "base_simulator_backend"
+        ),
+        "mechanistic_rollout_backend_allowed_for_bounded_research_only": bool(
+            production_world_model.get(
+                "mechanistic_rollout_backend_allowed_for_bounded_research_only"
+            )
+        ),
+        "core_action_conditioned_dynamics_ready": bool(
+            production_world_model.get("core_action_conditioned_dynamics_ready")
+        ),
+        "core_world_model_policy_improvement_ready": bool(
+            production_world_model.get("core_world_model_policy_improvement_ready")
+        ),
+        "bounded_mobility_projection_graph_ready": bool(
+            production_world_model.get("bounded_mobility_projection_graph_ready")
+        ),
+        "observed_mobility_or_travel_time_graph_ready": bool(
+            production_world_model.get(
+                "observed_mobility_or_travel_time_graph_ready"
+            )
+        ),
+        "scene_aligned_station_calibrated_air_quality_holdout_ready": bool(
+            production_world_model.get(
+                "scene_aligned_station_calibrated_air_quality_holdout_ready"
+            )
+        ),
+        "observed_policy_outcome_ready": bool(
+            production_world_model.get("observed_policy_outcome_ready")
+        ),
+        "planner_governance_binding_ready": bool(
+            production_world_model.get("planner_governance_binding_ready")
+        ),
+        "blocking_gates": blocking_gates,
+        "claim_level": production_world_model.get("claim_level") or "not_for_claim",
+        "allowed_claim": production_world_model.get("allowed_claim"),
+    }
+
+
 def _forbidden_claims(gate: dict[str, Any], tap: dict[str, Any]) -> list[str]:
     claims = []
     if not gate.get("observed_policy_outcome_superiority_claim"):
@@ -1181,12 +1279,17 @@ def _forbidden_claims(gate: dict[str, Any], tap: dict[str, Any]) -> list[str]:
         claims.append("spatial_attribution_for_tap_external_transition")
     if not gate.get("empirical_superiority_claim"):
         claims.append("overall_empirical_policy_superiority")
+    production_world_model = gate.get("production_world_model_readiness") or {}
+    if production_world_model.get("production_ready") is not True:
+        claims.append("production_world_model_readiness")
     return claims
 
 
 def _next_actions(gate: dict[str, Any]) -> list[str]:
     actions = ["complete_world_model_evidence_readiness_section"]
     remaining_gates = set(gate.get("remaining_gates") or [])
+    production_world_model = gate.get("production_world_model_readiness") or {}
+    production_blockers = set(production_world_model.get("blocking_gates") or [])
     spatial_registry = (
         (gate.get("evidence_slices") or {}).get("spatial_causal_question_registry")
         or {}
@@ -1201,6 +1304,10 @@ def _next_actions(gate: dict[str, Any]) -> list[str]:
         actions.append("design_causal_policy_effect_validation")
     if "external_observed_holdout_required" in remaining_gates:
         actions.append("build_external_observed_holdout_suite")
+    if "observed_mobility_or_travel_time_graph_required" in production_blockers:
+        actions.append("build_observed_mobility_or_travel_time_graph")
+    if "planner_governance_binding_required" in production_blockers:
+        actions.append("close_production_governance_planner_binding")
     return actions
 
 

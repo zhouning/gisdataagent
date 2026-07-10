@@ -1,0 +1,80 @@
+{
+  "snapshot_id": "uwm_full_admin_graph_planner_replay_2026_07_08",
+  "created_at": "2026-07-08T11:00:00+00:00",
+  "schema": "uwm.snapshot_manifest.v1",
+  "output_path": "data/uwm_public_proxy/chongqing_central/data_calibrated_planner_replay_full_admin_graph_2026_07_08/uwm_full_admin_graph_model_based_graph_search.json",
+  "experiment_scope": "full_admin_graph",
+  "source_artifacts": {
+    "admin_livability_panel": "data/uwm_public_proxy/chongqing_central/admin_livability_target_full_admin_graph_2024_07_2026_07_08/uwm_admin_livability_target_full_admin_graph_panel.json",
+    "admin_spatial_graph": "data/uwm_public_proxy/chongqing_central/admin_spatial_graph_2026_07_05/uwm_admin_spatial_adjacency_graph.json",
+    "geographic_similarity_kernel": "data/uwm_public_proxy/chongqing_central/geographic_similarity_kernel_2026_07_08/uwm_geographic_similarity_kernel.json",
+    "mechanism_table": "data/uwm_public_proxy/chongqing_central/data_calibrated_mechanism_table_full_admin_graph_2026_07_08/uwm_full_admin_graph_data_calibrated_mechanism_table.json",
+    "air_quality_holdout": "data/uwm_public_proxy/chongqing_central/scene_aligned_gridded_air_quality_holdout_2026_07_06/uwm_scene_aligned_gridded_air_quality_holdout.json",
+    "spatial_causal_question_registry": "data/uwm_public_proxy/chongqing_central/spatial_causal_question_registry_2026_07_09/uwm_spatial_causal_question_registry.json"
+  },
+  "full_data_guard": {
+    "required_scope": "full_admin_graph",
+    "source_panel_joined_admin_count": 1017,
+    "source_graph_node_count": 1017,
+    "rendered_node_count": 1017,
+    "source_admin_boundary_edge_count": 2847,
+    "source_geographic_similarity_edge_count": 5085,
+    "rendered_graph_edge_count": 7932,
+    "passed": true
+  },
+  "graph_statistics": {
+    "node_count": 1017,
+    "edge_count": 7932,
+    "available_action_count": 1137,
+    "mobility_similarity_edge_count": 0,
+    "mobility_feature_node_count": 1017
+  },
+  "search_config": {
+    "horizon": 2,
+    "beam_width": 5,
+    "candidate_action_count": 1137,
+    "transition_storage": "compact"
+  },
+  "spatial_causal_contract_binding": {
+    "binding_ready": true,
+    "schema": "uwm.spatial_causal_question_registry.v1",
+    "registry_ready": true,
+    "validation_errors": [],
+    "active_causal_question_count": 3,
+    "active_action_types": [
+      "add_community_service",
+      "increase_green_infrastructure",
+      "traffic_emission_control"
+    ],
+    "feasible_action_count": 1137,
+    "attached_action_count": 1137,
+    "missing_contract_action_count": 0,
+    "missing_contract_action_types": [],
+    "action_type_counts": {
+      "increase_green_infrastructure": 81,
+      "traffic_emission_control": 77,
+      "add_community_service": 979
+    },
+    "underidentified_policy_effect_action_count": 1137,
+    "identified_policy_effect_action_count": 0,
+    "policy_outcome_claim_allowed_action_count": 0,
+    "required_authoritative_tables": [
+      "policy_project_history",
+      "action_constraint_cost_model",
+      "observed_outcome_validation_panel",
+      "causal_effect_calibration_panel",
+      "human_governance_review_log"
+    ],
+    "observed_policy_outcome_superiority_claim": false,
+    "empirical_superiority_claim": false
+  },
+  "advantage_over_static_single_step": 0.001436437,
+  "observed_policy_outcome_superiority_claim": false,
+  "empirical_superiority_claim": false,
+  "remaining_gates": [
+    "observed_policy_outcome_holdout_required",
+    "learned_dynamics_model_required",
+    "offline_policy_evaluation_required",
+    "causal_policy_effect_validation_required"
+  ]
+}

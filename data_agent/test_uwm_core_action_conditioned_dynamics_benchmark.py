@@ -7,6 +7,7 @@ from data_agent.uwm.core_action_conditioned_dynamics_benchmark import (
     build_uwm_core_action_conditioned_dynamics_benchmark,
     validate_uwm_core_action_conditioned_dynamics_benchmark,
 )
+from data_agent.uwm.offline_world_model_policy import FEATURE_NAMES
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -68,6 +69,9 @@ def _assert_full_admin_core_claim(benchmark: dict) -> None:
     assert holdout["train_count"] == 5844
 
     assert benchmark["action_conditioning_gate"]["passed"] is True
+    assert benchmark["feature_names"] == FEATURE_NAMES
+    assert "target_travel_time_min_norm" in benchmark["feature_names"]
+    assert "target_travel_time_inverse_norm" in benchmark["feature_names"]
     assert set(benchmark["target_names"]) == set(TARGETS)
 
     metrics = benchmark["variant_metrics"]

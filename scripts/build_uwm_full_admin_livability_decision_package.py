@@ -40,6 +40,10 @@ FULL_ADMIN_SERVICE_SURFACE_QUALITY_AUDIT_PATH = (
     DATA_ROOT
     / "full_admin_service_surface_quality_audit_2026_07_08/uwm_full_admin_service_surface_quality_audit.json"
 )
+FULL_ADMIN_MOBILITY_GRAPH_PATH = (
+    DATA_ROOT
+    / "full_admin_mobility_graph_2026_07_10/full_admin_mobility_graph.json"
+)
 PRODUCTION_GOVERNANCE_PLANNER_BINDING_GATE_PATH = (
     DATA_ROOT
     / "production_governance_planner_binding_gate_2026_07_08/uwm_production_governance_planner_binding_gate.json"
@@ -70,6 +74,7 @@ def main() -> None:
         full_admin_service_surface_quality_audit=_read_json(
             FULL_ADMIN_SERVICE_SURFACE_QUALITY_AUDIT_PATH
         ),
+        full_admin_mobility_graph=_read_json(FULL_ADMIN_MOBILITY_GRAPH_PATH),
         production_governance_planner_binding_gate=_read_json(
             PRODUCTION_GOVERNANCE_PLANNER_BINDING_GATE_PATH
         ),
@@ -101,6 +106,9 @@ def main() -> None:
         "source_full_admin_service_surface_quality_audit_path": str(
             FULL_ADMIN_SERVICE_SURFACE_QUALITY_AUDIT_PATH.relative_to(REPO_ROOT)
         ),
+        "source_full_admin_mobility_graph_path": str(
+            FULL_ADMIN_MOBILITY_GRAPH_PATH.relative_to(REPO_ROOT)
+        ),
         "source_production_governance_planner_binding_gate_path": str(
             PRODUCTION_GOVERNANCE_PLANNER_BINDING_GATE_PATH.relative_to(REPO_ROOT)
         ),
@@ -119,6 +127,12 @@ def main() -> None:
             "available_action_count"
         ],
         "transition_count": package["full_data_guard"]["transition_count"],
+        "full_admin_mobility_graph_ready": package["mobility_graph_evidence"][
+            "full_admin_mobility_graph_ready"
+        ],
+        "full_admin_mobility_graph_edge_count": package["mobility_graph_evidence"][
+            "edge_count"
+        ],
         "planner_governance_binding_ready": package[
             "planner_governance_binding_ready"
         ],
@@ -156,6 +170,12 @@ def main() -> None:
                     "available_action_count"
                 ],
                 "transition_count": package["full_data_guard"]["transition_count"],
+                "full_admin_mobility_graph_ready": package[
+                    "mobility_graph_evidence"
+                ]["full_admin_mobility_graph_ready"],
+                "full_admin_mobility_graph_edge_count": package[
+                    "mobility_graph_evidence"
+                ]["edge_count"],
                 "planner_advantage_over_static": comparison[
                     "planner_advantage_over_static"
                 ],

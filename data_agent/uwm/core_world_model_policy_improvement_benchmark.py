@@ -10,11 +10,16 @@ import numpy as np
 from .offline_world_model_policy import (
     FEATURE_NAMES,
     TARGET_NAMES,
+    _apply_predicted_dynamics_to_state,
+    _clone_node_features,
     _degree_by_unit,
+    _features_for_action,
     _fit_ridge_multi_output,
     _holdout_indices,
     _mae_by_target,
     _node_features_by_unit,
+    _state_features_for_units,
+    _target_units,
     _training_row,
 )
 
@@ -907,113 +912,6 @@ def _validate_required_policy_advantages(
             errors.append(f"missing comparable policy metric for {baseline_id}")
 
 
-def _features_for_action(
-    action: dict[str, Any],
-    *,
-    node_features: dict[str, dict[str, float]],
-    degree_by_unit: dict[str, int],
-    node_count: int,
-    step_index: float,
-) -> list[float]:
-    action_type = str(action.get("action_type") or "").lower()
-    mask_reason = str(action.get("mask_reason") or "").lower()
-    target_unit = _first_target_unit(action)
-    features = node_features.get(target_unit) or {}
-    is_green = action_type in {
-        "increase_green",
-        "increase_green_infrastructure",
-        "urban_greening",
-    }
-    is_traffic = action_type in {"traffic_emission_control", "low_emission_zone"}
-    is_service = action_type in {
-        "add_community_service",
-        "service_accessibility_improvement",
-    }
-    return [
-        1.0,
-        1.0 if is_green else 0.0,
-        1.0 if is_traffic else 0.0,
-        1.0 if is_service else 0.0,
-        0.0 if (is_green or is_traffic or is_service) else 1.0,
-        _float(action.get("intensity"), default=1.0),
-        _float(features.get("heat_risk")),
-        _float(features.get("air_pollution_exposure")),
-        max(0.0, 1.0 - _float(features.get("service_accessibility"))),
-        _float(features.get("equity")),
-        max(0.0, 1.0 - _float(features.get("livability"))),
-        _float(degree_by_unit.get(target_unit)) / max(1.0, float(node_count - 1)),
-        1.0 if "heat" in mask_reason else 0.0,
-        1.0 if "air_pollution" in mask_reason else 0.0,
-        1.0 if "service" in mask_reason else 0.0,
-        step_index / 10.0,
-    ]
-
-
-def _apply_predicted_dynamics_to_state(
-    state_features: dict[str, dict[str, float]],
-    action: dict[str, Any],
-    predicted_dynamics: dict[str, float],
-) -> dict[str, dict[str, float]]:
-    next_state = _clone_node_features(state_features)
-    for unit_id in _target_units(action):
-        features = next_state.setdefault(
-            unit_id,
-            {
-                "heat_risk": 0.0,
-                "air_pollution_exposure": 0.0,
-                "service_accessibility": 0.0,
-                "equity": 0.0,
-                "livability": 0.0,
-            },
-        )
-        features["heat_risk"] = _clamp01(
-            features["heat_risk"] + predicted_dynamics["heat_risk_delta"]
-        )
-        features["air_pollution_exposure"] = _clamp01(
-            features["air_pollution_exposure"]
-            + predicted_dynamics["air_pollution_exposure_delta"]
-        )
-        features["service_accessibility"] = _clamp01(
-            features["service_accessibility"]
-            + predicted_dynamics["service_accessibility_delta"]
-        )
-        features["equity"] = _clamp01(features["equity"] + predicted_dynamics["equity_delta"])
-        features["livability"] = _clamp01(
-            features["livability"] + predicted_dynamics["livability_delta"]
-        )
-    return next_state
-
-
-def _clone_node_features(
-    node_features: dict[str, dict[str, float]]
-) -> dict[str, dict[str, float]]:
-    return {
-        str(unit_id): {
-            "heat_risk": _float(features.get("heat_risk")),
-            "air_pollution_exposure": _float(features.get("air_pollution_exposure")),
-            "service_accessibility": _float(features.get("service_accessibility")),
-            "equity": _float(features.get("equity")),
-            "livability": _float(features.get("livability")),
-        }
-        for unit_id, features in node_features.items()
-    }
-
-
-def _state_features_for_units(
-    state_features: dict[str, dict[str, float]],
-    unit_ids: list[str],
-) -> dict[str, dict[str, float]]:
-    selected = unit_ids or list(state_features)
-    return {
-        unit_id: {
-            key: round(_float(value), 9)
-            for key, value in (state_features.get(unit_id) or {}).items()
-        }
-        for unit_id in selected
-        if unit_id in state_features
-    }
-
-
 def _public_action(action: dict[str, Any]) -> dict[str, Any]:
     return {
         "action_id": action.get("action_id"),
@@ -1022,20 +920,6 @@ def _public_action(action: dict[str, Any]) -> dict[str, Any]:
         "intensity": _float(action.get("intensity"), default=1.0),
         "mask_reason": action.get("mask_reason"),
     }
-
-
-def _first_target_unit(action: dict[str, Any]) -> str:
-    units = _target_units(action)
-    return units[0] if units else ""
-
-
-def _target_units(action: dict[str, Any]) -> list[str]:
-    targets = action.get("target_units")
-    if isinstance(targets, list) and targets:
-        return [str(unit_id) for unit_id in targets]
-    if action.get("target_unit") is not None:
-        return [str(action.get("target_unit"))]
-    return []
 
 
 def _reward_residual_std_by_action_type(
@@ -1076,10 +960,6 @@ def _shuffle_columns(matrix: np.ndarray, columns: list[int], offset: int) -> np.
 
 def _round_mae(values: dict[str, float]) -> dict[str, float]:
     return {name: round(float(values[name]), 9) for name in TARGET_NAMES}
-
-
-def _clamp01(value: float) -> float:
-    return max(0.0, min(1.0, float(value)))
 
 
 def _float(value: Any, default: float = 0.0) -> float:

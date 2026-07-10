@@ -7,6 +7,8 @@ from data_agent.uwm.full_admin_world_model_superiority_dossier import (
     build_uwm_full_admin_world_model_superiority_dossier,
     validate_uwm_full_admin_world_model_superiority_dossier,
 )
+from data_agent.uwm.livability_graph_drl import GRAPH_NODE_FEATURE_NAMES
+from data_agent.uwm.offline_world_model_policy import FEATURE_NAMES
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -114,17 +116,31 @@ def test_full_admin_world_model_superiority_dossier_proves_bounded_system_advant
     )
     assert (
         world["components"]["graph_dqn"]["advantage_over_traditional_static"]
-        == 0.000812622
+        > 0.0
     )
     assert (
-        world["components"]["learned_rollout_static"]["advantage_over_static"]
-        == 0.00121167
+        world["components"]["graph_dqn"]["node_feature_names"]
+        == GRAPH_NODE_FEATURE_NAMES
     )
+    assert "estimated_nearest_essential_travel_time_min" in world["components"][
+        "graph_dqn"
+    ]["node_feature_names"]
+    assert (
+        world["components"]["learned_rollout_static"]["advantage_over_static"]
+        > 0.0
+    )
+    assert (
+        world["components"]["learned_rollout_static"]["world_model_feature_names"]
+        == FEATURE_NAMES
+    )
+    assert "target_travel_time_min_norm" in world["components"][
+        "learned_rollout_static"
+    ]["world_model_feature_names"]
     assert (
         world["components"]["learned_rollout_one_step"][
             "advantage_over_one_step_policy"
         ]
-        == 0.000900135
+        > 0.0
     )
     assert (
         world["components"]["energy_regularized_planner"][

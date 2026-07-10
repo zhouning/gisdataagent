@@ -87,6 +87,10 @@ GEOGRAPHIC_SIMILARITY_KERNEL_PATH = (
     REPO_ROOT
     / "data/uwm_public_proxy/chongqing_central/geographic_similarity_kernel_2026_07_08/uwm_geographic_similarity_kernel.json"
 )
+FULL_ADMIN_MOBILITY_GRAPH_PATH = (
+    REPO_ROOT
+    / "data/uwm_public_proxy/chongqing_central/full_admin_mobility_graph_2026_07_10/full_admin_mobility_graph.json"
+)
 FULL_ADMIN_ACTION_INVENTORY_PATH = (
     REPO_ROOT
     / "data/uwm_public_proxy/chongqing_central/full_admin_action_inventory_2026_07_08/uwm_full_admin_action_inventory.json"
@@ -138,6 +142,14 @@ FULL_ADMIN_LIVABILITY_DECISION_PACKAGE_PATH = (
 FULL_ADMIN_ENERGY_REGULARIZED_PLANNER_REPORT_PATH = (
     REPO_ROOT
     / "data/uwm_public_proxy/chongqing_central/energy_regularized_planner_full_admin_graph_2026_07_08/uwm_full_admin_graph_energy_regularized_planner_report.json"
+)
+CORE_ACTION_CONDITIONED_DYNAMICS_BENCHMARK_PATH = (
+    REPO_ROOT
+    / "data/uwm_public_proxy/chongqing_central/core_action_conditioned_dynamics_benchmark_2026_07_09/uwm_core_action_conditioned_dynamics_benchmark.json"
+)
+CORE_WORLD_MODEL_POLICY_IMPROVEMENT_BENCHMARK_PATH = (
+    REPO_ROOT
+    / "data/uwm_public_proxy/chongqing_central/core_world_model_policy_improvement_benchmark_2026_07_09/uwm_core_world_model_policy_improvement_benchmark.json"
 )
 
 
@@ -249,6 +261,11 @@ def main() -> None:
             if GEOGRAPHIC_SIMILARITY_KERNEL_PATH.exists()
             else None
         ),
+        full_admin_mobility_graph_path=(
+            FULL_ADMIN_MOBILITY_GRAPH_PATH
+            if FULL_ADMIN_MOBILITY_GRAPH_PATH.exists()
+            else None
+        ),
         full_admin_action_inventory_path=(
             FULL_ADMIN_ACTION_INVENTORY_PATH
             if FULL_ADMIN_ACTION_INVENTORY_PATH.exists()
@@ -312,6 +329,16 @@ def main() -> None:
         full_admin_energy_regularized_planner_report_path=(
             FULL_ADMIN_ENERGY_REGULARIZED_PLANNER_REPORT_PATH
             if FULL_ADMIN_ENERGY_REGULARIZED_PLANNER_REPORT_PATH.exists()
+            else None
+        ),
+        core_action_conditioned_dynamics_benchmark_path=(
+            CORE_ACTION_CONDITIONED_DYNAMICS_BENCHMARK_PATH
+            if CORE_ACTION_CONDITIONED_DYNAMICS_BENCHMARK_PATH.exists()
+            else None
+        ),
+        core_world_model_policy_improvement_benchmark_path=(
+            CORE_WORLD_MODEL_POLICY_IMPROVEMENT_BENCHMARK_PATH
+            if CORE_WORLD_MODEL_POLICY_IMPROVEMENT_BENCHMARK_PATH.exists()
             else None
         ),
         gate_id="uwm-data-foundation-evidence-gate-2026-07-06",
@@ -673,6 +700,31 @@ def main() -> None:
                 ]["full_admin_energy_regularized_planner"][
                     "search_value_alignment_ready"
                 ],
+                "core_action_conditioned_dynamics_ready": gate["evidence_slices"][
+                    "core_action_conditioned_dynamics_benchmark"
+                ]["core_action_conditioned_dynamics_ready"],
+                "core_action_conditioned_dynamics_holdout_count": gate[
+                    "evidence_slices"
+                ]["core_action_conditioned_dynamics_benchmark"]["holdout_count"],
+                "core_world_model_policy_improvement_ready": gate[
+                    "evidence_slices"
+                ]["core_world_model_policy_improvement_benchmark"][
+                    "core_world_model_policy_improvement_ready"
+                ],
+                "core_world_model_policy_improvement_static_advantage": gate[
+                    "evidence_slices"
+                ]["core_world_model_policy_improvement_benchmark"][
+                    "policy_advantage_over_static"
+                ],
+                "production_world_model_ready": gate[
+                    "production_world_model_readiness"
+                ]["production_ready"],
+                "production_world_model_bounded_research_ready": gate[
+                    "production_world_model_readiness"
+                ]["bounded_research_world_model_ready"],
+                "production_world_model_blocking_gates": gate[
+                    "production_world_model_readiness"
+                ]["blocking_gates"],
                 "energy_regularized_planner_ready": gate["evidence_slices"][
                     "energy_regularized_planner"
                 ]["energy_regularized_planner_ready"],

@@ -1,0 +1,308 @@
+{
+  "schema": "uwm.livability_graph_drl_training_report.v1",
+  "report_id": "uwm-full-admin-graph-livability-graph-dqn-training-2026-07-08",
+  "created_at": "2026-07-08T12:40:00Z",
+  "experiment_scope": "full_admin_graph",
+  "full_data_guard": {
+    "required_scope": "full_admin_graph",
+    "required_graph_node_count": 1017,
+    "observed_graph_node_count": 1017,
+    "passed": true
+  },
+  "source_environment_schema": "uwm.livability_graph_mdp_env.v1",
+  "source_observation_id": "admin-livability-full-admin-graph-drl-obs-2026-07-08",
+  "drl_algorithm": {
+    "algorithm": "graph_dqn_fitted_q_model_based_rl",
+    "is_deep_rl": true,
+    "is_model_based": true,
+    "is_model_free": false,
+    "uses_graph_message_passing": true,
+    "policy_or_value_network_trained": true,
+    "world_model_backend": "real_data_uwm_livability_graph_mdp_env_v1",
+    "training_target": "simulator_generated_discounted_two_step_q_return"
+  },
+  "network_architecture": {
+    "model_class": "GraphDQNValueNetwork",
+    "node_feature_dim": 14,
+    "node_feature_names": [
+      "heat_risk",
+      "air_pollution_exposure",
+      "service_accessibility",
+      "equity",
+      "livability",
+      "estimated_nearest_essential_travel_time_min",
+      "road_segment_count",
+      "road_length_km",
+      "mean_road_speed_kmh",
+      "capacity_norm",
+      "essential_norm",
+      "travel_time_inverse_norm",
+      "service_gap",
+      "degree_norm"
+    ],
+    "node_feature_transforms": {
+      "heat_risk": "clamped_0_1",
+      "air_pollution_exposure": "clamped_0_1",
+      "service_accessibility": "clamped_0_1",
+      "equity": "clamped_0_1",
+      "livability": "clamped_0_1",
+      "estimated_nearest_essential_travel_time_min": "max_abs_scaled_by_observed_graph_nodes",
+      "road_segment_count": "max_abs_scaled_by_observed_graph_nodes",
+      "road_length_km": "max_abs_scaled_by_observed_graph_nodes",
+      "mean_road_speed_kmh": "max_abs_scaled_by_observed_graph_nodes",
+      "capacity_norm": "clamped_0_1",
+      "essential_norm": "clamped_0_1",
+      "travel_time_inverse_norm": "clamped_0_1_or_derived_from_observed_travel_time",
+      "service_gap": "clamped_0_1",
+      "degree_norm": "degree_divided_by_graph_node_count_minus_one"
+    },
+    "action_feature_dim": 40,
+    "hidden_dim": 24,
+    "message_passing_layers": 1,
+    "readout": "graph_mean_embedding_plus_target_node_embedding_plus_action_embedding"
+  },
+  "training_summary": {
+    "seed": 20260708,
+    "epochs": 80,
+    "learning_rate": 0.006,
+    "discount_factor": 0.9,
+    "holdout_stride": 7,
+    "training_sample_count": 1248,
+    "train_count": 1070,
+    "holdout_count": 178,
+    "final_train_loss_scaled": 0.0047869,
+    "first_train_loss_scaled": 3.709067106,
+    "real_data_graph_node_count": 1017,
+    "real_data_graph_edge_count": 7932,
+    "real_data_available_action_count": 1137,
+    "action_sampling_strategy": "stratified_priority",
+    "exhaustive_action_pair_training": false,
+    "sampled_first_action_count": 96,
+    "sampled_second_action_limit": 12,
+    "sampled_unique_action_count": 96,
+    "sampled_unique_action_indices": [
+      0,
+      1,
+      3,
+      4,
+      6,
+      7,
+      9,
+      12,
+      28,
+      29,
+      31,
+      50,
+      51,
+      59,
+      112,
+      113,
+      182,
+      183,
+      250,
+      294,
+      316,
+      360,
+      361,
+      364,
+      365,
+      367,
+      368,
+      373,
+      374,
+      385,
+      386,
+      394,
+      395,
+      400,
+      401,
+      403,
+      404,
+      425,
+      426,
+      428,
+      439,
+      440,
+      448,
+      460,
+      520,
+      579,
+      580,
+      597,
+      626,
+      649,
+      657,
+      658,
+      672,
+      673,
+      705,
+      715,
+      718,
+      736,
+      737,
+      740,
+      758,
+      767,
+      771,
+      789,
+      815,
+      852,
+      853,
+      858,
+      883,
+      896,
+      916,
+      974,
+      975,
+      1020,
+      1022,
+      1023,
+      1026,
+      1029,
+      1032,
+      1035,
+      1036,
+      1040,
+      1046,
+      1063,
+      1065,
+      1067,
+      1094,
+      1095,
+      1099,
+      1102,
+      1111,
+      1115,
+      1126,
+      1127,
+      1128,
+      1130
+    ],
+    "policy_action_scope": "sampled_training_candidate_pool",
+    "spatial_spillover_directional_edge_count": 0
+  },
+  "holdout_metrics": {
+    "q_return_mae": 5.3133e-05,
+    "train_mean_return_mae": 0.000994236,
+    "q_return_rmse": 6.769e-05,
+    "train_mean_return_rmse": 0.001866426,
+    "holdout_win_count_vs_train_mean": 178,
+    "case_count": 178
+  },
+  "learned_policy_evaluation": {
+    "policy": "greedy_policy_from_trained_graph_q_network",
+    "policy_action_scope": "sampled_training_candidate_pool",
+    "action_count": 2,
+    "action_sequence": [
+      {
+        "action_id": "increase_green_infrastructure-江北区|观音桥街道|653",
+        "action_type": "increase_green_infrastructure",
+        "target_units": [
+          "江北区|观音桥街道|653"
+        ],
+        "intensity": 1.0,
+        "mask_reason": "heat_risk_above_threshold"
+      },
+      {
+        "action_id": "increase_green_infrastructure-沙坪坝区|覃家岗街道|973",
+        "action_type": "increase_green_infrastructure",
+        "target_units": [
+          "沙坪坝区|覃家岗街道|973"
+        ],
+        "intensity": 1.0,
+        "mask_reason": "heat_risk_above_threshold"
+      }
+    ],
+    "predicted_q_values": [
+      {
+        "action_index": 1126,
+        "action_id": "increase_green_infrastructure-江北区|观音桥街道|653",
+        "predicted_q_return": -0.006359272
+      },
+      {
+        "action_index": 3,
+        "action_id": "increase_green_infrastructure-沙坪坝区|覃家岗街道|973",
+        "predicted_q_return": 0.000816182
+      }
+    ],
+    "graph_dqn_policy_cumulative_reward": -0.006482013,
+    "advantage_over_traditional_static": 0.000773039,
+    "uses_spatial_spillover_kernel": false,
+    "rollout_trace_steps": [
+      "validate_observation_contract",
+      "read_scene_state_controls",
+      "read_data_calibrated_mechanism_table",
+      "apply_action_effects",
+      "apply_action_effects",
+      "aggregate_rollout_delta"
+    ],
+    "simulator_mechanism_sources": [
+      "data_calibrated_mechanism_table"
+    ]
+  },
+  "baseline_evaluation": {
+    "baseline": "traditional_static_priority_single_step_same_graph_mdp",
+    "action_sequence": [
+      {
+        "action_id": "increase_green_infrastructure-铜梁区|东城街道|100",
+        "action_type": "increase_green_infrastructure",
+        "target_units": [
+          "铜梁区|东城街道|100"
+        ],
+        "intensity": 1.0,
+        "mask_reason": "heat_risk_above_threshold"
+      }
+    ],
+    "traditional_static_cumulative_reward": -0.007255052
+  },
+  "supported_claim": "graph_dqn_value_network_improves_same_scene_static_livability_baseline",
+  "claim_boundary": {
+    "max_claim_level": "bounded_support",
+    "reason": "graph Q network is trained on simulator-generated returns over the same real-data Graph-MDP, calibrated mechanism table, spatial spillover kernel and uncertainty context as the static baseline; it is not observed policy-outcome evidence"
+  },
+  "observed_policy_outcome_superiority_claim": false,
+  "empirical_superiority_claim": false,
+  "remaining_gates": [
+    "observed_policy_outcome_holdout_required",
+    "off_policy_evaluation_on_real_intervention_logs_required",
+    "causal_policy_effect_validation_required",
+    "larger_city_scale_deep_rl_training_required"
+  ],
+  "source_admin_livability_panel_path": "data/uwm_public_proxy/chongqing_central/admin_livability_target_full_admin_graph_2024_07_2026_07_08/uwm_admin_livability_target_full_admin_graph_panel.json",
+  "source_admin_livability_panel_summary": {
+    "panel_id": "uwm-admin-livability-target-full-admin-graph-2026-07-08",
+    "joined_admin_count": 1017,
+    "source_admin_count": 1017,
+    "service_matched_admin_count": 1017,
+    "service_missing_admin_count": 0,
+    "claim_boundary": {
+      "max_claim_level": "bounded_support",
+      "reason": "Composite livability targets combine public proxies for bounded planner benchmarking only."
+    }
+  },
+  "source_admin_spatial_graph_path": "data/uwm_public_proxy/chongqing_central/admin_spatial_graph_2026_07_05/uwm_admin_spatial_adjacency_graph.json",
+  "source_admin_spatial_graph_summary": {
+    "source_feature_count": 1017,
+    "node_count": 1017,
+    "edge_count": 2847,
+    "isolated_node_count": 0,
+    "edge_rule": "polygon_boundary_touch_or_shared_boundary_v0"
+  },
+  "source_geographic_similarity_kernel_path": "data/uwm_public_proxy/chongqing_central/geographic_similarity_kernel_2026_07_08/uwm_geographic_similarity_kernel.json",
+  "source_geographic_similarity_kernel_summary": {
+    "panel_unit_count": 1017,
+    "graph_node_count": 1017,
+    "graph_edge_count": 2847,
+    "kernel_source_unit_count": 1017,
+    "top_k": 5,
+    "similarity_edge_count": 5085,
+    "adjacent_similarity_edge_count": 250,
+    "non_adjacent_similarity_edge_count": 4835,
+    "non_adjacent_similarity_edge_share": 0.950835792,
+    "min_configuration_similarity": 0.360906393,
+    "max_configuration_similarity": 0.875124566,
+    "mean_configuration_similarity": 0.741347419
+  },
+  "source_mechanism_table_path": "data/uwm_public_proxy/chongqing_central/data_calibrated_mechanism_table_full_admin_graph_2026_07_08/uwm_full_admin_graph_data_calibrated_mechanism_table.json",
+  "source_air_quality_holdout_path": "data/uwm_public_proxy/chongqing_central/scene_aligned_gridded_air_quality_holdout_2026_07_06/uwm_scene_aligned_gridded_air_quality_holdout.json"
+}

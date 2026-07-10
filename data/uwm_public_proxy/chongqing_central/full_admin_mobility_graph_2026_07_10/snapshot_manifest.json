@@ -1,0 +1,55 @@
+{
+  "claim_boundary": {
+    "max_claim_level": "bounded_support",
+    "reason": "The mobility graph projects full-admin service and road travel-time proxies into a mobility-context graph with similarity edges, not observed OD flow or policy outcomes."
+  },
+  "created_at": "2026-07-10T09:30:00Z",
+  "dataset_id": "uwm-full-admin-mobility-graph-2026-07-10",
+  "empirical_superiority_claim": false,
+  "experiment_scope": "full_admin_graph",
+  "files": {
+    "edges": "full_admin_mobility_graph_edges.csv",
+    "graph": "full_admin_mobility_graph.json",
+    "nodes": "full_admin_mobility_graph_nodes.csv"
+  },
+  "limitations": [
+    "mobility_graph_uses_travel_time_and_road_context_proxies_not_observed_trip_times",
+    "mobility_graph_is_similarity_projection_not_true_od_geometry",
+    "unicom_grid_geometry_dictionary_missing",
+    "osm_mobility_network_is_bbox_proxy_not_citywide_observed_mobility_flow",
+    "not_observed_policy_outcome"
+  ],
+  "observed_policy_outcome_superiority_claim": false,
+  "record_counts": {
+    "edge_count": 5085,
+    "node_count": 1017
+  },
+  "schema": "uwm.full_admin_mobility_graph_snapshot_manifest.v1",
+  "source_artifact_paths": {
+    "full_admin_service_accessibility_surface": "data/uwm_public_proxy/chongqing_central/full_admin_service_accessibility_surface_2026_07_08/uwm_full_admin_service_accessibility_surface.json",
+    "geographic_similarity_kernel": "data/uwm_public_proxy/chongqing_central/geographic_similarity_kernel_2026_07_08/uwm_geographic_similarity_kernel.json",
+    "osm_admin_mobility_crosswalk": "data/uwm_public_proxy/chongqing_central/osm_admin_mobility_crosswalk_2026_07_06/uwm_osm_admin_mobility_crosswalk.json",
+    "osm_mobility_network": "data/uwm_public_proxy/chongqing_central/osm_complete_bbox_2026_07_05/mobility/osm_mobility_network_proxy.json",
+    "unicom_latent_mobility_graph": "data/uwm_public_proxy/chongqing_central/fitted_gap_filling_2026_07_05/unicom_latent_mobility_graph.json"
+  },
+  "summary": {
+    "edge_count": 5085,
+    "mean_configuration_similarity": 0.741347419,
+    "mean_road_speed_kmh_mean": 41.141598,
+    "mobility_activity_context": {
+      "osm_crosswalk_assigned_road_segment_count": 45449,
+      "osm_highway_edge_count": 45468,
+      "unicom_directed_edge_count": 1067,
+      "unicom_total_expanded_population": 29634.796667
+    },
+    "mobility_similarity_edge_count": 5085,
+    "node_count": 1017,
+    "road_length_km_sum": 58887.996598,
+    "road_segment_count_sum": 50332,
+    "service_accessibility_score_mean": 0.233089,
+    "travel_time_min_max": 48.271,
+    "travel_time_min_mean": 3.365864,
+    "travel_time_min_min": 0.011
+  },
+  "supported_claim": "full_admin_mobility_graph_travel_time_similarity_projection_ready"
+}

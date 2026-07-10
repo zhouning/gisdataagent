@@ -7,6 +7,7 @@ from data_agent.uwm.core_world_model_policy_improvement_benchmark import (
     build_uwm_core_world_model_policy_improvement_benchmark,
     validate_uwm_core_world_model_policy_improvement_benchmark,
 )
+from data_agent.uwm.offline_world_model_policy import FEATURE_NAMES
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -45,6 +46,9 @@ def _assert_policy_improvement_claim(benchmark: dict) -> None:
     assert benchmark["claim_boundary"]["max_claim_level"] == "bounded_support"
     assert benchmark["observed_policy_outcome_superiority_claim"] is False
     assert benchmark["empirical_superiority_claim"] is False
+    assert benchmark["feature_names"] == FEATURE_NAMES
+    assert "target_travel_time_min_norm" in benchmark["feature_names"]
+    assert "target_travel_time_inverse_norm" in benchmark["feature_names"]
 
     guard = benchmark["full_admin_scope_guard"]
     assert guard["passed"] is True

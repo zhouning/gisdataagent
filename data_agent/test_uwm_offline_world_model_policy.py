@@ -1,4 +1,5 @@
 from data_agent.uwm.offline_world_model_policy import (
+    FEATURE_NAMES,
     OFFLINE_WORLD_MODEL_POLICY_REPORT_SCHEMA,
     OFFLINE_WORLD_MODEL_ROLLOUT_PLANNER_REPORT_SCHEMA,
     plan_with_offline_world_model_rollouts,
@@ -19,6 +20,14 @@ def _search_report():
                     "service_accessibility": 0.2,
                     "equity": 0.8,
                     "livability": 0.2,
+                    "estimated_nearest_essential_travel_time_min": 24.0,
+                    "road_segment_count": 2.0,
+                    "road_length_km": 1.5,
+                    "mean_road_speed_kmh": 28.0,
+                    "capacity_norm": 0.1,
+                    "essential_norm": 0.0,
+                    "travel_time_inverse_norm": 0.05,
+                    "service_gap": 0.8,
                 },
             },
             {
@@ -29,6 +38,14 @@ def _search_report():
                     "service_accessibility": 0.8,
                     "equity": 0.3,
                     "livability": 0.7,
+                    "estimated_nearest_essential_travel_time_min": 4.0,
+                    "road_segment_count": 9.0,
+                    "road_length_km": 12.0,
+                    "mean_road_speed_kmh": 45.0,
+                    "capacity_norm": 0.8,
+                    "essential_norm": 0.7,
+                    "travel_time_inverse_norm": 0.75,
+                    "service_gap": 0.2,
                 },
             },
         ],
@@ -119,6 +136,17 @@ def test_train_offline_world_model_policy_learns_reward_and_dynamics_on_holdout(
         "equity_delta",
         "livability_delta",
     ]
+    assert report["world_model"]["feature_names"] == FEATURE_NAMES
+    for feature_name in [
+        "target_travel_time_min_norm",
+        "target_road_segment_count_norm",
+        "target_road_length_km_norm",
+        "target_mean_road_speed_kmh_norm",
+        "target_travel_time_inverse_norm",
+        "target_service_gap",
+    ]:
+        assert feature_name in report["world_model"]["feature_names"]
+        assert feature_name in report["world_model"]["coefficients"]["reward"]
     assert report["empirical_superiority_claim"] is False
 
 

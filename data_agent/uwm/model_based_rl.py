@@ -29,6 +29,24 @@ GRAPH_MDP_REPLAY_DATASET_SCHEMA = "uwm.graph_mdp_replay_dataset.v1"
 MODEL_BASED_GRAPH_SEARCH_REPORT_SCHEMA = "uwm.model_based_graph_search_report.v1"
 DEFAULT_GRAPH_SEARCH_BACKEND = "graph_mdp_beam_search_v0"
 DEFAULT_STATE_ENCODER = "graph_feature_encoder_v0"
+GRAPH_NODE_FEATURE_SCHEMA = "uwm.graph_node_features.mobility_accessibility.v1"
+BASE_NODE_FEATURE_NAMES = [
+    "heat_risk",
+    "air_pollution_exposure",
+    "service_accessibility",
+    "equity",
+    "livability",
+]
+MOBILITY_NODE_FEATURE_NAMES = [
+    "estimated_nearest_essential_travel_time_min",
+    "road_segment_count",
+    "road_length_km",
+    "mean_road_speed_kmh",
+    "capacity_norm",
+    "essential_norm",
+    "travel_time_inverse_norm",
+    "service_gap",
+]
 
 
 def build_admin_livability_graph_observation(
@@ -39,6 +57,8 @@ def build_admin_livability_graph_observation(
     max_units: int | None = None,
     admin_spatial_graph: dict[str, Any] | None = None,
     geographic_similarity_kernel: dict[str, Any] | None = None,
+    mobility_graph: dict[str, Any] | None = None,
+    graph_edge_mode: str = "admin_boundary_plus_similarity",
 ) -> dict[str, Any]:
     """Map an admin livability proxy panel into a graph-MDP observation.
 
@@ -50,13 +70,31 @@ def build_admin_livability_graph_observation(
     rows = list(panel.get("admin_livability_target_rows") or [])
     rows.sort(key=lambda row: _float(row.get("livability_need_score")), reverse=True)
     selection_mode = "all_rows"
+    edge_mode = str(graph_edge_mode or "admin_boundary_plus_similarity").strip().lower()
+    if edge_mode not in {
+        "admin_boundary_plus_similarity",
+        "mobility_similarity_only",
+    }:
+        raise ValueError(
+            "graph_edge_mode must be 'admin_boundary_plus_similarity' or 'mobility_similarity_only'"
+        )
     selected_source_rows = rows
     if max_units is not None:
         selection_mode = f"top_{max_units}_rows"
         selected_source_rows = rows[:max_units]
     selected_rows = [row for row in selected_source_rows if row.get("admin_unit_id")]
     spatial_units = [_admin_spatial_unit(row) for row in selected_rows]
-    if admin_spatial_graph:
+    if edge_mode == "mobility_similarity_only":
+        graph_edges, graph_trace, graph_quality_flags = _mobility_edges_for_units(
+            mobility_graph=mobility_graph,
+            geographic_similarity_kernel=geographic_similarity_kernel,
+            unit_ids=[unit["unit_id"] for unit in spatial_units],
+        )
+        if not graph_edges:
+            raise ValueError(
+                "mobility_similarity_only graph mode requires a mobility graph or geographic similarity kernel"
+            )
+    elif admin_spatial_graph:
         graph_edges = _spatial_edges_for_units(admin_spatial_graph, [unit["unit_id"] for unit in spatial_units])
         graph_trace = {
             "step": "derive_admin_spatial_adjacency_subgraph",
@@ -68,6 +106,7 @@ def build_admin_livability_graph_observation(
             "selected_spatial_edge_count": len(graph_edges),
             "selection_mode": selection_mode,
             "edge_type": "admin_boundary_adjacency",
+            "graph_edge_mode": edge_mode,
         }
         graph_quality_flags = [
             {
@@ -90,6 +129,7 @@ def build_admin_livability_graph_observation(
             "selected_unit_count": len(spatial_units),
             "selection_mode": selection_mode,
             "edge_type": "proxy_priority_similarity_not_spatial_adjacency",
+            "graph_edge_mode": edge_mode,
         }
         graph_quality_flags = [
             {
@@ -154,6 +194,8 @@ def build_admin_livability_graph_observation(
             "source_geographic_similarity_kernel_id": (
                 geographic_similarity_kernel or {}
             ).get("kernel_id"),
+            "source_mobility_graph_id": (mobility_graph or {}).get("graph_id"),
+            "graph_edge_mode": edge_mode,
         },
         "claim_boundary": {
             "max_claim_level": (panel.get("claim_boundary") or {}).get("max_claim_level", "bounded_support"),
@@ -211,6 +253,11 @@ def build_graph_mdp_state(
         "state_id": str(observation.get("observation_id") or "unknown_observation"),
         "source_observation_id": observation.get("observation_id"),
         "state_encoder": DEFAULT_STATE_ENCODER,
+        "feature_schema": {
+            "schema": GRAPH_NODE_FEATURE_SCHEMA,
+            "base_feature_names": list(BASE_NODE_FEATURE_NAMES),
+            "mobility_feature_names": list(MOBILITY_NODE_FEATURE_NAMES),
+        },
         "observation_validation": validation,
         "nodes": nodes,
         "edges": edges,
@@ -218,6 +265,14 @@ def build_graph_mdp_state(
             "node_count": len(nodes),
             "edge_count": len(edges),
             "available_action_count": len(available_actions),
+            "mobility_similarity_edge_count": sum(
+                1
+                for edge in edges
+                if edge.get("edge_type") == "mobility_accessibility_similarity"
+            ),
+            "mobility_feature_node_count": sum(
+                1 for node in nodes if _node_has_mobility_features(node)
+            ),
         },
         "available_actions": available_actions,
         "action_mask_trace": action_mask_trace,
@@ -433,27 +488,69 @@ def plan_with_model_based_graph_search(
 
 
 def _node_from_unit(unit: dict[str, Any]) -> dict[str, Any]:
+    service_accessibility = _float(unit.get("service_accessibility"))
     return {
         "node_id": str(unit.get("unit_id")),
         "unit_id": str(unit.get("unit_id")),
         "node_type": str(unit.get("unit_type") or "spatial_unit"),
+        "feature_schema": GRAPH_NODE_FEATURE_SCHEMA,
         "features": {
             "heat_risk": _float(unit.get("heat_risk")),
             "air_pollution_exposure": _float(unit.get("air_pollution_exposure")),
-            "service_accessibility": _float(unit.get("service_accessibility")),
+            "service_accessibility": service_accessibility,
             "equity": _float(unit.get("equity")),
             "livability": _float(unit.get("livability")),
+            "estimated_nearest_essential_travel_time_min": _float(
+                unit.get("estimated_nearest_essential_travel_time_min")
+            ),
+            "road_segment_count": _float(unit.get("road_segment_count")),
+            "road_length_km": _float(unit.get("road_length_km")),
+            "mean_road_speed_kmh": _float(unit.get("mean_road_speed_kmh")),
+            "capacity_norm": _float(unit.get("capacity_norm")),
+            "essential_norm": _float(unit.get("essential_norm")),
+            "travel_time_inverse_norm": _float(unit.get("travel_time_inverse_norm")),
+            "service_gap": max(0.0, min(1.0, 1.0 - service_accessibility)),
         },
     }
 
 
 def _edge_from_observation(edge: dict[str, Any]) -> dict[str, Any]:
-    return {
+    encoded = {
         "source": str(edge.get("source")),
         "target": str(edge.get("target")),
         "edge_type": str(edge.get("edge_type") or "spatial_adjacency"),
         "weight": _float(edge.get("weight"), default=1.0),
     }
+    if encoded["edge_type"] == "mobility_accessibility_similarity":
+        encoded.update(
+            {
+                "rank": _int(edge.get("rank")),
+                "configuration_similarity": _float(
+                    edge.get("configuration_similarity")
+                ),
+                "standardized_feature_distance": _float(
+                    edge.get("standardized_feature_distance")
+                ),
+                "boundary_adjacent": bool(edge.get("boundary_adjacent")),
+                "same_county": bool(edge.get("same_county")),
+                "travel_time_difference_min": _float(
+                    edge.get("travel_time_difference_min")
+                ),
+                "road_segment_difference": _int(edge.get("road_segment_difference")),
+                "road_length_difference_km": _float(
+                    edge.get("road_length_difference_km")
+                ),
+                "road_speed_difference_kmh": _float(
+                    edge.get("road_speed_difference_kmh")
+                ),
+            }
+        )
+    return encoded
+
+
+def _node_has_mobility_features(node: dict[str, Any]) -> bool:
+    features = node.get("features") or {}
+    return any(abs(_float(features.get(name))) > 0.0 for name in MOBILITY_NODE_FEATURE_NAMES)
 
 
 def _admin_spatial_unit(row: dict[str, Any]) -> dict[str, Any]:
@@ -470,6 +567,18 @@ def _admin_spatial_unit(row: dict[str, Any]) -> dict[str, Any]:
         "service_accessibility": max(0.0, min(1.0, 1.0 - service_gap)),
         "equity": livability_need,
         "livability": max(0.0, min(1.0, 1.0 - livability_need)),
+        "nearest_essential_service_distance_m": _float(
+            row.get("nearest_essential_service_distance_m")
+        ),
+        "estimated_nearest_essential_travel_time_min": _float(
+            row.get("estimated_nearest_essential_travel_time_min")
+        ),
+        "road_segment_count": _float(row.get("road_segment_count")),
+        "road_length_km": _float(row.get("road_length_km")),
+        "mean_road_speed_kmh": _float(row.get("mean_road_speed_kmh")),
+        "capacity_norm": _float(row.get("capacity_norm")),
+        "essential_norm": _float(row.get("essential_norm")),
+        "travel_time_inverse_norm": _float(row.get("travel_time_inverse_norm")),
         "proxy_source": {
             "livability_need_score": livability_need,
             "service_point_count": _float(row.get("service_point_count")),
@@ -585,6 +694,98 @@ def _geographic_similarity_edges_for_units(
             }
         ],
     )
+
+
+def _mobility_edges_for_units(
+    *,
+    mobility_graph: dict[str, Any] | None,
+    geographic_similarity_kernel: dict[str, Any] | None,
+    unit_ids: list[str],
+) -> tuple[list[dict[str, Any]], dict[str, Any] | None, list[dict[str, str]]]:
+    if mobility_graph is not None:
+        edges_source = (
+            mobility_graph.get("mobility_edges")
+            or mobility_graph.get("graph_edges")
+            or []
+        )
+        selected = {str(unit_id) for unit_id in unit_ids}
+        edges = []
+        for edge in edges_source:
+            source = str(edge.get("source") or edge.get("source_unit_id") or "")
+            target = str(edge.get("target") or edge.get("target_unit_id") or "")
+            if source not in selected or target not in selected:
+                continue
+            edges.append(
+                {
+                    "edge_type": str(
+                        edge.get("edge_type") or "mobility_accessibility_similarity"
+                    ),
+                    "source": source,
+                    "target": target,
+                    "weight": _float(edge.get("weight"), default=0.0),
+                    "rank": _int(edge.get("rank")),
+                    "configuration_similarity": _float(
+                        edge.get("configuration_similarity"),
+                        default=0.0,
+                    ),
+                    "standardized_feature_distance": _float(
+                        edge.get("standardized_feature_distance"),
+                        default=0.0,
+                    ),
+                    "boundary_adjacent": bool(edge.get("boundary_adjacent")),
+                    "same_county": bool(edge.get("same_county")),
+                    "travel_time_difference_min": _float(
+                        edge.get("travel_time_difference_min"),
+                        default=0.0,
+                    ),
+                    "road_segment_difference": _int(
+                        edge.get("road_segment_difference")
+                    ),
+                    "road_length_difference_km": _float(
+                        edge.get("road_length_difference_km"),
+                        default=0.0,
+                    ),
+                    "road_speed_difference_kmh": _float(
+                        edge.get("road_speed_difference_kmh"),
+                        default=0.0,
+                    ),
+                }
+            )
+        if edges:
+            return (
+                edges,
+                {
+                    "step": "append_mobility_similarity_edges",
+                    "source_mobility_graph_id": mobility_graph.get("graph_id"),
+                    "source_mobility_edge_count": _int(
+                        mobility_graph.get("edge_count")
+                    ),
+                    "selected_unit_count": len(selected),
+                    "selected_mobility_edge_count": len(edges),
+                    "edge_type": "mobility_accessibility_similarity",
+                    "graph_edge_mode": "mobility_similarity_only",
+                },
+                [
+                    {
+                        "level": "info",
+                        "message": (
+                            "mobility graph edges are derived from travel-time and road-context proxies, not administrative adjacency"
+                        ),
+                    }
+                ],
+            )
+
+    edges, trace, flags = _geographic_similarity_edges_for_units(
+        geographic_similarity_kernel,
+        unit_ids,
+    )
+    if trace is None:
+        return [], None, []
+    trace = {
+        **trace,
+        "graph_edge_mode": "mobility_similarity_only",
+    }
+    return edges, trace, flags
 
 
 def _action_allowed(

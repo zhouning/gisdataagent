@@ -338,7 +338,9 @@ def _world_model_system_matrix(
 ) -> dict[str, Any]:
     risk = planner.get("risk_adjusted_planner_evaluation") or {}
     graph_learned = graph_dqn.get("learned_policy_evaluation") or {}
+    graph_architecture = graph_dqn.get("network_architecture") or {}
     learned_planner = learned_rollout.get("learned_rollout_planner") or {}
+    learned_world_model = learned_rollout.get("world_model") or {}
     energy_selected = energy_planner.get("selected_sequence") or {}
     components = {
         "planner_replay": {
@@ -364,12 +366,19 @@ def _world_model_system_matrix(
             "advantage_over_traditional_static": _float(
                 graph_learned.get("advantage_over_traditional_static")
             ),
+            "node_feature_names": list(
+                graph_architecture.get("node_feature_names") or []
+            ),
+            "node_feature_dim": _int(graph_architecture.get("node_feature_dim")),
             "observed_policy_outcome_superiority_claim": False,
         },
         "learned_rollout_static": {
             "ready": learned_rollout.get("experiment_scope") == "full_admin_graph",
             "advantage_over_static": _float(
                 learned_planner.get("imagined_advantage_over_static_single_step")
+            ),
+            "world_model_feature_names": list(
+                learned_world_model.get("feature_names") or []
             ),
             "observed_policy_outcome_superiority_claim": False,
         },

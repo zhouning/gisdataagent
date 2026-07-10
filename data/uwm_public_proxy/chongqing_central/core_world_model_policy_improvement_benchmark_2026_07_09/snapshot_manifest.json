@@ -1,0 +1,104 @@
+{
+  "artifact_path": "data/uwm_public_proxy/chongqing_central/core_world_model_policy_improvement_benchmark_2026_07_09/uwm_core_world_model_policy_improvement_benchmark.json",
+  "claim_boundary": {
+    "max_claim_level": "bounded_support",
+    "reason": "same-scene full-admin learned world-model finite-horizon policy improvement; observed policy outcome gates remain open"
+  },
+  "created_at": "2026-07-09T15:00:00Z",
+  "empirical_superiority_claim": false,
+  "full_admin_scope_guard": {
+    "available_action_count": 1137,
+    "experiment_scope": "full_admin_graph",
+    "failed_count_fields": [],
+    "graph_edge_count": 7932,
+    "graph_node_count": 1017,
+    "passed": true,
+    "required_counts": {
+      "available_action_count": 1137,
+      "graph_edge_count": 7932,
+      "graph_node_count": 1017,
+      "transition_count": 6817,
+      "transition_row_count": 6817
+    },
+    "required_scope": "full_admin_graph",
+    "transition_count": 6817,
+    "transition_row_count": 6817
+  },
+  "observed_policy_outcome_superiority_claim": false,
+  "policy_improvement_config": {
+    "algorithm": "finite_horizon_model_based_value_backup",
+    "beam_width": 8,
+    "candidate_action_count": 1137,
+    "gamma": 0.9,
+    "horizon": 2,
+    "shuffle_offset": 137,
+    "state_update": "apply_predicted_dynamics_to_target_unit_latent_features",
+    "uncertainty_penalty": 0.5
+  },
+  "policy_improvement_gate": {
+    "baseline_rows": [
+      {
+        "baseline_conservative_return": -0.007381399,
+        "passed": true,
+        "policy_baseline": "static_single_step_baseline",
+        "world_model_policy_improvement_advantage": 0.00110234,
+        "world_model_policy_improvement_conservative_return": -0.006279059
+      },
+      {
+        "baseline_conservative_return": -0.007086926,
+        "passed": true,
+        "policy_baseline": "one_step_world_model_greedy",
+        "world_model_policy_improvement_advantage": 0.000807867,
+        "world_model_policy_improvement_conservative_return": -0.006279059
+      },
+      {
+        "baseline_conservative_return": -0.006459944,
+        "passed": true,
+        "policy_baseline": "no_action_signal_world_model_policy",
+        "world_model_policy_improvement_advantage": 0.000180885,
+        "world_model_policy_improvement_conservative_return": -0.006279059
+      },
+      {
+        "baseline_conservative_return": -0.006459553,
+        "passed": true,
+        "policy_baseline": "shuffled_action_signal_world_model_policy",
+        "world_model_policy_improvement_advantage": 0.000180494,
+        "world_model_policy_improvement_conservative_return": -0.006279059
+      }
+    ],
+    "diagnostic_policy_baselines": [
+      "multi_step_beam_search"
+    ],
+    "dynamics_reward_gate": {
+      "beats_no_action_signal": true,
+      "beats_shuffled_action_signal": true,
+      "beats_train_mean_static": true,
+      "full_reward_mae": 3.2363e-05,
+      "no_action_signal_reward_mae": 5.0925e-05,
+      "shuffled_action_signal_reward_mae": 5.0954e-05,
+      "train_mean_reward_mae": 0.00222562
+    },
+    "observed_policy_outcome_superiority_claim": false,
+    "passed": true,
+    "required_policy_baselines": [
+      "static_single_step_baseline",
+      "one_step_world_model_greedy",
+      "no_action_signal_world_model_policy",
+      "shuffled_action_signal_world_model_policy"
+    ],
+    "required_sequence_action_count": 2
+  },
+  "schema": "uwm.snapshot_manifest.v1",
+  "snapshot_id": "uwm_core_world_model_policy_improvement_benchmark_2026_07_09",
+  "source_artifact_path": "data/uwm_public_proxy/chongqing_central/data_calibrated_planner_replay_full_admin_graph_2026_07_08/uwm_full_admin_graph_model_based_graph_search.json",
+  "supported_claim": "core_world_model_policy_improvement_beats_static_and_action_ablation_baselines",
+  "training_summary": {
+    "first_holdout_index": 6,
+    "holdout_count": 973,
+    "holdout_stride": 7,
+    "last_holdout_index": 6810,
+    "ridge": 0.001,
+    "row_count": 6817,
+    "train_count": 5844
+  }
+}

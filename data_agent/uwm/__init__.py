@@ -59,6 +59,12 @@ from .full_admin_livability_decision_package import (
     UWM_FULL_ADMIN_LIVABILITY_DECISION_PACKAGE_SCHEMA,
     build_uwm_full_admin_livability_decision_package,
 )
+from .full_admin_mobility_graph import (
+    UWM_FULL_ADMIN_MOBILITY_GRAPH_SCHEMA,
+    build_full_admin_mobility_graph,
+    validate_full_admin_mobility_graph,
+    write_full_admin_mobility_graph_snapshot,
+)
 from .livability_graph_mdp_env import (
     LIVABILITY_GRAPH_MDP_ENV_SCHEMA,
     build_livability_graph_mdp_env,
@@ -158,6 +164,7 @@ __all__ = [
     "UWM_ENERGY_REGULARIZED_ACTION_SEQUENCE_PLANNER_SCHEMA",
     "UWM_FULL_ADMIN_ENERGY_REGULARIZED_ACTION_SEQUENCE_PLANNER_SCHEMA",
     "UWM_FULL_ADMIN_ACTION_INVENTORY_SCHEMA",
+    "UWM_FULL_ADMIN_MOBILITY_GRAPH_SCHEMA",
     "UWM_PRODUCTION_STATE_ACTION_SPACE_ASSESSMENT_SCHEMA",
     "UWM_ENDPOINT_ALIGNED_PLANNER_EVALUATOR_SCHEMA",
     "UWM_EXTERNAL_OBSERVED_HOLDOUT_SUITE_SCHEMA",
@@ -196,6 +203,7 @@ __all__ = [
     "build_uwm_livability_endpoint_suite",
     "build_uwm_livability_decision_package",
     "build_uwm_full_admin_livability_decision_package",
+    "build_full_admin_mobility_graph",
     "build_full_admin_action_inventory",
     "build_uwm_production_state_action_space_assessment",
     "build_livability_graph_mdp_env",
@@ -218,6 +226,8 @@ __all__ = [
     "plan_full_admin_energy_regularized_action_sequences",
     "simulate_livability_rollout",
     "train_livability_model_based_q_agent",
+    "validate_full_admin_mobility_graph",
+    "write_full_admin_mobility_graph_snapshot",
     "train_livability_graph_dqn_agent",
     "build_world_model_evidence_readiness",
     "summarize_acquisition_blockers",

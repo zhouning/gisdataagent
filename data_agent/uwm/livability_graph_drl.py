@@ -11,6 +11,7 @@ import torch
 from torch import nn
 
 from .livability_graph_mdp_env import LivabilityGraphMDPEnv
+from .model_based_rl import BASE_NODE_FEATURE_NAMES, MOBILITY_NODE_FEATURE_NAMES
 
 
 UWM_LIVABILITY_GRAPH_DRL_TRAINING_REPORT_SCHEMA = (
@@ -29,6 +30,27 @@ MASK_REASONS = [
     "service_accessibility_below_threshold",
 ]
 TARGET_SCALE = 1000.0
+GRAPH_NODE_FEATURE_NAMES = [
+    *BASE_NODE_FEATURE_NAMES,
+    *MOBILITY_NODE_FEATURE_NAMES,
+    "degree_norm",
+]
+GRAPH_NODE_FEATURE_TRANSFORMS = {
+    "heat_risk": "clamped_0_1",
+    "air_pollution_exposure": "clamped_0_1",
+    "service_accessibility": "clamped_0_1",
+    "equity": "clamped_0_1",
+    "livability": "clamped_0_1",
+    "estimated_nearest_essential_travel_time_min": "max_abs_scaled_by_observed_graph_nodes",
+    "road_segment_count": "max_abs_scaled_by_observed_graph_nodes",
+    "road_length_km": "max_abs_scaled_by_observed_graph_nodes",
+    "mean_road_speed_kmh": "max_abs_scaled_by_observed_graph_nodes",
+    "capacity_norm": "clamped_0_1",
+    "essential_norm": "clamped_0_1",
+    "travel_time_inverse_norm": "clamped_0_1_or_derived_from_observed_travel_time",
+    "service_gap": "clamped_0_1",
+    "degree_norm": "degree_divided_by_graph_node_count_minus_one",
+}
 
 
 @dataclass(frozen=True)
@@ -267,6 +289,8 @@ def train_livability_graph_dqn_agent(
         "network_architecture": {
             "model_class": "GraphDQNValueNetwork",
             "node_feature_dim": tensors.node_features.shape[1],
+            "node_feature_names": GRAPH_NODE_FEATURE_NAMES,
+            "node_feature_transforms": GRAPH_NODE_FEATURE_TRANSFORMS,
             "action_feature_dim": tensors.action_features.shape[1],
             "hidden_dim": hidden_dim,
             "message_passing_layers": 1,
@@ -756,21 +780,79 @@ def _node_index_by_unit(env: LivabilityGraphMDPEnv) -> dict[str, int]:
 def _node_feature_rows(env: LivabilityGraphMDPEnv) -> list[list[float]]:
     degree_by_unit = _degree_by_unit(env)
     node_count = max(1, len(env.graph_state.get("nodes") or []))
+    scalers = _node_feature_scalers(env)
     rows = []
     for node in env.graph_state.get("nodes") or []:
         features = node.get("features") or {}
         unit_id = str(node.get("unit_id") or node.get("node_id"))
         rows.append(
             [
-                _float(features.get("heat_risk")),
-                _float(features.get("air_pollution_exposure")),
-                _float(features.get("service_accessibility")),
-                _float(features.get("equity")),
-                _float(features.get("livability")),
+                _clamp01(_float(features.get("heat_risk"))),
+                _clamp01(_float(features.get("air_pollution_exposure"))),
+                _clamp01(_float(features.get("service_accessibility"))),
+                _clamp01(_float(features.get("equity"))),
+                _clamp01(_float(features.get("livability"))),
+                _scale_observed(
+                    features.get("estimated_nearest_essential_travel_time_min"),
+                    scalers["estimated_nearest_essential_travel_time_min"],
+                ),
+                _scale_observed(
+                    features.get("road_segment_count"),
+                    scalers["road_segment_count"],
+                ),
+                _scale_observed(
+                    features.get("road_length_km"),
+                    scalers["road_length_km"],
+                ),
+                _scale_observed(
+                    features.get("mean_road_speed_kmh"),
+                    scalers["mean_road_speed_kmh"],
+                ),
+                _clamp01(_float(features.get("capacity_norm"))),
+                _clamp01(_float(features.get("essential_norm"))),
+                _travel_time_inverse_feature(features, scalers),
+                _clamp01(_float(features.get("service_gap"))),
                 _float(degree_by_unit.get(unit_id)) / max(1.0, float(node_count - 1)),
             ]
         )
     return rows
+
+
+def _node_feature_scalers(env: LivabilityGraphMDPEnv) -> dict[str, float]:
+    raw_feature_names = [
+        "estimated_nearest_essential_travel_time_min",
+        "road_segment_count",
+        "road_length_km",
+        "mean_road_speed_kmh",
+    ]
+    scalers: dict[str, float] = {}
+    for feature_name in raw_feature_names:
+        values = [
+            abs(_float((node.get("features") or {}).get(feature_name)))
+            for node in env.graph_state.get("nodes") or []
+        ]
+        scalers[feature_name] = max([value for value in values if value > 0.0] or [1.0])
+    return scalers
+
+
+def _scale_observed(value: Any, scale: float) -> float:
+    if scale <= 0.0:
+        return 0.0
+    return _clamp01(_float(value) / scale)
+
+
+def _travel_time_inverse_feature(
+    features: dict[str, Any],
+    scalers: dict[str, float],
+) -> float:
+    explicit = _float(features.get("travel_time_inverse_norm"))
+    if explicit > 0.0:
+        return _clamp01(explicit)
+    travel_time = _float(features.get("estimated_nearest_essential_travel_time_min"))
+    max_travel_time = scalers.get("estimated_nearest_essential_travel_time_min", 1.0)
+    if travel_time <= 0.0 or max_travel_time <= 0.0:
+        return 0.0
+    return _clamp01(1.0 - (travel_time / max_travel_time))
 
 
 def _node_features_by_unit(
@@ -831,7 +913,7 @@ def _action_feature_row(
     selected_node_features = (
         _node_features_for_action(selected_action, node_features_by_unit)
         if selected_action
-        else [0.0] * 6
+        else [0.0] * len(GRAPH_NODE_FEATURE_NAMES)
     )
     step_index = _float(sample.get("step_index"))
     horizon = max(1.0, float(env.config.horizon))
@@ -852,7 +934,7 @@ def _node_features_for_action(
     node_features_by_unit: dict[str, list[float]],
 ) -> list[float]:
     unit_id = _target_unit(action)
-    return list(node_features_by_unit.get(unit_id) or [0.0] * 6)
+    return list(node_features_by_unit.get(unit_id) or [0.0] * len(GRAPH_NODE_FEATURE_NAMES))
 
 
 def _target_node_index(action: dict[str, Any], node_index_by_unit: dict[str, int]) -> int:
@@ -914,3 +996,7 @@ def _float(value: Any, default: float = 0.0) -> float:
     except (TypeError, ValueError):
         return default
     return result if math.isfinite(result) else default
+
+
+def _clamp01(value: float) -> float:
+    return max(0.0, min(1.0, float(value)))

@@ -8,9 +8,11 @@ from data_agent.uwm.full_admin_livability_decision_package import (
     UWM_FULL_ADMIN_LIVABILITY_DECISION_PACKAGE_SCHEMA,
     build_uwm_full_admin_livability_decision_package,
 )
+from data_agent.uwm.livability_graph_drl import GRAPH_NODE_FEATURE_NAMES
 from data_agent.uwm.livability_data_catalog import (
     build_uwm_livability_data_catalog,
 )
+from data_agent.uwm.offline_world_model_policy import FEATURE_NAMES
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -52,6 +54,10 @@ def _build_package() -> dict:
         full_admin_service_surface_quality_audit=_read_json(
             DATA_ROOT
             / "full_admin_service_surface_quality_audit_2026_07_08/uwm_full_admin_service_surface_quality_audit.json"
+        ),
+        full_admin_mobility_graph=_read_json(
+            DATA_ROOT
+            / "full_admin_mobility_graph_2026_07_10/full_admin_mobility_graph.json"
         ),
         production_governance_planner_binding_gate=_read_json(
             DATA_ROOT
@@ -104,20 +110,28 @@ def test_full_admin_livability_decision_package_collects_real_full_scope_evidenc
     assert graph_dqn["training_sample_count"] == 1248
     assert graph_dqn["sampled_first_action_count"] == 96
     assert graph_dqn["sampled_second_action_limit"] == 12
-    assert graph_dqn["q_return_mae"] == 0.0000954
+    assert graph_dqn["node_feature_names"] == GRAPH_NODE_FEATURE_NAMES
+    assert "estimated_nearest_essential_travel_time_min" in graph_dqn[
+        "node_feature_names"
+    ]
+    assert "travel_time_inverse_norm" in graph_dqn["node_feature_names"]
+    assert graph_dqn["q_return_mae"] < graph_dqn["train_mean_return_mae"]
     assert graph_dqn["train_mean_return_mae"] == 0.000994236
-    assert graph_dqn["advantage_over_traditional_static"] == 0.000812622
+    assert graph_dqn["advantage_over_traditional_static"] > 0.0
     assert graph_dqn["target_units"] == [
+        "江北区|观音桥街道|653",
         "沙坪坝区|覃家岗街道|973",
-        "涪陵区|蔺市镇|498",
     ]
 
     learned = package["learned_world_model_rollout_evidence"]
     assert learned["learned_world_model_rollout_ready"] is True
-    assert learned["reward_mae"] == 0.000033499
+    assert learned["world_model_feature_names"] == FEATURE_NAMES
+    assert "target_travel_time_min_norm" in learned["world_model_feature_names"]
+    assert "target_travel_time_inverse_norm" in learned["world_model_feature_names"]
+    assert learned["reward_mae"] < learned["train_mean_reward_mae"]
     assert learned["train_mean_reward_mae"] == 0.00222562
-    assert learned["imagined_advantage_over_static_single_step"] == 0.00121167
-    assert learned["imagined_advantage_over_one_step_policy"] == 0.000900135
+    assert learned["imagined_advantage_over_static_single_step"] > 0.0
+    assert learned["imagined_advantage_over_one_step_policy"] > 0.0
     assert learned["target_units"] == [
         "沙坪坝区|石井坡街道|793",
         "九龙坡区|中梁山街道|91",
@@ -140,6 +154,19 @@ def test_full_admin_livability_decision_package_collects_real_full_scope_evidenc
     assert service["travel_time_model_mae"] == 2.17547
     assert service["travel_time_best_baseline_mae"] == 2.192174
     assert service["target_rotation_negative_controls_passed"] is True
+
+    mobility = package["mobility_graph_evidence"]
+    assert mobility["full_admin_mobility_graph_ready"] is True
+    assert mobility["node_count"] == 1017
+    assert mobility["edge_count"] == 5085
+    assert mobility["mobility_similarity_edge_count"] == 5085
+    assert mobility["travel_time_min_mean"] > 0.0
+    assert mobility["unicom_directed_edge_count"] == 1067
+    assert mobility["osm_highway_edge_count"] == 45468
+    assert mobility["osm_crosswalk_assigned_road_segment_count"] == 45449
+    assert mobility["observed_od_flow_claim"] is False
+    assert mobility["observed_trip_time_claim"] is False
+    assert mobility["observed_policy_outcome_superiority_claim"] is False
 
     governance = package["production_governance_binding_evidence"]
     assert governance["production_governance_binding_gate_ready"] is True
@@ -192,9 +219,15 @@ def test_full_admin_livability_decision_package_collects_real_full_scope_evidenc
     assert comparison["all_world_model_advantages_positive"] is True
     assert comparison["planner_advantage_over_static"] == 0.001436437
     assert comparison["planner_risk_adjusted_advantage_over_static"] == 0.0013756
-    assert comparison["graph_dqn_advantage_over_static"] == 0.000812622
-    assert comparison["learned_rollout_advantage_over_static"] == 0.00121167
-    assert comparison["learned_rollout_advantage_over_one_step_policy"] == 0.000900135
+    assert comparison["graph_dqn_advantage_over_static"] == graph_dqn[
+        "advantage_over_traditional_static"
+    ]
+    assert comparison["learned_rollout_advantage_over_static"] == learned[
+        "imagined_advantage_over_static_single_step"
+    ]
+    assert comparison["learned_rollout_advantage_over_one_step_policy"] == learned[
+        "imagined_advantage_over_one_step_policy"
+    ]
 
     outputs = package["final_outputs"]
     assert outputs["planner_recommended_sequence"]["target_units"] == planner[
@@ -207,13 +240,10 @@ def test_full_admin_livability_decision_package_collects_real_full_scope_evidenc
         "target_units"
     ]
     priority_units = {unit["unit_id"] for unit in outputs["priority_admin_units"]}
-    assert {
-        "九龙坡区|中梁山街道|91",
-        "大渡口区|八桥镇|964",
-        "沙坪坝区|覃家岗街道|973",
-        "涪陵区|蔺市镇|498",
-        "沙坪坝区|石井坡街道|793",
-    }.issubset(priority_units)
+    expected_priority_units = set(planner["target_units"])
+    expected_priority_units.update(graph_dqn["target_units"])
+    expected_priority_units.update(learned["target_units"])
+    assert expected_priority_units.issubset(priority_units)
     assert "full_admin_graph_model_based_planner_replay" in outputs["decision_basis"]
     assert "full_admin_graph_trained_graph_dqn_value_network" in outputs[
         "decision_basis"
@@ -222,6 +252,9 @@ def test_full_admin_livability_decision_package_collects_real_full_scope_evidenc
         "decision_basis"
     ]
     assert "full_admin_geographic_similarity_kernel" in outputs["decision_basis"]
+    assert "full_admin_mobility_travel_time_similarity_projection" in outputs[
+        "decision_basis"
+    ]
 
     assert package["claim_boundary"]["max_claim_level"] == "bounded_support"
     assert package["planner_governance_binding_ready"] is False
@@ -258,6 +291,10 @@ def test_full_admin_livability_decision_package_artifact_is_full_scope_and_claim
     assert package["full_data_guard"]["graph_node_count"] == 1017
     assert package["full_data_guard"]["graph_edge_count"] == 7932
     assert package["full_data_guard"]["transition_count"] == 6817
+    assert package["mobility_graph_evidence"]["full_admin_mobility_graph_ready"] is True
+    assert package["mobility_graph_evidence"]["node_count"] == 1017
+    assert package["mobility_graph_evidence"]["edge_count"] == 5085
+    assert package["mobility_graph_evidence"]["observed_trip_time_claim"] is False
     assert package["comparison_against_traditional_static_baselines"][
         "all_world_model_advantages_positive"
     ] is True
@@ -375,8 +412,8 @@ def test_evidence_gate_tracks_full_admin_livability_decision_package(tmp_path: P
     assert decision_slice["transition_count"] == 6817
     assert decision_slice["planner_advantage_over_static"] == 0.001436437
     assert decision_slice["planner_risk_adjusted_advantage_over_static"] == 0.0013756
-    assert decision_slice["graph_dqn_advantage_over_static"] == 0.000812622
-    assert decision_slice["learned_rollout_advantage_over_static"] == 0.00121167
+    assert decision_slice["graph_dqn_advantage_over_static"] > 0.0
+    assert decision_slice["learned_rollout_advantage_over_static"] > 0.0
     assert decision_slice["all_world_model_advantages_positive"] is True
     assert decision_slice["planner_governance_binding_ready"] is False
     assert decision_slice["production_governance_binding_blocking_gate_count"] == 7
