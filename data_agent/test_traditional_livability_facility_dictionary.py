@@ -475,3 +475,29 @@ def test_compatibility_rejects_non_string_rule_fields_and_uses_incomplete_blocke
     assert result["production_blockers"] == [
         "authoritative_facility_compatibility_matrix_incomplete"
     ]
+
+
+@pytest.mark.parametrize("blank_effective_date", ["", "   "])
+def test_dictionary_blank_effective_date_falls_back_to_version_date(blank_effective_date):
+    payload = dictionary_fixture()
+    payload["effective_date"] = blank_effective_date
+    payload["content_digest"] = compute_canonical_content_digest(payload)
+
+    result = validate_facility_dictionary(payload)
+
+    assert result["ready"] is True
+    assert result["source_metadata"]["effective_date"] == "2026-07-10"
+
+
+@pytest.mark.parametrize("blank_effective_date", ["", "   "])
+def test_compatibility_blank_effective_date_falls_back_to_version_date(
+    blank_effective_date,
+):
+    payload = matrix_fixture()
+    payload["effective_date"] = blank_effective_date
+    payload["content_digest"] = compute_canonical_content_digest(payload)
+
+    result = validate_compatibility_matrix(payload)
+
+    assert result["ready"] is True
+    assert result["source_metadata"]["effective_date"] == "2026-07-10"

@@ -179,7 +179,12 @@ def _normalize_source_metadata(
     )
     version_date = _normalized_string(payload.get("version_date"))
     effective_date_value = payload.get("effective_date")
-    selected_date = effective_date_value if effective_date_value is not None else payload.get("version_date")
+    effective_date_is_blank = isinstance(effective_date_value, str) and not effective_date_value.strip()
+    selected_date = (
+        payload.get("version_date")
+        if effective_date_value is None or effective_date_is_blank
+        else effective_date_value
+    )
     effective_date = _normalize_required_string(
         selected_date,
         missing_error=f"{error_prefix}_effective_or_version_date_missing",
