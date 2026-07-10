@@ -104,6 +104,9 @@ def _candidate(
     class_record: Mapping[str, Any],
     match_method: str,
     confidence: str,
+    dictionary_version: str | None,
+    rule_version: str | None,
+    human_confirmation_required: bool,
     evidence: list[dict[str, Any]],
 ) -> dict[str, Any]:
     return {
@@ -112,6 +115,9 @@ def _candidate(
         "authority_level": "authoritative_dictionary",
         "match_method": match_method,
         "confidence": confidence,
+        "dictionary_version": dictionary_version,
+        "rule_version": rule_version,
+        "human_confirmation_required": human_confirmation_required,
         "evidence": evidence,
     }
 
@@ -122,6 +128,7 @@ def _authoritative_matches(
     classes: Mapping[str, Mapping[str, Any]],
     inputs: Mapping[str, str | None],
     record_type: str,
+    dictionary_version: str | None,
 ) -> list[dict[str, Any]]:
     matches: dict[str, list[dict[str, Any]]] = {}
     is_alias = record_type == "aliases"
@@ -150,6 +157,9 @@ def _authoritative_matches(
             class_record=classes[class_id],
             match_method=match_method,
             confidence=confidence,
+            dictionary_version=dictionary_version,
+            rule_version=None,
+            human_confirmation_required=False,
             evidence=sorted(
                 evidence,
                 key=lambda row: (
@@ -163,7 +173,10 @@ def _authoritative_matches(
     ]
 
 
-def _internal_suggestions(inputs: Mapping[str, str | None]) -> list[dict[str, Any]]:
+def _internal_suggestions(
+    inputs: Mapping[str, str | None],
+    dictionary_version: str | None,
+) -> list[dict[str, Any]]:
     suggestions = []
     for rule in _INTERNAL_SUGGESTION_RULES:
         evidence = []
@@ -189,6 +202,9 @@ def _internal_suggestions(inputs: Mapping[str, str | None]) -> list[dict[str, An
                     "authority_level": "internal_suggestion",
                     "match_method": "internal_keyword_rule",
                     "confidence": "weak_suggestion",
+                    "dictionary_version": dictionary_version,
+                    "rule_version": rule["rule_id"],
+                    "human_confirmation_required": True,
                     "evidence": evidence,
                 }
             )
@@ -241,6 +257,7 @@ def resolve_s6_facility_semantics(
             classes=classes,
             inputs=inputs,
             record_type="aliases",
+            dictionary_version=dictionary_version,
         )
         if len(alias_candidates) == 1:
             return {
@@ -253,7 +270,10 @@ def resolve_s6_facility_semantics(
         if len(alias_candidates) > 1:
             return {
                 **base,
-                "candidates": alias_candidates,
+                "candidates": [
+                    {**candidate, "human_confirmation_required": True}
+                    for candidate in alias_candidates
+                ],
                 "resolution_reasons": ["ambiguous_authoritative_alias_matches"],
             }
 
@@ -262,6 +282,7 @@ def resolve_s6_facility_semantics(
             classes=classes,
             inputs=inputs,
             record_type="keywords",
+            dictionary_version=dictionary_version,
         )
         if len(keyword_candidates) == 1:
             return {
@@ -274,11 +295,14 @@ def resolve_s6_facility_semantics(
         if len(keyword_candidates) > 1:
             return {
                 **base,
-                "candidates": keyword_candidates,
+                "candidates": [
+                    {**candidate, "human_confirmation_required": True}
+                    for candidate in keyword_candidates
+                ],
                 "resolution_reasons": ["ambiguous_authoritative_keyword_matches"],
             }
 
-    suggestions = _internal_suggestions(inputs)
+    suggestions = _internal_suggestions(inputs, dictionary_version)
     if suggestions:
         return {
             **base,
@@ -299,11 +323,61 @@ def _parse_confirmation_time(value: str) -> datetime | None:
         return None
 
 
+def _raw_input_digest(original_input: Mapping[str, Any]) -> str:
+    return compute_canonical_content_digest(
+        {
+            field: _digestable_raw_value(original_input.get(field))
+            for field in _INPUT_FIELDS
+        }
+    )
+
+
+def _candidate_audit_view(candidate: Any) -> dict[str, Any] | None:
+    if not isinstance(candidate, Mapping):
+        return None
+    evidence = candidate.get("evidence")
+    if not isinstance(evidence, list) or not evidence:
+        return None
+    return {
+        "standard_class_id": _normalized_string(candidate.get("standard_class_id")),
+        "standard_class_label": _normalized_string(candidate.get("standard_class_label")),
+        "authority_level": _normalized_string(candidate.get("authority_level")),
+        "match_method": _normalized_string(candidate.get("match_method")),
+        "confidence": _normalized_string(candidate.get("confidence")),
+        "dictionary_version": _normalized_string(candidate.get("dictionary_version")),
+        "rule_version": _normalized_string(candidate.get("rule_version")),
+        "human_confirmation_required": candidate.get("human_confirmation_required"),
+        "evidence": evidence,
+    }
+
+
+def _current_resolution(
+    original_input: Any,
+    dictionary: Mapping[str, Any],
+) -> tuple[dict[str, str | None] | None, str | None, dict[str, Any] | None]:
+    if not isinstance(original_input, Mapping):
+        return None, None, None
+    normalized_input = _normalized_inputs(
+        original_input.get("facility_name"),
+        original_input.get("raw_facility_type"),
+        original_input.get("use_description"),
+    )
+    digest = _raw_input_digest(original_input)
+    resolution = resolve_s6_facility_semantics(
+        facility_name=original_input.get("facility_name"),
+        raw_facility_type=original_input.get("raw_facility_type"),
+        use_description=original_input.get("use_description"),
+        dictionary=dictionary,
+    )
+    return normalized_input, digest, resolution
+
+
 def validate_human_confirmation(
     confirmation: Mapping[str, Any],
     *,
     dictionary: Mapping[str, Any],
-    original_input_digest: str | None = None,
+    original_input: Mapping[str, Any] | None = None,
+    selected_candidate: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Validate a human decision for one request without changing authority."""
     payload = confirmation if isinstance(confirmation, Mapping) else {}
@@ -312,6 +386,19 @@ def validate_human_confirmation(
     selected_class_id = _normalized_string(payload.get("selected_standard_class_id"))
     supplied_input_digest = _normalized_string(payload.get("original_input_digest"))
     supplied_dictionary_version = _normalized_string(payload.get("dictionary_version"))
+
+    normalized_input, expected_input_digest, current_resolution = _current_resolution(
+        original_input,
+        dictionary,
+    )
+    supplied_candidate = _candidate_audit_view(selected_candidate)
+    matched_candidate = None
+    if current_resolution is not None and supplied_candidate is not None:
+        for candidate in current_resolution["candidates"]:
+            expected_candidate = _candidate_audit_view(candidate)
+            if supplied_candidate == expected_candidate:
+                matched_candidate = expected_candidate
+                break
 
     errors = []
     if actor_id is None:
@@ -329,9 +416,21 @@ def validate_human_confirmation(
             errors.append("confirmed_at_timezone_missing")
     if selected_class_id is None:
         errors.append("selected_standard_class_id_missing")
+    if normalized_input is None:
+        errors.append("current_original_input_missing")
+    if supplied_candidate is None:
+        errors.append("selected_candidate_evidence_missing")
+    elif matched_candidate is None:
+        errors.append("selected_candidate_evidence_mismatch")
+    elif (
+        matched_candidate["standard_class_id"] is not None
+        and selected_class_id is not None
+        and matched_candidate["standard_class_id"] != selected_class_id
+    ):
+        errors.append("selected_candidate_class_mismatch")
     if supplied_input_digest is None:
         errors.append("original_input_digest_missing")
-    elif original_input_digest is not None and supplied_input_digest != original_input_digest:
+    elif expected_input_digest is not None and supplied_input_digest != expected_input_digest:
         errors.append("original_input_digest_mismatch")
     if supplied_dictionary_version is None:
         errors.append("dictionary_version_missing")
@@ -360,6 +459,11 @@ def validate_human_confirmation(
         "confirmed_at": confirmed_at,
         "selected_standard_class_id": selected_class_id,
         "original_input_digest": supplied_input_digest,
+        "original_input": normalized_input,
+        "selected_candidate": matched_candidate,
+        "selected_candidate_evidence": (
+            matched_candidate["evidence"] if matched_candidate is not None else None
+        ),
         "dictionary_version": supplied_dictionary_version,
         "dictionary_content_digest": (
             _normalized_string(dictionary.get("content_digest"))
