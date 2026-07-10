@@ -59,6 +59,17 @@ CUSTOMER_DEMAND_PRIMARY_ROUTES = {
     "25": "impact_implementation",
 }
 
+_REQUIRED_ROW_FIELDS = (
+    "title",
+    "primary_route",
+    "required_method",
+    "implementation_level",
+    "data_support",
+    "route_availability",
+    "implemented_outputs",
+    "production_blockers",
+)
+
 _SCENARIO_DEFINITIONS = {
     "S1": ("区级设施评估", "facility_inventory_service_area_gap_analysis"),
     "S2": ("用地或设施变更", "action_conditioned_counterfactual_transition"),
@@ -211,6 +222,21 @@ def validate_livability_requirement_registry(payload: dict[str, Any]) -> dict[st
     errors: list[str] = []
     if payload.get("schema") != UWM_LIVABILITY_REQUIREMENT_REGISTRY_SCHEMA:
         errors.append("invalid schema")
+    if payload.get("source_documents") != SOURCE_DOCUMENTS:
+        errors.append("source_documents must exactly match canonical source documents")
+    if payload.get("primary_routes") != sorted(PRIMARY_ROUTES):
+        errors.append("primary_routes must exactly match canonical primary routes")
+
+    claim_boundary = payload.get("claim_boundary")
+    if not isinstance(claim_boundary, dict):
+        errors.append("claim_boundary must be an object")
+        claim_boundary = {}
+    if claim_boundary.get("registration_is_not_implementation") is not True:
+        errors.append("claim_boundary.registration_is_not_implementation must be true")
+    if claim_boundary.get("observed_policy_outcome_superiority_claim") is not False:
+        errors.append(
+            "claim_boundary.observed_policy_outcome_superiority_claim must be false"
+        )
 
     scenarios = payload.get("livability_scenarios")
     demands = payload.get("customer_ai_demands")
@@ -225,6 +251,7 @@ def validate_livability_requirement_registry(payload: dict[str, Any]) -> dict[st
         scenarios,
         expected_ids=set(LIVABILITY_SCENARIO_PRIMARY_ROUTES),
         expected_routes=LIVABILITY_SCENARIO_PRIMARY_ROUTES,
+        canonical_rows={row["id"]: row for row in _scenario_rows()},
         label="scenario",
         errors=errors,
     )
@@ -232,6 +259,7 @@ def validate_livability_requirement_registry(payload: dict[str, Any]) -> dict[st
         demands,
         expected_ids={str(index) for index in range(1, 26)},
         expected_routes=CUSTOMER_DEMAND_PRIMARY_ROUTES,
+        canonical_rows={row["id"]: row for row in _demand_rows()},
         label="demand",
         errors=errors,
     )
@@ -243,6 +271,7 @@ def _validate_rows(
     *,
     expected_ids: set[str],
     expected_routes: dict[str, str],
+    canonical_rows: dict[str, dict[str, Any]],
     label: str,
     errors: list[str],
 ) -> None:
@@ -257,6 +286,10 @@ def _validate_rows(
             errors.append(f"{label} row {index} must be an object")
             continue
         requirement_id = row.get("id")
+        for field in _REQUIRED_ROW_FIELDS:
+            if field not in row:
+                errors.append(f"{label} {requirement_id} missing required field: {field}")
+
         route = row.get("primary_route")
         if route not in PRIMARY_ROUTES:
             errors.append(f"{label} {requirement_id} has invalid primary_route")
@@ -271,3 +304,12 @@ def _validate_rows(
             errors.append(f"{label} {requirement_id} implemented_outputs must be a list")
         if not isinstance(row.get("production_blockers"), list):
             errors.append(f"{label} {requirement_id} production_blockers must be a list")
+
+        canonical_row = canonical_rows.get(requirement_id)
+        if canonical_row is None:
+            continue
+        for field in _REQUIRED_ROW_FIELDS:
+            if field in row and row[field] != canonical_row[field]:
+                errors.append(
+                    f"{label} {requirement_id} {field} does not match canonical definition"
+                )

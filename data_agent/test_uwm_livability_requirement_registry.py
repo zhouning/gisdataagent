@@ -2,6 +2,7 @@ from data_agent.uwm.livability_requirement_registry import (
     CUSTOMER_DEMAND_PRIMARY_ROUTES,
     LIVABILITY_SCENARIO_PRIMARY_ROUTES,
     PRIMARY_ROUTES,
+    SOURCE_DOCUMENTS,
     build_livability_requirement_registry,
     requirement_coverage_for_route,
     validate_livability_requirement_registry,
@@ -102,6 +103,92 @@ def test_validator_rejects_duplicate_ids_and_invalid_row_contracts():
 
     assert validation["valid"] is False
     assert validation["errors"]
+
+
+def test_validator_rejects_metadata_drift_with_specific_errors():
+    mutations = [
+        ("source_documents", [], "source_documents must exactly match canonical source documents"),
+        ("primary_routes", ["uwm_livability"], "primary_routes must exactly match canonical primary routes"),
+        ("claim_boundary", {}, "claim_boundary.registration_is_not_implementation must be true"),
+        (
+            "claim_boundary",
+            {
+                "registration_is_not_implementation": True,
+                "observed_policy_outcome_superiority_claim": True,
+            },
+            "claim_boundary.observed_policy_outcome_superiority_claim must be false",
+        ),
+    ]
+
+    for field, value, expected_error in mutations:
+        registry = build_livability_requirement_registry()
+        registry[field] = value
+
+        validation = validate_livability_requirement_registry(registry)
+
+        assert validation["valid"] is False
+        assert expected_error in validation["errors"]
+
+    registry = build_livability_requirement_registry()
+    registry["source_documents"] = list(reversed(SOURCE_DOCUMENTS))
+    validation = validate_livability_requirement_registry(registry)
+    assert "source_documents must exactly match canonical source documents" in validation["errors"]
+
+
+def test_validator_rejects_required_row_field_and_canonical_drift():
+    required_fields = [
+        "title",
+        "primary_route",
+        "required_method",
+        "implementation_level",
+        "data_support",
+        "route_availability",
+        "implemented_outputs",
+        "production_blockers",
+    ]
+    for field in required_fields:
+        registry = build_livability_requirement_registry()
+        del registry["livability_scenarios"][0][field]
+
+        validation = validate_livability_requirement_registry(registry)
+
+        assert validation["valid"] is False
+        assert f"scenario S1 missing required field: {field}" in validation["errors"]
+
+    drift_cases = [
+        ("livability_scenarios", "S2", "title", "漂移标题", "scenario S2 title does not match canonical definition"),
+        ("livability_scenarios", "S7", "required_method", "fixed_score", "scenario S7 required_method does not match canonical definition"),
+        ("customer_ai_demands", "7", "implementation_level", "complete", "demand 7 implementation_level does not match canonical definition"),
+        ("customer_ai_demands", "11", "data_support", "observed", "demand 11 data_support does not match canonical definition"),
+        ("customer_ai_demands", "23", "implemented_outputs", ["fabricated_roi"], "demand 23 implemented_outputs does not match canonical definition"),
+        ("customer_ai_demands", "23", "production_blockers", [], "demand 23 production_blockers does not match canonical definition"),
+    ]
+    for collection, requirement_id, field, value, expected_error in drift_cases:
+        registry = build_livability_requirement_registry()
+        row = next(row for row in registry[collection] if row["id"] == requirement_id)
+        row[field] = value
+
+        validation = validate_livability_requirement_registry(registry)
+
+        assert validation["valid"] is False
+        assert expected_error in validation["errors"]
+
+
+def test_route_filtered_view_is_deep_copy_isolated():
+    registry = build_livability_requirement_registry()
+    coverage = requirement_coverage_for_route(registry, "economy_investment")
+    filtered_demand = next(
+        row for row in coverage["customer_ai_demands"] if row["id"] == "23"
+    )
+    original_demand = next(
+        row for row in registry["customer_ai_demands"] if row["id"] == "23"
+    )
+
+    filtered_demand["production_blockers"].append("mutated_blocker")
+    coverage["claim_boundary"]["registration_is_not_implementation"] = False
+
+    assert "mutated_blocker" not in original_demand["production_blockers"]
+    assert registry["claim_boundary"]["registration_is_not_implementation"] is True
 
 
 def test_route_filter_rejects_unknown_route():
