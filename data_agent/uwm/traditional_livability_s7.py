@@ -89,6 +89,7 @@ def build_s7_primary_school_siting(
 
 
 def _base_payload(siting_id, created_at, planning_inputs, coverage_distance_m, max_sites):
+    manifest = planning_inputs.get("manifest") or {}
     return {
         "schema": SCHEMA,
         "siting_id": siting_id,
@@ -106,7 +107,9 @@ def _base_payload(siting_id, created_at, planning_inputs, coverage_distance_m, m
         },
         "data_support": {
             "planning_scope": "fulu_heping_and_banzhu_planning_samples_only",
-            "source_ready": bool((planning_inputs.get("manifest") or {}).get("ready")),
+            "source_ready": bool(manifest.get("ready")),
+            "source_manifest_schema": manifest.get("schema"),
+            "source_manifest_reference_count": len(manifest.get("sources") or []),
         },
     }
 

@@ -16,7 +16,7 @@ def _inputs(candidates=True):
             {"planning_area_id": "a", "source_parcel_id": "candidate-second", "area_m2": 100, "suitability_score": 1, "distance_crs": "EPSG:4523", "projected_centroid": {"x": 1000, "y": 0}, "display_centroid": {"longitude": 106.01, "latitude": 29}},
         ] if candidates else []),
         "excluded_parcels": [{"planning_area_id": "a", "exclusion_reason": "cultivated_land"}],
-        "manifest": {"ready": True},
+        "manifest": {"schema": "uwm.traditional_livability.s7_fulu_planning_inputs.v1", "ready": True, "sources": [{"relative_path": "fulu_heping/JQDLTB.shp"}]},
     }
 
 
@@ -27,6 +27,8 @@ def test_allocates_greedy_new_coverage_and_reports_distance_proxy():
     assert result["selected_sites"][0]["parcel_id"] == "candidate-best"
     assert result["selected_sites"][0]["newly_covered_proxy_area_m2"] == 4000
     assert result["demand_summary"]["unserved_proxy_area_m2"] == 0
+    assert result["data_support"]["source_manifest_schema"] == "uwm.traditional_livability.s7_fulu_planning_inputs.v1"
+    assert result["data_support"]["source_manifest_reference_count"] == 1
     assert "walking_minutes" not in str(result).lower()
     assert result["claim_boundary"]["walking_or_network_service_area_assessed"] is False
 
