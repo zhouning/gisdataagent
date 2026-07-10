@@ -144,6 +144,12 @@ def build_facility_data_product(
     population_rows: Iterable[Mapping[str, Any]],
     source_manifest: Mapping[str, Any],
 ) -> dict[str, Any]:
+    poi_rows = list(poi_rows)
+    aoi_rows = list(aoi_rows)
+    population_rows = list(population_rows)
+    facilities = _deduplicated_facilities(poi_rows, aoi_rows)
+    population_units = [_normalize_population(row) for row in population_rows]
+    production_blockers = list(_PRODUCTION_BLOCKERS)
     return {
         "schema": SCHEMA,
         "product_id": product_id,
@@ -156,10 +162,27 @@ def build_facility_data_product(
             "covered_domains": list(_COVERED_DOMAINS),
             "unknown_class_policy": "preserve_raw_and_mark_unmapped",
         },
-        "facilities": _deduplicated_facilities(poi_rows, aoi_rows),
-        "population_units": [_normalize_population(row) for row in population_rows],
+        "facilities": facilities,
+        "population_units": population_units,
+        "quality_summary": {
+            "input_poi_rows": len(poi_rows),
+            "input_aoi_rows": len(aoi_rows),
+            "input_population_rows": len(population_rows),
+            "facility_rows_after_deduplication": len(facilities),
+            "duplicate_facility_rows_removed": (
+                len(poi_rows) + len(aoi_rows) - len(facilities)
+            ),
+            "mapped_facility_rows": sum(
+                facility["mapping_status"] == "mapped" for facility in facilities
+            ),
+            "unmapped_facility_rows": sum(
+                facility["mapping_status"] == "unmapped" for facility in facilities
+            ),
+            "population_unit_rows": len(population_units),
+        },
+        "production_blockers": production_blockers,
         "claim_boundary": {
             "authoritative_fp_fpp_available": False,
-            "production_blockers": list(_PRODUCTION_BLOCKERS),
+            "production_blockers": list(production_blockers),
         },
     }

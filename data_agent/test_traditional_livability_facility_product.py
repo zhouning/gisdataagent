@@ -108,6 +108,7 @@ def test_declares_non_authoritative_claim_boundary_and_production_blockers():
 
     boundary = product["claim_boundary"]
     assert boundary["authoritative_fp_fpp_available"] is False
+    assert product["production_blockers"] == boundary["production_blockers"]
     assert "authoritative_43_class_facility_dictionary_missing" in boundary["production_blockers"]
     assert "authoritative_fp_fpp_thresholds_missing" in boundary["production_blockers"]
     assert "facility_capacity_and_operating_status_missing" in boundary["production_blockers"]
@@ -143,6 +144,54 @@ def test_deduplicates_only_by_source_dataset_and_source_record_id():
         (row["source_dataset_id"], row["source_record_id"])
         for row in product["facilities"]
     } == {("gaode_poi", "same-id"), ("baidu_aoi", "same-id")}
+
+
+def test_reports_facility_and_population_quality_summary():
+    product = _build_product(
+        poi_rows=[
+            {
+                "source_record_id": "school-1",
+                "source_dataset_id": "gaode_poi",
+                "raw_primary_class": "科教文化服务",
+                "raw_secondary_class": "学校",
+                "raw_tertiary_class": "小学",
+            },
+            {
+                "source_record_id": "school-1",
+                "source_dataset_id": "gaode_poi",
+                "raw_primary_class": "科教文化服务",
+                "raw_secondary_class": "学校",
+                "raw_tertiary_class": "小学",
+            },
+        ],
+        aoi_rows=[
+            {
+                "source_record_id": "unknown-1",
+                "source_dataset_id": "baidu_aoi",
+                "raw_primary_class": "未来设施",
+            }
+        ],
+        population_rows=[
+            {
+                "source_record_id": "pop-1",
+                "source_dataset_id": "admin_population_2021",
+                "admin_code": "500103",
+                "admin_name": "渝中区",
+                "population": 588717,
+            }
+        ],
+    )
+
+    assert product["quality_summary"] == {
+        "input_poi_rows": 2,
+        "input_aoi_rows": 1,
+        "input_population_rows": 1,
+        "facility_rows_after_deduplication": 2,
+        "duplicate_facility_rows_removed": 1,
+        "mapped_facility_rows": 1,
+        "unmapped_facility_rows": 1,
+        "population_unit_rows": 1,
+    }
 
 
 def test_mapping_contract_explicitly_covers_required_facility_domains():
