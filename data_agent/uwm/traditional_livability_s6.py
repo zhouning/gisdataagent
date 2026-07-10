@@ -11,6 +11,7 @@ from shapely.ops import transform
 
 from data_agent.uwm.traditional_livability_s6_semantics import (
     resolve_s6_facility_semantics,
+    validate_human_confirmation,
 )
 
 
@@ -18,7 +19,13 @@ SCHEMA = "uwm.traditional_livability.s6_analysis.v1"
 SCREENING_DISTANCE_M = 150.0
 
 _INPUT_MODES = {"point", "planning_parcel"}
-_CONFIRMATION_SCHEMA = "uwm.traditional_livability.s6_human_confirmation.v1"
+_SUPPORTED_APPLICABILITY_CONDITIONS = {
+    "planning_area_ids",
+    "input_modes",
+    "planning_statuses",
+    "resource_domains",
+    "facility_geometry_types",
+}
 
 
 def _text(value: Any) -> str | None:
@@ -63,29 +70,6 @@ def _parcel_candidates(
         for row in _rows(resources, "planning_resources")
         if _text(row.get("resource_id")) == parcel_id
     ]
-
-
-def _dictionary_class_ids(dictionary: Mapping[str, Any]) -> set[str]:
-    return {
-        class_id
-        for row in _rows(dictionary, "classes")
-        if (class_id := _text(row.get("class_id"))) is not None
-    }
-
-
-def _valid_confirmation(
-    request: Mapping[str, Any], dictionary: Mapping[str, Any]
-) -> bool:
-    class_id = _text(request.get("confirmed_standard_class_id"))
-    confirmation = request.get("human_confirmation")
-    if class_id is None or not isinstance(confirmation, Mapping):
-        return False
-    return (
-        confirmation.get("schema") == _CONFIRMATION_SCHEMA
-        and confirmation.get("valid") is True
-        and _text(confirmation.get("selected_standard_class_id")) == class_id
-        and class_id in _dictionary_class_ids(dictionary)
-    )
 
 
 def validate_s6_request(
@@ -214,17 +198,6 @@ def validate_s6_request(
                         blockers.append(
                             f"planning_parcel_distance_crs_mismatch:{parcel_id}"
                         )
-
-    if normalized["confirmed_standard_class_id"] is not None:
-        confirmation = normalized["human_confirmation"]
-        if not (
-            isinstance(confirmation, Mapping)
-            and confirmation.get("schema") == _CONFIRMATION_SCHEMA
-            and confirmation.get("valid") is True
-            and _text(confirmation.get("selected_standard_class_id"))
-            == normalized["confirmed_standard_class_id"]
-        ):
-            blockers.append("confirmed_class_requires_valid_human_confirmation")
 
     return {
         "valid": not blockers,
@@ -403,27 +376,123 @@ def _screen_resources(
     }
 
 
-def _confirmed_class_id(
+def _validate_request_confirmation(
     request: Mapping[str, Any],
     dictionary: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    class_id = _text(request.get("confirmed_standard_class_id"))
+    if class_id is None:
+        return None
+    confirmation = request.get("human_confirmation")
+    if not isinstance(confirmation, Mapping):
+        return {
+            "valid": False,
+            "selected_standard_class_id": class_id,
+            "validation_errors": [
+                "confirmed_class_requires_valid_human_confirmation"
+            ],
+        }
+    original_input = {
+        "facility_name": request.get("facility_name"),
+        "raw_facility_type": request.get("raw_facility_type"),
+        "use_description": request.get("use_description"),
+    }
+    selected_candidate = confirmation.get("selected_candidate")
+    confirmation_payload = {
+        key: value
+        for key, value in confirmation.items()
+        if key not in {"valid", "schema", "validation_errors", "selected_candidate"}
+    }
+    return validate_human_confirmation(
+        confirmation_payload,
+        dictionary=dictionary,
+        original_input=original_input,
+        selected_candidate=(
+            selected_candidate if isinstance(selected_candidate, Mapping) else None
+        ),
+    )
+
+
+def _confirmed_class_id(
+    *,
     semantic_resolution: Mapping[str, Any],
+    confirmation_validation: Mapping[str, Any] | None,
 ) -> str | None:
-    if _valid_confirmation(request, dictionary):
-        return _text(request.get("confirmed_standard_class_id"))
+    if (
+        confirmation_validation is not None
+        and confirmation_validation.get("valid") is True
+    ):
+        return _text(confirmation_validation.get("selected_standard_class_id"))
     if semantic_resolution.get("resolution_status") == "authoritative_confirmed":
         return _text(semantic_resolution.get("confirmed_standard_class_id"))
     return None
 
 
+def _condition_values(value: Any) -> list[str] | None:
+    if not isinstance(value, list) or not value:
+        return None
+    normalized = [_text(item) for item in value]
+    if any(item is None for item in normalized):
+        return None
+    return [item for item in normalized if item is not None]
+
+
+def _condition_context(
+    normalized_request: Mapping[str, Any], hit: Mapping[str, Any]
+) -> dict[str, str | None]:
+    return {
+        "planning_area_ids": _text(normalized_request.get("analysis_area_id")),
+        "input_modes": _text(normalized_request.get("input_mode")),
+        "planning_statuses": _text(hit.get("planning_status")),
+        "resource_domains": _text(hit.get("resource_domain")),
+        "facility_geometry_types": _text(hit.get("geometry_type")),
+    }
+
+
+def _evaluate_applicability_conditions(
+    conditions: Any,
+    *,
+    normalized_request: Mapping[str, Any],
+    hit: Mapping[str, Any],
+) -> list[str]:
+    if not isinstance(conditions, Mapping):
+        return ["applicability_conditions_malformed"]
+    reasons = []
+    context = _condition_context(normalized_request, hit)
+    condition_names = list(conditions)
+    if any(not isinstance(condition_name, str) for condition_name in condition_names):
+        return ["applicability_condition_key_malformed"]
+    for condition_name in sorted(condition_names):
+        if condition_name not in _SUPPORTED_APPLICABILITY_CONDITIONS:
+            reasons.append(f"unsupported_condition:{condition_name}")
+            continue
+        expected_values = _condition_values(conditions[condition_name])
+        if expected_values is None:
+            reasons.append(f"condition_malformed:{condition_name}")
+            continue
+        actual_value = context[condition_name]
+        if actual_value is None or actual_value not in expected_values:
+            reasons.append(f"condition_not_matched:{condition_name}")
+    return reasons
+
+
 def _applicable_rules(
     *,
     confirmed_class_id: str | None,
-    object_class_ids: set[str],
+    normalized_request: Mapping[str, Any],
+    hits: list[Mapping[str, Any]],
     compatibility: Mapping[str, Any],
-) -> list[dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[str]]:
     if confirmed_class_id is None or compatibility.get("ready") is not True:
-        return []
-    applicable = []
+        return [], [], [
+            _text(hit.get("resource_id"))
+            or _text(hit.get("facility_id"))
+            or "unknown_hit"
+            for hit in hits
+        ]
+    evaluated = []
+    applicable_by_rule_id: dict[str, dict[str, Any]] = {}
+    decisive_hit_ids: set[str] = set()
     for row in _rows(compatibility, "rules"):
         rule_id = _text(row.get("rule_id"))
         relationship = _text(row.get("relationship"))
@@ -433,20 +502,70 @@ def _applicable_rules(
             or _text(row.get("source_reference")) is None
             or relationship not in {"conflict", "compatible"}
             or _text(row.get("subject_class_id")) != confirmed_class_id
-            or _text(row.get("object_class_id")) not in object_class_ids
         ):
             continue
-        applicable.append(
-            {
+        object_class_id = _text(row.get("object_class_id"))
+        for hit in hits:
+            if _text(hit.get("compatibility_object_class_id")) != object_class_id:
+                continue
+            hit_id = (
+                _text(hit.get("resource_id"))
+                or _text(hit.get("facility_id"))
+                or "unknown_hit"
+            )
+            reasons = _evaluate_applicability_conditions(
+                row.get("applicability_conditions"),
+                normalized_request=normalized_request,
+                hit=hit,
+            )
+            evaluation = {
                 "rule_id": rule_id,
                 "rule_version": _text(row.get("rule_version")),
                 "subject_class_id": confirmed_class_id,
-                "object_class_id": _text(row.get("object_class_id")),
+                "object_class_id": object_class_id,
                 "relationship": relationship,
                 "source_reference": _text(row.get("source_reference")),
+                "applicability_conditions": row.get("applicability_conditions"),
+                "evaluated_hit_id": hit_id,
+                "applicable": not reasons,
+                "non_applicable_reasons": reasons,
             }
+            evaluated.append(evaluation)
+            if reasons:
+                continue
+            decisive_hit_ids.add(hit_id)
+            applicable_by_rule_id.setdefault(
+                rule_id,
+                {
+                    "rule_id": rule_id,
+                    "rule_version": evaluation["rule_version"],
+                    "subject_class_id": confirmed_class_id,
+                    "object_class_id": object_class_id,
+                    "relationship": relationship,
+                    "source_reference": evaluation["source_reference"],
+                    "applicability_conditions": row.get(
+                        "applicability_conditions"
+                    ),
+                    "applied_hit_ids": [],
+                },
+            )["applied_hit_ids"].append(hit_id)
+    evaluated.sort(key=lambda row: (row["rule_id"], row["evaluated_hit_id"]))
+    applicable = sorted(applicable_by_rule_id.values(), key=lambda row: row["rule_id"])
+    unruled_hit_ids = sorted(
+        (
+            _text(hit.get("resource_id"))
+            or _text(hit.get("facility_id"))
+            or "unknown_hit"
         )
-    return sorted(applicable, key=lambda row: row["rule_id"])
+        for hit in hits
+        if (
+            _text(hit.get("resource_id"))
+            or _text(hit.get("facility_id"))
+            or "unknown_hit"
+        )
+        not in decisive_hit_ids
+    )
+    return evaluated, applicable, unruled_hit_ids
 
 
 def _feature_collection(rows: list[Mapping[str, Any]], id_field: str) -> dict[str, Any]:
@@ -485,6 +604,7 @@ def _insufficient_result(
     *,
     validation: Mapping[str, Any],
     dictionary: Mapping[str, Any],
+    confirmation_validation: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     normalized = validation["normalized_request"]
     semantic_resolution = resolve_s6_facility_semantics(
@@ -501,6 +621,7 @@ def _insufficient_result(
         "max_claim_level": "insufficient_evidence",
         "normalized_request": normalized,
         "semantic_resolution": semantic_resolution,
+        "human_confirmation_validation": confirmation_validation,
         "screening": {
             "provider": "projected_planar_buffer",
             "distance_m": SCREENING_DISTANCE_M,
@@ -517,6 +638,8 @@ def _insufficient_result(
         },
         "compatibility_rules_evaluated": [],
         "applied_rule_ids": [],
+        "applied_rules": [],
+        "unruled_hit_ids": [],
         "validation_blockers": list(validation["blockers"]),
         "production_blockers": list(validation["blockers"]),
         "completeness_warnings": [],
@@ -547,15 +670,20 @@ def analyze_s6_facility_proposal(
     """Return the evidence-bounded S6 analysis contract."""
     validation = validate_s6_request(request, resources)
     normalized = validation["normalized_request"]
-    if normalized.get("confirmed_standard_class_id") is not None and not _valid_confirmation(
-        request, dictionary
+    confirmation_validation = _validate_request_confirmation(request, dictionary)
+    if (
+        confirmation_validation is not None
+        and confirmation_validation.get("valid") is not True
     ):
         blockers = list(validation["blockers"])
-        if "confirmed_class_requires_valid_human_confirmation" not in blockers:
-            blockers.append("confirmed_class_requires_valid_human_confirmation")
+        blockers.extend(confirmation_validation.get("validation_errors") or [])
         validation = {**validation, "valid": False, "blockers": blockers}
     if not validation["valid"]:
-        return _insufficient_result(validation=validation, dictionary=dictionary)
+        return _insufficient_result(
+            validation=validation,
+            dictionary=dictionary,
+            confirmation_validation=confirmation_validation,
+        )
 
     selected_area = validation["selected_area"]
     distance_crs = selected_area["distance_crs"]
@@ -578,17 +706,14 @@ def analyze_s6_facility_proposal(
         dictionary=dictionary,
     )
     confirmed_class_id = _confirmed_class_id(
-        request, dictionary, semantic_resolution
+        semantic_resolution=semantic_resolution,
+        confirmation_validation=confirmation_validation,
     )
-    object_class_ids = {
-        object_class_id
-        for row in planning_hits + facility_hits
-        if (object_class_id := _text(row.get("compatibility_object_class_id")))
-        is not None
-    }
-    applicable_rules = _applicable_rules(
+    mapped_hits = planning_hits + facility_hits
+    evaluated_rules, applicable_rules, unruled_hit_ids = _applicable_rules(
         confirmed_class_id=confirmed_class_id,
-        object_class_ids=object_class_ids,
+        normalized_request=normalized,
+        hits=mapped_hits,
         compatibility=compatibility,
     )
     relationships = {row["relationship"] for row in applicable_rules}
@@ -601,7 +726,13 @@ def analyze_s6_facility_proposal(
     if "conflict" in relationships:
         status = "confirmed_conflict"
         max_claim_level = "authoritative_rule_applied"
-    elif "compatible" in relationships:
+    elif (
+        mapped_hits
+        and not unruled_hit_ids
+        and "compatible" in relationships
+        and not unresolved["planning_resources"]
+        and not unresolved["current_facilities"]
+    ):
         status = "confirmed_compatible"
         max_claim_level = "authoritative_rule_applied"
     elif any_spatial_hit:
@@ -648,6 +779,7 @@ def analyze_s6_facility_proposal(
             "scope": resources.get("scope"),
         },
         "semantic_resolution": semantic_resolution,
+        "human_confirmation_validation": confirmation_validation,
         "screening": {
             "provider": "projected_planar_buffer",
             "distance_m": SCREENING_DISTANCE_M,
@@ -659,8 +791,10 @@ def analyze_s6_facility_proposal(
         "planning_resource_hits": planning_hits,
         "current_facility_hits": facility_hits,
         "unresolved_objects": unresolved,
-        "compatibility_rules_evaluated": applicable_rules,
+        "compatibility_rules_evaluated": evaluated_rules,
         "applied_rule_ids": [row["rule_id"] for row in applicable_rules],
+        "applied_rules": applicable_rules,
+        "unruled_hit_ids": unruled_hit_ids,
         "validation_blockers": [],
         "production_blockers": production_blockers,
         "completeness_warnings": warnings,

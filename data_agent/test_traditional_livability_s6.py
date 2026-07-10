@@ -10,6 +10,9 @@ from data_agent.uwm.traditional_livability_s6 import (
     analyze_s6_facility_proposal,
     validate_s6_request,
 )
+from data_agent.uwm.traditional_livability_s6_semantics import (
+    resolve_s6_facility_semantics,
+)
 
 
 AREA_ID = "fulu_heping"
@@ -210,33 +213,103 @@ def unavailable_compatibility() -> dict:
 
 
 def compatibility(*rules: dict) -> dict:
-    return {"ready": True, "status": "ready", "rules": list(rules)}
+    normalized_rules = list(rules)
+    return {
+        "schema": "uwm.traditional_livability.facility_compatibility.v1",
+        "ready": True,
+        "status": "ready",
+        "rules": normalized_rules,
+        "rule_index": {
+            row["rule_id"]: row for row in normalized_rules if row["rule_id"]
+        },
+        "source_metadata": {
+            "matrix_version": "matrix-v1",
+            "issuing_organization": "Fixture standards authority",
+            "source_reference": "fixture://compatibility",
+            "effective_date": "2026-07-10",
+            "version_date": "2026-07-10",
+            "imported_at": "2026-07-10T00:00:00Z",
+        },
+        "content_digest": "sha256:fixture-matrix",
+        "validation_errors": [],
+        "production_blockers": [],
+    }
 
 
-def rule(*, rule_id: str, subject: str, object_id: str, relationship: str) -> dict:
+def rule(
+    *,
+    rule_id: str,
+    subject: str,
+    object_id: str,
+    relationship: str,
+    applicability_conditions: dict | list | None = None,
+) -> dict:
     return {
         "rule_id": rule_id,
         "rule_version": "rule-v1",
         "subject_class_id": subject,
         "object_class_id": object_id,
         "relationship": relationship,
+        "applicability_conditions": (
+            {} if applicability_conditions is None else applicability_conditions
+        ),
         "source_reference": f"fixture://{rule_id}",
     }
 
 
 def confirmed_request(class_id: str) -> dict:
-    return point_request(
+    request = point_request(
+        facility_name="新型邻里服务点",
+        raw_facility_type="未分类设施",
+        use_description="现场材料由审查员核验",
         confirmed_standard_class_id=class_id,
-        human_confirmation={
-            "schema": "uwm.traditional_livability.s6_human_confirmation.v1",
-            "valid": True,
-            "selected_standard_class_id": class_id,
+    )
+    resolution = resolve_s6_facility_semantics(
+        facility_name=request["facility_name"],
+        raw_facility_type=request["raw_facility_type"],
+        use_description=request["use_description"],
+        dictionary=authoritative_dictionary(class_id),
+    )
+    request["human_confirmation"] = {
             "actor_id": "planner-1",
             "confirmed_at": "2026-07-10T12:00:00Z",
-            "original_input_digest": "sha256:confirmed",
+            "selected_standard_class_id": class_id,
+            "original_input_digest": resolution["original_input_digest"],
             "dictionary_version": "dict-v1",
-        },
-    )
+            "selected_candidate": {
+                "standard_class_id": class_id,
+                "standard_class_label": class_id,
+                "authority_level": "human_confirmation",
+                "match_method": "human_selected",
+                "confidence": "human_confirmed",
+                "dictionary_version": "dict-v1",
+                "rule_version": None,
+                "human_confirmation_required": False,
+                "human_confirmed": True,
+                "evidence": [
+                    {
+                        "evidence_type": "reviewer_reason",
+                        "reason": "Reviewer verified the proposed use against the case materials.",
+                    }
+                ],
+            },
+        }
+    return request
+
+
+def resources_without_unresolved_hits() -> dict:
+    resources = resource_fixture(complete_inventory=True)
+    resources["planning_resources"] = [
+        row
+        for row in resources["planning_resources"]
+        if row["resource_id"] != "planning-unresolved"
+    ]
+    resources["current_facilities"] = [
+        row
+        for row in resources["current_facilities"]
+        if row["facility_id"] == "facility-hit"
+    ]
+    return resources
 
 
 def test_point_mode_returns_separate_planning_and_facility_hits():
@@ -330,6 +403,45 @@ def test_authoritative_rule_is_required_for_confirmed_conflict():
     assert result["s1_handoff"]["confirmed_standard_class_id"] == "facility.market"
 
 
+def test_request_valid_flag_cannot_bypass_server_confirmation_validation():
+    request = confirmed_request("facility.market")
+    request["human_confirmation"]["valid"] = True
+    request["human_confirmation"]["original_input_digest"] = "sha256:malicious"
+    result = analyze_s6_facility_proposal(
+        request=request,
+        resources=resource_fixture(),
+        dictionary=authoritative_dictionary("facility.market"),
+        compatibility=compatibility(
+            rule(
+                rule_id="RULE-001",
+                subject="facility.market",
+                object_id="village_public_service_land",
+                relationship="conflict",
+            )
+        ),
+    )
+
+    assert result["status"] == "insufficient_evidence"
+    assert "original_input_digest_mismatch" in result["validation_blockers"]
+    assert result["human_confirmation_validation"]["valid"] is False
+    assert result["s1_handoff"]["ready"] is False
+
+
+def test_missing_confirmation_audit_field_fails_closed_with_exact_error():
+    request = confirmed_request("facility.market")
+    request["human_confirmation"].pop("actor_id")
+    result = analyze_s6_facility_proposal(
+        request=request,
+        resources=resource_fixture(),
+        dictionary=authoritative_dictionary("facility.market"),
+        compatibility=compatibility(),
+    )
+
+    assert result["status"] == "insufficient_evidence"
+    assert "actor_id_missing" in result["validation_blockers"]
+    assert result["human_confirmation_validation"]["valid"] is False
+
+
 def test_authoritative_alias_match_can_apply_rules_without_human_confirmation():
     result = analyze_s6_facility_proposal(
         request=point_request(facility_name="标准市场", raw_facility_type="市场"),
@@ -374,19 +486,152 @@ def test_confirmed_conflict_precedes_compatible_rules_deterministically():
     assert result["applied_rule_ids"] == ["RULE-A", "RULE-Z"]
 
 
-def test_authoritative_compatible_rules_with_no_conflict_confirm_compatibility():
+def test_nonmatching_applicability_condition_is_reported_and_not_applied():
     result = analyze_s6_facility_proposal(
         request=confirmed_request("facility.market"),
         resources=resource_fixture(),
         dictionary=authoritative_dictionary("facility.market"),
         compatibility=compatibility(
-            rule(rule_id="RULE-002", subject="facility.market", object_id="facility.market", relationship="compatible")
+            rule(
+                rule_id="RULE-AREA",
+                subject="facility.market",
+                object_id="village_public_service_land",
+                relationship="conflict",
+                applicability_conditions={"planning_area_ids": ["fulu_banzhu"]},
+            )
+        ),
+    )
+
+    assert result["status"] == "potential_conflict_review_required"
+    assert result["applied_rule_ids"] == []
+    evaluated = result["compatibility_rules_evaluated"][0]
+    assert evaluated["rule_id"] == "RULE-AREA"
+    assert evaluated["applicable"] is False
+    assert evaluated["non_applicable_reasons"] == [
+        "condition_not_matched:planning_area_ids"
+    ]
+
+
+def test_supported_applicability_conditions_all_match_the_current_hit():
+    result = analyze_s6_facility_proposal(
+        request=confirmed_request("facility.market"),
+        resources=resource_fixture(),
+        dictionary=authoritative_dictionary("facility.market"),
+        compatibility=compatibility(
+            rule(
+                rule_id="RULE-PLANNING-CONDITIONS",
+                subject="facility.market",
+                object_id="village_public_service_land",
+                relationship="conflict",
+                applicability_conditions={
+                    "planning_area_ids": [AREA_ID],
+                    "input_modes": ["point"],
+                    "planning_statuses": ["current", "planned"],
+                    "resource_domains": ["village_public_service_land"],
+                },
+            ),
+            rule(
+                rule_id="RULE-FACILITY-CONDITIONS",
+                subject="facility.market",
+                object_id="facility.market",
+                relationship="compatible",
+                applicability_conditions={
+                    "planning_area_ids": [AREA_ID],
+                    "input_modes": ["point"],
+                    "facility_geometry_types": ["Point"],
+                },
+            ),
+        ),
+    )
+
+    assert result["status"] == "confirmed_conflict"
+    assert result["applied_rule_ids"] == [
+        "RULE-FACILITY-CONDITIONS",
+        "RULE-PLANNING-CONDITIONS",
+    ]
+    assert all(row["applicable"] for row in result["compatibility_rules_evaluated"])
+
+
+def test_unsupported_or_malformed_applicability_is_never_applied():
+    result = analyze_s6_facility_proposal(
+        request=confirmed_request("facility.market"),
+        resources=resource_fixture(),
+        dictionary=authoritative_dictionary("facility.market"),
+        compatibility=compatibility(
+            rule(
+                rule_id="RULE-UNSUPPORTED",
+                subject="facility.market",
+                object_id="village_public_service_land",
+                relationship="conflict",
+                applicability_conditions={"planning_area_types": ["village"]},
+            ),
+            rule(
+                rule_id="RULE-MALFORMED",
+                subject="facility.market",
+                object_id="village_public_service_land",
+                relationship="conflict",
+                applicability_conditions={"input_modes": "point"},
+            ),
+        ),
+    )
+
+    assert result["status"] == "potential_conflict_review_required"
+    assert result["applied_rule_ids"] == []
+    reasons = {
+        row["rule_id"]: row["non_applicable_reasons"]
+        for row in result["compatibility_rules_evaluated"]
+    }
+    assert reasons == {
+        "RULE-MALFORMED": ["condition_malformed:input_modes"],
+        "RULE-UNSUPPORTED": ["unsupported_condition:planning_area_types"],
+    }
+
+
+def test_authoritative_compatible_rules_with_no_conflict_confirm_compatibility():
+    result = analyze_s6_facility_proposal(
+        request=confirmed_request("facility.market"),
+        resources=resources_without_unresolved_hits(),
+        dictionary=authoritative_dictionary("facility.market"),
+        compatibility=compatibility(
+            rule(rule_id="RULE-PLANNING", subject="facility.market", object_id="village_public_service_land", relationship="compatible"),
+            rule(rule_id="RULE-FACILITY", subject="facility.market", object_id="facility.market", relationship="compatible"),
         ),
     )
 
     assert result["status"] == "confirmed_compatible"
-    assert result["applied_rule_ids"] == ["RULE-002"]
+    assert result["applied_rule_ids"] == ["RULE-FACILITY", "RULE-PLANNING"]
     assert result["max_claim_level"] == "authoritative_rule_applied"
+
+
+def test_partial_compatible_rule_coverage_requires_review():
+    result = analyze_s6_facility_proposal(
+        request=confirmed_request("facility.market"),
+        resources=resources_without_unresolved_hits(),
+        dictionary=authoritative_dictionary("facility.market"),
+        compatibility=compatibility(
+            rule(rule_id="RULE-FACILITY", subject="facility.market", object_id="facility.market", relationship="compatible")
+        ),
+    )
+
+    assert result["status"] == "potential_conflict_review_required"
+    assert result["applied_rule_ids"] == ["RULE-FACILITY"]
+    assert result["unruled_hit_ids"] == ["parcel-selected", "planning-hit"]
+
+
+def test_unresolved_hit_blocks_confirmed_compatible():
+    result = analyze_s6_facility_proposal(
+        request=confirmed_request("facility.market"),
+        resources=resource_fixture(),
+        dictionary=authoritative_dictionary("facility.market"),
+        compatibility=compatibility(
+            rule(rule_id="RULE-PLANNING", subject="facility.market", object_id="village_public_service_land", relationship="compatible"),
+            rule(rule_id="RULE-FACILITY", subject="facility.market", object_id="facility.market", relationship="compatible"),
+        ),
+    )
+
+    assert result["status"] == "potential_conflict_review_required"
+    assert result["unresolved_objects"]["planning_resources"]
+    assert result["unresolved_objects"]["current_facilities"]
 
 
 def test_sampled_inventory_no_hit_has_explicit_warning():
