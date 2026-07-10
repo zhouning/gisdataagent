@@ -5,6 +5,7 @@ from copy import deepcopy
 from data_agent.uwm.traditional_livability_facility_dictionary import (
     COMPATIBILITY_SCHEMA,
     DICTIONARY_SCHEMA,
+    compute_canonical_content_digest,
     unavailable_compatibility_matrix,
     unavailable_facility_dictionary,
     validate_compatibility_matrix,
@@ -13,7 +14,7 @@ from data_agent.uwm.traditional_livability_facility_dictionary import (
 
 
 def dictionary_fixture(*, class_count: int = 43) -> dict:
-    return {
+    payload = {
         "schema": DICTIONARY_SCHEMA,
         "dictionary_version": "fixture-dictionary-2026-07-10",
         "issuing_organization": "Fixture standards authority",
@@ -42,13 +43,14 @@ def dictionary_fixture(*, class_count: int = 43) -> dict:
                 "source_reference": "fixture://liv-2.0/dictionary#keyword-1",
             }
         ],
-        "content_digest": "sha256:fixture-dictionary",
         "imported_at": "2026-07-10T00:00:00Z",
     }
+    payload["content_digest"] = compute_canonical_content_digest(payload)
+    return payload
 
 
 def matrix_fixture(*, rule_id: str = "fixture-rule-001") -> dict:
-    return {
+    payload = {
         "schema": COMPATIBILITY_SCHEMA,
         "matrix_version": "fixture-matrix-2026-07-10",
         "issuing_organization": "Fixture standards authority",
@@ -57,15 +59,20 @@ def matrix_fixture(*, rule_id: str = "fixture-rule-001") -> dict:
         "rules": [
             {
                 "rule_id": rule_id,
+                "rule_version": "fixture-rule-version-1",
                 "subject_class_id": "fixture.class.01",
                 "object_class_id": "fixture.class.02",
                 "relationship": "conflict",
+                "applicability_conditions": {
+                    "planning_area_types": ["fixture_planning_area"]
+                },
                 "source_reference": "fixture://liv-2.0/compatibility#rule-1",
             }
         ],
-        "content_digest": "sha256:fixture-compatibility",
         "imported_at": "2026-07-10T00:00:00Z",
     }
+    payload["content_digest"] = compute_canonical_content_digest(payload)
+    return payload
 
 
 def test_load_dictionary_preserves_authority_and_exact_class_count():
@@ -96,7 +103,10 @@ def test_missing_dictionary_never_promotes_internal_taxonomy():
 
 
 def test_compatibility_rule_requires_provenance_and_stable_rule_id():
-    result = validate_compatibility_matrix(matrix_fixture(rule_id=""))
+    payload = matrix_fixture(rule_id="")
+    payload["content_digest"] = compute_canonical_content_digest(payload)
+
+    result = validate_compatibility_matrix(payload)
 
     assert result["ready"] is False
     assert "compatibility_rule_id_missing" in result["validation_errors"]
@@ -105,6 +115,7 @@ def test_compatibility_rule_requires_provenance_and_stable_rule_id():
 def test_dictionary_rejects_duplicate_class_ids():
     payload = dictionary_fixture()
     payload["classes"][1]["class_id"] = payload["classes"][0]["class_id"]
+    payload["content_digest"] = compute_canonical_content_digest(payload)
 
     result = validate_facility_dictionary(payload)
 
@@ -115,6 +126,7 @@ def test_dictionary_rejects_duplicate_class_ids():
 def test_dictionary_rejects_aliases_pointing_to_unknown_classes():
     payload = dictionary_fixture()
     payload["aliases"][0]["class_id"] = "fixture.class.unknown"
+    payload["content_digest"] = compute_canonical_content_digest(payload)
 
     result = validate_facility_dictionary(payload)
 
@@ -125,6 +137,7 @@ def test_dictionary_rejects_aliases_pointing_to_unknown_classes():
 def test_compatibility_matrix_rejects_unsupported_relationship_values():
     payload = matrix_fixture()
     payload["rules"][0]["relationship"] = "possibly_conflicting"
+    payload["content_digest"] = compute_canonical_content_digest(payload)
 
     result = validate_compatibility_matrix(payload)
 
@@ -169,6 +182,7 @@ def test_compatibility_matrix_preserves_normalized_rules_and_source_metadata():
 def test_compatibility_rule_requires_rule_level_provenance():
     payload = matrix_fixture()
     payload["rules"][0]["source_reference"] = ""
+    payload["content_digest"] = compute_canonical_content_digest(payload)
 
     result = validate_compatibility_matrix(payload)
 
@@ -183,4 +197,80 @@ def test_missing_compatibility_matrix_is_explicitly_unavailable():
     assert result["status"] == "compatibility_matrix_unavailable"
     assert result["rules"] == []
     assert result["rule_index"] == {}
+    assert result["content_digest"] is None
+    assert result["validation_errors"] == []
     assert "authoritative_facility_compatibility_matrix_missing" in result["production_blockers"]
+
+
+def test_compatibility_rule_requires_non_empty_rule_version():
+    payload = matrix_fixture()
+    payload["rules"][0]["rule_version"] = ""
+    payload["content_digest"] = compute_canonical_content_digest(payload)
+
+    result = validate_compatibility_matrix(payload)
+
+    assert result["ready"] is False
+    assert "compatibility_rule_version_missing:fixture-rule-001" in result["validation_errors"]
+
+
+def test_compatibility_rule_requires_explicit_applicability_conditions():
+    payload = matrix_fixture()
+    payload["rules"][0].pop("applicability_conditions")
+    payload["content_digest"] = compute_canonical_content_digest(payload)
+
+    result = validate_compatibility_matrix(payload)
+
+    assert result["ready"] is False
+    assert (
+        "compatibility_rule_applicability_conditions_missing:fixture-rule-001"
+        in result["validation_errors"]
+    )
+
+
+def test_dictionary_digest_covers_entire_canonical_payload_except_digest_field():
+    payload = dictionary_fixture()
+    original_digest = payload["content_digest"]
+    reordered_payload = dict(reversed(list(payload.items())))
+
+    assert compute_canonical_content_digest(reordered_payload) == original_digest
+
+    payload["classes"][0]["label"] = "Changed fixture class"
+    result = validate_facility_dictionary(payload)
+
+    assert result["ready"] is False
+    assert result["content_digest"] != original_digest
+    assert result["provided_content_digest"] == original_digest
+    assert "dictionary_content_digest_mismatch" in result["validation_errors"]
+    assert result["digest_contract"]["excluded_top_level_fields"] == ["content_digest"]
+
+
+def test_compatibility_digest_mismatch_fails_readiness():
+    payload = matrix_fixture()
+    original_digest = payload["content_digest"]
+    payload["rules"][0]["applicability_conditions"] = ["changed-condition"]
+
+    result = validate_compatibility_matrix(payload)
+
+    assert result["ready"] is False
+    assert result["content_digest"] != original_digest
+    assert result["provided_content_digest"] == original_digest
+    assert "compatibility_matrix_content_digest_mismatch" in result["validation_errors"]
+
+
+def test_provided_digest_requires_an_exact_untrimmed_match():
+    payload = dictionary_fixture()
+    payload["content_digest"] = f" {payload['content_digest']} "
+
+    result = validate_facility_dictionary(payload)
+
+    assert result["ready"] is False
+    assert "dictionary_content_digest_mismatch" in result["validation_errors"]
+
+
+def test_compatibility_validation_does_not_mutate_the_imported_payload():
+    payload = matrix_fixture()
+    original = deepcopy(payload)
+
+    validate_compatibility_matrix(payload)
+
+    assert payload == original

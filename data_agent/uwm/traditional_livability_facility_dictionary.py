@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from hashlib import sha256
+import json
 from typing import Any, Mapping
 
 
@@ -13,11 +15,56 @@ _DICTIONARY_INCOMPLETE_BLOCKER = "authoritative_43_class_facility_dictionary_inc
 _ALIAS_PROVENANCE_BLOCKER = "authoritative_alias_keyword_provenance_missing"
 _COMPATIBILITY_MISSING_BLOCKER = "authoritative_facility_compatibility_matrix_missing"
 
+_DIGEST_CONTRACT = {
+    "algorithm": "sha256",
+    "encoding": "utf-8",
+    "serialization": "canonical_json_sorted_keys_compact_separators_preserve_list_order",
+    "covered_fields": "all_top_level_source_payload_fields_and_nested_values",
+    "excluded_top_level_fields": ["content_digest"],
+}
+
 
 def _text(value: Any) -> str:
     if value is None:
         return ""
     return str(value).strip()
+
+
+def _canonical_json_value(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        if any(not isinstance(key, str) for key in value):
+            raise TypeError("canonical payload object keys must be strings")
+        return {key: _canonical_json_value(value[key]) for key in sorted(value)}
+    if isinstance(value, list):
+        return [_canonical_json_value(item) for item in value]
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    raise TypeError(f"unsupported canonical payload value: {type(value).__name__}")
+
+
+def compute_canonical_content_digest(payload: Mapping[str, Any]) -> str:
+    """Hash the complete normalized source payload except top-level content_digest.
+
+    The contract covers schema/version/provenance metadata, import timestamp,
+    completeness claims, classes, aliases, keywords, rules, applicability
+    conditions and any future source fields. Object keys are sorted, list order is
+    preserved, UTF-8 canonical JSON uses compact separators, and the digest is
+    returned as ``sha256:<lowercase hex>``.
+    """
+    digest_payload = {
+        key: value
+        for key, value in payload.items()
+        if key not in _DIGEST_CONTRACT["excluded_top_level_fields"]
+    }
+    canonical_payload = _canonical_json_value(digest_payload)
+    serialized = json.dumps(
+        canonical_payload,
+        ensure_ascii=False,
+        allow_nan=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    return f"sha256:{sha256(serialized).hexdigest()}"
 
 
 def _source_metadata(payload: Mapping[str, Any], *, version_field: str) -> dict[str, Any]:
@@ -59,6 +106,11 @@ def validate_facility_dictionary(payload: Mapping[str, Any]) -> dict[str, Any]:
         payload = {}
 
     errors = []
+    raw_content_digest = payload.get("content_digest")
+    provided_content_digest = raw_content_digest if _text(raw_content_digest) else None
+    computed_content_digest = compute_canonical_content_digest(payload)
+    if provided_content_digest and provided_content_digest != computed_content_digest:
+        errors.append("dictionary_content_digest_mismatch")
     if payload.get("schema") != DICTIONARY_SCHEMA:
         errors.append("dictionary_schema_invalid")
     errors.extend(
@@ -161,7 +213,9 @@ def validate_facility_dictionary(payload: Mapping[str, Any]) -> dict[str, Any]:
         "alias_index": alias_index,
         "keyword_index": keyword_index,
         "source_metadata": _source_metadata(payload, version_field="dictionary_version"),
-        "content_digest": payload.get("content_digest"),
+        "content_digest": computed_content_digest,
+        "provided_content_digest": provided_content_digest,
+        "digest_contract": deepcopy(_DIGEST_CONTRACT),
         "validation_errors": errors,
         "production_blockers": blockers,
     }
@@ -193,6 +247,11 @@ def validate_compatibility_matrix(payload: Mapping[str, Any]) -> dict[str, Any]:
         payload = {}
 
     errors = []
+    raw_content_digest = payload.get("content_digest")
+    provided_content_digest = raw_content_digest if _text(raw_content_digest) else None
+    computed_content_digest = compute_canonical_content_digest(payload)
+    if provided_content_digest and provided_content_digest != computed_content_digest:
+        errors.append("compatibility_matrix_content_digest_mismatch")
     if payload.get("schema") != COMPATIBILITY_SCHEMA:
         errors.append("compatibility_matrix_schema_invalid")
     errors.extend(
@@ -214,6 +273,7 @@ def validate_compatibility_matrix(payload: Mapping[str, Any]) -> dict[str, Any]:
             errors.append(f"compatibility_rule_invalid:{index}")
             continue
         rule_id = _text(rule.get("rule_id"))
+        rule_version = _text(rule.get("rule_version"))
         relationship = _text(rule.get("relationship"))
         if not rule_id:
             errors.append("compatibility_rule_id_missing")
@@ -221,12 +281,18 @@ def validate_compatibility_matrix(payload: Mapping[str, Any]) -> dict[str, Any]:
             errors.append(f"duplicate_compatibility_rule_id:{rule_id}")
         else:
             rule_index[rule_id] = rule
+        if not rule_version:
+            errors.append(f"compatibility_rule_version_missing:{rule_id or index}")
         if relationship not in ALLOWED_RELATIONSHIPS:
             errors.append(f"unsupported_compatibility_relationship:{relationship}")
         if not _text(rule.get("subject_class_id")):
             errors.append(f"compatibility_subject_class_id_missing:{rule_id or index}")
         if not _text(rule.get("object_class_id")):
             errors.append(f"compatibility_object_class_id_missing:{rule_id or index}")
+        if not isinstance(rule.get("applicability_conditions"), (Mapping, list)):
+            errors.append(
+                f"compatibility_rule_applicability_conditions_missing:{rule_id or index}"
+            )
         if not _text(rule.get("source_reference")):
             errors.append(f"compatibility_rule_provenance_missing:{rule_id or index}")
 
@@ -246,7 +312,9 @@ def validate_compatibility_matrix(payload: Mapping[str, Any]) -> dict[str, Any]:
         "rules": rules,
         "rule_index": rule_index,
         "source_metadata": _source_metadata(payload, version_field="matrix_version"),
-        "content_digest": payload.get("content_digest"),
+        "content_digest": computed_content_digest,
+        "provided_content_digest": provided_content_digest,
+        "digest_contract": deepcopy(_DIGEST_CONTRACT),
         "validation_errors": errors,
         "production_blockers": [] if ready else [_COMPATIBILITY_MISSING_BLOCKER],
     }
