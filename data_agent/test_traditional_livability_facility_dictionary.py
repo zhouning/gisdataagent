@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import math
+
+import pytest
 
 from data_agent.uwm.traditional_livability_facility_dictionary import (
     COMPATIBILITY_SCHEMA,
@@ -11,6 +14,11 @@ from data_agent.uwm.traditional_livability_facility_dictionary import (
     validate_compatibility_matrix,
     validate_facility_dictionary,
 )
+
+
+class UncopyableValue:
+    def __deepcopy__(self, memo):
+        raise RuntimeError("cannot copy malformed source value")
 
 
 def dictionary_fixture(*, class_count: int = 43) -> dict:
@@ -274,3 +282,53 @@ def test_compatibility_validation_does_not_mutate_the_imported_payload():
     validate_compatibility_matrix(payload)
 
     assert payload == original
+
+
+@pytest.mark.parametrize(
+    "malformed_value",
+    [
+        {1: "non-string nested key"},
+        object(),
+        UncopyableValue(),
+        math.nan,
+        math.inf,
+        -math.inf,
+    ],
+)
+def test_dictionary_malformed_canonical_content_fails_closed(malformed_value):
+    payload = dictionary_fixture()
+    payload["classes"][0]["malformed_evidence"] = malformed_value
+
+    result = validate_facility_dictionary(payload)
+
+    assert result["ready"] is False
+    assert result["status"] == "dictionary_incomplete"
+    assert result["content_digest"] is None
+    assert "content_not_canonical_json" in result["validation_errors"]
+    assert "authoritative_43_class_facility_dictionary_incomplete" in result["production_blockers"]
+
+
+@pytest.mark.parametrize(
+    "malformed_value",
+    [
+        {1: "non-string nested key"},
+        object(),
+        UncopyableValue(),
+        math.nan,
+        math.inf,
+        -math.inf,
+    ],
+)
+def test_compatibility_malformed_canonical_content_fails_closed(malformed_value):
+    payload = matrix_fixture()
+    payload["rules"][0]["applicability_conditions"] = {
+        "malformed_evidence": malformed_value
+    }
+
+    result = validate_compatibility_matrix(payload)
+
+    assert result["ready"] is False
+    assert result["status"] == "compatibility_matrix_incomplete"
+    assert result["content_digest"] is None
+    assert "content_not_canonical_json" in result["validation_errors"]
+    assert "authoritative_facility_compatibility_matrix_missing" in result["production_blockers"]

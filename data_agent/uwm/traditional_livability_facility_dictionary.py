@@ -67,6 +67,17 @@ def compute_canonical_content_digest(payload: Mapping[str, Any]) -> str:
     return f"sha256:{sha256(serialized).hexdigest()}"
 
 
+def _content_digest_or_validation_error(
+    payload: Mapping[str, Any],
+    errors: list[str],
+) -> str | None:
+    try:
+        return compute_canonical_content_digest(payload)
+    except Exception:
+        errors.append("content_not_canonical_json")
+        return None
+
+
 def _source_metadata(payload: Mapping[str, Any], *, version_field: str) -> dict[str, Any]:
     return {
         version_field: payload.get(version_field),
@@ -100,16 +111,54 @@ def _validate_source_metadata(
     return errors
 
 
-def validate_facility_dictionary(payload: Mapping[str, Any]) -> dict[str, Any]:
-    """Return the normalized dictionary, validation errors and blockers."""
+def _payload_has_schema(payload: Any, expected_schema: str) -> bool:
+    if not isinstance(payload, Mapping):
+        return False
+    try:
+        return payload.get("schema") == expected_schema
+    except Exception:
+        return False
+
+
+def _invalid_dictionary_content_contract(payload: Any) -> dict[str, Any]:
+    status = (
+        "dictionary_incomplete"
+        if _payload_has_schema(payload, DICTIONARY_SCHEMA)
+        else "dictionary_schema_invalid"
+    )
+    return {
+        "schema": DICTIONARY_SCHEMA,
+        "ready": False,
+        "status": status,
+        "authoritative_complete_43_class_dictionary": False,
+        "class_count": 0,
+        "classes": [],
+        "aliases": [],
+        "keywords": [],
+        "alias_index": {},
+        "keyword_index": {},
+        "source_metadata": _source_metadata({}, version_field="dictionary_version"),
+        "content_digest": None,
+        "provided_content_digest": None,
+        "digest_contract": deepcopy(_DIGEST_CONTRACT),
+        "validation_errors": ["content_not_canonical_json"],
+        "production_blockers": [_DICTIONARY_INCOMPLETE_BLOCKER],
+    }
+
+
+def _validate_facility_dictionary(payload: Mapping[str, Any]) -> dict[str, Any]:
     if not isinstance(payload, Mapping):
         payload = {}
 
     errors = []
     raw_content_digest = payload.get("content_digest")
     provided_content_digest = raw_content_digest if _text(raw_content_digest) else None
-    computed_content_digest = compute_canonical_content_digest(payload)
-    if provided_content_digest and provided_content_digest != computed_content_digest:
+    computed_content_digest = _content_digest_or_validation_error(payload, errors)
+    if (
+        computed_content_digest is not None
+        and provided_content_digest
+        and provided_content_digest != computed_content_digest
+    ):
         errors.append("dictionary_content_digest_mismatch")
     if payload.get("schema") != DICTIONARY_SCHEMA:
         errors.append("dictionary_schema_invalid")
@@ -221,6 +270,14 @@ def validate_facility_dictionary(payload: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def validate_facility_dictionary(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Return the normalized dictionary, validation errors and blockers."""
+    try:
+        return _validate_facility_dictionary(payload)
+    except Exception:
+        return _invalid_dictionary_content_contract(payload)
+
+
 def unavailable_facility_dictionary() -> dict[str, Any]:
     """Return the explicit no-authoritative-dictionary contract."""
     return {
@@ -241,16 +298,40 @@ def unavailable_facility_dictionary() -> dict[str, Any]:
     }
 
 
-def validate_compatibility_matrix(payload: Mapping[str, Any]) -> dict[str, Any]:
-    """Return normalized authoritative compatibility rules."""
+def _invalid_compatibility_content_contract(payload: Any) -> dict[str, Any]:
+    status = (
+        "compatibility_matrix_incomplete"
+        if _payload_has_schema(payload, COMPATIBILITY_SCHEMA)
+        else "compatibility_matrix_schema_invalid"
+    )
+    return {
+        "schema": COMPATIBILITY_SCHEMA,
+        "ready": False,
+        "status": status,
+        "rules": [],
+        "rule_index": {},
+        "source_metadata": _source_metadata({}, version_field="matrix_version"),
+        "content_digest": None,
+        "provided_content_digest": None,
+        "digest_contract": deepcopy(_DIGEST_CONTRACT),
+        "validation_errors": ["content_not_canonical_json"],
+        "production_blockers": [_COMPATIBILITY_MISSING_BLOCKER],
+    }
+
+
+def _validate_compatibility_matrix(payload: Mapping[str, Any]) -> dict[str, Any]:
     if not isinstance(payload, Mapping):
         payload = {}
 
     errors = []
     raw_content_digest = payload.get("content_digest")
     provided_content_digest = raw_content_digest if _text(raw_content_digest) else None
-    computed_content_digest = compute_canonical_content_digest(payload)
-    if provided_content_digest and provided_content_digest != computed_content_digest:
+    computed_content_digest = _content_digest_or_validation_error(payload, errors)
+    if (
+        computed_content_digest is not None
+        and provided_content_digest
+        and provided_content_digest != computed_content_digest
+    ):
         errors.append("compatibility_matrix_content_digest_mismatch")
     if payload.get("schema") != COMPATIBILITY_SCHEMA:
         errors.append("compatibility_matrix_schema_invalid")
@@ -318,6 +399,14 @@ def validate_compatibility_matrix(payload: Mapping[str, Any]) -> dict[str, Any]:
         "validation_errors": errors,
         "production_blockers": [] if ready else [_COMPATIBILITY_MISSING_BLOCKER],
     }
+
+
+def validate_compatibility_matrix(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Return normalized authoritative compatibility rules."""
+    try:
+        return _validate_compatibility_matrix(payload)
+    except Exception:
+        return _invalid_compatibility_content_contract(payload)
 
 
 def unavailable_compatibility_matrix() -> dict[str, Any]:
