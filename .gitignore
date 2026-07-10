@@ -369,6 +369,9 @@ docs/sigspatial2026_poster.toc
 # Frontend test scratch
 frontend/_test_turndown.cjs
 
+# Independent standalone repositories
+/standalone/
+
 # Paper-only eval tooling
 scripts/paper_eval/
 
