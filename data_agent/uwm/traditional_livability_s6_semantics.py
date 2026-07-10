@@ -118,6 +118,7 @@ def _candidate(
         "dictionary_version": dictionary_version,
         "rule_version": rule_version,
         "human_confirmation_required": human_confirmation_required,
+        "human_confirmed": False,
         "evidence": evidence,
     }
 
@@ -205,6 +206,7 @@ def _internal_suggestions(
                     "dictionary_version": dictionary_version,
                     "rule_version": rule["rule_id"],
                     "human_confirmation_required": True,
+                    "human_confirmed": False,
                     "evidence": evidence,
                 }
             )
@@ -332,6 +334,15 @@ def _raw_input_digest(original_input: Mapping[str, Any]) -> str:
     )
 
 
+def _raw_input_audit_view(original_input: Any) -> dict[str, Any] | None:
+    if not isinstance(original_input, Mapping):
+        return None
+    return {
+        field: _digestable_raw_value(original_input.get(field))
+        for field in _INPUT_FIELDS
+    }
+
+
 def _candidate_audit_view(candidate: Any) -> dict[str, Any] | None:
     if not isinstance(candidate, Mapping):
         return None
@@ -347,8 +358,60 @@ def _candidate_audit_view(candidate: Any) -> dict[str, Any] | None:
         "dictionary_version": _normalized_string(candidate.get("dictionary_version")),
         "rule_version": _normalized_string(candidate.get("rule_version")),
         "human_confirmation_required": candidate.get("human_confirmation_required"),
+        "human_confirmed": candidate.get("human_confirmed") is True,
         "evidence": evidence,
     }
+
+
+def _human_selected_candidate(
+    candidate: dict[str, Any] | None,
+    *,
+    selected_class_id: str | None,
+    classes: Mapping[str, Mapping[str, Any]],
+    dictionary_version: str | None,
+) -> tuple[dict[str, Any] | None, list[str]]:
+    if candidate is None or candidate.get("match_method") != "human_selected":
+        return None, []
+    errors = []
+    if candidate.get("authority_level") != "human_confirmation":
+        errors.append("human_selected_authority_level_invalid")
+    if candidate.get("confidence") != "human_confirmed":
+        errors.append("human_selected_confidence_invalid")
+    if candidate.get("human_confirmed") is not True:
+        errors.append("human_selected_confirmation_marker_missing")
+    if candidate.get("human_confirmation_required") is not False:
+        errors.append("human_selected_confirmation_state_invalid")
+    candidate_class_id = candidate.get("standard_class_id")
+    if candidate_class_id != selected_class_id:
+        errors.append("selected_candidate_class_mismatch")
+    if candidate_class_id not in classes:
+        errors.append("selected_standard_class_not_in_dictionary")
+    if candidate.get("dictionary_version") != dictionary_version:
+        errors.append("selected_candidate_dictionary_version_mismatch")
+    evidence = candidate.get("evidence")
+    if not isinstance(evidence, list) or not evidence:
+        errors.append("selected_candidate_evidence_missing")
+    elif not all(
+        isinstance(row, Mapping)
+        and _normalized_string(row.get("evidence_type")) is not None
+        and _normalized_string(row.get("reason")) is not None
+        for row in evidence
+    ):
+        errors.append("selected_candidate_reviewer_reason_missing")
+    if errors:
+        return None, errors
+    class_record = classes[candidate_class_id]
+    return {
+        **candidate,
+        "standard_class_label": class_record.get("label"),
+        "authority_level": "human_confirmation",
+        "match_method": "human_selected",
+        "confidence": "human_confirmed",
+        "dictionary_version": dictionary_version,
+        "rule_version": None,
+        "human_confirmation_required": False,
+        "human_confirmed": True,
+    }, []
 
 
 def _current_resolution(
@@ -393,12 +456,28 @@ def validate_human_confirmation(
     )
     supplied_candidate = _candidate_audit_view(selected_candidate)
     matched_candidate = None
+    candidate_errors = []
+    classes = _dictionary_classes(dictionary)
+    source_metadata = dictionary.get("source_metadata") if isinstance(dictionary, Mapping) else None
+    loaded_version = None
+    if isinstance(source_metadata, Mapping):
+        loaded_version = _normalized_string(source_metadata.get("dictionary_version"))
     if current_resolution is not None and supplied_candidate is not None:
         for candidate in current_resolution["candidates"]:
             expected_candidate = _candidate_audit_view(candidate)
             if supplied_candidate == expected_candidate:
                 matched_candidate = expected_candidate
                 break
+        if (
+            matched_candidate is None
+            and current_resolution["resolution_status"] == "unresolved"
+        ):
+            matched_candidate, candidate_errors = _human_selected_candidate(
+                supplied_candidate,
+                selected_class_id=selected_class_id,
+                classes=classes,
+                dictionary_version=loaded_version,
+            )
 
     errors = []
     if actor_id is None:
@@ -421,7 +500,7 @@ def validate_human_confirmation(
     if supplied_candidate is None:
         errors.append("selected_candidate_evidence_missing")
     elif matched_candidate is None:
-        errors.append("selected_candidate_evidence_mismatch")
+        errors.extend(candidate_errors or ["selected_candidate_evidence_mismatch"])
     elif (
         matched_candidate["standard_class_id"] is not None
         and selected_class_id is not None
@@ -438,13 +517,9 @@ def validate_human_confirmation(
     dictionary_ready = isinstance(dictionary, Mapping) and dictionary.get("ready") is True
     if not dictionary_ready:
         errors.append("authoritative_dictionary_not_ready")
-    classes = _dictionary_classes(dictionary)
     if selected_class_id is not None and selected_class_id not in classes:
-        errors.append("selected_standard_class_not_in_dictionary")
-    source_metadata = dictionary.get("source_metadata") if isinstance(dictionary, Mapping) else None
-    loaded_version = None
-    if isinstance(source_metadata, Mapping):
-        loaded_version = _normalized_string(source_metadata.get("dictionary_version"))
+        if "selected_standard_class_not_in_dictionary" not in errors:
+            errors.append("selected_standard_class_not_in_dictionary")
     if (
         supplied_dictionary_version is not None
         and supplied_dictionary_version != loaded_version
@@ -459,7 +534,8 @@ def validate_human_confirmation(
         "confirmed_at": confirmed_at,
         "selected_standard_class_id": selected_class_id,
         "original_input_digest": supplied_input_digest,
-        "original_input": normalized_input,
+        "original_input": _raw_input_audit_view(original_input),
+        "normalized_input": normalized_input,
         "selected_candidate": matched_candidate,
         "selected_candidate_evidence": (
             matched_candidate["evidence"] if matched_candidate is not None else None
