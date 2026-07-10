@@ -23,6 +23,7 @@ def test_builds_versioned_chongqing_facility_product_and_maps_primary_school():
             {
                 "source_record_id": "poi-001",
                 "source_dataset_id": "gaode_poi",
+                "name": "人民小学",
                 "raw_primary_class": "科教文化服务",
                 "raw_secondary_class": "学校",
                 "raw_tertiary_class": "小学",
@@ -40,8 +41,9 @@ def test_builds_versioned_chongqing_facility_product_and_maps_primary_school():
     assert product["geography"]["executed_area"] == "重庆市"
     assert product["mapping_version"] == "traditional_livability_facility_mapping.v1"
     facility = product["facilities"][0]
-    assert facility["canonical_class"] == "education_primary_school"
-    assert facility["mapping_status"] == "mapped"
+    assert facility["name"] == "人民小学"
+    assert facility["canonical_class"] == "education.primary_school"
+    assert facility["mapping_status"] == "mapped_internal_taxonomy"
     assert facility["source_record_id"] == "poi-001"
     assert facility["source_dataset_id"] == "gaode_poi"
     assert facility["raw_primary_class"] == "科教文化服务"

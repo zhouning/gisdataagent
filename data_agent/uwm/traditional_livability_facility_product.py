@@ -17,51 +17,51 @@ _RAW_CLASS_FIELDS = (
 _FACILITY_CLASS_MAPPING = (
     {
         "domain": "education",
-        "canonical_class": "education_primary_school",
+        "canonical_class": "education.primary_school",
         "raw_classes": frozenset({"小学", "小学校"}),
     },
     {
         "domain": "education",
-        "canonical_class": "education_school",
+        "canonical_class": "education.school",
         "raw_classes": frozenset({"学校", "中学", "幼儿园", "高等院校"}),
     },
     {
         "domain": "healthcare",
-        "canonical_class": "healthcare_facility",
+        "canonical_class": "healthcare.facility",
         "raw_classes": frozenset(
             {"医疗保健服务", "医院", "综合医院", "专科医院", "社区卫生服务中心", "诊所"}
         ),
     },
     {
         "domain": "green_space_park",
-        "canonical_class": "green_space_park",
+        "canonical_class": "green_space.park",
         "raw_classes": frozenset({"公园广场", "公园", "城市公园", "社区公园", "广场"}),
     },
     {
         "domain": "culture",
-        "canonical_class": "culture_facility",
+        "canonical_class": "culture.facility",
         "raw_classes": frozenset({"文化场馆", "图书馆", "博物馆", "文化馆", "科技馆"}),
     },
     {
         "domain": "sports",
-        "canonical_class": "sports_facility",
+        "canonical_class": "sports.facility",
         "raw_classes": frozenset({"体育休闲服务", "体育场馆", "体育馆", "运动场", "健身中心"}),
     },
     {
         "domain": "public_safety",
-        "canonical_class": "public_safety_facility",
+        "canonical_class": "public_safety.facility",
         "raw_classes": frozenset({"公共安全", "公安机关", "派出所", "消防站", "消防机关"}),
     },
     {
         "domain": "government_community",
-        "canonical_class": "government_community_facility",
+        "canonical_class": "government_community.facility",
         "raw_classes": frozenset(
             {"政府机构及社会团体", "政府机关", "街道办事处", "社区服务中心", "居民委员会"}
         ),
     },
     {
         "domain": "transport",
-        "canonical_class": "transport_facility",
+        "canonical_class": "transport.facility",
         "raw_classes": frozenset(
             {"交通设施服务", "公共交通", "公交车站", "地铁站", "长途汽车站", "火车站"}
         ),
@@ -85,13 +85,14 @@ def _map_facility_class(row: Mapping[str, Any]) -> tuple[str, str]:
     }
     for rule in _FACILITY_CLASS_MAPPING:
         if raw_classes.intersection(rule["raw_classes"]):
-            return str(rule["canonical_class"]), "mapped"
+            return str(rule["canonical_class"]), "mapped_internal_taxonomy"
     return "unmapped", "unmapped"
 
 
 def _normalize_facility(row: Mapping[str, Any]) -> dict[str, Any]:
     canonical_class, mapping_status = _map_facility_class(row)
     return {
+        "name": row.get("name"),
         "source_record_id": row.get("source_record_id"),
         "source_dataset_id": row.get("source_dataset_id"),
         "raw_primary_class": row.get("raw_primary_class"),
@@ -173,7 +174,8 @@ def build_facility_data_product(
                 len(poi_rows) + len(aoi_rows) - len(facilities)
             ),
             "mapped_facility_rows": sum(
-                facility["mapping_status"] == "mapped" for facility in facilities
+                facility["mapping_status"] == "mapped_internal_taxonomy"
+                for facility in facilities
             ),
             "unmapped_facility_rows": sum(
                 facility["mapping_status"] == "unmapped" for facility in facilities
