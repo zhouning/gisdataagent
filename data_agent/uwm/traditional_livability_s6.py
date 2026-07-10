@@ -180,12 +180,29 @@ def validate_s6_request(
         if _safe_geometry(selected_area.get("metric_geometry")) is None:
             blockers.append(f"planning_area_geometry_missing:{analysis_area_id}")
 
+        active_facilities = []
         for facility in _rows(resource_payload, "current_facilities"):
             matching_area_ids = facility.get("matching_planning_area_ids")
+            belongs_to_active_area = (
+                _text(facility.get("planning_area_id")) == analysis_area_id
+                or (
+                    isinstance(matching_area_ids, list)
+                    and analysis_area_id in matching_area_ids
+                )
+            )
+            if belongs_to_active_area:
+                active_facilities.append(facility)
+        for (duplicate_facility_id,) in _duplicate_ids(
+            active_facilities, "facility_id"
+        ):
+            blockers.append(
+                "duplicate_current_facility_id:"
+                f"{analysis_area_id}:{duplicate_facility_id}"
+            )
+        for facility in active_facilities:
             if (
-                isinstance(matching_area_ids, list)
-                and analysis_area_id in matching_area_ids
-                and _safe_geometry(facility.get("metric_geometry")) is None
+                _text(facility.get("association_status"))
+                == "multi_area_overlap_unresolved"
             ):
                 facility_id = _text(facility.get("facility_id")) or "unknown"
                 blockers.append(

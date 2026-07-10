@@ -978,6 +978,63 @@ def test_active_area_unresolved_facility_association_fails_closed():
     ]
 
 
+def test_active_area_multi_area_association_fails_even_with_metric_geometry():
+    resources = resource_fixture(include_unresolved_association=True)
+    ambiguous = resources["current_facilities"][-1]
+    ambiguous["distance_crs"] = DISTANCE_CRS
+    ambiguous["metric_geometry"] = mapping(_metric_point())
+
+    result = analyze_s6_facility_proposal(
+        request=confirmed_request("facility.market"),
+        resources=resources,
+        dictionary=authoritative_dictionary("facility.market"),
+        compatibility=compatibility(
+            rule(
+                rule_id="RULE-PLANNING",
+                subject="facility.market",
+                object_id="village_public_service_land",
+                relationship="compatible",
+            ),
+            rule(
+                rule_id="RULE-FACILITY",
+                subject="facility.market",
+                object_id="facility.market",
+                relationship="compatible",
+            ),
+        ),
+    )
+
+    assert result["status"] == "insufficient_evidence"
+    assert result["validation_blockers"] == [
+        "current_facility_spatial_association_unresolved:facility-multi-area"
+    ]
+
+
+def test_duplicate_current_facility_id_in_active_area_is_rejected():
+    resources = resource_fixture()
+    duplicate = deepcopy(resources["current_facilities"][0])
+    duplicate["source_record_id"] = "duplicate-facility-source"
+    resources["current_facilities"].append(duplicate)
+
+    validation = validate_s6_request(point_request(), resources)
+
+    assert validation["blockers"] == [
+        "duplicate_current_facility_id:fulu_heping:facility-hit"
+    ]
+
+
+def test_duplicate_facility_id_counts_ambiguous_record_matching_active_area():
+    resources = resource_fixture(include_unresolved_association=True)
+    resources["current_facilities"][-1]["facility_id"] = "facility-hit"
+
+    validation = validate_s6_request(point_request(), resources)
+
+    assert validation["blockers"] == [
+        "duplicate_current_facility_id:fulu_heping:facility-hit",
+        "current_facility_spatial_association_unresolved:facility-hit",
+    ]
+
+
 def test_duplicate_planning_area_ids_are_rejected():
     resources = resource_fixture()
     resources["planning_areas"].append(deepcopy(resources["planning_areas"][0]))
