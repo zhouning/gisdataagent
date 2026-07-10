@@ -166,8 +166,9 @@ def build_traditional_livability_analysis(
         "requirement_ownership": requirement_ownership,
         "method_boundary": {
             "max_claim_level": "traditional_baseline_reference",
-            "world_model_transition_claim": False,
-            "policy_outcome_claim": False,
+            "static_current_state_analysis_only": True,
+            "observed_policy_outcome_superiority_claim": False,
+            "empirical_superiority_claim": False,
             "can_output": [
                 "current_state_indicator_summary",
                 "static_problem_ranking",

@@ -115,8 +115,14 @@ def test_traditional_livability_analysis_is_complete_static_same_data_output():
         "risk_adjusted_counterfactual_benefit",
         "empirical_policy_outcome_superiority",
     ]
-    assert analysis["method_boundary"]["world_model_transition_claim"] is False
-    assert analysis["method_boundary"]["policy_outcome_claim"] is False
+    assert analysis["method_boundary"]["static_current_state_analysis_only"] is True
+    assert (
+        analysis["method_boundary"]["observed_policy_outcome_superiority_claim"]
+        is False
+    )
+    assert analysis["method_boundary"]["empirical_superiority_claim"] is False
+    assert "world_model_transition_claim" not in analysis["method_boundary"]
+    assert "policy_outcome_claim" not in analysis["method_boundary"]
 
 
 def test_traditional_livability_map_uses_real_admin_geojson_static_scores(tmp_path):
