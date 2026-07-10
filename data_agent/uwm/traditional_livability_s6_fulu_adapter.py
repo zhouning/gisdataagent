@@ -35,6 +35,17 @@ _STATUS_VALUES = {
     "planned": {"planned", "规划", "规划中", "拟建", "新建"},
     "reserved": {"reserved", "预留", "储备"},
 }
+_RESOURCE_DOMAINS_BY_CODE = {
+    "2121": "village_residential_land",
+    "2123": "village_public_service_land",
+    "2124": "village_mixed_construction_land",
+    "214": "village_independent_construction_land",
+}
+_RESOURCE_DOMAINS_BY_NAME = {
+    "宅基地（村居住用地）": "village_residential_land",
+    "村居住用地": "village_residential_land",
+    "村公共服务用地": "village_public_service_land",
+}
 _FACILITY_FIELDS = (
     "source_dataset_id",
     "source_record_id",
@@ -94,6 +105,7 @@ def attach_facility_resources(
 ) -> dict[str, Any]:
     payload = deepcopy(dict(planning_inputs))
     areas = list(payload.get("planning_areas") or [])
+    mapping_version = facility_product.get("mapping_version")
     current_facilities: list[dict[str, Any]] = []
     for facility in facility_product.get("facilities") or []:
         geometry_wgs84 = _facility_geometry_wgs84(facility)
@@ -103,7 +115,7 @@ def attach_facility_resources(
             (
                 area
                 for area in areas
-                if shape(area["display_geometry_wgs84"]).covers(geometry_wgs84)
+                if shape(area["display_geometry_wgs84"]).intersects(geometry_wgs84)
             ),
             None,
         )
@@ -120,6 +132,7 @@ def attach_facility_resources(
                     facility.get("source_record_id"),
                 ),
                 **{field: facility.get(field) for field in _FACILITY_FIELDS},
+                "mapping_version": mapping_version,
                 "planning_area_id": matching_area["planning_area_id"],
                 "distance_crs": matching_area["distance_crs"],
                 "metric_geometry": mapping(metric_geometry),
@@ -131,6 +144,7 @@ def attach_facility_resources(
     payload["current_facilities"] = current_facilities
     payload["facility_inventory"] = {
         "product_id": facility_product.get("product_id"),
+        "mapping_version": mapping_version,
         "complete_inventory": bool(source_manifest.get("complete_inventory")),
         "source_manifest": source_manifest,
         "facility_count": len(current_facilities),
@@ -164,13 +178,16 @@ def _inspect_sources(root: Path) -> dict[str, Any]:
                 )
         else:
             info = pyogrio.read_info(path, force_feature_count=True)
+            sha256, components = _source_hashes(path, root)
             source.update(
-                sha256=_sha256_path(path),
+                sha256=sha256,
                 feature_count=int(info.get("features") or 0),
                 crs=str(info.get("crs") or ""),
                 geometry_type=str(info.get("geometry_type") or ""),
                 fields=_list_values(info.get("fields")),
             )
+            if components is not None:
+                source["components"] = components
         sources.append(source)
     return {"ready": not blockers, "sources": sources, "blockers": blockers}
 
@@ -217,6 +234,9 @@ def _planning_resource_rows(
             continue
         source_record_id = _record_id(row, index)
         planning_status, evidence = _planning_status(row)
+        resource_domain, interpretation_rule, interpretation_evidence = (
+            _interpret_land_use(code, name)
+        )
         display_geometry = gpd.GeoSeries([geometry], crs=frame.crs).to_crs(
             "EPSG:4326"
         ).iloc[0]
@@ -231,9 +251,13 @@ def _planning_resource_rows(
                 "source_record_id": source_record_id,
                 "raw_land_use_code": code or None,
                 "raw_land_use_name": name or None,
+                "resource_domain": resource_domain,
+                "interpretation_rule": interpretation_rule,
+                "interpretation_evidence": interpretation_evidence,
                 "planning_status": planning_status,
                 "planning_status_evidence": evidence,
                 "distance_crs": str(frame.crs),
+                "area_m2": _polygon_area_m2(geometry),
                 "metric_geometry": mapping(geometry),
                 "display_geometry_wgs84": mapping(display_geometry),
             }
@@ -265,6 +289,39 @@ def _planning_status(row: Any) -> tuple[str, dict[str, str] | None]:
                 return status, evidence
         return "status_unknown", evidence
     return "status_unknown", None
+
+
+def _interpret_land_use(
+    code: str, name: str
+) -> tuple[str, str | None, dict[str, Any]]:
+    if code in _RESOURCE_DOMAINS_BY_CODE:
+        return (
+            _RESOURCE_DOMAINS_BY_CODE[code],
+            f"exact_land_use_code:{code}",
+            {"field": "raw_land_use_code", "value": code},
+        )
+    if not code and name in _RESOURCE_DOMAINS_BY_NAME:
+        return (
+            _RESOURCE_DOMAINS_BY_NAME[name],
+            f"exact_land_use_name:{name}",
+            {"field": "raw_land_use_name", "value": name},
+        )
+    return (
+        "unresolved",
+        None,
+        {
+            "raw_land_use_code": code or None,
+            "raw_land_use_name": name or None,
+            "resolution_status": "unresolved",
+        },
+    )
+
+
+def _polygon_area_m2(geometry: Any) -> float | None:
+    if geometry.geom_type not in {"Polygon", "MultiPolygon"}:
+        return None
+    area_m2 = float(geometry.area)
+    return area_m2 if area_m2 > 0 else None
 
 
 def _facility_geometry_wgs84(facility: Mapping[str, Any]):
@@ -303,6 +360,30 @@ def _stable_id(prefix: str, *parts: Any) -> str:
 
 def _source_id(area_id: str, layer: str) -> str:
     return _stable_id("planning_source", area_id, layer)
+
+
+def _source_hashes(
+    path: Path, root: Path
+) -> tuple[str, list[dict[str, str]] | None]:
+    if path.suffix.casefold() != ".shp":
+        return _sha256_path(path), None
+    family = sorted(
+        item for item in path.parent.glob(f"{path.stem}.*") if item.is_file()
+    )
+    components = [
+        {
+            "relative_path": item.relative_to(root).as_posix(),
+            "sha256": _sha256_path(item),
+        }
+        for item in family
+    ]
+    aggregate = hashlib.sha256()
+    for component in components:
+        aggregate.update(component["relative_path"].encode("utf-8"))
+        aggregate.update(b"\0")
+        aggregate.update(component["sha256"].encode("ascii"))
+        aggregate.update(b"\0")
+    return aggregate.hexdigest(), components
 
 
 def _sha256_path(path: Path) -> str:

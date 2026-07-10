@@ -1,3 +1,4 @@
+import hashlib
 from pathlib import Path
 
 import geopandas as gpd
@@ -13,15 +14,16 @@ from data_agent.uwm.traditional_livability_s6_fulu_adapter import (
 def _write(path: Path, rows: list[dict], crs: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     geometries = [row.pop("geometry") for row in rows]
-    gpd.GeoDataFrame(rows, geometry=geometries, crs=crs).to_file(path, driver="GPKG")
+    driver = "ESRI Shapefile" if path.suffix == ".shp" else "GPKG"
+    gpd.GeoDataFrame(rows, geometry=geometries, crs=crs).to_file(path, driver=driver)
 
 
-def _specs():
+def _specs(extension: str = "gpkg"):
     return tuple(
         {
             "area_id": area_id,
             "layer": layer,
-            "relative_path": f"{area_id}/{layer}.gpkg",
+            "relative_path": f"{area_id}/{layer}.{extension}",
             "required": True,
         }
         for area_id in ("fulu_heping", "fulu_banzhu")
@@ -33,20 +35,23 @@ def _polygon(x: float, y: float = 0) -> Polygon:
     return Polygon([(x, y), (x + 100, y), (x + 100, y + 100), (x, y + 100), (x, y)])
 
 
-def _planning_fixture_root(tmp_path: Path) -> Path:
+def _planning_fixture_root(tmp_path: Path, extension: str = "gpkg") -> Path:
     area_specs = (
         ("fulu_heping", "EPSG:4523", 35597400, 3209600, None),
         ("fulu_banzhu", "EPSG:32648", 626600, 3208600, "现状"),
     )
     for area_id, crs, origin_x, origin_y, source_status in area_specs:
         _write(
-            tmp_path / area_id / "GHFW.gpkg",
+            tmp_path / area_id / f"GHFW.{extension}",
             [{"BSM": f"boundary-{area_id}", "geometry": _polygon(origin_x, origin_y)}],
             crs,
         )
         _write(
-            tmp_path / area_id / "JQDLTB.gpkg",
-            [{"TBBH": f"current-{area_id}", "DLDM": "2121", "DLMC": "村居住用地", "geometry": _polygon(origin_x + 10, origin_y + 10)}],
+            tmp_path / area_id / f"JQDLTB.{extension}",
+            [
+                {"TBBH": f"current-{area_id}", "DLDM": "2121", "DLMC": "村居住用地", "geometry": _polygon(origin_x + 10, origin_y + 10)},
+                {"TBBH": f"unknown-{area_id}", "DLDM": "999", "DLMC": "未知用途", "geometry": _polygon(origin_x + 15, origin_y + 15)},
+            ],
             crs,
         )
         planned_row = {
@@ -68,7 +73,7 @@ def _planning_fixture_root(tmp_path: Path) -> Path:
                     "geometry": _polygon(origin_x + 30, origin_y + 30),
                 }
             )
-        _write(tmp_path / area_id / "TDGHDL.gpkg", planned_rows, crs)
+        _write(tmp_path / area_id / f"TDGHDL.{extension}", planned_rows, crs)
     return tmp_path
 
 
@@ -76,6 +81,7 @@ def _facility_product() -> dict:
     return {
         "schema": "uwm.traditional_livability.facility_product.v1",
         "product_id": "fixture-product",
+        "mapping_version": "traditional_livability_facility_mapping.v1",
         "source_manifest": {
             "schema": "uwm.traditional_livability.source_manifest.v1",
             "complete_inventory": False,
@@ -172,11 +178,55 @@ def test_planning_resources_keep_stable_ids_raw_land_use_and_relative_source_man
     assert {row["resource_id"] for row in first["planning_resources"]} == second_ids
     assert planned["raw_land_use_code"] == "2123"
     assert planned["raw_land_use_name"] == "村公共服务用地"
+    assert planned["area_m2"] == 10000.0
     assert shape(planned["metric_geometry"]).geom_type == "Polygon"
     assert shape(planned["display_geometry_wgs84"]).geom_type == "Polygon"
     assert str(tmp_path) not in str(first["source_manifest"])
     assert all(source.get("relative_path") and source.get("sha256") for source in first["source_manifest"]["sources"])
     assert planned["source_manifest_ref"] in {source["source_id"] for source in first["source_manifest"]["sources"]}
+    gpkg_source = next(source for source in first["source_manifest"]["sources"] if source["source_id"] == planned["source_manifest_ref"])
+    assert gpkg_source["sha256"] == hashlib.sha256((source_root / gpkg_source["relative_path"]).read_bytes()).hexdigest()
+    assert "components" not in gpkg_source
+
+
+def test_planning_resources_emit_controlled_domain_rules_and_explicit_unresolved(tmp_path, monkeypatch):
+    monkeypatch.setattr(adapter, "ASSET_SPECS", _specs())
+
+    payload = build_fulu_s6_resources(
+        source_root=_planning_fixture_root(tmp_path),
+        facility_product=_facility_product(),
+    )
+
+    rows = {row["source_record_id"]: row for row in payload["planning_resources"]}
+    known = rows["planned-fulu_heping"]
+    unresolved = rows["unknown-fulu_heping"]
+    assert known["resource_domain"] == "village_public_service_land"
+    assert known["interpretation_rule"] == "exact_land_use_code:2123"
+    assert known["interpretation_evidence"] == {"field": "raw_land_use_code", "value": "2123"}
+    assert unresolved["resource_domain"] == "unresolved"
+    assert unresolved["interpretation_rule"] is None
+    assert unresolved["interpretation_evidence"] == {
+        "raw_land_use_code": "999",
+        "raw_land_use_name": "未知用途",
+        "resolution_status": "unresolved",
+    }
+
+
+def test_shapefile_manifest_hashes_complete_dataset_family(tmp_path, monkeypatch):
+    monkeypatch.setattr(adapter, "ASSET_SPECS", _specs("shp"))
+    source_root = _planning_fixture_root(tmp_path, "shp")
+
+    first = build_fulu_s6_resources(source_root=source_root, facility_product=_facility_product())
+    second = build_fulu_s6_resources(source_root=source_root, facility_product=_facility_product())
+
+    source = next(row for row in first["source_manifest"]["sources"] if row["planning_area_id"] == "fulu_heping" and row["layer"] == "GHFW")
+    repeated = next(row for row in second["source_manifest"]["sources"] if row["source_id"] == source["source_id"])
+    component_suffixes = {Path(row["relative_path"]).suffix for row in source["components"]}
+    assert {".shp", ".dbf", ".shx", ".prj", ".cpg"} <= component_suffixes
+    assert all(row["sha256"] for row in source["components"])
+    assert source["sha256"] == repeated["sha256"]
+    assert source["sha256"] not in {row["sha256"] for row in source["components"]}
+    assert str(tmp_path) not in str(source)
 
 
 def test_unmapped_and_mapped_facilities_are_retained_with_completeness(tmp_path, monkeypatch):
@@ -192,8 +242,47 @@ def test_unmapped_and_mapped_facilities_are_retained_with_completeness(tmp_path,
     assert set(facilities) == {"unmapped-heping", "mapped-banzhu"}
     assert facilities["unmapped-heping"]["mapping_status"] == "unmapped"
     assert facilities["mapped-banzhu"]["mapping_status"] == "mapped_internal_taxonomy"
+    assert facilities["unmapped-heping"]["mapping_version"] == "traditional_livability_facility_mapping.v1"
+    assert facilities["mapped-banzhu"]["mapping_version"] == "traditional_livability_facility_mapping.v1"
     assert facilities["unmapped-heping"]["raw_primary_class"] == "生活服务"
     assert shape(facilities["unmapped-heping"]["metric_geometry"]).geom_type == "Point"
     assert shape(facilities["unmapped-heping"]["display_geometry_wgs84"]).geom_type == "Point"
     assert payload["facility_inventory"]["complete_inventory"] is False
+    assert payload["facility_inventory"]["mapping_version"] == "traditional_livability_facility_mapping.v1"
     assert payload["facility_inventory"]["source_manifest"] == _facility_product()["source_manifest"]
+
+
+def test_boundary_crossing_facility_polygon_is_spatially_associated(tmp_path, monkeypatch):
+    monkeypatch.setattr(adapter, "ASSET_SPECS", _specs())
+    planning_inputs = build_fulu_s6_resources(
+        source_root=_planning_fixture_root(tmp_path),
+        facility_product={"facilities": [], "source_manifest": {"complete_inventory": True}},
+    )
+    product = {
+        "mapping_version": "traditional_livability_facility_mapping.v1",
+        "source_manifest": {"complete_inventory": True},
+        "facilities": [
+            {
+                "source_dataset_id": "baidu_aoi",
+                "source_record_id": "crossing-aoi",
+                "name": "跨界文化设施",
+                "canonical_class": "culture.facility",
+                "mapping_status": "mapped_internal_taxonomy",
+                "geometry": Polygon(
+                    [
+                        (35597450, 3209650),
+                        (35597550, 3209650),
+                        (35597550, 3209750),
+                        (35597450, 3209750),
+                        (35597450, 3209650),
+                    ]
+                ).__geo_interface__,
+                "geometry_crs": "EPSG:4523",
+            }
+        ],
+    }
+
+    payload = attach_facility_resources(planning_inputs, product)
+
+    assert [row["source_record_id"] for row in payload["current_facilities"]] == ["crossing-aoi"]
+    assert shape(payload["current_facilities"][0]["metric_geometry"]).geom_type == "Polygon"
