@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import Any
 
 from starlette.requests import Request
@@ -20,21 +21,26 @@ UWM_AI_DEMAND_READINESS_API_SCHEMA = "uwm.ai_demand_readiness_api.v2"
 def load_uwm_ai_demand_readiness_payload() -> dict[str, Any]:
     """Build readiness directly from the canonical ownership registry."""
 
-    registry = build_livability_requirement_registry()
-    route_rows = [
-        {
-            "route": route,
-            "availability": (
-                "existing"
-                if route in {"traditional_livability", "uwm_livability"}
-                else "planned"
-            ),
-        }
-        for route in registry["primary_routes"]
-    ]
+    registry = deepcopy(build_livability_requirement_registry())
     requirement_rows = (
         registry["livability_scenarios"] + registry["customer_ai_demands"]
     )
+    route_rows = []
+    for route in registry["primary_routes"]:
+        availability_values = {
+            row["route_availability"]
+            for row in requirement_rows
+            if row["primary_route"] == route
+        }
+        if not availability_values:
+            raise ValueError(f"{route} has no canonical requirement rows")
+        if len(availability_values) != 1:
+            raise ValueError(f"{route} has conflicting route_availability values")
+        availability = next(iter(availability_values))
+        if availability not in {"existing", "planned"}:
+            raise ValueError(f"{route} has invalid route_availability: {availability}")
+        route_rows.append({"route": route, "availability": availability})
+
     return {
         "schema": UWM_AI_DEMAND_READINESS_API_SCHEMA,
         "source_documents": registry["source_documents"],
