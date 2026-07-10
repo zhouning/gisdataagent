@@ -111,32 +111,49 @@ def attach_facility_resources(
         geometry_wgs84 = _facility_geometry_wgs84(facility)
         if geometry_wgs84 is None:
             continue
-        matching_area = next(
-            (
-                area
-                for area in areas
-                if shape(area["display_geometry_wgs84"]).intersects(geometry_wgs84)
-            ),
-            None,
-        )
-        if matching_area is None:
+        matching_areas = [
+            area
+            for area in areas
+            if shape(area["display_geometry_wgs84"]).intersects(geometry_wgs84)
+        ]
+        if not matching_areas:
             continue
+        matching_area_ids = sorted(
+            area["planning_area_id"] for area in matching_areas
+        )
+        base = {
+            "facility_id": _stable_id(
+                "facility",
+                facility.get("source_dataset_id"),
+                facility.get("source_record_id"),
+            ),
+            **{field: facility.get(field) for field in _FACILITY_FIELDS},
+            "mapping_version": mapping_version,
+            "matching_planning_area_ids": matching_area_ids,
+            "display_geometry_wgs84": mapping(geometry_wgs84),
+        }
+        if len(matching_areas) > 1:
+            current_facilities.append(
+                {
+                    **base,
+                    "association_status": "multi_area_overlap_unresolved",
+                    "planning_area_id": None,
+                    "distance_crs": None,
+                    "metric_geometry": None,
+                }
+            )
+            continue
+        matching_area = matching_areas[0]
         metric_geometry = gpd.GeoSeries(
             [geometry_wgs84], crs="EPSG:4326"
         ).to_crs(matching_area["distance_crs"]).iloc[0]
         current_facilities.append(
             {
-                "facility_id": _stable_id(
-                    "facility",
-                    facility.get("source_dataset_id"),
-                    facility.get("source_record_id"),
-                ),
-                **{field: facility.get(field) for field in _FACILITY_FIELDS},
-                "mapping_version": mapping_version,
+                **base,
+                "association_status": "single_area_intersection",
                 "planning_area_id": matching_area["planning_area_id"],
                 "distance_crs": matching_area["distance_crs"],
                 "metric_geometry": mapping(metric_geometry),
-                "display_geometry_wgs84": mapping(geometry_wgs84),
             }
         )
 
@@ -225,14 +242,24 @@ def _planning_resource_rows(
     if frame.crs is None:
         return []
     rows: list[dict[str, Any]] = []
-    for index, row in frame.iterrows():
+    for row_number, (index, row) in enumerate(frame.iterrows()):
         geometry = row.geometry
         if geometry is None or geometry.is_empty or not geometry.is_valid:
             continue
         code, name = _land_use(row, source_layer)
         if not code and not name:
             continue
-        source_record_id = _record_id(row, index)
+        raw_tbbh = _text(row.get("TBBH")) or None
+        raw_bsm = _text(row.get("BSM")) or None
+        identity_field, identity_value = _source_identity(row, index)
+        source_record_id = _stable_id(
+            "planning_source_record",
+            area_id,
+            source_layer,
+            identity_field,
+            identity_value,
+            row_number,
+        )
         planning_status, evidence = _planning_status(row)
         resource_domain, interpretation_rule, interpretation_evidence = (
             _interpret_land_use(code, name)
@@ -243,12 +270,18 @@ def _planning_resource_rows(
         rows.append(
             {
                 "resource_id": _stable_id(
-                    "planning_resource", area_id, source_layer, source_record_id
+                    "planning_resource", source_record_id
                 ),
                 "planning_area_id": area_id,
                 "source_layer": source_layer,
                 "source_manifest_ref": _source_id(area_id, source_layer),
                 "source_record_id": source_record_id,
+                "source_identity_field": identity_field,
+                "source_identity_value": identity_value,
+                "source_row_index": str(index),
+                "source_row_number": row_number,
+                "raw_tbbh": raw_tbbh,
+                "raw_bsm": raw_bsm,
                 "raw_land_use_code": code or None,
                 "raw_land_use_name": name or None,
                 "resource_domain": resource_domain,
@@ -345,12 +378,12 @@ def _facility_geometry_wgs84(facility: Mapping[str, Any]):
         return None
 
 
-def _record_id(row: Any, index: Any) -> str:
-    for field in ("TBBH", "BSM", "OBJECTID"):
+def _source_identity(row: Any, index: Any) -> tuple[str, str]:
+    for field in ("BSM", "TBBH", "OBJECTID"):
         value = _text(row.get(field))
         if value:
-            return value
-    return str(index)
+            return field, value
+    return "row_index", str(index)
 
 
 def _stable_id(prefix: str, *parts: Any) -> str:

@@ -1,4 +1,5 @@
 import hashlib
+from copy import deepcopy
 from pathlib import Path
 
 import geopandas as gpd
@@ -13,9 +14,13 @@ from data_agent.uwm.traditional_livability_s6_fulu_adapter import (
 
 def _write(path: Path, rows: list[dict], crs: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    geometries = [row.pop("geometry") for row in rows]
+    geometries = [row["geometry"] for row in rows]
+    attributes = [
+        {key: value for key, value in row.items() if key != "geometry"}
+        for row in rows
+    ]
     driver = "ESRI Shapefile" if path.suffix == ".shp" else "GPKG"
-    gpd.GeoDataFrame(rows, geometry=geometries, crs=crs).to_file(path, driver=driver)
+    gpd.GeoDataFrame(attributes, geometry=geometries, crs=crs).to_file(path, driver=driver)
 
 
 def _specs(extension: str = "gpkg"):
@@ -49,7 +54,7 @@ def _planning_fixture_root(tmp_path: Path, extension: str = "gpkg") -> Path:
         _write(
             tmp_path / area_id / f"JQDLTB.{extension}",
             [
-                {"TBBH": f"current-{area_id}", "DLDM": "2121", "DLMC": "村居住用地", "geometry": _polygon(origin_x + 10, origin_y + 10)},
+                {"TBBH": f"current-{area_id}", "BSM": f"bsm-current-{area_id}", "DLDM": "2121", "DLMC": "村居住用地", "geometry": _polygon(origin_x + 10, origin_y + 10)},
                 {"TBBH": f"unknown-{area_id}", "DLDM": "999", "DLMC": "未知用途", "geometry": _polygon(origin_x + 15, origin_y + 15)},
             ],
             crs,
@@ -64,6 +69,14 @@ def _planning_fixture_root(tmp_path: Path, extension: str = "gpkg") -> Path:
             planned_row["GHZT"] = source_status
         planned_rows = [planned_row]
         if area_id == "fulu_heping":
+            planned_rows.append(
+                {
+                    "TBBH": f"planned-{area_id}",
+                    "CGHDLDM": "2123",
+                    "CGHDLMC": "村公共服务用地",
+                    "geometry": _polygon(origin_x + 25, origin_y + 25),
+                }
+            )
             planned_rows.append(
                 {
                     "TBBH": "status-unrecognized",
@@ -137,8 +150,8 @@ def test_resource_adapter_preserves_source_status_without_guessing_reserved(tmp_
         facility_product=_facility_product(),
     )
 
-    unknown = next(row for row in payload["planning_resources"] if row["source_record_id"] == "planned-fulu_heping")
-    unrecognized = next(row for row in payload["planning_resources"] if row["source_record_id"] == "status-unrecognized")
+    unknown = next(row for row in payload["planning_resources"] if row["raw_tbbh"] == "planned-fulu_heping")
+    unrecognized = next(row for row in payload["planning_resources"] if row["raw_tbbh"] == "status-unrecognized")
     current = next(row for row in payload["planning_resources"] if row["planning_area_id"] == "fulu_banzhu" and row["source_layer"] == "TDGHDL")
     assert unknown["planning_status"] == "status_unknown"
     assert unknown["planning_status_evidence"] is None
@@ -172,9 +185,9 @@ def test_planning_resources_keep_stable_ids_raw_land_use_and_relative_source_man
     first = build_fulu_s6_resources(source_root=source_root, facility_product=_facility_product())
     second = build_fulu_s6_resources(source_root=source_root, facility_product=_facility_product())
 
-    first_rows = {(row["planning_area_id"], row["source_layer"], row["source_record_id"]): row for row in first["planning_resources"]}
+    first_rows = [row for row in first["planning_resources"] if row["planning_area_id"] == "fulu_heping" and row["source_layer"] == "TDGHDL" and row["raw_tbbh"] == "planned-fulu_heping"]
     second_ids = {row["resource_id"] for row in second["planning_resources"]}
-    planned = first_rows[("fulu_heping", "TDGHDL", "planned-fulu_heping")]
+    planned = first_rows[0]
     assert {row["resource_id"] for row in first["planning_resources"]} == second_ids
     assert planned["raw_land_use_code"] == "2123"
     assert planned["raw_land_use_name"] == "村公共服务用地"
@@ -197,9 +210,8 @@ def test_planning_resources_emit_controlled_domain_rules_and_explicit_unresolved
         facility_product=_facility_product(),
     )
 
-    rows = {row["source_record_id"]: row for row in payload["planning_resources"]}
-    known = rows["planned-fulu_heping"]
-    unresolved = rows["unknown-fulu_heping"]
+    known = next(row for row in payload["planning_resources"] if row["raw_tbbh"] == "planned-fulu_heping")
+    unresolved = next(row for row in payload["planning_resources"] if row["raw_tbbh"] == "unknown-fulu_heping")
     assert known["resource_domain"] == "village_public_service_land"
     assert known["interpretation_rule"] == "exact_land_use_code:2123"
     assert known["interpretation_evidence"] == {"field": "raw_land_use_code", "value": "2123"}
@@ -229,6 +241,31 @@ def test_shapefile_manifest_hashes_complete_dataset_family(tmp_path, monkeypatch
     assert str(tmp_path) not in str(source)
 
 
+def test_repeated_tbbh_rows_have_stable_unique_source_and_resource_ids(tmp_path, monkeypatch):
+    monkeypatch.setattr(adapter, "ASSET_SPECS", _specs())
+    source_root = _planning_fixture_root(tmp_path)
+
+    first = build_fulu_s6_resources(source_root=source_root, facility_product=_facility_product())
+    second = build_fulu_s6_resources(source_root=source_root, facility_product=_facility_product())
+
+    first_source_ids = [row["source_record_id"] for row in first["planning_resources"]]
+    second_source_ids = [row["source_record_id"] for row in second["planning_resources"]]
+    first_resource_ids = [row["resource_id"] for row in first["planning_resources"]]
+    second_resource_ids = [row["resource_id"] for row in second["planning_resources"]]
+    repeated = [row for row in first["planning_resources"] if row["raw_tbbh"] == "planned-fulu_heping"]
+    bsm_row = next(row for row in first["planning_resources"] if row["raw_tbbh"] == "current-fulu_heping")
+    assert first_source_ids == second_source_ids
+    assert first_resource_ids == second_resource_ids
+    assert len(set(first_source_ids)) == len(first_source_ids)
+    assert len(set(first_resource_ids)) == len(first_resource_ids)
+    assert len(repeated) == 2
+    assert len({row["source_record_id"] for row in repeated}) == 2
+    assert all(row["raw_bsm"] is None for row in repeated)
+    assert bsm_row["raw_bsm"] == "bsm-current-fulu_heping"
+    assert bsm_row["source_identity_field"] == "BSM"
+    assert bsm_row["source_identity_value"] == "bsm-current-fulu_heping"
+
+
 def test_unmapped_and_mapped_facilities_are_retained_with_completeness(tmp_path, monkeypatch):
     monkeypatch.setattr(adapter, "ASSET_SPECS", _specs())
     planning_inputs = build_fulu_s6_resources(
@@ -236,7 +273,11 @@ def test_unmapped_and_mapped_facilities_are_retained_with_completeness(tmp_path,
         facility_product={"facilities": [], "source_manifest": {"complete_inventory": True}},
     )
 
-    payload = attach_facility_resources(planning_inputs, _facility_product())
+    product = _facility_product()
+    planning_before = deepcopy(planning_inputs)
+    product_before = deepcopy(product)
+
+    payload = attach_facility_resources(planning_inputs, product)
 
     facilities = {row["source_record_id"]: row for row in payload["current_facilities"]}
     assert set(facilities) == {"unmapped-heping", "mapped-banzhu"}
@@ -250,6 +291,8 @@ def test_unmapped_and_mapped_facilities_are_retained_with_completeness(tmp_path,
     assert payload["facility_inventory"]["complete_inventory"] is False
     assert payload["facility_inventory"]["mapping_version"] == "traditional_livability_facility_mapping.v1"
     assert payload["facility_inventory"]["source_manifest"] == _facility_product()["source_manifest"]
+    assert planning_inputs == planning_before
+    assert product == product_before
 
 
 def test_boundary_crossing_facility_polygon_is_spatially_associated(tmp_path, monkeypatch):
@@ -286,3 +329,50 @@ def test_boundary_crossing_facility_polygon_is_spatially_associated(tmp_path, mo
 
     assert [row["source_record_id"] for row in payload["current_facilities"]] == ["crossing-aoi"]
     assert shape(payload["current_facilities"][0]["metric_geometry"]).geom_type == "Polygon"
+
+
+def test_multi_area_facility_overlap_is_unresolved_without_arbitrary_crs(tmp_path, monkeypatch):
+    monkeypatch.setattr(adapter, "ASSET_SPECS", _specs())
+    planning_inputs = build_fulu_s6_resources(
+        source_root=_planning_fixture_root(tmp_path),
+        facility_product={"facilities": [], "source_manifest": {"complete_inventory": True}},
+    )
+    first_area = planning_inputs["planning_areas"][0]
+    overlapping_area = deepcopy(first_area)
+    overlapping_area["planning_area_id"] = "fulu_overlap"
+    overlapping_area["distance_crs"] = "EPSG:32648"
+    planning_inputs["planning_areas"].append(overlapping_area)
+    centroid = shape(first_area["display_geometry_wgs84"]).centroid
+    product = {
+        "mapping_version": "traditional_livability_facility_mapping.v1",
+        "source_manifest": {"complete_inventory": True},
+        "facilities": [
+            {
+                "source_dataset_id": "gaode_poi",
+                "source_record_id": "multi-area",
+                "name": "跨区设施",
+                "canonical_class": "unmapped",
+                "mapping_status": "unmapped",
+                "longitude": centroid.x,
+                "latitude": centroid.y,
+            }
+        ],
+    }
+
+    payload = attach_facility_resources(planning_inputs, product)
+
+    facility = payload["current_facilities"][0]
+    assert facility["association_status"] == "multi_area_overlap_unresolved"
+    assert facility["matching_planning_area_ids"] == ["fulu_heping", "fulu_overlap"]
+    assert facility["planning_area_id"] is None
+    assert facility["distance_crs"] is None
+    assert facility["metric_geometry"] is None
+
+
+def test_write_helper_does_not_mutate_fixture_rows(tmp_path):
+    rows = [{"TBBH": "row-1", "geometry": _polygon(0)}]
+    before = deepcopy(rows)
+
+    _write(tmp_path / "fixture.gpkg", rows, "EPSG:4523")
+
+    assert rows == before
