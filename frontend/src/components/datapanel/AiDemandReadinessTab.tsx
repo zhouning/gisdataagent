@@ -47,6 +47,14 @@ const ROUTE_LABELS: Record<string, string> = {
 };
 
 const cellStyle = { verticalAlign: 'top' as const, whiteSpace: 'normal' as const };
+const routeListStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+  gap: 10,
+  listStyle: 'none',
+  margin: 0,
+  padding: 0,
+};
 const routeCardStyle = {
   display: 'flex',
   gap: 8,
@@ -293,9 +301,9 @@ export default function AiDemandReadinessTab() {
 
           <section className="uwm-livability-panel">
             <div className="uwm-livability-panel-title"><Route size={16} /> 主技术路线</div>
-            <div className="uwm-evidence-grid">
+            <ul className="ai-demand-route-list" style={routeListStyle}>
               {payload.primary_routes.map(routeRow => (
-                <div className="ai-demand-route-card" style={routeCardStyle} key={routeRow.route}>
+                <li className="ai-demand-route-card" style={routeCardStyle} key={routeRow.route}>
                   {routeRow.availability === 'existing'
                     ? <CheckCircle2 size={15} />
                     : <ShieldAlert size={15} />}
@@ -303,9 +311,9 @@ export default function AiDemandReadinessTab() {
                     <strong>{ROUTE_LABELS[routeRow.route] || routeRow.route}</strong>
                     <div>{routeRow.route} · {routeRow.availability}</div>
                   </div>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           </section>
 
           <section className="uwm-livability-panel">

@@ -100,8 +100,11 @@ def test_ai_demand_readiness_tab_has_accessible_loading_errors_and_tables():
 def test_ai_demand_readiness_routes_do_not_reuse_component_row_class():
     source = READINESS_TAB.read_text(encoding="utf-8")
 
+    assert 'className="ai-demand-route-list"' in source
+    assert "style={routeListStyle}" in source
     assert 'className="ai-demand-route-card"' in source
     assert 'className="uwm-component-row"' not in source
+    assert 'className="uwm-evidence-grid"' not in source
 
 
 def test_ai_demand_readiness_tab_does_not_use_obsolete_phase_counts():
