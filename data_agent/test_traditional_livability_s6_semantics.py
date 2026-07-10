@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 import json
+import math
 
 import pytest
 
@@ -88,8 +89,8 @@ def test_exact_authoritative_alias_can_confirm_class():
 def test_controlled_keyword_can_confirm_only_one_authoritative_class():
     result = resolve_s6_facility_semantics(
         facility_name="社区服务设施",
-        raw_facility_type="其他",
-        use_description="提供固定室内市场服务",
+        raw_facility_type="  室内市场  ",
+        use_description="固定服务设施",
         dictionary=authoritative_dictionary_fixture(),
     )
 
@@ -100,6 +101,67 @@ def test_controlled_keyword_can_confirm_only_one_authoritative_class():
     assert result["candidates"][0]["dictionary_version"] == "liv-2.0-fixture-v1"
     assert result["candidates"][0]["rule_version"] is None
     assert result["candidates"][0]["human_confirmation_required"] is False
+    assert result["candidates"][0]["evidence"] == [
+        {
+            "input_field": "raw_facility_type",
+            "matched_value": "室内市场",
+            "source_reference": "fixture://liv-2.0/dictionary#market-keyword",
+            "match_scope": "raw_facility_type",
+            "match_mode": "exact_normalized_token",
+            "negated": False,
+        }
+    ]
+
+
+@pytest.mark.parametrize(
+    ("facility_name", "raw_facility_type", "use_description"),
+    [
+        ("室内市场配套服务点", "其他", "固定服务设施"),
+        ("社区服务设施", "社区室内市场服务", "固定服务设施"),
+        ("社区服务设施", "其他", "提供固定室内市场服务"),
+    ],
+    ids=[
+        "facility_name_substring",
+        "raw_facility_type_substring",
+        "use_description_substring",
+    ],
+)
+def test_keyword_substring_outside_raw_type_is_suggestion_only(
+    facility_name,
+    raw_facility_type,
+    use_description,
+):
+    result = resolve_s6_facility_semantics(
+        facility_name=facility_name,
+        raw_facility_type=raw_facility_type,
+        use_description=use_description,
+        dictionary=authoritative_dictionary_fixture(),
+    )
+
+    assert result["resolution_status"] == "suggested_review_required"
+    assert result["confirmed_standard_class_id"] is None
+    assert result["candidates"][0]["match_method"] == "authoritative_keyword_context_suggestion"
+    assert result["candidates"][0]["human_confirmation_required"] is True
+    assert result["candidates"][0]["evidence"][0]["match_mode"] == "substring_context"
+
+
+@pytest.mark.parametrize("negation", ["不", "非", "无", "不提供", "并非"])
+def test_negated_keyword_context_never_authoritative_confirms(negation):
+    result = resolve_s6_facility_semantics(
+        facility_name="社区服务设施",
+        raw_facility_type="室内市场",
+        use_description=f"本设施{negation}室内市场服务",
+        dictionary=authoritative_dictionary_fixture(),
+    )
+
+    assert result["resolution_status"] == "suggested_review_required"
+    assert result["confirmed_standard_class_id"] is None
+    assert all(candidate["human_confirmation_required"] is True for candidate in result["candidates"])
+    assert any(
+        evidence["negated"] is True
+        for candidate in result["candidates"]
+        for evidence in candidate["evidence"]
+    )
 
 
 def test_conflicting_authoritative_aliases_fail_closed():
@@ -224,6 +286,21 @@ def test_malformed_non_json_input_fails_closed_without_crashing():
     assert result["resolution_status"] == "unresolved"
     assert result["resolution_reasons"] == ["facility_semantic_input_missing"]
     assert result["original_input_digest"].startswith("sha256:")
+    json.dumps(result, ensure_ascii=False, allow_nan=False)
+
+
+@pytest.mark.parametrize("non_finite", [math.nan, math.inf, -math.inf])
+def test_non_finite_raw_input_is_json_safe_unresolved(non_finite):
+    result = resolve_s6_facility_semantics(
+        facility_name=non_finite,
+        raw_facility_type="未分类设施",
+        use_description="用途不详",
+        dictionary=authoritative_dictionary_fixture(),
+    )
+
+    assert result["resolution_status"] == "unresolved"
+    assert result["confirmed_standard_class_id"] is None
+    json.dumps(result, ensure_ascii=False, allow_nan=False)
 
 
 def test_human_confirmation_is_request_scoped_and_auditable():
@@ -690,3 +767,102 @@ def test_human_selected_rejects_semantically_incomplete_input(original_input):
     assert "human_selected_semantic_input_incomplete" in confirmation["validation_errors"]
     assert confirmation["selected_candidate"] is None
     assert confirmation["mutates_authoritative_dictionary"] is False
+
+
+@pytest.mark.parametrize(
+    ("evidence", "expected_error"),
+    [
+        (
+            [{"evidence_type": "document_reference", "reason": "Reviewed materials."}],
+            "selected_candidate_reviewer_evidence_type_invalid",
+        ),
+        (
+            [
+                {
+                    "evidence_type": "reviewer_reason",
+                    "reason": "Reviewed materials.",
+                    "note": "unexpected",
+                }
+            ],
+            "selected_candidate_evidence_fields_invalid",
+        ),
+        (
+            [
+                {
+                    "evidence_type": "reviewer_reason",
+                    "reason": "Reviewed materials.",
+                    "unsafe": object(),
+                }
+            ],
+            "selected_candidate_evidence_fields_invalid",
+        ),
+    ],
+    ids=["wrong_type", "extra_field", "unsafe_extra_value"],
+)
+def test_human_selected_rejects_noncanonical_reviewer_evidence(evidence, expected_error):
+    dictionary = authoritative_dictionary_fixture()
+    original_input = {
+        "facility_name": "新型邻里服务点",
+        "raw_facility_type": "未分类设施",
+        "use_description": "现场材料由审查员核验",
+    }
+    resolution = resolve_s6_facility_semantics(**original_input, dictionary=dictionary)
+
+    confirmation = validate_human_confirmation(
+        {
+            "actor_id": "reviewer-001",
+            "confirmed_at": "2026-07-10T08:00:00Z",
+            "selected_standard_class_id": "facility.market",
+            "original_input_digest": resolution["original_input_digest"],
+            "dictionary_version": "liv-2.0-fixture-v1",
+        },
+        dictionary=dictionary,
+        original_input=original_input,
+        selected_candidate=human_selected_candidate(evidence=evidence),
+    )
+
+    assert confirmation["valid"] is False
+    assert expected_error in confirmation["validation_errors"]
+    json.dumps(confirmation, ensure_ascii=False, allow_nan=False)
+
+
+def test_human_selected_sanitizes_reviewer_evidence_for_strict_json_audit():
+    dictionary = authoritative_dictionary_fixture()
+    original_input = {
+        "facility_name": "新型邻里服务点",
+        "raw_facility_type": "未分类设施",
+        "use_description": "现场材料由审查员核验",
+    }
+    resolution = resolve_s6_facility_semantics(**original_input, dictionary=dictionary)
+    candidate = human_selected_candidate(
+        evidence=[
+            {
+                "evidence_type": "reviewer_reason",
+                "reason": "  Reviewer verified the source materials.  ",
+            }
+        ]
+    )
+    candidate["unsafe_extra"] = object()
+
+    confirmation = validate_human_confirmation(
+        {
+            "actor_id": "reviewer-001",
+            "confirmed_at": "2026-07-10T08:00:00Z",
+            "selected_standard_class_id": "facility.market",
+            "original_input_digest": resolution["original_input_digest"],
+            "dictionary_version": "liv-2.0-fixture-v1",
+        },
+        dictionary=dictionary,
+        original_input=original_input,
+        selected_candidate=candidate,
+    )
+
+    assert confirmation["valid"] is True
+    assert confirmation["selected_candidate_evidence"] == [
+        {
+            "evidence_type": "reviewer_reason",
+            "reason": "Reviewer verified the source materials.",
+        }
+    ]
+    assert "unsafe_extra" not in confirmation["selected_candidate"]
+    json.dumps(confirmation, ensure_ascii=False, allow_nan=False)

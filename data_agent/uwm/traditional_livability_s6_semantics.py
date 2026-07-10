@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import math
 import re
 from typing import Any, Mapping
 import unicodedata
@@ -14,6 +15,8 @@ SCHEMA = "uwm.traditional_livability.s6_semantic_resolution.v1"
 CONFIRMATION_SCHEMA = "uwm.traditional_livability.s6_human_confirmation.v1"
 
 _INPUT_FIELDS = ("facility_name", "raw_facility_type", "use_description")
+_KEYWORD_NEGATION_MARKERS = ("不提供", "并非", "不", "非", "无")
+_REVIEWER_EVIDENCE_FIELDS = {"evidence_type", "reason"}
 _INTERNAL_SUGGESTION_RULES = (
     {
         "rule_id": "internal.food_truck.v1",
@@ -51,6 +54,8 @@ def _normalized_inputs(
 
 
 def _digestable_raw_value(value: Any) -> Any:
+    if isinstance(value, float) and not math.isfinite(value):
+        return {"invalid_input_type": "non_finite_float"}
     if value is None or isinstance(value, (bool, int, float, str)):
         return value
     return {"invalid_input_type": type(value).__name__}
@@ -123,17 +128,15 @@ def _candidate(
     }
 
 
-def _authoritative_matches(
+def _authoritative_alias_candidates(
     *,
     dictionary: Mapping[str, Any],
     classes: Mapping[str, Mapping[str, Any]],
     inputs: Mapping[str, str | None],
-    record_type: str,
     dictionary_version: str | None,
 ) -> list[dict[str, Any]]:
     matches: dict[str, list[dict[str, Any]]] = {}
-    is_alias = record_type == "aliases"
-    for record in _authoritative_records(dictionary, record_type):
+    for record in _authoritative_records(dictionary, "aliases"):
         class_id = record["class_id"]
         if class_id not in classes:
             continue
@@ -141,7 +144,7 @@ def _authoritative_matches(
             input_value = inputs[input_field]
             if not input_value:
                 continue
-            matched = input_value == record["value"] if is_alias else record["value"] in input_value
+            matched = input_value == record["value"]
             if matched:
                 matches.setdefault(class_id, []).append(
                     {
@@ -150,14 +153,12 @@ def _authoritative_matches(
                         "source_reference": record["source_reference"],
                     }
                 )
-    match_method = "authoritative_alias_exact" if is_alias else "authoritative_keyword_controlled"
-    confidence = "exact" if is_alias else "controlled_rule"
     return [
         _candidate(
             class_id=class_id,
             class_record=classes[class_id],
-            match_method=match_method,
-            confidence=confidence,
+            match_method="authoritative_alias_exact",
+            confidence="exact",
             dictionary_version=dictionary_version,
             rule_version=None,
             human_confirmation_required=False,
@@ -172,6 +173,97 @@ def _authoritative_matches(
         )
         for class_id, evidence in sorted(matches.items())
     ]
+
+
+def _keyword_is_negated(input_value: str) -> bool:
+    return any(marker in input_value for marker in _KEYWORD_NEGATION_MARKERS)
+
+
+def _authoritative_keyword_candidates(
+    *,
+    dictionary: Mapping[str, Any],
+    classes: Mapping[str, Mapping[str, Any]],
+    inputs: Mapping[str, str | None],
+    dictionary_version: str | None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    confirmed: dict[str, list[dict[str, Any]]] = {}
+    suggestions: dict[str, list[dict[str, Any]]] = {}
+    for record in _authoritative_records(dictionary, "keywords"):
+        class_id = record["class_id"]
+        if class_id not in classes:
+            continue
+        contextual_evidence = []
+        exact_raw_evidence = None
+        any_negated = False
+        for input_field in _INPUT_FIELDS:
+            input_value = inputs[input_field]
+            if not input_value or record["value"] not in input_value:
+                continue
+            negated = _keyword_is_negated(input_value)
+            any_negated = any_negated or negated
+            exact_raw = (
+                input_field == "raw_facility_type"
+                and input_value == record["value"]
+            )
+            evidence = {
+                "input_field": input_field,
+                "matched_value": record["value"],
+                "source_reference": record["source_reference"],
+                "match_scope": input_field,
+                "match_mode": (
+                    "exact_normalized_token" if exact_raw else "substring_context"
+                ),
+                "negated": negated,
+            }
+            contextual_evidence.append(evidence)
+            if exact_raw:
+                exact_raw_evidence = evidence
+        if exact_raw_evidence is not None and not any_negated:
+            confirmed.setdefault(class_id, []).append(exact_raw_evidence)
+        elif contextual_evidence:
+            suggestions.setdefault(class_id, []).extend(contextual_evidence)
+
+    confirmed_candidates = [
+        _candidate(
+            class_id=class_id,
+            class_record=classes[class_id],
+            match_method="authoritative_keyword_controlled",
+            confidence="controlled_rule",
+            dictionary_version=dictionary_version,
+            rule_version=None,
+            human_confirmation_required=False,
+            evidence=sorted(
+                evidence,
+                key=lambda row: (
+                    _INPUT_FIELDS.index(row["input_field"]),
+                    row["matched_value"],
+                    row["source_reference"],
+                ),
+            ),
+        )
+        for class_id, evidence in sorted(confirmed.items())
+    ]
+    suggestion_candidates = [
+        _candidate(
+            class_id=class_id,
+            class_record=classes[class_id],
+            match_method="authoritative_keyword_context_suggestion",
+            confidence="controlled_rule",
+            dictionary_version=dictionary_version,
+            rule_version=None,
+            human_confirmation_required=True,
+            evidence=sorted(
+                evidence,
+                key=lambda row: (
+                    _INPUT_FIELDS.index(row["input_field"]),
+                    row["matched_value"],
+                    row["source_reference"],
+                ),
+            ),
+        )
+        for class_id, evidence in sorted(suggestions.items())
+    ]
+    return confirmed_candidates, suggestion_candidates
 
 
 def _internal_suggestions(
@@ -254,11 +346,10 @@ def resolve_s6_facility_semantics(
 
     if dictionary_ready:
         classes = _dictionary_classes(dictionary)
-        alias_candidates = _authoritative_matches(
+        alias_candidates = _authoritative_alias_candidates(
             dictionary=dictionary,
             classes=classes,
             inputs=inputs,
-            record_type="aliases",
             dictionary_version=dictionary_version,
         )
         if len(alias_candidates) == 1:
@@ -279,11 +370,10 @@ def resolve_s6_facility_semantics(
                 "resolution_reasons": ["ambiguous_authoritative_alias_matches"],
             }
 
-        keyword_candidates = _authoritative_matches(
+        keyword_candidates, keyword_suggestions = _authoritative_keyword_candidates(
             dictionary=dictionary,
             classes=classes,
             inputs=inputs,
-            record_type="keywords",
             dictionary_version=dictionary_version,
         )
         if len(keyword_candidates) == 1:
@@ -302,6 +392,15 @@ def resolve_s6_facility_semantics(
                     for candidate in keyword_candidates
                 ],
                 "resolution_reasons": ["ambiguous_authoritative_keyword_matches"],
+            }
+        if keyword_suggestions:
+            return {
+                **base,
+                "resolution_status": "suggested_review_required",
+                "candidates": keyword_suggestions,
+                "resolution_reasons": [
+                    "authoritative_keyword_context_requires_human_review"
+                ],
             }
 
     suggestions = _internal_suggestions(inputs, dictionary_version)
@@ -388,16 +487,8 @@ def _human_selected_candidate(
         errors.append("selected_standard_class_not_in_dictionary")
     if candidate.get("dictionary_version") != dictionary_version:
         errors.append("selected_candidate_dictionary_version_mismatch")
-    evidence = candidate.get("evidence")
-    if not isinstance(evidence, list) or not evidence:
-        errors.append("selected_candidate_evidence_missing")
-    elif not all(
-        isinstance(row, Mapping)
-        and _normalized_string(row.get("evidence_type")) is not None
-        and _normalized_string(row.get("reason")) is not None
-        for row in evidence
-    ):
-        errors.append("selected_candidate_reviewer_reason_missing")
+    evidence, evidence_errors = _sanitize_reviewer_evidence(candidate.get("evidence"))
+    errors.extend(evidence_errors)
     if errors:
         return None, errors
     class_record = classes[candidate_class_id]
@@ -411,7 +502,38 @@ def _human_selected_candidate(
         "rule_version": None,
         "human_confirmation_required": False,
         "human_confirmed": True,
+        "evidence": evidence,
     }, []
+
+
+def _sanitize_reviewer_evidence(
+    evidence: Any,
+) -> tuple[list[dict[str, str]], list[str]]:
+    if not isinstance(evidence, list) or not evidence:
+        return [], ["selected_candidate_evidence_missing"]
+    sanitized = []
+    errors = []
+    for row in evidence:
+        if not isinstance(row, Mapping):
+            errors.append("selected_candidate_reviewer_reason_missing")
+            continue
+        if set(row) != _REVIEWER_EVIDENCE_FIELDS:
+            errors.append("selected_candidate_evidence_fields_invalid")
+            continue
+        evidence_type = _normalized_string(row.get("evidence_type"))
+        reason = _normalized_string(row.get("reason"))
+        if evidence_type != "reviewer_reason":
+            errors.append("selected_candidate_reviewer_evidence_type_invalid")
+        if reason is None:
+            errors.append("selected_candidate_reviewer_reason_missing")
+        if evidence_type == "reviewer_reason" and reason is not None:
+            sanitized.append(
+                {
+                    "evidence_type": "reviewer_reason",
+                    "reason": reason,
+                }
+            )
+    return sanitized, list(dict.fromkeys(errors))
 
 
 def _current_resolution(
