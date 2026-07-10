@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from copy import deepcopy
 import json
+import time
 
+import pytest
 from pyproj import Transformer
 from shapely.geometry import Point, box, mapping, shape
 
@@ -33,7 +36,11 @@ def _display_geometry(metric_geometry):
     return mapping(transform(transformer.transform, metric_geometry))
 
 
-def resource_fixture(*, complete_inventory: bool = False) -> dict:
+def resource_fixture(
+    *,
+    complete_inventory: bool = False,
+    include_unresolved_association: bool = False,
+) -> dict:
     origin = _metric_point()
     area_geometry = box(origin.x - 1000, origin.y - 1000, origin.x + 1000, origin.y + 1000)
     selected_parcel = box(origin.x - 20, origin.y - 20, origin.x + 20, origin.y + 20)
@@ -150,18 +157,26 @@ def resource_fixture(*, complete_inventory: bool = False) -> dict:
                 "metric_geometry": mapping(unresolved_facility),
                 "display_geometry_wgs84": _display_geometry(unresolved_facility),
             },
-            {
-                "facility_id": "facility-multi-area",
-                "source_record_id": "facility-source-multi-area",
-                "mapping_status": "unmapped",
-                "association_status": "multi_area_overlap_unresolved",
-                "matching_planning_area_ids": [AREA_ID, "fulu_banzhu"],
-                "planning_area_id": None,
-                "distance_crs": None,
-                "metric_geometry": None,
-                "display_geometry_wgs84": mapping(Point(ORIGIN_LON, ORIGIN_LAT)),
-            },
-        ],
+        ]
+        + (
+            [
+                {
+                    "facility_id": "facility-multi-area",
+                    "source_record_id": "facility-source-multi-area",
+                    "mapping_status": "unmapped",
+                    "association_status": "multi_area_overlap_unresolved",
+                    "matching_planning_area_ids": [AREA_ID, "fulu_banzhu"],
+                    "planning_area_id": None,
+                    "distance_crs": None,
+                    "metric_geometry": None,
+                    "display_geometry_wgs84": mapping(
+                        Point(ORIGIN_LON, ORIGIN_LAT)
+                    ),
+                }
+            ]
+            if include_unresolved_association
+            else []
+        ),
         "facility_inventory": {
             "complete_inventory": complete_inventory,
             "mapping_version": "traditional_livability_facility_mapping.v1",
@@ -332,7 +347,6 @@ def test_point_mode_returns_separate_planning_and_facility_hits():
     ]
     assert result["unresolved_objects"]["planning_resources"][0]["resource_id"] == "planning-unresolved"
     assert result["unresolved_objects"]["current_facilities"][0]["facility_id"] == "facility-unresolved"
-    assert result["unresolved_objects"]["association_records"][0]["facility_id"] == "facility-multi-area"
 
 
 def test_point_is_projected_and_outputs_are_json_safe_geojson():
@@ -723,7 +737,10 @@ def test_partial_compatible_rule_coverage_requires_review():
 
     assert result["status"] == "potential_conflict_review_required"
     assert result["applied_rule_ids"] == ["RULE-FACILITY"]
-    assert result["unruled_hit_ids"] == ["parcel-selected", "planning-hit"]
+    assert result["unruled_hit_ids"] == [
+        "planning:parcel-selected",
+        "planning:planning-hit",
+    ]
 
 
 def test_unresolved_hit_blocks_confirmed_compatible():
@@ -759,9 +776,11 @@ def test_sampled_inventory_no_hit_has_explicit_warning():
 
 
 def test_unresolved_multi_area_association_alone_does_not_create_a_hit():
-    resources = resource_fixture(complete_inventory=True)
+    resources = resource_fixture(
+        complete_inventory=True, include_unresolved_association=True
+    )
     resources["planning_resources"] = []
-    resources["current_facilities"] = [resources["current_facilities"][2]]
+    resources["current_facilities"] = [resources["current_facilities"][-1]]
     result = analyze_s6_facility_proposal(
         request=point_request(),
         resources=resources,
@@ -769,8 +788,10 @@ def test_unresolved_multi_area_association_alone_does_not_create_a_hit():
         compatibility=unavailable_compatibility(),
     )
 
-    assert result["status"] == "no_screening_hit"
-    assert result["unresolved_objects"]["association_records"]
+    assert result["status"] == "insufficient_evidence"
+    assert result["validation_blockers"] == [
+        "current_facility_spatial_association_unresolved:facility-multi-area"
+    ]
 
 
 def test_invalid_coordinates_fail_closed_before_spatial_screening():
@@ -809,6 +830,176 @@ def test_missing_parcel_geometry_and_crs_fail_closed():
     assert missing_crs["blockers"] == ["planning_area_distance_crs_missing:fulu_heping"]
 
 
+def test_non_metre_projected_distance_crs_fails_closed():
+    resources = resource_fixture()
+    resources["planning_areas"][0]["distance_crs"] = "EPSG:2263"
+
+    result = analyze_s6_facility_proposal(
+        request=point_request(),
+        resources=resources,
+        dictionary=unavailable_dictionary(),
+        compatibility=unavailable_compatibility(),
+    )
+
+    assert result["status"] == "insufficient_evidence"
+    assert result["validation_blockers"] == [
+        "planning_area_distance_crs_not_metre:fulu_heping"
+    ]
+
+
+@pytest.mark.parametrize(
+    "malformed_geometry",
+    [
+        {},
+        {"type": "Point"},
+        {"type": "Point", "coordinates": "invalid"},
+        {"type": "Unknown", "coordinates": []},
+        {"type": "Polygon", "coordinates": [[[0, 0], [1, 1]]]},
+    ],
+)
+def test_malformed_area_geojson_never_raises_and_fails_closed(malformed_geometry):
+    resources = resource_fixture()
+    resources["planning_areas"][0]["metric_geometry"] = malformed_geometry
+
+    result = analyze_s6_facility_proposal(
+        request=point_request(),
+        resources=resources,
+        dictionary=unavailable_dictionary(),
+        compatibility=unavailable_compatibility(),
+    )
+
+    assert result["status"] == "insufficient_evidence"
+    assert result["validation_blockers"] == [
+        "planning_area_geometry_missing:fulu_heping"
+    ]
+    json.dumps(result, allow_nan=False)
+
+
+def test_malformed_parcel_geojson_never_raises_and_fails_closed():
+    resources = resource_fixture()
+    resources["planning_resources"][0]["metric_geometry"] = {
+        "type": "Point",
+        "coordinates": None,
+    }
+
+    result = analyze_s6_facility_proposal(
+        request=parcel_request(),
+        resources=resources,
+        dictionary=unavailable_dictionary(),
+        compatibility=unavailable_compatibility(),
+    )
+
+    assert result["status"] == "insufficient_evidence"
+    assert result["validation_blockers"] == [
+        "planning_parcel_geometry_missing:parcel-selected"
+    ]
+
+
+def test_malformed_active_area_resource_geometry_is_an_exact_blocker():
+    resources = resource_fixture()
+    resources["planning_resources"][1]["metric_geometry"] = {
+        "type": "Unknown",
+        "coordinates": [],
+    }
+
+    result = analyze_s6_facility_proposal(
+        request=point_request(),
+        resources=resources,
+        dictionary=unavailable_dictionary(),
+        compatibility=unavailable_compatibility(),
+    )
+
+    assert result["status"] == "insufficient_evidence"
+    assert result["validation_blockers"] == [
+        "planning_resource_geometry_missing:planning-hit"
+    ]
+
+
+def test_malformed_active_area_facility_geometry_is_an_exact_blocker():
+    resources = resource_fixture()
+    resources["current_facilities"][0]["metric_geometry"] = {}
+
+    result = analyze_s6_facility_proposal(
+        request=point_request(),
+        resources=resources,
+        dictionary=unavailable_dictionary(),
+        compatibility=unavailable_compatibility(),
+    )
+
+    assert result["status"] == "insufficient_evidence"
+    assert result["validation_blockers"] == [
+        "current_facility_geometry_missing:facility-hit"
+    ]
+
+
+def test_malformed_client_confirmation_objects_never_break_json_safe_failure():
+    request = point_request(
+        confirmed_standard_class_id="facility.market",
+        human_confirmation={
+            "selected_candidate": {"evidence": [object()]},
+        },
+    )
+
+    result = analyze_s6_facility_proposal(
+        request=request,
+        resources=resource_fixture(),
+        dictionary=authoritative_dictionary("facility.market"),
+        compatibility=compatibility(),
+    )
+
+    assert result["status"] == "insufficient_evidence"
+    json.dumps(result, ensure_ascii=False, allow_nan=False)
+
+
+def test_active_area_unresolved_facility_association_fails_closed():
+    result = analyze_s6_facility_proposal(
+        request=confirmed_request("facility.market"),
+        resources=resource_fixture(include_unresolved_association=True),
+        dictionary=authoritative_dictionary("facility.market"),
+        compatibility=compatibility(
+            rule(
+                rule_id="RULE-PLANNING",
+                subject="facility.market",
+                object_id="village_public_service_land",
+                relationship="compatible",
+            ),
+            rule(
+                rule_id="RULE-FACILITY",
+                subject="facility.market",
+                object_id="facility.market",
+                relationship="compatible",
+            ),
+        ),
+    )
+
+    assert result["status"] == "insufficient_evidence"
+    assert result["validation_blockers"] == [
+        "current_facility_spatial_association_unresolved:facility-multi-area"
+    ]
+
+
+def test_duplicate_planning_area_ids_are_rejected():
+    resources = resource_fixture()
+    resources["planning_areas"].append(deepcopy(resources["planning_areas"][0]))
+
+    validation = validate_s6_request(point_request(), resources)
+
+    assert validation["blockers"] == ["duplicate_planning_area_id:fulu_heping"]
+
+
+def test_duplicate_same_area_resource_ids_are_rejected():
+    resources = resource_fixture()
+    duplicate = deepcopy(resources["planning_resources"][0])
+    duplicate["source_record_id"] = "duplicate-source"
+    resources["planning_resources"].append(duplicate)
+
+    validation = validate_s6_request(point_request(), resources)
+
+    assert validation["blockers"] == [
+        "duplicate_planning_resource_id:fulu_heping:parcel-selected"
+    ]
+
+
 def test_unconfirmed_class_cannot_apply_rules_or_enable_s1_handoff():
     result = analyze_s6_facility_proposal(
         request=point_request(confirmed_standard_class_id="facility.market"),
@@ -837,3 +1028,193 @@ def test_invalid_authoritative_rule_id_cannot_create_confirmed_state():
 
     assert result["status"] == "potential_conflict_review_required"
     assert result["applied_rule_ids"] == []
+
+
+def test_channel_qualified_hit_ids_prevent_cross_channel_collision():
+    resources = resources_without_unresolved_hits()
+    planning = next(
+        row for row in resources["planning_resources"] if row["resource_id"] == "planning-hit"
+    )
+    planning["resource_id"] = "shared-id"
+    resources["planning_resources"] = [planning]
+    resources["current_facilities"][0]["facility_id"] = "shared-id"
+    result = analyze_s6_facility_proposal(
+        request=confirmed_request("facility.market"),
+        resources=resources,
+        dictionary=authoritative_dictionary("facility.market"),
+        compatibility=compatibility(
+            rule(
+                rule_id="RULE-FACILITY",
+                subject="facility.market",
+                object_id="facility.market",
+                relationship="compatible",
+            )
+        ),
+    )
+
+    assert result["status"] == "potential_conflict_review_required"
+    assert result["unruled_hit_ids"] == ["planning:shared-id"]
+    assert result["applied_rules"][0]["applied_hit_ids"] == ["facility:shared-id"]
+
+
+def test_result_is_deeply_detached_from_all_inputs_bidirectionally():
+    request = confirmed_request("facility.market")
+    resources = resource_fixture()
+    dictionary = authoritative_dictionary("facility.market")
+    matrix = compatibility(
+        rule(
+            rule_id="RULE-001",
+            subject="facility.market",
+            object_id="village_public_service_land",
+            relationship="conflict",
+            applicability_conditions={"planning_area_ids": [AREA_ID]},
+        )
+    )
+    original_request = deepcopy(request)
+    original_resources = deepcopy(resources)
+    original_dictionary = deepcopy(dictionary)
+    original_matrix = deepcopy(matrix)
+
+    result = analyze_s6_facility_proposal(
+        request=request,
+        resources=resources,
+        dictionary=dictionary,
+        compatibility=matrix,
+    )
+    result_snapshot = deepcopy(result)
+
+    result["normalized_request"]["human_confirmation"]["actor_id"] = "changed"
+    result["planning_resource_hits"][0]["interpretation_evidence"]["field"] = "changed"
+    result["compatibility_rules_evaluated"][0]["applicability_conditions"][
+        "planning_area_ids"
+    ].append("changed")
+    assert request == original_request
+    assert resources == original_resources
+    assert dictionary == original_dictionary
+    assert matrix == original_matrix
+
+    request["human_confirmation"]["actor_id"] = "input-changed"
+    resources["planning_resources"][0]["interpretation_evidence"]["field"] = "input-changed"
+    dictionary["classes"][0]["label"] = "input-changed"
+    matrix["rules"][0]["applicability_conditions"]["planning_area_ids"].append(
+        "input-changed"
+    )
+    assert result_snapshot["normalized_request"]["human_confirmation"]["actor_id"] == "planner-1"
+    assert result_snapshot["planning_resource_hits"][0]["interpretation_evidence"]["field"] == "DLBM"
+    assert result_snapshot["compatibility_rules_evaluated"][0][
+        "applicability_conditions"
+    ]["planning_area_ids"] == [AREA_ID]
+    json.dumps(result_snapshot, ensure_ascii=False, allow_nan=False)
+
+
+def test_hit_tables_are_compact_and_geojson_is_only_full_display_geometry_payload():
+    result = analyze_s6_facility_proposal(
+        request=point_request(),
+        resources=resource_fixture(),
+        dictionary=unavailable_dictionary(),
+        compatibility=unavailable_compatibility(),
+    )
+
+    all_hits = (
+        result["planning_resource_hits"]
+        + result["current_facility_hits"]
+        + result["unresolved_objects"]["planning_resources"]
+        + result["unresolved_objects"]["current_facilities"]
+    )
+    assert all("metric_geometry" not in row for row in all_hits)
+    assert all("display_geometry_wgs84" not in row for row in all_hits)
+    assert all(row["geometry_ref"].startswith("geojson:") for row in all_hits)
+    assert result["geometry_payload"] == {
+        "max_display_feature_count": 1000,
+        "truncated": False,
+        "total_feature_count": len(all_hits),
+        "returned_feature_count": len(all_hits),
+    }
+    assert result["geojson"]["planning_resource_hits"]["features"]
+
+
+def test_display_geometry_cap_does_not_truncate_hit_evidence():
+    resources = resource_fixture(complete_inventory=True)
+    template = deepcopy(resources["planning_resources"][1])
+    resources["planning_resources"] = []
+    resources["current_facilities"] = []
+    for index in range(1005):
+        row = deepcopy(template)
+        row["resource_id"] = f"bulk-{index:04d}"
+        row["source_record_id"] = f"bulk-source-{index:04d}"
+        resources["planning_resources"].append(row)
+
+    result = analyze_s6_facility_proposal(
+        request=point_request(),
+        resources=resources,
+        dictionary=unavailable_dictionary(),
+        compatibility=unavailable_compatibility(),
+    )
+
+    assert len(result["planning_resource_hits"]) == 1005
+    assert result["geometry_payload"] == {
+        "max_display_feature_count": 1000,
+        "truncated": True,
+        "total_feature_count": 1005,
+        "returned_feature_count": 1000,
+    }
+    assert "display_geometry_payload_truncated" in result["production_blockers"]
+    assert len(result["geojson"]["planning_resource_hits"]["features"]) == 1000
+    assert len(json.dumps(result, ensure_ascii=False, allow_nan=False)) < 2_500_000
+
+
+def test_analysis_id_uses_server_validated_confirmation_not_ignored_client_fields():
+    first_request = confirmed_request("facility.market")
+    second_request = deepcopy(first_request)
+    second_request["human_confirmation"].update(
+        {
+            "valid": True,
+            "schema": "client-asserted-schema",
+            "validation_errors": ["client-asserted-error"],
+        }
+    )
+    arguments = {
+        "resources": resource_fixture(),
+        "dictionary": authoritative_dictionary("facility.market"),
+        "compatibility": compatibility(),
+    }
+
+    first = analyze_s6_facility_proposal(request=first_request, **arguments)
+    second = analyze_s6_facility_proposal(request=second_request, **arguments)
+
+    assert first["analysis_id"] == second["analysis_id"]
+    assert first["normalized_request"] == second["normalized_request"]
+    assert first["normalized_request"]["human_confirmation"]["valid"] is True
+
+
+def test_synthetic_4672_resource_screening_is_bounded_and_reasonably_fast():
+    resources = resource_fixture(complete_inventory=True)
+    template = deepcopy(resources["planning_resources"][1])
+    resources["planning_resources"] = []
+    resources["current_facilities"] = []
+    for index in range(4672):
+        row = deepcopy(template)
+        row["resource_id"] = f"benchmark-{index:04d}"
+        row["source_record_id"] = f"benchmark-source-{index:04d}"
+        resources["planning_resources"].append(row)
+
+    started_at = time.perf_counter()
+    result = analyze_s6_facility_proposal(
+        request=point_request(),
+        resources=resources,
+        dictionary=unavailable_dictionary(),
+        compatibility=unavailable_compatibility(),
+    )
+    elapsed_seconds = time.perf_counter() - started_at
+    serialized = json.dumps(result, ensure_ascii=False, allow_nan=False)
+
+    assert len(result["planning_resource_hits"]) == 4672
+    assert result["geometry_payload"] == {
+        "max_display_feature_count": 1000,
+        "truncated": True,
+        "total_feature_count": 4672,
+        "returned_feature_count": 1000,
+    }
+    assert len(result["geojson"]["planning_resource_hits"]["features"]) == 1000
+    assert elapsed_seconds < 8.0
+    assert len(serialized) < 8_000_000

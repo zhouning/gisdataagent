@@ -8,6 +8,7 @@ from typing import Any, Mapping
 from pyproj import CRS, Transformer
 from shapely.geometry import mapping, shape
 from shapely.ops import transform
+from shapely.prepared import prep
 
 from data_agent.uwm.traditional_livability_s6_semantics import (
     resolve_s6_facility_semantics,
@@ -17,6 +18,7 @@ from data_agent.uwm.traditional_livability_s6_semantics import (
 
 SCHEMA = "uwm.traditional_livability.s6_analysis.v1"
 SCREENING_DISTANCE_M = 150.0
+_MAX_DISPLAY_FEATURE_COUNT = 1000
 
 _INPUT_MODES = {"point", "planning_parcel"}
 _SUPPORTED_APPLICABILITY_CONDITIONS = {
@@ -42,16 +44,62 @@ def _rows(payload: Mapping[str, Any], field: str) -> list[Mapping[str, Any]]:
     return [row for row in value if isinstance(row, Mapping)]
 
 
+def _json_safe_detached(value: Any) -> Any:
+    return json.loads(
+        json.dumps(
+            value,
+            ensure_ascii=False,
+            allow_nan=False,
+            separators=(",", ":"),
+        )
+    )
+
+
+def _json_audit_value(value: Any) -> Any:
+    try:
+        return _json_safe_detached(value)
+    except (TypeError, ValueError):
+        return {"invalid_json_value_type": type(value).__name__}
+
+
 def _safe_geometry(value: Any):
     if not isinstance(value, Mapping):
         return None
     try:
         geometry = shape(value)
-    except (TypeError, ValueError):
-        return None
-    if geometry.is_empty or not geometry.is_valid:
+        if geometry.is_empty or not geometry.is_valid:
+            return None
+    except Exception:
         return None
     return geometry
+
+
+def _projected_crs_uses_metres(crs: CRS) -> bool:
+    horizontal_axes = list(crs.axis_info[:2])
+    if len(horizontal_axes) != 2:
+        return False
+    return all(
+        axis.unit_conversion_factor is not None
+        and math.isclose(
+            float(axis.unit_conversion_factor),
+            1.0,
+            rel_tol=0.0,
+            abs_tol=1e-9,
+        )
+        for axis in horizontal_axes
+    )
+
+
+def _duplicate_ids(
+    rows: list[Mapping[str, Any]],
+    *fields: str,
+) -> list[tuple[str, ...]]:
+    counts: dict[tuple[str, ...], int] = {}
+    for row in rows:
+        key = tuple(_text(row.get(field)) or "" for field in fields)
+        if all(key):
+            counts[key] = counts.get(key, 0) + 1
+    return sorted(key for key, count in counts.items() if count > 1)
 
 
 def _area_index(resources: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
@@ -83,6 +131,18 @@ def validate_s6_request(
     if resource_payload.get("ready") is not True:
         blockers.append("s6_resource_snapshot_not_ready")
 
+    area_rows = _rows(resource_payload, "planning_areas")
+    for (duplicate_area_id,) in _duplicate_ids(area_rows, "planning_area_id"):
+        blockers.append(f"duplicate_planning_area_id:{duplicate_area_id}")
+    resource_rows = _rows(resource_payload, "planning_resources")
+    for duplicate_area_id, duplicate_resource_id in _duplicate_ids(
+        resource_rows, "planning_area_id", "resource_id"
+    ):
+        blockers.append(
+            "duplicate_planning_resource_id:"
+            f"{duplicate_area_id}:{duplicate_resource_id}"
+        )
+
     input_mode = _text(request.get("input_mode"))
     if input_mode not in _INPUT_MODES:
         blockers.append("unsupported_input_mode")
@@ -104,9 +164,14 @@ def validate_s6_request(
             )
         else:
             try:
-                if not CRS.from_user_input(distance_crs).is_projected:
+                parsed_crs = CRS.from_user_input(distance_crs)
+                if not parsed_crs.is_projected:
                     blockers.append(
                         f"planning_area_distance_crs_not_projected:{analysis_area_id}"
+                    )
+                elif not _projected_crs_uses_metres(parsed_crs):
+                    blockers.append(
+                        f"planning_area_distance_crs_not_metre:{analysis_area_id}"
                     )
             except Exception:
                 blockers.append(
@@ -114,6 +179,19 @@ def validate_s6_request(
                 )
         if _safe_geometry(selected_area.get("metric_geometry")) is None:
             blockers.append(f"planning_area_geometry_missing:{analysis_area_id}")
+
+        for facility in _rows(resource_payload, "current_facilities"):
+            matching_area_ids = facility.get("matching_planning_area_ids")
+            if (
+                isinstance(matching_area_ids, list)
+                and analysis_area_id in matching_area_ids
+                and _safe_geometry(facility.get("metric_geometry")) is None
+            ):
+                facility_id = _text(facility.get("facility_id")) or "unknown"
+                blockers.append(
+                    "current_facility_spatial_association_unresolved:"
+                    f"{facility_id}"
+                )
 
     normalized: dict[str, Any] = {
         "input_mode": input_mode,
@@ -124,11 +202,7 @@ def validate_s6_request(
         "confirmed_standard_class_id": _text(
             request.get("confirmed_standard_class_id")
         ),
-        "human_confirmation": (
-            dict(request["human_confirmation"])
-            if isinstance(request.get("human_confirmation"), Mapping)
-            else None
-        ),
+        "human_confirmation": None,
     }
     for field in ("facility_name", "raw_facility_type", "use_description"):
         if normalized[field] is None:
@@ -199,12 +273,30 @@ def validate_s6_request(
                             f"planning_parcel_distance_crs_mismatch:{parcel_id}"
                         )
 
-    return {
+    selected_parcel_id = normalized.get("parcel_id")
+    for resource in resource_rows:
+        if _text(resource.get("planning_area_id")) != analysis_area_id:
+            continue
+        resource_id = _text(resource.get("resource_id")) or "unknown"
+        if resource_id == selected_parcel_id:
+            continue
+        if _safe_geometry(resource.get("metric_geometry")) is None:
+            blockers.append(
+                f"planning_resource_geometry_missing:{resource_id}"
+            )
+    for facility in _rows(resource_payload, "current_facilities"):
+        if _text(facility.get("planning_area_id")) != analysis_area_id:
+            continue
+        if _safe_geometry(facility.get("metric_geometry")) is None:
+            facility_id = _text(facility.get("facility_id")) or "unknown"
+            blockers.append(f"current_facility_geometry_missing:{facility_id}")
+
+    return _json_safe_detached({
         "valid": not blockers,
         "blockers": list(dict.fromkeys(blockers)),
         "normalized_request": normalized,
         "selected_area": dict(selected_area) if selected_area is not None else None,
-    }
+    })
 
 
 def _projected_input_geometry(
@@ -250,15 +342,41 @@ def _rounded(value: float) -> float:
     return round(float(value), 6)
 
 
-def _planning_hit(
-    row: Mapping[str, Any], input_geometry, screening_geometry
+def _qualified_hit_id(channel: str, raw_id: Any) -> str:
+    return f"{channel}:{_text(raw_id) or 'unknown'}"
+
+
+def _bbox_intersects(
+    first: tuple[float, float, float, float],
+    second: tuple[float, float, float, float],
+) -> bool:
+    return not (
+        first[2] < second[0]
+        or first[0] > second[2]
+        or first[3] < second[1]
+        or first[1] > second[3]
+    )
+
+
+def _hit_display_geometry(
+    row: Mapping[str, Any], metric_geometry, distance_crs: str
 ) -> dict[str, Any]:
-    geometry = shape(row["metric_geometry"])
+    display_geometry = _safe_geometry(row.get("display_geometry_wgs84"))
+    if display_geometry is not None:
+        return mapping(display_geometry)
+    return _display_geometry(metric_geometry, distance_crs)
+
+
+def _planning_hit(
+    row: Mapping[str, Any], geometry, input_geometry, screening_geometry
+) -> dict[str, Any]:
     intersection = geometry.intersection(screening_geometry)
     intersection_area = None
     if not intersection.is_empty and intersection.area > 0:
         intersection_area = _rounded(intersection.area)
     return {
+        "channel": "planning",
+        "evidence_id": _qualified_hit_id("planning", row.get("resource_id")),
         "resource_id": row.get("resource_id"),
         "source_record_id": row.get("source_record_id"),
         "planning_area_id": row.get("planning_area_id"),
@@ -274,13 +392,19 @@ def _planning_hit(
         "nearest_distance_m": _rounded(input_geometry.distance(geometry)),
         "intersection_area_m2": intersection_area,
         "compatibility_object_class_id": _text(row.get("resource_domain")),
-        "display_geometry_wgs84": row.get("display_geometry_wgs84"),
+        "geometry_ref": (
+            "geojson:"
+            f"{_qualified_hit_id('planning', row.get('resource_id'))}"
+        ),
     }
 
 
-def _facility_hit(row: Mapping[str, Any], input_geometry) -> dict[str, Any]:
-    geometry = shape(row["metric_geometry"])
+def _facility_hit(
+    row: Mapping[str, Any], geometry, input_geometry
+) -> dict[str, Any]:
     return {
+        "channel": "facility",
+        "evidence_id": _qualified_hit_id("facility", row.get("facility_id")),
         "facility_id": row.get("facility_id"),
         "source_dataset_id": row.get("source_dataset_id"),
         "source_record_id": row.get("source_record_id"),
@@ -294,7 +418,10 @@ def _facility_hit(row: Mapping[str, Any], input_geometry) -> dict[str, Any]:
         "geometry_type": row.get("geometry_type"),
         "nearest_distance_m": _rounded(input_geometry.distance(geometry)),
         "compatibility_object_class_id": _text(row.get("canonical_class")),
-        "display_geometry_wgs84": row.get("display_geometry_wgs84"),
+        "geometry_ref": (
+            "geojson:"
+            f"{_qualified_hit_id('facility', row.get('facility_id'))}"
+        ),
     }
 
 
@@ -305,18 +432,33 @@ def _screen_resources(
     distance_crs: str,
     input_geometry,
     screening_geometry,
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, list[dict[str, Any]]]]:
+) -> tuple[
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+    dict[str, list[dict[str, Any]]],
+    dict[str, dict[str, Any]],
+]:
     planning_hits = []
     unresolved_planning = []
+    display_geometries: dict[str, dict[str, Any]] = {}
+    screening_bounds = screening_geometry.bounds
+    prepared_screening = prep(screening_geometry)
     for row in _rows(resources, "planning_resources"):
         if _text(row.get("planning_area_id")) != area_id:
             continue
         if _text(row.get("distance_crs")) != distance_crs:
             continue
         geometry = _safe_geometry(row.get("metric_geometry"))
-        if geometry is None or not geometry.intersects(screening_geometry):
+        if (
+            geometry is None
+            or not _bbox_intersects(geometry.bounds, screening_bounds)
+            or not prepared_screening.intersects(geometry)
+        ):
             continue
-        hit = _planning_hit(row, input_geometry, screening_geometry)
+        hit = _planning_hit(row, geometry, input_geometry, screening_geometry)
+        display_geometries[hit["evidence_id"]] = _hit_display_geometry(
+            row, geometry, distance_crs
+        )
         if hit["compatibility_object_class_id"] in (None, "unresolved"):
             unresolved_planning.append(hit)
         else:
@@ -350,9 +492,16 @@ def _screen_resources(
         if _text(row.get("distance_crs")) != distance_crs:
             continue
         geometry = _safe_geometry(row.get("metric_geometry"))
-        if geometry is None or not geometry.intersects(screening_geometry):
+        if (
+            geometry is None
+            or not _bbox_intersects(geometry.bounds, screening_bounds)
+            or not prepared_screening.intersects(geometry)
+        ):
             continue
-        hit = _facility_hit(row, input_geometry)
+        hit = _facility_hit(row, geometry, input_geometry)
+        display_geometries[hit["evidence_id"]] = _hit_display_geometry(
+            row, geometry, distance_crs
+        )
         if row.get("mapping_status") == "unmapped" or hit[
             "compatibility_object_class_id"
         ] is None:
@@ -369,11 +518,16 @@ def _screen_resources(
         key=lambda row: (row["nearest_distance_m"], row["facility_id"] or "")
     )
     unresolved_associations.sort(key=lambda row: row["facility_id"] or "")
-    return planning_hits, facility_hits, {
-        "planning_resources": unresolved_planning,
-        "current_facilities": unresolved_facilities,
-        "association_records": unresolved_associations,
-    }
+    return (
+        planning_hits,
+        facility_hits,
+        {
+            "planning_resources": unresolved_planning,
+            "current_facilities": unresolved_facilities,
+            "association_records": unresolved_associations,
+        },
+        display_geometries,
+    )
 
 
 def _validate_request_confirmation(
@@ -501,12 +655,7 @@ def _applicable_rules(
     compatibility: Mapping[str, Any],
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[str]]:
     if confirmed_class_id is None or compatibility.get("ready") is not True:
-        return [], [], [
-            _text(hit.get("resource_id"))
-            or _text(hit.get("facility_id"))
-            or "unknown_hit"
-            for hit in hits
-        ]
+        return [], [], [str(hit["evidence_id"]) for hit in hits]
     evaluated = []
     applicable_by_rule_id: dict[str, dict[str, Any]] = {}
     decisive_hit_ids: set[str] = set()
@@ -525,11 +674,7 @@ def _applicable_rules(
         for hit in hits:
             if _text(hit.get("compatibility_object_class_id")) != object_class_id:
                 continue
-            hit_id = (
-                _text(hit.get("resource_id"))
-                or _text(hit.get("facility_id"))
-                or "unknown_hit"
-            )
+            hit_id = str(hit["evidence_id"])
             reasons = _evaluate_applicability_conditions(
                 row.get("applicability_conditions"),
                 normalized_request=normalized_request,
@@ -542,7 +687,9 @@ def _applicable_rules(
                 "object_class_id": object_class_id,
                 "relationship": relationship,
                 "source_reference": _text(row.get("source_reference")),
-                "applicability_conditions": row.get("applicability_conditions"),
+                "applicability_conditions": _json_audit_value(
+                    row.get("applicability_conditions")
+                ),
                 "evaluated_hit_id": hit_id,
                 "applicable": not reasons,
                 "non_applicable_reasons": reasons,
@@ -560,8 +707,8 @@ def _applicable_rules(
                     "object_class_id": object_class_id,
                     "relationship": relationship,
                     "source_reference": evaluation["source_reference"],
-                    "applicability_conditions": row.get(
-                        "applicability_conditions"
+                    "applicability_conditions": _json_audit_value(
+                        row.get("applicability_conditions")
                     ),
                     "applied_hit_ids": [],
                 },
@@ -569,41 +716,33 @@ def _applicable_rules(
     evaluated.sort(key=lambda row: (row["rule_id"], row["evaluated_hit_id"]))
     applicable = sorted(applicable_by_rule_id.values(), key=lambda row: row["rule_id"])
     unruled_hit_ids = sorted(
-        (
-            _text(hit.get("resource_id"))
-            or _text(hit.get("facility_id"))
-            or "unknown_hit"
-        )
+        str(hit["evidence_id"])
         for hit in hits
-        if (
-            _text(hit.get("resource_id"))
-            or _text(hit.get("facility_id"))
-            or "unknown_hit"
-        )
-        not in decisive_hit_ids
+        if str(hit["evidence_id"]) not in decisive_hit_ids
     )
     return evaluated, applicable, unruled_hit_ids
 
 
-def _feature_collection(rows: list[Mapping[str, Any]], id_field: str) -> dict[str, Any]:
+def _feature_collection(
+    rows: list[Mapping[str, Any]],
+    display_geometries: Mapping[str, Mapping[str, Any]],
+    limit: int,
+) -> tuple[dict[str, Any], int]:
     features = []
-    for row in rows:
-        geometry = row.get("display_geometry_wgs84")
+    for row in rows[:limit]:
+        evidence_id = str(row["evidence_id"])
+        geometry = display_geometries.get(evidence_id)
         if not isinstance(geometry, Mapping):
             continue
         features.append(
             {
                 "type": "Feature",
-                "id": row.get(id_field),
+                "id": evidence_id,
                 "geometry": dict(geometry),
-                "properties": {
-                    key: value
-                    for key, value in row.items()
-                    if key != "display_geometry_wgs84"
-                },
+                "properties": dict(row),
             }
         )
-    return {"type": "FeatureCollection", "features": features}
+    return {"type": "FeatureCollection", "features": features}, len(features)
 
 
 def _analysis_id(normalized_request: Mapping[str, Any]) -> str:
@@ -632,7 +771,7 @@ def _insufficient_result(
             use_description=normalized.get("use_description"),
             dictionary=dictionary,
         )
-    return {
+    return _json_safe_detached({
         "schema": SCHEMA,
         "analysis_id": _analysis_id(normalized),
         "analyzed_at": None,
@@ -663,6 +802,12 @@ def _insufficient_result(
         "production_blockers": list(validation["blockers"]),
         "completeness_warnings": [],
         "claim_boundary": "No spatial or compatibility conclusion is supported.",
+        "geometry_payload": {
+            "max_display_feature_count": _MAX_DISPLAY_FEATURE_COUNT,
+            "truncated": False,
+            "total_feature_count": 0,
+            "returned_feature_count": 0,
+        },
         "s1_handoff": {
             "ready": False,
             "confirmed_standard_class_id": None,
@@ -676,7 +821,7 @@ def _insufficient_result(
             "unresolved_planning_resources": {"type": "FeatureCollection", "features": []},
             "unresolved_current_facilities": {"type": "FeatureCollection", "features": []},
         },
-    }
+    })
 
 
 def analyze_s6_facility_proposal(
@@ -696,6 +841,7 @@ def analyze_s6_facility_proposal(
         dictionary=dictionary,
     )
     confirmation_validation = _validate_request_confirmation(request, dictionary)
+    normalized["human_confirmation"] = confirmation_validation
     blockers = list(validation["blockers"])
     if (
         confirmation_validation is not None
@@ -731,7 +877,7 @@ def analyze_s6_facility_proposal(
         normalized, resources, distance_crs
     )
     screening_geometry = input_geometry.buffer(SCREENING_DISTANCE_M)
-    planning_hits, facility_hits, unresolved = _screen_resources(
+    planning_hits, facility_hits, unresolved, display_geometries = _screen_resources(
         resources=resources,
         area_id=normalized["analysis_area_id"],
         distance_crs=distance_crs,
@@ -796,11 +942,52 @@ def analyze_s6_facility_proposal(
 
     proposed_geojson = mapping(proposed_display_geometry)
     screening_geojson = _display_geometry(screening_geometry, distance_crs)
+    display_channels = (
+        ("planning_resource_hits", planning_hits),
+        ("current_facility_hits", facility_hits),
+        (
+            "unresolved_planning_resources",
+            unresolved["planning_resources"],
+        ),
+        (
+            "unresolved_current_facilities",
+            unresolved["current_facilities"],
+        ),
+    )
+    remaining_display_features = _MAX_DISPLAY_FEATURE_COUNT
+    returned_display_feature_count = 0
+    display_feature_collections = {}
+    for channel_name, channel_rows in display_channels:
+        feature_collection, returned_count = _feature_collection(
+            channel_rows,
+            display_geometries,
+            remaining_display_features,
+        )
+        display_feature_collections[channel_name] = feature_collection
+        returned_display_feature_count += returned_count
+        remaining_display_features -= returned_count
+    total_display_feature_count = sum(
+        len(channel_rows) for _, channel_rows in display_channels
+    )
+    geometry_payload_truncated = (
+        returned_display_feature_count < total_display_feature_count
+    )
+    if geometry_payload_truncated:
+        production_blockers.append("display_geometry_payload_truncated")
     s1_ready = confirmed_class_id is not None
+    claim_boundary = (
+        "Confirmed states require the cited authoritative rule IDs."
+        if applicable_rules
+        else "Spatial proximity alone is not a regulatory or business conflict."
+    )
+    if geometry_payload_truncated:
+        claim_boundary += (
+            " Hit evidence is complete; display GeoJSON is capped and truncated."
+        )
     result = {
         "schema": SCHEMA,
         "analysis_id": _analysis_id(normalized),
-        "analyzed_at": request.get("analysis_timestamp"),
+        "analyzed_at": _text(request.get("analysis_timestamp")),
         "status": status,
         "max_claim_level": max_claim_level,
         "normalized_request": normalized,
@@ -828,11 +1015,13 @@ def analyze_s6_facility_proposal(
         "validation_blockers": [],
         "production_blockers": production_blockers,
         "completeness_warnings": warnings,
-        "claim_boundary": (
-            "Confirmed states require the cited authoritative rule IDs."
-            if applicable_rules
-            else "Spatial proximity alone is not a regulatory or business conflict."
-        ),
+        "claim_boundary": claim_boundary,
+        "geometry_payload": {
+            "max_display_feature_count": _MAX_DISPLAY_FEATURE_COUNT,
+            "truncated": geometry_payload_truncated,
+            "total_feature_count": total_display_feature_count,
+            "returned_feature_count": returned_display_feature_count,
+        },
         "s1_handoff": {
             "ready": s1_ready,
             "confirmed_standard_class_id": confirmed_class_id,
@@ -845,19 +1034,7 @@ def analyze_s6_facility_proposal(
         "geojson": {
             "proposed_geometry": proposed_geojson,
             "screening_buffer": screening_geojson,
-            "planning_resource_hits": _feature_collection(
-                planning_hits, "resource_id"
-            ),
-            "current_facility_hits": _feature_collection(
-                facility_hits, "facility_id"
-            ),
-            "unresolved_planning_resources": _feature_collection(
-                unresolved["planning_resources"], "resource_id"
-            ),
-            "unresolved_current_facilities": _feature_collection(
-                unresolved["current_facilities"], "facility_id"
-            ),
+            **display_feature_collections,
         },
     }
-    json.dumps(result, ensure_ascii=False, allow_nan=False)
-    return result
+    return _json_safe_detached(result)
