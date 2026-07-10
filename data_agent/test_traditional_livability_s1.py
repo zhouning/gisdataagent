@@ -18,6 +18,7 @@ def _product():
             {"admin_code": "500105", "admin_name": "江北区", "population": 200000, "population_basis": "resident_population_2021"},
         ],
         "claim_boundary": {"authoritative_fp_fpp_available": False},
+        "source_manifest": {"complete_inventory": False, "sampling": {"max_poi_features": 50000}},
         "production_blockers": ["facility_capacity_and_operating_status_missing"],
     }
 
@@ -33,6 +34,8 @@ def test_without_authoritative_standards_reports_inventory_not_compliance():
     assert school["gap_to_standard"] is None
     assert result["summary"]["unmatched_facility_count"] == 1
     assert result["summary"]["unmapped_facility_count"] == 1
+    assert result["data_support"]["complete_inventory"] is False
+    assert result["data_support"]["sampling"]["max_poi_features"] == 50000
     assert "authoritative_fp_fpp_thresholds_missing" in result["production_blockers"]
 
 

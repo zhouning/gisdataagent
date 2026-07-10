@@ -69,6 +69,17 @@ def build_s1_facility_assessment(
         "created_at": created_at,
         "facility_product_id": facility_product.get("product_id"),
         "method": "deterministic_current_state_facility_supply_assessment",
+        "data_support": {
+            "complete_inventory": bool(
+                (facility_product.get("source_manifest") or {}).get(
+                    "complete_inventory"
+                )
+            ),
+            "sampling": dict(
+                (facility_product.get("source_manifest") or {}).get("sampling")
+                or {}
+            ),
+        },
         "summary": {
             "population_unit_count": len(populations),
             "facility_count": len(facilities),

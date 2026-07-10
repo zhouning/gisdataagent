@@ -160,6 +160,7 @@ export default function TraditionalLivabilityTab() {
   const actions = asArray<AnyRecord>(actionPlan.actions);
   const indicatorDimensions = asArray<AnyRecord>(indicatorSystem.dimensions);
   const s1Summary = isRecord(s1?.summary) ? s1.summary : {};
+  const s1DataSupport = isRecord(s1?.data_support) ? s1.data_support : {};
   const s1Metrics = asArray<AnyRecord>(s1?.supply_metrics);
   const s1Blockers = asArray<string>(s1?.production_blockers || s1Unavailable?.blockers);
 
@@ -208,7 +209,7 @@ export default function TraditionalLivabilityTab() {
           <>
             <div className="traditional-kpi-grid">
               <div className="traditional-kpi"><span>执行区域</span><strong>重庆市</strong></div>
-              <div className="traditional-kpi"><span>设施库存</span><strong>{s1Summary.facility_count || 0}</strong></div>
+              <div className="traditional-kpi"><span>{s1DataSupport.complete_inventory ? '完整库存' : '采样库存'}</span><strong>{s1Summary.facility_count || 0}</strong></div>
               <div className="traditional-kpi"><span>已匹配人口单元</span><strong>{s1Summary.population_unit_count || 0}</strong></div>
               <div className="traditional-kpi"><span>未匹配设施</span><strong>{s1Summary.unmatched_facility_count || 0}</strong></div>
             </div>

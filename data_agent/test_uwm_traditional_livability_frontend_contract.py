@@ -49,6 +49,7 @@ def test_traditional_livability_tab_uses_static_analysis_api_contract():
     assert "S1 设施供需评估" in text
     assert "每万人设施数" in text
     assert "权威 FP/FPP 标准未提供" in text
+    assert "采样库存" in text
     assert "production_blockers" in text
     assert "not_assessed" in text
     assert "not_assessed: '未评估'" in text
