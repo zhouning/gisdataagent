@@ -1,8 +1,11 @@
 from data_agent.uwm.livability_requirement_registry import (
     CUSTOMER_DEMAND_PRIMARY_ROUTES,
+    EVIDENCE_LEVELS,
     LIVABILITY_SCENARIO_PRIMARY_ROUTES,
+    MAX_CLAIM_LEVELS,
     PRIMARY_ROUTES,
     SOURCE_DOCUMENTS,
+    UNCERTAINTY_LEVELS,
     build_livability_requirement_registry,
     requirement_coverage_for_route,
     validate_livability_requirement_registry,
@@ -83,7 +86,16 @@ def test_registry_keeps_financial_and_policy_claim_boundaries_explicit():
     demands = {row["id"]: row for row in registry["customer_ai_demands"]}
 
     assert demands["23"]["data_support"] == "requires_customer_data"
+    assert demands["23"]["evidence_level"] == "unsupported"
+    assert demands["23"]["uncertainty"] == "not_assessed"
+    assert demands["23"]["max_claim_level"] == "unsupported"
     assert demands["23"]["implemented_outputs"] == []
+    assert registry["source_documents"] == [
+        "宜居性专项分析.docx",
+        "客户侧25个AI应用需求的回复.docx",
+    ]
+    assert all(not source.startswith("/") for source in SOURCE_DOCUMENTS)
+    assert registry["source_provenance_server_side"] is True
     assert registry["claim_boundary"]["registration_is_not_implementation"] is True
     assert (
         registry["claim_boundary"]["observed_policy_outcome_superiority_claim"]
@@ -98,6 +110,9 @@ def test_validator_rejects_duplicate_ids_and_invalid_row_contracts():
     registry["customer_ai_demands"][2]["route_availability"] = "unknown"
     registry["customer_ai_demands"][3]["implemented_outputs"] = "not-a-list"
     registry["customer_ai_demands"][4]["production_blockers"] = "not-a-list"
+    registry["customer_ai_demands"][5]["evidence_level"] = "invented"
+    registry["customer_ai_demands"][6]["uncertainty"] = "certain"
+    registry["customer_ai_demands"][7]["max_claim_level"] = "policy_proven"
 
     validation = validate_livability_requirement_registry(registry)
 
@@ -109,6 +124,11 @@ def test_validator_rejects_metadata_drift_with_specific_errors():
     mutations = [
         ("source_documents", [], "source_documents must exactly match canonical source documents"),
         ("primary_routes", ["uwm_livability"], "primary_routes must exactly match canonical primary routes"),
+        (
+            "source_provenance_server_side",
+            False,
+            "source_provenance_server_side must be true",
+        ),
         ("claim_boundary", {}, "claim_boundary.registration_is_not_implementation must be true"),
         (
             "claim_boundary",
@@ -142,6 +162,9 @@ def test_validator_rejects_required_row_field_and_canonical_drift():
         "required_method",
         "implementation_level",
         "data_support",
+        "evidence_level",
+        "uncertainty",
+        "max_claim_level",
         "route_availability",
         "implemented_outputs",
         "production_blockers",
@@ -160,6 +183,9 @@ def test_validator_rejects_required_row_field_and_canonical_drift():
         ("livability_scenarios", "S7", "required_method", "fixed_score", "scenario S7 required_method does not match canonical definition"),
         ("customer_ai_demands", "7", "implementation_level", "complete", "demand 7 implementation_level does not match canonical definition"),
         ("customer_ai_demands", "11", "data_support", "observed", "demand 11 data_support does not match canonical definition"),
+        ("customer_ai_demands", "11", "evidence_level", "simulated", "demand 11 evidence_level does not match canonical definition"),
+        ("customer_ai_demands", "11", "uncertainty", "low", "demand 11 uncertainty does not match canonical definition"),
+        ("customer_ai_demands", "11", "max_claim_level", "model_counterfactual", "demand 11 max_claim_level does not match canonical definition"),
         ("customer_ai_demands", "23", "implemented_outputs", ["fabricated_roi"], "demand 23 implemented_outputs does not match canonical definition"),
         ("customer_ai_demands", "23", "production_blockers", [], "demand 23 production_blockers does not match canonical definition"),
     ]
@@ -200,3 +226,13 @@ def test_route_filter_rejects_unknown_route():
         assert "not_a_route" in str(exc)
     else:
         raise AssertionError("unknown routes must be rejected")
+
+
+def test_registry_evidence_fields_use_controlled_enums():
+    registry = build_livability_requirement_registry()
+    rows = registry["livability_scenarios"] + registry["customer_ai_demands"]
+
+    assert {"observed", "proxy", "simulated", "contract_only", "unsupported"} <= EVIDENCE_LEVELS
+    assert all(row["evidence_level"] in EVIDENCE_LEVELS for row in rows)
+    assert all(row["uncertainty"] in UNCERTAINTY_LEVELS for row in rows)
+    assert all(row["max_claim_level"] in MAX_CLAIM_LEVELS for row in rows)

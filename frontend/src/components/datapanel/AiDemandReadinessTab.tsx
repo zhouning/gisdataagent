@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertTriangle, CheckCircle2, RefreshCw, Route, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, CircleDot, RefreshCw, Route, ShieldAlert } from 'lucide-react';
+
+type EvidenceLevel = 'observed' | 'proxy' | 'simulated' | 'contract_only' | 'unsupported';
+type UncertaintyLevel = 'low' | 'medium' | 'high' | 'not_assessed';
+type MaxClaimLevel =
+  | 'descriptive_observed'
+  | 'proxy_diagnostic'
+  | 'model_counterfactual'
+  | 'requirement_registered'
+  | 'unsupported';
 
 type RequirementRow = {
   id: string;
@@ -8,6 +17,9 @@ type RequirementRow = {
   required_method: string;
   implementation_level: string;
   data_support: string;
+  evidence_level: EvidenceLevel;
+  uncertainty: UncertaintyLevel;
+  max_claim_level: MaxClaimLevel;
   route_availability: 'existing' | 'planned';
   implemented_outputs: string[];
   production_blockers: string[];
@@ -21,6 +33,7 @@ type RouteRow = {
 type ReadinessPayload = {
   schema: "uwm.ai_demand_readiness_api.v2";
   source_documents: string[];
+  source_provenance_server_side: true;
   livability_scenarios: RequirementRow[];
   customer_ai_demands: RequirementRow[];
   primary_routes: RouteRow[];
@@ -76,6 +89,24 @@ function isAvailability(value: unknown): value is 'existing' | 'planned' {
   return value === 'existing' || value === 'planned';
 }
 
+function isEvidenceLevel(value: unknown): value is EvidenceLevel {
+  return ['observed', 'proxy', 'simulated', 'contract_only', 'unsupported'].includes(String(value));
+}
+
+function isUncertaintyLevel(value: unknown): value is UncertaintyLevel {
+  return ['low', 'medium', 'high', 'not_assessed'].includes(String(value));
+}
+
+function isMaxClaimLevel(value: unknown): value is MaxClaimLevel {
+  return [
+    'descriptive_observed',
+    'proxy_diagnostic',
+    'model_counterfactual',
+    'requirement_registered',
+    'unsupported',
+  ].includes(String(value));
+}
+
 function isRequirementRow(value: unknown): value is RequirementRow {
   if (!isRecord(value)) return false;
   return (
@@ -85,6 +116,9 @@ function isRequirementRow(value: unknown): value is RequirementRow {
     && typeof value.required_method === 'string'
     && typeof value.implementation_level === 'string'
     && typeof value.data_support === 'string'
+    && isEvidenceLevel(value.evidence_level)
+    && isUncertaintyLevel(value.uncertainty)
+    && isMaxClaimLevel(value.max_claim_level)
     && isAvailability(value.route_availability)
     && isStringArray(value.implemented_outputs)
     && isStringArray(value.production_blockers)
@@ -102,6 +136,7 @@ function isRouteRow(value: unknown): value is RouteRow {
 function isReadinessPayload(value: unknown): value is ReadinessPayload {
   if (!isRecord(value) || value.schema !== 'uwm.ai_demand_readiness_api.v2') return false;
   if (!isStringArray(value.source_documents)) return false;
+  if (value.source_provenance_server_side !== true) return false;
   if (!Array.isArray(value.livability_scenarios)
     || !value.livability_scenarios.every(isRequirementRow)) return false;
   if (!Array.isArray(value.customer_ai_demands)
@@ -152,12 +187,13 @@ function RequirementTable({ title, rows }: { title: string; rows: RequirementRow
       <div className="uwm-livability-panel-title">{title}</div>
       <div className="uwm-priority-table-wrap">
         <table className="uwm-priority-table">
-          <caption>{title}的技术归属、实施状态与生产阻塞项</caption>
+          <caption>{title}的技术归属、证据边界、实施状态与生产阻塞项</caption>
           <thead>
             <tr>
               <th scope="col">ID / 需求</th>
               <th scope="col">主技术路线</th>
               <th scope="col">实施与数据状态</th>
+              <th scope="col">证据与最大主张</th>
               <th scope="col">已实现产出</th>
               <th scope="col">生产阻塞项</th>
             </tr>
@@ -177,6 +213,11 @@ function RequirementTable({ title, rows }: { title: string; rows: RequirementRow
                 <td style={cellStyle}>
                   <div>implementation_level: {row.implementation_level}</div>
                   <div>data_support: {row.data_support}</div>
+                </td>
+                <td style={cellStyle}>
+                  <div>evidence_level: {row.evidence_level}</div>
+                  <div>uncertainty: {row.uncertainty}</div>
+                  <div>max_claim_level: {row.max_claim_level}</div>
                 </td>
                 <td style={cellStyle}>{listText(row.implemented_outputs, '尚无已验证产出')}</td>
                 <td style={cellStyle}>{listText(row.production_blockers, '当前 registry 未登记 blocker')}</td>
@@ -305,11 +346,15 @@ export default function AiDemandReadinessTab() {
               {payload.primary_routes.map(routeRow => (
                 <li className="ai-demand-route-card" style={routeCardStyle} key={routeRow.route}>
                   {routeRow.availability === 'existing'
-                    ? <CheckCircle2 size={15} />
+                    ? <CircleDot size={15} />
                     : <ShieldAlert size={15} />}
                   <div>
                     <strong>{ROUTE_LABELS[routeRow.route] || routeRow.route}</strong>
-                    <div>{routeRow.route} · {routeRow.availability}</div>
+                    <div>
+                      {routeRow.route} · {routeRow.availability === 'existing'
+                        ? '产品页面已存在（不代表需求能力完成）'
+                        : '产品页面规划中'}
+                    </div>
                   </div>
                 </li>
               ))}
@@ -319,10 +364,11 @@ export default function AiDemandReadinessTab() {
           <section className="uwm-livability-panel">
             <div className="uwm-livability-panel-title">需求来源</div>
             <div className="uwm-capability-tags">
-              {payload.source_documents.map(path => (
-                <span key={path}>{documentName(path)}</span>
+              {payload.source_documents.map(documentId => (
+                <span key={documentId}>{documentName(documentId)}</span>
               ))}
             </div>
+            <div>原始路径与详细 provenance 仅在服务端审计报告保存。</div>
           </section>
 
           <RequirementTable

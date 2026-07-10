@@ -38,6 +38,25 @@ def test_ai_demand_readiness_payload_is_built_from_canonical_registry():
     assert payload["livability_scenarios"] == registry["livability_scenarios"]
     assert payload["customer_ai_demands"] == registry["customer_ai_demands"]
     assert payload["claim_boundary"] == registry["claim_boundary"]
+    assert payload["source_provenance_server_side"] is True
+    assert all(not source.startswith("/") for source in payload["source_documents"])
+
+
+def test_ai_demand_readiness_payload_validates_registry_before_publishing(monkeypatch):
+    validation_calls = []
+    monkeypatch.setattr(
+        routes,
+        "validate_livability_requirement_registry",
+        lambda registry: validation_calls.append(registry) or {
+            "valid": False,
+            "errors": ["canonical drift"],
+        },
+    )
+
+    with pytest.raises(ValueError, match="canonical drift"):
+        routes.load_uwm_ai_demand_readiness_payload()
+
+    assert len(validation_calls) == 1
 
 
 def test_ai_demand_readiness_payload_exposes_routes_counts_and_safe_claims():
@@ -81,6 +100,11 @@ def test_ai_demand_readiness_payload_derives_statuses_and_completion(monkeypatch
         "build_livability_requirement_registry",
         lambda: registry,
     )
+    monkeypatch.setattr(
+        routes,
+        "validate_livability_requirement_registry",
+        lambda payload: {"valid": True, "errors": []},
+    )
 
     payload = routes.load_uwm_ai_demand_readiness_payload()
     route_availability = {
@@ -107,6 +131,11 @@ def test_ai_demand_readiness_payload_rejects_conflicting_route_availability(
         routes,
         "build_livability_requirement_registry",
         lambda: registry,
+    )
+    monkeypatch.setattr(
+        routes,
+        "validate_livability_requirement_registry",
+        lambda payload: {"valid": True, "errors": []},
     )
 
     with pytest.raises(ValueError, match="planning_land.*route_availability"):
@@ -159,3 +188,47 @@ def test_ai_demand_readiness_endpoint_returns_payload(monkeypatch):
     assert payload["schema"] == routes.UWM_AI_DEMAND_READINESS_API_SCHEMA
     assert payload["summary"]["registered_requirement_count"] == 30
     assert payload["claim_boundary"]["registration_is_not_implementation"] is True
+
+
+def test_ai_demand_readiness_endpoint_requires_auth(monkeypatch):
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda request: None)
+    request = Request(
+        {
+            "type": "http",
+            "method": "GET",
+            "path": "/api/uwm/ai-demand-readiness",
+            "headers": [],
+            "query_string": b"",
+        }
+    )
+
+    response = asyncio.run(routes.uwm_ai_demand_readiness(request))
+
+    assert response.status_code == 401
+    assert json.loads(response.body) == {"error": "Unauthorized"}
+
+
+def test_ai_demand_readiness_endpoint_fails_closed_on_invalid_registry(monkeypatch):
+    user = object()
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda request: user)
+    monkeypatch.setattr(routes, "_set_user_context", lambda authenticated_user: None)
+    monkeypatch.setattr(
+        routes,
+        "load_uwm_ai_demand_readiness_payload",
+        lambda: (_ for _ in ()).throw(ValueError("invalid canonical registry: drift")),
+    )
+    request = Request(
+        {
+            "type": "http",
+            "method": "GET",
+            "path": "/api/uwm/ai-demand-readiness",
+            "headers": [],
+            "query_string": b"",
+        }
+    )
+
+    response = asyncio.run(routes.uwm_ai_demand_readiness(request))
+    payload = json.loads(response.body)
+
+    assert response.status_code == 503
+    assert payload == {"error": "AI demand readiness registry validation failed"}

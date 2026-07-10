@@ -30,12 +30,16 @@ def test_ai_demand_readiness_tab_uses_canonical_api_and_required_fields():
         "primary_route",
         "implementation_level",
         "data_support",
+        "evidence_level",
+        "uncertainty",
+        "max_claim_level",
         "route_availability",
         "implemented_outputs",
         "production_blockers",
         "registration_is_not_implementation",
         "production_complete_count",
         "observed_policy_outcome_superiority_claim",
+        "source_provenance_server_side",
     ):
         assert field in source
 
@@ -85,6 +89,12 @@ def test_ai_demand_readiness_tab_renders_complete_ownership_scope():
     assert "注册不等于实现" in source
     assert "implemented_outputs" in source
     assert "production_blockers" in source
+    assert "evidence_level" in source
+    assert "uncertainty" in source
+    assert "max_claim_level" in source
+    assert "产品页面已存在" in source
+    assert "产品页面规划中" in source
+    assert "CheckCircle2" not in source
 
 
 def test_ai_demand_readiness_tab_has_accessible_loading_errors_and_tables():

@@ -12,6 +12,7 @@ from starlette.routing import Route
 from .helpers import _get_user_from_request, _set_user_context
 from data_agent.uwm.livability_requirement_registry import (
     build_livability_requirement_registry,
+    validate_livability_requirement_registry,
 )
 
 
@@ -21,7 +22,13 @@ UWM_AI_DEMAND_READINESS_API_SCHEMA = "uwm.ai_demand_readiness_api.v2"
 def load_uwm_ai_demand_readiness_payload() -> dict[str, Any]:
     """Build readiness directly from the canonical ownership registry."""
 
-    registry = deepcopy(build_livability_requirement_registry())
+    registry = build_livability_requirement_registry()
+    validation = validate_livability_requirement_registry(registry)
+    if not validation["valid"]:
+        raise ValueError(
+            "invalid canonical registry: " + "; ".join(validation["errors"])
+        )
+    registry = deepcopy(registry)
     requirement_rows = (
         registry["livability_scenarios"] + registry["customer_ai_demands"]
     )
@@ -44,6 +51,9 @@ def load_uwm_ai_demand_readiness_payload() -> dict[str, Any]:
     return {
         "schema": UWM_AI_DEMAND_READINESS_API_SCHEMA,
         "source_documents": registry["source_documents"],
+        "source_provenance_server_side": registry[
+            "source_provenance_server_side"
+        ],
         "livability_scenarios": registry["livability_scenarios"],
         "customer_ai_demands": registry["customer_ai_demands"],
         "primary_routes": route_rows,
@@ -71,7 +81,14 @@ async def uwm_ai_demand_readiness(request: Request):
     if not user:
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
     _set_user_context(user)
-    return JSONResponse(load_uwm_ai_demand_readiness_payload())
+    try:
+        payload = load_uwm_ai_demand_readiness_payload()
+    except ValueError:
+        return JSONResponse(
+            {"error": "AI demand readiness registry validation failed"},
+            status_code=503,
+        )
+    return JSONResponse(payload)
 
 
 def get_uwm_ai_demand_readiness_routes() -> list:

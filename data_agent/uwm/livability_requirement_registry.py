@@ -9,9 +9,32 @@ from typing import Any
 UWM_LIVABILITY_REQUIREMENT_REGISTRY_SCHEMA = "uwm.customer_ai_requirement_registry.v2"
 
 SOURCE_DOCUMENTS = [
-    "/Users/zhouning/Downloads/宜居性专项分析.docx",
-    "/Users/zhouning/Downloads/客户侧25个AI应用需求的回复.docx",
+    "宜居性专项分析.docx",
+    "客户侧25个AI应用需求的回复.docx",
 ]
+
+EVIDENCE_LEVELS = {
+    "observed",
+    "proxy",
+    "simulated",
+    "contract_only",
+    "unsupported",
+}
+
+UNCERTAINTY_LEVELS = {
+    "low",
+    "medium",
+    "high",
+    "not_assessed",
+}
+
+MAX_CLAIM_LEVELS = {
+    "descriptive_observed",
+    "proxy_diagnostic",
+    "model_counterfactual",
+    "requirement_registered",
+    "unsupported",
+}
 
 PRIMARY_ROUTES = {
     "traditional_livability",
@@ -65,6 +88,9 @@ _REQUIRED_ROW_FIELDS = (
     "required_method",
     "implementation_level",
     "data_support",
+    "evidence_level",
+    "uncertainty",
+    "max_claim_level",
     "route_availability",
     "implemented_outputs",
     "production_blockers",
@@ -121,6 +147,9 @@ def _row(
     *,
     implementation_level: str = "registered",
     data_support: str = "requires_data_audit",
+    evidence_level: str = "contract_only",
+    uncertainty: str = "not_assessed",
+    max_claim_level: str = "requirement_registered",
     implemented_outputs: list[str] | None = None,
     production_blockers: list[str] | None = None,
 ) -> dict[str, Any]:
@@ -131,6 +160,9 @@ def _row(
         "required_method": required_method,
         "implementation_level": implementation_level,
         "data_support": data_support,
+        "evidence_level": evidence_level,
+        "uncertainty": uncertainty,
+        "max_claim_level": max_claim_level,
         "route_availability": _route_availability(primary_route),
         "implemented_outputs": list(implemented_outputs or []),
         "production_blockers": list(production_blockers or []),
@@ -158,6 +190,8 @@ def _demand_rows() -> list[dict[str, Any]]:
                     required_method,
                     implementation_level="data_contract_required",
                     data_support="requires_customer_data",
+                    evidence_level="unsupported",
+                    max_claim_level="unsupported",
                     production_blockers=[
                         "boq",
                         "capital_cost",
@@ -178,6 +212,7 @@ def build_livability_requirement_registry() -> dict[str, Any]:
     return {
         "schema": UWM_LIVABILITY_REQUIREMENT_REGISTRY_SCHEMA,
         "source_documents": list(SOURCE_DOCUMENTS),
+        "source_provenance_server_side": True,
         "primary_routes": sorted(PRIMARY_ROUTES),
         "livability_scenarios": _scenario_rows(),
         "customer_ai_demands": _demand_rows(),
@@ -224,6 +259,8 @@ def validate_livability_requirement_registry(payload: dict[str, Any]) -> dict[st
         errors.append("invalid schema")
     if payload.get("source_documents") != SOURCE_DOCUMENTS:
         errors.append("source_documents must exactly match canonical source documents")
+    if payload.get("source_provenance_server_side") is not True:
+        errors.append("source_provenance_server_side must be true")
     if payload.get("primary_routes") != sorted(PRIMARY_ROUTES):
         errors.append("primary_routes must exactly match canonical primary routes")
 
@@ -304,6 +341,12 @@ def _validate_rows(
             errors.append(f"{label} {requirement_id} implemented_outputs must be a list")
         if not isinstance(row.get("production_blockers"), list):
             errors.append(f"{label} {requirement_id} production_blockers must be a list")
+        if row.get("evidence_level") not in EVIDENCE_LEVELS:
+            errors.append(f"{label} {requirement_id} has invalid evidence_level")
+        if row.get("uncertainty") not in UNCERTAINTY_LEVELS:
+            errors.append(f"{label} {requirement_id} has invalid uncertainty")
+        if row.get("max_claim_level") not in MAX_CLAIM_LEVELS:
+            errors.append(f"{label} {requirement_id} has invalid max_claim_level")
 
         canonical_row = canonical_rows.get(requirement_id)
         if canonical_row is None:
