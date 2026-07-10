@@ -31,6 +31,12 @@ def test_traditional_livability_routes_are_registered_in_frontend_api():
     assert "GET" in _route_methods(
         frontend_route_list, "/api/uwm/traditional-livability/s1"
     )
+    assert "GET" in _route_methods(
+        route_list, "/api/uwm/traditional-livability/s7"
+    )
+    assert "GET" in _route_methods(
+        frontend_route_list, "/api/uwm/traditional-livability/s7"
+    )
 
 
 def test_s1_snapshot_loader_validates_schema(tmp_path, monkeypatch):

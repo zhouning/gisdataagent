@@ -11,6 +11,14 @@ TRADITIONAL_TAB = (
     / "datapanel"
     / "TraditionalLivabilityTab.tsx"
 )
+S7_PANEL = (
+    ROOT
+    / "frontend"
+    / "src"
+    / "components"
+    / "datapanel"
+    / "TraditionalLivabilityS7Panel.tsx"
+)
 
 
 def test_traditional_livability_tab_is_registered_in_datapanel():
@@ -63,3 +71,22 @@ def test_traditional_livability_tab_uses_static_analysis_api_contract():
     ]
     for item in forbidden_static_tab_strings:
         assert item not in text
+
+
+def test_traditional_livability_s7_panel_uses_distance_proxy_contract():
+    text = S7_PANEL.read_text(encoding="utf-8")
+
+    for required in [
+        "/api/uwm/traditional-livability/s7",
+        "福禄镇和平村与斑竹村",
+        "住宅用地面积代理",
+        "距离代理覆盖范围",
+        "候选过滤漏斗",
+        "新增覆盖面积",
+        "重复覆盖面积",
+        "candidate_policy_no_eligible_parcels",
+        "__handleMapUpdate",
+    ]:
+        assert required in text
+    assert "步行服务区" not in text
+    assert "15分钟步行" not in text

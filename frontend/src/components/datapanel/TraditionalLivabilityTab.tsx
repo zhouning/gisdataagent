@@ -9,6 +9,7 @@ import {
   RefreshCw,
   Shield,
 } from 'lucide-react';
+import TraditionalLivabilityS7Panel from './TraditionalLivabilityS7Panel';
 
 declare global {
   interface Window {
@@ -194,6 +195,8 @@ export default function TraditionalLivabilityTab() {
       {error && <div className="traditional-message error"><AlertTriangle size={15} />{error}</div>}
       {message && <div className="traditional-message success"><Shield size={15} />{message}</div>}
       {loading && !analysis && <div className="traditional-empty">正在加载传统方法分析...</div>}
+
+      <TraditionalLivabilityS7Panel />
 
       <div className="traditional-panel">
         <div className="traditional-panel-title">
