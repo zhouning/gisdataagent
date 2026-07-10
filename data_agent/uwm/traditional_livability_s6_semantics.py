@@ -1,0 +1,371 @@
+from __future__ import annotations
+
+from datetime import datetime
+import re
+from typing import Any, Mapping
+import unicodedata
+
+from data_agent.uwm.traditional_livability_facility_dictionary import (
+    compute_canonical_content_digest,
+)
+
+
+SCHEMA = "uwm.traditional_livability.s6_semantic_resolution.v1"
+CONFIRMATION_SCHEMA = "uwm.traditional_livability.s6_human_confirmation.v1"
+
+_INPUT_FIELDS = ("facility_name", "raw_facility_type", "use_description")
+_INTERNAL_SUGGESTION_RULES = (
+    {
+        "rule_id": "internal.food_truck.v1",
+        "terms": ("食品车", "餐车", "food truck"),
+        "suggested_class_label": "流动餐饮服务设施",
+    },
+)
+
+
+def _normalized_text(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    normalized = unicodedata.normalize("NFKC", value).strip().casefold()
+    normalized = re.sub(r"\s+", " ", normalized)
+    return normalized or None
+
+
+def _normalized_string(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    normalized = value.strip()
+    return normalized or None
+
+
+def _normalized_inputs(
+    facility_name: Any,
+    raw_facility_type: Any,
+    use_description: Any,
+) -> dict[str, str | None]:
+    return {
+        "facility_name": _normalized_text(facility_name),
+        "raw_facility_type": _normalized_text(raw_facility_type),
+        "use_description": _normalized_text(use_description),
+    }
+
+
+def _digestable_raw_value(value: Any) -> Any:
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    return {"invalid_input_type": type(value).__name__}
+
+
+def _dictionary_classes(dictionary: Any) -> dict[str, dict[str, Any]]:
+    if not isinstance(dictionary, Mapping):
+        return {}
+    classes = dictionary.get("classes")
+    if not isinstance(classes, list):
+        return {}
+    result = {}
+    for row in classes:
+        if not isinstance(row, Mapping):
+            continue
+        class_id = _normalized_string(row.get("class_id"))
+        if class_id is not None:
+            result[class_id] = dict(row)
+    return result
+
+
+def _authoritative_records(
+    dictionary: Mapping[str, Any],
+    record_type: str,
+) -> list[dict[str, Any]]:
+    records = dictionary.get(record_type)
+    if not isinstance(records, list):
+        return []
+    normalized = []
+    value_field = "alias" if record_type == "aliases" else "keyword"
+    for record in records:
+        if not isinstance(record, Mapping):
+            continue
+        value = _normalized_text(record.get(value_field))
+        class_id = _normalized_string(record.get("class_id"))
+        source_reference = _normalized_string(record.get("source_reference"))
+        if value and class_id and source_reference:
+            normalized.append(
+                {
+                    "value": value,
+                    "class_id": class_id,
+                    "source_reference": source_reference,
+                }
+            )
+    return normalized
+
+
+def _candidate(
+    *,
+    class_id: str,
+    class_record: Mapping[str, Any],
+    match_method: str,
+    confidence: str,
+    evidence: list[dict[str, Any]],
+) -> dict[str, Any]:
+    return {
+        "standard_class_id": class_id,
+        "standard_class_label": class_record.get("label"),
+        "authority_level": "authoritative_dictionary",
+        "match_method": match_method,
+        "confidence": confidence,
+        "evidence": evidence,
+    }
+
+
+def _authoritative_matches(
+    *,
+    dictionary: Mapping[str, Any],
+    classes: Mapping[str, Mapping[str, Any]],
+    inputs: Mapping[str, str | None],
+    record_type: str,
+) -> list[dict[str, Any]]:
+    matches: dict[str, list[dict[str, Any]]] = {}
+    is_alias = record_type == "aliases"
+    for record in _authoritative_records(dictionary, record_type):
+        class_id = record["class_id"]
+        if class_id not in classes:
+            continue
+        for input_field in _INPUT_FIELDS:
+            input_value = inputs[input_field]
+            if not input_value:
+                continue
+            matched = input_value == record["value"] if is_alias else record["value"] in input_value
+            if matched:
+                matches.setdefault(class_id, []).append(
+                    {
+                        "input_field": input_field,
+                        "matched_value": record["value"],
+                        "source_reference": record["source_reference"],
+                    }
+                )
+    match_method = "authoritative_alias_exact" if is_alias else "authoritative_keyword_controlled"
+    confidence = "exact" if is_alias else "controlled_rule"
+    return [
+        _candidate(
+            class_id=class_id,
+            class_record=classes[class_id],
+            match_method=match_method,
+            confidence=confidence,
+            evidence=sorted(
+                evidence,
+                key=lambda row: (
+                    _INPUT_FIELDS.index(row["input_field"]),
+                    row["matched_value"],
+                    row["source_reference"],
+                ),
+            ),
+        )
+        for class_id, evidence in sorted(matches.items())
+    ]
+
+
+def _internal_suggestions(inputs: Mapping[str, str | None]) -> list[dict[str, Any]]:
+    suggestions = []
+    for rule in _INTERNAL_SUGGESTION_RULES:
+        evidence = []
+        for input_field in _INPUT_FIELDS:
+            input_value = inputs[input_field]
+            if not input_value:
+                continue
+            for term in rule["terms"]:
+                normalized_term = _normalized_text(term)
+                if normalized_term and normalized_term in input_value:
+                    evidence.append(
+                        {
+                            "input_field": input_field,
+                            "matched_value": normalized_term,
+                            "internal_rule_id": rule["rule_id"],
+                        }
+                    )
+        if evidence:
+            suggestions.append(
+                {
+                    "standard_class_id": None,
+                    "standard_class_label": rule["suggested_class_label"],
+                    "authority_level": "internal_suggestion",
+                    "match_method": "internal_keyword_rule",
+                    "confidence": "weak_suggestion",
+                    "evidence": evidence,
+                }
+            )
+    return suggestions
+
+
+def resolve_s6_facility_semantics(
+    *,
+    facility_name: Any,
+    raw_facility_type: Any,
+    use_description: Any,
+    dictionary: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Resolve facility semantics conservatively without model inference."""
+    inputs = _normalized_inputs(facility_name, raw_facility_type, use_description)
+    input_digest = compute_canonical_content_digest(
+        {
+            "facility_name": _digestable_raw_value(facility_name),
+            "raw_facility_type": _digestable_raw_value(raw_facility_type),
+            "use_description": _digestable_raw_value(use_description),
+        }
+    )
+    dictionary_ready = isinstance(dictionary, Mapping) and dictionary.get("ready") is True
+    dictionary_version = None
+    dictionary_digest = None
+    if isinstance(dictionary, Mapping):
+        source_metadata = dictionary.get("source_metadata")
+        if isinstance(source_metadata, Mapping):
+            dictionary_version = _normalized_string(source_metadata.get("dictionary_version"))
+        dictionary_digest = _normalized_string(dictionary.get("content_digest"))
+
+    base = {
+        "schema": SCHEMA,
+        "resolution_status": "unresolved",
+        "confirmed_standard_class_id": None,
+        "candidates": [],
+        "resolution_reasons": [],
+        "original_input_digest": input_digest,
+        "dictionary_version": dictionary_version,
+        "dictionary_content_digest": dictionary_digest,
+        "llm_used": False,
+    }
+    if not any(inputs.values()):
+        return {**base, "resolution_reasons": ["facility_semantic_input_missing"]}
+
+    if dictionary_ready:
+        classes = _dictionary_classes(dictionary)
+        alias_candidates = _authoritative_matches(
+            dictionary=dictionary,
+            classes=classes,
+            inputs=inputs,
+            record_type="aliases",
+        )
+        if len(alias_candidates) == 1:
+            return {
+                **base,
+                "resolution_status": "authoritative_confirmed",
+                "confirmed_standard_class_id": alias_candidates[0]["standard_class_id"],
+                "candidates": alias_candidates,
+                "resolution_reasons": ["single_authoritative_exact_alias_match"],
+            }
+        if len(alias_candidates) > 1:
+            return {
+                **base,
+                "candidates": alias_candidates,
+                "resolution_reasons": ["ambiguous_authoritative_alias_matches"],
+            }
+
+        keyword_candidates = _authoritative_matches(
+            dictionary=dictionary,
+            classes=classes,
+            inputs=inputs,
+            record_type="keywords",
+        )
+        if len(keyword_candidates) == 1:
+            return {
+                **base,
+                "resolution_status": "authoritative_confirmed",
+                "confirmed_standard_class_id": keyword_candidates[0]["standard_class_id"],
+                "candidates": keyword_candidates,
+                "resolution_reasons": ["single_authoritative_controlled_keyword_match"],
+            }
+        if len(keyword_candidates) > 1:
+            return {
+                **base,
+                "candidates": keyword_candidates,
+                "resolution_reasons": ["ambiguous_authoritative_keyword_matches"],
+            }
+
+    suggestions = _internal_suggestions(inputs)
+    if suggestions:
+        return {
+            **base,
+            "resolution_status": "suggested_review_required",
+            "candidates": suggestions,
+            "resolution_reasons": ["internal_suggestion_requires_human_review"],
+        }
+    reason = "no_deterministic_semantic_match"
+    if not dictionary_ready:
+        reason = "authoritative_dictionary_unavailable_and_no_internal_suggestion"
+    return {**base, "resolution_reasons": [reason]}
+
+
+def _parse_confirmation_time(value: str) -> datetime | None:
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def validate_human_confirmation(
+    confirmation: Mapping[str, Any],
+    *,
+    dictionary: Mapping[str, Any],
+    original_input_digest: str | None = None,
+) -> dict[str, Any]:
+    """Validate a human decision for one request without changing authority."""
+    payload = confirmation if isinstance(confirmation, Mapping) else {}
+    actor_id = _normalized_string(payload.get("actor_id"))
+    confirmed_at = _normalized_string(payload.get("confirmed_at"))
+    selected_class_id = _normalized_string(payload.get("selected_standard_class_id"))
+    supplied_input_digest = _normalized_string(payload.get("original_input_digest"))
+    supplied_dictionary_version = _normalized_string(payload.get("dictionary_version"))
+
+    errors = []
+    if actor_id is None:
+        errors.append("actor_id_missing")
+    if confirmed_at is None:
+        errors.append("confirmed_at_missing")
+    else:
+        parsed_confirmation_time = _parse_confirmation_time(confirmed_at)
+        if parsed_confirmation_time is None:
+            errors.append("confirmed_at_invalid")
+        elif (
+            parsed_confirmation_time.tzinfo is None
+            or parsed_confirmation_time.utcoffset() is None
+        ):
+            errors.append("confirmed_at_timezone_missing")
+    if selected_class_id is None:
+        errors.append("selected_standard_class_id_missing")
+    if supplied_input_digest is None:
+        errors.append("original_input_digest_missing")
+    elif original_input_digest is not None and supplied_input_digest != original_input_digest:
+        errors.append("original_input_digest_mismatch")
+    if supplied_dictionary_version is None:
+        errors.append("dictionary_version_missing")
+
+    dictionary_ready = isinstance(dictionary, Mapping) and dictionary.get("ready") is True
+    if not dictionary_ready:
+        errors.append("authoritative_dictionary_not_ready")
+    classes = _dictionary_classes(dictionary)
+    if selected_class_id is not None and selected_class_id not in classes:
+        errors.append("selected_standard_class_not_in_dictionary")
+    source_metadata = dictionary.get("source_metadata") if isinstance(dictionary, Mapping) else None
+    loaded_version = None
+    if isinstance(source_metadata, Mapping):
+        loaded_version = _normalized_string(source_metadata.get("dictionary_version"))
+    if (
+        supplied_dictionary_version is not None
+        and supplied_dictionary_version != loaded_version
+    ):
+        errors.append("dictionary_version_mismatch")
+
+    return {
+        "schema": CONFIRMATION_SCHEMA,
+        "valid": not errors,
+        "scope": "single_request",
+        "actor_id": actor_id,
+        "confirmed_at": confirmed_at,
+        "selected_standard_class_id": selected_class_id,
+        "original_input_digest": supplied_input_digest,
+        "dictionary_version": supplied_dictionary_version,
+        "dictionary_content_digest": (
+            _normalized_string(dictionary.get("content_digest"))
+            if isinstance(dictionary, Mapping)
+            else None
+        ),
+        "mutates_authoritative_dictionary": False,
+        "validation_errors": errors,
+    }
