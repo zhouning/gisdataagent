@@ -45,6 +45,14 @@ def test_traditional_livability_tab_uses_static_analysis_api_contract():
     assert "能力边界" in text
     assert "反事实预测" in text
     assert "规划器" in text
+    assert "/api/uwm/traditional-livability/s1" in text
+    assert "S1 设施供需评估" in text
+    assert "每万人设施数" in text
+    assert "权威 FP/FPP 标准未提供" in text
+    assert "production_blockers" in text
+    assert "not_assessed" in text
+    assert "not_assessed: '未评估'" in text
+    assert "not_assessed: '不达标'" not in text
 
     forbidden_static_tab_strings = [
         "counterfactual_state_delta",

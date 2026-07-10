@@ -52,8 +52,16 @@ function coverageText(source: AnyRecord): string {
   return source.unit_projection || '-';
 }
 
+const complianceLabels: Record<string, string> = {
+  not_assessed: '未评估',
+  meets_standard: '达到已提供标准',
+  below_standard: '低于已提供标准',
+};
+
 export default function TraditionalLivabilityTab() {
   const [analysis, setAnalysis] = useState<AnyRecord | null>(null);
+  const [s1, setS1] = useState<AnyRecord | null>(null);
+  const [s1Unavailable, setS1Unavailable] = useState<AnyRecord | null>(null);
   const [topN, setTopN] = useState(8);
   const [loading, setLoading] = useState(false);
   const [pushingMap, setPushingMap] = useState(false);
@@ -77,6 +85,23 @@ export default function TraditionalLivabilityTab() {
       setError(err instanceof Error ? err.message : '传统方法分析加载失败');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadS1Assessment = async () => {
+    try {
+      const resp = await fetch('/api/uwm/traditional-livability/s1', { credentials: 'include' });
+      const data = await resp.json();
+      if (!resp.ok || data.ready === false) {
+        setS1(null);
+        setS1Unavailable(data);
+        return;
+      }
+      setS1(data);
+      setS1Unavailable(null);
+    } catch (err: unknown) {
+      setS1(null);
+      setS1Unavailable({ blockers: [err instanceof Error ? err.message : 's1_request_failed'] });
     }
   };
 
@@ -113,6 +138,7 @@ export default function TraditionalLivabilityTab() {
 
   useEffect(() => {
     loadTraditionalAnalysis();
+    loadS1Assessment();
   }, [topN]);
 
   const summary = isRecord(analysis?.summary) ? analysis.summary : {};
@@ -133,6 +159,9 @@ export default function TraditionalLivabilityTab() {
   const actionPlan = isRecord(analysis?.static_action_plan) ? analysis.static_action_plan : {};
   const actions = asArray<AnyRecord>(actionPlan.actions);
   const indicatorDimensions = asArray<AnyRecord>(indicatorSystem.dimensions);
+  const s1Summary = isRecord(s1?.summary) ? s1.summary : {};
+  const s1Metrics = asArray<AnyRecord>(s1?.supply_metrics);
+  const s1Blockers = asArray<string>(s1?.production_blockers || s1Unavailable?.blockers);
 
   return (
     <div className="traditional-livability-tab">
@@ -164,6 +193,48 @@ export default function TraditionalLivabilityTab() {
       {error && <div className="traditional-message error"><AlertTriangle size={15} />{error}</div>}
       {message && <div className="traditional-message success"><Shield size={15} />{message}</div>}
       {loading && !analysis && <div className="traditional-empty">正在加载传统方法分析...</div>}
+
+      <div className="traditional-panel">
+        <div className="traditional-panel-title">
+          <Database size={15} />
+          <strong>S1 设施供需评估</strong>
+        </div>
+        {s1Unavailable && (
+          <div className="traditional-empty">
+            S1 快照当前不可用；系统未生成替代性合规结论。阻塞项：{s1Blockers.join(' / ') || '-'}
+          </div>
+        )}
+        {s1 && (
+          <>
+            <div className="traditional-kpi-grid">
+              <div className="traditional-kpi"><span>执行区域</span><strong>重庆市</strong></div>
+              <div className="traditional-kpi"><span>设施库存</span><strong>{s1Summary.facility_count || 0}</strong></div>
+              <div className="traditional-kpi"><span>已匹配人口单元</span><strong>{s1Summary.population_unit_count || 0}</strong></div>
+              <div className="traditional-kpi"><span>未匹配设施</span><strong>{s1Summary.unmatched_facility_count || 0}</strong></div>
+            </div>
+            <div className="traditional-message error">
+              <AlertTriangle size={15} />权威 FP/FPP 标准未提供；下表仅展示设施库存与每万人设施数，不代表达标或不达标。
+            </div>
+            <div className="traditional-table-wrap">
+              <table className="traditional-table">
+                <thead><tr><th>行政单元</th><th>设施类</th><th>设施数</th><th>每万人设施数</th><th>合规状态</th></tr></thead>
+                <tbody>
+                  {s1Metrics.slice(0, 30).map(row => (
+                    <tr key={`${row.admin_code}-${row.canonical_class}`}>
+                      <td>{row.admin_name || row.admin_code}</td><td>{row.canonical_class}</td><td>{row.facility_count}</td>
+                      <td>{fmtScore(row.facilities_per_10000_residents)}</td><td>{complianceLabels[String(row.compliance_status)] || '未评估'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="traditional-boundary-grid">
+              <div><span>生产阻塞项 production_blockers</span><strong>{s1Blockers.join(' / ') || '-'}</strong></div>
+              <div><span>能力边界</span><strong>当前库存与人口归一化；不含网络服务区、容量合规和未来影响</strong></div>
+            </div>
+          </>
+        )}
+      </div>
 
       {analysis && (
         <>
