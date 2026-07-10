@@ -471,6 +471,114 @@ def test_authoritative_alias_match_can_apply_rules_without_human_confirmation():
     assert result["s1_handoff"]["ready"] is True
 
 
+def test_matching_requested_class_accepts_current_authoritative_resolution():
+    request = point_request(
+        facility_name="标准市场",
+        raw_facility_type="市场",
+        confirmed_standard_class_id="facility.market",
+    )
+    result = analyze_s6_facility_proposal(
+        request=request,
+        resources=resource_fixture(),
+        dictionary=authoritative_dictionary(
+            "facility.market",
+            aliases=[
+                {
+                    "alias": "标准市场",
+                    "class_id": "facility.market",
+                    "source_reference": "fixture://dictionary/market",
+                }
+            ],
+        ),
+        compatibility=compatibility(
+            rule(
+                rule_id="RULE-001",
+                subject="facility.market",
+                object_id="village_public_service_land",
+                relationship="conflict",
+            )
+        ),
+    )
+
+    assert result["status"] == "confirmed_conflict"
+    assert result["normalized_request"]["confirmed_standard_class_id"] == "facility.market"
+    assert result["semantic_resolution"]["resolution_status"] == "authoritative_confirmed"
+    assert result["semantic_resolution"]["candidates"][0]["evidence"]
+    assert result["human_confirmation_validation"] is None
+    assert result["s1_handoff"]["confirmed_standard_class_id"] == "facility.market"
+
+
+def test_requested_class_differing_from_authoritative_resolution_fails_closed():
+    request = point_request(
+        facility_name="标准市场",
+        raw_facility_type="市场",
+        confirmed_standard_class_id="facility.school",
+    )
+    result = analyze_s6_facility_proposal(
+        request=request,
+        resources=resource_fixture(),
+        dictionary=authoritative_dictionary(
+            "facility.market",
+            "facility.school",
+            aliases=[
+                {
+                    "alias": "标准市场",
+                    "class_id": "facility.market",
+                    "source_reference": "fixture://dictionary/market",
+                }
+            ],
+        ),
+        compatibility=compatibility(),
+    )
+
+    assert result["status"] == "insufficient_evidence"
+    assert result["validation_blockers"] == [
+        "confirmed_class_authoritative_mismatch"
+    ]
+    assert result["s1_handoff"]["ready"] is False
+
+
+def test_valid_confirmation_differing_from_requested_class_fails_exactly():
+    request = confirmed_request("facility.market")
+    request["confirmed_standard_class_id"] = "facility.school"
+    result = analyze_s6_facility_proposal(
+        request=request,
+        resources=resource_fixture(),
+        dictionary=authoritative_dictionary("facility.market", "facility.school"),
+        compatibility=compatibility(),
+    )
+
+    assert result["status"] == "insufficient_evidence"
+    assert result["validation_blockers"] == [
+        "confirmed_class_confirmation_mismatch"
+    ]
+    assert result["normalized_request"]["confirmed_standard_class_id"] == "facility.school"
+    assert result["s1_handoff"]["confirmed_standard_class_id"] is None
+
+
+def test_valid_confirmation_supplies_class_when_request_omits_it():
+    request = confirmed_request("facility.market")
+    request.pop("confirmed_standard_class_id")
+    result = analyze_s6_facility_proposal(
+        request=request,
+        resources=resource_fixture(),
+        dictionary=authoritative_dictionary("facility.market"),
+        compatibility=compatibility(
+            rule(
+                rule_id="RULE-001",
+                subject="facility.market",
+                object_id="village_public_service_land",
+                relationship="conflict",
+            )
+        ),
+    )
+
+    assert result["human_confirmation_validation"]["valid"] is True
+    assert result["normalized_request"]["confirmed_standard_class_id"] == "facility.market"
+    assert result["s1_handoff"]["confirmed_standard_class_id"] == "facility.market"
+    assert result["status"] == "confirmed_conflict"
+
+
 def test_confirmed_conflict_precedes_compatible_rules_deterministically():
     result = analyze_s6_facility_proposal(
         request=confirmed_request("facility.market"),

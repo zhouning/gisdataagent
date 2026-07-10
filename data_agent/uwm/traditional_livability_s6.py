@@ -380,18 +380,9 @@ def _validate_request_confirmation(
     request: Mapping[str, Any],
     dictionary: Mapping[str, Any],
 ) -> dict[str, Any] | None:
-    class_id = _text(request.get("confirmed_standard_class_id"))
-    if class_id is None:
-        return None
     confirmation = request.get("human_confirmation")
     if not isinstance(confirmation, Mapping):
-        return {
-            "valid": False,
-            "selected_standard_class_id": class_id,
-            "validation_errors": [
-                "confirmed_class_requires_valid_human_confirmation"
-            ],
-        }
+        return None
     original_input = {
         "facility_name": request.get("facility_name"),
         "raw_facility_type": request.get("raw_facility_type"),
@@ -413,19 +404,45 @@ def _validate_request_confirmation(
     )
 
 
-def _confirmed_class_id(
+def _select_confirmed_class(
     *,
+    requested_class_id: str | None,
     semantic_resolution: Mapping[str, Any],
     confirmation_validation: Mapping[str, Any] | None,
-) -> str | None:
+) -> tuple[str | None, list[str]]:
+    authoritative_class_id = None
+    if semantic_resolution.get("resolution_status") == "authoritative_confirmed":
+        authoritative_class_id = _text(
+            semantic_resolution.get("confirmed_standard_class_id")
+        )
+    confirmation_class_id = None
     if (
         confirmation_validation is not None
         and confirmation_validation.get("valid") is True
     ):
-        return _text(confirmation_validation.get("selected_standard_class_id"))
-    if semantic_resolution.get("resolution_status") == "authoritative_confirmed":
-        return _text(semantic_resolution.get("confirmed_standard_class_id"))
-    return None
+        confirmation_class_id = _text(
+            confirmation_validation.get("selected_standard_class_id")
+        )
+
+    if (
+        requested_class_id is not None
+        and confirmation_class_id is not None
+        and requested_class_id != confirmation_class_id
+    ):
+        return None, ["confirmed_class_confirmation_mismatch"]
+    if requested_class_id is not None and authoritative_class_id is not None:
+        if requested_class_id != authoritative_class_id:
+            return None, ["confirmed_class_authoritative_mismatch"]
+        return authoritative_class_id, []
+    if requested_class_id is not None and confirmation_class_id is not None:
+        return confirmation_class_id, []
+    if requested_class_id is not None:
+        return None, ["confirmed_class_requires_valid_human_confirmation"]
+    if confirmation_class_id is not None:
+        return confirmation_class_id, []
+    if authoritative_class_id is not None:
+        return authoritative_class_id, []
+    return None, []
 
 
 def _condition_values(value: Any) -> list[str] | None:
@@ -605,14 +622,16 @@ def _insufficient_result(
     validation: Mapping[str, Any],
     dictionary: Mapping[str, Any],
     confirmation_validation: Mapping[str, Any] | None = None,
+    semantic_resolution: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     normalized = validation["normalized_request"]
-    semantic_resolution = resolve_s6_facility_semantics(
-        facility_name=normalized.get("facility_name"),
-        raw_facility_type=normalized.get("raw_facility_type"),
-        use_description=normalized.get("use_description"),
-        dictionary=dictionary,
-    )
+    if semantic_resolution is None:
+        semantic_resolution = resolve_s6_facility_semantics(
+            facility_name=normalized.get("facility_name"),
+            raw_facility_type=normalized.get("raw_facility_type"),
+            use_description=normalized.get("use_description"),
+            dictionary=dictionary,
+        )
     return {
         "schema": SCHEMA,
         "analysis_id": _analysis_id(normalized),
@@ -669,20 +688,41 @@ def analyze_s6_facility_proposal(
 ) -> dict[str, Any]:
     """Return the evidence-bounded S6 analysis contract."""
     validation = validate_s6_request(request, resources)
-    normalized = validation["normalized_request"]
+    normalized = dict(validation["normalized_request"])
+    semantic_resolution = resolve_s6_facility_semantics(
+        facility_name=normalized.get("facility_name"),
+        raw_facility_type=normalized.get("raw_facility_type"),
+        use_description=normalized.get("use_description"),
+        dictionary=dictionary,
+    )
     confirmation_validation = _validate_request_confirmation(request, dictionary)
+    blockers = list(validation["blockers"])
     if (
         confirmation_validation is not None
         and confirmation_validation.get("valid") is not True
     ):
-        blockers = list(validation["blockers"])
         blockers.extend(confirmation_validation.get("validation_errors") or [])
-        validation = {**validation, "valid": False, "blockers": blockers}
+    confirmed_class_id, class_selection_blockers = _select_confirmed_class(
+        requested_class_id=normalized.get("confirmed_standard_class_id"),
+        semantic_resolution=semantic_resolution,
+        confirmation_validation=confirmation_validation,
+    )
+    blockers.extend(class_selection_blockers)
+    blockers = list(dict.fromkeys(blockers))
+    if not blockers:
+        normalized["confirmed_standard_class_id"] = confirmed_class_id
+    validation = {
+        **validation,
+        "valid": not blockers,
+        "blockers": blockers,
+        "normalized_request": normalized,
+    }
     if not validation["valid"]:
         return _insufficient_result(
             validation=validation,
             dictionary=dictionary,
             confirmation_validation=confirmation_validation,
+            semantic_resolution=semantic_resolution,
         )
 
     selected_area = validation["selected_area"]
@@ -699,16 +739,6 @@ def analyze_s6_facility_proposal(
         screening_geometry=screening_geometry,
     )
 
-    semantic_resolution = resolve_s6_facility_semantics(
-        facility_name=normalized["facility_name"],
-        raw_facility_type=normalized["raw_facility_type"],
-        use_description=normalized["use_description"],
-        dictionary=dictionary,
-    )
-    confirmed_class_id = _confirmed_class_id(
-        semantic_resolution=semantic_resolution,
-        confirmation_validation=confirmation_validation,
-    )
     mapped_hits = planning_hits + facility_hits
     evaluated_rules, applicable_rules, unruled_hit_ids = _applicable_rules(
         confirmed_class_id=confirmed_class_id,
