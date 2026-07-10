@@ -25,6 +25,7 @@ def test_ai_demand_readiness_tab_uses_canonical_api_and_required_fields():
     source = READINESS_TAB.read_text(encoding="utf-8")
 
     assert "/api/uwm/ai-demand-readiness" in source
+    assert 'schema: "uwm.ai_demand_readiness_api.v2"' in source
     for field in (
         "primary_route",
         "implementation_level",
@@ -39,18 +40,68 @@ def test_ai_demand_readiness_tab_uses_canonical_api_and_required_fields():
         assert field in source
 
 
+def test_ai_demand_readiness_tab_guards_latest_abortable_request():
+    source = READINESS_TAB.read_text(encoding="utf-8")
+
+    assert "AbortController" in source
+    assert "requestIdRef" in source
+    assert "abortControllerRef" in source
+    assert "signal: controller.signal" in source
+    assert "abortControllerRef.current?.abort()" in source
+    assert "requestId !== requestIdRef.current" in source
+    assert "loadError.name === 'AbortError'" in source
+
+
+def test_ai_demand_readiness_tab_validates_payload_and_http_errors():
+    source = READINESS_TAB.read_text(encoding="utf-8")
+
+    assert "function isReadinessPayload" in source
+    assert "function isRequirementRow" in source
+    assert "function isRouteRow" in source
+    assert "value.livability_scenarios.every(isRequirementRow)" in source
+    assert "value.customer_ai_demands.every(isRequirementRow)" in source
+    assert "value.primary_routes.every(isRouteRow)" in source
+    assert "value.summary.registered_requirement_count" in source
+    assert "value.summary.production_complete_count" in source
+    assert "value.claim_boundary.registration_is_not_implementation" in source
+    assert "value.claim_boundary.observed_policy_outcome_superiority_claim" in source
+    assert "response.text()" in source
+    assert "JSON.parse" in source
+    assert "HTTP ${response.status}" in source
+    assert "响应不是有效 JSON" in source
+    assert "响应结构不符合 readiness contract" in source
+    assert "data as ReadinessPayload" not in source
+
+
 def test_ai_demand_readiness_tab_renders_complete_ownership_scope():
     source = READINESS_TAB.read_text(encoding="utf-8")
 
     assert "livability_scenarios" in source
     assert "customer_ai_demands" in source
     assert "primary_routes" in source
-    assert "5 个宜居性场景" in source
-    assert "25 项客户需求" in source
-    assert "7 条主技术路线" in source
+    assert "{payload.livability_scenarios.length} 个宜居性场景" in source
+    assert "{payload.customer_ai_demands.length} 项客户需求" in source
+    assert "{payload.primary_routes.length} 条主技术路线" in source
     assert "注册不等于实现" in source
     assert "implemented_outputs" in source
     assert "production_blockers" in source
+
+
+def test_ai_demand_readiness_tab_has_accessible_loading_errors_and_tables():
+    source = READINESS_TAB.read_text(encoding="utf-8")
+
+    assert 'aria-live="polite"' in source
+    assert "aria-busy={loading}" in source
+    assert 'role="alert"' in source
+    assert "<caption>" in source
+    assert 'scope="col"' in source
+
+
+def test_ai_demand_readiness_routes_do_not_reuse_component_row_class():
+    source = READINESS_TAB.read_text(encoding="utf-8")
+
+    assert 'className="ai-demand-route-card"' in source
+    assert 'className="uwm-component-row"' not in source
 
 
 def test_ai_demand_readiness_tab_does_not_use_obsolete_phase_counts():

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle2, RefreshCw, Route, ShieldAlert } from 'lucide-react';
 
 type RequirementRow = {
@@ -19,6 +19,7 @@ type RouteRow = {
 };
 
 type ReadinessPayload = {
+  schema: "uwm.ai_demand_readiness_api.v2";
   source_documents: string[];
   livability_scenarios: RequirementRow[];
   customer_ai_demands: RequirementRow[];
@@ -46,6 +47,88 @@ const ROUTE_LABELS: Record<string, string> = {
 };
 
 const cellStyle = { verticalAlign: 'top' as const, whiteSpace: 'normal' as const };
+const routeCardStyle = {
+  display: 'flex',
+  gap: 8,
+  alignItems: 'flex-start',
+  padding: 10,
+  border: '1px solid var(--border-color, #d1d5db)',
+  borderRadius: 8,
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every(item => typeof item === 'string');
+}
+
+function isAvailability(value: unknown): value is 'existing' | 'planned' {
+  return value === 'existing' || value === 'planned';
+}
+
+function isRequirementRow(value: unknown): value is RequirementRow {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.id === 'string'
+    && typeof value.title === 'string'
+    && typeof value.primary_route === 'string'
+    && typeof value.required_method === 'string'
+    && typeof value.implementation_level === 'string'
+    && typeof value.data_support === 'string'
+    && isAvailability(value.route_availability)
+    && isStringArray(value.implemented_outputs)
+    && isStringArray(value.production_blockers)
+  );
+}
+
+function isRouteRow(value: unknown): value is RouteRow {
+  return (
+    isRecord(value)
+    && typeof value.route === 'string'
+    && isAvailability(value.availability)
+  );
+}
+
+function isReadinessPayload(value: unknown): value is ReadinessPayload {
+  if (!isRecord(value) || value.schema !== 'uwm.ai_demand_readiness_api.v2') return false;
+  if (!isStringArray(value.source_documents)) return false;
+  if (!Array.isArray(value.livability_scenarios)
+    || !value.livability_scenarios.every(isRequirementRow)) return false;
+  if (!Array.isArray(value.customer_ai_demands)
+    || !value.customer_ai_demands.every(isRequirementRow)) return false;
+  if (!Array.isArray(value.primary_routes) || !value.primary_routes.every(isRouteRow)) return false;
+  if (!isRecord(value.summary)
+    || typeof value.summary.registered_requirement_count !== 'number'
+    || typeof value.summary.existing_route_count !== 'number'
+    || typeof value.summary.planned_route_count !== 'number'
+    || typeof value.summary.production_complete_count !== 'number') return false;
+  return (
+    isRecord(value.claim_boundary)
+    && typeof value.claim_boundary.registration_is_not_implementation === 'boolean'
+    && typeof value.claim_boundary.observed_policy_outcome_superiority_claim === 'boolean'
+  );
+}
+
+async function parseReadinessResponse(response: Response): Promise<unknown> {
+  const responseBody = await response.text();
+  let data: unknown = null;
+  if (responseBody) {
+    try {
+      data = JSON.parse(responseBody) as unknown;
+    } catch {
+      throw new Error(`HTTP ${response.status}: 响应不是有效 JSON`);
+    }
+  }
+  if (!response.ok) {
+    const serverMessage = isRecord(data) && typeof data.error === 'string'
+      ? data.error
+      : response.statusText || '请求失败';
+    throw new Error(`HTTP ${response.status}: ${serverMessage}`);
+  }
+  return data;
+}
 
 function documentName(path: string): string {
   return path.split(/[\\/]/).pop() || path;
@@ -61,13 +144,14 @@ function RequirementTable({ title, rows }: { title: string; rows: RequirementRow
       <div className="uwm-livability-panel-title">{title}</div>
       <div className="uwm-priority-table-wrap">
         <table className="uwm-priority-table">
+          <caption>{title}的技术归属、实施状态与生产阻塞项</caption>
           <thead>
             <tr>
-              <th>ID / 需求</th>
-              <th>主技术路线</th>
-              <th>实施与数据状态</th>
-              <th>已实现产出</th>
-              <th>生产阻塞项</th>
+              <th scope="col">ID / 需求</th>
+              <th scope="col">主技术路线</th>
+              <th scope="col">实施与数据状态</th>
+              <th scope="col">已实现产出</th>
+              <th scope="col">生产阻塞项</th>
             </tr>
           </thead>
           <tbody>
@@ -79,8 +163,8 @@ function RequirementTable({ title, rows }: { title: string; rows: RequirementRow
                 </td>
                 <td style={cellStyle}>
                   <strong>{ROUTE_LABELS[row.primary_route] || row.primary_route}</strong>
-                  <div>{row.primary_route}</div>
-                  <div>{row.route_availability}</div>
+                  <div>primary_route: {row.primary_route}</div>
+                  <div>route_availability: {row.route_availability}</div>
                 </td>
                 <td style={cellStyle}>
                   <div>implementation_level: {row.implementation_level}</div>
@@ -101,36 +185,54 @@ export default function AiDemandReadinessTab() {
   const [payload, setPayload] = useState<ReadinessPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const requestIdRef = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  const loadReadiness = async () => {
+  const loadReadiness = useCallback(async () => {
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
     setLoading(true);
     setError('');
     try {
       const response = await fetch('/api/uwm/ai-demand-readiness', {
         credentials: 'include',
+        signal: controller.signal,
       });
-      const data = await response.json();
-      if (!response.ok || data.error) {
-        setError(data.error || 'AI 应用需求矩阵加载失败');
-        return;
+      const data = await parseReadinessResponse(response);
+      if (requestId !== requestIdRef.current) return;
+      if (!isReadinessPayload(data)) {
+        throw new Error(`HTTP ${response.status}: 响应结构不符合 readiness contract`);
       }
-      setPayload(data as ReadinessPayload);
+      setPayload(data);
     } catch (loadError: unknown) {
+      if (loadError instanceof Error && loadError.name === 'AbortError') return;
+      if (requestId !== requestIdRef.current) return;
+      setPayload(null);
       setError(loadError instanceof Error ? loadError.message : 'AI 应用需求矩阵加载失败');
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+        if (abortControllerRef.current === controller) abortControllerRef.current = null;
+      }
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadReadiness();
-  }, []);
+    return () => {
+      requestIdRef.current += 1;
+      abortControllerRef.current?.abort();
+    };
+  }, [loadReadiness]);
 
   const summary = payload?.summary;
   const claimBoundary = payload?.claim_boundary;
 
   return (
-    <div className="uwm-livability-tab">
+    <div className="uwm-livability-tab" aria-live="polite" aria-busy={loading}>
       <div className="datapanel-section-header">
         <div>
           <h3>AI应用需求矩阵</h3>
@@ -141,7 +243,7 @@ export default function AiDemandReadinessTab() {
         </button>
       </div>
 
-      {error && <div className="uwm-livability-message error">{error}</div>}
+      {error && <div role="alert" className="uwm-livability-message error">{error}</div>}
 
       {claimBoundary?.registration_is_not_implementation && (
         <div
@@ -171,9 +273,18 @@ export default function AiDemandReadinessTab() {
       {payload && summary ? (
         <>
           <div className="uwm-livability-kpi-grid">
-            <div className="uwm-livability-kpi"><span>宜居性专项</span><strong>5 个宜居性场景</strong></div>
-            <div className="uwm-livability-kpi"><span>客户应用</span><strong>25 项客户需求</strong></div>
-            <div className="uwm-livability-kpi"><span>唯一归属</span><strong>7 条主技术路线</strong></div>
+            <div className="uwm-livability-kpi">
+              <span>宜居性专项</span>
+              <strong>{payload.livability_scenarios.length} 个宜居性场景</strong>
+            </div>
+            <div className="uwm-livability-kpi">
+              <span>客户应用</span>
+              <strong>{payload.customer_ai_demands.length} 项客户需求</strong>
+            </div>
+            <div className="uwm-livability-kpi">
+              <span>唯一归属</span>
+              <strong>{payload.primary_routes.length} 条主技术路线</strong>
+            </div>
             <div className="uwm-livability-kpi">
               <span>production_complete_count</span>
               <strong>{summary.production_complete_count}</strong>
@@ -184,7 +295,7 @@ export default function AiDemandReadinessTab() {
             <div className="uwm-livability-panel-title"><Route size={16} /> 主技术路线</div>
             <div className="uwm-evidence-grid">
               {payload.primary_routes.map(routeRow => (
-                <div className="uwm-component-row" key={routeRow.route}>
+                <div className="ai-demand-route-card" style={routeCardStyle} key={routeRow.route}>
                   {routeRow.availability === 'existing'
                     ? <CheckCircle2 size={15} />
                     : <ShieldAlert size={15} />}
@@ -206,8 +317,14 @@ export default function AiDemandReadinessTab() {
             </div>
           </section>
 
-          <RequirementTable title="5 个宜居性场景" rows={payload.livability_scenarios} />
-          <RequirementTable title="25 项客户需求" rows={payload.customer_ai_demands} />
+          <RequirementTable
+            title={`${payload.livability_scenarios.length} 个宜居性场景`}
+            rows={payload.livability_scenarios}
+          />
+          <RequirementTable
+            title={`${payload.customer_ai_demands.length} 项客户需求`}
+            rows={payload.customer_ai_demands}
+          />
         </>
       ) : !loading && !error ? (
         <div className="uwm-livability-empty">暂无 AI 应用需求 readiness 数据。</div>
