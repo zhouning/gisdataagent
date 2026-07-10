@@ -305,6 +305,58 @@ def _internal_suggestions(
     return suggestions
 
 
+def _authoritative_candidate_sort_key(candidate: Mapping[str, Any]) -> tuple[str, int]:
+    method_order = {
+        "authoritative_alias_exact": 0,
+        "authoritative_keyword_controlled": 1,
+        "authoritative_keyword_context_suggestion": 2,
+    }
+    return (
+        str(candidate.get("standard_class_id") or ""),
+        method_order.get(str(candidate.get("match_method")), 99),
+    )
+
+
+def _review_required_candidates(
+    candidates: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    return [
+        {**candidate, "human_confirmation_required": True}
+        for candidate in sorted(candidates, key=_authoritative_candidate_sort_key)
+    ]
+
+
+def _aggregate_conflicting_candidates(
+    candidates: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for candidate in sorted(candidates, key=_authoritative_candidate_sort_key):
+        class_id = str(candidate.get("standard_class_id") or "")
+        grouped.setdefault(class_id, []).append(candidate)
+    aggregated = []
+    for class_id in sorted(grouped):
+        class_candidates = grouped[class_id]
+        strongest = class_candidates[0]
+        aggregated.append(
+            {
+                **strongest,
+                "match_methods": list(
+                    dict.fromkeys(
+                        candidate["match_method"]
+                        for candidate in class_candidates
+                    )
+                ),
+                "human_confirmation_required": True,
+                "evidence": [
+                    evidence
+                    for candidate in class_candidates
+                    for evidence in candidate["evidence"]
+                ],
+            }
+        )
+    return aggregated
+
+
 def resolve_s6_facility_semantics(
     *,
     facility_name: Any,
@@ -352,52 +404,74 @@ def resolve_s6_facility_semantics(
             inputs=inputs,
             dictionary_version=dictionary_version,
         )
-        if len(alias_candidates) == 1:
-            return {
-                **base,
-                "resolution_status": "authoritative_confirmed",
-                "confirmed_standard_class_id": alias_candidates[0]["standard_class_id"],
-                "candidates": alias_candidates,
-                "resolution_reasons": ["single_authoritative_exact_alias_match"],
-            }
-        if len(alias_candidates) > 1:
-            return {
-                **base,
-                "candidates": [
-                    {**candidate, "human_confirmation_required": True}
-                    for candidate in alias_candidates
-                ],
-                "resolution_reasons": ["ambiguous_authoritative_alias_matches"],
-            }
-
         keyword_candidates, keyword_suggestions = _authoritative_keyword_candidates(
             dictionary=dictionary,
             classes=classes,
             inputs=inputs,
             dictionary_version=dictionary_version,
         )
-        if len(keyword_candidates) == 1:
+        if len(alias_candidates) > 1 and not keyword_candidates and not keyword_suggestions:
+            return {
+                **base,
+                "candidates": _review_required_candidates(alias_candidates),
+                "resolution_reasons": ["ambiguous_authoritative_alias_matches"],
+            }
+        if len(keyword_candidates) > 1 and not alias_candidates and not keyword_suggestions:
+            return {
+                **base,
+                "candidates": _review_required_candidates(keyword_candidates),
+                "resolution_reasons": ["ambiguous_authoritative_keyword_matches"],
+            }
+
+        all_authoritative_candidates = sorted(
+            alias_candidates + keyword_candidates + keyword_suggestions,
+            key=_authoritative_candidate_sort_key,
+        )
+        authoritative_class_ids = {
+            candidate["standard_class_id"]
+            for candidate in all_authoritative_candidates
+            if candidate.get("standard_class_id") is not None
+        }
+        if len(authoritative_class_ids) > 1:
+            return {
+                **base,
+                "resolution_status": "suggested_review_required",
+                "candidates": _aggregate_conflicting_candidates(
+                    all_authoritative_candidates
+                ),
+                "resolution_reasons": [
+                    "conflicting_authoritative_semantic_evidence"
+                ],
+            }
+
+        confirming_candidates = sorted(
+            alias_candidates + keyword_candidates,
+            key=_authoritative_candidate_sort_key,
+        )
+        if confirming_candidates:
+            confirmed_class_id = confirming_candidates[0]["standard_class_id"]
+            reason = "single_authoritative_class_corroborated"
+            if len(confirming_candidates) == 1:
+                reason = (
+                    "single_authoritative_exact_alias_match"
+                    if alias_candidates
+                    else "single_authoritative_controlled_keyword_match"
+                )
             return {
                 **base,
                 "resolution_status": "authoritative_confirmed",
-                "confirmed_standard_class_id": keyword_candidates[0]["standard_class_id"],
-                "candidates": keyword_candidates,
-                "resolution_reasons": ["single_authoritative_controlled_keyword_match"],
-            }
-        if len(keyword_candidates) > 1:
-            return {
-                **base,
-                "candidates": [
-                    {**candidate, "human_confirmation_required": True}
-                    for candidate in keyword_candidates
-                ],
-                "resolution_reasons": ["ambiguous_authoritative_keyword_matches"],
+                "confirmed_standard_class_id": confirmed_class_id,
+                "candidates": confirming_candidates,
+                "resolution_reasons": [reason],
             }
         if keyword_suggestions:
             return {
                 **base,
                 "resolution_status": "suggested_review_required",
-                "candidates": keyword_suggestions,
+                "candidates": sorted(
+                    keyword_suggestions,
+                    key=_authoritative_candidate_sort_key,
+                ),
                 "resolution_reasons": [
                     "authoritative_keyword_context_requires_human_review"
                 ],

@@ -68,6 +68,27 @@ def authoritative_dictionary_fixture(
     return result
 
 
+def dictionary_with_secondary_class_evidence() -> dict:
+    dictionary = authoritative_dictionary_fixture()
+    dictionary["classes"][1]["class_id"] = "facility.hall"
+    dictionary["classes"][1]["label"] = "社区礼堂"
+    dictionary["aliases"].append(
+        {
+            "alias": "社区礼堂",
+            "class_id": "facility.hall",
+            "source_reference": "fixture://liv-2.0/dictionary#hall-alias",
+        }
+    )
+    dictionary["keywords"].append(
+        {
+            "keyword": "礼堂",
+            "class_id": "facility.hall",
+            "source_reference": "fixture://liv-2.0/dictionary#hall-keyword",
+        }
+    )
+    return dictionary
+
+
 def test_exact_authoritative_alias_can_confirm_class():
     result = resolve_s6_facility_semantics(
         facility_name="社区传统市集",
@@ -111,6 +132,74 @@ def test_controlled_keyword_can_confirm_only_one_authoritative_class():
             "negated": False,
         }
     ]
+
+
+@pytest.mark.parametrize(
+    ("facility_name", "use_description", "conflicting_method"),
+    [
+        ("社区礼堂", "固定服务设施", "authoritative_alias_exact"),
+        ("社区服务设施", "拟提供礼堂配套服务", "authoritative_keyword_context_suggestion"),
+    ],
+    ids=["conflicting_name_alias", "conflicting_description_keyword"],
+)
+def test_exact_raw_keyword_does_not_confirm_against_cross_class_evidence(
+    facility_name,
+    use_description,
+    conflicting_method,
+):
+    result = resolve_s6_facility_semantics(
+        facility_name=facility_name,
+        raw_facility_type="室内市场",
+        use_description=use_description,
+        dictionary=dictionary_with_secondary_class_evidence(),
+    )
+
+    assert result["resolution_status"] == "suggested_review_required"
+    assert result["confirmed_standard_class_id"] is None
+    assert result["resolution_reasons"] == ["conflicting_authoritative_semantic_evidence"]
+    assert [candidate["standard_class_id"] for candidate in result["candidates"]] == [
+        "facility.hall",
+        "facility.market",
+    ]
+    assert all(candidate["human_confirmation_required"] is True for candidate in result["candidates"])
+    assert {candidate["match_method"] for candidate in result["candidates"]} == {
+        conflicting_method,
+        "authoritative_keyword_controlled",
+    }
+    evidence_by_class = {
+        candidate["standard_class_id"]: candidate["evidence"]
+        for candidate in result["candidates"]
+    }
+    assert any(
+        evidence["input_field"] == "raw_facility_type"
+        and evidence["matched_value"] == "室内市场"
+        for evidence in evidence_by_class["facility.market"]
+    )
+    expected_conflict_field = (
+        "facility_name"
+        if conflicting_method == "authoritative_alias_exact"
+        else "use_description"
+    )
+    assert any(
+        evidence["input_field"] == expected_conflict_field
+        for evidence in evidence_by_class["facility.hall"]
+    )
+
+
+def test_same_class_alias_corroboration_allows_exact_raw_keyword_confirmation():
+    result = resolve_s6_facility_semantics(
+        facility_name="传统市集",
+        raw_facility_type="室内市场",
+        use_description="固定服务设施",
+        dictionary=authoritative_dictionary_fixture(),
+    )
+
+    assert result["resolution_status"] == "authoritative_confirmed"
+    assert result["confirmed_standard_class_id"] == "facility.market"
+    assert {candidate["standard_class_id"] for candidate in result["candidates"]} == {
+        "facility.market"
+    }
+    assert all(candidate["human_confirmation_required"] is False for candidate in result["candidates"])
 
 
 @pytest.mark.parametrize(
