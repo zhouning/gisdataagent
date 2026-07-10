@@ -66,6 +66,21 @@ def test_loads_two_area_contract_with_demand_candidates_and_exclusions(tmp_path,
     assert {"longitude", "latitude"} <= set(candidate["display_centroid"])
 
 
+def test_accepts_actual_dltb_land_use_field_names(tmp_path, monkeypatch):
+    monkeypatch.setattr(adapter, "ASSET_SPECS", _specs())
+    root = _root(tmp_path)
+    for area, name in (("fulu_heping", "宅基地（村居住用地）"), ("fulu_banzhu", "村居住用地")):
+        _write(
+            root / area / "JQDLTB.gpkg",
+            [{"TBBH": "actual", "DLDM": "2121", "DLMC": name, "geometry": _poly(500)}],
+        )
+
+    payload = adapter.load_fulu_s7_planning_inputs(root)
+
+    assert len(payload["demand_parcels"]) == 2
+    assert {row["source_parcel_id"] for row in payload["demand_parcels"]} == {"actual"}
+
+
 def test_classifies_exact_primary_school_supply_against_planning_boundaries():
     planning_inputs = {
         "planning_areas": [

@@ -22,11 +22,18 @@ from ..uwm.traditional_livability_analysis import (
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATA_ROOT = ROOT / "data/uwm_public_proxy/chongqing_central"
 S1_SCHEMA = "uwm.traditional_livability.s1_assessment.v1"
+S7_SCHEMA = "uwm.traditional_livability.s7_siting.v1"
 
 
 class S1SnapshotUnavailable(RuntimeError):
     def __init__(self, payload: dict):
         super().__init__("traditional livability S1 snapshot unavailable")
+        self.payload = payload
+
+
+class S7SnapshotUnavailable(RuntimeError):
+    def __init__(self, payload: dict):
+        super().__init__("traditional livability S7 snapshot unavailable")
         self.payload = payload
 
 
@@ -76,6 +83,40 @@ def _load_s1_snapshot() -> dict:
                 "ready": False,
                 "blockers": ["s1_snapshot_schema_invalid"],
                 "claim_boundary": {"assessment_fabricated": False},
+            }
+        )
+    return payload
+
+
+def _s7_path() -> Path:
+    configured = os.environ.get("UWM_TRADITIONAL_LIVABILITY_S7_PATH", "").strip()
+    if configured:
+        return Path(configured).expanduser()
+    return DEFAULT_DATA_ROOT / "traditional_livability_s7_fulu/uwm_traditional_livability_s7.json"
+
+
+def _load_s7_snapshot() -> dict:
+    path = _s7_path()
+    if not path.is_file():
+        raise S7SnapshotUnavailable(
+            {
+                "schema": S7_SCHEMA,
+                "ready": False,
+                "blockers": ["s7_snapshot_missing"],
+                "claim_boundary": {
+                    "recommendation_fabricated": False,
+                    "source_path_disclosed": False,
+                },
+            }
+        )
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload.get("schema") != S7_SCHEMA:
+        raise S7SnapshotUnavailable(
+            {
+                "schema": S7_SCHEMA,
+                "ready": False,
+                "blockers": ["s7_snapshot_schema_invalid"],
+                "claim_boundary": {"recommendation_fabricated": False},
             }
         )
     return payload
@@ -156,6 +197,28 @@ async def uwm_traditional_livability_s1(request: Request):
         )
 
 
+async def uwm_traditional_livability_s7(request: Request):
+    """GET /api/uwm/traditional-livability/s7"""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        return JSONResponse(await asyncio.to_thread(_load_s7_snapshot))
+    except S7SnapshotUnavailable as exc:
+        return JSONResponse(exc.payload, status_code=503)
+    except Exception:
+        return JSONResponse(
+            {
+                "schema": S7_SCHEMA,
+                "ready": False,
+                "blockers": ["s7_snapshot_unreadable"],
+                "claim_boundary": {"recommendation_fabricated": False},
+            },
+            status_code=503,
+        )
+
+
 def get_uwm_traditional_livability_routes() -> list:
     """Return Route objects for traditional livability analysis endpoints."""
     return [
@@ -172,6 +235,11 @@ def get_uwm_traditional_livability_routes() -> list:
         Route(
             "/api/uwm/traditional-livability/s1",
             uwm_traditional_livability_s1,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/uwm/traditional-livability/s7",
+            uwm_traditional_livability_s7,
             methods=["GET"],
         ),
     ]

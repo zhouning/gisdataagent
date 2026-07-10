@@ -49,3 +49,20 @@ def test_s1_snapshot_loader_fails_closed_when_missing(tmp_path, monkeypatch):
 
     assert error.value.payload["ready"] is False
     assert "s1_snapshot_missing" in error.value.payload["blockers"]
+
+
+def test_s7_snapshot_loader_validates_schema(tmp_path, monkeypatch):
+    import json
+    path = tmp_path / "s7.json"
+    path.write_text(json.dumps({"schema": "uwm.traditional_livability.s7_siting.v1", "siting_id": "s7"}), encoding="utf-8")
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S7_PATH", str(path))
+    assert routes._load_s7_snapshot()["siting_id"] == "s7"
+
+
+def test_s7_snapshot_loader_fails_closed_when_missing(tmp_path, monkeypatch):
+    import pytest
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S7_PATH", str(tmp_path / "missing.json"))
+    with pytest.raises(routes.S7SnapshotUnavailable) as error:
+        routes._load_s7_snapshot()
+    assert error.value.payload["ready"] is False
+    assert "s7_snapshot_missing" in error.value.payload["blockers"]

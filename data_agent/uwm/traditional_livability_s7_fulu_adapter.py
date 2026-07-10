@@ -123,8 +123,8 @@ def _planning_area_rows(area_id: str, frame: gpd.GeoDataFrame) -> list[dict[str,
 def _demand_rows(area_id: str, frame: gpd.GeoDataFrame) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for index, row in frame.iterrows():
-        code = _text(row.get("JQDLDM"))
-        name = _text(row.get("JQDLMC"))
+        code = _text(row.get("JQDLDM")) or _text(row.get("DLDM"))
+        name = _text(row.get("JQDLMC")) or _text(row.get("DLMC"))
         if code != "2121" and name != _DEMAND_NAMES[area_id]:
             continue
         metric = _metric_row(row.geometry, frame.crs)
