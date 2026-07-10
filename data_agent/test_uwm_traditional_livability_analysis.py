@@ -46,6 +46,26 @@ def test_traditional_livability_analysis_is_complete_static_same_data_output():
     assert analysis["method"]["counterfactual_output_available"] is False
     assert analysis["method"]["world_model_components_used"] == []
 
+    ownership = analysis["requirement_ownership"]
+    assert ownership["primary_route"] == "traditional_livability"
+    assert {row["id"] for row in ownership["livability_scenarios"]} == {
+        "S1",
+        "S4",
+        "S6",
+        "S7",
+    }
+    assert {row["id"] for row in ownership["customer_ai_demands"]} == {
+        "8",
+        "9",
+        "10",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "21",
+    }
+
     assert analysis["data_basis"]["admin_unit_count"] == 36
     assert "osm_admin_mobility_crosswalk" in analysis["data_basis"]["data_sources_used"]
     assert (
@@ -95,6 +115,8 @@ def test_traditional_livability_analysis_is_complete_static_same_data_output():
         "risk_adjusted_counterfactual_benefit",
         "empirical_policy_outcome_superiority",
     ]
+    assert analysis["method_boundary"]["world_model_transition_claim"] is False
+    assert analysis["method_boundary"]["policy_outcome_claim"] is False
 
 
 def test_traditional_livability_map_uses_real_admin_geojson_static_scores(tmp_path):

@@ -7,11 +7,17 @@ import math
 from pathlib import Path
 from typing import Any
 
+from .livability_requirement_registry import (
+    build_livability_requirement_registry,
+    requirement_coverage_for_route,
+)
+
 
 UWM_TRADITIONAL_LIVABILITY_ANALYSIS_SCHEMA = (
     "uwm.traditional_livability_analysis.v1"
 )
 UWM_TRADITIONAL_LIVABILITY_MAP_SCHEMA = "uwm.traditional_livability_map.v1"
+TRADITIONAL_LIVABILITY_ROUTE = "traditional_livability"
 
 DIMENSION_SPECS = [
     {
@@ -93,6 +99,11 @@ def build_traditional_livability_analysis(
     city_score = _mean(
         [_float(row.get("traditional_livability_score")) for row in ranked_units]
     )
+    registry = build_livability_requirement_registry()
+    requirement_ownership = requirement_coverage_for_route(
+        registry,
+        TRADITIONAL_LIVABILITY_ROUTE,
+    )
     return {
         "schema": UWM_TRADITIONAL_LIVABILITY_ANALYSIS_SCHEMA,
         "analysis_id": analysis_id,
@@ -152,8 +163,11 @@ def build_traditional_livability_analysis(
             for row in priority_rows
         ],
         "static_action_plan": _static_action_plan(priority_rows),
+        "requirement_ownership": requirement_ownership,
         "method_boundary": {
             "max_claim_level": "traditional_baseline_reference",
+            "world_model_transition_claim": False,
+            "policy_outcome_claim": False,
             "can_output": [
                 "current_state_indicator_summary",
                 "static_problem_ranking",

@@ -27,6 +27,14 @@ def test_livability_decision_payload_uses_real_same_data_world_model_artifacts()
         "simulator",
         "planner",
     ]
+    ownership = payload["requirement_ownership"]
+    assert ownership["primary_route"] == "uwm_livability"
+    assert {row["id"] for row in ownership["livability_scenarios"]} == {"S2"}
+    assert {row["id"] for row in ownership["customer_ai_demands"]} == {
+        "7",
+        "11",
+        "19",
+    }
     assert payload["shared_data_contract"] == {
         "scene_id": "uwm-multisource-livability-scene-2026-07-06",
         "admin_unit_count": 36,

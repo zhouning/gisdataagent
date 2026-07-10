@@ -13,12 +13,17 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 
 from .helpers import _get_user_from_request, _set_user_context
+from data_agent.uwm.livability_requirement_registry import (
+    build_livability_requirement_registry,
+    requirement_coverage_for_route,
+)
 from data_agent.uwm.world_model_evidence_readiness import (
     build_world_model_evidence_readiness,
 )
 
 
 UWM_LIVABILITY_DECISION_API_SCHEMA = "uwm.livability_decision_api.v1"
+UWM_LIVABILITY_ROUTE = "uwm_livability"
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATA_ROOT = ROOT / "data/uwm_public_proxy/chongqing_central"
@@ -49,9 +54,15 @@ def load_uwm_livability_decision_payload() -> dict[str, Any]:
         )
         or {}
     )
+    registry = build_livability_requirement_registry()
+    requirement_ownership = requirement_coverage_for_route(
+        registry,
+        UWM_LIVABILITY_ROUTE,
+    )
     return {
         "schema": UWM_LIVABILITY_DECISION_API_SCHEMA,
         "world_model_components_used": ["renderer", "simulator", "planner"],
+        "requirement_ownership": requirement_ownership,
         "active_decision_package_scope": full_admin_decision_package.get(
             "experiment_scope"
         ),
