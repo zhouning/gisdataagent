@@ -34,6 +34,7 @@ import WorldModelV21Tab from './datapanel/WorldModelV21Tab';
 import TerritoryWorldModelTab from './datapanel/TerritoryWorldModelTab';
 import TraditionalLivabilityTab from './datapanel/TraditionalLivabilityTab';
 import LivabilityWorldModelTab from './datapanel/LivabilityWorldModelTab';
+import AiDemandReadinessTab from './datapanel/AiDemandReadinessTab';
 import CausalReasoningTab from './datapanel/CausalReasoningTab';
 import OptimizationTab from './datapanel/OptimizationTab';
 import QcMonitorTab from './datapanel/QcMonitorTab';
@@ -57,7 +58,7 @@ interface DataPanelProps {
   username?: string;
 }
 
-type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'agent_logs' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'traditional_livability' | 'uwm_livability' | 'worldmodel' | 'worldmodel_v11' | 'worldmodel_v2' | 'worldmodel_v21' | 'twm' | 'causal' | 'optimization' | 'qcmonitor' | 'fusion_quality' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'std_platform' | 'semantic' | 'agents' | 'intake' | 'classification';
+type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'agent_logs' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'traditional_livability' | 'uwm_livability' | 'ai_demand_readiness' | 'worldmodel' | 'worldmodel_v11' | 'worldmodel_v2' | 'worldmodel_v21' | 'twm' | 'causal' | 'optimization' | 'qcmonitor' | 'fusion_quality' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'std_platform' | 'semantic' | 'agents' | 'intake' | 'classification';
 
 type GroupKey = 'data' | 'intelligence' | 'ops';
 
@@ -95,6 +96,7 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: ReactNode; tabs: TabDef[
       { key: 'market', label: '市场', icon: <Store size={ICON_SIZE} /> },
       { key: 'traditional_livability', label: '城市宜居性分析（传统方法）', icon: <BarChart3 size={ICON_SIZE} /> },
       { key: 'uwm_livability', label: '城市宜居性分析（UWM）', icon: <Brain size={ICON_SIZE} /> },
+      { key: 'ai_demand_readiness', label: 'AI应用需求矩阵', icon: <ClipboardCheck size={ICON_SIZE} /> },
       { key: 'worldmodel', label: '世界模型', icon: <Globe size={ICON_SIZE} /> },
       { key: 'worldmodel_v11', label: '世界模型v1.1', icon: <Globe size={ICON_SIZE} /> },
       { key: 'worldmodel_v2', label: '世界模型v2', icon: <Globe size={ICON_SIZE} /> },
@@ -240,6 +242,7 @@ export default function DataPanel({ dataFile, userRole, username }: DataPanelPro
         {activeTab === 'charts' && <ChartsTab />}
         {activeTab === 'traditional_livability' && <TraditionalLivabilityTab />}
         {activeTab === 'uwm_livability' && <LivabilityWorldModelTab />}
+        {activeTab === 'ai_demand_readiness' && <AiDemandReadinessTab />}
         {activeTab === 'worldmodel' && <WorldModelTab />}
         {activeTab === 'worldmodel_v11' && <WorldModelV11Tab />}
         {activeTab === 'worldmodel_v2' && <WorldModelV2Tab />}

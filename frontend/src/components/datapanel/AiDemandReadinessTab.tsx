@@ -1,0 +1,217 @@
+import { useEffect, useState } from 'react';
+import { AlertTriangle, CheckCircle2, RefreshCw, Route, ShieldAlert } from 'lucide-react';
+
+type RequirementRow = {
+  id: string;
+  title: string;
+  primary_route: string;
+  required_method: string;
+  implementation_level: string;
+  data_support: string;
+  route_availability: 'existing' | 'planned';
+  implemented_outputs: string[];
+  production_blockers: string[];
+};
+
+type RouteRow = {
+  route: string;
+  availability: 'existing' | 'planned';
+};
+
+type ReadinessPayload = {
+  source_documents: string[];
+  livability_scenarios: RequirementRow[];
+  customer_ai_demands: RequirementRow[];
+  primary_routes: RouteRow[];
+  summary: {
+    registered_requirement_count: number;
+    existing_route_count: number;
+    planned_route_count: number;
+    production_complete_count: number;
+  };
+  claim_boundary: {
+    registration_is_not_implementation: boolean;
+    observed_policy_outcome_superiority_claim: boolean;
+  };
+};
+
+const ROUTE_LABELS: Record<string, string> = {
+  traditional_livability: '城市宜居性（传统方法）',
+  uwm_livability: '城市宜居性（UWM）',
+  planning_land: '城市规划与土地',
+  infrastructure_assets: '基础设施与资产',
+  population_demand: '人口与需求',
+  economy_investment: '经济与投资',
+  impact_implementation: '影响与实施决策',
+};
+
+const cellStyle = { verticalAlign: 'top' as const, whiteSpace: 'normal' as const };
+
+function documentName(path: string): string {
+  return path.split(/[\\/]/).pop() || path;
+}
+
+function listText(values: string[], emptyText: string): string {
+  return values.length ? values.join('；') : emptyText;
+}
+
+function RequirementTable({ title, rows }: { title: string; rows: RequirementRow[] }) {
+  return (
+    <section className="uwm-livability-panel">
+      <div className="uwm-livability-panel-title">{title}</div>
+      <div className="uwm-priority-table-wrap">
+        <table className="uwm-priority-table">
+          <thead>
+            <tr>
+              <th>ID / 需求</th>
+              <th>主技术路线</th>
+              <th>实施与数据状态</th>
+              <th>已实现产出</th>
+              <th>生产阻塞项</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(row => (
+              <tr key={row.id}>
+                <td style={cellStyle}>
+                  <strong>{row.id} · {row.title}</strong>
+                  <div>{row.required_method}</div>
+                </td>
+                <td style={cellStyle}>
+                  <strong>{ROUTE_LABELS[row.primary_route] || row.primary_route}</strong>
+                  <div>{row.primary_route}</div>
+                  <div>{row.route_availability}</div>
+                </td>
+                <td style={cellStyle}>
+                  <div>implementation_level: {row.implementation_level}</div>
+                  <div>data_support: {row.data_support}</div>
+                </td>
+                <td style={cellStyle}>{listText(row.implemented_outputs, '尚无已验证产出')}</td>
+                <td style={cellStyle}>{listText(row.production_blockers, '当前 registry 未登记 blocker')}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+export default function AiDemandReadinessTab() {
+  const [payload, setPayload] = useState<ReadinessPayload | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const loadReadiness = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await fetch('/api/uwm/ai-demand-readiness', {
+        credentials: 'include',
+      });
+      const data = await response.json();
+      if (!response.ok || data.error) {
+        setError(data.error || 'AI 应用需求矩阵加载失败');
+        return;
+      }
+      setPayload(data as ReadinessPayload);
+    } catch (loadError: unknown) {
+      setError(loadError instanceof Error ? loadError.message : 'AI 应用需求矩阵加载失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadReadiness();
+  }, []);
+
+  const summary = payload?.summary;
+  const claimBoundary = payload?.claim_boundary;
+
+  return (
+    <div className="uwm-livability-tab">
+      <div className="datapanel-section-header">
+        <div>
+          <h3>AI应用需求矩阵</h3>
+          <p>两份客户需求文档的唯一技术归属、实施状态、数据基础与生产阻塞项。</p>
+        </div>
+        <button className="secondary-button" onClick={loadReadiness} disabled={loading}>
+          <RefreshCw size={14} /> {loading ? '加载中' : '刷新'}
+        </button>
+      </div>
+
+      {error && <div className="uwm-livability-message error">{error}</div>}
+
+      {claimBoundary?.registration_is_not_implementation && (
+        <div
+          role="alert"
+          style={{
+            display: 'flex',
+            gap: 10,
+            alignItems: 'flex-start',
+            padding: 12,
+            marginBottom: 12,
+            border: '1px solid #f59e0b',
+            borderRadius: 8,
+            background: 'rgba(245, 158, 11, 0.12)',
+          }}
+        >
+          <AlertTriangle size={18} />
+          <div>
+            <strong>注册不等于实现。</strong>
+            <div>
+              本页只声明需求所有权与 readiness；observed_policy_outcome_superiority_claim =
+              {' '}{String(claimBoundary.observed_policy_outcome_superiority_claim)}。
+            </div>
+          </div>
+        </div>
+      )}
+
+      {payload && summary ? (
+        <>
+          <div className="uwm-livability-kpi-grid">
+            <div className="uwm-livability-kpi"><span>宜居性专项</span><strong>5 个宜居性场景</strong></div>
+            <div className="uwm-livability-kpi"><span>客户应用</span><strong>25 项客户需求</strong></div>
+            <div className="uwm-livability-kpi"><span>唯一归属</span><strong>7 条主技术路线</strong></div>
+            <div className="uwm-livability-kpi">
+              <span>production_complete_count</span>
+              <strong>{summary.production_complete_count}</strong>
+            </div>
+          </div>
+
+          <section className="uwm-livability-panel">
+            <div className="uwm-livability-panel-title"><Route size={16} /> 主技术路线</div>
+            <div className="uwm-evidence-grid">
+              {payload.primary_routes.map(routeRow => (
+                <div className="uwm-component-row" key={routeRow.route}>
+                  {routeRow.availability === 'existing'
+                    ? <CheckCircle2 size={15} />
+                    : <ShieldAlert size={15} />}
+                  <div>
+                    <strong>{ROUTE_LABELS[routeRow.route] || routeRow.route}</strong>
+                    <div>{routeRow.route} · {routeRow.availability}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="uwm-livability-panel">
+            <div className="uwm-livability-panel-title">需求来源</div>
+            <div className="uwm-capability-tags">
+              {payload.source_documents.map(path => (
+                <span key={path}>{documentName(path)}</span>
+              ))}
+            </div>
+          </section>
+
+          <RequirementTable title="5 个宜居性场景" rows={payload.livability_scenarios} />
+          <RequirementTable title="25 项客户需求" rows={payload.customer_ai_demands} />
+        </>
+      ) : !loading && !error ? (
+        <div className="uwm-livability-empty">暂无 AI 应用需求 readiness 数据。</div>
+      ) : null}
+    </div>
+  );
+}
