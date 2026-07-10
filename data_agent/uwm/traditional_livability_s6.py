@@ -102,6 +102,10 @@ def _duplicate_ids(
     return sorted(key for key, count in counts.items() if count > 1)
 
 
+def _source_record_reference(row: Mapping[str, Any], index: int) -> str:
+    return _text(row.get("source_record_id")) or f"row-{index}"
+
+
 def _area_index(resources: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
     result = {}
     for row in _rows(resources, "planning_areas"):
@@ -135,13 +139,6 @@ def validate_s6_request(
     for (duplicate_area_id,) in _duplicate_ids(area_rows, "planning_area_id"):
         blockers.append(f"duplicate_planning_area_id:{duplicate_area_id}")
     resource_rows = _rows(resource_payload, "planning_resources")
-    for duplicate_area_id, duplicate_resource_id in _duplicate_ids(
-        resource_rows, "planning_area_id", "resource_id"
-    ):
-        blockers.append(
-            "duplicate_planning_resource_id:"
-            f"{duplicate_area_id}:{duplicate_resource_id}"
-        )
 
     input_mode = _text(request.get("input_mode"))
     if input_mode not in _INPUT_MODES:
@@ -180,6 +177,26 @@ def validate_s6_request(
         if _safe_geometry(selected_area.get("metric_geometry")) is None:
             blockers.append(f"planning_area_geometry_missing:{analysis_area_id}")
 
+        active_resources = [
+            resource
+            for resource in resource_rows
+            if _text(resource.get("planning_area_id")) == analysis_area_id
+        ]
+        for index, resource in enumerate(active_resources):
+            if _text(resource.get("resource_id")) is None:
+                blockers.append(
+                    "planning_resource_id_missing:"
+                    f"{analysis_area_id}:"
+                    f"{_source_record_reference(resource, index)}"
+                )
+        for duplicate_resource_area_id, duplicate_resource_id in _duplicate_ids(
+            resource_rows, "planning_area_id", "resource_id"
+        ):
+            blockers.append(
+                "duplicate_planning_resource_id:"
+                f"{duplicate_resource_area_id}:{duplicate_resource_id}"
+            )
+
         active_facilities = []
         for facility in _rows(resource_payload, "current_facilities"):
             matching_area_ids = facility.get("matching_planning_area_ids")
@@ -192,6 +209,13 @@ def validate_s6_request(
             )
             if belongs_to_active_area:
                 active_facilities.append(facility)
+        for index, facility in enumerate(active_facilities):
+            if _text(facility.get("facility_id")) is None:
+                blockers.append(
+                    "current_facility_id_missing:"
+                    f"{analysis_area_id}:"
+                    f"{_source_record_reference(facility, index)}"
+                )
         for (duplicate_facility_id,) in _duplicate_ids(
             active_facilities, "facility_id"
         ):
@@ -201,7 +225,8 @@ def validate_s6_request(
             )
         for facility in active_facilities:
             if (
-                _text(facility.get("association_status"))
+                _text(facility.get("facility_id")) is not None
+                and _text(facility.get("association_status"))
                 == "multi_area_overlap_unresolved"
             ):
                 facility_id = _text(facility.get("facility_id")) or "unknown"

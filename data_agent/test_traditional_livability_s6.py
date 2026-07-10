@@ -1057,6 +1057,70 @@ def test_duplicate_same_area_resource_ids_are_rejected():
     ]
 
 
+@pytest.mark.parametrize("missing_id", [None, "", "   ", 123])
+def test_active_planning_resource_requires_nonblank_string_id(missing_id):
+    resources = resource_fixture()
+    resources["planning_resources"][0]["resource_id"] = missing_id
+
+    result = analyze_s6_facility_proposal(
+        request=point_request(),
+        resources=resources,
+        dictionary=unavailable_dictionary(),
+        compatibility=unavailable_compatibility(),
+    )
+
+    assert result["status"] == "insufficient_evidence"
+    assert result["validation_blockers"] == [
+        "planning_resource_id_missing:fulu_heping:source-selected"
+    ]
+    assert "planning:unknown" not in json.dumps(result)
+
+
+def test_multiple_active_planning_resources_report_each_missing_id():
+    resources = resource_fixture()
+    resources["planning_resources"][0]["resource_id"] = None
+    resources["planning_resources"][1]["resource_id"] = "   "
+
+    validation = validate_s6_request(point_request(), resources)
+
+    assert validation["blockers"] == [
+        "planning_resource_id_missing:fulu_heping:source-selected",
+        "planning_resource_id_missing:fulu_heping:source-planning-hit",
+    ]
+
+
+@pytest.mark.parametrize("missing_id", [None, "", "   ", 123])
+def test_active_current_facility_requires_nonblank_string_id(missing_id):
+    resources = resource_fixture()
+    resources["current_facilities"][0]["facility_id"] = missing_id
+
+    result = analyze_s6_facility_proposal(
+        request=point_request(),
+        resources=resources,
+        dictionary=unavailable_dictionary(),
+        compatibility=unavailable_compatibility(),
+    )
+
+    assert result["status"] == "insufficient_evidence"
+    assert result["validation_blockers"] == [
+        "current_facility_id_missing:fulu_heping:facility-source-hit"
+    ]
+    assert "facility:unknown" not in json.dumps(result)
+
+
+def test_multiple_active_facilities_report_each_missing_id():
+    resources = resource_fixture()
+    resources["current_facilities"][0]["facility_id"] = None
+    resources["current_facilities"][1]["facility_id"] = 123
+
+    validation = validate_s6_request(point_request(), resources)
+
+    assert validation["blockers"] == [
+        "current_facility_id_missing:fulu_heping:facility-source-hit",
+        "current_facility_id_missing:fulu_heping:facility-source-unresolved",
+    ]
+
+
 def test_unconfirmed_class_cannot_apply_rules_or_enable_s1_handoff():
     result = analyze_s6_facility_proposal(
         request=point_request(confirmed_standard_class_id="facility.market"),
