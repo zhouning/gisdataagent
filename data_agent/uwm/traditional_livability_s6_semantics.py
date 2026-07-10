@@ -435,6 +435,18 @@ def _current_resolution(
     return normalized_input, digest, resolution
 
 
+def _semantically_complete_input(
+    original_input: Any,
+    normalized_input: Mapping[str, str | None] | None,
+) -> bool:
+    return (
+        isinstance(original_input, Mapping)
+        and normalized_input is not None
+        and all(isinstance(original_input.get(field), str) for field in _INPUT_FIELDS)
+        and all(normalized_input.get(field) is not None for field in _INPUT_FIELDS)
+    )
+
+
 def validate_human_confirmation(
     confirmation: Mapping[str, Any],
     *,
@@ -472,12 +484,19 @@ def validate_human_confirmation(
             matched_candidate is None
             and current_resolution["resolution_status"] == "unresolved"
         ):
-            matched_candidate, candidate_errors = _human_selected_candidate(
-                supplied_candidate,
-                selected_class_id=selected_class_id,
-                classes=classes,
-                dictionary_version=loaded_version,
-            )
+            if (
+                not _semantically_complete_input(original_input, normalized_input)
+                or current_resolution["resolution_reasons"]
+                != ["no_deterministic_semantic_match"]
+            ):
+                candidate_errors = ["human_selected_semantic_input_incomplete"]
+            else:
+                matched_candidate, candidate_errors = _human_selected_candidate(
+                    supplied_candidate,
+                    selected_class_id=selected_class_id,
+                    classes=classes,
+                    dictionary_version=loaded_version,
+                )
 
     errors = []
     if actor_id is None:

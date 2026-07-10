@@ -645,3 +645,48 @@ def test_human_selected_candidate_cannot_override_authoritative_resolution():
 
     assert confirmation["valid"] is False
     assert "selected_candidate_evidence_mismatch" in confirmation["validation_errors"]
+
+
+@pytest.mark.parametrize(
+    "original_input",
+    [
+        {
+            "facility_name": "",
+            "raw_facility_type": "未分类设施",
+            "use_description": "现场材料由审查员核验",
+        },
+        {
+            "facility_name": "新型邻里服务点",
+            "raw_facility_type": "\u3000",
+            "use_description": "现场材料由审查员核验",
+        },
+        {
+            "facility_name": "新型邻里服务点",
+            "raw_facility_type": "未分类设施",
+            "use_description": {},
+        },
+    ],
+    ids=["empty", "whitespace_only", "non_string"],
+)
+def test_human_selected_rejects_semantically_incomplete_input(original_input):
+    dictionary = authoritative_dictionary_fixture()
+    resolution = resolve_s6_facility_semantics(**original_input, dictionary=dictionary)
+    assert resolution["resolution_status"] == "unresolved"
+
+    confirmation = validate_human_confirmation(
+        {
+            "actor_id": "reviewer-001",
+            "confirmed_at": "2026-07-10T08:00:00Z",
+            "selected_standard_class_id": "facility.market",
+            "original_input_digest": resolution["original_input_digest"],
+            "dictionary_version": "liv-2.0-fixture-v1",
+        },
+        dictionary=dictionary,
+        original_input=original_input,
+        selected_candidate=human_selected_candidate(),
+    )
+
+    assert confirmation["valid"] is False
+    assert "human_selected_semantic_input_incomplete" in confirmation["validation_errors"]
+    assert confirmation["selected_candidate"] is None
+    assert confirmation["mutates_authoritative_dictionary"] is False
