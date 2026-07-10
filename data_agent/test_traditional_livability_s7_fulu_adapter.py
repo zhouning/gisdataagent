@@ -4,6 +4,7 @@ import geopandas as gpd
 from shapely.geometry import Polygon
 
 from data_agent.uwm import traditional_livability_s7_fulu_adapter as adapter
+from data_agent.uwm.traditional_livability_s7_fulu_adapter import classify_primary_school_supply
 
 
 def _write(path, rows):
@@ -63,3 +64,74 @@ def test_loads_two_area_contract_with_demand_candidates_and_exclusions(tmp_path,
     }
     assert candidate["distance_crs"]
     assert {"longitude", "latitude"} <= set(candidate["display_centroid"])
+
+
+def test_classifies_exact_primary_school_supply_against_planning_boundaries():
+    planning_inputs = {
+        "planning_areas": [
+            {
+                "planning_area_id": "fulu_heping",
+                "distance_crs": "EPSG:4523",
+                "boundary_geometry_wgs84": Polygon([(106.0, 29.0), (106.1, 29.0), (106.1, 29.1), (106.0, 29.1)]),
+            },
+            {
+                "planning_area_id": "fulu_banzhu",
+                "distance_crs": "EPSG:4523",
+                "boundary_geometry_wgs84": Polygon([(106.2, 29.0), (106.3, 29.0), (106.3, 29.1), (106.2, 29.1)]),
+            },
+        ]
+    }
+    facility_product = {
+        "facilities": [
+            {"name": "和平小学", "source_record_id": "primary-heping", "source_dataset_id": "poi", "canonical_class": "education.primary_school", "longitude": 106.05, "latitude": 29.05},
+            {"name": "斑竹小学", "source_record_id": "primary-banzhu", "source_dataset_id": "poi", "canonical_class": "education.primary_school", "longitude": 106.25, "latitude": 29.05},
+            {"name": "村外小学", "source_record_id": "primary-outside", "source_dataset_id": "poi", "canonical_class": "education.primary_school", "longitude": 106.4, "latitude": 29.05},
+            {"name": "无坐标小学", "source_record_id": "primary-unlocatable", "source_dataset_id": "poi", "canonical_class": "education.primary_school", "longitude": None, "latitude": None},
+            {"name": "泛学校", "source_record_id": "school-generic", "source_dataset_id": "poi", "canonical_class": "education.school", "longitude": 106.05, "latitude": 29.05},
+        ]
+    }
+
+    supply = classify_primary_school_supply(
+        facility_product=facility_product,
+        planning_inputs=planning_inputs,
+    )
+
+    assert {row["source_record_id"]: row["supply_verification_status"] for row in supply} == {
+        "primary-heping": "locally_verified_current_supply",
+        "primary-banzhu": "locally_verified_current_supply",
+        "primary-outside": "outside_planning_area_reference",
+        "primary-unlocatable": "unlocatable_reference",
+    }
+    assert {row["source_record_id"]: row.get("planning_area_id") for row in supply} == {
+        "primary-heping": "fulu_heping",
+        "primary-banzhu": "fulu_banzhu",
+        "primary-outside": None,
+        "primary-unlocatable": None,
+    }
+    assert "school-generic" not in {row["source_record_id"] for row in supply}
+
+
+def test_classifies_only_exact_primary_schools_against_planning_boundaries():
+    planning_inputs = {
+        "planning_areas": [
+            {"planning_area_id": "fulu_heping", "distance_crs": "EPSG:4326", "boundary_geometry_wgs84": Polygon([(106, 29), (106.1, 29), (106.1, 29.1), (106, 29.1), (106, 29)])},
+            {"planning_area_id": "fulu_banzhu", "distance_crs": "EPSG:4326", "boundary_geometry_wgs84": Polygon([(106.2, 29), (106.3, 29), (106.3, 29.1), (106.2, 29.1), (106.2, 29)])},
+        ]
+    }
+    product = {"facilities": [
+        {"source_dataset_id": "poi", "source_record_id": "h", "name": "和平小学", "canonical_class": "education.primary_school", "longitude": 106.05, "latitude": 29.05},
+        {"source_dataset_id": "poi", "source_record_id": "b", "name": "斑竹小学", "canonical_class": "education.primary_school", "longitude": 106.25, "latitude": 29.05},
+        {"source_dataset_id": "poi", "source_record_id": "o", "name": "范围外小学", "canonical_class": "education.primary_school", "longitude": 107, "latitude": 30},
+        {"source_dataset_id": "poi", "source_record_id": "u", "name": "未知小学", "canonical_class": "education.primary_school"},
+        {"source_dataset_id": "poi", "source_record_id": "not-primary", "canonical_class": "education.school", "longitude": 106.05, "latitude": 29.05},
+    ]}
+
+    rows = adapter.classify_primary_school_supply(facility_product=product, planning_inputs=planning_inputs)
+
+    assert [(row["source_record_id"], row["supply_verification_status"]) for row in rows] == [
+        ("h", "locally_verified_current_supply"),
+        ("b", "locally_verified_current_supply"),
+        ("o", "outside_planning_area_reference"),
+        ("u", "unlocatable_reference"),
+    ]
+    assert rows[0]["planning_area_id"] == "fulu_heping"

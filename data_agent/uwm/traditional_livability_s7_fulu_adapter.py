@@ -6,6 +6,7 @@ from typing import Any
 
 import geopandas as gpd
 import pyogrio
+from shapely.geometry import Point
 
 
 SCHEMA = "uwm.traditional_livability.s7_fulu_planning_inputs.v1"
@@ -111,6 +112,9 @@ def _planning_area_rows(area_id: str, frame: gpd.GeoDataFrame) -> list[dict[str,
                     "distance_crs": str(frame.crs),
                     "area_m2": metric["area_m2"],
                     "display_centroid": metric["display_centroid"],
+                    "boundary_geometry_wgs84": gpd.GeoSeries(
+                        [row.geometry], crs=frame.crs
+                    ).to_crs("EPSG:4326").iloc[0],
                 }
             )
     return rows
@@ -212,6 +216,76 @@ def _exclusion_reason(code: str, name: str) -> str:
     if code.startswith("32") or "自然保留" in name:
         return "natural_reservation_land"
     return "other_land_use"
+
+
+def classify_primary_school_supply(
+    *, facility_product: dict[str, Any], planning_inputs: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """Classify exact primary-school facilities by planning-boundary containment."""
+
+    areas = list(planning_inputs.get("planning_areas") or [])
+    rows: list[dict[str, Any]] = []
+    for facility in facility_product.get("facilities") or []:
+        if facility.get("canonical_class") != "education.primary_school":
+            continue
+        longitude, latitude = facility.get("longitude"), facility.get("latitude")
+        if longitude is None or latitude is None:
+            rows.append(
+                _supply_row(facility, None, "unlocatable_reference", None, None)
+            )
+            continue
+        try:
+            point = Point(float(longitude), float(latitude))
+        except (TypeError, ValueError):
+            rows.append(
+                _supply_row(facility, None, "unlocatable_reference", None, None)
+            )
+            continue
+        matching = next(
+            (
+                area
+                for area in areas
+                if area.get("boundary_geometry_wgs84") is not None
+                and area["boundary_geometry_wgs84"].covers(point)
+            ),
+            None,
+        )
+        if matching is None:
+            rows.append(
+                _supply_row(
+                    facility,
+                    None,
+                    "outside_planning_area_reference",
+                    None,
+                    {"longitude": float(point.x), "latitude": float(point.y)},
+                )
+            )
+            continue
+        projected = gpd.GeoSeries([point], crs="EPSG:4326").to_crs(
+            matching["distance_crs"]
+        ).iloc[0]
+        rows.append(
+            _supply_row(
+                facility,
+                matching["planning_area_id"],
+                "locally_verified_current_supply",
+                {"x": float(projected.x), "y": float(projected.y)},
+                {"longitude": float(point.x), "latitude": float(point.y)},
+            )
+        )
+    return rows
+
+
+def _supply_row(facility, planning_area_id, status, projected_centroid, display_centroid):
+    return {
+        "source_dataset_id": facility.get("source_dataset_id"),
+        "source_record_id": facility.get("source_record_id"),
+        "name": facility.get("name"),
+        "planning_area_id": planning_area_id,
+        "supply_verification_status": status,
+        "projected_centroid": projected_centroid,
+        "display_centroid": display_centroid,
+    }
 
 
 def _sha256_path(path: Path) -> str:
