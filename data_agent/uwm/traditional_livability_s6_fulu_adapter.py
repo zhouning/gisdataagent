@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from collections import Counter
 from copy import deepcopy
 import hashlib
+import json
 from pathlib import Path
 from typing import Any, Mapping
+import unicodedata
 
 import geopandas as gpd
 import pandas as pd
@@ -241,7 +244,8 @@ def _planning_resource_rows(
 ) -> list[dict[str, Any]]:
     if frame.crs is None:
         return []
-    rows: list[dict[str, Any]] = []
+    candidates: list[dict[str, Any]] = []
+    geometry_field = frame.geometry.name
     for row_number, (index, row) in enumerate(frame.iterrows()):
         geometry = row.geometry
         if geometry is None or geometry.is_empty or not geometry.is_valid:
@@ -251,15 +255,14 @@ def _planning_resource_rows(
             continue
         raw_tbbh = _text(row.get("TBBH")) or None
         raw_bsm = _text(row.get("BSM")) or None
-        identity_field, identity_value = _source_identity(row, index)
-        source_record_id = _stable_id(
-            "planning_source_record",
-            area_id,
-            source_layer,
-            identity_field,
-            identity_value,
-            row_number,
+        identity_field, identity_value = _source_identity(row)
+        identity_normalized = _normalize_identity(identity_value)
+        canonical_record_content = _canonical_record_content(
+            row, geometry, geometry_field
         )
+        source_record_digest = hashlib.sha256(
+            canonical_record_content.encode("utf-8")
+        ).hexdigest()
         planning_status, evidence = _planning_status(row)
         resource_domain, interpretation_rule, interpretation_evidence = (
             _interpret_land_use(code, name)
@@ -267,17 +270,15 @@ def _planning_resource_rows(
         display_geometry = gpd.GeoSeries([geometry], crs=frame.crs).to_crs(
             "EPSG:4326"
         ).iloc[0]
-        rows.append(
+        candidates.append(
             {
-                "resource_id": _stable_id(
-                    "planning_resource", source_record_id
-                ),
                 "planning_area_id": area_id,
                 "source_layer": source_layer,
                 "source_manifest_ref": _source_id(area_id, source_layer),
-                "source_record_id": source_record_id,
                 "source_identity_field": identity_field,
                 "source_identity_value": identity_value,
+                "source_identity_normalized": identity_normalized,
+                "source_record_digest": source_record_digest,
                 "source_row_index": str(index),
                 "source_row_number": row_number,
                 "raw_tbbh": raw_tbbh,
@@ -293,6 +294,35 @@ def _planning_resource_rows(
                 "area_m2": _polygon_area_m2(geometry),
                 "metric_geometry": mapping(geometry),
                 "display_geometry_wgs84": mapping(display_geometry),
+                "_canonical_record_content": canonical_record_content,
+            }
+        )
+    candidates.sort(key=_canonical_candidate_sort_key)
+    collision_counts = Counter(_source_collision_key(row) for row in candidates)
+    collision_ordinals: Counter[tuple[str, str, str]] = Counter()
+    rows: list[dict[str, Any]] = []
+    for candidate in candidates:
+        collision_key = _source_collision_key(candidate)
+        duplicate_ordinal = None
+        if collision_counts[collision_key] > 1:
+            duplicate_ordinal = collision_ordinals[collision_key]
+            collision_ordinals[collision_key] += 1
+        source_record_id = _stable_id(
+            "planning_source_record",
+            area_id,
+            source_layer,
+            candidate["source_identity_field"],
+            candidate["source_identity_normalized"],
+            candidate["source_record_digest"],
+            "" if duplicate_ordinal is None else f"duplicate:{duplicate_ordinal}",
+        )
+        candidate.pop("_canonical_record_content")
+        rows.append(
+            {
+                "resource_id": _stable_id("planning_resource", source_record_id),
+                "source_record_id": source_record_id,
+                "source_duplicate_ordinal": duplicate_ordinal,
+                **candidate,
             }
         )
     return rows
@@ -378,12 +408,62 @@ def _facility_geometry_wgs84(facility: Mapping[str, Any]):
         return None
 
 
-def _source_identity(row: Any, index: Any) -> tuple[str, str]:
+def _source_identity(row: Any) -> tuple[str, str | None]:
     for field in ("BSM", "TBBH", "OBJECTID"):
         value = _text(row.get(field))
         if value:
             return field, value
-    return "row_index", str(index)
+    return "none", None
+
+
+def _normalize_identity(value: str | None) -> str:
+    if value is None:
+        return ""
+    return unicodedata.normalize("NFKC", value).strip().casefold()
+
+
+def _canonical_record_content(
+    row: Any, geometry: Any, geometry_field: str
+) -> str:
+    attributes = {
+        str(field): _canonical_scalar(value)
+        for field, value in row.items()
+        if field != geometry_field
+    }
+    return json.dumps(
+        {
+            "attributes": attributes,
+            "geometry_wkb_hex": geometry.wkb_hex,
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def _canonical_scalar(value: Any) -> str | None:
+    if value is None or pd.isna(value):
+        return None
+    if isinstance(value, bytes):
+        return value.hex()
+    return unicodedata.normalize("NFKC", str(value)).strip()
+
+
+def _canonical_candidate_sort_key(row: Mapping[str, Any]) -> tuple[str, ...]:
+    return (
+        str(row["source_identity_field"]),
+        str(row["source_identity_normalized"]),
+        str(row["source_record_digest"]),
+        str(row["_canonical_record_content"]),
+    )
+
+
+def _source_collision_key(row: Mapping[str, Any]) -> tuple[str, str, str]:
+    return (
+        str(row["source_identity_field"]),
+        str(row["source_identity_normalized"]),
+        str(row["source_record_digest"]),
+    )
 
 
 def _stable_id(prefix: str, *parts: Any) -> str:

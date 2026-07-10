@@ -40,7 +40,13 @@ def _polygon(x: float, y: float = 0) -> Polygon:
     return Polygon([(x, y), (x + 100, y), (x + 100, y + 100), (x, y + 100), (x, y)])
 
 
-def _planning_fixture_root(tmp_path: Path, extension: str = "gpkg") -> Path:
+def _planning_fixture_root(
+    tmp_path: Path,
+    extension: str = "gpkg",
+    *,
+    reverse_rows: bool = False,
+    include_exact_duplicate: bool = False,
+) -> Path:
     area_specs = (
         ("fulu_heping", "EPSG:4523", 35597400, 3209600, None),
         ("fulu_banzhu", "EPSG:32648", 626600, 3208600, "现状"),
@@ -51,14 +57,10 @@ def _planning_fixture_root(tmp_path: Path, extension: str = "gpkg") -> Path:
             [{"BSM": f"boundary-{area_id}", "geometry": _polygon(origin_x, origin_y)}],
             crs,
         )
-        _write(
-            tmp_path / area_id / f"JQDLTB.{extension}",
-            [
-                {"TBBH": f"current-{area_id}", "BSM": f"bsm-current-{area_id}", "DLDM": "2121", "DLMC": "村居住用地", "geometry": _polygon(origin_x + 10, origin_y + 10)},
-                {"TBBH": f"unknown-{area_id}", "DLDM": "999", "DLMC": "未知用途", "geometry": _polygon(origin_x + 15, origin_y + 15)},
-            ],
-            crs,
-        )
+        current_rows = [
+            {"TBBH": f"current-{area_id}", "BSM": f"bsm-current-{area_id}", "DLDM": "2121", "DLMC": "村居住用地", "geometry": _polygon(origin_x + 10, origin_y + 10)},
+            {"TBBH": f"unknown-{area_id}", "DLDM": "999", "DLMC": "未知用途", "geometry": _polygon(origin_x + 15, origin_y + 15)},
+        ]
         planned_row = {
             "TBBH": f"planned-{area_id}",
             "CGHDLDM": "2123",
@@ -86,6 +88,16 @@ def _planning_fixture_root(tmp_path: Path, extension: str = "gpkg") -> Path:
                     "geometry": _polygon(origin_x + 30, origin_y + 30),
                 }
             )
+        if include_exact_duplicate:
+            planned_rows.append(deepcopy(planned_row))
+        if reverse_rows:
+            current_rows.reverse()
+            planned_rows.reverse()
+        _write(
+            tmp_path / area_id / f"JQDLTB.{extension}",
+            current_rows,
+            crs,
+        )
         _write(tmp_path / area_id / f"TDGHDL.{extension}", planned_rows, crs)
     return tmp_path
 
@@ -264,6 +276,51 @@ def test_repeated_tbbh_rows_have_stable_unique_source_and_resource_ids(tmp_path,
     assert bsm_row["raw_bsm"] == "bsm-current-fulu_heping"
     assert bsm_row["source_identity_field"] == "BSM"
     assert bsm_row["source_identity_value"] == "bsm-current-fulu_heping"
+
+
+def test_source_and_resource_ids_are_stable_under_row_reordering(tmp_path, monkeypatch):
+    monkeypatch.setattr(adapter, "ASSET_SPECS", _specs())
+    first_root = _planning_fixture_root(
+        tmp_path / "ordered", include_exact_duplicate=True
+    )
+    second_root = _planning_fixture_root(
+        tmp_path / "reversed", reverse_rows=True, include_exact_duplicate=True
+    )
+
+    first = build_fulu_s6_resources(
+        source_root=first_root, facility_product=_facility_product()
+    )
+    second = build_fulu_s6_resources(
+        source_root=second_root, facility_product=_facility_product()
+    )
+
+    first_source_ids = [row["source_record_id"] for row in first["planning_resources"]]
+    second_source_ids = [row["source_record_id"] for row in second["planning_resources"]]
+    first_resource_ids = [row["resource_id"] for row in first["planning_resources"]]
+    second_resource_ids = [row["resource_id"] for row in second["planning_resources"]]
+    assert first_source_ids == second_source_ids
+    assert first_resource_ids == second_resource_ids
+    assert len(set(first_source_ids)) == len(first_source_ids)
+    assert len(set(first_resource_ids)) == len(first_resource_ids)
+    exact_duplicates = [
+        row
+        for row in first["planning_resources"]
+        if row["planning_area_id"] == "fulu_banzhu"
+        and row["source_layer"] == "TDGHDL"
+        and row["raw_tbbh"] == "planned-fulu_banzhu"
+    ]
+    assert len(exact_duplicates) == 2
+    assert {row["source_duplicate_ordinal"] for row in exact_duplicates} == {0, 1}
+    assert len({row["source_record_digest"] for row in exact_duplicates}) == 1
+    second_by_id = {
+        row["source_record_id"]: row for row in second["planning_resources"]
+    }
+    assert any(
+        row["source_row_number"]
+        != second_by_id[row["source_record_id"]]["source_row_number"]
+        for row in first["planning_resources"]
+        if row["source_duplicate_ordinal"] is None
+    )
 
 
 def test_unmapped_and_mapped_facilities_are_retained_with_completeness(tmp_path, monkeypatch):
