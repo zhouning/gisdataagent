@@ -36,6 +36,14 @@ S6_PANEL = (
     / "datapanel"
     / "TraditionalLivabilityS6Panel.tsx"
 )
+S4_PANEL = (
+    ROOT
+    / "frontend"
+    / "src"
+    / "components"
+    / "datapanel"
+    / "TraditionalLivabilityS4Panel.tsx"
+)
 MAP_PANEL = ROOT / "frontend" / "src" / "components" / "MapPanel.tsx"
 
 
@@ -176,6 +184,65 @@ def test_traditional_livability_s6_panel_uses_evidence_bounded_contract():
     assert "语义未解析现状设施" in panel
 
     for forbidden in ["禁止建设", "审批通过", "法定退界", "安全距离", "步行服务区"]:
+        assert forbidden not in panel
+
+
+def test_traditional_livability_s4_panel_uses_project_alignment_contract():
+    panel = S4_PANEL.read_text(encoding="utf-8")
+    tab = TRADITIONAL_TAB.read_text(encoding="utf-8")
+
+    assert "TraditionalLivabilityS4Panel" in tab
+    for required in [
+        "/api/uwm/traditional-livability/s4/resources",
+        "/api/uwm/traditional-livability/s4/analyze",
+        "S4 项目宜居性评估",
+        "项目名称",
+        "项目说明",
+        "规划地块",
+        "新增业态",
+        "删除业态",
+        "业态名称",
+        "原始业态类型",
+        "用途说明",
+        "GFA",
+        "GFA 证据构成",
+        "地块直接关系",
+        "150 米空间初筛",
+        "需求未评估",
+        "初步对齐分析，需人工复核",
+        "语义证据",
+        "S1 需求证据",
+        "S6 空间证据",
+        "project_blockers",
+        "max_claim",
+        "__handleMapUpdate",
+    ]:
+        assert required in panel
+
+    assert "clientKey" in panel
+    assert "crypto.randomUUID" in panel
+    assert "Number.isFinite(gfa) && gfa > 0" in panel
+    assert "confirmed_standard_class_id" in panel
+    assert "human_confirmation" in panel
+    assert "actor_id" not in panel
+    assert "let stale = false" in panel
+    assert "if (stale) return" in panel
+    assert "return () => { stale = true; }" in panel
+    assert "geojson.proposed_geometry" in panel
+    assert "geojson.screening_buffer" in panel
+    assert "geojson.planning_resource_hits" in panel
+    assert "geojson.current_facility_hits" in panel
+    assert "geojson.unresolved_planning_resources" in panel
+    assert "geojson.unresolved_current_facilities" in panel
+
+    for forbidden in [
+        "审批通过",
+        "禁止建设",
+        "合理建设规模",
+        "GFA即容量",
+        "步行服务区",
+        "正式对齐结论",
+    ]:
         assert forbidden not in panel
 
 

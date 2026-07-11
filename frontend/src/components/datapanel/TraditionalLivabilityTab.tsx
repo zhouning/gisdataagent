@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import TraditionalLivabilityS7Panel from './TraditionalLivabilityS7Panel';
 import TraditionalLivabilityS6Panel from './TraditionalLivabilityS6Panel';
+import TraditionalLivabilityS4Panel from './TraditionalLivabilityS4Panel';
 
 declare global {
   interface Window {
@@ -198,6 +199,7 @@ export default function TraditionalLivabilityTab() {
       {loading && !analysis && <div className="traditional-empty">正在加载传统方法分析...</div>}
 
       <TraditionalLivabilityS6Panel />
+      <TraditionalLivabilityS4Panel />
       <TraditionalLivabilityS7Panel />
 
       <div className="traditional-panel">
