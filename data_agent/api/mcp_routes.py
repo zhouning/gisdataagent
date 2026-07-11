@@ -115,11 +115,10 @@ async def mcp_reconnect(request: Request):
 
 
 async def mcp_test_connection(request: Request):
-    """POST /api/mcp/test — test MCP server connection without saving."""
-    user = _get_user_from_request(request)
-    if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
-    _set_user_context(user)
+    """POST /api/mcp/servers/test — test MCP server connection without saving."""
+    user, username, role, err = _require_admin(request)
+    if err:
+        return err
     try:
         body = await request.json()
     except Exception:
@@ -128,9 +127,16 @@ async def mcp_test_connection(request: Request):
     err = _validate_mcp_config(body, transport)
     if err:
         return JSONResponse({"error": err}, status_code=400)
-    from ..mcp_hub import get_mcp_hub
+    from ..mcp_hub import get_mcp_hub, McpServerConfig
+    config = McpServerConfig(
+        name="__test__", transport=transport,
+        command=body.get("command", ""), args=body.get("args", []),
+        env=body.get("env", {}), cwd=body.get("cwd"),
+        url=body.get("url", ""), headers=body.get("headers", {}),
+        timeout=float(body.get("timeout", 5.0)),
+    )
     hub = get_mcp_hub()
-    result = await hub.test_connection(body)
+    result = await hub.test_connection(config)
     status_code = 200 if result.get("status") == "ok" else 400
     return JSONResponse(result, status_code=status_code)
 
@@ -154,13 +160,24 @@ async def mcp_server_create(request: Request):
     err = _validate_mcp_config(body, transport)
     if err:
         return JSONResponse({"error": err}, status_code=400)
-    from ..mcp_hub import get_mcp_hub, MCPServerConfig
-    config = MCPServerConfig(
-        name=name, transport=transport,
-        command=body.get("command", ""), args=body.get("args", []),
-        url=body.get("url", ""), headers=body.get("headers", {}),
-        env=body.get("env", {}), description=body.get("description", ""),
-        owner_username=username, is_shared=body.get("is_shared", False),
+    is_shared = body.get("is_shared", False) if role == "admin" else False
+    from ..mcp_hub import get_mcp_hub, McpServerConfig
+    config = McpServerConfig(
+        name=name,
+        description=body.get("description", ""),
+        transport=transport,
+        enabled=body.get("enabled", False),
+        category=body.get("category", ""),
+        pipelines=body.get("pipelines", ["general", "planner"]),
+        command=body.get("command", ""),
+        args=body.get("args", []),
+        env=body.get("env", {}),
+        cwd=body.get("cwd"),
+        url=body.get("url", ""),
+        headers=body.get("headers", {}),
+        timeout=float(body.get("timeout", 5.0)),
+        owner_username=username,
+        is_shared=is_shared,
     )
     hub = get_mcp_hub()
     result = await hub.add_server(config)
@@ -332,7 +349,7 @@ def get_mcp_routes() -> list:
         Route("/api/mcp/servers", mcp_server_create, methods=["POST"]),
         Route("/api/mcp/servers/mine", mcp_servers_mine, methods=["GET"]),
         Route("/api/mcp/tools", mcp_tools, methods=["GET"]),
-        Route("/api/mcp/test", mcp_test_connection, methods=["POST"]),
+        Route("/api/mcp/servers/test", mcp_test_connection, methods=["POST"]),
         Route("/api/mcp/rules", mcp_rules_list, methods=["GET"]),
         Route("/api/mcp/rules", mcp_rules_create, methods=["POST"]),
         Route("/api/mcp/rules/match", mcp_rules_match, methods=["GET"]),
