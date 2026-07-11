@@ -1,0 +1,39 @@
+digraph AWMTargetArchitecture {
+  graph [rankdir=LR, bgcolor="white", pad="0.3", nodesep="0.42", ranksep="0.72", fontname="PingFang SC", label="AWM-CropWater 总体技术架构（目标架构，尚未形成实验验证）", labelloc="t", fontsize=19];
+  node [shape=box, style="rounded,filled", fontname="PingFang SC", fontsize=11, color="#64748B", fillcolor="#F8FAFC", margin="0.15,0.09"];
+  edge [fontname="PingFang SC", fontsize=9, color="#64748B", arrowsize=0.75];
+
+  observation [label="Canonical Agricultural Observation\n多源观测与质量 sidecar", fillcolor="#DBEAFE", color="#2563EB"];
+  state [label="Belief State + Spatial Graph\n水—土—作物—经营—治理状态", fillcolor="#FFEDD5", color="#EA580C"];
+
+  subgraph cluster_simulator {
+    label="Hybrid Action-Conditioned Simulator";
+    fontname="PingFang SC";
+    color="#FDBA74";
+    style="rounded";
+    process [label="过程模型锚定\n水量平衡·作物生长·渠系传输"];
+    residual [label="学习残差与图传播\n区域偏差·空间外溢·状态更新"];
+    uncertainty [label="不确定性与集合情景\n天气·参数·观测缺失"];
+    transition [label="多时间尺度 Transition\n小时/日/周/季节"];
+    process -> transition;
+    residual -> transition;
+    uncertainty -> transition;
+  }
+
+  action [label="Action Catalog + Hard Mask\n供水对象·时机·水量·重分配", fillcolor="#FEF3C7", color="#D97706"];
+  planner [label="Robust MPC / Planner\n消费 rollout，不自行生成效果", fillcolor="#DCFCE7", color="#16A34A"];
+  package [label="方案包与 Rollout Trace\n产量·用水·公平·成本·生态风险", fillcolor="#DCFCE7", color="#16A34A"];
+  gate [label="Evidence Gate\n诊断 / 探索情景 / 历史回放 / 受控试点", fillcolor="#FEE2E2", color="#DC2626"];
+  review [label="业务专家与农户复核\n采纳·驳回·补证·执行记录", fillcolor="#EDE9FE", color="#7C3AED"];
+  memory [label="Failure Memory\n极端天气·跨区迁移·异常供水·误放/误阻", fillcolor="#EDE9FE", color="#7C3AED"];
+
+  observation -> state -> transition;
+  action -> transition;
+  transition -> planner [label="rollout trace"];
+  action -> planner [label="候选动作"];
+  planner -> package -> gate -> review;
+  review -> memory;
+  memory -> state [style=dashed, label="replay"];
+  review -> action [style=dashed, label="约束/动作修订"];
+  gate -> planner [style=dashed, label="降级或阻断"];
+}

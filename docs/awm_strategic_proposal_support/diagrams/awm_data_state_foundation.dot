@@ -1,0 +1,35 @@
+digraph AWMDataStateFoundation {
+  graph [rankdir=LR, bgcolor="white", pad="0.3", nodesep="0.42", ranksep="0.75", fontname="PingFang SC", label="AWM 数据与状态基础（目标架构）", labelloc="t", fontsize=20];
+  node [shape=box, style="rounded,filled", fontname="PingFang SC", fontsize=12, color="#64748B", fillcolor="#F8FAFC", margin="0.16,0.10"];
+  edge [fontname="PingFang SC", fontsize=10, color="#64748B", arrowsize=0.8];
+
+  subgraph cluster_inputs {
+    label="农业多源输入";
+    fontname="PingFang SC";
+    color="#CBD5E1";
+    style="rounded,dashed";
+    spatial [label="空间对象\n田块·农场·渠系·水源·行政单元"];
+    observation [label="连续观测\n遥感·气象·墒情·流量·作物观测"];
+    management [label="经营与干预记录\n播种·灌溉·施肥·防治·收获"];
+    governance [label="治理与约束\n水权·配额·农艺规则·预算·安全边界"];
+    outcome [label="结果与复核\n产量·用水·成本·生态影响·专家记录"];
+  }
+
+  manifest [label="Agricultural Data Manifest\n来源·时空范围·许可·质量·证据等级", fillcolor="#DBEAFE", color="#2563EB"];
+  semantic [label="语义与数据契约\n对象角色·字段绑定·单位·CRS·时间对齐", fillcolor="#DBEAFE", color="#2563EB"];
+  renderer [label="Agricultural Renderer\n观测对齐·质量标记·空间聚合", fillcolor="#FFEDD5", color="#EA580C"];
+  belief [label="Belief-State Estimator\n推断根区水分·生物量·胁迫等隐状态", fillcolor="#FFEDD5", color="#EA580C"];
+  graphstate [label="分层农业状态图\n田块—农场—渠系—灌区/县域", fillcolor="#FFEDD5", color="#EA580C"];
+  evidence [label="证据与 Claim Boundary\nobserved / simulated / learned / causal", fillcolor="#FEE2E2", color="#DC2626"];
+
+  spatial -> manifest;
+  observation -> manifest;
+  management -> manifest;
+  governance -> manifest;
+  outcome -> manifest;
+  manifest -> semantic -> renderer -> belief -> graphstate;
+  manifest -> evidence;
+  renderer -> evidence [style=dashed];
+  belief -> evidence [style=dashed];
+  graphstate -> evidence [style=dashed];
+}

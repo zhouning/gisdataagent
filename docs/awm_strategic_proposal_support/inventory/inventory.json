@@ -1,0 +1,73 @@
+{
+  "generated_at": "2026-07-11T12:06:52.956230+00:00",
+  "cwd": "/Users/zhouning/gisdataagent",
+  "docx": null,
+  "code_roots": [
+    {
+      "path": "/Users/zhouning/gisdataagent/data_agent/territory_world_model",
+      "exists": true,
+      "git_commit": null,
+      "file_count": 18,
+      "total_bytes": 1441829,
+      "extensions": {
+        ".py": 18
+      },
+      "marker_files": [],
+      "java_annotations": {},
+      "top_packages": [],
+      "sample_declared_types": [],
+      "api_hints": []
+    },
+    {
+      "path": "/Users/zhouning/gisdataagent/data_agent/uwm",
+      "exists": true,
+      "git_commit": null,
+      "file_count": 128,
+      "total_bytes": 2000809,
+      "extensions": {
+        ".py": 128
+      },
+      "marker_files": [],
+      "java_annotations": {},
+      "top_packages": [],
+      "sample_declared_types": [],
+      "api_hints": []
+    },
+    {
+      "path": "/Users/zhouning/paper13-future-aware-farmland-planning",
+      "exists": true,
+      "git_commit": "716f921f895fd5ea0942ed57498d58a2aec9070f",
+      "file_count": 993,
+      "total_bytes": 716804325,
+      "extensions": {
+        ".json": 358,
+        ".md": 197,
+        ".py": 162,
+        ".csv": 157,
+        ".png": 64,
+        ".pdf": 25,
+        ".npy": 13,
+        "[no extension]": 5,
+        ".log": 2,
+        ".npz": 2,
+        ".pt": 2,
+        ".tex": 2,
+        ".bib": 1,
+        ".gpkg": 1,
+        ".tsv": 1,
+        ".txt": 1
+      },
+      "marker_files": [
+        {
+          "path": "requirements.txt",
+          "kind": "python"
+        }
+      ],
+      "java_annotations": {},
+      "top_packages": [],
+      "sample_declared_types": [],
+      "api_hints": []
+    }
+  ],
+  "ea_artifacts": []
+}
