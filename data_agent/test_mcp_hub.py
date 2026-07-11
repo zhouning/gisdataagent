@@ -146,6 +146,7 @@ class TestMcpServerStatus(unittest.TestCase):
         self.assertEqual(status.tool_count, 0)
         self.assertEqual(status.tool_names, [])
         self.assertEqual(status.error_message, "")
+        self.assertEqual(status.error_code, "")
         self.assertIsNone(status.connected_at)
         self.assertEqual(status.runtime_secrets, ())
 
@@ -332,6 +333,7 @@ class TestMcpHubManager(unittest.TestCase):
         self.assertFalse(statuses[0]["enabled"])
         self.assertEqual(statuses[0]["category"], "gis")
         self.assertEqual(statuses[0]["pipelines"], ["general"])
+        self.assertEqual(statuses[0]["error_code"], "")
 
     def test_get_server_statuses_never_exposes_runtime_secrets(self):
         from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
@@ -634,6 +636,24 @@ class TestMcpHubManager(unittest.TestCase):
 class TestSecureMcpHttpTransport(unittest.TestCase):
     """Secure streamable HTTP integration without real network calls."""
 
+    def setUp(self):
+        from data_agent.mcp_transport import (
+            current_runtime_secrets,
+            unregister_runtime_secrets,
+        )
+
+        while secrets := current_runtime_secrets():
+            unregister_runtime_secrets(secrets)
+
+    def tearDown(self):
+        from data_agent.mcp_transport import (
+            current_runtime_secrets,
+            unregister_runtime_secrets,
+        )
+
+        while secrets := current_runtime_secrets():
+            unregister_runtime_secrets(secrets)
+
     def test_connect_server_uses_runtime_bearer_and_private_ca_factory(self):
         from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
 
@@ -648,9 +668,18 @@ class TestSecureMcpHttpTransport(unittest.TestCase):
             bearer_token_file_env_var="ARCPY_TOKEN_FILE",
             ca_bundle_env_var="ARCPY_CA_FILE",
         )
-        hub._servers = {"arcpy": McpServerStatus(config=config)}
+        hub._servers = {
+            "arcpy": McpServerStatus(config=config, error_code="STALE_ERROR")
+        }
         toolset = MagicMock()
-        toolset.get_tools = AsyncMock(return_value=[])
+
+        async def get_tools_with_registered_secret():
+            from data_agent.mcp_transport import current_runtime_secrets
+            self.assertEqual(current_runtime_secrets(), ("runtime-token",))
+            return []
+
+        toolset.get_tools = AsyncMock(side_effect=get_tools_with_registered_secret)
+        toolset.close = AsyncMock()
         connection_params = MagicMock()
         private_ca_factory = MagicMock(name="private_ca_factory")
 
@@ -676,7 +705,7 @@ class TestSecureMcpHttpTransport(unittest.TestCase):
                 patch(
                     "google.adk.tools.mcp_tool.mcp_toolset.McpToolset",
                     return_value=toolset,
-                ),
+                ) as toolset_cls,
                 patch(
                     "data_agent.mcp_hub.build_httpx_client_factory",
                     return_value=private_ca_factory,
@@ -695,6 +724,16 @@ class TestSecureMcpHttpTransport(unittest.TestCase):
         self.assertEqual(static_headers, {"X-Service": "arcpy"})
         self.assertNotIn("Authorization", config.headers)
         self.assertEqual(hub._servers["arcpy"].runtime_secrets, ("runtime-token",))
+        self.assertEqual(hub._servers["arcpy"].error_code, "")
+        from data_agent.mcp_transport import (
+            RedactingTextIO,
+            current_runtime_secrets,
+        )
+        self.assertIsInstance(toolset_cls.call_args.kwargs["errlog"], RedactingTextIO)
+        self.assertEqual(current_runtime_secrets(), ("runtime-token",))
+
+        _run(hub.disconnect_server("arcpy"))
+        self.assertEqual(current_runtime_secrets(), ())
 
     def test_disconnect_redacts_close_error_and_clears_runtime_secrets(self):
         from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
@@ -708,6 +747,7 @@ class TestSecureMcpHttpTransport(unittest.TestCase):
             config=McpServerConfig(name="secure"),
             status="connected",
             toolset=toolset,
+            error_code="STALE_ERROR",
             runtime_secrets=(token,),
         )
         hub = McpHubManager()
@@ -720,6 +760,7 @@ class TestSecureMcpHttpTransport(unittest.TestCase):
         self.assertNotIn(token, repr(warning.call_args))
         self.assertIn("close failed", repr(warning.call_args))
         self.assertEqual(status.runtime_secrets, ())
+        self.assertEqual(status.error_code, "")
 
     def test_connect_server_keeps_default_http_client_for_generic_server(self):
         from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
@@ -766,7 +807,13 @@ class TestSecureMcpHttpTransport(unittest.TestCase):
             ca_bundle_env_var="ARCPY_CA_FILE",
         )
         toolset = MagicMock()
-        toolset.get_tools = AsyncMock(return_value=[MagicMock()])
+
+        async def get_tools_with_ephemeral_secret():
+            from data_agent.mcp_transport import current_runtime_secrets
+            self.assertEqual(current_runtime_secrets(), ("test-token",))
+            return [MagicMock()]
+
+        toolset.get_tools = AsyncMock(side_effect=get_tools_with_ephemeral_secret)
         toolset.close = AsyncMock()
         private_ca_factory = MagicMock(name="private_ca_factory")
 
@@ -800,6 +847,8 @@ class TestSecureMcpHttpTransport(unittest.TestCase):
         self.assertIs(kwargs["httpx_client_factory"], private_ca_factory)
         self.assertEqual(config.headers, {"X-Test": "true"})
         toolset.close.assert_awaited_once()
+        from data_agent.mcp_transport import current_runtime_secrets
+        self.assertEqual(current_runtime_secrets(), ())
 
     def test_connect_server_redacts_runtime_secret_from_status_and_log(self):
         from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
@@ -819,6 +868,9 @@ class TestSecureMcpHttpTransport(unittest.TestCase):
         hub._servers = {"arcpy": McpServerStatus(config=config)}
         toolset = MagicMock()
         toolset.get_tools = AsyncMock(side_effect=failure)
+        toolset.close = AsyncMock(side_effect=RuntimeError(
+            f"probe close failed with exact credential {token}"
+        ))
 
         with (
             patch.dict(os.environ, {"ARCPY_TOKEN": token}, clear=False),
@@ -837,7 +889,56 @@ class TestSecureMcpHttpTransport(unittest.TestCase):
         self.assertIn("failed", error_message)
         self.assertNotIn(token, repr(warning.call_args))
         self.assertNotIn("signed-value", repr(warning.call_args))
+        toolset.close.assert_awaited_once()
+        self.assertIsNone(hub._servers["arcpy"].toolset)
         self.assertEqual(hub._servers["arcpy"].runtime_secrets, ())
+        self.assertEqual(hub._servers["arcpy"].error_code, "")
+        from data_agent.mcp_transport import current_runtime_secrets
+        self.assertEqual(current_runtime_secrets(), ())
+
+    def test_connect_server_returns_machine_actionable_configuration_error(self):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
+
+        config = McpServerConfig(
+            name="missing-token",
+            transport="streamable_http",
+            url="https://host/mcp",
+            bearer_token_env_var="DEFINITELY_MISSING_MCP_TOKEN",
+        )
+        hub = McpHubManager()
+        hub._servers = {"missing-token": McpServerStatus(config=config)}
+
+        with patch.dict(
+            os.environ, {"DEFINITELY_MISSING_MCP_TOKEN": ""}, clear=False
+        ):
+            result = _run(hub.connect_server("missing-token"))
+
+        self.assertFalse(result)
+        status = hub._servers["missing-token"]
+        self.assertEqual(status.status, "error")
+        self.assertEqual(status.error_code, "ARCPY_MCP_TOKEN_MISSING")
+        self.assertEqual(status.error_message, "MCP bearer token is not available")
+        self.assertIsNone(status.toolset)
+        self.assertEqual(status.runtime_secrets, ())
+
+    def test_test_connection_returns_machine_actionable_configuration_error(self):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig
+
+        config = McpServerConfig(
+            name="__test__",
+            transport="streamable_http",
+            url="https://host/mcp",
+            bearer_token_env_var="DEFINITELY_MISSING_MCP_TOKEN",
+        )
+
+        with patch.dict(
+            os.environ, {"DEFINITELY_MISSING_MCP_TOKEN": ""}, clear=False
+        ):
+            result = _run(McpHubManager().test_connection(config))
+
+        self.assertEqual(result["status"], "error")
+        self.assertEqual(result["error_code"], "ARCPY_MCP_TOKEN_MISSING")
+        self.assertEqual(result["message"], "MCP bearer token is not available")
 
     def test_test_connection_redacts_runtime_secret_from_returned_error(self):
         from data_agent.mcp_hub import McpHubManager, McpServerConfig
@@ -846,6 +947,9 @@ class TestSecureMcpHttpTransport(unittest.TestCase):
         toolset = MagicMock()
         toolset.get_tools = AsyncMock(side_effect=RuntimeError(
             f"Bearer {token} rejected at https://host/mcp?signature=signed-value"
+        ))
+        toolset.close = AsyncMock(side_effect=RuntimeError(
+            f"test cleanup failed with exact credential {token}"
         ))
         config = McpServerConfig(
             name="__test__",
@@ -860,6 +964,7 @@ class TestSecureMcpHttpTransport(unittest.TestCase):
                 "google.adk.tools.mcp_tool.mcp_toolset.McpToolset",
                 return_value=toolset,
             ),
+            patch("data_agent.mcp_hub.logger.warning") as warning,
         ):
             result = _run(McpHubManager().test_connection(config))
 
@@ -867,6 +972,11 @@ class TestSecureMcpHttpTransport(unittest.TestCase):
         self.assertNotIn(token, result["message"])
         self.assertNotIn("signed-value", result["message"])
         self.assertIn("rejected", result["message"])
+        self.assertNotIn("cleanup failed", result["message"])
+        self.assertNotIn(token, repr(warning.call_args))
+        toolset.close.assert_awaited_once()
+        from data_agent.mcp_transport import current_runtime_secrets
+        self.assertEqual(current_runtime_secrets(), ())
 
 
 # ---------------------------------------------------------------------------

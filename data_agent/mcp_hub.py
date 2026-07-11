@@ -20,10 +20,15 @@ from sqlalchemy import text
 
 from .i18n import t
 from .mcp_transport import (
+    McpConfigurationError,
+    RedactingTextIO,
     build_httpx_client_factory,
+    install_runtime_secret_log_filter,
     redact_mcp_text,
+    register_runtime_secrets,
     resolve_ca_bundle,
     resolve_secret_reference,
+    unregister_runtime_secrets,
 )
 
 try:
@@ -132,6 +137,7 @@ class McpServerStatus:
     tool_count: int = 0
     tool_names: list[str] = field(default_factory=list)
     error_message: str = ""
+    error_code: str = ""
     connected_at: Optional[float] = None
     runtime_secrets: tuple[str, ...] = field(default_factory=tuple, repr=False)
 
@@ -487,7 +493,11 @@ class McpHubManager:
             return False
         config = status.config
         redaction_secrets: list[str] = []
-        status.runtime_secrets = ()
+        if status.toolset is not None or status.runtime_secrets:
+            await self._cleanup_runtime(name, status)
+        status.error_code = ""
+        toolset = None
+        secrets_registered = False
 
         try:
             from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
@@ -515,11 +525,14 @@ class McpHubManager:
                     timeout=config.timeout,
                 )
             elif config.transport == "streamable_http":
-                conn_params = StreamableHTTPConnectionParams(
-                    **_streamable_http_kwargs(
-                        config, config.timeout, redaction_secrets
-                    )
+                connection_kwargs = _streamable_http_kwargs(
+                    config, config.timeout, redaction_secrets
                 )
+                if redaction_secrets:
+                    install_runtime_secret_log_filter()
+                    register_runtime_secrets(redaction_secrets)
+                    secrets_registered = True
+                conn_params = StreamableHTTPConnectionParams(**connection_kwargs)
             else:
                 status.status = "error"
                 status.error_message = f"Unknown transport: {config.transport}"
@@ -530,7 +543,7 @@ class McpHubManager:
             toolset = McpToolset(
                 connection_params=conn_params,
                 tool_name_prefix=prefix,
-                errlog=sys.stderr,
+                errlog=RedactingTextIO(sys.stderr),
             )
 
             # Probe tools to verify connection
@@ -542,6 +555,7 @@ class McpHubManager:
             status.tool_names = [tool.name for tool in tools]
             status.connected_at = time.time()
             status.error_message = ""
+            status.error_code = ""
             status.runtime_secrets = tuple(redaction_secrets)
 
             logger.info(
@@ -553,22 +567,37 @@ class McpHubManager:
             error_message = redact_mcp_text(str(e), redaction_secrets)
             status.status = "error"
             status.error_message = error_message
+            status.error_code = (
+                e.code if isinstance(e, McpConfigurationError) else ""
+            )
             status.toolset = None
             status.tool_count = 0
             status.tool_names = []
             status.runtime_secrets = ()
+            try:
+                if toolset is not None:
+                    await self._close_toolset(name, toolset, redaction_secrets)
+            finally:
+                if secrets_registered:
+                    unregister_runtime_secrets(redaction_secrets)
             logger.warning(t("mcp.server_failed", name=name, error=error_message))
             return False
+
+    async def _close_toolset(self, name: str, toolset, secrets=()):
+        """Close a toolset, logging only sanitized cleanup failures."""
+        try:
+            await toolset.close()
+        except Exception as e:
+            error_message = redact_mcp_text(str(e), secrets)
+            logger.warning("Error closing MCP server '%s': %s", name, error_message)
 
     async def _cleanup_runtime(self, name: str, status: McpServerStatus):
         """Close a toolset and clear runtime-only state without changing status."""
         try:
             if status.toolset is not None:
-                await status.toolset.close()
-        except Exception as e:
-            error_message = redact_mcp_text(str(e), status.runtime_secrets)
-            logger.warning("Error closing MCP server '%s': %s", name, error_message)
+                await self._close_toolset(name, status.toolset, status.runtime_secrets)
         finally:
+            unregister_runtime_secrets(status.runtime_secrets)
             status.toolset = None
             status.tool_count = 0
             status.tool_names = []
@@ -584,6 +613,7 @@ class McpHubManager:
         await self._cleanup_runtime(name, status)
         status.status = "disconnected"
         status.error_message = ""
+        status.error_code = ""
         logger.info(t("mcp.server_disconnected", name=name))
         return True
 
@@ -661,6 +691,8 @@ class McpHubManager:
     async def test_connection(self, config: McpServerConfig) -> dict:
         """Test connectivity to an MCP server without persisting. Returns result dict."""
         redaction_secrets: list[str] = []
+        toolset = None
+        secrets_registered = False
         try:
             from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
             from google.adk.tools.mcp_tool.mcp_session_manager import (
@@ -679,20 +711,45 @@ class McpHubManager:
                 conn_params = SseConnectionParams(
                     url=config.url, headers=config.headers or None, timeout=timeout)
             elif config.transport == "streamable_http":
-                conn_params = StreamableHTTPConnectionParams(**_streamable_http_kwargs(
-                    config, timeout, redaction_secrets))
+                connection_kwargs = _streamable_http_kwargs(
+                    config, timeout, redaction_secrets
+                )
+                if redaction_secrets:
+                    install_runtime_secret_log_filter()
+                    register_runtime_secrets(redaction_secrets)
+                    secrets_registered = True
+                conn_params = StreamableHTTPConnectionParams(**connection_kwargs)
             else:
-                return {"status": "error", "message": f"Unknown transport: {config.transport}"}
+                return {
+                    "status": "error",
+                    "message": f"Unknown transport: {config.transport}",
+                    "error_code": "",
+                }
 
-            toolset = McpToolset(connection_params=conn_params, errlog=sys.stderr)
+            toolset = McpToolset(
+                connection_params=conn_params,
+                errlog=RedactingTextIO(sys.stderr),
+            )
             tools = await toolset.get_tools()
             tool_count = len(tools)
-            await toolset.close()
             return {"status": "ok", "tool_count": tool_count,
                     "message": f"连接成功，发现 {tool_count} 个工具"}
         except Exception as e:
             message = redact_mcp_text(str(e), redaction_secrets)
-            return {"status": "error", "message": message[:200]}
+            return {
+                "status": "error",
+                "message": message[:200],
+                "error_code": (
+                    e.code if isinstance(e, McpConfigurationError) else ""
+                ),
+            }
+        finally:
+            try:
+                if toolset is not None:
+                    await self._close_toolset(config.name, toolset, redaction_secrets)
+            finally:
+                if secrets_registered:
+                    unregister_runtime_secrets(redaction_secrets)
 
     # ----- CRUD (hot-reload capable) -----
 
@@ -810,6 +867,7 @@ class McpHubManager:
                 "tool_count": s.tool_count,
                 "tool_names": s.tool_names,
                 "error_message": s.error_message,
+                "error_code": s.error_code,
                 "connected_at": s.connected_at,
                 "source": s.config.source,
                 "owner_username": s.config.owner_username,
@@ -839,6 +897,7 @@ class McpHubManager:
                 logger.warning("Failed to get tools from '%s': %s", name, error_message)
                 s.status = "error"
                 s.error_message = error_message
+                s.error_code = ""
                 await self._cleanup_runtime(name, s)
         return tools
 
@@ -864,6 +923,7 @@ class McpHubManager:
             logger.warning("Failed to get tools from '%s': %s", name, error_message)
             status.status = "error"
             status.error_message = error_message
+            status.error_code = ""
             await self._cleanup_runtime(name, status)
             return []
 
