@@ -21,6 +21,7 @@ _MCP_CONFIG_FIELDS = (
     "command", "args", "env", "cwd", "url", "headers", "timeout",
     "is_shared",
 )
+_MCP_ADMIN_UPDATE_FIELDS = set(_MCP_CONFIG_FIELDS)
 
 
 async def _read_mcp_body(request: Request):
@@ -252,12 +253,17 @@ async def mcp_server_update(request: Request):
     body, body_err = await _read_mcp_body(request)
     if body_err:
         return body_err
+
+    body_fields = set(body)
+    if role != "admin":
+        if not body_fields.issubset(_MCP_METADATA_UPDATE_FIELDS):
+            return JSONResponse({"error": "Permission denied"}, status_code=403)
+    elif not body_fields.issubset(_MCP_ADMIN_UPDATE_FIELDS):
+        return JSONResponse({"error": "Unknown update field"}, status_code=400)
+
     from ..mcp_hub import get_mcp_hub
     hub = get_mcp_hub()
     if not hub._can_manage_server(server_name, username, role):
-        return JSONResponse({"error": "Permission denied"}, status_code=403)
-
-    if role != "admin" and not set(body).issubset(_MCP_METADATA_UPDATE_FIELDS):
         return JSONResponse({"error": "Permission denied"}, status_code=403)
 
     existing = hub._servers.get(server_name)

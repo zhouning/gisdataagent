@@ -399,10 +399,6 @@ async def test_update_rejects_invalid_typed_fields_without_updating_hub(body):
 )
 async def test_non_admin_owner_cannot_update_privileged_or_unknown_fields(body):
     user = _make_user(username="route-owner", role="analyst")
-    hub = MagicMock()
-    hub._can_manage_server.return_value = True
-    hub._servers = {"owned-server": _server_status(_existing_config())}
-    hub.update_server = AsyncMock(return_value={"status": "ok"})
     request = _make_request(body, path_params={"name": "owned-server"})
 
     with (
@@ -411,12 +407,33 @@ async def test_non_admin_owner_cannot_update_privileged_or_unknown_fields(body):
             "data_agent.api.mcp_routes._set_user_context",
             return_value=("route-owner", "analyst"),
         ),
-        patch("data_agent.mcp_hub.get_mcp_hub", return_value=hub),
+        patch("data_agent.mcp_hub.get_mcp_hub") as get_hub,
     ):
         response = await mcp_server_update(request)
 
     assert response.status_code == 403
-    hub.update_server.assert_not_awaited()
+    get_hub.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_admin_unknown_update_field_is_bad_request_without_hub_access():
+    user = _make_user(username="admin-user", role="admin")
+    request = _make_request(
+        {"unknown_field": "value"}, path_params={"name": "owned-server"}
+    )
+
+    with (
+        patch("data_agent.api.mcp_routes._get_user_from_request", return_value=user),
+        patch(
+            "data_agent.api.mcp_routes._set_user_context",
+            return_value=("admin-user", "admin"),
+        ),
+        patch("data_agent.mcp_hub.get_mcp_hub") as get_hub,
+    ):
+        response = await mcp_server_update(request)
+
+    assert response.status_code == 400
+    get_hub.assert_not_called()
 
 
 @pytest.mark.asyncio
