@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -49,12 +50,44 @@ S6_SCHEMAS = {
     "compatibility": COMPATIBILITY_SCHEMA,
 }
 S4_PROJECT_FIELDS = {
+    "actor_id",
     "analysis_area_id",
     "planning_parcel_id",
     "project_description",
     "project_name",
     "uses",
 }
+S4_ENGINE_INPUT_BLOCKERS = {
+    "analysis_area_id_missing",
+    "confirmed_class_authoritative_mismatch",
+    "confirmed_class_confirmation_mismatch",
+    "confirmed_class_requires_valid_human_confirmation",
+    "confirmed_standard_class_id_mismatch",
+    "invalid_point_coordinates",
+    "original_input_digest_mismatch",
+    "original_input_digest_missing",
+    "planning_parcel_id_missing",
+    "point_outside_selected_area",
+    "unsupported_input_mode",
+    "actor_id_missing",
+    "confirmed_at_invalid",
+    "confirmed_at_missing",
+    "confirmed_at_timezone_missing",
+    "dictionary_version_mismatch",
+    "dictionary_version_missing",
+    "selected_candidate_class_mismatch",
+    "selected_candidate_evidence_mismatch",
+    "selected_candidate_evidence_missing",
+    "selected_standard_class_id_missing",
+}
+S4_ENGINE_INPUT_BLOCKER_PREFIXES = (
+    "human_selected_",
+    "unknown_analysis_area:",
+    "unknown_planning_parcel:",
+    "planning_parcel_distance_crs_mismatch:",
+    "planning_parcel_geometry_missing:",
+    "planning_parcel_outside_",
+)
 
 
 class S1SnapshotUnavailable(RuntimeError):
@@ -497,6 +530,39 @@ def _validate_s4_parcel(project: dict, resources: dict) -> list[str]:
     return []
 
 
+def _bind_s4_confirmation_actors(payload: dict, actor_id: str) -> dict:
+    rebound = deepcopy(payload)
+    uses = rebound.get("uses")
+    if not isinstance(uses, list):
+        return rebound
+    for use in uses:
+        if not isinstance(use, dict):
+            continue
+        confirmation = use.get("human_confirmation")
+        if isinstance(confirmation, dict):
+            confirmation["actor_id"] = actor_id
+    return rebound
+
+
+def _s4_engine_input_blockers(result: dict) -> list[str]:
+    candidates = []
+    for value in result.get("validation_blockers") or []:
+        candidates.append(str(value))
+    for assessment in result.get("use_assessments") or []:
+        if not isinstance(assessment, dict):
+            continue
+        for value in assessment.get("blockers") or []:
+            candidates.append(str(value))
+    return list(
+        dict.fromkeys(
+            blocker
+            for blocker in candidates
+            if blocker in S4_ENGINE_INPUT_BLOCKERS
+            or blocker.startswith(S4_ENGINE_INPUT_BLOCKER_PREFIXES)
+        )
+    )
+
+
 def _load_default_analysis(top_n: int = 8) -> dict:
     scene = json.loads(_scene_path().read_text(encoding="utf-8"))
     return build_traditional_livability_analysis(
@@ -621,8 +687,8 @@ async def uwm_traditional_livability_s4_resources(request: Request):
         s1_snapshot, s6_resources, dictionary, compatibility = await asyncio.gather(
             asyncio.to_thread(_load_required_s4_s1_snapshot),
             asyncio.to_thread(_load_s6_snapshot, "resources"),
-            asyncio.to_thread(_load_s6_snapshot, "dictionary"),
-            asyncio.to_thread(_load_s6_snapshot, "compatibility"),
+            asyncio.to_thread(_load_optional_s6_snapshot, "dictionary"),
+            asyncio.to_thread(_load_optional_s6_snapshot, "compatibility"),
         )
         return JSONResponse(
             _s4_resources_payload(
@@ -663,7 +729,12 @@ async def uwm_traditional_livability_s4_analyze(request: Request):
             {"error": "Invalid request payload", "validation_errors": ["project_request_not_object"]},
             status_code=400,
         )
-    trusted_payload = {key: payload.get(key) for key in S4_PROJECT_FIELDS if key in payload}
+    rebound_payload = _bind_s4_confirmation_actors(payload, username)
+    trusted_payload = {
+        key: rebound_payload.get(key)
+        for key in S4_PROJECT_FIELDS
+        if key in rebound_payload
+    }
     project = await asyncio.to_thread(
         validate_s4_project_request,
         trusted_payload,
@@ -675,8 +746,8 @@ async def uwm_traditional_livability_s4_analyze(request: Request):
         s1_snapshot, s6_resources, dictionary, compatibility = await asyncio.gather(
             asyncio.to_thread(_load_required_s4_s1_snapshot),
             asyncio.to_thread(_load_s6_snapshot, "resources"),
-            asyncio.to_thread(_load_s6_snapshot, "dictionary"),
-            asyncio.to_thread(_load_s6_snapshot, "compatibility"),
+            asyncio.to_thread(_load_optional_s6_snapshot, "dictionary"),
+            asyncio.to_thread(_load_optional_s6_snapshot, "compatibility"),
         )
         parcel_errors = _validate_s4_parcel(project, s6_resources)
         if parcel_errors:
@@ -692,6 +763,12 @@ async def uwm_traditional_livability_s4_analyze(request: Request):
             facility_dictionary=dictionary,
             compatibility_matrix=compatibility,
         )
+        input_blockers = _s4_engine_input_blockers(result)
+        if input_blockers:
+            return JSONResponse(
+                {**result, "validation_blockers": input_blockers},
+                status_code=400,
+            )
         return JSONResponse(result)
     except (S1SnapshotUnavailable, S6SnapshotUnavailable) as exc:
         return JSONResponse(exc.payload, status_code=503)

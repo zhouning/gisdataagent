@@ -12,6 +12,7 @@ from data_agent.test_traditional_livability_s6 import point_request, resource_fi
 from data_agent.test_traditional_livability_s6_semantics import (
     authoritative_dictionary_fixture,
 )
+from data_agent.uwm import traditional_livability_s4 as s4_engine
 from data_agent.uwm.traditional_livability_facility_dictionary import (
     compute_canonical_content_digest,
     unavailable_compatibility_matrix,
@@ -149,6 +150,36 @@ def _s4_project(**overrides):
     }
     payload.update(overrides)
     return payload
+
+
+def _valid_s4_confirmation(dictionary, *, actor_id="spoofed-reviewer"):
+    original_input = {
+        "facility_name": "农贸市场",
+        "raw_facility_type": "室内市场",
+        "use_description": "固定室内市场",
+    }
+    resolution = resolve_s6_facility_semantics(
+        **original_input,
+        dictionary=dictionary,
+    )
+    candidate = resolution["candidates"][0]
+    return {
+        "actor_id": actor_id,
+        "confirmed_at": "2026-07-11T02:00:00Z",
+        "selected_standard_class_id": candidate["standard_class_id"],
+        "original_input_digest": resolution["original_input_digest"],
+        "dictionary_version": dictionary["source_metadata"]["dictionary_version"],
+        "selected_candidate": candidate,
+    }
+
+
+def _s4_compatibility():
+    payload = matrix_fixture()
+    payload["effective_date"] = "2026-07-09"
+    payload["content_digest"] = compute_canonical_content_digest(payload)
+    compatibility = validate_compatibility_matrix(payload)
+    assert compatibility["ready"] is True
+    return compatibility
 
 
 def test_s1_snapshot_loader_validates_schema(tmp_path, monkeypatch):
@@ -616,7 +647,7 @@ async def test_s4_resources_exposes_real_parcels_minimal_classes_and_readiness(
     snapshot_dir = _write_s6_snapshots(
         tmp_path / "snapshots",
         dictionary=authoritative_dictionary_fixture(),
-        compatibility=validate_compatibility_matrix(matrix_fixture()),
+        compatibility=_s4_compatibility(),
     )
     s1_path = tmp_path / "s1.json"
     s1_path.write_text(json.dumps(_s1_snapshot()), encoding="utf-8")
@@ -695,25 +726,87 @@ async def test_s4_resources_returns_503_when_s1_snapshot_digest_is_tampered(
     assert "s1_snapshot_digest_mismatch" in json.loads(response.body)["blockers"]
 
 
+@pytest.mark.parametrize("authority", ["dictionary", "compatibility"])
+@pytest.mark.asyncio
+async def test_s4_resources_keeps_missing_or_malformed_optional_authority_http_200(
+    tmp_path, monkeypatch, authority
+):
+    snapshot_dir = _write_s6_snapshots(tmp_path / "snapshots")
+    authority_path = snapshot_dir / routes.S6_RESOURCE_FILES[authority]
+    if authority == "dictionary":
+        authority_path.unlink()
+    else:
+        authority_path.write_text("{malformed", encoding="utf-8")
+    s1_path = tmp_path / "s1.json"
+    s1_path.write_text(json.dumps(_s1_snapshot()), encoding="utf-8")
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S1_PATH", str(s1_path))
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S6_PATH", str(snapshot_dir))
+    _authenticated(monkeypatch)
+
+    response = await routes.uwm_traditional_livability_s4_resources(
+        _request("/api/uwm/traditional-livability/s4/resources")
+    )
+    payload = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert payload["readiness"][authority]["ready"] is False
+    assert any(
+        blocker.startswith(f"s6_{authority}_snapshot_")
+        for blocker in payload["readiness"][authority]["blockers"]
+    )
+
+
 @pytest.mark.asyncio
 async def test_s4_analyze_binds_actor_validates_project_and_ignores_client_snapshots(
     tmp_path, monkeypatch
 ):
-    snapshot_dir = _write_s6_snapshots(tmp_path / "snapshots")
+    dictionary = authoritative_dictionary_fixture()
+    snapshot_dir = _write_s6_snapshots(
+        tmp_path / "snapshots",
+        dictionary=dictionary,
+        compatibility=_s4_compatibility(),
+    )
     s1_path = tmp_path / "s1.json"
     s1_path.write_text(json.dumps(_s1_snapshot()), encoding="utf-8")
     monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S1_PATH", str(s1_path))
     monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S6_PATH", str(snapshot_dir))
     _authenticated(monkeypatch, "trusted-planner")
-    captured = {}
+    captured = {"s6_requests": [], "s6_results": []}
+    real_validate = routes.validate_s4_project_request
+    real_s6_analyze = s4_engine.analyze_s6_facility_proposal
 
-    def fake_assess(**kwargs):
-        captured.update(kwargs)
-        return {"schema": "uwm.traditional_livability.s4_project_assessment.v1", "status": "insufficient_evidence", "project_blockers": ["evidence_limited"]}
+    def capture_validate(payload, *, actor_id):
+        result = real_validate(payload, actor_id=actor_id)
+        captured["project"] = result
+        return result
 
-    monkeypatch.setattr(routes, "assess_s4_project", fake_assess)
+    def capture_s6(**kwargs):
+        captured["s6_requests"].append(kwargs["request"])
+        result = real_s6_analyze(**kwargs)
+        captured["s6_results"].append(result)
+        return result
+
+    monkeypatch.setattr(routes, "validate_s4_project_request", capture_validate)
+    monkeypatch.setattr(s4_engine, "analyze_s6_facility_proposal", capture_s6)
+    spoofed_confirmation = _valid_s4_confirmation(dictionary)
+    omitted_confirmation = _valid_s4_confirmation(dictionary)
+    omitted_confirmation.pop("actor_id")
+    base_use = _s4_project()["uses"][0]
     request_payload = {
-        **_s4_project(),
+        **_s4_project(
+            uses=[
+                {
+                    **base_use,
+                    "use_id": "use-spoofed-actor",
+                    "human_confirmation": spoofed_confirmation,
+                },
+                {
+                    **base_use,
+                    "use_id": "use-omitted-actor",
+                    "human_confirmation": omitted_confirmation,
+                },
+            ]
+        ),
         "s1_snapshot": {"tampered": True},
         "s6_resources": {"tampered": True},
     }
@@ -724,10 +817,88 @@ async def test_s4_analyze_binds_actor_validates_project_and_ignores_client_snaps
 
     assert response.status_code == 200
     assert captured["project"]["actor_id"] == "trusted-planner"
-    assert captured["project"]["valid"] is True
-    assert captured["s1_snapshot"] == _s1_snapshot()
-    assert captured["s6_resources"]["schema"] == routes.S6_RESOURCE_SCHEMA
+    assert captured["project"]["raw_request"]["actor_id"] == "untrusted-client"
+    normalized_uses = captured["project"]["normalized_request"]["uses"]
+    assert {
+        use["human_confirmation"]["actor_id"] for use in normalized_uses
+    } == {"trusted-planner"}
+    assert {
+        request["human_confirmation"]["actor_id"]
+        for request in captured["s6_requests"]
+    } == {"trusted-planner"}
+    assert {
+        result["human_confirmation_validation"]["actor_id"]
+        for result in captured["s6_results"]
+    } == {"trusted-planner"}
+    assert all(
+        result["human_confirmation_validation"]["valid"] is True
+        for result in captured["s6_results"]
+    )
+    assert "spoofed-reviewer" not in json.dumps(captured)
     assert "tampered" not in json.dumps(captured)
+
+
+@pytest.mark.parametrize("authority", ["dictionary", "compatibility"])
+@pytest.mark.asyncio
+async def test_s4_analyze_keeps_optional_authority_failure_evidence_limited_http_200(
+    tmp_path, monkeypatch, authority
+):
+    snapshot_dir = _write_s6_snapshots(tmp_path / "snapshots")
+    authority_path = snapshot_dir / routes.S6_RESOURCE_FILES[authority]
+    authority_path.unlink()
+    s1_path = tmp_path / "s1.json"
+    s1_path.write_text(json.dumps(_s1_snapshot()), encoding="utf-8")
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S1_PATH", str(s1_path))
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S6_PATH", str(snapshot_dir))
+    _authenticated(monkeypatch)
+
+    response = await routes.uwm_traditional_livability_s4_analyze(
+        _request(
+            "/api/uwm/traditional-livability/s4/analyze",
+            method="POST",
+            payload=_s4_project(uses=[{**_s4_project()["uses"][0], "confirmed_standard_class_id": None}]),
+        )
+    )
+    payload = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert payload["status"] == "insufficient_evidence"
+    assert payload["project_blockers"]
+
+
+@pytest.mark.asyncio
+async def test_s4_analyze_returns_400_for_invalid_confirmation_from_real_engine(
+    tmp_path, monkeypatch
+):
+    dictionary = authoritative_dictionary_fixture()
+    snapshot_dir = _write_s6_snapshots(
+        tmp_path / "snapshots",
+        dictionary=dictionary,
+        compatibility=_s4_compatibility(),
+    )
+    s1_path = tmp_path / "s1.json"
+    s1_path.write_text(json.dumps(_s1_snapshot()), encoding="utf-8")
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S1_PATH", str(s1_path))
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S6_PATH", str(snapshot_dir))
+    _authenticated(monkeypatch, "trusted-planner")
+    confirmation = _valid_s4_confirmation(dictionary)
+    confirmation["original_input_digest"] = "sha256:tampered"
+    project = _s4_project(
+        uses=[
+            {
+                **_s4_project()["uses"][0],
+                "human_confirmation": confirmation,
+            }
+        ]
+    )
+
+    response = await routes.uwm_traditional_livability_s4_analyze(
+        _request("/api/uwm/traditional-livability/s4/analyze", method="POST", payload=project)
+    )
+    payload = json.loads(response.body)
+
+    assert response.status_code == 400
+    assert payload["validation_blockers"] == ["original_input_digest_mismatch"]
 
 
 @pytest.mark.parametrize(
