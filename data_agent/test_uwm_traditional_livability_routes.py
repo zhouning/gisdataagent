@@ -950,12 +950,21 @@ async def test_s4_analyze_keeps_valid_evidence_limited_result_http_200(
     monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S1_PATH", str(s1_path))
     monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S6_PATH", str(snapshot_dir))
     _authenticated(monkeypatch)
+    unconfirmed_use = {
+        key: value
+        for key, value in _s4_project()["uses"][0].items()
+        if key not in {"confirmed_standard_class_id", "human_confirmation"}
+    }
 
     response = await routes.uwm_traditional_livability_s4_analyze(
-        _request("/api/uwm/traditional-livability/s4/analyze", method="POST", payload=_s4_project())
+        _request(
+            "/api/uwm/traditional-livability/s4/analyze",
+            method="POST",
+            payload=_s4_project(uses=[unconfirmed_use]),
+        )
     )
     payload = json.loads(response.body)
 
     assert response.status_code == 200
-    assert payload["status"] == "insufficient_evidence"
+    assert payload["status"] == "human_review_required"
     assert payload["project_blockers"]
