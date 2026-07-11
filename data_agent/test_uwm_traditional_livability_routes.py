@@ -4,10 +4,18 @@ import json
 import pytest
 from starlette.requests import Request
 
+from data_agent.test_traditional_livability_facility_dictionary import (
+    dictionary_fixture,
+)
 from data_agent.test_traditional_livability_s6 import point_request, resource_fixture
 from data_agent.uwm.traditional_livability_facility_dictionary import (
     unavailable_compatibility_matrix,
     unavailable_facility_dictionary,
+    validate_facility_dictionary,
+)
+from data_agent.uwm.traditional_livability_s6_semantics import (
+    resolve_s6_facility_semantics,
+    validate_human_confirmation,
 )
 
 
@@ -191,11 +199,87 @@ async def test_s6_dictionary_unavailable_returns_http_200_blocker(tmp_path, monk
         "version": None,
         "ready": False,
         "blockers": ["authoritative_43_class_facility_dictionary_missing"],
+        "content_digest": None,
+        "classes": [],
     }
     assert payload["compatibility_matrix"]["status"] == "compatibility_matrix_unavailable"
     assert payload["compatibility_matrix"]["version"] is None
     assert payload["compatibility_matrix"]["ready"] is False
     assert payload["compatibility_matrix"]["blockers"]
+
+
+@pytest.mark.asyncio
+async def test_s6_dictionary_envelope_classes_build_valid_human_selected_confirmation(
+    tmp_path, monkeypatch
+):
+    dictionary = validate_facility_dictionary(dictionary_fixture())
+    snapshot_dir = _write_s6_snapshots(
+        tmp_path / "snapshots",
+        dictionary=dictionary,
+    )
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S6_PATH", str(snapshot_dir))
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda request: {"id": "user"})
+    monkeypatch.setattr(routes, "_set_user_context", lambda user: None)
+
+    response = await routes.uwm_traditional_livability_s6_dictionary(
+        _request("/api/uwm/traditional-livability/s6/dictionary")
+    )
+    envelope = json.loads(response.body)
+    exposed_dictionary = envelope["facility_dictionary"]
+    selected_class = exposed_dictionary["classes"][0]
+    assert set(selected_class) == {"class_id", "label"}
+    assert "alias_index" not in exposed_dictionary
+    assert "keyword_index" not in exposed_dictionary
+
+    backend_dictionary = {
+        "ready": exposed_dictionary["ready"],
+        "classes": exposed_dictionary["classes"],
+        "source_metadata": {"dictionary_version": exposed_dictionary["version"]},
+        "content_digest": exposed_dictionary["content_digest"],
+    }
+    original_input = {
+        "facility_name": "新型邻里服务点",
+        "raw_facility_type": "未分类设施",
+        "use_description": "现场材料由审查员核验",
+    }
+    resolution = resolve_s6_facility_semantics(
+        **original_input,
+        dictionary=backend_dictionary,
+    )
+    selected_candidate = {
+        "standard_class_id": selected_class["class_id"],
+        "standard_class_label": selected_class["label"],
+        "authority_level": "human_confirmation",
+        "match_method": "human_selected",
+        "confidence": "human_confirmed",
+        "dictionary_version": exposed_dictionary["version"],
+        "rule_version": None,
+        "human_confirmation_required": False,
+        "human_confirmed": True,
+        "evidence": [
+            {
+                "evidence_type": "reviewer_reason",
+                "reason": "审查员核验了本次申请材料。",
+            }
+        ],
+    }
+    confirmation = {
+        "actor_id": "frontend_reviewer",
+        "confirmed_at": "2026-07-11T02:00:00Z",
+        "selected_standard_class_id": selected_class["class_id"],
+        "original_input_digest": resolution["original_input_digest"],
+        "dictionary_version": exposed_dictionary["version"],
+    }
+
+    validated = validate_human_confirmation(
+        confirmation,
+        dictionary=backend_dictionary,
+        original_input=original_input,
+        selected_candidate=selected_candidate,
+    )
+
+    assert validated["valid"] is True
+    assert validated["selected_candidate"]["match_method"] == "human_selected"
 
 
 @pytest.mark.parametrize("matrix_failure", ["missing", "invalid"])

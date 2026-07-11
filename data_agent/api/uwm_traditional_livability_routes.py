@@ -217,11 +217,22 @@ def _s6_authority_status(
     )
     dictionary_metadata = dictionary.get("source_metadata") or {}
     compatibility_metadata = compatibility.get("source_metadata") or {}
+    dictionary_classes = []
+    if dictionary.get("ready") is True:
+        for row in dictionary.get("classes") or []:
+            if not isinstance(row, dict):
+                continue
+            class_id = row.get("class_id")
+            label = row.get("label")
+            if isinstance(class_id, str) and class_id and isinstance(label, str) and label:
+                dictionary_classes.append({"class_id": class_id, "label": label})
     dictionary_status = {
         "status": dictionary.get("status"),
         "version": dictionary_metadata.get("dictionary_version"),
         "ready": dictionary.get("ready") is True,
         "blockers": dictionary_blockers,
+        "content_digest": dictionary.get("content_digest"),
+        "classes": dictionary_classes,
     }
     compatibility_status = {
         "status": compatibility.get("status"),
