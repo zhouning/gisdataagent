@@ -33,6 +33,17 @@ def _validate_mcp_config(body: dict, transport: str, *, partial: bool = False) -
     if not isinstance(transport, str) or transport not in _MCP_ALLOWED_TRANSPORTS:
         return "transport must be stdio, sse, or streamable_http"
 
+    for field_name in ("description", "category", "command", "url"):
+        if field_name in body and not isinstance(body[field_name], str):
+            return f"{field_name} must be a string"
+
+    if (
+        "cwd" in body
+        and body["cwd"] is not None
+        and not isinstance(body["cwd"], str)
+    ):
+        return "cwd must be a string or null"
+
     for field_name in ("enabled", "is_shared"):
         if field_name in body and not isinstance(body[field_name], bool):
             return f"{field_name} must be a boolean"
@@ -63,8 +74,6 @@ def _validate_mcp_config(body: dict, transport: str, *, partial: bool = False) -
     if transport == "stdio":
         cmd = body.get("command")
         if cmd is not None or not partial:
-            if cmd is not None and not isinstance(cmd, str):
-                return "command must be a string"
             cmd = (cmd or "").strip()
             if not cmd:
                 return "command required for stdio transport"
@@ -76,8 +85,6 @@ def _validate_mcp_config(body: dict, transport: str, *, partial: bool = False) -
     else:
         url = body.get("url")
         if url is not None or not partial:
-            if url is not None and not isinstance(url, str):
-                return "url must be a string"
             url = (url or "").strip()
             if not url:
                 return f"url required for {transport} transport"

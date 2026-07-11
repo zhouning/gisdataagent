@@ -251,6 +251,11 @@ async def test_routes_reject_invalid_timeout_without_calling_hub(
         ("args", ["--serve", 3]),
         ("env", {"PORT": 8080}),
         ("headers", {"Authorization": 42}),
+        ("description", None),
+        ("category", 7),
+        ("command", None),
+        ("url", 42),
+        ("cwd", []),
     ],
 )
 async def test_routes_reject_invalid_typed_fields_without_calling_hub(
@@ -258,6 +263,35 @@ async def test_routes_reject_invalid_typed_fields_without_calling_hub(
 ):
     body = _valid_server_body()
     body[field] = invalid_value
+    user = _make_user()
+    hub = MagicMock()
+    hub.test_connection = AsyncMock(return_value={"status": "error"})
+    hub.add_server = AsyncMock(return_value={"status": "error"})
+
+    with (
+        patch("data_agent.api.helpers._get_user_from_request", return_value=user),
+        patch("data_agent.mcp_hub.get_mcp_hub", return_value=hub) as get_hub,
+    ):
+        response = await handler(_make_request(body))
+
+    assert response.status_code == 400
+    get_hub.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("handler", [mcp_test_connection, mcp_server_create])
+@pytest.mark.parametrize(
+    "body_updates",
+    [
+        {"transport": "streamable_http", "command": None},
+        {"transport": "stdio", "command": "python", "url": None},
+    ],
+)
+async def test_routes_reject_invalid_scalar_fields_for_inactive_transport(
+    handler, body_updates
+):
+    body = _valid_server_body()
+    body.update(body_updates)
     user = _make_user()
     hub = MagicMock()
     hub.test_connection = AsyncMock(return_value={"status": "error"})
@@ -285,6 +319,15 @@ async def test_routes_reject_invalid_typed_fields_without_calling_hub(
         {"args": ["--serve", 3]},
         {"env": {"PORT": 8080}},
         {"headers": {"Authorization": 42}},
+        {"description": None},
+        {"category": 7},
+        {"cwd": []},
+        {
+            "transport": "streamable_http",
+            "url": "https://example.test/mcp",
+            "command": None,
+        },
+        {"transport": "stdio", "command": "python", "url": None},
     ],
 )
 async def test_update_rejects_invalid_typed_fields_without_updating_hub(body):
