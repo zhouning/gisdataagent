@@ -8,6 +8,7 @@ from data_agent.api import uwm_ai_demand_readiness_routes as routes
 from data_agent.uwm.livability_requirement_registry import (
     build_livability_requirement_registry,
 )
+from data_agent.uwm.ai_demand_implementation_ledger import IMPLEMENTATION_STATUSES
 
 
 def _route_methods(route_list, path):
@@ -35,9 +36,17 @@ def test_ai_demand_readiness_payload_is_built_from_canonical_registry():
 
     assert payload["schema"] == routes.UWM_AI_DEMAND_READINESS_API_SCHEMA
     assert payload["source_documents"] == registry["source_documents"]
-    assert payload["livability_scenarios"] == registry["livability_scenarios"]
-    assert payload["customer_ai_demands"] == registry["customer_ai_demands"]
-    assert payload["claim_boundary"] == registry["claim_boundary"]
+    for payload_rows, registry_rows in [
+        (payload["livability_scenarios"], registry["livability_scenarios"]),
+        (payload["customer_ai_demands"], registry["customer_ai_demands"]),
+    ]:
+        canonical = {row["id"]: row for row in registry_rows}
+        assert {row["id"] for row in payload_rows} == set(canonical)
+        for row in payload_rows:
+            assert row["primary_route"] == canonical[row["id"]]["primary_route"]
+            assert row["required_method"] == canonical[row["id"]]["required_method"]
+    assert payload["claim_boundary"]["registration_is_not_implementation"] is True
+    assert payload["claim_boundary"]["product_presence_is_not_full_requirement_completion"] is True
     assert payload["source_provenance_server_side"] is True
     assert all(not source.startswith("/") for source in payload["source_documents"])
 
@@ -74,18 +83,34 @@ def test_ai_demand_readiness_payload_exposes_routes_counts_and_safe_claims():
         "economy_investment",
         "impact_implementation",
     }
-    assert payload["summary"] == {
-        "registered_requirement_count": 30,
-        "existing_route_count": 2,
-        "planned_route_count": 5,
-        "production_complete_count": 0,
-    }
+    assert payload["summary"]["registered_requirement_count"] == 30
+    assert payload["summary"]["existing_route_count"] == 2
+    assert payload["summary"]["planned_route_count"] == 5
+    assert payload["summary"]["production_complete_count"] == 0
+    assert set(payload["summary"]["implementation_status_counts"]) == IMPLEMENTATION_STATUSES
+    assert sum(payload["summary"]["implementation_status_counts"].values()) == 30
+    assert payload["summary"]["verified_or_bounded_count"] > 0
     assert payload["claim_boundary"]["registration_is_not_implementation"] is True
     assert (
         payload["claim_boundary"]["observed_policy_outcome_superiority_claim"]
         is False
     )
     assert "phase_counts" not in payload
+
+
+def test_ai_demand_readiness_exposes_real_implementation_ledger_fields():
+    payload = routes.load_uwm_ai_demand_readiness_payload()
+    rows = payload["livability_scenarios"] + payload["customer_ai_demands"]
+    for row in rows:
+        assert row["implementation_status"] in IMPLEMENTATION_STATUSES
+        assert row["status_basis"]
+        assert isinstance(row["evidence_artifacts"], list)
+        assert isinstance(row["evidence_artifact_checks"], list)
+        assert isinstance(row["next_actions"], list)
+        assert row["max_supported_claim"]
+    demand11 = next(row for row in payload["customer_ai_demands"] if row["id"] == "11")
+    assert demand11["implementation_status"] == "implemented_evidence_bounded"
+    assert "environmental_action_response_closed" in demand11["production_blockers"]
 
 
 def test_ai_demand_readiness_payload_derives_statuses_and_completion(monkeypatch):
