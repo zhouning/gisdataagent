@@ -4204,6 +4204,7 @@ def get_frontend_api_routes():
     from .api.territory_world_model_routes import get_territory_world_model_routes
     from .api.uwm_traditional_livability_routes import get_uwm_traditional_livability_routes
     from .api.uwm_livability_s2_routes import get_uwm_livability_s2_routes
+    from .api.uwm_environmental_kernel_routes import get_uwm_environmental_kernel_routes
     from .api.uwm_livability_decision_routes import get_uwm_livability_decision_routes
     from .api.uwm_ai_demand_readiness_routes import get_uwm_ai_demand_readiness_routes
     from .api.uwm_livability_data_catalog_routes import get_uwm_livability_data_catalog_routes
@@ -4361,6 +4362,8 @@ def get_frontend_api_routes():
         *get_uwm_traditional_livability_routes(),
         # UWM parcel-scale livability S2 land-use scenarios
         *get_uwm_livability_s2_routes(),
+        # UWM environmental dynamics kernel
+        *get_uwm_environmental_kernel_routes(),
         # UWM livability world-model decision package
         *get_uwm_livability_decision_routes(),
         # Canonical customer AI demand ownership readiness
