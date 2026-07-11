@@ -9,6 +9,9 @@ from data_agent.test_traditional_livability_facility_dictionary import (
     matrix_fixture,
 )
 from data_agent.test_traditional_livability_s6 import point_request, resource_fixture
+from data_agent.test_traditional_livability_s6_semantics import (
+    authoritative_dictionary_fixture,
+)
 from data_agent.uwm.traditional_livability_facility_dictionary import (
     compute_canonical_content_digest,
     unavailable_compatibility_matrix,
@@ -104,12 +107,48 @@ def test_traditional_livability_routes_are_registered_in_frontend_api():
         frontend_route_list, "/api/uwm/traditional-livability/s7"
     )
     for path, method in (
+        ("/api/uwm/traditional-livability/s4/resources", "GET"),
+        ("/api/uwm/traditional-livability/s4/analyze", "POST"),
         ("/api/uwm/traditional-livability/s6/resources", "GET"),
         ("/api/uwm/traditional-livability/s6/dictionary", "GET"),
         ("/api/uwm/traditional-livability/s6/analyze", "POST"),
     ):
         assert method in _route_methods(route_list, path)
         assert method in _route_methods(frontend_route_list, path)
+
+
+def _s1_snapshot():
+    payload = {
+        "schema": "uwm.traditional_livability.s1_assessment.v1",
+        "ready": True,
+        "supply_metrics": [],
+        "production_blockers": ["facility_capacity_missing"],
+    }
+    payload["content_digest"] = compute_canonical_content_digest(payload)
+    return payload
+
+
+def _s4_project(**overrides):
+    payload = {
+        "actor_id": "untrusted-client",
+        "analysis_area_id": "fulu_heping",
+        "planning_parcel_id": "parcel-selected",
+        "project_name": "和平村项目",
+        "project_description": "测试项目",
+        "uses": [
+            {
+                "use_id": "use-market",
+                "use_name": "农贸市场",
+                "raw_use_type": "室内市场",
+                "use_description": "固定室内市场",
+                "gfa_m2": 1000.0,
+                "confirmed_standard_class_id": "facility.market",
+                "human_confirmation": None,
+            }
+        ],
+    }
+    payload.update(overrides)
+    return payload
 
 
 def test_s1_snapshot_loader_validates_schema(tmp_path, monkeypatch):
@@ -568,3 +607,184 @@ async def test_s6_analyze_binds_confirmation_actor_to_authenticated_username(
     assert payload["human_confirmation_validation"]["actor_id"] == "trusted-user"
     assert payload["normalized_request"]["human_confirmation"]["actor_id"] == "trusted-user"
     assert "spoofed-user" not in response.body.decode("utf-8")
+
+
+@pytest.mark.asyncio
+async def test_s4_resources_exposes_real_parcels_minimal_classes_and_readiness(
+    tmp_path, monkeypatch
+):
+    snapshot_dir = _write_s6_snapshots(
+        tmp_path / "snapshots",
+        dictionary=authoritative_dictionary_fixture(),
+        compatibility=validate_compatibility_matrix(matrix_fixture()),
+    )
+    s1_path = tmp_path / "s1.json"
+    s1_path.write_text(json.dumps(_s1_snapshot()), encoding="utf-8")
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S1_PATH", str(s1_path))
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S6_PATH", str(snapshot_dir))
+    _authenticated(monkeypatch)
+
+    response = await routes.uwm_traditional_livability_s4_resources(
+        _request("/api/uwm/traditional-livability/s4/resources")
+    )
+    payload = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert payload["schema"] == "uwm.traditional_livability.s4_resources.v1"
+    assert {row["planning_parcel_id"] for row in payload["planning_parcels"]} >= {
+        "parcel-selected",
+        "other-area-parcel",
+    }
+    assert payload["planning_parcels"][0].keys() <= {
+        "planning_parcel_id",
+        "analysis_area_id",
+        "raw_land_use_code",
+        "raw_land_use_name",
+        "resource_domain",
+        "planning_status",
+        "display_geometry_wgs84",
+    }
+    assert payload["facility_classes"][0].keys() == {"class_id", "label"}
+    assert payload["readiness"]["s1"]["ready"] is True
+    assert payload["readiness"]["s1"]["blockers"] == ["facility_capacity_missing"]
+    assert payload["readiness"]["s6_resources"]["complete"] is False
+    assert payload["readiness"]["dictionary"]["complete"] is True
+    assert payload["readiness"]["compatibility"]["ready"] is True
+
+
+@pytest.mark.asyncio
+async def test_s4_resources_returns_503_when_required_snapshot_is_tampered(
+    tmp_path, monkeypatch
+):
+    resources = resource_fixture()
+    resources["content_digest"] = "sha256:tampered"
+    snapshot_dir = _write_s6_snapshots(tmp_path / "snapshots", resources=resources)
+    s1_path = tmp_path / "s1.json"
+    s1_path.write_text(json.dumps(_s1_snapshot()), encoding="utf-8")
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S1_PATH", str(s1_path))
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S6_PATH", str(snapshot_dir))
+    _authenticated(monkeypatch)
+
+    response = await routes.uwm_traditional_livability_s4_resources(
+        _request("/api/uwm/traditional-livability/s4/resources")
+    )
+
+    assert response.status_code == 503
+    assert "s6_resources_snapshot_digest_mismatch" in json.loads(response.body)["blockers"]
+
+
+@pytest.mark.asyncio
+async def test_s4_resources_returns_503_when_s1_snapshot_digest_is_tampered(
+    tmp_path, monkeypatch
+):
+    snapshot_dir = _write_s6_snapshots(tmp_path / "snapshots")
+    s1_snapshot = _s1_snapshot()
+    s1_snapshot["content_digest"] = compute_canonical_content_digest(s1_snapshot)
+    s1_snapshot["supply_metrics"].append({"tampered": True})
+    s1_path = tmp_path / "s1.json"
+    s1_path.write_text(json.dumps(s1_snapshot), encoding="utf-8")
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S1_PATH", str(s1_path))
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S6_PATH", str(snapshot_dir))
+    _authenticated(monkeypatch)
+
+    response = await routes.uwm_traditional_livability_s4_resources(
+        _request("/api/uwm/traditional-livability/s4/resources")
+    )
+
+    assert response.status_code == 503
+    assert "s1_snapshot_digest_mismatch" in json.loads(response.body)["blockers"]
+
+
+@pytest.mark.asyncio
+async def test_s4_analyze_binds_actor_validates_project_and_ignores_client_snapshots(
+    tmp_path, monkeypatch
+):
+    snapshot_dir = _write_s6_snapshots(tmp_path / "snapshots")
+    s1_path = tmp_path / "s1.json"
+    s1_path.write_text(json.dumps(_s1_snapshot()), encoding="utf-8")
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S1_PATH", str(s1_path))
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S6_PATH", str(snapshot_dir))
+    _authenticated(monkeypatch, "trusted-planner")
+    captured = {}
+
+    def fake_assess(**kwargs):
+        captured.update(kwargs)
+        return {"schema": "uwm.traditional_livability.s4_project_assessment.v1", "status": "insufficient_evidence", "project_blockers": ["evidence_limited"]}
+
+    monkeypatch.setattr(routes, "assess_s4_project", fake_assess)
+    request_payload = {
+        **_s4_project(),
+        "s1_snapshot": {"tampered": True},
+        "s6_resources": {"tampered": True},
+    }
+
+    response = await routes.uwm_traditional_livability_s4_analyze(
+        _request("/api/uwm/traditional-livability/s4/analyze", method="POST", payload=request_payload)
+    )
+
+    assert response.status_code == 200
+    assert captured["project"]["actor_id"] == "trusted-planner"
+    assert captured["project"]["valid"] is True
+    assert captured["s1_snapshot"] == _s1_snapshot()
+    assert captured["s6_resources"]["schema"] == routes.S6_RESOURCE_SCHEMA
+    assert "tampered" not in json.dumps(captured)
+
+
+@pytest.mark.parametrize(
+    ("project", "expected_blocker"),
+    [
+        (_s4_project(project_name=""), "project_name_missing"),
+        (
+            _s4_project(
+                uses=[
+                    {
+                        **_s4_project()["uses"][0],
+                        "gfa_m2": 0,
+                    }
+                ]
+            ),
+            "uses[0].gfa_m2_must_be_finite_positive_number",
+        ),
+        (_s4_project(planning_parcel_id="missing"), "unknown_planning_parcel:missing"),
+        (_s4_project(analysis_area_id="fulu_heping", planning_parcel_id="other-area-parcel"), "planning_parcel_outside_analysis_area:other-area-parcel"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_s4_analyze_returns_400_for_input_parcel_and_cross_area_errors(
+    tmp_path, monkeypatch, project, expected_blocker
+):
+    snapshot_dir = _write_s6_snapshots(tmp_path / "snapshots")
+    s1_path = tmp_path / "s1.json"
+    s1_path.write_text(json.dumps(_s1_snapshot()), encoding="utf-8")
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S1_PATH", str(s1_path))
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S6_PATH", str(snapshot_dir))
+    _authenticated(monkeypatch)
+
+    response = await routes.uwm_traditional_livability_s4_analyze(
+        _request("/api/uwm/traditional-livability/s4/analyze", method="POST", payload=project)
+    )
+    payload = json.loads(response.body)
+
+    assert response.status_code == 400
+    assert expected_blocker in payload["validation_errors"]
+
+
+@pytest.mark.asyncio
+async def test_s4_analyze_keeps_valid_evidence_limited_result_http_200(
+    tmp_path, monkeypatch
+):
+    snapshot_dir = _write_s6_snapshots(tmp_path / "snapshots")
+    s1_path = tmp_path / "s1.json"
+    s1_path.write_text(json.dumps(_s1_snapshot()), encoding="utf-8")
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S1_PATH", str(s1_path))
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S6_PATH", str(snapshot_dir))
+    _authenticated(monkeypatch)
+
+    response = await routes.uwm_traditional_livability_s4_analyze(
+        _request("/api/uwm/traditional-livability/s4/analyze", method="POST", payload=_s4_project())
+    )
+    payload = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert payload["status"] == "insufficient_evidence"
+    assert payload["project_blockers"]

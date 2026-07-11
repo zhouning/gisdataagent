@@ -27,6 +27,8 @@ from ..uwm.traditional_livability_facility_dictionary import (
     validate_facility_dictionary,
 )
 from ..uwm.traditional_livability_s6 import analyze_s6_facility_proposal
+from ..uwm.traditional_livability_s4 import assess_s4_project
+from ..uwm.traditional_livability_s4_project import validate_s4_project_request
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -35,6 +37,7 @@ S1_SCHEMA = "uwm.traditional_livability.s1_assessment.v1"
 S7_SCHEMA = "uwm.traditional_livability.s7_siting.v1"
 S6_RESOURCE_SCHEMA = "uwm.traditional_livability.s6_fulu_resources.v1"
 S6_AUTHORITY_STATUS_SCHEMA = "uwm.traditional_livability.s6_authority_status.v1"
+S4_RESOURCE_SCHEMA = "uwm.traditional_livability.s4_resources.v1"
 S6_RESOURCE_FILES = {
     "resources": "uwm_traditional_livability_s6_resources.json",
     "dictionary": "uwm_traditional_livability_s6_dictionary.json",
@@ -44,6 +47,13 @@ S6_SCHEMAS = {
     "resources": S6_RESOURCE_SCHEMA,
     "dictionary": DICTIONARY_SCHEMA,
     "compatibility": COMPATIBILITY_SCHEMA,
+}
+S4_PROJECT_FIELDS = {
+    "analysis_area_id",
+    "planning_parcel_id",
+    "project_description",
+    "project_name",
+    "uses",
 }
 
 
@@ -110,6 +120,43 @@ def _load_s1_snapshot() -> dict:
                 "schema": S1_SCHEMA,
                 "ready": False,
                 "blockers": ["s1_snapshot_schema_invalid"],
+                "claim_boundary": {"assessment_fabricated": False},
+            }
+        )
+    return payload
+
+
+def _load_required_s4_s1_snapshot() -> dict:
+    payload = _load_s1_snapshot()
+    if not isinstance(payload.get("supply_metrics"), list):
+        raise S1SnapshotUnavailable(
+            {
+                "schema": S1_SCHEMA,
+                "ready": False,
+                "blockers": ["s1_snapshot_contract_invalid"],
+                "claim_boundary": {"assessment_fabricated": False},
+            }
+        )
+    provided_digest = payload.get("content_digest")
+    try:
+        digest_valid = (
+            isinstance(provided_digest, str)
+            and provided_digest
+            and compute_canonical_content_digest(payload) == provided_digest
+        )
+    except Exception:
+        digest_valid = False
+    if not digest_valid:
+        blocker = (
+            "s1_snapshot_digest_missing"
+            if not isinstance(provided_digest, str) or not provided_digest
+            else "s1_snapshot_digest_mismatch"
+        )
+        raise S1SnapshotUnavailable(
+            {
+                "schema": S1_SCHEMA,
+                "ready": False,
+                "blockers": [blocker],
                 "claim_boundary": {"assessment_fabricated": False},
             }
         )
@@ -358,6 +405,98 @@ def _s6_authority_status(
     }
 
 
+def _snapshot_blockers(payload: dict) -> list[str]:
+    return list(
+        payload.get("blockers")
+        or payload.get("production_blockers")
+        or []
+    )
+
+
+def _s4_resources_payload(
+    s1_snapshot: dict,
+    s6_resources: dict,
+    dictionary: dict,
+    compatibility: dict,
+) -> dict:
+    parcels = []
+    for row in s6_resources.get("planning_resources") or []:
+        if not isinstance(row, dict):
+            continue
+        parcel_id = row.get("resource_id")
+        area_id = row.get("planning_area_id")
+        if not isinstance(parcel_id, str) or not parcel_id or not isinstance(area_id, str) or not area_id:
+            continue
+        parcels.append(
+            {
+                "planning_parcel_id": parcel_id,
+                "analysis_area_id": area_id,
+                "raw_land_use_code": row.get("raw_land_use_code"),
+                "raw_land_use_name": row.get("raw_land_use_name"),
+                "resource_domain": row.get("resource_domain"),
+                "planning_status": row.get("planning_status"),
+                "display_geometry_wgs84": row.get("display_geometry_wgs84"),
+            }
+        )
+    classes = []
+    if dictionary.get("ready") is True:
+        for row in dictionary.get("classes") or []:
+            if not isinstance(row, dict):
+                continue
+            class_id = row.get("class_id")
+            label = row.get("label")
+            if isinstance(class_id, str) and class_id and isinstance(label, str) and label:
+                classes.append({"class_id": class_id, "label": label})
+    inventory = s6_resources.get("facility_inventory") or {}
+    s1_blockers = _snapshot_blockers(s1_snapshot)
+    resource_blockers = _snapshot_blockers(s6_resources)
+    dictionary_blockers = _snapshot_blockers(dictionary)
+    compatibility_blockers = _snapshot_blockers(compatibility)
+    return {
+        "schema": S4_RESOURCE_SCHEMA,
+        "planning_parcels": parcels,
+        "facility_classes": classes,
+        "readiness": {
+            "s1": {
+                "ready": s1_snapshot.get("ready") is not False,
+                "complete": not s1_blockers,
+                "blockers": s1_blockers,
+            },
+            "s6_resources": {
+                "ready": s6_resources.get("ready") is True,
+                "complete": inventory.get("complete_inventory") is True,
+                "blockers": resource_blockers,
+            },
+            "dictionary": {
+                "ready": dictionary.get("ready") is True,
+                "complete": dictionary.get("authoritative_complete_43_class_dictionary") is True,
+                "blockers": dictionary_blockers,
+            },
+            "compatibility": {
+                "ready": compatibility.get("ready") is True,
+                "complete": compatibility.get("ready") is True,
+                "blockers": compatibility_blockers,
+            },
+        },
+    }
+
+
+def _validate_s4_parcel(project: dict, resources: dict) -> list[str]:
+    normalized = project.get("normalized_request") or {}
+    area_id = normalized.get("analysis_area_id")
+    parcel_id = normalized.get("planning_parcel_id")
+    candidates = [
+        row
+        for row in resources.get("planning_resources") or []
+        if isinstance(row, dict) and row.get("resource_id") == parcel_id
+    ]
+    if not candidates:
+        return [f"unknown_planning_parcel:{parcel_id}"]
+    if not any(row.get("planning_area_id") == area_id for row in candidates):
+        return [f"planning_parcel_outside_analysis_area:{parcel_id}"]
+    return []
+
+
 def _load_default_analysis(top_n: int = 8) -> dict:
     scene = json.loads(_scene_path().read_text(encoding="utf-8"))
     return build_traditional_livability_analysis(
@@ -472,6 +611,101 @@ async def uwm_traditional_livability_s6_resources(request: Request):
         )
 
 
+async def uwm_traditional_livability_s4_resources(request: Request):
+    """GET /api/uwm/traditional-livability/s4/resources"""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        s1_snapshot, s6_resources, dictionary, compatibility = await asyncio.gather(
+            asyncio.to_thread(_load_required_s4_s1_snapshot),
+            asyncio.to_thread(_load_s6_snapshot, "resources"),
+            asyncio.to_thread(_load_s6_snapshot, "dictionary"),
+            asyncio.to_thread(_load_s6_snapshot, "compatibility"),
+        )
+        return JSONResponse(
+            _s4_resources_payload(
+                s1_snapshot,
+                s6_resources,
+                dictionary,
+                compatibility,
+            )
+        )
+    except (S1SnapshotUnavailable, S6SnapshotUnavailable) as exc:
+        return JSONResponse(exc.payload, status_code=503)
+    except Exception:
+        return JSONResponse(
+            {
+                "schema": S4_RESOURCE_SCHEMA,
+                "ready": False,
+                "blockers": ["s4_required_snapshot_unreadable"],
+            },
+            status_code=503,
+        )
+
+
+async def uwm_traditional_livability_s4_analyze(request: Request):
+    """POST /api/uwm/traditional-livability/s4/analyze"""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    username, _ = _set_user_context(user)
+    try:
+        payload = await request.json()
+    except Exception:
+        return JSONResponse(
+            {"error": "Invalid JSON payload", "validation_errors": ["request_json_invalid"]},
+            status_code=400,
+        )
+    if not isinstance(payload, dict):
+        return JSONResponse(
+            {"error": "Invalid request payload", "validation_errors": ["project_request_not_object"]},
+            status_code=400,
+        )
+    trusted_payload = {key: payload.get(key) for key in S4_PROJECT_FIELDS if key in payload}
+    project = await asyncio.to_thread(
+        validate_s4_project_request,
+        trusted_payload,
+        actor_id=username,
+    )
+    if project.get("valid") is not True:
+        return JSONResponse(project, status_code=400)
+    try:
+        s1_snapshot, s6_resources, dictionary, compatibility = await asyncio.gather(
+            asyncio.to_thread(_load_required_s4_s1_snapshot),
+            asyncio.to_thread(_load_s6_snapshot, "resources"),
+            asyncio.to_thread(_load_s6_snapshot, "dictionary"),
+            asyncio.to_thread(_load_s6_snapshot, "compatibility"),
+        )
+        parcel_errors = _validate_s4_parcel(project, s6_resources)
+        if parcel_errors:
+            return JSONResponse(
+                {**project, "valid": False, "validation_errors": parcel_errors},
+                status_code=400,
+            )
+        result = await asyncio.to_thread(
+            assess_s4_project,
+            project=project,
+            s1_snapshot=s1_snapshot,
+            s6_resources=s6_resources,
+            facility_dictionary=dictionary,
+            compatibility_matrix=compatibility,
+        )
+        return JSONResponse(result)
+    except (S1SnapshotUnavailable, S6SnapshotUnavailable) as exc:
+        return JSONResponse(exc.payload, status_code=503)
+    except Exception:
+        return JSONResponse(
+            {
+                "schema": "uwm.traditional_livability.s4_project_assessment.v1",
+                "status": "insufficient_evidence",
+                "project_blockers": ["s4_analysis_failed"],
+            },
+            status_code=503,
+        )
+
+
 async def uwm_traditional_livability_s6_dictionary(request: Request):
     """GET /api/uwm/traditional-livability/s6/dictionary"""
     user = _get_user_from_request(request)
@@ -557,6 +791,16 @@ def get_uwm_traditional_livability_routes() -> list:
             "/api/uwm/traditional-livability/s7",
             uwm_traditional_livability_s7,
             methods=["GET"],
+        ),
+        Route(
+            "/api/uwm/traditional-livability/s4/resources",
+            uwm_traditional_livability_s4_resources,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/uwm/traditional-livability/s4/analyze",
+            uwm_traditional_livability_s4_analyze,
+            methods=["POST"],
         ),
         Route(
             "/api/uwm/traditional-livability/s6/resources",
