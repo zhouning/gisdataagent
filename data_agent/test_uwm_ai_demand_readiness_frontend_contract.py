@@ -38,6 +38,15 @@ def test_ai_demand_readiness_tab_uses_canonical_api_and_required_fields():
         "production_blockers",
         "registration_is_not_implementation",
         "production_complete_count",
+        "implementation_status",
+        "status_basis",
+        "evidence_artifacts",
+        "evidence_artifact_checks",
+        "max_supported_claim",
+        "next_actions",
+        "implementation_status_counts",
+        "verified_or_bounded_count",
+        "product_presence_is_not_full_requirement_completion",
         "observed_policy_outcome_superiority_claim",
         "source_provenance_server_side",
     ):
@@ -94,6 +103,14 @@ def test_ai_demand_readiness_tab_renders_complete_ownership_scope():
     assert "max_claim_level" in source
     assert "产品页面已存在" in source
     assert "产品页面规划中" in source
+    assert "production_verified" in source
+    assert "implemented_evidence_bounded" in source
+    assert "data_query_only" in source
+    assert "contract_only" in source
+    assert "not_implemented" in source
+    assert "真实实施状态" in source
+    assert "状态依据" in source
+    assert "下一步" in source
     assert "CheckCircle2" not in source
 
 

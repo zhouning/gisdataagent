@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from pathlib import Path
 from typing import Any
 
 from starlette.requests import Request
@@ -14,9 +15,13 @@ from data_agent.uwm.livability_requirement_registry import (
     build_livability_requirement_registry,
     validate_livability_requirement_registry,
 )
+from data_agent.uwm.ai_demand_implementation_ledger import (
+    build_ai_demand_implementation_ledger,
+)
 
 
 UWM_AI_DEMAND_READINESS_API_SCHEMA = "uwm.ai_demand_readiness_api.v2"
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def load_uwm_ai_demand_readiness_payload() -> dict[str, Any]:
@@ -29,9 +34,8 @@ def load_uwm_ai_demand_readiness_payload() -> dict[str, Any]:
             "invalid canonical registry: " + "; ".join(validation["errors"])
         )
     registry = deepcopy(registry)
-    requirement_rows = (
-        registry["livability_scenarios"] + registry["customer_ai_demands"]
-    )
+    ledger = build_ai_demand_implementation_ledger(repo_root=ROOT, registry=registry)
+    requirement_rows = ledger["livability_scenarios"] + ledger["customer_ai_demands"]
     route_rows = []
     for route in registry["primary_routes"]:
         availability_values = {
@@ -54,8 +58,8 @@ def load_uwm_ai_demand_readiness_payload() -> dict[str, Any]:
         "source_provenance_server_side": registry[
             "source_provenance_server_side"
         ],
-        "livability_scenarios": registry["livability_scenarios"],
-        "customer_ai_demands": registry["customer_ai_demands"],
+        "livability_scenarios": ledger["livability_scenarios"],
+        "customer_ai_demands": ledger["customer_ai_demands"],
         "primary_routes": route_rows,
         "summary": {
             "registered_requirement_count": len(requirement_rows),
@@ -69,8 +73,13 @@ def load_uwm_ai_demand_readiness_payload() -> dict[str, Any]:
                 row["implementation_level"] == "production_complete"
                 for row in requirement_rows
             ),
+            "implementation_status_counts": ledger["summary"]["implementation_status_counts"],
+            "verified_or_bounded_count": ledger["summary"]["verified_or_bounded_count"],
         },
-        "claim_boundary": registry["claim_boundary"],
+        "claim_boundary": {
+            **registry["claim_boundary"],
+            **ledger["claim_boundary"],
+        },
     }
 
 

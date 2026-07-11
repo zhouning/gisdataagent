@@ -1,0 +1,124 @@
+from __future__ import annotations
+
+from copy import deepcopy
+from pathlib import Path
+from typing import Any, Mapping
+
+from .livability_requirement_registry import build_livability_requirement_registry
+
+
+IMPLEMENTATION_STATUSES = {
+    "production_verified",
+    "implemented_evidence_bounded",
+    "data_query_only",
+    "contract_only",
+    "not_implemented",
+}
+
+SCENARIO_OVERLAYS = {
+    "S1": {
+        "implementation_status": "implemented_evidence_bounded",
+        "status_basis": "FP/FPP kernel and S6-to-S1 product exist; authoritative profile, population and capacity gaps remain scene dependent.",
+        "implemented_outputs": ["traditional_livability_s1_api", "fp_fpp_gap_matrix", "baseline_proposal_snapshot"],
+        "evidence_artifacts": ["docs/reports/traditional_livability_s6_s1_fulu_verification_2026-07-11.md"],
+        "production_blockers": ["authoritative_fp_fpp_profile_missing", "authoritative_population_or_capacity_missing"],
+        "max_supported_claim": "evidence_bounded_facility_gap_assessment",
+        "next_actions": ["bind authoritative facility standards and population/capacity tables"],
+    },
+    "S2": {
+        "implementation_status": "production_verified",
+        "status_basis": "Real Fulu parcel state, constrained actions, t0-t1-t2 propagation and counterfactual rollout are implemented and verified.",
+        "implemented_outputs": ["uwm_livability_s2_kernel", "parcel_action_validation", "counterfactual_rollout", "map_payload"],
+        "evidence_artifacts": ["docs/reports/uwm_livability_s2_fulu_verification_2026-07-11.md"],
+        "production_blockers": [],
+        "max_supported_claim": "bounded_action_conditioned_spatial_scenario",
+        "next_actions": ["add locally calibrated intervention-outcome channels before policy-effect claims"],
+    },
+    "S4": {
+        "implementation_status": "implemented_evidence_bounded",
+        "status_basis": "Project activity alignment and conflict analysis are implemented; authoritative project and demand tables remain required for customer production claims.",
+        "implemented_outputs": ["traditional_livability_s4_project_analysis"],
+        "evidence_artifacts": ["docs/reports/traditional_livability_s4_fulu_verification_2026-07-11.md"],
+        "production_blockers": ["authoritative_project_program_required", "authoritative_demand_matrix_required"],
+        "max_supported_claim": "project_alignment_proxy_diagnostic",
+        "next_actions": ["bind authoritative project GFA schedules and demand rules"],
+    },
+    "S6": {
+        "implementation_status": "production_verified",
+        "status_basis": "Semantic confirmation, 150 m conflict screening and immutable S1 handoff are implemented and verified on Fulu data.",
+        "implemented_outputs": ["s6_semantic_confirmation", "150m_conflict_screening", "immutable_s1_handoff"],
+        "evidence_artifacts": ["docs/reports/traditional_livability_s6_s1_fulu_verification_2026-07-11.md"],
+        "production_blockers": [],
+        "max_supported_claim": "verified_semantic_and_spatial_conflict_workflow",
+        "next_actions": ["expand authoritative mappings for additional out-of-taxonomy facility types"],
+    },
+    "S7": {
+        "implementation_status": "implemented_evidence_bounded",
+        "status_basis": "Demand-gated candidate ranking is implemented; Fulu authoritative school need is unresolved, so outputs are not site recommendations.",
+        "implemented_outputs": ["s1_demand_gate", "conditional_candidate_ranking", "gated_s7_api"],
+        "evidence_artifacts": ["docs/reports/traditional_livability_s7_gated_fulu_verification_2026-07-11.md"],
+        "production_blockers": ["need_unresolved", "authoritative_site_recommendation_closed"],
+        "max_supported_claim": "conditional_candidate_ranking_not_site_recommendation",
+        "next_actions": ["bind authoritative positive S1 count gap and facility capacity assumptions"],
+    },
+}
+
+def _query(output: str, blockers: list[str] | None = None) -> dict[str, Any]:
+    return {"implementation_status": "data_query_only", "status_basis": "Reusable data/query components exist, but the complete requirement output and advanced analysis are not implemented.", "implemented_outputs": [output], "evidence_artifacts": [], "production_blockers": list(blockers or []), "max_supported_claim": "descriptive_observed_or_proxy_query", "next_actions": ["build requirement-specific product and verification report"]}
+
+
+def _bounded(output: str, blockers: list[str], claim: str, artifacts: list[str] | None = None) -> dict[str, Any]:
+    return {"implementation_status": "implemented_evidence_bounded", "status_basis": "A requirement-relevant product exists, but evidence or data blockers prevent full customer requirement completion.", "implemented_outputs": [output], "evidence_artifacts": list(artifacts or []), "production_blockers": blockers, "max_supported_claim": claim, "next_actions": ["close listed evidence and data blockers before promoting status"]}
+
+
+def _contract(output: str, blockers: list[str]) -> dict[str, Any]:
+    return {"implementation_status": "contract_only", "status_basis": "The technical route and safety contract are defined, but no verified requirement product exists.", "implemented_outputs": [output], "evidence_artifacts": [], "production_blockers": blockers, "max_supported_claim": "requirement_and_method_contract_only", "next_actions": ["bind authoritative inputs and implement a verified product"]}
+
+
+def _not_implemented(blocker: str) -> dict[str, Any]:
+    return {"implementation_status": "not_implemented", "status_basis": "No requirement-specific verified product exists.", "implemented_outputs": [], "evidence_artifacts": [], "production_blockers": [blocker], "max_supported_claim": "not_implemented", "next_actions": ["design and implement the requirement-specific product"]}
+
+DEMAND_OVERLAYS = {
+    "1": _query("area_registry_and_spatial_layers"), "2": _query("planning_and_parcel_version_assets"), "3": _query("parcel_status_and_land_use_layers"),
+    "4": _query("roads_buildings_and_visible_infrastructure_only", ["underground_network_capacity_ownership_missing"]),
+    "5": _query("asset_catalog_and_spatial_inventory_only", ["condition_ownership_lifecycle_missing"]),
+    "6": _query("population_proxy_and_admin_statistics", ["authoritative_demographic_structure_missing"]),
+    "7": _bounded("existing_livability_world_model_decision_package", ["24_month_and_five_year_customer_calibration_missing"], "bounded_model_based_livability_decision_support"),
+    "8": _query("osm_mobility_and_accessibility_foundation", ["formal_customer_network_accessibility_product_missing"]),
+    "9": _query("poi_aoi_and_service_accessibility_foundation", ["public_space_quality_and_opportunity_product_missing"]),
+    "10": _query("environment_and_road_context_foundation", ["safety_lighting_shade_authoritative_data_missing"]),
+    "11": _bounded("environmental_kernel_scene_evidence_gate_and_api", ["environmental_action_response_closed", "temperature_and_vegetation_dynamics_unavailable"], "observed_environmental_state_and_calibrated_pm25_temporal_dynamics", ["docs/reports/uwm_environmental_kernel_chongqing_verification_2026-07-11.md"]),
+    "12": _query("facility_inventory_and_service_accessibility_foundation", ["authoritative_capacity_and_lifecycle_missing"]),
+    "13": _query("building_population_and_land_use_foundation", ["authoritative_housing_stock_and_household_composition_missing"]),
+    "14": _query("poi_activity_mix_foundation", ["authoritative_economic_activity_and_demand_frequency_missing"]),
+    "15": _query("text_and_geospatial_analysis_platform_capability", ["customer_feedback_corpus_missing"]),
+    "16": _query("heritage_poi_and_place_context_foundation", ["authoritative_cultural_inventory_and_place_narrative_missing"]),
+    "17": _query("digital_asset_catalog_and_platform_observability", ["district_digital_infrastructure_inventory_missing"]),
+    "18": _query("platform_operations_and_observability_only", ["customer_sla_work_order_and_asset_lifecycle_missing"]),
+    "19": _contract("resilience_world_model_route_defined", ["hazard_response_capacity_and_recovery_data_missing"]),
+    "20": _query("poi_economic_activity_proxy_only", ["authoritative_ded_licence_and_lifecycle_data_missing"]),
+    "21": _bounded("facility_inventory_and_service_coverage_components", ["authoritative_public_service_capacity_missing"], "observed_inventory_and_proxy_service_coverage"),
+    "22": _contract("dcr_and_dcr_plus_rule_contract", ["approved_dcr_and_authoritative_rule_basis_missing"]),
+    "23": _contract("deterministic_financial_model_contract", ["boq", "capital_cost", "operating_cost", "revenue", "cash_flow"]),
+    "24": _not_implemented("cross_domain_impact_evidence_product_missing"),
+    "25": _not_implemented("dependency_aware_implementation_roadmap_product_missing"),
+}
+
+
+def build_ai_demand_implementation_ledger(*, repo_root: Path, registry: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    registry_payload = deepcopy(dict(registry or build_livability_requirement_registry()))
+    scenarios = [_overlay(row, SCENARIO_OVERLAYS[str(row["id"])], repo_root) for row in registry_payload["livability_scenarios"]]
+    demands = [_overlay(row, DEMAND_OVERLAYS[str(row["id"])], repo_root) for row in registry_payload["customer_ai_demands"]]
+    counts = {status: 0 for status in sorted(IMPLEMENTATION_STATUSES)}
+    for row in scenarios + demands:
+        counts[row["implementation_status"]] += 1
+    return {"schema": "uwm.ai_demand_implementation_ledger.v1", "source_documents": registry_payload["source_documents"], "livability_scenarios": scenarios, "customer_ai_demands": demands, "summary": {"implementation_status_counts": counts, "verified_or_bounded_count": counts["production_verified"] + counts["implemented_evidence_bounded"]}, "claim_boundary": {"registration_is_not_implementation": True, "product_presence_is_not_full_requirement_completion": True, "observed_policy_outcome_superiority_claim": False}}
+
+
+def _overlay(row: Mapping[str, Any], overlay: Mapping[str, Any], repo_root: Path) -> dict[str, Any]:
+    result = deepcopy(dict(row))
+    result.update(deepcopy(dict(overlay)))
+    result["evidence_artifact_checks"] = [{"path": path, "exists": (repo_root / path).is_file()} for path in result["evidence_artifacts"]]
+    if any(not check["exists"] for check in result["evidence_artifact_checks"]):
+        result["production_blockers"] = sorted(set(result["production_blockers"] + ["declared_evidence_artifact_missing"]))
+    return result

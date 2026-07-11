@@ -23,6 +23,12 @@ type RequirementRow = {
   route_availability: 'existing' | 'planned';
   implemented_outputs: string[];
   production_blockers: string[];
+  implementation_status: 'production_verified' | 'implemented_evidence_bounded' | 'data_query_only' | 'contract_only' | 'not_implemented';
+  status_basis: string;
+  evidence_artifacts: string[];
+  evidence_artifact_checks: { path: string; exists: boolean }[];
+  max_supported_claim: string;
+  next_actions: string[];
 };
 
 type RouteRow = {
@@ -42,10 +48,13 @@ type ReadinessPayload = {
     existing_route_count: number;
     planned_route_count: number;
     production_complete_count: number;
+    implementation_status_counts: Record<RequirementRow['implementation_status'], number>;
+    verified_or_bounded_count: number;
   };
   claim_boundary: {
     registration_is_not_implementation: boolean;
     observed_policy_outcome_superiority_claim: boolean;
+    product_presence_is_not_full_requirement_completion: boolean;
   };
 };
 
@@ -122,6 +131,12 @@ function isRequirementRow(value: unknown): value is RequirementRow {
     && isAvailability(value.route_availability)
     && isStringArray(value.implemented_outputs)
     && isStringArray(value.production_blockers)
+    && ['production_verified', 'implemented_evidence_bounded', 'data_query_only', 'contract_only', 'not_implemented'].includes(String(value.implementation_status))
+    && typeof value.status_basis === 'string'
+    && isStringArray(value.evidence_artifacts)
+    && Array.isArray(value.evidence_artifact_checks)
+    && typeof value.max_supported_claim === 'string'
+    && isStringArray(value.next_actions)
   );
 }
 
@@ -147,10 +162,13 @@ function isReadinessPayload(value: unknown): value is ReadinessPayload {
     || typeof value.summary.existing_route_count !== 'number'
     || typeof value.summary.planned_route_count !== 'number'
     || typeof value.summary.production_complete_count !== 'number') return false;
+  if (!isRecord(value.summary.implementation_status_counts)
+    || typeof value.summary.verified_or_bounded_count !== 'number') return false;
   return (
     isRecord(value.claim_boundary)
     && typeof value.claim_boundary.registration_is_not_implementation === 'boolean'
     && typeof value.claim_boundary.observed_policy_outcome_superiority_claim === 'boolean'
+    && typeof value.claim_boundary.product_presence_is_not_full_requirement_completion === 'boolean'
   );
 }
 
@@ -193,9 +211,10 @@ function RequirementTable({ title, rows }: { title: string; rows: RequirementRow
               <th scope="col">ID / 需求</th>
               <th scope="col">主技术路线</th>
               <th scope="col">实施与数据状态</th>
+              <th scope="col">真实实施状态</th>
               <th scope="col">证据与最大主张</th>
               <th scope="col">已实现产出</th>
-              <th scope="col">生产阻塞项</th>
+              <th scope="col">生产阻塞项 / 下一步</th>
             </tr>
           </thead>
           <tbody>
@@ -215,12 +234,21 @@ function RequirementTable({ title, rows }: { title: string; rows: RequirementRow
                   <div>data_support: {row.data_support}</div>
                 </td>
                 <td style={cellStyle}>
+                  <strong>{row.implementation_status}</strong>
+                  <div>状态依据：{row.status_basis}</div>
+                </td>
+                <td style={cellStyle}>
                   <div>evidence_level: {row.evidence_level}</div>
                   <div>uncertainty: {row.uncertainty}</div>
                   <div>max_claim_level: {row.max_claim_level}</div>
+                  <div>max_supported_claim: {row.max_supported_claim}</div>
+                  <div>evidence_artifacts: {listText(row.evidence_artifacts, '无已验证证据文件')}</div>
                 </td>
                 <td style={cellStyle}>{listText(row.implemented_outputs, '尚无已验证产出')}</td>
-                <td style={cellStyle}>{listText(row.production_blockers, '当前 registry 未登记 blocker')}</td>
+                <td style={cellStyle}>
+                  <div>{listText(row.production_blockers, '当前无登记 blocker')}</div>
+                  <div>下一步：{listText(row.next_actions, '无')}</div>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -335,10 +363,19 @@ export default function AiDemandReadinessTab() {
               <strong>{payload.primary_routes.length} 条主技术路线</strong>
             </div>
             <div className="uwm-livability-kpi">
-              <span>production_complete_count</span>
-              <strong>{summary.production_complete_count}</strong>
+              <span>已验证或证据受限实现</span>
+              <strong>{summary.verified_or_bounded_count}</strong>
             </div>
           </div>
+
+          <section className="uwm-livability-panel">
+            <div className="uwm-livability-panel-title">五级真实实施状态</div>
+            <div>production_verified：{summary.implementation_status_counts.production_verified}</div>
+            <div>implemented_evidence_bounded：{summary.implementation_status_counts.implemented_evidence_bounded}</div>
+            <div>data_query_only：{summary.implementation_status_counts.data_query_only}</div>
+            <div>contract_only：{summary.implementation_status_counts.contract_only}</div>
+            <div>not_implemented：{summary.implementation_status_counts.not_implemented}</div>
+          </section>
 
           <section className="uwm-livability-panel">
             <div className="uwm-livability-panel-title"><Route size={16} /> 主技术路线</div>
