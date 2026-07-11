@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from shapely.geometry import shape
+from shapely.strtree import STRtree
 
 from data_agent.uwm.traditional_livability_s6_fulu_adapter import (
     build_fulu_s6_resources,
@@ -47,8 +48,16 @@ def build_fulu_s2_inputs(
     resources = list(payload["planning_resources"])
     current_rows = [row for row in resources if row.get("source_layer") == "JQDLTB"]
     planned_rows = [row for row in resources if row.get("source_layer") == "TDGHDL"]
+    current_geometries = _geometry_cache(current_rows)
+    planned_geometries = _geometry_cache(planned_rows)
+    planned_indexes = _planned_spatial_indexes(planned_rows, planned_geometries)
     for current in current_rows:
-        parcel = _parcel_from_current_resource(current, planned_rows)
+        parcel = _parcel_from_current_resource(
+            current,
+            current_geometry=current_geometries.get(str(current.get("resource_id"))),
+            planned_index=planned_indexes.get(str(current.get("planning_area_id"))),
+            planned_geometries=planned_geometries,
+        )
         if parcel is not None:
             payload["parcels"].append(parcel)
     payload["parcels"].sort(key=lambda row: row["parcel_id"])
@@ -60,22 +69,20 @@ def build_fulu_s2_inputs(
 
 
 def _parcel_from_current_resource(
-    current: Mapping[str, Any], planned_rows: list[dict[str, Any]]
+    current: Mapping[str, Any],
+    *,
+    current_geometry: Any,
+    planned_index: tuple[STRtree, list[dict[str, Any]]] | None,
+    planned_geometries: Mapping[str, Any],
 ) -> dict[str, Any] | None:
-    geometry_payload = current.get("metric_geometry")
-    if not geometry_payload:
+    if current_geometry is None:
         return None
-    geometry = shape(geometry_payload)
+    geometry = current_geometry
     if geometry.is_empty or not geometry.is_valid:
         return None
     overlaps: list[dict[str, Any]] = []
-    for planned in planned_rows:
-        if planned.get("planning_area_id") != current.get("planning_area_id"):
-            continue
-        planned_geometry_payload = planned.get("metric_geometry")
-        if not planned_geometry_payload:
-            continue
-        planned_geometry = shape(planned_geometry_payload)
+    for planned in _query_rows(planned_index, geometry):
+        planned_geometry = planned_geometries[str(planned["resource_id"])]
         intersection = geometry.intersection(planned_geometry)
         if intersection.is_empty or intersection.area <= 0.0:
             continue
@@ -136,6 +143,42 @@ def _planned_class(overlaps: list[dict[str, Any]]) -> tuple[str, str]:
     return next(iter(domains)), "largest_overlap_proxy"
 
 
+def _geometry_cache(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    return {
+        str(row["resource_id"]): shape(row["metric_geometry"])
+        for row in rows
+        if row.get("resource_id") and row.get("metric_geometry")
+    }
+
+
+def _planned_spatial_indexes(
+    rows: list[dict[str, Any]], geometries: Mapping[str, Any]
+) -> dict[str, tuple[STRtree, list[dict[str, Any]]]]:
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        resource_id = str(row.get("resource_id") or "")
+        area_id = str(row.get("planning_area_id") or "")
+        if resource_id in geometries and area_id:
+            grouped.setdefault(area_id, []).append(row)
+    result: dict[str, tuple[STRtree, list[dict[str, Any]]]] = {}
+    for area_id, area_rows in grouped.items():
+        ordered = sorted(area_rows, key=lambda row: str(row["resource_id"]))
+        result[area_id] = (
+            STRtree([geometries[str(row["resource_id"])] for row in ordered]),
+            ordered,
+        )
+    return result
+
+
+def _query_rows(
+    index: tuple[STRtree, list[dict[str, Any]]] | None, geometry: Any
+) -> list[dict[str, Any]]:
+    if index is None:
+        return []
+    tree, rows = index
+    return [rows[int(position)] for position in tree.query(geometry)]
+
+
 def _content_digest(payload: Mapping[str, Any]) -> str:
     content = {
         "schema": payload.get("schema"),
@@ -160,4 +203,3 @@ def _content_digest(payload: Mapping[str, Any]) -> str:
 def _stable_id(prefix: str, *parts: Any) -> str:
     encoded = "\x1f".join(str(part or "") for part in parts).encode("utf-8")
     return f"{prefix}_{hashlib.sha256(encoded).hexdigest()[:20]}"
-

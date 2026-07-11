@@ -6,7 +6,9 @@ from data_agent.test_traditional_livability_s6_fulu_adapter import (
     _specs,
 )
 from data_agent.uwm import traditional_livability_s6_fulu_adapter as s6_adapter
+from data_agent.uwm.livability_s2 import fulu_adapter
 from data_agent.uwm.livability_s2.fulu_adapter import build_fulu_s2_inputs
+from data_agent.uwm.livability_s2 import state_builder
 from data_agent.uwm.livability_s2.state_builder import build_fulu_s2_state_graph
 
 
@@ -107,3 +109,46 @@ def test_fulu_s2_adapter_returns_blockers_instead_of_synthetic_parcels(tmp_path,
     assert payload["parcels"] == []
     assert payload["blockers"]
     assert payload["synthetic_parcels_created"] is False
+
+
+def test_fulu_s2_state_builder_parses_each_geometry_once(tmp_path, monkeypatch):
+    inputs = _build(tmp_path, monkeypatch)
+    original_shape = state_builder.shape
+    call_count = 0
+
+    def counting_shape(value):
+        nonlocal call_count
+        call_count += 1
+        return original_shape(value)
+
+    monkeypatch.setattr(state_builder, "shape", counting_shape)
+
+    build_fulu_s2_state_graph(inputs, kernel_version="0.1.0")
+
+    geometry_record_count = (
+        len(inputs["parcels"])
+        + sum(bool(row.get("metric_geometry")) for row in inputs["planning_resources"])
+        + sum(bool(row.get("metric_geometry")) for row in inputs["current_facilities"])
+    )
+    assert call_count <= geometry_record_count
+
+
+def test_fulu_s2_input_adapter_parses_each_planning_geometry_once(tmp_path, monkeypatch):
+    monkeypatch.setattr(s6_adapter, "ASSET_SPECS", _specs())
+    source_root = _planning_fixture_root(tmp_path)
+    original_shape = fulu_adapter.shape
+    call_count = 0
+
+    def counting_shape(value):
+        nonlocal call_count
+        call_count += 1
+        return original_shape(value)
+
+    monkeypatch.setattr(fulu_adapter, "shape", counting_shape)
+    payload = build_fulu_s2_inputs(
+        source_root=source_root,
+        facility_product=_facility_product(),
+    )
+
+    geometry_record_count = len(payload["planning_resources"])
+    assert call_count <= geometry_record_count

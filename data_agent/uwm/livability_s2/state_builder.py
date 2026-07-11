@@ -6,6 +6,7 @@ import hashlib
 from typing import Any, Mapping
 
 from shapely.geometry import shape
+from shapely.strtree import STRtree
 
 from data_agent.uwm.geospatial_kernel.state_graph import build_state_graph
 
@@ -30,9 +31,21 @@ def build_fulu_s2_state_graph(
     facilities = list(inputs.get("current_facilities") or [])
     areas = list(inputs.get("planning_areas") or [])
     admin_id = "admin_context_fulu"
+    parcel_geometries = _geometry_cache(parcels, "parcel_id")
+    resource_geometries = _geometry_cache(resources, "resource_id")
+    facility_geometries = _geometry_cache(facilities, "facility_id")
+    resource_indexes = _area_spatial_indexes(
+        resources, resource_geometries, id_field="resource_id"
+    )
+    facility_indexes = _area_spatial_indexes(
+        facilities, facility_geometries, id_field="facility_id"
+    )
+    parcel_indexes = _area_spatial_indexes(
+        parcels, parcel_geometries, id_field="parcel_id"
+    )
 
     for parcel in parcels:
-        geometry = shape(parcel["metric_geometry"])
+        geometry = parcel_geometries[parcel["parcel_id"]]
         nodes.append(
             {
                 "node_id": parcel["parcel_id"],
@@ -111,7 +124,7 @@ def build_fulu_s2_state_graph(
     )
 
     for parcel in parcels:
-        parcel_geometry = shape(parcel["metric_geometry"])
+        parcel_geometry = parcel_geometries[parcel["parcel_id"]]
         village_id = _village_id(str(parcel["planning_area_id"]))
         edges.append(
             _edge(
@@ -121,13 +134,11 @@ def build_fulu_s2_state_graph(
                 "geometry:planning_area_membership",
             )
         )
-        for resource in resources:
-            if resource.get("planning_area_id") != parcel.get("planning_area_id"):
-                continue
-            resource_payload = resource.get("metric_geometry")
-            if not resource_payload:
-                continue
-            intersection = parcel_geometry.intersection(shape(resource_payload))
+        for resource in _query_rows(
+            resource_indexes.get(str(parcel.get("planning_area_id"))), parcel_geometry
+        ):
+            resource_geometry = resource_geometries[str(resource["resource_id"])]
+            intersection = parcel_geometry.intersection(resource_geometry)
             if intersection.is_empty or intersection.area <= 0.0:
                 continue
             edge = _edge(
@@ -143,13 +154,12 @@ def build_fulu_s2_state_graph(
                 "resource_domain"
             ) == "unresolved" else "unresolved"
             edges.append(edge)
-        for facility in facilities:
-            if facility.get("planning_area_id") != parcel.get("planning_area_id"):
-                continue
-            facility_payload = facility.get("metric_geometry")
-            if not facility_payload:
-                continue
-            distance = float(parcel_geometry.distance(shape(facility_payload)))
+        for facility in _query_rows(
+            facility_indexes.get(str(parcel.get("planning_area_id"))),
+            parcel_geometry.buffer(300.0),
+        ):
+            facility_geometry = facility_geometries[str(facility["facility_id"])]
+            distance = float(parcel_geometry.distance(facility_geometry))
             if distance > 300.0:
                 continue
             edge = _edge(
@@ -163,12 +173,18 @@ def build_fulu_s2_state_graph(
             edge["active_compatibility_status"] = "unresolved"
             edges.append(edge)
 
-    for index, source in enumerate(parcels):
-        source_geometry = shape(source["metric_geometry"])
-        for target in parcels[index + 1 :]:
-            if target.get("planning_area_id") != source.get("planning_area_id"):
+    parcel_order = {str(parcel["parcel_id"]): index for index, parcel in enumerate(parcels)}
+    for source in parcels:
+        source_id = str(source["parcel_id"])
+        source_geometry = parcel_geometries[source_id]
+        for target in _query_rows(
+            parcel_indexes.get(str(source.get("planning_area_id"))),
+            source_geometry.buffer(300.0),
+        ):
+            target_id = str(target["parcel_id"])
+            if parcel_order[target_id] <= parcel_order[source_id]:
                 continue
-            target_geometry = shape(target["metric_geometry"])
+            target_geometry = parcel_geometries[target_id]
             shared = source_geometry.boundary.intersection(target_geometry.boundary).length
             if shared > 0.0:
                 edges.append(
@@ -246,6 +262,47 @@ def _edge(
         "evidence_refs": [evidence_ref],
         "support_level": support_level,
     }
+
+
+def _geometry_cache(
+    rows: list[dict[str, Any]], id_field: str
+) -> dict[str, Any]:
+    return {
+        str(row[id_field]): shape(row["metric_geometry"])
+        for row in rows
+        if row.get(id_field) and row.get("metric_geometry")
+    }
+
+
+def _area_spatial_indexes(
+    rows: list[dict[str, Any]],
+    geometries: Mapping[str, Any],
+    *,
+    id_field: str,
+) -> dict[str, tuple[STRtree, list[dict[str, Any]]]]:
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        row_id = str(row.get(id_field) or "")
+        area_id = str(row.get("planning_area_id") or "")
+        if row_id in geometries and area_id:
+            grouped.setdefault(area_id, []).append(row)
+    indexes: dict[str, tuple[STRtree, list[dict[str, Any]]]] = {}
+    for area_id, area_rows in grouped.items():
+        ordered = sorted(area_rows, key=lambda row: str(row[id_field]))
+        indexes[area_id] = (
+            STRtree([geometries[str(row[id_field])] for row in ordered]),
+            ordered,
+        )
+    return indexes
+
+
+def _query_rows(
+    index: tuple[STRtree, list[dict[str, Any]]] | None, geometry: Any
+) -> list[dict[str, Any]]:
+    if index is None:
+        return []
+    tree, rows = index
+    return [rows[int(position)] for position in tree.query(geometry)]
 
 
 def _village_id(area_id: str) -> str:
