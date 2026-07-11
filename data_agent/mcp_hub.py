@@ -560,26 +560,30 @@ class McpHubManager:
             logger.warning(t("mcp.server_failed", name=name, error=error_message))
             return False
 
+    async def _cleanup_runtime(self, name: str, status: McpServerStatus):
+        """Close a toolset and clear runtime-only state without changing status."""
+        try:
+            if status.toolset is not None:
+                await status.toolset.close()
+        except Exception as e:
+            error_message = redact_mcp_text(str(e), status.runtime_secrets)
+            logger.warning("Error closing MCP server '%s': %s", name, error_message)
+        finally:
+            status.toolset = None
+            status.tool_count = 0
+            status.tool_names = []
+            status.connected_at = None
+            status.runtime_secrets = ()
+
     async def disconnect_server(self, name: str) -> bool:
         """Disconnect and cleanup a single server."""
         status = self._servers.get(name)
         if not status:
             return False
 
-        if status.toolset is not None:
-            try:
-                await status.toolset.close()
-            except Exception as e:
-                error_message = redact_mcp_text(str(e), status.runtime_secrets)
-                logger.warning("Error closing MCP server '%s': %s", name, error_message)
-
-        status.toolset = None
+        await self._cleanup_runtime(name, status)
         status.status = "disconnected"
-        status.tool_count = 0
-        status.tool_names = []
-        status.connected_at = None
         status.error_message = ""
-        status.runtime_secrets = ()
         logger.info(t("mcp.server_disconnected", name=name))
         return True
 
@@ -608,8 +612,11 @@ class McpHubManager:
     async def shutdown(self):
         """Disconnect all servers gracefully."""
         for name in list(self._servers.keys()):
-            if self._servers[name].status == "connected":
+            status = self._servers[name]
+            if status.status == "connected":
                 await self.disconnect_server(name)
+            elif status.toolset is not None or status.runtime_secrets:
+                await self._cleanup_runtime(name, status)
         self._started = False
 
     # ----- Dynamic control -----
@@ -832,6 +839,7 @@ class McpHubManager:
                 logger.warning("Failed to get tools from '%s': %s", name, error_message)
                 s.status = "error"
                 s.error_message = error_message
+                await self._cleanup_runtime(name, s)
         return tools
 
     async def get_tools_for_server(self, name: str) -> list[dict]:
@@ -856,6 +864,7 @@ class McpHubManager:
             logger.warning("Failed to get tools from '%s': %s", name, error_message)
             status.status = "error"
             status.error_message = error_message
+            await self._cleanup_runtime(name, status)
             return []
 
 
