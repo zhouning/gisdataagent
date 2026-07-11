@@ -9,6 +9,24 @@ from typing import Any, Mapping
 
 S4_PROJECT_REQUEST_SCHEMA = "uwm.traditional_livability.s4_project_request.v1"
 
+_PROJECT_FIELDS = {
+    "actor_id",
+    "analysis_area_id",
+    "planning_parcel_id",
+    "project_description",
+    "project_name",
+    "uses",
+}
+_USE_FIELDS = {
+    "confirmed_standard_class_id",
+    "gfa_m2",
+    "human_confirmation",
+    "raw_use_type",
+    "use_description",
+    "use_id",
+    "use_name",
+}
+
 _DIGEST_CONTRACT = {
     "algorithm": "sha256",
     "encoding": "utf-8",
@@ -16,7 +34,9 @@ _DIGEST_CONTRACT = {
         "canonical_json_sorted_keys_compact_separators_"
         "uses_sorted_by_stable_use_id"
     ),
-    "covered_fields": "normalized_project_request_and_authenticated_actor",
+    "covered_fields": (
+        "normalized_project_request_submitted_actor_and_authenticated_actor"
+    ),
 }
 
 
@@ -111,6 +131,10 @@ def _normalize_use(
     row: Mapping[str, Any], index: int, errors: list[str]
 ) -> dict[str, Any] | None:
     path = f"uses[{index}]."
+    errors.extend(
+        f"{path}undeclared_field:{field}"
+        for field in sorted(set(row) - _USE_FIELDS)
+    )
     use_name = _required_string(row, "use_name", errors, path=path)
     raw_use_type = _required_string(row, "raw_use_type", errors, path=path)
     use_description = _optional_string(row, "use_description", errors, path=path)
@@ -119,16 +143,19 @@ def _normalize_use(
     )
 
     gfa = row.get("gfa_m2")
+    try:
+        normalized_gfa = float(gfa)
+    except (OverflowError, TypeError, ValueError):
+        normalized_gfa = None
     if (
         isinstance(gfa, bool)
         or not isinstance(gfa, (int, float))
-        or not math.isfinite(gfa)
-        or gfa <= 0
+        or normalized_gfa is None
+        or not math.isfinite(normalized_gfa)
+        or normalized_gfa <= 0
     ):
         errors.append(f"{path}gfa_m2_must_be_finite_positive_number")
         normalized_gfa = None
-    else:
-        normalized_gfa = float(gfa)
 
     human_confirmation = row.get("human_confirmation")
     if human_confirmation is not None and not isinstance(human_confirmation, Mapping):
@@ -154,16 +181,21 @@ def _normalize_use(
         return None
 
     if use_id is None:
-        use_id = _stable_id(
-            "s4use",
-            {
-                "use_name": use_name,
-                "raw_use_type": raw_use_type,
-                "use_description": use_description,
-                "confirmed_standard_class_id": confirmed_class,
-                "human_confirmation": normalized_confirmation,
-            },
-        )
+        try:
+            use_id = _stable_id(
+                "s4use",
+                {
+                    "use_name": use_name,
+                    "raw_use_type": raw_use_type,
+                    "use_description": use_description,
+                    "confirmed_standard_class_id": confirmed_class,
+                    "human_confirmation": normalized_confirmation,
+                },
+            )
+        except (OverflowError, TypeError, ValueError):
+            if "content_not_canonical_json" not in errors:
+                errors.append("content_not_canonical_json")
+            return None
 
     return {
         "use_id": use_id,
@@ -188,6 +220,11 @@ def validate_s4_project_request(
         errors.append("project_request_not_object")
         return result
 
+    errors.extend(
+        f"project_undeclared_field:{field}"
+        for field in sorted(set(payload) - _PROJECT_FIELDS)
+    )
+
     try:
         raw_request = deepcopy(_canonical_json_value(payload))
     except (TypeError, ValueError):
@@ -199,6 +236,7 @@ def validate_s4_project_request(
     planning_parcel_id = _required_string(payload, "planning_parcel_id", errors)
     project_name = _required_string(payload, "project_name", errors)
     project_description = _optional_string(payload, "project_description", errors)
+    submitted_actor_id = _optional_string(payload, "actor_id", errors)
 
     raw_uses = payload.get("uses")
     normalized_uses = []
@@ -229,16 +267,30 @@ def validate_s4_project_request(
             "project_description": project_description,
         },
     )
-    total_gfa = math.fsum(row["gfa_m2"] for row in normalized_uses)
+    try:
+        total_gfa = math.fsum(row["gfa_m2"] for row in normalized_uses)
+    except (OverflowError, TypeError, ValueError):
+        errors.append("total_gfa_m2_not_finite")
+        return result
+    if not math.isfinite(total_gfa) or total_gfa <= 0:
+        errors.append("total_gfa_m2_not_finite")
+        return result
+
     allocated_share = 0.0
     uses_with_shares = []
-    for index, row in enumerate(normalized_uses):
-        if index == len(normalized_uses) - 1:
-            share = 1.0 - allocated_share
-        else:
-            share = row["gfa_m2"] / total_gfa
-            allocated_share += share
-        uses_with_shares.append({**row, "gfa_share": share})
+    try:
+        for index, row in enumerate(normalized_uses):
+            if index == len(normalized_uses) - 1:
+                share = 1.0 - allocated_share
+            else:
+                share = row["gfa_m2"] / total_gfa
+                allocated_share += share
+            if not math.isfinite(share) or share <= 0:
+                raise ValueError("GFA share must be finite and positive")
+            uses_with_shares.append({**row, "gfa_share": share})
+    except (OverflowError, TypeError, ValueError):
+        errors.append("gfa_share_not_finite")
+        return result
 
     normalized_request = {
         "analysis_area_id": analysis_area_id,
@@ -250,6 +302,7 @@ def validate_s4_project_request(
     digest_payload = {
         "schema": S4_PROJECT_REQUEST_SCHEMA,
         "actor_id": result["actor_id"],
+        "submitted_actor_id": submitted_actor_id,
         "project_id": project_id,
         "normalized_request": {
             **normalized_request,

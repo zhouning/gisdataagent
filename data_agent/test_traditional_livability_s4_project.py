@@ -195,3 +195,117 @@ def test_non_json_request_content_fails_closed_without_leaking_unsafe_values():
     assert result["normalized_request"] is None
     assert result["content_digest"] is None
     json.dumps(result, ensure_ascii=False, allow_nan=False, sort_keys=True)
+
+
+@pytest.mark.parametrize(
+    ("extra_fields", "expected_errors"),
+    [
+        (
+            {"subjective_score": 0.8},
+            ["project_undeclared_field:subjective_score"],
+        ),
+        (
+            {"z_extra": True, "a_extra": False},
+            [
+                "project_undeclared_field:a_extra",
+                "project_undeclared_field:z_extra",
+            ],
+        ),
+    ],
+)
+def test_project_rejects_undeclared_fields_with_exact_blockers(
+    extra_fields, expected_errors
+):
+    request = project_request()
+    request.update(extra_fields)
+
+    result = validate_s4_project_request(request, actor_id="planner")
+
+    assert result["valid"] is False
+    assert result["validation_errors"] == expected_errors
+    assert result["normalized_request"] is None
+    assert result["content_digest"] is None
+    json.dumps(result, ensure_ascii=False, allow_nan=False, sort_keys=True)
+
+
+def test_use_rejects_undeclared_fields_with_exact_blockers():
+    request = project_request()
+    request["uses"][0]["capacity_score"] = 9
+    request["uses"][0]["unknown"] = "not documented"
+
+    result = validate_s4_project_request(request, actor_id="planner")
+
+    assert result["valid"] is False
+    assert result["validation_errors"] == [
+        "uses[0].undeclared_field:capacity_score",
+        "uses[0].undeclared_field:unknown",
+    ]
+    assert result["uses"] == []
+    assert result["content_digest"] is None
+    json.dumps(result, ensure_ascii=False, allow_nan=False, sort_keys=True)
+
+
+def test_documented_client_actor_field_is_accepted_but_server_actor_wins():
+    request = project_request()
+    request["actor_id"] = "client-actor"
+
+    result = validate_s4_project_request(request, actor_id="server-actor")
+
+    assert result["valid"] is True
+    assert result["actor_id"] == "server-actor"
+    assert result["raw_request"]["actor_id"] == "client-actor"
+    assert "actor_id" not in result["normalized_request"]
+
+    changed_request = project_request()
+    changed_request["actor_id"] = "different-client-actor"
+    changed = validate_s4_project_request(changed_request, actor_id="server-actor")
+    assert changed["valid"] is True
+    assert changed["content_digest"] != result["content_digest"]
+
+
+@pytest.mark.parametrize(
+    ("gfa", "expected_error"),
+    [
+        (10**1000, "uses[0].gfa_m2_must_be_finite_positive_number"),
+        (-10**1000, "uses[0].gfa_m2_must_be_finite_positive_number"),
+    ],
+)
+def test_gfa_numeric_conversion_overflow_fails_closed(gfa, expected_error):
+    result = validate_s4_project_request(project_request(gfa=gfa), actor_id="planner")
+
+    assert result["valid"] is False
+    assert expected_error in result["validation_errors"]
+    assert result["uses"] == []
+    assert result["total_gfa_m2"] is None
+    assert result["content_digest"] is None
+    json.dumps(result, ensure_ascii=False, allow_nan=False, sort_keys=True)
+
+
+def test_finite_use_gfa_with_overflowing_total_fails_closed():
+    request = project_request(gfa=1e308)
+    request["uses"][1]["gfa_m2"] = 1e308
+    request["uses"][2]["gfa_m2"] = 1e308
+
+    result = validate_s4_project_request(request, actor_id="planner")
+
+    assert result["valid"] is False
+    assert result["validation_errors"] == ["total_gfa_m2_not_finite"]
+    assert result["uses"] == []
+    assert result["total_gfa_m2"] is None
+    assert result["normalized_request"] is None
+    assert result["content_digest"] is None
+    json.dumps(result, ensure_ascii=False, allow_nan=False, sort_keys=True)
+
+
+@pytest.mark.parametrize("location", ["project", "use"])
+def test_non_string_object_keys_fail_closed_and_remain_json_safe(location):
+    request = project_request()
+    target = request if location == "project" else request["uses"][0]
+    target[7] = "invalid JSON object key"
+
+    result = validate_s4_project_request(request, actor_id="planner")
+
+    assert result["valid"] is False
+    assert "content_not_canonical_json" in result["validation_errors"]
+    assert result["content_digest"] is None
+    json.dumps(result, ensure_ascii=False, allow_nan=False, sort_keys=True)
