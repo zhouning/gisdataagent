@@ -42,6 +42,7 @@ def build_mobility_accessibility_product(
         [_canonical_row(row) for row in surface.get("admin_service_rows") or []],
         key=lambda row: row["admin_unit_id"],
     )
+    _apply_gap_ranking(rows)
     channel_readiness = {
         channel: _channel_readiness(channel, status)
         for channel, status in sorted(DEMAND8_CHANNELS.items())
@@ -62,6 +63,14 @@ def build_mobility_accessibility_product(
             "mobility_graph_edge_count": (mobility_graph.get("summary") or {}).get("edge_count"),
             "road_segment_count": (mobility_graph.get("summary") or {}).get("road_segment_count_sum"),
             "road_length_km_proxy": (mobility_graph.get("summary") or {}).get("road_length_km_sum"),
+            "ranked_admin_unit_count": sum(row["accessibility_gap_rank"] is not None for row in rows),
+            "ranking_excluded_admin_unit_count": sum(row["accessibility_gap_rank"] is None for row in rows),
+        },
+        "ranking_method": {
+            "method": "relative_ordering_within_bound_product",
+            "order": ["service_accessibility_score_ascending", "nearest_service_distance_descending", "admin_unit_id"],
+            "authoritative_thresholds_used": False,
+            "engineering_investment_priority": False,
         },
         "quality_evidence": {
             "supported_claim": quality_audit.get("supported_claim"),
@@ -100,7 +109,48 @@ def _canonical_row(row: Mapping[str, Any]) -> dict[str, Any]:
         "policy_outcome_claim": False,
         "source_trace": deepcopy(row.get("source_trace") or {}),
         "limitations": ["network_proxy_not_observed_walk_time"],
+        "accessibility_gap_rank": None,
+        "ranking_exclusion_reason": None,
+        "review_priority_reasons": [],
+        "approved_connectivity_project": False,
+        "expected_time_saving_min": None,
     }
+
+
+def _apply_gap_ranking(rows: list[dict[str, Any]]) -> None:
+    rankable = [row for row in rows if row.get("service_accessibility_score") is not None]
+    rankable.sort(
+        key=lambda row: (
+            float(row["service_accessibility_score"]),
+            -float(row.get("nearest_essential_service_distance_m") or -1.0),
+            row["admin_unit_id"],
+        )
+    )
+    scores = sorted(float(row["service_accessibility_score"]) for row in rankable)
+    low_score_cut = scores[max(0, len(scores) // 3 - 1)] if scores else None
+    distances = sorted(
+        float(row["nearest_essential_service_distance_m"])
+        for row in rankable
+        if row.get("nearest_essential_service_distance_m") is not None
+    )
+    long_distance_cut = distances[(2 * len(distances)) // 3] if distances else None
+    for rank, row in enumerate(rankable, start=1):
+        row["accessibility_gap_rank"] = rank
+        reasons = []
+        if low_score_cut is not None and float(row["service_accessibility_score"]) <= low_score_cut:
+            reasons.append("relative_low_accessibility_score")
+        distance = row.get("nearest_essential_service_distance_m")
+        if long_distance_cut is not None and distance is not None and float(distance) >= long_distance_cut:
+            reasons.append("long_nearest_service_distance_proxy")
+        if row.get("essential_service_count") == 0:
+            reasons.append("zero_essential_service_count")
+        if row.get("road_segment_count") == 0:
+            reasons.append("limited_road_network_context")
+        row["review_priority_reasons"] = reasons
+    for row in rows:
+        if row.get("service_accessibility_score") is None:
+            row["ranking_exclusion_reason"] = "service_accessibility_score_missing"
+            row["review_priority_reasons"] = ["collect_missing_accessibility_evidence"]
 
 
 def _channel_readiness(channel: str, status: str) -> dict[str, Any]:
