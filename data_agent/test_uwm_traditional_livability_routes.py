@@ -6,11 +6,13 @@ from starlette.requests import Request
 
 from data_agent.test_traditional_livability_facility_dictionary import (
     dictionary_fixture,
+    matrix_fixture,
 )
 from data_agent.test_traditional_livability_s6 import point_request, resource_fixture
 from data_agent.uwm.traditional_livability_facility_dictionary import (
     unavailable_compatibility_matrix,
     unavailable_facility_dictionary,
+    validate_compatibility_matrix,
     validate_facility_dictionary,
 )
 from data_agent.uwm.traditional_livability_s6_semantics import (
@@ -61,6 +63,11 @@ def _write_s6_snapshots(directory, *, resources=None, dictionary=None, compatibi
         json.dumps(compatibility or unavailable_compatibility_matrix()), encoding="utf-8"
     )
     return directory
+
+
+def _authenticated(monkeypatch, username="authenticated-planner"):
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda request: {"id": username})
+    monkeypatch.setattr(routes, "_set_user_context", lambda user: (username, "analyst"))
 
 
 def test_traditional_livability_routes_are_registered_in_frontend_api():
@@ -164,13 +171,48 @@ def test_s6_resource_loader_fails_closed(tmp_path, monkeypatch, failure):
     assert error.value.payload["blockers"]
 
 
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"schema": "uwm.traditional_livability.s6_fulu_resources.v1", "ready": False},
+        {
+            "schema": "uwm.traditional_livability.s6_fulu_resources.v1",
+            "ready": True,
+            "scope": "scope",
+            "planning_areas": {},
+            "planning_resources": [],
+            "current_facilities": [],
+        },
+    ],
+)
+def test_s6_resource_loader_rejects_invalid_runtime_contract(tmp_path, monkeypatch, payload):
+    path = tmp_path / "resources.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S6_PATH", str(path))
+
+    with pytest.raises(routes.S6SnapshotUnavailable):
+        routes._load_s6_snapshot("resources")
+
+
+def test_s6_resource_loader_rejects_nonfinite_json(tmp_path, monkeypatch):
+    path = tmp_path / "resources.json"
+    path.write_text(
+        '{"schema":"uwm.traditional_livability.s6_fulu_resources.v1","ready":true,"scope":"scope","planning_areas":[],"planning_resources":[],"current_facilities":[],"bad":NaN}',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S6_PATH", str(path))
+
+    with pytest.raises(routes.S6SnapshotUnavailable):
+        routes._load_s6_snapshot("resources")
+
+
 @pytest.mark.asyncio
 async def test_s6_resources_endpoint_returns_503_for_invalid_snapshot(tmp_path, monkeypatch):
     path = tmp_path / "resources.json"
     path.write_text(json.dumps({"schema": "wrong"}), encoding="utf-8")
     monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S6_PATH", str(path))
     monkeypatch.setattr(routes, "_get_user_from_request", lambda request: {"id": "user"})
-    monkeypatch.setattr(routes, "_set_user_context", lambda user: None)
+    monkeypatch.setattr(routes, "_set_user_context", lambda user: ("user", "analyst"))
 
     response = await routes.uwm_traditional_livability_s6_resources(
         _request("/api/uwm/traditional-livability/s6/resources")
@@ -184,7 +226,7 @@ async def test_s6_dictionary_unavailable_returns_http_200_blocker(tmp_path, monk
     _write_s6_snapshots(tmp_path / "snapshots")
     monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S6_PATH", str(tmp_path / "snapshots"))
     monkeypatch.setattr(routes, "_get_user_from_request", lambda request: {"id": "user"})
-    monkeypatch.setattr(routes, "_set_user_context", lambda user: None)
+    monkeypatch.setattr(routes, "_set_user_context", lambda user: ("user", "analyst"))
 
     response = await routes.uwm_traditional_livability_s6_dictionary(
         _request("/api/uwm/traditional-livability/s6/dictionary")
@@ -219,7 +261,7 @@ async def test_s6_dictionary_envelope_classes_build_valid_human_selected_confirm
     )
     monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S6_PATH", str(snapshot_dir))
     monkeypatch.setattr(routes, "_get_user_from_request", lambda request: {"id": "user"})
-    monkeypatch.setattr(routes, "_set_user_context", lambda user: None)
+    monkeypatch.setattr(routes, "_set_user_context", lambda user: ("user", "analyst"))
 
     response = await routes.uwm_traditional_livability_s6_dictionary(
         _request("/api/uwm/traditional-livability/s6/dictionary")
@@ -282,6 +324,55 @@ async def test_s6_dictionary_envelope_classes_build_valid_human_selected_confirm
     assert validated["selected_candidate"]["match_method"] == "human_selected"
 
 
+@pytest.mark.parametrize("tamper", ["class", "digest"])
+@pytest.mark.asyncio
+async def test_s6_dictionary_revalidates_normalized_snapshot_and_rejects_tamper(
+    tmp_path, monkeypatch, tamper
+):
+    dictionary = validate_facility_dictionary(dictionary_fixture())
+    if tamper == "class":
+        dictionary["classes"][0]["label"] = "Tampered label"
+    else:
+        dictionary["provided_content_digest"] = "sha256:tampered"
+    snapshot_dir = _write_s6_snapshots(tmp_path / "snapshots", dictionary=dictionary)
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S6_PATH", str(snapshot_dir))
+    _authenticated(monkeypatch)
+
+    response = await routes.uwm_traditional_livability_s6_dictionary(
+        _request("/api/uwm/traditional-livability/s6/dictionary")
+    )
+    facility_dictionary = json.loads(response.body)["facility_dictionary"]
+
+    assert facility_dictionary["ready"] is False
+    assert facility_dictionary["classes"] == []
+    assert facility_dictionary["blockers"]
+
+
+@pytest.mark.parametrize("tamper", ["rule", "digest"])
+@pytest.mark.asyncio
+async def test_s6_compatibility_revalidates_normalized_snapshot_and_rejects_tamper(
+    tmp_path, monkeypatch, tamper
+):
+    compatibility = validate_compatibility_matrix(matrix_fixture())
+    if tamper == "rule":
+        compatibility["rules"][0]["relationship"] = "compatible"
+    else:
+        compatibility["provided_content_digest"] = "sha256:tampered"
+    snapshot_dir = _write_s6_snapshots(
+        tmp_path / "snapshots", compatibility=compatibility
+    )
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S6_PATH", str(snapshot_dir))
+    _authenticated(monkeypatch)
+
+    response = await routes.uwm_traditional_livability_s6_dictionary(
+        _request("/api/uwm/traditional-livability/s6/dictionary")
+    )
+    matrix = json.loads(response.body)["compatibility_matrix"]
+
+    assert matrix["ready"] is False
+    assert matrix["blockers"]
+
+
 @pytest.mark.parametrize("matrix_failure", ["missing", "invalid"])
 @pytest.mark.asyncio
 async def test_s6_dictionary_envelope_reports_matrix_snapshot_failure(
@@ -295,7 +386,7 @@ async def test_s6_dictionary_envelope_reports_matrix_snapshot_failure(
         matrix_path.write_text(json.dumps({"schema": "wrong"}), encoding="utf-8")
     monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S6_PATH", str(snapshot_dir))
     monkeypatch.setattr(routes, "_get_user_from_request", lambda request: {"id": "user"})
-    monkeypatch.setattr(routes, "_set_user_context", lambda user: None)
+    monkeypatch.setattr(routes, "_set_user_context", lambda user: ("user", "analyst"))
 
     response = await routes.uwm_traditional_livability_s6_dictionary(
         _request("/api/uwm/traditional-livability/s6/dictionary")
@@ -322,7 +413,7 @@ async def test_s6_analyze_returns_400_for_real_validation_blockers(
     snapshot_dir = _write_s6_snapshots(tmp_path / "snapshots")
     monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S6_PATH", str(snapshot_dir))
     monkeypatch.setattr(routes, "_get_user_from_request", lambda request: {"id": "user"})
-    monkeypatch.setattr(routes, "_set_user_context", lambda user: None)
+    monkeypatch.setattr(routes, "_set_user_context", lambda user: ("user", "analyst"))
 
     response = await routes.uwm_traditional_livability_s6_analyze(
         _request("/api/uwm/traditional-livability/s6/analyze", method="POST", payload=request_payload)
@@ -338,7 +429,7 @@ async def test_s6_analyze_keeps_valid_evidence_limited_analysis_http_200(tmp_pat
     snapshot_dir = _write_s6_snapshots(tmp_path / "snapshots")
     monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S6_PATH", str(snapshot_dir))
     monkeypatch.setattr(routes, "_get_user_from_request", lambda request: {"id": "user"})
-    monkeypatch.setattr(routes, "_set_user_context", lambda user: None)
+    monkeypatch.setattr(routes, "_set_user_context", lambda user: ("user", "analyst"))
 
     response = await routes.uwm_traditional_livability_s6_analyze(
         _request(
@@ -352,3 +443,39 @@ async def test_s6_analyze_keeps_valid_evidence_limited_analysis_http_200(tmp_pat
     assert response.status_code == 200
     assert payload["validation_blockers"] == []
     assert payload["production_blockers"]
+
+
+@pytest.mark.asyncio
+async def test_s6_analyze_binds_confirmation_actor_to_authenticated_username(
+    tmp_path, monkeypatch
+):
+    snapshot_dir = _write_s6_snapshots(tmp_path / "snapshots")
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S6_PATH", str(snapshot_dir))
+    _authenticated(monkeypatch, "trusted-user")
+    request_payload = point_request(
+        confirmed_standard_class_id="spoofed.class",
+        human_confirmation={
+            "actor_id": "spoofed-user",
+            "confirmed_at": "2026-07-11T02:00:00Z",
+            "selected_standard_class_id": "spoofed.class",
+            "original_input_digest": "sha256:spoofed",
+            "dictionary_version": "spoofed-version",
+            "selected_candidate": {
+                "match_method": "human_selected",
+                "evidence": [{"evidence_type": "reviewer_reason", "reason": "reviewed"}],
+            },
+        },
+    )
+
+    response = await routes.uwm_traditional_livability_s6_analyze(
+        _request(
+            "/api/uwm/traditional-livability/s6/analyze",
+            method="POST",
+            payload=request_payload,
+        )
+    )
+    payload = json.loads(response.body)
+
+    assert payload["human_confirmation_validation"]["actor_id"] == "trusted-user"
+    assert payload["normalized_request"]["human_confirmation"]["actor_id"] == "trusted-user"
+    assert "spoofed-user" not in response.body.decode("utf-8")

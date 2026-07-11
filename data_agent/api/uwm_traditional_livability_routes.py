@@ -22,6 +22,8 @@ from ..uwm.traditional_livability_facility_dictionary import (
     DICTIONARY_SCHEMA,
     unavailable_compatibility_matrix,
     unavailable_facility_dictionary,
+    validate_compatibility_matrix,
+    validate_facility_dictionary,
 )
 from ..uwm.traditional_livability_s6 import analyze_s6_facility_proposal
 
@@ -177,7 +179,13 @@ def _load_s6_snapshot(snapshot: str) -> dict:
             _s6_unavailable_payload(snapshot, f"s6_{snapshot}_snapshot_missing")
         )
     try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload = json.loads(
+            path.read_text(encoding="utf-8"),
+            parse_constant=lambda value: (_ for _ in ()).throw(
+                ValueError(f"non-finite JSON constant: {value}")
+            ),
+        )
+        json.dumps(payload, ensure_ascii=False, allow_nan=False)
     except Exception as exc:
         raise S6SnapshotUnavailable(
             _s6_unavailable_payload(snapshot, f"s6_{snapshot}_snapshot_unreadable")
@@ -186,7 +194,84 @@ def _load_s6_snapshot(snapshot: str) -> dict:
         raise S6SnapshotUnavailable(
             _s6_unavailable_payload(snapshot, f"s6_{snapshot}_snapshot_schema_invalid")
         )
-    return payload
+    if snapshot == "resources":
+        if (
+            payload.get("ready") is not True
+            or not isinstance(payload.get("scope"), str)
+            or not payload["scope"].strip()
+            or any(
+                not isinstance(payload.get(field), list)
+                for field in (
+                    "planning_areas",
+                    "planning_resources",
+                    "current_facilities",
+                )
+            )
+        ):
+            raise S6SnapshotUnavailable(
+                _s6_unavailable_payload(
+                    snapshot, "s6_resources_snapshot_contract_invalid"
+                )
+            )
+        return payload
+    return _revalidate_s6_authority_snapshot(snapshot, payload)
+
+
+def _authority_source_payload(snapshot: str, payload: dict) -> dict:
+    metadata = payload.get("source_metadata") or {}
+    effective_date = metadata.get("effective_date")
+    version_date = metadata.get("version_date")
+    date_fields = {"version_date": version_date}
+    if effective_date != version_date:
+        date_fields["effective_date"] = effective_date
+    if snapshot == "dictionary":
+        return {
+            "schema": DICTIONARY_SCHEMA,
+            "dictionary_version": metadata.get("dictionary_version"),
+            "issuing_organization": metadata.get("issuing_organization"),
+            "source_reference": metadata.get("source_reference"),
+            **date_fields,
+            "imported_at": metadata.get("imported_at"),
+            "authoritative_complete_43_class_dictionary": payload.get(
+                "authoritative_complete_43_class_dictionary"
+            ),
+            "classes": payload.get("classes"),
+            "aliases": payload.get("aliases"),
+            "keywords": payload.get("keywords"),
+            "content_digest": payload.get("provided_content_digest"),
+        }
+    return {
+        "schema": COMPATIBILITY_SCHEMA,
+        "matrix_version": metadata.get("matrix_version"),
+        "issuing_organization": metadata.get("issuing_organization"),
+        "source_reference": metadata.get("source_reference"),
+        **date_fields,
+        "imported_at": metadata.get("imported_at"),
+        "rules": payload.get("rules"),
+        "content_digest": payload.get("provided_content_digest"),
+    }
+
+
+def _revalidate_s6_authority_snapshot(snapshot: str, payload: dict) -> dict:
+    if payload.get("ready") is False and payload.get("status") in {
+        "dictionary_unavailable",
+        "compatibility_matrix_unavailable",
+    }:
+        validator = (
+            validate_facility_dictionary
+            if snapshot == "dictionary"
+            else validate_compatibility_matrix
+        )
+        validator(_authority_source_payload(snapshot, payload))
+        return (
+            unavailable_facility_dictionary()
+            if snapshot == "dictionary"
+            else unavailable_compatibility_matrix()
+        )
+    source_payload = _authority_source_payload(snapshot, payload)
+    if snapshot == "dictionary":
+        return validate_facility_dictionary(source_payload)
+    return validate_compatibility_matrix(source_payload)
 
 
 def _load_optional_s6_snapshot(snapshot: str) -> dict:
@@ -383,7 +468,7 @@ async def uwm_traditional_livability_s6_analyze(request: Request):
     user = _get_user_from_request(request)
     if not user:
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
-    _set_user_context(user)
+    username, _ = _set_user_context(user)
     try:
         payload = await request.json()
     except Exception:
@@ -396,6 +481,13 @@ async def uwm_traditional_livability_s6_analyze(request: Request):
             {"error": "Invalid request payload", "blockers": ["request_object_required"]},
             status_code=400,
         )
+    confirmation = payload.get("human_confirmation")
+    if isinstance(confirmation, dict):
+        payload = dict(payload)
+        payload["human_confirmation"] = {
+            **confirmation,
+            "actor_id": username,
+        }
     try:
         resources = await asyncio.to_thread(_load_s6_snapshot, "resources")
         dictionary, compatibility = await asyncio.gather(
