@@ -339,3 +339,26 @@ def test_representative_frontend_human_selected_confirmation_validates():
 
     assert validated["valid"] is True
     assert validated["selected_candidate"] == selected_candidate_audit
+
+
+def test_s6_panel_completes_s1_handoff_without_world_model_wording():
+    panel = S6_PANEL.read_text(encoding="utf-8")
+    for required in [
+        "/api/uwm/traditional-livability/s1/profiles",
+        "/api/uwm/traditional-livability/s6/handoffs",
+        "/execute-s1",
+        "S1交接就绪度",
+        "生成S1交接",
+        "执行S1评估",
+        "FP",
+        "FPP",
+        "当前基线",
+        "拟建静态快照",
+        "传统静态分析",
+        "未解析维度",
+        "setHandoff(null)",
+        "setS1Result(null)",
+    ]:
+        assert required in panel
+    for forbidden in ["UWM rollout", "世界模型预测", "未来适应预测"]:
+        assert forbidden not in panel

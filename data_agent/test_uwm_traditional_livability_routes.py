@@ -113,9 +113,60 @@ def test_traditional_livability_routes_are_registered_in_frontend_api():
         ("/api/uwm/traditional-livability/s6/resources", "GET"),
         ("/api/uwm/traditional-livability/s6/dictionary", "GET"),
         ("/api/uwm/traditional-livability/s6/analyze", "POST"),
+        ("/api/uwm/traditional-livability/s1/profiles", "GET"),
+        ("/api/uwm/traditional-livability/s6/handoffs", "POST"),
+        ("/api/uwm/traditional-livability/s6/handoffs/{handoff_id}", "GET"),
+        ("/api/uwm/traditional-livability/s6/handoffs/{handoff_id}/execute-s1", "POST"),
     ):
         assert method in _route_methods(route_list, path)
         assert method in _route_methods(frontend_route_list, path)
+
+
+@pytest.mark.asyncio
+async def test_s6_s1_handoff_routes_bind_actor_and_hide_other_users(monkeypatch):
+    from data_agent.test_traditional_livability_s6_s1_service import _service, _service_analysis
+
+    service = _service()
+    monkeypatch.setattr(routes, "_get_s6_s1_service", lambda: service)
+    _authenticated(monkeypatch, "alice")
+    response = await routes.uwm_traditional_livability_s6_create_handoff(
+        _request(
+            "/api/uwm/traditional-livability/s6/handoffs",
+            method="POST",
+            payload={"s6_analysis": _service_analysis(), "created_at": "2026-07-11T12:01:00+08:00"},
+        )
+    )
+    assert response.status_code == 200
+    handoff = json.loads(response.body)
+    assert handoff["actor_id"] == "alice"
+
+    _authenticated(monkeypatch, "bob")
+    request = _request(f"/api/uwm/traditional-livability/s6/handoffs/{handoff['handoff_id']}")
+    request.scope["path_params"] = {"handoff_id": handoff["handoff_id"]}
+    response = await routes.uwm_traditional_livability_s6_get_handoff(request)
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_s6_s1_execute_route_returns_static_comparison(monkeypatch):
+    from data_agent.test_traditional_livability_s6_s1_service import _service, _service_analysis
+
+    service = _service()
+    monkeypatch.setattr(routes, "_get_s6_s1_service", lambda: service)
+    _authenticated(monkeypatch, "alice")
+    handoff = service.create_handoff(
+        s6_analysis=_service_analysis(), actor_id="alice", created_at="2026-07-11T12:01:00+08:00"
+    )
+    request = _request(
+        f"/api/uwm/traditional-livability/s6/handoffs/{handoff['handoff_id']}/execute-s1",
+        method="POST",
+    )
+    request.scope["path_params"] = {"handoff_id": handoff["handoff_id"]}
+    response = await routes.uwm_traditional_livability_s6_execute_s1(request)
+    assert response.status_code == 200
+    payload = json.loads(response.body)
+    assert payload["method"] == "deterministic_static_proposal_comparison"
+    assert payload["claim_boundary"]["uwm_rollout"] is False
 
 
 def _s1_snapshot():
