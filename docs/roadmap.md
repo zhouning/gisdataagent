@@ -1,12 +1,95 @@
 # GIS Data Agent — Roadmap
 
-**Last updated**: 2026-06-30 &nbsp;|&nbsp; **Current version**: v25.21-twm-demo &nbsp;|&nbsp; **Next**: TWM 算法模型路线刷新 + 权威数据接入试点 + CRS/瓦片化治理 + Self-Evolution regression gate + Standards P5 remaining &nbsp;|&nbsp; **ADK**: v1.27.2
+**Last updated**: 2026-07-11 &nbsp;|&nbsp; **Current version**: v25.21-twm-demo &nbsp;|&nbsp; **Next**: Agent Runtime Reliability P0 + TWM 算法模型路线刷新 + 权威数据接入试点 + CRS/瓦片化治理 + Self-Evolution regression gate + Standards P5 remaining &nbsp;|&nbsp; **ADK**: v1.27.2
 
 > 参照标杆：SeerAI Geodesic、OpenClaw、Frontier、CoWork、**DeerFlow v2.0（ByteDance 通用 Agent Harness）**、**SIGMOD 2026 Data Agent Levels（L0-L5 自主性分级）**、**AgentArts（华为云企业级智能体平台）**、**Datus.ai（上下文工程 + 反馈飞轮）**、**Hermes Agent（通用 Agent Runtime）**、**Atlan / Alation / Ataccama（Agentic Governance + Active Metadata）**、**DataWorks / Dataphin（数据开发治理一体化 + Agent）**、**袋鼠云（多模态数据中台）**
 >
 > 核心战略：**Agentic Spatial Data Governance Platform（智能体驱动的时空数据治理平台）**——保持智能层 + 交互层领先，把空间数据治理、活跃元数据、声明式治理、数据产品化和多模态治理做成面向行业客户的产品能力；从"用户带数据来"转向"Agent 主动发现、治理、编排和运营数据"，从"一次性回答"转向"越用越准、越用越能沉淀的数据治理飞轮"。
 >
 > **Data Agent Level**: v25.0 = **L4 — Agentic Governance**（标准全生命周期闭环 + 单向派生 + 双层世界模型 + NL2SQL 列名反查 + 跨家族评估），从场景驱动升级为**标准驱动**
+
+---
+
+## Cross-Cutting — Agent Runtime Reliability & Cognitive Control (规划中, 2026-07-11)
+
+> **主题**：在不削弱现有 GIS、Standards、NL2SQL、TWM 和 DRL 能力的前提下，将当前分散的 Agent、工具、记忆、上下文、评测、安全和可观测性模块收束为一个强类型、可恢复、权限一致、可评测和可复现发布的 Agent Runtime。
+>
+> **证据基线**：[《AI Agents in Action（第二版）》对 GIS Data Agent 的系统评估与改进建议](ai-agents-in-action-gis-data-agent-assessment-2026-07-11.md)
+
+战略判断：项目当前的主要瓶颈不是 GIS 功能不足，而是部分高级模块“已经定义、尚未进入真实主链”。下一阶段优先修复伪闭环、跨入口策略差异和租户隔离，再建设 Cognitive Runtime；不以继续扩充 GeneralProcessing 工具数量或创建平行模块作为主要路线。
+
+目标运行架构：
+
+```text
+All Entrypoints
+  -> Unified RunnerFactory
+  -> FrontDoor (<= 6-10 meta tools)
+  -> RunWorkspace + deterministic AttentionRouter
+  -> Typed Specialist Worker (small tool manifest)
+  -> Typed Evaluator
+  -> retry | replan | retrieve memory | respond | escalate
+```
+
+当前审计基线：
+
+- 三个 generator/checker 质量工作流当前只顺序执行一次，`max_iterations` 不参与控制流；
+- 核心 Agent 交接主要依赖自由文本和 `output_key`，Skill schema 未进入生产 caller；
+- 运行时工具枚举：GeneralProcessing `315`、Planner `63`、DataProcessing `34`、DataAnalysis `41`、GovProcessing `33`；
+- UI 会加载 CostGuard、Retry、Provenance、Guardrail 和可选 HITL，多个 headless 入口默认可能使用空插件列表；
+- MCP Agent 工具发现未传 username，ContextEngine 缓存键未包含 tenant/user/role；
+- task decomposition 调用不存在的 `run_pipeline`，当前路径可触发 `ImportError`；
+- Conversation Memory、ContextEngine、DecisionTracer、OTel、PlanRefiner 和 Prompt Registry 均已有实现基础，但主链接线不完整；
+- 当前 ADK eval 共 `12` 个正向案例，尚不足以覆盖重试、隔离、注入、故障恢复和认知停滞。
+
+### P0 — Runtime Truthfulness & Security Consistency
+
+> **进入条件**：以当前运行语义缺口编写失败测试；禁止只验证类、属性或辅助函数存在。<br>
+> **退出条件**：以下四个工作包全部通过集成测试后，才能扩大主动记忆、自进化和 ContextEngine 的生产接入面。
+
+| 工作包 | 范围 | 依赖 | 验收门 |
+|---|---|---|---|
+| [ ] **Typed quality loop** | `QualityVerdict(pass/revise/escalate)`、条件回跳、反馈注入、iteration/token/cost/tool-failure/stagnation 门 | ADK Workflow routed edges、Pydantic schema | checker 返回 revise 后 generator 确实重跑；质量通过、预算耗尽和停滞三条路径均有确定性测试 |
+| [ ] **Unified RunnerFactory** | UI、headless、MCP、A2A、queue、workflow、CLI、TUI、Bot 统一 mandatory plugin stack、session/memory/context 和 trace | plugins、guardrails、HITL、pipeline runner | 所有入口均加载 CostGuard、Retry、Provenance 和 Guardrail；调用方不能用空列表绕过必需策略 |
+| [ ] **Tenant isolation hardening** | MCP tool visibility、Context cache、KB provider 和 RuntimeIdentity 统一 | user ContextVar、MCP Hub、ContextEngine | 双用户私有 MCP/KB/缓存隔离测试通过；缺失身份时默认拒绝私有能力 |
+| [ ] **Task decomposition repair** | 正确 headless runner、`agent_hint` 路由、typed TaskResult、失败重规划、最终 synthesis | task decomposer、PlanRefiner、pipeline runner | 多依赖任务可端到端执行；失败节点不会被简单计数掩盖；结果包含证据、产物和失败解释 |
+
+### P1 — Tool Surface & Cognitive Runtime
+
+> **进入条件**：P0 全部通过。<br>
+> **退出条件**：复杂任务具备统一 workspace、确定性下一步路由和主动经验检索，且每次运行可重放关键状态。
+
+| 工作包 | 范围 | 依赖 | 验收门 |
+|---|---|---|---|
+| [ ] **Capability manifest + dynamic tool loading** | 建立 capability catalog、route manifest 和按任务加载的小工具集 | Agent/Skill/Operator/MCP registry | FrontDoor 不超过 10 个工具；specialist 默认不超过 10 个主要工具；trace 记录实际工具及版本 |
+| [ ] **RunWorkspace** | 统一 goal、plan、subgoals、evidence、artifacts、failures、memory、budget、confidence 和版本 | typed contracts、trace storage | 每次复杂运行可重建计划修订、工具观察、评价和退出原因 |
+| [ ] **Deterministic AttentionRouter** | fast/plan/execute/evaluate/replan/retrieve/respond/escalate 状态路由 | RunWorkspace、QualityVerdict | 低置信、停滞、证据不足和工具失败能够触发可预测路由，不由自由文本直接控制高风险分支 |
+| [ ] **Proactive structured memory** | planning 前检索 episodic/procedural/semantic memory，evaluation 后记录结构化经验；加入 TTL、压缩和冲突处理 | Conversation Memory、KB、feedback | 检索命中可改变计划；错误记忆可撤回；过期和跨租户记忆不可见；不以整段长回答作为主要记忆单元 |
+
+### P2 — Evaluation, Observability & Versioned Release
+
+> **进入条件**：P0 完成，P1 至少完成 RunWorkspace 和 tool manifest。<br>
+> **退出条件**：从失败发现到回归评测、灰度发布和回滚形成可审计链路。
+
+| 工作包 | 范围 | 依赖 | 验收门 |
+|---|---|---|---|
+| [ ] **Cognitive failure benchmark** | confident wrong answer、broken record、rigid plan、overcommitted guess、shallow composition，加 GIS CRS/单位/重复计数/权限案例 | ADK Eval、Evaluator Registry | 核心 pipeline 同时包含正向、负向、故障和隔离案例；每例多次运行并统计答案、轨迹、成本和延迟方差 |
+| [ ] **Trace wiring** | route、plan、tool、memory、guardrail、quality、cost、confidence、outcome 全链路 | OTel、DecisionTracer、RunWorkspace | 任一失败可定位到决策、证据和版本；trace 不依赖 UI session 才存在 |
+| [ ] **Versioned release gates** | prompt/model/tool schema/MCP server version 固定，offline eval -> shadow -> canary -> SLO rollback | Agent factory、Prompt Registry、eval history | prompt deploy 无需依赖进程重启语义；每次运行可复现版本；回归自动阻断晋级 |
+| [ ] **Feedback-to-eval promotion** | trace、负反馈和工具失败进入候选 eval，人工审核后晋升回归集 | feedback、failure-to-eval、evaluation CI | 未审核案例和 prompt 修改不能自动进入生产；线上失败可追踪到后续回归用例 |
+
+阶段顺序：
+
+1. **Gate A：真实闭环与隔离** — 完成 P0，消除已知运行时和权限风险；
+2. **Gate B：认知控制层** — 收缩工具面，接入 RunWorkspace、AttentionRouter 和主动记忆；
+3. **Gate C：评测发布飞轮** — 扩充认知失败 benchmark，完成 trace、版本和灰度回滚；
+4. **Gate D：受控自进化** — Self-Evolution 继续保持 review-only，直到反馈、评测、权限和回滚门全部可审计。
+
+非目标：
+
+- 不重写现有 GIS、TWM、Standards 和 NL2SQL 领域算法；
+- 不以增加更多 Agent 或 Toolset 替代运行时收束；
+- 不把启发式 confidence 作为校准概率；
+- 不在 P0 完成前扩大自动 prompt 发布或跨用户记忆注入。
 
 ---
 
