@@ -8,6 +8,7 @@ aggregated tool access for agent integration.
 Singleton pattern follows db_engine.py (module-level global + get function).
 """
 import asyncio
+import inspect
 import json
 import os
 import sys
@@ -150,6 +151,10 @@ def _streamable_http_kwargs(
     redaction_secrets: list[str],
 ) -> dict:
     """Build runtime-only streamable HTTP parameters for an MCP server."""
+    if not config.url.strip():
+        raise McpConfigurationError(
+            "ARCPY_MCP_URL_MISSING", "ArcPy MCP URL is not configured"
+        )
     runtime_headers = dict(config.headers or {})
     if config.bearer_token_env_var or config.bearer_token_file_env_var:
         token = resolve_secret_reference(
@@ -438,7 +443,7 @@ class McpHubManager:
     # ----- Config loading -----
 
     def load_config(self) -> list[McpServerConfig]:
-        """Load server configs from DB (primary) + YAML (seed/fallback)."""
+        """Load DB/YAML configs, then overlay system-managed environment configs."""
         # 1. Ensure DB table exists and load DB configs
         db_ok = self._ensure_table()
         db_configs = self._load_from_db() if db_ok else []
@@ -454,13 +459,85 @@ class McpHubManager:
                 db_configs.append(yc)
                 db_names.add(yc.name)
 
-        # 3. Build runtime state
-        for config in db_configs:
+        # 3. Overlay non-persistent system configs by name so environment wins.
+        configs_by_name = {config.name: config for config in db_configs}
+        system_configs = self._load_system_configs()
+        for config in system_configs:
+            configs_by_name[config.name] = config
+
+        configs = list(configs_by_name.values())
+
+        # 4. When the remote service is enabled, retain but disable the old
+        # Windows-local stdio row. Persistence is deliberately best effort.
+        remote_enabled = any(
+            config.name == "arcpy-remote" and config.enabled
+            for config in system_configs
+        )
+        if remote_enabled:
+            legacy = configs_by_name.get("arcgis-pro-tools")
+            if legacy and self._is_windows_stdio(legacy):
+                legacy.enabled = False
+                marker = "Legacy Windows stdio configuration"
+                if marker not in legacy.description:
+                    legacy.description = (
+                        f"{legacy.description.rstrip()} — {marker}"
+                        if legacy.description.strip()
+                        else marker
+                    )
+                self._update_enabled_in_db(legacy.name, False)
+
+        # 5. Build runtime state.
+        for config in configs:
             self._servers[config.name] = McpServerStatus(config=config)
 
-        logger.info("Loaded %d MCP server config(s) (%d from DB, %d from YAML seed)",
-                     len(db_configs), sum(1 for c in db_configs if c.source == "db"), len(yaml_configs))
-        return db_configs
+        logger.info(
+            "Loaded %d MCP server config(s) (%d from DB, %d from YAML seed, %d system-managed)",
+            len(configs),
+            sum(1 for c in configs if c.source == "db"),
+            len(yaml_configs),
+            len(system_configs),
+        )
+        return configs
+
+    @staticmethod
+    def _is_windows_stdio(config: McpServerConfig) -> bool:
+        """Return whether a config is the legacy Windows-local stdio shape."""
+        if config.transport != "stdio":
+            return False
+        command = (config.command or "").strip()
+        return bool(
+            "\\" in command
+            or (len(command) >= 2 and command[0].isalpha() and command[1] == ":")
+        )
+
+    def _load_system_configs(self) -> list[McpServerConfig]:
+        """Build system-managed configs from references in process environment."""
+        enabled = os.environ.get("ARCPY_MCP_ENABLED", "").strip().lower()
+        if enabled not in ("true", "1", "yes"):
+            return []
+
+        try:
+            timeout = float(os.environ.get("ARCPY_MCP_CONNECT_TIMEOUT", "10"))
+        except (TypeError, ValueError):
+            timeout = 10.0
+
+        return [McpServerConfig(
+            name="arcpy-remote",
+            description="Private ArcGIS Pro 3.7.1 ArcPy MCP service",
+            transport="streamable_http",
+            enabled=True,
+            category="gis",
+            pipelines=["general", "planner", "governance"],
+            url=os.environ.get("ARCPY_MCP_URL", "").strip(),
+            timeout=timeout,
+            bearer_token_env_var="ARCPY_MCP_TOKEN",
+            bearer_token_file_env_var="ARCPY_MCP_TOKEN_FILE",
+            ca_bundle_env_var="ARCPY_MCP_CA_BUNDLE",
+            system_managed=True,
+            expose_raw_tools=False,
+            source="environment",
+            is_shared=True,
+        )]
 
     def _load_yaml(self) -> list[McpServerConfig]:
         """Load server configs from YAML file."""
@@ -654,10 +731,10 @@ class McpHubManager:
         logger.info(t("mcp.server_disconnected", name=name))
         return True
 
-    async def startup(self):
-        """Load config and connect all enabled servers."""
+    async def startup(self) -> bool:
+        """Load config and connect enabled servers, returning full success."""
         if self._started:
-            return
+            return True
 
         if not self._servers:
             self.load_config()
@@ -674,7 +751,39 @@ class McpHubManager:
         logger.info(
             t("mcp.hub_startup", connected=connected, total=total)
         )
-        self._started = True
+        self._started = connected == total
+        return self._started
+
+    async def retry_failed_servers(
+        self,
+        delays=(2, 5, 10, 20),
+        sleep=asyncio.sleep,
+    ) -> bool:
+        """Retry enabled non-connected servers on a bounded schedule."""
+        pending = self._enabled_non_connected_servers()
+        if not pending:
+            self._started = True
+            return True
+
+        self._started = False
+        for delay in delays:
+            await sleep(delay)
+            for name in list(self._enabled_non_connected_servers()):
+                await self.connect_server(name)
+            pending = self._enabled_non_connected_servers()
+            if not pending:
+                self._started = True
+                return True
+        return False
+
+    def _enabled_non_connected_servers(self) -> list[str]:
+        """Return enabled servers without a live connected runtime."""
+        return [
+            name for name, status in self._servers.items()
+            if status.config.enabled and (
+                status.status != "connected" or status.toolset is None
+            )
+        ]
 
     async def shutdown(self):
         """Disconnect all servers gracefully."""
@@ -695,6 +804,11 @@ class McpHubManager:
             status = self._servers.get(name)
             if not status:
                 return {"status": "error", "message": f"Server '{name}' not found"}
+            if status.config.system_managed:
+                return {
+                    "status": "forbidden",
+                    "message": f"Server '{name}' is system-managed",
+                }
 
             status.config.enabled = enabled
             self._update_enabled_in_db(name, enabled)
@@ -848,11 +962,13 @@ class McpHubManager:
 
         Admins can manage any server. Non-admins can only manage their own.
         """
-        if role == "admin":
-            return True
         status = self._servers.get(name)
         if not status:
             return False
+        if status.config.system_managed:
+            return False
+        if role == "admin":
+            return True
         return status.config.owner_username == username
 
     async def update_server(self, name: str, updates: dict) -> dict:
@@ -861,6 +977,11 @@ class McpHubManager:
             status = self._servers.get(name)
             if not status:
                 return {"status": "error", "message": f"Server '{name}' not found"}
+            if status.config.system_managed:
+                return {
+                    "status": "forbidden",
+                    "message": f"Server '{name}' is system-managed",
+                }
 
             config = status.config
             was_connected = status.status == "connected"
@@ -899,6 +1020,11 @@ class McpHubManager:
             status = self._servers.get(name)
             if not status:
                 return {"status": "error", "message": f"Server '{name}' not found"}
+            if status.config.system_managed:
+                return {
+                    "status": "forbidden",
+                    "message": f"Server '{name}' is system-managed",
+                }
 
             await self._cleanup_runtime(name, status)
             self._delete_from_db(name)
@@ -936,6 +1062,8 @@ class McpHubManager:
                 "error_code": s.error_code,
                 "connected_at": s.connected_at,
                 "source": s.config.source,
+                "system_managed": s.config.system_managed,
+                "expose_raw_tools": s.config.expose_raw_tools,
                 "owner_username": s.config.owner_username,
                 "is_shared": s.config.is_shared,
             })
@@ -976,6 +1104,7 @@ class McpHubManager:
                     status.status = "error"
                     status.error_message = error_message
                     status.error_code = ""
+                    self._started = False
                     await self._cleanup_runtime(name, status)
         return tools
 
@@ -1012,6 +1141,7 @@ class McpHubManager:
                 status.status = "error"
                 status.error_message = error_message
                 status.error_code = ""
+                self._started = False
                 await self._cleanup_runtime(name, status)
                 return []
 
@@ -1019,6 +1149,68 @@ class McpHubManager:
 # ---------------------------------------------------------------------------
 # Singleton
 # ---------------------------------------------------------------------------
+
+
+def _get_existing_arcpy_client():
+    """Return a future ArcPy client singleton without constructing one."""
+    for module_name in (
+        "data_agent.arcpy_mcp_client",
+        "data_agent.toolsets.arcpy_mcp_toolset",
+    ):
+        module = sys.modules.get(module_name)
+        if module is None:
+            continue
+        for attribute in (
+            "_arcpy_mcp_client",
+            "_client",
+            "_ARCPY_MCP_CLIENT",
+        ):
+            client = getattr(module, attribute, None)
+            if client is not None:
+                return client
+    return None
+
+
+class McpShutdownBridge:
+    """Idempotent synchronous bridge for safe process-exit cleanup."""
+
+    def __init__(self, hub_getter=None, client_getter=None):
+        self._hub_getter = hub_getter
+        self._client_getter = client_getter or _get_existing_arcpy_client
+        self._started = False
+        self._guard = threading.Lock()
+        self._cleanup_task = None
+
+    def __call__(self):
+        with self._guard:
+            if self._started:
+                return
+            self._started = True
+
+        cleanup = self._cleanup()
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            asyncio.run(cleanup)
+        else:
+            self._cleanup_task = loop.create_task(cleanup)
+
+    async def _cleanup(self):
+        try:
+            hub_getter = self._hub_getter or get_mcp_hub
+            await hub_getter().shutdown()
+        except Exception:
+            logger.warning("MCP Hub shutdown cleanup failed")
+
+        try:
+            client = self._client_getter()
+            close = getattr(client, "close", None) if client is not None else None
+            if close is not None:
+                result = close()
+                if inspect.isawaitable(result):
+                    await result
+        except Exception:
+            logger.warning("ArcPy MCP client shutdown cleanup failed")
 
 _hub: Optional[McpHubManager] = None
 

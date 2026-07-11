@@ -154,6 +154,87 @@ class TestSessionServiceCheck(unittest.TestCase):
         self.assertEqual(result["status"], "unconfigured")
 
 
+class TestMcpHealthCheck(unittest.TestCase):
+    """MCP health details should expose only sanitized ArcPy readiness."""
+
+    def test_arcpy_health_contains_only_allowlisted_fields(self):
+        from data_agent.health import check_mcp_hub
+        from data_agent.mcp_hub import McpServerConfig, McpServerStatus
+
+        token = "health-must-not-expose-this-token"
+        config = McpServerConfig(
+            name="arcpy-remote",
+            enabled=True,
+            transport="streamable_http",
+            url="https://private.example/mcp?token=hidden",
+            headers={"Authorization": f"Bearer {token}"},
+            bearer_token_env_var="ARCPY_MCP_TOKEN",
+            bearer_token_file_env_var="ARCPY_MCP_TOKEN_FILE",
+            ca_bundle_env_var="ARCPY_MCP_CA_BUNDLE",
+            system_managed=True,
+            expose_raw_tools=False,
+        )
+        status = McpServerStatus(
+            config=config,
+            status="error",
+            tool_count=0,
+            connected_at=None,
+            error_code="ARCPY_MCP_UNREACHABLE",
+            error_message="ArcPy MCP service is unreachable",
+            runtime_secrets=(token,),
+        )
+        hub = MagicMock()
+        hub.get_server_statuses.return_value = [{
+            "name": "arcpy-remote",
+            "enabled": True,
+            "status": status.status,
+            "tool_count": status.tool_count,
+            "connected_at": status.connected_at,
+            "error_code": status.error_code,
+            "error_message": status.error_message,
+        }]
+
+        with patch("data_agent.mcp_hub.get_mcp_hub", return_value=hub):
+            result = check_mcp_hub()
+
+        assert set(result["arcpy"]) == {
+            "status",
+            "tool_count",
+            "connected_at",
+            "error_code",
+            "error_message",
+        }
+        assert result["arcpy"]["error_code"] == "ARCPY_MCP_UNREACHABLE"
+        serialized = repr(result)
+        for forbidden in (
+            token,
+            config.url,
+            "Authorization",
+            "ARCPY_MCP_TOKEN",
+            "ARCPY_MCP_TOKEN_FILE",
+            "ARCPY_MCP_CA_BUNDLE",
+            "runtime_secrets",
+        ):
+            assert forbidden not in serialized
+
+    @patch("data_agent.health.check_mcp_hub")
+    def test_feature_flags_distinguish_local_and_remote_arcpy(
+        self, mock_check_mcp_hub
+    ):
+        mock_check_mcp_hub.return_value = {
+            "status": "ok",
+            "arcpy": {"status": "connected"},
+        }
+        with patch(
+            "data_agent.toolsets.geo_processing_tools.ARCPY_AVAILABLE", False
+        ):
+            from data_agent.health import _get_feature_flags
+            flags = _get_feature_flags()
+
+        self.assertFalse(flags["arcpy"])
+        self.assertTrue(flags["arcpy_mcp_ready"])
+
+
 class TestReadinessCheck(unittest.TestCase):
     """Readiness probe depends on database status."""
 

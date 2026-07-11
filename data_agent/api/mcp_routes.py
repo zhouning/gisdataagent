@@ -110,6 +110,17 @@ def _mcp_config_body(config) -> dict:
     return {field_name: getattr(config, field_name) for field_name in _MCP_CONFIG_FIELDS}
 
 
+def _reject_system_managed_mutation(hub, server_name: str):
+    """Return a 403 response when a server is managed by process configuration."""
+    status = hub._servers.get(server_name)
+    if status and status.config.system_managed:
+        return JSONResponse(
+            {"error": f"Server '{server_name}' is system-managed"},
+            status_code=403,
+        )
+    return None
+
+
 async def mcp_servers(request: Request):
     """GET /api/mcp/servers — list MCP servers visible to current user."""
     user = _get_user_from_request(request)
@@ -155,11 +166,18 @@ async def mcp_toggle(request: Request):
     enabled = body.get("enabled", True)
     from ..mcp_hub import get_mcp_hub
     hub = get_mcp_hub()
+    protected = _reject_system_managed_mutation(hub, server_name)
+    if protected is not None:
+        return protected
     result = await hub.toggle_server(server_name, enabled)
     if result.get("status") == "ok":
         from ..audit_logger import record_audit, ACTION_MCP_SERVER_TOGGLE
         record_audit(username, ACTION_MCP_SERVER_TOGGLE, details={"server": server_name, "enabled": enabled})
-    status_code = 200 if result.get("status") == "ok" else 404
+    status_code = (
+        200 if result.get("status") == "ok"
+        else 403 if result.get("status") == "forbidden"
+        else 404
+    )
     return JSONResponse(result, status_code=status_code)
 
 
@@ -278,6 +296,9 @@ async def mcp_server_update(request: Request):
 
     from ..mcp_hub import get_mcp_hub
     hub = get_mcp_hub()
+    protected = _reject_system_managed_mutation(hub, server_name)
+    if protected is not None:
+        return protected
     if not hub._can_manage_server(server_name, username, role):
         return JSONResponse({"error": "Permission denied"}, status_code=403)
 
@@ -312,6 +333,9 @@ async def mcp_server_delete(request: Request):
     server_name = request.path_params.get("name", "")
     from ..mcp_hub import get_mcp_hub
     hub = get_mcp_hub()
+    protected = _reject_system_managed_mutation(hub, server_name)
+    if protected is not None:
+        return protected
     if not hub._can_manage_server(server_name, username, role):
         return JSONResponse({"error": "Permission denied"}, status_code=403)
     result = await hub.remove_server(server_name)
@@ -351,6 +375,9 @@ async def mcp_server_share(request: Request):
     status_obj = hub._servers.get(server_name)
     if not status_obj:
         return JSONResponse({"error": f"Server '{server_name}' not found"}, status_code=404)
+    protected = _reject_system_managed_mutation(hub, server_name)
+    if protected is not None:
+        return protected
     status_obj.config.is_shared = is_shared
     hub._save_to_db(status_obj.config)
     from ..audit_logger import record_audit, ACTION_MCP_SERVER_UPDATE

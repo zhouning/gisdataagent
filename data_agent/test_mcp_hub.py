@@ -352,6 +352,25 @@ class TestMcpHubManager(unittest.TestCase):
         self.assertNotIn("runtime_secrets", statuses[0])
         self.assertNotIn(token, repr(statuses))
 
+    def test_get_server_statuses_marks_managed_hidden_tool_server(self):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
+
+        hub = McpHubManager()
+        hub._servers = {
+            "arcpy-remote": McpServerStatus(
+                config=McpServerConfig(
+                    name="arcpy-remote",
+                    system_managed=True,
+                    expose_raw_tools=False,
+                )
+            )
+        }
+
+        status = hub.get_server_statuses()[0]
+
+        self.assertTrue(status["system_managed"])
+        self.assertFalse(status["expose_raw_tools"])
+
     def test_connect_unknown_server(self):
         from data_agent.mcp_hub import McpHubManager
         hub = McpHubManager()
@@ -487,6 +506,7 @@ class TestMcpHubManager(unittest.TestCase):
         )
         hub = McpHubManager()
         hub._servers = {"secure": status}
+        hub._started = True
 
         with patch("data_agent.mcp_hub.logger.warning") as warning:
             tools = _run(hub.get_all_tools())
@@ -500,6 +520,7 @@ class TestMcpHubManager(unittest.TestCase):
         self.assertIsNone(status.toolset)
         self.assertEqual(status.runtime_secrets, ())
         self.assertEqual(status.status, "error")
+        self.assertFalse(hub._started)
 
     def test_get_tools_for_server_disconnected(self):
         from data_agent.mcp_hub import McpHubManager
@@ -556,6 +577,7 @@ class TestMcpHubManager(unittest.TestCase):
         )
         hub = McpHubManager()
         hub._servers = {"secure": status}
+        hub._started = True
 
         with patch("data_agent.mcp_hub.logger.warning") as warning:
             result = _run(hub.get_tools_for_server("secure"))
@@ -569,6 +591,7 @@ class TestMcpHubManager(unittest.TestCase):
         self.assertIsNone(status.toolset)
         self.assertEqual(status.runtime_secrets, ())
         self.assertEqual(status.status, "error")
+        self.assertFalse(hub._started)
 
     def test_shutdown_disconnects_connected(self):
         """shutdown() disconnects all connected servers."""

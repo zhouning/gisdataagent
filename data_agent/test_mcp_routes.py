@@ -7,9 +7,13 @@ import pytest
 
 from data_agent.api.mcp_routes import (
     get_mcp_routes,
+    mcp_reconnect,
+    mcp_server_delete,
+    mcp_server_share,
     mcp_server_create,
     mcp_server_update,
     mcp_test_connection,
+    mcp_toggle,
 )
 from data_agent.mcp_hub import McpServerConfig
 
@@ -71,7 +75,7 @@ def _existing_config(transport="stdio"):
         bearer_token_env_var="EXISTING_TOKEN",
         bearer_token_file_env_var="EXISTING_TOKEN_FILE",
         ca_bundle_env_var="EXISTING_CA_FILE",
-        system_managed=True,
+        system_managed=False,
         expose_raw_tools=False,
         owner_username="route-owner",
         is_shared=False,
@@ -82,6 +86,33 @@ def _server_status(config):
     status = MagicMock()
     status.config = config
     return status
+
+
+def _system_managed_hub():
+    hub = MagicMock()
+    config = McpServerConfig(
+        name="arcpy-remote",
+        transport="streamable_http",
+        enabled=True,
+        url="https://arcpy.internal/mcp",
+        system_managed=True,
+        expose_raw_tools=False,
+    )
+    hub._servers = {"arcpy-remote": _server_status(config)}
+    hub._can_manage_server.return_value = False
+    hub.toggle_server = AsyncMock(return_value={
+        "status": "forbidden",
+        "message": "Server 'arcpy-remote' is system-managed",
+    })
+    hub.update_server = AsyncMock()
+    hub.remove_server = AsyncMock()
+    hub.reconnect_server = AsyncMock(return_value={
+        "status": "ok",
+        "server": "arcpy-remote",
+        "connected": True,
+        "tool_count": 4,
+    })
+    return hub
 
 
 def test_routes_expose_canonical_connection_test_endpoint():
@@ -615,3 +646,63 @@ async def test_admin_can_update_runtime_security_references():
 
     assert response.status_code == 200
     hub.update_server.assert_awaited_once_with("owned-server", body)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("handler", "body"),
+    [
+        (mcp_server_update, {"description": "changed"}),
+        (mcp_server_delete, {}),
+        (mcp_toggle, {"enabled": False}),
+        (mcp_server_share, {"is_shared": False}),
+    ],
+)
+async def test_admin_cannot_mutate_system_managed_server(handler, body):
+    user = _make_user(username="admin-user", role="admin")
+    hub = _system_managed_hub()
+    request = _make_request(body, path_params={"name": "arcpy-remote"})
+
+    with (
+        patch("data_agent.api.mcp_routes._get_user_from_request", return_value=user),
+        patch(
+            "data_agent.api.mcp_routes._set_user_context",
+            return_value=("admin-user", "admin"),
+        ),
+        patch(
+            "data_agent.api.mcp_routes._require_admin",
+            return_value=(user, "admin-user", "admin", None),
+        ),
+        patch("data_agent.mcp_hub.get_mcp_hub", return_value=hub),
+    ):
+        response = await handler(request)
+
+    assert response.status_code == 403
+    hub.update_server.assert_not_awaited()
+    hub.remove_server.assert_not_awaited()
+    hub._save_to_db.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_admin_can_reconnect_system_managed_server():
+    user = _make_user(username="admin-user", role="admin")
+    hub = _system_managed_hub()
+    request = _make_request({}, path_params={"name": "arcpy-remote"})
+
+    with (
+        patch("data_agent.api.mcp_routes._get_user_from_request", return_value=user),
+        patch(
+            "data_agent.api.mcp_routes._set_user_context",
+            return_value=("admin-user", "admin"),
+        ),
+        patch(
+            "data_agent.api.mcp_routes._require_admin",
+            return_value=(user, "admin-user", "admin", None),
+        ),
+        patch("data_agent.mcp_hub.get_mcp_hub", return_value=hub),
+        patch("data_agent.audit_logger.record_audit"),
+    ):
+        response = await mcp_reconnect(request)
+
+    assert response.status_code == 200
+    hub.reconnect_server.assert_awaited_once_with("arcpy-remote")

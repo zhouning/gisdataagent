@@ -1,4 +1,5 @@
 import chainlit as cl
+import atexit
 import sys
 import os
 import re
@@ -242,8 +243,11 @@ if DYNAMIC_PLANNER:
     logger.info("Dynamic Planner mode enabled")
 
 # --- MCP Hub: load config (async connections deferred to on_chat_start) ---
+_mcp_shutdown_bridge = None
 try:
-    from data_agent.mcp_hub import get_mcp_hub
+    from data_agent.mcp_hub import get_mcp_hub, McpShutdownBridge
+    _mcp_shutdown_bridge = McpShutdownBridge()
+    atexit.register(_mcp_shutdown_bridge)
     _mcp_hub = get_mcp_hub()
     _mcp_hub.load_config()
     _mcp_hub_loaded = True
@@ -252,6 +256,65 @@ except Exception as _mcp_err:
     _mcp_hub_loaded = False
 _mcp_started = False
 _mcp_alock = asyncio.Lock()
+_mcp_retry_task = None
+_MCP_STARTUP_TIMEOUT_SECONDS = 15
+
+
+async def _retry_mcp_hub_startup():
+    """Run one bounded background retry sequence after initial startup fails."""
+    global _mcp_started
+    try:
+        retry_succeeded = await get_mcp_hub().retry_failed_servers()
+        if retry_succeeded:
+            _mcp_started = True
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        logger.warning("MCP Hub background retry failed")
+
+
+async def _ensure_mcp_hub_started() -> bool:
+    """Attempt initial startup once and schedule at most one retry task."""
+    global _mcp_started, _mcp_retry_task
+    if not _mcp_hub_loaded:
+        return False
+
+    hub = get_mcp_hub()
+    if _mcp_started and hub._started:
+        return _mcp_started
+    if _mcp_started:
+        _mcp_started = False
+
+    async with _mcp_alock:
+        if _mcp_started and hub._started:
+            return True
+        if _mcp_retry_task is not None:
+            return False
+
+        startup_succeeded = False
+        try:
+            startup_succeeded = bool(await asyncio.wait_for(
+                hub.startup(),
+                timeout=_MCP_STARTUP_TIMEOUT_SECONDS,
+            ))
+        except asyncio.TimeoutError:
+            logger.warning(
+                "MCP Hub startup timed out after %ss; scheduling bounded retry",
+                _MCP_STARTUP_TIMEOUT_SECONDS,
+            )
+        except Exception:
+            logger.warning("MCP Hub startup failed; scheduling bounded retry")
+
+        if startup_succeeded:
+            _mcp_started = True
+            return True
+
+        if _mcp_retry_task is None:
+            _mcp_retry_task = asyncio.create_task(
+                _retry_mcp_hub_startup(),
+                name="mcp-hub-startup-retry",
+            )
+        return False
 
 # --- Chainlit Data Layer: thread/message persistence in PostgreSQL ---
 try:
@@ -3000,17 +3063,7 @@ async def start():
     set_language(os.environ.get("UI_LANGUAGE", "zh"))
 
     # Start MCP Hub connections (once, on first chat start — async-safe)
-    global _mcp_started
-    if not _mcp_started and _mcp_hub_loaded:
-        async with _mcp_alock:
-            if not _mcp_started:  # double-check after acquiring lock
-                try:
-                    await asyncio.wait_for(get_mcp_hub().startup(), timeout=15)
-                except asyncio.TimeoutError:
-                    logger.warning("MCP Hub startup timed out after 15s — skipping")
-                except Exception as e:
-                    logger.warning("MCP Hub startup failed: %s", e)
-                _mcp_started = True
+    await _ensure_mcp_hub_started()
 
     # Start Workflow Scheduler (deferred to async context — needs event loop)
     global _workflow_scheduler_started

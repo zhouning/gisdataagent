@@ -98,6 +98,15 @@ def _get_feature_flags() -> dict:
     except Exception:
         flags["arcpy"] = False
 
+    # Remote ArcPy is independent of the legacy local ArcPy import flag.
+    try:
+        arcpy_health = check_mcp_hub().get("arcpy")
+        flags["arcpy_mcp_ready"] = bool(
+            arcpy_health and arcpy_health.get("status") == "connected"
+        )
+    except Exception:
+        flags["arcpy_mcp_ready"] = False
+
     # Cloud storage
     try:
         flags["cloud_storage"] = get_cloud_adapter() is not None
@@ -141,18 +150,48 @@ def check_mcp_hub() -> dict:
         connected = sum(1 for s in statuses if s["status"] == "connected")
         enabled = sum(1 for s in statuses if s.get("enabled", True))
         total = len(statuses)
+        arcpy_status = next(
+            (status for status in statuses if status.get("name") == "arcpy-remote"),
+            None,
+        )
+        arcpy = None if arcpy_status is None else {
+            "status": arcpy_status.get("status", "disconnected"),
+            "tool_count": arcpy_status.get("tool_count", 0),
+            "connected_at": arcpy_status.get("connected_at"),
+            "error_code": arcpy_status.get("error_code", ""),
+            "error_message": arcpy_status.get("error_message", ""),
+        }
         if total == 0:
-            return {"status": "unconfigured", "connected": 0, "enabled": 0, "total": 0}
+            return {
+                "status": "unconfigured",
+                "connected": 0,
+                "enabled": 0,
+                "total": 0,
+                "arcpy": None,
+            }
         if enabled == 0:
-            return {"status": "all_disabled", "connected": 0, "enabled": 0, "total": total}
+            return {
+                "status": "all_disabled",
+                "connected": 0,
+                "enabled": 0,
+                "total": total,
+                "arcpy": arcpy,
+            }
         return {
             "status": "ok" if connected > 0 else "disconnected",
             "connected": connected,
             "enabled": enabled,
             "total": total,
+            "arcpy": arcpy,
         }
     except Exception:
-        return {"status": "unconfigured", "connected": 0, "enabled": 0, "total": 0}
+        return {
+            "status": "unconfigured",
+            "connected": 0,
+            "enabled": 0,
+            "total": 0,
+            "arcpy": None,
+        }
 
 
 # ---------------------------------------------------------------------------
