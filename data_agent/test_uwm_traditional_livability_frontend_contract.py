@@ -118,6 +118,25 @@ def test_traditional_livability_s7_panel_uses_distance_proxy_contract():
     assert "15分钟步行" not in text
 
 
+def test_s7_panel_separates_need_gate_from_conditional_ranking():
+    text = S7_PANEL.read_text(encoding="utf-8")
+    for required in [
+        "/api/uwm/traditional-livability/s7/demand-gate",
+        "/api/uwm/traditional-livability/s7/run",
+        "需求证据",
+        "need_unresolved",
+        "权威建议模式",
+        "条件式排序模式",
+        "我确认该结果不构成选址建议",
+        "假设需要新增小学",
+        "不构成选址建议",
+        "not_a_site_recommendation",
+    ]:
+        assert required in text
+    assert "主选地块" not in text
+    assert "备选地块" not in text
+
+
 def test_traditional_livability_s6_panel_uses_evidence_bounded_contract():
     panel = S6_PANEL.read_text(encoding="utf-8")
     tab = TRADITIONAL_TAB.read_text(encoding="utf-8")
