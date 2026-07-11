@@ -5,6 +5,8 @@ import json
 import math
 from typing import Any, Mapping
 
+from shapely.geometry import shape
+
 from data_agent.uwm.traditional_livability_s6 import (
     analyze_s6_facility_proposal,
 )
@@ -71,15 +73,47 @@ def _validated_authority_payload(
     )
     if not isinstance(payload, Mapping) or payload.get("schema") != expected_schema:
         return {}, [blocker]
+    source_payloads = [deepcopy(dict(payload))]
     if "provided_content_digest" in payload:
-        valid = (
-            payload.get("content_digest") == payload.get("provided_content_digest")
-            and isinstance(payload.get("validation_errors"), list)
-            and not payload.get("validation_errors")
-        )
-        return (deepcopy(dict(payload)), []) if valid else ({}, [blocker])
-    validated = validator(payload)
-    return (validated, []) if not validated.get("validation_errors") else ({}, [blocker])
+        metadata = payload.get("source_metadata")
+        metadata = metadata if isinstance(metadata, Mapping) else {}
+        if kind == "dictionary":
+            source_payload = {
+                "schema": payload.get("schema"),
+                "dictionary_version": metadata.get("dictionary_version"),
+                "issuing_organization": metadata.get("issuing_organization"),
+                "source_reference": metadata.get("source_reference"),
+                "effective_date": metadata.get("effective_date"),
+                "version_date": metadata.get("version_date"),
+                "imported_at": metadata.get("imported_at"),
+                "authoritative_complete_43_class_dictionary": payload.get(
+                    "authoritative_complete_43_class_dictionary"
+                ),
+                "classes": deepcopy(payload.get("classes")),
+                "aliases": deepcopy(payload.get("aliases")),
+                "keywords": deepcopy(payload.get("keywords")),
+                "content_digest": payload.get("provided_content_digest"),
+            }
+            source_without_effective_date = deepcopy(source_payload)
+            source_without_effective_date.pop("effective_date")
+            source_payloads = [source_payload, source_without_effective_date]
+        else:
+            source_payloads = [{
+                "schema": payload.get("schema"),
+                "matrix_version": metadata.get("matrix_version"),
+                "issuing_organization": metadata.get("issuing_organization"),
+                "source_reference": metadata.get("source_reference"),
+                "effective_date": metadata.get("effective_date"),
+                "version_date": metadata.get("version_date"),
+                "imported_at": metadata.get("imported_at"),
+                "rules": deepcopy(payload.get("rules")),
+                "content_digest": payload.get("provided_content_digest"),
+            }]
+    for source_payload in source_payloads:
+        validated = validator(source_payload)
+        if not validated.get("validation_errors"):
+            return validated, []
+    return {}, [blocker]
 
 
 def _validate_resources(payload: Mapping[str, Any]) -> list[str]:
@@ -242,7 +276,9 @@ def _demand_evidence(
 
 
 def _split_spatial_evidence(
-    s6_result: Mapping[str, Any], planning_parcel_id: str
+    s6_result: Mapping[str, Any],
+    planning_parcel_id: str,
+    s6_resources: Mapping[str, Any],
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     planning = [dict(row) for row in _rows(s6_result, "planning_resource_hits")]
     facilities = [dict(row) for row in _rows(s6_result, "current_facility_hits")]
@@ -250,23 +286,71 @@ def _split_spatial_evidence(
     unresolved = unresolved if isinstance(unresolved, Mapping) else {}
     unresolved_planning = [dict(row) for row in _rows(unresolved, "planning_resources")]
     unresolved_facilities = [dict(row) for row in _rows(unresolved, "current_facilities")]
+    planning_sources = {
+        _text(row.get("resource_id")): row
+        for row in _rows(s6_resources, "planning_resources")
+        if _text(row.get("resource_id")) is not None
+    }
+    facility_sources = {
+        _text(row.get("facility_id")): row
+        for row in _rows(s6_resources, "current_facilities")
+        if _text(row.get("facility_id")) is not None
+    }
+
+    def safe_geometry(source: Any):
+        if not isinstance(source, Mapping):
+            return None
+        value = source.get("metric_geometry") or source.get("display_geometry_wgs84")
+        if not isinstance(value, Mapping):
+            return None
+        try:
+            geometry = shape(value)
+        except Exception:
+            return None
+        if geometry.is_empty or not geometry.is_valid:
+            return None
+        return geometry
+
+    selected_geometry = safe_geometry(planning_sources.get(planning_parcel_id))
+
+    def authoritative_relationship(row: Mapping[str, Any]) -> bool:
+        relationship = _text(row.get("spatial_relationship"))
+        evidence = row.get("relationship_evidence")
+        return (
+            relationship in {"contained", "contains", "intersects", "overlaps"}
+            and isinstance(evidence, Mapping)
+            and evidence.get("evidence_level") == "authoritative"
+            and _text(evidence.get("source_reference")) is not None
+            and _text(evidence.get("rule_version")) is not None
+        )
+
+    def geometry_is_direct(row: Mapping[str, Any]) -> bool:
+        if selected_geometry is None:
+            return False
+        channel = _text(row.get("channel"))
+        source = (
+            planning_sources.get(_text(row.get("resource_id")))
+            if channel == "planning"
+            else facility_sources.get(_text(row.get("facility_id")))
+            if channel == "facility"
+            else None
+        )
+        geometry = safe_geometry(source)
+        if geometry is None:
+            return False
+        if geometry.geom_type in {"Point", "MultiPoint"}:
+            return selected_geometry.covers(geometry) and not selected_geometry.touches(geometry)
+        try:
+            intersection = selected_geometry.intersection(geometry)
+        except Exception:
+            return False
+        return not intersection.is_empty and intersection.area > 0
+
     def is_direct(row: Mapping[str, Any]) -> bool:
-        distance = row.get("distance_m", row.get("nearest_distance_m"))
-        relationship = _text(row.get("spatial_relationship") or row.get("relationship"))
         return (
             _text(row.get("resource_id")) == planning_parcel_id
-            or (
-                isinstance(distance, (int, float))
-                and not isinstance(distance, bool)
-                and math.isfinite(float(distance))
-                and float(distance) == 0.0
-            )
-            or relationship in {"contained", "contains", "intersects", "intersection"}
-            or (
-                isinstance(row.get("intersection_area_m2"), (int, float))
-                and not isinstance(row.get("intersection_area_m2"), bool)
-                and float(row["intersection_area_m2"]) > 0
-            )
+            or authoritative_relationship(row)
+            or geometry_is_direct(row)
         )
 
     direct_planning = [row for row in planning if is_direct(row)]
@@ -562,7 +646,9 @@ def assess_s4_project(
             analysis_area_id=analysis_area_id,
             confirmed_class_id=confirmed_class_id,
         )
-        parcel_direct, neighborhood = _split_spatial_evidence(s6_result, planning_parcel_id)
+        parcel_direct, neighborhood = _split_spatial_evidence(
+            s6_result, planning_parcel_id, s6_resources
+        )
         same_class = _nearby_same_class(neighborhood, confirmed_class_id)
         applied_duplicate_rules = _applied_duplicate_rules(
             s6_result=s6_result,

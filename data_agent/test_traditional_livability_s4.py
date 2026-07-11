@@ -5,6 +5,7 @@ import json
 import time
 
 import pytest
+from shapely.geometry import Point, box, mapping, shape
 
 import data_agent.uwm.traditional_livability_s4 as s4
 from data_agent.test_traditional_livability_s6 import resource_fixture
@@ -89,6 +90,12 @@ def _resources():
     payload = json.loads(json.dumps(resource_fixture()))
     payload["content_digest"] = compute_canonical_content_digest(payload)
     return payload
+
+
+def _redigest_resources(payload):
+    detached = json.loads(json.dumps(payload))
+    detached["content_digest"] = compute_canonical_content_digest(detached)
+    return detached
 
 
 def _dictionary():
@@ -354,18 +361,117 @@ def test_duplicate_risk_requires_applied_hit_rule_with_explicit_authority(
     assert result["use_assessments"][0]["duplicate_supply_evidence"]["status"] == expected
 
 
-def test_zero_distance_facility_is_parcel_direct_not_neighborhood(monkeypatch):
+def test_zero_distance_boundary_facility_remains_neighborhood(monkeypatch):
     output = _s6_result()
+    output["current_facility_hits"][0]["facility_id"] = "facility-hit"
+    output["current_facility_hits"][0]["evidence_id"] = "facility:facility-hit"
     output["current_facility_hits"][0]["nearest_distance_m"] = 0.0
+    resources = _resources()
+    parcel_geometry = resources["planning_resources"][0]["metric_geometry"]
+    parcel = box(*shape(parcel_geometry).bounds)
+    resources["current_facilities"][0]["metric_geometry"] = mapping(
+        Point(parcel.bounds[2], (parcel.bounds[1] + parcel.bounds[3]) / 2)
+    )
+    resources = _redigest_resources(resources)
+    _patch_s6(monkeypatch, [output])
+    result = s4.assess_s4_project(
+        project=_project(), s1_snapshot=_s1(), s6_resources=resources,
+        facility_dictionary=_dictionary(), compatibility_matrix=_compatibility()
+    )
+    direct = result["use_assessments"][0]["parcel_direct_evidence"]
+    neighborhood = result["use_assessments"][0]["neighborhood_evidence"]
+    assert direct["current_facilities"] == []
+    assert neighborhood["current_facilities"][0]["channel"] == "facility"
+
+
+def test_validated_authoritative_relationship_can_mark_direct(monkeypatch):
+    output = _s6_result()
+    output["current_facility_hits"][0].update({
+        "spatial_relationship": "contained",
+        "relationship_evidence": {
+            "evidence_level": "authoritative",
+            "source_reference": "fixture://parcel-facility-relation",
+            "rule_version": "relation-v1",
+        },
+    })
     _patch_s6(monkeypatch, [output])
     result = s4.assess_s4_project(
         project=_project(), s1_snapshot=_s1(), s6_resources=_resources(),
         facility_dictionary=_dictionary(), compatibility_matrix=_compatibility()
     )
-    direct = result["use_assessments"][0]["parcel_direct_evidence"]
-    neighborhood = result["use_assessments"][0]["neighborhood_evidence"]
-    assert direct["current_facilities"][0]["channel"] == "facility"
-    assert neighborhood["current_facilities"] == []
+    assert result["use_assessments"][0]["parcel_direct_evidence"]["current_facilities"][0]["facility_id"] == "market-1"
+
+
+def test_contained_point_is_parcel_direct(monkeypatch):
+    output = _s6_result()
+    output["current_facility_hits"][0]["facility_id"] = "facility-hit"
+    output["current_facility_hits"][0]["evidence_id"] = "facility:facility-hit"
+    resources = _resources()
+    parcel = shape(
+        resources["planning_resources"][0]["metric_geometry"]
+    )
+    resources["current_facilities"][0]["metric_geometry"] = mapping(
+        parcel.representative_point()
+    )
+    resources = _redigest_resources(resources)
+    _patch_s6(monkeypatch, [output])
+    result = s4.assess_s4_project(
+        project=_project(), s1_snapshot=_s1(), s6_resources=resources,
+        facility_dictionary=_dictionary(), compatibility_matrix=_compatibility()
+    )
+    assert result["use_assessments"][0]["parcel_direct_evidence"]["current_facilities"][0]["facility_id"] == "facility-hit"
+
+
+def test_overlapping_polygon_is_direct_but_adjacent_touch_is_neighborhood(monkeypatch):
+    output = _s6_result()
+    resources = _resources()
+    selected = shape(
+        resources["planning_resources"][0]["metric_geometry"]
+    )
+    min_x, min_y, max_x, max_y = selected.bounds
+    resources["planning_resources"][1]["metric_geometry"] = mapping(
+        box(max_x - 5, min_y + 5, max_x + 5, max_y - 5)
+    )
+    resources["planning_resources"][2]["resource_id"] = "planning-touch"
+    resources["planning_resources"][2]["metric_geometry"] = mapping(
+        box(max_x, min_y + 5, max_x + 10, max_y - 5)
+    )
+    resources = _redigest_resources(resources)
+    output["planning_resource_hits"].extend([
+        {**output["planning_resource_hits"][0], "evidence_id": "planning:planning-hit", "resource_id": "planning-hit"},
+        {**output["planning_resource_hits"][0], "evidence_id": "planning:planning-touch", "resource_id": "planning-touch"},
+    ])
+    _patch_s6(monkeypatch, [output])
+    result = s4.assess_s4_project(
+        project=_project(), s1_snapshot=_s1(), s6_resources=resources,
+        facility_dictionary=_dictionary(), compatibility_matrix=_compatibility()
+    )
+    direct_ids = {row["resource_id"] for row in result["use_assessments"][0]["parcel_direct_evidence"]["planning_resources"]}
+    neighborhood_ids = {row["resource_id"] for row in result["use_assessments"][0]["neighborhood_evidence"]["planning_resources"]}
+    assert "planning-hit" in direct_ids
+    assert "planning-touch" in neighborhood_ids
+
+
+def test_mutated_normalized_dictionary_with_stale_digest_fails_closed():
+    dictionary = _dictionary()
+    dictionary["classes"][0]["class_id"] = "facility.tampered"
+    result = s4.assess_s4_project(
+        project=_project(), s1_snapshot=_s1(), s6_resources=_resources(),
+        facility_dictionary=dictionary, compatibility_matrix=_compatibility()
+    )
+    assert result["status"] == "insufficient_evidence"
+    assert result["project_blockers"] == ["facility_dictionary_contract_invalid"]
+
+
+def test_mutated_normalized_matrix_with_stale_digest_fails_closed():
+    matrix = _compatibility(_rule(purpose="duplicate_supply"))
+    matrix["rules"][0]["rule_purpose"] = "tampered"
+    result = s4.assess_s4_project(
+        project=_project(), s1_snapshot=_s1(), s6_resources=_resources(),
+        facility_dictionary=_dictionary(), compatibility_matrix=matrix
+    )
+    assert result["status"] == "insufficient_evidence"
+    assert result["project_blockers"] == ["compatibility_matrix_contract_invalid"]
 
 
 def test_malformed_inputs_fail_closed_and_project_total_is_recomputed():
