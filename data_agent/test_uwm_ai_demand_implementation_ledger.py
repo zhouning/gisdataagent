@@ -91,3 +91,16 @@ def test_ledger_summary_counts_all_thirty_requirements():
     assert sum(ledger["summary"]["implementation_status_counts"].values()) == 30
     assert ledger["summary"]["verified_or_bounded_count"] > 0
     assert ledger["claim_boundary"]["product_presence_is_not_full_requirement_completion"] is True
+
+def test_demands12_and21_use_verified_shared_product_with_distinct_boundaries():
+    demands=rows_by_id(build_ai_demand_implementation_ledger(repo_root=ROOT)['customer_ai_demands'])
+    d12,d21=demands['12'],demands['21']
+    assert d12['implementation_status']=='implemented_evidence_bounded'
+    assert d21['implementation_status']=='implemented_evidence_bounded'
+    assert 'traditional_social_public_service_product' in d12['implemented_outputs']
+    assert 'traditional_social_public_service_product' in d21['implemented_outputs']
+    assert d12['max_supported_claim']=='social_infrastructure_inventory_and_relative_evidence_gap'
+    assert d21['max_supported_claim']=='government_public_service_inventory_and_relative_evidence_gap'
+    for demand in (d12,d21):
+        assert 'township_accessibility_not_joined_to_county_facilities' in demand['production_blockers']
+        assert all(check['exists'] for check in demand['evidence_artifact_checks'])
