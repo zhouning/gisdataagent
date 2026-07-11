@@ -11,6 +11,7 @@ import {
   Shield,
   Target,
 } from 'lucide-react';
+import UwmLivabilityS2Panel from './UwmLivabilityS2Panel';
 
 type AnyRecord = Record<string, any>;
 
@@ -217,6 +218,7 @@ export default function LivabilityWorldModelTab() {
 
   return (
     <div className="uwm-livability-tab">
+      <UwmLivabilityS2Panel />
       <div className="datapanel-section-header">
         <div>
           <h3>城市宜居性分析（UWM）</h3>
