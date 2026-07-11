@@ -114,6 +114,9 @@ def run_counterfactual_rollout(
             "intervention_message_digest": intervention["t2"]["message_digest"],
             "message_count_delta": len(intervention["t2"]["messages"])
             - len(baseline["t2"]["messages"]),
+            **_message_differences(
+                baseline["t2"]["messages"], intervention["t2"]["messages"]
+            ),
         },
         "constraint_violations": _constraint_violations(intervention_validation),
         "potential_conflicts": _messages_by_priority(
@@ -209,3 +212,27 @@ def _rollout_digest(payload: dict[str, Any]) -> str:
         content, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str
     ).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
+
+
+def _message_differences(
+    baseline: list[dict[str, Any]], intervention: list[dict[str, Any]]
+) -> dict[str, Any]:
+    baseline_by_id = {str(row.get("message_id")): row for row in baseline}
+    intervention_by_id = {str(row.get("message_id")): row for row in intervention}
+    changed = []
+    for message_id in sorted(set(baseline_by_id) | set(intervention_by_id)):
+        before = baseline_by_id.get(message_id)
+        after = intervention_by_id.get(message_id)
+        if before == after:
+            continue
+        changed.append(
+            {
+                "message_id": message_id,
+                "target_node_id": (after or before or {}).get("target_node_id"),
+                "relation_type": (after or before or {}).get("relation_type"),
+                "effect_type": (after or before or {}).get("effect_type"),
+                "baseline_raw_evidence": (before or {}).get("raw_evidence"),
+                "intervention_raw_evidence": (after or {}).get("raw_evidence"),
+            }
+        )
+    return {"changed_message_count": len(changed), "changed_effects": changed}

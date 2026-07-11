@@ -45,28 +45,32 @@ def propagate_spatial_messages(
         )
     ]
     seen_keys = {_message_key(messages[0])}
-    cycle_paths_skipped = sum(
-        1
-        for edge in edges
-        if edge.get("target_node_id") == target_parcel_id
-        and edge.get("source_node_id") != target_parcel_id
-        and edge.get("relation_type")
-        in {"parcel_adjacent_parcel", "parcel_near_parcel"}
-    )
+    cycle_paths_skipped = 0
 
     for edge in edges:
-        if edge.get("source_node_id") != target_parcel_id:
-            continue
-        target_id = str(edge.get("target_node_id"))
         relation = edge.get("relation_type")
+        source_matches = edge.get("source_node_id") == target_parcel_id
+        reverse_parcel_relation = (
+            edge.get("target_node_id") == target_parcel_id
+            and relation in {"parcel_adjacent_parcel", "parcel_near_parcel"}
+        )
+        if not source_matches and not reverse_parcel_relation:
+            continue
+        target_id = str(
+            edge.get("source_node_id") if reverse_parcel_relation else edge.get("target_node_id")
+        )
         if target_id == target_parcel_id:
             cycle_paths_skipped += 1
             continue
         message = _local_message(
             edge=edge,
             target_node=nodes.get(target_id) or {},
+            target_node_id=target_id,
             target_parcel_id=target_parcel_id,
             kernel_version=kernel_version,
+            from_land_use_class=from_land_use_class,
+            to_land_use_class=to_land_use_class,
+            reverse_relation=reverse_parcel_relation,
         )
         if message is None:
             continue
@@ -96,6 +100,7 @@ def propagate_spatial_messages(
                 "affected_parcel_count": 1,
                 "from_land_use_class": from_land_use_class,
                 "to_land_use_class": to_land_use_class,
+                **_action_evidence(from_land_use_class, to_land_use_class),
             },
             support_level="bounded_proxy",
             kernel_version=kernel_version,
@@ -119,7 +124,8 @@ def propagate_spatial_messages(
                         stage=2,
                         raw_evidence={
                             "context_relation": edge.get("context_relation")
-                            or "direct_village_neighbor"
+                            or "direct_village_neighbor",
+                            **_action_evidence(from_land_use_class, to_land_use_class),
                         },
                         support_level=_bounded_support(edge.get("support_level")),
                         kernel_version=kernel_version,
@@ -135,7 +141,10 @@ def propagate_spatial_messages(
                         relation_type=relation,
                         effect_type="admin_context_summary",
                         stage=3,
-                        raw_evidence={"affected_village_count": 1},
+                        raw_evidence={
+                            "affected_village_count": 1,
+                            **_action_evidence(from_land_use_class, to_land_use_class),
+                        },
                         support_level=_bounded_support(edge.get("support_level")),
                         kernel_version=kernel_version,
                     ),
@@ -166,16 +175,24 @@ def _local_message(
     *,
     edge: dict[str, Any],
     target_node: dict[str, Any],
+    target_node_id: str,
     target_parcel_id: str,
     kernel_version: str,
+    from_land_use_class: str,
+    to_land_use_class: str,
+    reverse_relation: bool,
 ) -> dict[str, Any] | None:
     relation = str(edge.get("relation_type"))
-    target_id = str(edge.get("target_node_id"))
+    target_id = target_node_id
     support = _bounded_support(edge.get("support_level"))
     if relation == "parcel_adjacent_parcel":
         shared = _float(edge.get("shared_boundary_length_m"))
-        source_perimeter = _float(edge.get("source_perimeter_m"))
-        target_perimeter = _float(edge.get("target_perimeter_m"))
+        source_perimeter = _float(
+            edge.get("target_perimeter_m") if reverse_relation else edge.get("source_perimeter_m")
+        )
+        target_perimeter = _float(
+            edge.get("source_perimeter_m") if reverse_relation else edge.get("target_perimeter_m")
+        )
         compatibility = str(edge.get("compatibility_status") or "unresolved")
         return build_spatial_message(
             source_node_id=target_parcel_id,
@@ -188,6 +205,7 @@ def _local_message(
                 "shared_boundary_length_m": shared,
                 "source_shared_boundary_ratio": _ratio(shared, source_perimeter),
                 "target_shared_boundary_ratio": _ratio(shared, target_perimeter),
+                **_action_evidence(from_land_use_class, to_land_use_class),
             },
             normalization_basis={
                 "source": "source_perimeter_m",
@@ -210,7 +228,11 @@ def _local_message(
             relation_type=relation,
             effect_type="distance_bounded_land_use_context_signal",
             direction="outbound",
-            raw_evidence={"distance_m": distance, "proxy_distance_band": band},
+            raw_evidence={
+                "distance_m": distance,
+                "proxy_distance_band": band,
+                **_action_evidence(from_land_use_class, to_land_use_class),
+            },
             normalization_basis={"basis": "projected_distance_m", "max_distance_m": 300.0},
             propagation_stage=1,
             support_level=support,
@@ -231,6 +253,7 @@ def _local_message(
                 "intersection_ratio": round(_float(edge.get("intersection_ratio")), 9),
                 "compatibility_status": compatibility,
                 "mapping_status": target_node.get("mapping_status") or "unresolved",
+                **_action_evidence(from_land_use_class, to_land_use_class),
             },
             normalization_basis={"basis": "target_parcel_intersection_ratio"},
             propagation_stage=1,
@@ -256,6 +279,7 @@ def _local_message(
                 "proxy_distance_band": band,
                 "compatibility_status": compatibility,
                 "mapping_status": target_node.get("mapping_status") or "unresolved",
+                **_action_evidence(from_land_use_class, to_land_use_class),
             },
             normalization_basis={"basis": "projected_distance_m", "max_distance_m": 300.0},
             propagation_stage=1,
@@ -349,3 +373,11 @@ def _float(value: Any) -> float:
         return float(value)
     except (TypeError, ValueError):
         return 0.0
+
+
+def _action_evidence(from_land_use_class: str, to_land_use_class: str) -> dict[str, Any]:
+    return {
+        "action_from_land_use_class": from_land_use_class,
+        "action_to_land_use_class": to_land_use_class,
+        "action_land_use_changed": from_land_use_class != to_land_use_class,
+    }

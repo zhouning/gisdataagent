@@ -256,12 +256,11 @@ def test_distance_and_adjacency_messages_preserve_evidence_vectors():
     )
 
     by_target = {message["target_node_id"]: message for message in result["messages"]}
-    assert by_target["parcel-adjacent"]["raw_evidence"] == {
-        "compatibility_status": "potential_conflict",
-        "shared_boundary_length_m": 35.0,
-        "source_shared_boundary_ratio": 0.25,
-        "target_shared_boundary_ratio": 0.291666667,
-    }
+    adjacent = by_target["parcel-adjacent"]["raw_evidence"]
+    assert adjacent["compatibility_status"] == "potential_conflict"
+    assert adjacent["shared_boundary_length_m"] == 35.0
+    assert adjacent["source_shared_boundary_ratio"] == 0.25
+    assert adjacent["target_shared_boundary_ratio"] == 0.291666667
     assert by_target["parcel-near-40"]["raw_evidence"]["proxy_distance_band"] == "0_50m"
     assert by_target["parcel-near-120"]["raw_evidence"]["proxy_distance_band"] == "50_150m"
     assert by_target["parcel-near-250"]["raw_evidence"]["proxy_distance_band"] == "150_300m"
@@ -310,3 +309,47 @@ def test_spatial_propagation_is_deterministic_for_same_graph_and_versions():
 
     assert first["messages"] == second["messages"]
     assert first["message_digest"] == second["message_digest"]
+
+
+def test_local_messages_are_action_conditioned_not_static_relationship_enumeration():
+    graph = _graph()
+    baseline = propagate_spatial_messages(
+        graph=graph,
+        target_parcel_id="parcel-target",
+        from_land_use_class="residential",
+        to_land_use_class="residential",
+        kernel_version="0.1.0",
+    )
+    intervention = propagate_spatial_messages(
+        graph=graph,
+        target_parcel_id="parcel-target",
+        from_land_use_class="residential",
+        to_land_use_class="public_service",
+        kernel_version="0.1.0",
+    )
+
+    baseline_by_target = {row["target_node_id"]: row for row in baseline["messages"]}
+    intervention_by_target = {row["target_node_id"]: row for row in intervention["messages"]}
+    for target_id in ["parcel-adjacent", "parcel-near-40", "resource-1", "facility-1", "village-target"]:
+        assert baseline_by_target[target_id]["raw_evidence"]["action_land_use_changed"] is False
+        assert intervention_by_target[target_id]["raw_evidence"]["action_land_use_changed"] is True
+        assert intervention_by_target[target_id]["raw_evidence"]["action_to_land_use_class"] == "public_service"
+    assert baseline["message_digest"] != intervention["message_digest"]
+
+
+def test_undirected_parcel_relation_propagates_from_either_endpoint():
+    graph = _graph()
+    reverse = propagate_spatial_messages(
+        graph=graph,
+        target_parcel_id="parcel-adjacent",
+        from_land_use_class="agricultural",
+        to_land_use_class="public_service",
+        kernel_version="0.1.0",
+    )
+
+    target_messages = [
+        row for row in reverse["messages"] if row["target_node_id"] == "parcel-target"
+    ]
+    assert len(target_messages) == 1
+    assert target_messages[0]["relation_type"] == "parcel_adjacent_parcel"
+    assert target_messages[0]["direction"] == "outbound"

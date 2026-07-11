@@ -99,17 +99,27 @@ def test_rollout_returns_auditable_run_and_never_enables_unsupported_heads(tmp_p
         actor_id="authenticated-user",
         alternative_land_use_class=None,
     )
-    loaded = service.get_run(run["run_id"])
+    loaded = service.get_run(run["run_id"], actor_id="authenticated-user")
 
     assert run == loaded
     assert run["run_id"].startswith("s2_run_")
     assert run["actor_id"] == "authenticated-user"
     assert run["snapshot_digest"] == service.catalog()["snapshot_digest"]
-    assert run["rollout"]["baseline"]["t0_snapshot_digest"] == run["snapshot_digest"]
-    assert run["rollout"]["intervention"]["t0_snapshot_digest"] == run["snapshot_digest"]
+    assert run["execution_scope"]["source_snapshot_digest"] == run["snapshot_digest"]
+    assert run["rollout"]["intervention"]["action"]["source_snapshot_digest"] == run["snapshot_digest"]
+    assert run["rollout"]["intervention"]["action"]["snapshot_digest"] == run["execution_scope"]["rollout_snapshot_digest"]
+    assert run["rollout"]["baseline"]["t0_snapshot_digest"] == run["execution_scope"]["rollout_snapshot_digest"]
+    assert run["rollout"]["intervention"]["t0_snapshot_digest"] == run["execution_scope"]["rollout_snapshot_digest"]
     assert run["rollout"]["unsupported_prediction_heads_ready"] is False
     assert "approval_probability" in run["rollout"]["unavailable_effects"]
     assert run["persistence_boundary"] == "process_memory_only"
+    assert run["map_evidence"]["target_parcel"]["features"]
+    assert run["map_evidence"]["affected_parcels"]["type"] == "FeatureCollection"
+    assert run["map_evidence"]["planning_resources"]["type"] == "FeatureCollection"
+    assert run["map_evidence"]["facilities"]["type"] == "FeatureCollection"
+    assert run["map_evidence"]["proxy_distance_bands_m"] == [50, 150, 300]
+    with pytest.raises(S2RunNotFound, match="run_not_found"):
+        service.get_run(run["run_id"], actor_id="other-user")
 
 
 def test_service_rejects_stale_requests_and_missing_runs(tmp_path, monkeypatch):
@@ -128,7 +138,7 @@ def test_service_rejects_stale_requests_and_missing_runs(tmp_path, monkeypatch):
             alternative_land_use_class=None,
         )
     with pytest.raises(S2RunNotFound, match="run_not_found"):
-        service.get_run("s2_run_missing")
+        service.get_run("s2_run_missing", actor_id="authenticated-user")
 
 
 def test_service_fails_closed_when_any_product_digest_is_tampered(tmp_path, monkeypatch):
@@ -141,3 +151,47 @@ def test_service_fails_closed_when_any_product_digest_is_tampered(tmp_path, monk
     service = S2ScenarioService(product_dir)
     with pytest.raises(S2ProductInvalid, match="content_digest_mismatch"):
         service.catalog()
+
+
+def test_service_rejects_cross_bundle_or_schema_mixed_products(tmp_path, monkeypatch):
+    product_dir = _product_dir(tmp_path, monkeypatch)
+    path = product_dir / "uwm_livability_s2_transition_matrix.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["bundle_id"] = "bundle-from-other-build"
+    payload["content_digest"] = _scenario_digest(payload)
+    path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+    with pytest.raises(S2ProductInvalid, match="bundle_id_mismatch"):
+        S2ScenarioService(product_dir).catalog()
+
+
+def _scenario_digest(payload: dict) -> str:
+    import hashlib
+
+    content = {key: value for key, value in payload.items() if key != "content_digest"}
+    encoded = json.dumps(content, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
+    return "sha256:" + hashlib.sha256(encoded).hexdigest()
+
+
+def test_rollout_uses_bounded_local_subgraph_not_full_snapshot(tmp_path, monkeypatch):
+    service = S2ScenarioService(_product_dir(tmp_path, monkeypatch))
+    parcel = _first_parcel(service)
+    current = parcel["properties"]["current_land_use_class"]
+    target = next(value for value in service.catalog()["land_use_classes"] if value != current)
+
+    run = service.rollout(
+        parcel_id=str(parcel["id"]),
+        from_land_use_class=current,
+        to_land_use_class=target,
+        snapshot_digest=service.catalog()["snapshot_digest"],
+        rationale="局部子图推演",
+        requested_at="2026-07-11T08:00:00Z",
+        actor_id="authenticated-user",
+        alternative_land_use_class=None,
+    )
+
+    execution = run["execution_scope"]
+    assert execution["source_snapshot_node_count"] > execution["rollout_node_count"]
+    assert execution["source_snapshot_edge_count"] > execution["rollout_edge_count"]
+    assert execution["rollout_edge_count"] == execution["direct_edge_count"] + execution["cross_scale_edge_count"]
+    assert execution["scope"] == "target_parcel_bounded_local_subgraph"

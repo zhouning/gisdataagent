@@ -77,6 +77,9 @@ def test_fulu_s2_adapter_is_stable_when_source_rows_are_reordered(tmp_path, monk
     ]
     assert first["content_digest"] == second["content_digest"]
 
+    second["planning_resources"][0]["resource_domain"] = "changed-domain"
+    assert fulu_adapter.compute_fulu_s2_content_digest(second) != first["content_digest"]
+
 
 def test_fulu_s2_state_builder_creates_cross_scale_graph_with_traceable_edges(
     tmp_path, monkeypatch

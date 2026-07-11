@@ -192,6 +192,8 @@ def test_counterfactual_rollout_returns_evidence_bounded_deltas_and_unavailable_
     assert result["direct_state_delta"]["from_land_use_class"] == "residential"
     assert result["direct_state_delta"]["to_land_use_class"] == "public_service"
     assert result["spillover_state_delta"]["intervention_message_count"] > 0
+    assert result["spillover_state_delta"]["changed_message_count"] > 0
+    assert result["spillover_state_delta"]["changed_effects"]
     assert result["potential_conflicts"]
     assert result["review_required"] is True
     assert result["unavailable_effects"] == [

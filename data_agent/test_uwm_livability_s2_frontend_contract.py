@@ -29,8 +29,14 @@ def test_s2_panel_exposes_action_conditioned_world_model_contract():
         assert label in text
     assert "credentials: 'include'" in text
     assert "window.__handleMapUpdate" in text
+    assert "map_evidence" in text
+    assert "S2 受影响地块" in text
+    assert "S2 规划资源证据" in text
+    assert "S2 设施证据" in text
     assert "alternative_land_use_class" in text
     assert "actor_id:" not in text
+    assert "setConfirmed(false)" in text
+    assert "setValidation(null)" in text
 
 
 def test_s2_panel_does_not_claim_unsupported_outcomes():

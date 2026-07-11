@@ -82,6 +82,10 @@ async def test_validate_and_rollout_override_actor_and_map_errors(tmp_path, monk
     run = json.loads(response.body)
     assert response.status_code == 200
     assert run["actor_id"] == "authenticated-planner"
+    _auth(monkeypatch, "other-planner")
+    response = await routes.uwm_livability_s2_run(_request("/x", path_params={"run_id":run["run_id"]}))
+    assert response.status_code == 404
+    _auth(monkeypatch, "authenticated-planner")
     stale = dict(body, snapshot_digest="stale")
     response = await routes.uwm_livability_s2_rollout(_request("/api/uwm/livability/s2/rollout","POST",stale))
     assert response.status_code == 409

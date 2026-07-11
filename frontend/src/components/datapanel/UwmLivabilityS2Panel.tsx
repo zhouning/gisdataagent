@@ -74,10 +74,14 @@ export default function UwmLivabilityS2Panel() {
   const pushMap = (payload = run) => {
     if (!selected || !payload) return;
     const rolloutPayload = record(payload.rollout);
+    const mapEvidence = record(payload.map_evidence);
     const messages = rows(record(record(rolloutPayload.intervention).t2).messages);
     const layer = (name: string, geojsonData: unknown) => ({ name, type: 'geojson', geojsonData });
     window.__handleMapUpdate?.({ schema: 'map_update.v1', summary: { title: 'S2 用地性质变更推演证据图层' }, layers: [
-      layer('S2 目标真实地块', { type: 'FeatureCollection', features: [selected] }),
+      layer('S2 目标真实地块', mapEvidence.target_parcel || { type: 'FeatureCollection', features: [selected] }),
+      layer('S2 受影响地块', mapEvidence.affected_parcels || { type: 'FeatureCollection', features: [] }),
+      layer('S2 规划资源证据', mapEvidence.planning_resources || { type: 'FeatureCollection', features: [] }),
+      layer('S2 设施证据', mapEvidence.facilities || { type: 'FeatureCollection', features: [] }),
     ], metadata: { evidence_only: true, proxy_distance_bands_m: [50, 150, 300], affected_node_ids: messages.map(message => message.target_node_id) } });
   };
 
@@ -98,9 +102,9 @@ export default function UwmLivabilityS2Panel() {
         <label>真实地块<select value={parcelId} onChange={event => { setParcelId(event.target.value); setValidation(null); setRun(null); setConfirmed(false); }}><option value="">请选择</option>{parcels.map(parcel => <option value={parcel.id} key={parcel.id}>{label(record(parcel.properties).planning_area_id)} · {label(record(parcel.properties).source_land_use_name)} · {parcel.id}</option>)}</select></label>
         <label>当前用途<input readOnly value={label(properties.current_land_use_class)} /></label>
         <label>规划用途<input readOnly value={label(properties.planned_land_use_class)} /></label>
-        <label>目标用途<select value={targetClass} onChange={event => setTargetClass(event.target.value)}><option value="">请选择</option>{rows<string>(catalog.land_use_classes).map(value => <option key={value}>{value}</option>)}</select></label>
-        <label>替代用途<select value={alternativeClass} onChange={event => setAlternativeClass(event.target.value)}><option value="">不设置</option>{rows<string>(catalog.land_use_classes).map(value => <option key={value}>{value}</option>)}</select></label>
-        <label>行动理由<textarea value={rationale} onChange={event => setRationale(event.target.value)} /></label>
+        <label>目标用途<select value={targetClass} onChange={event => { setTargetClass(event.target.value); setConfirmed(false); setValidation(null); }}><option value="">请选择</option>{rows<string>(catalog.land_use_classes).map(value => <option key={value}>{value}</option>)}</select></label>
+        <label>替代用途<select value={alternativeClass} onChange={event => { setAlternativeClass(event.target.value); setConfirmed(false); setValidation(null); }}><option value="">不设置</option>{rows<string>(catalog.land_use_classes).map(value => <option key={value}>{value}</option>)}</select></label>
+        <label>行动理由<textarea value={rationale} onChange={event => { setRationale(event.target.value); setConfirmed(false); setValidation(null); }} /></label>
         <div><strong>数据快照</strong><p>{label(catalog.snapshot_digest)}</p></div>
         <button className="secondary-button" onClick={validate}><ShieldCheck size={14} />验证动作</button>
         <label><input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} />人工确认：理解该结果不是规划许可或已观测政策效果。</label>

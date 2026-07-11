@@ -42,7 +42,7 @@ def build_fulu_s2_inputs(
         "synthetic_parcels_created": False,
     }
     if not s6.get("ready"):
-        payload["content_digest"] = _content_digest(payload)
+        payload["content_digest"] = compute_fulu_s2_content_digest(payload)
         return payload
 
     resources = list(payload["planning_resources"])
@@ -64,7 +64,7 @@ def build_fulu_s2_inputs(
     if not payload["parcels"]:
         payload["blockers"].append("no_valid_current_parcels")
     payload["ready"] = not payload["blockers"] and bool(payload["parcels"])
-    payload["content_digest"] = _content_digest(payload)
+    payload["content_digest"] = compute_fulu_s2_content_digest(payload)
     return payload
 
 
@@ -179,18 +179,21 @@ def _query_rows(
     return [rows[int(position)] for position in tree.query(geometry)]
 
 
-def _content_digest(payload: Mapping[str, Any]) -> str:
+def compute_fulu_s2_content_digest(payload: Mapping[str, Any]) -> str:
     content = {
         "schema": payload.get("schema"),
         "scope": payload.get("scope"),
         "ready": payload.get("ready"),
         "parcels": payload.get("parcels") or [],
-        "planning_resource_ids": sorted(
-            str(row.get("resource_id")) for row in payload.get("planning_resources") or []
+        "planning_resources": sorted(
+            [_stable_digest_row(row) for row in payload.get("planning_resources") or []],
+            key=lambda row: str(row.get("resource_id")),
         ),
-        "facility_ids": sorted(
-            str(row.get("facility_id")) for row in payload.get("current_facilities") or []
+        "current_facilities": sorted(
+            deepcopy(payload.get("current_facilities") or []),
+            key=lambda row: str(row.get("facility_id")),
         ),
+        "facility_inventory": deepcopy(payload.get("facility_inventory") or {}),
         "blockers": sorted(str(value) for value in payload.get("blockers") or []),
         "synthetic_parcels_created": False,
     }
@@ -198,6 +201,14 @@ def _content_digest(payload: Mapping[str, Any]) -> str:
         content, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str
     ).encode("utf-8")
     return "sha256:" + hashlib.sha256(encoded).hexdigest()
+
+
+def _stable_digest_row(row: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        key: deepcopy(value)
+        for key, value in row.items()
+        if key not in {"source_row_index", "source_row_number"}
+    }
 
 
 def _stable_id(prefix: str, *parts: Any) -> str:

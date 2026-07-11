@@ -38,6 +38,12 @@ def build_s2_product_payloads(
         edges=_public_rows(graph.get("edges") or []),
         kernel_version=str(graph.get("kernel_version") or ""),
     )
+    bundle_id = _bundle_id(
+        source_content_digest=str(inputs.get("content_digest") or ""),
+        state_graph_snapshot_digest=str(public_graph.get("snapshot_digest") or ""),
+        dictionary_version=str(land_use_dictionary.get("version") or ""),
+        transition_matrix_version=str(transition_matrix.get("version") or ""),
+    )
     payloads = {
         PRODUCT_FILENAMES["parcels"]: _feature_collection(
             "uwm.livability_s2.parcels.v1",
@@ -103,7 +109,10 @@ def build_s2_product_payloads(
             "blockers": [],
         },
     }
-    return {filename: attach_content_digest(payload) for filename, payload in payloads.items()}
+    return {
+        filename: attach_content_digest({**payload, "bundle_id": bundle_id})
+        for filename, payload in payloads.items()
+    }
 
 
 def attach_content_digest(payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -166,3 +175,21 @@ def _content_digest(payload: Mapping[str, Any]) -> str:
         separators=(",", ":"),
     ).encode("utf-8")
     return "sha256:" + hashlib.sha256(encoded).hexdigest()
+
+
+def _bundle_id(
+    *,
+    source_content_digest: str,
+    state_graph_snapshot_digest: str,
+    dictionary_version: str,
+    transition_matrix_version: str,
+) -> str:
+    encoded = "\x1f".join(
+        [
+            source_content_digest,
+            state_graph_snapshot_digest,
+            dictionary_version,
+            transition_matrix_version,
+        ]
+    ).encode("utf-8")
+    return "s2_bundle_" + hashlib.sha256(encoded).hexdigest()[:24]

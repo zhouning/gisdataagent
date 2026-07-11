@@ -170,12 +170,14 @@ async def uwm_livability_s2_rollout(request: Request):
 
 
 async def uwm_livability_s2_run(request: Request):
-    _, unauthorized = _authorized(request)
+    username, unauthorized = _authorized(request)
     if unauthorized:
         return unauthorized
     try:
         result = await asyncio.to_thread(
-            _service().get_run, str(request.path_params.get("run_id") or "")
+            _service().get_run,
+            str(request.path_params.get("run_id") or ""),
+            actor_id=str(username),
         )
         return JSONResponse(result)
     except S2ProductInvalid as error:
