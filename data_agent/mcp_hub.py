@@ -465,6 +465,14 @@ class McpHubManager:
         for config in system_configs:
             configs_by_name[config.name] = config
 
+        arcpy_enabled_state = self._arcpy_mcp_enabled_state()
+        if arcpy_enabled_state is False:
+            stale_arcpy = configs_by_name.get("arcpy-remote")
+            if stale_arcpy is not None:
+                stale_arcpy.enabled = False
+                if stale_arcpy.source == "db":
+                    self._update_enabled_in_db(stale_arcpy.name, False)
+
         configs = list(configs_by_name.values())
 
         # 4. When the remote service is enabled, retain but disable the old
@@ -512,8 +520,7 @@ class McpHubManager:
 
     def _load_system_configs(self) -> list[McpServerConfig]:
         """Build system-managed configs from references in process environment."""
-        enabled = os.environ.get("ARCPY_MCP_ENABLED", "").strip().lower()
-        if enabled not in ("true", "1", "yes"):
+        if self._arcpy_mcp_enabled_state() is not True:
             return []
 
         try:
@@ -538,6 +545,19 @@ class McpHubManager:
             source="environment",
             is_shared=True,
         )]
+
+    @staticmethod
+    def _arcpy_mcp_enabled_state() -> Optional[bool]:
+        """Return explicit ArcPy enablement, preserving unset as ``None``."""
+        raw = os.environ.get("ARCPY_MCP_ENABLED")
+        if raw is None:
+            return None
+        value = raw.strip().lower()
+        if value in ("true", "1", "yes"):
+            return True
+        if value in ("false", "0", "no"):
+            return False
+        return None
 
     def _load_yaml(self) -> list[McpServerConfig]:
         """Load server configs from YAML file."""
@@ -584,7 +604,11 @@ class McpHubManager:
     async def connect_server(self, name: str) -> bool:
         """Connect to a single MCP server by name. Returns success."""
         async with self._get_lifecycle_lock(name):
-            return await self._connect_server_unlocked(name)
+            connected = await self._connect_server_unlocked(name)
+            self._refresh_started_state()
+            if not connected:
+                self._started = False
+            return connected
 
     async def _connect_server_unlocked(self, name: str) -> bool:
         """Connect while the caller owns the server lifecycle lock."""
@@ -716,7 +740,10 @@ class McpHubManager:
     async def disconnect_server(self, name: str) -> bool:
         """Disconnect and cleanup a single server."""
         async with self._get_lifecycle_lock(name):
-            return await self._disconnect_server_unlocked(name)
+            disconnected = await self._disconnect_server_unlocked(name)
+            if disconnected:
+                self._refresh_started_state()
+            return disconnected
 
     async def _disconnect_server_unlocked(self, name: str) -> bool:
         """Disconnect while the caller owns the server lifecycle lock."""
@@ -785,6 +812,11 @@ class McpHubManager:
             )
         ]
 
+    def _refresh_started_state(self) -> bool:
+        """Recompute whether every enabled server owns a live connection."""
+        self._started = not self._enabled_non_connected_servers()
+        return self._started
+
     async def shutdown(self):
         """Disconnect all servers gracefully."""
         for name in list(self._servers.keys()):
@@ -815,6 +847,9 @@ class McpHubManager:
 
             if enabled and status.status != "connected":
                 ok = await self._connect_server_unlocked(name)
+                self._refresh_started_state()
+                if not ok:
+                    self._started = False
                 return {
                     "status": "ok" if ok else "error",
                     "server": name,
@@ -823,12 +858,14 @@ class McpHubManager:
                 }
             if not enabled and status.status == "connected":
                 await self._disconnect_server_unlocked(name)
+                self._refresh_started_state()
                 return {
                     "status": "ok",
                     "server": name,
                     "enabled": False,
                     "connected": False,
                 }
+            self._refresh_started_state()
             return {
                 "status": "ok",
                 "server": name,
@@ -845,6 +882,9 @@ class McpHubManager:
 
             await self._disconnect_server_unlocked(name)
             ok = await self._connect_server_unlocked(name)
+            self._refresh_started_state()
+            if not ok:
+                self._started = False
             return {
                 "status": "ok" if ok else "error",
                 "server": name,
@@ -943,6 +983,9 @@ class McpHubManager:
             connected = False
             if config.enabled:
                 connected = await self._connect_server_unlocked(config.name)
+            self._refresh_started_state()
+            if config.enabled and not connected:
+                self._started = False
 
             logger.info(
                 "Added MCP server '%s' (transport=%s, enabled=%s, owner=%s)",
@@ -1012,6 +1055,8 @@ class McpHubManager:
                 await self._disconnect_server_unlocked(name)
                 await self._connect_server_unlocked(name)
 
+            self._refresh_started_state()
+
             return {"status": "ok", "server": name}
 
     async def remove_server(self, name: str) -> dict:
@@ -1029,6 +1074,7 @@ class McpHubManager:
             await self._cleanup_runtime(name, status)
             self._delete_from_db(name)
             del self._servers[name]
+            self._refresh_started_state()
 
             logger.info("Removed MCP server '%s'", name)
             return {"status": "ok", "server": name}

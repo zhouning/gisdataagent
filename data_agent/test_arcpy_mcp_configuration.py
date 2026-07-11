@@ -84,6 +84,82 @@ def test_false_values_do_not_register_system_config(monkeypatch, value):
     assert "arcpy-remote" not in hub._servers
 
 
+@pytest.mark.parametrize("value", ["false", "0", "no"])
+def test_explicit_false_disables_stale_db_arcpy(monkeypatch, value):
+    _clear_arcpy_environment(monkeypatch)
+    monkeypatch.setenv("ARCPY_MCP_ENABLED", value)
+    stale = McpServerConfig(
+        name="arcpy-remote",
+        transport="streamable_http",
+        enabled=True,
+        url="https://stale-database.example/mcp",
+        source="db",
+    )
+    hub = McpHubManager()
+    hub._ensure_table = MagicMock(return_value=True)
+    hub._load_from_db = MagicMock(return_value=[stale])
+    hub._load_yaml = MagicMock(return_value=[])
+    hub._update_enabled_in_db = MagicMock()
+
+    configs = hub.load_config()
+
+    assert configs == [stale]
+    assert hub._servers["arcpy-remote"].config.enabled is False
+    assert hub._servers["arcpy-remote"].config.source == "db"
+    hub._update_enabled_in_db.assert_called_once_with("arcpy-remote", False)
+    hub.connect_server = AsyncMock(return_value=True)
+    assert asyncio.run(hub.startup()) is True
+    hub.connect_server.assert_not_awaited()
+
+
+def test_explicit_false_disables_stale_yaml_arcpy_without_persisting(monkeypatch):
+    _clear_arcpy_environment(monkeypatch)
+    monkeypatch.setenv("ARCPY_MCP_ENABLED", "false")
+    stale = McpServerConfig(
+        name="arcpy-remote",
+        transport="streamable_http",
+        enabled=True,
+        url="https://stale-yaml.example/mcp",
+        source="yaml",
+    )
+    hub = McpHubManager()
+    hub._ensure_table = MagicMock(return_value=False)
+    hub._load_from_db = MagicMock(return_value=[])
+    hub._load_yaml = MagicMock(return_value=[stale])
+    hub._update_enabled_in_db = MagicMock()
+
+    configs = hub.load_config()
+
+    assert configs == [stale]
+    assert hub._servers["arcpy-remote"].config.enabled is False
+    assert hub._servers["arcpy-remote"].config.source == "yaml"
+    hub._update_enabled_in_db.assert_not_called()
+    hub.connect_server = AsyncMock(return_value=True)
+    assert asyncio.run(hub.startup()) is True
+    hub.connect_server.assert_not_awaited()
+
+
+def test_unset_enabled_does_not_override_stale_persisted_arcpy(monkeypatch):
+    _clear_arcpy_environment(monkeypatch)
+    stale = McpServerConfig(
+        name="arcpy-remote",
+        transport="streamable_http",
+        enabled=True,
+        url="https://persisted.example/mcp",
+        source="db",
+    )
+    hub = McpHubManager()
+    hub._ensure_table = MagicMock(return_value=True)
+    hub._load_from_db = MagicMock(return_value=[stale])
+    hub._load_yaml = MagicMock(return_value=[])
+    hub._update_enabled_in_db = MagicMock()
+
+    hub.load_config()
+
+    assert hub._servers["arcpy-remote"].config.enabled is True
+    hub._update_enabled_in_db.assert_not_called()
+
+
 def test_environment_arcpy_overrides_same_name_db_and_yaml(monkeypatch):
     _clear_arcpy_environment(monkeypatch)
     monkeypatch.setenv("ARCPY_MCP_ENABLED", "1")
@@ -412,6 +488,58 @@ def test_system_managed_server_reconnect_remains_allowed():
     assert result["connected"] is True
 
 
+def test_failed_reconnect_invalidates_hub_readiness():
+    hub = McpHubManager()
+    hub._servers = {
+        "arcpy-remote": McpServerStatus(
+            config=McpServerConfig(name="arcpy-remote", enabled=True),
+            status="connected",
+            toolset=object(),
+        )
+    }
+    hub._started = True
+    hub._disconnect_server_unlocked = AsyncMock(return_value=True)
+    hub._connect_server_unlocked = AsyncMock(return_value=False)
+
+    result = asyncio.run(hub.reconnect_server("arcpy-remote"))
+
+    assert result["status"] == "error"
+    assert hub._started is False
+
+
+def test_successful_reconnect_is_ready_only_when_all_enabled_are_connected():
+    hub = McpHubManager()
+    reconnecting = McpServerStatus(
+        config=McpServerConfig(name="arcpy-remote", enabled=True),
+        status="error",
+    )
+    other = McpServerStatus(
+        config=McpServerConfig(name="other", enabled=True),
+        status="error",
+    )
+    hub._servers = {"arcpy-remote": reconnecting, "other": other}
+
+    async def connect(_name):
+        reconnecting.status = "connected"
+        reconnecting.toolset = object()
+        return True
+
+    hub._disconnect_server_unlocked = AsyncMock(return_value=True)
+    hub._connect_server_unlocked = AsyncMock(side_effect=connect)
+
+    result = asyncio.run(hub.reconnect_server("arcpy-remote"))
+
+    assert result["status"] == "ok"
+    assert hub._started is False
+
+    other.status = "connected"
+    other.toolset = object()
+    result = asyncio.run(hub.reconnect_server("arcpy-remote"))
+
+    assert result["status"] == "ok"
+    assert hub._started is True
+
+
 def test_shutdown_bridge_is_sync_and_idempotent_without_running_loop():
     from data_agent.mcp_hub import McpShutdownBridge
 
@@ -464,6 +592,8 @@ def test_app_uses_single_retry_task_and_success_gated_startup():
     assert "retry_failed_servers" in app_source
     assert "_mcp_retry_task = None" not in retry_body
     assert "if _mcp_retry_task is not None:" in app_source
+    assert "if _mcp_started and hub._started:" in app_source
+    assert "if _mcp_started:\n        _mcp_started = False" in app_source
 
 
 def test_app_registers_idempotent_mcp_shutdown_bridge():

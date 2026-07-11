@@ -380,8 +380,10 @@ class TestMcpHubManager(unittest.TestCase):
     def test_disconnect_unknown_server(self):
         from data_agent.mcp_hub import McpHubManager
         hub = McpHubManager()
+        hub._started = False
         result = _run(hub.disconnect_server("nonexistent"))
         self.assertFalse(result)
+        self.assertFalse(hub._started)
 
     @patch("data_agent.mcp_hub.McpHubManager.connect_server", new_callable=AsyncMock)
     def test_startup_connects_enabled_only(self, mock_connect):
