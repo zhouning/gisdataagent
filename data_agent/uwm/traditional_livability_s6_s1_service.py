@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import json
+from pathlib import Path
 from typing import Any, Mapping
 
 from data_agent.uwm.traditional_livability_s1_comparison import (
@@ -8,6 +10,11 @@ from data_agent.uwm.traditional_livability_s1_comparison import (
 )
 from data_agent.uwm.traditional_livability_s6_s1_handoff import (
     build_s6_s1_handoff,
+)
+from data_agent.uwm.traditional_livability_s6_s1_product import (
+    FACILITY_FILENAME,
+    MATRIX_FILENAME,
+    PROFILE_FILENAME,
 )
 
 
@@ -34,6 +41,25 @@ class TraditionalLivabilityS6S1Service:
         self.synthesis_matrices = deepcopy(dict(synthesis_matrices))
         self._handoffs: dict[str, dict[str, Any]] = {}
         self._results: dict[str, dict[str, Any]] = {}
+
+    @classmethod
+    def from_product_dir(cls, product_dir: Path):
+        root = Path(product_dir)
+        facility = json.loads((root / FACILITY_FILENAME).read_text(encoding="utf-8"))
+        profiles = json.loads((root / PROFILE_FILENAME).read_text(encoding="utf-8"))
+        matrix_collection = json.loads((root / MATRIX_FILENAME).read_text(encoding="utf-8"))
+        matrices = {
+            row["matrix_id"]: row
+            for row in matrix_collection.get("matrices") or []
+            if isinstance(row, Mapping) and row.get("matrix_id")
+        }
+        demand_units = facility.get("demand_units") or []
+        return cls(
+            facility_product=facility,
+            demand_units=demand_units,
+            metric_profiles=profiles,
+            synthesis_matrices=matrices,
+        )
 
     def list_profiles(self) -> dict[str, Any]:
         return deepcopy(self.metric_profiles)

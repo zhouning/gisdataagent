@@ -102,3 +102,15 @@ def test_profile_bundle_change_after_creation_fails_closed():
     service.metric_profiles["bundle_id"] = "profile-bundle-v2"
     with pytest.raises(HandoffConflict, match="metric_profile_bundle_mismatch"):
         service.execute_s1(handoff["handoff_id"], actor_id="alice")
+
+
+def test_service_loads_evidence_bounded_product_directory(tmp_path):
+    from data_agent.test_build_traditional_livability_s6_s1_fulu import _facility_product, _s6_resources
+    from data_agent.uwm.traditional_livability_s6_s1_product import build_s6_s1_product_bundle
+
+    build_s6_s1_product_bundle(
+        facility_product=_facility_product(), s6_resources=_s6_resources(), output_dir=tmp_path
+    )
+    service = TraditionalLivabilityS6S1Service.from_product_dir(tmp_path)
+    assert service.list_profiles()["status"] == "unavailable"
+    assert service.facility_product["bundle_id"].startswith("traditional-livability-s6-s1-")

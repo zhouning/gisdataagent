@@ -95,6 +95,16 @@ def configure_s6_s1_service(service: TraditionalLivabilityS6S1Service | None) ->
 
 
 def _get_s6_s1_service() -> TraditionalLivabilityS6S1Service:
+    global _S6_S1_SERVICE
+    if _S6_S1_SERVICE is None:
+        configured = os.environ.get("UWM_TRADITIONAL_LIVABILITY_S6_S1_PATH", "").strip()
+        if configured:
+            try:
+                _S6_S1_SERVICE = TraditionalLivabilityS6S1Service.from_product_dir(
+                    Path(configured).expanduser()
+                )
+            except Exception as exc:
+                raise RuntimeError("s6_s1_product_not_configured") from exc
     if _S6_S1_SERVICE is None:
         raise RuntimeError("s6_s1_product_not_configured")
     return _S6_S1_SERVICE
