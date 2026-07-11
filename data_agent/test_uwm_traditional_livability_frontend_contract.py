@@ -167,6 +167,13 @@ def test_traditional_livability_s6_panel_uses_evidence_bounded_contract():
     assert "map.off('click', s6PointSelectionHandlerRef.current)" in map_panel
     assert "reason === 'map_unavailable'" in map_panel
     assert "reason === 'request_rejected_active_mode'" in map_panel
+    assert "geojson.unresolved_planning_resources" in panel
+    assert "geojson.unresolved_current_facilities" in panel
+    assert "unresolved_object_kind: kind" in panel
+    assert "geojson.unresolved_planning_resources, 'planning_resource'" in panel
+    assert "geojson.unresolved_current_facilities, 'current_facility'" in panel
+    assert "语义未解析规划资源" in panel
+    assert "语义未解析现状设施" in panel
 
     for forbidden in ["禁止建设", "审批通过", "法定退界", "安全距离", "步行服务区"]:
         assert forbidden not in panel

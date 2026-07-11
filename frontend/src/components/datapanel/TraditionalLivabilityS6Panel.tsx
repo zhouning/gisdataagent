@@ -45,6 +45,25 @@ function buildS6Confirmation(candidate: Row, semantic: Row, reviewerReason: stri
   };
 }
 
+function unresolvedFeatureCollection(geojson: Row): Row {
+  const taggedFeatures = (collection: unknown, kind: 'planning_resource' | 'current_facility', label: string) =>
+    rows(record(collection).features).map(feature => ({
+      ...feature,
+      properties: {
+        ...record(feature.properties),
+        unresolved_object_kind: kind,
+        unresolved_object_label: label,
+      },
+    }));
+  return {
+    type: 'FeatureCollection',
+    features: [
+      ...taggedFeatures(geojson.unresolved_planning_resources, 'planning_resource', '语义未解析规划资源'),
+      ...taggedFeatures(geojson.unresolved_current_facilities, 'current_facility', '语义未解析现状设施'),
+    ],
+  };
+}
+
 declare global {
   interface Window {
     __handleMapUpdate?: (payload: any) => void;
@@ -183,12 +202,13 @@ export default function TraditionalLivabilityS6Panel() {
 
   const sendMap = () => {
     const geojson = record(result?.geojson);
+    const unresolvedGeojson = unresolvedFeatureCollection(geojson);
     window.__handleMapUpdate?.({ schema: 'map_update.v1', summary: { title: 'S6 超范围设施评估' }, layers: [
       ['拟建设施位置或目标地块', geojson.proposed_geometry],
       ['150 米空间初筛范围', geojson.screening_buffer],
       ['命中规划资源地块', geojson.planning_resource_hits],
       ['命中现状设施', geojson.current_facility_hits],
-      ['语义未解析设施', geojson.unresolved_current_facilities],
+      ['语义未解析设施', unresolvedGeojson],
     ].filter(([, data]) => data).map(([name, geojsonData]) => ({ name, type: 'geojson', geojsonData })) });
   };
 
