@@ -48,6 +48,32 @@ def _valid_server_body():
     }
 
 
+def _existing_config(transport="stdio"):
+    return McpServerConfig(
+        name="owned-server",
+        description="Existing server",
+        transport=transport,
+        enabled=False,
+        category="gis",
+        pipelines=["general", "planner"],
+        command="python" if transport == "stdio" else "",
+        args=["-m", "example.server"] if transport == "stdio" else [],
+        env={"MODE": "safe"},
+        cwd="/srv/mcp",
+        url="https://example.test/mcp" if transport != "stdio" else "",
+        headers={"X-Test": "true"},
+        timeout=10.0,
+        owner_username="route-owner",
+        is_shared=False,
+    )
+
+
+def _server_status(config):
+    status = MagicMock()
+    status.config = config
+    return status
+
+
 def test_routes_expose_canonical_connection_test_endpoint():
     routes = get_mcp_routes()
     paths = {route.path for route in routes}
@@ -331,11 +357,52 @@ async def test_routes_reject_invalid_scalar_fields_for_inactive_transport(
     ],
 )
 async def test_update_rejects_invalid_typed_fields_without_updating_hub(body):
+    user = _make_user(username="admin-user", role="admin")
+    hub = MagicMock()
+    hub._can_manage_server.return_value = True
+    hub._servers = {"owned-server": _server_status(_existing_config())}
+    hub.update_server = AsyncMock(return_value={"status": "error"})
+    request = _make_request(body, path_params={"name": "owned-server"})
+
+    with (
+        patch("data_agent.api.mcp_routes._get_user_from_request", return_value=user),
+        patch(
+            "data_agent.api.mcp_routes._set_user_context",
+            return_value=("admin-user", "admin"),
+        ),
+        patch("data_agent.mcp_hub.get_mcp_hub", return_value=hub),
+    ):
+        response = await mcp_server_update(request)
+
+    assert response.status_code == 400
+    hub.update_server.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"transport": "streamable_http"},
+        {"command": "python"},
+        {"args": ["-c", "print('unsafe')"]},
+        {"env": {"TOKEN": "secret"}},
+        {"cwd": "/tmp"},
+        {"url": "http://127.0.0.1/internal"},
+        {"headers": {"Authorization": "Bearer secret"}},
+        {"timeout": 30},
+        {"enabled": True},
+        {"is_shared": True},
+        {"bearer": "secret"},
+        {"security": {"token": "secret"}},
+        {"unknown_field": "value"},
+    ],
+)
+async def test_non_admin_owner_cannot_update_privileged_or_unknown_fields(body):
     user = _make_user(username="route-owner", role="analyst")
     hub = MagicMock()
     hub._can_manage_server.return_value = True
-    hub._servers = {}
-    hub.update_server = AsyncMock(return_value={"status": "error"})
+    hub._servers = {"owned-server": _server_status(_existing_config())}
+    hub.update_server = AsyncMock(return_value={"status": "ok"})
     request = _make_request(body, path_params={"name": "owned-server"})
 
     with (
@@ -348,5 +415,120 @@ async def test_update_rejects_invalid_typed_fields_without_updating_hub(body):
     ):
         response = await mcp_server_update(request)
 
+    assert response.status_code == 403
+    hub.update_server.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_non_admin_owner_can_update_metadata_only():
+    body = {
+        "description": "Updated description",
+        "category": "analysis",
+        "pipelines": ["general"],
+    }
+    user = _make_user(username="route-owner", role="analyst")
+    hub = MagicMock()
+    hub._can_manage_server.return_value = True
+    hub._servers = {"owned-server": _server_status(_existing_config())}
+    hub.update_server = AsyncMock(return_value={"status": "ok", "server": "owned-server"})
+    request = _make_request(body, path_params={"name": "owned-server"})
+
+    with (
+        patch("data_agent.api.mcp_routes._get_user_from_request", return_value=user),
+        patch(
+            "data_agent.api.mcp_routes._set_user_context",
+            return_value=("route-owner", "analyst"),
+        ),
+        patch("data_agent.mcp_hub.get_mcp_hub", return_value=hub),
+        patch("data_agent.audit_logger.record_audit"),
+    ):
+        response = await mcp_server_update(request)
+
+    assert response.status_code == 200
+    hub.update_server.assert_awaited_once_with("owned-server", body)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("existing_transport", "body"),
+    [
+        ("stdio", {"transport": "streamable_http"}),
+        ("streamable_http", {"transport": "stdio"}),
+    ],
+)
+async def test_admin_transport_transition_requires_complete_candidate_config(
+    existing_transport, body
+):
+    user = _make_user(username="admin-user", role="admin")
+    hub = MagicMock()
+    hub._can_manage_server.return_value = True
+    hub._servers = {
+        "owned-server": _server_status(_existing_config(existing_transport))
+    }
+    hub.update_server = AsyncMock(return_value={"status": "ok"})
+    request = _make_request(body, path_params={"name": "owned-server"})
+
+    with (
+        patch("data_agent.api.mcp_routes._get_user_from_request", return_value=user),
+        patch(
+            "data_agent.api.mcp_routes._set_user_context",
+            return_value=("admin-user", "admin"),
+        ),
+        patch("data_agent.mcp_hub.get_mcp_hub", return_value=hub),
+    ):
+        response = await mcp_server_update(request)
+
     assert response.status_code == 400
     hub.update_server.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_admin_partial_metadata_update_preserves_existing_connection_config():
+    body = {"description": "Admin metadata update"}
+    user = _make_user(username="admin-user", role="admin")
+    hub = MagicMock()
+    hub._can_manage_server.return_value = True
+    hub._servers = {"owned-server": _server_status(_existing_config())}
+    hub.update_server = AsyncMock(return_value={"status": "ok", "server": "owned-server"})
+    request = _make_request(body, path_params={"name": "owned-server"})
+
+    with (
+        patch("data_agent.api.mcp_routes._get_user_from_request", return_value=user),
+        patch(
+            "data_agent.api.mcp_routes._set_user_context",
+            return_value=("admin-user", "admin"),
+        ),
+        patch("data_agent.mcp_hub.get_mcp_hub", return_value=hub),
+        patch("data_agent.audit_logger.record_audit"),
+    ):
+        response = await mcp_server_update(request)
+
+    assert response.status_code == 200
+    hub.update_server.assert_awaited_once_with("owned-server", body)
+
+
+@pytest.mark.asyncio
+async def test_admin_update_normalizes_numeric_timeout_before_hub_call():
+    body = {"timeout": "12.5"}
+    user = _make_user(username="admin-user", role="admin")
+    hub = MagicMock()
+    hub._can_manage_server.return_value = True
+    hub._servers = {"owned-server": _server_status(_existing_config())}
+    hub.update_server = AsyncMock(return_value={"status": "ok", "server": "owned-server"})
+    request = _make_request(body, path_params={"name": "owned-server"})
+
+    with (
+        patch("data_agent.api.mcp_routes._get_user_from_request", return_value=user),
+        patch(
+            "data_agent.api.mcp_routes._set_user_context",
+            return_value=("admin-user", "admin"),
+        ),
+        patch("data_agent.mcp_hub.get_mcp_hub", return_value=hub),
+        patch("data_agent.audit_logger.record_audit"),
+    ):
+        response = await mcp_server_update(request)
+
+    assert response.status_code == 200
+    updates = hub.update_server.await_args.args[1]
+    assert updates == {"timeout": 12.5}
+    assert isinstance(updates["timeout"], float)

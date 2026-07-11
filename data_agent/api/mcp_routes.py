@@ -15,6 +15,12 @@ logger = logging.getLogger("data_agent.api.mcp_routes")
 _MCP_ALLOWED_COMMANDS = {"python", "python3", "node", "npx", "uvx", "docker", "deno"}
 _MCP_ALLOWED_TRANSPORTS = {"stdio", "sse", "streamable_http"}
 _MCP_MAX_TIMEOUT_SECONDS = 300.0
+_MCP_METADATA_UPDATE_FIELDS = {"description", "category", "pipelines"}
+_MCP_CONFIG_FIELDS = (
+    "description", "transport", "enabled", "category", "pipelines",
+    "command", "args", "env", "cwd", "url", "headers", "timeout",
+    "is_shared",
+)
 
 
 async def _read_mcp_body(request: Request):
@@ -91,6 +97,11 @@ def _validate_mcp_config(body: dict, transport: str, *, partial: bool = False) -
             if not url.startswith(("http://", "https://")):
                 return "url must start with http:// or https://"
     return None
+
+
+def _mcp_config_body(config) -> dict:
+    """Return the validated, mutable fields from an existing MCP config."""
+    return {field_name: getattr(config, field_name) for field_name in _MCP_CONFIG_FIELDS}
 
 
 async def mcp_servers(request: Request):
@@ -245,17 +256,25 @@ async def mcp_server_update(request: Request):
     hub = get_mcp_hub()
     if not hub._can_manage_server(server_name, username, role):
         return JSONResponse({"error": "Permission denied"}, status_code=403)
-    if "transport" in body:
-        transport = body["transport"]
-    else:
-        existing = hub._servers.get(server_name)
-        transport = existing.config.transport if existing else "stdio"
-    err = _validate_mcp_config(body, transport, partial=True)
+
+    if role != "admin" and not set(body).issubset(_MCP_METADATA_UPDATE_FIELDS):
+        return JSONResponse({"error": "Permission denied"}, status_code=403)
+
+    existing = hub._servers.get(server_name)
+    if not existing:
+        return JSONResponse({"error": f"Server '{server_name}' not found"}, status_code=404)
+
+    candidate = _mcp_config_body(existing.config)
+    candidate.update(body)
+    transport = candidate.get("transport", "stdio")
+    err = _validate_mcp_config(candidate, transport)
     if err:
         return JSONResponse({"error": err}, status_code=400)
-    if "timeout" in body:
-        body["timeout"] = float(body["timeout"])
-    result = await hub.update_server(server_name, body)
+
+    updates = dict(body)
+    if "timeout" in updates:
+        updates["timeout"] = float(updates["timeout"])
+    result = await hub.update_server(server_name, updates)
     if result.get("status") == "ok":
         from ..audit_logger import record_audit, ACTION_MCP_SERVER_UPDATE
         record_audit(username, ACTION_MCP_SERVER_UPDATE, details={"server": server_name})
