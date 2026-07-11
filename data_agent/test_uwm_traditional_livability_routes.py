@@ -4,7 +4,7 @@ import json
 import pytest
 from starlette.requests import Request
 
-from data_agent.test_traditional_livability_s6 import resource_fixture
+from data_agent.test_traditional_livability_s6 import point_request, resource_fixture
 from data_agent.uwm.traditional_livability_facility_dictionary import (
     unavailable_compatibility_matrix,
     unavailable_facility_dictionary,
@@ -184,32 +184,61 @@ async def test_s6_dictionary_unavailable_returns_http_200_blocker(tmp_path, monk
     payload = json.loads(response.body)
 
     assert response.status_code == 200
+    assert payload["schema"] == "uwm.traditional_livability.s6_authority_status.v1"
     assert payload["ready"] is False
-    assert payload["blockers"]
+    assert payload["facility_dictionary"] == {
+        "status": "dictionary_unavailable",
+        "version": None,
+        "ready": False,
+        "blockers": ["authoritative_43_class_facility_dictionary_missing"],
+    }
+    assert payload["compatibility_matrix"]["status"] == "compatibility_matrix_unavailable"
+    assert payload["compatibility_matrix"]["version"] is None
+    assert payload["compatibility_matrix"]["ready"] is False
+    assert payload["compatibility_matrix"]["blockers"]
 
 
+@pytest.mark.parametrize("matrix_failure", ["missing", "invalid"])
 @pytest.mark.asyncio
-async def test_s6_analyze_uses_server_snapshots_and_rejects_cross_area(tmp_path, monkeypatch):
+async def test_s6_dictionary_envelope_reports_matrix_snapshot_failure(
+    tmp_path, monkeypatch, matrix_failure
+):
+    snapshot_dir = _write_s6_snapshots(tmp_path / "snapshots")
+    matrix_path = snapshot_dir / "uwm_traditional_livability_s6_compatibility.json"
+    if matrix_failure == "missing":
+        matrix_path.unlink()
+    else:
+        matrix_path.write_text(json.dumps({"schema": "wrong"}), encoding="utf-8")
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S6_PATH", str(snapshot_dir))
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda request: {"id": "user"})
+    monkeypatch.setattr(routes, "_set_user_context", lambda user: None)
+
+    response = await routes.uwm_traditional_livability_s6_dictionary(
+        _request("/api/uwm/traditional-livability/s6/dictionary")
+    )
+    payload = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert payload["compatibility_matrix"]["ready"] is False
+    expected = f"s6_compatibility_snapshot_{'missing' if matrix_failure == 'missing' else 'schema_invalid'}"
+    assert expected in payload["compatibility_matrix"]["blockers"]
+
+
+@pytest.mark.parametrize(
+    ("request_payload", "expected_blocker"),
+    [
+        (point_request(analysis_area_id="outside"), "unknown_analysis_area:outside"),
+        (point_request(input_mode="uploaded_shapefile"), "unsupported_input_mode"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_s6_analyze_returns_400_for_real_validation_blockers(
+    tmp_path, monkeypatch, request_payload, expected_blocker
+):
     snapshot_dir = _write_s6_snapshots(tmp_path / "snapshots")
     monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S6_PATH", str(snapshot_dir))
     monkeypatch.setattr(routes, "_get_user_from_request", lambda request: {"id": "user"})
     monkeypatch.setattr(routes, "_set_user_context", lambda user: None)
-    calls = []
-
-    def fake_analyze(**kwargs):
-        calls.append(kwargs)
-        return {"schema": "uwm.traditional_livability.s6_analysis.v1", "status": "insufficient_evidence", "blockers": ["unknown_analysis_area:outside"]}
-
-    monkeypatch.setattr(routes, "analyze_s6_facility_proposal", fake_analyze)
-    request_payload = {
-        "input_mode": "planning_parcel",
-        "analysis_area_id": "outside",
-        "planning_resource_id": "parcel-selected",
-        "resources": {"schema": "attacker"},
-        "dictionary": {"schema": "attacker"},
-        "compatibility": {"schema": "attacker"},
-        "source_path": str(tmp_path / "Downloads" / "attacker.shp"),
-    }
 
     response = await routes.uwm_traditional_livability_s6_analyze(
         _request("/api/uwm/traditional-livability/s6/analyze", method="POST", payload=request_payload)
@@ -217,8 +246,25 @@ async def test_s6_analyze_uses_server_snapshots_and_rejects_cross_area(tmp_path,
     payload = json.loads(response.body)
 
     assert response.status_code == 400
-    assert "unknown_analysis_area:outside" in payload["blockers"]
-    assert calls[0]["request"] == request_payload
-    assert calls[0]["resources"]["schema"] == "uwm.traditional_livability.s6_fulu_resources.v1"
-    assert calls[0]["dictionary"]["schema"] != "attacker"
-    assert calls[0]["compatibility"]["schema"] != "attacker"
+    assert expected_blocker in payload["validation_blockers"]
+
+
+@pytest.mark.asyncio
+async def test_s6_analyze_keeps_valid_evidence_limited_analysis_http_200(tmp_path, monkeypatch):
+    snapshot_dir = _write_s6_snapshots(tmp_path / "snapshots")
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S6_PATH", str(snapshot_dir))
+    monkeypatch.setattr(routes, "_get_user_from_request", lambda request: {"id": "user"})
+    monkeypatch.setattr(routes, "_set_user_context", lambda user: None)
+
+    response = await routes.uwm_traditional_livability_s6_analyze(
+        _request(
+            "/api/uwm/traditional-livability/s6/analyze",
+            method="POST",
+            payload=point_request(),
+        )
+    )
+    payload = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert payload["validation_blockers"] == []
+    assert payload["production_blockers"]

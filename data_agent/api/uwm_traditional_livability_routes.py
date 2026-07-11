@@ -31,6 +31,7 @@ DEFAULT_DATA_ROOT = ROOT / "data/uwm_public_proxy/chongqing_central"
 S1_SCHEMA = "uwm.traditional_livability.s1_assessment.v1"
 S7_SCHEMA = "uwm.traditional_livability.s7_siting.v1"
 S6_RESOURCE_SCHEMA = "uwm.traditional_livability.s6_fulu_resources.v1"
+S6_AUTHORITY_STATUS_SCHEMA = "uwm.traditional_livability.s6_authority_status.v1"
 S6_RESOURCE_FILES = {
     "resources": "uwm_traditional_livability_s6_resources.json",
     "dictionary": "uwm_traditional_livability_s6_dictionary.json",
@@ -202,6 +203,43 @@ def _load_optional_s6_snapshot(snapshot: str) -> dict:
         return payload
 
 
+def _s6_authority_status(
+    dictionary: dict,
+    compatibility: dict,
+) -> dict:
+    dictionary_blockers = list(
+        dictionary.get("blockers") or dictionary.get("production_blockers") or []
+    )
+    compatibility_blockers = list(
+        compatibility.get("blockers")
+        or compatibility.get("production_blockers")
+        or []
+    )
+    dictionary_metadata = dictionary.get("source_metadata") or {}
+    compatibility_metadata = compatibility.get("source_metadata") or {}
+    dictionary_status = {
+        "status": dictionary.get("status"),
+        "version": dictionary_metadata.get("dictionary_version"),
+        "ready": dictionary.get("ready") is True,
+        "blockers": dictionary_blockers,
+    }
+    compatibility_status = {
+        "status": compatibility.get("status"),
+        "version": compatibility_metadata.get("matrix_version"),
+        "ready": compatibility.get("ready") is True,
+        "blockers": compatibility_blockers,
+    }
+    return {
+        "schema": S6_AUTHORITY_STATUS_SCHEMA,
+        "ready": dictionary_status["ready"] and compatibility_status["ready"],
+        "blockers": list(
+            dict.fromkeys([*dictionary_blockers, *compatibility_blockers])
+        ),
+        "facility_dictionary": dictionary_status,
+        "compatibility_matrix": compatibility_status,
+    }
+
+
 def _load_default_analysis(top_n: int = 8) -> dict:
     scene = json.loads(_scene_path().read_text(encoding="utf-8"))
     return build_traditional_livability_analysis(
@@ -322,10 +360,11 @@ async def uwm_traditional_livability_s6_dictionary(request: Request):
     if not user:
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
     _set_user_context(user)
-    payload = await asyncio.to_thread(_load_optional_s6_snapshot, "dictionary")
-    if payload.get("ready") is not True and "blockers" not in payload:
-        payload["blockers"] = list(payload.get("production_blockers") or [])
-    return JSONResponse(payload)
+    dictionary, compatibility = await asyncio.gather(
+        asyncio.to_thread(_load_optional_s6_snapshot, "dictionary"),
+        asyncio.to_thread(_load_optional_s6_snapshot, "compatibility"),
+    )
+    return JSONResponse(_s6_authority_status(dictionary, compatibility))
 
 
 async def uwm_traditional_livability_s6_analyze(request: Request):
@@ -366,8 +405,8 @@ async def uwm_traditional_livability_s6_analyze(request: Request):
             _s6_unavailable_payload("resources", "s6_analysis_failed"),
             status_code=503,
         )
-    blockers = result.get("blockers") or result.get("validation", {}).get("blockers") or []
-    status_code = 400 if result.get("status") == "insufficient_evidence" and blockers else 200
+    validation_blockers = result.get("validation_blockers") or []
+    status_code = 400 if validation_blockers else 200
     return JSONResponse(result, status_code=status_code)
 
 
