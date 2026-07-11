@@ -20,6 +20,7 @@ from ..uwm.traditional_livability_analysis import (
 from ..uwm.traditional_livability_facility_dictionary import (
     COMPATIBILITY_SCHEMA,
     DICTIONARY_SCHEMA,
+    compute_canonical_content_digest,
     unavailable_compatibility_matrix,
     unavailable_facility_dictionary,
     validate_compatibility_matrix,
@@ -211,6 +212,27 @@ def _load_s6_snapshot(snapshot: str) -> dict:
             raise S6SnapshotUnavailable(
                 _s6_unavailable_payload(
                     snapshot, "s6_resources_snapshot_contract_invalid"
+                )
+            )
+        provided_digest = payload.get("content_digest")
+        if not isinstance(provided_digest, str) or not provided_digest.strip():
+            raise S6SnapshotUnavailable(
+                _s6_unavailable_payload(
+                    snapshot, "s6_resources_snapshot_digest_missing"
+                )
+            )
+        try:
+            computed_digest = compute_canonical_content_digest(payload)
+        except Exception as exc:
+            raise S6SnapshotUnavailable(
+                _s6_unavailable_payload(
+                    snapshot, "s6_resources_snapshot_digest_mismatch"
+                )
+            ) from exc
+        if provided_digest != computed_digest:
+            raise S6SnapshotUnavailable(
+                _s6_unavailable_payload(
+                    snapshot, "s6_resources_snapshot_digest_mismatch"
                 )
             )
         return payload

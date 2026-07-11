@@ -10,6 +10,7 @@ from data_agent.test_traditional_livability_facility_dictionary import (
 )
 from data_agent.test_traditional_livability_s6 import point_request, resource_fixture
 from data_agent.uwm.traditional_livability_facility_dictionary import (
+    compute_canonical_content_digest,
     unavailable_compatibility_matrix,
     unavailable_facility_dictionary,
     validate_compatibility_matrix,
@@ -53,8 +54,14 @@ def _request(path, *, method="GET", payload=None):
 
 def _write_s6_snapshots(directory, *, resources=None, dictionary=None, compatibility=None):
     directory.mkdir()
+    resource_payload = json.loads(json.dumps(resources or resource_fixture()))
+    if "content_digest" not in resource_payload:
+        resource_payload = dict(resource_payload)
+        resource_payload["content_digest"] = compute_canonical_content_digest(
+            resource_payload
+        )
     (directory / "uwm_traditional_livability_s6_resources.json").write_text(
-        json.dumps(resources or resource_fixture()), encoding="utf-8"
+        json.dumps(resource_payload), encoding="utf-8"
     )
     (directory / "uwm_traditional_livability_s6_dictionary.json").write_text(
         json.dumps(dictionary or unavailable_facility_dictionary()), encoding="utf-8"
@@ -204,6 +211,88 @@ def test_s6_resource_loader_rejects_nonfinite_json(tmp_path, monkeypatch):
 
     with pytest.raises(routes.S6SnapshotUnavailable):
         routes._load_s6_snapshot("resources")
+
+
+@pytest.mark.parametrize(
+    ("digest_value", "expected_blocker"),
+    [
+        (None, "s6_resources_snapshot_digest_missing"),
+        ("sha256:tampered", "s6_resources_snapshot_digest_mismatch"),
+    ],
+)
+def test_s6_resource_loader_requires_exact_canonical_digest(
+    tmp_path, monkeypatch, digest_value, expected_blocker
+):
+    payload = resource_fixture()
+    if digest_value is not None:
+        payload["content_digest"] = digest_value
+    path = tmp_path / "resources.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S6_PATH", str(path))
+
+    with pytest.raises(routes.S6SnapshotUnavailable) as error:
+        routes._load_s6_snapshot("resources")
+
+    assert error.value.payload["blockers"] == [expected_blocker]
+
+
+@pytest.mark.parametrize(
+    "tamper",
+    [
+        "geometry",
+        "raw_resource_evidence",
+        "distance_crs",
+        "facility_mapping_status",
+        "complete_inventory",
+    ],
+)
+def test_s6_resource_loader_rejects_valid_shaped_content_tamper(
+    tmp_path, monkeypatch, tamper
+):
+    payload = json.loads(json.dumps(resource_fixture()))
+    payload["content_digest"] = compute_canonical_content_digest(payload)
+    if tamper == "geometry":
+        payload["planning_areas"][0]["metric_geometry"]["coordinates"][0][0][0] += 1
+    elif tamper == "raw_resource_evidence":
+        payload["planning_resources"][0]["interpretation_evidence"]["value"] = "tampered"
+        payload["planning_resources"][0]["resource_domain"] = "tampered_domain"
+    elif tamper == "distance_crs":
+        payload["planning_areas"][0]["distance_crs"] = "EPSG:3857"
+    elif tamper == "facility_mapping_status":
+        payload["current_facilities"][0]["mapping_status"] = "authoritative"
+    else:
+        payload["facility_inventory"]["complete_inventory"] = True
+    path = tmp_path / "resources.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S6_PATH", str(path))
+
+    with pytest.raises(routes.S6SnapshotUnavailable) as error:
+        routes._load_s6_snapshot("resources")
+
+    assert error.value.payload["blockers"] == [
+        "s6_resources_snapshot_digest_mismatch"
+    ]
+
+
+@pytest.mark.asyncio
+async def test_s6_resources_endpoint_returns_503_for_digest_mismatch(
+    tmp_path, monkeypatch
+):
+    payload = resource_fixture()
+    payload["content_digest"] = "sha256:tampered"
+    path = tmp_path / "resources.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    monkeypatch.setenv("UWM_TRADITIONAL_LIVABILITY_S6_PATH", str(path))
+    _authenticated(monkeypatch)
+
+    response = await routes.uwm_traditional_livability_s6_resources(
+        _request("/api/uwm/traditional-livability/s6/resources")
+    )
+
+    assert response.status_code == 503
+    assert json.loads(response.body)["blockers"] == [
+        "s6_resources_snapshot_digest_mismatch"
+    ]
 
 
 @pytest.mark.asyncio
