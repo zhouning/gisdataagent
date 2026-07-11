@@ -1,6 +1,7 @@
 """MCP Hub routes — extracted from frontend_api.py (S-4 refactoring v12.1)."""
 
 import os
+import math
 import logging
 from typing import Optional
 from starlette.requests import Request
@@ -12,13 +13,58 @@ from .helpers import _get_user_from_request, _set_user_context, _require_admin
 logger = logging.getLogger("data_agent.api.mcp_routes")
 
 _MCP_ALLOWED_COMMANDS = {"python", "python3", "node", "npx", "uvx", "docker", "deno"}
+_MCP_ALLOWED_TRANSPORTS = {"stdio", "sse", "streamable_http"}
+_MCP_MAX_TIMEOUT_SECONDS = 300.0
+
+
+async def _read_mcp_body(request: Request):
+    """Read an MCP request body and require a JSON object."""
+    try:
+        body = await request.json()
+    except Exception:
+        return None, JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+    if not isinstance(body, dict):
+        return None, JSONResponse({"error": "JSON body must be an object"}, status_code=400)
+    return body, None
 
 
 def _validate_mcp_config(body: dict, transport: str, *, partial: bool = False) -> Optional[str]:
     """Validate MCP server config fields. Returns error message or None."""
+    if not isinstance(transport, str) or transport not in _MCP_ALLOWED_TRANSPORTS:
+        return "transport must be stdio, sse, or streamable_http"
+
+    for field_name in ("enabled", "is_shared"):
+        if field_name in body and not isinstance(body[field_name], bool):
+            return f"{field_name} must be a boolean"
+
+    for field_name in ("args", "pipelines"):
+        value = body.get(field_name)
+        if field_name in body and (not isinstance(value, list) or not all(
+                isinstance(item, str) for item in value)):
+            return f"{field_name} must be a list of strings"
+
+    for field_name in ("env", "headers"):
+        value = body.get(field_name)
+        if field_name in body and (not isinstance(value, dict) or not all(
+                isinstance(k, str) and isinstance(v, str) for k, v in value.items())):
+            return f"{field_name} must be a dict of string:string"
+
+    if "timeout" in body:
+        raw_timeout = body["timeout"]
+        if isinstance(raw_timeout, bool):
+            return f"timeout must be a number between 0 and {_MCP_MAX_TIMEOUT_SECONDS:g}"
+        try:
+            timeout = float(raw_timeout)
+        except (TypeError, ValueError):
+            return f"timeout must be a number between 0 and {_MCP_MAX_TIMEOUT_SECONDS:g}"
+        if not math.isfinite(timeout) or timeout <= 0 or timeout > _MCP_MAX_TIMEOUT_SECONDS:
+            return f"timeout must be a number between 0 and {_MCP_MAX_TIMEOUT_SECONDS:g}"
+
     if transport == "stdio":
         cmd = body.get("command")
         if cmd is not None or not partial:
+            if cmd is not None and not isinstance(cmd, str):
+                return "command must be a string"
             cmd = (cmd or "").strip()
             if not cmd:
                 return "command required for stdio transport"
@@ -30,18 +76,13 @@ def _validate_mcp_config(body: dict, transport: str, *, partial: bool = False) -
     else:
         url = body.get("url")
         if url is not None or not partial:
+            if url is not None and not isinstance(url, str):
+                return "url must be a string"
             url = (url or "").strip()
             if not url:
                 return f"url required for {transport} transport"
             if not url.startswith(("http://", "https://")):
                 return "url must start with http:// or https://"
-    args = body.get("args")
-    if args is not None and (not isinstance(args, list) or not all(isinstance(a, str) for a in args)):
-        return "args must be a list of strings"
-    headers = body.get("headers")
-    if headers is not None and (not isinstance(headers, dict) or not all(
-            isinstance(k, str) and isinstance(v, str) for k, v in headers.items())):
-        return "headers must be a dict of string:string"
     return None
 
 
@@ -119,10 +160,9 @@ async def mcp_test_connection(request: Request):
     user, username, role, err = _require_admin(request)
     if err:
         return err
-    try:
-        body = await request.json()
-    except Exception:
-        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+    body, body_err = await _read_mcp_body(request)
+    if body_err:
+        return body_err
     transport = body.get("transport", "stdio")
     err = _validate_mcp_config(body, transport)
     if err:
@@ -142,25 +182,21 @@ async def mcp_test_connection(request: Request):
 
 
 async def mcp_server_create(request: Request):
-    """POST /api/mcp/servers — register a new MCP server."""
-    user = _get_user_from_request(request)
-    if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
-    username, role = _set_user_context(user)
-    try:
-        body = await request.json()
-    except Exception:
-        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
-    name = body.get("name", "").strip()
-    if not name:
+    """POST /api/mcp/servers — register a new MCP server (admin only)."""
+    user, username, role, err = _require_admin(request)
+    if err:
+        return err
+    body, body_err = await _read_mcp_body(request)
+    if body_err:
+        return body_err
+    raw_name = body.get("name")
+    if not isinstance(raw_name, str) or not raw_name.strip():
         return JSONResponse({"error": "name is required"}, status_code=400)
+    name = raw_name.strip()
     transport = body.get("transport", "stdio")
-    if transport not in ("stdio", "sse", "streamable_http"):
-        return JSONResponse({"error": "transport must be stdio, sse, or streamable_http"}, status_code=400)
     err = _validate_mcp_config(body, transport)
     if err:
         return JSONResponse({"error": err}, status_code=400)
-    is_shared = body.get("is_shared", False) if role == "admin" else False
     from ..mcp_hub import get_mcp_hub, McpServerConfig
     config = McpServerConfig(
         name=name,
@@ -177,7 +213,7 @@ async def mcp_server_create(request: Request):
         headers=body.get("headers", {}),
         timeout=float(body.get("timeout", 5.0)),
         owner_username=username,
-        is_shared=is_shared,
+        is_shared=body.get("is_shared", False),
     )
     hub = get_mcp_hub()
     result = await hub.add_server(config)
@@ -195,23 +231,23 @@ async def mcp_server_update(request: Request):
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
     username, role = _set_user_context(user)
     server_name = request.path_params.get("name", "")
-    try:
-        body = await request.json()
-    except Exception:
-        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+    body, body_err = await _read_mcp_body(request)
+    if body_err:
+        return body_err
     from ..mcp_hub import get_mcp_hub
     hub = get_mcp_hub()
     if not hub._can_manage_server(server_name, username, role):
         return JSONResponse({"error": "Permission denied"}, status_code=403)
-    transport = body.get("transport")
-    if transport:
-        err = _validate_mcp_config(body, transport, partial=True)
+    if "transport" in body:
+        transport = body["transport"]
     else:
         existing = hub._servers.get(server_name)
         transport = existing.config.transport if existing else "stdio"
-        err = _validate_mcp_config(body, transport, partial=True)
+    err = _validate_mcp_config(body, transport, partial=True)
     if err:
         return JSONResponse({"error": err}, status_code=400)
+    if "timeout" in body:
+        body["timeout"] = float(body["timeout"])
     result = await hub.update_server(server_name, body)
     if result.get("status") == "ok":
         from ..audit_logger import record_audit, ACTION_MCP_SERVER_UPDATE
