@@ -16,7 +16,15 @@ _INPUT_FIELDS = ("facility_name", "raw_facility_type", "use_description")
 
 
 def canonical_payload_digest(payload: Mapping[str, Any]) -> str:
-    return compute_canonical_content_digest(payload)
+    return compute_canonical_content_digest(_json_canonical_value(payload))
+
+
+def _json_canonical_value(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return {str(key): _json_canonical_value(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_canonical_value(item) for item in value]
+    return value
 
 
 def _text(value: Any) -> str | None:

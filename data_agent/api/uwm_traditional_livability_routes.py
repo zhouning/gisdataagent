@@ -28,6 +28,11 @@ from ..uwm.traditional_livability_facility_dictionary import (
     validate_facility_dictionary,
 )
 from ..uwm.traditional_livability_s6 import analyze_s6_facility_proposal
+from ..uwm.traditional_livability_s6_s1_service import (
+    HandoffConflict,
+    HandoffNotFound,
+    TraditionalLivabilityS6S1Service,
+)
 from ..uwm.traditional_livability_s4 import assess_s4_project
 from ..uwm.traditional_livability_s4_project import validate_s4_project_request
 
@@ -80,6 +85,19 @@ S4_ENGINE_INPUT_BLOCKER_PREFIXES = (
     "planning_parcel_geometry_missing:",
     "planning_parcel_outside_",
 )
+
+_S6_S1_SERVICE: TraditionalLivabilityS6S1Service | None = None
+
+
+def configure_s6_s1_service(service: TraditionalLivabilityS6S1Service | None) -> None:
+    global _S6_S1_SERVICE
+    _S6_S1_SERVICE = service
+
+
+def _get_s6_s1_service() -> TraditionalLivabilityS6S1Service:
+    if _S6_S1_SERVICE is None:
+        raise RuntimeError("s6_s1_product_not_configured")
+    return _S6_S1_SERVICE
 
 
 class S1SnapshotUnavailable(RuntimeError):
@@ -833,6 +851,83 @@ async def uwm_traditional_livability_s6_analyze(request: Request):
     return JSONResponse(result, status_code=status_code)
 
 
+def _authenticated_actor(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return None
+    username, _ = _set_user_context(user)
+    return username
+
+
+async def uwm_traditional_livability_s1_profiles(request: Request):
+    actor_id = _authenticated_actor(request)
+    if actor_id is None:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    try:
+        return JSONResponse(_get_s6_s1_service().list_profiles())
+    except RuntimeError:
+        return JSONResponse(
+            {
+                "schema": "uwm.traditional_livability.s1_metric_profile_collection.v1",
+                "status": "unavailable",
+                "profiles": [],
+                "blockers": ["s6_s1_product_not_configured"],
+            },
+            status_code=503,
+        )
+
+
+async def uwm_traditional_livability_s6_create_handoff(request: Request):
+    actor_id = _authenticated_actor(request)
+    if actor_id is None:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    try:
+        payload = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON payload", "blockers": ["request_json_invalid"]}, status_code=400)
+    if not isinstance(payload, dict) or not isinstance(payload.get("s6_analysis"), dict):
+        return JSONResponse({"error": "Invalid request payload", "blockers": ["s6_analysis_required"]}, status_code=400)
+    try:
+        handoff = _get_s6_s1_service().create_handoff(
+            s6_analysis=payload["s6_analysis"],
+            actor_id=actor_id,
+            created_at=str(payload.get("created_at") or _utc_now()),
+        )
+    except RuntimeError:
+        return JSONResponse({"error": "S6 to S1 product unavailable", "blockers": ["s6_s1_product_not_configured"]}, status_code=503)
+    return JSONResponse(handoff)
+
+
+async def uwm_traditional_livability_s6_get_handoff(request: Request):
+    actor_id = _authenticated_actor(request)
+    if actor_id is None:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    handoff_id = request.path_params.get("handoff_id")
+    try:
+        handoff = _get_s6_s1_service().get_handoff(str(handoff_id), actor_id=actor_id)
+    except HandoffNotFound:
+        return JSONResponse({"error": "Handoff not found"}, status_code=404)
+    except RuntimeError:
+        return JSONResponse({"error": "S6 to S1 product unavailable", "blockers": ["s6_s1_product_not_configured"]}, status_code=503)
+    return JSONResponse(handoff)
+
+
+async def uwm_traditional_livability_s6_execute_s1(request: Request):
+    actor_id = _authenticated_actor(request)
+    if actor_id is None:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    handoff_id = request.path_params.get("handoff_id")
+    try:
+        result = _get_s6_s1_service().execute_s1(str(handoff_id), actor_id=actor_id)
+    except HandoffNotFound:
+        return JSONResponse({"error": "Handoff not found"}, status_code=404)
+    except HandoffConflict as exc:
+        return JSONResponse({"error": str(exc), "blockers": [str(exc)]}, status_code=409)
+    except RuntimeError:
+        return JSONResponse({"error": "S6 to S1 product unavailable", "blockers": ["s6_s1_product_not_configured"]}, status_code=503)
+    return JSONResponse(result)
+
+
 def get_uwm_traditional_livability_routes() -> list:
     """Return Route objects for traditional livability analysis endpoints."""
     return [
@@ -879,6 +974,26 @@ def get_uwm_traditional_livability_routes() -> list:
         Route(
             "/api/uwm/traditional-livability/s6/analyze",
             uwm_traditional_livability_s6_analyze,
+            methods=["POST"],
+        ),
+        Route(
+            "/api/uwm/traditional-livability/s1/profiles",
+            uwm_traditional_livability_s1_profiles,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/uwm/traditional-livability/s6/handoffs",
+            uwm_traditional_livability_s6_create_handoff,
+            methods=["POST"],
+        ),
+        Route(
+            "/api/uwm/traditional-livability/s6/handoffs/{handoff_id}",
+            uwm_traditional_livability_s6_get_handoff,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/uwm/traditional-livability/s6/handoffs/{handoff_id}/execute-s1",
+            uwm_traditional_livability_s6_execute_s1,
             methods=["POST"],
         ),
     ]
