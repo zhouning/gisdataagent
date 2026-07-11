@@ -4203,6 +4203,7 @@ def get_frontend_api_routes():
     from .api.world_model_v21_routes import get_world_model_v21_routes
     from .api.territory_world_model_routes import get_territory_world_model_routes
     from .api.uwm_traditional_livability_routes import get_uwm_traditional_livability_routes
+    from .api.uwm_traditional_mobility_routes import get_uwm_traditional_mobility_routes
     from .api.uwm_livability_s2_routes import get_uwm_livability_s2_routes
     from .api.uwm_environmental_kernel_routes import get_uwm_environmental_kernel_routes
     from .api.uwm_livability_decision_routes import get_uwm_livability_decision_routes
@@ -4360,6 +4361,8 @@ def get_frontend_api_routes():
         *get_territory_world_model_routes(),
         # UWM traditional static livability analysis
         *get_uwm_traditional_livability_routes(),
+        # Traditional mobility and accessibility demand 8
+        *get_uwm_traditional_mobility_routes(),
         # UWM parcel-scale livability S2 land-use scenarios
         *get_uwm_livability_s2_routes(),
         # UWM environmental dynamics kernel
