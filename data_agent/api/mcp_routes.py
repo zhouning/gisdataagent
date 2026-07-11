@@ -19,6 +19,8 @@ _MCP_METADATA_UPDATE_FIELDS = {"description", "category", "pipelines"}
 _MCP_CONFIG_FIELDS = (
     "description", "transport", "enabled", "category", "pipelines",
     "command", "args", "env", "cwd", "url", "headers", "timeout",
+    "bearer_token_env_var", "bearer_token_file_env_var", "ca_bundle_env_var",
+    "system_managed", "expose_raw_tools",
     "is_shared",
 )
 _MCP_ADMIN_UPDATE_FIELDS = set(_MCP_CONFIG_FIELDS)
@@ -40,7 +42,10 @@ def _validate_mcp_config(body: dict, transport: str, *, partial: bool = False) -
     if not isinstance(transport, str) or transport not in _MCP_ALLOWED_TRANSPORTS:
         return "transport must be stdio, sse, or streamable_http"
 
-    for field_name in ("description", "category", "command", "url"):
+    for field_name in (
+        "description", "category", "command", "url",
+        "bearer_token_env_var", "bearer_token_file_env_var", "ca_bundle_env_var",
+    ):
         if field_name in body and not isinstance(body[field_name], str):
             return f"{field_name} must be a string"
 
@@ -51,7 +56,7 @@ def _validate_mcp_config(body: dict, transport: str, *, partial: bool = False) -
     ):
         return "cwd must be a string or null"
 
-    for field_name in ("enabled", "is_shared"):
+    for field_name in ("enabled", "is_shared", "system_managed", "expose_raw_tools"):
         if field_name in body and not isinstance(body[field_name], bool):
             return f"{field_name} must be a boolean"
 
@@ -193,6 +198,11 @@ async def mcp_test_connection(request: Request):
         env=body.get("env", {}), cwd=body.get("cwd"),
         url=body.get("url", ""), headers=body.get("headers", {}),
         timeout=float(body.get("timeout", 5.0)),
+        bearer_token_env_var=body.get("bearer_token_env_var", ""),
+        bearer_token_file_env_var=body.get("bearer_token_file_env_var", ""),
+        ca_bundle_env_var=body.get("ca_bundle_env_var", ""),
+        system_managed=body.get("system_managed", False),
+        expose_raw_tools=body.get("expose_raw_tools", True),
     )
     hub = get_mcp_hub()
     result = await hub.test_connection(config)
@@ -231,6 +241,11 @@ async def mcp_server_create(request: Request):
         url=body.get("url", ""),
         headers=body.get("headers", {}),
         timeout=float(body.get("timeout", 5.0)),
+        bearer_token_env_var=body.get("bearer_token_env_var", ""),
+        bearer_token_file_env_var=body.get("bearer_token_file_env_var", ""),
+        ca_bundle_env_var=body.get("ca_bundle_env_var", ""),
+        system_managed=body.get("system_managed", False),
+        expose_raw_tools=body.get("expose_raw_tools", True),
         owner_username=username,
         is_shared=body.get("is_shared", False),
     )

@@ -19,6 +19,12 @@ import yaml
 from sqlalchemy import text
 
 from .i18n import t
+from .mcp_transport import (
+    build_httpx_client_factory,
+    redact_mcp_text,
+    resolve_ca_bundle,
+    resolve_secret_reference,
+)
 
 try:
     from .observability import get_logger
@@ -105,8 +111,13 @@ class McpServerConfig:
     url: str = ""
     headers: dict[str, str] = field(default_factory=dict)
     timeout: float = 5.0
+    bearer_token_env_var: str = ""
+    bearer_token_file_env_var: str = ""
+    ca_bundle_env_var: str = ""
+    system_managed: bool = False
+    expose_raw_tools: bool = True
     # DB tracking
-    source: str = "yaml"  # yaml | db
+    source: str = "yaml"  # yaml | db | environment
     # Per-user isolation (v10.0.1)
     owner_username: Optional[str] = None  # None = legacy global
     is_shared: bool = True  # True = visible to all users
@@ -122,6 +133,32 @@ class McpServerStatus:
     tool_names: list[str] = field(default_factory=list)
     error_message: str = ""
     connected_at: Optional[float] = None
+
+
+def _streamable_http_kwargs(
+    config: McpServerConfig,
+    timeout: float,
+    redaction_secrets: list[str],
+) -> dict:
+    """Build runtime-only streamable HTTP parameters for an MCP server."""
+    runtime_headers = dict(config.headers or {})
+    if config.bearer_token_env_var or config.bearer_token_file_env_var:
+        token = resolve_secret_reference(
+            config.bearer_token_env_var,
+            config.bearer_token_file_env_var,
+        )
+        redaction_secrets.append(token)
+        runtime_headers["Authorization"] = f"Bearer {token}"
+
+    kwargs = {
+        "url": config.url,
+        "headers": runtime_headers or None,
+        "timeout": timeout,
+    }
+    if config.ca_bundle_env_var:
+        ca_bundle = resolve_ca_bundle(config.ca_bundle_env_var)
+        kwargs["httpx_client_factory"] = build_httpx_client_factory(ca_bundle)
+    return kwargs
 
 
 # ---------------------------------------------------------------------------
@@ -167,6 +204,11 @@ class McpHubManager:
                         url VARCHAR(500) DEFAULT '',
                         headers JSONB DEFAULT '{{}}',
                         timeout REAL DEFAULT 5.0,
+                        bearer_token_env_var VARCHAR(255) DEFAULT '',
+                        bearer_token_file_env_var VARCHAR(255) DEFAULT '',
+                        ca_bundle_env_var VARCHAR(255) DEFAULT '',
+                        system_managed BOOLEAN DEFAULT FALSE,
+                        expose_raw_tools BOOLEAN DEFAULT TRUE,
                         owner_username VARCHAR(100),
                         is_shared BOOLEAN DEFAULT TRUE,
                         created_at TIMESTAMP DEFAULT NOW(),
@@ -181,6 +223,26 @@ class McpHubManager:
                 conn.execute(text(f"""
                     ALTER TABLE {T_MCP_SERVERS}
                     ADD COLUMN IF NOT EXISTS is_shared BOOLEAN DEFAULT TRUE
+                """))
+                conn.execute(text(f"""
+                    ALTER TABLE {T_MCP_SERVERS}
+                    ADD COLUMN IF NOT EXISTS bearer_token_env_var VARCHAR(255) DEFAULT ''
+                """))
+                conn.execute(text(f"""
+                    ALTER TABLE {T_MCP_SERVERS}
+                    ADD COLUMN IF NOT EXISTS bearer_token_file_env_var VARCHAR(255) DEFAULT ''
+                """))
+                conn.execute(text(f"""
+                    ALTER TABLE {T_MCP_SERVERS}
+                    ADD COLUMN IF NOT EXISTS ca_bundle_env_var VARCHAR(255) DEFAULT ''
+                """))
+                conn.execute(text(f"""
+                    ALTER TABLE {T_MCP_SERVERS}
+                    ADD COLUMN IF NOT EXISTS system_managed BOOLEAN DEFAULT FALSE
+                """))
+                conn.execute(text(f"""
+                    ALTER TABLE {T_MCP_SERVERS}
+                    ADD COLUMN IF NOT EXISTS expose_raw_tools BOOLEAN DEFAULT TRUE
                 """))
                 conn.commit()
             return True
@@ -204,7 +266,8 @@ class McpHubManager:
             cols = (
                 "name, description, transport, enabled, category, "
                 "pipelines, command, args, env, cwd, url, headers, timeout, "
-                "owner_username, is_shared"
+                "bearer_token_env_var, bearer_token_file_env_var, ca_bundle_env_var, "
+                "system_managed, expose_raw_tools, owner_username, is_shared"
             )
             if username:
                 query = (
@@ -231,8 +294,13 @@ class McpHubManager:
                     enabled=bool(r[3]), category=r[4] or "", pipelines=pipelines,
                     command=r[6] or "", args=args, env=env, cwd=r[9],
                     url=r[10] or "", headers=headers, timeout=float(r[12] or 5.0),
+                    bearer_token_env_var=r[13] or "",
+                    bearer_token_file_env_var=r[14] or "",
+                    ca_bundle_env_var=r[15] or "",
+                    system_managed=bool(r[16]),
+                    expose_raw_tools=bool(r[17]) if r[17] is not None else True,
                     source="db",
-                    owner_username=r[13], is_shared=bool(r[14]) if r[14] is not None else True,
+                    owner_username=r[18], is_shared=bool(r[19]) if r[19] is not None else True,
                 )
                 configs.append(config)
             return configs
@@ -252,10 +320,14 @@ class McpHubManager:
                     INSERT INTO {T_MCP_SERVERS}
                         (name, description, transport, enabled, category, pipelines,
                          command, args, env, cwd, url, headers, timeout,
+                         bearer_token_env_var, bearer_token_file_env_var,
+                         ca_bundle_env_var, system_managed, expose_raw_tools,
                          owner_username, is_shared, updated_at)
                     VALUES (:name, :desc, :transport, :enabled, :category, CAST(:pipelines AS jsonb),
                             :command, CAST(:args AS jsonb), CAST(:env AS jsonb), :cwd, :url, CAST(:headers AS jsonb),
-                            :timeout, :owner_username, :is_shared, NOW())
+                            :timeout, :bearer_token_env_var, :bearer_token_file_env_var,
+                            :ca_bundle_env_var, :system_managed, :expose_raw_tools,
+                            :owner_username, :is_shared, NOW())
                     ON CONFLICT (name) DO UPDATE SET
                         description = EXCLUDED.description,
                         transport = EXCLUDED.transport,
@@ -269,6 +341,11 @@ class McpHubManager:
                         url = EXCLUDED.url,
                         headers = EXCLUDED.headers,
                         timeout = EXCLUDED.timeout,
+                        bearer_token_env_var = EXCLUDED.bearer_token_env_var,
+                        bearer_token_file_env_var = EXCLUDED.bearer_token_file_env_var,
+                        ca_bundle_env_var = EXCLUDED.ca_bundle_env_var,
+                        system_managed = EXCLUDED.system_managed,
+                        expose_raw_tools = EXCLUDED.expose_raw_tools,
                         owner_username = EXCLUDED.owner_username,
                         is_shared = EXCLUDED.is_shared,
                         updated_at = NOW()
@@ -286,6 +363,11 @@ class McpHubManager:
                     "url": config.url,
                     "headers": _encrypt_dict(config.headers),
                     "timeout": config.timeout,
+                    "bearer_token_env_var": config.bearer_token_env_var,
+                    "bearer_token_file_env_var": config.bearer_token_file_env_var,
+                    "ca_bundle_env_var": config.ca_bundle_env_var,
+                    "system_managed": config.system_managed,
+                    "expose_raw_tools": config.expose_raw_tools,
                     "owner_username": config.owner_username,
                     "is_shared": config.is_shared,
                 })
@@ -385,6 +467,11 @@ class McpHubManager:
                 url=raw.get("url", ""),
                 headers=raw.get("headers", {}),
                 timeout=raw.get("timeout", 5.0),
+                bearer_token_env_var=raw.get("bearer_token_env_var", ""),
+                bearer_token_file_env_var=raw.get("bearer_token_file_env_var", ""),
+                ca_bundle_env_var=raw.get("ca_bundle_env_var", ""),
+                system_managed=raw.get("system_managed", False),
+                expose_raw_tools=raw.get("expose_raw_tools", True),
                 source="yaml",
             )
             configs.append(config)
@@ -398,6 +485,7 @@ class McpHubManager:
         if not status:
             return False
         config = status.config
+        redaction_secrets: list[str] = []
 
         try:
             from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
@@ -426,9 +514,9 @@ class McpHubManager:
                 )
             elif config.transport == "streamable_http":
                 conn_params = StreamableHTTPConnectionParams(
-                    url=config.url,
-                    headers=config.headers or None,
-                    timeout=config.timeout,
+                    **_streamable_http_kwargs(
+                        config, config.timeout, redaction_secrets
+                    )
                 )
             else:
                 status.status = "error"
@@ -459,12 +547,13 @@ class McpHubManager:
             return True
 
         except Exception as e:
+            error_message = redact_mcp_text(str(e), redaction_secrets)
             status.status = "error"
-            status.error_message = str(e)
+            status.error_message = error_message
             status.toolset = None
             status.tool_count = 0
             status.tool_names = []
-            logger.warning(t("mcp.server_failed", name=name, error=str(e)))
+            logger.warning(t("mcp.server_failed", name=name, error=error_message))
             return False
 
     async def disconnect_server(self, name: str) -> bool:
@@ -558,6 +647,7 @@ class McpHubManager:
 
     async def test_connection(self, config: McpServerConfig) -> dict:
         """Test connectivity to an MCP server without persisting. Returns result dict."""
+        redaction_secrets: list[str] = []
         try:
             from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
             from google.adk.tools.mcp_tool.mcp_session_manager import (
@@ -576,8 +666,8 @@ class McpHubManager:
                 conn_params = SseConnectionParams(
                     url=config.url, headers=config.headers or None, timeout=timeout)
             elif config.transport == "streamable_http":
-                conn_params = StreamableHTTPConnectionParams(
-                    url=config.url, headers=config.headers or None, timeout=timeout)
+                conn_params = StreamableHTTPConnectionParams(**_streamable_http_kwargs(
+                    config, timeout, redaction_secrets))
             else:
                 return {"status": "error", "message": f"Unknown transport: {config.transport}"}
 
@@ -588,7 +678,8 @@ class McpHubManager:
             return {"status": "ok", "tool_count": tool_count,
                     "message": f"连接成功，发现 {tool_count} 个工具"}
         except Exception as e:
-            return {"status": "error", "message": str(e)[:200]}
+            message = redact_mcp_text(str(e), redaction_secrets)
+            return {"status": "error", "message": message[:200]}
 
     # ----- CRUD (hot-reload capable) -----
 
@@ -639,7 +730,9 @@ class McpHubManager:
 
         # Apply updatable fields
         for key in ("description", "transport", "category", "command", "url",
-                     "cwd", "timeout"):
+                     "cwd", "timeout", "bearer_token_env_var",
+                     "bearer_token_file_env_var", "ca_bundle_env_var",
+                     "system_managed", "expose_raw_tools", "is_shared"):
             if key in updates:
                 setattr(config, key, updates[key])
         for key in ("pipelines", "args", "env", "headers"):
@@ -653,7 +746,10 @@ class McpHubManager:
 
         # Reconnect if connection-relevant fields changed
         needs_reconnect = any(k in updates for k in ("transport", "command", "args",
-                                                       "env", "cwd", "url", "headers", "timeout"))
+                                                       "env", "cwd", "url", "headers", "timeout",
+                                                       "bearer_token_env_var",
+                                                       "bearer_token_file_env_var",
+                                                       "ca_bundle_env_var"))
         if was_connected and needs_reconnect:
             await self.disconnect_server(name)
             await self.connect_server(name)
@@ -726,9 +822,10 @@ class McpHubManager:
                 server_tools = await s.toolset.get_tools()
                 tools.extend(server_tools)
             except Exception as e:
-                logger.warning("Failed to get tools from '%s': %s", name, e)
+                error_message = redact_mcp_text(str(e))
+                logger.warning("Failed to get tools from '%s': %s", name, error_message)
                 s.status = "error"
-                s.error_message = str(e)
+                s.error_message = error_message
         return tools
 
     async def get_tools_for_server(self, name: str) -> list[dict]:

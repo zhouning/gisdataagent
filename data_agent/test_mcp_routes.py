@@ -44,6 +44,11 @@ def _valid_server_body():
         "url": "https://example.test/mcp",
         "headers": {"Authorization": "Bearer secret"},
         "timeout": "18.25",
+        "bearer_token_env_var": "ARCPY_MCP_TOKEN",
+        "bearer_token_file_env_var": "ARCPY_MCP_TOKEN_FILE",
+        "ca_bundle_env_var": "ARCPY_MCP_CA_FILE",
+        "system_managed": True,
+        "expose_raw_tools": False,
         "is_shared": True,
     }
 
@@ -63,6 +68,11 @@ def _existing_config(transport="stdio"):
         url="https://example.test/mcp" if transport != "stdio" else "",
         headers={"X-Test": "true"},
         timeout=10.0,
+        bearer_token_env_var="EXISTING_TOKEN",
+        bearer_token_file_env_var="EXISTING_TOKEN_FILE",
+        ca_bundle_env_var="EXISTING_CA_FILE",
+        system_managed=True,
+        expose_raw_tools=False,
         owner_username="route-owner",
         is_shared=False,
     )
@@ -139,6 +149,11 @@ async def test_connection_requires_admin_and_passes_complete_config_to_hub():
     assert config.headers == {"Authorization": "Bearer secret"}
     assert config.timeout == 12.5
     assert isinstance(config.timeout, float)
+    assert config.bearer_token_env_var == "ARCPY_MCP_TOKEN"
+    assert config.bearer_token_file_env_var == "ARCPY_MCP_TOKEN_FILE"
+    assert config.ca_bundle_env_var == "ARCPY_MCP_CA_FILE"
+    assert config.system_managed is True
+    assert config.expose_raw_tools is False
 
 
 @pytest.mark.asyncio
@@ -215,6 +230,11 @@ async def test_admin_create_passes_complete_config_and_preserves_sharing():
     assert config.headers == {"Authorization": "Bearer secret"}
     assert config.timeout == 18.25
     assert isinstance(config.timeout, float)
+    assert config.bearer_token_env_var == "ARCPY_MCP_TOKEN"
+    assert config.bearer_token_file_env_var == "ARCPY_MCP_TOKEN_FILE"
+    assert config.ca_bundle_env_var == "ARCPY_MCP_CA_FILE"
+    assert config.system_managed is True
+    assert config.expose_raw_tools is False
     assert config.owner_username == "route-owner"
     assert config.is_shared is True
 
@@ -271,6 +291,8 @@ async def test_routes_reject_invalid_timeout_without_calling_hub(
         ("transport", []),
         ("enabled", 1),
         ("is_shared", "yes"),
+        ("system_managed", "yes"),
+        ("expose_raw_tools", 1),
         ("pipelines", "general"),
         ("pipelines", ["general", 3]),
         ("args", "--serve"),
@@ -281,6 +303,9 @@ async def test_routes_reject_invalid_timeout_without_calling_hub(
         ("category", 7),
         ("command", None),
         ("url", 42),
+        ("bearer_token_env_var", None),
+        ("bearer_token_file_env_var", []),
+        ("ca_bundle_env_var", 42),
         ("cwd", []),
     ],
 )
@@ -341,12 +366,17 @@ async def test_routes_reject_invalid_scalar_fields_for_inactive_transport(
         {"timeout": "slow"},
         {"enabled": 1},
         {"is_shared": "yes"},
+        {"system_managed": "yes"},
+        {"expose_raw_tools": 1},
         {"pipelines": ["general", 3]},
         {"args": ["--serve", 3]},
         {"env": {"PORT": 8080}},
         {"headers": {"Authorization": 42}},
         {"description": None},
         {"category": 7},
+        {"bearer_token_env_var": None},
+        {"bearer_token_file_env_var": []},
+        {"ca_bundle_env_var": 42},
         {"cwd": []},
         {
             "transport": "streamable_http",
@@ -390,6 +420,11 @@ async def test_update_rejects_invalid_typed_fields_without_updating_hub(body):
         {"url": "http://127.0.0.1/internal"},
         {"headers": {"Authorization": "Bearer secret"}},
         {"timeout": 30},
+        {"bearer_token_env_var": "ARCPY_TOKEN"},
+        {"bearer_token_file_env_var": "ARCPY_TOKEN_FILE"},
+        {"ca_bundle_env_var": "ARCPY_CA_FILE"},
+        {"system_managed": True},
+        {"expose_raw_tools": False},
         {"enabled": True},
         {"is_shared": True},
         {"bearer": "secret"},
@@ -549,3 +584,34 @@ async def test_admin_update_normalizes_numeric_timeout_before_hub_call():
     updates = hub.update_server.await_args.args[1]
     assert updates == {"timeout": 12.5}
     assert isinstance(updates["timeout"], float)
+
+
+@pytest.mark.asyncio
+async def test_admin_can_update_runtime_security_references():
+    body = {
+        "bearer_token_env_var": "NEW_TOKEN",
+        "bearer_token_file_env_var": "NEW_TOKEN_FILE",
+        "ca_bundle_env_var": "NEW_CA_FILE",
+        "system_managed": False,
+        "expose_raw_tools": True,
+    }
+    user = _make_user(username="admin-user", role="admin")
+    hub = MagicMock()
+    hub._can_manage_server.return_value = True
+    hub._servers = {"owned-server": _server_status(_existing_config("streamable_http"))}
+    hub.update_server = AsyncMock(return_value={"status": "ok", "server": "owned-server"})
+    request = _make_request(body, path_params={"name": "owned-server"})
+
+    with (
+        patch("data_agent.api.mcp_routes._get_user_from_request", return_value=user),
+        patch(
+            "data_agent.api.mcp_routes._set_user_context",
+            return_value=("admin-user", "admin"),
+        ),
+        patch("data_agent.mcp_hub.get_mcp_hub", return_value=hub),
+        patch("data_agent.audit_logger.record_audit"),
+    ):
+        response = await mcp_server_update(request)
+
+    assert response.status_code == 200
+    hub.update_server.assert_awaited_once_with("owned-server", body)

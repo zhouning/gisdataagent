@@ -79,6 +79,11 @@ class TestMcpServerConfig(unittest.TestCase):
         self.assertEqual(cfg.url, "")
         self.assertEqual(cfg.headers, {})
         self.assertEqual(cfg.timeout, 5.0)
+        self.assertEqual(cfg.bearer_token_env_var, "")
+        self.assertEqual(cfg.bearer_token_file_env_var, "")
+        self.assertEqual(cfg.ca_bundle_env_var, "")
+        self.assertFalse(cfg.system_managed)
+        self.assertTrue(cfg.expose_raw_tools)
 
     def test_full_config(self):
         from data_agent.mcp_hub import McpServerConfig
@@ -92,12 +97,22 @@ class TestMcpServerConfig(unittest.TestCase):
             url="http://localhost:8080/sse",
             headers={"Authorization": "Bearer xxx"},
             timeout=10.0,
+            bearer_token_env_var="ARCPY_TOKEN",
+            bearer_token_file_env_var="ARCPY_TOKEN_FILE",
+            ca_bundle_env_var="ARCPY_CA_FILE",
+            system_managed=True,
+            expose_raw_tools=False,
         )
         self.assertEqual(cfg.transport, "sse")
         self.assertTrue(cfg.enabled)
         self.assertEqual(cfg.pipelines, ["general"])
         self.assertEqual(cfg.url, "http://localhost:8080/sse")
         self.assertEqual(cfg.timeout, 10.0)
+        self.assertEqual(cfg.bearer_token_env_var, "ARCPY_TOKEN")
+        self.assertEqual(cfg.bearer_token_file_env_var, "ARCPY_TOKEN_FILE")
+        self.assertEqual(cfg.ca_bundle_env_var, "ARCPY_CA_FILE")
+        self.assertTrue(cfg.system_managed)
+        self.assertFalse(cfg.expose_raw_tools)
 
     def test_stdio_config(self):
         from data_agent.mcp_hub import McpServerConfig
@@ -196,6 +211,34 @@ class TestMcpHubManager(unittest.TestCase):
         self.assertEqual(configs[1].name, "srv2")
         self.assertFalse(configs[1].enabled)
         self.assertEqual(configs[1].transport, "sse")
+
+    def test_load_yaml_parses_runtime_security_references(self):
+        from data_agent.mcp_hub import McpHubManager
+        hub = McpHubManager()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _write_config(tmp, {
+                "servers": [{
+                    "name": "secure-http",
+                    "transport": "streamable_http",
+                    "url": "https://arcpy.internal/mcp",
+                    "bearer_token_env_var": "ARCPY_MCP_TOKEN",
+                    "bearer_token_file_env_var": "ARCPY_MCP_TOKEN_FILE",
+                    "ca_bundle_env_var": "ARCPY_MCP_CA_FILE",
+                    "system_managed": True,
+                    "expose_raw_tools": False,
+                }]
+            })
+            hub._config_path = path
+            configs = hub._load_yaml()
+
+        self.assertEqual(len(configs), 1)
+        config = configs[0]
+        self.assertEqual(config.bearer_token_env_var, "ARCPY_MCP_TOKEN")
+        self.assertEqual(config.bearer_token_file_env_var, "ARCPY_MCP_TOKEN_FILE")
+        self.assertEqual(config.ca_bundle_env_var, "ARCPY_MCP_CA_FILE")
+        self.assertTrue(config.system_managed)
+        self.assertFalse(config.expose_raw_tools)
 
     def test_load_config_skips_invalid_entries(self):
         from data_agent.mcp_hub import McpHubManager
@@ -394,6 +437,32 @@ class TestMcpHubManager(unittest.TestCase):
         tools_all = _run(hub.get_all_tools())
         self.assertEqual(len(tools_all), 2)
 
+    def test_get_all_tools_redacts_session_error_from_status_and_log(self):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
+
+        token = "later-session-token"
+        toolset = MagicMock()
+        toolset.get_tools = AsyncMock(side_effect=RuntimeError(
+            f"Bearer {token} failed at https://host/mcp?sig=signed-value"
+        ))
+        status = McpServerStatus(
+            config=McpServerConfig(name="secure"),
+            status="connected",
+            toolset=toolset,
+        )
+        hub = McpHubManager()
+        hub._servers = {"secure": status}
+
+        with patch("data_agent.mcp_hub.logger.warning") as warning:
+            tools = _run(hub.get_all_tools())
+
+        self.assertEqual(tools, [])
+        self.assertNotIn(token, status.error_message)
+        self.assertNotIn("signed-value", status.error_message)
+        self.assertIn("failed", status.error_message)
+        self.assertNotIn(token, repr(warning.call_args))
+        self.assertNotIn("signed-value", repr(warning.call_args))
+
     def test_get_tools_for_server_disconnected(self):
         from data_agent.mcp_hub import McpHubManager
         hub = McpHubManager()
@@ -461,6 +530,217 @@ class TestMcpHubManager(unittest.TestCase):
         self.assertFalse(result)
         self.assertEqual(hub._servers["bad"].status, "error")
         self.assertIn("Unknown transport", hub._servers["bad"].error_message)
+
+
+class TestSecureMcpHttpTransport(unittest.TestCase):
+    """Secure streamable HTTP integration without real network calls."""
+
+    def test_connect_server_uses_runtime_bearer_and_private_ca_factory(self):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
+
+        hub = McpHubManager()
+        static_headers = {"X-Service": "arcpy"}
+        config = McpServerConfig(
+            name="arcpy",
+            transport="streamable_http",
+            url="https://arcpy.internal/mcp",
+            headers=static_headers,
+            bearer_token_env_var="ARCPY_TOKEN",
+            bearer_token_file_env_var="ARCPY_TOKEN_FILE",
+            ca_bundle_env_var="ARCPY_CA_FILE",
+        )
+        hub._servers = {"arcpy": McpServerStatus(config=config)}
+        toolset = MagicMock()
+        toolset.get_tools = AsyncMock(return_value=[])
+        connection_params = MagicMock()
+        private_ca_factory = MagicMock(name="private_ca_factory")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            token_path = os.path.join(tmp, "token")
+            ca_path = os.path.join(tmp, "ca.pem")
+            with open(token_path, "w", encoding="utf-8") as f:
+                f.write(" runtime-token\n")
+            with open(ca_path, "w", encoding="utf-8") as f:
+                f.write("-----BEGIN CERTIFICATE-----\nca\n-----END CERTIFICATE-----\n")
+
+            with (
+                patch.dict(os.environ, {
+                    "ARCPY_TOKEN": "environment-token",
+                    "ARCPY_TOKEN_FILE": token_path,
+                    "ARCPY_CA_FILE": ca_path,
+                }, clear=False),
+                patch(
+                    "google.adk.tools.mcp_tool.mcp_session_manager."
+                    "StreamableHTTPConnectionParams",
+                    return_value=connection_params,
+                ) as params_cls,
+                patch(
+                    "google.adk.tools.mcp_tool.mcp_toolset.McpToolset",
+                    return_value=toolset,
+                ),
+                patch(
+                    "data_agent.mcp_hub.build_httpx_client_factory",
+                    return_value=private_ca_factory,
+                ) as build_factory,
+            ):
+                result = _run(hub.connect_server("arcpy"))
+
+        self.assertTrue(result)
+        kwargs = params_cls.call_args.kwargs
+        self.assertEqual(kwargs["headers"], {
+            "X-Service": "arcpy",
+            "Authorization": "Bearer runtime-token",
+        })
+        self.assertIs(kwargs["httpx_client_factory"], private_ca_factory)
+        build_factory.assert_called_once_with(ca_path)
+        self.assertEqual(static_headers, {"X-Service": "arcpy"})
+        self.assertNotIn("Authorization", config.headers)
+
+    def test_connect_server_keeps_default_http_client_for_generic_server(self):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
+
+        hub = McpHubManager()
+        config = McpServerConfig(
+            name="generic",
+            transport="streamable_http",
+            url="https://generic.internal/mcp",
+            headers={"X-Static": "true"},
+        )
+        hub._servers = {"generic": McpServerStatus(config=config)}
+        toolset = MagicMock()
+        toolset.get_tools = AsyncMock(return_value=[])
+
+        with (
+            patch(
+                "google.adk.tools.mcp_tool.mcp_session_manager."
+                "StreamableHTTPConnectionParams"
+            ) as params_cls,
+            patch(
+                "google.adk.tools.mcp_tool.mcp_toolset.McpToolset",
+                return_value=toolset,
+            ),
+        ):
+            result = _run(hub.connect_server("generic"))
+
+        self.assertTrue(result)
+        kwargs = params_cls.call_args.kwargs
+        self.assertEqual(kwargs["headers"], {"X-Static": "true"})
+        self.assertNotIn("httpx_client_factory", kwargs)
+        self.assertEqual(config.headers, {"X-Static": "true"})
+
+    def test_test_connection_uses_runtime_security_references(self):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig
+
+        hub = McpHubManager()
+        config = McpServerConfig(
+            name="__test__",
+            transport="streamable_http",
+            url="https://arcpy.internal/mcp",
+            headers={"X-Test": "true"},
+            bearer_token_env_var="ARCPY_TOKEN",
+            ca_bundle_env_var="ARCPY_CA_FILE",
+        )
+        toolset = MagicMock()
+        toolset.get_tools = AsyncMock(return_value=[MagicMock()])
+        toolset.close = AsyncMock()
+        private_ca_factory = MagicMock(name="private_ca_factory")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            ca_path = os.path.join(tmp, "ca.pem")
+            with open(ca_path, "w", encoding="utf-8") as f:
+                f.write("-----BEGIN CERTIFICATE-----\nca\n-----END CERTIFICATE-----\n")
+            with (
+                patch.dict(os.environ, {
+                    "ARCPY_TOKEN": "test-token",
+                    "ARCPY_CA_FILE": ca_path,
+                }, clear=False),
+                patch(
+                    "google.adk.tools.mcp_tool.mcp_session_manager."
+                    "StreamableHTTPConnectionParams"
+                ) as params_cls,
+                patch(
+                    "google.adk.tools.mcp_tool.mcp_toolset.McpToolset",
+                    return_value=toolset,
+                ),
+                patch(
+                    "data_agent.mcp_hub.build_httpx_client_factory",
+                    return_value=private_ca_factory,
+                ),
+            ):
+                result = _run(hub.test_connection(config))
+
+        self.assertEqual(result["status"], "ok")
+        kwargs = params_cls.call_args.kwargs
+        self.assertEqual(kwargs["headers"]["Authorization"], "Bearer test-token")
+        self.assertIs(kwargs["httpx_client_factory"], private_ca_factory)
+        self.assertEqual(config.headers, {"X-Test": "true"})
+        toolset.close.assert_awaited_once()
+
+    def test_connect_server_redacts_runtime_secret_from_status_and_log(self):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
+
+        token = "never-print-this-token"
+        failure = RuntimeError(
+            f"Authorization: Bearer {token}; "
+            f"GET https://arcpy.internal/mcp?token={token}&sig=signed-value failed"
+        )
+        hub = McpHubManager()
+        config = McpServerConfig(
+            name="arcpy",
+            transport="streamable_http",
+            url="https://arcpy.internal/mcp",
+            bearer_token_env_var="ARCPY_TOKEN",
+        )
+        hub._servers = {"arcpy": McpServerStatus(config=config)}
+        toolset = MagicMock()
+        toolset.get_tools = AsyncMock(side_effect=failure)
+
+        with (
+            patch.dict(os.environ, {"ARCPY_TOKEN": token}, clear=False),
+            patch(
+                "google.adk.tools.mcp_tool.mcp_toolset.McpToolset",
+                return_value=toolset,
+            ),
+            patch("data_agent.mcp_hub.logger.warning") as warning,
+        ):
+            result = _run(hub.connect_server("arcpy"))
+
+        self.assertFalse(result)
+        error_message = hub._servers["arcpy"].error_message
+        self.assertNotIn(token, error_message)
+        self.assertNotIn("signed-value", error_message)
+        self.assertIn("failed", error_message)
+        self.assertNotIn(token, repr(warning.call_args))
+        self.assertNotIn("signed-value", repr(warning.call_args))
+
+    def test_test_connection_redacts_runtime_secret_from_returned_error(self):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig
+
+        token = "test-connection-secret"
+        toolset = MagicMock()
+        toolset.get_tools = AsyncMock(side_effect=RuntimeError(
+            f"Bearer {token} rejected at https://host/mcp?signature=signed-value"
+        ))
+        config = McpServerConfig(
+            name="__test__",
+            transport="streamable_http",
+            url="https://host/mcp",
+            bearer_token_env_var="ARCPY_TOKEN",
+        )
+
+        with (
+            patch.dict(os.environ, {"ARCPY_TOKEN": token}, clear=False),
+            patch(
+                "google.adk.tools.mcp_tool.mcp_toolset.McpToolset",
+                return_value=toolset,
+            ),
+        ):
+            result = _run(McpHubManager().test_connection(config))
+
+        self.assertEqual(result["status"], "error")
+        self.assertNotIn(token, result["message"])
+        self.assertNotIn("signed-value", result["message"])
+        self.assertIn("rejected", result["message"])
 
 
 # ---------------------------------------------------------------------------
@@ -810,6 +1090,47 @@ class TestMcpHubCrud(unittest.TestCase):
         self.assertEqual(result["status"], "ok")
         self.assertEqual(hub._servers["s1"].config.description, "new")
 
+    @patch("data_agent.mcp_hub.McpHubManager._save_to_db", return_value=True)
+    def test_update_server_applies_security_reference_and_management_fields(self, mock_save):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
+
+        hub = McpHubManager()
+        config = McpServerConfig(name="s1", transport="streamable_http")
+        hub._servers["s1"] = McpServerStatus(config=config)
+        updates = {
+            "bearer_token_env_var": "NEW_TOKEN",
+            "bearer_token_file_env_var": "NEW_TOKEN_FILE",
+            "ca_bundle_env_var": "NEW_CA_FILE",
+            "system_managed": True,
+            "expose_raw_tools": False,
+            "is_shared": False,
+        }
+
+        result = _run(hub.update_server("s1", updates))
+
+        self.assertEqual(result["status"], "ok")
+        for field_name, value in updates.items():
+            self.assertEqual(getattr(config, field_name), value)
+        mock_save.assert_called_once_with(config)
+
+    @patch("data_agent.mcp_hub.McpHubManager._save_to_db", return_value=True)
+    @patch("data_agent.mcp_hub.McpHubManager.connect_server", new_callable=AsyncMock)
+    @patch("data_agent.mcp_hub.McpHubManager.disconnect_server", new_callable=AsyncMock)
+    def test_update_server_reconnects_for_runtime_security_reference_change(
+        self, disconnect, connect, _save
+    ):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
+
+        hub = McpHubManager()
+        config = McpServerConfig(name="s1", transport="streamable_http")
+        hub._servers["s1"] = McpServerStatus(config=config, status="connected")
+
+        result = _run(hub.update_server("s1", {"ca_bundle_env_var": "NEW_CA"}))
+
+        self.assertEqual(result["status"], "ok")
+        disconnect.assert_awaited_once_with("s1")
+        connect.assert_awaited_once_with("s1")
+
     def test_remove_server_not_found(self):
         from data_agent.mcp_hub import McpHubManager
         hub = McpHubManager()
@@ -867,6 +1188,94 @@ class TestMcpHubDbMethods(unittest.TestCase):
         with patch("data_agent.db_engine.get_engine", return_value=None):
             result = hub._delete_from_db("test")
         self.assertFalse(result)
+
+    def test_ensure_table_creates_security_reference_columns_idempotently(self):
+        from data_agent.mcp_hub import McpHubManager
+
+        connection = MagicMock()
+        connection.__enter__.return_value = connection
+        engine = MagicMock()
+        engine.connect.return_value = connection
+
+        with patch("data_agent.db_engine.get_engine", return_value=engine):
+            result = McpHubManager()._ensure_table()
+
+        self.assertTrue(result)
+        sql = "\n".join(str(call.args[0]) for call in connection.execute.call_args_list)
+        for column in (
+            "bearer_token_env_var",
+            "bearer_token_file_env_var",
+            "ca_bundle_env_var",
+            "system_managed",
+            "expose_raw_tools",
+        ):
+            self.assertIn(column, sql)
+            self.assertIn(f"ADD COLUMN IF NOT EXISTS {column}", sql)
+
+    def test_load_from_db_maps_security_reference_columns(self):
+        from data_agent.mcp_hub import McpHubManager
+
+        row = (
+            "arcpy", "Private ArcPy", "streamable_http", True, "gis",
+            ["general"], "", [], {}, None, "https://arcpy.internal/mcp",
+            {"X-Service": "arcpy"}, 7.5,
+            "ARCPY_TOKEN", "ARCPY_TOKEN_FILE", "ARCPY_CA_FILE",
+            True, False, "admin", True,
+        )
+        result_proxy = MagicMock()
+        result_proxy.fetchall.return_value = [row]
+        connection = MagicMock()
+        connection.__enter__.return_value = connection
+        connection.execute.return_value = result_proxy
+        engine = MagicMock()
+        engine.connect.return_value = connection
+
+        with patch("data_agent.db_engine.get_engine", return_value=engine):
+            configs = McpHubManager()._load_from_db()
+
+        self.assertEqual(len(configs), 1)
+        config = configs[0]
+        self.assertEqual(config.bearer_token_env_var, "ARCPY_TOKEN")
+        self.assertEqual(config.bearer_token_file_env_var, "ARCPY_TOKEN_FILE")
+        self.assertEqual(config.ca_bundle_env_var, "ARCPY_CA_FILE")
+        self.assertTrue(config.system_managed)
+        self.assertFalse(config.expose_raw_tools)
+        self.assertEqual(config.owner_username, "admin")
+        self.assertTrue(config.is_shared)
+
+    def test_save_to_db_persists_reference_names_not_resolved_values(self):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig
+
+        connection = MagicMock()
+        connection.__enter__.return_value = connection
+        engine = MagicMock()
+        engine.connect.return_value = connection
+        config = McpServerConfig(
+            name="arcpy",
+            transport="streamable_http",
+            url="https://arcpy.internal/mcp",
+            bearer_token_env_var="ARCPY_TOKEN",
+            bearer_token_file_env_var="ARCPY_TOKEN_FILE",
+            ca_bundle_env_var="ARCPY_CA_FILE",
+            system_managed=True,
+            expose_raw_tools=False,
+        )
+
+        with (
+            patch("data_agent.db_engine.get_engine", return_value=engine),
+            patch.dict(os.environ, {"ARCPY_TOKEN": "resolved-secret-value"}, clear=False),
+        ):
+            result = McpHubManager()._save_to_db(config)
+
+        self.assertTrue(result)
+        sql, params = connection.execute.call_args.args
+        self.assertIn("bearer_token_env_var", str(sql))
+        self.assertEqual(params["bearer_token_env_var"], "ARCPY_TOKEN")
+        self.assertEqual(params["bearer_token_file_env_var"], "ARCPY_TOKEN_FILE")
+        self.assertEqual(params["ca_bundle_env_var"], "ARCPY_CA_FILE")
+        self.assertTrue(params["system_managed"])
+        self.assertFalse(params["expose_raw_tools"])
+        self.assertNotIn("resolved-secret-value", repr(params))
 
 
 # ---------------------------------------------------------------------------
@@ -1068,13 +1477,16 @@ class TestMcpUserIsolation(unittest.TestCase):
         from data_agent.mcp_hub import McpHubManager
         hub = McpHubManager()
 
-        # Build mock result rows: 15 columns each
+        # Build mock result rows: 20 columns each
         #  0:name 1:desc 2:transport 3:enabled 4:category 5:pipelines
         #  6:command 7:args 8:env 9:cwd 10:url 11:headers 12:timeout
-        #  13:owner_username 14:is_shared
+        #  13:token env 14:token file env 15:CA env 16:system 17:raw tools
+        #  18:owner_username 19:is_shared
         mock_rows = [
-            ("shared-srv", "", "stdio", True, "", '["general"]', "", "[]", "{}", None, "", "{}", 5.0, "admin", True),
-            ("alice-srv", "", "stdio", True, "", '["general"]', "", "[]", "{}", None, "", "{}", 5.0, "alice", False),
+            ("shared-srv", "", "stdio", True, "", '["general"]', "", "[]", "{}", None, "", "{}", 5.0,
+             "", "", "", False, True, "admin", True),
+            ("alice-srv", "", "stdio", True, "", '["general"]', "", "[]", "{}", None, "", "{}", 5.0,
+             "", "", "", False, True, "alice", False),
         ]
 
         mock_engine = MagicMock()
