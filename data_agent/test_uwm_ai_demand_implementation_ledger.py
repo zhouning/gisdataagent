@@ -104,3 +104,12 @@ def test_demands12_and21_use_verified_shared_product_with_distinct_boundaries():
     for demand in (d12,d21):
         assert 'township_accessibility_not_joined_to_county_facilities' in demand['production_blockers']
         assert all(check['exists'] for check in demand['evidence_artifact_checks'])
+
+def test_demand9_uses_verified_public_space_product_but_keeps_quality_channels_closed():
+ demand=rows_by_id(build_ai_demand_implementation_ledger(repo_root=ROOT)['customer_ai_demands'])['9']
+ assert demand['implementation_status']=='implemented_evidence_bounded'
+ assert 'traditional_public_space_product' in demand['implemented_outputs']
+ assert demand['max_supported_claim']=='public_space_inventory_distribution_and_relative_evidence_gap'
+ for blocker in ['public_access_and_opening_hours_missing','quality_vitality_and_actual_use_missing','shade_seating_furniture_missing','waterfront_accessibility_missing','safety_and_universal_accessibility_missing','intervention_effect_evidence_missing']:
+  assert blocker in demand['production_blockers']
+ assert all(x['exists'] for x in demand['evidence_artifact_checks'])
