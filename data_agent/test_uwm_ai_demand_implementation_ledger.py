@@ -75,6 +75,17 @@ def test_non_livability_demands_are_not_promoted_by_generic_platform_capabilitie
     assert demands["25"]["implementation_status"] == "not_implemented"
 
 
+def test_demand8_is_verified_but_remains_evidence_bounded():
+    ledger = build_ai_demand_implementation_ledger(repo_root=ROOT)
+    demand = rows_by_id(ledger["customer_ai_demands"])["8"]
+
+    assert demand["implementation_status"] == "implemented_evidence_bounded"
+    assert "traditional_mobility_accessibility_product" in demand["implemented_outputs"]
+    assert demand["max_supported_claim"] == "administrative_service_accessibility_and_network_proxy_gap_diagnostic"
+    for blocker in ["public_transport_missing", "road_safety_missing", "shaded_routes_missing", "universal_accessibility_missing", "cycling_routes_missing", "parking_pressure_missing", "pedestrian_crossings_missing"]:
+        assert blocker in demand["production_blockers"]
+
+
 def test_ledger_summary_counts_all_thirty_requirements():
     ledger = build_ai_demand_implementation_ledger(repo_root=ROOT)
     assert sum(ledger["summary"]["implementation_status_counts"].values()) == 30
