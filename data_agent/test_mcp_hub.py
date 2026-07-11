@@ -917,7 +917,7 @@ class TestSecureMcpHttpTransport(unittest.TestCase):
         status = hub._servers["missing-token"]
         self.assertEqual(status.status, "error")
         self.assertEqual(status.error_code, "ARCPY_MCP_TOKEN_MISSING")
-        self.assertEqual(status.error_message, "MCP bearer token is not available")
+        self.assertEqual(status.error_message, "MCP credential is not available")
         self.assertIsNone(status.toolset)
         self.assertEqual(status.runtime_secrets, ())
 
@@ -938,7 +938,203 @@ class TestSecureMcpHttpTransport(unittest.TestCase):
 
         self.assertEqual(result["status"], "error")
         self.assertEqual(result["error_code"], "ARCPY_MCP_TOKEN_MISSING")
-        self.assertEqual(result["message"], "MCP bearer token is not available")
+        self.assertEqual(result["message"], "MCP credential is not available")
+
+    def test_connect_server_cancellation_cleans_probe_and_registry(self):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
+        from data_agent.mcp_transport import current_runtime_secrets
+
+        token = "cancelled-connect-token"
+        probe_started = asyncio.Event()
+        toolset = MagicMock()
+
+        async def blocked_get_tools():
+            probe_started.set()
+            await asyncio.Future()
+
+        toolset.get_tools = AsyncMock(side_effect=blocked_get_tools)
+        toolset.close = AsyncMock()
+        config = McpServerConfig(
+            name="cancelled-connect",
+            transport="streamable_http",
+            url="https://host/mcp",
+            bearer_token_env_var="ARCPY_TOKEN",
+        )
+        status = McpServerStatus(config=config)
+        hub = McpHubManager()
+        hub._servers = {config.name: status}
+
+        async def scenario():
+            with (
+                patch.dict(os.environ, {"ARCPY_TOKEN": token}, clear=False),
+                patch(
+                    "google.adk.tools.mcp_tool.mcp_toolset.McpToolset",
+                    return_value=toolset,
+                ),
+            ):
+                task = asyncio.create_task(hub.connect_server(config.name))
+                await probe_started.wait()
+                task.cancel()
+                with self.assertRaises(asyncio.CancelledError):
+                    await task
+
+        _run(scenario())
+
+        toolset.close.assert_awaited_once()
+        self.assertEqual(current_runtime_secrets(), ())
+        self.assertIsNone(status.toolset)
+        self.assertEqual(status.runtime_secrets, ())
+
+    def test_concurrent_connects_create_one_owned_session(self):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
+        from data_agent.mcp_transport import current_runtime_secrets
+
+        token = "concurrent-connect-token"
+        probe_started = asyncio.Event()
+        release_probe = asyncio.Event()
+        created_toolsets = []
+
+        def create_toolset(**_kwargs):
+            toolset = MagicMock()
+
+            async def blocked_get_tools():
+                probe_started.set()
+                await release_probe.wait()
+                return []
+
+            toolset.get_tools = AsyncMock(side_effect=blocked_get_tools)
+            toolset.close = AsyncMock()
+            created_toolsets.append(toolset)
+            return toolset
+
+        config = McpServerConfig(
+            name="concurrent",
+            transport="streamable_http",
+            url="https://host/mcp",
+            bearer_token_env_var="ARCPY_TOKEN",
+        )
+        status = McpServerStatus(config=config)
+        hub = McpHubManager()
+        hub._servers = {config.name: status}
+
+        async def scenario():
+            with (
+                patch.dict(os.environ, {"ARCPY_TOKEN": token}, clear=False),
+                patch(
+                    "google.adk.tools.mcp_tool.mcp_toolset.McpToolset",
+                    side_effect=create_toolset,
+                ) as toolset_cls,
+            ):
+                first = asyncio.create_task(hub.connect_server(config.name))
+                await probe_started.wait()
+                second = asyncio.create_task(hub.connect_server(config.name))
+                await asyncio.sleep(0)
+                release_probe.set()
+                results = await asyncio.gather(first, second)
+                self.assertEqual(results, [True, True])
+                self.assertEqual(toolset_cls.call_count, 1)
+
+                await hub.disconnect_server(config.name)
+
+        _run(scenario())
+
+        self.assertEqual(len(created_toolsets), 1)
+        created_toolsets[0].close.assert_awaited_once()
+        self.assertIsNone(status.toolset)
+        self.assertEqual(status.runtime_secrets, ())
+        self.assertEqual(current_runtime_secrets(), ())
+
+    def test_disconnect_waits_for_in_progress_reconnect(self):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
+
+        reconnect_probe_started = asyncio.Event()
+        release_reconnect_probe = asyncio.Event()
+        initial_toolset = MagicMock()
+        initial_toolset.close = AsyncMock()
+        replacement_toolset = MagicMock()
+
+        async def blocked_get_tools():
+            reconnect_probe_started.set()
+            await release_reconnect_probe.wait()
+            return []
+
+        replacement_toolset.get_tools = AsyncMock(side_effect=blocked_get_tools)
+        replacement_toolset.close = AsyncMock()
+        config = McpServerConfig(
+            name="reconnect-race",
+            transport="streamable_http",
+            url="https://host/mcp",
+        )
+        status = McpServerStatus(
+            config=config,
+            status="connected",
+            toolset=initial_toolset,
+        )
+        hub = McpHubManager()
+        hub._servers = {config.name: status}
+
+        async def scenario():
+            with patch(
+                "google.adk.tools.mcp_tool.mcp_toolset.McpToolset",
+                return_value=replacement_toolset,
+            ):
+                reconnect = asyncio.create_task(hub.reconnect_server(config.name))
+                await reconnect_probe_started.wait()
+                disconnect = asyncio.create_task(hub.disconnect_server(config.name))
+                await asyncio.sleep(0)
+                release_reconnect_probe.set()
+                reconnect_result, disconnect_result = await asyncio.gather(
+                    reconnect, disconnect
+                )
+                self.assertEqual(reconnect_result["status"], "ok")
+                self.assertTrue(disconnect_result)
+
+        _run(scenario())
+
+        initial_toolset.close.assert_awaited_once()
+        replacement_toolset.close.assert_awaited_once()
+        self.assertEqual(status.status, "disconnected")
+        self.assertIsNone(status.toolset)
+
+    def test_test_connection_cancellation_cleans_probe_and_registry(self):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig
+        from data_agent.mcp_transport import current_runtime_secrets
+
+        token = "cancelled-test-token"
+        probe_started = asyncio.Event()
+        toolset = MagicMock()
+
+        async def blocked_get_tools():
+            probe_started.set()
+            await asyncio.Future()
+
+        toolset.get_tools = AsyncMock(side_effect=blocked_get_tools)
+        toolset.close = AsyncMock()
+        config = McpServerConfig(
+            name="__test__",
+            transport="streamable_http",
+            url="https://host/mcp",
+            bearer_token_env_var="ARCPY_TOKEN",
+        )
+
+        async def scenario():
+            with (
+                patch.dict(os.environ, {"ARCPY_TOKEN": token}, clear=False),
+                patch(
+                    "google.adk.tools.mcp_tool.mcp_toolset.McpToolset",
+                    return_value=toolset,
+                ),
+            ):
+                task = asyncio.create_task(McpHubManager().test_connection(config))
+                await probe_started.wait()
+                task.cancel()
+                with self.assertRaises(asyncio.CancelledError):
+                    await task
+
+        _run(scenario())
+
+        toolset.close.assert_awaited_once()
+        self.assertEqual(current_runtime_secrets(), ())
 
     def test_test_connection_redacts_runtime_secret_from_returned_error(self):
         from data_agent.mcp_hub import McpHubManager, McpServerConfig

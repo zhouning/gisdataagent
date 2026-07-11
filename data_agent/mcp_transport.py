@@ -31,7 +31,7 @@ class McpConfigurationError(RuntimeError):
 
 def _token_missing() -> McpConfigurationError:
     return McpConfigurationError(
-        "ARCPY_MCP_TOKEN_MISSING", "MCP bearer token is not available"
+        "ARCPY_MCP_TOKEN_MISSING", "MCP credential is not available"
     )
 
 
@@ -138,7 +138,7 @@ def current_runtime_secrets() -> tuple[str, ...]:
         return tuple(_RUNTIME_SECRET_COUNTS)
 
 
-_BEARER_VALUE_RE = re.compile(r"(?i)(\bBearer\s+)(?!token\b)([^\s,;]+)")
+_BEARER_VALUE_RE = re.compile(r"(?i)(\bBearer\s+)([^\s,;]+)")
 _SIGNED_QUERY_VALUE_RE = re.compile(
     r"(?i)([?&](?:"
     r"token|signature|sig|googleaccessid|expires|"
@@ -178,13 +178,19 @@ class RuntimeSecretRedactionFilter(logging.Filter):
             record.msg = redact_mcp_text(message, secrets)
             record.args = ()
 
+            exception_text = ""
             if record.exc_info:
                 exception_text = record.exc_text or logging.Formatter().formatException(
                     record.exc_info
                 )
-                record.exc_text = redact_mcp_text(exception_text, secrets)
             elif record.exc_text:
-                record.exc_text = redact_mcp_text(record.exc_text, secrets)
+                exception_text = record.exc_text
+            if exception_text:
+                safe_exception = redact_mcp_text(exception_text, secrets)
+                record.msg = f"{record.msg}\n{safe_exception}"
+                record.safe_exception = safe_exception
+            record.exc_info = None
+            record.exc_text = None
 
             if record.stack_info:
                 record.stack_info = redact_mcp_text(record.stack_info, secrets)
@@ -193,11 +199,16 @@ class RuntimeSecretRedactionFilter(logging.Filter):
             record.args = ()
             record.exc_info = None
             record.exc_text = None
+            record.stack_info = None
         return True
 
 
 _RUNTIME_LOG_FILTER = RuntimeSecretRedactionFilter()
-_MCP_LOGGER_NAMESPACES = ("google.adk.tools.mcp_tool", "mcp")
+_MCP_LOGGER_NAMESPACES = (
+    "google.adk.tools.mcp_tool",
+    "google_adk.google.adk.tools.mcp_tool",
+    "mcp",
+)
 
 
 def _install_filter_on_handler(handler: logging.Handler) -> None:

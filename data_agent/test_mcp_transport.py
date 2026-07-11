@@ -79,7 +79,7 @@ def test_secret_requires_at_least_one_available_source():
             resolve_secret_reference("TOKEN_VALUE", "TOKEN_FILE")
 
     assert exc_info.value.code == "ARCPY_MCP_TOKEN_MISSING"
-    assert str(exc_info.value) == "MCP bearer token is not available"
+    assert str(exc_info.value) == "MCP credential is not available"
 
 
 @pytest.mark.parametrize("invalid_token", ["valid-prefix\rinjected", "valid-prefix\ninjected"])
@@ -186,21 +186,22 @@ def test_redaction_removes_exact_secrets_without_mutating_inputs():
     assert secrets == ["exact-secret"]
 
 
-def test_redaction_removes_bearer_authorization_value():
+@pytest.mark.parametrize("bearer_value", ["header-secret", "token", "token-abc"])
+def test_redaction_removes_bearer_authorization_value(bearer_value: str):
     from data_agent.mcp_transport import redact_mcp_text
 
     result = redact_mcp_text(
-        "request failed: Authorization: Bearer header-secret; retry disabled"
+        f"request failed: Authorization: Bearer {bearer_value}; retry disabled"
     )
 
     assert result == "request failed: Authorization: Bearer [REDACTED]; retry disabled"
-    assert "header-secret" not in result
+    assert bearer_value not in result
 
 
-def test_redaction_preserves_non_secret_bearer_token_phrase():
+def test_redaction_preserves_non_secret_credential_diagnostic():
     from data_agent.mcp_transport import redact_mcp_text
 
-    message = "MCP bearer token is not available"
+    message = "MCP credential is not available"
 
     assert redact_mcp_text(message) == message
 
@@ -277,8 +278,15 @@ def test_runtime_secret_registry_uses_reference_counts(empty_runtime_secret_regi
     assert current_runtime_secrets() == ()
 
 
+@pytest.mark.parametrize(
+    "logger_name",
+    [
+        "mcp.client.security_test",
+        "google_adk.google.adk.tools.mcp_tool.mcp_session_manager",
+    ],
+)
 def test_runtime_log_filter_redacts_third_party_message_and_exception(
-    empty_runtime_secret_registry,
+    empty_runtime_secret_registry, logger_name,
 ):
     from data_agent.mcp_transport import (
         install_runtime_secret_log_filter,
@@ -288,7 +296,7 @@ def test_runtime_log_filter_redacts_third_party_message_and_exception(
     token = "third-party-exact-token"
     output = io.StringIO()
     handler = logging.StreamHandler(output)
-    logger = logging.getLogger("mcp.client.security_test")
+    logger = logging.getLogger(logger_name)
     old_handlers = list(logger.handlers)
     old_propagate = logger.propagate
     old_level = logger.level
@@ -313,6 +321,59 @@ def test_runtime_log_filter_redacts_third_party_message_and_exception(
     assert "[REDACTED]" in logged
     assert "third-party request failed" in logged
     assert "transport exception exposed" in logged
+
+
+@pytest.mark.parametrize(
+    "logger_name",
+    [
+        "mcp.client.security_test",
+        "google_adk.google.adk.tools.mcp_tool.mcp_session_manager",
+    ],
+)
+def test_runtime_log_filter_redacts_json_formatter_exception(
+    empty_runtime_secret_registry, logger_name,
+):
+    from data_agent.mcp_transport import (
+        RuntimeSecretRedactionFilter,
+        install_runtime_secret_log_filter,
+        register_runtime_secrets,
+    )
+    from data_agent.observability import JsonFormatter
+
+    token = "json-formatter-exact-token"
+    output = io.StringIO()
+    handler = logging.StreamHandler(output)
+    handler.setFormatter(JsonFormatter())
+    logger = logging.getLogger(logger_name)
+    old_handlers = list(logger.handlers)
+    old_propagate = logger.propagate
+    old_level = logger.level
+    logger.handlers = [handler]
+    logger.propagate = False
+    logger.setLevel(logging.INFO)
+
+    try:
+        register_runtime_secrets([token])
+        install_runtime_secret_log_filter()
+        install_runtime_secret_log_filter()
+        self_filters = [
+            item for item in handler.filters
+            if isinstance(item, RuntimeSecretRedactionFilter)
+        ]
+        assert len(self_filters) == 1
+        try:
+            raise RuntimeError(f"formatter retained useful context {token}")
+        except RuntimeError:
+            logger.exception("JSON request failed for %s", token)
+    finally:
+        logger.handlers = old_handlers
+        logger.propagate = old_propagate
+        logger.setLevel(old_level)
+
+    formatted = output.getvalue()
+    assert token not in formatted
+    assert "JSON request failed" in formatted
+    assert "formatter retained useful context" in formatted
 
 
 def test_redacting_text_io_sanitizes_runtime_secret_writes(

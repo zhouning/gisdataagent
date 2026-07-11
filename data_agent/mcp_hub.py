@@ -11,7 +11,9 @@ import asyncio
 import json
 import os
 import sys
+import threading
 import time
+import weakref
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -184,6 +186,22 @@ class McpHubManager:
             os.path.dirname(__file__), "mcp_servers.yaml"
         )
         self._started = False
+        self._lifecycle_locks = weakref.WeakKeyDictionary()
+        self._lifecycle_locks_guard = threading.RLock()
+
+    def _get_lifecycle_lock(self, name: str) -> asyncio.Lock:
+        """Return the server lock scoped to the current event loop."""
+        loop = asyncio.get_running_loop()
+        with self._lifecycle_locks_guard:
+            loop_locks = self._lifecycle_locks.get(loop)
+            if loop_locks is None:
+                loop_locks = weakref.WeakValueDictionary()
+                self._lifecycle_locks[loop] = loop_locks
+            lock = loop_locks.get(name)
+            if lock is None:
+                lock = asyncio.Lock()
+                loop_locks[name] = lock
+            return lock
 
     # ----- DB table -----
 
@@ -488,9 +506,16 @@ class McpHubManager:
 
     async def connect_server(self, name: str) -> bool:
         """Connect to a single MCP server by name. Returns success."""
+        async with self._get_lifecycle_lock(name):
+            return await self._connect_server_unlocked(name)
+
+    async def _connect_server_unlocked(self, name: str) -> bool:
+        """Connect while the caller owns the server lifecycle lock."""
         status = self._servers.get(name)
         if not status:
             return False
+        if status.status == "connected" and status.toolset is not None:
+            return True
         config = status.config
         redaction_secrets: list[str] = []
         if status.toolset is not None or status.runtime_secrets:
@@ -498,90 +523,97 @@ class McpHubManager:
         status.error_code = ""
         toolset = None
         secrets_registered = False
+        ownership_transferred = False
 
         try:
-            from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
-            from google.adk.tools.mcp_tool.mcp_session_manager import (
-                StdioConnectionParams,
-                SseConnectionParams,
-                StreamableHTTPConnectionParams,
-            )
-            from mcp import StdioServerParameters
-
-            if config.transport == "stdio":
-                conn_params = StdioConnectionParams(
-                    server_params=StdioServerParameters(
-                        command=config.command,
-                        args=config.args,
-                        env=config.env or None,
-                        cwd=config.cwd,
-                    ),
-                    timeout=config.timeout,
-                )
-            elif config.transport == "sse":
-                conn_params = SseConnectionParams(
-                    url=config.url,
-                    headers=config.headers or None,
-                    timeout=config.timeout,
-                )
-            elif config.transport == "streamable_http":
-                connection_kwargs = _streamable_http_kwargs(
-                    config, config.timeout, redaction_secrets
-                )
-                if redaction_secrets:
-                    install_runtime_secret_log_filter()
-                    register_runtime_secrets(redaction_secrets)
-                    secrets_registered = True
-                conn_params = StreamableHTTPConnectionParams(**connection_kwargs)
-            else:
-                status.status = "error"
-                status.error_message = f"Unknown transport: {config.transport}"
-                return False
-
-            # Create toolset with name prefix to avoid tool name collisions
-            prefix = config.name.replace("-", "_")
-            toolset = McpToolset(
-                connection_params=conn_params,
-                tool_name_prefix=prefix,
-                errlog=RedactingTextIO(sys.stderr),
-            )
-
-            # Probe tools to verify connection
-            tools = await toolset.get_tools()
-
-            status.toolset = toolset
-            status.status = "connected"
-            status.tool_count = len(tools)
-            status.tool_names = [tool.name for tool in tools]
-            status.connected_at = time.time()
-            status.error_message = ""
-            status.error_code = ""
-            status.runtime_secrets = tuple(redaction_secrets)
-
-            logger.info(
-                t("mcp.server_connected", name=name, count=len(tools))
-            )
-            return True
-
-        except Exception as e:
-            error_message = redact_mcp_text(str(e), redaction_secrets)
-            status.status = "error"
-            status.error_message = error_message
-            status.error_code = (
-                e.code if isinstance(e, McpConfigurationError) else ""
-            )
-            status.toolset = None
-            status.tool_count = 0
-            status.tool_names = []
-            status.runtime_secrets = ()
             try:
-                if toolset is not None:
-                    await self._close_toolset(name, toolset, redaction_secrets)
-            finally:
-                if secrets_registered:
-                    unregister_runtime_secrets(redaction_secrets)
-            logger.warning(t("mcp.server_failed", name=name, error=error_message))
-            return False
+                from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
+                from google.adk.tools.mcp_tool.mcp_session_manager import (
+                    StdioConnectionParams,
+                    SseConnectionParams,
+                    StreamableHTTPConnectionParams,
+                )
+                from mcp import StdioServerParameters
+
+                if config.transport == "stdio":
+                    conn_params = StdioConnectionParams(
+                        server_params=StdioServerParameters(
+                            command=config.command,
+                            args=config.args,
+                            env=config.env or None,
+                            cwd=config.cwd,
+                        ),
+                        timeout=config.timeout,
+                    )
+                elif config.transport == "sse":
+                    conn_params = SseConnectionParams(
+                        url=config.url,
+                        headers=config.headers or None,
+                        timeout=config.timeout,
+                    )
+                elif config.transport == "streamable_http":
+                    connection_kwargs = _streamable_http_kwargs(
+                        config, config.timeout, redaction_secrets
+                    )
+                    if redaction_secrets:
+                        install_runtime_secret_log_filter()
+                        register_runtime_secrets(redaction_secrets)
+                        secrets_registered = True
+                    conn_params = StreamableHTTPConnectionParams(**connection_kwargs)
+                else:
+                    status.status = "error"
+                    status.error_message = f"Unknown transport: {config.transport}"
+                    return False
+
+                prefix = config.name.replace("-", "_")
+                toolset = McpToolset(
+                    connection_params=conn_params,
+                    tool_name_prefix=prefix,
+                    errlog=RedactingTextIO(sys.stderr),
+                )
+                tools = await toolset.get_tools()
+
+                status.toolset = toolset
+                status.status = "connected"
+                status.tool_count = len(tools)
+                status.tool_names = [tool.name for tool in tools]
+                status.connected_at = time.time()
+                status.error_message = ""
+                status.error_code = ""
+                status.runtime_secrets = tuple(redaction_secrets)
+                ownership_transferred = True
+
+                logger.info(
+                    t("mcp.server_connected", name=name, count=len(tools))
+                )
+                return True
+
+            except Exception as e:
+                error_message = redact_mcp_text(str(e), redaction_secrets)
+                status.status = "error"
+                status.error_message = error_message
+                status.error_code = (
+                    e.code if isinstance(e, McpConfigurationError) else ""
+                )
+                logger.warning(
+                    t("mcp.server_failed", name=name, error=error_message)
+                )
+                return False
+        finally:
+            if not ownership_transferred:
+                status.toolset = None
+                status.tool_count = 0
+                status.tool_names = []
+                status.connected_at = None
+                status.runtime_secrets = ()
+                try:
+                    if toolset is not None:
+                        await self._close_toolset(
+                            name, toolset, redaction_secrets
+                        )
+                finally:
+                    if secrets_registered:
+                        unregister_runtime_secrets(redaction_secrets)
 
     async def _close_toolset(self, name: str, toolset, secrets=()):
         """Close a toolset, logging only sanitized cleanup failures."""
@@ -606,6 +638,11 @@ class McpHubManager:
 
     async def disconnect_server(self, name: str) -> bool:
         """Disconnect and cleanup a single server."""
+        async with self._get_lifecycle_lock(name):
+            return await self._disconnect_server_unlocked(name)
+
+    async def _disconnect_server_unlocked(self, name: str) -> bool:
+        """Disconnect while the caller owns the server lifecycle lock."""
         status = self._servers.get(name)
         if not status:
             return False
@@ -642,51 +679,64 @@ class McpHubManager:
     async def shutdown(self):
         """Disconnect all servers gracefully."""
         for name in list(self._servers.keys()):
-            status = self._servers[name]
-            if status.status == "connected":
-                await self.disconnect_server(name)
-            elif status.toolset is not None or status.runtime_secrets:
-                await self._cleanup_runtime(name, status)
+            async with self._get_lifecycle_lock(name):
+                status = self._servers[name]
+                if status.status == "connected":
+                    await self._disconnect_server_unlocked(name)
+                elif status.toolset is not None or status.runtime_secrets:
+                    await self._cleanup_runtime(name, status)
         self._started = False
 
     # ----- Dynamic control -----
 
     async def toggle_server(self, name: str, enabled: bool) -> dict:
         """Enable/disable a server. Connects or disconnects accordingly. Persists to DB."""
-        status = self._servers.get(name)
-        if not status:
-            return {"status": "error", "message": f"Server '{name}' not found"}
+        async with self._get_lifecycle_lock(name):
+            status = self._servers.get(name)
+            if not status:
+                return {"status": "error", "message": f"Server '{name}' not found"}
 
-        status.config.enabled = enabled
-        self._update_enabled_in_db(name, enabled)
+            status.config.enabled = enabled
+            self._update_enabled_in_db(name, enabled)
 
-        if enabled and status.status != "connected":
-            ok = await self.connect_server(name)
+            if enabled and status.status != "connected":
+                ok = await self._connect_server_unlocked(name)
+                return {
+                    "status": "ok" if ok else "error",
+                    "server": name,
+                    "enabled": True,
+                    "connected": ok,
+                }
+            if not enabled and status.status == "connected":
+                await self._disconnect_server_unlocked(name)
+                return {
+                    "status": "ok",
+                    "server": name,
+                    "enabled": False,
+                    "connected": False,
+                }
             return {
-                "status": "ok" if ok else "error",
+                "status": "ok",
                 "server": name,
-                "enabled": True,
-                "connected": ok,
+                "enabled": enabled,
+                "connected": status.status == "connected",
             }
-        elif not enabled and status.status == "connected":
-            await self.disconnect_server(name)
-            return {"status": "ok", "server": name, "enabled": False, "connected": False}
-        return {"status": "ok", "server": name, "enabled": enabled, "connected": status.status == "connected"}
 
     async def reconnect_server(self, name: str) -> dict:
         """Force disconnect then reconnect a server."""
-        status = self._servers.get(name)
-        if not status:
-            return {"status": "error", "message": f"Server '{name}' not found"}
+        async with self._get_lifecycle_lock(name):
+            status = self._servers.get(name)
+            if not status:
+                return {"status": "error", "message": f"Server '{name}' not found"}
 
-        await self.disconnect_server(name)
-        ok = await self.connect_server(name)
-        return {
-            "status": "ok" if ok else "error",
-            "server": name,
-            "connected": ok,
-            "tool_count": status.tool_count,
-        }
+            await self._disconnect_server_unlocked(name)
+            ok = await self._connect_server_unlocked(name)
+            return {
+                "status": "ok" if ok else "error",
+                "server": name,
+                "connected": ok,
+                "tool_count": status.tool_count,
+            }
 
     async def test_connection(self, config: McpServerConfig) -> dict:
         """Test connectivity to an MCP server without persisting. Returns result dict."""
