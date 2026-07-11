@@ -117,9 +117,42 @@ def test_traditional_livability_routes_are_registered_in_frontend_api():
         ("/api/uwm/traditional-livability/s6/handoffs", "POST"),
         ("/api/uwm/traditional-livability/s6/handoffs/{handoff_id}", "GET"),
         ("/api/uwm/traditional-livability/s6/handoffs/{handoff_id}/execute-s1", "POST"),
+        ("/api/uwm/traditional-livability/s7/demand-gate", "GET"),
+        ("/api/uwm/traditional-livability/s7/run", "POST"),
     ):
         assert method in _route_methods(route_list, path)
         assert method in _route_methods(frontend_route_list, path)
+
+
+@pytest.mark.asyncio
+async def test_gated_s7_routes_enforce_need_and_acknowledgement(monkeypatch, tmp_path):
+    from data_agent.test_traditional_livability_s7_gated_service import _service
+
+    service = _service(tmp_path)
+    monkeypatch.setattr(routes, "_get_s7_gated_service", lambda: service)
+    _authenticated(monkeypatch, "planner")
+
+    response = await routes.uwm_traditional_livability_s7_demand_gate(
+        _request("/api/uwm/traditional-livability/s7/demand-gate")
+    )
+    assert response.status_code == 200
+    assert json.loads(response.body)["state"] == "need_unresolved"
+
+    response = await routes.uwm_traditional_livability_s7_run(
+        _request("/api/uwm/traditional-livability/s7/run", method="POST", payload={"mode": "authoritative"})
+    )
+    assert response.status_code == 409
+
+    response = await routes.uwm_traditional_livability_s7_run(
+        _request("/api/uwm/traditional-livability/s7/run", method="POST", payload={"mode": "conditional", "acknowledgement": False})
+    )
+    assert response.status_code == 400
+
+    response = await routes.uwm_traditional_livability_s7_run(
+        _request("/api/uwm/traditional-livability/s7/run", method="POST", payload={"mode": "conditional", "acknowledgement": True})
+    )
+    assert response.status_code == 200
+    assert json.loads(response.body)["not_a_site_recommendation"] is True
 
 
 @pytest.mark.asyncio

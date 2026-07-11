@@ -33,6 +33,11 @@ from ..uwm.traditional_livability_s6_s1_service import (
     HandoffNotFound,
     TraditionalLivabilityS6S1Service,
 )
+from ..uwm.traditional_livability_s7_gated_service import (
+    S7RunConflict,
+    S7RunInvalid,
+    TraditionalLivabilityS7GatedService,
+)
 from ..uwm.traditional_livability_s4 import assess_s4_project
 from ..uwm.traditional_livability_s4_project import validate_s4_project_request
 
@@ -87,6 +92,7 @@ S4_ENGINE_INPUT_BLOCKER_PREFIXES = (
 )
 
 _S6_S1_SERVICE: TraditionalLivabilityS6S1Service | None = None
+_S7_GATED_SERVICE: TraditionalLivabilityS7GatedService | None = None
 
 
 def configure_s6_s1_service(service: TraditionalLivabilityS6S1Service | None) -> None:
@@ -108,6 +114,25 @@ def _get_s6_s1_service() -> TraditionalLivabilityS6S1Service:
     if _S6_S1_SERVICE is None:
         raise RuntimeError("s6_s1_product_not_configured")
     return _S6_S1_SERVICE
+
+
+def configure_s7_gated_service(service: TraditionalLivabilityS7GatedService | None) -> None:
+    global _S7_GATED_SERVICE
+    _S7_GATED_SERVICE = service
+
+
+def _get_s7_gated_service() -> TraditionalLivabilityS7GatedService:
+    global _S7_GATED_SERVICE
+    if _S7_GATED_SERVICE is None:
+        configured = os.environ.get("UWM_TRADITIONAL_LIVABILITY_S7_GATED_PATH", "").strip()
+        if configured:
+            try:
+                _S7_GATED_SERVICE = TraditionalLivabilityS7GatedService.from_product_dir(Path(configured).expanduser())
+            except Exception as exc:
+                raise RuntimeError("s7_gated_product_not_configured") from exc
+    if _S7_GATED_SERVICE is None:
+        raise RuntimeError("s7_gated_product_not_configured")
+    return _S7_GATED_SERVICE
 
 
 class S1SnapshotUnavailable(RuntimeError):
@@ -665,7 +690,10 @@ async def uwm_traditional_livability_s7(request: Request):
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
     _set_user_context(user)
     try:
-        return JSONResponse(await asyncio.to_thread(_load_s7_snapshot))
+        try:
+            return JSONResponse(_get_s7_gated_service().current_result())
+        except RuntimeError:
+            return JSONResponse(await asyncio.to_thread(_load_s7_snapshot))
     except S7SnapshotUnavailable as exc:
         return JSONResponse(exc.payload, status_code=503)
     except Exception:
@@ -678,6 +706,42 @@ async def uwm_traditional_livability_s7(request: Request):
             },
             status_code=503,
         )
+
+
+async def uwm_traditional_livability_s7_demand_gate(request: Request):
+    actor_id = _authenticated_actor(request)
+    if actor_id is None:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    try:
+        return JSONResponse(_get_s7_gated_service().demand_gate())
+    except RuntimeError:
+        return JSONResponse(
+            {"schema": "uwm.traditional_livability.s7_demand_gate.v1", "state": "need_unresolved", "blockers": ["s7_gated_product_not_configured"]},
+            status_code=503,
+        )
+
+
+async def uwm_traditional_livability_s7_run(request: Request):
+    actor_id = _authenticated_actor(request)
+    if actor_id is None:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    try:
+        payload = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON payload", "blockers": ["request_json_invalid"]}, status_code=400)
+    if not isinstance(payload, dict):
+        return JSONResponse({"error": "Invalid request payload", "blockers": ["request_object_required"]}, status_code=400)
+    try:
+        result = _get_s7_gated_service().run(
+            mode=str(payload.get("mode") or ""), acknowledgement=payload.get("acknowledgement") is True
+        )
+    except S7RunInvalid as exc:
+        return JSONResponse({"error": str(exc), "blockers": [str(exc)]}, status_code=400)
+    except S7RunConflict as exc:
+        return JSONResponse({"error": str(exc), "blockers": [str(exc)]}, status_code=409)
+    except RuntimeError:
+        return JSONResponse({"error": "S7 gated product unavailable", "blockers": ["s7_gated_product_not_configured"]}, status_code=503)
+    return JSONResponse(result)
 
 
 async def uwm_traditional_livability_s6_resources(request: Request):
@@ -960,6 +1024,16 @@ def get_uwm_traditional_livability_routes() -> list:
             "/api/uwm/traditional-livability/s7",
             uwm_traditional_livability_s7,
             methods=["GET"],
+        ),
+        Route(
+            "/api/uwm/traditional-livability/s7/demand-gate",
+            uwm_traditional_livability_s7_demand_gate,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/uwm/traditional-livability/s7/run",
+            uwm_traditional_livability_s7_run,
+            methods=["POST"],
         ),
         Route(
             "/api/uwm/traditional-livability/s4/resources",
