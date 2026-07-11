@@ -928,54 +928,76 @@ class McpHubManager:
     async def get_all_tools(self, pipeline: str = None, username: str = None) -> list:
         """Get tools from all connected servers, optionally filtered by pipeline and user visibility."""
         tools = []
-        for name, s in self._servers.items():
-            if s.status != "connected" or s.toolset is None:
-                continue
-            if pipeline and pipeline not in s.config.pipelines:
-                continue
-            # Per-user visibility filter
-            if username:
-                owner = s.config.owner_username
-                shared = s.config.is_shared
-                if owner is not None and owner != username and not shared:
+        for name in list(self._servers):
+            async with self._get_lifecycle_lock(name):
+                status = self._servers.get(name)
+                if (
+                    status is None
+                    or status.status != "connected"
+                    or status.toolset is None
+                    or not status.config.expose_raw_tools
+                ):
                     continue
-            try:
-                server_tools = await s.toolset.get_tools()
-                tools.extend(server_tools)
-            except Exception as e:
-                error_message = redact_mcp_text(str(e), s.runtime_secrets)
-                logger.warning("Failed to get tools from '%s': %s", name, error_message)
-                s.status = "error"
-                s.error_message = error_message
-                s.error_code = ""
-                await self._cleanup_runtime(name, s)
+                if pipeline and pipeline not in status.config.pipelines:
+                    continue
+                if username:
+                    owner = status.config.owner_username
+                    shared = status.config.is_shared
+                    if owner is not None and owner != username and not shared:
+                        continue
+                try:
+                    server_tools = await status.toolset.get_tools()
+                    tools.extend(server_tools)
+                except Exception as e:
+                    error_message = redact_mcp_text(
+                        str(e), status.runtime_secrets
+                    )
+                    logger.warning(
+                        "Failed to get tools from '%s': %s",
+                        name,
+                        error_message,
+                    )
+                    status.status = "error"
+                    status.error_message = error_message
+                    status.error_code = ""
+                    await self._cleanup_runtime(name, status)
         return tools
 
     async def get_tools_for_server(self, name: str) -> list[dict]:
         """Get tool metadata for a specific server (for API/UI)."""
-        status = self._servers.get(name)
-        if not status or status.status != "connected" or status.toolset is None:
-            return []
+        async with self._get_lifecycle_lock(name):
+            status = self._servers.get(name)
+            if (
+                status is None
+                or status.status != "connected"
+                or status.toolset is None
+                or not status.config.expose_raw_tools
+            ):
+                return []
 
-        try:
-            tools = await status.toolset.get_tools()
-            result = []
-            for tool in tools:
-                info = {
-                    "name": tool.name,
-                    "description": getattr(tool, "description", ""),
-                    "server": name,
-                }
-                result.append(info)
-            return result
-        except Exception as e:
-            error_message = redact_mcp_text(str(e), status.runtime_secrets)
-            logger.warning("Failed to get tools from '%s': %s", name, error_message)
-            status.status = "error"
-            status.error_message = error_message
-            status.error_code = ""
-            await self._cleanup_runtime(name, status)
-            return []
+            try:
+                tools = await status.toolset.get_tools()
+                result = []
+                for tool in tools:
+                    info = {
+                        "name": tool.name,
+                        "description": getattr(tool, "description", ""),
+                        "server": name,
+                    }
+                    result.append(info)
+                return result
+            except Exception as e:
+                error_message = redact_mcp_text(
+                    str(e), status.runtime_secrets
+                )
+                logger.warning(
+                    "Failed to get tools from '%s': %s", name, error_message
+                )
+                status.status = "error"
+                status.error_message = error_message
+                status.error_code = ""
+                await self._cleanup_runtime(name, status)
+                return []
 
 
 # ---------------------------------------------------------------------------

@@ -1136,6 +1136,155 @@ class TestSecureMcpHttpTransport(unittest.TestCase):
         toolset.close.assert_awaited_once()
         self.assertEqual(current_runtime_secrets(), ())
 
+    def test_aggregate_lookup_failure_does_not_clobber_reconnected_session(self):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
+        from data_agent.mcp_transport import (
+            current_runtime_secrets,
+            register_runtime_secrets,
+        )
+
+        old_token = "stale-aggregate-token"
+        new_token = "replacement-aggregate-token"
+        lookup_started = asyncio.Event()
+        release_lookup = asyncio.Event()
+        old_toolset = MagicMock()
+
+        async def blocked_old_lookup():
+            lookup_started.set()
+            await release_lookup.wait()
+            raise RuntimeError(f"old aggregate lookup exposed {old_token}")
+
+        old_toolset.get_tools = AsyncMock(side_effect=blocked_old_lookup)
+        old_toolset.close = AsyncMock()
+        new_toolset = MagicMock()
+        new_toolset.get_tools = AsyncMock(return_value=[])
+        new_toolset.close = AsyncMock()
+        config = McpServerConfig(
+            name="aggregate-race",
+            transport="streamable_http",
+            url="https://host/mcp",
+            bearer_token_env_var="ARCPY_TOKEN",
+            pipelines=["general"],
+        )
+        status = McpServerStatus(
+            config=config,
+            status="connected",
+            toolset=old_toolset,
+            runtime_secrets=(old_token,),
+        )
+        hub = McpHubManager()
+        hub._servers = {config.name: status}
+        register_runtime_secrets([old_token])
+
+        async def scenario():
+            with (
+                patch.dict(os.environ, {"ARCPY_TOKEN": new_token}, clear=False),
+                patch(
+                    "google.adk.tools.mcp_tool.mcp_toolset.McpToolset",
+                    return_value=new_toolset,
+                ),
+                patch("data_agent.mcp_hub.logger.warning") as warning,
+            ):
+                lookup = asyncio.create_task(hub.get_all_tools(pipeline="general"))
+                await lookup_started.wait()
+                reconnect = asyncio.create_task(hub.reconnect_server(config.name))
+                await asyncio.sleep(0)
+                release_lookup.set()
+                lookup_result, reconnect_result = await asyncio.gather(
+                    lookup, reconnect
+                )
+
+                self.assertEqual(lookup_result, [])
+                self.assertEqual(reconnect_result["status"], "ok")
+                self.assertNotIn(old_token, repr(warning.call_args_list))
+                self.assertEqual(status.status, "connected")
+                self.assertIs(status.toolset, new_toolset)
+                self.assertEqual(status.runtime_secrets, (new_token,))
+                self.assertEqual(current_runtime_secrets(), (new_token,))
+                new_toolset.close.assert_not_awaited()
+
+                await hub.disconnect_server(config.name)
+
+        _run(scenario())
+
+        old_toolset.close.assert_awaited_once()
+        new_toolset.close.assert_awaited_once()
+        self.assertEqual(current_runtime_secrets(), ())
+
+    def test_single_lookup_failure_does_not_clobber_reconnected_session(self):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
+        from data_agent.mcp_transport import (
+            current_runtime_secrets,
+            register_runtime_secrets,
+        )
+
+        old_token = "stale-single-token"
+        new_token = "replacement-single-token"
+        lookup_started = asyncio.Event()
+        release_lookup = asyncio.Event()
+        old_toolset = MagicMock()
+
+        async def blocked_old_lookup():
+            lookup_started.set()
+            await release_lookup.wait()
+            raise RuntimeError(f"old single lookup exposed {old_token}")
+
+        old_toolset.get_tools = AsyncMock(side_effect=blocked_old_lookup)
+        old_toolset.close = AsyncMock()
+        new_toolset = MagicMock()
+        new_toolset.get_tools = AsyncMock(return_value=[])
+        new_toolset.close = AsyncMock()
+        config = McpServerConfig(
+            name="single-race",
+            transport="streamable_http",
+            url="https://host/mcp",
+            bearer_token_env_var="ARCPY_TOKEN",
+        )
+        status = McpServerStatus(
+            config=config,
+            status="connected",
+            toolset=old_toolset,
+            runtime_secrets=(old_token,),
+        )
+        hub = McpHubManager()
+        hub._servers = {config.name: status}
+        register_runtime_secrets([old_token])
+
+        async def scenario():
+            with (
+                patch.dict(os.environ, {"ARCPY_TOKEN": new_token}, clear=False),
+                patch(
+                    "google.adk.tools.mcp_tool.mcp_toolset.McpToolset",
+                    return_value=new_toolset,
+                ),
+                patch("data_agent.mcp_hub.logger.warning") as warning,
+            ):
+                lookup = asyncio.create_task(hub.get_tools_for_server(config.name))
+                await lookup_started.wait()
+                reconnect = asyncio.create_task(hub.reconnect_server(config.name))
+                await asyncio.sleep(0)
+                release_lookup.set()
+                lookup_result, reconnect_result = await asyncio.gather(
+                    lookup, reconnect
+                )
+
+                self.assertEqual(lookup_result, [])
+                self.assertEqual(reconnect_result["status"], "ok")
+                self.assertNotIn(old_token, repr(warning.call_args_list))
+                self.assertEqual(status.status, "connected")
+                self.assertIs(status.toolset, new_toolset)
+                self.assertEqual(status.runtime_secrets, (new_token,))
+                self.assertEqual(current_runtime_secrets(), (new_token,))
+                new_toolset.close.assert_not_awaited()
+
+                await hub.disconnect_server(config.name)
+
+        _run(scenario())
+
+        old_toolset.close.assert_awaited_once()
+        new_toolset.close.assert_awaited_once()
+        self.assertEqual(current_runtime_secrets(), ())
+
     def test_test_connection_redacts_runtime_secret_from_returned_error(self):
         from data_agent.mcp_hub import McpHubManager, McpServerConfig
 
