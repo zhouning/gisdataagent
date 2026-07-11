@@ -98,7 +98,12 @@ DEMAND_OVERLAYS = {
         "administrative_service_accessibility_and_network_proxy_gap_diagnostic",
         ["docs/reports/traditional_mobility_accessibility_chongqing_verification_2026-07-11.md"],
     ),
-    "9": _query("poi_aoi_and_service_accessibility_foundation", ["public_space_quality_and_opportunity_product_missing"]),
+    "9": _bounded(
+        "traditional_public_space_product",
+        ["public_access_and_opening_hours_missing", "quality_vitality_and_actual_use_missing", "shade_seating_furniture_missing", "waterfront_accessibility_missing", "safety_and_universal_accessibility_missing", "authoritative_per_capita_standard_missing", "intervention_effect_evidence_missing"],
+        "public_space_inventory_distribution_and_relative_evidence_gap",
+        ["docs/reports/traditional_public_space_chongqing_verification_2026-07-11.md", "data/uwm_public_proxy/chongqing_central/traditional_public_space_chongqing/overview.json"],
+    ),
     "10": _query("environment_and_road_context_foundation", ["safety_lighting_shade_authoritative_data_missing"]),
     "11": _bounded("environmental_kernel_scene_evidence_gate_and_api", ["environmental_action_response_closed", "temperature_and_vegetation_dynamics_unavailable"], "observed_environmental_state_and_calibrated_pm25_temporal_dynamics", ["docs/reports/uwm_environmental_kernel_chongqing_verification_2026-07-11.md"]),
     "12": _bounded(
