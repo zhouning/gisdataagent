@@ -6,6 +6,45 @@ const rows = (value: unknown): Row[] => Array.isArray(value) ? value : [];
 const record = (value: unknown): Row => value && typeof value === 'object' && !Array.isArray(value) ? value as Row : {};
 const text = (value: unknown) => value === null || value === undefined || value === '' ? '-' : String(value);
 
+const candidateAuditFields = [
+  'standard_class_id', 'standard_class_label', 'authority_level', 'match_method',
+  'confidence', 'dictionary_version', 'rule_version', 'human_confirmation_required',
+  'human_confirmed', 'evidence',
+] as const;
+
+function replayCandidateAudit(candidate: Row): Row {
+  return Object.fromEntries(candidateAuditFields.map(field => [field, candidate[field]]));
+}
+
+function buildHumanSelectedCandidate(classRecord: Row, dictionaryVersion: string, reviewerReason: string): Row {
+  return {
+    standard_class_id: classRecord.class_id,
+    standard_class_label: classRecord.label,
+    authority_level: 'human_confirmation',
+    match_method: 'human_selected',
+    confidence: 'human_confirmed',
+    dictionary_version: dictionaryVersion,
+    rule_version: null,
+    human_confirmation_required: false,
+    human_confirmed: true,
+    evidence: [{ evidence_type: 'reviewer_reason', reason: reviewerReason }],
+  };
+}
+
+function buildS6Confirmation(candidate: Row, semantic: Row, reviewerReason: string): Row {
+  const selectedCandidateAudit = candidate.match_method === 'human_selected'
+    ? candidate
+    : replayCandidateAudit(candidate);
+  return {
+    actor_id: 'frontend_reviewer',
+    confirmed_at: new Date().toISOString(),
+    selected_standard_class_id: candidate.standard_class_id,
+    original_input_digest: semantic.original_input_digest,
+    dictionary_version: candidate.dictionary_version,
+    selected_candidate: selectedCandidateAudit,
+  };
+}
+
 declare global {
   interface Window {
     __handleMapUpdate?: (payload: any) => void;
@@ -15,6 +54,11 @@ declare global {
 export default function TraditionalLivabilityS6Panel() {
   const [resources, setResources] = useState<Row>({});
   const [authority, setAuthority] = useState<Row>({});
+  const [resourcesSettled, setResourcesSettled] = useState(false);
+  const [authoritySettled, setAuthoritySettled] = useState(false);
+  const [resourcesError, setResourcesError] = useState('');
+  const [authorityError, setAuthorityError] = useState('');
+  const [reloadToken, setReloadToken] = useState(0);
   const [result, setResult] = useState<Row | null>(null);
   const [areaId, setAreaId] = useState('');
   const [inputMode, setInputMode] = useState<'point' | 'parcel'>('point');
@@ -29,36 +73,60 @@ export default function TraditionalLivabilityS6Panel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [selectingPoint, setSelectingPoint] = useState(false);
+  const [selectionMessage, setSelectionMessage] = useState('');
 
-  const load = async () => {
-    setError('');
-    try {
-      const [resourceResponse, dictionaryResponse] = await Promise.all([
-        fetch('/api/uwm/traditional-livability/s6/resources', { credentials: 'include' }),
-        fetch('/api/uwm/traditional-livability/s6/dictionary', { credentials: 'include' }),
-      ]);
-      const resourcePayload = await resourceResponse.json();
-      const dictionaryPayload = await dictionaryResponse.json();
-      if (!resourceResponse.ok) throw new Error(resourcePayload.detail || resourcePayload.error || 'S6 资源加载失败');
-      setResources(resourcePayload);
-      setAuthority(dictionaryPayload);
-      const areas = rows(resourcePayload.planning_areas);
-      setAreaId(current => current || text(areas[0]?.planning_area_id).replace('-', ''));
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'S6 加载失败');
-    }
-  };
+  useEffect(() => {
+    let stale = false;
+    setResourcesSettled(false);
+    setResourcesError('');
+    fetch('/api/uwm/traditional-livability/s6/resources', { credentials: 'include' })
+      .then(async response => ({ response, payload: await response.json() }))
+      .then(({ response, payload }) => {
+        if (stale) return;
+        if (!response.ok) throw new Error(payload.detail || payload.error || 'S6 资源加载失败');
+        setResources(payload);
+        const areas = rows(payload.planning_areas);
+        setAreaId(current => current || String(areas[0]?.planning_area_id || ''));
+      })
+      .catch(loadError => { if (!stale) setResourcesError(loadError instanceof Error ? loadError.message : 'S6 资源加载失败'); })
+      .finally(() => { if (!stale) setResourcesSettled(true); });
+    return () => { stale = true; };
+  }, [reloadToken]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    let stale = false;
+    setAuthoritySettled(false);
+    setAuthorityError('');
+    fetch('/api/uwm/traditional-livability/s6/dictionary', { credentials: 'include' })
+      .then(async response => ({ response, payload: await response.json() }))
+      .then(({ response, payload }) => {
+        if (stale) return;
+        if (!response.ok) throw new Error(payload.detail || payload.error || 'S6 权威状态加载失败');
+        setAuthority(payload);
+      })
+      .catch(loadError => { if (!stale) setAuthorityError(loadError instanceof Error ? loadError.message : 'S6 权威状态加载失败'); })
+      .finally(() => { if (!stale) setAuthoritySettled(true); });
+    return () => { stale = true; };
+  }, [reloadToken]);
   useEffect(() => {
     const selected = (event: Event) => {
       const detail = (event as CustomEvent<{ longitude: number; latitude: number }>).detail;
       setLongitude(detail.longitude);
       setLatitude(detail.latitude);
       setSelectingPoint(false);
+      setSelectionMessage('地图点选完成。');
+    };
+    const cancelled = (event: Event) => {
+      const reason = (event as CustomEvent<{ reason?: string }>).detail?.reason || 'unknown';
+      setSelectingPoint(false);
+      setSelectionMessage(`地图点选已取消：${reason}`);
     };
     window.addEventListener('traditional-livability-s6-point-selected', selected);
-    return () => window.removeEventListener('traditional-livability-s6-point-selected', selected);
+    window.addEventListener('traditional-livability-s6-point-selection-cancelled', cancelled);
+    return () => {
+      window.removeEventListener('traditional-livability-s6-point-selected', selected);
+      window.removeEventListener('traditional-livability-s6-point-selection-cancelled', cancelled);
+    };
   }, []);
 
   const areaResources = useMemo(() => rows(resources.planning_resources).filter(row => row.planning_area_id === areaId), [resources, areaId]);
@@ -66,11 +134,15 @@ export default function TraditionalLivabilityS6Panel() {
   const semantic = record(result?.semantic_resolution);
   const candidates = rows(semantic.candidates);
   const selectedCandidate = candidates.find(candidate => candidate.standard_class_id === selectedCandidateId);
+  const dictionaryStatus = record(authority.facility_dictionary);
+  const dictionaryClasses = rows(dictionaryStatus.classes);
+  const manualClass = dictionaryClasses.find(classRecord => classRecord.class_id === selectedCandidateId);
   const unresolved = record(result?.unresolved_objects);
   const authorityReady = authority.ready === true;
 
   const requestPoint = () => {
     setSelectingPoint(true);
+    setSelectionMessage('请在地图上选择下一个点。');
     window.dispatchEvent(new CustomEvent('traditional-livability-s6-request-point-selection'));
   };
 
@@ -78,16 +150,16 @@ export default function TraditionalLivabilityS6Panel() {
     setLoading(true);
     setError('');
     try {
-      const confirmation = selectedCandidate && confirmationReason.trim() ? {
-        actor_id: 'frontend_reviewer',
-        confirmed_at: new Date().toISOString(),
-        selected_standard_class_id: selectedCandidateId,
-        original_input_digest: semantic.original_input_digest,
-        dictionary_version: selectedCandidate.dictionary_version,
-        selected_candidate: { ...selectedCandidate, human_confirmed: true, human_confirmation_required: false, evidence: [{ evidence_type: 'reviewer_reason', reason: confirmationReason.trim() }] },
-      } : undefined;
+      const reviewerReason = confirmationReason.trim();
+      const humanSelectedCandidate = manualClass && reviewerReason
+        ? buildHumanSelectedCandidate(manualClass, String(dictionaryStatus.version || ''), reviewerReason)
+        : undefined;
+      const confirmationCandidate = selectedCandidate || humanSelectedCandidate;
+      const confirmation = confirmationCandidate && reviewerReason
+        ? buildS6Confirmation(confirmationCandidate, semantic, reviewerReason)
+        : undefined;
       const body = {
-        input_mode: inputMode,
+        input_mode: inputMode === 'parcel' ? 'planning_parcel' : 'point',
         analysis_area_id: areaId,
         facility_name: facilityName.trim(),
         raw_facility_type: rawType.trim(),
@@ -126,21 +198,25 @@ export default function TraditionalLivabilityS6Panel() {
   return <div className="traditional-panel">
     <div className="traditional-panel-title"><Search size={15} /><strong>S6 超范围设施评估</strong></div>
     <p>仅执行 150 米投影平面空间初筛；语义候选必须由人员显式确认，空间接近本身不构成许可或监管结论。</p>
-    <button className="secondary-button" onClick={load}><RefreshCw size={14} />刷新资源与权威状态</button>
-    {!authorityReady && <div className="traditional-message error"><AlertTriangle size={15} />权威字典或规则不可用：空间初筛仍可执行，分类与兼容性结论受限。</div>}
+    <button className="secondary-button" onClick={() => setReloadToken(token => token + 1)}><RefreshCw size={14} />刷新资源与权威状态</button>
+    {!resourcesSettled && <p>规划资源加载中…</p>}
+    {resourcesError && <div className="traditional-message error"><AlertTriangle size={15} />规划资源不可用：{resourcesError}</div>}
+    {!authoritySettled && <p>权威状态加载中…</p>}
+    {(!authorityReady || authorityError) && <div className="traditional-message error"><AlertTriangle size={15} />权威字典或规则不可用：{authorityError || '空间初筛仍可执行，分类与兼容性结论受限。'}</div>}
     {error && <div className="traditional-message error"><AlertTriangle size={15} />{error}</div>}
     <div className="traditional-two-col">
       <div className="traditional-panel">
         <h4>输入与语义复核</h4>
         <label>规划范围<select value={areaId} onChange={event => { setAreaId(event.target.value); setParcelId(''); }}><option value="">请选择</option>{rows(resources.planning_areas).map(area => <option key={area.planning_area_id} value={area.planning_area_id}>{area.planning_area_name || area.planning_area_id}</option>)}</select></label>
         <div><button className={inputMode === 'point' ? 'primary-button' : 'secondary-button'} onClick={() => setInputMode('point')}>地图点选</button> <button className={inputMode === 'parcel' ? 'primary-button' : 'secondary-button'} onClick={() => setInputMode('parcel')}>规划地块</button></div>
-        {inputMode === 'point' ? <div><button className="secondary-button" onClick={requestPoint} disabled={selectingPoint}><MapPin size={14} />{selectingPoint ? '等待地图点击' : '选择下一个地图点'}</button><p>坐标：{longitude ?? '-'}, {latitude ?? '-'}</p></div> : <label>规划地块<select value={parcelId} onChange={event => setParcelId(event.target.value)}><option value="">请选择</option>{selectableParcels.map(parcel => <option key={parcel.resource_id} value={parcel.resource_id}>{parcel.raw_land_use_name || parcel.resource_id}</option>)}</select></label>}
+        {inputMode === 'point' ? <div><button className="secondary-button" onClick={requestPoint} disabled={selectingPoint}><MapPin size={14} />{selectingPoint ? '等待地图点击' : '选择下一个地图点'}</button><p>坐标：{longitude ?? '-'}, {latitude ?? '-'}</p><p>{selectionMessage}</p></div> : <label>规划地块<select value={parcelId} onChange={event => setParcelId(event.target.value)}><option value="">请选择</option>{selectableParcels.map(parcel => <option key={parcel.resource_id} value={parcel.resource_id}>{parcel.raw_land_use_name || parcel.resource_id}</option>)}</select></label>}
         <label>设施名称<input value={facilityName} onChange={event => setFacilityName(event.target.value)} required /></label>
         <label>原始类型<input value={rawType} onChange={event => setRawType(event.target.value)} required /></label>
         <label>用途说明<textarea value={useDescription} onChange={event => setUseDescription(event.target.value)} required /></label>
         <button className="primary-button" onClick={analyze} disabled={!requiredReady || loading}>{loading ? '分析中…' : 'POST analyze'}</button>
         <h4>语义候选与人工确认</h4>
         {candidates.length === 0 ? <p>先执行分析以加载语义候选；不会静默自动确认。</p> : candidates.map(candidate => <label key={candidate.standard_class_id}><input type="radio" name="s6-candidate" checked={selectedCandidateId === candidate.standard_class_id} onChange={() => setSelectedCandidateId(candidate.standard_class_id)} /> {candidate.standard_class_label || candidate.standard_class_id} · {candidate.match_method}</label>)}
+        {semantic.resolution_status === 'unresolved' && dictionaryClasses.length > 0 && <label>人工选择字典类别<select value={selectedCandidateId} onChange={event => setSelectedCandidateId(event.target.value)}><option value="">请选择</option>{dictionaryClasses.map(classRecord => <option key={classRecord.class_id} value={classRecord.class_id}>{classRecord.label || classRecord.class_id}</option>)}</select></label>}
         {selectedCandidateId && <label>人工确认理由<textarea value={confirmationReason} onChange={event => setConfirmationReason(event.target.value)} placeholder="说明本次请求的确认依据" /></label>}
       </div>
       <div className="traditional-panel">

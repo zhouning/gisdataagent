@@ -109,28 +109,73 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
   const measureLayerRef = useRef<L.LayerGroup | null>(null);
   const annotationLayerRef = useRef<L.LayerGroup | null>(null);
   const s6PointSelectionRequestedRef = useRef(false);
+  const s6PointSelectionHandlerRef = useRef<((event: L.LeafletMouseEvent) => void) | null>(null);
+  const interactionModesRef = useRef({ annotationMode, measureMode, drawMode });
   const [availableBasemaps, setAvailableBasemaps] = useState<Record<string, string>>({ ...BASEMAPS });
 
   // Fetch basemap config (Tianditu)
   useEffect(() => {
-    const requestS6PointSelection = () => {
-      if (annotationMode || measureMode || drawMode) return;
-      const map = mapRef.current;
-      if (!map) return;
-      s6PointSelectionRequestedRef.current = true;
-      map.once('click', (event: L.LeafletMouseEvent) => {
-        if (!s6PointSelectionRequestedRef.current) return;
-        s6PointSelectionRequestedRef.current = false;
-        window.dispatchEvent(new CustomEvent('traditional-livability-s6-point-selected', { detail: { longitude: event.latlng.lng, latitude: event.latlng.lat } }));
-      });
-    };
-    window.addEventListener('traditional-livability-s6-request-point-selection', requestS6PointSelection);
-    return () => window.removeEventListener('traditional-livability-s6-request-point-selection', requestS6PointSelection);
+    interactionModesRef.current = { annotationMode, measureMode, drawMode };
   }, [annotationMode, measureMode, drawMode]);
 
   useEffect(() => {
-    if (annotationMode || measureMode || drawMode) {
+    const cancelS6PointSelection = (reason: string) => {
+      const map = mapRef.current;
+      if (map && s6PointSelectionHandlerRef.current) {
+        map.off('click', s6PointSelectionHandlerRef.current);
+      }
+      const wasPending = s6PointSelectionRequestedRef.current;
       s6PointSelectionRequestedRef.current = false;
+      s6PointSelectionHandlerRef.current = null;
+      if (
+        wasPending
+        || reason === 'request_rejected_active_mode'
+        || reason === 'map_unavailable'
+      ) {
+        window.dispatchEvent(new CustomEvent('traditional-livability-s6-point-selection-cancelled', { detail: { reason } }));
+      }
+    };
+    const requestS6PointSelection = () => {
+      const modes = interactionModesRef.current;
+      if (modes.annotationMode || modes.measureMode || modes.drawMode) {
+        cancelS6PointSelection('request_rejected_active_mode');
+        return;
+      }
+      const map = mapRef.current;
+      if (!map) {
+        cancelS6PointSelection('map_unavailable');
+        return;
+      }
+      cancelS6PointSelection('selection_replaced');
+      s6PointSelectionRequestedRef.current = true;
+      const handler = (event: L.LeafletMouseEvent) => {
+        if (!s6PointSelectionRequestedRef.current) return;
+        map.off('click', handler);
+        s6PointSelectionRequestedRef.current = false;
+        s6PointSelectionHandlerRef.current = null;
+        window.dispatchEvent(new CustomEvent('traditional-livability-s6-point-selected', { detail: { longitude: event.latlng.lng, latitude: event.latlng.lat } }));
+      };
+      s6PointSelectionHandlerRef.current = handler;
+      map.once('click', handler);
+    };
+    window.addEventListener('traditional-livability-s6-request-point-selection', requestS6PointSelection);
+    return () => {
+      window.removeEventListener('traditional-livability-s6-request-point-selection', requestS6PointSelection);
+      cancelS6PointSelection('map_panel_unmounted');
+    };
+  }, []);
+
+  useEffect(() => {
+    if (annotationMode || measureMode || drawMode) {
+      const map = mapRef.current;
+      if (map && s6PointSelectionHandlerRef.current) {
+        map.off('click', s6PointSelectionHandlerRef.current);
+      }
+      if (s6PointSelectionRequestedRef.current) {
+        window.dispatchEvent(new CustomEvent('traditional-livability-s6-point-selection-cancelled', { detail: { reason: 'interaction_mode_changed' } }));
+      }
+      s6PointSelectionRequestedRef.current = false;
+      s6PointSelectionHandlerRef.current = null;
     }
   }, [annotationMode, measureMode, drawMode]);
 

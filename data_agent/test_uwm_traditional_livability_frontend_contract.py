@@ -1,5 +1,14 @@
 from pathlib import Path
 
+from data_agent.test_traditional_livability_s6_semantics import (
+    authoritative_dictionary_fixture,
+    human_selected_candidate,
+)
+from data_agent.uwm.traditional_livability_s6_semantics import (
+    resolve_s6_facility_semantics,
+    validate_human_confirmation,
+)
+
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PANEL = ROOT / "frontend" / "src" / "components" / "DataPanel.tsx"
@@ -137,8 +146,62 @@ def test_traditional_livability_s6_panel_uses_evidence_bounded_contract():
     assert "traditional-livability-s6-request-point-selection" in map_panel
     assert "traditional-livability-s6-point-selected" in map_panel
     assert "annotationMode || measureMode || drawMode" in map_panel
+    assert "input_mode: inputMode === 'parcel' ? 'planning_parcel' : 'point'" in panel
     assert "confirmed_standard_class_id: selectedCandidateId || undefined" in panel
     assert "human_confirmation: confirmation" in panel
+    assert "buildS6Confirmation" in panel
+    assert "buildHumanSelectedCandidate" in panel
+    assert "selected_candidate: selectedCandidateAudit" in panel
+    assert "authority_level: 'human_confirmation'" in panel
+    assert "match_method: 'human_selected'" in panel
+    assert "confidence: 'human_confirmed'" in panel
+    assert "human_confirmation_required: false" in panel
+    assert "human_confirmed: true" in panel
+    assert "evidence: [{ evidence_type: 'reviewer_reason', reason: reviewerReason }]" in panel
+    assert "Promise.all" not in panel
+    assert "resourcesSettled" in panel
+    assert "authoritySettled" in panel
+    assert "stale" in panel
+    assert "traditional-livability-s6-point-selection-cancelled" in panel
+    assert "traditional-livability-s6-point-selection-cancelled" in map_panel
+    assert "map.off('click', s6PointSelectionHandlerRef.current)" in map_panel
+    assert "reason === 'map_unavailable'" in map_panel
+    assert "reason === 'request_rejected_active_mode'" in map_panel
 
     for forbidden in ["禁止建设", "审批通过", "法定退界", "安全距离", "步行服务区"]:
         assert forbidden not in panel
+
+
+def test_representative_frontend_human_selected_confirmation_validates():
+    dictionary = authoritative_dictionary_fixture()
+    original_input = {
+        "facility_name": "新型邻里服务点",
+        "raw_facility_type": "未分类设施",
+        "use_description": "现场材料由审查员核验",
+    }
+    resolution = resolve_s6_facility_semantics(**original_input, dictionary=dictionary)
+    selected_candidate_audit = human_selected_candidate(
+        evidence=[
+            {
+                "evidence_type": "reviewer_reason",
+                "reason": "审查员核验了本次申请材料。",
+            }
+        ]
+    )
+    confirmation = {
+        "actor_id": "frontend_reviewer",
+        "confirmed_at": "2026-07-11T02:00:00Z",
+        "selected_standard_class_id": "facility.market",
+        "original_input_digest": resolution["original_input_digest"],
+        "dictionary_version": "liv-2.0-fixture-v1",
+    }
+
+    validated = validate_human_confirmation(
+        confirmation,
+        dictionary=dictionary,
+        original_input=original_input,
+        selected_candidate=selected_candidate_audit,
+    )
+
+    assert validated["valid"] is True
+    assert validated["selected_candidate"] == selected_candidate_audit
