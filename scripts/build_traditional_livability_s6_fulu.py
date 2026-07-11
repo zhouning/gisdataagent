@@ -36,12 +36,20 @@ def build_s6_fulu(
     output_dir: Path,
     facility_dictionary: Mapping[str, Any] | None = None,
     compatibility_matrix: Mapping[str, Any] | None = None,
+    facility_dictionary_error: str | None = None,
+    compatibility_matrix_error: str | None = None,
 ) -> dict[str, Any]:
     if facility_product is None:
         return {
             "ready": False,
             "exit_code": 2,
             "blockers": ["facility_product_missing"],
+        }
+    if not _valid_facility_product(facility_product):
+        return {
+            "ready": False,
+            "exit_code": 2,
+            "blockers": ["facility_product_invalid"],
         }
 
     resources = s6_adapter.build_fulu_s6_resources(
@@ -58,35 +66,103 @@ def build_s6_fulu(
         }
 
     public_resources = _public_payload(resources)
-    dictionary = (
-        validate_facility_dictionary(facility_dictionary)
-        if facility_dictionary is not None
-        else unavailable_facility_dictionary()
+    dictionary = _dictionary_contract(
+        facility_dictionary, facility_dictionary_error
     )
-    compatibility = (
-        validate_compatibility_matrix(compatibility_matrix)
-        if compatibility_matrix is not None
-        else unavailable_compatibility_matrix()
+    compatibility = _compatibility_contract(
+        compatibility_matrix, compatibility_matrix_error
     )
     manifest = _build_manifest(public_resources, dictionary, compatibility)
 
     output_path = Path(output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
     snapshots = {
         RESOURCE_FILENAME: public_resources,
         DICTIONARY_FILENAME: dictionary,
         COMPATIBILITY_FILENAME: compatibility,
         MANIFEST_FILENAME: manifest,
     }
-    for filename, payload in snapshots.items():
-        _atomic_json(output_path / filename, payload)
+    try:
+        _write_snapshots_atomic(output_path, snapshots)
+    except (TypeError, ValueError):
+        return {
+            "ready": False,
+            "exit_code": 2,
+            "blockers": ["snapshot_serialization_failed"],
+        }
+
+    authority_blockers = []
+    if facility_dictionary_error is not None:
+        authority_blockers.append(facility_dictionary_error)
+    elif facility_dictionary is not None and not dictionary.get("ready"):
+        authority_blockers.append("facility_dictionary_invalid")
+    if compatibility_matrix_error is not None:
+        authority_blockers.append(compatibility_matrix_error)
+    elif compatibility_matrix is not None and not compatibility.get("ready"):
+        authority_blockers.append("compatibility_matrix_invalid")
 
     return {
-        "ready": True,
-        "exit_code": 0,
+        "ready": not authority_blockers,
+        "exit_code": 2 if authority_blockers else 0,
         "output_dir": str(output_path),
-        "blockers": [],
+        "blockers": authority_blockers,
     }
+
+
+def _valid_facility_product(payload: Mapping[str, Any]) -> bool:
+    if not isinstance(payload, Mapping):
+        return False
+    if payload.get("schema") != "uwm.traditional_livability.facility_product.v1":
+        return False
+    facilities = payload.get("facilities")
+    if not isinstance(facilities, list) or any(
+        not isinstance(row, Mapping) for row in facilities
+    ):
+        return False
+    source_manifest = payload.get("source_manifest")
+    if not isinstance(source_manifest, Mapping):
+        return False
+    if source_manifest.get("schema") != "uwm.traditional_livability.source_manifest.v1":
+        return False
+    sources = source_manifest.get("sources")
+    return (
+        isinstance(sources, list)
+        and all(isinstance(row, Mapping) for row in sources)
+        and isinstance(source_manifest.get("complete_inventory"), bool)
+    )
+
+
+def _dictionary_contract(
+    payload: Mapping[str, Any] | None, error: str | None
+) -> dict[str, Any]:
+    if error is None:
+        return (
+            validate_facility_dictionary(payload)
+            if payload is not None
+            else unavailable_facility_dictionary()
+        )
+    contract = unavailable_facility_dictionary()
+    contract["status"] = "dictionary_input_" + error.removeprefix(
+        "facility_dictionary_"
+    )
+    contract["validation_errors"] = [error]
+    return contract
+
+
+def _compatibility_contract(
+    payload: Mapping[str, Any] | None, error: str | None
+) -> dict[str, Any]:
+    if error is None:
+        return (
+            validate_compatibility_matrix(payload)
+            if payload is not None
+            else unavailable_compatibility_matrix()
+        )
+    contract = unavailable_compatibility_matrix()
+    contract["status"] = "compatibility_matrix_input_" + error.removeprefix(
+        "compatibility_matrix_"
+    )
+    contract["validation_errors"] = [error]
+    return contract
 
 
 def _build_manifest(
@@ -147,13 +223,32 @@ def _remove_private_paths(value: Any) -> Any:
     return value
 
 
-def _atomic_json(path: Path, payload: Mapping[str, Any]) -> None:
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-    )
-    os.replace(temporary, path)
+def _write_snapshots_atomic(
+    output_dir: Path, snapshots: Mapping[str, Mapping[str, Any]]
+) -> None:
+    serialized = {
+        filename: json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            allow_nan=False,
+        )
+        + "\n"
+        for filename, payload in snapshots.items()
+    }
+    output_dir.mkdir(parents=True, exist_ok=True)
+    temporary_paths = []
+    try:
+        for filename, contents in serialized.items():
+            temporary = (output_dir / filename).with_suffix(".json.tmp")
+            temporary.write_text(contents, encoding="utf-8")
+            temporary_paths.append(temporary)
+        for temporary in temporary_paths:
+            os.replace(temporary, temporary.with_suffix(""))
+    finally:
+        for temporary in temporary_paths:
+            if temporary.exists():
+                temporary.unlink()
 
 
 def _load_json(path: Path) -> Mapping[str, Any]:
@@ -161,6 +256,21 @@ def _load_json(path: Path) -> Mapping[str, Any]:
     if not isinstance(payload, dict):
         raise ValueError(f"JSON payload must be an object: {path}")
     return payload
+
+
+def _load_optional_json(
+    path: Path | None, *, prefix: str
+) -> tuple[Mapping[str, Any] | None, str | None]:
+    if path is None:
+        return None, None
+    if not path.is_file():
+        return None, f"{prefix}_missing"
+    try:
+        return _load_json(path), None
+    except OSError:
+        return None, f"{prefix}_unreadable"
+    except (json.JSONDecodeError, ValueError):
+        return None, f"{prefix}_malformed_json"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -179,20 +289,34 @@ def main(argv: list[str] | None = None) -> int:
             "blockers": ["facility_product_missing"],
         }
     else:
+        try:
+            facility_product = _load_json(args.facility_product)
+        except (OSError, json.JSONDecodeError, ValueError):
+            facility_product = None
+        if facility_product is None:
+            result = {
+                "ready": False,
+                "exit_code": 2,
+                "blockers": ["facility_product_invalid"],
+            }
+            print(json.dumps(result, ensure_ascii=False))
+            return 2
+        facility_dictionary, facility_dictionary_error = _load_optional_json(
+            args.facility_dictionary,
+            prefix="facility_dictionary",
+        )
+        compatibility_matrix, compatibility_matrix_error = _load_optional_json(
+            args.compatibility_matrix,
+            prefix="compatibility_matrix",
+        )
         result = build_s6_fulu(
             source_root=args.source_root,
-            facility_product=_load_json(args.facility_product),
+            facility_product=facility_product,
             output_dir=args.output,
-            facility_dictionary=(
-                _load_json(args.facility_dictionary)
-                if args.facility_dictionary is not None
-                else None
-            ),
-            compatibility_matrix=(
-                _load_json(args.compatibility_matrix)
-                if args.compatibility_matrix is not None
-                else None
-            ),
+            facility_dictionary=facility_dictionary,
+            compatibility_matrix=compatibility_matrix,
+            facility_dictionary_error=facility_dictionary_error,
+            compatibility_matrix_error=compatibility_matrix_error,
         )
     print(json.dumps(result, ensure_ascii=False))
     return int(result["exit_code"])
