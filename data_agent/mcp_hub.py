@@ -133,6 +133,7 @@ class McpServerStatus:
     tool_names: list[str] = field(default_factory=list)
     error_message: str = ""
     connected_at: Optional[float] = None
+    runtime_secrets: tuple[str, ...] = field(default_factory=tuple, repr=False)
 
 
 def _streamable_http_kwargs(
@@ -486,6 +487,7 @@ class McpHubManager:
             return False
         config = status.config
         redaction_secrets: list[str] = []
+        status.runtime_secrets = ()
 
         try:
             from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
@@ -540,6 +542,7 @@ class McpHubManager:
             status.tool_names = [tool.name for tool in tools]
             status.connected_at = time.time()
             status.error_message = ""
+            status.runtime_secrets = tuple(redaction_secrets)
 
             logger.info(
                 t("mcp.server_connected", name=name, count=len(tools))
@@ -553,6 +556,7 @@ class McpHubManager:
             status.toolset = None
             status.tool_count = 0
             status.tool_names = []
+            status.runtime_secrets = ()
             logger.warning(t("mcp.server_failed", name=name, error=error_message))
             return False
 
@@ -566,7 +570,8 @@ class McpHubManager:
             try:
                 await status.toolset.close()
             except Exception as e:
-                logger.warning("Error closing MCP server '%s': %s", name, e)
+                error_message = redact_mcp_text(str(e), status.runtime_secrets)
+                logger.warning("Error closing MCP server '%s': %s", name, error_message)
 
         status.toolset = None
         status.status = "disconnected"
@@ -574,6 +579,7 @@ class McpHubManager:
         status.tool_names = []
         status.connected_at = None
         status.error_message = ""
+        status.runtime_secrets = ()
         logger.info(t("mcp.server_disconnected", name=name))
         return True
 
@@ -822,7 +828,7 @@ class McpHubManager:
                 server_tools = await s.toolset.get_tools()
                 tools.extend(server_tools)
             except Exception as e:
-                error_message = redact_mcp_text(str(e))
+                error_message = redact_mcp_text(str(e), s.runtime_secrets)
                 logger.warning("Failed to get tools from '%s': %s", name, error_message)
                 s.status = "error"
                 s.error_message = error_message
@@ -845,7 +851,11 @@ class McpHubManager:
                 }
                 result.append(info)
             return result
-        except Exception:
+        except Exception as e:
+            error_message = redact_mcp_text(str(e), status.runtime_secrets)
+            logger.warning("Failed to get tools from '%s': %s", name, error_message)
+            status.status = "error"
+            status.error_message = error_message
             return []
 
 

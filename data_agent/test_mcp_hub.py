@@ -147,6 +147,18 @@ class TestMcpServerStatus(unittest.TestCase):
         self.assertEqual(status.tool_names, [])
         self.assertEqual(status.error_message, "")
         self.assertIsNone(status.connected_at)
+        self.assertEqual(status.runtime_secrets, ())
+
+    def test_runtime_secrets_are_excluded_from_status_repr(self):
+        from data_agent.mcp_hub import McpServerConfig, McpServerStatus
+
+        token = "repr-must-not-leak-token"
+        status = McpServerStatus(
+            config=McpServerConfig(name="secure"),
+            runtime_secrets=(token,),
+        )
+
+        self.assertNotIn(token, repr(status))
 
 
 # ---------------------------------------------------------------------------
@@ -321,6 +333,23 @@ class TestMcpHubManager(unittest.TestCase):
         self.assertEqual(statuses[0]["category"], "gis")
         self.assertEqual(statuses[0]["pipelines"], ["general"])
 
+    def test_get_server_statuses_never_exposes_runtime_secrets(self):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
+
+        token = "status-api-must-not-leak"
+        hub = McpHubManager()
+        hub._servers = {
+            "secure": McpServerStatus(
+                config=McpServerConfig(name="secure"),
+                runtime_secrets=(token,),
+            )
+        }
+
+        statuses = hub.get_server_statuses()
+
+        self.assertNotIn("runtime_secrets", statuses[0])
+        self.assertNotIn(token, repr(statuses))
+
     def test_connect_unknown_server(self):
         from data_agent.mcp_hub import McpHubManager
         hub = McpHubManager()
@@ -443,12 +472,13 @@ class TestMcpHubManager(unittest.TestCase):
         token = "later-session-token"
         toolset = MagicMock()
         toolset.get_tools = AsyncMock(side_effect=RuntimeError(
-            f"Bearer {token} failed at https://host/mcp?sig=signed-value"
+            f"tool session failed with exact credential {token}"
         ))
         status = McpServerStatus(
             config=McpServerConfig(name="secure"),
             status="connected",
             toolset=toolset,
+            runtime_secrets=(token,),
         )
         hub = McpHubManager()
         hub._servers = {"secure": status}
@@ -458,10 +488,8 @@ class TestMcpHubManager(unittest.TestCase):
 
         self.assertEqual(tools, [])
         self.assertNotIn(token, status.error_message)
-        self.assertNotIn("signed-value", status.error_message)
         self.assertIn("failed", status.error_message)
         self.assertNotIn(token, repr(warning.call_args))
-        self.assertNotIn("signed-value", repr(warning.call_args))
 
     def test_get_tools_for_server_disconnected(self):
         from data_agent.mcp_hub import McpHubManager
@@ -498,6 +526,31 @@ class TestMcpHubManager(unittest.TestCase):
         self.assertEqual(result[0]["name"], "buffer_analysis")
         self.assertEqual(result[0]["description"], "Create a buffer zone")
         self.assertEqual(result[0]["server"], "test-srv")
+
+    def test_get_tools_for_server_redacts_exact_runtime_secret(self):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
+
+        token = "single-server-exact-token"
+        toolset = MagicMock()
+        toolset.get_tools = AsyncMock(side_effect=RuntimeError(
+            f"tool lookup failed with exact credential {token}"
+        ))
+        status = McpServerStatus(
+            config=McpServerConfig(name="secure"),
+            status="connected",
+            toolset=toolset,
+            runtime_secrets=(token,),
+        )
+        hub = McpHubManager()
+        hub._servers = {"secure": status}
+
+        with patch("data_agent.mcp_hub.logger.warning") as warning:
+            result = _run(hub.get_tools_for_server("secure"))
+
+        self.assertEqual(result, [])
+        self.assertNotIn(token, status.error_message)
+        self.assertIn("lookup failed", status.error_message)
+        self.assertNotIn(token, repr(warning.call_args))
 
     def test_shutdown_disconnects_connected(self):
         """shutdown() disconnects all connected servers."""
@@ -595,6 +648,32 @@ class TestSecureMcpHttpTransport(unittest.TestCase):
         build_factory.assert_called_once_with(ca_path)
         self.assertEqual(static_headers, {"X-Service": "arcpy"})
         self.assertNotIn("Authorization", config.headers)
+        self.assertEqual(hub._servers["arcpy"].runtime_secrets, ("runtime-token",))
+
+    def test_disconnect_redacts_close_error_and_clears_runtime_secrets(self):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
+
+        token = "close-error-exact-token"
+        toolset = MagicMock()
+        toolset.close = AsyncMock(side_effect=RuntimeError(
+            f"close failed with exact credential {token}"
+        ))
+        status = McpServerStatus(
+            config=McpServerConfig(name="secure"),
+            status="connected",
+            toolset=toolset,
+            runtime_secrets=(token,),
+        )
+        hub = McpHubManager()
+        hub._servers = {"secure": status}
+
+        with patch("data_agent.mcp_hub.logger.warning") as warning:
+            result = _run(hub.disconnect_server("secure"))
+
+        self.assertTrue(result)
+        self.assertNotIn(token, repr(warning.call_args))
+        self.assertIn("close failed", repr(warning.call_args))
+        self.assertEqual(status.runtime_secrets, ())
 
     def test_connect_server_keeps_default_http_client_for_generic_server(self):
         from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
@@ -712,6 +791,7 @@ class TestSecureMcpHttpTransport(unittest.TestCase):
         self.assertIn("failed", error_message)
         self.assertNotIn(token, repr(warning.call_args))
         self.assertNotIn("signed-value", repr(warning.call_args))
+        self.assertEqual(hub._servers["arcpy"].runtime_secrets, ())
 
     def test_test_connection_redacts_runtime_secret_from_returned_error(self):
         from data_agent.mcp_hub import McpHubManager, McpServerConfig
