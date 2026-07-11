@@ -225,9 +225,39 @@ def test_traditional_livability_s4_panel_uses_project_alignment_contract():
     assert "confirmed_standard_class_id" in panel
     assert "human_confirmation" in panel
     assert "actor_id" not in panel
+    assert "buildS4Confirmation" in panel
+    assert "buildHumanSelectedCandidate" in panel
+    assert "selected_candidate: selectedCandidateAudit" in panel
+    assert "authority_level: 'human_confirmation'" in panel
+    assert "match_method: 'human_selected'" in panel
+    assert "confidence: 'human_confirmed'" in panel
+    assert "evidence: [{ evidence_type: 'reviewer_reason', reason: reviewerReason }]" in panel
+    assert "confirmationsByUseId" in panel
+    assert "semantic.resolution_status === 'unresolved'" in panel
+    assert "dictionaryReady" in panel
+    assert "human_confirmation: confirmation || undefined" in panel
+    assert "confirmed_standard_class_id: confirmation?.selected_standard_class_id" in panel
     assert "let stale = false" in panel
     assert "if (stale) return" in panel
     assert "return () => { stale = true; }" in panel
+    assert "AbortController" in panel
+    assert "analyzeAbortRef.current?.abort()" in panel
+    assert "signal: controller.signal" in panel
+    assert "if (controller.signal.aborted) return" in panel
+    assert "analysisAreaId" in panel
+    assert "parcel.analysis_area_id === analysisAreaId" in panel
+    assert "setParcelId('')" in panel
+    assert "validation_errors" in panel
+    assert "validation_blockers" in panel
+    assert "parcel_direct_evidence).planning_resources" in panel
+    assert "parcel_direct_evidence).current_facilities" in panel
+    assert "neighborhood_evidence).planning_resources" in panel
+    assert "neighborhood_evidence).current_facilities" in panel
+    assert "duplicate_supply_evidence" in panel
+    assert "unresolved_planning_resources" in panel
+    assert "unresolved_current_facilities" in panel
+    assert "applied_rules" in panel
+    assert "non_applicable" in panel
     assert "geojson.proposed_geometry" in panel
     assert "geojson.screening_buffer" in panel
     assert "geojson.planning_resource_hits" in panel
@@ -244,6 +274,36 @@ def test_traditional_livability_s4_panel_uses_project_alignment_contract():
         "正式对齐结论",
     ]:
         assert forbidden not in panel
+
+
+def test_s4_frontend_confirmation_payload_shape_matches_backend_validator():
+    dictionary = authoritative_dictionary_fixture()
+    original_input = {
+        "facility_name": "新型邻里服务点",
+        "raw_facility_type": "未分类设施",
+        "use_description": "现场材料由审查员核验",
+    }
+    resolution = resolve_s6_facility_semantics(**original_input, dictionary=dictionary)
+    selected_candidate_audit = human_selected_candidate(
+        evidence=[{"evidence_type": "reviewer_reason", "reason": "审查员核验了本次申请材料。"}]
+    )
+    confirmation = {
+        "confirmed_at": "2026-07-11T02:00:00Z",
+        "selected_standard_class_id": "facility.market",
+        "original_input_digest": resolution["original_input_digest"],
+        "dictionary_version": "liv-2.0-fixture-v1",
+        "selected_candidate": selected_candidate_audit,
+    }
+
+    validated = validate_human_confirmation(
+        {**confirmation, "actor_id": "authenticated-route-actor"},
+        dictionary=dictionary,
+        original_input=original_input,
+        selected_candidate=selected_candidate_audit,
+    )
+
+    assert validated["valid"] is True
+    assert "actor_id" not in confirmation
 
 
 def test_representative_frontend_human_selected_confirmation_validates():
