@@ -108,9 +108,32 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
   const [measureResult, setMeasureResult] = useState<string>('');
   const measureLayerRef = useRef<L.LayerGroup | null>(null);
   const annotationLayerRef = useRef<L.LayerGroup | null>(null);
+  const s6PointSelectionRequestedRef = useRef(false);
   const [availableBasemaps, setAvailableBasemaps] = useState<Record<string, string>>({ ...BASEMAPS });
 
   // Fetch basemap config (Tianditu)
+  useEffect(() => {
+    const requestS6PointSelection = () => {
+      if (annotationMode || measureMode || drawMode) return;
+      const map = mapRef.current;
+      if (!map) return;
+      s6PointSelectionRequestedRef.current = true;
+      map.once('click', (event: L.LeafletMouseEvent) => {
+        if (!s6PointSelectionRequestedRef.current) return;
+        s6PointSelectionRequestedRef.current = false;
+        window.dispatchEvent(new CustomEvent('traditional-livability-s6-point-selected', { detail: { longitude: event.latlng.lng, latitude: event.latlng.lat } }));
+      });
+    };
+    window.addEventListener('traditional-livability-s6-request-point-selection', requestS6PointSelection);
+    return () => window.removeEventListener('traditional-livability-s6-request-point-selection', requestS6PointSelection);
+  }, [annotationMode, measureMode, drawMode]);
+
+  useEffect(() => {
+    if (annotationMode || measureMode || drawMode) {
+      s6PointSelectionRequestedRef.current = false;
+    }
+  }, [annotationMode, measureMode, drawMode]);
+
   useEffect(() => {
     fetch('/api/config/basemaps', { credentials: 'include' })
       .then((r) => r.json())

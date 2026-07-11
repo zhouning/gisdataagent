@@ -19,6 +19,15 @@ S7_PANEL = (
     / "datapanel"
     / "TraditionalLivabilityS7Panel.tsx"
 )
+S6_PANEL = (
+    ROOT
+    / "frontend"
+    / "src"
+    / "components"
+    / "datapanel"
+    / "TraditionalLivabilityS6Panel.tsx"
+)
+MAP_PANEL = ROOT / "frontend" / "src" / "components" / "MapPanel.tsx"
 
 
 def test_traditional_livability_tab_is_registered_in_datapanel():
@@ -90,3 +99,46 @@ def test_traditional_livability_s7_panel_uses_distance_proxy_contract():
         assert required in text
     assert "步行服务区" not in text
     assert "15分钟步行" not in text
+
+
+def test_traditional_livability_s6_panel_uses_evidence_bounded_contract():
+    panel = S6_PANEL.read_text(encoding="utf-8")
+    tab = TRADITIONAL_TAB.read_text(encoding="utf-8")
+    map_panel = MAP_PANEL.read_text(encoding="utf-8")
+
+    assert "TraditionalLivabilityS6Panel" in tab
+    for required in [
+        "/api/uwm/traditional-livability/s6/resources",
+        "/api/uwm/traditional-livability/s6/dictionary",
+        "/api/uwm/traditional-livability/s6/analyze",
+        "S6 超范围设施评估",
+        "地图点选",
+        "规划地块",
+        "设施名称",
+        "原始类型",
+        "用途说明",
+        "语义候选",
+        "人工确认",
+        "权威字典或规则不可用",
+        "150 米空间初筛范围",
+        "规划资源命中",
+        "现状设施命中",
+        "语义未解析对象",
+        "潜在冲突、需人工复核",
+        "采样库存",
+        "max_claim_level",
+        "production_blockers",
+        "__handleMapUpdate",
+        "traditional-livability-s6-request-point-selection",
+        "traditional-livability-s6-point-selected",
+    ]:
+        assert required in panel
+
+    assert "traditional-livability-s6-request-point-selection" in map_panel
+    assert "traditional-livability-s6-point-selected" in map_panel
+    assert "annotationMode || measureMode || drawMode" in map_panel
+    assert "confirmed_standard_class_id: selectedCandidateId || undefined" in panel
+    assert "human_confirmation: confirmation" in panel
+
+    for forbidden in ["禁止建设", "审批通过", "法定退界", "安全距离", "步行服务区"]:
+        assert forbidden not in panel
