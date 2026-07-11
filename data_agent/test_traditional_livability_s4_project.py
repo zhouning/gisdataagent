@@ -351,3 +351,62 @@ def test_mixed_string_int_and_tuple_keys_have_deterministic_safe_blockers(
     assert result["normalized_request"] is None
     assert result["content_digest"] is None
     json.dumps(result, ensure_ascii=False, allow_nan=False, sort_keys=True)
+
+
+@pytest.mark.parametrize(
+    ("value", "expected_sign"),
+    [
+        (10**10000, "positive"),
+        (-(10**10000), "negative"),
+    ],
+    ids=["positive_huge_int", "negative_huge_int"],
+)
+def test_excessive_integer_raw_audit_uses_strict_json_safe_marker(
+    value, expected_sign
+):
+    request = project_request(gfa=value)
+
+    result = validate_s4_project_request(request, actor_id="planner")
+
+    assert result["valid"] is False
+    assert result["validation_errors"] == [
+        "strict_json_integer_too_large:$.uses[0].gfa_m2",
+        "uses[0].gfa_m2_must_be_finite_positive_number",
+    ]
+    marker = result["raw_request"]["uses"][0]["gfa_m2"]
+    assert marker == {
+        "__raw_audit_marker__": "integer_exceeds_strict_json_digit_limit",
+        "type": "int",
+        "sign": expected_sign,
+        "bit_length": abs(value).bit_length(),
+        "sha256": marker["sha256"],
+    }
+    assert marker["sha256"].startswith("sha256:")
+    assert len(marker["sha256"]) == len("sha256:") + 64
+    assert result["normalized_request"] is None
+    assert result["content_digest"] is None
+    json.dumps(result, ensure_ascii=False, allow_nan=False, sort_keys=True)
+
+
+def test_excessive_integer_raw_audit_marker_is_applied_recursively():
+    request = project_request()
+    request["uses"][0]["human_confirmation"]["evidence"] = [
+        {"source_value": 10**10000}
+    ]
+
+    result = validate_s4_project_request(request, actor_id="planner")
+
+    assert result["valid"] is False
+    assert (
+        "strict_json_integer_too_large:"
+        "$.uses[0].human_confirmation.evidence[0].source_value"
+    ) in result["validation_errors"]
+    marker = result["raw_request"]["uses"][0]["human_confirmation"]["evidence"][0][
+        "source_value"
+    ]
+    assert marker["__raw_audit_marker__"] == (
+        "integer_exceeds_strict_json_digit_limit"
+    )
+    assert marker["type"] == "int"
+    assert marker["sign"] == "positive"
+    json.dumps(result, ensure_ascii=False, allow_nan=False, sort_keys=True)

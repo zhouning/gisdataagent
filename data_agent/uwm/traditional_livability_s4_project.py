@@ -4,6 +4,7 @@ from copy import deepcopy
 from hashlib import sha256
 import json
 import math
+import sys
 from typing import Any, Mapping
 
 
@@ -49,6 +50,67 @@ def _canonical_json_value(value: Any) -> Any:
         return [_canonical_json_value(item) for item in value]
     if value is None or isinstance(value, (bool, int, float, str)):
         if isinstance(value, float) and not math.isfinite(value):
+            raise ValueError("canonical payload numbers must be finite")
+        return value
+    raise TypeError(f"unsupported canonical payload value: {type(value).__name__}")
+
+
+def _estimated_decimal_digits(value: int) -> int:
+    bit_length = abs(value).bit_length()
+    if bit_length == 0:
+        return 1
+    return (bit_length * 30103) // 100000 + 1
+
+
+def _excessive_integer_audit_marker(value: int) -> dict[str, Any]:
+    magnitude = abs(value)
+    bit_length = magnitude.bit_length()
+    byte_length = max(1, (bit_length + 7) // 8)
+    digest = sha256()
+    digest.update(b"-" if value < 0 else b"+")
+    digest.update(magnitude.to_bytes(byte_length, byteorder="big", signed=False))
+    return {
+        "__raw_audit_marker__": "integer_exceeds_strict_json_digit_limit",
+        "type": "int",
+        "sign": "negative" if value < 0 else "positive",
+        "bit_length": bit_length,
+        "sha256": f"sha256:{digest.hexdigest()}",
+    }
+
+
+def _strict_json_audit_value(
+    value: Any, *, errors: list[str], path: str = "$"
+) -> Any:
+    if isinstance(value, Mapping):
+        if any(not isinstance(key, str) for key in value):
+            raise TypeError("canonical payload object keys must be strings")
+        return {
+            key: _strict_json_audit_value(
+                value[key],
+                errors=errors,
+                path=f"{path}.{key}",
+            )
+            for key in sorted(value)
+        }
+    if isinstance(value, list):
+        return [
+            _strict_json_audit_value(
+                item,
+                errors=errors,
+                path=f"{path}[{index}]",
+            )
+            for index, item in enumerate(value)
+        ]
+    if isinstance(value, bool) or value is None or isinstance(value, str):
+        return deepcopy(value)
+    if isinstance(value, int):
+        digit_limit = sys.get_int_max_str_digits()
+        if digit_limit and _estimated_decimal_digits(value) > digit_limit:
+            errors.append(f"strict_json_integer_too_large:{path}")
+            return _excessive_integer_audit_marker(value)
+        return value
+    if isinstance(value, float):
+        if not math.isfinite(value):
             raise ValueError("canonical payload numbers must be finite")
         return value
     raise TypeError(f"unsupported canonical payload value: {type(value).__name__}")
@@ -263,7 +325,7 @@ def validate_s4_project_request(
     )
 
     try:
-        raw_request = deepcopy(_canonical_json_value(payload))
+        raw_request = _strict_json_audit_value(payload, errors=errors)
     except (TypeError, ValueError):
         raw_request = None
         errors.append("content_not_canonical_json")
