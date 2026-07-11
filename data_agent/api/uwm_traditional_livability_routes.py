@@ -49,14 +49,6 @@ S6_SCHEMAS = {
     "dictionary": DICTIONARY_SCHEMA,
     "compatibility": COMPATIBILITY_SCHEMA,
 }
-S4_PROJECT_FIELDS = {
-    "actor_id",
-    "analysis_area_id",
-    "planning_parcel_id",
-    "project_description",
-    "project_name",
-    "uses",
-}
 S4_ENGINE_INPUT_BLOCKERS = {
     "analysis_area_id_missing",
     "confirmed_class_authoritative_mismatch",
@@ -730,14 +722,9 @@ async def uwm_traditional_livability_s4_analyze(request: Request):
             status_code=400,
         )
     rebound_payload = _bind_s4_confirmation_actors(payload, username)
-    trusted_payload = {
-        key: rebound_payload.get(key)
-        for key in S4_PROJECT_FIELDS
-        if key in rebound_payload
-    }
     project = await asyncio.to_thread(
         validate_s4_project_request,
-        trusted_payload,
+        rebound_payload,
         actor_id=username,
     )
     if project.get("valid") is not True:

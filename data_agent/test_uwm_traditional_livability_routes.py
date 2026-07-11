@@ -806,9 +806,7 @@ async def test_s4_analyze_binds_actor_validates_project_and_ignores_client_snaps
                     "human_confirmation": omitted_confirmation,
                 },
             ]
-        ),
-        "s1_snapshot": {"tampered": True},
-        "s6_resources": {"tampered": True},
+        )
     }
 
     response = await routes.uwm_traditional_livability_s4_analyze(
@@ -835,7 +833,43 @@ async def test_s4_analyze_binds_actor_validates_project_and_ignores_client_snaps
         for result in captured["s6_results"]
     )
     assert "spoofed-reviewer" not in json.dumps(captured)
-    assert "tampered" not in json.dumps(captured)
+
+
+@pytest.mark.asyncio
+async def test_s4_analyze_rejects_top_level_and_use_injection_fields_exactly(
+    monkeypatch,
+):
+    _authenticated(monkeypatch, "trusted-planner")
+    project = _s4_project(
+        subjective_score=0.9,
+        s1_snapshot={"schema": "client-snapshot"},
+        s6_resources={"schema": "client-resources"},
+        uses=[
+            {
+                **_s4_project()["uses"][0],
+                "authority_override": True,
+                "capacity_score": 0.8,
+            }
+        ],
+    )
+
+    response = await routes.uwm_traditional_livability_s4_analyze(
+        _request(
+            "/api/uwm/traditional-livability/s4/analyze",
+            method="POST",
+            payload=project,
+        )
+    )
+    payload = json.loads(response.body)
+
+    assert response.status_code == 400
+    assert payload["validation_errors"] == [
+        "project_undeclared_field:s1_snapshot",
+        "project_undeclared_field:s6_resources",
+        "project_undeclared_field:subjective_score",
+        "uses[0].undeclared_field:authority_override",
+        "uses[0].undeclared_field:capacity_score",
+    ]
 
 
 @pytest.mark.parametrize("authority", ["dictionary", "compatibility"])
