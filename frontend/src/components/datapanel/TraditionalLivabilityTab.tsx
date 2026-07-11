@@ -12,6 +12,7 @@ import {
 import TraditionalLivabilityS7Panel from './TraditionalLivabilityS7Panel';
 import TraditionalLivabilityS6Panel from './TraditionalLivabilityS6Panel';
 import TraditionalLivabilityS4Panel from './TraditionalLivabilityS4Panel';
+import TraditionalLivabilityMobilityPanel from './TraditionalLivabilityMobilityPanel';
 
 declare global {
   interface Window {
@@ -169,6 +170,7 @@ export default function TraditionalLivabilityTab() {
 
   return (
     <div className="traditional-livability-tab">
+      <TraditionalLivabilityMobilityPanel />
       <div className="datapanel-section-header">
         <div>
           <h3>城市宜居性分析（传统方法）</h3>
