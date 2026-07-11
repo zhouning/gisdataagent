@@ -309,3 +309,45 @@ def test_non_string_object_keys_fail_closed_and_remain_json_safe(location):
     assert "content_not_canonical_json" in result["validation_errors"]
     assert result["content_digest"] is None
     json.dumps(result, ensure_ascii=False, allow_nan=False, sort_keys=True)
+
+
+@pytest.mark.parametrize(
+    ("location", "expected_errors"),
+    [
+        (
+            "project",
+            [
+                "project_undeclared_field:z_extra",
+                "project_undeclared_non_string_field:int:7",
+                "project_undeclared_non_string_field:tuple:('tuple', 2)",
+                "content_not_canonical_json",
+            ],
+        ),
+        (
+            "use",
+            [
+                "content_not_canonical_json",
+                "uses[0].undeclared_field:z_extra",
+                "uses[0].undeclared_non_string_field:int:7",
+                "uses[0].undeclared_non_string_field:tuple:('tuple', 2)",
+            ],
+        ),
+    ],
+)
+def test_mixed_string_int_and_tuple_keys_have_deterministic_safe_blockers(
+    location, expected_errors
+):
+    request = project_request()
+    target = request if location == "project" else request["uses"][0]
+    target["z_extra"] = "extra"
+    target[7] = "integer key"
+    target[("tuple", 2)] = "tuple key"
+
+    result = validate_s4_project_request(request, actor_id="planner")
+
+    assert result["valid"] is False
+    assert result["validation_errors"] == expected_errors
+    assert result["raw_request"] is None
+    assert result["normalized_request"] is None
+    assert result["content_digest"] is None
+    json.dumps(result, ensure_ascii=False, allow_nan=False, sort_keys=True)

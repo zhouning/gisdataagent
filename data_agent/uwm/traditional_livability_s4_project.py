@@ -72,6 +72,37 @@ def _normalized_string(value: Any) -> str | None:
     return normalized or None
 
 
+def _safe_key_repr(key: Any) -> str:
+    try:
+        rendered = repr(key)
+    except Exception:
+        rendered = "<repr-unavailable>"
+    return rendered if isinstance(rendered, str) else "<repr-not-string>"
+
+
+def _undeclared_field_errors(
+    row: Mapping[Any, Any], *, allowed_fields: set[str], path: str
+) -> list[str]:
+    string_fields = sorted(
+        key for key in row if isinstance(key, str) and key not in allowed_fields
+    )
+    non_string_fields = sorted(
+        (
+            type(key).__module__,
+            type(key).__qualname__,
+            _safe_key_repr(key),
+        )
+        for key in row
+        if not isinstance(key, str)
+    )
+    errors = [f"{path}undeclared_field:{field}" for field in string_fields]
+    errors.extend(
+        f"{path}undeclared_non_string_field:{type_name}:{rendered}"
+        for _, type_name, rendered in non_string_fields
+    )
+    return errors
+
+
 def _normalized_json_value(value: Any) -> Any:
     if isinstance(value, Mapping):
         return {
@@ -132,8 +163,11 @@ def _normalize_use(
 ) -> dict[str, Any] | None:
     path = f"uses[{index}]."
     errors.extend(
-        f"{path}undeclared_field:{field}"
-        for field in sorted(set(row) - _USE_FIELDS)
+        _undeclared_field_errors(
+            row,
+            allowed_fields=_USE_FIELDS,
+            path=path,
+        )
     )
     use_name = _required_string(row, "use_name", errors, path=path)
     raw_use_type = _required_string(row, "raw_use_type", errors, path=path)
@@ -221,8 +255,11 @@ def validate_s4_project_request(
         return result
 
     errors.extend(
-        f"project_undeclared_field:{field}"
-        for field in sorted(set(payload) - _PROJECT_FIELDS)
+        _undeclared_field_errors(
+            payload,
+            allowed_fields=_PROJECT_FIELDS,
+            path="project_",
+        )
     )
 
     try:
