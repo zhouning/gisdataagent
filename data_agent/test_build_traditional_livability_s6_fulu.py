@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from copy import deepcopy
+import hashlib
 import importlib.util
 import json
 import os
@@ -32,6 +34,20 @@ OUTPUT_FILES = {
     "uwm_traditional_livability_s6_compatibility.json",
     "uwm_traditional_livability_s6_build_manifest.json",
 }
+
+
+def _independent_resource_digest(payload):
+    digest_payload = {
+        key: value for key, value in payload.items() if key != "content_digest"
+    }
+    serialized = json.dumps(
+        digest_payload,
+        ensure_ascii=False,
+        allow_nan=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    return f"sha256:{hashlib.sha256(serialized).hexdigest()}"
 
 
 def test_builder_fails_closed_without_required_planning_sources(tmp_path):
@@ -163,6 +179,14 @@ def test_builder_writes_atomic_public_snapshots_with_unavailable_authority(
     resources = payloads["uwm_traditional_livability_s6_resources.json"]
     assert resources["scope"] == "fulu_heping_and_banzhu_planning_samples_only"
     assert resources["facility_inventory"]["complete_inventory"] is False
+    assert resources["content_digest"] == _independent_resource_digest(resources)
+    assert resources["digest_contract"] == {
+        "algorithm": "sha256",
+        "encoding": "utf-8",
+        "serialization": "canonical_json_sorted_keys_compact_separators_preserve_list_order",
+        "covered_fields": "all_top_level_public_resource_snapshot_fields_and_nested_values",
+        "excluded_top_level_fields": ["content_digest"],
+    }
 
     dictionary = payloads["uwm_traditional_livability_s6_dictionary.json"]
     compatibility = payloads["uwm_traditional_livability_s6_compatibility.json"]
@@ -185,6 +209,60 @@ def test_builder_writes_atomic_public_snapshots_with_unavailable_authority(
         "fulu_banzhu",
     }
     assert all(row["distance_crs"] for row in manifest["planning_coverage"])
+
+
+def test_resource_digest_is_deterministic_and_covers_all_screening_evidence(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(adapter, "ASSET_SPECS", _specs())
+    monkeypatch.setattr(MODULE.s6_adapter, "ASSET_SPECS", _specs())
+    source_root = _planning_fixture_root(tmp_path / "sources")
+
+    first_output = tmp_path / "first"
+    second_output = tmp_path / "second"
+    MODULE.build_s6_fulu(
+        source_root=source_root,
+        facility_product=_facility_product(),
+        output_dir=first_output,
+    )
+    MODULE.build_s6_fulu(
+        source_root=source_root,
+        facility_product=_facility_product(),
+        output_dir=second_output,
+    )
+
+    first = json.loads(
+        (first_output / "uwm_traditional_livability_s6_resources.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    second = json.loads(
+        (second_output / "uwm_traditional_livability_s6_resources.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert first["content_digest"] == second["content_digest"]
+    assert first["content_digest"] == _independent_resource_digest(first)
+
+    mutations = []
+    geometry = deepcopy(first)
+    geometry["planning_areas"][0]["metric_geometry"]["coordinates"][0][0][0] += 1
+    mutations.append(geometry)
+    classification = deepcopy(first)
+    classification["current_facilities"][0]["canonical_class"] = "changed.class"
+    mutations.append(classification)
+    evidence = deepcopy(first)
+    evidence["planning_resources"][0]["interpretation_evidence"] = {
+        "field": "changed",
+        "value": "changed",
+    }
+    mutations.append(evidence)
+    inventory = deepcopy(first)
+    inventory["facility_inventory"]["complete_inventory"] = True
+    mutations.append(inventory)
+
+    for mutated in mutations:
+        assert _independent_resource_digest(mutated) != first["content_digest"]
 
 
 def test_builder_validates_optional_dictionary_and_matrix(tmp_path, monkeypatch):

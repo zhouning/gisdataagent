@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 from copy import deepcopy
+import hashlib
 import json
 import os
 import sys
@@ -27,6 +28,13 @@ RESOURCE_FILENAME = "uwm_traditional_livability_s6_resources.json"
 DICTIONARY_FILENAME = "uwm_traditional_livability_s6_dictionary.json"
 COMPATIBILITY_FILENAME = "uwm_traditional_livability_s6_compatibility.json"
 MANIFEST_FILENAME = "uwm_traditional_livability_s6_build_manifest.json"
+RESOURCE_DIGEST_CONTRACT = {
+    "algorithm": "sha256",
+    "encoding": "utf-8",
+    "serialization": "canonical_json_sorted_keys_compact_separators_preserve_list_order",
+    "covered_fields": "all_top_level_public_resource_snapshot_fields_and_nested_values",
+    "excluded_top_level_fields": ["content_digest"],
+}
 
 
 def build_s6_fulu(
@@ -66,6 +74,17 @@ def build_s6_fulu(
         }
 
     public_resources = _public_payload(resources)
+    public_resources["digest_contract"] = deepcopy(RESOURCE_DIGEST_CONTRACT)
+    try:
+        public_resources["content_digest"] = _resource_content_digest(
+            public_resources
+        )
+    except (TypeError, ValueError):
+        return {
+            "ready": False,
+            "exit_code": 2,
+            "blockers": ["snapshot_serialization_failed"],
+        }
     dictionary = _dictionary_contract(
         facility_dictionary, facility_dictionary_error
     )
@@ -209,6 +228,20 @@ def _build_manifest(
 
 def _public_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
     return _remove_private_paths(deepcopy(dict(payload)))
+
+
+def _resource_content_digest(payload: Mapping[str, Any]) -> str:
+    digest_payload = {
+        key: value for key, value in payload.items() if key != "content_digest"
+    }
+    serialized = json.dumps(
+        digest_payload,
+        ensure_ascii=False,
+        allow_nan=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    return f"sha256:{hashlib.sha256(serialized).hexdigest()}"
 
 
 def _remove_private_paths(value: Any) -> Any:
