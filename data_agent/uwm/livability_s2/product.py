@@ -7,6 +7,8 @@ import json
 from copy import deepcopy
 from typing import Any, Mapping
 
+from data_agent.uwm.geospatial_kernel.state_graph import build_state_graph
+
 
 PRODUCT_FILENAMES = {
     "parcels": "uwm_livability_s2_parcels.geojson",
@@ -31,6 +33,11 @@ def build_s2_product_payloads(
     """Build public JSON payloads from validated inputs and a state graph."""
 
     graph = graph_product["state_graph"]
+    public_graph = build_state_graph(
+        nodes=_public_rows(graph.get("nodes") or []),
+        edges=_public_rows(graph.get("edges") or []),
+        kernel_version=str(graph.get("kernel_version") or ""),
+    )
     payloads = {
         PRODUCT_FILENAMES["parcels"]: _feature_collection(
             "uwm.livability_s2.parcels.v1",
@@ -53,14 +60,14 @@ def build_s2_product_payloads(
         PRODUCT_FILENAMES["graph_nodes"]: {
             "schema": "uwm.livability_s2.graph_nodes.v1",
             "kernel_version": graph.get("kernel_version"),
-            "state_graph_snapshot_digest": graph.get("snapshot_digest"),
-            "nodes": _public_rows(graph.get("nodes") or []),
+            "state_graph_snapshot_digest": public_graph.get("snapshot_digest"),
+            "nodes": public_graph["nodes"],
         },
         PRODUCT_FILENAMES["graph_edges"]: {
             "schema": "uwm.livability_s2.graph_edges.v1",
             "kernel_version": graph.get("kernel_version"),
-            "state_graph_snapshot_digest": graph.get("snapshot_digest"),
-            "edges": _public_rows(graph.get("edges") or []),
+            "state_graph_snapshot_digest": public_graph.get("snapshot_digest"),
+            "edges": public_graph["edges"],
         },
         PRODUCT_FILENAMES["land_use_dictionary"]: deepcopy(dict(land_use_dictionary)),
         PRODUCT_FILENAMES["transition_matrix"]: deepcopy(dict(transition_matrix)),
@@ -68,7 +75,8 @@ def build_s2_product_payloads(
             "schema": "uwm.livability_s2.evidence_manifest.v1",
             "scope": inputs.get("scope"),
             "source_content_digest": inputs.get("content_digest"),
-            "state_graph_snapshot_digest": graph.get("snapshot_digest"),
+            "state_graph_snapshot_digest": public_graph.get("snapshot_digest"),
+            "source_state_graph_snapshot_digest": graph.get("snapshot_digest"),
             "source_manifest": _public_value(inputs.get("source_manifest") or {}),
             "facility_inventory_complete": bool(
                 (inputs.get("facility_inventory") or {}).get("complete_inventory")
@@ -158,4 +166,3 @@ def _content_digest(payload: Mapping[str, Any]) -> str:
         separators=(",", ":"),
     ).encode("utf-8")
     return "sha256:" + hashlib.sha256(encoded).hexdigest()
-
