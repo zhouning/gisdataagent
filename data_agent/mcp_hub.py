@@ -807,25 +807,41 @@ class McpHubManager:
         """Add a new server config. Saves to DB + registers in memory.
         Optionally connects if enabled.
         """
-        if config.name in self._servers:
-            return {"status": "error", "message": f"Server '{config.name}' already exists"}
-        if not config.name or len(config.name) > 100:
-            return {"status": "error", "message": "Invalid server name"}
-        if len(self._servers) >= MAX_MCP_SERVERS:
-            return {"status": "error", "message": f"Maximum {MAX_MCP_SERVERS} servers reached"}
+        async with self._get_lifecycle_lock(config.name):
+            if config.name in self._servers:
+                return {
+                    "status": "error",
+                    "message": f"Server '{config.name}' already exists",
+                }
+            if not config.name or len(config.name) > 100:
+                return {"status": "error", "message": "Invalid server name"}
+            if len(self._servers) >= MAX_MCP_SERVERS:
+                return {
+                    "status": "error",
+                    "message": f"Maximum {MAX_MCP_SERVERS} servers reached",
+                }
 
-        config.source = "db"
-        if not self._save_to_db(config):
-            return {"status": "error", "message": "Failed to save to database"}
+            config.source = "db"
+            if not self._save_to_db(config):
+                return {"status": "error", "message": "Failed to save to database"}
 
-        self._servers[config.name] = McpServerStatus(config=config)
-        connected = False
-        if config.enabled:
-            connected = await self.connect_server(config.name)
+            self._servers[config.name] = McpServerStatus(config=config)
+            connected = False
+            if config.enabled:
+                connected = await self._connect_server_unlocked(config.name)
 
-        logger.info("Added MCP server '%s' (transport=%s, enabled=%s, owner=%s)",
-                     config.name, config.transport, config.enabled, config.owner_username)
-        return {"status": "ok", "server": config.name, "connected": connected}
+            logger.info(
+                "Added MCP server '%s' (transport=%s, enabled=%s, owner=%s)",
+                config.name,
+                config.transport,
+                config.enabled,
+                config.owner_username,
+            )
+            return {
+                "status": "ok",
+                "server": config.name,
+                "connected": connected,
+            }
 
     def _can_manage_server(self, name: str, username: str, role: str) -> bool:
         """Check if user can manage (update/delete) a server.
@@ -841,55 +857,55 @@ class McpHubManager:
 
     async def update_server(self, name: str, updates: dict) -> dict:
         """Update an existing server's config fields. Persists to DB."""
-        status = self._servers.get(name)
-        if not status:
-            return {"status": "error", "message": f"Server '{name}' not found"}
+        async with self._get_lifecycle_lock(name):
+            status = self._servers.get(name)
+            if not status:
+                return {"status": "error", "message": f"Server '{name}' not found"}
 
-        config = status.config
-        was_connected = status.status == "connected"
+            config = status.config
+            was_connected = status.status == "connected"
 
-        # Apply updatable fields
-        for key in ("description", "transport", "category", "command", "url",
-                     "cwd", "timeout", "bearer_token_env_var",
-                     "bearer_token_file_env_var", "ca_bundle_env_var",
-                     "system_managed", "expose_raw_tools", "is_shared"):
-            if key in updates:
-                setattr(config, key, updates[key])
-        for key in ("pipelines", "args", "env", "headers"):
-            if key in updates:
-                setattr(config, key, updates[key])
-        if "enabled" in updates:
-            config.enabled = updates["enabled"]
+            for key in (
+                "description", "transport", "category", "command", "url",
+                "cwd", "timeout", "bearer_token_env_var",
+                "bearer_token_file_env_var", "ca_bundle_env_var",
+                "system_managed", "expose_raw_tools", "is_shared",
+            ):
+                if key in updates:
+                    setattr(config, key, updates[key])
+            for key in ("pipelines", "args", "env", "headers"):
+                if key in updates:
+                    setattr(config, key, updates[key])
+            if "enabled" in updates:
+                config.enabled = updates["enabled"]
 
-        if not self._save_to_db(config):
-            return {"status": "error", "message": "Failed to save to database"}
+            if not self._save_to_db(config):
+                return {"status": "error", "message": "Failed to save to database"}
 
-        # Reconnect if connection-relevant fields changed
-        needs_reconnect = any(k in updates for k in ("transport", "command", "args",
-                                                       "env", "cwd", "url", "headers", "timeout",
-                                                       "bearer_token_env_var",
-                                                       "bearer_token_file_env_var",
-                                                       "ca_bundle_env_var"))
-        if was_connected and needs_reconnect:
-            await self.disconnect_server(name)
-            await self.connect_server(name)
+            needs_reconnect = any(k in updates for k in (
+                "transport", "command", "args", "env", "cwd", "url",
+                "headers", "timeout", "bearer_token_env_var",
+                "bearer_token_file_env_var", "ca_bundle_env_var",
+            ))
+            if was_connected and needs_reconnect:
+                await self._disconnect_server_unlocked(name)
+                await self._connect_server_unlocked(name)
 
-        return {"status": "ok", "server": name}
+            return {"status": "ok", "server": name}
 
     async def remove_server(self, name: str) -> dict:
         """Remove a server completely. Disconnects, deletes from DB, removes from memory."""
-        status = self._servers.get(name)
-        if not status:
-            return {"status": "error", "message": f"Server '{name}' not found"}
+        async with self._get_lifecycle_lock(name):
+            status = self._servers.get(name)
+            if not status:
+                return {"status": "error", "message": f"Server '{name}' not found"}
 
-        if status.status == "connected":
-            await self.disconnect_server(name)
+            await self._cleanup_runtime(name, status)
+            self._delete_from_db(name)
+            del self._servers[name]
 
-        self._delete_from_db(name)
-        del self._servers[name]
-
-        logger.info("Removed MCP server '%s'", name)
-        return {"status": "ok", "server": name}
+            logger.info("Removed MCP server '%s'", name)
+            return {"status": "ok", "server": name}
 
     # ----- Tool access -----
 
