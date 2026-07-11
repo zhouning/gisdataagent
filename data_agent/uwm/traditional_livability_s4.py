@@ -25,6 +25,13 @@ _S1_SCHEMA = "uwm.traditional_livability.s1_assessment.v1"
 _S6_RESOURCE_SCHEMA = "uwm.traditional_livability.s6_fulu_resources.v1"
 _S4_PROJECT_SCHEMA = "uwm.traditional_livability.s4_project_request.v1"
 _DUPLICATION_RULE_PURPOSES = {"duplicate_supply", "capacity"}
+_AUTHORITY_DIGEST_CONTRACT = {
+    "algorithm": "sha256",
+    "encoding": "utf-8",
+    "serialization": "canonical_json_sorted_keys_compact_separators_preserve_list_order",
+    "covered_fields": "all_top_level_source_payload_fields_and_nested_values",
+    "excluded_top_level_fields": ["content_digest"],
+}
 
 
 def _text(value: Any) -> str | None:
@@ -73,6 +80,8 @@ def _validated_authority_payload(
     )
     if not isinstance(payload, Mapping) or payload.get("schema") != expected_schema:
         return {}, [blocker]
+    if _canonical_unavailable_authority(payload, kind=kind):
+        return _json_safe_detached(payload), []
     source_payloads = [deepcopy(dict(payload))]
     if "provided_content_digest" in payload:
         metadata = payload.get("source_metadata")
@@ -114,6 +123,87 @@ def _validated_authority_payload(
         if not validated.get("validation_errors"):
             return validated, []
     return {}, [blocker]
+
+
+def _canonical_unavailable_authority(
+    payload: Mapping[str, Any], *, kind: str
+) -> bool:
+    try:
+        detached = _json_safe_detached(payload)
+    except (TypeError, ValueError):
+        return False
+    if kind == "dictionary":
+        expected_keys = {
+            "schema",
+            "ready",
+            "status",
+            "authoritative_complete_43_class_dictionary",
+            "class_count",
+            "classes",
+            "aliases",
+            "keywords",
+            "alias_index",
+            "keyword_index",
+            "source_metadata",
+            "content_digest",
+            "provided_content_digest",
+            "digest_contract",
+            "validation_errors",
+            "production_blockers",
+        }
+        expected_status = "dictionary_unavailable"
+        expected_blockers = ["authoritative_43_class_facility_dictionary_missing"]
+        expected_metadata_key = "dictionary_version"
+        empty_content = (
+            detached.get("authoritative_complete_43_class_dictionary") is False
+            and detached.get("class_count") == 0
+            and detached.get("classes") == []
+            and detached.get("aliases") == []
+            and detached.get("keywords") == []
+            and detached.get("alias_index") == {}
+            and detached.get("keyword_index") == {}
+        )
+    else:
+        expected_keys = {
+            "schema",
+            "ready",
+            "status",
+            "rules",
+            "rule_index",
+            "source_metadata",
+            "content_digest",
+            "provided_content_digest",
+            "digest_contract",
+            "validation_errors",
+            "production_blockers",
+        }
+        expected_status = "compatibility_matrix_unavailable"
+        expected_blockers = ["authoritative_facility_compatibility_matrix_missing"]
+        expected_metadata_key = "matrix_version"
+        empty_content = detached.get("rules") == [] and detached.get("rule_index") == {}
+    metadata = detached.get("source_metadata")
+    expected_metadata_keys = {
+        expected_metadata_key,
+        "issuing_organization",
+        "source_reference",
+        "effective_date",
+        "version_date",
+        "imported_at",
+    }
+    return (
+        set(detached) == expected_keys
+        and detached.get("ready") is False
+        and detached.get("status") == expected_status
+        and empty_content
+        and isinstance(metadata, Mapping)
+        and set(metadata) == expected_metadata_keys
+        and all(value is None for value in metadata.values())
+        and detached.get("content_digest") is None
+        and detached.get("provided_content_digest") is None
+        and detached.get("digest_contract") == _AUTHORITY_DIGEST_CONTRACT
+        and detached.get("validation_errors") == []
+        and detached.get("production_blockers") == expected_blockers
+    )
 
 
 def _validate_resources(payload: Mapping[str, Any]) -> list[str]:
@@ -684,6 +774,8 @@ def assess_s4_project(
             unresolved_objects=unresolved_objects,
         )
         use_blockers = list(dict.fromkeys([
+            *[str(value) for value in validated_dictionary.get("production_blockers") or []],
+            *[str(value) for value in validated_compatibility.get("production_blockers") or []],
             *[str(value) for value in s6_result.get("validation_blockers") or []],
             *[str(value) for value in s6_result.get("production_blockers") or []],
             *([] if demand["status"] == "demand_supported" else ["authoritative_matching_demand_gap_not_available"]),

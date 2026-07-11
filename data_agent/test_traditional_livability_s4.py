@@ -8,6 +8,12 @@ import pytest
 from shapely.geometry import Point, box, mapping, shape
 
 import data_agent.uwm.traditional_livability_s4 as s4
+from data_agent.test_build_traditional_livability_s6_fulu import MODULE as BUILD_MODULE
+from data_agent.test_traditional_livability_s6_fulu_adapter import (
+    _facility_product,
+    _planning_fixture_root,
+    _specs,
+)
 from data_agent.test_traditional_livability_s6 import resource_fixture
 from data_agent.test_traditional_livability_s6_semantics import (
     authoritative_dictionary_fixture,
@@ -15,8 +21,11 @@ from data_agent.test_traditional_livability_s6_semantics import (
 from data_agent.uwm.traditional_livability_facility_dictionary import (
     COMPATIBILITY_SCHEMA,
     compute_canonical_content_digest,
+    unavailable_compatibility_matrix,
+    unavailable_facility_dictionary,
     validate_compatibility_matrix,
 )
+from data_agent.uwm import traditional_livability_s6_fulu_adapter as s6_adapter
 
 
 def _project(*, uses=None):
@@ -472,6 +481,78 @@ def test_mutated_normalized_matrix_with_stale_digest_fails_closed():
     )
     assert result["status"] == "insufficient_evidence"
     assert result["project_blockers"] == ["compatibility_matrix_contract_invalid"]
+
+
+def test_canonical_unavailable_authority_continues_per_use_analysis():
+    result = s4.assess_s4_project(
+        project=_project(),
+        s1_snapshot=_s1(),
+        s6_resources=_resources(),
+        facility_dictionary=unavailable_facility_dictionary(),
+        compatibility_matrix=unavailable_compatibility_matrix(),
+    )
+    assert len(result["use_assessments"]) == 1
+    assert result["status"] != "insufficient_evidence"
+    assert "authoritative_43_class_facility_dictionary_missing" in result["use_assessments"][0]["blockers"]
+    assert "authoritative_facility_compatibility_matrix_missing" in result["use_assessments"][0]["blockers"]
+    json.dumps(result, ensure_ascii=False, allow_nan=False, sort_keys=True)
+
+
+@pytest.mark.parametrize(
+    ("kind", "mutation", "expected"),
+    [
+        ("dictionary", lambda row: row.update(status="ready"), "facility_dictionary_contract_invalid"),
+        ("dictionary", lambda row: row["classes"].append({"class_id": "tampered"}), "facility_dictionary_contract_invalid"),
+        ("compatibility", lambda row: row.update(ready=True), "compatibility_matrix_contract_invalid"),
+        ("compatibility", lambda row: row["rules"].append({"rule_id": "tampered"}), "compatibility_matrix_contract_invalid"),
+    ],
+)
+def test_malformed_unavailable_authority_fails_closed(kind, mutation, expected):
+    dictionary = unavailable_facility_dictionary()
+    matrix = unavailable_compatibility_matrix()
+    mutation(dictionary if kind == "dictionary" else matrix)
+    result = s4.assess_s4_project(
+        project=_project(), s1_snapshot=_s1(), s6_resources=_resources(),
+        facility_dictionary=dictionary, compatibility_matrix=matrix
+    )
+    assert result["status"] == "insufficient_evidence"
+    assert expected in result["project_blockers"]
+
+
+def test_real_builder_unavailable_snapshots_still_run_s4(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(s6_adapter, "ASSET_SPECS", _specs())
+    monkeypatch.setattr(BUILD_MODULE.s6_adapter, "ASSET_SPECS", _specs())
+    source_root = _planning_fixture_root(tmp_path / "sources")
+    output_dir = tmp_path / "out"
+    build = BUILD_MODULE.build_s6_fulu(
+        source_root=source_root,
+        facility_product=_facility_product(),
+        output_dir=output_dir,
+    )
+    assert build["ready"] is True
+    resources = json.loads((output_dir / BUILD_MODULE.RESOURCE_FILENAME).read_text())
+    dictionary = json.loads((output_dir / BUILD_MODULE.DICTIONARY_FILENAME).read_text())
+    matrix = json.loads((output_dir / BUILD_MODULE.COMPATIBILITY_FILENAME).read_text())
+    parcel = resources["planning_resources"][0]
+    project = _project()
+    project["normalized_request"]["analysis_area_id"] = parcel["planning_area_id"]
+    project["normalized_request"]["planning_parcel_id"] = parcel["resource_id"]
+
+    result = s4.assess_s4_project(
+        project=project,
+        s1_snapshot=_s1(area=parcel["planning_area_id"]),
+        s6_resources=resources,
+        facility_dictionary=dictionary,
+        compatibility_matrix=matrix,
+    )
+    assert len(result["use_assessments"]) == 1
+    assert result["project_summary"]["formal_alignment_enabled"] is False
+    assert result["use_assessments"][0]["status"] in {
+        "insufficient_evidence",
+        "unresolved_review_required",
+    }
 
 
 def test_malformed_inputs_fail_closed_and_project_total_is_recomputed():
