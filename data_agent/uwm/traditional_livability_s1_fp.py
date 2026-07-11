@@ -90,7 +90,7 @@ def evaluate_fp(
             continue
         try:
             selected_facilities.append((row, shape(row["metric_geometry"])))
-        except (KeyError, TypeError, ValueError):
+        except (AttributeError, KeyError, TypeError, ValueError):
             blockers.append("facility_metric_geometry_invalid")
     selected_demand = []
     for row in deepcopy(demand_units):
@@ -105,7 +105,7 @@ def evaluate_fp(
             continue
         try:
             selected_demand.append((row, shape(row["metric_geometry"])))
-        except (KeyError, TypeError, ValueError):
+        except (AttributeError, KeyError, TypeError, ValueError):
             blockers.append("demand_metric_geometry_invalid")
     if blockers:
         return _unresolved(blockers, metric=metric)
