@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import ipaddress
 import json
 import re
 import time
@@ -28,18 +29,39 @@ from data_agent.mcp_transport import (
 )
 
 
-_URL_RE = re.compile(r"(?i)https?://[^\s,;]+")
-_IPV4_RE = re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])")
-_WINDOWS_PATH_RE = re.compile(r"(?i)\b[A-Z]:\\(?:[^\\\s,;]+\\?)+")
-_UNIX_PATH_RE = re.compile(r"(?<![:A-Za-z0-9])/(?:[^/\s,;]+/)*[^/\s,;]+")
+_URL_MARKER_RE = re.compile(r"(?i)https?://")
+_WINDOWS_DRIVE_RE = re.compile(r"(?i)(?:^|[\s\"'(])\s*[A-Z]:\\")
+_UNIX_ABSOLUTE_RE = re.compile(r"(?<![:A-Za-z0-9])/(?!/)")
+
+
+def _contains_ip_address(value: str) -> bool:
+    for token in re.split(r"[\s,;()\[\]{}]+", value):
+        candidate = token.strip("'\"<>")
+        if not candidate:
+            continue
+        try:
+            ipaddress.ip_address(candidate)
+        except ValueError:
+            continue
+        return True
+    return False
+
+
+def _contains_sensitive_location(value: str) -> bool:
+    return (
+        _URL_MARKER_RE.search(value) is not None
+        or "\\\\" in value
+        or _WINDOWS_DRIVE_RE.search(value) is not None
+        or _UNIX_ABSOLUTE_RE.search(value) is not None
+        or _contains_ip_address(value)
+    )
 
 
 def _sanitize_public_text(value: Any) -> str:
     sanitized = redact_mcp_text(str(value), current_runtime_secrets())
-    sanitized = _URL_RE.sub("[REDACTED]", sanitized)
-    sanitized = _WINDOWS_PATH_RE.sub("[REDACTED]", sanitized)
-    sanitized = _UNIX_PATH_RE.sub("[REDACTED]", sanitized)
-    return _IPV4_RE.sub("[REDACTED]", sanitized)
+    if _contains_sensitive_location(sanitized):
+        return "[REDACTED]"
+    return sanitized
 
 
 def _sanitize_value(value: Any) -> Any:
@@ -266,7 +288,7 @@ class ArcPyMcpClient:
             if not ready.done():
                 ready.set_exception(public_failure)
             if cleanup_failure is not None:
-                raise cleanup_failure
+                raise public_failure
             if isinstance(failure, asyncio.CancelledError):
                 raise failure
             if not isinstance(failure, Exception):
@@ -317,11 +339,19 @@ class ArcPyMcpClient:
                 command = commands.get_nowait()
                 if command[0] == "call" and not command[3].done():
                     command[3].set_exception(closed_error)
+            cleanup_failure = None
             try:
                 if seed_session is None:
                     await stack.aclose()
+            except BaseException:
+                cleanup_failure = ArcPyMcpError(
+                    "ARCPY_MCP_UNREACHABLE",
+                    "ArcPy MCP service is unreachable",
+                )
             finally:
                 self._clear_runtime_state()
+            if cleanup_failure is not None:
+                raise cleanup_failure
 
     def _clear_runtime_state(self) -> None:
         self._stack = None

@@ -85,6 +85,37 @@ def test_error_redacts_runtime_secret_private_url_and_absolute_paths():
         assert sensitive not in public_state
 
 
+def test_error_strictly_redacts_ipv6_unc_and_paths_with_spaces():
+    ipv6 = "fd00::1234"
+    unc_path = "\\\\server\\share\\private-ca.pem"
+    unix_path = "/private/ca bundles/root.pem"
+    windows_path = "C:\\private ca\\root.pem"
+    error = ArcPyMcpError(
+        "ARCPY_TEST",
+        f"unsafe {ipv6} {unc_path} {unix_path} {windows_path}",
+        {
+            "safe-key": ipv6,
+            unc_path: "unsafe-key",
+            "unix": unix_path,
+            "windows": windows_path,
+        },
+    )
+
+    assert str(error) == "[REDACTED]"
+    assert error.details["safe-key"] == "[REDACTED]"
+    public_details = repr(error.details)
+    for fragment in (
+        "fd00",
+        "server",
+        "share",
+        "private-ca",
+        "ca bundles",
+        "private ca",
+        "root.pem",
+    ):
+        assert fragment not in public_details
+
+
 @pytest.mark.asyncio
 async def test_unknown_tool_is_rejected_before_connect():
     client = _client()
@@ -297,6 +328,16 @@ class TaskAffineContext(FakeContext):
         await super().__aexit__(exc_type, exc, traceback)
 
 
+class SensitiveFailingExitContext(TaskAffineContext):
+    def __init__(self, name, value, events, message):
+        super().__init__(name, value, events)
+        self.message = message
+
+    async def __aexit__(self, exc_type, exc, traceback):
+        await super().__aexit__(exc_type, exc, traceback)
+        raise RuntimeError(self.message)
+
+
 class FakeSdkSession:
     def __init__(self, events, *, initialize_error=None, call_result=None):
         self.events = events
@@ -441,6 +482,65 @@ async def test_session_contexts_exit_in_the_same_owner_task(monkeypatch):
     assert http_context.exit_count == 1
     assert transport_context.exit_count == 1
     assert session_context.exit_count == 1
+
+
+@pytest.mark.asyncio
+async def test_close_maps_sensitive_owner_cleanup_failure_and_remains_idempotent(
+    monkeypatch,
+):
+    import data_agent.arcpy_mcp_client as client_module
+    from data_agent.mcp_transport import current_runtime_secrets
+
+    credential = "fixture-cleanup-runtime-credential"
+    private_url = "https://10.1.2.3/private/service"
+    ca_path = "/private/ca bundles/root.pem"
+    events = []
+    http_context = TaskAffineContext("http", object(), events)
+    transport_context = SensitiveFailingExitContext(
+        "transport",
+        ("read", "write", lambda: None),
+        events,
+        f"Authorization: Bearer {credential} {private_url} {ca_path}",
+    )
+    session = FakeSdkSession(events)
+    monkeypatch.setattr(
+        client_module.httpx,
+        "AsyncClient",
+        MagicMock(return_value=http_context),
+    )
+    monkeypatch.setattr(
+        client_module,
+        "streamable_http_client",
+        MagicMock(return_value=transport_context),
+    )
+    monkeypatch.setattr(
+        client_module,
+        "ClientSession",
+        MagicMock(return_value=session),
+    )
+    monkeypatch.setenv("ARCPY_CLIENT_TEST_TOKEN", credential)
+    client = ArcPyMcpClient(
+        McpServerConfig(
+            name="arcpy",
+            url="https://service.example/mcp",
+            bearer_token_env_var="ARCPY_CLIENT_TEST_TOKEN",
+        )
+    )
+    await client.connect()
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client.close()
+
+    error = exc_info.value
+    assert error.code == "ARCPY_MCP_UNREACHABLE"
+    assert str(error) == "ArcPy MCP service is unreachable"
+    assert credential not in repr(error)
+    assert private_url not in repr(error)
+    assert ca_path not in repr(error)
+    assert current_runtime_secrets() == ()
+    assert client._session is None
+    assert client._stack is None
+    await client.close()
 
 
 @pytest.mark.asyncio
