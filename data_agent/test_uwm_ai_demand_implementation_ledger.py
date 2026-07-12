@@ -69,6 +69,8 @@ def test_non_livability_demands_are_not_promoted_by_generic_platform_capabilitie
 
     assert demands["1"]["implementation_status"] == "implemented_evidence_bounded"
     assert demands["1"]["max_supported_claim"] == "fragile_spatial_scope_admin_unit_registry_and_uwm_identity_readiness"
+    assert demands["2"]["implementation_status"] == "implemented_evidence_bounded"
+    assert demands["2"]["max_supported_claim"] == "planning_parcel_asset_inventory_version_contract_and_temporal_baseline_readiness"
     assert demands["4"]["implementation_status"] == "data_query_only"
     assert demands["19"]["implementation_status"] == "implemented_evidence_bounded"
     assert demands["19"]["max_supported_claim"] == "observed_resilience_context_spatial_graph_and_fail_closed_kernel_readiness"
