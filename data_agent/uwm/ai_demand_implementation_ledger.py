@@ -89,7 +89,12 @@ DEMAND_OVERLAYS = {
         ["planning_asset_approval_unverified", "effective_period_and_version_identifiers_missing", "predecessor_successor_lineage_missing", "source_license_pending", "uwm_temporal_baseline_gate_closed"],
         "planning_parcel_asset_inventory_version_contract_and_temporal_baseline_readiness",
         ["docs/reports/planning_version_registry_chongqing_verification_2026-07-12.md", "data/uwm_public_proxy/chongqing_central/planning_version_registry_chongqing/overview.json"],
-    ), "3": _query("parcel_status_and_land_use_layers"),
+    ), "3": _bounded(
+        "parcel_land_use_state_readiness_product",
+        ["source_feature_rows_not_materialized", "authoritative_version_baseline_missing", "planned_use_and_approval_join_missing", "successor_observations_and_transition_labels_missing", "traditional_state_and_uwm_transition_gates_closed"],
+        "parcel_land_use_schema_audit_state_contract_and_uwm_transition_readiness",
+        ["docs/reports/parcel_state_readiness_chongqing_verification_2026-07-13.md", "data/uwm_public_proxy/chongqing_central/parcel_state_readiness_chongqing/overview.json"],
+    ),
     "4": _query("roads_buildings_and_visible_infrastructure_only", ["underground_network_capacity_ownership_missing"]),
     "5": _query("asset_catalog_and_spatial_inventory_only", ["condition_ownership_lifecycle_missing"]),
     "6": _query("population_proxy_and_admin_statistics", ["authoritative_demographic_structure_missing"]),
