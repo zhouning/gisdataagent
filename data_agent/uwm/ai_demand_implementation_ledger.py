@@ -104,7 +104,12 @@ DEMAND_OVERLAYS = {
         "public_space_inventory_distribution_and_relative_evidence_gap",
         ["docs/reports/traditional_public_space_chongqing_verification_2026-07-11.md", "data/uwm_public_proxy/chongqing_central/traditional_public_space_chongqing/overview.json"],
     ),
-    "10": _query("environment_and_road_context_foundation", ["safety_lighting_shade_authoritative_data_missing"]),
+    "10": _bounded(
+        "traditional_safety_comfort_evidence_product",
+        ["crash_conflict_observations_missing", "crime_security_observations_missing", "lighting_crossing_data_missing", "shade_corridor_data_missing", "universal_accessibility_assets_missing", "observed_thermal_comfort_missing", "emergency_response_time_missing", "intervention_effect_evidence_missing", "environment_admin_crosswalk_missing"],
+        "mobility_environment_context_and_safety_comfort_evidence_readiness",
+        ["docs/reports/traditional_safety_comfort_chongqing_verification_2026-07-12.md", "data/uwm_public_proxy/chongqing_central/traditional_safety_comfort_chongqing/overview.json"],
+    ),
     "11": _bounded("environmental_kernel_scene_evidence_gate_and_api", ["environmental_action_response_closed", "temperature_and_vegetation_dynamics_unavailable"], "observed_environmental_state_and_calibrated_pm25_temporal_dynamics", ["docs/reports/uwm_environmental_kernel_chongqing_verification_2026-07-11.md"]),
     "12": _bounded(
         "traditional_social_public_service_product",
