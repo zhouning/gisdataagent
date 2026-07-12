@@ -144,3 +144,8 @@ def test_demand_18_is_platform_operations_and_customer_readiness_only():
     demand = rows_by_id(build_ai_demand_implementation_ledger(repo_root=ROOT)["customer_ai_demands"])["18"]
     assert demand["implementation_status"] == "implemented_evidence_bounded"
     assert demand["max_supported_claim"] == "platform_operations_evidence_and_customer_service_management_readiness"
+
+def test_demand_20_is_business_poi_and_licence_readiness_only():
+    demand = rows_by_id(build_ai_demand_implementation_ledger(repo_root=ROOT)["customer_ai_demands"])["20"]
+    assert demand["implementation_status"] == "implemented_evidence_bounded"
+    assert demand["max_supported_claim"] == "business_poi_spatial_evidence_and_authoritative_licence_lifecycle_readiness"

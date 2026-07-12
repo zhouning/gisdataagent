@@ -154,7 +154,12 @@ DEMAND_OVERLAYS = {
         "observed_resilience_context_spatial_graph_and_fail_closed_kernel_readiness",
         ["docs/reports/resilience_kernel_chongqing_verification_2026-07-12.md", "data/uwm_public_proxy/chongqing_central/resilience_kernel_chongqing/overview.json"],
     ),
-    "20": _query("poi_economic_activity_proxy_only", ["authoritative_ded_licence_and_lifecycle_data_missing"]),
+    "20": _bounded(
+        "business_licence_activity_readiness_product",
+        ["authoritative_ded_licence_and_lifecycle_data_missing", "poi_to_entity_authoritative_crosswalk_missing", "business_lifecycle_uwm_gate_closed"],
+        "business_poi_spatial_evidence_and_authoritative_licence_lifecycle_readiness",
+        ["docs/reports/business_licence_chongqing_verification_2026-07-12.md", "data/uwm_public_proxy/chongqing_central/business_licence_chongqing/overview.json"],
+    ),
     "21": _bounded(
         "traditional_social_public_service_product",
         ["authoritative_capacity_missing", "observed_service_availability_missing", "population_service_match_missing", "authoritative_service_area_standard_missing", "authoritative_service_deficit_unavailable", "township_accessibility_not_joined_to_county_facilities"],
