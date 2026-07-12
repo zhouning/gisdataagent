@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import copy
-import ipaddress
 import json
 import re
 import time
@@ -29,54 +28,35 @@ from data_agent.mcp_transport import (
 )
 
 
-_LOCATION_TOKEN_SPLIT_RE = re.compile(r"[\s=,;\"'()\[\]{}<>]+")
-_DRIVE_PREFIX_RE = re.compile(r"(?i)^[A-Z]:[\\/]")
+_PUBLIC_ERROR_MESSAGES = {
+    "ARCPY_MCP_URL_MISSING": "ArcPy MCP URL is not configured",
+    "ARCPY_MCP_TOKEN_MISSING": "MCP credential is not available",
+    "ARCPY_MCP_CA_MISSING": "MCP CA bundle is not available",
+    "ARCPY_MCP_UNREACHABLE": "ArcPy MCP service is unreachable",
+    "ARCPY_TOOL_NOT_ALLOWED": "Requested ArcPy MCP tool is not allowed",
+    "ARCPY_JOB_FAILED": "ArcPy MCP tool reported a failure",
+    "ARCPY_RESPONSE_INVALID": "ArcPy MCP response is invalid",
+    "ARCPY_WORKER_UNAVAILABLE": "ArcPy worker is unavailable",
+    "ARCPY_INVALID_ARGUMENT": "Required extension is invalid",
+    "ARCPY_EXTENSION_UNAVAILABLE": "Required ArcPy extension is unavailable",
+}
+_SAFE_DETAIL_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_-]{0,63}$")
 
 
-def _is_ip_token(token: str) -> bool:
-    candidates = [token]
-    if token.count(":") == 1:
-        host, port = token.rsplit(":", 1)
-        if port.isdigit():
-            candidates.append(host)
-    for candidate in candidates:
-        try:
-            ipaddress.ip_address(candidate)
-        except ValueError:
-            continue
-        return True
-    return False
-
-
-def _contains_sensitive_location(value: str) -> bool:
-    for token in _LOCATION_TOKEN_SPLIT_RE.split(value):
-        if not token:
-            continue
-        lowered = token.lower()
-        if lowered.startswith(("http://", "https://")):
-            return True
-        if token.startswith(("/", "\\\\")):
-            return True
-        if _DRIVE_PREFIX_RE.match(token) is not None:
-            return True
-        if _is_ip_token(token):
-            return True
-    return False
-
-
-def _sanitize_public_text(value: Any) -> str:
-    sanitized = redact_mcp_text(str(value), current_runtime_secrets())
-    if _contains_sensitive_location(sanitized):
+def _sanitize_detail_key(key: Any) -> str:
+    if not isinstance(key, str) or _SAFE_DETAIL_KEY_RE.fullmatch(key) is None:
         return "[REDACTED]"
-    return sanitized
+    if any(secret and secret in key for secret in current_runtime_secrets()):
+        return "[REDACTED]"
+    return key
 
 
 def _sanitize_value(value: Any) -> Any:
     if isinstance(value, str):
-        return _sanitize_public_text(value)
+        return "[REDACTED]"
     if isinstance(value, dict):
         return {
-            _sanitize_public_text(key): _sanitize_value(item)
+            _sanitize_detail_key(key): _sanitize_value(item)
             for key, item in value.items()
         }
     if isinstance(value, list):
@@ -94,7 +74,7 @@ class ArcPyMcpError(RuntimeError):
     def __init__(
         self, code: str, message: str, details: dict | None = None
     ) -> None:
-        super().__init__(_sanitize_public_text(message))
+        super().__init__(_PUBLIC_ERROR_MESSAGES.get(code, "[REDACTED]"))
         self.code = code
         self.details = _sanitize_value(dict(details or {}))
 

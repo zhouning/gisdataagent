@@ -137,6 +137,55 @@ def test_error_redacts_embedded_location_tokens_as_whole_strings(sensitive):
     assert sensitive not in repr(error.details)
 
 
+@pytest.mark.parametrize(
+    "unsafe",
+    [
+        "worker=10.0.0.8:8443.",
+        "worker=fd00::1234.",
+        "endpoint=redis://internal-host:6379/0",
+        "path:/private/ca.pem",
+        "path:C:\\private\\ca.pem",
+    ],
+)
+def test_unknown_error_code_fails_closed_for_message_and_details(unsafe):
+    error = ArcPyMcpError("ARCPY_UNKNOWN", unsafe, {unsafe: unsafe})
+
+    assert str(error) == "[REDACTED]"
+    assert error.details == {"[REDACTED]": "[REDACTED]"}
+    assert unsafe not in repr(error.details)
+
+
+def test_known_error_code_ignores_caller_supplied_message():
+    error = ArcPyMcpError(
+        "ARCPY_MCP_UNREACHABLE",
+        "caller supplied diagnostic must not be public",
+    )
+
+    assert str(error) == "ArcPy MCP service is unreachable"
+
+
+def test_error_details_preserve_only_safe_identifiers_and_scalar_values():
+    error = ArcPyMcpError(
+        "ARCPY_JOB_FAILED",
+        "ignored",
+        {
+            "count": 3,
+            "enabled": True,
+            "ratio": 1.25,
+            "missing": None,
+            "nested": {"attempt": 2, "diagnostic": "not public"},
+        },
+    )
+
+    assert error.details == {
+        "count": 3,
+        "enabled": True,
+        "ratio": 1.25,
+        "missing": None,
+        "nested": {"attempt": 2, "diagnostic": "[REDACTED]"},
+    }
+
+
 @pytest.mark.asyncio
 async def test_unknown_tool_is_rejected_before_connect():
     client = _client()
