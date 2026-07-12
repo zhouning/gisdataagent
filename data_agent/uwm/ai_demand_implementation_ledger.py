@@ -142,7 +142,12 @@ DEMAND_OVERLAYS = {
         "platform_digital_capability_and_district_smart_infrastructure_evidence_readiness",
         ["docs/reports/digital_readiness_chongqing_verification_2026-07-12.md", "data/uwm_public_proxy/chongqing_central/digital_readiness_chongqing/overview.json"],
     ),
-    "18": _query("platform_operations_and_observability_only", ["customer_sla_work_order_and_asset_lifecycle_missing"]),
+    "18": _bounded(
+        "operations_service_quality_readiness_product",
+        ["customer_sla_work_order_and_asset_lifecycle_missing", "authoritative_incident_response_and_recovery_timestamps_missing", "operations_uwm_gate_closed"],
+        "platform_operations_evidence_and_customer_service_management_readiness",
+        ["docs/reports/operations_quality_chongqing_verification_2026-07-12.md", "data/uwm_public_proxy/chongqing_central/operations_quality_chongqing/overview.json"],
+    ),
     "19": _bounded(
         "resilience_kernel_foundation",
         ["authoritative_hazard_event_timeseries_missing", "population_and_asset_exposure_missing", "emergency_response_time_missing", "hazard_spatial_propagation_calibration_missing", "recovery_state_timeseries_missing", "intervention_outcome_evidence_missing", "held_out_event_evaluation_missing"],

@@ -139,3 +139,8 @@ def test_demand_17_is_platform_capability_and_infrastructure_readiness_only():
     demand = rows_by_id(build_ai_demand_implementation_ledger(repo_root=ROOT)["customer_ai_demands"])["17"]
     assert demand["implementation_status"] == "implemented_evidence_bounded"
     assert demand["max_supported_claim"] == "platform_digital_capability_and_district_smart_infrastructure_evidence_readiness"
+
+def test_demand_18_is_platform_operations_and_customer_readiness_only():
+    demand = rows_by_id(build_ai_demand_implementation_ledger(repo_root=ROOT)["customer_ai_demands"])["18"]
+    assert demand["implementation_status"] == "implemented_evidence_bounded"
+    assert demand["max_supported_claim"] == "platform_operations_evidence_and_customer_service_management_readiness"
