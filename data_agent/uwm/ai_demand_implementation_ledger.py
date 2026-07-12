@@ -79,7 +79,12 @@ def _not_implemented(blocker: str) -> dict[str, Any]:
     return {"implementation_status": "not_implemented", "status_basis": "No requirement-specific verified product exists.", "implemented_outputs": [], "evidence_artifacts": [], "production_blockers": [blocker], "max_supported_claim": "not_implemented", "next_actions": ["design and implement the requirement-specific product"]}
 
 DEMAND_OVERLAYS = {
-    "1": _query("area_registry_and_spatial_layers"), "2": _query("planning_and_parcel_version_assets"), "3": _query("parcel_status_and_land_use_layers"),
+    "1": _bounded(
+        "spatial_scope_admin_unit_registry_product",
+        ["source_license_and_official_vintage_unverified", "topology_not_validated", "authoritative_admin_codes_missing", "historical_county_name_crosswalk_missing"],
+        "fragile_spatial_scope_admin_unit_registry_and_uwm_identity_readiness",
+        ["docs/reports/spatial_scope_registry_chongqing_verification_2026-07-12.md", "data/uwm_public_proxy/chongqing_central/spatial_scope_registry_chongqing/overview.json"],
+    ), "2": _query("planning_and_parcel_version_assets"), "3": _query("parcel_status_and_land_use_layers"),
     "4": _query("roads_buildings_and_visible_infrastructure_only", ["underground_network_capacity_ownership_missing"]),
     "5": _query("asset_catalog_and_spatial_inventory_only", ["condition_ownership_lifecycle_missing"]),
     "6": _query("population_proxy_and_admin_statistics", ["authoritative_demographic_structure_missing"]),
