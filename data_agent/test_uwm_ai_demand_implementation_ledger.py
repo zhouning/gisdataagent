@@ -73,7 +73,8 @@ def test_non_livability_demands_are_not_promoted_by_generic_platform_capabilitie
     assert demands["23"]["implementation_status"] == "contract_only"
     assert demands["24"]["implementation_status"] == "implemented_evidence_bounded"
     assert demands["24"]["max_supported_claim"] == "cross_domain_evidence_compatibility_priority_and_dynamic_channel_readiness"
-    assert demands["25"]["implementation_status"] == "not_implemented"
+    assert demands["25"]["implementation_status"] == "implemented_evidence_bounded"
+    assert demands["25"]["max_supported_claim"] == "evidence_dependency_and_verification_gated_implementation_roadmap"
 
 
 def test_demand8_is_verified_but_remains_evidence_bounded():

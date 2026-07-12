@@ -154,7 +154,12 @@ DEMAND_OVERLAYS = {
         "cross_domain_evidence_compatibility_priority_and_dynamic_channel_readiness",
         ["docs/reports/cross_domain_impact_chongqing_verification_2026-07-12.md", "data/uwm_public_proxy/chongqing_central/cross_domain_impact_chongqing/overview.json"],
     ),
-    "25": _not_implemented("dependency_aware_implementation_roadmap_product_missing"),
+    "25": _bounded(
+        "dependency_aware_implementation_roadmap_product",
+        ["roadmap_not_approved_program", "budgets_dates_owners_and_policy_effects_unavailable", "kernel_release_tasks_blocked_until_independent_verification"],
+        "evidence_dependency_and_verification_gated_implementation_roadmap",
+        ["docs/reports/dependency_roadmap_chongqing_verification_2026-07-12.md", "data/uwm_public_proxy/chongqing_central/dependency_roadmap_chongqing/overview.json"],
+    ),
 }
 
 
