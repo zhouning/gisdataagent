@@ -113,3 +113,12 @@ def test_demand9_uses_verified_public_space_product_but_keeps_quality_channels_c
  for blocker in ['public_access_and_opening_hours_missing','quality_vitality_and_actual_use_missing','shade_seating_furniture_missing','waterfront_accessibility_missing','safety_and_universal_accessibility_missing','intervention_effect_evidence_missing']:
   assert blocker in demand['production_blockers']
  assert all(x['exists'] for x in demand['evidence_artifact_checks'])
+
+def test_demand10_uses_verified_evidence_product_without_safety_outcome_claims():
+ demand=rows_by_id(build_ai_demand_implementation_ledger(repo_root=ROOT)['customer_ai_demands'])['10']
+ assert demand['implementation_status']=='implemented_evidence_bounded'
+ assert 'traditional_safety_comfort_evidence_product' in demand['implemented_outputs']
+ assert demand['max_supported_claim']=='mobility_environment_context_and_safety_comfort_evidence_readiness'
+ for blocker in ['crash_conflict_observations_missing','crime_security_observations_missing','lighting_crossing_data_missing','shade_corridor_data_missing','universal_accessibility_assets_missing','observed_thermal_comfort_missing','emergency_response_time_missing','intervention_effect_evidence_missing']:
+  assert blocker in demand['production_blockers']
+ assert all(x['exists'] for x in demand['evidence_artifact_checks'])
