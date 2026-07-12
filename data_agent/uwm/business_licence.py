@@ -6,7 +6,7 @@ CHANNELS=('entity_registry','business_licence_registry','licence_status_history'
 def build_business_licence_product(*,business_places,admin_units,source_artifacts):
  places=[]
  for raw in business_places:
-  x=deepcopy(raw);x.update({'legal_entity_id':None,'licence_id':None,'licence_status':None,'operating_status':None,'company_poi_not_legal_entity_registry':True,'poi_presence_not_valid_business_licence':True,'poi_presence_not_active_operation':True,'company_name_not_authoritative_entity_match':True,'industrial_poi_not_observed_production':True,'business_count_not_employment_or_output':True});places.append(x)
+  x={k:deepcopy(raw.get(k)) for k in ('place_id','name','canonical_category','longitude','latitude','admin_unit_id','source_dataset','source_record_id','classification_reason','source_trace')};x.update({'legal_entity_id':None,'licence_id':None,'licence_status':None,'operating_status':None,'company_poi_not_legal_entity_registry':True,'poi_presence_not_valid_business_licence':True,'poi_presence_not_active_operation':True,'company_name_not_authoritative_entity_match':True,'industrial_poi_not_observed_production':True,'business_count_not_employment_or_output':True});places.append(x)
  grouped={str(x['admin_unit_id']):[] for x in admin_units};names={str(x['admin_unit_id']):x.get('admin_name') for x in admin_units}
  for x in places:
   if str(x.get('admin_unit_id')) in grouped:grouped[str(x['admin_unit_id'])].append(x)
