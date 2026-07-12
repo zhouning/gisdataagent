@@ -1,6 +1,7 @@
 """Behavioral tests for application-level MCP startup and shutdown coordination."""
 
 import asyncio
+import gc
 from unittest.mock import AsyncMock
 
 import pytest
@@ -224,3 +225,92 @@ def test_exit_bridge_never_awaits_retry_task_from_stopped_owner_loop(closed):
     assert coordinator.shutdown_complete is True
     if not owner_loop.is_closed():
         owner_loop.close()
+
+
+@pytest.mark.parametrize("closed", [False, True])
+def test_exit_bridge_consumes_real_pending_retry_task_from_foreign_loop(
+    closed, recwarn
+):
+    owner_loop = asyncio.new_event_loop()
+    errors = []
+    owner_loop.set_exception_handler(
+        lambda loop, context: errors.append(context)
+    )
+
+    async def pending_retry():
+        await asyncio.Future()
+
+    retry_task = owner_loop.create_task(pending_retry())
+    owner_loop.run_until_complete(asyncio.sleep(0))
+    if closed:
+        owner_loop.close()
+
+    order = []
+    hub = FakeHub()
+    client = type("Client", (), {})()
+
+    async def hub_shutdown():
+        order.append("hub")
+
+    async def client_close():
+        order.append("client")
+
+    hub.shutdown.side_effect = hub_shutdown
+    client.close = client_close
+    coordinator = McpRuntimeCoordinator(
+        lambda: hub, client_getter=lambda: client
+    )
+    coordinator._retry_task = retry_task
+    coordinator._owning_loop = owner_loop
+    bridge = McpRuntimeExitBridge(coordinator)
+
+    bridge()
+    del retry_task
+    gc.collect()
+
+    assert coordinator.shutdown_complete is True
+    assert order == ["hub", "client"]
+    assert not [
+        context for context in errors
+        if context.get("message") == "Task was destroyed but it is pending!"
+    ]
+    assert not [
+        warning for warning in recwarn
+        if "was never awaited" in str(warning.message)
+    ]
+    if not owner_loop.is_closed():
+        owner_loop.close()
+
+
+@pytest.mark.parametrize("has_owner_loop", [False, True])
+@pytest.mark.asyncio
+async def test_exit_bridge_retries_after_create_task_scheduling_failure(
+    monkeypatch, has_owner_loop, recwarn
+):
+    loop = asyncio.get_running_loop()
+    hub = FakeHub()
+    coordinator = McpRuntimeCoordinator(lambda: hub)
+    coordinator._owning_loop = loop if has_owner_loop else None
+    bridge = McpRuntimeExitBridge(coordinator)
+    original_create_task = loop.create_task
+
+    def fail_create_task(coro, *args, **kwargs):
+        raise RuntimeError("create_task failed")
+
+    monkeypatch.setattr(loop, "create_task", fail_create_task)
+    bridge()
+    gc.collect()
+
+    assert bridge._called is False
+    assert not [
+        warning for warning in recwarn
+        if "was never awaited" in str(warning.message)
+    ]
+
+    monkeypatch.setattr(loop, "create_task", original_create_task)
+    bridge()
+    awaitable = bridge.cleanup_handle
+    if awaitable is not None:
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+    assert hub.shutdown.await_count == 1

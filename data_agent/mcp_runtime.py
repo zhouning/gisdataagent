@@ -13,6 +13,19 @@ from typing import Callable
 logger = logging.getLogger("data_agent.mcp_runtime")
 
 
+def _dispose_unrunnable_task(task):
+    """Close a task's coroutine when its loop can no longer finalize it."""
+    get_coro = getattr(task, "get_coro", None)
+    if callable(get_coro):
+        coroutine = get_coro()
+        close = getattr(coroutine, "close", None)
+        if close is not None:
+            close()
+    # A closed loop cannot run Task.__step to clear this destructor warning.
+    if hasattr(task, "_log_destroy_pending"):
+        task._log_destroy_pending = False
+
+
 def _get_existing_arcpy_client():
     """Return an already-created ArcPy client without constructing one."""
     for module_name in (
@@ -143,18 +156,30 @@ class McpRuntimeCoordinator:
             self._started = False
             retry_task = self._retry_task
             if retry_task is not None and not retry_task.done():
+                retry_loop = None
                 try:
-                    retry_task.cancel()
+                    retry_loop = retry_task.get_loop()
+                    current_loop = asyncio.get_running_loop()
+                    if retry_loop is not current_loop and retry_loop.is_running():
+                        retry_loop.call_soon_threadsafe(retry_task.cancel)
+                    else:
+                        retry_task.cancel()
                 except (RuntimeError, AttributeError):
                     logger.warning("MCP retry cancellation could not be scheduled")
+                    if retry_loop is not None and retry_loop.is_closed():
+                        _dispose_unrunnable_task(retry_task)
                 else:
-                    try:
-                        retry_loop = retry_task.get_loop()
-                    except AttributeError:
-                        retry_loop = asyncio.get_running_loop()
-                    if retry_loop is asyncio.get_running_loop():
+                    if retry_loop is current_loop:
                         with suppress(asyncio.CancelledError):
                             await retry_task
+                    elif not retry_loop.is_running():
+                        if retry_loop.is_closed():
+                            _dispose_unrunnable_task(retry_task)
+                        else:
+                            try:
+                                retry_loop.run_until_complete(retry_task)
+                            except BaseException:
+                                _dispose_unrunnable_task(retry_task)
             self._retry_task = None
             try:
                 await self._hub_getter().shutdown()
@@ -194,12 +219,16 @@ class McpRuntimeExitBridge:
         except RuntimeError:
             running_loop = None
 
+        scheduled = False
         try:
             if owning_loop is not None and owning_loop.is_running():
                 if owning_loop is running_loop:
-                    self.cleanup_handle = owning_loop.create_task(
-                        self._coordinator.shutdown()
-                    )
+                    cleanup = self._coordinator.shutdown()
+                    try:
+                        self.cleanup_handle = owning_loop.create_task(cleanup)
+                    except Exception:
+                        cleanup.close()
+                        raise
                 else:
                     cleanup = self._coordinator.shutdown()
                     try:
@@ -209,18 +238,25 @@ class McpRuntimeExitBridge:
                     except Exception:
                         cleanup.close()
                         raise
+                scheduled = True
             elif running_loop is not None:
-                self.cleanup_handle = running_loop.create_task(
-                    self._coordinator.shutdown()
-                )
+                cleanup = self._coordinator.shutdown()
+                try:
+                    self.cleanup_handle = running_loop.create_task(cleanup)
+                except Exception:
+                    cleanup.close()
+                    raise
+                scheduled = True
             else:
                 asyncio.run(self._coordinator.shutdown())
+                scheduled = True
         except Exception:
             logger.warning("MCP exit cleanup could not be scheduled")
             if running_loop is None:
                 try:
                     asyncio.run(self._coordinator.shutdown())
+                    scheduled = True
                 except Exception:
                     logger.warning("MCP exit cleanup failed")
         finally:
-            self._called = True
+            self._called = scheduled or self._coordinator.shutdown_complete
