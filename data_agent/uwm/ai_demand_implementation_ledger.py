@@ -166,7 +166,12 @@ DEMAND_OVERLAYS = {
         "government_public_service_inventory_and_relative_evidence_gap",
         ["docs/reports/traditional_social_public_service_chongqing_verification_2026-07-11.md", "data/uwm_public_proxy/chongqing_central/traditional_social_public_service_chongqing/overview.json"],
     ),
-    "22": _contract("dcr_and_dcr_plus_rule_contract", ["approved_dcr_and_authoritative_rule_basis_missing"]),
+    "22": _bounded(
+        "development_control_rule_readiness_product",
+        ["approved_site_specific_dcr_missing", "authoritative_project_applicability_and_rule_priority_missing", "dcr_execution_gate_closed"],
+        "planning_rule_asset_catalog_and_site_specific_dcr_execution_readiness",
+        ["docs/reports/development_control_chongqing_verification_2026-07-12.md", "data/uwm_public_proxy/chongqing_central/development_control_chongqing/overview.json"],
+    ),
     "23": _contract("deterministic_financial_model_contract", ["boq", "capital_cost", "operating_cost", "revenue", "cash_flow"]),
     "24": _bounded(
         "cross_domain_impact_evidence_product",
