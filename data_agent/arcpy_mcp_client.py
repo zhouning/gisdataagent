@@ -174,6 +174,25 @@ _SHAPEFILE_SIDECAR_EXTENSIONS = frozenset(
 )
 
 
+def _is_shapefile_sidecar_name(name: str, stem: str) -> bool:
+    normalized = name.casefold()
+    exact_names = {
+        f"{stem}{extension}" for extension in _SHAPEFILE_SIDECAR_EXTENSIONS
+    }
+    if normalized in exact_names or normalized == f"{stem}.shp.xml":
+        return True
+    prefix = f"{stem}."
+    suffix = ".atx"
+    if not normalized.startswith(prefix) or not normalized.endswith(suffix):
+        return False
+    field_name = normalized[len(prefix) : -len(suffix)]
+    return (
+        bool(field_name)
+        and "/" not in field_name
+        and "\\" not in field_name
+    )
+
+
 def _checked_archive_file(path: Path) -> Path:
     from data_agent import user_context
 
@@ -258,14 +277,10 @@ def package_local_dataset(
         delete_after_upload = True
     elif source.is_file() and source.suffix.lower() == ".shp":
         stem = source.stem.casefold()
-        allowed_names = {
-            f"{stem}{extension}" for extension in _SHAPEFILE_SIDECAR_EXTENSIONS
-        }
-        allowed_names.add(f"{stem}.shp.xml")
         candidates = [
             item
             for item in source.parent.iterdir()
-            if item.name.casefold() in allowed_names
+            if _is_shapefile_sidecar_name(item.name, stem)
         ]
         entries = [
             (_checked_archive_file(item), item.name) for item in candidates
@@ -1217,6 +1232,16 @@ class ArcPyMcpClient:
                     handler.addFilter(_SIGNED_TRANSFER_LOG_FILTER)
 
     @staticmethod
+    def _signed_transfer_secrets(signed_url: str) -> set[str]:
+        try:
+            normalized_url = str(httpx.URL(signed_url))
+        except (TypeError, ValueError):
+            raise ArcPyMcpError(
+                "ARCPY_UPLOAD_FAILED", "ArcPy artifact upload failed"
+            ) from None
+        return {signed_url, normalized_url}
+
+    @staticmethod
     def _committed_offset(
         status: dict, artifact_id: str, expected_size: int
     ) -> int:
@@ -1312,8 +1337,11 @@ class ArcPyMcpClient:
                     try:
                         with prepared.upload_path.open("rb") as stream:
                             stream.seek(offset)
+                            signed_url_secrets = self._signed_transfer_secrets(
+                                signed_url
+                            )
                             self._install_signed_transfer_log_filter()
-                            register_runtime_secrets([signed_url])
+                            register_runtime_secrets(signed_url_secrets)
                             try:
                                 response = await http_client.put(
                                     signed_url,
@@ -1322,7 +1350,9 @@ class ArcPyMcpClient:
                                     timeout=self._upload_timeout,
                                 )
                             finally:
-                                unregister_runtime_secrets([signed_url])
+                                unregister_runtime_secrets(
+                                    signed_url_secrets
+                                )
                     except httpx.RequestError:
                         if attempt + 1 >= self._upload_attempts:
                             raise ArcPyMcpError(

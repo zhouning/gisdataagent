@@ -151,6 +151,27 @@ def test_package_shapefile_ignores_unknown_and_nested_stem_files(
     prepared.upload_path.unlink()
 
 
+def test_package_shapefile_includes_compound_field_atx_sidecars(
+    user_upload_dir,
+):
+    for suffix in (".shp", ".shx", ".dbf"):
+        (user_upload_dir / f"roads{suffix}").write_bytes(b"core")
+    (user_upload_dir / "roads.PARCEL_ID.atx").write_bytes(b"field-index")
+    (user_upload_dir / "roads.backup.atx").write_bytes(b"backup-field-index")
+
+    prepared = package_local_dataset(user_upload_dir / "roads.shp")
+
+    with zipfile.ZipFile(prepared.upload_path) as archive:
+        assert archive.namelist() == [
+            "roads.backup.atx",
+            "roads.dbf",
+            "roads.PARCEL_ID.atx",
+            "roads.shp",
+            "roads.shx",
+        ]
+    prepared.upload_path.unlink()
+
+
 def test_package_shapefile_rejects_known_sidecar_symlink(
     user_upload_dir,
 ):
@@ -747,17 +768,29 @@ async def test_upload_nonexpired_http_failure_is_stable_and_sanitized(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("signed_url", "opaque_path", "opaque_query"),
+    [
+        (
+            "https://signed.example/opaque-path-fixture-secret"
+            "?custom=opaque-query-fixture-secret",
+            "opaque-path-fixture-secret",
+            "opaque-query-fixture-secret",
+        ),
+        (
+            "https://SIGNED.Example/needs space/normalized-path-fixture-secret"
+            "?custom=needs space normalized-query-fixture-secret",
+            "normalized-path-fixture-secret",
+            "normalized-query-fixture-secret",
+        ),
+    ],
+)
 async def test_signed_upload_url_is_redacted_from_root_and_httpx_logs(
-    user_upload_dir, caplog
+    user_upload_dir, caplog, signed_url, opaque_path, opaque_query
 ):
     from data_agent.mcp_transport import current_runtime_secrets
 
     prepared = _prepared_regular(user_upload_dir)
-    opaque_path = "opaque-path-fixture-secret"
-    opaque_query = "opaque-query-fixture-secret"
-    signed_url = (
-        f"https://signed.example/{opaque_path}?custom={opaque_query}"
-    )
     caplog.set_level(logging.INFO)
     httpx_handler = logging.StreamHandler()
     logging.getLogger("httpx").addHandler(httpx_handler)
