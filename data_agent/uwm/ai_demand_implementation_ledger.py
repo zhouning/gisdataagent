@@ -172,7 +172,12 @@ DEMAND_OVERLAYS = {
         "planning_rule_asset_catalog_and_site_specific_dcr_execution_readiness",
         ["docs/reports/development_control_chongqing_verification_2026-07-12.md", "data/uwm_public_proxy/chongqing_central/development_control_chongqing/overview.json"],
     ),
-    "23": _contract("deterministic_financial_model_contract", ["boq", "capital_cost", "operating_cost", "revenue", "cash_flow"]),
+    "23": _bounded(
+        "financial_investment_readiness_product",
+        ["authoritative_boq_missing", "capital_and_operating_cost_missing", "revenue_and_benefit_evidence_missing", "financing_discount_and_schedule_assumptions_missing", "financial_calculation_and_uwm_handoff_gates_closed"],
+        "financial_data_contract_and_deterministic_calculation_readiness",
+        ["docs/reports/financial_readiness_chongqing_verification_2026-07-12.md", "data/uwm_public_proxy/chongqing_central/financial_readiness_chongqing/overview.json"],
+    ),
     "24": _bounded(
         "cross_domain_impact_evidence_product",
         ["cross_grain_products_reference_only", "housing_culture_economy_resilience_uwm_gates_closed", "authoritative_cost_benefit_and_policy_outcomes_missing"],
