@@ -930,7 +930,9 @@ class McpHubManager:
         self._started = False
         for name in list(self._servers.keys()):
             async with self._get_lifecycle_lock(name):
-                status = self._servers[name]
+                status = self._servers.get(name)
+                if status is None:
+                    continue
                 if status.status == "connected":
                     await self._disconnect_server_unlocked(name)
                 elif status.toolset is not None or status.runtime_secrets:

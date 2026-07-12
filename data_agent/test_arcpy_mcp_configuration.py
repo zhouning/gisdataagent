@@ -340,6 +340,34 @@ def test_closed_hub_cannot_be_reopened_by_startup_retry_or_connect():
     assert hub._started is False
 
 
+def test_shutdown_tolerates_server_removed_while_waiting_for_lifecycle_lock():
+    hub = McpHubManager()
+    config = McpServerConfig(name="removing", enabled=False)
+    hub._servers = {"removing": McpServerStatus(config=config)}
+    hub._delete_from_db = MagicMock(return_value=True)
+
+    async def scenario():
+        lock = hub._get_lifecycle_lock("removing")
+        await lock.acquire()
+        try:
+            removing = asyncio.create_task(hub.remove_server("removing"))
+            await asyncio.sleep(0)
+            shutting_down = asyncio.create_task(hub.shutdown())
+            await asyncio.sleep(0)
+        finally:
+            lock.release()
+        remove_result = await removing
+        await shutting_down
+        return remove_result
+
+    result = asyncio.run(scenario())
+
+    assert result["status"] == "ok"
+    assert hub._servers == {}
+    assert hub._closing is True
+    assert hub._started is False
+
+
 def test_enabled_without_url_registers_and_reports_stable_config_error(monkeypatch):
     _clear_arcpy_environment(monkeypatch)
     monkeypatch.setenv("ARCPY_MCP_ENABLED", "true")

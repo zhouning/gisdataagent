@@ -52,6 +52,31 @@ async def test_concurrent_ensure_started_creates_one_retry_task():
 
 
 @pytest.mark.asyncio
+async def test_completed_retry_allows_a_new_startup_and_retry_episode():
+    hub = FakeHub()
+    hub.retry_failed_servers.side_effect = None
+    hub.retry_failed_servers.return_value = False
+    coordinator = McpRuntimeCoordinator(lambda: hub, startup_timeout=0.1)
+
+    assert await coordinator.ensure_started() is False
+    first_retry = coordinator.retry_task
+    assert first_retry is not None
+    await first_retry
+    assert coordinator.retry_task is None
+
+    hub._started = False
+    assert await coordinator.ensure_started() is False
+    second_retry = coordinator.retry_task
+    assert second_retry is not None
+    assert second_retry is not first_retry
+    await second_retry
+
+    assert hub.startup.await_count == 2
+    assert hub.retry_failed_servers.await_count == 2
+    await coordinator.shutdown()
+
+
+@pytest.mark.asyncio
 async def test_shutdown_cancels_sleeping_retry_before_hub_shutdown():
     hub = FakeHub()
     shutdown_order = []
@@ -145,3 +170,57 @@ async def test_exit_bridge_schedules_shutdown_on_owning_loop():
 
     hub.shutdown.assert_awaited_once()
     assert bridge.cleanup_handle is not None
+
+
+@pytest.mark.parametrize("closed", [False, True])
+def test_exit_bridge_never_awaits_retry_task_from_stopped_owner_loop(closed):
+    owner_loop = asyncio.new_event_loop()
+    if closed:
+        owner_loop.close()
+
+    class ForeignRetryTask:
+        def __init__(self):
+            self.cancel_called = False
+
+        def done(self):
+            return False
+
+        def get_loop(self):
+            return owner_loop
+
+        def cancel(self):
+            self.cancel_called = True
+            if owner_loop.is_closed():
+                raise RuntimeError("Event loop is closed")
+
+        def __await__(self):
+            raise AssertionError("foreign-loop task must not be awaited")
+
+    order = []
+    hub = FakeHub()
+
+    async def hub_shutdown():
+        order.append("hub")
+
+    client = type("Client", (), {})()
+
+    async def client_close():
+        order.append("client")
+
+    hub.shutdown.side_effect = hub_shutdown
+    client.close = client_close
+    coordinator = McpRuntimeCoordinator(
+        lambda: hub, client_getter=lambda: client
+    )
+    foreign_task = ForeignRetryTask()
+    coordinator._retry_task = foreign_task
+    coordinator._owning_loop = owner_loop
+    bridge = McpRuntimeExitBridge(coordinator)
+
+    bridge()
+
+    assert foreign_task.cancel_called is True
+    assert order == ["hub", "client"]
+    assert coordinator.shutdown_complete is True
+    if not owner_loop.is_closed():
+        owner_loop.close()

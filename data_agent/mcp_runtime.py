@@ -48,7 +48,6 @@ class McpRuntimeCoordinator:
         self._startup_timeout = startup_timeout
         self._started = False
         self._closing = False
-        self._retry_started = False
         self._retry_task: asyncio.Task | None = None
         self._lock = asyncio.Lock()
         self._shutdown_lock = asyncio.Lock()
@@ -112,14 +111,13 @@ class McpRuntimeCoordinator:
                 self._started = True
                 return True
 
-            if not self._retry_started:
-                self._retry_started = True
-                self._retry_task = asyncio.create_task(
-                    self._run_retry(), name="mcp-hub-startup-retry"
-                )
+            self._retry_task = asyncio.create_task(
+                self._run_retry(), name="mcp-hub-startup-retry"
+            )
             return False
 
     async def _run_retry(self):
+        owned_task = asyncio.current_task()
         try:
             retry_succeeded = await self._hub_getter().retry_failed_servers()
             if (
@@ -132,6 +130,9 @@ class McpRuntimeCoordinator:
             raise
         except Exception:
             logger.warning("MCP Hub background retry failed")
+        finally:
+            if self._retry_task is owned_task:
+                self._retry_task = None
 
     async def shutdown(self):
         """Cancel retry activity before closing Hub-owned connections."""
@@ -142,21 +143,34 @@ class McpRuntimeCoordinator:
             self._started = False
             retry_task = self._retry_task
             if retry_task is not None and not retry_task.done():
-                retry_task.cancel()
-                with suppress(asyncio.CancelledError):
-                    await retry_task
-            self._retry_task = None
-            await self._hub_getter().shutdown()
-            client = self._client_getter()
-            close = getattr(client, "close", None) if client is not None else None
-            if close is not None:
                 try:
-                    result = close()
-                    if inspect.isawaitable(result):
-                        await result
-                except Exception:
-                    logger.warning("ArcPy MCP client shutdown cleanup failed")
-            self._shutdown_complete = True
+                    retry_task.cancel()
+                except (RuntimeError, AttributeError):
+                    logger.warning("MCP retry cancellation could not be scheduled")
+                else:
+                    try:
+                        retry_loop = retry_task.get_loop()
+                    except AttributeError:
+                        retry_loop = asyncio.get_running_loop()
+                    if retry_loop is asyncio.get_running_loop():
+                        with suppress(asyncio.CancelledError):
+                            await retry_task
+            self._retry_task = None
+            try:
+                await self._hub_getter().shutdown()
+            except Exception:
+                logger.warning("MCP Hub shutdown cleanup failed")
+            finally:
+                client = self._client_getter()
+                close = getattr(client, "close", None) if client is not None else None
+                if close is not None:
+                    try:
+                        result = close()
+                        if inspect.isawaitable(result):
+                            await result
+                    except Exception:
+                        logger.warning("ArcPy MCP client shutdown cleanup failed")
+                self._shutdown_complete = True
 
 
 class McpRuntimeExitBridge:
@@ -170,8 +184,8 @@ class McpRuntimeExitBridge:
     def __call__(self):
         if self._called:
             return
-        self._called = True
         if self._coordinator.shutdown_complete:
+            self._called = True
             return
 
         owning_loop = self._coordinator.owning_loop
@@ -180,18 +194,33 @@ class McpRuntimeExitBridge:
         except RuntimeError:
             running_loop = None
 
-        if owning_loop is not None and owning_loop.is_running():
-            if owning_loop is running_loop:
-                self.cleanup_handle = owning_loop.create_task(
+        try:
+            if owning_loop is not None and owning_loop.is_running():
+                if owning_loop is running_loop:
+                    self.cleanup_handle = owning_loop.create_task(
+                        self._coordinator.shutdown()
+                    )
+                else:
+                    cleanup = self._coordinator.shutdown()
+                    try:
+                        self.cleanup_handle = asyncio.run_coroutine_threadsafe(
+                            cleanup, owning_loop
+                        )
+                    except Exception:
+                        cleanup.close()
+                        raise
+            elif running_loop is not None:
+                self.cleanup_handle = running_loop.create_task(
                     self._coordinator.shutdown()
                 )
             else:
-                self.cleanup_handle = asyncio.run_coroutine_threadsafe(
-                    self._coordinator.shutdown(), owning_loop
-                )
-        elif running_loop is not None:
-            self.cleanup_handle = running_loop.create_task(
-                self._coordinator.shutdown()
-            )
-        else:
-            asyncio.run(self._coordinator.shutdown())
+                asyncio.run(self._coordinator.shutdown())
+        except Exception:
+            logger.warning("MCP exit cleanup could not be scheduled")
+            if running_loop is None:
+                try:
+                    asyncio.run(self._coordinator.shutdown())
+                except Exception:
+                    logger.warning("MCP exit cleanup failed")
+        finally:
+            self._called = True
