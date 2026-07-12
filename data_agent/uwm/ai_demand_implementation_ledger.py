@@ -95,7 +95,12 @@ DEMAND_OVERLAYS = {
         "parcel_land_use_schema_audit_state_contract_and_uwm_transition_readiness",
         ["docs/reports/parcel_state_readiness_chongqing_verification_2026-07-13.md", "data/uwm_public_proxy/chongqing_central/parcel_state_readiness_chongqing/overview.json"],
     ),
-    "4": _query("roads_buildings_and_visible_infrastructure_only", ["underground_network_capacity_ownership_missing"]),
+    "4": _bounded(
+        "infrastructure_network_readiness_product",
+        ["underground_utility_networks_missing", "capacity_ownership_and_operator_missing", "load_condition_maintenance_and_outage_timeseries_missing", "cross_network_dependencies_missing", "utility_observation_and_cascade_kernel_gates_closed"],
+        "visible_infrastructure_inventory_utility_data_contract_and_cascade_kernel_readiness",
+        ["docs/reports/infrastructure_network_readiness_chongqing_verification_2026-07-13.md", "data/uwm_public_proxy/chongqing_central/infrastructure_network_readiness_chongqing/overview.json"],
+    ),
     "5": _query("asset_catalog_and_spatial_inventory_only", ["condition_ownership_lifecycle_missing"]),
     "6": _query("population_proxy_and_admin_statistics", ["authoritative_demographic_structure_missing"]),
     "7": _bounded("existing_livability_world_model_decision_package", ["24_month_and_five_year_customer_calibration_missing"], "bounded_model_based_livability_decision_support"),
