@@ -1,0 +1,1 @@
+{"bundle_id":"spatial-scope-9da50eb8e0f9be3882b1","data_contracts":{"authoritative_upgrade":{"required_fields":["official_admin_code","official_name","legal_geometry","effective_date","source_authority","source_license","crs","topology_validation","historical_crosswalk"]}},"schema":"uwm.spatial_scope_contracts.v1"}
