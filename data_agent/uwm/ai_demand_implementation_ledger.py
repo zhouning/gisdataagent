@@ -130,7 +130,12 @@ DEMAND_OVERLAYS = {
         ["docs/reports/traditional_daily_convenience_chongqing_verification_2026-07-12.md", "data/uwm_public_proxy/chongqing_central/traditional_daily_convenience_chongqing/overview.json"],
     ),
     "15": _query("text_and_geospatial_analysis_platform_capability", ["customer_feedback_corpus_missing"]),
-    "16": _query("heritage_poi_and_place_context_foundation", ["authoritative_cultural_inventory_and_place_narrative_missing"]),
+    "16": _bounded(
+        "traditional_cultural_heritage_evidence_product",
+        ["authoritative_heritage_register_missing", "legal_status_and_level_missing", "opening_operation_and_public_access_missing", "condition_and_restoration_observations_missing", "visitor_and_community_activity_missing", "longitudinal_intervention_outcomes_missing", "facility_inventory_sampling_not_complete"],
+        "cultural_place_inventory_candidate_leads_and_heritage_evidence_readiness",
+        ["docs/reports/traditional_cultural_heritage_chongqing_verification_2026-07-12.md", "data/uwm_public_proxy/chongqing_central/traditional_cultural_heritage_chongqing/overview.json"],
+    ),
     "17": _query("digital_asset_catalog_and_platform_observability", ["district_digital_infrastructure_inventory_missing"]),
     "18": _query("platform_operations_and_observability_only", ["customer_sla_work_order_and_asset_lifecycle_missing"]),
     "19": _contract("resilience_world_model_route_defined", ["hazard_response_capacity_and_recovery_data_missing"]),

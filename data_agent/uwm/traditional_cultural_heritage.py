@@ -18,8 +18,9 @@ def classify(record):
  elif '文化馆' in cats or '文化中心' in cats:category='cultural_center'
  elif any(x in cats for x in ('展览馆','美术馆','画廊')):category='exhibition_gallery'
  if category:return 'confirmed_cultural_place_evidence',category,'explicit_source_category'
- if any(p.startswith(x) for x in EXCLUDED_PRIMARY):return 'excluded_ambiguous_records',None,'incompatible_source_category'
- if any(x in name for x in KEYWORDS):return 'heritage_candidate_leads','historic_place_context','name_keyword_requires_verification'
+ has_keyword=any(x in name for x in KEYWORDS)
+ if has_keyword and any(p.startswith(x) for x in EXCLUDED_PRIMARY):return 'excluded_ambiguous_records',None,'incompatible_source_category'
+ if has_keyword:return 'heritage_candidate_leads','historic_place_context','name_keyword_requires_verification'
  return None,None,'not_cultural_evidence'
 def build_cultural_heritage_product(*,records,admin_units,source_artifacts):
  places=[];unrelated=0
