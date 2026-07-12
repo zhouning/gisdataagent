@@ -7,6 +7,7 @@ import copy
 import json
 import logging
 import re
+import threading
 import time
 from contextlib import AsyncExitStack
 from datetime import timedelta
@@ -127,10 +128,17 @@ class ArcPyMcpClient:
 
     def __init__(self, config, *, clock=time.monotonic) -> None:
         self._config = config
+        self._clock = clock
+        self._thread_lock = threading.RLock()
+        self._worker_thread: threading.Thread | None = None
+        self._worker_loop: asyncio.AbstractEventLoop | None = None
+        self._worker_started: threading.Event | None = None
+        self._worker_start_error: BaseException | None = None
+        self._worker_closing = False
+        self._shutdown_future = None
         self._session = None
         self._resolved_token: str | None = None
         self._stack: AsyncExitStack | None = None
-        self._lock = asyncio.Lock()
         self._owner_task: asyncio.Task | None = None
         self._owner_loop: asyncio.AbstractEventLoop | None = None
         self._ready: asyncio.Future | None = None
@@ -138,41 +146,184 @@ class ArcPyMcpClient:
         self._closing = False
         self._accepting_calls = False
         self._generation = 0
-        self._clock = clock
         self._health_cache: tuple[float, dict] | None = None
         self._capabilities_cache: tuple[float, dict] | None = None
-        self._health_cache_lock = asyncio.Lock()
-        self._capabilities_cache_lock = asyncio.Lock()
+        self._health_cache_lock: asyncio.Lock | None = None
+        self._capabilities_cache_lock: asyncio.Lock | None = None
+        self._session_close_lock: asyncio.Lock | None = None
 
     async def connect(self) -> None:
-        async with self._lock:
-            if self._closing:
-                raise ArcPyMcpError(
-                    "ARCPY_MCP_UNREACHABLE", "ArcPy MCP service is unreachable"
-                )
-            owner = self._owner_task
-            if owner is None or owner.done():
-                owner_loop = asyncio.get_running_loop()
-                seed_session = self._session if owner is None else None
-                commands = asyncio.Queue()
-                ready = asyncio.get_running_loop().create_future()
-                ready.add_done_callback(self._consume_future)
-                owner = asyncio.create_task(
-                    self._session_owner(ready, commands, seed_session),
-                    name=f"arcpy-mcp-session-{self._config.name}",
-                )
-                owner.add_done_callback(
-                    lambda task, waiter=ready: self._owner_finished(task, waiter)
-                )
-                self._owner_task = owner
-                self._owner_loop = owner_loop
-                self._ready = ready
-                self._commands = commands
-                self._accepting_calls = False
-                self._generation += 1
-            ready = self._ready
+        await self._submit_to_worker(self._worker_connect)
 
-        await asyncio.shield(ready)
+    def _ensure_worker_loop(self) -> asyncio.AbstractEventLoop:
+        while True:
+            thread_to_join = None
+            with self._thread_lock:
+                thread = self._worker_thread
+                loop = self._worker_loop
+                if (
+                    thread is not None
+                    and thread.is_alive()
+                    and loop is not None
+                    and not self._worker_closing
+                ):
+                    return loop
+                if thread is not None and thread.is_alive():
+                    if self._worker_closing:
+                        thread_to_join = thread
+                    else:
+                        started = self._worker_started
+                else:
+                    started = threading.Event()
+                    thread = threading.Thread(
+                        target=self._worker_thread_main,
+                        args=(started,),
+                        name="arcpy-mcp-worker",
+                        daemon=True,
+                    )
+                    self._worker_thread = thread
+                    self._worker_started = started
+                    self._worker_start_error = None
+                    self._worker_closing = False
+                    self._shutdown_future = None
+                    thread.start()
+            if thread_to_join is not None:
+                thread_to_join.join()
+                continue
+            started.wait()
+            with self._thread_lock:
+                if self._worker_start_error is not None:
+                    raise ArcPyMcpError(
+                        "ARCPY_MCP_UNREACHABLE",
+                        "ArcPy MCP service is unreachable",
+                    )
+                if self._worker_loop is not None:
+                    return self._worker_loop
+
+    def _worker_thread_main(self, started: threading.Event) -> None:
+        loop = None
+        current_thread = threading.current_thread()
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            self._health_cache_lock = asyncio.Lock()
+            self._capabilities_cache_lock = asyncio.Lock()
+            self._session_close_lock = asyncio.Lock()
+            with self._thread_lock:
+                self._worker_loop = loop
+                self._owner_loop = loop
+            started.set()
+            loop.run_forever()
+        except BaseException as exc:
+            with self._thread_lock:
+                self._worker_start_error = exc
+            started.set()
+        finally:
+            if loop is not None and not loop.is_closed():
+                try:
+                    loop.run_until_complete(self._worker_final_cleanup())
+                    loop.run_until_complete(loop.shutdown_asyncgens())
+                    loop.run_until_complete(loop.shutdown_default_executor())
+                except BaseException:
+                    logger.warning("ArcPy MCP worker cleanup failed")
+                finally:
+                    loop.close()
+            with self._thread_lock:
+                if self._worker_thread is current_thread:
+                    self._worker_thread = None
+                    self._worker_loop = None
+                    self._owner_loop = None
+                    self._worker_started = None
+                    self._worker_closing = False
+                    self._shutdown_future = None
+                    self._health_cache_lock = None
+                    self._capabilities_cache_lock = None
+                    self._session_close_lock = None
+
+    async def _worker_final_cleanup(self) -> None:
+        try:
+            await self._worker_close_session()
+        except BaseException:
+            logger.warning("ArcPy MCP session cleanup failed")
+        current = asyncio.current_task()
+        pending = [
+            task for task in asyncio.all_tasks()
+            if task is not current and not task.done()
+        ]
+        for task in pending:
+            task.cancel()
+        if pending:
+            await asyncio.gather(*pending, return_exceptions=True)
+
+    async def _submit_to_worker(
+        self, coroutine_factory, *, cancel_on_caller_cancel: bool = True
+    ):
+        try:
+            loop = await asyncio.to_thread(self._ensure_worker_loop)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            raise ArcPyMcpError(
+                "ARCPY_MCP_UNREACHABLE", "ArcPy MCP service is unreachable"
+            ) from None
+
+        coroutine = coroutine_factory()
+        try:
+            future = asyncio.run_coroutine_threadsafe(coroutine, loop)
+        except Exception:
+            coroutine.close()
+            raise ArcPyMcpError(
+                "ARCPY_MCP_UNREACHABLE", "ArcPy MCP service is unreachable"
+            ) from None
+        wrapped = asyncio.wrap_future(future)
+        try:
+            if cancel_on_caller_cancel:
+                return await wrapped
+            return await asyncio.shield(wrapped)
+        except asyncio.CancelledError:
+            if cancel_on_caller_cancel:
+                future.cancel()
+            else:
+                future.add_done_callback(self._consume_concurrent_future)
+            raise
+        except ArcPyMcpError:
+            raise
+        except Exception:
+            raise ArcPyMcpError(
+                "ARCPY_MCP_UNREACHABLE", "ArcPy MCP service is unreachable"
+            ) from None
+
+    @staticmethod
+    def _consume_concurrent_future(future) -> None:
+        try:
+            future.exception()
+        except BaseException:
+            pass
+
+    async def _worker_connect(self) -> None:
+        if self._closing:
+            raise ArcPyMcpError(
+                "ARCPY_MCP_UNREACHABLE", "ArcPy MCP service is unreachable"
+            )
+        owner = self._owner_task
+        if owner is None or owner.done():
+            seed_session = self._session if owner is None else None
+            commands = asyncio.Queue()
+            ready = asyncio.get_running_loop().create_future()
+            ready.add_done_callback(self._consume_future)
+            owner = asyncio.create_task(
+                self._session_owner(ready, commands, seed_session),
+                name="arcpy-mcp-session-owner",
+            )
+            owner.add_done_callback(
+                lambda task, waiter=ready: self._owner_finished(task, waiter)
+            )
+            self._owner_task = owner
+            self._ready = ready
+            self._commands = commands
+            self._accepting_calls = False
+            self._generation += 1
+        await asyncio.shield(self._ready)
 
     @staticmethod
     def _consume_future(future) -> None:
@@ -188,15 +339,21 @@ class ArcPyMcpClient:
                     "ARCPY_MCP_UNREACHABLE", "ArcPy MCP service is unreachable"
                 )
             )
+        should_stop_idle_worker = self._owner_task is owner and not self._worker_closing
         self._finalize_owner(owner)
         self._consume_future(owner)
+        if should_stop_idle_worker:
+            with self._thread_lock:
+                self._worker_closing = True
+                loop = self._worker_loop
+            if loop is not None:
+                loop.call_soon(loop.stop)
 
     def _finalize_owner(self, owner) -> None:
         if self._owner_task is not owner:
             return
         self._accepting_calls = False
         self._owner_task = None
-        self._owner_loop = None
         self._ready = None
         self._commands = None
         self._closing = False
@@ -382,65 +539,71 @@ class ArcPyMcpClient:
         self._capabilities_cache = None
 
     async def close(self) -> None:
-        try:
-            running_loop = asyncio.get_running_loop()
-        except RuntimeError:
-            running_loop = None
-        owner_loop = self._owner_loop
-
-        if owner_loop is None or owner_loop is running_loop:
-            await self._close_on_owner_loop()
-            return
-        if owner_loop.is_closed():
-            self._close_closed_owner_loop()
-            return
-        if owner_loop.is_running():
-            foreign_close = asyncio.run_coroutine_threadsafe(
-                self._close_on_owner_loop(), owner_loop
-            )
-            await asyncio.wrap_future(foreign_close)
-            return
-        await asyncio.to_thread(self._close_stopped_owner_loop, owner_loop)
-
-    def _close_stopped_owner_loop(
-        self, owner_loop: asyncio.AbstractEventLoop
-    ) -> None:
-        owner_loop.run_until_complete(self._close_on_owner_loop())
-
-    def _close_closed_owner_loop(self) -> None:
-        owner = self._owner_task
-        token = self._resolved_token
-        commands = self._commands
-        if commands is not None:
-            while not commands.empty():
-                command = commands.get_nowait()
-                if command[0] == "call" and not command[3].done():
+        with self._thread_lock:
+            thread = self._worker_thread
+            loop = self._worker_loop
+            shutdown_future = self._shutdown_future
+            if thread is None:
+                self._clear_runtime_state()
+                return
+            if loop is None:
+                thread_to_join = thread
+            else:
+                thread_to_join = None
+                if shutdown_future is None:
+                    coroutine = self._worker_close_session()
                     try:
-                        command[3].cancel()
-                    except BaseException:
-                        pass
-        if token:
-            unregister_runtime_secrets([token])
-        if owner is not None and not owner.done():
-            coroutine = owner.get_coro()
-            try:
-                coroutine.close()
-            except BaseException:
-                pass
-            if hasattr(owner, "_log_destroy_pending"):
-                owner._log_destroy_pending = False
-        self._accepting_calls = False
-        self._closing = False
-        self._generation += 1
-        self._owner_task = None
-        self._owner_loop = None
-        self._ready = None
-        self._commands = None
-        self._clear_runtime_state()
-        logger.warning("ArcPy MCP owner loop is closed; cleanup was limited")
+                        shutdown_future = asyncio.run_coroutine_threadsafe(
+                            coroutine, loop
+                        )
+                    except Exception:
+                        coroutine.close()
+                        raise ArcPyMcpError(
+                            "ARCPY_MCP_UNREACHABLE",
+                            "ArcPy MCP service is unreachable",
+                        ) from None
+                    self._shutdown_future = shutdown_future
+                    self._worker_closing = True
 
-    async def _close_on_owner_loop(self) -> None:
-        async with self._lock:
+        if thread_to_join is not None:
+            await asyncio.to_thread(thread_to_join.join)
+            return
+
+        wrapped = asyncio.wrap_future(shutdown_future)
+        try:
+            await asyncio.shield(wrapped)
+        except asyncio.CancelledError:
+            shutdown_future.add_done_callback(
+                lambda future: self._request_worker_stop(loop)
+            )
+            raise
+        except ArcPyMcpError as exc:
+            error = exc
+        except Exception:
+            error = ArcPyMcpError(
+                "ARCPY_MCP_UNREACHABLE", "ArcPy MCP service is unreachable"
+            )
+        else:
+            error = None
+
+        self._request_worker_stop(loop)
+        await asyncio.to_thread(thread.join)
+        if error is not None:
+            raise error
+
+    @staticmethod
+    def _request_worker_stop(loop: asyncio.AbstractEventLoop) -> None:
+        try:
+            loop.call_soon_threadsafe(loop.stop)
+        except RuntimeError:
+            pass
+
+    async def _worker_close_session(self) -> None:
+        close_lock = self._session_close_lock
+        if close_lock is None:
+            self._clear_runtime_state()
+            return
+        async with close_lock:
             owner = self._owner_task
             if owner is None:
                 self._generation += 1
@@ -487,24 +650,27 @@ class ArcPyMcpClient:
                 "ARCPY_TOOL_NOT_ALLOWED",
                 "Requested ArcPy MCP tool is not allowed",
             )
+        return await self._submit_to_worker(
+            lambda: self._worker_call_tool(name, arguments)
+        )
 
-        await self.connect()
-        async with self._lock:
-            owner = self._owner_task
-            commands = self._commands
-            if (
-                self._closing
-                or owner is None
-                or owner.done()
-                or commands is None
-                or not self._accepting_calls
-            ):
-                raise ArcPyMcpError(
-                    "ARCPY_MCP_UNREACHABLE", "ArcPy MCP service is unreachable"
-                )
-            response = asyncio.get_running_loop().create_future()
-            response.add_done_callback(self._consume_future)
-            commands.put_nowait(("call", name, arguments, response))
+    async def _worker_call_tool(self, name: str, arguments: dict) -> dict:
+        await self._worker_connect()
+        owner = self._owner_task
+        commands = self._commands
+        if (
+            self._closing
+            or owner is None
+            or owner.done()
+            or commands is None
+            or not self._accepting_calls
+        ):
+            raise ArcPyMcpError(
+                "ARCPY_MCP_UNREACHABLE", "ArcPy MCP service is unreachable"
+            )
+        response = asyncio.get_running_loop().create_future()
+        response.add_done_callback(self._consume_future)
+        commands.put_nowait(("call", name, arguments, response))
         try:
             return await asyncio.shield(response)
         except asyncio.CancelledError:
@@ -561,6 +727,12 @@ class ArcPyMcpClient:
         return copy.deepcopy(value)
 
     async def health_check(self) -> dict:
+        return await self._submit_to_worker(
+            self._worker_health_check,
+            cancel_on_caller_cancel=False,
+        )
+
+    async def _worker_health_check(self) -> dict:
         cached = self._cached(self._health_cache)
         if cached is not None:
             return cached
@@ -569,9 +741,9 @@ class ArcPyMcpClient:
             cached = self._cached(self._health_cache)
             if cached is not None:
                 return cached
-            await self.connect()
+            await self._worker_connect()
             generation = self._generation
-            result = await self.call_tool("health_check", {})
+            result = await self._worker_call_tool("health_check", {})
             if result.get("status") != "healthy" or not isinstance(
                 result.get("worker"), dict
             ):
@@ -610,14 +782,22 @@ class ArcPyMcpClient:
         self, required_extension: str | None = None
     ) -> dict:
         extension = self._normalize_extension(required_extension)
+        return await self._submit_to_worker(
+            lambda: self._worker_get_capabilities(extension),
+            cancel_on_caller_cancel=False,
+        )
+
+    async def _worker_get_capabilities(self, extension: str | None) -> dict:
         result = self._cached(self._capabilities_cache)
         if result is None:
             async with self._capabilities_cache_lock:
                 result = self._cached(self._capabilities_cache)
                 if result is None:
-                    await self.connect()
+                    await self._worker_connect()
                     generation = self._generation
-                    result = await self.call_tool("get_capabilities", {})
+                    result = await self._worker_call_tool(
+                        "get_capabilities", {}
+                    )
                     if generation == self._generation and self._accepting_calls:
                         self._capabilities_cache = (
                             self._clock(),

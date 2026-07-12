@@ -6,10 +6,29 @@ import threading
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
+import anyio
 import pytest
 
 from data_agent.arcpy_mcp_client import ArcPyMcpClient, ArcPyMcpError
 from data_agent.mcp_hub import McpServerConfig
+
+
+@pytest.fixture(autouse=True)
+def close_constructed_clients(monkeypatch):
+    clients = []
+    original_init = ArcPyMcpClient.__init__
+
+    def tracked_init(client, *args, **kwargs):
+        original_init(client, *args, **kwargs)
+        clients.append(client)
+
+    monkeypatch.setattr(ArcPyMcpClient, "__init__", tracked_init)
+    yield
+    for client in clients:
+        try:
+            asyncio.run(client.close())
+        except BaseException:
+            pass
 
 
 def test_client_api_is_importable():
@@ -418,8 +437,24 @@ class BlockingExitContext(TaskAffineContext):
 
     async def __aexit__(self, exc_type, exc, traceback):
         self.exit_started.set()
-        await self.release_exit.wait()
+        await asyncio.to_thread(self.release_exit.wait)
         await super().__aexit__(exc_type, exc, traceback)
+
+
+class AnyioTaskGroupContext:
+    def __init__(self, value, exited):
+        self.value = value
+        self.exited = exited
+        self.task_group = None
+
+    async def __aenter__(self):
+        self.task_group = anyio.create_task_group()
+        await self.task_group.__aenter__()
+        return self.value
+
+    async def __aexit__(self, exc_type, exc, traceback):
+        await self.task_group.__aexit__(exc_type, exc, traceback)
+        self.exited.set()
 
 
 class FakeSdkSession:
@@ -487,8 +522,8 @@ def _install_blocking_exit_sdk(monkeypatch):
     import data_agent.arcpy_mcp_client as client_module
 
     events = []
-    exit_started = asyncio.Event()
-    release_exit = asyncio.Event()
+    exit_started = threading.Event()
+    release_exit = threading.Event()
     sessions = [FakeSdkSession(events), FakeSdkSession(events)]
     http_contexts = []
     transport_contexts = []
@@ -782,75 +817,174 @@ async def test_close_from_foreign_stopped_owner_loop(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_close_with_closed_owner_loop_is_sanitized_and_warning_free(
-    caplog, recwarn
+    monkeypatch, caplog, recwarn
 ):
-    from data_agent.mcp_transport import (
-        current_runtime_secrets,
-        register_runtime_secrets,
-        unregister_runtime_secrets,
-    )
+    from data_agent.mcp_transport import current_runtime_secrets
 
+    events = []
+    session = FakeSdkSession(events)
+    sdk = _install_fake_sdk(monkeypatch, [session])
     credential = "fixture-closed-loop-credential"
-    register_runtime_secrets([credential])
-    owner_loop = asyncio.new_event_loop()
-    client = _client()
-    client._resolved_token = credential
-    client._session = SimpleNamespace(
-        call_tool=AsyncMock(return_value=_result(structured={"status": "ok"}))
+    monkeypatch.setenv("ARCPY_CLIENT_TEST_TOKEN", credential)
+    client = ArcPyMcpClient(
+        McpServerConfig(
+            name="arcpy",
+            url="https://service.example/mcp",
+            bearer_token_env_var="ARCPY_CLIENT_TEST_TOKEN",
+        )
     )
     setup_errors = []
-    pending_responses = []
 
-    def connect_then_close_loop():
-        asyncio.set_event_loop(owner_loop)
+    def connect_then_close_caller_loop():
         try:
-            owner_loop.run_until_complete(client.connect())
-            response = owner_loop.create_future()
-            response.add_done_callback(lambda future: future.cancelled())
-            client._commands.put_nowait(("call", "submit_job", {}, response))
-            pending_responses.append(response)
+            asyncio.run(client.connect())
         except BaseException as exc:
             setup_errors.append(exc)
-        finally:
-            owner_loop.close()
 
-    setup_thread = threading.Thread(target=connect_then_close_loop)
+    setup_thread = threading.Thread(target=connect_then_close_caller_loop)
     setup_thread.start()
     await asyncio.to_thread(setup_thread.join, 2)
     assert not setup_thread.is_alive()
     assert setup_errors == []
-    owner = client._owner_task
 
-    try:
-        with caplog.at_level("WARNING", logger="data_agent.arcpy_mcp_client"):
-            await client.close()
-        gc.collect()
+    with caplog.at_level("WARNING", logger="data_agent.arcpy_mcp_client"):
+        await client.close()
+    gc.collect()
 
-        assert current_runtime_secrets() == ()
-        assert client._owner_task is None
-        assert client._owner_loop is None
-        assert client._session is None
-        assert client._resolved_token is None
-        assert (
-            pending_responses[0].cancelled()
-            or not pending_responses[0].done()
+    assert current_runtime_secrets() == ()
+    assert client._owner_task is None
+    assert client._owner_loop is None
+    assert client._worker_thread is None
+    assert client._worker_loop is None
+    assert client._session is None
+    assert client._resolved_token is None
+    assert all(not context.affinity_violation for context in sdk.http_contexts)
+    assert all(not context.affinity_violation for context in sdk.transport_contexts)
+    assert not any("Task was destroyed" in record.message for record in caplog.records)
+    assert not any("coroutine" in str(warning.message) for warning in recwarn)
+
+
+@pytest.mark.asyncio
+async def test_dedicated_owner_survives_caller_loop_close_until_explicit_close(
+    monkeypatch, recwarn
+):
+    import data_agent.arcpy_mcp_client as client_module
+    from data_agent.mcp_transport import current_runtime_secrets
+
+    credential = "fixture-dedicated-anyio-credential"
+    exits = [threading.Event() for _ in range(3)]
+    session = FakeSdkSession([])
+    monkeypatch.setattr(
+        client_module.httpx,
+        "AsyncClient",
+        MagicMock(return_value=AnyioTaskGroupContext(object(), exits[0])),
+    )
+    monkeypatch.setattr(
+        client_module,
+        "streamable_http_client",
+        MagicMock(
+            return_value=AnyioTaskGroupContext(
+                ("read", "write", lambda: None), exits[1]
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        client_module,
+        "ClientSession",
+        MagicMock(return_value=AnyioTaskGroupContext(session, exits[2])),
+    )
+    monkeypatch.setenv("ARCPY_CLIENT_TEST_TOKEN", credential)
+    client = ArcPyMcpClient(
+        McpServerConfig(
+            name="arcpy",
+            url="https://service.example/mcp",
+            bearer_token_env_var="ARCPY_CLIENT_TEST_TOKEN",
         )
-        assert getattr(owner, "_log_destroy_pending", False) is False
-        assert not any(
-            "Task was destroyed" in record.message for record in caplog.records
+    )
+    caller_errors = []
+
+    def use_client_then_close_caller_loop():
+        async def use_client():
+            await client.connect()
+            assert await client.call_tool("get_job", {}) == {"status": "ok"}
+
+        try:
+            asyncio.run(use_client())
+        except BaseException as exc:
+            caller_errors.append(exc)
+
+    caller = threading.Thread(target=use_client_then_close_caller_loop)
+    caller.start()
+    await asyncio.to_thread(caller.join, 2)
+    assert not caller.is_alive()
+    assert caller_errors == []
+    exited_before_explicit_close = [event.is_set() for event in exits]
+
+    await client.close()
+    gc.collect()
+
+    assert exited_before_explicit_close == [False, False, False]
+    assert [event.is_set() for event in exits] == [True, True, True]
+    assert current_runtime_secrets() == ()
+    assert not any("coroutine" in str(warning.message) for warning in recwarn)
+
+
+@pytest.mark.asyncio
+async def test_health_recovers_on_new_caller_loop_after_old_loop_cancellation(
+    monkeypatch,
+):
+    started = threading.Event()
+    release = threading.Event()
+    call_count = 0
+
+    class BlockingHealthSession(FakeSdkSession):
+        async def call_tool(self, name, arguments):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                started.set()
+                await asyncio.to_thread(release.wait)
+            return _result(structured={"status": "healthy", "worker": {}})
+
+    sessions = [BlockingHealthSession([]), FakeSdkSession([])]
+    _install_fake_sdk(monkeypatch, sessions)
+    monkeypatch.setenv("ARCPY_CLIENT_TEST_TOKEN", "fixture-loop-cache-credential")
+    client = ArcPyMcpClient(
+        McpServerConfig(
+            name="arcpy",
+            url="https://service.example/mcp",
+            bearer_token_env_var="ARCPY_CLIENT_TEST_TOKEN",
         )
-        assert not any("coroutine" in str(warning.message) for warning in recwarn)
-    finally:
-        if credential in current_runtime_secrets():
-            unregister_runtime_secrets([credential])
-        if not owner.done():
-            coroutine = owner.get_coro()
-            try:
-                coroutine.close()
-            except BaseException:
-                pass
-            if hasattr(owner, "_log_destroy_pending"):
-                owner._log_destroy_pending = False
+    )
+    caller_errors = []
+
+    def cancel_health_then_close_caller_loop():
+        async def cancel_health():
+            tasks = [asyncio.create_task(client.health_check()) for _ in range(12)]
+            await asyncio.to_thread(started.wait)
+            for task in tasks:
+                task.cancel()
+            release.set()
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+        try:
+            asyncio.run(cancel_health())
+        except BaseException as exc:
+            caller_errors.append(exc)
+
+    caller = threading.Thread(target=cancel_health_then_close_caller_loop)
+    caller.start()
+    await asyncio.to_thread(caller.join, 2)
+    assert not caller.is_alive()
+    assert caller_errors == []
+
+    result = await asyncio.wait_for(client.health_check(), timeout=2.0)
+
+    assert result["status"] == "healthy"
+    assert 1 <= call_count <= 2
+    await client.close()
+    assert client._worker_thread is None
+    assert client._worker_loop is None
 
 
 @pytest.mark.asyncio
@@ -868,8 +1002,16 @@ async def test_call_during_owner_cleanup_is_rejected_then_retry_uses_new_owner(
     )
     await client.connect()
     first_owner = client._owner_task
-    client._commands.put_nowait(("shutdown",))
-    await sdk.exit_started.wait()
+    first_worker = client._worker_thread
+    owner_done = threading.Event()
+    client._worker_loop.call_soon_threadsafe(
+        first_owner.add_done_callback,
+        lambda task: owner_done.set(),
+    )
+    client._worker_loop.call_soon_threadsafe(
+        client._commands.put_nowait, ("shutdown",)
+    )
+    await asyncio.to_thread(sdk.exit_started.wait)
 
     retry_during_cleanup = asyncio.create_task(client.call_tool("get_job", {}))
     for _ in range(10):
@@ -889,7 +1031,8 @@ async def test_call_during_owner_cleanup_is_rejected_then_retry_uses_new_owner(
             await retry_during_cleanup
 
     sdk.release_exit.set()
-    await first_owner
+    await asyncio.to_thread(owner_done.wait)
+    await asyncio.to_thread(first_worker.join)
     assert was_rejected is True
     assert rejection is not None
     assert rejection.code == "ARCPY_MCP_UNREACHABLE"
@@ -912,17 +1055,16 @@ async def test_cancelled_close_waiter_recovers_after_owner_finishes(monkeypatch)
     )
     await client.connect()
     owner = client._owner_task
+    worker = client._worker_thread
     close_task = asyncio.create_task(client.close())
-    await sdk.exit_started.wait()
+    await asyncio.to_thread(sdk.exit_started.wait)
     close_task.cancel()
     with pytest.raises(asyncio.CancelledError):
         await close_task
 
     assert client._closing is True
     sdk.release_exit.set()
-    with pytest.raises(asyncio.CancelledError):
-        await owner
-    await asyncio.sleep(0)
+    await asyncio.to_thread(worker.join)
 
     assert client._closing is False
     assert client._owner_task is None
@@ -1068,14 +1210,14 @@ async def test_half_connect_failure_cleans_up_and_allows_retry(monkeypatch):
 async def test_cancelled_connect_caller_does_not_cancel_session_owner(monkeypatch):
     from data_agent.mcp_transport import current_runtime_secrets
 
-    initialize_started = asyncio.Event()
-    release_initialize = asyncio.Event()
+    initialize_started = threading.Event()
+    release_initialize = threading.Event()
 
     class BlockingInitializeSession(FakeSdkSession):
         async def initialize(self):
             self.initialize_count += 1
             initialize_started.set()
-            await release_initialize.wait()
+            await asyncio.to_thread(release_initialize.wait)
 
     session = BlockingInitializeSession([])
     sdk = _install_fake_sdk(monkeypatch, [session])
@@ -1089,7 +1231,7 @@ async def test_cancelled_connect_caller_does_not_cancel_session_owner(monkeypatc
     )
 
     connect_task = asyncio.create_task(client.connect())
-    await initialize_started.wait()
+    await asyncio.to_thread(initialize_started.wait)
     connect_task.cancel()
     with pytest.raises(asyncio.CancelledError):
         await connect_task
@@ -1111,15 +1253,18 @@ async def test_cancelled_connect_caller_does_not_cancel_session_owner(monkeypatc
 async def test_owner_cancelled_before_start_resolves_connect_waiter():
     client = _client()
     connect_task = asyncio.create_task(client.connect())
-    await asyncio.sleep(0)
-    owner = client._owner_task
-    owner.cancel()
+    connect_task.cancel()
+
+    with pytest.raises(asyncio.CancelledError):
+        await connect_task
+
+    client._session = SimpleNamespace(
+        call_tool=AsyncMock(return_value=_result(structured={"status": "ok"}))
+    )
+    await asyncio.wait_for(client.connect(), timeout=2.0)
+    assert client._owner_task is not None
     await client.close()
 
-    with pytest.raises(ArcPyMcpError) as exc_info:
-        await asyncio.wait_for(connect_task, timeout=2.0)
-
-    assert exc_info.value.code == "ARCPY_MCP_UNREACHABLE"
 
 
 @pytest.mark.asyncio
@@ -1185,19 +1330,20 @@ class FakeClock:
 
 @pytest.mark.asyncio
 async def test_close_cancels_an_owned_call_without_deadlock():
-    started = asyncio.Event()
-    release = asyncio.Event()
+    started = threading.Event()
+    release = threading.Event()
 
     class BlockingSession:
         async def call_tool(self, name, arguments):
             started.set()
-            await release.wait()
+            while not release.is_set():
+                await asyncio.sleep(0)
             return _result(structured={"status": "ok"})
 
     client = _client()
     client._session = BlockingSession()
     call_task = asyncio.create_task(client.call_tool("get_job", {}))
-    await started.wait()
+    await asyncio.to_thread(started.wait)
     close_task = asyncio.create_task(client.close())
     try:
         await asyncio.wait_for(close_task, timeout=2.0)
@@ -1214,9 +1360,9 @@ async def test_close_cancels_an_owned_call_without_deadlock():
 
 @pytest.mark.asyncio
 async def test_cancelled_call_waiter_does_not_cancel_owner_or_next_call():
-    first_started = asyncio.Event()
-    release_first = asyncio.Event()
-    first_completed = asyncio.Event()
+    first_started = threading.Event()
+    release_first = threading.Event()
+    first_completed = threading.Event()
 
     class RecordingSession:
         def __init__(self):
@@ -1228,7 +1374,7 @@ async def test_cancelled_call_waiter_does_not_cancel_owner_or_next_call():
             self.call_count += 1
             if self.call_count == 1:
                 first_started.set()
-                await release_first.wait()
+                await asyncio.to_thread(release_first.wait)
                 first_completed.set()
             return _result(structured={"call": self.call_count})
 
@@ -1236,13 +1382,13 @@ async def test_cancelled_call_waiter_does_not_cancel_owner_or_next_call():
     client = _client()
     client._session = session
     first_call = asyncio.create_task(client.call_tool("get_job", {}))
-    await first_started.wait()
+    await asyncio.to_thread(first_started.wait)
     first_call.cancel()
     with pytest.raises(asyncio.CancelledError):
         await first_call
 
     release_first.set()
-    await first_completed.wait()
+    await asyncio.to_thread(first_completed.wait)
     second = await client.call_tool("get_job", {})
 
     assert second == {"call": 2}
@@ -1252,8 +1398,8 @@ async def test_cancelled_call_waiter_does_not_cancel_owner_or_next_call():
 
 @pytest.mark.asyncio
 async def test_cancelled_queued_call_is_not_invoked_remotely():
-    first_started = asyncio.Event()
-    release_first = asyncio.Event()
+    first_started = threading.Event()
+    release_first = threading.Event()
 
     class RecordingSession:
         def __init__(self):
@@ -1263,14 +1409,14 @@ async def test_cancelled_queued_call_is_not_invoked_remotely():
             self.names.append(name)
             if len(self.names) == 1:
                 first_started.set()
-                await release_first.wait()
+                await asyncio.to_thread(release_first.wait)
             return _result(structured={"name": name})
 
     session = RecordingSession()
     client = _client()
     client._session = session
     first_call = asyncio.create_task(client.call_tool("get_job", {}))
-    await first_started.wait()
+    await asyncio.to_thread(first_started.wait)
     queued_call = asyncio.create_task(client.call_tool("submit_job", {}))
     for _ in range(10):
         if client._commands.qsize() == 1:
@@ -1396,23 +1542,22 @@ async def test_health_check_cold_cache_is_single_flight():
 
 @pytest.mark.asyncio
 async def test_health_result_after_close_does_not_repopulate_cache():
-    started = asyncio.Event()
-    release = asyncio.Event()
+    started = threading.Event()
+
+    class BlockingHealthSession:
+        async def call_tool(self, name, arguments):
+            started.set()
+            while True:
+                await asyncio.sleep(0)
+
     client = _client()
-    client.connect = AsyncMock()
-
-    async def delayed_call(name, arguments):
-        started.set()
-        await release.wait()
-        return {"status": "healthy", "worker": {}}
-
-    client.call_tool = delayed_call
+    client._session = BlockingHealthSession()
     health_task = asyncio.create_task(client.health_check())
-    await started.wait()
+    await asyncio.to_thread(started.wait)
     await client.close()
-    release.set()
 
-    assert (await health_task)["status"] == "healthy"
+    with pytest.raises(ArcPyMcpError):
+        await health_task
     assert client._health_cache is None
 
 
@@ -1513,23 +1658,22 @@ async def test_capabilities_cold_cache_is_single_flight():
 
 @pytest.mark.asyncio
 async def test_capability_result_after_close_does_not_repopulate_cache():
-    started = asyncio.Event()
-    release = asyncio.Event()
+    started = threading.Event()
+
+    class BlockingCapabilitiesSession:
+        async def call_tool(self, name, arguments):
+            started.set()
+            while True:
+                await asyncio.sleep(0)
+
     client = _client()
-    client.connect = AsyncMock()
-
-    async def delayed_call(name, arguments):
-        started.set()
-        await release.wait()
-        return {"worker": {"extensions": {}}}
-
-    client.call_tool = delayed_call
+    client._session = BlockingCapabilitiesSession()
     capability_task = asyncio.create_task(client.get_capabilities())
-    await started.wait()
+    await asyncio.to_thread(started.wait)
     await client.close()
-    release.set()
 
-    assert "worker" in await capability_task
+    with pytest.raises(ArcPyMcpError):
+        await capability_task
     assert client._capabilities_cache is None
 
 
