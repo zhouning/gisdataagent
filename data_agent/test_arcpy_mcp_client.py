@@ -2,15 +2,26 @@
 
 import asyncio
 import gc
+import hashlib
 import threading
+import zipfile
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import anyio
+import httpx
 import pytest
 
-from data_agent.arcpy_mcp_client import ArcPyMcpClient, ArcPyMcpError
+from data_agent.arcpy_mcp_client import (
+    ArcPyMcpClient,
+    ArcPyMcpError,
+    PreparedLocalUpload,
+    UploadedArtifact,
+    package_local_dataset,
+)
 from data_agent.mcp_hub import McpServerConfig
+from data_agent.user_context import current_user_id, get_user_upload_dir
 
 
 @pytest.fixture(autouse=True)
@@ -40,6 +51,962 @@ def _client() -> ArcPyMcpClient:
     return ArcPyMcpClient(
         McpServerConfig(name="arcpy", url="https://service.example/mcp")
     )
+
+
+@pytest.fixture
+def user_upload_dir(tmp_path, monkeypatch):
+    base = tmp_path / "uploads"
+    base.mkdir()
+    monkeypatch.setattr("data_agent.user_context._BASE_UPLOAD_DIR", str(base))
+    monkeypatch.setattr("data_agent.gis_processors._BASE_UPLOAD_DIR", str(base))
+    token = current_user_id.set("arcpy-test-user")
+    try:
+        yield Path(get_user_upload_dir())
+    finally:
+        current_user_id.reset(token)
+
+
+def test_package_regular_file_preserves_metadata_and_streaming_hash(
+    user_upload_dir,
+):
+    source = user_upload_dir / "roads.geojson"
+    payload = b'{"type":"FeatureCollection","features":[]}'
+    source.write_bytes(payload)
+
+    prepared = package_local_dataset(source)
+
+    assert prepared == PreparedLocalUpload(
+        upload_path=source.resolve(),
+        source_path=source.resolve(),
+        logical_name="roads.geojson",
+        media_type="application/geo+json",
+        size=len(payload),
+        sha256=hashlib.sha256(payload).hexdigest(),
+        delete_after_upload=False,
+    )
+
+
+def test_package_shapefile_includes_required_and_optional_sidecars(
+    user_upload_dir,
+):
+    for suffix in (".shp", ".shx", ".dbf", ".prj", ".cpg", ".qix"):
+        (user_upload_dir / f"roads{suffix}").write_bytes(suffix.encode())
+    (user_upload_dir / "roads.shp.xml").write_bytes(b"metadata")
+    (user_upload_dir / "other.dbf").write_bytes(b"ignore")
+
+    prepared = package_local_dataset(user_upload_dir / "roads.shp")
+
+    assert prepared.upload_path.parent == user_upload_dir
+    assert prepared.logical_name == "roads.zip"
+    assert prepared.media_type == "application/zip"
+    assert prepared.delete_after_upload is True
+    with zipfile.ZipFile(prepared.upload_path) as archive:
+        assert archive.namelist() == [
+            "roads.cpg",
+            "roads.dbf",
+            "roads.prj",
+            "roads.qix",
+            "roads.shp",
+            "roads.shp.xml",
+            "roads.shx",
+        ]
+    prepared.upload_path.unlink()
+
+
+@pytest.mark.parametrize("missing", [".shp", ".shx", ".dbf"])
+def test_package_shapefile_requires_all_core_sidecars(
+    user_upload_dir, missing
+):
+    for suffix in (".shp", ".shx", ".dbf"):
+        if suffix != missing:
+            (user_upload_dir / f"roads{suffix}").write_bytes(b"x")
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        package_local_dataset(user_upload_dir / "roads.shp")
+
+    expected = (
+        "ARCPY_INPUT_NOT_FOUND"
+        if missing == ".shp"
+        else "ARCPY_INPUT_INCOMPLETE"
+    )
+    assert exc_info.value.code == expected
+
+
+def test_package_gdb_recurses_with_dataset_root(user_upload_dir):
+    source = user_upload_dir / "parcels.gdb"
+    nested = source / "nested"
+    nested.mkdir(parents=True)
+    (source / "a00000001.gdbtable").write_bytes(b"table")
+    (nested / "index.bin").write_bytes(b"index")
+
+    prepared = package_local_dataset(source)
+
+    assert prepared.logical_name == "parcels.gdb.zip"
+    with zipfile.ZipFile(prepared.upload_path) as archive:
+        assert archive.namelist() == [
+            "parcels.gdb/a00000001.gdbtable",
+            "parcels.gdb/nested/index.bin",
+        ]
+    prepared.upload_path.unlink()
+
+
+def test_package_rejects_gdb_internal_symlink(user_upload_dir, tmp_path):
+    source = user_upload_dir / "parcels.gdb"
+    source.mkdir()
+    outside = tmp_path / "private.bin"
+    outside.write_bytes(b"private")
+    (source / "link.bin").symlink_to(outside)
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        package_local_dataset(source)
+
+    assert exc_info.value.code == "ARCPY_INPUT_OUTSIDE_SANDBOX"
+
+
+@pytest.mark.parametrize(
+    "provided",
+    ["../outside.geojson", "C:\\private\\roads.shp", "\\\\host\\share\\roads.shp"],
+)
+def test_package_rejects_lexical_path_bypass(user_upload_dir, provided):
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        package_local_dataset(provided)
+
+    assert exc_info.value.code == "ARCPY_INPUT_OUTSIDE_SANDBOX"
+
+
+def test_package_rejects_caller_symlink_even_when_target_is_in_sandbox(
+    user_upload_dir,
+):
+    target = user_upload_dir / "target.geojson"
+    target.write_bytes(b"{}")
+    link = user_upload_dir / "link.geojson"
+    link.symlink_to(target)
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        package_local_dataset(link)
+
+    assert exc_info.value.code == "ARCPY_INPUT_OUTSIDE_SANDBOX"
+
+
+def test_package_rejects_relative_caller_symlink_in_user_sandbox(
+    user_upload_dir,
+):
+    target = user_upload_dir / "target.geojson"
+    target.write_bytes(b"{}")
+    (user_upload_dir / "link.geojson").symlink_to(target)
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        package_local_dataset("link.geojson")
+
+    assert exc_info.value.code == "ARCPY_INPUT_OUTSIDE_SANDBOX"
+
+
+def test_package_rejects_windows_drive_relative_path(user_upload_dir):
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        package_local_dataset("C:roads.shp")
+
+    assert exc_info.value.code == "ARCPY_INPUT_OUTSIDE_SANDBOX"
+
+
+def test_package_cleans_partial_temp_archive_on_zip_failure(
+    user_upload_dir, monkeypatch
+):
+    import data_agent.arcpy_mcp_client as client_module
+
+    for suffix in (".shp", ".shx", ".dbf"):
+        (user_upload_dir / f"roads{suffix}").write_bytes(b"x")
+
+    class FailingZipFile:
+        def __init__(self, path, *args, **kwargs):
+            Path(path).write_bytes(b"partial")
+
+        def __enter__(self):
+            raise OSError("zip failed")
+
+        def __exit__(self, *args):
+            return False
+
+    monkeypatch.setattr(client_module.zipfile, "ZipFile", FailingZipFile)
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        package_local_dataset(user_upload_dir / "roads.shp")
+
+    assert exc_info.value.code == "ARCPY_INPUT_PACKAGE_FAILED"
+    assert list(user_upload_dir.glob("*.zip")) == []
+
+
+class FakeUploadResponse:
+    def __init__(self, status_code=200):
+        self.status_code = status_code
+
+
+class FakeSignedUploadClient:
+    def __init__(self, outcomes, calls):
+        self._outcomes = iter(outcomes)
+        self.calls = calls
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
+        return False
+
+    async def put(self, url, *, headers, content, timeout):
+        body = content.read()
+        self.calls.append(
+            {
+                "url": url,
+                "headers": dict(headers),
+                "body": body,
+                "timeout": timeout,
+            }
+        )
+        outcome = next(self._outcomes)
+        if isinstance(outcome, BaseException):
+            raise outcome
+        return outcome
+
+
+@pytest.mark.parametrize(
+    "signed_url",
+    [
+        "http://signed.example/upload",
+        "https:///missing-host",
+        "https://user:password@signed.example/upload",
+    ],
+)
+def test_signed_upload_url_requires_https_host_without_userinfo(signed_url):
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        ArcPyMcpClient._signed_url({"upload_url": signed_url})
+
+    assert exc_info.value.code == "ARCPY_UPLOAD_FAILED"
+    assert signed_url not in str(exc_info.value)
+    assert signed_url not in repr(exc_info.value.details)
+
+
+def _prepared_regular(user_upload_dir, payload=b"0123456789"):
+    source = user_upload_dir / "sample.gpkg"
+    source.write_bytes(payload)
+    return package_local_dataset(source)
+
+
+def _upload_client(outcomes, factory_calls, http_calls, **kwargs):
+    def factory(**factory_kwargs):
+        factory_calls.append(factory_kwargs)
+        return FakeSignedUploadClient(outcomes, http_calls)
+
+    return ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp"),
+        signed_http_client_factory=factory,
+        upload_timeout=17.0,
+        **kwargs,
+    )
+
+
+@pytest.mark.asyncio
+async def test_upload_uses_exact_metadata_offset_zero_and_no_authorization(
+    user_upload_dir,
+):
+    prepared = _prepared_regular(user_upload_dir)
+    factory_calls = []
+    http_calls = []
+    client = _upload_client(
+        [FakeUploadResponse()], factory_calls, http_calls
+    )
+    tool_calls = []
+
+    async def call_tool(name, arguments):
+        tool_calls.append((name, arguments))
+        if name == "create_upload":
+            return {
+                "artifact_id": "artifact-1",
+                "upload_url": "https://signed.example/upload-one",
+            }
+        if name == "complete_upload":
+            return {
+                "state": "ready",
+                "artifact_id": "artifact-1",
+                "verified_sha256": prepared.sha256,
+                "size": prepared.size,
+            }
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+
+    artifact_id = await client._upload_prepared(prepared)
+
+    assert artifact_id == "artifact-1"
+    assert tool_calls == [
+        (
+            "create_upload",
+            {
+                "logical_name": prepared.logical_name,
+                "expected_size": prepared.size,
+                "expected_sha256": prepared.sha256,
+                "media_type": prepared.media_type,
+            },
+        ),
+        ("complete_upload", {"artifact_id": "artifact-1"}),
+    ]
+    assert factory_calls == [{"follow_redirects": True}]
+    assert http_calls == [
+        {
+            "url": "https://signed.example/upload-one",
+            "headers": {"Upload-Offset": "0"},
+            "body": b"0123456789",
+            "timeout": 17.0,
+        }
+    ]
+    assert "Authorization" not in repr(factory_calls + http_calls)
+
+
+@pytest.mark.asyncio
+async def test_upload_resumes_from_strict_server_committed_offset(
+    user_upload_dir,
+):
+    prepared = _prepared_regular(user_upload_dir)
+    factory_calls = []
+    http_calls = []
+    interrupted = httpx.ReadError(
+        "interrupted",
+        request=httpx.Request("PUT", "https://signed.example/upload"),
+    )
+    client = _upload_client(
+        [interrupted, FakeUploadResponse()], factory_calls, http_calls
+    )
+    tool_calls = []
+
+    async def call_tool(name, arguments):
+        tool_calls.append((name, arguments))
+        if name == "create_upload":
+            return {
+                "artifact_id": "artifact-1",
+                "signed_url": "https://signed.example/upload",
+            }
+        if name == "get_upload_status":
+            return {"artifact_id": "artifact-1", "committed_size": 4}
+        if name == "complete_upload":
+            return {
+                "state": "ready",
+                "actual_sha256": prepared.sha256,
+            }
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+
+    await client._upload_prepared(prepared)
+
+    assert [call["headers"] for call in http_calls] == [
+        {"Upload-Offset": "0"},
+        {"Upload-Offset": "4"},
+    ]
+    assert http_calls[1]["body"] == b"456789"
+    assert ("get_upload_status", {"artifact_id": "artifact-1"}) in tool_calls
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("expired_status", [401, 403])
+async def test_upload_expired_url_renews_and_resumes_from_server_offset(
+    user_upload_dir, expired_status
+):
+    prepared = _prepared_regular(user_upload_dir)
+    factory_calls = []
+    http_calls = []
+    client = _upload_client(
+        [FakeUploadResponse(expired_status), FakeUploadResponse()],
+        factory_calls,
+        http_calls,
+    )
+    names = []
+
+    async def call_tool(name, arguments):
+        names.append(name)
+        if name == "create_upload":
+            return {
+                "artifact_id": "artifact-1",
+                "upload_url": "https://signed.example/expired",
+            }
+        if name == "get_upload_status":
+            return {"committed_size": 3}
+        if name == "renew_upload":
+            return {"signed_url": "https://signed.example/renewed"}
+        if name == "complete_upload":
+            return {
+                "state": "ready",
+                "verified_sha256": prepared.sha256,
+            }
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+
+    await client._upload_prepared(prepared)
+
+    assert names == [
+        "create_upload",
+        "get_upload_status",
+        "renew_upload",
+        "complete_upload",
+    ]
+    assert http_calls[1]["url"] == "https://signed.example/renewed"
+    assert http_calls[1]["headers"] == {"Upload-Offset": "3"}
+
+
+@pytest.mark.asyncio
+async def test_upload_rejects_renewal_for_different_artifact(user_upload_dir):
+    prepared = _prepared_regular(user_upload_dir)
+    factory_calls = []
+    http_calls = []
+    client = _upload_client(
+        [FakeUploadResponse(403)], factory_calls, http_calls
+    )
+
+    async def call_tool(name, arguments):
+        if name == "create_upload":
+            return {
+                "artifact_id": "artifact-1",
+                "upload_url": "https://signed.example/expired",
+            }
+        if name == "get_upload_status":
+            return {"artifact_id": "artifact-1", "committed_size": 3}
+        if name == "renew_upload":
+            return {
+                "artifact_id": "artifact-other",
+                "upload_url": "https://signed.example/wrong",
+            }
+        if name == "delete_artifact":
+            return {}
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client._upload_prepared(prepared)
+
+    assert exc_info.value.code == "ARCPY_RESPONSE_INVALID"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("committed_size", [-1, 11, True, "4", None])
+async def test_upload_rejects_invalid_committed_offset(
+    user_upload_dir, committed_size
+):
+    prepared = _prepared_regular(user_upload_dir)
+    factory_calls = []
+    http_calls = []
+    interrupted = httpx.ReadError(
+        "interrupted",
+        request=httpx.Request("PUT", "https://signed.example/upload"),
+    )
+    client = _upload_client([interrupted], factory_calls, http_calls)
+    deleted = []
+
+    async def call_tool(name, arguments):
+        if name == "create_upload":
+            return {
+                "artifact_id": "artifact-1",
+                "upload_url": "https://signed.example/upload",
+            }
+        if name == "get_upload_status":
+            return {"committed_size": committed_size}
+        if name == "delete_artifact":
+            deleted.append(arguments)
+            return {}
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client._upload_prepared(prepared)
+
+    assert exc_info.value.code == "ARCPY_RESPONSE_INVALID"
+    assert deleted == [{"artifact_id": "artifact-1"}]
+
+
+@pytest.mark.asyncio
+async def test_upload_network_failures_are_bounded_and_cleanup_artifact(
+    user_upload_dir,
+):
+    prepared = _prepared_regular(user_upload_dir)
+    factory_calls = []
+    http_calls = []
+    failures = [
+        httpx.ReadError(
+            "interrupted",
+            request=httpx.Request("PUT", "https://signed.example/upload"),
+        )
+        for _ in range(3)
+    ]
+    client = _upload_client(failures, factory_calls, http_calls)
+    names = []
+
+    async def call_tool(name, arguments):
+        names.append(name)
+        if name == "create_upload":
+            return {
+                "artifact_id": "artifact-1",
+                "upload_url": "https://signed.example/upload",
+            }
+        if name == "get_upload_status":
+            return {"committed_size": 0}
+        if name == "delete_artifact":
+            return {}
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client._upload_prepared(prepared)
+
+    assert exc_info.value.code == "ARCPY_UPLOAD_FAILED"
+    assert len(http_calls) == 3
+    assert names.count("get_upload_status") == 2
+    assert names[-1] == "delete_artifact"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "completion",
+    [
+        {"state": "pending", "verified_sha256": "local"},
+        {"state": "ready", "artifact_id": "other", "verified_sha256": "local"},
+        {"state": "ready", "verified_sha256": "wrong"},
+        {"state": "ready", "verified_sha256": "local", "size": 999},
+        {"state": "ready"},
+    ],
+)
+async def test_upload_rejects_unverified_completion_and_cleans_artifact(
+    user_upload_dir, completion
+):
+    prepared = _prepared_regular(user_upload_dir, payload=b"local")
+    factory_calls = []
+    http_calls = []
+    client = _upload_client(
+        [FakeUploadResponse()], factory_calls, http_calls
+    )
+    deleted = []
+
+    async def call_tool(name, arguments):
+        if name == "create_upload":
+            return {
+                "artifact_id": "artifact-1",
+                "upload_url": "https://signed.example/upload",
+            }
+        if name == "complete_upload":
+            result = dict(completion)
+            if result.get("verified_sha256") == "local":
+                result["verified_sha256"] = prepared.sha256
+            return result
+        if name == "delete_artifact":
+            deleted.append(arguments)
+            return {}
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client._upload_prepared(prepared)
+
+    assert exc_info.value.code == "ARCPY_UPLOAD_VERIFICATION_FAILED"
+    assert deleted == [{"artifact_id": "artifact-1"}]
+
+
+@pytest.mark.asyncio
+async def test_upload_nonexpired_http_failure_is_stable_and_sanitized(
+    user_upload_dir,
+):
+    prepared = _prepared_regular(user_upload_dir)
+    factory_calls = []
+    http_calls = []
+    signed_url = "https://signed.example/private?signature=fixture-secret"
+    client = _upload_client(
+        [FakeUploadResponse(500)], factory_calls, http_calls
+    )
+
+    async def call_tool(name, arguments):
+        if name == "create_upload":
+            return {"artifact_id": "artifact-1", "upload_url": signed_url}
+        if name == "delete_artifact":
+            return {}
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client._upload_prepared(prepared)
+
+    assert exc_info.value.code == "ARCPY_UPLOAD_FAILED"
+    assert signed_url not in str(exc_info.value)
+    assert signed_url not in repr(exc_info.value.details)
+
+
+class AdvancingSleep:
+    def __init__(self, clock):
+        self.clock = clock
+        self.delays = []
+
+    async def __call__(self, delay):
+        self.delays.append(delay)
+        self.clock.advance(delay)
+
+
+@pytest.mark.asyncio
+async def test_inspect_polls_until_succeeded_and_returns_dataset_path():
+    clock = FakeClock()
+    sleep = AdvancingSleep(clock)
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp"),
+        clock=clock,
+        sleep=sleep,
+        inspection_timeout=40.0,
+    )
+    calls = []
+    jobs = iter(
+        [
+            {"job_id": "job-1", "status": "queued"},
+            {"job_id": "job-1", "status": "running"},
+            {
+                "job_id": "job-1",
+                "status": "succeeded",
+                "result": {
+                    "dataset": {
+                        "artifact_id": "artifact-1",
+                        "path": "roads.shp",
+                    }
+                },
+            },
+        ]
+    )
+
+    async def call_tool(name, arguments):
+        calls.append((name, arguments))
+        if name == "inspect_dataset":
+            return {"job_id": "job-1"}
+        if name == "get_job":
+            return next(jobs)
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+
+    path = await client._inspect_uploaded_artifact("artifact-1")
+
+    assert path == "roads.shp"
+    assert calls[0] == (
+        "inspect_dataset",
+        {"artifact_id": "artifact-1", "path": "."},
+    )
+    assert sleep.delays == [2, 5, 10]
+
+
+@pytest.mark.asyncio
+async def test_inspect_supports_result_artifact_path_contract():
+    clock = FakeClock()
+    sleep = AdvancingSleep(clock)
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp"),
+        clock=clock,
+        sleep=sleep,
+    )
+    client.call_tool = AsyncMock(
+        side_effect=[
+            {"job_id": "job-1"},
+            {
+                "status": "succeeded",
+                "artifact_id": "artifact-1",
+                "result": {"artifact_path": "parcels.gdb"},
+            },
+        ]
+    )
+
+    assert (
+        await client._inspect_uploaded_artifact("artifact-1")
+        == "parcels.gdb"
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "status", ["failed", "timed_out", "cancelled", "interrupted"]
+)
+async def test_inspect_terminal_failure_reads_log_but_returns_stable_error(
+    status,
+):
+    clock = FakeClock()
+    sleep = AdvancingSleep(clock)
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp"),
+        clock=clock,
+        sleep=sleep,
+    )
+    private_log = "C:\\private\\worker.gdb Authorization: Bearer fixture"
+    client.call_tool = AsyncMock(
+        side_effect=[
+            {"job_id": "job-1"},
+            {"status": status},
+            {"messages": [private_log]},
+        ]
+    )
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client._inspect_uploaded_artifact("artifact-1")
+
+    assert exc_info.value.code == "ARCPY_INSPECTION_FAILED"
+    assert private_log not in str(exc_info.value)
+    assert private_log not in repr(exc_info.value.details)
+    assert client.call_tool.await_args_list[-1].args == (
+        "get_job_log",
+        {"job_id": "job-1"},
+    )
+
+
+@pytest.mark.asyncio
+async def test_inspect_times_out_with_bounded_polling():
+    clock = FakeClock()
+    sleep = AdvancingSleep(clock)
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp"),
+        clock=clock,
+        sleep=sleep,
+        inspection_timeout=6.0,
+    )
+
+    async def call_tool(name, arguments):
+        if name == "inspect_dataset":
+            return {"job_id": "job-1"}
+        if name == "get_job":
+            return {"status": "running"}
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client._inspect_uploaded_artifact("artifact-1")
+
+    assert exc_info.value.code == "ARCPY_JOB_TIMED_OUT"
+    assert sleep.delays == [2, 5]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "artifact_path",
+    [
+        "",
+        ".",
+        "/private/roads.shp",
+        "C:\\private\\roads.shp",
+        "\\\\host\\share\\roads.shp",
+        "../roads.shp",
+        "folder/../../roads.shp",
+    ],
+)
+async def test_inspect_rejects_unsafe_artifact_relative_path(artifact_path):
+    clock = FakeClock()
+    sleep = AdvancingSleep(clock)
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp"),
+        clock=clock,
+        sleep=sleep,
+    )
+    client.call_tool = AsyncMock(
+        side_effect=[
+            {"job_id": "job-1"},
+            {
+                "status": "succeeded",
+                "result": {
+                    "dataset": {
+                        "artifact_id": "artifact-1",
+                        "path": artifact_path,
+                    }
+                },
+            },
+        ]
+    )
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client._inspect_uploaded_artifact("artifact-1")
+
+    assert exc_info.value.code == "ARCPY_RESPONSE_INVALID"
+
+
+@pytest.mark.asyncio
+async def test_inspect_rejects_result_for_different_artifact():
+    clock = FakeClock()
+    sleep = AdvancingSleep(clock)
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp"),
+        clock=clock,
+        sleep=sleep,
+    )
+    client.call_tool = AsyncMock(
+        side_effect=[
+            {"job_id": "job-1"},
+            {
+                "status": "succeeded",
+                "result": {
+                    "dataset": {
+                        "artifact_id": "artifact-other",
+                        "path": "roads.shp",
+                    }
+                },
+            },
+        ]
+    )
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client._inspect_uploaded_artifact("artifact-1")
+
+    assert exc_info.value.code == "ARCPY_RESPONSE_INVALID"
+
+
+@pytest.mark.asyncio
+async def test_inspect_rejects_unbound_result_path():
+    clock = FakeClock()
+    sleep = AdvancingSleep(clock)
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp"),
+        clock=clock,
+        sleep=sleep,
+    )
+    client.call_tool = AsyncMock(
+        side_effect=[
+            {"job_id": "job-1"},
+            {
+                "status": "succeeded",
+                "result": {"dataset": {"path": "roads.shp"}},
+            },
+        ]
+    )
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client._inspect_uploaded_artifact("artifact-1")
+
+    assert exc_info.value.code == "ARCPY_RESPONSE_INVALID"
+
+
+@pytest.mark.asyncio
+async def test_prepare_input_rejects_missing_and_outside_sandbox(
+    user_upload_dir, tmp_path
+):
+    outside = tmp_path / "outside.geojson"
+    outside.write_bytes(b"{}")
+    client = _client()
+    client._upload_prepared = AsyncMock()
+
+    for provided, expected in (
+        (user_upload_dir / "missing.geojson", "ARCPY_INPUT_NOT_FOUND"),
+        (outside, "ARCPY_INPUT_OUTSIDE_SANDBOX"),
+    ):
+        with pytest.raises(ArcPyMcpError) as exc_info:
+            await client.prepare_input(provided)
+        assert exc_info.value.code == expected
+
+    client._upload_prepared.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_prepare_input_returns_uploaded_artifact_in_required_order(
+    user_upload_dir,
+):
+    for suffix in (".shp", ".shx", ".dbf"):
+        (user_upload_dir / f"roads{suffix}").write_bytes(suffix.encode())
+    source = (user_upload_dir / "roads.shp").resolve()
+    events = []
+    client = _client()
+
+    async def upload(prepared):
+        events.append(("upload", prepared.logical_name))
+        assert prepared.upload_path.exists()
+        return "artifact-1"
+
+    async def inspect(artifact_id):
+        events.append(("inspect", artifact_id))
+        return "roads.shp"
+
+    client._upload_prepared = upload
+    client._inspect_uploaded_artifact = inspect
+
+    uploaded = await client.prepare_input(source)
+
+    assert uploaded == UploadedArtifact(
+        artifact_id="artifact-1",
+        artifact_path="roads.shp",
+        source_path=source,
+        local_package_path=uploaded.local_package_path,
+        delete_local_package=True,
+    )
+    assert events == [("upload", "roads.zip"), ("inspect", "artifact-1")]
+    assert uploaded.local_package_path.parent == user_upload_dir
+    assert uploaded.local_package_path.exists()
+    uploaded.local_package_path.unlink()
+
+
+@pytest.mark.asyncio
+async def test_prepare_input_regular_file_is_not_marked_for_local_cleanup(
+    user_upload_dir,
+):
+    source = user_upload_dir / "roads.tif"
+    source.write_bytes(b"raster")
+    client = _client()
+    client._upload_prepared = AsyncMock(return_value="artifact-1")
+    client._inspect_uploaded_artifact = AsyncMock(return_value="roads.tif")
+
+    uploaded = await client.prepare_input(source)
+
+    assert uploaded.local_package_path == source.resolve()
+    assert uploaded.delete_local_package is False
+    assert source.exists()
+
+
+@pytest.mark.asyncio
+async def test_prepare_input_inspection_failure_cleans_remote_and_temp_package(
+    user_upload_dir,
+):
+    for suffix in (".shp", ".shx", ".dbf"):
+        (user_upload_dir / f"roads{suffix}").write_bytes(b"x")
+    client = _client()
+    package_paths = []
+
+    async def upload(prepared):
+        package_paths.append(prepared.upload_path)
+        return "artifact-1"
+
+    client._upload_prepared = upload
+    client._inspect_uploaded_artifact = AsyncMock(
+        side_effect=ArcPyMcpError(
+            "ARCPY_INSPECTION_FAILED", "private inspection detail"
+        )
+    )
+    client.call_tool = AsyncMock(return_value={})
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client.prepare_input(user_upload_dir / "roads.shp")
+
+    assert exc_info.value.code == "ARCPY_INSPECTION_FAILED"
+    assert package_paths and not package_paths[0].exists()
+    client.call_tool.assert_awaited_once_with(
+        "delete_artifact", {"artifact_id": "artifact-1"}
+    )
+
+
+@pytest.mark.asyncio
+async def test_prepare_input_upload_failure_cleans_temp_package(
+    user_upload_dir,
+):
+    for suffix in (".shp", ".shx", ".dbf"):
+        (user_upload_dir / f"roads{suffix}").write_bytes(b"x")
+    client = _client()
+    package_paths = []
+
+    async def fail_upload(prepared):
+        package_paths.append(prepared.upload_path)
+        raise ArcPyMcpError("ARCPY_UPLOAD_FAILED", "private URL")
+
+    client._upload_prepared = fail_upload
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client.prepare_input(user_upload_dir / "roads.shp")
+
+    assert exc_info.value.code == "ARCPY_UPLOAD_FAILED"
+    assert package_paths and not package_paths[0].exists()
 
 
 def _result(*, structured=None, text=None, error=False, snake_case=False):

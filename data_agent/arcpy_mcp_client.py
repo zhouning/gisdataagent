@@ -4,14 +4,21 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import hashlib
 import json
 import logging
+import os
 import re
+import tempfile
 import threading
 import time
+import zipfile
 from contextlib import AsyncExitStack
+from dataclasses import dataclass
 from datetime import timedelta
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 from mcp import ClientSession
@@ -44,8 +51,223 @@ _PUBLIC_ERROR_MESSAGES = {
     "ARCPY_WORKER_UNAVAILABLE": "ArcPy worker is unavailable",
     "ARCPY_INVALID_ARGUMENT": "Required extension is invalid",
     "ARCPY_EXTENSION_UNAVAILABLE": "Required ArcPy extension is unavailable",
+    "ARCPY_INPUT_NOT_FOUND": "ArcPy input dataset was not found",
+    "ARCPY_INPUT_INVALID": "ArcPy input dataset is invalid",
+    "ARCPY_INPUT_OUTSIDE_SANDBOX": "ArcPy input dataset is outside the user sandbox",
+    "ARCPY_INPUT_INCOMPLETE": "ArcPy input dataset is incomplete",
+    "ARCPY_INPUT_PACKAGE_FAILED": "ArcPy input dataset could not be packaged",
+    "ARCPY_UPLOAD_FAILED": "ArcPy artifact upload failed",
+    "ARCPY_UPLOAD_VERIFICATION_FAILED": "ArcPy artifact upload verification failed",
+    "ARCPY_INSPECTION_FAILED": "ArcPy dataset inspection failed",
+    "ARCPY_JOB_TIMED_OUT": "ArcPy job timed out",
 }
 _SAFE_DETAIL_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_-]{0,63}$")
+
+
+@dataclass(frozen=True)
+class PreparedLocalUpload:
+    upload_path: Path
+    source_path: Path
+    logical_name: str
+    media_type: str
+    size: int
+    sha256: str
+    delete_after_upload: bool
+
+
+@dataclass(frozen=True)
+class UploadedArtifact:
+    artifact_id: str
+    artifact_path: str
+    source_path: Path
+    local_package_path: Path
+    delete_local_package: bool
+
+
+def _input_error(code: str) -> ArcPyMcpError:
+    return ArcPyMcpError(code, _PUBLIC_ERROR_MESSAGES[code])
+
+
+def _has_unsafe_caller_syntax(path: str) -> bool:
+    if not path or "\x00" in path:
+        return True
+    if re.match(r"^[A-Za-z]:[\\/]", path) or path.startswith("\\\\"):
+        return True
+    if path.startswith("//"):
+        return True
+    normalized_parts = path.replace("\\", "/").split("/")
+    windows_path = PureWindowsPath(path)
+    return (
+        ".." in normalized_parts
+        or windows_path.is_absolute()
+        or bool(windows_path.drive)
+    )
+
+
+def _resolve_local_input(path: str | os.PathLike[str]) -> Path:
+    from data_agent import gis_processors, user_context
+
+    caller_path = os.fspath(path)
+    if _has_unsafe_caller_syntax(caller_path):
+        raise _input_error("ARCPY_INPUT_OUTSIDE_SANDBOX")
+    direct_candidate = Path(caller_path)
+    user_candidate = Path(user_context.get_user_upload_dir()) / caller_path
+    if direct_candidate.is_symlink() or user_candidate.is_symlink():
+        raise _input_error("ARCPY_INPUT_OUTSIDE_SANDBOX")
+    try:
+        resolved_candidate = Path(gis_processors._resolve_path(caller_path))
+    except Exception:
+        raise _input_error("ARCPY_INPUT_NOT_FOUND") from None
+    if not resolved_candidate.exists():
+        raise _input_error("ARCPY_INPUT_NOT_FOUND")
+    if resolved_candidate.is_symlink():
+        raise _input_error("ARCPY_INPUT_OUTSIDE_SANDBOX")
+    try:
+        resolved = resolved_candidate.resolve(strict=True)
+    except (OSError, RuntimeError):
+        raise _input_error("ARCPY_INPUT_NOT_FOUND") from None
+    if not user_context.is_path_in_sandbox(str(resolved)):
+        raise _input_error("ARCPY_INPUT_OUTSIDE_SANDBOX")
+    return resolved
+
+
+def _hash_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest().lower()
+
+
+def _media_type(path: Path) -> str:
+    return {
+        ".zip": "application/zip",
+        ".geojson": "application/geo+json",
+        ".json": "application/json",
+        ".gpkg": "application/geopackage+sqlite3",
+        ".tif": "image/tiff",
+        ".tiff": "image/tiff",
+    }.get(path.suffix.lower(), "application/octet-stream")
+
+
+def _checked_archive_file(path: Path) -> Path:
+    from data_agent import user_context
+
+    if path.is_symlink():
+        raise _input_error("ARCPY_INPUT_OUTSIDE_SANDBOX")
+    if not path.is_file():
+        raise _input_error("ARCPY_INPUT_INVALID")
+    try:
+        real_path = path.resolve(strict=True)
+    except (OSError, RuntimeError):
+        raise _input_error("ARCPY_INPUT_INVALID") from None
+    if not user_context.is_path_in_sandbox(str(real_path)):
+        raise _input_error("ARCPY_INPUT_OUTSIDE_SANDBOX")
+    return real_path
+
+
+def _new_package_path() -> Path:
+    from data_agent.user_context import get_user_upload_dir
+
+    upload_dir = Path(get_user_upload_dir()).resolve()
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    descriptor, filename = tempfile.mkstemp(
+        prefix="arcpy-input-", suffix=".zip", dir=upload_dir
+    )
+    os.close(descriptor)
+    return Path(filename)
+
+
+def _write_package(entries: list[tuple[Path, str]]) -> Path:
+    package_path = _new_package_path()
+    try:
+        with zipfile.ZipFile(
+            package_path, mode="w", compression=zipfile.ZIP_DEFLATED
+        ) as archive:
+            for source, archive_name in sorted(
+                entries, key=lambda item: item[1].casefold()
+            ):
+                archive.write(source, arcname=archive_name)
+        return package_path
+    except Exception:
+        try:
+            package_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise _input_error("ARCPY_INPUT_PACKAGE_FAILED") from None
+
+
+def package_local_dataset(
+    path: str | os.PathLike[str],
+) -> PreparedLocalUpload:
+    source = _resolve_local_input(path)
+    upload_path = source
+    logical_name = source.name
+    media_type = _media_type(source)
+    delete_after_upload = False
+
+    if source.is_dir():
+        if source.suffix.lower() != ".gdb":
+            raise _input_error("ARCPY_INPUT_INVALID")
+        entries = []
+        try:
+            for root, directory_names, file_names in os.walk(
+                source, followlinks=False
+            ):
+                root_path = Path(root)
+                for name in directory_names:
+                    if (root_path / name).is_symlink():
+                        raise _input_error("ARCPY_INPUT_OUTSIDE_SANDBOX")
+                for name in file_names:
+                    item = _checked_archive_file(root_path / name)
+                    relative = item.relative_to(source)
+                    entries.append((item, (Path(source.name) / relative).as_posix()))
+        except ArcPyMcpError:
+            raise
+        except Exception:
+            raise _input_error("ARCPY_INPUT_PACKAGE_FAILED") from None
+        if not entries:
+            raise _input_error("ARCPY_INPUT_INCOMPLETE")
+        upload_path = _write_package(entries)
+        logical_name = f"{source.name}.zip"
+        media_type = "application/zip"
+        delete_after_upload = True
+    elif source.is_file() and source.suffix.lower() == ".shp":
+        prefix = f"{source.stem}.".casefold()
+        candidates = [
+            item
+            for item in source.parent.iterdir()
+            if item.name.casefold().startswith(prefix)
+        ]
+        entries = [
+            (_checked_archive_file(item), item.name) for item in candidates
+        ]
+        extensions = {item.suffix.lower() for item, _ in entries}
+        if not {".shp", ".shx", ".dbf"}.issubset(extensions):
+            raise _input_error("ARCPY_INPUT_INCOMPLETE")
+        upload_path = _write_package(entries)
+        logical_name = f"{source.stem}.zip"
+        media_type = "application/zip"
+        delete_after_upload = True
+    elif not source.is_file():
+        raise _input_error("ARCPY_INPUT_INVALID")
+
+    try:
+        size = upload_path.stat().st_size
+        sha256 = _hash_file(upload_path)
+    except Exception:
+        if delete_after_upload:
+            upload_path.unlink(missing_ok=True)
+        raise _input_error("ARCPY_INPUT_PACKAGE_FAILED") from None
+    return PreparedLocalUpload(
+        upload_path=upload_path,
+        source_path=source,
+        logical_name=logical_name,
+        media_type=media_type,
+        size=size,
+        sha256=sha256,
+        delete_after_upload=delete_after_upload,
+    )
 
 
 def _sanitize_detail_key(key: Any) -> str:
@@ -126,9 +348,24 @@ class ArcPyMcpClient:
         }
     )
 
-    def __init__(self, config, *, clock=time.monotonic) -> None:
+    def __init__(
+        self,
+        config,
+        *,
+        clock=time.monotonic,
+        signed_http_client_factory=httpx.AsyncClient,
+        upload_timeout: float = 120.0,
+        upload_attempts: int = 3,
+        sleep=asyncio.sleep,
+        inspection_timeout: float = 120.0,
+    ) -> None:
         self._config = config
         self._clock = clock
+        self._signed_http_client_factory = signed_http_client_factory
+        self._upload_timeout = upload_timeout
+        self._upload_attempts = max(1, int(upload_attempts))
+        self._sleep = sleep
+        self._inspection_timeout = inspection_timeout
         self._thread_lock = threading.RLock()
         self._worker_thread: threading.Thread | None = None
         self._worker_loop: asyncio.AbstractEventLoop | None = None
@@ -871,3 +1108,369 @@ class ArcPyMcpClient:
                     "Required ArcPy extension is unavailable",
                 )
         return copy.deepcopy(result)
+
+    @staticmethod
+    def _required_identifier(payload: dict, field: str) -> str:
+        value = payload.get(field)
+        if not isinstance(value, str) or not value.strip():
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
+        return value.strip()
+
+    @staticmethod
+    def _validate_signed_url(value: Any) -> str:
+        if isinstance(value, str) and value.strip():
+            candidate = value.strip()
+            try:
+                parsed = urlparse(candidate)
+                valid = (
+                    parsed.scheme == "https"
+                    and parsed.hostname is not None
+                    and parsed.username is None
+                    and parsed.password is None
+                )
+            except (TypeError, ValueError):
+                valid = False
+            if valid:
+                return candidate
+        raise ArcPyMcpError(
+            "ARCPY_UPLOAD_FAILED", "ArcPy artifact upload failed"
+        )
+
+    @classmethod
+    def _signed_url(cls, payload: dict) -> str:
+        value = payload.get("upload_url")
+        if value is None:
+            value = payload.get("signed_url")
+        return cls._validate_signed_url(value)
+
+    @staticmethod
+    def _validate_optional_artifact_id(
+        payload: dict, artifact_id: str
+    ) -> None:
+        response_artifact_id = payload.get("artifact_id")
+        if (
+            response_artifact_id is not None
+            and response_artifact_id != artifact_id
+        ):
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
+
+    def _signed_http_options(self) -> dict:
+        options = {"follow_redirects": True}
+        if self._config.ca_bundle_env_var:
+            try:
+                options["verify"] = resolve_ca_bundle(
+                    self._config.ca_bundle_env_var
+                )
+            except McpConfigurationError as exc:
+                raise ArcPyMcpError(exc.code, str(exc)) from None
+        return options
+
+    @staticmethod
+    def _committed_offset(
+        status: dict, artifact_id: str, expected_size: int
+    ) -> int:
+        response_artifact_id = status.get("artifact_id")
+        if (
+            response_artifact_id is not None
+            and response_artifact_id != artifact_id
+        ):
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
+        committed_size = status.get("committed_size")
+        if (
+            isinstance(committed_size, bool)
+            or not isinstance(committed_size, int)
+            or committed_size < 0
+            or committed_size > expected_size
+        ):
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
+        return committed_size
+
+    @staticmethod
+    def _verify_completed_upload(
+        completion: dict,
+        artifact_id: str,
+        prepared: PreparedLocalUpload,
+    ) -> None:
+        valid = completion.get("state") == "ready"
+        response_artifact_id = completion.get("artifact_id")
+        if response_artifact_id is not None:
+            valid = valid and response_artifact_id == artifact_id
+
+        hash_values = [
+            completion[field]
+            for field in ("verified_sha256", "actual_sha256")
+            if field in completion
+        ]
+        valid = valid and bool(hash_values) and all(
+            isinstance(value, str)
+            and value.lower() == prepared.sha256
+            for value in hash_values
+        )
+        for field in ("size", "actual_size", "actual_size_bytes"):
+            if field in completion:
+                value = completion[field]
+                valid = (
+                    valid
+                    and isinstance(value, int)
+                    and not isinstance(value, bool)
+                    and value == prepared.size
+                )
+        if not valid:
+            raise ArcPyMcpError(
+                "ARCPY_UPLOAD_VERIFICATION_FAILED",
+                "ArcPy artifact upload verification failed",
+            )
+
+    async def _best_effort_delete_artifact(self, artifact_id: str) -> None:
+        try:
+            await self.call_tool(
+                "delete_artifact", {"artifact_id": artifact_id}
+            )
+        except BaseException:
+            pass
+
+    async def _upload_prepared(
+        self, prepared: PreparedLocalUpload
+    ) -> str:
+        artifact_id = None
+        try:
+            created = await self.call_tool(
+                "create_upload",
+                {
+                    "logical_name": prepared.logical_name,
+                    "expected_size": prepared.size,
+                    "expected_sha256": prepared.sha256,
+                    "media_type": prepared.media_type,
+                },
+            )
+            artifact_id = self._required_identifier(created, "artifact_id")
+            signed_url = self._signed_url(created)
+            offset = 0
+            uploaded = False
+
+            async with self._signed_http_client_factory(
+                **self._signed_http_options()
+            ) as http_client:
+                for attempt in range(self._upload_attempts):
+                    try:
+                        with prepared.upload_path.open("rb") as stream:
+                            stream.seek(offset)
+                            response = await http_client.put(
+                                signed_url,
+                                headers={"Upload-Offset": str(offset)},
+                                content=stream,
+                                timeout=self._upload_timeout,
+                            )
+                    except httpx.RequestError:
+                        if attempt + 1 >= self._upload_attempts:
+                            raise ArcPyMcpError(
+                                "ARCPY_UPLOAD_FAILED",
+                                "ArcPy artifact upload failed",
+                            ) from None
+                        status = await self.call_tool(
+                            "get_upload_status",
+                            {"artifact_id": artifact_id},
+                        )
+                        offset = self._committed_offset(
+                            status, artifact_id, prepared.size
+                        )
+                        continue
+                    except ArcPyMcpError:
+                        raise
+                    except Exception:
+                        raise ArcPyMcpError(
+                            "ARCPY_UPLOAD_FAILED",
+                            "ArcPy artifact upload failed",
+                        ) from None
+
+                    status_code = getattr(response, "status_code", None)
+                    if isinstance(status_code, int) and 200 <= status_code < 300:
+                        uploaded = True
+                        break
+                    if status_code in {401, 403}:
+                        if attempt + 1 >= self._upload_attempts:
+                            raise ArcPyMcpError(
+                                "ARCPY_UPLOAD_FAILED",
+                                "ArcPy artifact upload failed",
+                            )
+                        status = await self.call_tool(
+                            "get_upload_status",
+                            {"artifact_id": artifact_id},
+                        )
+                        offset = self._committed_offset(
+                            status, artifact_id, prepared.size
+                        )
+                        renewed = await self.call_tool(
+                            "renew_upload", {"artifact_id": artifact_id}
+                        )
+                        self._validate_optional_artifact_id(
+                            renewed, artifact_id
+                        )
+                        signed_url = self._signed_url(renewed)
+                        continue
+                    raise ArcPyMcpError(
+                        "ARCPY_UPLOAD_FAILED", "ArcPy artifact upload failed"
+                    )
+
+            if not uploaded:
+                raise ArcPyMcpError(
+                    "ARCPY_UPLOAD_FAILED", "ArcPy artifact upload failed"
+                )
+            completion = await self.call_tool(
+                "complete_upload", {"artifact_id": artifact_id}
+            )
+            self._verify_completed_upload(completion, artifact_id, prepared)
+            return artifact_id
+        except BaseException:
+            if artifact_id is not None:
+                await self._best_effort_delete_artifact(artifact_id)
+            raise
+
+    @staticmethod
+    def _artifact_relative_path(job: dict, artifact_id: str) -> str:
+        response_artifact_id = job.get("artifact_id")
+        if (
+            response_artifact_id is not None
+            and response_artifact_id != artifact_id
+        ):
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
+        bound_to_artifact = response_artifact_id == artifact_id
+        result = job.get("result")
+        if not isinstance(result, dict):
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
+        dataset = result.get("dataset")
+        if isinstance(dataset, dict):
+            owner = dataset.get("artifact_id")
+            if owner is not None and owner != artifact_id:
+                raise ArcPyMcpError(
+                    "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+                )
+            bound_to_artifact = bound_to_artifact or owner == artifact_id
+            value = dataset.get("path")
+        else:
+            owner = result.get("artifact_id")
+            if owner is not None and owner != artifact_id:
+                raise ArcPyMcpError(
+                    "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+                )
+            bound_to_artifact = bound_to_artifact or owner == artifact_id
+            value = result.get("artifact_path")
+
+        if (
+            not bound_to_artifact
+            or not isinstance(value, str)
+            or not value
+            or value == "."
+        ):
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
+        if "\\" in value or "://" in value:
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
+        posix_path = PurePosixPath(value)
+        windows_path = PureWindowsPath(value)
+        if (
+            posix_path.is_absolute()
+            or windows_path.is_absolute()
+            or windows_path.drive
+            or ".." in posix_path.parts
+            or any(part in {"", "."} for part in posix_path.parts)
+        ):
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
+        return posix_path.as_posix()
+
+    async def _inspect_uploaded_artifact(self, artifact_id: str) -> str:
+        if not isinstance(artifact_id, str) or not artifact_id.strip():
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
+        inspection = await self.call_tool(
+            "inspect_dataset",
+            {"artifact_id": artifact_id, "path": "."},
+        )
+        job_id = self._required_identifier(inspection, "job_id")
+        started = self._clock()
+        delays = (2, 5, 10)
+        attempt = 0
+        terminal_failures = {
+            "failed",
+            "timed_out",
+            "cancelled",
+            "interrupted",
+        }
+
+        while True:
+            delay = delays[attempt] if attempt < len(delays) else 20
+            attempt += 1
+            await self._sleep(delay)
+            if self._clock() - started > self._inspection_timeout:
+                raise ArcPyMcpError(
+                    "ARCPY_JOB_TIMED_OUT", "ArcPy job timed out"
+                )
+            job = await self.call_tool("get_job", {"job_id": job_id})
+            response_job_id = job.get("job_id")
+            if response_job_id is not None and response_job_id != job_id:
+                raise ArcPyMcpError(
+                    "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+                )
+            status = job.get("status")
+            if status == "succeeded":
+                return self._artifact_relative_path(job, artifact_id)
+            if status in terminal_failures:
+                try:
+                    await self.call_tool(
+                        "get_job_log", {"job_id": job_id}
+                    )
+                except BaseException:
+                    pass
+                raise ArcPyMcpError(
+                    "ARCPY_INSPECTION_FAILED",
+                    "ArcPy dataset inspection failed",
+                )
+            if status not in {"queued", "running", "pending"}:
+                raise ArcPyMcpError(
+                    "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+                )
+
+    async def prepare_input(
+        self, local_path: str | os.PathLike[str]
+    ) -> UploadedArtifact:
+        prepared = await asyncio.to_thread(package_local_dataset, local_path)
+        artifact_id = None
+        try:
+            artifact_id = await self._upload_prepared(prepared)
+            artifact_path = await self._inspect_uploaded_artifact(artifact_id)
+            return UploadedArtifact(
+                artifact_id=artifact_id,
+                artifact_path=artifact_path,
+                source_path=prepared.source_path,
+                local_package_path=prepared.upload_path,
+                delete_local_package=prepared.delete_after_upload,
+            )
+        except BaseException:
+            if artifact_id is not None:
+                await self._best_effort_delete_artifact(artifact_id)
+            if prepared.delete_after_upload:
+                try:
+                    await asyncio.to_thread(
+                        prepared.upload_path.unlink, missing_ok=True
+                    )
+                except OSError:
+                    pass
+            raise
