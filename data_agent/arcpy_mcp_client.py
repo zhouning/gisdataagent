@@ -26,6 +26,7 @@ from mcp.client.streamable_http import streamable_http_client
 
 from data_agent.mcp_transport import (
     McpConfigurationError,
+    RuntimeSecretRedactionFilter,
     build_httpx_client_factory,
     current_runtime_secrets,
     install_runtime_secret_log_filter,
@@ -38,6 +39,7 @@ from data_agent.mcp_transport import (
 
 
 logger = logging.getLogger("data_agent.arcpy_mcp_client")
+_SIGNED_TRANSFER_LOG_FILTER = RuntimeSecretRedactionFilter()
 
 
 _PUBLIC_ERROR_MESSAGES = {
@@ -150,6 +152,28 @@ def _media_type(path: Path) -> str:
     }.get(path.suffix.lower(), "application/octet-stream")
 
 
+_SHAPEFILE_SIDECAR_EXTENSIONS = frozenset(
+    {
+        ".shp",
+        ".shx",
+        ".dbf",
+        ".prj",
+        ".cpg",
+        ".sbn",
+        ".sbx",
+        ".qix",
+        ".ain",
+        ".aih",
+        ".ixs",
+        ".mxs",
+        ".atx",
+        ".fbn",
+        ".fbx",
+        ".xml",
+    }
+)
+
+
 def _checked_archive_file(path: Path) -> Path:
     from data_agent import user_context
 
@@ -233,17 +257,25 @@ def package_local_dataset(
         media_type = "application/zip"
         delete_after_upload = True
     elif source.is_file() and source.suffix.lower() == ".shp":
-        prefix = f"{source.stem}.".casefold()
+        stem = source.stem.casefold()
+        allowed_names = {
+            f"{stem}{extension}" for extension in _SHAPEFILE_SIDECAR_EXTENSIONS
+        }
+        allowed_names.add(f"{stem}.shp.xml")
         candidates = [
             item
             for item in source.parent.iterdir()
-            if item.name.casefold().startswith(prefix)
+            if item.name.casefold() in allowed_names
         ]
         entries = [
             (_checked_archive_file(item), item.name) for item in candidates
         ]
-        extensions = {item.suffix.lower() for item, _ in entries}
-        if not {".shp", ".shx", ".dbf"}.issubset(extensions):
+        packaged_names = {name.casefold() for _, name in entries}
+        required_names = {
+            f"{stem}{extension}"
+            for extension in (".shp", ".shx", ".dbf")
+        }
+        if not required_names.issubset(packaged_names):
             raise _input_error("ARCPY_INPUT_INCOMPLETE")
         upload_path = _write_package(entries)
         logical_name = f"{source.stem}.zip"
@@ -1170,6 +1202,21 @@ class ArcPyMcpClient:
         return options
 
     @staticmethod
+    def _install_signed_transfer_log_filter() -> None:
+        install_runtime_secret_log_filter()
+        logger_names = {"httpx", "httpcore"}
+        logger_names.update(
+            name
+            for name, logger_object in logging.Logger.manager.loggerDict.items()
+            if isinstance(logger_object, logging.Logger)
+            and (name.startswith("httpx.") or name.startswith("httpcore."))
+        )
+        for name in logger_names:
+            for handler in logging.getLogger(name).handlers:
+                if _SIGNED_TRANSFER_LOG_FILTER not in handler.filters:
+                    handler.addFilter(_SIGNED_TRANSFER_LOG_FILTER)
+
+    @staticmethod
     def _committed_offset(
         status: dict, artifact_id: str, expected_size: int
     ) -> int:
@@ -1199,10 +1246,10 @@ class ArcPyMcpClient:
         artifact_id: str,
         prepared: PreparedLocalUpload,
     ) -> None:
-        valid = completion.get("state") == "ready"
-        response_artifact_id = completion.get("artifact_id")
-        if response_artifact_id is not None:
-            valid = valid and response_artifact_id == artifact_id
+        valid = (
+            completion.get("state") == "ready"
+            and completion.get("artifact_id") == artifact_id
+        )
 
         hash_values = [
             completion[field]
@@ -1214,15 +1261,17 @@ class ArcPyMcpClient:
             and value.lower() == prepared.sha256
             for value in hash_values
         )
-        for field in ("size", "actual_size", "actual_size_bytes"):
-            if field in completion:
-                value = completion[field]
-                valid = (
-                    valid
-                    and isinstance(value, int)
-                    and not isinstance(value, bool)
-                    and value == prepared.size
-                )
+        size_values = [
+            completion[field]
+            for field in ("size", "actual_size", "actual_size_bytes")
+            if field in completion
+        ]
+        valid = valid and bool(size_values) and all(
+            isinstance(value, int)
+            and not isinstance(value, bool)
+            and value == prepared.size
+            for value in size_values
+        )
         if not valid:
             raise ArcPyMcpError(
                 "ARCPY_UPLOAD_VERIFICATION_FAILED",
@@ -1263,12 +1312,17 @@ class ArcPyMcpClient:
                     try:
                         with prepared.upload_path.open("rb") as stream:
                             stream.seek(offset)
-                            response = await http_client.put(
-                                signed_url,
-                                headers={"Upload-Offset": str(offset)},
-                                content=stream,
-                                timeout=self._upload_timeout,
-                            )
+                            self._install_signed_transfer_log_filter()
+                            register_runtime_secrets([signed_url])
+                            try:
+                                response = await http_client.put(
+                                    signed_url,
+                                    headers={"Upload-Offset": str(offset)},
+                                    content=stream,
+                                    timeout=self._upload_timeout,
+                                )
+                            finally:
+                                unregister_runtime_secrets([signed_url])
                     except httpx.RequestError:
                         if attempt + 1 >= self._upload_attempts:
                             raise ArcPyMcpError(
