@@ -136,7 +136,12 @@ DEMAND_OVERLAYS = {
         "cultural_place_inventory_candidate_leads_and_heritage_evidence_readiness",
         ["docs/reports/traditional_cultural_heritage_chongqing_verification_2026-07-12.md", "data/uwm_public_proxy/chongqing_central/traditional_cultural_heritage_chongqing/overview.json"],
     ),
-    "17": _query("digital_asset_catalog_and_platform_observability", ["district_digital_infrastructure_inventory_missing"]),
+    "17": _bounded(
+        "digital_asset_smart_district_readiness_product",
+        ["district_digital_infrastructure_inventory_missing", "device_operational_timeseries_missing", "digital_infrastructure_uwm_gate_closed"],
+        "platform_digital_capability_and_district_smart_infrastructure_evidence_readiness",
+        ["docs/reports/digital_readiness_chongqing_verification_2026-07-12.md", "data/uwm_public_proxy/chongqing_central/digital_readiness_chongqing/overview.json"],
+    ),
     "18": _query("platform_operations_and_observability_only", ["customer_sla_work_order_and_asset_lifecycle_missing"]),
     "19": _bounded(
         "resilience_kernel_foundation",

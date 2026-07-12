@@ -134,3 +134,8 @@ def test_demand14_uses_verified_daily_convenience_product_without_economic_claim
  for blocker in ['business_operation_and_opening_hours_missing','business_licence_missing','employment_data_missing','revenue_transactions_visits_missing','market_demand_missing','entrepreneurship_evidence_missing','causal_activation_effect_missing']:
   assert blocker in demand['production_blockers']
  assert all(x['exists'] for x in demand['evidence_artifact_checks'])
+
+def test_demand_17_is_platform_capability_and_infrastructure_readiness_only():
+    demand = rows_by_id(build_ai_demand_implementation_ledger(repo_root=ROOT)["customer_ai_demands"])["17"]
+    assert demand["implementation_status"] == "implemented_evidence_bounded"
+    assert demand["max_supported_claim"] == "platform_digital_capability_and_district_smart_infrastructure_evidence_readiness"
