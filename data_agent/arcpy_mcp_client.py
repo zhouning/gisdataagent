@@ -29,16 +29,17 @@ from data_agent.mcp_transport import (
 )
 
 
-_URL_MARKER_RE = re.compile(r"(?i)https?://")
-_WINDOWS_DRIVE_RE = re.compile(r"(?i)(?:^|[\s\"'(])\s*[A-Z]:\\")
-_UNIX_ABSOLUTE_RE = re.compile(r"(?<![:A-Za-z0-9])/(?!/)")
+_LOCATION_TOKEN_SPLIT_RE = re.compile(r"[\s=,;\"'()\[\]{}<>]+")
+_DRIVE_PREFIX_RE = re.compile(r"(?i)^[A-Z]:[\\/]")
 
 
-def _contains_ip_address(value: str) -> bool:
-    for token in re.split(r"[\s,;()\[\]{}]+", value):
-        candidate = token.strip("'\"<>")
-        if not candidate:
-            continue
+def _is_ip_token(token: str) -> bool:
+    candidates = [token]
+    if token.count(":") == 1:
+        host, port = token.rsplit(":", 1)
+        if port.isdigit():
+            candidates.append(host)
+    for candidate in candidates:
         try:
             ipaddress.ip_address(candidate)
         except ValueError:
@@ -48,13 +49,19 @@ def _contains_ip_address(value: str) -> bool:
 
 
 def _contains_sensitive_location(value: str) -> bool:
-    return (
-        _URL_MARKER_RE.search(value) is not None
-        or "\\\\" in value
-        or _WINDOWS_DRIVE_RE.search(value) is not None
-        or _UNIX_ABSOLUTE_RE.search(value) is not None
-        or _contains_ip_address(value)
-    )
+    for token in _LOCATION_TOKEN_SPLIT_RE.split(value):
+        if not token:
+            continue
+        lowered = token.lower()
+        if lowered.startswith(("http://", "https://")):
+            return True
+        if token.startswith(("/", "\\\\")):
+            return True
+        if _DRIVE_PREFIX_RE.match(token) is not None:
+            return True
+        if _is_ip_token(token):
+            return True
+    return False
 
 
 def _sanitize_public_text(value: Any) -> str:

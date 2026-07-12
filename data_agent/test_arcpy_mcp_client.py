@@ -116,6 +116,27 @@ def test_error_strictly_redacts_ipv6_unc_and_paths_with_spaces():
         assert fragment not in public_details
 
 
+@pytest.mark.parametrize(
+    "sensitive",
+    [
+        "host=fd00::1234",
+        "host=10.0.0.8:8443",
+        "path=C:\\private ca\\root.pem",
+        "path=C:/private ca/root.pem",
+    ],
+)
+def test_error_redacts_embedded_location_tokens_as_whole_strings(sensitive):
+    error = ArcPyMcpError(
+        "ARCPY_TEST",
+        sensitive,
+        {sensitive: sensitive},
+    )
+
+    assert str(error) == "[REDACTED]"
+    assert error.details == {"[REDACTED]": "[REDACTED]"}
+    assert sensitive not in repr(error.details)
+
+
 @pytest.mark.asyncio
 async def test_unknown_tool_is_rejected_before_connect():
     client = _client()
