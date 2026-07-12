@@ -149,3 +149,10 @@ def test_demand_20_is_business_poi_and_licence_readiness_only():
     demand = rows_by_id(build_ai_demand_implementation_ledger(repo_root=ROOT)["customer_ai_demands"])["20"]
     assert demand["implementation_status"] == "implemented_evidence_bounded"
     assert demand["max_supported_claim"] == "business_poi_spatial_evidence_and_authoritative_licence_lifecycle_readiness"
+
+
+def test_demand_22_is_development_control_readiness_only():
+    demand = rows_by_id(build_ai_demand_implementation_ledger(repo_root=ROOT)["customer_ai_demands"])["22"]
+    assert demand["implementation_status"] == "implemented_evidence_bounded"
+    assert demand["max_supported_claim"] == "planning_rule_asset_catalog_and_site_specific_dcr_execution_readiness"
+    assert "dcr_execution_gate_closed" in demand["production_blockers"]
