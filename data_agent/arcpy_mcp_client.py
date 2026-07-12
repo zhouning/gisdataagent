@@ -5,8 +5,9 @@ from __future__ import annotations
 import asyncio
 import copy
 import json
+import re
 import time
-from contextlib import AsyncExitStack, suppress
+from contextlib import AsyncExitStack
 from datetime import timedelta
 from typing import Any
 
@@ -17,6 +18,7 @@ from mcp.client.streamable_http import streamable_http_client
 from data_agent.mcp_transport import (
     McpConfigurationError,
     build_httpx_client_factory,
+    current_runtime_secrets,
     install_runtime_secret_log_filter,
     redact_mcp_text,
     register_runtime_secrets,
@@ -26,12 +28,26 @@ from data_agent.mcp_transport import (
 )
 
 
+_URL_RE = re.compile(r"(?i)https?://[^\s,;]+")
+_IPV4_RE = re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])")
+_WINDOWS_PATH_RE = re.compile(r"(?i)\b[A-Z]:\\(?:[^\\\s,;]+\\?)+")
+_UNIX_PATH_RE = re.compile(r"(?<![:A-Za-z0-9])/(?:[^/\s,;]+/)*[^/\s,;]+")
+
+
+def _sanitize_public_text(value: Any) -> str:
+    sanitized = redact_mcp_text(str(value), current_runtime_secrets())
+    sanitized = _URL_RE.sub("[REDACTED]", sanitized)
+    sanitized = _WINDOWS_PATH_RE.sub("[REDACTED]", sanitized)
+    sanitized = _UNIX_PATH_RE.sub("[REDACTED]", sanitized)
+    return _IPV4_RE.sub("[REDACTED]", sanitized)
+
+
 def _sanitize_value(value: Any) -> Any:
     if isinstance(value, str):
-        return redact_mcp_text(value)
+        return _sanitize_public_text(value)
     if isinstance(value, dict):
         return {
-            redact_mcp_text(str(key)): _sanitize_value(item)
+            _sanitize_public_text(key): _sanitize_value(item)
             for key, item in value.items()
         }
     if isinstance(value, list):
@@ -49,7 +65,7 @@ class ArcPyMcpError(RuntimeError):
     def __init__(
         self, code: str, message: str, details: dict | None = None
     ) -> None:
-        super().__init__(redact_mcp_text(message))
+        super().__init__(_sanitize_public_text(message))
         self.code = code
         self.details = _sanitize_value(dict(details or {}))
 
@@ -102,84 +118,210 @@ class ArcPyMcpClient:
         self._resolved_token: str | None = None
         self._stack: AsyncExitStack | None = None
         self._lock = asyncio.Lock()
+        self._owner_task: asyncio.Task | None = None
+        self._ready: asyncio.Future | None = None
+        self._commands: asyncio.Queue | None = None
+        self._closing = False
         self._clock = clock
         self._health_cache: tuple[float, dict] | None = None
         self._capabilities_cache: tuple[float, dict] | None = None
 
     async def connect(self) -> None:
         async with self._lock:
-            await self._connect_locked()
+            if self._closing:
+                raise ArcPyMcpError(
+                    "ARCPY_MCP_UNREACHABLE", "ArcPy MCP service is unreachable"
+                )
+            owner = self._owner_task
+            if owner is None or owner.done():
+                seed_session = self._session if owner is None else None
+                commands = asyncio.Queue()
+                ready = asyncio.get_running_loop().create_future()
+                ready.add_done_callback(self._consume_future)
+                owner = asyncio.create_task(
+                    self._session_owner(ready, commands, seed_session),
+                    name=f"arcpy-mcp-session-{self._config.name}",
+                )
+                owner.add_done_callback(
+                    lambda task, waiter=ready: self._owner_finished(task, waiter)
+                )
+                self._owner_task = owner
+                self._ready = ready
+                self._commands = commands
+            ready = self._ready
 
-    async def _connect_locked(self) -> None:
-        if self._session is not None:
-            return
-        if not str(self._config.url).strip():
-            raise ArcPyMcpError(
-                "ARCPY_MCP_URL_MISSING", "ArcPy MCP URL is not configured"
-            )
+        await asyncio.shield(ready)
 
-        stack = AsyncExitStack()
-        token = None
-        session = None
-        failure = None
+    @staticmethod
+    def _consume_future(future) -> None:
         try:
-            token = resolve_secret_reference(
-                self._config.bearer_token_env_var,
-                self._config.bearer_token_file_env_var,
-            )
-            register_runtime_secrets([token])
-            stack.callback(unregister_runtime_secrets, [token])
-            install_runtime_secret_log_filter()
-            headers = {"Authorization": f"Bearer {token}"}
-            if self._config.ca_bundle_env_var:
-                ca_bundle = resolve_ca_bundle(self._config.ca_bundle_env_var)
-                client_context = build_httpx_client_factory(ca_bundle)(
-                    headers=headers,
-                    timeout=self._config.timeout,
-                )
-            else:
-                client_context = httpx.AsyncClient(
-                    headers=headers,
-                    timeout=self._config.timeout,
-                    follow_redirects=True,
-                )
-            http_client = await stack.enter_async_context(client_context)
-            transport_context = streamable_http_client(
-                self._config.url,
-                http_client=http_client,
-            )
-            read_stream, write_stream, _ = await stack.enter_async_context(
-                transport_context
-            )
-            session = await stack.enter_async_context(
-                ClientSession(
-                    read_stream,
-                    write_stream,
-                    read_timeout_seconds=timedelta(seconds=self._config.timeout),
+            future.exception()
+        except BaseException:
+            pass
+
+    @classmethod
+    def _owner_finished(cls, owner, ready) -> None:
+        if not ready.done():
+            ready.set_exception(
+                ArcPyMcpError(
+                    "ARCPY_MCP_UNREACHABLE", "ArcPy MCP service is unreachable"
                 )
             )
-            await session.initialize()
-        except BaseException as exc:
-            if isinstance(exc, McpConfigurationError):
-                failure = ArcPyMcpError(exc.code, str(exc))
-            elif isinstance(exc, Exception):
-                redact_mcp_text(str(exc), [token or ""])
-                failure = ArcPyMcpError(
+        cls._consume_future(owner)
+
+    @staticmethod
+    def _connection_failure(exc: BaseException, token: str | None):
+        if isinstance(exc, ArcPyMcpError):
+            return exc
+        if isinstance(exc, McpConfigurationError):
+            return ArcPyMcpError(exc.code, str(exc))
+        if isinstance(exc, asyncio.CancelledError):
+            return exc
+        if isinstance(exc, Exception):
+            redact_mcp_text(str(exc), [token or ""])
+            return ArcPyMcpError(
+                "ARCPY_MCP_UNREACHABLE", "ArcPy MCP service is unreachable"
+            )
+        return exc
+
+    async def _session_owner(
+        self,
+        ready: asyncio.Future,
+        commands: asyncio.Queue,
+        seed_session,
+    ) -> None:
+        stack = AsyncExitStack()
+        token = self._resolved_token if seed_session is not None else None
+        session = seed_session
+        failure = None
+
+        if session is None:
+            try:
+                if not str(self._config.url).strip():
+                    raise ArcPyMcpError(
+                        "ARCPY_MCP_URL_MISSING",
+                        "ArcPy MCP URL is not configured",
+                    )
+                token = resolve_secret_reference(
+                    self._config.bearer_token_env_var,
+                    self._config.bearer_token_file_env_var,
+                )
+                register_runtime_secrets([token])
+                stack.callback(unregister_runtime_secrets, [token])
+                install_runtime_secret_log_filter()
+                headers = {"Authorization": f"Bearer {token}"}
+                if self._config.ca_bundle_env_var:
+                    ca_bundle = resolve_ca_bundle(self._config.ca_bundle_env_var)
+                    client_context = build_httpx_client_factory(ca_bundle)(
+                        headers=headers,
+                        timeout=self._config.timeout,
+                    )
+                else:
+                    client_context = httpx.AsyncClient(
+                        headers=headers,
+                        timeout=self._config.timeout,
+                        follow_redirects=True,
+                    )
+                http_client = await stack.enter_async_context(client_context)
+                transport_context = streamable_http_client(
+                    self._config.url,
+                    http_client=http_client,
+                )
+                read_stream, write_stream, _ = await stack.enter_async_context(
+                    transport_context
+                )
+                session = await stack.enter_async_context(
+                    ClientSession(
+                        read_stream,
+                        write_stream,
+                        read_timeout_seconds=timedelta(
+                            seconds=self._config.timeout
+                        ),
+                    )
+                )
+                await session.initialize()
+            except BaseException as exc:
+                failure = self._connection_failure(exc, token)
+
+        if failure is not None:
+            cleanup_failure = None
+            try:
+                await stack.aclose()
+            except BaseException as exc:
+                cleanup_failure = exc
+            finally:
+                self._clear_runtime_state()
+
+            public_failure = failure
+            if not isinstance(public_failure, ArcPyMcpError):
+                public_failure = ArcPyMcpError(
                     "ARCPY_MCP_UNREACHABLE",
                     "ArcPy MCP service is unreachable",
                 )
-            else:
-                failure = exc
+            if cleanup_failure is not None:
+                public_failure = ArcPyMcpError(
+                    "ARCPY_MCP_UNREACHABLE",
+                    "ArcPy MCP service is unreachable",
+                )
+            if not ready.done():
+                ready.set_exception(public_failure)
+            if cleanup_failure is not None:
+                raise cleanup_failure
+            if isinstance(failure, asyncio.CancelledError):
+                raise failure
+            if not isinstance(failure, Exception):
+                raise failure
+            return
 
-        if failure is not None:
-            with suppress(Exception):
-                await stack.aclose()
-            self._clear_runtime_state()
-            raise failure
-
-        self._stack = stack
+        self._stack = stack if seed_session is None else None
         self._session = session
         self._resolved_token = token
+        if not ready.done():
+            ready.set_result(None)
+
+        active_response = None
+        try:
+            while True:
+                command = await commands.get()
+                kind = command[0]
+                if kind == "shutdown":
+                    return
+                _, name, arguments, response = command
+                active_response = response
+                try:
+                    result = await self._invoke_tool(name, arguments)
+                except asyncio.CancelledError:
+                    raise
+                except ArcPyMcpError as exc:
+                    if not response.done():
+                        response.set_exception(exc)
+                except Exception:
+                    if not response.done():
+                        response.set_exception(
+                            ArcPyMcpError(
+                                "ARCPY_MCP_UNREACHABLE",
+                                "ArcPy MCP service is unreachable",
+                            )
+                        )
+                else:
+                    if not response.done():
+                        response.set_result(result)
+                active_response = None
+        finally:
+            closed_error = ArcPyMcpError(
+                "ARCPY_MCP_UNREACHABLE", "ArcPy MCP service is unreachable"
+            )
+            if active_response is not None and not active_response.done():
+                active_response.set_exception(closed_error)
+            while not commands.empty():
+                command = commands.get_nowait()
+                if command[0] == "call" and not command[3].done():
+                    command[3].set_exception(closed_error)
+            try:
+                if seed_session is None:
+                    await stack.aclose()
+            finally:
+                self._clear_runtime_state()
 
     def _clear_runtime_state(self) -> None:
         self._stack = None
@@ -190,13 +332,29 @@ class ArcPyMcpClient:
 
     async def close(self) -> None:
         async with self._lock:
-            stack = self._stack
-            try:
-                if stack is not None:
-                    with suppress(Exception):
-                        await stack.aclose()
-            finally:
+            owner = self._owner_task
+            if owner is None:
                 self._clear_runtime_state()
+                return
+            if not self._closing and not owner.done():
+                self._closing = True
+                if self._commands is not None:
+                    self._commands.put_nowait(("shutdown",))
+                owner.cancel()
+
+        try:
+            await asyncio.shield(owner)
+        except asyncio.CancelledError:
+            if not owner.cancelled():
+                raise
+        finally:
+            async with self._lock:
+                if self._owner_task is owner and owner.done():
+                    self._owner_task = None
+                    self._ready = None
+                    self._commands = None
+                    self._closing = False
+                    self._clear_runtime_state()
 
     @staticmethod
     def _result_attribute(result, camel_case: str, snake_case: str, default=None):
@@ -225,11 +383,25 @@ class ArcPyMcpClient:
                 "Requested ArcPy MCP tool is not allowed",
             )
 
+        await self.connect()
         async with self._lock:
-            await self._connect_locked()
-            return await self._call_tool_locked(name, arguments)
+            owner = self._owner_task
+            commands = self._commands
+            if (
+                self._closing
+                or owner is None
+                or owner.done()
+                or commands is None
+            ):
+                raise ArcPyMcpError(
+                    "ARCPY_MCP_UNREACHABLE", "ArcPy MCP service is unreachable"
+                )
+            response = asyncio.get_running_loop().create_future()
+            response.add_done_callback(self._consume_future)
+            commands.put_nowait(("call", name, arguments, response))
+        return await asyncio.shield(response)
 
-    async def _call_tool_locked(self, name: str, arguments: dict) -> dict:
+    async def _invoke_tool(self, name: str, arguments: dict) -> dict:
         transport_message = None
         try:
             result = await self._session.call_tool(name, arguments)

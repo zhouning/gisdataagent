@@ -43,13 +43,46 @@ def test_error_has_stable_code_dict_details_and_sanitized_repr():
     )
 
     assert error.code == "ARCPY_TEST"
-    assert error.details["url"] == (
-        "https://download.example/item?signature=[REDACTED]"
-    )
+    assert error.details["url"] == "[REDACTED]"
     assert "fixture-credential" not in str(error)
     assert "fixture-signature" not in repr(error)
     assert "fixture-key-credential" not in repr(error.details)
     assert "fixture-value-credential" not in repr(error.details)
+
+
+def test_error_redacts_runtime_secret_private_url_and_absolute_paths():
+    from data_agent.mcp_transport import (
+        register_runtime_secrets,
+        unregister_runtime_secrets,
+    )
+
+    credential = "fixture-bare-runtime-credential"
+    private_url = "https://10.1.2.3/private/service"
+    unix_path = "/private/ca.pem"
+    windows_path = "C:\\private\\ca.pem"
+    register_runtime_secrets([credential])
+    try:
+        error = ArcPyMcpError(
+            "ARCPY_TEST",
+            f"failure {credential} {private_url} {unix_path} {windows_path}",
+            {
+                f"key-{credential}": private_url,
+                "unix": unix_path,
+                "windows": windows_path,
+            },
+        )
+    finally:
+        unregister_runtime_secrets([credential])
+
+    public_state = f"{error!s} {error.details!r}"
+    for sensitive in (
+        credential,
+        private_url,
+        "10.1.2.3",
+        unix_path,
+        windows_path,
+    ):
+        assert sensitive not in public_state
 
 
 @pytest.mark.asyncio
@@ -247,6 +280,23 @@ class FakeContext:
         self.events.append(f"exit:{self.name}")
 
 
+class TaskAffineContext(FakeContext):
+    def __init__(self, name, value, events):
+        super().__init__(name, value, events)
+        self.enter_task = None
+        self.affinity_violation = False
+
+    async def __aenter__(self):
+        self.enter_task = asyncio.current_task()
+        return await super().__aenter__()
+
+    async def __aexit__(self, exc_type, exc, traceback):
+        if asyncio.current_task() is not self.enter_task:
+            self.affinity_violation = True
+            raise RuntimeError("context exited from a different task")
+        await super().__aexit__(exc_type, exc, traceback)
+
+
 class FakeSdkSession:
     def __init__(self, events, *, initialize_error=None, call_result=None):
         self.events = events
@@ -344,6 +394,53 @@ async def test_connect_builds_one_authenticated_official_session_and_initializes
 
     await client.close()
     assert current_runtime_secrets() == ()
+
+
+@pytest.mark.asyncio
+async def test_session_contexts_exit_in_the_same_owner_task(monkeypatch):
+    import data_agent.arcpy_mcp_client as client_module
+
+    events = []
+    http_context = TaskAffineContext("http", object(), events)
+    transport_context = TaskAffineContext(
+        "transport", ("read", "write", lambda: None), events
+    )
+    session = FakeSdkSession(events)
+    session_context = TaskAffineContext("session", session, events)
+    monkeypatch.setattr(
+        client_module.httpx,
+        "AsyncClient",
+        MagicMock(return_value=http_context),
+    )
+    monkeypatch.setattr(
+        client_module,
+        "streamable_http_client",
+        MagicMock(return_value=transport_context),
+    )
+    monkeypatch.setattr(
+        client_module,
+        "ClientSession",
+        MagicMock(return_value=session_context),
+    )
+    monkeypatch.setenv("ARCPY_CLIENT_TEST_TOKEN", "fixture-affinity-credential")
+    client = ArcPyMcpClient(
+        McpServerConfig(
+            name="arcpy",
+            url="https://service.example/mcp",
+            bearer_token_env_var="ARCPY_CLIENT_TEST_TOKEN",
+        )
+    )
+
+    await client.connect()
+    close_task = asyncio.create_task(client.close())
+    await close_task
+
+    assert http_context.affinity_violation is False
+    assert transport_context.affinity_violation is False
+    assert session_context.affinity_violation is False
+    assert http_context.exit_count == 1
+    assert transport_context.exit_count == 1
+    assert session_context.exit_count == 1
 
 
 @pytest.mark.asyncio
@@ -481,7 +578,7 @@ async def test_half_connect_failure_cleans_up_and_allows_retry(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_cancelled_half_connect_cleans_up_and_remains_retryable(monkeypatch):
+async def test_cancelled_connect_caller_does_not_cancel_session_owner(monkeypatch):
     from data_agent.mcp_transport import current_runtime_secrets
 
     initialize_started = asyncio.Event()
@@ -493,9 +590,8 @@ async def test_cancelled_half_connect_cleans_up_and_remains_retryable(monkeypatc
             initialize_started.set()
             await release_initialize.wait()
 
-    first_session = BlockingInitializeSession([])
-    second_session = FakeSdkSession([])
-    sdk = _install_fake_sdk(monkeypatch, [first_session, second_session])
+    session = BlockingInitializeSession([])
+    sdk = _install_fake_sdk(monkeypatch, [session])
     monkeypatch.setenv("ARCPY_CLIENT_TEST_TOKEN", "fixture-cancel-credential")
     client = ArcPyMcpClient(
         McpServerConfig(
@@ -511,18 +607,32 @@ async def test_cancelled_half_connect_cleans_up_and_remains_retryable(monkeypatc
     with pytest.raises(asyncio.CancelledError):
         await connect_task
 
-    assert first_session.exit_count == 1
-    assert sdk.transport_contexts[0].exit_count == 1
-    assert sdk.http_contexts[0].exit_count == 1
-    assert client._session is None
-    assert client._stack is None
-    assert client._resolved_token is None
-    assert current_runtime_secrets() == ()
+    assert session.exit_count == 0
+    assert sdk.transport_contexts[0].exit_count == 0
+    assert sdk.http_contexts[0].exit_count == 0
+    assert current_runtime_secrets() == ("fixture-cancel-credential",)
 
     release_initialize.set()
     await client.connect()
-    assert client._session is second_session
+    assert client._session is session
     await client.close()
+    assert session.exit_count == 1
+    assert current_runtime_secrets() == ()
+
+
+@pytest.mark.asyncio
+async def test_owner_cancelled_before_start_resolves_connect_waiter():
+    client = _client()
+    connect_task = asyncio.create_task(client.connect())
+    await asyncio.sleep(0)
+    owner = client._owner_task
+    owner.cancel()
+    await client.close()
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await asyncio.wait_for(connect_task, timeout=0.2)
+
+    assert exc_info.value.code == "ARCPY_MCP_UNREACHABLE"
 
 
 @pytest.mark.asyncio
@@ -587,7 +697,7 @@ class FakeClock:
 
 
 @pytest.mark.asyncio
-async def test_close_waits_for_an_owned_call_and_then_clears_state():
+async def test_close_cancels_an_owned_call_without_deadlock():
     started = asyncio.Event()
     release = asyncio.Event()
 
@@ -602,15 +712,55 @@ async def test_close_waits_for_an_owned_call_and_then_clears_state():
     call_task = asyncio.create_task(client.call_tool("get_job", {}))
     await started.wait()
     close_task = asyncio.create_task(client.close())
-    await asyncio.sleep(0)
+    done, _ = await asyncio.wait({close_task}, timeout=0.2)
+    closed_without_release = close_task in done
+    if not closed_without_release:
+        release.set()
+        await close_task
 
-    assert not close_task.done()
-    assert client._session is not None
-
-    release.set()
-    assert await call_task == {"status": "ok"}
-    await close_task
+    assert closed_without_release is True
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await call_task
+    assert exc_info.value.code == "ARCPY_MCP_UNREACHABLE"
     assert client._session is None
+
+
+@pytest.mark.asyncio
+async def test_cancelled_call_waiter_does_not_cancel_owner_or_next_call():
+    first_started = asyncio.Event()
+    release_first = asyncio.Event()
+    first_completed = asyncio.Event()
+
+    class RecordingSession:
+        def __init__(self):
+            self.call_tasks = []
+            self.call_count = 0
+
+        async def call_tool(self, name, arguments):
+            self.call_tasks.append(asyncio.current_task())
+            self.call_count += 1
+            if self.call_count == 1:
+                first_started.set()
+                await release_first.wait()
+                first_completed.set()
+            return _result(structured={"call": self.call_count})
+
+    session = RecordingSession()
+    client = _client()
+    client._session = session
+    first_call = asyncio.create_task(client.call_tool("get_job", {}))
+    await first_started.wait()
+    first_call.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await first_call
+
+    release_first.set()
+    await first_completed.wait()
+    second = await client.call_tool("get_job", {})
+
+    assert second == {"call": 2}
+    assert session.call_tasks == [client._owner_task, client._owner_task]
+    await client.close()
 
 
 @pytest.mark.asyncio
