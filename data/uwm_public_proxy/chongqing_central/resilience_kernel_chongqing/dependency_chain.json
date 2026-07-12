@@ -1,0 +1,1 @@
+{"bundle_id":"resilience-kernel-723a9c0cb5cf2457af90","dependency_chain":["hazard_exposure_observations","response_capacity_inventory","propagation_and_recovery_timeseries","resilience_kernel_calibration","resilience_kernel_independent_verification","resilience_dynamic_decision_release"],"schema":"uwm.resilience_dependency_chain.v1"}

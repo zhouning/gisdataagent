@@ -138,7 +138,12 @@ DEMAND_OVERLAYS = {
     ),
     "17": _query("digital_asset_catalog_and_platform_observability", ["district_digital_infrastructure_inventory_missing"]),
     "18": _query("platform_operations_and_observability_only", ["customer_sla_work_order_and_asset_lifecycle_missing"]),
-    "19": _contract("resilience_world_model_route_defined", ["hazard_response_capacity_and_recovery_data_missing"]),
+    "19": _bounded(
+        "resilience_kernel_foundation",
+        ["authoritative_hazard_event_timeseries_missing", "population_and_asset_exposure_missing", "emergency_response_time_missing", "hazard_spatial_propagation_calibration_missing", "recovery_state_timeseries_missing", "intervention_outcome_evidence_missing", "held_out_event_evaluation_missing"],
+        "observed_resilience_context_spatial_graph_and_fail_closed_kernel_readiness",
+        ["docs/reports/resilience_kernel_chongqing_verification_2026-07-12.md", "data/uwm_public_proxy/chongqing_central/resilience_kernel_chongqing/overview.json"],
+    ),
     "20": _query("poi_economic_activity_proxy_only", ["authoritative_ded_licence_and_lifecycle_data_missing"]),
     "21": _bounded(
         "traditional_social_public_service_product",
