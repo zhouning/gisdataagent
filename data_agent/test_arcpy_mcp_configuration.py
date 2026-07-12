@@ -274,6 +274,72 @@ def test_environment_arcpy_overrides_same_name_db_and_yaml(monkeypatch):
     assert config.system_managed is True
 
 
+def test_persisted_db_and_yaml_configs_cannot_claim_managed_provenance(monkeypatch):
+    _clear_arcpy_environment(monkeypatch)
+    db_config = McpServerConfig(
+        name="db-managed",
+        enabled=False,
+        system_managed=True,
+        source="db",
+    )
+    yaml_config = McpServerConfig(
+        name="yaml-managed",
+        enabled=False,
+        system_managed=True,
+        source="yaml",
+    )
+    hub = McpHubManager()
+    hub._ensure_table = MagicMock(return_value=True)
+    hub._load_from_db = MagicMock(return_value=[db_config])
+    hub._load_yaml = MagicMock(return_value=[yaml_config])
+
+    hub.load_config()
+
+    assert hub._servers["db-managed"].config.system_managed is False
+    assert hub._servers["yaml-managed"].config.system_managed is False
+    assert hub._can_manage_server("db-managed", "admin", "admin") is True
+    assert hub._can_manage_server("yaml-managed", "admin", "admin") is True
+
+
+def test_malformed_system_url_fails_closed_without_raising(monkeypatch):
+    _clear_arcpy_environment(monkeypatch)
+    monkeypatch.setenv("ARCPY_MCP_ENABLED", "true")
+    monkeypatch.setenv("ARCPY_MCP_URL", "http://[")
+    hub = _config_only_hub()
+
+    configs = hub.load_config()
+
+    assert len(configs) == 1
+    status = hub._servers["arcpy-remote"]
+    assert status.config.enabled is False
+    assert status.status == "error"
+    assert status.error_code == "ARCPY_MCP_URL_INVALID"
+    assert status.error_message == "ArcPy MCP URL configuration is invalid"
+    assert "http://[" not in repr(hub.get_server_statuses())
+
+
+def test_closed_hub_cannot_be_reopened_by_startup_retry_or_connect():
+    hub = McpHubManager()
+    config = McpServerConfig(name="remote", enabled=True)
+    hub._servers = {"remote": McpServerStatus(config=config)}
+
+    async def scenario():
+        await hub.shutdown()
+        hub._servers["remote"].status = "disconnected"
+        startup = await hub.startup()
+        retry = await hub.retry_failed_servers(delays=(), sleep=AsyncMock())
+        connect = await hub.connect_server("remote")
+        return startup, retry, connect
+
+    startup, retry, connect = asyncio.run(scenario())
+
+    assert startup is False
+    assert retry is False
+    assert connect is False
+    assert hub._closing is True
+    assert hub._started is False
+
+
 def test_enabled_without_url_registers_and_reports_stable_config_error(monkeypatch):
     _clear_arcpy_environment(monkeypatch)
     monkeypatch.setenv("ARCPY_MCP_ENABLED", "true")

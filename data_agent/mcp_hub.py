@@ -354,7 +354,8 @@ class McpHubManager:
                     bearer_token_env_var=r[13] or "",
                     bearer_token_file_env_var=r[14] or "",
                     ca_bundle_env_var=r[15] or "",
-                    system_managed=bool(r[16]),
+                    # Persisted rows never establish deployment provenance.
+                    system_managed=False,
                     expose_raw_tools=bool(r[17]) if r[17] is not None else True,
                     source="db",
                     owner_username=r[18], is_shared=bool(r[19]) if r[19] is not None else True,
@@ -486,6 +487,11 @@ class McpHubManager:
                 db_configs.append(yc)
                 db_names.add(yc.name)
 
+        # Defense in depth: only the environment overlay can establish provenance,
+        # even when a loader is replaced or returns legacy managed rows.
+        for persisted_config in db_configs:
+            persisted_config.system_managed = False
+
         # 3. Overlay non-persistent system configs by name so environment wins.
         configs_by_name = {config.name: config for config in db_configs}
         persisted_arcpy = configs_by_name.get("arcpy-remote")
@@ -576,8 +582,15 @@ class McpHubManager:
             error_code = "ARCPY_MCP_URL_MISSING"
             error_message = "ArcPy MCP URL is not configured"
         else:
-            parsed_url = urlparse(url)
-            if parsed_url.scheme not in ("http", "https") or not parsed_url.netloc:
+            try:
+                parsed_url = urlparse(url)
+                valid_url = (
+                    parsed_url.scheme in ("http", "https")
+                    and bool(parsed_url.netloc)
+                )
+            except ValueError:
+                valid_url = False
+            if not valid_url:
                 error_code = "ARCPY_MCP_URL_INVALID"
                 error_message = "ArcPy MCP URL configuration is invalid"
 
@@ -662,7 +675,8 @@ class McpHubManager:
                 bearer_token_env_var=raw.get("bearer_token_env_var", ""),
                 bearer_token_file_env_var=raw.get("bearer_token_file_env_var", ""),
                 ca_bundle_env_var=raw.get("ca_bundle_env_var", ""),
-                system_managed=raw.get("system_managed", False),
+                # YAML is persisted deployment data, not trusted provenance.
+                system_managed=False,
                 expose_raw_tools=raw.get("expose_raw_tools", True),
                 source="yaml",
             )
@@ -842,7 +856,6 @@ class McpHubManager:
 
     async def startup(self) -> bool:
         """Load config and connect enabled servers, returning full success."""
-        self._closing = False
         if self._started:
             return True
 

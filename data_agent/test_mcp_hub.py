@@ -250,7 +250,7 @@ class TestMcpHubManager(unittest.TestCase):
         self.assertEqual(config.bearer_token_env_var, "ARCPY_MCP_TOKEN")
         self.assertEqual(config.bearer_token_file_env_var, "ARCPY_MCP_TOKEN_FILE")
         self.assertEqual(config.ca_bundle_env_var, "ARCPY_MCP_CA_FILE")
-        self.assertTrue(config.system_managed)
+        self.assertFalse(config.system_managed)
         self.assertFalse(config.expose_raw_tools)
 
     def test_load_config_skips_invalid_entries(self):
@@ -2064,7 +2064,7 @@ class TestMcpHubDbMethods(unittest.TestCase):
         self.assertEqual(config.bearer_token_env_var, "ARCPY_TOKEN")
         self.assertEqual(config.bearer_token_file_env_var, "ARCPY_TOKEN_FILE")
         self.assertEqual(config.ca_bundle_env_var, "ARCPY_CA_FILE")
-        self.assertTrue(config.system_managed)
+        self.assertFalse(config.system_managed)
         self.assertFalse(config.expose_raw_tools)
         self.assertEqual(config.owner_username, "admin")
         self.assertTrue(config.is_shared)
