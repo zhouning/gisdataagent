@@ -129,7 +129,12 @@ DEMAND_OVERLAYS = {
         "daily_service_inventory_accessibility_context_and_business_activity_evidence",
         ["docs/reports/traditional_daily_convenience_chongqing_verification_2026-07-12.md", "data/uwm_public_proxy/chongqing_central/traditional_daily_convenience_chongqing/overview.json"],
     ),
-    "15": _query("text_and_geospatial_analysis_platform_capability", ["customer_feedback_corpus_missing"]),
+    "15": _bounded(
+        "public_feedback_spatial_semantic_readiness_product",
+        ["authoritative_privacy_safe_customer_feedback_corpus_missing", "sampling_frame_and_representativeness_missing", "response_resolution_and_longitudinal_outcomes_missing", "feedback_analysis_and_uwm_observation_gates_closed"],
+        "public_feedback_data_contract_spatial_semantic_and_uwm_observation_readiness",
+        ["docs/reports/public_feedback_readiness_chongqing_verification_2026-07-12.md", "data/uwm_public_proxy/chongqing_central/public_feedback_readiness_chongqing/overview.json"],
+    ),
     "16": _bounded(
         "traditional_cultural_heritage_evidence_product",
         ["authoritative_heritage_register_missing", "legal_status_and_level_missing", "opening_operation_and_public_access_missing", "condition_and_restoration_observations_missing", "visitor_and_community_activity_missing", "longitudinal_intervention_outcomes_missing", "facility_inventory_sampling_not_complete"],
