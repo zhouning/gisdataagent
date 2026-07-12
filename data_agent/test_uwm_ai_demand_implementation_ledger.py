@@ -122,3 +122,12 @@ def test_demand10_uses_verified_evidence_product_without_safety_outcome_claims()
  for blocker in ['crash_conflict_observations_missing','crime_security_observations_missing','lighting_crossing_data_missing','shade_corridor_data_missing','universal_accessibility_assets_missing','observed_thermal_comfort_missing','emergency_response_time_missing','intervention_effect_evidence_missing']:
   assert blocker in demand['production_blockers']
  assert all(x['exists'] for x in demand['evidence_artifact_checks'])
+
+def test_demand14_uses_verified_daily_convenience_product_without_economic_claims():
+ demand=rows_by_id(build_ai_demand_implementation_ledger(repo_root=ROOT)['customer_ai_demands'])['14']
+ assert demand['implementation_status']=='implemented_evidence_bounded'
+ assert 'traditional_daily_convenience_business_evidence_product' in demand['implemented_outputs']
+ assert demand['max_supported_claim']=='daily_service_inventory_accessibility_context_and_business_activity_evidence'
+ for blocker in ['business_operation_and_opening_hours_missing','business_licence_missing','employment_data_missing','revenue_transactions_visits_missing','market_demand_missing','entrepreneurship_evidence_missing','causal_activation_effect_missing']:
+  assert blocker in demand['production_blockers']
+ assert all(x['exists'] for x in demand['evidence_artifact_checks'])
