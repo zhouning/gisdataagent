@@ -17,6 +17,7 @@ import TraditionalLivabilitySocialPublicServicePanel from './TraditionalLivabili
 import TraditionalLivabilityPublicSpacePanel from './TraditionalLivabilityPublicSpacePanel';
 import TraditionalLivabilitySafetyComfortPanel from './TraditionalLivabilitySafetyComfortPanel';
 import TraditionalLivabilityDailyConveniencePanel from './TraditionalLivabilityDailyConveniencePanel';
+import TraditionalLivabilityHousingCommunityPanel from './TraditionalLivabilityHousingCommunityPanel';
 
 declare global {
   interface Window {
@@ -179,6 +180,7 @@ export default function TraditionalLivabilityTab() {
       <TraditionalLivabilityPublicSpacePanel />
       <TraditionalLivabilitySafetyComfortPanel />
       <TraditionalLivabilityDailyConveniencePanel />
+      <TraditionalLivabilityHousingCommunityPanel />
       <div className="datapanel-section-header">
         <div>
           <h3>城市宜居性分析（传统方法）</h3>

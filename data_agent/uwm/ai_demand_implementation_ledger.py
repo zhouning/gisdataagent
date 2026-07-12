@@ -117,7 +117,12 @@ DEMAND_OVERLAYS = {
         "social_infrastructure_inventory_and_relative_evidence_gap",
         ["docs/reports/traditional_social_public_service_chongqing_verification_2026-07-11.md", "data/uwm_public_proxy/chongqing_central/traditional_social_public_service_chongqing/overview.json"],
     ),
-    "13": _query("building_population_and_land_use_foundation", ["authoritative_housing_stock_and_household_composition_missing"]),
+    "13": _bounded(
+        "traditional_housing_community_evidence_product",
+        ["housing_unit_inventory_missing", "residential_use_and_floor_area_missing", "price_rent_affordability_missing", "tenure_missing", "household_composition_microdata_missing", "housing_job_observed_proximity_missing", "causal_housing_transition_model_missing"],
+        "building_morphology_population_context_and_housing_evidence_readiness",
+        ["docs/reports/traditional_housing_community_chongqing_verification_2026-07-12.md", "data/uwm_public_proxy/chongqing_central/traditional_housing_community_chongqing/overview.json"],
+    ),
     "14": _bounded(
         "traditional_daily_convenience_business_evidence_product",
         ["business_operation_and_opening_hours_missing", "business_licence_missing", "employment_data_missing", "revenue_transactions_visits_missing", "market_demand_missing", "entrepreneurship_evidence_missing", "causal_activation_effect_missing", "county_facility_to_township_accessibility_exact_id_missing"],
