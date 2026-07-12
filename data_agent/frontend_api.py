@@ -4208,6 +4208,7 @@ def get_frontend_api_routes():
     from .api.uwm_traditional_public_space_routes import get_uwm_traditional_public_space_routes
     from .api.uwm_traditional_safety_comfort_routes import get_uwm_traditional_safety_comfort_routes
     from .api.uwm_traditional_daily_convenience_routes import get_uwm_traditional_daily_convenience_routes
+    from .api.uwm_traditional_housing_community_routes import get_uwm_traditional_housing_community_routes
     from .api.uwm_livability_s2_routes import get_uwm_livability_s2_routes
     from .api.uwm_environmental_kernel_routes import get_uwm_environmental_kernel_routes
     from .api.uwm_livability_decision_routes import get_uwm_livability_decision_routes
@@ -4371,6 +4372,7 @@ def get_frontend_api_routes():
         *get_uwm_traditional_public_space_routes(),
         *get_uwm_traditional_safety_comfort_routes(),
         *get_uwm_traditional_daily_convenience_routes(),
+        *get_uwm_traditional_housing_community_routes(),
         # UWM parcel-scale livability S2 land-use scenarios
         *get_uwm_livability_s2_routes(),
         # UWM environmental dynamics kernel
