@@ -4212,6 +4212,7 @@ def get_frontend_api_routes():
     from .api.uwm_traditional_cultural_heritage_routes import get_uwm_traditional_cultural_heritage_routes
     from .api.uwm_cross_domain_impact_routes import get_uwm_cross_domain_impact_routes
     from .api.uwm_implementation_roadmap_routes import get_uwm_implementation_roadmap_routes
+    from .api.uwm_resilience_kernel_routes import get_uwm_resilience_kernel_routes
     from .api.uwm_livability_s2_routes import get_uwm_livability_s2_routes
     from .api.uwm_environmental_kernel_routes import get_uwm_environmental_kernel_routes
     from .api.uwm_livability_decision_routes import get_uwm_livability_decision_routes
@@ -4379,6 +4380,7 @@ def get_frontend_api_routes():
         *get_uwm_traditional_cultural_heritage_routes(),
         *get_uwm_cross_domain_impact_routes(),
         *get_uwm_implementation_roadmap_routes(),
+        *get_uwm_resilience_kernel_routes(),
         # UWM parcel-scale livability S2 land-use scenarios
         *get_uwm_livability_s2_routes(),
         # UWM environmental dynamics kernel

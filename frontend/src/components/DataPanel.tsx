@@ -36,6 +36,7 @@ import TraditionalLivabilityTab from './datapanel/TraditionalLivabilityTab';
 import TraditionalCulturalHeritageTab from './datapanel/TraditionalCulturalHeritageTab';
 import CrossDomainImpactTab from './datapanel/CrossDomainImpactTab';
 import ImplementationRoadmapTab from './datapanel/ImplementationRoadmapTab';
+import ResilienceWorldModelTab from './datapanel/ResilienceWorldModelTab';
 import LivabilityWorldModelTab from './datapanel/LivabilityWorldModelTab';
 import AiDemandReadinessTab from './datapanel/AiDemandReadinessTab';
 import CausalReasoningTab from './datapanel/CausalReasoningTab';
@@ -61,7 +62,7 @@ interface DataPanelProps {
   username?: string;
 }
 
-type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'agent_logs' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'traditional_livability' | 'cultural_heritage' | 'cross_domain_impact' | 'implementation_roadmap' | 'uwm_livability' | 'ai_demand_readiness' | 'worldmodel' | 'worldmodel_v11' | 'worldmodel_v2' | 'worldmodel_v21' | 'twm' | 'causal' | 'optimization' | 'qcmonitor' | 'fusion_quality' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'std_platform' | 'semantic' | 'agents' | 'intake' | 'classification';
+type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'agent_logs' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'traditional_livability' | 'cultural_heritage' | 'cross_domain_impact' | 'implementation_roadmap' | 'resilience_kernel' | 'uwm_livability' | 'ai_demand_readiness' | 'worldmodel' | 'worldmodel_v11' | 'worldmodel_v2' | 'worldmodel_v21' | 'twm' | 'causal' | 'optimization' | 'qcmonitor' | 'fusion_quality' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'std_platform' | 'semantic' | 'agents' | 'intake' | 'classification';
 
 type GroupKey = 'data' | 'intelligence' | 'ops';
 
@@ -101,6 +102,7 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: ReactNode; tabs: TabDef[
       { key: 'cultural_heritage', label: '文化遗产与场所', icon: <MapPin size={ICON_SIZE} /> },
       { key: 'cross_domain_impact', label: '跨领域影响与优先级', icon: <GitBranch size={ICON_SIZE} /> },
       { key: 'implementation_roadmap', label: '建议与实施路线图', icon: <ListTodo size={ICON_SIZE} /> },
+      { key: 'resilience_kernel', label: '韧性世界模型', icon: <Shield size={ICON_SIZE} /> },
       { key: 'uwm_livability', label: '城市宜居性分析（UWM）', icon: <Brain size={ICON_SIZE} /> },
       { key: 'ai_demand_readiness', label: 'AI应用需求矩阵', icon: <ClipboardCheck size={ICON_SIZE} /> },
       { key: 'worldmodel', label: '世界模型', icon: <Globe size={ICON_SIZE} /> },
@@ -250,6 +252,7 @@ export default function DataPanel({ dataFile, userRole, username }: DataPanelPro
         {activeTab === 'cultural_heritage' && <TraditionalCulturalHeritageTab />}
         {activeTab === 'cross_domain_impact' && <CrossDomainImpactTab />}
         {activeTab === 'implementation_roadmap' && <ImplementationRoadmapTab />}
+        {activeTab === 'resilience_kernel' && <ResilienceWorldModelTab />}
         {activeTab === 'uwm_livability' && <LivabilityWorldModelTab />}
         {activeTab === 'ai_demand_readiness' && <AiDemandReadinessTab />}
         {activeTab === 'worldmodel' && <WorldModelTab />}
