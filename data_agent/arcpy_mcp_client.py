@@ -133,6 +133,7 @@ class ArcPyMcpClient:
         self._worker_thread: threading.Thread | None = None
         self._worker_loop: asyncio.AbstractEventLoop | None = None
         self._worker_started: threading.Event | None = None
+        self._worker_stop_requested: threading.Event | None = None
         self._worker_start_error: BaseException | None = None
         self._worker_closing = False
         self._shutdown_future = None
@@ -173,8 +174,10 @@ class ArcPyMcpClient:
                         thread_to_join = thread
                     else:
                         started = self._worker_started
+                        stop_requested = self._worker_stop_requested
                 else:
                     started = threading.Event()
+                    stop_requested = threading.Event()
                     thread = threading.Thread(
                         target=self._worker_thread_main,
                         args=(started,),
@@ -183,10 +186,28 @@ class ArcPyMcpClient:
                     )
                     self._worker_thread = thread
                     self._worker_started = started
+                    self._worker_stop_requested = stop_requested
                     self._worker_start_error = None
                     self._worker_closing = False
                     self._shutdown_future = None
-                    thread.start()
+                    try:
+                        thread.start()
+                    except BaseException as exc:
+                        if self._worker_thread is thread:
+                            self._worker_thread = None
+                            self._worker_loop = None
+                            self._owner_loop = None
+                            self._worker_started = None
+                            self._worker_stop_requested = None
+                            self._worker_closing = False
+                            self._shutdown_future = None
+                            self._worker_start_error = exc
+                        stop_requested.set()
+                        started.set()
+                        raise ArcPyMcpError(
+                            "ARCPY_MCP_UNREACHABLE",
+                            "ArcPy MCP service is unreachable",
+                        ) from None
             if thread_to_join is not None:
                 thread_to_join.join()
                 continue
@@ -197,8 +218,18 @@ class ArcPyMcpClient:
                         "ARCPY_MCP_UNREACHABLE",
                         "ArcPy MCP service is unreachable",
                     )
-                if self._worker_loop is not None:
+                closing = self._worker_closing or (
+                    stop_requested is not None and stop_requested.is_set()
+                )
+                if self._worker_loop is not None and not closing:
                     return self._worker_loop
+            if closing:
+                if thread.ident is not None:
+                    thread.join()
+                raise ArcPyMcpError(
+                    "ARCPY_MCP_UNREACHABLE",
+                    "ArcPy MCP service is unreachable",
+                )
 
     def _worker_thread_main(self, started: threading.Event) -> None:
         loop = None
@@ -212,8 +243,13 @@ class ArcPyMcpClient:
             with self._thread_lock:
                 self._worker_loop = loop
                 self._owner_loop = loop
+                stop_requested = self._worker_stop_requested
+                should_stop = self._worker_closing or (
+                    stop_requested is not None and stop_requested.is_set()
+                )
             started.set()
-            loop.run_forever()
+            if not should_stop:
+                loop.run_forever()
         except BaseException as exc:
             with self._thread_lock:
                 self._worker_start_error = exc
@@ -234,6 +270,7 @@ class ArcPyMcpClient:
                     self._worker_loop = None
                     self._owner_loop = None
                     self._worker_started = None
+                    self._worker_stop_requested = None
                     self._worker_closing = False
                     self._shutdown_future = None
                     self._health_cache_lock = None
@@ -547,10 +584,27 @@ class ArcPyMcpClient:
                 self._clear_runtime_state()
                 return
             if loop is None:
+                if thread.ident is None or not thread.is_alive():
+                    if self._worker_thread is thread:
+                        self._worker_thread = None
+                        self._worker_started = None
+                        self._worker_stop_requested = None
+                        self._worker_closing = False
+                        self._shutdown_future = None
+                    self._clear_runtime_state()
+                    return
+                self._worker_closing = True
+                if self._worker_stop_requested is not None:
+                    self._worker_stop_requested.set()
+                startup_handshake = self._worker_started
                 thread_to_join = thread
             else:
+                startup_handshake = None
                 thread_to_join = None
                 if shutdown_future is None:
+                    self._worker_closing = True
+                    if self._worker_stop_requested is not None:
+                        self._worker_stop_requested.set()
                     coroutine = self._worker_close_session()
                     try:
                         shutdown_future = asyncio.run_coroutine_threadsafe(
@@ -563,9 +617,10 @@ class ArcPyMcpClient:
                             "ArcPy MCP service is unreachable",
                         ) from None
                     self._shutdown_future = shutdown_future
-                    self._worker_closing = True
 
         if thread_to_join is not None:
+            if startup_handshake is not None:
+                await asyncio.to_thread(startup_handshake.wait)
             await asyncio.to_thread(thread_to_join.join)
             return
 

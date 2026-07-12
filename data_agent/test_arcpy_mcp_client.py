@@ -930,6 +930,98 @@ async def test_dedicated_owner_survives_caller_loop_close_until_explicit_close(
 
 
 @pytest.mark.asyncio
+async def test_close_during_worker_loop_publication_requests_stop(monkeypatch):
+    import data_agent.arcpy_mcp_client as client_module
+
+    original_new_event_loop = client_module.asyncio.new_event_loop
+    publication_started = threading.Event()
+    release_publication = threading.Event()
+
+    def delayed_new_event_loop():
+        publication_started.set()
+        release_publication.wait()
+        return original_new_event_loop()
+
+    monkeypatch.setattr(
+        client_module.asyncio, "new_event_loop", delayed_new_event_loop
+    )
+    client = _client()
+    client._session = SimpleNamespace(
+        call_tool=AsyncMock(return_value=_result(structured={"status": "ok"}))
+    )
+    connect_task = asyncio.create_task(client.connect())
+    await asyncio.to_thread(publication_started.wait)
+    close_task = asyncio.create_task(client.close())
+    await asyncio.sleep(0)
+    stop_requested = getattr(client, "_worker_stop_requested", None)
+
+    if stop_requested is None:
+        startup_handshake = client._worker_started
+        release_publication.set()
+        assert await asyncio.to_thread(startup_handshake.wait, 2)
+        if client._worker_loop is not None:
+            client._request_worker_stop(client._worker_loop)
+    else:
+        assert await asyncio.to_thread(stop_requested.wait, 2)
+        release_publication.set()
+
+    close_error = None
+    try:
+        await asyncio.wait_for(close_task, timeout=2.0)
+    except BaseException as exc:
+        close_error = exc
+    connect_result = await asyncio.gather(connect_task, return_exceptions=True)
+
+    assert stop_requested is not None
+    assert close_error is None
+    assert isinstance(connect_result[0], ArcPyMcpError)
+    assert connect_result[0].code == "ARCPY_MCP_UNREACHABLE"
+    assert client._worker_thread is None
+    assert client._worker_loop is None
+
+
+@pytest.mark.asyncio
+async def test_worker_thread_start_failure_is_recoverable(monkeypatch):
+    original_start = threading.Thread.start
+    failed = False
+
+    def fail_arcpy_worker_once(thread):
+        nonlocal failed
+        if thread.name == "arcpy-mcp-worker" and not failed:
+            failed = True
+            raise RuntimeError("synthetic worker start failure")
+        return original_start(thread)
+
+    monkeypatch.setattr(threading.Thread, "start", fail_arcpy_worker_once)
+    client = _client()
+    client._session = SimpleNamespace(
+        call_tool=AsyncMock(return_value=_result(structured={"status": "ok"}))
+    )
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client.connect()
+    close_error = None
+    try:
+        await client.close()
+        await client.close()
+    except BaseException as exc:
+        close_error = exc
+    monkeypatch.setattr(threading.Thread, "start", original_start)
+
+    assert exc_info.value.code == "ARCPY_MCP_UNREACHABLE"
+    assert close_error is None
+    assert client._worker_thread is None
+    assert client._worker_loop is None
+    assert client._worker_started is None
+
+    client._session = SimpleNamespace(
+        call_tool=AsyncMock(return_value=_result(structured={"status": "ok"}))
+    )
+    await client.connect()
+    await client.close()
+
+
+@pytest.mark.asyncio
 async def test_health_recovers_on_new_caller_loop_after_old_loop_cancellation(
     monkeypatch,
 ):
@@ -1014,28 +1106,13 @@ async def test_call_during_owner_cleanup_is_rejected_then_retry_uses_new_owner(
     await asyncio.to_thread(sdk.exit_started.wait)
 
     retry_during_cleanup = asyncio.create_task(client.call_tool("get_job", {}))
-    for _ in range(10):
-        if retry_during_cleanup.done():
-            break
-        await asyncio.sleep(0)
-    was_rejected = retry_during_cleanup.done()
-    rejection = None
-    if was_rejected:
-        try:
-            await retry_during_cleanup
-        except ArcPyMcpError as exc:
-            rejection = exc
-    if not was_rejected:
-        retry_during_cleanup.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await retry_during_cleanup
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await asyncio.wait_for(retry_during_cleanup, timeout=2.0)
 
     sdk.release_exit.set()
     await asyncio.to_thread(owner_done.wait)
     await asyncio.to_thread(first_worker.join)
-    assert was_rejected is True
-    assert rejection is not None
-    assert rejection.code == "ARCPY_MCP_UNREACHABLE"
+    assert exc_info.value.code == "ARCPY_MCP_UNREACHABLE"
     result = await client.call_tool("get_job", {})
     assert result == {"status": "ok"}
     assert client._owner_task is not first_owner
