@@ -649,7 +649,7 @@ class TestMcpHubManager(unittest.TestCase):
         from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
 
         hub = McpHubManager()
-        cfg = McpServerConfig(name="bad", transport="websocket")
+        cfg = McpServerConfig(name="bad", transport="websocket", enabled=True)
         hub._servers = {"bad": McpServerStatus(config=cfg)}
 
         result = _run(hub.connect_server("bad"))
@@ -687,6 +687,7 @@ class TestSecureMcpHttpTransport(unittest.TestCase):
         config = McpServerConfig(
             name="arcpy",
             transport="streamable_http",
+            enabled=True,
             url="https://arcpy.internal/mcp",
             headers=static_headers,
             bearer_token_env_var="ARCPY_TOKEN",
@@ -794,6 +795,7 @@ class TestSecureMcpHttpTransport(unittest.TestCase):
         config = McpServerConfig(
             name="generic",
             transport="streamable_http",
+            enabled=True,
             url="https://generic.internal/mcp",
             headers={"X-Static": "true"},
         )
@@ -887,6 +889,7 @@ class TestSecureMcpHttpTransport(unittest.TestCase):
         config = McpServerConfig(
             name="arcpy",
             transport="streamable_http",
+            enabled=True,
             url="https://arcpy.internal/mcp",
             bearer_token_env_var="ARCPY_TOKEN",
         )
@@ -927,6 +930,7 @@ class TestSecureMcpHttpTransport(unittest.TestCase):
         config = McpServerConfig(
             name="missing-token",
             transport="streamable_http",
+            enabled=True,
             url="https://host/mcp",
             bearer_token_env_var="DEFINITELY_MISSING_MCP_TOKEN",
         )
@@ -982,6 +986,7 @@ class TestSecureMcpHttpTransport(unittest.TestCase):
         config = McpServerConfig(
             name="cancelled-connect",
             transport="streamable_http",
+            enabled=True,
             url="https://host/mcp",
             bearer_token_env_var="ARCPY_TOKEN",
         )
@@ -1035,6 +1040,7 @@ class TestSecureMcpHttpTransport(unittest.TestCase):
         config = McpServerConfig(
             name="concurrent",
             transport="streamable_http",
+            enabled=True,
             url="https://host/mcp",
             bearer_token_env_var="ARCPY_TOKEN",
         )
@@ -1088,6 +1094,7 @@ class TestSecureMcpHttpTransport(unittest.TestCase):
         config = McpServerConfig(
             name="reconnect-race",
             transport="streamable_http",
+            enabled=True,
             url="https://host/mcp",
         )
         status = McpServerStatus(
@@ -1187,6 +1194,7 @@ class TestSecureMcpHttpTransport(unittest.TestCase):
         config = McpServerConfig(
             name="aggregate-race",
             transport="streamable_http",
+            enabled=True,
             url="https://host/mcp",
             bearer_token_env_var="ARCPY_TOKEN",
             pipelines=["general"],
@@ -1262,6 +1270,7 @@ class TestSecureMcpHttpTransport(unittest.TestCase):
         config = McpServerConfig(
             name="single-race",
             transport="streamable_http",
+            enabled=True,
             url="https://host/mcp",
             bearer_token_env_var="ARCPY_TOKEN",
         )
@@ -1329,6 +1338,7 @@ class TestSecureMcpHttpTransport(unittest.TestCase):
         config = McpServerConfig(
             name="remove-race",
             transport="streamable_http",
+            enabled=True,
             url="https://host/mcp",
             bearer_token_env_var="ARCPY_TOKEN",
         )
@@ -1386,6 +1396,7 @@ class TestSecureMcpHttpTransport(unittest.TestCase):
         config = McpServerConfig(
             name="update-race",
             transport="streamable_http",
+            enabled=True,
             url="https://old.host/mcp",
             bearer_token_env_var="OLD_TOKEN",
         )

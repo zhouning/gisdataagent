@@ -1,0 +1,147 @@
+"""Behavioral tests for application-level MCP startup and shutdown coordination."""
+
+import asyncio
+from unittest.mock import AsyncMock
+
+import pytest
+
+from data_agent.mcp_runtime import McpRuntimeCoordinator, McpRuntimeExitBridge
+
+
+class FakeHub:
+    def __init__(self):
+        self._started = False
+        self.startup = AsyncMock(side_effect=self._startup)
+        self.shutdown = AsyncMock(side_effect=self._shutdown)
+        self.retry_started = asyncio.Event()
+        self.retry_cancelled = asyncio.Event()
+        self.retry_failed_servers = AsyncMock(side_effect=self._retry)
+
+    async def _startup(self):
+        return self._started
+
+    async def _retry(self):
+        self.retry_started.set()
+        try:
+            await asyncio.Future()
+        except asyncio.CancelledError:
+            self.retry_cancelled.set()
+            raise
+
+    async def _shutdown(self):
+        self._started = False
+
+
+@pytest.mark.asyncio
+async def test_concurrent_ensure_started_creates_one_retry_task():
+    hub = FakeHub()
+    coordinator = McpRuntimeCoordinator(lambda: hub, startup_timeout=0.1)
+
+    results = await asyncio.gather(
+        coordinator.ensure_started(),
+        coordinator.ensure_started(),
+    )
+    await hub.retry_started.wait()
+
+    assert results == [False, False]
+    hub.startup.assert_awaited_once()
+    hub.retry_failed_servers.assert_awaited_once()
+    assert coordinator.retry_task is not None
+
+    await coordinator.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_shutdown_cancels_sleeping_retry_before_hub_shutdown():
+    hub = FakeHub()
+    shutdown_order = []
+
+    async def shutdown():
+        shutdown_order.append("hub")
+        hub._started = False
+
+    hub.shutdown.side_effect = shutdown
+    coordinator = McpRuntimeCoordinator(lambda: hub, startup_timeout=0.1)
+
+    assert await coordinator.ensure_started() is False
+    await hub.retry_started.wait()
+    await coordinator.shutdown()
+
+    assert hub.retry_cancelled.is_set()
+    assert shutdown_order == ["hub"]
+    assert coordinator.retry_task is None
+    assert coordinator.started is False
+    assert coordinator.closing is True
+
+
+@pytest.mark.asyncio
+async def test_shutdown_closes_existing_arcpy_client_after_hub():
+    hub = FakeHub()
+    order = []
+    client = type("Client", (), {})()
+
+    async def hub_shutdown():
+        order.append("hub")
+
+    async def client_close():
+        order.append("client")
+
+    hub.shutdown.side_effect = hub_shutdown
+    client.close = client_close
+    coordinator = McpRuntimeCoordinator(
+        lambda: hub,
+        startup_timeout=0.1,
+        client_getter=lambda: client,
+    )
+
+    await coordinator.shutdown()
+    await coordinator.shutdown()
+
+    assert order == ["hub", "client"]
+
+
+@pytest.mark.asyncio
+async def test_failed_hub_readiness_clears_coordinator_started_flag():
+    hub = FakeHub()
+    hub._started = True
+    coordinator = McpRuntimeCoordinator(lambda: hub, startup_timeout=0.1)
+
+    assert await coordinator.ensure_started() is True
+    assert coordinator.started is True
+
+    hub._started = False
+    assert await coordinator.ensure_started() is False
+    assert coordinator.started is False
+
+    await hub.retry_started.wait()
+    await coordinator.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_shutdown_during_retry_never_marks_runtime_started():
+    hub = FakeHub()
+    coordinator = McpRuntimeCoordinator(lambda: hub, startup_timeout=0.1)
+
+    await coordinator.ensure_started()
+    await hub.retry_started.wait()
+    shutdown_task = asyncio.create_task(coordinator.shutdown())
+    await shutdown_task
+
+    hub._started = True
+    await asyncio.sleep(0)
+    assert coordinator.started is False
+
+
+@pytest.mark.asyncio
+async def test_exit_bridge_schedules_shutdown_on_owning_loop():
+    hub = FakeHub()
+    coordinator = McpRuntimeCoordinator(lambda: hub, startup_timeout=0.1)
+    coordinator._owning_loop = asyncio.get_running_loop()
+    bridge = McpRuntimeExitBridge(coordinator)
+
+    bridge()
+    await asyncio.sleep(0)
+    await asyncio.sleep(0)
+
+    hub.shutdown.assert_awaited_once()
+    assert bridge.cleanup_handle is not None

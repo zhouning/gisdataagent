@@ -20,10 +20,11 @@ _MCP_CONFIG_FIELDS = (
     "description", "transport", "enabled", "category", "pipelines",
     "command", "args", "env", "cwd", "url", "headers", "timeout",
     "bearer_token_env_var", "bearer_token_file_env_var", "ca_bundle_env_var",
-    "system_managed", "expose_raw_tools",
+    "expose_raw_tools",
     "is_shared",
 )
 _MCP_ADMIN_UPDATE_FIELDS = set(_MCP_CONFIG_FIELDS)
+_MCP_CREATE_FIELDS = {"name", *_MCP_CONFIG_FIELDS}
 
 
 async def _read_mcp_body(request: Request):
@@ -219,7 +220,7 @@ async def mcp_test_connection(request: Request):
         bearer_token_env_var=body.get("bearer_token_env_var", ""),
         bearer_token_file_env_var=body.get("bearer_token_file_env_var", ""),
         ca_bundle_env_var=body.get("ca_bundle_env_var", ""),
-        system_managed=body.get("system_managed", False),
+        system_managed=False,
         expose_raw_tools=body.get("expose_raw_tools", True),
     )
     hub = get_mcp_hub()
@@ -236,6 +237,8 @@ async def mcp_server_create(request: Request):
     body, body_err = await _read_mcp_body(request)
     if body_err:
         return body_err
+    if not set(body).issubset(_MCP_CREATE_FIELDS):
+        return JSONResponse({"error": "Unknown server field"}, status_code=400)
     raw_name = body.get("name")
     if not isinstance(raw_name, str) or not raw_name.strip():
         return JSONResponse({"error": "name is required"}, status_code=400)
@@ -262,7 +265,7 @@ async def mcp_server_create(request: Request):
         bearer_token_env_var=body.get("bearer_token_env_var", ""),
         bearer_token_file_env_var=body.get("bearer_token_file_env_var", ""),
         ca_bundle_env_var=body.get("ca_bundle_env_var", ""),
-        system_managed=body.get("system_managed", False),
+        system_managed=False,
         expose_raw_tools=body.get("expose_raw_tools", True),
         owner_username=username,
         is_shared=body.get("is_shared", False),
@@ -286,6 +289,9 @@ async def mcp_server_update(request: Request):
     body, body_err = await _read_mcp_body(request)
     if body_err:
         return body_err
+
+    if "system_managed" in body:
+        return JSONResponse({"error": "Unknown update field"}, status_code=400)
 
     body_fields = set(body)
     if role != "admin":

@@ -12,6 +12,7 @@ from data_agent.api.mcp_routes import (
     mcp_server_share,
     mcp_server_create,
     mcp_server_update,
+    mcp_servers,
     mcp_test_connection,
     mcp_toggle,
 )
@@ -51,7 +52,6 @@ def _valid_server_body():
         "bearer_token_env_var": "ARCPY_MCP_TOKEN",
         "bearer_token_file_env_var": "ARCPY_MCP_TOKEN_FILE",
         "ca_bundle_env_var": "ARCPY_MCP_CA_FILE",
-        "system_managed": True,
         "expose_raw_tools": False,
         "is_shared": True,
     }
@@ -183,7 +183,7 @@ async def test_connection_requires_admin_and_passes_complete_config_to_hub():
     assert config.bearer_token_env_var == "ARCPY_MCP_TOKEN"
     assert config.bearer_token_file_env_var == "ARCPY_MCP_TOKEN_FILE"
     assert config.ca_bundle_env_var == "ARCPY_MCP_CA_FILE"
-    assert config.system_managed is True
+    assert config.system_managed is False
     assert config.expose_raw_tools is False
 
 
@@ -264,7 +264,7 @@ async def test_admin_create_passes_complete_config_and_preserves_sharing():
     assert config.bearer_token_env_var == "ARCPY_MCP_TOKEN"
     assert config.bearer_token_file_env_var == "ARCPY_MCP_TOKEN_FILE"
     assert config.ca_bundle_env_var == "ARCPY_MCP_CA_FILE"
-    assert config.system_managed is True
+    assert config.system_managed is False
     assert config.expose_raw_tools is False
     assert config.owner_username == "route-owner"
     assert config.is_shared is True
@@ -454,7 +454,6 @@ async def test_update_rejects_invalid_typed_fields_without_updating_hub(body):
         {"bearer_token_env_var": "ARCPY_TOKEN"},
         {"bearer_token_file_env_var": "ARCPY_TOKEN_FILE"},
         {"ca_bundle_env_var": "ARCPY_CA_FILE"},
-        {"system_managed": True},
         {"expose_raw_tools": False},
         {"enabled": True},
         {"is_shared": True},
@@ -623,7 +622,6 @@ async def test_admin_can_update_runtime_security_references():
         "bearer_token_env_var": "NEW_TOKEN",
         "bearer_token_file_env_var": "NEW_TOKEN_FILE",
         "ca_bundle_env_var": "NEW_CA_FILE",
-        "system_managed": False,
         "expose_raw_tools": True,
     }
     user = _make_user(username="admin-user", role="admin")
@@ -706,3 +704,83 @@ async def test_admin_can_reconnect_system_managed_server():
 
     assert response.status_code == 200
     hub.reconnect_server.assert_awaited_once_with("arcpy-remote")
+
+
+@pytest.mark.asyncio
+async def test_create_rejects_forged_system_managed_provenance():
+    body = _valid_server_body()
+    body["system_managed"] = True
+    user = _make_user(username="admin-user", role="admin")
+
+    with (
+        patch(
+            "data_agent.api.mcp_routes._require_admin",
+            return_value=(user, "admin-user", "admin", None),
+        ),
+        patch("data_agent.mcp_hub.get_mcp_hub") as get_hub,
+    ):
+        get_hub.return_value.add_server = AsyncMock(
+            return_value={"status": "ok", "server": "complete-server"}
+        )
+        response = await mcp_server_create(_make_request(body))
+
+    assert response.status_code == 400
+    assert "unknown" in json.loads(response.body)["error"].lower()
+    get_hub.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_update_rejects_forged_system_managed_provenance():
+    user = _make_user(username="admin-user", role="admin")
+    request = _make_request(
+        {"system_managed": True}, path_params={"name": "owned-server"}
+    )
+
+    with (
+        patch("data_agent.api.mcp_routes._get_user_from_request", return_value=user),
+        patch(
+            "data_agent.api.mcp_routes._set_user_context",
+            return_value=("admin-user", "admin"),
+        ),
+        patch("data_agent.mcp_hub.get_mcp_hub") as get_hub,
+    ):
+        response = await mcp_server_update(request)
+
+    assert response.status_code == 400
+    assert "unknown" in json.loads(response.body)["error"].lower()
+    get_hub.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_server_list_never_exposes_detailed_connection_error():
+    from data_agent.mcp_hub import McpHubManager, McpServerStatus
+
+    hub = McpHubManager()
+    hub._servers = {
+        "remote": McpServerStatus(
+            config=McpServerConfig(name="remote", enabled=True),
+            status="error",
+            error_message=(
+                "failed https://10.1.2.3/mcp with /private/ca.pem"
+            ),
+        )
+    }
+    user = _make_user(username="admin-user", role="admin")
+    request = _make_request({})
+
+    with (
+        patch("data_agent.api.mcp_routes._get_user_from_request", return_value=user),
+        patch(
+            "data_agent.api.mcp_routes._set_user_context",
+            return_value=("admin-user", "admin"),
+        ),
+        patch("data_agent.mcp_hub.get_mcp_hub", return_value=hub),
+    ):
+        response = await mcp_servers(request)
+
+    payload = json.loads(response.body)
+    serialized = repr(payload)
+    assert payload["servers"][0]["error_code"] == "MCP_CONNECTION_FAILED"
+    assert payload["servers"][0]["error_message"] == "MCP server connection failed"
+    assert "10.1.2.3" not in serialized
+    assert "/private/ca.pem" not in serialized

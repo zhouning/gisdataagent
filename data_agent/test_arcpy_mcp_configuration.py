@@ -2,7 +2,7 @@
 
 import asyncio
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -158,6 +158,96 @@ def test_unset_enabled_does_not_override_stale_persisted_arcpy(monkeypatch):
 
     assert hub._servers["arcpy-remote"].config.enabled is True
     hub._update_enabled_in_db.assert_not_called()
+
+
+@pytest.mark.parametrize("value", ["", "tru", "enabled", "2"])
+def test_invalid_enablement_suppresses_stale_config_with_stable_error(
+    monkeypatch, value
+):
+    _clear_arcpy_environment(monkeypatch)
+    monkeypatch.setenv("ARCPY_MCP_ENABLED", value)
+    stale = McpServerConfig(
+        name="arcpy-remote",
+        transport="streamable_http",
+        enabled=True,
+        url="https://stale.example/mcp",
+        source="db",
+    )
+    hub = McpHubManager()
+    hub._ensure_table = MagicMock(return_value=True)
+    hub._load_from_db = MagicMock(return_value=[stale])
+    hub._load_yaml = MagicMock(return_value=[])
+    hub._update_enabled_in_db = MagicMock()
+
+    hub.load_config()
+
+    status = hub._servers["arcpy-remote"]
+    assert status.config.source == "environment"
+    assert status.config.enabled is False
+    assert status.config.system_managed is True
+    assert status.config.expose_raw_tools is False
+    assert status.status == "error"
+    assert status.error_code == "ARCPY_MCP_ENABLED_INVALID"
+    hub._update_enabled_in_db.assert_called_once_with("arcpy-remote", False)
+
+
+def test_invalid_enablement_suppresses_stale_yaml_without_persisting(monkeypatch):
+    _clear_arcpy_environment(monkeypatch)
+    monkeypatch.setenv("ARCPY_MCP_ENABLED", "tru")
+    stale = McpServerConfig(
+        name="arcpy-remote",
+        transport="streamable_http",
+        enabled=True,
+        url="https://stale-yaml.example/mcp",
+        source="yaml",
+    )
+    hub = McpHubManager()
+    hub._ensure_table = MagicMock(return_value=False)
+    hub._load_from_db = MagicMock(return_value=[])
+    hub._load_yaml = MagicMock(return_value=[stale])
+    hub._update_enabled_in_db = MagicMock()
+
+    hub.load_config()
+
+    status = hub._servers["arcpy-remote"]
+    assert status.config.source == "environment"
+    assert status.config.enabled is False
+    assert status.error_code == "ARCPY_MCP_ENABLED_INVALID"
+    hub._update_enabled_in_db.assert_not_called()
+
+
+@pytest.mark.parametrize("url", ["ftp://arcpy.internal/mcp", "arcpy.internal/mcp"])
+def test_invalid_system_url_is_disabled_with_stable_error(monkeypatch, url):
+    _clear_arcpy_environment(monkeypatch)
+    monkeypatch.setenv("ARCPY_MCP_ENABLED", "true")
+    monkeypatch.setenv("ARCPY_MCP_URL", url)
+    hub = _config_only_hub()
+
+    hub.load_config()
+
+    status = hub._servers["arcpy-remote"]
+    assert status.config.enabled is False
+    assert status.config.expose_raw_tools is False
+    assert status.status == "error"
+    assert status.error_code == "ARCPY_MCP_URL_INVALID"
+
+
+@pytest.mark.parametrize("timeout", ["nan", "inf", "0", "-1", "301", "slow"])
+def test_invalid_system_timeout_is_disabled_with_stable_error(
+    monkeypatch, timeout
+):
+    _clear_arcpy_environment(monkeypatch)
+    monkeypatch.setenv("ARCPY_MCP_ENABLED", "true")
+    monkeypatch.setenv("ARCPY_MCP_URL", "https://arcpy.internal/mcp")
+    monkeypatch.setenv("ARCPY_MCP_CONNECT_TIMEOUT", timeout)
+    hub = _config_only_hub()
+
+    hub.load_config()
+
+    status = hub._servers["arcpy-remote"]
+    assert status.config.enabled is False
+    assert status.status == "error"
+    assert status.error_code == "ARCPY_MCP_CONNECT_TIMEOUT_INVALID"
 
 
 def test_environment_arcpy_overrides_same_name_db_and_yaml(monkeypatch):
@@ -446,6 +536,171 @@ def test_retry_failed_servers_is_cancellation_safe():
     hub.connect_server.assert_not_awaited()
 
 
+def test_retry_stops_after_hub_begins_closing():
+    hub = McpHubManager()
+    hub._servers = {
+        "remote": McpServerStatus(
+            config=McpServerConfig(name="remote", enabled=True), status="error"
+        )
+    }
+    sleep_started = asyncio.Event()
+    release_sleep = asyncio.Event()
+
+    async def blocked_sleep(_delay):
+        sleep_started.set()
+        await release_sleep.wait()
+
+    hub.connect_server = AsyncMock(return_value=True)
+
+    async def scenario():
+        retry = asyncio.create_task(hub.retry_failed_servers(sleep=blocked_sleep))
+        await sleep_started.wait()
+        await hub.shutdown()
+        release_sleep.set()
+        assert await retry is False
+
+    asyncio.run(scenario())
+
+    hub.connect_server.assert_not_awaited()
+    assert hub._started is False
+    assert hub._closing is True
+
+
+def test_toggle_disable_wins_against_stale_queued_connect():
+    hub = McpHubManager()
+    config = McpServerConfig(name="remote", enabled=True)
+    hub._servers = {"remote": McpServerStatus(config=config)}
+    hub._update_enabled_in_db = MagicMock()
+
+    async def scenario():
+        lock = hub._get_lifecycle_lock("remote")
+        await lock.acquire()
+        try:
+            disable = asyncio.create_task(hub.toggle_server("remote", False))
+            await asyncio.sleep(0)
+            stale_connect = asyncio.create_task(hub.connect_server("remote"))
+            await asyncio.sleep(0)
+        finally:
+            lock.release()
+        return await disable, await stale_connect
+
+    disabled, connected = asyncio.run(scenario())
+
+    assert disabled["status"] == "ok"
+    assert config.enabled is False
+    assert connected is False
+    assert hub._servers["remote"].toolset is None
+    assert hub._started is True
+
+
+def test_shutdown_barrier_rejects_toolset_ownership_from_inflight_connect():
+    hub = McpHubManager()
+    probe_started = asyncio.Event()
+    release_probe = asyncio.Event()
+    toolset = MagicMock()
+
+    async def blocked_get_tools():
+        probe_started.set()
+        await release_probe.wait()
+        return [MagicMock(name="raw-tool")]
+
+    toolset.get_tools = AsyncMock(side_effect=blocked_get_tools)
+    toolset.close = AsyncMock()
+    config = McpServerConfig(
+        name="remote",
+        transport="streamable_http",
+        enabled=True,
+        url="https://remote.example/mcp",
+    )
+    hub._servers = {"remote": McpServerStatus(config=config)}
+
+    async def scenario():
+        with patch(
+            "google.adk.tools.mcp_tool.mcp_toolset.McpToolset",
+            return_value=toolset,
+        ):
+            connecting = asyncio.create_task(hub.connect_server("remote"))
+            await probe_started.wait()
+            shutting_down = asyncio.create_task(hub.shutdown())
+            await asyncio.sleep(0)
+            assert hub._closing is True
+            release_probe.set()
+            return await connecting, await shutting_down
+
+    connected, _ = asyncio.run(scenario())
+
+    assert connected is False
+    assert hub._started is False
+    assert hub._servers["remote"].toolset is None
+    toolset.close.assert_awaited_once()
+
+
+def test_public_status_sanitizes_detailed_connection_error():
+    hub = McpHubManager()
+    detailed = (
+        "connection failed for https://10.1.2.3/mcp "
+        "using certificate /private/ca.pem"
+    )
+    status = McpServerStatus(
+        config=McpServerConfig(name="remote", enabled=True),
+        status="error",
+        error_code="",
+        error_message=detailed,
+    )
+    hub._servers = {"remote": status}
+
+    public = hub.get_server_statuses()[0]
+
+    assert public["error_code"] == "MCP_CONNECTION_FAILED"
+    assert public["error_message"] == "MCP server connection failed"
+    assert "10.1.2.3" not in repr(public)
+    assert "/private/ca.pem" not in repr(public)
+    assert status.error_message == detailed
+
+
+def test_connection_log_keeps_redacted_detail_while_public_status_is_generic(
+    monkeypatch,
+):
+    token = "private-runtime-token"
+    monkeypatch.setenv("ARCPY_TEST_TOKEN", token)
+    detailed = (
+        f"Authorization: Bearer {token}; failed https://10.1.2.3/mcp "
+        "with /private/ca.pem"
+    )
+    toolset = MagicMock()
+    toolset.get_tools = AsyncMock(side_effect=RuntimeError(detailed))
+    toolset.close = AsyncMock()
+    config = McpServerConfig(
+        name="remote",
+        transport="streamable_http",
+        enabled=True,
+        url="https://remote.example/mcp",
+        bearer_token_env_var="ARCPY_TEST_TOKEN",
+    )
+    hub = McpHubManager()
+    hub._servers = {"remote": McpServerStatus(config=config)}
+
+    with (
+        patch(
+            "google.adk.tools.mcp_tool.mcp_toolset.McpToolset",
+            return_value=toolset,
+        ),
+        patch("data_agent.mcp_hub.logger.warning") as warning,
+    ):
+        assert asyncio.run(hub.connect_server("remote")) is False
+
+    internal = hub._servers["remote"].error_message
+    assert token not in internal
+    assert "[REDACTED]" in internal
+    assert "10.1.2.3" in internal
+    assert "/private/ca.pem" in internal
+    assert token not in repr(warning.call_args)
+    assert "[REDACTED]" in repr(warning.call_args)
+    public = hub.get_server_statuses()[0]
+    assert "10.1.2.3" not in repr(public)
+    assert "/private/ca.pem" not in repr(public)
+
+
 @pytest.mark.parametrize("operation", ["toggle", "update", "remove"])
 def test_system_managed_server_rejects_hub_mutation(operation):
     hub = McpHubManager()
@@ -540,64 +795,14 @@ def test_successful_reconnect_is_ready_only_when_all_enabled_are_connected():
     assert hub._started is True
 
 
-def test_shutdown_bridge_is_sync_and_idempotent_without_running_loop():
-    from data_agent.mcp_hub import McpShutdownBridge
-
-    hub = MagicMock()
-    hub.shutdown = AsyncMock()
-    client = MagicMock()
-    client.close = AsyncMock()
-    bridge = McpShutdownBridge(
-        hub_getter=lambda: hub,
-        client_getter=lambda: client,
-    )
-
-    bridge()
-    bridge()
-
-    hub.shutdown.assert_awaited_once()
-    client.close.assert_awaited_once()
-
-
-def test_shutdown_bridge_schedules_cleanup_on_running_loop():
-    from data_agent.mcp_hub import McpShutdownBridge
-
-    hub = MagicMock()
-    hub.shutdown = AsyncMock()
-    bridge = McpShutdownBridge(
-        hub_getter=lambda: hub,
-        client_getter=lambda: None,
-    )
-
-    async def scenario():
-        bridge()
-        await asyncio.sleep(0)
-
-    asyncio.run(scenario())
-
-    hub.shutdown.assert_awaited_once()
-    assert bridge._cleanup_task is not None
-
-
-def test_app_uses_single_retry_task_and_success_gated_startup():
-    app_source = Path(__file__).with_name("app.py").read_text(encoding="utf-8")
-    retry_body = app_source.split(
-        "async def _retry_mcp_hub_startup", 1
-    )[1].split("async def _ensure_mcp_hub_started", 1)[0]
-
-    assert "async def _ensure_mcp_hub_started" in app_source
-    assert "_mcp_retry_task" in app_source
-    assert "if startup_succeeded:" in app_source
-    assert "_mcp_started = True" in app_source
-    assert "retry_failed_servers" in app_source
-    assert "_mcp_retry_task = None" not in retry_body
-    assert "if _mcp_retry_task is not None:" in app_source
-    assert "if _mcp_started and hub._started:" in app_source
-    assert "if _mcp_started:\n        _mcp_started = False" in app_source
-
-
-def test_app_registers_idempotent_mcp_shutdown_bridge():
+def test_app_uses_behaviorally_tested_mcp_runtime_coordinator():
     app_source = Path(__file__).with_name("app.py").read_text(encoding="utf-8")
 
-    assert "McpShutdownBridge" in app_source
-    assert "atexit.register(_mcp_shutdown_bridge)" in app_source
+    assert "McpRuntimeCoordinator" in app_source
+    assert "McpRuntimeExitBridge" in app_source
+    assert "_mcp_runtime = McpRuntimeCoordinator" in app_source
+    assert "await _mcp_runtime.ensure_started()" in app_source
+    assert "@cl.on_app_shutdown" in app_source
+    assert "await _mcp_runtime.shutdown()" in app_source
+    assert "atexit.register(_mcp_exit_bridge)" in app_source
+    assert "async def _retry_mcp_hub_startup" not in app_source

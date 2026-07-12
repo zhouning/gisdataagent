@@ -234,6 +234,42 @@ class TestMcpHealthCheck(unittest.TestCase):
         self.assertFalse(flags["arcpy"])
         self.assertTrue(flags["arcpy_mcp_ready"])
 
+    def test_arcpy_health_never_exposes_url_or_ca_path_from_internal_error(self):
+        from data_agent.health import check_mcp_hub
+        from data_agent.mcp_hub import (
+            McpHubManager,
+            McpServerConfig,
+            McpServerStatus,
+        )
+
+        hub = McpHubManager()
+        hub._servers = {
+            "arcpy-remote": McpServerStatus(
+                config=McpServerConfig(
+                    name="arcpy-remote", enabled=True, system_managed=True
+                ),
+                status="error",
+                error_message=(
+                    "failed https://10.1.2.3/mcp with /private/ca.pem"
+                ),
+            )
+        }
+
+        with patch("data_agent.mcp_hub.get_mcp_hub", return_value=hub):
+            result = check_mcp_hub()
+
+        assert set(result["arcpy"]) == {
+            "status",
+            "tool_count",
+            "connected_at",
+            "error_code",
+            "error_message",
+        }
+        assert result["arcpy"]["error_code"] == "MCP_CONNECTION_FAILED"
+        assert result["arcpy"]["error_message"] == "MCP server connection failed"
+        assert "10.1.2.3" not in repr(result)
+        assert "/private/ca.pem" not in repr(result)
+
 
 class TestReadinessCheck(unittest.TestCase):
     """Readiness probe depends on database status."""
