@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import json
+import logging
 import re
 import time
 from contextlib import AsyncExitStack
@@ -26,6 +27,9 @@ from data_agent.mcp_transport import (
     resolve_secret_reference,
     unregister_runtime_secrets,
 )
+
+
+logger = logging.getLogger("data_agent.arcpy_mcp_client")
 
 
 _PUBLIC_ERROR_MESSAGES = {
@@ -128,12 +132,17 @@ class ArcPyMcpClient:
         self._stack: AsyncExitStack | None = None
         self._lock = asyncio.Lock()
         self._owner_task: asyncio.Task | None = None
+        self._owner_loop: asyncio.AbstractEventLoop | None = None
         self._ready: asyncio.Future | None = None
         self._commands: asyncio.Queue | None = None
         self._closing = False
+        self._accepting_calls = False
+        self._generation = 0
         self._clock = clock
         self._health_cache: tuple[float, dict] | None = None
         self._capabilities_cache: tuple[float, dict] | None = None
+        self._health_cache_lock = asyncio.Lock()
+        self._capabilities_cache_lock = asyncio.Lock()
 
     async def connect(self) -> None:
         async with self._lock:
@@ -143,6 +152,7 @@ class ArcPyMcpClient:
                 )
             owner = self._owner_task
             if owner is None or owner.done():
+                owner_loop = asyncio.get_running_loop()
                 seed_session = self._session if owner is None else None
                 commands = asyncio.Queue()
                 ready = asyncio.get_running_loop().create_future()
@@ -155,8 +165,11 @@ class ArcPyMcpClient:
                     lambda task, waiter=ready: self._owner_finished(task, waiter)
                 )
                 self._owner_task = owner
+                self._owner_loop = owner_loop
                 self._ready = ready
                 self._commands = commands
+                self._accepting_calls = False
+                self._generation += 1
             ready = self._ready
 
         await asyncio.shield(ready)
@@ -168,15 +181,27 @@ class ArcPyMcpClient:
         except BaseException:
             pass
 
-    @classmethod
-    def _owner_finished(cls, owner, ready) -> None:
+    def _owner_finished(self, owner, ready) -> None:
         if not ready.done():
             ready.set_exception(
                 ArcPyMcpError(
                     "ARCPY_MCP_UNREACHABLE", "ArcPy MCP service is unreachable"
                 )
             )
-        cls._consume_future(owner)
+        self._finalize_owner(owner)
+        self._consume_future(owner)
+
+    def _finalize_owner(self, owner) -> None:
+        if self._owner_task is not owner:
+            return
+        self._accepting_calls = False
+        self._owner_task = None
+        self._owner_loop = None
+        self._ready = None
+        self._commands = None
+        self._closing = False
+        self._generation += 1
+        self._clear_runtime_state()
 
     @staticmethod
     def _connection_failure(exc: BaseException, token: str | None):
@@ -285,6 +310,8 @@ class ArcPyMcpClient:
         self._stack = stack if seed_session is None else None
         self._session = session
         self._resolved_token = token
+        if self._owner_task is asyncio.current_task():
+            self._accepting_calls = True
         if not ready.done():
             ready.set_result(None)
 
@@ -296,6 +323,8 @@ class ArcPyMcpClient:
                 if kind == "shutdown":
                     return
                 _, name, arguments, response = command
+                if response.cancelled():
+                    continue
                 active_response = response
                 try:
                     result = await self._invoke_tool(name, arguments)
@@ -317,6 +346,8 @@ class ArcPyMcpClient:
                         response.set_result(result)
                 active_response = None
         finally:
+            if self._owner_task is asyncio.current_task():
+                self._accepting_calls = False
             closed_error = ArcPyMcpError(
                 "ARCPY_MCP_UNREACHABLE", "ArcPy MCP service is unreachable"
             )
@@ -344,17 +375,81 @@ class ArcPyMcpClient:
         self._stack = None
         self._session = None
         self._resolved_token = None
+        self._clear_caches()
+
+    def _clear_caches(self) -> None:
         self._health_cache = None
         self._capabilities_cache = None
 
     async def close(self) -> None:
+        try:
+            running_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            running_loop = None
+        owner_loop = self._owner_loop
+
+        if owner_loop is None or owner_loop is running_loop:
+            await self._close_on_owner_loop()
+            return
+        if owner_loop.is_closed():
+            self._close_closed_owner_loop()
+            return
+        if owner_loop.is_running():
+            foreign_close = asyncio.run_coroutine_threadsafe(
+                self._close_on_owner_loop(), owner_loop
+            )
+            await asyncio.wrap_future(foreign_close)
+            return
+        await asyncio.to_thread(self._close_stopped_owner_loop, owner_loop)
+
+    def _close_stopped_owner_loop(
+        self, owner_loop: asyncio.AbstractEventLoop
+    ) -> None:
+        owner_loop.run_until_complete(self._close_on_owner_loop())
+
+    def _close_closed_owner_loop(self) -> None:
+        owner = self._owner_task
+        token = self._resolved_token
+        commands = self._commands
+        if commands is not None:
+            while not commands.empty():
+                command = commands.get_nowait()
+                if command[0] == "call" and not command[3].done():
+                    try:
+                        command[3].cancel()
+                    except BaseException:
+                        pass
+        if token:
+            unregister_runtime_secrets([token])
+        if owner is not None and not owner.done():
+            coroutine = owner.get_coro()
+            try:
+                coroutine.close()
+            except BaseException:
+                pass
+            if hasattr(owner, "_log_destroy_pending"):
+                owner._log_destroy_pending = False
+        self._accepting_calls = False
+        self._closing = False
+        self._generation += 1
+        self._owner_task = None
+        self._owner_loop = None
+        self._ready = None
+        self._commands = None
+        self._clear_runtime_state()
+        logger.warning("ArcPy MCP owner loop is closed; cleanup was limited")
+
+    async def _close_on_owner_loop(self) -> None:
         async with self._lock:
             owner = self._owner_task
             if owner is None:
+                self._generation += 1
                 self._clear_runtime_state()
                 return
             if not self._closing and not owner.done():
                 self._closing = True
+                self._generation += 1
+                self._clear_caches()
                 if self._commands is not None:
                     self._commands.put_nowait(("shutdown",))
                 owner.cancel()
@@ -364,14 +459,7 @@ class ArcPyMcpClient:
         except asyncio.CancelledError:
             if not owner.cancelled():
                 raise
-        finally:
-            async with self._lock:
-                if self._owner_task is owner and owner.done():
-                    self._owner_task = None
-                    self._ready = None
-                    self._commands = None
-                    self._closing = False
-                    self._clear_runtime_state()
+        self._finalize_owner(owner)
 
     @staticmethod
     def _result_attribute(result, camel_case: str, snake_case: str, default=None):
@@ -409,6 +497,7 @@ class ArcPyMcpClient:
                 or owner is None
                 or owner.done()
                 or commands is None
+                or not self._accepting_calls
             ):
                 raise ArcPyMcpError(
                     "ARCPY_MCP_UNREACHABLE", "ArcPy MCP service is unreachable"
@@ -416,7 +505,11 @@ class ArcPyMcpClient:
             response = asyncio.get_running_loop().create_future()
             response.add_done_callback(self._consume_future)
             commands.put_nowait(("call", name, arguments, response))
-        return await asyncio.shield(response)
+        try:
+            return await asyncio.shield(response)
+        except asyncio.CancelledError:
+            response.cancel()
+            raise
 
     async def _invoke_tool(self, name: str, arguments: dict) -> dict:
         transport_message = None
@@ -472,15 +565,22 @@ class ArcPyMcpClient:
         if cached is not None:
             return cached
 
-        result = await self.call_tool("health_check", {})
-        if result.get("status") != "healthy" or not isinstance(
-            result.get("worker"), dict
-        ):
-            raise ArcPyMcpError(
-                "ARCPY_WORKER_UNAVAILABLE", "ArcPy worker is unavailable"
-            )
-        self._health_cache = (self._clock(), copy.deepcopy(result))
-        return copy.deepcopy(result)
+        async with self._health_cache_lock:
+            cached = self._cached(self._health_cache)
+            if cached is not None:
+                return cached
+            await self.connect()
+            generation = self._generation
+            result = await self.call_tool("health_check", {})
+            if result.get("status") != "healthy" or not isinstance(
+                result.get("worker"), dict
+            ):
+                raise ArcPyMcpError(
+                    "ARCPY_WORKER_UNAVAILABLE", "ArcPy worker is unavailable"
+                )
+            if generation == self._generation and self._accepting_calls:
+                self._health_cache = (self._clock(), copy.deepcopy(result))
+            return copy.deepcopy(result)
 
     @staticmethod
     def _normalize_extension(required_extension: str | None) -> str | None:
@@ -512,8 +612,17 @@ class ArcPyMcpClient:
         extension = self._normalize_extension(required_extension)
         result = self._cached(self._capabilities_cache)
         if result is None:
-            result = await self.call_tool("get_capabilities", {})
-            self._capabilities_cache = (self._clock(), copy.deepcopy(result))
+            async with self._capabilities_cache_lock:
+                result = self._cached(self._capabilities_cache)
+                if result is None:
+                    await self.connect()
+                    generation = self._generation
+                    result = await self.call_tool("get_capabilities", {})
+                    if generation == self._generation and self._accepting_calls:
+                        self._capabilities_cache = (
+                            self._clock(),
+                            copy.deepcopy(result),
+                        )
 
         if extension is not None:
             worker = result.get("worker")
