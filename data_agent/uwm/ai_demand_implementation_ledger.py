@@ -118,7 +118,12 @@ DEMAND_OVERLAYS = {
         ["docs/reports/traditional_social_public_service_chongqing_verification_2026-07-11.md", "data/uwm_public_proxy/chongqing_central/traditional_social_public_service_chongqing/overview.json"],
     ),
     "13": _query("building_population_and_land_use_foundation", ["authoritative_housing_stock_and_household_composition_missing"]),
-    "14": _query("poi_activity_mix_foundation", ["authoritative_economic_activity_and_demand_frequency_missing"]),
+    "14": _bounded(
+        "traditional_daily_convenience_business_evidence_product",
+        ["business_operation_and_opening_hours_missing", "business_licence_missing", "employment_data_missing", "revenue_transactions_visits_missing", "market_demand_missing", "entrepreneurship_evidence_missing", "causal_activation_effect_missing", "county_facility_to_township_accessibility_exact_id_missing"],
+        "daily_service_inventory_accessibility_context_and_business_activity_evidence",
+        ["docs/reports/traditional_daily_convenience_chongqing_verification_2026-07-12.md", "data/uwm_public_proxy/chongqing_central/traditional_daily_convenience_chongqing/overview.json"],
+    ),
     "15": _query("text_and_geospatial_analysis_platform_capability", ["customer_feedback_corpus_missing"]),
     "16": _query("heritage_poi_and_place_context_foundation", ["authoritative_cultural_inventory_and_place_narrative_missing"]),
     "17": _query("digital_asset_catalog_and_platform_observability", ["district_digital_infrastructure_inventory_missing"]),
