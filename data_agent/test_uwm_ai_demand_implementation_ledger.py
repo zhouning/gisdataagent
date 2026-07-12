@@ -136,6 +136,13 @@ def test_demand14_uses_verified_daily_convenience_product_without_economic_claim
   assert blocker in demand['production_blockers']
  assert all(x['exists'] for x in demand['evidence_artifact_checks'])
 
+
+def test_demand15_is_public_feedback_readiness_not_public_opinion_result():
+ demand=rows_by_id(build_ai_demand_implementation_ledger(repo_root=ROOT)['customer_ai_demands'])['15']
+ assert demand['implementation_status']=='implemented_evidence_bounded'
+ assert demand['max_supported_claim']=='public_feedback_data_contract_spatial_semantic_and_uwm_observation_readiness'
+ assert 'feedback_analysis_and_uwm_observation_gates_closed' in demand['production_blockers']
+
 def test_demand_17_is_platform_capability_and_infrastructure_readiness_only():
     demand = rows_by_id(build_ai_demand_implementation_ledger(repo_root=ROOT)["customer_ai_demands"])["17"]
     assert demand["implementation_status"] == "implemented_evidence_bounded"
