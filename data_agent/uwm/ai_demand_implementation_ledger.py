@@ -148,7 +148,12 @@ DEMAND_OVERLAYS = {
     ),
     "22": _contract("dcr_and_dcr_plus_rule_contract", ["approved_dcr_and_authoritative_rule_basis_missing"]),
     "23": _contract("deterministic_financial_model_contract", ["boq", "capital_cost", "operating_cost", "revenue", "cash_flow"]),
-    "24": _not_implemented("cross_domain_impact_evidence_product_missing"),
+    "24": _bounded(
+        "cross_domain_impact_evidence_product",
+        ["cross_grain_products_reference_only", "housing_culture_economy_resilience_uwm_gates_closed", "authoritative_cost_benefit_and_policy_outcomes_missing"],
+        "cross_domain_evidence_compatibility_priority_and_dynamic_channel_readiness",
+        ["docs/reports/cross_domain_impact_chongqing_verification_2026-07-12.md", "data/uwm_public_proxy/chongqing_central/cross_domain_impact_chongqing/overview.json"],
+    ),
     "25": _not_implemented("dependency_aware_implementation_roadmap_product_missing"),
 }
 
