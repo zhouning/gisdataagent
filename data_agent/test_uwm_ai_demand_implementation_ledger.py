@@ -71,7 +71,8 @@ def test_non_livability_demands_are_not_promoted_by_generic_platform_capabilitie
     assert demands["4"]["implementation_status"] == "data_query_only"
     assert demands["19"]["implementation_status"] == "implemented_evidence_bounded"
     assert demands["19"]["max_supported_claim"] == "observed_resilience_context_spatial_graph_and_fail_closed_kernel_readiness"
-    assert demands["23"]["implementation_status"] == "contract_only"
+    assert demands["23"]["implementation_status"] == "implemented_evidence_bounded"
+    assert demands["23"]["max_supported_claim"] == "financial_data_contract_and_deterministic_calculation_readiness"
     assert demands["24"]["implementation_status"] == "implemented_evidence_bounded"
     assert demands["24"]["max_supported_claim"] == "cross_domain_evidence_compatibility_priority_and_dynamic_channel_readiness"
     assert demands["25"]["implementation_status"] == "implemented_evidence_bounded"
@@ -156,3 +157,10 @@ def test_demand_22_is_development_control_readiness_only():
     assert demand["implementation_status"] == "implemented_evidence_bounded"
     assert demand["max_supported_claim"] == "planning_rule_asset_catalog_and_site_specific_dcr_execution_readiness"
     assert "dcr_execution_gate_closed" in demand["production_blockers"]
+
+
+def test_demand_23_is_financial_data_and_calculation_readiness_only():
+    demand = rows_by_id(build_ai_demand_implementation_ledger(repo_root=ROOT)["customer_ai_demands"])["23"]
+    assert demand["implementation_status"] == "implemented_evidence_bounded"
+    assert demand["max_supported_claim"] == "financial_data_contract_and_deterministic_calculation_readiness"
+    assert "financial_calculation_and_uwm_handoff_gates_closed" in demand["production_blockers"]
