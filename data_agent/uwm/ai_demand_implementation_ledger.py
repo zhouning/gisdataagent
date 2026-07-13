@@ -107,7 +107,12 @@ DEMAND_OVERLAYS = {
         "cross_product_asset_catalog_lifecycle_contract_and_uwm_asset_state_readiness",
         ["docs/reports/asset_lifecycle_readiness_chongqing_verification_2026-07-13.md", "data/uwm_public_proxy/chongqing_central/asset_lifecycle_readiness_chongqing/overview.json"],
     ),
-    "6": _query("population_proxy_and_admin_statistics", ["authoritative_demographic_structure_missing"]),
+    "6": _bounded(
+        "population_demographic_readiness_product",
+        ["authoritative_current_population_and_lineage_missing", "gender_age_nationality_citizenship_and_household_structure_missing", "birth_death_migration_and_household_transition_timeseries_missing", "service_demand_and_planning_response_observations_missing", "uwm_population_state_and_dynamics_kernel_gates_closed"],
+        "observed_population_evidence_catalog_demographic_contract_and_uwm_population_dynamics_readiness",
+        ["docs/reports/population_demographic_readiness_chongqing_verification_2026-07-13.md", "data/uwm_public_proxy/chongqing_central/population_demographic_readiness_chongqing/overview.json"],
+    ),
     "7": _bounded("existing_livability_world_model_decision_package", ["24_month_and_five_year_customer_calibration_missing"], "bounded_model_based_livability_decision_support"),
     "8": _bounded(
         "traditional_mobility_accessibility_product",

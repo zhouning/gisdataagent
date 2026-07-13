@@ -4224,6 +4224,7 @@ def get_frontend_api_routes():
     from .api.uwm_parcel_state_readiness_routes import get_uwm_parcel_state_readiness_routes
     from .api.uwm_infrastructure_network_readiness_routes import get_uwm_infrastructure_network_readiness_routes
     from .api.uwm_asset_lifecycle_readiness_routes import get_uwm_asset_lifecycle_readiness_routes
+    from .api.uwm_population_demographic_readiness_routes import get_uwm_population_demographic_readiness_routes
     from .api.uwm_livability_s2_routes import get_uwm_livability_s2_routes
     from .api.uwm_environmental_kernel_routes import get_uwm_environmental_kernel_routes
     from .api.uwm_livability_decision_routes import get_uwm_livability_decision_routes
@@ -4403,6 +4404,7 @@ def get_frontend_api_routes():
         *get_uwm_parcel_state_readiness_routes(),
         *get_uwm_infrastructure_network_readiness_routes(),
         *get_uwm_asset_lifecycle_readiness_routes(),
+        *get_uwm_population_demographic_readiness_routes(),
         # UWM parcel-scale livability S2 land-use scenarios
         *get_uwm_livability_s2_routes(),
         # UWM environmental dynamics kernel

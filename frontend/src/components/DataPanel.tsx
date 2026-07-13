@@ -48,6 +48,7 @@ import PlanningVersionRegistryTab from './datapanel/PlanningVersionRegistryTab';
 import ParcelStateReadinessTab from './datapanel/ParcelStateReadinessTab';
 import InfrastructureNetworkReadinessTab from './datapanel/InfrastructureNetworkReadinessTab';
 import AssetLifecycleReadinessTab from './datapanel/AssetLifecycleReadinessTab';
+import PopulationDemographicReadinessTab from './datapanel/PopulationDemographicReadinessTab';
 import LivabilityWorldModelTab from './datapanel/LivabilityWorldModelTab';
 import AiDemandReadinessTab from './datapanel/AiDemandReadinessTab';
 import CausalReasoningTab from './datapanel/CausalReasoningTab';
@@ -73,7 +74,7 @@ interface DataPanelProps {
   username?: string;
 }
 
-type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'agent_logs' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'traditional_livability' | 'cultural_heritage' | 'cross_domain_impact' | 'implementation_roadmap' | 'resilience_kernel' | 'digital_readiness' | 'operations_quality' | 'business_licence' | 'development_control' | 'financial_readiness' | 'public_feedback_readiness' | 'spatial_scope_registry' | 'planning_version_registry' | 'parcel_state_readiness' | 'infrastructure_network_readiness' | 'asset_lifecycle_readiness' | 'uwm_livability' | 'ai_demand_readiness' | 'worldmodel' | 'worldmodel_v11' | 'worldmodel_v2' | 'worldmodel_v21' | 'twm' | 'causal' | 'optimization' | 'qcmonitor' | 'fusion_quality' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'std_platform' | 'semantic' | 'agents' | 'intake' | 'classification';
+type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'agent_logs' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'traditional_livability' | 'cultural_heritage' | 'cross_domain_impact' | 'implementation_roadmap' | 'resilience_kernel' | 'digital_readiness' | 'operations_quality' | 'business_licence' | 'development_control' | 'financial_readiness' | 'public_feedback_readiness' | 'spatial_scope_registry' | 'planning_version_registry' | 'parcel_state_readiness' | 'infrastructure_network_readiness' | 'asset_lifecycle_readiness' | 'population_demographic_readiness' | 'uwm_livability' | 'ai_demand_readiness' | 'worldmodel' | 'worldmodel_v11' | 'worldmodel_v2' | 'worldmodel_v21' | 'twm' | 'causal' | 'optimization' | 'qcmonitor' | 'fusion_quality' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'std_platform' | 'semantic' | 'agents' | 'intake' | 'classification';
 
 type GroupKey = 'data' | 'intelligence' | 'ops';
 
@@ -125,6 +126,7 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: ReactNode; tabs: TabDef[
       { key: 'parcel_state_readiness', label: '用地与地块状态', icon: <MapPin size={ICON_SIZE} /> },
       { key: 'infrastructure_network_readiness', label: '基础设施与市政管网', icon: <Network size={ICON_SIZE} /> },
       { key: 'asset_lifecycle_readiness', label: '资产生命周期', icon: <Wrench size={ICON_SIZE} /> },
+      { key: 'population_demographic_readiness', label: '人口与人口结构', icon: <PieChart size={ICON_SIZE} /> },
       { key: 'uwm_livability', label: '城市宜居性分析（UWM）', icon: <Brain size={ICON_SIZE} /> },
       { key: 'ai_demand_readiness', label: 'AI应用需求矩阵', icon: <ClipboardCheck size={ICON_SIZE} /> },
       { key: 'worldmodel', label: '世界模型', icon: <Globe size={ICON_SIZE} /> },
@@ -286,6 +288,7 @@ export default function DataPanel({ dataFile, userRole, username }: DataPanelPro
         {activeTab === 'parcel_state_readiness' && <ParcelStateReadinessTab />}
         {activeTab === 'infrastructure_network_readiness' && <InfrastructureNetworkReadinessTab />}
         {activeTab === 'asset_lifecycle_readiness' && <AssetLifecycleReadinessTab />}
+        {activeTab === 'population_demographic_readiness' && <PopulationDemographicReadinessTab />}
         {activeTab === 'uwm_livability' && <LivabilityWorldModelTab />}
         {activeTab === 'ai_demand_readiness' && <AiDemandReadinessTab />}
         {activeTab === 'worldmodel' && <WorldModelTab />}

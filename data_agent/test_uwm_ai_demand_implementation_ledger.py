@@ -78,6 +78,9 @@ def test_non_livability_demands_are_not_promoted_by_generic_platform_capabilitie
     assert demands["5"]["implementation_status"] == "implemented_evidence_bounded"
     assert demands["5"]["max_supported_claim"] == "cross_product_asset_catalog_lifecycle_contract_and_uwm_asset_state_readiness"
     assert all(check["exists"] for check in demands["5"]["evidence_artifact_checks"])
+    assert demands["6"]["implementation_status"] == "implemented_evidence_bounded"
+    assert demands["6"]["max_supported_claim"] == "observed_population_evidence_catalog_demographic_contract_and_uwm_population_dynamics_readiness"
+    assert all(check["exists"] for check in demands["6"]["evidence_artifact_checks"])
     assert demands["19"]["implementation_status"] == "implemented_evidence_bounded"
     assert demands["19"]["max_supported_claim"] == "observed_resilience_context_spatial_graph_and_fail_closed_kernel_readiness"
     assert demands["23"]["implementation_status"] == "implemented_evidence_bounded"
