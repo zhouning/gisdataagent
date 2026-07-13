@@ -101,7 +101,12 @@ DEMAND_OVERLAYS = {
         "visible_infrastructure_inventory_utility_data_contract_and_cascade_kernel_readiness",
         ["docs/reports/infrastructure_network_readiness_chongqing_verification_2026-07-13.md", "data/uwm_public_proxy/chongqing_central/infrastructure_network_readiness_chongqing/overview.json"],
     ),
-    "5": _query("asset_catalog_and_spatial_inventory_only", ["condition_ownership_lifecycle_missing"]),
+    "5": _bounded(
+        "asset_lifecycle_readiness_product",
+        ["authoritative_asset_identity_and_entity_resolution_missing", "ownership_condition_and_lifecycle_observations_missing", "maintenance_failure_replacement_and_dependency_events_missing", "uwm_asset_state_and_lifecycle_kernel_gates_closed"],
+        "cross_product_asset_catalog_lifecycle_contract_and_uwm_asset_state_readiness",
+        ["docs/reports/asset_lifecycle_readiness_chongqing_verification_2026-07-13.md", "data/uwm_public_proxy/chongqing_central/asset_lifecycle_readiness_chongqing/overview.json"],
+    ),
     "6": _query("population_proxy_and_admin_statistics", ["authoritative_demographic_structure_missing"]),
     "7": _bounded("existing_livability_world_model_decision_package", ["24_month_and_five_year_customer_calibration_missing"], "bounded_model_based_livability_decision_support"),
     "8": _bounded(
