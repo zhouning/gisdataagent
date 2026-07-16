@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import UwmLivabilityS2Panel from './UwmLivabilityS2Panel';
 import UwmLivabilityEnvironmentalKernelPanel from './UwmLivabilityEnvironmentalKernelPanel';
+import UwmLivabilityDemand7Panel from './UwmLivabilityDemand7Panel';
 
 type AnyRecord = Record<string, any>;
 
@@ -219,6 +220,7 @@ export default function LivabilityWorldModelTab() {
 
   return (
     <div className="uwm-livability-tab">
+      <UwmLivabilityDemand7Panel />
       <UwmLivabilityEnvironmentalKernelPanel />
       <UwmLivabilityS2Panel />
       <div className="datapanel-section-header">

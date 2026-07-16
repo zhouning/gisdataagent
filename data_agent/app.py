@@ -9,7 +9,7 @@ import json
 import zipfile
 import shutil
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import Any, List, Dict, Optional
 from dotenv import load_dotenv
 from google import genai as genai_client
 
@@ -3099,6 +3099,437 @@ async def start():
         pass
 
 
+async def _execute_s2_chat_draft(
+    draft: dict[str, Any],
+    *,
+    user_id: str,
+    service: Any,
+    radius_value: str,
+    followup: bool = False,
+) -> None:
+    from data_agent.uwm.livability_s2.chat_flow import (
+        action_response_value,
+        execute_s2_chat_draft,
+        format_confirmation_summary,
+        format_result_summary,
+        result_map_update,
+    )
+
+    confirmation_prompt = cl.AskActionMessage(
+        content=(
+            ("### S2参数追问已识别\n\n仅调整服务半径，复用上一轮真实地块、用途和设施动作。\n\n" if followup else "")
+            + format_confirmation_summary(draft, radius_value)
+        ),
+        actions=[
+            cl.Action(name="s2_confirm", payload={"value": "confirm"}, label="确认并推演"),
+            cl.Action(name="s2_cancel_confirm", payload={"value": "cancel"}, label="取消"),
+        ],
+        timeout=180,
+    )
+    confirmation = await confirmation_prompt.send()
+    if action_response_value(confirmation) != "confirm":
+        confirmation_prompt.content = "S2流程已取消，未执行推演。"
+        await confirmation_prompt.update()
+        return
+    confirmation_prompt.content = (
+        f"✅ 已确认执行：地块 `{draft['parcel_id']}`，"
+        f"新增设施 `{draft['facility_class']}`，服务半径 {radius_value} 米。"
+    )
+    await confirmation_prompt.update()
+
+    progress = cl.Message(content="正在执行：锁定快照 → 覆盖重算 → UWM反事实 → 业务规则…")
+    await progress.send()
+    try:
+        run = await asyncio.to_thread(
+            execute_s2_chat_draft,
+            draft,
+            service=service,
+            actor_id=user_id,
+            service_radius_m=float(radius_value),
+        )
+    except Exception as error:
+        progress.content = f"❌ S2推演失败：`{error}`"
+        await progress.update()
+        return
+    progress.content = "S2真实覆盖与UWM反事实推演完成。"
+    await progress.update()
+    await cl.Message(
+        content=format_result_summary(run),
+        actions=[
+            cl.Action(
+                name="s2_show_new_coverage",
+                payload={"run_id": run.get("run_id")},
+                label="查看新增覆盖地块",
+            ),
+            cl.Action(
+                name="s2_show_evidence_gaps",
+                payload={"run_id": run.get("run_id")},
+                label="查看证据缺口",
+            ),
+            cl.Action(
+                name="s2_show_run_audit",
+                payload={"run_id": run.get("run_id")},
+                label="查看运行审计",
+            ),
+        ],
+        metadata={
+            "routing_info": {
+                "intent": "S2",
+                "pipeline": "s2_deterministic",
+                "pipeline_name": "S2确定性反事实推演",
+            },
+            "map_update": result_map_update(run),
+            "s2_run": {
+                "run_id": run.get("run_id"),
+                "assessment_digest": (run.get("business_assessment") or {}).get(
+                    "assessment_digest"
+                ),
+            },
+        },
+    ).send()
+    cl.user_session.set(
+        "last_context",
+        {
+            "pipeline": "S2",
+            "files": [],
+            "summary": format_result_summary(run),
+            "run_id": run.get("run_id"),
+            "service_radius_m": int(radius_value),
+        },
+    )
+    cl.user_session.set("last_s2_request_text", str(draft.get("rationale") or ""))
+    cl.user_session.set("last_s2_radius_m", int(radius_value))
+
+
+async def _handle_s2_parcel_location_message(
+    user_text: str,
+    user_id: str,
+    *,
+    service=None,
+) -> None:
+    """Load one real S2 parcel onto the map without starting a scenario rollout."""
+    from data_agent.api.uwm_livability_s2_routes import _service as _s2_service
+    from data_agent.uwm.livability_s2.chat_flow import (
+        format_parcel_location_summary,
+        parcel_location_map_update,
+        s2_parcel_id,
+    )
+
+    parcel_id = s2_parcel_id(user_text)
+    if not parcel_id:
+        await cl.Message(
+            content="未识别地块ID，请提供例如 `parcel_79bb3178da33949459fc`。",
+            metadata={"routing_info": {"intent": "S2", "pipeline": "s2_parcel_location"}},
+        ).send()
+        return
+    service = service or _s2_service()
+    try:
+        parcel = (await asyncio.to_thread(service.parcel_detail, parcel_id))["parcel"]
+    except ValueError:
+        await cl.Message(
+            content=f"未找到真实地块 `{parcel_id}`，请检查ID或输入 `@S2 在地图上选择地块`。",
+            metadata={"routing_info": {"intent": "S2", "pipeline": "s2_parcel_location"}},
+        ).send()
+        return
+    except Exception as error:
+        await cl.Message(content=f"❌ S2真实地块加载失败：`{error}`").send()
+        return
+
+    map_update = parcel_location_map_update(parcel)
+    await cl.Message(
+        content=format_parcel_location_summary(parcel),
+        metadata={
+            "routing_info": {
+                "intent": "S2",
+                "pipeline": "s2_parcel_location",
+                "pipeline_name": "S2真实地块快速定位",
+            },
+            "map_update": map_update,
+        },
+    ).send()
+    cl.user_session.set(
+        "last_context",
+        {
+            "pipeline": "S2_PARCEL_LOCATION",
+            "files": [],
+            "summary": f"已定位真实地块 {parcel_id}",
+            "parcel_id": parcel_id,
+        },
+    )
+
+
+async def _handle_s2_chat_message(user_text: str, user_id: str) -> None:
+    """Run the deterministic S2 chat flow without WORLD_MODEL/GEE routing."""
+    from data_agent.api.uwm_livability_s2_routes import _service as _s2_service
+    from data_agent.uwm.livability_s2.chat_flow import (
+        action_response_value,
+        build_s2_chat_draft,
+        draft_map_update,
+        format_draft_summary,
+        is_s2_map_selection_request,
+        is_s2_parcel_location_request,
+        parcel_selection_map_update,
+        s2_map_selection_prompt_template,
+    )
+
+    service = _s2_service()
+    if is_s2_parcel_location_request(user_text):
+        await _handle_s2_parcel_location_message(user_text, user_id, service=service)
+        return
+    try:
+        draft = await asyncio.to_thread(build_s2_chat_draft, user_text, service)
+    except Exception as error:
+        await cl.Message(content=f"❌ S2真实数据加载失败：`{error}`").send()
+        return
+
+    blockers = draft.get("blockers") or []
+    if blockers:
+        if blockers == ["parcel_id_required"] and is_s2_map_selection_request(user_text):
+            map_update = await asyncio.to_thread(parcel_selection_map_update, service)
+            await cl.Message(
+                content=(
+                    "## 请在中间地图选择真实地块\n\n"
+                    f"已加载 **{map_update['metadata']['parcel_count']} 个真实地块**。"
+                    "点击地块后，系统会把地块ID和原业务问题回填到左侧输入框；确认文字无误后按 Enter 继续。"
+                ),
+                metadata={
+                    "routing_info": {"intent": "S2", "pipeline": "s2_deterministic"},
+                    "map_update": map_update,
+                    "s2_parcel_selection": {
+                        "prompt_template": s2_map_selection_prompt_template(user_text),
+                    },
+                },
+            ).send()
+            return
+        messages = {
+            "parcel_id_required": "请提供真实地块ID，例如 `parcel_79bb3178da33949459fc`，或输入“@S2 在地图上选择地块，改成公共服务用地并新增养老服务站是否同意”。",
+            "parcel_not_found": f"未找到地块 `{draft.get('parcel_id')}`，请检查ID或改用地图选择。",
+            "target_land_use_required": "当前未识别目标用途。请明确说明改成公共服务用地或独立建设用地。",
+            "facility_action_required_for_coverage_decision": (
+                "仅识别到用途变更，没有明确新增或移除哪类设施，因此无法计算设施覆盖前后变化。"
+                "请补充例如“新增养老服务站”或“新增学校”。"
+            ),
+        }
+        await cl.Message(
+            content="## S2暂不能执行\n\n" + "\n".join(
+                f"- {messages.get(blocker, blocker)}" for blocker in blockers
+            ),
+            metadata={"routing_info": {"intent": "S2", "pipeline": "s2_deterministic"}},
+        ).send()
+        return
+
+    await cl.Message(
+        content=format_draft_summary(draft),
+        metadata={
+            "routing_info": {
+                "intent": "S2",
+                "pipeline": "s2_deterministic",
+                "pipeline_name": "S2确定性反事实推演",
+            },
+            "map_update": draft_map_update(draft),
+        },
+    ).send()
+
+    radius_prompt = cl.AskActionMessage(
+        content=(
+            "请选择本次设施覆盖情景半径。该半径将作为用户情景假设，"
+            "不会被声明为法定服务标准。"
+        ),
+        actions=[
+            cl.Action(name="s2_radius_300", payload={"value": "300"}, label="300米情景"),
+            cl.Action(name="s2_radius_500", payload={"value": "500"}, label="500米情景"),
+            cl.Action(name="s2_radius_800", payload={"value": "800"}, label="800米情景"),
+            cl.Action(name="s2_cancel", payload={"value": "cancel"}, label="取消"),
+        ],
+        timeout=180,
+    )
+    radius_response = await radius_prompt.send()
+    radius_value = action_response_value(radius_response)
+    if radius_value not in {"300", "500", "800"}:
+        radius_prompt.content = "S2流程已取消或等待超时，未执行推演。"
+        await radius_prompt.update()
+        return
+    radius_prompt.content = (
+        f"✅ 已选择服务半径：**{radius_value}米情景**。"
+        "该参数属于用户情景假设，不是法定服务标准。"
+    )
+    await radius_prompt.update()
+    await _execute_s2_chat_draft(
+        draft,
+        user_id=user_id,
+        service=service,
+        radius_value=radius_value,
+    )
+
+
+async def _handle_s2_radius_followup(user_text: str, user_id: str, radius_value: str) -> None:
+    from data_agent.api.uwm_livability_s2_routes import _service as _s2_service
+    from data_agent.uwm.livability_s2.chat_flow import build_s2_chat_draft
+
+    source_text = str(cl.user_session.get("last_s2_request_text") or "")
+    if not source_text:
+        await cl.Message(content="没有可复用的S2上一轮动作，请先完成一次完整S2推演。").send()
+        return
+    service = _s2_service()
+    draft = await asyncio.to_thread(build_s2_chat_draft, source_text, service)
+    if draft.get("blockers"):
+        await cl.Message(content="上一轮S2动作已无法从当前真实快照重建，请重新提交完整请求。").send()
+        return
+    previous_radius = cl.user_session.get("last_s2_radius_m")
+    await cl.Message(
+        content=(
+            "### S2追问解析\n\n"
+            f"- 复用地块：`{draft['parcel_id']}`\n"
+            f"- 原服务半径：{previous_radius or '未知'}米\n"
+            f"- 新服务半径：{radius_value}米\n"
+            "- 地块、用途、设施类别和规划项目证据保持不变。"
+        ),
+        metadata={"routing_info": {"intent": "S2", "pipeline": "s2_deterministic_followup"}},
+    ).send()
+    await _execute_s2_chat_draft(
+        draft,
+        user_id=user_id,
+        service=service,
+        radius_value=radius_value,
+        followup=True,
+    )
+
+
+def _uwm_multistage_service():
+    from data_agent.uwm.multistage_intervention_planner import (
+        MultiStageInterventionPlannerService,
+    )
+
+    return MultiStageInterventionPlannerService()
+
+
+async def _send_uwm_multistage_map(map_update: dict[str, Any], content: str) -> None:
+    user_id = str(cl.user_session.get("user_id") or "")
+    if user_id:
+        from data_agent.frontend_api import _pending_lock, pending_map_updates
+
+        with _pending_lock:
+            pending_map_updates[user_id] = map_update
+    await cl.Message(content=content, metadata={"map_update": map_update}).send()
+
+
+async def _handle_uwm_multistage_chat_message(user_text: str, user_id: str) -> None:
+    from data_agent.uwm.multistage_intervention_planner.chat_flow import (
+        format_scenario_parse,
+        format_state_inspection,
+    )
+    from data_agent.uwm.multistage_intervention_planner.scenario_parser import (
+        parse_uwm_scenario,
+    )
+
+    service = _uwm_multistage_service()
+    parsing_message = cl.Message(
+        content="正在调用本机Gemma4解析规划区域、动作、时域和约束…",
+        metadata={
+            "routing_info": {
+                "intent": "WORLD_MODEL",
+                "pipeline": "uwm_multistage_gemma4_scenario_parse",
+                "pipeline_name": "UWM多阶段城市干预规划",
+            }
+        },
+    )
+    await parsing_message.send()
+    try:
+        scenario_parse = await asyncio.to_thread(parse_uwm_scenario, user_text, service)
+    except Exception as error:
+        parsing_message.content = (
+            "❌ 本机Gemma4未能完成UWM场景语义解析，系统不会静默套用默认场景。\n\n"
+            f"错误：`{error}`"
+        )
+        await parsing_message.update()
+        return
+    parsing_message.content = format_scenario_parse(scenario_parse)
+    await parsing_message.update()
+    planning_request = dict(scenario_parse.get("planning_request") or {})
+    inspection = await asyncio.to_thread(service.inspect_state, planning_request)
+    cl.user_session.set("last_uwm_multistage_scenario_parse", scenario_parse)
+    cl.user_session.set("last_uwm_multistage_inspection", inspection)
+    cl.user_session.set("last_context", {"pipeline": "UWM_MULTISTAGE", "intent": "WORLD_MODEL"})
+    await cl.Message(
+        content=format_state_inspection(inspection),
+        metadata={
+            "routing_info": {
+                "intent": "WORLD_MODEL",
+                "pipeline": "uwm_multistage_state_inspection",
+                "pipeline_name": "UWM多阶段城市干预规划",
+            },
+            "map_update": inspection.get("map_update"),
+        },
+    ).send()
+    parsed_horizon = (scenario_parse.get("interpretation") or {}).get("horizon")
+    prompt = cl.AskActionMessage(
+        content=(
+            "请先检查中间地图和状态体检。只有确认后系统才会训练Simulator并正式推演未来。"
+        ),
+        actions=[
+            cl.Action(name="uwm_multistage_plan_2", payload={"horizon": 2}, label="确认2步推演"),
+            cl.Action(name="uwm_multistage_plan_3", payload={"horizon": 3}, label="改为3步推演"),
+            cl.Action(name="uwm_multistage_cancel", payload={"value": "cancel"}, label="暂不推演"),
+        ],
+        timeout=240,
+    )
+    response = await prompt.send()
+    response_payload = response if isinstance(response, dict) else {}
+    nested_payload = response_payload.get("payload")
+    if isinstance(nested_payload, dict):
+        response_payload = nested_payload
+    horizon = int(response_payload.get("horizon") or 0)
+    if horizon not in {2, 3}:
+        prompt.content = "UWM流程停留在状态体检阶段，未训练Simulator，也未执行未来推演。"
+        await prompt.update()
+        return
+    prompt.content = f"✅ 已确认执行{horizon}步UWM多阶段推演。"
+    await prompt.update()
+    progress = cl.Message(
+        content="正在执行：训练Simulator → 构建空间Kernel → 想象未来 → 写回状态 → 重新规划…"
+    )
+    await progress.send()
+    try:
+        run_request = {
+            **planning_request,
+            "horizon": horizon,
+            "beam_width": 8,
+            "gamma": 0.9,
+            "nl_scenario_parse": scenario_parse.get("audit_summary") or {},
+        }
+        run = await asyncio.to_thread(
+            service.plan,
+            run_request,
+        )
+    except Exception as error:
+        progress.content = f"❌ UWM多阶段推演失败：`{error}`"
+        await progress.update()
+        return
+    progress.content = "UWM多阶段未来搜索、状态写回和基线比较已完成。"
+    await progress.update()
+    cl.user_session.set("last_uwm_multistage_run_id", run.get("run_id"))
+    from data_agent.uwm.multistage_intervention_planner.chat_flow import format_plan_result
+
+    await cl.Message(
+        content=format_plan_result(run),
+        actions=[
+            cl.Action(name="uwm_multistage_scene_t0", payload={"run_id": run.get("run_id"), "scene": "t0"}, label="查看当前世界"),
+            cl.Action(name="uwm_multistage_scene_t1", payload={"run_id": run.get("run_id"), "scene": "t1"}, label="查看第一步传播"),
+            cl.Action(name="uwm_multistage_scene_branch", payload={"run_id": run.get("run_id"), "scene": "branch"}, label="查看第二步分叉"),
+            cl.Action(name="uwm_multistage_scene_t2", payload={"run_id": run.get("run_id"), "scene": "t2"}, label="查看最终轨迹"),
+            cl.Action(name="uwm_multistage_audit", payload={"run_id": run.get("run_id")}, label="查看运行审计"),
+        ],
+        metadata={
+            "routing_info": {
+                "intent": "WORLD_MODEL",
+                "pipeline": "uwm_multistage_planning",
+                "pipeline_name": "UWM多阶段城市干预规划",
+            },
+            "map_update": (run.get("map_scenes") or {}).get("branch") or run.get("map_update"),
+        },
+    ).send()
+
+
 @cl.on_message
 async def main(message: cl.Message):
     """Handle user message with File Upload Support and RBAC."""
@@ -3193,6 +3624,29 @@ async def main(message: cl.Message):
     # Construct User Prompt
     user_text = message.content
     cl.user_session.set("last_user_message", user_text)
+
+    from data_agent.uwm.livability_s2.chat_flow import (
+        is_s2_chat_message,
+        is_s2_parcel_location_request,
+        s2_followup_radius,
+    )
+    from data_agent.uwm.multistage_intervention_planner.chat_flow import (
+        is_multistage_uwm_chat_message,
+    )
+    if is_multistage_uwm_chat_message(user_text):
+        await _handle_uwm_multistage_chat_message(user_text, user_id)
+        return
+    if is_s2_parcel_location_request(user_text):
+        await _handle_s2_parcel_location_message(user_text, user_id)
+        return
+    if is_s2_chat_message(user_text):
+        await _handle_s2_chat_message(user_text, user_id)
+        return
+    s2_radius_value = s2_followup_radius(user_text)
+    last_context = cl.user_session.get("last_context") or {}
+    if s2_radius_value and last_context.get("pipeline") == "S2":
+        await _handle_s2_radius_followup(user_text, user_id, s2_radius_value)
+        return
 
     # --- Custom Skill @mention detection (v8.0.1) ---
     _custom_skill_agent = None
@@ -3951,6 +4405,136 @@ async def main(message: cl.Message):
         router_tokens=router_tokens,
         extra_parts=extra_parts,
     )
+
+
+async def _s2_run_from_action(action: cl.Action) -> dict[str, Any] | None:
+    from data_agent.api.uwm_livability_s2_routes import _service as _s2_service
+
+    user_id = str(cl.user_session.get("user_id") or "")
+    run_id = str((action.payload or {}).get("run_id") or "")
+    if not user_id or not run_id:
+        await cl.Message(content="无法读取S2运行：缺少用户或运行ID。").send()
+        return None
+    try:
+        return await asyncio.to_thread(
+            _s2_service().get_run,
+            run_id,
+            actor_id=user_id,
+        )
+    except Exception as error:
+        await cl.Message(content=f"无法读取S2运行 `{run_id}`：`{error}`").send()
+        return None
+
+
+@cl.action_callback("s2_show_new_coverage")
+async def on_s2_show_new_coverage(action: cl.Action):
+    from data_agent.uwm.livability_s2.chat_flow import newly_covered_map_update
+
+    run = await _s2_run_from_action(action)
+    if not run:
+        return
+    count = len((run.get("business_assessment") or {}).get("newly_covered_parcel_ids") or [])
+    map_update = newly_covered_map_update(run)
+    user_id = str(cl.user_session.get("user_id") or "")
+    if user_id:
+        from data_agent.frontend_api import _pending_lock, pending_map_updates
+
+        with _pending_lock:
+            pending_map_updates[user_id] = map_update
+    await cl.Message(
+        content=f"已在中间地图突出显示 **{count} 个新增覆盖地块**、目标地块和干预服务范围。",
+        metadata={"map_update": map_update},
+    ).send()
+
+
+@cl.action_callback("s2_show_evidence_gaps")
+async def on_s2_show_evidence_gaps(action: cl.Action):
+    from data_agent.uwm.livability_s2.chat_flow import format_evidence_gap_summary
+
+    run = await _s2_run_from_action(action)
+    if run:
+        await cl.Message(content=format_evidence_gap_summary(run)).send()
+
+
+@cl.action_callback("s2_show_run_audit")
+async def on_s2_show_run_audit(action: cl.Action):
+    from data_agent.uwm.livability_s2.chat_flow import format_run_audit_summary
+
+    run = await _s2_run_from_action(action)
+    if run:
+        await cl.Message(content=format_run_audit_summary(run)).send()
+
+
+async def _on_uwm_multistage_scene(action: cl.Action):
+    payload = action.payload or {}
+    run_id = str(payload.get("run_id") or "")
+    scene_key = str(payload.get("scene") or "branch")
+    try:
+        run = await asyncio.to_thread(_uwm_multistage_service().get_run, run_id)
+    except Exception as error:
+        await cl.Message(content=f"无法读取UWM运行 `{run_id}`：`{error}`").send()
+        return
+    scene = (run.get("map_scenes") or {}).get(scene_key)
+    if not scene:
+        await cl.Message(content=f"运行中不存在地图阶段 `{scene_key}`。").send()
+        return
+    labels = {
+        "t0": "当前世界",
+        "t1": "第一步空间传播",
+        "branch": "第二步未来分叉",
+        "t2": "最终干预轨迹",
+    }
+    await _send_uwm_multistage_map(
+        scene,
+        f"已在中间地图展示：**{labels.get(scene_key, scene_key)}**。",
+    )
+
+
+@cl.action_callback("uwm_multistage_scene_t0")
+async def on_uwm_multistage_scene_t0(action: cl.Action):
+    await _on_uwm_multistage_scene(action)
+
+
+@cl.action_callback("uwm_multistage_scene_t1")
+async def on_uwm_multistage_scene_t1(action: cl.Action):
+    await _on_uwm_multistage_scene(action)
+
+
+@cl.action_callback("uwm_multistage_scene_branch")
+async def on_uwm_multistage_scene_branch(action: cl.Action):
+    await _on_uwm_multistage_scene(action)
+
+
+@cl.action_callback("uwm_multistage_scene_t2")
+async def on_uwm_multistage_scene_t2(action: cl.Action):
+    await _on_uwm_multistage_scene(action)
+
+
+@cl.action_callback("uwm_multistage_audit")
+async def on_uwm_multistage_audit(action: cl.Action):
+    run_id = str((action.payload or {}).get("run_id") or "")
+    try:
+        run = await asyncio.to_thread(_uwm_multistage_service().get_run, run_id)
+    except Exception as error:
+        await cl.Message(content=f"无法读取UWM运行 `{run_id}`：`{error}`").send()
+        return
+    training = run.get("training_summary") or {}
+    runtime = run.get("runtime_profile") or {}
+    search = run.get("planner_search_summary") or {}
+    audit = run.get("audit") or {}
+    await cl.Message(
+        content=(
+            "## UWM运行审计\n\n"
+            f"- 运行ID：`{run_id}`\n"
+            f"- 训练/留出：{training.get('train_count')}/{training.get('holdout_count')}\n"
+            f"- Simulator训练耗时：{runtime.get('dynamics_training_ms')}毫秒\n"
+            f"- Kernel构建耗时：{runtime.get('spatial_kernel_build_ms')}毫秒\n"
+            f"- 想象动作：{search.get('evaluated_imagined_action_count')}次\n"
+            f"- 请求摘要：`{audit.get('request_digest')}`\n"
+            f"- 状态写回验证：{audit.get('state_update_verified')}\n"
+            "- 训练数据性质：主要为准备好的Simulator回放，不是同等数量的真实政策项目。"
+        )
+    ).send()
 
 
 @cl.action_callback("retry_pipeline")

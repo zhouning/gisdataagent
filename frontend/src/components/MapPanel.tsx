@@ -7,7 +7,7 @@ import Map3DView from './Map3DView';
 
 interface MapLayer {
   name: string;
-  type: 'point' | 'polygon' | 'choropleth' | 'heatmap' | 'bubble' | 'line'
+  type: 'geojson' | 'point' | 'polygon' | 'choropleth' | 'heatmap' | 'bubble' | 'line'
       | 'extrusion' | 'arc' | 'column' | 'categorized' | 'wms' | 'mvt' | 'fgb';
   geojson?: string;       // filename to fetch from /api/user/files/
   geojsonData?: any;      // already loaded GeoJSON
@@ -90,7 +90,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
   const [loadedLayers, setLoadedLayers] = useState<MapLayer[]>([]);
   const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({});
   const [showLayerControl, setShowLayerControl] = useState(false);
-  const [viewMode, setViewMode] = useState<'2d' | '3d'>('3d');
+  const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
 
   // Annotation state
   const [annotationMode, setAnnotationMode] = useState(false);
@@ -562,11 +562,38 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
             // v23.0: Cross-layer association highlighting on feature click
             if ('eachLayer' in leafletLayer) {
               (leafletLayer as L.LayerGroup).eachLayer((featureLayer: L.Layer) => {
+                const feature = (featureLayer as any).feature;
+                const parcelId = String(feature?.id || feature?.properties?.parcel_id || '');
+                const isS2Parcel = layerConfig.name.startsWith('S2 ') && parcelId.startsWith('parcel_');
+                const element = (featureLayer as any).getElement?.() as SVGElement | undefined;
+                if (isS2Parcel && element) {
+                  element.dataset.s2ParcelId = parcelId;
+                  element.dataset.s2LayerName = layerConfig.name;
+                  element.style.cursor = 'pointer';
+                  bindS2ParcelPopup(feature, featureLayer, layerConfig.name);
+                }
                 featureLayer.on('click', () => {
                   highlightAssociatedFeatures(
                     featureLayer, layerGroupsRef, highlightLayerRef,
                     mapRef.current!, layerConfig.name,
                   );
+                  if (isS2Parcel) {
+                    highlightSelectedS2Parcel(feature, mapRef.current!, highlightLayerRef);
+                    if (layerConfig.name === 'S2 可选真实地块' && 'getBounds' in featureLayer) {
+                      const selectedBounds = (featureLayer as any).getBounds() as L.LatLngBounds;
+                      if (selectedBounds.isValid()) {
+                        mapRef.current!.fitBounds(selectedBounds.pad(1.2), { maxZoom: 15 });
+                      }
+                    }
+                    window.dispatchEvent(new CustomEvent('s2-map-parcel-selected', {
+                      detail: {
+                        parcelId,
+                        layerName: layerConfig.name,
+                        planningAreaId: feature?.properties?.planning_area_id || '',
+                        sourceLandUseName: feature?.properties?.source_land_use_name || '',
+                      },
+                    }));
+                  }
                 });
               });
             }
@@ -585,7 +612,11 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
           Array.from(layerGroupsRef.current.values())
         ).getBounds();
         if (allBounds.isValid()) {
-          mapRef.current.fitBounds(allBounds, { padding: [30, 30] });
+          const containsS2Layers = loaded.some((layerConfig) => layerConfig.name.startsWith('S2 '));
+          mapRef.current.fitBounds(allBounds, {
+            padding: [30, 30],
+            ...(containsS2Layers ? { maxZoom: 15 } : {}),
+          });
         }
       }
     };
@@ -617,16 +648,17 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
   // --- Timeline slider for temporal layers (e.g., World Model LULC predictions) ---
   // Detect layers with year pattern in name: "LULC 2023 (baseline)"
   const yearPattern = /\b(20\d{2})\b/;
-  const temporalYears: number[] = [];
-  const temporalLayerNames: Map<number, string> = new Map();
+  const temporalLayerNames: Map<number, string[]> = new Map();
   for (const l of loadedLayers) {
     const m = l.name.match(yearPattern);
     if (m) {
       const yr = parseInt(m[1]);
-      temporalYears.push(yr);
-      temporalLayerNames.set(yr, l.name);
+      const names = temporalLayerNames.get(yr) || [];
+      names.push(l.name);
+      temporalLayerNames.set(yr, names);
     }
   }
+  const temporalYears = Array.from(temporalLayerNames.keys());
   temporalYears.sort((a, b) => a - b);
   const hasTimeline = temporalYears.length >= 2;
 
@@ -643,19 +675,21 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
     setTimelineYear(year);
     if (!mapRef.current) return;
     // Show only the selected year's layer, hide others
-    for (const [yr, layerName] of temporalLayerNames) {
-      const leafletLayer = layerGroupsRef.current.get(layerName);
-      if (!leafletLayer) continue;
-      if (yr === year) {
-        if (!mapRef.current.hasLayer(leafletLayer)) {
-          leafletLayer.addTo(mapRef.current);
+    for (const [yr, layerNames] of temporalLayerNames) {
+      for (const layerName of layerNames) {
+        const leafletLayer = layerGroupsRef.current.get(layerName);
+        if (!leafletLayer) continue;
+        if (yr === year) {
+          if (!mapRef.current.hasLayer(leafletLayer)) {
+            leafletLayer.addTo(mapRef.current);
+          }
+          setLayerVisibility((prev) => ({ ...prev, [layerName]: true }));
+        } else {
+          if (mapRef.current.hasLayer(leafletLayer)) {
+            mapRef.current.removeLayer(leafletLayer);
+          }
+          setLayerVisibility((prev) => ({ ...prev, [layerName]: false }));
         }
-        setLayerVisibility((prev) => ({ ...prev, [layerName]: true }));
-      } else {
-        if (mapRef.current.hasLayer(leafletLayer)) {
-          mapRef.current.removeLayer(leafletLayer);
-        }
-        setLayerVisibility((prev) => ({ ...prev, [layerName]: false }));
       }
     }
   }, [loadedLayers]);
@@ -991,6 +1025,28 @@ function createLeafletLayer(config: MapLayer, geojsonData: any): L.Layer | null 
   const colors = COLOR_RAMPS[color_scheme || 'YlOrRd'];
 
   switch (type) {
+    case 'geojson':
+      return L.geoJSON(geojsonData, {
+        style: {
+          color: style.color || '#3388ff',
+          weight: style.weight ?? 2,
+          opacity: style.opacity ?? 0.7,
+          fillColor: style.fillColor || style.color || '#3388ff',
+          fillOpacity: style.fillOpacity ?? 0.3,
+          dashArray: style.dashArray || undefined,
+        },
+        pointToLayer: (_feature, latlng) =>
+          L.circleMarker(latlng, {
+            radius: style.radius || 6,
+            fillColor: style.fillColor || style.color || '#4f46e5',
+            color: style.color || '#4f46e5',
+            weight: style.weight ?? 1,
+            opacity: style.opacity ?? 0.8,
+            fillOpacity: style.fillOpacity ?? 0.6,
+          }),
+        onEachFeature: bindPopup,
+      });
+
     case 'point':
       return L.geoJSON(geojsonData, {
         pointToLayer: (_feature, latlng) =>
@@ -1174,6 +1230,63 @@ function bindPopup(feature: any, layer: L.Layer) {
     .join('<br/>');
   layer.bindPopup(html, { maxWidth: 300 });
   layer.bindTooltip(String(entries[0]?.[1] ?? ''), { sticky: true });
+}
+
+function bindS2ParcelPopup(feature: any, layer: L.Layer, layerName: string) {
+  const properties = feature?.properties || {};
+  const parcelId = String(feature?.id || properties.parcel_id || '');
+  const planningArea = String(properties.planning_area_id || '未标注');
+  const landUse = String(
+    properties.source_land_use_name
+      || properties.current_land_use_class
+      || '未标注',
+  );
+  const areaValue = Number(properties.area_m2);
+  const areaText = Number.isFinite(areaValue) ? `${areaValue.toFixed(1)} ㎡` : '未标注';
+  const html = `
+    <div class="s2-parcel-popup">
+      <strong>S2真实地块</strong>
+      <dl>
+        <dt>地块ID</dt><dd>${escapeHtml(parcelId)}</dd>
+        <dt>村域</dt><dd>${escapeHtml(planningArea)}</dd>
+        <dt>原始地类</dt><dd>${escapeHtml(landUse)}</dd>
+        <dt>面积</dt><dd>${escapeHtml(areaText)}</dd>
+      </dl>
+      <small>${layerName === 'S2 可选真实地块' ? '点击地块后将回填左侧S2输入框' : '点击可基于该地块发起新的S2请求'}</small>
+    </div>`;
+  layer.unbindPopup();
+  layer.unbindTooltip();
+  layer.bindPopup(html, { maxWidth: 280, className: 's2-parcel-popup-shell' });
+  layer.bindTooltip(parcelId, { sticky: true });
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>'"]/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    "'": '&#39;',
+    '"': '&quot;',
+  }[character] || character));
+}
+
+function highlightSelectedS2Parcel(
+  feature: any,
+  map: L.Map,
+  highlightLayerRef: React.MutableRefObject<L.GeoJSON | null>,
+) {
+  if (highlightLayerRef.current) {
+    map.removeLayer(highlightLayerRef.current);
+  }
+  highlightLayerRef.current = L.geoJSON(feature, {
+    style: {
+      color: '#facc15',
+      weight: 4,
+      opacity: 1,
+      fillColor: '#facc15',
+      fillOpacity: 0.38,
+    },
+  }).addTo(map);
 }
 
 /**

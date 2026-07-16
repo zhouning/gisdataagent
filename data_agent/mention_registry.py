@@ -12,6 +12,14 @@ except Exception:
     list_custom_skills = None  # type: ignore[assignment]
 
 _PIPELINE_TARGETS = [
+    {"handle": "S2", "label": "S2", "type": "pipeline",
+     "description": "城市宜居性S2用地性质变更与设施覆盖评估", "allowed_roles": ["admin", "analyst"],
+     "required_state_keys": [], "pipeline": "S2", "aliases": ["宜居性S2", "LivabilityS2"]},
+    {"handle": "UWM规划", "label": "UWM规划", "type": "pipeline",
+     "description": "先展示当前城市状态，再确认执行UWM多阶段城市干预规划",
+     "allowed_roles": ["admin", "analyst"], "required_state_keys": [],
+     "pipeline": "UWM_MULTISTAGE",
+     "aliases": ["UWM多阶段", "多阶段UWM", "城市干预", "UWM多阶段城市干预规划"]},
     {"handle": "General", "label": "General", "type": "pipeline",
      "description": "通用分析与查询", "allowed_roles": ["admin", "analyst", "viewer"],
      "required_state_keys": [], "pipeline": "GENERAL"},

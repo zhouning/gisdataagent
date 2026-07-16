@@ -18,7 +18,13 @@ from data_agent.uwm.geospatial_kernel.land_use_action import (
 )
 from data_agent.uwm.geospatial_kernel.state_graph import build_state_graph
 
+from .business_assessment import assess_s2_business_impact
 from .product import PRODUCT_FILENAMES
+from .run_store import S2RunStore
+from .technical_audit import build_s2_technical_audit
+
+
+PLANNING_PROJECTS_FILENAME = "uwm_livability_s2_planning_projects.json"
 
 
 class S2ProductInvalid(RuntimeError):
@@ -29,13 +35,18 @@ class S2RunNotFound(KeyError):
     """Raised when a process-memory run is unavailable."""
 
 
+class S2RunInvalid(RuntimeError):
+    """Raised when a durable audit record fails integrity validation."""
+
+
 class S2ScenarioService:
     """Load validated offline products and execute bounded online rollouts."""
 
-    def __init__(self, product_dir: Path):
+    def __init__(self, product_dir: Path, run_store_dir: Path | None = None):
         self.product_dir = Path(product_dir)
         self._bundle: dict[str, Any] | None = None
         self._runs: dict[str, dict[str, Any]] = {}
+        self._run_store = S2RunStore(run_store_dir) if run_store_dir else None
 
     def catalog(self) -> dict[str, Any]:
         bundle = self._load_bundle()
@@ -56,13 +67,53 @@ class S2ScenarioService:
             "facility_inventory_complete": bool(
                 bundle["manifest"].get("facility_inventory_complete")
             ),
+            "observed_facility_classes": sorted(
+                {
+                    str((feature.get("properties") or {}).get("canonical_class"))
+                    for feature in bundle["facilities"].get("features") or []
+                    if (feature.get("properties") or {}).get("canonical_class")
+                    and (feature.get("properties") or {}).get("canonical_class")
+                    != "unmapped"
+                }
+            ),
+            "supported_business_actions": [
+                "change_land_use",
+                "add_facility",
+                "remove_facility",
+            ],
+            "planning_project_count": len(
+                (bundle.get("planning_projects") or {}).get("projects") or []
+            ),
+            "planning_project_evidence_version": (
+                bundle.get("planning_projects") or {}
+            ).get("version"),
             "synthetic_parcels_created": False,
             "online_raw_vector_access": False,
+            "run_persistence": (
+                "durable_digest_verified_file_store"
+                if self._run_store
+                else "process_memory_only"
+            ),
             "claim_boundary": deepcopy(bundle["manifest"].get("claim_boundary") or {}),
         }
 
     def list_parcels(self) -> dict[str, Any]:
         return deepcopy(self._load_bundle()["parcels"])
+
+    def list_facilities(self) -> dict[str, Any]:
+        return deepcopy(self._load_bundle()["facilities"])
+
+    def list_planning_projects(self) -> dict[str, Any]:
+        payload = self._load_bundle().get("planning_projects")
+        if not payload:
+            return {
+                "schema": "uwm.livability_s2.planning_project_evidence.v1",
+                "version": None,
+                "project_count": 0,
+                "projects": [],
+                "claim_boundary": "planning_project_evidence_unavailable",
+            }
+        return deepcopy(payload)
 
     def parcel_detail(self, parcel_id: str) -> dict[str, Any]:
         bundle = self._load_bundle()
@@ -102,6 +153,13 @@ class S2ScenarioService:
         rationale: str,
         requested_at: str,
         actor_id: str,
+        action_type: str = "change_land_use",
+        facility_class: str | None = None,
+        facility_id: str | None = None,
+        service_radius_m: float | None = None,
+        radius_evidence_source: str | None = None,
+        critical_facility: bool = False,
+        planning_project_id: str | None = None,
     ) -> dict[str, Any]:
         bundle = self._load_bundle()
         action = bind_server_actor(
@@ -125,10 +183,35 @@ class S2ScenarioService:
             land_use_dictionary=bundle["dictionary"],
             transition_matrix=bundle["matrix"],
         )
+        business_assessment = assess_s2_business_impact(
+            parcels=bundle["parcels"],
+            facilities=bundle["facilities"],
+            parcel_id=parcel_id,
+            action_type=action_type,
+            facility_class=facility_class,
+            facility_id=facility_id,
+            service_radius_m=service_radius_m,
+            radius_evidence_source=radius_evidence_source,
+            critical_facility=critical_facility,
+            facility_inventory_complete=bool(
+                bundle["manifest"].get("facility_inventory_complete")
+            ),
+            transition_status=str((validation.get("transition") or {}).get("status") or "unresolved"),
+        )
+        project_evidence = _planning_project_evidence(
+            bundle,
+            planning_project_id=planning_project_id,
+            parcel_id=parcel_id,
+            facility_class=facility_class,
+        )
+        if project_evidence:
+            business_assessment["planning_project_evidence"] = project_evidence
+            business_assessment["action"]["planning_project_id"] = planning_project_id
         return {
             "schema": "uwm.livability_s2.action_validation.v1",
             "action": action,
             "validation": validation,
+            "business_assessment_preview": business_assessment,
             "approval_claim": False,
         }
 
@@ -143,6 +226,13 @@ class S2ScenarioService:
         requested_at: str,
         actor_id: str,
         alternative_land_use_class: str | None,
+        action_type: str = "change_land_use",
+        facility_class: str | None = None,
+        facility_id: str | None = None,
+        service_radius_m: float | None = None,
+        radius_evidence_source: str | None = None,
+        critical_facility: bool = False,
+        planning_project_id: str | None = None,
     ) -> dict[str, Any]:
         bundle = self._load_bundle()
         action_result = self.validate_action(
@@ -153,6 +243,13 @@ class S2ScenarioService:
             rationale=rationale,
             requested_at=requested_at,
             actor_id=actor_id,
+            action_type=action_type,
+            facility_class=facility_class,
+            facility_id=facility_id,
+            service_radius_m=service_radius_m,
+            radius_evidence_source=radius_evidence_source,
+            critical_facility=critical_facility,
+            planning_project_id=planning_project_id,
         )
         validation = action_result["validation"]
         if not validation["valid"]:
@@ -171,6 +268,7 @@ class S2ScenarioService:
             transition_matrix=bundle["matrix"],
             alternative_land_use_class=alternative_land_use_class,
         )
+        business_assessment = action_result["business_assessment_preview"]
         run_id = _run_id(
             actor_id=actor_id,
             requested_at=requested_at,
@@ -186,17 +284,43 @@ class S2ScenarioService:
             "snapshot_digest": bundle["graph"]["snapshot_digest"],
             "execution_scope": execution_scope,
             "rollout": rollout,
-            "map_evidence": _map_evidence(bundle, parcel_id=parcel_id, rollout=rollout),
-            "persistence_boundary": "process_memory_only",
+            "business_assessment": business_assessment,
+            "map_evidence": _map_evidence(
+                bundle,
+                parcel_id=parcel_id,
+                rollout=rollout,
+                business_assessment=business_assessment,
+            ),
+            "persistence_boundary": (
+                "durable_digest_verified_file_store"
+                if self._run_store
+                else "process_memory_only"
+            ),
             "approval_claim": False,
         }
+        result["technical_audit"] = build_s2_technical_audit(
+            bundle=bundle,
+            rollout=rollout,
+            business_assessment=business_assessment,
+            execution_scope=execution_scope,
+        )
         self._runs[run_id] = deepcopy(result)
+        if self._run_store:
+            self._run_store.save(result)
         return result
 
     def get_run(self, run_id: str, *, actor_id: str) -> dict[str, Any]:
-        if run_id not in self._runs or self._runs[run_id].get("actor_id") != actor_id:
-            raise S2RunNotFound("run_not_found")
-        return deepcopy(self._runs[run_id])
+        if run_id in self._runs and self._runs[run_id].get("actor_id") == actor_id:
+            return deepcopy(self._runs[run_id])
+        if self._run_store:
+            try:
+                stored = self._run_store.get(run_id, actor_id=actor_id)
+            except (RuntimeError, ValueError, json.JSONDecodeError) as error:
+                raise S2RunInvalid(str(error)) from error
+            if stored is not None:
+                self._runs[run_id] = deepcopy(stored)
+                return stored
+        raise S2RunNotFound("run_not_found")
 
     def _load_bundle(self) -> dict[str, Any]:
         if self._bundle is not None:
@@ -262,6 +386,7 @@ class S2ScenarioService:
             "manifest": payloads["evidence_manifest"],
             "report": payloads["build_report"],
             "graph": graph,
+            "planning_projects": _load_planning_projects(self.product_dir),
         }
         return self._bundle
 
@@ -283,6 +408,58 @@ def _content_digest(payload: dict[str, Any]) -> str:
         separators=(",", ":"),
     ).encode("utf-8")
     return "sha256:" + hashlib.sha256(encoded).hexdigest()
+
+
+def _load_planning_projects(product_dir: Path) -> dict[str, Any] | None:
+    path = product_dir / PLANNING_PROJECTS_FILENAME
+    if not path.is_file():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise S2ProductInvalid("planning_project_evidence_invalid_json") from error
+    if payload.get("schema") != "uwm.livability_s2.planning_project_evidence.v1":
+        raise S2ProductInvalid("planning_project_evidence_schema_mismatch")
+    if payload.get("content_digest") != _content_digest(payload):
+        raise S2ProductInvalid("planning_project_evidence_digest_mismatch")
+    return payload
+
+
+def _planning_project_evidence(
+    bundle: dict[str, Any],
+    *,
+    planning_project_id: str | None,
+    parcel_id: str,
+    facility_class: str | None,
+) -> dict[str, Any] | None:
+    if not planning_project_id:
+        return None
+    payload = bundle.get("planning_projects") or {}
+    project = next(
+        (
+            row
+            for row in payload.get("projects") or []
+            if str(row.get("project_id")) == planning_project_id
+        ),
+        None,
+    )
+    if project is None:
+        raise ValueError("planning_project_not_found")
+    parcel = next(
+        (
+            feature
+            for feature in bundle["parcels"].get("features") or []
+            if str(feature.get("id")) == parcel_id
+        ),
+        None,
+    )
+    planning_area_id = str((parcel.get("properties") or {}).get("planning_area_id") or "")
+    if str(project.get("planning_area_id") or "") != planning_area_id:
+        raise ValueError("planning_project_area_mismatch")
+    mapped_class = project.get("canonical_facility_class")
+    if mapped_class and facility_class and mapped_class != facility_class:
+        raise ValueError("planning_project_facility_class_mismatch")
+    return deepcopy(project)
 
 
 def _run_id(*, actor_id: str, requested_at: str, parcel_id: str, rollout_digest: str) -> str:
@@ -339,7 +516,11 @@ def _bounded_rollout_graph(
 
 
 def _map_evidence(
-    bundle: dict[str, Any], *, parcel_id: str, rollout: dict[str, Any]
+    bundle: dict[str, Any],
+    *,
+    parcel_id: str,
+    rollout: dict[str, Any],
+    business_assessment: dict[str, Any],
 ) -> dict[str, Any]:
     affected_ids = {
         str(message.get("target_node_id"))
@@ -350,6 +531,10 @@ def _map_evidence(
     parcels = bundle["parcels"].get("features") or []
     resources = bundle["planning_resources"].get("features") or []
     facilities = bundle["facilities"].get("features") or []
+    baseline = business_assessment.get("baseline") or {}
+    intervention = business_assessment.get("intervention") or {}
+    newly_covered_ids = set(business_assessment.get("newly_covered_parcel_ids") or [])
+    newly_uncovered_ids = set(business_assessment.get("newly_uncovered_parcel_ids") or [])
     return {
         "target_parcel": _feature_collection(
             [feature for feature in parcels if str(feature.get("id")) == parcel_id]
@@ -367,6 +552,18 @@ def _map_evidence(
         ),
         "facilities": _feature_collection(
             [feature for feature in facilities if str(feature.get("id")) in affected_ids]
+        ),
+        "baseline_service_areas": deepcopy(
+            baseline.get("service_areas") or _feature_collection([])
+        ),
+        "intervention_service_areas": deepcopy(
+            intervention.get("service_areas") or _feature_collection([])
+        ),
+        "newly_covered_parcels": _feature_collection(
+            [feature for feature in parcels if str(feature.get("id")) in newly_covered_ids]
+        ),
+        "newly_uncovered_parcels": _feature_collection(
+            [feature for feature in parcels if str(feature.get("id")) in newly_uncovered_ids]
         ),
         "proxy_distance_bands_m": [50, 150, 300],
         "distance_band_claim": "projected_distance_proxy_not_walkability_or_statutory_buffer",

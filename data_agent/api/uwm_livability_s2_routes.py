@@ -14,6 +14,7 @@ from starlette.routing import Route
 from .helpers import _get_user_from_request, _set_user_context
 from ..uwm.livability_s2.scenario_service import (
     S2ProductInvalid,
+    S2RunInvalid,
     S2RunNotFound,
     S2ScenarioService,
 )
@@ -23,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_PRODUCT_DIR = (
     ROOT / "data/uwm_public_proxy/chongqing_central/uwm_livability_s2_fulu"
 )
-_SERVICE_CACHE: tuple[Path, S2ScenarioService] | None = None
+_SERVICE_CACHE: tuple[Path, Path | None, S2ScenarioService] | None = None
 
 
 def _product_dir() -> Path:
@@ -34,9 +35,11 @@ def _product_dir() -> Path:
 def _service() -> S2ScenarioService:
     global _SERVICE_CACHE
     path = _product_dir()
-    if _SERVICE_CACHE is None or _SERVICE_CACHE[0] != path:
-        _SERVICE_CACHE = (path, S2ScenarioService(path))
-    return _SERVICE_CACHE[1]
+    configured_store = os.environ.get("UWM_LIVABILITY_S2_RUN_STORE", "").strip()
+    store_path = Path(configured_store).expanduser() if configured_store else None
+    if _SERVICE_CACHE is None or _SERVICE_CACHE[:2] != (path, store_path):
+        _SERVICE_CACHE = (path, store_path, S2ScenarioService(path, store_path))
+    return _SERVICE_CACHE[2]
 
 
 def _reset_service_cache() -> None:
@@ -96,6 +99,26 @@ async def uwm_livability_s2_parcels(request: Request):
         return _product_error(error)
 
 
+async def uwm_livability_s2_facilities(request: Request):
+    _, unauthorized = _authorized(request)
+    if unauthorized:
+        return unauthorized
+    try:
+        return JSONResponse(await asyncio.to_thread(_service().list_facilities))
+    except S2ProductInvalid as error:
+        return _product_error(error)
+
+
+async def uwm_livability_s2_planning_projects(request: Request):
+    _, unauthorized = _authorized(request)
+    if unauthorized:
+        return unauthorized
+    try:
+        return JSONResponse(await asyncio.to_thread(_service().list_planning_projects))
+    except S2ProductInvalid as error:
+        return _product_error(error)
+
+
 async def uwm_livability_s2_parcel(request: Request):
     _, unauthorized = _authorized(request)
     if unauthorized:
@@ -128,6 +151,13 @@ async def uwm_livability_s2_validate_action(request: Request):
             rationale=str(payload.get("rationale") or ""),
             requested_at=str(payload.get("requested_at") or ""),
             actor_id=str(username),
+            action_type=str(payload.get("action_type") or "change_land_use"),
+            facility_class=payload.get("facility_class"),
+            facility_id=payload.get("facility_id"),
+            service_radius_m=payload.get("service_radius_m"),
+            radius_evidence_source=payload.get("radius_evidence_source"),
+            critical_facility=bool(payload.get("critical_facility")),
+            planning_project_id=payload.get("planning_project_id"),
         )
         status = 200 if result["validation"]["valid"] else 400
         if "snapshot_digest_mismatch" in result["validation"]["errors"]:
@@ -157,6 +187,13 @@ async def uwm_livability_s2_rollout(request: Request):
             requested_at=str(payload.get("requested_at") or ""),
             actor_id=str(username),
             alternative_land_use_class=payload.get("alternative_land_use_class"),
+            action_type=str(payload.get("action_type") or "change_land_use"),
+            facility_class=payload.get("facility_class"),
+            facility_id=payload.get("facility_id"),
+            service_radius_m=payload.get("service_radius_m"),
+            radius_evidence_source=payload.get("radius_evidence_source"),
+            critical_facility=bool(payload.get("critical_facility")),
+            planning_project_id=payload.get("planning_project_id"),
         )
         return JSONResponse(result)
     except S2ProductInvalid as error:
@@ -184,12 +221,16 @@ async def uwm_livability_s2_run(request: Request):
         return _product_error(error)
     except S2RunNotFound as error:
         return JSONResponse({"error": str(error).strip("'\"")}, status_code=404)
+    except S2RunInvalid as error:
+        return JSONResponse({"error": str(error)}, status_code=409)
 
 
 def get_uwm_livability_s2_routes() -> list:
     return [
         Route("/api/uwm/livability/s2/catalog", uwm_livability_s2_catalog, methods=["GET"]),
         Route("/api/uwm/livability/s2/parcels", uwm_livability_s2_parcels, methods=["GET"]),
+        Route("/api/uwm/livability/s2/facilities", uwm_livability_s2_facilities, methods=["GET"]),
+        Route("/api/uwm/livability/s2/planning-projects", uwm_livability_s2_planning_projects, methods=["GET"]),
         Route("/api/uwm/livability/s2/parcels/{parcel_id}", uwm_livability_s2_parcel, methods=["GET"]),
         Route("/api/uwm/livability/s2/validate-action", uwm_livability_s2_validate_action, methods=["POST"]),
         Route("/api/uwm/livability/s2/rollout", uwm_livability_s2_rollout, methods=["POST"]),

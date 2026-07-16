@@ -1,0 +1,35 @@
+{
+  "schema": "uwm.livability_s2.business_rules.v1",
+  "version": "s2-business-rules-2026.07.14.1",
+  "critical_facility_classes": [
+    "education.school",
+    "healthcare.primary",
+    "healthcare.hospital",
+    "eldercare.station",
+    "emergency.shelter",
+    "park.public"
+  ],
+  "rules": [
+    {
+      "rule_id": "critical_facility_coverage_proxy_decreases",
+      "priority": 100,
+      "recommendation": "disagree"
+    },
+    {
+      "rule_id": "required_evidence_missing_fail_closed",
+      "priority": 90,
+      "recommendation": "evidence_insufficient"
+    },
+    {
+      "rule_id": "authoritative_coverage_not_decreased",
+      "priority": 50,
+      "recommendation": "agree"
+    },
+    {
+      "rule_id": "bounded_coverage_not_decreased",
+      "priority": 40,
+      "recommendation": "conditional_agree"
+    }
+  ],
+  "claim_boundary": "Rules decide only within the supplied evidence level and never constitute planning approval."
+}

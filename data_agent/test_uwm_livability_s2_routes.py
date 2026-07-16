@@ -40,6 +40,8 @@ def test_s2_routes_registered_in_frontend_api():
     for path, method in [
         ("/api/uwm/livability/s2/catalog","GET"),
         ("/api/uwm/livability/s2/parcels","GET"),
+        ("/api/uwm/livability/s2/facilities","GET"),
+        ("/api/uwm/livability/s2/planning-projects","GET"),
         ("/api/uwm/livability/s2/parcels/{parcel_id}","GET"),
         ("/api/uwm/livability/s2/validate-action","POST"),
         ("/api/uwm/livability/s2/rollout","POST"),
