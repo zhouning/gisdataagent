@@ -1,12 +1,356 @@
 # GIS Data Agent — Roadmap
 
-**Last updated**: 2026-07-11 &nbsp;|&nbsp; **Current version**: v25.21-twm-demo &nbsp;|&nbsp; **Next**: Agent Runtime Reliability P0 + TWM 算法模型路线刷新 + 权威数据接入试点 + CRS/瓦片化治理 + Self-Evolution regression gate + Standards P5 remaining &nbsp;|&nbsp; **ADK**: v1.27.2
+**Last updated**: 2026-07-18 &nbsp;|&nbsp; **Current release line**: v25.21-twm-demo &nbsp;|&nbsp; **Package metadata**: v23.0.0（待对齐） &nbsp;|&nbsp; **Next platform gate**: NDP-0 Product Charter + Governance/Contract Freeze -> Baseline CI 绿色 -> Agentic Governance Runtime first slice -> Trusted Data Product first slice -> MMFE/Data for AI -> GWM Kernel & Dual-Engine validation &nbsp;|&nbsp; **Executable ADK dependency**: 2.3.0（旧文档 1.27.x 待清理）
 
 > 参照标杆：SeerAI Geodesic、OpenClaw、Frontier、CoWork、**DeerFlow v2.0（ByteDance 通用 Agent Harness）**、**SIGMOD 2026 Data Agent Levels（L0-L5 自主性分级）**、**AgentArts（华为云企业级智能体平台）**、**Datus.ai（上下文工程 + 反馈飞轮）**、**Hermes Agent（通用 Agent Runtime）**、**Atlan / Alation / Ataccama（Agentic Governance + Active Metadata）**、**DataWorks / Dataphin（数据开发治理一体化 + Agent）**、**袋鼠云（多模态数据中台）**
 >
-> 核心战略：**Agentic Spatial Data Governance Platform（智能体驱动的时空数据治理平台）**——保持智能层 + 交互层领先，把空间数据治理、活跃元数据、声明式治理、数据产品化和多模态治理做成面向行业客户的产品能力；从"用户带数据来"转向"Agent 主动发现、治理、编排和运营数据"，从"一次性回答"转向"越用越准、越用越能沉淀的数据治理飞轮"。
+> 核心战略：建设优先面向**自然资源与城市场景**、同时支持空间与非空间多类型数据的 **Geospatial-Native & Agentic-Native Data Platform（地理空间原生、智能体原生的新一代数据平台）**。即使不部署 GWM，平台也必须凭借严格的数据治理、MMFE 语义融合、可信数据产品和 Human/Agent/AI 一致消费而独立成立。
 >
-> **Data Agent Level**: v25.0 = **L4 — Agentic Governance**（标准全生命周期闭环 + 单向派生 + 双层世界模型 + NL2SQL 列名反查 + 跨家族评估），从场景驱动升级为**标准驱动**
+> 特有内核：**Geospatial World Model（GWM）是 GIS Data Agent 的特有空间世界认知内核和核心差异化能力，而不是基础数据治理成立的前提。**带有 GWM 的 GIS Data Agent 由 LLM 与 GWM 双引擎共同支撑：LLM 负责语义、知识、意图、解释与治理编排，GWM 负责多尺度空间世界状态、地理过程、行动条件推演、不确定性和证据边界；二者共同把治理后的数据产品转化为可理解、可推演、可规划、可审计的空间智能。
+>
+> 创新命题：目标形成一个具有世界级原创性的 `LLM + GWM + Agentic Data Platform` 产品范式。该命题必须通过先行技术检索、可重复 benchmark，以及 LLM-only、GWM-only、规则/传统基线与 LLM+GWM 的同题消融验证，不以内部命名或功能数量直接宣称“全球首创”。
+>
+> **等级口径**：v25.0 的 **L4 — Agentic Governance** 仅保留为领域治理路线标签，不再作为当前整个 Agent Runtime 已达到 L4 的结论。统一 Runner、真实质量回跳、checkpoint/resume、跨入口策略一致性、租户隔离和认知失败基准通过前，整体自主等级保持“待基准评定”。
+
+---
+
+## Strategic Program — Next-Generation Data Platform（产品章程与主路线，2026-07-18）
+
+### 产品本体：无 GWM 也成立，有 GWM 形成独特跃迁
+
+GIS Data Agent 必须同时满足两个独立验收层级：
+
+| 产品层级 | 成立条件 | 不能依赖 |
+|---|---|---|
+| **Core Data Platform** | 完成地理空间原生、智能体原生的数据治理、数据工程、MMFE 语义融合、数据产品化，以及人/Agent/AI 一致消费 | 不依赖 GWM、TWM、UWM、DRL 或真实 Action-Outcome 数据才能完成标准、模型、质量、安全、汇聚、开发和发布 |
+| **GWM-Enhanced GIS Data Agent** | 在同一治理数据产品上增加共享 GWM Kernel、TWM/UWM 领域实例、LLM+GWM 协同推理、状态推演、规划和证据审计 | 不得把 simulator 输出冒充 observed outcome，不得让 GWM 绕过数据权限、质量门禁和发布权威 |
+
+> **基础平台的价值主张**：以 Agentic-native 的方式生产可信、版本化、可消费的数据成果。**GWM 增强产品的价值主张**：在此基础上，让 LLM 不只“读懂数据”，还能够与 GWM 一起理解空间世界状态、推演受约束的未来并形成证据有界的决策支持。
+
+统一数据产品的消费模型：
+
+```text
+Geo / non-Geo Sources
+          |
+          v
+Agentic Governance + Data Engineering + MMFE
+          |
+          v
+Canonical DataProductVersion
+data + semantics + spatial/temporal context + quality + security
+     + lineage + policy + evidence + version + owner + SLA
+          |
+          +----------------------+----------------------+----------------------+
+          |                      |                      |                      |
+          v                      v                      v                      v
+ HumanViewProjection    AgentContextProjection  AIDatasetProjection  GWMObservationProjection
+ map/table/report/API   resource/tool/schema     train/eval/infer      state/action/evidence input
+          |                      |                      |                      |
+          +----------------------+----------------------+----------+-----------+
+                                                                  |
+                                      feedback + trace + error + DataDemand
+                                      + optional Action/Outcome evidence
+                                                                  |
+                                                         next product version
+```
+
+平台必须完成四个主闭环；第五个 GWM 闭环是特有增强而非基础平台前置条件：
+
+1. **AI for Data**：治理事件 -> Agent 发现/理解 -> 标准/策略约束 -> 工具执行 -> 独立评价 -> HITL/自动门禁 -> ChangeSet -> 新版本。
+2. **Data for Human/Agent**：可信数据产品 -> 人直接使用或委托 Agent 使用 -> 查询/分析/反馈 -> 改进语义、视图、质量规则和产品契约。
+3. **Data for AI**：DataProductVersion -> DatasetVersion -> 训练/评测/推理 -> ModelVersion -> 误差/漂移/DataDemand -> 下一数据产品版本。
+4. **MMFE 语义学习闭环**：融合候选 -> 置信度/冲突 -> 人工纠正和下游任务效果 -> 改进标准、模型、领域语义包和融合策略。
+5. **GWM 空间世界闭环（增强）**：GWMObservationProjection -> State/Transition -> TWM/UWM 推演/规划 -> 证据边界 -> 新观测/误差/可选 Action-Outcome -> 校准 GWM 与数据产品。
+
+### 严格的数据治理定义
+
+数据治理不等于功能清单。平台统一采用：
+
+```text
+Data Governance = Governance Domain × Data Lifecycle Stage × Control Contract
+```
+
+| 维度 | 必须覆盖的内容 |
+|---|---|
+| **Governance Domain** | 数据标准、数据模型、元数据/目录、主数据/参考数据、语义/本体、数据质量、数据安全/隐私/分类分级、血缘/影响、生命周期/版本、数据资产/产品、合规/审计、使用反馈/价值 |
+| **Data Lifecycle Stage** | 发现登记 -> 采集汇聚 -> Profiling -> 标准映射/建模 -> 语义融合 -> 清洗转换/开发 -> 质量安全验证 -> 审批发布 -> 产品/服务 -> 使用监控 -> 变更归档/销毁 |
+| **Control Contract** | Governed Object、Authority、Owner/Steward、Trigger、Agent Action、Capability/Tool、Policy、Evaluator、HITL、ChangeSet、Version、Evidence、KPI |
+
+每一个治理过程必须可回答：治理什么对象、依据哪个权威版本、谁负责、谁可以做什么、Agent 调用什么工具、由谁验证、何时需要审批、产生什么版本、保留什么证据、用什么 KPI 判断改进。无法回答者不得称为生产级 Agentic Governance。
+
+Agentic-native 的最低执行纪律：
+
+```text
+GovernanceEvent
+ -> typed GovernanceTask / TaskGraph
+ -> standard/model/policy-aware planning
+ -> deterministic and AI-assisted capabilities
+ -> independent evaluator
+ -> policy-based auto gate or HITL
+ -> auditable ChangeSet
+ -> versioned DataProduct publication
+ -> feedback and governance memory
+```
+
+LLM 可以理解、规划、解释和生成候选；标准、模型、权限、质量门禁和发布权威必须由版本化 Authority、Policy、Evaluator 与审批流程控制。
+
+### 数据范围：Spatial-native，不是 Spatial-only
+
+| 数据家族 | 首要类型 |
+|---|---|
+| **地理空间数据** | 矢量/PostGIS、栅格/COG、遥感影像、点云/LiDAR、3D/BIM/CityGML、CAD/测绘成果、路网/空间网络、轨迹/时空事件、时空立方体、传感器/实时流、WMS/WFS/STAC/OGC API |
+| **非地理空间数据** | 关系表/业务库、指标/统计/时间序列、文档/PDF/Office/法规标准、图片/音频/视频、日志/消息/事件、API/SaaS 对象、图/RDF、模型特征/标签/轨迹/评测集 |
+
+非空间数据可以独立治理，也可以绑定到空间对象、时间窗口、业务对象和证据链；不得为了“GIS 化”强行生成虚假 geometry。
+
+### MMFE：数据产品生产主线中的多模态智能语义融合引擎
+
+MMFE 不是旁路工具、普通格式转换器或只为 TWM 准备输入的前处理。它消费标准、数据模型、领域语义包、质量和安全策略，执行现有五阶段生命周期：
+
+```text
+Profiling -> Assessment -> Alignment -> Execution -> Validation
+```
+
+并将空间与非空间多模态数据加工为版本化 `SemanticFusionProductVersion`：
+
+```text
+canonical objects + role/field/value bindings
++ entity resolution + spatial/temporal alignment + semantic relations
++ derived features + conflicts/resolutions + unresolved ambiguities
++ confidence + quality/security sidecar + provenance + applicable authorities
+```
+
+MMFE 必须同时完成 Schema、对象、空间、时间、特征和证据六类融合。执行策略采用“确定性优先、AI 处理歧义、人工控制高风险”：规则/标准精确匹配 -> embedding/retrieval 候选 -> 空间/统计证据评分 -> LLM/VLM 歧义裁决 -> HITL；支持 content hash、增量融合、缓存、分区/流式执行和不必要时的语义视图/联邦引用，避免无意义物理合并。
+
+MMFE 的产品门不能只看流程通过，至少评测字段映射 P/R、实体解析、空间/时间对齐、冲突识别、置信度校准、人工修正率、吞吐/成本，以及对下游质量、查询和 AI/GWM 任务的增益。
+
+### 平台核心、GeoCore、领域包与 GWM 的边界
+
+不建设一个无边界巨型本体，也不让 GWM 侵入基础治理依赖：
+
+```text
+PlatformCore
+├── governance / engineering / fusion / product / consumption contracts
+├── non-spatial and generic multimodal data support
+└── GeoCore
+    ├── spatial identity / geometry / CRS / scale / spatial-temporal relations
+    ├── NaturalResourceDomainPack
+    └── UrbanDomainPack
+
+GWM Kernel（特有、可插拔）
+├── versioned geospatial state graph
+├── canonical action / transition / uncertainty / evidence claim ledger
+├── TWM Adapter -> Territory World Model
+└── UWM Adapter -> Urban World Model
+```
+
+`PlatformCore` 保证无 GWM 的 Data Platform 独立成立；`GeoCore` 让空间成为一等公民；Domain Pack 保留行业标准、对象、规则、指标和生命周期；GWM Kernel 消费治理后投影并提供空间世界认知，不成为数据标准、质量、安全、MMFE 和数据产品发布的强依赖。
+
+### 四个契约族
+
+| 契约族 | 代表契约 | 平台职责 | 当前缺口 |
+|---|---|---|---|
+| **Governance Authority Contracts** | `StandardVersion`、`DataModelVersion`、`SemanticPackVersion`、`PolicyVersion`、`QualityRuleVersion`、`SecurityPolicyVersion` | 定义权威语义、规则、责任、适用范围和版本 | 现有 Standards/Policy/语义能力尚未统一成 Authority Resolver |
+| **Data Production & Fusion Contracts** | `DataAssetVersion`、`PipelineRun`、`SemanticFusionProductVersion`、`QualityAssessment`、`LineageEvent`、`DataIssue`、`GovernanceTask`、`ChangeSet` | 承载汇聚、开发、治理、MMFE、评价、修复和可回放生产过程 | 生命周期对象分散，Agent 过程尚未以同一治理状态机闭环 |
+| **Data Product & Consumption Contracts** | `DataProductVersion`、`HumanViewProjection`、`AgentContextProjection`、`AIDatasetProjection`、`DatasetVersion` | 将同一权威成果安全、一致地交给人、Agent 与各类 AI 使用 | 缺平台级聚合根、投影一致性、订阅/消费审计和 SLA 门禁 |
+| **AI/GWM Feedback Contracts** | `ModelVersion`、`DataDemand`；GeoCore/GWM 扩展 `SpatialObject`、`StateSnapshot`、`CanonicalAction`、`CanonicalTransition`、`ActionEvent`、`OutcomeObservation`、`EvidenceClaimLedger` | 管理 AI 谱系、误差反馈及 GWM 状态/转移/证据；不把 GWM 特有对象强加给所有数据产品 | GWM 共享 Kernel 尚未抽取；真实 Action-Outcome 不足只限制强因果/决策 claim，不阻塞基础平台 |
+
+所有新表、API、Agent、工具和前端视图必须映射到契约族或明确的支持对象。若无法说明权威来源、Owner、生命周期阶段、Agent/人工权限、Evaluator、输出版本、消费者和业务 KPI，不进入主路线。
+
+### LLM + GWM 双智能引擎
+
+| 引擎 | 主要职责 | 不得承担 |
+|---|---|---|
+| **LLM / Cognitive Runtime** | 自然语言与多模态意图理解、标准/模型/规则检索、治理任务分解、工具编排、解释、知识与 Agent 协作 | 不作为数据权威、权限引擎、质量真值或不可审计的生产控制器 |
+| **GWM Runtime Kernel** | 多尺度地理状态图、空间关系和作用场、状态转移来源、情景/行动条件推演、不确定性、证据/claim 边界、TWM/UWM 适配 | 不替代基础治理、MMFE、数据产品权威，也不在弱证据下输出真实政策效果 |
+| **双引擎协同** | LLM 将问题转为受标准/策略约束的世界状态查询与方案；GWM 返回证据有界的状态、未来、风险与不可判断项；LLM 形成可追溯解释和 DataDemand | 不允许 LLM 用语言补齐 GWM 缺失证据，也不允许 GWM 结果绕过 Policy/HITL 写回权威数据 |
+
+双引擎创新必须做四路同题比较：传统/规则基线、LLM-only、GWM-only、LLM+GWM。至少分别评估治理正确性、空间状态/转移质量、规划约束违规、证据引用、拒答/降级正确率、人工修正、成本和时延；只有组合在关键任务上产生稳定增益，才能支持产品原创性主张。
+
+### 当前基线判断
+
+| 验收维度 | 当前状态 | 结论 |
+|---|---|---|
+| 严格数据治理 | Standards Platform、数据模型派生、质检、安全、目录、血缘、反馈等能力丰富 | **领域能力较强，尚未形成 Governance Domain × Lifecycle × Control Contract 的统一过程模型** |
+| 数据汇聚/开发/服务 | PostGIS、ArcPy、连接器、工作流、分布式任务、地图/API/导出能力已存在 | **技术面较宽，尚未围绕 DataProductVersion 收束** |
+| 空间与非空间多类型数据 | 空间数据能力强，表格/文档/图像/流等局部具备 | **Spatial-native 基础强，统一多类型数据生命周期和安全/质量契约不足** |
+| MMFE | 已有五阶段流水线、时空对齐、语义增强、冲突消解和 TWM/UWM 消费经验 | **重要基础；融合效果 benchmark、非空间扩展、增量产品化和 Authority 绑定仍不足** |
+| Agentic-native 治理 | 多 Agent、Workflow、Policy/标准、工具和 HITL/反馈 first slice 已存在 | **组件具备，治理状态机、独立评价和跨入口 Runtime 未统一** |
+| 人直接消费 | 地图、表格、目录、标准、治理、报告和决策工作台已存在 | **已具备，待按数据产品收束** |
+| 人通过 Agent 消费 | Chat、CLI/TUI、MCP、A2A、NL2SQL 和专业工具已存在 | **入口具备，跨入口 Runtime/权限未统一** |
+| AI 消费 | eval set、状态快照、trajectory、replay、holdout 和模型实验存在 | **局部具备，缺 DatasetVersion/ModelVersion 平台** |
+| 统一 Data Product | 只有 data asset、标准市场和局部 UWM 产品 | **未完成** |
+| GWM/TWM/UWM | TWM/UWM 领域实现与局部 geospatial kernel/DAM-GK 证据丰富 | **GWM 范式和领域实例存在；平台级共享 `data_agent/geospatial_world_model/` Runtime Kernel 尚未抽取** |
+| LLM + GWM | LLM Agent 与 TWM/UWM 能力同时存在 | **尚无统一双引擎协议和四路消融证据** |
+| 真实 Action-Outcome | UWM/TWM 能表达行动和模拟结果，且保留 claim boundary | **不足；限制真实行动效果与决策优势 claim，但不阻塞 Data Platform、状态模型和条件模拟** |
+| Cognitive Runtime | 正式设计已冻结 | **尚未实施；是 Agentic Governance 控制面的关键依赖** |
+
+因此当前项目已具备下一代平台和 GWM 创新产品的强技术基础，但尚未完成统一治理过程、可信数据产品、MMFE 产品化、共享 GWM Kernel 或 LLM+GWM 双引擎验证，不得以局部模块替代整体完成声明。
+
+### 交付路线与退出门
+
+| 顺序 | 阶段 | 状态 | 核心交付 | 强制退出门 |
+|---:|---|---|---|---|
+| 0 | **NDP-0 Product Charter, Governance Taxonomy & Contract Freeze** | **当前优先** | 冻结“无 GWM 也成立、有 GWM 高差异化”的产品章程；治理三维模型、数据类型矩阵、PlatformCore/GeoCore/Domain Pack/GWM 边界、四契约族、Authority/ID/版本策略；盘点现有表/API/schema | 核心资产完成“保留/适配/合并/搁置”映射；每个治理域和生命周期阶段有 Owner/Authority/Action/Evaluator/Version；双试点同时定义 Core Platform 与 GWM-enhanced 验收 |
+| 1 | **NDP-1 Agentic Governance Runtime & Trusted Data Product** | 规划中 | 先按既定计划完成 RuntimeIdentity/RunnerFactory/RunWorkspace/策略一致性 first slice；落地治理事件/任务/ChangeSet/评价/审批状态机；串联标准、模型、元数据、质量、安全、血缘、生命周期和 DataProductVersion | 不调用 GWM 也能完成一次“发现/汇聚 -> 治理 -> 评价 -> 审批 -> 发布 -> Human/Agent/AI 消费”闭环；语义、ACL、质量、证据和 hash 在投影间一致；越权、质量不达标和无审批变更无法发布 |
+| 2 | **NDP-2 MMFE Semantic Fusion & Data for AI Factory** | 规划中 | 将 MMFE 前移为主线：空间/非空间多模态 semantic fusion、SemanticFusionProductVersion、增量/缓存/流式执行、融合 benchmark；DatasetVersion、EvaluationSet、ModelVersion、DataDemand 和 AI/GWM 投影 | 至少一个跨空间/非空间多类型产品通过融合效果、人工修正、吞吐/成本和下游增益门；`DataProductVersion -> DatasetVersion -> ModelVersion` 可重放；质量/权限不合格数据不能进入 AI/GWM |
+| 3 | **NDP-3 GWM Kernel & LLM+GWM Dual-Engine Intelligence** | 规划中；特有增强 | 抽取共享 GWM Runtime Kernel：状态图、CanonicalAction/Transition、uncertainty、EvidenceClaimLedger、TWM/UWM adapters；定义 LLM↔GWM 双引擎协议、DataDemand 和地图审计；保留领域 simulator/planner | Core Platform 在关闭 GWM 时继续通过全部基础验收；同一产品版本可进入 TWM/UWM adapter；transition origin/claim 自动推导；传统、LLM-only、GWM-only、LLM+GWM 四路同题评测证明组合增益，否则不得升级原创性主张 |
+| 4 | **NDP-4 Operational Learning, Federation & Ecosystem** | 条件规划 | Prospective Action/Outcome capture、Operational Object/Action、审批/补偿/回滚、observed/proxy/synthetic 分级；湖仓/联邦、STAC/OGC API/MCP/A2A、跨组织数据空间、隐私计算、SDK 和规模运维 | 无真实数据时保持 state dynamics/conditional simulation claim；有真实或准真实证据后再升级局部行动效果；跨组织权限、来源、版本、退出和审计通过联合演练；无第二权威写源 |
+
+实施顺序约束：NDP-0 完成后，第一份代码实施计划仍只覆盖 **Agentic Governance/Cognitive Runtime Kernel first slice**；Data Product first slice、MMFE 产品化和 GWM Kernel 抽取不得混成一次大改。`Runtime` 一词必须带限定：Cognitive Runtime 控制 Agent 行为，Data Platform Runtime 控制治理/生产过程，GWM Runtime 控制空间世界状态/转移/证据；三者共享身份、权限、版本和审计，但职责不同。
+
+### 双试点
+
+| 试点 | Core Platform（不依赖 GWM） | MMFE / Data for AI | GWM 增强 | 独立退出门 |
+|---|---|---|---|---|
+| 自然资源：地类图斑/规划管控治理产品 | 多源汇交、标准/模型映射、质量安全、血缘版本、地图/表格/API、Agent 治理与成果发布 | 图斑/项目/规则/遥感/文档语义融合；输出 Human/Agent/AI/GWM 投影 | TWM 消费治理状态，提供地类状态预测、规则约束、条件情景、风险和证据审计 | 关闭 TWM 后数据产品全链路仍通过；启用后在同题 benchmark 上相对规则与 LLM-only 有可重复增益 |
+| 城市：设施供给与宜居性状态产品 | 设施/人口/道路/环境数据汇聚治理、质量安全、地图/报告/API、Agent 查询与数据产品发布 | 建筑/路网/POI/人口/环境/文本多模态对齐；输出 DatasetVersion 与城市观测投影 | UWM 消费城市状态图，提供热/污染/服务/公平状态、空间外溢和证据有界规划 | 关闭 UWM 后仍是可交付城市数据平台产品；启用后完成 LLM-only/GWM-only/组合消融和 claim boundary 验证 |
+
+### 架构决策与非目标
+
+1. **一份权威产品，多种可重建投影**：Human/Agent/AI 视图不得各自维护语义、权限或版本真值。
+2. **GWM 特有但可插拔**：它是 GIS Data Agent 的核心差异化内核和重点产品能力，但 Core Data Platform 不得以 GWM 可用性作为标准、模型、质量、安全、MMFE、发布和消费的运行前提。
+3. **LLM + GWM，不是 LLM 或 GWM 单引擎垄断**：LLM 负责语义/编排，GWM 负责空间世界状态/转移/证据，Policy/Evaluator/HITL 保持生产控制权。
+4. **MMFE 是主线能力**：多模态语义融合在 NDP-2 完成产品化，不推迟到生态阶段，也不只服务 TWM/UWM。
+5. **PostgreSQL/PostGIS 与 Standards Platform 保持权威边界**：搜索、向量、图、RDF、STAC 和缓存均为投影或交换接口。
+6. **生产探索分离**：探索任务可采用 Agentic Mode；生产任务必须固化为版本化 Workflow、Policy、Capability 和 Evaluator。
+7. **模块化单体优先**：没有独立扩缩容、故障隔离和团队边界证据前，不按名词拆微服务；GWM Kernel 首期以 contracts/ledger/adapters 抽取，不重写 TWM/UWM。
+8. **空间原生而非空间排他**：空间语义是一等公民，同时完整治理非空间数据；不为非空间事实强造 geometry。
+9. **不把 synthetic 当 observed**：仿真和 replay 可用于工程验证与候选评测，但不能替代真实 Action-Outcome 证据；缺真实数据限制 claim，不阻塞基础平台和条件模拟。
+10. **不建设无边界泛化平台**：优先服务自然资源和城市场景，不与通用湖仓、BI、GIS 编辑器或通用 Agent Harness 正面复制。
+11. **不继续以新增 Tab 代表产品进度**：前端逐步收敛为 Data Workspace、Data Product Studio、Operations & Decision Center，以及证据有界的 GWM World/Scenario Workspace。
+
+---
+
+## Strategic Program — GIS Data Agent Cognitive Runtime（设计已冻结，实施暂缓，2026-07-15）
+
+> **目标**：为 GIS Data Agent 建设一个模型无关、证据驱动、数据标准感知、Capability 驱动的“智能体大脑”。该大脑以强类型工作状态和确定性策略控制知识检索、规划、专业工具执行、独立评价、HITL、记忆和受控自我进化；LLM 是可替换的推理提供者，不是运行控制本身。
+>
+> **当前决策**：本轮只完成正式设计和 roadmap 刷新，不对现有应用代码进行大规模改造。必须等 UWM 城市适宜性需求开发与 ArcPy MCP 集成稳定完成并合并、基线测试恢复稳定后，才创建独立 worktree 和第一份 Runtime Kernel 实施计划。
+
+正式设计与证据：
+
+- [Cognitive Runtime 正式设计 Markdown](designs/gis_data_agent_cognitive_runtime_2026-07-15/GIS_Data_Agent_Cognitive_Runtime_详细设计说明书.md)
+- [Cognitive Runtime 正式设计 Word](designs/gis_data_agent_cognitive_runtime_2026-07-15/GIS_Data_Agent_Cognitive_Runtime_详细设计说明书.docx)
+- [用户确认的总体架构规格](superpowers/specs/2026-07-15-gis-data-agent-cognitive-runtime-design.md)
+- [当前实现审计](designs/gis_data_agent_cognitive_runtime_2026-07-15/design-doc-audit.md)
+- [证据包](designs/gis_data_agent_cognitive_runtime_2026-07-15/evidence-pack.md) / [追踪矩阵](designs/gis_data_agent_cognitive_runtime_2026-07-15/traceability-matrix.md) / [可编辑架构图](designs/gis_data_agent_cognitive_runtime_2026-07-15/diagrams/README.md)
+- [重型本体生产架构分析与技术选型](reports/gis-data-agent-heavy-ontology-production-architecture-2026-07-15.md)
+- [GIS Data Agent 与 DeerFlow 客观对比分析](reports/gis-data-agent-vs-deerflow-objective-comparison-2026-07-15.md)
+
+### DeerFlow 对比结论与执行决策（2026-07-15）
+
+> 对比采用两个独立目标函数，禁止用一个混合总分掩盖产品定位差异：DeerFlow 是成熟的通用 Super Agent Harness；GIS Data Agent 是领域能力深但运行时尚未统一收束的专业 GIS 平台。
+
+| 评估视角 | DeerFlow | GIS Data Agent | Roadmap 含义 |
+|---|---:|---:|---|
+| 通用 Agent Harness | 9.1 / 10 | 5.5 / 10 | 优先补 Runtime Kernel、Sandbox、Run/Event/Checkpoint 和跨入口一致性 |
+| GIS 业务交付 | 3.5 / 10 | 8.7 / 10 | 保留 Standards、PostGIS、ArcPy、NL2GeoSQL、DRL、TWM/UWM 和专业地图，不做通用化重写 |
+| 当前工程可信度 | 9.2 / 10 | 5.2 / 10 | 新增功能不得越过绿色基线、契约测试和真实发布 gate |
+| 目标架构严谨性 | 7.8 / 10 | 9.0 / 10 | Cognitive Runtime 继续作为目标架构，但设计项不得记为已交付能力 |
+
+评分是代码/测试/仓库证据支持的诊断性序数值，不是统计显著性结果。当前没有同模型、同硬件、同任务集的端到端对照实验。
+
+当前可重复基线：
+
+- 本地工作区位于 `feat/v12-extensible-platform@1421e00`，相对已配置同名远端领先 102 commits；评估时有 38 个已修改和 131 个未跟踪条目，不能作为发布快照。
+- 抽取的 360 个核心后端测试中 357 通过、3 个失败；失败归并为 2 个根因：CostGuard 配置优先级漂移、API route 数量契约漂移。
+- `npm run build` 通过；主 JS 约 4.36 MB、gzip 后约 1.28 MB，需代码分割；前端尚无独立 unit/lint/typecheck script。
+- task decomposition 路径导入不存在的 `data_agent.pipeline_runner.run_pipeline`，已直接复现 `ImportError`。
+- GitHub `CI` workflow 最近 100 条历史记录均为 failure；当前功能分支可见的最近 20 条 staging workflow 记录均为 failure。该历史信号不代替目标 commit 的 CI，但证明现阶段没有可信绿色发布基线。
+- README 声明 MIT，但仓库未发现 `LICENSE`，GitHub API 未识别许可证。
+
+执行决策：
+
+1. **不迁移成 DeerFlow，不全面切换 LangGraph**：Google ADK 是否替换只能由同任务 benchmark 和明确的框架阻塞证据决定。
+2. **不继续横向扩张通用 Agent 功能**：先完成 Phase 0 和 Runtime Truthfulness P0。
+3. **吸收 DeerFlow 工程机制**：统一 Harness/App 边界、RunnerFactory、Run/Thread/Event/Artifact、Sub-Agent budgets、provider Sandbox、request-scoped secrets、read-before-write、contract replay、blocking-IO 和真实 smoke/rollback。
+4. **保留 GIS 执行面**：现有领域模块作为 Capability 后端接入统一 Runtime，不复制、不降级、不暴露给一个巨型 FrontDoor Agent。
+5. **自我进化保持 review-only**：CI、评测、隔离、版本和 rollback gate 完成前不得扩大自动 promotion。
+
+Runtime Kernel 实施计划的新增进入门：
+
+- 目标基线 commit 的后端、前端和契约 CI 全绿；
+- 版本、ADK、API route、schema、migration 和 License 口径一致；
+- UWM/ArcPy 并行改动已合并或从 Runtime worktree 隔离；
+- 至少 50 个正向、负向、缺数据、越权和工具故障 GIS 任务冻结；
+- 双用户/双租户的工具、文件、KB、memory 和 cache 隔离测试通过；
+- Docker health/smoke 与 rollback rehearsal 执行真实命令，不再只输出说明文本。
+
+### 总体交付顺序与状态
+
+| 顺序 | 子项目 | 状态 | 核心范围 | 启动条件 | 退出门 |
+|---:|---|---|---|---|---|
+| 0 | **Baseline & Contract Freeze** | 文档完成；工程基线待建立 | 50-100 个真实/脱敏治理任务；正向、负向、缺数据、越权和工具故障集；冻结 prompt/model/tool/standard 版本；不可变安全集 | UWM 与 ArcPy MCP 并行工作稳定合并 | 能分别识别检索、理解、规划、工具、产物和结果错误；形成当前成功率、人工修正、成本与延迟基线 |
+| 1 | **Runtime Kernel** | 规划中；暂缓实施 | `RuntimeIdentity`、mandatory `RunnerFactory`、`RunWorkspace`、事件流、Attention Router v1、`TaskFrame`、`TaskGraph`、`QualityVerdict`、checkpoint/resume、真实质量回跳 | Phase 0 基线完成；独立 worktree；只为本子项目创建实施计划 | 所有入口执行同一 RuntimePolicy；revise/replan 真实重跑；可恢复 checkpoint；跨租户上下文、记忆和工具泄露为零 |
+| 2 | **Standards Knowledge Brain** | 规划中；依赖 Runtime Kernel | `StandardKnowledgePack`、Domain/Operational Ontology Authority Store/Compiler/Package/Resolver、Object/Property/Link/Action/Function/Interface contracts、动态安全语义、`EvidenceBundle`、Hybrid Retrieval | Runtime Kernel 身份、Workspace、Policy 和隔离契约验收通过 | 本体包/版本/投影一致性 100%；Object/Action schema 可验证；未授权对象/属性/关系/Action 返回为 0；正确标准/条款召回和引用指标达标 |
+| 3 | **Governance Pilot** | 规划中；依赖知识大脑 | ActionType↔Capability↔Tool/Evaluator 绑定、窄工具 Specialist、typed Python/TypeScript/REST/MCP/A2A contracts、ChangeSet/ActionResult、治理对象行动闭环、lineage、HITL、写回/回滚 | Runtime、Evidence、Domain/Operational Ontology 契约稳定；确定首个真实或脱敏治理数据集 | 至少一个治理场景通过对象发现、Action 规划、动态授权、审批、执行、评价、版本化写回和回滚；所有实际变更均能与 ChangeSet 对账 |
+| 4 | **Memory and Experience** | 规划中；依赖稳定运行事件 | Memory Write Gate、episodic/procedural memory、经验检索评测、压缩、保留、纠错和删除 | 治理试点产生稳定的 run event、evaluator verdict 和人工反馈 | 经验命中能够可测地改进计划；错误经验可撤回；过期、越权和跨租户记忆不可见 |
+| 5 | **Controlled Evolution** | 规划中；保持 review-only | `EvolutionEvent`、Candidate Registry、failure attribution、regression/replay/holdout、shadow、canary、Evolution Governor、promotion/rollback | 前四个子项目的 trace、评测、版本和回滚语义稳定 | 候选可自动生成和离线验证；安全/权限回归为零；先演练 rollback；仅 L0-L2 低风险对象允许受控自动晋级 |
+
+### 实施纪律
+
+1. **模块化单体优先**：第一阶段继续使用 PostgreSQL、pgvector、现有任务队列、对象存储和 OTel；本体以 PostgreSQL 权威写模型和不可变 JSON Package 起步。Stage 2 再增加 SKOS/SHACL/RDF 构建验证，只有容量、SLO 或互操作基准证明必要时，Stage 3 才引入 Fuseki/TDB2、OpenSearch、专用向量库或属性图读投影。
+2. **顺序子项目**：不得把五个子项目合并为一次大改；每个子项目必须独立产生可部署、可测试价值，并通过退出门后再启动下一项。
+3. **第一份实施计划只覆盖 Runtime Kernel**：不得提前把 Standards Knowledge Brain、Memory 或 Controlled Evolution 混入同一代码改造。
+4. **现有领域能力不重写**：GIS、PostGIS、ArcPy、Standards、NL2SQL、TWM、DRL 和报表能力作为 Execution Plane 接入统一 Runtime，不复制新的平行“大脑”。
+5. **RAG 不是控制器**：RAG 只承担证据获取；标准原文、结构化定义、可执行规则和实时工具事实共同进入 `EvidenceBundle`，Evaluator 决定结论是否得到支持。
+6. **高风险变更保留 HITL**：写库、覆盖、删除、发布标准、修改权限、晋级候选等操作必须服从 side-effect policy、审批、审计和 rollback。
+7. **自我进化以证据晋级**：候选不能评价自己；未通过不可变安全集、回归集、未见 holdout、shadow/canary 和回滚门的改动不得进入生产。
+
+### Palantir 标杆吸收项（规划中，实施暂缓）
+
+> 对比报告：[GIS Data Agent 智能体大脑与 Palantir 技术体系客观对比分析](reports/gis-data-agent-brain-vs-palantir-objective-comparison-2026-07-15.md)。吸收重点是 operational ontology、动态安全、对象行动闭环、typed SDK 和变更生命周期；不建设通用 Foundry，不削弱 GIS/TWM 垂直能力。
+
+| 工作包 | 归属子项目 | 状态 | 范围 | 验收门 |
+|---|---|---|---|---|
+| **Operational Object Model** | Standards Knowledge Brain | 规划中；暂缓 | ObjectType、PropertyType、LinkType、ObjectInstanceRef、对象状态机和稳定版本引用 | 首批治理对象 schema 通过版本、来源、ACL、link 完整性和兼容性评测；不复制业务事实 |
+| **Action/Function/Interface Model** | Standards Knowledge Brain | 规划中；暂缓 | ActionType、FunctionType、InterfaceType、参数、前置条件、证据、权限、副作用、幂等、补偿和 Evaluator | ActionType 不能绕过 RuntimePolicy；breaking change 必须 major version + impact analysis |
+| **Object-Action-Capability Binding** | Governance Pilot | 规划中；依赖前两项 | ActionType→CapabilityDefinition→Specialist Tool Manifest→Evaluator 固定版本绑定 | Planner 只选择合法 Action；工具替换不能扩大 Action 权限、参数和副作用 |
+| **Dynamic Object Security** | Runtime Kernel 契约 + Knowledge/Governance 执行 | 规划中；分阶段 | 对象、属性、关系遍历、Action、ActionResult、产物和 AI context 的统一 Policy Decision | 跨租户泄露为 0；deny/requires-approval 不可被 Agent 或 Tool 绕过；策略版本进入 trace |
+| **Typed Consumption Layer** | Governance Pilot | 规划中；暂缓 | 统一 Python、TypeScript、OpenAPI、MCP/A2A、UI form/approval 和 Evaluator schema | 同一 Action 的参数、结果和错误语义跨入口一致；SDK 兼容性测试通过 |
+| **Ontology/Action Release Lifecycle** | Controlled Evolution | 规划中；保持 review-only | dev namespace、diff、impact、regression、review、shadow、canary、activate、rollback | 未通过安全/权限/兼容性门不得晋级；权威对象/Action/规则变更保留 HITL |
+
+明确非目标：
+
+- 不以“成为通用 Palantir/Foundry”作为产品目标；
+- 不把全部 GIS 要素复制进本体、RDF Store 或属性图；
+- 不允许 RDF/图/向量/搜索投影成为第二权威写源；
+- 不因增加 Operational Ontology 而重写 PostGIS、ArcPy、Standards、NL2SQL 或 TWM；
+- 不在 Runtime Kernel 完成前启动 Action 写回和 SDK 大规模改造。
+
+### Heavy Ontology Platform（条件路线，未启动）
+
+> 定位：企业级 Semantic + Operational Ontology Platform 的远期条件路线。它不替换当前 PostgreSQL/PostGIS、Standards Platform、轻量 OntologyPackage 或 Cognitive Runtime，也不因文档设计完成而自动启动。当前状态统一为“规划中；未启动”。
+
+| 阶段 | 状态 | 依赖 | 核心范围 | 进入门 | 退出门 |
+|---|---|---|---|---|---|
+| **H0 — Business/Architecture Entry Gate** | 规划中；未启动 | Runtime/Knowledge Brain 设计基线；轻量 Stage 1/2 的代表性任务与测量能力 | 30-50 个 competency questions；跨组织/跨版本/空间适用性/动态安全场景；容量、SLO 候选、三年 TCO、团队和供应商评估 | UWM 与 ArcPy MCP 并行工作稳定；owner 指定业务 sponsor；可获得真实/脱敏工作负载 | 证明至少两项稳定重型需求且轻量路线无法合理满足；owner 批准业务价值、SLO、TCO、组织和继续/停止 ADR |
+| **H1 — Ontology Governance & Model Registry** | 规划中；未启动 | H0 go 决策；领域/标准 owner 和 Ontology Engineer 到位 | Ontology Studio/Governance、namespace、稳定 URI、Canonical Model Registry、provenance、ACL、review、diff、impact、签名包和 rollback | H0 退出门通过；不与 Runtime Kernel 首项实施混合 | 模型发布/回滚/历史重放可审计；LLM 候选不能绕过 review；不存在第二业务真值源 |
+| **H2 — RDF/SHACL Build & Validation** | 规划中；未启动 | H1 Registry 和版本契约稳定 | SKOS、SHACL、PROV-O、必要 GeoSPARQL/OWL-Time、JSON-LD/Turtle、RDFLib/pySHACL CI、受限 OWL 2 RL 实验 | 有批准的 competency queries、Shape owner 和外部互操作样本 | 每个发布包通过 Shape/来源/兼容性/推理回归；JSON Package 与 RDF 投影/hash 一致；推理有 trace |
+| **H3 — Semantic Query Gateway & Policy Federation** | 规划中；未启动；非必经 | H2；RuntimeIdentity/Policy；代表性 SLO 与安全基准 | SQL/SPARQL/Graph/Search/Spatial 联邦、EvidenceBundle、query budget、权限下推、隔离缓存；条件部署 Fuseki/RDF4J/企业语义平台 | 轻量 PostgreSQL/Package 在批准的 SLO 或互操作需求上失败；PoC/ADR 通过 | 未授权返回 0；p95/p99 达到 owner SLO；故障可降级到固定 Package；查询/来源/策略可审计 |
+| **H4 — Operational Object & Action Service** | 规划中；未启动；非必经 | H3 或等价安全查询能力；Governance Pilot contracts | Object/Property/Link/Action/Function/Interface 服务、动态策略、typed SDK、ChangeSet/ActionResult、写回和审批 | 至少两个独立应用/工作流需要统一对象行动契约，或轻量 Governance Pilot 证明平台化价值 | 一个标准治理场景完成对象发现、Action 规划、审批、执行、评价、写回和回滚；跨入口 schema 一致 |
+| **H5 — Multi-Store Projection & Reconciliation** | 规划中；未启动；非必经 | H1-H4 中至少两个在线投影形成稳定生产负载 | Kafka/Redpanda、Schema Registry、Outbox、DLQ、幂等消费者、Projection Reconciler、蓝绿重建和一致性告警 | 单 Outbox/Worker 无法满足已批准的吞吐、重放或隔离要求 | authority/projection hash 和 checkpoint 可对账；故障注入后可重放、重建和安全降级；无双写 |
+| **H6 — Production Resilience, SDK & Release Governance** | 规划中；未启动；非必经 | H3-H5 的生产候选服务和 owner 批准 NFR | HA、backup/restore、DR、OTel/SLO、容量、包签名、mTLS、SDK 兼容性、ontology/action CI/CD 和 runbook | 生产上线范围、RPO/RTO、SLO、值班和预算已确认 | restore、projection rebuild、ontology/policy rollback 演练通过；SLO/告警/runbook/责任边界可执行 |
+| **H7 — Cross-Organization Federation** | 规划中；未启动；远期 | H6；明确的跨组织业务协议和法律/安全边界 | 签名 namespace、外部映射注册表、冲突协商、联邦 SPARQL、MCP/A2A 交换和多组织发布治理 | 至少两个组织有稳定共享需求、共同语义 owner 和责任协议 | 外部包来源/签名可验证；冲突不静默合并；权限、版本、审计和退出机制经过联合演练 |
+
+路线纪律：
+
+1. **H3+ 不是必经阶段**：如果轻量 Stage 1/2 的 PostgreSQL、OntologyPackage、RDF/SHACL 离线验证和现有 Policy Adapter 满足批准的 SLO、互操作与安全需求，路线停留在轻量架构。
+2. **不 RDF 化大规模空间事实**：地块、栅格、点云、轨迹和推演状态继续由 PostGIS、GeoParquet/COG、对象存储、ArcPy 和 TWM 管理；RDF 保存语义、适用性和稳定引用。
+3. **不建立多真值源**：业务事实、标准发布和本体模型分别有明确权威；RDF、Operational Graph、Search 和 Vector 只做版本化可重建投影。
+4. **不先选产品再找问题**：Stardog、GraphDB、TopBraid、Neptune、Anzo、Fuseki、RDF4J、OPA、Cedar、Kafka/Redpanda 等仅为 PoC 候选，必须经过相同数据、查询、安全、故障和 TCO 基准。
+5. **独立实施计划**：H1-H7 每阶段单独形成 ADR、实施计划、验收报告和回滚方案，不与 UWM、ArcPy MCP 或 Runtime Kernel 的代码改造混在同一工作包。
+
+### 启动前待确认项
+
+- 生产并发、吞吐和 p95/p99 延迟 SLO；
+- RPO/RTO、异地容灾与 Trace/Memory/Evidence/Artifact 保留期；
+- HITL 审批 SLA、责任人和高风险副作用矩阵；
+- Runtime 目标物理 DDL、分区、索引与迁移策略；
+- 首个真实或脱敏的数据标准驱动治理试点数据集。
+
+> 下方既有“Agent Runtime Reliability & Cognitive Control”P0/P1/P2 清单继续保留，作为现状缺口和 Runtime Kernel/评测工程的详细输入；若与本节交付顺序冲突，以本节五子项目及其验收门为准。
 
 ---
 
@@ -412,6 +756,8 @@ All Entrypoints
 
 ## v25.x — Standards Platform 后续阶段 (规划)
 
+> **NDP 归属**：已完成能力作为 NDP-0 Governance Authority/Domain Pack 与 NDP-1 Trusted Data Product 的标准权威基础保留；剩余工作只有在直接支撑四契约族、双试点或阶段退出门时才进入实施，不再独立扩张版本线。
+
 - **P4**：审定流模板可视化、批量回滚、跨标准影响图谱（first slice 全部完成，v25.4-v25.7）
 - **P5**：标准市场（目录 + diff first slice、订阅持久化 first slice、市场审核 first slice、组织访问 first slice 已完成，后续补 diff 深化）
 
@@ -448,8 +794,10 @@ All Entrypoints
 
 ---
 
-## v24.2 — STAC 客户端标准化 + 遥感数据源扩展 (计划, 1 周)
+## 历史计划输入 — v24.2 STAC 客户端标准化 + 遥感数据源扩展（已撤销版本承诺）
 
+> **状态**：原独立版本计划已撤销。以下条目保留为需求池，其中数据产品发布与消费能力归入 NDP-1，联邦检索和生态互操作能力归入 NDP-4。
+>
 > **主题**: 把 v13.0 埋下的 STAC 基础设施升级为生产级国际标准对接能力
 >
 > **背景**: `connectors/stac.py` + `satellite_presets.yaml` + `satellite-imagery` Skill 已经在 v13.0 落地，但实现是裸 httpx、缺 CQL2 / 分页 / 扩展校验，且 Skill 文档里写的 `stac_search` 工具侧一直没对齐。此版本把既有资产补齐到生产级，并为 v25.0 数据产品化和 v27.0 Agent 互操作打地基。
@@ -1469,9 +1817,11 @@ All Entrypoints
 
 ---
 
-## 四看驱动的战略刷新 (2026-04-21)
+## 历史战略输入 — 四看驱动的战略刷新 (2026-04-21)
 
-> **背景**: 基于 2026 Q2 技术四看分析（技术趋势 / 宏观 PEST / 竞争格局 / 自我评估），行业已从"AI 辅助数据治理"全面进入 **Agentic Data Governance** 阶段。GIS Data Agent 原型阶段已完成，下一阶段以"智能体驱动的时空数据治理平台"为叙事，分三个版本产品化落地。
+> **状态**：本节及后续 `v25.0/v26.0/v27.0` 是 2026-04-21 形成的竞品研究和需求池，已被文首 NDP-0~NDP-4 主路线接管，不再作为有效 release line、交付顺序或完成时间承诺。保留原条目用于追溯需求来源；任何条目进入实施前，必须映射到四契约族、治理生命周期、双试点和对应 NDP 退出门。
+>
+> **原背景**: 基于 2026 Q2 技术四看分析（技术趋势 / 宏观 PEST / 竞争格局 / 自我评估），行业已从"AI 辅助数据治理"全面进入 **Agentic Data Governance** 阶段。GIS Data Agent 原型阶段已完成，下一阶段以"智能体驱动的时空数据治理平台"为叙事，分三个版本产品化落地。
 >
 > **四看核心结论**:
 > - **趋势**: Gartner 2026 MQ for D&A Governance 把 agentic AI + 活跃元数据作为核心评估维度；数据产品化 + AI-Ready Data 成为新范式；MCP/A2A 协议栈重塑 Agent↔数据集成
@@ -1479,13 +1829,25 @@ All Entrypoints
 > - **竞争**: 北京数慧（数据编织 + 智能体）、土豆数据（Data for AI 闭环）、阿里 DataWorks（Agent + 语义 ETL）、袋鼠云（多模态数据中台）、Atlan / Alation / Ataccama（agentic governance + metadata lakehouse）
 > - **自己**: 空间数据一等公民是核心优势；智能化治理从"缺失"升级为"原型验证"；多模态治理、数据产品化、合规审计、声明式治理仍为缺失项
 
+### 历史需求到 NDP 主路线的迁移
+
+| 历史规划能力 | 当前归属 | 处理原则 |
+|---|---|---|
+| `v25.0` Active Metadata、Policy as Code、治理 Agent | NDP-1 Agentic Governance Runtime | 必须进入 GovernanceEvent/Task/Policy/Evaluator/HITL/ChangeSet/Version 状态机，不再建设彼此独立的 Agent 孤岛 |
+| `v25.0` 数据产品、空间契约、质量门禁、STAC 发布 | NDP-1 Trusted Data Product | 升级为平台级 `DataProductVersion` 和 Human/Agent/AI/GWM 投影；旧 migration 064 仅作需求草案，不能视为已实现 |
+| `v26.0` 多模态治理、AI-Ready Data、合规 | NDP-1 / NDP-2 | MMFE 和多类型数据治理前移到主线；先完成 SemanticFusionProductVersion、DatasetVersion/ModelVersion、质量安全策略和效果 benchmark |
+| `v26.0` 湖仓、可信流通、资产化 | NDP-4 条件路线 | 只有出现跨组织消费、规模负载或政策交付证据后启动；不得产生第二权威写源 |
+| `v27.0` MCP/A2A/STAC/OGC、联邦治理、生态 SDK | NDP-4 条件路线 | 作为同一数据产品的交换与消费接口，不以协议数量代替产品闭环 |
+| `v27.0` 行业知识、交付模板 | NDP-0 Domain Pack + NDP-1/NDP-2；GWM 知识投影进入 NDP-3 | 自然资源和城市优先；先沉淀标准/模型/质量/安全/融合/产品模板，再由 TWM/UWM 消费领域状态与证据 |
+| Hermes 记忆、执行后端、安全栈 | Cognitive Runtime 子路线 | 服从 RuntimeIdentity、RunWorkspace、Policy、Evidence 和隔离契约 |
+
 ---
 
-## v25.0 — Agentic Governance Foundation (2026 H2, 计划)
+## 历史计划输入 — v25.0 Agentic Governance Foundation（原计划 2026 H2，已撤销版本承诺）
 
 > **主题**: 把 GIS Data Agent 的智能化治理原型产品化，补齐 agentic data governance 基础设施
 >
-> **Data Agent Level**: L3.5 → **L4**（治理 Agent 自主执行 + 声明式策略 + 持续监控）
+> **历史等级假设**: L3.5 → **L4**。该假设已撤销，当前整体等级须由 Cognitive Runtime 基准重新评定。
 >
 > **工作量估算**: 4-5 个月 | **依赖**: 无外部基础设施硬依赖（Kong / Jaeger 等保持搁置）
 
@@ -1540,11 +1902,11 @@ All Entrypoints
 
 ---
 
-## v26.0 — Multi-Modal & Data Economy (2027 H1, 计划)
+## 历史计划输入 — v26.0 Multi-Modal & Data Economy（原计划 2027 H1，已撤销版本承诺）
 
 > **主题**: 多模态数据治理 + 数据要素流通与资产化支撑
 >
-> **Data Agent Level**: L4 → **L4+**（多模态治理 + 数据资产化 + 合规自动化）
+> **历史等级假设**: L4 → **L4+**。该假设已撤销，能力条目按 NDP-2/NDP-4 退出门重新验收。
 >
 > **工作量估算**: 5-6 个月 | **驱动政策**: 国家数据局数据产权登记、数据资产入表、网安法修订合规审计
 
@@ -1596,11 +1958,11 @@ All Entrypoints
 
 ---
 
-## v27.0 — Platform & Ecosystem (2027 H2 – 2028 H1, 计划)
+## 历史计划输入 — v27.0 Platform & Ecosystem（原计划 2027 H2-2028 H1，已撤销版本承诺）
 
 > **主题**: 平台化 + 规模化 + 生态化 + 搁置项清零
 >
-> **Data Agent Level**: L4+ → **L4.5**（分布式治理 + Agent 互操作 + 经验沉淀 + 行业知识库深化）
+> **历史等级假设**: L4+ → **L4.5**。该假设已撤销，平台化能力仅在 NDP-4 条件满足后启动。
 >
 > **工作量估算**: 6-12 个月 | **依赖**: 外部基础设施就位（K8s 集群 / Kong / Jaeger / Loki / 隐私计算底座）
 
@@ -1651,7 +2013,7 @@ All Entrypoints
 
 ## v21.0+ — L4 主动式探索 (已完成项归档)
 
-> 本节内容为 v21.0-v23.0 已完成项归档；v24.0 之后的新规划请参见上方 v25.0 / v26.0 / v27.0 段落
+> 本节内容为 v21.0-v23.0 的历史完成项归档。原 `v25.0/v26.0/v27.0` 规划只保留为历史需求输入；当前未来主线以文首 NDP-0~NDP-4 为准。
 
 
 
@@ -1765,8 +2127,10 @@ All Entrypoints
 
 ---
 
-## 标杆对标进度 (更新 2026-04-18)
+## 历史对标记录 — 标杆对标进度 (更新 2026-04-18)
 
+> 本节记录 2026-04 的逐版本对标判断，不代表当前能力审计或未来 release 承诺。当前差距和交付判断以文首“当前基线判断”、NDP 退出门及 Cognitive Runtime 证据包为准。
+>
 > 新增标杆: DeerFlow (ByteDance 通用 Agent Harness) + **AgentArts (华为云企业级智能体平台)** + **Datus.ai (开源数据工程智能体 — 上下文工程 + 反馈飞轮)** + **Hermes Agent (通用 Agent Runtime — learning loop + 持久记忆 + 多入口网关)**
 >
 > AgentArts 对标详情见 `docs/agentarts-benchmark-analysis.md`
@@ -1818,10 +2182,13 @@ All Entrypoints
 | **执行后端抽象** | Hermes | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🟡 观察池 |
 | **Agent 执行面安全栈** | Hermes | 🟡 Guardrails | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 观察池 |
 | **多入口 Agent Runtime** | Hermes | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🟡 CLI | 🟡 观察池 |
-| **API 网关** | — | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🟢🟢 Kong || **分布式追踪** | — | 🟡 OTel | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | 🟢🟢🟢 Jaeger |
+| **API 网关** | — | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🟢🟢 Kong |
+| **分布式追踪** | — | 🟡 OTel | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | 🟢🟢🟢 Jaeger |
 | **Data Agent Level** | SIGMOD | L3 | L3 | L3 | L3 | L3+ | L3+ | L3.5→L4 |
 
-### 四看驱动的新增对标维度 (2026-04-21)
+### 历史对标维度 (2026-04-21)
+
+> 表中的 `v25.0/v26.0/v27.0` 列是当时的目标假设，已由 NDP 路线替代，不得据此声明能力已完成或仍按原版本交付。
 
 | 标杆能力 | 来源 | v24.0 ✅ | v25.0 🎯 | v26.0 🎯 | v27.0 🎯 |
 |----------|------|----------|----------|----------|----------|
@@ -1839,7 +2206,9 @@ All Entrypoints
 | **行业知识库深化** | — | 🟢 XMI + 本体 | 🟢🟢 | 🟢🟢 | 🟢🟢🟢🟢 自然资源/住建/水利 |
 
 
-### Data Agent Level 演进路径
+### 历史 Data Agent Level 演进假设
+
+> 已完成版本号只说明对应功能曾交付，不自动证明整个平台达到相应自主等级。尤其 `v25.0` 以后等级是已撤销的目标假设；当前等级须在统一 Runtime、权限隔离、失败诊断和可重复 benchmark 上重新评定。
 
 ```
 v15.9: L2.8 — + Planner-Executor + 中间件链 + 工具选择 + 上下文摘要
@@ -1860,7 +2229,9 @@ v26.0: L4+  — + 多模态治理 + 数据资产化 + 合规自动化 + 湖仓�
 v27.0: L4.5 — + 分布式治理 + Agent 互操作 + 经验沉淀 + 行业知识库深化 + 搁置项清零 🎯
 ```
 
-### 治理能力评估对标 (《智能化数据治理能力要求》22 项)
+### 历史治理能力估算 (《智能化数据治理能力要求》22 项)
+
+> 以下百分比是 2026-04 的方向性估算，未经独立测评，不作为当前验收结果；`v25.0/v26.0/v27.0` 列仅保留用于追溯历史目标。
 
 | 领域 | v14.5 ✅ | v18.5 ✅ | v21.0 ✅ | v24.0 ✅ | v25.0 🎯 | v26.0 🎯 | v27.0 🎯 |
 |------|-----------|-----------|-----------|-----------|-----------|-----------|-----------|
@@ -1874,9 +2245,11 @@ v27.0: L4.5 — + 分布式治理 + Agent 互操作 + 经验沉淀 + 行业知�
 
 ---
 
-## 架构演进对比
+## 历史容量架构设想
 
-### 当前架构 (v18.5)
+> 本节是早期部署容量假设，并非当前 NDP 目标架构或已验证 SLO。未来物理架构由 NDP 各阶段的真实负载、隔离、RPO/RTO 和试点退出门驱动。
+
+### 当时架构快照 (v18.5)
 
 ```
 单节点部署:
@@ -1890,7 +2263,7 @@ v27.0: L4.5 — + 分布式治理 + Agent 互操作 + 经验沉淀 + 行业知�
 适用场景: 开发环境、演示、<20 用户
 ```
 
-### 目标架构 (v21.0)
+### 当时目标架构设想 (v21.0)
 
 ```
 分布式高可用部署:
@@ -1908,7 +2281,9 @@ v27.0: L4.5 — + 分布式治理 + Agent 互操作 + 经验沉淀 + 行业知�
 
 ---
 
-## 性能指标演进
+## 历史性能目标
+
+> 数字均为早期容量规划，尚不能视为当前实测基线或 NDP SLO。
 
 | 指标 | v16.0 当前 | v18.0 目标 | v19.0 目标 | v21.0 目标 |
 |------|------------|------------|------------|------------|
@@ -1923,7 +2298,9 @@ v27.0: L4.5 — + 分布式治理 + Agent 互操作 + 经验沉淀 + 行业知�
 
 ---
 
-## 成本估算 (云厂商部署)
+## 历史成本估算 (云厂商部署)
+
+> 以下价格和拓扑仅保留作历史参考，立项时必须按目标环境、数据规模、并发和容灾要求重新测算。
 
 ### 阿里云 (华东2 区域)
 
@@ -1945,7 +2322,22 @@ v27.0: L4.5 — + 分布式治理 + Agent 互操作 + 经验沉淀 + 行业知�
 
 ---
 
-## 实施时间线
+## 实施时间线（NDP 主路线）
+
+NDP 采用退出门而不是预设版本日期驱动。未通过上一阶段退出门，不得以日历到期为由启动下一阶段。
+
+| 阶段 | 当前状态 | 启动口径 | 完成口径 |
+|---|---|---|---|
+| **NDP-0 Product Charter, Governance Taxonomy & Contract Freeze** | **当前优先，2026-07-18 启动** | 本 roadmap 刷新完成 | 无 GWM/有 GWM 双层产品章程、治理三维模型、数据类型矩阵、四契约族、PlatformCore/GeoCore/Domain Pack/GWM 边界、双试点 owner/KPI/验收数据冻结 |
+| **Baseline CI + Agentic Governance/Cognitive Runtime first slice** | 等待 NDP-0 与工程基线 | UWM/ArcPy 并行改动稳定；目标 commit CI 绿色；治理任务集和隔离集冻结 | 统一 RuntimeIdentity/RunnerFactory/Workspace/Policy；跨入口、恢复、回跳、租户隔离和治理变更审计通过 |
+| **NDP-1 Agentic Governance & Trusted Data Product** | 规划中 | Runtime first slice 退出门通过 | 不调用 GWM 完成标准/模型/质量/安全/血缘治理、ChangeSet、审批发布和 Human/Agent/AI 一致消费 |
+| **NDP-2 MMFE Semantic Fusion & Data for AI Factory** | 规划中 | NDP-1 产品和治理证据稳定 | MMFE 完成多类型语义融合产品化和效果 benchmark；DataProduct/Dataset/Model/DataDemand 全谱系可重放 |
+| **NDP-3 GWM Kernel & LLM+GWM Dual Engine** | 规划中；特有增强 | NDP-2 形成可信 GWMObservationProjection；TWM/UWM 并行改动稳定 | 共享 GWM contracts/ledger/adapters 可运行；Core Platform 可关闭 GWM 独立运行；四路同题消融验证双引擎增益与 claim boundary |
+| **NDP-4 Operational Learning, Federation & Ecosystem** | 条件规划 | NDP-1~3 证明业务价值、规模负载或跨组织/真实行动证据需求 | Action/Outcome 证据按等级升级；联邦权限、来源、版本、退出和审计联合演练通过；无第二权威写源 |
+
+### 历史版本时间记录
+
+> 下表用于追溯 2026-04 的版本记录。原 `v24.2/v25.0/v26.0/v27.0` 未来日期已经撤销，不属于当前承诺。
 
 | 版本 | 主题 | 工作量 | 开始时间 | 完成时间 |
 |------|------|--------|----------|----------|
@@ -1958,12 +2350,12 @@ v27.0: L4.5 — + 分布式治理 + Agent 互操作 + 经验沉淀 + 行业知�
 | v22.0 | L4 持续监控 + 遥感 Phase 2-3 | 1-2 周 | 2026-04-08 | ✅ 2026-04-08 |
 | v23.0 | Roadmap 清零 + DRL 约束 | 1-2 周 | 2026-04-09 | ✅ 2026-04-09 |
 | v24.0 | @SubAgent 路由 + XMI 域标准 | 2-3 周 | 2026-04-18 | ✅ 2026-04-19 |
-| **v24.2** | **STAC 客户端标准化 + 遥感数据源扩展** | **1 周** | **2026-05** | **🎯 2026 H1** |
-| **v25.0** | **Agentic Governance Foundation** | **4-5 个月** | **2026-05** | **🎯 2026 H2** |
-| **v26.0** | **多模态治理 + 数据要素流通** | **5-6 个月** | **2026-12** | **🎯 2027 H1** |
-| **v27.0** | **平台化 + 生态化 + 搁置项清零** | **6-12 个月** | **2027-07** | **🎯 2028 H1** |
+| **v24.2** | **STAC 客户端标准化 + 遥感数据源扩展** | **1 周** | **原定 2026-05** | **已撤销日期，能力并入 NDP-1/NDP-4** |
+| **v25.0** | **Agentic Governance Foundation** | **4-5 个月** | **原定 2026-05** | **已撤销版本承诺，映射 NDP-1/NDP-2** |
+| **v26.0** | **多模态治理 + 数据要素流通** | **5-6 个月** | **原定 2026-12** | **已撤销版本承诺，映射 NDP-2/NDP-4** |
+| **v27.0** | **平台化 + 生态化 + 搁置项清零** | **6-12 个月** | **原定 2027-07** | **已撤销版本承诺，映射 NDP-4** |
 
-**总计**: v12.0 → v24.0 全部完成。v25.0-v27.0 是基于 2026 Q2 技术四看刷新后的中长期规划，主线叙事从"Data Agent 自主性演进"升级为"Agentic Spatial Data Governance Platform"。
+**当前口径**：历史功能是否“完成”仍以代码、迁移、测试和可运行证据为准；未来产品路线只采用 NDP-0~NDP-4 及其退出门。
 
 ---
 
@@ -1993,18 +2385,14 @@ v27.0: L4.5 — + 分布式治理 + Agent 互操作 + 经验沉淀 + 行业知�
 
 ## 总结
 
-本次 roadmap 整合完成了 Datus.ai 对标分析的融入：
+GIS Data Agent 的当前主线是 **Geospatial-Native & Agentic-Native Data Platform**，优先服务自然资源和城市场景，同时治理空间与非空间多类型数据。产品不以功能数量或 Agent 等级作为唯一进度，而以治理过程是否严格可执行、数据产品是否可信可版本化、人/Agent/AI 是否一致消费，以及反馈能否形成下一版本为核心结果。
 
-**1. v19.0 上下文工程 + 反馈飞轮 (Datus 对标, P0)** — 统一上下文引擎 + 结构化反馈闭环 + 语义模型标准化 + 参考查询库
-
-**2. v20.0 增补体验优化项 (Datus 对标, P2)** — 多 LLM YAML 一键切换 + Agentic/Workflow 双模式 + 轻量部署 (DuckDB Lite)
-
-**3. v21.0+ 增补 CLI 终端入口 (Datus 对标, P3)** — gis-agent CLI 三命令设计 (chat/context/exec)
-
-**4. 标杆对标表扩展** — 新增 8 行 Datus 对标能力追踪 (上下文引擎/反馈闭环/语义模型/参考查询/多LLM/双模式/CLI/轻量部署)
-
-**5. 演进逻辑** — v18.5 (平台能力) → v19.0 (上下文工程, **无外部依赖可立即启动**) → v20.0 (分布式+体验) → v21.0+ (生产级+CLI)
-
-**6. 核心策略调整** — 从"Agent 更聪明"到"Agent 看到的上下文更好"。学习 Datus 的上下文工程方法论和反馈飞轮设计，嫁接到已有的空间智能深度上。
-
-**7. Hermes 对标纳入观察池** — 将 learning loop、用户画像、历史会话召回、执行后端抽象、Agent 执行面安全栈列为后续平台化候选项，但不进入当前版本承诺，避免分散垂直场景交付主线。
+1. **无 GWM 也必须成立**：标准、模型、元数据、质量、安全、汇聚、开发、MMFE、血缘、发布和 Human/Agent/AI 消费共同构成独立完整的 Core Data Platform。
+2. **AI for Data 必须 Agentic-native**：Agent 围绕强类型治理对象、Authority、Policy、Capability、Evaluator、HITL、ChangeSet 和版本状态机运行，LLM 不是数据或发布权威。
+3. **Data for AI 不等于只为 GWM 准备数据**：同一 `DataProductVersion` 可派生 DatasetVersion，服务训练、评测、推理、RAG、Agent 和多类 AI；GWM 是其中最具差异化的空间智能消费者。
+4. **MMFE 是主线而非后期增强**：它把空间与非空间多模态数据加工成可追溯、可评价的 `SemanticFusionProductVersion`，并以融合效果和下游增益而非流程通过验收。
+5. **GWM 是特有创新内核**：共享 GWM Runtime Kernel 连接状态图、行动、转移、不确定性、EvidenceClaimLedger 及 TWM/UWM；它增强平台但不侵入基础治理依赖。
+6. **LLM + GWM 是双智能引擎产品命题**：LLM 提供语义、知识和治理编排，GWM 提供空间世界状态、过程、推演和证据边界；必须用传统、LLM-only、GWM-only、LLM+GWM 四路同题评测证明组合价值与原创性。
+7. **真实 Action-Outcome 是能力升级门，不是平台启动门**：没有真实数据时仍可交付状态模型、机制/条件模拟和证据有界规划；只有在证据满足时才升级真实行动效果与决策优势 claim。
+8. 交付从 NDP-0 产品章程和治理契约冻结开始，经 Agentic Governance/Cognitive Runtime 与 NDP-1 Trusted Data Product、NDP-2 MMFE/Data for AI，再进入 NDP-3 GWM 双引擎；NDP-4 保持运营学习、联邦和生态的条件路线。
+9. 旧 `v25.0/v26.0/v27.0` 规划、对标表、等级和容量数字保留为历史输入，不再构成版本承诺；所有后续实施以 Core Platform 与 GWM-enhanced 两套独立退出门验收。
