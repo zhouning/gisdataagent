@@ -1,10 +1,10 @@
 # GIS Data Agent — Roadmap
 
-**Last updated**: 2026-07-18 &nbsp;|&nbsp; **Current release line**: v25.21-twm-demo &nbsp;|&nbsp; **Package metadata**: v23.0.0（待对齐） &nbsp;|&nbsp; **Next platform gate**: NDP-0 Product Charter + Governance/Contract Freeze -> Baseline CI 绿色 -> Agentic Governance Runtime first slice -> Trusted Data Product first slice -> MMFE/Data for AI -> GWM Kernel & Dual-Engine validation &nbsp;|&nbsp; **Executable ADK dependency**: 2.3.0（旧文档 1.27.x 待清理）
+**Last updated**: 2026-07-18（Ontology Intelligence refresh） &nbsp;|&nbsp; **Current release line**: v25.21-twm-demo &nbsp;|&nbsp; **Package metadata**: v23.0.0（待对齐） &nbsp;|&nbsp; **Next platform gate**: NDP-0 Product/Ontology Charter + Governance/Contract Freeze -> Baseline CI 绿色 -> NDP-1A Cognitive Runtime first slice -> NDP-1B Ontology Knowledge Brain + Trusted Data Product -> NDP-2 MMFE/Data for AI -> NDP-3 GWM Kernel & Dual-Engine validation &nbsp;|&nbsp; **Executable ADK dependency**: 2.3.0（旧文档 1.27.x 待清理）
 
 > 参照标杆：SeerAI Geodesic、OpenClaw、Frontier、CoWork、**DeerFlow v2.0（ByteDance 通用 Agent Harness）**、**SIGMOD 2026 Data Agent Levels（L0-L5 自主性分级）**、**AgentArts（华为云企业级智能体平台）**、**Datus.ai（上下文工程 + 反馈飞轮）**、**Hermes Agent（通用 Agent Runtime）**、**Atlan / Alation / Ataccama（Agentic Governance + Active Metadata）**、**DataWorks / Dataphin（数据开发治理一体化 + Agent）**、**袋鼠云（多模态数据中台）**
 >
-> 核心战略：建设优先面向**自然资源与城市场景**、同时支持空间与非空间多类型数据的 **Geospatial-Native & Agentic-Native Data Platform（地理空间原生、智能体原生的新一代数据平台）**。即使不部署 GWM，平台也必须凭借严格的数据治理、MMFE 语义融合、可信数据产品和 Human/Agent/AI 一致消费而独立成立。
+> 核心战略：建设优先面向**自然资源与城市场景**、同时支持空间与非空间多类型数据的 **Geospatial-Native、Agentic-Native、Ontology-Grounded Data Platform（地理空间原生、智能体原生、本体约束的新一代数据平台）**。即使不部署 GWM，平台也必须凭借严格的数据治理、轻量生产本体、MMFE 语义融合、可信数据产品和 Human/Agent/AI 一致消费而独立成立。
 >
 > 特有内核：**Geospatial World Model（GWM）是 GIS Data Agent 的特有空间世界认知内核和核心差异化能力，而不是基础数据治理成立的前提。**带有 GWM 的 GIS Data Agent 由 LLM 与 GWM 双引擎共同支撑：LLM 负责语义、知识、意图、解释与治理编排，GWM 负责多尺度空间世界状态、地理过程、行动条件推演、不确定性和证据边界；二者共同把治理后的数据产品转化为可理解、可推演、可规划、可审计的空间智能。
 >
@@ -22,7 +22,7 @@ GIS Data Agent 必须同时满足两个独立验收层级：
 
 | 产品层级 | 成立条件 | 不能依赖 |
 |---|---|---|
-| **Core Data Platform** | 完成地理空间原生、智能体原生的数据治理、数据工程、MMFE 语义融合、数据产品化，以及人/Agent/AI 一致消费 | 不依赖 GWM、TWM、UWM、DRL 或真实 Action-Outcome 数据才能完成标准、模型、质量、安全、汇聚、开发和发布 |
+| **Core Data Platform** | 完成地理空间原生、智能体原生、本体约束的数据治理、数据工程、MMFE 语义融合、数据产品化，以及人/Agent/AI 一致消费 | 不依赖 GWM、TWM、UWM、DRL、在线 RDF 平台或真实 Action-Outcome 数据才能完成标准、本体、模型、质量、安全、汇聚、开发和发布 |
 | **GWM-Enhanced GIS Data Agent** | 在同一治理数据产品上增加共享 GWM Kernel、TWM/UWM 领域实例、LLM+GWM 协同推理、状态推演、规划和证据审计 | 不得把 simulator 输出冒充 observed outcome，不得让 GWM 绕过数据权限、质量门禁和发布权威 |
 
 > **基础平台的价值主张**：以 Agentic-native 的方式生产可信、版本化、可消费的数据成果。**GWM 增强产品的价值主张**：在此基础上，让 LLM 不只“读懂数据”，还能够与 GWM 一起理解空间世界状态、推演受约束的未来并形成证据有界的决策支持。
@@ -94,6 +94,55 @@ GovernanceEvent
 
 LLM 可以理解、规划、解释和生成候选；标准、模型、权限、质量门禁和发布权威必须由版本化 Authority、Policy、Evaluator 与审批流程控制。
 
+### 本体智能：贯穿 NDP 的轻量生产语义与行动主线
+
+GIS Data Agent 采用《本体智能研究报告（1.0）》提出的“语义层 -> 决策层 -> 行动层 -> 反馈演化”框架，但不把本体等同于 RDF、知识图谱或大规模 OWL 推理。本项目中的本体智能定义为：
+
+```text
+Ontology Intelligence
+= Governed Semantics
++ Deterministic Decision Control
++ Operational Action Contracts
++ Evidence / Feedback / Version Evolution
+```
+
+| 层次 | GIS Data Agent 的实现边界 | 当前基础 | 主线缺口 |
+|---|---|---|---|
+| **语义层：是什么** | Object、Property、Link、Rule、Constraint、Standard、Applicability、Authority、Evidence | GIS YAML `OntologyReasoner`、`mmfe.semantic_ontology.v1`、Standards Platform terms/data elements/value domains/references | 缺统一 Meta-model、Authority Store、Compiler、Resolver、ACL、兼容性与 competency-query 回归 |
+| **决策层：做什么** | `TaskFrame`、`TaskGraph`、EvidenceBundle、Policy、QualityVerdict、确定性路由与证据有界推理 | Planner、规则、Evaluator、TWM/UWM、Cognitive Runtime 正式设计 | RuntimeIdentity、RunWorkspace、真实质量回跳和跨入口策略尚未进入统一主链 |
+| **行动层：怎么做** | ActionType、FunctionType、InterfaceType、Capability、Tool Manifest、Approval、Idempotency、Compensation、Evaluator | SQL/PostGIS、ArcPy、MCP、治理工具、工作流和局部 HITL | 缺 Object-Action-Capability 固定版本绑定、ChangeSet/ActionResult 和统一写回/回滚契约 |
+| **演化层：如何持续可信** | diff、impact、review、shadow、canary、activate、rollback、usage/drift monitoring | Standards 发布/回滚/Outbox、自进化 review-only 基础 | 本体包和 Action 的发布生命周期、能力问题回归、漂移与使用效果指标尚未统一 |
+
+本体资产按五层拆分，禁止建设一个无边界巨型本体：
+
+| 本体资产 | 负责内容 | 不负责内容 |
+|---|---|---|
+| **Platform Meta-model** | 稳定 ID、版本、Authority、Owner、来源、适用性、ACL、审定和兼容性 | 不承载具体行业全部概念 |
+| **GeoCore Ontology** | geometry、CRS、scale、spatial/temporal identity 与关系 | 不复制全国级要素、栅格、轨迹和点云事实 |
+| **Domain Ontology Packs** | 自然资源、城市的对象、术语、规则、指标、值域和生命周期 | 不形成独立数据真值源 |
+| **Operational Ontology** | Object/Property/Link/Action/Function/Interface、Policy、Capability 和 Evaluator 语义 | 不绕过 RuntimePolicy 直接执行高风险动作 |
+| **GWM Ontology Projection** | State、CanonicalAction、Transition、Uncertainty、EvidenceClaim 和 TWM/UWM 适配语义 | 不替代基础治理、本体权威或真实 Action-Outcome 证据 |
+
+轻量生产本体的技术顺序固定为：
+
+1. **Stage 1 — Authority + Package**：PostgreSQL 权威写模型、不可变 JSON `OntologyPackage`、安全规则 DSL、版本/ACL/来源/审定、Compiler/Resolver 和有界 SQL/图遍历。
+2. **Stage 2 — Build-time Semantic Validation**：SKOS、SHACL、PROV-O、必要 GeoSPARQL/OWL-Time、JSON-LD/RDF 导出和 RDFLib/pySHACL CI；OWL 仅允许经 benchmark 的离线 OWL 2 RL 子集。
+3. **Stage 3 — Conditional Online Projection**：只有 PostgreSQL/Package 在批准的 SLO、互操作或查询场景上失败时，才引入 Fuseki/RDF4J、属性图、搜索或专用向量读投影。
+4. **Stage 4 — Federation and Controlled Evolution**：签名 namespace、跨组织映射、candidate/evaluation/shadow/canary/rollback；仍不产生第二权威写源。
+
+本体工程六阶段与 NDP 的映射：
+
+| 本体工程阶段 | NDP 归属 | 必须产物 |
+|---|---|---|
+| 领域理解与需求分析 | NDP-0 | 30-50 个 Competency Questions、业务边界、Owner、数据可得性和验收基线 |
+| 本体建模 | NDP-0 / NDP-1B | Meta-model、GeoCore、Domain/Operational Ontology、命名和版本策略 |
+| 本体实例化 | NDP-1B / NDP-2 | OntologyPackage、MMFE 对象/字段/值域/关系绑定和版本化实例投影 |
+| 验证与质量评估 | NDP-1B / NDP-2 | schema/一致性/ACL/能力问题/专家评审/下游增益回归 |
+| 部署与集成 | NDP-1B | Compiler/Resolver、EvidenceBundle、MCP/A2A/REST/SDK 受控消费和回滚 |
+| 持续维护与演化 | NDP-1B -> NDP-4 | diff/impact/usage/drift、版本兼容、候选评测、shadow/canary 和跨组织治理 |
+
+LLM 只能提出候选概念、映射和规则，不能自行发布权威概念、`exactMatch/owl:sameAs`、强制约束或可执行 Action。语义相似度只是候选证据，正式发布必须经过 Authority、Evaluator 和必要 HITL。
+
 ### 数据范围：Spatial-native，不是 Spatial-only
 
 | 数据家族 | 首要类型 |
@@ -132,6 +181,9 @@ MMFE 的产品门不能只看流程通过，至少评测字段映射 P/R、实�
 PlatformCore
 ├── governance / engineering / fusion / product / consumption contracts
 ├── non-spatial and generic multimodal data support
+├── OntologyCore
+│   ├── platform meta-model / authority / package / compiler / resolver
+│   └── operational object / action / capability / evaluator semantics
 └── GeoCore
     ├── spatial identity / geometry / CRS / scale / spatial-temporal relations
     ├── NaturalResourceDomainPack
@@ -172,6 +224,7 @@ GWM Kernel（特有、可插拔）
 | 验收维度 | 当前状态 | 结论 |
 |---|---|---|
 | 严格数据治理 | Standards Platform、数据模型派生、质检、安全、目录、血缘、反馈等能力丰富 | **领域能力较强，尚未形成 Governance Domain × Lifecycle × Control Contract 的统一过程模型** |
+| 本体智能 | GIS YAML 规则本体、MMFE JSON 语义本体包、Standards 术语/数据元/值域/引用/版本工作流已存在 | **语义基础真实可用但分散；尚无统一 Authority Store、OntologyPackage Compiler/Resolver、Operational Action 契约和 competency-query gate** |
 | 数据汇聚/开发/服务 | PostGIS、ArcPy、连接器、工作流、分布式任务、地图/API/导出能力已存在 | **技术面较宽，尚未围绕 DataProductVersion 收束** |
 | 空间与非空间多类型数据 | 空间数据能力强，表格/文档/图像/流等局部具备 | **Spatial-native 基础强，统一多类型数据生命周期和安全/质量契约不足** |
 | MMFE | 已有五阶段流水线、时空对齐、语义增强、冲突消解和 TWM/UWM 消费经验 | **重要基础；融合效果 benchmark、非空间扩展、增量产品化和 Authority 绑定仍不足** |
@@ -191,13 +244,14 @@ GWM Kernel（特有、可插拔）
 
 | 顺序 | 阶段 | 状态 | 核心交付 | 强制退出门 |
 |---:|---|---|---|---|
-| 0 | **NDP-0 Product Charter, Governance Taxonomy & Contract Freeze** | **当前优先** | 冻结“无 GWM 也成立、有 GWM 高差异化”的产品章程；治理三维模型、数据类型矩阵、PlatformCore/GeoCore/Domain Pack/GWM 边界、四契约族、Authority/ID/版本策略；盘点现有表/API/schema | 核心资产完成“保留/适配/合并/搁置”映射；每个治理域和生命周期阶段有 Owner/Authority/Action/Evaluator/Version；双试点同时定义 Core Platform 与 GWM-enhanced 验收 |
-| 1 | **NDP-1 Agentic Governance Runtime & Trusted Data Product** | 规划中 | 先按既定计划完成 RuntimeIdentity/RunnerFactory/RunWorkspace/策略一致性 first slice；落地治理事件/任务/ChangeSet/评价/审批状态机；串联标准、模型、元数据、质量、安全、血缘、生命周期和 DataProductVersion | 不调用 GWM 也能完成一次“发现/汇聚 -> 治理 -> 评价 -> 审批 -> 发布 -> Human/Agent/AI 消费”闭环；语义、ACL、质量、证据和 hash 在投影间一致；越权、质量不达标和无审批变更无法发布 |
+| 0 | **NDP-0 Product/Ontology Charter, Governance Taxonomy & Contract Freeze** | **当前优先** | 冻结“无 GWM 也成立、有 GWM 高差异化”的产品章程；治理三维模型、数据类型矩阵、PlatformCore/OntologyCore/GeoCore/Domain Pack/GWM 边界、四契约族、Ontology Meta-model、30-50 个 Competency Questions、Authority/ID/版本策略；盘点现有表/API/schema/本体资产 | 核心资产完成“保留/适配/合并/搁置”映射；每个治理域和本体模块有 Owner/Authority/Action/Evaluator/Version；能力问题、双试点数据、Core Platform 与 GWM-enhanced 验收全部冻结 |
+| 1A | **NDP-1A Cognitive Runtime & Security Consistency First Slice** | 规划中；工程基线恢复后启动 | 只实施 RuntimeIdentity、mandatory RunnerFactory、RunWorkspace、typed QualityVerdict、真实回跳、checkpoint/resume、跨入口 Policy、租户隔离和 task decomposition 修复 | 所有入口执行同一 RuntimePolicy；revise/replan 真实重跑；可恢复 checkpoint；双用户/双租户上下文、记忆、缓存、KB 和工具泄露为零；目标 commit CI 绿色 |
+| 1B | **NDP-1B Ontology Knowledge Brain & Trusted Data Product** | 规划中；依赖 NDP-1A | PostgreSQL Authority Store、不可变 OntologyPackage、Compiler/Resolver、StandardKnowledgePack、EvidenceBundle、Object/Action/Capability/Evaluator 契约；治理事件/任务/ChangeSet/审批状态机；串联标准、模型、元数据、质量、安全、血缘、生命周期和 DataProductVersion | 不调用 GWM 完成一次“发现/汇聚 -> 语义/标准约束 -> 治理 -> 评价 -> 审批 -> 发布 -> Human/Agent/AI 消费”闭环；competency queries、ACL、质量、证据和 package/projection hash 通过；越权、质量不达标和无审批变更无法发布 |
 | 2 | **NDP-2 MMFE Semantic Fusion & Data for AI Factory** | 规划中 | 将 MMFE 前移为主线：空间/非空间多模态 semantic fusion、SemanticFusionProductVersion、增量/缓存/流式执行、融合 benchmark；DatasetVersion、EvaluationSet、ModelVersion、DataDemand 和 AI/GWM 投影 | 至少一个跨空间/非空间多类型产品通过融合效果、人工修正、吞吐/成本和下游增益门；`DataProductVersion -> DatasetVersion -> ModelVersion` 可重放；质量/权限不合格数据不能进入 AI/GWM |
 | 3 | **NDP-3 GWM Kernel & LLM+GWM Dual-Engine Intelligence** | 规划中；特有增强 | 抽取共享 GWM Runtime Kernel：状态图、CanonicalAction/Transition、uncertainty、EvidenceClaimLedger、TWM/UWM adapters；定义 LLM↔GWM 双引擎协议、DataDemand 和地图审计；保留领域 simulator/planner | Core Platform 在关闭 GWM 时继续通过全部基础验收；同一产品版本可进入 TWM/UWM adapter；transition origin/claim 自动推导；传统、LLM-only、GWM-only、LLM+GWM 四路同题评测证明组合增益，否则不得升级原创性主张 |
-| 4 | **NDP-4 Operational Learning, Federation & Ecosystem** | 条件规划 | Prospective Action/Outcome capture、Operational Object/Action、审批/补偿/回滚、observed/proxy/synthetic 分级；湖仓/联邦、STAC/OGC API/MCP/A2A、跨组织数据空间、隐私计算、SDK 和规模运维 | 无真实数据时保持 state dynamics/conditional simulation claim；有真实或准真实证据后再升级局部行动效果；跨组织权限、来源、版本、退出和审计通过联合演练；无第二权威写源 |
+| 4 | **NDP-4 Operational Learning, Heavy Ontology, Federation & Ecosystem** | 条件规划 | Prospective Action/Outcome capture、Operational Object/Action 平台化、observed/proxy/synthetic 分级；Heavy Ontology H0-H7 条件路线；湖仓/联邦、STAC/OGC API/MCP/A2A、跨组织数据空间、隐私计算、SDK 和规模运维 | 无真实数据时保持 state dynamics/conditional simulation claim；在线 RDF/联邦只在 H0/H3 门通过后部署；有真实或准真实证据后再升级局部行动效果；跨组织权限、来源、版本、退出和审计通过联合演练；无第二权威写源 |
 
-实施顺序约束：NDP-0 完成后，第一份代码实施计划仍只覆盖 **Agentic Governance/Cognitive Runtime Kernel first slice**；Data Product first slice、MMFE 产品化和 GWM Kernel 抽取不得混成一次大改。`Runtime` 一词必须带限定：Cognitive Runtime 控制 Agent 行为，Data Platform Runtime 控制治理/生产过程，GWM Runtime 控制空间世界状态/转移/证据；三者共享身份、权限、版本和审计，但职责不同。
+实施顺序约束：NDP-0 完成后，第一份代码实施计划仍只覆盖 **NDP-1A Cognitive Runtime first slice**；NDP-1B Ontology/Data Product、NDP-2 MMFE 产品化和 NDP-3 GWM Kernel 抽取不得混成一次大改。`Runtime` 一词必须带限定：Cognitive Runtime 控制 Agent 行为，Data Platform Runtime 控制治理/生产过程，Ontology Runtime 提供权威语义解析和 Action 契约，GWM Runtime 控制空间世界状态/转移/证据；四者共享身份、权限、版本和审计，但职责不同。
 
 ### 双试点
 
@@ -206,19 +260,33 @@ GWM Kernel（特有、可插拔）
 | 自然资源：地类图斑/规划管控治理产品 | 多源汇交、标准/模型映射、质量安全、血缘版本、地图/表格/API、Agent 治理与成果发布 | 图斑/项目/规则/遥感/文档语义融合；输出 Human/Agent/AI/GWM 投影 | TWM 消费治理状态，提供地类状态预测、规则约束、条件情景、风险和证据审计 | 关闭 TWM 后数据产品全链路仍通过；启用后在同题 benchmark 上相对规则与 LLM-only 有可重复增益 |
 | 城市：设施供给与宜居性状态产品 | 设施/人口/道路/环境数据汇聚治理、质量安全、地图/报告/API、Agent 查询与数据产品发布 | 建筑/路网/POI/人口/环境/文本多模态对齐；输出 DatasetVersion 与城市观测投影 | UWM 消费城市状态图，提供热/污染/服务/公平状态、空间外溢和证据有界规划 | 关闭 UWM 后仍是可交付城市数据平台产品；启用后完成 LLM-only/GWM-only/组合消融和 claim boundary 验证 |
 
+双试点必须共同冻结以下 Competency Question 家族，并为每题记录标准/本体/数据版本、期望证据、允许 Action、权限和评价方法：
+
+| 能力问题家族 | 示例验收问题 |
+|---|---|
+| **语义消歧** | 同一地类、设施、人口或环境概念在不同数据源中的字段、值域、粒度和单位如何统一，哪些映射仍有歧义？ |
+| **标准适用性** | 某对象在指定地域、时间和业务目的下适用哪个标准版本、条款、值域和约束，冲突如何处理？ |
+| **对象与关系穿透** | 一个图斑/设施/项目与行政区、规则、遥感观测、文档证据和下游产品之间有哪些可追溯关系？ |
+| **质量与安全** | 哪些问题阻止发布，哪些可自动修复，哪些需要审批；未授权用户是否得到零对象、零属性、零关系和零 Action？ |
+| **行动闭环** | 对某治理问题允许执行哪些 Action，所需前置条件、审批、幂等、补偿、Evaluator、ChangeSet 和回滚路径是什么？ |
+| **GWM 证据边界** | 当前证据只支持状态描述、条件模拟还是现实行动效果；TWM/UWM 输出引用了哪些本体、数据和 transition origin？ |
+
+本体智能主线 KPI 至少包括：competency-query pass/regression、标准/条款召回与引用、字段映射 P/R、实体解析和时空对齐、冲突发现、置信度校准、专家修正率、未授权返回数、OntologyPackage/投影 hash 一致性、Action 审批/执行/补偿/回滚成功率、从 GovernanceEvent 到 DataProductVersion 的周期，以及本体对 Human/Agent/AI/GWM 下游任务的可重复增益。
+
 ### 架构决策与非目标
 
 1. **一份权威产品，多种可重建投影**：Human/Agent/AI 视图不得各自维护语义、权限或版本真值。
-2. **GWM 特有但可插拔**：它是 GIS Data Agent 的核心差异化内核和重点产品能力，但 Core Data Platform 不得以 GWM 可用性作为标准、模型、质量、安全、MMFE、发布和消费的运行前提。
-3. **LLM + GWM，不是 LLM 或 GWM 单引擎垄断**：LLM 负责语义/编排，GWM 负责空间世界状态/转移/证据，Policy/Evaluator/HITL 保持生产控制权。
-4. **MMFE 是主线能力**：多模态语义融合在 NDP-2 完成产品化，不推迟到生态阶段，也不只服务 TWM/UWM。
-5. **PostgreSQL/PostGIS 与 Standards Platform 保持权威边界**：搜索、向量、图、RDF、STAC 和缓存均为投影或交换接口。
-6. **生产探索分离**：探索任务可采用 Agentic Mode；生产任务必须固化为版本化 Workflow、Policy、Capability 和 Evaluator。
-7. **模块化单体优先**：没有独立扩缩容、故障隔离和团队边界证据前，不按名词拆微服务；GWM Kernel 首期以 contracts/ledger/adapters 抽取，不重写 TWM/UWM。
-8. **空间原生而非空间排他**：空间语义是一等公民，同时完整治理非空间数据；不为非空间事实强造 geometry。
-9. **不把 synthetic 当 observed**：仿真和 replay 可用于工程验证与候选评测，但不能替代真实 Action-Outcome 证据；缺真实数据限制 claim，不阻塞基础平台和条件模拟。
-10. **不建设无边界泛化平台**：优先服务自然资源和城市场景，不与通用湖仓、BI、GIS 编辑器或通用 Agent Harness 正面复制。
-11. **不继续以新增 Tab 代表产品进度**：前端逐步收敛为 Data Workspace、Data Product Studio、Operations & Decision Center，以及证据有界的 GWM World/Scenario Workspace。
+2. **轻量生产本体贯穿 NDP-0~NDP-3**：本体不是 NDP-4 的远期附属能力；NDP-0 冻结语义，NDP-1B 建立 Authority/Package/Resolver，NDP-2 用本体引导 MMFE，NDP-3 向 GWM 提供状态与行动语义。
+3. **GWM 特有但可插拔**：它是 GIS Data Agent 的核心差异化内核和重点产品能力，但 Core Data Platform 不得以 GWM 可用性作为标准、模型、质量、安全、MMFE、发布和消费的运行前提。
+4. **LLM + GWM，不是 LLM 或 GWM 单引擎垄断**：LLM 负责语义/编排，GWM 负责空间世界状态/转移/证据，Ontology Authority/Policy/Evaluator/HITL 保持生产控制权。
+5. **MMFE 是主线能力**：多模态语义融合在 NDP-2 完成产品化，不推迟到生态阶段，也不只服务 TWM/UWM。
+6. **PostgreSQL/PostGIS 与 Standards Platform 保持权威边界**：搜索、向量、图、RDF、STAC 和缓存均为投影或交换接口。
+7. **生产探索分离**：探索任务可采用 Agentic Mode；生产任务必须固化为版本化 Workflow、Policy、Capability 和 Evaluator。
+8. **模块化单体优先**：没有独立扩缩容、故障隔离和团队边界证据前，不按名词拆微服务；Ontology Runtime 首期为 Authority/Package/Compiler/Resolver 模块，GWM Kernel 首期以 contracts/ledger/adapters 抽取，不重写 TWM/UWM。
+9. **空间原生而非空间排他**：空间语义是一等公民，同时完整治理非空间数据；不为非空间事实强造 geometry。
+10. **不把 synthetic 当 observed**：仿真和 replay 可用于工程验证与候选评测，但不能替代真实 Action-Outcome 证据；缺真实数据限制 claim，不阻塞基础平台和条件模拟。
+11. **不建设无边界泛化平台**：优先服务自然资源和城市场景，不与通用湖仓、BI、GIS 编辑器或通用 Agent Harness 正面复制。
+12. **不继续以新增 Tab 代表产品进度**：前端逐步收敛为 Data Workspace、Ontology & Data Product Studio、Operations & Decision Center，以及证据有界的 GWM World/Scenario Workspace。
 
 ---
 
@@ -756,7 +824,7 @@ All Entrypoints
 
 ## v25.x — Standards Platform 后续阶段 (规划)
 
-> **NDP 归属**：已完成能力作为 NDP-0 Governance Authority/Domain Pack 与 NDP-1 Trusted Data Product 的标准权威基础保留；剩余工作只有在直接支撑四契约族、双试点或阶段退出门时才进入实施，不再独立扩张版本线。
+> **NDP 归属**：已完成能力作为 NDP-0 Governance/Ontology Authority、Domain Pack 与 NDP-1B Ontology Knowledge Brain/Trusted Data Product 的标准权威基础保留；剩余工作只有在直接支撑四契约族、Competency Questions、双试点或阶段退出门时才进入实施，不再独立扩张版本线。
 
 - **P4**：审定流模板可视化、批量回滚、跨标准影响图谱（first slice 全部完成，v25.4-v25.7）
 - **P5**：标准市场（目录 + diff first slice、订阅持久化 first slice、市场审核 first slice、组织访问 first slice 已完成，后续补 diff 深化）
@@ -796,7 +864,7 @@ All Entrypoints
 
 ## 历史计划输入 — v24.2 STAC 客户端标准化 + 遥感数据源扩展（已撤销版本承诺）
 
-> **状态**：原独立版本计划已撤销。以下条目保留为需求池，其中数据产品发布与消费能力归入 NDP-1，联邦检索和生态互操作能力归入 NDP-4。
+> **状态**：原独立版本计划已撤销。以下条目保留为需求池，其中数据产品发布与消费能力归入 NDP-1B，联邦检索和生态互操作能力归入 NDP-4。
 >
 > **主题**: 把 v13.0 埋下的 STAC 基础设施升级为生产级国际标准对接能力
 >
@@ -1833,12 +1901,12 @@ All Entrypoints
 
 | 历史规划能力 | 当前归属 | 处理原则 |
 |---|---|---|
-| `v25.0` Active Metadata、Policy as Code、治理 Agent | NDP-1 Agentic Governance Runtime | 必须进入 GovernanceEvent/Task/Policy/Evaluator/HITL/ChangeSet/Version 状态机，不再建设彼此独立的 Agent 孤岛 |
-| `v25.0` 数据产品、空间契约、质量门禁、STAC 发布 | NDP-1 Trusted Data Product | 升级为平台级 `DataProductVersion` 和 Human/Agent/AI/GWM 投影；旧 migration 064 仅作需求草案，不能视为已实现 |
-| `v26.0` 多模态治理、AI-Ready Data、合规 | NDP-1 / NDP-2 | MMFE 和多类型数据治理前移到主线；先完成 SemanticFusionProductVersion、DatasetVersion/ModelVersion、质量安全策略和效果 benchmark |
+| `v25.0` Active Metadata、Policy as Code、治理 Agent | NDP-1A Runtime + NDP-1B Governance State Machine | 先统一 RuntimeIdentity/Policy/Workspace，再进入 GovernanceEvent/Task/Evaluator/HITL/ChangeSet/Version 状态机，不再建设彼此独立的 Agent 孤岛 |
+| `v25.0` 数据产品、空间契约、质量门禁、STAC 发布 | NDP-1B Trusted Data Product | 升级为平台级 `DataProductVersion` 和 Human/Agent/AI/GWM 投影；旧 migration 064 仅作需求草案，不能视为已实现 |
+| `v26.0` 多模态治理、AI-Ready Data、合规 | NDP-1B / NDP-2 | MMFE 和多类型数据治理前移到主线；先完成 Ontology Authority、SemanticFusionProductVersion、DatasetVersion/ModelVersion、质量安全策略和效果 benchmark |
 | `v26.0` 湖仓、可信流通、资产化 | NDP-4 条件路线 | 只有出现跨组织消费、规模负载或政策交付证据后启动；不得产生第二权威写源 |
 | `v27.0` MCP/A2A/STAC/OGC、联邦治理、生态 SDK | NDP-4 条件路线 | 作为同一数据产品的交换与消费接口，不以协议数量代替产品闭环 |
-| `v27.0` 行业知识、交付模板 | NDP-0 Domain Pack + NDP-1/NDP-2；GWM 知识投影进入 NDP-3 | 自然资源和城市优先；先沉淀标准/模型/质量/安全/融合/产品模板，再由 TWM/UWM 消费领域状态与证据 |
+| `v27.0` 行业知识、交付模板 | NDP-0 Domain Pack + NDP-1B/NDP-2；GWM 本体投影进入 NDP-3 | 自然资源和城市优先；先沉淀标准/本体/模型/质量/安全/融合/产品模板，再由 TWM/UWM 消费领域状态、行动语义与证据 |
 | Hermes 记忆、执行后端、安全栈 | Cognitive Runtime 子路线 | 服从 RuntimeIdentity、RunWorkspace、Policy、Evidence 和隔离契约 |
 
 ---
@@ -2328,12 +2396,12 @@ NDP 采用退出门而不是预设版本日期驱动。未通过上一阶段退�
 
 | 阶段 | 当前状态 | 启动口径 | 完成口径 |
 |---|---|---|---|
-| **NDP-0 Product Charter, Governance Taxonomy & Contract Freeze** | **当前优先，2026-07-18 启动** | 本 roadmap 刷新完成 | 无 GWM/有 GWM 双层产品章程、治理三维模型、数据类型矩阵、四契约族、PlatformCore/GeoCore/Domain Pack/GWM 边界、双试点 owner/KPI/验收数据冻结 |
-| **Baseline CI + Agentic Governance/Cognitive Runtime first slice** | 等待 NDP-0 与工程基线 | UWM/ArcPy 并行改动稳定；目标 commit CI 绿色；治理任务集和隔离集冻结 | 统一 RuntimeIdentity/RunnerFactory/Workspace/Policy；跨入口、恢复、回跳、租户隔离和治理变更审计通过 |
-| **NDP-1 Agentic Governance & Trusted Data Product** | 规划中 | Runtime first slice 退出门通过 | 不调用 GWM 完成标准/模型/质量/安全/血缘治理、ChangeSet、审批发布和 Human/Agent/AI 一致消费 |
-| **NDP-2 MMFE Semantic Fusion & Data for AI Factory** | 规划中 | NDP-1 产品和治理证据稳定 | MMFE 完成多类型语义融合产品化和效果 benchmark；DataProduct/Dataset/Model/DataDemand 全谱系可重放 |
+| **NDP-0 Product/Ontology Charter, Governance Taxonomy & Contract Freeze** | **当前优先，2026-07-18 启动** | 本 roadmap 本体智能刷新完成 | 无 GWM/有 GWM 双层产品章程、治理三维模型、数据类型矩阵、四契约族、PlatformCore/OntologyCore/GeoCore/Domain Pack/GWM 边界、Ontology Meta-model、30-50 个 Competency Questions、双试点 owner/KPI/验收数据冻结 |
+| **NDP-1A Cognitive Runtime & Security Consistency First Slice** | 等待 NDP-0 与工程基线 | UWM/ArcPy 并行改动稳定；目标 commit CI 绿色；治理任务集、能力问题集和隔离集冻结 | 统一 RuntimeIdentity/RunnerFactory/Workspace/Policy；跨入口、恢复、真实质量回跳、租户隔离和治理变更审计通过 |
+| **NDP-1B Ontology Knowledge Brain & Trusted Data Product** | 规划中 | NDP-1A 退出门通过；首个自然资源治理数据集冻结 | PostgreSQL Authority、OntologyPackage/Compiler/Resolver、EvidenceBundle 与 Object/Action 契约可用；不调用 GWM 完成标准/本体/模型/质量/安全/血缘治理、ChangeSet、审批发布和 Human/Agent/AI 一致消费 |
+| **NDP-2 MMFE Semantic Fusion & Data for AI Factory** | 规划中 | NDP-1B 产品、本体和治理证据稳定 | MMFE 完成本体引导的多类型语义融合产品化和效果 benchmark；DataProduct/Dataset/Model/DataDemand 全谱系可重放 |
 | **NDP-3 GWM Kernel & LLM+GWM Dual Engine** | 规划中；特有增强 | NDP-2 形成可信 GWMObservationProjection；TWM/UWM 并行改动稳定 | 共享 GWM contracts/ledger/adapters 可运行；Core Platform 可关闭 GWM 独立运行；四路同题消融验证双引擎增益与 claim boundary |
-| **NDP-4 Operational Learning, Federation & Ecosystem** | 条件规划 | NDP-1~3 证明业务价值、规模负载或跨组织/真实行动证据需求 | Action/Outcome 证据按等级升级；联邦权限、来源、版本、退出和审计联合演练通过；无第二权威写源 |
+| **NDP-4 Operational Learning, Heavy Ontology, Federation & Ecosystem** | 条件规划 | NDP-1B、NDP-2、NDP-3 证明业务价值、规模负载、跨组织互操作或真实行动证据需求；Heavy Ontology H0 进入门通过 | Action/Outcome 证据按等级升级；必要时上线受治理 RDF/SHACL/联邦读投影；跨组织权限、来源、版本、退出和审计联合演练通过；无第二权威写源 |
 
 ### 历史版本时间记录
 
@@ -2350,8 +2418,8 @@ NDP 采用退出门而不是预设版本日期驱动。未通过上一阶段退�
 | v22.0 | L4 持续监控 + 遥感 Phase 2-3 | 1-2 周 | 2026-04-08 | ✅ 2026-04-08 |
 | v23.0 | Roadmap 清零 + DRL 约束 | 1-2 周 | 2026-04-09 | ✅ 2026-04-09 |
 | v24.0 | @SubAgent 路由 + XMI 域标准 | 2-3 周 | 2026-04-18 | ✅ 2026-04-19 |
-| **v24.2** | **STAC 客户端标准化 + 遥感数据源扩展** | **1 周** | **原定 2026-05** | **已撤销日期，能力并入 NDP-1/NDP-4** |
-| **v25.0** | **Agentic Governance Foundation** | **4-5 个月** | **原定 2026-05** | **已撤销版本承诺，映射 NDP-1/NDP-2** |
+| **v24.2** | **STAC 客户端标准化 + 遥感数据源扩展** | **1 周** | **原定 2026-05** | **已撤销日期，能力并入 NDP-1B/NDP-4** |
+| **v25.0** | **Agentic Governance Foundation** | **4-5 个月** | **原定 2026-05** | **已撤销版本承诺，映射 NDP-1A/NDP-1B/NDP-2** |
 | **v26.0** | **多模态治理 + 数据要素流通** | **5-6 个月** | **原定 2026-12** | **已撤销版本承诺，映射 NDP-2/NDP-4** |
 | **v27.0** | **平台化 + 生态化 + 搁置项清零** | **6-12 个月** | **原定 2027-07** | **已撤销版本承诺，映射 NDP-4** |
 
@@ -2385,14 +2453,15 @@ NDP 采用退出门而不是预设版本日期驱动。未通过上一阶段退�
 
 ## 总结
 
-GIS Data Agent 的当前主线是 **Geospatial-Native & Agentic-Native Data Platform**，优先服务自然资源和城市场景，同时治理空间与非空间多类型数据。产品不以功能数量或 Agent 等级作为唯一进度，而以治理过程是否严格可执行、数据产品是否可信可版本化、人/Agent/AI 是否一致消费，以及反馈能否形成下一版本为核心结果。
+GIS Data Agent 的当前主线是 **Geospatial-Native、Agentic-Native、Ontology-Grounded Data Platform**，优先服务自然资源和城市场景，同时治理空间与非空间多类型数据。产品不以功能数量、Agent 等级或图数据库规模作为进度，而以语义是否有权威、治理过程是否严格可执行、Action 是否可审计、数据产品是否可信可版本化、人/Agent/AI 是否一致消费，以及反馈能否形成下一版本为核心结果。
 
 1. **无 GWM 也必须成立**：标准、模型、元数据、质量、安全、汇聚、开发、MMFE、血缘、发布和 Human/Agent/AI 消费共同构成独立完整的 Core Data Platform。
-2. **AI for Data 必须 Agentic-native**：Agent 围绕强类型治理对象、Authority、Policy、Capability、Evaluator、HITL、ChangeSet 和版本状态机运行，LLM 不是数据或发布权威。
-3. **Data for AI 不等于只为 GWM 准备数据**：同一 `DataProductVersion` 可派生 DatasetVersion，服务训练、评测、推理、RAG、Agent 和多类 AI；GWM 是其中最具差异化的空间智能消费者。
-4. **MMFE 是主线而非后期增强**：它把空间与非空间多模态数据加工成可追溯、可评价的 `SemanticFusionProductVersion`，并以融合效果和下游增益而非流程通过验收。
-5. **GWM 是特有创新内核**：共享 GWM Runtime Kernel 连接状态图、行动、转移、不确定性、EvidenceClaimLedger 及 TWM/UWM；它增强平台但不侵入基础治理依赖。
-6. **LLM + GWM 是双智能引擎产品命题**：LLM 提供语义、知识和治理编排，GWM 提供空间世界状态、过程、推演和证据边界；必须用传统、LLM-only、GWM-only、LLM+GWM 四路同题评测证明组合价值与原创性。
-7. **真实 Action-Outcome 是能力升级门，不是平台启动门**：没有真实数据时仍可交付状态模型、机制/条件模拟和证据有界规划；只有在证据满足时才升级真实行动效果与决策优势 claim。
-8. 交付从 NDP-0 产品章程和治理契约冻结开始，经 Agentic Governance/Cognitive Runtime 与 NDP-1 Trusted Data Product、NDP-2 MMFE/Data for AI，再进入 NDP-3 GWM 双引擎；NDP-4 保持运营学习、联邦和生态的条件路线。
-9. 旧 `v25.0/v26.0/v27.0` 规划、对标表、等级和容量数字保留为历史输入，不再构成版本承诺；所有后续实施以 Core Platform 与 GWM-enhanced 两套独立退出门验收。
+2. **本体智能是生产主线而非远期附属**：轻量 Authority/Package/Compiler/Resolver、Domain/Operational Ontology 和 Competency Questions 贯穿 NDP-0~NDP-3；重型 RDF/联邦平台保持条件路线。
+3. **AI for Data 必须 Agentic-native**：Agent 围绕强类型治理对象、Authority、Policy、Capability、Evaluator、HITL、ChangeSet 和版本状态机运行，LLM 不是数据、本体、权限或发布权威。
+4. **Data for AI 不等于只为 GWM 准备数据**：同一 `DataProductVersion` 可派生 DatasetVersion，服务训练、评测、推理、RAG、Agent 和多类 AI；GWM 是其中最具差异化的空间智能消费者。
+5. **MMFE 是主线而非后期增强**：它在本体和标准约束下，把空间与非空间多模态数据加工成可追溯、可评价的 `SemanticFusionProductVersion`，并以融合效果和下游增益而非流程通过验收。
+6. **GWM 是特有创新内核**：共享 GWM Runtime Kernel 连接状态图、行动、转移、不确定性、EvidenceClaimLedger 及 TWM/UWM；它消费本体投影并增强平台，但不侵入基础治理依赖。
+7. **LLM + GWM 是双智能引擎产品命题**：LLM 提供语义、知识和治理编排，GWM 提供空间世界状态、过程、推演和证据边界；Ontology Authority、Policy、Evaluator 和 HITL 保持控制权；必须用传统、LLM-only、GWM-only、LLM+GWM 四路同题评测证明组合价值与原创性。
+8. **真实 Action-Outcome 是能力升级门，不是平台启动门**：没有真实数据时仍可交付状态模型、机制/条件模拟和证据有界规划；只有在证据满足时才升级真实行动效果与决策优势 claim。
+9. 交付从 NDP-0 Product/Ontology Charter 和治理契约冻结开始，经 NDP-1A Cognitive Runtime、NDP-1B Ontology Knowledge Brain/Trusted Data Product、NDP-2 MMFE/Data for AI，再进入 NDP-3 GWM 双引擎；NDP-4 保持运营学习、重型本体、联邦和生态的条件路线。
+10. 旧 `v25.0/v26.0/v27.0` 规划、对标表、等级和容量数字保留为历史输入，不再构成版本承诺；所有后续实施以 Core Platform 与 GWM-enhanced 两套独立退出门验收。
