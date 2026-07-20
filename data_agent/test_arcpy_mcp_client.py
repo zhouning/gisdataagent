@@ -111,7 +111,7 @@ def test_package_regular_file_preserves_metadata_and_streaming_hash(
 def test_package_shapefile_includes_required_and_optional_sidecars(
     user_upload_dir,
 ):
-    for suffix in (".shp", ".shx", ".dbf", ".prj", ".cpg", ".qix"):
+    for suffix in (".shp", ".shx", ".dbf", ".prj", ".cpg"):
         (user_upload_dir / f"roads{suffix}").write_bytes(suffix.encode())
     (user_upload_dir / "roads.shp.xml").write_bytes(b"metadata")
     (user_upload_dir / "other.dbf").write_bytes(b"ignore")
@@ -127,7 +127,6 @@ def test_package_shapefile_includes_required_and_optional_sidecars(
             "roads.cpg",
             "roads.dbf",
             "roads.prj",
-            "roads.qix",
             "roads.shp",
             "roads.shp.xml",
             "roads.shx",
@@ -151,7 +150,15 @@ def test_package_shapefile_does_not_accept_nested_stem_as_required_sidecars(
 def test_package_shapefile_ignores_unknown_and_nested_stem_files(
     user_upload_dir,
 ):
-    for suffix in (".shp", ".shx", ".dbf", ".prj", ".atx", ".xml"):
+    for suffix in (
+        ".shp",
+        ".shx",
+        ".dbf",
+        ".prj",
+        ".atx",
+        ".qix",
+        ".xml",
+    ):
         (user_upload_dir / f"roads{suffix}").write_bytes(b"sidecar")
     (user_upload_dir / "roads.shp.xml").write_bytes(b"metadata")
     (user_upload_dir / "roads.secret").write_bytes(b"private")
@@ -161,7 +168,6 @@ def test_package_shapefile_ignores_unknown_and_nested_stem_files(
 
     with zipfile.ZipFile(prepared.upload_path) as archive:
         assert archive.namelist() == [
-            "roads.atx",
             "roads.dbf",
             "roads.prj",
             "roads.shp",
@@ -409,6 +415,69 @@ def test_package_cleans_partial_temp_archive_on_zip_failure(
     assert list(user_upload_dir.glob("*.zip")) == []
 
 
+def test_package_cleanup_uses_pinned_tenant_after_directory_replacement(
+    user_upload_dir, monkeypatch
+):
+    import data_agent.arcpy_mcp_client as client_module
+
+    for suffix in (".shp", ".shx", ".dbf"):
+        (user_upload_dir / f"roads{suffix}").write_bytes(b"x")
+    original_new_package_file = client_module._new_package_file
+    created_names = []
+    original_dir = user_upload_dir.parent / "original-user-dir"
+
+    def capture_new_package_file(expected_tenant_identity=None):
+        package_path, package_stream, tenant_fd = original_new_package_file(
+            expected_tenant_identity
+        )
+        created_names.append(package_path.name)
+        return package_path, package_stream, tenant_fd
+
+    class ReplacingZipFile:
+        def __init__(self, package_stream, *args, **kwargs):
+            package_stream.write(b"partial")
+            user_upload_dir.rename(original_dir)
+            user_upload_dir.mkdir()
+            (user_upload_dir / created_names[0]).write_bytes(b"unrelated")
+
+        def __enter__(self):
+            raise OSError("zip failed")
+
+        def __exit__(self, *args):
+            return False
+
+    monkeypatch.setattr(
+        client_module, "_new_package_file", capture_new_package_file
+    )
+    monkeypatch.setattr(client_module.zipfile, "ZipFile", ReplacingZipFile)
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        package_local_dataset(user_upload_dir / "roads.shp")
+
+    assert exc_info.value.code == "ARCPY_INPUT_PACKAGE_FAILED"
+    assert not (original_dir / created_names[0]).exists()
+    assert (user_upload_dir / created_names[0]).read_bytes() == b"unrelated"
+
+
+def test_prepared_package_cleanup_does_not_unlink_renamed_or_replaced_file(
+    user_upload_dir,
+):
+    for suffix in (".shp", ".shx", ".dbf"):
+        (user_upload_dir / f"roads{suffix}").write_bytes(b"x")
+
+    prepared = package_local_dataset(user_upload_dir / "roads.shp")
+    original_path = prepared.upload_path
+    renamed_path = user_upload_dir / "renamed-package.zip"
+    original_path.rename(renamed_path)
+    original_path.write_bytes(b"unrelated")
+
+    prepared._cleanup_local_package()
+    prepared._close_lease()
+
+    assert original_path.read_bytes() == b"unrelated"
+    assert renamed_path.exists()
+
+
 class FakeUploadResponse:
     def __init__(self, status_code=200):
         self.status_code = status_code
@@ -447,6 +516,9 @@ class FakeSignedUploadClient:
         "http://signed.example/upload",
         "https:///missing-host",
         "https://user:password@signed.example/upload",
+        "https://bad host/upload",
+        "https://./upload",
+        "https://256.256.256.256/upload",
     ],
 )
 def test_signed_upload_url_requires_https_host_without_userinfo(signed_url):
@@ -456,6 +528,18 @@ def test_signed_upload_url_requires_https_host_without_userinfo(signed_url):
     assert exc_info.value.code == "ARCPY_UPLOAD_FAILED"
     assert signed_url not in str(exc_info.value)
     assert signed_url not in repr(exc_info.value.details)
+
+
+@pytest.mark.parametrize(
+    "signed_url",
+    [
+        "https://signed.example/upload",
+        "https://127.0.0.1/upload",
+        "https://[2001:db8::1]/upload",
+    ],
+)
+def test_signed_upload_url_accepts_valid_dns_and_ip_hosts(signed_url):
+    assert ArcPyMcpClient._signed_url({"upload_url": signed_url}) == signed_url
 
 
 def _prepared_regular(user_upload_dir, payload=b"0123456789"):
@@ -841,6 +925,71 @@ async def test_redirect_location_is_redacted_before_target_registration(
 
 
 @pytest.mark.asyncio
+async def test_relative_redirect_location_is_redacted_from_root_and_httpx_logs(
+    user_upload_dir, caplog
+):
+    prepared = _prepared_regular(user_upload_dir)
+    redirect_target = (
+        "/opaque-relative-path-fixture?custom=opaque-relative-query-fixture"
+    )
+    caplog.set_level(logging.INFO)
+    httpx_handler = logging.StreamHandler()
+    logging.getLogger("httpx").addHandler(httpx_handler)
+
+    class LoggingRelativeRedirectTransport(httpx.AsyncBaseTransport):
+        async def handle_async_request(self, request):
+            body = b"".join([chunk async for chunk in request.stream])
+            assert body == b"0123456789"
+            if request.url.path == "/upload":
+                logging.getLogger().info(f"root relative Location {redirect_target}")
+                logging.getLogger("httpx.fixture").info(
+                    f"httpx relative Location {redirect_target}"
+                )
+                return httpx.Response(
+                    307,
+                    headers={"Location": redirect_target},
+                    request=request,
+                )
+            return httpx.Response(200, request=request)
+
+    def signed_http_client_factory(**kwargs):
+        return httpx.AsyncClient(
+            transport=LoggingRelativeRedirectTransport(), **kwargs
+        )
+
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp"),
+        signed_http_client_factory=signed_http_client_factory,
+    )
+
+    async def call_tool(name, arguments):
+        if name == "create_upload":
+            return {
+                "artifact_id": "artifact-1",
+                "upload_url": "https://signed.example/upload",
+            }
+        if name == "complete_upload":
+            return {
+                "state": "ready",
+                "artifact_id": "artifact-1",
+                "verified_sha256": prepared.sha256,
+                "size": prepared.size,
+            }
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+    try:
+        await client._upload_prepared(prepared)
+    finally:
+        logging.getLogger("httpx").removeHandler(httpx_handler)
+
+    logs = caplog.text
+    assert redirect_target not in logs
+    assert "opaque-relative-path-fixture" not in logs
+    assert "opaque-relative-query-fixture" not in logs
+
+
+@pytest.mark.asyncio
 async def test_upload_uses_pinned_file_after_tenant_directory_replacement(
     user_upload_dir,
 ):
@@ -976,6 +1125,7 @@ async def test_upload_cancellation_closes_stream_and_cleans_artifact(
 
         async def put(self, url, *, headers, content, timeout):
             async for _ in content:
+                prepared.upload_path.write_bytes(b"x" * prepared.size)
                 upload_started.set()
                 await hold_upload.wait()
             return FakeUploadResponse()
@@ -1575,6 +1725,38 @@ async def test_inspect_terminal_failure_reads_log_but_returns_stable_error(
 
 
 @pytest.mark.asyncio
+async def test_inspect_terminal_log_cancellation_preserves_cancelled_error():
+    clock = FakeClock()
+    sleep = AdvancingSleep(clock)
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp"),
+        clock=clock,
+        sleep=sleep,
+    )
+    log_started = asyncio.Event()
+
+    async def call_tool(name, arguments):
+        if name == "inspect_dataset":
+            return {"job_id": "job-1"}
+        if name == "get_job":
+            return {"status": "failed"}
+        if name == "get_job_log":
+            log_started.set()
+            await asyncio.Event().wait()
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+    inspection_task = asyncio.create_task(
+        client._inspect_uploaded_artifact("artifact-1")
+    )
+    await log_started.wait()
+
+    inspection_task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await inspection_task
+
+
+@pytest.mark.asyncio
 async def test_inspect_times_out_with_bounded_polling():
     clock = FakeClock()
     sleep = AdvancingSleep(clock)
@@ -1585,11 +1767,16 @@ async def test_inspect_times_out_with_bounded_polling():
         inspection_timeout=6.0,
     )
 
+    cancelled = []
+
     async def call_tool(name, arguments):
         if name == "inspect_dataset":
             return {"job_id": "job-1"}
         if name == "get_job":
             return {"status": "running"}
+        if name == "cancel_job":
+            cancelled.append(arguments)
+            return {}
         raise AssertionError(name)
 
     client.call_tool = call_tool
@@ -1598,7 +1785,8 @@ async def test_inspect_times_out_with_bounded_polling():
         await client._inspect_uploaded_artifact("artifact-1")
 
     assert exc_info.value.code == "ARCPY_JOB_TIMED_OUT"
-    assert sleep.delays == [2, 5]
+    assert cancelled == [{"job_id": "job-1"}]
+    assert sleep.delays == [2, 5, 2, 5]
 
 
 @pytest.mark.asyncio
@@ -1612,10 +1800,13 @@ async def test_inspect_timeout_cancels_nonterminal_job_once():
         inspection_timeout=1.0,
     )
     cancelled = []
+    jobs = iter([{"status": "cancelled"}])
 
     async def call_tool(name, arguments):
         if name == "inspect_dataset":
             return {"job_id": "job-1"}
+        if name == "get_job":
+            return next(jobs)
         if name == "cancel_job":
             cancelled.append(arguments)
             return {}
@@ -1628,6 +1819,7 @@ async def test_inspect_timeout_cancels_nonterminal_job_once():
 
     assert exc_info.value.code == "ARCPY_JOB_TIMED_OUT"
     assert cancelled == [{"job_id": "job-1"}]
+    assert sleep.delays == [2, 2]
 
 
 @pytest.mark.asyncio
@@ -1637,13 +1829,19 @@ async def test_inspect_caller_cancellation_cancels_nonterminal_job_once():
     client = _client()
     cancelled = []
 
+    sleep_calls = []
+
     async def blocking_sleep(delay):
+        sleep_calls.append(delay)
         sleep_started.set()
-        await hold_sleep.wait()
+        if len(sleep_calls) == 1:
+            await hold_sleep.wait()
 
     async def call_tool(name, arguments):
         if name == "inspect_dataset":
             return {"job_id": "job-1"}
+        if name == "get_job":
+            return {"status": "cancelled"}
         if name == "cancel_job":
             cancelled.append(arguments)
             return {}
@@ -1661,6 +1859,7 @@ async def test_inspect_caller_cancellation_cancels_nonterminal_job_once():
         await inspection_task
 
     assert cancelled == [{"job_id": "job-1"}]
+    assert sleep_calls == [2, 2]
 
 
 @pytest.mark.asyncio
@@ -1718,8 +1917,18 @@ async def test_inspect_rejects_unsafe_artifact_relative_path(artifact_path):
         "folder/NUL.tif",
         "folder/COM1.bin",
         "folder/com9.extra",
+        "folder/COM\u00b9.bin",
+        "folder/com\u00b2.extra",
+        "folder/Com\u00b3",
         "folder/LPT1",
         "folder/lpt9.txt",
+        "folder/LPT\u00b9",
+        "folder/lpt\u00b2.txt",
+        "folder/Lpt\u00b3",
+        "folder/CONIN$",
+        "folder/conin$.txt",
+        "folder/CONOUT$",
+        "folder/conout$.json",
         "folder/control\x01name.shp",
         "folder/nul\x00name.shp",
     ],

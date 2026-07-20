@@ -6,6 +6,7 @@ import asyncio
 import copy
 import errno
 import hashlib
+import ipaddress
 import json
 import logging
 import os
@@ -41,7 +42,6 @@ from data_agent.mcp_transport import (
 
 
 logger = logging.getLogger("data_agent.arcpy_mcp_client")
-_SIGNED_URL_LOG_RE = re.compile(r"https?://[^\s\"']+", re.IGNORECASE)
 _SIGNED_TRANSFER_ACTIVE = 0
 _SIGNED_TRANSFER_ACTIVE_LOCK = threading.Lock()
 
@@ -52,7 +52,7 @@ class _SignedTransferLogFilter(RuntimeSecretRedactionFilter):
         with _SIGNED_TRANSFER_ACTIVE_LOCK:
             active = _SIGNED_TRANSFER_ACTIVE > 0
         if active:
-            record.msg = _SIGNED_URL_LOG_RE.sub("[REDACTED]", str(record.msg))
+            record.msg = "[REDACTED]"
             record.args = ()
         return True
 
@@ -82,8 +82,11 @@ _PUBLIC_ERROR_MESSAGES = {
     "ARCPY_JOB_TIMED_OUT": "ArcPy job timed out",
 }
 _SAFE_DETAIL_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_-]{0,63}$")
+_DNS_HOST_LABEL_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$")
 _WINDOWS_RESERVED_COMPONENT_RE = re.compile(
-    r"^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$", re.IGNORECASE
+    r"^(?:CON|PRN|AUX|NUL|COM[1-9\u00b9\u00b2\u00b3]|"
+    r"LPT[1-9\u00b9\u00b2\u00b3]|CONIN\$|CONOUT\$)$",
+    re.IGNORECASE,
 )
 
 
@@ -194,6 +197,11 @@ class _PreparedUploadLease:
             relative_path = path.relative_to(self._user_upload_dir)
             if len(relative_path.parts) != 1:
                 return
+            current_stat = os.stat(
+                relative_path.parts[0], dir_fd=tenant_fd, follow_symlinks=False
+            )
+            if self._file_identity(current_stat) != self._identity:
+                return
             os.unlink(relative_path.parts[0], dir_fd=tenant_fd)
         except (OSError, ValueError):
             pass
@@ -227,10 +235,25 @@ class _AsyncFileByteStream:
         stream = self._stream
         self._stream = None
         if stream is not None:
+            exc_type = args[0] if args else None
+            cancelled = isinstance(exc_type, type) and issubclass(
+                exc_type, asyncio.CancelledError
+            )
+            validation_error = None
+            close_error = None
             try:
                 self._lease.validate()
-            finally:
+            except Exception as exc:
+                validation_error = exc
+            try:
                 stream.close()
+            except Exception as exc:
+                close_error = exc
+            if not cancelled:
+                if validation_error is not None:
+                    raise validation_error
+                if close_error is not None:
+                    raise close_error
         return False
 
     def __aiter__(self):
@@ -586,12 +609,10 @@ _SHAPEFILE_SIDECAR_EXTENSIONS = frozenset(
         ".cpg",
         ".sbn",
         ".sbx",
-        ".qix",
         ".ain",
         ".aih",
         ".ixs",
         ".mxs",
-        ".atx",
         ".fbn",
         ".fbx",
         ".xml",
@@ -650,6 +671,7 @@ def _new_package_file(
     )
     descriptor = None
     filename = None
+    retain_user_fd = False
     try:
         create_flags = os.O_RDWR | os.O_CREAT | os.O_EXCL
         create_flags |= getattr(os, "O_CLOEXEC", 0)
@@ -673,18 +695,20 @@ def _new_package_file(
             os.unlink(filename, dir_fd=user_fd)
             raise
         descriptor = None
-        return user_upload_dir / filename, stream
+        retain_user_fd = True
+        return user_upload_dir / filename, stream, user_fd
     finally:
         if descriptor is not None:
             os.close(descriptor)
-        os.close(user_fd)
+        if not retain_user_fd:
+            os.close(user_fd)
 
 
 def _write_package(
     entries: list[tuple[Path, str]],
     expected_tenant_identity: tuple[int, int] | None = None,
 ) -> Path:
-    package_path, package_stream = _new_package_file(
+    package_path, package_stream, tenant_fd = _new_package_file(
         expected_tenant_identity
     )
     try:
@@ -709,11 +733,17 @@ def _write_package(
                                 target_stream.write(chunk)
         return package_path
     except ArcPyMcpError:
-        _best_effort_unlink_current_user_file(package_path)
+        _best_effort_unlink_from_tenant(
+            tenant_fd, package_path.parent, package_path
+        )
         raise
     except Exception:
-        _best_effort_unlink_current_user_file(package_path)
+        _best_effort_unlink_from_tenant(
+            tenant_fd, package_path.parent, package_path
+        )
         raise _input_error("ARCPY_INPUT_PACKAGE_FAILED") from None
+    finally:
+        os.close(tenant_fd)
 
 
 def package_local_dataset(
@@ -1691,9 +1721,35 @@ class ArcPyMcpClient:
             candidate = value.strip()
             try:
                 parsed = urlparse(candidate)
+                hostname = parsed.hostname
+                _ = parsed.port
+                valid_host = False
+                if hostname:
+                    try:
+                        ipaddress.ip_address(hostname)
+                        valid_host = True
+                    except ValueError:
+                        if not (
+                            hostname.count(".") == 3
+                            and all(part.isdigit() for part in hostname.split("."))
+                        ):
+                            ascii_hostname = hostname.encode("idna").decode(
+                                "ascii"
+                            )
+                            if ascii_hostname.endswith("."):
+                                ascii_hostname = ascii_hostname[:-1]
+                            valid_host = (
+                                bool(ascii_hostname)
+                                and len(ascii_hostname) <= 253
+                                and all(
+                                    _DNS_HOST_LABEL_RE.fullmatch(label)
+                                    is not None
+                                    for label in ascii_hostname.split(".")
+                                )
+                            )
                 valid = (
                     parsed.scheme == "https"
-                    and parsed.hostname is not None
+                    and valid_host
                     and parsed.username is None
                     and parsed.password is None
                 )
@@ -2067,6 +2123,49 @@ class ArcPyMcpClient:
                 )
         return posix_path.as_posix()
 
+    async def _cancel_and_drain_inspection_job(
+        self, job_id: str, *, ignore_cancellation: bool = False
+    ) -> None:
+        try:
+            await self.call_tool("cancel_job", {"job_id": job_id})
+        except asyncio.CancelledError:
+            if not ignore_cancellation:
+                raise
+        except Exception:
+            pass
+
+        started = self._clock()
+        delays = (2, 5, 10, 20)
+        terminal_statuses = {
+            "succeeded",
+            "failed",
+            "timed_out",
+            "cancelled",
+            "interrupted",
+        }
+        for attempt in range(8):
+            delay = delays[min(attempt, len(delays) - 1)]
+            try:
+                await self._sleep(delay)
+            except asyncio.CancelledError:
+                if not ignore_cancellation:
+                    raise
+                continue
+            except Exception:
+                continue
+            try:
+                job = await self.call_tool("get_job", {"job_id": job_id})
+            except asyncio.CancelledError:
+                if not ignore_cancellation:
+                    raise
+                job = None
+            except Exception:
+                job = None
+            if isinstance(job, dict) and job.get("status") in terminal_statuses:
+                return
+            if self._clock() - started >= self._inspection_timeout:
+                return
+
     async def _inspect_uploaded_artifact(self, artifact_id: str) -> str:
         if not isinstance(artifact_id, str) or not artifact_id.strip():
             raise ArcPyMcpError(
@@ -2115,7 +2214,7 @@ class ArcPyMcpClient:
                         await self.call_tool(
                             "get_job_log", {"job_id": job_id}
                         )
-                    except BaseException:
+                    except Exception:
                         pass
                     raise ArcPyMcpError(
                         "ARCPY_INSPECTION_FAILED",
@@ -2126,12 +2225,18 @@ class ArcPyMcpClient:
                         "ARCPY_RESPONSE_INVALID",
                         "ArcPy MCP response is invalid",
                     )
-        except BaseException:
+        except asyncio.CancelledError:
             if job_id is not None and not terminal:
                 try:
-                    await self.call_tool("cancel_job", {"job_id": job_id})
-                except BaseException:
+                    await self._cancel_and_drain_inspection_job(
+                        job_id, ignore_cancellation=True
+                    )
+                except Exception:
                     pass
+            raise
+        except Exception:
+            if job_id is not None and not terminal:
+                await self._cancel_and_drain_inspection_job(job_id)
             raise
 
     async def prepare_input(
