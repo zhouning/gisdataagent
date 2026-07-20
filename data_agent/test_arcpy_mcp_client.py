@@ -4,6 +4,7 @@ import asyncio
 import gc
 import hashlib
 import logging
+import os
 import threading
 import zipfile
 from dataclasses import asdict
@@ -493,8 +494,7 @@ def test_prepared_package_cleanup_removes_same_inode_metadata_change(
     assert not prepared.upload_path.exists()
 
 
-@pytest.mark.asyncio
-async def test_package_lease_does_not_reopen_replaced_path_after_creation(
+def test_package_lease_rejects_renamed_original_before_upload(
     user_upload_dir, monkeypatch
 ):
     import data_agent.arcpy_mcp_client as client_module
@@ -512,14 +512,30 @@ async def test_package_lease_does_not_reopen_replaced_path_after_creation(
         return result
 
     monkeypatch.setattr(client_module, "_write_package", write_then_replace)
-    prepared = package_local_dataset(user_upload_dir / "roads.shp")
-    with prepared._lease.open_stream() as stream:
-        stream.seek(0)
-        pinned_payload = stream.read()
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        package_local_dataset(user_upload_dir / "roads.shp")
 
-    assert pinned_payload.startswith(b"PK")
-    assert prepared.upload_path.read_bytes() == b"not-a-zip"
+    assert exc_info.value.code == "ARCPY_INPUT_INVALID"
     assert renamed_path.exists()
+    replacement_paths = list(user_upload_dir.glob("arcpy-input-*.zip"))
+    assert len(replacement_paths) == 1
+    assert replacement_paths[0].read_bytes() == b"not-a-zip"
+
+
+@pytest.mark.asyncio
+async def test_upload_rejects_hardlink_tamper_with_restored_mtime(
+    user_upload_dir,
+):
+    prepared = _prepared_regular(user_upload_dir, payload=b"original-data")
+    hardlink = user_upload_dir / "hardlink.gpkg"
+    os.link(prepared.upload_path, hardlink)
+    original_stat = os.stat(hardlink)
+    prepared.upload_path.unlink()
+    hardlink.write_bytes(b"tampered-data")
+    os.utime(
+        hardlink,
+        ns=(original_stat.st_atime_ns, original_stat.st_mtime_ns),
+    )
     http_calls = []
     client = _upload_client([FakeUploadResponse()], [], http_calls)
 
@@ -539,11 +555,13 @@ async def test_package_lease_does_not_reopen_replaced_path_after_creation(
         raise AssertionError(name)
 
     client.call_tool = call_tool
-    await client._upload_prepared(prepared, retain_cleanup_lease=True)
-    assert http_calls[0]["body"].startswith(b"PK")
-    prepared._cleanup_local_package()
-    prepared._close_lease()
-    assert prepared.upload_path.exists()
+    try:
+        with pytest.raises(ArcPyMcpError) as exc_info:
+            await client._upload_prepared(prepared)
+        assert exc_info.value.code == "ARCPY_INPUT_INVALID"
+        assert http_calls == []
+    finally:
+        hardlink.unlink()
 
 
 class FakeUploadResponse:
@@ -1854,7 +1872,7 @@ async def test_inspect_times_out_with_bounded_polling():
 
     assert exc_info.value.code == "ARCPY_JOB_TIMED_OUT"
     assert cancelled == [{"job_id": "job-1"}]
-    assert sleep.delays == [2, 5, 2, 5]
+    assert sleep.delays == [2, 5, 2, 3.0]
 
 
 @pytest.mark.asyncio
@@ -1887,7 +1905,7 @@ async def test_inspect_timeout_cancels_nonterminal_job_once():
 
     assert exc_info.value.code == "ARCPY_JOB_TIMED_OUT"
     assert cancelled == [{"job_id": "job-1"}]
-    assert sleep.delays == [2, 2]
+    assert sleep.delays == [2]
 
 
 @pytest.mark.asyncio
@@ -1966,7 +1984,159 @@ async def test_inspect_caller_cancellation_cancels_nonterminal_job_once():
         await inspection_task
 
     assert cancelled == [{"job_id": "job-1"}]
-    assert sleep_calls == [2, 2]
+    assert sleep_calls == [2]
+
+
+@pytest.mark.asyncio
+async def test_inspect_initial_rpc_cancellation_cancels_returned_job_once():
+    client = _client()
+    inspect_started = asyncio.Event()
+    release_inspect = asyncio.Event()
+    inspect_finished = asyncio.Event()
+    drain_finished = asyncio.Event()
+    cancelled = []
+    drained = []
+
+    async def call_tool(name, arguments):
+        if name == "inspect_dataset":
+            inspect_started.set()
+            await release_inspect.wait()
+            inspect_finished.set()
+            return {"job_id": "job-1"}
+        if name == "cancel_job":
+            cancelled.append(arguments)
+            return {}
+        if name == "get_job":
+            drained.append(arguments)
+            drain_finished.set()
+            return {"job_id": "job-1", "status": "cancelled"}
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+    inspection_task = asyncio.create_task(
+        client._inspect_uploaded_artifact("artifact-1")
+    )
+    await inspect_started.wait()
+
+    inspection_task.cancel()
+    release_inspect.set()
+
+    with pytest.raises(asyncio.CancelledError):
+        await inspection_task
+
+    assert inspect_finished.is_set()
+    assert drain_finished.is_set()
+    assert cancelled == [{"job_id": "job-1"}]
+    assert drained == [{"job_id": "job-1"}]
+
+
+@pytest.mark.asyncio
+async def test_inspect_initial_rpc_cancellation_consumes_hung_call():
+    config = McpServerConfig(
+        name="arcpy", url="https://service.example/mcp", timeout=0.01
+    )
+    client = ArcPyMcpClient(config, inspection_timeout=0.01)
+    inspect_started = asyncio.Event()
+    inspect_finished = asyncio.Event()
+
+    async def call_tool(name, arguments):
+        if name != "inspect_dataset":
+            raise AssertionError(name)
+        inspect_started.set()
+        try:
+            await asyncio.Event().wait()
+        finally:
+            inspect_finished.set()
+
+    client.call_tool = call_tool
+    inspection_task = asyncio.create_task(
+        client._inspect_uploaded_artifact("artifact-1")
+    )
+    await inspect_started.wait()
+
+    inspection_task.cancel()
+
+    with pytest.raises(asyncio.CancelledError):
+        await asyncio.wait_for(inspection_task, timeout=0.2)
+    assert inspect_finished.is_set()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("hung_rpc", ["cancel_job", "get_job"])
+async def test_inspect_drain_bounds_hung_rpc(hung_rpc):
+    config = McpServerConfig(
+        name="arcpy", url="https://service.example/mcp", timeout=0.01
+    )
+    client = ArcPyMcpClient(
+        config,
+        inspection_timeout=0.01,
+    )
+    started = asyncio.Event()
+
+    async def call_tool(name, arguments):
+        if name == hung_rpc:
+            started.set()
+            await asyncio.Event().wait()
+        if name == "cancel_job":
+            return {}
+        if name == "get_job":
+            return {"job_id": "job-1", "status": "running"}
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+    await asyncio.wait_for(
+        client._cancel_and_drain_inspection_job("job-1"), timeout=0.2
+    )
+    assert started.is_set()
+
+
+@pytest.mark.asyncio
+async def test_inspect_second_cancellation_interrupts_drain():
+    client = _client()
+    polling_started = asyncio.Event()
+    drain_started = asyncio.Event()
+    cancelled = []
+    sleep_calls = 0
+    get_job_calls = 0
+
+    async def blocking_sleep(delay):
+        nonlocal sleep_calls
+        sleep_calls += 1
+        if sleep_calls == 1:
+            polling_started.set()
+            await asyncio.Event().wait()
+
+    async def call_tool(name, arguments):
+        nonlocal get_job_calls
+        if name == "inspect_dataset":
+            return {"job_id": "job-1"}
+        if name == "cancel_job":
+            cancelled.append(arguments)
+            return {}
+        if name == "get_job":
+            get_job_calls += 1
+            if get_job_calls > 1:
+                return {"job_id": "job-1", "status": "cancelled"}
+            drain_started.set()
+            await asyncio.Event().wait()
+        raise AssertionError(name)
+
+    client._sleep = blocking_sleep
+    client.call_tool = call_tool
+    inspection_task = asyncio.create_task(
+        client._inspect_uploaded_artifact("artifact-1")
+    )
+    await polling_started.wait()
+
+    inspection_task.cancel()
+    await drain_started.wait()
+    inspection_task.cancel()
+
+    with pytest.raises(asyncio.CancelledError):
+        await asyncio.wait_for(inspection_task, timeout=0.2)
+
+    assert cancelled == [{"job_id": "job-1"}]
+    assert get_job_calls == 1
 
 
 @pytest.mark.asyncio

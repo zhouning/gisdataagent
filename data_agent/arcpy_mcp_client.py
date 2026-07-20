@@ -131,7 +131,6 @@ class _PreparedUploadLease:
         file_fd: int,
         identity: tuple[int, ...],
         user_upload_dir: Path,
-        pinned_path: Path | None = None,
     ):
         self._tenant_fd = tenant_fd
         self._file_fd = file_fd
@@ -141,7 +140,6 @@ class _PreparedUploadLease:
             identity[1],
             stat.S_IFMT(identity[2]),
         )
-        self._pinned_path = pinned_path
         self._user_upload_dir = user_upload_dir
         self._closed = False
         self._lock = threading.Lock()
@@ -171,44 +169,7 @@ class _PreparedUploadLease:
                 raise _input_error("ARCPY_INPUT_INVALID")
             current = self._file_identity(os.fstat(self._file_fd))
             if current != self._identity:
-                if not self._accept_relocated_identity(current):
-                    raise _input_error("ARCPY_INPUT_INVALID")
-                self._identity = current
-
-    def _accept_relocated_identity(self, current: tuple[int, ...]) -> bool:
-        if self._pinned_path is None or current[:5] != self._identity[:5]:
-            return False
-        try:
-            link_count = os.fstat(self._file_fd).st_nlink
-        except OSError:
-            return False
-        if link_count == 0:
-            return False
-        try:
-            relative_path = self._pinned_path.relative_to(
-                self._user_upload_dir
-            )
-            if len(relative_path.parts) != 1:
-                return False
-            tenant_fd = os.dup(self._tenant_fd)
-            try:
-                current_path_stat = os.stat(
-                    relative_path.parts[0],
-                    dir_fd=tenant_fd,
-                    follow_symlinks=False,
-                )
-            except FileNotFoundError:
-                return True
-            except OSError:
-                return False
-            finally:
-                os.close(tenant_fd)
-        except (OSError, ValueError):
-            return False
-        return (
-            self._file_object_identity(current_path_stat)
-            != self._object_identity
-        )
+                raise _input_error("ARCPY_INPUT_INVALID")
 
     def open_stream(self):
         self.validate()
@@ -534,7 +495,6 @@ def _pin_current_user_file(
             file_fd,
             _PreparedUploadLease._file_identity(file_stat),
             user_upload_dir,
-            path,
         )
         file_fd = None
         return lease
@@ -795,7 +755,6 @@ def _write_package(
                 package_file_fd,
                 _PreparedUploadLease._file_identity(file_stat),
                 package_path.parent,
-                package_path,
             )
             package_file_fd = None
             tenant_fd = None
@@ -2208,18 +2167,101 @@ class ArcPyMcpClient:
                 )
         return posix_path.as_posix()
 
-    async def _cancel_and_drain_inspection_job(
-        self, job_id: str, *, ignore_cancellation: bool = False
-    ) -> None:
+    def _inspection_cleanup_deadline(self) -> float:
+        cleanup_timeout = max(
+            0.0,
+            min(
+                float(self._config.timeout),
+                float(self._inspection_timeout),
+            ),
+        )
+        return self._clock() + cleanup_timeout
+
+    async def _inspection_cleanup_call(
+        self, name: str, arguments: dict, deadline: float
+    ) -> tuple[bool, Any]:
+        remaining = deadline - self._clock()
+        if remaining <= 0:
+            return False, None
         try:
-            await self.call_tool("cancel_job", {"job_id": job_id})
-        except asyncio.CancelledError:
-            if not ignore_cancellation:
-                raise
+            return True, await asyncio.wait_for(
+                self.call_tool(name, arguments), timeout=remaining
+            )
+        except asyncio.TimeoutError:
+            return False, None
         except Exception:
+            return False, None
+
+    @staticmethod
+    def _consume_background_task(task: asyncio.Task) -> None:
+        try:
+            task.result()
+        except BaseException:
             pass
 
-        started = self._clock()
+    async def _cancel_and_consume_background_task(
+        self, task: asyncio.Task
+    ) -> None:
+        caller_task = asyncio.current_task()
+        cancellation_count = (
+            caller_task.cancelling() if caller_task is not None else 0
+        )
+        task.cancel()
+        try:
+            await asyncio.shield(task)
+        except asyncio.CancelledError:
+            if (
+                caller_task is not None
+                and caller_task.cancelling() > cancellation_count
+            ):
+                task.add_done_callback(self._consume_background_task)
+                raise
+        except BaseException:
+            pass
+
+    async def _await_cancelled_inspection_call(
+        self, task: asyncio.Task, deadline: float
+    ) -> Any:
+        remaining = deadline - self._clock()
+        if remaining <= 0:
+            await self._cancel_and_consume_background_task(task)
+            return None
+        caller_task = asyncio.current_task()
+        cancellation_count = (
+            caller_task.cancelling() if caller_task is not None else 0
+        )
+        try:
+            return await asyncio.wait_for(
+                asyncio.shield(task), timeout=remaining
+            )
+        except asyncio.TimeoutError:
+            await self._cancel_and_consume_background_task(task)
+            return None
+        except asyncio.CancelledError:
+            if (
+                caller_task is not None
+                and caller_task.cancelling() > cancellation_count
+            ):
+                task.cancel()
+                task.add_done_callback(self._consume_background_task)
+                raise
+            return None
+        except Exception:
+            return None
+
+    async def _cancel_and_drain_inspection_job(
+        self, job_id: str, *, _deadline: float | None = None
+    ) -> None:
+        own_deadline = self._inspection_cleanup_deadline()
+        deadline = (
+            own_deadline
+            if _deadline is None
+            else min(_deadline, own_deadline)
+        )
+        await self._inspection_cleanup_call(
+            "cancel_job", {"job_id": job_id}, deadline
+        )
+
         delays = (2, 5, 10, 20)
         terminal_statuses = {
             "succeeded",
@@ -2229,36 +2271,34 @@ class ArcPyMcpClient:
             "interrupted",
         }
         for attempt in range(8):
-            delay = delays[min(attempt, len(delays) - 1)]
-            try:
-                await self._sleep(delay)
-            except asyncio.CancelledError:
-                if not ignore_cancellation:
-                    raise
-                continue
-            except Exception:
-                continue
-            try:
-                job = await self.call_tool("get_job", {"job_id": job_id})
-            except asyncio.CancelledError:
-                if not ignore_cancellation:
-                    raise
-                job = None
-            except Exception:
-                job = None
+            completed, job = await self._inspection_cleanup_call(
+                "get_job", {"job_id": job_id}, deadline
+            )
+            if not completed and self._clock() >= deadline:
+                return
             if not isinstance(job, dict):
-                if self._clock() - started >= self._inspection_timeout:
+                pass
+            else:
+                response_job_id = job.get("job_id")
+                if (
+                    response_job_id is None
+                    or response_job_id == job_id
+                ) and job.get("status") in terminal_statuses:
                     return
-                continue
-            response_job_id = job.get("job_id")
-            if response_job_id is not None and response_job_id != job_id:
-                if self._clock() - started >= self._inspection_timeout:
-                    return
-                continue
-            if job.get("status") in terminal_statuses:
+            remaining = deadline - self._clock()
+            if remaining <= 0:
                 return
-            if self._clock() - started >= self._inspection_timeout:
+            delay = min(
+                delays[min(attempt, len(delays) - 1)], remaining
+            )
+            try:
+                await asyncio.wait_for(
+                    self._sleep(delay), timeout=remaining
+                )
+            except asyncio.TimeoutError:
                 return
+            except Exception:
+                pass
 
     async def _inspect_uploaded_artifact(self, artifact_id: str) -> str:
         if not isinstance(artifact_id, str) or not artifact_id.strip():
@@ -2267,11 +2307,14 @@ class ArcPyMcpClient:
             )
         job_id = None
         terminal = False
-        try:
-            inspection = await self.call_tool(
+        inspection_task = asyncio.create_task(
+            self.call_tool(
                 "inspect_dataset",
                 {"artifact_id": artifact_id, "path": "."},
             )
+        )
+        try:
+            inspection = await asyncio.shield(inspection_task)
             job_id = self._required_identifier(inspection, "job_id")
             started = self._clock()
             delays = (2, 5, 10)
@@ -2320,10 +2363,21 @@ class ArcPyMcpClient:
                         "ArcPy MCP response is invalid",
                     )
         except asyncio.CancelledError:
+            cleanup_deadline = self._inspection_cleanup_deadline()
+            if job_id is None:
+                inspection = await self._await_cancelled_inspection_call(
+                    inspection_task, cleanup_deadline
+                )
+                try:
+                    job_id = self._required_identifier(
+                        inspection, "job_id"
+                    )
+                except Exception:
+                    job_id = None
             if job_id is not None and not terminal:
                 try:
                     await self._cancel_and_drain_inspection_job(
-                        job_id, ignore_cancellation=True
+                        job_id, _deadline=cleanup_deadline
                     )
                 except Exception:
                     pass
