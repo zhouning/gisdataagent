@@ -478,6 +478,74 @@ def test_prepared_package_cleanup_does_not_unlink_renamed_or_replaced_file(
     assert renamed_path.exists()
 
 
+def test_prepared_package_cleanup_removes_same_inode_metadata_change(
+    user_upload_dir,
+):
+    for suffix in (".shp", ".shx", ".dbf"):
+        (user_upload_dir / f"roads{suffix}").write_bytes(b"x")
+
+    prepared = package_local_dataset(user_upload_dir / "roads.shp")
+    prepared.upload_path.write_bytes(b"damaged-package")
+
+    prepared._cleanup_local_package()
+    prepared._close_lease()
+
+    assert not prepared.upload_path.exists()
+
+
+@pytest.mark.asyncio
+async def test_package_lease_does_not_reopen_replaced_path_after_creation(
+    user_upload_dir, monkeypatch
+):
+    import data_agent.arcpy_mcp_client as client_module
+
+    for suffix in (".shp", ".shx", ".dbf"):
+        (user_upload_dir / f"roads{suffix}").write_bytes(b"x")
+    original_write_package = client_module._write_package
+    renamed_path = user_upload_dir / "renamed-original.zip"
+
+    def write_then_replace(entries, expected_tenant_identity=None):
+        result = original_write_package(entries, expected_tenant_identity)
+        package_path = result[0] if isinstance(result, tuple) else result
+        package_path.rename(renamed_path)
+        package_path.write_bytes(b"not-a-zip")
+        return result
+
+    monkeypatch.setattr(client_module, "_write_package", write_then_replace)
+    prepared = package_local_dataset(user_upload_dir / "roads.shp")
+    with prepared._lease.open_stream() as stream:
+        stream.seek(0)
+        pinned_payload = stream.read()
+
+    assert pinned_payload.startswith(b"PK")
+    assert prepared.upload_path.read_bytes() == b"not-a-zip"
+    assert renamed_path.exists()
+    http_calls = []
+    client = _upload_client([FakeUploadResponse()], [], http_calls)
+
+    async def call_tool(name, arguments):
+        if name == "create_upload":
+            return {
+                "artifact_id": "artifact-1",
+                "upload_url": "https://signed.example/upload",
+            }
+        if name == "complete_upload":
+            return {
+                "state": "ready",
+                "artifact_id": "artifact-1",
+                "verified_sha256": prepared.sha256,
+                "size": prepared.size,
+            }
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+    await client._upload_prepared(prepared, retain_cleanup_lease=True)
+    assert http_calls[0]["body"].startswith(b"PK")
+    prepared._cleanup_local_package()
+    prepared._close_lease()
+    assert prepared.upload_path.exists()
+
+
 class FakeUploadResponse:
     def __init__(self, status_code=200):
         self.status_code = status_code
@@ -1823,6 +1891,45 @@ async def test_inspect_timeout_cancels_nonterminal_job_once():
 
 
 @pytest.mark.asyncio
+async def test_inspect_drain_rejects_cancelled_status_for_other_job():
+    clock = FakeClock()
+    sleep = AdvancingSleep(clock)
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp"),
+        clock=clock,
+        sleep=sleep,
+        inspection_timeout=6.0,
+    )
+    jobs = iter(
+        [
+            {"job_id": "job-1", "status": "running"},
+            {"job_id": "job-other", "status": "cancelled"},
+            {"job_id": "job-1", "status": "cancelled"},
+        ]
+    )
+    calls = []
+
+    async def call_tool(name, arguments):
+        calls.append((name, arguments))
+        if name == "inspect_dataset":
+            return {"job_id": "job-1"}
+        if name == "cancel_job":
+            return {}
+        if name == "get_job":
+            return next(jobs)
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client._inspect_uploaded_artifact("artifact-1")
+
+    assert exc_info.value.code == "ARCPY_JOB_TIMED_OUT"
+    assert [name for name, _ in calls].count("cancel_job") == 1
+    assert [name for name, _ in calls].count("get_job") == 3
+
+
+@pytest.mark.asyncio
 async def test_inspect_caller_cancellation_cancels_nonterminal_job_once():
     sleep_started = asyncio.Event()
     hold_sleep = asyncio.Event()
@@ -2059,14 +2166,19 @@ async def test_prepare_input_cancellation_cleans_completed_background_package(
     package_finished = threading.Event()
 
     def blocking_write_package(entries, expected_tenant_identity=None):
-        package_path = original_write_package(
+        package_result = original_write_package(
             entries, expected_tenant_identity
+        )
+        package_path = (
+            package_result[0]
+            if isinstance(package_result, tuple)
+            else package_result
         )
         package_paths.append(package_path)
         package_ready.set()
         release_package.wait(timeout=5)
         package_finished.set()
-        return package_path
+        return package_result
 
     monkeypatch.setattr(
         client_module, "_write_package", blocking_write_package

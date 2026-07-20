@@ -131,10 +131,17 @@ class _PreparedUploadLease:
         file_fd: int,
         identity: tuple[int, ...],
         user_upload_dir: Path,
+        pinned_path: Path | None = None,
     ):
         self._tenant_fd = tenant_fd
         self._file_fd = file_fd
         self._identity = identity
+        self._object_identity = (
+            identity[0],
+            identity[1],
+            stat.S_IFMT(identity[2]),
+        )
+        self._pinned_path = pinned_path
         self._user_upload_dir = user_upload_dir
         self._closed = False
         self._lock = threading.Lock()
@@ -150,13 +157,58 @@ class _PreparedUploadLease:
             file_stat.st_ctime_ns,
         )
 
+    @staticmethod
+    def _file_object_identity(file_stat: os.stat_result) -> tuple[int, ...]:
+        return (
+            file_stat.st_dev,
+            file_stat.st_ino,
+            stat.S_IFMT(file_stat.st_mode),
+        )
+
     def validate(self) -> None:
         with self._lock:
             if self._closed:
                 raise _input_error("ARCPY_INPUT_INVALID")
             current = self._file_identity(os.fstat(self._file_fd))
             if current != self._identity:
-                raise _input_error("ARCPY_INPUT_INVALID")
+                if not self._accept_relocated_identity(current):
+                    raise _input_error("ARCPY_INPUT_INVALID")
+                self._identity = current
+
+    def _accept_relocated_identity(self, current: tuple[int, ...]) -> bool:
+        if self._pinned_path is None or current[:5] != self._identity[:5]:
+            return False
+        try:
+            link_count = os.fstat(self._file_fd).st_nlink
+        except OSError:
+            return False
+        if link_count == 0:
+            return False
+        try:
+            relative_path = self._pinned_path.relative_to(
+                self._user_upload_dir
+            )
+            if len(relative_path.parts) != 1:
+                return False
+            tenant_fd = os.dup(self._tenant_fd)
+            try:
+                current_path_stat = os.stat(
+                    relative_path.parts[0],
+                    dir_fd=tenant_fd,
+                    follow_symlinks=False,
+                )
+            except FileNotFoundError:
+                return True
+            except OSError:
+                return False
+            finally:
+                os.close(tenant_fd)
+        except (OSError, ValueError):
+            return False
+        return (
+            self._file_object_identity(current_path_stat)
+            != self._object_identity
+        )
 
     def open_stream(self):
         self.validate()
@@ -200,7 +252,7 @@ class _PreparedUploadLease:
             current_stat = os.stat(
                 relative_path.parts[0], dir_fd=tenant_fd, follow_symlinks=False
             )
-            if self._file_identity(current_stat) != self._identity:
+            if self._file_object_identity(current_stat) != self._object_identity:
                 return
             os.unlink(relative_path.parts[0], dir_fd=tenant_fd)
         except (OSError, ValueError):
@@ -482,6 +534,7 @@ def _pin_current_user_file(
             file_fd,
             _PreparedUploadLease._file_identity(file_stat),
             user_upload_dir,
+            path,
         )
         file_fd = None
         return lease
@@ -707,10 +760,12 @@ def _new_package_file(
 def _write_package(
     entries: list[tuple[Path, str]],
     expected_tenant_identity: tuple[int, int] | None = None,
-) -> Path:
+) -> tuple[Path, _PreparedUploadLease]:
     package_path, package_stream, tenant_fd = _new_package_file(
         expected_tenant_identity
     )
+    lease = None
+    package_file_fd = None
     try:
         with package_stream:
             with zipfile.ZipFile(
@@ -731,19 +786,45 @@ def _write_package(
                                 lambda: source_stream.read(1024 * 1024), b""
                             ):
                                 target_stream.write(chunk)
-        return package_path
+            package_stream.flush()
+            package_stream.seek(0)
+            package_file_fd = os.dup(package_stream.fileno())
+            file_stat = os.fstat(package_file_fd)
+            lease = _PreparedUploadLease(
+                tenant_fd,
+                package_file_fd,
+                _PreparedUploadLease._file_identity(file_stat),
+                package_path.parent,
+                package_path,
+            )
+            package_file_fd = None
+            tenant_fd = None
+        return package_path, lease
     except ArcPyMcpError:
-        _best_effort_unlink_from_tenant(
-            tenant_fd, package_path.parent, package_path
-        )
+        if lease is not None:
+            lease.unlink(package_path)
+            lease.close()
+            lease = None
+        elif tenant_fd is not None:
+            _best_effort_unlink_from_tenant(
+                tenant_fd, package_path.parent, package_path
+            )
         raise
     except Exception:
-        _best_effort_unlink_from_tenant(
-            tenant_fd, package_path.parent, package_path
-        )
+        if lease is not None:
+            lease.unlink(package_path)
+            lease.close()
+            lease = None
+        elif tenant_fd is not None:
+            _best_effort_unlink_from_tenant(
+                tenant_fd, package_path.parent, package_path
+            )
         raise _input_error("ARCPY_INPUT_PACKAGE_FAILED") from None
     finally:
-        os.close(tenant_fd)
+        if package_file_fd is not None:
+            os.close(package_file_fd)
+        if tenant_fd is not None:
+            os.close(tenant_fd)
 
 
 def package_local_dataset(
@@ -791,7 +872,7 @@ def package_local_dataset(
                 raise _input_error("ARCPY_INPUT_PACKAGE_FAILED") from None
             if not entries:
                 raise _input_error("ARCPY_INPUT_INCOMPLETE")
-            upload_path = _write_package(entries, tenant_identity)
+            upload_path, lease = _write_package(entries, tenant_identity)
             logical_name = f"{source.name}.zip"
             media_type = "application/zip"
             delete_after_upload = True
@@ -816,17 +897,21 @@ def package_local_dataset(
             }
             if not required_names.issubset(packaged_names):
                 raise _input_error("ARCPY_INPUT_INCOMPLETE")
-            upload_path = _write_package(entries, tenant_identity)
+            upload_path, lease = _write_package(entries, tenant_identity)
             logical_name = f"{source.stem}.zip"
             media_type = "application/zip"
             delete_after_upload = True
         elif not source.is_file():
             raise _input_error("ARCPY_INPUT_INVALID")
 
-        lease = _pin_current_user_file(
-            upload_path, tenant_fd, user_upload_dir
-        )
-        tenant_fd = None
+        if lease is None:
+            lease = _pin_current_user_file(
+                upload_path, tenant_fd, user_upload_dir
+            )
+            tenant_fd = None
+        else:
+            os.close(tenant_fd)
+            tenant_fd = None
         size, sha256 = lease.metadata()
         return PreparedLocalUpload(
             upload_path=upload_path,
@@ -2161,7 +2246,16 @@ class ArcPyMcpClient:
                 job = None
             except Exception:
                 job = None
-            if isinstance(job, dict) and job.get("status") in terminal_statuses:
+            if not isinstance(job, dict):
+                if self._clock() - started >= self._inspection_timeout:
+                    return
+                continue
+            response_job_id = job.get("job_id")
+            if response_job_id is not None and response_job_id != job_id:
+                if self._clock() - started >= self._inspection_timeout:
+                    return
+                continue
+            if job.get("status") in terminal_statuses:
                 return
             if self._clock() - started >= self._inspection_timeout:
                 return
