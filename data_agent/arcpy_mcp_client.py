@@ -206,19 +206,71 @@ class _PreparedUploadLease:
             if self._closed:
                 return
             tenant_fd = os.dup(self._tenant_fd)
+        quarantine_name = None
+        quarantine_fd = None
         try:
             relative_path = path.relative_to(self._user_upload_dir)
             if len(relative_path.parts) != 1:
                 return
-            current_stat = os.stat(
-                relative_path.parts[0], dir_fd=tenant_fd, follow_symlinks=False
-            )
-            if self._file_object_identity(current_stat) != self._object_identity:
+            filename = relative_path.parts[0]
+            for _ in range(100):
+                candidate = f".arcpy-cleanup-{secrets.token_hex(16)}"
+                try:
+                    os.mkdir(candidate, 0o700, dir_fd=tenant_fd)
+                    quarantine_name = candidate
+                    break
+                except FileExistsError:
+                    continue
+            if quarantine_name is None:
                 return
-            os.unlink(relative_path.parts[0], dir_fd=tenant_fd)
+            quarantine_fd = os.open(
+                quarantine_name,
+                _directory_open_flags(),
+                dir_fd=tenant_fd,
+            )
+            entry_name = "entry"
+            os.rename(
+                filename,
+                entry_name,
+                src_dir_fd=tenant_fd,
+                dst_dir_fd=quarantine_fd,
+            )
+            current_stat = os.stat(
+                entry_name,
+                dir_fd=quarantine_fd,
+                follow_symlinks=False,
+            )
+            if (
+                self._file_object_identity(current_stat)
+                == self._object_identity
+            ):
+                os.unlink(entry_name, dir_fd=quarantine_fd)
+                return
+
+            try:
+                os.link(
+                    entry_name,
+                    filename,
+                    src_dir_fd=quarantine_fd,
+                    dst_dir_fd=tenant_fd,
+                    follow_symlinks=False,
+                )
+            except OSError:
+                return
+            try:
+                os.unlink(entry_name, dir_fd=quarantine_fd)
+            except OSError:
+                pass
         except (OSError, ValueError):
             pass
         finally:
+            if quarantine_fd is not None:
+                os.close(quarantine_fd)
+            if quarantine_name is not None:
+                try:
+                    os.rmdir(quarantine_name, dir_fd=tenant_fd)
+                except OSError:
+                    pass
             os.close(tenant_fd)
 
     def __del__(self):
@@ -2168,29 +2220,48 @@ class ArcPyMcpClient:
         return posix_path.as_posix()
 
     def _inspection_cleanup_deadline(self) -> float:
-        cleanup_timeout = max(
-            0.0,
-            min(
-                float(self._config.timeout),
-                float(self._inspection_timeout),
-            ),
-        )
+        cleanup_timeout = max(0.0, float(self._inspection_timeout))
         return self._clock() + cleanup_timeout
+
+    async def _await_inspection_cleanup_task(
+        self, task: asyncio.Task, deadline: float
+    ) -> tuple[bool, Any]:
+        remaining = deadline - self._clock()
+        if remaining <= 0:
+            task.cancel()
+            task.add_done_callback(self._consume_background_task)
+            return False, None
+        caller_task = asyncio.current_task()
+        cancellation_count = (
+            caller_task.cancelling() if caller_task is not None else 0
+        )
+        try:
+            return True, await asyncio.wait_for(
+                asyncio.shield(task), timeout=remaining
+            )
+        except asyncio.TimeoutError:
+            task.cancel()
+            task.add_done_callback(self._consume_background_task)
+            return False, None
+        except asyncio.CancelledError:
+            task.cancel()
+            task.add_done_callback(self._consume_background_task)
+            if (
+                caller_task is not None
+                and caller_task.cancelling() > cancellation_count
+            ):
+                raise
+            return False, None
+        except Exception:
+            return False, None
 
     async def _inspection_cleanup_call(
         self, name: str, arguments: dict, deadline: float
     ) -> tuple[bool, Any]:
-        remaining = deadline - self._clock()
-        if remaining <= 0:
+        if deadline - self._clock() <= 0:
             return False, None
-        try:
-            return True, await asyncio.wait_for(
-                self.call_tool(name, arguments), timeout=remaining
-            )
-        except asyncio.TimeoutError:
-            return False, None
-        except Exception:
-            return False, None
+        task = asyncio.create_task(self.call_tool(name, arguments))
+        return await self._await_inspection_cleanup_task(task, deadline)
 
     @staticmethod
     def _consume_background_task(task: asyncio.Task) -> None:
@@ -2199,55 +2270,13 @@ class ArcPyMcpClient:
         except BaseException:
             pass
 
-    async def _cancel_and_consume_background_task(
-        self, task: asyncio.Task
-    ) -> None:
-        caller_task = asyncio.current_task()
-        cancellation_count = (
-            caller_task.cancelling() if caller_task is not None else 0
-        )
-        task.cancel()
-        try:
-            await asyncio.shield(task)
-        except asyncio.CancelledError:
-            if (
-                caller_task is not None
-                and caller_task.cancelling() > cancellation_count
-            ):
-                task.add_done_callback(self._consume_background_task)
-                raise
-        except BaseException:
-            pass
-
     async def _await_cancelled_inspection_call(
         self, task: asyncio.Task, deadline: float
     ) -> Any:
-        remaining = deadline - self._clock()
-        if remaining <= 0:
-            await self._cancel_and_consume_background_task(task)
-            return None
-        caller_task = asyncio.current_task()
-        cancellation_count = (
-            caller_task.cancelling() if caller_task is not None else 0
+        completed, response = await self._await_inspection_cleanup_task(
+            task, deadline
         )
-        try:
-            return await asyncio.wait_for(
-                asyncio.shield(task), timeout=remaining
-            )
-        except asyncio.TimeoutError:
-            await self._cancel_and_consume_background_task(task)
-            return None
-        except asyncio.CancelledError:
-            if (
-                caller_task is not None
-                and caller_task.cancelling() > cancellation_count
-            ):
-                task.cancel()
-                task.add_done_callback(self._consume_background_task)
-                raise
-            return None
-        except Exception:
-            return None
+        return response if completed else None
 
     async def _cancel_and_drain_inspection_job(
         self, job_id: str, *, _deadline: float | None = None
@@ -2291,14 +2320,12 @@ class ArcPyMcpClient:
             delay = min(
                 delays[min(attempt, len(delays) - 1)], remaining
             )
-            try:
-                await asyncio.wait_for(
-                    self._sleep(delay), timeout=remaining
-                )
-            except asyncio.TimeoutError:
+            sleep_task = asyncio.create_task(self._sleep(delay))
+            completed, _ = await self._await_inspection_cleanup_task(
+                sleep_task, deadline
+            )
+            if not completed:
                 return
-            except Exception:
-                pass
 
     async def _inspect_uploaded_artifact(self, artifact_id: str) -> str:
         if not isinstance(artifact_id, str) or not artifact_id.strip():

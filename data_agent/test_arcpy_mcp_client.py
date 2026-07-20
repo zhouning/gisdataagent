@@ -494,6 +494,82 @@ def test_prepared_package_cleanup_removes_same_inode_metadata_change(
     assert not prepared.upload_path.exists()
 
 
+def test_prepared_package_cleanup_does_not_unlink_racing_replacement(
+    user_upload_dir, monkeypatch
+):
+    import data_agent.arcpy_mcp_client as client_module
+
+    for suffix in (".shp", ".shx", ".dbf"):
+        (user_upload_dir / f"roads{suffix}").write_bytes(b"x")
+
+    prepared = package_local_dataset(user_upload_dir / "roads.shp")
+    package_path = prepared.upload_path
+    lease_fd = prepared._lease._file_fd
+    original_stat = client_module.os.stat
+    replacement = b"replacement-must-survive"
+    swapped = False
+
+    def stat_then_replace(path, *args, **kwargs):
+        nonlocal swapped
+        result = original_stat(path, *args, **kwargs)
+        if not swapped:
+            swapped = True
+            package_path.unlink(missing_ok=True)
+            package_path.write_bytes(replacement)
+        return result
+
+    monkeypatch.setattr(client_module.os, "stat", stat_then_replace)
+
+    prepared._cleanup_local_package()
+
+    assert swapped is True
+    assert package_path.read_bytes() == replacement
+    assert os.fstat(lease_fd).st_nlink == 0
+
+    prepared._cleanup_local_package()
+    assert package_path.read_bytes() == replacement
+    assert list(user_upload_dir.glob(".arcpy-cleanup-*")) == []
+
+    prepared._close_lease()
+    with pytest.raises(OSError):
+        os.fstat(lease_fd)
+
+
+def test_prepared_package_cleanup_rename_failure_is_idempotent(
+    user_upload_dir, monkeypatch
+):
+    import data_agent.arcpy_mcp_client as client_module
+
+    for suffix in (".shp", ".shx", ".dbf"):
+        (user_upload_dir / f"roads{suffix}").write_bytes(b"x")
+
+    prepared = package_local_dataset(user_upload_dir / "roads.shp")
+    package_path = prepared.upload_path
+    original_rename = client_module.os.rename
+    failed = False
+
+    def fail_first_cleanup_rename(source, target, *args, **kwargs):
+        nonlocal failed
+        if not failed and source == package_path.name:
+            failed = True
+            raise OSError("forced quarantine rename failure")
+        return original_rename(source, target, *args, **kwargs)
+
+    monkeypatch.setattr(
+        client_module.os, "rename", fail_first_cleanup_rename
+    )
+
+    prepared._cleanup_local_package()
+    assert failed is True
+    assert package_path.exists()
+    assert list(user_upload_dir.glob(".arcpy-cleanup-*")) == []
+
+    prepared._cleanup_local_package()
+    prepared._close_lease()
+    assert not package_path.exists()
+    assert list(user_upload_dir.glob(".arcpy-cleanup-*")) == []
+
+
 def test_package_lease_rejects_renamed_original_before_upload(
     user_upload_dir, monkeypatch
 ):
@@ -1872,7 +1948,7 @@ async def test_inspect_times_out_with_bounded_polling():
 
     assert exc_info.value.code == "ARCPY_JOB_TIMED_OUT"
     assert cancelled == [{"job_id": "job-1"}]
-    assert sleep.delays == [2, 5, 2, 3.0]
+    assert sleep.delays == [2, 5, 2, 4.0]
 
 
 @pytest.mark.asyncio
@@ -2031,6 +2107,63 @@ async def test_inspect_initial_rpc_cancellation_cancels_returned_job_once():
 
 
 @pytest.mark.asyncio
+async def test_inspect_cancellation_uses_one_full_inspection_deadline():
+    clock = FakeClock()
+    sleep = AdvancingSleep(clock)
+    client = ArcPyMcpClient(
+        McpServerConfig(
+            name="arcpy",
+            url="https://service.example/mcp",
+            timeout=1.0,
+        ),
+        clock=clock,
+        sleep=sleep,
+        inspection_timeout=10.0,
+    )
+    inspect_started = asyncio.Event()
+    release_inspect = asyncio.Event()
+    cleanup_started = asyncio.Event()
+    calls = []
+    original_cleanup_deadline = client._inspection_cleanup_deadline
+
+    def inspection_cleanup_deadline():
+        deadline = original_cleanup_deadline()
+        cleanup_started.set()
+        return deadline
+
+    async def call_tool(name, arguments):
+        calls.append((name, arguments, clock()))
+        if name == "inspect_dataset":
+            inspect_started.set()
+            await release_inspect.wait()
+            return {"job_id": "job-1"}
+        if name == "cancel_job":
+            return {}
+        if name == "get_job":
+            return {"job_id": "job-1", "status": "running"}
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+    client._inspection_cleanup_deadline = inspection_cleanup_deadline
+    inspection_task = asyncio.create_task(
+        client._inspect_uploaded_artifact("artifact-1")
+    )
+    await inspect_started.wait()
+
+    inspection_task.cancel()
+    await cleanup_started.wait()
+    clock.advance(4.0)
+    release_inspect.set()
+
+    with pytest.raises(asyncio.CancelledError):
+        await inspection_task
+
+    assert [name for name, _, _ in calls].count("cancel_job") == 1
+    assert [name for name, _, _ in calls].count("get_job") == 2
+    assert sleep.delays == [2, 4.0]
+
+
+@pytest.mark.asyncio
 async def test_inspect_initial_rpc_cancellation_consumes_hung_call():
     config = McpServerConfig(
         name="arcpy", url="https://service.example/mcp", timeout=0.01
@@ -2062,6 +2195,55 @@ async def test_inspect_initial_rpc_cancellation_consumes_hung_call():
 
 
 @pytest.mark.asyncio
+async def test_inspect_initial_rpc_cleanup_hard_bounds_cancel_suppression():
+    config = McpServerConfig(
+        name="arcpy", url="https://service.example/mcp", timeout=1.0
+    )
+    client = ArcPyMcpClient(config, inspection_timeout=0.01)
+    inspect_started = asyncio.Event()
+    cancellation_swallowed = asyncio.Event()
+    release_inspect = asyncio.Event()
+    inspect_finished = asyncio.Event()
+
+    async def call_tool(name, arguments):
+        if name != "inspect_dataset":
+            raise AssertionError(name)
+        inspect_started.set()
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            cancellation_swallowed.set()
+            await release_inspect.wait()
+            return None
+        finally:
+            inspect_finished.set()
+
+    client.call_tool = call_tool
+    inspection_task = asyncio.create_task(
+        client._inspect_uploaded_artifact("artifact-1")
+    )
+    await inspect_started.wait()
+    inspection_task.cancel()
+
+    completed_in_budget = False
+    try:
+        await asyncio.wait_for(asyncio.shield(inspection_task), timeout=0.05)
+    except asyncio.CancelledError:
+        completed_in_budget = True
+    except asyncio.TimeoutError:
+        pass
+    finally:
+        release_inspect.set()
+        if not inspection_task.done():
+            with pytest.raises(asyncio.CancelledError):
+                await asyncio.wait_for(inspection_task, timeout=0.2)
+        await asyncio.wait_for(inspect_finished.wait(), timeout=0.2)
+
+    assert completed_in_budget is True
+    assert cancellation_swallowed.is_set()
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("hung_rpc", ["cancel_job", "get_job"])
 async def test_inspect_drain_bounds_hung_rpc(hung_rpc):
     config = McpServerConfig(
@@ -2088,6 +2270,54 @@ async def test_inspect_drain_bounds_hung_rpc(hung_rpc):
         client._cancel_and_drain_inspection_job("job-1"), timeout=0.2
     )
     assert started.is_set()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("hung_rpc", ["cancel_job", "get_job"])
+async def test_inspect_drain_hard_bounds_rpc_cancel_suppression(hung_rpc):
+    config = McpServerConfig(
+        name="arcpy", url="https://service.example/mcp", timeout=1.0
+    )
+    client = ArcPyMcpClient(config, inspection_timeout=0.01)
+    cancellation_swallowed = asyncio.Event()
+    release_rpc = asyncio.Event()
+    rpc_finished = asyncio.Event()
+
+    async def call_tool(name, arguments):
+        if name == hung_rpc:
+            try:
+                await asyncio.Event().wait()
+            except asyncio.CancelledError:
+                cancellation_swallowed.set()
+                await release_rpc.wait()
+                if name == "get_job":
+                    return {"job_id": "job-1", "status": "cancelled"}
+                return {}
+            finally:
+                rpc_finished.set()
+        if name == "cancel_job":
+            return {}
+        if name == "get_job":
+            return {"job_id": "job-1", "status": "running"}
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+    cleanup_task = asyncio.create_task(
+        client._cancel_and_drain_inspection_job("job-1")
+    )
+    completed_in_budget = False
+    try:
+        await asyncio.wait_for(asyncio.shield(cleanup_task), timeout=0.05)
+        completed_in_budget = True
+    except asyncio.TimeoutError:
+        pass
+    finally:
+        release_rpc.set()
+        await asyncio.wait_for(cleanup_task, timeout=0.2)
+        await asyncio.wait_for(rpc_finished.wait(), timeout=0.2)
+
+    assert completed_in_budget is True
+    assert cancellation_swallowed.is_set()
 
 
 @pytest.mark.asyncio
