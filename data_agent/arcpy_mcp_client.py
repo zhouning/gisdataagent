@@ -4,21 +4,23 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import errno
 import hashlib
 import json
 import logging
 import os
 import re
-import tempfile
+import secrets
+import stat
 import threading
 import time
 import zipfile
 from contextlib import AsyncExitStack
-from dataclasses import dataclass
+from dataclasses import InitVar, dataclass
 from datetime import timedelta
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 from mcp import ClientSession
@@ -39,7 +41,23 @@ from data_agent.mcp_transport import (
 
 
 logger = logging.getLogger("data_agent.arcpy_mcp_client")
-_SIGNED_TRANSFER_LOG_FILTER = RuntimeSecretRedactionFilter()
+_SIGNED_URL_LOG_RE = re.compile(r"https?://[^\s\"']+", re.IGNORECASE)
+_SIGNED_TRANSFER_ACTIVE = 0
+_SIGNED_TRANSFER_ACTIVE_LOCK = threading.Lock()
+
+
+class _SignedTransferLogFilter(RuntimeSecretRedactionFilter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        super().filter(record)
+        with _SIGNED_TRANSFER_ACTIVE_LOCK:
+            active = _SIGNED_TRANSFER_ACTIVE > 0
+        if active:
+            record.msg = _SIGNED_URL_LOG_RE.sub("[REDACTED]", str(record.msg))
+            record.args = ()
+        return True
+
+
+_SIGNED_TRANSFER_LOG_FILTER = _SignedTransferLogFilter()
 
 
 _PUBLIC_ERROR_MESSAGES = {
@@ -64,6 +82,9 @@ _PUBLIC_ERROR_MESSAGES = {
     "ARCPY_JOB_TIMED_OUT": "ArcPy job timed out",
 }
 _SAFE_DETAIL_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_-]{0,63}$")
+_WINDOWS_RESERVED_COMPONENT_RE = re.compile(
+    r"^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$", re.IGNORECASE
+)
 
 
 @dataclass(frozen=True)
@@ -75,6 +96,20 @@ class PreparedLocalUpload:
     size: int
     sha256: str
     delete_after_upload: bool
+    _lease_init: InitVar[Any] = None
+
+    def __post_init__(self, _lease_init: Any) -> None:
+        object.__setattr__(self, "_lease", _lease_init)
+
+    def _close_lease(self) -> None:
+        if self._lease is not None:
+            self._lease.close()
+
+    def _cleanup_local_package(self) -> None:
+        if self.delete_after_upload and self._lease is not None:
+            self._lease.unlink(self.upload_path)
+        elif self.delete_after_upload:
+            _best_effort_unlink_current_user_file(self.upload_path)
 
 
 @dataclass(frozen=True)
@@ -86,8 +121,162 @@ class UploadedArtifact:
     delete_local_package: bool
 
 
+class _PreparedUploadLease:
+    def __init__(
+        self,
+        tenant_fd: int,
+        file_fd: int,
+        identity: tuple[int, ...],
+        user_upload_dir: Path,
+    ):
+        self._tenant_fd = tenant_fd
+        self._file_fd = file_fd
+        self._identity = identity
+        self._user_upload_dir = user_upload_dir
+        self._closed = False
+        self._lock = threading.Lock()
+
+    @staticmethod
+    def _file_identity(file_stat: os.stat_result) -> tuple[int, ...]:
+        return (
+            file_stat.st_dev,
+            file_stat.st_ino,
+            file_stat.st_mode,
+            file_stat.st_size,
+            file_stat.st_mtime_ns,
+            file_stat.st_ctime_ns,
+        )
+
+    def validate(self) -> None:
+        with self._lock:
+            if self._closed:
+                raise _input_error("ARCPY_INPUT_INVALID")
+            current = self._file_identity(os.fstat(self._file_fd))
+            if current != self._identity:
+                raise _input_error("ARCPY_INPUT_INVALID")
+
+    def open_stream(self):
+        self.validate()
+        with self._lock:
+            if self._closed:
+                raise _input_error("ARCPY_INPUT_INVALID")
+            descriptor = os.dup(self._file_fd)
+        return os.fdopen(descriptor, "rb")
+
+    def metadata(self) -> tuple[int, str]:
+        digest = hashlib.sha256()
+        with self.open_stream() as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(chunk)
+        self.validate()
+        return self._identity[3], digest.hexdigest().lower()
+
+    def close(self) -> None:
+        with self._lock:
+            if self._closed:
+                return
+            self._closed = True
+            file_fd = self._file_fd
+            tenant_fd = self._tenant_fd
+            self._file_fd = -1
+            self._tenant_fd = -1
+        try:
+            os.close(file_fd)
+        finally:
+            os.close(tenant_fd)
+
+    def unlink(self, path: Path) -> None:
+        with self._lock:
+            if self._closed:
+                return
+            tenant_fd = os.dup(self._tenant_fd)
+        try:
+            relative_path = path.relative_to(self._user_upload_dir)
+            if len(relative_path.parts) != 1:
+                return
+            os.unlink(relative_path.parts[0], dir_fd=tenant_fd)
+        except (OSError, ValueError):
+            pass
+        finally:
+            os.close(tenant_fd)
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass
+
+
+class _AsyncFileByteStream:
+    def __init__(
+        self,
+        lease: _PreparedUploadLease,
+        offset: int,
+        chunk_size: int = 1024 * 1024,
+    ):
+        self._lease = lease
+        self._offset = offset
+        self._chunk_size = chunk_size
+        self._stream = None
+
+    async def __aenter__(self):
+        self._stream = self._lease.open_stream()
+        return self
+
+    async def __aexit__(self, *args):
+        stream = self._stream
+        self._stream = None
+        if stream is not None:
+            try:
+                self._lease.validate()
+            finally:
+                stream.close()
+        return False
+
+    def __aiter__(self):
+        return self._read_chunks()
+
+    async def _file_operation(self, operation, *args):
+        operation_task = asyncio.create_task(
+            asyncio.to_thread(operation, *args)
+        )
+        try:
+            return await asyncio.shield(operation_task)
+        except asyncio.CancelledError:
+            try:
+                await operation_task
+            except Exception:
+                pass
+            raise
+
+    async def _read_chunks(self):
+        if self._stream is None:
+            return
+        await self._file_operation(self._stream.seek, self._offset)
+        while True:
+            chunk = await self._file_operation(
+                self._stream.read, self._chunk_size
+            )
+            if not chunk:
+                self._lease.validate()
+                return
+            yield chunk
+
+
 def _input_error(code: str) -> ArcPyMcpError:
     return ArcPyMcpError(code, _PUBLIC_ERROR_MESSAGES[code])
+
+
+def _begin_signed_transfer() -> None:
+    global _SIGNED_TRANSFER_ACTIVE
+    with _SIGNED_TRANSFER_ACTIVE_LOCK:
+        _SIGNED_TRANSFER_ACTIVE += 1
+
+
+def _end_signed_transfer() -> None:
+    global _SIGNED_TRANSFER_ACTIVE
+    with _SIGNED_TRANSFER_ACTIVE_LOCK:
+        _SIGNED_TRANSFER_ACTIVE = max(0, _SIGNED_TRANSFER_ACTIVE - 1)
 
 
 def _has_unsafe_caller_syntax(path: str) -> bool:
@@ -106,7 +295,238 @@ def _has_unsafe_caller_syntax(path: str) -> bool:
     )
 
 
-def _resolve_local_input(path: str | os.PathLike[str]) -> Path:
+def _current_user_upload_location() -> tuple[Path, Path, str]:
+    from data_agent import user_context
+
+    try:
+        shared_upload_dir = Path(
+            os.path.abspath(os.fspath(user_context._BASE_UPLOAD_DIR))
+        )
+        user_upload_dir = Path(
+            os.path.abspath(os.fspath(user_context.get_user_upload_dir()))
+        )
+        relative_user_dir = user_upload_dir.relative_to(shared_upload_dir)
+    except Exception:
+        raise _input_error("ARCPY_INPUT_OUTSIDE_SANDBOX") from None
+    if len(relative_user_dir.parts) != 1:
+        raise _input_error("ARCPY_INPUT_OUTSIDE_SANDBOX")
+    return shared_upload_dir, user_upload_dir, relative_user_dir.parts[0]
+
+
+def _directory_open_flags() -> int:
+    flags = os.O_RDONLY
+    flags |= getattr(os, "O_CLOEXEC", 0)
+    flags |= getattr(os, "O_DIRECTORY", 0)
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    return flags
+
+
+def _directory_identity(descriptor: int) -> tuple[int, int]:
+    directory_stat = os.fstat(descriptor)
+    return directory_stat.st_dev, directory_stat.st_ino
+
+
+def _open_current_user_upload_dir(
+    expected_identity: tuple[int, int] | None = None,
+) -> tuple[int, Path]:
+    shared_upload_dir, user_upload_dir, user_dir_name = (
+        _current_user_upload_location()
+    )
+    shared_fd = None
+    try:
+        shared_fd = os.open(shared_upload_dir, _directory_open_flags())
+        user_fd = os.open(
+            user_dir_name,
+            _directory_open_flags(),
+            dir_fd=shared_fd,
+        )
+        if (
+            expected_identity is not None
+            and _directory_identity(user_fd) != expected_identity
+        ):
+            os.close(user_fd)
+            raise _input_error("ARCPY_INPUT_OUTSIDE_SANDBOX")
+        return user_fd, user_upload_dir
+    except OSError as exc:
+        if exc.errno in {errno.ELOOP, errno.ENOTDIR}:
+            raise _input_error("ARCPY_INPUT_OUTSIDE_SANDBOX") from None
+        raise _input_error("ARCPY_INPUT_INVALID") from None
+    finally:
+        if shared_fd is not None:
+            os.close(shared_fd)
+
+
+def _is_in_current_user_upload_dir(
+    path: Path, expected_identity: tuple[int, int] | None = None
+) -> bool:
+    user_fd, user_upload_dir = _open_current_user_upload_dir(
+        expected_identity
+    )
+    os.close(user_fd)
+    try:
+        path.relative_to(user_upload_dir)
+    except ValueError:
+        return False
+    return True
+
+
+def _open_current_user_file(
+    path: Path, expected_identity: tuple[int, int] | None = None
+):
+    user_fd, user_upload_dir = _open_current_user_upload_dir(
+        expected_identity
+    )
+    try:
+        relative_path = path.relative_to(user_upload_dir)
+    except ValueError:
+        os.close(user_fd)
+        raise _input_error("ARCPY_INPUT_OUTSIDE_SANDBOX") from None
+    if not relative_path.parts:
+        os.close(user_fd)
+        raise _input_error("ARCPY_INPUT_INVALID")
+
+    file_flags = os.O_RDONLY
+    file_flags |= getattr(os, "O_CLOEXEC", 0)
+    file_flags |= getattr(os, "O_NOFOLLOW", 0)
+    directory_fds = [user_fd]
+    file_fd = None
+    try:
+        for part in relative_path.parts[:-1]:
+            directory_fds.append(
+                os.open(
+                    part,
+                    _directory_open_flags(),
+                    dir_fd=directory_fds[-1],
+                )
+            )
+        file_fd = os.open(
+            relative_path.parts[-1], file_flags, dir_fd=directory_fds[-1]
+        )
+        if not stat.S_ISREG(os.fstat(file_fd).st_mode):
+            raise _input_error("ARCPY_INPUT_INVALID")
+        stream = os.fdopen(file_fd, "rb")
+        file_fd = None
+        return stream
+    except ArcPyMcpError:
+        raise
+    except OSError as exc:
+        if exc.errno in {errno.ELOOP, errno.ENOTDIR}:
+            raise _input_error("ARCPY_INPUT_OUTSIDE_SANDBOX") from None
+        raise _input_error("ARCPY_INPUT_INVALID") from None
+    finally:
+        if file_fd is not None:
+            os.close(file_fd)
+        for directory_fd in reversed(directory_fds):
+            os.close(directory_fd)
+
+
+def _pin_current_user_file(
+    path: Path,
+    tenant_fd: int,
+    user_upload_dir: Path,
+) -> _PreparedUploadLease:
+    try:
+        relative_path = path.relative_to(user_upload_dir)
+    except ValueError:
+        raise _input_error("ARCPY_INPUT_OUTSIDE_SANDBOX") from None
+    if not relative_path.parts:
+        raise _input_error("ARCPY_INPUT_INVALID")
+
+    file_flags = os.O_RDONLY
+    file_flags |= getattr(os, "O_CLOEXEC", 0)
+    file_flags |= getattr(os, "O_NOFOLLOW", 0)
+    directory_fds = [os.dup(tenant_fd)]
+    file_fd = None
+    try:
+        for part in relative_path.parts[:-1]:
+            directory_fds.append(
+                os.open(
+                    part,
+                    _directory_open_flags(),
+                    dir_fd=directory_fds[-1],
+                )
+            )
+        file_fd = os.open(
+            relative_path.parts[-1],
+            file_flags,
+            dir_fd=directory_fds[-1],
+        )
+        file_stat = os.fstat(file_fd)
+        if not stat.S_ISREG(file_stat.st_mode):
+            raise _input_error("ARCPY_INPUT_INVALID")
+        lease = _PreparedUploadLease(
+            tenant_fd,
+            file_fd,
+            _PreparedUploadLease._file_identity(file_stat),
+            user_upload_dir,
+        )
+        file_fd = None
+        return lease
+    except ArcPyMcpError:
+        raise
+    except OSError as exc:
+        if exc.errno in {errno.ELOOP, errno.ENOTDIR}:
+            raise _input_error("ARCPY_INPUT_OUTSIDE_SANDBOX") from None
+        raise _input_error("ARCPY_INPUT_INVALID") from None
+    finally:
+        if file_fd is not None:
+            os.close(file_fd)
+        for directory_fd in reversed(directory_fds):
+            os.close(directory_fd)
+
+
+def _best_effort_unlink_current_user_file(path: Path) -> None:
+    directory_fds = []
+    try:
+        user_fd, user_upload_dir = _open_current_user_upload_dir()
+        directory_fds.append(user_fd)
+        relative_path = path.relative_to(user_upload_dir)
+        if not relative_path.parts:
+            return
+        for part in relative_path.parts[:-1]:
+            directory_fds.append(
+                os.open(
+                    part,
+                    _directory_open_flags(),
+                    dir_fd=directory_fds[-1],
+                )
+            )
+        os.unlink(relative_path.parts[-1], dir_fd=directory_fds[-1])
+    except (ArcPyMcpError, OSError, ValueError):
+        pass
+    finally:
+        for directory_fd in reversed(directory_fds):
+            os.close(directory_fd)
+
+
+def _best_effort_unlink_from_tenant(
+    tenant_fd: int, user_upload_dir: Path, path: Path
+) -> None:
+    directory_fds = [os.dup(tenant_fd)]
+    try:
+        relative_path = path.relative_to(user_upload_dir)
+        if not relative_path.parts:
+            return
+        for part in relative_path.parts[:-1]:
+            directory_fds.append(
+                os.open(
+                    part,
+                    _directory_open_flags(),
+                    dir_fd=directory_fds[-1],
+                )
+            )
+        os.unlink(relative_path.parts[-1], dir_fd=directory_fds[-1])
+    except (OSError, ValueError):
+        pass
+    finally:
+        for directory_fd in reversed(directory_fds):
+            os.close(directory_fd)
+
+
+def _resolve_local_input(
+    path: str | os.PathLike[str],
+    expected_tenant_identity: tuple[int, int] | None = None,
+) -> Path:
     from data_agent import gis_processors, user_context
 
     caller_path = os.fspath(path)
@@ -128,14 +548,19 @@ def _resolve_local_input(path: str | os.PathLike[str]) -> Path:
         resolved = resolved_candidate.resolve(strict=True)
     except (OSError, RuntimeError):
         raise _input_error("ARCPY_INPUT_NOT_FOUND") from None
-    if not user_context.is_path_in_sandbox(str(resolved)):
+    if (
+        not user_context.is_path_in_sandbox(str(resolved))
+        or not _is_in_current_user_upload_dir(
+            resolved, expected_tenant_identity
+        )
+    ):
         raise _input_error("ARCPY_INPUT_OUTSIDE_SANDBOX")
     return resolved
 
 
 def _hash_file(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as stream:
+    with _open_current_user_file(path) as stream:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest().lower()
@@ -193,7 +618,10 @@ def _is_shapefile_sidecar_name(name: str, stem: str) -> bool:
     )
 
 
-def _checked_archive_file(path: Path) -> Path:
+def _checked_archive_file(
+    path: Path,
+    expected_tenant_identity: tuple[int, int] | None = None,
+) -> Path:
     from data_agent import user_context
 
     if path.is_symlink():
@@ -204,117 +632,209 @@ def _checked_archive_file(path: Path) -> Path:
         real_path = path.resolve(strict=True)
     except (OSError, RuntimeError):
         raise _input_error("ARCPY_INPUT_INVALID") from None
-    if not user_context.is_path_in_sandbox(str(real_path)):
+    if (
+        not user_context.is_path_in_sandbox(str(real_path))
+        or not _is_in_current_user_upload_dir(
+            real_path, expected_tenant_identity
+        )
+    ):
         raise _input_error("ARCPY_INPUT_OUTSIDE_SANDBOX")
     return real_path
 
 
-def _new_package_path() -> Path:
-    from data_agent.user_context import get_user_upload_dir
-
-    upload_dir = Path(get_user_upload_dir()).resolve()
-    upload_dir.mkdir(parents=True, exist_ok=True)
-    descriptor, filename = tempfile.mkstemp(
-        prefix="arcpy-input-", suffix=".zip", dir=upload_dir
+def _new_package_file(
+    expected_tenant_identity: tuple[int, int] | None = None,
+):
+    user_fd, user_upload_dir = _open_current_user_upload_dir(
+        expected_tenant_identity
     )
-    os.close(descriptor)
-    return Path(filename)
-
-
-def _write_package(entries: list[tuple[Path, str]]) -> Path:
-    package_path = _new_package_path()
+    descriptor = None
+    filename = None
     try:
-        with zipfile.ZipFile(
-            package_path, mode="w", compression=zipfile.ZIP_DEFLATED
-        ) as archive:
-            for source, archive_name in sorted(
-                entries, key=lambda item: item[1].casefold()
-            ):
-                archive.write(source, arcname=archive_name)
-        return package_path
-    except Exception:
+        create_flags = os.O_RDWR | os.O_CREAT | os.O_EXCL
+        create_flags |= getattr(os, "O_CLOEXEC", 0)
+        create_flags |= getattr(os, "O_NOFOLLOW", 0)
+        for _ in range(100):
+            filename = f"arcpy-input-{secrets.token_hex(12)}.zip"
+            try:
+                descriptor = os.open(
+                    filename, create_flags, 0o600, dir_fd=user_fd
+                )
+                break
+            except FileExistsError:
+                continue
+        if descriptor is None or filename is None:
+            raise _input_error("ARCPY_INPUT_PACKAGE_FAILED")
         try:
-            package_path.unlink(missing_ok=True)
-        except OSError:
-            pass
+            stream = os.fdopen(descriptor, "w+b")
+        except Exception:
+            os.close(descriptor)
+            descriptor = None
+            os.unlink(filename, dir_fd=user_fd)
+            raise
+        descriptor = None
+        return user_upload_dir / filename, stream
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+        os.close(user_fd)
+
+
+def _write_package(
+    entries: list[tuple[Path, str]],
+    expected_tenant_identity: tuple[int, int] | None = None,
+) -> Path:
+    package_path, package_stream = _new_package_file(
+        expected_tenant_identity
+    )
+    try:
+        with package_stream:
+            with zipfile.ZipFile(
+                package_stream,
+                mode="w",
+                compression=zipfile.ZIP_DEFLATED,
+            ) as archive:
+                for source, archive_name in sorted(
+                    entries, key=lambda item: item[1].casefold()
+                ):
+                    with _open_current_user_file(
+                        source, expected_tenant_identity
+                    ) as source_stream:
+                        with archive.open(
+                            archive_name, mode="w"
+                        ) as target_stream:
+                            for chunk in iter(
+                                lambda: source_stream.read(1024 * 1024), b""
+                            ):
+                                target_stream.write(chunk)
+        return package_path
+    except ArcPyMcpError:
+        _best_effort_unlink_current_user_file(package_path)
+        raise
+    except Exception:
+        _best_effort_unlink_current_user_file(package_path)
         raise _input_error("ARCPY_INPUT_PACKAGE_FAILED") from None
 
 
 def package_local_dataset(
     path: str | os.PathLike[str],
 ) -> PreparedLocalUpload:
-    source = _resolve_local_input(path)
-    upload_path = source
-    logical_name = source.name
-    media_type = _media_type(source)
+    tenant_fd, user_upload_dir = _open_current_user_upload_dir()
+    tenant_identity = _directory_identity(tenant_fd)
+    lease = None
+    upload_path = None
     delete_after_upload = False
-
-    if source.is_dir():
-        if source.suffix.lower() != ".gdb":
-            raise _input_error("ARCPY_INPUT_INVALID")
-        entries = []
-        try:
-            for root, directory_names, file_names in os.walk(
-                source, followlinks=False
-            ):
-                root_path = Path(root)
-                for name in directory_names:
-                    if (root_path / name).is_symlink():
-                        raise _input_error("ARCPY_INPUT_OUTSIDE_SANDBOX")
-                for name in file_names:
-                    item = _checked_archive_file(root_path / name)
-                    relative = item.relative_to(source)
-                    entries.append((item, (Path(source.name) / relative).as_posix()))
-        except ArcPyMcpError:
-            raise
-        except Exception:
-            raise _input_error("ARCPY_INPUT_PACKAGE_FAILED") from None
-        if not entries:
-            raise _input_error("ARCPY_INPUT_INCOMPLETE")
-        upload_path = _write_package(entries)
-        logical_name = f"{source.name}.zip"
-        media_type = "application/zip"
-        delete_after_upload = True
-    elif source.is_file() and source.suffix.lower() == ".shp":
-        stem = source.stem.casefold()
-        candidates = [
-            item
-            for item in source.parent.iterdir()
-            if _is_shapefile_sidecar_name(item.name, stem)
-        ]
-        entries = [
-            (_checked_archive_file(item), item.name) for item in candidates
-        ]
-        packaged_names = {name.casefold() for _, name in entries}
-        required_names = {
-            f"{stem}{extension}"
-            for extension in (".shp", ".shx", ".dbf")
-        }
-        if not required_names.issubset(packaged_names):
-            raise _input_error("ARCPY_INPUT_INCOMPLETE")
-        upload_path = _write_package(entries)
-        logical_name = f"{source.stem}.zip"
-        media_type = "application/zip"
-        delete_after_upload = True
-    elif not source.is_file():
-        raise _input_error("ARCPY_INPUT_INVALID")
-
     try:
-        size = upload_path.stat().st_size
-        sha256 = _hash_file(upload_path)
+        source = _resolve_local_input(path, tenant_identity)
+        upload_path = source
+        logical_name = source.name
+        media_type = _media_type(source)
+
+        if source.is_dir():
+            if source.suffix.lower() != ".gdb":
+                raise _input_error("ARCPY_INPUT_INVALID")
+            entries = []
+            try:
+                for root, directory_names, file_names in os.walk(
+                    source, followlinks=False
+                ):
+                    root_path = Path(root)
+                    for name in directory_names:
+                        if (root_path / name).is_symlink():
+                            raise _input_error(
+                                "ARCPY_INPUT_OUTSIDE_SANDBOX"
+                            )
+                    for name in file_names:
+                        item = _checked_archive_file(
+                            root_path / name, tenant_identity
+                        )
+                        relative = item.relative_to(source)
+                        entries.append(
+                            (
+                                item,
+                                (Path(source.name) / relative).as_posix(),
+                            )
+                        )
+            except ArcPyMcpError:
+                raise
+            except Exception:
+                raise _input_error("ARCPY_INPUT_PACKAGE_FAILED") from None
+            if not entries:
+                raise _input_error("ARCPY_INPUT_INCOMPLETE")
+            upload_path = _write_package(entries, tenant_identity)
+            logical_name = f"{source.name}.zip"
+            media_type = "application/zip"
+            delete_after_upload = True
+        elif source.is_file() and source.suffix.lower() == ".shp":
+            stem = source.stem.casefold()
+            candidates = [
+                item
+                for item in source.parent.iterdir()
+                if _is_shapefile_sidecar_name(item.name, stem)
+            ]
+            entries = [
+                (
+                    _checked_archive_file(item, tenant_identity),
+                    item.name,
+                )
+                for item in candidates
+            ]
+            packaged_names = {name.casefold() for _, name in entries}
+            required_names = {
+                f"{stem}{extension}"
+                for extension in (".shp", ".shx", ".dbf")
+            }
+            if not required_names.issubset(packaged_names):
+                raise _input_error("ARCPY_INPUT_INCOMPLETE")
+            upload_path = _write_package(entries, tenant_identity)
+            logical_name = f"{source.stem}.zip"
+            media_type = "application/zip"
+            delete_after_upload = True
+        elif not source.is_file():
+            raise _input_error("ARCPY_INPUT_INVALID")
+
+        lease = _pin_current_user_file(
+            upload_path, tenant_fd, user_upload_dir
+        )
+        tenant_fd = None
+        size, sha256 = lease.metadata()
+        return PreparedLocalUpload(
+            upload_path=upload_path,
+            source_path=source,
+            logical_name=logical_name,
+            media_type=media_type,
+            size=size,
+            sha256=sha256,
+            delete_after_upload=delete_after_upload,
+            _lease_init=lease,
+        )
+    except ArcPyMcpError:
+        if delete_after_upload and upload_path is not None:
+            if lease is not None:
+                lease.unlink(upload_path)
+            elif tenant_fd is not None:
+                _best_effort_unlink_from_tenant(
+                    tenant_fd, user_upload_dir, upload_path
+                )
+        if lease is not None:
+            lease.close()
+            lease = None
+        raise
     except Exception:
-        if delete_after_upload:
-            upload_path.unlink(missing_ok=True)
+        if delete_after_upload and upload_path is not None:
+            if lease is not None:
+                lease.unlink(upload_path)
+            elif tenant_fd is not None:
+                _best_effort_unlink_from_tenant(
+                    tenant_fd, user_upload_dir, upload_path
+                )
+        if lease is not None:
+            lease.close()
+            lease = None
         raise _input_error("ARCPY_INPUT_PACKAGE_FAILED") from None
-    return PreparedLocalUpload(
-        upload_path=upload_path,
-        source_path=source,
-        logical_name=logical_name,
-        media_type=media_type,
-        size=size,
-        sha256=sha256,
-        delete_after_upload=delete_after_upload,
-    )
+    finally:
+        if lease is None and tenant_fd is not None:
+            os.close(tenant_fd)
 
 
 def _sanitize_detail_key(key: Any) -> str:
@@ -1206,7 +1726,7 @@ class ArcPyMcpClient:
             )
 
     def _signed_http_options(self) -> dict:
-        options = {"follow_redirects": True}
+        options = {"follow_redirects": False}
         if self._config.ca_bundle_env_var:
             try:
                 options["verify"] = resolve_ca_bundle(
@@ -1219,7 +1739,7 @@ class ArcPyMcpClient:
     @staticmethod
     def _install_signed_transfer_log_filter() -> None:
         install_runtime_secret_log_filter()
-        logger_names = {"httpx", "httpcore"}
+        logger_names = {"", "httpx", "httpcore"}
         logger_names.update(
             name
             for name, logger_object in logging.Logger.manager.loggerDict.items()
@@ -1240,6 +1760,65 @@ class ArcPyMcpClient:
                 "ARCPY_UPLOAD_FAILED", "ArcPy artifact upload failed"
             ) from None
         return {signed_url, normalized_url}
+
+    async def _send_signed_put(
+        self,
+        http_client,
+        signed_url: str,
+        prepared: PreparedLocalUpload,
+        offset: int,
+    ):
+        if prepared._lease is None:
+            raise ArcPyMcpError(
+                "ARCPY_UPLOAD_FAILED", "ArcPy artifact upload failed"
+            )
+        current_url = signed_url
+        registered_secrets = set()
+        self._install_signed_transfer_log_filter()
+        _begin_signed_transfer()
+        try:
+            for redirect_count in range(4):
+                current_secrets = self._signed_transfer_secrets(current_url)
+                new_secrets = current_secrets - registered_secrets
+                if new_secrets:
+                    register_runtime_secrets(new_secrets)
+                    registered_secrets.update(new_secrets)
+                async with _AsyncFileByteStream(
+                    prepared._lease, offset
+                ) as stream:
+                    response = await http_client.put(
+                        current_url,
+                        headers={"Upload-Offset": str(offset)},
+                        content=stream,
+                        timeout=self._upload_timeout,
+                    )
+                status_code = getattr(response, "status_code", None)
+                if status_code not in {307, 308}:
+                    if isinstance(status_code, int) and 300 <= status_code < 400:
+                        raise ArcPyMcpError(
+                            "ARCPY_UPLOAD_FAILED",
+                            "ArcPy artifact upload failed",
+                        )
+                    return response
+                if redirect_count >= 3:
+                    raise ArcPyMcpError(
+                        "ARCPY_UPLOAD_FAILED", "ArcPy artifact upload failed"
+                    )
+                location = getattr(response, "headers", {}).get("Location")
+                if not isinstance(location, str) or not location.strip():
+                    raise ArcPyMcpError(
+                        "ARCPY_UPLOAD_FAILED", "ArcPy artifact upload failed"
+                    )
+                current_url = self._validate_signed_url(
+                    urljoin(current_url, location.strip())
+                )
+            raise ArcPyMcpError(
+                "ARCPY_UPLOAD_FAILED", "ArcPy artifact upload failed"
+            )
+        finally:
+            if registered_secrets:
+                unregister_runtime_secrets(registered_secrets)
+            _end_signed_transfer()
 
     @staticmethod
     def _committed_offset(
@@ -1312,7 +1891,10 @@ class ArcPyMcpClient:
             pass
 
     async def _upload_prepared(
-        self, prepared: PreparedLocalUpload
+        self,
+        prepared: PreparedLocalUpload,
+        *,
+        retain_cleanup_lease: bool = False,
     ) -> str:
         artifact_id = None
         try:
@@ -1335,24 +1917,12 @@ class ArcPyMcpClient:
             ) as http_client:
                 for attempt in range(self._upload_attempts):
                     try:
-                        with prepared.upload_path.open("rb") as stream:
-                            stream.seek(offset)
-                            signed_url_secrets = self._signed_transfer_secrets(
-                                signed_url
-                            )
-                            self._install_signed_transfer_log_filter()
-                            register_runtime_secrets(signed_url_secrets)
-                            try:
-                                response = await http_client.put(
-                                    signed_url,
-                                    headers={"Upload-Offset": str(offset)},
-                                    content=stream,
-                                    timeout=self._upload_timeout,
-                                )
-                            finally:
-                                unregister_runtime_secrets(
-                                    signed_url_secrets
-                                )
+                        response = await self._send_signed_put(
+                            http_client,
+                            signed_url,
+                            prepared,
+                            offset,
+                        )
                     except httpx.RequestError:
                         if attempt + 1 >= self._upload_attempts:
                             raise ArcPyMcpError(
@@ -1417,6 +1987,9 @@ class ArcPyMcpClient:
             if artifact_id is not None:
                 await self._best_effort_delete_artifact(artifact_id)
             raise
+        finally:
+            if not retain_cleanup_lease:
+                prepared._close_lease()
 
     @staticmethod
     def _artifact_relative_path(job: dict, artifact_id: str) -> str:
@@ -1477,6 +2050,21 @@ class ArcPyMcpClient:
             raise ArcPyMcpError(
                 "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
             )
+        for part in posix_path.parts:
+            reserved_stem = part.split(".", 1)[0].rstrip(" .")
+            if (
+                ":" in part
+                or part.endswith((".", " "))
+                or any(
+                    ord(character) < 32 or ord(character) == 127
+                    for character in part
+                )
+                or _WINDOWS_RESERVED_COMPONENT_RE.fullmatch(reserved_stem)
+                is not None
+            ):
+                raise ArcPyMcpError(
+                    "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+                )
         return posix_path.as_posix()
 
     async def _inspect_uploaded_artifact(self, artifact_id: str) -> str:
@@ -1484,61 +2072,91 @@ class ArcPyMcpClient:
             raise ArcPyMcpError(
                 "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
             )
-        inspection = await self.call_tool(
-            "inspect_dataset",
-            {"artifact_id": artifact_id, "path": "."},
-        )
-        job_id = self._required_identifier(inspection, "job_id")
-        started = self._clock()
-        delays = (2, 5, 10)
-        attempt = 0
-        terminal_failures = {
-            "failed",
-            "timed_out",
-            "cancelled",
-            "interrupted",
-        }
+        job_id = None
+        terminal = False
+        try:
+            inspection = await self.call_tool(
+                "inspect_dataset",
+                {"artifact_id": artifact_id, "path": "."},
+            )
+            job_id = self._required_identifier(inspection, "job_id")
+            started = self._clock()
+            delays = (2, 5, 10)
+            attempt = 0
+            terminal_failures = {
+                "failed",
+                "timed_out",
+                "cancelled",
+                "interrupted",
+            }
 
-        while True:
-            delay = delays[attempt] if attempt < len(delays) else 20
-            attempt += 1
-            await self._sleep(delay)
-            if self._clock() - started > self._inspection_timeout:
-                raise ArcPyMcpError(
-                    "ARCPY_JOB_TIMED_OUT", "ArcPy job timed out"
-                )
-            job = await self.call_tool("get_job", {"job_id": job_id})
-            response_job_id = job.get("job_id")
-            if response_job_id is not None and response_job_id != job_id:
-                raise ArcPyMcpError(
-                    "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
-                )
-            status = job.get("status")
-            if status == "succeeded":
-                return self._artifact_relative_path(job, artifact_id)
-            if status in terminal_failures:
-                try:
-                    await self.call_tool(
-                        "get_job_log", {"job_id": job_id}
+            while True:
+                delay = delays[attempt] if attempt < len(delays) else 20
+                attempt += 1
+                await self._sleep(delay)
+                if self._clock() - started > self._inspection_timeout:
+                    raise ArcPyMcpError(
+                        "ARCPY_JOB_TIMED_OUT", "ArcPy job timed out"
                     )
+                job = await self.call_tool("get_job", {"job_id": job_id})
+                response_job_id = job.get("job_id")
+                if response_job_id is not None and response_job_id != job_id:
+                    raise ArcPyMcpError(
+                        "ARCPY_RESPONSE_INVALID",
+                        "ArcPy MCP response is invalid",
+                    )
+                status = job.get("status")
+                if status == "succeeded":
+                    terminal = True
+                    return self._artifact_relative_path(job, artifact_id)
+                if status in terminal_failures:
+                    terminal = True
+                    try:
+                        await self.call_tool(
+                            "get_job_log", {"job_id": job_id}
+                        )
+                    except BaseException:
+                        pass
+                    raise ArcPyMcpError(
+                        "ARCPY_INSPECTION_FAILED",
+                        "ArcPy dataset inspection failed",
+                    )
+                if status not in {"queued", "running", "pending"}:
+                    raise ArcPyMcpError(
+                        "ARCPY_RESPONSE_INVALID",
+                        "ArcPy MCP response is invalid",
+                    )
+        except BaseException:
+            if job_id is not None and not terminal:
+                try:
+                    await self.call_tool("cancel_job", {"job_id": job_id})
                 except BaseException:
                     pass
-                raise ArcPyMcpError(
-                    "ARCPY_INSPECTION_FAILED",
-                    "ArcPy dataset inspection failed",
-                )
-            if status not in {"queued", "running", "pending"}:
-                raise ArcPyMcpError(
-                    "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
-                )
+            raise
 
     async def prepare_input(
         self, local_path: str | os.PathLike[str]
     ) -> UploadedArtifact:
-        prepared = await asyncio.to_thread(package_local_dataset, local_path)
+        packaging_task = asyncio.create_task(
+            asyncio.to_thread(package_local_dataset, local_path)
+        )
+        try:
+            prepared = await asyncio.shield(packaging_task)
+        except asyncio.CancelledError:
+            prepared = None
+            try:
+                prepared = await packaging_task
+            except BaseException:
+                pass
+            if prepared is not None:
+                prepared._cleanup_local_package()
+                prepared._close_lease()
+            raise
         artifact_id = None
         try:
-            artifact_id = await self._upload_prepared(prepared)
+            artifact_id = await self._upload_prepared(
+                prepared, retain_cleanup_lease=True
+            )
             artifact_path = await self._inspect_uploaded_artifact(artifact_id)
             return UploadedArtifact(
                 artifact_id=artifact_id,
@@ -1551,10 +2169,7 @@ class ArcPyMcpClient:
             if artifact_id is not None:
                 await self._best_effort_delete_artifact(artifact_id)
             if prepared.delete_after_upload:
-                try:
-                    await asyncio.to_thread(
-                        prepared.upload_path.unlink, missing_ok=True
-                    )
-                except OSError:
-                    pass
+                await asyncio.to_thread(prepared._cleanup_local_package)
             raise
+        finally:
+            prepared._close_lease()

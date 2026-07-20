@@ -6,6 +6,7 @@ import hashlib
 import logging
 import threading
 import zipfile
+from dataclasses import asdict
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
@@ -67,6 +68,22 @@ def user_upload_dir(tmp_path, monkeypatch):
         current_user_id.reset(token)
 
 
+@pytest.fixture
+def symlinked_user_upload_root(tmp_path, monkeypatch):
+    base = tmp_path / "uploads"
+    victim_upload_dir = base / "victim"
+    victim_upload_dir.mkdir(parents=True)
+    attacker_upload_dir = base / "attacker"
+    attacker_upload_dir.symlink_to(victim_upload_dir, target_is_directory=True)
+    monkeypatch.setattr("data_agent.user_context._BASE_UPLOAD_DIR", str(base))
+    monkeypatch.setattr("data_agent.gis_processors._BASE_UPLOAD_DIR", str(base))
+    token = current_user_id.set("attacker")
+    try:
+        yield attacker_upload_dir, victim_upload_dir
+    finally:
+        current_user_id.reset(token)
+
+
 def test_package_regular_file_preserves_metadata_and_streaming_hash(
     user_upload_dir,
 ):
@@ -85,6 +102,10 @@ def test_package_regular_file_preserves_metadata_and_streaming_hash(
         sha256=hashlib.sha256(payload).hexdigest(),
         delete_after_upload=False,
     )
+    assert "_lease" not in repr(prepared)
+    assert "_lease_init" not in repr(prepared)
+    assert "_lease" not in asdict(prepared)
+    assert "_lease_init" not in asdict(prepared)
 
 
 def test_package_shapefile_includes_required_and_optional_sidecars(
@@ -292,6 +313,75 @@ def test_package_rejects_windows_drive_relative_path(user_upload_dir):
     assert exc_info.value.code == "ARCPY_INPUT_OUTSIDE_SANDBOX"
 
 
+def test_package_rejects_other_users_files_via_shared_upload_root(
+    user_upload_dir,
+):
+    victim_upload_dir = user_upload_dir.parent / "victim"
+    victim_upload_dir.mkdir()
+    victim_file = victim_upload_dir / "secret.tif"
+    victim_file.write_bytes(b"victim-private-data")
+
+    for provided in (victim_file, Path("victim") / "secret.tif"):
+        with pytest.raises(ArcPyMcpError) as exc_info:
+            package_local_dataset(provided)
+
+        assert exc_info.value.code == "ARCPY_INPUT_OUTSIDE_SANDBOX"
+
+
+def test_package_rejects_regular_file_through_symlinked_user_upload_root(
+    symlinked_user_upload_root,
+):
+    _, victim_upload_dir = symlinked_user_upload_root
+    (victim_upload_dir / "secret.tif").write_bytes(b"victim-private-data")
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        package_local_dataset("secret.tif")
+
+    assert exc_info.value.code == "ARCPY_INPUT_OUTSIDE_SANDBOX"
+
+
+def test_package_does_not_create_archive_through_symlinked_user_upload_root(
+    symlinked_user_upload_root,
+):
+    _, victim_upload_dir = symlinked_user_upload_root
+    for suffix in (".shp", ".shx", ".dbf"):
+        (victim_upload_dir / f"roads{suffix}").write_bytes(b"victim-data")
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        package_local_dataset("roads.shp")
+
+    assert exc_info.value.code == "ARCPY_INPUT_OUTSIDE_SANDBOX"
+    assert list(victim_upload_dir.glob("arcpy-input-*.zip")) == []
+
+
+def test_package_rejects_file_swapped_to_cross_user_symlink_before_hash(
+    user_upload_dir, monkeypatch
+):
+    import data_agent.arcpy_mcp_client as client_module
+
+    source = user_upload_dir / "source.tif"
+    source.write_bytes(b"attacker-data")
+    victim_upload_dir = user_upload_dir.parent / "victim"
+    victim_upload_dir.mkdir()
+    victim_file = victim_upload_dir / "secret.tif"
+    victim_file.write_bytes(b"victim-private-data")
+    original_pin_file = client_module._pin_current_user_file
+
+    def swap_then_pin(path, tenant_fd, user_upload_dir):
+        source.unlink()
+        source.symlink_to(victim_file)
+        return original_pin_file(path, tenant_fd, user_upload_dir)
+
+    monkeypatch.setattr(
+        client_module, "_pin_current_user_file", swap_then_pin
+    )
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        package_local_dataset(source)
+
+    assert exc_info.value.code == "ARCPY_INPUT_OUTSIDE_SANDBOX"
+
+
 def test_package_cleans_partial_temp_archive_on_zip_failure(
     user_upload_dir, monkeypatch
 ):
@@ -336,7 +426,7 @@ class FakeSignedUploadClient:
         return False
 
     async def put(self, url, *, headers, content, timeout):
-        body = content.read()
+        body = b"".join([chunk async for chunk in content])
         self.calls.append(
             {
                 "url": url,
@@ -432,7 +522,7 @@ async def test_upload_uses_exact_metadata_offset_zero_and_no_authorization(
         ),
         ("complete_upload", {"artifact_id": "artifact-1"}),
     ]
-    assert factory_calls == [{"follow_redirects": True}]
+    assert factory_calls == [{"follow_redirects": False}]
     assert http_calls == [
         {
             "url": "https://signed.example/upload-one",
@@ -488,6 +578,438 @@ async def test_upload_resumes_from_strict_server_committed_offset(
     ]
     assert http_calls[1]["body"] == b"456789"
     assert ("get_upload_status", {"artifact_id": "artifact-1"}) in tool_calls
+
+
+@pytest.mark.asyncio
+async def test_upload_real_httpx_async_stream_resumes_without_mcp_authorization(
+    user_upload_dir,
+):
+    prepared = _prepared_regular(user_upload_dir)
+    requests = []
+
+    async def handler(request):
+        body = await request.aread()
+        upload_offset = request.headers.get("Upload-Offset")
+        authorization = request.headers.get("Authorization")
+        assert authorization is None
+        assert all(
+            not value.casefold().startswith("bearer ")
+            for value in request.headers.values()
+        )
+        requests.append((upload_offset, body))
+        if len(requests) == 1:
+            assert upload_offset == "0"
+            assert body == b"0123456789"
+            raise httpx.ReadError("interrupted", request=request)
+        assert upload_offset == "4"
+        assert body == b"456789"
+        return httpx.Response(200, request=request)
+
+    transport = httpx.MockTransport(handler)
+
+    def signed_http_client_factory(**kwargs):
+        return httpx.AsyncClient(transport=transport, **kwargs)
+
+    client = ArcPyMcpClient(
+        McpServerConfig(
+            name="arcpy",
+            url="https://service.example/mcp",
+            headers={"Authorization": "Bearer fixture-mcp-credential"},
+        ),
+        signed_http_client_factory=signed_http_client_factory,
+    )
+    tool_calls = []
+
+    async def call_tool(name, arguments):
+        tool_calls.append((name, arguments))
+        if name == "create_upload":
+            return {
+                "artifact_id": "artifact-1",
+                "upload_url": "https://signed.example/upload",
+            }
+        if name == "get_upload_status":
+            return {"artifact_id": "artifact-1", "committed_size": 4}
+        if name == "complete_upload":
+            return {
+                "state": "ready",
+                "artifact_id": "artifact-1",
+                "verified_sha256": prepared.sha256,
+                "size": prepared.size,
+            }
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+
+    artifact_id = await client._upload_prepared(prepared)
+
+    assert artifact_id == "artifact-1"
+    assert requests == [("0", b"0123456789"), ("4", b"456789")]
+    assert tool_calls == [
+        (
+            "create_upload",
+            {
+                "logical_name": prepared.logical_name,
+                "expected_size": prepared.size,
+                "expected_sha256": prepared.sha256,
+                "media_type": prepared.media_type,
+            },
+        ),
+        ("get_upload_status", {"artifact_id": "artifact-1"}),
+        ("complete_upload", {"artifact_id": "artifact-1"}),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_upload_replays_async_stream_across_temporary_redirect(
+    user_upload_dir,
+):
+    prepared = _prepared_regular(user_upload_dir)
+    requests = []
+
+    class RedirectTransport(httpx.AsyncBaseTransport):
+        async def handle_async_request(self, request):
+            body = b"".join([chunk async for chunk in request.stream])
+            requests.append((str(request.url), body))
+            if len(requests) == 1:
+                return httpx.Response(
+                    307,
+                    headers={"Location": "https://storage.example/upload"},
+                    request=request,
+                )
+            return httpx.Response(200, request=request)
+
+    transport = RedirectTransport()
+
+    def signed_http_client_factory(**kwargs):
+        return httpx.AsyncClient(transport=transport, **kwargs)
+
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp"),
+        signed_http_client_factory=signed_http_client_factory,
+    )
+
+    async def call_tool(name, arguments):
+        if name == "create_upload":
+            return {
+                "artifact_id": "artifact-1",
+                "upload_url": "https://signed.example/upload",
+            }
+        if name == "complete_upload":
+            return {
+                "state": "ready",
+                "artifact_id": "artifact-1",
+                "verified_sha256": prepared.sha256,
+                "size": prepared.size,
+            }
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+
+    await client._upload_prepared(prepared)
+
+    assert requests == [
+        ("https://signed.example/upload", b"0123456789"),
+        ("https://storage.example/upload", b"0123456789"),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_upload_rejects_https_redirect_to_http_without_sending_body(
+    user_upload_dir,
+):
+    prepared = _prepared_regular(user_upload_dir)
+    downgrade_bodies = []
+
+    class DowngradeTransport(httpx.AsyncBaseTransport):
+        async def handle_async_request(self, request):
+            body = b"".join([chunk async for chunk in request.stream])
+            if request.url.scheme == "http":
+                downgrade_bodies.append(body)
+                return httpx.Response(200, request=request)
+            return httpx.Response(
+                307,
+                headers={"Location": "http://storage.example/upload"},
+                request=request,
+            )
+
+    def signed_http_client_factory(**kwargs):
+        return httpx.AsyncClient(transport=DowngradeTransport(), **kwargs)
+
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp"),
+        signed_http_client_factory=signed_http_client_factory,
+    )
+    deleted = []
+
+    async def call_tool(name, arguments):
+        if name == "create_upload":
+            return {
+                "artifact_id": "artifact-1",
+                "upload_url": "https://signed.example/upload",
+            }
+        if name == "delete_artifact":
+            deleted.append(arguments)
+            return {}
+        if name == "complete_upload":
+            return {
+                "state": "ready",
+                "artifact_id": "artifact-1",
+                "verified_sha256": prepared.sha256,
+                "size": prepared.size,
+            }
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client._upload_prepared(prepared)
+
+    assert exc_info.value.code == "ARCPY_UPLOAD_FAILED"
+    assert downgrade_bodies == []
+    assert deleted == [{"artifact_id": "artifact-1"}]
+
+
+@pytest.mark.asyncio
+async def test_redirect_location_is_redacted_before_target_registration(
+    user_upload_dir, caplog
+):
+    from data_agent.mcp_transport import current_runtime_secrets
+
+    prepared = _prepared_regular(user_upload_dir)
+    redirect_target = (
+        "https://storage.example/opaque-redirect-path-fixture"
+        "?custom=opaque-redirect-query-fixture"
+    )
+    caplog.set_level(logging.INFO)
+    httpx_handler = logging.StreamHandler()
+    logging.getLogger("httpx").addHandler(httpx_handler)
+
+    class LoggingRedirectTransport(httpx.AsyncBaseTransport):
+        async def handle_async_request(self, request):
+            body = b"".join([chunk async for chunk in request.stream])
+            assert body == b"0123456789"
+            if request.url.host == "signed.example":
+                logging.getLogger().info(
+                    "root redirect Location %s", redirect_target
+                )
+                logging.getLogger("httpx.fixture").info(
+                    "httpx redirect Location %s", redirect_target
+                )
+                return httpx.Response(
+                    307,
+                    headers={"Location": redirect_target},
+                    request=request,
+                )
+            return httpx.Response(200, request=request)
+
+    def signed_http_client_factory(**kwargs):
+        return httpx.AsyncClient(
+            transport=LoggingRedirectTransport(), **kwargs
+        )
+
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp"),
+        signed_http_client_factory=signed_http_client_factory,
+    )
+
+    async def call_tool(name, arguments):
+        if name == "create_upload":
+            return {
+                "artifact_id": "artifact-1",
+                "upload_url": "https://signed.example/upload",
+            }
+        if name == "complete_upload":
+            return {
+                "state": "ready",
+                "artifact_id": "artifact-1",
+                "verified_sha256": prepared.sha256,
+                "size": prepared.size,
+            }
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+    try:
+        await client._upload_prepared(prepared)
+    finally:
+        logging.getLogger("httpx").removeHandler(httpx_handler)
+
+    logs = caplog.text
+    assert redirect_target not in logs
+    assert "opaque-redirect-path-fixture" not in logs
+    assert "opaque-redirect-query-fixture" not in logs
+    assert redirect_target not in current_runtime_secrets()
+
+
+@pytest.mark.asyncio
+async def test_upload_uses_pinned_file_after_tenant_directory_replacement(
+    user_upload_dir,
+):
+    prepared = _prepared_regular(user_upload_dir, payload=b"original-data")
+    original_user_dir = user_upload_dir.parent / "original-user-dir"
+    user_upload_dir.rename(original_user_dir)
+    user_upload_dir.mkdir()
+    (user_upload_dir / prepared.upload_path.name).write_bytes(
+        b"replacement-data"
+    )
+    http_calls = []
+    client = _upload_client([FakeUploadResponse()], [], http_calls)
+
+    async def call_tool(name, arguments):
+        if name == "create_upload":
+            return {
+                "artifact_id": "artifact-1",
+                "upload_url": "https://signed.example/upload",
+            }
+        if name == "complete_upload":
+            return {
+                "state": "ready",
+                "artifact_id": "artifact-1",
+                "verified_sha256": prepared.sha256,
+                "size": prepared.size,
+            }
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+
+    await client._upload_prepared(prepared)
+
+    assert http_calls[0]["body"] == b"original-data"
+
+
+@pytest.mark.asyncio
+async def test_upload_rejects_path_replacement_after_preparation(user_upload_dir):
+    prepared = _prepared_regular(user_upload_dir, payload=b"original-data")
+    prepared.upload_path.unlink()
+    prepared.upload_path.write_bytes(b"replacement-data")
+    http_calls = []
+    client = _upload_client([FakeUploadResponse()], [], http_calls)
+    deleted = []
+
+    async def call_tool(name, arguments):
+        if name == "create_upload":
+            return {
+                "artifact_id": "artifact-1",
+                "upload_url": "https://signed.example/upload",
+            }
+        if name == "delete_artifact":
+            deleted.append(arguments)
+            return {}
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client._upload_prepared(prepared)
+
+    assert exc_info.value.code == "ARCPY_INPUT_INVALID"
+    assert http_calls == []
+    assert deleted == [{"artifact_id": "artifact-1"}]
+
+
+@pytest.mark.asyncio
+async def test_upload_rejects_in_place_mutation_during_stream(user_upload_dir):
+    payload = b"a" * (1024 * 1024 + 32)
+    prepared = _prepared_regular(user_upload_dir, payload=payload)
+    deleted = []
+
+    class MutatingSignedUploadClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return False
+
+        async def put(self, url, *, headers, content, timeout):
+            iterator = content.__aiter__()
+            await anext(iterator)
+            prepared.upload_path.write_bytes(b"z" * len(payload))
+            async for _ in iterator:
+                pass
+            return FakeUploadResponse()
+
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp"),
+        signed_http_client_factory=lambda **kwargs: MutatingSignedUploadClient(),
+    )
+
+    async def call_tool(name, arguments):
+        if name == "create_upload":
+            return {
+                "artifact_id": "artifact-1",
+                "upload_url": "https://signed.example/upload",
+            }
+        if name == "complete_upload":
+            return {
+                "state": "ready",
+                "artifact_id": "artifact-1",
+                "verified_sha256": prepared.sha256,
+                "size": prepared.size,
+            }
+        if name == "delete_artifact":
+            deleted.append(arguments)
+            return {}
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+
+    with pytest.raises(ArcPyMcpError):
+        await client._upload_prepared(prepared)
+
+    assert deleted == [{"artifact_id": "artifact-1"}]
+
+
+@pytest.mark.asyncio
+async def test_upload_cancellation_closes_stream_and_cleans_artifact(
+    user_upload_dir,
+):
+    prepared = _prepared_regular(user_upload_dir)
+    lease = prepared._lease
+    upload_started = asyncio.Event()
+    hold_upload = asyncio.Event()
+
+    class BlockingSignedUploadClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return False
+
+        async def put(self, url, *, headers, content, timeout):
+            async for _ in content:
+                upload_started.set()
+                await hold_upload.wait()
+            return FakeUploadResponse()
+
+    def signed_http_client_factory(**kwargs):
+        return BlockingSignedUploadClient()
+
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp"),
+        signed_http_client_factory=signed_http_client_factory,
+    )
+    deleted = []
+
+    async def call_tool(name, arguments):
+        if name == "create_upload":
+            return {
+                "artifact_id": "artifact-1",
+                "upload_url": "https://signed.example/upload",
+            }
+        if name == "delete_artifact":
+            deleted.append(arguments)
+            return {}
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+    upload_task = asyncio.create_task(client._upload_prepared(prepared))
+    await upload_started.wait()
+
+    upload_task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await upload_task
+
+    assert lease._closed is True
+    assert deleted == [{"artifact_id": "artifact-1"}]
 
 
 @pytest.mark.asyncio
@@ -816,10 +1338,11 @@ async def test_signed_upload_url_is_redacted_from_root_and_httpx_logs(
             return await self.client.__aexit__(*args)
 
         async def put(self, url, *, headers, content, timeout):
+            body = b"".join([chunk async for chunk in content])
             return await self.client.put(
                 url,
                 headers=headers,
-                content=content.read(),
+                content=body,
                 timeout=timeout,
             )
 
@@ -900,7 +1423,7 @@ async def test_signed_upload_client_uses_only_configured_custom_ca(
     await client._upload_prepared(prepared)
 
     assert factory_calls == [
-        {"follow_redirects": True, "verify": str(ca_bundle)}
+        {"follow_redirects": False, "verify": str(ca_bundle)}
     ]
     assert "Authorization" not in repr(factory_calls)
 
@@ -1079,6 +1602,68 @@ async def test_inspect_times_out_with_bounded_polling():
 
 
 @pytest.mark.asyncio
+async def test_inspect_timeout_cancels_nonterminal_job_once():
+    clock = FakeClock()
+    sleep = AdvancingSleep(clock)
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp"),
+        clock=clock,
+        sleep=sleep,
+        inspection_timeout=1.0,
+    )
+    cancelled = []
+
+    async def call_tool(name, arguments):
+        if name == "inspect_dataset":
+            return {"job_id": "job-1"}
+        if name == "cancel_job":
+            cancelled.append(arguments)
+            return {}
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client._inspect_uploaded_artifact("artifact-1")
+
+    assert exc_info.value.code == "ARCPY_JOB_TIMED_OUT"
+    assert cancelled == [{"job_id": "job-1"}]
+
+
+@pytest.mark.asyncio
+async def test_inspect_caller_cancellation_cancels_nonterminal_job_once():
+    sleep_started = asyncio.Event()
+    hold_sleep = asyncio.Event()
+    client = _client()
+    cancelled = []
+
+    async def blocking_sleep(delay):
+        sleep_started.set()
+        await hold_sleep.wait()
+
+    async def call_tool(name, arguments):
+        if name == "inspect_dataset":
+            return {"job_id": "job-1"}
+        if name == "cancel_job":
+            cancelled.append(arguments)
+            return {}
+        raise AssertionError(name)
+
+    client._sleep = blocking_sleep
+    client.call_tool = call_tool
+    inspection_task = asyncio.create_task(
+        client._inspect_uploaded_artifact("artifact-1")
+    )
+    await sleep_started.wait()
+
+    inspection_task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await inspection_task
+
+    assert cancelled == [{"job_id": "job-1"}]
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "artifact_path",
     [
@@ -1118,6 +1703,61 @@ async def test_inspect_rejects_unsafe_artifact_relative_path(artifact_path):
         await client._inspect_uploaded_artifact("artifact-1")
 
     assert exc_info.value.code == "ARCPY_RESPONSE_INVALID"
+
+
+@pytest.mark.parametrize(
+    "artifact_path",
+    [
+        "folder/file:stream",
+        "folder/trailing.",
+        "folder/trailing ",
+        "folder/CON",
+        "folder/con.txt",
+        "PRN/data.shp",
+        "folder/AUX.json",
+        "folder/NUL.tif",
+        "folder/COM1.bin",
+        "folder/com9.extra",
+        "folder/LPT1",
+        "folder/lpt9.txt",
+        "folder/control\x01name.shp",
+        "folder/nul\x00name.shp",
+    ],
+)
+def test_artifact_relative_path_rejects_windows_unsafe_components(
+    artifact_path,
+):
+    job = {
+        "artifact_id": "artifact-1",
+        "result": {"artifact_path": artifact_path},
+    }
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        ArcPyMcpClient._artifact_relative_path(job, "artifact-1")
+
+    assert exc_info.value.code == "ARCPY_RESPONSE_INVALID"
+
+
+@pytest.mark.parametrize(
+    "artifact_path",
+    [
+        "folder/conduit.shp",
+        "folder/auxiliary.json",
+        "folder/com10.bin",
+        "folder/lpt10.txt",
+        "normal.name/roads.shp",
+    ],
+)
+def test_artifact_relative_path_accepts_windows_safe_components(artifact_path):
+    job = {
+        "artifact_id": "artifact-1",
+        "result": {"artifact_path": artifact_path},
+    }
+
+    assert (
+        ArcPyMcpClient._artifact_relative_path(job, "artifact-1")
+        == artifact_path
+    )
 
 
 @pytest.mark.asyncio
@@ -1196,6 +1836,50 @@ async def test_prepare_input_rejects_missing_and_outside_sandbox(
 
 
 @pytest.mark.asyncio
+async def test_prepare_input_cancellation_cleans_completed_background_package(
+    user_upload_dir, monkeypatch
+):
+    import data_agent.arcpy_mcp_client as client_module
+
+    for suffix in (".shp", ".shx", ".dbf"):
+        (user_upload_dir / f"roads{suffix}").write_bytes(b"sidecar")
+    original_write_package = client_module._write_package
+    package_paths = []
+    package_ready = threading.Event()
+    release_package = threading.Event()
+    package_finished = threading.Event()
+
+    def blocking_write_package(entries, expected_tenant_identity=None):
+        package_path = original_write_package(
+            entries, expected_tenant_identity
+        )
+        package_paths.append(package_path)
+        package_ready.set()
+        release_package.wait(timeout=5)
+        package_finished.set()
+        return package_path
+
+    monkeypatch.setattr(
+        client_module, "_write_package", blocking_write_package
+    )
+    client = _client()
+    client._upload_prepared = AsyncMock()
+    prepare_task = asyncio.create_task(
+        client.prepare_input(user_upload_dir / "roads.shp")
+    )
+    await asyncio.to_thread(package_ready.wait, 5)
+
+    prepare_task.cancel()
+    release_package.set()
+    with pytest.raises(asyncio.CancelledError):
+        await prepare_task
+    await asyncio.to_thread(package_finished.wait, 5)
+
+    assert package_paths and not package_paths[0].exists()
+    client._upload_prepared.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_prepare_input_returns_uploaded_artifact_in_required_order(
     user_upload_dir,
 ):
@@ -1205,7 +1889,7 @@ async def test_prepare_input_returns_uploaded_artifact_in_required_order(
     events = []
     client = _client()
 
-    async def upload(prepared):
+    async def upload(prepared, **kwargs):
         events.append(("upload", prepared.logical_name))
         assert prepared.upload_path.exists()
         return "artifact-1"
@@ -1258,7 +1942,7 @@ async def test_prepare_input_inspection_failure_cleans_remote_and_temp_package(
     client = _client()
     package_paths = []
 
-    async def upload(prepared):
+    async def upload(prepared, **kwargs):
         package_paths.append(prepared.upload_path)
         return "artifact-1"
 
@@ -1289,7 +1973,7 @@ async def test_prepare_input_cleanup_failure_preserves_inspection_error(
     client = _client()
     package_paths = []
 
-    async def upload(prepared):
+    async def upload(prepared, **kwargs):
         package_paths.append(prepared.upload_path)
         return "artifact-1"
 
@@ -1321,7 +2005,7 @@ async def test_prepare_input_upload_failure_cleans_temp_package(
     client = _client()
     package_paths = []
 
-    async def fail_upload(prepared):
+    async def fail_upload(prepared, **kwargs):
         package_paths.append(prepared.upload_path)
         raise ArcPyMcpError("ARCPY_UPLOAD_FAILED", "private URL")
 
