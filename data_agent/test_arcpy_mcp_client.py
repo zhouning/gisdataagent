@@ -2841,6 +2841,134 @@ async def test_prepare_input_cancellation_cleans_completed_background_package(
 
 
 @pytest.mark.asyncio
+async def test_prepare_input_repeated_cancellation_drains_background_package(
+    user_upload_dir, monkeypatch
+):
+    import data_agent.arcpy_mcp_client as client_module
+
+    for suffix in (".shp", ".shx", ".dbf"):
+        (user_upload_dir / f"roads{suffix}").write_bytes(b"sidecar")
+    original_write_package = client_module._write_package
+    package_paths = []
+    lease_fds = []
+    package_ready = threading.Event()
+    release_package = threading.Event()
+    package_finished = threading.Event()
+
+    def blocking_write_package(entries, expected_tenant_identity=None):
+        package_path, lease = original_write_package(
+            entries, expected_tenant_identity
+        )
+        package_paths.append(package_path)
+        lease_fds.extend(
+            (lease._tenant_fd, lease._private_dir_fd, lease._file_fd)
+        )
+        package_ready.set()
+        release_package.wait(timeout=5)
+        package_finished.set()
+        return package_path, lease
+
+    monkeypatch.setattr(
+        client_module, "_write_package", blocking_write_package
+    )
+    client = _client()
+    client._upload_prepared = AsyncMock()
+    prepare_task = asyncio.create_task(
+        client.prepare_input(user_upload_dir / "roads.shp")
+    )
+    assert await asyncio.to_thread(package_ready.wait, 5)
+
+    prepare_task.cancel("first cancellation")
+    await asyncio.sleep(0)
+    assert not prepare_task.done()
+    prepare_task.cancel("second cancellation")
+    release_package.set()
+
+    with pytest.raises(asyncio.CancelledError) as exc_info:
+        await prepare_task
+    assert exc_info.value.args == ("first cancellation",)
+    assert await asyncio.to_thread(package_finished.wait, 5)
+    gc.collect()
+
+    assert package_paths and not package_paths[0].parent.exists()
+    for descriptor in lease_fds:
+        with pytest.raises(OSError):
+            os.fstat(descriptor)
+    client._upload_prepared.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_prepare_input_repeated_cancellation_drains_local_cleanup(
+    user_upload_dir, monkeypatch
+):
+    for suffix in (".shp", ".shx", ".dbf"):
+        (user_upload_dir / f"roads{suffix}").write_bytes(b"sidecar")
+    original_cleanup = PreparedLocalUpload._cleanup_local_package
+    package_paths = []
+    lease_fds = []
+    cleanup_saw_open_fds = []
+    upload_started = asyncio.Event()
+    cleanup_started = threading.Event()
+    release_cleanup = threading.Event()
+    cleanup_finished = threading.Event()
+
+    def blocking_cleanup(prepared):
+        cleanup_started.set()
+        release_cleanup.wait(timeout=5)
+        try:
+            original_cleanup(prepared)
+            cleanup_saw_open_fds.append(
+                all(
+                    os.fstat(descriptor) is not None
+                    for descriptor in lease_fds
+                )
+            )
+        except OSError:
+            cleanup_saw_open_fds.append(False)
+        finally:
+            cleanup_finished.set()
+
+    monkeypatch.setattr(
+        PreparedLocalUpload, "_cleanup_local_package", blocking_cleanup
+    )
+    client = _client()
+
+    async def blocking_upload(prepared, **kwargs):
+        package_paths.append(prepared.upload_path)
+        lease_fds.extend(
+            (
+                prepared._lease._tenant_fd,
+                prepared._lease._private_dir_fd,
+                prepared._lease._file_fd,
+            )
+        )
+        upload_started.set()
+        await asyncio.Future()
+
+    client._upload_prepared = blocking_upload
+    prepare_task = asyncio.create_task(
+        client.prepare_input(user_upload_dir / "roads.shp")
+    )
+    await upload_started.wait()
+
+    prepare_task.cancel("first cancellation")
+    assert await asyncio.to_thread(cleanup_started.wait, 5)
+    prepare_task.cancel("second cancellation")
+    release_cleanup.set()
+
+    with pytest.raises(asyncio.CancelledError) as exc_info:
+        await prepare_task
+    assert exc_info.value.args == ("first cancellation",)
+    assert await asyncio.to_thread(cleanup_finished.wait, 5)
+
+    assert cleanup_saw_open_fds == [True]
+    assert package_paths and not package_paths[0].parent.exists()
+    for descriptor in lease_fds:
+        with pytest.raises(OSError):
+            os.fstat(descriptor)
+
+
+@pytest.mark.asyncio
 async def test_prepare_input_returns_uploaded_artifact_in_required_order(
     user_upload_dir,
 ):

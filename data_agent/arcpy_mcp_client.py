@@ -361,6 +361,16 @@ def _retry_unleased_package_cleanup(
     )
 
 
+async def _drain_shielded_task(task: asyncio.Task[Any]) -> Any:
+    while not task.done():
+        try:
+            await asyncio.shield(task)
+        except asyncio.CancelledError:
+            if task.done():
+                break
+    return task.result()
+
+
 class _AsyncFileByteStream:
     def __init__(
         self,
@@ -2522,13 +2532,13 @@ class ArcPyMcpClient:
         try:
             prepared = await asyncio.shield(packaging_task)
         except asyncio.CancelledError:
-            prepared = None
+            prepared = await _drain_shielded_task(packaging_task)
+            cleanup_task = asyncio.create_task(
+                asyncio.to_thread(prepared._cleanup_local_package)
+            )
             try:
-                prepared = await packaging_task
-            except BaseException:
-                pass
-            if prepared is not None:
-                prepared._cleanup_local_package()
+                await _drain_shielded_task(cleanup_task)
+            finally:
                 prepared._close_lease()
             raise
         artifact_id = None
@@ -2545,10 +2555,16 @@ class ArcPyMcpClient:
                 delete_local_package=prepared.delete_after_upload,
             )
         except BaseException:
-            if artifact_id is not None:
-                await self._best_effort_delete_artifact(artifact_id)
-            if prepared.delete_after_upload:
-                await asyncio.to_thread(prepared._cleanup_local_package)
+            async def cleanup_failed_input() -> None:
+                if artifact_id is not None:
+                    await self._best_effort_delete_artifact(artifact_id)
+                if prepared.delete_after_upload:
+                    await asyncio.to_thread(
+                        prepared._cleanup_local_package
+                    )
+
+            cleanup_task = asyncio.create_task(cleanup_failed_input())
+            await _drain_shielded_task(cleanup_task)
             raise
         finally:
             prepared._close_lease()
