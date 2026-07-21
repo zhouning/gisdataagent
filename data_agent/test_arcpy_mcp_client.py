@@ -592,6 +592,38 @@ def test_package_dup_error_retries_transient_prelease_cleanup_failure(
     assert list(user_upload_dir.glob(".arcpy-package-*")) == []
 
 
+def test_private_directory_open_error_retries_transient_rmdir_failure(
+    user_upload_dir, monkeypatch
+):
+    import data_agent.arcpy_mcp_client as client_module
+
+    for suffix in (".shp", ".shx", ".dbf"):
+        (user_upload_dir / f"roads{suffix}").write_bytes(b"x")
+
+    original_open = client_module.os.open
+    private_open_failed = False
+
+    def fail_private_directory_open(path, flags, *args, **kwargs):
+        nonlocal private_open_failed
+        if isinstance(path, str) and path.startswith(".arcpy-package-"):
+            private_open_failed = True
+            raise OSError("forced private directory open failure")
+        return original_open(path, flags, *args, **kwargs)
+
+    monkeypatch.setattr(client_module.os, "open", fail_private_directory_open)
+    cleanup_state = _fail_first_private_cleanup(
+        monkeypatch, client_module, "rmdir"
+    )
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        package_local_dataset(user_upload_dir / "roads.shp")
+
+    assert exc_info.value.code == "ARCPY_INPUT_PACKAGE_FAILED"
+    assert private_open_failed is True
+    assert cleanup_state["failed"] is True
+    assert list(user_upload_dir.glob(".arcpy-package-*")) == []
+
+
 def test_package_cleanup_uses_pinned_tenant_after_directory_replacement(
     user_upload_dir, monkeypatch
 ):
@@ -718,7 +750,7 @@ def test_prepared_package_cleanup_retries_without_private_directory_orphan(
 
     prepared._cleanup_local_package()
     assert failed is True
-    assert private_dir.exists()
+    assert not private_dir.exists()
 
     prepared._cleanup_local_package()
     prepared._close_lease()
@@ -2951,6 +2983,60 @@ async def test_prepare_input_upload_failure_cleans_temp_package(
 
     assert exc_info.value.code == "ARCPY_UPLOAD_FAILED"
     assert package_paths and not package_paths[0].exists()
+
+
+@pytest.mark.parametrize(
+    ("failure_stage", "cleanup_operation"),
+    [
+        ("upload", "stat"),
+        ("inspection", "unlink"),
+        ("cancellation", "rmdir"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_prepare_input_retries_transient_private_cleanup_failure(
+    user_upload_dir, monkeypatch, failure_stage, cleanup_operation
+):
+    import data_agent.arcpy_mcp_client as client_module
+
+    for suffix in (".shp", ".shx", ".dbf"):
+        (user_upload_dir / f"roads{suffix}").write_bytes(b"x")
+
+    client = _client()
+    expected_error = None
+    if failure_stage == "upload":
+        expected_error = ArcPyMcpError(
+            "ARCPY_UPLOAD_FAILED", "forced upload failure"
+        )
+        client._upload_prepared = AsyncMock(side_effect=expected_error)
+    elif failure_stage == "inspection":
+        expected_error = ArcPyMcpError(
+            "ARCPY_INSPECTION_FAILED", "forced inspection failure"
+        )
+        client._upload_prepared = AsyncMock(return_value="artifact-1")
+        client._inspect_uploaded_artifact = AsyncMock(
+            side_effect=expected_error
+        )
+        client._best_effort_delete_artifact = AsyncMock()
+    else:
+        client._upload_prepared = AsyncMock(
+            side_effect=asyncio.CancelledError()
+        )
+
+    cleanup_state = _fail_first_private_cleanup(
+        monkeypatch, client_module, cleanup_operation
+    )
+
+    if failure_stage == "cancellation":
+        with pytest.raises(asyncio.CancelledError):
+            await client.prepare_input(user_upload_dir / "roads.shp")
+    else:
+        with pytest.raises(ArcPyMcpError) as exc_info:
+            await client.prepare_input(user_upload_dir / "roads.shp")
+        assert exc_info.value is expected_error
+
+    assert cleanup_state["failed"] is True
+    assert list(user_upload_dir.glob(".arcpy-package-*")) == []
 
 
 def _result(*, structured=None, text=None, error=False, snake_case=False):

@@ -110,7 +110,7 @@ class PreparedLocalUpload:
 
     def _cleanup_local_package(self) -> None:
         if self.delete_after_upload and self._lease is not None:
-            self._lease.unlink(self.upload_path)
+            _retry_package_cleanup(self._lease, self.upload_path)
         elif self.delete_after_upload:
             _best_effort_unlink_current_user_file(self.upload_path)
 
@@ -315,6 +315,12 @@ def _cleanup_unleased_package_once(
         pass
     except OSError:
         return False
+    return _remove_empty_private_dir_once(tenant_fd, private_dir_name)
+
+
+def _remove_empty_private_dir_once(
+    tenant_fd: int, private_dir_name: str
+) -> bool:
     try:
         os.rmdir(private_dir_name, dir_fd=tenant_fd)
     except FileNotFoundError:
@@ -322,6 +328,19 @@ def _cleanup_unleased_package_once(
     except OSError:
         return False
     return True
+
+
+def _retry_empty_private_dir_cleanup(
+    tenant_fd: int,
+    private_dir_name: str,
+    attempts: int = 3,
+) -> None:
+    _retry_cleanup(
+        lambda: _remove_empty_private_dir_once(
+            tenant_fd, private_dir_name
+        ),
+        attempts,
+    )
 
 
 def _retry_unleased_package_cleanup(
@@ -873,10 +892,7 @@ def _new_package_file(
                 )
             os.close(private_dir_fd)
         elif private_dir_name is not None and user_fd is not None:
-            try:
-                os.rmdir(private_dir_name, dir_fd=user_fd)
-            except OSError:
-                pass
+            _retry_empty_private_dir_cleanup(user_fd, private_dir_name)
         if user_fd is not None:
             os.close(user_fd)
 
