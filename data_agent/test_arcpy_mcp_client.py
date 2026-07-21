@@ -4624,6 +4624,787 @@ async def test_close_cancels_an_owned_call_without_deadlock():
     assert client._session is None
 
 
+class FakeSignedDownloadResponse:
+    def __init__(self, body: bytes, status_code: int = 200, headers=None):
+        self._body = body
+        self.status_code = status_code
+        self.headers = dict(headers or {})
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
+        return False
+
+    async def aiter_bytes(self):
+        yield self._body
+
+
+class FakeSignedDownloadClient:
+    def __init__(self, response, calls):
+        self._response = response
+        self._calls = calls
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
+        return False
+
+    def stream(self, method, url, *, headers, timeout):
+        self._calls.append(
+            {
+                "method": method,
+                "url": url,
+                "headers": dict(headers),
+                "timeout": timeout,
+            }
+        )
+        return self._response
+
+
+@pytest.mark.asyncio
+async def test_wait_for_job_uses_required_delays_and_waits_for_succeeded():
+    clock = FakeClock()
+    delays = []
+    statuses = iter(("queued", "running", "pending", "succeeded"))
+
+    async def sleep(delay):
+        delays.append(delay)
+        clock.advance(delay)
+
+    async def call_tool(name, arguments):
+        assert name == "get_job"
+        assert arguments == {"job_id": "job-1"}
+        return {"id": "job-1", "status": next(statuses), "result": {}}
+
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp"),
+        clock=clock,
+        sleep=sleep,
+    )
+    client.call_tool = call_tool
+
+    job = await client.wait_for_job("job-1", timeout=60)
+
+    assert job["status"] == "succeeded"
+    assert delays == [2, 5, 10, 20]
+
+
+@pytest.mark.asyncio
+async def test_wait_for_job_fetches_log_for_terminal_failure():
+    calls = []
+
+    async def call_tool(name, arguments):
+        calls.append((name, arguments))
+        if name == "get_job":
+            return {
+                "id": "job-1",
+                "status": "failed",
+                "error_code": "ARCPY_EXECUTION_FAILED",
+            }
+        if name == "get_job_log":
+            return {
+                "result": [
+                    {"level": "error", "message": "ERROR 000229: bad input"}
+                ]
+            }
+        raise AssertionError(name)
+
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp"),
+        sleep=AsyncMock(),
+    )
+    client.call_tool = call_tool
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client.wait_for_job("job-1", timeout=60)
+
+    assert exc_info.value.code == "ARCPY_JOB_FAILED"
+    assert exc_info.value.details == {
+        "status": "failed",
+        "arcpy_messages": ["ERROR 000229: bad input"],
+    }
+    assert calls == [
+        ("get_job", {"job_id": "job-1"}),
+        ("get_job_log", {"job_id": "job-1"}),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_cancel_job_calls_remote_once_and_drains_to_terminal():
+    calls = []
+    statuses = iter(("running", "cancelled"))
+
+    async def call_tool(name, arguments):
+        calls.append((name, arguments))
+        if name == "cancel_job":
+            return {"id": "job-1", "status": "cancelling"}
+        if name == "get_job":
+            return {"id": "job-1", "status": next(statuses)}
+        if name == "get_job_log":
+            return {"result": []}
+        raise AssertionError(name)
+
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp"),
+        sleep=AsyncMock(),
+    )
+    client.call_tool = call_tool
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client.cancel_job("job-1")
+
+    assert exc_info.value.code == "ARCPY_JOB_CANCELLED"
+    assert [name for name, _ in calls].count("cancel_job") == 1
+    assert [name for name, _ in calls].count("get_job") == 2
+
+
+def _download_client(response, factory_calls, http_calls):
+    def factory(**factory_kwargs):
+        factory_calls.append(factory_kwargs)
+        return FakeSignedDownloadClient(response, http_calls)
+
+    return ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp"),
+        signed_http_client_factory=factory,
+    )
+
+
+@pytest.mark.asyncio
+async def test_download_checksum_mismatch_deletes_partial_file(user_upload_dir):
+    body = b"corrupt-result"
+    factory_calls = []
+    http_calls = []
+    client = _download_client(
+        FakeSignedDownloadResponse(body), factory_calls, http_calls
+    )
+    client.health_check = AsyncMock(
+        return_value={
+            "worker": {
+                "product": "ArcInfo",
+                "install": {"Version": "3.7.1"},
+            }
+        }
+    )
+
+    async def call_tool(name, arguments):
+        assert name == "create_download"
+        assert arguments == {"artifact_id": "output-1"}
+        return {
+            "artifact_id": "output-1",
+            "download_url": "https://signed.example/result",
+            "logical_name": "result.geojson",
+            "actual_sha256": hashlib.sha256(b"expected").hexdigest(),
+            "actual_size": len(body),
+        }
+
+    client.call_tool = call_tool
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client.download_job_results(
+            "buffer_features",
+            {
+                "status": "succeeded",
+                "result": {"output_artifact_ids": ["output-1"]},
+            },
+            [str(user_upload_dir / "source.geojson")],
+        )
+
+    assert exc_info.value.code == "ARCPY_DOWNLOAD_CHECKSUM_MISMATCH"
+    assert list(user_upload_dir.rglob("*.part")) == []
+    assert list(user_upload_dir.rglob("result*.geojson")) == []
+    assert factory_calls == [{"follow_redirects": False}]
+    assert http_calls[0]["headers"] == {}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "entry_name",
+    [
+        "../escape.shp",
+        "/absolute.shp",
+        "C:/drive.shp",
+        "..\\escape.shp",
+    ],
+)
+async def test_download_rejects_unsafe_zip_entries(
+    user_upload_dir, tmp_path, entry_name
+):
+    archive = tmp_path / "result.zip"
+    with zipfile.ZipFile(archive, "w") as bundle:
+        bundle.writestr(entry_name, b"shape")
+    body = archive.read_bytes()
+    client = _download_client(
+        FakeSignedDownloadResponse(body), [], []
+    )
+    client.health_check = AsyncMock(
+        return_value={
+            "worker": {
+                "product": "ArcInfo",
+                "install": {"Version": "3.7.1"},
+            }
+        }
+    )
+
+    async def call_tool(name, arguments):
+        assert name == "create_download"
+        return {
+            "artifact_id": "output-zip",
+            "download_url": "https://signed.example/result",
+            "logical_name": "result.zip",
+            "actual_sha256": hashlib.sha256(body).hexdigest(),
+            "actual_size": len(body),
+        }
+
+    client.call_tool = call_tool
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client.download_job_results(
+            "buffer_features",
+            {
+                "status": "succeeded",
+                "result": {"output_artifact_ids": ["output-zip"]},
+            },
+            [str(user_upload_dir / "source.shp")],
+        )
+
+    assert exc_info.value.code == "ARCPY_UNSAFE_ARCHIVE"
+    assert not (user_upload_dir.parent / "escape.shp").exists()
+
+
+class InterruptingDownloadResponse(FakeSignedDownloadResponse):
+    async def aiter_bytes(self):
+        yield self._body
+        raise httpx.ReadError("interrupted")
+
+
+class SequencedSignedDownloadClient:
+    def __init__(self, responses, calls):
+        self._responses = iter(responses)
+        self._calls = calls
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
+        return False
+
+    def stream(self, method, url, *, headers, timeout):
+        self._calls.append(
+            {
+                "method": method,
+                "url": url,
+                "headers": dict(headers),
+                "timeout": timeout,
+            }
+        )
+        return next(self._responses)
+
+
+@pytest.mark.asyncio
+async def test_download_resumes_with_range_and_registers_verified_output(
+    user_upload_dir, monkeypatch
+):
+    import data_agent.data_catalog as data_catalog
+
+    body = b'foo {"type":"FeatureCollection","features":[]} bar'
+    first, second = body[:7], body[7:]
+    http_calls = []
+    factory_calls = []
+
+    def factory(**kwargs):
+        factory_calls.append(kwargs)
+        return SequencedSignedDownloadClient(
+            [
+                InterruptingDownloadResponse(first),
+                FakeSignedDownloadResponse(second, status_code=206),
+            ],
+            http_calls,
+        )
+
+    registrations = []
+    monkeypatch.setattr(
+        data_catalog,
+        "register_tool_output",
+        lambda *args, **kwargs: registrations.append((args, kwargs)),
+    )
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp"),
+        signed_http_client_factory=factory,
+    )
+    client.health_check = AsyncMock(
+        return_value={
+            "worker": {
+                "product": "ArcInfo",
+                "install": {"Version": "3.7.1"},
+            }
+        }
+    )
+    calls = []
+
+    async def call_tool(name, arguments):
+        calls.append((name, arguments))
+        if name == "create_download":
+            return {
+                "artifact_id": "output-1",
+                "download_url": "https://signed.example/result",
+                "logical_name": "result.bin",
+                "actual_sha256": hashlib.sha256(body).hexdigest(),
+                "actual_size": len(body),
+            }
+        if name == "delete_artifact":
+            return {"artifact_id": "output-1", "state": "deleted"}
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+
+    result = await client.download_job_results(
+        "buffer_features",
+        {
+            "status": "succeeded",
+            "request": {"distance": "10 Meters"},
+            "result": {"output_artifact_ids": ["output-1"]},
+        },
+        [str(user_upload_dir / "source.geojson")],
+    )
+
+    output = Path(result["local_outputs"][0])
+    assert output.read_bytes() == body
+    assert list(user_upload_dir.rglob("*.part")) == []
+    assert factory_calls == [{"follow_redirects": False}]
+    assert http_calls[0]["headers"] == {}
+    assert http_calls[1]["headers"] == {"Range": "bytes=7-"}
+    assert all("Authorization" not in call["headers"] for call in http_calls)
+    assert [name for name, _ in calls] == [
+        "create_download",
+        "create_download",
+        "delete_artifact",
+    ]
+    assert registrations[0][0][0] == str(output)
+
+
+@pytest.mark.asyncio
+async def test_download_never_starts_for_non_succeeded_job():
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp")
+    )
+    client.health_check = AsyncMock(return_value={"worker": {}})
+    client.call_tool = AsyncMock()
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client.download_job_results(
+            "buffer_features",
+            {"status": "running", "result": {"output_artifact_ids": []}},
+            [],
+        )
+
+    assert exc_info.value.code == "ARCPY_RESPONSE_INVALID"
+    client.call_tool.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_run_dedicated_binds_inputs_waits_downloads_and_cleans_up():
+    events = []
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp"),
+        job_timeout=321,
+    )
+    client.health_check = AsyncMock(
+        side_effect=lambda: events.append("health")
+        or {"worker": {"product": "ArcInfo", "install": {"Version": "3.7"}}}
+    )
+
+    async def prepare(path):
+        events.append(("prepare", path))
+        prefix = Path(path).stem
+        return UploadedArtifact(
+            artifact_id=f"artifact-{prefix}",
+            artifact_path=f"{prefix}.geojson",
+            source_path=Path(path),
+            local_package_path=Path(path),
+            delete_local_package=False,
+        )
+
+    async def call_tool(name, arguments):
+        events.append((name, arguments))
+        if name == "clip_features":
+            return {"job_id": "job-1"}
+        if name == "delete_artifact":
+            return {"state": "deleted"}
+        raise AssertionError(name)
+
+    client.prepare_input = prepare
+    client.call_tool = call_tool
+    client.wait_for_job = AsyncMock(
+        side_effect=lambda job_id, timeout: events.append(
+            ("wait", job_id, timeout)
+        )
+        or {"id": job_id, "status": "succeeded", "result": {"output_artifact_ids": []}}
+    )
+    client.download_job_results = AsyncMock(
+        side_effect=lambda operation, job, paths: events.append(
+            ("download", operation, paths)
+        )
+        or {"status": "success", "operation": operation}
+    )
+
+    result = await client.run_dedicated(
+        "clip_features",
+        {"input": "/uploads/roads.geojson", "clip": "/uploads/aoi.geojson"},
+        {"output_name": "clipped.zip"},
+    )
+
+    assert result["status"] == "success"
+    assert result["operation"] == "clip_features"
+    assert result["arcgis_product"] == "ArcInfo"
+    assert events[0] == "health"
+    assert (
+        "clip_features",
+        {
+            "output_name": "clipped.zip",
+            "input_artifact_id": "artifact-roads",
+            "input_path": "roads.geojson",
+            "clip_artifact_id": "artifact-aoi",
+            "clip_path": "aoi.geojson",
+        },
+    ) in events
+    assert ("wait", "job-1", 321.0) in events
+    assert [event for event in events if event[0] == "delete_artifact"] == [
+        ("delete_artifact", {"artifact_id": "artifact-roads"}),
+        ("delete_artifact", {"artifact_id": "artifact-aoi"}),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_run_catalog_tool_requires_exact_schema_validated_match():
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp")
+    )
+    client.health_check = AsyncMock(return_value={"worker": {}})
+    events = []
+
+    async def call_tool(name, arguments):
+        events.append((name, arguments))
+        if name == "search_tools":
+            return {"result": [{"tool_id": "vector.erase"}]}
+        if name == "describe_tool":
+            return {
+                "tool_id": "vector.erase",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {"output_name": {"type": "string"}},
+                    "required": ["output_name"],
+                    "additionalProperties": False,
+                },
+            }
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client.run_catalog_tool(
+            "vector.erase",
+            "vector",
+            {},
+            {"output_name": 42},
+        )
+
+    assert exc_info.value.code == "ARCPY_TOOL_NOT_ALLOWED"
+    assert [name for name, _ in events] == ["search_tools", "describe_tool"]
+
+
+def test_select_exact_catalog_tool_rejects_fuzzy_and_duplicate_matches():
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp")
+    )
+
+    with pytest.raises(ArcPyMcpError) as fuzzy:
+        client._select_exact_tool_id(
+            {"result": [{"tool_id": "vector.buffer"}]}, "buffer"
+        )
+    with pytest.raises(ArcPyMcpError) as duplicate:
+        client._select_exact_tool_id(
+            {
+                "result": [
+                    {"tool_id": "vector.buffer"},
+                    {"tool_id": "vector.buffer"},
+                ]
+            },
+            "vector.buffer",
+        )
+
+    assert fuzzy.value.code == "ARCPY_TOOL_NOT_ALLOWED"
+    assert duplicate.value.code == "ARCPY_TOOL_NOT_ALLOWED"
+
+
+@pytest.mark.asyncio
+async def test_cancelled_wait_requests_cancel_once_and_drains_terminal_state():
+    sleep_started = asyncio.Event()
+    sleeps = []
+    calls = []
+    statuses = iter(("running", "cancelled"))
+
+    async def sleep(delay):
+        sleeps.append(delay)
+        if len(sleeps) == 1:
+            sleep_started.set()
+            await asyncio.Future()
+
+    async def call_tool(name, arguments):
+        calls.append((name, arguments))
+        if name == "cancel_job":
+            return {"id": "job-1", "status": "cancelling"}
+        if name == "get_job":
+            return {"id": "job-1", "status": next(statuses)}
+        if name == "get_job_log":
+            return {"result": []}
+        raise AssertionError(name)
+
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp"),
+        sleep=sleep,
+    )
+    client.call_tool = call_tool
+    wait_task = asyncio.create_task(client.wait_for_job("job-1", 60))
+    await sleep_started.wait()
+
+    wait_task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await wait_task
+
+    assert [name for name, _ in calls].count("cancel_job") == 1
+    assert [name for name, _ in calls].count("get_job") == 2
+
+
+@pytest.mark.asyncio
+async def test_download_rejects_zip_symlink(user_upload_dir, tmp_path):
+    archive = tmp_path / "symlink.zip"
+    with zipfile.ZipFile(archive, "w") as bundle:
+        entry = zipfile.ZipInfo("link.shp")
+        entry.create_system = 3
+        entry.external_attr = (stat.S_IFLNK | 0o777) << 16
+        bundle.writestr(entry, "../escape.shp")
+    body = archive.read_bytes()
+    client = _download_client(FakeSignedDownloadResponse(body), [], [])
+    client.health_check = AsyncMock(return_value={"worker": {}})
+
+    async def call_tool(name, arguments):
+        if name == "create_download":
+            return {
+                "artifact_id": "output-zip",
+                "download_url": "https://signed.example/result",
+                "logical_name": "result.zip",
+                "actual_sha256": hashlib.sha256(body).hexdigest(),
+                "actual_size": len(body),
+            }
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client.download_job_results(
+            "buffer_features",
+            {
+                "status": "succeeded",
+                "result": {"output_artifact_ids": ["output-zip"]},
+            },
+            [],
+        )
+
+    assert exc_info.value.code == "ARCPY_UNSAFE_ARCHIVE"
+
+
+@pytest.mark.asyncio
+async def test_verified_geojson_is_registered_and_returns_map_metadata(
+    user_upload_dir, monkeypatch
+):
+    import data_agent.artifact_handler as artifact_handler
+    import data_agent.data_catalog as data_catalog
+    import geopandas as gpd
+
+    output = user_upload_dir / "result.geojson"
+    output.write_text(
+        '{"type":"FeatureCollection","features":[]}', encoding="utf-8"
+    )
+    registrations = []
+    monkeypatch.setattr(
+        data_catalog,
+        "register_tool_output",
+        lambda *args, **kwargs: registrations.append((args, kwargs)),
+    )
+    monkeypatch.setattr(
+        artifact_handler,
+        "build_map_update_from_geojson",
+        lambda path: {"layers": [{"path": path}]},
+    )
+    monkeypatch.setattr(
+        gpd,
+        "read_file",
+        lambda path: SimpleNamespace(empty=False),
+    )
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp")
+    )
+    client.health_check = AsyncMock(
+        return_value={
+            "worker": {
+                "product": "ArcInfo",
+                "install": {"Version": "3.7.1"},
+            }
+        }
+    )
+    client._download_artifact = AsyncMock(return_value=[output])
+    client._best_effort_delete_artifact = AsyncMock()
+
+    result = await client.download_job_results(
+        "buffer_features",
+        {
+            "status": "succeeded",
+            "request": {"distance": "10 Meters"},
+            "result": {
+                "output_artifact_ids": ["output-1"],
+                "dataset_summary": {"count": 4},
+            },
+        },
+        ["source.geojson"],
+    )
+
+    assert result["local_outputs"] == [str(output)]
+    assert result["map_update"] == {"layers": [{"path": str(output)}]}
+    assert result["dataset_summary"] == {"count": 4}
+    assert result["arcgis_product"] == "ArcInfo"
+    assert result["arcgis_version"] == "3.7.1"
+    assert registrations == [
+        (
+            (str(output), "buffer_features", {"distance": "10 Meters"}),
+            {"source_paths": ["source.geojson"]},
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_run_deep_learning_checks_image_analyst_and_marks_operation():
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp")
+    )
+    client.health_check = AsyncMock(return_value={"worker": {}})
+    client.get_capabilities = AsyncMock(return_value={"worker": {}})
+    client._execute_operation = AsyncMock(return_value={"status": "success"})
+
+    result = await client.run_deep_learning(
+        "detect_objects",
+        {"input": "image.tif"},
+        "model.dlpk",
+        {"output_name": "detections.zip"},
+    )
+
+    assert result == {"status": "success"}
+    client.get_capabilities.assert_awaited_once_with(
+        required_extension="ImageAnalyst"
+    )
+    client._execute_operation.assert_awaited_once_with(
+        remote_tool="detect_objects",
+        local_inputs={"input": "image.tif", "model": "model.dlpk"},
+        parameters={"output_name": "detections.zip"},
+        deep_learning=True,
+    )
+
+
+@pytest.mark.asyncio
+async def test_catalog_tool_submits_validated_exact_tool_and_cleans_input():
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp")
+    )
+    client.health_check = AsyncMock(
+        return_value={
+            "worker": {
+                "product": "ArcInfo",
+                "install": {"Version": "3.7.1"},
+            }
+        }
+    )
+    uploaded = UploadedArtifact(
+        artifact_id="input-1",
+        artifact_path="roads.geojson",
+        source_path=Path("roads.geojson"),
+        local_package_path=Path("roads.geojson"),
+        delete_local_package=False,
+    )
+    client.prepare_input = AsyncMock(return_value=uploaded)
+    events = []
+
+    async def call_tool(name, arguments):
+        events.append((name, arguments))
+        if name == "search_tools":
+            return {"result": [{"tool_id": "vector.erase"}]}
+        if name == "describe_tool":
+            return {
+                "tool_id": "vector.erase",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {"output_name": {"type": "string"}},
+                    "required": ["output_name"],
+                    "additionalProperties": False,
+                },
+            }
+        if name == "submit_job":
+            return {"job_id": "job-1"}
+        if name == "delete_artifact":
+            return {"state": "deleted"}
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+    client.wait_for_job = AsyncMock(
+        return_value={
+            "id": "job-1",
+            "status": "succeeded",
+            "result": {"output_artifact_ids": []},
+        }
+    )
+    client.download_job_results = AsyncMock(
+        return_value={"status": "success", "operation": "vector.erase"}
+    )
+
+    result = await client.run_catalog_tool(
+        "vector.erase",
+        "vector",
+        {"input": "roads.geojson"},
+        {"output_name": "erased.zip"},
+    )
+
+    assert result["status"] == "success"
+    assert (
+        "submit_job",
+        {
+            "tool_id": "vector.erase",
+            "parameters": {
+                "output_name": "erased.zip",
+                "input_artifact_id": "input-1",
+                "input_path": "roads.geojson",
+            },
+        },
+    ) in events
+    assert events[-1] == (
+        "delete_artifact",
+        {"artifact_id": "input-1"},
+    )
+
+
+def test_catalog_tool_selection_forbids_training_even_if_server_returns_it():
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp")
+    )
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        client._select_exact_tool_id(
+            {"result": [{"tool_id": "dl.TrainDeepLearningModel"}]},
+            "dl.TrainDeepLearningModel",
+        )
+
+    assert exc_info.value.code == "ARCPY_TOOL_NOT_ALLOWED"
+
+
 @pytest.mark.asyncio
 async def test_cancelled_call_waiter_does_not_cancel_owner_or_next_call():
     first_started = threading.Event()

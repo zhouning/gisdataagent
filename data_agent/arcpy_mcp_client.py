@@ -24,6 +24,7 @@ from typing import Any, Callable
 from urllib.parse import urljoin, urlparse
 
 import httpx
+import jsonschema
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 
@@ -80,6 +81,11 @@ _PUBLIC_ERROR_MESSAGES = {
     "ARCPY_UPLOAD_VERIFICATION_FAILED": "ArcPy artifact upload verification failed",
     "ARCPY_INSPECTION_FAILED": "ArcPy dataset inspection failed",
     "ARCPY_JOB_TIMED_OUT": "ArcPy job timed out",
+    "ARCPY_JOB_CANCELLED": "ArcPy job was cancelled",
+    "ARCPY_JOB_INTERRUPTED": "ArcPy job was interrupted",
+    "ARCPY_DOWNLOAD_FAILED": "ArcPy result download failed",
+    "ARCPY_DOWNLOAD_CHECKSUM_MISMATCH": "ArcPy result checksum mismatch",
+    "ARCPY_UNSAFE_ARCHIVE": "ArcPy result archive is unsafe",
 }
 _SAFE_DETAIL_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_-]{0,63}$")
 _DNS_HOST_LABEL_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$")
@@ -458,6 +464,312 @@ def _end_signed_transfer() -> None:
         _SIGNED_TRANSFER_ACTIVE = max(0, _SIGNED_TRANSFER_ACTIVE - 1)
 
 
+@dataclass
+class _DownloadWorkspace:
+    tenant_fd: int
+    directory_fd: int
+    directory_name: str
+    path: Path
+    closed: bool = False
+
+    def close(self) -> None:
+        if self.closed:
+            return
+        self.closed = True
+        os.close(self.directory_fd)
+        os.close(self.tenant_fd)
+
+    def cleanup(self) -> None:
+        if self.closed:
+            return
+        try:
+            _remove_directory_contents(self.directory_fd)
+            os.rmdir(self.directory_name, dir_fd=self.tenant_fd)
+        except OSError:
+            pass
+        finally:
+            self.close()
+
+
+def _remove_directory_contents(directory_fd: int) -> None:
+    for name in os.listdir(directory_fd):
+        try:
+            item_stat = os.stat(
+                name, dir_fd=directory_fd, follow_symlinks=False
+            )
+            if stat.S_ISDIR(item_stat.st_mode):
+                child_fd = os.open(
+                    name, _directory_open_flags(), dir_fd=directory_fd
+                )
+                try:
+                    _remove_directory_contents(child_fd)
+                finally:
+                    os.close(child_fd)
+                os.rmdir(name, dir_fd=directory_fd)
+            else:
+                os.unlink(name, dir_fd=directory_fd)
+        except OSError:
+            continue
+
+
+def _new_download_workspace() -> _DownloadWorkspace:
+    tenant_fd, user_upload_dir = _open_current_user_upload_dir()
+    directory_fd = None
+    directory_name = None
+    try:
+        for _ in range(100):
+            candidate = f".arcpy-result-{secrets.token_hex(16)}"
+            try:
+                os.mkdir(candidate, 0o700, dir_fd=tenant_fd)
+                directory_name = candidate
+                break
+            except FileExistsError:
+                continue
+        if directory_name is None:
+            raise ArcPyMcpError(
+                "ARCPY_DOWNLOAD_FAILED", "ArcPy result download failed"
+            )
+        directory_fd = os.open(
+            directory_name, _directory_open_flags(), dir_fd=tenant_fd
+        )
+        workspace = _DownloadWorkspace(
+            tenant_fd=tenant_fd,
+            directory_fd=directory_fd,
+            directory_name=directory_name,
+            path=user_upload_dir / directory_name,
+        )
+        tenant_fd = None
+        directory_fd = None
+        return workspace
+    except ArcPyMcpError:
+        raise
+    except OSError:
+        raise ArcPyMcpError(
+            "ARCPY_DOWNLOAD_FAILED", "ArcPy result download failed"
+        ) from None
+    finally:
+        if directory_fd is not None:
+            os.close(directory_fd)
+        if tenant_fd is not None:
+            if directory_name is not None:
+                try:
+                    os.rmdir(directory_name, dir_fd=tenant_fd)
+                except OSError:
+                    pass
+            os.close(tenant_fd)
+
+
+def _safe_archive_parts(name: str) -> tuple[str, ...]:
+    if (
+        not isinstance(name, str)
+        or not name
+        or "\x00" in name
+        or "\\" in name
+    ):
+        raise ArcPyMcpError(
+            "ARCPY_UNSAFE_ARCHIVE", "ArcPy result archive is unsafe"
+        )
+    posix_path = PurePosixPath(name)
+    windows_path = PureWindowsPath(name)
+    parts = posix_path.parts
+    if (
+        posix_path.is_absolute()
+        or windows_path.is_absolute()
+        or bool(windows_path.drive)
+        or not parts
+        or any(part in {"", ".", ".."} for part in parts)
+    ):
+        raise ArcPyMcpError(
+            "ARCPY_UNSAFE_ARCHIVE", "ArcPy result archive is unsafe"
+        )
+    if (
+        len(name.encode("utf-8")) > 4096
+        or any(len(part.encode("utf-8")) > 255 for part in parts)
+    ):
+        raise ArcPyMcpError(
+            "ARCPY_UNSAFE_ARCHIVE", "ArcPy result archive is unsafe"
+        )
+    for part in parts:
+        reserved_stem = part.split(".", 1)[0].rstrip(" .")
+        if (
+            ":" in part
+            or part.endswith((".", " "))
+            or any(ord(character) < 32 or ord(character) == 127 for character in part)
+            or _WINDOWS_RESERVED_COMPONENT_RE.fullmatch(reserved_stem)
+            is not None
+        ):
+            raise ArcPyMcpError(
+                "ARCPY_UNSAFE_ARCHIVE", "ArcPy result archive is unsafe"
+            )
+    return tuple(parts)
+
+
+def _zip_entry_kind(info: zipfile.ZipInfo) -> str:
+    unix_mode = (info.external_attr >> 16) & 0xFFFF
+    file_type = stat.S_IFMT(unix_mode)
+    if stat.S_ISLNK(unix_mode):
+        raise ArcPyMcpError(
+            "ARCPY_UNSAFE_ARCHIVE", "ArcPy result archive is unsafe"
+        )
+    if info.is_dir():
+        if file_type not in {0, stat.S_IFDIR}:
+            raise ArcPyMcpError(
+                "ARCPY_UNSAFE_ARCHIVE", "ArcPy result archive is unsafe"
+            )
+        return "directory"
+    if file_type not in {0, stat.S_IFREG}:
+        raise ArcPyMcpError(
+            "ARCPY_UNSAFE_ARCHIVE", "ArcPy result archive is unsafe"
+        )
+    return "file"
+
+
+def _validate_zip_entries(
+    archive: zipfile.ZipFile,
+) -> list[tuple[zipfile.ZipInfo, tuple[str, ...], str]]:
+    checked = []
+    seen: dict[tuple[str, ...], str] = {}
+    for info in archive.infolist():
+        parts = _safe_archive_parts(info.filename.rstrip("/"))
+        kind = _zip_entry_kind(info)
+        folded = tuple(part.casefold() for part in parts)
+        if folded in seen:
+            raise ArcPyMcpError(
+                "ARCPY_UNSAFE_ARCHIVE", "ArcPy result archive is unsafe"
+            )
+        for index in range(1, len(folded)):
+            if seen.get(folded[:index]) == "file":
+                raise ArcPyMcpError(
+                    "ARCPY_UNSAFE_ARCHIVE", "ArcPy result archive is unsafe"
+                )
+        if kind == "file" and any(
+            existing[: len(folded)] == folded
+            for existing in seen
+            if len(existing) > len(folded)
+        ):
+            raise ArcPyMcpError(
+                "ARCPY_UNSAFE_ARCHIVE", "ArcPy result archive is unsafe"
+            )
+        seen[folded] = kind
+        checked.append((info, parts, kind))
+    return checked
+
+
+def _ensure_archive_directory(root_fd: int, parts: tuple[str, ...]) -> int:
+    current_fd = os.dup(root_fd)
+    try:
+        for part in parts:
+            try:
+                os.mkdir(part, 0o700, dir_fd=current_fd)
+            except FileExistsError:
+                pass
+            next_fd = os.open(
+                part, _directory_open_flags(), dir_fd=current_fd
+            )
+            os.close(current_fd)
+            current_fd = next_fd
+        result = current_fd
+        current_fd = None
+        return result
+    except OSError:
+        raise ArcPyMcpError(
+            "ARCPY_UNSAFE_ARCHIVE", "ArcPy result archive is unsafe"
+        ) from None
+    finally:
+        if current_fd is not None:
+            os.close(current_fd)
+
+
+def _extract_verified_zip(
+    archive_path: Path, workspace: _DownloadWorkspace
+) -> list[Path]:
+    extraction_name = "extracted"
+    try:
+        os.mkdir(extraction_name, 0o700, dir_fd=workspace.directory_fd)
+        extraction_fd = os.open(
+            extraction_name,
+            _directory_open_flags(),
+            dir_fd=workspace.directory_fd,
+        )
+    except OSError:
+        raise ArcPyMcpError(
+            "ARCPY_UNSAFE_ARCHIVE", "ArcPy result archive is unsafe"
+        ) from None
+    extracted_files = []
+    try:
+        try:
+            archive = zipfile.ZipFile(archive_path, "r")
+        except (OSError, zipfile.BadZipFile):
+            raise ArcPyMcpError(
+                "ARCPY_UNSAFE_ARCHIVE", "ArcPy result archive is unsafe"
+            ) from None
+        with archive:
+            checked = _validate_zip_entries(archive)
+            for info, parts, kind in checked:
+                if kind == "directory":
+                    directory_fd = _ensure_archive_directory(
+                        extraction_fd, parts
+                    )
+                    os.close(directory_fd)
+                    continue
+                parent_fd = _ensure_archive_directory(
+                    extraction_fd, parts[:-1]
+                )
+                output_fd = None
+                try:
+                    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+                    flags |= getattr(os, "O_CLOEXEC", 0)
+                    flags |= getattr(os, "O_NOFOLLOW", 0)
+                    output_fd = os.open(
+                        parts[-1], flags, 0o600, dir_fd=parent_fd
+                    )
+                    with archive.open(info, "r") as source:
+                        with os.fdopen(output_fd, "wb") as destination:
+                            output_fd = None
+                            while True:
+                                chunk = source.read(1024 * 1024)
+                                if not chunk:
+                                    break
+                                destination.write(chunk)
+                    extracted_files.append(
+                        workspace.path / extraction_name / Path(*parts)
+                    )
+                except (OSError, RuntimeError, zipfile.BadZipFile):
+                    raise ArcPyMcpError(
+                        "ARCPY_UNSAFE_ARCHIVE",
+                        "ArcPy result archive is unsafe",
+                    ) from None
+                finally:
+                    if output_fd is not None:
+                        os.close(output_fd)
+                    os.close(parent_fd)
+    finally:
+        os.close(extraction_fd)
+    return extracted_files
+
+
+def _extracted_dataset_paths(paths: list[Path]) -> list[Path]:
+    gdb_roots = set()
+    for path in paths:
+        for parent in (path, *path.parents):
+            if parent.suffix.lower() == ".gdb":
+                gdb_roots.add(parent)
+                break
+    shapefiles = {path for path in paths if path.suffix.lower() == ".shp"}
+    shapefile_stems = {
+        (path.parent, path.stem.casefold()) for path in shapefiles
+    }
+    outputs = set(gdb_roots) | shapefiles
+    for path in paths:
+        if any(root == path or root in path.parents for root in gdb_roots):
+            continue
+        parent_and_stem = (path.parent, path.name.split(".", 1)[0].casefold())
+        if parent_and_stem in shapefile_stems and path not in shapefiles:
+            continue
+        outputs.add(path)
+    return sorted(outputs, key=lambda item: str(item).casefold())
+
+
 def _has_unsafe_caller_syntax(path: str) -> bool:
     if not path or "\x00" in path:
         return True
@@ -671,6 +983,36 @@ def _best_effort_unlink_current_user_file(path: Path) -> None:
                 )
             )
         os.unlink(relative_path.parts[-1], dir_fd=directory_fds[-1])
+    except (ArcPyMcpError, OSError, ValueError):
+        pass
+    finally:
+        for directory_fd in reversed(directory_fds):
+            os.close(directory_fd)
+
+
+def _best_effort_remove_uploaded_package(path: Path) -> None:
+    directory_fds = []
+    try:
+        user_fd, user_upload_dir = _open_current_user_upload_dir()
+        directory_fds.append(user_fd)
+        relative_path = path.relative_to(user_upload_dir)
+        if (
+            len(relative_path.parts) != 2
+            or not relative_path.parts[0].startswith(".arcpy-package-")
+            or relative_path.parts[1] != "entry.zip"
+        ):
+            return
+        private_fd = os.open(
+            relative_path.parts[0],
+            _directory_open_flags(),
+            dir_fd=user_fd,
+        )
+        directory_fds.append(private_fd)
+        try:
+            os.unlink(relative_path.parts[1], dir_fd=private_fd)
+        except FileNotFoundError:
+            pass
+        os.rmdir(relative_path.parts[0], dir_fd=user_fd)
     except (ArcPyMcpError, OSError, ValueError):
         pass
     finally:
@@ -1080,7 +1422,13 @@ def _sanitize_detail_key(key: Any) -> str:
     return key
 
 
+class _SafeDetailString(str):
+    pass
+
+
 def _sanitize_value(value: Any) -> Any:
+    if isinstance(value, _SafeDetailString):
+        return str(value)
     if isinstance(value, str):
         return "[REDACTED]"
     if isinstance(value, dict):
@@ -1160,6 +1508,10 @@ class ArcPyMcpClient:
         upload_attempts: int = 3,
         sleep=asyncio.sleep,
         inspection_timeout: float = 120.0,
+        job_timeout: float = 900.0,
+        dl_job_timeout: float = 3600.0,
+        download_timeout: float = 120.0,
+        download_attempts: int = 3,
     ) -> None:
         self._config = config
         self._clock = clock
@@ -1168,6 +1520,10 @@ class ArcPyMcpClient:
         self._upload_attempts = max(1, int(upload_attempts))
         self._sleep = sleep
         self._inspection_timeout = inspection_timeout
+        self.job_timeout = max(0.0, float(job_timeout))
+        self.dl_job_timeout = max(0.0, float(dl_job_timeout))
+        self._download_timeout = max(0.0, float(download_timeout))
+        self._download_attempts = max(1, int(download_attempts))
         self._thread_lock = threading.RLock()
         self._worker_thread: threading.Thread | None = None
         self._worker_loop: asyncio.AbstractEventLoop | None = None
@@ -2575,3 +2931,885 @@ class ArcPyMcpClient:
             raise
         finally:
             prepared._close_lease()
+
+    @staticmethod
+    def _validate_job_response(job: Any, job_id: str) -> dict:
+        if not isinstance(job, dict):
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
+        response_id = job.get("job_id", job.get("id"))
+        if response_id is not None and response_id != job_id:
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
+        return job
+
+    @staticmethod
+    def _job_error_code(status: str) -> str:
+        return {
+            "failed": "ARCPY_JOB_FAILED",
+            "timed_out": "ARCPY_JOB_TIMED_OUT",
+            "cancelled": "ARCPY_JOB_CANCELLED",
+            "interrupted": "ARCPY_JOB_INTERRUPTED",
+        }.get(status, "ARCPY_JOB_FAILED")
+
+    @staticmethod
+    def _sanitize_job_message(value: Any) -> _SafeDetailString | None:
+        if not isinstance(value, str) or not value.strip():
+            return None
+        message = redact_mcp_text(
+            value.strip(), current_runtime_secrets()
+        )
+        message = re.sub(
+            r"(?i)https?://[^\s\"']+", "[REDACTED]", message
+        )
+        message = re.sub(
+            r"(?i)(?:[A-Z]:[\\/]|\\\\)[^\r\n]*",
+            "[REDACTED]",
+            message,
+        )
+        return _SafeDetailString(message[:2048])
+
+    @classmethod
+    def _final_job_messages(cls, logs: Any) -> list[_SafeDetailString]:
+        if not isinstance(logs, dict):
+            return []
+        rows = logs.get("result", logs.get("events", []))
+        if not isinstance(rows, list):
+            return []
+        messages = []
+        for row in rows[-20:]:
+            if isinstance(row, dict):
+                value = row.get("message", row.get("text"))
+            else:
+                value = row
+            message = cls._sanitize_job_message(value)
+            if message is not None:
+                messages.append(message)
+        return messages
+
+    async def _poll_job(self, job_id: str, timeout: float) -> dict:
+        if not isinstance(job_id, str) or not job_id.strip():
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
+        job_id = job_id.strip()
+        deadline = self._clock() + max(0.0, float(timeout))
+        delays = (2, 5, 10, 20)
+        attempt = 0
+        terminal_failures = {
+            "failed",
+            "timed_out",
+            "cancelled",
+            "interrupted",
+        }
+        active_statuses = {"queued", "running", "pending", "cancelling"}
+        while True:
+            remaining = deadline - self._clock()
+            if remaining <= 0:
+                raise ArcPyMcpError(
+                    "ARCPY_JOB_TIMED_OUT", "ArcPy job timed out"
+                )
+            delay = delays[min(attempt, len(delays) - 1)]
+            attempt += 1
+            await self._sleep(min(delay, remaining))
+            if self._clock() > deadline:
+                raise ArcPyMcpError(
+                    "ARCPY_JOB_TIMED_OUT", "ArcPy job timed out"
+                )
+            job = self._validate_job_response(
+                await self.call_tool("get_job", {"job_id": job_id}),
+                job_id,
+            )
+            status = job.get("status")
+            if status == "succeeded":
+                return job
+            if status in terminal_failures:
+                try:
+                    logs = await self.call_tool(
+                        "get_job_log", {"job_id": job_id}
+                    )
+                except Exception:
+                    logs = {}
+                raise ArcPyMcpError(
+                    self._job_error_code(status),
+                    "ArcPy job failed",
+                    {
+                        "status": _SafeDetailString(status),
+                        "arcpy_messages": self._final_job_messages(logs),
+                    },
+                )
+            if status not in active_statuses:
+                raise ArcPyMcpError(
+                    "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+                )
+
+    async def wait_for_job(self, job_id: str, timeout: float) -> dict:
+        try:
+            return await self._poll_job(job_id, timeout)
+        except asyncio.CancelledError:
+            cancellation = asyncio.create_task(self.cancel_job(job_id))
+            try:
+                await _drain_shielded_task(cancellation)
+            except Exception:
+                pass
+            raise
+
+    async def cancel_job(self, job_id: str) -> dict:
+        if not isinstance(job_id, str) or not job_id.strip():
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
+        job_id = job_id.strip()
+        try:
+            response = await self.call_tool(
+                "cancel_job", {"job_id": job_id}
+            )
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            response = None
+        if isinstance(response, dict):
+            response_id = response.get("job_id", response.get("id"))
+            if response_id is not None and response_id != job_id:
+                raise ArcPyMcpError(
+                    "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+                )
+        return await self._poll_job(job_id, self.job_timeout)
+
+    @staticmethod
+    def _download_payload(payload: Any, artifact_id: str) -> dict:
+        if not isinstance(payload, dict):
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
+        nested = payload.get("artifact")
+        metadata = dict(nested) if isinstance(nested, dict) else {}
+        metadata.update(payload)
+        response_id = metadata.get("artifact_id")
+        if response_id is not None and response_id != artifact_id:
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
+        return metadata
+
+    @classmethod
+    def _download_url(cls, payload: dict) -> str:
+        value = payload.get("download_url", payload.get("signed_url"))
+        try:
+            return cls._validate_signed_url(value)
+        except ArcPyMcpError:
+            raise ArcPyMcpError(
+                "ARCPY_DOWNLOAD_FAILED", "ArcPy result download failed"
+            ) from None
+
+    @staticmethod
+    def _download_sha256(payload: dict) -> str:
+        value = payload.get("actual_sha256", payload.get("verified_sha256"))
+        if (
+            not isinstance(value, str)
+            or re.fullmatch(r"[A-Fa-f0-9]{64}", value) is None
+        ):
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
+        return value.lower()
+
+    @staticmethod
+    def _download_size(payload: dict) -> int | None:
+        value = payload.get(
+            "actual_size", payload.get("actual_size_bytes", payload.get("size"))
+        )
+        if value is None:
+            return None
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
+        return value
+
+    @staticmethod
+    def _download_name(payload: dict, artifact_id: str) -> str:
+        value = payload.get(
+            "logical_name", payload.get("file_name", payload.get("name"))
+        )
+        if value is None:
+            suffix = hashlib.sha256(artifact_id.encode("utf-8")).hexdigest()[:16]
+            return f"result-{suffix}.bin"
+        try:
+            parts = _safe_archive_parts(value)
+        except ArcPyMcpError:
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            ) from None
+        if len(parts) != 1:
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
+        if len(parts[0].encode("utf-8")) > 240:
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
+        return parts[0]
+
+    async def _stream_signed_download(
+        self,
+        http_client,
+        signed_url: str,
+        stream,
+        offset: int,
+    ) -> None:
+        current_url = signed_url
+        registered_secrets = set()
+        self._install_signed_transfer_log_filter()
+        _begin_signed_transfer()
+        try:
+            for redirect_count in range(4):
+                current_secrets = self._signed_transfer_secrets(current_url)
+                new_secrets = current_secrets - registered_secrets
+                if new_secrets:
+                    register_runtime_secrets(new_secrets)
+                    registered_secrets.update(new_secrets)
+                headers = {"Range": f"bytes={offset}-"} if offset else {}
+                async with http_client.stream(
+                    "GET",
+                    current_url,
+                    headers=headers,
+                    timeout=self._download_timeout,
+                ) as response:
+                    status_code = getattr(response, "status_code", None)
+                    if status_code in {307, 308}:
+                        if redirect_count >= 3:
+                            raise ArcPyMcpError(
+                                "ARCPY_DOWNLOAD_FAILED",
+                                "ArcPy result download failed",
+                            )
+                        location = getattr(response, "headers", {}).get(
+                            "Location"
+                        )
+                        if not isinstance(location, str) or not location.strip():
+                            raise ArcPyMcpError(
+                                "ARCPY_DOWNLOAD_FAILED",
+                                "ArcPy result download failed",
+                            )
+                        try:
+                            current_url = self._validate_signed_url(
+                                urljoin(current_url, location.strip())
+                            )
+                        except ArcPyMcpError:
+                            raise ArcPyMcpError(
+                                "ARCPY_DOWNLOAD_FAILED",
+                                "ArcPy result download failed",
+                            ) from None
+                        continue
+                    if status_code not in {200, 206}:
+                        raise ArcPyMcpError(
+                            "ARCPY_DOWNLOAD_FAILED",
+                            "ArcPy result download failed",
+                        )
+                    if offset and status_code == 200:
+                        stream.seek(0)
+                        stream.truncate(0)
+                    else:
+                        stream.seek(offset)
+                    async for chunk in response.aiter_bytes():
+                        if not isinstance(chunk, (bytes, bytearray)):
+                            raise ArcPyMcpError(
+                                "ARCPY_DOWNLOAD_FAILED",
+                                "ArcPy result download failed",
+                            )
+                        stream.write(chunk)
+                    stream.flush()
+                    return
+            raise ArcPyMcpError(
+                "ARCPY_DOWNLOAD_FAILED", "ArcPy result download failed"
+            )
+        finally:
+            if registered_secrets:
+                unregister_runtime_secrets(registered_secrets)
+            _end_signed_transfer()
+
+    @staticmethod
+    def _hash_download_stream(stream) -> str:
+        digest = hashlib.sha256()
+        stream.seek(0)
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+        return digest.hexdigest().lower()
+
+    async def _download_artifact(self, artifact_id: str) -> list[Path]:
+        workspace = _new_download_workspace()
+        stream = None
+        part_name = None
+        final_name = None
+        expected_sha256 = None
+        expected_size = None
+        try:
+            async with self._signed_http_client_factory(
+                **self._signed_http_options()
+            ) as http_client:
+                completed = False
+                for attempt in range(self._download_attempts):
+                    metadata = self._download_payload(
+                        await self.call_tool(
+                            "create_download", {"artifact_id": artifact_id}
+                        ),
+                        artifact_id,
+                    )
+                    signed_url = self._download_url(metadata)
+                    current_sha256 = self._download_sha256(metadata)
+                    current_size = self._download_size(metadata)
+                    current_name = self._download_name(metadata, artifact_id)
+                    if expected_sha256 is None:
+                        expected_sha256 = current_sha256
+                        expected_size = current_size
+                        final_name = current_name
+                        part_name = f"{final_name}.part"
+                        flags = os.O_RDWR | os.O_CREAT | os.O_EXCL
+                        flags |= getattr(os, "O_CLOEXEC", 0)
+                        flags |= getattr(os, "O_NOFOLLOW", 0)
+                        descriptor = os.open(
+                            part_name,
+                            flags,
+                            0o600,
+                            dir_fd=workspace.directory_fd,
+                        )
+                        stream = os.fdopen(descriptor, "r+b")
+                    elif (
+                        current_sha256 != expected_sha256
+                        or current_size != expected_size
+                        or current_name != final_name
+                    ):
+                        raise ArcPyMcpError(
+                            "ARCPY_RESPONSE_INVALID",
+                            "ArcPy MCP response is invalid",
+                        )
+                    stream.seek(0, os.SEEK_END)
+                    offset = stream.tell()
+                    if expected_size is not None and offset > expected_size:
+                        raise ArcPyMcpError(
+                            "ARCPY_DOWNLOAD_FAILED",
+                            "ArcPy result download failed",
+                        )
+                    try:
+                        await self._stream_signed_download(
+                            http_client, signed_url, stream, offset
+                        )
+                    except httpx.RequestError:
+                        if attempt + 1 >= self._download_attempts:
+                            raise ArcPyMcpError(
+                                "ARCPY_DOWNLOAD_FAILED",
+                                "ArcPy result download failed",
+                            ) from None
+                        continue
+                    stream.seek(0, os.SEEK_END)
+                    size = stream.tell()
+                    if expected_size is not None and size < expected_size:
+                        if attempt + 1 < self._download_attempts:
+                            continue
+                        raise ArcPyMcpError(
+                            "ARCPY_DOWNLOAD_FAILED",
+                            "ArcPy result download failed",
+                        )
+                    if expected_size is not None and size != expected_size:
+                        raise ArcPyMcpError(
+                            "ARCPY_DOWNLOAD_FAILED",
+                            "ArcPy result download failed",
+                        )
+                    completed = True
+                    break
+                if not completed:
+                    raise ArcPyMcpError(
+                        "ARCPY_DOWNLOAD_FAILED", "ArcPy result download failed"
+                    )
+
+            if self._hash_download_stream(stream) != expected_sha256:
+                stream.close()
+                stream = None
+                os.unlink(part_name, dir_fd=workspace.directory_fd)
+                raise ArcPyMcpError(
+                    "ARCPY_DOWNLOAD_CHECKSUM_MISMATCH",
+                    "ArcPy result checksum mismatch",
+                )
+            stream.flush()
+            os.fsync(stream.fileno())
+            stream.close()
+            stream = None
+            os.rename(
+                part_name,
+                final_name,
+                src_dir_fd=workspace.directory_fd,
+                dst_dir_fd=workspace.directory_fd,
+            )
+            final_path = workspace.path / final_name
+            if final_path.suffix.lower() == ".zip":
+                extracted = await asyncio.to_thread(
+                    _extract_verified_zip, final_path, workspace
+                )
+                outputs = _extracted_dataset_paths(extracted)
+                os.unlink(final_name, dir_fd=workspace.directory_fd)
+            else:
+                outputs = [final_path]
+            workspace.close()
+            return outputs
+        except BaseException:
+            if stream is not None:
+                try:
+                    stream.close()
+                except OSError:
+                    pass
+            workspace.cleanup()
+            raise
+
+    @staticmethod
+    def _result_artifact_ids(job: dict) -> list[str]:
+        if job.get("status") != "succeeded":
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
+        result = job.get("result")
+        if not isinstance(result, dict):
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
+        values = result.get("output_artifact_ids")
+        if not isinstance(values, list):
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
+        artifact_ids = []
+        seen = set()
+        for value in values:
+            if (
+                not isinstance(value, str)
+                or not value.strip()
+                or value in seen
+            ):
+                raise ArcPyMcpError(
+                    "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+                )
+            seen.add(value)
+            artifact_ids.append(value)
+        return artifact_ids
+
+    @staticmethod
+    def _dataset_summary(job: dict) -> dict:
+        result = job.get("result")
+        if not isinstance(result, dict):
+            return {}
+        summary = result.get("dataset_summary")
+        if isinstance(summary, dict):
+            return copy.deepcopy(summary)
+        return {
+            key: copy.deepcopy(value)
+            for key, value in result.items()
+            if key != "output_artifact_ids"
+        }
+
+    async def _register_and_map_outputs(
+        self,
+        paths: list[Path],
+        operation: str,
+        tool_params: dict,
+        source_paths: list[str],
+    ) -> tuple[list[str], dict | None]:
+        from data_agent import artifact_handler, data_catalog
+
+        local_outputs = []
+        map_update = None
+        vector_suffixes = {".geojson", ".json", ".gpkg", ".shp", ".gdb"}
+        for path in paths:
+            local_path = str(path)
+            data_catalog.register_tool_output(
+                local_path,
+                operation,
+                tool_params,
+                source_paths=source_paths,
+            )
+            local_outputs.append(local_path)
+            if map_update is not None or path.suffix.lower() not in vector_suffixes:
+                continue
+            try:
+                import geopandas as gpd
+
+                frame = await asyncio.to_thread(gpd.read_file, local_path)
+                if frame.empty:
+                    continue
+                if path.suffix.lower() in {".geojson", ".json"}:
+                    geojson_path = path
+                else:
+                    geojson_path = path.with_name(f"{path.stem}.geojson")
+                    if geojson_path.exists():
+                        geojson_path = path.with_name(
+                            f"{path.stem}-map.geojson"
+                        )
+                    await asyncio.to_thread(
+                        frame.to_file, str(geojson_path), driver="GeoJSON"
+                    )
+                    data_catalog.register_tool_output(
+                        str(geojson_path),
+                        operation,
+                        tool_params,
+                        source_paths=source_paths,
+                    )
+                    local_outputs.append(str(geojson_path))
+                map_update = await asyncio.to_thread(
+                    artifact_handler.build_map_update_from_geojson,
+                    str(geojson_path),
+                )
+            except Exception:
+                continue
+        return local_outputs, map_update
+
+    async def download_job_results(
+        self, operation: str, job: dict, source_paths: list[str]
+    ) -> dict:
+        started = self._clock()
+        health = await self.health_check()
+        artifact_ids = self._result_artifact_ids(job)
+        request = job.get("request")
+        tool_params = copy.deepcopy(request) if isinstance(request, dict) else {}
+        local_outputs = []
+        map_update = None
+        for artifact_id in artifact_ids:
+            downloaded = await self._download_artifact(artifact_id)
+            registered, artifact_map_update = (
+                await self._register_and_map_outputs(
+                    downloaded, operation, tool_params, source_paths
+                )
+            )
+            local_outputs.extend(registered)
+            if map_update is None:
+                map_update = artifact_map_update
+            await self._best_effort_delete_artifact(artifact_id)
+        worker = health.get("worker") if isinstance(health, dict) else None
+        worker = worker if isinstance(worker, dict) else {}
+        install = worker.get("install")
+        install = install if isinstance(install, dict) else {}
+        return {
+            "status": "success",
+            "operation": operation,
+            "message": f"ArcPy operation completed: {operation}",
+            "local_outputs": local_outputs,
+            "dataset_summary": self._dataset_summary(job),
+            "arcgis_product": worker.get("product"),
+            "arcgis_version": install.get("Version"),
+            "duration_seconds": round(self._clock() - started, 3),
+            "lineage": {
+                "source_paths": list(source_paths),
+                "tool": operation,
+            },
+            "map_update": map_update,
+        }
+
+    @staticmethod
+    def _select_exact_tool_id(matches: dict, query: str) -> str:
+        if (
+            not isinstance(matches, dict)
+            or not isinstance(query, str)
+            or not query.strip()
+        ):
+            raise ArcPyMcpError(
+                "ARCPY_TOOL_NOT_ALLOWED",
+                "Requested ArcPy MCP tool is not allowed",
+            )
+        rows = matches.get("result", matches.get("tools", []))
+        rows = rows if isinstance(rows, list) else []
+        exact = [
+            row.get("tool_id")
+            for row in rows
+            if isinstance(row, dict) and row.get("tool_id") == query
+        ]
+        if len(exact) == 1:
+            tool_id = exact[0]
+            tokens = {
+                token
+                for token in re.split(r"[._:\-]+", tool_id.casefold())
+                if token
+            }
+            normalized = "".join(
+                character
+                for character in tool_id.casefold()
+                if character.isalnum()
+            )
+            if (
+                tokens & {"train", "training"}
+                or "traindeeplearningmodel" in normalized
+            ):
+                raise ArcPyMcpError(
+                    "ARCPY_TOOL_NOT_ALLOWED",
+                    "Requested ArcPy MCP tool is not allowed",
+                )
+            return tool_id
+        raise ArcPyMcpError(
+            "ARCPY_TOOL_NOT_ALLOWED",
+            f"No exact allowlisted ArcPy tool for: {query}",
+        )
+
+    @staticmethod
+    def _validate_catalog_parameters(parameters: dict, schema: dict) -> None:
+        if not isinstance(parameters, dict) or not isinstance(schema, dict):
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
+        try:
+            jsonschema.validate(parameters, schema)
+        except jsonschema.ValidationError as exc:
+            raise ArcPyMcpError(
+                "ARCPY_TOOL_NOT_ALLOWED", exc.message
+            ) from None
+        except jsonschema.SchemaError:
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            ) from None
+
+    @staticmethod
+    def _bind_prepared_inputs(
+        parameters: dict,
+        prepared: dict[str, UploadedArtifact],
+    ) -> dict:
+        arguments = dict(parameters)
+        for prefix, artifact in prepared.items():
+            arguments[f"{prefix}_artifact_id"] = artifact.artifact_id
+            arguments[f"{prefix}_path"] = artifact.artifact_path
+        return arguments
+
+    @classmethod
+    def _argument_artifact_ids(cls, arguments: Any) -> list[str]:
+        found = []
+
+        def visit(value: Any, key: str | None = None) -> None:
+            if isinstance(value, dict):
+                for child_key, child in value.items():
+                    visit(child, child_key)
+            elif isinstance(value, list):
+                for child in value:
+                    visit(child, key)
+            elif (
+                isinstance(value, str)
+                and key is not None
+                and (key == "artifact_id" or key.endswith("_artifact_id"))
+            ):
+                found.append(value)
+
+        visit(arguments)
+        return list(dict.fromkeys(found))
+
+    async def _delete_artifacts(self, artifact_ids: list[str]) -> None:
+        for artifact_id in dict.fromkeys(artifact_ids):
+            await self._best_effort_delete_artifact(artifact_id)
+
+    async def _cleanup_prepared_inputs(
+        self,
+        prepared: list[UploadedArtifact],
+        *,
+        delete_remote: bool,
+    ) -> None:
+        async def cleanup() -> None:
+            if delete_remote:
+                await self._delete_artifacts(
+                    [item.artifact_id for item in prepared]
+                )
+            for item in prepared:
+                if item.delete_local_package:
+                    await asyncio.to_thread(
+                        _best_effort_remove_uploaded_package,
+                        item.local_package_path,
+                    )
+
+        cleanup_task = asyncio.create_task(cleanup())
+        await _drain_shielded_task(cleanup_task)
+
+    @staticmethod
+    def _apply_operation_timing(
+        result: dict, health: dict, started: float, finished: float
+    ) -> dict:
+        worker = health.get("worker") if isinstance(health, dict) else None
+        worker = worker if isinstance(worker, dict) else {}
+        install = worker.get("install")
+        install = install if isinstance(install, dict) else {}
+        updated = dict(result)
+        updated["arcgis_product"] = worker.get("product")
+        updated["arcgis_version"] = install.get("Version")
+        updated["duration_seconds"] = round(finished - started, 3)
+        return updated
+
+    async def _execute_operation(
+        self,
+        remote_tool: str,
+        local_inputs: dict[str, str],
+        parameters: dict,
+        deep_learning: bool,
+    ) -> dict:
+        started = self._clock()
+        health = await self.health_check()
+        prepared_by_name: dict[str, UploadedArtifact] = {}
+        try:
+            for name, path in local_inputs.items():
+                prepared_by_name[name] = await self.prepare_input(path)
+            arguments = self._bind_prepared_inputs(
+                parameters, prepared_by_name
+            )
+            submission = await self.call_tool(remote_tool, arguments)
+            job_id = self._required_identifier(submission, "job_id")
+            timeout = self.dl_job_timeout if deep_learning else self.job_timeout
+            job = await self.wait_for_job(job_id, timeout)
+            result = await self.download_job_results(
+                remote_tool, job, list(local_inputs.values())
+            )
+            return self._apply_operation_timing(
+                result, health, started, self._clock()
+            )
+        finally:
+            await self._cleanup_prepared_inputs(
+                list(prepared_by_name.values()), delete_remote=True
+            )
+
+    async def _submit_wait_download_as(
+        self,
+        operation: str,
+        remote_tool: str,
+        arguments: dict,
+        source_paths: list[str],
+    ) -> dict:
+        artifact_ids = self._argument_artifact_ids(arguments)
+        try:
+            submission = await self.call_tool(remote_tool, arguments)
+            job_id = self._required_identifier(submission, "job_id")
+            job = await self.wait_for_job(job_id, self.job_timeout)
+            return await self.download_job_results(
+                operation, job, source_paths
+            )
+        finally:
+            cleanup_task = asyncio.create_task(
+                self._delete_artifacts(artifact_ids)
+            )
+            await _drain_shielded_task(cleanup_task)
+
+    async def _submit_wait_download(
+        self,
+        remote_tool: str,
+        arguments: dict,
+        source_paths: list[str],
+    ) -> dict:
+        return await self._submit_wait_download_as(
+            remote_tool, remote_tool, arguments, source_paths
+        )
+
+    async def run_dedicated(
+        self,
+        remote_tool: str,
+        local_inputs: dict[str, str],
+        parameters: dict,
+    ) -> dict:
+        return await self._execute_operation(
+            remote_tool=remote_tool,
+            local_inputs=local_inputs,
+            parameters=parameters,
+            deep_learning=False,
+        )
+
+    async def run_multi_input(
+        self,
+        remote_tool: str,
+        local_inputs: list[str],
+        parameters: dict,
+    ) -> dict:
+        await self.health_check()
+        prepared = []
+        try:
+            for path in local_inputs:
+                prepared.append(await self.prepare_input(path))
+            arguments = dict(parameters)
+            arguments["inputs"] = [
+                {
+                    "artifact_id": item.artifact_id,
+                    "path": item.artifact_path,
+                }
+                for item in prepared
+            ]
+            return await self._submit_wait_download(
+                remote_tool, arguments, list(local_inputs)
+            )
+        finally:
+            await self._cleanup_prepared_inputs(
+                prepared, delete_remote=False
+            )
+
+    async def run_deep_learning(
+        self,
+        remote_tool: str,
+        imagery_inputs: dict[str, str],
+        model_path: str,
+        parameters: dict,
+    ) -> dict:
+        allowed = {
+            "detect_objects",
+            "classify_pixels",
+            "classify_objects",
+            "detect_change",
+        }
+        if remote_tool not in allowed:
+            raise ArcPyMcpError(
+                "ARCPY_TOOL_NOT_ALLOWED",
+                "Requested ArcPy MCP tool is not allowed",
+            )
+        await self.health_check()
+        await self.get_capabilities(required_extension="ImageAnalyst")
+        return await self._execute_operation(
+            remote_tool=remote_tool,
+            local_inputs={**imagery_inputs, "model": model_path},
+            parameters=parameters,
+            deep_learning=True,
+        )
+
+    async def run_catalog_tool(
+        self,
+        query: str,
+        category: str,
+        local_inputs: dict[str, str],
+        parameters: dict,
+    ) -> dict:
+        started = self._clock()
+        health = await self.health_check()
+        matches = await self.call_tool(
+            "search_tools", {"query": query, "category": category or None}
+        )
+        tool_id = self._select_exact_tool_id(matches, query)
+        description = await self.call_tool(
+            "describe_tool", {"tool_id": tool_id}
+        )
+        if (
+            not isinstance(description, dict)
+            or description.get("tool_id", tool_id) != tool_id
+        ):
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
+        self._validate_catalog_parameters(
+            parameters, description.get("input_schema")
+        )
+        prepared_by_name: dict[str, UploadedArtifact] = {}
+        try:
+            for name, path in local_inputs.items():
+                prepared_by_name[name] = await self.prepare_input(path)
+            arguments = self._bind_prepared_inputs(
+                parameters, prepared_by_name
+            )
+            submission = await self.call_tool(
+                "submit_job",
+                {"tool_id": tool_id, "parameters": arguments},
+            )
+            job_id = self._required_identifier(submission, "job_id")
+            job = await self.wait_for_job(job_id, self.job_timeout)
+            result = await self.download_job_results(
+                tool_id, job, list(local_inputs.values())
+            )
+            return self._apply_operation_timing(
+                result, health, started, self._clock()
+            )
+        finally:
+            await self._cleanup_prepared_inputs(
+                list(prepared_by_name.values()), delete_remote=True
+            )
