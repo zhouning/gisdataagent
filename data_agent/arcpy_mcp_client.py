@@ -495,6 +495,8 @@ def _end_signed_transfer() -> None:
 class _DownloadWorkspace:
     tenant_fd: int
     directory_fd: int
+    tenant_identity: tuple[int, int]
+    directory_identity: tuple[int, int]
     directory_name: str
     path: Path
     closed: bool = False
@@ -503,15 +505,62 @@ class _DownloadWorkspace:
         if self.closed:
             return
         self.closed = True
-        os.close(self.directory_fd)
-        os.close(self.tenant_fd)
+        try:
+            os.close(self.directory_fd)
+        finally:
+            os.close(self.tenant_fd)
+
+    def validate_path(self) -> None:
+        current_tenant_fd = None
+        try:
+            current_tenant_fd, _ = _open_current_user_upload_dir(
+                self.tenant_identity
+            )
+            current = os.stat(
+                self.directory_name,
+                dir_fd=self.tenant_fd,
+                follow_symlinks=False,
+            )
+            pinned = os.fstat(self.directory_fd)
+            valid = stat.S_ISDIR(current.st_mode) and (
+                current.st_dev,
+                current.st_ino,
+            ) == self.directory_identity and current.st_mode == pinned.st_mode
+        except (ArcPyMcpError, OSError):
+            valid = False
+        finally:
+            if current_tenant_fd is not None:
+                os.close(current_tenant_fd)
+        if not valid:
+            raise ArcPyMcpError(
+                "ARCPY_DOWNLOAD_FAILED", "ArcPy result download failed"
+            )
 
     def cleanup(self) -> None:
         if self.closed:
             return
         try:
-            _remove_directory_contents(self.directory_fd)
-            os.rmdir(self.directory_name, dir_fd=self.tenant_fd)
+            for _ in range(3):
+                _remove_directory_contents(self.directory_fd)
+                try:
+                    current = os.stat(
+                        self.directory_name,
+                        dir_fd=self.tenant_fd,
+                        follow_symlinks=False,
+                    )
+                    if (
+                        stat.S_ISDIR(current.st_mode)
+                        and (current.st_dev, current.st_ino)
+                        == self.directory_identity
+                    ):
+                        os.rmdir(
+                            self.directory_name, dir_fd=self.tenant_fd
+                        )
+                    break
+                except FileNotFoundError:
+                    break
+                except OSError:
+                    continue
         except OSError:
             pass
         finally:
@@ -562,6 +611,8 @@ def _new_download_workspace() -> _DownloadWorkspace:
         workspace = _DownloadWorkspace(
             tenant_fd=tenant_fd,
             directory_fd=directory_fd,
+            tenant_identity=_directory_identity(tenant_fd),
+            directory_identity=_directory_identity(directory_fd),
             directory_name=directory_name,
             path=user_upload_dir / directory_name,
         )
@@ -656,6 +707,10 @@ def _validate_zip_entries(
 ) -> list[tuple[zipfile.ZipInfo, tuple[str, ...], str]]:
     infos = archive.infolist()
     if len(infos) > _MAX_ARCHIVE_ENTRIES:
+        raise ArcPyMcpError(
+            "ARCPY_UNSAFE_ARCHIVE", "ArcPy result archive is unsafe"
+        )
+    if not infos:
         raise ArcPyMcpError(
             "ARCPY_UNSAFE_ARCHIVE", "ArcPy result archive is unsafe"
         )
@@ -808,6 +863,10 @@ def _extract_verified_zip(
                     os.close(parent_fd)
     finally:
         os.close(extraction_fd)
+    if not extracted_files:
+        raise ArcPyMcpError(
+            "ARCPY_UNSAFE_ARCHIVE", "ArcPy result archive is unsafe"
+        )
     return extracted_files
 
 
@@ -1175,6 +1234,7 @@ def _same_regular_file(left, right) -> bool:
     return (
         stat.S_ISREG(left.st_mode)
         and stat.S_ISREG(right.st_mode)
+        and left.st_mode == right.st_mode
         and left.st_dev == right.st_dev
         and left.st_ino == right.st_ino
         and left.st_size == right.st_size
@@ -3633,6 +3693,7 @@ class ArcPyMcpClient:
                 outputs = [final_path]
             stream.close()
             stream = None
+            workspace.validate_path()
             workspace.close()
             return outputs
         except BaseException:

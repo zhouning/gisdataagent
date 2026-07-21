@@ -5787,6 +5787,48 @@ async def test_download_rejects_part_name_swap_after_hash(
 
 
 @pytest.mark.asyncio
+async def test_download_rejects_workspace_directory_swap_before_return(
+    user_upload_dir, monkeypatch
+):
+    import data_agent.arcpy_mcp_client as client_module
+
+    body = b"verified"
+    moved_paths = []
+    original_validate = client_module._DownloadWorkspace.validate_path
+
+    def swap_then_validate(workspace):
+        moved = workspace.path.with_name(f"{workspace.path.name}-moved")
+        workspace.path.rename(moved)
+        workspace.path.mkdir(mode=0o700)
+        moved_paths.append(moved)
+        return original_validate(workspace)
+
+    monkeypatch.setattr(
+        client_module._DownloadWorkspace,
+        "validate_path",
+        swap_then_validate,
+    )
+    client = _download_client(FakeSignedDownloadResponse(body), [], [])
+    client.call_tool = AsyncMock(
+        return_value={
+            "artifact_id": "output-1",
+            "download_url": "https://signed.example/result",
+            "logical_name": "result.bin",
+            "actual_sha256": hashlib.sha256(body).hexdigest(),
+            "actual_size": len(body),
+        }
+    )
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client._download_artifact("output-1")
+
+    assert exc_info.value.code == "ARCPY_DOWNLOAD_FAILED"
+    assert moved_paths
+    assert list(moved_paths[0].iterdir()) == []
+    assert list(user_upload_dir.rglob("result.bin")) == []
+
+
+@pytest.mark.asyncio
 async def test_cancelled_zip_extraction_drains_thread_before_cleanup(
     user_upload_dir, monkeypatch
 ):
