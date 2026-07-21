@@ -2532,14 +2532,21 @@ class ArcPyMcpClient:
         try:
             prepared = await asyncio.shield(packaging_task)
         except asyncio.CancelledError:
-            prepared = await _drain_shielded_task(packaging_task)
-            cleanup_task = asyncio.create_task(
-                asyncio.to_thread(prepared._cleanup_local_package)
-            )
+            prepared = None
             try:
-                await _drain_shielded_task(cleanup_task)
-            finally:
-                prepared._close_lease()
+                prepared = await _drain_shielded_task(packaging_task)
+            except asyncio.CancelledError:
+                pass
+            except Exception:
+                pass
+            if prepared is not None:
+                cleanup_task = asyncio.create_task(
+                    asyncio.to_thread(prepared._cleanup_local_package)
+                )
+                try:
+                    await _drain_shielded_task(cleanup_task)
+                finally:
+                    prepared._close_lease()
             raise
         artifact_id = None
         try:

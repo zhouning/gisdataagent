@@ -2898,6 +2898,70 @@ async def test_prepare_input_repeated_cancellation_drains_background_package(
 
 
 @pytest.mark.asyncio
+async def test_prepare_input_cancellation_wins_over_background_package_error(
+    user_upload_dir, monkeypatch
+):
+    import data_agent.arcpy_mcp_client as client_module
+
+    for suffix in (".shp", ".shx", ".dbf"):
+        (user_upload_dir / f"roads{suffix}").write_bytes(b"sidecar")
+    original_new_package_file = client_module._new_package_file
+    package_paths = []
+    lease_fds = []
+    package_started = threading.Event()
+    release_package = threading.Event()
+
+    def capture_new_package_file(expected_tenant_identity=None):
+        package_path, package_stream, lease = original_new_package_file(
+            expected_tenant_identity
+        )
+        package_paths.append(package_path)
+        lease_fds.extend(
+            (lease._tenant_fd, lease._private_dir_fd, lease._file_fd)
+        )
+        return package_path, package_stream, lease
+
+    class BlockingFailingZipFile:
+        def __init__(self, *args, **kwargs):
+            package_started.set()
+            release_package.wait(timeout=5)
+
+        def __enter__(self):
+            raise OSError("forced package failure")
+
+        def __exit__(self, *args):
+            return False
+
+    monkeypatch.setattr(
+        client_module, "_new_package_file", capture_new_package_file
+    )
+    monkeypatch.setattr(
+        client_module.zipfile, "ZipFile", BlockingFailingZipFile
+    )
+    client = _client()
+    client._upload_prepared = AsyncMock()
+    prepare_task = asyncio.create_task(
+        client.prepare_input(user_upload_dir / "roads.shp")
+    )
+    assert await asyncio.to_thread(package_started.wait, 5)
+
+    prepare_task.cancel("first cancellation")
+    await asyncio.sleep(0)
+    prepare_task.cancel("second cancellation")
+    release_package.set()
+
+    with pytest.raises(asyncio.CancelledError) as exc_info:
+        await prepare_task
+    assert exc_info.value.args == ("first cancellation",)
+
+    assert package_paths and not package_paths[0].parent.exists()
+    for descriptor in lease_fds:
+        with pytest.raises(OSError):
+            os.fstat(descriptor)
+    client._upload_prepared.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_prepare_input_repeated_cancellation_drains_local_cleanup(
     user_upload_dir, monkeypatch
 ):
