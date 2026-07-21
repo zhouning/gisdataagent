@@ -5,9 +5,10 @@ import gc
 import hashlib
 import logging
 import os
+import stat
 import threading
 import zipfile
-from dataclasses import asdict
+from dataclasses import asdict, fields
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
@@ -50,10 +51,34 @@ def test_client_api_is_importable():
     assert ArcPyMcpError is not None
 
 
+def test_upload_dataclasses_keep_their_public_field_contracts():
+    assert [field.name for field in fields(PreparedLocalUpload)] == [
+        "upload_path",
+        "source_path",
+        "logical_name",
+        "media_type",
+        "size",
+        "sha256",
+        "delete_after_upload",
+    ]
+    assert [field.name for field in fields(UploadedArtifact)] == [
+        "artifact_id",
+        "artifact_path",
+        "source_path",
+        "local_package_path",
+        "delete_local_package",
+    ]
+
+
 def _client() -> ArcPyMcpClient:
     return ArcPyMcpClient(
         McpServerConfig(name="arcpy", url="https://service.example/mcp")
     )
+
+
+def _cleanup_prepared(prepared: PreparedLocalUpload) -> None:
+    prepared._cleanup_local_package()
+    prepared._close_lease()
 
 
 @pytest.fixture
@@ -119,7 +144,9 @@ def test_package_shapefile_includes_required_and_optional_sidecars(
 
     prepared = package_local_dataset(user_upload_dir / "roads.shp")
 
-    assert prepared.upload_path.parent == user_upload_dir
+    assert prepared.upload_path.parent.parent == user_upload_dir
+    assert prepared.upload_path.parent.name.startswith(".arcpy-package-")
+    assert prepared.upload_path.name == "entry.zip"
     assert prepared.logical_name == "roads.zip"
     assert prepared.media_type == "application/zip"
     assert prepared.delete_after_upload is True
@@ -132,7 +159,7 @@ def test_package_shapefile_includes_required_and_optional_sidecars(
             "roads.shp.xml",
             "roads.shx",
         ]
-    prepared.upload_path.unlink()
+    _cleanup_prepared(prepared)
 
 
 def test_package_shapefile_does_not_accept_nested_stem_as_required_sidecars(
@@ -176,7 +203,7 @@ def test_package_shapefile_ignores_unknown_and_nested_stem_files(
             "roads.shx",
             "roads.xml",
         ]
-    prepared.upload_path.unlink()
+    _cleanup_prepared(prepared)
 
 
 def test_package_shapefile_includes_compound_field_atx_sidecars(
@@ -197,7 +224,7 @@ def test_package_shapefile_includes_compound_field_atx_sidecars(
             "roads.shp",
             "roads.shx",
         ]
-    prepared.upload_path.unlink()
+    _cleanup_prepared(prepared)
 
 
 def test_package_shapefile_rejects_known_sidecar_symlink(
@@ -249,7 +276,7 @@ def test_package_gdb_recurses_with_dataset_root(user_upload_dir):
             "parcels.gdb/a00000001.gdbtable",
             "parcels.gdb/nested/index.bin",
         ]
-    prepared.upload_path.unlink()
+    _cleanup_prepared(prepared)
 
 
 def test_package_empty_gdb_has_stable_incomplete_error(user_upload_dir):
@@ -414,6 +441,7 @@ def test_package_cleans_partial_temp_archive_on_zip_failure(
 
     assert exc_info.value.code == "ARCPY_INPUT_PACKAGE_FAILED"
     assert list(user_upload_dir.glob("*.zip")) == []
+    assert list(user_upload_dir.glob(".arcpy-package-*")) == []
 
 
 def test_package_cleanup_uses_pinned_tenant_after_directory_replacement(
@@ -424,22 +452,25 @@ def test_package_cleanup_uses_pinned_tenant_after_directory_replacement(
     for suffix in (".shp", ".shx", ".dbf"):
         (user_upload_dir / f"roads{suffix}").write_bytes(b"x")
     original_new_package_file = client_module._new_package_file
-    created_names = []
+    created_relative_paths = []
     original_dir = user_upload_dir.parent / "original-user-dir"
 
     def capture_new_package_file(expected_tenant_identity=None):
-        package_path, package_stream, tenant_fd = original_new_package_file(
-            expected_tenant_identity
+        result = original_new_package_file(expected_tenant_identity)
+        package_path = result[0]
+        created_relative_paths.append(
+            package_path.relative_to(user_upload_dir)
         )
-        created_names.append(package_path.name)
-        return package_path, package_stream, tenant_fd
+        return result
 
     class ReplacingZipFile:
         def __init__(self, package_stream, *args, **kwargs):
             package_stream.write(b"partial")
             user_upload_dir.rename(original_dir)
             user_upload_dir.mkdir()
-            (user_upload_dir / created_names[0]).write_bytes(b"unrelated")
+            replacement_path = user_upload_dir / created_relative_paths[0]
+            replacement_path.parent.mkdir(parents=True, mode=0o700)
+            replacement_path.write_bytes(b"unrelated")
 
         def __enter__(self):
             raise OSError("zip failed")
@@ -456,27 +487,36 @@ def test_package_cleanup_uses_pinned_tenant_after_directory_replacement(
         package_local_dataset(user_upload_dir / "roads.shp")
 
     assert exc_info.value.code == "ARCPY_INPUT_PACKAGE_FAILED"
-    assert not (original_dir / created_names[0]).exists()
-    assert (user_upload_dir / created_names[0]).read_bytes() == b"unrelated"
+    assert not (original_dir / created_relative_paths[0]).exists()
+    assert not (original_dir / created_relative_paths[0]).parent.exists()
+    assert (
+        user_upload_dir / created_relative_paths[0]
+    ).read_bytes() == b"unrelated"
 
 
-def test_prepared_package_cleanup_does_not_unlink_renamed_or_replaced_file(
+def test_prepared_package_uses_exclusive_pinned_private_directory(
     user_upload_dir,
 ):
     for suffix in (".shp", ".shx", ".dbf"):
         (user_upload_dir / f"roads{suffix}").write_bytes(b"x")
 
     prepared = package_local_dataset(user_upload_dir / "roads.shp")
-    original_path = prepared.upload_path
-    renamed_path = user_upload_dir / "renamed-package.zip"
-    original_path.rename(renamed_path)
-    original_path.write_bytes(b"unrelated")
+    private_dir = prepared.upload_path.parent
+    private_stat = os.stat(private_dir, follow_symlinks=False)
 
-    prepared._cleanup_local_package()
-    prepared._close_lease()
+    assert private_dir.parent == user_upload_dir
+    assert private_dir.name.startswith(".arcpy-package-")
+    assert prepared.upload_path.name == "entry.zip"
+    assert stat.S_ISDIR(private_stat.st_mode)
+    assert stat.S_IMODE(private_stat.st_mode) == 0o700
+    assert private_stat.st_uid == os.geteuid()
+    assert os.path.samestat(
+        private_stat, os.fstat(prepared._lease._private_dir_fd)
+    )
+    assert prepared.upload_path.read_bytes().startswith(b"PK")
 
-    assert original_path.read_bytes() == b"unrelated"
-    assert renamed_path.exists()
+    _cleanup_prepared(prepared)
+    assert not private_dir.exists()
 
 
 def test_prepared_package_cleanup_removes_same_inode_metadata_change(
@@ -494,8 +534,9 @@ def test_prepared_package_cleanup_removes_same_inode_metadata_change(
     assert not prepared.upload_path.exists()
 
 
-def test_prepared_package_cleanup_does_not_unlink_racing_replacement(
-    user_upload_dir, monkeypatch
+@pytest.mark.parametrize("failing_operation", ["stat", "unlink", "rmdir"])
+def test_prepared_package_cleanup_retries_without_private_directory_orphan(
+    user_upload_dir, monkeypatch, failing_operation
 ):
     import data_agent.arcpy_mcp_client as client_module
 
@@ -503,71 +544,88 @@ def test_prepared_package_cleanup_does_not_unlink_racing_replacement(
         (user_upload_dir / f"roads{suffix}").write_bytes(b"x")
 
     prepared = package_local_dataset(user_upload_dir / "roads.shp")
-    package_path = prepared.upload_path
-    lease_fd = prepared._lease._file_fd
-    original_stat = client_module.os.stat
-    replacement = b"replacement-must-survive"
-    swapped = False
-
-    def stat_then_replace(path, *args, **kwargs):
-        nonlocal swapped
-        result = original_stat(path, *args, **kwargs)
-        if not swapped:
-            swapped = True
-            package_path.unlink(missing_ok=True)
-            package_path.write_bytes(replacement)
-        return result
-
-    monkeypatch.setattr(client_module.os, "stat", stat_then_replace)
-
-    prepared._cleanup_local_package()
-
-    assert swapped is True
-    assert package_path.read_bytes() == replacement
-    assert os.fstat(lease_fd).st_nlink == 0
-
-    prepared._cleanup_local_package()
-    assert package_path.read_bytes() == replacement
-    assert list(user_upload_dir.glob(".arcpy-cleanup-*")) == []
-
-    prepared._close_lease()
-    with pytest.raises(OSError):
-        os.fstat(lease_fd)
-
-
-def test_prepared_package_cleanup_rename_failure_is_idempotent(
-    user_upload_dir, monkeypatch
-):
-    import data_agent.arcpy_mcp_client as client_module
-
-    for suffix in (".shp", ".shx", ".dbf"):
-        (user_upload_dir / f"roads{suffix}").write_bytes(b"x")
-
-    prepared = package_local_dataset(user_upload_dir / "roads.shp")
-    package_path = prepared.upload_path
-    original_rename = client_module.os.rename
+    private_dir = prepared.upload_path.parent
+    lease = prepared._lease
+    original_operation = getattr(client_module.os, failing_operation)
     failed = False
 
-    def fail_first_cleanup_rename(source, target, *args, **kwargs):
+    def fail_once(path, *args, **kwargs):
         nonlocal failed
-        if not failed and source == package_path.name:
+        targets_entry = (
+            failing_operation in {"stat", "unlink"}
+            and path == prepared.upload_path.name
+            and kwargs.get("dir_fd") == lease._private_dir_fd
+        )
+        targets_directory = (
+            failing_operation == "rmdir"
+            and path == private_dir.name
+            and kwargs.get("dir_fd") == lease._tenant_fd
+        )
+        if not failed and (targets_entry or targets_directory):
             failed = True
-            raise OSError("forced quarantine rename failure")
-        return original_rename(source, target, *args, **kwargs)
+            raise OSError(f"forced cleanup {failing_operation} failure")
+        return original_operation(path, *args, **kwargs)
 
-    monkeypatch.setattr(
-        client_module.os, "rename", fail_first_cleanup_rename
-    )
+    monkeypatch.setattr(client_module.os, failing_operation, fail_once)
 
     prepared._cleanup_local_package()
     assert failed is True
-    assert package_path.exists()
-    assert list(user_upload_dir.glob(".arcpy-cleanup-*")) == []
+    assert private_dir.exists()
 
     prepared._cleanup_local_package()
     prepared._close_lease()
-    assert not package_path.exists()
-    assert list(user_upload_dir.glob(".arcpy-cleanup-*")) == []
+    assert not private_dir.exists()
+    assert list(user_upload_dir.glob(".arcpy-package-*")) == []
+
+
+def test_prepared_package_cleanup_uses_pinned_original_tenant(
+    user_upload_dir,
+):
+    for suffix in (".shp", ".shx", ".dbf"):
+        (user_upload_dir / f"roads{suffix}").write_bytes(b"x")
+
+    prepared = package_local_dataset(user_upload_dir / "roads.shp")
+    private_relative_path = prepared.upload_path.parent.relative_to(
+        user_upload_dir
+    )
+    original_user_dir = user_upload_dir.parent / "original-user-dir"
+    user_upload_dir.rename(original_user_dir)
+    user_upload_dir.mkdir()
+    replacement_private_dir = user_upload_dir / private_relative_path
+    replacement_private_dir.mkdir(mode=0o700)
+    replacement_path = replacement_private_dir / prepared.upload_path.name
+    replacement_path.write_bytes(b"replacement-must-survive")
+
+    prepared._cleanup_local_package()
+    prepared._close_lease()
+
+    assert not (original_user_dir / private_relative_path).exists()
+    assert replacement_path.read_bytes() == b"replacement-must-survive"
+
+
+def test_prepared_package_cleanup_and_close_are_idempotent_without_fd_leaks(
+    user_upload_dir,
+):
+    for suffix in (".shp", ".shx", ".dbf"):
+        (user_upload_dir / f"roads{suffix}").write_bytes(b"x")
+
+    prepared = package_local_dataset(user_upload_dir / "roads.shp")
+    private_dir = prepared.upload_path.parent
+    lease_fds = (
+        prepared._lease._tenant_fd,
+        prepared._lease._private_dir_fd,
+        prepared._lease._file_fd,
+    )
+
+    prepared._cleanup_local_package()
+    prepared._cleanup_local_package()
+    prepared._close_lease()
+    prepared._close_lease()
+
+    assert not private_dir.exists()
+    for descriptor in lease_fds:
+        with pytest.raises(OSError):
+            os.fstat(descriptor)
 
 
 def test_package_lease_rejects_renamed_original_before_upload(
@@ -593,7 +651,9 @@ def test_package_lease_rejects_renamed_original_before_upload(
 
     assert exc_info.value.code == "ARCPY_INPUT_INVALID"
     assert renamed_path.exists()
-    replacement_paths = list(user_upload_dir.glob("arcpy-input-*.zip"))
+    replacement_paths = list(
+        user_upload_dir.glob(".arcpy-package-*/entry.zip")
+    )
     assert len(replacement_paths) == 1
     assert replacement_paths[0].read_bytes() == b"not-a-zip"
 
@@ -2632,9 +2692,15 @@ async def test_prepare_input_returns_uploaded_artifact_in_required_order(
         delete_local_package=True,
     )
     assert events == [("upload", "roads.zip"), ("inspect", "artifact-1")]
-    assert uploaded.local_package_path.parent == user_upload_dir
+    assert uploaded.local_package_path.parent.parent == user_upload_dir
+    assert uploaded.local_package_path.parent.name.startswith(
+        ".arcpy-package-"
+    )
+    assert uploaded.local_package_path.name == "entry.zip"
     assert uploaded.local_package_path.exists()
+    package_dir = uploaded.local_package_path.parent
     uploaded.local_package_path.unlink()
+    package_dir.rmdir()
 
 
 @pytest.mark.asyncio

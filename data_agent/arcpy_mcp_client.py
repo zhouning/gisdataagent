@@ -131,6 +131,9 @@ class _PreparedUploadLease:
         file_fd: int,
         identity: tuple[int, ...],
         user_upload_dir: Path,
+        private_dir_fd: int | None = None,
+        private_dir_name: str | None = None,
+        private_entry_name: str | None = None,
     ):
         self._tenant_fd = tenant_fd
         self._file_fd = file_fd
@@ -141,6 +144,9 @@ class _PreparedUploadLease:
             stat.S_IFMT(identity[2]),
         )
         self._user_upload_dir = user_upload_dir
+        self._private_dir_fd = private_dir_fd
+        self._private_dir_name = private_dir_name
+        self._private_entry_name = private_entry_name
         self._closed = False
         self._lock = threading.Lock()
 
@@ -187,6 +193,18 @@ class _PreparedUploadLease:
         self.validate()
         return self._identity[3], digest.hexdigest().lower()
 
+    def seal(self) -> None:
+        with self._lock:
+            if self._closed:
+                raise _input_error("ARCPY_INPUT_INVALID")
+            current_stat = os.fstat(self._file_fd)
+            if (
+                self._file_object_identity(current_stat)
+                != self._object_identity
+            ):
+                raise _input_error("ARCPY_INPUT_INVALID")
+            self._identity = self._file_identity(current_stat)
+
     def close(self) -> None:
         with self._lock:
             if self._closed:
@@ -194,84 +212,71 @@ class _PreparedUploadLease:
             self._closed = True
             file_fd = self._file_fd
             tenant_fd = self._tenant_fd
+            private_dir_fd = self._private_dir_fd
             self._file_fd = -1
             self._tenant_fd = -1
+            self._private_dir_fd = None
         try:
             os.close(file_fd)
         finally:
-            os.close(tenant_fd)
+            try:
+                if private_dir_fd is not None:
+                    os.close(private_dir_fd)
+            finally:
+                os.close(tenant_fd)
 
     def unlink(self, path: Path) -> None:
         with self._lock:
             if self._closed:
                 return
-            tenant_fd = os.dup(self._tenant_fd)
-        quarantine_name = None
-        quarantine_fd = None
-        try:
-            relative_path = path.relative_to(self._user_upload_dir)
-            if len(relative_path.parts) != 1:
-                return
-            filename = relative_path.parts[0]
-            for _ in range(100):
-                candidate = f".arcpy-cleanup-{secrets.token_hex(16)}"
-                try:
-                    os.mkdir(candidate, 0o700, dir_fd=tenant_fd)
-                    quarantine_name = candidate
-                    break
-                except FileExistsError:
-                    continue
-            if quarantine_name is None:
-                return
-            quarantine_fd = os.open(
-                quarantine_name,
-                _directory_open_flags(),
-                dir_fd=tenant_fd,
-            )
-            entry_name = "entry"
-            os.rename(
-                filename,
-                entry_name,
-                src_dir_fd=tenant_fd,
-                dst_dir_fd=quarantine_fd,
-            )
-            current_stat = os.stat(
-                entry_name,
-                dir_fd=quarantine_fd,
-                follow_symlinks=False,
-            )
             if (
-                self._file_object_identity(current_stat)
-                == self._object_identity
+                self._private_dir_fd is None
+                or self._private_dir_name is None
+                or self._private_entry_name is None
             ):
-                os.unlink(entry_name, dir_fd=quarantine_fd)
+                return
+            try:
+                relative_path = path.relative_to(self._user_upload_dir)
+            except ValueError:
+                return
+            if relative_path.parts != (
+                self._private_dir_name,
+                self._private_entry_name,
+            ):
                 return
 
             try:
-                os.link(
-                    entry_name,
-                    filename,
-                    src_dir_fd=quarantine_fd,
-                    dst_dir_fd=tenant_fd,
+                current_stat = os.stat(
+                    self._private_entry_name,
+                    dir_fd=self._private_dir_fd,
                     follow_symlinks=False,
                 )
+            except FileNotFoundError:
+                pass
             except OSError:
                 return
-            try:
-                os.unlink(entry_name, dir_fd=quarantine_fd)
-            except OSError:
-                pass
-        except (OSError, ValueError):
-            pass
-        finally:
-            if quarantine_fd is not None:
-                os.close(quarantine_fd)
-            if quarantine_name is not None:
+            else:
+                if (
+                    self._file_object_identity(current_stat)
+                    != self._object_identity
+                ):
+                    return
                 try:
-                    os.rmdir(quarantine_name, dir_fd=tenant_fd)
-                except OSError:
+                    os.unlink(
+                        self._private_entry_name,
+                        dir_fd=self._private_dir_fd,
+                    )
+                except FileNotFoundError:
                     pass
-            os.close(tenant_fd)
+                except OSError:
+                    return
+            try:
+                os.rmdir(
+                    self._private_dir_name,
+                    dir_fd=self._tenant_fd,
+                )
+            except (FileNotFoundError, OSError):
+                pass
 
     def __del__(self):
         try:
@@ -735,37 +740,84 @@ def _new_package_file(
         expected_tenant_identity
     )
     descriptor = None
-    filename = None
-    retain_user_fd = False
+    private_dir_fd = None
+    private_dir_name = None
+    lease_file_fd = None
+    lease = None
+    entry_name = "entry.zip"
+    package_path = None
     try:
-        create_flags = os.O_RDWR | os.O_CREAT | os.O_EXCL
-        create_flags |= getattr(os, "O_CLOEXEC", 0)
-        create_flags |= getattr(os, "O_NOFOLLOW", 0)
         for _ in range(100):
-            filename = f"arcpy-input-{secrets.token_hex(12)}.zip"
+            candidate = f".arcpy-package-{secrets.token_hex(16)}"
             try:
-                descriptor = os.open(
-                    filename, create_flags, 0o600, dir_fd=user_fd
-                )
+                os.mkdir(candidate, 0o700, dir_fd=user_fd)
+                private_dir_name = candidate
                 break
             except FileExistsError:
                 continue
-        if descriptor is None or filename is None:
+        if private_dir_name is None:
             raise _input_error("ARCPY_INPUT_PACKAGE_FAILED")
+        private_dir_fd = os.open(
+            private_dir_name,
+            _directory_open_flags(),
+            dir_fd=user_fd,
+        )
+        create_flags = os.O_RDWR | os.O_CREAT | os.O_EXCL
+        create_flags |= getattr(os, "O_CLOEXEC", 0)
+        create_flags |= getattr(os, "O_NOFOLLOW", 0)
+        descriptor = os.open(
+            entry_name,
+            create_flags,
+            0o600,
+            dir_fd=private_dir_fd,
+        )
+        file_stat = os.fstat(descriptor)
+        lease_file_fd = os.dup(descriptor)
+        package_path = user_upload_dir / private_dir_name / entry_name
+        lease = _PreparedUploadLease(
+            user_fd,
+            lease_file_fd,
+            _PreparedUploadLease._file_identity(file_stat),
+            user_upload_dir,
+            private_dir_fd,
+            private_dir_name,
+            entry_name,
+        )
+        user_fd = None
+        private_dir_fd = None
+        lease_file_fd = None
         try:
             stream = os.fdopen(descriptor, "w+b")
         except Exception:
             os.close(descriptor)
             descriptor = None
-            os.unlink(filename, dir_fd=user_fd)
             raise
         descriptor = None
-        retain_user_fd = True
-        return user_upload_dir / filename, stream, user_fd
+        return package_path, stream, lease
+    except BaseException:
+        if lease is not None:
+            if package_path is not None:
+                lease.unlink(package_path)
+            lease.close()
+            lease = None
+        raise
     finally:
         if descriptor is not None:
             os.close(descriptor)
-        if not retain_user_fd:
+        if lease_file_fd is not None:
+            os.close(lease_file_fd)
+        if private_dir_fd is not None:
+            try:
+                os.unlink(entry_name, dir_fd=private_dir_fd)
+            except OSError:
+                pass
+            os.close(private_dir_fd)
+        if private_dir_name is not None and user_fd is not None:
+            try:
+                os.rmdir(private_dir_name, dir_fd=user_fd)
+            except OSError:
+                pass
+        if user_fd is not None:
             os.close(user_fd)
 
 
@@ -773,11 +825,9 @@ def _write_package(
     entries: list[tuple[Path, str]],
     expected_tenant_identity: tuple[int, int] | None = None,
 ) -> tuple[Path, _PreparedUploadLease]:
-    package_path, package_stream, tenant_fd = _new_package_file(
+    package_path, package_stream, lease = _new_package_file(
         expected_tenant_identity
     )
-    lease = None
-    package_file_fd = None
     try:
         with package_stream:
             with zipfile.ZipFile(
@@ -799,43 +849,16 @@ def _write_package(
                             ):
                                 target_stream.write(chunk)
             package_stream.flush()
-            package_stream.seek(0)
-            package_file_fd = os.dup(package_stream.fileno())
-            file_stat = os.fstat(package_file_fd)
-            lease = _PreparedUploadLease(
-                tenant_fd,
-                package_file_fd,
-                _PreparedUploadLease._file_identity(file_stat),
-                package_path.parent,
-            )
-            package_file_fd = None
-            tenant_fd = None
+            lease.seal()
         return package_path, lease
     except ArcPyMcpError:
-        if lease is not None:
-            lease.unlink(package_path)
-            lease.close()
-            lease = None
-        elif tenant_fd is not None:
-            _best_effort_unlink_from_tenant(
-                tenant_fd, package_path.parent, package_path
-            )
+        lease.unlink(package_path)
+        lease.close()
         raise
     except Exception:
-        if lease is not None:
-            lease.unlink(package_path)
-            lease.close()
-            lease = None
-        elif tenant_fd is not None:
-            _best_effort_unlink_from_tenant(
-                tenant_fd, package_path.parent, package_path
-            )
+        lease.unlink(package_path)
+        lease.close()
         raise _input_error("ARCPY_INPUT_PACKAGE_FAILED") from None
-    finally:
-        if package_file_fd is not None:
-            os.close(package_file_fd)
-        if tenant_fd is not None:
-            os.close(tenant_fd)
 
 
 def package_local_dataset(
