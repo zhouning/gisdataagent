@@ -20,7 +20,7 @@ from contextlib import AsyncExitStack
 from dataclasses import InitVar, dataclass
 from datetime import timedelta
 from pathlib import Path, PurePosixPath, PureWindowsPath
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import urljoin, urlparse
 
 import httpx
@@ -288,15 +288,58 @@ class _PreparedUploadLease:
             pass
 
 
-def _retry_package_cleanup(
-    lease: _PreparedUploadLease, path: Path, attempts: int = 3
-) -> None:
+def _retry_cleanup(cleanup: Callable[[], bool], attempts: int = 3) -> None:
     for _ in range(attempts):
         try:
-            if lease.unlink(path):
+            if cleanup():
                 return
         except Exception:
             pass
+
+
+def _retry_package_cleanup(
+    lease: _PreparedUploadLease, path: Path, attempts: int = 3
+) -> None:
+    _retry_cleanup(lambda: lease.unlink(path), attempts)
+
+
+def _cleanup_unleased_package_once(
+    tenant_fd: int,
+    private_dir_fd: int,
+    private_dir_name: str,
+    entry_name: str,
+) -> bool:
+    try:
+        os.unlink(entry_name, dir_fd=private_dir_fd)
+    except FileNotFoundError:
+        pass
+    except OSError:
+        return False
+    try:
+        os.rmdir(private_dir_name, dir_fd=tenant_fd)
+    except FileNotFoundError:
+        return True
+    except OSError:
+        return False
+    return True
+
+
+def _retry_unleased_package_cleanup(
+    tenant_fd: int,
+    private_dir_fd: int,
+    private_dir_name: str,
+    entry_name: str,
+    attempts: int = 3,
+) -> None:
+    _retry_cleanup(
+        lambda: _cleanup_unleased_package_once(
+            tenant_fd,
+            private_dir_fd,
+            private_dir_name,
+            entry_name,
+        ),
+        attempts,
+    )
 
 
 class _AsyncFileByteStream:
@@ -821,12 +864,15 @@ def _new_package_file(
         if lease_file_fd is not None:
             os.close(lease_file_fd)
         if private_dir_fd is not None:
-            try:
-                os.unlink(entry_name, dir_fd=private_dir_fd)
-            except OSError:
-                pass
+            if private_dir_name is not None and user_fd is not None:
+                _retry_unleased_package_cleanup(
+                    user_fd,
+                    private_dir_fd,
+                    private_dir_name,
+                    entry_name,
+                )
             os.close(private_dir_fd)
-        if private_dir_name is not None and user_fd is not None:
+        elif private_dir_name is not None and user_fd is not None:
             try:
                 os.rmdir(private_dir_name, dir_fd=user_fd)
             except OSError:
@@ -974,7 +1020,7 @@ def package_local_dataset(
     except ArcPyMcpError:
         if delete_after_upload and upload_path is not None:
             if lease is not None:
-                lease.unlink(upload_path)
+                _retry_package_cleanup(lease, upload_path)
             elif tenant_fd is not None:
                 _best_effort_unlink_from_tenant(
                     tenant_fd, user_upload_dir, upload_path
@@ -986,7 +1032,7 @@ def package_local_dataset(
     except Exception:
         if delete_after_upload and upload_path is not None:
             if lease is not None:
-                lease.unlink(upload_path)
+                _retry_package_cleanup(lease, upload_path)
             elif tenant_fd is not None:
                 _best_effort_unlink_from_tenant(
                     tenant_fd, user_upload_dir, upload_path

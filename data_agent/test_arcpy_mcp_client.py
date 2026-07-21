@@ -81,6 +81,37 @@ def _cleanup_prepared(prepared: PreparedLocalUpload) -> None:
     prepared._close_lease()
 
 
+def _fail_first_private_cleanup(
+    monkeypatch, client_module, cleanup_operation
+):
+    original_cleanup_operation = getattr(
+        client_module.os, cleanup_operation
+    )
+    state = {"failed": False}
+
+    def fail_first_cleanup(path, *args, **kwargs):
+        targets_entry = (
+            cleanup_operation in {"stat", "unlink"}
+            and path == "entry.zip"
+            and kwargs.get("dir_fd") is not None
+        )
+        targets_directory = (
+            cleanup_operation == "rmdir"
+            and isinstance(path, str)
+            and path.startswith(".arcpy-package-")
+            and kwargs.get("dir_fd") is not None
+        )
+        if not state["failed"] and (targets_entry or targets_directory):
+            state["failed"] = True
+            raise OSError(f"forced cleanup {cleanup_operation} failure")
+        return original_cleanup_operation(path, *args, **kwargs)
+
+    monkeypatch.setattr(
+        client_module.os, cleanup_operation, fail_first_cleanup
+    )
+    return state
+
+
 @pytest.fixture
 def user_upload_dir(tmp_path, monkeypatch):
     base = tmp_path / "uploads"
@@ -477,38 +508,87 @@ def test_packaging_error_retries_transient_private_cleanup_failure(
 
         monkeypatch.setattr(client_module.zipfile, "ZipFile", FailingZipFile)
 
-    original_cleanup_operation = getattr(
-        client_module.os, cleanup_operation
-    )
-    cleanup_failed = False
-
-    def fail_first_cleanup(path, *args, **kwargs):
-        nonlocal cleanup_failed
-        targets_entry = (
-            cleanup_operation in {"stat", "unlink"}
-            and path == "entry.zip"
-            and kwargs.get("dir_fd") is not None
-        )
-        targets_directory = (
-            cleanup_operation == "rmdir"
-            and isinstance(path, str)
-            and path.startswith(".arcpy-package-")
-            and kwargs.get("dir_fd") is not None
-        )
-        if not cleanup_failed and (targets_entry or targets_directory):
-            cleanup_failed = True
-            raise OSError(f"forced cleanup {cleanup_operation} failure")
-        return original_cleanup_operation(path, *args, **kwargs)
-
-    monkeypatch.setattr(
-        client_module.os, cleanup_operation, fail_first_cleanup
+    cleanup_state = _fail_first_private_cleanup(
+        monkeypatch, client_module, cleanup_operation
     )
 
     with pytest.raises(ArcPyMcpError) as exc_info:
         package_local_dataset(user_upload_dir / "roads.shp")
 
     assert exc_info.value.code == "ARCPY_INPUT_PACKAGE_FAILED"
-    assert cleanup_failed is True
+    assert cleanup_state["failed"] is True
+    assert list(user_upload_dir.glob(".arcpy-package-*")) == []
+
+
+@pytest.mark.parametrize(
+    ("metadata_error", "expected_code"),
+    [
+        (
+            ArcPyMcpError("ARCPY_INPUT_INVALID", "forced metadata failure"),
+            "ARCPY_INPUT_INVALID",
+        ),
+        (OSError("forced metadata failure"), "ARCPY_INPUT_PACKAGE_FAILED"),
+    ],
+    ids=["arcpy-error", "os-error"],
+)
+@pytest.mark.parametrize("cleanup_operation", ["stat", "unlink", "rmdir"])
+def test_metadata_error_retries_transient_private_cleanup_failure(
+    user_upload_dir,
+    monkeypatch,
+    metadata_error,
+    expected_code,
+    cleanup_operation,
+):
+    import data_agent.arcpy_mcp_client as client_module
+
+    for suffix in (".shp", ".shx", ".dbf"):
+        (user_upload_dir / f"roads{suffix}").write_bytes(b"x")
+
+    def fail_metadata(lease):
+        raise metadata_error
+
+    monkeypatch.setattr(
+        client_module._PreparedUploadLease, "metadata", fail_metadata
+    )
+    cleanup_state = _fail_first_private_cleanup(
+        monkeypatch, client_module, cleanup_operation
+    )
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        package_local_dataset(user_upload_dir / "roads.shp")
+
+    assert exc_info.value.code == expected_code
+    assert cleanup_state["failed"] is True
+    assert list(user_upload_dir.glob(".arcpy-package-*")) == []
+
+
+@pytest.mark.parametrize("cleanup_operation", ["unlink", "rmdir"])
+def test_package_dup_error_retries_transient_prelease_cleanup_failure(
+    user_upload_dir, monkeypatch, cleanup_operation
+):
+    import data_agent.arcpy_mcp_client as client_module
+
+    for suffix in (".shp", ".shx", ".dbf"):
+        (user_upload_dir / f"roads{suffix}").write_bytes(b"x")
+
+    dup_failed = False
+
+    def fail_package_dup(descriptor):
+        nonlocal dup_failed
+        dup_failed = True
+        raise OSError("forced package dup failure")
+
+    monkeypatch.setattr(client_module.os, "dup", fail_package_dup)
+    cleanup_state = _fail_first_private_cleanup(
+        monkeypatch, client_module, cleanup_operation
+    )
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        package_local_dataset(user_upload_dir / "roads.shp")
+
+    assert exc_info.value.code == "ARCPY_INPUT_PACKAGE_FAILED"
+    assert dup_failed is True
+    assert cleanup_state["failed"] is True
     assert list(user_upload_dir.glob(".arcpy-package-*")) == []
 
 
