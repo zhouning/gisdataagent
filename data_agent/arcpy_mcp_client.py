@@ -94,6 +94,9 @@ _WINDOWS_RESERVED_COMPONENT_RE = re.compile(
     r"LPT[1-9\u00b9\u00b2\u00b3]|CONIN\$|CONOUT\$)$",
     re.IGNORECASE,
 )
+_MAX_ARCHIVE_ENTRIES = 10_000
+_MAX_ARCHIVE_UNCOMPRESSED_BYTES = 20 * 1024 * 1024 * 1024
+_MAX_ARCHIVE_COMPRESSION_RATIO = 1_000
 
 
 @dataclass(frozen=True)
@@ -114,6 +117,11 @@ class PreparedLocalUpload:
         if self._lease is not None:
             self._lease.close()
 
+    def _take_lease(self):
+        lease = self._lease
+        object.__setattr__(self, "_lease", None)
+        return lease
+
     def _cleanup_local_package(self) -> None:
         if self.delete_after_upload and self._lease is not None:
             _retry_package_cleanup(self._lease, self.upload_path)
@@ -128,6 +136,25 @@ class UploadedArtifact:
     source_path: Path
     local_package_path: Path
     delete_local_package: bool
+    _lease_init: InitVar[Any] = None
+
+    def __post_init__(self, _lease_init: Any) -> None:
+        object.__setattr__(self, "_lease", _lease_init)
+
+    def _cleanup_local_package(self) -> None:
+        if self.delete_local_package and self._lease is not None:
+            _retry_package_cleanup(self._lease, self.local_package_path)
+
+    def _close_lease(self) -> None:
+        if self._lease is not None:
+            self._lease.close()
+            object.__setattr__(self, "_lease", None)
+
+    def __del__(self) -> None:
+        try:
+            self._close_lease()
+        except Exception:
+            pass
 
 
 class _PreparedUploadLease:
@@ -627,11 +654,37 @@ def _zip_entry_kind(info: zipfile.ZipInfo) -> str:
 def _validate_zip_entries(
     archive: zipfile.ZipFile,
 ) -> list[tuple[zipfile.ZipInfo, tuple[str, ...], str]]:
+    infos = archive.infolist()
+    if len(infos) > _MAX_ARCHIVE_ENTRIES:
+        raise ArcPyMcpError(
+            "ARCPY_UNSAFE_ARCHIVE", "ArcPy result archive is unsafe"
+        )
     checked = []
     seen: dict[tuple[str, ...], str] = {}
-    for info in archive.infolist():
+    total_size = 0
+    for info in infos:
         parts = _safe_archive_parts(info.filename.rstrip("/"))
         kind = _zip_entry_kind(info)
+        if info.file_size < 0 or info.compress_size < 0:
+            raise ArcPyMcpError(
+                "ARCPY_UNSAFE_ARCHIVE", "ArcPy result archive is unsafe"
+            )
+        total_size += info.file_size
+        if total_size > _MAX_ARCHIVE_UNCOMPRESSED_BYTES:
+            raise ArcPyMcpError(
+                "ARCPY_UNSAFE_ARCHIVE", "ArcPy result archive is unsafe"
+            )
+        if (
+            info.file_size > 0
+            and (
+                info.compress_size == 0
+                or info.file_size
+                > info.compress_size * _MAX_ARCHIVE_COMPRESSION_RATIO
+            )
+        ):
+            raise ArcPyMcpError(
+                "ARCPY_UNSAFE_ARCHIVE", "ArcPy result archive is unsafe"
+            )
         folded = tuple(part.casefold() for part in parts)
         if folded in seen:
             raise ArcPyMcpError(
@@ -681,7 +734,7 @@ def _ensure_archive_directory(root_fd: int, parts: tuple[str, ...]) -> int:
 
 
 def _extract_verified_zip(
-    archive_path: Path, workspace: _DownloadWorkspace
+    archive_source, workspace: _DownloadWorkspace
 ) -> list[Path]:
     extraction_name = "extracted"
     try:
@@ -698,13 +751,14 @@ def _extract_verified_zip(
     extracted_files = []
     try:
         try:
-            archive = zipfile.ZipFile(archive_path, "r")
+            archive = zipfile.ZipFile(archive_source, "r")
         except (OSError, zipfile.BadZipFile):
             raise ArcPyMcpError(
                 "ARCPY_UNSAFE_ARCHIVE", "ArcPy result archive is unsafe"
             ) from None
         with archive:
             checked = _validate_zip_entries(archive)
+            extracted_size = 0
             for info, parts, kind in checked:
                 if kind == "directory":
                     directory_fd = _ensure_archive_directory(
@@ -730,6 +784,15 @@ def _extract_verified_zip(
                                 chunk = source.read(1024 * 1024)
                                 if not chunk:
                                     break
+                                extracted_size += len(chunk)
+                                if (
+                                    extracted_size
+                                    > _MAX_ARCHIVE_UNCOMPRESSED_BYTES
+                                ):
+                                    raise ArcPyMcpError(
+                                        "ARCPY_UNSAFE_ARCHIVE",
+                                        "ArcPy result archive is unsafe",
+                                    )
                                 destination.write(chunk)
                     extracted_files.append(
                         workspace.path / extraction_name / Path(*parts)
@@ -756,18 +819,53 @@ def _extracted_dataset_paths(paths: list[Path]) -> list[Path]:
                 gdb_roots.add(parent)
                 break
     shapefiles = {path for path in paths if path.suffix.lower() == ".shp"}
-    shapefile_stems = {
-        (path.parent, path.stem.casefold()) for path in shapefiles
-    }
     outputs = set(gdb_roots) | shapefiles
     for path in paths:
         if any(root == path or root in path.parents for root in gdb_roots):
             continue
-        parent_and_stem = (path.parent, path.name.split(".", 1)[0].casefold())
-        if parent_and_stem in shapefile_stems and path not in shapefiles:
+        is_sidecar = any(
+            path.parent == shapefile.parent
+            and _is_shapefile_sidecar_name(
+                path.name, shapefile.stem.casefold()
+            )
+            for shapefile in shapefiles
+        )
+        if is_sidecar and path not in shapefiles:
             continue
         outputs.add(path)
     return sorted(outputs, key=lambda item: str(item).casefold())
+
+
+def _write_unique_geojson(frame, source_path: Path) -> Path:
+    parent = source_path.parent
+    stem = source_path.stem
+    temp_path = parent / f".{stem}-map-{secrets.token_hex(16)}.geojson"
+    final_path = None
+    try:
+        frame.to_file(str(temp_path), driver="GeoJSON")
+        temp_stat = os.lstat(temp_path)
+        if not stat.S_ISREG(temp_stat.st_mode):
+            raise OSError("map output is not a regular file")
+        for _ in range(100):
+            candidate = parent / (
+                f"{stem}-map-{secrets.token_hex(8)}.geojson"
+            )
+            try:
+                os.link(temp_path, candidate, follow_symlinks=False)
+                final_path = candidate
+                break
+            except FileExistsError:
+                continue
+        if final_path is None:
+            raise OSError("could not allocate map output")
+        os.unlink(temp_path)
+        return final_path
+    finally:
+        try:
+            if temp_path.exists() or temp_path.is_symlink():
+                temp_path.unlink()
+        except OSError:
+            pass
 
 
 def _has_unsafe_caller_syntax(path: str) -> bool:
@@ -990,36 +1088,6 @@ def _best_effort_unlink_current_user_file(path: Path) -> None:
             os.close(directory_fd)
 
 
-def _best_effort_remove_uploaded_package(path: Path) -> None:
-    directory_fds = []
-    try:
-        user_fd, user_upload_dir = _open_current_user_upload_dir()
-        directory_fds.append(user_fd)
-        relative_path = path.relative_to(user_upload_dir)
-        if (
-            len(relative_path.parts) != 2
-            or not relative_path.parts[0].startswith(".arcpy-package-")
-            or relative_path.parts[1] != "entry.zip"
-        ):
-            return
-        private_fd = os.open(
-            relative_path.parts[0],
-            _directory_open_flags(),
-            dir_fd=user_fd,
-        )
-        directory_fds.append(private_fd)
-        try:
-            os.unlink(relative_path.parts[1], dir_fd=private_fd)
-        except FileNotFoundError:
-            pass
-        os.rmdir(relative_path.parts[0], dir_fd=user_fd)
-    except (ArcPyMcpError, OSError, ValueError):
-        pass
-    finally:
-        for directory_fd in reversed(directory_fds):
-            os.close(directory_fd)
-
-
 def _best_effort_unlink_from_tenant(
     tenant_fd: int, user_upload_dir: Path, path: Path
 ) -> None:
@@ -1085,6 +1153,41 @@ def _hash_file(path: Path) -> str:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest().lower()
+
+
+def _hash_file_descriptor(descriptor: int) -> str:
+    digest = hashlib.sha256()
+    try:
+        with os.fdopen(descriptor, "rb") as stream:
+            stream.seek(0)
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(chunk)
+    except Exception:
+        try:
+            os.close(descriptor)
+        except OSError:
+            pass
+        raise
+    return digest.hexdigest().lower()
+
+
+def _same_regular_file(left, right) -> bool:
+    return (
+        stat.S_ISREG(left.st_mode)
+        and stat.S_ISREG(right.st_mode)
+        and left.st_dev == right.st_dev
+        and left.st_ino == right.st_ino
+        and left.st_size == right.st_size
+    )
+
+
+def _same_regular_file_state(left, right) -> bool:
+    return (
+        _same_regular_file(left, right)
+        and left.st_mtime_ns == right.st_mtime_ns
+        and left.st_ctime_ns == right.st_ctime_ns
+        and left.st_nlink == right.st_nlink
+    )
 
 
 def _media_type(path: Path) -> str:
@@ -1423,6 +1526,10 @@ def _sanitize_detail_key(key: Any) -> str:
 
 
 class _SafeDetailString(str):
+    pass
+
+
+class _RetryableDownloadError(Exception):
     pass
 
 
@@ -2916,6 +3023,7 @@ class ArcPyMcpClient:
                 source_path=prepared.source_path,
                 local_package_path=prepared.upload_path,
                 delete_local_package=prepared.delete_after_upload,
+                _lease_init=prepared._take_lease(),
             )
         except BaseException:
             async def cleanup_failed_input() -> None:
@@ -2938,7 +3046,9 @@ class ArcPyMcpClient:
             raise ArcPyMcpError(
                 "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
             )
-        response_id = job.get("job_id", job.get("id"))
+        response_id = job.get("job_id")
+        if response_id is None:
+            response_id = job.get("id")
         if response_id is not None and response_id != job_id:
             raise ArcPyMcpError(
                 "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
@@ -2989,13 +3099,39 @@ class ArcPyMcpClient:
                 messages.append(message)
         return messages
 
-    async def _poll_job(self, job_id: str, timeout: float) -> dict:
+    @staticmethod
+    def _job_timeout_error() -> ArcPyMcpError:
+        return ArcPyMcpError("ARCPY_JOB_TIMED_OUT", "ArcPy job timed out")
+
+    async def _await_job_operation(self, awaitable, deadline: float):
+        remaining = deadline - self._clock()
+        if remaining <= 0:
+            if asyncio.iscoroutine(awaitable):
+                awaitable.close()
+            raise self._job_timeout_error()
+        try:
+            return await asyncio.wait_for(awaitable, timeout=remaining)
+        except asyncio.TimeoutError:
+            raise self._job_timeout_error() from None
+
+    async def _poll_job(
+        self,
+        job_id: str,
+        timeout: float,
+        *,
+        _deadline: float | None = None,
+    ) -> dict:
         if not isinstance(job_id, str) or not job_id.strip():
             raise ArcPyMcpError(
                 "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
             )
         job_id = job_id.strip()
-        deadline = self._clock() + max(0.0, float(timeout))
+        own_deadline = self._clock() + max(0.0, float(timeout))
+        deadline = (
+            own_deadline
+            if _deadline is None
+            else min(_deadline, own_deadline)
+        )
         delays = (2, 5, 10, 20)
         attempt = 0
         terminal_failures = {
@@ -3008,18 +3144,19 @@ class ArcPyMcpClient:
         while True:
             remaining = deadline - self._clock()
             if remaining <= 0:
-                raise ArcPyMcpError(
-                    "ARCPY_JOB_TIMED_OUT", "ArcPy job timed out"
-                )
+                raise self._job_timeout_error()
             delay = delays[min(attempt, len(delays) - 1)]
             attempt += 1
-            await self._sleep(min(delay, remaining))
+            await self._await_job_operation(
+                self._sleep(min(delay, remaining)), deadline
+            )
             if self._clock() > deadline:
-                raise ArcPyMcpError(
-                    "ARCPY_JOB_TIMED_OUT", "ArcPy job timed out"
-                )
+                raise self._job_timeout_error()
             job = self._validate_job_response(
-                await self.call_tool("get_job", {"job_id": job_id}),
+                await self._await_job_operation(
+                    self.call_tool("get_job", {"job_id": job_id}),
+                    deadline,
+                ),
                 job_id,
             )
             status = job.get("status")
@@ -3027,8 +3164,11 @@ class ArcPyMcpClient:
                 return job
             if status in terminal_failures:
                 try:
-                    logs = await self.call_tool(
-                        "get_job_log", {"job_id": job_id}
+                    logs = await self._await_job_operation(
+                        self.call_tool(
+                            "get_job_log", {"job_id": job_id}
+                        ),
+                        deadline,
                     )
                 except Exception:
                     logs = {}
@@ -3049,34 +3189,48 @@ class ArcPyMcpClient:
         try:
             return await self._poll_job(job_id, timeout)
         except asyncio.CancelledError:
-            cancellation = asyncio.create_task(self.cancel_job(job_id))
-            try:
-                await _drain_shielded_task(cancellation)
-            except Exception:
-                pass
+            deadline = self._clock() + self.job_timeout
+            cancellation = asyncio.create_task(
+                self._cancel_job_with_deadline(job_id, deadline)
+            )
+            await self._await_inspection_cleanup_task(
+                cancellation, deadline
+            )
             raise
 
-    async def cancel_job(self, job_id: str) -> dict:
+    async def _cancel_job_with_deadline(
+        self, job_id: str, deadline: float
+    ) -> dict:
         if not isinstance(job_id, str) or not job_id.strip():
             raise ArcPyMcpError(
                 "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
             )
         job_id = job_id.strip()
         try:
-            response = await self.call_tool(
-                "cancel_job", {"job_id": job_id}
+            response = await self._await_job_operation(
+                self.call_tool("cancel_job", {"job_id": job_id}),
+                deadline,
             )
         except asyncio.CancelledError:
             raise
         except Exception:
             response = None
         if isinstance(response, dict):
-            response_id = response.get("job_id", response.get("id"))
+            response_id = response.get("job_id")
+            if response_id is None:
+                response_id = response.get("id")
             if response_id is not None and response_id != job_id:
                 raise ArcPyMcpError(
                     "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
                 )
-        return await self._poll_job(job_id, self.job_timeout)
+        remaining = max(0.0, deadline - self._clock())
+        return await self._poll_job(
+            job_id, remaining, _deadline=deadline
+        )
+
+    async def cancel_job(self, job_id: str) -> dict:
+        deadline = self._clock() + self.job_timeout
+        return await self._cancel_job_with_deadline(job_id, deadline)
 
     @staticmethod
     def _download_payload(payload: Any, artifact_id: str) -> dict:
@@ -3159,6 +3313,7 @@ class ArcPyMcpClient:
         signed_url: str,
         stream,
         offset: int,
+        expected_size: int | None,
     ) -> None:
         current_url = signed_url
         registered_secrets = set()
@@ -3171,7 +3326,9 @@ class ArcPyMcpClient:
                 if new_secrets:
                     register_runtime_secrets(new_secrets)
                     registered_secrets.update(new_secrets)
-                headers = {"Range": f"bytes={offset}-"} if offset else {}
+                headers = {"Accept-Encoding": "identity"}
+                if offset:
+                    headers["Range"] = f"bytes={offset}-"
                 async with http_client.stream(
                     "GET",
                     current_url,
@@ -3203,17 +3360,82 @@ class ArcPyMcpClient:
                                 "ArcPy result download failed",
                             ) from None
                         continue
+                    if status_code == 416:
+                        content_range = getattr(response, "headers", {}).get(
+                            "Content-Range", ""
+                        )
+                        match = re.fullmatch(r"bytes \*/(\d+)", content_range)
+                        if (
+                            expected_size is not None
+                            and offset == expected_size
+                            and match is not None
+                            and int(match.group(1)) == expected_size
+                        ):
+                            return
+                        raise ArcPyMcpError(
+                            "ARCPY_DOWNLOAD_FAILED",
+                            "ArcPy result download failed",
+                        )
+                    if status_code in {
+                        401,
+                        403,
+                        408,
+                        425,
+                        429,
+                        500,
+                        502,
+                        503,
+                        504,
+                    }:
+                        raise _RetryableDownloadError()
                     if status_code not in {200, 206}:
                         raise ArcPyMcpError(
                             "ARCPY_DOWNLOAD_FAILED",
                             "ArcPy result download failed",
                         )
+                    response_headers = getattr(response, "headers", {})
+                    content_encoding = response_headers.get(
+                        "Content-Encoding", "identity"
+                    )
+                    if (
+                        not isinstance(content_encoding, str)
+                        or content_encoding.casefold() not in {"", "identity"}
+                    ):
+                        raise ArcPyMcpError(
+                            "ARCPY_DOWNLOAD_FAILED",
+                            "ArcPy result download failed",
+                        )
+                    if status_code == 206:
+                        content_range = response_headers.get(
+                            "Content-Range", ""
+                        )
+                        match = re.fullmatch(
+                            r"bytes (\d+)-(\d+)/(\d+|\*)", content_range
+                        )
+                        if match is None or int(match.group(1)) != offset:
+                            raise ArcPyMcpError(
+                                "ARCPY_DOWNLOAD_FAILED",
+                                "ArcPy result download failed",
+                            )
+                        end = int(match.group(2))
+                        total = match.group(3)
+                        if end < offset or (
+                            expected_size is not None
+                            and (
+                                total == "*"
+                                or int(total) != expected_size
+                            )
+                        ):
+                            raise ArcPyMcpError(
+                                "ARCPY_DOWNLOAD_FAILED",
+                                "ArcPy result download failed",
+                            )
                     if offset and status_code == 200:
                         stream.seek(0)
                         stream.truncate(0)
                     else:
                         stream.seek(offset)
-                    async for chunk in response.aiter_bytes():
+                    async for chunk in response.aiter_raw():
                         if not isinstance(chunk, (bytes, bytearray)):
                             raise ArcPyMcpError(
                                 "ARCPY_DOWNLOAD_FAILED",
@@ -3229,14 +3451,6 @@ class ArcPyMcpClient:
             if registered_secrets:
                 unregister_runtime_secrets(registered_secrets)
             _end_signed_transfer()
-
-    @staticmethod
-    def _hash_download_stream(stream) -> str:
-        digest = hashlib.sha256()
-        stream.seek(0)
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(chunk)
-        return digest.hexdigest().lower()
 
     async def _download_artifact(self, artifact_id: str) -> list[Path]:
         workspace = _new_download_workspace()
@@ -3294,9 +3508,13 @@ class ArcPyMcpClient:
                         )
                     try:
                         await self._stream_signed_download(
-                            http_client, signed_url, stream, offset
+                            http_client,
+                            signed_url,
+                            stream,
+                            offset,
+                            expected_size,
                         )
-                    except httpx.RequestError:
+                    except (httpx.RequestError, _RetryableDownloadError):
                         if attempt + 1 >= self._download_attempts:
                             raise ArcPyMcpError(
                                 "ARCPY_DOWNLOAD_FAILED",
@@ -3324,7 +3542,19 @@ class ArcPyMcpClient:
                         "ARCPY_DOWNLOAD_FAILED", "ArcPy result download failed"
                     )
 
-            if self._hash_download_stream(stream) != expected_sha256:
+            stream.flush()
+            os.fsync(stream.fileno())
+            pre_hash_stat = os.fstat(stream.fileno())
+            actual_sha256 = await asyncio.to_thread(
+                _hash_file_descriptor, os.dup(stream.fileno())
+            )
+            post_hash_stat = os.fstat(stream.fileno())
+            if (
+                actual_sha256 != expected_sha256
+                or not _same_regular_file_state(
+                    pre_hash_stat, post_hash_stat
+                )
+            ):
                 stream.close()
                 stream = None
                 os.unlink(part_name, dir_fd=workspace.directory_fd)
@@ -3332,25 +3562,77 @@ class ArcPyMcpClient:
                     "ARCPY_DOWNLOAD_CHECKSUM_MISMATCH",
                     "ArcPy result checksum mismatch",
                 )
-            stream.flush()
-            os.fsync(stream.fileno())
-            stream.close()
-            stream = None
-            os.rename(
-                part_name,
-                final_name,
-                src_dir_fd=workspace.directory_fd,
-                dst_dir_fd=workspace.directory_fd,
-            )
+            try:
+                open_stat = post_hash_stat
+                part_stat = os.stat(
+                    part_name,
+                    dir_fd=workspace.directory_fd,
+                    follow_symlinks=False,
+                )
+                if not _same_regular_file(open_stat, part_stat):
+                    raise ArcPyMcpError(
+                        "ARCPY_DOWNLOAD_FAILED",
+                        "ArcPy result download failed",
+                    )
+                os.rename(
+                    part_name,
+                    final_name,
+                    src_dir_fd=workspace.directory_fd,
+                    dst_dir_fd=workspace.directory_fd,
+                )
+                final_stat = os.stat(
+                    final_name,
+                    dir_fd=workspace.directory_fd,
+                    follow_symlinks=False,
+                )
+                if not _same_regular_file(open_stat, final_stat):
+                    raise ArcPyMcpError(
+                        "ARCPY_DOWNLOAD_FAILED",
+                        "ArcPy result download failed",
+                    )
+                verified_stat = os.fstat(stream.fileno())
+            except ArcPyMcpError:
+                raise
+            except OSError:
+                raise ArcPyMcpError(
+                    "ARCPY_DOWNLOAD_FAILED",
+                    "ArcPy result download failed",
+                ) from None
             final_path = workspace.path / final_name
             if final_path.suffix.lower() == ".zip":
-                extracted = await asyncio.to_thread(
-                    _extract_verified_zip, final_path, workspace
+                archive_stream = os.fdopen(
+                    os.dup(stream.fileno()), "rb"
                 )
+                extraction_task = asyncio.create_task(
+                    asyncio.to_thread(
+                        _extract_verified_zip,
+                        archive_stream,
+                        workspace,
+                    )
+                )
+                try:
+                    extracted = await asyncio.shield(extraction_task)
+                except asyncio.CancelledError:
+                    try:
+                        await _drain_shielded_task(extraction_task)
+                    except Exception:
+                        pass
+                    raise
+                finally:
+                    archive_stream.close()
+                if not _same_regular_file_state(
+                    verified_stat, os.fstat(stream.fileno())
+                ):
+                    raise ArcPyMcpError(
+                        "ARCPY_DOWNLOAD_FAILED",
+                        "ArcPy result download failed",
+                    )
                 outputs = _extracted_dataset_paths(extracted)
                 os.unlink(final_name, dir_fd=workspace.directory_fd)
             else:
                 outputs = [final_path]
+            stream.close()
+            stream = None
             workspace.close()
             return outputs
         except BaseException:
@@ -3399,13 +3681,111 @@ class ArcPyMcpClient:
         if not isinstance(result, dict):
             return {}
         summary = result.get("dataset_summary")
-        if isinstance(summary, dict):
-            return copy.deepcopy(summary)
-        return {
-            key: copy.deepcopy(value)
-            for key, value in result.items()
-            if key != "output_artifact_ids"
+        if not isinstance(summary, dict):
+            return {}
+        allowed_scalar_keys = {
+            "band_count",
+            "cell_size",
+            "count",
+            "data_type",
+            "geometry_type",
+            "height",
+            "name",
+            "spatial_reference",
+            "width",
         }
+        sanitized = {}
+        for key in allowed_scalar_keys:
+            value = summary.get(key)
+            if value is None or isinstance(value, (bool, int, float)):
+                if key in summary:
+                    sanitized[key] = value
+            elif isinstance(value, str):
+                safe = ArcPyMcpClient._safe_metadata_string(value)
+                if safe is not None:
+                    sanitized[key] = safe
+        extent = summary.get("extent")
+        if isinstance(extent, dict):
+            safe_extent = {
+                key: value
+                for key, value in extent.items()
+                if key in {"xmin", "ymin", "xmax", "ymax"}
+                and isinstance(value, (int, float))
+                and not isinstance(value, bool)
+            }
+            if safe_extent:
+                sanitized["extent"] = safe_extent
+        fields = summary.get("fields")
+        if isinstance(fields, list):
+            safe_fields = []
+            for field in fields[:1000]:
+                if not isinstance(field, dict):
+                    continue
+                safe_field = {}
+                for key in {"name", "type", "alias"}:
+                    value = ArcPyMcpClient._safe_metadata_string(
+                        field.get(key)
+                    )
+                    if value is not None:
+                        safe_field[key] = value
+                for key in {"length", "precision", "scale"}:
+                    value = field.get(key)
+                    if isinstance(value, (int, float)) and not isinstance(
+                        value, bool
+                    ):
+                        safe_field[key] = value
+                if safe_field:
+                    safe_fields.append(safe_field)
+            sanitized["fields"] = safe_fields
+        return sanitized
+
+    @staticmethod
+    def _safe_metadata_string(value: Any) -> str | None:
+        if not isinstance(value, str) or not value or len(value) > 512:
+            return None
+        redacted = redact_mcp_text(value, current_runtime_secrets())
+        if redacted != value or re.search(r"(?i)https?://", value):
+            return None
+        windows_path = PureWindowsPath(value)
+        posix_path = PurePosixPath(value)
+        if (
+            windows_path.is_absolute()
+            or bool(windows_path.drive)
+            or posix_path.is_absolute()
+            or value.startswith("\\\\")
+            or ".." in posix_path.parts
+            or ".." in value.replace("\\", "/").split("/")
+        ):
+            return None
+        return value
+
+    @classmethod
+    def _registration_parameters(cls, parameters: Any) -> dict:
+        if not isinstance(parameters, dict):
+            return {}
+
+        def sanitize(value: Any):
+            if value is None or isinstance(value, (bool, int, float)):
+                return value
+            if isinstance(value, str):
+                return cls._safe_metadata_string(value) or "[REDACTED]"
+            if isinstance(value, list):
+                return [sanitize(item) for item in value[:1000]]
+            if isinstance(value, dict):
+                return {
+                    key: sanitize(item)
+                    for key, item in value.items()
+                    if isinstance(key, str)
+                    and _SAFE_DETAIL_KEY_RE.fullmatch(key) is not None
+                    and key != "artifact_id"
+                    and not key.endswith("_artifact_id")
+                    and key != "path"
+                    and not key.endswith("_path")
+                    and key != "inputs"
+                }
+            return "[REDACTED]"
+
+        return sanitize(parameters)
 
     async def _register_and_map_outputs(
         self,
@@ -3439,14 +3819,19 @@ class ArcPyMcpClient:
                 if path.suffix.lower() in {".geojson", ".json"}:
                     geojson_path = path
                 else:
-                    geojson_path = path.with_name(f"{path.stem}.geojson")
-                    if geojson_path.exists():
-                        geojson_path = path.with_name(
-                            f"{path.stem}-map.geojson"
+                    map_task = asyncio.create_task(
+                        asyncio.to_thread(
+                            _write_unique_geojson, frame, path
                         )
-                    await asyncio.to_thread(
-                        frame.to_file, str(geojson_path), driver="GeoJSON"
                     )
+                    try:
+                        geojson_path = await asyncio.shield(map_task)
+                    except asyncio.CancelledError:
+                        try:
+                            await _drain_shielded_task(map_task)
+                        except Exception:
+                            pass
+                        raise
                     data_catalog.register_tool_output(
                         str(geojson_path),
                         operation,
@@ -3463,26 +3848,35 @@ class ArcPyMcpClient:
         return local_outputs, map_update
 
     async def download_job_results(
-        self, operation: str, job: dict, source_paths: list[str]
+        self,
+        operation: str,
+        job: dict,
+        source_paths: list[str],
+        *,
+        _tool_params: dict | None = None,
     ) -> dict:
         started = self._clock()
         health = await self.health_check()
         artifact_ids = self._result_artifact_ids(job)
-        request = job.get("request")
-        tool_params = copy.deepcopy(request) if isinstance(request, dict) else {}
+        tool_params = self._registration_parameters(_tool_params)
         local_outputs = []
         map_update = None
         for artifact_id in artifact_ids:
-            downloaded = await self._download_artifact(artifact_id)
-            registered, artifact_map_update = (
-                await self._register_and_map_outputs(
-                    downloaded, operation, tool_params, source_paths
+            verified = False
+            try:
+                downloaded = await self._download_artifact(artifact_id)
+                verified = True
+                registered, artifact_map_update = (
+                    await self._register_and_map_outputs(
+                        downloaded, operation, tool_params, source_paths
+                    )
                 )
-            )
-            local_outputs.extend(registered)
-            if map_update is None:
-                map_update = artifact_map_update
-            await self._best_effort_delete_artifact(artifact_id)
+                local_outputs.extend(registered)
+                if map_update is None:
+                    map_update = artifact_map_update
+            finally:
+                if verified:
+                    await self._run_remote_cleanup([artifact_id])
         worker = health.get("worker") if isinstance(health, dict) else None
         worker = worker if isinstance(worker, dict) else {}
         install = worker.get("install")
@@ -3514,7 +3908,7 @@ class ArcPyMcpClient:
                 "ARCPY_TOOL_NOT_ALLOWED",
                 "Requested ArcPy MCP tool is not allowed",
             )
-        rows = matches.get("result", matches.get("tools", []))
+        rows = matches.get("result") or matches.get("tools") or []
         rows = rows if isinstance(rows, list) else []
         exact = [
             row.get("tool_id")
@@ -3536,6 +3930,17 @@ class ArcPyMcpClient:
             if (
                 tokens & {"train", "training"}
                 or "traindeeplearningmodel" in normalized
+                or normalized
+                in {
+                    "dldetectobjects",
+                    "dlclassifypixels",
+                    "dlclassifyobjects",
+                    "dldetectchange",
+                    "detectobjectsusingdeeplearning",
+                    "classifypixelsusingdeeplearning",
+                    "classifyobjectsusingdeeplearning",
+                    "detectchangeusingdeeplearning",
+                }
             ):
                 raise ArcPyMcpError(
                     "ARCPY_TOOL_NOT_ALLOWED",
@@ -3575,30 +3980,61 @@ class ArcPyMcpClient:
             arguments[f"{prefix}_path"] = artifact.artifact_path
         return arguments
 
-    @classmethod
-    def _argument_artifact_ids(cls, arguments: Any) -> list[str]:
-        found = []
+    @staticmethod
+    def _multi_input_artifact_ids(arguments: dict) -> list[str]:
+        rows = arguments.get("inputs") if isinstance(arguments, dict) else None
+        if not isinstance(rows, list):
+            return []
+        return list(
+            dict.fromkeys(
+                row["artifact_id"]
+                for row in rows
+                if isinstance(row, dict)
+                and isinstance(row.get("artifact_id"), str)
+                and row["artifact_id"]
+            )
+        )
 
-        def visit(value: Any, key: str | None = None) -> None:
-            if isinstance(value, dict):
-                for child_key, child in value.items():
-                    visit(child, child_key)
-            elif isinstance(value, list):
-                for child in value:
-                    visit(child, key)
-            elif (
-                isinstance(value, str)
-                and key is not None
-                and (key == "artifact_id" or key.endswith("_artifact_id"))
-            ):
-                found.append(value)
-
-        visit(arguments)
-        return list(dict.fromkeys(found))
-
-    async def _delete_artifacts(self, artifact_ids: list[str]) -> None:
+    async def _delete_artifacts(
+        self, artifact_ids: list[str], deadline: float | None = None
+    ) -> None:
+        if deadline is None:
+            deadline = self._inspection_cleanup_deadline()
         for artifact_id in dict.fromkeys(artifact_ids):
-            await self._best_effort_delete_artifact(artifact_id)
+            completed, _ = await self._inspection_cleanup_call(
+                "delete_artifact",
+                {"artifact_id": artifact_id},
+                deadline,
+            )
+            if not completed and self._clock() >= deadline:
+                return
+
+    async def _run_remote_cleanup(self, artifact_ids: list[str]) -> None:
+        if not artifact_ids:
+            return
+        deadline = self._inspection_cleanup_deadline()
+        cleanup_task = asyncio.create_task(
+            self._delete_artifacts(artifact_ids, deadline)
+        )
+        remaining = deadline - self._clock()
+        if remaining <= 0:
+            cleanup_task.cancel()
+            cleanup_task.add_done_callback(self._consume_background_task)
+            return
+        try:
+            await asyncio.wait_for(
+                asyncio.shield(cleanup_task), timeout=remaining
+            )
+        except asyncio.TimeoutError:
+            cleanup_task.cancel()
+            cleanup_task.add_done_callback(self._consume_background_task)
+        except asyncio.CancelledError:
+            await self._await_inspection_cleanup_task(
+                cleanup_task, deadline
+            )
+            raise
+        except Exception:
+            pass
 
     async def _cleanup_prepared_inputs(
         self,
@@ -3606,20 +4042,19 @@ class ArcPyMcpClient:
         *,
         delete_remote: bool,
     ) -> None:
-        async def cleanup() -> None:
-            if delete_remote:
-                await self._delete_artifacts(
-                    [item.artifact_id for item in prepared]
-                )
-            for item in prepared:
+        for item in prepared:
+            try:
                 if item.delete_local_package:
-                    await asyncio.to_thread(
-                        _best_effort_remove_uploaded_package,
-                        item.local_package_path,
+                    local_cleanup = asyncio.create_task(
+                        asyncio.to_thread(item._cleanup_local_package)
                     )
-
-        cleanup_task = asyncio.create_task(cleanup())
-        await _drain_shielded_task(cleanup_task)
+                    await _drain_shielded_task(local_cleanup)
+            finally:
+                item._close_lease()
+        if delete_remote:
+            await self._run_remote_cleanup(
+                [item.artifact_id for item in prepared]
+            )
 
     @staticmethod
     def _apply_operation_timing(
@@ -3656,7 +4091,10 @@ class ArcPyMcpClient:
             timeout = self.dl_job_timeout if deep_learning else self.job_timeout
             job = await self.wait_for_job(job_id, timeout)
             result = await self.download_job_results(
-                remote_tool, job, list(local_inputs.values())
+                remote_tool,
+                job,
+                list(local_inputs.values()),
+                _tool_params=parameters,
             )
             return self._apply_operation_timing(
                 result, health, started, self._clock()
@@ -3673,19 +4111,19 @@ class ArcPyMcpClient:
         arguments: dict,
         source_paths: list[str],
     ) -> dict:
-        artifact_ids = self._argument_artifact_ids(arguments)
+        artifact_ids = self._multi_input_artifact_ids(arguments)
         try:
             submission = await self.call_tool(remote_tool, arguments)
             job_id = self._required_identifier(submission, "job_id")
             job = await self.wait_for_job(job_id, self.job_timeout)
             return await self.download_job_results(
-                operation, job, source_paths
+                operation,
+                job,
+                source_paths,
+                _tool_params=arguments,
             )
         finally:
-            cleanup_task = asyncio.create_task(
-                self._delete_artifacts(artifact_ids)
-            )
-            await _drain_shielded_task(cleanup_task)
+            await self._run_remote_cleanup(artifact_ids)
 
     async def _submit_wait_download(
         self,
@@ -3716,8 +4154,10 @@ class ArcPyMcpClient:
         local_inputs: list[str],
         parameters: dict,
     ) -> dict:
-        await self.health_check()
+        started = self._clock()
+        health = await self.health_check()
         prepared = []
+        remote_cleanup_handed_off = False
         try:
             for path in local_inputs:
                 prepared.append(await self.prepare_input(path))
@@ -3729,12 +4169,16 @@ class ArcPyMcpClient:
                 }
                 for item in prepared
             ]
-            return await self._submit_wait_download(
+            remote_cleanup_handed_off = True
+            result = await self._submit_wait_download(
                 remote_tool, arguments, list(local_inputs)
+            )
+            return self._apply_operation_timing(
+                result, health, started, self._clock()
             )
         finally:
             await self._cleanup_prepared_inputs(
-                prepared, delete_remote=False
+                prepared, delete_remote=not remote_cleanup_handed_off
             )
 
     async def run_deep_learning(
@@ -3804,7 +4248,10 @@ class ArcPyMcpClient:
             job_id = self._required_identifier(submission, "job_id")
             job = await self.wait_for_job(job_id, self.job_timeout)
             result = await self.download_job_results(
-                tool_id, job, list(local_inputs.values())
+                tool_id,
+                job,
+                list(local_inputs.values()),
+                _tool_params=parameters,
             )
             return self._apply_operation_timing(
                 result, health, started, self._clock()
