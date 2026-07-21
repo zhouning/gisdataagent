@@ -225,25 +225,25 @@ class _PreparedUploadLease:
             finally:
                 os.close(tenant_fd)
 
-    def unlink(self, path: Path) -> None:
+    def unlink(self, path: Path) -> bool:
         with self._lock:
             if self._closed:
-                return
+                return False
             if (
                 self._private_dir_fd is None
                 or self._private_dir_name is None
                 or self._private_entry_name is None
             ):
-                return
+                return False
             try:
                 relative_path = path.relative_to(self._user_upload_dir)
             except ValueError:
-                return
+                return False
             if relative_path.parts != (
                 self._private_dir_name,
                 self._private_entry_name,
             ):
-                return
+                return False
 
             try:
                 current_stat = os.stat(
@@ -254,13 +254,13 @@ class _PreparedUploadLease:
             except FileNotFoundError:
                 pass
             except OSError:
-                return
+                return False
             else:
                 if (
                     self._file_object_identity(current_stat)
                     != self._object_identity
                 ):
-                    return
+                    return False
                 try:
                     os.unlink(
                         self._private_entry_name,
@@ -269,18 +269,32 @@ class _PreparedUploadLease:
                 except FileNotFoundError:
                     pass
                 except OSError:
-                    return
+                    return False
             try:
                 os.rmdir(
                     self._private_dir_name,
                     dir_fd=self._tenant_fd,
                 )
-            except (FileNotFoundError, OSError):
-                pass
+            except FileNotFoundError:
+                return True
+            except OSError:
+                return False
+            return True
 
     def __del__(self):
         try:
             self.close()
+        except Exception:
+            pass
+
+
+def _retry_package_cleanup(
+    lease: _PreparedUploadLease, path: Path, attempts: int = 3
+) -> None:
+    for _ in range(attempts):
+        try:
+            if lease.unlink(path):
+                return
         except Exception:
             pass
 
@@ -797,7 +811,7 @@ def _new_package_file(
     except BaseException:
         if lease is not None:
             if package_path is not None:
-                lease.unlink(package_path)
+                _retry_package_cleanup(lease, package_path)
             lease.close()
             lease = None
         raise
@@ -852,11 +866,11 @@ def _write_package(
             lease.seal()
         return package_path, lease
     except ArcPyMcpError:
-        lease.unlink(package_path)
+        _retry_package_cleanup(lease, package_path)
         lease.close()
         raise
     except Exception:
-        lease.unlink(package_path)
+        _retry_package_cleanup(lease, package_path)
         lease.close()
         raise _input_error("ARCPY_INPUT_PACKAGE_FAILED") from None
 
