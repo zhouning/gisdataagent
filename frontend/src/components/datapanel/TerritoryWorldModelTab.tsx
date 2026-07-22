@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
 } from 'lucide-react';
+import TwmExecutiveDemoPanel from './TwmExecutiveDemoPanel';
 
 type RunKey =
   | 'status'
@@ -49,7 +50,7 @@ type RunKey =
   | 'beam';
 
 type TwmMapStage = 'locate' | 'risk' | 'plan';
-type TwmSubTab = 'overview' | 'data' | 'operate' | 'graph' | 'payload';
+type TwmSubTab = 'briefing' | 'overview' | 'data' | 'operate' | 'graph' | 'payload';
 
 interface TwmProject {
   id: string;
@@ -1010,6 +1011,8 @@ const DEMO_BUNDLES = [
   },
 ];
 
+const DEFAULT_DEMO_BUNDLE = DEMO_BUNDLES[1];
+
 const TWM_DEMO_MAP_CENTER: [number, number] = [29.7771813765, 106.2598609625];
 
 const TWM_MAP_STAGE_LABELS: Record<TwmMapStage | 'none', string> = {
@@ -1020,6 +1023,7 @@ const TWM_MAP_STAGE_LABELS: Record<TwmMapStage | 'none', string> = {
 };
 
 const TWM_SUB_TABS: Array<{ id: TwmSubTab; label: string; summary: string }> = [
+  { id: 'briefing', label: '汇报演示', summary: '结论、证据和能力边界' },
   { id: 'overview', label: '总览地图', summary: '先看范围和空间联动' },
   { id: 'data', label: '数据依据', summary: '主张、数据和基线' },
   { id: 'operate', label: '操作推演', summary: '规则、预测和方案' },
@@ -1712,7 +1716,7 @@ export default function TerritoryWorldModelTab() {
   const [error, setError] = useState('');
   const [running, setRunning] = useState<RunKey | null>(null);
   const [mapStage, setMapStage] = useState<TwmMapStage | 'none'>('none');
-  const [activeSubTab, setActiveSubTab] = useState<TwmSubTab>('overview');
+  const [activeSubTab, setActiveSubTab] = useState<TwmSubTab>('briefing');
   const [selectedDataPackageId, setSelectedDataPackageId] = useState('twm_bishan_multi_admin_eval');
   const [dataMapPreviewLoading, setDataMapPreviewLoading] = useState(false);
   const [dataMapPreviewSummary, setDataMapPreviewSummary] = useState('');
@@ -1727,17 +1731,17 @@ export default function TerritoryWorldModelTab() {
   const [crsRemediationPlan, setCrsRemediationPlan] = useState<TwmDataFoundationCrsRemediationPlan | null>(null);
   const [authoritativeTemplates, setAuthoritativeTemplates] = useState<TwmDataFoundationAuthoritativeTemplates | null>(null);
 
-  const [projectName, setProjectName] = useState('TWM 璧山演示工作空间');
-  const [regionCode, setRegionCode] = useState('500227');
-  const [bundleDir, setBundleDir] = useState(DEMO_BUNDLES[0].bundleDir);
-  const [optimizationDir, setOptimizationDir] = useState(DEMO_BUNDLES[0].optimizationDir);
-  const [stateLabel, setStateLabel] = useState('璧山 MMFE TWM 状态');
+  const [projectName, setProjectName] = useState('TWM 璧山多行政单元工作空间');
+  const [regionCode, setRegionCode] = useState(DEFAULT_DEMO_BUNDLE.regionCode);
+  const [bundleDir, setBundleDir] = useState(DEFAULT_DEMO_BUNDLE.bundleDir);
+  const [optimizationDir, setOptimizationDir] = useState(DEFAULT_DEMO_BUNDLE.optimizationDir);
+  const [stateLabel, setStateLabel] = useState(DEFAULT_DEMO_BUNDLE.label);
   const [includeAuxiliary, setIncludeAuxiliary] = useState(true);
   const [actionType, setActionType] = useState('protect');
   const [targetRole, setTargetRole] = useState('project');
   const [scenario, setScenario] = useState(FALLBACK_BUSINESS_SCENARIOS[0].label);
-  const [evidenceCoverage, setEvidenceCoverage] = useState(0.72);
-  const [horizon, setHorizon] = useState(3);
+  const [evidenceCoverage, setEvidenceCoverage] = useState(FALLBACK_BUSINESS_SCENARIOS[0].default_evidence_coverage || 0.78);
+  const [horizon, setHorizon] = useState(FALLBACK_BUSINESS_SCENARIOS[0].default_horizon || 3);
 
   const [stateDetail, setStateDetail] = useState<any | null>(null);
   const [stateGraph, setStateGraph] = useState<TwmStateGraphReport | null>(null);
@@ -2443,7 +2447,7 @@ export default function TerritoryWorldModelTab() {
     await withRun('candidates', async () => {
       const data = await api(`/api/twm/states/${encodeURIComponent(selectedStateId)}/farmland-layout-candidates`, {
         method: 'POST',
-        body: JSON.stringify({ optimization_dir: optimizationDir }),
+        body: JSON.stringify({ optimization_dir: optimizationDir, horizon }),
       });
       setCandidateResult(data);
       return data;
@@ -2458,6 +2462,7 @@ export default function TerritoryWorldModelTab() {
         body: JSON.stringify({
           optimization_dir: optimizationDir,
           evidence_coverage: evidenceCoverage,
+          horizon,
           limit: 5,
           use_optimizer_metric_projection: true,
         }),
@@ -2475,6 +2480,10 @@ export default function TerritoryWorldModelTab() {
   const claim = validationSummary?.claim_ladder || {};
   const beamSelected = beamResult?.beam_plan?.selected || beamResult?.selected || {};
   const candidateSummary = candidateResult?.summary || beamResult?.optimization_bundle?.summary || {};
+  const multiHorizonComparison = beamResult?.multi_horizon_comparison || {};
+  const multiHorizonTrajectories = multiHorizonComparison?.candidate_trajectories || [];
+  const executionAccounting = multiHorizonComparison?.execution_accounting || {};
+  const spatialSimulatorBackend = multiHorizonTrajectories[0]?.simulator_trace?.backend || {};
   const filteredBaselineCards = baselineCards.filter(card => {
     if (baselineCardFilter === 'all') return true;
     const claimId = card.metadata?.claim?.claim_id || card.input_changes?.claim_id || '';
@@ -2659,6 +2668,17 @@ export default function TerritoryWorldModelTab() {
           );
         })}
       </div>
+
+      {activeSubTab === 'briefing' && (
+        <div
+          className="twm-subtab-panel"
+          role="tabpanel"
+          id="twm-subtab-briefing"
+          aria-labelledby="twm-subtab-control-briefing"
+        >
+          <TwmExecutiveDemoPanel onNavigate={setActiveSubTab} onMapStage={syncTwmMap} />
+        </div>
+      )}
 
       {activeSubTab === 'overview' && (
         <div
@@ -4129,6 +4149,71 @@ export default function TerritoryWorldModelTab() {
               方案比选
             </button>
           </div>
+
+          {multiHorizonTrajectories.length > 0 && (
+            <div className="twm-multi-horizon-comparison" data-testid="twm-multi-horizon-comparison">
+              <div className="twm-multi-horizon-summary">
+                <strong>合法方案多期状态转移</strong>
+                <span>{fmt(multiHorizonComparison.legal_candidate_count, 0)} 个方案 × {fmt(multiHorizonComparison.horizon, 0)} 期</span>
+                <span>{fmt(executionAccounting.simulator_call_count, 0)} 次状态转移计算</span>
+                <span>{fmt(executionAccounting.hard_constraint_recomputation_count, 0)} 次硬约束重算</span>
+                <span>{spatialSimulatorBackend.learned_dynamics ? '学习型动力学' : 'GIS / 规则机制后端'}</span>
+                <span>
+                  {spatialSimulatorBackend.execution_mode === 'online_recursive_transition_loop'
+                    && spatialSimulatorBackend.precomputed_period_states_consumed === false
+                    ? 'Simulator 在线递归执行'
+                    : '执行链需复核'}
+                </span>
+              </div>
+              <div className="twm-multi-horizon-boundary">
+                每期由 Simulator 消费上一期写回状态和本期动作增量，重新计算空间状态、关系、硬约束与目标；不读取预计算时期状态做选优。尚未用真实业务闭环历史验证政策效果预测。
+              </div>
+              <div className="twm-multi-horizon-table-wrap">
+                <table className="twm-multi-horizon-table">
+                  <thead>
+                    <tr>
+                      <th>排序</th>
+                      <th>候选方案</th>
+                      <th>逐期空间状态</th>
+                      <th>累计效用</th>
+                      <th>全过程风险</th>
+                      <th>最低可信度</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {multiHorizonTrajectories.map((trajectory: any) => (
+                      <tr key={trajectory.candidate_id}>
+                        <td><strong>{fmt(trajectory.rank, 0)}</strong></td>
+                        <td>
+                          <strong>{trajectory.scenario_name || trajectory.candidate_id}</strong>
+                          <code>{trajectory.candidate_id}</code>
+                        </td>
+                        <td>
+                          <div className="twm-period-track">
+                            {(trajectory.periods || []).map((period: any) => (
+                              <span
+                                key={`${trajectory.candidate_id}-${period.period}`}
+                                className={(period.constraint_recheck || {}).passed ? 'pass' : 'blocked'}
+                                title={`父状态 ${(period.state_writeback || {}).from_state_sha256 || '-'}；当前状态 ${period.state_sha256 || '-'}；几何 ${period.geometry_sha256 || '-'}`}
+                              >
+                                第{fmt(period.period, 0)}期<br />
+                                {fmt(period.action_count, 0)} 个动作<br />
+                                目标 {fmt((period.outcome_metrics || {}).spatial_objective_score, 3)}<br />
+                                {(period.constraint_recheck || {}).passed ? '约束通过' : '约束阻断'}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td>{fmt(trajectory.discounted_cumulative_utility, 3)}</td>
+                        <td>{fmt(trajectory.max_constraint_risk, 3)}</td>
+                        <td>{fmt(trajectory.minimum_confidence, 3)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </section>
       </div>
 

@@ -56,6 +56,7 @@ from .models import (
 )
 from .causal_calibration import estimate_observational_treatment_effect
 from .claim_ladder import evaluate_claim_ladder
+from .executive_demo import build_executive_demo_report
 from .spatial_causal_estimator import SPATIAL_CAUSAL_ESTIMATOR_SCHEMA
 from .neural_dynamics import (
     HIERARCHICAL_GRAPH_DYNAMICS_SCHEMA,
@@ -68,6 +69,12 @@ from .neural_dynamics import (
 from .planner import TerritoryWorldModelPlanner
 from .repository import TwmRepository, get_twm_repository
 from .rule_evaluator import RuleEvaluator, evaluate_rules
+from .spatial_scenario_simulator import (
+    SIMULATOR_BACKEND as SPATIAL_SIMULATOR_BACKEND,
+    compile_optimization_spatial_profiles,
+    load_optimization_spatial_runtime,
+    simulate_optimization_spatial_candidate,
+)
 from .state_builder import StateBuilder, build_state_from_bundle
 from .utils import compact_text, read_csv, read_json, safe_float, safe_int, truthy
 from ..otel_tracing import trace_twm_operation
@@ -1202,6 +1209,11 @@ class TerritoryWorldModelService:
             },
             "updated_at": now_utc_iso(),
         }
+
+    def executive_demo_report(self) -> dict[str, Any]:
+        """Return fail-closed evidence for the natural-resources briefing UI."""
+
+        return build_executive_demo_report()
 
     def _report_cache_key(
         self,
@@ -6424,6 +6436,17 @@ class TerritoryWorldModelService:
         violations_by_id: dict[str, list[dict[str, Any]]] = {}
         for row in violation_rows:
             violations_by_id.setdefault(str(row.get("scenario_id") or ""), []).append(row)
+        horizon = max(1, min(12, int(payload.get("horizon") or 3)))
+        spatial_profiles = self._optimization_spatial_profiles(
+            root,
+            scenario_specs={
+                str(row.get("scenario_id") or ""): dict(row)
+                for row in candidates
+                if str(row.get("scenario_id") or "")
+            },
+            horizon=horizon,
+            hard_constraint_tolerance_m2=float(safe_float(pareto.get("hard_constraint_tolerance_m2"), 1.0) or 1.0),
+        )
 
         actions: list[dict[str, Any]] = []
         for row in candidates:
@@ -6433,9 +6456,14 @@ class TerritoryWorldModelService:
             feasibility = dict(feasibility_by_id.get(scenario_id) or row)
             metrics = metrics_by_id.get(scenario_id) or []
             violations = violations_by_id.get(scenario_id) or []
+            spatial_profile = dict(spatial_profiles.get(scenario_id) or {})
+            spatial_recheck = dict(spatial_profile.get("final_constraint_recheck") or {})
+            requires_spatial_state = "baseline" not in str(row.get("scenario_type") or scenario_id).lower()
             blocked = (
                 str(feasibility.get("hard_constraint_status") or row.get("hard_constraint_status") or "") != "legal_feasible"
                 or truthy(feasibility.get("excluded_from_recommendation") or row.get("excluded_from_recommendation"))
+                or (requires_spatial_state and not spatial_profile.get("available"))
+                or (bool(spatial_profile.get("available")) and not spatial_recheck.get("passed", False))
             )
             requires_review = truthy(feasibility.get("requires_legal_review") or row.get("requires_legal_review"))
             hard_blocks = [
@@ -6444,6 +6472,11 @@ class TerritoryWorldModelService:
                 if str(item.get("severity") or "").lower() in {"critical", "blocking"}
             ]
             hard_blocks = [item for item in hard_blocks if item]
+            if requires_spatial_state and not spatial_profile.get("available"):
+                hard_blocks.append("spatial_state_unavailable")
+            if spatial_profile.get("available") and not spatial_recheck.get("passed", False):
+                hard_blocks.extend(spatial_recheck.get("failed_constraints") or ["spatial_hard_constraint_recheck"])
+            hard_blocks = list(dict.fromkeys(hard_blocks))
             if blocked and not hard_blocks:
                 hard_blocks = ["hard_constraint_violation"]
             weighted_score = self._optimization_weighted_score(scenario_id, pareto, metrics)
@@ -6455,6 +6488,15 @@ class TerritoryWorldModelService:
                     "candidate_id": scenario_id,
                     "action_type": self._optimization_action_type(row),
                     "target_role": str(payload.get("target_role") or "scenario"),
+                    "target_objects": list(spatial_profile.get("action_ids") or []),
+                    "spatial_scope": {
+                        "level": "candidate_scenario",
+                        "crs": spatial_profile.get("crs"),
+                        "bbox": spatial_profile.get("final_bbox"),
+                        "geometry_sha256": spatial_profile.get("final_geometry_sha256"),
+                        "state_sha256": spatial_profile.get("final_state_sha256"),
+                        "materialized_from_action_geometries": bool(spatial_profile.get("available")),
+                    },
                     "magnitude": round(max(0.0, safe_float(row.get("project_count"), 0.0) or 0.0), 4),
                     "scenario": scenario_id,
                     "description": str(row.get("description_zh") or row.get("scenario_name_zh") or scenario_id),
@@ -6478,12 +6520,17 @@ class TerritoryWorldModelService:
                         "hard_constraint_violation_m2": safe_float(feasibility.get("hard_constraint_violation_m2"), 0.0),
                         "pbf_overlap_m2": safe_float(feasibility.get("pbf_overlap_m2"), 0.0),
                         "eco_overlap_m2": safe_float(feasibility.get("eco_overlap_m2"), 0.0),
+                        "transition_source": "optimization_bundle_spatial_state",
+                        "spatial_trajectory": list(spatial_profile.get("periods") or []),
+                        "spatial_trajectory_role": "renderer_admissibility_audit_only_not_simulator_input",
+                        "spatial_constraint_recheck": spatial_recheck,
                     },
                     "provenance": {
                         "optimization_dir": str(root),
                         "synthetic": truthy(row.get("synthetic")),
                         "not_for_production": truthy(row.get("not_for_production")),
                         "source": "twm_optimization_fixture",
+                        "spatial_state_compiler": spatial_profile.get("provenance") or {},
                     },
                 }
             )
@@ -6498,6 +6545,15 @@ class TerritoryWorldModelService:
                 "algorithm_family": str(payload.get("algorithm_family") or pareto.get("method") or "hard_constraint_filter_then_pareto_summary"),
                 "validation": {
                     "hard_constraint_recheck": "pass" if actions and legal_count + blocked_count == len(actions) else "review",
+                    "spatial_state_compilation": "pass" if spatial_profiles and all(
+                        profile.get("available") or profile.get("no_action_baseline")
+                        for profile in spatial_profiles.values()
+                    ) else "review",
+                    "per_period_hard_constraint_recheck": "pass" if spatial_profiles and all(
+                        (profile.get("final_constraint_recheck") or {}).get("passed", False)
+                        or not profile.get("available")
+                        for profile in spatial_profiles.values()
+                    ) else "review",
                     "spatial_holdout": payload.get("spatial_holdout_validation") or "not_provided",
                     "temporal_holdout": payload.get("temporal_holdout_validation") or "not_provided",
                     "planning_lift": payload.get("planning_lift_benchmark") or "not_provided",
@@ -6518,7 +6574,35 @@ class TerritoryWorldModelService:
                 "hard_constraint_policy": pareto.get("hard_constraint_policy_zh"),
                 "claim_boundary": "optimization_fixture_only_not_for_production",
             },
+            "spatial_state_compiler": {
+                "schema": "territory_world_model.optimization_spatial_state_compiler.v1",
+                "horizon": horizon,
+                "hard_constraint_tolerance_m2": float(safe_float(pareto.get("hard_constraint_tolerance_m2"), 1.0) or 1.0),
+                "scenario_count": len(spatial_profiles),
+                "compiled_scenario_count": sum(1 for profile in spatial_profiles.values() if profile.get("available")),
+                "transition_evaluation_count": sum(
+                    int(profile.get("transition_evaluation_count") or 0)
+                    for profile in spatial_profiles.values()
+                ),
+                "source_files": ["action_space.geojson", "scenario_project_membership.csv", "constraint_masks.geojson"],
+                "fail_closed": True,
+            },
         }
+
+    def _optimization_spatial_profiles(
+        self,
+        root: Path,
+        *,
+        scenario_specs: dict[str, dict[str, Any]],
+        horizon: int,
+        hard_constraint_tolerance_m2: float,
+    ) -> dict[str, dict[str, Any]]:
+        return compile_optimization_spatial_profiles(
+            root,
+            scenario_specs=scenario_specs,
+            horizon=horizon,
+            hard_constraint_tolerance_m2=hard_constraint_tolerance_m2,
+        )
 
     def farmland_layout_beam_plan_from_optimization_bundle(
         self,
@@ -6531,19 +6615,18 @@ class TerritoryWorldModelService:
         if state is None or self.repository.get_state_bundle(state_version_id) is None:
             raise LookupError(f"state not found: {state_version_id}")
         adapter = self.farmland_layout_candidate_actions_from_optimization_bundle(optimization_dir, payload)
-        candidate_actions = [dict(item) for item in adapter.get("candidate_actions") or [] if isinstance(item, dict)]
-        beam_payload = dict(payload)
-        beam_payload["scenario"] = str(payload.get("scenario") or "farmland_layout_optimization_bundle")
-        beam_payload["candidate_actions"] = candidate_actions
-        beam_payload["optimizer_evidence"] = adapter.get("optimizer_evidence") or {}
-        if "dynamics_candidate_report" not in beam_payload and truthy(payload.get("use_optimizer_metric_projection", True)):
-            beam_payload["dynamics_candidate_report"] = self._optimizer_metric_projection_report_from_candidate_actions(
-                candidate_actions,
-                adapter,
-                payload,
-            )
-            beam_payload["optimizer_metric_projection_applied"] = True
-        beam_report = self.beam_plan(state_version_id, beam_payload)
+        multi_horizon_comparison = self._farmland_layout_multi_horizon_comparison(
+            state_version_id,
+            adapter,
+            payload,
+        )
+        beam_report = self._spatial_trace_plan_report(
+            state_version_id=state_version_id,
+            project_id=state.project_id,
+            adapter=adapter,
+            comparison=multi_horizon_comparison,
+            payload=payload,
+        )
         selection_audit = self._farmland_layout_bundle_beam_selection_audit(adapter, beam_report)
         not_for_production = bool(
             ((adapter.get("optimizer_evidence") or {}).get("pareto_summary") or {}).get("not_for_production", True)
@@ -6559,7 +6642,7 @@ class TerritoryWorldModelService:
             "state_version_id": state_version_id,
             "project_id": state.project_id,
             "status": status,
-            "scenario": beam_payload["scenario"],
+            "scenario": str(payload.get("scenario") or "farmland_layout_optimization_bundle"),
             "optimization_bundle": {
                 "schema": adapter.get("schema"),
                 "status": adapter.get("status"),
@@ -6568,20 +6651,482 @@ class TerritoryWorldModelService:
                 "optimizer_evidence": adapter.get("optimizer_evidence") or {},
             },
             "beam_plan": beam_report,
+            "multi_horizon_comparison": multi_horizon_comparison,
             "selection_audit": selection_audit,
             "claim_boundary": {
                 "production_claim": "not_supported_from_fixture_bundle_without_real_observed_history_and_holdout_validation",
                 "planner_role": "consumer_and_auditor_of_external_farmland_layout_candidates",
                 "hard_constraint_rule": "hard-blocked candidates remain visible for audit but cannot be selected as recommended plans",
-                "optimizer_metric_projection": (
-                    "used_as_candidate_forecast_input_only"
-                    if beam_payload.get("optimizer_metric_projection_applied")
-                    else "not_applied"
-                ),
+                "selection_basis": "all_legal_candidates_multi_horizon_recursive_rollout",
+                "optimizer_metric_projection": "retained_for_input_audit_only_not_used_for_selection",
+                "planner_contract": "planner_consumes_spatial_simulator_trace_only",
             },
             "recommendations": self._farmland_layout_bundle_beam_recommendations(adapter, beam_report, selection_audit),
             "created_at": now_utc_iso(),
         }
+
+    def _spatial_trace_plan_report(
+        self,
+        *,
+        state_version_id: str,
+        project_id: str,
+        adapter: dict[str, Any],
+        comparison: dict[str, Any],
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Build the planner result exclusively from simulator traces."""
+
+        trajectories = {
+            str(item.get("candidate_id") or ""): dict(item)
+            for item in comparison.get("candidate_trajectories") or []
+            if isinstance(item, dict) and str(item.get("candidate_id") or "")
+        }
+        overrides = payload.get("candidate_metric_overrides")
+        overrides = dict(overrides) if isinstance(overrides, dict) else {}
+        candidates = []
+        for action in adapter.get("candidate_actions") or []:
+            if not isinstance(action, dict):
+                continue
+            candidate_id = str(action.get("candidate_id") or "")
+            execution_mask = dict(action.get("execution_mask") or {})
+            trajectory = trajectories.get(candidate_id)
+            action_override = overrides.get(candidate_id)
+            action_override = dict(action_override) if isinstance(action_override, dict) else {}
+            input_parameters = dict(action.get("parameters") or {})
+            input_metrics = {
+                "planning_utility_delta": float(
+                    safe_float(
+                        action_override.get("planning_utility_delta", input_parameters.get("planning_utility_delta")),
+                        0.0,
+                    )
+                    or 0.0
+                ),
+                "constraint_violation_probability": float(
+                    safe_float(
+                        action_override.get(
+                            "constraint_violation_probability",
+                            input_parameters.get("constraint_violation_probability"),
+                        ),
+                        0.0,
+                    )
+                    or 0.0
+                ),
+                "confidence": float(
+                    safe_float(action_override.get("confidence", execution_mask.get("confidence")), 0.0) or 0.0
+                ),
+                "selection_role": "input_audit_only",
+            }
+            trajectory_complete = bool(
+                trajectory
+                and trajectory.get("trace_completed")
+                and trajectory.get("hard_constraint_passed_all_periods")
+                and len(trajectory.get("periods") or []) == int(comparison.get("horizon") or 0)
+            )
+            if trajectory_complete:
+                utility = float(safe_float(trajectory.get("discounted_cumulative_utility"), 0.0) or 0.0)
+                risk = float(safe_float(trajectory.get("max_constraint_risk"), 0.0) or 0.0)
+                confidence = float(safe_float(trajectory.get("minimum_confidence"), 0.0) or 0.0)
+                rank_score = float(safe_float(trajectory.get("rank_score"), 0.0) or 0.0)
+                final_period = (trajectory.get("periods") or [{}])[-1]
+                trace_gate = dict((trajectory.get("simulator_trace") or {}).get("evidence_gate") or {})
+                evidence_gate = {
+                    **trace_gate,
+                    "action_mask": execution_mask,
+                    "selection_source": "spatial_simulator_trace",
+                }
+                forecast = {
+                    "planning_utility_delta": round(utility, 6),
+                    "constraint_violation_probability": round(risk, 6),
+                    "uncertainty": {"confidence": round(confidence, 6)},
+                    "evidence_gate": evidence_gate,
+                    "future_latent_state": {
+                        "projected": {
+                            "spatial_state": final_period,
+                            "source": "spatial_simulator_trace",
+                        }
+                    },
+                }
+                selection_status = "eligible"
+            else:
+                trace = dict((trajectory or {}).get("simulator_trace") or {})
+                utility = float(safe_float((trajectory or {}).get("discounted_cumulative_utility"), 0.0) or 0.0)
+                risk = float(safe_float((trajectory or {}).get("max_constraint_risk"), 0.0) or 0.0)
+                confidence = float(safe_float((trajectory or {}).get("minimum_confidence"), 0.0) or 0.0)
+                rank_score = self._beam_rank_score(
+                    utility=utility,
+                    risk=risk,
+                    confidence=confidence,
+                    blocked=True,
+                    evidence_status="blocked",
+                    ranking_policy=self._beam_ranking_policy(payload),
+                )
+                evidence_gate = {
+                    "passed": False,
+                    "status": "blocked",
+                    "missing": list(
+                        (trace.get("evidence_gate") or {}).get("missing")
+                        or execution_mask.get("hard_blocks")
+                        or ["complete_legal_feasible_spatial_trace"]
+                    ),
+                    "action_mask": execution_mask,
+                    "selection_source": "spatial_simulator_fail_closed" if trajectory else "candidate_admissibility_gate",
+                }
+                forecast = {
+                    "planning_utility_delta": round(input_metrics["planning_utility_delta"], 6) if not trajectory else round(utility, 6),
+                    "constraint_violation_probability": round(input_metrics["constraint_violation_probability"], 6) if not trajectory else round(risk, 6),
+                    "uncertainty": {
+                        "confidence": round(input_metrics["confidence"], 6) if not trajectory else round(confidence, 6)
+                    },
+                    "evidence_gate": evidence_gate,
+                }
+                selection_status = "hard_blocked"
+            candidates.append(
+                {
+                    "candidate_id": candidate_id,
+                    "action": dict(action),
+                    "forecast": forecast,
+                    "utility": round(utility, 6),
+                    "risk": round(risk, 6),
+                    "confidence": round(confidence, 6),
+                    "rank_score": round(rank_score, 6),
+                    "input_metric_audit": input_metrics,
+                    "multi_horizon": trajectory or {},
+                    "simulator_trace": (trajectory or {}).get("simulator_trace") or {},
+                    "evidence_gate": evidence_gate,
+                    "claim_status": "review_required",
+                    "selection_status": selection_status,
+                }
+            )
+
+        candidates.sort(
+            key=lambda item: (
+                item.get("selection_status") != "hard_blocked",
+                float(item.get("rank_score") or 0.0),
+            ),
+            reverse=True,
+        )
+        ranking = []
+        for rank, candidate in enumerate(candidates, start=1):
+            candidate["rank"] = rank
+            ranking.append(
+                {
+                    "rank": rank,
+                    "candidate_id": candidate.get("candidate_id"),
+                    "action_type": (candidate.get("action") or {}).get("action_type"),
+                    "rank_score": candidate.get("rank_score"),
+                    "utility": candidate.get("utility"),
+                    "risk": candidate.get("risk"),
+                    "confidence": candidate.get("confidence"),
+                    "selection_status": candidate.get("selection_status"),
+                    "multi_horizon_simulated": bool(candidate.get("simulator_trace")),
+                }
+            )
+        selected_id = str(comparison.get("selected_candidate_id") or "")
+        selected = next(
+            (candidate for candidate in candidates if str(candidate.get("candidate_id") or "") == selected_id),
+            {},
+        )
+        ranking_policy = self._beam_ranking_policy(payload) | {
+            "selection_basis": "spatial_simulator_trace_only",
+            "horizon": comparison.get("horizon"),
+            "input_metric_projection_used_for_selection": False,
+        }
+        return {
+            "schema": "territory_world_model.beam_plan_report.v1",
+            "state_version_id": state_version_id,
+            "project_id": project_id,
+            "scenario": str(payload.get("scenario") or "farmland_layout_optimization_bundle"),
+            "status": "review" if selected else "blocked",
+            "ranking_policy": ranking_policy,
+            "candidates": candidates,
+            "ranking": ranking,
+            "selected": selected,
+            "evidence_gate": {
+                "passed": False,
+                "status": "review" if selected else "blocked",
+                "missing": ["real_observed_transition_holdout", "production_policy_effect_validation"],
+                "selection_trace_available": bool(selected and selected.get("simulator_trace")),
+            },
+            "recommendations": [
+                "retain the selected result as a controlled engineering comparison until real holdout evidence is available",
+                "require human legal review before any operational GIS deployment",
+            ],
+            "multi_horizon_comparison_schema": comparison.get("schema"),
+            "created_at": now_utc_iso(),
+        }
+
+    def _farmland_layout_multi_horizon_comparison(
+        self,
+        state_version_id: str,
+        adapter: dict[str, Any],
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        horizon = max(1, min(12, int(payload.get("horizon") or 3)))
+        gamma = max(0.0, min(1.0, float(safe_float(payload.get("discount_factor"), 0.95) or 0.95)))
+        ranking_policy = self._beam_ranking_policy(payload)
+        legal_actions = [
+            dict(action)
+            for action in adapter.get("candidate_actions") or []
+            if isinstance(action, dict) and bool((action.get("execution_mask") or {}).get("allowed"))
+        ]
+        spatial_runtime = load_optimization_spatial_runtime(Path(str(adapter.get("optimization_dir") or "")))
+        hard_constraint_tolerance_m2 = float(
+            safe_float(
+                (adapter.get("spatial_state_compiler") or {}).get("hard_constraint_tolerance_m2"),
+                1.0,
+            )
+            or 1.0
+        )
+        trajectories: list[dict[str, Any]] = []
+        for action in legal_actions:
+            candidate_id = str(action.get("candidate_id") or "")
+            parameters = dict(action.get("parameters") or {})
+            scenario_type = str(parameters.get("scenario_type") or candidate_id).lower()
+            trace = simulate_optimization_spatial_candidate(
+                runtime=spatial_runtime,
+                candidate_id=candidate_id,
+                scenario_name=str(action.get("description") or candidate_id),
+                initial_state_ref=state_version_id,
+                horizon=horizon,
+                hard_constraint_tolerance_m2=hard_constraint_tolerance_m2,
+                evidence_coverage=float(safe_float(payload.get("evidence_coverage"), 0.0) or 0.0),
+                synthetic=truthy((action.get("provenance") or {}).get("synthetic")),
+                not_for_production=truthy((action.get("provenance") or {}).get("not_for_production")),
+                no_action_baseline="baseline" in scenario_type,
+            )
+            intervention_steps = [
+                dict(step)
+                for step in trace.get("transitions") or []
+                if isinstance(step, dict)
+            ]
+            period_metrics = []
+            discounted_utility = 0.0
+            max_risk = 0.0
+            min_confidence = 1.0
+            trace_completed = str(trace.get("status") or "") == "completed"
+            hard_constraint_passed = trace_completed and len(intervention_steps) == horizon
+            evidence_statuses: list[str] = []
+            writeback_count = 0
+            for idx, step in enumerate(intervention_steps):
+                metrics = dict(step.get("outcome") or {})
+                spatial_state = dict(step.get("next_state") or {})
+                writeback = dict(step.get("state_writeback") or {})
+                recheck = dict(spatial_state.get("constraint_recheck") or {})
+                utility = float(safe_float(metrics.get("spatial_objective_delta"), 0.0) or 0.0)
+                risk = float(safe_float(metrics.get("constraint_violation_probability"), 0.0) or 0.0)
+                confidence = float(safe_float(metrics.get("confidence"), 0.0) or 0.0)
+                evidence_status = str((trace.get("evidence_gate") or {}).get("status") or "review")
+                discounted_utility += (gamma ** idx) * utility
+                max_risk = max(max_risk, risk)
+                min_confidence = min(min_confidence, confidence)
+                hard_constraint_passed = hard_constraint_passed and bool(recheck.get("passed", False))
+                hard_constraint_passed = hard_constraint_passed and bool(writeback.get("parent_link_verified"))
+                if idx:
+                    hard_constraint_passed = hard_constraint_passed and (
+                        writeback.get("from_state_sha256")
+                        == period_metrics[-1].get("state_sha256")
+                    )
+                evidence_statuses.append(evidence_status)
+                writeback_count += int(bool(writeback.get("applied")))
+                period_metrics.append(
+                    {
+                        "period": idx + 1,
+                        "utility_delta": round(utility, 6),
+                        "constraint_risk": round(risk, 6),
+                        "confidence": round(confidence, 6),
+                        "evidence_gate_status": evidence_status,
+                        "state_sha256": spatial_state.get("state_sha256"),
+                        "geometry_sha256": spatial_state.get("geometry_sha256"),
+                        "area_m2": spatial_state.get("area_m2"),
+                        "action_count": spatial_state.get("action_count"),
+                        "completion_ratio": spatial_state.get("completion_ratio"),
+                        "outcome_metrics": spatial_state.get("outcome_metrics") or {},
+                        "relation_counts_by_type": spatial_state.get("relation_counts_by_type") or {},
+                        "constraint_recheck": recheck,
+                        "state_writeback": writeback,
+                        "transition_sha256": step.get("transition_sha256"),
+                    }
+                )
+            if min_confidence == 1.0 and not intervention_steps:
+                min_confidence = 0.0
+            rank_score = self._beam_rank_score(
+                utility=discounted_utility,
+                risk=max_risk,
+                confidence=min_confidence,
+                blocked=not hard_constraint_passed,
+                evidence_status="pass" if evidence_statuses and all(status == "pass" for status in evidence_statuses) else "review",
+                ranking_policy=ranking_policy,
+            )
+            trajectories.append(
+                {
+                    "candidate_id": candidate_id,
+                    "scenario_name": action.get("description") or candidate_id,
+                    "horizon": horizon,
+                    "periods": period_metrics,
+                    "discounted_cumulative_utility": round(discounted_utility, 6),
+                    "max_constraint_risk": round(max_risk, 6),
+                    "minimum_confidence": round(min_confidence, 6),
+                    "hard_constraint_passed_all_periods": hard_constraint_passed,
+                    "evidence_gate_status": "pass" if evidence_statuses and all(status == "pass" for status in evidence_statuses) else "review",
+                    "state_writeback_count": writeback_count,
+                    "trace_completed": trace_completed,
+                    "simulation_errors": list(trace.get("errors") or []),
+                    "rank_score": rank_score,
+                    "simulator_trace": trace,
+                }
+            )
+        trajectories.sort(
+            key=lambda item: (
+                bool(item.get("hard_constraint_passed_all_periods")),
+                float(item.get("rank_score") or 0.0),
+                float(item.get("minimum_confidence") or 0.0),
+            ),
+            reverse=True,
+        )
+        for rank, trajectory in enumerate(trajectories, start=1):
+            trajectory["rank"] = rank
+        selected = next((item for item in trajectories if item.get("hard_constraint_passed_all_periods")), {})
+        transition_hashes = {
+            str(period.get("transition_sha256") or "")
+            for item in trajectories
+            for period in item.get("periods") or []
+            if str(period.get("transition_sha256") or "")
+        }
+        simulator_call_count = sum(len(item.get("periods") or []) for item in trajectories)
+        completed_trajectories = [
+            item
+            for item in trajectories
+            if item.get("trace_completed") and len(item.get("periods") or []) == horizon
+        ]
+        state_materialization_count = int(
+            (adapter.get("spatial_state_compiler") or {}).get("transition_evaluation_count") or 0
+        )
+        return {
+            "schema": "territory_world_model.multi_candidate_multi_horizon_comparison.v1",
+            "status": "pass" if legal_actions and len(completed_trajectories) == len(legal_actions) else "blocked",
+            "horizon": horizon,
+            "discount_factor": gamma,
+            "legal_candidate_count": len(legal_actions),
+            "simulator_attempted_candidate_count": len(trajectories),
+            "simulated_candidate_count": len(completed_trajectories),
+            "candidate_trajectories": trajectories,
+            "ranking": [
+                {
+                    "rank": item.get("rank"),
+                    "candidate_id": item.get("candidate_id"),
+                    "rank_score": item.get("rank_score"),
+                    "discounted_cumulative_utility": item.get("discounted_cumulative_utility"),
+                    "max_constraint_risk": item.get("max_constraint_risk"),
+                    "minimum_confidence": item.get("minimum_confidence"),
+                    "hard_constraint_passed_all_periods": item.get("hard_constraint_passed_all_periods"),
+                }
+                for item in trajectories
+            ],
+            "selected_candidate_id": selected.get("candidate_id"),
+            "execution_accounting": {
+                "simulator_call_count": simulator_call_count,
+                "unique_state_transition_count": len(transition_hashes),
+                "candidate_admissibility_evaluation_count": len(adapter.get("candidate_actions") or []),
+                "renderer_spatial_state_evaluation_count": state_materialization_count,
+                "legal_candidate_transition_count": simulator_call_count,
+                "state_writeback_count": sum(int(item.get("state_writeback_count") or 0) for item in trajectories),
+                "hard_constraint_recomputation_count": sum(
+                    int(bool((period.get("constraint_recheck") or {}).get("method")))
+                    for item in trajectories
+                    for period in item.get("periods") or []
+                ),
+                "formula": "legal_candidates * horizon; each legal candidate is one independent state-action trajectory",
+            },
+            "strict_execution": {
+                "all_legal_candidates_simulated": bool(legal_actions) and len(completed_trajectories) == len(legal_actions),
+                "all_periods_state_written_back": all(
+                    item.get("trace_completed") and int(item.get("state_writeback_count") or 0) == horizon
+                    for item in trajectories
+                ) if legal_actions and len(trajectories) == len(legal_actions) else False,
+                "hard_constraints_recomputed_each_period": all(
+                    item.get("trace_completed")
+                    and len(item.get("periods") or []) == horizon
+                    and all(bool((period.get("constraint_recheck") or {}).get("method")) for period in item.get("periods") or [])
+                    for item in trajectories
+                ) if legal_actions and len(trajectories) == len(legal_actions) else False,
+                "selection_uses_multi_horizon_rank": bool(selected),
+                "planner_consumes_simulator_trace_only": all(
+                    bool(item.get("simulator_trace"))
+                    and not bool(((item.get("simulator_trace") or {}).get("backend") or {}).get("precomputed_period_states_consumed"))
+                    for item in trajectories
+                ) if legal_actions and len(trajectories) == len(legal_actions) else False,
+            },
+            "transition_sources": [
+                "optimization_bundle_action_membership",
+                "GIS_geometry_intersection_and_topology",
+                "action_conditioned_recursive_state_writeback",
+                SPATIAL_SIMULATOR_BACKEND,
+            ],
+            "claim_boundary": {
+                "supported": "engineering_fixture_multi_horizon_GIS_rule_mechanism_execution",
+                "not_supported": "learned_real_world_dynamics_or_production_effect_validation",
+            },
+        }
+
+    def _apply_multi_horizon_selection(
+        self,
+        beam_report: dict[str, Any],
+        comparison: dict[str, Any],
+    ) -> dict[str, Any]:
+        report = dict(beam_report)
+        trajectories = {
+            str(item.get("candidate_id") or ""): dict(item)
+            for item in comparison.get("candidate_trajectories") or []
+            if isinstance(item, dict)
+        }
+        candidates = [dict(item) for item in report.get("candidates") or [] if isinstance(item, dict)]
+        for candidate in candidates:
+            trajectory = trajectories.get(str(candidate.get("candidate_id") or ""))
+            if not trajectory:
+                continue
+            candidate["multi_horizon"] = {
+                key: value
+                for key, value in trajectory.items()
+                if key != "rollout_trace"
+            }
+            candidate["rank_score"] = trajectory.get("rank_score")
+            candidate["utility"] = trajectory.get("discounted_cumulative_utility")
+            candidate["risk"] = trajectory.get("max_constraint_risk")
+            candidate["confidence"] = trajectory.get("minimum_confidence")
+        candidates.sort(
+            key=lambda item: (
+                str(item.get("candidate_id") or "") in trajectories,
+                float((trajectories.get(str(item.get("candidate_id") or "")) or {}).get("rank_score") or item.get("rank_score") or 0.0),
+            ),
+            reverse=True,
+        )
+        selected_id = str(comparison.get("selected_candidate_id") or "")
+        selected = next((item for item in candidates if str(item.get("candidate_id") or "") == selected_id), {})
+        ranking = []
+        for rank, item in enumerate(candidates, start=1):
+            item["rank"] = rank
+            ranking.append(
+                {
+                    "rank": rank,
+                    "candidate_id": item.get("candidate_id"),
+                    "action_type": (item.get("action") or {}).get("action_type"),
+                    "rank_score": item.get("rank_score"),
+                    "utility": item.get("utility"),
+                    "risk": item.get("risk"),
+                    "confidence": item.get("confidence"),
+                    "selection_status": item.get("selection_status"),
+                    "multi_horizon_simulated": str(item.get("candidate_id") or "") in trajectories,
+                }
+            )
+        report["candidates"] = candidates
+        report["ranking"] = ranking
+        report["selected"] = selected
+        report["ranking_policy"] = dict(report.get("ranking_policy") or {}) | {
+            "selection_basis": "multi_candidate_multi_horizon_recursive_rollout",
+            "horizon": comparison.get("horizon"),
+        }
+        report["multi_horizon_comparison_schema"] = comparison.get("schema")
+        return report
 
     def selected_plan_evaluation_bundle(self, state_version_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(payload or {})
@@ -14341,8 +14886,14 @@ class TerritoryWorldModelService:
                 "action_type": action_payload.get("action_type") or "inspect",
                 "target_role": action_payload.get("target_role") or "project",
                 "target_objects": list(action_payload.get("target_objects") or []),
+                "spatial_scope": dict(action_payload.get("spatial_scope") or {}),
                 "magnitude": action_payload.get("magnitude") or 1.0,
                 "scenario": action_payload.get("scenario") or "beam_plan",
+                "description": action_payload.get("description") or "",
+                "legal_intent": action_payload.get("legal_intent") or "",
+                "execution_mask": dict(action_payload.get("execution_mask") or {}),
+                "parameters": dict(action_payload.get("parameters") or {}),
+                "treatment": action_payload.get("treatment") or "",
             },
             "forecast": forecast,
             "utility": round(utility, 6),

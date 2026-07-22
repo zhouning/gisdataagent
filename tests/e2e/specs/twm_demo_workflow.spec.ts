@@ -134,12 +134,19 @@ test.describe('TWM prototype demo workflow', () => {
     await page.locator('.data-panel-tab', { hasText: 'TWM' }).click();
 
     await expect(page.locator('.twm-title')).toContainText('国土空间世界模型', { timeout: 30000 });
-    await expect(page.getByRole('tab', { name: '总览地图' })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('tab', { name: '汇报演示' })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('[data-testid="twm-executive-demo"]')).toContainText('受控演示就绪，生产效果尚未验证');
+    await expect(page.locator('[data-testid="twm-gwm-definition"]')).toContainText('地理空间世界模型的正式定义');
+    await expect(page.locator('[data-testid="twm-simulator-mechanism"]')).toContainText('组合式状态转移与写回协议');
     await expect(page.getByRole('tab', { name: '数据依据' })).toBeVisible();
     await expect(page.getByRole('tab', { name: '操作推演' })).toBeVisible();
     await expect(page.getByRole('tab', { name: '状态图谱' })).toBeVisible();
     await expect(page.getByRole('tab', { name: '技术载荷' })).toBeVisible();
+    await page.getByRole('button', { name: '退出全宽演示' }).click();
+    await page.getByRole('tab', { name: '总览地图' }).click();
     await expect(page.locator('.twm-map-story')).toContainText('地图联动');
+    await expect(page.locator('.twm-business-section')).toContainText('耕地保护与占补平衡审查');
+    await expect(page.locator('.twm-business-section')).toContainText('拟建或调整项目是否触碰永久基本农田、生态红线');
     await expect(page.locator('.twm-claim-matrix-panel')).toHaveCount(0);
     await page.evaluate(() => {
       const current = (window as any).__handleMapUpdate;
@@ -279,6 +286,10 @@ test.describe('TWM prototype demo workflow', () => {
 
     await page.getByRole('tab', { name: '操作推演' }).click();
     await page.getByRole('button', { name: '璧山多行政单元' }).click();
+    await expect(page.locator('label').filter({ hasText: 'MMFE / TWM 数据包' }).locator('input'))
+      .toHaveValue('data_agent/test_data/twm_bishan_multi_admin_eval');
+    await expect(page.locator('label').filter({ hasText: '依据完整度' }).locator('input')).toHaveValue('0.78');
+    await expect(page.locator('label').filter({ hasText: '验证期数' }).locator('input')).toHaveValue('3');
     const projectName = `TWM 自然资源部演示 ${Date.now()}`;
     await page.locator('label').filter({ hasText: '项目名' }).locator('input').fill(projectName);
 
@@ -290,6 +301,7 @@ test.describe('TWM prototype demo workflow', () => {
     expectJsonResponse(createResponse, '/api/twm/projects');
     const projectPayload = await createResponse.json();
     expect(projectPayload.id).toBeTruthy();
+    expect(projectPayload.business_scenario).toBe('farmland_protection_review');
     await expect(page.locator('label').filter({ hasText: '选择项目' }).locator('select')).toContainText(projectName, { timeout: 30000 });
     await expectNoTwmError(page);
 
@@ -415,7 +427,9 @@ test.describe('TWM prototype demo workflow', () => {
     expectJsonResponse(candidatesResponse, '/farmland-layout-candidates');
     const candidatesPayload = await responseJsonOrNull(candidatesResponse);
     if (candidatesPayload) {
-      expect(candidatesPayload.summary?.candidate_count).toBeGreaterThan(0);
+      expect(candidatesPayload.summary?.candidate_count).toBe(7);
+      expect(candidatesPayload.summary?.legal_feasible_count).toBe(3);
+      expect(candidatesPayload.summary?.blocked_count).toBe(4);
     }
     await expectNoTwmError(page);
 
@@ -434,8 +448,34 @@ test.describe('TWM prototype demo workflow', () => {
         || beamPayload.selection_audit?.selected_candidate_id
         || beamPayload.top_actions?.[0]?.candidate_id;
       expect(selectedCandidate).toBeTruthy();
+      expect(beamPayload.selection_audit?.selected_from_legal_feasible_space).toBe(true);
+      expect(beamPayload.selection_audit?.selected_hard_blocked).toBe(false);
+      expect(beamPayload.selection_audit?.eligible_candidate_count).toBe(3);
+      expect(beamPayload.multi_horizon_comparison?.execution_accounting?.simulator_call_count).toBe(9);
+      expect(beamPayload.multi_horizon_comparison?.execution_accounting?.state_writeback_count).toBe(9);
+      expect(beamPayload.multi_horizon_comparison?.strict_execution).toEqual({
+        all_legal_candidates_simulated: true,
+        all_periods_state_written_back: true,
+        hard_constraints_recomputed_each_period: true,
+        selection_uses_multi_horizon_rank: true,
+        planner_consumes_simulator_trace_only: true,
+      });
+      for (const trajectory of beamPayload.multi_horizon_comparison?.candidate_trajectories || []) {
+        expect(trajectory.simulator_trace?.backend?.execution_mode).toBe('online_recursive_transition_loop');
+        expect(trajectory.simulator_trace?.backend?.precomputed_period_states_consumed).toBe(false);
+      }
     }
+    const multiHorizonPanel = page.locator('[data-testid="twm-multi-horizon-comparison"]');
+    await expect(multiHorizonPanel).toContainText('3 个方案 × 3 期', { timeout: 30000 });
+    await expect(multiHorizonPanel).toContainText('9 次状态转移计算');
+    await expect(multiHorizonPanel).toContainText('9 次硬约束重算');
+    await expect(multiHorizonPanel).toContainText('Simulator 在线递归执行');
+    await expect(multiHorizonPanel).toContainText('不读取预计算时期状态做选优');
     await expect(page.locator('.twm-results-grid')).toContainText('推荐方案', { timeout: 30000 });
+    const candidateSummaryPanel = page.locator('.twm-results-grid .twm-section', { hasText: '候选方案' });
+    await expect(candidateSummaryPanel).toContainText('候选方案7');
+    await expect(candidateSummaryPanel).toContainText('合法可行3');
+    await expect(candidateSummaryPanel).toContainText('阻断方案4');
     await page.getByRole('tab', { name: '总览地图' }).click();
     await expect(page.locator('.twm-map-story')).toContainText('已联动：推荐方案');
     expect(bboxIntersects(await captureLastMapUpdateBbox(page), BISHAN_MULTI_ADMIN_BBOX)).toBe(true);

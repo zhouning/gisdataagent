@@ -1,5 +1,7 @@
 import asyncio
+import csv
 import json
+import shutil
 from contextlib import contextmanager
 from copy import deepcopy
 from pathlib import Path
@@ -29,6 +31,7 @@ from data_agent.territory_world_model.service import _stable_sha256
 
 MMFE_DIR = Path("data_agent/test_data/twm_bishan_demo/mmfe_semantic_fusion")
 OPTIMIZATION_DIR = Path("data_agent/test_data/twm_bishan_demo/optimization")
+MULTI_ADMIN_OPTIMIZATION_DIR = Path("data_agent/test_data/twm_bishan_multi_admin_eval/optimization")
 
 
 def _build_service():
@@ -1285,8 +1288,176 @@ def test_farmland_layout_optimization_bundle_beam_plan_blocks_high_score_infeasi
     }["SCN-WM-V21-REFERENCE"]
     assert blocked["selection_status"] == "hard_blocked"
     assert blocked["forecast"]["planning_utility_delta"] == 2.0
-    assert report["claim_boundary"]["optimizer_metric_projection"] == "used_as_candidate_forecast_input_only"
+    assert report["claim_boundary"]["optimizer_metric_projection"] == "retained_for_input_audit_only_not_used_for_selection"
+    assert report["claim_boundary"]["planner_contract"] == "planner_consumes_spatial_simulator_trace_only"
     assert report["claim_boundary"]["production_claim"] == "not_supported_from_fixture_bundle_without_real_observed_history_and_holdout_validation"
+
+
+def test_farmland_layout_multi_admin_strict_spatial_world_model_rollout():
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+    state_id = state["state_version"]["id"]
+
+    report = svc.farmland_layout_beam_plan_from_optimization_bundle(
+        state_id,
+        MULTI_ADMIN_OPTIMIZATION_DIR,
+        {
+            "scenario": "strict_spatial_world_model_rollout",
+            "horizon": 3,
+            "evidence_coverage": 0.82,
+            "candidate_metric_overrides": {
+                "SCN-WM-V21-REFERENCE": {
+                    "planning_utility_delta": 9.0,
+                    "constraint_violation_probability": 0.0,
+                    "confidence": 1.0,
+                }
+            },
+        },
+    )
+
+    comparison = report["multi_horizon_comparison"]
+    accounting = comparison["execution_accounting"]
+    strict = comparison["strict_execution"]
+    assert comparison["legal_candidate_count"] == 3
+    assert comparison["simulated_candidate_count"] == 3
+    assert accounting["simulator_call_count"] == 9
+    assert comparison["simulator_attempted_candidate_count"] == 3
+    assert accounting["legal_candidate_transition_count"] == 9
+    assert accounting["state_writeback_count"] == 9
+    assert accounting["hard_constraint_recomputation_count"] == 9
+    assert strict == {
+        "all_legal_candidates_simulated": True,
+        "all_periods_state_written_back": True,
+        "hard_constraints_recomputed_each_period": True,
+        "selection_uses_multi_horizon_rank": True,
+        "planner_consumes_simulator_trace_only": True,
+    }
+
+    trajectories = {
+        item["candidate_id"]: item
+        for item in comparison["candidate_trajectories"]
+    }
+    assert set(trajectories) == {
+        "SCN-BASELINE-CURRENT",
+        "SCN-BALANCED",
+        "SCN-ECOLOGICAL-PRIORITY",
+    }
+    final_geometry_hashes = set()
+    for candidate_id, trajectory in trajectories.items():
+        assert len(trajectory["periods"]) == 3
+        trace = trajectory["simulator_trace"]
+        assert trace["schema"] == "territory_world_model.spatial_simulator_trace.v1"
+        assert trace["backend"]["action_conditioned"] is True
+        assert trace["backend"]["recursive_state_writeback"] is True
+        assert trace["backend"]["learned_dynamics"] is False
+        assert trace["backend"]["execution_mode"] == "online_recursive_transition_loop"
+        assert trace["backend"]["precomputed_period_states_consumed"] is False
+        assert trace["execution_contract"]["planner_consumption"] == "trace_only"
+        transitions = trace["transitions"]
+        assert len(transitions) == 3
+        for index, transition in enumerate(transitions):
+            assert transition["state_writeback"]["relations_recomputed"] is True
+            assert transition["state_writeback"]["hard_constraints_recomputed"] is True
+            assert transition["state_writeback"]["objectives_recomputed"] is True
+            assert transition["state_writeback"]["parent_link_verified"] is True
+            assert transition["next_state"]["parent_state_sha256"] == transition["input_state_sha256"]
+            assert transition["next_state"]["applied_action_delta_ids"] == transition["action"]["new_action_ids"]
+            if index:
+                assert transition["input_state_sha256"] == transitions[index - 1]["output_state_sha256"]
+        final_geometry_hashes.add(trajectory["periods"][-1]["geometry_sha256"])
+        if candidate_id != "SCN-BASELINE-CURRENT":
+            assert len({period["state_sha256"] for period in trajectory["periods"]}) == 3
+            assert trajectory["periods"][-1]["outcome_metrics"]["spatial_objective_score"] > 0
+    assert len(final_geometry_hashes) == 3
+    assert report["beam_plan"]["selected"]["candidate_id"] == comparison["selected_candidate_id"]
+    assert report["beam_plan"]["ranking_policy"]["selection_basis"] == "spatial_simulator_trace_only"
+    assert report["selection_audit"]["selected_hard_blocked"] is False
+    blocked = next(
+        item
+        for item in report["beam_plan"]["candidates"]
+        if item["candidate_id"] == "SCN-WM-V21-REFERENCE"
+    )
+    assert blocked["forecast"]["planning_utility_delta"] == 9.0
+    assert blocked["selection_status"] == "hard_blocked"
+
+
+def test_farmland_layout_spatial_simulator_fails_closed_when_action_space_is_missing(tmp_path):
+    optimization_dir = tmp_path / "optimization"
+    shutil.copytree(MULTI_ADMIN_OPTIMIZATION_DIR, optimization_dir)
+    (optimization_dir / "action_space.geojson").unlink()
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+
+    report = svc.farmland_layout_beam_plan_from_optimization_bundle(
+        state["state_version"]["id"],
+        optimization_dir,
+        {"horizon": 3, "evidence_coverage": 0.82},
+    )
+
+    comparison = report["multi_horizon_comparison"]
+    assert report["status"] == "blocked"
+    assert comparison["status"] == "blocked"
+    assert comparison["simulator_attempted_candidate_count"] == 1
+    assert comparison["simulated_candidate_count"] == 0
+    assert comparison["selected_candidate_id"] is None
+    assert comparison["strict_execution"]["all_legal_candidates_simulated"] is False
+    assert report["beam_plan"]["selected"] == {}
+    assert report["selection_audit"]["eligible_candidate_count"] == 0
+    baseline = next(
+        item
+        for item in report["beam_plan"]["candidates"]
+        if item["candidate_id"] == "SCN-BASELINE-CURRENT"
+    )
+    assert baseline["selection_status"] == "hard_blocked"
+    assert baseline["evidence_gate"]["selection_source"] == "spatial_simulator_fail_closed"
+    assert "missing_spatial_source" in baseline["evidence_gate"]["missing"]
+
+
+def test_farmland_layout_candidate_with_missing_action_geometry_cannot_be_recommended(tmp_path):
+    optimization_dir = tmp_path / "optimization"
+    shutil.copytree(MULTI_ADMIN_OPTIMIZATION_DIR, optimization_dir)
+    with (optimization_dir / "scenario_project_membership.csv").open("r", encoding="utf-8-sig", newline="") as handle:
+        balanced_action_id = next(
+            row["action_id"]
+            for row in csv.DictReader(handle)
+            if row["scenario_id"] == "SCN-BALANCED"
+        )
+    action_path = optimization_dir / "action_space.geojson"
+    action_payload = json.loads(action_path.read_text(encoding="utf-8"))
+    action_payload["features"] = [
+        feature
+        for feature in action_payload["features"]
+        if str((feature.get("properties") or {}).get("action_id") or "") != balanced_action_id
+    ]
+    action_path.write_text(json.dumps(action_payload, ensure_ascii=False), encoding="utf-8")
+    svc = _build_service()
+    _project, state = _build_project_and_state(svc)
+
+    report = svc.farmland_layout_beam_plan_from_optimization_bundle(
+        state["state_version"]["id"],
+        optimization_dir,
+        {
+            "horizon": 3,
+            "evidence_coverage": 0.82,
+            "candidate_metric_overrides": {
+                "SCN-BALANCED": {
+                    "planning_utility_delta": 9.0,
+                    "constraint_violation_probability": 0.0,
+                    "confidence": 1.0,
+                }
+            },
+        },
+    )
+
+    balanced = next(
+        item
+        for item in report["beam_plan"]["candidates"]
+        if item["candidate_id"] == "SCN-BALANCED"
+    )
+    assert balanced["selection_status"] == "hard_blocked"
+    assert "spatial_state_unavailable" in balanced["evidence_gate"]["missing"]
+    assert balanced["input_metric_audit"]["planning_utility_delta"] == 9.0
+    assert report["beam_plan"]["selected"]["candidate_id"] != "SCN-BALANCED"
 
 
 def test_selected_plan_evaluation_bundle_runs_selected_rollout_and_validation_from_optimization_bundle():
