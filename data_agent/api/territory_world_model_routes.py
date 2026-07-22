@@ -23,6 +23,17 @@ async def twm_status(request: Request):
         return JSONResponse({"error": str(exc)}, status_code=500)
 
 
+async def twm_executive_demo_report(request: Request):
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _set_user_context(user)
+    try:
+        return JSONResponse(get_territory_world_model_service().executive_demo_report())
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=500)
+
+
 async def twm_business_scenarios(request: Request):
     user = _get_user_from_request(request)
     if not user:
@@ -1443,6 +1454,7 @@ async def twm_scca_causal_evidence_report(request: Request):
 def get_territory_world_model_routes() -> list[Route]:
     return [
         Route("/api/twm/status", endpoint=twm_status, methods=["GET"]),
+        Route("/api/twm/executive-demo-report", endpoint=twm_executive_demo_report, methods=["GET"]),
         Route("/api/twm/business-scenarios", endpoint=twm_business_scenarios, methods=["GET"]),
         Route("/api/twm/research-positioning", endpoint=twm_research_positioning, methods=["GET"]),
         Route("/api/twm/roadmap-status", endpoint=twm_roadmap_status, methods=["GET"]),

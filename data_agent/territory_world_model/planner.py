@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
+import json
 from typing import Any, Iterable
 
 from .models import (
@@ -28,6 +30,11 @@ def _float(value: Any, default: float = 0.0) -> float:
         return float(value)
     except Exception:
         return default
+
+
+def _stable_state_hash(payload: dict[str, Any]) -> str:
+    encoded = json.dumps(jsonable(payload), ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def _coerce_state_bundle(state_bundle: StateBuildResult | dict[str, Any]) -> dict[str, Any]:
@@ -135,6 +142,7 @@ class TerritoryWorldModelPlanner:
         action_sig = _action_signature(action)
         mask_summary = _action_mask_summary(action)
         scenario_name = str(scenario or action.scenario or "baseline").strip() or "baseline"
+        spatial_projection = self._spatial_projection_for_action(action, scenario_context or {})
 
         rule_hits_list = list(rule_hits or [])
         severity_counts: dict[str, int] = {}
@@ -180,6 +188,10 @@ class TerritoryWorldModelPlanner:
             risk_pressure = _clamp(risk_pressure + min(0.3, 0.12 * len(mask_summary["hard_blocks"])))
         if mask_summary["required_reviews"]:
             risk_pressure = _clamp(risk_pressure + min(0.12, 0.04 * len(mask_summary["required_reviews"])))
+        if spatial_projection:
+            constraint_recheck = dict(spatial_projection.get("constraint_recheck") or {})
+            explicit_risk = _float(action.parameters.get("constraint_violation_probability"), risk_pressure)
+            risk_pressure = _clamp(max(explicit_risk, 0.0 if constraint_recheck.get("passed", True) else 1.0))
 
         scenario_bias = self._scenario_bias(scenario_name, action)
         treatment_effect = self._treatment_effect(action, scenario_context or {})
@@ -195,11 +207,19 @@ class TerritoryWorldModelPlanner:
             utility_scale_adjustment=causal_adjustment["utility_scale_adjustment"],
             scenario_scale_adjustment=causal_adjustment["scenario_scale_adjustment"],
         )
+        if spatial_projection and "planning_utility_delta" in action.parameters:
+            total_utility = _float(action.parameters.get("planning_utility_delta"), utility_delta)
+            completion = _clamp(_float(spatial_projection.get("completion_ratio"), 1.0))
+            previous_completion = _clamp(_float(spatial_projection.get("previous_completion_ratio"), 0.0))
+            utility_delta = total_utility * max(0.0, completion - previous_completion)
 
         epistemic = _clamp(0.14 + abs(action_magnitude - 1.0) * 0.22 + max(0.0, 0.18 - evidence_ratio))
         aleatoric = _clamp(0.12 + risk_pressure * 0.32 + qa_disabled_count / (total_objects * 5.0))
         calibration_gap = _clamp(abs((scenario_context or {}).get("calibration_gap", 0.0)) + max(0.0, 0.22 - evidence_ratio))
         confidence = _clamp(1.0 - max(epistemic, aleatoric, calibration_gap))
+        if spatial_projection:
+            rollout_step = max(0, int(_float((scenario_context or {}).get("rollout_step"), 0.0)))
+            confidence = _clamp(_float(mask_summary.get("confidence"), confidence) - rollout_step * 0.02)
 
         projected_object_counts = self._project_counts(object_counts, action)
         projected_relation_counts = self._project_relations(relation_counts, action)
@@ -216,7 +236,24 @@ class TerritoryWorldModelPlanner:
             missing_evidence.append("action_mask_allowed")
         if mask_summary["hard_blocks"]:
             missing_evidence.append("action_mask_hard_blocks")
+        if action.parameters.get("spatial_trajectory") and not spatial_projection:
+            missing_evidence.append("spatial_state_projection")
+        if spatial_projection and not (spatial_projection.get("constraint_recheck") or {}).get("passed", True):
+            missing_evidence.append("spatial_hard_constraint_recheck")
         evidence_gate_passed = not missing_evidence and blocking_count == 0 and confidence >= 0.35
+
+        current_rollout_state = dict(bundle.get("rollout_state") or {})
+        projected_rollout_state = dict(spatial_projection or {})
+        if projected_rollout_state and not projected_rollout_state.get("state_sha256"):
+            projected_rollout_state["state_sha256"] = _stable_state_hash(projected_rollout_state)
+        state_writeback = {
+            "applied": bool(projected_rollout_state),
+            "from_state_sha256": current_rollout_state.get("state_sha256") or state_version.id,
+            "to_state_sha256": projected_rollout_state.get("state_sha256") or current_rollout_state.get("state_sha256") or state_version.id,
+            "geometry_changed": bool(projected_rollout_state) and current_rollout_state.get("geometry_sha256") != projected_rollout_state.get("geometry_sha256"),
+            "constraint_recomputed": bool(projected_rollout_state.get("constraint_recheck")),
+            "source": projected_rollout_state.get("transition_source") or "planner_count_projection",
+        }
 
         future_latent_state = {
             "schema": "territory_world_model.latent_state.v1",
@@ -228,6 +265,7 @@ class TerritoryWorldModelPlanner:
                 "object_counts_by_role": object_counts,
                 "relation_counts_by_type": relation_counts,
                 "quality_summary": quality_summary,
+                "rollout_state": current_rollout_state,
             },
             "projected": {
                 "object_counts_by_role": projected_object_counts,
@@ -236,6 +274,8 @@ class TerritoryWorldModelPlanner:
                 "projected_utility_delta": round(utility_delta, 4),
                 "action_mask": mask_summary,
                 "causal_adjustment": causal_adjustment,
+                "spatial_state": projected_rollout_state,
+                "state_writeback": state_writeback,
             },
             "hierarchy_tokens": dict(bundle.get("hierarchy_tokens") or {}),
             "warnings": warnings,
@@ -256,6 +296,7 @@ class TerritoryWorldModelPlanner:
             "utility_scale_adjustment": round(causal_adjustment["utility_scale_adjustment"], 4),
             "scenario_scale_adjustment": round(causal_adjustment["scenario_scale_adjustment"], 4),
             "causal_calibration": causal_adjustment.get("source", {}),
+            "transition_source": projected_rollout_state.get("transition_source") or "deterministic_action_conditioned_planner",
             "support": {
                 "blocking_hits": blocking_count,
                 "critical_hits": critical_count,
@@ -501,7 +542,39 @@ class TerritoryWorldModelPlanner:
             projected = forecast.future_latent_state.get("projected") or {}
             current_bundle["object_counts_by_role"] = dict(projected.get("object_counts_by_role") or {})
             current_bundle["relation_counts_by_type"] = dict(projected.get("relation_counts_by_type") or {})
+            projected_spatial_state = dict(projected.get("spatial_state") or {})
+            if projected_spatial_state:
+                current_bundle["rollout_state"] = projected_spatial_state
+                current_bundle["hierarchy_tokens"] = dict(current_bundle.get("hierarchy_tokens") or {}) | {
+                    "rollout_state": projected_spatial_state,
+                }
+                current_bundle["quality_summary"] = dict(current_bundle.get("quality_summary") or {}) | {
+                    "rollout_step": idx + 1,
+                    "rollout_state_sha256": projected_spatial_state.get("state_sha256"),
+                    "spatial_constraint_recheck_passed": (projected_spatial_state.get("constraint_recheck") or {}).get("passed"),
+                }
         return steps
+
+    def _spatial_projection_for_action(
+        self,
+        action: TerritoryWorldModelAction,
+        scenario_context: dict[str, Any],
+    ) -> dict[str, Any]:
+        trajectory = action.parameters.get("spatial_trajectory")
+        if not isinstance(trajectory, list) or not trajectory:
+            return {}
+        step = max(0, int(_float(scenario_context.get("rollout_step"), 0.0)))
+        selected = trajectory[min(step, len(trajectory) - 1)]
+        if not isinstance(selected, dict):
+            return {}
+        projection = dict(selected)
+        previous = trajectory[step - 1] if step > 0 and step - 1 < len(trajectory) else {}
+        projection["previous_completion_ratio"] = _float(
+            previous.get("completion_ratio") if isinstance(previous, dict) else 0.0,
+            0.0,
+        )
+        projection.setdefault("transition_source", action.parameters.get("transition_source") or "optimization_bundle_spatial_state")
+        return projection
 
     def _rollout_deltas(
         self,
