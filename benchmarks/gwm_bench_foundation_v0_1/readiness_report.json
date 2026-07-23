@@ -1,0 +1,1779 @@
+{
+  "schema": "gwm_bench.foundation_readiness_report.v1",
+  "benchmark_id": "gwm-bench-foundation-v0.1",
+  "generated_at": "2026-07-23T03:14:12.159325+00:00",
+  "status": "internal_foundation_ready_public_release_blocked",
+  "source_artifacts": {
+    "contract": {
+      "path": "benchmarks/gwm_bench_foundation_v0_1/benchmark_contract.json",
+      "sha256": "6b13ded8c7ac35b16589466a22182ed815d23c86743e25327e74ca4fba81caa3"
+    },
+    "auditor": {
+      "path": "benchmarks/gwm_bench_foundation_v0_1/readiness.py",
+      "sha256": "38832f8acbb43b78129eb158e578626c81bed2e1351f39b9cce695e129452116"
+    }
+  },
+  "readiness_tiers": {
+    "local_source_feasible": true,
+    "internal_foundation_ready": true,
+    "public_foundation_ready": false,
+    "general_gwm_supported": false
+  },
+  "checks": {
+    "contract_valid": true,
+    "source_evidence_hashes_verified": true,
+    "region_split_valid": true,
+    "temporal_contract_leakage_safe": true,
+    "observed_source_inventory_complete_and_readable": true,
+    "planned_bundles_materialized": true,
+    "planned_evaluators_materialized": true,
+    "bundle_manifest_verified": true,
+    "evaluator_conformance_passed": true,
+    "planned_baselines_materialized": true,
+    "planned_controls_materialized": true,
+    "baselines_and_controls_verified": true,
+    "materialized_bundle_leakage_checked": true,
+    "independent_data_validation_passed": true,
+    "redistribution_authority_verified": true,
+    "external_hidden_label_boundary_registered": true,
+    "external_hidden_labels_verified": false
+  },
+  "contract_audit": {
+    "passed": true,
+    "errors": []
+  },
+  "source_evidence_audit": {
+    "passed": true,
+    "artifacts": [
+      {
+        "path": "data_agent/uwm/dam_geospatial_kernel/controlled_benchmark.py",
+        "role": "current controlled generator discovery implementation",
+        "exists": true,
+        "expected_sha256": "73d0dbdb9af404c01fe8b09cfead3f3c6f7874d36add88b93a7e575b4c23fc6a",
+        "actual_sha256": "73d0dbdb9af404c01fe8b09cfead3f3c6f7874d36add88b93a7e575b4c23fc6a",
+        "passed": true
+      },
+      {
+        "path": "data/benchmarks/dam_gk_2026-07-17/controlled_benchmark_recursive_v3.json",
+        "role": "controlled feasibility evidence, not a required candidate score",
+        "exists": true,
+        "expected_sha256": "e30a3b0ed8571999c8e584cbd5b4b229e5439809699445b392092c60053914dc",
+        "actual_sha256": "e30a3b0ed8571999c8e584cbd5b4b229e5439809699445b392092c60053914dc",
+        "passed": true
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/twm_dynamic_world_manifest.json",
+        "role": "observed source discovery manifest",
+        "exists": true,
+        "expected_sha256": "2c50741e94af6efd31c91302190539efc31e45d64089402de519803798dd2926",
+        "actual_sha256": "2c50741e94af6efd31c91302190539efc31e45d64089402de519803798dd2926",
+        "passed": true
+      },
+      {
+        "path": "data/benchmarks/dam_gk_2026-07-18/annual_viirs_download_status.json",
+        "role": "annual VIIRS local completeness evidence",
+        "exists": true,
+        "expected_sha256": "e7a8001be29f064ab34f22e4a7b0dde9275c23144b1b621ea18c45deb12c2281",
+        "actual_sha256": "e7a8001be29f064ab34f22e4a7b0dde9275c23144b1b621ea18c45deb12c2281",
+        "passed": true
+      }
+    ]
+  },
+  "redistribution_authority_audit": {
+    "passed": true,
+    "errors": [],
+    "review_path": "data/gwm_bench_foundation_v0_1/license_audit/license_review.json",
+    "review_sha256": "b24628b414c05093334c9d40bd0fd3b0c23f5457b16160aa88c7493dd41f0e00",
+    "sources": {
+      "dynamic_world": {
+        "passed": true,
+        "errors": []
+      },
+      "viirs_monthly_vcm_slcfg": {
+        "passed": true,
+        "errors": []
+      },
+      "srtmgl1_v003": {
+        "passed": true,
+        "errors": []
+      }
+    },
+    "public_release_still_blocked_by_hidden_labels": true
+  },
+  "hidden_evaluation_audit": {
+    "passed": true,
+    "status": "pending_full_calendar_2026_labels",
+    "external_hidden_label_boundary_registered": true,
+    "boundary_type": "prospective_full_calendar_temporal_holdout",
+    "external_custodian_verified": false,
+    "external_hidden_labels_verified": false,
+    "earliest_valid_export_date": "2027-01-01",
+    "label_registration": {
+      "path": "data/twm_public_landcover/gee_dynamic_world/twm_v2_2026_hidden_label_registration.json",
+      "present": false,
+      "expected_before_earliest_valid_export_date": false
+    },
+    "protocol": {
+      "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_frozen_2026/precommit_protocol.json",
+      "expected_sha256": "e9493b440210dc355f975cedf8b67ba8f91b3736bb1eb465b83c7199b8912726",
+      "actual_sha256": "e9493b440210dc355f975cedf8b67ba8f91b3736bb1eb465b83c7199b8912726",
+      "checks": {
+        "schema_verified": true,
+        "protocol_id_verified": true,
+        "candidate_fingerprint_verified": true,
+        "candidate_and_predictions_sealed_before_labels": true,
+        "scored_year_is_2026": true,
+        "all_20_regions_registered": true,
+        "full_calendar_observation_window_registered": true,
+        "earliest_valid_export_date_registered": true,
+        "bridge_and_target_years_registered": true,
+        "label_pixels_not_opened_during_precommit": true,
+        "prediction_hash_committed_before_labels": true,
+        "post_commit_candidate_changes_prohibited": true,
+        "acceptance_gates_precommitted": true
+      }
+    },
+    "evaluator_seal": {
+      "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_frozen_2026/evaluator_implementation_seal.json",
+      "expected_sha256": "b63ac58c91be377ad2e5cc4d1e21f38ccc14d45e37160ec87610a713a83b3d87",
+      "actual_sha256": "b63ac58c91be377ad2e5cc4d1e21f38ccc14d45e37160ec87610a713a83b3d87",
+      "checks": {
+        "schema_verified": true,
+        "evaluator_sealed_before_labels": true,
+        "protocol_binding_verified": true,
+        "candidate_binding_verified": true,
+        "scorer_hash_registered": true,
+        "labels_not_opened_when_evaluator_sealed": true,
+        "post_seal_evaluator_changes_prohibited": true,
+        "acceptance_gates_match_protocol": true
+      }
+    },
+    "artifact_audit": [
+      {
+        "role": "seed_31_fold_0_weights",
+        "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_31/fold_0_weights.pt",
+        "exists": true,
+        "expected_size_bytes": 484454,
+        "actual_size_bytes": 484454,
+        "expected_sha256": "21e40a5b29eb647a0b431276ddfcddf79c0b2cfb65350401eede52822031d58d",
+        "actual_sha256": "21e40a5b29eb647a0b431276ddfcddf79c0b2cfb65350401eede52822031d58d",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_31_fold_0_selection_trials",
+        "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_31/fold_0_selection_trials.json",
+        "exists": true,
+        "expected_size_bytes": 22008,
+        "actual_size_bytes": 22008,
+        "expected_sha256": "a9d988805ac83a39a50579f2e08f5e87a4ed0025358e844d5abd773569abea68",
+        "actual_sha256": "a9d988805ac83a39a50579f2e08f5e87a4ed0025358e844d5abd773569abea68",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_31_fold_1_weights",
+        "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_31/fold_1_weights.pt",
+        "exists": true,
+        "expected_size_bytes": 484454,
+        "actual_size_bytes": 484454,
+        "expected_sha256": "d16a5297d34adb87615c119729ed82aa8e33e0c9d3339fa5ad6fb3cc7c9bb537",
+        "actual_sha256": "d16a5297d34adb87615c119729ed82aa8e33e0c9d3339fa5ad6fb3cc7c9bb537",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_31_fold_1_selection_trials",
+        "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_31/fold_1_selection_trials.json",
+        "exists": true,
+        "expected_size_bytes": 21497,
+        "actual_size_bytes": 21497,
+        "expected_sha256": "aede75167ad890f8454ac9a34e412b8dd4ff327942433ddbac15f01a2be1fe65",
+        "actual_sha256": "aede75167ad890f8454ac9a34e412b8dd4ff327942433ddbac15f01a2be1fe65",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_31_fold_2_weights",
+        "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_31/fold_2_weights.pt",
+        "exists": true,
+        "expected_size_bytes": 484454,
+        "actual_size_bytes": 484454,
+        "expected_sha256": "7b7147370af2356ff5086dc5b882543824ccc56fe8f58b7f9fe3ff57fe222f81",
+        "actual_sha256": "7b7147370af2356ff5086dc5b882543824ccc56fe8f58b7f9fe3ff57fe222f81",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_31_fold_2_selection_trials",
+        "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_31/fold_2_selection_trials.json",
+        "exists": true,
+        "expected_size_bytes": 22315,
+        "actual_size_bytes": 22315,
+        "expected_sha256": "8d7784a075dbf366671624666a8f560eb311cbb10c6567e72ac0b2901af442b7",
+        "actual_sha256": "8d7784a075dbf366671624666a8f560eb311cbb10c6567e72ac0b2901af442b7",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_31_fold_3_weights",
+        "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_31/fold_3_weights.pt",
+        "exists": true,
+        "expected_size_bytes": 484454,
+        "actual_size_bytes": 484454,
+        "expected_sha256": "fb5afa43615c339428add10d5d6c11281f3cdc4b030e2c5ef4ff62be26e2b7aa",
+        "actual_sha256": "fb5afa43615c339428add10d5d6c11281f3cdc4b030e2c5ef4ff62be26e2b7aa",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_31_fold_3_selection_trials",
+        "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_31/fold_3_selection_trials.json",
+        "exists": true,
+        "expected_size_bytes": 22140,
+        "actual_size_bytes": 22140,
+        "expected_sha256": "4659815a319b26a94f5ad3825949aa214110dd954d0be9ce99959a2232f5d3b9",
+        "actual_sha256": "4659815a319b26a94f5ad3825949aa214110dd954d0be9ce99959a2232f5d3b9",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_31_fold_4_weights",
+        "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_31/fold_4_weights.pt",
+        "exists": true,
+        "expected_size_bytes": 484454,
+        "actual_size_bytes": 484454,
+        "expected_sha256": "030a470a09f93ca780bf5877a0a6181c9705059cb3d10b7fb2109ba9e99dd0e8",
+        "actual_sha256": "030a470a09f93ca780bf5877a0a6181c9705059cb3d10b7fb2109ba9e99dd0e8",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_31_fold_4_selection_trials",
+        "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_31/fold_4_selection_trials.json",
+        "exists": true,
+        "expected_size_bytes": 22416,
+        "actual_size_bytes": 22416,
+        "expected_sha256": "6e14b4eca47aa169b7b9cca0c556c4a362904ce29e926a5eb4d8718069d468cc",
+        "actual_sha256": "6e14b4eca47aa169b7b9cca0c556c4a362904ce29e926a5eb4d8718069d468cc",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_31_prediction",
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_frozen_2026/seed_31_prediction_2021_2026.parquet",
+        "exists": true,
+        "expected_size_bytes": 42684,
+        "actual_size_bytes": 42684,
+        "expected_sha256": "26d939b5d905b2f1b47188a3784268804d6040bfc8f692983d32cc39279cb8c9",
+        "actual_sha256": "26d939b5d905b2f1b47188a3784268804d6040bfc8f692983d32cc39279cb8c9",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_47_fold_0_weights",
+        "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_47/fold_0_weights.pt",
+        "exists": true,
+        "expected_size_bytes": 484454,
+        "actual_size_bytes": 484454,
+        "expected_sha256": "64bc743f8336479a4f3dbd51a8d1c76fd6867a70b9fadee312a677989923274d",
+        "actual_sha256": "64bc743f8336479a4f3dbd51a8d1c76fd6867a70b9fadee312a677989923274d",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_47_fold_0_selection_trials",
+        "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_47/fold_0_selection_trials.json",
+        "exists": true,
+        "expected_size_bytes": 21835,
+        "actual_size_bytes": 21835,
+        "expected_sha256": "9dc15a2ceaab07ceb4cc9a587cee5ffda0adb1f76a0b53d7a9f60ae860dfaadb",
+        "actual_sha256": "9dc15a2ceaab07ceb4cc9a587cee5ffda0adb1f76a0b53d7a9f60ae860dfaadb",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_47_fold_1_weights",
+        "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_47/fold_1_weights.pt",
+        "exists": true,
+        "expected_size_bytes": 484454,
+        "actual_size_bytes": 484454,
+        "expected_sha256": "8c8d97fedae39f753b97a5f04a936040426225c1a3d208dcdd395f80c33596a0",
+        "actual_sha256": "8c8d97fedae39f753b97a5f04a936040426225c1a3d208dcdd395f80c33596a0",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_47_fold_1_selection_trials",
+        "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_47/fold_1_selection_trials.json",
+        "exists": true,
+        "expected_size_bytes": 21474,
+        "actual_size_bytes": 21474,
+        "expected_sha256": "f25011736a94f1ab974a26ea154adb58eddeab3af68c9c0761218785dbee43c2",
+        "actual_sha256": "f25011736a94f1ab974a26ea154adb58eddeab3af68c9c0761218785dbee43c2",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_47_fold_2_weights",
+        "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_47/fold_2_weights.pt",
+        "exists": true,
+        "expected_size_bytes": 484454,
+        "actual_size_bytes": 484454,
+        "expected_sha256": "dcad57c67d6f3ff3fe1e47b7f7de80123dc298a29d47ab753757f599282fa6da",
+        "actual_sha256": "dcad57c67d6f3ff3fe1e47b7f7de80123dc298a29d47ab753757f599282fa6da",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_47_fold_2_selection_trials",
+        "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_47/fold_2_selection_trials.json",
+        "exists": true,
+        "expected_size_bytes": 22320,
+        "actual_size_bytes": 22320,
+        "expected_sha256": "c5111b493c5e8765f88a68712b86d6191ba2c74693255db5e1e85ff12ede3aa5",
+        "actual_sha256": "c5111b493c5e8765f88a68712b86d6191ba2c74693255db5e1e85ff12ede3aa5",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_47_fold_3_weights",
+        "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_47/fold_3_weights.pt",
+        "exists": true,
+        "expected_size_bytes": 484454,
+        "actual_size_bytes": 484454,
+        "expected_sha256": "c87d2fe11e0cecf43271f9ae0e3709e9dce08788a511fc7405e7c715aafc1df8",
+        "actual_sha256": "c87d2fe11e0cecf43271f9ae0e3709e9dce08788a511fc7405e7c715aafc1df8",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_47_fold_3_selection_trials",
+        "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_47/fold_3_selection_trials.json",
+        "exists": true,
+        "expected_size_bytes": 22029,
+        "actual_size_bytes": 22029,
+        "expected_sha256": "6249e5db43b46a86b562cf6b0bf00bae19f5acc242aee7f623a35ef92c1ec69d",
+        "actual_sha256": "6249e5db43b46a86b562cf6b0bf00bae19f5acc242aee7f623a35ef92c1ec69d",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_47_fold_4_weights",
+        "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_47/fold_4_weights.pt",
+        "exists": true,
+        "expected_size_bytes": 484454,
+        "actual_size_bytes": 484454,
+        "expected_sha256": "0a0057f09be91ae2f954f8df9ca05b63dfbc01df4196ef3087b3b42aec5e7574",
+        "actual_sha256": "0a0057f09be91ae2f954f8df9ca05b63dfbc01df4196ef3087b3b42aec5e7574",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_47_fold_4_selection_trials",
+        "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_47/fold_4_selection_trials.json",
+        "exists": true,
+        "expected_size_bytes": 22319,
+        "actual_size_bytes": 22319,
+        "expected_sha256": "6a92d78e6b0c1eb2cb02b0f7130610fc63c4a6552b803115b4c8fb2b452ca774",
+        "actual_sha256": "6a92d78e6b0c1eb2cb02b0f7130610fc63c4a6552b803115b4c8fb2b452ca774",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_47_prediction",
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_frozen_2026/seed_47_prediction_2021_2026.parquet",
+        "exists": true,
+        "expected_size_bytes": 52370,
+        "actual_size_bytes": 52370,
+        "expected_sha256": "a6773654354cb0d928c33dddb814db62bd9cda9594fae4c6cea272b55de28a6c",
+        "actual_sha256": "a6773654354cb0d928c33dddb814db62bd9cda9594fae4c6cea272b55de28a6c",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_73_fold_0_weights",
+        "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_73/fold_0_weights.pt",
+        "exists": true,
+        "expected_size_bytes": 484454,
+        "actual_size_bytes": 484454,
+        "expected_sha256": "65bea9ab10a5c453b5db86d4e781279ca3bd47e1ef6d68a1c505778ead975d0a",
+        "actual_sha256": "65bea9ab10a5c453b5db86d4e781279ca3bd47e1ef6d68a1c505778ead975d0a",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_73_fold_0_selection_trials",
+        "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_73/fold_0_selection_trials.json",
+        "exists": true,
+        "expected_size_bytes": 22189,
+        "actual_size_bytes": 22189,
+        "expected_sha256": "eb8eb2ae2f6a63cf205f525eb2980297e05c54b1420164543fc7b7d4edc60751",
+        "actual_sha256": "eb8eb2ae2f6a63cf205f525eb2980297e05c54b1420164543fc7b7d4edc60751",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_73_fold_1_weights",
+        "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_73/fold_1_weights.pt",
+        "exists": true,
+        "expected_size_bytes": 484454,
+        "actual_size_bytes": 484454,
+        "expected_sha256": "110dc42b7f3aab724fea1e3c692fd455ff51bddaa3d940a5e914d8944f343cac",
+        "actual_sha256": "110dc42b7f3aab724fea1e3c692fd455ff51bddaa3d940a5e914d8944f343cac",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_73_fold_1_selection_trials",
+        "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_73/fold_1_selection_trials.json",
+        "exists": true,
+        "expected_size_bytes": 21506,
+        "actual_size_bytes": 21506,
+        "expected_sha256": "1e4cb52293aad369e07213be07fe702cc99ab2da43c7a3b16ed1611ea5f525dc",
+        "actual_sha256": "1e4cb52293aad369e07213be07fe702cc99ab2da43c7a3b16ed1611ea5f525dc",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_73_fold_2_weights",
+        "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_73/fold_2_weights.pt",
+        "exists": true,
+        "expected_size_bytes": 484454,
+        "actual_size_bytes": 484454,
+        "expected_sha256": "bf67d9342afaf735682e94e01874e6ffdc92e1453c73d587f093114c221e4c3c",
+        "actual_sha256": "bf67d9342afaf735682e94e01874e6ffdc92e1453c73d587f093114c221e4c3c",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_73_fold_2_selection_trials",
+        "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_73/fold_2_selection_trials.json",
+        "exists": true,
+        "expected_size_bytes": 22425,
+        "actual_size_bytes": 22425,
+        "expected_sha256": "96164ff5c7937e68593a5adfc0ce6abac2b4f1177e3032a8ced0a606e1f81a87",
+        "actual_sha256": "96164ff5c7937e68593a5adfc0ce6abac2b4f1177e3032a8ced0a606e1f81a87",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_73_fold_3_weights",
+        "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_73/fold_3_weights.pt",
+        "exists": true,
+        "expected_size_bytes": 484454,
+        "actual_size_bytes": 484454,
+        "expected_sha256": "ef2b94f9c694f2a1320c7e8b81ea709bde85a179f34c9c28350e28ecfe988dc2",
+        "actual_sha256": "ef2b94f9c694f2a1320c7e8b81ea709bde85a179f34c9c28350e28ecfe988dc2",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_73_fold_3_selection_trials",
+        "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_73/fold_3_selection_trials.json",
+        "exists": true,
+        "expected_size_bytes": 22149,
+        "actual_size_bytes": 22149,
+        "expected_sha256": "c86128817352e1e8a2b9c6124cbd8ff2203e254a2100208fc18b3f1476f962f3",
+        "actual_sha256": "c86128817352e1e8a2b9c6124cbd8ff2203e254a2100208fc18b3f1476f962f3",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_73_fold_4_weights",
+        "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_73/fold_4_weights.pt",
+        "exists": true,
+        "expected_size_bytes": 484454,
+        "actual_size_bytes": 484454,
+        "expected_sha256": "ce87bee44f660217755e2a82b400e08c5b7e47e87443490bbde173807b7708b8",
+        "actual_sha256": "ce87bee44f660217755e2a82b400e08c5b7e47e87443490bbde173807b7708b8",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_73_fold_4_selection_trials",
+        "path": "development/multiregion_temporal_holdout/twm_v2_posthoc/seed_73/fold_4_selection_trials.json",
+        "exists": true,
+        "expected_size_bytes": 22263,
+        "actual_size_bytes": 22263,
+        "expected_sha256": "c691f6ce2928c90872c78a3cc1f4f5446f7871a01b2d5d814398560c9aaa0b96",
+        "actual_sha256": "c691f6ce2928c90872c78a3cc1f4f5446f7871a01b2d5d814398560c9aaa0b96",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "seed_73_prediction",
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_frozen_2026/seed_73_prediction_2021_2026.parquet",
+        "exists": true,
+        "expected_size_bytes": 46511,
+        "actual_size_bytes": 46511,
+        "expected_sha256": "b091ad1a701b51333b22ceaccdbef57b48bdbfb21c8bf68f333484e4b2a9d8cd",
+        "actual_sha256": "b091ad1a701b51333b22ceaccdbef57b48bdbfb21c8bf68f333484e4b2a9d8cd",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "ensemble_prediction",
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_frozen_2026/twm_v2_prediction_2021_2026.parquet",
+        "exists": true,
+        "expected_size_bytes": 73078,
+        "actual_size_bytes": 73078,
+        "expected_sha256": "2a4987cb75a1d43f04e85b765633af1e185415a0143edf79da3bb9eb683b1312",
+        "actual_sha256": "2a4987cb75a1d43f04e85b765633af1e185415a0143edf79da3bb9eb683b1312",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "baseline_persistence",
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_frozen_2026/persistence_prediction_2021_2026.parquet",
+        "exists": true,
+        "expected_size_bytes": 11812,
+        "actual_size_bytes": 11812,
+        "expected_sha256": "f731761da7239067b69dd2653b38577b1d627bed5bd2ad2f9a6dd20a07d18d44",
+        "actual_sha256": "f731761da7239067b69dd2653b38577b1d627bed5bd2ad2f9a6dd20a07d18d44",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "baseline_fixed_adjacency",
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_frozen_2026/fixed_adjacency_prediction_2021_2026.parquet",
+        "exists": true,
+        "expected_size_bytes": 454682,
+        "actual_size_bytes": 454682,
+        "expected_sha256": "9f965eff1d42b0818686287afab48937b0044b3dd1736367d2da9bbdd10ff543",
+        "actual_sha256": "9f965eff1d42b0818686287afab48937b0044b3dd1736367d2da9bbdd10ff543",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "source_0",
+        "path": "benchmarks/gwm_bench_foundation_v0_1/commit_twm_v2_2026_forecast.py",
+        "exists": true,
+        "expected_size_bytes": 21261,
+        "actual_size_bytes": 21261,
+        "expected_sha256": "f76f0228dc4c79b13498d1f25c59d1e0882424891b2c207a3cc1c375514748ba",
+        "actual_sha256": "f76f0228dc4c79b13498d1f25c59d1e0882424891b2c207a3cc1c375514748ba",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "source_1",
+        "path": "benchmarks/gwm_bench_foundation_v0_1/build_baselines_and_controls.py",
+        "exists": true,
+        "expected_size_bytes": 19892,
+        "actual_size_bytes": 19892,
+        "expected_sha256": "361fd142760fe8e6d0fd1216815e0c870a40cef91079cd39c45e6adf5edaf347",
+        "actual_sha256": "361fd142760fe8e6d0fd1216815e0c870a40cef91079cd39c45e6adf5edaf347",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "source_2",
+        "path": "benchmarks/gwm_bench_foundation_v0_1/observed_evaluator.py",
+        "exists": true,
+        "expected_size_bytes": 9779,
+        "actual_size_bytes": 9779,
+        "expected_sha256": "fe487c54c880bf24a413bb4798d70c6c7f20ae778dc9c8a822df86e5dd9d3746",
+        "actual_sha256": "fe487c54c880bf24a413bb4798d70c6c7f20ae778dc9c8a822df86e5dd9d3746",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "source_3",
+        "path": "benchmarks/gwm_bench_foundation_v0_1/run_twm_multiregion_posthoc_v2.py",
+        "exists": true,
+        "expected_size_bytes": 27824,
+        "actual_size_bytes": 27824,
+        "expected_sha256": "a56f0ad6af19eb23d19d55994ee20e193e0f1be14ddc74201d2825466341c66d",
+        "actual_sha256": "a56f0ad6af19eb23d19d55994ee20e193e0f1be14ddc74201d2825466341c66d",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "source_4",
+        "path": "benchmarks/gwm_bench_foundation_v0_1/run_twm_observed_scenario.py",
+        "exists": true,
+        "expected_size_bytes": 50242,
+        "actual_size_bytes": 50242,
+        "expected_sha256": "a96a837a1922a70c02186919fa55e897a472f55642d7cdc73b4b5eeae6595485",
+        "actual_sha256": "a96a837a1922a70c02186919fa55e897a472f55642d7cdc73b4b5eeae6595485",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "source_5",
+        "path": "data_agent/uwm/dam_geospatial_kernel/twm_adapter.py",
+        "exists": true,
+        "expected_size_bytes": 16758,
+        "actual_size_bytes": 16758,
+        "expected_sha256": "cfe0c35c983d23f77e84b7dc43516fb127deeaade91987261045b24b436e6db2",
+        "actual_sha256": "cfe0c35c983d23f77e84b7dc43516fb127deeaade91987261045b24b436e6db2",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "source_6",
+        "path": "data_agent/uwm/dam_geospatial_kernel/twm_sequence_adapter.py",
+        "exists": true,
+        "expected_size_bytes": 19314,
+        "actual_size_bytes": 19314,
+        "expected_sha256": "a9e3d99d1af7e95a2313d7eaff179ecafad21129fdb41407c9da0c87928b5841",
+        "actual_sha256": "a9e3d99d1af7e95a2313d7eaff179ecafad21129fdb41407c9da0c87928b5841",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "source_7",
+        "path": "data_agent/uwm/dam_geospatial_kernel/model.py",
+        "exists": true,
+        "expected_size_bytes": 16463,
+        "actual_size_bytes": 16463,
+        "expected_sha256": "bbe35d52aa755a67e3e1fe6e5c44c39f7c63da201714fdc367566c0b3d72e769",
+        "actual_sha256": "bbe35d52aa755a67e3e1fe6e5c44c39f7c63da201714fdc367566c0b3d72e769",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "source_8",
+        "path": "data_agent/uwm/dam_geospatial_kernel/contracts.py",
+        "exists": true,
+        "expected_size_bytes": 6397,
+        "actual_size_bytes": 6397,
+        "expected_sha256": "2ef476ae30ae1ccd5829115f04de214dc42815188a4d2058b618ef71cef7f26e",
+        "actual_sha256": "2ef476ae30ae1ccd5829115f04de214dc42815188a4d2058b618ef71cef7f26e",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "source_9",
+        "path": "data_agent/uwm/dam_geospatial_kernel/twm_transition_head.py",
+        "exists": true,
+        "expected_size_bytes": 2838,
+        "actual_size_bytes": 2838,
+        "expected_sha256": "58219107edb6160b1a1e8991d37e55478c972cfcefc43a5c8dc86d3a9eb25610",
+        "actual_sha256": "58219107edb6160b1a1e8991d37e55478c972cfcefc43a5c8dc86d3a9eb25610",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "source_10",
+        "path": "data_agent/uwm/dam_geospatial_kernel/twm_sequence_benchmark.py",
+        "exists": true,
+        "expected_size_bytes": 33399,
+        "actual_size_bytes": 33399,
+        "expected_sha256": "79813ddf37300796a13ed6637847b5b870ebfb960097692c7dabbb0660d137e9",
+        "actual_sha256": "79813ddf37300796a13ed6637847b5b870ebfb960097692c7dabbb0660d137e9",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "input_0",
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/multiregion_temporal_holdout/twm_v2_posthoc/prediction_report.json",
+        "exists": true,
+        "expected_size_bytes": 25211,
+        "actual_size_bytes": 25211,
+        "expected_sha256": "b9db8c8591a699b6f6f1711a8ff8e9d857c4ce4a2a2b04b1030f8ce149651d44",
+        "actual_sha256": "b9db8c8591a699b6f6f1711a8ff8e9d857c4ce4a2a2b04b1030f8ce149651d44",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "input_1",
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/bundle_manifest.json",
+        "exists": true,
+        "expected_size_bytes": 100435,
+        "actual_size_bytes": 100435,
+        "expected_sha256": "1310e534c31bee5948b445d65149a19de310304490c4893bd18332395de2c8cb",
+        "actual_sha256": "1310e534c31bee5948b445d65149a19de310304490c4893bd18332395de2c8cb",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "input_2",
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/region_folds.json",
+        "exists": true,
+        "expected_size_bytes": 5237,
+        "actual_size_bytes": 5237,
+        "expected_sha256": "d30751b5e5b455e674f72fa29a39a61aa5060288fe2c5857077d0d5d329a4222",
+        "actual_sha256": "d30751b5e5b455e674f72fa29a39a61aa5060288fe2c5857077d0d5d329a4222",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "input_3",
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/observed_train.parquet",
+        "exists": true,
+        "expected_size_bytes": 71012,
+        "actual_size_bytes": 71012,
+        "expected_sha256": "05e8de613f1ca58184dfe1917e4e4ce07630bd9b9f386db1950bec6dafb16ab2",
+        "actual_sha256": "05e8de613f1ca58184dfe1917e4e4ce07630bd9b9f386db1950bec6dafb16ab2",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "input_4",
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/observed_inputs.parquet",
+        "exists": true,
+        "expected_size_bytes": 58539,
+        "actual_size_bytes": 58539,
+        "expected_sha256": "6f1323959276e53e467d2abf66d8cc00b861cf616fec34a41f76a0aa7be2015e",
+        "actual_sha256": "6f1323959276e53e467d2abf66d8cc00b861cf616fec34a41f76a0aa7be2015e",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "input_5",
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/observed_edges.parquet",
+        "exists": true,
+        "expected_size_bytes": 15448,
+        "actual_size_bytes": 15448,
+        "expected_sha256": "70f63a5b217624c28d90f4cbf1c25d7e9aa621c138bce50a63f443ba2fce96aa",
+        "actual_sha256": "70f63a5b217624c28d90f4cbf1c25d7e9aa621c138bce50a63f443ba2fce96aa",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "sealed_scorer",
+        "path": "benchmarks/gwm_bench_foundation_v0_1/score_twm_v2_2026_hidden.py",
+        "exists": true,
+        "expected_size_bytes": 15081,
+        "actual_size_bytes": 15081,
+        "expected_sha256": "9aabcc3a19ba9155eafb03453bf4b057a5ecd2b32e86443a2365bef4fca6ef05",
+        "actual_sha256": "9aabcc3a19ba9155eafb03453bf4b057a5ecd2b32e86443a2365bef4fca6ef05",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "evaluator_dependency_0",
+        "path": "benchmarks/gwm_bench_foundation_v0_1/commit_twm_v2_2026_forecast.py",
+        "exists": true,
+        "expected_size_bytes": 21261,
+        "actual_size_bytes": 21261,
+        "expected_sha256": "f76f0228dc4c79b13498d1f25c59d1e0882424891b2c207a3cc1c375514748ba",
+        "actual_sha256": "f76f0228dc4c79b13498d1f25c59d1e0882424891b2c207a3cc1c375514748ba",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "role": "evaluator_dependency_1",
+        "path": "benchmarks/gwm_bench_foundation_v0_1/observed_evaluator.py",
+        "exists": true,
+        "expected_size_bytes": 9779,
+        "actual_size_bytes": 9779,
+        "expected_sha256": "fe487c54c880bf24a413bb4798d70c6c7f20ae778dc9c8a822df86e5dd9d3746",
+        "actual_sha256": "fe487c54c880bf24a413bb4798d70c6c7f20ae778dc9c8a822df86e5dd9d3746",
+        "passed": true,
+        "errors": []
+      }
+    ],
+    "errors": [],
+    "interpretation": "The candidate, predictions, baselines, evaluator, and acceptance gates are sealed. Public release still waits for complete 2026 labels; this prospective boundary does not imply an independent external custodian."
+  },
+  "region_split_audit": {
+    "passed": true,
+    "checks": {
+      "method_is_five_fold_region_holdout": true,
+      "fold_count_is_five": true,
+      "each_test_fold_has_four_regions": true,
+      "every_region_appears_once_as_test": true,
+      "declared_partition_sizes_are_12_4_4": true,
+      "validation_offset_is_one": true
+    },
+    "fold_assignments": [
+      {
+        "fold_index": 0,
+        "training_regions": [
+          "佛山市_高明区_杨和镇",
+          "北京市_密云县_石城镇",
+          "南京市_六合区_马鞍街道",
+          "天津市_滨海新区_临港工业区",
+          "宁波市_余姚市_小曹娥镇",
+          "广州市_增城区_正果镇",
+          "武汉市_江夏区_江夏区经济开发区梁子湖风景区办事",
+          "深圳市_龙岗区_南澳街道",
+          "福州市_永泰县_嵩口镇",
+          "郑州市_荥阳市_广武镇",
+          "重庆市_云阳县_江口镇",
+          "长沙市_浏阳市_高坪镇"
+        ],
+        "validation_regions": [
+          "东莞市_东莞市_虎门镇",
+          "合肥市_巢湖市_散兵镇",
+          "杭州市_淳安县_界首乡",
+          "西安市_周至县_陈河镇"
+        ],
+        "test_regions": [
+          "上海市_浦东新区_祝桥镇",
+          "厦门市_同安区_莲花镇",
+          "成都市_桂阳县_舂陵江镇",
+          "苏州市_吴江区_黎里镇"
+        ],
+        "counts": {
+          "training": 12,
+          "validation": 4,
+          "test": 4
+        },
+        "passed": true
+      },
+      {
+        "fold_index": 1,
+        "training_regions": [
+          "上海市_浦东新区_祝桥镇",
+          "北京市_密云县_石城镇",
+          "南京市_六合区_马鞍街道",
+          "厦门市_同安区_莲花镇",
+          "宁波市_余姚市_小曹娥镇",
+          "广州市_增城区_正果镇",
+          "成都市_桂阳县_舂陵江镇",
+          "深圳市_龙岗区_南澳街道",
+          "福州市_永泰县_嵩口镇",
+          "苏州市_吴江区_黎里镇",
+          "重庆市_云阳县_江口镇",
+          "长沙市_浏阳市_高坪镇"
+        ],
+        "validation_regions": [
+          "佛山市_高明区_杨和镇",
+          "天津市_滨海新区_临港工业区",
+          "武汉市_江夏区_江夏区经济开发区梁子湖风景区办事",
+          "郑州市_荥阳市_广武镇"
+        ],
+        "test_regions": [
+          "东莞市_东莞市_虎门镇",
+          "合肥市_巢湖市_散兵镇",
+          "杭州市_淳安县_界首乡",
+          "西安市_周至县_陈河镇"
+        ],
+        "counts": {
+          "training": 12,
+          "validation": 4,
+          "test": 4
+        },
+        "passed": true
+      },
+      {
+        "fold_index": 2,
+        "training_regions": [
+          "上海市_浦东新区_祝桥镇",
+          "东莞市_东莞市_虎门镇",
+          "南京市_六合区_马鞍街道",
+          "厦门市_同安区_莲花镇",
+          "合肥市_巢湖市_散兵镇",
+          "广州市_增城区_正果镇",
+          "成都市_桂阳县_舂陵江镇",
+          "杭州市_淳安县_界首乡",
+          "福州市_永泰县_嵩口镇",
+          "苏州市_吴江区_黎里镇",
+          "西安市_周至县_陈河镇",
+          "长沙市_浏阳市_高坪镇"
+        ],
+        "validation_regions": [
+          "北京市_密云县_石城镇",
+          "宁波市_余姚市_小曹娥镇",
+          "深圳市_龙岗区_南澳街道",
+          "重庆市_云阳县_江口镇"
+        ],
+        "test_regions": [
+          "佛山市_高明区_杨和镇",
+          "天津市_滨海新区_临港工业区",
+          "武汉市_江夏区_江夏区经济开发区梁子湖风景区办事",
+          "郑州市_荥阳市_广武镇"
+        ],
+        "counts": {
+          "training": 12,
+          "validation": 4,
+          "test": 4
+        },
+        "passed": true
+      },
+      {
+        "fold_index": 3,
+        "training_regions": [
+          "上海市_浦东新区_祝桥镇",
+          "东莞市_东莞市_虎门镇",
+          "佛山市_高明区_杨和镇",
+          "厦门市_同安区_莲花镇",
+          "合肥市_巢湖市_散兵镇",
+          "天津市_滨海新区_临港工业区",
+          "成都市_桂阳县_舂陵江镇",
+          "杭州市_淳安县_界首乡",
+          "武汉市_江夏区_江夏区经济开发区梁子湖风景区办事",
+          "苏州市_吴江区_黎里镇",
+          "西安市_周至县_陈河镇",
+          "郑州市_荥阳市_广武镇"
+        ],
+        "validation_regions": [
+          "南京市_六合区_马鞍街道",
+          "广州市_增城区_正果镇",
+          "福州市_永泰县_嵩口镇",
+          "长沙市_浏阳市_高坪镇"
+        ],
+        "test_regions": [
+          "北京市_密云县_石城镇",
+          "宁波市_余姚市_小曹娥镇",
+          "深圳市_龙岗区_南澳街道",
+          "重庆市_云阳县_江口镇"
+        ],
+        "counts": {
+          "training": 12,
+          "validation": 4,
+          "test": 4
+        },
+        "passed": true
+      },
+      {
+        "fold_index": 4,
+        "training_regions": [
+          "东莞市_东莞市_虎门镇",
+          "佛山市_高明区_杨和镇",
+          "北京市_密云县_石城镇",
+          "合肥市_巢湖市_散兵镇",
+          "天津市_滨海新区_临港工业区",
+          "宁波市_余姚市_小曹娥镇",
+          "杭州市_淳安县_界首乡",
+          "武汉市_江夏区_江夏区经济开发区梁子湖风景区办事",
+          "深圳市_龙岗区_南澳街道",
+          "西安市_周至县_陈河镇",
+          "郑州市_荥阳市_广武镇",
+          "重庆市_云阳县_江口镇"
+        ],
+        "validation_regions": [
+          "上海市_浦东新区_祝桥镇",
+          "厦门市_同安区_莲花镇",
+          "成都市_桂阳县_舂陵江镇",
+          "苏州市_吴江区_黎里镇"
+        ],
+        "test_regions": [
+          "南京市_六合区_马鞍街道",
+          "广州市_增城区_正果镇",
+          "福州市_永泰县_嵩口镇",
+          "长沙市_浏阳市_高坪镇"
+        ],
+        "counts": {
+          "training": 12,
+          "validation": 4,
+          "test": 4
+        },
+        "passed": true
+      }
+    ]
+  },
+  "observed_asset_audit": {
+    "passed": true,
+    "expected_inventory_asset_count": 340,
+    "required_benchmark_asset_count": 280,
+    "quarantined_future_auxiliary_asset_count": 60,
+    "present_asset_count": 340,
+    "readable_asset_count": 340,
+    "expected_paths_unique": true,
+    "missing_paths": [],
+    "empty_paths": [],
+    "unreadable": [],
+    "misaligned_paths": [],
+    "per_region": {
+      "上海市_浦东新区_祝桥镇": {
+        "expected_count": 17,
+        "present_count": 17,
+        "readable_count": 17,
+        "required_count": 14,
+        "quarantined_future_auxiliary_count": 3,
+        "reference_grid": {
+          "width": 328,
+          "height": 285,
+          "count": 1,
+          "crs": "EPSG:3857",
+          "transform": [
+            100.0,
+            0.0,
+            13549200.0,
+            0.0,
+            -100.0,
+            3664600.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "grid_aligned": true,
+        "passed": true
+      },
+      "东莞市_东莞市_虎门镇": {
+        "expected_count": 17,
+        "present_count": 17,
+        "readable_count": 17,
+        "required_count": 14,
+        "quarantined_future_auxiliary_count": 3,
+        "reference_grid": {
+          "width": 226,
+          "height": 191,
+          "count": 1,
+          "crs": "EPSG:3857",
+          "transform": [
+            100.0,
+            0.0,
+            12646300.0,
+            0.0,
+            -100.0,
+            2618300.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "grid_aligned": true,
+        "passed": true
+      },
+      "佛山市_高明区_杨和镇": {
+        "expected_count": 17,
+        "present_count": 17,
+        "readable_count": 17,
+        "required_count": 14,
+        "quarantined_future_auxiliary_count": 3,
+        "reference_grid": {
+          "width": 211,
+          "height": 264,
+          "count": 1,
+          "crs": "EPSG:3857",
+          "transform": [
+            100.0,
+            0.0,
+            12541200.0,
+            0.0,
+            -100.0,
+            2621400.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "grid_aligned": true,
+        "passed": true
+      },
+      "北京市_密云县_石城镇": {
+        "expected_count": 17,
+        "present_count": 17,
+        "readable_count": 17,
+        "required_count": 14,
+        "quarantined_future_auxiliary_count": 3,
+        "reference_grid": {
+          "width": 262,
+          "height": 303,
+          "count": 1,
+          "crs": "EPSG:3857",
+          "transform": [
+            100.0,
+            0.0,
+            12986500.0,
+            0.0,
+            -100.0,
+            4969000.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "grid_aligned": true,
+        "passed": true
+      },
+      "南京市_六合区_马鞍街道": {
+        "expected_count": 17,
+        "present_count": 17,
+        "readable_count": 17,
+        "required_count": 14,
+        "quarantined_future_auxiliary_count": 3,
+        "reference_grid": {
+          "width": 159,
+          "height": 376,
+          "count": 1,
+          "crs": "EPSG:3857",
+          "transform": [
+            100.0,
+            0.0,
+            13217600.0,
+            0.0,
+            -100.0,
+            3843200.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "grid_aligned": true,
+        "passed": true
+      },
+      "厦门市_同安区_莲花镇": {
+        "expected_count": 17,
+        "present_count": 17,
+        "readable_count": 17,
+        "required_count": 14,
+        "quarantined_future_auxiliary_count": 3,
+        "reference_grid": {
+          "width": 223,
+          "height": 235,
+          "count": 1,
+          "crs": "EPSG:3857",
+          "transform": [
+            100.0,
+            0.0,
+            13125400.0,
+            0.0,
+            -100.0,
+            2864400.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "grid_aligned": true,
+        "passed": true
+      },
+      "合肥市_巢湖市_散兵镇": {
+        "expected_count": 17,
+        "present_count": 17,
+        "readable_count": 17,
+        "required_count": 14,
+        "quarantined_future_auxiliary_count": 3,
+        "reference_grid": {
+          "width": 246,
+          "height": 291,
+          "count": 1,
+          "crs": "EPSG:3857",
+          "transform": [
+            100.0,
+            0.0,
+            13091500.0,
+            0.0,
+            -100.0,
+            3710900.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "grid_aligned": true,
+        "passed": true
+      },
+      "天津市_滨海新区_临港工业区": {
+        "expected_count": 17,
+        "present_count": 17,
+        "readable_count": 17,
+        "required_count": 14,
+        "quarantined_future_auxiliary_count": 3,
+        "reference_grid": {
+          "width": 330,
+          "height": 285,
+          "count": 1,
+          "crs": "EPSG:3857",
+          "transform": [
+            100.0,
+            0.0,
+            13087900.0,
+            0.0,
+            -100.0,
+            4716500.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "grid_aligned": true,
+        "passed": true
+      },
+      "宁波市_余姚市_小曹娥镇": {
+        "expected_count": 17,
+        "present_count": 17,
+        "readable_count": 17,
+        "required_count": 14,
+        "quarantined_future_auxiliary_count": 3,
+        "reference_grid": {
+          "width": 252,
+          "height": 226,
+          "count": 1,
+          "crs": "EPSG:3857",
+          "transform": [
+            100.0,
+            0.0,
+            13455700.0,
+            0.0,
+            -100.0,
+            3549300.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "grid_aligned": true,
+        "passed": true
+      },
+      "广州市_增城区_正果镇": {
+        "expected_count": 17,
+        "present_count": 17,
+        "readable_count": 17,
+        "required_count": 14,
+        "quarantined_future_auxiliary_count": 3,
+        "reference_grid": {
+          "width": 194,
+          "height": 282,
+          "count": 1,
+          "crs": "EPSG:3857",
+          "transform": [
+            100.0,
+            0.0,
+            12670700.0,
+            0.0,
+            -100.0,
+            2696500.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "grid_aligned": true,
+        "passed": true
+      },
+      "成都市_桂阳县_舂陵江镇": {
+        "expected_count": 17,
+        "present_count": 17,
+        "readable_count": 17,
+        "required_count": 14,
+        "quarantined_future_auxiliary_count": 3,
+        "reference_grid": {
+          "width": 282,
+          "height": 194,
+          "count": 1,
+          "crs": "EPSG:3857",
+          "transform": [
+            100.0,
+            0.0,
+            12506300.0,
+            0.0,
+            -100.0,
+            2986200.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "grid_aligned": true,
+        "passed": true
+      },
+      "杭州市_淳安县_界首乡": {
+        "expected_count": 17,
+        "present_count": 17,
+        "readable_count": 17,
+        "required_count": 14,
+        "quarantined_future_auxiliary_count": 3,
+        "reference_grid": {
+          "width": 288,
+          "height": 203,
+          "count": 1,
+          "crs": "EPSG:3857",
+          "transform": [
+            100.0,
+            0.0,
+            13215200.0,
+            0.0,
+            -100.0,
+            3457500.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "grid_aligned": true,
+        "passed": true
+      },
+      "武汉市_江夏区_江夏区经济开发区梁子湖风景区办事": {
+        "expected_count": 17,
+        "present_count": 17,
+        "readable_count": 17,
+        "required_count": 14,
+        "quarantined_future_auxiliary_count": 3,
+        "reference_grid": {
+          "width": 245,
+          "height": 348,
+          "count": 1,
+          "crs": "EPSG:3857",
+          "transform": [
+            100.0,
+            0.0,
+            12731700.0,
+            0.0,
+            -100.0,
+            3551800.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "grid_aligned": true,
+        "passed": true
+      },
+      "深圳市_龙岗区_南澳街道": {
+        "expected_count": 17,
+        "present_count": 17,
+        "readable_count": 17,
+        "required_count": 14,
+        "quarantined_future_auxiliary_count": 3,
+        "reference_grid": {
+          "width": 191,
+          "height": 163,
+          "count": 1,
+          "crs": "EPSG:3857",
+          "transform": [
+            100.0,
+            0.0,
+            12740800.0,
+            0.0,
+            -100.0,
+            2580900.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "grid_aligned": true,
+        "passed": true
+      },
+      "福州市_永泰县_嵩口镇": {
+        "expected_count": 17,
+        "present_count": 17,
+        "readable_count": 17,
+        "required_count": 14,
+        "quarantined_future_auxiliary_count": 3,
+        "reference_grid": {
+          "width": 207,
+          "height": 252,
+          "count": 1,
+          "crs": "EPSG:3857",
+          "transform": [
+            100.0,
+            0.0,
+            13191400.0,
+            0.0,
+            -100.0,
+            2984200.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "grid_aligned": true,
+        "passed": true
+      },
+      "苏州市_吴江区_黎里镇": {
+        "expected_count": 17,
+        "present_count": 17,
+        "readable_count": 17,
+        "required_count": 14,
+        "quarantined_future_auxiliary_count": 3,
+        "reference_grid": {
+          "width": 263,
+          "height": 226,
+          "count": 1,
+          "crs": "EPSG:3857",
+          "transform": [
+            100.0,
+            0.0,
+            13432400.0,
+            0.0,
+            -100.0,
+            3650700.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "grid_aligned": true,
+        "passed": true
+      },
+      "西安市_周至县_陈河镇": {
+        "expected_count": 17,
+        "present_count": 17,
+        "readable_count": 17,
+        "required_count": 14,
+        "quarantined_future_auxiliary_count": 3,
+        "reference_grid": {
+          "width": 333,
+          "height": 470,
+          "count": 1,
+          "crs": "EPSG:3857",
+          "transform": [
+            100.0,
+            0.0,
+            12016100.0,
+            0.0,
+            -100.0,
+            4057300.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "grid_aligned": true,
+        "passed": true
+      },
+      "郑州市_荥阳市_广武镇": {
+        "expected_count": 17,
+        "present_count": 17,
+        "readable_count": 17,
+        "required_count": 14,
+        "quarantined_future_auxiliary_count": 3,
+        "reference_grid": {
+          "width": 146,
+          "height": 220,
+          "count": 1,
+          "crs": "EPSG:3857",
+          "transform": [
+            100.0,
+            0.0,
+            12621100.0,
+            0.0,
+            -100.0,
+            4161800.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "grid_aligned": true,
+        "passed": true
+      },
+      "重庆市_云阳县_江口镇": {
+        "expected_count": 17,
+        "present_count": 17,
+        "readable_count": 17,
+        "required_count": 14,
+        "quarantined_future_auxiliary_count": 3,
+        "reference_grid": {
+          "width": 322,
+          "height": 247,
+          "count": 1,
+          "crs": "EPSG:3857",
+          "transform": [
+            100.0,
+            0.0,
+            12098700.0,
+            0.0,
+            -100.0,
+            3680000.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "grid_aligned": true,
+        "passed": true
+      },
+      "长沙市_浏阳市_高坪镇": {
+        "expected_count": 17,
+        "present_count": 17,
+        "readable_count": 17,
+        "required_count": 14,
+        "quarantined_future_auxiliary_count": 3,
+        "reference_grid": {
+          "width": 291,
+          "height": 202,
+          "count": 1,
+          "crs": "EPSG:3857",
+          "transform": [
+            100.0,
+            0.0,
+            12653100.0,
+            0.0,
+            -100.0,
+            3282200.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "grid_aligned": true,
+        "passed": true
+      }
+    },
+    "interpretation": "Future Dynamic World files are labels. Future VIIRS files are audited as local inventory but quarantined and not required as model inputs."
+  },
+  "temporal_boundary_audit": {
+    "passed": true,
+    "checks": {
+      "forecast_origin_is_2020": true,
+      "dynamic_world_inputs_stop_at_origin": true,
+      "annual_viirs_inputs_stop_at_origin": true,
+      "targets_are_strictly_after_origin": true,
+      "future_dynamic_world_is_label_only": true,
+      "future_viirs_is_prohibited": true,
+      "full_period_viirs_mean_is_prohibited": true,
+      "target_derived_features_are_prohibited": true,
+      "held_out_labels_during_fit_are_prohibited": true,
+      "future_inputs_or_labels_allowed_is_false": true
+    },
+    "materialized_bundle_leakage_checked": true,
+    "materialized_bundle_leakage_check_reason": "bundle source lineage and fit-year columns verified"
+  },
+  "packaging_audit": {
+    "planned_bundles": [
+      {
+        "path": "development/controlled_nodes.parquet",
+        "exists": true
+      },
+      {
+        "path": "development/controlled_edges.parquet",
+        "exists": true
+      },
+      {
+        "path": "development/controlled_node_labels.parquet",
+        "exists": true
+      },
+      {
+        "path": "development/controlled_edge_labels.parquet",
+        "exists": true
+      },
+      {
+        "path": "development/observed_train.parquet",
+        "exists": true
+      },
+      {
+        "path": "development/observed_inputs.parquet",
+        "exists": true
+      },
+      {
+        "path": "development/observed_edges.parquet",
+        "exists": true
+      },
+      {
+        "path": "development/observed_labels.parquet",
+        "exists": true
+      },
+      {
+        "path": "development/region_folds.json",
+        "exists": true
+      },
+      {
+        "path": "development/bundle_manifest.json",
+        "exists": true
+      }
+    ],
+    "planned_evaluators": [
+      {
+        "path": "controlled_evaluator.py",
+        "exists": true
+      },
+      {
+        "path": "observed_evaluator.py",
+        "exists": true
+      },
+      {
+        "path": "evaluator_conformance_report.json",
+        "exists": true
+      }
+    ],
+    "planned_baselines": [
+      {
+        "path": "development/baselines/controlled_zero_node_submission.parquet",
+        "exists": true
+      },
+      {
+        "path": "development/baselines/controlled_zero_edge_submission.parquet",
+        "exists": true
+      },
+      {
+        "path": "development/baselines/observed_persistence_submission.parquet",
+        "exists": true
+      },
+      {
+        "path": "development/baselines/observed_history_only_submission.parquet",
+        "exists": true
+      },
+      {
+        "path": "development/baselines/observed_independent_one_step_submission.parquet",
+        "exists": true
+      },
+      {
+        "path": "development/baselines/observed_fixed_adjacency_submission.parquet",
+        "exists": true
+      },
+      {
+        "path": "development/baselines/baseline_report.json",
+        "exists": true
+      }
+    ],
+    "planned_controls": [
+      {
+        "path": "development/controls/controlled_no_action_nodes.parquet",
+        "exists": true
+      },
+      {
+        "path": "development/controls/controlled_action_shuffle_nodes.parquet",
+        "exists": true
+      },
+      {
+        "path": "development/controls/controlled_single_relation_edges.parquet",
+        "exists": true
+      },
+      {
+        "path": "development/controls/controlled_relation_shuffle_edges.parquet",
+        "exists": true
+      },
+      {
+        "path": "development/controls/controlled_spatial_rewire_edges.parquet",
+        "exists": true
+      },
+      {
+        "path": "development/controls/observed_history_shuffle_inputs.parquet",
+        "exists": true
+      },
+      {
+        "path": "development/controls/observed_spatial_rewire_edges.parquet",
+        "exists": true
+      },
+      {
+        "path": "development/controls/control_manifest.json",
+        "exists": true
+      }
+    ],
+    "all_bundles_materialized": true,
+    "all_evaluators_materialized": true,
+    "all_baselines_materialized": true,
+    "all_controls_materialized": true,
+    "bundle_manifest_verified": true,
+    "bundle_temporal_lineage_verified": true,
+    "evaluator_conformance_passed": true,
+    "baselines_and_controls_verified": true,
+    "independent_data_validation_passed": true,
+    "bundle_manifest_audit": {
+      "passed": true,
+      "temporal_lineage_passed": true,
+      "errors": [],
+      "resources": [
+        {
+          "path": "development/controlled_nodes.parquet",
+          "exists": true,
+          "sha256_matches": true,
+          "row_count_matches": true,
+          "columns_match": true,
+          "keys_unique": true,
+          "passed": true
+        },
+        {
+          "path": "development/controlled_edges.parquet",
+          "exists": true,
+          "sha256_matches": true,
+          "row_count_matches": true,
+          "columns_match": true,
+          "keys_unique": true,
+          "passed": true
+        },
+        {
+          "path": "development/controlled_node_labels.parquet",
+          "exists": true,
+          "sha256_matches": true,
+          "row_count_matches": true,
+          "columns_match": true,
+          "keys_unique": true,
+          "passed": true
+        },
+        {
+          "path": "development/controlled_edge_labels.parquet",
+          "exists": true,
+          "sha256_matches": true,
+          "row_count_matches": true,
+          "columns_match": true,
+          "keys_unique": true,
+          "passed": true
+        },
+        {
+          "path": "development/observed_train.parquet",
+          "exists": true,
+          "sha256_matches": true,
+          "row_count_matches": true,
+          "columns_match": true,
+          "keys_unique": true,
+          "passed": true
+        },
+        {
+          "path": "development/observed_inputs.parquet",
+          "exists": true,
+          "sha256_matches": true,
+          "row_count_matches": true,
+          "columns_match": true,
+          "keys_unique": true,
+          "passed": true
+        },
+        {
+          "path": "development/observed_edges.parquet",
+          "exists": true,
+          "sha256_matches": true,
+          "row_count_matches": true,
+          "columns_match": true,
+          "keys_unique": true,
+          "passed": true
+        },
+        {
+          "path": "development/observed_labels.parquet",
+          "exists": true,
+          "sha256_matches": true,
+          "row_count_matches": true,
+          "columns_match": true,
+          "keys_unique": true,
+          "passed": true
+        },
+        {
+          "path": "development/region_folds.json",
+          "exists": true,
+          "sha256_matches": true,
+          "row_count_matches": true,
+          "columns_match": true,
+          "keys_unique": true,
+          "passed": true
+        }
+      ],
+      "semantic_checks": {
+        "controlled_split_and_grid_counts_match": true,
+        "controlled_node_label_keys_match": true,
+        "controlled_edge_label_keys_match": true,
+        "observed_fit_years_stop_at_2020": true,
+        "observed_inputs_have_no_future_columns": true,
+        "observed_labels_have_exact_target_years": true,
+        "observed_fold_membership_matches_contract": true,
+        "observed_input_and_label_keys_match": true,
+        "observed_spatial_graph_is_valid": true
+      },
+      "observed_source_hashes_verified": true
+    },
+    "evaluator_conformance_audit": {
+      "passed": true,
+      "errors": []
+    },
+    "baselines_and_controls_audit": {
+      "passed": true,
+      "errors": []
+    },
+    "independent_data_validation_audit": {
+      "passed": true,
+      "errors": []
+    }
+  },
+  "blocking_items": [
+    "wait for full-calendar 2026 labels and run the sealed evaluator after 2027-01-01"
+  ],
+  "non_blocking_extension_state": {
+    "hydrocontrol_v0_3_role": "non_blocking_research_extension",
+    "nwm_full_archive_required_for_foundation": false,
+    "dwr_response_required_for_foundation": false,
+    "existing_hydro_gates_relaxed": false
+  },
+  "claim_boundary": {
+    "supports_when_ready": [
+      "controlled action-mechanism evaluation",
+      "observed unseen-region state-rollout evaluation",
+      "falsification of selected foundation capabilities"
+    ],
+    "does_not_support": [
+      "identified real-world intervention effects",
+      "operational forecasting",
+      "cross-domain transfer",
+      "public release before license and hidden-label gates",
+      "general-purpose GWM validity"
+    ]
+  }
+}

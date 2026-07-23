@@ -1,0 +1,734 @@
+{
+  "schema": "gwm_bench.twm_v3_historical_backtest_prediction.v1",
+  "status": "historical_v3_predictions_committed_before_target_scoring",
+  "candidate": {
+    "name": "TWM V3 jointly calibrated three-seed logit ensemble",
+    "seeds": [
+      31,
+      47,
+      73
+    ],
+    "training": "reuse exact frozen TWM V2 weights",
+    "aggregation": "mean change and destination logits before one shared update",
+    "selection": "past-only validation balanced region and overall change F1 with 0.75-1.25 validation change-count ratio constraint",
+    "target_year_labels_used_for_selection": false
+  },
+  "experiments": [
+    {
+      "target_year": 2019,
+      "origin_year": 2018,
+      "training_windows": [
+        [
+          2017,
+          2018
+        ]
+      ],
+      "folds": [
+        {
+          "fold_index": 0,
+          "selected": {
+            "logit_offset": -0.5,
+            "cap_rate": 0.109962,
+            "validation_change_count_ratio": 1.1,
+            "change_count_constraint_satisfied": true,
+            "balanced_change_f1": 0.4025793650793651,
+            "metrics": {
+              "mean_region_year_change_f1": 0.4242063492063492,
+              "overall_change_f1": 0.38095238095238093,
+              "overall_class_macro_f1": 0.623110531705608,
+              "multiclass_brier_score": 0.20259696827428988,
+              "predicted_change_count": 22,
+              "observed_change_count": 20
+            }
+          },
+          "cap_rate_candidates": [
+            0.0,
+            0.03485,
+            0.077082,
+            0.077083,
+            0.096354,
+            0.109962,
+            0.145175
+          ],
+          "reused_weights": [
+            {
+              "seed": 31,
+              "weights": {
+                "path": "development/twm_v2_historical_backtest/target_2019/seed_31/fold_0_weights.pt",
+                "path_scope": "benchmark_relative",
+                "role": "historical_model_weights",
+                "size_bytes": 484454,
+                "sha256": "922a91b3df3d8b1aabf52b670d80c8750bc70a1b55e822c6455d72aa2a86fc1a"
+              }
+            },
+            {
+              "seed": 47,
+              "weights": {
+                "path": "development/twm_v2_historical_backtest/target_2019/seed_47/fold_0_weights.pt",
+                "path_scope": "benchmark_relative",
+                "role": "historical_model_weights",
+                "size_bytes": 484454,
+                "sha256": "dbdd8c96b9df47db9b106fda3753f33dfd4d1c14042fb2df083b91b48c4cb44b"
+              }
+            },
+            {
+              "seed": 73,
+              "weights": {
+                "path": "development/twm_v2_historical_backtest/target_2019/seed_73/fold_0_weights.pt",
+                "path_scope": "benchmark_relative",
+                "role": "historical_model_weights",
+                "size_bytes": 484454,
+                "sha256": "e0529c4ab8c8728dfa9dc125387b5b1cfc195146faa7e4b1da964d99b3b2ec09"
+              }
+            }
+          ],
+          "selection_trials": {
+            "path": "development/twm_v3_historical_backtest/target_2019/fold_0_joint_trials.json",
+            "path_scope": "benchmark_relative",
+            "role": "v3_past_only_joint_validation_trials",
+            "size_bytes": 29406,
+            "sha256": "aa95fcd080909a9cd41d2896884d642e351a13af7733282e5070b9ef7eb86ea3"
+          }
+        },
+        {
+          "fold_index": 1,
+          "selected": {
+            "logit_offset": 0.0,
+            "cap_rate": 0.118477,
+            "validation_change_count_ratio": 1.25,
+            "change_count_constraint_satisfied": true,
+            "balanced_change_f1": 0.5634920634920635,
+            "metrics": {
+              "mean_region_year_change_f1": 0.5714285714285714,
+              "overall_change_f1": 0.5555555555555556,
+              "overall_class_macro_f1": 0.6902045226687555,
+              "multiclass_brier_score": 0.14080365596799452,
+              "predicted_change_count": 20,
+              "observed_change_count": 16
+            }
+          },
+          "cap_rate_candidates": [
+            0.0,
+            0.040179,
+            0.082916,
+            0.102752,
+            0.103645,
+            0.118477,
+            0.122391
+          ],
+          "reused_weights": [
+            {
+              "seed": 31,
+              "weights": {
+                "path": "development/twm_v2_historical_backtest/target_2019/seed_31/fold_1_weights.pt",
+                "path_scope": "benchmark_relative",
+                "role": "historical_model_weights",
+                "size_bytes": 484454,
+                "sha256": "41706ea91fa17df4d678ddcf6ea64d6c6da2b2fdc7297ab141b231f9c0fd921f"
+              }
+            },
+            {
+              "seed": 47,
+              "weights": {
+                "path": "development/twm_v2_historical_backtest/target_2019/seed_47/fold_1_weights.pt",
+                "path_scope": "benchmark_relative",
+                "role": "historical_model_weights",
+                "size_bytes": 484454,
+                "sha256": "5728b2f93fa5b4fdb7df0840c358a02d07eca4104081210a702499f5cf42f066"
+              }
+            },
+            {
+              "seed": 73,
+              "weights": {
+                "path": "development/twm_v2_historical_backtest/target_2019/seed_73/fold_1_weights.pt",
+                "path_scope": "benchmark_relative",
+                "role": "historical_model_weights",
+                "size_bytes": 484454,
+                "sha256": "8e3bd0bf2dfbc6646b19671932e1ff78c6587851b2d5318c57d6ef4a38f509fa"
+              }
+            }
+          ],
+          "selection_trials": {
+            "path": "development/twm_v3_historical_backtest/target_2019/fold_1_joint_trials.json",
+            "path_scope": "benchmark_relative",
+            "role": "v3_past_only_joint_validation_trials",
+            "size_bytes": 29287,
+            "sha256": "1d789397a845eacbf556d72de67d632f870239bca4812e756f7d91bb73b10060"
+          }
+        },
+        {
+          "fold_index": 2,
+          "selected": {
+            "logit_offset": -0.5,
+            "cap_rate": 0.100024,
+            "validation_change_count_ratio": 0.9166666666666666,
+            "change_count_constraint_satisfied": true,
+            "balanced_change_f1": 0.5170912846744049,
+            "metrics": {
+              "mean_region_year_change_f1": 0.5124434389140271,
+              "overall_change_f1": 0.5217391304347826,
+              "overall_class_macro_f1": 0.4728355384433899,
+              "multiclass_brier_score": 0.18283739126461476,
+              "predicted_change_count": 22,
+              "observed_change_count": 24
+            }
+          },
+          "cap_rate_candidates": [
+            0.0,
+            0.040179,
+            0.054094,
+            0.080019,
+            0.100024,
+            0.110018,
+            0.122391
+          ],
+          "reused_weights": [
+            {
+              "seed": 31,
+              "weights": {
+                "path": "development/twm_v2_historical_backtest/target_2019/seed_31/fold_2_weights.pt",
+                "path_scope": "benchmark_relative",
+                "role": "historical_model_weights",
+                "size_bytes": 484454,
+                "sha256": "4e4c0f51a07409a5cbdd754c31b9cf4b39cd95aa1910087f27271b2a4b2c1df6"
+              }
+            },
+            {
+              "seed": 47,
+              "weights": {
+                "path": "development/twm_v2_historical_backtest/target_2019/seed_47/fold_2_weights.pt",
+                "path_scope": "benchmark_relative",
+                "role": "historical_model_weights",
+                "size_bytes": 484454,
+                "sha256": "f53835bdfe3e266f6aaf1bd96ea97e6d1c20053dc93685950e9cc13d6cc2d946"
+              }
+            },
+            {
+              "seed": 73,
+              "weights": {
+                "path": "development/twm_v2_historical_backtest/target_2019/seed_73/fold_2_weights.pt",
+                "path_scope": "benchmark_relative",
+                "role": "historical_model_weights",
+                "size_bytes": 484454,
+                "sha256": "fd4eaa4185bb123ad740cff2d067c578911bcde229ce9c7c54af2a712a4bb4a6"
+              }
+            }
+          ],
+          "selection_trials": {
+            "path": "development/twm_v3_historical_backtest/target_2019/fold_2_joint_trials.json",
+            "path_scope": "benchmark_relative",
+            "role": "v3_past_only_joint_validation_trials",
+            "size_bytes": 29551,
+            "sha256": "c814dd63e1fba22e9f1b6325699e5b64d2961c93c81ad7be6c28be47e6cd6284"
+          }
+        },
+        {
+          "fold_index": 3,
+          "selected": {
+            "logit_offset": 0.0,
+            "cap_rate": 0.050837,
+            "validation_change_count_ratio": 1.0,
+            "change_count_constraint_satisfied": true,
+            "balanced_change_f1": 0.31136363636363634,
+            "metrics": {
+              "mean_region_year_change_f1": 0.35,
+              "overall_change_f1": 0.2727272727272727,
+              "overall_class_macro_f1": 0.8809799782584592,
+              "multiclass_brier_score": 0.11018335052693315,
+              "predicted_change_count": 11,
+              "observed_change_count": 11
+            }
+          },
+          "cap_rate_candidates": [
+            0.0,
+            0.050837,
+            0.077082,
+            0.090044,
+            0.112555,
+            0.119685,
+            0.145614
+          ],
+          "reused_weights": [
+            {
+              "seed": 31,
+              "weights": {
+                "path": "development/twm_v2_historical_backtest/target_2019/seed_31/fold_3_weights.pt",
+                "path_scope": "benchmark_relative",
+                "role": "historical_model_weights",
+                "size_bytes": 484454,
+                "sha256": "8a9fbe982c7beb9638377b265e3607eea9130ec74c9beb367c0bf6609759a457"
+              }
+            },
+            {
+              "seed": 47,
+              "weights": {
+                "path": "development/twm_v2_historical_backtest/target_2019/seed_47/fold_3_weights.pt",
+                "path_scope": "benchmark_relative",
+                "role": "historical_model_weights",
+                "size_bytes": 484454,
+                "sha256": "4a4ada653e5bdc0d7831e749dffb12b7e7704e5754cd6b4a4a536f02afbe29d1"
+              }
+            },
+            {
+              "seed": 73,
+              "weights": {
+                "path": "development/twm_v2_historical_backtest/target_2019/seed_73/fold_3_weights.pt",
+                "path_scope": "benchmark_relative",
+                "role": "historical_model_weights",
+                "size_bytes": 484454,
+                "sha256": "49dcf47f88880216453600c3be12d7c4307191d95d1dc5f2c198da7e2f526802"
+              }
+            }
+          ],
+          "selection_trials": {
+            "path": "development/twm_v3_historical_backtest/target_2019/fold_3_joint_trials.json",
+            "path_scope": "benchmark_relative",
+            "role": "v3_past_only_joint_validation_trials",
+            "size_bytes": 29495,
+            "sha256": "d0f1650fb538aeb749bc5f14898794a3843c30b71ba1f8d003468d10f12f9a76"
+          }
+        },
+        {
+          "fold_index": 4,
+          "selected": {
+            "logit_offset": -0.5,
+            "cap_rate": 0.125853,
+            "validation_change_count_ratio": 1.2272727272727273,
+            "change_count_constraint_satisfied": true,
+            "balanced_change_f1": 0.3356554160125589,
+            "metrics": {
+              "mean_region_year_change_f1": 0.3447802197802198,
+              "overall_change_f1": 0.32653061224489793,
+              "overall_class_macro_f1": 0.47301033564790684,
+              "multiclass_brier_score": 0.253470345416724,
+              "predicted_change_count": 27,
+              "observed_change_count": 22
+            }
+          },
+          "cap_rate_candidates": [
+            0.0,
+            0.047538,
+            0.077082,
+            0.090305,
+            0.112882,
+            0.125853,
+            0.148148
+          ],
+          "reused_weights": [
+            {
+              "seed": 31,
+              "weights": {
+                "path": "development/twm_v2_historical_backtest/target_2019/seed_31/fold_4_weights.pt",
+                "path_scope": "benchmark_relative",
+                "role": "historical_model_weights",
+                "size_bytes": 484454,
+                "sha256": "13dacdefa17d62089b78a403bc6a169a12e06844054abab775a29636cbecfd69"
+              }
+            },
+            {
+              "seed": 47,
+              "weights": {
+                "path": "development/twm_v2_historical_backtest/target_2019/seed_47/fold_4_weights.pt",
+                "path_scope": "benchmark_relative",
+                "role": "historical_model_weights",
+                "size_bytes": 484454,
+                "sha256": "0aecdf1ebbc621168b947f78c16a70c9f77b8550f63662b4745493c02f5a1fbe"
+              }
+            },
+            {
+              "seed": 73,
+              "weights": {
+                "path": "development/twm_v2_historical_backtest/target_2019/seed_73/fold_4_weights.pt",
+                "path_scope": "benchmark_relative",
+                "role": "historical_model_weights",
+                "size_bytes": 484454,
+                "sha256": "1b0e88cc125f224e3681229e383cad258e27589b3337c2b9a3a0867fa7020d8f"
+              }
+            }
+          ],
+          "selection_trials": {
+            "path": "development/twm_v3_historical_backtest/target_2019/fold_4_joint_trials.json",
+            "path_scope": "benchmark_relative",
+            "role": "v3_past_only_joint_validation_trials",
+            "size_bytes": 29713,
+            "sha256": "dfb2970c2f059dd8195cbb08dd3c2c9e317fef92cce7cd07dfb926d3bf46f174"
+          }
+        }
+      ]
+    },
+    {
+      "target_year": 2020,
+      "origin_year": 2019,
+      "training_windows": [
+        [
+          2017,
+          2018
+        ],
+        [
+          2018,
+          2019
+        ]
+      ],
+      "folds": [
+        {
+          "fold_index": 0,
+          "selected": {
+            "logit_offset": 0.0,
+            "cap_rate": 0.080065,
+            "validation_change_count_ratio": 1.0625,
+            "change_count_constraint_satisfied": true,
+            "balanced_change_f1": 0.3170600233100233,
+            "metrics": {
+              "mean_region_year_change_f1": 0.3310897435897436,
+              "overall_change_f1": 0.30303030303030304,
+              "overall_class_macro_f1": 0.6055476929205881,
+              "multiclass_brier_score": 0.1693100285925547,
+              "predicted_change_count": 34,
+              "observed_change_count": 32
+            }
+          },
+          "cap_rate_candidates": [
+            0.0,
+            0.03485,
+            0.080065,
+            0.082808,
+            0.10351,
+            0.124072,
+            0.148148
+          ],
+          "reused_weights": [
+            {
+              "seed": 31,
+              "weights": {
+                "path": "development/twm_v2_historical_backtest/target_2020/seed_31/fold_0_weights.pt",
+                "path_scope": "benchmark_relative",
+                "role": "historical_model_weights",
+                "size_bytes": 484454,
+                "sha256": "2e21b990c4613f9bee1a98a7a790e50dc3c06c7ddf1658c46271245d9904ff90"
+              }
+            },
+            {
+              "seed": 47,
+              "weights": {
+                "path": "development/twm_v2_historical_backtest/target_2020/seed_47/fold_0_weights.pt",
+                "path_scope": "benchmark_relative",
+                "role": "historical_model_weights",
+                "size_bytes": 484454,
+                "sha256": "027650693b93878e90ae305301d0df5faadff123a094e7607248e8e6f3e6beff"
+              }
+            },
+            {
+              "seed": 73,
+              "weights": {
+                "path": "development/twm_v2_historical_backtest/target_2020/seed_73/fold_0_weights.pt",
+                "path_scope": "benchmark_relative",
+                "role": "historical_model_weights",
+                "size_bytes": 484454,
+                "sha256": "018d9097f352f1c97a2fc0a00ac6ff8d6d08b823bd44eabe8aa5c314cc5ce3ff"
+              }
+            }
+          ],
+          "selection_trials": {
+            "path": "development/twm_v3_historical_backtest/target_2020/fold_0_joint_trials.json",
+            "path_scope": "benchmark_relative",
+            "role": "v3_past_only_joint_validation_trials",
+            "size_bytes": 30413,
+            "sha256": "cec1bf500335770cb6539958d6ea5a85a89c18d7663ca179a49cf24b4382bce3"
+          }
+        },
+        {
+          "fold_index": 1,
+          "selected": {
+            "logit_offset": -1.0,
+            "cap_rate": 0.119685,
+            "validation_change_count_ratio": 1.0952380952380953,
+            "change_count_constraint_satisfied": true,
+            "balanced_change_f1": 0.38887085137085137,
+            "metrics": {
+              "mean_region_year_change_f1": 0.3913780663780664,
+              "overall_change_f1": 0.38636363636363635,
+              "overall_class_macro_f1": 0.47493877659406286,
+              "multiclass_brier_score": 0.24290451421772144,
+              "predicted_change_count": 46,
+              "observed_change_count": 42
+            }
+          },
+          "cap_rate_candidates": [
+            0.0,
+            0.03438,
+            0.05968,
+            0.078707,
+            0.098384,
+            0.119685,
+            0.148148
+          ],
+          "reused_weights": [
+            {
+              "seed": 31,
+              "weights": {
+                "path": "development/twm_v2_historical_backtest/target_2020/seed_31/fold_1_weights.pt",
+                "path_scope": "benchmark_relative",
+                "role": "historical_model_weights",
+                "size_bytes": 484454,
+                "sha256": "5436513c507e3f0750b610475d25ce93d959b2cfcc5d775d0d564d9a56e02296"
+              }
+            },
+            {
+              "seed": 47,
+              "weights": {
+                "path": "development/twm_v2_historical_backtest/target_2020/seed_47/fold_1_weights.pt",
+                "path_scope": "benchmark_relative",
+                "role": "historical_model_weights",
+                "size_bytes": 484454,
+                "sha256": "6b2c672871205339ea359e329b6a149fa1c6cd11f1979204be6357dd61864788"
+              }
+            },
+            {
+              "seed": 73,
+              "weights": {
+                "path": "development/twm_v2_historical_backtest/target_2020/seed_73/fold_1_weights.pt",
+                "path_scope": "benchmark_relative",
+                "role": "historical_model_weights",
+                "size_bytes": 484454,
+                "sha256": "0f7e992e2457e11c8d6eeedc2408c1f4ad78c7dfcf68dc586f3a90634b16416e"
+              }
+            }
+          ],
+          "selection_trials": {
+            "path": "development/twm_v3_historical_backtest/target_2020/fold_1_joint_trials.json",
+            "path_scope": "benchmark_relative",
+            "role": "v3_past_only_joint_validation_trials",
+            "size_bytes": 29754,
+            "sha256": "ee5c6d2ad13ed381b8b629009c04128f906b028118557cf90baf0677fd3accd9"
+          }
+        },
+        {
+          "fold_index": 2,
+          "selected": {
+            "logit_offset": -0.5,
+            "cap_rate": 0.119685,
+            "validation_change_count_ratio": 1.146341463414634,
+            "change_count_constraint_satisfied": true,
+            "balanced_change_f1": 0.4983280608280608,
+            "metrics": {
+              "mean_region_year_change_f1": 0.5193833943833943,
+              "overall_change_f1": 0.4772727272727273,
+              "overall_class_macro_f1": 0.4238073466658801,
+              "multiclass_brier_score": 0.1790476175967656,
+              "predicted_change_count": 47,
+              "observed_change_count": 41
+            }
+          },
+          "cap_rate_candidates": [
+            0.0,
+            0.026042,
+            0.049043,
+            0.073926,
+            0.092408,
+            0.119685,
+            0.153178
+          ],
+          "reused_weights": [
+            {
+              "seed": 31,
+              "weights": {
+                "path": "development/twm_v2_historical_backtest/target_2020/seed_31/fold_2_weights.pt",
+                "path_scope": "benchmark_relative",
+                "role": "historical_model_weights",
+                "size_bytes": 484454,
+                "sha256": "8172cf1dd12da9796a25b51bb132e140bc5a606a2ba2d0f45812b793f00214d0"
+              }
+            },
+            {
+              "seed": 47,
+              "weights": {
+                "path": "development/twm_v2_historical_backtest/target_2020/seed_47/fold_2_weights.pt",
+                "path_scope": "benchmark_relative",
+                "role": "historical_model_weights",
+                "size_bytes": 484454,
+                "sha256": "d08cbeb61b070a6e6dc02e43d0b30cbd08f352a4c9abab0badd398eca6b0e562"
+              }
+            },
+            {
+              "seed": 73,
+              "weights": {
+                "path": "development/twm_v2_historical_backtest/target_2020/seed_73/fold_2_weights.pt",
+                "path_scope": "benchmark_relative",
+                "role": "historical_model_weights",
+                "size_bytes": 484454,
+                "sha256": "6c7926bb274bb71d0673d74df1a8b5461cdc15e53e8832c8253c434d4a0c929b"
+              }
+            }
+          ],
+          "selection_trials": {
+            "path": "development/twm_v3_historical_backtest/target_2020/fold_2_joint_trials.json",
+            "path_scope": "benchmark_relative",
+            "role": "v3_past_only_joint_validation_trials",
+            "size_bytes": 30154,
+            "sha256": "b546041909c32aa2194f9104f5145ed52298fd2dd810650fcacaa3ced46dae9c"
+          }
+        },
+        {
+          "fold_index": 3,
+          "selected": {
+            "logit_offset": 0.0,
+            "cap_rate": 0.091305,
+            "validation_change_count_ratio": 0.7916666666666666,
+            "change_count_constraint_satisfied": true,
+            "balanced_change_f1": 0.26088039867109636,
+            "metrics": {
+              "mean_region_year_change_f1": 0.33571428571428574,
+              "overall_change_f1": 0.18604651162790697,
+              "overall_class_macro_f1": 0.702620320855615,
+              "multiclass_brier_score": 0.13645143313669747,
+              "predicted_change_count": 19,
+              "observed_change_count": 24
+            }
+          },
+          "cap_rate_candidates": [
+            0.0,
+            0.035088,
+            0.091305,
+            0.09595,
+            0.114131,
+            0.126359,
+            0.174074
+          ],
+          "reused_weights": [
+            {
+              "seed": 31,
+              "weights": {
+                "path": "development/twm_v2_historical_backtest/target_2020/seed_31/fold_3_weights.pt",
+                "path_scope": "benchmark_relative",
+                "role": "historical_model_weights",
+                "size_bytes": 484454,
+                "sha256": "7c4da5cc3ac6c9edaf582ff0f3853f1ae9d0b65177f20b90684b783a87292a7e"
+              }
+            },
+            {
+              "seed": 47,
+              "weights": {
+                "path": "development/twm_v2_historical_backtest/target_2020/seed_47/fold_3_weights.pt",
+                "path_scope": "benchmark_relative",
+                "role": "historical_model_weights",
+                "size_bytes": 484454,
+                "sha256": "83b5bb93a15b55ae3c3b35a995ad59c9c704d462b3d15502bad680738b869847"
+              }
+            },
+            {
+              "seed": 73,
+              "weights": {
+                "path": "development/twm_v2_historical_backtest/target_2020/seed_73/fold_3_weights.pt",
+                "path_scope": "benchmark_relative",
+                "role": "historical_model_weights",
+                "size_bytes": 484454,
+                "sha256": "bcefe923595d49d3c1a4a37160cdf949b547db1ae06beb20572dd477e12b98c1"
+              }
+            }
+          ],
+          "selection_trials": {
+            "path": "development/twm_v3_historical_backtest/target_2020/fold_3_joint_trials.json",
+            "path_scope": "benchmark_relative",
+            "role": "v3_past_only_joint_validation_trials",
+            "size_bytes": 30088,
+            "sha256": "8fc9882d66d2571678f0b5dc3c1d0a03af8cbe00eaa33406c056ab5fed16c5d5"
+          }
+        },
+        {
+          "fold_index": 4,
+          "selected": {
+            "logit_offset": 0.0,
+            "cap_rate": 0.148148,
+            "validation_change_count_ratio": 1.1627906976744187,
+            "change_count_constraint_satisfied": true,
+            "balanced_change_f1": 0.32397181111898854,
+            "metrics": {
+              "mean_region_year_change_f1": 0.3038576007326007,
+              "overall_change_f1": 0.34408602150537637,
+              "overall_class_macro_f1": 0.4673888798536371,
+              "multiclass_brier_score": 0.2286253267521713,
+              "predicted_change_count": 50,
+              "observed_change_count": 43
+            }
+          },
+          "cap_rate_candidates": [
+            0.0,
+            0.03438,
+            0.080065,
+            0.088598,
+            0.110748,
+            0.131724,
+            0.148148
+          ],
+          "reused_weights": [
+            {
+              "seed": 31,
+              "weights": {
+                "path": "development/twm_v2_historical_backtest/target_2020/seed_31/fold_4_weights.pt",
+                "path_scope": "benchmark_relative",
+                "role": "historical_model_weights",
+                "size_bytes": 484454,
+                "sha256": "373bdcae7b40ca2b48988ffeaae3f7d0baaa9e2ee174453bd1e48be61ef14b50"
+              }
+            },
+            {
+              "seed": 47,
+              "weights": {
+                "path": "development/twm_v2_historical_backtest/target_2020/seed_47/fold_4_weights.pt",
+                "path_scope": "benchmark_relative",
+                "role": "historical_model_weights",
+                "size_bytes": 484454,
+                "sha256": "832d1d88de42dc73b1c9632f9ec2f0abecbab9fbec21f176e4ed020c8aa87cbd"
+              }
+            },
+            {
+              "seed": 73,
+              "weights": {
+                "path": "development/twm_v2_historical_backtest/target_2020/seed_73/fold_4_weights.pt",
+                "path_scope": "benchmark_relative",
+                "role": "historical_model_weights",
+                "size_bytes": 484454,
+                "sha256": "62c8c1848457f8bcb6921d0d5edf765cdb9463e635794fd47fbef60e838a6ef9"
+              }
+            }
+          ],
+          "selection_trials": {
+            "path": "development/twm_v3_historical_backtest/target_2020/fold_4_joint_trials.json",
+            "path_scope": "benchmark_relative",
+            "role": "v3_past_only_joint_validation_trials",
+            "size_bytes": 31459,
+            "sha256": "dccca64981b7fe82938708dfc2596e798a5062868412b2a226d43372a8c5cac3"
+          }
+        }
+      ]
+    }
+  ],
+  "artifacts": {
+    "prediction": {
+      "path": "development/twm_v3_historical_backtest/twm_v3_prediction.parquet",
+      "path_scope": "benchmark_relative",
+      "role": "committed_historical_v3_prediction",
+      "size_bytes": 26316,
+      "sha256": "8b40d99e2192c9f9f976c79e121a6ae660ec1c6446771f278b542878aabe4364"
+    },
+    "v2_prediction_report": {
+      "path": "development/twm_v2_historical_backtest/prediction_report.json",
+      "path_scope": "benchmark_relative",
+      "role": "frozen_v2_weight_manifest",
+      "size_bytes": 52834,
+      "sha256": "fa7c55d0b88439bec532f97e8332b0aaad4d75d2a6493ebfee35066285f26d57"
+    }
+  },
+  "source": {
+    "path": "run_twm_v3_historical_backtest.py",
+    "path_scope": "benchmark_relative",
+    "role": "historical_v3_prediction_program",
+    "size_bytes": 16865,
+    "sha256": "e5f518069ad09994488e44f1de735e608c528f73c50cb1c666fac9c2b61aa50e"
+  },
+  "claim_boundary": {
+    "posthoc_development_only": true,
+    "historical_test_labels_known_before_v3_design": true,
+    "fresh_hidden_labels_required_for_unbiased_acceptance": true
+  }
+}

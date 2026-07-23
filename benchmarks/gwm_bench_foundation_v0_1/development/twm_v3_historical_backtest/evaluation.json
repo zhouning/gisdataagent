@@ -1,0 +1,2491 @@
+{
+  "schema": "gwm_bench.twm_v3_historical_backtest_evaluation.v1",
+  "status": "historical_v3_scored_against_v2_flus_and_baselines",
+  "evaluations": {
+    "twm_v2": {
+      "primary_metric": {
+        "name": "mean_region_year_change_f1",
+        "value": 0.21089950898774426,
+        "component_count": 40,
+        "aggregation": "unweighted_mean"
+      },
+      "overall_secondary_metrics": {
+        "row_count": 2110,
+        "observed_changed_count": 172,
+        "predicted_changed_count": 91,
+        "change_f1": 0.23574144486692014,
+        "changed_destination_macro_f1": 0.04193302891933029,
+        "overall_class_macro_f1": 0.5266806059908957,
+        "multiclass_brier_score": 0.17535366496016852
+      },
+      "metrics_by_year": [
+        {
+          "target_year": 2019,
+          "row_count": 1055,
+          "observed_changed_count": 89,
+          "predicted_changed_count": 45,
+          "change_f1": 0.19402985074626866,
+          "changed_destination_macro_f1": 0.026436781609195402,
+          "overall_class_macro_f1": 0.5350278511964555,
+          "multiclass_brier_score": 0.17898463916561874
+        },
+        {
+          "target_year": 2020,
+          "row_count": 1055,
+          "observed_changed_count": 83,
+          "predicted_changed_count": 46,
+          "change_f1": 0.27906976744186046,
+          "changed_destination_macro_f1": 0.05867269984917044,
+          "overall_class_macro_f1": 0.4919613883441487,
+          "multiclass_brier_score": 0.17172269075471835
+        }
+      ],
+      "metrics_by_region_year": [
+        {
+          "region_id": "上海市_浦东新区_祝桥镇",
+          "target_year": 2019,
+          "row_count": 59,
+          "observed_changed_count": 12,
+          "predicted_changed_count": 5,
+          "change_f1": 0.35294117647058826,
+          "changed_destination_macro_f1": 0.047619047619047616,
+          "overall_class_macro_f1": 0.5742655090481178,
+          "multiclass_brier_score": 0.3568626592735882
+        },
+        {
+          "region_id": "上海市_浦东新区_祝桥镇",
+          "target_year": 2020,
+          "row_count": 59,
+          "observed_changed_count": 9,
+          "predicted_changed_count": 3,
+          "change_f1": 0.3333333333333333,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.5,
+          "multiclass_brier_score": 0.28351163443188393
+        },
+        {
+          "region_id": "东莞市_东莞市_虎门镇",
+          "target_year": 2019,
+          "row_count": 36,
+          "observed_changed_count": 1,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.7087301587301588,
+          "multiclass_brier_score": 0.10159210732050779
+        },
+        {
+          "region_id": "东莞市_东莞市_虎门镇",
+          "target_year": 2020,
+          "row_count": 36,
+          "observed_changed_count": 2,
+          "predicted_changed_count": 2,
+          "change_f1": 0.5,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.5601398601398602,
+          "multiclass_brier_score": 0.1468885084806392
+        },
+        {
+          "region_id": "佛山市_高明区_杨和镇",
+          "target_year": 2019,
+          "row_count": 46,
+          "observed_changed_count": 6,
+          "predicted_changed_count": 3,
+          "change_f1": 0.4444444444444444,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.4364012798795408,
+          "multiclass_brier_score": 0.26156853423257365
+        },
+        {
+          "region_id": "佛山市_高明区_杨和镇",
+          "target_year": 2020,
+          "row_count": 46,
+          "observed_changed_count": 5,
+          "predicted_changed_count": 1,
+          "change_f1": 0.3333333333333333,
+          "changed_destination_macro_f1": 0.1,
+          "overall_class_macro_f1": 0.5830314009661836,
+          "multiclass_brier_score": 0.18314602511489605
+        },
+        {
+          "region_id": "北京市_密云县_石城镇",
+          "target_year": 2019,
+          "row_count": 76,
+          "observed_changed_count": 5,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.8560381355932204,
+          "multiclass_brier_score": 0.1031871043582895
+        },
+        {
+          "region_id": "北京市_密云县_石城镇",
+          "target_year": 2020,
+          "row_count": 76,
+          "observed_changed_count": 11,
+          "predicted_changed_count": 3,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.6776214833759591,
+          "multiclass_brier_score": 0.32124177713236685
+        },
+        {
+          "region_id": "南京市_六合区_马鞍街道",
+          "target_year": 2019,
+          "row_count": 56,
+          "observed_changed_count": 9,
+          "predicted_changed_count": 4,
+          "change_f1": 0.15384615384615385,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.6328320802005012,
+          "multiclass_brier_score": 0.37275068265641526
+        },
+        {
+          "region_id": "南京市_六合区_马鞍街道",
+          "target_year": 2020,
+          "row_count": 56,
+          "observed_changed_count": 6,
+          "predicted_changed_count": 3,
+          "change_f1": 0.2222222222222222,
+          "changed_destination_macro_f1": 0.1111111111111111,
+          "overall_class_macro_f1": 0.8704614797864225,
+          "multiclass_brier_score": 0.23964621396871427
+        },
+        {
+          "region_id": "厦门市_同安区_莲花镇",
+          "target_year": 2019,
+          "row_count": 44,
+          "observed_changed_count": 0,
+          "predicted_changed_count": 2,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 1.0,
+          "overall_class_macro_f1": 0.6351851851851852,
+          "multiclass_brier_score": 0.06647111884045137
+        },
+        {
+          "region_id": "厦门市_同安区_莲花镇",
+          "target_year": 2020,
+          "row_count": 44,
+          "observed_changed_count": 0,
+          "predicted_changed_count": 2,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 1.0,
+          "overall_class_macro_f1": 0.9301587301587302,
+          "multiclass_brier_score": 0.04825883693405119
+        },
+        {
+          "region_id": "合肥市_巢湖市_散兵镇",
+          "target_year": 2019,
+          "row_count": 57,
+          "observed_changed_count": 2,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.7495597484276729,
+          "multiclass_brier_score": 0.08277156703203638
+        },
+        {
+          "region_id": "合肥市_巢湖市_散兵镇",
+          "target_year": 2020,
+          "row_count": 57,
+          "observed_changed_count": 2,
+          "predicted_changed_count": 3,
+          "change_f1": 0.4,
+          "changed_destination_macro_f1": 0.3333333333333333,
+          "overall_class_macro_f1": 0.8630325814536342,
+          "multiclass_brier_score": 0.11469533746191664
+        },
+        {
+          "region_id": "天津市_滨海新区_临港工业区",
+          "target_year": 2019,
+          "row_count": 54,
+          "observed_changed_count": 10,
+          "predicted_changed_count": 3,
+          "change_f1": 0.3076923076923077,
+          "changed_destination_macro_f1": 0.08333333333333333,
+          "overall_class_macro_f1": 0.5101010101010102,
+          "multiclass_brier_score": 0.33877559696638543
+        },
+        {
+          "region_id": "天津市_滨海新区_临港工业区",
+          "target_year": 2020,
+          "row_count": 54,
+          "observed_changed_count": 11,
+          "predicted_changed_count": 3,
+          "change_f1": 0.2857142857142857,
+          "changed_destination_macro_f1": 0.08333333333333333,
+          "overall_class_macro_f1": 0.5039657772923493,
+          "multiclass_brier_score": 0.3408882378963711
+        },
+        {
+          "region_id": "宁波市_余姚市_小曹娥镇",
+          "target_year": 2019,
+          "row_count": 54,
+          "observed_changed_count": 8,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.7744273879142299,
+          "multiclass_brier_score": 0.28005614618232655
+        },
+        {
+          "region_id": "宁波市_余姚市_小曹娥镇",
+          "target_year": 2020,
+          "row_count": 54,
+          "observed_changed_count": 7,
+          "predicted_changed_count": 1,
+          "change_f1": 0.25,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.5864695340501792,
+          "multiclass_brier_score": 0.26561526026148496
+        },
+        {
+          "region_id": "广州市_增城区_正果镇",
+          "target_year": 2019,
+          "row_count": 48,
+          "observed_changed_count": 1,
+          "predicted_changed_count": 3,
+          "change_f1": 0.5,
+          "changed_destination_macro_f1": 1.0,
+          "overall_class_macro_f1": 0.7441860465116279,
+          "multiclass_brier_score": 0.07949772893154236
+        },
+        {
+          "region_id": "广州市_增城区_正果镇",
+          "target_year": 2020,
+          "row_count": 48,
+          "observed_changed_count": 1,
+          "predicted_changed_count": 2,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.5286821705426357,
+          "multiclass_brier_score": 0.1012653099381891
+        },
+        {
+          "region_id": "成都市_桂阳县_舂陵江镇",
+          "target_year": 2019,
+          "row_count": 56,
+          "observed_changed_count": 7,
+          "predicted_changed_count": 4,
+          "change_f1": 0.18181818181818182,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.6020582329317269,
+          "multiclass_brier_score": 0.24481756605119087
+        },
+        {
+          "region_id": "成都市_桂阳县_舂陵江镇",
+          "target_year": 2020,
+          "row_count": 56,
+          "observed_changed_count": 2,
+          "predicted_changed_count": 2,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.8407407407407408,
+          "multiclass_brier_score": 0.12861552816433094
+        },
+        {
+          "region_id": "杭州市_淳安县_界首乡",
+          "target_year": 2019,
+          "row_count": 59,
+          "observed_changed_count": 1,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.9643719806763285,
+          "multiclass_brier_score": 0.08478048332644483
+        },
+        {
+          "region_id": "杭州市_淳安县_界首乡",
+          "target_year": 2020,
+          "row_count": 59,
+          "observed_changed_count": 1,
+          "predicted_changed_count": 3,
+          "change_f1": 0.5,
+          "changed_destination_macro_f1": 1.0,
+          "overall_class_macro_f1": 0.6571428571428571,
+          "multiclass_brier_score": 0.08013180989298119
+        },
+        {
+          "region_id": "武汉市_江夏区_江夏区经济开发区梁子湖风景区办事",
+          "target_year": 2019,
+          "row_count": 53,
+          "observed_changed_count": 5,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.32673992673992674,
+          "multiclass_brier_score": 0.16356148045487642
+        },
+        {
+          "region_id": "武汉市_江夏区_江夏区经济开发区梁子湖风景区办事",
+          "target_year": 2020,
+          "row_count": 53,
+          "observed_changed_count": 4,
+          "predicted_changed_count": 3,
+          "change_f1": 0.8571428571428571,
+          "changed_destination_macro_f1": 0.16666666666666666,
+          "overall_class_macro_f1": 0.608058608058608,
+          "multiclass_brier_score": 0.11040083079884432
+        },
+        {
+          "region_id": "深圳市_龙岗区_南澳街道",
+          "target_year": 2019,
+          "row_count": 31,
+          "observed_changed_count": 1,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.6585365853658537,
+          "multiclass_brier_score": 0.0688393906096679
+        },
+        {
+          "region_id": "深圳市_龙岗区_南澳街道",
+          "target_year": 2020,
+          "row_count": 31,
+          "observed_changed_count": 0,
+          "predicted_changed_count": 0,
+          "change_f1": 1.0,
+          "changed_destination_macro_f1": 1.0,
+          "overall_class_macro_f1": 1.0,
+          "multiclass_brier_score": 0.007687503729939064
+        },
+        {
+          "region_id": "福州市_永泰县_嵩口镇",
+          "target_year": 2019,
+          "row_count": 52,
+          "observed_changed_count": 0,
+          "predicted_changed_count": 3,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 1.0,
+          "overall_class_macro_f1": 0.3234323432343234,
+          "multiclass_brier_score": 0.07157363106044111
+        },
+        {
+          "region_id": "福州市_永泰县_嵩口镇",
+          "target_year": 2020,
+          "row_count": 52,
+          "observed_changed_count": 0,
+          "predicted_changed_count": 3,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 1.0,
+          "overall_class_macro_f1": 0.6172680412371134,
+          "multiclass_brier_score": 0.04712501054503474
+        },
+        {
+          "region_id": "苏州市_吴江区_黎里镇",
+          "target_year": 2019,
+          "row_count": 57,
+          "observed_changed_count": 2,
+          "predicted_changed_count": 4,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.6090108401084011,
+          "multiclass_brier_score": 0.1580349162638068
+        },
+        {
+          "region_id": "苏州市_吴江区_黎里镇",
+          "target_year": 2020,
+          "row_count": 57,
+          "observed_changed_count": 5,
+          "predicted_changed_count": 3,
+          "change_f1": 0.25,
+          "changed_destination_macro_f1": 0.1111111111111111,
+          "overall_class_macro_f1": 0.7736412746916949,
+          "multiclass_brier_score": 0.16815886585290746
+        },
+        {
+          "region_id": "西安市_周至县_陈河镇",
+          "target_year": 2019,
+          "row_count": 59,
+          "observed_changed_count": 8,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.5291666666666667,
+          "multiclass_brier_score": 0.23102114657094816
+        },
+        {
+          "region_id": "西安市_周至县_陈河镇",
+          "target_year": 2020,
+          "row_count": 59,
+          "observed_changed_count": 6,
+          "predicted_changed_count": 6,
+          "change_f1": 0.5,
+          "changed_destination_macro_f1": 0.2222222222222222,
+          "overall_class_macro_f1": 0.5814814814814815,
+          "multiclass_brier_score": 0.19720879675955116
+        },
+        {
+          "region_id": "郑州市_荥阳市_广武镇",
+          "target_year": 2019,
+          "row_count": 41,
+          "observed_changed_count": 5,
+          "predicted_changed_count": 1,
+          "change_f1": 0.3333333333333333,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.7358554488989272,
+          "multiclass_brier_score": 0.22621224096987572
+        },
+        {
+          "region_id": "郑州市_荥阳市_广武镇",
+          "target_year": 2020,
+          "row_count": 41,
+          "observed_changed_count": 5,
+          "predicted_changed_count": 2,
+          "change_f1": 0.2857142857142857,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.7729292929292929,
+          "multiclass_brier_score": 0.2246684676431918
+        },
+        {
+          "region_id": "重庆市_云阳县_江口镇",
+          "target_year": 2019,
+          "row_count": 61,
+          "observed_changed_count": 3,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.567156862745098,
+          "multiclass_brier_score": 0.09415648659087059
+        },
+        {
+          "region_id": "重庆市_云阳县_江口镇",
+          "target_year": 2020,
+          "row_count": 61,
+          "observed_changed_count": 3,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.8527183600713013,
+          "multiclass_brier_score": 0.1127677526848265
+        },
+        {
+          "region_id": "长沙市_浏阳市_高坪镇",
+          "target_year": 2019,
+          "row_count": 56,
+          "observed_changed_count": 3,
+          "predicted_changed_count": 6,
+          "change_f1": 0.4444444444444444,
+          "changed_destination_macro_f1": 0.4,
+          "overall_class_macro_f1": 0.3630952380952381,
+          "multiclass_brier_score": 0.1357094842142991
+        },
+        {
+          "region_id": "长沙市_浏阳市_高坪镇",
+          "target_year": 2020,
+          "row_count": 56,
+          "observed_changed_count": 3,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.7816666666666666,
+          "multiclass_brier_score": 0.1578414458052533
+        }
+      ]
+    },
+    "persistence": {
+      "primary_metric": {
+        "name": "mean_region_year_change_f1",
+        "value": 0.125,
+        "component_count": 40,
+        "aggregation": "unweighted_mean"
+      },
+      "overall_secondary_metrics": {
+        "row_count": 2110,
+        "observed_changed_count": 172,
+        "predicted_changed_count": 0,
+        "change_f1": 0.0,
+        "changed_destination_macro_f1": 0.0,
+        "overall_class_macro_f1": 0.5572207992540084,
+        "multiclass_brier_score": 0.16303317535545023
+      },
+      "metrics_by_year": [
+        {
+          "target_year": 2019,
+          "row_count": 1055,
+          "observed_changed_count": 89,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.5778884484342659,
+          "multiclass_brier_score": 0.16872037914691942
+        },
+        {
+          "target_year": 2020,
+          "row_count": 1055,
+          "observed_changed_count": 83,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.5314281938600292,
+          "multiclass_brier_score": 0.15734597156398103
+        }
+      ],
+      "metrics_by_region_year": [
+        {
+          "region_id": "上海市_浦东新区_祝桥镇",
+          "target_year": 2019,
+          "row_count": 59,
+          "observed_changed_count": 12,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.5321646607360894,
+          "multiclass_brier_score": 0.4067796610169492
+        },
+        {
+          "region_id": "上海市_浦东新区_祝桥镇",
+          "target_year": 2020,
+          "row_count": 59,
+          "observed_changed_count": 9,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.5261268556005398,
+          "multiclass_brier_score": 0.3050847457627119
+        },
+        {
+          "region_id": "东莞市_东莞市_虎门镇",
+          "target_year": 2019,
+          "row_count": 36,
+          "observed_changed_count": 1,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.9703703703703703,
+          "multiclass_brier_score": 0.05555555555555555
+        },
+        {
+          "region_id": "东莞市_东莞市_虎门镇",
+          "target_year": 2020,
+          "row_count": 36,
+          "observed_changed_count": 2,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.708288610614192,
+          "multiclass_brier_score": 0.1111111111111111
+        },
+        {
+          "region_id": "佛山市_高明区_杨和镇",
+          "target_year": 2019,
+          "row_count": 46,
+          "observed_changed_count": 6,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.5205627705627706,
+          "multiclass_brier_score": 0.2608695652173913
+        },
+        {
+          "region_id": "佛山市_高明区_杨和镇",
+          "target_year": 2020,
+          "row_count": 46,
+          "observed_changed_count": 5,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.48902691511387164,
+          "multiclass_brier_score": 0.21739130434782608
+        },
+        {
+          "region_id": "北京市_密云县_石城镇",
+          "target_year": 2019,
+          "row_count": 76,
+          "observed_changed_count": 5,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.8746103569632981,
+          "multiclass_brier_score": 0.13157894736842105
+        },
+        {
+          "region_id": "北京市_密云县_石城镇",
+          "target_year": 2020,
+          "row_count": 76,
+          "observed_changed_count": 11,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.7835609243697479,
+          "multiclass_brier_score": 0.2894736842105263
+        },
+        {
+          "region_id": "南京市_六合区_马鞍街道",
+          "target_year": 2019,
+          "row_count": 56,
+          "observed_changed_count": 9,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.8181372549019608,
+          "multiclass_brier_score": 0.32142857142857145
+        },
+        {
+          "region_id": "南京市_六合区_马鞍街道",
+          "target_year": 2020,
+          "row_count": 56,
+          "observed_changed_count": 6,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.9027093596059113,
+          "multiclass_brier_score": 0.21428571428571427
+        },
+        {
+          "region_id": "厦门市_同安区_莲花镇",
+          "target_year": 2019,
+          "row_count": 44,
+          "observed_changed_count": 0,
+          "predicted_changed_count": 0,
+          "change_f1": 1.0,
+          "changed_destination_macro_f1": 1.0,
+          "overall_class_macro_f1": 1.0,
+          "multiclass_brier_score": 0.0
+        },
+        {
+          "region_id": "厦门市_同安区_莲花镇",
+          "target_year": 2020,
+          "row_count": 44,
+          "observed_changed_count": 0,
+          "predicted_changed_count": 0,
+          "change_f1": 1.0,
+          "changed_destination_macro_f1": 1.0,
+          "overall_class_macro_f1": 1.0,
+          "multiclass_brier_score": 0.0
+        },
+        {
+          "region_id": "合肥市_巢湖市_散兵镇",
+          "target_year": 2019,
+          "row_count": 57,
+          "observed_changed_count": 2,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.9416666666666667,
+          "multiclass_brier_score": 0.07017543859649122
+        },
+        {
+          "region_id": "合肥市_巢湖市_散兵镇",
+          "target_year": 2020,
+          "row_count": 57,
+          "observed_changed_count": 2,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.9140765765765766,
+          "multiclass_brier_score": 0.07017543859649122
+        },
+        {
+          "region_id": "天津市_滨海新区_临港工业区",
+          "target_year": 2019,
+          "row_count": 54,
+          "observed_changed_count": 10,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.6132400932400932,
+          "multiclass_brier_score": 0.37037037037037035
+        },
+        {
+          "region_id": "天津市_滨海新区_临港工业区",
+          "target_year": 2020,
+          "row_count": 54,
+          "observed_changed_count": 11,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.5139539831009885,
+          "multiclass_brier_score": 0.4074074074074074
+        },
+        {
+          "region_id": "宁波市_余姚市_小曹娥镇",
+          "target_year": 2019,
+          "row_count": 54,
+          "observed_changed_count": 8,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.7744273879142299,
+          "multiclass_brier_score": 0.2962962962962963
+        },
+        {
+          "region_id": "宁波市_余姚市_小曹娥镇",
+          "target_year": 2020,
+          "row_count": 54,
+          "observed_changed_count": 7,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.5026881720430108,
+          "multiclass_brier_score": 0.25925925925925924
+        },
+        {
+          "region_id": "广州市_增城区_正果镇",
+          "target_year": 2019,
+          "row_count": 48,
+          "observed_changed_count": 1,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.9469879518072288,
+          "multiclass_brier_score": 0.041666666666666664
+        },
+        {
+          "region_id": "广州市_增城区_正果镇",
+          "target_year": 2020,
+          "row_count": 48,
+          "observed_changed_count": 1,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.7333333333333333,
+          "multiclass_brier_score": 0.041666666666666664
+        },
+        {
+          "region_id": "成都市_桂阳县_舂陵江镇",
+          "target_year": 2019,
+          "row_count": 56,
+          "observed_changed_count": 7,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.7425105485232069,
+          "multiclass_brier_score": 0.25
+        },
+        {
+          "region_id": "成都市_桂阳县_舂陵江镇",
+          "target_year": 2020,
+          "row_count": 56,
+          "observed_changed_count": 2,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.9051687763713081,
+          "multiclass_brier_score": 0.07142857142857142
+        },
+        {
+          "region_id": "杭州市_淳安县_界首乡",
+          "target_year": 2019,
+          "row_count": 59,
+          "observed_changed_count": 1,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.9823194486065328,
+          "multiclass_brier_score": 0.03389830508474576
+        },
+        {
+          "region_id": "杭州市_淳安县_界首乡",
+          "target_year": 2020,
+          "row_count": 59,
+          "observed_changed_count": 1,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.9823194486065328,
+          "multiclass_brier_score": 0.03389830508474576
+        },
+        {
+          "region_id": "武汉市_江夏区_江夏区经济开发区梁子湖风景区办事",
+          "target_year": 2019,
+          "row_count": 53,
+          "observed_changed_count": 5,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.3534065934065934,
+          "multiclass_brier_score": 0.18867924528301888
+        },
+        {
+          "region_id": "武汉市_江夏区_江夏区经济开发区梁子湖风景区办事",
+          "target_year": 2020,
+          "row_count": 53,
+          "observed_changed_count": 4,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.3752247752247752,
+          "multiclass_brier_score": 0.1509433962264151
+        },
+        {
+          "region_id": "深圳市_龙岗区_南澳街道",
+          "target_year": 2019,
+          "row_count": 31,
+          "observed_changed_count": 1,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.6585365853658537,
+          "multiclass_brier_score": 0.06451612903225806
+        },
+        {
+          "region_id": "深圳市_龙岗区_南澳街道",
+          "target_year": 2020,
+          "row_count": 31,
+          "observed_changed_count": 0,
+          "predicted_changed_count": 0,
+          "change_f1": 1.0,
+          "changed_destination_macro_f1": 1.0,
+          "overall_class_macro_f1": 1.0,
+          "multiclass_brier_score": 0.0
+        },
+        {
+          "region_id": "福州市_永泰县_嵩口镇",
+          "target_year": 2019,
+          "row_count": 52,
+          "observed_changed_count": 0,
+          "predicted_changed_count": 0,
+          "change_f1": 1.0,
+          "changed_destination_macro_f1": 1.0,
+          "overall_class_macro_f1": 1.0,
+          "multiclass_brier_score": 0.0
+        },
+        {
+          "region_id": "福州市_永泰县_嵩口镇",
+          "target_year": 2020,
+          "row_count": 52,
+          "observed_changed_count": 0,
+          "predicted_changed_count": 0,
+          "change_f1": 1.0,
+          "changed_destination_macro_f1": 1.0,
+          "overall_class_macro_f1": 1.0,
+          "multiclass_brier_score": 0.0
+        },
+        {
+          "region_id": "苏州市_吴江区_黎里镇",
+          "target_year": 2019,
+          "row_count": 57,
+          "observed_changed_count": 2,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.9279336734693877,
+          "multiclass_brier_score": 0.07017543859649122
+        },
+        {
+          "region_id": "苏州市_吴江区_黎里镇",
+          "target_year": 2020,
+          "row_count": 57,
+          "observed_changed_count": 5,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.858408479670938,
+          "multiclass_brier_score": 0.17543859649122806
+        },
+        {
+          "region_id": "西安市_周至县_陈河镇",
+          "target_year": 2019,
+          "row_count": 59,
+          "observed_changed_count": 8,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.5544956140350877,
+          "multiclass_brier_score": 0.2711864406779661
+        },
+        {
+          "region_id": "西安市_周至县_陈河镇",
+          "target_year": 2020,
+          "row_count": 59,
+          "observed_changed_count": 6,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.5852941176470589,
+          "multiclass_brier_score": 0.2033898305084746
+        },
+        {
+          "region_id": "郑州市_荥阳市_广武镇",
+          "target_year": 2019,
+          "row_count": 41,
+          "observed_changed_count": 5,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.760541586073501,
+          "multiclass_brier_score": 0.24390243902439024
+        },
+        {
+          "region_id": "郑州市_荥阳市_广武镇",
+          "target_year": 2020,
+          "row_count": 41,
+          "observed_changed_count": 5,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.7818181818181817,
+          "multiclass_brier_score": 0.24390243902439024
+        },
+        {
+          "region_id": "重庆市_云阳县_江口镇",
+          "target_year": 2019,
+          "row_count": 61,
+          "observed_changed_count": 3,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.7690594059405941,
+          "multiclass_brier_score": 0.09836065573770492
+        },
+        {
+          "region_id": "重庆市_云阳县_江口镇",
+          "target_year": 2020,
+          "row_count": 61,
+          "observed_changed_count": 3,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.8527183600713013,
+          "multiclass_brier_score": 0.09836065573770492
+        },
+        {
+          "region_id": "长沙市_浏阳市_高坪镇",
+          "target_year": 2019,
+          "row_count": 56,
+          "observed_changed_count": 3,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.8590909090909091,
+          "multiclass_brier_score": 0.10714285714285714
+        },
+        {
+          "region_id": "长沙市_浏阳市_高坪镇",
+          "target_year": 2020,
+          "row_count": 56,
+          "observed_changed_count": 3,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.8590909090909091,
+          "multiclass_brier_score": 0.10714285714285714
+        }
+      ]
+    },
+    "fixed_adjacency": {
+      "primary_metric": {
+        "name": "mean_region_year_change_f1",
+        "value": 0.2094985277880015,
+        "component_count": 40,
+        "aggregation": "unweighted_mean"
+      },
+      "overall_secondary_metrics": {
+        "row_count": 2110,
+        "observed_changed_count": 172,
+        "predicted_changed_count": 169,
+        "change_f1": 0.31671554252199413,
+        "changed_destination_macro_f1": 0.08392131371595589,
+        "overall_class_macro_f1": 0.4156545789019803,
+        "multiclass_brier_score": 0.22041677000390145
+      },
+      "metrics_by_year": [
+        {
+          "target_year": 2019,
+          "row_count": 1055,
+          "observed_changed_count": 89,
+          "predicted_changed_count": 80,
+          "change_f1": 0.3076923076923077,
+          "changed_destination_macro_f1": 0.07852913370154749,
+          "overall_class_macro_f1": 0.42420914983692937,
+          "multiclass_brier_score": 0.2235366599781452
+        },
+        {
+          "target_year": 2020,
+          "row_count": 1055,
+          "observed_changed_count": 83,
+          "predicted_changed_count": 89,
+          "change_f1": 0.32558139534883723,
+          "changed_destination_macro_f1": 0.08870542368994382,
+          "overall_class_macro_f1": 0.4047514962999747,
+          "multiclass_brier_score": 0.21729688002965772
+        }
+      ],
+      "metrics_by_region_year": [
+        {
+          "region_id": "上海市_浦东新区_祝桥镇",
+          "target_year": 2019,
+          "row_count": 59,
+          "observed_changed_count": 12,
+          "predicted_changed_count": 7,
+          "change_f1": 0.631578947368421,
+          "changed_destination_macro_f1": 0.13095238095238096,
+          "overall_class_macro_f1": 0.6202651150019571,
+          "multiclass_brier_score": 0.37164467661464695
+        },
+        {
+          "region_id": "上海市_浦东新区_祝桥镇",
+          "target_year": 2020,
+          "row_count": 59,
+          "observed_changed_count": 9,
+          "predicted_changed_count": 9,
+          "change_f1": 0.4444444444444444,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.37917587680518716,
+          "multiclass_brier_score": 0.38393416905157046
+        },
+        {
+          "region_id": "东莞市_东莞市_虎门镇",
+          "target_year": 2019,
+          "row_count": 36,
+          "observed_changed_count": 1,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.9431818181818182,
+          "multiclass_brier_score": 0.17312788456298706
+        },
+        {
+          "region_id": "东莞市_东莞市_虎门镇",
+          "target_year": 2020,
+          "row_count": 36,
+          "observed_changed_count": 2,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.6876144688644689,
+          "multiclass_brier_score": 0.19966862379454026
+        },
+        {
+          "region_id": "佛山市_高明区_杨和镇",
+          "target_year": 2019,
+          "row_count": 46,
+          "observed_changed_count": 6,
+          "predicted_changed_count": 3,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.30666666666666664,
+          "multiclass_brier_score": 0.29310073878323023
+        },
+        {
+          "region_id": "佛山市_高明区_杨和镇",
+          "target_year": 2020,
+          "row_count": 46,
+          "observed_changed_count": 5,
+          "predicted_changed_count": 6,
+          "change_f1": 0.9090909090909091,
+          "changed_destination_macro_f1": 0.7619047619047619,
+          "overall_class_macro_f1": 0.7265765765765766,
+          "multiclass_brier_score": 0.1512638684793088
+        },
+        {
+          "region_id": "北京市_密云县_石城镇",
+          "target_year": 2019,
+          "row_count": 76,
+          "observed_changed_count": 5,
+          "predicted_changed_count": 5,
+          "change_f1": 0.6,
+          "changed_destination_macro_f1": 0.25,
+          "overall_class_macro_f1": 0.8270973963355834,
+          "multiclass_brier_score": 0.12111280553156392
+        },
+        {
+          "region_id": "北京市_密云县_石城镇",
+          "target_year": 2020,
+          "row_count": 76,
+          "observed_changed_count": 11,
+          "predicted_changed_count": 4,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.6399956534337873,
+          "multiclass_brier_score": 0.33557589366852636
+        },
+        {
+          "region_id": "南京市_六合区_马鞍街道",
+          "target_year": 2019,
+          "row_count": 56,
+          "observed_changed_count": 9,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.8008349950149551,
+          "multiclass_brier_score": 0.4110503516748798
+        },
+        {
+          "region_id": "南京市_六合区_马鞍街道",
+          "target_year": 2020,
+          "row_count": 56,
+          "observed_changed_count": 6,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.8786389049546943,
+          "multiclass_brier_score": 0.34355354685934586
+        },
+        {
+          "region_id": "厦门市_同安区_莲花镇",
+          "target_year": 2019,
+          "row_count": 44,
+          "observed_changed_count": 0,
+          "predicted_changed_count": 4,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 1.0,
+          "overall_class_macro_f1": 0.8070175438596491,
+          "multiclass_brier_score": 0.11701096491920641
+        },
+        {
+          "region_id": "厦门市_同安区_莲花镇",
+          "target_year": 2020,
+          "row_count": 44,
+          "observed_changed_count": 0,
+          "predicted_changed_count": 4,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 1.0,
+          "overall_class_macro_f1": 0.8070175438596491,
+          "multiclass_brier_score": 0.11053075941482565
+        },
+        {
+          "region_id": "合肥市_巢湖市_散兵镇",
+          "target_year": 2019,
+          "row_count": 57,
+          "observed_changed_count": 2,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.900563063063063,
+          "multiclass_brier_score": 0.14445558122037316
+        },
+        {
+          "region_id": "合肥市_巢湖市_散兵镇",
+          "target_year": 2020,
+          "row_count": 57,
+          "observed_changed_count": 2,
+          "predicted_changed_count": 2,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.8379120879120879,
+          "multiclass_brier_score": 0.139755247119287
+        },
+        {
+          "region_id": "天津市_滨海新区_临港工业区",
+          "target_year": 2019,
+          "row_count": 54,
+          "observed_changed_count": 10,
+          "predicted_changed_count": 11,
+          "change_f1": 0.47619047619047616,
+          "changed_destination_macro_f1": 0.13333333333333333,
+          "overall_class_macro_f1": 0.4921328671328671,
+          "multiclass_brier_score": 0.41571076639309806
+        },
+        {
+          "region_id": "天津市_滨海新区_临港工业区",
+          "target_year": 2020,
+          "row_count": 54,
+          "observed_changed_count": 11,
+          "predicted_changed_count": 13,
+          "change_f1": 0.5833333333333334,
+          "changed_destination_macro_f1": 0.08333333333333333,
+          "overall_class_macro_f1": 0.37374847374847375,
+          "multiclass_brier_score": 0.3992138336555205
+        },
+        {
+          "region_id": "宁波市_余姚市_小曹娥镇",
+          "target_year": 2019,
+          "row_count": 54,
+          "observed_changed_count": 8,
+          "predicted_changed_count": 4,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.49913419913419915,
+          "multiclass_brier_score": 0.3388772265823202
+        },
+        {
+          "region_id": "宁波市_余姚市_小曹娥镇",
+          "target_year": 2020,
+          "row_count": 54,
+          "observed_changed_count": 7,
+          "predicted_changed_count": 7,
+          "change_f1": 0.2857142857142857,
+          "changed_destination_macro_f1": 0.08,
+          "overall_class_macro_f1": 0.4808080808080808,
+          "multiclass_brier_score": 0.26407821573035944
+        },
+        {
+          "region_id": "广州市_增城区_正果镇",
+          "target_year": 2019,
+          "row_count": 48,
+          "observed_changed_count": 1,
+          "predicted_changed_count": 4,
+          "change_f1": 0.4,
+          "changed_destination_macro_f1": 1.0,
+          "overall_class_macro_f1": 0.6580459770114943,
+          "multiclass_brier_score": 0.11522692481415368
+        },
+        {
+          "region_id": "广州市_增城区_正果镇",
+          "target_year": 2020,
+          "row_count": 48,
+          "observed_changed_count": 1,
+          "predicted_changed_count": 3,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.45977011494252873,
+          "multiclass_brier_score": 0.1135530476668744
+        },
+        {
+          "region_id": "成都市_桂阳县_舂陵江镇",
+          "target_year": 2019,
+          "row_count": 56,
+          "observed_changed_count": 7,
+          "predicted_changed_count": 6,
+          "change_f1": 0.3076923076923077,
+          "changed_destination_macro_f1": 0.07142857142857142,
+          "overall_class_macro_f1": 0.5833333333333334,
+          "multiclass_brier_score": 0.3114208889362682
+        },
+        {
+          "region_id": "成都市_桂阳县_舂陵江镇",
+          "target_year": 2020,
+          "row_count": 56,
+          "observed_changed_count": 2,
+          "predicted_changed_count": 8,
+          "change_f1": 0.4,
+          "changed_destination_macro_f1": 0.3333333333333333,
+          "overall_class_macro_f1": 0.6632183908045977,
+          "multiclass_brier_score": 0.21667668481825417
+        },
+        {
+          "region_id": "杭州市_淳安县_界首乡",
+          "target_year": 2019,
+          "row_count": 59,
+          "observed_changed_count": 1,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.9643719806763285,
+          "multiclass_brier_score": 0.12961326293472553
+        },
+        {
+          "region_id": "杭州市_淳安县_界首乡",
+          "target_year": 2020,
+          "row_count": 59,
+          "observed_changed_count": 1,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.9643719806763285,
+          "multiclass_brier_score": 0.12692392920448398
+        },
+        {
+          "region_id": "武汉市_江夏区_江夏区经济开发区梁子湖风景区办事",
+          "target_year": 2019,
+          "row_count": 53,
+          "observed_changed_count": 5,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.33656565656565657,
+          "multiclass_brier_score": 0.2203757602722343
+        },
+        {
+          "region_id": "武汉市_江夏区_江夏区经济开发区梁子湖风景区办事",
+          "target_year": 2020,
+          "row_count": 53,
+          "observed_changed_count": 4,
+          "predicted_changed_count": 3,
+          "change_f1": 0.8571428571428571,
+          "changed_destination_macro_f1": 0.3333333333333333,
+          "overall_class_macro_f1": 0.6363636363636364,
+          "multiclass_brier_score": 0.10400088916461667
+        },
+        {
+          "region_id": "深圳市_龙岗区_南澳街道",
+          "target_year": 2019,
+          "row_count": 31,
+          "observed_changed_count": 1,
+          "predicted_changed_count": 4,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.5462962962962963,
+          "multiclass_brier_score": 0.1844345484929697
+        },
+        {
+          "region_id": "深圳市_龙岗区_南澳街道",
+          "target_year": 2020,
+          "row_count": 31,
+          "observed_changed_count": 0,
+          "predicted_changed_count": 4,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 1.0,
+          "overall_class_macro_f1": 0.8315217391304348,
+          "multiclass_brier_score": 0.15492554749474352
+        },
+        {
+          "region_id": "福州市_永泰县_嵩口镇",
+          "target_year": 2019,
+          "row_count": 52,
+          "observed_changed_count": 0,
+          "predicted_changed_count": 3,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 1.0,
+          "overall_class_macro_f1": 0.3234323432343234,
+          "multiclass_brier_score": 0.049788225937094394
+        },
+        {
+          "region_id": "福州市_永泰县_嵩口镇",
+          "target_year": 2020,
+          "row_count": 52,
+          "observed_changed_count": 0,
+          "predicted_changed_count": 3,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 1.0,
+          "overall_class_macro_f1": 0.3234323432343234,
+          "multiclass_brier_score": 0.04521576726690505
+        },
+        {
+          "region_id": "苏州市_吴江区_黎里镇",
+          "target_year": 2019,
+          "row_count": 57,
+          "observed_changed_count": 2,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.9169381533101045,
+          "multiclass_brier_score": 0.3069454293158908
+        },
+        {
+          "region_id": "苏州市_吴江区_黎里镇",
+          "target_year": 2020,
+          "row_count": 57,
+          "observed_changed_count": 5,
+          "predicted_changed_count": 2,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.818627450980392,
+          "multiclass_brier_score": 0.32761223161167763
+        },
+        {
+          "region_id": "西安市_周至县_陈河镇",
+          "target_year": 2019,
+          "row_count": 59,
+          "observed_changed_count": 8,
+          "predicted_changed_count": 11,
+          "change_f1": 0.631578947368421,
+          "changed_destination_macro_f1": 0.25641025641025644,
+          "overall_class_macro_f1": 0.39779874213836475,
+          "multiclass_brier_score": 0.18623584867517803
+        },
+        {
+          "region_id": "西安市_周至县_陈河镇",
+          "target_year": 2020,
+          "row_count": 59,
+          "observed_changed_count": 6,
+          "predicted_changed_count": 8,
+          "change_f1": 0.42857142857142855,
+          "changed_destination_macro_f1": 0.2222222222222222,
+          "overall_class_macro_f1": 0.3090909090909091,
+          "multiclass_brier_score": 0.17923638618982465
+        },
+        {
+          "region_id": "郑州市_荥阳市_广武镇",
+          "target_year": 2019,
+          "row_count": 41,
+          "observed_changed_count": 5,
+          "predicted_changed_count": 1,
+          "change_f1": 0.3333333333333333,
+          "changed_destination_macro_f1": 0.2222222222222222,
+          "overall_class_macro_f1": 0.773913043478261,
+          "multiclass_brier_score": 0.2943886412215922
+        },
+        {
+          "region_id": "郑州市_荥阳市_广武镇",
+          "target_year": 2020,
+          "row_count": 41,
+          "observed_changed_count": 5,
+          "predicted_changed_count": 1,
+          "change_f1": 0.3333333333333333,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.7827705627705628,
+          "multiclass_brier_score": 0.28241976723706164
+        },
+        {
+          "region_id": "重庆市_云阳县_江口镇",
+          "target_year": 2019,
+          "row_count": 61,
+          "observed_changed_count": 3,
+          "predicted_changed_count": 6,
+          "change_f1": 0.2222222222222222,
+          "changed_destination_macro_f1": 0.25,
+          "overall_class_macro_f1": 0.6086448598130841,
+          "multiclass_brier_score": 0.15297319403704474
+        },
+        {
+          "region_id": "重庆市_云阳县_江口镇",
+          "target_year": 2020,
+          "row_count": 61,
+          "observed_changed_count": 3,
+          "predicted_changed_count": 5,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.5096153846153846,
+          "multiclass_brier_score": 0.20362515693325758
+        },
+        {
+          "region_id": "长沙市_浏阳市_高坪镇",
+          "target_year": 2019,
+          "row_count": 56,
+          "observed_changed_count": 3,
+          "predicted_changed_count": 5,
+          "change_f1": 0.25,
+          "changed_destination_macro_f1": 0.16666666666666666,
+          "overall_class_macro_f1": 0.3605769230769231,
+          "multiclass_brier_score": 0.13118187512905247
+        },
+        {
+          "region_id": "长沙市_浏阳市_高坪镇",
+          "target_year": 2020,
+          "row_count": 56,
+          "observed_changed_count": 3,
+          "predicted_changed_count": 4,
+          "change_f1": 0.2857142857142857,
+          "changed_destination_macro_f1": 0.25,
+          "overall_class_macro_f1": 0.6545307443365695,
+          "multiclass_brier_score": 0.14414006905755292
+        }
+      ]
+    },
+    "twm_v3": {
+      "primary_metric": {
+        "name": "mean_region_year_change_f1",
+        "value": 0.2492117237337826,
+        "component_count": 40,
+        "aggregation": "unweighted_mean"
+      },
+      "overall_secondary_metrics": {
+        "row_count": 2110,
+        "observed_changed_count": 172,
+        "predicted_changed_count": 191,
+        "change_f1": 0.27548209366391185,
+        "changed_destination_macro_f1": 0.06366811520672948,
+        "overall_class_macro_f1": 0.4681604172643314,
+        "multiclass_brier_score": 0.20084183785925358
+      },
+      "metrics_by_year": [
+        {
+          "target_year": 2019,
+          "row_count": 1055,
+          "observed_changed_count": 89,
+          "predicted_changed_count": 100,
+          "change_f1": 0.25396825396825395,
+          "changed_destination_macro_f1": 0.06164822831489498,
+          "overall_class_macro_f1": 0.47482776785730774,
+          "multiclass_brier_score": 0.20959912053363466
+        },
+        {
+          "target_year": 2020,
+          "row_count": 1055,
+          "observed_changed_count": 83,
+          "predicted_changed_count": 91,
+          "change_f1": 0.2988505747126437,
+          "changed_destination_macro_f1": 0.06552371769763074,
+          "overall_class_macro_f1": 0.44540176597831826,
+          "multiclass_brier_score": 0.1920845551848725
+        }
+      ],
+      "metrics_by_region_year": [
+        {
+          "region_id": "上海市_浦东新区_祝桥镇",
+          "target_year": 2019,
+          "row_count": 59,
+          "observed_changed_count": 12,
+          "predicted_changed_count": 6,
+          "change_f1": 0.3333333333333333,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.4983918297261625,
+          "multiclass_brier_score": 0.42522569636437235
+        },
+        {
+          "region_id": "上海市_浦东新区_祝桥镇",
+          "target_year": 2020,
+          "row_count": 59,
+          "observed_changed_count": 9,
+          "predicted_changed_count": 5,
+          "change_f1": 0.2857142857142857,
+          "changed_destination_macro_f1": 0.03125,
+          "overall_class_macro_f1": 0.4828504828504828,
+          "multiclass_brier_score": 0.33201468922919786
+        },
+        {
+          "region_id": "东莞市_东莞市_虎门镇",
+          "target_year": 2019,
+          "row_count": 36,
+          "observed_changed_count": 1,
+          "predicted_changed_count": 3,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.6557971014492754,
+          "multiclass_brier_score": 0.1245860609979424
+        },
+        {
+          "region_id": "东莞市_东莞市_虎门镇",
+          "target_year": 2020,
+          "row_count": 36,
+          "observed_changed_count": 2,
+          "predicted_changed_count": 4,
+          "change_f1": 0.3333333333333333,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.5077922077922078,
+          "multiclass_brier_score": 0.16638663176822385
+        },
+        {
+          "region_id": "佛山市_高明区_杨和镇",
+          "target_year": 2019,
+          "row_count": 46,
+          "observed_changed_count": 6,
+          "predicted_changed_count": 5,
+          "change_f1": 0.36363636363636365,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.35918367346938773,
+          "multiclass_brier_score": 0.2968471473952494
+        },
+        {
+          "region_id": "佛山市_高明区_杨和镇",
+          "target_year": 2020,
+          "row_count": 46,
+          "observed_changed_count": 5,
+          "predicted_changed_count": 6,
+          "change_f1": 0.36363636363636365,
+          "changed_destination_macro_f1": 0.1,
+          "overall_class_macro_f1": 0.48743781094527366,
+          "multiclass_brier_score": 0.26480675345527555
+        },
+        {
+          "region_id": "北京市_密云县_石城镇",
+          "target_year": 2019,
+          "row_count": 76,
+          "observed_changed_count": 5,
+          "predicted_changed_count": 4,
+          "change_f1": 0.2222222222222222,
+          "changed_destination_macro_f1": 0.16666666666666666,
+          "overall_class_macro_f1": 0.781370523415978,
+          "multiclass_brier_score": 0.14674220779259453
+        },
+        {
+          "region_id": "北京市_密云县_石城镇",
+          "target_year": 2020,
+          "row_count": 76,
+          "observed_changed_count": 11,
+          "predicted_changed_count": 4,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.6573275862068966,
+          "multiclass_brier_score": 0.335689703732473
+        },
+        {
+          "region_id": "南京市_六合区_马鞍街道",
+          "target_year": 2019,
+          "row_count": 56,
+          "observed_changed_count": 9,
+          "predicted_changed_count": 7,
+          "change_f1": 0.125,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.5885009727114989,
+          "multiclass_brier_score": 0.4290675057362799
+        },
+        {
+          "region_id": "南京市_六合区_马鞍街道",
+          "target_year": 2020,
+          "row_count": 56,
+          "observed_changed_count": 6,
+          "predicted_changed_count": 8,
+          "change_f1": 0.14285714285714285,
+          "changed_destination_macro_f1": 0.1111111111111111,
+          "overall_class_macro_f1": 0.7841193893825473,
+          "multiclass_brier_score": 0.28593012920593125
+        },
+        {
+          "region_id": "厦门市_同安区_莲花镇",
+          "target_year": 2019,
+          "row_count": 44,
+          "observed_changed_count": 0,
+          "predicted_changed_count": 5,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 1.0,
+          "overall_class_macro_f1": 0.5765258215962441,
+          "multiclass_brier_score": 0.10282902754084439
+        },
+        {
+          "region_id": "厦门市_同安区_莲花镇",
+          "target_year": 2020,
+          "row_count": 44,
+          "observed_changed_count": 0,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 1.0,
+          "overall_class_macro_f1": 0.9635459817729909,
+          "multiclass_brier_score": 0.045671419674872184
+        },
+        {
+          "region_id": "合肥市_巢湖市_散兵镇",
+          "target_year": 2019,
+          "row_count": 57,
+          "observed_changed_count": 2,
+          "predicted_changed_count": 6,
+          "change_f1": 0.25,
+          "changed_destination_macro_f1": 0.3333333333333333,
+          "overall_class_macro_f1": 0.7086857445680975,
+          "multiclass_brier_score": 0.10698828254400386
+        },
+        {
+          "region_id": "合肥市_巢湖市_散兵镇",
+          "target_year": 2020,
+          "row_count": 57,
+          "observed_changed_count": 2,
+          "predicted_changed_count": 7,
+          "change_f1": 0.2222222222222222,
+          "changed_destination_macro_f1": 0.3333333333333333,
+          "overall_class_macro_f1": 0.7787878787878788,
+          "multiclass_brier_score": 0.14099921384846992
+        },
+        {
+          "region_id": "天津市_滨海新区_临港工业区",
+          "target_year": 2019,
+          "row_count": 54,
+          "observed_changed_count": 10,
+          "predicted_changed_count": 5,
+          "change_f1": 0.26666666666666666,
+          "changed_destination_macro_f1": 0.08,
+          "overall_class_macro_f1": 0.4684888096652802,
+          "multiclass_brier_score": 0.3843034483219937
+        },
+        {
+          "region_id": "天津市_滨海新区_临港工业区",
+          "target_year": 2020,
+          "row_count": 54,
+          "observed_changed_count": 11,
+          "predicted_changed_count": 6,
+          "change_f1": 0.5882352941176471,
+          "changed_destination_macro_f1": 0.047619047619047616,
+          "overall_class_macro_f1": 0.43563880017081985,
+          "multiclass_brier_score": 0.32788441060853474
+        },
+        {
+          "region_id": "宁波市_余姚市_小曹娥镇",
+          "target_year": 2019,
+          "row_count": 54,
+          "observed_changed_count": 8,
+          "predicted_changed_count": 2,
+          "change_f1": 0.2,
+          "changed_destination_macro_f1": 0.2,
+          "overall_class_macro_f1": 0.78125,
+          "multiclass_brier_score": 0.2883982409223249
+        },
+        {
+          "region_id": "宁波市_余姚市_小曹娥镇",
+          "target_year": 2020,
+          "row_count": 54,
+          "observed_changed_count": 7,
+          "predicted_changed_count": 5,
+          "change_f1": 0.16666666666666666,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.4817219817219818,
+          "multiclass_brier_score": 0.32769551665286845
+        },
+        {
+          "region_id": "广州市_增城区_正果镇",
+          "target_year": 2019,
+          "row_count": 48,
+          "observed_changed_count": 1,
+          "predicted_changed_count": 6,
+          "change_f1": 0.2857142857142857,
+          "changed_destination_macro_f1": 1.0,
+          "overall_class_macro_f1": 0.5272988505747126,
+          "multiclass_brier_score": 0.10934868899485002
+        },
+        {
+          "region_id": "广州市_增城区_正果镇",
+          "target_year": 2020,
+          "row_count": 48,
+          "observed_changed_count": 1,
+          "predicted_changed_count": 5,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.4355708548479633,
+          "multiclass_brier_score": 0.1273645398116933
+        },
+        {
+          "region_id": "成都市_桂阳县_舂陵江镇",
+          "target_year": 2019,
+          "row_count": 56,
+          "observed_changed_count": 7,
+          "predicted_changed_count": 6,
+          "change_f1": 0.3076923076923077,
+          "changed_destination_macro_f1": 0.07142857142857142,
+          "overall_class_macro_f1": 0.5193627450980391,
+          "multiclass_brier_score": 0.29636012934982403
+        },
+        {
+          "region_id": "成都市_桂阳县_舂陵江镇",
+          "target_year": 2020,
+          "row_count": 56,
+          "observed_changed_count": 2,
+          "predicted_changed_count": 4,
+          "change_f1": 0.3333333333333333,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.6408278867102396,
+          "multiclass_brier_score": 0.11305421106133863
+        },
+        {
+          "region_id": "杭州市_淳安县_界首乡",
+          "target_year": 2019,
+          "row_count": 59,
+          "observed_changed_count": 1,
+          "predicted_changed_count": 7,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.5736842105263158,
+          "multiclass_brier_score": 0.11648804274109531
+        },
+        {
+          "region_id": "杭州市_淳安县_界首乡",
+          "target_year": 2020,
+          "row_count": 59,
+          "observed_changed_count": 1,
+          "predicted_changed_count": 7,
+          "change_f1": 0.25,
+          "changed_destination_macro_f1": 1.0,
+          "overall_class_macro_f1": 0.47052042160737817,
+          "multiclass_brier_score": 0.10652350199549705
+        },
+        {
+          "region_id": "武汉市_江夏区_江夏区经济开发区梁子湖风景区办事",
+          "target_year": 2019,
+          "row_count": 53,
+          "observed_changed_count": 5,
+          "predicted_changed_count": 5,
+          "change_f1": 0.4,
+          "changed_destination_macro_f1": 0.4,
+          "overall_class_macro_f1": 0.3397435897435897,
+          "multiclass_brier_score": 0.16515297584338692
+        },
+        {
+          "region_id": "武汉市_江夏区_江夏区经济开发区梁子湖风景区办事",
+          "target_year": 2020,
+          "row_count": 53,
+          "observed_changed_count": 4,
+          "predicted_changed_count": 5,
+          "change_f1": 0.8888888888888888,
+          "changed_destination_macro_f1": 0.16666666666666666,
+          "overall_class_macro_f1": 0.5787545787545788,
+          "multiclass_brier_score": 0.12037506899563083
+        },
+        {
+          "region_id": "深圳市_龙岗区_南澳街道",
+          "target_year": 2019,
+          "row_count": 31,
+          "observed_changed_count": 1,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.633249791144528,
+          "multiclass_brier_score": 0.09902699472082341
+        },
+        {
+          "region_id": "深圳市_龙岗区_南澳街道",
+          "target_year": 2020,
+          "row_count": 31,
+          "observed_changed_count": 0,
+          "predicted_changed_count": 0,
+          "change_f1": 1.0,
+          "changed_destination_macro_f1": 1.0,
+          "overall_class_macro_f1": 1.0,
+          "multiclass_brier_score": 0.040082467812463524
+        },
+        {
+          "region_id": "福州市_永泰县_嵩口镇",
+          "target_year": 2019,
+          "row_count": 52,
+          "observed_changed_count": 0,
+          "predicted_changed_count": 5,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 1.0,
+          "overall_class_macro_f1": 0.3164983164983165,
+          "multiclass_brier_score": 0.09364825535636255
+        },
+        {
+          "region_id": "福州市_永泰县_嵩口镇",
+          "target_year": 2020,
+          "row_count": 52,
+          "observed_changed_count": 0,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 1.0,
+          "overall_class_macro_f1": 0.8855218855218855,
+          "multiclass_brier_score": 0.058321904905283356
+        },
+        {
+          "region_id": "苏州市_吴江区_黎里镇",
+          "target_year": 2019,
+          "row_count": 57,
+          "observed_changed_count": 2,
+          "predicted_changed_count": 6,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.5290350877192982,
+          "multiclass_brier_score": 0.18941071497752665
+        },
+        {
+          "region_id": "苏州市_吴江区_黎里镇",
+          "target_year": 2020,
+          "row_count": 57,
+          "observed_changed_count": 5,
+          "predicted_changed_count": 5,
+          "change_f1": 0.4,
+          "changed_destination_macro_f1": 0.1111111111111111,
+          "overall_class_macro_f1": 0.5229946524064172,
+          "multiclass_brier_score": 0.17702094743309987
+        },
+        {
+          "region_id": "西安市_周至县_陈河镇",
+          "target_year": 2019,
+          "row_count": 59,
+          "observed_changed_count": 8,
+          "predicted_changed_count": 7,
+          "change_f1": 0.5333333333333333,
+          "changed_destination_macro_f1": 0.13636363636363635,
+          "overall_class_macro_f1": 0.48039215686274506,
+          "multiclass_brier_score": 0.21671393150311719
+        },
+        {
+          "region_id": "西安市_周至县_陈河镇",
+          "target_year": 2020,
+          "row_count": 59,
+          "observed_changed_count": 6,
+          "predicted_changed_count": 7,
+          "change_f1": 0.46153846153846156,
+          "changed_destination_macro_f1": 0.2222222222222222,
+          "overall_class_macro_f1": 0.47859327217125386,
+          "multiclass_brier_score": 0.19590344080080008
+        },
+        {
+          "region_id": "郑州市_荥阳市_广武镇",
+          "target_year": 2019,
+          "row_count": 41,
+          "observed_changed_count": 5,
+          "predicted_changed_count": 4,
+          "change_f1": 0.4444444444444444,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.6272082527401677,
+          "multiclass_brier_score": 0.24657500074243172
+        },
+        {
+          "region_id": "郑州市_荥阳市_广武镇",
+          "target_year": 2020,
+          "row_count": 41,
+          "observed_changed_count": 5,
+          "predicted_changed_count": 5,
+          "change_f1": 0.4,
+          "changed_destination_macro_f1": 0.25,
+          "overall_class_macro_f1": 0.665976535541753,
+          "multiclass_brier_score": 0.2400045445165947
+        },
+        {
+          "region_id": "重庆市_云阳县_江口镇",
+          "target_year": 2019,
+          "row_count": 61,
+          "observed_changed_count": 3,
+          "predicted_changed_count": 3,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.3484615384615385,
+          "multiclass_brier_score": 0.14322868659470864
+        },
+        {
+          "region_id": "重庆市_云阳县_江口镇",
+          "target_year": 2020,
+          "row_count": 61,
+          "observed_changed_count": 3,
+          "predicted_changed_count": 3,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.4540441176470588,
+          "multiclass_brier_score": 0.13526046008715154
+        },
+        {
+          "region_id": "长沙市_浏阳市_高坪镇",
+          "target_year": 2019,
+          "row_count": 56,
+          "observed_changed_count": 3,
+          "predicted_changed_count": 7,
+          "change_f1": 0.4,
+          "changed_destination_macro_f1": 0.4,
+          "overall_class_macro_f1": 0.2358490566037736,
+          "multiclass_brier_score": 0.1416141099133649
+        },
+        {
+          "region_id": "长沙市_浏阳市_高坪镇",
+          "target_year": 2020,
+          "row_count": 56,
+          "observed_changed_count": 3,
+          "predicted_changed_count": 3,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.6102941176470589,
+          "multiclass_brier_score": 0.1570147364813467
+        }
+      ]
+    },
+    "flus_full_grid": {
+      "primary_metric": {
+        "name": "mean_region_year_change_f1",
+        "value": 0.15343434343434342,
+        "component_count": 40,
+        "aggregation": "unweighted_mean"
+      },
+      "overall_secondary_metrics": {
+        "row_count": 2110,
+        "observed_changed_count": 172,
+        "predicted_changed_count": 87,
+        "change_f1": 0.19305019305019305,
+        "changed_destination_macro_f1": 0.04116081857822019,
+        "overall_class_macro_f1": 0.5285944059617143,
+        "multiclass_brier_score": 0.19167983149025802
+      },
+      "metrics_by_year": [
+        {
+          "target_year": 2019,
+          "row_count": 1055,
+          "observed_changed_count": 89,
+          "predicted_changed_count": 41,
+          "change_f1": 0.2,
+          "changed_destination_macro_f1": 0.041785490090574834,
+          "overall_class_macro_f1": 0.550802352158295,
+          "multiclass_brier_score": 0.19357556608741444
+        },
+        {
+          "target_year": 2020,
+          "row_count": 1055,
+          "observed_changed_count": 83,
+          "predicted_changed_count": 46,
+          "change_f1": 0.18604651162790697,
+          "changed_destination_macro_f1": 0.04024216524216525,
+          "overall_class_macro_f1": 0.4945469477919137,
+          "multiclass_brier_score": 0.18978409689310163
+        }
+      ],
+      "metrics_by_region_year": [
+        {
+          "region_id": "上海市_浦东新区_祝桥镇",
+          "target_year": 2019,
+          "row_count": 59,
+          "observed_changed_count": 12,
+          "predicted_changed_count": 3,
+          "change_f1": 0.4,
+          "changed_destination_macro_f1": 0.05555555555555555,
+          "overall_class_macro_f1": 0.6343229869545658,
+          "multiclass_brier_score": 0.3239171374764595
+        },
+        {
+          "region_id": "上海市_浦东新区_祝桥镇",
+          "target_year": 2020,
+          "row_count": 59,
+          "observed_changed_count": 9,
+          "predicted_changed_count": 2,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.5065114709851553,
+          "multiclass_brier_score": 0.3352165725047081
+        },
+        {
+          "region_id": "东莞市_东莞市_虎门镇",
+          "target_year": 2019,
+          "row_count": 36,
+          "observed_changed_count": 1,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.9206228956228957,
+          "multiclass_brier_score": 0.1111111111111111
+        },
+        {
+          "region_id": "东莞市_东莞市_虎门镇",
+          "target_year": 2020,
+          "row_count": 36,
+          "observed_changed_count": 2,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.6876144688644689,
+          "multiclass_brier_score": 0.16049382716049385
+        },
+        {
+          "region_id": "佛山市_高明区_杨和镇",
+          "target_year": 2019,
+          "row_count": 46,
+          "observed_changed_count": 6,
+          "predicted_changed_count": 1,
+          "change_f1": 0.2857142857142857,
+          "changed_destination_macro_f1": 0.1,
+          "overall_class_macro_f1": 0.5375586854460094,
+          "multiclass_brier_score": 0.20289855072463767
+        },
+        {
+          "region_id": "佛山市_高明区_杨和镇",
+          "target_year": 2020,
+          "row_count": 46,
+          "observed_changed_count": 5,
+          "predicted_changed_count": 3,
+          "change_f1": 0.5,
+          "changed_destination_macro_f1": 0.2,
+          "overall_class_macro_f1": 0.6209523809523809,
+          "multiclass_brier_score": 0.18357487922705318
+        },
+        {
+          "region_id": "北京市_密云县_石城镇",
+          "target_year": 2019,
+          "row_count": 76,
+          "observed_changed_count": 5,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.6978904665314402,
+          "multiclass_brier_score": 0.13742690058479531
+        },
+        {
+          "region_id": "北京市_密云县_石城镇",
+          "target_year": 2020,
+          "row_count": 76,
+          "observed_changed_count": 11,
+          "predicted_changed_count": 2,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.6085714285714285,
+          "multiclass_brier_score": 0.31871345029239767
+        },
+        {
+          "region_id": "南京市_六合区_马鞍街道",
+          "target_year": 2019,
+          "row_count": 56,
+          "observed_changed_count": 9,
+          "predicted_changed_count": 2,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.5389114266396213,
+          "multiclass_brier_score": 0.3452380952380953
+        },
+        {
+          "region_id": "南京市_六合区_马鞍街道",
+          "target_year": 2020,
+          "row_count": 56,
+          "observed_changed_count": 6,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.718295739348371,
+          "multiclass_brier_score": 0.23412698412698413
+        },
+        {
+          "region_id": "厦门市_同安区_莲花镇",
+          "target_year": 2019,
+          "row_count": 44,
+          "observed_changed_count": 0,
+          "predicted_changed_count": 0,
+          "change_f1": 1.0,
+          "changed_destination_macro_f1": 1.0,
+          "overall_class_macro_f1": 1.0,
+          "multiclass_brier_score": 0.015151515151515154
+        },
+        {
+          "region_id": "厦门市_同安区_莲花镇",
+          "target_year": 2020,
+          "row_count": 44,
+          "observed_changed_count": 0,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 1.0,
+          "overall_class_macro_f1": 0.6619718309859155,
+          "multiclass_brier_score": 0.045454545454545456
+        },
+        {
+          "region_id": "合肥市_巢湖市_散兵镇",
+          "target_year": 2019,
+          "row_count": 57,
+          "observed_changed_count": 2,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.9416666666666667,
+          "multiclass_brier_score": 0.06627680311890838
+        },
+        {
+          "region_id": "合肥市_巢湖市_散兵镇",
+          "target_year": 2020,
+          "row_count": 57,
+          "observed_changed_count": 2,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.9140765765765766,
+          "multiclass_brier_score": 0.08576998050682262
+        },
+        {
+          "region_id": "天津市_滨海新区_临港工业区",
+          "target_year": 2019,
+          "row_count": 54,
+          "observed_changed_count": 10,
+          "predicted_changed_count": 4,
+          "change_f1": 0.14285714285714285,
+          "changed_destination_macro_f1": 0.1,
+          "overall_class_macro_f1": 0.5928000960787847,
+          "multiclass_brier_score": 0.43621399176954734
+        },
+        {
+          "region_id": "天津市_滨海新区_临港工业区",
+          "target_year": 2020,
+          "row_count": 54,
+          "observed_changed_count": 11,
+          "predicted_changed_count": 5,
+          "change_f1": 0.25,
+          "changed_destination_macro_f1": 0.05555555555555555,
+          "overall_class_macro_f1": 0.4600614439324116,
+          "multiclass_brier_score": 0.4362139917695472
+        },
+        {
+          "region_id": "宁波市_余姚市_小曹娥镇",
+          "target_year": 2019,
+          "row_count": 54,
+          "observed_changed_count": 8,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.7744273879142299,
+          "multiclass_brier_score": 0.2962962962962963
+        },
+        {
+          "region_id": "宁波市_余姚市_小曹娥镇",
+          "target_year": 2020,
+          "row_count": 54,
+          "observed_changed_count": 7,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.5026881720430108,
+          "multiclass_brier_score": 0.2633744855967078
+        },
+        {
+          "region_id": "广州市_增城区_正果镇",
+          "target_year": 2019,
+          "row_count": 48,
+          "observed_changed_count": 1,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.9469879518072288,
+          "multiclass_brier_score": 0.060185185185185196
+        },
+        {
+          "region_id": "广州市_增城区_正果镇",
+          "target_year": 2020,
+          "row_count": 48,
+          "observed_changed_count": 1,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.6643137254901961,
+          "multiclass_brier_score": 0.06944444444444446
+        },
+        {
+          "region_id": "成都市_桂阳县_舂陵江镇",
+          "target_year": 2019,
+          "row_count": 56,
+          "observed_changed_count": 7,
+          "predicted_changed_count": 5,
+          "change_f1": 0.5,
+          "changed_destination_macro_f1": 0.125,
+          "overall_class_macro_f1": 0.7214285714285714,
+          "multiclass_brier_score": 0.28174603174603174
+        },
+        {
+          "region_id": "成都市_桂阳县_舂陵江镇",
+          "target_year": 2020,
+          "row_count": 56,
+          "observed_changed_count": 2,
+          "predicted_changed_count": 2,
+          "change_f1": 0.5,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.8790441176470589,
+          "multiclass_brier_score": 0.10317460317460318
+        },
+        {
+          "region_id": "杭州市_淳安县_界首乡",
+          "target_year": 2019,
+          "row_count": 59,
+          "observed_changed_count": 1,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.9823194486065328,
+          "multiclass_brier_score": 0.06026365348399247
+        },
+        {
+          "region_id": "杭州市_淳安县_界首乡",
+          "target_year": 2020,
+          "row_count": 59,
+          "observed_changed_count": 1,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.9823194486065328,
+          "multiclass_brier_score": 0.048964218455743884
+        },
+        {
+          "region_id": "武汉市_江夏区_江夏区经济开发区梁子湖风景区办事",
+          "target_year": 2019,
+          "row_count": 53,
+          "observed_changed_count": 5,
+          "predicted_changed_count": 7,
+          "change_f1": 0.16666666666666666,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.24603174603174605,
+          "multiclass_brier_score": 0.3144654088050315
+        },
+        {
+          "region_id": "武汉市_江夏区_江夏区经济开发区梁子湖风景区办事",
+          "target_year": 2020,
+          "row_count": 53,
+          "observed_changed_count": 4,
+          "predicted_changed_count": 8,
+          "change_f1": 0.5,
+          "changed_destination_macro_f1": 0.375,
+          "overall_class_macro_f1": 0.35533661740558287,
+          "multiclass_brier_score": 0.2222222222222222
+        },
+        {
+          "region_id": "深圳市_龙岗区_南澳街道",
+          "target_year": 2019,
+          "row_count": 31,
+          "observed_changed_count": 1,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.633249791144528,
+          "multiclass_brier_score": 0.11469534050179213
+        },
+        {
+          "region_id": "深圳市_龙岗区_南澳街道",
+          "target_year": 2020,
+          "row_count": 31,
+          "observed_changed_count": 0,
+          "predicted_changed_count": 2,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 1.0,
+          "overall_class_macro_f1": 0.633249791144528,
+          "multiclass_brier_score": 0.10035842293906812
+        },
+        {
+          "region_id": "福州市_永泰县_嵩口镇",
+          "target_year": 2019,
+          "row_count": 52,
+          "observed_changed_count": 0,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 1.0,
+          "overall_class_macro_f1": 0.6632996632996634,
+          "multiclass_brier_score": 0.042735042735042736
+        },
+        {
+          "region_id": "福州市_永泰县_嵩口镇",
+          "target_year": 2020,
+          "row_count": 52,
+          "observed_changed_count": 0,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 1.0,
+          "overall_class_macro_f1": 0.6632996632996634,
+          "multiclass_brier_score": 0.047008547008547015
+        },
+        {
+          "region_id": "苏州市_吴江区_黎里镇",
+          "target_year": 2019,
+          "row_count": 57,
+          "observed_changed_count": 2,
+          "predicted_changed_count": 0,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.9279336734693877,
+          "multiclass_brier_score": 0.10916179337231971
+        },
+        {
+          "region_id": "苏州市_吴江区_黎里镇",
+          "target_year": 2020,
+          "row_count": 57,
+          "observed_changed_count": 5,
+          "predicted_changed_count": 3,
+          "change_f1": 0.25,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.6625210084033613,
+          "multiclass_brier_score": 0.19883040935672514
+        },
+        {
+          "region_id": "西安市_周至县_陈河镇",
+          "target_year": 2019,
+          "row_count": 59,
+          "observed_changed_count": 8,
+          "predicted_changed_count": 4,
+          "change_f1": 0.16666666666666666,
+          "changed_destination_macro_f1": 0.0625,
+          "overall_class_macro_f1": 0.5179824561403509,
+          "multiclass_brier_score": 0.256120527306968
+        },
+        {
+          "region_id": "西安市_周至县_陈河镇",
+          "target_year": 2020,
+          "row_count": 59,
+          "observed_changed_count": 6,
+          "predicted_changed_count": 3,
+          "change_f1": 0.2222222222222222,
+          "changed_destination_macro_f1": 0.09523809523809523,
+          "overall_class_macro_f1": 0.6259259259259259,
+          "multiclass_brier_score": 0.18455743879472694
+        },
+        {
+          "region_id": "郑州市_荥阳市_广武镇",
+          "target_year": 2019,
+          "row_count": 41,
+          "observed_changed_count": 5,
+          "predicted_changed_count": 2,
+          "change_f1": 0.5714285714285714,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.7184848484848485,
+          "multiclass_brier_score": 0.24932249322493222
+        },
+        {
+          "region_id": "郑州市_荥阳市_广武镇",
+          "target_year": 2020,
+          "row_count": 41,
+          "observed_changed_count": 5,
+          "predicted_changed_count": 3,
+          "change_f1": 0.5,
+          "changed_destination_macro_f1": 0.125,
+          "overall_class_macro_f1": 0.839064558629776,
+          "multiclass_brier_score": 0.23848238482384826
+        },
+        {
+          "region_id": "重庆市_云阳县_江口镇",
+          "target_year": 2019,
+          "row_count": 61,
+          "observed_changed_count": 3,
+          "predicted_changed_count": 8,
+          "change_f1": 0.18181818181818182,
+          "changed_destination_macro_f1": 0.16666666666666666,
+          "overall_class_macro_f1": 0.4279306829765545,
+          "multiclass_brier_score": 0.23679417122040072
+        },
+        {
+          "region_id": "重庆市_云阳县_江口镇",
+          "target_year": 2020,
+          "row_count": 61,
+          "observed_changed_count": 3,
+          "predicted_changed_count": 7,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.44232418524871353,
+          "multiclass_brier_score": 0.2586520947176685
+        },
+        {
+          "region_id": "长沙市_浏阳市_高坪镇",
+          "target_year": 2019,
+          "row_count": 56,
+          "observed_changed_count": 3,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.6851700680272108,
+          "multiclass_brier_score": 0.13095238095238096
+        },
+        {
+          "region_id": "长沙市_浏阳市_高坪镇",
+          "target_year": 2020,
+          "row_count": 56,
+          "observed_changed_count": 3,
+          "predicted_changed_count": 1,
+          "change_f1": 0.0,
+          "changed_destination_macro_f1": 0.0,
+          "overall_class_macro_f1": 0.6851700680272108,
+          "multiclass_brier_score": 0.126984126984127
+        }
+      ]
+    }
+  },
+  "primary_comparison": {
+    "twm_v3": 0.2492117237337826,
+    "paired_region_bootstrap": {
+      "twm_v2": {
+        "unit": "region_with_two_years_clustered",
+        "region_count": 20,
+        "mean_primary_difference": 0.03831221474603828,
+        "bootstrap_95_percent_interval": [
+          -0.0068335192177103946,
+          0.08597483735627115
+        ],
+        "bootstrap_probability_difference_above_zero": 0.94915,
+        "region_wins": 9,
+        "region_ties": 4,
+        "region_losses": 7,
+        "bootstrap_draw_count": 20000,
+        "seed": 20260723
+      },
+      "persistence": {
+        "unit": "region_with_two_years_clustered",
+        "region_count": 20,
+        "mean_primary_difference": 0.12421172373378256,
+        "bootstrap_95_percent_interval": [
+          -0.0729225939501675,
+          0.27932695654019174
+        ],
+        "bootstrap_probability_difference_above_zero": 0.90795,
+        "region_wins": 16,
+        "region_ties": 2,
+        "region_losses": 2,
+        "bootstrap_draw_count": 20000,
+        "seed": 20260723
+      },
+      "fixed_adjacency": {
+        "unit": "region_with_two_years_clustered",
+        "region_count": 20,
+        "mean_primary_difference": 0.039713195945781085,
+        "bootstrap_95_percent_interval": [
+          -0.03095158313371354,
+          0.11555850929041717
+        ],
+        "bootstrap_probability_difference_above_zero": 0.8548,
+        "region_wins": 9,
+        "region_ties": 2,
+        "region_losses": 9,
+        "bootstrap_draw_count": 20000,
+        "seed": 20260723
+      },
+      "flus_full_grid": {
+        "unit": "region_with_two_years_clustered",
+        "region_count": 20,
+        "mean_primary_difference": 0.09577738029943912,
+        "bootstrap_95_percent_interval": [
+          0.001397214407324706,
+          0.18042076591708933
+        ],
+        "bootstrap_probability_difference_above_zero": 0.9767,
+        "region_wins": 14,
+        "region_ties": 1,
+        "region_losses": 5,
+        "bootstrap_draw_count": 20000,
+        "seed": 20260723
+      }
+    }
+  },
+  "integrity": {
+    "v3_source_v2_manifest_weights_and_trials_verified_before_scoring": true,
+    "flus_lineage_hash_count_verified": 320,
+    "flus_member_count_verified": 3,
+    "suitability_raster_hashes_verified": 30,
+    "simulation_result_hashes_verified": 120,
+    "flus_prediction_rebuild_maximum_absolute_error": 0.0,
+    "all_prediction_keys_verified_before_target_column_access": true,
+    "predictors_loaded_target_year_columns": false
+  },
+  "claim_boundary": {
+    "posthoc_development_only": true,
+    "historical_test_labels_known_before_v3_design": true,
+    "fresh_hidden_labels_required_for_unbiased_acceptance": true
+  }
+}

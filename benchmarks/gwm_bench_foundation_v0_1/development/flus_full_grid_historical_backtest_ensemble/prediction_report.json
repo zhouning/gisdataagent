@@ -1,0 +1,2039 @@
+{
+  "schema": "gwm_bench.flus_full_grid_historical_ensemble.v1",
+  "status": "flus_historical_ensemble_committed_before_scoring",
+  "method": {
+    "name": "three-seed mean-probability ensemble of full-grid FLUS",
+    "seeds": [
+      31,
+      47,
+      73
+    ],
+    "binary_path": "/Users/zhouning/FLUS_console_crossplatform/build/cmake-release/flus_console",
+    "binary_sha256": "9839ce50950442d4ef49e4d2129a1ba27735e1955c2d4975ae51067c1c3c9964"
+  },
+  "members": [
+    {
+      "seed": 31,
+      "report": {
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/flus_full_grid_historical_backtest/prediction_report.json",
+        "role": "flus_historical_member_report",
+        "size_bytes": 190520,
+        "sha256": "927f25266be86723cc15fa395845f9607ed220ae8f77be0ca554c094c58650d2"
+      },
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/flus_full_grid_historical_backtest/flus_full_grid_historical_prediction.parquet",
+        "role": "committed_historical_flus_prediction",
+        "size_bytes": 11687,
+        "sha256": "7ff6876972be373a11fe5905d8896a693931e2779b4aa0a8a6265a0a2ac7bce1"
+      },
+      "convergence": {
+        "region_run_count": 40,
+        "exact_demand_count": 1,
+        "mean_demand_total_variation_distance": 0.029335844751155783,
+        "maximum_demand_total_variation_distance": 0.15726441853135834
+      }
+    },
+    {
+      "seed": 47,
+      "report": {
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/flus_full_grid_historical_backtest_seed_47/prediction_report.json",
+        "role": "flus_historical_member_report",
+        "size_bytes": 191250,
+        "sha256": "ee4d3e12345a394f8f9d285dabfac2c92928648d4ee1c4d2b1086ac2ee9ebd0c"
+      },
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/flus_full_grid_historical_backtest_seed_47/flus_full_grid_historical_prediction.parquet",
+        "role": "committed_historical_flus_prediction",
+        "size_bytes": 11636,
+        "sha256": "b04e24e73d399eb3b6c99567e31807e5d4b5765126cdc6925de86a6f19f6600e"
+      },
+      "convergence": {
+        "region_run_count": 40,
+        "exact_demand_count": 1,
+        "mean_demand_total_variation_distance": 0.02184573098880764,
+        "maximum_demand_total_variation_distance": 0.0797958242011766
+      }
+    },
+    {
+      "seed": 73,
+      "report": {
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/flus_full_grid_historical_backtest_seed_73/prediction_report.json",
+        "role": "flus_historical_member_report",
+        "size_bytes": 191254,
+        "sha256": "6d5f94196342efe6095517f4c4b5089a632f0cc02a9b955c8ec094fc01f3ce4c"
+      },
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/flus_full_grid_historical_backtest_seed_73/flus_full_grid_historical_prediction.parquet",
+        "role": "committed_historical_flus_prediction",
+        "size_bytes": 11660,
+        "sha256": "6b245526bf5339910f018c2707b72c2c73cb376f2e7a040e23d31191c5bceedb"
+      },
+      "convergence": {
+        "region_run_count": 40,
+        "exact_demand_count": 1,
+        "mean_demand_total_variation_distance": 0.025623796130879922,
+        "maximum_demand_total_variation_distance": 0.1448552312838851
+      }
+    }
+  ],
+  "source_lineage": {
+    "file_count": 320,
+    "maximum_land_or_viirs_year_by_experiment": {
+      "2019": 2018,
+      "2020": 2019
+    },
+    "files": [
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "e9d78e19681fe9c59e05710efd951aa274c70862aafc7f6576a5edf5c8a4921e",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "ff9337df51531e87d9e0b9bf045d0c8b2f82903da303b737cd9431a1496469db",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "557b5ea48fc455b390bcfc0776f9c8e25569b97373429079d300983d7811d9f5",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "478e01fa9f360f8c92356c52831e8ca1f2a25a84f18cb6a95431f488bc53b5df",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "400e5ccf8b61d107ee88477017a7eaad166e3dff709bd73ccf17d985658d6642",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "8e2d95f6e08a83e51572c3c8e59af082e0f790e3235d4faf4b664e2eb57ac07b",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "8766ac9cceda2f21d3c700e25f56d02f67c8b6ce0a83f3d3d19561f1f1b908bf",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "1e3516b30b8887d85262ef85b8f432cc9b595bdf7a92af0338bf442ce8822fb7",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "9bdc2f1d28ca4e88deeabfea49550dace645ad9c3b0382d70bfcfa64d17d00be",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "a9d5ed608e8f49f45d0e11f39ff62e5f6ece9bd067d44664f80688f572360d63",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "b9f9b294b0fada5bc1b00f9825b61600f2de5603d5e9226faaf70ed2defc4e19",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "1ff86f18ae6c0199b380c48f9a5845ea60d58d8e95872880f96956f29c8093ea",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "4f0124eec48cb38be7163f74d143c84a2b219fceca988351bc657d8c3359a844",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "4b2cfcf936db3d7300bbc35b68cd3d3c6ef6b1316537d9c6ebf8b55f9d0eedb1",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "203f7211a63cfc08d69af114cfbdf98e15a1c4f97efc99e995c51b46133cd966",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "56a86690e518d2cb2632e9a26322f7203e3163f3f93131fa17c49cba7316ff93",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "3efae0dd059296e9d091a6aa6a1bd0aa23bbf495f87de4fc504b9b805663f653",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "5e35ae5374de3d7feeb02937e7730a3021b2d6d51f9dba7c7861474b2e7bdc06",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "2546411e511dbed48b6c1edff58e0b843a4f997b73ca437d358651fe75447fac",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "2e4329030d8072263d822d425edb5ca2de5aad37e464983b98e538d26366cb37",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "162fc9095144ad31a4a08021b3e2860f7ef9edf4e0c51381c1845762ed3c0abe",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "8dc84c4f0c8cfa41b39a32d88fe2ec725db7ff68d0af095d89dd6bcfcb8975af",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "beafcbbf030f4c5620379d0614380098962af72d82874e482757af19f8f71cbe",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "bd85dc41f91a8d522d8e4f475647c1adcbe6ff9fcf14b982a7ccef9608f7c317",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "8473c64f31eb904611ea01aed0de6b56e3c90476a0419a32dc7c5f417132b5f4",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "d7b27170807019af59a528259db9599a4e29649cdaa37f0cf87098a5635f2a34",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "9cd6cb974d2cd466583e3c8d8754ee9ed4deb24b89f03bfc4d68ddbf3f3467d3",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "ac27704cbe361ce2c1bb29b6be95870eb3072b770fa1b4335d85aadf93afd74a",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "f48118b914c2d78c80cdffcadfcd0b292df0d74810477186dba6973af1bf7f18",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "d183772e9c360345c43abecb9d113f68674df5cd6f58ff22407140cab2be8f23",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "e4715e2fde9dec8a5cf0e7c9157eb5582633a62cd2789eb01aa59b766fe16deb",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "24738d7bd634c71d56be741f6bc0d2dbdf6e41db5bec909b9b1e399a5e6572f4",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "3e4ea2e988e0dc4566bb0203391cbfca0c73c318e16ad560fb3853e839363f3e",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "a5063f4d3944be077e2054aff6e66d49a6ae24bbd5fe49be79f41d0de0a5afe3",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "bba928327c2766294f720243aac88608c4f1871f4172d0ece94d4ff8b3f8146d",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "defc7c0016eb66767979f3012807be3445e31e32bd1a93d0f140f7304dd39b76",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "6e402fcd519c8d9e7905cc973df4ae212544e76e192cdd42b3aaca1e702c94f8",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "891b61434a87d690292a9c5bba70c226dffd69dcf8ead52f6d52651482ff68d1",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "401092cfe6eb3d23e2c1a89c79586eaf2c09180ca2a2d87e138f72dc7df72195",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "e59b93e50cf773d04239fd128040065e2145d0b071ee9798b4e95226b9d8445b",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "e5f421d9423492e4b60266ea9750e2ee7ffd332a64885edc7eded08cd8b6cf15",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "5755d4e6e610b6e34fff1d72f370420e0a00e1a3e87f7484d30b822bc5953dad",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "0bbc436befbe906815fa1bc646890e7242a94a2a328ac3ea98c2050dd61f79c7",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "9288a3fbd649f9fe8ed26326b21edb84bc4647ca7d63d6c76e579c3747d4c04e",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "85c2dd0605d98a11807310937d1c3fd4ee988f01a61352d6ceef2c1054a49b97",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "e2ae663a7ec65cd86eecf5a1740845957abe52afac65895229d8f780419f67a8",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "e6a4b8dd87ccde8dd6b03a484fb431dad31cd6d3d340c691dd8c71b1a8debf1e",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "4048b6380a3745b973a10d62703a5f0b95f8cd4a40700aee55e126bb5762e75f",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "a375c8d6188c97651a304c9afc892b8daed9a4743c58fb15f30180ae5651a4ed",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "4013d63a843ab7583d94629f7ba7f04151c204262cfd8cca30fe8c79051f727c",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "c34ed1661cb100651cd0028abdc804a90ecf0c8be2f5b4e0275f482a46776192",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "ed1c5aa54599ee8b11d27fc36c181a19e4d09e4aea2c24b6653b693388d607a3",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "26bb33529b7c2e9c211101c2ac42f6a4b90a279a9940ce8cad5712f217757c3e",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "4d2e0b0a876ef0bbbf817b30b78400e14d816ab456167890690933b2b540df56",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "4a98f6687091a1d24529c6f7bcbeb123767b0e2f05ad9357111e7f005286cca2",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "c643efc953d2c30782e9050fe6af7dca8ace9e6371561d2f0cb8a682e05fddd3",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "d0c3aea7dfca9199f3b2d3dee61ea66027b746215827427133cad576b6f8022b",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "ce7cb3af0590d952a48e59365fae3ec21c11d06614e8d6c5ab07999f6989ea0f",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "a94892e550023ed3ece5c4664948e0a97f2b8c260d7a7cc051dec360f2ec1b64",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "44648819c811df87a15a503b74d215868fffaa1f66a11d813052501a856bccf8",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "c4a600459f2614d14c0da3192da8f586f975a7d92603621f0e7f153039fbd963",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "7ec43186c196007af0038dab614942e1c4f04b194b18c36d96f86fd9b3b9d7df",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "2d40f068354ed402f9efa7bfdd642a83821132279f2d288002e07975bd2ef29a",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "4e2f24fbabd69f66b717c9c07e5a5603ec9a3fbc3bbb4e14ea8095555f526927",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "06f8b88b8adf3cbf02ecd67d5eaba141e2f8dda8b425249e4210ff47e0a418fa",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "22f55d0ceb5c54733019c873aa3898167d8349d016873ee891d98334e6511bf6",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "663db27a804681f97231e1d0bba2a11d0ab8a804da935a40d3cffd86268db9fb",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "b2135bf383d323215240ee1317129b512c36ca3c5a7c2fd73282e6f556a12558",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "0b96e5d0b041b6d11a25699951175d23513422cfbb2de83b384077512870ef60",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "9b08f8cba2ae937aa27b830bed6979fbd5dc0a8c8fc61dd2323345ea0a7d1891",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "795c623c52e830388a31081c644350546e97678b3e5c679919c983dbb7a7665b",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "225719e5f08e21f3089e908e1792f76b9a8fb513e48d26c99d30d7eb8e69b04f",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "3f6e5e6c0c8daccdce86b149b340eb1431cf8e51ae515142078951f51844ef1d",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "e387d36316d3cc1f8c68995507bc493042a7054fb7aad82d26e4a48eb308d258",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "faaa2b0af8cc3fa3152230c5dd32c0ff13bab9429d3f98c7e93485294dd0224a",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "08d8cd1ff142b99547c7244e7e506373303d6ec4ac345d9b65356fc30f7a5974",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "6ffb038c91e45deeac0331dd584c2551c8d7c55dcaac7f55404401d6f74da3d2",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "38788b5be71b6ed6f06812420815c6358444a4c8f9954b4e8ad2a44704719e1f",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "b4c77300c2bab78b62167e93dadc73c3fd6fbb78c90632ede703a23359bea4dd",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "120e8722bd45cd34058702e1a87579fc715e076d5bd2d1f20a8cdb266535376f",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "a6aa40159768b0bf555b0912c3c28de0abd498f62ae39ea86fa4d9e8eaa06fd7",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "2050d64ee1e04d4d94c2cbc9e093d203359f2fa9c0c6a098caed053d04c4d3cb",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "3c197ffbd8a87a0d11487d45b7c4e619404431d4a6932345956de0d64b633ee3",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "39df158458fadaa6265ecc9d6a22bf9c94cfcfb3b2aa2a19ce7e7b08a82ff44a",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "d6d0d6ab3420055d6687ee01f516d150541ee0a35de3e34fcdf35c5db6ad29b1",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "953ec03a9c39048f40176a50a82641aa8baed7f3325723ddfdf7b684a47036b7",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "07871651da9221cad82e1b9bbaabdcf31ef6962dc3fa03114ffee581387987a7",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "7c85b0e2e239a95e1530b2ba4e9f74171f57d77cdb8309ab1a07b51e41929277",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "869edd791e7e3a281f9498a5e2f98bc7994f0968c0d9683e2047cb1235321936",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "83a89f8436c13a3d9de1d8641d8fa6797a2bd10441af75c70d088d7deab96a2d",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "8054586ba7c58702ee0703d6f7243d7349b1ba46eb5d43511c8766c44671f8c8",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "c60020f07928c22f659013ba43e715a4ece65d94fe2e30ad4f10c602d6737006",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "822e4cc391ce96e75c3adf7cbd178e23ba6a285460ef00c86105acca214cb51b",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "d15f2e4571c4b42b366e5db0c6d7c206b1e34e52ffda8d712fefefe99d6f114c",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "3bebba1107c3c6d28c4966bf7d3ae91fceed0475e9cf86c1ca3b1c90d02f7294",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "b2435436dc873e329cfea309572e543b32db68f3b1e78ec829a981666d23f8e8",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "a4d94eb75e493e83d094fb52889bcad2f092f06b43f87533299212206abee8bf",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "591e982bbd4a76da21b0f54068ee262a10a9e8f9dce932ccbc583161d5ff510e",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "2d27d8414de2a7bb07cb53924f8c9e3d0413a7c7685b63488f380ff9388050f8",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "3eb45ece68de10ccf2e9894cd715b9e2153596e73ffae5467b3cb78e6c3689c7",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "bcaa366961458db0dbf65ed998c6bd99cf5bfce2f19b73e8827b19a772a9366b",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "bedc53f603f4078427551e67ede629903de9c25a7d81ad8f8591b03279002745",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "20e8d416e28e7cf63ccd454bb38d1705519c02a8a04cc3a5940e25580078927b",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "0ef7a12914587adb4128acf1a86e6888c0bca938883514a8dad6a883ccea7423",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "9bc6c5fdf4d44e241aed5f98bcbd49ca2b8d7a5671c06b9f726f767a63d897e1",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "838f30a405e86fc648ec599ed3ce1af96c0791f69423958ca0adcbf51c07e137",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "b4d932919375fa5cf207460781e84fa0fb8909a3436dd81916c92aad6cc7328b",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "46eaa494c0b1bd57cd3892ad7fe642ba9ef660cd5c6819cc7d7c84f2337cd2c6",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "4924dc676ca4bdc8b2376c43f2da14c5d56c5f5d24d54ef575d5dbf56054efa3",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "6aefbcb3f30bb14cfd1658887bffe37bfb41af4f59d08fdd5e2226a257fd690d",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "873ecac773a8ff00b55d0a72eb652f2043328d7340e6d6b3ffd48140f200ae4c",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "55c6f00f9f70334067bded1001bf2f9ab29abe363a354c2c6d6b5cb63e7a71ea",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "e2f8091d517841b6e877c42eaec48128feec76fda5bb8f268582ed47ad0b3cc5",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "1e797198682d6fda0e1243af3fc044cf599b2fe31d012116b1b5f7b89c72d1d9",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "10ec89d520b8d4a893678aad9b688ddec5c4563be3274b31ecc547ce8f37ca16",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "96db5898f893e003a49fb8cf1dbcd43163b3915045db6765d0d58b385ee0b44e",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "bb5b946516e441f28c7c5e71afd1f6427ce20ebcdedfc4acf4ce71384f56142e",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "6c4be6f0957faba3c9522d0d5a39787cefd69b207ef4a03aeaeca3154df2d554",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "d1f6b728f5cdb326ed963b7cf7e46c7e55117a3a6909c1ae760d9372464601d2",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "0081058992406e96ecb877406471047ef7fe2eef574d77c4348aa6fa4d5cf262",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "91da18155d4114b956413847b704dc162a4d521885b27f2f97d045c5dd482843",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "28a28f5c3bc9463355a7cac460ebc64e24ef95c753e5579e7f520f4fd0137ed4",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "e4ce9d10f3c607fd94a80a9a60c1b36ced803a7623a5c096b890d1b5f7007a5d",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "54b9a2a424d4561d433e9de37e24c35338a00b71c90afdc5f1a577415e26797c",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "2f26102e0cd8fe24850436f04f9fa28ddc22f1575baff2a0570993083c6c299c",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "214364a4d5ade6376f2d57976cfafb6f4c7a97f9216c7124ac024d020fda244f",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "513cbbf4ff6dc0706f6322d9f37654fb04b655a432983726384b309985c170bb",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "c2ce92790a0230861cbfce7bdb6bf4272f4e06c7280755ef801c4195fe1de418",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "8a1a09790e4429ae8bebd89f0d11e96280b698da251b53e187d13d4e13ed82dd",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "ee646e095a9dce5f4eb4f6cd709bc72c67298b10c93529f2f5773c77b80cd8ee",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "d1309eef3d67e84d7d96d4697a467909629cb1a8f3c2c89397eee98b0452dd48",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "806636ed336834c911b5dd83c079ea5a1ada495f239ea6de6548af5ea3d6ecb4",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "7955e631657d4c9a848394491e726fe531ad6662e0707d1543f25b2725b341f4",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "269faace479fa32727fa5382549ec08cfe2fd42322c814160f2c4ee829783efb",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "22e57d3a23c25dffa13bf1fb502806fc3309f210d10e09afc258875d85403384",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "f5df513c5532c68e34159ecf9fb6d4be7b2caf3afdec31943d6b5e30927749ca",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "1e8c383cbd1cc6f1052a81b7c6da578c6ad0a9da02cdcfa21822afe3885fdd21",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "2ab1b95a334baf1c8fff65fe084042839938524237d9bf3ab4de86568c66638c",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "e1a48a04acea5610c711719f1a051a1cf0bae4783b5f54939138d4423d198ea4",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "573b408d228e92fe0837fb0e28351cb097ac12a01993d985fdeb69b8b9b37118",
+        "experiment_target_year": 2019
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "e9d78e19681fe9c59e05710efd951aa274c70862aafc7f6576a5edf5c8a4921e",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "ff9337df51531e87d9e0b9bf045d0c8b2f82903da303b737cd9431a1496469db",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_dynamic_world_2019_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "f837f6a01bd74ac49a015c3f43c34d060341204418814ed877298faa3859ca6b",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "557b5ea48fc455b390bcfc0776f9c8e25569b97373429079d300983d7811d9f5",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "478e01fa9f360f8c92356c52831e8ca1f2a25a84f18cb6a95431f488bc53b5df",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "400e5ccf8b61d107ee88477017a7eaad166e3dff709bd73ccf17d985658d6642",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_viirs_nightlight_2019_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "2bfd1d7ed3761506525f726ffb58af65a4d7e3c53be2b39591ac6d21cd9a75f5",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "8e2d95f6e08a83e51572c3c8e59af082e0f790e3235d4faf4b664e2eb57ac07b",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "8766ac9cceda2f21d3c700e25f56d02f67c8b6ce0a83f3d3d19561f1f1b908bf",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "1e3516b30b8887d85262ef85b8f432cc9b595bdf7a92af0338bf442ce8822fb7",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "9bdc2f1d28ca4e88deeabfea49550dace645ad9c3b0382d70bfcfa64d17d00be",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_dynamic_world_2019_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "1df3b86347a41c44bc28b5e8bcde74241b4348ee6bb41672bd6929d242224040",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "a9d5ed608e8f49f45d0e11f39ff62e5f6ece9bd067d44664f80688f572360d63",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "b9f9b294b0fada5bc1b00f9825b61600f2de5603d5e9226faaf70ed2defc4e19",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "1ff86f18ae6c0199b380c48f9a5845ea60d58d8e95872880f96956f29c8093ea",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_viirs_nightlight_2019_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "9a029c840238df1fad3c77315237f5fed2371fb0a4fb4f4a5d91e1e800ac3572",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "4f0124eec48cb38be7163f74d143c84a2b219fceca988351bc657d8c3359a844",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "4b2cfcf936db3d7300bbc35b68cd3d3c6ef6b1316537d9c6ebf8b55f9d0eedb1",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "203f7211a63cfc08d69af114cfbdf98e15a1c4f97efc99e995c51b46133cd966",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "56a86690e518d2cb2632e9a26322f7203e3163f3f93131fa17c49cba7316ff93",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_dynamic_world_2019_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "8d9de64bf8d8681759bce37da99a010d8c0eddf23b0967adc89ab9e304c583c0",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "3efae0dd059296e9d091a6aa6a1bd0aa23bbf495f87de4fc504b9b805663f653",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "5e35ae5374de3d7feeb02937e7730a3021b2d6d51f9dba7c7861474b2e7bdc06",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "2546411e511dbed48b6c1edff58e0b843a4f997b73ca437d358651fe75447fac",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_viirs_nightlight_2019_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "acf2350d04996b106d9d14767ef2bd3a4da762d113abc50981c72de706ba25fa",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "2e4329030d8072263d822d425edb5ca2de5aad37e464983b98e538d26366cb37",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "162fc9095144ad31a4a08021b3e2860f7ef9edf4e0c51381c1845762ed3c0abe",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "8dc84c4f0c8cfa41b39a32d88fe2ec725db7ff68d0af095d89dd6bcfcb8975af",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "beafcbbf030f4c5620379d0614380098962af72d82874e482757af19f8f71cbe",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_dynamic_world_2019_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "e3d26f9b2db8968373398fe6777993b30987f42f77c44220aa87d6645de0c996",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "bd85dc41f91a8d522d8e4f475647c1adcbe6ff9fcf14b982a7ccef9608f7c317",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "8473c64f31eb904611ea01aed0de6b56e3c90476a0419a32dc7c5f417132b5f4",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "d7b27170807019af59a528259db9599a4e29649cdaa37f0cf87098a5635f2a34",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_viirs_nightlight_2019_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "0f7e716900afb1cf8131cb0bdaa805a8e827957f0cb7d7534659c5f1271f3fdc",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "9cd6cb974d2cd466583e3c8d8754ee9ed4deb24b89f03bfc4d68ddbf3f3467d3",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "ac27704cbe361ce2c1bb29b6be95870eb3072b770fa1b4335d85aadf93afd74a",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "f48118b914c2d78c80cdffcadfcd0b292df0d74810477186dba6973af1bf7f18",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "d183772e9c360345c43abecb9d113f68674df5cd6f58ff22407140cab2be8f23",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_dynamic_world_2019_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "01fd50aae1bd965c22896740b85fccbfd1cccec16b86aaa60c6a7a9355dd03cf",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "e4715e2fde9dec8a5cf0e7c9157eb5582633a62cd2789eb01aa59b766fe16deb",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "24738d7bd634c71d56be741f6bc0d2dbdf6e41db5bec909b9b1e399a5e6572f4",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "3e4ea2e988e0dc4566bb0203391cbfca0c73c318e16ad560fb3853e839363f3e",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_viirs_nightlight_2019_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "04759cb5766dc577a74f6873cfc127155f1499d24c14c15f9f9c076ad92aa3af",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "a5063f4d3944be077e2054aff6e66d49a6ae24bbd5fe49be79f41d0de0a5afe3",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "bba928327c2766294f720243aac88608c4f1871f4172d0ece94d4ff8b3f8146d",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "defc7c0016eb66767979f3012807be3445e31e32bd1a93d0f140f7304dd39b76",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "6e402fcd519c8d9e7905cc973df4ae212544e76e192cdd42b3aaca1e702c94f8",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_dynamic_world_2019_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "32420a0ff7fc4aa9ff52008b75d0a8c4df97b94f416938c8936727594636c50f",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "891b61434a87d690292a9c5bba70c226dffd69dcf8ead52f6d52651482ff68d1",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "401092cfe6eb3d23e2c1a89c79586eaf2c09180ca2a2d87e138f72dc7df72195",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "e59b93e50cf773d04239fd128040065e2145d0b071ee9798b4e95226b9d8445b",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_viirs_nightlight_2019_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "52b1851da175c1cde2ca098a80f9b58c00c4b5e58e5ab8498216b1f1c71c38da",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "e5f421d9423492e4b60266ea9750e2ee7ffd332a64885edc7eded08cd8b6cf15",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "5755d4e6e610b6e34fff1d72f370420e0a00e1a3e87f7484d30b822bc5953dad",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "0bbc436befbe906815fa1bc646890e7242a94a2a328ac3ea98c2050dd61f79c7",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "9288a3fbd649f9fe8ed26326b21edb84bc4647ca7d63d6c76e579c3747d4c04e",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_dynamic_world_2019_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "88b42ef765ce23b79d15894d3595280571706b22025678417a3ba1857da6d127",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "85c2dd0605d98a11807310937d1c3fd4ee988f01a61352d6ceef2c1054a49b97",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "e2ae663a7ec65cd86eecf5a1740845957abe52afac65895229d8f780419f67a8",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "e6a4b8dd87ccde8dd6b03a484fb431dad31cd6d3d340c691dd8c71b1a8debf1e",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_viirs_nightlight_2019_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "d9dbc583ee498a726ee4576b2c1a68feaf47a1f93ba05f80eeec43f45ea80b8c",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "4048b6380a3745b973a10d62703a5f0b95f8cd4a40700aee55e126bb5762e75f",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "a375c8d6188c97651a304c9afc892b8daed9a4743c58fb15f30180ae5651a4ed",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "4013d63a843ab7583d94629f7ba7f04151c204262cfd8cca30fe8c79051f727c",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "c34ed1661cb100651cd0028abdc804a90ecf0c8be2f5b4e0275f482a46776192",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_dynamic_world_2019_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "8939cfab6547a00abe831fdabd423aa8a613bd60c432d8b57548423d4f3b67d3",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "ed1c5aa54599ee8b11d27fc36c181a19e4d09e4aea2c24b6653b693388d607a3",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "26bb33529b7c2e9c211101c2ac42f6a4b90a279a9940ce8cad5712f217757c3e",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "4d2e0b0a876ef0bbbf817b30b78400e14d816ab456167890690933b2b540df56",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_viirs_nightlight_2019_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "f3db337d4a86a6a9b21051c4495a445ccde551923b59147fc7daf8ace15b463c",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "4a98f6687091a1d24529c6f7bcbeb123767b0e2f05ad9357111e7f005286cca2",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "c643efc953d2c30782e9050fe6af7dca8ace9e6371561d2f0cb8a682e05fddd3",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "d0c3aea7dfca9199f3b2d3dee61ea66027b746215827427133cad576b6f8022b",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "ce7cb3af0590d952a48e59365fae3ec21c11d06614e8d6c5ab07999f6989ea0f",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_dynamic_world_2019_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "0122afb3367c8fb9c66608a98fdb46f837158ed523f265eb0ca8eb62f6a80d86",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "a94892e550023ed3ece5c4664948e0a97f2b8c260d7a7cc051dec360f2ec1b64",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "44648819c811df87a15a503b74d215868fffaa1f66a11d813052501a856bccf8",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "c4a600459f2614d14c0da3192da8f586f975a7d92603621f0e7f153039fbd963",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_viirs_nightlight_2019_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "8f8e100980a5a3a6bb14a971af13837c2e21f5280e57df90a9bbee2f4ab418a0",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "7ec43186c196007af0038dab614942e1c4f04b194b18c36d96f86fd9b3b9d7df",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "2d40f068354ed402f9efa7bfdd642a83821132279f2d288002e07975bd2ef29a",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "4e2f24fbabd69f66b717c9c07e5a5603ec9a3fbc3bbb4e14ea8095555f526927",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "06f8b88b8adf3cbf02ecd67d5eaba141e2f8dda8b425249e4210ff47e0a418fa",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_dynamic_world_2019_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "2092e0c9b884b8764414e3c854e8c7816d02d2bdb8d60180ffcde229233eef6b",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "22f55d0ceb5c54733019c873aa3898167d8349d016873ee891d98334e6511bf6",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "663db27a804681f97231e1d0bba2a11d0ab8a804da935a40d3cffd86268db9fb",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "b2135bf383d323215240ee1317129b512c36ca3c5a7c2fd73282e6f556a12558",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_viirs_nightlight_2019_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "988c7ae0c697a1a73c1a5bdd970baad6eb1b401ccf51509b4695b277ac34b092",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "0b96e5d0b041b6d11a25699951175d23513422cfbb2de83b384077512870ef60",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "9b08f8cba2ae937aa27b830bed6979fbd5dc0a8c8fc61dd2323345ea0a7d1891",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "795c623c52e830388a31081c644350546e97678b3e5c679919c983dbb7a7665b",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "225719e5f08e21f3089e908e1792f76b9a8fb513e48d26c99d30d7eb8e69b04f",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_dynamic_world_2019_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "d74525ca63c12c347a3b70126f45cde29d729e6902524c4e443478abc2c20678",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "3f6e5e6c0c8daccdce86b149b340eb1431cf8e51ae515142078951f51844ef1d",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "e387d36316d3cc1f8c68995507bc493042a7054fb7aad82d26e4a48eb308d258",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "faaa2b0af8cc3fa3152230c5dd32c0ff13bab9429d3f98c7e93485294dd0224a",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_viirs_nightlight_2019_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "ffb784b239b0857d33dde5a7ec937f71dc2353fc2068a4ef98d94b01e5f64058",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "08d8cd1ff142b99547c7244e7e506373303d6ec4ac345d9b65356fc30f7a5974",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "6ffb038c91e45deeac0331dd584c2551c8d7c55dcaac7f55404401d6f74da3d2",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "38788b5be71b6ed6f06812420815c6358444a4c8f9954b4e8ad2a44704719e1f",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "b4c77300c2bab78b62167e93dadc73c3fd6fbb78c90632ede703a23359bea4dd",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_dynamic_world_2019_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "bc73b27ba50bf4b934ffb03b0eafab486cadb07fe584a7707ff107ecbdea354c",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "120e8722bd45cd34058702e1a87579fc715e076d5bd2d1f20a8cdb266535376f",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "a6aa40159768b0bf555b0912c3c28de0abd498f62ae39ea86fa4d9e8eaa06fd7",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "2050d64ee1e04d4d94c2cbc9e093d203359f2fa9c0c6a098caed053d04c4d3cb",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_viirs_nightlight_2019_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "225228ddf120dad21ac28b21944335e84616d6a9d2a4732a215fa6bdb6765f7a",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "3c197ffbd8a87a0d11487d45b7c4e619404431d4a6932345956de0d64b633ee3",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "39df158458fadaa6265ecc9d6a22bf9c94cfcfb3b2aa2a19ce7e7b08a82ff44a",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "d6d0d6ab3420055d6687ee01f516d150541ee0a35de3e34fcdf35c5db6ad29b1",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "953ec03a9c39048f40176a50a82641aa8baed7f3325723ddfdf7b684a47036b7",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_dynamic_world_2019_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "7ede8b98f1aec6be24732c4b326eaa660d4a061454ea5ad515f1f870c81c81fc",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "07871651da9221cad82e1b9bbaabdcf31ef6962dc3fa03114ffee581387987a7",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "7c85b0e2e239a95e1530b2ba4e9f74171f57d77cdb8309ab1a07b51e41929277",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "869edd791e7e3a281f9498a5e2f98bc7994f0968c0d9683e2047cb1235321936",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_viirs_nightlight_2019_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "cf71fda5ef9aad89d80d9ebe6f59f58e54c687036f3966de7bce8269226f33bd",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "83a89f8436c13a3d9de1d8641d8fa6797a2bd10441af75c70d088d7deab96a2d",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "8054586ba7c58702ee0703d6f7243d7349b1ba46eb5d43511c8766c44671f8c8",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "c60020f07928c22f659013ba43e715a4ece65d94fe2e30ad4f10c602d6737006",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "822e4cc391ce96e75c3adf7cbd178e23ba6a285460ef00c86105acca214cb51b",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_dynamic_world_2019_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "687f47d605c7ef473ebbc305c53a1214fef90650b8a3ea111d6ed2913312139f",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "d15f2e4571c4b42b366e5db0c6d7c206b1e34e52ffda8d712fefefe99d6f114c",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "3bebba1107c3c6d28c4966bf7d3ae91fceed0475e9cf86c1ca3b1c90d02f7294",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "b2435436dc873e329cfea309572e543b32db68f3b1e78ec829a981666d23f8e8",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_viirs_nightlight_2019_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "4c13ab032c22ff965f10af8ba5fb9ae068038d6e28062423608131a96f5a61b1",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "a4d94eb75e493e83d094fb52889bcad2f092f06b43f87533299212206abee8bf",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "591e982bbd4a76da21b0f54068ee262a10a9e8f9dce932ccbc583161d5ff510e",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "2d27d8414de2a7bb07cb53924f8c9e3d0413a7c7685b63488f380ff9388050f8",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "3eb45ece68de10ccf2e9894cd715b9e2153596e73ffae5467b3cb78e6c3689c7",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_dynamic_world_2019_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "027779aa2ecfcfecf9ba8b72fed4fe9382ff1fd8086e12c448e743a1b5224060",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "bcaa366961458db0dbf65ed998c6bd99cf5bfce2f19b73e8827b19a772a9366b",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "bedc53f603f4078427551e67ede629903de9c25a7d81ad8f8591b03279002745",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "20e8d416e28e7cf63ccd454bb38d1705519c02a8a04cc3a5940e25580078927b",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_viirs_nightlight_2019_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "f80b978756bc8696b87924285dec0854341eb588f983d335081946c9849c0746",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "0ef7a12914587adb4128acf1a86e6888c0bca938883514a8dad6a883ccea7423",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "9bc6c5fdf4d44e241aed5f98bcbd49ca2b8d7a5671c06b9f726f767a63d897e1",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "838f30a405e86fc648ec599ed3ce1af96c0791f69423958ca0adcbf51c07e137",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "b4d932919375fa5cf207460781e84fa0fb8909a3436dd81916c92aad6cc7328b",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_dynamic_world_2019_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "7047034ac0ff78b511220f3c8569a81c2fe6396acb92b5fe3b511e68dc06db64",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "46eaa494c0b1bd57cd3892ad7fe642ba9ef660cd5c6819cc7d7c84f2337cd2c6",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "4924dc676ca4bdc8b2376c43f2da14c5d56c5f5d24d54ef575d5dbf56054efa3",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "6aefbcb3f30bb14cfd1658887bffe37bfb41af4f59d08fdd5e2226a257fd690d",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_viirs_nightlight_2019_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "6166e5012144ef6087af45e2e523a627c603ae05b40f310b207bdc75a11f800c",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "873ecac773a8ff00b55d0a72eb652f2043328d7340e6d6b3ffd48140f200ae4c",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "55c6f00f9f70334067bded1001bf2f9ab29abe363a354c2c6d6b5cb63e7a71ea",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "e2f8091d517841b6e877c42eaec48128feec76fda5bb8f268582ed47ad0b3cc5",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "1e797198682d6fda0e1243af3fc044cf599b2fe31d012116b1b5f7b89c72d1d9",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_dynamic_world_2019_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "400101cfb7570aeff31c420fdb07e435d71025c033dfe6feb7bd413bda4f2f0b",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "10ec89d520b8d4a893678aad9b688ddec5c4563be3274b31ecc547ce8f37ca16",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "96db5898f893e003a49fb8cf1dbcd43163b3915045db6765d0d58b385ee0b44e",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "bb5b946516e441f28c7c5e71afd1f6427ce20ebcdedfc4acf4ce71384f56142e",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_viirs_nightlight_2019_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "d39d9de22c1528123cf6010bc239657a8f7dfd9644366cf8a02cb04685095a4f",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "6c4be6f0957faba3c9522d0d5a39787cefd69b207ef4a03aeaeca3154df2d554",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "d1f6b728f5cdb326ed963b7cf7e46c7e55117a3a6909c1ae760d9372464601d2",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "0081058992406e96ecb877406471047ef7fe2eef574d77c4348aa6fa4d5cf262",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "91da18155d4114b956413847b704dc162a4d521885b27f2f97d045c5dd482843",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_dynamic_world_2019_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "1fb35b25f606160347971d57c14fd2e4a698d347b27e3f0a52ecd587f59a9f2e",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "28a28f5c3bc9463355a7cac460ebc64e24ef95c753e5579e7f520f4fd0137ed4",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "e4ce9d10f3c607fd94a80a9a60c1b36ced803a7623a5c096b890d1b5f7007a5d",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "54b9a2a424d4561d433e9de37e24c35338a00b71c90afdc5f1a577415e26797c",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_viirs_nightlight_2019_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "baaf811996e1a7d1f1bea3dab00214e4afeabd96e80f2f218b7ede2a143857f0",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "2f26102e0cd8fe24850436f04f9fa28ddc22f1575baff2a0570993083c6c299c",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "214364a4d5ade6376f2d57976cfafb6f4c7a97f9216c7124ac024d020fda244f",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "513cbbf4ff6dc0706f6322d9f37654fb04b655a432983726384b309985c170bb",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "c2ce92790a0230861cbfce7bdb6bf4272f4e06c7280755ef801c4195fe1de418",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_dynamic_world_2019_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "30dbfeccf67ab9eec93cbdc069b424c805ee57d844cf9794ca797ffb9ac0eff0",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "8a1a09790e4429ae8bebd89f0d11e96280b698da251b53e187d13d4e13ed82dd",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "ee646e095a9dce5f4eb4f6cd709bc72c67298b10c93529f2f5773c77b80cd8ee",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "d1309eef3d67e84d7d96d4697a467909629cb1a8f3c2c89397eee98b0452dd48",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_viirs_nightlight_2019_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "c768e95ee8db28515e43a60c2b526f0137e81fc66a5eb75efbe9e30af4e359a7",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "806636ed336834c911b5dd83c079ea5a1ada495f239ea6de6548af5ea3d6ecb4",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "7955e631657d4c9a848394491e726fe531ad6662e0707d1543f25b2725b341f4",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_dynamic_world_2017_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "269faace479fa32727fa5382549ec08cfe2fd42322c814160f2c4ee829783efb",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_dynamic_world_2018_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "22e57d3a23c25dffa13bf1fb502806fc3309f210d10e09afc258875d85403384",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_dynamic_world_2019_100m.tif",
+        "role": "historical_land_input",
+        "sha256": "a83cef9c1b1d32574e9fa84c31b1a48bc54347c38168f7062c1d9a9823af3c73",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_viirs_nightlight_2016_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "f5df513c5532c68e34159ecf9fb6d4be7b2caf3afdec31943d6b5e30927749ca",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_viirs_nightlight_2017_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "1e8c383cbd1cc6f1052a81b7c6da578c6ad0a9da02cdcfa21822afe3885fdd21",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_viirs_nightlight_2018_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "2ab1b95a334baf1c8fff65fe084042839938524237d9bf3ab4de86568c66638c",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_viirs_nightlight_2019_100m.tif",
+        "role": "historical_viirs_input",
+        "sha256": "b53d3669ca3e145e36b7f1c1b55fb9dcba9ded5f7f60fe454636f9cb665c3aac",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_srtm_elevation_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "e1a48a04acea5610c711719f1a051a1cf0bae4783b5f54939138d4423d198ea4",
+        "experiment_target_year": 2020
+      },
+      {
+        "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_srtm_slope_100m.tif",
+        "role": "static_terrain_input",
+        "sha256": "573b408d228e92fe0837fb0e28351cb097ac12a01993d985fdeb69b8b9b37118",
+        "experiment_target_year": 2020
+      }
+    ]
+  },
+  "convergence": {
+    "region_run_count": 120,
+    "exact_demand_count": 3,
+    "mean_demand_total_variation_distance": 0.02560179062361445,
+    "maximum_demand_total_variation_distance": 0.15726441853135834
+  },
+  "protocol": {
+    "member_predictions_committed_before_ensemble": true,
+    "labels_loaded_before_ensemble_commit": false,
+    "aggregation": "arithmetic_mean_of_nine_class_probabilities"
+  },
+  "artifacts": {
+    "prediction": {
+      "path": "benchmarks/gwm_bench_foundation_v0_1/development/flus_full_grid_historical_backtest_ensemble/flus_full_grid_historical_ensemble_prediction.parquet",
+      "role": "committed_historical_flus_ensemble_prediction",
+      "size_bytes": 12223,
+      "sha256": "44b5865c90ddabd7ce4d3e61e1b5ec8d0908b5701a4297c146c7efeba141d57a"
+    }
+  },
+  "source": {
+    "path": "benchmarks/gwm_bench_foundation_v0_1/ensemble_flus_full_grid_historical_backtest.py",
+    "role": "historical_flus_ensemble_program",
+    "size_bytes": 8485,
+    "sha256": "b429efdc2e7548f64549c9fce082cd43dc9a43bd960d08103575b7559a662665"
+  },
+  "claim_boundary": {
+    "same_historical_split_as_twm_v2": true,
+    "retrospective_not_prospectively_blind": true,
+    "external_flus_core_baseline": true,
+    "published_sota_comparison": false
+  }
+}

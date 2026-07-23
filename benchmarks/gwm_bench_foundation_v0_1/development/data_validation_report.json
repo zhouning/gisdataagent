@@ -1,0 +1,65 @@
+{
+  "schema": "gwm_bench.foundation_data_validation.v1",
+  "benchmark_id": "gwm-bench-foundation-v0.1",
+  "generated_at": "2026-07-22T15:58:14.858738+00:00",
+  "status": "data_validation_passed",
+  "passed": true,
+  "checks": {
+    "all_280_observed_source_hashes_match": true,
+    "all_128_samples_regenerated": true,
+    "controlled_inputs_match_generator": true,
+    "controlled_labels_match_generator": true,
+    "node_selection_reconstructed_from_pre_2021_inputs": true,
+    "observed_input_values_match_raw_rasters": true,
+    "observed_training_values_match_raw_rasters": true,
+    "observed_labels_match_raw_rasters": true,
+    "observed_coordinates_and_node_ids_match_grid": true,
+    "observed_edges_match_reconstructed_four_neighbor_graph": true,
+    "all_observed_source_grids_align": true,
+    "observed_unique_node_count_is_1055": true,
+    "observed_directed_edge_count_is_3338": true
+  },
+  "counts": {
+    "controlled": {
+      "sample_count": 128,
+      "input_node_value_comparisons": 20480,
+      "input_edge_value_comparisons": 64512,
+      "node_label_value_comparisons": 24576,
+      "edge_label_value_comparisons": 46080
+    },
+    "observed": {
+      "unique_node_count": 1055,
+      "directed_edge_count": 3338,
+      "input_value_comparisons": 27430,
+      "training_value_comparisons": 63300,
+      "label_value_comparisons": 25320
+    },
+    "total_value_comparisons": 271698
+  },
+  "errors": [],
+  "source_artifacts": {
+    "contract": {
+      "path": "benchmarks/gwm_bench_foundation_v0_1/benchmark_contract.json",
+      "sha256": "6b13ded8c7ac35b16589466a22182ed815d23c86743e25327e74ca4fba81caa3"
+    },
+    "bundle_manifest": {
+      "path": "benchmarks/gwm_bench_foundation_v0_1/development/bundle_manifest.json",
+      "sha256": "1310e534c31bee5948b445d65149a19de310304490c4893bd18332395de2c8cb"
+    },
+    "controlled_generator": {
+      "path": "data_agent/uwm/dam_geospatial_kernel/controlled_benchmark.py",
+      "sha256": "73d0dbdb9af404c01fe8b09cfead3f3c6f7874d36add88b93a7e575b4c23fc6a",
+      "role": "current controlled generator discovery implementation"
+    },
+    "validator": {
+      "path": "benchmarks/gwm_bench_foundation_v0_1/validate_development_bundle.py",
+      "sha256": "b132bb238e736857085de6c567079fe49a64a48b8c2f7bcba4a8d24e9df7f812"
+    }
+  },
+  "claim_boundary": {
+    "validates_bundle_fidelity_to_frozen_sources": true,
+    "validates_candidate_model_quality": false,
+    "validates_real_world_causal_effects": false,
+    "validates_general_gwm": false
+  }
+}
