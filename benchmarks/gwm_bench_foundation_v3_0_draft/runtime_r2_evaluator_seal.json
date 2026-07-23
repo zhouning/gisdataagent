@@ -1,0 +1,68 @@
+{
+  "schema": "gwm_bench.runtime_r2_evaluator_seal.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+  "generated_at": "2026-07-23T07:06:29.010249+00:00",
+  "status": "RUNTIME_R2_AND_EVALUATOR_SEALED_PREDICTIONS_PENDING",
+  "suite_protocol_sha256": "f4bcad2ef8cf18dc383272ea6ecb44513d1b0895d7beef5d1afa306c7beaacff",
+  "bundle_fingerprint": "652a009fd38f79308ee7ddd71549db5c71760e8cc884217cb29e85bcf184a7e3",
+  "evaluator_conformance_check_count": 16,
+  "artifacts": {
+    "runtime_r2_contract.json": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/runtime_r2_contract.json",
+      "role": "runtime_lifecycle_contract",
+      "size_bytes": 2115,
+      "sha256": "6ee33a19dafa2de9e276fe66c7e8cc8e886a0098960dd00242f48b4f5a8da704"
+    },
+    "submission_contract.json": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/submission_contract.json",
+      "role": "prediction_and_label_contract",
+      "size_bytes": 1443,
+      "sha256": "0afab3fcf576198a311f3f7aa75937bf712b8eb79b4948942807dc2ae6a3f7bf"
+    },
+    "observed_o3_evaluator.py": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/observed_o3_evaluator.py",
+      "role": "sealed_reference_evaluator",
+      "size_bytes": 10096,
+      "sha256": "740ea9b657e84b6105cbea9f09276f14ecc81221c4ab7ca17739798746ae2e60"
+    },
+    "run_evaluator_conformance.py": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/run_evaluator_conformance.py",
+      "role": "evaluator_conformance_runner",
+      "size_bytes": 9309,
+      "sha256": "7a6d7846cb2d90f4d60ffe3c914f775a134bc225994551da741f007b6c1e2168"
+    },
+    "evaluator_conformance_report.json": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/evaluator_conformance_report.json",
+      "role": "evaluator_conformance_evidence",
+      "size_bytes": 2121,
+      "sha256": "69b2f4e3efcdbfa3c36e5ac9a39b051a736a7f6738737bb2aaa718ac46f1834c"
+    },
+    "bundle_manifest.json": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/phase_a_bundle/bundle_manifest.json",
+      "role": "phase_a_bundle_manifest",
+      "size_bytes": 3332,
+      "sha256": "3c6529e46e90d7d18cf75627680fa76d60a5ae1a18d31a58d5f576db7078fbcf"
+    },
+    "phase_a_bundle_verification.json": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/phase_a_bundle_verification.json",
+      "role": "phase_a_bundle_verification",
+      "size_bytes": 1730,
+      "sha256": "d367b768df883126bdb0e0b97f37799c51f779e3b62cc76264d62b1071c41006"
+    },
+    "preflight_report.json": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/preflight_report.json",
+      "role": "label_firewall_preflight",
+      "size_bytes": 3132,
+      "sha256": "350d65dda99da40dd810b0fee07708380e9b9c47de22c3736255a68bd0855526"
+    }
+  },
+  "integrity": {
+    "protocol_frozen": true,
+    "predictions_committed": false,
+    "target_file_count": 0,
+    "target_pixels_read": false,
+    "scoring_permitted": false
+  },
+  "next_permitted_action": "Run and hash TWM, FLUS and three internal baseline predictions.",
+  "seal_fingerprint": "2891389d25f199301a58209cd5e6dc20e8f1dde68026dfcefd284f114891bd4b"
+}

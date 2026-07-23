@@ -1,0 +1,2234 @@
+{
+  "schema": "gwm_bench.v3_flus_seed_run.v1",
+  "seed": 73,
+  "status": "COMPLETE",
+  "ann": {
+    "base_seed": 73,
+    "training_valid_cell_count": 617253,
+    "target_valid_cell_count": 774015,
+    "training_sample_per_mille": 10.0,
+    "expected_training_sample_count": 6172,
+    "feature_names": [
+      "x_3857",
+      "y_3857",
+      "srtm_elevation",
+      "srtm_slope",
+      "log1p_viirs_mean_2017_2022"
+    ],
+    "training_label_year": 2022,
+    "target_label_pixels_read": false,
+    "chunk_count": 2,
+    "chunks": [
+      {
+        "chunk_index": 0,
+        "target_pixel_count": 617253,
+        "derived_process_seed": 73,
+        "probability_sha256": "fa652f4a4ea0e43e992989cf6fff48aab010e8b93cb1fcad5271169bbd29c655",
+        "elapsed_seconds": 1.543561500031501
+      },
+      {
+        "chunk_index": 1,
+        "target_pixel_count": 156762,
+        "derived_process_seed": 73,
+        "probability_sha256": "42fff06814b51bacec68a89af0eeb2f6d3a19b579dff3591900d8ff4c9a1f1c5",
+        "elapsed_seconds": 1.5185015000170097
+      }
+    ],
+    "elapsed_seconds": 3.124235708033666
+  },
+  "regions": [
+    {
+      "region_id": "v3_changchun_core",
+      "full_grid_shape": [
+        248,
+        179
+      ],
+      "full_valid_cell_count": 43542,
+      "scored_sampled_node_count": 70,
+      "active_original_classes": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "year_runs": [
+        {
+          "target_year": 2023,
+          "derived_process_seed": 7300023,
+          "requested_counts": [
+            1640,
+            2471,
+            47,
+            45,
+            2698,
+            211,
+            36016,
+            381,
+            33
+          ],
+          "actual_counts": [
+            1640,
+            2471,
+            47,
+            45,
+            2698,
+            211,
+            36016,
+            381,
+            33
+          ],
+          "exact_demand_convergence": true,
+          "demand_total_variation_distance": 0.0,
+          "result_sha256": "ea6d7c911652eb6e57e2ebc281acaa278937d8f8c4620ddc7071702b86572c78",
+          "elapsed_seconds": 0.9521948749898002
+        },
+        {
+          "target_year": 2024,
+          "derived_process_seed": 7300024,
+          "requested_counts": [
+            1942,
+            3419,
+            57,
+            52,
+            3461,
+            285,
+            33789,
+            522,
+            15
+          ],
+          "actual_counts": [
+            1942,
+            3419,
+            57,
+            52,
+            3461,
+            285,
+            33789,
+            522,
+            15
+          ],
+          "exact_demand_convergence": true,
+          "demand_total_variation_distance": 0.0,
+          "result_sha256": "d9dd3380a72d99ee75fab5161ddb5715506184cdccbe942fcf052ff02f4d2a8d",
+          "elapsed_seconds": 1.0841506250435486
+        },
+        {
+          "target_year": 2025,
+          "derived_process_seed": 7300025,
+          "requested_counts": [
+            2249,
+            4349,
+            67,
+            62,
+            4075,
+            349,
+            31766,
+            613,
+            12
+          ],
+          "actual_counts": [
+            2249,
+            4349,
+            67,
+            62,
+            4075,
+            349,
+            31766,
+            613,
+            12
+          ],
+          "exact_demand_convergence": true,
+          "demand_total_variation_distance": 0.0,
+          "result_sha256": "0cfcc79f94632ba368252fd59928af64a4c433b4e4c46005e8cf1f6bf78daf4e",
+          "elapsed_seconds": 1.426190625061281
+        }
+      ]
+    },
+    {
+      "region_id": "v3_dalian_core",
+      "full_grid_shape": [
+        230,
+        179
+      ],
+      "full_valid_cell_count": 40584,
+      "scored_sampled_node_count": 63,
+      "active_original_classes": [
+        0,
+        1,
+        2,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "year_runs": [
+        {
+          "target_year": 2023,
+          "derived_process_seed": 7300123,
+          "requested_counts": [
+            13757,
+            5238,
+            51,
+            1076,
+            338,
+            19352,
+            761,
+            11
+          ],
+          "actual_counts": [
+            13898,
+            5096,
+            51,
+            1076,
+            338,
+            19352,
+            761,
+            12
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.0034989158288980878,
+          "result_sha256": "776beef1d8274bcaa21163cdc8778491c92c0a0a6bc2a01cc0a316dbcf44c415",
+          "elapsed_seconds": 1.9717705830698833
+        },
+        {
+          "target_year": 2024,
+          "derived_process_seed": 7300124,
+          "requested_counts": [
+            13500,
+            5741,
+            57,
+            1836,
+            353,
+            18265,
+            821,
+            11
+          ],
+          "actual_counts": [
+            13812,
+            5426,
+            57,
+            1836,
+            353,
+            18265,
+            821,
+            14
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.0077616794795978715,
+          "result_sha256": "aba4529223be49ba0ef2c80a329b8d991d6a51d02b1f2187e6d6b15d787a9568",
+          "elapsed_seconds": 1.977530249976553
+        },
+        {
+          "target_year": 2025,
+          "derived_process_seed": 7300125,
+          "requested_counts": [
+            13434,
+            6083,
+            64,
+            2460,
+            377,
+            17294,
+            861,
+            11
+          ],
+          "actual_counts": [
+            13794,
+            5722,
+            64,
+            2460,
+            377,
+            17294,
+            861,
+            12
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.008895131086142321,
+          "result_sha256": "3fed53d74e70aa9820bfdb32761c419b9839f6e9b1bc8822c2773c0d86164eec",
+          "elapsed_seconds": 2.025096083059907
+        }
+      ]
+    },
+    {
+      "region_id": "v3_guiyang_core",
+      "full_grid_shape": [
+        200,
+        180
+      ],
+      "full_valid_cell_count": 35244,
+      "scored_sampled_node_count": 56,
+      "active_original_classes": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "year_runs": [
+        {
+          "target_year": 2023,
+          "derived_process_seed": 7300223,
+          "requested_counts": [
+            1237,
+            13491,
+            52,
+            30,
+            1157,
+            517,
+            18287,
+            463,
+            10
+          ],
+          "actual_counts": [
+            815,
+            13491,
+            52,
+            1,
+            1157,
+            517,
+            18747,
+            463,
+            1
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.013051866984451254,
+          "result_sha256": "cdce1a1abcbbcaf82b28a944bab86c108c6859f9a3b885716e1b394a2e1f20de",
+          "elapsed_seconds": 2.0286391250556335
+        },
+        {
+          "target_year": 2024,
+          "derived_process_seed": 7300224,
+          "requested_counts": [
+            1060,
+            13586,
+            57,
+            33,
+            1793,
+            563,
+            17683,
+            458,
+            11
+          ],
+          "actual_counts": [
+            633,
+            13586,
+            33,
+            1,
+            1793,
+            563,
+            18177,
+            458,
+            0
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.014016570196345477,
+          "result_sha256": "9cfa07fce5b347fcbc8f0f0073e992491bce60d33c606d80e9a31a0135839e65",
+          "elapsed_seconds": 2.0307732080109417
+        },
+        {
+          "target_year": 2025,
+          "derived_process_seed": 7300225,
+          "requested_counts": [
+            895,
+            13707,
+            55,
+            35,
+            2311,
+            594,
+            17182,
+            454,
+            11
+          ],
+          "actual_counts": [
+            452,
+            13707,
+            25,
+            1,
+            2311,
+            594,
+            17700,
+            454,
+            0
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.014697537169447281,
+          "result_sha256": "4685cdd800ba4052f4f9d39728372a9f33d72af3ac242cb16290362dc6984925",
+          "elapsed_seconds": 2.0269525829935446
+        }
+      ]
+    },
+    {
+      "region_id": "v3_haikou_core",
+      "full_grid_shape": [
+        191,
+        179
+      ],
+      "full_valid_cell_count": 33642,
+      "scored_sampled_node_count": 49,
+      "active_original_classes": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "year_runs": [
+        {
+          "target_year": 2023,
+          "derived_process_seed": 7300323,
+          "requested_counts": [
+            15621,
+            1872,
+            73,
+            93,
+            1003,
+            114,
+            14417,
+            444,
+            5
+          ],
+          "actual_counts": [
+            15816,
+            1872,
+            73,
+            93,
+            1003,
+            43,
+            14468,
+            274,
+            0
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.007312288211164615,
+          "result_sha256": "252998e358441ff769033d2583e0d81f427a351de789f3ace8d45f7fabd33d4c",
+          "elapsed_seconds": 1.7911488329991698
+        },
+        {
+          "target_year": 2024,
+          "derived_process_seed": 7300324,
+          "requested_counts": [
+            15160,
+            2478,
+            57,
+            122,
+            1565,
+            120,
+            13654,
+            481,
+            5
+          ],
+          "actual_counts": [
+            15160,
+            2478,
+            57,
+            122,
+            1565,
+            33,
+            13746,
+            481,
+            0
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.0027346768919802628,
+          "result_sha256": "42a0166c026bab8dd17189d2924972dbb5a0807f3e6afc98760c682dbc1ba9eb",
+          "elapsed_seconds": 1.8465812919894233
+        },
+        {
+          "target_year": 2025,
+          "derived_process_seed": 7300325,
+          "requested_counts": [
+            14577,
+            3062,
+            56,
+            138,
+            2037,
+            134,
+            13021,
+            612,
+            5
+          ],
+          "actual_counts": [
+            14716,
+            3062,
+            56,
+            113,
+            2037,
+            25,
+            13021,
+            612,
+            0
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.004131740086796266,
+          "result_sha256": "9dfbd9155146d5e4a49c49238f595da2ccc0b60a1d7f742dff2b26a17c0aa8b5",
+          "elapsed_seconds": 1.7877322499407455
+        }
+      ]
+    },
+    {
+      "region_id": "v3_harbin_core",
+      "full_grid_shape": [
+        256,
+        179
+      ],
+      "full_valid_cell_count": 45390,
+      "scored_sampled_node_count": 70,
+      "active_original_classes": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "year_runs": [
+        {
+          "target_year": 2023,
+          "derived_process_seed": 7300423,
+          "requested_counts": [
+            5184,
+            5050,
+            53,
+            255,
+            1630,
+            587,
+            31247,
+            550,
+            834
+          ],
+          "actual_counts": [
+            5184,
+            2494,
+            0,
+            449,
+            1630,
+            587,
+            31546,
+            550,
+            2950
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.05747962106190791,
+          "result_sha256": "ef508a9527d2d9ecc90c19b743645845426eb28afbda34265951de1628ed9af6",
+          "elapsed_seconds": 2.5571142500266433
+        },
+        {
+          "target_year": 2024,
+          "derived_process_seed": 7300424,
+          "requested_counts": [
+            5521,
+            4861,
+            64,
+            260,
+            2638,
+            836,
+            29697,
+            826,
+            687
+          ],
+          "actual_counts": [
+            5521,
+            2369,
+            0,
+            438,
+            2638,
+            836,
+            30128,
+            826,
+            2634
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.05631196298744217,
+          "result_sha256": "30c86570c57ce83b52aa5237bb3b1fe2f3e7b3ebc01c7059bf3afee1c53dab45",
+          "elapsed_seconds": 2.5654332920676097
+        },
+        {
+          "target_year": 2025,
+          "derived_process_seed": 7300425,
+          "requested_counts": [
+            5862,
+            4715,
+            73,
+            263,
+            3480,
+            950,
+            28433,
+            998,
+            616
+          ],
+          "actual_counts": [
+            5862,
+            2243,
+            0,
+            427,
+            3480,
+            950,
+            28971,
+            998,
+            2459
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.056069618858779466,
+          "result_sha256": "54c10868d992246e54fdfbd9f7c1cebcb26eb2cf1ed8e603d6e6d40a0544c626",
+          "elapsed_seconds": 2.6386105419369414
+        }
+      ]
+    },
+    {
+      "region_id": "v3_jinan_core",
+      "full_grid_shape": [
+        223,
+        179
+      ],
+      "full_valid_cell_count": 39294,
+      "scored_sampled_node_count": 63,
+      "active_original_classes": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "year_runs": [
+        {
+          "target_year": 2023,
+          "derived_process_seed": 7300523,
+          "requested_counts": [
+            1471,
+            5007,
+            36,
+            29,
+            2727,
+            333,
+            29270,
+            409,
+            12
+          ],
+          "actual_counts": [
+            1471,
+            5007,
+            14,
+            4,
+            2727,
+            158,
+            29491,
+            409,
+            13
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.005649717514124294,
+          "result_sha256": "77ab53ce1496afd67dfd0c493dd01bbe560bad703561acb57112359ed565654a",
+          "elapsed_seconds": 2.2247291659004986
+        },
+        {
+          "target_year": 2024,
+          "derived_process_seed": 7300524,
+          "requested_counts": [
+            1739,
+            5666,
+            44,
+            34,
+            3308,
+            276,
+            27719,
+            498,
+            10
+          ],
+          "actual_counts": [
+            1739,
+            5666,
+            17,
+            0,
+            3308,
+            89,
+            27966,
+            498,
+            11
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.006311396141904617,
+          "result_sha256": "e957836c966e8b041dd4b8540b1c6a4d125a6922f0696df12b7afa2f20bb62d8",
+          "elapsed_seconds": 2.1350442500552163
+        },
+        {
+          "target_year": 2025,
+          "derived_process_seed": 7300525,
+          "requested_counts": [
+            2005,
+            6277,
+            49,
+            37,
+            3769,
+            255,
+            26335,
+            557,
+            10
+          ],
+          "actual_counts": [
+            2005,
+            6277,
+            17,
+            0,
+            3769,
+            66,
+            26592,
+            557,
+            11
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.006565887921820125,
+          "result_sha256": "86a30c75ebde346a1efa275bc18723ead91982bb7d37fcf74f995550a33050ee",
+          "elapsed_seconds": 2.13268929196056
+        }
+      ]
+    },
+    {
+      "region_id": "v3_kunming_core",
+      "full_grid_shape": [
+        197,
+        179
+      ],
+      "full_valid_cell_count": 34692,
+      "scored_sampled_node_count": 56,
+      "active_original_classes": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "year_runs": [
+        {
+          "target_year": 2023,
+          "derived_process_seed": 7300623,
+          "requested_counts": [
+            1503,
+            4648,
+            60,
+            47,
+            1196,
+            309,
+            26497,
+            424,
+            8
+          ],
+          "actual_counts": [
+            1085,
+            4648,
+            60,
+            47,
+            1196,
+            309,
+            27170,
+            174,
+            3
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.01939928513778393,
+          "result_sha256": "d1b2bd6f36d7358fff389222145d57ec0454c8e60eb3810d3bd7e1f5a92b0082",
+          "elapsed_seconds": 1.8502928749658167
+        },
+        {
+          "target_year": 2024,
+          "derived_process_seed": 7300624,
+          "requested_counts": [
+            1308,
+            5243,
+            51,
+            43,
+            1939,
+            325,
+            25463,
+            312,
+            8
+          ],
+          "actual_counts": [
+            939,
+            5243,
+            51,
+            43,
+            1939,
+            325,
+            26067,
+            85,
+            0
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.017410353972097312,
+          "result_sha256": "eb59c3506446aec0c6402a53a3260bc1a9aad0997fa6249ab3fca376d22b16d2",
+          "elapsed_seconds": 1.8685460409615189
+        },
+        {
+          "target_year": 2025,
+          "derived_process_seed": 7300625,
+          "requested_counts": [
+            1166,
+            5827,
+            52,
+            45,
+            2530,
+            347,
+            24468,
+            250,
+            7
+          ],
+          "actual_counts": [
+            819,
+            5827,
+            38,
+            36,
+            2530,
+            347,
+            25048,
+            47,
+            0
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.016718551827510666,
+          "result_sha256": "92fc5337bef3a3a257bd131e545032dd147f0044115ab728c30c9391480c5662",
+          "elapsed_seconds": 1.8813333750003949
+        }
+      ]
+    },
+    {
+      "region_id": "v3_lanzhou_core",
+      "full_grid_shape": [
+        221,
+        179
+      ],
+      "full_valid_cell_count": 39160,
+      "scored_sampled_node_count": 63,
+      "active_original_classes": [
+        0,
+        1,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "year_runs": [
+        {
+          "target_year": 2023,
+          "derived_process_seed": 7300723,
+          "requested_counts": [
+            3181,
+            3860,
+            175,
+            4170,
+            3074,
+            16030,
+            8634,
+            36
+          ],
+          "actual_counts": [
+            1075,
+            3860,
+            62,
+            2959,
+            3569,
+            16030,
+            11604,
+            1
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.08848314606741572,
+          "result_sha256": "6a8399012b5fa2b7787687b623acd273ff1e799482dbf8b02ebad6d1671ae4fe",
+          "elapsed_seconds": 2.161207333090715
+        },
+        {
+          "target_year": 2024,
+          "derived_process_seed": 7300724,
+          "requested_counts": [
+            2698,
+            5640,
+            155,
+            4321,
+            2426,
+            15913,
+            7976,
+            31
+          ],
+          "actual_counts": [
+            745,
+            5640,
+            51,
+            3093,
+            2892,
+            15913,
+            10826,
+            0
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.0846782431052094,
+          "result_sha256": "039bafc1062d2f9da1c8fef96daf03970b243608fae245d6349effd175366787",
+          "elapsed_seconds": 2.1169570829952136
+        },
+        {
+          "target_year": 2025,
+          "derived_process_seed": 7300725,
+          "requested_counts": [
+            2291,
+            7096,
+            143,
+            4336,
+            2057,
+            15764,
+            7445,
+            28
+          ],
+          "actual_counts": [
+            521,
+            7096,
+            44,
+            2948,
+            2505,
+            15764,
+            10282,
+            0
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.08388661899897855,
+          "result_sha256": "166bdd522107952bdb0ae62f7ece0c5970902d7c59466be85235a8d517f55f83",
+          "elapsed_seconds": 2.0868870000122115
+        }
+      ]
+    },
+    {
+      "region_id": "v3_nanchang_core",
+      "full_grid_shape": [
+        204,
+        179
+      ],
+      "full_valid_cell_count": 35956,
+      "scored_sampled_node_count": 56,
+      "active_original_classes": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "year_runs": [
+        {
+          "target_year": 2023,
+          "derived_process_seed": 7300823,
+          "requested_counts": [
+            5762,
+            3046,
+            77,
+            68,
+            1911,
+            390,
+            23939,
+            754,
+            9
+          ],
+          "actual_counts": [
+            5762,
+            3046,
+            78,
+            68,
+            1911,
+            390,
+            23945,
+            754,
+            2
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.00019468238958727333,
+          "result_sha256": "098904bf53b6b3d1db2c6a019c43f2bf94cb08167be65c70561945fd7c6f35d7",
+          "elapsed_seconds": 2.036246708012186
+        },
+        {
+          "target_year": 2024,
+          "derived_process_seed": 7300824,
+          "requested_counts": [
+            5795,
+            3804,
+            66,
+            80,
+            2553,
+            368,
+            22537,
+            745,
+            8
+          ],
+          "actual_counts": [
+            5795,
+            3804,
+            66,
+            80,
+            2553,
+            368,
+            22543,
+            745,
+            2
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.0001668706196462343,
+          "result_sha256": "cec0de754de470da0b9f373d33b6c8a1e48245ad82731c4117546332f6cc6e72",
+          "elapsed_seconds": 2.049922457896173
+        },
+        {
+          "target_year": 2025,
+          "derived_process_seed": 7300825,
+          "requested_counts": [
+            5831,
+            4526,
+            67,
+            89,
+            3062,
+            372,
+            21264,
+            737,
+            8
+          ],
+          "actual_counts": [
+            5831,
+            4526,
+            45,
+            89,
+            3062,
+            228,
+            21435,
+            737,
+            3
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.004755812659917677,
+          "result_sha256": "eeb78c0065c75e414b0cdd9f75e85debedc7fb2b1c8c6ff73d3671cfafad5308",
+          "elapsed_seconds": 2.0645263750338927
+        }
+      ]
+    },
+    {
+      "region_id": "v3_nanning_core",
+      "full_grid_shape": [
+        195,
+        179
+      ],
+      "full_valid_cell_count": 34161,
+      "scored_sampled_node_count": 56,
+      "active_original_classes": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "year_runs": [
+        {
+          "target_year": 2023,
+          "derived_process_seed": 7300923,
+          "requested_counts": [
+            2303,
+            5225,
+            29,
+            22,
+            1292,
+            225,
+            24768,
+            297
+          ],
+          "actual_counts": [
+            2303,
+            5225,
+            8,
+            0,
+            1292,
+            89,
+            25145,
+            99
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.011035976698574397,
+          "result_sha256": "74630e2c3471ef0669724942c346d38eee0a4e6bcbac5fb4fb05a47f2fe09249",
+          "elapsed_seconds": 1.743519042036496
+        },
+        {
+          "target_year": 2024,
+          "derived_process_seed": 7300924,
+          "requested_counts": [
+            2428,
+            5683,
+            30,
+            26,
+            1947,
+            203,
+            23582,
+            262
+          ],
+          "actual_counts": [
+            2346,
+            5683,
+            5,
+            0,
+            1947,
+            48,
+            24077,
+            55
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.014490208132080443,
+          "result_sha256": "a9499dee12268fe881cca7aba749fd6f5afa207d3471d5d0d86fd6b32201caca",
+          "elapsed_seconds": 1.773120417026803
+        },
+        {
+          "target_year": 2025,
+          "derived_process_seed": 7300925,
+          "requested_counts": [
+            2469,
+            6120,
+            33,
+            29,
+            2469,
+            192,
+            22617,
+            232
+          ],
+          "actual_counts": [
+            2278,
+            6120,
+            3,
+            0,
+            2469,
+            26,
+            23226,
+            39
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.01782734697462018,
+          "result_sha256": "6487b7071255e947f1f270fcebd291850d9b640e556dcf79daf868fa28096530",
+          "elapsed_seconds": 1.769270749995485
+        }
+      ]
+    },
+    {
+      "region_id": "v3_qingdao_core",
+      "full_grid_shape": [
+        221,
+        179
+      ],
+      "full_valid_cell_count": 38940,
+      "scored_sampled_node_count": 63,
+      "active_original_classes": [
+        0,
+        1,
+        2,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "year_runs": [
+        {
+          "target_year": 2023,
+          "derived_process_seed": 7301023,
+          "requested_counts": [
+            17176,
+            2069,
+            28,
+            1073,
+            120,
+            17982,
+            486,
+            6
+          ],
+          "actual_counts": [
+            17272,
+            2069,
+            2,
+            1073,
+            56,
+            17982,
+            486,
+            0
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.002465331278890601,
+          "result_sha256": "55b3e870d4506cfbf06da719e3e9e49bb30dcab14b8df45d9bcbc857d25739e0",
+          "elapsed_seconds": 1.8792426669970155
+        },
+        {
+          "target_year": 2024,
+          "derived_process_seed": 7301024,
+          "requested_counts": [
+            16642,
+            2751,
+            33,
+            1750,
+            137,
+            16958,
+            663,
+            6
+          ],
+          "actual_counts": [
+            16770,
+            2751,
+            0,
+            1750,
+            48,
+            16958,
+            663,
+            0
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.0032871083718541347,
+          "result_sha256": "4823037441aec65f868acb110994bff5e914c4a3235cd4b4d094fbbef07b9784",
+          "elapsed_seconds": 1.8727920409291983
+        },
+        {
+          "target_year": 2025,
+          "derived_process_seed": 7301025,
+          "requested_counts": [
+            16195,
+            3411,
+            38,
+            2311,
+            154,
+            16049,
+            776,
+            6
+          ],
+          "actual_counts": [
+            16348,
+            3411,
+            0,
+            2311,
+            45,
+            16049,
+            776,
+            0
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.003929121725731895,
+          "result_sha256": "0a8487c1365192a445173a66cd704ec98dd95dbce0da6941e41f39f2cb114aac",
+          "elapsed_seconds": 1.8977925409562886
+        }
+      ]
+    },
+    {
+      "region_id": "v3_quanzhou_core",
+      "full_grid_shape": [
+        197,
+        179
+      ],
+      "full_valid_cell_count": 34710,
+      "scored_sampled_node_count": 56,
+      "active_original_classes": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "year_runs": [
+        {
+          "target_year": 2023,
+          "derived_process_seed": 7301123,
+          "requested_counts": [
+            3314,
+            7675,
+            52,
+            85,
+            1442,
+            281,
+            21488,
+            373
+          ],
+          "actual_counts": [
+            3314,
+            7675,
+            52,
+            87,
+            1442,
+            79,
+            21688,
+            373
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.00581964851627773,
+          "result_sha256": "ad893fa047aba28440f3f2e912eebb39d73b5a5f9a943394e7451afc2e9648c4",
+          "elapsed_seconds": 1.8010084169218317
+        },
+        {
+          "target_year": 2024,
+          "derived_process_seed": 7301124,
+          "requested_counts": [
+            3427,
+            8004,
+            52,
+            77,
+            2060,
+            243,
+            20404,
+            443
+          ],
+          "actual_counts": [
+            3427,
+            8004,
+            52,
+            78,
+            2060,
+            42,
+            20604,
+            443
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.005790838375108038,
+          "result_sha256": "4c21e0d59621b93ea18eb4e8feb9bff7b164ba18d1056681736c1c1678506f32",
+          "elapsed_seconds": 1.7718013339908794
+        },
+        {
+          "target_year": 2025,
+          "derived_process_seed": 7301125,
+          "requested_counts": [
+            3545,
+            8319,
+            56,
+            76,
+            2559,
+            236,
+            19429,
+            490
+          ],
+          "actual_counts": [
+            3545,
+            8319,
+            31,
+            77,
+            2559,
+            29,
+            19660,
+            490
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.006683952751368482,
+          "result_sha256": "ef06bbb5abab92c521250c3bded5f276f9a670f15bab61ac3341e569d72e6c77",
+          "elapsed_seconds": 1.767991291009821
+        }
+      ]
+    },
+    {
+      "region_id": "v3_shenyang_core",
+      "full_grid_shape": [
+        240,
+        179
+      ],
+      "full_valid_cell_count": 42542,
+      "scored_sampled_node_count": 63,
+      "active_original_classes": [
+        0,
+        1,
+        2,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "year_runs": [
+        {
+          "target_year": 2023,
+          "derived_process_seed": 7301223,
+          "requested_counts": [
+            1971,
+            2886,
+            40,
+            2334,
+            159,
+            34594,
+            545,
+            13
+          ],
+          "actual_counts": [
+            1971,
+            1997,
+            35,
+            2334,
+            159,
+            35488,
+            545,
+            13
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.021014526820553804,
+          "result_sha256": "7e2fe1a2efcbf40121916c088ad66c2126293dd3131050cd07d135e02c69b1bb",
+          "elapsed_seconds": 2.0864754170179367
+        },
+        {
+          "target_year": 2024,
+          "derived_process_seed": 7301224,
+          "requested_counts": [
+            2261,
+            2910,
+            49,
+            3149,
+            243,
+            33290,
+            630,
+            10
+          ],
+          "actual_counts": [
+            2261,
+            1951,
+            35,
+            3149,
+            243,
+            34263,
+            630,
+            10
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.022871515208499834,
+          "result_sha256": "f8588b48dba3f7613f192b09a725838e88eed93f6fc7f229d16ad4738ef9815d",
+          "elapsed_seconds": 2.1684625840280205
+        },
+        {
+          "target_year": 2025,
+          "derived_process_seed": 7301225,
+          "requested_counts": [
+            2554,
+            2918,
+            55,
+            3821,
+            300,
+            32194,
+            690,
+            10
+          ],
+          "actual_counts": [
+            2554,
+            1890,
+            33,
+            3821,
+            300,
+            33244,
+            690,
+            10
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.024681491232194066,
+          "result_sha256": "0a2b5b07c33f3fe26866f0c1fcdd579eb99c91a3457ae09ac2e353f29ebb605f",
+          "elapsed_seconds": 2.119078707997687
+        }
+      ]
+    },
+    {
+      "region_id": "v3_shijiazhuang_core",
+      "full_grid_shape": [
+        227,
+        180
+      ],
+      "full_valid_cell_count": 40228,
+      "scored_sampled_node_count": 63,
+      "active_original_classes": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "year_runs": [
+        {
+          "target_year": 2023,
+          "derived_process_seed": 7301323,
+          "requested_counts": [
+            1878,
+            1646,
+            68,
+            42,
+            5195,
+            184,
+            30841,
+            368,
+            6
+          ],
+          "actual_counts": [
+            1878,
+            1646,
+            36,
+            8,
+            5195,
+            40,
+            31057,
+            368,
+            0
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.005369394451625733,
+          "result_sha256": "3bf0da0ce2ee0d5b02a38e394f20b549370157747823ca1707d25f75313d700f",
+          "elapsed_seconds": 2.202083665993996
+        },
+        {
+          "target_year": 2024,
+          "derived_process_seed": 7301324,
+          "requested_counts": [
+            2161,
+            2583,
+            64,
+            46,
+            5397,
+            196,
+            29274,
+            501,
+            6
+          ],
+          "actual_counts": [
+            2161,
+            2583,
+            24,
+            6,
+            5397,
+            27,
+            29529,
+            501,
+            0
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.006338868449835935,
+          "result_sha256": "58510a9e1c38ea8d4f4f313dd29267a9ca73a3a3250b75076fa1c5097191c13e",
+          "elapsed_seconds": 2.256172624998726
+        },
+        {
+          "target_year": 2025,
+          "derived_process_seed": 7301325,
+          "requested_counts": [
+            2442,
+            3457,
+            62,
+            49,
+            5546,
+            206,
+            27874,
+            586,
+            6
+          ],
+          "actual_counts": [
+            2442,
+            3457,
+            21,
+            3,
+            5546,
+            11,
+            28162,
+            586,
+            0
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.007159192602167645,
+          "result_sha256": "05536c848989fbbb18f1e8b3c8f44dcc728a6f3267e03b61b4dc4f8b33783f9d",
+          "elapsed_seconds": 2.247596792061813
+        }
+      ]
+    },
+    {
+      "region_id": "v3_taiyuan_core",
+      "full_grid_shape": [
+        227,
+        179
+      ],
+      "full_valid_cell_count": 40050,
+      "scored_sampled_node_count": 72,
+      "active_original_classes": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "year_runs": [
+        {
+          "target_year": 2023,
+          "derived_process_seed": 7301423,
+          "requested_counts": [
+            1482,
+            2397,
+            37,
+            28,
+            2133,
+            534,
+            32972,
+            456,
+            11
+          ],
+          "actual_counts": [
+            1031,
+            2397,
+            8,
+            12,
+            2133,
+            534,
+            33663,
+            264,
+            8
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.017253433208489388,
+          "result_sha256": "97cf1d68396f9a28a9443b7412607a3675b0552eb6a8672ee3dd33918cdd7113",
+          "elapsed_seconds": 2.213005792000331
+        },
+        {
+          "target_year": 2024,
+          "derived_process_seed": 7301424,
+          "requested_counts": [
+            1315,
+            3340,
+            40,
+            30,
+            2902,
+            438,
+            31558,
+            417,
+            10
+          ],
+          "actual_counts": [
+            761,
+            3340,
+            3,
+            4,
+            2902,
+            438,
+            32380,
+            212,
+            10
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.02052434456928839,
+          "result_sha256": "cd0aeec047a78e6cb81471dd15d021c0923840d57731a236a97be89fb8b8ea95",
+          "elapsed_seconds": 2.1519013749202713
+        },
+        {
+          "target_year": 2025,
+          "derived_process_seed": 7301425,
+          "requested_counts": [
+            1060,
+            4218,
+            42,
+            30,
+            3509,
+            405,
+            30399,
+            377,
+            10
+          ],
+          "actual_counts": [
+            521,
+            4218,
+            1,
+            2,
+            3509,
+            405,
+            31212,
+            172,
+            10
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.020299625468164793,
+          "result_sha256": "a410e29c8ba4e7e735cd06834b1ee9d414ccacd7d067f34ef3d3651746ba2f87",
+          "elapsed_seconds": 2.1159238340333104
+        }
+      ]
+    },
+    {
+      "region_id": "v3_urumqi_core",
+      "full_grid_shape": [
+        248,
+        179
+      ],
+      "full_valid_cell_count": 43542,
+      "scored_sampled_node_count": 70,
+      "active_original_classes": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "year_runs": [
+        {
+          "target_year": 2023,
+          "derived_process_seed": 7301523,
+          "requested_counts": [
+            1145,
+            3232,
+            77,
+            68,
+            3953,
+            1248,
+            29835,
+            3889,
+            95
+          ],
+          "actual_counts": [
+            90,
+            3232,
+            4,
+            0,
+            3953,
+            1272,
+            30664,
+            4169,
+            158
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.02746773230444169,
+          "result_sha256": "ab850263d92d1e5b0b059619ba9d99e7ee95e40ebd97f435cd92ea248b78a751",
+          "elapsed_seconds": 2.425126582966186
+        },
+        {
+          "target_year": 2024,
+          "derived_process_seed": 7301524,
+          "requested_counts": [
+            939,
+            4535,
+            74,
+            63,
+            4742,
+            995,
+            29108,
+            3035,
+            51
+          ],
+          "actual_counts": [
+            47,
+            4535,
+            3,
+            0,
+            4742,
+            1009,
+            29766,
+            3328,
+            112
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.023563455973542785,
+          "result_sha256": "97003d4933d72b6905d3506c3edd9c65a3a5938424368b8566e07cc58d99e4af",
+          "elapsed_seconds": 2.447506041964516
+        },
+        {
+          "target_year": 2025,
+          "derived_process_seed": 7301525,
+          "requested_counts": [
+            803,
+            5682,
+            73,
+            61,
+            5306,
+            851,
+            28260,
+            2467,
+            39
+          ],
+          "actual_counts": [
+            27,
+            5682,
+            2,
+            0,
+            5306,
+            852,
+            29035,
+            2549,
+            89
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.020853428873271785,
+          "result_sha256": "0bd573e94ebabc52f324e522dbbed165f59920ff845d6c977e49dea58272e5c8",
+          "elapsed_seconds": 2.380147375050001
+        }
+      ]
+    },
+    {
+      "region_id": "v3_wenzhou_core",
+      "full_grid_shape": [
+        203,
+        179
+      ],
+      "full_valid_cell_count": 35778,
+      "scored_sampled_node_count": 56,
+      "active_original_classes": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "year_runs": [
+        {
+          "target_year": 2023,
+          "derived_process_seed": 7301623,
+          "requested_counts": [
+            5797,
+            10577,
+            57,
+            83,
+            1601,
+            329,
+            17042,
+            292
+          ],
+          "actual_counts": [
+            5797,
+            10577,
+            57,
+            83,
+            1600,
+            329,
+            17043,
+            292
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 2.7950136955671083e-05,
+          "result_sha256": "bfa7139cb70d54f34dc094c0d54eb6fcddc4ecc74509903191123bc3a96d2371",
+          "elapsed_seconds": 0.5490699169458821
+        },
+        {
+          "target_year": 2024,
+          "derived_process_seed": 7301624,
+          "requested_counts": [
+            5751,
+            10821,
+            61,
+            89,
+            2134,
+            418,
+            16107,
+            397
+          ],
+          "actual_counts": [
+            5751,
+            10821,
+            60,
+            89,
+            2134,
+            418,
+            16108,
+            397
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 2.7950136955671083e-05,
+          "result_sha256": "174963aa3d1e3bea43a9aecabe13e7c124bfd5af8d970a162ef337b95b13ad58",
+          "elapsed_seconds": 0.959927957970649
+        },
+        {
+          "target_year": 2025,
+          "derived_process_seed": 7301625,
+          "requested_counts": [
+            5726,
+            11097,
+            67,
+            96,
+            2576,
+            479,
+            15270,
+            467
+          ],
+          "actual_counts": [
+            5726,
+            10914,
+            67,
+            96,
+            2576,
+            479,
+            15453,
+            467
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.005114875062887808,
+          "result_sha256": "11fdfdd60400f8c6cf2f044ec383ebaea7113acf91a6c563e2345f812dc69ad6",
+          "elapsed_seconds": 1.841232500039041
+        }
+      ]
+    },
+    {
+      "region_id": "v3_wuxi_core",
+      "full_grid_shape": [
+        210,
+        179
+      ],
+      "full_valid_cell_count": 36816,
+      "scored_sampled_node_count": 56,
+      "active_original_classes": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "year_runs": [
+        {
+          "target_year": 2023,
+          "derived_process_seed": 7301723,
+          "requested_counts": [
+            3192,
+            3526,
+            47,
+            30,
+            2407,
+            147,
+            27188,
+            273,
+            6
+          ],
+          "actual_counts": [
+            3192,
+            2837,
+            47,
+            30,
+            2407,
+            147,
+            27883,
+            273,
+            0
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.018877661886136463,
+          "result_sha256": "3890e25ac97b04121a49b0217633a16654624dc8fea8e38da88201de0d4a862f",
+          "elapsed_seconds": 2.027745374944061
+        },
+        {
+          "target_year": 2024,
+          "derived_process_seed": 7301724,
+          "requested_counts": [
+            3329,
+            3566,
+            52,
+            49,
+            2983,
+            228,
+            26188,
+            415,
+            6
+          ],
+          "actual_counts": [
+            3329,
+            2801,
+            52,
+            49,
+            2983,
+            228,
+            26959,
+            415,
+            0
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.020941981747066494,
+          "result_sha256": "c819cc7d7510f5d9decfd45b4b364fcee803ea2b227b27820b73461f5ddf06a1",
+          "elapsed_seconds": 2.0592569999862462
+        },
+        {
+          "target_year": 2025,
+          "derived_process_seed": 7301725,
+          "requested_counts": [
+            3484,
+            3580,
+            59,
+            62,
+            3465,
+            283,
+            25364,
+            512,
+            7
+          ],
+          "actual_counts": [
+            3484,
+            2759,
+            59,
+            62,
+            3465,
+            283,
+            26192,
+            512,
+            0
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.022490221642764017,
+          "result_sha256": "6765d9226a1e04f37db6bb584f77adc427905feb564353b49b6066722c01f106",
+          "elapsed_seconds": 2.050509999971837
+        }
+      ]
+    },
+    {
+      "region_id": "v3_xining_core",
+      "full_grid_shape": [
+        223,
+        180
+      ],
+      "full_valid_cell_count": 39338,
+      "scored_sampled_node_count": 63,
+      "active_original_classes": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "year_runs": [
+        {
+          "target_year": 2023,
+          "derived_process_seed": 7301823,
+          "requested_counts": [
+            835,
+            11449,
+            194,
+            80,
+            4913,
+            6863,
+            13858,
+            1146
+          ],
+          "actual_counts": [
+            336,
+            11449,
+            1,
+            0,
+            3595,
+            8920,
+            13858,
+            1179
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.053129289745284455,
+          "result_sha256": "62f4c29b2f4732f2f3bb645d2f144c320733414f895950a69afb55d0879ff113",
+          "elapsed_seconds": 2.1460513749625534
+        },
+        {
+          "target_year": 2024,
+          "derived_process_seed": 7301824,
+          "requested_counts": [
+            750,
+            14544,
+            156,
+            70,
+            4248,
+            5209,
+            13373,
+            988
+          ],
+          "actual_counts": [
+            309,
+            14544,
+            1,
+            0,
+            2869,
+            7157,
+            13373,
+            1085
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.05198535766942905,
+          "result_sha256": "3c3b55d3f2588e66e0e133c13dacdd222aeec8797f6ad756e99a7dca98b50975",
+          "elapsed_seconds": 2.1030734580708668
+        },
+        {
+          "target_year": 2025,
+          "derived_process_seed": 7301825,
+          "requested_counts": [
+            698,
+            16849,
+            133,
+            64,
+            3542,
+            4269,
+            12879,
+            904
+          ],
+          "actual_counts": [
+            271,
+            16849,
+            1,
+            0,
+            2280,
+            6019,
+            12879,
+            1039
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.04791804362194316,
+          "result_sha256": "80e08ab455a34f4abb8e080ec83139737d0448a60d9a6adb2efcd5c6e7ff5f9c",
+          "elapsed_seconds": 2.0387960830703378
+        }
+      ]
+    },
+    {
+      "region_id": "v3_yinchuan_core",
+      "full_grid_shape": [
+        229,
+        179
+      ],
+      "full_valid_cell_count": 40406,
+      "scored_sampled_node_count": 63,
+      "active_original_classes": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "year_runs": [
+        {
+          "target_year": 2023,
+          "derived_process_seed": 7301923,
+          "requested_counts": [
+            4122,
+            1952,
+            97,
+            147,
+            7810,
+            554,
+            23269,
+            2444,
+            11
+          ],
+          "actual_counts": [
+            3226,
+            1952,
+            20,
+            125,
+            7810,
+            554,
+            23853,
+            2855,
+            11
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.024625055684799287,
+          "result_sha256": "d03723356a14c0feb09824a87d62e88265a97d11c97f0b8cb6f36c2dee101fcf",
+          "elapsed_seconds": 2.4083282080246136
+        },
+        {
+          "target_year": 2024,
+          "derived_process_seed": 7301924,
+          "requested_counts": [
+            3769,
+            3119,
+            92,
+            138,
+            7682,
+            572,
+            22851,
+            2170,
+            13
+          ],
+          "actual_counts": [
+            2788,
+            3119,
+            14,
+            112,
+            7682,
+            572,
+            23530,
+            2576,
+            13
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.02685244765628867,
+          "result_sha256": "2f13a3b044dd18fbeb9b92cf67ef68027cfdd398f9d49563be7363480694dc65",
+          "elapsed_seconds": 2.3806620410177857
+        },
+        {
+          "target_year": 2025,
+          "derived_process_seed": 7301925,
+          "requested_counts": [
+            3318,
+            4214,
+            89,
+            129,
+            7546,
+            590,
+            22532,
+            1975,
+            13
+          ],
+          "actual_counts": [
+            2377,
+            4214,
+            8,
+            94,
+            7546,
+            590,
+            23243,
+            2321,
+            13
+          ],
+          "exact_demand_convergence": false,
+          "demand_total_variation_distance": 0.02615948126515864,
+          "result_sha256": "4d4a1118c2f8247a8bf6e147905753e00f71cfc5b6198f117f06695892a85bf2",
+          "elapsed_seconds": 2.392123791971244
+        }
+      ]
+    }
+  ],
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/geosos_flus_three_seed_ensemble/members/seed_73/prediction.parquet",
+    "role": "flus_full_grid_seed_member_prediction",
+    "size_bytes": 11201,
+    "sha256": "cb2705f37613f4b46debf180946efbb02013f66fc7b1a8efcef629b69c13589b"
+  },
+  "temporary_bytes": 137169264,
+  "wall_time_seconds": 122.9386342499638,
+  "target_pixels_read": false
+}

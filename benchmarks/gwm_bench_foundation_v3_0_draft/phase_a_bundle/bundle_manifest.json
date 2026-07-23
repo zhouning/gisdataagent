@@ -1,0 +1,102 @@
+{
+  "schema": "gwm_bench.foundation_v3_phase_a_bundle.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+  "generated_at": "2026-07-23T07:06:27.276149+00:00",
+  "status": "PHASE_A_BUNDLE_MATERIALIZED",
+  "label_boundary": {
+    "maximum_input_year": 2022,
+    "target_years": [
+      2023,
+      2024,
+      2025
+    ],
+    "target_labels_in_bundle": false,
+    "target_pixels_read": false
+  },
+  "source_commitments": {
+    "protocol_sha256": "f4bcad2ef8cf18dc383272ea6ecb44513d1b0895d7beef5d1afa306c7beaacff",
+    "lockbox_region_manifest_sha256": "0865680ccb5ec9f70509325fe33021fab6fa8222c752353a3604e3ec82a7c356",
+    "input_artifact_manifest_sha256": "10da2a488b2776481d69b387eee3964a453335a1207c43e3ddf0f7775b40dd70",
+    "input_dataset_fingerprint": "8e83d8d2f0676d9c089a528375d994c89794059e4cf8654015145c1b7337ded2"
+  },
+  "counts": {
+    "region_count": 20,
+    "node_count": 1227,
+    "state_history_row_count": 7362,
+    "directed_edge_count": 4278,
+    "submission_key_count": 3681
+  },
+  "artifacts": {
+    "observed_inputs.parquet": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/phase_a_bundle/observed_inputs.parquet",
+      "row_count": 1227,
+      "columns": [
+        "region_id",
+        "node_id",
+        "raster_row",
+        "raster_column",
+        "x_3857",
+        "y_3857",
+        "land_class_2017",
+        "land_class_2018",
+        "land_class_2019",
+        "land_class_2020",
+        "land_class_2021",
+        "land_class_2022",
+        "srtm_elevation",
+        "srtm_slope",
+        "viirs_nightlight_mean_2017_2022"
+      ],
+      "size_bytes": 36550,
+      "sha256": "2408238e7d8f9d5daa8b4a65b76f2b519615afea86678e2d97800c459de3dc8a"
+    },
+    "observed_state_history.parquet": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/phase_a_bundle/observed_state_history.parquet",
+      "row_count": 7362,
+      "columns": [
+        "region_id",
+        "node_id",
+        "raster_row",
+        "raster_column",
+        "x_3857",
+        "y_3857",
+        "year",
+        "land_class"
+      ],
+      "size_bytes": 12226,
+      "sha256": "b03d17eba77370073f86f44e5736b9e371ac2a337da57dd41c65c527450af4d9"
+    },
+    "observed_edges.parquet": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/phase_a_bundle/observed_edges.parquet",
+      "row_count": 4278,
+      "columns": [
+        "region_id",
+        "edge_id",
+        "source_node_id",
+        "target_node_id",
+        "direction",
+        "distance_m"
+      ],
+      "size_bytes": 12101,
+      "sha256": "c6ec7302a5759c4abb9dce376895e8e9c265f009a44226e0b1132b11e7f28c60"
+    },
+    "submission_keys.parquet": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/phase_a_bundle/submission_keys.parquet",
+      "row_count": 3681,
+      "columns": [
+        "region_id",
+        "node_id",
+        "target_year"
+      ],
+      "size_bytes": 5645,
+      "sha256": "8b89fa97a3a925fa8fc94ca6c336382d7271083f4dbf4bdab1d0411a66a52466"
+    },
+    "region_metadata.json": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/phase_a_bundle/region_metadata.json",
+      "row_count": 20,
+      "size_bytes": 5261,
+      "sha256": "e01fa64b3d124d71daceb4a33db16fbb6999f7a93bc72b42c46f3953a2667900"
+    }
+  },
+  "bundle_fingerprint": "652a009fd38f79308ee7ddd71549db5c71760e8cc884217cb29e85bcf184a7e3"
+}

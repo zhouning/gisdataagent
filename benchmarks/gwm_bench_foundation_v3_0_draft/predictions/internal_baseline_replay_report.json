@@ -1,0 +1,71 @@
+{
+  "schema": "gwm_bench.runtime_r2_replay.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+  "scope": "three_internal_baselines",
+  "status": "PASS_DETERMINISTIC_REPLAY_LABEL_FIREWALL_INTACT",
+  "created_at": "2026-07-23T07:46:43.663534+00:00",
+  "models": [
+    {
+      "model_id": "state_persistence",
+      "status": "PASS",
+      "checks": {
+        "prediction_file_sha256_equal": true,
+        "columns_equal": true,
+        "keys_and_order_equal": true,
+        "probability_values_bitwise_equal": true,
+        "model_spec_sha256_equal": true
+      },
+      "committed_prediction_sha256": "2502653e9871c6d6585904832f73359d0f1f77180bf69300bf485bf1447be2ff",
+      "replayed_prediction_sha256": "2502653e9871c6d6585904832f73359d0f1f77180bf69300bf485bf1447be2ff",
+      "row_count": 3681
+    },
+    {
+      "model_id": "nonspatial_history_only",
+      "status": "PASS",
+      "checks": {
+        "prediction_file_sha256_equal": true,
+        "columns_equal": true,
+        "keys_and_order_equal": true,
+        "probability_values_bitwise_equal": true,
+        "model_spec_sha256_equal": true
+      },
+      "committed_prediction_sha256": "483d8b23eff55ed3f9f39ca9c4cf489ef115d0778207f4e080e0ca035e3977d0",
+      "replayed_prediction_sha256": "483d8b23eff55ed3f9f39ca9c4cf489ef115d0778207f4e080e0ca035e3977d0",
+      "row_count": 3681
+    },
+    {
+      "model_id": "fixed_adjacency_spatial",
+      "status": "PASS",
+      "checks": {
+        "prediction_file_sha256_equal": true,
+        "columns_equal": true,
+        "keys_and_order_equal": true,
+        "probability_values_bitwise_equal": true,
+        "model_spec_sha256_equal": true
+      },
+      "committed_prediction_sha256": "775a82427919ecafb155a02fbae7b0484e72c8fc58d1b8ed4cbce7c9da9b8195",
+      "replayed_prediction_sha256": "775a82427919ecafb155a02fbae7b0484e72c8fc58d1b8ed4cbce7c9da9b8195",
+      "row_count": 3681
+    }
+  ],
+  "label_firewall": {
+    "before": {
+      "target_root": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025",
+      "target_root_exists": false,
+      "target_file_count": 0,
+      "target_pixels_read": false,
+      "target_labels_visible_to_adapter": false,
+      "passed": true
+    },
+    "after": {
+      "target_root": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025",
+      "target_root_exists": false,
+      "target_file_count": 0,
+      "target_pixels_read": false,
+      "target_labels_visible_to_adapter": false,
+      "passed": true
+    },
+    "target_pixels_read": false
+  },
+  "wall_time_seconds": 0.3207486249739304
+}

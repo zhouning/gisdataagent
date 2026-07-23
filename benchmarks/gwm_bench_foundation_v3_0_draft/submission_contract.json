@@ -1,0 +1,47 @@
+{
+  "schema": "gwm_bench.observed_o3_submission_contract.v1",
+  "contract_id": "gwm-bench-v3-observed-o3-submission-draft1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+  "submission_key_source": "benchmarks/gwm_bench_foundation_v3_0_draft/phase_a_bundle/submission_keys.parquet",
+  "expected_row_count": 3681,
+  "columns": [
+    "region_id",
+    "node_id",
+    "target_year",
+    "probability_0",
+    "probability_1",
+    "probability_2",
+    "probability_3",
+    "probability_4",
+    "probability_5",
+    "probability_6",
+    "probability_7",
+    "probability_8"
+  ],
+  "key_columns": ["region_id", "node_id", "target_year"],
+  "target_years": [2023, 2024, 2025],
+  "probability_columns": [
+    "probability_0",
+    "probability_1",
+    "probability_2",
+    "probability_3",
+    "probability_4",
+    "probability_5",
+    "probability_6",
+    "probability_7",
+    "probability_8"
+  ],
+  "probability_range": [0.0, 1.0],
+  "probability_row_sum": 1.0,
+  "absolute_tolerance": 1e-06,
+  "argmax_tie_break": "lowest_class_index",
+  "duplicate_missing_or_extra_keys_allowed": false,
+  "extra_columns_allowed": false,
+  "non_finite_values_allowed": false,
+  "label_contract": {
+    "columns": ["region_id", "node_id", "target_year", "target_class"],
+    "target_class_range": [0, 8],
+    "origin_class_source": "phase_a_bundle/observed_inputs.parquet land_class_2022",
+    "labels_may_be_registered_before_prediction_commitments": false
+  }
+}

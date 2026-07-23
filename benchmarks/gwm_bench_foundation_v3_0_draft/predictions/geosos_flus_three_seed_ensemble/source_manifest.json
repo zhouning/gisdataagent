@@ -1,0 +1,2188 @@
+{
+  "schema": "gwm_bench.v3_flus_source_manifest.v1",
+  "development_years_read": [
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022
+  ],
+  "maximum_development_label_year_read": 2022,
+  "v3_phase_a_years_read": [
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022
+  ],
+  "v3_target_pixels_read": false,
+  "development_region_count": 20,
+  "v3_region_count": 20,
+  "development_valid_cell_count": 617253,
+  "v3_valid_cell_count": 774015,
+  "artifacts": [
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_dynamic_world_2017_100m.tif",
+      "role": "development_land_state_2017",
+      "size_bytes": 9345,
+      "sha256": "e9d78e19681fe9c59e05710efd951aa274c70862aafc7f6576a5edf5c8a4921e"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_dynamic_world_2018_100m.tif",
+      "role": "development_land_state_2018",
+      "size_bytes": 9794,
+      "sha256": "ff9337df51531e87d9e0b9bf045d0c8b2f82903da303b737cd9431a1496469db"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_dynamic_world_2019_100m.tif",
+      "role": "development_land_state_2019",
+      "size_bytes": 10099,
+      "sha256": "f837f6a01bd74ac49a015c3f43c34d060341204418814ed877298faa3859ca6b"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_dynamic_world_2020_100m.tif",
+      "role": "development_land_state_2020",
+      "size_bytes": 10327,
+      "sha256": "f8402397d49b6e47f1c0a7393fad853707ab498adad7d2a37cc2f73e2f5b07ad"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_dynamic_world_2021_100m.tif",
+      "role": "development_land_state_2021",
+      "size_bytes": 10277,
+      "sha256": "8e5bc6cea4b52cb3c4ee4fe5bc89360af6aaa00fbfcd473a9012a3ae7032a8e9"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_dynamic_world_2022_100m.tif",
+      "role": "development_land_state_2022",
+      "size_bytes": 10460,
+      "sha256": "7b4bcfe84e9edcc08e7a24817f17a4003755ef1d0d4a2ed5f7d1a38b629c4409"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_srtm_elevation_100m.tif",
+      "role": "development_srtm_elevation",
+      "size_bytes": 17055,
+      "sha256": "8e2d95f6e08a83e51572c3c8e59af082e0f790e3235d4faf4b664e2eb57ac07b"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_srtm_slope_100m.tif",
+      "role": "development_srtm_slope",
+      "size_bytes": 37173,
+      "sha256": "8766ac9cceda2f21d3c700e25f56d02f67c8b6ce0a83f3d3d19561f1f1b908bf"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_viirs_nightlight_mean_100m.tif",
+      "role": "development_viirs_nightlight_mean",
+      "size_bytes": 12318,
+      "sha256": "3604dd86ee8816b522bd3af0f5e5e7fc4013e049c274e832a5d9a31f6e209e66"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_dynamic_world_2017_100m.tif",
+      "role": "development_land_state_2017",
+      "size_bytes": 4570,
+      "sha256": "1e3516b30b8887d85262ef85b8f432cc9b595bdf7a92af0338bf442ce8822fb7"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_dynamic_world_2018_100m.tif",
+      "role": "development_land_state_2018",
+      "size_bytes": 4504,
+      "sha256": "9bdc2f1d28ca4e88deeabfea49550dace645ad9c3b0382d70bfcfa64d17d00be"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_dynamic_world_2019_100m.tif",
+      "role": "development_land_state_2019",
+      "size_bytes": 4490,
+      "sha256": "1df3b86347a41c44bc28b5e8bcde74241b4348ee6bb41672bd6929d242224040"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_dynamic_world_2020_100m.tif",
+      "role": "development_land_state_2020",
+      "size_bytes": 4458,
+      "sha256": "3eb58edc2622b55b9cfa05c002037d441c3aab4c6ed59080466aa7da30f07b7f"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_dynamic_world_2021_100m.tif",
+      "role": "development_land_state_2021",
+      "size_bytes": 4406,
+      "sha256": "8a3c6f5c69d40c58a209a961662ee35e6ebc3c2f16dce98f95261fa2dc487e72"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_dynamic_world_2022_100m.tif",
+      "role": "development_land_state_2022",
+      "size_bytes": 4459,
+      "sha256": "ded992142f847372416ffbb761c95a995d00f73668696b02fade3b77a610371b"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_srtm_elevation_100m.tif",
+      "role": "development_srtm_elevation",
+      "size_bytes": 24132,
+      "sha256": "4f0124eec48cb38be7163f74d143c84a2b219fceca988351bc657d8c3359a844"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_srtm_slope_100m.tif",
+      "role": "development_srtm_slope",
+      "size_bytes": 57078,
+      "sha256": "4b2cfcf936db3d7300bbc35b68cd3d3c6ef6b1316537d9c6ebf8b55f9d0eedb1"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_viirs_nightlight_mean_100m.tif",
+      "role": "development_viirs_nightlight_mean",
+      "size_bytes": 7225,
+      "sha256": "49547f9b559bf70227d49e16140957806f9bf4f98f0a4c52bf43570c4f69c071"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_dynamic_world_2017_100m.tif",
+      "role": "development_land_state_2017",
+      "size_bytes": 5519,
+      "sha256": "203f7211a63cfc08d69af114cfbdf98e15a1c4f97efc99e995c51b46133cd966"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_dynamic_world_2018_100m.tif",
+      "role": "development_land_state_2018",
+      "size_bytes": 5765,
+      "sha256": "56a86690e518d2cb2632e9a26322f7203e3163f3f93131fa17c49cba7316ff93"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_dynamic_world_2019_100m.tif",
+      "role": "development_land_state_2019",
+      "size_bytes": 5849,
+      "sha256": "8d9de64bf8d8681759bce37da99a010d8c0eddf23b0967adc89ab9e304c583c0"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_dynamic_world_2020_100m.tif",
+      "role": "development_land_state_2020",
+      "size_bytes": 5533,
+      "sha256": "a4e4ae23e9676b669312450b69bc598e8278d09ebc3819b8309841bc240d6788"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_dynamic_world_2021_100m.tif",
+      "role": "development_land_state_2021",
+      "size_bytes": 5521,
+      "sha256": "43accd56ef182082f8aff6c108d0125aa206102acad1be8f218095600f2bb800"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_dynamic_world_2022_100m.tif",
+      "role": "development_land_state_2022",
+      "size_bytes": 5520,
+      "sha256": "0363bebc493249c3684a5dfdeec511abb09f8f62c759507368860f82cc6272cb"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_srtm_elevation_100m.tif",
+      "role": "development_srtm_elevation",
+      "size_bytes": 39066,
+      "sha256": "2e4329030d8072263d822d425edb5ca2de5aad37e464983b98e538d26366cb37"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_srtm_slope_100m.tif",
+      "role": "development_srtm_slope",
+      "size_bytes": 89524,
+      "sha256": "162fc9095144ad31a4a08021b3e2860f7ef9edf4e0c51381c1845762ed3c0abe"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_viirs_nightlight_mean_100m.tif",
+      "role": "development_viirs_nightlight_mean",
+      "size_bytes": 9302,
+      "sha256": "66fb596a522513288ce8be8d52ee32ca41c78aa0778c42a319e08b4be0cf10de"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_dynamic_world_2017_100m.tif",
+      "role": "development_land_state_2017",
+      "size_bytes": 8316,
+      "sha256": "8dc84c4f0c8cfa41b39a32d88fe2ec725db7ff68d0af095d89dd6bcfcb8975af"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_dynamic_world_2018_100m.tif",
+      "role": "development_land_state_2018",
+      "size_bytes": 8649,
+      "sha256": "beafcbbf030f4c5620379d0614380098962af72d82874e482757af19f8f71cbe"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_dynamic_world_2019_100m.tif",
+      "role": "development_land_state_2019",
+      "size_bytes": 6737,
+      "sha256": "e3d26f9b2db8968373398fe6777993b30987f42f77c44220aa87d6645de0c996"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_dynamic_world_2020_100m.tif",
+      "role": "development_land_state_2020",
+      "size_bytes": 10041,
+      "sha256": "80d2d9968e542b167faea7235d862d33b8230d239d3900bc30bc732ac7fc24e1"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_dynamic_world_2021_100m.tif",
+      "role": "development_land_state_2021",
+      "size_bytes": 10473,
+      "sha256": "42bc223246c7c929f612011bcc34a63f957681713956da36d1ea7746dc044196"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_dynamic_world_2022_100m.tif",
+      "role": "development_land_state_2022",
+      "size_bytes": 7275,
+      "sha256": "57be3611a5d97469715cea44b295ab300da1ae73ef1cef266fd4195d31d77dd7"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_srtm_elevation_100m.tif",
+      "role": "development_srtm_elevation",
+      "size_bytes": 76235,
+      "sha256": "9cd6cb974d2cd466583e3c8d8754ee9ed4deb24b89f03bfc4d68ddbf3f3467d3"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_srtm_slope_100m.tif",
+      "role": "development_srtm_slope",
+      "size_bytes": 155216,
+      "sha256": "ac27704cbe361ce2c1bb29b6be95870eb3072b770fa1b4335d85aadf93afd74a"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_viirs_nightlight_mean_100m.tif",
+      "role": "development_viirs_nightlight_mean",
+      "size_bytes": 11427,
+      "sha256": "2a4dbdac09fa5b0230582cba1d6c624ec7a1a1fee460599b1226d698188502d6"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_dynamic_world_2017_100m.tif",
+      "role": "development_land_state_2017",
+      "size_bytes": 11263,
+      "sha256": "f48118b914c2d78c80cdffcadfcd0b292df0d74810477186dba6973af1bf7f18"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_dynamic_world_2018_100m.tif",
+      "role": "development_land_state_2018",
+      "size_bytes": 10410,
+      "sha256": "d183772e9c360345c43abecb9d113f68674df5cd6f58ff22407140cab2be8f23"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_dynamic_world_2019_100m.tif",
+      "role": "development_land_state_2019",
+      "size_bytes": 10241,
+      "sha256": "01fd50aae1bd965c22896740b85fccbfd1cccec16b86aaa60c6a7a9355dd03cf"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_dynamic_world_2020_100m.tif",
+      "role": "development_land_state_2020",
+      "size_bytes": 10857,
+      "sha256": "4436b2e7cbd0a664e931d8157ce1714f49553ab6cd43e1a1404655693aee3dde"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_dynamic_world_2021_100m.tif",
+      "role": "development_land_state_2021",
+      "size_bytes": 10643,
+      "sha256": "95104fc0dcd772e439aedc46400bc0caa7e34be6a0a53b19fdea737961e26ba3"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_dynamic_world_2022_100m.tif",
+      "role": "development_land_state_2022",
+      "size_bytes": 10355,
+      "sha256": "b74a71f8d34f759ed2e0e905ca16eceb89d3bf738b1f5df5b58226bd59d84aee"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_srtm_elevation_100m.tif",
+      "role": "development_srtm_elevation",
+      "size_bytes": 34323,
+      "sha256": "a5063f4d3944be077e2054aff6e66d49a6ae24bbd5fe49be79f41d0de0a5afe3"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_srtm_slope_100m.tif",
+      "role": "development_srtm_slope",
+      "size_bytes": 76508,
+      "sha256": "bba928327c2766294f720243aac88608c4f1871f4172d0ece94d4ff8b3f8146d"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_viirs_nightlight_mean_100m.tif",
+      "role": "development_viirs_nightlight_mean",
+      "size_bytes": 11591,
+      "sha256": "d39ff3606766125d1631bd259c6f6962ea05b66a387926535d65da5a32f0eb3f"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_dynamic_world_2017_100m.tif",
+      "role": "development_land_state_2017",
+      "size_bytes": 4046,
+      "sha256": "defc7c0016eb66767979f3012807be3445e31e32bd1a93d0f140f7304dd39b76"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_dynamic_world_2018_100m.tif",
+      "role": "development_land_state_2018",
+      "size_bytes": 3933,
+      "sha256": "6e402fcd519c8d9e7905cc973df4ae212544e76e192cdd42b3aaca1e702c94f8"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_dynamic_world_2019_100m.tif",
+      "role": "development_land_state_2019",
+      "size_bytes": 3818,
+      "sha256": "32420a0ff7fc4aa9ff52008b75d0a8c4df97b94f416938c8936727594636c50f"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_dynamic_world_2020_100m.tif",
+      "role": "development_land_state_2020",
+      "size_bytes": 3838,
+      "sha256": "ad1ebb5ba7c09f00d3350e9606901ea14b63aa3638987f2a7d0b3b29639ee654"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_dynamic_world_2021_100m.tif",
+      "role": "development_land_state_2021",
+      "size_bytes": 3697,
+      "sha256": "ccdf56360e2738c1eaf4d0e0bad96234f68fa214e04cf502e86549cd9a5e195c"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_dynamic_world_2022_100m.tif",
+      "role": "development_land_state_2022",
+      "size_bytes": 3707,
+      "sha256": "8a7ea8184b96f39bf7bc1dbf76ed2f0da45f68768c12d27555c9dffc5aec9195"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_srtm_elevation_100m.tif",
+      "role": "development_srtm_elevation",
+      "size_bytes": 44089,
+      "sha256": "e5f421d9423492e4b60266ea9750e2ee7ffd332a64885edc7eded08cd8b6cf15"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_srtm_slope_100m.tif",
+      "role": "development_srtm_slope",
+      "size_bytes": 89136,
+      "sha256": "5755d4e6e610b6e34fff1d72f370420e0a00e1a3e87f7484d30b822bc5953dad"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_viirs_nightlight_mean_100m.tif",
+      "role": "development_viirs_nightlight_mean",
+      "size_bytes": 8706,
+      "sha256": "145ac7a02d5a1109ed2ffff40bae2882d61c28f527edfa3ede0df1e11a3f01ac"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_dynamic_world_2017_100m.tif",
+      "role": "development_land_state_2017",
+      "size_bytes": 5612,
+      "sha256": "0bbc436befbe906815fa1bc646890e7242a94a2a328ac3ea98c2050dd61f79c7"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_dynamic_world_2018_100m.tif",
+      "role": "development_land_state_2018",
+      "size_bytes": 5226,
+      "sha256": "9288a3fbd649f9fe8ed26326b21edb84bc4647ca7d63d6c76e579c3747d4c04e"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_dynamic_world_2019_100m.tif",
+      "role": "development_land_state_2019",
+      "size_bytes": 5382,
+      "sha256": "88b42ef765ce23b79d15894d3595280571706b22025678417a3ba1857da6d127"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_dynamic_world_2020_100m.tif",
+      "role": "development_land_state_2020",
+      "size_bytes": 5221,
+      "sha256": "0aa74b6ec7d0aafece464a3b9984957b713d8647b874f6b87bf06a5ec5365dfa"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_dynamic_world_2021_100m.tif",
+      "role": "development_land_state_2021",
+      "size_bytes": 5543,
+      "sha256": "ed36c9fcb069bc38864ea31b9dd0c03909eee6dd9b40f087fcd1a53efde81643"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_dynamic_world_2022_100m.tif",
+      "role": "development_land_state_2022",
+      "size_bytes": 5285,
+      "sha256": "b618dbbfd79b5f2c961d4b1ee6174bdf5c28066ddce63997041aaf78c5a27e1c"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_srtm_elevation_100m.tif",
+      "role": "development_srtm_elevation",
+      "size_bytes": 27870,
+      "sha256": "4048b6380a3745b973a10d62703a5f0b95f8cd4a40700aee55e126bb5762e75f"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_srtm_slope_100m.tif",
+      "role": "development_srtm_slope",
+      "size_bytes": 61439,
+      "sha256": "a375c8d6188c97651a304c9afc892b8daed9a4743c58fb15f30180ae5651a4ed"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_viirs_nightlight_mean_100m.tif",
+      "role": "development_viirs_nightlight_mean",
+      "size_bytes": 9503,
+      "sha256": "5fe94ea44421fb5329ebb176d4dff6fc0b03605fc04389a5f843f63f83e40ffb"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_dynamic_world_2017_100m.tif",
+      "role": "development_land_state_2017",
+      "size_bytes": 6589,
+      "sha256": "4013d63a843ab7583d94629f7ba7f04151c204262cfd8cca30fe8c79051f727c"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_dynamic_world_2018_100m.tif",
+      "role": "development_land_state_2018",
+      "size_bytes": 6583,
+      "sha256": "c34ed1661cb100651cd0028abdc804a90ecf0c8be2f5b4e0275f482a46776192"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_dynamic_world_2019_100m.tif",
+      "role": "development_land_state_2019",
+      "size_bytes": 6917,
+      "sha256": "8939cfab6547a00abe831fdabd423aa8a613bd60c432d8b57548423d4f3b67d3"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_dynamic_world_2020_100m.tif",
+      "role": "development_land_state_2020",
+      "size_bytes": 6703,
+      "sha256": "33222a6c44e8011b044bb9f810db9e0070881463774697a5630524f8789de761"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_dynamic_world_2021_100m.tif",
+      "role": "development_land_state_2021",
+      "size_bytes": 7234,
+      "sha256": "0c5e1f5fb16aea700b8547661eb57073f83c3105def740775e9bfcb4aa89a1df"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_dynamic_world_2022_100m.tif",
+      "role": "development_land_state_2022",
+      "size_bytes": 7265,
+      "sha256": "ddf7533e9214d7e191bbac7bb563b22f892560cd58c4cb98e282035dbdb4b1b6"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_srtm_elevation_100m.tif",
+      "role": "development_srtm_elevation",
+      "size_bytes": 5721,
+      "sha256": "4a98f6687091a1d24529c6f7bcbeb123767b0e2f05ad9357111e7f005286cca2"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_srtm_slope_100m.tif",
+      "role": "development_srtm_slope",
+      "size_bytes": 9152,
+      "sha256": "c643efc953d2c30782e9050fe6af7dca8ace9e6371561d2f0cb8a682e05fddd3"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_viirs_nightlight_mean_100m.tif",
+      "role": "development_viirs_nightlight_mean",
+      "size_bytes": 10803,
+      "sha256": "f670b56d4d64870a365c91363aa37b55f9fe0ebcdd62f3f658660f86babdcf55"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_dynamic_world_2017_100m.tif",
+      "role": "development_land_state_2017",
+      "size_bytes": 5756,
+      "sha256": "d0c3aea7dfca9199f3b2d3dee61ea66027b746215827427133cad576b6f8022b"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_dynamic_world_2018_100m.tif",
+      "role": "development_land_state_2018",
+      "size_bytes": 6021,
+      "sha256": "ce7cb3af0590d952a48e59365fae3ec21c11d06614e8d6c5ab07999f6989ea0f"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_dynamic_world_2019_100m.tif",
+      "role": "development_land_state_2019",
+      "size_bytes": 5499,
+      "sha256": "0122afb3367c8fb9c66608a98fdb46f837158ed523f265eb0ca8eb62f6a80d86"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_dynamic_world_2020_100m.tif",
+      "role": "development_land_state_2020",
+      "size_bytes": 5207,
+      "sha256": "edf5bec5717a4544d4a544bcae2e98d77dba1a7a9ff71cff206a4fb61683f484"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_dynamic_world_2021_100m.tif",
+      "role": "development_land_state_2021",
+      "size_bytes": 5721,
+      "sha256": "5d52727b798b3d3db9863b8afdd1a6aa88340cb14dceb9c8a96942d7e0ae295b"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_dynamic_world_2022_100m.tif",
+      "role": "development_land_state_2022",
+      "size_bytes": 5617,
+      "sha256": "31ec39e911b1b4e2f9cfa674a2fc1fadb423fd64d8e3a7c6168997bc5d69867e"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_srtm_elevation_100m.tif",
+      "role": "development_srtm_elevation",
+      "size_bytes": 6475,
+      "sha256": "7ec43186c196007af0038dab614942e1c4f04b194b18c36d96f86fd9b3b9d7df"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_srtm_slope_100m.tif",
+      "role": "development_srtm_slope",
+      "size_bytes": 13292,
+      "sha256": "2d40f068354ed402f9efa7bfdd642a83821132279f2d288002e07975bd2ef29a"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_viirs_nightlight_mean_100m.tif",
+      "role": "development_viirs_nightlight_mean",
+      "size_bytes": 8709,
+      "sha256": "4bdf68f1587b61f0147eea73bec493d4b0dc6e293576a8255f304608998d1abe"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_dynamic_world_2017_100m.tif",
+      "role": "development_land_state_2017",
+      "size_bytes": 4764,
+      "sha256": "4e2f24fbabd69f66b717c9c07e5a5603ec9a3fbc3bbb4e14ea8095555f526927"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_dynamic_world_2018_100m.tif",
+      "role": "development_land_state_2018",
+      "size_bytes": 4695,
+      "sha256": "06f8b88b8adf3cbf02ecd67d5eaba141e2f8dda8b425249e4210ff47e0a418fa"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_dynamic_world_2019_100m.tif",
+      "role": "development_land_state_2019",
+      "size_bytes": 4580,
+      "sha256": "2092e0c9b884b8764414e3c854e8c7816d02d2bdb8d60180ffcde229233eef6b"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_dynamic_world_2020_100m.tif",
+      "role": "development_land_state_2020",
+      "size_bytes": 4658,
+      "sha256": "a9763508e3c3796bfcf7385b3d7f27b420fa96ad64373536a292ce3fbcb81c13"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_dynamic_world_2021_100m.tif",
+      "role": "development_land_state_2021",
+      "size_bytes": 4805,
+      "sha256": "ee3070cae0ee6c2ab448520d312b0adbaffb539e86b062df1cf4016a1c018117"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_dynamic_world_2022_100m.tif",
+      "role": "development_land_state_2022",
+      "size_bytes": 4712,
+      "sha256": "d4bbeca5fca3976e8ba6911a9abebd5a17c838f82efc4952a9046443243708c4"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_srtm_elevation_100m.tif",
+      "role": "development_srtm_elevation",
+      "size_bytes": 43807,
+      "sha256": "0b96e5d0b041b6d11a25699951175d23513422cfbb2de83b384077512870ef60"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_srtm_slope_100m.tif",
+      "role": "development_srtm_slope",
+      "size_bytes": 97025,
+      "sha256": "9b08f8cba2ae937aa27b830bed6979fbd5dc0a8c8fc61dd2323345ea0a7d1891"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_viirs_nightlight_mean_100m.tif",
+      "role": "development_viirs_nightlight_mean",
+      "size_bytes": 9589,
+      "sha256": "0fdda210950cf0e5133598fe2b8c9f1fce5d17e44d93f733db0da61950c87196"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_dynamic_world_2017_100m.tif",
+      "role": "development_land_state_2017",
+      "size_bytes": 8811,
+      "sha256": "795c623c52e830388a31081c644350546e97678b3e5c679919c983dbb7a7665b"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_dynamic_world_2018_100m.tif",
+      "role": "development_land_state_2018",
+      "size_bytes": 8625,
+      "sha256": "225719e5f08e21f3089e908e1792f76b9a8fb513e48d26c99d30d7eb8e69b04f"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_dynamic_world_2019_100m.tif",
+      "role": "development_land_state_2019",
+      "size_bytes": 8646,
+      "sha256": "d74525ca63c12c347a3b70126f45cde29d729e6902524c4e443478abc2c20678"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_dynamic_world_2020_100m.tif",
+      "role": "development_land_state_2020",
+      "size_bytes": 8373,
+      "sha256": "c2da5de54441634d7bfceae5b0c989572e921c127a411dbc1801df8e3946daf6"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_dynamic_world_2021_100m.tif",
+      "role": "development_land_state_2021",
+      "size_bytes": 8553,
+      "sha256": "c85bdafafce1ef86ced4ad908bf251bc0cb41c805ab3559941928a18e9c836d4"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_dynamic_world_2022_100m.tif",
+      "role": "development_land_state_2022",
+      "size_bytes": 8766,
+      "sha256": "1a855b7314c7130b69e38611f8d40cd4780176c2307758da87b82bc7b49084ab"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_srtm_elevation_100m.tif",
+      "role": "development_srtm_elevation",
+      "size_bytes": 39336,
+      "sha256": "08d8cd1ff142b99547c7244e7e506373303d6ec4ac345d9b65356fc30f7a5974"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_srtm_slope_100m.tif",
+      "role": "development_srtm_slope",
+      "size_bytes": 95733,
+      "sha256": "6ffb038c91e45deeac0331dd584c2551c8d7c55dcaac7f55404401d6f74da3d2"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_viirs_nightlight_mean_100m.tif",
+      "role": "development_viirs_nightlight_mean",
+      "size_bytes": 9533,
+      "sha256": "ab06c6fee3f90553d5cc79e57f3c2be8661d4bd55fd6b44859009c8ee2606049"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_dynamic_world_2017_100m.tif",
+      "role": "development_land_state_2017",
+      "size_bytes": 5084,
+      "sha256": "38788b5be71b6ed6f06812420815c6358444a4c8f9954b4e8ad2a44704719e1f"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_dynamic_world_2018_100m.tif",
+      "role": "development_land_state_2018",
+      "size_bytes": 4977,
+      "sha256": "b4c77300c2bab78b62167e93dadc73c3fd6fbb78c90632ede703a23359bea4dd"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_dynamic_world_2019_100m.tif",
+      "role": "development_land_state_2019",
+      "size_bytes": 4916,
+      "sha256": "bc73b27ba50bf4b934ffb03b0eafab486cadb07fe584a7707ff107ecbdea354c"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_dynamic_world_2020_100m.tif",
+      "role": "development_land_state_2020",
+      "size_bytes": 4943,
+      "sha256": "a09df50770cdbd8a44b3f9c8d0847bb263792774db95f787f766d307f3fe51a5"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_dynamic_world_2021_100m.tif",
+      "role": "development_land_state_2021",
+      "size_bytes": 5032,
+      "sha256": "432b96c55811914cc41393399887498c1fba6938c767a175c762627079887b4f"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_dynamic_world_2022_100m.tif",
+      "role": "development_land_state_2022",
+      "size_bytes": 5199,
+      "sha256": "9541e97f3c8b1ece92c5ba9b54d3b07f93211fd86a53fb55579381c58a2facd5"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_srtm_elevation_100m.tif",
+      "role": "development_srtm_elevation",
+      "size_bytes": 37315,
+      "sha256": "3c197ffbd8a87a0d11487d45b7c4e619404431d4a6932345956de0d64b633ee3"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_srtm_slope_100m.tif",
+      "role": "development_srtm_slope",
+      "size_bytes": 86243,
+      "sha256": "39df158458fadaa6265ecc9d6a22bf9c94cfcfb3b2aa2a19ce7e7b08a82ff44a"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_viirs_nightlight_mean_100m.tif",
+      "role": "development_viirs_nightlight_mean",
+      "size_bytes": 9690,
+      "sha256": "2fade7a8d790652acb8009f75988cc13dc6535244158c4767a8f04545803af34"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_dynamic_world_2017_100m.tif",
+      "role": "development_land_state_2017",
+      "size_bytes": 5676,
+      "sha256": "d6d0d6ab3420055d6687ee01f516d150541ee0a35de3e34fcdf35c5db6ad29b1"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_dynamic_world_2018_100m.tif",
+      "role": "development_land_state_2018",
+      "size_bytes": 6442,
+      "sha256": "953ec03a9c39048f40176a50a82641aa8baed7f3325723ddfdf7b684a47036b7"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_dynamic_world_2019_100m.tif",
+      "role": "development_land_state_2019",
+      "size_bytes": 7194,
+      "sha256": "7ede8b98f1aec6be24732c4b326eaa660d4a061454ea5ad515f1f870c81c81fc"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_dynamic_world_2020_100m.tif",
+      "role": "development_land_state_2020",
+      "size_bytes": 5494,
+      "sha256": "c48d4eedf9c793ccf68ae184b28e5f2b31a946df640ca76e80df05544503dd56"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_dynamic_world_2021_100m.tif",
+      "role": "development_land_state_2021",
+      "size_bytes": 5728,
+      "sha256": "96b09a467c79ad47f62100645319fc36350b513d840a9e77c1374219604e1d73"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_dynamic_world_2022_100m.tif",
+      "role": "development_land_state_2022",
+      "size_bytes": 6204,
+      "sha256": "bc9eef590037e6e65b44adda49961ccaadbfc92e533c4129a0759104190a51f4"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_srtm_elevation_100m.tif",
+      "role": "development_srtm_elevation",
+      "size_bytes": 14940,
+      "sha256": "83a89f8436c13a3d9de1d8641d8fa6797a2bd10441af75c70d088d7deab96a2d"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_srtm_slope_100m.tif",
+      "role": "development_srtm_slope",
+      "size_bytes": 32160,
+      "sha256": "8054586ba7c58702ee0703d6f7243d7349b1ba46eb5d43511c8766c44671f8c8"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_viirs_nightlight_mean_100m.tif",
+      "role": "development_viirs_nightlight_mean",
+      "size_bytes": 12623,
+      "sha256": "20b3b5f2eeacb0bc13f8c4cb7fd66d78a1102c0e68822896b88ac8d83d7f31d3"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_dynamic_world_2017_100m.tif",
+      "role": "development_land_state_2017",
+      "size_bytes": 2369,
+      "sha256": "c60020f07928c22f659013ba43e715a4ece65d94fe2e30ad4f10c602d6737006"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_dynamic_world_2018_100m.tif",
+      "role": "development_land_state_2018",
+      "size_bytes": 2391,
+      "sha256": "822e4cc391ce96e75c3adf7cbd178e23ba6a285460ef00c86105acca214cb51b"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_dynamic_world_2019_100m.tif",
+      "role": "development_land_state_2019",
+      "size_bytes": 2358,
+      "sha256": "687f47d605c7ef473ebbc305c53a1214fef90650b8a3ea111d6ed2913312139f"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_dynamic_world_2020_100m.tif",
+      "role": "development_land_state_2020",
+      "size_bytes": 2371,
+      "sha256": "8a8ee6b017e11401ad3ff69fb256dc577621d549127b6155ebccbebb33d17ee9"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_dynamic_world_2021_100m.tif",
+      "role": "development_land_state_2021",
+      "size_bytes": 2392,
+      "sha256": "1a8e22e6a4e0a10bb8b19392f4f53a938213a7519a51d31e9ae32ebfb892c1b9"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_dynamic_world_2022_100m.tif",
+      "role": "development_land_state_2022",
+      "size_bytes": 2382,
+      "sha256": "8d258801887a0847e6053b0f39982866a9443dc7d5cc74f433392f54e61eed9f"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_srtm_elevation_100m.tif",
+      "role": "development_srtm_elevation",
+      "size_bytes": 24004,
+      "sha256": "a4d94eb75e493e83d094fb52889bcad2f092f06b43f87533299212206abee8bf"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_srtm_slope_100m.tif",
+      "role": "development_srtm_slope",
+      "size_bytes": 50673,
+      "sha256": "591e982bbd4a76da21b0f54068ee262a10a9e8f9dce932ccbc583161d5ff510e"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_viirs_nightlight_mean_100m.tif",
+      "role": "development_viirs_nightlight_mean",
+      "size_bytes": 6389,
+      "sha256": "ccf217b82521313b434245c3ae4b0ed49818b246976890abe8e3c1e582941a95"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_dynamic_world_2017_100m.tif",
+      "role": "development_land_state_2017",
+      "size_bytes": 4323,
+      "sha256": "2d27d8414de2a7bb07cb53924f8c9e3d0413a7c7685b63488f380ff9388050f8"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_dynamic_world_2018_100m.tif",
+      "role": "development_land_state_2018",
+      "size_bytes": 4162,
+      "sha256": "3eb45ece68de10ccf2e9894cd715b9e2153596e73ffae5467b3cb78e6c3689c7"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_dynamic_world_2019_100m.tif",
+      "role": "development_land_state_2019",
+      "size_bytes": 4213,
+      "sha256": "027779aa2ecfcfecf9ba8b72fed4fe9382ff1fd8086e12c448e743a1b5224060"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_dynamic_world_2020_100m.tif",
+      "role": "development_land_state_2020",
+      "size_bytes": 4175,
+      "sha256": "798e17f348bb2e5bc83ceb08716f6983db1feef1e84a01914b7da7242efe5ec7"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_dynamic_world_2021_100m.tif",
+      "role": "development_land_state_2021",
+      "size_bytes": 3932,
+      "sha256": "dc15381561b6899ba22272255ecc42a4cab1826da405808330616642b5d50a6c"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_dynamic_world_2022_100m.tif",
+      "role": "development_land_state_2022",
+      "size_bytes": 3858,
+      "sha256": "2b49a94873f6daff6c55f8ada39aac0ae7c21c32cfa331734993d180574fc521"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_srtm_elevation_100m.tif",
+      "role": "development_srtm_elevation",
+      "size_bytes": 55250,
+      "sha256": "0ef7a12914587adb4128acf1a86e6888c0bca938883514a8dad6a883ccea7423"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_srtm_slope_100m.tif",
+      "role": "development_srtm_slope",
+      "size_bytes": 109817,
+      "sha256": "9bc6c5fdf4d44e241aed5f98bcbd49ca2b8d7a5671c06b9f726f767a63d897e1"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_viirs_nightlight_mean_100m.tif",
+      "role": "development_viirs_nightlight_mean",
+      "size_bytes": 9543,
+      "sha256": "0849c1899fa431d04eded7f19ad726c374a3aa3e3adbcf2a33fd58c427412a59"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_dynamic_world_2017_100m.tif",
+      "role": "development_land_state_2017",
+      "size_bytes": 8401,
+      "sha256": "838f30a405e86fc648ec599ed3ce1af96c0791f69423958ca0adcbf51c07e137"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_dynamic_world_2018_100m.tif",
+      "role": "development_land_state_2018",
+      "size_bytes": 8536,
+      "sha256": "b4d932919375fa5cf207460781e84fa0fb8909a3436dd81916c92aad6cc7328b"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_dynamic_world_2019_100m.tif",
+      "role": "development_land_state_2019",
+      "size_bytes": 8468,
+      "sha256": "7047034ac0ff78b511220f3c8569a81c2fe6396acb92b5fe3b511e68dc06db64"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_dynamic_world_2020_100m.tif",
+      "role": "development_land_state_2020",
+      "size_bytes": 8538,
+      "sha256": "2f50a70937af251f1f4f2f10c6dc3281d87da38e7e004aa72bcdb6f2d0140798"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_dynamic_world_2021_100m.tif",
+      "role": "development_land_state_2021",
+      "size_bytes": 8855,
+      "sha256": "82d1b66351cdc596141b4f3694ab894aa8bd4d4016605a5d8ae92c871981b847"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_dynamic_world_2022_100m.tif",
+      "role": "development_land_state_2022",
+      "size_bytes": 8372,
+      "sha256": "7d1464612b597a11a646edbafac22e5b3d28bb50e67075327c289eba8d382c58"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_srtm_elevation_100m.tif",
+      "role": "development_srtm_elevation",
+      "size_bytes": 22556,
+      "sha256": "873ecac773a8ff00b55d0a72eb652f2043328d7340e6d6b3ffd48140f200ae4c"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_srtm_slope_100m.tif",
+      "role": "development_srtm_slope",
+      "size_bytes": 55567,
+      "sha256": "55c6f00f9f70334067bded1001bf2f9ab29abe363a354c2c6d6b5cb63e7a71ea"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_viirs_nightlight_mean_100m.tif",
+      "role": "development_viirs_nightlight_mean",
+      "size_bytes": 9804,
+      "sha256": "d952707fe0ed23002ad9584df2c32480af425ab2ff838f3470994dde683fc2aa"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_dynamic_world_2017_100m.tif",
+      "role": "development_land_state_2017",
+      "size_bytes": 8760,
+      "sha256": "e2f8091d517841b6e877c42eaec48128feec76fda5bb8f268582ed47ad0b3cc5"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_dynamic_world_2018_100m.tif",
+      "role": "development_land_state_2018",
+      "size_bytes": 7191,
+      "sha256": "1e797198682d6fda0e1243af3fc044cf599b2fe31d012116b1b5f7b89c72d1d9"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_dynamic_world_2019_100m.tif",
+      "role": "development_land_state_2019",
+      "size_bytes": 5514,
+      "sha256": "400101cfb7570aeff31c420fdb07e435d71025c033dfe6feb7bd413bda4f2f0b"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_dynamic_world_2020_100m.tif",
+      "role": "development_land_state_2020",
+      "size_bytes": 6327,
+      "sha256": "d21f1bd1fa127de01759a443547c17aae432400af45e473c33c6d6bd433f7bd3"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_dynamic_world_2021_100m.tif",
+      "role": "development_land_state_2021",
+      "size_bytes": 6224,
+      "sha256": "e9fec10294878c5db928ae345b30fe301fe96f973803c6b8f460700fd8682925"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_dynamic_world_2022_100m.tif",
+      "role": "development_land_state_2022",
+      "size_bytes": 6029,
+      "sha256": "6cf41b76477aa13c9c7a068b1fda8c00f0df352936b007a255dbf34ba761aa7f"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_srtm_elevation_100m.tif",
+      "role": "development_srtm_elevation",
+      "size_bytes": 75935,
+      "sha256": "6c4be6f0957faba3c9522d0d5a39787cefd69b207ef4a03aeaeca3154df2d554"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_srtm_slope_100m.tif",
+      "role": "development_srtm_slope",
+      "size_bytes": 132006,
+      "sha256": "d1f6b728f5cdb326ed963b7cf7e46c7e55117a3a6909c1ae760d9372464601d2"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_viirs_nightlight_mean_100m.tif",
+      "role": "development_viirs_nightlight_mean",
+      "size_bytes": 12181,
+      "sha256": "929f8702085cec48442941247fe8fd530c2eda9a5c02387d840ec29cb8485cf8"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_dynamic_world_2017_100m.tif",
+      "role": "development_land_state_2017",
+      "size_bytes": 5752,
+      "sha256": "0081058992406e96ecb877406471047ef7fe2eef574d77c4348aa6fa4d5cf262"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_dynamic_world_2018_100m.tif",
+      "role": "development_land_state_2018",
+      "size_bytes": 5457,
+      "sha256": "91da18155d4114b956413847b704dc162a4d521885b27f2f97d045c5dd482843"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_dynamic_world_2019_100m.tif",
+      "role": "development_land_state_2019",
+      "size_bytes": 5895,
+      "sha256": "1fb35b25f606160347971d57c14fd2e4a698d347b27e3f0a52ecd587f59a9f2e"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_dynamic_world_2020_100m.tif",
+      "role": "development_land_state_2020",
+      "size_bytes": 5505,
+      "sha256": "ff36cc44d5032b180a1a05ca9bc00f916c6b5be2b291d195b0690a94aedbcfb6"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_dynamic_world_2021_100m.tif",
+      "role": "development_land_state_2021",
+      "size_bytes": 5759,
+      "sha256": "69213a05a9e149e135a5af3b725af2d196d7f713e970d7335b509848aa5ef47f"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_dynamic_world_2022_100m.tif",
+      "role": "development_land_state_2022",
+      "size_bytes": 5372,
+      "sha256": "e6599ee77e0c41c01b996ababadfbc7d2b8d1f688c70684d00b6f05d463da951"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_srtm_elevation_100m.tif",
+      "role": "development_srtm_elevation",
+      "size_bytes": 21758,
+      "sha256": "2f26102e0cd8fe24850436f04f9fa28ddc22f1575baff2a0570993083c6c299c"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_srtm_slope_100m.tif",
+      "role": "development_srtm_slope",
+      "size_bytes": 49196,
+      "sha256": "214364a4d5ade6376f2d57976cfafb6f4c7a97f9216c7124ac024d020fda244f"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_viirs_nightlight_mean_100m.tif",
+      "role": "development_viirs_nightlight_mean",
+      "size_bytes": 6879,
+      "sha256": "41c0a8ec6eaaecbf06ffe7f2ab62f62890d53ce7e38c144c04de33c894970cd2"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_dynamic_world_2017_100m.tif",
+      "role": "development_land_state_2017",
+      "size_bytes": 6650,
+      "sha256": "513cbbf4ff6dc0706f6322d9f37654fb04b655a432983726384b309985c170bb"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_dynamic_world_2018_100m.tif",
+      "role": "development_land_state_2018",
+      "size_bytes": 6453,
+      "sha256": "c2ce92790a0230861cbfce7bdb6bf4272f4e06c7280755ef801c4195fe1de418"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_dynamic_world_2019_100m.tif",
+      "role": "development_land_state_2019",
+      "size_bytes": 6251,
+      "sha256": "30dbfeccf67ab9eec93cbdc069b424c805ee57d844cf9794ca797ffb9ac0eff0"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_dynamic_world_2020_100m.tif",
+      "role": "development_land_state_2020",
+      "size_bytes": 6664,
+      "sha256": "423bd644648ec33c138e070c7059629ced12ae0578dfd503e3f7527f260342bf"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_dynamic_world_2021_100m.tif",
+      "role": "development_land_state_2021",
+      "size_bytes": 6688,
+      "sha256": "87c451632d4148f6a3198cb0a713197a4ca7e0997e0f87344112dcc53003ebeb"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_dynamic_world_2022_100m.tif",
+      "role": "development_land_state_2022",
+      "size_bytes": 6298,
+      "sha256": "aa9c0a24907af39b02881e90d76d2cc7c93c4dc6b4029a5cd0c11eea6335e2f7"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_srtm_elevation_100m.tif",
+      "role": "development_srtm_elevation",
+      "size_bytes": 64620,
+      "sha256": "806636ed336834c911b5dd83c079ea5a1ada495f239ea6de6548af5ea3d6ecb4"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_srtm_slope_100m.tif",
+      "role": "development_srtm_slope",
+      "size_bytes": 124604,
+      "sha256": "7955e631657d4c9a848394491e726fe531ad6662e0707d1543f25b2725b341f4"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_viirs_nightlight_mean_100m.tif",
+      "role": "development_viirs_nightlight_mean",
+      "size_bytes": 11040,
+      "sha256": "ec5fc73221a306f08303179d6ea5dd31059ae32c862eecdd2aa28d5b135c65b7"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_dynamic_world_2017_100m.tif",
+      "role": "development_land_state_2017",
+      "size_bytes": 5340,
+      "sha256": "269faace479fa32727fa5382549ec08cfe2fd42322c814160f2c4ee829783efb"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_dynamic_world_2018_100m.tif",
+      "role": "development_land_state_2018",
+      "size_bytes": 5216,
+      "sha256": "22e57d3a23c25dffa13bf1fb502806fc3309f210d10e09afc258875d85403384"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_dynamic_world_2019_100m.tif",
+      "role": "development_land_state_2019",
+      "size_bytes": 5096,
+      "sha256": "a83cef9c1b1d32574e9fa84c31b1a48bc54347c38168f7062c1d9a9823af3c73"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_dynamic_world_2020_100m.tif",
+      "role": "development_land_state_2020",
+      "size_bytes": 5220,
+      "sha256": "e0864d1c82793ece3c8b0026bd1b5b91722f44bb82544654b6f42c76d2b2e542"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_dynamic_world_2021_100m.tif",
+      "role": "development_land_state_2021",
+      "size_bytes": 5208,
+      "sha256": "f1d9b8a3c3f90514a983627b761bed0e81534f047daf1f8c8b0a421c0c16dd4f"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_dynamic_world_2022_100m.tif",
+      "role": "development_land_state_2022",
+      "size_bytes": 5180,
+      "sha256": "e7bfd57b1cf10c041ef0612bb0731c8f6fd3ee16e96602905099ada11902f29f"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_srtm_elevation_100m.tif",
+      "role": "development_srtm_elevation",
+      "size_bytes": 50492,
+      "sha256": "e1a48a04acea5610c711719f1a051a1cf0bae4783b5f54939138d4423d198ea4"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_srtm_slope_100m.tif",
+      "role": "development_srtm_slope",
+      "size_bytes": 114235,
+      "sha256": "573b408d228e92fe0837fb0e28351cb097ac12a01993d985fdeb69b8b9b37118"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_viirs_nightlight_mean_100m.tif",
+      "role": "development_viirs_nightlight_mean",
+      "size_bytes": 10096,
+      "sha256": "72693dc08cba8e10cf26bc2f30ba683af6510aa021d81f7bb82ad32e92e0eaa2"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_changchun_core/v3_changchun_core_dynamic_world_2017_100m.tif",
+      "role": "v3_phase_a_land_state_2017",
+      "size_bytes": 4970,
+      "sha256": "b22ba26ce61bf19e24d157bfcbd6b3f1a3df00bfec94c6a91898ec20480625c3"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_changchun_core/v3_changchun_core_dynamic_world_2018_100m.tif",
+      "role": "v3_phase_a_land_state_2018",
+      "size_bytes": 4739,
+      "sha256": "2037b0d107799d13ee63f8def12405a758d3a0686007235c6e3029903337e547"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_changchun_core/v3_changchun_core_dynamic_world_2019_100m.tif",
+      "role": "v3_phase_a_land_state_2019",
+      "size_bytes": 5361,
+      "sha256": "d65db8e05f6f88adcf45933a7c36b8ab9a28fc737bf88b835021549431d5b02e"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_changchun_core/v3_changchun_core_dynamic_world_2020_100m.tif",
+      "role": "v3_phase_a_land_state_2020",
+      "size_bytes": 5369,
+      "sha256": "6d15a49687cc3b3f192d05811ebc37ec80b79d73a5384cfed635f69e15dda123"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_changchun_core/v3_changchun_core_dynamic_world_2021_100m.tif",
+      "role": "v3_phase_a_land_state_2021",
+      "size_bytes": 5492,
+      "sha256": "05bb1f18e3a2015a692986132d72fd81e70fe1ad70f2d37909010156b35d62e8"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_changchun_core/v3_changchun_core_dynamic_world_2022_100m.tif",
+      "role": "v3_phase_a_land_state_2022",
+      "size_bytes": 5155,
+      "sha256": "3cc82faf0bdedb4bba4e3b549f1d27df7ff2ef4b3b54d1e9a154819b94754aae"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_changchun_core/v3_changchun_core_srtm_elevation_100m.tif",
+      "role": "v3_phase_a_srtm_elevation",
+      "size_bytes": 33750,
+      "sha256": "7fb68e25cb1be73cab96f9061208ea00aa91b5d5897e043139c6de19a759543b"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_changchun_core/v3_changchun_core_srtm_slope_100m.tif",
+      "role": "v3_phase_a_srtm_slope",
+      "size_bytes": 76473,
+      "sha256": "0c2ca143ee9df7ee0453c669749a39b5c06ff4a20e1f9f2a8be4e890b2a3046a"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_changchun_core/v3_changchun_core_viirs_nightlight_mean_100m.tif",
+      "role": "v3_phase_a_viirs_nightlight_mean",
+      "size_bytes": 8211,
+      "sha256": "d386c37392aa4083cb0320be65f082b69a9a78687b352765dc72958d6d3f0bd5"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_dalian_core/v3_dalian_core_dynamic_world_2017_100m.tif",
+      "role": "v3_phase_a_land_state_2017",
+      "size_bytes": 4274,
+      "sha256": "f496dfab93ec73740507c6e4f091356e003b2d8ba1068677d51a54331d864d9a"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_dalian_core/v3_dalian_core_dynamic_world_2018_100m.tif",
+      "role": "v3_phase_a_land_state_2018",
+      "size_bytes": 4102,
+      "sha256": "2cd3043abf2b06c4e1a0a17a49a1b6c3d17bd9a62ff4ea3bdfabe53472234ae5"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_dalian_core/v3_dalian_core_dynamic_world_2019_100m.tif",
+      "role": "v3_phase_a_land_state_2019",
+      "size_bytes": 4189,
+      "sha256": "4f6fa89252f6242d83ac9052b254e277f0aacd3a05cbc0e912a3635ff6dbca98"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_dalian_core/v3_dalian_core_dynamic_world_2020_100m.tif",
+      "role": "v3_phase_a_land_state_2020",
+      "size_bytes": 4147,
+      "sha256": "0add1609357f79af44403310538011e162b399fde07aa17e1f9c79d85c5ba850"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_dalian_core/v3_dalian_core_dynamic_world_2021_100m.tif",
+      "role": "v3_phase_a_land_state_2021",
+      "size_bytes": 4349,
+      "sha256": "e8076ef80b15e67c65237da1674c106a4295b5614a29ff9b11b3a5deb7807bf3"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_dalian_core/v3_dalian_core_dynamic_world_2022_100m.tif",
+      "role": "v3_phase_a_land_state_2022",
+      "size_bytes": 4172,
+      "sha256": "55547b35bea8d5e7d125e27ef709120a2c4064e932b13a6b2b378170a1947a2c"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_dalian_core/v3_dalian_core_srtm_elevation_100m.tif",
+      "role": "v3_phase_a_srtm_elevation",
+      "size_bytes": 30226,
+      "sha256": "7a65c4b0e6c289d31765bbf53df5ed14a66bbe4ff629c864f218491764512e97"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_dalian_core/v3_dalian_core_srtm_slope_100m.tif",
+      "role": "v3_phase_a_srtm_slope",
+      "size_bytes": 77583,
+      "sha256": "0090493c46901b3d978f85bc69a2c266fe1b562ea2e1bef57b5564a9758d4525"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_dalian_core/v3_dalian_core_viirs_nightlight_mean_100m.tif",
+      "role": "v3_phase_a_viirs_nightlight_mean",
+      "size_bytes": 8179,
+      "sha256": "088c79e5b8a06b58e56d5fde5bc3e015813b2eaa25433e988800218996a4f9dd"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_guiyang_core/v3_guiyang_core_dynamic_world_2017_100m.tif",
+      "role": "v3_phase_a_land_state_2017",
+      "size_bytes": 7488,
+      "sha256": "d05c1c18a836b4af903ef8f144ed050bfd6bc3dfe0232261f3494ae1d1796fbc"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_guiyang_core/v3_guiyang_core_dynamic_world_2018_100m.tif",
+      "role": "v3_phase_a_land_state_2018",
+      "size_bytes": 7619,
+      "sha256": "2a2c9e9b28edd5cb848734d030abd8e427d6c965e64414df365c4b9a56ec45b0"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_guiyang_core/v3_guiyang_core_dynamic_world_2019_100m.tif",
+      "role": "v3_phase_a_land_state_2019",
+      "size_bytes": 7367,
+      "sha256": "d54dd868ca1ae6560b07e3ced83b27024b61087da1d43933e33a8c77af0b7e73"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_guiyang_core/v3_guiyang_core_dynamic_world_2020_100m.tif",
+      "role": "v3_phase_a_land_state_2020",
+      "size_bytes": 7361,
+      "sha256": "7775e6fbfdb3a4c5d2cbfbbe5564e0ba46b59c16479e5fb29ad37feb9cb85874"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_guiyang_core/v3_guiyang_core_dynamic_world_2021_100m.tif",
+      "role": "v3_phase_a_land_state_2021",
+      "size_bytes": 7411,
+      "sha256": "01e3b46271cf93f73f22e9f0bc374a9b102ea0b82f2665d92258fe90c860a6b3"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_guiyang_core/v3_guiyang_core_dynamic_world_2022_100m.tif",
+      "role": "v3_phase_a_land_state_2022",
+      "size_bytes": 7228,
+      "sha256": "d3891892c92ce23c1e8df02d0ed6b3041011ba07098b3e4e4e26098beea39807"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_guiyang_core/v3_guiyang_core_srtm_elevation_100m.tif",
+      "role": "v3_phase_a_srtm_elevation",
+      "size_bytes": 46735,
+      "sha256": "5dcc6a48636d0f73547c37ffc22062bb41d6a29cbac40f1f9f32300a175c7ed5"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_guiyang_core/v3_guiyang_core_srtm_slope_100m.tif",
+      "role": "v3_phase_a_srtm_slope",
+      "size_bytes": 115569,
+      "sha256": "86ae35460c7368acf2b94665ef330c5e19c2e727f974631acc6c396cb554d7ad"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_guiyang_core/v3_guiyang_core_viirs_nightlight_mean_100m.tif",
+      "role": "v3_phase_a_viirs_nightlight_mean",
+      "size_bytes": 8220,
+      "sha256": "55a41ae3e85e97d9a5341b5c7cb475520dbdacd2b5dff3a6e9d8d6e788235eb3"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_haikou_core/v3_haikou_core_dynamic_world_2017_100m.tif",
+      "role": "v3_phase_a_land_state_2017",
+      "size_bytes": 3846,
+      "sha256": "2c69246d46ed3af74fc16e4cb0e66419b4d1867c30d20faefeffcaffc2fcb35c"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_haikou_core/v3_haikou_core_dynamic_world_2018_100m.tif",
+      "role": "v3_phase_a_land_state_2018",
+      "size_bytes": 3790,
+      "sha256": "18f83353c57db9156d3a3fcedd5a4fcd1cb22200a698d96cbd6f5ebb02785edb"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_haikou_core/v3_haikou_core_dynamic_world_2019_100m.tif",
+      "role": "v3_phase_a_land_state_2019",
+      "size_bytes": 3899,
+      "sha256": "b7c06f16cc054ed2b47a946aa08e79b42c506b2947824f741bb1a07c35262014"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_haikou_core/v3_haikou_core_dynamic_world_2020_100m.tif",
+      "role": "v3_phase_a_land_state_2020",
+      "size_bytes": 3751,
+      "sha256": "f66edd99b781e1ea239fd7726def72a4c544819c4822dfaba5b103b1577823ab"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_haikou_core/v3_haikou_core_dynamic_world_2021_100m.tif",
+      "role": "v3_phase_a_land_state_2021",
+      "size_bytes": 3793,
+      "sha256": "1ffeac1dc7de1218afc54845138cbccbb5322e2005fe4b8eb40fee283e29baaa"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_haikou_core/v3_haikou_core_dynamic_world_2022_100m.tif",
+      "role": "v3_phase_a_land_state_2022",
+      "size_bytes": 3828,
+      "sha256": "fe22135ea2798fa5e7bedfc921975343337527076f96edc826ba21b60f914a74"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_haikou_core/v3_haikou_core_srtm_elevation_100m.tif",
+      "role": "v3_phase_a_srtm_elevation",
+      "size_bytes": 16943,
+      "sha256": "8fdc9852d7ea3be135adde441cd03bdbf33166cb44156e0a0578bdfe1d6ead96"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_haikou_core/v3_haikou_core_srtm_slope_100m.tif",
+      "role": "v3_phase_a_srtm_slope",
+      "size_bytes": 40443,
+      "sha256": "e777c800ae0287530ba97177905937faaf38f6b72e2aa1a33d007dd6f84477f6"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_haikou_core/v3_haikou_core_viirs_nightlight_mean_100m.tif",
+      "role": "v3_phase_a_viirs_nightlight_mean",
+      "size_bytes": 7975,
+      "sha256": "d9e9a15085009c802728894c5e47e44492d9269d9333151b4ea91401bf627c5b"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_harbin_core/v3_harbin_core_dynamic_world_2017_100m.tif",
+      "role": "v3_phase_a_land_state_2017",
+      "size_bytes": 6398,
+      "sha256": "57b970d6b034fd3b4791925d6712879323f5481fabb08abeeda8ca28effbe29c"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_harbin_core/v3_harbin_core_dynamic_world_2018_100m.tif",
+      "role": "v3_phase_a_land_state_2018",
+      "size_bytes": 6281,
+      "sha256": "8d995dec98ecce763783ab9c748c21310874ec964ef1c76596352f50958133e4"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_harbin_core/v3_harbin_core_dynamic_world_2019_100m.tif",
+      "role": "v3_phase_a_land_state_2019",
+      "size_bytes": 6819,
+      "sha256": "20535d3e6d07de50d67e0a19a2c5eaf78a810bf7fa9e317bb512bc1f8663f09c"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_harbin_core/v3_harbin_core_dynamic_world_2020_100m.tif",
+      "role": "v3_phase_a_land_state_2020",
+      "size_bytes": 6917,
+      "sha256": "ad71d9dda9dc3dca8d1353c40b9df2cc64b7e158f465d8e3c781f58a55507a27"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_harbin_core/v3_harbin_core_dynamic_world_2021_100m.tif",
+      "role": "v3_phase_a_land_state_2021",
+      "size_bytes": 6761,
+      "sha256": "1a504405b8e0209442bd870d8b6d2f4d70f3e654b27ba977bbb5af56c9205000"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_harbin_core/v3_harbin_core_dynamic_world_2022_100m.tif",
+      "role": "v3_phase_a_land_state_2022",
+      "size_bytes": 6859,
+      "sha256": "d5f66de464e64f7f7efe7e3fddcf1afcd2ce140ae09502e9857e7e7203ea7f76"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_harbin_core/v3_harbin_core_srtm_elevation_100m.tif",
+      "role": "v3_phase_a_srtm_elevation",
+      "size_bytes": 33200,
+      "sha256": "afa3259c03a3283ebfbb779d4cd6388ce6f50e304ee5d6a606ee03b1e2821309"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_harbin_core/v3_harbin_core_srtm_slope_100m.tif",
+      "role": "v3_phase_a_srtm_slope",
+      "size_bytes": 81496,
+      "sha256": "de0171cd179fb674b8db9a8ebdc5cd683573aca4c0f3c4081bd9a8960fab9f70"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_harbin_core/v3_harbin_core_viirs_nightlight_mean_100m.tif",
+      "role": "v3_phase_a_viirs_nightlight_mean",
+      "size_bytes": 8390,
+      "sha256": "624802c01b1bb07c6a70e66af43b81d0fd0dd1f2ca5c83cb44c7ac211f0e5372"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_jinan_core/v3_jinan_core_dynamic_world_2017_100m.tif",
+      "role": "v3_phase_a_land_state_2017",
+      "size_bytes": 6230,
+      "sha256": "4bae95b136860476612ef8d4f78bd17eb456dcf70b3d41b72d83d9c3b60e0b65"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_jinan_core/v3_jinan_core_dynamic_world_2018_100m.tif",
+      "role": "v3_phase_a_land_state_2018",
+      "size_bytes": 5538,
+      "sha256": "c34fa6870cf3c742fe800ad3656151db533bbcda25e8ca1671c1bd9034a286f4"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_jinan_core/v3_jinan_core_dynamic_world_2019_100m.tif",
+      "role": "v3_phase_a_land_state_2019",
+      "size_bytes": 5172,
+      "sha256": "2100d27796e94dc8b259a182321c3f3191c3a6c558481166f27935c594b72525"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_jinan_core/v3_jinan_core_dynamic_world_2020_100m.tif",
+      "role": "v3_phase_a_land_state_2020",
+      "size_bytes": 5940,
+      "sha256": "624090a896b7693c2ed06dd07d4f2e8991f847e044bbffe60fee785b5e8e5d5c"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_jinan_core/v3_jinan_core_dynamic_world_2021_100m.tif",
+      "role": "v3_phase_a_land_state_2021",
+      "size_bytes": 5060,
+      "sha256": "7d3fcf49110c56291abaa3f8d5357d96a086ed799dae02a810817abdeefb7859"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_jinan_core/v3_jinan_core_dynamic_world_2022_100m.tif",
+      "role": "v3_phase_a_land_state_2022",
+      "size_bytes": 5146,
+      "sha256": "3143c2bf0bafbf2ce39ee748407438fdb071bb82c91d473d9590626064545ce4"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_jinan_core/v3_jinan_core_srtm_elevation_100m.tif",
+      "role": "v3_phase_a_srtm_elevation",
+      "size_bytes": 36343,
+      "sha256": "1b7a712746d98bc35b874201c9c371589bb959b800c91b332750386ca0c7d6de"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_jinan_core/v3_jinan_core_srtm_slope_100m.tif",
+      "role": "v3_phase_a_srtm_slope",
+      "size_bytes": 83875,
+      "sha256": "529c130dd17a9fda04242d707990afa8d701be924670bb02fe124214b2d31996"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_jinan_core/v3_jinan_core_viirs_nightlight_mean_100m.tif",
+      "role": "v3_phase_a_viirs_nightlight_mean",
+      "size_bytes": 8286,
+      "sha256": "3baed5d32000b5118577e8cbb7f4bae3e7f3da651ce1a91645e6750824dc0793"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_kunming_core/v3_kunming_core_dynamic_world_2017_100m.tif",
+      "role": "v3_phase_a_land_state_2017",
+      "size_bytes": 5277,
+      "sha256": "baeee5ee37821863996b8a8fdc248a145ce54b6e45226e466cde3849399c51a5"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_kunming_core/v3_kunming_core_dynamic_world_2018_100m.tif",
+      "role": "v3_phase_a_land_state_2018",
+      "size_bytes": 4743,
+      "sha256": "2af7777f9c340caa3115873cf802b5ba6fcd81f1303d0dba751f9de13cb27858"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_kunming_core/v3_kunming_core_dynamic_world_2019_100m.tif",
+      "role": "v3_phase_a_land_state_2019",
+      "size_bytes": 4595,
+      "sha256": "2a18b7dc4cd24ff4d7f35a810941adc1a240760ada76f3f263636d20cf2a1836"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_kunming_core/v3_kunming_core_dynamic_world_2020_100m.tif",
+      "role": "v3_phase_a_land_state_2020",
+      "size_bytes": 4190,
+      "sha256": "98ad88f08ef1f3979a49610107c127e3f10b3d73c380f18166cd917511f2839c"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_kunming_core/v3_kunming_core_dynamic_world_2021_100m.tif",
+      "role": "v3_phase_a_land_state_2021",
+      "size_bytes": 4270,
+      "sha256": "e38aa090d7f17b26312c66f9114a8acdfb45394f1b2111da45890306dfed5553"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_kunming_core/v3_kunming_core_dynamic_world_2022_100m.tif",
+      "role": "v3_phase_a_land_state_2022",
+      "size_bytes": 4141,
+      "sha256": "9a4f085aa23da7806975494ae3a1d671d7c5df95143f72dda0c04290b4893039"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_kunming_core/v3_kunming_core_srtm_elevation_100m.tif",
+      "role": "v3_phase_a_srtm_elevation",
+      "size_bytes": 34154,
+      "sha256": "2a47e6b681cf1dde4e3b9bea90c9bbabbc8f8027cac9eb2dbc1aae1ee56cb056"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_kunming_core/v3_kunming_core_srtm_slope_100m.tif",
+      "role": "v3_phase_a_srtm_slope",
+      "size_bytes": 81609,
+      "sha256": "e6f4ebc43841a2548ebae41bea475dff04802afc3aaa9e4085b88a22c615201f"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_kunming_core/v3_kunming_core_viirs_nightlight_mean_100m.tif",
+      "role": "v3_phase_a_viirs_nightlight_mean",
+      "size_bytes": 8285,
+      "sha256": "7339f82db43db40ae0c3116999e1dcb865be4610c9eceee8acdc4ddd7c9e4f6c"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_lanzhou_core/v3_lanzhou_core_dynamic_world_2017_100m.tif",
+      "role": "v3_phase_a_land_state_2017",
+      "size_bytes": 10141,
+      "sha256": "1cd2d3c26892ebd32593b7ff48f775d955c1311ca3e590118d0197a6ad01c5ec"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_lanzhou_core/v3_lanzhou_core_dynamic_world_2018_100m.tif",
+      "role": "v3_phase_a_land_state_2018",
+      "size_bytes": 9187,
+      "sha256": "a6e101a4c0189e3a4957e8ca105464b3728e2325de6033b76cf07b4ccb729f4d"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_lanzhou_core/v3_lanzhou_core_dynamic_world_2019_100m.tif",
+      "role": "v3_phase_a_land_state_2019",
+      "size_bytes": 9866,
+      "sha256": "af6692f6419f8d4d0b7ce9cc686ba273cf53f03c483d2c0836b8e63f25689c68"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_lanzhou_core/v3_lanzhou_core_dynamic_world_2020_100m.tif",
+      "role": "v3_phase_a_land_state_2020",
+      "size_bytes": 9174,
+      "sha256": "b8ef0836424bb078345b4df0f8cbde31023905f7cca53a749ceacbf61712bb07"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_lanzhou_core/v3_lanzhou_core_dynamic_world_2021_100m.tif",
+      "role": "v3_phase_a_land_state_2021",
+      "size_bytes": 8139,
+      "sha256": "0694ab44c1090332f3db50c34f674d73745fe2db6a5498d4ad1547013ee5a640"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_lanzhou_core/v3_lanzhou_core_dynamic_world_2022_100m.tif",
+      "role": "v3_phase_a_land_state_2022",
+      "size_bytes": 8166,
+      "sha256": "38da7e417c5be50abe5e3f06770f60d336976efacca8655e946d344eaf1c7694"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_lanzhou_core/v3_lanzhou_core_srtm_elevation_100m.tif",
+      "role": "v3_phase_a_srtm_elevation",
+      "size_bytes": 53225,
+      "sha256": "79888c4a39edd8e149272b857b68b291269effdb287b6fe13917ca6737e6f45e"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_lanzhou_core/v3_lanzhou_core_srtm_slope_100m.tif",
+      "role": "v3_phase_a_srtm_slope",
+      "size_bytes": 124591,
+      "sha256": "7ad7858332a2e43327b3fbd2edfd7c5df199e3e31636195ebbb48505dd5c00c2"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_lanzhou_core/v3_lanzhou_core_viirs_nightlight_mean_100m.tif",
+      "role": "v3_phase_a_viirs_nightlight_mean",
+      "size_bytes": 8180,
+      "sha256": "5c90ccb7b37dec8449eccf1d182728c17d14ad41be267d8b25b62814ee2a7d53"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_nanchang_core/v3_nanchang_core_dynamic_world_2017_100m.tif",
+      "role": "v3_phase_a_land_state_2017",
+      "size_bytes": 7145,
+      "sha256": "567dcb859fae6ad4d025ca4979c70df0fd4b2fa7888cc64979f4516850bcd9af"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_nanchang_core/v3_nanchang_core_dynamic_world_2018_100m.tif",
+      "role": "v3_phase_a_land_state_2018",
+      "size_bytes": 7023,
+      "sha256": "0d11b2f260c9baa3d827a96e38d44942dcd7d973b96baaca024e7c96736f83e5"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_nanchang_core/v3_nanchang_core_dynamic_world_2019_100m.tif",
+      "role": "v3_phase_a_land_state_2019",
+      "size_bytes": 6908,
+      "sha256": "3387c013a6036eb70007725ad3273b8cb2aa4f409f45c8ceefbcd5799f3d75ac"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_nanchang_core/v3_nanchang_core_dynamic_world_2020_100m.tif",
+      "role": "v3_phase_a_land_state_2020",
+      "size_bytes": 6899,
+      "sha256": "ad3ff8a14715d32e47dfef44687d2ad243a8ee4f7b023cf65d94d9ddfb3455c4"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_nanchang_core/v3_nanchang_core_dynamic_world_2021_100m.tif",
+      "role": "v3_phase_a_land_state_2021",
+      "size_bytes": 6810,
+      "sha256": "d5fe650ae9ff8b6059ad5bc4f4423094a05a66d0cc6b3c8e321f93a208ed4b66"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_nanchang_core/v3_nanchang_core_dynamic_world_2022_100m.tif",
+      "role": "v3_phase_a_land_state_2022",
+      "size_bytes": 6683,
+      "sha256": "30aa667fd605bbdcba81f6a5fd6a38341d78b9ff1b7ca94d0a54aa1cfae12a6a"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_nanchang_core/v3_nanchang_core_srtm_elevation_100m.tif",
+      "role": "v3_phase_a_srtm_elevation",
+      "size_bytes": 29373,
+      "sha256": "c73026397c6125591d04dd5b7f19c75b741ab0c687015ad241781f68703e04ce"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_nanchang_core/v3_nanchang_core_srtm_slope_100m.tif",
+      "role": "v3_phase_a_srtm_slope",
+      "size_bytes": 72204,
+      "sha256": "7c6552dabead6a11fc741d406476f82a43e55db451d37ee7dbb973c99292c774"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_nanchang_core/v3_nanchang_core_viirs_nightlight_mean_100m.tif",
+      "role": "v3_phase_a_viirs_nightlight_mean",
+      "size_bytes": 8185,
+      "sha256": "05e4f0491bbce6bd6d85cd54d3f68d922f7afec69b63f1eb4a8cc1dad2783b75"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_nanning_core/v3_nanning_core_dynamic_world_2017_100m.tif",
+      "role": "v3_phase_a_land_state_2017",
+      "size_bytes": 5795,
+      "sha256": "311e103be2ea418b91cae825f93b2508741accd23be0fa218c1f21ba8c017f1b"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_nanning_core/v3_nanning_core_dynamic_world_2018_100m.tif",
+      "role": "v3_phase_a_land_state_2018",
+      "size_bytes": 5721,
+      "sha256": "b991023da3327a01849850dd8c892f7b9145309f4e2a8953971080b412728dcd"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_nanning_core/v3_nanning_core_dynamic_world_2019_100m.tif",
+      "role": "v3_phase_a_land_state_2019",
+      "size_bytes": 5444,
+      "sha256": "b18168808d3832031281a1fcaee671eea25415e2aceaccbac062418cb10665ad"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_nanning_core/v3_nanning_core_dynamic_world_2020_100m.tif",
+      "role": "v3_phase_a_land_state_2020",
+      "size_bytes": 5320,
+      "sha256": "f5ad5f57427e30c2078c86dc5bcd7a3ebc92cbd47799b17573f634ce9c3dc87a"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_nanning_core/v3_nanning_core_dynamic_world_2021_100m.tif",
+      "role": "v3_phase_a_land_state_2021",
+      "size_bytes": 5181,
+      "sha256": "e7532dc5e6d3f7fd6a77b8f984d8af7abc7a7c0c47f6ba417e9f7251ca15e9f2"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_nanning_core/v3_nanning_core_dynamic_world_2022_100m.tif",
+      "role": "v3_phase_a_land_state_2022",
+      "size_bytes": 5128,
+      "sha256": "417d70e2e23085d2303d95fbd1178a83d790ff47c7fb64572c93a51b63a27eab"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_nanning_core/v3_nanning_core_srtm_elevation_100m.tif",
+      "role": "v3_phase_a_srtm_elevation",
+      "size_bytes": 35195,
+      "sha256": "f2febf57ad85f5734ddf34a39f9d5b6dbc53dc25ef8db34f53e13cbd804ac33a"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_nanning_core/v3_nanning_core_srtm_slope_100m.tif",
+      "role": "v3_phase_a_srtm_slope",
+      "size_bytes": 88590,
+      "sha256": "177f62ba19f47080ef5fa88d795339d946033e1edfac191c4cbcf540e20fb4db"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_nanning_core/v3_nanning_core_viirs_nightlight_mean_100m.tif",
+      "role": "v3_phase_a_viirs_nightlight_mean",
+      "size_bytes": 8137,
+      "sha256": "88152c9864f49fdb323efe5f9133dc27dc844f4f75998402045a0ff8818f3cba"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_qingdao_core/v3_qingdao_core_dynamic_world_2017_100m.tif",
+      "role": "v3_phase_a_land_state_2017",
+      "size_bytes": 3130,
+      "sha256": "f0de2c60e1522f014814bee37ecccf4750ae43321c0d28e89b26168b04157265"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_qingdao_core/v3_qingdao_core_dynamic_world_2018_100m.tif",
+      "role": "v3_phase_a_land_state_2018",
+      "size_bytes": 3067,
+      "sha256": "829abaa61bb3bf8cf894c8d8059037d0c15f59ddc331377c4a89de9c8a14d4ac"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_qingdao_core/v3_qingdao_core_dynamic_world_2019_100m.tif",
+      "role": "v3_phase_a_land_state_2019",
+      "size_bytes": 2843,
+      "sha256": "4bb837d9b769b1feeb2958295a4e97d8abb4600769a393e082fa65710300d96a"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_qingdao_core/v3_qingdao_core_dynamic_world_2020_100m.tif",
+      "role": "v3_phase_a_land_state_2020",
+      "size_bytes": 2961,
+      "sha256": "75dd1d00ecfda104e65106b13f5f94c559793105ca6c2ff18a552da33ba6f2f7"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_qingdao_core/v3_qingdao_core_dynamic_world_2021_100m.tif",
+      "role": "v3_phase_a_land_state_2021",
+      "size_bytes": 2763,
+      "sha256": "4330d3c0520c78cda714639c45719ed6a42eb10cb91febcac70102dd0d6da294"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_qingdao_core/v3_qingdao_core_dynamic_world_2022_100m.tif",
+      "role": "v3_phase_a_land_state_2022",
+      "size_bytes": 2760,
+      "sha256": "fea0e129099f921dd0b46096a1b8140c496fade18982ea163fe93ce2c6564642"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_qingdao_core/v3_qingdao_core_srtm_elevation_100m.tif",
+      "role": "v3_phase_a_srtm_elevation",
+      "size_bytes": 23539,
+      "sha256": "fb746641fb5c59bab7a84041ebe235adeba788f3b4954c62fb43b9c235f1e59c"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_qingdao_core/v3_qingdao_core_srtm_slope_100m.tif",
+      "role": "v3_phase_a_srtm_slope",
+      "size_bytes": 58714,
+      "sha256": "61f61e791fba8c885587780157fda85f5ecc484329514dbf65c80adadf88b9c0"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_qingdao_core/v3_qingdao_core_viirs_nightlight_mean_100m.tif",
+      "role": "v3_phase_a_viirs_nightlight_mean",
+      "size_bytes": 8139,
+      "sha256": "dcbefd8d7c38a0232644e3358ae167d7a27e7a6ae9009fa6c4c1c5d7ed1724b9"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_quanzhou_core/v3_quanzhou_core_dynamic_world_2017_100m.tif",
+      "role": "v3_phase_a_land_state_2017",
+      "size_bytes": 6016,
+      "sha256": "c30e772cc2a023d9e14b68fcd0877efe58d5caba20c9dddbae9c07b10364620c"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_quanzhou_core/v3_quanzhou_core_dynamic_world_2018_100m.tif",
+      "role": "v3_phase_a_land_state_2018",
+      "size_bytes": 5986,
+      "sha256": "58f829b8aa475d847b04d9eb69f20960cc198bb836122a42b9950043013a0459"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_quanzhou_core/v3_quanzhou_core_dynamic_world_2019_100m.tif",
+      "role": "v3_phase_a_land_state_2019",
+      "size_bytes": 5886,
+      "sha256": "d1286c66a582de6ed6199f02847da053a8c5dde66cf5bba94926674481ac7cc6"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_quanzhou_core/v3_quanzhou_core_dynamic_world_2020_100m.tif",
+      "role": "v3_phase_a_land_state_2020",
+      "size_bytes": 5967,
+      "sha256": "97e64d16b8a5def26141211b5b09e8b0480a6e7876c64635e884c4059707e3f5"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_quanzhou_core/v3_quanzhou_core_dynamic_world_2021_100m.tif",
+      "role": "v3_phase_a_land_state_2021",
+      "size_bytes": 5819,
+      "sha256": "7d66aaa8e437bffcd97d16cef9093437bb0a81b78ec6e2adb328fd1b7a682f93"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_quanzhou_core/v3_quanzhou_core_dynamic_world_2022_100m.tif",
+      "role": "v3_phase_a_land_state_2022",
+      "size_bytes": 5712,
+      "sha256": "c2bedb934d9ad4c15496f54abddb93ff3dbcfd9735e4233c4d33b2989395dcea"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_quanzhou_core/v3_quanzhou_core_srtm_elevation_100m.tif",
+      "role": "v3_phase_a_srtm_elevation",
+      "size_bytes": 35642,
+      "sha256": "5c1e8c59090d40b69df6c918e120845d928c23e087cadc558ba5f2f5ee57cc59"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_quanzhou_core/v3_quanzhou_core_srtm_slope_100m.tif",
+      "role": "v3_phase_a_srtm_slope",
+      "size_bytes": 85293,
+      "sha256": "4f6c66ed5be4d0c551b6350facd39916433bce524671372e3055761d28878ff3"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_quanzhou_core/v3_quanzhou_core_viirs_nightlight_mean_100m.tif",
+      "role": "v3_phase_a_viirs_nightlight_mean",
+      "size_bytes": 8041,
+      "sha256": "7442f7a9c61f0f98b41095100332a4d6a41c7d61395ee86c876f61059680d684"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_shenyang_core/v3_shenyang_core_dynamic_world_2017_100m.tif",
+      "role": "v3_phase_a_land_state_2017",
+      "size_bytes": 4039,
+      "sha256": "849d20189873ca2dfda41d3ed59742807f0a4688d681d7b1571058ffad5e176e"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_shenyang_core/v3_shenyang_core_dynamic_world_2018_100m.tif",
+      "role": "v3_phase_a_land_state_2018",
+      "size_bytes": 4114,
+      "sha256": "4fe2c4b957c848386fb1812bdeafd3051ee0b59d61997af3cb51019423b85574"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_shenyang_core/v3_shenyang_core_dynamic_world_2019_100m.tif",
+      "role": "v3_phase_a_land_state_2019",
+      "size_bytes": 4257,
+      "sha256": "63b916767b161a382e62b1b43d1961fd14cfcaa7ae56ace2f762658fddeba680"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_shenyang_core/v3_shenyang_core_dynamic_world_2020_100m.tif",
+      "role": "v3_phase_a_land_state_2020",
+      "size_bytes": 4855,
+      "sha256": "174bdbdfe23f8559745d5aae54e5e18721904ae0b1ad4ccce16659582742f6a5"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_shenyang_core/v3_shenyang_core_dynamic_world_2021_100m.tif",
+      "role": "v3_phase_a_land_state_2021",
+      "size_bytes": 7038,
+      "sha256": "fcf54ec2f52b549db1a4b18d72a2f6acdd1b082124520b9fd99ce90c8c98f656"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_shenyang_core/v3_shenyang_core_dynamic_world_2022_100m.tif",
+      "role": "v3_phase_a_land_state_2022",
+      "size_bytes": 4689,
+      "sha256": "8fd8fc9df3cd84e330277cbfea3f3cac49da434176d6c12f48cf6c0d60f53d5d"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_shenyang_core/v3_shenyang_core_srtm_elevation_100m.tif",
+      "role": "v3_phase_a_srtm_elevation",
+      "size_bytes": 30572,
+      "sha256": "104e159c8494779d40be28a9e958dcd2fc5476c7ea63d943e9eadf2a2adc1a39"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_shenyang_core/v3_shenyang_core_srtm_slope_100m.tif",
+      "role": "v3_phase_a_srtm_slope",
+      "size_bytes": 74149,
+      "sha256": "4c19fb57d821eaa7679cd93ea910686e1775b3832dca5cc42053e33948090cb8"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_shenyang_core/v3_shenyang_core_viirs_nightlight_mean_100m.tif",
+      "role": "v3_phase_a_viirs_nightlight_mean",
+      "size_bytes": 8108,
+      "sha256": "f5c655c5c4fd9ca34c159eb30c3f1302b9e30ab50fe44a3e92a8459a409a5e7b"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_shijiazhuang_core/v3_shijiazhuang_core_dynamic_world_2017_100m.tif",
+      "role": "v3_phase_a_land_state_2017",
+      "size_bytes": 5077,
+      "sha256": "4d3e497f9f242200d77513406ea221e5011857e2d7d5ccae5a8fa191c61c5c67"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_shijiazhuang_core/v3_shijiazhuang_core_dynamic_world_2018_100m.tif",
+      "role": "v3_phase_a_land_state_2018",
+      "size_bytes": 5054,
+      "sha256": "8497a0c3e69938451a654082daaf1e8df2d91909f2cda16141491699f661437b"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_shijiazhuang_core/v3_shijiazhuang_core_dynamic_world_2019_100m.tif",
+      "role": "v3_phase_a_land_state_2019",
+      "size_bytes": 5138,
+      "sha256": "f11f05324a738e61a2ab487a83969fc56b9a906f91dc6ab4fed0bca4722a0dbc"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_shijiazhuang_core/v3_shijiazhuang_core_dynamic_world_2020_100m.tif",
+      "role": "v3_phase_a_land_state_2020",
+      "size_bytes": 4676,
+      "sha256": "781f2ceccc4a270a25641955b706627c03ac50010c45102b6461c0304f23bb0b"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_shijiazhuang_core/v3_shijiazhuang_core_dynamic_world_2021_100m.tif",
+      "role": "v3_phase_a_land_state_2021",
+      "size_bytes": 5166,
+      "sha256": "9b37b358769c01d3b180f25d2e8799b5efe9acdc46d7b69efee68af3ab12373b"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_shijiazhuang_core/v3_shijiazhuang_core_dynamic_world_2022_100m.tif",
+      "role": "v3_phase_a_land_state_2022",
+      "size_bytes": 4643,
+      "sha256": "6425f54ff07c398fa64ec1d83146b2550d9fbd9a91e6be8a2d744848f0752984"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_shijiazhuang_core/v3_shijiazhuang_core_srtm_elevation_100m.tif",
+      "role": "v3_phase_a_srtm_elevation",
+      "size_bytes": 29736,
+      "sha256": "3f568827c8d23314137977cff2473cbeea4a5c2f56c1df495601a8dcdab6484c"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_shijiazhuang_core/v3_shijiazhuang_core_srtm_slope_100m.tif",
+      "role": "v3_phase_a_srtm_slope",
+      "size_bytes": 73892,
+      "sha256": "58481d2ea083c6b34b8f4e96b5fdc08fb7d9da772c2e6aa04e9bffd008912752"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_shijiazhuang_core/v3_shijiazhuang_core_viirs_nightlight_mean_100m.tif",
+      "role": "v3_phase_a_viirs_nightlight_mean",
+      "size_bytes": 8320,
+      "sha256": "f7a2868725d4e53bbc789a828abd914d88f167277ffc581cdfe23760fb175415"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_taiyuan_core/v3_taiyuan_core_dynamic_world_2017_100m.tif",
+      "role": "v3_phase_a_land_state_2017",
+      "size_bytes": 5459,
+      "sha256": "9b784b164cb28d9d4c8416ecaade1be76d90809855514d36a0628fae728815ea"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_taiyuan_core/v3_taiyuan_core_dynamic_world_2018_100m.tif",
+      "role": "v3_phase_a_land_state_2018",
+      "size_bytes": 5366,
+      "sha256": "8d7ac4dd755f94a5fcb392990e52a230d9fbe45609850a935b1f7ae23d8cd720"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_taiyuan_core/v3_taiyuan_core_dynamic_world_2019_100m.tif",
+      "role": "v3_phase_a_land_state_2019",
+      "size_bytes": 4803,
+      "sha256": "97793f9e8b7f689acbeb6b828415320ff1e6c7288d65be20b59977c3c91e2030"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_taiyuan_core/v3_taiyuan_core_dynamic_world_2020_100m.tif",
+      "role": "v3_phase_a_land_state_2020",
+      "size_bytes": 4903,
+      "sha256": "066475e399667a2db2809870122216721d5eaa03df09f614448b2ed7bae0d4d9"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_taiyuan_core/v3_taiyuan_core_dynamic_world_2021_100m.tif",
+      "role": "v3_phase_a_land_state_2021",
+      "size_bytes": 5004,
+      "sha256": "548f27e0778723c8fd976e3abd2094c7554b9fd33f0540fae56baf593fe644d1"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_taiyuan_core/v3_taiyuan_core_dynamic_world_2022_100m.tif",
+      "role": "v3_phase_a_land_state_2022",
+      "size_bytes": 4998,
+      "sha256": "76568b1b2f81a5d3d21ddac52c2fa3f0e59ff09c4ccca6663d1e48d8987ca149"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_taiyuan_core/v3_taiyuan_core_srtm_elevation_100m.tif",
+      "role": "v3_phase_a_srtm_elevation",
+      "size_bytes": 39764,
+      "sha256": "a05c8cf9b8248bbf1c78d5b75f2d46a93eaff44ae15dc6682eca3aef50c62584"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_taiyuan_core/v3_taiyuan_core_srtm_slope_100m.tif",
+      "role": "v3_phase_a_srtm_slope",
+      "size_bytes": 89360,
+      "sha256": "bd699432461e4061b092f566f93b70b4de31c15990b4abb8de82d7a21d3c857a"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_taiyuan_core/v3_taiyuan_core_viirs_nightlight_mean_100m.tif",
+      "role": "v3_phase_a_viirs_nightlight_mean",
+      "size_bytes": 8291,
+      "sha256": "18e05e4efdba7acc1d8c29b81a4bcd845e559145ec549441ee469f594642b499"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_urumqi_core/v3_urumqi_core_dynamic_world_2017_100m.tif",
+      "role": "v3_phase_a_land_state_2017",
+      "size_bytes": 7068,
+      "sha256": "693d3783da787be9fd76365f40c09bf1d082c15937854f42dcd1c53d49622f7e"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_urumqi_core/v3_urumqi_core_dynamic_world_2018_100m.tif",
+      "role": "v3_phase_a_land_state_2018",
+      "size_bytes": 6987,
+      "sha256": "17f7fc3848eb4373d1c3584876016cc95e235fc7ebd0b8e73431e332cb0d996f"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_urumqi_core/v3_urumqi_core_dynamic_world_2019_100m.tif",
+      "role": "v3_phase_a_land_state_2019",
+      "size_bytes": 7229,
+      "sha256": "5018d29c58623bffb5be352ac21a12756b943b65e6bf85f674058e2ef6bdf85c"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_urumqi_core/v3_urumqi_core_dynamic_world_2020_100m.tif",
+      "role": "v3_phase_a_land_state_2020",
+      "size_bytes": 7294,
+      "sha256": "d5d0f6bf4600984dd5c40294ef84ee9b0bde85639e6e2d8dad3ef72a241015f8"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_urumqi_core/v3_urumqi_core_dynamic_world_2021_100m.tif",
+      "role": "v3_phase_a_land_state_2021",
+      "size_bytes": 7424,
+      "sha256": "813616fdc2f15c76e3dcf719a67cffc97b541d6981f39f5d77e7f61d6c935cc6"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_urumqi_core/v3_urumqi_core_dynamic_world_2022_100m.tif",
+      "role": "v3_phase_a_land_state_2022",
+      "size_bytes": 7175,
+      "sha256": "94bf40e69b8b0b173e0b6ad16da69fcb10f3c2031f8cffe4f194362c7648852d"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_urumqi_core/v3_urumqi_core_srtm_elevation_100m.tif",
+      "role": "v3_phase_a_srtm_elevation",
+      "size_bytes": 47179,
+      "sha256": "9b8a662bcd43fd135111afc128b2ddcabb27055beeb2aa9ee3321f3f698e1a19"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_urumqi_core/v3_urumqi_core_srtm_slope_100m.tif",
+      "role": "v3_phase_a_srtm_slope",
+      "size_bytes": 109456,
+      "sha256": "ff2e8308ed6b32c6748f62f7294bbde8b23290815d7eda03c8ce08e8a8510800"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_urumqi_core/v3_urumqi_core_viirs_nightlight_mean_100m.tif",
+      "role": "v3_phase_a_viirs_nightlight_mean",
+      "size_bytes": 8258,
+      "sha256": "4f03780e892e4bed0477a82a15b8ee98b7ecca37bcae7087fd3fa1fb8ab7bc93"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_wenzhou_core/v3_wenzhou_core_dynamic_world_2017_100m.tif",
+      "role": "v3_phase_a_land_state_2017",
+      "size_bytes": 5802,
+      "sha256": "e9aa589acb9324daff01bf46f90be11490c7e19f80cefa4d83c4c9b4f3d26e3f"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_wenzhou_core/v3_wenzhou_core_dynamic_world_2018_100m.tif",
+      "role": "v3_phase_a_land_state_2018",
+      "size_bytes": 5862,
+      "sha256": "51a506641ac35b903f0204e736f40afc1b718ef53b37a647fabf13cafd28776a"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_wenzhou_core/v3_wenzhou_core_dynamic_world_2019_100m.tif",
+      "role": "v3_phase_a_land_state_2019",
+      "size_bytes": 5864,
+      "sha256": "5d58bd5c33b0b1b23303c1625dffcf0171cf0a7677f5cc3d2c76f09141da5610"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_wenzhou_core/v3_wenzhou_core_dynamic_world_2020_100m.tif",
+      "role": "v3_phase_a_land_state_2020",
+      "size_bytes": 5852,
+      "sha256": "7d9e75ce6021ca7e5e348ab3209f85609b3b86de5f5265a412e6cf794deaaefb"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_wenzhou_core/v3_wenzhou_core_dynamic_world_2021_100m.tif",
+      "role": "v3_phase_a_land_state_2021",
+      "size_bytes": 5820,
+      "sha256": "f529171f975bae4c19c560fecaa8889925f8c9aa0776f167cef196f68855811a"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_wenzhou_core/v3_wenzhou_core_dynamic_world_2022_100m.tif",
+      "role": "v3_phase_a_land_state_2022",
+      "size_bytes": 5834,
+      "sha256": "b6bf88abba43642a325e3e28fef1fc96c027f0d69d2cf6ba1b8c256d3b62042a"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_wenzhou_core/v3_wenzhou_core_srtm_elevation_100m.tif",
+      "role": "v3_phase_a_srtm_elevation",
+      "size_bytes": 36822,
+      "sha256": "4a644d46affb09aca546616a12fc5022ebfc79c1c4ea320652450cd063dd9bc5"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_wenzhou_core/v3_wenzhou_core_srtm_slope_100m.tif",
+      "role": "v3_phase_a_srtm_slope",
+      "size_bytes": 86250,
+      "sha256": "a2a29024457ffec3ed1f433ebb11e7618fc66a8e54e6e9b112ecc6ee3aaf99a0"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_wenzhou_core/v3_wenzhou_core_viirs_nightlight_mean_100m.tif",
+      "role": "v3_phase_a_viirs_nightlight_mean",
+      "size_bytes": 8034,
+      "sha256": "b07dffca43d107b2f21f58124d9682ca93e4cd7c1af6276cd33c3771b0cf28c3"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_wuxi_core/v3_wuxi_core_dynamic_world_2017_100m.tif",
+      "role": "v3_phase_a_land_state_2017",
+      "size_bytes": 6144,
+      "sha256": "6e2e2a78f655bc2c61f0f7bd61fb3ee4de612b280c1d8db724bee12ba20b74be"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_wuxi_core/v3_wuxi_core_dynamic_world_2018_100m.tif",
+      "role": "v3_phase_a_land_state_2018",
+      "size_bytes": 5388,
+      "sha256": "a4cc6b37c93135f8030932b48fc5fe8f4a4579358236f4fb465119709212360d"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_wuxi_core/v3_wuxi_core_dynamic_world_2019_100m.tif",
+      "role": "v3_phase_a_land_state_2019",
+      "size_bytes": 5462,
+      "sha256": "1954e116ac88cc5af2e1ff99606163d1885ded4558b339c7d4b9227fbc88e587"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_wuxi_core/v3_wuxi_core_dynamic_world_2020_100m.tif",
+      "role": "v3_phase_a_land_state_2020",
+      "size_bytes": 5670,
+      "sha256": "9e978ab5f5d3b9d5c1c449e3d74649092037659672f8f40a4f260da7ccb487f3"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_wuxi_core/v3_wuxi_core_dynamic_world_2021_100m.tif",
+      "role": "v3_phase_a_land_state_2021",
+      "size_bytes": 5760,
+      "sha256": "2a20ffaa4fcf8d021bd0f7d8f48c2a5f9ed813a0ffa7e2e556c535e708185248"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_wuxi_core/v3_wuxi_core_dynamic_world_2022_100m.tif",
+      "role": "v3_phase_a_land_state_2022",
+      "size_bytes": 5445,
+      "sha256": "2db9be0d3a2c3efbc2a867088081386e846a80fb9816101d7fdc13048cb9682c"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_wuxi_core/v3_wuxi_core_srtm_elevation_100m.tif",
+      "role": "v3_phase_a_srtm_elevation",
+      "size_bytes": 32404,
+      "sha256": "198e35298570f3fb04fa2c9833e7c40b2b23290eaafd2cadf95c92043877bfa9"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_wuxi_core/v3_wuxi_core_srtm_slope_100m.tif",
+      "role": "v3_phase_a_srtm_slope",
+      "size_bytes": 82107,
+      "sha256": "68e617e33073174a42e79e3e59c41301fbcb51083c8f85e6561246f634b54964"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_wuxi_core/v3_wuxi_core_viirs_nightlight_mean_100m.tif",
+      "role": "v3_phase_a_viirs_nightlight_mean",
+      "size_bytes": 8090,
+      "sha256": "d10a38b04279fe1d44bce10795e6330739a1ab29f975dbc06d7fca7a7c938573"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_xining_core/v3_xining_core_dynamic_world_2017_100m.tif",
+      "role": "v3_phase_a_land_state_2017",
+      "size_bytes": 8776,
+      "sha256": "684b8237b8cc960326530503792c2f95b1ca78766feed2cb1d92c67cf3aa78f2"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_xining_core/v3_xining_core_dynamic_world_2018_100m.tif",
+      "role": "v3_phase_a_land_state_2018",
+      "size_bytes": 9077,
+      "sha256": "e69a42d0fc7998aa39ae88f7affdbca2b5f3c7b3d31dc5415207e3b2111fda86"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_xining_core/v3_xining_core_dynamic_world_2019_100m.tif",
+      "role": "v3_phase_a_land_state_2019",
+      "size_bytes": 9056,
+      "sha256": "32855347dc85872bb206fa213ad461377668325a1fa17ccdcccf484361ea7245"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_xining_core/v3_xining_core_dynamic_world_2020_100m.tif",
+      "role": "v3_phase_a_land_state_2020",
+      "size_bytes": 9600,
+      "sha256": "c0095a47837ebe1e69a611a9c553166b7799c0694c7224de92f059b1df54b4c0"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_xining_core/v3_xining_core_dynamic_world_2021_100m.tif",
+      "role": "v3_phase_a_land_state_2021",
+      "size_bytes": 8846,
+      "sha256": "7e1cc327dbf2879a69026fdf6d94aef66e199a9fa8036cb286a40602935a57ed"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_xining_core/v3_xining_core_dynamic_world_2022_100m.tif",
+      "role": "v3_phase_a_land_state_2022",
+      "size_bytes": 9025,
+      "sha256": "56c37faeb5d8a4795a64634803574b599ffc2ede773d4117d72efae4515e5dc8"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_xining_core/v3_xining_core_srtm_elevation_100m.tif",
+      "role": "v3_phase_a_srtm_elevation",
+      "size_bytes": 54031,
+      "sha256": "b2cf912b3b2f38c7be8c3302962e7c64c1229a140fcb48a25381d5218d4041a4"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_xining_core/v3_xining_core_srtm_slope_100m.tif",
+      "role": "v3_phase_a_srtm_slope",
+      "size_bytes": 125505,
+      "sha256": "a8e6f0fe4c73747f1cfa8292feaf8d5d8bdb382f81136d0cb4a85d54bb220ead"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_xining_core/v3_xining_core_viirs_nightlight_mean_100m.tif",
+      "role": "v3_phase_a_viirs_nightlight_mean",
+      "size_bytes": 8252,
+      "sha256": "0dfc075607adc31dd4233d70fa148bc4ee0dc794d80cd0436d36bac2eeb72e93"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_yinchuan_core/v3_yinchuan_core_dynamic_world_2017_100m.tif",
+      "role": "v3_phase_a_land_state_2017",
+      "size_bytes": 7470,
+      "sha256": "5cfdf53abe195e127a156aae5aecc96ed2da67bfd870dcec470471ca69386a99"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_yinchuan_core/v3_yinchuan_core_dynamic_world_2018_100m.tif",
+      "role": "v3_phase_a_land_state_2018",
+      "size_bytes": 7611,
+      "sha256": "1a9e0e74cf51a4c35895a7f0db8cb17352802d411c38516ee0d1a57e3ad677f7"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_yinchuan_core/v3_yinchuan_core_dynamic_world_2019_100m.tif",
+      "role": "v3_phase_a_land_state_2019",
+      "size_bytes": 7585,
+      "sha256": "b40da2b7c924200f0586b44966c328c1e2eb6d726d8a90ddb95430a3b7fdd8ce"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_yinchuan_core/v3_yinchuan_core_dynamic_world_2020_100m.tif",
+      "role": "v3_phase_a_land_state_2020",
+      "size_bytes": 7592,
+      "sha256": "a72a09079a56f00a59ac6fead096f02c87bb37fd8865aeec37a0ae7056fda2c4"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_yinchuan_core/v3_yinchuan_core_dynamic_world_2021_100m.tif",
+      "role": "v3_phase_a_land_state_2021",
+      "size_bytes": 7665,
+      "sha256": "4803df840cdcbf1a766fe5d085a4a7a1712e4cdf3c7ebfde59f464601ea2018e"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_yinchuan_core/v3_yinchuan_core_dynamic_world_2022_100m.tif",
+      "role": "v3_phase_a_land_state_2022",
+      "size_bytes": 7414,
+      "sha256": "74e9fd6c0e6912ac87a41ecb55f27ef86366a10332fc696c61e565406078fb52"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_yinchuan_core/v3_yinchuan_core_srtm_elevation_100m.tif",
+      "role": "v3_phase_a_srtm_elevation",
+      "size_bytes": 25644,
+      "sha256": "97ac5fd2c4a9b54d097627525d3a4244fc54d1166d6d462321ca4a1952db95eb"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_yinchuan_core/v3_yinchuan_core_srtm_slope_100m.tif",
+      "role": "v3_phase_a_srtm_slope",
+      "size_bytes": 61429,
+      "sha256": "7357a2a7f7affacfa2e9c7e8b53abd54b2ce389ea51eb97fe974783a02649a00"
+    },
+    {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/v3_yinchuan_core/v3_yinchuan_core_viirs_nightlight_mean_100m.tif",
+      "role": "v3_phase_a_viirs_nightlight_mean",
+      "size_bytes": 8213,
+      "sha256": "4e54b20c9c874bcfa506d55a0b8152cd9af361ca9282516591a3cad7b765f893"
+    }
+  ],
+  "source_fingerprint": "bd958afe0e0ceac972061cd5ff704175037bd77498fbb0a233c15510f369e9dd"
+}

@@ -1,0 +1,161 @@
+{
+  "schema": "gwm_bench.foundation_v3_controlled_c2_results.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+  "track_id": "CONTROLLED-C2",
+  "status": "CONTROLLED_C2_COMPLETED_STABILITY_PASS",
+  "formal_run_count": 1,
+  "contract_sha256": "a16c27b908e32c8b62e6e5c749eea447ee76c90c0eb8603273f71f2562984ae5",
+  "runner_sha256": "99461265be6465a24254e915c78c7dd59fefe050e13bfd985931a9466860631b",
+  "corpus_manifest_fingerprint": "b414037ecb21b566dd19de8e776a97b25d8d13b067f110b5f15b266b0c226056",
+  "fit_corpus_fingerprint": "c37f35c2bac86110a7189cd40b790f80638d2427f9c0cf20ca7bfa25d6a270f7",
+  "ood_corpus_fingerprint": "c9c2d3cbe804f7cb4f7de612afbe325032b9d7ff860a85728072fdbd90ea2a78",
+  "sample_count": 512,
+  "fit_seeds": [
+    17,
+    31,
+    47,
+    73,
+    101,
+    137,
+    173,
+    211,
+    251,
+    293
+  ],
+  "stability_pass_count": 8,
+  "required_stability_pass_count": 8,
+  "aggregate_dam_gk_full_metrics": {
+    "state_delta_mae": {
+      "mean": 0.0029592649021651595,
+      "median": 0.002635612851008773,
+      "min": 0.000922015926335007,
+      "max": 0.0056616016663610935
+    },
+    "affected_node_state_delta_mae": {
+      "mean": 0.004540008003823459,
+      "median": 0.0042233450803905725,
+      "min": 0.002198035130277276,
+      "max": 0.0074924202635884285
+    },
+    "effective_gate_mae": {
+      "mean": 0.011814455036073923,
+      "median": 0.011386231984943151,
+      "min": 0.008276487700641155,
+      "max": 0.01649952121078968
+    },
+    "topology_probability_mae": {
+      "mean": 0.0833183841779828,
+      "median": 0.03909510746598244,
+      "min": 0.025518672540783882,
+      "max": 0.2588755190372467
+    },
+    "lag_distribution_mae": {
+      "mean": 0.08380327224731446,
+      "median": 0.08036172389984131,
+      "min": 0.07516679912805557,
+      "max": 0.10451435297727585
+    },
+    "mechanism_macro_mae": {
+      "mean": 0.05964537151157856,
+      "median": 0.04718252643942833,
+      "min": 0.03779001906514168,
+      "max": 0.11650709062814713
+    }
+  },
+  "control_direction_pass_counts": {
+    "no_action_conditioning_degrades": 10,
+    "fixed_topology_degrades": 10,
+    "single_relation_degrades": 8,
+    "no_lag_structure_degrades": 10,
+    "action_assignment_shuffle_degrades": 10,
+    "relation_type_shuffle_degrades": 10,
+    "spatial_target_rewire_degrades": 10
+  },
+  "completion_checks": {
+    "contract_was_frozen": true,
+    "formal_seed_count_is_ten": true,
+    "minimum_512_samples": true,
+    "all_hidden_factor_checks_pass": true,
+    "all_seven_controls_reported_for_every_seed": true,
+    "stability_pass_count_meets_gate": true,
+    "single_formal_assembly": true
+  },
+  "seed_artifacts": {
+    "17": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/controlled_c2/seed_runs/seed_17.json",
+      "size_bytes": 5561,
+      "sha256": "f1eaeb4175841132d4e1aca6e1c4e3a1876801296e6bc5f1ec11907f47b78834",
+      "seed_result_fingerprint": "409ce3e4db5400d3fa08986ec4bdd402bdc32ffcb5ce3a9ab1c54e51b7534c4b"
+    },
+    "31": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/controlled_c2/seed_runs/seed_31.json",
+      "size_bytes": 5558,
+      "sha256": "5ff6de886e86e1d3931a3596e0e314bc8aa733e58dd362bb7d1b4f1d55854207",
+      "seed_result_fingerprint": "40e708d51a150c0b7eacd7e0c3849547ab62c9fa069f515261b3c46a667ae921"
+    },
+    "47": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/controlled_c2/seed_runs/seed_47.json",
+      "size_bytes": 5564,
+      "sha256": "83a419baef8f2335bfa988e6bf8e90280700dfcbed30ba8040b1cad55ea52b55",
+      "seed_result_fingerprint": "7352c40abe770210fbdcdc0a7526802bf434b4ac944a1b21301164423ff88c8c"
+    },
+    "73": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/controlled_c2/seed_runs/seed_73.json",
+      "size_bytes": 5558,
+      "sha256": "54dc7f3235ebf40e0a033811f133e2b4d000886851181abd423e0acba7cd7344",
+      "seed_result_fingerprint": "2fb2b62216b9e61cb86b05840e595c28c601feb58110e5ded3b7bb43b5a8c4d7"
+    },
+    "101": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/controlled_c2/seed_runs/seed_101.json",
+      "size_bytes": 5566,
+      "sha256": "1caf980bc6c88992dc8d2282662819e304dd73480a6032409ed493c2f8704ea6",
+      "seed_result_fingerprint": "d4732a2e35584923ec4e966e837042377f3f1f3a6870c1ea9d3f486ab667d51d"
+    },
+    "137": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/controlled_c2/seed_runs/seed_137.json",
+      "size_bytes": 5563,
+      "sha256": "074dca1567f7b64c31a619afdedf8a892bb7e1b215be94d60fb783d20d5682fb",
+      "seed_result_fingerprint": "e18458c1a4be7351378f1b454b790a7feb85946d63e9d310735572635676cb6f"
+    },
+    "173": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/controlled_c2/seed_runs/seed_173.json",
+      "size_bytes": 5564,
+      "sha256": "5195dbf172b6e1d8c09ad959beaa93d81cac6dab505b185dd0594c30832091d5",
+      "seed_result_fingerprint": "da33fee8bba521e0592d1fe36598580208f5cef78a80e776fe1b516930115b3e"
+    },
+    "211": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/controlled_c2/seed_runs/seed_211.json",
+      "size_bytes": 5573,
+      "sha256": "b8d23867c9f48227816eb95c3aed9b9e2a1b9e2b82737f1b9ed4ab06bb706787",
+      "seed_result_fingerprint": "c7fdb17428879bc6f075cf8e4f6cb5215f881d0ff2606f11f38657689d5f47ba"
+    },
+    "251": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/controlled_c2/seed_runs/seed_251.json",
+      "size_bytes": 5566,
+      "sha256": "d9b72844aa2280292dda17b05d7cd4727501f2a755bee952a4558faa05e79a53",
+      "seed_result_fingerprint": "e1a5fa24ce6fda58a9301eefb97483e6b6eb9ec8c83c163665a515402756650a"
+    },
+    "293": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/controlled_c2/seed_runs/seed_293.json",
+      "size_bytes": 5567,
+      "sha256": "6e3b5211dfedf40d94307c078090d3ba7443f65de1eef463727db2bcbe45a390",
+      "seed_result_fingerprint": "04127b82d837556fa20c35a03a1835e4b31229f618c8beb12ee9c9c6f4aa904e"
+    }
+  },
+  "claim_boundary": {
+    "real_action_effect_claimed": false,
+    "observed_policy_effect_claimed": false,
+    "cross_domain_transfer_claimed": false,
+    "maximum_supported_claim": "controlled_out_of_distribution_dam_gk_mechanism_transfer"
+  },
+  "created_at": "2026-07-23T13:39:55.217381+00:00",
+  "environment": {
+    "python": "3.11.15",
+    "platform": "macOS-26.5.2-arm64-arm-64bit",
+    "torch": "2.10.0",
+    "numpy": "2.4.6",
+    "torch_num_threads": 6,
+    "pid": 59482
+  },
+  "controlled_c2_results_fingerprint": "6cd522355ba50ef00c83e329fd6124c9d34abb5e115b12e3f6351bdcf4b04f14"
+}

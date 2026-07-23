@@ -1,0 +1,73 @@
+{
+  "schema": "gwm_bench.foundation_v3_final_verification.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+  "status": "PASS_V3_FINAL_VERIFIED",
+  "created_at": "2026-07-23T13:46:10.303382+00:00",
+  "checks": {
+    "final_status_is_completed": true,
+    "formal_scoring_event_count_is_one": true,
+    "final_fingerprint_matches": true,
+    "protocol_hash_matches": true,
+    "prediction_commitment_fingerprint_matches": true,
+    "target_dataset_fingerprint_matches": true,
+    "evaluator_hash_matches_seal": true,
+    "all_five_model_evaluation_hashes_match": true,
+    "all_five_models_published": true,
+    "negative_results_retained": true,
+    "single_composite_score_is_false": true
+  },
+  "models": {
+    "twm_dam_gk_candidate": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/final_results/twm_dam_gk_candidate_evaluation.json",
+      "sha256": "b15e6c04fc24878b11281913da8dc8cec47c6d730f81b91822b8ef4a67847232",
+      "passed": true
+    },
+    "geosos_flus_three_seed_ensemble": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/final_results/geosos_flus_three_seed_ensemble_evaluation.json",
+      "sha256": "e7d1441043926771c6b37e22190809c6559cad81fd9dcc357be9b9612f49d210",
+      "passed": true
+    },
+    "state_persistence": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/final_results/state_persistence_evaluation.json",
+      "sha256": "ce48f38295d99743ee49a084fb3cfa35428e91602e05e7df505a692e99937d01",
+      "passed": true
+    },
+    "nonspatial_history_only": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/final_results/nonspatial_history_only_evaluation.json",
+      "sha256": "b121d9bc70207a2aec41b3a907287772b0909724dc8f429c6ad953de8827135c",
+      "passed": true
+    },
+    "fixed_adjacency_spatial": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/final_results/fixed_adjacency_spatial_evaluation.json",
+      "sha256": "82af2add212d0e6d82c18f1c7d27831348e0111cf67073ee96df4364696e1709",
+      "passed": true
+    }
+  },
+  "final_results_fingerprint": "22fa0c1682a98a5902acba121f622232eb9cba4d4df6a76c9240677e3525d0b7",
+  "artifacts": {
+    "final_results": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/final_results/final_results.json",
+      "role": "verified_v3_final_results",
+      "size_bytes": 21028,
+      "sha256": "3a2adb16c429f25c462a8814fa73b18dc2ed58f828a1ad6cbfbf056c94e576ba"
+    },
+    "prediction_commitment": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/prediction_commitment.json",
+      "role": "verified_pre_target_prediction_commitment",
+      "size_bytes": 17755,
+      "sha256": "4bc8f9cbfa8b89c600c70834d844fc592c04ddbb001bd8878d01c1e8c2f5f6a2"
+    },
+    "target_registry": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/phase_c_targets/target_registry.json",
+      "role": "verified_phase_c_target_registry",
+      "size_bytes": 52646,
+      "sha256": "75ba60d81b75b652c8e5ae6eb33bdc796940666cb22f04adf40d8ff8e2387633"
+    },
+    "evaluator": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/observed_o3_evaluator.py",
+      "role": "verified_sealed_evaluator",
+      "size_bytes": 10096,
+      "sha256": "740ea9b657e84b6105cbea9f09276f14ecc81221c4ab7ca17739798746ae2e60"
+    }
+  }
+}

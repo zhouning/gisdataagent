@@ -1,0 +1,16 @@
+{
+  "schema": "gwm_bench.runtime_r2_failed_run.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+  "model_group": "geosos_flus_three_seed_ensemble",
+  "status": "FAILED_BEFORE_PREDICTION_RETAINED",
+  "stage": "seed_31_ann_training_chunk_0",
+  "exit_code": -6,
+  "failure_type": "alglib::ap_error",
+  "root_cause": "A constant-zero VIIRS change driver became NaN under FLUS min-max normalization.",
+  "remediation": "Remove the unavailable, zero-variance driver and retain the five observed nonconstant drivers.",
+  "temporary_evidence_path": "/private/tmp/gwm-v3-flus-auljrc0h",
+  "flus_log_sha256": "b7c5bf0b4549ead1dcdb6b0e97d7072284a49da49810bc93c0b1ae90817a3e91",
+  "prediction_rows_produced": 0,
+  "target_pixels_read": false,
+  "target_file_count": 0
+}

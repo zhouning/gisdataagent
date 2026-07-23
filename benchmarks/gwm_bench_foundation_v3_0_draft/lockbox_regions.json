@@ -1,0 +1,180 @@
+{
+  "schema": "gwm_bench.foundation_v3_geographic_lockbox.v1",
+  "region_set_id": "gwm-v3-china-new-city-lockbox-20-draft1",
+  "selected_at": "2026-07-23",
+  "selection_basis": "Fixed 0.16 degree city-core boxes chosen from cities absent from the V1/V2 20-region development set. Selection used geography only and did not inspect 2023-2025 target labels.",
+  "target_labels_inspected_for_selection": false,
+  "bbox_size_degrees": [
+    0.16,
+    0.16
+  ],
+  "strata": [
+    {
+      "stratum_id": "northeast_bohai",
+      "region_ids": [
+        "v3_shenyang_core",
+        "v3_dalian_core",
+        "v3_changchun_core",
+        "v3_harbin_core"
+      ]
+    },
+    {
+      "stratum_id": "north_china_plain",
+      "region_ids": [
+        "v3_jinan_core",
+        "v3_qingdao_core",
+        "v3_shijiazhuang_core",
+        "v3_taiyuan_core"
+      ]
+    },
+    {
+      "stratum_id": "east_southeast",
+      "region_ids": [
+        "v3_wuxi_core",
+        "v3_wenzhou_core",
+        "v3_nanchang_core",
+        "v3_quanzhou_core"
+      ]
+    },
+    {
+      "stratum_id": "south_southwest",
+      "region_ids": [
+        "v3_kunming_core",
+        "v3_guiyang_core",
+        "v3_nanning_core",
+        "v3_haikou_core"
+      ]
+    },
+    {
+      "stratum_id": "northwest",
+      "region_ids": [
+        "v3_urumqi_core",
+        "v3_lanzhou_core",
+        "v3_xining_core",
+        "v3_yinchuan_core"
+      ]
+    }
+  ],
+  "regions": [
+    {
+      "region_id": "v3_shenyang_core",
+      "city": "Shenyang",
+      "stratum_id": "northeast_bohai",
+      "bbox": [123.35, 41.72, 123.51, 41.88]
+    },
+    {
+      "region_id": "v3_dalian_core",
+      "city": "Dalian",
+      "stratum_id": "northeast_bohai",
+      "bbox": [121.54, 38.84, 121.7, 39.0]
+    },
+    {
+      "region_id": "v3_changchun_core",
+      "city": "Changchun",
+      "stratum_id": "northeast_bohai",
+      "bbox": [125.24, 43.8, 125.4, 43.96]
+    },
+    {
+      "region_id": "v3_harbin_core",
+      "city": "Harbin",
+      "stratum_id": "northeast_bohai",
+      "bbox": [126.55, 45.68, 126.71, 45.84]
+    },
+    {
+      "region_id": "v3_jinan_core",
+      "city": "Jinan",
+      "stratum_id": "north_china_plain",
+      "bbox": [116.9, 36.58, 117.06, 36.74]
+    },
+    {
+      "region_id": "v3_qingdao_core",
+      "city": "Qingdao",
+      "stratum_id": "north_china_plain",
+      "bbox": [120.3, 36.0, 120.46, 36.16]
+    },
+    {
+      "region_id": "v3_shijiazhuang_core",
+      "city": "Shijiazhuang",
+      "stratum_id": "north_china_plain",
+      "bbox": [114.43, 38.0, 114.59, 38.16]
+    },
+    {
+      "region_id": "v3_taiyuan_core",
+      "city": "Taiyuan",
+      "stratum_id": "north_china_plain",
+      "bbox": [112.47, 37.78, 112.63, 37.94]
+    },
+    {
+      "region_id": "v3_wuxi_core",
+      "city": "Wuxi",
+      "stratum_id": "east_southeast",
+      "bbox": [120.22, 31.49, 120.38, 31.65]
+    },
+    {
+      "region_id": "v3_wenzhou_core",
+      "city": "Wenzhou",
+      "stratum_id": "east_southeast",
+      "bbox": [120.62, 27.92, 120.78, 28.08]
+    },
+    {
+      "region_id": "v3_nanchang_core",
+      "city": "Nanchang",
+      "stratum_id": "east_southeast",
+      "bbox": [115.78, 28.6, 115.94, 28.76]
+    },
+    {
+      "region_id": "v3_quanzhou_core",
+      "city": "Quanzhou",
+      "stratum_id": "east_southeast",
+      "bbox": [118.5, 24.82, 118.66, 24.98]
+    },
+    {
+      "region_id": "v3_kunming_core",
+      "city": "Kunming",
+      "stratum_id": "south_southwest",
+      "bbox": [102.64, 24.96, 102.8, 25.12]
+    },
+    {
+      "region_id": "v3_guiyang_core",
+      "city": "Guiyang",
+      "stratum_id": "south_southwest",
+      "bbox": [106.63, 26.5, 106.79, 26.66]
+    },
+    {
+      "region_id": "v3_nanning_core",
+      "city": "Nanning",
+      "stratum_id": "south_southwest",
+      "bbox": [108.24, 22.72, 108.4, 22.88]
+    },
+    {
+      "region_id": "v3_haikou_core",
+      "city": "Haikou",
+      "stratum_id": "south_southwest",
+      "bbox": [110.25, 19.97, 110.41, 20.13]
+    },
+    {
+      "region_id": "v3_urumqi_core",
+      "city": "Urumqi",
+      "stratum_id": "northwest",
+      "bbox": [87.54, 43.74, 87.7, 43.9]
+    },
+    {
+      "region_id": "v3_lanzhou_core",
+      "city": "Lanzhou",
+      "stratum_id": "northwest",
+      "bbox": [103.74, 36.0, 103.9, 36.16]
+    },
+    {
+      "region_id": "v3_xining_core",
+      "city": "Xining",
+      "stratum_id": "northwest",
+      "bbox": [101.7, 36.54, 101.86, 36.7]
+    },
+    {
+      "region_id": "v3_yinchuan_core",
+      "city": "Yinchuan",
+      "stratum_id": "northwest",
+      "bbox": [106.15, 38.4, 106.31, 38.56]
+    }
+  ]
+}

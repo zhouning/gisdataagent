@@ -1,0 +1,52 @@
+{
+  "schema": "gwm_bench.observed_o3_evaluator_conformance.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+  "generated_at": "2026-07-23T07:06:28.950859+00:00",
+  "status": "PASS_EVALUATOR_CONFORMANCE",
+  "check_count": 16,
+  "checks": {
+    "constructed_oracle_scores_perfectly": true,
+    "evaluator_is_deterministic": true,
+    "constructed_persistence_is_not_better_than_oracle": true,
+    "duplicate_submission_key_rejected": true,
+    "missing_submission_key_rejected": true,
+    "extra_submission_column_rejected": true,
+    "non_finite_probability_rejected": true,
+    "out_of_range_probability_rejected": true,
+    "probability_sum_rejected": true,
+    "duplicate_label_key_rejected": true,
+    "missing_label_key_rejected": true,
+    "out_of_range_target_class_rejected": true,
+    "extra_label_column_rejected": true,
+    "temporary_constructed_labels_removed": true,
+    "real_target_directory_contains_no_files": true,
+    "real_target_pixels_not_read": true
+  },
+  "constructed_row_count": 3681,
+  "constructed_oracle_primary": 1.0,
+  "constructed_persistence_primary": 0.0,
+  "source_artifacts": {
+    "evaluator": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/observed_o3_evaluator.py",
+      "sha256": "740ea9b657e84b6105cbea9f09276f14ecc81221c4ab7ca17739798746ae2e60"
+    },
+    "runtime_contract": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/runtime_r2_contract.json",
+      "sha256": "6ee33a19dafa2de9e276fe66c7e8cc8e886a0098960dd00242f48b4f5a8da704"
+    },
+    "submission_contract": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/submission_contract.json",
+      "sha256": "0afab3fcf576198a311f3f7aa75937bf712b8eb79b4948942807dc2ae6a3f7bf"
+    },
+    "bundle_manifest": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/phase_a_bundle/bundle_manifest.json",
+      "sha256": "3c6529e46e90d7d18cf75627680fa76d60a5ae1a18d31a58d5f576db7078fbcf"
+    }
+  },
+  "protocol": {
+    "constructed_labels_are_real_lockbox_labels": false,
+    "constructed_labels_retained": false,
+    "real_target_pixels_read": false,
+    "llm_judge_used": false
+  }
+}

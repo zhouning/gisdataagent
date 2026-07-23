@@ -1,0 +1,582 @@
+{
+  "schema": "territory_world_model.gee_dynamic_world_download_status.v1",
+  "status": "pass",
+  "source": {
+    "provider": "Google Earth Engine",
+    "collection": "GOOGLE/DYNAMICWORLD/V1",
+    "label_band": "label",
+    "annual_reducer": "mode",
+    "scale_m": 100,
+    "crs": "EPSG:3857",
+    "include_drivers": false,
+    "driver_years": [
+      2017,
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023
+    ]
+  },
+  "project": "ee-zn19860115",
+  "region_count": 20,
+  "years": [
+    2023,
+    2024,
+    2025
+  ],
+  "expected_raster_count": 60,
+  "output_dir": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025",
+  "manifest_output": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/manifest.json",
+  "regions": [
+    {
+      "region_id": "v3_shenyang_core",
+      "bbox": [
+        123.35,
+        41.72,
+        123.51,
+        41.88
+      ]
+    },
+    {
+      "region_id": "v3_dalian_core",
+      "bbox": [
+        121.54,
+        38.84,
+        121.7,
+        39.0
+      ]
+    },
+    {
+      "region_id": "v3_changchun_core",
+      "bbox": [
+        125.24,
+        43.8,
+        125.4,
+        43.96
+      ]
+    },
+    {
+      "region_id": "v3_harbin_core",
+      "bbox": [
+        126.55,
+        45.68,
+        126.71,
+        45.84
+      ]
+    },
+    {
+      "region_id": "v3_jinan_core",
+      "bbox": [
+        116.9,
+        36.58,
+        117.06,
+        36.74
+      ]
+    },
+    {
+      "region_id": "v3_qingdao_core",
+      "bbox": [
+        120.3,
+        36.0,
+        120.46,
+        36.16
+      ]
+    },
+    {
+      "region_id": "v3_shijiazhuang_core",
+      "bbox": [
+        114.43,
+        38.0,
+        114.59,
+        38.16
+      ]
+    },
+    {
+      "region_id": "v3_taiyuan_core",
+      "bbox": [
+        112.47,
+        37.78,
+        112.63,
+        37.94
+      ]
+    },
+    {
+      "region_id": "v3_wuxi_core",
+      "bbox": [
+        120.22,
+        31.49,
+        120.38,
+        31.65
+      ]
+    },
+    {
+      "region_id": "v3_wenzhou_core",
+      "bbox": [
+        120.62,
+        27.92,
+        120.78,
+        28.08
+      ]
+    },
+    {
+      "region_id": "v3_nanchang_core",
+      "bbox": [
+        115.78,
+        28.6,
+        115.94,
+        28.76
+      ]
+    },
+    {
+      "region_id": "v3_quanzhou_core",
+      "bbox": [
+        118.5,
+        24.82,
+        118.66,
+        24.98
+      ]
+    },
+    {
+      "region_id": "v3_kunming_core",
+      "bbox": [
+        102.64,
+        24.96,
+        102.8,
+        25.12
+      ]
+    },
+    {
+      "region_id": "v3_guiyang_core",
+      "bbox": [
+        106.63,
+        26.5,
+        106.79,
+        26.66
+      ]
+    },
+    {
+      "region_id": "v3_nanning_core",
+      "bbox": [
+        108.24,
+        22.72,
+        108.4,
+        22.88
+      ]
+    },
+    {
+      "region_id": "v3_haikou_core",
+      "bbox": [
+        110.25,
+        19.97,
+        110.41,
+        20.13
+      ]
+    },
+    {
+      "region_id": "v3_urumqi_core",
+      "bbox": [
+        87.54,
+        43.74,
+        87.7,
+        43.9
+      ]
+    },
+    {
+      "region_id": "v3_lanzhou_core",
+      "bbox": [
+        103.74,
+        36.0,
+        103.9,
+        36.16
+      ]
+    },
+    {
+      "region_id": "v3_xining_core",
+      "bbox": [
+        101.7,
+        36.54,
+        101.86,
+        36.7
+      ]
+    },
+    {
+      "region_id": "v3_yinchuan_core",
+      "bbox": [
+        106.15,
+        38.4,
+        106.31,
+        38.56
+      ]
+    }
+  ],
+  "downloads": [
+    {
+      "region_id": "v3_shenyang_core",
+      "year": 2023,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_shenyang_core/v3_shenyang_core_dynamic_world_2023_100m.tif"
+    },
+    {
+      "region_id": "v3_shenyang_core",
+      "year": 2024,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_shenyang_core/v3_shenyang_core_dynamic_world_2024_100m.tif"
+    },
+    {
+      "region_id": "v3_shenyang_core",
+      "year": 2025,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_shenyang_core/v3_shenyang_core_dynamic_world_2025_100m.tif"
+    },
+    {
+      "region_id": "v3_dalian_core",
+      "year": 2023,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_dalian_core/v3_dalian_core_dynamic_world_2023_100m.tif"
+    },
+    {
+      "region_id": "v3_dalian_core",
+      "year": 2024,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_dalian_core/v3_dalian_core_dynamic_world_2024_100m.tif"
+    },
+    {
+      "region_id": "v3_dalian_core",
+      "year": 2025,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_dalian_core/v3_dalian_core_dynamic_world_2025_100m.tif"
+    },
+    {
+      "region_id": "v3_changchun_core",
+      "year": 2023,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_changchun_core/v3_changchun_core_dynamic_world_2023_100m.tif"
+    },
+    {
+      "region_id": "v3_changchun_core",
+      "year": 2024,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_changchun_core/v3_changchun_core_dynamic_world_2024_100m.tif"
+    },
+    {
+      "region_id": "v3_changchun_core",
+      "year": 2025,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_changchun_core/v3_changchun_core_dynamic_world_2025_100m.tif"
+    },
+    {
+      "region_id": "v3_harbin_core",
+      "year": 2023,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_harbin_core/v3_harbin_core_dynamic_world_2023_100m.tif"
+    },
+    {
+      "region_id": "v3_harbin_core",
+      "year": 2024,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_harbin_core/v3_harbin_core_dynamic_world_2024_100m.tif"
+    },
+    {
+      "region_id": "v3_harbin_core",
+      "year": 2025,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_harbin_core/v3_harbin_core_dynamic_world_2025_100m.tif"
+    },
+    {
+      "region_id": "v3_jinan_core",
+      "year": 2023,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_jinan_core/v3_jinan_core_dynamic_world_2023_100m.tif"
+    },
+    {
+      "region_id": "v3_jinan_core",
+      "year": 2024,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_jinan_core/v3_jinan_core_dynamic_world_2024_100m.tif"
+    },
+    {
+      "region_id": "v3_jinan_core",
+      "year": 2025,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_jinan_core/v3_jinan_core_dynamic_world_2025_100m.tif"
+    },
+    {
+      "region_id": "v3_qingdao_core",
+      "year": 2023,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_qingdao_core/v3_qingdao_core_dynamic_world_2023_100m.tif"
+    },
+    {
+      "region_id": "v3_qingdao_core",
+      "year": 2024,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_qingdao_core/v3_qingdao_core_dynamic_world_2024_100m.tif"
+    },
+    {
+      "region_id": "v3_qingdao_core",
+      "year": 2025,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_qingdao_core/v3_qingdao_core_dynamic_world_2025_100m.tif"
+    },
+    {
+      "region_id": "v3_shijiazhuang_core",
+      "year": 2023,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_shijiazhuang_core/v3_shijiazhuang_core_dynamic_world_2023_100m.tif"
+    },
+    {
+      "region_id": "v3_shijiazhuang_core",
+      "year": 2024,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_shijiazhuang_core/v3_shijiazhuang_core_dynamic_world_2024_100m.tif"
+    },
+    {
+      "region_id": "v3_shijiazhuang_core",
+      "year": 2025,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_shijiazhuang_core/v3_shijiazhuang_core_dynamic_world_2025_100m.tif"
+    },
+    {
+      "region_id": "v3_taiyuan_core",
+      "year": 2023,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_taiyuan_core/v3_taiyuan_core_dynamic_world_2023_100m.tif"
+    },
+    {
+      "region_id": "v3_taiyuan_core",
+      "year": 2024,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_taiyuan_core/v3_taiyuan_core_dynamic_world_2024_100m.tif"
+    },
+    {
+      "region_id": "v3_taiyuan_core",
+      "year": 2025,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_taiyuan_core/v3_taiyuan_core_dynamic_world_2025_100m.tif"
+    },
+    {
+      "region_id": "v3_wuxi_core",
+      "year": 2023,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_wuxi_core/v3_wuxi_core_dynamic_world_2023_100m.tif"
+    },
+    {
+      "region_id": "v3_wuxi_core",
+      "year": 2024,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_wuxi_core/v3_wuxi_core_dynamic_world_2024_100m.tif"
+    },
+    {
+      "region_id": "v3_wuxi_core",
+      "year": 2025,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_wuxi_core/v3_wuxi_core_dynamic_world_2025_100m.tif"
+    },
+    {
+      "region_id": "v3_wenzhou_core",
+      "year": 2023,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_wenzhou_core/v3_wenzhou_core_dynamic_world_2023_100m.tif"
+    },
+    {
+      "region_id": "v3_wenzhou_core",
+      "year": 2024,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_wenzhou_core/v3_wenzhou_core_dynamic_world_2024_100m.tif"
+    },
+    {
+      "region_id": "v3_wenzhou_core",
+      "year": 2025,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_wenzhou_core/v3_wenzhou_core_dynamic_world_2025_100m.tif"
+    },
+    {
+      "region_id": "v3_nanchang_core",
+      "year": 2023,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_nanchang_core/v3_nanchang_core_dynamic_world_2023_100m.tif"
+    },
+    {
+      "region_id": "v3_nanchang_core",
+      "year": 2024,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_nanchang_core/v3_nanchang_core_dynamic_world_2024_100m.tif"
+    },
+    {
+      "region_id": "v3_nanchang_core",
+      "year": 2025,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_nanchang_core/v3_nanchang_core_dynamic_world_2025_100m.tif"
+    },
+    {
+      "region_id": "v3_quanzhou_core",
+      "year": 2023,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_quanzhou_core/v3_quanzhou_core_dynamic_world_2023_100m.tif"
+    },
+    {
+      "region_id": "v3_quanzhou_core",
+      "year": 2024,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_quanzhou_core/v3_quanzhou_core_dynamic_world_2024_100m.tif"
+    },
+    {
+      "region_id": "v3_quanzhou_core",
+      "year": 2025,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_quanzhou_core/v3_quanzhou_core_dynamic_world_2025_100m.tif"
+    },
+    {
+      "region_id": "v3_kunming_core",
+      "year": 2023,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_kunming_core/v3_kunming_core_dynamic_world_2023_100m.tif"
+    },
+    {
+      "region_id": "v3_kunming_core",
+      "year": 2024,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_kunming_core/v3_kunming_core_dynamic_world_2024_100m.tif"
+    },
+    {
+      "region_id": "v3_kunming_core",
+      "year": 2025,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_kunming_core/v3_kunming_core_dynamic_world_2025_100m.tif"
+    },
+    {
+      "region_id": "v3_guiyang_core",
+      "year": 2023,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_guiyang_core/v3_guiyang_core_dynamic_world_2023_100m.tif"
+    },
+    {
+      "region_id": "v3_guiyang_core",
+      "year": 2024,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_guiyang_core/v3_guiyang_core_dynamic_world_2024_100m.tif"
+    },
+    {
+      "region_id": "v3_guiyang_core",
+      "year": 2025,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_guiyang_core/v3_guiyang_core_dynamic_world_2025_100m.tif"
+    },
+    {
+      "region_id": "v3_nanning_core",
+      "year": 2023,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_nanning_core/v3_nanning_core_dynamic_world_2023_100m.tif"
+    },
+    {
+      "region_id": "v3_nanning_core",
+      "year": 2024,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_nanning_core/v3_nanning_core_dynamic_world_2024_100m.tif"
+    },
+    {
+      "region_id": "v3_nanning_core",
+      "year": 2025,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_nanning_core/v3_nanning_core_dynamic_world_2025_100m.tif"
+    },
+    {
+      "region_id": "v3_haikou_core",
+      "year": 2023,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_haikou_core/v3_haikou_core_dynamic_world_2023_100m.tif"
+    },
+    {
+      "region_id": "v3_haikou_core",
+      "year": 2024,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_haikou_core/v3_haikou_core_dynamic_world_2024_100m.tif"
+    },
+    {
+      "region_id": "v3_haikou_core",
+      "year": 2025,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_haikou_core/v3_haikou_core_dynamic_world_2025_100m.tif"
+    },
+    {
+      "region_id": "v3_urumqi_core",
+      "year": 2023,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_urumqi_core/v3_urumqi_core_dynamic_world_2023_100m.tif"
+    },
+    {
+      "region_id": "v3_urumqi_core",
+      "year": 2024,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_urumqi_core/v3_urumqi_core_dynamic_world_2024_100m.tif"
+    },
+    {
+      "region_id": "v3_urumqi_core",
+      "year": 2025,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_urumqi_core/v3_urumqi_core_dynamic_world_2025_100m.tif"
+    },
+    {
+      "region_id": "v3_lanzhou_core",
+      "year": 2023,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_lanzhou_core/v3_lanzhou_core_dynamic_world_2023_100m.tif"
+    },
+    {
+      "region_id": "v3_lanzhou_core",
+      "year": 2024,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_lanzhou_core/v3_lanzhou_core_dynamic_world_2024_100m.tif"
+    },
+    {
+      "region_id": "v3_lanzhou_core",
+      "year": 2025,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_lanzhou_core/v3_lanzhou_core_dynamic_world_2025_100m.tif"
+    },
+    {
+      "region_id": "v3_xining_core",
+      "year": 2023,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_xining_core/v3_xining_core_dynamic_world_2023_100m.tif"
+    },
+    {
+      "region_id": "v3_xining_core",
+      "year": 2024,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_xining_core/v3_xining_core_dynamic_world_2024_100m.tif"
+    },
+    {
+      "region_id": "v3_xining_core",
+      "year": 2025,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_xining_core/v3_xining_core_dynamic_world_2025_100m.tif"
+    },
+    {
+      "region_id": "v3_yinchuan_core",
+      "year": 2023,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_yinchuan_core/v3_yinchuan_core_dynamic_world_2023_100m.tif"
+    },
+    {
+      "region_id": "v3_yinchuan_core",
+      "year": 2024,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_yinchuan_core/v3_yinchuan_core_dynamic_world_2024_100m.tif"
+    },
+    {
+      "region_id": "v3_yinchuan_core",
+      "year": 2025,
+      "status": "downloaded",
+      "path": "/Users/zhouning/gisdataagent/data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_yinchuan_core/v3_yinchuan_core_dynamic_world_2025_100m.tif"
+    }
+  ],
+  "blocked_reason": "",
+  "downloaded_region_count": 20,
+  "downloaded_raster_count": 60,
+  "downloaded_driver_count": 0,
+  "failed_count": 0,
+  "failures": []
+}

@@ -1,0 +1,54 @@
+{
+  "schema": "gwm_bench.v3_internal_baselines.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+  "status": "THREE_INTERNAL_BASELINES_COMPLETE_REPLAY_PENDING",
+  "created_at": "2026-07-23T07:17:53.671995+00:00",
+  "phase_a_bundle_fingerprint": "652a009fd38f79308ee7ddd71549db5c71760e8cc884217cb29e85bcf184a7e3",
+  "target_pixels_read": false,
+  "target_file_count": 0,
+  "reports": {
+    "state_persistence": {
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/state_persistence/prediction.parquet",
+        "role": "sealed_v3_probability_prediction",
+        "size_bytes": 10919,
+        "sha256": "2502653e9871c6d6585904832f73359d0f1f77180bf69300bf485bf1447be2ff"
+      },
+      "run_report": {
+        "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/state_persistence/run_report.json",
+        "role": "runtime_r2_run_report",
+        "size_bytes": 4332,
+        "sha256": "5b4ae8214b2fe0a43b2d445b9bf0b40b346d074177285f92df37a4232757c524"
+      }
+    },
+    "nonspatial_history_only": {
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/nonspatial_history_only/prediction.parquet",
+        "role": "sealed_v3_probability_prediction",
+        "size_bytes": 20134,
+        "sha256": "483d8b23eff55ed3f9f39ca9c4cf489ef115d0778207f4e080e0ca035e3977d0"
+      },
+      "run_report": {
+        "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/nonspatial_history_only/run_report.json",
+        "role": "runtime_r2_run_report",
+        "size_bytes": 4637,
+        "sha256": "a0527c31477e200c621a16aba0dd41f8acc91bb4b46a14dcb2872754054ff7a8"
+      }
+    },
+    "fixed_adjacency_spatial": {
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/fixed_adjacency_spatial/prediction.parquet",
+        "role": "sealed_v3_probability_prediction",
+        "size_bytes": 195715,
+        "sha256": "775a82427919ecafb155a02fbae7b0484e72c8fc58d1b8ed4cbce7c9da9b8195"
+      },
+      "run_report": {
+        "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/fixed_adjacency_spatial/run_report.json",
+        "role": "runtime_r2_run_report",
+        "size_bytes": 4642,
+        "sha256": "554e8158477c477a530d661c640e17932247b40db3ff0a2f92c96ff7735fcb65"
+      }
+    }
+  },
+  "total_wall_time_seconds": 0.3340579589130357
+}

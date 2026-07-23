@@ -1,0 +1,82 @@
+{
+  "schema": "gwm_bench.foundation_v3_draft_preflight.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+  "generated_at": "2026-07-23T07:06:26.360476+00:00",
+  "status": "PASS_RUNTIME_R2_EVALUATOR_SEALED_LABEL_FIREWALL_INTACT",
+  "protocol_sha256": "f4bcad2ef8cf18dc383272ea6ecb44513d1b0895d7beef5d1afa306c7beaacff",
+  "lockbox_region_manifest_sha256": "0865680ccb5ec9f70509325fe33021fab6fa8222c752353a3604e3ec82a7c356",
+  "development_manifest_sha256": "2c50741e94af6efd31c91302190539efc31e45d64089402de519803798dd2926",
+  "check_count": 21,
+  "checks": {
+    "protocol_schema_and_status_valid": true,
+    "development_manifest_exists": true,
+    "development_region_count_is_20": true,
+    "lockbox_region_count_is_20": true,
+    "lockbox_ids_and_cities_are_unique": true,
+    "lockbox_boxes_are_fixed_and_valid": true,
+    "five_geographic_strata_have_four_regions_each": true,
+    "lockbox_regions_do_not_overlap_each_other": true,
+    "lockbox_regions_do_not_overlap_development_regions": true,
+    "region_selection_declares_no_target_label_use": true,
+    "input_and_target_years_are_disjoint": true,
+    "forecast_year_partition_is_exact": true,
+    "downloader_supports_separate_phase_a_acquisition": true,
+    "target_directory_contains_no_files": true,
+    "protocol_records_no_target_pixel_access": true,
+    "no_prediction_or_score_state_is_claimed": true,
+    "phase_a_state_matches_protocol_status": true,
+    "benchmark_completion_does_not_require_twm_win": true,
+    "hydro_and_intervention_extensions_are_non_blocking": true,
+    "claim_boundary_rejects_causal_and_general_gwm_claims": true,
+    "temporary_workspace_has_at_least_20_gib_free": true
+  },
+  "summary": {
+    "development_region_count": 20,
+    "lockbox_region_count": 20,
+    "geographic_stratum_count": 5,
+    "input_years": [
+      2017,
+      2018,
+      2019,
+      2020,
+      2021,
+      2022
+    ],
+    "target_years": [
+      2023,
+      2024,
+      2025
+    ],
+    "expected_phase_a_annual_label_raster_count": 120,
+    "input_root_exists": true,
+    "prediction_commitment_root_exists": false,
+    "target_root_exists": false,
+    "target_file_count": 0,
+    "free_bytes": 1193365426176
+  },
+  "label_firewall": {
+    "target_pixels_read_by_preflight": false,
+    "target_file_names_seen": [],
+    "target_acquisition_permitted_now": false
+  },
+  "next_permitted_action": "Run and commit all five model predictions; do not acquire targets.",
+  "phase_a_command": [
+    ".venv/bin/python",
+    "scripts/download_twm_gee_dynamic_world_benchmark.py",
+    "--project",
+    "ee-zn19860115",
+    "--regions-json",
+    "benchmarks/gwm_bench_foundation_v3_0_draft/lockbox_regions.json",
+    "--years",
+    "2017,2018,2019,2020,2021,2022",
+    "--driver-years",
+    "2017,2018,2019,2020,2021,2022",
+    "--include-drivers",
+    "--output-dir",
+    "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022",
+    "--manifest-output",
+    "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/manifest.json",
+    "--status-output",
+    "data/twm_public_landcover/gee_dynamic_world_v3_input_2017_2022/download_status.json"
+  ]
+}

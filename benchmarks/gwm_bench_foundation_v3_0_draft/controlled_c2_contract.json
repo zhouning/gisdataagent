@@ -1,0 +1,86 @@
+{
+  "schema": "gwm_bench.foundation_v3_controlled_c2_contract.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+  "track_id": "CONTROLLED-C2",
+  "frozen_at": "2026-07-23",
+  "status": "frozen_before_formal_controlled_c2_run",
+  "purpose": "Test whether the DAM-GK action-conditioned, multi-relation, soft-topology and lag mechanisms transfer from small regular fitting graphs to larger irregular graphs and unseen mechanism mixtures.",
+  "source_fit_corpus": {
+    "generator_seed": 2026072301,
+    "sample_count": 128,
+    "graph_kind": "regular_4_by_4",
+    "node_count_per_sample": 16,
+    "action_sources_per_sample": 1,
+    "relation_mixtures": [
+      [0, 1],
+      [1, 2],
+      [0, 2]
+    ],
+    "all_three_relations_in_one_fit_sample": false
+  },
+  "out_of_distribution_corpus": {
+    "generator_seed": 2026072302,
+    "sample_count": 512,
+    "graph_kind": "irregular_masked_grids",
+    "grid_side_lengths": [5, 6, 7, 8],
+    "node_retention_range": [0.72, 0.92],
+    "action_sources_per_sample": [1, 2],
+    "relation_mixture": "all_three_relations_with_sample-varying_proportions",
+    "propagation_horizons": [1, 2, 3, 4, 5],
+    "soft_topology_required": true
+  },
+  "model": {
+    "implementation": "data_agent.uwm.dam_geospatial_kernel.DynamicActionConditionedMultiscaleKernel",
+    "node_state_dim": 3,
+    "action_dim": 4,
+    "edge_feature_dim": 4,
+    "relation_type_count": 3,
+    "context_dim": 3,
+    "hidden_dim": 48,
+    "horizon": 5,
+    "epochs": 320,
+    "optimizer": "AdamW",
+    "learning_rate": 0.006,
+    "weight_decay": 0.0001,
+    "gradient_clip_norm": 5.0,
+    "loss_weights": {
+      "sparsity": 0.001,
+      "effective_gate_supervision": 0.35,
+      "soft_topology_supervision": 0.25,
+      "lag_supervision": 0.2
+    }
+  },
+  "fit_seeds": [17, 31, 47, 73, 101, 137, 173, 211, 251, 293],
+  "required_seed_count": 10,
+  "required_controls": [
+    "no_action_conditioning",
+    "fixed_topology",
+    "single_relation",
+    "no_lag_structure",
+    "action_assignment_shuffle",
+    "relation_type_shuffle",
+    "spatial_target_rewire"
+  ],
+  "stability_gate_per_seed": {
+    "maximum_affected_node_state_delta_mae": 0.02,
+    "maximum_effective_gate_mae": 0.1,
+    "maximum_topology_probability_mae": 0.12,
+    "maximum_lag_distribution_mae": 0.12,
+    "minimum_control_direction_pass_count": 6,
+    "critical_control_direction_checks": [
+      "no_action_conditioning_degrades",
+      "no_lag_structure_degrades",
+      "spatial_target_rewire_degrades"
+    ]
+  },
+  "required_stability_pass_count": 8,
+  "minimum_sample_count": 512,
+  "formal_run_count": 1,
+  "metric_direction": "lower_is_better",
+  "claim_boundary": {
+    "real_action_effect_claimed": false,
+    "observed_policy_effect_claimed": false,
+    "cross_domain_transfer_claimed": false,
+    "maximum_supported_claim": "controlled_out_of_distribution_dam_gk_mechanism_transfer"
+  }
+}

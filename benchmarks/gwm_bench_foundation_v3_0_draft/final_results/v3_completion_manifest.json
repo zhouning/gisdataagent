@@ -1,0 +1,157 @@
+{
+  "schema": "gwm_bench.foundation_v3_completion_manifest.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+  "status": "V3_ALL_TRACKS_COMPLETED_VERIFIED",
+  "protocol_completion_gate_names_match": true,
+  "completion_gates": {
+    "20 lockbox regions are unique and do not intersect the 20 development regions": {
+      "passed": true,
+      "evidence": [
+        "benchmarks/gwm_bench_foundation_v3_0_draft/preflight_report.json"
+      ]
+    },
+    "lockbox region selection and node selection use no post-2022 labels": {
+      "passed": true,
+      "evidence": [
+        "benchmarks/gwm_bench_foundation_v3_0_draft/preflight_report.json",
+        "benchmarks/gwm_bench_foundation_v3_0_draft/phase_a_bundle_verification.json",
+        "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/prediction_commitment_verification.json",
+        "benchmarks/gwm_bench_foundation_v3_0_draft/phase_c_targets/target_registration_report.json"
+      ]
+    },
+    "all source, grid, input, model, environment and prediction artifacts have hashes": {
+      "passed": true,
+      "evidence": [
+        "benchmarks/gwm_bench_foundation_v3_0_draft/phase_a_bundle_verification.json",
+        "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/prediction_commitment_verification.json",
+        "benchmarks/gwm_bench_foundation_v3_0_draft/final_results/final_verification.json",
+        "benchmarks/gwm_bench_foundation_v3_0_draft/controlled_c2/controlled_c2_verification.json"
+      ]
+    },
+    "all five required models produce exactly the same submission keys": {
+      "passed": true,
+      "evidence": [
+        "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/prediction_commitment_verification.json"
+      ]
+    },
+    "Runtime-R2 replay and label-firewall checks pass": {
+      "passed": true,
+      "evidence": [
+        "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/runtime_replay_report.json"
+      ]
+    },
+    "Controlled-C2 and all required controls are reported": {
+      "passed": true,
+      "evidence": [
+        "benchmarks/gwm_bench_foundation_v3_0_draft/controlled_c2/controlled_c2_results.json",
+        "benchmarks/gwm_bench_foundation_v3_0_draft/controlled_c2/controlled_c2_verification.json"
+      ]
+    },
+    "the frozen evaluator passes constructed-answer conformance tests": {
+      "passed": true,
+      "evidence": [
+        "benchmarks/gwm_bench_foundation_v3_0_draft/evaluator_conformance_report.json"
+      ]
+    },
+    "all model results are published even when TWM loses": {
+      "passed": true,
+      "evidence": [
+        "benchmarks/gwm_bench_foundation_v3_0_draft/final_results/final_results.json",
+        "benchmarks/gwm_bench_foundation_v3_0_draft/final_results/final_verification.json"
+      ]
+    },
+    "insufficient target change is reported as inconclusive rather than hidden": {
+      "passed": true,
+      "evidence": [
+        "benchmarks/gwm_bench_foundation_v3_0_draft/suite_protocol.json",
+        "benchmarks/gwm_bench_foundation_v3_0_draft/final_results/final_results.json"
+      ]
+    }
+  },
+  "tracks": {
+    "RUNTIME-R2": {
+      "status": "PASS_ALL_FIVE_MODELS_REPLAYED_LABEL_FIREWALL_INTACT",
+      "prediction_commitment_fingerprint": "fcce6679f251b85d350f7ac41cab68164be383e6bbc5685df91542cbeb1b93c1"
+    },
+    "OBSERVED-O3": {
+      "status": "V3_FINAL_COMPLETED_MODEL_COMPARISON_VALID",
+      "final_results_fingerprint": "22fa0c1682a98a5902acba121f622232eb9cba4d4df6a76c9240677e3525d0b7",
+      "formal_scoring_event_count": 1
+    },
+    "CONTROLLED-C2": {
+      "status": "CONTROLLED_C2_COMPLETED_STABILITY_PASS",
+      "controlled_c2_results_fingerprint": "6cd522355ba50ef00c83e329fd6124c9d34abb5e115b12e3f6351bdcf4b04f14",
+      "stability_pass_count": 8,
+      "required_stability_pass_count": 8
+    }
+  },
+  "artifacts": {
+    "frozen_protocol": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/suite_protocol.json",
+      "role": "frozen_v3_protocol",
+      "size_bytes": 12184,
+      "sha256": "f4bcad2ef8cf18dc383272ea6ecb44513d1b0895d7beef5d1afa306c7beaacff"
+    },
+    "runtime_replay": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/runtime_replay_report.json",
+      "role": "verified_runtime_r2_replay",
+      "size_bytes": 3747,
+      "sha256": "125b800f69de0f72757ae2e015547414b3fd329d2b8e4f03dbcfa046b31404fd"
+    },
+    "prediction_commitment_verification": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/prediction_commitment_verification.json",
+      "role": "verified_pre_target_prediction_commitment",
+      "size_bytes": 2898,
+      "sha256": "65a2d01c155bda42144261ccac28d95e46b86a07c34bae5c3029118ef8245554"
+    },
+    "target_registration": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/phase_c_targets/target_registration_report.json",
+      "role": "verified_post_commitment_targets",
+      "size_bytes": 1933,
+      "sha256": "604ac137c942ce97dfb33c66d140f56dc19c2ec330671af379445763c64348ed"
+    },
+    "observed_o3_final": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/final_results/final_results.json",
+      "role": "sealed_observed_o3_final_results",
+      "size_bytes": 21028,
+      "sha256": "3a2adb16c429f25c462a8814fa73b18dc2ed58f828a1ad6cbfbf056c94e576ba"
+    },
+    "observed_o3_verification": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/final_results/final_verification.json",
+      "role": "observed_o3_final_verification",
+      "size_bytes": 3267,
+      "sha256": "24d97d91463eb8aec50ddd4a1b8545eca28d9edf3d7c3736bda26b5b0f9d2c70"
+    },
+    "controlled_c2_results": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/controlled_c2/controlled_c2_results.json",
+      "role": "controlled_c2_formal_results",
+      "size_bytes": 6534,
+      "sha256": "62494ceceb76667881b73e2d20959a1049bec52b9d30905527f1c0e65f6d1c82"
+    },
+    "controlled_c2_verification": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/controlled_c2/controlled_c2_verification.json",
+      "role": "controlled_c2_verification",
+      "size_bytes": 5797,
+      "sha256": "479146f978565c4c8b8e50aa5afb114d2c37c1ee9f319638b4b705bba736aadd"
+    }
+  },
+  "claim_boundary": {
+    "supports_on_finalization": [
+      "bounded process-sealed geographic transfer evidence in the Dynamic World land-state domain",
+      "three-step open-loop rollout evidence on 20 new cities",
+      "same-protocol TWM versus full-grid FLUS comparison",
+      "out-of-distribution controlled DAM-GK mechanism checks",
+      "benchmark-level Runtime-R2 reproducibility and auditability"
+    ],
+    "does_not_support": [
+      "prospective analyst-unseen temporal prediction",
+      "identified real-world policy or action effects",
+      "operational forecasting validation",
+      "cross-domain transfer",
+      "complete shared GWM Runtime Kernel product",
+      "general TWM, DAM-GK or GWM validity"
+    ]
+  },
+  "created_at": "2026-07-23T13:46:22.831626+00:00",
+  "v3_completion_fingerprint": "b41834410944115e6a987818bb1ecc5b38db1812582a8dda5b8f2a1fd5cae38e"
+}

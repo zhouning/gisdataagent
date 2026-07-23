@@ -1,0 +1,527 @@
+{
+  "schema": "gwm_bench.foundation_v3_final_results.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+  "status": "V3_FINAL_COMPLETED_MODEL_COMPARISON_VALID",
+  "scored_at": "2026-07-23T12:50:51.352596+00:00",
+  "formal_scoring_event_count": 1,
+  "final_identity": {
+    "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+    "protocol_sha256": "f4bcad2ef8cf18dc383272ea6ecb44513d1b0895d7beef5d1afa306c7beaacff",
+    "prediction_commitment_fingerprint": "fcce6679f251b85d350f7ac41cab68164be383e6bbc5685df91542cbeb1b93c1",
+    "target_dataset_fingerprint": "182333a179764d111750fe2430fb6a8ab7c163ce2ba2b43ce6553978bd7e7c71",
+    "runtime_r2_evaluator_seal_fingerprint": "2891389d25f199301a58209cd5e6dc20e8f1dde68026dfcefd284f114891bd4b",
+    "evaluator_sha256": "740ea9b657e84b6105cbea9f09276f14ecc81221c4ab7ca17739798746ae2e60",
+    "evaluation_sha256": {
+      "twm_dam_gk_candidate": "b15e6c04fc24878b11281913da8dc8cec47c6d730f81b91822b8ef4a67847232",
+      "geosos_flus_three_seed_ensemble": "e7d1441043926771c6b37e22190809c6559cad81fd9dcc357be9b9612f49d210",
+      "state_persistence": "ce48f38295d99743ee49a084fb3cfa35428e91602e05e7df505a692e99937d01",
+      "nonspatial_history_only": "b121d9bc70207a2aec41b3a907287772b0909724dc8f429c6ad953de8827135c",
+      "fixed_adjacency_spatial": "82af2add212d0e6d82c18f1c7d27831348e0111cf67073ee96df4364696e1709"
+    },
+    "summary": [
+      {
+        "model_id": "twm_dam_gk_candidate",
+        "model_name": "TWM / DAM-GK",
+        "primary_change_f1": 0.20294279794279788,
+        "overall_change_f1": 0.2261904761904762,
+        "changed_destination_macro_f1": 0.14564191601748094,
+        "overall_class_macro_f1": 0.5552659901116955,
+        "multiclass_brier_score": 0.1456267139662733,
+        "predicted_to_observed_change_ratio": 0.45454545454545453,
+        "predicted_changed_count": 105,
+        "observed_changed_count": 231
+      },
+      {
+        "model_id": "geosos_flus_three_seed_ensemble",
+        "model_name": "GeoSOS FLUS（三种子）",
+        "primary_change_f1": 0.1099344125659915,
+        "overall_change_f1": 0.1561712846347607,
+        "changed_destination_macro_f1": 0.1580880712288889,
+        "overall_class_macro_f1": 0.4887431710475888,
+        "multiclass_brier_score": 0.21805668749434032,
+        "predicted_to_observed_change_ratio": 0.7186147186147186,
+        "predicted_changed_count": 166,
+        "observed_changed_count": 231
+      },
+      {
+        "model_id": "state_persistence",
+        "model_name": "状态不变",
+        "primary_change_f1": 0.05,
+        "overall_change_f1": 0.0,
+        "changed_destination_macro_f1": 0.18156321290649646,
+        "overall_class_macro_f1": 0.6346363540271027,
+        "multiclass_brier_score": 0.16680249932083674,
+        "predicted_to_observed_change_ratio": 0.0,
+        "predicted_changed_count": 0,
+        "observed_changed_count": 231
+      },
+      {
+        "model_id": "nonspatial_history_only",
+        "model_name": "非空间历史",
+        "primary_change_f1": 0.06938746438746438,
+        "overall_change_f1": 0.06498194945848375,
+        "changed_destination_macro_f1": 0.12976162471575314,
+        "overall_class_macro_f1": 0.47442908827626973,
+        "multiclass_brier_score": 0.14978653288571647,
+        "predicted_to_observed_change_ratio": 0.19913419913419914,
+        "predicted_changed_count": 46,
+        "observed_changed_count": 231
+      },
+      {
+        "model_id": "fixed_adjacency_spatial",
+        "model_name": "固定邻接空间",
+        "primary_change_f1": 0.21378776778776779,
+        "overall_change_f1": 0.22176591375770022,
+        "changed_destination_macro_f1": 0.10697900995773336,
+        "overall_class_macro_f1": 0.4079484586220136,
+        "multiclass_brier_score": 0.26107653399365055,
+        "predicted_to_observed_change_ratio": 1.1082251082251082,
+        "predicted_changed_count": 256,
+        "observed_changed_count": 231
+      }
+    ],
+    "bootstrap": {
+      "comparison": "TWM minus FLUS mean region-level horizon-averaged change F1",
+      "region_count": 20,
+      "draw_count": 20000,
+      "seed": 20260723,
+      "point_difference": 0.09300838537680643,
+      "confidence_interval_95_percentile": [
+        0.02084564679959417,
+        0.16453117277459384
+      ],
+      "bootstrap_probability_twm_exceeds_flus": 0.99455,
+      "bootstrap_probability_flus_exceeds_twm": 0.00545,
+      "conclusion": "TWM_HIGHER_CI_EXCLUDES_ZERO",
+      "region_differences": {
+        "v3_changchun_core": -0.1717171717171717,
+        "v3_dalian_core": 0.35555555555555557,
+        "v3_guiyang_core": 0.1507936507936508,
+        "v3_haikou_core": 0.20555555555555566,
+        "v3_harbin_core": 0.0,
+        "v3_jinan_core": 0.2777777777777778,
+        "v3_kunming_core": 0.0,
+        "v3_lanzhou_core": 0.1119208277103014,
+        "v3_nanchang_core": 0.16666666666666666,
+        "v3_nanning_core": 0.14285714285714285,
+        "v3_qingdao_core": 0.3333333333333333,
+        "v3_quanzhou_core": -0.16666666666666666,
+        "v3_shenyang_core": 0.1616161616161616,
+        "v3_shijiazhuang_core": -0.08333333333333333,
+        "v3_taiyuan_core": 0.3,
+        "v3_urumqi_core": -0.026052894473947097,
+        "v3_wenzhou_core": 0.0,
+        "v3_wuxi_core": -0.1111111111111111,
+        "v3_xining_core": -0.05946645946645951,
+        "v3_yinchuan_core": 0.2724386724386724
+      }
+    }
+  },
+  "final_results_fingerprint": "22fa0c1682a98a5902acba121f622232eb9cba4d4df6a76c9240677e3525d0b7",
+  "plain_language_conclusion": "V3 已完成。TWM 主指标为 0.2029，FLUS 为 0.1099。TWM 的变化识别显著高于 FLUS。最高主指标模型是 固定邻接空间，但这不是综合总分，也不改变所有结果必须发布的规则。",
+  "summary": [
+    {
+      "model_id": "twm_dam_gk_candidate",
+      "model_name": "TWM / DAM-GK",
+      "primary_change_f1": 0.20294279794279788,
+      "overall_change_f1": 0.2261904761904762,
+      "changed_destination_macro_f1": 0.14564191601748094,
+      "overall_class_macro_f1": 0.5552659901116955,
+      "multiclass_brier_score": 0.1456267139662733,
+      "predicted_to_observed_change_ratio": 0.45454545454545453,
+      "predicted_changed_count": 105,
+      "observed_changed_count": 231
+    },
+    {
+      "model_id": "geosos_flus_three_seed_ensemble",
+      "model_name": "GeoSOS FLUS（三种子）",
+      "primary_change_f1": 0.1099344125659915,
+      "overall_change_f1": 0.1561712846347607,
+      "changed_destination_macro_f1": 0.1580880712288889,
+      "overall_class_macro_f1": 0.4887431710475888,
+      "multiclass_brier_score": 0.21805668749434032,
+      "predicted_to_observed_change_ratio": 0.7186147186147186,
+      "predicted_changed_count": 166,
+      "observed_changed_count": 231
+    },
+    {
+      "model_id": "state_persistence",
+      "model_name": "状态不变",
+      "primary_change_f1": 0.05,
+      "overall_change_f1": 0.0,
+      "changed_destination_macro_f1": 0.18156321290649646,
+      "overall_class_macro_f1": 0.6346363540271027,
+      "multiclass_brier_score": 0.16680249932083674,
+      "predicted_to_observed_change_ratio": 0.0,
+      "predicted_changed_count": 0,
+      "observed_changed_count": 231
+    },
+    {
+      "model_id": "nonspatial_history_only",
+      "model_name": "非空间历史",
+      "primary_change_f1": 0.06938746438746438,
+      "overall_change_f1": 0.06498194945848375,
+      "changed_destination_macro_f1": 0.12976162471575314,
+      "overall_class_macro_f1": 0.47442908827626973,
+      "multiclass_brier_score": 0.14978653288571647,
+      "predicted_to_observed_change_ratio": 0.19913419913419914,
+      "predicted_changed_count": 46,
+      "observed_changed_count": 231
+    },
+    {
+      "model_id": "fixed_adjacency_spatial",
+      "model_name": "固定邻接空间",
+      "primary_change_f1": 0.21378776778776779,
+      "overall_change_f1": 0.22176591375770022,
+      "changed_destination_macro_f1": 0.10697900995773336,
+      "overall_class_macro_f1": 0.4079484586220136,
+      "multiclass_brier_score": 0.26107653399365055,
+      "predicted_to_observed_change_ratio": 1.1082251082251082,
+      "predicted_changed_count": 256,
+      "observed_changed_count": 231
+    }
+  ],
+  "ranking_by_primary_metric_only": [
+    {
+      "rank": 1,
+      "model_id": "fixed_adjacency_spatial",
+      "model_name": "固定邻接空间",
+      "primary_change_f1": 0.21378776778776779
+    },
+    {
+      "rank": 2,
+      "model_id": "twm_dam_gk_candidate",
+      "model_name": "TWM / DAM-GK",
+      "primary_change_f1": 0.20294279794279788
+    },
+    {
+      "rank": 3,
+      "model_id": "geosos_flus_three_seed_ensemble",
+      "model_name": "GeoSOS FLUS（三种子）",
+      "primary_change_f1": 0.1099344125659915
+    },
+    {
+      "rank": 4,
+      "model_id": "nonspatial_history_only",
+      "model_name": "非空间历史",
+      "primary_change_f1": 0.06938746438746438
+    },
+    {
+      "rank": 5,
+      "model_id": "state_persistence",
+      "model_name": "状态不变",
+      "primary_change_f1": 0.05
+    }
+  ],
+  "twm_vs_flus_paired_region_bootstrap": {
+    "comparison": "TWM minus FLUS mean region-level horizon-averaged change F1",
+    "region_count": 20,
+    "draw_count": 20000,
+    "seed": 20260723,
+    "point_difference": 0.09300838537680643,
+    "confidence_interval_95_percentile": [
+      0.02084564679959417,
+      0.16453117277459384
+    ],
+    "bootstrap_probability_twm_exceeds_flus": 0.99455,
+    "bootstrap_probability_flus_exceeds_twm": 0.00545,
+    "conclusion": "TWM_HIGHER_CI_EXCLUDES_ZERO",
+    "region_differences": {
+      "v3_changchun_core": -0.1717171717171717,
+      "v3_dalian_core": 0.35555555555555557,
+      "v3_guiyang_core": 0.1507936507936508,
+      "v3_haikou_core": 0.20555555555555566,
+      "v3_harbin_core": 0.0,
+      "v3_jinan_core": 0.2777777777777778,
+      "v3_kunming_core": 0.0,
+      "v3_lanzhou_core": 0.1119208277103014,
+      "v3_nanchang_core": 0.16666666666666666,
+      "v3_nanning_core": 0.14285714285714285,
+      "v3_qingdao_core": 0.3333333333333333,
+      "v3_quanzhou_core": -0.16666666666666666,
+      "v3_shenyang_core": 0.1616161616161616,
+      "v3_shijiazhuang_core": -0.08333333333333333,
+      "v3_taiyuan_core": 0.3,
+      "v3_urumqi_core": -0.026052894473947097,
+      "v3_wenzhou_core": 0.0,
+      "v3_wuxi_core": -0.1111111111111111,
+      "v3_xining_core": -0.05946645946645951,
+      "v3_yinchuan_core": 0.2724386724386724
+    }
+  },
+  "metrics_by_geographic_stratum": {
+    "twm_dam_gk_candidate": [
+      {
+        "stratum_id": "east_southeast",
+        "region_horizon_count": 12,
+        "mean_change_f1": 0.041666666666666664,
+        "mean_overall_class_macro_f1": 0.737308755965208,
+        "mean_multiclass_brier_score": 0.0963288095178218
+      },
+      {
+        "stratum_id": "north_china_plain",
+        "region_horizon_count": 12,
+        "mean_change_f1": 0.26944444444444443,
+        "mean_overall_class_macro_f1": 0.7839405032404706,
+        "mean_multiclass_brier_score": 0.09248515821307061
+      },
+      {
+        "stratum_id": "northeast_bohai",
+        "region_horizon_count": 12,
+        "mean_change_f1": 0.14444444444444446,
+        "mean_overall_class_macro_f1": 0.6255412790612935,
+        "mean_multiclass_brier_score": 0.10985770262987764
+      },
+      {
+        "stratum_id": "northwest",
+        "region_horizon_count": 12,
+        "mean_change_f1": 0.3103489103489104,
+        "mean_overall_class_macro_f1": 0.6357769573996036,
+        "mean_multiclass_brier_score": 0.30461463364310054
+      },
+      {
+        "stratum_id": "south_southwest",
+        "region_horizon_count": 12,
+        "mean_change_f1": 0.2488095238095238,
+        "mean_overall_class_macro_f1": 0.637132427596168,
+        "mean_multiclass_brier_score": 0.11589780456921038
+      }
+    ],
+    "geosos_flus_three_seed_ensemble": [
+      {
+        "stratum_id": "east_southeast",
+        "region_horizon_count": 12,
+        "mean_change_f1": 0.06944444444444443,
+        "mean_overall_class_macro_f1": 0.7414012887839138,
+        "mean_multiclass_brier_score": 0.18452380952380953
+      },
+      {
+        "stratum_id": "north_china_plain",
+        "region_horizon_count": 12,
+        "mean_change_f1": 0.0625,
+        "mean_overall_class_macro_f1": 0.6987521784314064,
+        "mean_multiclass_brier_score": 0.15461493239271018
+      },
+      {
+        "stratum_id": "northeast_bohai",
+        "region_horizon_count": 12,
+        "mean_change_f1": 0.05808080808080809,
+        "mean_overall_class_macro_f1": 0.5392103746079184,
+        "mean_multiclass_brier_score": 0.1861552028218695
+      },
+      {
+        "stratum_id": "northwest",
+        "region_horizon_count": 12,
+        "mean_change_f1": 0.2356388737967685,
+        "mean_overall_class_macro_f1": 0.5771413821501746,
+        "mean_multiclass_brier_score": 0.39729570840681955
+      },
+      {
+        "stratum_id": "south_southwest",
+        "region_horizon_count": 12,
+        "mean_change_f1": 0.12400793650793651,
+        "mean_overall_class_macro_f1": 0.6128114061998505,
+        "mean_multiclass_brier_score": 0.15986394557823128
+      }
+    ],
+    "state_persistence": [
+      {
+        "stratum_id": "east_southeast",
+        "region_horizon_count": 12,
+        "mean_change_f1": 0.08333333333333333,
+        "mean_overall_class_macro_f1": 0.7937019435150666,
+        "mean_multiclass_brier_score": 0.09523809523809523
+      },
+      {
+        "stratum_id": "north_china_plain",
+        "region_horizon_count": 12,
+        "mean_change_f1": 0.16666666666666666,
+        "mean_overall_class_macro_f1": 0.7793390676664257,
+        "mean_multiclass_brier_score": 0.08267195767195767
+      },
+      {
+        "stratum_id": "northeast_bohai",
+        "region_horizon_count": 12,
+        "mean_change_f1": 0.0,
+        "mean_overall_class_macro_f1": 0.6721725934587299,
+        "mean_multiclass_brier_score": 0.10449735449735449
+      },
+      {
+        "stratum_id": "northwest",
+        "region_horizon_count": 12,
+        "mean_change_f1": 0.0,
+        "mean_overall_class_macro_f1": 0.61845549008754,
+        "mean_multiclass_brier_score": 0.423015873015873
+      },
+      {
+        "stratum_id": "south_southwest",
+        "region_horizon_count": 12,
+        "mean_change_f1": 0.0,
+        "mean_overall_class_macro_f1": 0.6881052787628859,
+        "mean_multiclass_brier_score": 0.11564625850340134
+      }
+    ],
+    "nonspatial_history_only": [
+      {
+        "stratum_id": "east_southeast",
+        "region_horizon_count": 12,
+        "mean_change_f1": 0.11666666666666665,
+        "mean_overall_class_macro_f1": 0.8292836812585,
+        "mean_multiclass_brier_score": 0.09202647906742055
+      },
+      {
+        "stratum_id": "north_china_plain",
+        "region_horizon_count": 12,
+        "mean_change_f1": 0.08333333333333333,
+        "mean_overall_class_macro_f1": 0.7475854046627627,
+        "mean_multiclass_brier_score": 0.09130119874731783
+      },
+      {
+        "stratum_id": "northeast_bohai",
+        "region_horizon_count": 12,
+        "mean_change_f1": 0.018518518518518517,
+        "mean_overall_class_macro_f1": 0.6107599936173375,
+        "mean_multiclass_brier_score": 0.11184345776957616
+      },
+      {
+        "stratum_id": "northwest",
+        "region_horizon_count": 12,
+        "mean_change_f1": 0.045085470085470085,
+        "mean_overall_class_macro_f1": 0.5769612443027726,
+        "mean_multiclass_brier_score": 0.32748337242517933
+      },
+      {
+        "stratum_id": "south_southwest",
+        "region_horizon_count": 12,
+        "mean_change_f1": 0.08333333333333333,
+        "mean_overall_class_macro_f1": 0.6362953759628145,
+        "mean_multiclass_brier_score": 0.11491674536168726
+      }
+    ],
+    "fixed_adjacency_spatial": [
+      {
+        "stratum_id": "east_southeast",
+        "region_horizon_count": 12,
+        "mean_change_f1": 0.23221500721500718,
+        "mean_overall_class_macro_f1": 0.6174322136876104,
+        "mean_multiclass_brier_score": 0.2734668752155213
+      },
+      {
+        "stratum_id": "north_china_plain",
+        "region_horizon_count": 12,
+        "mean_change_f1": 0.24166666666666667,
+        "mean_overall_class_macro_f1": 0.6003395669120466,
+        "mean_multiclass_brier_score": 0.18945905805015575
+      },
+      {
+        "stratum_id": "northeast_bohai",
+        "region_horizon_count": 12,
+        "mean_change_f1": 0.11574074074074074,
+        "mean_overall_class_macro_f1": 0.4756005607609497,
+        "mean_multiclass_brier_score": 0.19066080194174964
+      },
+      {
+        "stratum_id": "northwest",
+        "region_horizon_count": 12,
+        "mean_change_f1": 0.2763402338402338,
+        "mean_overall_class_macro_f1": 0.4296421327108933,
+        "mean_multiclass_brier_score": 0.4112287129507511
+      },
+      {
+        "stratum_id": "south_southwest",
+        "region_horizon_count": 12,
+        "mean_change_f1": 0.2029761904761905,
+        "mean_overall_class_macro_f1": 0.4665455956831823,
+        "mean_multiclass_brier_score": 0.24303852312181962
+      }
+    ]
+  },
+  "data_sufficiency": {
+    "total_observed_step_changes": 231,
+    "minimum_required_step_changes": 20,
+    "regions_with_observed_change": 20,
+    "minimum_required_regions_with_change": 10,
+    "comparison_is_sufficient": true
+  },
+  "artifacts": {
+    "prediction_commitment": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/prediction_commitment.json",
+      "role": "pre_target_prediction_commitment",
+      "size_bytes": 17755,
+      "sha256": "4bc8f9cbfa8b89c600c70834d844fc592c04ddbb001bd8878d01c1e8c2f5f6a2"
+    },
+    "target_registry": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/phase_c_targets/target_registry.json",
+      "role": "registered_phase_c_targets",
+      "size_bytes": 52646,
+      "sha256": "75ba60d81b75b652c8e5ae6eb33bdc796940666cb22f04adf40d8ff8e2387633"
+    },
+    "labels": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/phase_c_targets/observed_targets.parquet",
+      "role": "registered_observed_o3_labels",
+      "size_bytes": 5553,
+      "sha256": "98a2ffc6c6ef7a7f63fc468bd4c53033ed2547247ce8ecf8835821d665fc7920"
+    },
+    "evaluator": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/observed_o3_evaluator.py",
+      "role": "sealed_reference_evaluator",
+      "size_bytes": 10096,
+      "sha256": "740ea9b657e84b6105cbea9f09276f14ecc81221c4ab7ca17739798746ae2e60"
+    },
+    "model_evaluations": {
+      "twm_dam_gk_candidate": {
+        "path": "benchmarks/gwm_bench_foundation_v3_0_draft/final_results/twm_dam_gk_candidate_evaluation.json",
+        "role": "sealed_observed_o3_model_evaluation",
+        "size_bytes": 34634,
+        "sha256": "b15e6c04fc24878b11281913da8dc8cec47c6d730f81b91822b8ef4a67847232"
+      },
+      "geosos_flus_three_seed_ensemble": {
+        "path": "benchmarks/gwm_bench_foundation_v3_0_draft/final_results/geosos_flus_three_seed_ensemble_evaluation.json",
+        "role": "sealed_observed_o3_model_evaluation",
+        "size_bytes": 34663,
+        "sha256": "e7d1441043926771c6b37e22190809c6559cad81fd9dcc357be9b9612f49d210"
+      },
+      "state_persistence": {
+        "path": "benchmarks/gwm_bench_foundation_v3_0_draft/final_results/state_persistence_evaluation.json",
+        "role": "sealed_observed_o3_model_evaluation",
+        "size_bytes": 33509,
+        "sha256": "ce48f38295d99743ee49a084fb3cfa35428e91602e05e7df505a692e99937d01"
+      },
+      "nonspatial_history_only": {
+        "path": "benchmarks/gwm_bench_foundation_v3_0_draft/final_results/nonspatial_history_only_evaluation.json",
+        "role": "sealed_observed_o3_model_evaluation",
+        "size_bytes": 34028,
+        "sha256": "b121d9bc70207a2aec41b3a907287772b0909724dc8f429c6ad953de8827135c"
+      },
+      "fixed_adjacency_spatial": {
+        "path": "benchmarks/gwm_bench_foundation_v3_0_draft/final_results/fixed_adjacency_spatial_evaluation.json",
+        "role": "sealed_observed_o3_model_evaluation",
+        "size_bytes": 34675,
+        "sha256": "82af2add212d0e6d82c18f1c7d27831348e0111cf67073ee96df4364696e1709"
+      }
+    }
+  },
+  "publication": {
+    "all_five_models_published": true,
+    "negative_results_retained": true,
+    "single_composite_score": false,
+    "model_win_required_for_benchmark_completion": false
+  },
+  "claim_boundary": {
+    "supports_on_finalization": [
+      "bounded process-sealed geographic transfer evidence in the Dynamic World land-state domain",
+      "three-step open-loop rollout evidence on 20 new cities",
+      "same-protocol TWM versus full-grid FLUS comparison",
+      "out-of-distribution controlled DAM-GK mechanism checks",
+      "benchmark-level Runtime-R2 reproducibility and auditability"
+    ],
+    "does_not_support": [
+      "prospective analyst-unseen temporal prediction",
+      "identified real-world policy or action effects",
+      "operational forecasting validation",
+      "cross-domain transfer",
+      "complete shared GWM Runtime Kernel product",
+      "general TWM, DAM-GK or GWM validity"
+    ]
+  }
+}

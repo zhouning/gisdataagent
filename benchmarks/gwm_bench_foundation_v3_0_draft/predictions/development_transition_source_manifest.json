@@ -1,0 +1,856 @@
+{
+  "schema": "gwm_bench.v3_development_transition_sources.v1",
+  "purpose": "label-safe global transition estimation for V3 internal baselines",
+  "allowed_years": [
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022
+  ],
+  "post_2022_pixel_values_read": false,
+  "artifacts": [
+    {
+      "region_id": "上海市_浦东新区_祝桥镇",
+      "year": 2017,
+      "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_dynamic_world_2017_100m.tif",
+      "size_bytes": 9345,
+      "sha256": "e9d78e19681fe9c59e05710efd951aa274c70862aafc7f6576a5edf5c8a4921e"
+    },
+    {
+      "region_id": "上海市_浦东新区_祝桥镇",
+      "year": 2018,
+      "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_dynamic_world_2018_100m.tif",
+      "size_bytes": 9794,
+      "sha256": "ff9337df51531e87d9e0b9bf045d0c8b2f82903da303b737cd9431a1496469db"
+    },
+    {
+      "region_id": "上海市_浦东新区_祝桥镇",
+      "year": 2019,
+      "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_dynamic_world_2019_100m.tif",
+      "size_bytes": 10099,
+      "sha256": "f837f6a01bd74ac49a015c3f43c34d060341204418814ed877298faa3859ca6b"
+    },
+    {
+      "region_id": "上海市_浦东新区_祝桥镇",
+      "year": 2020,
+      "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_dynamic_world_2020_100m.tif",
+      "size_bytes": 10327,
+      "sha256": "f8402397d49b6e47f1c0a7393fad853707ab498adad7d2a37cc2f73e2f5b07ad"
+    },
+    {
+      "region_id": "上海市_浦东新区_祝桥镇",
+      "year": 2021,
+      "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_dynamic_world_2021_100m.tif",
+      "size_bytes": 10277,
+      "sha256": "8e5bc6cea4b52cb3c4ee4fe5bc89360af6aaa00fbfcd473a9012a3ae7032a8e9"
+    },
+    {
+      "region_id": "上海市_浦东新区_祝桥镇",
+      "year": 2022,
+      "path": "data/twm_public_landcover/gee_dynamic_world/上海市_浦东新区_祝桥镇/上海市_浦东新区_祝桥镇_dynamic_world_2022_100m.tif",
+      "size_bytes": 10460,
+      "sha256": "7b4bcfe84e9edcc08e7a24817f17a4003755ef1d0d4a2ed5f7d1a38b629c4409"
+    },
+    {
+      "region_id": "东莞市_东莞市_虎门镇",
+      "year": 2017,
+      "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_dynamic_world_2017_100m.tif",
+      "size_bytes": 4570,
+      "sha256": "1e3516b30b8887d85262ef85b8f432cc9b595bdf7a92af0338bf442ce8822fb7"
+    },
+    {
+      "region_id": "东莞市_东莞市_虎门镇",
+      "year": 2018,
+      "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_dynamic_world_2018_100m.tif",
+      "size_bytes": 4504,
+      "sha256": "9bdc2f1d28ca4e88deeabfea49550dace645ad9c3b0382d70bfcfa64d17d00be"
+    },
+    {
+      "region_id": "东莞市_东莞市_虎门镇",
+      "year": 2019,
+      "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_dynamic_world_2019_100m.tif",
+      "size_bytes": 4490,
+      "sha256": "1df3b86347a41c44bc28b5e8bcde74241b4348ee6bb41672bd6929d242224040"
+    },
+    {
+      "region_id": "东莞市_东莞市_虎门镇",
+      "year": 2020,
+      "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_dynamic_world_2020_100m.tif",
+      "size_bytes": 4458,
+      "sha256": "3eb58edc2622b55b9cfa05c002037d441c3aab4c6ed59080466aa7da30f07b7f"
+    },
+    {
+      "region_id": "东莞市_东莞市_虎门镇",
+      "year": 2021,
+      "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_dynamic_world_2021_100m.tif",
+      "size_bytes": 4406,
+      "sha256": "8a3c6f5c69d40c58a209a961662ee35e6ebc3c2f16dce98f95261fa2dc487e72"
+    },
+    {
+      "region_id": "东莞市_东莞市_虎门镇",
+      "year": 2022,
+      "path": "data/twm_public_landcover/gee_dynamic_world/东莞市_东莞市_虎门镇/东莞市_东莞市_虎门镇_dynamic_world_2022_100m.tif",
+      "size_bytes": 4459,
+      "sha256": "ded992142f847372416ffbb761c95a995d00f73668696b02fade3b77a610371b"
+    },
+    {
+      "region_id": "佛山市_高明区_杨和镇",
+      "year": 2017,
+      "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_dynamic_world_2017_100m.tif",
+      "size_bytes": 5519,
+      "sha256": "203f7211a63cfc08d69af114cfbdf98e15a1c4f97efc99e995c51b46133cd966"
+    },
+    {
+      "region_id": "佛山市_高明区_杨和镇",
+      "year": 2018,
+      "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_dynamic_world_2018_100m.tif",
+      "size_bytes": 5765,
+      "sha256": "56a86690e518d2cb2632e9a26322f7203e3163f3f93131fa17c49cba7316ff93"
+    },
+    {
+      "region_id": "佛山市_高明区_杨和镇",
+      "year": 2019,
+      "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_dynamic_world_2019_100m.tif",
+      "size_bytes": 5849,
+      "sha256": "8d9de64bf8d8681759bce37da99a010d8c0eddf23b0967adc89ab9e304c583c0"
+    },
+    {
+      "region_id": "佛山市_高明区_杨和镇",
+      "year": 2020,
+      "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_dynamic_world_2020_100m.tif",
+      "size_bytes": 5533,
+      "sha256": "a4e4ae23e9676b669312450b69bc598e8278d09ebc3819b8309841bc240d6788"
+    },
+    {
+      "region_id": "佛山市_高明区_杨和镇",
+      "year": 2021,
+      "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_dynamic_world_2021_100m.tif",
+      "size_bytes": 5521,
+      "sha256": "43accd56ef182082f8aff6c108d0125aa206102acad1be8f218095600f2bb800"
+    },
+    {
+      "region_id": "佛山市_高明区_杨和镇",
+      "year": 2022,
+      "path": "data/twm_public_landcover/gee_dynamic_world/佛山市_高明区_杨和镇/佛山市_高明区_杨和镇_dynamic_world_2022_100m.tif",
+      "size_bytes": 5520,
+      "sha256": "0363bebc493249c3684a5dfdeec511abb09f8f62c759507368860f82cc6272cb"
+    },
+    {
+      "region_id": "北京市_密云县_石城镇",
+      "year": 2017,
+      "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_dynamic_world_2017_100m.tif",
+      "size_bytes": 8316,
+      "sha256": "8dc84c4f0c8cfa41b39a32d88fe2ec725db7ff68d0af095d89dd6bcfcb8975af"
+    },
+    {
+      "region_id": "北京市_密云县_石城镇",
+      "year": 2018,
+      "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_dynamic_world_2018_100m.tif",
+      "size_bytes": 8649,
+      "sha256": "beafcbbf030f4c5620379d0614380098962af72d82874e482757af19f8f71cbe"
+    },
+    {
+      "region_id": "北京市_密云县_石城镇",
+      "year": 2019,
+      "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_dynamic_world_2019_100m.tif",
+      "size_bytes": 6737,
+      "sha256": "e3d26f9b2db8968373398fe6777993b30987f42f77c44220aa87d6645de0c996"
+    },
+    {
+      "region_id": "北京市_密云县_石城镇",
+      "year": 2020,
+      "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_dynamic_world_2020_100m.tif",
+      "size_bytes": 10041,
+      "sha256": "80d2d9968e542b167faea7235d862d33b8230d239d3900bc30bc732ac7fc24e1"
+    },
+    {
+      "region_id": "北京市_密云县_石城镇",
+      "year": 2021,
+      "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_dynamic_world_2021_100m.tif",
+      "size_bytes": 10473,
+      "sha256": "42bc223246c7c929f612011bcc34a63f957681713956da36d1ea7746dc044196"
+    },
+    {
+      "region_id": "北京市_密云县_石城镇",
+      "year": 2022,
+      "path": "data/twm_public_landcover/gee_dynamic_world/北京市_密云县_石城镇/北京市_密云县_石城镇_dynamic_world_2022_100m.tif",
+      "size_bytes": 7275,
+      "sha256": "57be3611a5d97469715cea44b295ab300da1ae73ef1cef266fd4195d31d77dd7"
+    },
+    {
+      "region_id": "南京市_六合区_马鞍街道",
+      "year": 2017,
+      "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_dynamic_world_2017_100m.tif",
+      "size_bytes": 11263,
+      "sha256": "f48118b914c2d78c80cdffcadfcd0b292df0d74810477186dba6973af1bf7f18"
+    },
+    {
+      "region_id": "南京市_六合区_马鞍街道",
+      "year": 2018,
+      "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_dynamic_world_2018_100m.tif",
+      "size_bytes": 10410,
+      "sha256": "d183772e9c360345c43abecb9d113f68674df5cd6f58ff22407140cab2be8f23"
+    },
+    {
+      "region_id": "南京市_六合区_马鞍街道",
+      "year": 2019,
+      "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_dynamic_world_2019_100m.tif",
+      "size_bytes": 10241,
+      "sha256": "01fd50aae1bd965c22896740b85fccbfd1cccec16b86aaa60c6a7a9355dd03cf"
+    },
+    {
+      "region_id": "南京市_六合区_马鞍街道",
+      "year": 2020,
+      "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_dynamic_world_2020_100m.tif",
+      "size_bytes": 10857,
+      "sha256": "4436b2e7cbd0a664e931d8157ce1714f49553ab6cd43e1a1404655693aee3dde"
+    },
+    {
+      "region_id": "南京市_六合区_马鞍街道",
+      "year": 2021,
+      "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_dynamic_world_2021_100m.tif",
+      "size_bytes": 10643,
+      "sha256": "95104fc0dcd772e439aedc46400bc0caa7e34be6a0a53b19fdea737961e26ba3"
+    },
+    {
+      "region_id": "南京市_六合区_马鞍街道",
+      "year": 2022,
+      "path": "data/twm_public_landcover/gee_dynamic_world/南京市_六合区_马鞍街道/南京市_六合区_马鞍街道_dynamic_world_2022_100m.tif",
+      "size_bytes": 10355,
+      "sha256": "b74a71f8d34f759ed2e0e905ca16eceb89d3bf738b1f5df5b58226bd59d84aee"
+    },
+    {
+      "region_id": "厦门市_同安区_莲花镇",
+      "year": 2017,
+      "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_dynamic_world_2017_100m.tif",
+      "size_bytes": 4046,
+      "sha256": "defc7c0016eb66767979f3012807be3445e31e32bd1a93d0f140f7304dd39b76"
+    },
+    {
+      "region_id": "厦门市_同安区_莲花镇",
+      "year": 2018,
+      "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_dynamic_world_2018_100m.tif",
+      "size_bytes": 3933,
+      "sha256": "6e402fcd519c8d9e7905cc973df4ae212544e76e192cdd42b3aaca1e702c94f8"
+    },
+    {
+      "region_id": "厦门市_同安区_莲花镇",
+      "year": 2019,
+      "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_dynamic_world_2019_100m.tif",
+      "size_bytes": 3818,
+      "sha256": "32420a0ff7fc4aa9ff52008b75d0a8c4df97b94f416938c8936727594636c50f"
+    },
+    {
+      "region_id": "厦门市_同安区_莲花镇",
+      "year": 2020,
+      "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_dynamic_world_2020_100m.tif",
+      "size_bytes": 3838,
+      "sha256": "ad1ebb5ba7c09f00d3350e9606901ea14b63aa3638987f2a7d0b3b29639ee654"
+    },
+    {
+      "region_id": "厦门市_同安区_莲花镇",
+      "year": 2021,
+      "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_dynamic_world_2021_100m.tif",
+      "size_bytes": 3697,
+      "sha256": "ccdf56360e2738c1eaf4d0e0bad96234f68fa214e04cf502e86549cd9a5e195c"
+    },
+    {
+      "region_id": "厦门市_同安区_莲花镇",
+      "year": 2022,
+      "path": "data/twm_public_landcover/gee_dynamic_world/厦门市_同安区_莲花镇/厦门市_同安区_莲花镇_dynamic_world_2022_100m.tif",
+      "size_bytes": 3707,
+      "sha256": "8a7ea8184b96f39bf7bc1dbf76ed2f0da45f68768c12d27555c9dffc5aec9195"
+    },
+    {
+      "region_id": "合肥市_巢湖市_散兵镇",
+      "year": 2017,
+      "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_dynamic_world_2017_100m.tif",
+      "size_bytes": 5612,
+      "sha256": "0bbc436befbe906815fa1bc646890e7242a94a2a328ac3ea98c2050dd61f79c7"
+    },
+    {
+      "region_id": "合肥市_巢湖市_散兵镇",
+      "year": 2018,
+      "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_dynamic_world_2018_100m.tif",
+      "size_bytes": 5226,
+      "sha256": "9288a3fbd649f9fe8ed26326b21edb84bc4647ca7d63d6c76e579c3747d4c04e"
+    },
+    {
+      "region_id": "合肥市_巢湖市_散兵镇",
+      "year": 2019,
+      "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_dynamic_world_2019_100m.tif",
+      "size_bytes": 5382,
+      "sha256": "88b42ef765ce23b79d15894d3595280571706b22025678417a3ba1857da6d127"
+    },
+    {
+      "region_id": "合肥市_巢湖市_散兵镇",
+      "year": 2020,
+      "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_dynamic_world_2020_100m.tif",
+      "size_bytes": 5221,
+      "sha256": "0aa74b6ec7d0aafece464a3b9984957b713d8647b874f6b87bf06a5ec5365dfa"
+    },
+    {
+      "region_id": "合肥市_巢湖市_散兵镇",
+      "year": 2021,
+      "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_dynamic_world_2021_100m.tif",
+      "size_bytes": 5543,
+      "sha256": "ed36c9fcb069bc38864ea31b9dd0c03909eee6dd9b40f087fcd1a53efde81643"
+    },
+    {
+      "region_id": "合肥市_巢湖市_散兵镇",
+      "year": 2022,
+      "path": "data/twm_public_landcover/gee_dynamic_world/合肥市_巢湖市_散兵镇/合肥市_巢湖市_散兵镇_dynamic_world_2022_100m.tif",
+      "size_bytes": 5285,
+      "sha256": "b618dbbfd79b5f2c961d4b1ee6174bdf5c28066ddce63997041aaf78c5a27e1c"
+    },
+    {
+      "region_id": "天津市_滨海新区_临港工业区",
+      "year": 2017,
+      "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_dynamic_world_2017_100m.tif",
+      "size_bytes": 6589,
+      "sha256": "4013d63a843ab7583d94629f7ba7f04151c204262cfd8cca30fe8c79051f727c"
+    },
+    {
+      "region_id": "天津市_滨海新区_临港工业区",
+      "year": 2018,
+      "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_dynamic_world_2018_100m.tif",
+      "size_bytes": 6583,
+      "sha256": "c34ed1661cb100651cd0028abdc804a90ecf0c8be2f5b4e0275f482a46776192"
+    },
+    {
+      "region_id": "天津市_滨海新区_临港工业区",
+      "year": 2019,
+      "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_dynamic_world_2019_100m.tif",
+      "size_bytes": 6917,
+      "sha256": "8939cfab6547a00abe831fdabd423aa8a613bd60c432d8b57548423d4f3b67d3"
+    },
+    {
+      "region_id": "天津市_滨海新区_临港工业区",
+      "year": 2020,
+      "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_dynamic_world_2020_100m.tif",
+      "size_bytes": 6703,
+      "sha256": "33222a6c44e8011b044bb9f810db9e0070881463774697a5630524f8789de761"
+    },
+    {
+      "region_id": "天津市_滨海新区_临港工业区",
+      "year": 2021,
+      "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_dynamic_world_2021_100m.tif",
+      "size_bytes": 7234,
+      "sha256": "0c5e1f5fb16aea700b8547661eb57073f83c3105def740775e9bfcb4aa89a1df"
+    },
+    {
+      "region_id": "天津市_滨海新区_临港工业区",
+      "year": 2022,
+      "path": "data/twm_public_landcover/gee_dynamic_world/天津市_滨海新区_临港工业区/天津市_滨海新区_临港工业区_dynamic_world_2022_100m.tif",
+      "size_bytes": 7265,
+      "sha256": "ddf7533e9214d7e191bbac7bb563b22f892560cd58c4cb98e282035dbdb4b1b6"
+    },
+    {
+      "region_id": "宁波市_余姚市_小曹娥镇",
+      "year": 2017,
+      "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_dynamic_world_2017_100m.tif",
+      "size_bytes": 5756,
+      "sha256": "d0c3aea7dfca9199f3b2d3dee61ea66027b746215827427133cad576b6f8022b"
+    },
+    {
+      "region_id": "宁波市_余姚市_小曹娥镇",
+      "year": 2018,
+      "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_dynamic_world_2018_100m.tif",
+      "size_bytes": 6021,
+      "sha256": "ce7cb3af0590d952a48e59365fae3ec21c11d06614e8d6c5ab07999f6989ea0f"
+    },
+    {
+      "region_id": "宁波市_余姚市_小曹娥镇",
+      "year": 2019,
+      "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_dynamic_world_2019_100m.tif",
+      "size_bytes": 5499,
+      "sha256": "0122afb3367c8fb9c66608a98fdb46f837158ed523f265eb0ca8eb62f6a80d86"
+    },
+    {
+      "region_id": "宁波市_余姚市_小曹娥镇",
+      "year": 2020,
+      "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_dynamic_world_2020_100m.tif",
+      "size_bytes": 5207,
+      "sha256": "edf5bec5717a4544d4a544bcae2e98d77dba1a7a9ff71cff206a4fb61683f484"
+    },
+    {
+      "region_id": "宁波市_余姚市_小曹娥镇",
+      "year": 2021,
+      "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_dynamic_world_2021_100m.tif",
+      "size_bytes": 5721,
+      "sha256": "5d52727b798b3d3db9863b8afdd1a6aa88340cb14dceb9c8a96942d7e0ae295b"
+    },
+    {
+      "region_id": "宁波市_余姚市_小曹娥镇",
+      "year": 2022,
+      "path": "data/twm_public_landcover/gee_dynamic_world/宁波市_余姚市_小曹娥镇/宁波市_余姚市_小曹娥镇_dynamic_world_2022_100m.tif",
+      "size_bytes": 5617,
+      "sha256": "31ec39e911b1b4e2f9cfa674a2fc1fadb423fd64d8e3a7c6168997bc5d69867e"
+    },
+    {
+      "region_id": "广州市_增城区_正果镇",
+      "year": 2017,
+      "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_dynamic_world_2017_100m.tif",
+      "size_bytes": 4764,
+      "sha256": "4e2f24fbabd69f66b717c9c07e5a5603ec9a3fbc3bbb4e14ea8095555f526927"
+    },
+    {
+      "region_id": "广州市_增城区_正果镇",
+      "year": 2018,
+      "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_dynamic_world_2018_100m.tif",
+      "size_bytes": 4695,
+      "sha256": "06f8b88b8adf3cbf02ecd67d5eaba141e2f8dda8b425249e4210ff47e0a418fa"
+    },
+    {
+      "region_id": "广州市_增城区_正果镇",
+      "year": 2019,
+      "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_dynamic_world_2019_100m.tif",
+      "size_bytes": 4580,
+      "sha256": "2092e0c9b884b8764414e3c854e8c7816d02d2bdb8d60180ffcde229233eef6b"
+    },
+    {
+      "region_id": "广州市_增城区_正果镇",
+      "year": 2020,
+      "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_dynamic_world_2020_100m.tif",
+      "size_bytes": 4658,
+      "sha256": "a9763508e3c3796bfcf7385b3d7f27b420fa96ad64373536a292ce3fbcb81c13"
+    },
+    {
+      "region_id": "广州市_增城区_正果镇",
+      "year": 2021,
+      "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_dynamic_world_2021_100m.tif",
+      "size_bytes": 4805,
+      "sha256": "ee3070cae0ee6c2ab448520d312b0adbaffb539e86b062df1cf4016a1c018117"
+    },
+    {
+      "region_id": "广州市_增城区_正果镇",
+      "year": 2022,
+      "path": "data/twm_public_landcover/gee_dynamic_world/广州市_增城区_正果镇/广州市_增城区_正果镇_dynamic_world_2022_100m.tif",
+      "size_bytes": 4712,
+      "sha256": "d4bbeca5fca3976e8ba6911a9abebd5a17c838f82efc4952a9046443243708c4"
+    },
+    {
+      "region_id": "成都市_桂阳县_舂陵江镇",
+      "year": 2017,
+      "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_dynamic_world_2017_100m.tif",
+      "size_bytes": 8811,
+      "sha256": "795c623c52e830388a31081c644350546e97678b3e5c679919c983dbb7a7665b"
+    },
+    {
+      "region_id": "成都市_桂阳县_舂陵江镇",
+      "year": 2018,
+      "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_dynamic_world_2018_100m.tif",
+      "size_bytes": 8625,
+      "sha256": "225719e5f08e21f3089e908e1792f76b9a8fb513e48d26c99d30d7eb8e69b04f"
+    },
+    {
+      "region_id": "成都市_桂阳县_舂陵江镇",
+      "year": 2019,
+      "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_dynamic_world_2019_100m.tif",
+      "size_bytes": 8646,
+      "sha256": "d74525ca63c12c347a3b70126f45cde29d729e6902524c4e443478abc2c20678"
+    },
+    {
+      "region_id": "成都市_桂阳县_舂陵江镇",
+      "year": 2020,
+      "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_dynamic_world_2020_100m.tif",
+      "size_bytes": 8373,
+      "sha256": "c2da5de54441634d7bfceae5b0c989572e921c127a411dbc1801df8e3946daf6"
+    },
+    {
+      "region_id": "成都市_桂阳县_舂陵江镇",
+      "year": 2021,
+      "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_dynamic_world_2021_100m.tif",
+      "size_bytes": 8553,
+      "sha256": "c85bdafafce1ef86ced4ad908bf251bc0cb41c805ab3559941928a18e9c836d4"
+    },
+    {
+      "region_id": "成都市_桂阳县_舂陵江镇",
+      "year": 2022,
+      "path": "data/twm_public_landcover/gee_dynamic_world/成都市_桂阳县_舂陵江镇/成都市_桂阳县_舂陵江镇_dynamic_world_2022_100m.tif",
+      "size_bytes": 8766,
+      "sha256": "1a855b7314c7130b69e38611f8d40cd4780176c2307758da87b82bc7b49084ab"
+    },
+    {
+      "region_id": "杭州市_淳安县_界首乡",
+      "year": 2017,
+      "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_dynamic_world_2017_100m.tif",
+      "size_bytes": 5084,
+      "sha256": "38788b5be71b6ed6f06812420815c6358444a4c8f9954b4e8ad2a44704719e1f"
+    },
+    {
+      "region_id": "杭州市_淳安县_界首乡",
+      "year": 2018,
+      "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_dynamic_world_2018_100m.tif",
+      "size_bytes": 4977,
+      "sha256": "b4c77300c2bab78b62167e93dadc73c3fd6fbb78c90632ede703a23359bea4dd"
+    },
+    {
+      "region_id": "杭州市_淳安县_界首乡",
+      "year": 2019,
+      "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_dynamic_world_2019_100m.tif",
+      "size_bytes": 4916,
+      "sha256": "bc73b27ba50bf4b934ffb03b0eafab486cadb07fe584a7707ff107ecbdea354c"
+    },
+    {
+      "region_id": "杭州市_淳安县_界首乡",
+      "year": 2020,
+      "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_dynamic_world_2020_100m.tif",
+      "size_bytes": 4943,
+      "sha256": "a09df50770cdbd8a44b3f9c8d0847bb263792774db95f787f766d307f3fe51a5"
+    },
+    {
+      "region_id": "杭州市_淳安县_界首乡",
+      "year": 2021,
+      "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_dynamic_world_2021_100m.tif",
+      "size_bytes": 5032,
+      "sha256": "432b96c55811914cc41393399887498c1fba6938c767a175c762627079887b4f"
+    },
+    {
+      "region_id": "杭州市_淳安县_界首乡",
+      "year": 2022,
+      "path": "data/twm_public_landcover/gee_dynamic_world/杭州市_淳安县_界首乡/杭州市_淳安县_界首乡_dynamic_world_2022_100m.tif",
+      "size_bytes": 5199,
+      "sha256": "9541e97f3c8b1ece92c5ba9b54d3b07f93211fd86a53fb55579381c58a2facd5"
+    },
+    {
+      "region_id": "武汉市_江夏区_江夏区经济开发区梁子湖风景区办事",
+      "year": 2017,
+      "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_dynamic_world_2017_100m.tif",
+      "size_bytes": 5676,
+      "sha256": "d6d0d6ab3420055d6687ee01f516d150541ee0a35de3e34fcdf35c5db6ad29b1"
+    },
+    {
+      "region_id": "武汉市_江夏区_江夏区经济开发区梁子湖风景区办事",
+      "year": 2018,
+      "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_dynamic_world_2018_100m.tif",
+      "size_bytes": 6442,
+      "sha256": "953ec03a9c39048f40176a50a82641aa8baed7f3325723ddfdf7b684a47036b7"
+    },
+    {
+      "region_id": "武汉市_江夏区_江夏区经济开发区梁子湖风景区办事",
+      "year": 2019,
+      "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_dynamic_world_2019_100m.tif",
+      "size_bytes": 7194,
+      "sha256": "7ede8b98f1aec6be24732c4b326eaa660d4a061454ea5ad515f1f870c81c81fc"
+    },
+    {
+      "region_id": "武汉市_江夏区_江夏区经济开发区梁子湖风景区办事",
+      "year": 2020,
+      "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_dynamic_world_2020_100m.tif",
+      "size_bytes": 5494,
+      "sha256": "c48d4eedf9c793ccf68ae184b28e5f2b31a946df640ca76e80df05544503dd56"
+    },
+    {
+      "region_id": "武汉市_江夏区_江夏区经济开发区梁子湖风景区办事",
+      "year": 2021,
+      "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_dynamic_world_2021_100m.tif",
+      "size_bytes": 5728,
+      "sha256": "96b09a467c79ad47f62100645319fc36350b513d840a9e77c1374219604e1d73"
+    },
+    {
+      "region_id": "武汉市_江夏区_江夏区经济开发区梁子湖风景区办事",
+      "year": 2022,
+      "path": "data/twm_public_landcover/gee_dynamic_world/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事/武汉市_江夏区_江夏区经济开发区梁子湖风景区办事_dynamic_world_2022_100m.tif",
+      "size_bytes": 6204,
+      "sha256": "bc9eef590037e6e65b44adda49961ccaadbfc92e533c4129a0759104190a51f4"
+    },
+    {
+      "region_id": "深圳市_龙岗区_南澳街道",
+      "year": 2017,
+      "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_dynamic_world_2017_100m.tif",
+      "size_bytes": 2369,
+      "sha256": "c60020f07928c22f659013ba43e715a4ece65d94fe2e30ad4f10c602d6737006"
+    },
+    {
+      "region_id": "深圳市_龙岗区_南澳街道",
+      "year": 2018,
+      "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_dynamic_world_2018_100m.tif",
+      "size_bytes": 2391,
+      "sha256": "822e4cc391ce96e75c3adf7cbd178e23ba6a285460ef00c86105acca214cb51b"
+    },
+    {
+      "region_id": "深圳市_龙岗区_南澳街道",
+      "year": 2019,
+      "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_dynamic_world_2019_100m.tif",
+      "size_bytes": 2358,
+      "sha256": "687f47d605c7ef473ebbc305c53a1214fef90650b8a3ea111d6ed2913312139f"
+    },
+    {
+      "region_id": "深圳市_龙岗区_南澳街道",
+      "year": 2020,
+      "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_dynamic_world_2020_100m.tif",
+      "size_bytes": 2371,
+      "sha256": "8a8ee6b017e11401ad3ff69fb256dc577621d549127b6155ebccbebb33d17ee9"
+    },
+    {
+      "region_id": "深圳市_龙岗区_南澳街道",
+      "year": 2021,
+      "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_dynamic_world_2021_100m.tif",
+      "size_bytes": 2392,
+      "sha256": "1a8e22e6a4e0a10bb8b19392f4f53a938213a7519a51d31e9ae32ebfb892c1b9"
+    },
+    {
+      "region_id": "深圳市_龙岗区_南澳街道",
+      "year": 2022,
+      "path": "data/twm_public_landcover/gee_dynamic_world/深圳市_龙岗区_南澳街道/深圳市_龙岗区_南澳街道_dynamic_world_2022_100m.tif",
+      "size_bytes": 2382,
+      "sha256": "8d258801887a0847e6053b0f39982866a9443dc7d5cc74f433392f54e61eed9f"
+    },
+    {
+      "region_id": "福州市_永泰县_嵩口镇",
+      "year": 2017,
+      "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_dynamic_world_2017_100m.tif",
+      "size_bytes": 4323,
+      "sha256": "2d27d8414de2a7bb07cb53924f8c9e3d0413a7c7685b63488f380ff9388050f8"
+    },
+    {
+      "region_id": "福州市_永泰县_嵩口镇",
+      "year": 2018,
+      "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_dynamic_world_2018_100m.tif",
+      "size_bytes": 4162,
+      "sha256": "3eb45ece68de10ccf2e9894cd715b9e2153596e73ffae5467b3cb78e6c3689c7"
+    },
+    {
+      "region_id": "福州市_永泰县_嵩口镇",
+      "year": 2019,
+      "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_dynamic_world_2019_100m.tif",
+      "size_bytes": 4213,
+      "sha256": "027779aa2ecfcfecf9ba8b72fed4fe9382ff1fd8086e12c448e743a1b5224060"
+    },
+    {
+      "region_id": "福州市_永泰县_嵩口镇",
+      "year": 2020,
+      "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_dynamic_world_2020_100m.tif",
+      "size_bytes": 4175,
+      "sha256": "798e17f348bb2e5bc83ceb08716f6983db1feef1e84a01914b7da7242efe5ec7"
+    },
+    {
+      "region_id": "福州市_永泰县_嵩口镇",
+      "year": 2021,
+      "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_dynamic_world_2021_100m.tif",
+      "size_bytes": 3932,
+      "sha256": "dc15381561b6899ba22272255ecc42a4cab1826da405808330616642b5d50a6c"
+    },
+    {
+      "region_id": "福州市_永泰县_嵩口镇",
+      "year": 2022,
+      "path": "data/twm_public_landcover/gee_dynamic_world/福州市_永泰县_嵩口镇/福州市_永泰县_嵩口镇_dynamic_world_2022_100m.tif",
+      "size_bytes": 3858,
+      "sha256": "2b49a94873f6daff6c55f8ada39aac0ae7c21c32cfa331734993d180574fc521"
+    },
+    {
+      "region_id": "苏州市_吴江区_黎里镇",
+      "year": 2017,
+      "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_dynamic_world_2017_100m.tif",
+      "size_bytes": 8401,
+      "sha256": "838f30a405e86fc648ec599ed3ce1af96c0791f69423958ca0adcbf51c07e137"
+    },
+    {
+      "region_id": "苏州市_吴江区_黎里镇",
+      "year": 2018,
+      "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_dynamic_world_2018_100m.tif",
+      "size_bytes": 8536,
+      "sha256": "b4d932919375fa5cf207460781e84fa0fb8909a3436dd81916c92aad6cc7328b"
+    },
+    {
+      "region_id": "苏州市_吴江区_黎里镇",
+      "year": 2019,
+      "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_dynamic_world_2019_100m.tif",
+      "size_bytes": 8468,
+      "sha256": "7047034ac0ff78b511220f3c8569a81c2fe6396acb92b5fe3b511e68dc06db64"
+    },
+    {
+      "region_id": "苏州市_吴江区_黎里镇",
+      "year": 2020,
+      "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_dynamic_world_2020_100m.tif",
+      "size_bytes": 8538,
+      "sha256": "2f50a70937af251f1f4f2f10c6dc3281d87da38e7e004aa72bcdb6f2d0140798"
+    },
+    {
+      "region_id": "苏州市_吴江区_黎里镇",
+      "year": 2021,
+      "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_dynamic_world_2021_100m.tif",
+      "size_bytes": 8855,
+      "sha256": "82d1b66351cdc596141b4f3694ab894aa8bd4d4016605a5d8ae92c871981b847"
+    },
+    {
+      "region_id": "苏州市_吴江区_黎里镇",
+      "year": 2022,
+      "path": "data/twm_public_landcover/gee_dynamic_world/苏州市_吴江区_黎里镇/苏州市_吴江区_黎里镇_dynamic_world_2022_100m.tif",
+      "size_bytes": 8372,
+      "sha256": "7d1464612b597a11a646edbafac22e5b3d28bb50e67075327c289eba8d382c58"
+    },
+    {
+      "region_id": "西安市_周至县_陈河镇",
+      "year": 2017,
+      "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_dynamic_world_2017_100m.tif",
+      "size_bytes": 8760,
+      "sha256": "e2f8091d517841b6e877c42eaec48128feec76fda5bb8f268582ed47ad0b3cc5"
+    },
+    {
+      "region_id": "西安市_周至县_陈河镇",
+      "year": 2018,
+      "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_dynamic_world_2018_100m.tif",
+      "size_bytes": 7191,
+      "sha256": "1e797198682d6fda0e1243af3fc044cf599b2fe31d012116b1b5f7b89c72d1d9"
+    },
+    {
+      "region_id": "西安市_周至县_陈河镇",
+      "year": 2019,
+      "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_dynamic_world_2019_100m.tif",
+      "size_bytes": 5514,
+      "sha256": "400101cfb7570aeff31c420fdb07e435d71025c033dfe6feb7bd413bda4f2f0b"
+    },
+    {
+      "region_id": "西安市_周至县_陈河镇",
+      "year": 2020,
+      "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_dynamic_world_2020_100m.tif",
+      "size_bytes": 6327,
+      "sha256": "d21f1bd1fa127de01759a443547c17aae432400af45e473c33c6d6bd433f7bd3"
+    },
+    {
+      "region_id": "西安市_周至县_陈河镇",
+      "year": 2021,
+      "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_dynamic_world_2021_100m.tif",
+      "size_bytes": 6224,
+      "sha256": "e9fec10294878c5db928ae345b30fe301fe96f973803c6b8f460700fd8682925"
+    },
+    {
+      "region_id": "西安市_周至县_陈河镇",
+      "year": 2022,
+      "path": "data/twm_public_landcover/gee_dynamic_world/西安市_周至县_陈河镇/西安市_周至县_陈河镇_dynamic_world_2022_100m.tif",
+      "size_bytes": 6029,
+      "sha256": "6cf41b76477aa13c9c7a068b1fda8c00f0df352936b007a255dbf34ba761aa7f"
+    },
+    {
+      "region_id": "郑州市_荥阳市_广武镇",
+      "year": 2017,
+      "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_dynamic_world_2017_100m.tif",
+      "size_bytes": 5752,
+      "sha256": "0081058992406e96ecb877406471047ef7fe2eef574d77c4348aa6fa4d5cf262"
+    },
+    {
+      "region_id": "郑州市_荥阳市_广武镇",
+      "year": 2018,
+      "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_dynamic_world_2018_100m.tif",
+      "size_bytes": 5457,
+      "sha256": "91da18155d4114b956413847b704dc162a4d521885b27f2f97d045c5dd482843"
+    },
+    {
+      "region_id": "郑州市_荥阳市_广武镇",
+      "year": 2019,
+      "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_dynamic_world_2019_100m.tif",
+      "size_bytes": 5895,
+      "sha256": "1fb35b25f606160347971d57c14fd2e4a698d347b27e3f0a52ecd587f59a9f2e"
+    },
+    {
+      "region_id": "郑州市_荥阳市_广武镇",
+      "year": 2020,
+      "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_dynamic_world_2020_100m.tif",
+      "size_bytes": 5505,
+      "sha256": "ff36cc44d5032b180a1a05ca9bc00f916c6b5be2b291d195b0690a94aedbcfb6"
+    },
+    {
+      "region_id": "郑州市_荥阳市_广武镇",
+      "year": 2021,
+      "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_dynamic_world_2021_100m.tif",
+      "size_bytes": 5759,
+      "sha256": "69213a05a9e149e135a5af3b725af2d196d7f713e970d7335b509848aa5ef47f"
+    },
+    {
+      "region_id": "郑州市_荥阳市_广武镇",
+      "year": 2022,
+      "path": "data/twm_public_landcover/gee_dynamic_world/郑州市_荥阳市_广武镇/郑州市_荥阳市_广武镇_dynamic_world_2022_100m.tif",
+      "size_bytes": 5372,
+      "sha256": "e6599ee77e0c41c01b996ababadfbc7d2b8d1f688c70684d00b6f05d463da951"
+    },
+    {
+      "region_id": "重庆市_云阳县_江口镇",
+      "year": 2017,
+      "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_dynamic_world_2017_100m.tif",
+      "size_bytes": 6650,
+      "sha256": "513cbbf4ff6dc0706f6322d9f37654fb04b655a432983726384b309985c170bb"
+    },
+    {
+      "region_id": "重庆市_云阳县_江口镇",
+      "year": 2018,
+      "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_dynamic_world_2018_100m.tif",
+      "size_bytes": 6453,
+      "sha256": "c2ce92790a0230861cbfce7bdb6bf4272f4e06c7280755ef801c4195fe1de418"
+    },
+    {
+      "region_id": "重庆市_云阳县_江口镇",
+      "year": 2019,
+      "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_dynamic_world_2019_100m.tif",
+      "size_bytes": 6251,
+      "sha256": "30dbfeccf67ab9eec93cbdc069b424c805ee57d844cf9794ca797ffb9ac0eff0"
+    },
+    {
+      "region_id": "重庆市_云阳县_江口镇",
+      "year": 2020,
+      "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_dynamic_world_2020_100m.tif",
+      "size_bytes": 6664,
+      "sha256": "423bd644648ec33c138e070c7059629ced12ae0578dfd503e3f7527f260342bf"
+    },
+    {
+      "region_id": "重庆市_云阳县_江口镇",
+      "year": 2021,
+      "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_dynamic_world_2021_100m.tif",
+      "size_bytes": 6688,
+      "sha256": "87c451632d4148f6a3198cb0a713197a4ca7e0997e0f87344112dcc53003ebeb"
+    },
+    {
+      "region_id": "重庆市_云阳县_江口镇",
+      "year": 2022,
+      "path": "data/twm_public_landcover/gee_dynamic_world/重庆市_云阳县_江口镇/重庆市_云阳县_江口镇_dynamic_world_2022_100m.tif",
+      "size_bytes": 6298,
+      "sha256": "aa9c0a24907af39b02881e90d76d2cc7c93c4dc6b4029a5cd0c11eea6335e2f7"
+    },
+    {
+      "region_id": "长沙市_浏阳市_高坪镇",
+      "year": 2017,
+      "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_dynamic_world_2017_100m.tif",
+      "size_bytes": 5340,
+      "sha256": "269faace479fa32727fa5382549ec08cfe2fd42322c814160f2c4ee829783efb"
+    },
+    {
+      "region_id": "长沙市_浏阳市_高坪镇",
+      "year": 2018,
+      "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_dynamic_world_2018_100m.tif",
+      "size_bytes": 5216,
+      "sha256": "22e57d3a23c25dffa13bf1fb502806fc3309f210d10e09afc258875d85403384"
+    },
+    {
+      "region_id": "长沙市_浏阳市_高坪镇",
+      "year": 2019,
+      "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_dynamic_world_2019_100m.tif",
+      "size_bytes": 5096,
+      "sha256": "a83cef9c1b1d32574e9fa84c31b1a48bc54347c38168f7062c1d9a9823af3c73"
+    },
+    {
+      "region_id": "长沙市_浏阳市_高坪镇",
+      "year": 2020,
+      "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_dynamic_world_2020_100m.tif",
+      "size_bytes": 5220,
+      "sha256": "e0864d1c82793ece3c8b0026bd1b5b91722f44bb82544654b6f42c76d2b2e542"
+    },
+    {
+      "region_id": "长沙市_浏阳市_高坪镇",
+      "year": 2021,
+      "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_dynamic_world_2021_100m.tif",
+      "size_bytes": 5208,
+      "sha256": "f1d9b8a3c3f90514a983627b761bed0e81534f047daf1f8c8b0a421c0c16dd4f"
+    },
+    {
+      "region_id": "长沙市_浏阳市_高坪镇",
+      "year": 2022,
+      "path": "data/twm_public_landcover/gee_dynamic_world/长沙市_浏阳市_高坪镇/长沙市_浏阳市_高坪镇_dynamic_world_2022_100m.tif",
+      "size_bytes": 5180,
+      "sha256": "e7bfd57b1cf10c041ef0612bb0731c8f6fd3ee16e96602905099ada11902f29f"
+    }
+  ],
+  "source_fingerprint": "8587c055f983b233fa4c267df8a074a75f28d0b59476f2fac852f0c6b5653187"
+}

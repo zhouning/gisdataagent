@@ -1,0 +1,291 @@
+{
+  "schema": "gwm_bench.v3_geosos_flus_candidate.v1",
+  "model_id": "geosos_flus_three_seed_ensemble",
+  "method": "GeoSOS FLUS ANN suitability plus cellular allocation",
+  "citation": "Liu et al. (2017), Landscape and Urban Planning 168:94-116, doi:10.1016/j.landurbplan.2017.09.019",
+  "license_boundary": "non-commercial academic research",
+  "binary": {
+    "path": "/Users/zhouning/FLUS_console_crossplatform/build/cmake-release/flus_console",
+    "path_scope": "absolute_external_not_distributed",
+    "role": "geosos_flus_cross_platform_executable",
+    "size_bytes": 2558784,
+    "sha256": "9839ce50950442d4ef49e4d2129a1ba27735e1955c2d4975ae51067c1c3c9964"
+  },
+  "base_seeds": [
+    31,
+    47,
+    73
+  ],
+  "seed_ensemble": "equal empirical probability over three categorical members",
+  "training": {
+    "regions": "all 20 frozen development regions",
+    "land_years": [
+      2017,
+      2018,
+      2019,
+      2020,
+      2021,
+      2022
+    ],
+    "ann_label_year": 2022,
+    "ann_features": [
+      "x_3857",
+      "y_3857",
+      "srtm_elevation",
+      "srtm_slope",
+      "log1p_viirs_mean_2017_2022"
+    ],
+    "omitted_driver": "annual VIIRS change is unavailable in Phase A; a constant-zero column is excluded because FLUS min-max normalization is undefined",
+    "sample_per_mille": 10.0,
+    "hidden_layer": 8,
+    "transition_estimator": "add-one global 9x9 matrix over 2017-2022 full-grid development transitions"
+  },
+  "allocation": {
+    "grid": "complete 100 m input-valid raster before node extraction",
+    "origin_year": 2022,
+    "target_years": [
+      2023,
+      2024,
+      2025
+    ],
+    "writeback": "previous FLUS categorical full-grid result",
+    "demand": "apply frozen development transition matrix to previous predicted full-grid counts",
+    "maximum_iterations": 500,
+    "neighborhood_size": 3,
+    "accelerated_factor": 0.1
+  },
+  "selection": {
+    "v3_target_labels_used": false,
+    "post_prediction_adjustment_allowed": false,
+    "parameter_origin": "pre-existing V1 full-grid FLUS historical baseline"
+  },
+  "transition_counts_with_smoothing": [
+    [
+      665078.0,
+      12133.0,
+      574.0,
+      2990.0,
+      9464.0,
+      402.0,
+      3246.0,
+      8730.0,
+      64.0
+    ],
+    [
+      7238.0,
+      1455540.0,
+      1782.0,
+      1741.0,
+      18875.0,
+      23230.0,
+      10729.0,
+      1157.0,
+      577.0
+    ],
+    [
+      673.0,
+      2513.0,
+      3636.0,
+      135.0,
+      1809.0,
+      1052.0,
+      216.0,
+      168.0,
+      4.0
+    ],
+    [
+      2184.0,
+      1688.0,
+      299.0,
+      5602.0,
+      1748.0,
+      175.0,
+      66.0,
+      281.0,
+      4.0
+    ],
+    [
+      6237.0,
+      18195.0,
+      2188.0,
+      1611.0,
+      281199.0,
+      4578.0,
+      16175.0,
+      2634.0,
+      18.0
+    ],
+    [
+      507.0,
+      25471.0,
+      904.0,
+      232.0,
+      4557.0,
+      40903.0,
+      911.0,
+      596.0,
+      316.0
+    ],
+    [
+      2789.0,
+      8073.0,
+      135.0,
+      41.0,
+      11205.0,
+      770.0,
+      353218.0,
+      2285.0,
+      52.0
+    ],
+    [
+      6623.0,
+      783.0,
+      197.0,
+      406.0,
+      4730.0,
+      1394.0,
+      3330.0,
+      35640.0,
+      52.0
+    ],
+    [
+      100.0,
+      727.0,
+      8.0,
+      5.0,
+      41.0,
+      196.0,
+      53.0,
+      93.0,
+      365.0
+    ]
+  ],
+  "transition_probability": [
+    [
+      0.9464863857141435,
+      0.017266725583870917,
+      0.0008168713826046242,
+      0.004255131418097259,
+      0.013468415966846977,
+      0.0005720945919983606,
+      0.004619450362255419,
+      0.012423845244143502,
+      9.107973603953999e-05
+    ],
+    [
+      0.004759121265539635,
+      0.957044952589605,
+      0.0011716985486586945,
+      0.0011447402767759747,
+      0.01241066784844717,
+      0.015274162337453127,
+      0.007054519488529256,
+      0.0007607492821538213,
+      0.0003793883628372989
+    ],
+    [
+      0.06594160297864002,
+      0.24622770919067216,
+      0.3562610229276896,
+      0.013227513227513227,
+      0.17724867724867724,
+      0.10307662159514011,
+      0.021164021164021163,
+      0.01646090534979424,
+      0.0003919263178522438
+    ],
+    [
+      0.1812899477048228,
+      0.14011787166929526,
+      0.0248194571262555,
+      0.465012036191583,
+      0.14509836473810908,
+      0.01452643811737362,
+      0.005478542375695194,
+      0.023325309205611357,
+      0.0003320328712542542
+    ],
+    [
+      0.018739014827166615,
+      0.05466672675650097,
+      0.006573827872669641,
+      0.004840236153048808,
+      0.8448600657983686,
+      0.01375456307179233,
+      0.0485976534919705,
+      0.007913831177610528,
+      5.408085087205372e-05
+    ],
+    [
+      0.006814790918988669,
+      0.3423659556164899,
+      0.01215102759519873,
+      0.0031184053120421524,
+      0.06125246985765555,
+      0.5497936744761214,
+      0.012245117410648279,
+      0.008011075715418632,
+      0.004247483097436724
+    ],
+    [
+      0.007367236533462945,
+      0.021325098793347562,
+      0.0003566070032332368,
+      0.00010830286764861267,
+      0.029598381268358658,
+      0.0020339806851080917,
+      0.93303712939287,
+      0.006035903721392194,
+      0.00013735973457872826
+    ],
+    [
+      0.12459787414166118,
+      0.01473050512651679,
+      0.0037061424136957954,
+      0.0076380396952309285,
+      0.08898504374000564,
+      0.02622519048066974,
+      0.06264697582541623,
+      0.6704919574828332,
+      0.0009782710939704637
+    ],
+    [
+      0.06297229219143577,
+      0.45780856423173805,
+      0.005037783375314861,
+      0.0031486146095717885,
+      0.025818639798488665,
+      0.12342569269521411,
+      0.033375314861460954,
+      0.058564231738035266,
+      0.22984886649874056
+    ]
+  ],
+  "source_fingerprint": "bd958afe0e0ceac972061cd5ff704175037bd77498fbb0a233c15510f369e9dd",
+  "implementation_sources": [
+    {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/run_geosos_flus_ensemble.py",
+      "role": "v3_flus_runtime_r2_adapter",
+      "size_bytes": 35995,
+      "sha256": "db7f1c6ffcc69580f8bfbf1ae13ed104af30929dee149eff7ce0945f87256a1c"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v0_1/run_flus_observed_baseline.py",
+      "role": "prior_validated_flus_adapter_source",
+      "size_bytes": 26976,
+      "sha256": "13f7bd36787119b78703f6cf17e520db8ba39f4e9405b0747d574cfa5410050d"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v0_1/run_flus_full_grid_observed_baseline.py",
+      "role": "prior_validated_flus_adapter_source",
+      "size_bytes": 29002,
+      "sha256": "2eab3c245ea60d40bbb71d55193cc8ccb02e36f4316862412e9ec4f870efb2cf"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v0_1/run_flus_full_grid_historical_backtest.py",
+      "role": "prior_validated_flus_adapter_source",
+      "size_bytes": 26988,
+      "sha256": "a9aeba3f8d5149965977709020f72c80be312edbdfd5ab15b3fd832ffbf9e57e"
+    }
+  ]
+}

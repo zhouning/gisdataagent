@@ -1,0 +1,82 @@
+{
+  "schema": "gwm_bench.runtime_r2_replay.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+  "scope": "twm_dam_gk_candidate_all_seed_members",
+  "status": "PASS_SEED_COMPLETE_REPLAY_LABEL_FIREWALL_INTACT",
+  "created_at": "2026-07-23T08:38:56.610593+00:00",
+  "members": [
+    {
+      "member": "seed_31",
+      "status": "PASS",
+      "checks": {
+        "prediction_file_sha256_equal": true,
+        "columns_equal": true,
+        "keys_and_order_equal": true,
+        "probability_values_bitwise_equal": true
+      },
+      "committed_prediction_sha256": "d6fbfdeb05e92e672b828c240a145890004ffcd7ab17280d3493957ef8292462",
+      "replayed_prediction_sha256": "d6fbfdeb05e92e672b828c240a145890004ffcd7ab17280d3493957ef8292462",
+      "row_count": 3681
+    },
+    {
+      "member": "seed_47",
+      "status": "PASS",
+      "checks": {
+        "prediction_file_sha256_equal": true,
+        "columns_equal": true,
+        "keys_and_order_equal": true,
+        "probability_values_bitwise_equal": true
+      },
+      "committed_prediction_sha256": "41af4be70fa0d29328ae5531555395620ad63eac9538108222108eabe8108c59",
+      "replayed_prediction_sha256": "41af4be70fa0d29328ae5531555395620ad63eac9538108222108eabe8108c59",
+      "row_count": 3681
+    },
+    {
+      "member": "seed_73",
+      "status": "PASS",
+      "checks": {
+        "prediction_file_sha256_equal": true,
+        "columns_equal": true,
+        "keys_and_order_equal": true,
+        "probability_values_bitwise_equal": true
+      },
+      "committed_prediction_sha256": "ca18c5d90809f3bcf6964fb60d7b8dbba5632d53e2cdf3ae4c320ec8f4d00d89",
+      "replayed_prediction_sha256": "ca18c5d90809f3bcf6964fb60d7b8dbba5632d53e2cdf3ae4c320ec8f4d00d89",
+      "row_count": 3681
+    }
+  ],
+  "ensemble": {
+    "member": "equal_seed_equal_fold_ensemble",
+    "status": "PASS",
+    "checks": {
+      "prediction_file_sha256_equal": true,
+      "columns_equal": true,
+      "keys_and_order_equal": true,
+      "probability_values_bitwise_equal": true
+    },
+    "committed_prediction_sha256": "66caa44290722668ec848109fd901d9eb1582f2096c4c2d52e122528b4d3b00a",
+    "replayed_prediction_sha256": "66caa44290722668ec848109fd901d9eb1582f2096c4c2d52e122528b4d3b00a",
+    "row_count": 3681
+  },
+  "model_spec_sha256_equal": true,
+  "label_firewall": {
+    "before": {
+      "target_root": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025",
+      "target_root_exists": false,
+      "target_file_count": 0,
+      "target_pixels_read": false,
+      "target_labels_visible_to_adapter": false,
+      "passed": true
+    },
+    "after": {
+      "target_root": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025",
+      "target_root_exists": false,
+      "target_file_count": 0,
+      "target_pixels_read": false,
+      "target_labels_visible_to_adapter": false,
+      "passed": true
+    },
+    "target_pixels_read": false
+  },
+  "wall_time_seconds": 2.6972735830349848
+}

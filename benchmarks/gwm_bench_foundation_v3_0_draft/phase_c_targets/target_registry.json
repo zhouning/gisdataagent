@@ -1,0 +1,1503 @@
+{
+  "schema": "gwm_bench.v3_phase_c_target_registry.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+  "status": "PHASE_C_TARGETS_REGISTERED_AFTER_PREDICTION_COMMITMENT",
+  "registered_at": "2026-07-23T12:48:44.985381+00:00",
+  "registry_identity": {
+    "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+    "prediction_commitment_fingerprint": "fcce6679f251b85d350f7ac41cab68164be383e6bbc5685df91542cbeb1b93c1",
+    "prediction_commitment_sha256": "4bc8f9cbfa8b89c600c70834d844fc592c04ddbb001bd8878d01c1e8c2f5f6a2",
+    "target_manifest_sha256": "b60a049c0e5ee1b2931a607f68323939a184888aeb9d83eb4510f28f00a4cad3",
+    "download_status_sha256": "b7f1cc5116c2b6c5bd6724f66b87d1d95d490254b08ffee34deb3b51fb76c973",
+    "target_artifacts": [
+      {
+        "region_id": "v3_changchun_core",
+        "year": 2023,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_changchun_core/v3_changchun_core_dynamic_world_2023_100m.tif",
+        "size_bytes": 5552,
+        "sha256": "3a18e505c382cc61393bf56b01cdec658d046c6072f95871e2df1dc4220a34e5",
+        "shape": [
+          248,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_changchun_core",
+        "year": 2024,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_changchun_core/v3_changchun_core_dynamic_world_2024_100m.tif",
+        "size_bytes": 6173,
+        "sha256": "afef390719b27ef7472228418ea251ff96a2c8dc8aa31289d9de738efd6e0e06",
+        "shape": [
+          248,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_changchun_core",
+        "year": 2025,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_changchun_core/v3_changchun_core_dynamic_world_2025_100m.tif",
+        "size_bytes": 5815,
+        "sha256": "b779966d27c8e0d9111495b4aa639652e9eab46170870bb16f76ce0833152b8b",
+        "shape": [
+          248,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_dalian_core",
+        "year": 2023,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_dalian_core/v3_dalian_core_dynamic_world_2023_100m.tif",
+        "size_bytes": 3913,
+        "sha256": "702e2bd44b218bbb235e736a4b38b10ebf7dfb149ab4255a7ba30e8ee6d13e18",
+        "shape": [
+          230,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_dalian_core",
+        "year": 2024,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_dalian_core/v3_dalian_core_dynamic_world_2024_100m.tif",
+        "size_bytes": 4140,
+        "sha256": "e30b01ba4d1c7523c98e2587471e5508cf9355c92fe5a5d44d59f37bb6a397fc",
+        "shape": [
+          230,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_dalian_core",
+        "year": 2025,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_dalian_core/v3_dalian_core_dynamic_world_2025_100m.tif",
+        "size_bytes": 4467,
+        "sha256": "2f9c0400c3b335958b84d65139b6f2deaa045c35bbca8457b4373856d450a09d",
+        "shape": [
+          230,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_guiyang_core",
+        "year": 2023,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_guiyang_core/v3_guiyang_core_dynamic_world_2023_100m.tif",
+        "size_bytes": 7248,
+        "sha256": "908212d9f1a67489e3afa32e864b0786b18a69e13150d4a02d67d476623edbbc",
+        "shape": [
+          200,
+          180
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_guiyang_core",
+        "year": 2024,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_guiyang_core/v3_guiyang_core_dynamic_world_2024_100m.tif",
+        "size_bytes": 6656,
+        "sha256": "b02a5f5a5708b7763fd68cb67a5e0db588e6af042b8ed6a2da4e76ce9d9d6a0b",
+        "shape": [
+          200,
+          180
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_guiyang_core",
+        "year": 2025,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_guiyang_core/v3_guiyang_core_dynamic_world_2025_100m.tif",
+        "size_bytes": 7548,
+        "sha256": "705ea46deda1f930e838cebd9a9a15684be9393bd59169e7665f0dd49c765393",
+        "shape": [
+          200,
+          180
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_haikou_core",
+        "year": 2023,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_haikou_core/v3_haikou_core_dynamic_world_2023_100m.tif",
+        "size_bytes": 3898,
+        "sha256": "0686afed356e760d160155eaab1b075287782e1d8ad78e2ebb065db6b24fabed",
+        "shape": [
+          191,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_haikou_core",
+        "year": 2024,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_haikou_core/v3_haikou_core_dynamic_world_2024_100m.tif",
+        "size_bytes": 3623,
+        "sha256": "69c46e58293503a11a8fe70e31979aa49a19a5b2bb35af042da606de42ba07ef",
+        "shape": [
+          191,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_haikou_core",
+        "year": 2025,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_haikou_core/v3_haikou_core_dynamic_world_2025_100m.tif",
+        "size_bytes": 3669,
+        "sha256": "f8d5fa4e6799e89e2835dcc2a00cfdca934f5eacfd184b4649fa9a94f4450afb",
+        "shape": [
+          191,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_harbin_core",
+        "year": 2023,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_harbin_core/v3_harbin_core_dynamic_world_2023_100m.tif",
+        "size_bytes": 7057,
+        "sha256": "ef5740b63539a6db0fc1e77c513b3264d5566a8eb6ca2b4c8279f5211cee4d14",
+        "shape": [
+          256,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_harbin_core",
+        "year": 2024,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_harbin_core/v3_harbin_core_dynamic_world_2024_100m.tif",
+        "size_bytes": 7363,
+        "sha256": "fc8e427fe702e3b07796dff9815c83e24543b4384813744fec0a62a01202dca4",
+        "shape": [
+          256,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_harbin_core",
+        "year": 2025,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_harbin_core/v3_harbin_core_dynamic_world_2025_100m.tif",
+        "size_bytes": 6801,
+        "sha256": "ee0fb46fbee77d21f8a4c3b27826e207c3a36a6bb52954371febfced8c545dcc",
+        "shape": [
+          256,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_jinan_core",
+        "year": 2023,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_jinan_core/v3_jinan_core_dynamic_world_2023_100m.tif",
+        "size_bytes": 4995,
+        "sha256": "162af6945b63f7a12dde546a9e65ca256c2edaa713b30faf364d7520c7688048",
+        "shape": [
+          223,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_jinan_core",
+        "year": 2024,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_jinan_core/v3_jinan_core_dynamic_world_2024_100m.tif",
+        "size_bytes": 4823,
+        "sha256": "5744521d9c0d0dd29c7f60d778158afd542ab21fbdbd515e887970929650c046",
+        "shape": [
+          223,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_jinan_core",
+        "year": 2025,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_jinan_core/v3_jinan_core_dynamic_world_2025_100m.tif",
+        "size_bytes": 5018,
+        "sha256": "ec6d366ff8bc201c078e996fa2cc65e3ef2e00d83929144114b22061d0666ddc",
+        "shape": [
+          223,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_kunming_core",
+        "year": 2023,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_kunming_core/v3_kunming_core_dynamic_world_2023_100m.tif",
+        "size_bytes": 4076,
+        "sha256": "00338e8be8a2a4074e3d8b4eaa424824e01b45baabbb01f14dc66bc68072498c",
+        "shape": [
+          197,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_kunming_core",
+        "year": 2024,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_kunming_core/v3_kunming_core_dynamic_world_2024_100m.tif",
+        "size_bytes": 3952,
+        "sha256": "ca59750f903a1c3881e13bfc21827bfa81034195a064eaf79fa291c56ad19834",
+        "shape": [
+          197,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_kunming_core",
+        "year": 2025,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_kunming_core/v3_kunming_core_dynamic_world_2025_100m.tif",
+        "size_bytes": 3847,
+        "sha256": "b1fc9da055f23700909028a38cfe87e08a6512ce04eae18dee5a512e63c3bc96",
+        "shape": [
+          197,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_lanzhou_core",
+        "year": 2023,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_lanzhou_core/v3_lanzhou_core_dynamic_world_2023_100m.tif",
+        "size_bytes": 7732,
+        "sha256": "5f1564751eff90889532ea510df6adbfc8fe2eabaff0831927522c68257f6f4d",
+        "shape": [
+          221,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_lanzhou_core",
+        "year": 2024,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_lanzhou_core/v3_lanzhou_core_dynamic_world_2024_100m.tif",
+        "size_bytes": 8294,
+        "sha256": "68152784b4e75a6c21b8e5ad90605bef89e239b2578f7f3b61a4265a2ae5c41e",
+        "shape": [
+          221,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_lanzhou_core",
+        "year": 2025,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_lanzhou_core/v3_lanzhou_core_dynamic_world_2025_100m.tif",
+        "size_bytes": 9295,
+        "sha256": "26d0920a0d23141597c069f91b0a7fa83ba5e4cb05e682927ddc934195834260",
+        "shape": [
+          221,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_nanchang_core",
+        "year": 2023,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_nanchang_core/v3_nanchang_core_dynamic_world_2023_100m.tif",
+        "size_bytes": 6854,
+        "sha256": "833728c64950d9a9a95c950e5d1621dbc8301893c34ea881cb517857fc9e83a3",
+        "shape": [
+          204,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_nanchang_core",
+        "year": 2024,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_nanchang_core/v3_nanchang_core_dynamic_world_2024_100m.tif",
+        "size_bytes": 6662,
+        "sha256": "2180a947180d2e4cf4339181f20d2b76d7ccf2d3f16c9c5df75854e79248d94f",
+        "shape": [
+          204,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_nanchang_core",
+        "year": 2025,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_nanchang_core/v3_nanchang_core_dynamic_world_2025_100m.tif",
+        "size_bytes": 6547,
+        "sha256": "c7f4bf037705c1f028109689bb88a9b74da9d16978545dec96e2d0c1f3c68ca9",
+        "shape": [
+          204,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_nanning_core",
+        "year": 2023,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_nanning_core/v3_nanning_core_dynamic_world_2023_100m.tif",
+        "size_bytes": 5409,
+        "sha256": "051cbb84080435ede48f69c433e272d94d971fc6425b90eb9dd15409607f8c1a",
+        "shape": [
+          195,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_nanning_core",
+        "year": 2024,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_nanning_core/v3_nanning_core_dynamic_world_2024_100m.tif",
+        "size_bytes": 5084,
+        "sha256": "12bc888290de519420487974e762f8b5259c41716eb8e5cd473d85ccfe29a35b",
+        "shape": [
+          195,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_nanning_core",
+        "year": 2025,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_nanning_core/v3_nanning_core_dynamic_world_2025_100m.tif",
+        "size_bytes": 5389,
+        "sha256": "e09295d562402cd25456b9517b5b3d7541dc8fcc081fc8faacfa8694d90e60c1",
+        "shape": [
+          195,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_qingdao_core",
+        "year": 2023,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_qingdao_core/v3_qingdao_core_dynamic_world_2023_100m.tif",
+        "size_bytes": 2836,
+        "sha256": "07e14f081ed3a53748353da0225814058d127d2bed5fc23a4c305d50aa108aa5",
+        "shape": [
+          221,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_qingdao_core",
+        "year": 2024,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_qingdao_core/v3_qingdao_core_dynamic_world_2024_100m.tif",
+        "size_bytes": 2666,
+        "sha256": "6f0c25d8bbf4c1544be255d38612f1455cd877011e1989d9c9419b754e65f32f",
+        "shape": [
+          221,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_qingdao_core",
+        "year": 2025,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_qingdao_core/v3_qingdao_core_dynamic_world_2025_100m.tif",
+        "size_bytes": 2639,
+        "sha256": "eb5aa5da86832ebbfd84bc961645e5fc2aab07ab3968c1d9439ea0b5a1d3e618",
+        "shape": [
+          221,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_quanzhou_core",
+        "year": 2023,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_quanzhou_core/v3_quanzhou_core_dynamic_world_2023_100m.tif",
+        "size_bytes": 5707,
+        "sha256": "3c8e5bd182a75d0c9868c4f5dcd2909e135dc637db3baba7c9c7037a89002dab",
+        "shape": [
+          197,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_quanzhou_core",
+        "year": 2024,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_quanzhou_core/v3_quanzhou_core_dynamic_world_2024_100m.tif",
+        "size_bytes": 5593,
+        "sha256": "7bc7925b610074fb701860fcc98cfb51491dddf39a7692a0ced01de8cefe093c",
+        "shape": [
+          197,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_quanzhou_core",
+        "year": 2025,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_quanzhou_core/v3_quanzhou_core_dynamic_world_2025_100m.tif",
+        "size_bytes": 5588,
+        "sha256": "7a100f8a5f16c93c60c582865d7a6d1a0fbdcf86503bd24f0e7e267dc7d1df2b",
+        "shape": [
+          197,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_shenyang_core",
+        "year": 2023,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_shenyang_core/v3_shenyang_core_dynamic_world_2023_100m.tif",
+        "size_bytes": 4265,
+        "sha256": "35847403d6f3d2957dbfda992128aba2348a5310ece7c7b2761cda768eaa66fa",
+        "shape": [
+          240,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_shenyang_core",
+        "year": 2024,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_shenyang_core/v3_shenyang_core_dynamic_world_2024_100m.tif",
+        "size_bytes": 5408,
+        "sha256": "680c359621209c7a7a7fcde2567002d1d92472fd376fb15610ca30c45d95778e",
+        "shape": [
+          240,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_shenyang_core",
+        "year": 2025,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_shenyang_core/v3_shenyang_core_dynamic_world_2025_100m.tif",
+        "size_bytes": 4796,
+        "sha256": "b35a40935432f39563b9bb480227f46b856900e2bfca13bed98e0a41443791ec",
+        "shape": [
+          240,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_shijiazhuang_core",
+        "year": 2023,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_shijiazhuang_core/v3_shijiazhuang_core_dynamic_world_2023_100m.tif",
+        "size_bytes": 4800,
+        "sha256": "2c0cda495f2e2db32a928396d555b0fce9658feadfbadef2060a2fd826979891",
+        "shape": [
+          227,
+          180
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_shijiazhuang_core",
+        "year": 2024,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_shijiazhuang_core/v3_shijiazhuang_core_dynamic_world_2024_100m.tif",
+        "size_bytes": 4993,
+        "sha256": "cee69e5ddf6d262b968c1acdd47db204787091d266edc485f2856a83df44d245",
+        "shape": [
+          227,
+          180
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_shijiazhuang_core",
+        "year": 2025,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_shijiazhuang_core/v3_shijiazhuang_core_dynamic_world_2025_100m.tif",
+        "size_bytes": 5055,
+        "sha256": "26b067815f7810fad619938793a55f36e383989a4628666e560d16a4933520c7",
+        "shape": [
+          227,
+          180
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_taiyuan_core",
+        "year": 2023,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_taiyuan_core/v3_taiyuan_core_dynamic_world_2023_100m.tif",
+        "size_bytes": 4970,
+        "sha256": "332cc57f51a1ca55ce7c85f32421c95b7b3ffc2bc6db0208471c172aaa3ed427",
+        "shape": [
+          227,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_taiyuan_core",
+        "year": 2024,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_taiyuan_core/v3_taiyuan_core_dynamic_world_2024_100m.tif",
+        "size_bytes": 4747,
+        "sha256": "cb959218cc9bd2a047dd29c2fcef9d455fb89d2f596a4252ab5d414e0ce2a69e",
+        "shape": [
+          227,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_taiyuan_core",
+        "year": 2025,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_taiyuan_core/v3_taiyuan_core_dynamic_world_2025_100m.tif",
+        "size_bytes": 4932,
+        "sha256": "5779727b21a6a55f38dd41a6b75ab612e4ec523e21ca00531316f04463964dcd",
+        "shape": [
+          227,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_urumqi_core",
+        "year": 2023,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_urumqi_core/v3_urumqi_core_dynamic_world_2023_100m.tif",
+        "size_bytes": 7047,
+        "sha256": "b8e30f2f519dbb5b6943fe79302ea4e07fa76398af31fc8f011c8996bbaaa85d",
+        "shape": [
+          248,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_urumqi_core",
+        "year": 2024,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_urumqi_core/v3_urumqi_core_dynamic_world_2024_100m.tif",
+        "size_bytes": 6941,
+        "sha256": "de0d4b67e429f52c14fd0a6c9a14deb6ec7697f4b3eafa95262050076acb358e",
+        "shape": [
+          248,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_urumqi_core",
+        "year": 2025,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_urumqi_core/v3_urumqi_core_dynamic_world_2025_100m.tif",
+        "size_bytes": 7321,
+        "sha256": "4596b1c563525b01b4eb5a5a2a494e6bf47d7f6dec2e58af0b651ecad1c4afd1",
+        "shape": [
+          248,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_wenzhou_core",
+        "year": 2023,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_wenzhou_core/v3_wenzhou_core_dynamic_world_2023_100m.tif",
+        "size_bytes": 5747,
+        "sha256": "a13617414317c66f1719a8d89ba62ecf69b9bd302dc5aa04fc7e1f1174ef1329",
+        "shape": [
+          203,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_wenzhou_core",
+        "year": 2024,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_wenzhou_core/v3_wenzhou_core_dynamic_world_2024_100m.tif",
+        "size_bytes": 5763,
+        "sha256": "7c3c7b21c2489acb4ed51cade8d956ef5f793de0a28f95b7d17fc495581c0282",
+        "shape": [
+          203,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_wenzhou_core",
+        "year": 2025,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_wenzhou_core/v3_wenzhou_core_dynamic_world_2025_100m.tif",
+        "size_bytes": 5737,
+        "sha256": "0aba481c615cd41e9e075f21a8dce64fdb998becc85e6dba27e33aee8c156971",
+        "shape": [
+          203,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_wuxi_core",
+        "year": 2023,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_wuxi_core/v3_wuxi_core_dynamic_world_2023_100m.tif",
+        "size_bytes": 5781,
+        "sha256": "9de5b6750efcb1cd8350bbbb2d2c823f84da277b5bbef6bca7817fba59ce1bd3",
+        "shape": [
+          210,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_wuxi_core",
+        "year": 2024,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_wuxi_core/v3_wuxi_core_dynamic_world_2024_100m.tif",
+        "size_bytes": 5758,
+        "sha256": "557b33209a943b1d9758a19d0ba7c60010b4463bef731edf01c231078d10c4cc",
+        "shape": [
+          210,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_wuxi_core",
+        "year": 2025,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_wuxi_core/v3_wuxi_core_dynamic_world_2025_100m.tif",
+        "size_bytes": 5390,
+        "sha256": "4174cd105532db82a31789cd4f219cc8ef700771f05e9b7b9c7661c0b5a1793d",
+        "shape": [
+          210,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_xining_core",
+        "year": 2023,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_xining_core/v3_xining_core_dynamic_world_2023_100m.tif",
+        "size_bytes": 8569,
+        "sha256": "57064b97d16a6d4bff7145e62e1f74a59cd5bc5a7933cc636bc018c82643b1d6",
+        "shape": [
+          223,
+          180
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_xining_core",
+        "year": 2024,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_xining_core/v3_xining_core_dynamic_world_2024_100m.tif",
+        "size_bytes": 8509,
+        "sha256": "4ce940b1cb97acbdd1e1585892f47474225a2abdaf9a0bbe9c595fa840493359",
+        "shape": [
+          223,
+          180
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_xining_core",
+        "year": 2025,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_xining_core/v3_xining_core_dynamic_world_2025_100m.tif",
+        "size_bytes": 8600,
+        "sha256": "93cce7b2e13d4bfbdb564eb171046b0cc8dce4cdc7c7a80ca1e3156888f2986d",
+        "shape": [
+          223,
+          180
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_yinchuan_core",
+        "year": 2023,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_yinchuan_core/v3_yinchuan_core_dynamic_world_2023_100m.tif",
+        "size_bytes": 7390,
+        "sha256": "20f1e78cd24de415095d5533412ab78d53130082e17275c3f35e714c96f5e36e",
+        "shape": [
+          229,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_yinchuan_core",
+        "year": 2024,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_yinchuan_core/v3_yinchuan_core_dynamic_world_2024_100m.tif",
+        "size_bytes": 7203,
+        "sha256": "2a904c3bcc4ad76c47a246dd20c2cb1e92b315959de901dce0677dba2d91cf8d",
+        "shape": [
+          229,
+          179
+        ],
+        "crs": "EPSG:3857"
+      },
+      {
+        "region_id": "v3_yinchuan_core",
+        "year": 2025,
+        "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_yinchuan_core/v3_yinchuan_core_dynamic_world_2025_100m.tif",
+        "size_bytes": 7219,
+        "sha256": "8dc65396be042c7c9a203f8c21bd37d0a3a9ef3cf81daf251e340196967beaad",
+        "shape": [
+          229,
+          179
+        ],
+        "crs": "EPSG:3857"
+      }
+    ],
+    "labels_sha256": "98a2ffc6c6ef7a7f63fc468bd4c53033ed2547247ce8ecf8835821d665fc7920"
+  },
+  "target_dataset_fingerprint": "182333a179764d111750fe2430fb6a8ab7c163ce2ba2b43ce6553978bd7e7c71",
+  "counts": {
+    "region_count": 20,
+    "target_raster_count": 60,
+    "label_row_count": 3681,
+    "class_counts": {
+      "0": 392,
+      "1": 460,
+      "2": 4,
+      "3": 1,
+      "4": 129,
+      "5": 115,
+      "6": 2487,
+      "7": 72,
+      "8": 21
+    },
+    "step_change_counts": {
+      "2023": 77,
+      "2024": 76,
+      "2025": 78
+    },
+    "total_step_change_count": 231,
+    "regions_with_at_least_one_change": 20
+  },
+  "artifacts": {
+    "labels": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/phase_c_targets/observed_targets.parquet",
+      "role": "registered_v3_observed_targets",
+      "size_bytes": 5553,
+      "sha256": "98a2ffc6c6ef7a7f63fc468bd4c53033ed2547247ce8ecf8835821d665fc7920"
+    },
+    "target_manifest": {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/manifest.json",
+      "role": "phase_c_source_manifest",
+      "size_bytes": 16445,
+      "sha256": "b60a049c0e5ee1b2931a607f68323939a184888aeb9d83eb4510f28f00a4cad3"
+    },
+    "download_status": {
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/download_status.json",
+      "role": "phase_c_download_status",
+      "size_bytes": 20481,
+      "sha256": "b7f1cc5116c2b6c5bd6724f66b87d1d95d490254b08ffee34deb3b51fb76c973"
+    }
+  },
+  "target_artifacts": [
+    {
+      "region_id": "v3_changchun_core",
+      "year": 2023,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_changchun_core/v3_changchun_core_dynamic_world_2023_100m.tif",
+      "size_bytes": 5552,
+      "sha256": "3a18e505c382cc61393bf56b01cdec658d046c6072f95871e2df1dc4220a34e5",
+      "shape": [
+        248,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_changchun_core",
+      "year": 2024,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_changchun_core/v3_changchun_core_dynamic_world_2024_100m.tif",
+      "size_bytes": 6173,
+      "sha256": "afef390719b27ef7472228418ea251ff96a2c8dc8aa31289d9de738efd6e0e06",
+      "shape": [
+        248,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_changchun_core",
+      "year": 2025,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_changchun_core/v3_changchun_core_dynamic_world_2025_100m.tif",
+      "size_bytes": 5815,
+      "sha256": "b779966d27c8e0d9111495b4aa639652e9eab46170870bb16f76ce0833152b8b",
+      "shape": [
+        248,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_dalian_core",
+      "year": 2023,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_dalian_core/v3_dalian_core_dynamic_world_2023_100m.tif",
+      "size_bytes": 3913,
+      "sha256": "702e2bd44b218bbb235e736a4b38b10ebf7dfb149ab4255a7ba30e8ee6d13e18",
+      "shape": [
+        230,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_dalian_core",
+      "year": 2024,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_dalian_core/v3_dalian_core_dynamic_world_2024_100m.tif",
+      "size_bytes": 4140,
+      "sha256": "e30b01ba4d1c7523c98e2587471e5508cf9355c92fe5a5d44d59f37bb6a397fc",
+      "shape": [
+        230,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_dalian_core",
+      "year": 2025,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_dalian_core/v3_dalian_core_dynamic_world_2025_100m.tif",
+      "size_bytes": 4467,
+      "sha256": "2f9c0400c3b335958b84d65139b6f2deaa045c35bbca8457b4373856d450a09d",
+      "shape": [
+        230,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_guiyang_core",
+      "year": 2023,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_guiyang_core/v3_guiyang_core_dynamic_world_2023_100m.tif",
+      "size_bytes": 7248,
+      "sha256": "908212d9f1a67489e3afa32e864b0786b18a69e13150d4a02d67d476623edbbc",
+      "shape": [
+        200,
+        180
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_guiyang_core",
+      "year": 2024,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_guiyang_core/v3_guiyang_core_dynamic_world_2024_100m.tif",
+      "size_bytes": 6656,
+      "sha256": "b02a5f5a5708b7763fd68cb67a5e0db588e6af042b8ed6a2da4e76ce9d9d6a0b",
+      "shape": [
+        200,
+        180
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_guiyang_core",
+      "year": 2025,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_guiyang_core/v3_guiyang_core_dynamic_world_2025_100m.tif",
+      "size_bytes": 7548,
+      "sha256": "705ea46deda1f930e838cebd9a9a15684be9393bd59169e7665f0dd49c765393",
+      "shape": [
+        200,
+        180
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_haikou_core",
+      "year": 2023,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_haikou_core/v3_haikou_core_dynamic_world_2023_100m.tif",
+      "size_bytes": 3898,
+      "sha256": "0686afed356e760d160155eaab1b075287782e1d8ad78e2ebb065db6b24fabed",
+      "shape": [
+        191,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_haikou_core",
+      "year": 2024,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_haikou_core/v3_haikou_core_dynamic_world_2024_100m.tif",
+      "size_bytes": 3623,
+      "sha256": "69c46e58293503a11a8fe70e31979aa49a19a5b2bb35af042da606de42ba07ef",
+      "shape": [
+        191,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_haikou_core",
+      "year": 2025,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_haikou_core/v3_haikou_core_dynamic_world_2025_100m.tif",
+      "size_bytes": 3669,
+      "sha256": "f8d5fa4e6799e89e2835dcc2a00cfdca934f5eacfd184b4649fa9a94f4450afb",
+      "shape": [
+        191,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_harbin_core",
+      "year": 2023,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_harbin_core/v3_harbin_core_dynamic_world_2023_100m.tif",
+      "size_bytes": 7057,
+      "sha256": "ef5740b63539a6db0fc1e77c513b3264d5566a8eb6ca2b4c8279f5211cee4d14",
+      "shape": [
+        256,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_harbin_core",
+      "year": 2024,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_harbin_core/v3_harbin_core_dynamic_world_2024_100m.tif",
+      "size_bytes": 7363,
+      "sha256": "fc8e427fe702e3b07796dff9815c83e24543b4384813744fec0a62a01202dca4",
+      "shape": [
+        256,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_harbin_core",
+      "year": 2025,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_harbin_core/v3_harbin_core_dynamic_world_2025_100m.tif",
+      "size_bytes": 6801,
+      "sha256": "ee0fb46fbee77d21f8a4c3b27826e207c3a36a6bb52954371febfced8c545dcc",
+      "shape": [
+        256,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_jinan_core",
+      "year": 2023,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_jinan_core/v3_jinan_core_dynamic_world_2023_100m.tif",
+      "size_bytes": 4995,
+      "sha256": "162af6945b63f7a12dde546a9e65ca256c2edaa713b30faf364d7520c7688048",
+      "shape": [
+        223,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_jinan_core",
+      "year": 2024,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_jinan_core/v3_jinan_core_dynamic_world_2024_100m.tif",
+      "size_bytes": 4823,
+      "sha256": "5744521d9c0d0dd29c7f60d778158afd542ab21fbdbd515e887970929650c046",
+      "shape": [
+        223,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_jinan_core",
+      "year": 2025,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_jinan_core/v3_jinan_core_dynamic_world_2025_100m.tif",
+      "size_bytes": 5018,
+      "sha256": "ec6d366ff8bc201c078e996fa2cc65e3ef2e00d83929144114b22061d0666ddc",
+      "shape": [
+        223,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_kunming_core",
+      "year": 2023,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_kunming_core/v3_kunming_core_dynamic_world_2023_100m.tif",
+      "size_bytes": 4076,
+      "sha256": "00338e8be8a2a4074e3d8b4eaa424824e01b45baabbb01f14dc66bc68072498c",
+      "shape": [
+        197,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_kunming_core",
+      "year": 2024,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_kunming_core/v3_kunming_core_dynamic_world_2024_100m.tif",
+      "size_bytes": 3952,
+      "sha256": "ca59750f903a1c3881e13bfc21827bfa81034195a064eaf79fa291c56ad19834",
+      "shape": [
+        197,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_kunming_core",
+      "year": 2025,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_kunming_core/v3_kunming_core_dynamic_world_2025_100m.tif",
+      "size_bytes": 3847,
+      "sha256": "b1fc9da055f23700909028a38cfe87e08a6512ce04eae18dee5a512e63c3bc96",
+      "shape": [
+        197,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_lanzhou_core",
+      "year": 2023,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_lanzhou_core/v3_lanzhou_core_dynamic_world_2023_100m.tif",
+      "size_bytes": 7732,
+      "sha256": "5f1564751eff90889532ea510df6adbfc8fe2eabaff0831927522c68257f6f4d",
+      "shape": [
+        221,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_lanzhou_core",
+      "year": 2024,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_lanzhou_core/v3_lanzhou_core_dynamic_world_2024_100m.tif",
+      "size_bytes": 8294,
+      "sha256": "68152784b4e75a6c21b8e5ad90605bef89e239b2578f7f3b61a4265a2ae5c41e",
+      "shape": [
+        221,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_lanzhou_core",
+      "year": 2025,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_lanzhou_core/v3_lanzhou_core_dynamic_world_2025_100m.tif",
+      "size_bytes": 9295,
+      "sha256": "26d0920a0d23141597c069f91b0a7fa83ba5e4cb05e682927ddc934195834260",
+      "shape": [
+        221,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_nanchang_core",
+      "year": 2023,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_nanchang_core/v3_nanchang_core_dynamic_world_2023_100m.tif",
+      "size_bytes": 6854,
+      "sha256": "833728c64950d9a9a95c950e5d1621dbc8301893c34ea881cb517857fc9e83a3",
+      "shape": [
+        204,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_nanchang_core",
+      "year": 2024,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_nanchang_core/v3_nanchang_core_dynamic_world_2024_100m.tif",
+      "size_bytes": 6662,
+      "sha256": "2180a947180d2e4cf4339181f20d2b76d7ccf2d3f16c9c5df75854e79248d94f",
+      "shape": [
+        204,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_nanchang_core",
+      "year": 2025,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_nanchang_core/v3_nanchang_core_dynamic_world_2025_100m.tif",
+      "size_bytes": 6547,
+      "sha256": "c7f4bf037705c1f028109689bb88a9b74da9d16978545dec96e2d0c1f3c68ca9",
+      "shape": [
+        204,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_nanning_core",
+      "year": 2023,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_nanning_core/v3_nanning_core_dynamic_world_2023_100m.tif",
+      "size_bytes": 5409,
+      "sha256": "051cbb84080435ede48f69c433e272d94d971fc6425b90eb9dd15409607f8c1a",
+      "shape": [
+        195,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_nanning_core",
+      "year": 2024,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_nanning_core/v3_nanning_core_dynamic_world_2024_100m.tif",
+      "size_bytes": 5084,
+      "sha256": "12bc888290de519420487974e762f8b5259c41716eb8e5cd473d85ccfe29a35b",
+      "shape": [
+        195,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_nanning_core",
+      "year": 2025,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_nanning_core/v3_nanning_core_dynamic_world_2025_100m.tif",
+      "size_bytes": 5389,
+      "sha256": "e09295d562402cd25456b9517b5b3d7541dc8fcc081fc8faacfa8694d90e60c1",
+      "shape": [
+        195,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_qingdao_core",
+      "year": 2023,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_qingdao_core/v3_qingdao_core_dynamic_world_2023_100m.tif",
+      "size_bytes": 2836,
+      "sha256": "07e14f081ed3a53748353da0225814058d127d2bed5fc23a4c305d50aa108aa5",
+      "shape": [
+        221,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_qingdao_core",
+      "year": 2024,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_qingdao_core/v3_qingdao_core_dynamic_world_2024_100m.tif",
+      "size_bytes": 2666,
+      "sha256": "6f0c25d8bbf4c1544be255d38612f1455cd877011e1989d9c9419b754e65f32f",
+      "shape": [
+        221,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_qingdao_core",
+      "year": 2025,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_qingdao_core/v3_qingdao_core_dynamic_world_2025_100m.tif",
+      "size_bytes": 2639,
+      "sha256": "eb5aa5da86832ebbfd84bc961645e5fc2aab07ab3968c1d9439ea0b5a1d3e618",
+      "shape": [
+        221,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_quanzhou_core",
+      "year": 2023,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_quanzhou_core/v3_quanzhou_core_dynamic_world_2023_100m.tif",
+      "size_bytes": 5707,
+      "sha256": "3c8e5bd182a75d0c9868c4f5dcd2909e135dc637db3baba7c9c7037a89002dab",
+      "shape": [
+        197,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_quanzhou_core",
+      "year": 2024,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_quanzhou_core/v3_quanzhou_core_dynamic_world_2024_100m.tif",
+      "size_bytes": 5593,
+      "sha256": "7bc7925b610074fb701860fcc98cfb51491dddf39a7692a0ced01de8cefe093c",
+      "shape": [
+        197,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_quanzhou_core",
+      "year": 2025,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_quanzhou_core/v3_quanzhou_core_dynamic_world_2025_100m.tif",
+      "size_bytes": 5588,
+      "sha256": "7a100f8a5f16c93c60c582865d7a6d1a0fbdcf86503bd24f0e7e267dc7d1df2b",
+      "shape": [
+        197,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_shenyang_core",
+      "year": 2023,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_shenyang_core/v3_shenyang_core_dynamic_world_2023_100m.tif",
+      "size_bytes": 4265,
+      "sha256": "35847403d6f3d2957dbfda992128aba2348a5310ece7c7b2761cda768eaa66fa",
+      "shape": [
+        240,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_shenyang_core",
+      "year": 2024,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_shenyang_core/v3_shenyang_core_dynamic_world_2024_100m.tif",
+      "size_bytes": 5408,
+      "sha256": "680c359621209c7a7a7fcde2567002d1d92472fd376fb15610ca30c45d95778e",
+      "shape": [
+        240,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_shenyang_core",
+      "year": 2025,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_shenyang_core/v3_shenyang_core_dynamic_world_2025_100m.tif",
+      "size_bytes": 4796,
+      "sha256": "b35a40935432f39563b9bb480227f46b856900e2bfca13bed98e0a41443791ec",
+      "shape": [
+        240,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_shijiazhuang_core",
+      "year": 2023,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_shijiazhuang_core/v3_shijiazhuang_core_dynamic_world_2023_100m.tif",
+      "size_bytes": 4800,
+      "sha256": "2c0cda495f2e2db32a928396d555b0fce9658feadfbadef2060a2fd826979891",
+      "shape": [
+        227,
+        180
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_shijiazhuang_core",
+      "year": 2024,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_shijiazhuang_core/v3_shijiazhuang_core_dynamic_world_2024_100m.tif",
+      "size_bytes": 4993,
+      "sha256": "cee69e5ddf6d262b968c1acdd47db204787091d266edc485f2856a83df44d245",
+      "shape": [
+        227,
+        180
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_shijiazhuang_core",
+      "year": 2025,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_shijiazhuang_core/v3_shijiazhuang_core_dynamic_world_2025_100m.tif",
+      "size_bytes": 5055,
+      "sha256": "26b067815f7810fad619938793a55f36e383989a4628666e560d16a4933520c7",
+      "shape": [
+        227,
+        180
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_taiyuan_core",
+      "year": 2023,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_taiyuan_core/v3_taiyuan_core_dynamic_world_2023_100m.tif",
+      "size_bytes": 4970,
+      "sha256": "332cc57f51a1ca55ce7c85f32421c95b7b3ffc2bc6db0208471c172aaa3ed427",
+      "shape": [
+        227,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_taiyuan_core",
+      "year": 2024,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_taiyuan_core/v3_taiyuan_core_dynamic_world_2024_100m.tif",
+      "size_bytes": 4747,
+      "sha256": "cb959218cc9bd2a047dd29c2fcef9d455fb89d2f596a4252ab5d414e0ce2a69e",
+      "shape": [
+        227,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_taiyuan_core",
+      "year": 2025,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_taiyuan_core/v3_taiyuan_core_dynamic_world_2025_100m.tif",
+      "size_bytes": 4932,
+      "sha256": "5779727b21a6a55f38dd41a6b75ab612e4ec523e21ca00531316f04463964dcd",
+      "shape": [
+        227,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_urumqi_core",
+      "year": 2023,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_urumqi_core/v3_urumqi_core_dynamic_world_2023_100m.tif",
+      "size_bytes": 7047,
+      "sha256": "b8e30f2f519dbb5b6943fe79302ea4e07fa76398af31fc8f011c8996bbaaa85d",
+      "shape": [
+        248,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_urumqi_core",
+      "year": 2024,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_urumqi_core/v3_urumqi_core_dynamic_world_2024_100m.tif",
+      "size_bytes": 6941,
+      "sha256": "de0d4b67e429f52c14fd0a6c9a14deb6ec7697f4b3eafa95262050076acb358e",
+      "shape": [
+        248,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_urumqi_core",
+      "year": 2025,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_urumqi_core/v3_urumqi_core_dynamic_world_2025_100m.tif",
+      "size_bytes": 7321,
+      "sha256": "4596b1c563525b01b4eb5a5a2a494e6bf47d7f6dec2e58af0b651ecad1c4afd1",
+      "shape": [
+        248,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_wenzhou_core",
+      "year": 2023,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_wenzhou_core/v3_wenzhou_core_dynamic_world_2023_100m.tif",
+      "size_bytes": 5747,
+      "sha256": "a13617414317c66f1719a8d89ba62ecf69b9bd302dc5aa04fc7e1f1174ef1329",
+      "shape": [
+        203,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_wenzhou_core",
+      "year": 2024,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_wenzhou_core/v3_wenzhou_core_dynamic_world_2024_100m.tif",
+      "size_bytes": 5763,
+      "sha256": "7c3c7b21c2489acb4ed51cade8d956ef5f793de0a28f95b7d17fc495581c0282",
+      "shape": [
+        203,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_wenzhou_core",
+      "year": 2025,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_wenzhou_core/v3_wenzhou_core_dynamic_world_2025_100m.tif",
+      "size_bytes": 5737,
+      "sha256": "0aba481c615cd41e9e075f21a8dce64fdb998becc85e6dba27e33aee8c156971",
+      "shape": [
+        203,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_wuxi_core",
+      "year": 2023,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_wuxi_core/v3_wuxi_core_dynamic_world_2023_100m.tif",
+      "size_bytes": 5781,
+      "sha256": "9de5b6750efcb1cd8350bbbb2d2c823f84da277b5bbef6bca7817fba59ce1bd3",
+      "shape": [
+        210,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_wuxi_core",
+      "year": 2024,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_wuxi_core/v3_wuxi_core_dynamic_world_2024_100m.tif",
+      "size_bytes": 5758,
+      "sha256": "557b33209a943b1d9758a19d0ba7c60010b4463bef731edf01c231078d10c4cc",
+      "shape": [
+        210,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_wuxi_core",
+      "year": 2025,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_wuxi_core/v3_wuxi_core_dynamic_world_2025_100m.tif",
+      "size_bytes": 5390,
+      "sha256": "4174cd105532db82a31789cd4f219cc8ef700771f05e9b7b9c7661c0b5a1793d",
+      "shape": [
+        210,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_xining_core",
+      "year": 2023,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_xining_core/v3_xining_core_dynamic_world_2023_100m.tif",
+      "size_bytes": 8569,
+      "sha256": "57064b97d16a6d4bff7145e62e1f74a59cd5bc5a7933cc636bc018c82643b1d6",
+      "shape": [
+        223,
+        180
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_xining_core",
+      "year": 2024,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_xining_core/v3_xining_core_dynamic_world_2024_100m.tif",
+      "size_bytes": 8509,
+      "sha256": "4ce940b1cb97acbdd1e1585892f47474225a2abdaf9a0bbe9c595fa840493359",
+      "shape": [
+        223,
+        180
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_xining_core",
+      "year": 2025,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_xining_core/v3_xining_core_dynamic_world_2025_100m.tif",
+      "size_bytes": 8600,
+      "sha256": "93cce7b2e13d4bfbdb564eb171046b0cc8dce4cdc7c7a80ca1e3156888f2986d",
+      "shape": [
+        223,
+        180
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_yinchuan_core",
+      "year": 2023,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_yinchuan_core/v3_yinchuan_core_dynamic_world_2023_100m.tif",
+      "size_bytes": 7390,
+      "sha256": "20f1e78cd24de415095d5533412ab78d53130082e17275c3f35e714c96f5e36e",
+      "shape": [
+        229,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_yinchuan_core",
+      "year": 2024,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_yinchuan_core/v3_yinchuan_core_dynamic_world_2024_100m.tif",
+      "size_bytes": 7203,
+      "sha256": "2a904c3bcc4ad76c47a246dd20c2cb1e92b315959de901dce0677dba2d91cf8d",
+      "shape": [
+        229,
+        179
+      ],
+      "crs": "EPSG:3857"
+    },
+    {
+      "region_id": "v3_yinchuan_core",
+      "year": 2025,
+      "path": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025/v3_yinchuan_core/v3_yinchuan_core_dynamic_world_2025_100m.tif",
+      "size_bytes": 7219,
+      "sha256": "8dc65396be042c7c9a203f8c21bd37d0a3a9ef3cf81daf251e340196967beaad",
+      "shape": [
+        229,
+        179
+      ],
+      "crs": "EPSG:3857"
+    }
+  ],
+  "prediction_commitment_preceded_target_access": true
+}

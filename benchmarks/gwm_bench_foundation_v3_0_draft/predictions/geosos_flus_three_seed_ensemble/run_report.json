@@ -1,0 +1,192 @@
+{
+  "schema": "gwm_bench.runtime_r2_prediction_run.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V3.0-DRAFT1",
+  "model_group": "geosos_flus_three_seed_ensemble",
+  "status": "PREDICTION_COMPLETE_LABEL_FIREWALL_INTACT_REPLAY_PENDING",
+  "created_at": "2026-07-23T09:00:08.859982+00:00",
+  "lifecycle": {
+    "prepare": "complete",
+    "predict": "complete",
+    "writeback": "predicted_full_grid_categorical_state",
+    "audit": "complete"
+  },
+  "label_firewall": {
+    "before": {
+      "target_root": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025",
+      "target_root_exists": false,
+      "target_file_count": 0,
+      "target_pixels_read": false,
+      "target_labels_visible_to_adapter": false,
+      "passed": true
+    },
+    "after": {
+      "target_root": "data/twm_public_landcover/gee_dynamic_world_v3_lockbox_targets_2023_2025",
+      "target_root_exists": false,
+      "target_file_count": 0,
+      "target_pixels_read": false,
+      "target_labels_visible_to_adapter": false,
+      "passed": true
+    },
+    "target_pixels_read": false
+  },
+  "contract": {
+    "submission_contract_sha256": "0afab3fcf576198a311f3f7aa75937bf712b8eb79b4948942807dc2ae6a3f7bf",
+    "protocol_sha256": "f4bcad2ef8cf18dc383272ea6ecb44513d1b0895d7beef5d1afa306c7beaacff",
+    "phase_a_bundle_fingerprint": "652a009fd38f79308ee7ddd71549db5c71760e8cc884217cb29e85bcf184a7e3",
+    "submission_keys_sha256": "8b89fa97a3a925fa8fc94ca6c336382d7271083f4dbf4bdab1d0411a66a52466"
+  },
+  "hashes": {
+    "protocol": "f4bcad2ef8cf18dc383272ea6ecb44513d1b0895d7beef5d1afa306c7beaacff",
+    "phase_a_bundle": "652a009fd38f79308ee7ddd71549db5c71760e8cc884217cb29e85bcf184a7e3",
+    "runtime_environment": "ad338533aec418c0849106783b62f554a5d0bd979662baf982478a20e9556622",
+    "adapter_source": "db7f1c6ffcc69580f8bfbf1ae13ed104af30929dee149eff7ce0945f87256a1c",
+    "model_or_binary": "9839ce50950442d4ef49e4d2129a1ba27735e1955c2d4975ae51067c1c3c9964",
+    "random_seed_or_seed_set": "ae2522c4f64deda635bb9331f5d5211c4edbc119e6be7ca8ed64ac75c0286765",
+    "prediction": "283c7ef0c491c8391c6429d804ab07d089c1ccd25ca543446b444381362a2f07"
+  },
+  "artifacts": {
+    "prediction": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/geosos_flus_three_seed_ensemble/prediction.parquet",
+      "role": "sealed_v3_flus_ensemble_prediction",
+      "size_bytes": 12179,
+      "sha256": "283c7ef0c491c8391c6429d804ab07d089c1ccd25ca543446b444381362a2f07"
+    },
+    "member_predictions": [
+      {
+        "seed": 31,
+        "prediction": {
+          "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/geosos_flus_three_seed_ensemble/members/seed_31/prediction.parquet",
+          "role": "flus_full_grid_seed_member_prediction",
+          "size_bytes": 11182,
+          "sha256": "94046f796477bf31707d3bddf810a5dfd7a549ddbb3b1a8aaf55e2ea4c3ea02e"
+        },
+        "run_report": {
+          "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/geosos_flus_three_seed_ensemble/members/seed_31/run_report.json",
+          "role": "flus_seed_runtime_report",
+          "size_bytes": 52445,
+          "sha256": "f055f4130c080c38ccfa946bbb697a198b895007edbbd58bad388b8e20f6f85f"
+        }
+      },
+      {
+        "seed": 47,
+        "prediction": {
+          "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/geosos_flus_three_seed_ensemble/members/seed_47/prediction.parquet",
+          "role": "flus_full_grid_seed_member_prediction",
+          "size_bytes": 11184,
+          "sha256": "f478c558fe652b1628798b11b93e4377cfc983eb390632a42517c448a3b81ac6"
+        },
+        "run_report": {
+          "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/geosos_flus_three_seed_ensemble/members/seed_47/run_report.json",
+          "role": "flus_seed_runtime_report",
+          "size_bytes": 52508,
+          "sha256": "defa755e14d3127b4f4b3e9f5c3fc6cf1450ad1ab2f8a1f919747626a4004ccb"
+        }
+      },
+      {
+        "seed": 73,
+        "prediction": {
+          "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/geosos_flus_three_seed_ensemble/members/seed_73/prediction.parquet",
+          "role": "flus_full_grid_seed_member_prediction",
+          "size_bytes": 11201,
+          "sha256": "cb2705f37613f4b46debf180946efbb02013f66fc7b1a8efcef629b69c13589b"
+        },
+        "run_report": {
+          "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/geosos_flus_three_seed_ensemble/members/seed_73/run_report.json",
+          "role": "flus_seed_runtime_report",
+          "size_bytes": 52470,
+          "sha256": "2d7011625a8eadea9144d94327d55ad3522a8fa4e55d6d59b4cdd7e6d3b84ef0"
+        }
+      }
+    ],
+    "model_spec": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/geosos_flus_three_seed_ensemble/model_spec.json",
+      "role": "frozen_v3_flus_model_and_adapter_spec",
+      "size_bytes": 6884,
+      "sha256": "1b3031da2e210c09c4cde98f3a7206d4aaab991918dd4c078c8e71e04b6f4c58"
+    },
+    "adapter_source": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/run_geosos_flus_ensemble.py",
+      "role": "v3_flus_runtime_r2_adapter",
+      "size_bytes": 35995,
+      "sha256": "db7f1c6ffcc69580f8bfbf1ae13ed104af30929dee149eff7ce0945f87256a1c"
+    },
+    "runtime_environment": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/geosos_flus_three_seed_ensemble/runtime_environment.json",
+      "role": "runtime_environment_descriptor",
+      "size_bytes": 553,
+      "sha256": "ad338533aec418c0849106783b62f554a5d0bd979662baf982478a20e9556622"
+    },
+    "source_manifest": {
+      "path": "benchmarks/gwm_bench_foundation_v3_0_draft/predictions/geosos_flus_three_seed_ensemble/source_manifest.json",
+      "role": "flus_development_and_phase_a_source_manifest",
+      "size_bytes": 113429,
+      "sha256": "f2e202a97720946224a3a4d89a1f563aa59a548861f959c54b3002679a20476d"
+    },
+    "binary": {
+      "path": "/Users/zhouning/FLUS_console_crossplatform/build/cmake-release/flus_console",
+      "path_scope": "absolute_external_not_distributed",
+      "role": "geosos_flus_cross_platform_executable",
+      "size_bytes": 2558784,
+      "sha256": "9839ce50950442d4ef49e4d2129a1ba27735e1955c2d4975ae51067c1c3c9964"
+    }
+  },
+  "full_grid_execution": {
+    "development_valid_cell_count": 617253,
+    "v3_valid_cell_count_per_seed": 774015,
+    "region_seed_run_count": 60,
+    "region_year_run_count": 180,
+    "exact_demand_run_count": 8,
+    "mean_demand_total_variation_distance": 0.020499349736523318,
+    "maximum_demand_total_variation_distance": 0.10038304392236977,
+    "large_temporary_rasters_committed": false
+  },
+  "prediction_summary": {
+    "row_count": 3681,
+    "region_count": 20,
+    "node_count": 1227,
+    "target_years": [
+      2023,
+      2024,
+      2025
+    ],
+    "argmax_class_counts": {
+      "0": 406,
+      "1": 534,
+      "2": 1,
+      "3": 8,
+      "4": 209,
+      "5": 62,
+      "6": 2359,
+      "7": 98,
+      "8": 4
+    },
+    "argmax_change_from_2022_by_year": {
+      "2023": 48,
+      "2024": 117,
+      "2025": 157
+    },
+    "argmax_step_change_by_year": {
+      "2023": 48,
+      "2024": 72,
+      "2025": 46
+    }
+  },
+  "resource_usage": {
+    "wall_time_seconds": 371.1213047080673,
+    "peak_memory_bytes": 703725568,
+    "temporary_bytes": 411230347,
+    "exit_status": 0
+  },
+  "replay": {
+    "stochastic_member_count": 3,
+    "all_seed_members_materialized": true,
+    "required": true,
+    "verified": false
+  },
+  "claim_boundary": {
+    "external_flus_core_baseline": true,
+    "published_sota_comparison": false,
+    "operational_forecast_supported": false,
+    "quality_claimed_before_labels": false
+  }
+}

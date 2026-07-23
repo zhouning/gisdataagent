@@ -1,0 +1,205 @@
+{
+  "schema": "gwm_bench.foundation_v3_phase_a_regions.v1",
+  "regions": [
+    {
+      "region_id": "v3_shenyang_core",
+      "width": 179,
+      "height": 240,
+      "crs": "EPSG:3857",
+      "sample_stride_pixels": 24,
+      "node_count": 63,
+      "directed_edge_count": 220,
+      "node_selection_uses_target_labels": false
+    },
+    {
+      "region_id": "v3_dalian_core",
+      "width": 179,
+      "height": 230,
+      "crs": "EPSG:3857",
+      "sample_stride_pixels": 24,
+      "node_count": 63,
+      "directed_edge_count": 220,
+      "node_selection_uses_target_labels": false
+    },
+    {
+      "region_id": "v3_changchun_core",
+      "width": 179,
+      "height": 248,
+      "crs": "EPSG:3857",
+      "sample_stride_pixels": 24,
+      "node_count": 70,
+      "directed_edge_count": 246,
+      "node_selection_uses_target_labels": false
+    },
+    {
+      "region_id": "v3_harbin_core",
+      "width": 179,
+      "height": 256,
+      "crs": "EPSG:3857",
+      "sample_stride_pixels": 24,
+      "node_count": 70,
+      "directed_edge_count": 246,
+      "node_selection_uses_target_labels": false
+    },
+    {
+      "region_id": "v3_jinan_core",
+      "width": 179,
+      "height": 223,
+      "crs": "EPSG:3857",
+      "sample_stride_pixels": 24,
+      "node_count": 63,
+      "directed_edge_count": 220,
+      "node_selection_uses_target_labels": false
+    },
+    {
+      "region_id": "v3_qingdao_core",
+      "width": 179,
+      "height": 221,
+      "crs": "EPSG:3857",
+      "sample_stride_pixels": 24,
+      "node_count": 63,
+      "directed_edge_count": 220,
+      "node_selection_uses_target_labels": false
+    },
+    {
+      "region_id": "v3_shijiazhuang_core",
+      "width": 180,
+      "height": 227,
+      "crs": "EPSG:3857",
+      "sample_stride_pixels": 24,
+      "node_count": 63,
+      "directed_edge_count": 220,
+      "node_selection_uses_target_labels": false
+    },
+    {
+      "region_id": "v3_taiyuan_core",
+      "width": 179,
+      "height": 227,
+      "crs": "EPSG:3857",
+      "sample_stride_pixels": 24,
+      "node_count": 72,
+      "directed_edge_count": 254,
+      "node_selection_uses_target_labels": false
+    },
+    {
+      "region_id": "v3_wuxi_core",
+      "width": 179,
+      "height": 210,
+      "crs": "EPSG:3857",
+      "sample_stride_pixels": 24,
+      "node_count": 56,
+      "directed_edge_count": 194,
+      "node_selection_uses_target_labels": false
+    },
+    {
+      "region_id": "v3_wenzhou_core",
+      "width": 179,
+      "height": 203,
+      "crs": "EPSG:3857",
+      "sample_stride_pixels": 24,
+      "node_count": 56,
+      "directed_edge_count": 194,
+      "node_selection_uses_target_labels": false
+    },
+    {
+      "region_id": "v3_nanchang_core",
+      "width": 179,
+      "height": 204,
+      "crs": "EPSG:3857",
+      "sample_stride_pixels": 24,
+      "node_count": 56,
+      "directed_edge_count": 194,
+      "node_selection_uses_target_labels": false
+    },
+    {
+      "region_id": "v3_quanzhou_core",
+      "width": 179,
+      "height": 197,
+      "crs": "EPSG:3857",
+      "sample_stride_pixels": 24,
+      "node_count": 56,
+      "directed_edge_count": 194,
+      "node_selection_uses_target_labels": false
+    },
+    {
+      "region_id": "v3_kunming_core",
+      "width": 179,
+      "height": 197,
+      "crs": "EPSG:3857",
+      "sample_stride_pixels": 24,
+      "node_count": 56,
+      "directed_edge_count": 194,
+      "node_selection_uses_target_labels": false
+    },
+    {
+      "region_id": "v3_guiyang_core",
+      "width": 180,
+      "height": 200,
+      "crs": "EPSG:3857",
+      "sample_stride_pixels": 24,
+      "node_count": 56,
+      "directed_edge_count": 194,
+      "node_selection_uses_target_labels": false
+    },
+    {
+      "region_id": "v3_nanning_core",
+      "width": 179,
+      "height": 195,
+      "crs": "EPSG:3857",
+      "sample_stride_pixels": 24,
+      "node_count": 56,
+      "directed_edge_count": 194,
+      "node_selection_uses_target_labels": false
+    },
+    {
+      "region_id": "v3_haikou_core",
+      "width": 179,
+      "height": 191,
+      "crs": "EPSG:3857",
+      "sample_stride_pixels": 24,
+      "node_count": 49,
+      "directed_edge_count": 168,
+      "node_selection_uses_target_labels": false
+    },
+    {
+      "region_id": "v3_urumqi_core",
+      "width": 179,
+      "height": 248,
+      "crs": "EPSG:3857",
+      "sample_stride_pixels": 24,
+      "node_count": 70,
+      "directed_edge_count": 246,
+      "node_selection_uses_target_labels": false
+    },
+    {
+      "region_id": "v3_lanzhou_core",
+      "width": 179,
+      "height": 221,
+      "crs": "EPSG:3857",
+      "sample_stride_pixels": 24,
+      "node_count": 63,
+      "directed_edge_count": 220,
+      "node_selection_uses_target_labels": false
+    },
+    {
+      "region_id": "v3_xining_core",
+      "width": 180,
+      "height": 223,
+      "crs": "EPSG:3857",
+      "sample_stride_pixels": 24,
+      "node_count": 63,
+      "directed_edge_count": 220,
+      "node_selection_uses_target_labels": false
+    },
+    {
+      "region_id": "v3_yinchuan_core",
+      "width": 179,
+      "height": 229,
+      "crs": "EPSG:3857",
+      "sample_stride_pixels": 24,
+      "node_count": 63,
+      "directed_edge_count": 220,
+      "node_selection_uses_target_labels": false
+    }
+  ]
+}
