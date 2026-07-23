@@ -1,0 +1,57 @@
+{
+  "schema": "gwm_bench.foundation_v5_multifold_run_report.v1",
+  "model_id": "action_deleted",
+  "outer_fold_count": 4,
+  "seed_count": 3,
+  "fold_reports": {
+    "holdout_2015": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/folds/holdout_2015/run_report.json",
+      "bytes": 37473,
+      "sha256": "8fccead22c212d1c1d8d81e489b02119cb2ccf22b02f4976163ee5e5e2c021db"
+    },
+    "holdout_2019": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/folds/holdout_2019/run_report.json",
+      "bytes": 37458,
+      "sha256": "f530f48a0d7d4bdd5dd497d4017e6254f431e91329eab340bdc831a57065e3d8"
+    },
+    "holdout_2022": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/folds/holdout_2022/run_report.json",
+      "bytes": 37445,
+      "sha256": "9198dfcabdf7eea1fcc0f08efb2c9983a1c390f49812afeef2ba6b98295f47a6"
+    },
+    "holdout_2025": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/folds/holdout_2025/run_report.json",
+      "bytes": 37504,
+      "sha256": "2b34d17b83df7ec47b06303da42e76aaca932775ca8005ff3854de67a33fa99c"
+    }
+  },
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_deleted/prediction.parquet",
+    "bytes": 399613,
+    "sha256": "cd1ec5b00749d975508382dd61d00aa6a86b62b40b24edcb3dcb1f7fd2bd5f04"
+  },
+  "model_spec": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_deleted/model_spec.json",
+    "bytes": 549,
+    "sha256": "669690517ba7b2bfc35b88203f930824a90208aee4b540a614696cc2f76d1ec0"
+  },
+  "nested_selection_receipts": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_deleted/nested_selection_receipts.json",
+    "bytes": 16956,
+    "sha256": "e9ed61911fee38f5e78eab0d153aa62d9ebde8218fe15b437dddc5f7bd505036"
+  },
+  "fold_training_manifests": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_deleted/fold_training_manifests.json",
+    "bytes": 4855,
+    "sha256": "04a8ddb01c6e0a3c2f1437e07505a23d27f2a9fd3271a14b4b4c82f6440fdaec"
+  },
+  "runtime_environment": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_deleted/runtime_environment.json",
+    "bytes": 409,
+    "sha256": "1dcbd18ce4af05cf3d75e1627ccc2d660070e059e38e815a695f02a4aa2dee75"
+  },
+  "test_target_rows_loaded": false,
+  "model_process_target_access_permitted": false,
+  "exit_status": "success",
+  "failure_state": null
+}

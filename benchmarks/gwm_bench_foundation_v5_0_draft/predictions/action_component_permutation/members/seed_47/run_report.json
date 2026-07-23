@@ -1,0 +1,13 @@
+{
+  "schema": "gwm_bench.foundation_v5_seed_multifold_run.v1",
+  "model_id": "action_component_permutation",
+  "seed": 47,
+  "outer_fold_count": 4,
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_component_permutation/members/seed_47/prediction.parquet",
+    "bytes": 398497,
+    "sha256": "63dd3b3ca393dd24878cd584796ce4e4ec67f65a33c916ff140a51432a4af0d5"
+  },
+  "test_target_rows_loaded": false,
+  "exit_status": "success"
+}

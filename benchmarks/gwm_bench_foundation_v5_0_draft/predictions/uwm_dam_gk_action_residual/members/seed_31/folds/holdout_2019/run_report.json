@@ -1,0 +1,28 @@
+{
+  "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+  "model_id": "uwm_dam_gk_action_residual",
+  "outer_fold_id": "holdout_2019",
+  "seed": 31,
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/uwm_dam_gk_action_residual/members/seed_31/folds/holdout_2019/prediction.parquet",
+    "bytes": 102768,
+    "sha256": "593cd97605dd517c8deda42cb4d3ddfbeff083f10f076f1fdc0a1123768e75b9"
+  },
+  "checkpoint": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/uwm_dam_gk_action_residual/members/seed_31/folds/holdout_2019/model.pt",
+    "bytes": 34198,
+    "sha256": "67ac52d605c69b1d53ec64381ee4822cce02fa78b9deaac0abaab8e489414c23"
+  },
+  "training_final_loss": 0.22783312698205313,
+  "control_audit": null,
+  "model_process_target_access_permitted": false,
+  "test_target_rows_loaded": false,
+  "exit_status": "success",
+  "failure_state": null,
+  "wall_seconds": 0.19630050007253885,
+  "raw_action_residual": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/uwm_dam_gk_action_residual/members/seed_31/folds/holdout_2019/raw_action_residual.parquet",
+    "bytes": 105921,
+    "sha256": "f161d2fb90ed7ee2578e46dca1fce456a56ded5ef06bf78ed47d32a13c27487f"
+  }
+}

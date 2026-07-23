@@ -1,0 +1,113 @@
+{
+  "selection_rule": "lowest mean three-fold leave-one-training-action-out macro pre-action normalized MAE",
+  "seed": 31,
+  "rows": [
+    {
+      "config": "compact",
+      "training_events": [
+        "event_2019_nys_congestion_surcharge",
+        "event_2025_mta_crz"
+      ],
+      "validation_event": "event_2015_improvement_surcharge",
+      "primary_metric": 0.42627838253974915,
+      "training_final_loss": 0.3183447867631912
+    },
+    {
+      "config": "compact",
+      "training_events": [
+        "event_2015_improvement_surcharge",
+        "event_2025_mta_crz"
+      ],
+      "validation_event": "event_2019_nys_congestion_surcharge",
+      "primary_metric": 0.42632314562797546,
+      "training_final_loss": 0.27772631496191025
+    },
+    {
+      "config": "compact",
+      "training_events": [
+        "event_2015_improvement_surcharge",
+        "event_2019_nys_congestion_surcharge"
+      ],
+      "validation_event": "event_2025_mta_crz",
+      "primary_metric": 0.4373312294483185,
+      "training_final_loss": 0.1956329494714737
+    },
+    {
+      "config": "base",
+      "training_events": [
+        "event_2019_nys_congestion_surcharge",
+        "event_2025_mta_crz"
+      ],
+      "validation_event": "event_2015_improvement_surcharge",
+      "primary_metric": 0.42904040217399597,
+      "training_final_loss": 0.3001575917005539
+    },
+    {
+      "config": "base",
+      "training_events": [
+        "event_2015_improvement_surcharge",
+        "event_2025_mta_crz"
+      ],
+      "validation_event": "event_2019_nys_congestion_surcharge",
+      "primary_metric": 0.41973933577537537,
+      "training_final_loss": 0.2513609677553177
+    },
+    {
+      "config": "base",
+      "training_events": [
+        "event_2015_improvement_surcharge",
+        "event_2019_nys_congestion_surcharge"
+      ],
+      "validation_event": "event_2025_mta_crz",
+      "primary_metric": 0.4395591914653778,
+      "training_final_loss": 0.17618870735168457
+    },
+    {
+      "config": "regularized",
+      "training_events": [
+        "event_2019_nys_congestion_surcharge",
+        "event_2025_mta_crz"
+      ],
+      "validation_event": "event_2015_improvement_surcharge",
+      "primary_metric": 0.42751362919807434,
+      "training_final_loss": 0.31645625829696655
+    },
+    {
+      "config": "regularized",
+      "training_events": [
+        "event_2015_improvement_surcharge",
+        "event_2025_mta_crz"
+      ],
+      "validation_event": "event_2019_nys_congestion_surcharge",
+      "primary_metric": 0.41092199087142944,
+      "training_final_loss": 0.26421917974948883
+    },
+    {
+      "config": "regularized",
+      "training_events": [
+        "event_2015_improvement_surcharge",
+        "event_2019_nys_congestion_surcharge"
+      ],
+      "validation_event": "event_2025_mta_crz",
+      "primary_metric": 0.44738054275512695,
+      "training_final_loss": 0.18124552071094513
+    }
+  ],
+  "summary": {
+    "compact": 0.42997758587201435,
+    "base": 0.4294463098049164,
+    "regularized": 0.42860538760821026
+  },
+  "selected_config": "regularized",
+  "backbone_crossfit_rule": "inner validation backbone uses the two residual-training actions; each residual-training event backbone uses only the other residual-training action",
+  "schema": "gwm_bench.foundation_v5_nested_selection_receipt.v1",
+  "outer_fold_id": "holdout_2022",
+  "created_at": "2026-07-23T16:07:36.579672+00:00",
+  "candidate_grid_sha256": "2a885befbb8c118c285fbfe6c3024a1be13a86e058cfd50850bdfd6f4d11a356",
+  "training_event_ids": [
+    "event_2015_improvement_surcharge",
+    "event_2019_nys_congestion_surcharge",
+    "event_2025_mta_crz"
+  ],
+  "current_outer_fold_targets_read": false
+}

@@ -1,0 +1,28 @@
+{
+  "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+  "model_id": "dam_gk_residual_no_action",
+  "outer_fold_id": "holdout_2015",
+  "seed": 47,
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/members/seed_47/folds/holdout_2015/prediction.parquet",
+    "bytes": 103135,
+    "sha256": "ca387ffee8dc1cfca70669375acd5fc136b9778f20df6cb4e63e0bb4822df5c7"
+  },
+  "checkpoint": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/members/seed_47/folds/holdout_2015/model.pt",
+    "bytes": 48790,
+    "sha256": "888792cb52f9c790e7c3ac73089a5380cb87007b87c6c94e6efa1d7aa18f1e79"
+  },
+  "training_final_loss": 0.2608139564593633,
+  "control_audit": null,
+  "model_process_target_access_permitted": false,
+  "test_target_rows_loaded": false,
+  "exit_status": "success",
+  "failure_state": null,
+  "wall_seconds": 0.43242391594685614,
+  "raw_action_residual": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/members/seed_47/folds/holdout_2015/raw_action_residual.parquet",
+    "bytes": 105834,
+    "sha256": "9c5f94a80dcfa6e2586984d66306a5f696368c624a84e8297a59f695b8f411a6"
+  }
+}

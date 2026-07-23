@@ -1,0 +1,18 @@
+{
+  "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+  "model_id": "fixed_adjacency_spatial_ar",
+  "outer_fold_id": "holdout_2022",
+  "seed": null,
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/fixed_adjacency_spatial_ar/folds/holdout_2022/prediction.parquet",
+    "bytes": 101560,
+    "sha256": "c96651a1dced3f0bbb49608ac462272933136febc97f3f3918b04dd36108ca40"
+  },
+  "checkpoint": null,
+  "training_final_loss": null,
+  "control_audit": null,
+  "model_process_target_access_permitted": false,
+  "test_target_rows_loaded": false,
+  "exit_status": "success",
+  "failure_state": null
+}

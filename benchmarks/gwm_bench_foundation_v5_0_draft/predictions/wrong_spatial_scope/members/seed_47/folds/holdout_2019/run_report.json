@@ -1,0 +1,24 @@
+{
+  "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+  "model_id": "wrong_spatial_scope",
+  "outer_fold_id": "holdout_2019",
+  "seed": 47,
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/wrong_spatial_scope/members/seed_47/folds/holdout_2019/prediction.parquet",
+    "bytes": 103216,
+    "sha256": "5230bd3d736d62d55b4c38d9858694da1ec4821244e6d3f85fbcb2a52347967e"
+  },
+  "checkpoint": null,
+  "training_final_loss": null,
+  "control_audit": {
+    "control_id": "wrong_spatial_scope",
+    "wrong_scope": "CBD-only for every held-out action",
+    "nonzero_zone_count": 38,
+    "outer_fold_id": "holdout_2019",
+    "swap_source_event": null
+  },
+  "model_process_target_access_permitted": false,
+  "test_target_rows_loaded": false,
+  "exit_status": "success",
+  "failure_state": null
+}

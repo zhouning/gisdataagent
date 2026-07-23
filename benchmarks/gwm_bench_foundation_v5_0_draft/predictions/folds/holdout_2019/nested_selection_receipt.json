@@ -1,0 +1,113 @@
+{
+  "selection_rule": "lowest mean three-fold leave-one-training-action-out macro pre-action normalized MAE",
+  "seed": 31,
+  "rows": [
+    {
+      "config": "compact",
+      "training_events": [
+        "event_2022_tlc_taximeter_adjustment",
+        "event_2025_mta_crz"
+      ],
+      "validation_event": "event_2015_improvement_surcharge",
+      "primary_metric": 0.4444541037082672,
+      "training_final_loss": 0.2955876439809799
+    },
+    {
+      "config": "compact",
+      "training_events": [
+        "event_2015_improvement_surcharge",
+        "event_2025_mta_crz"
+      ],
+      "validation_event": "event_2022_tlc_taximeter_adjustment",
+      "primary_metric": 0.30197516083717346,
+      "training_final_loss": 0.27772631496191025
+    },
+    {
+      "config": "compact",
+      "training_events": [
+        "event_2015_improvement_surcharge",
+        "event_2022_tlc_taximeter_adjustment"
+      ],
+      "validation_event": "event_2025_mta_crz",
+      "primary_metric": 0.49370405077934265,
+      "training_final_loss": 0.14335965365171432
+    },
+    {
+      "config": "base",
+      "training_events": [
+        "event_2022_tlc_taximeter_adjustment",
+        "event_2025_mta_crz"
+      ],
+      "validation_event": "event_2015_improvement_surcharge",
+      "primary_metric": 0.43583157658576965,
+      "training_final_loss": 0.2812782973051071
+    },
+    {
+      "config": "base",
+      "training_events": [
+        "event_2015_improvement_surcharge",
+        "event_2025_mta_crz"
+      ],
+      "validation_event": "event_2022_tlc_taximeter_adjustment",
+      "primary_metric": 0.3344656825065613,
+      "training_final_loss": 0.2513609677553177
+    },
+    {
+      "config": "base",
+      "training_events": [
+        "event_2015_improvement_surcharge",
+        "event_2022_tlc_taximeter_adjustment"
+      ],
+      "validation_event": "event_2025_mta_crz",
+      "primary_metric": 0.4782947897911072,
+      "training_final_loss": 0.14107754826545715
+    },
+    {
+      "config": "regularized",
+      "training_events": [
+        "event_2022_tlc_taximeter_adjustment",
+        "event_2025_mta_crz"
+      ],
+      "validation_event": "event_2015_improvement_surcharge",
+      "primary_metric": 0.4281806945800781,
+      "training_final_loss": 0.29038067162036896
+    },
+    {
+      "config": "regularized",
+      "training_events": [
+        "event_2015_improvement_surcharge",
+        "event_2025_mta_crz"
+      ],
+      "validation_event": "event_2022_tlc_taximeter_adjustment",
+      "primary_metric": 0.3383139967918396,
+      "training_final_loss": 0.26421917974948883
+    },
+    {
+      "config": "regularized",
+      "training_events": [
+        "event_2015_improvement_surcharge",
+        "event_2022_tlc_taximeter_adjustment"
+      ],
+      "validation_event": "event_2025_mta_crz",
+      "primary_metric": 0.48710936307907104,
+      "training_final_loss": 0.1424088552594185
+    }
+  ],
+  "summary": {
+    "compact": 0.4133777717749278,
+    "base": 0.4161973496278127,
+    "regularized": 0.4178680181503296
+  },
+  "selected_config": "compact",
+  "backbone_crossfit_rule": "inner validation backbone uses the two residual-training actions; each residual-training event backbone uses only the other residual-training action",
+  "schema": "gwm_bench.foundation_v5_nested_selection_receipt.v1",
+  "outer_fold_id": "holdout_2019",
+  "created_at": "2026-07-23T16:07:31.624244+00:00",
+  "candidate_grid_sha256": "2a885befbb8c118c285fbfe6c3024a1be13a86e058cfd50850bdfd6f4d11a356",
+  "training_event_ids": [
+    "event_2015_improvement_surcharge",
+    "event_2022_tlc_taximeter_adjustment",
+    "event_2025_mta_crz"
+  ],
+  "current_outer_fold_targets_read": false
+}

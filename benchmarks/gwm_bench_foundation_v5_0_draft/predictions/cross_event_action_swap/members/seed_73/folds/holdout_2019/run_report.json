@@ -1,0 +1,23 @@
+{
+  "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+  "model_id": "cross_event_action_swap",
+  "outer_fold_id": "holdout_2019",
+  "seed": 73,
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/cross_event_action_swap/members/seed_73/folds/holdout_2019/prediction.parquet",
+    "bytes": 102935,
+    "sha256": "15a4753eb1056987b3c3e03f052e04c5b95ac816ed1b20d90f54191b7e37ca4b"
+  },
+  "checkpoint": null,
+  "training_final_loss": null,
+  "control_audit": {
+    "control_id": "cross_event_action_swap",
+    "swap_action_sha256": "555a0da6cd4cd88a61e8f05858aacb880d49d11dab0412dad4d88036214d5001",
+    "outer_fold_id": "holdout_2019",
+    "swap_source_event": "event_2015_improvement_surcharge"
+  },
+  "model_process_target_access_permitted": false,
+  "test_target_rows_loaded": false,
+  "exit_status": "success",
+  "failure_state": null
+}

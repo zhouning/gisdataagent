@@ -1,0 +1,18 @@
+{
+  "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+  "model_id": "history_ar_backbone",
+  "outer_fold_id": "holdout_2019",
+  "seed": null,
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/history_ar_backbone/folds/holdout_2019/prediction.parquet",
+    "bytes": 102433,
+    "sha256": "5ba2b833279f829739ffd9e2081726a5302b533e17c8a1f7abd808d11cfb16b9"
+  },
+  "checkpoint": null,
+  "training_final_loss": null,
+  "control_audit": null,
+  "model_process_target_access_permitted": false,
+  "test_target_rows_loaded": false,
+  "exit_status": "success",
+  "failure_state": null
+}

@@ -1,0 +1,884 @@
+{
+  "schema": "gwm_bench.foundation_v5_outer_fold_run.v1",
+  "outer_fold_id": "holdout_2019",
+  "test_event": "event_2019_nys_congestion_surcharge",
+  "training_events": [
+    "event_2015_improvement_surcharge",
+    "event_2022_tlc_taximeter_adjustment",
+    "event_2025_mta_crz"
+  ],
+  "mode": "formal",
+  "selected_config": "compact",
+  "selection_receipt": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/folds/holdout_2019/nested_selection_receipt.json",
+    "bytes": 3676,
+    "sha256": "a00bbf5835809721d5dc70a652f79090b41ec232cdfc7a00939cad7d9ff694d3"
+  },
+  "training_manifest": {
+    "schema": "gwm_bench.foundation_v5_fold_training_manifest.v1",
+    "created_at": "2026-07-23T15:34:17.098417+00:00",
+    "fold_id": "holdout_2019",
+    "test_event": "event_2019_nys_congestion_surcharge",
+    "permitted_training_events": [
+      "event_2015_improvement_surcharge",
+      "event_2022_tlc_taximeter_adjustment",
+      "event_2025_mta_crz"
+    ],
+    "weekly_rows": 50496,
+    "heldout_event_rows": 0,
+    "heldout_post_action_target_rows_loaded": 0,
+    "chronologically_later_training_events_permitted": true,
+    "analyst_blindness_claimed": false,
+    "test_target_path_permitted_for_model_runtime": false,
+    "normalization_may_read_current_fold_targets": false,
+    "selection_may_read_current_fold_targets": false,
+    "graph_may_read_current_fold_post_action_rows": false,
+    "artifact": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2019/development/weekly_state_action.parquet",
+      "bytes": 664465,
+      "sha256": "5fd0ddf3ce69cdec7b3488a7bfa7e04d6fed515ea40f6f6f012e57108ce80b8b",
+      "row_count": 50496
+    }
+  },
+  "test_graph": {
+    "path": "/Users/zhouning/gisdataagent/benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2019/graph/test_spatial_edges.parquet",
+    "sha256": "51429bee2978345b1c3ecae72c080b70bd0e8df9aa6dbfbe5c82028ed1d91e45",
+    "relation_counts": {
+      "geographic_adjacency": 692,
+      "origin_destination_flow": 2082,
+      "action_exposure": 263
+    },
+    "relation_digests": [
+      "ef7ebd578d91766090d96b7c67759fbc0aad7f8011f0871addf8d6eee54b1769",
+      "71d7b55bd23bdde419652c107018f51957ca57254fe20e39ec866629e515ce49",
+      "31bcf9be005e692b2e857f32b49c8538fec1cabddcd048b1caaa6b14dadff4dd"
+    ]
+  },
+  "training_graphs": {
+    "event_2015_improvement_surcharge": {
+      "path": "/Users/zhouning/gisdataagent/benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/events/event_2015_improvement_surcharge/spatial_edges.parquet",
+      "sha256": "432a312781e9856e9a49966fca4c9fc49a56e01993aadf7f12df2a51a08ab52c",
+      "relation_counts": {
+        "geographic_adjacency": 692,
+        "origin_destination_flow": 2092,
+        "action_exposure": 263
+      },
+      "relation_digests": [
+        "ef7ebd578d91766090d96b7c67759fbc0aad7f8011f0871addf8d6eee54b1769",
+        "19d8fcb9dbbb0c794cf037351916d4fc0f4821ac5b15c2f32e58bee28ff9683e",
+        "e34927057127782566a8943078e293570e10ce256a5330205a7c5948f098eb84"
+      ]
+    },
+    "event_2022_tlc_taximeter_adjustment": {
+      "path": "/Users/zhouning/gisdataagent/benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/events/event_2022_tlc_taximeter_adjustment/spatial_edges.parquet",
+      "sha256": "59558e70f19adc8eb7f4ea8615bd28b720d5151d6de868efdacab350ea150dfe",
+      "relation_counts": {
+        "geographic_adjacency": 692,
+        "origin_destination_flow": 2076,
+        "action_exposure": 263
+      },
+      "relation_digests": [
+        "ef7ebd578d91766090d96b7c67759fbc0aad7f8011f0871addf8d6eee54b1769",
+        "21adf62931117f663e17a22c2b59da7eaa5a4696f9a84a08abbbd65a0154133f",
+        "1cc511a3b1e9cad3570a613eb577fcdb102949cf9108cd80e29a1cb7f88ad81b"
+      ]
+    },
+    "event_2025_mta_crz": {
+      "path": "/Users/zhouning/gisdataagent/benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/events/event_2025_mta_crz/spatial_edges.parquet",
+      "sha256": "e6b2873ef6be59376107c014b47fc2fc952621a238fda6a676256401aa786469",
+      "relation_counts": {
+        "geographic_adjacency": 692,
+        "origin_destination_flow": 2059,
+        "action_exposure": 263
+      },
+      "relation_digests": [
+        "ef7ebd578d91766090d96b7c67759fbc0aad7f8011f0871addf8d6eee54b1769",
+        "34a045d70e5381c2222d152502de62f59547f54410327e4c5c9f686451d20b28",
+        "1303fd36ac8b9837183e566f22eeae3cfb95e11431ede5aca892590167bbecd1"
+      ]
+    }
+  },
+  "model_read_artifacts": [
+    {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2019/development/weekly_state_action.parquet",
+      "bytes": 664465,
+      "sha256": "5fd0ddf3ce69cdec7b3488a7bfa7e04d6fed515ea40f6f6f012e57108ce80b8b"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2019/test_input/weekly_state_history.parquet",
+      "bytes": 208811,
+      "sha256": "d27d469a550757f099b66f4ab2eb3234c06f19d3a0c9ba42e5f7839397993d20"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2019/test_input/future_action_spec.parquet",
+      "bytes": 27288,
+      "sha256": "14c0a3af690bb776a7db21d8993ed60a11423bbdfc0dd4c8d9c1240f373942da"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2019/test_input/submission_keys.parquet",
+      "bytes": 5391,
+      "sha256": "255570eb116bebc5f76a2c76b54abb8a842fb307049d3bfc19ac6df59ebeaba4"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2019/graph/zone_metadata.parquet",
+      "bytes": 8489,
+      "sha256": "8cae554be9ab0fc12b99106eda2e47159c7036eb3d7c44d74bca11be5ffeca37"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2019/graph/test_spatial_edges.parquet",
+      "bytes": 31159,
+      "sha256": "51429bee2978345b1c3ecae72c080b70bd0e8df9aa6dbfbe5c82028ed1d91e45"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2019/graph/training_graph_index.json",
+      "bytes": 1202,
+      "sha256": "12315b3a9b77d27a7ba169a956f91590580585fd8f7aa1502e21ca4411a9d7b8"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2019/development/training_row_manifest.json",
+      "bytes": 1042,
+      "sha256": "8ec74e0be3084e15e2b1af920f793beb700e2b76eca0c5c592dc5db9e0558fd5"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/events/event_2015_improvement_surcharge/spatial_edges.parquet",
+      "bytes": 28218,
+      "sha256": "432a312781e9856e9a49966fca4c9fc49a56e01993aadf7f12df2a51a08ab52c"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/events/event_2022_tlc_taximeter_adjustment/spatial_edges.parquet",
+      "bytes": 29403,
+      "sha256": "59558e70f19adc8eb7f4ea8615bd28b720d5151d6de868efdacab350ea150dfe"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/events/event_2025_mta_crz/spatial_edges.parquet",
+      "bytes": 30398,
+      "sha256": "e6b2873ef6be59376107c014b47fc2fc952621a238fda6a676256401aa786469"
+    }
+  ],
+  "model_read_path_count": 11,
+  "model_read_paths_contain_answer_directory": false,
+  "test_target_rows_loaded": false,
+  "fold_prediction_reports": {
+    "history_ar_backbone": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "history_ar_backbone",
+      "outer_fold_id": "holdout_2019",
+      "seed": null,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/history_ar_backbone/folds/holdout_2019/prediction.parquet",
+        "bytes": 102433,
+        "sha256": "5ba2b833279f829739ffd9e2081726a5302b533e17c8a1f7abd808d11cfb16b9"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": null,
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "fixed_adjacency_spatial_ar": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "fixed_adjacency_spatial_ar",
+      "outer_fold_id": "holdout_2019",
+      "seed": null,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/fixed_adjacency_spatial_ar/folds/holdout_2019/prediction.parquet",
+        "bytes": 102513,
+        "sha256": "4dd2281b881200d4e691cf6b9e8512855e91385a77c26510f976aa19c5163b04"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": null,
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "uwm_dam_gk_action_residual/seed_31": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "uwm_dam_gk_action_residual",
+      "outer_fold_id": "holdout_2019",
+      "seed": 31,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/uwm_dam_gk_action_residual/members/seed_31/folds/holdout_2019/prediction.parquet",
+        "bytes": 102768,
+        "sha256": "593cd97605dd517c8deda42cb4d3ddfbeff083f10f076f1fdc0a1123768e75b9"
+      },
+      "checkpoint": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/uwm_dam_gk_action_residual/members/seed_31/folds/holdout_2019/model.pt",
+        "bytes": 34198,
+        "sha256": "67ac52d605c69b1d53ec64381ee4822cce02fa78b9deaac0abaab8e489414c23"
+      },
+      "training_final_loss": 0.22783312698205313,
+      "control_audit": null,
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null,
+      "wall_seconds": 0.19630050007253885,
+      "raw_action_residual": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/uwm_dam_gk_action_residual/members/seed_31/folds/holdout_2019/raw_action_residual.parquet",
+        "bytes": 105921,
+        "sha256": "f161d2fb90ed7ee2578e46dca1fce456a56ded5ef06bf78ed47d32a13c27487f"
+      }
+    },
+    "action_deleted/seed_31": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "action_deleted",
+      "outer_fold_id": "holdout_2019",
+      "seed": 31,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_deleted/members/seed_31/folds/holdout_2019/prediction.parquet",
+        "bytes": 102433,
+        "sha256": "5ba2b833279f829739ffd9e2081726a5302b533e17c8a1f7abd808d11cfb16b9"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "action_deleted",
+        "outer_fold_id": "holdout_2019",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "effective_date_minus_4w/seed_31": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "effective_date_minus_4w",
+      "outer_fold_id": "holdout_2019",
+      "seed": 31,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/effective_date_minus_4w/members/seed_31/folds/holdout_2019/prediction.parquet",
+        "bytes": 102734,
+        "sha256": "7a9838fd35081d4c319fc977575df2b0ef6e3e60ce5ff2703147d9088ba3d4e2"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "effective_date_minus_4w",
+        "outer_fold_id": "holdout_2019",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "effective_date_plus_4w/seed_31": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "effective_date_plus_4w",
+      "outer_fold_id": "holdout_2019",
+      "seed": 31,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/effective_date_plus_4w/members/seed_31/folds/holdout_2019/prediction.parquet",
+        "bytes": 103001,
+        "sha256": "af8a659d3db36706678932be2a719eed11b13d4806d6e32a1b367536b400d084"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "effective_date_plus_4w",
+        "outer_fold_id": "holdout_2019",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "action_component_permutation/seed_31": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "action_component_permutation",
+      "outer_fold_id": "holdout_2019",
+      "seed": 31,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_component_permutation/members/seed_31/folds/holdout_2019/prediction.parquet",
+        "bytes": 102877,
+        "sha256": "365b650f7f9aa47b5e079aad745e3b50d4d79119dcdc7de0ffa56671ba6fcd30"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "action_component_permutation",
+        "component_permutation": [
+          9,
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "permutation_has_fixed_points": false,
+        "outer_fold_id": "holdout_2019",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "wrong_spatial_scope/seed_31": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "wrong_spatial_scope",
+      "outer_fold_id": "holdout_2019",
+      "seed": 31,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/wrong_spatial_scope/members/seed_31/folds/holdout_2019/prediction.parquet",
+        "bytes": 103014,
+        "sha256": "cf3547820219ce408a337b58d7a4569dd8af3b21e6eb4c5b7100ed03882e90b6"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "wrong_spatial_scope",
+        "wrong_scope": "CBD-only for every held-out action",
+        "nonzero_zone_count": 38,
+        "outer_fold_id": "holdout_2019",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "cross_event_action_swap/seed_31": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "cross_event_action_swap",
+      "outer_fold_id": "holdout_2019",
+      "seed": 31,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/cross_event_action_swap/members/seed_31/folds/holdout_2019/prediction.parquet",
+        "bytes": 102881,
+        "sha256": "77a2a2c275f9beafe0ad38e95e7828c90cdfd98c5721d12fb88b24badbd83cfa"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "cross_event_action_swap",
+        "swap_action_sha256": "555a0da6cd4cd88a61e8f05858aacb880d49d11dab0412dad4d88036214d5001",
+        "outer_fold_id": "holdout_2019",
+        "swap_source_event": "event_2015_improvement_surcharge"
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "zone_exposure_shuffle_seed_20260723/seed_31": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "zone_exposure_shuffle_seed_20260723",
+      "outer_fold_id": "holdout_2019",
+      "seed": 31,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/zone_exposure_shuffle_seed_20260723/members/seed_31/folds/holdout_2019/prediction.parquet",
+        "bytes": 102914,
+        "sha256": "aa96681fa70a66a5d73789d75f2d25ef49ff22bfa6845d6734a1f919f402ebf2"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "zone_exposure_shuffle_seed_20260723",
+        "zone_permutation_sha256": "e135bdbc26f1b5ffabc9707d95944be431300a1c5e4167bf5a7cc911d8fcbadf",
+        "outer_fold_id": "holdout_2019",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "dam_gk_residual_no_action/seed_31": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "dam_gk_residual_no_action",
+      "outer_fold_id": "holdout_2019",
+      "seed": 31,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/members/seed_31/folds/holdout_2019/prediction.parquet",
+        "bytes": 102882,
+        "sha256": "e259e49ae5889b1ff37a04711f165ccf30a7b8d90d678dd00c6824b009c3a697"
+      },
+      "checkpoint": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/members/seed_31/folds/holdout_2019/model.pt",
+        "bytes": 34198,
+        "sha256": "cdb49b4e1f46ea7af4849ffc4e9c7bd7c71b695b1a488610b84ab378b2734509"
+      },
+      "training_final_loss": 0.23934803903102875,
+      "control_audit": null,
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null,
+      "wall_seconds": 0.1895070830360055,
+      "raw_action_residual": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/members/seed_31/folds/holdout_2019/raw_action_residual.parquet",
+        "bytes": 106388,
+        "sha256": "98bcb751a237708c9afaf10c7ea030fd116aeef476745113925074658c36cd41"
+      }
+    },
+    "uwm_dam_gk_action_residual/seed_47": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "uwm_dam_gk_action_residual",
+      "outer_fold_id": "holdout_2019",
+      "seed": 47,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/uwm_dam_gk_action_residual/members/seed_47/folds/holdout_2019/prediction.parquet",
+        "bytes": 102941,
+        "sha256": "b1c32c6d90c710d1870a5687eb9b53009200d803b7440b56e4f464586fc17f60"
+      },
+      "checkpoint": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/uwm_dam_gk_action_residual/members/seed_47/folds/holdout_2019/model.pt",
+        "bytes": 34198,
+        "sha256": "3a718612a3b69200a48aed5159f265f0bad3991392acd94822ae456a649894a9"
+      },
+      "training_final_loss": 0.22599823276201883,
+      "control_audit": null,
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null,
+      "wall_seconds": 0.2047622500685975,
+      "raw_action_residual": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/uwm_dam_gk_action_residual/members/seed_47/folds/holdout_2019/raw_action_residual.parquet",
+        "bytes": 105844,
+        "sha256": "4be6f95df0c65c59e8564517e13e705a58e50908b86f51405e6407cb15288a82"
+      }
+    },
+    "action_deleted/seed_47": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "action_deleted",
+      "outer_fold_id": "holdout_2019",
+      "seed": 47,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_deleted/members/seed_47/folds/holdout_2019/prediction.parquet",
+        "bytes": 102433,
+        "sha256": "5ba2b833279f829739ffd9e2081726a5302b533e17c8a1f7abd808d11cfb16b9"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "action_deleted",
+        "outer_fold_id": "holdout_2019",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "effective_date_minus_4w/seed_47": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "effective_date_minus_4w",
+      "outer_fold_id": "holdout_2019",
+      "seed": 47,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/effective_date_minus_4w/members/seed_47/folds/holdout_2019/prediction.parquet",
+        "bytes": 102909,
+        "sha256": "a6fdc5ce0820dbcf761b09bee26af8b445589901366ca95949b39803c376d69c"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "effective_date_minus_4w",
+        "outer_fold_id": "holdout_2019",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "effective_date_plus_4w/seed_47": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "effective_date_plus_4w",
+      "outer_fold_id": "holdout_2019",
+      "seed": 47,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/effective_date_plus_4w/members/seed_47/folds/holdout_2019/prediction.parquet",
+        "bytes": 103110,
+        "sha256": "7a3ef4d1891fb822e8a71e4fa5d7ea87a7a1fb2ae2703d7546d69bc1eb90ffc6"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "effective_date_plus_4w",
+        "outer_fold_id": "holdout_2019",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "action_component_permutation/seed_47": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "action_component_permutation",
+      "outer_fold_id": "holdout_2019",
+      "seed": 47,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_component_permutation/members/seed_47/folds/holdout_2019/prediction.parquet",
+        "bytes": 103164,
+        "sha256": "d58e570e0e63ae90329a34a085f3bc81e292d85eda8c9b839dd7ce1ec6ac4e14"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "action_component_permutation",
+        "component_permutation": [
+          9,
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "permutation_has_fixed_points": false,
+        "outer_fold_id": "holdout_2019",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "wrong_spatial_scope/seed_47": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "wrong_spatial_scope",
+      "outer_fold_id": "holdout_2019",
+      "seed": 47,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/wrong_spatial_scope/members/seed_47/folds/holdout_2019/prediction.parquet",
+        "bytes": 103216,
+        "sha256": "5230bd3d736d62d55b4c38d9858694da1ec4821244e6d3f85fbcb2a52347967e"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "wrong_spatial_scope",
+        "wrong_scope": "CBD-only for every held-out action",
+        "nonzero_zone_count": 38,
+        "outer_fold_id": "holdout_2019",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "cross_event_action_swap/seed_47": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "cross_event_action_swap",
+      "outer_fold_id": "holdout_2019",
+      "seed": 47,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/cross_event_action_swap/members/seed_47/folds/holdout_2019/prediction.parquet",
+        "bytes": 103124,
+        "sha256": "00deb2678009ac23e57f3a0cd9ae5689c20b8c6979a885045a21ac53128e9490"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "cross_event_action_swap",
+        "swap_action_sha256": "555a0da6cd4cd88a61e8f05858aacb880d49d11dab0412dad4d88036214d5001",
+        "outer_fold_id": "holdout_2019",
+        "swap_source_event": "event_2015_improvement_surcharge"
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "zone_exposure_shuffle_seed_20260723/seed_47": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "zone_exposure_shuffle_seed_20260723",
+      "outer_fold_id": "holdout_2019",
+      "seed": 47,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/zone_exposure_shuffle_seed_20260723/members/seed_47/folds/holdout_2019/prediction.parquet",
+        "bytes": 103129,
+        "sha256": "51323c9fd76566006f6f6943de0bc8725f8e3ed49842426e03d3afc79a78191d"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "zone_exposure_shuffle_seed_20260723",
+        "zone_permutation_sha256": "e135bdbc26f1b5ffabc9707d95944be431300a1c5e4167bf5a7cc911d8fcbadf",
+        "outer_fold_id": "holdout_2019",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "dam_gk_residual_no_action/seed_47": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "dam_gk_residual_no_action",
+      "outer_fold_id": "holdout_2019",
+      "seed": 47,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/members/seed_47/folds/holdout_2019/prediction.parquet",
+        "bytes": 102884,
+        "sha256": "25ab9ef06b089b7945df057d5f8b39cb39dda245a058e3962d063888ee6c6e8a"
+      },
+      "checkpoint": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/members/seed_47/folds/holdout_2019/model.pt",
+        "bytes": 34198,
+        "sha256": "1d0123a26ab8a9d0bb13e0648090dbb3fe286463ebb304d18b75b3c482d0e2ed"
+      },
+      "training_final_loss": 0.23832531770070395,
+      "control_audit": null,
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null,
+      "wall_seconds": 0.18758120795246214,
+      "raw_action_residual": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/members/seed_47/folds/holdout_2019/raw_action_residual.parquet",
+        "bytes": 106500,
+        "sha256": "94e061c6d5cb8e936ca4befc82d878d953c9b3fdfe7c18218da28ebfe0d8659c"
+      }
+    },
+    "uwm_dam_gk_action_residual/seed_73": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "uwm_dam_gk_action_residual",
+      "outer_fold_id": "holdout_2019",
+      "seed": 73,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/uwm_dam_gk_action_residual/members/seed_73/folds/holdout_2019/prediction.parquet",
+        "bytes": 102848,
+        "sha256": "37106b5b0649d53eefa38718f3ce1311579ecec538d00debf8de20574b2c6f7a"
+      },
+      "checkpoint": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/uwm_dam_gk_action_residual/members/seed_73/folds/holdout_2019/model.pt",
+        "bytes": 34198,
+        "sha256": "7cda8695d83eceacb71481cb33f6107ff3f26714fd1b9de366605799c8596132"
+      },
+      "training_final_loss": 0.22404290239016214,
+      "control_audit": null,
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null,
+      "wall_seconds": 0.19643000001087785,
+      "raw_action_residual": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/uwm_dam_gk_action_residual/members/seed_73/folds/holdout_2019/raw_action_residual.parquet",
+        "bytes": 105809,
+        "sha256": "0d772a8ef18ef135b8bff0c43cbda1665f53a9e5870a9d799f8d0b5cb31d49b4"
+      }
+    },
+    "action_deleted/seed_73": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "action_deleted",
+      "outer_fold_id": "holdout_2019",
+      "seed": 73,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_deleted/members/seed_73/folds/holdout_2019/prediction.parquet",
+        "bytes": 102433,
+        "sha256": "5ba2b833279f829739ffd9e2081726a5302b533e17c8a1f7abd808d11cfb16b9"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "action_deleted",
+        "outer_fold_id": "holdout_2019",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "effective_date_minus_4w/seed_73": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "effective_date_minus_4w",
+      "outer_fold_id": "holdout_2019",
+      "seed": 73,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/effective_date_minus_4w/members/seed_73/folds/holdout_2019/prediction.parquet",
+        "bytes": 102859,
+        "sha256": "b209f1447d5027c4ad4967214071fb11b99eccc3573cdf12d31612ce0c597533"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "effective_date_minus_4w",
+        "outer_fold_id": "holdout_2019",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "effective_date_plus_4w/seed_73": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "effective_date_plus_4w",
+      "outer_fold_id": "holdout_2019",
+      "seed": 73,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/effective_date_plus_4w/members/seed_73/folds/holdout_2019/prediction.parquet",
+        "bytes": 103038,
+        "sha256": "2edc0f8a5ccd52edfbc277cb24e1771adbe5f7acd773a0d1981832abdd232708"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "effective_date_plus_4w",
+        "outer_fold_id": "holdout_2019",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "action_component_permutation/seed_73": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "action_component_permutation",
+      "outer_fold_id": "holdout_2019",
+      "seed": 73,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_component_permutation/members/seed_73/folds/holdout_2019/prediction.parquet",
+        "bytes": 102990,
+        "sha256": "076bf35f333978f1b4d21fa148750fae90445ac365002de75fc84db2d1175511"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "action_component_permutation",
+        "component_permutation": [
+          9,
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "permutation_has_fixed_points": false,
+        "outer_fold_id": "holdout_2019",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "wrong_spatial_scope/seed_73": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "wrong_spatial_scope",
+      "outer_fold_id": "holdout_2019",
+      "seed": 73,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/wrong_spatial_scope/members/seed_73/folds/holdout_2019/prediction.parquet",
+        "bytes": 103176,
+        "sha256": "05e7432e4010708a4c2ebab0a1ad3a9e96b64731ea5f7e841c3e5a14c54257ed"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "wrong_spatial_scope",
+        "wrong_scope": "CBD-only for every held-out action",
+        "nonzero_zone_count": 38,
+        "outer_fold_id": "holdout_2019",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "cross_event_action_swap/seed_73": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "cross_event_action_swap",
+      "outer_fold_id": "holdout_2019",
+      "seed": 73,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/cross_event_action_swap/members/seed_73/folds/holdout_2019/prediction.parquet",
+        "bytes": 102935,
+        "sha256": "15a4753eb1056987b3c3e03f052e04c5b95ac816ed1b20d90f54191b7e37ca4b"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "cross_event_action_swap",
+        "swap_action_sha256": "555a0da6cd4cd88a61e8f05858aacb880d49d11dab0412dad4d88036214d5001",
+        "outer_fold_id": "holdout_2019",
+        "swap_source_event": "event_2015_improvement_surcharge"
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "zone_exposure_shuffle_seed_20260723/seed_73": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "zone_exposure_shuffle_seed_20260723",
+      "outer_fold_id": "holdout_2019",
+      "seed": 73,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/zone_exposure_shuffle_seed_20260723/members/seed_73/folds/holdout_2019/prediction.parquet",
+        "bytes": 103051,
+        "sha256": "719e81d05e3e3e643c21576d8e9aaa8d503f1d077c2327aaf622a74d5be30cba"
+      },
+      "checkpoint": null,
+      "training_final_loss": null,
+      "control_audit": {
+        "control_id": "zone_exposure_shuffle_seed_20260723",
+        "zone_permutation_sha256": "e135bdbc26f1b5ffabc9707d95944be431300a1c5e4167bf5a7cc911d8fcbadf",
+        "outer_fold_id": "holdout_2019",
+        "swap_source_event": null
+      },
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null
+    },
+    "dam_gk_residual_no_action/seed_73": {
+      "schema": "gwm_bench.foundation_v5_fold_prediction_run.v1",
+      "model_id": "dam_gk_residual_no_action",
+      "outer_fold_id": "holdout_2019",
+      "seed": 73,
+      "prediction": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/members/seed_73/folds/holdout_2019/prediction.parquet",
+        "bytes": 102940,
+        "sha256": "830c34c3beb8e2a151cb517f5ba75b29044046d244000a372b3d84c2c4678edb"
+      },
+      "checkpoint": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/members/seed_73/folds/holdout_2019/model.pt",
+        "bytes": 34198,
+        "sha256": "453422c5bacd19911d00d027101722d2e45c8cf0af7c03a8869e7f3ef9bf40a3"
+      },
+      "training_final_loss": 0.23573011656602225,
+      "control_audit": null,
+      "model_process_target_access_permitted": false,
+      "test_target_rows_loaded": false,
+      "exit_status": "success",
+      "failure_state": null,
+      "wall_seconds": 0.1911090420326218,
+      "raw_action_residual": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/members/seed_73/folds/holdout_2019/raw_action_residual.parquet",
+        "bytes": 106461,
+        "sha256": "fe5016683b1206416c93999471961c3e00a77c2425a0e48f2c382adae0fc829f"
+      }
+    }
+  },
+  "wall_seconds": 4.984345666016452,
+  "ru_maxrss_raw": 697745408,
+  "exit_status": "success",
+  "failure_state": null
+}

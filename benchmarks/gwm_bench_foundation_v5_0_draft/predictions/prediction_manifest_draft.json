@@ -1,0 +1,425 @@
+{
+  "schema": "gwm_bench.foundation_v5_prediction_manifest_draft.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V5.0-DRAFT1",
+  "created_at": "2026-07-23T16:07:45.752215+00:00",
+  "status": "ALL_REQUIRED_MULTIFOLD_PREDICTIONS_MATERIALIZED_UNCOMMITTED",
+  "test_target_rows_loaded": false,
+  "runtime_seal": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/runtime_r4_evaluator_seal.json",
+    "bytes": 10665,
+    "sha256": "ea1a4dcfd4955088bf849f6bc2422db5b995d21ea8ac637d168530d62595d4c0"
+  },
+  "runtime_contract": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/runtime_r4_contract.json",
+    "bytes": 7903,
+    "sha256": "a07aef09032d9d5ecfb4f01f0584b00a43c2636d1dda91f7b81ab218df39d20c"
+  },
+  "submission_contract": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/submission_contract.json",
+    "bytes": 1666,
+    "sha256": "04efcabc9caab4c43ddc5e3c1b9bae8725bf527750f61c786473431f5fbc9a51"
+  },
+  "runner": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/run_runtime_r4_predictions.py",
+    "bytes": 27103,
+    "sha256": "466bb0596da8398b0000188d66aa21854c6bd46a6ff976ce7f2241cb9c9f2d8b"
+  },
+  "model_core": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/v5_runtime_models.py",
+    "bytes": 28406,
+    "sha256": "2a885befbb8c118c285fbfe6c3024a1be13a86e058cfd50850bdfd6f4d11a356"
+  },
+  "required_models": [
+    "history_ar_backbone",
+    "fixed_adjacency_spatial_ar",
+    "dam_gk_residual_no_action",
+    "uwm_dam_gk_action_residual"
+  ],
+  "required_controls": [
+    "action_deleted",
+    "effective_date_minus_4w",
+    "effective_date_plus_4w",
+    "action_component_permutation",
+    "wrong_spatial_scope",
+    "cross_event_action_swap",
+    "zone_exposure_shuffle_seed_20260723"
+  ],
+  "required_seeds": [
+    31,
+    47,
+    73
+  ],
+  "required_outer_folds": [
+    "holdout_2015",
+    "holdout_2019",
+    "holdout_2022",
+    "holdout_2025"
+  ],
+  "submissions": {
+    "history_ar_backbone": {
+      "prediction_path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/history_ar_backbone/prediction.parquet",
+      "prediction_artifact": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/history_ar_backbone/prediction.parquet",
+        "bytes": 399613,
+        "sha256": "cd1ec5b00749d975508382dd61d00aa6a86b62b40b24edcb3dcb1f7fd2bd5f04"
+      },
+      "model_spec": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/history_ar_backbone/model_spec.json",
+        "bytes": 428,
+        "sha256": "ad7724b3cda4e738daa09b299429532737da7bb47a64b915a83515a91a0efe5e"
+      },
+      "nested_selection_receipts": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/history_ar_backbone/nested_selection_receipts.json",
+        "bytes": 16961,
+        "sha256": "7316f158dd75b45d4a8ead0259910e4e240ed58dfb55f4f28584414e9aa3d87b"
+      },
+      "fold_training_manifests": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/history_ar_backbone/fold_training_manifests.json",
+        "bytes": 4860,
+        "sha256": "05d8531bfdf6a1ba313741c2182fc5aef245d0e34f6e76480d8e8a71c8cc3329"
+      },
+      "runtime_environment": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/history_ar_backbone/runtime_environment.json",
+        "bytes": 409,
+        "sha256": "85390c3f2bbd44ecfb642cb1911c6779b20fb36137b06ac2ad499c8870f5dcac"
+      },
+      "run_report": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/history_ar_backbone/run_report.json",
+        "bytes": 2497,
+        "sha256": "5c8dd2132411d4da9734f4616f58446646af124d25266d9b9b81c7c34c339819"
+      }
+    },
+    "fixed_adjacency_spatial_ar": {
+      "prediction_path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/fixed_adjacency_spatial_ar/prediction.parquet",
+      "prediction_artifact": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/fixed_adjacency_spatial_ar/prediction.parquet",
+        "bytes": 399775,
+        "sha256": "a75f817a86dac0830efb660ab304336bd6fc6479c2a5489a3b14125b9d2c0ca9"
+      },
+      "model_spec": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/fixed_adjacency_spatial_ar/model_spec.json",
+        "bytes": 427,
+        "sha256": "f3088edb6e53842e02b7931515cc615a22fea247a17b3bf6304f367205bf5b43"
+      },
+      "nested_selection_receipts": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/fixed_adjacency_spatial_ar/nested_selection_receipts.json",
+        "bytes": 16968,
+        "sha256": "4a0ffe8f7e6a6bd7f507cfa407f90666f9398fa295c1353baee7cf07499bf6e5"
+      },
+      "fold_training_manifests": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/fixed_adjacency_spatial_ar/fold_training_manifests.json",
+        "bytes": 4867,
+        "sha256": "3b2ffde69f18d1ffb8fb7f2ba98e65197509b858f26a91ea1b36904137d5b9b2"
+      },
+      "runtime_environment": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/fixed_adjacency_spatial_ar/runtime_environment.json",
+        "bytes": 409,
+        "sha256": "32d72673378c8043ca824ef96b76063560f70ab5e0cbf5bdea8241c733d45260"
+      },
+      "run_report": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/fixed_adjacency_spatial_ar/run_report.json",
+        "bytes": 2539,
+        "sha256": "21060efff2c51226024c250597c18905d1614640391059d58c913eb36299723a"
+      }
+    },
+    "dam_gk_residual_no_action": {
+      "prediction_path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/prediction.parquet",
+      "prediction_artifact": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/prediction.parquet",
+        "bytes": 413180,
+        "sha256": "8f8d38313027f3f82e3d4cab52e4da137589967f763693ddd29f4988844a2f21"
+      },
+      "model_spec": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/model_spec.json",
+        "bytes": 561,
+        "sha256": "7b12a30440f9bc1053dd16d4285d9ecedb1f93720225c1f0578457a86a0062ab"
+      },
+      "nested_selection_receipts": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/nested_selection_receipts.json",
+        "bytes": 16967,
+        "sha256": "26c5a0b1e70129324df9de726fcb53078232bfd51e853af81e6e6a67796145db"
+      },
+      "fold_training_manifests": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/fold_training_manifests.json",
+        "bytes": 4866,
+        "sha256": "943e29d3e26da9b1d680ce169ca1b1f8f962aef368d70827c77c7e2b89da4ea6"
+      },
+      "runtime_environment": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/runtime_environment.json",
+        "bytes": 409,
+        "sha256": "9deb9f3f7f6ef0f99a78b0a351f9825d78c443971e50ec9acecc748b5854e877"
+      },
+      "run_report": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/dam_gk_residual_no_action/run_report.json",
+        "bytes": 2533,
+        "sha256": "516df200d0644cdf24f94d197583b09eecd53034f3f675d23890ece7b2133b0e"
+      }
+    },
+    "uwm_dam_gk_action_residual": {
+      "prediction_path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/uwm_dam_gk_action_residual/prediction.parquet",
+      "prediction_artifact": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/uwm_dam_gk_action_residual/prediction.parquet",
+        "bytes": 414964,
+        "sha256": "63de99766971d7b0d63255ea12dfe19826ff886ca97ee9c44a96ad43d76b14b7"
+      },
+      "model_spec": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/uwm_dam_gk_action_residual/model_spec.json",
+        "bytes": 562,
+        "sha256": "88c2b46600da7870977413d3c379cca143067c795e3e3d1bd4d47c240eb288df"
+      },
+      "nested_selection_receipts": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/uwm_dam_gk_action_residual/nested_selection_receipts.json",
+        "bytes": 16968,
+        "sha256": "ba5078339d0bf0b987eb4cf608d496f589a2461a32957d0deda5a7db675118cf"
+      },
+      "fold_training_manifests": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/uwm_dam_gk_action_residual/fold_training_manifests.json",
+        "bytes": 4867,
+        "sha256": "efab90aa314b04a811131d3c3b6d2e7a07b89e5b25977e8324c968358d8a672e"
+      },
+      "runtime_environment": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/uwm_dam_gk_action_residual/runtime_environment.json",
+        "bytes": 409,
+        "sha256": "c98913231ca21be764abebfd3b78ca72f00d852b6602bdaaf5a4377fd7372845"
+      },
+      "run_report": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/uwm_dam_gk_action_residual/run_report.json",
+        "bytes": 2539,
+        "sha256": "53036807cde82d0182157efa3e645b1137efebcc0235f05fb39715155548d097"
+      }
+    },
+    "action_deleted": {
+      "prediction_path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_deleted/prediction.parquet",
+      "prediction_artifact": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_deleted/prediction.parquet",
+        "bytes": 399613,
+        "sha256": "cd1ec5b00749d975508382dd61d00aa6a86b62b40b24edcb3dcb1f7fd2bd5f04"
+      },
+      "model_spec": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_deleted/model_spec.json",
+        "bytes": 549,
+        "sha256": "669690517ba7b2bfc35b88203f930824a90208aee4b540a614696cc2f76d1ec0"
+      },
+      "nested_selection_receipts": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_deleted/nested_selection_receipts.json",
+        "bytes": 16956,
+        "sha256": "e9ed61911fee38f5e78eab0d153aa62d9ebde8218fe15b437dddc5f7bd505036"
+      },
+      "fold_training_manifests": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_deleted/fold_training_manifests.json",
+        "bytes": 4855,
+        "sha256": "04a8ddb01c6e0a3c2f1437e07505a23d27f2a9fd3271a14b4b4c82f6440fdaec"
+      },
+      "runtime_environment": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_deleted/runtime_environment.json",
+        "bytes": 409,
+        "sha256": "1dcbd18ce4af05cf3d75e1627ccc2d660070e059e38e815a695f02a4aa2dee75"
+      },
+      "run_report": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_deleted/run_report.json",
+        "bytes": 2467,
+        "sha256": "5797aeb92ceef2cef791b6b368b78dbb45d1011da89b2bb33d03e347aba6be6a"
+      }
+    },
+    "effective_date_minus_4w": {
+      "prediction_path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/effective_date_minus_4w/prediction.parquet",
+      "prediction_artifact": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/effective_date_minus_4w/prediction.parquet",
+        "bytes": 414814,
+        "sha256": "5c6adda7de0d23ab34a0344ec86735725562f66c6200f72af5b6fd384391a263"
+      },
+      "model_spec": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/effective_date_minus_4w/model_spec.json",
+        "bytes": 558,
+        "sha256": "7f2c77de4494135dd9deedd513b333a8d13c89d9741a32f75b6132784908706f"
+      },
+      "nested_selection_receipts": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/effective_date_minus_4w/nested_selection_receipts.json",
+        "bytes": 16965,
+        "sha256": "dcfc17ec0c7772b4fc72cdfef2029c5164a83f6aa8594b09479b7d23bbd4d295"
+      },
+      "fold_training_manifests": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/effective_date_minus_4w/fold_training_manifests.json",
+        "bytes": 4864,
+        "sha256": "357ecbb1784d75f3b693d0f22630089cfc4ee9eb3039fae2340c9576ca6386d2"
+      },
+      "runtime_environment": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/effective_date_minus_4w/runtime_environment.json",
+        "bytes": 409,
+        "sha256": "b81a2b65592a6d43d77eebe692c45bee5ddeee5ebcecca9b03e8bd25807d4b16"
+      },
+      "run_report": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/effective_date_minus_4w/run_report.json",
+        "bytes": 2521,
+        "sha256": "99069b63a52c87ea9fa8a9cc481b6a8927085b7f8451a7ae50422fa8fcac00ed"
+      }
+    },
+    "effective_date_plus_4w": {
+      "prediction_path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/effective_date_plus_4w/prediction.parquet",
+      "prediction_artifact": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/effective_date_plus_4w/prediction.parquet",
+        "bytes": 414543,
+        "sha256": "9c42a96390a62d94e0cca090b9c268c4045784c403310373d15000c365b69921"
+      },
+      "model_spec": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/effective_date_plus_4w/model_spec.json",
+        "bytes": 557,
+        "sha256": "87b1a66cd23b64d7814cd8872dfd30a8c082bd518cd6c37c66c105a37b7b93fb"
+      },
+      "nested_selection_receipts": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/effective_date_plus_4w/nested_selection_receipts.json",
+        "bytes": 16964,
+        "sha256": "beca48c67649803506da711a596eb1af15418479e5708f4a934ba981a57327bb"
+      },
+      "fold_training_manifests": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/effective_date_plus_4w/fold_training_manifests.json",
+        "bytes": 4863,
+        "sha256": "a02cc2d3da7bcad683ebf4cfbd52e1ae16aee15528d2d6589c9ea310c6c4dbb1"
+      },
+      "runtime_environment": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/effective_date_plus_4w/runtime_environment.json",
+        "bytes": 409,
+        "sha256": "76fdc9586d36a3614e676b32c7f78a09de03d27b98357501c795f85833439f74"
+      },
+      "run_report": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/effective_date_plus_4w/run_report.json",
+        "bytes": 2515,
+        "sha256": "b6d1ba438b8e61aab501fbe8ccabc13e23125beb736827ed7db3561beac2d1cd"
+      }
+    },
+    "action_component_permutation": {
+      "prediction_path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_component_permutation/prediction.parquet",
+      "prediction_artifact": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_component_permutation/prediction.parquet",
+        "bytes": 412770,
+        "sha256": "6dffda667ef955562c3310e27781488d7fce4aa0e5c38c37cad336564d2de493"
+      },
+      "model_spec": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_component_permutation/model_spec.json",
+        "bytes": 563,
+        "sha256": "37f005b3cad00e82f9c5f403cc2413210162a80f3a67648e6c878692910c9eb2"
+      },
+      "nested_selection_receipts": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_component_permutation/nested_selection_receipts.json",
+        "bytes": 16970,
+        "sha256": "f87a941660d9f84d341b71936918e6bacdc9c53005af70b7a5bd26759932908f"
+      },
+      "fold_training_manifests": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_component_permutation/fold_training_manifests.json",
+        "bytes": 4869,
+        "sha256": "37516e85e3bdcf498f6311e25b86ef0e9ccc8972ddc21b1b3ab0a54adc0251e4"
+      },
+      "runtime_environment": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_component_permutation/runtime_environment.json",
+        "bytes": 409,
+        "sha256": "c5dab4e0f993cb171e332b08f94f593f4832f56b4a2b115bf0eceaf206a0b6ca"
+      },
+      "run_report": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/action_component_permutation/run_report.json",
+        "bytes": 2551,
+        "sha256": "676d07a9bee8ae9f113b96d33314d11757bc4cd86d4be88e94626cc265e9fe17"
+      }
+    },
+    "wrong_spatial_scope": {
+      "prediction_path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/wrong_spatial_scope/prediction.parquet",
+      "prediction_artifact": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/wrong_spatial_scope/prediction.parquet",
+        "bytes": 414446,
+        "sha256": "4818c1f84b20474997d1889fa4a85157e16548cd41ffa12e8651fb3bd5e8fc01"
+      },
+      "model_spec": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/wrong_spatial_scope/model_spec.json",
+        "bytes": 554,
+        "sha256": "d798a6a917f1944602204b66fed3ccee30e1bb7099c7968d1adb88be7ff57da4"
+      },
+      "nested_selection_receipts": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/wrong_spatial_scope/nested_selection_receipts.json",
+        "bytes": 16961,
+        "sha256": "c20b32a0424a699f7b25d688743412914ae8b3c0f4e1fd92534aed2d2d95c39e"
+      },
+      "fold_training_manifests": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/wrong_spatial_scope/fold_training_manifests.json",
+        "bytes": 4860,
+        "sha256": "cc2c8b3d788146e18623a722e3f332390bb827b379ea63b569d3f7743f8cb0aa"
+      },
+      "runtime_environment": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/wrong_spatial_scope/runtime_environment.json",
+        "bytes": 409,
+        "sha256": "e2374ff062600c4bfa9d3b8b74d1e787dab4676db133b14574aa67142456b5e9"
+      },
+      "run_report": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/wrong_spatial_scope/run_report.json",
+        "bytes": 2497,
+        "sha256": "33f06123c255eaae13f0d91253745d0779d45de12614d6970d29e1cdd3668b50"
+      }
+    },
+    "cross_event_action_swap": {
+      "prediction_path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/cross_event_action_swap/prediction.parquet",
+      "prediction_artifact": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/cross_event_action_swap/prediction.parquet",
+        "bytes": 415606,
+        "sha256": "3248058352a1feb1a295ac649cccfe2ccaa30be4199fbf71e134e34071f5c7ae"
+      },
+      "model_spec": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/cross_event_action_swap/model_spec.json",
+        "bytes": 558,
+        "sha256": "f553fd0e6bb3528c5b4905302bb5e5d1482128cad8e36de4dfce344b67c7f98d"
+      },
+      "nested_selection_receipts": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/cross_event_action_swap/nested_selection_receipts.json",
+        "bytes": 16965,
+        "sha256": "4b288d9a2982467e07c723004bc88ba1f2df38e943d7cf34b9d4db4b6f29c6e5"
+      },
+      "fold_training_manifests": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/cross_event_action_swap/fold_training_manifests.json",
+        "bytes": 4864,
+        "sha256": "b3d735f72566638ae8cfa84e5be26783f92b76a5acfddb49060f0ff12ce65423"
+      },
+      "runtime_environment": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/cross_event_action_swap/runtime_environment.json",
+        "bytes": 409,
+        "sha256": "60a3554006702fa961e6d1368b8b0449042f89a027ce8fdf504bb960089ddc45"
+      },
+      "run_report": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/cross_event_action_swap/run_report.json",
+        "bytes": 2521,
+        "sha256": "56f352ac26eff2599dfabbc29528934985642e32f918d7cd35bd21f6a3eac3b3"
+      }
+    },
+    "zone_exposure_shuffle_seed_20260723": {
+      "prediction_path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/zone_exposure_shuffle_seed_20260723/prediction.parquet",
+      "prediction_artifact": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/zone_exposure_shuffle_seed_20260723/prediction.parquet",
+        "bytes": 414207,
+        "sha256": "7bf2788a9d3203497c1905374846e8e00683153d8b282909420c83ef760338eb"
+      },
+      "model_spec": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/zone_exposure_shuffle_seed_20260723/model_spec.json",
+        "bytes": 570,
+        "sha256": "fe953663cb99ef7edd45be59c8a7f4dae9d1dc72a78af6896a079506ef0fa468"
+      },
+      "nested_selection_receipts": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/zone_exposure_shuffle_seed_20260723/nested_selection_receipts.json",
+        "bytes": 16977,
+        "sha256": "a4b3e67d49e834873ad0c37daca163f67198500e90f16ded09c2b32238f42f7d"
+      },
+      "fold_training_manifests": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/zone_exposure_shuffle_seed_20260723/fold_training_manifests.json",
+        "bytes": 4876,
+        "sha256": "96b69b74f45c78433d8eb6c56e367111badf203abcb85b89bdecd7e2b126493d"
+      },
+      "runtime_environment": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/zone_exposure_shuffle_seed_20260723/runtime_environment.json",
+        "bytes": 409,
+        "sha256": "8cff80308e2a3c972ab7e8bd348db3f4dcbeab004b8e7a18071a9b12ba30c256"
+      },
+      "run_report": {
+        "path": "benchmarks/gwm_bench_foundation_v5_0_draft/predictions/zone_exposure_shuffle_seed_20260723/run_report.json",
+        "bytes": 2593,
+        "sha256": "7e11a72c9c71eff8b8913a937884561178fe0bdd2d555460941e9219988a98c8"
+      }
+    }
+  },
+  "wall_seconds": 23.959859917056747,
+  "ru_maxrss_raw": 782630912
+}

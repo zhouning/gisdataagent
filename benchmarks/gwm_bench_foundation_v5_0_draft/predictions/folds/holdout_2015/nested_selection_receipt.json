@@ -1,0 +1,113 @@
+{
+  "selection_rule": "lowest mean three-fold leave-one-training-action-out macro pre-action normalized MAE",
+  "seed": 31,
+  "rows": [
+    {
+      "config": "compact",
+      "training_events": [
+        "event_2022_tlc_taximeter_adjustment",
+        "event_2025_mta_crz"
+      ],
+      "validation_event": "event_2019_nys_congestion_surcharge",
+      "primary_metric": 0.4646182656288147,
+      "training_final_loss": 0.2955876439809799
+    },
+    {
+      "config": "compact",
+      "training_events": [
+        "event_2019_nys_congestion_surcharge",
+        "event_2025_mta_crz"
+      ],
+      "validation_event": "event_2022_tlc_taximeter_adjustment",
+      "primary_metric": 0.5476598739624023,
+      "training_final_loss": 0.3183447867631912
+    },
+    {
+      "config": "compact",
+      "training_events": [
+        "event_2019_nys_congestion_surcharge",
+        "event_2022_tlc_taximeter_adjustment"
+      ],
+      "validation_event": "event_2025_mta_crz",
+      "primary_metric": 0.43144986033439636,
+      "training_final_loss": 0.20555728673934937
+    },
+    {
+      "config": "base",
+      "training_events": [
+        "event_2022_tlc_taximeter_adjustment",
+        "event_2025_mta_crz"
+      ],
+      "validation_event": "event_2019_nys_congestion_surcharge",
+      "primary_metric": 0.4579784870147705,
+      "training_final_loss": 0.2812782973051071
+    },
+    {
+      "config": "base",
+      "training_events": [
+        "event_2019_nys_congestion_surcharge",
+        "event_2025_mta_crz"
+      ],
+      "validation_event": "event_2022_tlc_taximeter_adjustment",
+      "primary_metric": 0.43256938457489014,
+      "training_final_loss": 0.3001575917005539
+    },
+    {
+      "config": "base",
+      "training_events": [
+        "event_2019_nys_congestion_surcharge",
+        "event_2022_tlc_taximeter_adjustment"
+      ],
+      "validation_event": "event_2025_mta_crz",
+      "primary_metric": 0.4354441165924072,
+      "training_final_loss": 0.1859366074204445
+    },
+    {
+      "config": "regularized",
+      "training_events": [
+        "event_2022_tlc_taximeter_adjustment",
+        "event_2025_mta_crz"
+      ],
+      "validation_event": "event_2019_nys_congestion_surcharge",
+      "primary_metric": 0.4521486163139343,
+      "training_final_loss": 0.29038067162036896
+    },
+    {
+      "config": "regularized",
+      "training_events": [
+        "event_2019_nys_congestion_surcharge",
+        "event_2025_mta_crz"
+      ],
+      "validation_event": "event_2022_tlc_taximeter_adjustment",
+      "primary_metric": 0.4053269028663635,
+      "training_final_loss": 0.31645625829696655
+    },
+    {
+      "config": "regularized",
+      "training_events": [
+        "event_2019_nys_congestion_surcharge",
+        "event_2022_tlc_taximeter_adjustment"
+      ],
+      "validation_event": "event_2025_mta_crz",
+      "primary_metric": 0.4344616234302521,
+      "training_final_loss": 0.19387853145599365
+    }
+  ],
+  "summary": {
+    "compact": 0.48124266664187115,
+    "base": 0.44199732939402264,
+    "regularized": 0.43064571420351666
+  },
+  "selected_config": "regularized",
+  "backbone_crossfit_rule": "inner validation backbone uses the two residual-training actions; each residual-training event backbone uses only the other residual-training action",
+  "schema": "gwm_bench.foundation_v5_nested_selection_receipt.v1",
+  "outer_fold_id": "holdout_2015",
+  "created_at": "2026-07-23T16:07:25.148653+00:00",
+  "candidate_grid_sha256": "2a885befbb8c118c285fbfe6c3024a1be13a86e058cfd50850bdfd6f4d11a356",
+  "training_event_ids": [
+    "event_2019_nys_congestion_surcharge",
+    "event_2022_tlc_taximeter_adjustment",
+    "event_2025_mta_crz"
+  ],
+  "current_outer_fold_targets_read": false
+}
