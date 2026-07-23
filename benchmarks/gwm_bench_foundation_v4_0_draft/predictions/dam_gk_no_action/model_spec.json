@@ -1,0 +1,49 @@
+{
+  "schema": "gwm_bench.foundation_v4_model_spec.v1",
+  "model_id": "dam_gk_no_action",
+  "algorithm": "matched multi-relation Graph-GRU trained without action input",
+  "selected_config": "base",
+  "selection_report": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/development_selection.json",
+    "bytes": 2685,
+    "sha256": "e09247ac0292d68949e6e5013d80698ccd1504ccc0c17d5bead17227f48dca09"
+  },
+  "seeds": [
+    31,
+    47,
+    73
+  ],
+  "ensemble_rule": "arithmetic mean in raw count space",
+  "graph": {
+    "path": "/Users/zhouning/gisdataagent/benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/graph/spatial_edges.parquet",
+    "sha256": "10b5a8c1b17ed44cacbb20295ab29b52bd2f5ca1675824925dcd786077a2f1ae",
+    "relation_counts": {
+      "geographic_adjacency": 692,
+      "origin_destination_flow": 2054,
+      "action_exposure": 263
+    },
+    "relation_digests": [
+      "ef7ebd578d91766090d96b7c67759fbc0aad7f8011f0871addf8d6eee54b1769",
+      "662bcefe0ffba87f8d0c0428302b81e642ef24a11eb1a142a38e38a96cd9d704",
+      "a17b8415dbdb92cdb21c9b13b2cd624908912de57034781ff8dc3174b6b79701"
+    ]
+  },
+  "action_columns": [
+    "fixed_spatial_surcharge_contribution_usd",
+    "flag_fall_contribution_usd",
+    "improvement_surcharge_contribution_usd",
+    "metered_unit_contribution_usd",
+    "rush_hour_contribution_usd",
+    "night_contribution_usd",
+    "jfk_flat_contribution_usd",
+    "jfk_rush_contribution_usd",
+    "lga_contribution_usd",
+    "newark_contribution_usd",
+    "expected_total_delta_usd",
+    "expected_fractional_fare_delta",
+    "spatial_applicability_share",
+    "temporal_applicability_share",
+    "implementation_share"
+  ],
+  "test_target_rows_loaded": false
+}

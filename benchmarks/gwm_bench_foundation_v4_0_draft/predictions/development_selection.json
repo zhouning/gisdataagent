@@ -1,0 +1,74 @@
+{
+  "selection_rule": "lowest mean two-fold leave-one-intervention-out macro pre-event normalized MAE",
+  "seed": 31,
+  "rows": [
+    {
+      "config": "compact",
+      "train_event": "train_2022_tlc_taximeter_adjustment",
+      "validation_event": "train_2019_nys_congestion_surcharge",
+      "primary_metric": 0.37016206979751587,
+      "training_final_loss": 0.5596350431442261
+    },
+    {
+      "config": "compact",
+      "train_event": "train_2019_nys_congestion_surcharge",
+      "validation_event": "train_2022_tlc_taximeter_adjustment",
+      "primary_metric": 0.33083051443099976,
+      "training_final_loss": 0.42726826667785645
+    },
+    {
+      "config": "base",
+      "train_event": "train_2022_tlc_taximeter_adjustment",
+      "validation_event": "train_2019_nys_congestion_surcharge",
+      "primary_metric": 0.3494868874549866,
+      "training_final_loss": 0.539677083492279
+    },
+    {
+      "config": "base",
+      "train_event": "train_2019_nys_congestion_surcharge",
+      "validation_event": "train_2022_tlc_taximeter_adjustment",
+      "primary_metric": 0.31552836298942566,
+      "training_final_loss": 0.4079655706882477
+    },
+    {
+      "config": "regularized",
+      "train_event": "train_2022_tlc_taximeter_adjustment",
+      "validation_event": "train_2019_nys_congestion_surcharge",
+      "primary_metric": 0.3685648739337921,
+      "training_final_loss": 0.5542750954627991
+    },
+    {
+      "config": "regularized",
+      "train_event": "train_2019_nys_congestion_surcharge",
+      "validation_event": "train_2022_tlc_taximeter_adjustment",
+      "primary_metric": 0.33185404539108276,
+      "training_final_loss": 0.41383397579193115
+    }
+  ],
+  "summary": {
+    "compact": 0.3504962921142578,
+    "base": 0.3325076252222061,
+    "regularized": 0.35020945966243744
+  },
+  "selected_config": "base",
+  "schema": "gwm_bench.foundation_v4_weekly_loo_selection.v1",
+  "created_at": "2026-07-23T14:47:24.335660+00:00",
+  "test_target_rows_loaded": false,
+  "inputs": {
+    "development": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/development/weekly_state_action.parquet",
+      "bytes": 472628,
+      "sha256": "524f10d1f12ff1d57207831d443cefb401d70ff74d946db0c1e9dd4931c47e3f"
+    },
+    "graph": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/graph/spatial_edges.parquet",
+      "bytes": 18439,
+      "sha256": "10b5a8c1b17ed44cacbb20295ab29b52bd2f5ca1675824925dcd786077a2f1ae"
+    },
+    "code": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/v4_weekly_models.py",
+      "bytes": 25777,
+      "sha256": "1ff1588a8da0a86925f0746b586a8a83b5d9dcf4f8467f4f3372393453c70472"
+    }
+  }
+}

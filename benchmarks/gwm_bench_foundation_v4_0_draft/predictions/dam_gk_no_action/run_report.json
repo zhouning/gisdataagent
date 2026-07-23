@@ -1,0 +1,36 @@
+{
+  "schema": "gwm_bench.foundation_v4_run_report.v1",
+  "model_id": "dam_gk_no_action",
+  "adapter_id": "runtime_r3_weekly_graph_gru",
+  "seeds": [
+    31,
+    47,
+    73
+  ],
+  "member_count": 3,
+  "wall_seconds_total_so_far": 18.594612250104547,
+  "ru_maxrss_raw": 766803968,
+  "exit_status": "success",
+  "failure_state": null,
+  "test_target_rows_loaded": false,
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/dam_gk_no_action/prediction.parquet",
+    "bytes": 104010,
+    "sha256": "d4c1dd9f8f3bd59022cc56bcd30924a8a799843d2773ddb742a284a40a25a97b"
+  },
+  "model_spec": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/dam_gk_no_action/model_spec.json",
+    "bytes": 1722,
+    "sha256": "1f53260ea36edcc76eaedfabb42777bdf1f000c0f03232e9afc1623eaa045006"
+  },
+  "training_manifest": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/dam_gk_no_action/training_row_manifest.json",
+    "bytes": 381,
+    "sha256": "4cc0e248a4799a884fd522123a8153b9a2ea48a21845af7c294fbffaa7b5ed93"
+  },
+  "runtime_environment": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/dam_gk_no_action/runtime_environment.json",
+    "bytes": 409,
+    "sha256": "8ea3bd984eb78029dab762de717d5c78cc953f2cb52dd13ebd6c26dbf1c0b84d"
+  }
+}

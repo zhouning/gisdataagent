@@ -1,0 +1,109 @@
+{
+  "schema": "gwm_bench.foundation_v4_runtime_r3_evaluator_seal.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V4.0-DRAFT1",
+  "created_at": "2026-07-23T14:34:01.723544+00:00",
+  "status": "RUNTIME_R3_EVALUATOR_SEALED_PREDICTIONS_PENDING",
+  "checks": {
+    "protocol_is_v4_draft": true,
+    "preflight_passed": true,
+    "bundle_is_materialized_against_protocol": true,
+    "bundle_verification_passed": true,
+    "runtime_contract_is_frozen": true,
+    "submission_contract_is_frozen": true,
+    "evaluator_conformance_passed": true,
+    "runtime_denies_test_targets": true,
+    "runtime_forbids_observed_writeback": true,
+    "completion_does_not_require_model_win": true,
+    "claim_boundary_rejects_causal_and_blind_claims": true
+  },
+  "artifacts": {
+    "protocol": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/suite_protocol.json",
+      "bytes": 18343,
+      "sha256": "54152f65433440fb28fb8d9aeb605685b7e81bbade11bed229ce50dd7abb9950"
+    },
+    "preflight": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/preflight_report.json",
+      "bytes": 5682,
+      "sha256": "606031b9cf0abb917d4d65eb791b38056ff4317459aea159a3e4c5403a35ee10"
+    },
+    "bundle_manifest": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/bundle_manifest.json",
+      "bytes": 4872,
+      "sha256": "dfe3fd7ae490ac2b8a2522ba77df4a111017302eabd579544b1a3300f1020acd"
+    },
+    "bundle_verification": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/bundle_verification.json",
+      "bytes": 2434,
+      "sha256": "cb48b7d532aa778b233997e7ff73bdba3837494296adc8f88bcf9c1da089a049"
+    },
+    "runtime_r3_contract": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/runtime_r3_contract.json",
+      "bytes": 4021,
+      "sha256": "edf1dfe107a10444d7ca0034b674819b13f61cd3ec8abd1f26d03dd42fe386b5"
+    },
+    "submission_contract": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/submission_contract.json",
+      "bytes": 1332,
+      "sha256": "b1d94247c44e9ea3a73d4531813add8a04cc77ebd230107d629faa4e01f041a7"
+    },
+    "evaluator": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/action_a4_evaluator.py",
+      "bytes": 13887,
+      "sha256": "26cfb70002108a1d145e143b2d4b0b5588223f6ee0ffc2a0ccaca4ac2030f655"
+    },
+    "evaluator_conformance": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/evaluator_conformance_report.json",
+      "bytes": 1677,
+      "sha256": "a20b2990477197c2b7799b99cab5dbc2b55a496a93da4498cf52c5739803e8d6"
+    },
+    "test_history": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/test_input/weekly_state_history.parquet",
+      "bytes": 185182,
+      "sha256": "dd6839a10d9e710f3afd1ddcdbb730e9011223203d47b83942236e45878338b4"
+    },
+    "future_action_spec": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/test_input/future_action_spec.parquet",
+      "bytes": 27093,
+      "sha256": "4dace3c231a9dc78e8cd09dfcc26a2bfcbcc27be9c75741e0ba07cbb5269133f"
+    },
+    "submission_keys": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/test_input/submission_keys.parquet",
+      "bytes": 5391,
+      "sha256": "255570eb116bebc5f76a2c76b54abb8a842fb307049d3bfc19ac6df59ebeaba4"
+    },
+    "spatial_edges": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/graph/spatial_edges.parquet",
+      "bytes": 18439,
+      "sha256": "10b5a8c1b17ed44cacbb20295ab29b52bd2f5ca1675824925dcd786077a2f1ae"
+    },
+    "test_targets": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/test_targets/weekly_targets.parquet",
+      "bytes": 49412,
+      "sha256": "4e3913cff5f5ee923d547653b2362342895129d82aeaeac31ccf9b3f3ee16876"
+    }
+  },
+  "model_runtime_target_access_permitted": false,
+  "formal_evaluator_target_access_permitted_after_all_prediction_commitments": true,
+  "required_model_ids": [
+    "uwm_dam_gk_action",
+    "dam_gk_no_action",
+    "fixed_adjacency_spatial_ar",
+    "nonspatial_historical_ar",
+    "seasonal_persistence_52w"
+  ],
+  "required_control_ids": [
+    "action_deleted",
+    "effective_date_minus_4w",
+    "effective_date_plus_4w",
+    "action_component_permutation",
+    "cbd_scope_rewire",
+    "zone_exposure_shuffle_seed_20260723"
+  ],
+  "required_seeds": [
+    31,
+    47,
+    73
+  ],
+  "next_permitted_action": "Run and commit all required model and control predictions without opening rc1_bundle/test_targets from any model process."
+}

@@ -1,0 +1,112 @@
+{
+  "schema": "gwm_bench.foundation_v4_prediction_manifest_draft.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V4.0-DRAFT1",
+  "created_at": "2026-07-23T14:47:37.759234+00:00",
+  "status": "ALL_REQUIRED_PREDICTIONS_MATERIALIZED_UNCOMMITTED",
+  "test_target_rows_loaded": false,
+  "runtime_seal": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/runtime_r3_evaluator_seal.json",
+    "bytes": 4487,
+    "sha256": "93c8a7f3335bf9c4e7338c6490f951119bc6542e5f6a87fb2656aa901674528c"
+  },
+  "runtime_contract": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/runtime_r3_contract.json",
+    "bytes": 4021,
+    "sha256": "edf1dfe107a10444d7ca0034b674819b13f61cd3ec8abd1f26d03dd42fe386b5"
+  },
+  "submission_contract": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/submission_contract.json",
+    "bytes": 1332,
+    "sha256": "b1d94247c44e9ea3a73d4531813add8a04cc77ebd230107d629faa4e01f041a7"
+  },
+  "selection": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/development_selection.json",
+    "bytes": 2685,
+    "sha256": "e09247ac0292d68949e6e5013d80698ccd1504ccc0c17d5bead17227f48dca09"
+  },
+  "required_models": [
+    "uwm_dam_gk_action",
+    "dam_gk_no_action",
+    "fixed_adjacency_spatial_ar",
+    "nonspatial_historical_ar",
+    "seasonal_persistence_52w"
+  ],
+  "required_controls": [
+    "action_deleted",
+    "effective_date_minus_4w",
+    "effective_date_plus_4w",
+    "action_component_permutation",
+    "cbd_scope_rewire",
+    "zone_exposure_shuffle_seed_20260723"
+  ],
+  "submissions": {
+    "uwm_dam_gk_action": {
+      "prediction_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/uwm_dam_gk_action/prediction.parquet",
+      "prediction_sha256": "e65d567e4695fe1f777849aca376a35d0ee23ace79b855977554a045dd3f9d1b",
+      "model_spec_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/uwm_dam_gk_action/model_spec.json",
+      "run_report_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/uwm_dam_gk_action/run_report.json"
+    },
+    "dam_gk_no_action": {
+      "prediction_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/dam_gk_no_action/prediction.parquet",
+      "prediction_sha256": "d4c1dd9f8f3bd59022cc56bcd30924a8a799843d2773ddb742a284a40a25a97b",
+      "model_spec_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/dam_gk_no_action/model_spec.json",
+      "run_report_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/dam_gk_no_action/run_report.json"
+    },
+    "action_deleted": {
+      "prediction_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/action_deleted/prediction.parquet",
+      "prediction_sha256": "95472a72c1cf92a58916c6c011a4fc597c5ce9364a42793108e6430e56071292",
+      "model_spec_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/action_deleted/model_spec.json",
+      "run_report_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/action_deleted/run_report.json"
+    },
+    "effective_date_minus_4w": {
+      "prediction_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/effective_date_minus_4w/prediction.parquet",
+      "prediction_sha256": "b204b39c410b21029ff01743ba3070a6fd28f551b4fccf2652252f4a559ad1c4",
+      "model_spec_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/effective_date_minus_4w/model_spec.json",
+      "run_report_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/effective_date_minus_4w/run_report.json"
+    },
+    "effective_date_plus_4w": {
+      "prediction_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/effective_date_plus_4w/prediction.parquet",
+      "prediction_sha256": "9ae359ab1014c23243c86f18ba0b1f8857eaa517199f6892bfaeb3400cf9e0d9",
+      "model_spec_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/effective_date_plus_4w/model_spec.json",
+      "run_report_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/effective_date_plus_4w/run_report.json"
+    },
+    "action_component_permutation": {
+      "prediction_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/action_component_permutation/prediction.parquet",
+      "prediction_sha256": "b7edc4e0ad70d8fa159d23db0edf82b1af70f012a558c7783250711a5ae1373d",
+      "model_spec_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/action_component_permutation/model_spec.json",
+      "run_report_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/action_component_permutation/run_report.json"
+    },
+    "cbd_scope_rewire": {
+      "prediction_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/cbd_scope_rewire/prediction.parquet",
+      "prediction_sha256": "1e3430e648a31d529adc07f39090306f4463d34f4453e4df9461f8d37ec51062",
+      "model_spec_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/cbd_scope_rewire/model_spec.json",
+      "run_report_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/cbd_scope_rewire/run_report.json"
+    },
+    "zone_exposure_shuffle_seed_20260723": {
+      "prediction_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/zone_exposure_shuffle_seed_20260723/prediction.parquet",
+      "prediction_sha256": "1acad095a7af9696128fd56f5377ab4b5a57979804939056c602423126e1ba42",
+      "model_spec_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/zone_exposure_shuffle_seed_20260723/model_spec.json",
+      "run_report_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/zone_exposure_shuffle_seed_20260723/run_report.json"
+    },
+    "fixed_adjacency_spatial_ar": {
+      "prediction_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/fixed_adjacency_spatial_ar/prediction.parquet",
+      "prediction_sha256": "640a1a08fab607c93d6efdc47be506f30e9f2191e543ddb3d5f145c43eb9a9ad",
+      "model_spec_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/fixed_adjacency_spatial_ar/model_spec.json",
+      "run_report_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/fixed_adjacency_spatial_ar/run_report.json"
+    },
+    "nonspatial_historical_ar": {
+      "prediction_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/nonspatial_historical_ar/prediction.parquet",
+      "prediction_sha256": "8a49c58cf12f9763caa4f49de888e23a8959b4549f7cd22102aef794be280028",
+      "model_spec_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/nonspatial_historical_ar/model_spec.json",
+      "run_report_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/nonspatial_historical_ar/run_report.json"
+    },
+    "seasonal_persistence_52w": {
+      "prediction_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/seasonal_persistence_52w/prediction.parquet",
+      "prediction_sha256": "b340f76be0646b49d7fed817480e6955983d76769532c96576e1856cf337a6b7",
+      "model_spec_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/seasonal_persistence_52w/model_spec.json",
+      "run_report_path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/seasonal_persistence_52w/run_report.json"
+    }
+  },
+  "wall_seconds": 19.559344750014134,
+  "ru_maxrss_raw": 777830400
+}

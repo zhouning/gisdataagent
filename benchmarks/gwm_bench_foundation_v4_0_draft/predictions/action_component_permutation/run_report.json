@@ -1,0 +1,33 @@
+{
+  "schema": "gwm_bench.foundation_v4_run_report.v1",
+  "model_id": "action_component_permutation",
+  "adapter_id": "runtime_r3_action_control",
+  "seeds": [
+    31,
+    47,
+    73
+  ],
+  "exit_status": "success",
+  "failure_state": null,
+  "test_target_rows_loaded": false,
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/action_component_permutation/prediction.parquet",
+    "bytes": 104135,
+    "sha256": "b7edc4e0ad70d8fa159d23db0edf82b1af70f012a558c7783250711a5ae1373d"
+  },
+  "model_spec": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/action_component_permutation/model_spec.json",
+    "bytes": 422,
+    "sha256": "c3a57d3f5318598acd39d4337451ca2dd127ed35c7944bdfddfdfce59e3c7358"
+  },
+  "training_manifest": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/action_component_permutation/training_row_manifest.json",
+    "bytes": 381,
+    "sha256": "4cc0e248a4799a884fd522123a8153b9a2ea48a21845af7c294fbffaa7b5ed93"
+  },
+  "runtime_environment": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/action_component_permutation/runtime_environment.json",
+    "bytes": 409,
+    "sha256": "430262018fac7f052a7e6a79656abfab749aa294504916447e1ed42fcc9d7b78"
+  }
+}

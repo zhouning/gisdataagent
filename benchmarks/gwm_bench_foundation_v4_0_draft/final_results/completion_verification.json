@@ -1,0 +1,96 @@
+{
+  "schema": "gwm_bench.foundation_v4_completion_verification.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V4.0-DRAFT1",
+  "generated_at": "2026-07-23T15:13:01.444970+00:00",
+  "status": "PASS_V4_BENCHMARK_COMPLETE_ACTION_TRANSFER_NOT_SUPPORTED",
+  "benchmark_completed": true,
+  "scientific_result": "ACTION_TRANSFER_NOT_SUPPORTED",
+  "check_count": 18,
+  "checks": {
+    "prediction_commitment_status": true,
+    "target_firewall_preserved_before_commitment": true,
+    "all_112_committed_prediction_files_unchanged": true,
+    "all_35_predictions_replayed_exactly": true,
+    "r1_2_evaluator_sealed": true,
+    "r1_2_seal_artifacts_unchanged": true,
+    "formal_result_exists_and_completed": true,
+    "formal_result_uses_r1_2": true,
+    "formal_result_binds_prediction_commitment": true,
+    "formal_result_binds_frozen_protocol": true,
+    "formal_result_binds_frozen_contract": true,
+    "formal_result_binds_frozen_targets": true,
+    "all_11_required_submissions_scored": true,
+    "scored_prediction_hashes_match_commitment": true,
+    "status_matches_action_transfer_gate": true,
+    "all_gate_conditions_are_boolean": true,
+    "chronology_commit_then_seal_then_score": true,
+    "final_report_and_visual_previews_exist": true
+  },
+  "artifacts": {
+    "prediction_commitment": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/prediction_commitment.json",
+      "bytes": 45131,
+      "sha256": "3c39a405b74d84ba026767c7d50c6ddd28b5e21736166e7c60b743f87660a2b3"
+    },
+    "evaluator_r1_2_erratum_seal": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/evaluator_r1_2_erratum_seal.json",
+      "bytes": 2939,
+      "sha256": "414bdf2847e92befdacfaa2bcb5d85450b737727032a5c7db5b59a096cb41b1b"
+    },
+    "formal_result": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/final_results/action_a4_results.json",
+      "bytes": 39932,
+      "sha256": "7dc1b11020304a5dad1a5196ffc41254cb5063c2fbb3ea31ea6e6ee297822b9f"
+    },
+    "final_report": {
+      "path": "docs/research/GWM_BENCHMARK_V4_0_FINAL_REPORT_2026-07-23.md",
+      "bytes": 16406,
+      "sha256": "44f6dca1c773998bac07942ecdd484755b959e0e177da0023e165a82a1a93cba"
+    },
+    "figures": [
+      {
+        "path": "docs/research/assets/gwm_benchmark_v4_final_2026-07-23/01_primary_model_scores.png",
+        "bytes": 62164,
+        "sha256": "728bdedf04dbb25553e2a42ca1020c1850e1540fd7b892b357adc7fe72302d8f"
+      },
+      {
+        "path": "docs/research/assets/gwm_benchmark_v4_final_2026-07-23/02_action_vs_no_action_by_horizon.png",
+        "bytes": 90899,
+        "sha256": "1da2b226ec565c1f960188862ad88a689a3a9c46d6d14bdac376eb8859710342"
+      },
+      {
+        "path": "docs/research/assets/gwm_benchmark_v4_final_2026-07-23/03_action_mechanism_controls.png",
+        "bytes": 69147,
+        "sha256": "9ba94ebb4345a9691a7a756f3868f453f986a5d168ebb0283b77e4dafbada3c0"
+      },
+      {
+        "path": "docs/research/assets/gwm_benchmark_v4_final_2026-07-23/04_system_total_prediction_preview.png",
+        "bytes": 233084,
+        "sha256": "024d1e642dd4c1806121a06b3186f6384ea4f8094cd467da87aecfddc695522b"
+      },
+      {
+        "path": "docs/research/assets/gwm_benchmark_v4_final_2026-07-23/05_raw_and_result_data_preview.png",
+        "bytes": 157554,
+        "sha256": "04a37a47f5692183a769f3dab3eb647a3686b9f0382084c1a48664118ba6f8d4"
+      }
+    ],
+    "preview_csvs": [
+      {
+        "path": "docs/research/assets/gwm_benchmark_v4_final_2026-07-23/zone161_action_preview.csv",
+        "bytes": 281,
+        "sha256": "679dac620a617a707561e1b4ad5e208df7a4460084c7f37700a0625dce197548"
+      },
+      {
+        "path": "docs/research/assets/gwm_benchmark_v4_final_2026-07-23/zone161_history_preview.csv",
+        "bytes": 213,
+        "sha256": "736001bd4e657263440c02cdfaa2ba46924fd826b3a707147cd3b611a11374bb"
+      },
+      {
+        "path": "docs/research/assets/gwm_benchmark_v4_final_2026-07-23/zone161_result_preview.csv",
+        "bytes": 684,
+        "sha256": "29f325272fc38b65a6b9a75a9f25ec7eb4f3365326b2d29d3c21be72043e0d8b"
+      }
+    ]
+  },
+  "plain_language_conclusion": "The benchmark and audit chain are complete. The tested action-transfer claim is not supported by the frozen gate."
+}

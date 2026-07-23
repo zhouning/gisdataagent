@@ -1,0 +1,188 @@
+{
+  "schema": "gwm_bench.foundation_v4_runtime_replay.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V4.0-DRAFT1",
+  "generated_at": "2026-07-23T14:51:50.679324+00:00",
+  "status": "PASS_RUNTIME_R3_ALL_PREDICTIONS_REPLAYED",
+  "test_target_rows_loaded": false,
+  "prediction_manifest_sha256": "27a59bd1559a8615fed164e32df5fda8ef0831ac5b895b8c32b4dfa0135b24ab",
+  "check_count": 35,
+  "checks": {
+    "uwm_dam_gk_action_seed_31": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "uwm_dam_gk_action_seed_47": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "uwm_dam_gk_action_seed_73": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "uwm_dam_gk_action_ensemble": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "dam_gk_no_action_seed_31": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "dam_gk_no_action_seed_47": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "dam_gk_no_action_seed_73": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "dam_gk_no_action_ensemble": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "action_deleted_seed_31": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "action_deleted_seed_47": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "action_deleted_seed_73": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "action_deleted_ensemble": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "effective_date_minus_4w_seed_31": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "effective_date_minus_4w_seed_47": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "effective_date_minus_4w_seed_73": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "effective_date_minus_4w_ensemble": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "effective_date_plus_4w_seed_31": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "effective_date_plus_4w_seed_47": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "effective_date_plus_4w_seed_73": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "effective_date_plus_4w_ensemble": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "action_component_permutation_seed_31": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "action_component_permutation_seed_47": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "action_component_permutation_seed_73": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "action_component_permutation_ensemble": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "cbd_scope_rewire_seed_31": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "cbd_scope_rewire_seed_47": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "cbd_scope_rewire_seed_73": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "cbd_scope_rewire_ensemble": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "zone_exposure_shuffle_seed_20260723_seed_31": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "zone_exposure_shuffle_seed_20260723_seed_47": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "zone_exposure_shuffle_seed_20260723_seed_73": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "zone_exposure_shuffle_seed_20260723_ensemble": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "fixed_adjacency_spatial_ar": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "nonspatial_historical_ar": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    },
+    "seasonal_persistence_52w": {
+      "key_match": true,
+      "max_abs_difference": 0.0,
+      "pass": true
+    }
+  },
+  "maximum_observed_absolute_difference": 0.0,
+  "next_permitted_action": "Commit all prediction and sidecar hashes before evaluator target access."
+}

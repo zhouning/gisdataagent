@@ -1,0 +1,13 @@
+{
+  "schema": "gwm_bench.foundation_v4_control_seed_run.v1",
+  "control_id": "zone_exposure_shuffle_seed_20260723",
+  "seed": 73,
+  "source_model": "uwm_dam_gk_action",
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/zone_exposure_shuffle_seed_20260723/members/seed_73/prediction.parquet",
+    "bytes": 100775,
+    "sha256": "8883d7d65ba9a4ce11992c4ca3faa740b6e294ed47bee7db55e501dc12c71811"
+  },
+  "test_target_rows_loaded": false,
+  "exit_status": "success"
+}

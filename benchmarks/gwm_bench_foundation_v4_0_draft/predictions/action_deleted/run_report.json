@@ -1,0 +1,33 @@
+{
+  "schema": "gwm_bench.foundation_v4_run_report.v1",
+  "model_id": "action_deleted",
+  "adapter_id": "runtime_r3_action_control",
+  "seeds": [
+    31,
+    47,
+    73
+  ],
+  "exit_status": "success",
+  "failure_state": null,
+  "test_target_rows_loaded": false,
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/action_deleted/prediction.parquet",
+    "bytes": 104794,
+    "sha256": "95472a72c1cf92a58916c6c011a4fc597c5ce9364a42793108e6430e56071292"
+  },
+  "model_spec": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/action_deleted/model_spec.json",
+    "bytes": 267,
+    "sha256": "9dd0e1ee8551dfe16ade2c3bb2b6c13624bf582c7cd7ae881c767b01cb175b7c"
+  },
+  "training_manifest": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/action_deleted/training_row_manifest.json",
+    "bytes": 381,
+    "sha256": "4cc0e248a4799a884fd522123a8153b9a2ea48a21845af7c294fbffaa7b5ed93"
+  },
+  "runtime_environment": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/action_deleted/runtime_environment.json",
+    "bytes": 409,
+    "sha256": "72eb8ae3f40cfc96e8ae2635eebb26b3b7e383dc647ba79fa402264fbbc18278"
+  }
+}

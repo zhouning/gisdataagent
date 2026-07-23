@@ -1,0 +1,15 @@
+{
+  "schema": "gwm_bench.foundation_v4_control_spec.v1",
+  "model_id": "zone_exposure_shuffle_seed_20260723",
+  "source_model": "uwm_dam_gk_action",
+  "control_audit": {
+    "control_id": "zone_exposure_shuffle_seed_20260723",
+    "zone_permutation_sha256": "e135bdbc26f1b5ffabc9707d95944be431300a1c5e4167bf5a7cc911d8fcbadf"
+  },
+  "seeds": [
+    31,
+    47,
+    73
+  ],
+  "test_target_rows_loaded": false
+}

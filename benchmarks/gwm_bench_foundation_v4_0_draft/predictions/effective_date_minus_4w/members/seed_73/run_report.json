@@ -1,0 +1,13 @@
+{
+  "schema": "gwm_bench.foundation_v4_control_seed_run.v1",
+  "control_id": "effective_date_minus_4w",
+  "seed": 73,
+  "source_model": "uwm_dam_gk_action",
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/effective_date_minus_4w/members/seed_73/prediction.parquet",
+    "bytes": 100820,
+    "sha256": "57456e21f6648ccae2c66109270b24db816995d1de03c3fe713566999c55154c"
+  },
+  "test_target_rows_loaded": false,
+  "exit_status": "success"
+}

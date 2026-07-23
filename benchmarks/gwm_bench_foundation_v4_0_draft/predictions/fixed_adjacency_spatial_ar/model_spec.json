@@ -1,0 +1,15 @@
+{
+  "schema": "gwm_bench.foundation_v4_model_spec.v1",
+  "model_id": "fixed_adjacency_spatial_ar",
+  "algorithm": "per-zone multi-output Ridge autoregression",
+  "lags": [
+    1,
+    2,
+    4,
+    8
+  ],
+  "alpha": 5.0,
+  "uses_geographic_adjacency_message": true,
+  "uses_action": false,
+  "test_target_rows_loaded": false
+}

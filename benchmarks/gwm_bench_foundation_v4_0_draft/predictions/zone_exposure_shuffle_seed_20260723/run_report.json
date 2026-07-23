@@ -1,0 +1,33 @@
+{
+  "schema": "gwm_bench.foundation_v4_run_report.v1",
+  "model_id": "zone_exposure_shuffle_seed_20260723",
+  "adapter_id": "runtime_r3_action_control",
+  "seeds": [
+    31,
+    47,
+    73
+  ],
+  "exit_status": "success",
+  "failure_state": null,
+  "test_target_rows_loaded": false,
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/zone_exposure_shuffle_seed_20260723/prediction.parquet",
+    "bytes": 104247,
+    "sha256": "1acad095a7af9696128fd56f5377ab4b5a57979804939056c602423126e1ba42"
+  },
+  "model_spec": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/zone_exposure_shuffle_seed_20260723/model_spec.json",
+    "bytes": 408,
+    "sha256": "0609eb7d31f6e35e9852468c6d07b2b50a8b0263f2a8e888e507184d1b001a67"
+  },
+  "training_manifest": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/zone_exposure_shuffle_seed_20260723/training_row_manifest.json",
+    "bytes": 381,
+    "sha256": "4cc0e248a4799a884fd522123a8153b9a2ea48a21845af7c294fbffaa7b5ed93"
+  },
+  "runtime_environment": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/zone_exposure_shuffle_seed_20260723/runtime_environment.json",
+    "bytes": 409,
+    "sha256": "672847bd4e28e658a95ba0a39a476c0b4dc643f36520237d7a16f55eb754356a"
+  }
+}

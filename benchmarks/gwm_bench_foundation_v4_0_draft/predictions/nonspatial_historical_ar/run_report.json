@@ -1,0 +1,31 @@
+{
+  "schema": "gwm_bench.foundation_v4_run_report.v1",
+  "model_id": "nonspatial_historical_ar",
+  "adapter_id": "runtime_r3_ridge",
+  "seed": null,
+  "wall_seconds": 0.13821254193317145,
+  "ru_maxrss_raw": 777830400,
+  "exit_status": "success",
+  "failure_state": null,
+  "test_target_rows_loaded": false,
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/nonspatial_historical_ar/prediction.parquet",
+    "bytes": 100949,
+    "sha256": "8a49c58cf12f9763caa4f49de888e23a8959b4549f7cd22102aef794be280028"
+  },
+  "model_spec": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/nonspatial_historical_ar/model_spec.json",
+    "bytes": 325,
+    "sha256": "5604b6a53dff62555592a72bf486a54310230a0b45c1c7f9777282341c02d2e9"
+  },
+  "training_manifest": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/nonspatial_historical_ar/training_row_manifest.json",
+    "bytes": 381,
+    "sha256": "4cc0e248a4799a884fd522123a8153b9a2ea48a21845af7c294fbffaa7b5ed93"
+  },
+  "runtime_environment": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/nonspatial_historical_ar/runtime_environment.json",
+    "bytes": 409,
+    "sha256": "aa4acef39dcd1352bde461b547781c47b9d7755192f1c1a62845473a9d3df28e"
+  }
+}

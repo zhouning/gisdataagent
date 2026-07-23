@@ -1,0 +1,13 @@
+{
+  "schema": "gwm_bench.foundation_v4_control_seed_run.v1",
+  "control_id": "cbd_scope_rewire",
+  "seed": 73,
+  "source_model": "uwm_dam_gk_action",
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/cbd_scope_rewire/members/seed_73/prediction.parquet",
+    "bytes": 100735,
+    "sha256": "ddc548bb7e6eed594b0ff6ad09e0fed39fbc03a1fad0b411d5d07764dace7167"
+  },
+  "test_target_rows_loaded": false,
+  "exit_status": "success"
+}

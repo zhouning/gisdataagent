@@ -1,0 +1,13 @@
+{
+  "schema": "gwm_bench.foundation_v4_control_seed_run.v1",
+  "control_id": "action_deleted",
+  "seed": 73,
+  "source_model": "uwm_dam_gk_action",
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/action_deleted/members/seed_73/prediction.parquet",
+    "bytes": 101071,
+    "sha256": "2a6e65d4833ccb5c29299e9d7b17e1ad2a8cb916675e47c5e51e8d22999944db"
+  },
+  "test_target_rows_loaded": false,
+  "exit_status": "success"
+}

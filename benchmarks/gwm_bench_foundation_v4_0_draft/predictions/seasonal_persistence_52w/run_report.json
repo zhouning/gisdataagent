@@ -1,0 +1,29 @@
+{
+  "schema": "gwm_bench.foundation_v4_run_report.v1",
+  "model_id": "seasonal_persistence_52w",
+  "adapter_id": "runtime_r3_seasonal_persistence",
+  "seed": null,
+  "exit_status": "success",
+  "failure_state": null,
+  "test_target_rows_loaded": false,
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/seasonal_persistence_52w/prediction.parquet",
+    "bytes": 42694,
+    "sha256": "b340f76be0646b49d7fed817480e6955983d76769532c96576e1856cf337a6b7"
+  },
+  "model_spec": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/seasonal_persistence_52w/model_spec.json",
+    "bytes": 235,
+    "sha256": "95932226361169aa9b9fc4496a501acc382fd4977f01aa1e812701f0aa4a62af"
+  },
+  "training_manifest": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/seasonal_persistence_52w/training_row_manifest.json",
+    "bytes": 381,
+    "sha256": "4cc0e248a4799a884fd522123a8153b9a2ea48a21845af7c294fbffaa7b5ed93"
+  },
+  "runtime_environment": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/seasonal_persistence_52w/runtime_environment.json",
+    "bytes": 409,
+    "sha256": "0203653937879b293ee27620e9aa7df521868767ea8276cf82ba34fdd4378c82"
+  }
+}

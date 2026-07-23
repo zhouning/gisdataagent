@@ -1,0 +1,131 @@
+{
+  "schema": "gwm_bench.foundation_v4_rc1_bundle.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V4.0-DRAFT1",
+  "created_at": "2026-07-23T14:34:01.182155+00:00",
+  "status": "V4_RC1_DATA_MATERIALIZED",
+  "protocol_sha256": "54152f65433440fb28fb8d9aeb605685b7e81bbade11bed229ce50dd7abb9950",
+  "source_event_panel": {
+    "path": "paper-output/regimeworld-nyc-v4-compositional-uwm/results/development_event_panel.parquet",
+    "bytes": 18388927,
+    "sha256": "1032d96bbf910169a77b21eac20d5c8221d7dfd16e1ce1442f1890719225d468"
+  },
+  "source_graph_ledger": {
+    "path": "paper-output/regimeworld-nyc-v1/results/graph_ledger.json",
+    "bytes": 203542,
+    "sha256": "e358bf36387023c1774f4e978be10502cdd7521c2211de399cdd4f231c2e2085"
+  },
+  "event_audits": [
+    {
+      "source_event": "development_2019_congestion_surcharge",
+      "event_id": "train_2019_nys_congestion_surcharge",
+      "role": "training_and_development",
+      "effective_date": "2019-02-02",
+      "source_date_min": "2018-02-03",
+      "source_date_max": "2019-04-26",
+      "source_zone_day_rows": 117824,
+      "weekly_rows": 16832,
+      "pre_week_count": 52,
+      "post_week_count": 12,
+      "zone_count": 263
+    },
+    {
+      "source_event": "development_2022_taximeter_adjustment",
+      "event_id": "train_2022_tlc_taximeter_adjustment",
+      "role": "training_and_development",
+      "effective_date": "2022-12-19",
+      "source_date_min": "2021-12-20",
+      "source_date_max": "2023-03-12",
+      "source_zone_day_rows": 117824,
+      "weekly_rows": 16832,
+      "pre_week_count": 52,
+      "post_week_count": 12,
+      "zone_count": 263
+    },
+    {
+      "source_event": "development_2025_crz",
+      "event_id": "test_2025_mta_crz",
+      "role": "model_unseen_test_intervention",
+      "effective_date": "2025-01-05",
+      "source_date_min": "2024-01-07",
+      "source_date_max": "2025-03-29",
+      "source_zone_day_rows": 117824,
+      "weekly_rows": 16832,
+      "pre_week_count": 52,
+      "post_week_count": 12,
+      "zone_count": 263
+    }
+  ],
+  "counts": {
+    "development_rows": 33664,
+    "test_history_rows": 13676,
+    "test_action_rows": 3156,
+    "test_target_rows": 3156,
+    "submission_key_rows": 3156,
+    "zone_metadata_rows": 263,
+    "graph_edge_rows": 3009
+  },
+  "artifacts": {
+    "development": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/development/weekly_state_action.parquet",
+      "bytes": 472628,
+      "sha256": "524f10d1f12ff1d57207831d443cefb401d70ff74d946db0c1e9dd4931c47e3f",
+      "row_count": 33664
+    },
+    "training_row_manifest": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/development/training_row_manifest.json",
+      "bytes": 782,
+      "sha256": "8c0552a655221473628993ee166cd86dbf6d18cec3ec617f225d08a7f3172a5f"
+    },
+    "test_history": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/test_input/weekly_state_history.parquet",
+      "bytes": 185182,
+      "sha256": "dd6839a10d9e710f3afd1ddcdbb730e9011223203d47b83942236e45878338b4",
+      "row_count": 13676
+    },
+    "test_action": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/test_input/future_action_spec.parquet",
+      "bytes": 27093,
+      "sha256": "4dace3c231a9dc78e8cd09dfcc26a2bfcbcc27be9c75741e0ba07cbb5269133f",
+      "row_count": 3156
+    },
+    "submission_keys": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/test_input/submission_keys.parquet",
+      "bytes": 5391,
+      "sha256": "255570eb116bebc5f76a2c76b54abb8a842fb307049d3bfc19ac6df59ebeaba4",
+      "row_count": 3156
+    },
+    "test_targets": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/test_targets/weekly_targets.parquet",
+      "bytes": 49412,
+      "sha256": "4e3913cff5f5ee923d547653b2362342895129d82aeaeac31ccf9b3f3ee16876",
+      "row_count": 3156
+    },
+    "zone_metadata": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/graph/zone_metadata.parquet",
+      "bytes": 8489,
+      "sha256": "8cae554be9ab0fc12b99106eda2e47159c7036eb3d7c44d74bca11be5ffeca37",
+      "row_count": 263
+    },
+    "spatial_edges": {
+      "path": "benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/graph/spatial_edges.parquet",
+      "bytes": 18439,
+      "sha256": "10b5a8c1b17ed44cacbb20295ab29b52bd2f5ca1675824925dcd786077a2f1ae",
+      "row_count": 3009
+    }
+  },
+  "firewall": {
+    "test_targets_written_to_separate_directory": true,
+    "test_target_path_permitted_for_model_runtime": false,
+    "development_max_date": "2023-03-12",
+    "test_history_max_date": "2025-01-04",
+    "test_target_min_date": "2025-01-05",
+    "analyst_blindness_claimed": false
+  },
+  "model_input_prohibitions": [
+    "event_id_audit_only",
+    "event_role_audit_only",
+    "effective_date_audit_only",
+    "policy name",
+    "event year"
+  ]
+}

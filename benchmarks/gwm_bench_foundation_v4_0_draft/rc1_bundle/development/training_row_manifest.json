@@ -1,0 +1,22 @@
+{
+  "schema": "gwm_bench.foundation_v4_training_row_manifest.v1",
+  "created_at": "2026-07-23T14:34:01.181078+00:00",
+  "permitted_event_ids": [
+    "train_2019_nys_congestion_surcharge",
+    "train_2022_tlc_taximeter_adjustment"
+  ],
+  "source_date_min": "2018-02-03",
+  "source_date_max": "2023-03-12",
+  "weekly_rows": 33664,
+  "zone_count": 263,
+  "post_2025_action_rows": 0,
+  "normalization_may_read_test_targets": false,
+  "graph_may_read_test_targets": false,
+  "test_target_path_permitted_for_model_runtime": false,
+  "artifact": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/development/weekly_state_action.parquet",
+    "bytes": 472628,
+    "sha256": "524f10d1f12ff1d57207831d443cefb401d70ff74d946db0c1e9dd4931c47e3f",
+    "row_count": 33664
+  }
+}

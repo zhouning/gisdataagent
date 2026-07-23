@@ -1,0 +1,14 @@
+{
+  "schema": "gwm_bench.foundation_v4_control_spec.v1",
+  "model_id": "action_deleted",
+  "source_model": "uwm_dam_gk_action",
+  "control_audit": {
+    "control_id": "action_deleted"
+  },
+  "seeds": [
+    31,
+    47,
+    73
+  ],
+  "test_target_rows_loaded": false
+}

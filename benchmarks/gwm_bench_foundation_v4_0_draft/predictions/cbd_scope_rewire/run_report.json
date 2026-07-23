@@ -1,0 +1,33 @@
+{
+  "schema": "gwm_bench.foundation_v4_run_report.v1",
+  "model_id": "cbd_scope_rewire",
+  "adapter_id": "runtime_r3_action_control",
+  "seeds": [
+    31,
+    47,
+    73
+  ],
+  "exit_status": "success",
+  "failure_state": null,
+  "test_target_rows_loaded": false,
+  "prediction": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/cbd_scope_rewire/prediction.parquet",
+    "bytes": 104162,
+    "sha256": "1e3430e648a31d529adc07f39090306f4463d34f4453e4df9461f8d37ec51062"
+  },
+  "model_spec": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/cbd_scope_rewire/model_spec.json",
+    "bytes": 705,
+    "sha256": "310a94e9d7382e84178f5258a2bedb4da51f54c86f163ed2503ece17d1163dc5"
+  },
+  "training_manifest": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/cbd_scope_rewire/training_row_manifest.json",
+    "bytes": 381,
+    "sha256": "4cc0e248a4799a884fd522123a8153b9a2ea48a21845af7c294fbffaa7b5ed93"
+  },
+  "runtime_environment": {
+    "path": "benchmarks/gwm_bench_foundation_v4_0_draft/predictions/cbd_scope_rewire/runtime_environment.json",
+    "bytes": 409,
+    "sha256": "7dd45e45387b926724ffb39738aed08ebf340c5fc28dabbfeb3388a23b945cc8"
+  }
+}
