@@ -1,0 +1,27 @@
+{
+  "schema": "gwm_bench.foundation_v5_training_graph_index.v1",
+  "fold_id": "holdout_2025",
+  "test_event": "event_2025_mta_crz",
+  "training_event_graphs": {
+    "event_2015_improvement_surcharge": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/events/event_2015_improvement_surcharge/spatial_edges.parquet",
+      "bytes": 28218,
+      "sha256": "432a312781e9856e9a49966fca4c9fc49a56e01993aadf7f12df2a51a08ab52c",
+      "row_count": 3047
+    },
+    "event_2019_nys_congestion_surcharge": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/events/event_2019_nys_congestion_surcharge/spatial_edges.parquet",
+      "bytes": 31159,
+      "sha256": "51429bee2978345b1c3ecae72c080b70bd0e8df9aa6dbfbe5c82028ed1d91e45",
+      "row_count": 3037
+    },
+    "event_2022_tlc_taximeter_adjustment": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/events/event_2022_tlc_taximeter_adjustment/spatial_edges.parquet",
+      "bytes": 29403,
+      "sha256": "59558e70f19adc8eb7f4ea8615bd28b720d5151d6de868efdacab350ea150dfe",
+      "row_count": 3031
+    }
+  },
+  "test_event_graph_permitted_for_model_runtime": true,
+  "test_event_graph_uses_post_action_od": false
+}

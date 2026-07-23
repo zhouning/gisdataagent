@@ -1,0 +1,288 @@
+{
+  "schema": "gwm_bench.foundation_v5_suite_protocol.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V5.0-DRAFT1",
+  "version": "5.0-draft1",
+  "created_at": "2026-07-23",
+  "status": "defined_before_v5_bundle_or_model_execution",
+  "definition": "A four-event leave-one-action-out retrospective benchmark for action-specific residual transfer on New York City taxi-zone mobility.",
+  "single_new_question": "When a strong history-only forecast is fixed first, can a DAM-GK action residual learned from three real institutional changes improve the fourth held-out action consistently, while corrupted action semantics and spatial scope perform worse?",
+  "v4_evidence_boundary": {
+    "v4_result_path": "benchmarks/gwm_bench_foundation_v4_0_draft/final_results/action_a4_results.json",
+    "v4_result_sha256": "7dc1b11020304a5dad1a5196ffc41254cb5063c2fbb3ea31ea6e6ee297822b9f",
+    "v4_status": "ACTION_TRANSFER_NOT_SUPPORTED",
+    "v4_action_score": 0.49599785192306456,
+    "v4_matched_no_action_score": 0.5010902720159695,
+    "v4_best_baseline_id": "nonspatial_historical_ar",
+    "v4_best_baseline_score": 0.46222487967007536,
+    "v4_failed_gate": "correct_action_beats_cbd_scope_rewire",
+    "design_response": [
+      "Use the strongest V4 history-only model as a fixed forecast backbone.",
+      "Predict only the action-conditioned residual instead of the full state.",
+      "Replace one held-out event with four equal-weight outer folds.",
+      "Require correct action semantics to beat every frozen corruption family."
+    ]
+  },
+  "claim_boundary": {
+    "supports_on_finalization": [
+      "reproducible model-held-out transfer evidence across four known NYC taxi actions",
+      "equal-event evidence for incremental action value over a strong historical forecast",
+      "mechanism-specific evidence from frozen action and spatial-scope corruptions",
+      "Runtime-R4 multi-fold isolation, commitment and replay evidence"
+    ],
+    "does_not_support": [
+      "causal effects of any taxi fee or congestion-pricing policy",
+      "analyst-unseen or externally hidden labels",
+      "a new future intervention forecast",
+      "operational transportation forecasting validity",
+      "generalization beyond NYC yellow taxis or beyond the four admitted actions",
+      "complete universal GWM, UWM or DAM-GK validity"
+    ]
+  },
+  "scene": {
+    "city": "New York City",
+    "spatial_unit": "263 NYC TLC Taxi Zones",
+    "time_unit": "action-aligned complete seven-day blocks",
+    "pre_action_weeks": 52,
+    "post_action_weeks": 12,
+    "state_targets": [
+      "pickup_count",
+      "dropoff_count",
+      "cbd_inflow",
+      "cbd_outflow"
+    ],
+    "action_columns": [
+      "fixed_spatial_surcharge_contribution_usd",
+      "flag_fall_contribution_usd",
+      "improvement_surcharge_contribution_usd",
+      "metered_unit_contribution_usd",
+      "rush_hour_contribution_usd",
+      "night_contribution_usd",
+      "jfk_flat_contribution_usd",
+      "jfk_rush_contribution_usd",
+      "lga_contribution_usd",
+      "newark_contribution_usd",
+      "expected_total_delta_usd",
+      "expected_fractional_fare_delta",
+      "spatial_applicability_share",
+      "temporal_applicability_share",
+      "implementation_share"
+    ],
+    "forbidden_model_features": [
+      "event_audit_only",
+      "policy_date_audit_only",
+      "event year",
+      "policy name",
+      "outer fold ID as a learned feature"
+    ]
+  },
+  "source_assets": {
+    "event_panels": [
+      {
+        "path": "paper-output/regimeworld-nyc-v4-compositional-uwm/results/heldout_2015_event_panel.parquet",
+        "bytes": 4127495,
+        "sha256": "9687da26e86fcbe6dd37959702060a434a0ae2419cfa3f4d24882fb35123bcbc"
+      },
+      {
+        "path": "paper-output/regimeworld-nyc-v4-compositional-uwm/results/development_event_panel.parquet",
+        "bytes": 18388927,
+        "sha256": "1032d96bbf910169a77b21eac20d5c8221d7dfd16e1ce1442f1890719225d468"
+      }
+    ],
+    "od_panels": [
+      {
+        "path": "paper-output/regimeworld-nyc-v4-compositional-uwm/results/heldout_2015_daily_od_state.parquet",
+        "bytes": 12310172,
+        "sha256": "14019d4c430fa0986628573bbea6c9a41990e9c09141c417bc9263841d3eb281"
+      },
+      {
+        "path": "paper-output/regimeworld-nyc-v3-multi-intervention/results/daily_od_state.parquet",
+        "bytes": 42765003,
+        "sha256": "9802785aae8cf498a65742eb347e87fa6b2388102e5cf7066d566a1ed7fad045"
+      }
+    ],
+    "zone_metadata": "benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/graph/zone_metadata.parquet",
+    "v4_spatial_edges": "benchmarks/gwm_bench_foundation_v4_0_draft/rc1_bundle/graph/spatial_edges.parquet",
+    "new_download_required": false
+  },
+  "events": [
+    {
+      "event_id": "event_2015_improvement_surcharge",
+      "source_event": "heldout_2015_improvement_surcharge",
+      "effective_date": "2015-01-01",
+      "action": "USD 0.30 citywide improvement surcharge",
+      "pre_window": ["2014-01-02", "2014-12-31"],
+      "post_window": ["2015-01-01", "2015-03-25"],
+      "source_panel": "heldout_2015_event_panel.parquet",
+      "od_panel": "heldout_2015_daily_od_state.parquet"
+    },
+    {
+      "event_id": "event_2019_nys_congestion_surcharge",
+      "source_event": "development_2019_congestion_surcharge",
+      "effective_date": "2019-02-02",
+      "action": "USD 2.50 yellow-taxi congestion surcharge for applicable Manhattan trips",
+      "pre_window": ["2018-02-03", "2019-02-01"],
+      "post_window": ["2019-02-02", "2019-04-26"],
+      "source_panel": "development_event_panel.parquet",
+      "od_panel": "daily_od_state.parquet"
+    },
+    {
+      "event_id": "event_2022_tlc_taximeter_adjustment",
+      "source_event": "development_2022_taximeter_adjustment",
+      "effective_date": "2022-12-19",
+      "action": "citywide taximeter fare and surcharge component adjustment",
+      "pre_window": ["2021-12-20", "2022-12-18"],
+      "post_window": ["2022-12-19", "2023-03-12"],
+      "source_panel": "development_event_panel.parquet",
+      "od_panel": "daily_od_state.parquet"
+    },
+    {
+      "event_id": "event_2025_mta_crz",
+      "source_event": "development_2025_crz",
+      "effective_date": "2025-01-05",
+      "action": "USD 0.75 per-trip yellow-taxi charge associated with the Congestion Relief Zone",
+      "pre_window": ["2024-01-07", "2025-01-04"],
+      "post_window": ["2025-01-05", "2025-03-29"],
+      "source_panel": "development_event_panel.parquet",
+      "od_panel": "daily_od_state.parquet"
+    }
+  ],
+  "outer_folds": [
+    {
+      "fold_id": "holdout_2015",
+      "test_event": "event_2015_improvement_surcharge",
+      "training_events": [
+        "event_2019_nys_congestion_surcharge",
+        "event_2022_tlc_taximeter_adjustment",
+        "event_2025_mta_crz"
+      ]
+    },
+    {
+      "fold_id": "holdout_2019",
+      "test_event": "event_2019_nys_congestion_surcharge",
+      "training_events": [
+        "event_2015_improvement_surcharge",
+        "event_2022_tlc_taximeter_adjustment",
+        "event_2025_mta_crz"
+      ]
+    },
+    {
+      "fold_id": "holdout_2022",
+      "test_event": "event_2022_tlc_taximeter_adjustment",
+      "training_events": [
+        "event_2015_improvement_surcharge",
+        "event_2019_nys_congestion_surcharge",
+        "event_2025_mta_crz"
+      ]
+    },
+    {
+      "fold_id": "holdout_2025",
+      "test_event": "event_2025_mta_crz",
+      "training_events": [
+        "event_2015_improvement_surcharge",
+        "event_2019_nys_congestion_surcharge",
+        "event_2022_tlc_taximeter_adjustment"
+      ]
+    }
+  ],
+  "split_contract": {
+    "outer_fold_rule": "The held-out event contributes its 52 pre-action weeks to test input and graph construction, but none of its 12 post-action target weeks to fitting, normalization, selection or graph construction.",
+    "inner_selection_rule": "Within each outer training set, hyperparameters are selected by three-fold leave-one-training-action-out validation and then refit on all three training actions.",
+    "event_weighting": "Each of the four outer held-out events has equal weight regardless of trip volume.",
+    "expected_event_week_rows": 16832,
+    "expected_total_event_week_rows": 67328,
+    "expected_training_rows_per_outer_fold": 50496,
+    "expected_test_history_rows_per_outer_fold": 13676,
+    "expected_test_action_rows_per_outer_fold": 3156,
+    "expected_test_target_rows_per_outer_fold": 3156,
+    "expected_total_outer_test_keys": 12624,
+    "expected_total_predicted_scalars": 50496
+  },
+  "graph_contract": {
+    "geographic_adjacency": "Frozen TLC-zone adjacency from V4.",
+    "origin_destination_flow": "Event-specific top-eight outgoing OD relations built only from that event's 52 pre-action weeks.",
+    "action_exposure": "One self relation per zone carrying the frozen numeric action exposure for that event.",
+    "heldout_post_action_graph_update_permitted": false
+  },
+  "model_contract": {
+    "strong_backbone": "nonspatial historical autoregression selected because it was the best frozen V4 formal model",
+    "candidate": "action-conditioned multi-relation DAM-GK residual correction over the fixed backbone forecast",
+    "prediction_equation": "final_prediction = frozen_history_backbone_prediction + dam_gk_action_residual",
+    "matched_no_action": "same backbone and residual architecture with action inputs removed",
+    "zero_action_anchor": "the action residual is regularized toward zero when the numeric action is zero",
+    "open_loop_steps": 12,
+    "observed_test_state_writeback_permitted": false,
+    "required_seeds": [31, 47, 73],
+    "ensemble_rule": "arithmetic mean in raw count space after every seed emits the complete fold key set"
+  },
+  "required_models": [
+    "history_ar_backbone",
+    "fixed_adjacency_spatial_ar",
+    "dam_gk_residual_no_action",
+    "uwm_dam_gk_action_residual"
+  ],
+  "required_controls": [
+    "action_deleted",
+    "effective_date_minus_4w",
+    "effective_date_plus_4w",
+    "action_component_permutation",
+    "wrong_spatial_scope",
+    "cross_event_action_swap",
+    "zone_exposure_shuffle_seed_20260723"
+  ],
+  "evaluation": {
+    "reported_horizons": [1, 2, 4, 8, 12],
+    "primary_error": "equal-event macro pre-action-normalized MAE over 263 zones, four targets and five reported horizons",
+    "fold_skill": "1 - candidate_primary_error / history_ar_backbone_primary_error",
+    "paired_bootstrap": {
+      "unit": "Taxi Zone within outer event fold",
+      "draws": 20000,
+      "seed": 20260723,
+      "event_aggregation": "equal-weight mean of the four fold-level paired differences"
+    },
+    "minimum_practical_mean_skill": 0.01,
+    "maximum_allowed_single_fold_relative_degradation": 0.02
+  },
+  "action_transfer_gate": {
+    "all_required": true,
+    "conditions": [
+      "mean fold skill over the history AR backbone is at least 1 percent",
+      "the paired bootstrap interval for candidate minus history backbone is entirely below zero",
+      "the candidate improves at least three of four outer held-out events",
+      "no outer fold degrades by more than 2 percent relative to the history backbone",
+      "at least 12 of 16 event-target pairs improve",
+      "at least four of five equal-event reported horizons improve",
+      "the correct action beats every frozen control in equal-event macro score",
+      "the correct action beats every frozen control in at least three of four folds"
+    ],
+    "completion_independent_of_gate": true
+  },
+  "runtime_r4": {
+    "required_components": [
+      "EventWeekBundle",
+      "OuterFoldFirewall",
+      "NestedSelectionReceipt",
+      "FrozenBackboneForecast",
+      "ActionResidualRolloutRequest",
+      "FoldPredictionBundle",
+      "MultiFoldPredictionCommitment",
+      "RuntimeAuditReceipt"
+    ],
+    "model_runtime_denied_routes": [
+      "current outer fold post-action targets",
+      "other model predictions for the current fold",
+      "formal evaluator outputs before all fold commitments"
+    ],
+    "formal_evaluator_permitted_after": "all models, controls, seeds and four outer folds are committed and replayed"
+  },
+  "completion_definition": {
+    "benchmark_complete_when": [
+      "all four event bundles and outer folds validate",
+      "Runtime-R4, submission contracts and evaluator are frozen before formal predictions",
+      "all required models, controls and seeds emit complete predictions for all four folds",
+      "all committed predictions replay within the frozen tolerance",
+      "the frozen evaluator emits the full result regardless of gate outcome",
+      "data previews, comparisons, failures, hashes and claim boundaries are published"
+    ],
+    "model_win_required": false
+  }
+}

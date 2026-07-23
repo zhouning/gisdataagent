@@ -1,0 +1,55 @@
+{
+  "schema": "gwm_bench.foundation_v5_multifold_submission_contract.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V5.0-DRAFT1",
+  "created_at": "2026-07-23",
+  "status": "frozen_before_predictions",
+  "format": "parquet",
+  "key_columns": ["fold_id", "zone_id", "horizon_week"],
+  "expected_fold_ids": ["holdout_2015", "holdout_2019", "holdout_2022", "holdout_2025"],
+  "expected_key_count_per_fold": 3156,
+  "expected_key_count": 12624,
+  "zone_id_range": [1, 263],
+  "horizon_week_range": [1, 12],
+  "prediction_columns": [
+    "pickup_count_prediction",
+    "dropoff_count_prediction",
+    "cbd_inflow_prediction",
+    "cbd_outflow_prediction"
+  ],
+  "optional_uncertainty_columns": [
+    "pickup_count_p10",
+    "pickup_count_p90",
+    "dropoff_count_p10",
+    "dropoff_count_p90",
+    "cbd_inflow_p10",
+    "cbd_inflow_p90",
+    "cbd_outflow_p10",
+    "cbd_outflow_p90"
+  ],
+  "constraints": {
+    "duplicate_keys_allowed": false,
+    "missing_keys_allowed": false,
+    "extra_keys_allowed": false,
+    "extra_columns_allowed": false,
+    "integer_storage_width_changes_key_identity": false,
+    "negative_predictions_allowed": false,
+    "non_finite_predictions_allowed": false,
+    "uncertainty_order": "p10 <= prediction <= p90",
+    "absolute_replay_tolerance": 1e-06
+  },
+  "required_sidecars": [
+    "model_spec.json",
+    "nested_selection_receipts.json",
+    "fold_training_manifests.json",
+    "runtime_environment.json",
+    "run_report.json"
+  ],
+  "forbidden_model_features": [
+    "event_id_audit_only",
+    "source_event_audit_only",
+    "effective_date_audit_only",
+    "event year",
+    "policy name",
+    "outer fold ID as a learned feature"
+  ]
+}

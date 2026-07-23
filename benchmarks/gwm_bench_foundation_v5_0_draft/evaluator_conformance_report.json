@@ -1,0 +1,150 @@
+{
+  "schema": "gwm_bench.foundation_v5_action_transfer_evaluator_conformance.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V5.0-DRAFT1",
+  "generated_at": "2026-07-23T15:47:20.628748+00:00",
+  "status": "PASS_V5_ACTION_TRANSFER_EVALUATOR_CONFORMANCE",
+  "check_count": 23,
+  "passed_check_count": 23,
+  "failed_checks": [],
+  "checks": {
+    "perfect_multifold_submission_validates": true,
+    "all_four_folds_have_exact_key_counts": true,
+    "integer_storage_width_does_not_change_key_identity": true,
+    "perfect_primary_metric_is_zero": true,
+    "biased_primary_metric_is_positive": true,
+    "four_equal_event_fold_scores_are_reported": true,
+    "all_four_targets_are_reported": true,
+    "only_five_frozen_horizons_are_primary": true,
+    "perfect_beats_biased_equal_event": true,
+    "perfect_vs_biased_interval_is_below_zero": true,
+    "all_sixteen_event_target_directions_are_correct": true,
+    "all_five_horizon_directions_are_correct": true,
+    "constructed_supported_case_passes_all_eight_gates": true,
+    "constructed_unsupported_case_completes_but_fails_gate": true,
+    "duplicate_keys_are_rejected": true,
+    "missing_keys_are_rejected": true,
+    "wrong_fold_is_rejected": true,
+    "nonintegral_keys_are_rejected": true,
+    "negative_predictions_are_rejected": true,
+    "nonfinite_predictions_are_rejected": true,
+    "extra_columns_are_rejected": true,
+    "partial_uncertainty_is_rejected": true,
+    "bad_uncertainty_order_is_rejected": true
+  },
+  "constructed_answer_metrics": {
+    "perfect": 0.0,
+    "biased": 0.06601814663810951,
+    "perfect_minus_biased": {
+      "candidate_minus_baseline_equal_event": -0.06601814663810951,
+      "bootstrap_draws": 2000,
+      "bootstrap_seed": 20260723,
+      "bootstrap_95_percentile_interval": [
+        -0.06611124994948916,
+        -0.06592614189644083
+      ],
+      "by_fold": {
+        "holdout_2015": -0.08411432105521313,
+        "holdout_2019": -0.06940419815061527,
+        "holdout_2022": -0.05909389053252655,
+        "holdout_2025": -0.0514601768140831
+      },
+      "by_target_equal_event": {
+        "cbd_inflow": -0.06347233913644199,
+        "cbd_outflow": -0.05957765498097726,
+        "dropoff_count": -0.06793118577902298,
+        "pickup_count": -0.07309140665599581
+      },
+      "by_horizon_equal_event": {
+        "1": -0.06601814663810951,
+        "2": -0.06601814663810951,
+        "4": -0.06601814663810951,
+        "8": -0.06601814663810951,
+        "12": -0.06601814663810951
+      },
+      "by_fold_target": {
+        "holdout_2015|cbd_inflow": -0.08003877903302728,
+        "holdout_2015|cbd_outflow": -0.07410408000830049,
+        "holdout_2015|dropoff_count": -0.08700758356338119,
+        "holdout_2015|pickup_count": -0.09530684161614357,
+        "holdout_2019|cbd_inflow": -0.06668769163116685,
+        "holdout_2019|cbd_outflow": -0.06251685805568705,
+        "holdout_2019|dropoff_count": -0.07145512745667501,
+        "holdout_2019|pickup_count": -0.07695711545893215,
+        "holdout_2022|cbd_inflow": -0.05715520748618334,
+        "holdout_2022|cbd_outflow": -0.05406420695933581,
+        "holdout_2022|dropoff_count": -0.06062121975933808,
+        "holdout_2022|pickup_count": -0.06453492792524894,
+        "holdout_2025|cbd_inflow": -0.050007678395390484,
+        "holdout_2025|cbd_outflow": -0.0476254749005857,
+        "holdout_2025|dropoff_count": -0.05264081233669764,
+        "holdout_2025|pickup_count": -0.05556674162365859
+      }
+    },
+    "passing_gate": {
+      "conditions": {
+        "mean_fold_skill_at_least_one_percent": true,
+        "paired_bootstrap_interval_entirely_below_zero": true,
+        "at_least_three_of_four_events_improve": true,
+        "no_fold_degrades_more_than_two_percent": true,
+        "at_least_twelve_of_sixteen_event_target_pairs_improve": true,
+        "at_least_four_of_five_reported_horizons_improve": true,
+        "correct_action_beats_every_frozen_control_equal_event": true,
+        "correct_action_beats_every_control_in_three_of_four_folds": true
+      },
+      "all_required": true,
+      "passed": true,
+      "fold_skill": {
+        "holdout_2015": 1.0,
+        "holdout_2019": 1.0,
+        "holdout_2022": 1.0,
+        "holdout_2025": 1.0
+      },
+      "mean_fold_skill": 1.0,
+      "fold_improvement_count": 4,
+      "event_target_improvement_count": 16,
+      "horizon_improvement_count": 5,
+      "control_fold_wins": {
+        "action_deleted": 4,
+        "effective_date_minus_4w": 4,
+        "effective_date_plus_4w": 4,
+        "action_component_permutation": 4,
+        "wrong_spatial_scope": 4,
+        "cross_event_action_swap": 4,
+        "zone_exposure_shuffle_seed_20260723": 4
+      }
+    },
+    "failing_gate": {
+      "conditions": {
+        "mean_fold_skill_at_least_one_percent": false,
+        "paired_bootstrap_interval_entirely_below_zero": false,
+        "at_least_three_of_four_events_improve": false,
+        "no_fold_degrades_more_than_two_percent": false,
+        "at_least_twelve_of_sixteen_event_target_pairs_improve": false,
+        "at_least_four_of_five_reported_horizons_improve": false,
+        "correct_action_beats_every_frozen_control_equal_event": true,
+        "correct_action_beats_every_control_in_three_of_four_folds": true
+      },
+      "all_required": true,
+      "passed": false,
+      "fold_skill": {
+        "holdout_2015": -0.09999999999999987,
+        "holdout_2019": -0.10000000000000009,
+        "holdout_2022": -0.09999999999999987,
+        "holdout_2025": -0.09999999999999987
+      },
+      "mean_fold_skill": -0.09999999999999992,
+      "fold_improvement_count": 0,
+      "event_target_improvement_count": 0,
+      "horizon_improvement_count": 0,
+      "control_fold_wins": {
+        "action_deleted": 4,
+        "effective_date_minus_4w": 4,
+        "effective_date_plus_4w": 4,
+        "action_component_permutation": 4,
+        "wrong_spatial_scope": 4,
+        "cross_event_action_swap": 4,
+        "zone_exposure_shuffle_seed_20260723": 4
+      }
+    }
+  }
+}

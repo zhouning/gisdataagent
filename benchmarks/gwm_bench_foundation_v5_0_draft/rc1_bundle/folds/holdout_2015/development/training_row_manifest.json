@@ -1,0 +1,26 @@
+{
+  "schema": "gwm_bench.foundation_v5_fold_training_manifest.v1",
+  "created_at": "2026-07-23T15:34:17.066932+00:00",
+  "fold_id": "holdout_2015",
+  "test_event": "event_2015_improvement_surcharge",
+  "permitted_training_events": [
+    "event_2019_nys_congestion_surcharge",
+    "event_2022_tlc_taximeter_adjustment",
+    "event_2025_mta_crz"
+  ],
+  "weekly_rows": 50496,
+  "heldout_event_rows": 0,
+  "heldout_post_action_target_rows_loaded": 0,
+  "chronologically_later_training_events_permitted": true,
+  "analyst_blindness_claimed": false,
+  "test_target_path_permitted_for_model_runtime": false,
+  "normalization_may_read_current_fold_targets": false,
+  "selection_may_read_current_fold_targets": false,
+  "graph_may_read_current_fold_post_action_rows": false,
+  "artifact": {
+    "path": "benchmarks/gwm_bench_foundation_v5_0_draft/rc1_bundle/folds/holdout_2015/development/weekly_state_action.parquet",
+    "bytes": 659326,
+    "sha256": "737a881fc78dca43a6ed8bb5016bf5b489d2a71278f66818cf6f701aab6694df",
+    "row_count": 50496
+  }
+}
