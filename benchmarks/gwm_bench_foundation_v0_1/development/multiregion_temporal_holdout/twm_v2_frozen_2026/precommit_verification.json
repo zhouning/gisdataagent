@@ -1,0 +1,31 @@
+{
+  "schema": "gwm_bench.twm_v2_2026_precommit_verification.v1",
+  "status": "2026_precommit_integrity_verified_without_labels",
+  "candidate_fingerprint": "a822146464624aa8a78e1844472b1841b4f10d084ac79d1f8a3ae1b71dc72242",
+  "member_checks": [
+    {
+      "seed": 31,
+      "2021_2025_maximum_probability_absolute_error": 0.0,
+      "predicted_2026_change_count": 89
+    },
+    {
+      "seed": 47,
+      "2021_2025_maximum_probability_absolute_error": 0.0,
+      "predicted_2026_change_count": 121
+    },
+    {
+      "seed": 73,
+      "2021_2025_maximum_probability_absolute_error": 0.0,
+      "predicted_2026_change_count": 101
+    }
+  ],
+  "ensemble_2021_2025_maximum_probability_absolute_error": 0.0,
+  "ensemble_predicted_2026_change_count": 43,
+  "baseline_predicted_2026_change_counts": {
+    "persistence": 0,
+    "fixed_adjacency": 56
+  },
+  "source_input_weight_selection_and_prediction_hashes_verified": true,
+  "2026_label_manifest_accessed": false,
+  "2026_label_pixels_accessed": false
+}

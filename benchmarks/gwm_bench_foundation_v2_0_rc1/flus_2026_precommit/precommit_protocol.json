@@ -1,0 +1,200 @@
+{
+  "schema": "gwm_bench.flus_2026_candidate_precommit.v1",
+  "protocol_id": "FLUS-FULL-GRID-TEMPORAL-2026-PRECOMMIT-v1",
+  "status": "flus_candidate_and_predictions_sealed_before_2026_labels",
+  "created_at": "2026-07-23T04:48:34.773473+00:00",
+  "forecast_origin_year": 2020,
+  "forecast_years": [
+    2021,
+    2022,
+    2023,
+    2024,
+    2025,
+    2026
+  ],
+  "scored_year": 2026,
+  "scored_region_count": 20,
+  "scored_node_count": 1055,
+  "candidate": {
+    "name": "GeoSOS FLUS full-grid three-seed ensemble",
+    "seeds": [
+      31,
+      47,
+      73
+    ],
+    "sample_per_mille": 10.0,
+    "max_iterations_per_region_year": 500,
+    "allocation_grid": "complete aligned 100 m source raster",
+    "evaluation_grid": "frozen 1,055 OBSERVED-O1 nodes",
+    "land_demand": "fold-training 2017-2020 transition matrix recursively applied from each test region's 2020 full-grid class counts"
+  },
+  "artifacts": {
+    "prediction": {
+      "path": "benchmarks/gwm_bench_foundation_v2_0_rc1/flus_2026_precommit/flus_prediction_2021_2026.parquet",
+      "path_scope": "repository_relative",
+      "role": "precommitted_flus_prediction_2021_2026",
+      "size_bytes": 13943,
+      "sha256": "05d7f3ae4b3bafed328c9600adb2e729bd2c606bf2caea458fd565031a13006c",
+      "row_count": 6330
+    },
+    "members": [
+      {
+        "seed": 31,
+        "predicted_2026_change_count": 22,
+        "prediction": {
+          "path": "benchmarks/gwm_bench_foundation_v2_0_rc1/flus_2026_precommit/seed_31/prediction_2021_2026.parquet",
+          "path_scope": "repository_relative",
+          "role": "flus_seed_31_prediction_2021_2026",
+          "size_bytes": 12392,
+          "sha256": "fb4d0985ad382f77a61fa37dafafb08a942764ad9de343374ffdebc7d2a5f544",
+          "row_count": 6330
+        },
+        "run_report": {
+          "path": "benchmarks/gwm_bench_foundation_v2_0_rc1/flus_2026_precommit/seed_31/run_report.json",
+          "path_scope": "repository_relative",
+          "role": "flus_seed_31_label_blind_run_report",
+          "size_bytes": 206890,
+          "sha256": "8cb3f35695fd56a3bd19b57559a615209a9ea65df5059860e44b39b446d1c1e4"
+        }
+      },
+      {
+        "seed": 47,
+        "predicted_2026_change_count": 23,
+        "prediction": {
+          "path": "benchmarks/gwm_bench_foundation_v2_0_rc1/flus_2026_precommit/seed_47/prediction_2021_2026.parquet",
+          "path_scope": "repository_relative",
+          "role": "flus_seed_47_prediction_2021_2026",
+          "size_bytes": 12314,
+          "sha256": "a4ae76bef3e8cd9e65215903af7e54480f9319ce1f588e3bcc592b53ebaa3c96",
+          "row_count": 6330
+        },
+        "run_report": {
+          "path": "benchmarks/gwm_bench_foundation_v2_0_rc1/flus_2026_precommit/seed_47/run_report.json",
+          "path_scope": "repository_relative",
+          "role": "flus_seed_47_label_blind_run_report",
+          "size_bytes": 206953,
+          "sha256": "be1acf17d55d5b556e25594c8122d1fa5e876c85112f794de06487c27950af7f"
+        }
+      },
+      {
+        "seed": 73,
+        "predicted_2026_change_count": 37,
+        "prediction": {
+          "path": "benchmarks/gwm_bench_foundation_v2_0_rc1/flus_2026_precommit/seed_73/prediction_2021_2026.parquet",
+          "path_scope": "repository_relative",
+          "role": "flus_seed_73_prediction_2021_2026",
+          "size_bytes": 12489,
+          "sha256": "f6a5333344749a5d2773e080d819516ef9428fe47d90a4876da7e1daa3193fbb",
+          "row_count": 6330
+        },
+        "run_report": {
+          "path": "benchmarks/gwm_bench_foundation_v2_0_rc1/flus_2026_precommit/seed_73/run_report.json",
+          "path_scope": "repository_relative",
+          "role": "flus_seed_73_label_blind_run_report",
+          "size_bytes": 207027,
+          "sha256": "646567b9a7fcd72fe44cad807a4e8a9db7597d346ae045f8d3d7a3f77089544f"
+        }
+      }
+    ],
+    "binary": {
+      "path": "/Users/zhouning/FLUS_console_crossplatform/build/cmake-release/flus_console",
+      "path_scope": "external_absolute",
+      "role": "flus_console_binary",
+      "size_bytes": 2558784,
+      "sha256": "9839ce50950442d4ef49e4d2129a1ba27735e1955c2d4975ae51067c1c3c9964"
+    },
+    "source": [
+      {
+        "path": "benchmarks/gwm_bench_foundation_v2_0_rc1/commit_flus_2026_forecast.py",
+        "path_scope": "repository_relative",
+        "role": "source_0",
+        "size_bytes": 17787,
+        "sha256": "003c5d8c3ae9eca241751c6ace0b042fb5345d572f38a23ed31f7863339171de"
+      },
+      {
+        "path": "benchmarks/gwm_bench_foundation_v0_1/run_flus_full_grid_observed_baseline.py",
+        "path_scope": "repository_relative",
+        "role": "source_1",
+        "size_bytes": 29002,
+        "sha256": "2eab3c245ea60d40bbb71d55193cc8ccb02e36f4316862412e9ec4f870efb2cf"
+      },
+      {
+        "path": "benchmarks/gwm_bench_foundation_v0_1/run_flus_observed_baseline.py",
+        "path_scope": "repository_relative",
+        "role": "source_2",
+        "size_bytes": 26976,
+        "sha256": "13f7bd36787119b78703f6cf17e520db8ba39f4e9405b0747d574cfa5410050d"
+      },
+      {
+        "path": "benchmarks/gwm_bench_foundation_v0_1/observed_evaluator.py",
+        "path_scope": "repository_relative",
+        "role": "source_3",
+        "size_bytes": 9779,
+        "sha256": "fe487c54c880bf24a413bb4798d70c6c7f20ae778dc9c8a822df86e5dd9d3746"
+      }
+    ],
+    "inputs": [
+      {
+        "path": "benchmarks/gwm_bench_foundation_v0_1/benchmark_contract.json",
+        "path_scope": "repository_relative",
+        "role": "input_0",
+        "size_bytes": 14306,
+        "sha256": "6b13ded8c7ac35b16589466a22182ed815d23c86743e25327e74ca4fba81caa3"
+      },
+      {
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/bundle_manifest.json",
+        "path_scope": "repository_relative",
+        "role": "input_1",
+        "size_bytes": 100435,
+        "sha256": "1310e534c31bee5948b445d65149a19de310304490c4893bd18332395de2c8cb"
+      },
+      {
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/region_folds.json",
+        "path_scope": "repository_relative",
+        "role": "input_2",
+        "size_bytes": 5237,
+        "sha256": "d30751b5e5b455e674f72fa29a39a61aa5060288fe2c5857077d0d5d329a4222"
+      },
+      {
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/observed_train.parquet",
+        "path_scope": "repository_relative",
+        "role": "input_3",
+        "size_bytes": 71012,
+        "sha256": "05e8de613f1ca58184dfe1917e4e4ce07630bd9b9f386db1950bec6dafb16ab2"
+      },
+      {
+        "path": "benchmarks/gwm_bench_foundation_v0_1/development/observed_inputs.parquet",
+        "path_scope": "repository_relative",
+        "role": "input_4",
+        "size_bytes": 58539,
+        "sha256": "6f1323959276e53e467d2abf66d8cc00b861cf616fec34a41f76a0aa7be2015e"
+      }
+    ]
+  },
+  "prediction_summary": {
+    "row_count": 6330,
+    "predicted_2026_change_count": 22,
+    "member_predicted_2026_change_counts": {
+      "31": 22,
+      "47": 23,
+      "73": 37
+    }
+  },
+  "integrity": {
+    "maximum_observed_input_year": 2020,
+    "evaluation_disabled_for_all_members": true,
+    "hidden_label_manifest_present": false,
+    "hidden_label_manifest_accessed": false,
+    "hidden_label_pixels_accessed": false,
+    "prediction_hash_committed_before_labels": true,
+    "post_commit_model_or_parameter_changes_allowed": false
+  },
+  "claim_boundary": {
+    "prospective_2026_flus_baseline_committed": true,
+    "prospective_2026_flus_score_available": false,
+    "published_flus_best_score_reproduced": false,
+    "general_twm_supported": false,
+    "general_gwm_supported": false
+  },
+  "candidate_fingerprint": "22e987763e1f7a83e1fcdf509dd4224093a47a5041f96621fcb7ff1776287fdc"
+}
