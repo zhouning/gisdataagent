@@ -44,6 +44,7 @@ services:
     environment:
       # Environment identifier
       DEPLOY_ENV: staging
+      GDA_DEPLOYMENT_PROFILE: staging
       # PostgreSQL connection (staging DB)
       POSTGRES_HOST: db-staging
       POSTGRES_PORT: 5432

@@ -22,6 +22,8 @@ services:
 
   app:
     restart: always
+    environment:
+      GDA_DEPLOYMENT_PROFILE: production
     deploy:
       resources:
         limits:

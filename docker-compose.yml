@@ -48,6 +48,7 @@ services:
       - "8000:8000"
     environment:
       PORT: "8000"
+      GDA_DEPLOYMENT_PROFILE: ${GDA_DEPLOYMENT_PROFILE:-development}
       # PostgreSQL connection
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432

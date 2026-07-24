@@ -7,6 +7,9 @@ export POSTGRES_PORT="${POSTGRES_PORT:-5433}"
 export POSTGRES_DATABASE="${POSTGRES_DATABASE:-gis_agent}"
 export POSTGRES_USER="${POSTGRES_ADMIN_USER:-${POSTGRES_USER:-postgres}}"
 export POSTGRES_PASSWORD="${POSTGRES_ADMIN_PASSWORD:-${POSTGRES_PASSWORD:-postgres}}"
+# Migrations intentionally use the admin components above. DATABASE_URL is
+# the application-role authority everywhere else and therefore must not win.
+unset DATABASE_URL
 
 echo "========================================="
 echo " GIS Data Agent - SQL Migrations"

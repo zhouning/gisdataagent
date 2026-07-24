@@ -20,21 +20,15 @@ from typing import Any
 import asyncpg
 
 from .user_context import current_user_id, current_user_role
+from .platform_truth import resolve_database_url
 
 _async_pool: asyncpg.Pool | None = None
 _pool_lock = asyncio.Lock()
 
 
 def _build_dsn() -> str | None:
-    """Build a PostgreSQL DSN from environment variables."""
-    user = os.environ.get("POSTGRES_USER")
-    password = os.environ.get("POSTGRES_PASSWORD")
-    host = os.environ.get("POSTGRES_HOST", "localhost")
-    port = os.environ.get("POSTGRES_PORT", "5432")
-    db = os.environ.get("POSTGRES_DATABASE")
-    if not all([user, password, db]):
-        return None
-    return f"postgresql://{user}:{password}@{host}:{port}/{db}"
+    """Return the authoritative plain PostgreSQL DSN for asyncpg."""
+    return resolve_database_url()
 
 
 async def get_async_pool() -> asyncpg.Pool | None:

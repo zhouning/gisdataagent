@@ -57,6 +57,7 @@ spec:
               export PYTHONPATH=/app
               export POSTGRES_USER="${POSTGRES_ADMIN_USER}"
               export POSTGRES_PASSWORD="${POSTGRES_ADMIN_PASSWORD}"
+              unset DATABASE_URL
               python -m data_agent.migration_runner migrate
               echo "[migrate] migrations done"
           resources:

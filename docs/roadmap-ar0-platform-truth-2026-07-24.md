@@ -91,9 +91,11 @@ AR-0 Schema / Config / Runtime Truth
 
 MMFE、GWM 和生态扩展继续保留为战略方向，但必须由已发布 Data Product、稳定控制面和可量化业务指标触发。它们不能再反向定义底层平台合同。
 
-## 4. 首个开发包
+## 4. 当前开发包
 
-本分支只覆盖 AR-0 的第一块可验收切片：
+### 4.1 Migration truth（已完成）
+
+第一块可验收切片包括：
 
 1. migration catalog 静态校验；
 2. 稳定 ID 与 checksum 账本；
@@ -102,7 +104,19 @@ MMFE、GWM 和生态扩展继续保留为战略方向，但必须由已发布 Da
 5. schema 状态导出与跨环境比较；
 6. 单元测试、PostgreSQL 集成验证和 CI 门禁。
 
-OpenMetadata、Gravitino、DolphinScheduler 或 Temporal 的部署不进入本分支。AR-0 验收后，再用 ADR 和 POC 评分选择 AR-1 的最小组合。
+### 4.2 Config / runtime truth（本次实现）
+
+第二块切片包括：
+
+1. 关键配置类型、owner、默认值、环境 profile 和密钥边界；
+2. development/test 可降级、staging/production fail-closed 的启动语义；
+3. `DATABASE_URL` 优先级、冲突检查与数据库调用方收敛；
+4. 不含密钥的 config snapshot/fingerprint 与环境 compare；
+5. 全量环境读取和后台运行原语的 AST 指纹门禁；
+6. legacy/governed/ephemeral runtime inventory、owner 和替换目标；
+7. [ADR-019](architecture-decisions/adr-019-configuration-and-runtime-truth.md) 与 [System-of-Record 矩阵](system-of-record-matrix-2026-07-24.md)。
+
+OpenMetadata、Gravitino、DolphinScheduler 或 Temporal 的部署仍不进入本分支。下一步先冻结 Resource/Definition/Run/Artifact/Lineage 最小合同和首条图斑链，再用真实 POC 与退出门选择 AR-1 的最小组合。
 
 ## 5. 重新评估条件
 

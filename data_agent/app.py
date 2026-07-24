@@ -26,7 +26,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Load env
 env_path = os.path.join(os.path.dirname(__file__), '.env')
 if os.path.exists(env_path):
-    load_dotenv(env_path, override=True)
+    load_dotenv(env_path, override=False)
 
 # --- Observability: init structured logging early ---
 from data_agent.observability import (
@@ -36,6 +36,23 @@ from data_agent.observability import (
 )
 setup_logging()
 logger = get_logger("app")
+from data_agent.platform_truth import assert_startup_config
+
+_platform_config_report = assert_startup_config()
+logger.info(
+    "Platform config validated: profile=%s strict=%s valid=%s fingerprint=%s",
+    _platform_config_report["profile"],
+    _platform_config_report["strict"],
+    _platform_config_report["valid"],
+    _platform_config_report["config_fingerprint"],
+)
+for _config_warning in _platform_config_report["warnings"]:
+    logger.warning(
+        "Platform config warning: key=%s code=%s message=%s",
+        _config_warning["key"],
+        _config_warning["code"],
+        _config_warning["message"],
+    )
 from data_agent.model_requirements import configured_models_require_google_cloud_project
 
 from google.adk.runners import Runner
