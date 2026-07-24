@@ -126,7 +126,14 @@ except ImportError:
     generate_word_report = report_generator.generate_word_report
     ARCPY_AVAILABLE = getattr(agent, 'ARCPY_AVAILABLE', False)
 
-# Initialize DB tables (resilient — if PostgreSQL is down, non-DB features still work)
+# Migrations are the schema authority.  When a database is configured, drift or
+# a failed migration must block startup rather than leave a partially-valid app.
+from data_agent.migration_runner import run_pending_migrations
+run_pending_migrations()
+
+# Initialize compatibility tables.  A deployment without database credentials
+# can still use non-DB features, but configured databases have already passed
+# the strict migration gate above.
 try:
     ensure_users_table()
     ensure_memory_table()
@@ -179,9 +186,6 @@ try:
     ensure_plugins_table()
     from data_agent.proactive_explorer import ensure_observations_table
     ensure_observations_table()
-    # Run pending SQL migrations after all ensure_*_table() calls
-    from data_agent.migration_runner import run_pending_migrations
-    run_pending_migrations()
     # Cleanup expired MVT tile layers from previous sessions
     from data_agent.tile_server import cleanup_expired_layers
     cleanup_expired_layers()

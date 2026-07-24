@@ -51,6 +51,9 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Validate migration catalog
+        run: python -m data_agent.migration_runner validate
+
       - name: Run tests
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gis_agent_test

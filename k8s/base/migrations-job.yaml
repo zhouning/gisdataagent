@@ -50,12 +50,14 @@ spec:
             - sh
             - -c
             - |
-              # 1. Run python-side migrations (082+ are tracked in
-              #    schema_migrations). data_agent.migration_runner discovers
-              #    all migrations/*.sql and skips already-applied ones.
+              set -eu
+              # Run the complete, checksummed migration catalog as the admin
+              # role. The application itself continues to use agent_user.
               cd /app
               export PYTHONPATH=/app
-              python -c "from dotenv import load_dotenv; load_dotenv('/app/.env', override=False) if __import__('os').path.exists('/app/.env') else None; from data_agent.migration_runner import run_pending_migrations; run_pending_migrations()"
+              export POSTGRES_USER="${POSTGRES_ADMIN_USER}"
+              export POSTGRES_PASSWORD="${POSTGRES_ADMIN_PASSWORD}"
+              python -m data_agent.migration_runner migrate
               echo "[migrate] migrations done"
           resources:
             requests:
