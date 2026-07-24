@@ -6359,6 +6359,172 @@ async def test_cancellation_during_output_delete_is_not_swallowed(
 
 
 @pytest.mark.asyncio
+async def test_multiple_mvt_artifacts_are_all_returned(
+    user_upload_dir, monkeypatch
+):
+    import data_agent.tile_server as tile_server
+
+    outputs = [
+        user_upload_dir / "first.geojson",
+        user_upload_dir / "second.geojson",
+    ]
+    for output in outputs:
+        output.write_bytes(b"verified")
+    downloads = [_FakeVerifiedDownload([output]) for output in outputs]
+    client = _client()
+    client.health_check = AsyncMock(return_value={"worker": {}})
+    client._download_artifact = AsyncMock(side_effect=downloads)
+    client._register_and_map_outputs = AsyncMock(
+        side_effect=[
+            (
+                [str(outputs[0])],
+                {
+                    "layers": [
+                        {"type": "mvt", "layer_id": "layer-first"}
+                    ],
+                    "center": [35.0, 139.0],
+                    "zoom": 8,
+                },
+            ),
+            (
+                [str(outputs[1])],
+                {
+                    "layers": [
+                        {"type": "mvt", "layer_id": "layer-second"}
+                    ],
+                    "center": [36.0, 140.0],
+                    "zoom": 8,
+                },
+            ),
+        ]
+    )
+    client._run_remote_cleanup = AsyncMock()
+    cleanup = MagicMock(return_value=True)
+    monkeypatch.setattr(tile_server, "cleanup_tile_layer", cleanup)
+
+    result = await client.download_job_results(
+        "buffer_features",
+        {
+            "status": "succeeded",
+            "result": {
+                "output_artifact_ids": ["output-1", "output-2"]
+            },
+        },
+        [],
+    )
+
+    assert [
+        layer["layer_id"] for layer in result["map_update"]["layers"]
+    ] == ["layer-first", "layer-second"]
+    cleanup.assert_not_called()
+    assert all(download.closed for download in downloads)
+
+
+@pytest.mark.asyncio
+async def test_later_artifact_failure_cleans_prior_mvt_layer(
+    user_upload_dir, monkeypatch
+):
+    import data_agent.tile_server as tile_server
+
+    output = user_upload_dir / "first.geojson"
+    output.write_bytes(b"verified")
+    download = _FakeVerifiedDownload([output])
+    client = _client()
+    client.health_check = AsyncMock(return_value={"worker": {}})
+    client._download_artifact = AsyncMock(
+        side_effect=[download, RuntimeError("second download failed")]
+    )
+    client._register_and_map_outputs = AsyncMock(
+        return_value=(
+            [str(output)],
+            {
+                "layers": [{"type": "mvt", "layer_id": "layer-first"}],
+                "center": [35.0, 139.0],
+                "zoom": 8,
+            },
+        )
+    )
+    client._run_remote_cleanup = AsyncMock()
+    cleaned = []
+    monkeypatch.setattr(
+        tile_server,
+        "cleanup_tile_layer",
+        lambda layer_id: cleaned.append(layer_id) or True,
+    )
+
+    with pytest.raises(RuntimeError, match="second download failed"):
+        await client.download_job_results(
+            "buffer_features",
+            {
+                "status": "succeeded",
+                "result": {
+                    "output_artifact_ids": ["output-1", "output-2"]
+                },
+            },
+            [],
+        )
+
+    assert cleaned == ["layer-first"]
+    assert download.closed is True
+
+
+@pytest.mark.asyncio
+async def test_cancellation_during_remote_delete_cleans_owned_mvt_layer(
+    user_upload_dir, monkeypatch
+):
+    import data_agent.tile_server as tile_server
+
+    output = user_upload_dir / "result.geojson"
+    output.write_bytes(b"verified")
+    download = _FakeVerifiedDownload([output])
+    delete_started = asyncio.Event()
+    release_delete = asyncio.Event()
+    client = _client()
+    client.health_check = AsyncMock(return_value={"worker": {}})
+    client._download_artifact = AsyncMock(return_value=download)
+    client._register_and_map_outputs = AsyncMock(
+        return_value=(
+            [str(output)],
+            {
+                "layers": [{"type": "mvt", "layer_id": "owned-layer"}],
+                "center": [35.0, 139.0],
+                "zoom": 8,
+            },
+        )
+    )
+    cleaned = []
+    monkeypatch.setattr(
+        tile_server,
+        "cleanup_tile_layer",
+        lambda layer_id: cleaned.append(layer_id) or True,
+    )
+
+    async def remote_cleanup(artifact_ids):
+        delete_started.set()
+        await release_delete.wait()
+
+    client._run_remote_cleanup = remote_cleanup
+    task = asyncio.create_task(
+        client.download_job_results(
+            "buffer_features",
+            {
+                "status": "succeeded",
+                "result": {"output_artifact_ids": ["output-1"]},
+            },
+            [],
+        )
+    )
+    await delete_started.wait()
+    task.cancel()
+    release_delete.set()
+
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert cleaned == ["owned-layer"]
+    assert download.closed is True
+
+
+@pytest.mark.asyncio
 async def test_cancelled_call_waiter_does_not_cancel_owner_or_next_call():
     first_started = threading.Event()
     release_first = threading.Event()

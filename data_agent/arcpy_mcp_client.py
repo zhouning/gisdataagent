@@ -428,6 +428,19 @@ async def _cleanup_mvt_layer(tile_server: Any, metadata: dict) -> None:
         logger.warning("Failed to clean up ArcPy MVT layer")
 
 
+async def _cleanup_mvt_layers(
+    tile_server: Any, layers: list[dict]
+) -> None:
+    cancelled = False
+    for metadata in reversed(layers):
+        try:
+            await _cleanup_mvt_layer(tile_server, metadata)
+        except asyncio.CancelledError:
+            cancelled = True
+    if cancelled:
+        raise asyncio.CancelledError
+
+
 class _AsyncFileByteStream:
     def __init__(
         self,
@@ -4926,6 +4939,63 @@ class ArcPyMcpClient:
                 generated_paths.append(fgb_path)
         return normalized, generated_paths
 
+    @staticmethod
+    def _mvt_layers_from_map_update(map_update: Any) -> list[dict]:
+        if map_update is None:
+            return []
+        if not isinstance(map_update, dict):
+            raise ArcPyMcpError(
+                "ARCPY_DOWNLOAD_FAILED", "ArcPy result download failed"
+            )
+        layers = map_update.get("layers")
+        if layers is None:
+            return []
+        if not isinstance(layers, list):
+            raise ArcPyMcpError(
+                "ARCPY_DOWNLOAD_FAILED", "ArcPy result download failed"
+            )
+        result = []
+        for layer in layers:
+            if not isinstance(layer, dict):
+                raise ArcPyMcpError(
+                    "ARCPY_DOWNLOAD_FAILED",
+                    "ArcPy result download failed",
+                )
+            if layer.get("type") != "mvt":
+                continue
+            layer_id = layer.get("layer_id")
+            if not isinstance(layer_id, str) or not layer_id:
+                raise ArcPyMcpError(
+                    "ARCPY_DOWNLOAD_FAILED",
+                    "ArcPy result download failed",
+                )
+            result.append({"layer_id": layer_id})
+        return result
+
+    @staticmethod
+    def _merge_map_updates(
+        current: dict | None, incoming: dict | None
+    ) -> dict | None:
+        if incoming is None:
+            return current
+        if current is None:
+            return incoming
+        if not isinstance(current, dict) or not isinstance(incoming, dict):
+            raise ArcPyMcpError(
+                "ARCPY_DOWNLOAD_FAILED", "ArcPy result download failed"
+            )
+        current_layers = current.get("layers")
+        incoming_layers = incoming.get("layers")
+        if not isinstance(current_layers, list) or not isinstance(
+            incoming_layers, list
+        ):
+            raise ArcPyMcpError(
+                "ARCPY_DOWNLOAD_FAILED", "ArcPy result download failed"
+            )
+        merged = copy.deepcopy(current)
+        merged["layers"].extend(copy.deepcopy(incoming_layers))
+        return merged
+
     async def download_job_results(
         self,
         operation: str,
@@ -4940,64 +5010,80 @@ class ArcPyMcpClient:
         tool_params = self._registration_parameters(_tool_params)
         local_outputs = []
         map_update = None
-        for artifact_id in artifact_ids:
-            download = None
-            try:
-                download = await self._download_artifact(artifact_id)
-                registered, artifact_map_update = (
-                    await self._register_and_map_outputs(
-                        download, operation, tool_params, source_paths
+        owned_mvt_layers = []
+        completed = False
+        try:
+            for artifact_id in artifact_ids:
+                download = None
+                try:
+                    download = await self._download_artifact(artifact_id)
+                    registered, artifact_map_update = (
+                        await self._register_and_map_outputs(
+                            download, operation, tool_params, source_paths
+                        )
                     )
-                )
-                local_outputs.extend(registered)
-                if map_update is None:
-                    map_update = artifact_map_update
-            except BaseException:
-                valid_for_cleanup = False
-                if download is not None:
+                    local_outputs.extend(registered)
+                    owned_mvt_layers.extend(
+                        self._mvt_layers_from_map_update(
+                            artifact_map_update
+                        )
+                    )
+                    map_update = self._merge_map_updates(
+                        map_update, artifact_map_update
+                    )
+                except BaseException:
+                    valid_for_cleanup = False
+                    if download is not None:
+                        try:
+                            download.validate()
+                            valid_for_cleanup = True
+                        except Exception:
+                            pass
+                        finally:
+                            download.close()
+                    if valid_for_cleanup:
+                        try:
+                            await self._run_remote_cleanup([artifact_id])
+                        except BaseException:
+                            pass
+                    raise
+                else:
                     try:
                         download.validate()
-                        valid_for_cleanup = True
-                    except Exception:
-                        pass
                     finally:
                         download.close()
-                if valid_for_cleanup:
-                    try:
+                    if download is not None:
                         await self._run_remote_cleanup([artifact_id])
-                    except BaseException:
-                        pass
-                raise
-            else:
-                try:
-                    download.validate()
-                finally:
-                    download.close()
-                if download is not None:
-                    await self._run_remote_cleanup([artifact_id])
-        worker = health.get("worker") if isinstance(health, dict) else None
-        worker = worker if isinstance(worker, dict) else {}
-        install = worker.get("install")
-        install = install if isinstance(install, dict) else {}
-        return {
-            "status": "success",
-            "operation": operation,
-            "message": f"ArcPy operation completed: {operation}",
-            "local_outputs": local_outputs,
-            "dataset_summary": self._dataset_summary(job),
-            "arcgis_product": self._safe_metadata_string(
-                worker.get("product")
-            ),
-            "arcgis_version": self._safe_metadata_string(
-                install.get("Version")
-            ),
-            "duration_seconds": round(self._clock() - started, 3),
-            "lineage": {
-                "source_paths": list(source_paths),
-                "tool": operation,
-            },
-            "map_update": map_update,
-        }
+            worker = health.get("worker") if isinstance(health, dict) else None
+            worker = worker if isinstance(worker, dict) else {}
+            install = worker.get("install")
+            install = install if isinstance(install, dict) else {}
+            result = {
+                "status": "success",
+                "operation": operation,
+                "message": f"ArcPy operation completed: {operation}",
+                "local_outputs": local_outputs,
+                "dataset_summary": self._dataset_summary(job),
+                "arcgis_product": self._safe_metadata_string(
+                    worker.get("product")
+                ),
+                "arcgis_version": self._safe_metadata_string(
+                    install.get("Version")
+                ),
+                "duration_seconds": round(self._clock() - started, 3),
+                "lineage": {
+                    "source_paths": list(source_paths),
+                    "tool": operation,
+                },
+                "map_update": map_update,
+            }
+            completed = True
+            return result
+        finally:
+            if not completed and owned_mvt_layers:
+                from data_agent import tile_server
+
+                await _cleanup_mvt_layers(tile_server, owned_mvt_layers)
 
     @staticmethod
     def _select_exact_tool_id(matches: dict, query: str) -> str:
