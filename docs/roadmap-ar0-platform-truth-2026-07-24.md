@@ -104,7 +104,7 @@ MMFE、GWM 和生态扩展继续保留为战略方向，但必须由已发布 Da
 5. schema 状态导出与跨环境比较；
 6. 单元测试、PostgreSQL 集成验证和 CI 门禁。
 
-### 4.2 Config / runtime truth（本次实现）
+### 4.2 Config / runtime truth（已完成）
 
 第二块切片包括：
 
@@ -116,7 +116,23 @@ MMFE、GWM 和生态扩展继续保留为战略方向，但必须由已发布 Da
 6. legacy/governed/ephemeral runtime inventory、owner 和替换目标；
 7. [ADR-019](architecture-decisions/adr-019-configuration-and-runtime-truth.md) 与 [System-of-Record 矩阵](system-of-record-matrix-2026-07-24.md)。
 
-OpenMetadata、Gravitino、DolphinScheduler 或 Temporal 的部署仍不进入本分支。下一步先冻结 Resource/Definition/Run/Artifact/Lineage 最小合同和首条图斑链，再用真实 POC 与退出门选择 AR-1 的最小组合。
+### 4.3 Resource / Run / Evidence contracts（本次实现）
+
+第三块切片包括：
+
+1. canonical `ResourceURN`、immutable `ResourceVersion` 与 Definition fingerprint；
+2. `SubjectContext`、Run input binding、CAS 状态图与 append-only RunEvent；
+3. provider attempt observation 与 PlatformRun 终局裁决分离；
+4. stable Artifact URI/checksum 与 version-to-version LineageEvent；
+5. 独立 `gda_control` schema、tenant composite FK、FORCE RLS 和 fail-closed privilege；
+6. Pydantic JSON Schema/validator、PostgreSQL 回归测试与 CI 门禁；
+7. [ADR-020](architecture-decisions/adr-020-platform-resource-run-and-evidence-contracts.md) 与更新后的 [System-of-Record 矩阵](system-of-record-matrix-2026-07-24.md)。
+
+此切片没有自动回填旧资产/workflow/run/lineage 表，也没有部署 OpenMetadata、Gravitino、DolphinScheduler 或 Temporal。`gda_control` 当前是已编译、已验证但尚未接入生产调用链的控制/证据账本。
+
+### 4.4 下一开发包
+
+AR-0 的下一块工作是 legacy crosswalk 与首条图斑链验收夹具：完成现有 metadata/job/API 写入方的表级 inventory，定义旧资产/版本/run/lineage 到新合同的显式映射规则，固定样本、golden result、owner、SLO、回滚点和消费者。达到退出门后再进入 AR-1 gateway role/API 与最小外部平台 POC。
 
 ## 5. 重新评估条件
 

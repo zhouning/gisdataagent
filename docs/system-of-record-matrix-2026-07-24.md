@@ -19,21 +19,21 @@
 |---|---|---|---|---|---|
 | SQL schema 历史 | PostgreSQL `schema_migrations`，以完整 migration ID + checksum 为权威 | migration CLI 的 JSON 报告 | 保持现有 ledger；任何 drift fail closed | Data Platform | AR-0，已验证 |
 | 部署配置策略 | Compose/K8s/进程环境；`platform_truth.CONFIG_SPECS` 定义关键类型与策略 | `.env` 仅补默认；脱敏 snapshot 是观测 | 版本化 DeploymentProfile + secret reference；部署环境始终优先 | Platform/SRE/Security | AR-0，部分实现 |
-| 后台运行时清单 | `platform_truth.RUNTIME_INVENTORY` 是代码层登记；多数执行状态仍分散 | AST primitive report | PlatformRun 登记最终状态；framework attempt 只能回报观测 | Platform Architecture | AR-0 -> AR-1 |
+| 后台运行时清单 | `platform_truth.RUNTIME_INVENTORY` 是代码层登记；`gda_control` 已实现 PlatformRun 合同但尚未接入调用链，多数执行状态仍分散 | AST primitive report、FrameworkAttemptObservation | PlatformRun ledger 唯一登记最终状态；framework attempt 只能回报观测 | Platform Architecture | AR-0 合同已实现 -> AR-1 接入 |
 | 原始文件/对象 | 当前 local uploads、S3/MinIO/OBS 均可能被直接写入，权威边界未统一 | 临时上传、下载缓存、预览文件 | Landing object 以 immutable URI + checksum + retention 为权威；本地 scratch 可删除 | Data Platform | AR-2 |
 | 湖仓表与 snapshot | Iceberg/STAC/S3A 有局部实现，尚无通用发布权威 | STAC item、GeoParquet export | Iceberg catalog snapshot 是分析表版本权威；对象是物理内容，STAC 是发现投影 | Data Platform | AR-2 |
 | 在线空间数据 | PostGIS 业务表是当前编辑/查询事实，部分临时表混入 | Martin MVT、API JSON、导出文件 | 已批准 DataProductVersion 物化到 PostGIS；不能由瓦片或临时表反向定义产品版本 | GIS/Data Platform | AR-2 -> AR-4 |
-| 数据资产身份与版本 | `agent_data_assets`、专项 catalog/registry 并存，无单一写入方 | UI catalog、search index、STAC | GDA ResourceURN/Version ledger 管身份与策略；OpenMetadata 管治理目录，Gravitino 管技术对象映射 | Metadata Platform | AR-1 |
+| 数据资产身份与版本 | `gda_control.resource/resource_version` 已实现 identity、hash、predecessor 和 tenant FK；旧 `agent_data_assets` 与专项 registry 仍是兼容写路径 | UI catalog、search index、STAC | GDA ledger 管身份与版本绑定；旧行只按显式 crosswalk 迁移；OpenMetadata 管治理目录，Gravitino 管技术对象映射 | Metadata Platform | AR-0 合同已实现 -> AR-1 切换 |
 | 技术元数据 | PostGIS schema、Iceberg/STAC 和专项 JSONB 各自记录 | harvester 结果 | 源系统技术对象是原始证据；Gravitino 映射并联邦，不能覆盖业务 ResourceVersion | Metadata Platform | AR-1 |
 | 治理目录 | 当前 catalog、tag、standard、semantic registry 分散 | 搜索/页面视图 | OpenMetadata 为 owner/glossary/classification/quality discoverability 权威；GDA ledger 保留审批证据 | Governance | AR-1 |
-| 血缘 | 当前 lineage 表与各 pipeline 记录不一致 | OpenMetadata lineage graph、UI DAG | 不可变 LineageEvent/OpenLineage 事件为证据；目录图为可重建投影 | Data Platform | AR-1 |
-| Definition | `agent_workflows`、template、专项 YAML/JSON 各自管理 | 编辑器状态、编排器 DAG | 版本化 PlatformDefinition 为逻辑权威；编译到 provider 的 ExecutionPlanArtifact 不可反写 definition | DataOps | AR-1 -> AR-3 |
-| Run 最终状态 | APScheduler、TaskQueue、SparkGateway、API task 等分散且部分进程内 | Redis progress、日志、provider job status | GDA PlatformRun ledger 唯一决定平台状态；DolphinScheduler/Temporal/provider 只提交 attempt observation | DataOps/AgentOps | AR-1 |
+| 血缘 | `gda_control.lineage_event` 已实现 immutable version edge；旧 lineage 表与 pipeline 写入仍不一致 | OpenMetadata lineage graph、UI DAG | LineageEvent/OpenLineage envelope 为证据；旧记录按 crosswalk 收敛，目录图只作可重建投影 | Data Platform | AR-0 合同已实现 -> AR-1 接入 |
+| Definition | `gda_control.platform_definition_version` 已绑定 definition ResourceVersion 与完整逻辑 hash；旧 workflow/template/YAML 仍在写入 | 编辑器状态、编排器 DAG | PlatformDefinitionVersion 为逻辑权威；provider ExecutionPlanArtifact 不可反写 definition | DataOps | AR-0 合同已实现 -> AR-1/AR-3 切换 |
+| Run 最终状态 | `gda_control.platform_run/event` 已实现 CAS 状态合同；APScheduler、TaskQueue、SparkGateway、API task 仍是现有兼容运行路径 | Redis progress、日志、provider job status、attempt observation | gateway 接入后 PlatformRun ledger 唯一决定平台状态；DolphinScheduler/Temporal/provider 只提交 observation | DataOps/AgentOps | AR-0 合同已实现 -> AR-1 接入 |
 | 调度与补数 | APScheduler、自进化 scheduler 和调用方定时逻辑并存 | UI schedule 列表 | DolphinScheduler 管 DataOps schedule/complement；Temporal 只管需要 durable signal/compensation 的 Agent/GWM workflow | DataOps/AgentOps | AR-1/AR-5 |
 | 事件交付 | Standards outbox 已数据库耐久；其他 WebSocket/bot/feedback 多为 best effort | 消费者 offset、WebSocket 消息 | command/event 先入 outbox，幂等 consumer 交付；缓存或 socket 不是权威 | Platform/Integrations | AR-1 |
 | 质量结果 | standards、QC、MMFE 和专项表各自记录 | dashboard 汇总 | 不可变 QualityResult/Evidence 绑定 input version、rule version 和 RunRef；汇总可重建 | Governance/DataOps | AR-1 -> AR-3 |
 | 标准与语义定义 | `std_*`、semantic registry 和 YAML 共同存在，生命周期未统一 | prompt/context、搜索索引 | 版本化 Standard/SemanticDefinition 经审批后为权威；Agent context 只消费批准版本 | Governance | AR-1 -> AR-3 |
-| 身份与权限 | Chainlit user、PostgreSQL RLS、角色上下文和局部 token | session/cache、前端菜单权限 | IdP/workload identity 提供 SubjectContext；GDA policy decision + 数据库/服务下推共同执法 | Security | AR-0 -> AR-4 |
+| 身份与权限 | Chainlit user、现有 PostgreSQL RLS、角色上下文和局部 token；新 ledger 已校验 SubjectContext tenant 并 FORCE RLS，PUBLIC 权限已撤销 | session/cache、前端菜单权限 | IdP/workload identity 提供 SubjectContext；AR-1 专用 gateway role 仅获最小函数/表权限，GDA policy decision + 下推共同执法 | Security | AR-0 fail closed -> AR-1/AR-4 |
 | GIS 服务定义与 active revision | Martin、REST/MVT/STAC endpoints 和配置直接暴露 | Ingress、tile cache、客户端图层 | GIS Service Control Plane 管 Service/Layer/Style/TMS/DeploymentRevision；provider/Gateway 仅执行 | GIS Platform | AR-4 |
 | 缓存与进度 | Redis、进程内 dict/task map | UI progress、tile/context cache | 永不作为资产、Run、workflow 或产品权威；丢失后必须从 ledger/provider 重建 | SRE/Platform | 持续约束 |
 | Agent/Prompt/Model bundle | 多个 registry 与 YAML 存在，尚无统一 deployment revision | trace、eval dashboard | AgentSpecBundle + EvaluationBinding + DeploymentRevision；只消费已发布 DataProductVersion | AgentOps | AR-5 |
@@ -47,11 +47,14 @@
 3. OpenMetadata、Gravitino、DolphinScheduler 和 Temporal 在真实 POC/退出门前只是目标组件，不得写成当前生产权威。
 4. 新增 registry、metadata table、queue、scheduler 或后台任务前，必须先更新本矩阵、runtime inventory、owner 和迁移/恢复策略。
 5. 自然资源地类图斑纵向链是首个验证载体：其 input checksum、标准版本、DataProductVersion、QualityResult、LineageEvent、RunRef 和 serving revision 必须贯通后，才能宣称控制面闭环。
+6. `gda_control` 当前没有生产 gateway role 或业务调用方；合同与 DDL 已验证不等于生产运行链已经切换。
+7. 旧资产、workflow、run 和 lineage 行缺少稳定 tenant/version/checksum 证据时禁止自动 backfill，也不得猜测生成 ResourceVersion。
 
 ## 下一验收证据
 
 - staging/production 的 schema、config 和 runtime snapshot 产物及环境 compare 报告；
 - 现有 metadata/job/API/GIS endpoint 的表级、写入方级 inventory；
-- ResourceURN、ResourceVersion、PlatformDefinition、PlatformRun、FrameworkAttemptObservation、Artifact 和 LineageEvent 最小合同；
+- legacy metadata/job/API/GIS 写入方到 Resource/Definition/Run/Artifact/Lineage 的逐表 crosswalk、冲突规则和幂等证据；
+- AR-1 gateway role/API 的最小授权、tenant context、create/transition/ingest contract tests；
 - 首条图斑链的 owner、SLO、输入样本、golden result、回滚点和消费者；
 - OpenMetadata/Gravitino 与 DolphinScheduler/Temporal sandbox 的独立数据库、备份恢复、身份、版本和升级责任证明。

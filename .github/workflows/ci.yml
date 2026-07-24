@@ -57,6 +57,14 @@ jobs:
       - name: Validate platform configuration and runtime contracts
         run: python -m data_agent.platform_truth validate
 
+      - name: Validate platform resource and run contracts
+        run: python -m data_agent.platform_contracts validate
+
+      - name: Verify platform control ledger on PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gis_agent_test
+        run: python -m pytest data_agent/test_platform_control_ledger_postgres.py -q
+
       - name: Run tests
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gis_agent_test
