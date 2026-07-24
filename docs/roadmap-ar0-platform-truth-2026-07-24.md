@@ -1,8 +1,8 @@
 # GIS Data Agent 下一代 Data Platform Roadmap（AR-0 主线）
 
 日期：2026-07-24  
-分支：`feat/ar1-control-gateway`
-基线：`origin/feat/v12-extensible-platform@ebd99f8`
+分支：`feat/ar1-dolphinscheduler-adapter`
+基线：`feat/ar1-control-gateway@de03615`
 
 ## 1. 决策摘要
 
@@ -158,9 +158,33 @@ MMFE、GWM 和生态扩展继续保留为战略方向，但必须由已发布 Da
 
 此切片证明新的受控写入口可用，但没有切换任何生产业务调用方。现有 legacy 表仍是兼容写路径，OpenMetadata、Gravitino、DolphinScheduler 和 Temporal 仍未部署或接入。生产部署还要求 migration/DBA 具备 role 管理权限、应用 login 获得 gateway role membership，并先在 staging 完成双租户和连接池复位验收。
 
-### 4.6 下一开发包
+### 4.6 DolphinScheduler correlation adapter（Sandbox POC 已完成）
 
-下一块不再扩张通用控制表，而是用地类图斑 golden slice 选择并验证一个真实 adapter POC。优先比较 metadata-first（OpenMetadata governance mapping）与 orchestration-first（DolphinScheduler DataOps run correlation）两条路径，以首个纵向工作流的实际依赖决定只推进一条；验收必须包含外部系统故障、幂等 replay、outbox/callback、双租户拒绝和无双写恢复。资源级 PolicyDecision/Approval 与 workload identity 在任何生产 adapter 接入前补齐。
+第六块选择 orchestration-first，只实现 DolphinScheduler DataOps run correlation：
+
+1. 固定 Apache DolphinScheduler `3.4.2`、API profile `3.4` 和官方路由；
+2. 编译 provider-native DAG，注入稳定 definition/correlation 参数，拒绝内联 secret；
+3. create 后显式 `ONLINE`，形成带 compiled hash 和 provider version 的 binding；
+4. PlatformRun 在外部提交前进入 `dispatching`，timeout/网络未知结果进入 `reconciling`，禁止盲目重提；
+5. instance variables 四字段精确关联；未知分页、缺失变量、扫描上限和多结果均 fail closed；
+6. provider 终态只写 attempt observation 并等待平台终局裁决；
+7. `STOP` 前先 CAS 到 `cancelling`，不因 provider 接受命令直接写 `cancelled`；
+8. 16 个定向测试、静态 CI validator、只读 probe 和 [ADR-023](architecture-decisions/adr-023-dolphinscheduler-correlation-adapter.md)。
+
+真实 `3.4.2` ARM64 standalone 已验证 create -> online -> start -> list -> variables -> exact correlation，Shell instance 到达 `SUCCESS`；长任务接受 `STOP` 后进入 `READY_STOP`。standalone 使用 H2 和开发身份，因此这些是 adapter HTTP/correlation 证据，不是生产部署、高可用、最终取消裁决或 AR-1 全部退出门。
+
+### 4.7 下一开发包
+
+下一块把 adapter POC 接到地类图斑 golden slice 的真实控制链，而不是再接第二套外部平台：
+
+1. 用 workload identity、资源级 PolicyDecision/Approval 替代交互式管理员 token；
+2. 将 DolphinSchedulerDefinitionBinding 持久化为 ExecutionPlanArtifact 或等价不可变证据；
+3. 以 PostgreSQL outbox/callback 建立耐久 dispatch/reconcile 触发，不增加自研 scheduler 或 Redis queue；
+4. 在同一 staging 场景跑通 PlatformGateway PostgreSQL、DolphinScheduler 独立 metadata PostgreSQL、Artifact/Quality/Lineage 和平台终局裁决；
+5. 注入提交超时、callback 重复/乱序、worker 重启、双租户访问、凭据轮换和无双写恢复故障；
+6. 验证 schedule、complement/backfill、备份恢复、升级和 master/worker failover 后，再判断 AR-1 是否达到退出门。
+
+OpenMetadata/Gravitino 和 Temporal 继续保持目标组件状态，不在这一包并行接入。
 
 ## 5. 重新评估条件
 

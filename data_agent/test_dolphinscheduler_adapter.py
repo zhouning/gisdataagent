@@ -1,0 +1,605 @@
+import json
+from datetime import UTC, datetime
+from pathlib import Path
+from urllib.parse import parse_qs
+from uuid import UUID
+
+import httpx
+import pytest
+
+from data_agent.dolphinscheduler_adapter import (
+    DolphinSchedulerAdapter,
+    DolphinSchedulerClient,
+    DolphinSchedulerConfigurationError,
+    DolphinSchedulerContractError,
+    DolphinSchedulerCorrelationConflictError,
+    DolphinSchedulerDefinitionBinding,
+    DolphinSchedulerInstance,
+    DolphinSchedulerProfile,
+    DolphinSchedulerProtocolError,
+    DolphinSchedulerReconciliationRequired,
+    DolphinSchedulerRejectedError,
+    DolphinSchedulerUnavailableError,
+    _read_token_file,
+    build_dolphinscheduler_adapter_report,
+    compile_dolphinscheduler_workflow,
+)
+from data_agent.platform_contracts import (
+    OrchestrationClass,
+    PlatformDefinitionVersion,
+    PlatformRun,
+    RunStatus,
+    SubjectContext,
+    platform_definition_fingerprint,
+    validate_run_transition,
+)
+from data_agent.platform_gateway import GatewayWriteResult
+
+TENANT = "tenant-a"
+DEFINITION_ID = UUID("20000000-0000-4000-8000-000000000010")
+RUN_ID = UUID("20000000-0000-4000-8000-000000000020")
+SOURCE_ID = UUID("20000000-0000-4000-8000-000000000030")
+NOW = datetime(2026, 7, 24, 12, 0, tzinfo=UTC)
+ACTOR = "workload:dataops-adapter"
+
+
+def _profile(**overrides):
+    values = {
+        "base_url": "https://ds.example.test/dolphinscheduler",
+        "access_token": "sandbox-token-value",
+        "project_code": 123456789,
+        "tenant_code": "gda",
+        "worker_group": "gda-dataops",
+    }
+    values.update(overrides)
+    return DolphinSchedulerProfile(**values)
+
+
+def _definition(**document_overrides):
+    provider_document = {
+        "name": "gda_land_use_publish_v1",
+        "description": "Publish the controlled land-use slice",
+        "task_definitions": [
+            {
+                "code": 1001,
+                "name": "publish",
+                "taskType": "SHELL",
+                "taskParams": {"rawScript": "true"},
+            }
+        ],
+        "task_relations": [{"preTaskCode": 0, "postTaskCode": 1001}],
+        "locations": [{"taskCode": 1001, "x": 120, "y": 80}],
+        "global_params": [
+            {"prop": "business_date", "direct": "IN", "type": "VARCHAR", "value": ""}
+        ],
+    }
+    provider_document.update(document_overrides)
+    definition_document = {"dolphinscheduler": provider_document}
+    input_contract = {"source": "gis.land_use.parcels"}
+    output_contract = {"product": "gis.land_use.parcels.standardized"}
+    fingerprint = platform_definition_fingerprint(
+        orchestration_class="dataops",
+        capability_id="land_use.publish",
+        portability_class="provider_native",
+        definition_document=definition_document,
+        input_contract=input_contract,
+        output_contract=output_contract,
+    )
+    return PlatformDefinitionVersion(
+        tenant_id=TENANT,
+        definition_urn=f"gda://{TENANT}/definition/land-use-publish",
+        definition_version_id=DEFINITION_ID,
+        orchestration_class="dataops",
+        capability_id="land_use.publish",
+        portability_class="provider_native",
+        definition_document=definition_document,
+        input_contract=input_contract,
+        output_contract=output_contract,
+        definition_sha256=fingerprint,
+    )
+
+
+def _run():
+    return PlatformRun(
+        tenant_id=TENANT,
+        run_id=RUN_ID,
+        definition_version_id=DEFINITION_ID,
+        orchestration_class="dataops",
+        subject_context=SubjectContext(
+            tenant_id=TENANT,
+            subject_id="dataops-adapter",
+            subject_type="workload",
+            roles=("platform_operator",),
+            purpose="publish controlled land-use slice",
+        ),
+        input_bindings=(
+            {
+                "binding_name": "source",
+                "resource_version_id": SOURCE_ID,
+                "semantic_type": "gis.land_use.parcels",
+            },
+        ),
+        idempotency_key="land-use:publish:snapshot-1",
+        submitted_at=NOW,
+    )
+
+
+def _binding():
+    spec = compile_dolphinscheduler_workflow(_definition())
+    return DolphinSchedulerDefinitionBinding(
+        tenant_id=TENANT,
+        definition_version_id=DEFINITION_ID,
+        project_code=123456789,
+        workflow_definition_code=987654321,
+        workflow_definition_version=1,
+        compiled_sha256=spec.compiled_sha256,
+    )
+
+
+class _FakeGateway:
+    def __init__(self):
+        self.run = _run()
+        self.transitions = []
+        self.observations = {}
+
+    def get_run(self, tenant_id, run_id):
+        assert tenant_id == self.run.tenant_id
+        assert run_id == self.run.run_id
+        return self.run
+
+    def transition_run(
+        self,
+        tenant_id,
+        run_id,
+        expected_state_version,
+        to_status,
+        actor_subject,
+        reason,
+        details=None,
+    ):
+        assert tenant_id == self.run.tenant_id
+        assert run_id == self.run.run_id
+        assert expected_state_version == self.run.state_version
+        target = RunStatus(to_status)
+        validate_run_transition(self.run.status, target)
+        self.run = self.run.model_copy(
+            update={"status": target, "state_version": self.run.state_version + 1}
+        )
+        self.transitions.append((target, actor_subject, reason, details or {}))
+        return self.run
+
+    def record_attempt(self, observation):
+        existing = self.observations.get(observation.observation_id)
+        if existing is not None:
+            assert existing == observation
+            return GatewayWriteResult(existing, False)
+        self.observations[observation.observation_id] = observation
+        return GatewayWriteResult(observation, True)
+
+
+class _FakeClient:
+    def __init__(self):
+        self.instances = []
+        self.start_calls = 0
+        self.start_error = None
+        self.control_calls = []
+        self.state = "SUBMITTED_SUCCESS"
+        self.start_time = "2026-07-24 12:01:00"
+        self.end_time = None
+
+    def find_instances(self, _binding_value, _run_value):
+        return list(self.instances)
+
+    def start_workflow(self, binding, _run_value):
+        self.start_calls += 1
+        if self.start_error:
+            raise self.start_error
+        instance = DolphinSchedulerInstance(
+            instance_id=901,
+            workflow_definition_code=binding.workflow_definition_code,
+            workflow_definition_version=binding.workflow_definition_version,
+            state=self.state,
+            start_time=self.start_time,
+        )
+        self.instances.append(instance)
+        return instance.instance_id
+
+    def get_instance(self, instance_id, workflow_definition_code):
+        return DolphinSchedulerInstance(
+            instance_id=instance_id,
+            workflow_definition_code=workflow_definition_code,
+            workflow_definition_version=1,
+            state=self.state,
+            start_time=self.start_time,
+            end_time=self.end_time,
+        )
+
+    def control_instance(self, instance_id, execute_type):
+        self.control_calls.append((instance_id, execute_type))
+
+
+def test_compiler_adds_stable_control_params_and_fingerprint():
+    spec = compile_dolphinscheduler_workflow(_definition())
+    params = {item["prop"]: item["value"] for item in spec.global_params}
+
+    assert spec.api_profile == "3.4"
+    assert params["gda_tenant_id"] == TENANT
+    assert params["gda_definition_version_id"] == str(DEFINITION_ID)
+    assert params["gda_definition_sha256"] == _definition().definition_sha256
+    assert spec == compile_dolphinscheduler_workflow(_definition())
+
+
+def test_compiler_rejects_non_dataops_and_inline_secrets():
+    definition = _definition(
+        task_definitions=[
+            {
+                "code": 1001,
+                "name": "unsafe",
+                "taskType": "HTTP",
+                "taskParams": {"token": "inline-secret"},
+            }
+        ]
+    )
+    with pytest.raises(DolphinSchedulerContractError, match="inline secret"):
+        compile_dolphinscheduler_workflow(definition)
+
+    with pytest.raises(DolphinSchedulerContractError, match="only accepts dataops"):
+        compile_dolphinscheduler_workflow(
+            _definition().model_copy(
+                update={"orchestration_class": OrchestrationClass.DURABLE_AGENT}
+            )
+        )
+
+
+def test_http_client_preserves_context_path_and_start_contract():
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["path"] = request.url.path
+        seen["token"] = request.headers.get("token")
+        seen["form"] = parse_qs(request.content.decode("utf-8"), keep_blank_values=True)
+        return httpx.Response(200, json={"code": 0, "msg": "success", "data": [901]})
+
+    client = DolphinSchedulerClient(_profile(), transport=httpx.MockTransport(handler))
+    try:
+        instance_id = client.start_workflow(_binding(), _run())
+    finally:
+        client.close()
+
+    assert instance_id == 901
+    assert seen["path"] == (
+        "/dolphinscheduler/projects/123456789/executors/start-workflow-instance"
+    )
+    assert seen["token"] == "sandbox-token-value"
+    assert seen["form"]["workflowDefinitionCode"] == ["987654321"]
+    start_params = json.loads(seen["form"]["startParams"][0])
+    assert start_params["gda_run_id"] == str(RUN_ID)
+    assert start_params["gda_idempotency_key"] == _run().idempotency_key
+
+
+def test_http_client_creates_workflow_with_compiled_form():
+    seen = {"requests": []}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        form = parse_qs(request.content.decode("utf-8"))
+        seen["requests"].append((request.url.path, form))
+        if request.url.path.endswith("/987654321/release"):
+            return httpx.Response(
+                200,
+                json={"code": 0, "msg": "success", "data": True},
+            )
+        return httpx.Response(
+            201,
+            json={
+                "code": 0,
+                "msg": "success",
+                "data": {"code": 987654321, "version": 1},
+            },
+        )
+
+    spec = compile_dolphinscheduler_workflow(_definition())
+    client = DolphinSchedulerClient(_profile(), transport=httpx.MockTransport(handler))
+    try:
+        binding = client.create_workflow(spec)
+    finally:
+        client.close()
+
+    assert binding.workflow_definition_code == 987654321
+    assert binding.compiled_sha256 == spec.compiled_sha256
+    assert seen["requests"][0][0].endswith("/workflow-definition")
+    assert seen["requests"][0][1]["executionType"] == ["PARALLEL"]
+    assert seen["requests"][1] == (
+        "/dolphinscheduler/projects/123456789/workflow-definition/987654321/release",
+        {"releaseState": ["ONLINE"]},
+    )
+
+
+def test_http_client_finds_exact_correlation_through_variables():
+    expected = DolphinSchedulerClient.start_params(_run())
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/workflow-instances"):
+            return httpx.Response(
+                200,
+                json={
+                    "code": 0,
+                    "data": {
+                        "totalList": [
+                            {
+                                "id": 901,
+                                "workflowDefinitionCode": 987654321,
+                                "workflowDefinitionVersion": 1,
+                                "state": "RUNNING_EXECUTION",
+                            }
+                        ]
+                    },
+                },
+            )
+        return httpx.Response(
+            200,
+            json={
+                "code": 0,
+                "data": {
+                    "globalParams": [
+                        {"prop": key, "value": value} for key, value in expected.items()
+                    ]
+                },
+            },
+        )
+
+    client = DolphinSchedulerClient(_profile(), transport=httpx.MockTransport(handler))
+    try:
+        matches = client.find_instances(_binding(), _run())
+    finally:
+        client.close()
+
+    assert [item.instance_id for item in matches] == [901]
+
+
+def test_correlation_lookup_rejects_unknown_page_shape():
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={"code": 0, "data": {"unexpected": []}},
+        )
+
+    client = DolphinSchedulerClient(_profile(), transport=httpx.MockTransport(handler))
+    try:
+        with pytest.raises(DolphinSchedulerProtocolError, match="unknown shape"):
+            client.find_instances(_binding(), _run())
+    finally:
+        client.close()
+
+
+def test_correlation_lookup_rejects_missing_variables_and_page_exhaustion():
+    expected = DolphinSchedulerClient.start_params(_run())
+
+    def missing_handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/workflow-instances"):
+            return httpx.Response(
+                200,
+                json={
+                    "code": 0,
+                    "data": {
+                        "totalList": [
+                            {
+                                "id": 901,
+                                "workflowDefinitionCode": 987654321,
+                                "state": "RUNNING_EXECUTION",
+                            }
+                        ]
+                    },
+                },
+            )
+        return httpx.Response(200, json={"code": 0, "data": {"globalParams": []}})
+
+    missing_client = DolphinSchedulerClient(
+        _profile(), transport=httpx.MockTransport(missing_handler)
+    )
+    try:
+        with pytest.raises(DolphinSchedulerProtocolError, match="missing required"):
+            missing_client.find_instances(_binding(), _run())
+    finally:
+        missing_client.close()
+
+    def full_page_handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/workflow-instances"):
+            return httpx.Response(
+                200,
+                json={
+                    "code": 0,
+                    "data": {
+                        "totalList": [
+                            {
+                                "id": value,
+                                "workflowDefinitionCode": 987654321,
+                                "state": "SUCCESS",
+                            }
+                            for value in range(1, 101)
+                        ]
+                    },
+                },
+            )
+        variables = dict(expected)
+        variables["gda_run_id"] = "different-run"
+        return httpx.Response(
+            200,
+            json={
+                "code": 0,
+                "data": {
+                    "globalParams": [
+                        {"prop": key, "value": value}
+                        for key, value in variables.items()
+                    ]
+                },
+            },
+        )
+
+    limited_client = DolphinSchedulerClient(
+        _profile(reconciliation_page_limit=1),
+        transport=httpx.MockTransport(full_page_handler),
+    )
+    try:
+        with pytest.raises(DolphinSchedulerReconciliationRequired, match="page limit"):
+            limited_client.find_instances(_binding(), _run())
+    finally:
+        limited_client.close()
+
+
+def test_http_errors_do_not_expose_access_token():
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200, json={"code": 10001, "msg": "sandbox-token-value is invalid"}
+        )
+
+    client = DolphinSchedulerClient(_profile(), transport=httpx.MockTransport(handler))
+    try:
+        with pytest.raises(DolphinSchedulerRejectedError) as caught:
+            client.list_workflows()
+    finally:
+        client.close()
+    assert "sandbox-token-value" not in str(caught.value)
+
+
+def test_probe_token_file_requires_owner_only_permissions(tmp_path):
+    token_file = tmp_path / "dolphinscheduler.token"
+    token_file.write_text("sandbox-token-value\n", encoding="utf-8")
+    token_file.chmod(0o644)
+
+    with pytest.raises(DolphinSchedulerConfigurationError, match="group or other"):
+        _read_token_file(token_file)
+
+    token_file.chmod(0o600)
+    assert _read_token_file(token_file) == "sandbox-token-value"
+
+
+def test_dispatch_is_idempotently_recovered_without_resubmission():
+    gateway = _FakeGateway()
+    client = _FakeClient()
+    adapter = DolphinSchedulerAdapter(_profile(), gateway=gateway, client=client)
+
+    first = adapter.dispatch(TENANT, RUN_ID, _binding(), actor_subject=ACTOR)
+    second = adapter.dispatch(TENANT, RUN_ID, _binding(), actor_subject=ACTOR)
+
+    assert first.run.status == RunStatus.DISPATCHING
+    assert first.observation_created is True
+    assert second.recovered is True
+    assert second.observation_created is False
+    assert client.start_calls == 1
+    assert [item[0] for item in gateway.transitions] == [RunStatus.DISPATCHING]
+
+
+def test_unknown_dispatch_outcome_moves_to_reconcile_and_never_blindly_retries():
+    gateway = _FakeGateway()
+    client = _FakeClient()
+    client.start_error = DolphinSchedulerUnavailableError("unknown outcome")
+    adapter = DolphinSchedulerAdapter(_profile(), gateway=gateway, client=client)
+
+    with pytest.raises(DolphinSchedulerReconciliationRequired):
+        adapter.dispatch(TENANT, RUN_ID, _binding(), actor_subject=ACTOR)
+    with pytest.raises(DolphinSchedulerReconciliationRequired, match="do not resubmit"):
+        adapter.dispatch(TENANT, RUN_ID, _binding(), actor_subject=ACTOR)
+
+    assert client.start_calls == 1
+    assert gateway.run.status == RunStatus.RECONCILING
+    assert [item[0] for item in gateway.transitions] == [
+        RunStatus.DISPATCHING,
+        RunStatus.RECONCILING,
+    ]
+
+
+def test_unknown_dispatch_response_recovers_visible_instance():
+    class _UnknownThenVisibleClient(_FakeClient):
+        def start_workflow(self, binding, _run_value):
+            self.start_calls += 1
+            self.instances.append(
+                DolphinSchedulerInstance(
+                    instance_id=901,
+                    workflow_definition_code=binding.workflow_definition_code,
+                    workflow_definition_version=binding.workflow_definition_version,
+                    state=self.state,
+                    start_time=self.start_time,
+                )
+            )
+            raise DolphinSchedulerUnavailableError("response was lost")
+
+    gateway = _FakeGateway()
+    client = _UnknownThenVisibleClient()
+    adapter = DolphinSchedulerAdapter(_profile(), gateway=gateway, client=client)
+
+    result = adapter.dispatch(TENANT, RUN_ID, _binding(), actor_subject=ACTOR)
+
+    assert result.recovered is True
+    assert result.workflow_instance_id == 901
+    assert result.run.status == RunStatus.DISPATCHING
+    assert client.start_calls == 1
+
+
+def test_reconcile_projects_running_but_keeps_provider_success_nonterminal():
+    gateway = _FakeGateway()
+    client = _FakeClient()
+    adapter = DolphinSchedulerAdapter(_profile(), gateway=gateway, client=client)
+    adapter.dispatch(TENANT, RUN_ID, _binding(), actor_subject=ACTOR)
+
+    client.state = "RUNNING_EXECUTION"
+    running = adapter.reconcile(TENANT, RUN_ID, _binding(), actor_subject=ACTOR)
+    assert running.run.status == RunStatus.RUNNING
+
+    client.state = "SUCCESS"
+    client.end_time = "2026-07-24 12:05:00"
+    completed = adapter.reconcile(TENANT, RUN_ID, _binding(), actor_subject=ACTOR)
+    assert completed.provider_state == "SUCCESS"
+    assert completed.run.status == RunStatus.RECONCILING
+    assert completed.run.status != RunStatus.SUCCEEDED
+
+
+def test_cancel_uses_cas_before_external_stop():
+    gateway = _FakeGateway()
+    client = _FakeClient()
+    adapter = DolphinSchedulerAdapter(_profile(), gateway=gateway, client=client)
+    adapter.dispatch(TENANT, RUN_ID, _binding(), actor_subject=ACTOR)
+
+    run = adapter.cancel(TENANT, RUN_ID, _binding(), actor_subject=ACTOR)
+
+    assert run.status == RunStatus.CANCELLING
+    assert client.control_calls == [(901, "STOP")]
+
+
+def test_multiple_external_correlations_fail_closed():
+    gateway = _FakeGateway()
+    client = _FakeClient()
+    client.instances = [
+        DolphinSchedulerInstance(
+            instance_id=value,
+            workflow_definition_code=987654321,
+            workflow_definition_version=1,
+            state="RUNNING_EXECUTION",
+        )
+        for value in (901, 902)
+    ]
+    adapter = DolphinSchedulerAdapter(_profile(), gateway=gateway, client=client)
+
+    with pytest.raises(DolphinSchedulerCorrelationConflictError):
+        adapter.dispatch(TENANT, RUN_ID, _binding(), actor_subject=ACTOR)
+    assert gateway.run.status == RunStatus.ACCEPTED
+
+
+def test_static_adapter_report_detects_missing_fail_closed_marker(tmp_path):
+    report = build_dolphinscheduler_adapter_report()
+    assert report["status"] == "valid"
+    assert report["server_version"] == "3.4.2"
+
+    unsafe = tmp_path / "unsafe_adapter.py"
+    source = Path(
+        __import__(
+            "data_agent.dolphinscheduler_adapter", fromlist=["__file__"]
+        ).__file__
+    )
+    unsafe.write_text(
+        source.read_text(encoding="utf-8").replace(
+            "dispatch outcome is unknown; reconcile before retry", "retry now"
+        ),
+        encoding="utf-8",
+    )
+    unsafe_report = build_dolphinscheduler_adapter_report(unsafe)
+    assert unsafe_report["status"] == "invalid"

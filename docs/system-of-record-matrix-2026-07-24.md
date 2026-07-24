@@ -2,9 +2,9 @@
 
 日期：2026-07-24
 
-阶段：AR-0 `in_progress`；AR-1 gateway entry slice `in_progress`
+阶段：AR-0 `in_progress`；AR-1 gateway 已验证，DolphinScheduler adapter sandbox POC 已完成，生产切换仍 `in_progress`
 
-适用分支：`feat/ar1-control-gateway`
+适用分支：`feat/ar1-dolphinscheduler-adapter`
 
 ## 判定规则
 
@@ -19,7 +19,7 @@
 |---|---|---|---|---|---|
 | SQL schema 历史 | PostgreSQL `schema_migrations`，以完整 migration ID + checksum 为权威 | migration CLI 的 JSON 报告 | 保持现有 ledger；任何 drift fail closed | Data Platform | AR-0，已验证 |
 | 部署配置策略 | Compose/K8s/进程环境；`platform_truth.CONFIG_SPECS` 定义关键类型与策略 | `.env` 仅补默认；脱敏 snapshot 是观测 | 版本化 DeploymentProfile + secret reference；部署环境始终优先 | Platform/SRE/Security | AR-0，部分实现 |
-| 后台运行时清单 | `platform_truth.RUNTIME_INVENTORY` 是代码层登记；`gda_control` 已有受控 PlatformRun 写入口，但尚无生产业务调用方，多数执行状态仍分散 | AST primitive report、FrameworkAttemptObservation | PlatformRun ledger 唯一登记最终状态；framework attempt 只能回报观测 | Platform Architecture | AR-1 gateway 已验证 -> 业务 adapter 待接入 |
+| 后台运行时清单 | `platform_truth.RUNTIME_INVENTORY` 是代码层登记；`gda_control` 已有受控 PlatformRun 写入口；DolphinScheduler adapter 合同和真实 standalone 客户端路径已验证，但尚无生产业务调用方，多数执行状态仍分散 | AST primitive report、FrameworkAttemptObservation、DolphinScheduler instance state | PlatformRun ledger 唯一登记最终状态；framework/provider attempt 只能回报观测 | Platform Architecture | AR-1 adapter sandbox POC 已验证 -> staging 控制链待接入 |
 | 原始文件/对象 | 当前 local uploads、S3/MinIO/OBS 均可能被直接写入，权威边界未统一 | 临时上传、下载缓存、预览文件 | Landing object 以 immutable URI + checksum + retention 为权威；本地 scratch 可删除 | Data Platform | AR-2 |
 | 湖仓表与 snapshot | Iceberg/STAC/S3A 有局部实现，尚无通用发布权威 | STAC item、GeoParquet export | Iceberg catalog snapshot 是分析表版本权威；对象是物理内容，STAC 是发现投影 | Data Platform | AR-2 |
 | 在线空间数据 | PostGIS 业务表是当前编辑/查询事实，部分临时表混入 | Martin MVT、API JSON、导出文件 | 已批准 DataProductVersion 物化到 PostGIS；不能由瓦片或临时表反向定义产品版本 | GIS/Data Platform | AR-2 -> AR-4 |
@@ -27,9 +27,9 @@
 | 技术元数据 | PostGIS schema、Iceberg/STAC 和专项 JSONB 各自记录 | harvester 结果 | 源系统技术对象是原始证据；Gravitino 映射并联邦，不能覆盖业务 ResourceVersion | Metadata Platform | AR-1 |
 | 治理目录 | 当前 catalog、tag、standard、semantic registry 分散 | 搜索/页面视图 | OpenMetadata 为 owner/glossary/classification/quality discoverability 权威；GDA ledger 保留审批证据 | Governance | AR-1 |
 | 血缘 | `gda_control.lineage_event` 已实现 immutable version edge 和幂等 gateway ingest；`agent_asset_lineage` 旧记录仍是可变 asset edge | OpenMetadata lineage graph、UI DAG | 只有 source/target ResourceVersion 与 event checksum 证据完整的旧记录可形成 eligible plan；目录图只作可重建投影 | Data Platform | AR-1 gateway 已验证 -> adapter 待接入 |
-| Definition | `gda_control.platform_definition_version` 已绑定 definition ResourceVersion、完整逻辑 hash 和原子 gateway registration；旧 workflow/template/YAML 仍在写入 | 编辑器状态、编排器 DAG | 旧 workflow 必须规范化并完整 hash 后才可形成 PlatformDefinitionVersion；provider ExecutionPlanArtifact 不可反写 definition | DataOps | AR-1 gateway 已验证 -> AR-1/AR-3 切换 |
-| Run 最终状态 | `gda_control.platform_run/event` 已实现受控 submit/read/CAS gateway；`agent_workflow_runs`、APScheduler、TaskQueue、SparkGateway、API task 仍是兼容运行路径 | Redis progress、日志、provider job status、attempt observation | 旧 run 到 PlatformRun 永久 prohibited；已有 PlatformRun correlation 时才可转为 attempt observation；生产 adapter 接入后 ledger 唯一决定平台状态 | DataOps/AgentOps | AR-1 gateway 已验证 -> provider correlation 待接入 |
-| 调度与补数 | APScheduler、自进化 scheduler 和调用方定时逻辑并存 | UI schedule 列表 | DolphinScheduler 管 DataOps schedule/complement；Temporal 只管需要 durable signal/compensation 的 Agent/GWM workflow | DataOps/AgentOps | AR-1/AR-5 |
+| Definition | `gda_control.platform_definition_version` 已绑定 definition ResourceVersion、完整逻辑 hash 和原子 gateway registration；3.4.2 adapter 可编译、创建并上线 provider DAG；binding 尚未持久化，旧 workflow/template/YAML 仍在写入 | 编辑器状态、DolphinScheduler DAG/definition | 旧 workflow 必须规范化并完整 hash 后才可形成 PlatformDefinitionVersion；provider binding 作为 ExecutionPlanArtifact/evidence，不可反写 definition | DataOps | AR-1 sandbox compile/publish 已验证 -> binding persistence 待实现 |
+| Run 最终状态 | `gda_control.platform_run/event` 已实现受控 submit/read/CAS gateway；adapter 已实现 dispatch/reconcile/cancel 和四字段 correlation，真实 standalone API path 已验证，PlatformGateway 端到端 staging 尚未完成；legacy 路径继续运行 | Redis progress、日志、DolphinScheduler state、attempt observation | 旧 run 到 PlatformRun 永久 prohibited；已有 PlatformRun correlation 时才可转为 attempt observation；provider 终态只进入 `reconciling`，ledger 经 Artifact/Quality/Policy 验证后唯一裁决终态 | DataOps/AgentOps | AR-1 adapter sandbox POC 已验证 -> staging/生产切换待验收 |
+| 调度与补数 | APScheduler、自进化 scheduler 和调用方定时逻辑并存；DolphinScheduler POC 只验证 manual start/list/variables/STOP | UI schedule 列表 | DolphinScheduler 管 DataOps schedule/complement；Temporal 只管需要 durable signal/compensation 的 Agent/GWM workflow | DataOps/AgentOps | AR-1 manual correlation 已验证；schedule/complement/failover 待验收 |
 | 事件交付 | Standards outbox 已数据库耐久；其他 WebSocket/bot/feedback 多为 best effort | 消费者 offset、WebSocket 消息 | command/event 先入 outbox，幂等 consumer 交付；缓存或 socket 不是权威 | Platform/Integrations | AR-1 |
 | 质量结果 | standards、QC、MMFE 和专项表各自记录 | dashboard 汇总 | 不可变 QualityResult/Evidence 绑定 input version、rule version 和 RunRef；汇总可重建 | Governance/DataOps | AR-1 -> AR-3 |
 | 标准与语义定义 | `std_*`、semantic registry 和 YAML 共同存在，生命周期未统一 | prompt/context、搜索索引 | 版本化 Standard/SemanticDefinition 经审批后为权威；Agent context 只消费批准版本 | Governance | AR-1 -> AR-3 |
@@ -50,6 +50,7 @@
 6. `gda_control` 已有测试验证的 gateway role/API，但没有生产业务调用方；gateway 可用不等于生产运行链已经切换。
 7. 旧资产、workflow、run 和 lineage 行缺少稳定 tenant/version/checksum 证据时禁止自动 backfill，也不得猜测生成 ResourceVersion。
 8. `platform_crosswalk` 只验证仓库 inventory、候选 payload 和 golden fixture；它不得连接数据库、分配 identity、回填旧表或写入 `gda_control`。
+9. DolphinScheduler standalone 使用 H2 和默认开发身份，只能证明 adapter API/correlation 合同；不能作为生产 metadata DB、身份、隔离、高可用、备份恢复或升级证据。
 
 ## 已建立的 AR-0/AR-1 entry 证据
 
@@ -58,11 +59,12 @@
 - 合成地类图斑 golden slice 已绑定 DLTB 标准证据、3 个 Resource、3 个 ResourceVersion、9 个平台合同、owner、SLO、rollback point 和消费者；fixture fingerprint 为 `b226622af6544cf0368d5a29f9e744aa1e3aed5511193c8e69f2f9f4ce5e7aac`。
 - `gda_control_gateway` 的最小 grant、FORCE RLS、跨租户拒绝、禁止直接 RunEvent/UPDATE/DELETE，以及服务层 Definition -> Run -> attempt/artifact/lineage 全链已在真实 PostgreSQL 验证。
 - 九个 versioned API 已校验认证角色、tenant 和 actor，未绑定 tenant 的历史/OAuth/bot 身份默认拒绝；生产调用链仍写旧表，尚未切换到 gateway。
+- DolphinScheduler 3.4.2 adapter 已固定 create/online/start/list/variables/control 路由、四字段 Run correlation、未知结果禁止盲目重提和 provider 非终局边界；真实 ARM64 standalone 完成 Shell DAG 精确关联，`STOP` 到达 `READY_STOP`，但未形成生产终局裁决证据。
 
 ## 下一验收证据
 
 - staging/production 的 schema、config 和 runtime snapshot 产物及环境 compare 报告；
 - staging 的 migration role、应用 login membership、连接池 role/tenant 复位和双租户 API 运行产物；
-- 首个 metadata 或 orchestrator adapter 的资源级 PolicyDecision/workload identity、幂等 replay、故障恢复和无双写证据；
+- DolphinScheduler adapter 的资源级 PolicyDecision/workload identity、binding 持久化、outbox/callback、幂等 replay、故障恢复和无双写证据；
 - 首条真实图斑链对 golden slice 的运行证据、质量结果、发布 revision 和 rollback 演练；
-- OpenMetadata/Gravitino 与 DolphinScheduler/Temporal sandbox 的独立数据库、备份恢复、身份、版本和升级责任证明。
+- OpenMetadata/Gravitino 与 DolphinScheduler/Temporal sandbox 的独立数据库、备份恢复、身份、版本和升级责任证明；DolphinScheduler standalone/H2 不计入此退出门。

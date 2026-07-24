@@ -66,6 +66,9 @@ jobs:
       - name: Validate platform gateway boundary
         run: python -m data_agent.platform_gateway validate
 
+      - name: Validate DolphinScheduler adapter boundary
+        run: python -m data_agent.dolphinscheduler_adapter validate
+
       - name: Verify platform control ledger on PostgreSQL
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gis_agent_test
