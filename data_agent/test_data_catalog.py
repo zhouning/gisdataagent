@@ -524,6 +524,30 @@ class TestRegisterToolOutputWithSources(unittest.TestCase):
         self.assertEqual(result, 100)
         mock_resolve.assert_called_once_with([])
 
+    @patch("data_agent.data_catalog.auto_register_from_path")
+    @patch("data_agent.data_catalog._resolve_source_assets", return_value=[])
+    def test_verified_reader_and_storage_paths_are_kept_separate(
+        self, _mock_resolve, mock_register
+    ):
+        from data_agent.data_catalog import register_tool_output
+
+        metadata = {"file_size_bytes": 12, "feature_count": 1}
+        register_tool_output(
+            "/dev/fd/17",
+            "buffer_features",
+            storage_path="/uploads/result.geojson",
+            verified_metadata=metadata,
+        )
+
+        self.assertEqual(mock_register.call_args.args[0], "/dev/fd/17")
+        self.assertEqual(
+            mock_register.call_args.kwargs["storage_path"],
+            "/uploads/result.geojson",
+        )
+        self.assertEqual(
+            mock_register.call_args.kwargs["verified_metadata"], metadata
+        )
+
 
 class TestGetDataLineage(unittest.TestCase):
     """Test data lineage tracing."""

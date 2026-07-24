@@ -13,6 +13,7 @@ import math
 import os
 import re
 import secrets
+import shutil
 import stat
 import threading
 import time
@@ -99,6 +100,7 @@ _MAX_ARCHIVE_ENTRIES = 10_000
 _MAX_ARCHIVE_PATH_DEPTH = 64
 _MAX_ARCHIVE_UNCOMPRESSED_BYTES = 20 * 1024 * 1024 * 1024
 _MAX_ARCHIVE_COMPRESSION_RATIO = 1_000
+_MAX_VECTOR_SNAPSHOT_BYTES = 512 * 1024 * 1024
 
 
 @dataclass(frozen=True)
@@ -593,6 +595,45 @@ class _PinnedDownloadEntry:
     identity: os.stat_result
 
 
+@dataclass
+class _ConsumerSnapshot:
+    descriptor: int
+    archived: bool
+    logical_size: int
+    closed: bool = False
+
+    @property
+    def path(self) -> str:
+        if self.closed:
+            raise ArcPyMcpError(
+                "ARCPY_DOWNLOAD_FAILED", "ArcPy result download failed"
+            )
+        return f"/dev/fd/{self.descriptor}"
+
+    def read_bytes(self, limit: int) -> bytes | None:
+        if self.closed or os.fstat(self.descriptor).st_size > limit:
+            return None
+        stream = os.fdopen(os.dup(self.descriptor), "rb")
+        try:
+            stream.seek(0)
+            payload = stream.read(limit + 1)
+        finally:
+            stream.close()
+        return payload if len(payload) <= limit else None
+
+    def close(self) -> None:
+        if self.closed:
+            return
+        self.closed = True
+        os.close(self.descriptor)
+
+    def __del__(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
+
+
 class _VerifiedDownload:
     def __init__(
         self,
@@ -784,6 +825,266 @@ class _VerifiedDownload:
                     "ArcPy result download failed",
                 )
 
+    def _refresh_modified_directory(
+        self, parts: tuple[str, ...], descriptor: int
+    ) -> None:
+        current = os.fstat(descriptor)
+        if parts:
+            entry = self._entries.get(parts)
+            if entry is None or not self._same_directory(
+                entry.identity, current
+            ):
+                raise ArcPyMcpError(
+                    "ARCPY_DOWNLOAD_FAILED",
+                    "ArcPy result download failed",
+                )
+            entry.identity = current
+            return
+        if self._workspace_identity is None or not self._same_directory(
+            self._workspace_identity, current
+        ):
+            raise ArcPyMcpError(
+                "ARCPY_DOWNLOAD_FAILED", "ArcPy result download failed"
+            )
+        self._workspace_identity = current
+
+    def _new_anonymous_file(self) -> int:
+        descriptor = None
+        candidate = None
+        try:
+            for _ in range(100):
+                candidate = f".consumer-{secrets.token_hex(16)}"
+                flags = os.O_RDWR | os.O_CREAT | os.O_EXCL
+                flags |= getattr(os, "O_CLOEXEC", 0)
+                flags |= getattr(os, "O_NOFOLLOW", 0)
+                try:
+                    descriptor = os.open(
+                        candidate,
+                        flags,
+                        0o600,
+                        dir_fd=self._workspace.directory_fd,
+                    )
+                    break
+                except FileExistsError:
+                    continue
+            if descriptor is None or candidate is None:
+                raise OSError("could not allocate consumer snapshot")
+            os.unlink(candidate, dir_fd=self._workspace.directory_fd)
+            self._refresh_modified_directory(
+                (), self._workspace.directory_fd
+            )
+            return descriptor
+        except BaseException:
+            if descriptor is not None:
+                os.close(descriptor)
+            if candidate is not None:
+                try:
+                    os.unlink(candidate, dir_fd=self._workspace.directory_fd)
+                except OSError:
+                    pass
+            raise
+
+    def _snapshot_entries(
+        self, path: Path
+    ) -> tuple[list[_PinnedDownloadEntry], tuple[str, ...], bool]:
+        parts = self._relative_parts(path)
+        entry = self._entries.get(parts)
+        if entry is None:
+            raise ArcPyMcpError(
+                "ARCPY_DOWNLOAD_FAILED", "ArcPy result download failed"
+            )
+        if path.suffix.lower() == ".shp":
+            parent = parts[:-1]
+            stem = path.stem.casefold()
+            selected = [
+                candidate
+                for candidate in self._entries.values()
+                if len(candidate.parts) == len(parts)
+                and candidate.parts[:-1] == parent
+                and stat.S_ISREG(candidate.identity.st_mode)
+                and _is_shapefile_sidecar_name(
+                    candidate.parts[-1], stem
+                )
+            ]
+            archived = True
+            base_parts = parent
+        elif stat.S_ISDIR(entry.identity.st_mode):
+            selected = [
+                candidate
+                for candidate in self._entries.values()
+                if len(candidate.parts) > len(parts)
+                and candidate.parts[: len(parts)] == parts
+                and stat.S_ISREG(candidate.identity.st_mode)
+            ]
+            archived = True
+            base_parts = parts[:-1]
+        else:
+            selected = [entry]
+            archived = False
+            base_parts = parts[:-1]
+        if not selected:
+            raise ArcPyMcpError(
+                "ARCPY_DOWNLOAD_FAILED", "ArcPy result download failed"
+            )
+        return sorted(selected, key=lambda item: item.parts), base_parts, archived
+
+    @staticmethod
+    def _copy_entry(source_fd: int, destination) -> None:
+        source = os.fdopen(os.dup(source_fd), "rb")
+        try:
+            source.seek(0)
+            shutil.copyfileobj(source, destination, 1024 * 1024)
+        finally:
+            source.close()
+
+    def consumer_snapshot(self, path: Path) -> _ConsumerSnapshot:
+        self.validate()
+        entries, base_parts, archived = self._snapshot_entries(path)
+        descriptor = self._new_anonymous_file()
+        read_descriptor = None
+        try:
+            if archived:
+                target = os.fdopen(os.dup(descriptor), "w+b")
+                try:
+                    with zipfile.ZipFile(
+                        target, "w", compression=zipfile.ZIP_STORED
+                    ) as archive:
+                        for entry in entries:
+                            relative = entry.parts[len(base_parts) :]
+                            archive_name = PurePosixPath(*relative).as_posix()
+                            with archive.open(archive_name, "w") as output:
+                                self._copy_entry(entry.descriptor, output)
+                    target.flush()
+                    os.fsync(target.fileno())
+                finally:
+                    target.close()
+            else:
+                target = os.fdopen(os.dup(descriptor), "r+b")
+                try:
+                    self._copy_entry(entries[0].descriptor, target)
+                    target.flush()
+                    os.fsync(target.fileno())
+                finally:
+                    target.close()
+            os.fchmod(descriptor, 0o400)
+            read_descriptor = os.open(
+                f"/dev/fd/{descriptor}",
+                os.O_RDONLY | getattr(os, "O_CLOEXEC", 0),
+            )
+            os.lseek(read_descriptor, 0, os.SEEK_SET)
+            os.close(descriptor)
+            descriptor = None
+            self.validate()
+            snapshot = _ConsumerSnapshot(
+                descriptor=read_descriptor,
+                archived=archived,
+                logical_size=sum(entry.identity.st_size for entry in entries),
+            )
+            read_descriptor = None
+            return snapshot
+        except BaseException:
+            if read_descriptor is not None:
+                os.close(read_descriptor)
+            if descriptor is not None:
+                os.close(descriptor)
+            raise
+
+    def write_geojson(self, frame, source_path: Path) -> Path:
+        source_parts = self._relative_parts(source_path)
+        parent_parts = source_parts[:-1]
+        if parent_parts:
+            parent_entry = self._entries.get(parent_parts)
+            if parent_entry is None or not stat.S_ISDIR(
+                parent_entry.identity.st_mode
+            ):
+                raise ArcPyMcpError(
+                    "ARCPY_DOWNLOAD_FAILED",
+                    "ArcPy result download failed",
+                )
+            parent_fd = parent_entry.descriptor
+        else:
+            parent_fd = self._workspace.directory_fd
+        descriptor = None
+        read_descriptor = None
+        candidate = None
+        parts = None
+        try:
+            for _ in range(100):
+                candidate = (
+                    f"{source_path.stem}-map-"
+                    f"{secrets.token_hex(8)}.geojson"
+                )
+                flags = os.O_RDWR | os.O_CREAT | os.O_EXCL
+                flags |= getattr(os, "O_CLOEXEC", 0)
+                flags |= getattr(os, "O_NOFOLLOW", 0)
+                try:
+                    descriptor = os.open(
+                        candidate, flags, 0o600, dir_fd=parent_fd
+                    )
+                    break
+                except FileExistsError:
+                    continue
+            if descriptor is None or candidate is None:
+                raise OSError("could not allocate map output")
+            stream = os.fdopen(os.dup(descriptor), "w", encoding="utf-8")
+            try:
+                stream.write('{"type":"FeatureCollection","features":[')
+                first = True
+                for feature in frame.iterfeatures():
+                    if not first:
+                        stream.write(",")
+                    json.dump(feature, stream, allow_nan=False)
+                    first = False
+                stream.write("]}")
+                stream.flush()
+                os.fsync(stream.fileno())
+            finally:
+                stream.close()
+            os.fchmod(descriptor, 0o600)
+            read_descriptor = os.open(
+                f"/dev/fd/{descriptor}",
+                os.O_RDONLY | getattr(os, "O_CLOEXEC", 0),
+            )
+            os.close(descriptor)
+            descriptor = None
+            self._refresh_modified_directory(parent_parts, parent_fd)
+            parts = (*parent_parts, candidate)
+            current_fd = self._open_parts(parts, directory=False)
+            try:
+                identity = os.fstat(read_descriptor)
+                current = os.fstat(current_fd)
+            finally:
+                os.close(current_fd)
+            if not self._same_identity(identity, current):
+                raise ArcPyMcpError(
+                    "ARCPY_DOWNLOAD_FAILED",
+                    "ArcPy result download failed",
+                )
+            self._entries[parts] = _PinnedDownloadEntry(
+                parts, read_descriptor, identity
+            )
+            read_descriptor = None
+            self.validate()
+            return source_path.parent / candidate
+        except BaseException:
+            if parts is not None:
+                entry = self._entries.pop(parts, None)
+                if entry is not None:
+                    os.close(entry.descriptor)
+            if read_descriptor is not None:
+                os.close(read_descriptor)
+            if descriptor is not None:
+                os.close(descriptor)
+            if candidate is not None:
+                try:
+                    os.unlink(candidate, dir_fd=parent_fd)
+                    self._refresh_modified_directory(
+                        parent_parts, parent_fd
+                    )
+                except OSError:
+                    pass
+            raise
+
     def user_relative_path(self, path: Path) -> str:
         parts = self._relative_parts(path)
         return PurePosixPath(
@@ -814,44 +1115,62 @@ class _VerifiedDownload:
 
 def _remove_directory_contents(directory_fd: int) -> None:
     root_fd = os.dup(directory_fd)
-    stack: list[tuple[int, int | None, str | None, bool]] = [
-        (root_fd, None, None, False)
-    ]
-    while stack:
-        current_fd, parent_fd, name, expanded = stack.pop()
-        if expanded:
-            if parent_fd is not None and name is not None:
-                try:
-                    os.rmdir(name, dir_fd=parent_fd)
-                except OSError:
-                    pass
-            os.close(current_fd)
-            continue
-        stack.append((current_fd, parent_fd, name, True))
-        try:
-            names = os.listdir(current_fd)
-        except OSError:
-            continue
-        for child_name in names:
+    try:
+        root_names = iter(os.listdir(root_fd))
+    except OSError:
+        os.close(root_fd)
+        return
+    stack = [(root_fd, None, None, root_names)]
+    try:
+        while stack:
+            current_fd, parent_fd, name, names = stack[-1]
+            try:
+                child_name = next(names)
+            except StopIteration:
+                stack.pop()
+                if parent_fd is not None and name is not None:
+                    try:
+                        os.rmdir(name, dir_fd=parent_fd)
+                    except OSError:
+                        pass
+                os.close(current_fd)
+                continue
+
             try:
                 item_stat = os.stat(
                     child_name,
                     dir_fd=current_fd,
                     follow_symlinks=False,
                 )
-                if stat.S_ISDIR(item_stat.st_mode):
-                    child_fd = os.open(
-                        child_name,
-                        _directory_open_flags(),
-                        dir_fd=current_fd,
-                    )
-                    stack.append(
-                        (child_fd, current_fd, child_name, False)
-                    )
-                else:
+                if not stat.S_ISDIR(item_stat.st_mode):
                     os.unlink(child_name, dir_fd=current_fd)
+                    continue
+                child_fd = os.open(
+                    child_name,
+                    _directory_open_flags(),
+                    dir_fd=current_fd,
+                )
+                try:
+                    child_names = iter(os.listdir(child_fd))
+                except OSError:
+                    os.close(child_fd)
+                    try:
+                        os.rmdir(child_name, dir_fd=current_fd)
+                    except OSError:
+                        pass
+                    continue
+                stack.append(
+                    (child_fd, current_fd, child_name, child_names)
+                )
             except OSError:
                 continue
+    finally:
+        while stack:
+            current_fd, _, _, _ = stack.pop()
+            try:
+                os.close(current_fd)
+            except OSError:
+                pass
 
 
 def _new_download_workspace() -> _DownloadWorkspace:
@@ -1162,36 +1481,72 @@ def _extracted_dataset_paths(paths: list[Path]) -> list[Path]:
     return sorted(outputs, key=lambda item: str(item).casefold())
 
 
-def _write_unique_geojson(frame, source_path: Path) -> Path:
-    parent = source_path.parent
-    stem = source_path.stem
-    temp_path = parent / f".{stem}-map-{secrets.token_hex(16)}.geojson"
-    final_path = None
-    try:
-        frame.to_file(str(temp_path), driver="GeoJSON")
-        temp_stat = os.lstat(temp_path)
-        if not stat.S_ISREG(temp_stat.st_mode):
-            raise OSError("map output is not a regular file")
-        for _ in range(100):
-            candidate = parent / (
-                f"{stem}-map-{secrets.token_hex(8)}.geojson"
-            )
-            try:
-                os.link(temp_path, candidate, follow_symlinks=False)
-                final_path = candidate
-                break
-            except FileExistsError:
-                continue
-        if final_path is None:
-            raise OSError("could not allocate map output")
-        os.unlink(temp_path)
-        return final_path
-    finally:
+def _frame_metadata(frame, file_size: int) -> dict:
+    metadata = {
+        "file_size_bytes": max(0, int(file_size)),
+        "crs": "",
+        "srid": 0,
+        "feature_count": len(frame),
+        "spatial_extent": None,
+        "column_schema": [
+            {"name": str(column), "type": str(frame[column].dtype)}
+            for column in frame.columns
+        ],
+    }
+    if frame.crs:
+        metadata["crs"] = str(frame.crs)
         try:
-            if temp_path.exists() or temp_path.is_symlink():
-                temp_path.unlink()
-        except OSError:
+            metadata["srid"] = frame.crs.to_epsg() or 0
+        except Exception:
             pass
+    if not frame.empty:
+        bounds = [float(value) for value in frame.total_bounds]
+        if all(math.isfinite(value) for value in bounds):
+            metadata["spatial_extent"] = {
+                "minx": round(bounds[0], 6),
+                "miny": round(bounds[1], 6),
+                "maxx": round(bounds[2], 6),
+                "maxy": round(bounds[3], 6),
+            }
+    return metadata
+
+
+def _map_frame(frame):
+    if frame.crs and frame.crs.to_epsg() != 4326:
+        return frame.to_crs(epsg=4326)
+    return frame
+
+
+def _map_update_from_frame(
+    frame, geojson_path: Path, relative_path: str
+) -> dict:
+    bounds = [float(value) for value in frame.total_bounds]
+    if len(bounds) != 4 or not all(math.isfinite(value) for value in bounds):
+        raise ArcPyMcpError(
+            "ARCPY_DOWNLOAD_FAILED", "ArcPy result download failed"
+        )
+    geometry_types = set(frame.geom_type.dropna().unique())
+    if geometry_types & {"Point", "MultiPoint"}:
+        layer_type = "point"
+    elif geometry_types & {"LineString", "MultiLineString"}:
+        layer_type = "line"
+    else:
+        layer_type = "polygon"
+    label = geojson_path.stem.replace("_", " ").title()
+    return {
+        "layers": [
+            {
+                "name": label,
+                "type": layer_type,
+                "geojson": relative_path,
+            }
+        ],
+        "center": [
+            (bounds[1] + bounds[3]) / 2,
+            (bounds[0] + bounds[2]) / 2,
+        ],
+        "zoom": 13,
+    }
 
 
 def _has_unsafe_caller_syntax(path: str) -> bool:
@@ -4159,6 +4514,12 @@ class ArcPyMcpClient:
         redacted = redact_mcp_text(value, current_runtime_secrets())
         if redacted != value or re.search(r"(?i)https?://", value):
             return None
+        if (
+            re.search(r"(?:^|[^A-Za-z0-9])/(?!/)", value)
+            or re.search(r"(?i)(?:^|[^A-Za-z0-9])[A-Z]:[\\/]", value)
+            or re.search(r"(?:^|[^A-Za-z0-9])\\\\[^\\]", value)
+        ):
+            return None
         windows_path = PureWindowsPath(value)
         posix_path = PurePosixPath(value)
         if (
@@ -4202,6 +4563,24 @@ class ArcPyMcpClient:
 
         return sanitize(parameters)
 
+    @staticmethod
+    async def _create_consumer_snapshot(
+        download: _VerifiedDownload, path: Path
+    ) -> _ConsumerSnapshot:
+        snapshot_task = asyncio.create_task(
+            asyncio.to_thread(download.consumer_snapshot, path)
+        )
+        try:
+            return await asyncio.shield(snapshot_task)
+        except asyncio.CancelledError:
+            try:
+                snapshot = await _drain_shielded_task(snapshot_task)
+            except Exception:
+                pass
+            else:
+                snapshot.close()
+            raise
+
     async def _register_and_map_outputs(
         self,
         download: _VerifiedDownload,
@@ -4209,42 +4588,73 @@ class ArcPyMcpClient:
         tool_params: dict,
         source_paths: list[str],
     ) -> tuple[list[str], dict | None]:
-        from data_agent import artifact_handler, data_catalog
+        from data_agent import data_catalog
 
         local_outputs = []
         map_update = None
         vector_suffixes = {".geojson", ".json", ".gpkg", ".shp", ".gdb"}
         for path in download.paths:
             local_path = str(path)
-            download.validate()
+            frame = None
+            verified_metadata = None
+            snapshot = await self._create_consumer_snapshot(
+                download, path
+            )
             try:
+                if path.suffix.lower() in vector_suffixes:
+                    try:
+                        import geopandas as gpd
+
+                        payload = await asyncio.to_thread(
+                            snapshot.read_bytes,
+                            _MAX_VECTOR_SNAPSHOT_BYTES,
+                        )
+                        if payload is not None:
+                            frame = await asyncio.to_thread(
+                                gpd.read_file, payload
+                            )
+                    except Exception:
+                        frame = None
+                    if frame is not None:
+                        verified_metadata = _frame_metadata(
+                            frame, snapshot.logical_size
+                        )
+                    else:
+                        verified_metadata = {
+                            "file_size_bytes": snapshot.logical_size,
+                            "crs": "",
+                            "srid": 0,
+                            "feature_count": 0,
+                            "spatial_extent": None,
+                            "column_schema": [],
+                        }
                 data_catalog.register_tool_output(
-                    local_path,
+                    snapshot.path,
                     operation,
                     tool_params,
                     source_paths=source_paths,
+                    storage_path=local_path,
+                    verified_metadata=verified_metadata,
                 )
             finally:
+                snapshot.close()
                 download.validate()
             local_outputs.append(local_path)
-            if map_update is not None or path.suffix.lower() not in vector_suffixes:
+            if (
+                map_update is not None
+                or frame is None
+                or frame.empty
+                or path.suffix.lower() not in vector_suffixes
+            ):
                 continue
             try:
-                import geopandas as gpd
-
-                download.validate()
-                try:
-                    frame = await asyncio.to_thread(gpd.read_file, local_path)
-                finally:
-                    download.validate()
-                if frame.empty:
-                    continue
+                map_frame = await asyncio.to_thread(_map_frame, frame)
                 if path.suffix.lower() in {".geojson", ".json"}:
                     geojson_path = path
                 else:
                     map_task = asyncio.create_task(
                         asyncio.to_thread(
-                            _write_unique_geojson, frame, path
+                            download.write_geojson, map_frame, path
                         )
                     )
                     try:
@@ -4255,46 +4665,30 @@ class ArcPyMcpClient:
                         except Exception:
                             pass
                         raise
-                    download.pin_path(geojson_path)
-                    download.validate()
+                    generated_snapshot = await self._create_consumer_snapshot(
+                        download, geojson_path
+                    )
                     try:
                         data_catalog.register_tool_output(
-                            str(geojson_path),
+                            generated_snapshot.path,
                             operation,
                             tool_params,
                             source_paths=source_paths,
+                            storage_path=str(geojson_path),
+                            verified_metadata=_frame_metadata(
+                                map_frame, generated_snapshot.logical_size
+                            ),
                         )
                     finally:
+                        generated_snapshot.close()
                         download.validate()
                     local_outputs.append(str(geojson_path))
-                download.validate()
-                try:
-                    candidate_map_update = await asyncio.to_thread(
-                        artifact_handler.build_map_update_from_geojson,
-                        str(geojson_path),
-                    )
-                except BaseException:
-                    download.validate()
-                    raise
-                map_update, generated_map_paths = (
-                    self._normalize_map_output_paths(
-                        download, candidate_map_update, geojson_path
-                    )
+                map_update = _map_update_from_frame(
+                    map_frame,
+                    geojson_path,
+                    download.user_relative_path(geojson_path),
                 )
                 download.validate()
-                for generated_path in generated_map_paths:
-                    generated_local_path = str(generated_path)
-                    download.validate()
-                    try:
-                        data_catalog.register_tool_output(
-                            generated_local_path,
-                            operation,
-                            tool_params,
-                            source_paths=source_paths,
-                        )
-                    finally:
-                        download.validate()
-                    local_outputs.append(generated_local_path)
             except ArcPyMcpError:
                 raise
             except Exception:

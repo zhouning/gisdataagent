@@ -1,8 +1,10 @@
 """Tests for the private ArcPy MCP client."""
 
 import asyncio
+import errno
 import gc
 import hashlib
+import json
 import logging
 import os
 import stat
@@ -92,8 +94,35 @@ class _FakeVerifiedDownload:
     def user_relative_path(self, path):
         return Path(path).name
 
+    def consumer_snapshot(self, path):
+        return _FakeConsumerSnapshot(path)
+
     def close(self):
         self.closed = True
+
+
+class _FakeConsumerSnapshot:
+    def __init__(self, path):
+        self.descriptor = os.open(path, os.O_RDONLY)
+        self.archived = False
+        self.logical_size = os.fstat(self.descriptor).st_size
+
+    @property
+    def path(self):
+        return f"/dev/fd/{self.descriptor}"
+
+    def read_bytes(self, limit):
+        if self.logical_size > limit:
+            return None
+        descriptor = os.dup(self.descriptor)
+        try:
+            os.lseek(descriptor, 0, os.SEEK_SET)
+            return os.read(descriptor, limit + 1)
+        finally:
+            os.close(descriptor)
+
+    def close(self):
+        os.close(self.descriptor)
 
 
 def _cleanup_prepared(prepared: PreparedLocalUpload) -> None:
@@ -826,6 +855,48 @@ def test_prepared_package_cleanup_and_close_are_idempotent_without_fd_leaks(
     for descriptor in lease_fds:
         with pytest.raises(OSError):
             os.fstat(descriptor)
+
+
+def test_download_cleanup_keeps_descriptor_usage_bounded_for_wide_trees(
+    tmp_path, monkeypatch
+):
+    import data_agent.arcpy_mcp_client as client_module
+
+    root = tmp_path / "wide"
+    root.mkdir()
+    for index in range(200):
+        child = root / f"child-{index}"
+        child.mkdir()
+        (child / "entry.bin").write_bytes(b"entry")
+
+    original_open = client_module.os.open
+    original_close = client_module.os.close
+    root_fd = original_open(root, client_module._directory_open_flags())
+    tracked_fds = {root_fd}
+    peak = 1
+
+    def bounded_open(*args, **kwargs):
+        nonlocal peak
+        if len(tracked_fds) >= 8:
+            raise OSError(errno.EMFILE, "forced descriptor limit")
+        descriptor = original_open(*args, **kwargs)
+        tracked_fds.add(descriptor)
+        peak = max(peak, len(tracked_fds))
+        return descriptor
+
+    def tracked_close(descriptor):
+        tracked_fds.discard(descriptor)
+        return original_close(descriptor)
+
+    monkeypatch.setattr(client_module.os, "open", bounded_open)
+    monkeypatch.setattr(client_module.os, "close", tracked_close)
+    try:
+        client_module._remove_directory_contents(root_fd)
+    finally:
+        tracked_close(root_fd)
+
+    assert list(root.iterdir()) == []
+    assert peak <= 4
 
 
 def test_package_lease_rejects_renamed_original_before_upload(
@@ -5015,7 +5086,8 @@ async def test_download_resumes_with_range_and_registers_verified_output(
         "create_download",
         "delete_artifact",
     ]
-    assert registrations[0][0][0] == str(output)
+    assert registrations[0][0][0].startswith("/dev/fd/")
+    assert registrations[0][1]["storage_path"] == str(output)
 
 
 @pytest.mark.asyncio
@@ -5255,29 +5327,20 @@ async def test_download_rejects_zip_symlink(user_upload_dir, tmp_path):
 async def test_verified_geojson_is_registered_and_returns_map_metadata(
     user_upload_dir, monkeypatch
 ):
-    import data_agent.artifact_handler as artifact_handler
     import data_agent.data_catalog as data_catalog
-    import geopandas as gpd
 
     output = user_upload_dir / "result.geojson"
     output.write_text(
-        '{"type":"FeatureCollection","features":[]}', encoding="utf-8"
+        '{"type":"FeatureCollection","features":['
+        '{"type":"Feature","properties":{},"geometry":'
+        '{"type":"Point","coordinates":[1.0,2.0]}}]}',
+        encoding="utf-8",
     )
     registrations = []
     monkeypatch.setattr(
         data_catalog,
         "register_tool_output",
         lambda *args, **kwargs: registrations.append((args, kwargs)),
-    )
-    monkeypatch.setattr(
-        artifact_handler,
-        "build_map_update_from_geojson",
-        lambda path: {"layers": [{"path": path}]},
-    )
-    monkeypatch.setattr(
-        gpd,
-        "read_file",
-        lambda path: SimpleNamespace(empty=False),
     )
     client = ArcPyMcpClient(
         McpServerConfig(name="arcpy", url="https://service.example/mcp")
@@ -5309,16 +5372,28 @@ async def test_verified_geojson_is_registered_and_returns_map_metadata(
     )
 
     assert result["local_outputs"] == [str(output)]
-    assert result["map_update"] == {"layers": [{"path": str(output)}]}
+    assert result["map_update"] == {
+        "layers": [
+            {
+                "name": "Result",
+                "type": "point",
+                "geojson": "result.geojson",
+            }
+        ],
+        "center": [2.0, 1.0],
+        "zoom": 13,
+    }
     assert result["dataset_summary"] == {"count": 4}
     assert result["arcgis_product"] == "ArcInfo"
     assert result["arcgis_version"] == "3.7.1"
-    assert registrations == [
-        (
-            (str(output), "buffer_features", {"distance": "10 Meters"}),
-            {"source_paths": ["source.geojson"]},
-        )
-    ]
+    assert len(registrations) == 1
+    assert registrations[0][0][0].startswith("/dev/fd/")
+    assert registrations[0][0][1:] == (
+        "buffer_features",
+        {"distance": "10 Meters"},
+    )
+    assert registrations[0][1]["source_paths"] == ["source.geojson"]
+    assert registrations[0][1]["storage_path"] == str(output)
     assert download.closed is True
 
 
@@ -6099,28 +6174,79 @@ def test_extracted_dataset_paths_keep_non_sidecar_same_stem():
 
 
 def test_unique_map_geojson_never_overwrites_existing_output(
-    tmp_path, monkeypatch
+    user_upload_dir, monkeypatch
 ):
     import data_agent.arcpy_mcp_client as client_module
 
-    source = tmp_path / "roads.shp"
-    collision = tmp_path / "roads-map-collision.geojson"
+    workspace = client_module._new_download_workspace()
+    source = workspace.path / "roads.shp"
+    source.write_bytes(b"shape")
+    collision = workspace.path / "roads-map-collision.geojson"
     collision.write_bytes(b"verified-existing")
-    tokens = iter(("temporary", "collision", "unique"))
+    download = client_module._VerifiedDownload(
+        [source], [source, collision], workspace
+    )
+    tokens = iter(("collision", "unique"))
     monkeypatch.setattr(
         client_module.secrets, "token_hex", lambda size: next(tokens)
     )
 
     class Frame:
-        def to_file(self, path, driver):
-            assert driver == "GeoJSON"
-            Path(path).write_bytes(b"generated")
+        def iterfeatures(self):
+            yield {
+                "type": "Feature",
+                "properties": {},
+                "geometry": {"type": "Point", "coordinates": [1, 2]},
+            }
 
-    output = client_module._write_unique_geojson(Frame(), source)
+    try:
+        output = download.write_geojson(Frame(), source)
 
-    assert collision.read_bytes() == b"verified-existing"
-    assert output.name == "roads-map-unique.geojson"
-    assert output.read_bytes() == b"generated"
+        assert collision.read_bytes() == b"verified-existing"
+        assert output.name == "roads-map-unique.geojson"
+        payload = json.loads(output.read_text(encoding="utf-8"))
+        assert len(payload["features"]) == 1
+        assert payload["features"][0]["geometry"]["coordinates"] == [1, 2]
+        download.validate()
+    finally:
+        download.close()
+
+
+def test_shapefile_consumer_uses_immutable_multifile_snapshot(
+    user_upload_dir,
+):
+    import data_agent.arcpy_mcp_client as client_module
+    import geopandas as gpd
+    from shapely.geometry import Point
+
+    workspace = client_module._new_download_workspace()
+    source = workspace.path / "roads.shp"
+    gpd.GeoDataFrame(
+        {"name": ["verified"]},
+        geometry=[Point(139.0, 35.0)],
+        crs="EPSG:4326",
+    ).to_file(source)
+    sidecars = sorted(workspace.path.glob("roads.*"))
+    download = client_module._VerifiedDownload(
+        [source], sidecars, workspace
+    )
+    snapshot = download.consumer_snapshot(source)
+    try:
+        assert snapshot.archived is True
+        payload = snapshot.read_bytes(client_module._MAX_VECTOR_SNAPSHOT_BYTES)
+        assert payload is not None
+
+        source.unlink()
+        source.write_bytes(b"attacker")
+
+        frame = gpd.read_file(payload)
+        assert frame["name"].tolist() == ["verified"]
+        with pytest.raises(ArcPyMcpError) as exc_info:
+            download.validate()
+        assert exc_info.value.code == "ARCPY_DOWNLOAD_FAILED"
+    finally:
+        snapshot.close()
+        download.close()
 
 
 def test_result_metadata_is_fail_closed_for_untrusted_job_fields():
@@ -6858,7 +6984,8 @@ async def test_replaced_output_fails_closed_and_preserves_remote_artifact(
         raise AssertionError(name)
 
     def replace_during_registration(path, *args, **kwargs):
-        target = Path(path)
+        assert path.startswith("/dev/fd/")
+        target = Path(kwargs["storage_path"])
         target.unlink()
         target.write_bytes(b"attacker")
 
@@ -6954,6 +7081,9 @@ def test_server_metadata_and_posix_paths_are_fail_closed():
     assert result["arcgis_product"] is None
     assert result["arcgis_version"] is None
     assert client._safe_metadata_string("ArcInfo\nprivate") is None
+    assert client._safe_metadata_string("ArcInfo at /srv/arcpy") is None
+    assert client._safe_metadata_string("Version at C:\\ArcGIS\\Pro") is None
+    assert client._safe_metadata_string("Worker on \\\\host\\share") is None
     assert client._sanitize_job_message(
         "failed at /srv/arcpy jobs/private/output.gdb"
     ) == "failed at [REDACTED]"
