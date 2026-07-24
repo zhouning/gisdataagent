@@ -4645,6 +4645,7 @@ class ArcPyMcpClient:
         operation: str,
         tool_params: dict,
         source_paths: list[str],
+        owned_mvt_layers: list[dict],
     ) -> tuple[list[str], dict | None]:
         from data_agent import data_catalog
 
@@ -4743,6 +4744,12 @@ class ArcPyMcpClient:
                         tile_metadata = None
                     if tile_metadata is not None:
                         try:
+                            layer_id = tile_metadata.get("layer_id")
+                            if not isinstance(layer_id, str) or not layer_id:
+                                raise ArcPyMcpError(
+                                    "ARCPY_DOWNLOAD_FAILED",
+                                    "ArcPy result download failed",
+                                )
                             map_update = {
                                 "layers": [
                                     {
@@ -4750,17 +4757,15 @@ class ArcPyMcpClient:
                                         "type": "mvt",
                                         "tile_url": (
                                             "/api/tiles/"
-                                            f"{tile_metadata['layer_id']}"
+                                            f"{layer_id}"
                                             "/{z}/{x}/{y}.pbf"
                                         ),
                                         "metadata_url": (
                                             "/api/tiles/"
-                                            f"{tile_metadata['layer_id']}"
+                                            f"{layer_id}"
                                             "/metadata.json"
                                         ),
-                                        "layer_id": (
-                                            tile_metadata["layer_id"]
-                                        ),
+                                        "layer_id": layer_id,
                                         "source_layer": (
                                             tile_metadata.get("layer_name")
                                             or "default"
@@ -4778,6 +4783,13 @@ class ArcPyMcpClient:
                                 "zoom": base_update["zoom"],
                             }
                             download.validate()
+                            if not any(
+                                owned.get("layer_id") == layer_id
+                                for owned in owned_mvt_layers
+                            ):
+                                owned_mvt_layers.append(
+                                    {"layer_id": layer_id}
+                                )
                         except (asyncio.CancelledError, ArcPyMcpError):
                             await _cleanup_mvt_layer(
                                 tile_server, tile_metadata
@@ -5019,15 +5031,23 @@ class ArcPyMcpClient:
                     download = await self._download_artifact(artifact_id)
                     registered, artifact_map_update = (
                         await self._register_and_map_outputs(
-                            download, operation, tool_params, source_paths
+                            download,
+                            operation,
+                            tool_params,
+                            source_paths,
+                            owned_mvt_layers,
                         )
                     )
                     local_outputs.extend(registered)
-                    owned_mvt_layers.extend(
-                        self._mvt_layers_from_map_update(
-                            artifact_map_update
-                        )
-                    )
+                    for metadata in self._mvt_layers_from_map_update(
+                        artifact_map_update
+                    ):
+                        if not any(
+                            owned.get("layer_id")
+                            == metadata["layer_id"]
+                            for owned in owned_mvt_layers
+                        ):
+                            owned_mvt_layers.append(metadata)
                     map_update = self._merge_map_updates(
                         map_update, artifact_map_update
                     )

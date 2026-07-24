@@ -6469,6 +6469,77 @@ async def test_later_artifact_failure_cleans_prior_mvt_layer(
 
 
 @pytest.mark.asyncio
+async def test_later_path_in_same_artifact_cleans_prior_mvt_layer(
+    user_upload_dir, monkeypatch
+):
+    import data_agent.arcpy_mcp_client as client_module
+    import data_agent.data_catalog as data_catalog
+    import data_agent.tile_server as tile_server
+
+    body = (
+        b'{"type":"FeatureCollection","features":['
+        b'{"type":"Feature","properties":{},"geometry":'
+        b'{"type":"Point","coordinates":[139.0,35.0]}},'
+        b'{"type":"Feature","properties":{},"geometry":'
+        b'{"type":"Point","coordinates":[140.0,36.0]}}]}'
+    )
+    workspace = client_module._new_download_workspace()
+    first = workspace.path / "first.geojson"
+    later = workspace.path / "later.bin"
+    first.write_bytes(body)
+    later.write_bytes(b"verified")
+    download = client_module._VerifiedDownload(
+        [first, later], [first, later], workspace
+    )
+    client = _client()
+    client.health_check = AsyncMock(return_value={"worker": {}})
+    client._download_artifact = AsyncMock(return_value=download)
+    client._run_remote_cleanup = AsyncMock()
+    registration_count = 0
+    cleaned = []
+
+    def register_output(*args, **kwargs):
+        nonlocal registration_count
+        registration_count += 1
+        if registration_count == 2:
+            raise RuntimeError("later path registration failed")
+
+    monkeypatch.setattr(
+        data_catalog, "register_tool_output", register_output
+    )
+    monkeypatch.setattr(tile_server, "FGB_FEATURE_THRESHOLD", 0)
+    monkeypatch.setattr(tile_server, "MVT_FEATURE_THRESHOLD", 1)
+    monkeypatch.setattr(
+        tile_server,
+        "create_tile_layer_from_frame",
+        lambda frame, user_id, layer_name, *, source_file: {
+            "layer_id": "archive-layer",
+            "layer_name": layer_name,
+        },
+    )
+    monkeypatch.setattr(
+        tile_server,
+        "cleanup_tile_layer",
+        lambda layer_id: cleaned.append(layer_id) or True,
+    )
+
+    with pytest.raises(
+        RuntimeError, match="later path registration failed"
+    ):
+        await client.download_job_results(
+            "buffer_features",
+            {
+                "status": "succeeded",
+                "result": {"output_artifact_ids": ["output-1"]},
+            },
+            [],
+        )
+
+    assert registration_count == 2
+    assert cleaned == ["archive-layer"]
+
+
+@pytest.mark.asyncio
 async def test_cancellation_during_remote_delete_cleans_owned_mvt_layer(
     user_upload_dir, monkeypatch
 ):
