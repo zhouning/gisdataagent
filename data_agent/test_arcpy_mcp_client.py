@@ -1165,6 +1165,113 @@ def test_download_metadata_accepts_matching_live_server_aliases():
     assert ArcPyMcpClient._download_size(metadata) == 12
 
 
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"job_id": "job-1", "id": "job-other"},
+        {"job_id": "job-other"},
+        {"id": "job-other"},
+    ],
+)
+def test_job_response_rejects_mismatched_identifier_evidence(payload):
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        ArcPyMcpClient._validate_job_response(payload, "job-1")
+
+    assert exc_info.value.code == "ARCPY_RESPONSE_INVALID"
+
+
+@pytest.mark.asyncio
+async def test_cancel_rejects_conflicting_job_identifier_aliases():
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp")
+    )
+    client.call_tool = AsyncMock(
+        return_value={"job_id": "job-1", "id": "job-other"}
+    )
+    client._poll_job = AsyncMock()
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client.cancel_job("job-1")
+
+    assert exc_info.value.code == "ARCPY_RESPONSE_INVALID"
+    client._poll_job.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {
+            "artifact": {"artifact_id": "artifact-other"},
+            "artifact_id": "artifact-1",
+        },
+        {
+            "artifact": {"artifact_id": "artifact-1"},
+            "artifact_id": "artifact-1",
+            "id": "artifact-other",
+        },
+        {
+            "artifact": {"size": 10},
+            "artifact_id": "artifact-1",
+            "size": 11,
+        },
+    ],
+)
+def test_download_metadata_rejects_conflicting_nested_evidence(payload):
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        ArcPyMcpClient._download_payload(payload, "artifact-1")
+
+    assert exc_info.value.code == "ARCPY_RESPONSE_INVALID"
+
+
+def test_download_metadata_accepts_consistent_nested_evidence():
+    digest = "a" * 64
+    payload = {
+        "artifact": {
+            "artifact_id": "artifact-1",
+            "actual_sha256": digest,
+            "actual_size": 12,
+        },
+        "id": "artifact-1",
+        "actual_sha256": digest,
+        "actual_size": 12,
+    }
+
+    metadata = ArcPyMcpClient._download_payload(payload, "artifact-1")
+
+    assert ArcPyMcpClient._download_sha256(metadata) == digest
+    assert ArcPyMcpClient._download_size(metadata) == 12
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"actual_sha256": "a" * 64, "verified_sha256": "b" * 64},
+        {"actual_sha256": "a" * 64, "verified_sha256": "invalid"},
+    ],
+)
+def test_download_hash_rejects_conflicting_or_invalid_evidence(payload):
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        ArcPyMcpClient._download_sha256(payload)
+
+    assert exc_info.value.code == "ARCPY_RESPONSE_INVALID"
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"actual_size": 12, "size": 13},
+        {"actual_size": 12, "committed_size": 12},
+        {"committed_size": 12, "expected_size": 13},
+        {"actual_size": 12, "committed_size": 12, "expected_size": 13},
+    ],
+)
+def test_download_size_rejects_conflicting_or_incomplete_evidence(payload):
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        ArcPyMcpClient._download_size(payload)
+
+    assert exc_info.value.code == "ARCPY_RESPONSE_INVALID"
+
+
 @pytest.mark.asyncio
 async def test_upload_resumes_from_strict_server_committed_offset(
     user_upload_dir,
@@ -2297,6 +2404,35 @@ def test_inspect_rejects_mismatched_server_normalized_request_binding():
         ArcPyMcpClient._artifact_relative_path(job, "artifact-1")
 
     assert exc_info.value.code == "ARCPY_RESPONSE_INVALID"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "input_path",
+    [
+        "../outside.tif",
+        r"..\outside.tif",
+        r"C:\outside.tif",
+        r"\\server\share\outside.tif",
+        "/outside.tif",
+        "bad:name.tif",
+        "CON.tif",
+        "trailing.",
+        "trailing ",
+        "control\x00.tif",
+    ],
+)
+async def test_inspect_rejects_unsafe_requested_artifact_path(input_path):
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp")
+    )
+    client.call_tool = AsyncMock()
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client._inspect_uploaded_artifact("artifact-1", input_path)
+
+    assert exc_info.value.code == "ARCPY_INPUT_INVALID"
+    client.call_tool.assert_not_awaited()
 
 
 @pytest.mark.asyncio

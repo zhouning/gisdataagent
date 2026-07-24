@@ -3727,6 +3727,42 @@ class ArcPyMcpClient:
             raise
         return self._required_identifier(submission, "job_id")
 
+    @staticmethod
+    def _validated_inspection_input_path(input_path: Any) -> str:
+        if input_path == ".":
+            return input_path
+        windows_path = (
+            PureWindowsPath(input_path)
+            if isinstance(input_path, str)
+            else None
+        )
+        reserved_stem = (
+            input_path.split(".", 1)[0].rstrip(" .")
+            if isinstance(input_path, str)
+            else ""
+        )
+        if (
+            not isinstance(input_path, str)
+            or not input_path
+            or input_path != PurePosixPath(input_path).name
+            or "\\" in input_path
+            or ":" in input_path
+            or input_path.endswith((".", " "))
+            or windows_path is None
+            or windows_path.is_absolute()
+            or bool(windows_path.drive)
+            or any(
+                ord(character) < 32 or ord(character) == 127
+                for character in input_path
+            )
+            or _WINDOWS_RESERVED_COMPONENT_RE.fullmatch(reserved_stem)
+            is not None
+        ):
+            raise ArcPyMcpError(
+                "ARCPY_INPUT_INVALID", "ArcPy input dataset is invalid"
+            )
+        return input_path
+
     async def _inspect_uploaded_artifact(
         self, artifact_id: str, input_path: str = "."
     ) -> str:
@@ -3734,17 +3770,7 @@ class ArcPyMcpClient:
             raise ArcPyMcpError(
                 "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
             )
-        if (
-            not isinstance(input_path, str)
-            or not input_path
-            or (
-                input_path != "."
-                and input_path != PurePosixPath(input_path).name
-            )
-        ):
-            raise ArcPyMcpError(
-                "ARCPY_INPUT_INVALID", "ArcPy input dataset is invalid"
-            )
+        input_path = self._validated_inspection_input_path(input_path)
         job_id = None
         terminal = False
         inspection_task = asyncio.create_task(
@@ -3777,13 +3803,10 @@ class ArcPyMcpClient:
                     raise ArcPyMcpError(
                         "ARCPY_JOB_TIMED_OUT", "ArcPy job timed out"
                     )
-                job = await self.call_tool("get_job", {"job_id": job_id})
-                response_job_id = job.get("job_id")
-                if response_job_id is not None and response_job_id != job_id:
-                    raise ArcPyMcpError(
-                        "ARCPY_RESPONSE_INVALID",
-                        "ArcPy MCP response is invalid",
-                    )
+                job = self._validate_job_response(
+                    await self.call_tool("get_job", {"job_id": job_id}),
+                    job_id,
+                )
                 status = job.get("status")
                 if status == "succeeded":
                     terminal = True
@@ -3892,9 +3915,7 @@ class ArcPyMcpClient:
             raise ArcPyMcpError(
                 "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
             )
-        response_id = job.get("job_id")
-        if response_id is None:
-            response_id = job.get("id")
+        response_id = ArcPyMcpClient._identifier_value(job, "job_id")
         if response_id is not None and response_id != job_id:
             raise ArcPyMcpError(
                 "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
@@ -4067,9 +4088,7 @@ class ArcPyMcpClient:
         except Exception:
             response = None
         if isinstance(response, dict):
-            response_id = response.get("job_id")
-            if response_id is None:
-                response_id = response.get("id")
+            response_id = self._identifier_value(response, "job_id")
             if response_id is not None and response_id != job_id:
                 raise ArcPyMcpError(
                     "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
@@ -4090,8 +4109,27 @@ class ArcPyMcpClient:
                 "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
             )
         nested = payload.get("artifact")
-        metadata = dict(nested) if isinstance(nested, dict) else {}
-        metadata.update(payload)
+        if nested is not None and not isinstance(nested, dict):
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
+        metadata = dict(nested) if nested is not None else {}
+        for source in (nested, payload):
+            if isinstance(source, dict):
+                response_id = cls._identifier_value(source, "artifact_id")
+                if response_id is not None and response_id != artifact_id:
+                    raise ArcPyMcpError(
+                        "ARCPY_RESPONSE_INVALID",
+                        "ArcPy MCP response is invalid",
+                    )
+        for key, value in payload.items():
+            if key == "artifact":
+                continue
+            if key in metadata and metadata[key] != value:
+                raise ArcPyMcpError(
+                    "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+                )
+            metadata[key] = value
         response_id = cls._identifier_value(metadata, "artifact_id")
         if response_id is not None and response_id != artifact_id:
             raise ArcPyMcpError(
@@ -4111,31 +4149,58 @@ class ArcPyMcpClient:
 
     @staticmethod
     def _download_sha256(payload: dict) -> str:
-        value = payload.get("actual_sha256", payload.get("verified_sha256"))
+        values = [
+            payload[field]
+            for field in ("actual_sha256", "verified_sha256")
+            if field in payload
+        ]
+        normalized = [
+            value.lower()
+            for value in values
+            if isinstance(value, str)
+            and re.fullmatch(r"[A-Fa-f0-9]{64}", value) is not None
+        ]
         if (
-            not isinstance(value, str)
-            or re.fullmatch(r"[A-Fa-f0-9]{64}", value) is None
+            not values
+            or len(normalized) != len(values)
+            or len(set(normalized)) != 1
         ):
             raise ArcPyMcpError(
                 "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
             )
-        return value.lower()
+        return normalized[0]
 
     @staticmethod
     def _download_size(payload: dict) -> int:
-        value = payload.get(
-            "actual_size", payload.get("actual_size_bytes", payload.get("size"))
-        )
-        if value is None:
-            committed_size = payload.get("committed_size")
-            expected_size = payload.get("expected_size")
-            if committed_size == expected_size:
-                value = committed_size
-        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        values = [
+            payload[field]
+            for field in ("actual_size", "actual_size_bytes", "size")
+            if field in payload
+        ]
+        committed_present = "committed_size" in payload
+        expected_present = "expected_size" in payload
+        if committed_present != expected_present:
             raise ArcPyMcpError(
                 "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
             )
-        return value
+        if committed_present:
+            values.extend(
+                [payload["committed_size"], payload["expected_size"]]
+            )
+        if (
+            not values
+            or any(
+                isinstance(value, bool)
+                or not isinstance(value, int)
+                or value < 0
+                for value in values
+            )
+            or len(set(values)) != 1
+        ):
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
+        return values[0]
 
     @staticmethod
     def _download_name(payload: dict, artifact_id: str) -> str:

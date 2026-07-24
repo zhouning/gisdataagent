@@ -247,6 +247,9 @@ docker compose -f docker-compose.yml -f docker-compose.arcpy-mcp.yml up -d --bui
 
 只有在作业达到 `succeeded`、结果已下载并通过 SHA-256 校验后，脚本才输出 `status: success`。stdout 仅包含脱敏 JSON 摘要。
 
+最近一次脱敏实机验收结果记录在
+`docs/reports/arcpy_mcp_live_verification_2026-07-24.md`。该报告会明确区分代码验证通过与远端服务阻断；远端作业未达到 `succeeded` 时不得将集成标记为实机 smoke 成功。
+
 ### CPU 深度学习
 
 远端当前使用 ArcGIS Pro 3.7.1 CPU 推理。目标检测、像素分类、对象分类和变化检测可能长时间运行，每次提交都必须由用户明确确认；无 UI、超时、审批异常或 HITL 关闭时会拒绝提交。模型必须是与 ArcGIS Pro 3.7.1 兼容的 DLPK 或 EMD。模型训练不开放。
