@@ -5261,17 +5261,103 @@ async def test_inspect_local_dataset_returns_summary_and_cleans_artifact():
 
     assert result["status"] == "success"
     assert result["operation"] == "inspect_dataset"
-    assert result["dataset"] == {
-        "name": "roads.shp",
-        "path": "roads/roads.shp",
-    }
+    assert result["dataset"] == {"name": "roads.shp"}
     assert "artifact_id" not in str(result)
+    assert "roads/roads.shp" not in str(result)
     assert result["arcgis_product"] == "ArcInfo"
     assert result["arcgis_version"] == "3.7.1"
     client.health_check.assert_awaited_once_with()
     client._cleanup_prepared_inputs.assert_awaited_once_with(
         [uploaded], delete_remote=True
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("remote_tool", "local_inputs"),
+    [
+        ("calculate_slope", {"input": "elevation.tif"}),
+        (
+            "zonal_statistics",
+            {"zone": "zones.tif", "value": "values.tif"},
+        ),
+    ],
+)
+async def test_spatial_dedicated_tools_check_capability_before_upload(
+    remote_tool, local_inputs
+):
+    client = _client()
+    events = []
+
+    async def health_check():
+        events.append("health")
+        return {"worker": {}}
+
+    async def get_capabilities(*, required_extension):
+        events.append(("capability", required_extension))
+        return {"worker": {}}
+
+    async def prepare_input(path):
+        events.append(("prepare", path))
+        return UploadedArtifact(
+            artifact_id=f"artifact-{Path(path).stem}",
+            artifact_path=Path(path).name,
+            source_path=Path(path),
+            local_package_path=Path(path),
+            delete_local_package=False,
+        )
+
+    client.health_check = health_check
+    client.get_capabilities = get_capabilities
+    client.prepare_input = prepare_input
+    client._submit_job_without_orphaning = AsyncMock(return_value="job-1")
+    client.wait_for_job = AsyncMock(
+        return_value={
+            "id": "job-1",
+            "status": "succeeded",
+            "result": {"output_artifact_ids": []},
+        }
+    )
+    client.download_job_results = AsyncMock(
+        return_value={"status": "success"}
+    )
+    client._cleanup_prepared_inputs = AsyncMock()
+
+    await client.run_dedicated(remote_tool, local_inputs, {})
+
+    assert events[:2] == ["health", ("capability", "Spatial")]
+    assert [event for event in events if event[0] == "prepare"] == [
+        ("prepare", path) for path in local_inputs.values()
+    ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "remote_tool", ["calculate_slope", "zonal_statistics"]
+)
+async def test_unavailable_spatial_extension_prevents_upload_and_submission(
+    remote_tool,
+):
+    client = _client()
+    client.health_check = AsyncMock(return_value={"worker": {}})
+    client.get_capabilities = AsyncMock(
+        side_effect=ArcPyMcpError(
+            "ARCPY_EXTENSION_UNAVAILABLE", "Spatial is unavailable"
+        )
+    )
+    client.prepare_input = AsyncMock()
+    client._submit_job_without_orphaning = AsyncMock()
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client.run_dedicated(remote_tool, {"input": "input.tif"}, {})
+
+    assert exc_info.value.code == "ARCPY_EXTENSION_UNAVAILABLE"
+    client.health_check.assert_awaited_once_with()
+    client.get_capabilities.assert_awaited_once_with(
+        required_extension="Spatial"
+    )
+    client.prepare_input.assert_not_awaited()
+    client._submit_job_without_orphaning.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -5312,6 +5398,109 @@ async def test_run_catalog_tool_requires_exact_schema_validated_match():
 
     assert exc_info.value.code == "ARCPY_TOOL_NOT_ALLOWED"
     assert [name for name, _ in events] == ["search_tools", "describe_tool"]
+
+
+@pytest.mark.asyncio
+async def test_catalog_required_extension_is_checked_before_upload():
+    client = _client()
+    events = []
+
+    async def health_check():
+        events.append("health")
+        return {"worker": {}}
+
+    async def call_tool(name, arguments):
+        events.append(name)
+        if name == "search_tools":
+            return {"result": [{"tool_id": "raster.slope"}]}
+        if name == "describe_tool":
+            return {
+                "tool_id": "raster.slope",
+                "required_extensions": ["Spatial"],
+                "input_schema": {
+                    "type": "object",
+                    "properties": {"output_name": {"type": "string"}},
+                    "required": ["output_name"],
+                    "additionalProperties": False,
+                },
+            }
+        raise AssertionError(name)
+
+    async def get_capabilities(*, required_extension):
+        events.append(("capability", required_extension))
+        raise ArcPyMcpError(
+            "ARCPY_EXTENSION_UNAVAILABLE", "Spatial is unavailable"
+        )
+
+    client.health_check = health_check
+    client.call_tool = call_tool
+    client.get_capabilities = get_capabilities
+    client.prepare_input = AsyncMock()
+    client._submit_job_without_orphaning = AsyncMock()
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client.run_catalog_tool(
+            "raster.slope",
+            "raster",
+            {"input": "elevation.tif"},
+            {"output_name": "slope.tif"},
+        )
+
+    assert exc_info.value.code == "ARCPY_EXTENSION_UNAVAILABLE"
+    assert events == [
+        "health",
+        "search_tools",
+        "describe_tool",
+        ("capability", "Spatial"),
+    ]
+    client.prepare_input.assert_not_awaited()
+    client._submit_job_without_orphaning.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "required_extensions",
+    [None, "Spatial", [42], [""], ["Network"]],
+)
+async def test_catalog_rejects_invalid_required_extension_metadata(
+    required_extensions,
+):
+    client = _client()
+    client.health_check = AsyncMock(return_value={"worker": {}})
+
+    async def call_tool(name, arguments):
+        if name == "search_tools":
+            return {"result": [{"tool_id": "raster.slope"}]}
+        if name == "describe_tool":
+            return {
+                "tool_id": "raster.slope",
+                "required_extensions": required_extensions,
+                "input_schema": {
+                    "type": "object",
+                    "properties": {"output_name": {"type": "string"}},
+                    "required": ["output_name"],
+                    "additionalProperties": False,
+                },
+            }
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+    client.get_capabilities = AsyncMock()
+    client.prepare_input = AsyncMock()
+    client._submit_job_without_orphaning = AsyncMock()
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client.run_catalog_tool(
+            "raster.slope",
+            "raster",
+            {"input": "elevation.tif"},
+            {"output_name": "slope.tif"},
+        )
+
+    assert exc_info.value.code == "ARCPY_RESPONSE_INVALID"
+    client.get_capabilities.assert_not_awaited()
+    client.prepare_input.assert_not_awaited()
+    client._submit_job_without_orphaning.assert_not_awaited()
 
 
 def test_select_exact_catalog_tool_rejects_fuzzy_and_duplicate_matches():

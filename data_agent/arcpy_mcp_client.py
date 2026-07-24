@@ -3077,6 +3077,28 @@ class ArcPyMcpClient:
                 "ARCPY_INVALID_ARGUMENT", "Required extension is invalid"
             ) from None
 
+    @classmethod
+    def _catalog_required_extensions(cls, description: dict) -> list[str]:
+        declared = description.get("required_extensions", [])
+        if not isinstance(declared, list):
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
+        normalized: list[str] = []
+        for item in declared:
+            try:
+                extension = cls._normalize_extension(item)
+            except ArcPyMcpError:
+                raise ArcPyMcpError(
+                    "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+                ) from None
+            if extension is None:
+                raise ArcPyMcpError(
+                    "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+                )
+            normalized.append(extension)
+        return normalized
+
     async def get_capabilities(
         self, required_extension: str | None = None
     ) -> dict:
@@ -5392,6 +5414,14 @@ class ArcPyMcpClient:
     ) -> dict:
         started = self._clock()
         health = await self.health_check()
+        required_extension = {
+            "calculate_slope": "Spatial",
+            "zonal_statistics": "Spatial",
+        }.get(remote_tool)
+        if required_extension is not None:
+            await self.get_capabilities(
+                required_extension=required_extension
+            )
         prepared_by_name: dict[str, UploadedArtifact] = {}
         try:
             for name, path in local_inputs.items():
@@ -5472,10 +5502,7 @@ class ArcPyMcpClient:
             result = {
                 "status": "success",
                 "operation": "inspect_dataset",
-                "dataset": {
-                    "name": prepared.source_path.name,
-                    "path": prepared.artifact_path,
-                },
+                "dataset": {"name": prepared.source_path.name},
             }
             return self._apply_operation_timing(
                 result, health, started, self._clock()
@@ -5598,6 +5625,7 @@ class ArcPyMcpClient:
                 "ARCPY_TOOL_NOT_ALLOWED",
                 "Requested ArcPy MCP tool is not allowed",
             )
+        required_extensions = self._catalog_required_extensions(description)
         schema = description.get("parameters")
         legacy_schema = description.get("input_schema")
         if schema is None:
@@ -5634,6 +5662,8 @@ class ArcPyMcpClient:
                     "ARCPY_TOOL_NOT_ALLOWED",
                     "Requested ArcPy MCP tool is not allowed",
                 )
+        for extension in required_extensions:
+            await self.get_capabilities(required_extension=extension)
         prepared_by_name: dict[str, UploadedArtifact] = {}
         try:
             for name, path in local_inputs.items():
