@@ -7064,6 +7064,135 @@ async def test_real_map_metadata_uses_user_relative_nested_path(
     assert (user_upload_dir / relative_path).is_file()
 
 
+@pytest.mark.asyncio
+async def test_large_map_uses_verified_flatgeobuf_delivery(
+    user_upload_dir, monkeypatch
+):
+    import data_agent.data_catalog as data_catalog
+    import data_agent.tile_server as tile_server
+
+    body = (
+        b'{"type":"FeatureCollection","features":['
+        b'{"type":"Feature","properties":{},"geometry":'
+        b'{"type":"Point","coordinates":[139.0,35.0]}},'
+        b'{"type":"Feature","properties":{},"geometry":'
+        b'{"type":"Point","coordinates":[140.0,36.0]}}]}'
+    )
+    client = _download_client(FakeSignedDownloadResponse(body), [], [])
+    client.health_check = AsyncMock(return_value={"worker": {}})
+    registrations = []
+
+    async def call_tool(name, arguments):
+        if name == "create_download":
+            return {
+                "artifact_id": "output-1",
+                "download_url": "https://signed.example/result",
+                "logical_name": "result.geojson",
+                "actual_sha256": hashlib.sha256(body).hexdigest(),
+                "actual_size": len(body),
+            }
+        if name == "delete_artifact":
+            return {"state": "deleted"}
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+    monkeypatch.setattr(
+        data_catalog,
+        "register_tool_output",
+        lambda *args, **kwargs: registrations.append((args, kwargs)),
+    )
+    monkeypatch.setattr(tile_server, "FGB_FEATURE_THRESHOLD", 1)
+    monkeypatch.setattr(tile_server, "MVT_FEATURE_THRESHOLD", 100)
+
+    result = await client.download_job_results(
+        "buffer_features",
+        {
+            "status": "succeeded",
+            "result": {"output_artifact_ids": ["output-1"]},
+        },
+        [],
+    )
+
+    layer = result["map_update"]["layers"][0]
+    assert layer["type"] == "fgb"
+    assert layer["fgb"].startswith(".arcpy-result-")
+    assert (user_upload_dir / layer["fgb"]).is_file()
+    assert any(path.endswith(".fgb") for path in result["local_outputs"])
+    assert len(registrations) == 2
+    assert all(call[0][0].startswith("/dev/fd/") for call in registrations)
+
+
+@pytest.mark.asyncio
+async def test_very_large_map_uses_verified_frame_for_mvt(
+    user_upload_dir, monkeypatch
+):
+    import data_agent.data_catalog as data_catalog
+    import data_agent.tile_server as tile_server
+
+    body = (
+        b'{"type":"FeatureCollection","features":['
+        b'{"type":"Feature","properties":{},"geometry":'
+        b'{"type":"Point","coordinates":[139.0,35.0]}},'
+        b'{"type":"Feature","properties":{},"geometry":'
+        b'{"type":"Point","coordinates":[140.0,36.0]}}]}'
+    )
+    client = _download_client(FakeSignedDownloadResponse(body), [], [])
+    client.health_check = AsyncMock(return_value={"worker": {}})
+    captured = {}
+
+    async def call_tool(name, arguments):
+        if name == "create_download":
+            return {
+                "artifact_id": "output-1",
+                "download_url": "https://signed.example/result",
+                "logical_name": "result.geojson",
+                "actual_sha256": hashlib.sha256(body).hexdigest(),
+                "actual_size": len(body),
+            }
+        if name == "delete_artifact":
+            return {"state": "deleted"}
+        raise AssertionError(name)
+
+    def create_from_frame(frame, user_id, layer_name, *, source_file):
+        captured.update(
+            count=len(frame),
+            user_id=user_id,
+            layer_name=layer_name,
+            source_file=source_file,
+        )
+        return {
+            "layer_id": "verified-layer",
+            "layer_name": layer_name,
+        }
+
+    client.call_tool = call_tool
+    monkeypatch.setattr(
+        data_catalog, "register_tool_output", lambda *args, **kwargs: None
+    )
+    monkeypatch.setattr(tile_server, "FGB_FEATURE_THRESHOLD", 0)
+    monkeypatch.setattr(tile_server, "MVT_FEATURE_THRESHOLD", 1)
+    monkeypatch.setattr(
+        tile_server, "create_tile_layer_from_frame", create_from_frame
+    )
+
+    result = await client.download_job_results(
+        "buffer_features",
+        {
+            "status": "succeeded",
+            "result": {"output_artifact_ids": ["output-1"]},
+        },
+        [],
+    )
+
+    layer = result["map_update"]["layers"][0]
+    assert layer["type"] == "mvt"
+    assert layer["layer_id"] == "verified-layer"
+    assert captured["count"] == 2
+    assert captured["source_file"] == "result.geojson"
+    assert len(result["local_outputs"]) == 1
+    assert result["local_outputs"][0].endswith("result.geojson")
+
+
 def test_server_metadata_and_posix_paths_are_fail_closed():
     client = _client()
     result = client._apply_operation_timing(

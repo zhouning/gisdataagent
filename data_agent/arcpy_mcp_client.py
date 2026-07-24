@@ -6,6 +6,7 @@ import asyncio
 import copy
 import errno
 import hashlib
+import io
 import ipaddress
 import json
 import logging
@@ -989,7 +990,9 @@ class _VerifiedDownload:
                 os.close(descriptor)
             raise
 
-    def write_geojson(self, frame, source_path: Path) -> Path:
+    def _write_generated_file(
+        self, source_path: Path, extension: str, writer
+    ) -> Path:
         source_parts = self._relative_parts(source_path)
         parent_parts = source_parts[:-1]
         if parent_parts:
@@ -1012,7 +1015,7 @@ class _VerifiedDownload:
             for _ in range(100):
                 candidate = (
                     f"{source_path.stem}-map-"
-                    f"{secrets.token_hex(8)}.geojson"
+                    f"{secrets.token_hex(8)}{extension}"
                 )
                 flags = os.O_RDWR | os.O_CREAT | os.O_EXCL
                 flags |= getattr(os, "O_CLOEXEC", 0)
@@ -1026,20 +1029,8 @@ class _VerifiedDownload:
                     continue
             if descriptor is None or candidate is None:
                 raise OSError("could not allocate map output")
-            stream = os.fdopen(os.dup(descriptor), "w", encoding="utf-8")
-            try:
-                stream.write('{"type":"FeatureCollection","features":[')
-                first = True
-                for feature in frame.iterfeatures():
-                    if not first:
-                        stream.write(",")
-                    json.dump(feature, stream, allow_nan=False)
-                    first = False
-                stream.write("]}")
-                stream.flush()
-                os.fsync(stream.fileno())
-            finally:
-                stream.close()
+            writer(descriptor)
+            os.fsync(descriptor)
             os.fchmod(descriptor, 0o600)
             read_descriptor = os.open(
                 f"/dev/fd/{descriptor}",
@@ -1084,6 +1075,41 @@ class _VerifiedDownload:
                 except OSError:
                     pass
             raise
+
+    def write_geojson(self, frame, source_path: Path) -> Path:
+        def write(descriptor: int) -> None:
+            stream = os.fdopen(
+                os.dup(descriptor), "w", encoding="utf-8"
+            )
+            try:
+                stream.write('{"type":"FeatureCollection","features":[')
+                first = True
+                for feature in frame.iterfeatures():
+                    if not first:
+                        stream.write(",")
+                    json.dump(feature, stream, allow_nan=False)
+                    first = False
+                stream.write("]}")
+                stream.flush()
+            finally:
+                stream.close()
+
+        return self._write_generated_file(source_path, ".geojson", write)
+
+    def write_flatgeobuf(self, frame, source_path: Path) -> Path:
+        buffer = io.BytesIO()
+        frame.to_file(buffer, driver="FlatGeobuf")
+        payload = buffer.getvalue()
+
+        def write(descriptor: int) -> None:
+            stream = os.fdopen(os.dup(descriptor), "wb")
+            try:
+                stream.write(payload)
+                stream.flush()
+            finally:
+                stream.close()
+
+        return self._write_generated_file(source_path, ".fgb", write)
 
     def user_relative_path(self, path: Path) -> str:
         parts = self._relative_parts(path)
@@ -4649,6 +4675,118 @@ class ArcPyMcpClient:
                 continue
             try:
                 map_frame = await asyncio.to_thread(_map_frame, frame)
+                from data_agent import tile_server
+                from data_agent.user_context import current_user_id
+
+                base_update = _map_update_from_frame(
+                    map_frame, path.with_suffix(".geojson"), path.name
+                )
+                base_layer = base_update["layers"][0]
+                feature_count = len(map_frame)
+                if feature_count > tile_server.MVT_FEATURE_THRESHOLD:
+                    try:
+                        tile_metadata = await asyncio.to_thread(
+                            tile_server.create_tile_layer_from_frame,
+                            map_frame,
+                            current_user_id.get("") or "anonymous",
+                            base_layer["name"],
+                            source_file=path.name,
+                        )
+                    except Exception:
+                        tile_metadata = None
+                    if tile_metadata is not None:
+                        map_update = {
+                            "layers": [
+                                {
+                                    "name": base_layer["name"],
+                                    "type": "mvt",
+                                    "tile_url": (
+                                        f"/api/tiles/{tile_metadata['layer_id']}"
+                                        "/{z}/{x}/{y}.pbf"
+                                    ),
+                                    "metadata_url": (
+                                        f"/api/tiles/{tile_metadata['layer_id']}"
+                                        "/metadata.json"
+                                    ),
+                                    "layer_id": tile_metadata["layer_id"],
+                                    "source_layer": (
+                                        tile_metadata.get("layer_name")
+                                        or "default"
+                                    ),
+                                    "style": {
+                                        "fillColor": "#4682B4",
+                                        "fillOpacity": 0.6,
+                                        "color": "#333333",
+                                        "weight": 1,
+                                    },
+                                    "visible": True,
+                                }
+                            ],
+                            "center": base_update["center"],
+                            "zoom": base_update["zoom"],
+                        }
+                        download.validate()
+                        continue
+                if feature_count > tile_server.FGB_FEATURE_THRESHOLD:
+                    fgb_task = asyncio.create_task(
+                        asyncio.to_thread(
+                            download.write_flatgeobuf, map_frame, path
+                        )
+                    )
+                    try:
+                        fgb_path = await asyncio.shield(fgb_task)
+                    except asyncio.CancelledError:
+                        try:
+                            await _drain_shielded_task(fgb_task)
+                        except Exception:
+                            pass
+                        raise
+                    except ArcPyMcpError:
+                        raise
+                    except Exception:
+                        fgb_path = None
+                    if fgb_path is not None:
+                        fgb_snapshot = await self._create_consumer_snapshot(
+                            download, fgb_path
+                        )
+                        try:
+                            data_catalog.register_tool_output(
+                                fgb_snapshot.path,
+                                operation,
+                                tool_params,
+                                source_paths=source_paths,
+                                storage_path=str(fgb_path),
+                                verified_metadata=_frame_metadata(
+                                    map_frame, fgb_snapshot.logical_size
+                                ),
+                            )
+                        finally:
+                            fgb_snapshot.close()
+                            download.validate()
+                        local_outputs.append(str(fgb_path))
+                        map_update = {
+                            "layers": [
+                                {
+                                    "name": base_layer["name"],
+                                    "type": "fgb",
+                                    "fgb": download.user_relative_path(
+                                        fgb_path
+                                    ),
+                                    "geom_type": base_layer["type"],
+                                    "style": {
+                                        "fillColor": "#4682B4",
+                                        "fillOpacity": 0.6,
+                                        "color": "#333333",
+                                        "weight": 1,
+                                    },
+                                    "visible": True,
+                                }
+                            ],
+                            "center": base_update["center"],
+                            "zoom": base_update["zoom"],
+                        }
+                        download.validate()
+                        continue
                 if path.suffix.lower() in {".geojson", ".json"}:
                     geojson_path = path
                 else:

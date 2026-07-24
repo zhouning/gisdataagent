@@ -45,6 +45,22 @@ def create_tile_layer(
     Returns metadata dict: {layer_id, table_name, srid, bounds, feature_count, columns}.
     """
     gdf = gpd.read_file(geojson_path)
+    return create_tile_layer_from_frame(
+        gdf,
+        user_id,
+        layer_name,
+        source_file=os.path.basename(geojson_path),
+    )
+
+
+def create_tile_layer_from_frame(
+    gdf,
+    user_id: str,
+    layer_name: str = "default",
+    *,
+    source_file: str = "verified.geojson",
+) -> dict:
+    """Import an already-verified GeoDataFrame for MVT serving."""
     if gdf.empty:
         raise ValueError("GeoJSON file is empty")
 
@@ -95,7 +111,7 @@ def create_tile_layer(
         "feature_count": len(gdf),
         "bounds": bounds,
         "columns": safe_cols,
-        "source_file": os.path.basename(geojson_path),
+        "source_file": os.path.basename(source_file),
     }
 
     with engine.connect() as conn:
