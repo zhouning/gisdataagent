@@ -250,11 +250,18 @@ class HITLApprovalPlugin(BasePlugin):
         """
         tool_name = tool.name if hasattr(tool, "name") else str(tool)
         mandatory_approval = tool_name in _MANDATORY_APPROVAL_TOOLS
-        if not HITL_ENABLED and not mandatory_approval:
-            return None
-
         risk = assess_risk(tool_name, tool_args)
+        if not HITL_ENABLED:
+            if not mandatory_approval:
+                return None
+            if risk is None:
+                return self._mandatory_block_result(tool_name)
+            return self._block_mandatory_approval(
+                tool_name, tool_args, risk, "hitl_disabled"
+            )
         if risk is None:
+            if mandatory_approval:
+                return self._mandatory_block_result(tool_name)
             return None
 
         # Below blocking threshold — log only, allow
@@ -321,6 +328,10 @@ class HITLApprovalPlugin(BasePlugin):
         self._record_audit(
             tool_name, tool_args, risk, "blocked", audit_reason
         )
+        return self._mandatory_block_result(tool_name)
+
+    @staticmethod
+    def _mandatory_block_result(tool_name: str) -> dict:
         return {
             "status": "blocked",
             "reason": "ArcPy 深度学习工具必须获得用户明确批准",
@@ -379,16 +390,33 @@ class HITLApprovalPlugin(BasePlugin):
 
 def ensure_hitl_plugin(plugins: Optional[list] = None) -> list:
     """Return a fresh plugin list containing exactly one HITL plugin."""
+    candidates = list(plugins or [])
+    hitl_plugins = [
+        plugin
+        for plugin in candidates
+        if isinstance(plugin, HITLApprovalPlugin)
+    ]
+    selected = next(
+        (
+            plugin
+            for plugin in hitl_plugins
+            if plugin._approval_fn is not None
+        ),
+        None,
+    )
+    if selected is None:
+        selected = hitl_plugins[0] if hitl_plugins else HITLApprovalPlugin()
     resolved = []
-    found_hitl = False
-    for plugin in plugins or []:
+    inserted = False
+    for plugin in candidates:
         if isinstance(plugin, HITLApprovalPlugin):
-            if found_hitl:
-                continue
-            found_hitl = True
+            if not inserted:
+                resolved.append(selected)
+                inserted = True
+            continue
         resolved.append(plugin)
-    if not found_hitl:
-        resolved.insert(0, HITLApprovalPlugin())
+    if not inserted:
+        resolved.insert(0, selected)
     return resolved
 
 

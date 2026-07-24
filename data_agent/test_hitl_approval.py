@@ -270,6 +270,10 @@ class TestHITLPlugin:
         hitl_approval.HITL_ENABLED = False
         try:
             plugin = HITLApprovalPlugin()
+            approval_function = AsyncMock(
+                return_value=SimpleNamespace(payload={"value": "APPROVE"})
+            )
+            plugin.set_approval_function(approval_function)
             result = asyncio.run(
                 self._call(
                     plugin,
@@ -283,6 +287,7 @@ class TestHITLPlugin:
         assert result is not None
         assert result["status"] == "blocked"
         assert result["tool"] == "arcpy_detect_change"
+        approval_function.assert_not_awaited()
 
     def test_arcpy_deep_learning_runs_only_after_explicit_approval(self):
         plugin = HITLApprovalPlugin()

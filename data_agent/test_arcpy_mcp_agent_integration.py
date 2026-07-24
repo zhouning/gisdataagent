@@ -127,11 +127,30 @@ async def test_headless_and_streaming_runners_install_hitl_by_default(
 def test_runner_plugin_assembly_preserves_configured_hitl_instance():
     configured = HITLApprovalPlugin()
     duplicate = HITLApprovalPlugin()
-    approval_function = AsyncMock()
+    approval_function = AsyncMock(
+        return_value=SimpleNamespace(payload={"value": "REJECT"})
+    )
     configured.set_approval_function(approval_function)
     unrelated = MagicMock()
 
-    plugins = ensure_hitl_plugin([unrelated, configured, duplicate])
+    configured_first = ensure_hitl_plugin(
+        [unrelated, configured, duplicate]
+    )
+    unconfigured_first = ensure_hitl_plugin(
+        [unrelated, duplicate, configured]
+    )
 
-    assert plugins == [unrelated, configured]
+    assert configured_first == [unrelated, configured]
+    assert unconfigured_first == [unrelated, configured]
     assert configured._approval_fn is approval_function
+
+    result = asyncio.run(
+        unconfigured_first[1].before_tool_callback(
+            tool=SimpleNamespace(name="import_to_postgis"),
+            tool_args={"table": "sensitive"},
+            tool_context=None,
+        )
+    )
+    assert result is not None
+    assert result["status"] == "blocked"
+    approval_function.assert_awaited_once()
