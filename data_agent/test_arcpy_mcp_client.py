@@ -5493,6 +5493,129 @@ async def test_catalog_tool_submits_validated_exact_tool_and_cleans_input():
     )
 
 
+@pytest.mark.asyncio
+async def test_catalog_tool_binds_legacy_nonempty_local_input():
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp")
+    )
+    client.health_check = AsyncMock(return_value={"worker": {}})
+    uploaded = UploadedArtifact(
+        artifact_id="input-1",
+        artifact_path="roads.geojson",
+        source_path=Path("roads.geojson"),
+        local_package_path=Path("roads.geojson"),
+        delete_local_package=False,
+    )
+    client.prepare_input = AsyncMock(return_value=uploaded)
+    events = []
+
+    async def call_tool(name, arguments):
+        events.append((name, arguments))
+        if name == "search_tools":
+            return {"result": [{"tool_id": "vector.erase"}]}
+        if name == "describe_tool":
+            return {
+                "tool_id": "vector.erase",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {"output_name": {"type": "string"}},
+                    "required": ["output_name"],
+                    "additionalProperties": False,
+                },
+            }
+        if name == "submit_job":
+            return {"job_id": "job-1"}
+        if name == "delete_artifact":
+            return {"state": "deleted"}
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+    client.wait_for_job = AsyncMock(
+        return_value={
+            "id": "job-1",
+            "status": "succeeded",
+            "result": {"output_artifact_ids": []},
+        }
+    )
+    client.download_job_results = AsyncMock(
+        return_value={"status": "success", "operation": "vector.erase"}
+    )
+
+    result = await client.run_catalog_tool(
+        "vector.erase",
+        "vector",
+        {"input": "roads.geojson"},
+        {"output_name": "erased.zip"},
+    )
+
+    assert result["status"] == "success"
+    assert (
+        "submit_job",
+        {
+            "tool_id": "vector.erase",
+            "parameters": {
+                "output_name": "erased.zip",
+                "input_artifact_id": "input-1",
+                "input_path": "roads.geojson",
+            },
+        },
+    ) in events
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("local_inputs", "parameters"),
+    [
+        (
+            {"input": "roads.geojson"},
+            {
+                "output_name": "erased.zip",
+                "input_artifact_id": "other-tenant-artifact",
+            },
+        ),
+        ({"input": "roads.geojson"}, {"output_name": 42}),
+        ({"": "roads.geojson"}, {"output_name": "erased.zip"}),
+        ({"input.path": "roads.geojson"}, {"output_name": "erased.zip"}),
+    ],
+)
+async def test_legacy_catalog_rejects_remote_fields_and_unsafe_prefixes(
+    local_inputs, parameters
+):
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp")
+    )
+    client.health_check = AsyncMock(return_value={"worker": {}})
+    client.prepare_input = AsyncMock()
+
+    async def call_tool(name, arguments):
+        if name == "search_tools":
+            return {"result": [{"tool_id": "vector.erase"}]}
+        if name == "describe_tool":
+            return {
+                "tool_id": "vector.erase",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {"output_name": {"type": "string"}},
+                    "required": ["output_name"],
+                    "additionalProperties": False,
+                },
+            }
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client.run_catalog_tool(
+            "vector.erase",
+            "vector",
+            local_inputs,
+            parameters,
+        )
+
+    assert exc_info.value.code == "ARCPY_TOOL_NOT_ALLOWED"
+    client.prepare_input.assert_not_awaited()
+
+
 def test_catalog_tool_selection_forbids_training_even_if_server_returns_it():
     client = ArcPyMcpClient(
         McpServerConfig(name="arcpy", url="https://service.example/mcp")

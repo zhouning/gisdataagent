@@ -4879,26 +4879,49 @@ class ArcPyMcpClient:
             raise ArcPyMcpError(
                 "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
             )
-        bindings = self._catalog_input_bindings(description)
+        legacy_contract = (
+            "inputs" not in description and "parameters" not in description
+        )
         self._reject_catalog_remote_inputs(parameters)
-        if not isinstance(local_inputs, dict) or any(
-            not isinstance(prefix, str) or prefix not in bindings
-            for prefix in local_inputs
-        ):
+        if not isinstance(local_inputs, dict):
             raise ArcPyMcpError(
                 "ARCPY_TOOL_NOT_ALLOWED",
                 "Requested ArcPy MCP tool is not allowed",
             )
+        bindings: dict[str, tuple[str, str]] = {}
+        if legacy_contract:
+            if any(
+                not isinstance(prefix, str)
+                or _SAFE_DETAIL_KEY_RE.fullmatch(prefix) is None
+                for prefix in local_inputs
+            ):
+                raise ArcPyMcpError(
+                    "ARCPY_TOOL_NOT_ALLOWED",
+                    "Requested ArcPy MCP tool is not allowed",
+                )
+            self._validate_catalog_parameters(parameters, schema)
+        else:
+            bindings = self._catalog_input_bindings(description)
+            if any(prefix not in bindings for prefix in local_inputs):
+                raise ArcPyMcpError(
+                    "ARCPY_TOOL_NOT_ALLOWED",
+                    "Requested ArcPy MCP tool is not allowed",
+                )
         prepared_by_name: dict[str, UploadedArtifact] = {}
         try:
             for name, path in local_inputs.items():
                 prepared_by_name[name] = await self.prepare_input(path)
-            arguments = dict(parameters)
-            for prefix, artifact in prepared_by_name.items():
-                artifact_field, path_field = bindings[prefix]
-                arguments[artifact_field] = artifact.artifact_id
-                arguments[path_field] = artifact.artifact_path
-            self._validate_catalog_parameters(arguments, schema)
+            if legacy_contract:
+                arguments = self._bind_prepared_inputs(
+                    parameters, prepared_by_name
+                )
+            else:
+                arguments = dict(parameters)
+                for prefix, artifact in prepared_by_name.items():
+                    artifact_field, path_field = bindings[prefix]
+                    arguments[artifact_field] = artifact.artifact_id
+                    arguments[path_field] = artifact.artifact_path
+                self._validate_catalog_parameters(arguments, schema)
             job_id = await self._submit_job_without_orphaning(
                 "submit_job",
                 {"tool_id": tool_id, "parameters": arguments},
