@@ -3140,8 +3140,22 @@ class ArcPyMcpClient:
         return copy.deepcopy(result)
 
     @staticmethod
-    def _required_identifier(payload: dict, field: str) -> str:
+    def _identifier_value(payload: Any, field: str) -> Any:
+        if not isinstance(payload, dict):
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
         value = payload.get(field)
+        alias = payload.get("id")
+        if value is not None and alias is not None and value != alias:
+            raise ArcPyMcpError(
+                "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
+        return value if value is not None else alias
+
+    @classmethod
+    def _required_identifier(cls, payload: dict, field: str) -> str:
+        value = cls._identifier_value(payload, field)
         if not isinstance(value, str) or not value.strip():
             raise ArcPyMcpError(
                 "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
@@ -3201,11 +3215,13 @@ class ArcPyMcpClient:
             value = payload.get("signed_url")
         return cls._validate_signed_url(value)
 
-    @staticmethod
+    @classmethod
     def _validate_optional_artifact_id(
-        payload: dict, artifact_id: str
+        cls, payload: dict, artifact_id: str
     ) -> None:
-        response_artifact_id = payload.get("artifact_id")
+        response_artifact_id = cls._identifier_value(
+            payload, "artifact_id"
+        )
         if (
             response_artifact_id is not None
             and response_artifact_id != artifact_id
@@ -3309,11 +3325,13 @@ class ArcPyMcpClient:
                 unregister_runtime_secrets(registered_secrets)
             _end_signed_transfer()
 
-    @staticmethod
+    @classmethod
     def _committed_offset(
-        status: dict, artifact_id: str, expected_size: int
+        cls, status: dict, artifact_id: str, expected_size: int
     ) -> int:
-        response_artifact_id = status.get("artifact_id")
+        response_artifact_id = cls._identifier_value(
+            status, "artifact_id"
+        )
         if (
             response_artifact_id is not None
             and response_artifact_id != artifact_id
@@ -3333,15 +3351,17 @@ class ArcPyMcpClient:
             )
         return committed_size
 
-    @staticmethod
+    @classmethod
     def _verify_completed_upload(
+        cls,
         completion: dict,
         artifact_id: str,
         prepared: PreparedLocalUpload,
     ) -> None:
         valid = (
             completion.get("state") == "ready"
-            and completion.get("artifact_id") == artifact_id
+            and cls._identifier_value(completion, "artifact_id")
+            == artifact_id
         )
 
         hash_values = [
@@ -3359,6 +3379,11 @@ class ArcPyMcpClient:
             for field in ("size", "actual_size", "actual_size_bytes")
             if field in completion
         ]
+        if not size_values:
+            committed_size = completion.get("committed_size")
+            expected_size = completion.get("expected_size")
+            if committed_size == expected_size and committed_size is not None:
+                size_values = [committed_size, expected_size]
         valid = valid and bool(size_values) and all(
             isinstance(value, int)
             and not isinstance(value, bool)
@@ -3513,6 +3538,17 @@ class ArcPyMcpClient:
                 )
             bound_to_artifact = bound_to_artifact or owner == artifact_id
             value = result.get("artifact_path")
+
+        request = job.get("request")
+        if isinstance(request, dict):
+            request_owner = request.get("input_artifact_id")
+            if request_owner is not None and request_owner != artifact_id:
+                raise ArcPyMcpError(
+                    "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+                )
+            if not bound_to_artifact and request_owner == artifact_id:
+                bound_to_artifact = True
+                value = request.get("input_path")
 
         if (
             not bound_to_artifact
@@ -3691,10 +3727,23 @@ class ArcPyMcpClient:
             raise
         return self._required_identifier(submission, "job_id")
 
-    async def _inspect_uploaded_artifact(self, artifact_id: str) -> str:
+    async def _inspect_uploaded_artifact(
+        self, artifact_id: str, input_path: str = "."
+    ) -> str:
         if not isinstance(artifact_id, str) or not artifact_id.strip():
             raise ArcPyMcpError(
                 "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
+            )
+        if (
+            not isinstance(input_path, str)
+            or not input_path
+            or (
+                input_path != "."
+                and input_path != PurePosixPath(input_path).name
+            )
+        ):
+            raise ArcPyMcpError(
+                "ARCPY_INPUT_INVALID", "ArcPy input dataset is invalid"
             )
         job_id = None
         terminal = False
@@ -3703,7 +3752,7 @@ class ArcPyMcpClient:
                 "inspect_dataset",
                 {
                     "input_artifact_id": artifact_id,
-                    "input_path": ".",
+                    "input_path": input_path,
                 },
             )
         )
@@ -3811,7 +3860,9 @@ class ArcPyMcpClient:
             artifact_id = await self._upload_prepared(
                 prepared, retain_cleanup_lease=True
             )
-            artifact_path = await self._inspect_uploaded_artifact(artifact_id)
+            artifact_path = await self._inspect_uploaded_artifact(
+                artifact_id, prepared.source_path.name
+            )
             return UploadedArtifact(
                 artifact_id=artifact_id,
                 artifact_path=artifact_path,
@@ -4032,8 +4083,8 @@ class ArcPyMcpClient:
         deadline = self._clock() + self.job_timeout
         return await self._cancel_job_with_deadline(job_id, deadline)
 
-    @staticmethod
-    def _download_payload(payload: Any, artifact_id: str) -> dict:
+    @classmethod
+    def _download_payload(cls, payload: Any, artifact_id: str) -> dict:
         if not isinstance(payload, dict):
             raise ArcPyMcpError(
                 "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
@@ -4041,7 +4092,7 @@ class ArcPyMcpClient:
         nested = payload.get("artifact")
         metadata = dict(nested) if isinstance(nested, dict) else {}
         metadata.update(payload)
-        response_id = metadata.get("artifact_id")
+        response_id = cls._identifier_value(metadata, "artifact_id")
         if response_id is not None and response_id != artifact_id:
             raise ArcPyMcpError(
                 "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"
@@ -4075,6 +4126,11 @@ class ArcPyMcpClient:
         value = payload.get(
             "actual_size", payload.get("actual_size_bytes", payload.get("size"))
         )
+        if value is None:
+            committed_size = payload.get("committed_size")
+            expected_size = payload.get("expected_size")
+            if committed_size == expected_size:
+                value = committed_size
         if isinstance(value, bool) or not isinstance(value, int) or value < 0:
             raise ArcPyMcpError(
                 "ARCPY_RESPONSE_INVALID", "ArcPy MCP response is invalid"

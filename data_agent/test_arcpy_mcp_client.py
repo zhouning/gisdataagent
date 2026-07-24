@@ -1112,6 +1112,60 @@ async def test_upload_uses_exact_metadata_offset_zero_and_no_authorization(
 
 
 @pytest.mark.asyncio
+async def test_upload_accepts_live_server_artifact_id_and_size_aliases(
+    user_upload_dir,
+):
+    prepared = _prepared_regular(user_upload_dir)
+    factory_calls = []
+    http_calls = []
+    client = _upload_client(
+        [FakeUploadResponse()], factory_calls, http_calls
+    )
+
+    async def call_tool(name, arguments):
+        if name == "create_upload":
+            return {
+                "id": "artifact-1",
+                "upload_url": "https://signed.example/upload-one",
+            }
+        if name == "complete_upload":
+            return {
+                "id": "artifact-1",
+                "state": "ready",
+                "actual_sha256": prepared.sha256,
+                "committed_size": prepared.size,
+                "expected_size": prepared.size,
+            }
+        raise AssertionError(name)
+
+    client.call_tool = call_tool
+
+    assert await client._upload_prepared(prepared) == "artifact-1"
+
+
+def test_identifier_alias_rejects_conflicting_canonical_value():
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        ArcPyMcpClient._required_identifier(
+            {"artifact_id": "artifact-1", "id": "artifact-2"},
+            "artifact_id",
+        )
+
+    assert exc_info.value.code == "ARCPY_RESPONSE_INVALID"
+
+
+def test_download_metadata_accepts_matching_live_server_aliases():
+    payload = {
+        "id": "artifact-1",
+        "expected_size": 12,
+        "committed_size": 12,
+    }
+
+    metadata = ArcPyMcpClient._download_payload(payload, "artifact-1")
+
+    assert ArcPyMcpClient._download_size(metadata) == 12
+
+
+@pytest.mark.asyncio
 async def test_upload_resumes_from_strict_server_committed_offset(
     user_upload_dir,
 ):
@@ -1865,6 +1919,19 @@ async def test_upload_network_failures_are_bounded_and_cleanup_artifact(
             "size": 5,
             "actual_size": 999,
         },
+        {
+            "state": "ready",
+            "artifact_id": "artifact-1",
+            "verified_sha256": "local",
+            "expected_size": 5,
+        },
+        {
+            "state": "ready",
+            "artifact_id": "artifact-1",
+            "verified_sha256": "local",
+            "committed_size": 5,
+            "expected_size": 999,
+        },
     ],
 )
 async def test_upload_rejects_unverified_completion_and_cleans_artifact(
@@ -2146,14 +2213,16 @@ async def test_inspect_polls_until_succeeded_and_returns_dataset_path():
 
     client.call_tool = call_tool
 
-    path = await client._inspect_uploaded_artifact("artifact-1")
+    path = await client._inspect_uploaded_artifact(
+        "artifact-1", "roads.shp"
+    )
 
     assert path == "roads.shp"
     assert calls[0] == (
         "inspect_dataset",
         {
             "input_artifact_id": "artifact-1",
-            "input_path": ".",
+            "input_path": "roads.shp",
         },
     )
     assert sleep.delays == [2, 5, 10]
@@ -2183,6 +2252,51 @@ async def test_inspect_supports_result_artifact_path_contract():
         await client._inspect_uploaded_artifact("artifact-1")
         == "parcels.gdb"
     )
+
+
+@pytest.mark.asyncio
+async def test_inspect_supports_server_normalized_request_path_contract():
+    clock = FakeClock()
+    sleep = AdvancingSleep(clock)
+    client = ArcPyMcpClient(
+        McpServerConfig(name="arcpy", url="https://service.example/mcp"),
+        clock=clock,
+        sleep=sleep,
+    )
+    client.call_tool = AsyncMock(
+        side_effect=[
+            {"job_id": "job-1"},
+            {
+                "status": "succeeded",
+                "request": {
+                    "input_artifact_id": "artifact-1",
+                    "input_path": "roads/roads.shp",
+                },
+                "result": {"name": "roads", "count": 2},
+            },
+        ]
+    )
+
+    assert (
+        await client._inspect_uploaded_artifact("artifact-1")
+        == "roads/roads.shp"
+    )
+
+
+def test_inspect_rejects_mismatched_server_normalized_request_binding():
+    job = {
+        "status": "succeeded",
+        "request": {
+            "input_artifact_id": "artifact-2",
+            "input_path": "roads.shp",
+        },
+        "result": {"name": "roads", "count": 2},
+    }
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        ArcPyMcpClient._artifact_relative_path(job, "artifact-1")
+
+    assert exc_info.value.code == "ARCPY_RESPONSE_INVALID"
 
 
 @pytest.mark.asyncio
@@ -3141,8 +3255,8 @@ async def test_prepare_input_returns_uploaded_artifact_in_required_order(
         assert prepared.upload_path.exists()
         return "artifact-1"
 
-    async def inspect(artifact_id):
-        events.append(("inspect", artifact_id))
+    async def inspect(artifact_id, input_path):
+        events.append(("inspect", artifact_id, input_path))
         return "roads.shp"
 
     client._upload_prepared = upload
@@ -3157,7 +3271,10 @@ async def test_prepare_input_returns_uploaded_artifact_in_required_order(
         local_package_path=uploaded.local_package_path,
         delete_local_package=True,
     )
-    assert events == [("upload", "roads.zip"), ("inspect", "artifact-1")]
+    assert events == [
+        ("upload", "roads.zip"),
+        ("inspect", "artifact-1", "roads.shp"),
+    ]
     assert uploaded.local_package_path.parent.parent == user_upload_dir
     assert uploaded.local_package_path.parent.name.startswith(
         ".arcpy-package-"
@@ -3185,6 +3302,9 @@ async def test_prepare_input_regular_file_is_not_marked_for_local_cleanup(
     assert uploaded.local_package_path == source.resolve()
     assert uploaded.delete_local_package is False
     assert source.exists()
+    client._inspect_uploaded_artifact.assert_awaited_once_with(
+        "artifact-1", "roads.tif"
+    )
 
 
 @pytest.mark.asyncio
