@@ -46,6 +46,13 @@ class TestToolsetCounts(unittest.TestCase):
         self.assertIn("get_population_data", names)
         self.assertEqual(len(tools), 8)
 
+    def test_arcpy_mcp_toolset(self):
+        from data_agent.toolsets import ArcPyMcpToolset
+
+        tools = self._run(ArcPyMcpToolset().get_tools())
+        self.assertEqual(len(tools), 20)
+        self.assertIn("arcpy_service_status", {tool.name for tool in tools})
+
     def test_analysis_toolset(self):
         from data_agent.toolsets.analysis_tools import AnalysisToolset
         ts = AnalysisToolset()

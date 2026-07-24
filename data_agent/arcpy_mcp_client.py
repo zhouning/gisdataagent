@@ -5206,6 +5206,23 @@ class ArcPyMcpClient:
             arguments[f"{prefix}_path"] = artifact.artifact_path
         return arguments
 
+    @classmethod
+    def _bind_dedicated_inputs(
+        cls,
+        remote_tool: str,
+        parameters: dict,
+        prepared: dict[str, UploadedArtifact],
+    ) -> dict:
+        arguments = cls._bind_prepared_inputs(parameters, prepared)
+        if remote_tool == "export_map_layout":
+            if set(prepared) != {"input"} or "input_path" not in arguments:
+                raise ArcPyMcpError(
+                    "ARCPY_INVALID_ARGUMENT",
+                    "ArcPy export input is invalid",
+                )
+            arguments["aprx_path"] = arguments.pop("input_path")
+        return arguments
+
     @staticmethod
     def _catalog_input_bindings(
         description: dict,
@@ -5379,8 +5396,8 @@ class ArcPyMcpClient:
         try:
             for name, path in local_inputs.items():
                 prepared_by_name[name] = await self.prepare_input(path)
-            arguments = self._bind_prepared_inputs(
-                parameters, prepared_by_name
+            arguments = self._bind_dedicated_inputs(
+                remote_tool, parameters, prepared_by_name
             )
             job_id = await self._submit_job_without_orphaning(
                 remote_tool, arguments
@@ -5445,6 +5462,29 @@ class ArcPyMcpClient:
             parameters=parameters,
             deep_learning=False,
         )
+
+    async def inspect_local_dataset(self, input_path: str) -> dict:
+        started = self._clock()
+        health = await self.health_check()
+        prepared = None
+        try:
+            prepared = await self.prepare_input(input_path)
+            result = {
+                "status": "success",
+                "operation": "inspect_dataset",
+                "dataset": {
+                    "name": prepared.source_path.name,
+                    "path": prepared.artifact_path,
+                },
+            }
+            return self._apply_operation_timing(
+                result, health, started, self._clock()
+            )
+        finally:
+            if prepared is not None:
+                await self._cleanup_prepared_inputs(
+                    [prepared], delete_remote=True
+                )
 
     async def run_multi_input(
         self,

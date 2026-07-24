@@ -5183,6 +5183,98 @@ async def test_run_dedicated_binds_inputs_waits_downloads_and_cleans_up():
 
 
 @pytest.mark.asyncio
+async def test_export_map_layout_uses_input_artifact_id_and_aprx_path():
+    client = _client()
+    client.health_check = AsyncMock(return_value={"worker": {}})
+    uploaded = UploadedArtifact(
+        artifact_id="project-1",
+        artifact_path="project.aprx",
+        source_path=Path("project.aprx"),
+        local_package_path=Path("project.aprx"),
+        delete_local_package=False,
+    )
+    client.prepare_input = AsyncMock(return_value=uploaded)
+    captured = {}
+
+    async def submit(tool_name, arguments):
+        captured.update(tool_name=tool_name, arguments=arguments)
+        return "job-1"
+
+    client._submit_job_without_orphaning = submit
+    client.wait_for_job = AsyncMock(
+        return_value={
+            "status": "succeeded",
+            "result": {"output_artifact_ids": []},
+        }
+    )
+    client.download_job_results = AsyncMock(
+        return_value={"status": "success"}
+    )
+    client._cleanup_prepared_inputs = AsyncMock()
+
+    await client.run_dedicated(
+        "export_map_layout",
+        {"input": "project.aprx"},
+        {
+            "layout_name": "Main",
+            "format": "PDF",
+            "output_name": "map.pdf",
+            "dpi": 200,
+        },
+    )
+
+    assert captured == {
+        "tool_name": "export_map_layout",
+        "arguments": {
+            "input_artifact_id": "project-1",
+            "aprx_path": "project.aprx",
+            "layout_name": "Main",
+            "format": "PDF",
+            "output_name": "map.pdf",
+            "dpi": 200,
+        },
+    }
+
+
+@pytest.mark.asyncio
+async def test_inspect_local_dataset_returns_summary_and_cleans_artifact():
+    client = _client()
+    client.health_check = AsyncMock(
+        return_value={
+            "worker": {
+                "product": "ArcInfo",
+                "install": {"Version": "3.7.1"},
+            }
+        }
+    )
+    uploaded = UploadedArtifact(
+        artifact_id="input-1",
+        artifact_path="roads/roads.shp",
+        source_path=Path("/uploads/roads.shp"),
+        local_package_path=Path("/uploads/roads.zip"),
+        delete_local_package=True,
+    )
+    client.prepare_input = AsyncMock(return_value=uploaded)
+    client._cleanup_prepared_inputs = AsyncMock()
+
+    result = await client.inspect_local_dataset("roads.shp")
+
+    assert result["status"] == "success"
+    assert result["operation"] == "inspect_dataset"
+    assert result["dataset"] == {
+        "name": "roads.shp",
+        "path": "roads/roads.shp",
+    }
+    assert "artifact_id" not in str(result)
+    assert result["arcgis_product"] == "ArcInfo"
+    assert result["arcgis_version"] == "3.7.1"
+    client.health_check.assert_awaited_once_with()
+    client._cleanup_prepared_inputs.assert_awaited_once_with(
+        [uploaded], delete_remote=True
+    )
+
+
+@pytest.mark.asyncio
 async def test_run_catalog_tool_requires_exact_schema_validated_match():
     client = ArcPyMcpClient(
         McpServerConfig(name="arcpy", url="https://service.example/mcp")

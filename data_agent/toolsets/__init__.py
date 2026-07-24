@@ -13,6 +13,7 @@ _EXPORTS = {
     "AdminToolset": ".admin_tools",
     "AdvancedAnalysisToolset": ".advanced_analysis_tools",
     "AnalysisToolset": ".analysis_tools",
+    "ArcPyMcpToolset": ".arcpy_mcp_toolset",
     "CausalInferenceToolset": ".causal_inference_tools",
     "CausalWorldModelToolset": ".causal_world_model_tools",
     "ChartToolset": ".chart_tools",
