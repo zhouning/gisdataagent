@@ -104,15 +104,22 @@ flowchart LR
 
 ## 5. 候选事件现状
 
-当前注册表只有两个“线索”，二者均未准入：
+当前注册表有四个“线索”，四者均未准入：
 
 | 候选 | 计划角色 | 已确认信息 | 主要卡点 | 当前结论 |
 | --- | --- | --- | --- | --- |
 | NYC 2012 计价调整 | 隐藏测试 | 官方政策 PDF 已哈希绑定；未打开、未下载行动后行程记录 | 没有独立答案保管回执；64 周完整源覆盖未核验；历史空间单元重建、实施比例和并发行动污染未关闭 | 只能继续做元数据和证据筛查 |
 | Chicago 2026 计价调整 | 开发 | 官方 Socrata 结果源存在；有 77 个社区区候选空间单元 | 12 周行动后窗口到 2026-09-22 才结束；正式行动文件、六维映射、完整下载器和图检查未完成 | 只能作为开发候选，不能再作为隐藏测试 |
+| San Diego 2026 区域公交票价调整 | 隐藏测试 | 官方文件确认 2026-10-01 生效；区域成人单程票从 2.50 美元调至 3.00 美元；COASTER 从分区票价改为 6.50 美元统一票价，具有空间异质暴露潜力 | 公开结果只有按方式月度统计或按线路年度统计，未找到每周、至少 50 个稳定空间单元的结果源；12 周答案到 2026-12-23 才完整 | 前瞻候选，证据已封存但未准入 |
+| Whatcom WTA 2026 票价调整 | 隐藏测试 | 官方页面确认 2026-09-01 生效；固定线路成人票从 1 美元调至 2 美元，优惠票从 0.50 美元调至 1 美元 | 只找到年度线路客流报告，没有合格的每周空间结果源；12 周答案到 2026-11-23 才完整 | 前瞻候选，证据已封存但未准入 |
 
 Chicago 不能作为隐藏测试，不是因为数据公开，而是因为开发侧已经探查过当前结果表的一条记录。NYC
 2012 目前没有打开结果行，但缺少独立保管，所以也不能只凭“尚未下载”就宣称是盲测。
+
+San Diego 和 WTA 的价值在于它们都在 V6 协议冻结之后才生效，因此具备真正前瞻测试的时间条件；卡点
+不是“等数据下载”，而是公开结果产品的空间和时间粒度不够。当前只归档了官方政策文件和结果目录页面，
+没有下载或打开任何行动后结果行。San Diego 是四条线索中优先级最高的隐藏候选，因为 COASTER 分区
+票价改统一票价可以检验“错空间范围”对照；但在获得合格的每周空间结果合同之前，它仍然不是正式事件。
 
 每个候选必须同时通过 13 项准入检查，包括官方行动权威、数值行动映射、官方结果源、可复现下载、
 52+12 周覆盖、至少 50 个稳定空间单元、完整周网格、行动前构图、并发行动处理以及隐藏回执。规则是
@@ -220,6 +227,8 @@ Benchmark 是否“完成”与模型是否“获胜”分开：只要数据准�
 | `benchmarks/gwm_bench_foundation_v6_0_draft/suite_protocol.json` | V6 问题、数据下限、Runtime-R5、评分门和主张边界 |
 | `benchmarks/gwm_bench_foundation_v6_0_draft/candidate_admission_contract.json` | 候选必须全部通过的准入规则 |
 | `benchmarks/gwm_bench_foundation_v6_0_draft/candidate_registry.json` | 当前候选、证据、访问状态和卡点 |
+| `benchmarks/gwm_bench_foundation_v6_0_draft/prospective_candidate_screening_2026-07-24.json` | 两个前瞻候选的元数据筛选结论和证据哈希 |
+| `benchmarks/gwm_bench_foundation_v6_0_draft/candidate_evidence/prospective_2026_07_24/` | 官方政策与结果目录页面；不含任何行动后结果行 |
 | `benchmarks/gwm_bench_foundation_v6_0_draft/validate_v6_definition.py` | 离线定义与激活状态校验器 |
 | `benchmarks/gwm_bench_foundation_v6_0_draft/definition_validation_report.json` | 机器生成的当前验证结论 |
 
@@ -229,7 +238,7 @@ Benchmark 是否“完成”与模型是否“获胜”分开：只要数据准�
 .venv/bin/python benchmarks/gwm_bench_foundation_v6_0_draft/validate_v6_definition.py
 ```
 
-在候选数量仍为 0+0 时，正确输出必须是：
+在正式准入数量仍为“新增开发 0 + 隐藏测试 0”时，正确输出必须是：
 
 ```text
 PASS_V6_DEFINITION_VALIDATED_NOT_ACTIVATED

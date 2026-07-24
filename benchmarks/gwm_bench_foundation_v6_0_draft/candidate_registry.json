@@ -7,6 +7,10 @@
     {
       "path": "docs/research/uwm_regimeworld_v5_candidate_support_audit_2026-07-19.json",
       "sha256": "01af628230cad644aa22c0d610f27039ffacbb7f74a532c905b313f24becbe10"
+    },
+    {
+      "path": "benchmarks/gwm_bench_foundation_v6_0_draft/prospective_candidate_screening_2026-07-24.json",
+      "sha256": "68d9331217d3762cde4784739ddf98cb978a9bdcab74d11a94e87a561afaecff"
     }
   ],
   "candidates": [
@@ -110,6 +114,120 @@
         "Full pre-window coverage, graph feasibility, downloader and reuse terms are not verified.",
         "This candidate is development-only because current outcome access already occurred."
       ]
+    },
+    {
+      "candidate_id": "san_diego_2026_regional_transit_fare_bundle",
+      "requested_role": "hidden_test",
+      "status": "screened_not_admitted",
+      "jurisdiction": "San Diego County",
+      "effective_date": "2026-10-01",
+      "action_summary": "Regional transit fares increase while COASTER changes from zone pricing to a flat adult fare, creating potentially heterogeneous geographic exposure.",
+      "spatially_heterogeneous_action": true,
+      "spatial_unit": "Stable transit route, stop catchment or origin-destination unit not yet verified",
+      "spatial_unit_count": 0,
+      "pre_window": ["2025-10-02", "2026-09-30"],
+      "post_window": ["2026-10-01", "2026-12-23"],
+      "official_action_evidence": [
+        {
+          "path": "benchmarks/gwm_bench_foundation_v6_0_draft/candidate_evidence/prospective_2026_07_24/san_diego/sandag_transit_fare_structure_2026-07-24.html",
+          "sha256": "471ec635f90afa21ad2b127fdc986442b1e238da3d53bce5027c524b9eb94c18"
+        },
+        {
+          "path": "benchmarks/gwm_bench_foundation_v6_0_draft/candidate_evidence/prospective_2026_07_24/san_diego/fare_change_public_notice_2026-06-09.pdf",
+          "sha256": "7e23b72bd55820a0519d8849a661e8fbd4cf015103b0997f0b9a5180dacfcfc0"
+        },
+        {
+          "path": "benchmarks/gwm_bench_foundation_v6_0_draft/candidate_evidence/prospective_2026_07_24/san_diego/comprehensive_fare_ordinance_proposed_amendments.pdf",
+          "sha256": "165de79e5874b47e93e67faddf8b8b11f26f5a92d1cc8dbf12748eed51e754d9"
+        }
+      ],
+      "official_outcome_source": {
+        "publisher": "San Diego Metropolitan Transit System",
+        "dataset": "Monthly ridership and annual route statistics catalogs",
+        "screening_access": "official catalog pages only; no outcome rows opened",
+        "qualifying_weekly_spatial_source_verified": false
+      },
+      "outcome_access": {
+        "post_action_trip_rows_opened": false,
+        "outcome_rows_downloaded": false,
+        "hidden_newness_mode": "prospective_action_effective_after_protocol_freeze"
+      },
+      "admission_checks": {
+        "not_a_v5_event": true,
+        "official_action_authority_verified": true,
+        "numeric_action_mapping_frozen": false,
+        "official_outcome_source_verified": false,
+        "redistribution_or_reproducible_downloader_verified": false,
+        "fifty_two_pre_weeks_available": false,
+        "twelve_post_weeks_available": false,
+        "stable_spatial_units_at_least_fifty": false,
+        "complete_zone_week_grid_feasible": false,
+        "pre_action_graph_feasible": false,
+        "concurrent_action_contamination_resolved": false,
+        "hidden_newness_receipt_valid_if_hidden": true,
+        "post_action_target_rows_unopened_if_hidden": true
+      },
+      "blockers": [
+        "No qualifying weekly route, stop or origin-destination outcome source with at least 50 stable spatial units has been verified.",
+        "The fixed 12-week post-action window will not complete until 2026-12-23.",
+        "The six-dimensional action mapping requires a frozen pre-action rider-product and origin-destination mix.",
+        "Complete pre-window coverage, graph feasibility, source reuse terms and concurrent-action contamination remain unresolved."
+      ]
+    },
+    {
+      "candidate_id": "whatcom_wta_2026_fare_bundle",
+      "requested_role": "hidden_test",
+      "status": "screened_not_admitted",
+      "jurisdiction": "Whatcom County",
+      "effective_date": "2026-09-01",
+      "action_summary": "Fixed-route adult and reduced cash fares increase alongside fare caps, paratransit pricing and rider exemptions.",
+      "spatially_heterogeneous_action": false,
+      "spatial_unit": "Stable transit route, stop catchment or origin-destination unit not yet verified",
+      "spatial_unit_count": 0,
+      "pre_window": ["2025-09-02", "2026-08-31"],
+      "post_window": ["2026-09-01", "2026-11-23"],
+      "official_action_evidence": [
+        {
+          "path": "benchmarks/gwm_bench_foundation_v6_0_draft/candidate_evidence/prospective_2026_07_24/whatcom_wta/wta_2026_fare_changes_2026-07-24.html",
+          "sha256": "2a331e5fda5a844becdca3f7824df0e66da8b669bd7d491c5d70007dec029eb9"
+        },
+        {
+          "path": "benchmarks/gwm_bench_foundation_v6_0_draft/candidate_evidence/prospective_2026_07_24/whatcom_wta/wta_webalerts_2026-07-24.html",
+          "sha256": "d62e37328437316538e00feb2f769bc3d745af4daf2d3d7672f8edc157435db7"
+        }
+      ],
+      "official_outcome_source": {
+        "publisher": "Whatcom Transportation Authority",
+        "dataset": "Annual route ridership reports",
+        "screening_access": "official catalog page only; no outcome rows opened",
+        "qualifying_weekly_spatial_source_verified": false
+      },
+      "outcome_access": {
+        "post_action_trip_rows_opened": false,
+        "outcome_rows_downloaded": false,
+        "hidden_newness_mode": "prospective_action_effective_after_protocol_freeze"
+      },
+      "admission_checks": {
+        "not_a_v5_event": true,
+        "official_action_authority_verified": true,
+        "numeric_action_mapping_frozen": false,
+        "official_outcome_source_verified": false,
+        "redistribution_or_reproducible_downloader_verified": false,
+        "fifty_two_pre_weeks_available": false,
+        "twelve_post_weeks_available": false,
+        "stable_spatial_units_at_least_fifty": false,
+        "complete_zone_week_grid_feasible": false,
+        "pre_action_graph_feasible": false,
+        "concurrent_action_contamination_resolved": false,
+        "hidden_newness_receipt_valid_if_hidden": true,
+        "post_action_target_rows_unopened_if_hidden": true
+      },
+      "blockers": [
+        "Only annual route ridership reports were identified; no qualifying weekly spatial outcome source with at least 50 stable units has been verified.",
+        "The fixed 12-week post-action window will not complete until 2026-11-23.",
+        "The six-dimensional action mapping requires a frozen pre-action rider-product mix.",
+        "Complete pre-window coverage, graph feasibility, source reuse terms and concurrent-action contamination remain unresolved."
+      ]
     }
   ],
   "admitted_development_event_ids": [],
@@ -122,5 +240,5 @@
     "hidden_events_with_heterogeneous_spatial_exposure": 0,
     "ready": false
   },
-  "next_permitted_action": "Close candidate admission evidence. Do not download NYC 2012 outcome rows or train V6."
+  "next_permitted_action": "Seek qualifying weekly spatial outcome contracts and close candidate admission evidence. Do not download hidden-candidate outcome rows or train V6."
 }

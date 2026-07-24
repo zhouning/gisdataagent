@@ -112,6 +112,9 @@ def main() -> int:
     allowed_roles = set(admission["allowed_roles"])
     allowed_statuses = set(admission["allowed_statuses"])
     candidates = registry["candidates"]
+    candidates_by_id = {
+        candidate.get("candidate_id"): candidate for candidate in candidates
+    }
     candidate_ids = [candidate.get("candidate_id") for candidate in candidates]
     checks["candidate_ids_unique"] = len(candidate_ids) == len(set(candidate_ids))
     checks["candidate_fields_complete"] = all(
@@ -127,6 +130,65 @@ def main() -> int:
         required_admission_checks == set(candidate.get("admission_checks", {}))
         for candidate in candidates
     )
+
+    action_evidence_ok = True
+    for candidate in candidates:
+        for artifact in candidate.get("official_action_evidence", []):
+            path = REPO_ROOT / artifact["path"]
+            action_evidence_ok = (
+                action_evidence_ok
+                and path.is_file()
+                and sha256_file(path) == artifact["sha256"]
+            )
+    checks["candidate_official_action_evidence_bound"] = action_evidence_ok
+
+    screening_dependencies = []
+    for artifact in registry["evidence_dependencies"]:
+        path = REPO_ROOT / artifact["path"]
+        if path.is_file():
+            payload = load_json(path)
+            if payload.get("schema") == "gwm_bench.foundation_v6_prospective_candidate_screening.v1":
+                screening_dependencies.append(payload)
+    checks["prospective_screening_report_bound"] = len(screening_dependencies) == 1
+    screening = screening_dependencies[0] if screening_dependencies else {}
+    screening_assets = screening.get("asset_audit", {}).get("assets", [])
+    checks["prospective_screening_asset_integrity"] = bool(screening_assets) and all(
+        (REPO_ROOT / artifact["path"]).is_file()
+        and sha256_file(REPO_ROOT / artifact["path"]) == artifact["sha256"]
+        and (REPO_ROOT / artifact["path"]).stat().st_size == artifact["bytes"]
+        for artifact in screening_assets
+    )
+    access_boundary = screening.get("access_boundary", {})
+    checks["prospective_outcome_boundary_preserved"] = (
+        access_boundary.get("outcome_rows_downloaded") is False
+        and access_boundary.get("post_action_target_rows_opened") is False
+    )
+    prospective_findings = screening.get("candidate_findings", {})
+    checks["prospective_candidates_registered_not_admitted"] = bool(
+        prospective_findings
+    ) and all(
+        candidate_id in candidates_by_id
+        and finding.get("decision") == "screened_not_admitted"
+        and candidates_by_id[candidate_id].get("status") == "screened_not_admitted"
+        for candidate_id, finding in prospective_findings.items()
+    )
+    screening_decision = screening.get("decision", {})
+    checks["prospective_screening_decision_preserves_gate"] = (
+        screening.get("asset_audit", {}).get("integrity_pass") is True
+        and screening_decision.get("candidates_added") == len(prospective_findings)
+        and screening_decision.get("candidates_admitted") == 0
+        and screening_decision.get("outcome_download_authorized") is False
+    )
+    protocol_freeze_date = datetime.fromisoformat(protocol["created_at"]).date()
+    checks["prospective_effective_dates_after_protocol_freeze"] = bool(
+        prospective_findings
+    ) and all(
+        datetime.fromisoformat(finding["effective_date"]).date() > protocol_freeze_date
+        and candidates_by_id[candidate_id].get("effective_date")
+        == finding["effective_date"]
+        for candidate_id, finding in prospective_findings.items()
+        if candidate_id in candidates_by_id
+    ) and set(prospective_findings).issubset(candidates_by_id)
 
     v5_event_ids = set(protocol["v5_foundation"]["event_ids"])
     checks["no_candidate_reuses_v5_event_id"] = not (set(candidate_ids) & v5_event_ids)
@@ -240,6 +302,15 @@ def main() -> int:
             "candidate_registry": {
                 "path": str(REGISTRY_PATH.relative_to(REPO_ROOT)),
                 "sha256": sha256_file(REGISTRY_PATH),
+            },
+            "prospective_candidate_screening": {
+                "path": str(
+                    (DRAFT_ROOT / "prospective_candidate_screening_2026-07-24.json")
+                    .relative_to(REPO_ROOT)
+                ),
+                "sha256": sha256_file(
+                    DRAFT_ROOT / "prospective_candidate_screening_2026-07-24.json"
+                ),
             },
         },
         "next_permitted_action": (

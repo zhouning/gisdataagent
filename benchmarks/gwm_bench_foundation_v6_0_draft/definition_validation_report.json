@@ -1,12 +1,12 @@
 {
   "schema": "gwm_bench.foundation_v6_definition_validation.v1",
   "suite_id": "GWM-BENCH-FOUNDATION-V6.0-DRAFT1",
-  "generated_at": "2026-07-24T01:28:46.201380+00:00",
+  "generated_at": "2026-07-24T01:56:50.886780+00:00",
   "status": "PASS_V6_DEFINITION_VALIDATED_NOT_ACTIVATED",
   "definition_valid": true,
   "activation_ready": false,
-  "check_count": 34,
-  "passed_check_count": 34,
+  "check_count": 41,
+  "passed_check_count": 41,
   "failed_checks": [],
   "checks": {
     "protocol_schema": true,
@@ -37,6 +37,13 @@
     "candidate_roles_valid": true,
     "candidate_statuses_valid": true,
     "candidate_check_keys_complete": true,
+    "candidate_official_action_evidence_bound": true,
+    "prospective_screening_report_bound": true,
+    "prospective_screening_asset_integrity": true,
+    "prospective_outcome_boundary_preserved": true,
+    "prospective_candidates_registered_not_admitted": true,
+    "prospective_screening_decision_preserves_gate": true,
+    "prospective_effective_dates_after_protocol_freeze": true,
     "no_candidate_reuses_v5_event_id": true,
     "admitted_candidates_have_all_checks_true": true,
     "screened_hidden_outcomes_remain_unopened": true,
@@ -52,7 +59,7 @@
     "heterogeneous_hidden_action_present": false
   },
   "candidate_counts": {
-    "screened": 2,
+    "screened": 4,
     "admitted_development": 0,
     "admitted_hidden_test": 0,
     "total_development_including_v5": 4,
@@ -71,6 +78,18 @@
       "Official final action evidence and the six-dimensional action mapping are not frozen.",
       "Full pre-window coverage, graph feasibility, downloader and reuse terms are not verified.",
       "This candidate is development-only because current outcome access already occurred."
+    ],
+    "san_diego_2026_regional_transit_fare_bundle": [
+      "No qualifying weekly route, stop or origin-destination outcome source with at least 50 stable spatial units has been verified.",
+      "The fixed 12-week post-action window will not complete until 2026-12-23.",
+      "The six-dimensional action mapping requires a frozen pre-action rider-product and origin-destination mix.",
+      "Complete pre-window coverage, graph feasibility, source reuse terms and concurrent-action contamination remain unresolved."
+    ],
+    "whatcom_wta_2026_fare_bundle": [
+      "Only annual route ridership reports were identified; no qualifying weekly spatial outcome source with at least 50 stable units has been verified.",
+      "The fixed 12-week post-action window will not complete until 2026-11-23.",
+      "The six-dimensional action mapping requires a frozen pre-action rider-product mix.",
+      "Complete pre-window coverage, graph feasibility, source reuse terms and concurrent-action contamination remain unresolved."
     ]
   },
   "artifacts": {
@@ -84,7 +103,11 @@
     },
     "candidate_registry": {
       "path": "benchmarks/gwm_bench_foundation_v6_0_draft/candidate_registry.json",
-      "sha256": "30958c76c77ef936f731cec7c22e740c5a85e46fc1ca7c74e4884b70c1f4d01b"
+      "sha256": "c74a819a8373754909b7664aa0d1e70d9c7899b9ecca9068eb053acfe95b77ba"
+    },
+    "prospective_candidate_screening": {
+      "path": "benchmarks/gwm_bench_foundation_v6_0_draft/prospective_candidate_screening_2026-07-24.json",
+      "sha256": "68d9331217d3762cde4784739ddf98cb978a9bdcab74d11a94e87a561afaecff"
     }
   },
   "next_permitted_action": "Close candidate admission evidence only; V6 data build and model execution remain prohibited."
