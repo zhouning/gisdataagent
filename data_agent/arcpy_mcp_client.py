@@ -409,6 +409,25 @@ async def _drain_shielded_task(task: asyncio.Task[Any]) -> Any:
     return task.result()
 
 
+async def _cleanup_mvt_layer(tile_server: Any, metadata: dict) -> None:
+    layer_id = metadata.get("layer_id") if isinstance(metadata, dict) else None
+    if not isinstance(layer_id, str) or not layer_id:
+        return
+    cleanup_task = asyncio.create_task(
+        asyncio.to_thread(tile_server.cleanup_tile_layer, layer_id)
+    )
+    try:
+        await asyncio.shield(cleanup_task)
+    except asyncio.CancelledError:
+        try:
+            await _drain_shielded_task(cleanup_task)
+        except Exception:
+            logger.warning("Failed to clean up ArcPy MVT layer")
+        raise
+    except Exception:
+        logger.warning("Failed to clean up ArcPy MVT layer")
+
+
 class _AsyncFileByteStream:
     def __init__(
         self,
@@ -4684,49 +4703,79 @@ class ArcPyMcpClient:
                 base_layer = base_update["layers"][0]
                 feature_count = len(map_frame)
                 if feature_count > tile_server.MVT_FEATURE_THRESHOLD:
-                    try:
-                        tile_metadata = await asyncio.to_thread(
+                    tile_task = asyncio.create_task(
+                        asyncio.to_thread(
                             tile_server.create_tile_layer_from_frame,
                             map_frame,
                             current_user_id.get("") or "anonymous",
                             base_layer["name"],
                             source_file=path.name,
                         )
+                    )
+                    try:
+                        tile_metadata = await asyncio.shield(tile_task)
+                    except asyncio.CancelledError:
+                        try:
+                            tile_metadata = await _drain_shielded_task(
+                                tile_task
+                            )
+                        except Exception:
+                            tile_metadata = None
+                        if tile_metadata is not None:
+                            await _cleanup_mvt_layer(
+                                tile_server, tile_metadata
+                            )
+                        raise
                     except Exception:
                         tile_metadata = None
                     if tile_metadata is not None:
-                        map_update = {
-                            "layers": [
-                                {
-                                    "name": base_layer["name"],
-                                    "type": "mvt",
-                                    "tile_url": (
-                                        f"/api/tiles/{tile_metadata['layer_id']}"
-                                        "/{z}/{x}/{y}.pbf"
-                                    ),
-                                    "metadata_url": (
-                                        f"/api/tiles/{tile_metadata['layer_id']}"
-                                        "/metadata.json"
-                                    ),
-                                    "layer_id": tile_metadata["layer_id"],
-                                    "source_layer": (
-                                        tile_metadata.get("layer_name")
-                                        or "default"
-                                    ),
-                                    "style": {
-                                        "fillColor": "#4682B4",
-                                        "fillOpacity": 0.6,
-                                        "color": "#333333",
-                                        "weight": 1,
-                                    },
-                                    "visible": True,
-                                }
-                            ],
-                            "center": base_update["center"],
-                            "zoom": base_update["zoom"],
-                        }
-                        download.validate()
-                        continue
+                        try:
+                            map_update = {
+                                "layers": [
+                                    {
+                                        "name": base_layer["name"],
+                                        "type": "mvt",
+                                        "tile_url": (
+                                            "/api/tiles/"
+                                            f"{tile_metadata['layer_id']}"
+                                            "/{z}/{x}/{y}.pbf"
+                                        ),
+                                        "metadata_url": (
+                                            "/api/tiles/"
+                                            f"{tile_metadata['layer_id']}"
+                                            "/metadata.json"
+                                        ),
+                                        "layer_id": (
+                                            tile_metadata["layer_id"]
+                                        ),
+                                        "source_layer": (
+                                            tile_metadata.get("layer_name")
+                                            or "default"
+                                        ),
+                                        "style": {
+                                            "fillColor": "#4682B4",
+                                            "fillOpacity": 0.6,
+                                            "color": "#333333",
+                                            "weight": 1,
+                                        },
+                                        "visible": True,
+                                    }
+                                ],
+                                "center": base_update["center"],
+                                "zoom": base_update["zoom"],
+                            }
+                            download.validate()
+                        except (asyncio.CancelledError, ArcPyMcpError):
+                            await _cleanup_mvt_layer(
+                                tile_server, tile_metadata
+                            )
+                            raise
+                        except Exception:
+                            await _cleanup_mvt_layer(
+                                tile_server, tile_metadata
+                            )
+                        else:
+                            continue
                 if feature_count > tile_server.FGB_FEATURE_THRESHOLD:
                     fgb_task = asyncio.create_task(
                         asyncio.to_thread(

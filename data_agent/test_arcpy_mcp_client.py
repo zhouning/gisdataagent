@@ -7193,6 +7193,146 @@ async def test_very_large_map_uses_verified_frame_for_mvt(
     assert result["local_outputs"][0].endswith("result.geojson")
 
 
+@pytest.mark.asyncio
+async def test_mvt_creation_cancellation_drains_and_cleans_layer(
+    user_upload_dir, monkeypatch
+):
+    import data_agent.data_catalog as data_catalog
+    import data_agent.tile_server as tile_server
+
+    body = (
+        b'{"type":"FeatureCollection","features":['
+        b'{"type":"Feature","properties":{},"geometry":'
+        b'{"type":"Point","coordinates":[139.0,35.0]}},'
+        b'{"type":"Feature","properties":{},"geometry":'
+        b'{"type":"Point","coordinates":[140.0,36.0]}}]}'
+    )
+    client = _download_client(FakeSignedDownloadResponse(body), [], [])
+    client.health_check = AsyncMock(return_value={"worker": {}})
+    started = threading.Event()
+    release = threading.Event()
+    cleaned = []
+
+    async def call_tool(name, arguments):
+        if name == "create_download":
+            return {
+                "artifact_id": "output-1",
+                "download_url": "https://signed.example/result",
+                "logical_name": "result.geojson",
+                "actual_sha256": hashlib.sha256(body).hexdigest(),
+                "actual_size": len(body),
+            }
+        if name == "delete_artifact":
+            return {"state": "deleted"}
+        raise AssertionError(name)
+
+    def create_from_frame(frame, user_id, layer_name, *, source_file):
+        started.set()
+        if not release.wait(2):
+            raise AssertionError("MVT test worker was not released")
+        return {"layer_id": "cancelled-layer", "layer_name": layer_name}
+
+    client.call_tool = call_tool
+    monkeypatch.setattr(
+        data_catalog, "register_tool_output", lambda *args, **kwargs: None
+    )
+    monkeypatch.setattr(tile_server, "FGB_FEATURE_THRESHOLD", 0)
+    monkeypatch.setattr(tile_server, "MVT_FEATURE_THRESHOLD", 1)
+    monkeypatch.setattr(
+        tile_server, "create_tile_layer_from_frame", create_from_frame
+    )
+    monkeypatch.setattr(
+        tile_server,
+        "cleanup_tile_layer",
+        lambda layer_id: cleaned.append(layer_id) or True,
+    )
+
+    task = asyncio.create_task(
+        client.download_job_results(
+            "buffer_features",
+            {
+                "status": "succeeded",
+                "result": {"output_artifact_ids": ["output-1"]},
+            },
+            [],
+        )
+    )
+    assert await asyncio.to_thread(started.wait, 2)
+    task.cancel()
+    await asyncio.sleep(0)
+    assert not task.done()
+    release.set()
+
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert cleaned == ["cancelled-layer"]
+
+
+@pytest.mark.asyncio
+async def test_mvt_layer_is_cleaned_when_download_revalidation_fails(
+    user_upload_dir, monkeypatch
+):
+    import data_agent.data_catalog as data_catalog
+    import data_agent.tile_server as tile_server
+
+    body = (
+        b'{"type":"FeatureCollection","features":['
+        b'{"type":"Feature","properties":{},"geometry":'
+        b'{"type":"Point","coordinates":[139.0,35.0]}},'
+        b'{"type":"Feature","properties":{},"geometry":'
+        b'{"type":"Point","coordinates":[140.0,36.0]}}]}'
+    )
+    client = _download_client(FakeSignedDownloadResponse(body), [], [])
+    client.health_check = AsyncMock(return_value={"worker": {}})
+    cleaned = []
+
+    async def call_tool(name, arguments):
+        if name == "create_download":
+            return {
+                "artifact_id": "output-1",
+                "download_url": "https://signed.example/result",
+                "logical_name": "result.geojson",
+                "actual_sha256": hashlib.sha256(body).hexdigest(),
+                "actual_size": len(body),
+            }
+        if name == "delete_artifact":
+            return {"state": "deleted"}
+        raise AssertionError(name)
+
+    def create_from_frame(frame, user_id, layer_name, *, source_file):
+        result_path = next(user_upload_dir.rglob("result.geojson"))
+        result_path.write_bytes(body + b"\n")
+        return {"layer_id": "invalid-layer", "layer_name": layer_name}
+
+    client.call_tool = call_tool
+    monkeypatch.setattr(
+        data_catalog, "register_tool_output", lambda *args, **kwargs: None
+    )
+    monkeypatch.setattr(tile_server, "FGB_FEATURE_THRESHOLD", 0)
+    monkeypatch.setattr(tile_server, "MVT_FEATURE_THRESHOLD", 1)
+    monkeypatch.setattr(
+        tile_server, "create_tile_layer_from_frame", create_from_frame
+    )
+    monkeypatch.setattr(
+        tile_server,
+        "cleanup_tile_layer",
+        lambda layer_id: cleaned.append(layer_id) or True,
+    )
+
+    with pytest.raises(ArcPyMcpError) as exc_info:
+        await client.download_job_results(
+            "buffer_features",
+            {
+                "status": "succeeded",
+                "result": {"output_artifact_ids": ["output-1"]},
+            },
+            [],
+        )
+
+    assert exc_info.value.code == "ARCPY_DOWNLOAD_FAILED"
+    assert cleaned == ["invalid-layer"]
+
+
 def test_server_metadata_and_posix_paths_are_fail_closed():
     client = _client()
     result = client._apply_operation_timing(
