@@ -116,7 +116,7 @@ MMFE、GWM 和生态扩展继续保留为战略方向，但必须由已发布 Da
 6. legacy/governed/ephemeral runtime inventory、owner 和替换目标；
 7. [ADR-019](architecture-decisions/adr-019-configuration-and-runtime-truth.md) 与 [System-of-Record 矩阵](system-of-record-matrix-2026-07-24.md)。
 
-### 4.3 Resource / Run / Evidence contracts（本次实现）
+### 4.3 Resource / Run / Evidence contracts（已完成）
 
 第三块切片包括：
 
@@ -130,9 +130,23 @@ MMFE、GWM 和生态扩展继续保留为战略方向，但必须由已发布 Da
 
 此切片没有自动回填旧资产/workflow/run/lineage 表，也没有部署 OpenMetadata、Gravitino、DolphinScheduler 或 Temporal。`gda_control` 当前是已编译、已验证但尚未接入生产调用链的控制/证据账本。
 
-### 4.4 下一开发包
+### 4.4 Legacy crosswalk / golden slice（已完成）
 
-AR-0 的下一块工作是 legacy crosswalk 与首条图斑链验收夹具：完成现有 metadata/job/API 写入方的表级 inventory，定义旧资产/版本/run/lineage 到新合同的显式映射规则，固定样本、golden result、owner、SLO、回滚点和消费者。达到退出门后再进入 AR-1 gateway role/API 与最小外部平台 POC。
+第四块切片包括：
+
+1. 冻结 `agent_data_assets`、`agent_asset_versions`、`agent_workflows`、`agent_workflow_runs`、`agent_asset_lineage` 的 schema、writer 和 API marker inventory；
+2. CI 扫描未登记直接写入方，新增或漂移的 legacy writer 必须先更新 inventory；
+3. 以 `eligible`、`blocked`、`prohibited` 三种结果输出只读 crosswalk plan，不连接数据库、不生成 identity、不执行 backfill；
+4. 旧 workflow run 永久禁止直接映射为 PlatformRun，只能在已有 PlatformRun correlation 时形成 FrameworkAttemptObservation；
+5. 固定带 DLTB 标准证据的合成地类图斑输入、golden result、ResourceVersion、Definition、Run、Artifact 和 LineageEvent；
+6. 固定 owner、SLO、rollback point、消费者与终局裁决条件；
+7. [ADR-021](architecture-decisions/adr-021-legacy-crosswalk-and-golden-slice.md)、CI validator 与更新后的 [System-of-Record 矩阵](system-of-record-matrix-2026-07-24.md)。
+
+此切片建立的是迁移判定与验收证据，不是生产迁移工具。五张旧表继续服务兼容调用方，`gda_control` 仍未进入生产写链路；任何真实数据迁移都必须由后续 adapter 提供 tenant、authority identity、checksum、correlation 和幂等证据。
+
+### 4.5 下一开发包
+
+下一块进入 AR-1 gateway role/API，但仍保持最小范围：建立 non-bypass gateway role、tenant session context、最小 grant、Resource/Version/Definition/Run 创建事务、CAS transition，以及 observation/artifact/lineage ingest 的幂等合同。完成授权与故障语义测试后，再选择一套首个纵向场景真正需要的外部 metadata 或 orchestrator 做 sandbox POC，不将多套控制面一次性接入主链路。
 
 ## 5. 重新评估条件
 

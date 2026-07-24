@@ -192,14 +192,23 @@ RUN_TRANSITIONS: dict[RunStatus, frozenset[RunStatus]] = {
 }
 
 
-def _json_fingerprint(value: Any) -> str:
-    encoded = json.dumps(
+def canonical_json_bytes(value: Any) -> bytes:
+    """Serialize a JSON value with the platform-wide canonical encoding."""
+    return json.dumps(
         value,
         ensure_ascii=True,
         sort_keys=True,
         separators=(",", ":"),
     ).encode("utf-8")
-    return hashlib.sha256(encoded).hexdigest()
+
+
+def _json_fingerprint(value: Any) -> str:
+    return hashlib.sha256(canonical_json_bytes(value)).hexdigest()
+
+
+def canonical_json_fingerprint(value: Any) -> str:
+    """Return the platform-wide SHA-256 for a canonical JSON value."""
+    return _json_fingerprint(value)
 
 
 def _aware_utc(value: datetime) -> datetime:

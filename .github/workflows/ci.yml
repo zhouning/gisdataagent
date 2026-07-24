@@ -60,6 +60,9 @@ jobs:
       - name: Validate platform resource and run contracts
         run: python -m data_agent.platform_contracts validate
 
+      - name: Validate legacy crosswalk and golden slice
+        run: python -m data_agent.platform_crosswalk validate
+
       - name: Verify platform control ledger on PostgreSQL
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gis_agent_test

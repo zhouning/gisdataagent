@@ -23,12 +23,12 @@
 | 原始文件/对象 | 当前 local uploads、S3/MinIO/OBS 均可能被直接写入，权威边界未统一 | 临时上传、下载缓存、预览文件 | Landing object 以 immutable URI + checksum + retention 为权威；本地 scratch 可删除 | Data Platform | AR-2 |
 | 湖仓表与 snapshot | Iceberg/STAC/S3A 有局部实现，尚无通用发布权威 | STAC item、GeoParquet export | Iceberg catalog snapshot 是分析表版本权威；对象是物理内容，STAC 是发现投影 | Data Platform | AR-2 |
 | 在线空间数据 | PostGIS 业务表是当前编辑/查询事实，部分临时表混入 | Martin MVT、API JSON、导出文件 | 已批准 DataProductVersion 物化到 PostGIS；不能由瓦片或临时表反向定义产品版本 | GIS/Data Platform | AR-2 -> AR-4 |
-| 数据资产身份与版本 | `gda_control.resource/resource_version` 已实现 identity、hash、predecessor 和 tenant FK；旧 `agent_data_assets` 与专项 registry 仍是兼容写路径 | UI catalog、search index、STAC | GDA ledger 管身份与版本绑定；旧行只按显式 crosswalk 迁移；OpenMetadata 管治理目录，Gravitino 管技术对象映射 | Metadata Platform | AR-0 合同已实现 -> AR-1 切换 |
+| 数据资产身份与版本 | `gda_control.resource/resource_version` 已实现 identity、hash、predecessor 和 tenant FK；`agent_data_assets`、`agent_asset_versions` 的 schema/writer/API inventory 已冻结，旧表仍是兼容写路径 | UI catalog、search index、STAC | GDA ledger 管身份与版本绑定；旧行只有在 tenant、authority identity、checksum 和 version evidence 完整时才可形成 eligible plan；OpenMetadata 管治理目录，Gravitino 管技术对象映射 | Metadata Platform | AR-0 合同/crosswalk 已实现 -> AR-1 切换 |
 | 技术元数据 | PostGIS schema、Iceberg/STAC 和专项 JSONB 各自记录 | harvester 结果 | 源系统技术对象是原始证据；Gravitino 映射并联邦，不能覆盖业务 ResourceVersion | Metadata Platform | AR-1 |
 | 治理目录 | 当前 catalog、tag、standard、semantic registry 分散 | 搜索/页面视图 | OpenMetadata 为 owner/glossary/classification/quality discoverability 权威；GDA ledger 保留审批证据 | Governance | AR-1 |
-| 血缘 | `gda_control.lineage_event` 已实现 immutable version edge；旧 lineage 表与 pipeline 写入仍不一致 | OpenMetadata lineage graph、UI DAG | LineageEvent/OpenLineage envelope 为证据；旧记录按 crosswalk 收敛，目录图只作可重建投影 | Data Platform | AR-0 合同已实现 -> AR-1 接入 |
-| Definition | `gda_control.platform_definition_version` 已绑定 definition ResourceVersion 与完整逻辑 hash；旧 workflow/template/YAML 仍在写入 | 编辑器状态、编排器 DAG | PlatformDefinitionVersion 为逻辑权威；provider ExecutionPlanArtifact 不可反写 definition | DataOps | AR-0 合同已实现 -> AR-1/AR-3 切换 |
-| Run 最终状态 | `gda_control.platform_run/event` 已实现 CAS 状态合同；APScheduler、TaskQueue、SparkGateway、API task 仍是现有兼容运行路径 | Redis progress、日志、provider job status、attempt observation | gateway 接入后 PlatformRun ledger 唯一决定平台状态；DolphinScheduler/Temporal/provider 只提交 observation | DataOps/AgentOps | AR-0 合同已实现 -> AR-1 接入 |
+| 血缘 | `gda_control.lineage_event` 已实现 immutable version edge；`agent_asset_lineage` writer/API inventory 已冻结，但旧记录仍是可变 asset edge | OpenMetadata lineage graph、UI DAG | 只有 source/target ResourceVersion 与 event checksum 证据完整的旧记录可形成 eligible plan；目录图只作可重建投影 | Data Platform | AR-0 合同/crosswalk 已实现 -> AR-1 接入 |
+| Definition | `gda_control.platform_definition_version` 已绑定 definition ResourceVersion 与完整逻辑 hash；`agent_workflows` writer/API inventory 已冻结，旧 workflow/template/YAML 仍在写入 | 编辑器状态、编排器 DAG | 旧 workflow 必须规范化并完整 hash 后才可形成 PlatformDefinitionVersion；provider ExecutionPlanArtifact 不可反写 definition | DataOps | AR-0 合同/crosswalk 已实现 -> AR-1/AR-3 切换 |
+| Run 最终状态 | `gda_control.platform_run/event` 已实现 CAS 状态合同；`agent_workflow_runs` writer/API inventory 已冻结，APScheduler、TaskQueue、SparkGateway、API task 仍是兼容运行路径 | Redis progress、日志、provider job status、attempt observation | 旧 run 到 PlatformRun 永久 prohibited；已有 PlatformRun correlation 时才可转为 attempt observation；gateway 接入后 ledger 唯一决定平台状态 | DataOps/AgentOps | AR-0 合同/crosswalk 已实现 -> AR-1 接入 |
 | 调度与补数 | APScheduler、自进化 scheduler 和调用方定时逻辑并存 | UI schedule 列表 | DolphinScheduler 管 DataOps schedule/complement；Temporal 只管需要 durable signal/compensation 的 Agent/GWM workflow | DataOps/AgentOps | AR-1/AR-5 |
 | 事件交付 | Standards outbox 已数据库耐久；其他 WebSocket/bot/feedback 多为 best effort | 消费者 offset、WebSocket 消息 | command/event 先入 outbox，幂等 consumer 交付；缓存或 socket 不是权威 | Platform/Integrations | AR-1 |
 | 质量结果 | standards、QC、MMFE 和专项表各自记录 | dashboard 汇总 | 不可变 QualityResult/Evidence 绑定 input version、rule version 和 RunRef；汇总可重建 | Governance/DataOps | AR-1 -> AR-3 |
@@ -49,12 +49,18 @@
 5. 自然资源地类图斑纵向链是首个验证载体：其 input checksum、标准版本、DataProductVersion、QualityResult、LineageEvent、RunRef 和 serving revision 必须贯通后，才能宣称控制面闭环。
 6. `gda_control` 当前没有生产 gateway role 或业务调用方；合同与 DDL 已验证不等于生产运行链已经切换。
 7. 旧资产、workflow、run 和 lineage 行缺少稳定 tenant/version/checksum 证据时禁止自动 backfill，也不得猜测生成 ResourceVersion。
+8. `platform_crosswalk` 只验证仓库 inventory、候选 payload 和 golden fixture；它不得连接数据库、分配 identity、回填旧表或写入 `gda_control`。
+
+## 已建立的 AR-0 证据
+
+- 五张 legacy 表及资产兼容视图的 schema、writer、API marker inventory 已冻结，当前 fingerprint 为 `f81c5142e0355531ea0a59e8e68608834c088dee02a9bdf2a013f6d5489376ba`；未登记直接写入方会使 CI 失败。
+- crosswalk planner 固定 `eligible`、`blocked`、`prohibited` 三种结果。当前没有对全量旧数据安全执行自动 backfill 的路径。
+- 合成地类图斑 golden slice 已绑定 DLTB 标准证据、3 个 Resource、3 个 ResourceVersion、9 个平台合同、owner、SLO、rollback point 和消费者；fixture fingerprint 为 `b226622af6544cf0368d5a29f9e744aa1e3aed5511193c8e69f2f9f4ce5e7aac`。
+- 以上证据只证明合同和验收夹具可重放；生产调用链仍写旧表，尚未切换到 gateway 或 `gda_control`。
 
 ## 下一验收证据
 
 - staging/production 的 schema、config 和 runtime snapshot 产物及环境 compare 报告；
-- 现有 metadata/job/API/GIS endpoint 的表级、写入方级 inventory；
-- legacy metadata/job/API/GIS 写入方到 Resource/Definition/Run/Artifact/Lineage 的逐表 crosswalk、冲突规则和幂等证据；
 - AR-1 gateway role/API 的最小授权、tenant context、create/transition/ingest contract tests；
-- 首条图斑链的 owner、SLO、输入样本、golden result、回滚点和消费者；
+- 首条真实图斑链对 golden slice 的运行证据、质量结果、发布 revision 和 rollback 演练；
 - OpenMetadata/Gravitino 与 DolphinScheduler/Temporal sandbox 的独立数据库、备份恢复、身份、版本和升级责任证明。
