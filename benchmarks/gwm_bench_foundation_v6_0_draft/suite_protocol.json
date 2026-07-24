@@ -1,0 +1,188 @@
+{
+  "schema": "gwm_bench.foundation_v6_suite_protocol.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V6.0-DRAFT1",
+  "version": "6.0-draft1",
+  "created_at": "2026-07-24",
+  "status": "DEFINED_CANDIDATE_ADMISSION_OPEN_NOT_ACTIVATED",
+  "definition": "A frozen-model external action benchmark that admits at least two genuinely new hidden mobility interventions only after source, spatial, action-semantic and target-seal evidence passes.",
+  "single_new_question": "Can one model package frozen before any hidden-target access improve strong history and spatial baselines on at least two newly admitted actions while correct action semantics outperform every frozen corruption?",
+  "v5_foundation": {
+    "development_event_count": 4,
+    "event_ids": [
+      "event_2015_improvement_surcharge",
+      "event_2019_nys_congestion_surcharge",
+      "event_2022_tlc_taximeter_adjustment",
+      "event_2025_mta_crz"
+    ],
+    "suite_protocol": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/suite_protocol.json",
+      "sha256": "1802ec61ec229f11f95e541c219aa83b8c7af6cfd692d897c1f15ddfbf4d7e79"
+    },
+    "completion_verification": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/final_results/completion_verification.json",
+      "sha256": "5d37eac70a9e613b1b487fbc8df8e3af54d24527b0a2642d781d93ca613f678b"
+    },
+    "formal_result": {
+      "path": "benchmarks/gwm_bench_foundation_v5_0_draft/final_results/action_transfer_results.json",
+      "sha256": "05c9d2aea055558fad64823ade773a5e0c39c3c79a972ab46ca1018d971a0628"
+    },
+    "git_commit": "aface9206a05cf7fc4d0e660079027a7d24b7b0c",
+    "frozen_result": "ACTION_TRANSFER_NOT_SUPPORTED",
+    "v5_predictions_or_thresholds_may_be_changed": false
+  },
+  "activation_gate": {
+    "minimum_total_development_events": 6,
+    "minimum_additional_development_events_beyond_v5": 2,
+    "minimum_hidden_test_events": 2,
+    "minimum_total_events": 8,
+    "minimum_stable_spatial_units_per_event": 50,
+    "preferred_spatial_units_per_event": 100,
+    "pre_action_weeks": 52,
+    "post_action_weeks": 12,
+    "minimum_hidden_events_with_heterogeneous_spatial_exposure": 1,
+    "cross_jurisdiction_hidden_event_required": false,
+    "cross_jurisdiction_claim_permitted_only_if_present": true,
+    "all_hidden_predictions_committed_before_any_hidden_target_access": true,
+    "single_model_package_across_hidden_events": true,
+    "model_update_after_first_hidden_target_reveal_permitted": false,
+    "activation_requires_every_admitted_candidate_check": true
+  },
+  "event_contract": {
+    "time_unit": "action-aligned complete seven-day blocks",
+    "state_targets": [
+      "pickup_count",
+      "dropoff_count",
+      "central_area_inflow",
+      "central_area_outflow"
+    ],
+    "required_history_weeks": 52,
+    "required_target_weeks": 12,
+    "stable_spatial_crosswalk_required": true,
+    "complete_zone_week_grid_required": true,
+    "post_action_target_missingness_allowed": false,
+    "pre_action_graph_only": true,
+    "observed_post_action_state_writeback_permitted": false
+  },
+  "canonical_action_contract": {
+    "dimension_count": 6,
+    "columns": [
+      "fixed_charge_delta",
+      "variable_metered_cost_delta",
+      "expected_fractional_cost_delta",
+      "spatial_applicability_share",
+      "temporal_applicability_share",
+      "implementation_share"
+    ],
+    "mapping_must_be_frozen_before_hidden_outcome_access": true,
+    "event_name_year_city_or_fold_id_as_learned_feature_permitted": false,
+    "reason_for_reduction_from_v5": "Six identifiable action dimensions are used because V5 had only three training actions per fold for a fifteen-dimensional action vector."
+  },
+  "hidden_newness_contract": {
+    "accepted_modes": [
+      "prospective_action_effective_after_protocol_freeze",
+      "historical_targets_committed_and_held_by_independent_custodian_before_model_freeze"
+    ],
+    "analyst_local_zero_row_claim_alone_is_sufficient": false,
+    "policy_documents_and_pre_action_inputs_may_be_public": true,
+    "hidden_post_action_targets_must_be_unavailable_to_model_developers": true,
+    "target_manifest_or_custodian_receipt_required": true
+  },
+  "runtime_r5": {
+    "purpose": "Execute the hidden set through a shared GWM Runtime Kernel profile rather than a benchmark-only model script.",
+    "required_shared_contracts": [
+      "StateSnapshot",
+      "CanonicalAction",
+      "MultiRelationGraph",
+      "OpenLoopRolloutRequest",
+      "PredictionBundle",
+      "RuntimeAuditReceipt",
+      "EvidenceClaimLedger"
+    ],
+    "required_runtime_capabilities": [
+      "target_firewall",
+      "model_and_action_mapping_freeze",
+      "twelve_step_open_loop_rollout",
+      "three_seed_execution",
+      "prediction_and_checkpoint_hash_commitment",
+      "checkpoint_replay",
+      "post_commit_evaluator_access",
+      "claim_boundary_audit"
+    ],
+    "required_seeds": [31, 47, 73],
+    "ensemble_rule": "arithmetic mean in raw count space",
+    "absolute_replay_tolerance": 0.000001,
+    "benchmark_specific_duplicate_runtime_permitted": false
+  },
+  "model_contract": {
+    "prediction_equation": "final_prediction = frozen_history_backbone_prediction + dam_gk_action_residual",
+    "required_models": [
+      "history_ar_backbone",
+      "fixed_adjacency_spatial_ar",
+      "dam_gk_residual_no_action",
+      "dam_gk_correct_action_residual"
+    ],
+    "required_controls": [
+      "action_deleted",
+      "effective_date_minus_4w",
+      "effective_date_plus_4w",
+      "action_component_permutation",
+      "wrong_spatial_scope",
+      "cross_event_action_swap",
+      "spatial_exposure_shuffle"
+    ],
+    "history_backbone_reselection_after_hidden_target_access_permitted": false,
+    "dam_gk_hyperparameter_reselection_after_hidden_target_access_permitted": false
+  },
+  "evaluation": {
+    "reported_horizons": [1, 2, 4, 8, 12],
+    "primary_error": "equal-hidden-event macro pre-action-normalized MAE over stable spatial units, four targets and five reported horizons",
+    "event_skill": "1 - candidate_primary_error / history_ar_backbone_primary_error",
+    "paired_bootstrap": {
+      "unit": "stable spatial unit within hidden event",
+      "draws": 20000,
+      "seed": 20260724,
+      "event_aggregation": "equal-weight mean over admitted hidden events"
+    },
+    "action_transfer_gate": {
+      "all_required": true,
+      "conditions": [
+        "mean hidden-event skill over history AR is at least 1 percent",
+        "paired bootstrap interval for candidate minus history AR is entirely below zero",
+        "at least one of two hidden events improves by at least 1 percent",
+        "no hidden event degrades by more than 2 percent",
+        "at least 6 of 8 hidden-event-target pairs improve",
+        "at least 4 of 5 equal-event reported horizons improve",
+        "correct action beats no-action, history AR and fixed spatial AR in aggregate",
+        "correct action beats every frozen corruption in aggregate and no corruption wins both hidden events"
+      ],
+      "benchmark_completion_independent_of_gate": true
+    }
+  },
+  "completion_definition": {
+    "benchmark_complete_when": [
+      "the activation gate was satisfied before Runtime-R5 freeze",
+      "all admitted source and target-seal evidence is hash-bound",
+      "one model package predicts every hidden event before any hidden target access",
+      "all required models, controls and seeds emit complete submissions",
+      "all committed predictions replay within tolerance",
+      "the frozen evaluator publishes the full result regardless of model success",
+      "data previews, failures, hashes and claim boundaries are published"
+    ],
+    "model_win_required": false
+  },
+  "claim_boundary": {
+    "supports_if_completed": [
+      "reproducible frozen-model evidence on the admitted new mobility actions",
+      "incremental action value over strong historical and spatial forecasts",
+      "Runtime-R5 target isolation, commitment and replay evidence"
+    ],
+    "does_not_support_without_separate_evidence": [
+      "causal policy effects",
+      "operational forecasting validity",
+      "cross-city generalization when no hidden external jurisdiction is admitted",
+      "generalization outside mobility actions",
+      "complete universal GWM or DAM-GK validity"
+    ]
+  },
+  "next_permitted_action": "Screen candidate evidence only. Do not download outcome rows, train a V6 model, build Runtime-R5 formal predictions or access hidden targets until the activation gate passes."
+}

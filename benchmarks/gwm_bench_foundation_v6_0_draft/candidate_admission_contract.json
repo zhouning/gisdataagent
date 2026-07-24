@@ -1,0 +1,56 @@
+{
+  "schema": "gwm_bench.foundation_v6_candidate_admission_contract.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V6.0-DRAFT1",
+  "created_at": "2026-07-24",
+  "status": "FROZEN_BEFORE_CANDIDATE_OUTCOME_ACQUISITION",
+  "allowed_roles": ["development", "hidden_test"],
+  "allowed_statuses": [
+    "screened_not_admitted",
+    "excluded",
+    "admitted_development",
+    "admitted_hidden_test"
+  ],
+  "required_candidate_fields": [
+    "candidate_id",
+    "requested_role",
+    "status",
+    "jurisdiction",
+    "effective_date",
+    "action_summary",
+    "spatial_unit",
+    "spatial_unit_count",
+    "pre_window",
+    "post_window",
+    "official_action_evidence",
+    "official_outcome_source",
+    "outcome_access",
+    "admission_checks",
+    "blockers"
+  ],
+  "admission_checks": [
+    "not_a_v5_event",
+    "official_action_authority_verified",
+    "numeric_action_mapping_frozen",
+    "official_outcome_source_verified",
+    "redistribution_or_reproducible_downloader_verified",
+    "fifty_two_pre_weeks_available",
+    "twelve_post_weeks_available",
+    "stable_spatial_units_at_least_fifty",
+    "complete_zone_week_grid_feasible",
+    "pre_action_graph_feasible",
+    "concurrent_action_contamination_resolved",
+    "hidden_newness_receipt_valid_if_hidden",
+    "post_action_target_rows_unopened_if_hidden"
+  ],
+  "hidden_test_extra_rules": {
+    "accepted_newness_modes": [
+      "prospective_action_effective_after_protocol_freeze",
+      "historical_targets_committed_and_held_by_independent_custodian_before_model_freeze"
+    ],
+    "local_analyst_assertion_without_custodian_receipt_is_sufficient": false,
+    "any_post_action_target_row_opened_by_model_developer_before_commitment_invalidates_hidden_role": true
+  },
+  "admission_rule": "Every admission check must be true. A candidate with one unresolved check remains screened_not_admitted or excluded.",
+  "download_rule": "Metadata, HEAD requests, schemas, policy documents and remote Parquet footers are allowed during screening. Outcome-row download is forbidden for hidden candidates before an accepted newness receipt and activation plan.",
+  "role_change_rule": "A hidden candidate invalidated by outcome access may be downgraded to development but may never be restored to hidden in the same V6 release."
+}

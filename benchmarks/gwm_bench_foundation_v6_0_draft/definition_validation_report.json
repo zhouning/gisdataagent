@@ -1,0 +1,91 @@
+{
+  "schema": "gwm_bench.foundation_v6_definition_validation.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V6.0-DRAFT1",
+  "generated_at": "2026-07-24T01:28:46.201380+00:00",
+  "status": "PASS_V6_DEFINITION_VALIDATED_NOT_ACTIVATED",
+  "definition_valid": true,
+  "activation_ready": false,
+  "check_count": 34,
+  "passed_check_count": 34,
+  "failed_checks": [],
+  "checks": {
+    "protocol_schema": true,
+    "admission_schema": true,
+    "registry_schema": true,
+    "suite_ids_match": true,
+    "protocol_not_activated": true,
+    "admission_frozen_before_outcomes": true,
+    "six_action_dimensions": true,
+    "six_development_events_required": true,
+    "two_hidden_events_required": true,
+    "eight_total_events_required": true,
+    "fixed_52_12_windows": true,
+    "single_frozen_hidden_model": true,
+    "hidden_input_publication_rule_defined": true,
+    "completion_independent_of_model_win": true,
+    "runtime_r5_requires_shared_kernel": true,
+    "eight_frozen_result_conditions": true,
+    "v5_artifact_exists::suite_protocol": true,
+    "v5_artifact_hash::suite_protocol": true,
+    "v5_artifact_exists::completion_verification": true,
+    "v5_artifact_hash::completion_verification": true,
+    "v5_artifact_exists::formal_result": true,
+    "v5_artifact_hash::formal_result": true,
+    "registry_evidence_dependencies_bound": true,
+    "candidate_ids_unique": true,
+    "candidate_fields_complete": true,
+    "candidate_roles_valid": true,
+    "candidate_statuses_valid": true,
+    "candidate_check_keys_complete": true,
+    "no_candidate_reuses_v5_event_id": true,
+    "admitted_candidates_have_all_checks_true": true,
+    "screened_hidden_outcomes_remain_unopened": true,
+    "registry_admitted_ids_match_evidence": true,
+    "registry_counts_match_evidence": true,
+    "registry_ready_flag_matches_evidence": true
+  },
+  "activation_checks": {
+    "minimum_total_development_events": false,
+    "minimum_additional_development_events": false,
+    "minimum_hidden_test_events": false,
+    "minimum_total_events": false,
+    "heterogeneous_hidden_action_present": false
+  },
+  "candidate_counts": {
+    "screened": 2,
+    "admitted_development": 0,
+    "admitted_hidden_test": 0,
+    "total_development_including_v5": 4,
+    "total_events": 4
+  },
+  "candidate_blockers": {
+    "nyc_2012_metered_fare_bundle": [
+      "Independent target custodian and pre-model target commitment are absent.",
+      "Only three remote monthly schemas were probed; the complete 64-week source window is not verified.",
+      "A stable historical spatial-unit reconstruction with at least 50 units is not verified.",
+      "Meter recalibration implementation share is not frozen.",
+      "Concurrent-action contamination and source reuse terms are not closed."
+    ],
+    "chicago_2026_metered_fare_bundle": [
+      "The fixed 12-week post-action window does not complete until 2026-09-22.",
+      "Official final action evidence and the six-dimensional action mapping are not frozen.",
+      "Full pre-window coverage, graph feasibility, downloader and reuse terms are not verified.",
+      "This candidate is development-only because current outcome access already occurred."
+    ]
+  },
+  "artifacts": {
+    "protocol": {
+      "path": "benchmarks/gwm_bench_foundation_v6_0_draft/suite_protocol.json",
+      "sha256": "c3d4ec953a3e23b2770ec9cca0a671f1f645e2c3dc20d9246295e438e0b41b23"
+    },
+    "admission_contract": {
+      "path": "benchmarks/gwm_bench_foundation_v6_0_draft/candidate_admission_contract.json",
+      "sha256": "316cfae1b0ce45e2b23ab24cf0ff1d33e4bae8469f978590b45be26844414655"
+    },
+    "candidate_registry": {
+      "path": "benchmarks/gwm_bench_foundation_v6_0_draft/candidate_registry.json",
+      "sha256": "30958c76c77ef936f731cec7c22e740c5a85e46fc1ca7c74e4884b70c1f4d01b"
+    }
+  },
+  "next_permitted_action": "Close candidate admission evidence only; V6 data build and model execution remain prohibited."
+}

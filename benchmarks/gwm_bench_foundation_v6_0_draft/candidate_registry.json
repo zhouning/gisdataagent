@@ -1,0 +1,126 @@
+{
+  "schema": "gwm_bench.foundation_v6_candidate_registry.v1",
+  "suite_id": "GWM-BENCH-FOUNDATION-V6.0-DRAFT1",
+  "updated_at": "2026-07-24",
+  "status": "CANDIDATES_SCREENED_NONE_ADMITTED",
+  "evidence_dependencies": [
+    {
+      "path": "docs/research/uwm_regimeworld_v5_candidate_support_audit_2026-07-19.json",
+      "sha256": "01af628230cad644aa22c0d610f27039ffacbb7f74a532c905b313f24becbe10"
+    }
+  ],
+  "candidates": [
+    {
+      "candidate_id": "nyc_2012_metered_fare_bundle",
+      "requested_role": "hidden_test",
+      "status": "screened_not_admitted",
+      "jurisdiction": "New York City",
+      "effective_date": "2012-09-04",
+      "action_summary": "Metered distance and waiting increments, JFK flat fare and Newark surcharge changed with staged meter recalibration.",
+      "spatially_heterogeneous_action": false,
+      "spatial_unit": "NYC Taxi Zone candidate reconstructed from historical trip coordinates or stable location identifiers",
+      "spatial_unit_count": 0,
+      "pre_window": ["2011-09-06", "2012-09-03"],
+      "post_window": ["2012-09-04", "2012-11-26"],
+      "official_action_evidence": [
+        {
+          "path": "data/uwm_regimeworld_v5/policy/nyc/taxi_fare_rules_passed_2012.pdf",
+          "sha256": "f0e6ba58e1d73a1acf2430780eb19e6e8cba9976ace3e2cdced2e919161cbf69"
+        },
+        {
+          "path": "data/uwm_regimeworld_v5/policy/nyc/industry_notice_12_25.pdf",
+          "sha256": "597a7c54c6f8971a94a9e4df0da7f3309ecb66b6696284df754cf8e88f30ad0b"
+        }
+      ],
+      "official_outcome_source": {
+        "publisher": "NYC TLC",
+        "dataset": "Yellow Taxi monthly Parquet",
+        "screening_access": "HEAD and remote Parquet footer only for 2012-08, 2012-09 and 2012-10"
+      },
+      "outcome_access": {
+        "post_action_trip_rows_opened": false,
+        "trip_files_downloaded": false,
+        "independent_custodian_receipt": null,
+        "hidden_newness_mode": null
+      },
+      "admission_checks": {
+        "not_a_v5_event": true,
+        "official_action_authority_verified": true,
+        "numeric_action_mapping_frozen": false,
+        "official_outcome_source_verified": true,
+        "redistribution_or_reproducible_downloader_verified": false,
+        "fifty_two_pre_weeks_available": false,
+        "twelve_post_weeks_available": false,
+        "stable_spatial_units_at_least_fifty": false,
+        "complete_zone_week_grid_feasible": false,
+        "pre_action_graph_feasible": false,
+        "concurrent_action_contamination_resolved": false,
+        "hidden_newness_receipt_valid_if_hidden": false,
+        "post_action_target_rows_unopened_if_hidden": true
+      },
+      "blockers": [
+        "Independent target custodian and pre-model target commitment are absent.",
+        "Only three remote monthly schemas were probed; the complete 64-week source window is not verified.",
+        "A stable historical spatial-unit reconstruction with at least 50 units is not verified.",
+        "Meter recalibration implementation share is not frozen.",
+        "Concurrent-action contamination and source reuse terms are not closed."
+      ]
+    },
+    {
+      "candidate_id": "chicago_2026_metered_fare_bundle",
+      "requested_role": "development",
+      "status": "screened_not_admitted",
+      "jurisdiction": "Chicago",
+      "effective_date": "2026-07-01",
+      "action_summary": "Metered fare revision represented as fixed and variable passenger-cost changes.",
+      "spatially_heterogeneous_action": false,
+      "spatial_unit": "Chicago community area",
+      "spatial_unit_count": 77,
+      "pre_window": ["2025-07-03", "2026-06-30"],
+      "post_window": ["2026-07-01", "2026-09-22"],
+      "official_action_evidence": [],
+      "official_outcome_source": {
+        "publisher": "City of Chicago",
+        "dataset": "Taxi Trips",
+        "access": "public Socrata"
+      },
+      "outcome_access": {
+        "post_action_trip_rows_opened": true,
+        "access_scope": "one current table row was previously probed",
+        "hidden_role_permitted": false
+      },
+      "admission_checks": {
+        "not_a_v5_event": true,
+        "official_action_authority_verified": false,
+        "numeric_action_mapping_frozen": false,
+        "official_outcome_source_verified": true,
+        "redistribution_or_reproducible_downloader_verified": false,
+        "fifty_two_pre_weeks_available": false,
+        "twelve_post_weeks_available": false,
+        "stable_spatial_units_at_least_fifty": true,
+        "complete_zone_week_grid_feasible": false,
+        "pre_action_graph_feasible": false,
+        "concurrent_action_contamination_resolved": false,
+        "hidden_newness_receipt_valid_if_hidden": true,
+        "post_action_target_rows_unopened_if_hidden": true
+      },
+      "blockers": [
+        "The fixed 12-week post-action window does not complete until 2026-09-22.",
+        "Official final action evidence and the six-dimensional action mapping are not frozen.",
+        "Full pre-window coverage, graph feasibility, downloader and reuse terms are not verified.",
+        "This candidate is development-only because current outcome access already occurred."
+      ]
+    }
+  ],
+  "admitted_development_event_ids": [],
+  "admitted_hidden_test_event_ids": [],
+  "activation_state": {
+    "v5_foundation_development_events": 4,
+    "additional_development_events": 0,
+    "total_development_events": 4,
+    "hidden_test_events": 0,
+    "hidden_events_with_heterogeneous_spatial_exposure": 0,
+    "ready": false
+  },
+  "next_permitted_action": "Close candidate admission evidence. Do not download NYC 2012 outcome rows or train V6."
+}
