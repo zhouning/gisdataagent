@@ -1,0 +1,7 @@
+quantity,value
+independent_action_events,4
+training_actions_per_fold,3
+zones_per_event,263
+weeks_per_event,64
+rows_per_event,16832
+total_zone_week_rows,67328

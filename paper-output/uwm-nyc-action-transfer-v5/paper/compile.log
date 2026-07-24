@@ -1,0 +1,455 @@
+Rc files read (in order):
+  NONE
+Latexmk: This is Latexmk, John Collins, 9 March 2026. Version 4.88.
+No existing .aux file, so I'll make a simple one, and require run of *latex.
+Latexmk: applying rule 'pdflatex'...
+Rule 'pdflatex':  Reasons for rerun
+Category 'other':
+  Rerun of 'pdflatex' forced or previously required:
+    Reason or flag: 'Initial setup'
+
+------------
+Run number 1 of rule 'pdflatex'
+------------
+------------
+Running 'pdflatex  -interaction=nonstopmode -halt-on-error -recorder  "main.tex"'
+------------
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex)
+ restricted \write18 enabled.
+entering extended mode
+(./main.tex
+LaTeX2e <2025-11-01>
+L3 programming layer <2026-01-19>
+(/Users/zhouning/Library/texmf/tex/latex/nature/nature.cls
+Document Class: nature 24/2/2004 v1.0
+A class for writing preprints for the journal Nature
+Written by Peter Czoschke
+ 
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/base/article.cls
+Document Class: article 2025/01/22 v1.4n Standard LaTeX document class
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/base/size12.clo))
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/cite/cite.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/psnfss/times.sty)
+(/Users/zhouning/Library/texmf/tex/latex/preprint/fullpage.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/base/ifthen.sty))
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/base/inputenc.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/graphics/graphicx.sty
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/graphics/keyval.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/graphics/graphics.sty
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/graphics/trig.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/graphics-cfg/graphics.cfg)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/graphics-def/pdftex.def)))
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsmath/amsmath.sty
+For additional information on amsmath, use the `?' option.
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsmath/amstext.sty
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsmath/amsgen.sty))
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsmath/amsbsy.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsmath/amsopn.sty))
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsfonts/amssymb.sty
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsfonts/amsfonts.sty))
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/booktabs/booktabs.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/multirow/multirow.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/xcolor/xcolor.sty
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/graphics-cfg/color.cfg)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/graphics/mathcolor.ltx))
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/microtype/microtype.sty
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/etoolbox/etoolbox.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/microtype/microtype-pdftex.d
+ef) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/microtype/microtype.cfg)
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/float/float.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/hyperref/hyperref.sty
+(/usr/local/texlive/2026basic/texmf-dist/tex/generic/iftex/iftex.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/kvsetkeys/kvsetkeys.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/generic/kvdefinekeys/kvdefinekeys.
+sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/generic/pdfescape/pdfescape.sty
+(/usr/local/texlive/2026basic/texmf-dist/tex/generic/ltxcmds/ltxcmds.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/generic/pdftexcmds/pdftexcmds.sty
+(/usr/local/texlive/2026basic/texmf-dist/tex/generic/infwarerr/infwarerr.sty)))
+ (/usr/local/texlive/2026basic/texmf-dist/tex/latex/hycolor/hycolor.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/hyperref/nameref.sty
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/refcount/refcount.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/generic/gettitlestring/gettitlestr
+ing.sty
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/kvoptions/kvoptions.sty)))
+(/usr/local/texlive/2026basic/texmf-dist/tex/generic/stringenc/stringenc.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/hyperref/pd1enc.def)
+(/usr/local/texlive/2026basic/texmf-dist/tex/generic/intcalc/intcalc.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/hyperref/puenc.def)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/url/url.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/generic/bitset/bitset.sty
+(/usr/local/texlive/2026basic/texmf-dist/tex/generic/bigintcalc/bigintcalc.sty)
+)) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/hyperref/hpdftex.def
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/rerunfilecheck/rerunfilechec
+k.sty
+(/usr/local/texlive/2026basic/texmf-dist/tex/generic/uniquecounter/uniquecounte
+r.sty))) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/psnfss/ot1ptm.fd)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/l3backend/l3backend-pdftex.d
+ef) (./main.aux)
+(/usr/local/texlive/2026basic/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
+[Loading MPS to PDF converter (version 2006.09.02).]
+)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.s
+ty
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
+)) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/microtype/mt-ptm.cfg)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/psnfss/ot1phv.fd)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/microtype/mt-cmr.cfg)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsfonts/umsa.fd)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/microtype/mt-msa.cfg)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsfonts/umsb.fd)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/microtype/mt-msb.cfg)
+
+LaTeX Warning: Citation `li2018dcrnn' on page 1 undefined on input line 41.
+
+
+LaTeX Warning: Citation `yu2018stgcn' on page 1 undefined on input line 41.
+
+
+LaTeX Warning: Citation `wu2019graphwavenet' on page 1 undefined on input line 
+41.
+
+
+LaTeX Warning: Citation `ha2018worldmodels' on page 1 undefined on input line 4
+1.
+
+
+LaTeX Warning: Citation `chen2021trafficstream' on page 1 undefined on input li
+ne 43.
+
+
+LaTeX Warning: Citation `lu2021transfer' on page 1 undefined on input line 43.
+
+
+LaTeX Warning: Citation `jin2023transgtr' on page 1 undefined on input line 43.
+
+
+
+LaTeX Warning: Citation `deng2024domain' on page 1 undefined on input line 43.
+
+
+LaTeX Warning: Citation `li2025opencity' on page 1 undefined on input line 43.
+
+[1{/Users/zhouning/Library/texlive/2026basic/texmf-var/fonts/map/pdftex/updmap/
+pdftex.map}{/usr/local/texlive/2026basic/texmf-dist/fonts/enc/dvips/base/8r.enc
+}]
+
+LaTeX Warning: Citation `yu2019specialevent' on page 2 undefined on input line 
+45.
+
+
+LaTeX Warning: Citation `han2024eventtraffic' on page 2 undefined on input line
+ 45.
+
+
+LaTeX Warning: Citation `liang2024llmmpe' on page 2 undefined on input line 45.
+
+
+
+LaTeX Warning: Citation `chen2025semob' on page 2 undefined on input line 45.
+
+
+LaTeX Warning: Citation `yu2025fuse' on page 2 undefined on input line 45.
+
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/psnfss/ts1ptm.fd) [2]
+
+LaTeX Warning: Reference `fig:design' on page 3 undefined on input line 59.
+
+
+LaTeX Warning: Citation `nys2019surcharge' on page 3 undefined on input line 59
+.
+
+
+LaTeX Warning: Citation `tlc2022fare' on page 3 undefined on input line 59.
+
+
+LaTeX Warning: Citation `mta2025crz' on page 3 undefined on input line 59.
+
+
+LaTeX Warning: Reference `fig:design' on page 3 undefined on input line 61.
+
+
+LaTeX Warning: Reference `fig:design' on page 3 undefined on input line 63.
+
+[3]
+
+LaTeX Warning: Reference `fig:primary' on page 4 undefined on input line 74.
+
+[4 <../figures/F1_benchmark_design.pdf>]
+
+LaTeX Warning: Reference `fig:primary' on page 5 undefined on input line 76.
+
+
+LaTeX Warning: Reference `fig:primary' on page 5 undefined on input line 78.
+
+[5] (../tables/tab1_primary_scores.tex) [6 <../figures/F2_primary_tournament.pd
+f>]
+
+LaTeX Warning: Reference `fig:heterogeneity' on page 7 undefined on input line 
+91.
+
+
+LaTeX Warning: Reference `fig:heterogeneity' on page 7 undefined on input line 
+93.
+
+[7]
+
+LaTeX Warning: Reference `fig:heterogeneity' on page 8 undefined on input line 
+95.
+
+(../tables/tab2_fold_skill.tex) [8 <../figures/F3_event_heterogeneity.pdf>]
+
+LaTeX Warning: Reference `fig:controls' on page 9 undefined on input line 108.
+
+
+LaTeX Warning: Reference `fig:controls' on page 9 undefined on input line 110.
+
+
+LaTeX Warning: Reference `fig:controls' on page 9 undefined on input line 110.
+
+
+LaTeX Warning: Reference `fig:controls' on page 9 undefined on input line 112.
+
+[9] (../tables/tab3_action_controls.tex)
+
+LaTeX Warning: Reference `fig:sensitivity' on page 10 undefined on input line 1
+25.
+
+[10 <../figures/F4_semantic_controls.pdf>]
+
+LaTeX Warning: Reference `fig:sensitivity' on page 11 undefined on input line 1
+27.
+
+
+LaTeX Warning: Reference `fig:sensitivity' on page 11 undefined on input line 1
+29.
+
+[11] (../tables/tab4_metric_sensitivity.tex) [12 <../figures/F5_horizon_metric_
+sensitivity.pdf>] [13]
+
+LaTeX Warning: Citation `tlctripdata' on page 14 undefined on input line 160.
+
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/psnfss/ot1pcr.fd) [14]
+
+LaTeX Warning: Citation `nys2019surcharge' on page 15 undefined on input line 1
+68.
+
+
+LaTeX Warning: Citation `tlc2022fare' on page 15 undefined on input line 168.
+
+
+LaTeX Warning: Citation `mta2025crz' on page 15 undefined on input line 168.
+
+[15] [16] [17] [18]
+
+LaTeX Warning: Citation `tlctripdata' on page 19 undefined on input line 226.
+
+
+LaTeX Warning: Citation `nys2019surcharge' on page 19 undefined on input line 2
+26.
+
+
+LaTeX Warning: Citation `tlc2022fare' on page 19 undefined on input line 226.
+
+
+LaTeX Warning: Citation `mta2025crz' on page 19 undefined on input line 226.
+
+(./main.bbl [19] [20] [21]
+Underfull \hbox (badness 1221) in paragraph at lines 152--159
+[]\OT1/ptm/m/n/12 (+20) New York City Taxi and Limou-sine Com-mis-sion.  Tlc tr
+ip record data.  Of-fi-cial
+) [22] (./main.aux)
+
+LaTeX Warning: There were undefined references.
+
+
+LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
+
+
+Package rerunfilecheck Warning: File `main.out' has changed.
+(rerunfilecheck)                Rerun to get outlines right
+(rerunfilecheck)                or use package `bookmark'.
+
+ )
+(see the transcript file for additional information)</usr/local/texlive/2026bas
+ic/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/local/texlive/202
+6basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb></usr/local/texlive
+/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr/local/texl
+ive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/local/t
+exlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local
+/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/l
+ocal/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></Us
+ers/zhouning/Library/texmf/fonts/type1/urw/courier/ucrr8a.pfb></Users/zhouning/
+Library/texmf/fonts/type1/urw/helvetic/uhvb8a.pfb></usr/local/texlive/2026basic
+/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></usr/local/texlive/2026basic/texm
+f-dist/fonts/type1/urw/times/utmr8a.pfb></usr/local/texlive/2026basic/texmf-dis
+t/fonts/type1/urw/times/utmri8a.pfb>
+Output written on main.pdf (22 pages, 365936 bytes).
+Transcript written on main.log.
+Latexmk: Getting log file 'main.log'
+Latexmk: Examining 'main.fls'
+Latexmk: Examining 'main.log'
+Latexmk: Found input bbl file 'main.bbl'
+Latexmk: References changed.
+Latexmk: References changed.
+Latexmk: Log file says output to 'main.pdf'
+Latexmk: Using bibtex to make bibliography file(s).
+  ===Source file 'main.bbl' for 'pdflatex'
+Create bibtex main
+Latexmk: Found bibliography file(s):
+  ./references.bib
+Latexmk: applying rule 'bibtex main'...
+Rule 'bibtex main':  Reasons for rerun
+Category 'other':
+  Rerun of 'bibtex main' forced or previously required:
+    Reason or flag: 'Initial set up of rule'
+
+------------
+Run number 1 of rule 'bibtex main'
+------------
+------------
+Running 'bibtex  "main.aux"'
+------------
+This is BibTeX, Version 0.99e (TeX Live 2026)
+The top-level auxiliary file: main.aux
+The style file: naturemag.bst
+Database file #1: references.bib
+Latexmk: applying rule 'pdflatex'...
+Rule 'pdflatex':  Reasons for rerun
+Changed files or newly in use/created:
+  main.aux
+  main.out
+
+------------
+Run number 2 of rule 'pdflatex'
+------------
+------------
+Running 'pdflatex  -interaction=nonstopmode -halt-on-error -recorder  "main.tex"'
+------------
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex)
+ restricted \write18 enabled.
+entering extended mode
+(./main.tex
+LaTeX2e <2025-11-01>
+L3 programming layer <2026-01-19>
+(/Users/zhouning/Library/texmf/tex/latex/nature/nature.cls
+Document Class: nature 24/2/2004 v1.0
+A class for writing preprints for the journal Nature
+Written by Peter Czoschke
+ 
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/base/article.cls
+Document Class: article 2025/01/22 v1.4n Standard LaTeX document class
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/base/size12.clo))
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/cite/cite.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/psnfss/times.sty)
+(/Users/zhouning/Library/texmf/tex/latex/preprint/fullpage.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/base/ifthen.sty))
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/base/inputenc.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/graphics/graphicx.sty
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/graphics/keyval.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/graphics/graphics.sty
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/graphics/trig.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/graphics-cfg/graphics.cfg)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/graphics-def/pdftex.def)))
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsmath/amsmath.sty
+For additional information on amsmath, use the `?' option.
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsmath/amstext.sty
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsmath/amsgen.sty))
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsmath/amsbsy.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsmath/amsopn.sty))
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsfonts/amssymb.sty
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsfonts/amsfonts.sty))
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/booktabs/booktabs.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/multirow/multirow.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/xcolor/xcolor.sty
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/graphics-cfg/color.cfg)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/graphics/mathcolor.ltx))
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/microtype/microtype.sty
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/etoolbox/etoolbox.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/microtype/microtype-pdftex.d
+ef) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/microtype/microtype.cfg)
+) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/float/float.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/hyperref/hyperref.sty
+(/usr/local/texlive/2026basic/texmf-dist/tex/generic/iftex/iftex.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/kvsetkeys/kvsetkeys.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/generic/kvdefinekeys/kvdefinekeys.
+sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/generic/pdfescape/pdfescape.sty
+(/usr/local/texlive/2026basic/texmf-dist/tex/generic/ltxcmds/ltxcmds.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/generic/pdftexcmds/pdftexcmds.sty
+(/usr/local/texlive/2026basic/texmf-dist/tex/generic/infwarerr/infwarerr.sty)))
+ (/usr/local/texlive/2026basic/texmf-dist/tex/latex/hycolor/hycolor.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/hyperref/nameref.sty
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/refcount/refcount.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/generic/gettitlestring/gettitlestr
+ing.sty
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/kvoptions/kvoptions.sty)))
+(/usr/local/texlive/2026basic/texmf-dist/tex/generic/stringenc/stringenc.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/hyperref/pd1enc.def)
+(/usr/local/texlive/2026basic/texmf-dist/tex/generic/intcalc/intcalc.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/hyperref/puenc.def)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/url/url.sty)
+(/usr/local/texlive/2026basic/texmf-dist/tex/generic/bitset/bitset.sty
+(/usr/local/texlive/2026basic/texmf-dist/tex/generic/bigintcalc/bigintcalc.sty)
+)) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/hyperref/hpdftex.def
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/rerunfilecheck/rerunfilechec
+k.sty
+(/usr/local/texlive/2026basic/texmf-dist/tex/generic/uniquecounter/uniquecounte
+r.sty))) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/psnfss/ot1ptm.fd)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/l3backend/l3backend-pdftex.d
+ef) (./main.aux)
+(/usr/local/texlive/2026basic/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
+[Loading MPS to PDF converter (version 2006.09.02).]
+)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.s
+ty
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
+)) (/usr/local/texlive/2026basic/texmf-dist/tex/latex/microtype/mt-ptm.cfg)
+(./main.out) (./main.out)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/psnfss/ot1phv.fd)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/microtype/mt-cmr.cfg)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsfonts/umsa.fd)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/microtype/mt-msa.cfg)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsfonts/umsb.fd)
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/microtype/mt-msb.cfg)
+[1{/Users/zhouning/Library/texlive/2026basic/texmf-var/fonts/map/pdftex/updmap/
+pdftex.map}{/usr/local/texlive/2026basic/texmf-dist/fonts/enc/dvips/base/8r.enc
+}] (/usr/local/texlive/2026basic/texmf-dist/tex/latex/psnfss/ts1ptm.fd)
+[2] [3] [4 <../figures/F1_benchmark_design.pdf>] [5]
+(../tables/tab1_primary_scores.tex) [6 <../figures/F2_primary_tournament.pdf>]
+[7] (../tables/tab2_fold_skill.tex) [8 <../figures/F3_event_heterogeneity.pdf>]
+ [9] (../tables/tab3_action_controls.tex) [10 <../figures/F4_semantic_controls.
+pdf>] [11] (../tables/tab4_metric_sensitivity.tex) [12 <../figures/F5_horizon_m
+etric_sensitivity.pdf>] [13]
+(/usr/local/texlive/2026basic/texmf-dist/tex/latex/psnfss/ot1pcr.fd) [14]
+[15] [16] [17] [18] (./main.bbl [19] [20] [21]
+Underfull \hbox (badness 1221) in paragraph at lines 152--159
+[]\OT1/ptm/m/n/12 (+20) New York City Taxi and Limou-sine Com-mis-sion.  Tlc tr
+ip record data.  Of-fi-cial
+) [22] (./main.aux) )
+(see the transcript file for additional information)</usr/local/texlive/2026bas
+ic/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/local/texlive/202
+6basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb></usr/local/texlive
+/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr/local/texl
+ive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/local/t
+exlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local
+/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/l
+ocal/texlive/2026basic/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></Us
+ers/zhouning/Library/texmf/fonts/type1/urw/courier/ucrr8a.pfb></Users/zhouning/
+Library/texmf/fonts/type1/urw/helvetic/uhvb8a.pfb></usr/local/texlive/2026basic
+/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></usr/local/texlive/2026basic/texm
+f-dist/fonts/type1/urw/times/utmr8a.pfb></usr/local/texlive/2026basic/texmf-dis
+t/fonts/type1/urw/times/utmri8a.pfb>
+Output written on main.pdf (22 pages, 367817 bytes).
+Transcript written on main.log.
+Latexmk: Getting log file 'main.log'
+Latexmk: Examining 'main.fls'
+Latexmk: Examining 'main.log'
+Latexmk: Found input bbl file 'main.bbl'
+Latexmk: Log file says output to 'main.pdf'
+Latexmk: Using bibtex to make bibliography file(s).
+  ===Source file 'main.bbl' for 'pdflatex'
+Latexmk: Found bibliography file(s):
+  ./references.bib
+Latexmk: All targets (main.pdf) are up-to-date
+

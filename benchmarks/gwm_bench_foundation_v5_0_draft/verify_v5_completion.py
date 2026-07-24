@@ -132,10 +132,31 @@ def main() -> int:
         if result["action_transfer_gate"]["passed"]
         else "PASS_V5_BENCHMARK_COMPLETE_ACTION_TRANSFER_NOT_SUPPORTED"
     )
+    artifacts = {
+        "protocol": artifact(PROTOCOL_PATH),
+        "data_verification": artifact(DATA_VERIFICATION_PATH),
+        "runtime_evaluator_seal": artifact(SEAL_PATH),
+        "runtime_replay": artifact(REPLAY_PATH),
+        "prediction_commitment": artifact(COMMITMENT_PATH),
+        "frozen_evaluator": artifact(EVALUATOR_PATH),
+        "formal_result": artifact(RESULT_PATH),
+    }
+    generated_at = datetime.now(timezone.utc).isoformat()
+    if OUTPUT_PATH.is_file():
+        existing = load_json(OUTPUT_PATH)
+        unchanged = (
+            existing.get("status") == (final_status if passed else "FAIL_V5_COMPLETION_VERIFICATION")
+            and existing.get("checks") == checks
+            and existing.get("artifacts") == artifacts
+            and existing.get("action_transfer_gate") == result["action_transfer_gate"]
+        )
+        if unchanged and existing.get("generated_at"):
+            generated_at = existing["generated_at"]
+
     report = {
         "schema": "gwm_bench.foundation_v5_completion_verification.v1",
         "suite_id": protocol["suite_id"],
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": generated_at,
         "status": final_status if passed else "FAIL_V5_COMPLETION_VERIFICATION",
         "benchmark_complete": passed,
         "action_transfer_supported": result["action_transfer_gate"]["passed"],
@@ -143,15 +164,7 @@ def main() -> int:
         "passed_check_count": sum(checks.values()),
         "failed_checks": [key for key, value in checks.items() if not value],
         "checks": checks,
-        "artifacts": {
-            "protocol": artifact(PROTOCOL_PATH),
-            "data_verification": artifact(DATA_VERIFICATION_PATH),
-            "runtime_evaluator_seal": artifact(SEAL_PATH),
-            "runtime_replay": artifact(REPLAY_PATH),
-            "prediction_commitment": artifact(COMMITMENT_PATH),
-            "frozen_evaluator": artifact(EVALUATOR_PATH),
-            "formal_result": artifact(RESULT_PATH),
-        },
+        "artifacts": artifacts,
         "action_transfer_gate": result["action_transfer_gate"],
         "next_permitted_action": (
             "Publish the complete V5 result, figures, data previews and failure analysis."

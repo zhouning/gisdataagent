@@ -1,0 +1,14 @@
+year,action,scope,panel,quantity,value
+2015.0,"Improvement
+surcharge",citywide,a,event,2015
+2019.0,"Congestion
+surcharge",Manhattan trips,a,event,2019
+2022.0,"Taximeter
+adjustment",citywide bundle,a,event,2022
+2025.0,"CRZ
+charge",CBD-related,a,event,2025
+,,,b,independent_action_events,4
+,,,b,training_actions_per_fold,3
+,,,b,zones_per_event,263
+,,,b,weeks_per_event,64
+,,,b,total_zone_week_rows,67328

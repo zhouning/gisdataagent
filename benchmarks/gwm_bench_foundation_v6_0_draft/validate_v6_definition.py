@@ -266,10 +266,29 @@ def main() -> int:
     else:
         status = "PASS_V6_DEFINITION_VALIDATED_NOT_ACTIVATED"
 
+    candidate_counts = {
+        "screened": len(candidates),
+        "admitted_development": len(admitted_development),
+        "admitted_hidden_test": len(admitted_hidden),
+        "total_development_including_v5": total_development,
+        "total_events": total_events,
+    }
+    generated_at = datetime.now(timezone.utc).isoformat()
+    if OUTPUT_PATH.is_file():
+        existing = load_json(OUTPUT_PATH)
+        unchanged = (
+            existing.get("status") == status
+            and existing.get("checks") == checks
+            and existing.get("activation_checks") == activation_checks
+            and existing.get("candidate_counts") == candidate_counts
+        )
+        if unchanged and existing.get("generated_at"):
+            generated_at = existing["generated_at"]
+
     report = {
         "schema": "gwm_bench.foundation_v6_definition_validation.v1",
         "suite_id": protocol["suite_id"],
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": generated_at,
         "status": status,
         "definition_valid": definition_valid,
         "activation_ready": activation_ready,
@@ -278,13 +297,7 @@ def main() -> int:
         "failed_checks": [name for name, value in checks.items() if not value],
         "checks": checks,
         "activation_checks": activation_checks,
-        "candidate_counts": {
-            "screened": len(candidates),
-            "admitted_development": len(admitted_development),
-            "admitted_hidden_test": len(admitted_hidden),
-            "total_development_including_v5": total_development,
-            "total_events": total_events,
-        },
+        "candidate_counts": candidate_counts,
         "candidate_blockers": {
             candidate["candidate_id"]: candidate["blockers"]
             for candidate in candidates

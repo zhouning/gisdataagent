@@ -1,0 +1,112 @@
+{
+  "schema": "uwm.nyc_action_transfer_narrative_report.v1",
+  "experiment_status": "COMPLETE_WITH_MANDATORY_CAUTIONS",
+  "central_claim": "Under the frozen four-action leave-one-action-out protocol, the evaluated action-conditioned configuration did not transfer reliably beyond strong historical forecasting and did not consistently prefer correct action semantics over corruptions.",
+  "claim_boundary": "One frozen configuration, four known NYC yellow-taxi fare actions, retrospective model-held-out prediction; no causal, future-event, cross-city, operational, or universal UWM/GWM claim.",
+  "subclaims": [
+    {
+      "claim_id": "S1",
+      "statement": "The benchmark is reproducible and leakage-resistant at the declared model boundary.",
+      "support_status": "supported",
+      "key_results": {
+        "paper_integrity_checks_passed": 15,
+        "paper_integrity_checks_total": 15,
+        "required_submissions_scored": 11,
+        "inventory_hashes_match": true
+      },
+      "result_files": ["benchmark_integrity.csv", "evidence_inventory.csv", "frozen_evidence_summary.json"],
+      "figure_panels": ["F1a", "F1b"],
+      "boundary": "Model-held-out but not analyst-blind; no causal or future-event validity."
+    },
+    {
+      "claim_id": "S2",
+      "statement": "The evaluated action-conditioned configuration lacks stable cross-action advantage over strong historical dynamics.",
+      "support_status": "supported",
+      "key_results": {
+        "candidate_primary_error": 0.36838923900541926,
+        "history_primary_error": 0.3626162626409588,
+        "spatial_ar_primary_error": 0.36141612169760795,
+        "mean_fold_skill": -0.025239441518234873,
+        "improved_actions": 2,
+        "total_actions": 4,
+        "frozen_gates_passed": 0,
+        "frozen_gates_total": 8,
+        "sensitivity_specs_losing_both_baselines": 6,
+        "sensitivity_specs_total": 7,
+        "all_12_horizons_candidate_minus_history": -0.0044954571735512094,
+        "all_12_horizons_candidate_minus_spatial_ar": -0.003817089092111259
+      },
+      "result_files": ["primary_scores.csv", "fold_skill.csv", "gate_summary.csv", "metric_sensitivity_contrasts.csv", "metric_sensitivity_summary.json"],
+      "figure_panels": ["F2a", "F2b", "F3a", "F5a", "F5b"],
+      "boundary": "The primary failure is horizon-weighting sensitive; uniform inferiority is unsupported."
+    },
+    {
+      "claim_id": "S3",
+      "statement": "Correct action timing, components and spatial scope are not reliably preferred.",
+      "support_status": "supported",
+      "key_results": {
+        "corruptions_beating_correct_action": 4,
+        "total_corruptions": 7,
+        "best_submission": "effective_date_plus_4w",
+        "best_submission_error": 0.3589183344673512,
+        "candidate_minus_best_control": 0.009470904538068044,
+        "best_control_bootstrap_ci_low": 0.005853143188698729,
+        "best_control_bootstrap_ci_high": 0.013100922185048127
+      },
+      "result_files": ["action_controls.csv", "primary_scores.csv"],
+      "figure_panels": ["F4a", "F4b"],
+      "boundary": "The +4-week control is not evidence of a true four-week implementation lag."
+    },
+    {
+      "claim_id": "S4",
+      "statement": "Transfer behavior is structured by event, target and horizon rather than uniform collapse.",
+      "support_status": "supported",
+      "key_results": {
+        "event_skill_2015": -0.15346525855099524,
+        "event_skill_2019": -0.13911786170463647,
+        "event_skill_2022": 0.10776477378515859,
+        "event_skill_2025": 0.08386058039753364,
+        "reported_horizons_improved": [4, 8, 12],
+        "reported_horizons_degraded": [1, 2]
+      },
+      "result_files": ["fold_skill.csv", "error_decomposition.csv", "horizon_profile.csv"],
+      "figure_panels": ["F3a", "F3b", "F5a"],
+      "boundary": "Descriptive heterogeneity does not identify fare-policy effects."
+    },
+    {
+      "claim_id": "S5",
+      "statement": "Zone-week row count cannot be interpreted as independent intervention support.",
+      "support_status": "partially_supported",
+      "key_results": {
+        "independent_action_events": 4,
+        "training_actions_per_fold": 3,
+        "zones_per_event": 263,
+        "weeks_per_event": 64,
+        "total_zone_week_rows": 67328,
+        "training_zone_week_rows_per_fold": 50496
+      },
+      "result_files": ["support_units.csv"],
+      "figure_panels": ["F1b"],
+      "boundary": "The hierarchy supports a pseudoreplication caution but does not prove that node-level exposure variation is uninformative."
+    }
+  ],
+  "uncertainty": {
+    "score_bootstrap_ready": true,
+    "score_bootstrap_draws": 20000,
+    "calibrated_prediction_interval_ready": false,
+    "seed_spread_is_calibrated_interval": false,
+    "reason": "Residual-level cross-fitted training-action predictions were not retained in V5."
+  },
+  "novelty": {
+    "decision": "PASS_WITH_NARROWED_CONTRIBUTION",
+    "admitted_object": "Policy-action-level leave-one-out forecasting with commitment/replay and semantic action corruptions.",
+    "not_admitted": [
+      "first event-aware mobility prediction",
+      "first semantic-text traffic forecast",
+      "first traffic distribution-shift benchmark",
+      "architecture-first novelty",
+      "absolute global first claim"
+    ]
+  },
+  "writer_status": "READY_FOR_ADMISSION_GATE"
+}
