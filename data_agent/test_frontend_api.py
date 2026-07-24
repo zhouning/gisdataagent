@@ -295,6 +295,37 @@ class TestAdminUsersAPI(unittest.TestCase):
             _api_admin_update_role(req))
         self.assertEqual(resp.status_code, 400)
 
+    @patch("data_agent.frontend_api.get_engine", return_value=None)
+    @patch("data_agent.frontend_api._get_user_from_request")
+    def test_update_role_accepts_platform_operator(self, mock_user, _mock_engine):
+        mock_user.return_value = _make_user(identifier="admin", role="admin")
+        from data_agent.frontend_api import _api_admin_update_role
+        req = _make_request(
+            path_params={"username": "operator"},
+            body={"role": "platform_operator"},
+        )
+        resp = _run_async(_api_admin_update_role(req))
+        self.assertEqual(resp.status_code, 503)
+
+    @patch("data_agent.frontend_api._get_user_from_request")
+    def test_update_tenant_rejects_noncanonical_tenant(self, mock_user):
+        mock_user.return_value = _make_user(identifier="admin", role="admin")
+        from data_agent.frontend_api import _api_admin_update_tenant
+        req = _make_request(
+            path_params={"username": "operator"},
+            body={"tenant_id": "Tenant A"},
+        )
+        resp = _run_async(_api_admin_update_tenant(req))
+        self.assertEqual(resp.status_code, 400)
+
+    @patch("data_agent.frontend_api._get_user_from_request")
+    def test_update_tenant_rejects_non_object_json(self, mock_user):
+        mock_user.return_value = _make_user(identifier="admin", role="admin")
+        from data_agent.frontend_api import _api_admin_update_tenant
+        req = _make_request(path_params={"username": "operator"}, body=[])
+        resp = _run_async(_api_admin_update_tenant(req))
+        self.assertEqual(resp.status_code, 400)
+
     @patch("data_agent.frontend_api._get_user_from_request")
     def test_delete_self_forbidden(self, mock_user):
         mock_user.return_value = _make_user(identifier="admin", role="admin")

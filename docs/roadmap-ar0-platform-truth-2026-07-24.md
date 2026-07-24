@@ -1,7 +1,7 @@
 # GIS Data Agent 下一代 Data Platform Roadmap（AR-0 主线）
 
 日期：2026-07-24  
-分支：`feat/ar0-platform-truth`  
+分支：`feat/ar1-control-gateway`
 基线：`origin/feat/v12-extensible-platform@ebd99f8`
 
 ## 1. 决策摘要
@@ -144,9 +144,23 @@ MMFE、GWM 和生态扩展继续保留为战略方向，但必须由已发布 Da
 
 此切片建立的是迁移判定与验收证据，不是生产迁移工具。五张旧表继续服务兼容调用方，`gda_control` 仍未进入生产写链路；任何真实数据迁移都必须由后续 adapter 提供 tenant、authority identity、checksum、correlation 和幂等证据。
 
-### 4.5 下一开发包
+### 4.5 AR-1 controlled write gateway（已完成）
 
-下一块进入 AR-1 gateway role/API，但仍保持最小范围：建立 non-bypass gateway role、tenant session context、最小 grant、Resource/Version/Definition/Run 创建事务、CAS transition，以及 observation/artifact/lineage ingest 的幂等合同。完成授权与故障语义测试后，再选择一套首个纵向场景真正需要的外部 metadata 或 orchestrator 做 sandbox POC，不将多套控制面一次性接入主链路。
+第五块切片包括：
+
+1. `NOLOGIN`、`NOINHERIT`、`NOBYPASSRLS` 的 `gda_control_gateway` 数据库角色和最小 `SELECT/INSERT/EXECUTE` grant；
+2. transaction-local role 与 tenant context，连接池事务结束后自动复位；
+3. Resource/ResourceVersion 幂等登记和 Definition bundle 原子事务；
+4. PlatformRun/input 原子提交、幂等 key、读取与 CAS transition；
+5. FrameworkAttemptObservation、Artifact 和 LineageEvent 幂等追加，禁止直接伪造 RunEvent；
+6. 九个 `/api/platform/v1` 路由、`platform_operator`、JWT tenant context、actor/tenant spoofing 拒绝和统一错误 envelope；
+7. 静态 validator、真实 PostgreSQL 角色/服务链测试、CI 门禁、[ADR-022](architecture-decisions/adr-022-platform-control-gateway.md) 与更新后的 [System-of-Record 矩阵](system-of-record-matrix-2026-07-24.md)。
+
+此切片证明新的受控写入口可用，但没有切换任何生产业务调用方。现有 legacy 表仍是兼容写路径，OpenMetadata、Gravitino、DolphinScheduler 和 Temporal 仍未部署或接入。生产部署还要求 migration/DBA 具备 role 管理权限、应用 login 获得 gateway role membership，并先在 staging 完成双租户和连接池复位验收。
+
+### 4.6 下一开发包
+
+下一块不再扩张通用控制表，而是用地类图斑 golden slice 选择并验证一个真实 adapter POC。优先比较 metadata-first（OpenMetadata governance mapping）与 orchestration-first（DolphinScheduler DataOps run correlation）两条路径，以首个纵向工作流的实际依赖决定只推进一条；验收必须包含外部系统故障、幂等 replay、outbox/callback、双租户拒绝和无双写恢复。资源级 PolicyDecision/Approval 与 workload identity 在任何生产 adapter 接入前补齐。
 
 ## 5. 重新评估条件
 

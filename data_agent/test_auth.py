@@ -8,6 +8,7 @@ def test_valid_roles_includes_standard_reviewer():
     """Wave 4: standard_reviewer is a recognized role."""
     assert "standard_reviewer" in _VALID_ROLES
     assert "standard_editor" in _VALID_ROLES
+    assert "platform_operator" in _VALID_ROLES
 
 
 def test_register_user_rejects_invalid_role():

@@ -1,6 +1,6 @@
 # GIS Data Agent — 总体架构 Roadmap
 
-**Last updated**: 2026-07-20
+**Last updated**: 2026-07-24
 
 **Status**: Architecture reset, authoritative mainline
 
@@ -724,7 +724,7 @@ AR-4 parity/control gate 退出前暂停以下主线扩张：
 | 阶段 | 状态 | 下一证据 |
 |---|---|---|
 | AR-0 Architecture/Schema/Runtime Truth Freeze | `in_progress` | 全环境 schema/config fingerprint、迁移 fail-closed、事实清单、storage/compute/GIS serving provider profile/capability、ADR-017 benchmark、owner/SLO 和首条数据/服务验收集冻结 |
-| AR-1 Unified Metadata + Orchestration Control Planes | `planned` | OpenMetadata + Gravitino fabric bridge、DolphinScheduler process/schedules/complement、PlatformRun correlation 与 Spark/Flink adapter 通过故障注入和双租户验收 |
+| AR-1 Unified Metadata + Orchestration Control Planes | `in_progress` | controlled gateway role/API 已通过真实 PostgreSQL 权限、幂等链和双租户边界测试；下一证据是单一 metadata 或 orchestrator adapter POC、资源级 policy/workload identity、故障恢复与无双写验收 |
 | AR-2 Source/Ingestion + Geospatial Lakehouse Vertical Slice | `planned` | 三类代表源、`DriveTransfer` 云盘客户端和大文件恢复通过统一控制面；默认湖仓、轻量存算一体及 Azure 代表 adapter 通过 provider conformance 与 Raw -> ADS 验收 |
 | AR-3 Data Product Engineering + Governance Workbench | `planned` | Blueprint、模型、Visual/SQL/Notebook、DataOps CI/CD、质量/安全/审批共用 definition 和产品生命周期 |
 | AR-4 Asset/GIS Service/Spatial Experience Operations | `planned` | Service Control Plane、Features/Tiles/MVT/COG/STAC/export 及条件 legacy OGC/3D/EDR provider、Gateway/权限/缓存、原子切换/回滚、Discover/Operate/Govern 和无 LLM 多入口通过 conformance/parity/control gate |

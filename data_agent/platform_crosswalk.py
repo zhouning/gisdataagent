@@ -24,7 +24,6 @@ from pydantic import (
     StringConstraints,
     ValidationError,
     field_validator,
-    model_validator,
 )
 
 from .platform_contracts import (
@@ -33,11 +32,11 @@ from .platform_contracts import (
     LineageEvent,
     PlatformDefinitionVersion,
     PlatformRun,
+    Resource,
     ResourceVersion,
     SubjectContext,
     canonical_json_bytes,
     canonical_json_fingerprint,
-    parse_resource_urn,
     validate_run_transition,
 )
 
@@ -497,24 +496,7 @@ class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
-class ResourceCrosswalkPayload(StrictModel):
-    tenant_id: NonEmptyText
-    resource_urn: NonEmptyText
-    resource_kind: NonEmptyText
-    authority_system: NonEmptyText
-    authority_locator: NonEmptyText
-    owner_ref: NonEmptyText
-    governance_ref: dict[str, Any] = Field(default_factory=dict)
-    technical_refs: tuple[dict[str, Any], ...] = ()
-
-    @model_validator(mode="after")
-    def _consistent_resource_identity(self) -> "ResourceCrosswalkPayload":
-        components = parse_resource_urn(self.resource_urn)
-        if components["tenant_id"] != self.tenant_id:
-            raise ValueError("resource_urn tenant must match tenant_id")
-        if components["resource_kind"] != self.resource_kind:
-            raise ValueError("resource_urn kind must match resource_kind")
-        return self
+ResourceCrosswalkPayload = Resource
 
 
 class CrosswalkCandidate(StrictModel):
@@ -543,7 +525,7 @@ class CrosswalkCandidate(StrictModel):
 
 
 TARGET_MODELS: dict[str, type[BaseModel]] = {
-    "resource": ResourceCrosswalkPayload,
+    "resource": Resource,
     "resource_version": ResourceVersion,
     "platform_definition_version": PlatformDefinitionVersion,
     "framework_attempt_observation": FrameworkAttemptObservation,

@@ -101,6 +101,33 @@ def test_resource_urn_build_parse_and_canonical_rejection():
         contracts.parse_resource_urn("gda://tenant-a/dataset/../secret")
 
 
+def test_resource_contract_binds_tenant_kind_and_authority():
+    resource = contracts.Resource(
+        tenant_id=TENANT,
+        resource_urn=contracts.build_resource_urn(TENANT, "dataset", "parcels"),
+        resource_kind="dataset",
+        authority_system="iceberg",
+        authority_locator="geo.parcels",
+        owner_ref="team:data-platform",
+    )
+
+    assert resource.resource_kind == "dataset"
+    with pytest.raises(ValidationError, match="tenant must match"):
+        contracts.Resource(
+            **{
+                **resource.model_dump(),
+                "tenant_id": "tenant-b",
+            }
+        )
+    with pytest.raises(ValidationError, match="kind must match"):
+        contracts.Resource(
+            **{
+                **resource.model_dump(),
+                "resource_kind": "model",
+            }
+        )
+
+
 def test_resource_version_requires_tenant_and_predecessor_consistency():
     urn = contracts.build_resource_urn(TENANT, "dataset", "parcels")
     version = contracts.ResourceVersion(
@@ -292,9 +319,9 @@ def test_control_ledger_contract_and_migration_catalog_are_valid():
     )
 
     assert report["status"] == "valid"
-    assert report["contract_count"] == 9
+    assert report["contract_count"] == 10
     assert report["migration"]["sha256"] == migration["checksum"]
-    assert migrations[-1]["migration_id"] == "092_platform_control_ledger"
+    assert migrations[-1]["migration_id"] == "094_platform_control_gateway"
 
 
 def test_sql_contract_has_tenant_fks_rls_append_only_and_no_legacy_backfill():

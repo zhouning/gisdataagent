@@ -75,6 +75,10 @@ ResourceURNText = Annotated[
     str,
     StringConstraints(min_length=12, max_length=256),
 ]
+ResourceKind = Annotated[
+    str,
+    StringConstraints(pattern=r"^[a-z][a-z0-9_-]{1,31}$"),
+]
 
 
 class PlatformContractError(ValueError):
@@ -324,6 +328,28 @@ class SubjectContext(FrozenContract):
         return tuple(sorted(value))
 
 
+class Resource(FrozenContract):
+    schema_id = "resource"
+
+    tenant_id: TenantId
+    resource_urn: ResourceURNText
+    resource_kind: ResourceKind
+    authority_system: ShortName
+    authority_locator: NonEmptyText
+    owner_ref: NonEmptyText
+    governance_ref: dict[str, Any] = Field(default_factory=dict)
+    technical_refs: tuple[dict[str, Any], ...] = ()
+
+    @model_validator(mode="after")
+    def _consistent_identity(self) -> "Resource":
+        components = parse_resource_urn(self.resource_urn)
+        if components["tenant_id"] != self.tenant_id:
+            raise ValueError("resource_urn tenant must match tenant_id")
+        if components["resource_kind"] != self.resource_kind:
+            raise ValueError("resource_urn kind must match resource_kind")
+        return self
+
+
 class ResourceVersion(FrozenContract):
     schema_id = "resource_version"
 
@@ -562,6 +588,7 @@ class LineageEvent(FrozenContract):
 
 CONTRACT_MODELS = (
     SubjectContext,
+    Resource,
     ResourceVersion,
     PlatformDefinitionVersion,
     ResourceBinding,
