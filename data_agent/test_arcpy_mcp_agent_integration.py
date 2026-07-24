@@ -1,7 +1,12 @@
 """Tests for ArcPy MCP registration across agent pipelines."""
 
 import asyncio
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
+from data_agent.hitl_approval import HITLApprovalPlugin, ensure_hitl_plugin
 from data_agent.toolsets.arcpy_mcp_toolset import ArcPyMcpToolset
 
 
@@ -72,3 +77,61 @@ def test_requested_pipelines_register_scoped_arcpy_toolsets():
 
     instances = [toolsets[0] for toolsets in registrations.values()]
     assert len({id(toolset) for toolset in instances}) == len(instances)
+
+
+@pytest.mark.asyncio
+@patch("data_agent.pipeline_runner.Runner")
+async def test_headless_and_streaming_runners_install_hitl_by_default(
+    runner_class,
+):
+    from data_agent.pipeline_runner import (
+        run_pipeline_headless,
+        run_pipeline_streaming,
+    )
+
+    async def empty_events():
+        if False:
+            yield None
+
+    runner = MagicMock()
+    runner.run_async.side_effect = lambda **kwargs: empty_events()
+    runner_class.return_value = runner
+    session_service = SimpleNamespace(
+        get_session=AsyncMock(return_value=None)
+    )
+
+    await run_pipeline_headless(
+        agent=MagicMock(),
+        session_service=session_service,
+        user_id="test-user",
+        session_id="headless-session",
+        prompt="test",
+    )
+    async for _ in run_pipeline_streaming(
+        agent=MagicMock(),
+        session_service=session_service,
+        user_id="test-user",
+        session_id="stream-session",
+        prompt="test",
+    ):
+        pass
+
+    assert len(runner_class.call_args_list) == 2
+    for runner_call in runner_class.call_args_list:
+        plugins = runner_call.kwargs["plugins"]
+        assert sum(
+            isinstance(plugin, HITLApprovalPlugin) for plugin in plugins
+        ) == 1
+
+
+def test_runner_plugin_assembly_preserves_configured_hitl_instance():
+    configured = HITLApprovalPlugin()
+    duplicate = HITLApprovalPlugin()
+    approval_function = AsyncMock()
+    configured.set_approval_function(approval_function)
+    unrelated = MagicMock()
+
+    plugins = ensure_hitl_plugin([unrelated, configured, duplicate])
+
+    assert plugins == [unrelated, configured]
+    assert configured._approval_fn is approval_function

@@ -196,7 +196,7 @@ except Exception as _startup_err:
 
 from data_agent.obs_storage import ensure_obs_connection, is_obs_configured, upload_file_smart
 from data_agent.gis_processors import sync_to_obs
-from data_agent.hitl_approval import HITLApprovalPlugin, HITL_ENABLED
+from data_agent.hitl_approval import HITLApprovalPlugin
 try:
     ensure_obs_connection()
 except Exception as _obs_err:
@@ -315,20 +315,28 @@ else:
 # ---------------------------------------------------------------------------
 _hitl_plugin = HITLApprovalPlugin()
 
-if HITL_ENABLED:
-    async def _chainlit_approval(content: str):
-        """Show approval dialog via Chainlit AskActionMessage."""
-        res = await cl.AskActionMessage(
-            content=content,
-            actions=[
-                cl.Action(name="approve", payload={"value": "APPROVE"}, label=t("action.approve")),
-                cl.Action(name="reject", payload={"value": "REJECT"}, label=t("action.reject")),
-            ],
-            timeout=int(os.environ.get("HITL_TIMEOUT", "120")),
-        ).send()
-        return res
+async def _chainlit_approval(content: str):
+    """Show approval dialog via Chainlit AskActionMessage."""
+    res = await cl.AskActionMessage(
+        content=content,
+        actions=[
+            cl.Action(
+                name="approve",
+                payload={"value": "APPROVE"},
+                label=t("action.approve"),
+            ),
+            cl.Action(
+                name="reject",
+                payload={"value": "REJECT"},
+                label=t("action.reject"),
+            ),
+        ],
+        timeout=int(os.environ.get("HITL_TIMEOUT", "120")),
+    ).send()
+    return res
 
-    _hitl_plugin.set_approval_function(_chainlit_approval)
+
+_hitl_plugin.set_approval_function(_chainlit_approval)
 
 # ---------------------------------------------------------------------------
 # Self-Registration Routes (mounted on Chainlit's FastAPI app)
@@ -1706,7 +1714,7 @@ async def _execute_pipeline(
     trace_id = _set_user_context(user_id, session_id, role)
     logger.info("[Trace:%s] Pipeline=%s Intent=%s Started", trace_id, pipeline_name, intent)
 
-    _plugins = [_hitl_plugin] if HITL_ENABLED else []
+    _plugins = [_hitl_plugin]
     try:
         from data_agent.plugins import build_plugin_stack
         _plugins.extend(build_plugin_stack())

@@ -226,6 +226,77 @@ class TestHITLPlugin:
         result = asyncio.run(self._call(plugin, "import_to_postgis", {"table": "t"}))
         assert result is None  # auto-approved on error
 
+    @pytest.mark.parametrize(
+        "tool_name",
+        [
+            "arcpy_detect_objects",
+            "arcpy_classify_pixels",
+            "arcpy_classify_objects",
+            "arcpy_detect_change",
+        ],
+    )
+    @pytest.mark.parametrize("failure_mode", ["missing", "error", "timeout"])
+    def test_arcpy_deep_learning_approval_failures_block(
+        self, tool_name, failure_mode
+    ):
+        plugin = HITLApprovalPlugin()
+        plugin._block_level = RiskLevel.CRITICAL
+
+        if failure_mode == "error":
+            async def approval_fn(content):
+                raise RuntimeError("approval unavailable")
+
+            plugin.set_approval_function(approval_fn)
+        elif failure_mode == "timeout":
+            async def approval_fn(content):
+                return None
+
+            plugin.set_approval_function(approval_fn)
+
+        result = asyncio.run(
+            self._call(plugin, tool_name, {"input_path": "x.tif"})
+        )
+
+        assert result == {
+            "status": "blocked",
+            "reason": "ArcPy 深度学习工具必须获得用户明确批准",
+            "tool": tool_name,
+        }
+
+    def test_arcpy_deep_learning_blocks_when_hitl_is_globally_disabled(self):
+        from data_agent import hitl_approval
+
+        old_value = hitl_approval.HITL_ENABLED
+        hitl_approval.HITL_ENABLED = False
+        try:
+            plugin = HITLApprovalPlugin()
+            result = asyncio.run(
+                self._call(
+                    plugin,
+                    "arcpy_detect_change",
+                    {"from_path": "before.tif", "to_path": "after.tif"},
+                )
+            )
+        finally:
+            hitl_approval.HITL_ENABLED = old_value
+
+        assert result is not None
+        assert result["status"] == "blocked"
+        assert result["tool"] == "arcpy_detect_change"
+
+    def test_arcpy_deep_learning_runs_only_after_explicit_approval(self):
+        plugin = HITLApprovalPlugin()
+
+        async def approval_fn(content):
+            return SimpleNamespace(payload={"value": "APPROVE"})
+
+        plugin.set_approval_function(approval_fn)
+        result = asyncio.run(
+            self._call(plugin, "arcpy_classify_pixels", {"input_path": "x.tif"})
+        )
+
+        assert result is None
+
     @patch.dict(os.environ, {"HITL_ENABLED": "true", "HITL_BLOCK_LEVEL": "high"})
     def test_high_threshold_blocks_high_tools(self):
         """When HITL_BLOCK_LEVEL=high, HIGH tools trigger approval."""

@@ -14,6 +14,8 @@ from google.adk.runners import Runner
 from google.adk.agents.run_config import RunConfig, StreamingMode
 from google.genai import types
 
+from .hitl_approval import ensure_hitl_plugin
+
 
 # ---------------------------------------------------------------------------
 # File path extraction (moved from app.py for reuse)
@@ -119,7 +121,7 @@ async def run_pipeline_headless(
         app_name="data_agent_headless",
         session_service=session_service,
         auto_create_session=True,
-        plugins=plugins or [],
+        plugins=ensure_hitl_plugin(plugins),
     )
     if memory_service is not None:
         runner_kwargs["memory_service"] = memory_service
@@ -300,7 +302,7 @@ async def run_pipeline_streaming(
         app_name="data_agent_headless",
         session_service=session_service,
         auto_create_session=True,
-        plugins=plugins or [],
+        plugins=ensure_hitl_plugin(plugins),
     )
     if memory_service is not None:
         runner_kwargs["memory_service"] = memory_service

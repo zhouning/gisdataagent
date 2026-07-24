@@ -32,6 +32,14 @@ class RiskLevel(IntEnum):
     CRITICAL = 3
 
 
+_MANDATORY_APPROVAL_TOOLS = frozenset({
+    "arcpy_detect_objects",
+    "arcpy_classify_pixels",
+    "arcpy_classify_objects",
+    "arcpy_detect_change",
+})
+
+
 # ---------------------------------------------------------------------------
 # Risk registry — maps tool names to risk metadata
 # ---------------------------------------------------------------------------
@@ -240,10 +248,11 @@ class HITLApprovalPlugin(BasePlugin):
 
         Returns ``None`` to allow execution, or a ``dict`` to block it.
         """
-        if not HITL_ENABLED:
+        tool_name = tool.name if hasattr(tool, "name") else str(tool)
+        mandatory_approval = tool_name in _MANDATORY_APPROVAL_TOOLS
+        if not HITL_ENABLED and not mandatory_approval:
             return None
 
-        tool_name = tool.name if hasattr(tool, "name") else str(tool)
         risk = assess_risk(tool_name, tool_args)
         if risk is None:
             return None
@@ -253,8 +262,12 @@ class HITLApprovalPlugin(BasePlugin):
             self._record_audit(tool_name, tool_args, risk, "auto_approved", "below_threshold")
             return None
 
-        # No approval function (eval / test mode) — auto-approve
+        # Headless channels cannot run mandatory operations without a user.
         if self._approval_fn is None:
+            if mandatory_approval:
+                return self._block_mandatory_approval(
+                    tool_name, tool_args, risk, "no_approval_fn"
+                )
             self._record_audit(tool_name, tool_args, risk, "auto_approved", "no_approval_fn")
             return None
 
@@ -265,13 +278,21 @@ class HITLApprovalPlugin(BasePlugin):
         try:
             response = await self._approval_fn(message)
         except Exception as exc:
-            # Approval mechanism failed — degrade to auto-approve
+            if mandatory_approval:
+                print("[HITL] Mandatory approval function failed; blocking")
+                return self._block_mandatory_approval(
+                    tool_name, tool_args, risk, "approval_error"
+                )
             print(f"[HITL] Approval function error, auto-approving: {exc}")
             self._record_audit(tool_name, tool_args, risk, "auto_approved", "approval_error")
             return None
 
         # Timeout — AskActionMessage returns None
         if response is None:
+            if mandatory_approval:
+                return self._block_mandatory_approval(
+                    tool_name, tool_args, risk, "timeout"
+                )
             self._record_audit(tool_name, tool_args, risk, "auto_approved", "timeout")
             return None
 
@@ -289,6 +310,22 @@ class HITLApprovalPlugin(BasePlugin):
             }
 
     # -- Internal helpers ------------------------------------------------------
+
+    def _block_mandatory_approval(
+        self,
+        tool_name: str,
+        tool_args: dict,
+        risk: dict,
+        audit_reason: str,
+    ) -> dict:
+        self._record_audit(
+            tool_name, tool_args, risk, "blocked", audit_reason
+        )
+        return {
+            "status": "blocked",
+            "reason": "ArcPy 深度学习工具必须获得用户明确批准",
+            "tool": tool_name,
+        }
 
     @staticmethod
     def _build_approval_message(risk: dict) -> str:
@@ -338,6 +375,21 @@ class HITLApprovalPlugin(BasePlugin):
             )
         except Exception:
             pass  # Audit failure must not block execution
+
+
+def ensure_hitl_plugin(plugins: Optional[list] = None) -> list:
+    """Return a fresh plugin list containing exactly one HITL plugin."""
+    resolved = []
+    found_hitl = False
+    for plugin in plugins or []:
+        if isinstance(plugin, HITLApprovalPlugin):
+            if found_hitl:
+                continue
+            found_hitl = True
+        resolved.append(plugin)
+    if not found_hitl:
+        resolved.insert(0, HITLApprovalPlugin())
+    return resolved
 
 
 def _extract_action_value(response: Any) -> str:
