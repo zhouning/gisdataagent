@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+import os
 import threading
 
 from google.adk.tools import FunctionTool
@@ -13,6 +15,30 @@ from ..mcp_hub import get_mcp_hub
 
 _arcpy_mcp_client = None
 _arcpy_mcp_client_lock = threading.Lock()
+
+_CLIENT_TIMEOUTS = {
+    "upload_timeout": ("ARCPY_MCP_UPLOAD_TIMEOUT", 600.0),
+    "job_timeout": ("ARCPY_MCP_JOB_TIMEOUT", 1800.0),
+    "dl_job_timeout": ("ARCPY_MCP_DL_JOB_TIMEOUT", 7200.0),
+    "download_timeout": ("ARCPY_MCP_DOWNLOAD_TIMEOUT", 600.0),
+}
+
+
+def _client_timeout_settings() -> dict[str, float]:
+    settings = {}
+    for argument, (environment_name, default) in _CLIENT_TIMEOUTS.items():
+        raw_value = os.environ.get(environment_name, str(default)).strip()
+        try:
+            value = float(raw_value)
+        except (TypeError, ValueError):
+            value = math.nan
+        if not math.isfinite(value) or value <= 0:
+            raise ArcPyMcpError(
+                "ARCPY_MCP_TIMEOUT_INVALID",
+                "ArcPy MCP timeout configuration is invalid",
+            )
+        settings[argument] = value
+    return settings
 
 
 def _system_arcpy_config():
@@ -47,7 +73,10 @@ def get_arcpy_mcp_client() -> ArcPyMcpClient:
         return _arcpy_mcp_client
     with _arcpy_mcp_client_lock:
         if _arcpy_mcp_client is None:
-            _arcpy_mcp_client = ArcPyMcpClient(_system_arcpy_config())
+            config = _system_arcpy_config()
+            _arcpy_mcp_client = ArcPyMcpClient(
+                config, **_client_timeout_settings()
+            )
     return _arcpy_mcp_client
 
 

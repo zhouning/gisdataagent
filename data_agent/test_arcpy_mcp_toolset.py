@@ -1,6 +1,7 @@
 """Tests for the high-level ArcPy MCP toolset."""
 
 import asyncio
+import os
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
@@ -247,6 +248,7 @@ def test_service_status_strips_server_paths_and_unapproved_install_fields(
     }
 
 
+@patch.dict(os.environ, {}, clear=True)
 @patch("data_agent.toolsets.arcpy_mcp_toolset.ArcPyMcpClient")
 @patch("data_agent.toolsets.arcpy_mcp_toolset.get_mcp_hub")
 def test_client_factory_uses_only_system_managed_environment_config(
@@ -261,7 +263,63 @@ def test_client_factory_uses_only_system_managed_environment_config(
 
     assert toolset_module.get_arcpy_mcp_client() is client
     assert toolset_module.get_arcpy_mcp_client() is client
-    client_class.assert_called_once_with(config)
+    client_class.assert_called_once_with(
+        config,
+        upload_timeout=600.0,
+        job_timeout=1800.0,
+        dl_job_timeout=7200.0,
+        download_timeout=600.0,
+    )
+
+
+@patch("data_agent.toolsets.arcpy_mcp_toolset.ArcPyMcpClient")
+@patch("data_agent.toolsets.arcpy_mcp_toolset.get_mcp_hub")
+def test_client_factory_applies_environment_timeout_overrides(
+    get_hub, client_class
+):
+    config = _system_config()
+    get_hub.return_value._servers = {
+        "arcpy-remote": SimpleNamespace(config=config)
+    }
+    client_class.return_value = MagicMock()
+    environment = {
+        "ARCPY_MCP_UPLOAD_TIMEOUT": "61.5",
+        "ARCPY_MCP_JOB_TIMEOUT": "181",
+        "ARCPY_MCP_DL_JOB_TIMEOUT": "721",
+        "ARCPY_MCP_DOWNLOAD_TIMEOUT": "62.5",
+    }
+
+    with patch.dict(os.environ, environment, clear=True):
+        toolset_module.get_arcpy_mcp_client()
+
+    client_class.assert_called_once_with(
+        config,
+        upload_timeout=61.5,
+        job_timeout=181.0,
+        dl_job_timeout=721.0,
+        download_timeout=62.5,
+    )
+
+
+@pytest.mark.parametrize("value", ["", "0", "-1", "nan", "invalid"])
+@patch("data_agent.toolsets.arcpy_mcp_toolset.ArcPyMcpClient")
+@patch("data_agent.toolsets.arcpy_mcp_toolset.get_mcp_hub")
+def test_client_factory_rejects_invalid_environment_timeout(
+    get_hub, client_class, value
+):
+    config = _system_config()
+    get_hub.return_value._servers = {
+        "arcpy-remote": SimpleNamespace(config=config)
+    }
+
+    with patch.dict(
+        os.environ, {"ARCPY_MCP_JOB_TIMEOUT": value}, clear=True
+    ):
+        with pytest.raises(ArcPyMcpError) as exc_info:
+            toolset_module.get_arcpy_mcp_client()
+
+    assert exc_info.value.code == "ARCPY_MCP_TIMEOUT_INVALID"
+    client_class.assert_not_called()
 
 
 def test_runtime_coordinator_can_discover_cached_toolset_client():

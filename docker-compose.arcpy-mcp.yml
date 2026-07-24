@@ -1,0 +1,22 @@
+services:
+  app:
+    environment:
+      ARCPY_MCP_ENABLED: "true"
+      ARCPY_MCP_URL: ${ARCPY_MCP_URL}
+      ARCPY_MCP_TOKEN_FILE: /run/secrets/arcpy_mcp_token
+      ARCPY_MCP_CA_BUNDLE: /run/secrets/arcpy_mcp_ca
+      ARCPY_MCP_CONNECT_TIMEOUT: ${ARCPY_MCP_CONNECT_TIMEOUT:-10}
+      ARCPY_MCP_JOB_TIMEOUT: ${ARCPY_MCP_JOB_TIMEOUT:-1800}
+      ARCPY_MCP_DL_JOB_TIMEOUT: ${ARCPY_MCP_DL_JOB_TIMEOUT:-7200}
+      ARCPY_MCP_UPLOAD_TIMEOUT: ${ARCPY_MCP_UPLOAD_TIMEOUT:-600}
+      ARCPY_MCP_DOWNLOAD_TIMEOUT: ${ARCPY_MCP_DOWNLOAD_TIMEOUT:-600}
+      NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1},192.168.25.228
+    secrets:
+      - arcpy_mcp_token
+      - arcpy_mcp_ca
+
+secrets:
+  arcpy_mcp_token:
+    file: ${ARCPY_MCP_TOKEN_HOST_FILE}
+  arcpy_mcp_ca:
+    file: ${ARCPY_MCP_CA_HOST_FILE}

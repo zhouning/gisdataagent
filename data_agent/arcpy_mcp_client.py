@@ -69,6 +69,7 @@ _PUBLIC_ERROR_MESSAGES = {
     "ARCPY_MCP_TOKEN_MISSING": "MCP credential is not available",
     "ARCPY_MCP_CA_MISSING": "MCP CA bundle is not available",
     "ARCPY_MCP_UNREACHABLE": "ArcPy MCP service is unreachable",
+    "ARCPY_MCP_TIMEOUT_INVALID": "ArcPy MCP timeout configuration is invalid",
     "ARCPY_TOOL_NOT_ALLOWED": "Requested ArcPy MCP tool is not allowed",
     "ARCPY_JOB_FAILED": "ArcPy MCP tool reported a failure",
     "ARCPY_RESPONSE_INVALID": "ArcPy MCP response is invalid",
