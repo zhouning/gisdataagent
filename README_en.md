@@ -301,6 +301,12 @@ docker-compose up -d
 # Login: admin / admin123
 ```
 
+For the optional private ArcPy MCP service, use the read-only Docker secret
+override in `docker-compose.arcpy-mcp.yml`. Keep its bearer token out of the
+repository and out of MCP UI headers. See
+[`docs/mcp-integration-guide.md`](docs/mcp-integration-guide.md) for macOS,
+Docker, reconnect, smoke-test, and ArcGIS Pro 3.7.1 CPU inference procedures.
+
 ### Local Development
 ```bash
 # 1. Configure environment

@@ -91,7 +91,8 @@ def _cosine_similarity(a: list[float], b: list[float]) -> float:
 # Asset type detection by file extension
 _EXT_TYPE_MAP = {
     '.tif': 'raster', '.tiff': 'raster', '.img': 'raster', '.nc': 'raster',
-    '.shp': 'vector', '.geojson': 'vector', '.gpkg': 'vector', '.kml': 'vector',
+    '.shp': 'vector', '.geojson': 'vector', '.gpkg': 'vector', '.gdb': 'vector',
+    '.kml': 'vector',
     '.kmz': 'vector',
     '.csv': 'tabular', '.xlsx': 'tabular', '.xls': 'tabular',
     '.html': 'map', '.png': 'map', '.jpg': 'map',
@@ -155,7 +156,7 @@ def ensure_data_catalog_table():
 # Spatial Metadata Extraction
 # =====================================================================
 
-def _extract_spatial_metadata(path: str) -> dict:
+def _extract_spatial_metadata(path: str, format_path: str = "") -> dict:
     """Extract spatial metadata from a file (CRS, bbox, feature count, file size).
 
     Non-fatal: returns partial metadata on errors.
@@ -167,7 +168,7 @@ def _extract_spatial_metadata(path: str) -> dict:
         return meta
 
     meta["file_size_bytes"] = os.path.getsize(path)
-    ext = os.path.splitext(path)[1].lower()
+    ext = os.path.splitext(format_path or path)[1].lower()
 
     try:
         if ext in ('.shp', '.geojson', '.gpkg', '.kml', '.kmz'):
@@ -246,7 +247,9 @@ def auto_register_from_path(local_path: str, creation_tool: str = "",
                             cloud_key: str = "",
                             owner: str = "",
                             source_assets: list = None,
-                            pipeline_run_id: str = None) -> Optional[int]:
+                            pipeline_run_id: str = None,
+                            storage_path: str = "",
+                            verified_metadata: dict = None) -> Optional[int]:
     """Register a data asset from a file path. Returns asset ID or None.
 
     Writes to agent_data_assets with 4-layer metadata format.
@@ -256,17 +259,28 @@ def auto_register_from_path(local_path: str, creation_tool: str = "",
         return None
 
     owner = owner or current_user_id.get() or "anonymous"
-    asset_name = os.path.basename(local_path)
-    asset_type = _detect_asset_type(local_path)
-    fmt = os.path.splitext(local_path)[1].lstrip('.').lower()
+    catalog_path = storage_path or local_path
+    asset_name = os.path.basename(catalog_path)
+    asset_type = _detect_asset_type(catalog_path)
+    fmt = os.path.splitext(catalog_path)[1].lstrip('.').lower()
 
-    meta = _extract_spatial_metadata(local_path)
+    if isinstance(verified_metadata, dict):
+        meta = {
+            "file_size_bytes": verified_metadata.get("file_size_bytes", 0),
+            "crs": verified_metadata.get("crs", ""),
+            "srid": verified_metadata.get("srid", 0),
+            "feature_count": verified_metadata.get("feature_count", 0),
+            "spatial_extent": verified_metadata.get("spatial_extent"),
+            "column_schema": verified_metadata.get("column_schema", []),
+        }
+    else:
+        meta = _extract_spatial_metadata(local_path, catalog_path)
 
     # Build 4-layer metadata
     technical = {
         "storage": {
             "backend": storage_backend,
-            "path": local_path,
+            "path": catalog_path,
             "cloud_key": cloud_key or "",
             "size_bytes": meta["file_size_bytes"],
             "format": fmt,
@@ -402,7 +416,9 @@ def _resolve_source_assets(paths: list) -> list:
 def register_tool_output(local_path: str, tool_name: str,
                          tool_params: dict = None, cloud_key: str = "",
                          source_paths: list = None,
-                         pipeline_run_id: str = None) -> Optional[int]:
+                         pipeline_run_id: str = None,
+                         storage_path: str = "",
+                         verified_metadata: dict = None) -> Optional[int]:
     """Non-fatal wrapper for auto_register_from_path. Used by app.py after tool execution."""
     try:
         backend = "cloud" if cloud_key else "local"
@@ -413,6 +429,8 @@ def register_tool_output(local_path: str, tool_name: str,
             storage_backend=backend, cloud_key=cloud_key,
             source_assets=source_assets,
             pipeline_run_id=pipeline_run_id,
+            storage_path=storage_path,
+            verified_metadata=verified_metadata,
         )
     except Exception as e:
         logger.debug("[DataCatalog] register_tool_output non-fatal error: %s", e)

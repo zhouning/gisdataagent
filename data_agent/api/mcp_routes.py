@@ -1,6 +1,7 @@
 """MCP Hub routes — extracted from frontend_api.py (S-4 refactoring v12.1)."""
 
 import os
+import math
 import logging
 from typing import Optional
 from starlette.requests import Request
@@ -12,10 +13,77 @@ from .helpers import _get_user_from_request, _set_user_context, _require_admin
 logger = logging.getLogger("data_agent.api.mcp_routes")
 
 _MCP_ALLOWED_COMMANDS = {"python", "python3", "node", "npx", "uvx", "docker", "deno"}
+_MCP_ALLOWED_TRANSPORTS = {"stdio", "sse", "streamable_http"}
+_MCP_MAX_TIMEOUT_SECONDS = 300.0
+_MCP_METADATA_UPDATE_FIELDS = {"description", "category", "pipelines"}
+_MCP_CONFIG_FIELDS = (
+    "description", "transport", "enabled", "category", "pipelines",
+    "command", "args", "env", "cwd", "url", "headers", "timeout",
+    "bearer_token_env_var", "bearer_token_file_env_var", "ca_bundle_env_var",
+    "expose_raw_tools",
+    "is_shared",
+)
+_MCP_ADMIN_UPDATE_FIELDS = set(_MCP_CONFIG_FIELDS)
+_MCP_CREATE_FIELDS = {"name", *_MCP_CONFIG_FIELDS}
+
+
+async def _read_mcp_body(request: Request):
+    """Read an MCP request body and require a JSON object."""
+    try:
+        body = await request.json()
+    except Exception:
+        return None, JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+    if not isinstance(body, dict):
+        return None, JSONResponse({"error": "JSON body must be an object"}, status_code=400)
+    return body, None
 
 
 def _validate_mcp_config(body: dict, transport: str, *, partial: bool = False) -> Optional[str]:
     """Validate MCP server config fields. Returns error message or None."""
+    if not isinstance(transport, str) or transport not in _MCP_ALLOWED_TRANSPORTS:
+        return "transport must be stdio, sse, or streamable_http"
+
+    for field_name in (
+        "description", "category", "command", "url",
+        "bearer_token_env_var", "bearer_token_file_env_var", "ca_bundle_env_var",
+    ):
+        if field_name in body and not isinstance(body[field_name], str):
+            return f"{field_name} must be a string"
+
+    if (
+        "cwd" in body
+        and body["cwd"] is not None
+        and not isinstance(body["cwd"], str)
+    ):
+        return "cwd must be a string or null"
+
+    for field_name in ("enabled", "is_shared", "system_managed", "expose_raw_tools"):
+        if field_name in body and not isinstance(body[field_name], bool):
+            return f"{field_name} must be a boolean"
+
+    for field_name in ("args", "pipelines"):
+        value = body.get(field_name)
+        if field_name in body and (not isinstance(value, list) or not all(
+                isinstance(item, str) for item in value)):
+            return f"{field_name} must be a list of strings"
+
+    for field_name in ("env", "headers"):
+        value = body.get(field_name)
+        if field_name in body and (not isinstance(value, dict) or not all(
+                isinstance(k, str) and isinstance(v, str) for k, v in value.items())):
+            return f"{field_name} must be a dict of string:string"
+
+    if "timeout" in body:
+        raw_timeout = body["timeout"]
+        if isinstance(raw_timeout, bool):
+            return f"timeout must be a number between 0 and {_MCP_MAX_TIMEOUT_SECONDS:g}"
+        try:
+            timeout = float(raw_timeout)
+        except (TypeError, ValueError):
+            return f"timeout must be a number between 0 and {_MCP_MAX_TIMEOUT_SECONDS:g}"
+        if not math.isfinite(timeout) or timeout <= 0 or timeout > _MCP_MAX_TIMEOUT_SECONDS:
+            return f"timeout must be a number between 0 and {_MCP_MAX_TIMEOUT_SECONDS:g}"
+
     if transport == "stdio":
         cmd = body.get("command")
         if cmd is not None or not partial:
@@ -35,13 +103,22 @@ def _validate_mcp_config(body: dict, transport: str, *, partial: bool = False) -
                 return f"url required for {transport} transport"
             if not url.startswith(("http://", "https://")):
                 return "url must start with http:// or https://"
-    args = body.get("args")
-    if args is not None and (not isinstance(args, list) or not all(isinstance(a, str) for a in args)):
-        return "args must be a list of strings"
-    headers = body.get("headers")
-    if headers is not None and (not isinstance(headers, dict) or not all(
-            isinstance(k, str) and isinstance(v, str) for k, v in headers.items())):
-        return "headers must be a dict of string:string"
+    return None
+
+
+def _mcp_config_body(config) -> dict:
+    """Return the validated, mutable fields from an existing MCP config."""
+    return {field_name: getattr(config, field_name) for field_name in _MCP_CONFIG_FIELDS}
+
+
+def _reject_system_managed_mutation(hub, server_name: str):
+    """Return a 403 response when a server is managed by process configuration."""
+    status = hub._servers.get(server_name)
+    if status and status.config.system_managed:
+        return JSONResponse(
+            {"error": f"Server '{server_name}' is system-managed"},
+            status_code=403,
+        )
     return None
 
 
@@ -90,11 +167,18 @@ async def mcp_toggle(request: Request):
     enabled = body.get("enabled", True)
     from ..mcp_hub import get_mcp_hub
     hub = get_mcp_hub()
+    protected = _reject_system_managed_mutation(hub, server_name)
+    if protected is not None:
+        return protected
     result = await hub.toggle_server(server_name, enabled)
     if result.get("status") == "ok":
         from ..audit_logger import record_audit, ACTION_MCP_SERVER_TOGGLE
         record_audit(username, ACTION_MCP_SERVER_TOGGLE, details={"server": server_name, "enabled": enabled})
-    status_code = 200 if result.get("status") == "ok" else 404
+    status_code = (
+        200 if result.get("status") == "ok"
+        else 403 if result.get("status") == "forbidden"
+        else 404
+    )
     return JSONResponse(result, status_code=status_code)
 
 
@@ -115,52 +199,76 @@ async def mcp_reconnect(request: Request):
 
 
 async def mcp_test_connection(request: Request):
-    """POST /api/mcp/test — test MCP server connection without saving."""
-    user = _get_user_from_request(request)
-    if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
-    _set_user_context(user)
-    try:
-        body = await request.json()
-    except Exception:
-        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+    """POST /api/mcp/servers/test — test MCP server connection without saving."""
+    user, username, role, err = _require_admin(request)
+    if err:
+        return err
+    body, body_err = await _read_mcp_body(request)
+    if body_err:
+        return body_err
     transport = body.get("transport", "stdio")
     err = _validate_mcp_config(body, transport)
     if err:
         return JSONResponse({"error": err}, status_code=400)
-    from ..mcp_hub import get_mcp_hub
+    from ..mcp_hub import get_mcp_hub, McpServerConfig
+    config = McpServerConfig(
+        name="__test__", transport=transport,
+        command=body.get("command", ""), args=body.get("args", []),
+        env=body.get("env", {}), cwd=body.get("cwd"),
+        url=body.get("url", ""), headers=body.get("headers", {}),
+        timeout=float(body.get("timeout", 5.0)),
+        bearer_token_env_var=body.get("bearer_token_env_var", ""),
+        bearer_token_file_env_var=body.get("bearer_token_file_env_var", ""),
+        ca_bundle_env_var=body.get("ca_bundle_env_var", ""),
+        system_managed=False,
+        expose_raw_tools=body.get("expose_raw_tools", True),
+    )
     hub = get_mcp_hub()
-    result = await hub.test_connection(body)
+    result = await hub.test_connection(config)
     status_code = 200 if result.get("status") == "ok" else 400
     return JSONResponse(result, status_code=status_code)
 
 
 async def mcp_server_create(request: Request):
-    """POST /api/mcp/servers — register a new MCP server."""
-    user = _get_user_from_request(request)
-    if not user:
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
-    username, role = _set_user_context(user)
-    try:
-        body = await request.json()
-    except Exception:
-        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
-    name = body.get("name", "").strip()
-    if not name:
+    """POST /api/mcp/servers — register a new MCP server (admin only)."""
+    user, username, role, err = _require_admin(request)
+    if err:
+        return err
+    body, body_err = await _read_mcp_body(request)
+    if body_err:
+        return body_err
+    if not set(body).issubset(_MCP_CREATE_FIELDS):
+        return JSONResponse({"error": "Unknown server field"}, status_code=400)
+    raw_name = body.get("name")
+    if not isinstance(raw_name, str) or not raw_name.strip():
         return JSONResponse({"error": "name is required"}, status_code=400)
+    name = raw_name.strip()
     transport = body.get("transport", "stdio")
-    if transport not in ("stdio", "sse", "streamable_http"):
-        return JSONResponse({"error": "transport must be stdio, sse, or streamable_http"}, status_code=400)
     err = _validate_mcp_config(body, transport)
     if err:
         return JSONResponse({"error": err}, status_code=400)
-    from ..mcp_hub import get_mcp_hub, MCPServerConfig
-    config = MCPServerConfig(
-        name=name, transport=transport,
-        command=body.get("command", ""), args=body.get("args", []),
-        url=body.get("url", ""), headers=body.get("headers", {}),
-        env=body.get("env", {}), description=body.get("description", ""),
-        owner_username=username, is_shared=body.get("is_shared", False),
+    from ..mcp_hub import get_mcp_hub, McpServerConfig
+    config = McpServerConfig(
+        name=name,
+        description=body.get("description", ""),
+        transport=transport,
+        enabled=body.get("enabled", False),
+        category=body.get("category", ""),
+        pipelines=body.get("pipelines", ["general", "planner"]),
+        command=body.get("command", ""),
+        args=body.get("args", []),
+        env=body.get("env", {}),
+        cwd=body.get("cwd"),
+        url=body.get("url", ""),
+        headers=body.get("headers", {}),
+        timeout=float(body.get("timeout", 5.0)),
+        bearer_token_env_var=body.get("bearer_token_env_var", ""),
+        bearer_token_file_env_var=body.get("bearer_token_file_env_var", ""),
+        ca_bundle_env_var=body.get("ca_bundle_env_var", ""),
+        system_managed=False,
+        expose_raw_tools=body.get("expose_raw_tools", True),
+        owner_username=username,
+        is_shared=body.get("is_shared", False),
     )
     hub = get_mcp_hub()
     result = await hub.add_server(config)
@@ -178,24 +286,43 @@ async def mcp_server_update(request: Request):
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
     username, role = _set_user_context(user)
     server_name = request.path_params.get("name", "")
-    try:
-        body = await request.json()
-    except Exception:
-        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+    body, body_err = await _read_mcp_body(request)
+    if body_err:
+        return body_err
+
+    if "system_managed" in body:
+        return JSONResponse({"error": "Unknown update field"}, status_code=400)
+
+    body_fields = set(body)
+    if role != "admin":
+        if not body_fields.issubset(_MCP_METADATA_UPDATE_FIELDS):
+            return JSONResponse({"error": "Permission denied"}, status_code=403)
+    elif not body_fields.issubset(_MCP_ADMIN_UPDATE_FIELDS):
+        return JSONResponse({"error": "Unknown update field"}, status_code=400)
+
     from ..mcp_hub import get_mcp_hub
     hub = get_mcp_hub()
+    protected = _reject_system_managed_mutation(hub, server_name)
+    if protected is not None:
+        return protected
     if not hub._can_manage_server(server_name, username, role):
         return JSONResponse({"error": "Permission denied"}, status_code=403)
-    transport = body.get("transport")
-    if transport:
-        err = _validate_mcp_config(body, transport, partial=True)
-    else:
-        existing = hub._servers.get(server_name)
-        transport = existing.config.transport if existing else "stdio"
-        err = _validate_mcp_config(body, transport, partial=True)
+
+    existing = hub._servers.get(server_name)
+    if not existing:
+        return JSONResponse({"error": f"Server '{server_name}' not found"}, status_code=404)
+
+    candidate = _mcp_config_body(existing.config)
+    candidate.update(body)
+    transport = candidate.get("transport", "stdio")
+    err = _validate_mcp_config(candidate, transport)
     if err:
         return JSONResponse({"error": err}, status_code=400)
-    result = await hub.update_server(server_name, body)
+
+    updates = dict(body)
+    if "timeout" in updates:
+        updates["timeout"] = float(updates["timeout"])
+    result = await hub.update_server(server_name, updates)
     if result.get("status") == "ok":
         from ..audit_logger import record_audit, ACTION_MCP_SERVER_UPDATE
         record_audit(username, ACTION_MCP_SERVER_UPDATE, details={"server": server_name})
@@ -212,6 +339,9 @@ async def mcp_server_delete(request: Request):
     server_name = request.path_params.get("name", "")
     from ..mcp_hub import get_mcp_hub
     hub = get_mcp_hub()
+    protected = _reject_system_managed_mutation(hub, server_name)
+    if protected is not None:
+        return protected
     if not hub._can_manage_server(server_name, username, role):
         return JSONResponse({"error": "Permission denied"}, status_code=403)
     result = await hub.remove_server(server_name)
@@ -251,6 +381,9 @@ async def mcp_server_share(request: Request):
     status_obj = hub._servers.get(server_name)
     if not status_obj:
         return JSONResponse({"error": f"Server '{server_name}' not found"}, status_code=404)
+    protected = _reject_system_managed_mutation(hub, server_name)
+    if protected is not None:
+        return protected
     status_obj.config.is_shared = is_shared
     hub._save_to_db(status_obj.config)
     from ..audit_logger import record_audit, ACTION_MCP_SERVER_UPDATE
@@ -332,7 +465,7 @@ def get_mcp_routes() -> list:
         Route("/api/mcp/servers", mcp_server_create, methods=["POST"]),
         Route("/api/mcp/servers/mine", mcp_servers_mine, methods=["GET"]),
         Route("/api/mcp/tools", mcp_tools, methods=["GET"]),
-        Route("/api/mcp/test", mcp_test_connection, methods=["POST"]),
+        Route("/api/mcp/servers/test", mcp_test_connection, methods=["POST"]),
         Route("/api/mcp/rules", mcp_rules_list, methods=["GET"]),
         Route("/api/mcp/rules", mcp_rules_create, methods=["POST"]),
         Route("/api/mcp/rules/match", mcp_rules_match, methods=["GET"]),

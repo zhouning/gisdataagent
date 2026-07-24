@@ -42,6 +42,7 @@ __pycache__/
 *.kml
 *.kmz
 !demos/**/*.geojson
+!data_agent/test_data/arcpy_mcp_smoke.geojson
 !data_agent/scca_samples/
 !data_agent/scca_samples/**
 

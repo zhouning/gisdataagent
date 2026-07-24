@@ -1,4 +1,5 @@
 import chainlit as cl
+import atexit
 import sys
 import os
 import re
@@ -195,7 +196,7 @@ except Exception as _startup_err:
 
 from data_agent.obs_storage import ensure_obs_connection, is_obs_configured, upload_file_smart
 from data_agent.gis_processors import sync_to_obs
-from data_agent.hitl_approval import HITLApprovalPlugin, HITL_ENABLED
+from data_agent.hitl_approval import HITLApprovalPlugin
 try:
     ensure_obs_connection()
 except Exception as _obs_err:
@@ -242,16 +243,20 @@ if DYNAMIC_PLANNER:
     logger.info("Dynamic Planner mode enabled")
 
 # --- MCP Hub: load config (async connections deferred to on_chat_start) ---
+_mcp_runtime = None
+_mcp_exit_bridge = None
 try:
     from data_agent.mcp_hub import get_mcp_hub
+    from data_agent.mcp_runtime import McpRuntimeCoordinator, McpRuntimeExitBridge
     _mcp_hub = get_mcp_hub()
+    _mcp_runtime = McpRuntimeCoordinator(get_mcp_hub)
+    _mcp_exit_bridge = McpRuntimeExitBridge(_mcp_runtime)
+    atexit.register(_mcp_exit_bridge)
     _mcp_hub.load_config()
     _mcp_hub_loaded = True
 except Exception as _mcp_err:
     logger.warning("MCP Hub config loading failed: %s", _mcp_err)
     _mcp_hub_loaded = False
-_mcp_started = False
-_mcp_alock = asyncio.Lock()
 
 # --- Chainlit Data Layer: thread/message persistence in PostgreSQL ---
 try:
@@ -310,20 +315,28 @@ else:
 # ---------------------------------------------------------------------------
 _hitl_plugin = HITLApprovalPlugin()
 
-if HITL_ENABLED:
-    async def _chainlit_approval(content: str):
-        """Show approval dialog via Chainlit AskActionMessage."""
-        res = await cl.AskActionMessage(
-            content=content,
-            actions=[
-                cl.Action(name="approve", payload={"value": "APPROVE"}, label=t("action.approve")),
-                cl.Action(name="reject", payload={"value": "REJECT"}, label=t("action.reject")),
-            ],
-            timeout=int(os.environ.get("HITL_TIMEOUT", "120")),
-        ).send()
-        return res
+async def _chainlit_approval(content: str):
+    """Show approval dialog via Chainlit AskActionMessage."""
+    res = await cl.AskActionMessage(
+        content=content,
+        actions=[
+            cl.Action(
+                name="approve",
+                payload={"value": "APPROVE"},
+                label=t("action.approve"),
+            ),
+            cl.Action(
+                name="reject",
+                payload={"value": "REJECT"},
+                label=t("action.reject"),
+            ),
+        ],
+        timeout=int(os.environ.get("HITL_TIMEOUT", "120")),
+    ).send()
+    return res
 
-    _hitl_plugin.set_approval_function(_chainlit_approval)
+
+_hitl_plugin.set_approval_function(_chainlit_approval)
 
 # ---------------------------------------------------------------------------
 # Self-Registration Routes (mounted on Chainlit's FastAPI app)
@@ -1701,7 +1714,7 @@ async def _execute_pipeline(
     trace_id = _set_user_context(user_id, session_id, role)
     logger.info("[Trace:%s] Pipeline=%s Intent=%s Started", trace_id, pipeline_name, intent)
 
-    _plugins = [_hitl_plugin] if HITL_ENABLED else []
+    _plugins = [_hitl_plugin]
     try:
         from data_agent.plugins import build_plugin_stack
         _plugins.extend(build_plugin_stack())
@@ -2993,6 +3006,13 @@ async def _execute_workflow_with_steps(workflow_id: int, file_path: str, templat
         await cl.Message(content=f"⚠️ 工作流执行异常: {str(e)}").send()
 
 
+@cl.on_app_shutdown
+async def shutdown_mcp_runtime():
+    """Stop MCP retries and close owned sessions during application shutdown."""
+    if _mcp_runtime is not None:
+        await _mcp_runtime.shutdown()
+
+
 @cl.on_chat_start
 async def start():
     """Initialize session with authenticated user."""
@@ -3000,17 +3020,8 @@ async def start():
     set_language(os.environ.get("UI_LANGUAGE", "zh"))
 
     # Start MCP Hub connections (once, on first chat start — async-safe)
-    global _mcp_started
-    if not _mcp_started and _mcp_hub_loaded:
-        async with _mcp_alock:
-            if not _mcp_started:  # double-check after acquiring lock
-                try:
-                    await asyncio.wait_for(get_mcp_hub().startup(), timeout=15)
-                except asyncio.TimeoutError:
-                    logger.warning("MCP Hub startup timed out after 15s — skipping")
-                except Exception as e:
-                    logger.warning("MCP Hub startup failed: %s", e)
-                _mcp_started = True
+    if _mcp_hub_loaded and _mcp_runtime is not None:
+        await _mcp_runtime.ensure_started()
 
     # Start Workflow Scheduler (deferred to async context — needs event loop)
     global _workflow_scheduler_started

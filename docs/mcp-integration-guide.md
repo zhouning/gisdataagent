@@ -186,3 +186,70 @@ DB_PASSWORD=your_password
 1. **MCP_USER 仅用于开发环境** — stdio 传输无认证层，生产环境应使用 SSE + API Key
 2. **数据库凭证** — 通过 `.env` 文件加载，不要通过 MCP 环境变量传递
 3. **文件访问** — 仅限用户沙箱目录，不可访问系统文件
+
+---
+
+## 私有 ArcPy MCP 运维
+
+ArcPy MCP 是系统管理的远程服务。应用仅从进程环境读取配置，并以高层 GIS 工具暴露给 Agent；原始 MCP 上传、下载和作业工具不会直接暴露给模型。
+
+### macOS 配置
+
+在 macOS Keychain 中保存 ArcPy MCP token，并由启动 GIS Data Agent 的 LaunchAgent 或受控启动脚本在进程启动时注入 `ARCPY_MCP_TOKEN`。不要把 token 写入 shell history、仓库 `.env`、命令参数或日志。也可以让启动器创建权限受限的临时凭据文件并只设置 `ARCPY_MCP_TOKEN_FILE`；当两者同时存在时，token file 优先。
+
+将服务端 CA 证书复制到仓库之外的稳定位置，例如 `~/.config/gis-data-agent/arcpy-mcp-ca.crt`，然后设置：
+
+```text
+ARCPY_MCP_ENABLED=true
+ARCPY_MCP_URL=https://arcpy-host.example/mcp
+ARCPY_MCP_CA_BUNDLE=/absolute/path/to/arcpy-mcp-ca.crt
+```
+
+CA 文件只能包含受信任证书，不能包含私钥。应用不依赖 Codex 插件缓存中的 CA 路径。
+
+### Docker Compose
+
+token 与 CA 通过只读 Docker secrets 挂载。先设置服务 URL 和两个宿主文件路径，再合并覆盖文件：
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.arcpy-mcp.yml config --quiet
+docker compose -f docker-compose.yml -f docker-compose.arcpy-mcp.yml up -d --build app
+```
+
+所需变量为 `ARCPY_MCP_URL`、`ARCPY_MCP_TOKEN_HOST_FILE` 和 `ARCPY_MCP_CA_HOST_FILE`。私网路由异常时检查 `NO_PROXY` 与容器到 ArcPy 主机的路由，不要通过关闭 TLS 验证处理。
+
+### 连接测试与恢复
+
+在 MCP 管理界面查看系统管理的 `arcpy-remote` 服务并执行连接测试。服务不可用时可使用 Reconnect；系统管理服务不能在 UI 中删除，也不能修改 URL、认证或 CA 配置。严禁把 token 粘贴到 MCP UI 的 Headers 字段。
+
+常见稳定错误码：
+
+- `ARCPY_MCP_DISABLED`：部署未启用远程 ArcPy。
+- `ARCPY_MCP_URL_MISSING`：未配置服务 URL。
+- `ARCPY_MCP_TOKEN_MISSING`：token 环境或 token file 不可用。
+- `ARCPY_MCP_CA_MISSING`：CA 文件缺失或无效。
+- `ARCPY_MCP_TLS_FAILED`：TLS/CA 校验失败。
+- `ARCPY_MCP_AUTH_FAILED`：服务拒绝凭据。
+- `ARCPY_MCP_UNREACHABLE`：网络或服务不可达。
+- `ARCPY_WORKER_UNAVAILABLE`：Windows ArcPy worker 未就绪。
+- `ARCPY_EXTENSION_UNAVAILABLE`：请求依赖的 ArcGIS 扩展不可用。
+- `ARCPY_INSPECTION_FAILED`：worker 无法检查已上传数据；查看脱敏作业日志并核对数据格式与制品相对路径。
+
+### Smoke 验证
+
+从仓库根目录运行：
+
+```bash
+.venv/bin/python scripts/smoke_arcpy_mcp.py \
+  --input data_agent/test_data/arcpy_mcp_smoke.geojson \
+  --output-dir data_agent/uploads/anonymous/arcpy-smoke
+```
+
+只有在作业达到 `succeeded`、结果已下载并通过 SHA-256 校验后，脚本才输出 `status: success`。stdout 仅包含脱敏 JSON 摘要。
+
+最近一次脱敏实机验收结果记录在
+`docs/reports/arcpy_mcp_live_verification_2026-07-24.md`。该报告会明确区分代码验证通过与远端服务阻断；远端作业未达到 `succeeded` 时不得将集成标记为实机 smoke 成功。
+
+### CPU 深度学习
+
+远端当前使用 ArcGIS Pro 3.7.1 CPU 推理。目标检测、像素分类、对象分类和变化检测可能长时间运行，每次提交都必须由用户明确确认；无 UI、超时、审批异常或 HITL 关闭时会拒绝提交。模型必须是与 ArcGIS Pro 3.7.1 兼容的 DLPK 或 EMD。模型训练不开放。

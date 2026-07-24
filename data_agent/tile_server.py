@@ -35,6 +35,33 @@ _MAX_TILE_COLUMNS = 20
 _layer_cache: dict[str, dict] = {}
 
 
+def _cleanup_failed_tile_layer(engine, layer_id: str, table_name: str) -> None:
+    """Best-effort compensation for a partially-created tile layer."""
+    _layer_cache.pop(layer_id, None)
+    dropped = False
+    try:
+        with engine.begin() as conn:
+            conn.execute(text(f'DROP TABLE IF EXISTS "{table_name}"'))
+        dropped = True
+    except Exception:
+        logger.warning(
+            "[TileServer] Failed to drop incomplete tile table %s",
+            table_name,
+        )
+    if not dropped:
+        return
+    try:
+        with engine.begin() as conn:
+            conn.execute(text(
+                "DELETE FROM agent_mvt_layers WHERE layer_id = :lid"
+            ), {"lid": layer_id})
+    except Exception:
+        logger.warning(
+            "[TileServer] Failed to remove incomplete tile metadata %s",
+            layer_id,
+        )
+
+
 def create_tile_layer(
     geojson_path: str,
     user_id: str,
@@ -45,6 +72,22 @@ def create_tile_layer(
     Returns metadata dict: {layer_id, table_name, srid, bounds, feature_count, columns}.
     """
     gdf = gpd.read_file(geojson_path)
+    return create_tile_layer_from_frame(
+        gdf,
+        user_id,
+        layer_name,
+        source_file=os.path.basename(geojson_path),
+    )
+
+
+def create_tile_layer_from_frame(
+    gdf,
+    user_id: str,
+    layer_name: str = "default",
+    *,
+    source_file: str = "verified.geojson",
+) -> dict:
+    """Import an already-verified GeoDataFrame for MVT serving."""
     if gdf.empty:
         raise ValueError("GeoJSON file is empty")
 
@@ -65,20 +108,6 @@ def create_tile_layer(
     # Sanitize column names for SQL safety
     safe_cols = [c for c in attr_cols if c.isidentifier() or c.replace("_", "").isalnum()]
 
-    # Import to PostGIS
-    engine = get_engine()
-    gdf.to_postgis(table_name, engine, if_exists="replace", index=False)
-    logger.info("[TileServer] Imported %d features to %s (SRID %d)",
-                len(gdf), table_name, srid)
-
-    # Create spatial index
-    with engine.connect() as conn:
-        conn.execute(text(
-            f'CREATE INDEX IF NOT EXISTS idx_{table_name}_geom '
-            f'ON "{table_name}" USING GIST (geometry)'
-        ))
-        conn.commit()
-
     # Compute bounds in WGS84
     gdf_4326 = gdf.to_crs(epsg=4326) if srid != 4326 else gdf
     total_bounds = gdf_4326.total_bounds  # [minx, miny, maxx, maxy]
@@ -95,23 +124,37 @@ def create_tile_layer(
         "feature_count": len(gdf),
         "bounds": bounds,
         "columns": safe_cols,
-        "source_file": os.path.basename(geojson_path),
+        "source_file": os.path.basename(source_file),
     }
 
-    with engine.connect() as conn:
-        conn.execute(text("""
-            INSERT INTO agent_mvt_layers
-                (layer_id, table_name, owner_username, layer_name, srid,
-                 feature_count, bounds, columns, source_file)
-            VALUES
-                (:layer_id, :table_name, :owner_username, :layer_name, :srid,
-                 :feature_count, :bounds, :columns, :source_file)
-        """), {
-            **meta,
-            "bounds": bounds,
-            "columns": safe_cols,
-        })
-        conn.commit()
+    engine = get_engine()
+    try:
+        with engine.begin() as conn:
+            gdf.to_postgis(
+                table_name, conn, if_exists="replace", index=False
+            )
+            conn.execute(text(
+                f'CREATE INDEX IF NOT EXISTS idx_{table_name}_geom '
+                f'ON "{table_name}" USING GIST (geometry)'
+            ))
+            conn.execute(text("""
+                INSERT INTO agent_mvt_layers
+                    (layer_id, table_name, owner_username, layer_name, srid,
+                     feature_count, bounds, columns, source_file)
+                VALUES
+                    (:layer_id, :table_name, :owner_username, :layer_name,
+                     :srid, :feature_count, :bounds, :columns, :source_file)
+            """), {
+                **meta,
+                "bounds": bounds,
+                "columns": safe_cols,
+            })
+    except BaseException:
+        _cleanup_failed_tile_layer(engine, layer_id, table_name)
+        raise
+
+    logger.info("[TileServer] Imported %d features to %s (SRID %d)",
+                len(gdf), table_name, srid)
 
     # Cache metadata
     _layer_cache[layer_id] = meta

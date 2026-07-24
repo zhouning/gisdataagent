@@ -130,6 +130,51 @@ class TestCreateTileLayer(unittest.TestCase):
             with self.assertRaises(ValueError):
                 create_tile_layer(path, "testuser")
 
+    @patch("data_agent.tile_server.get_engine")
+    def test_create_tile_layer_compensates_for_partial_failure(
+        self, mock_engine
+    ):
+        """A failed index or metadata write must not orphan its table."""
+        import geopandas as gpd
+
+        from data_agent.tile_server import create_tile_layer_from_frame
+
+        engine = MagicMock()
+        mock_engine.return_value = engine
+        write_conn = MagicMock()
+        write_conn.execute.side_effect = RuntimeError("index failed")
+        drop_conn = MagicMock()
+        delete_conn = MagicMock()
+
+        def context_for(conn):
+            context = MagicMock()
+            context.__enter__.return_value = conn
+            context.__exit__.return_value = False
+            return context
+
+        engine.begin.side_effect = [
+            context_for(write_conn),
+            context_for(drop_conn),
+            context_for(delete_conn),
+        ]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = _make_geojson_file(tmpdir, num_features=2)
+            frame = gpd.read_file(path)
+            with patch("geopandas.GeoDataFrame.to_postgis"):
+                with self.assertRaisesRegex(RuntimeError, "index failed"):
+                    create_tile_layer_from_frame(
+                        frame, "testuser", "test_layer"
+                    )
+
+        self.assertIn(
+            "DROP TABLE IF EXISTS", str(drop_conn.execute.call_args.args[0])
+        )
+        self.assertIn(
+            "DELETE FROM agent_mvt_layers",
+            str(delete_conn.execute.call_args.args[0]),
+        )
+
 
 class TestGetLayerMetadata(unittest.TestCase):
     """Test metadata retrieval from cache and DB."""
