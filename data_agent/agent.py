@@ -54,6 +54,7 @@ from .toolsets import (
     KnowledgeGraphToolset,
     KnowledgeBaseToolset,
     AdvancedAnalysisToolset,
+    ArcPyMcpToolset,
 )
 from .toolsets.governance_tools import GovernanceToolset
 from .toolsets.chart_tools import ChartToolset
@@ -120,6 +121,18 @@ _TRANSFORM_TOOLS = ["reproject_spatial_data", "engineer_spatial_features"]
 _DB_READ = ["query_database", "list_tables"]
 _DB_READ_DESCRIBE = ["query_database", "list_tables", "describe_table"]
 _DATALAKE_READ = ["list_data_assets", "describe_data_asset", "search_data_assets", "download_cloud_asset"]
+_ARCPY_GOVERNANCE_EXPLORATION = [
+    "arcpy_service_status",
+    "arcpy_inspect_dataset",
+    "arcpy_check_geometry",
+    "arcpy_calculate_slope",
+    "arcpy_zonal_statistics",
+]
+_ARCPY_GOVERNANCE_PROCESSING = [
+    "arcpy_project_features",
+    "arcpy_project_raster",
+    "arcpy_repair_geometry",
+]
 
 # --- Model Tiering (v23.0: DB-backed via ModelConfigManager, env var fallback) ---
 MODEL_FAST = os.environ.get("MODEL_FAST", "gemini-2.0-flash")
@@ -507,6 +520,7 @@ governance_exploration_agent = LlmAgent(
             "check_coordinate_precision", "generate_governance_plan",
         ]),
         DomainStandardToolset(tool_filter=["query_domain_modules", "query_domain_class"]),
+        ArcPyMcpToolset(tool_filter=_ARCPY_GOVERNANCE_EXPLORATION),
     ] + _arcpy_gov_explore_tools,
 )
 
@@ -530,6 +544,7 @@ governance_processing_agent = LlmAgent(
         ]),
         PrecisionToolset(),
         CapabilityQAToolset(),
+        ArcPyMcpToolset(tool_filter=_ARCPY_GOVERNANCE_PROCESSING),
     ] + _arcpy_gov_process_tools,
 )
 
@@ -623,6 +638,7 @@ general_processing_agent = LlmAgent(
         ReportToolset(),
         NL2SQLEnhancedToolset(),
         CapabilityQAToolset(),
+        ArcPyMcpToolset(),
     ] + _arcpy_tools,
 )
 
@@ -731,6 +747,7 @@ def _make_planner_processor(name: str, **overrides) -> LlmAgent:
             KnowledgeGraphToolset(tool_filter=intent_tool_predicate),
             KnowledgeBaseToolset(tool_filter=["search_knowledge_base", "get_kb_context", "list_knowledge_bases"]),
             VirtualSourceToolset(tool_filter=intent_tool_predicate),
+            ArcPyMcpToolset(),
         ] + _arcpy_tools,
     )
     defaults.update(overrides)

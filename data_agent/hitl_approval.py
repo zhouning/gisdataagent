@@ -57,6 +57,26 @@ _RISK_REGISTRY: dict[str, dict[str, Any]] = {
         "description": "删除用户文件（本地及云端）",
         "impact": "永久删除文件 {file_path}",
     },
+    "arcpy_detect_objects": {
+        "level": RiskLevel.CRITICAL,
+        "description": "使用 ArcGIS Pro 执行目标检测推理",
+        "impact": "ArcGIS Pro 3.7.1 CPU 推理可能长时间运行，并将创建远程和本地结果制品",
+    },
+    "arcpy_classify_pixels": {
+        "level": RiskLevel.CRITICAL,
+        "description": "使用 ArcGIS Pro 执行像素分类推理",
+        "impact": "ArcGIS Pro 3.7.1 CPU 推理可能长时间运行，并将创建远程和本地结果制品",
+    },
+    "arcpy_classify_objects": {
+        "level": RiskLevel.CRITICAL,
+        "description": "使用 ArcGIS Pro 执行对象分类推理",
+        "impact": "ArcGIS Pro 3.7.1 CPU 推理可能长时间运行，并将创建远程和本地结果制品",
+    },
+    "arcpy_detect_change": {
+        "level": RiskLevel.CRITICAL,
+        "description": "使用 ArcGIS Pro 执行变化检测推理",
+        "impact": "ArcGIS Pro 3.7.1 CPU 推理可能长时间运行，并将创建远程和本地结果制品",
+    },
     # HIGH — field / sharing / team mutations
     "add_field": {
         "level": RiskLevel.HIGH,

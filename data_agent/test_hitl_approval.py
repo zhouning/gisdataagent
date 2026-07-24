@@ -74,6 +74,28 @@ class TestRiskAssessment:
         result = assess_risk("optimize_land_use_drl", {})
         assert result["level"] == RiskLevel.CRITICAL
 
+    @pytest.mark.parametrize(
+        ("tool_name", "inference_type"),
+        [
+            ("arcpy_detect_objects", "目标检测"),
+            ("arcpy_classify_pixels", "像素分类"),
+            ("arcpy_classify_objects", "对象分类"),
+            ("arcpy_detect_change", "变化检测"),
+        ],
+    )
+    def test_arcpy_deep_learning_requires_critical_confirmation(
+        self, tool_name, inference_type
+    ):
+        result = assess_risk(tool_name, {"input_path": "image.tif"})
+
+        assert result is not None
+        assert result["level"] == RiskLevel.CRITICAL
+        assert inference_type in result["description"]
+        assert "ArcGIS Pro 3.7.1" in result["impact"]
+        assert "CPU" in result["impact"]
+        assert "远程" in result["impact"]
+        assert "本地" in result["impact"]
+
     def test_delete_user_file_critical(self):
         result = assess_risk("delete_user_file", {"file_path": "/tmp/foo.shp"})
         assert result["level"] == RiskLevel.CRITICAL
