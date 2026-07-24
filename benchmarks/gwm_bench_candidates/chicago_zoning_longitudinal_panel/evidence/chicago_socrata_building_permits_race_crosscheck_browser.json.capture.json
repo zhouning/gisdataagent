@@ -1,0 +1,35 @@
+{
+  "schema": "gwm.chicago_browser_cdp_capture.v1",
+  "captured_at": "2026-07-24T05:42:23.173Z",
+  "source_url": "https://data.cityofchicago.org/resource/ydr8-5enu.json?%24select=id%2Cpermit_%2Cpermit_type%2Capplication_start_date%2Cissue_date%2Cstreet_number%2Cstreet_direction%2Cstreet_name%2Cwork_type%2Cwork_description%2Creported_cost%2Ccommunity_area%2Ccensus_tract%2Cward%2Cxcoordinate%2Cycoordinate%2Clatitude%2Clongitude&%24where=street_number%3D1228%20AND%20street_direction%3D%27W%27%20AND%20street_name%3D%27RACE%20AVE%27&%24order=issue_date&%24limit=100",
+  "browser_url": "https://data.cityofchicago.org/resource/ydr8-5enu.json?%24select=id%2Cpermit_%2Cpermit_type%2Capplication_start_date%2Cissue_date%2Cstreet_number%2Cstreet_direction%2Cstreet_name%2Cwork_type%2Cwork_description%2Creported_cost%2Ccommunity_area%2Ccensus_tract%2Cward%2Cxcoordinate%2Cycoordinate%2Clatitude%2Clongitude&%24where=street_number%3D1228%20AND%20street_direction%3D%27W%27%20AND%20street_name%3D%27RACE%20AVE%27&%24order=issue_date&%24limit=100",
+  "http_status": 200,
+  "content_type": "application/json;charset=utf-8",
+  "output_path": "/Users/zhouning/gisdataagent/benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_socrata_building_permits_race_crosscheck_browser.json",
+  "bytes": 2961,
+  "sha256": "cc01904e4aa42857a2758ac56c05c8b4dd0741c69a559a0105f90f109a95de1a",
+  "mode": "json",
+  "validation": {
+    "json_kind": "list",
+    "row_count": 5,
+    "required_fields": [
+      "id",
+      "permit_",
+      "permit_type",
+      "application_start_date",
+      "issue_date",
+      "street_number",
+      "street_direction",
+      "street_name",
+      "census_tract",
+      "latitude",
+      "longitude"
+    ],
+    "unique_fields": [
+      "id",
+      "permit_"
+    ]
+  },
+  "access_boundary": "browser_or_waf",
+  "cookies_or_credentials_persisted": false
+}

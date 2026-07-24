@@ -1,0 +1,359 @@
+{
+  "adjudication_digest": "4ca61668bf1ebc68457146ebcd3469899e1f07b226f076ec1013a3d2f234a2f2",
+  "artifacts": {
+    "airport_features": {
+      "bytes": 780,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_official_airports_layer31_all_features.json",
+      "sha256": "00f91cedd259a92c027b45311c99b03f3d997f836adc02f9ab5f50f620ee9a88"
+    },
+    "airport_layer_metadata": {
+      "bytes": 4471,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_official_airports_layer31_metadata.json",
+      "sha256": "ce70c310ca69deaef45f5c7357c745bdf298dfcc0c176d826738a751409769a1"
+    },
+    "parcel_response": {
+      "bytes": 11982,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_permits_unresolved_pin_parcel_response.json",
+      "sha256": "b5008b41a11be399381083e364ab3778589cd2d5402325efadb360f07fabfb94"
+    },
+    "parcel_response_headers": {
+      "bytes": 646,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_permits_unresolved_pin_parcel_response.headers",
+      "sha256": "741a0a9a82e36bca053ed64fb67e71bcbea6304bedbe128200996c52ddc7d4c0"
+    }
+  },
+  "claim_boundary": {
+    "current_parcel_not_historical_vintage": true,
+    "facility_context_not_tract_assignment": true,
+    "facility_point_not_facility_polygon": true,
+    "facility_point_not_permit_location": true,
+    "gwm_k0_validated": false,
+    "negative_recovery_result_preserved": true,
+    "pin_not_project_location_without_address_consistency": true
+  },
+  "facility_context": {
+    "context_permit_ids": [
+      "3279276",
+      "3286065",
+      "3290703",
+      "3297759",
+      "3299740",
+      "3305638",
+      "3307150",
+      "3310322",
+      "3315602",
+      "3322975",
+      "3327088",
+      "3327448",
+      "3332581",
+      "3338113",
+      "3342677",
+      "3349005",
+      "3352648",
+      "3354192",
+      "3357057",
+      "3362937",
+      "3364211",
+      "3368274",
+      "3372857",
+      "3380303",
+      "3385713",
+      "3389265"
+    ],
+    "context_row_count": 26,
+    "facility_context_ready": true,
+    "facility_id": "chicago_ohare_airport",
+    "official_name": "O'Hare Airport",
+    "official_point_tract_geoid": "17043840000",
+    "official_point_wgs84": [
+      -87.92152222808691,
+      41.98788646671331
+    ],
+    "permit_tract_assignment_admitted": false,
+    "reason": "official_airport_layer_is_a_facility_point_not_a_project_or_facility_polygon_and_cannot_locate_each_permit_within_ohare",
+    "shared_permit_address": "10000 N BESSIE COLEMAN DR",
+    "source_geometry_type": "point"
+  },
+  "observed_on": "2026-07-24",
+  "pin_parcel_adjudication": {
+    "address_consistent_row_count": 0,
+    "admitted_row_count": 0,
+    "endpoint": "https://gisapps.chicago.gov/arcgis/rest/services/ExternalApps/operational/MapServer/1/query",
+    "layer_name": "Parcel Addresses",
+    "missing_pin_count": 3,
+    "multi_pin_row_count": 1,
+    "pin_bearing_row_count": 14,
+    "requested_unique_pin_count": 14,
+    "returned_unique_pin_polygon_count": 11,
+    "rows": [
+      {
+        "candidates": [
+          {
+            "address_consistent": false,
+            "parcel_address": null,
+            "parcel_returned": false,
+            "pin10": "1010404648",
+            "tract_geoid": null
+          }
+        ],
+        "id": "3327448",
+        "permit_": "101019617",
+        "permit_address": "10000 N BESSIE COLEMAN DR",
+        "pin_candidate_count": 1,
+        "pin_spatial_assignment_admitted": false,
+        "reason": "parcel_not_returned"
+      },
+      {
+        "candidates": [
+          {
+            "address_consistent": false,
+            "parcel_address": "800-800 S LARAMIE AVE",
+            "parcel_returned": true,
+            "pin10": "1616308053",
+            "tract_geoid": "17031831400"
+          }
+        ],
+        "id": "3331844",
+        "permit_": "101022761",
+        "permit_address": "800 S LEAMINGTON AVE",
+        "pin_candidate_count": 1,
+        "pin_spatial_assignment_admitted": false,
+        "reason": "permit_address_not_consistent_with_current_parcel_address"
+      },
+      {
+        "candidates": [
+          {
+            "address_consistent": false,
+            "parcel_address": "110-110 E ROOSEVELT RD",
+            "parcel_returned": true,
+            "pin10": "1715112003",
+            "tract_geoid": "17031320102"
+          },
+          {
+            "address_consistent": false,
+            "parcel_address": "562-562 S MCCORMICK PL BUSWAY",
+            "parcel_returned": true,
+            "pin10": "1715502001",
+            "tract_geoid": "17031320102"
+          }
+        ],
+        "id": "3414142",
+        "permit_": "101068745",
+        "permit_address": "132 E VAN BUREN ST",
+        "pin_candidate_count": 2,
+        "pin_spatial_assignment_admitted": false,
+        "reason": "multiple_pin_candidates"
+      },
+      {
+        "candidates": [
+          {
+            "address_consistent": false,
+            "parcel_address": "6446-6446 S KIMBARK AVE",
+            "parcel_returned": true,
+            "pin10": "2023210014",
+            "tract_geoid": "17031834400"
+          }
+        ],
+        "id": "N2773728",
+        "permit_": "B200441669",
+        "permit_address": "6450 S KIMBARK AVE",
+        "pin_candidate_count": 1,
+        "pin_spatial_assignment_admitted": false,
+        "reason": "permit_address_not_consistent_with_current_parcel_address"
+      },
+      {
+        "candidates": [
+          {
+            "address_consistent": false,
+            "parcel_address": null,
+            "parcel_returned": false,
+            "pin10": "1734327048",
+            "tract_geoid": null
+          }
+        ],
+        "id": "N2774568",
+        "permit_": "B200441880",
+        "permit_address": "3857 S CALUMET AVE",
+        "pin_candidate_count": 1,
+        "pin_spatial_assignment_admitted": false,
+        "reason": "parcel_not_returned"
+      },
+      {
+        "candidates": [
+          {
+            "address_consistent": false,
+            "parcel_address": "6446-6446 S KIMBARK AVE",
+            "parcel_returned": true,
+            "pin10": "2023210014",
+            "tract_geoid": "17031834400"
+          }
+        ],
+        "id": "N2786026",
+        "permit_": "B200444953",
+        "permit_address": "6450 S KIMBARK AVE",
+        "pin_candidate_count": 1,
+        "pin_spatial_assignment_admitted": false,
+        "reason": "permit_address_not_consistent_with_current_parcel_address"
+      },
+      {
+        "candidates": [
+          {
+            "address_consistent": false,
+            "parcel_address": "4324-4324 W POTOMAC AVE",
+            "parcel_returned": true,
+            "pin10": "1603224033",
+            "tract_geoid": "17031230600"
+          }
+        ],
+        "id": "N2838493",
+        "permit_": "B200458145",
+        "permit_address": "4322 W POTOMAC AVE",
+        "pin_candidate_count": 1,
+        "pin_spatial_assignment_admitted": false,
+        "reason": "permit_address_not_consistent_with_current_parcel_address"
+      },
+      {
+        "candidates": [
+          {
+            "address_consistent": false,
+            "parcel_address": "1653-1653 W FOSTER AVE",
+            "parcel_returned": true,
+            "pin10": "1407404001",
+            "tract_geoid": "17031031000"
+          }
+        ],
+        "id": "N2846854",
+        "permit_": "B200459981",
+        "permit_address": "1657 W FOSTER AVE",
+        "pin_candidate_count": 1,
+        "pin_spatial_assignment_admitted": false,
+        "reason": "permit_address_not_consistent_with_current_parcel_address"
+      },
+      {
+        "candidates": [
+          {
+            "address_consistent": false,
+            "parcel_address": null,
+            "parcel_returned": false,
+            "pin10": "1909128029",
+            "tract_geoid": null
+          }
+        ],
+        "id": "N2857933",
+        "permit_": "B200462820",
+        "permit_address": "5300 S LOREL AVE",
+        "pin_candidate_count": 1,
+        "pin_spatial_assignment_admitted": false,
+        "reason": "parcel_not_returned"
+      },
+      {
+        "candidates": [
+          {
+            "address_consistent": false,
+            "parcel_address": "1347-1347 S WELLS ST",
+            "parcel_returned": true,
+            "pin10": "1721208004",
+            "tract_geoid": "17031330200"
+          }
+        ],
+        "id": "N2858307",
+        "permit_": "B200462916",
+        "permit_address": "1331 S WELLS ST",
+        "pin_candidate_count": 1,
+        "pin_spatial_assignment_admitted": false,
+        "reason": "permit_address_not_consistent_with_current_parcel_address"
+      },
+      {
+        "candidates": [
+          {
+            "address_consistent": false,
+            "parcel_address": "4525-4525 N DELPHIA AVE",
+            "parcel_returned": true,
+            "pin10": "1214103018",
+            "tract_geoid": "17031760802"
+          }
+        ],
+        "id": "N2866448",
+        "permit_": "B200465000",
+        "permit_address": "4523 N DELPHIA AVE",
+        "pin_candidate_count": 1,
+        "pin_spatial_assignment_admitted": false,
+        "reason": "permit_address_not_consistent_with_current_parcel_address"
+      },
+      {
+        "candidates": [
+          {
+            "address_consistent": false,
+            "parcel_address": "5215-5215 S BISHOP ST",
+            "parcel_returned": true,
+            "pin10": "2008311008",
+            "tract_geoid": "17031611900"
+          }
+        ],
+        "id": "N2883612",
+        "permit_": "B200469344",
+        "permit_address": "5217 S BISHOP ST",
+        "pin_candidate_count": 1,
+        "pin_spatial_assignment_admitted": false,
+        "reason": "permit_address_not_consistent_with_current_parcel_address"
+      },
+      {
+        "candidates": [
+          {
+            "address_consistent": false,
+            "parcel_address": "11315-11315 S CORLISS AVE",
+            "parcel_returned": true,
+            "pin10": "2523104005",
+            "tract_geoid": "17031500300"
+          }
+        ],
+        "id": "N2897475",
+        "permit_": "B200472699",
+        "permit_address": "11211 S CORLISS AVE",
+        "pin_candidate_count": 1,
+        "pin_spatial_assignment_admitted": false,
+        "reason": "permit_address_not_consistent_with_current_parcel_address"
+      },
+      {
+        "candidates": [
+          {
+            "address_consistent": false,
+            "parcel_address": "920-920 W LAKE ST",
+            "parcel_returned": true,
+            "pin10": "1708424012",
+            "tract_geoid": "17031833000"
+          }
+        ],
+        "id": "N2905291",
+        "permit_": "B200474672",
+        "permit_address": "205 N SANGAMON ST",
+        "pin_candidate_count": 1,
+        "pin_spatial_assignment_admitted": false,
+        "reason": "permit_address_not_consistent_with_current_parcel_address"
+      }
+    ],
+    "unique_parcel_to_tract_count": 11
+  },
+  "readiness": {
+    "causal_estimation_ready": false,
+    "complete_spatial_assignment_ready": false,
+    "facility_context_ready": true,
+    "facility_level_permit_tract_assignment_ready": false,
+    "pin_parcel_response_ready": true,
+    "pin_spatial_recovery_ready": false
+  },
+  "remaining_missingness": {
+    "express_program_row_count": 65,
+    "missingness_assumed_random": false,
+    "permit_type_counts": {
+      "PERMIT - ELEVATOR EQUIPMENT": 1,
+      "PERMIT - NEW CONSTRUCTION": 2,
+      "PERMIT - REINSTATE REVOKED PMT": 1,
+      "PERMIT - RENOVATION/ALTERATION": 1,
+      "PERMIT - SIGNS": 2,
+      "PERMIT \u2013 EXPRESS PERMIT PROGRAM": 65
+    }
+  },
+  "remaining_unresolved_row_count": 72,
+  "schema": "gwm.chicago_remaining_permit_spatial_adjudication.v1"
+}

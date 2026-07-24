@@ -1,0 +1,269 @@
+{
+  "analysis_unit": "2020_census_tract",
+  "claim_boundary": {
+    "event_crosswalk_not_causal_identification": true,
+    "event_crosswalk_not_longitudinal_panel": true,
+    "point_and_tract_crosswalk_not_treatment_polygon": true,
+    "zoning_map_polygon_not_legal_parcel_polygon": true
+  },
+  "crosswalk_digest": "e43e73a2c4a6d5c6d8781ffe6734c440cd3506114c2a9971ea00bb351b0e36ed",
+  "event_count": 3,
+  "events": {
+    "O2024-0012247": {
+      "address_type": "PointAddress",
+      "block_fips_2020": "170312434002007",
+      "community": "WEST TOWN",
+      "match_score": 74.29,
+      "matched_address": "1228 W RACE AVE, 60642",
+      "pin10": "1708126021",
+      "point_epsg_3435": [
+        1167951.401312642,
+        1903946.2914013513
+      ],
+      "point_wgs84": [
+        -87.658642710961,
+        41.891978546929
+      ],
+      "record_number": "O2024-0012247",
+      "source_artifacts": {
+        "chicago_addresspoints_O2024_0012247_race.json": {
+          "bytes": 1440,
+          "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_addresspoints_O2024_0012247_race.json",
+          "sha256": "808f6720dd2664cd3515fd2e991e7290f9cce0e6ffb7cafe4a9165cecf35814c"
+        },
+        "chicago_current_zoning_O2024_0012247_race.json": {
+          "bytes": 1893,
+          "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_current_zoning_O2024_0012247_race.json",
+          "sha256": "83b6e7ea12149e658da1b8c37951ac0a95309ce387fd015f1aa694444f19efe8"
+        },
+        "fcc_census_block_O2024_0012247_race.json": {
+          "bytes": 216,
+          "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/fcc_census_block_O2024_0012247_race.json",
+          "sha256": "086c5c1ac62e2998e79e1c4e3b58c61cab62bd74383c65b2bc4a88cd310dc259"
+        }
+      },
+      "tract_geoid": "17031243400",
+      "validation": {
+        "checks": {
+          "block_derives_expected_tract": true,
+          "bounded_match_score": true,
+          "exact_normalized_address": true,
+          "expected_2020_block": true,
+          "expected_pin10": true,
+          "fcc_status_ok": true,
+          "finite_wgs84_point": true,
+          "point_address_type": true,
+          "single_address_candidate": true,
+          "wgs84_output": true
+        },
+        "passed": true
+      },
+      "ward": 1,
+      "zoning_map_polygon": {
+        "area_ratio_to_legal_lot": 1.365344,
+        "clerk_document_number": "O2024-0012247",
+        "legal_lot_area_square_feet": 2088,
+        "legal_parcel_area_consistent": false,
+        "object_id": 1661744,
+        "ordinance_date_epoch_ms": 1730246400000,
+        "ordinance_number": "22539T1",
+        "ring_count": 1,
+        "shape_area_square_feet": 2850.838134765625,
+        "spatial_reference_latest_wkid": 3435,
+        "spatial_reference_wkid": 102671,
+        "vertex_count": 9,
+        "zone_class": "B2-3"
+      },
+      "zoning_map_validation": {
+        "checks": {
+          "address_point_inside_polygon": true,
+          "clerk_document_matches_event": true,
+          "destination_zone_class_matches_ordinance": true,
+          "illinois_state_plane_output": true,
+          "ordinance_date_matches_final_action": true,
+          "polygon_geometry_present": true,
+          "positive_polygon_area": true,
+          "single_polygon_feature": true
+        },
+        "machine_legal_parcel_polygon_verified": false,
+        "machine_zoning_map_update_verified": true,
+        "passed": true
+      }
+    },
+    "O2024-0012334": {
+      "address_type": "PointAddress",
+      "block_fips_2020": "170313009002011",
+      "community": "SOUTH LAWNDALE",
+      "match_score": 73,
+      "matched_address": "2437 S TROY ST, 60623",
+      "pin10": "1625115015",
+      "point_epsg_3435": [
+        1155885.5240542549,
+        1887486.8033113407
+      ],
+      "point_wgs84": [
+        -87.703399056433,
+        41.847063783488
+      ],
+      "record_number": "O2024-0012334",
+      "source_artifacts": {
+        "chicago_addresspoints_O2024_0012334_troy.json": {
+          "bytes": 1430,
+          "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_addresspoints_O2024_0012334_troy.json",
+          "sha256": "a609bf0ca6651f01220c3b8b736622b8a52fad881fe89939ba9b4518dfc4990a"
+        },
+        "chicago_current_zoning_O2024_0012334_troy.json": {
+          "bytes": 1891,
+          "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_current_zoning_O2024_0012334_troy.json",
+          "sha256": "594af1c994bdc617275cdffe5414e6154f4d495aa6702dfff4a9aed2a2d4a715"
+        },
+        "fcc_census_block_O2024_0012334_troy.json": {
+          "bytes": 219,
+          "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/fcc_census_block_O2024_0012334_troy.json",
+          "sha256": "ed2c6dec68b15a51be9828db4c5d1595f27e2ef8bb06df570579f3a00f7e351c"
+        }
+      },
+      "tract_geoid": "17031300900",
+      "validation": {
+        "checks": {
+          "block_derives_expected_tract": true,
+          "bounded_match_score": true,
+          "exact_normalized_address": true,
+          "expected_2020_block": true,
+          "expected_pin10": true,
+          "fcc_status_ok": true,
+          "finite_wgs84_point": true,
+          "point_address_type": true,
+          "single_address_candidate": true,
+          "wgs84_output": true
+        },
+        "passed": true
+      },
+      "ward": 12,
+      "zoning_map_polygon": {
+        "area_ratio_to_legal_lot": null,
+        "clerk_document_number": "O2024-0012334",
+        "legal_lot_area_square_feet": null,
+        "legal_parcel_area_consistent": null,
+        "object_id": 1661758,
+        "ordinance_date_epoch_ms": 1730246400000,
+        "ordinance_number": "22544T1",
+        "ring_count": 1,
+        "shape_area_square_feet": 4031.9547119140625,
+        "spatial_reference_latest_wkid": 3435,
+        "spatial_reference_wkid": 102671,
+        "vertex_count": 9,
+        "zone_class": "RM-5"
+      },
+      "zoning_map_validation": {
+        "checks": {
+          "address_point_inside_polygon": true,
+          "clerk_document_matches_event": true,
+          "destination_zone_class_matches_ordinance": true,
+          "illinois_state_plane_output": true,
+          "ordinance_date_matches_final_action": true,
+          "polygon_geometry_present": true,
+          "positive_polygon_area": true,
+          "single_polygon_feature": true
+        },
+        "machine_legal_parcel_polygon_verified": false,
+        "machine_zoning_map_update_verified": true,
+        "passed": true
+      }
+    },
+    "O2024-0012532": {
+      "address_type": "PointAddress",
+      "block_fips_2020": "170318306001008",
+      "community": "ROGERS PARK",
+      "match_score": 78.4,
+      "matched_address": "6453 N BOSWORTH AVE, 60626",
+      "pin10": "1132323002",
+      "point_epsg_3435": [
+        1164847.9950355224,
+        1943160.291120241
+      ],
+      "point_wgs84": [
+        -87.668923785758,
+        41.999650128188
+      ],
+      "record_number": "O2024-0012532",
+      "source_artifacts": {
+        "chicago_addresspoints_O2024_0012532_bosworth.json": {
+          "bytes": 1468,
+          "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_addresspoints_O2024_0012532_bosworth.json",
+          "sha256": "a93eeb923cfca68f8e41a74c489bb34838280fbc8207d79ea0ab253fde84fb1b"
+        },
+        "chicago_current_zoning_O2024_0012532_bosworth.json": {
+          "bytes": 1897,
+          "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_current_zoning_O2024_0012532_bosworth.json",
+          "sha256": "9b15e7997b71807c936cf2c32247cf76e1900d32d068c85623ea277c69c9739d"
+        },
+        "fcc_census_block_O2024_0012532_bosworth.json": {
+          "bytes": 219,
+          "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/fcc_census_block_O2024_0012532_bosworth.json",
+          "sha256": "f5d824a404ae7d2a8ffc555b97d4f9f180c7165b4b8e287119d57fb9439262d7"
+        }
+      },
+      "tract_geoid": "17031830600",
+      "validation": {
+        "checks": {
+          "block_derives_expected_tract": true,
+          "bounded_match_score": true,
+          "exact_normalized_address": true,
+          "expected_2020_block": true,
+          "expected_pin10": true,
+          "fcc_status_ok": true,
+          "finite_wgs84_point": true,
+          "point_address_type": true,
+          "single_address_candidate": true,
+          "wgs84_output": true
+        },
+        "passed": true
+      },
+      "ward": 40,
+      "zoning_map_polygon": {
+        "area_ratio_to_legal_lot": 1.403035,
+        "clerk_document_number": "O2024-0012532",
+        "legal_lot_area_square_feet": 3885,
+        "legal_parcel_area_consistent": false,
+        "object_id": 1661741,
+        "ordinance_date_epoch_ms": 1730246400000,
+        "ordinance_number": "22570T1",
+        "ring_count": 1,
+        "shape_area_square_feet": 5450.791259765625,
+        "spatial_reference_latest_wkid": 3435,
+        "spatial_reference_wkid": 102671,
+        "vertex_count": 9,
+        "zone_class": "RM-4.5"
+      },
+      "zoning_map_validation": {
+        "checks": {
+          "address_point_inside_polygon": true,
+          "clerk_document_matches_event": true,
+          "destination_zone_class_matches_ordinance": true,
+          "illinois_state_plane_output": true,
+          "ordinance_date_matches_final_action": true,
+          "polygon_geometry_present": true,
+          "positive_polygon_area": true,
+          "single_polygon_feature": true
+        },
+        "machine_legal_parcel_polygon_verified": false,
+        "machine_zoning_map_update_verified": true,
+        "passed": true
+      }
+    }
+  },
+  "observed_on": "2026-07-24",
+  "readiness": {
+    "causal_estimation_ready": false,
+    "current_zoning_map_polygons_ready": true,
+    "effective_onsets_ready": false,
+    "machine_treatment_geometries_ready": false,
+    "official_pins_ready": true,
+    "official_point_addresses_ready": true,
+    "outcome_panel_ready": false,
+    "point_to_tract_crosswalks_ready": true
+  },
+  "schema": "gwm.chicago_historical_zoning_event_crosswalk.v1",
+  "source_audit_digest": "cb1fb6df9c6d5f6074b4f7ad980976e09a70e2f730375b7298ab3aed46bd5a35"
+}

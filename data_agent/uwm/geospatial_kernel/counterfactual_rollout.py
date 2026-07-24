@@ -6,6 +6,7 @@ import hashlib
 import json
 from typing import Any
 
+from .causal_calibration import bind_causal_calibration_to_rollout
 from .direct_transition import apply_direct_transition
 from .evidence_gate import build_rollout_evidence_gate
 from .land_use_action import (
@@ -24,6 +25,7 @@ def run_counterfactual_rollout(
     land_use_dictionary: dict[str, Any],
     transition_matrix: dict[str, Any],
     alternative_land_use_class: str | None,
+    causal_calibration_contract: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Compare no-action, intervention and optional controlled alternative worlds."""
 
@@ -136,6 +138,11 @@ def run_counterfactual_rollout(
         ),
         **evidence_gate,
     }
+    if causal_calibration_contract is not None:
+        result = bind_causal_calibration_to_rollout(
+            rollout=result,
+            causal_calibration_contract=causal_calibration_contract,
+        )
     result["rollout_digest"] = _rollout_digest(result)
     return result
 

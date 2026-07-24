@@ -1,0 +1,20 @@
+HTTP/2 200 
+x-content-type-options: nosniff
+vary: Origin, Accept-Encoding
+etag: "cae96f0c"
+content-type: application/json;charset=UTF-8
+x-ssl-protocol: TLSv1.2
+x-ssl-cipher: ECDHE-RSA-AES256-GCM-SHA384
+content-length: 11982
+expires: Fri, 24 Jul 2026 06:52:50 GMT
+cache-control: max-age=0, no-cache, no-store
+pragma: no-cache
+date: Fri, 24 Jul 2026 06:52:50 GMT
+server-timing: cdn-cache; desc=MISS
+server-timing: edge; dur=299
+server-timing: origin; dur=231
+alt-svc: h3=":443"; ma=93600
+x-akamai: Production
+x-akamai-lma-requested: 
+server-timing: ak_p; desc="1784875968421_400031942_2302440530_52910_11446_154_1258_15";dur=1
+

@@ -1,0 +1,104 @@
+{
+  "schema": "gwm.chicago_historical_zoning_attachment_preflight.v1",
+  "probed_at": "2026-07-23T15:52:43Z",
+  "request_scope": {
+    "candidate_count": 3,
+    "head_request_count": 6,
+    "document_download_count": 6,
+    "bulk_download_performed": false,
+    "bounded_official_document_bytes": 2898496,
+    "ocr_method": "Apple Vision local OCR"
+  },
+  "candidates": [
+    {
+      "record_number": "O2024-0012247",
+      "address": "1228 W Race Ave",
+      "final_action_date": "2024-10-30T15:00:00+00:00",
+      "last_publication_date": "2024-11-21T16:45:42+00:00",
+      "complete_post_publication_months": 19,
+      "geocode_probe_http_status": 503,
+      "documents": [
+        {
+          "role": "final_ordinance",
+          "url": "https://occprodstoragev1.blob.core.usgovcloudapi.net/matterattachmentspublic/1ea8f7f0-df90-4626-b995-560f24b9ab49.pdf",
+          "bytes": 22816,
+          "pages": 1,
+          "content_md5": "REbtH1xIbEQ43SVgnpTB6Q==",
+          "etag": "0x8DD0A4BF0FE4819",
+          "last_modified": "Thu, 21 Nov 2024 16:45:43 GMT",
+          "sha256": "d2c9c376e055f9ba39085b7e71cd8aee0c29a91974c5547a91ffba07993d37bb"
+        },
+        {
+          "role": "final_narrative_and_plans",
+          "url": "https://occprodstoragev1.blob.core.usgovcloudapi.net/matterattachmentspublic/9a7fa714-b4f1-4750-b530-cd9a4f42dec0.pdf",
+          "bytes": 1440916,
+          "pages": 17,
+          "content_md5": "XCP7XUoA1TnSfSNhnbGg2g==",
+          "etag": "0x8DD0A4BF1524F2C",
+          "last_modified": "Thu, 21 Nov 2024 16:45:44 GMT",
+          "sha256": "df9b854c688d624c6844ca4575d07f9529330d9c7ea7946b0f3152e4066c86b5"
+        }
+      ]
+    },
+    {
+      "record_number": "O2024-0012532",
+      "address": "6453 N Bosworth Ave",
+      "final_action_date": "2024-10-30T15:00:00+00:00",
+      "last_publication_date": "2024-11-21T17:25:24+00:00",
+      "complete_post_publication_months": 19,
+      "geocode_probe_http_status": 503,
+      "documents": [
+        {
+          "role": "final_ordinance",
+          "url": "https://occprodstoragev1.blob.core.usgovcloudapi.net/matterattachmentspublic/8775e566-2808-45db-84de-a5aff964ebb9.pdf",
+          "bytes": 24771,
+          "pages": 1,
+          "content_md5": "zocwNdwB8fnnY5YGgKbvfQ==",
+          "etag": "0x8DD0A517C9B30CC",
+          "last_modified": "Thu, 21 Nov 2024 17:25:25 GMT",
+          "sha256": "492394bae1a8a62c36e0d73316a28c4642b5ae534788173411b225e515f90b4b"
+        },
+        {
+          "role": "final_narrative_and_plans",
+          "url": "https://occprodstoragev1.blob.core.usgovcloudapi.net/matterattachmentspublic/1a6ae561-19c2-4248-b7c4-642dc375f059.pdf",
+          "bytes": 636837,
+          "pages": 7,
+          "content_md5": "AVX3rYGTqh7GUy7ikaDPJQ==",
+          "etag": "0x8DD0A517C5B23F0",
+          "last_modified": "Thu, 21 Nov 2024 17:25:25 GMT",
+          "sha256": "dbbd200ba04c183beb8301f38bc33d6c061f82bf12ac2a41cfcf77ade8421bc4"
+        }
+      ]
+    },
+    {
+      "record_number": "O2024-0012334",
+      "address": "2437 S Troy St",
+      "final_action_date": "2024-10-30T15:00:00+00:00",
+      "last_publication_date": "2024-11-21T17:05:37+00:00",
+      "complete_post_publication_months": 19,
+      "geocode_probe_http_status": 504,
+      "documents": [
+        {
+          "role": "final_ordinance",
+          "url": "https://occprodstoragev1.blob.core.usgovcloudapi.net/matterattachmentspublic/6d8cde0b-2862-4cfa-8003-3c5b2e683408.pdf",
+          "bytes": 23411,
+          "pages": 1,
+          "content_md5": "wzPCknF0mehhwKaqZlIK0g==",
+          "etag": "0x8DD0A4EB894F3DF",
+          "last_modified": "Thu, 21 Nov 2024 17:05:37 GMT",
+          "sha256": "857e7c8eea514eee9c349ea458be31d2b00cf9e8dac671d33b2cb8c33bf2917e"
+        },
+        {
+          "role": "final_narrative_and_plans",
+          "url": "https://occprodstoragev1.blob.core.usgovcloudapi.net/matterattachmentspublic/4835c5e9-647c-476e-86b9-b4e35ff3de8c.pdf",
+          "bytes": 749745,
+          "pages": 10,
+          "content_md5": "BIJfEGjFEBcNrp/Dy8P54A==",
+          "etag": "0x8DD0A4EB9C975CB",
+          "last_modified": "Thu, 21 Nov 2024 17:05:39 GMT",
+          "sha256": "631ff9fbb16dd497937f2fea7d5e94d3f990efc9818803a24beb017fba29bff2"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1211 @@
+{
+  "artifacts": {
+    "O2024-0008450": {
+      "bytes": 19023,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0008450.html",
+      "sha256": "e831ca38ff84a664458d53744211f7326eea82467f24125b044c781c2d3ac271"
+    },
+    "O2024-0008454": {
+      "bytes": 44385,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0008454.html",
+      "sha256": "8319c0aad1ee406b458a9d891fcfa55278038c0938fe8d01276c01578352327a"
+    },
+    "O2024-0008459": {
+      "bytes": 14620,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0008459.html",
+      "sha256": "d634e06d843fa80742de1e768cf7c86e355281545fc07f8021df276b6ef542f3"
+    },
+    "O2024-0008868": {
+      "bytes": 16405,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0008868.html",
+      "sha256": "10571ae0d75dbb76f2719048fe52ef47731ef4f921b1769db91c1d7e766dccc0"
+    },
+    "O2024-0008869": {
+      "bytes": 35134,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0008869.html",
+      "sha256": "019a0309525ec564bbc6cf48a2f81fe4a0b73a6ca56be0095e1388000d84b960"
+    },
+    "O2024-0008974": {
+      "bytes": 22291,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0008974.html",
+      "sha256": "85c10a2118caa1598e14a823627ef52b42127c7b1a68ddafcb50468a7aaf9ea1"
+    },
+    "O2024-0009009": {
+      "bytes": 33119,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0009009.html",
+      "sha256": "7f6ee2de7aff7692cd4fc012e17332e481fd2abcd17fb9b4794dc33274681617"
+    },
+    "O2024-0010948": {
+      "bytes": 12677,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0010948.html",
+      "sha256": "5ae576dc44950bc1c9be10d90cd8b4713839483f60c008810ec7ce21c116f3ca"
+    },
+    "O2024-0010950": {
+      "bytes": 28211,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0010950.html",
+      "sha256": "5b15d60601fb25c7195b284977505a3b51aeaae4c67cf5836c860c33d5bd5aae"
+    },
+    "O2024-0011132": {
+      "bytes": 20142,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0011132.html",
+      "sha256": "d6f3e8cf76a3122622e92e96c93a58b45cd5fb9938c573d42e72a1c99b1c971a"
+    },
+    "O2024-0011139": {
+      "bytes": 13691,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0011139.html",
+      "sha256": "969cc210785606c6f5e6f54074937beeb274b4438d4d2cf0989c411243fd5a00"
+    },
+    "O2024-0011150": {
+      "bytes": 33051,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0011150.html",
+      "sha256": "7aa5acd86d3e75a1c92dae7b02a53ad0eb99762c79ab29688af4526cec95ee72"
+    },
+    "O2024-0012247": {
+      "bytes": 70649,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0012247.html",
+      "sha256": "51c079ee7cc7abb38297c8bbccf918dceaff22d628086ebfd2509eda324679be"
+    },
+    "O2024-0012334": {
+      "bytes": 33220,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0012334.html",
+      "sha256": "2948bea0f9a467259788a463ea8d2d7cfb83061fef52e99d1a0af9bb10d8a356"
+    },
+    "O2024-0012506": {
+      "bytes": 22329,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0012506.html",
+      "sha256": "2ae5938f181a2b18935d3ea6ec0a6219498160c219a566031461f19b9460f765"
+    },
+    "O2024-0012520": {
+      "bytes": 22600,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0012520.html",
+      "sha256": "f088a1319b1e5250a6d6cd173578631617d82b506003537b282d411e554250d2"
+    },
+    "O2024-0012532": {
+      "bytes": 22462,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0012532.html",
+      "sha256": "726fee54a54e59ea9dccbb1e8eb034f60a71016b47b182efad96884b5c0ae717"
+    },
+    "agreement": {
+      "bytes": 10798,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/agreement.html",
+      "sha256": "24c38fe1870bc1c06a9ab7dbd986f39385e497938806bd6a79ffe1b30009e740"
+    },
+    "crosswalk": {
+      "bytes": 79430,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/historical_cohort_spatial_crosswalk.json",
+      "sha256": "90ca576ea332818ea8024bd2699bfdbd2d59690e757a1a194af05eeef96cf92a"
+    }
+  },
+  "claim_boundary": {
+    "address_history_not_complete_tract_outcome": true,
+    "bounded_html_probe_not_bulk_socrata_export": true,
+    "bounded_outcome_rows_not_causal_identification": true,
+    "candidate_publication_date_not_verified_effective_onset": true,
+    "permit_issue_not_construction_start": true,
+    "permit_issue_not_work_completion": true,
+    "treated_addresses_not_untreated_controls": true
+  },
+  "observations": [
+    {
+      "candidate_publication_date": "2024-07-05",
+      "page_title": "Building Permit and Inspection Records",
+      "permit_columns": [
+        "PERMIT #",
+        "DATE ISSUED",
+        "DESCRIPTION OF WORK"
+      ],
+      "permit_summary": {
+        "permit_count": 5,
+        "post_publication_permit_count": 0,
+        "post_publication_permit_numbers": []
+      },
+      "permits": [
+        {
+          "description_of_work": "INSTALLATION OF LOW VOLTAGE BURGLAR ALARM INTERIOR WORK ONLY #4002-88949",
+          "issued_on": "2014-07-15",
+          "permit_number": "100534771"
+        },
+        {
+          "description_of_work": "RELOCATE 2\" RISER",
+          "issued_on": "1996-10-23",
+          "permit_number": "EL0415029"
+        },
+        {
+          "description_of_work": "INSTALL PHONE SYSTEM W/CLASS 11 WIRING",
+          "issued_on": "1992-09-11",
+          "permit_number": "EL9011102"
+        },
+        {
+          "description_of_work": "1 STROH NEON",
+          "issued_on": "1985-12-04",
+          "permit_number": "EL6929933"
+        },
+        {
+          "description_of_work": "WIRE UP GARAGE",
+          "issued_on": "1982-08-09",
+          "permit_number": "EL5830792"
+        }
+      ],
+      "raw_artifact": {
+        "bytes": 19023,
+        "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0008450.html",
+        "sha256": "e831ca38ff84a664458d53744211f7326eea82467f24125b044c781c2d3ac271"
+      },
+      "record_number": "O2024-0008450",
+      "requested_address": "1157 W Grand Ave",
+      "result_content_type": "text/html",
+      "result_http_status": 200,
+      "result_server_date": "Fri, 24 Jul 2026 02:40:14 GMT",
+      "tract_geoid": "17031243500",
+      "validated_address": "1157 W GRAND AVE",
+      "validation": {
+        "current_permit_schema_verified": true,
+        "exact_input_address_returned": true,
+        "exact_validated_address": true,
+        "official_html_content_type": true,
+        "official_page_title": true,
+        "permit_rows_have_stable_id_and_date": true,
+        "result_http_200": true,
+        "source_disclaimer_present": true,
+        "validation_http_200": true
+      },
+      "validation_http_status": 200
+    },
+    {
+      "candidate_publication_date": "2024-07-06",
+      "page_title": "Building Permit and Inspection Records",
+      "permit_columns": [
+        "PERMIT #",
+        "DATE ISSUED",
+        "DESCRIPTION OF WORK"
+      ],
+      "permit_summary": {
+        "permit_count": 2,
+        "post_publication_permit_count": 1,
+        "post_publication_permit_numbers": [
+          "101070249"
+        ]
+      },
+      "permits": [
+        {
+          "description_of_work": "SPR 2019 CBC: INTERIOR ALTERATIONS AND REMODELING TO CONVERT 4 D.U. TO 5 D.U. BY ADDING APARTMENT UNIT IN THE BASEMENT FOR AN EXISTING 2 STORY FRAME RESIDENTIAL BUILDING WITH BASEMENT AS PER PLANS.**conditional permit subject to field inspections**",
+          "issued_on": "2025-09-29",
+          "permit_number": "101070249"
+        },
+        {
+          "description_of_work": "REPAIR DRYWALL 5/8\"UL 3 APTS ONLY SAME AREA",
+          "issued_on": "1994-09-27",
+          "permit_number": "B793286"
+        }
+      ],
+      "raw_artifact": {
+        "bytes": 44385,
+        "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0008454.html",
+        "sha256": "8319c0aad1ee406b458a9d891fcfa55278038c0938fe8d01276c01578352327a"
+      },
+      "record_number": "O2024-0008454",
+      "requested_address": "1806 N Monticello Ave",
+      "result_content_type": "text/html",
+      "result_http_status": 200,
+      "result_server_date": "Fri, 24 Jul 2026 02:40:18 GMT",
+      "tract_geoid": "17031222900",
+      "validated_address": "1806 N MONTICELLO AVE",
+      "validation": {
+        "current_permit_schema_verified": true,
+        "exact_input_address_returned": true,
+        "exact_validated_address": true,
+        "official_html_content_type": true,
+        "official_page_title": true,
+        "permit_rows_have_stable_id_and_date": true,
+        "result_http_200": true,
+        "source_disclaimer_present": true,
+        "validation_http_200": true
+      },
+      "validation_http_status": 200
+    },
+    {
+      "candidate_publication_date": "2024-07-06",
+      "page_title": "Building Permit and Inspection Records",
+      "permit_columns": [
+        "PERMIT #",
+        "DATE ISSUED",
+        "DESCRIPTION OF WORK"
+      ],
+      "permit_summary": {
+        "permit_count": 2,
+        "post_publication_permit_count": 0,
+        "post_publication_permit_numbers": []
+      },
+      "permits": [
+        {
+          "description_of_work": "WRECK AND REMOVE A 2-STORY FRAME RESIDENCE.",
+          "issued_on": "2001-09-07",
+          "permit_number": "B20121250"
+        },
+        {
+          "description_of_work": "DRYWALL REPAIRS 1/2'' U L GYP BD, REPAIR WOODEN FLOORS, REPAIR FENCE & DOORS",
+          "issued_on": "1998-09-02",
+          "permit_number": "B98018467"
+        }
+      ],
+      "raw_artifact": {
+        "bytes": 14620,
+        "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0008459.html",
+        "sha256": "d634e06d843fa80742de1e768cf7c86e355281545fc07f8021df276b6ef542f3"
+      },
+      "record_number": "O2024-0008459",
+      "requested_address": "8719 S Houston Ave",
+      "result_content_type": "text/html",
+      "result_http_status": 200,
+      "result_server_date": "Fri, 24 Jul 2026 02:40:22 GMT",
+      "tract_geoid": "17031460800",
+      "validated_address": "8719 S HOUSTON AVE",
+      "validation": {
+        "current_permit_schema_verified": true,
+        "exact_input_address_returned": true,
+        "exact_validated_address": true,
+        "official_html_content_type": true,
+        "official_page_title": true,
+        "permit_rows_have_stable_id_and_date": true,
+        "result_http_200": true,
+        "source_disclaimer_present": true,
+        "validation_http_200": true
+      },
+      "validation_http_status": 200
+    },
+    {
+      "candidate_publication_date": "2024-07-05",
+      "page_title": "Building Permit and Inspection Records",
+      "permit_columns": [
+        "PERMIT #",
+        "DATE ISSUED",
+        "DESCRIPTION OF WORK"
+      ],
+      "permit_summary": {
+        "permit_count": 1,
+        "post_publication_permit_count": 0,
+        "post_publication_permit_numbers": []
+      },
+      "permits": [
+        {
+          "description_of_work": "ERECT STEEL MONOPLE SIGN ON WESTERN AVENUE SIDE OF THE PROPERTY",
+          "issued_on": "2011-11-17",
+          "permit_number": "100349749"
+        }
+      ],
+      "raw_artifact": {
+        "bytes": 16405,
+        "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0008868.html",
+        "sha256": "10571ae0d75dbb76f2719048fe52ef47731ef4f921b1769db91c1d7e766dccc0"
+      },
+      "record_number": "O2024-0008868",
+      "requested_address": "2405 W Grand Ave",
+      "result_content_type": "text/html",
+      "result_http_status": 200,
+      "result_server_date": "Fri, 24 Jul 2026 02:40:24 GMT",
+      "tract_geoid": "17031242800",
+      "validated_address": "2405 W GRAND AVE",
+      "validation": {
+        "current_permit_schema_verified": true,
+        "exact_input_address_returned": true,
+        "exact_validated_address": true,
+        "official_html_content_type": true,
+        "official_page_title": true,
+        "permit_rows_have_stable_id_and_date": true,
+        "result_http_200": true,
+        "source_disclaimer_present": true,
+        "validation_http_200": true
+      },
+      "validation_http_status": 200
+    },
+    {
+      "candidate_publication_date": "2024-07-05",
+      "page_title": "Building Permit and Inspection Records",
+      "permit_columns": [
+        "PERMIT #",
+        "DATE ISSUED",
+        "DESCRIPTION OF WORK"
+      ],
+      "permit_summary": {
+        "permit_count": 7,
+        "post_publication_permit_count": 4,
+        "post_publication_permit_numbers": [
+          "101065116",
+          "101058502",
+          "101058506",
+          "101051515"
+        ]
+      },
+      "permits": [
+        {
+          "description_of_work": "SPR 2019 CBRC REVISION TO PERMITS 100939080 FOR REVISIONS TO RESTAURANT, OFFICE AND PRODUCTION AREAS REVISED 4 OVERHEAD DOOR OPENINGS TO DOUBLE DOORS. ELIMINATED TWO SINGLE EXIT DOORS. REVISED EXIT LOCATION IN H2 OCCUPANCY ROOM DUE TO EXTERIOR GRADE ISSUES, RELOCATED EXIT SIGN. REVISED WEST LOBBY EXIT CONFIGURATION, MOVING EXIT SIGN AND EMERGENCY LIGHTS. OCCUPANCY GROUPS A,B,F-1, S-1, H2 PREVIOUS REVISION PERMITS:101020762 AND 101051515",
+          "issued_on": "2025-03-31",
+          "permit_number": "101065116"
+        },
+        {
+          "description_of_work": "1. BUSINESS NAME HAND PAINTED ON BRICK WALL OVER TOP OF DOOR (APPROX 2' X 5' AND APPROX 9' ABOVE GRADE)",
+          "issued_on": "2024-10-29",
+          "permit_number": "101058502"
+        },
+        {
+          "description_of_work": "1. BUSINESS ICON HAND PAINTED ON BRICK WALL (APPROX 5' X 5' AND APPROX 13' ABOVE GRADE)",
+          "issued_on": "2024-10-29",
+          "permit_number": "101058506"
+        },
+        {
+          "description_of_work": "SPR 2019 CBRC REVISION TO PERMITS 100939080 AND 101020762 FOR REVISIONS TO RESTAURANT, OFFICE AND PRODUCTION AREAS,PRIVATE BAR AREA REMOVED FROM PROJECT,EXPANDING THE DINING TABLE AREA, ONE WEST EXIT DOOR WAS REMOVED FROM LOBBY AREA,IN PRODUCTION AREA EQUIPMENT WAS REDUCED WHICH REQUIRES CHANGES TO THE FLOOR DRAINS. PROVIDE DIRECT ACCESS FROM PRODUCTION AREA INTO THE RESTAURANT AND EXPANDING THE NORTH MECHANICAL ROOM, REMOVAL OF BOILER AND ENCLOSURE IN HIGH PROOF STORAGE ROOM.(conditional permit subject to field inspections.)",
+          "issued_on": "2024-09-17",
+          "permit_number": "101051515"
+        },
+        {
+          "description_of_work": "INSTALLATION OF CAMERAS AND DATA RECEPTACLES",
+          "issued_on": "2024-07-02",
+          "permit_number": "101054573"
+        },
+        {
+          "description_of_work": "SPR 2019 CBRC REVISION TO PERMIT 100939080 REVISIONS TO LAYOUT OF TASTING ROOM, REVISIONS TO KITCHEN EQUIPMENT, REVISIONS TO BUILDING LOBBY AND VESTIBULE. OCCUPANCY GROUPS A-2, F-1, H-2 AND S-1, CONSTRUCTION TYPE IIB",
+          "issued_on": "2023-09-21",
+          "permit_number": "101020762"
+        },
+        {
+          "description_of_work": "REMODEL AND REPAIR OF EXISTING VACANT INDUSTRIAL BUILDING FOR FUTURE TENANT OCCUPANCY OF F-1 MODERATE HAZARD FACTORY INDUSTRIAL AND ASSEMBLY GROUP A-2. REPLACEMENT OF 2600 S.F OF ROOF STRUCTURE, REPAIR AND REPLACEMENT OF INTERIOR CONCRETE FLOOR SLABS. CONSTRUCTION OF NEW PUBLIC TOILET ROOMS.",
+          "issued_on": "2023-03-01",
+          "permit_number": "100939080"
+        }
+      ],
+      "raw_artifact": {
+        "bytes": 35134,
+        "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0008869.html",
+        "sha256": "019a0309525ec564bbc6cf48a2f81fe4a0b73a6ca56be0095e1388000d84b960"
+      },
+      "record_number": "O2024-0008869",
+      "requested_address": "1857 W 16th St",
+      "result_content_type": "text/html",
+      "result_http_status": 200,
+      "result_server_date": "Fri, 24 Jul 2026 02:40:29 GMT",
+      "tract_geoid": "17031310900",
+      "validated_address": "1857 W 16TH ST",
+      "validation": {
+        "current_permit_schema_verified": true,
+        "exact_input_address_returned": true,
+        "exact_validated_address": true,
+        "official_html_content_type": true,
+        "official_page_title": true,
+        "permit_rows_have_stable_id_and_date": true,
+        "result_http_200": true,
+        "source_disclaimer_present": true,
+        "validation_http_200": true
+      },
+      "validation_http_status": 200
+    },
+    {
+      "candidate_publication_date": "2024-07-06",
+      "page_title": "Building Permit and Inspection Records",
+      "permit_columns": [
+        "PERMIT #",
+        "DATE ISSUED",
+        "DESCRIPTION OF WORK"
+      ],
+      "permit_summary": {
+        "permit_count": 4,
+        "post_publication_permit_count": 2,
+        "post_publication_permit_numbers": [
+          "101061915",
+          "101055333"
+        ]
+      },
+      "permits": [
+        {
+          "description_of_work": "SPR 2019 CBC - REVISION TO PERMIT 101055333 TO CHANGE: BUILDING LENGTH 76'-0\" TO 75'-0\", INTERIOR PLAN LAYOUTS REWORKED & ALL BUILDING ELEVATIONS & FOUNDATION PLANS TO ACCOMMODATE SHORTENED LENGTH, REMOVE STEEL MOMENT FRAME AT FRONT WALL & REPLACE WITH THICHENED REINFORCED MASONRY WALLS @ FRONT & REAR WALLS PER STRUCTURAL CALCS., REVISED: THIRD FLR REAR DECK, FOURTH FLR AREA AND LAYOUT, BASEMENT LAYOUT - UTILITY EQUIPMENT RELOCATED TO FRONT UTILITY ROOM, REVISED RECESSED CORNER FRONT ENTRY TO THE BUILDING PER PLANS **CERTIFIED PLANS CORRECTIONS: CONDITIONAL PERMIT SUBJECT TO FIELD INSPECTIONS **",
+          "issued_on": "2025-01-22",
+          "permit_number": "101061915"
+        },
+        {
+          "description_of_work": "SPR 2019 CBC - PROPOSED 4 STORY/3 UNIT RESIDENCE W/BASEMENT, REAR ELEVATED PATIO, AND 2 CAR GARAGE, PER PLANS. ZONING AMENDMENT #22424T1 TO CHANGE ZONING DISTRICT FROM RT-4 TO RT-4.5 AND TO REDUCE THE REQUIRED SIDE SETBACKS APPROVED 03.26.2024.",
+          "issued_on": "2024-09-26",
+          "permit_number": "101055333"
+        },
+        {
+          "description_of_work": "WRECK AND REMOVE A 2 STORY FRAME MULTI UNIT RESIDENCE",
+          "issued_on": "2024-05-14",
+          "permit_number": "101043387"
+        },
+        {
+          "description_of_work": "REPAIR ROOF SAME SIZE & SPACING/ REPLACE SHINGLES",
+          "issued_on": "1997-01-02",
+          "permit_number": "B97024337"
+        }
+      ],
+      "raw_artifact": {
+        "bytes": 22291,
+        "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0008974.html",
+        "sha256": "85c10a2118caa1598e14a823627ef52b42127c7b1a68ddafcb50468a7aaf9ea1"
+      },
+      "record_number": "O2024-0008974",
+      "requested_address": "1145 W 17th St",
+      "result_content_type": "text/html",
+      "result_http_status": 200,
+      "result_server_date": "Fri, 24 Jul 2026 02:40:34 GMT",
+      "tract_geoid": "17031310600",
+      "validated_address": "1145 W 17TH ST",
+      "validation": {
+        "current_permit_schema_verified": true,
+        "exact_input_address_returned": true,
+        "exact_validated_address": true,
+        "official_html_content_type": true,
+        "official_page_title": true,
+        "permit_rows_have_stable_id_and_date": true,
+        "result_http_200": true,
+        "source_disclaimer_present": true,
+        "validation_http_200": true
+      },
+      "validation_http_status": 200
+    },
+    {
+      "candidate_publication_date": "2024-07-06",
+      "page_title": "Building Permit and Inspection Records",
+      "permit_columns": [
+        "PERMIT #",
+        "DATE ISSUED",
+        "DESCRIPTION OF WORK"
+      ],
+      "permit_summary": {
+        "permit_count": 8,
+        "post_publication_permit_count": 1,
+        "post_publication_permit_numbers": [
+          "101045870"
+        ]
+      },
+      "permits": [
+        {
+          "description_of_work": "SELF CERTIFICATION. STRUCTURAL PEER REVIEW REPORT. ERECT A NEW 4-STORY RESIDENTIAL BUILDING (3 D.U.) WITH AN ATTACHED GARAGE (3 SPACES) AS PER PLANS, R-5 OCCUPANCY CLASS, 3A CONSTRUCTION TYPE",
+          "issued_on": "2024-10-11",
+          "permit_number": "101045870"
+        },
+        {
+          "description_of_work": "EMERGENCY WRECK AND REMOVE A 3 STORY MASONRY BUILDING",
+          "issued_on": "2022-02-03",
+          "permit_number": "100936430"
+        },
+        {
+          "description_of_work": "REPAIR EXISTING REAR OPEN WOOD PORCH AND STAIRS AS PER PLAN.",
+          "issued_on": "2012-05-24",
+          "permit_number": "100330734"
+        },
+        {
+          "description_of_work": "ERECT 5'.7\" HIGH WOOD FENCE (180.0' LN FT)",
+          "issued_on": "2010-10-05",
+          "permit_number": "100366519"
+        },
+        {
+          "description_of_work": "tuckpoint entire building no grinding",
+          "issued_on": "2010-07-14",
+          "permit_number": "100353569"
+        },
+        {
+          "description_of_work": "REPLACEMENT - OPEN PORCH",
+          "issued_on": "1999-04-14",
+          "permit_number": "B99006510"
+        },
+        {
+          "description_of_work": "REPAIR MEMBERS OF PORCH SYSTEM, EXTERIOR WALL, WASHED OUT MORTAR",
+          "issued_on": "1998-04-06",
+          "permit_number": "B98005847"
+        },
+        {
+          "description_of_work": "200 AMP 2 METER SERVICE ONLY",
+          "issued_on": "1989-11-27",
+          "permit_number": "EL8185763"
+        }
+      ],
+      "raw_artifact": {
+        "bytes": 33119,
+        "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0009009.html",
+        "sha256": "7f6ee2de7aff7692cd4fc012e17332e481fd2abcd17fb9b4794dc33274681617"
+      },
+      "record_number": "O2024-0009009",
+      "requested_address": "1227 W Jackson Blvd",
+      "result_content_type": "text/html",
+      "result_http_status": 200,
+      "result_server_date": "Fri, 24 Jul 2026 02:40:37 GMT",
+      "tract_geoid": "17031833100",
+      "validated_address": "1227 W JACKSON BLVD",
+      "validation": {
+        "current_permit_schema_verified": true,
+        "exact_input_address_returned": true,
+        "exact_validated_address": true,
+        "official_html_content_type": true,
+        "official_page_title": true,
+        "permit_rows_have_stable_id_and_date": true,
+        "result_http_200": true,
+        "source_disclaimer_present": true,
+        "validation_http_200": true
+      },
+      "validation_http_status": 200
+    },
+    {
+      "candidate_publication_date": "2024-10-04",
+      "page_title": "Building Permit and Inspection Records",
+      "permit_columns": [],
+      "permit_summary": {
+        "permit_count": 0,
+        "post_publication_permit_count": 0,
+        "post_publication_permit_numbers": []
+      },
+      "permits": [],
+      "raw_artifact": {
+        "bytes": 12677,
+        "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0010948.html",
+        "sha256": "5ae576dc44950bc1c9be10d90cd8b4713839483f60c008810ec7ce21c116f3ca"
+      },
+      "record_number": "O2024-0010948",
+      "requested_address": "6411 N Newgard Ave",
+      "result_content_type": "text/html",
+      "result_http_status": 200,
+      "result_server_date": "Fri, 24 Jul 2026 02:40:41 GMT",
+      "tract_geoid": "17031010600",
+      "validated_address": "6411 N NEWGARD AVE",
+      "validation": {
+        "current_permit_schema_verified": false,
+        "exact_input_address_returned": true,
+        "exact_validated_address": true,
+        "official_html_content_type": true,
+        "official_page_title": true,
+        "permit_rows_have_stable_id_and_date": true,
+        "result_http_200": true,
+        "source_disclaimer_present": true,
+        "validation_http_200": true
+      },
+      "validation_http_status": 200
+    },
+    {
+      "candidate_publication_date": "2024-10-04",
+      "page_title": "Building Permit and Inspection Records",
+      "permit_columns": [
+        "PERMIT #",
+        "DATE ISSUED",
+        "DESCRIPTION OF WORK"
+      ],
+      "permit_summary": {
+        "permit_count": 9,
+        "post_publication_permit_count": 1,
+        "post_publication_permit_numbers": [
+          "101072844"
+        ]
+      },
+      "permits": [
+        {
+          "description_of_work": "BUILD A DORMER ON THE SOUTH SIDE OF THE EXISTING 8-UNIT RESIDENTIAL BUILDING ROOF, 8'X32' IN SIZE.",
+          "issued_on": "2025-10-14",
+          "permit_number": "101072844"
+        },
+        {
+          "description_of_work": "REPLACE ONE (1) EXISTING ENCLOSED (3) STORY FRAME WOOD PORCH WITH NEW (3) STORY ENCLOSED FRAME WOOD PORCH, SAME IN SIZE AND LOCATION EXISTING, ALSO REPLACE SIDE FRONT AND BACK STAIRS WITH NEW, ALSO SPOT TUCK POINT AND REPAIR MASONRY WHERE NEEDED ALL AROUND, AS PER PLANS. **SEPARATE PERMIT REQUIRED TO REMOVE OR LEGALIZE DORMER AND INTERIOR WORK DONE WITHOUT PERMIT IN 2020**",
+          "issued_on": "2024-07-18",
+          "permit_number": "101051531"
+        },
+        {
+          "description_of_work": "**ELECTRICAL ONLY PERMIT**INSTALL NEW 400 AMP 120/240V SINGLE PHASE ELECTRIC SERVICE WITH (8) METERS AND PUBLIC,ONLY.",
+          "issued_on": "2020-12-17",
+          "permit_number": "100897420"
+        },
+        {
+          "description_of_work": "REPAIR EXTERIOR WALL NEAR GRADE, CHIMNEY CAPPING, REPLACE CORNICE, TUCKPOINT THROUGHOUT AS NEEDED",
+          "issued_on": "2019-09-17",
+          "permit_number": "100841320"
+        },
+        {
+          "description_of_work": "EXRTERIOR MASONRY WORK. REPAIR FRONT & REAR STAIRS.",
+          "issued_on": "2016-01-21",
+          "permit_number": "100631929"
+        },
+        {
+          "description_of_work": "WINDOWS (REPLACEMENT ONLY): QTY 20",
+          "issued_on": "2015-06-26",
+          "permit_number": "100602043"
+        },
+        {
+          "description_of_work": "INSTALLATION OF LOW VOLTAGE BURGLAR ALARM INTERIOR WORK ONLY # 4004-07031",
+          "issued_on": "2014-08-02",
+          "permit_number": "100551614"
+        },
+        {
+          "description_of_work": "REPAIRS DUE TO FIRE DAMAGE: DRYWALL, ELECTRICAL AND PLUMBING. ELECTRICAL APP # 100239898 ISSUED 05/30/200. NO STRUCTURAL WORK. OK'D BY ASIF RAHMAN.",
+          "issued_on": "2008-06-25",
+          "permit_number": "100244520"
+        },
+        {
+          "description_of_work": "CHANGE OLD SWITCHES, RECEPTACLES AND LIGHT FIXTURES WITH NEW ONES AND NEW ELECTRICAL WORK IN 3 REHAB BATHROOMS PER CHICAGO ELECTRICAL CODE",
+          "issued_on": "2008-05-30",
+          "permit_number": "100239898"
+        }
+      ],
+      "raw_artifact": {
+        "bytes": 28211,
+        "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0010950.html",
+        "sha256": "5b15d60601fb25c7195b284977505a3b51aeaae4c67cf5836c860c33d5bd5aae"
+      },
+      "record_number": "O2024-0010950",
+      "requested_address": "2219 S Oakley Ave",
+      "result_content_type": "text/html",
+      "result_http_status": 200,
+      "result_server_date": "Fri, 24 Jul 2026 02:40:45 GMT",
+      "tract_geoid": "17031841300",
+      "validated_address": "2219 S OAKLEY AVE",
+      "validation": {
+        "current_permit_schema_verified": true,
+        "exact_input_address_returned": true,
+        "exact_validated_address": true,
+        "official_html_content_type": true,
+        "official_page_title": true,
+        "permit_rows_have_stable_id_and_date": true,
+        "result_http_200": true,
+        "source_disclaimer_present": true,
+        "validation_http_200": true
+      },
+      "validation_http_status": 200
+    },
+    {
+      "candidate_publication_date": "2024-10-04",
+      "page_title": "Building Permit and Inspection Records",
+      "permit_columns": [
+        "PERMIT #",
+        "DATE ISSUED",
+        "DESCRIPTION OF WORK"
+      ],
+      "permit_summary": {
+        "permit_count": 1,
+        "post_publication_permit_count": 0,
+        "post_publication_permit_numbers": []
+      },
+      "permits": [
+        {
+          "description_of_work": "",
+          "issued_on": "1981-11-23",
+          "permit_number": "EL5617262"
+        }
+      ],
+      "raw_artifact": {
+        "bytes": 20142,
+        "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0011132.html",
+        "sha256": "d6f3e8cf76a3122622e92e96c93a58b45cd5fb9938c573d42e72a1c99b1c971a"
+      },
+      "record_number": "O2024-0011132",
+      "requested_address": "7015 N Sheridan Rd",
+      "result_content_type": "text/html",
+      "result_http_status": 200,
+      "result_server_date": "Fri, 24 Jul 2026 02:40:50 GMT",
+      "tract_geoid": "17031010400",
+      "validated_address": "7015 N SHERIDAN RD",
+      "validation": {
+        "current_permit_schema_verified": true,
+        "exact_input_address_returned": true,
+        "exact_validated_address": true,
+        "official_html_content_type": true,
+        "official_page_title": true,
+        "permit_rows_have_stable_id_and_date": true,
+        "result_http_200": true,
+        "source_disclaimer_present": true,
+        "validation_http_200": true
+      },
+      "validation_http_status": 200
+    },
+    {
+      "candidate_publication_date": "2024-10-25",
+      "page_title": "Building Permit and Inspection Records",
+      "permit_columns": [
+        "PERMIT #",
+        "DATE ISSUED",
+        "DESCRIPTION OF WORK"
+      ],
+      "permit_summary": {
+        "permit_count": 2,
+        "post_publication_permit_count": 0,
+        "post_publication_permit_numbers": []
+      },
+      "permits": [
+        {
+          "description_of_work": "WRECK AND REMOVAL OF A 2 STY BRICK BLDG W/ BSMT - 2 UNITS",
+          "issued_on": "1998-10-15",
+          "permit_number": "B98022264"
+        },
+        {
+          "description_of_work": "REPAIR WALLS, WINDOWS, DOORS, FLOORS & RESTORE BSMT TO ORIG CONDIT",
+          "issued_on": "1993-09-28",
+          "permit_number": "B775864"
+        }
+      ],
+      "raw_artifact": {
+        "bytes": 13691,
+        "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0011139.html",
+        "sha256": "969cc210785606c6f5e6f54074937beeb274b4438d4d2cf0989c411243fd5a00"
+      },
+      "record_number": "O2024-0011139",
+      "requested_address": "4508 S Cottage Grove Ave",
+      "result_content_type": "text/html",
+      "result_http_status": 200,
+      "result_server_date": "Fri, 24 Jul 2026 02:40:52 GMT",
+      "tract_geoid": "17031836000",
+      "validated_address": "4508 S COTTAGE GROVE AVE",
+      "validation": {
+        "current_permit_schema_verified": true,
+        "exact_input_address_returned": true,
+        "exact_validated_address": true,
+        "official_html_content_type": true,
+        "official_page_title": true,
+        "permit_rows_have_stable_id_and_date": true,
+        "result_http_200": true,
+        "source_disclaimer_present": true,
+        "validation_http_200": true
+      },
+      "validation_http_status": 200
+    },
+    {
+      "candidate_publication_date": "2024-10-04",
+      "page_title": "Building Permit and Inspection Records",
+      "permit_columns": [
+        "PERMIT #",
+        "DATE ISSUED",
+        "DESCRIPTION OF WORK"
+      ],
+      "permit_summary": {
+        "permit_count": 6,
+        "post_publication_permit_count": 1,
+        "post_publication_permit_numbers": [
+          "101047840"
+        ]
+      },
+      "permits": [
+        {
+          "description_of_work": "SELF -CERT 2019 CBC: EXISTING ATTIC DORMER EXPANSION, WITH NEW ROOF, REMODEL OF EXISTING ATTIC BATHROOM, NEW BEDROOM WITH CLOSET, AND REPLACEMENT OF EXISTING STAIR FROM 2ND FLOOR UNIT TO ATTIC. EXISTING 2 STORY 2 DWELLING UNIT WITH BASEMENT AND ATTIC. BUIDING HEIGHT TO REMAIN THE SAME (OCCUPANCY GROUP R-5, TYPE VB CONSTRUCTION).",
+          "issued_on": "2024-10-11",
+          "permit_number": "101047840"
+        },
+        {
+          "description_of_work": "UPGRADE SERVICE TO 200 AMP",
+          "issued_on": "2022-06-09",
+          "permit_number": "100975389"
+        },
+        {
+          "description_of_work": "DUPLEXING FIRST AND BASEMENT FLOOR ON EXISTING 2 STORY 2 DWELLING UNIT FRAME BLDG. PER PLANS",
+          "issued_on": "2014-02-21",
+          "permit_number": "100520124"
+        },
+        {
+          "description_of_work": "DECONVERT BSMT & ATTIC BACK TO ORIGINAL USE FOR EXISTING 2 DWELLING UNIT BUILDING; ELECTRICAL PERMIT # 100470554- SUBJECT TO FIELD INSPECTIONS",
+          "issued_on": "2012-12-12",
+          "permit_number": "100470677"
+        },
+        {
+          "description_of_work": "DIS-CONVERT BASEMENT THAT WAS ILLEGALLY CONVERTED.",
+          "issued_on": "2012-12-12",
+          "permit_number": "100470554"
+        },
+        {
+          "description_of_work": "REPAIR PORCH PER VIOLATIONS: REPAIR RAILING AND DECKING. DEVONCERT BASEMETN AND ATTIC TO ORIGINAL USE: REMOVE KITCHEN SINKS, CABINTENTS, STOVE, CAPPING ALL PIPES. KEEP EXISTING BATRHROOM AND RECREATION AREA.",
+          "issued_on": "2007-03-06",
+          "permit_number": "100165879"
+        }
+      ],
+      "raw_artifact": {
+        "bytes": 33051,
+        "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0011150.html",
+        "sha256": "7aa5acd86d3e75a1c92dae7b02a53ad0eb99762c79ab29688af4526cec95ee72"
+      },
+      "record_number": "O2024-0011150",
+      "requested_address": "1810 N Richmond St",
+      "result_content_type": "text/html",
+      "result_http_status": 200,
+      "result_server_date": "Fri, 24 Jul 2026 02:40:55 GMT",
+      "tract_geoid": "17031222500",
+      "validated_address": "1810 N RICHMOND ST",
+      "validation": {
+        "current_permit_schema_verified": true,
+        "exact_input_address_returned": true,
+        "exact_validated_address": true,
+        "official_html_content_type": true,
+        "official_page_title": true,
+        "permit_rows_have_stable_id_and_date": true,
+        "result_http_200": true,
+        "source_disclaimer_present": true,
+        "validation_http_200": true
+      },
+      "validation_http_status": 200
+    },
+    {
+      "candidate_publication_date": "2024-11-21",
+      "page_title": "Building Permit and Inspection Records",
+      "permit_columns": [
+        "PERMIT #",
+        "DATE ISSUED",
+        "DESCRIPTION OF WORK"
+      ],
+      "permit_summary": {
+        "permit_count": 3,
+        "post_publication_permit_count": 1,
+        "post_publication_permit_numbers": [
+          "101063756"
+        ]
+      },
+      "permits": [
+        {
+          "description_of_work": "SPR 2019 CBRC: REVISION TO PERMIT #101004830 TO RECONFIGURE THE 1ST FLOOR & BASEMENT TO A RESIDENTIAL UNIT TO A 3-DU BUILDING AND REMOVE SPRINKLER SYSTEM AS PER PLANS. (OCCUPANCY GROUP R5; TYPE 3A CONSTRUCTION)",
+          "issued_on": "2025-05-13",
+          "permit_number": "101063756"
+        },
+        {
+          "description_of_work": "TUCKPOINT AND PATCH STUCCO.",
+          "issued_on": "2009-03-25",
+          "permit_number": "100283877"
+        },
+        {
+          "description_of_work": "GARAGE",
+          "issued_on": "2008-10-15",
+          "permit_number": "100261021"
+        }
+      ],
+      "raw_artifact": {
+        "bytes": 70649,
+        "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0012247.html",
+        "sha256": "51c079ee7cc7abb38297c8bbccf918dceaff22d628086ebfd2509eda324679be"
+      },
+      "record_number": "O2024-0012247",
+      "requested_address": "1228 W Race Ave",
+      "result_content_type": "text/html",
+      "result_http_status": 200,
+      "result_server_date": "Fri, 24 Jul 2026 02:41:00 GMT",
+      "tract_geoid": "17031243400",
+      "validated_address": "1228 W RACE AVE",
+      "validation": {
+        "current_permit_schema_verified": true,
+        "exact_input_address_returned": true,
+        "exact_validated_address": true,
+        "official_html_content_type": true,
+        "official_page_title": true,
+        "permit_rows_have_stable_id_and_date": true,
+        "result_http_200": true,
+        "source_disclaimer_present": true,
+        "validation_http_200": true
+      },
+      "validation_http_status": 200
+    },
+    {
+      "candidate_publication_date": "2024-11-21",
+      "page_title": "Building Permit and Inspection Records",
+      "permit_columns": [
+        "PERMIT #",
+        "DATE ISSUED",
+        "DESCRIPTION OF WORK"
+      ],
+      "permit_summary": {
+        "permit_count": 4,
+        "post_publication_permit_count": 2,
+        "post_publication_permit_numbers": [
+          "101066672",
+          "101066622"
+        ]
+      },
+      "permits": [
+        {
+          "description_of_work": "SPR 2019 CBRC: INTERIOR ALTERATIONS TO EXISTING SINGLE FAMILY & LEGALIZE ONE DWELLING UNIT & REMOVAL OF 3 STORY ENCLOSED PORCH & ATTACHED GARAGE AND REPLACE WITH NEW REAR 3-STORY FRAME ADDITION, EXTERIOR WALL INFILL & NEW 6'0\" WOOD FENCE & 5' IRON FENCE IN AN EXISTING 2 -STORY BRICK REAR BUILDING (OCCUPANCY GROUP R-5, TYPE III-A CONSTRUCTION)",
+          "issued_on": "2025-06-24",
+          "permit_number": "101066672"
+        },
+        {
+          "description_of_work": "SPR 2019 CBRC: INTERIOR ALTERATIONS TO EXISTING TWO DWELLINGS UNITS & LEGALIZATION OF ONE BASEMENT DWELLING UNIT IN AN EXISTING 2 -STORY BRICK FRONT BUILDING W/ BASEMENT, DUPLEX SECOND FLOOR & ATTIC AND EXTERIOR WALL INFILL (OCCUPANCY GROUP R-5, TYPE III-A CONSTRUCTION) PER PLANS **CERTIFIED PLANS CORRECTIONS: CONDITIONAL PERMIT SUBJECT TO FIELD INSPECTIONS **",
+          "issued_on": "2025-06-16",
+          "permit_number": "101066622"
+        },
+        {
+          "description_of_work": "REPLACE EXISTING PORCH AND STAIRS",
+          "issued_on": "2014-12-11",
+          "permit_number": "100572227"
+        },
+        {
+          "description_of_work": "REPLACE EXISTING FRONT PORCH",
+          "issued_on": "2014-10-03",
+          "permit_number": "100562941"
+        }
+      ],
+      "raw_artifact": {
+        "bytes": 33220,
+        "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0012334.html",
+        "sha256": "2948bea0f9a467259788a463ea8d2d7cfb83061fef52e99d1a0af9bb10d8a356"
+      },
+      "record_number": "O2024-0012334",
+      "requested_address": "2437 S Troy St",
+      "result_content_type": "text/html",
+      "result_http_status": 200,
+      "result_server_date": "Fri, 24 Jul 2026 02:41:04 GMT",
+      "tract_geoid": "17031300900",
+      "validated_address": "2437 S TROY ST",
+      "validation": {
+        "current_permit_schema_verified": true,
+        "exact_input_address_returned": true,
+        "exact_validated_address": true,
+        "official_html_content_type": true,
+        "official_page_title": true,
+        "permit_rows_have_stable_id_and_date": true,
+        "result_http_200": true,
+        "source_disclaimer_present": true,
+        "validation_http_200": true
+      },
+      "validation_http_status": 200
+    },
+    {
+      "candidate_publication_date": "2024-11-21",
+      "page_title": "Building Permit and Inspection Records",
+      "permit_columns": [
+        "PERMIT #",
+        "DATE ISSUED",
+        "DESCRIPTION OF WORK"
+      ],
+      "permit_summary": {
+        "permit_count": 3,
+        "post_publication_permit_count": 2,
+        "post_publication_permit_numbers": [
+          "101062312",
+          "101062297"
+        ]
+      },
+      "permits": [
+        {
+          "description_of_work": "SPR 2019 CBRC - FRONT BUILDING: PROPOSED REAR 3 STORY ADDITION W/BASEMENT, REAR 3 STORY DECK/STAIRS, INTERNAL ALTERATIONS TO CONVERT EXISTING 3 STORY/3 UNIT BUILDING TO 4 UNITS, PER PLANS. ZONING AMENDMENT #22551T1 APPROVED 10.30.2024 INCLUDES A VARIATION TO REDUCE THE SIDE SETBACKS AND REAR YARD OPEN SPACE. **CERTIFIED CORRECTIONS SUBJECT TO FIELD INSPECTIONS & AUDIT **",
+          "issued_on": "2025-06-24",
+          "permit_number": "101062312"
+        },
+        {
+          "description_of_work": "REAR BUILDING: INTERIOR RENOVATIONS IN AN EXISTING 2 STORY COACH HOUSE, PER PLANS.",
+          "issued_on": "2024-12-26",
+          "permit_number": "101062297"
+        },
+        {
+          "description_of_work": "100 AMPERE SERVICE",
+          "issued_on": "1980-01-16",
+          "permit_number": "EL5079027"
+        }
+      ],
+      "raw_artifact": {
+        "bytes": 22329,
+        "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0012506.html",
+        "sha256": "2ae5938f181a2b18935d3ea6ec0a6219498160c219a566031461f19b9460f765"
+      },
+      "record_number": "O2024-0012506",
+      "requested_address": "2113 N Kenmore Ave",
+      "result_content_type": "text/html",
+      "result_http_status": 200,
+      "result_server_date": "Fri, 24 Jul 2026 02:41:09 GMT",
+      "tract_geoid": "17031071000",
+      "validated_address": "2113 N KENMORE AVE",
+      "validation": {
+        "current_permit_schema_verified": true,
+        "exact_input_address_returned": true,
+        "exact_validated_address": true,
+        "official_html_content_type": true,
+        "official_page_title": true,
+        "permit_rows_have_stable_id_and_date": true,
+        "result_http_200": true,
+        "source_disclaimer_present": true,
+        "validation_http_200": true
+      },
+      "validation_http_status": 200
+    },
+    {
+      "candidate_publication_date": "2024-11-21",
+      "page_title": "Building Permit and Inspection Records",
+      "permit_columns": [
+        "PERMIT #",
+        "DATE ISSUED",
+        "DESCRIPTION OF WORK"
+      ],
+      "permit_summary": {
+        "permit_count": 6,
+        "post_publication_permit_count": 1,
+        "post_publication_permit_numbers": [
+          "101071228"
+        ]
+      },
+      "permits": [
+        {
+          "description_of_work": "SPR 2019 CBRC: ADDITIONAL DWELLING UNIT IN BASEMENT IN AN EXISTING 6 DWELLING UNITS 3-STORY BRICK BUILDING WITH BASEMENT. TOTAL OF 7DU. (OCCUPANCY GROUP R-2; CONSTRUCTION TYPE IIIA)(conditional permit subject to field inspections)",
+          "issued_on": "2026-01-12",
+          "permit_number": "101071228"
+        },
+        {
+          "description_of_work": "SERVICE UPGRADE",
+          "issued_on": "2023-11-20",
+          "permit_number": "101038877"
+        },
+        {
+          "description_of_work": "masonry repairs to north elevations at 600 sq ft and south elvation at 3000 sq feet",
+          "issued_on": "2014-07-22",
+          "permit_number": "100551506"
+        },
+        {
+          "description_of_work": "CORRECT VIOLATIONS",
+          "issued_on": "2001-10-10",
+          "permit_number": "66790"
+        },
+        {
+          "description_of_work": "OUTLETS, FIXTURES",
+          "issued_on": "1992-05-18",
+          "permit_number": "EL8898917"
+        },
+        {
+          "description_of_work": "REPAIR 200A SERVICE/FIRE REPAIRS",
+          "issued_on": "1991-09-13",
+          "permit_number": "EL8694768"
+        }
+      ],
+      "raw_artifact": {
+        "bytes": 22600,
+        "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0012520.html",
+        "sha256": "f088a1319b1e5250a6d6cd173578631617d82b506003537b282d411e554250d2"
+      },
+      "record_number": "O2024-0012520",
+      "requested_address": "912 N Richmond St",
+      "result_content_type": "text/html",
+      "result_http_status": 200,
+      "result_server_date": "Fri, 24 Jul 2026 02:41:12 GMT",
+      "tract_geoid": "17031242700",
+      "validated_address": "912 N RICHMOND ST",
+      "validation": {
+        "current_permit_schema_verified": true,
+        "exact_input_address_returned": true,
+        "exact_validated_address": true,
+        "official_html_content_type": true,
+        "official_page_title": true,
+        "permit_rows_have_stable_id_and_date": true,
+        "result_http_200": true,
+        "source_disclaimer_present": true,
+        "validation_http_200": true
+      },
+      "validation_http_status": 200
+    },
+    {
+      "candidate_publication_date": "2024-11-21",
+      "page_title": "Building Permit and Inspection Records",
+      "permit_columns": [
+        "PERMIT #",
+        "DATE ISSUED",
+        "DESCRIPTION OF WORK"
+      ],
+      "permit_summary": {
+        "permit_count": 7,
+        "post_publication_permit_count": 2,
+        "post_publication_permit_numbers": [
+          "101078640",
+          "101058154"
+        ]
+      },
+      "permits": [
+        {
+          "description_of_work": "SPR 2019 CBRC: REVISION TO PERMIT #101058154 TO REVISE BASEMENT BEARING CONDITION TO REUSE EXISTING STEEL BEAMS, ADD NEW STEEL POST AND FOOTINGS, FRONT INTERIOR STAIR AND KITCHEN MILLWORK DESIGN, INFILL REAR WINDOW, AND HOOD EXHAUST TERMINATION (OCCUPANCY GROUP R-2; TYPE IIIA CONSTRUCTION). CERTIFIED PLAN CORRECTIONS.",
+          "issued_on": "2026-03-13",
+          "permit_number": "101078640"
+        },
+        {
+          "description_of_work": "SPR 2019 CBRC: PARTIAL INTERIOR BASEMENT REMODEL OF EXISTING 3-STORY, TYPE IIIA MASONRY, 35' HT., 3-UNIT RESIDENTIAL BUILDING FOR NEW 4TH RESIDENTAL UNIT (OCCUPANCY GROUP R-2; TYPE IIIA CONSTRUCTION) (BASEMENT WORK ONLY).",
+          "issued_on": "2025-04-10",
+          "permit_number": "101058154"
+        },
+        {
+          "description_of_work": "REVISION TO PERMIT # 100990188 TO CHANGE THE LOCATION FOR KITCHEN AND CHANGE DEN TO STORAGE WITH EXTERIOR ACCESS.",
+          "issued_on": "2023-08-28",
+          "permit_number": "101026086"
+        },
+        {
+          "description_of_work": "ROOF RECOVER ONLY - NO STRUCTURAL WORK",
+          "issued_on": "2022-10-11",
+          "permit_number": "100992004"
+        },
+        {
+          "description_of_work": "WINDOWS (REPLACEMENT ONLY): QTY 66",
+          "issued_on": "2022-10-11",
+          "permit_number": "100991934"
+        },
+        {
+          "description_of_work": "NEW 200 AMP SERVICE 4-ODS METER FITTINGS 3 APTS. & 1 BUILDING METER.PICK UP EXISTING CIRCUITS AND LOADS. - Loc = ; - Type-Ocpncy = A; - Type-Const = ELONLY; - SVC1 = 1/120/240/1/3/200; - Pln-Rev# = 13866; - Req-Em-Sys = N; - Req-Maint = N;",
+          "issued_on": "2003-01-16",
+          "permit_number": "139422"
+        },
+        {
+          "description_of_work": "REMOVE AND REPLACE 3 STORY OPEN PORCH SAME AS EXISTING.",
+          "issued_on": "2002-09-18",
+          "permit_number": "B20223947"
+        }
+      ],
+      "raw_artifact": {
+        "bytes": 22462,
+        "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0012532.html",
+        "sha256": "726fee54a54e59ea9dccbb1e8eb034f60a71016b47b182efad96884b5c0ae717"
+      },
+      "record_number": "O2024-0012532",
+      "requested_address": "6453 N Bosworth Ave",
+      "result_content_type": "text/html",
+      "result_http_status": 200,
+      "result_server_date": "Fri, 24 Jul 2026 02:41:17 GMT",
+      "tract_geoid": "17031830600",
+      "validated_address": "6453 N BOSWORTH AVE",
+      "validation": {
+        "current_permit_schema_verified": true,
+        "exact_input_address_returned": true,
+        "exact_validated_address": true,
+        "official_html_content_type": true,
+        "official_page_title": true,
+        "permit_rows_have_stable_id_and_date": true,
+        "result_http_200": true,
+        "source_disclaimer_present": true,
+        "validation_http_200": true
+      },
+      "validation_http_status": 200
+    }
+  ],
+  "observed_on": "2026-07-24",
+  "probe_digest": "cc2acbfe5afa95abd59fcf745f2c51f7325ce531f41dff075a38f88f804d6131",
+  "readiness": {
+    "causal_estimation_ready": false,
+    "full_cohort_address_history_probe_complete": true,
+    "official_bounded_address_level_rows_verified": true,
+    "official_current_address_level_schema_verified": true,
+    "official_zero_permit_address_results_verified": true,
+    "tract_month_outcome_panel_ready": false,
+    "untreated_control_outcomes_ready": false
+  },
+  "schema": "gwm.chicago_building_records_bounded_cohort_probe.v1",
+  "selection": {
+    "cohort_digest": "35f8d6d5e2523ca3400bc87ada22e539d5511550e1fffe77c71790c1490d622c",
+    "cohort_id": "chicago_single_address_t1_zoning_2023_2024_v1",
+    "eligible_event_count": 17,
+    "limit": null,
+    "queried_event_count": 17,
+    "rule": "spatial_consistency.ready == true",
+    "spatial_crosswalk_digest": "95f2d7ed8422b4a44df6ffed06a913460915065cada7e6a64b2e87b9c3bc59e4"
+  },
+  "source": {
+    "access_boundary": "interactive_selection_required",
+    "access_mode": "public_html_application_after_user_agreement",
+    "agreement_content_type": "text/html",
+    "agreement_http_status": 200,
+    "agreement_server_date": "Fri, 24 Jul 2026 02:40:09 GMT",
+    "canonical_url": "https://webapps1.chicago.gov/buildingrecords/",
+    "current_permit_columns": [
+      "PERMIT #",
+      "DATE ISSUED",
+      "DESCRIPTION OF WORK"
+    ],
+    "home_http_status": 200,
+    "publisher": "City of Chicago Department of Buildings",
+    "source_disclaimer": "A permit issue does not confirm that work was performed or that the work complied with the permit or Municipal Code."
+  },
+  "summary": {
+    "address_history_with_permits_count": 16,
+    "address_history_with_post_publication_permits_count": 11,
+    "current_permit_schema_verified_count": 16,
+    "exact_input_address_count": 17,
+    "permit_row_count": 70,
+    "post_publication_permit_row_count": 18,
+    "successful_http_result_count": 17,
+    "zero_permit_address_history_count": 1
+  }
+}

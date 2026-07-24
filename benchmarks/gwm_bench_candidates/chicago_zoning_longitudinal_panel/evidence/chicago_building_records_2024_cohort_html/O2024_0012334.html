@@ -1,0 +1,1017 @@
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-Q7XJP1T5WP"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-Q7XJP1T5WP');
+</script>
+
+    <title>Building Permit and Inspection Records</title>
+
+    <!-- CSS -->
+	<link href="https://webapps1.cityofchicago.org/cdn/Bootstrap-4.0.0-beta.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://webapps1.cityofchicago.org/cdn/jQuery-UI-1.12.1/jquery-ui.min.css" rel="stylesheet">
+    <link href="https://webapps1.cityofchicago.org/cdn/DataTables-1.10.16/css/dataTables.jqueryui.min.css" rel="stylesheet">
+	<link href="https://webapps1.cityofchicago.org/cdn/Responsive-2.2.1/css/responsive.jqueryui.min.css" rel="stylesheet">
+    <link href="https://webapps1.cityofchicago.org/cdn/Bootstrap-ComboBox-1.1.8/bootstrap-combobox.css" rel="stylesheet">
+    <link href="https://webapps1.cityofchicago.org/cdn/TypeAhead-0.11.1/typeahead.css" rel="stylesheet">
+    <link href="https://webapps1.cityofchicago.org/cdn/City-1.0/city.css" rel="stylesheet">
+    <link href="https://webapps1.cityofchicago.org/cdn/MegaNavbar-2.2.0/skins/city.css" rel="stylesheet">
+    <link href="/buildingrecords/resources/FontAwesome-5.0.6/css/fontawesome-all.min.css" rel="stylesheet">
+    <link href="/buildingrecords/resources/City-1.0/application.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet" type="text/css">
+	
+	<!-- JavaScript -->
+	<script src="https://webapps1.cityofchicago.org/cdn/jQuery-3.2.1/jquery-3.2.1.min.js"></script>
+	<script src="https://webapps1.cityofchicago.org/cdn/jQuery-UI-1.12.1/jquery-ui.min.js"></script>
+	<script src="https://webapps1.cityofchicago.org/cdn/Moment-2.18.1/moment.min.js"></script>
+	<script src="https://webapps1.cityofchicago.org/cdn/DataTables-1.10.16/js/jquery.dataTables.min.js"></script>
+	<script src="https://webapps1.cityofchicago.org/cdn/DataTables-1.10.16/js/dataTables.jqueryui.min.js"></script>
+	<script src="https://webapps1.cityofchicago.org/cdn/Responsive-2.2.1/js/dataTables.responsive.min.js"></script>
+	<script src="https://webapps1.cityofchicago.org/cdn/Responsive-2.2.1/js/responsive.jqueryui.min.js"></script>
+	<script src="https://webapps1.cityofchicago.org/cdn/Bootstrap-ComboBox-1.1.8/bootstrap-combobox.js"></script>
+	<script src="https://webapps1.cityofchicago.org/cdn/TypeAhead-0.11.1/typeahead.bundle.js"></script>
+	<script src="https://webapps1.cityofchicago.org/cdn/TypeAhead-0.11.1/typeahead.jquery.js"></script>
+		
+	<link rel="Shortcut Icon" type="image/ico" href="/buildingrecords/resources/City-1.0/favicon-32x32.png">
+</head>
+
+<body>
+
+<div  class="page-wrapper">
+
+	<!-- Header -->
+	<div class="container-fluid" style="margin-bottom:0px;margin-top:0px;padding-bottom:10px;padding-top:10px;padding-right:20px;padding-left:20px;background-color: #0198DD">
+		<img class="img-fluid" src="/buildingrecords/resources/City-1.0/city-logo.png" alt="City of Chicago"/>
+	</div>
+	<!-- End Header -->
+	
+	<!--Narrow Header-->
+	<div class="container-fluid app-header" style="padding-left:0px;padding-right:0px;"> 
+		<a href='/buildingrecords/home' title="The City of Chicago's Official Site">
+			<img class="img-responsive" src="/buildingrecords/resources/City-1.0/banner.jpg" alt="Building Permit and Inspection Records" style="width:100%;"/>
+		</a>
+	</div>
+	<!--End Narrow Header -->
+		
+	<!--Start Navigation-->
+	
+
+
+
+<div class="container-fluid" style="padding-left:0px;padding-right:0px" id="noprint">
+
+<nav class="navbar navbar-expand-lg navbar-light bg-light city-top-nav">
+
+	<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+		<span class="navbar-toggler-icon"></span>
+	</button>
+	
+	<div class="collapse navbar-collapse" id="navbarSupportedContent">
+		<ul class="navbar-nav mr-auto dropdown-onhover navbar-nav-city">	
+		
+			
+			
+					
+				
+					<li class="nav-item nav-item-city">
+						<li class="nav-item nav-item-city">
+	            		<a class="nav-link" href='/buildingrecords/search'>
+	            			Search
+	            		</a>
+	            	</li>
+	            	
+	            		
+	            	
+						<li class="nav-item nav-item-city">
+	            			<a class="nav-link" style="background-color:#013248; color:#FFFFFF;" href="#">
+	            				Results
+	            			</a>
+	            	</li>		     
+					
+						  
+					
+						
+	            	
+						       
+				
+								
+				
+				
+			
+						
+					
+		</ul>
+		
+		<ul class="navbar-nav dropdown-onhover navbar-nav-city" style="float: right; margin-right:0;">			
+			<li class="nav-item nav-item-city">
+				<a class="nav-link" href="/buildingrecords/buildingpermit" target="_blank">
+					Building Permit Application Status 
+				</a>
+			</li>
+			<li class="nav-item nav-item-city">
+				<a class="nav-link" href="http://www.cookcountyclerkofcourt.org/CourtCaseSearch/DocketSearch.aspx" target="_blank">
+					Circuit Court Case Status 
+				</a>
+			</li>
+			<li class="nav-item nav-item-city">
+				<a class="nav-link" href="https://data.cityofchicago.org/Administration-Finance/Ordinance-Violations-Buildings-/awqx-tuwv" target="_blank">
+					Administrative Hearing Case Status
+				</a>
+			</li>
+		</ul>
+	</div>
+</nav>
+</div>
+	<!--End Navigation-->
+	
+	
+	<!-- Body of the Site -->
+	<div class="container-fluid page-body">
+		
+
+
+
+
+<div class="city-row city-row-title">
+	<h3>Building Permit and Inspection Records</h3>
+</div>
+
+<div class="city-row" style="background-color:#e9ecef;border: 1px solid #ddd;">
+	<div class="city-row city-row-title">
+	<h6><b>Disclaimer</b></h6>
+	<p style="text-align: justify;">The information presented on this website is informational only and does not necessarily reflect the current condition of the building or property. The fact that a permit was issued does not confirm that work was performed, or that work was performed in accordance with that permit and the requirements of the Municipal Code.</p>
+	<p style="text-align: justify;">Information on inspections and alleged violations reflect conditions found by the inspector at the time of the inspection and not necessarily the current status of those alleged violations or the current condition of the property. The absence of alleged violations on this website does not mean a building or property is in compliance with the requirements of the Municipal Code.</p>
+	<p style="text-align: justify;">The Department of Buildings may refer certain alleged violations to the City's Department of Law for enforcement proceedings in the Department of Administrative Hearings or the Circuit Court of Cook County. Please contact the <a href="https://data.cityofchicago.org/Administration-Finance/Ordinance-Violations-Buildings-/awqx-tuwv" target="_blank">Department of Administrative Hearings</a> or the <a href="http://www.cookcountyclerkofcourt.org/CourtCaseSearch/DocketSearch.aspx" target="_blank">Clerk of the Circuit Court</a>, respectively to obtain records of these proceedings.</p>
+	</div>
+</div>
+
+
+<!-- INPUT ADDRESS --> 
+<div class="city-row city-row-title">
+	<h6 style="text-transform:uppercase;"><b>Input Address</b> </h6>
+	<p style="margin-bottom:0;">2437  S  TROY  ST</p>	
+</div>
+
+
+<!-- RANGE ADDRESS SEARCH RESULTS --> 
+
+
+<div class="city-row city-row-title">
+	<h6 style="text-transform:uppercase;"><b>Range address</b></h6>
+	
+	<p style="margin-bottom:0;">2437-2437 S TROY ST CHICAGO IL 60623</p>	
+	
+	<p style="margin-bottom:0;">2437-2437 S TROY ST CHICAGO IL 60623</p>	
+	
+</div>
+
+
+
+<!-- BUILDING ATTRIBUTES SEARCH RESULTS --> 
+
+    
+
+
+<!-- PERMITS SEARCH RESULTS -->  
+
+
+	<div class="city-row city-row-title">
+		<h6 style="margin-bottom:0px; text-transform:uppercase;"><b>Building Permits</b></h6>
+	</div>	
+	<div class="city-row">
+		<table id=resultstable_permits class="table table-bordered table-striped compact display tdisplay dt-responsive dataTables_scrollBody" data-pagination="true" data-height="200" style="width:100%;">	
+			<thead>  
+				<tr>  
+					<th style="width:75px;">PERMIT #</th>
+					<th style="width:95px;">DATE ISSUED</th>
+					<th>DESCRIPTION OF WORK</th>
+				</tr>  
+			</thead>
+			<tbody>
+			
+				<tr>
+					<td>101066672</td>
+					<td>
+						<span style="display:none;">20250624</span>
+						06/24/2025
+					</td>
+					<td>SPR 2019 CBRC:  INTERIOR ALTERATIONS TO EXISTING SINGLE FAMILY & LEGALIZE  ONE DWELLING UNIT & REMOVAL OF 3 STORY ENCLOSED PORCH & ATTACHED GARAGE AND REPLACE WITH NEW REAR 3-STORY FRAME ADDITION, EXTERIOR WALL INFILL & NEW 6'0" WOOD FENCE & 5' IRON FENCE IN AN EXISTING 2 -STORY BRICK REAR BUILDING  (OCCUPANCY GROUP R-5, TYPE III-A CONSTRUCTION)</td>
+				</tr>				
+			
+				<tr>
+					<td>101066622</td>
+					<td>
+						<span style="display:none;">20250616</span>
+						06/16/2025
+					</td>
+					<td>SPR 2019 CBRC: INTERIOR ALTERATIONS TO EXISTING TWO DWELLINGS UNITS & LEGALIZATION OF ONE BASEMENT DWELLING UNIT IN AN EXISTING 2 -STORY BRICK FRONT BUILDING W/ BASEMENT, DUPLEX SECOND FLOOR & ATTIC AND EXTERIOR WALL INFILL (OCCUPANCY GROUP R-5, TYPE III-A CONSTRUCTION)
+ PER PLANS  **CERTIFIED PLANS CORRECTIONS: CONDITIONAL PERMIT SUBJECT TO FIELD INSPECTIONS **</td>
+				</tr>				
+			
+				<tr>
+					<td>100572227</td>
+					<td>
+						<span style="display:none;">20141211</span>
+						12/11/2014
+					</td>
+					<td>REPLACE EXISTING PORCH AND STAIRS</td>
+				</tr>				
+			
+				<tr>
+					<td>100562941</td>
+					<td>
+						<span style="display:none;">20141003</span>
+						10/03/2014
+					</td>
+					<td>REPLACE EXISTING FRONT PORCH</td>
+				</tr>				
+			
+			</tbody>
+		</table>
+	</div>	
+
+
+
+<!-- CASE ACTIVITY SEARCH RESULTS --> 
+
+	
+	<div class="city-row city-row-title">
+		<h6 style="margin-bottom:0px; text-transform:uppercase;"><b>Building Code Enforcement Case Activity</b></h6>
+	</div>
+	<div class="city-row">
+		<table id=resultstable_caseactivity class="table table-bordered table-striped compact display tdisplay dt-responsive dataTables_scrollBody" data-pagination="true" data-height="200" style="width:100%;">	
+			<thead>  
+				<tr>  
+					<th style="width:50%;">CASE NUMBER</th>
+					<th style="width:50%;">CASE TYPE</th>					
+				</tr>  
+			</thead>
+			<tbody>
+			
+				<tr>
+					<td>18M1403555</td>					
+					<td>CIRCUIT COURT</td>
+				</tr>				
+			
+				<tr>
+					<td>17WO537932</td>					
+					<td>ADMINISTRATIVE HEARING</td>
+				</tr>				
+			
+				<tr>
+					<td>14WO407815</td>					
+					<td>ADMINISTRATIVE HEARING</td>
+				</tr>				
+			
+			</tbody>
+		</table>
+	</div>
+
+
+
+<!-- INSPECTIONS SEARCH RESULTS --> 
+
+
+	<div class="city-row city-row-title">
+		<h6 style="margin-bottom:0px; text-transform:uppercase;"><b>Department of Buildings Inspections</b></h6>
+	</div>	
+	<div class="city-row">
+		<table id=resultstable_inspections class="table table-bordered table-striped compact display tdisplay dt-responsive dataTables_scrollBody" data-pagination="true" data-height="200" style="width:100%;">	
+			<thead>  
+				<tr>  
+					<th style="width:75px;">INSP #</th>
+					<th style="width:120px;">INSPECTION DATE</th>
+					<th style="width:100px;">STATUS</th>
+					<th>TYPE DESCRIPTION</th>				
+				</tr>  
+			</thead>
+			<tbody>
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=338806&amp;insp=14719132" target="_blank">14719132</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20260702</span>
+						07/02/2026				
+					</td>
+					<td>PARTIAL PASSED</td>
+					<td>DOB NEW CONSTRUCTION INSP</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=338806&amp;insp=14719127" target="_blank">14719127</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20260702</span>
+						07/02/2026				
+					</td>
+					<td>PARTIAL PASSED</td>
+					<td>DOB NEW CONSTRUCTION INSP</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=338806&amp;insp=14673973" target="_blank">14673973</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20260605</span>
+						06/05/2026				
+					</td>
+					<td>PARTIAL PASSED</td>
+					<td>DOB REFRIGERATION INSPECTION</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=338806&amp;insp=14730578" target="_blank">14730578</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20260305</span>
+						03/05/2026				
+					</td>
+					<td>PARTIAL PASSED</td>
+					<td>ELECTRICAL PERMIT INSPECTION</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=338806&amp;insp=14730574" target="_blank">14730574</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20260305</span>
+						03/05/2026				
+					</td>
+					<td>PARTIAL PASSED</td>
+					<td>ELECTRICAL PERMIT INSPECTION</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=338806&amp;insp=14673974" target="_blank">14673974</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20260122</span>
+						01/22/2026				
+					</td>
+					<td>PARTIAL PASSED</td>
+					<td>DOB VENT/FURNACE INSPECTION</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=338806&amp;insp=14673969" target="_blank">14673969</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20260122</span>
+						01/22/2026				
+					</td>
+					<td>PARTIAL PASSED</td>
+					<td>DOB VENT/FURNACE INSPECTION</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=338806&amp;insp=14694113" target="_blank">14694113</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20251229</span>
+						12/29/2025				
+					</td>
+					<td>PARTIAL PASSED</td>
+					<td>ELECTRICAL PERMIT INSPECTION</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=338806&amp;insp=14694115" target="_blank">14694115</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20251229</span>
+						12/29/2025				
+					</td>
+					<td>PARTIAL PASSED</td>
+					<td>ELECTRICAL PERMIT INSPECTION</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=338806&amp;insp=14699098" target="_blank">14699098</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20251222</span>
+						12/22/2025				
+					</td>
+					<td>PARTIAL PASSED</td>
+					<td>DOB PLUMBING INSPECTION</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=338806&amp;insp=14699099" target="_blank">14699099</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20251222</span>
+						12/22/2025				
+					</td>
+					<td>PARTIAL PASSED</td>
+					<td>DOB PLUMBING INSPECTION</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=338806&amp;insp=14693714" target="_blank">14693714</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20251124</span>
+						11/24/2025				
+					</td>
+					<td>PARTIAL PASSED</td>
+					<td>DOB NEW CONSTRUCTION INSP</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=338806&amp;insp=14693720" target="_blank">14693720</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20251124</span>
+						11/24/2025				
+					</td>
+					<td>PARTIAL PASSED</td>
+					<td>DOB NEW CONSTRUCTION INSP</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=338806&amp;insp=14673968" target="_blank">14673968</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20250919</span>
+						09/19/2025				
+					</td>
+					<td>PARTIAL PASSED</td>
+					<td>DOB PLUMBING INSPECTION</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=338806&amp;insp=14673972" target="_blank">14673972</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20250919</span>
+						09/19/2025				
+					</td>
+					<td>PARTIAL PASSED</td>
+					<td>DOB PLUMBING INSPECTION</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=338806&amp;insp=14673975" target="_blank">14673975</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20250903</span>
+						09/03/2025				
+					</td>
+					<td>PARTIAL PASSED</td>
+					<td>DOB NEW CONSTRUCTION INSP</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=338806&amp;insp=14673970" target="_blank">14673970</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20250903</span>
+						09/03/2025				
+					</td>
+					<td>PARTIAL PASSED</td>
+					<td>DOB NEW CONSTRUCTION INSP</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=338806&amp;insp=14673967" target="_blank">14673967</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20250903</span>
+						09/03/2025				
+					</td>
+					<td>PARTIAL PASSED</td>
+					<td>ELECTRICAL PERMIT INSPECTION</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=338806&amp;insp=14673971" target="_blank">14673971</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20250903</span>
+						09/03/2025				
+					</td>
+					<td>PARTIAL PASSED</td>
+					<td>ELECTRICAL PERMIT INSPECTION</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=338806&amp;insp=12695643" target="_blank">12695643</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20190404</span>
+						04/04/2019				
+					</td>
+					<td>PASSED</td>
+					<td>CONSERVATION COMPLAINT INSPECT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=338806&amp;insp=12695642" target="_blank">12695642</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20181012</span>
+						10/12/2018				
+					</td>
+					<td>FAILED</td>
+					<td>CONSERVATION COMPLAINT INSPECT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=338806&amp;insp=12612820" target="_blank">12612820</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20180517</span>
+						05/17/2018				
+					</td>
+					<td>FAILED</td>
+					<td>CONSERVATION COMPLAINT INSPECT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=338806&amp;insp=12301935" target="_blank">12301935</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20180131</span>
+						01/31/2018				
+					</td>
+					<td>CLOSED</td>
+					<td>CONSERVATION COMPLAINT INSPECT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=338806&amp;insp=12301934" target="_blank">12301934</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20170731</span>
+						07/31/2017				
+					</td>
+					<td>FAILED</td>
+					<td>CONSERVATION COMPLAINT INSPECT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=338806&amp;insp=11258402" target="_blank">11258402</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20150416</span>
+						04/16/2015				
+					</td>
+					<td>CLOSED</td>
+					<td>CONSERVATION COMPLAINT INSPECT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=338806&amp;insp=11340813" target="_blank">11340813</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20150127</span>
+						01/27/2015				
+					</td>
+					<td>PASSED</td>
+					<td>DOB NEW CONSTRUCTION INSP</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=338806&amp;insp=11389236" target="_blank">11389236</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20150127</span>
+						01/27/2015				
+					</td>
+					<td>PASSED</td>
+					<td>DOB NEW CONSTRUCTION INSP</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=338806&amp;insp=11258401" target="_blank">11258401</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20140602</span>
+						06/02/2014				
+					</td>
+					<td>FAILED</td>
+					<td>CONSERVATION COMPLAINT INSPECT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=338806&amp;insp=10940407" target="_blank">10940407</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20140602</span>
+						06/02/2014				
+					</td>
+					<td>CLOSED</td>
+					<td>CONSERVATION COMPLAINT INSPECT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=338806&amp;insp=10940406" target="_blank">10940406</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20130425</span>
+						04/25/2013				
+					</td>
+					<td>FAILED</td>
+					<td>CONSERVATION COMPLAINT INSPECT</td>
+				</tr>				
+			
+			</tbody>
+		</table>
+	</div>	
+
+
+
+<!-- ALLEGED CODE VIOLATIONS SEARCH RESULTS -->
+
+
+	<div class="city-row city-row-title">
+		<h6 style="margin-bottom:0px; text-transform:uppercase;"><b>Alleged Code Violations</b></h6>
+	</div>	
+	<div class="city-row">
+		<table id=resultstable_violations class="table table-bordered table-striped compact display tdisplay dt-responsive dataTables_scrollBody" data-pagination="true" data-height="200" style="width:100%;">	
+			<thead>  
+				<tr>
+					<th style="width:5%; min-width:100px;"></th>
+					<th style="width:50%;"></th>
+					<th style="width:45%;"></th>			
+				</tr>
+			</thead>
+			<tbody>			
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">12612820</span></th>
+					<th>
+						CONSERVATION COMPLAINT INSPECT # 12612820
+						&nbsp&nbspINSPECTION DATE: 05/17/2018						
+					</th>	
+					<th>				
+						Number of Violations: 3														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>CN070014</td>
+					<td>Failed to maintain exterior stairways in safe condition and in sound repair.  (13-196-570, 13-196-641)</td>
+					<td>Front elevation-Exterior stairs-grade to basement,missing hand rail.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN190019</td>
+					<td>Arrange for inspection of premises. (13-12-100)</td>
+					<td>Interior of building-no response,unverified detectors.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN196029</td>
+					<td>Post name, address, and telephone of owner, owner's agent for managing, controlling or collecting rents, and any other person managing or controlling building conspicuously where accessible or visible to public way. (13-12-030)</td>
+					<td>Building owner's ID sign posted,incomplete information,missing mailing address info.</td>
+				</tr>
+									
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">11258402</span></th>
+					<th>
+						CONSERVATION COMPLAINT INSPECT # 11258402
+						&nbsp&nbspINSPECTION DATE: 04/16/2015						
+					</th>	
+					<th>				
+						Number of Violations: 2														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>CN079014</td>
+					<td>Failed to maintain garage in sound condition and repair.  (13-196-530, 13-196-641)</td>
+					<td>Rear building to garage wall connection - north and south walls - shifting , bulging , and displaced wall sections. Service door at south - rotted with peeling paint and large gaps at bottom of door and frame.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN190019</td>
+					<td>Arrange for inspection of premises. (13-12-100)</td>
+					<td>Front and rear buildings - interior - no response - unverified detectors , conditions, and occupancy. Unable to inspect interior stairways or verify complaint of leaks , cracks , unsanitary conditions , and odors.</td>
+				</tr>
+									
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">11258401</span></th>
+					<th>
+						CONSERVATION COMPLAINT INSPECT # 11258401
+						&nbsp&nbspINSPECTION DATE: 06/02/2014						
+					</th>	
+					<th>				
+						Number of Violations: 1														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>CN079014</td>
+					<td>Failed to maintain garage in sound condition and repair.  (13-196-530, 13-196-641)</td>
+					<td>Rear building to garage wall connection - north and south walls - shifting , bulging , and displaced wall sections. Service door at south - rotted with peeling paint and large gaps at bottom of door and frame.</td>
+				</tr>
+									
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">10940407</span></th>
+					<th>
+						CONSERVATION COMPLAINT INSPECT # 10940407
+						&nbsp&nbspINSPECTION DATE: 06/02/2014						
+					</th>	
+					<th>				
+						Number of Violations: 7														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>CN061014</td>
+					<td>Failed to maintain the exterior walls of a building or structure free from holes, breaks, loose or rotting boards or timbers and any other conditions which might admit rain or dampness to the walls.  (13-196-530(b), 13-196-641)</td>
+					<td>Front and rear building west elevation at grade some spalling bricks and washed out mortar joints.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN070014</td>
+					<td>Failed to maintain exterior stairways in safe condition and in sound repair.  (13-196-570, 13-196-641)</td>
+					<td>West elevation front stairs  and cracked concrete.                                  Basement stairwell missing handrail.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN070024</td>
+					<td>Failed to repair or replace defective or missing members of porch system.  (13-196-570, 13-196-641)</td>
+					<td>Rear building west elevation 2 story wood porch 6x6 columns erected on top of concrete slab.guardrails under 42" high.All connections fastened with  common nails.Permit required to make repairs.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN074024</td>
+					<td>Failed to provide porch which is more than two risers high with rails not less than three and one-half feet above the floor of the porch.  (13-196-570(b), 13-196-641</td>
+					<td>West elevation basement stairwell missing guardrail.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN079014</td>
+					<td>Failed to maintain garage in sound condition and repair.  (13-196-530, 13-196-641)</td>
+					<td>East elevation garage overhead door smashed in at top with gang graffiti.Service door rotted with large gap at bottom.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN104025</td>
+					<td>Failed to maintain window sash in good condition and so it fits reasonably tight within its frame.  (13-196-550(b))</td>
+					<td>Front building South elevation basement window rotted and boarded.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN196029</td>
+					<td>Post name, address, and telephone of owner, owner's agent for managing, controlling or collecting rents, and any other person managing or controlling building conspicuously where accessible or visible to public way. (13-12-030)</td>
+					<td>No owner i.d sign posted.</td>
+				</tr>
+									
+			
+			</tbody>			
+		</table>
+	</div>	
+
+
+
+<div class="city-row city-row-title">
+	<div id="noprint" style="margin-top:0;padding-top:0; text-align:right;">
+		<a class="btn btn-primary" href="javascript:window.print();" style="margin-top:0;">
+			Print
+		</a>					
+	</div>		
+</div>
+
+	
+<script>
+$(document).ready(function() {
+	var myWorker = new Worker("https://webapps1.cityofchicago.org/cdn/DataTables-1.10.16/js/jquery.dataTables.min.js");
+	myWorker.addEventListener("message", function (oEvent) {
+	  console.log("Called back by the worker!\n");
+	}, false);
+
+	myWorker.postMessage(""); // start the worker.
+						   
+	$('#resultstable_attributes').DataTable({
+        order: [[ 0, 'asc' ]],
+		responsive: true,
+		"paging":   false,
+		"bInfo" : false,	
+		"bSort" : false,  
+		searching: false
+	} );
+
+	$('#resultstable_permits').DataTable({
+        order: [[ 1, 'desc' ]],
+		responsive: true,
+		"paging":   false,
+		"bInfo" : false,	
+		"bSort" : true, 
+		 searching: false
+     } );
+
+	$('#resultstable_caseactivity').DataTable({
+		order: [[ 1, 'desc' ]],
+		responsive: true,
+		"paging":   false,
+		"bInfo" : false,	
+		"bSort" : true, 
+		 searching: false
+	 } );
+
+
+	$('#resultstable_inspections').DataTable({
+		order: [[ 1, 'desc' ]],
+		responsive: true,
+		"paging":   false,
+		"bInfo" : false,	
+		"bSort" : true, 
+		 searching: false
+	 } );   
+
+
+	$('#resultstable_violations').DataTable({
+		 responsive: true,
+		"paging":   false,
+		"bInfo" : false,	
+		"bSort" : false,  
+		searching: false
+    } );
+
+	myWorker.terminate();
+	myWorker=undefined;
+	
+});
+</script>
+	</div>
+	
+	<!-- Footer -->
+	<div class="container-fluid page-footer-container">
+		<div class="page-footer">
+
+
+
+
+
+<!-- Secondary footer-->
+<!--
+<div class="container-fluid footer secondary-footer">
+	<div class="page-footer-container">
+		<div class="footer-column">
+			<h3 class="footer-title">Contact Us</h3>
+			<div class="title-divider"></div>
+			<p><strong>Address:&nbsp;</strong><br>333 S. State Street, Suite LL30<br>Chicago, IL 60604</p>
+			<p><strong>Phone:&nbsp;</strong>312.744.5844</p>
+		</div>
+		<div class="footer-column">
+			<h3 class="footer-title">Quick Links</h3>
+			<div class="title-divider"></div>
+			<p><a href="http://www.cityofchicago.org/city/en/depts/doit.html">Department of Innovation and Technology</a></p>
+		</div>
+		<div class="footer-column">
+			<h3 class="footer-title">Connect With Us</h3>
+			<div class="title-divider"></div>
+			<ul class="footer-social social">
+                <li><a href="https://www.facebook.com/ChicagoMayorsOffice" title="Follow us on Facebook" target="blank"><i class="fa fa-facebook" aria-hidden="true"></i></a> </li>
+                <li><a href="https://twitter.com/ChicagosMayor" title="Follow us on Twitter" target="blank"><i class="fa fa-twitter" aria-hidden="true"></i></a> </li>
+				<li><a href="https://www.youtube.com/user/cityofchicagotv" title="Follow us on YouTube" target="blank"><i class="fa fa-youtube" aria-hidden="true"></i></a> </li>
+            </ul>
+		</div>
+	</div>
+</div>
+ -->
+<!-- End Secondary footer-->
+
+<!-- Primary Footer -->
+<div class="container-fluid footer primary-footer">
+<div class="col-xs-12 page-footer">					
+<div id="footer">
+	<div class="footer-navigation">
+        <ul>
+            <li><a href="http://www.cityofchicago.org" title="The City of Chicago's Official Site">Home</a> : </li>
+            <li><!--googleoff: anchor--><a href="http://www.cityofchicago.org/city/en/general/disclaimer.html">Disclaimer</a><!--googleon: anchor--> : </li>
+            <li><!--googleoff: anchor--><a href="http://www.cityofchicago.org/city/en/general/privacy.html">Privacy Policy</a><!--googleon: anchor--> : </li>
+            <li><!--googleoff: anchor--><a href="http://www.cityofchicago.org/city/en/general/standards.html">Web Standards</a><!--googleon: anchor--> : </li>
+            <li><!--googleoff: anchor--><a href="http://www.cityofchicago.org/city/en/general/credits.html">Site Credits</a><!--googleon: anchor--> : </li>
+            <li><!--googleoff: anchor--><a href="http://www.cityofchicago.org/city/en/general/sitemap.html">Site Map</a><!--googleon: anchor--> : </li>
+            <li><!--googleoff: anchor--><a href="http://www.cityofchicago.org/city/en/general/contact.html">Contact Us</a><!--googleon: anchor--> : </li>
+            <li><!--googleoff: anchor--><a href="http://www.cityofchicago.org/city/en/general/press_room.html">Press Room</a><!--googleon: anchor--></li>
+        </ul>
+	    
+	
+		
+		
+		
+			
+			Copyright © 2018 - 2026 City of Chicago	
+		
+		
+		
+		
+	</div>
+</div>
+</div>
+</div>								
+<!-- End Primary Footer --></div>
+	</div>
+	
+</div>
+
+<!-- JavaScript -->
+<script src="https://webapps1.cityofchicago.org/cdn/Bootstrap-4.0.0-beta.2/assets/js/vendor/popper.min.js"></script>
+<script src="https://webapps1.cityofchicago.org/cdn/Bootstrap-4.0.0-beta.2/js/bootstrap.min.js"></script>
+
+</body>

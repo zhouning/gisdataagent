@@ -1,0 +1,134 @@
+{
+ "currentVersion": 11.4,
+ "folders": [],
+ "services": [
+  {
+   "name": "ExternalApps/Anno_CacheMap",
+   "type": "MapServer"
+  },
+  {
+   "name": "ExternalApps/AUDIT_WARDS",
+   "type": "MapServer"
+  },
+  {
+   "name": "ExternalApps/Basemap_BlackWhite",
+   "type": "MapServer"
+  },
+  {
+   "name": "ExternalApps/CCME",
+   "type": "FeatureServer"
+  },
+  {
+   "name": "ExternalApps/CCME",
+   "type": "MapServer"
+  },
+  {
+   "name": "ExternalApps/CDOT_INSP",
+   "type": "MapServer"
+  },
+  {
+   "name": "ExternalApps/CDOT_SMALL_CELL_POLES",
+   "type": "FeatureServer"
+  },
+  {
+   "name": "ExternalApps/CDOT_SMALL_CELL_POLES",
+   "type": "MapServer"
+  },
+  {
+   "name": "ExternalApps/Centerline",
+   "type": "MapServer"
+  },
+  {
+   "name": "ExternalApps/devCDOT_SMALL_CELL_POLES",
+   "type": "FeatureServer"
+  },
+  {
+   "name": "ExternalApps/devCDOT_SMALL_CELL_POLES",
+   "type": "MapServer"
+  },
+  {
+   "name": "ExternalApps/dpd_1",
+   "type": "MapServer"
+  },
+  {
+   "name": "ExternalApps/dpd_2",
+   "type": "MapServer"
+  },
+  {
+   "name": "ExternalApps/dpd",
+   "type": "MapServer"
+  },
+  {
+   "name": "ExternalApps/DSS_Division",
+   "type": "MapServer"
+  },
+  {
+   "name": "ExternalApps/extoperational",
+   "type": "MapServer"
+  },
+  {
+   "name": "ExternalApps/FS_POI",
+   "type": "FeatureServer"
+  },
+  {
+   "name": "ExternalApps/FS_POI",
+   "type": "MapServer"
+  },
+  {
+   "name": "ExternalApps/IndexGrid",
+   "type": "MapServer"
+  },
+  {
+   "name": "ExternalApps/operational_1",
+   "type": "MapServer"
+  },
+  {
+   "name": "ExternalApps/operational",
+   "type": "MapServer"
+  },
+  {
+   "name": "ExternalApps/Permit_Map",
+   "type": "MapServer"
+  },
+  {
+   "name": "ExternalApps/SMALL_CELL_POLES",
+   "type": "FeatureServer"
+  },
+  {
+   "name": "ExternalApps/SMALL_CELL_POLES",
+   "type": "MapServer"
+  },
+  {
+   "name": "ExternalApps/Small_Cell_Test",
+   "type": "FeatureServer"
+  },
+  {
+   "name": "ExternalApps/Small_Cell_Test",
+   "type": "MapServer"
+  },
+  {
+   "name": "ExternalApps/STREETLIGHTDEMO",
+   "type": "MapServer"
+  },
+  {
+   "name": "ExternalApps/StreetNames",
+   "type": "MapServer"
+  },
+  {
+   "name": "ExternalApps/TransLegend",
+   "type": "MapServer"
+  },
+  {
+   "name": "ExternalApps/Wards",
+   "type": "MapServer"
+  },
+  {
+   "name": "ExternalApps/Zoning_update",
+   "type": "MapServer"
+  },
+  {
+   "name": "ExternalApps/Zoning",
+   "type": "MapServer"
+  }
+ ]
+}

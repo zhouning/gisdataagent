@@ -1,0 +1,1 @@
+{"displayFieldName":"CENSUS_TRACT","fieldAliases":{"TRACT_CENSUS_YEAR":"TRACT_CENSUS_YEAR"},"fields":[{"name":"TRACT_CENSUS_YEAR","type":"esriFieldTypeSmallInteger","alias":"TRACT_CENSUS_YEAR"}],"features":[{"attributes":{"TRACT_CENSUS_YEAR":2000}}]}

@@ -1,0 +1,21 @@
+{
+  "schema": "gwm.chicago_browser_cdp_capture.v1",
+  "captured_at": "2026-07-24T05:41:49.212Z",
+  "source_url": "https://www.chicago.gov/city/en/narr/foia/data_disclaimer.html",
+  "browser_url": "https://www.chicago.gov/city/en/narr/foia/data_disclaimer.html",
+  "http_status": 200,
+  "content_type": "text/html",
+  "output_path": "/Users/zhouning/gisdataagent/benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_data_portal_terms_of_use.html",
+  "bytes": 54228,
+  "sha256": "8d949c15a5251b0b749af6742f247f0925e4a05962bb125fdbfe16ebb209c877",
+  "mode": "text",
+  "validation": {
+    "required_text": [
+      "DISCLAIMER OF LIABILITY",
+      "USE OF DATA",
+      "RESERVATION OF RIGHTS"
+    ]
+  },
+  "access_boundary": "browser_or_waf",
+  "cookies_or_credentials_persisted": false
+}

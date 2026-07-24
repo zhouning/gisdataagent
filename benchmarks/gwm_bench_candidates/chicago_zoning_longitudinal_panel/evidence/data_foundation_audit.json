@@ -1,0 +1,1878 @@
+{
+  "admission": {
+    "causal_estimation_admitted": false,
+    "cross_county_city_internal_interference_network_admitted": true,
+    "effect_application_admitted": false,
+    "network_to_unit_time_ready": true,
+    "observed_outcome_panel_materialized": true,
+    "official_cook_dupage_city_internal_network_admitted": true,
+    "official_cook_internal_interference_network_admitted": true,
+    "outside_city_interference_network_admitted": false,
+    "panel_materialization_admitted": false,
+    "panel_materialization_ready": false
+  },
+  "artifacts": {
+    "census_reporter_acs2024_tract_17031671600.json": {
+      "bytes": 1774,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/census_reporter_acs2024_tract_17031671600.json",
+      "sha256": "03a1e2c8e11155cbf1f28ed39fb890857bfc54814e3ddba366705006a4b07e04"
+    },
+    "census_reporter_tiger2024_cook_county_tracts.json": {
+      "bytes": 825593,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/census_reporter_tiger2024_cook_county_tracts.json",
+      "sha256": "b1666f85673c2d8400d83c47180a23f1a5d1ffa27bb92761aa3299c7d2e6d94f"
+    },
+    "census_reporter_tiger2024_tract_17031671600.json": {
+      "bytes": 410,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/census_reporter_tiger2024_tract_17031671600.json",
+      "sha256": "5c90dbd430e5b5532a783b645e9813bad10ebc122350e313c8ce8a88827fb344"
+    },
+    "chicago_addresspoints_6716_s_bishop.json": {
+      "bytes": 2006,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_addresspoints_6716_s_bishop.json",
+      "sha256": "0c5c5a53c2b37996cecd4b68cdc908c912908ed598d48b5ee8503291de5389c9"
+    },
+    "chicago_addresspoints_O2024_0012247_race.json": {
+      "bytes": 1440,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_addresspoints_O2024_0012247_race.json",
+      "sha256": "808f6720dd2664cd3515fd2e991e7290f9cce0e6ffb7cafe4a9165cecf35814c"
+    },
+    "chicago_addresspoints_O2024_0012334_troy.json": {
+      "bytes": 1430,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_addresspoints_O2024_0012334_troy.json",
+      "sha256": "a609bf0ca6651f01220c3b8b736622b8a52fad881fe89939ba9b4518dfc4990a"
+    },
+    "chicago_addresspoints_O2024_0012532_bosworth.json": {
+      "bytes": 1468,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_addresspoints_O2024_0012532_bosworth.json",
+      "sha256": "a93eeb923cfca68f8e41a74c489bb34838280fbc8207d79ea0ab253fde84fb1b"
+    },
+    "chicago_building_permits_2023_2026_tract_month_panel.json": {
+      "bytes": 5742162,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_permits_2023_2026_tract_month_panel.json",
+      "sha256": "f1e22a485f58b7427dd0c68543ae659bd9334bb7a5af5bcbe6e4d69b0ff9cdcc"
+    },
+    "chicago_building_permits_remaining_spatial_adjudication.json": {
+      "bytes": 11772,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_permits_remaining_spatial_adjudication.json",
+      "sha256": "9058b3560fb1cf7922e6e037e04c33ae29438b11ebb521cfde8190e6dd238d72"
+    },
+    "chicago_building_permits_spatial_missingness_diagnostic.json": {
+      "bytes": 16174,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_permits_spatial_missingness_diagnostic.json",
+      "sha256": "4707373ab9554371e735cc07127610ca0b6150b82664ab4ecc98353ab0511d65"
+    },
+    "chicago_building_permits_unresolved_address_geocoder_request.json": {
+      "bytes": 5011,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_permits_unresolved_address_geocoder_request.json",
+      "sha256": "1174a501a339a44f6951a22f39f9184cf15809796f36caaaac97a9fc95e68512"
+    },
+    "chicago_building_permits_unresolved_address_geocoder_response.json": {
+      "bytes": 8428,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_permits_unresolved_address_geocoder_response.json",
+      "sha256": "88f73fedaf1445030d26b75b873caafd55ecde4f231e017325a8337c9479dcab"
+    },
+    "chicago_building_permits_unresolved_pin_parcel_response.headers": {
+      "bytes": 646,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_permits_unresolved_pin_parcel_response.headers",
+      "sha256": "741a0a9a82e36bca053ed64fb67e71bcbea6304bedbe128200996c52ddc7d4c0"
+    },
+    "chicago_building_permits_unresolved_pin_parcel_response.json": {
+      "bytes": 11982,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_permits_unresolved_pin_parcel_response.json",
+      "sha256": "b5008b41a11be399381083e364ab3778589cd2d5402325efadb360f07fabfb94"
+    },
+    "chicago_building_records_2024_cohort.json": {
+      "bytes": 51436,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort.json",
+      "sha256": "5ddf7a9d7f7c323e1536ddbc10b5541dbec10bdeb508a77e50873d5f50c2ac91"
+    },
+    "chicago_building_records_2024_cohort_html/O2024_0008450.html": {
+      "bytes": 19023,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0008450.html",
+      "sha256": "e831ca38ff84a664458d53744211f7326eea82467f24125b044c781c2d3ac271"
+    },
+    "chicago_building_records_2024_cohort_html/O2024_0008454.html": {
+      "bytes": 44385,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0008454.html",
+      "sha256": "8319c0aad1ee406b458a9d891fcfa55278038c0938fe8d01276c01578352327a"
+    },
+    "chicago_building_records_2024_cohort_html/O2024_0008459.html": {
+      "bytes": 14620,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0008459.html",
+      "sha256": "d634e06d843fa80742de1e768cf7c86e355281545fc07f8021df276b6ef542f3"
+    },
+    "chicago_building_records_2024_cohort_html/O2024_0008868.html": {
+      "bytes": 16405,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0008868.html",
+      "sha256": "10571ae0d75dbb76f2719048fe52ef47731ef4f921b1769db91c1d7e766dccc0"
+    },
+    "chicago_building_records_2024_cohort_html/O2024_0008869.html": {
+      "bytes": 35134,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0008869.html",
+      "sha256": "019a0309525ec564bbc6cf48a2f81fe4a0b73a6ca56be0095e1388000d84b960"
+    },
+    "chicago_building_records_2024_cohort_html/O2024_0008974.html": {
+      "bytes": 22291,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0008974.html",
+      "sha256": "85c10a2118caa1598e14a823627ef52b42127c7b1a68ddafcb50468a7aaf9ea1"
+    },
+    "chicago_building_records_2024_cohort_html/O2024_0009009.html": {
+      "bytes": 33119,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0009009.html",
+      "sha256": "7f6ee2de7aff7692cd4fc012e17332e481fd2abcd17fb9b4794dc33274681617"
+    },
+    "chicago_building_records_2024_cohort_html/O2024_0010948.html": {
+      "bytes": 12677,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0010948.html",
+      "sha256": "5ae576dc44950bc1c9be10d90cd8b4713839483f60c008810ec7ce21c116f3ca"
+    },
+    "chicago_building_records_2024_cohort_html/O2024_0010950.html": {
+      "bytes": 28211,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0010950.html",
+      "sha256": "5b15d60601fb25c7195b284977505a3b51aeaae4c67cf5836c860c33d5bd5aae"
+    },
+    "chicago_building_records_2024_cohort_html/O2024_0011132.html": {
+      "bytes": 20142,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0011132.html",
+      "sha256": "d6f3e8cf76a3122622e92e96c93a58b45cd5fb9938c573d42e72a1c99b1c971a"
+    },
+    "chicago_building_records_2024_cohort_html/O2024_0011139.html": {
+      "bytes": 13691,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0011139.html",
+      "sha256": "969cc210785606c6f5e6f54074937beeb274b4438d4d2cf0989c411243fd5a00"
+    },
+    "chicago_building_records_2024_cohort_html/O2024_0011150.html": {
+      "bytes": 33051,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0011150.html",
+      "sha256": "7aa5acd86d3e75a1c92dae7b02a53ad0eb99762c79ab29688af4526cec95ee72"
+    },
+    "chicago_building_records_2024_cohort_html/O2024_0012247.html": {
+      "bytes": 70649,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0012247.html",
+      "sha256": "51c079ee7cc7abb38297c8bbccf918dceaff22d628086ebfd2509eda324679be"
+    },
+    "chicago_building_records_2024_cohort_html/O2024_0012334.html": {
+      "bytes": 33220,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0012334.html",
+      "sha256": "2948bea0f9a467259788a463ea8d2d7cfb83061fef52e99d1a0af9bb10d8a356"
+    },
+    "chicago_building_records_2024_cohort_html/O2024_0012506.html": {
+      "bytes": 22329,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0012506.html",
+      "sha256": "2ae5938f181a2b18935d3ea6ec0a6219498160c219a566031461f19b9460f765"
+    },
+    "chicago_building_records_2024_cohort_html/O2024_0012520.html": {
+      "bytes": 22600,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0012520.html",
+      "sha256": "f088a1319b1e5250a6d6cd173578631617d82b506003537b282d411e554250d2"
+    },
+    "chicago_building_records_2024_cohort_html/O2024_0012532.html": {
+      "bytes": 22462,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/O2024_0012532.html",
+      "sha256": "726fee54a54e59ea9dccbb1e8eb034f60a71016b47b182efad96884b5c0ae717"
+    },
+    "chicago_building_records_2024_cohort_html/agreement.html": {
+      "bytes": 10798,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_building_records_2024_cohort_html/agreement.html",
+      "sha256": "24c38fe1870bc1c06a9ab7dbd986f39385e497938806bd6a79ffe1b30009e740"
+    },
+    "chicago_current_zoning_6716_s_bishop.json": {
+      "bytes": 48635,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_current_zoning_6716_s_bishop.json",
+      "sha256": "2cc8c57d1cddd6f69a8d944fe66116dce44b2aebb1f8faa24c4a3ce6f0616da3"
+    },
+    "chicago_current_zoning_O2024_0012247_race.json": {
+      "bytes": 1893,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_current_zoning_O2024_0012247_race.json",
+      "sha256": "83b6e7ea12149e658da1b8c37951ac0a95309ce387fd015f1aa694444f19efe8"
+    },
+    "chicago_current_zoning_O2024_0012334_troy.json": {
+      "bytes": 1891,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_current_zoning_O2024_0012334_troy.json",
+      "sha256": "594af1c994bdc617275cdffe5414e6154f4d495aa6702dfff4a9aed2a2d4a715"
+    },
+    "chicago_current_zoning_O2024_0012532_bosworth.json": {
+      "bytes": 1897,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_current_zoning_O2024_0012532_bosworth.json",
+      "sha256": "9b15e7997b71807c936cf2c32247cf76e1900d32d068c85623ea277c69c9739d"
+    },
+    "chicago_current_zoning_case_23063.json": {
+      "bytes": 255,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_current_zoning_case_23063.json",
+      "sha256": "f411940e65e7e587cc91a218575c7d9af59184f88e77218d784433552cf71130"
+    },
+    "chicago_data_portal_terms_of_use.html": {
+      "bytes": 54228,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_data_portal_terms_of_use.html",
+      "sha256": "8d949c15a5251b0b749af6742f247f0925e4a05962bb125fdbfe16ebb209c877"
+    },
+    "chicago_data_portal_terms_of_use.html.capture.json": {
+      "bytes": 814,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_data_portal_terms_of_use.html.capture.json",
+      "sha256": "e1eabe3d5b1e291142a064e83ca2624309d064ffce8eaa16b45021be0eee67af"
+    },
+    "chicago_dev_portal_github_repository.json": {
+      "bytes": 7306,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_dev_portal_github_repository.json",
+      "sha256": "43cb3a9065fe9aa065ec3403c204f05262c58eb651e566ecff4b132765f6105d"
+    },
+    "chicago_elms_2023_2024_zoning_cohort_raw.json": {
+      "bytes": 326900,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_elms_2023_2024_zoning_cohort_raw.json",
+      "sha256": "34af7f887247d563ea5f8335804b8a8f1c10e077ecaf5cbac44552f9804186a2"
+    },
+    "chicago_elms_O2024_0012247_final_narrative_and_plans.pdf": {
+      "bytes": 1440916,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_elms_O2024_0012247_final_narrative_and_plans.pdf",
+      "sha256": "df9b854c688d624c6844ca4575d07f9529330d9c7ea7946b0f3152e4066c86b5"
+    },
+    "chicago_elms_O2024_0012247_final_narrative_and_plans_ocr.txt": {
+      "bytes": 10461,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_elms_O2024_0012247_final_narrative_and_plans_ocr.txt",
+      "sha256": "a4571e67529b096efa6da6e338513d68d2bff03eb38565b71a607013bf1fcd55"
+    },
+    "chicago_elms_O2024_0012247_final_ordinance.pdf": {
+      "bytes": 22816,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_elms_O2024_0012247_final_ordinance.pdf",
+      "sha256": "d2c9c376e055f9ba39085b7e71cd8aee0c29a91974c5547a91ffba07993d37bb"
+    },
+    "chicago_elms_O2024_0012247_final_ordinance_ocr.txt": {
+      "bytes": 765,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_elms_O2024_0012247_final_ordinance_ocr.txt",
+      "sha256": "0f84f8f1b2857f8d0af000b5b38e85a7ae923b8ac74eeb6c50e82530b1b85e53"
+    },
+    "chicago_elms_O2024_0012247_race_detail.json": {
+      "bytes": 8518,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_elms_O2024_0012247_race_detail.json",
+      "sha256": "2e79db28e396c604f4d50363e25f5b605ff40cad4afd5d5396b1cbb6f00ef4f5"
+    },
+    "chicago_elms_O2024_0012334_final_narrative_and_plans.pdf": {
+      "bytes": 749745,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_elms_O2024_0012334_final_narrative_and_plans.pdf",
+      "sha256": "631ff9fbb16dd497937f2fea7d5e94d3f990efc9818803a24beb017fba29bff2"
+    },
+    "chicago_elms_O2024_0012334_final_narrative_and_plans_ocr.txt": {
+      "bytes": 7269,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_elms_O2024_0012334_final_narrative_and_plans_ocr.txt",
+      "sha256": "f395aa07402640e256c715aad9649d7c36fbe376c8950dca05cb3f5ce57938ea"
+    },
+    "chicago_elms_O2024_0012334_final_ordinance.pdf": {
+      "bytes": 23411,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_elms_O2024_0012334_final_ordinance.pdf",
+      "sha256": "857e7c8eea514eee9c349ea458be31d2b00cf9e8dac671d33b2cb8c33bf2917e"
+    },
+    "chicago_elms_O2024_0012334_final_ordinance_ocr.txt": {
+      "bytes": 743,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_elms_O2024_0012334_final_ordinance_ocr.txt",
+      "sha256": "2eeadeae287e0846f5c738a2be60bbbdcace974f2adc79d40c77b8144e7f5868"
+    },
+    "chicago_elms_O2024_0012334_troy_detail.json": {
+      "bytes": 8517,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_elms_O2024_0012334_troy_detail.json",
+      "sha256": "603022cc86938e29ebfcdb70f9e83ce9e261b3efa0e517b4d3ec3c2f8e83afaa"
+    },
+    "chicago_elms_O2024_0012532_bosworth_detail.json": {
+      "bytes": 8523,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_elms_O2024_0012532_bosworth_detail.json",
+      "sha256": "5d1522f5ccee9890dc6b8062e4d803fbc6da9079c704d316bf2851c72c9f5cbd"
+    },
+    "chicago_elms_O2024_0012532_final_narrative_and_plans.pdf": {
+      "bytes": 636837,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_elms_O2024_0012532_final_narrative_and_plans.pdf",
+      "sha256": "dbbd200ba04c183beb8301f38bc33d6c061f82bf12ac2a41cfcf77ade8421bc4"
+    },
+    "chicago_elms_O2024_0012532_final_narrative_and_plans_ocr.txt": {
+      "bytes": 2975,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_elms_O2024_0012532_final_narrative_and_plans_ocr.txt",
+      "sha256": "1c60f26a5e561dc655903151764642aa7af5e8192fb208a99515ea607096d0ed"
+    },
+    "chicago_elms_O2024_0012532_final_ordinance.pdf": {
+      "bytes": 24771,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_elms_O2024_0012532_final_ordinance.pdf",
+      "sha256": "492394bae1a8a62c36e0d73316a28c4642b5ae534788173411b225e515f90b4b"
+    },
+    "chicago_elms_O2024_0012532_final_ordinance_ocr.txt": {
+      "bytes": 808,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_elms_O2024_0012532_final_ordinance_ocr.txt",
+      "sha256": "c0584ab6e2ad8a0969a8f5c28bb1d24fcc6f5eef7fc36b3b5e6101730507c165"
+    },
+    "chicago_elms_O2026_0024863_final_narrative_and_plans.pdf": {
+      "bytes": 291862,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_elms_O2026_0024863_final_narrative_and_plans.pdf",
+      "sha256": "b8f497522dab212bfa304a2c00b3cbd669b4de654e87b46d153f2cb1bbf8be38"
+    },
+    "chicago_elms_O2026_0024863_final_narrative_and_plans_ocr.txt": {
+      "bytes": 2536,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_elms_O2026_0024863_final_narrative_and_plans_ocr.txt",
+      "sha256": "73e0f595cf915b2cee3174b05083b6fdf19401f29b8a1fee48c37b20c82a767d"
+    },
+    "chicago_elms_O2026_0024863_final_ordinance.pdf": {
+      "bytes": 26692,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_elms_O2026_0024863_final_ordinance.pdf",
+      "sha256": "7081a537e7763e28ce9221ac1bb4a1b9c5495f6576d96ddd6591249278486dea"
+    },
+    "chicago_elms_O2026_0024863_final_ordinance_ocr.txt": {
+      "bytes": 731,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_elms_O2026_0024863_final_ordinance_ocr.txt",
+      "sha256": "f1a76a2d8995a38bbf9cb9e744a203751fe1b12c385facd27cdbeb2aefbe008a"
+    },
+    "chicago_elms_historical_candidate_attachment_preflight.json": {
+      "bytes": 4271,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_elms_historical_candidate_attachment_preflight.json",
+      "sha256": "28713a9b95952ccf76e2f8cd34607b0969e9934010557a8ee5c070bb6af0ba44"
+    },
+    "chicago_elms_matter_O2026_0024863.json": {
+      "bytes": 8736,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_elms_matter_O2026_0024863.json",
+      "sha256": "9b493315455b006f7f870bfbf04e6c86ac9c1f042c5f3f9a5331912c3987198e"
+    },
+    "chicago_elms_pre2025_zoning_with_exhibits.json": {
+      "bytes": 112655,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_elms_pre2025_zoning_with_exhibits.json",
+      "sha256": "d5ec6d2f355e5eb2cf0a5c1cc28f547d87d909796f1fb300e3ab4f0127240bc0"
+    },
+    "chicago_official_airports_layer31_all_features.json": {
+      "bytes": 780,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_official_airports_layer31_all_features.json",
+      "sha256": "00f91cedd259a92c027b45311c99b03f3d997f836adc02f9ab5f50f620ee9a88"
+    },
+    "chicago_official_airports_layer31_metadata.json": {
+      "bytes": 4471,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_official_airports_layer31_metadata.json",
+      "sha256": "ce70c310ca69deaef45f5c7357c745bdf298dfcc0c176d826738a751409769a1"
+    },
+    "chicago_official_arcgis_externalapps_directory.json": {
+      "bytes": 2381,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_official_arcgis_externalapps_directory.json",
+      "sha256": "7498e67119005b40c2934123bca0d86411a9932986421e3d172ef6a29e608f5a"
+    },
+    "chicago_official_building_permits_changes_2019_07_09.md": {
+      "bytes": 1932,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_official_building_permits_changes_2019_07_09.md",
+      "sha256": "d622b565331850b13a83c235d879ad68d7aaaa7660904fb2dedeabc3683df545"
+    },
+    "chicago_official_building_permits_contact_columns_2019_07_16.md": {
+      "bytes": 2983,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_official_building_permits_contact_columns_2019_07_16.md",
+      "sha256": "c078fec3b1d58911a97c31f1469b028d35f1b2d451623e475e4dabd3b8e42c7a"
+    },
+    "chicago_official_building_permits_issue_date_2017_11_20.md": {
+      "bytes": 935,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_official_building_permits_issue_date_2017_11_20.md",
+      "sha256": "4454b892ec71e8bb64a2f32c25af7155708c254cb5b797210ca02a356758f15b"
+    },
+    "chicago_official_census_tract_layer84_count_probe.json": {
+      "bytes": 14,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_official_census_tract_layer84_count_probe.json",
+      "sha256": "9e017d6f17d7cc843a00b33141a120955ce385a39ea07af1fd20dd96cf053794"
+    },
+    "chicago_official_census_tract_layer84_metadata.json": {
+      "bytes": 6590,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_official_census_tract_layer84_metadata.json",
+      "sha256": "821a077a467013b1874912797d13cdee4e145131082960a6ceaf2448673cd238"
+    },
+    "chicago_official_census_tract_layer84_year_probe.json": {
+      "bytes": 251,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_official_census_tract_layer84_year_probe.json",
+      "sha256": "63bbce2dd3a9a2010ef69fa94de9ca777a0a0785cddc60bc662ba28d06f1e059"
+    },
+    "chicago_official_operational_mapserver_metadata.json": {
+      "bytes": 43128,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_official_operational_mapserver_metadata.json",
+      "sha256": "c390052df8295463f6b884e9cdb1e0eb6743ef720cbced3658a0304dfd27992c"
+    },
+    "chicago_official_permit_map_layer12_metadata.json": {
+      "bytes": 7370,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_official_permit_map_layer12_metadata.json",
+      "sha256": "45a51e0978827ba8fbcb427fb283e27e1675398cf8c4777b64a35816295da8ba"
+    },
+    "chicago_official_permit_mapserver_metadata.json": {
+      "bytes": 8017,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_official_permit_mapserver_metadata.json",
+      "sha256": "db46fff70a10f85251c8be829727c67536b10858d57402a8f5ec640bc318b3bc"
+    },
+    "chicago_official_tiger2020_city_tract_adjacency.json": {
+      "bytes": 618729,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_official_tiger2020_city_tract_adjacency.json",
+      "sha256": "4d68754066a1ee47ceeab5965c1e8a5d60c8404a700cc1d9b423a71994907e78"
+    },
+    "chicago_official_tiger2020_tract_adjacency.json": {
+      "bytes": 1059670,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_official_tiger2020_tract_adjacency.json",
+      "sha256": "585db73fc8d2df823a84c638d39c9b7e5ef0d83ee5ba103e08f5c61404171257"
+    },
+    "chicago_provisional_tract_adjacency.json": {
+      "bytes": 471821,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_provisional_tract_adjacency.json",
+      "sha256": "8d39bb9c86293e8b36bb7fbe4e3d1b4937b39125e87ff6ad42706795963be5d3"
+    },
+    "chicago_socrata_building_permits_2023_2026_missing_coordinates_address_browser.json": {
+      "bytes": 587127,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_socrata_building_permits_2023_2026_missing_coordinates_address_browser.json",
+      "sha256": "bafe1a4f7a473d9c2abfe98c0a441f5837f072e5d9d1277c3eea00c29ae0818a"
+    },
+    "chicago_socrata_building_permits_2023_2026_missing_coordinates_address_browser.json.capture.json": {
+      "bytes": 1745,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_socrata_building_permits_2023_2026_missing_coordinates_address_browser.json.capture.json",
+      "sha256": "11f2af3f2b837798c2fbf1ba47dfe656e9335dfd69214897b9588526039ebfd2"
+    },
+    "chicago_socrata_building_permits_2023_2026_raw/part-00000.json": {
+      "bytes": 7371208,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_socrata_building_permits_2023_2026_raw/part-00000.json",
+      "sha256": "89ee8c3334466475af8883cb1c8236bc1560e8ba00bd6e1482e0008a719140d4"
+    },
+    "chicago_socrata_building_permits_2023_2026_raw/part-00000.json.capture.json": {
+      "bytes": 1552,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_socrata_building_permits_2023_2026_raw/part-00000.json.capture.json",
+      "sha256": "957e5f6ffd7dc2fcfdf98ba1cce8db7c1f1547c37558a0bc53d7748fd17eb17b"
+    },
+    "chicago_socrata_building_permits_2023_2026_raw/part-00001.json": {
+      "bytes": 7470995,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_socrata_building_permits_2023_2026_raw/part-00001.json",
+      "sha256": "a783816b20a7d409eac7e8c4c63f0c88184b3aa6866ad9ad7b5e3e9735011055"
+    },
+    "chicago_socrata_building_permits_2023_2026_raw/part-00001.json.capture.json": {
+      "bytes": 1560,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_socrata_building_permits_2023_2026_raw/part-00001.json.capture.json",
+      "sha256": "c8eaf0a0798bfc374334550bc92d9b34e42afe9eb7083436385cfe7f011ecbbd"
+    },
+    "chicago_socrata_building_permits_2023_2026_raw/part-00002.json": {
+      "bytes": 7334468,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_socrata_building_permits_2023_2026_raw/part-00002.json",
+      "sha256": "6a75e9f9b1f9e047d632f625fd55de806c788cebc6de162210e22f117300ca53"
+    },
+    "chicago_socrata_building_permits_2023_2026_raw/part-00002.json.capture.json": {
+      "bytes": 1560,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_socrata_building_permits_2023_2026_raw/part-00002.json.capture.json",
+      "sha256": "b5b828b4e54cb29851a7785a9689469b0222d1fe48f5f9094a0130b2b4919fac"
+    },
+    "chicago_socrata_building_permits_2023_2026_raw/part-00003.json": {
+      "bytes": 8033285,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_socrata_building_permits_2023_2026_raw/part-00003.json",
+      "sha256": "39d6a840becd348a7f7d82d7ea95ac187b64cdb395eb06680204da3de7fd7dd6"
+    },
+    "chicago_socrata_building_permits_2023_2026_raw/part-00003.json.capture.json": {
+      "bytes": 1560,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_socrata_building_permits_2023_2026_raw/part-00003.json.capture.json",
+      "sha256": "40fe6d72e3268f5a485f2fe296e4b4a5e79d039796ea21f4d14b79acf14b5972"
+    },
+    "chicago_socrata_building_permits_2023_2026_raw/part-00004.json": {
+      "bytes": 4770629,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_socrata_building_permits_2023_2026_raw/part-00004.json",
+      "sha256": "dd2f772003b9a2d5c36798aa657f577cc2852d1c11eef51715eff724285b3ba7"
+    },
+    "chicago_socrata_building_permits_2023_2026_raw/part-00004.json.capture.json": {
+      "bytes": 1562,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_socrata_building_permits_2023_2026_raw/part-00004.json.capture.json",
+      "sha256": "66dbf58fc38ff5aef4828f800d8cbf166702494224da15dca808227bfbc0930e"
+    },
+    "chicago_socrata_building_permits_2023_2026_tract_summary_browser.json": {
+      "bytes": 158783,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_socrata_building_permits_2023_2026_tract_summary_browser.json",
+      "sha256": "07e99e1566f375f2cb27bec1120fbe5fa8270d7b2e3351cca5756a94dd4f6bda"
+    },
+    "chicago_socrata_building_permits_2023_2026_tract_summary_browser.json.capture.json": {
+      "bytes": 1537,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_socrata_building_permits_2023_2026_tract_summary_browser.json.capture.json",
+      "sha256": "6df10ffb319e24c14cd7b7db47bee92ab1ebfdf9b37932fd6adccf7241ab663b"
+    },
+    "chicago_socrata_building_permits_current_sample_browser.json": {
+      "bytes": 737,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_socrata_building_permits_current_sample_browser.json",
+      "sha256": "fd67a67c4da97b2d18aa230f879c05d17b7b58befcd49c56cf6960c43eb7fa16"
+    },
+    "chicago_socrata_building_permits_current_sample_browser.json.capture.json": {
+      "bytes": 1619,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_socrata_building_permits_current_sample_browser.json.capture.json",
+      "sha256": "750a1e6d6136d20c17d711bb02d670d6e6b6025d52c7e562d710abd344bab144"
+    },
+    "chicago_socrata_building_permits_metadata_browser.json": {
+      "bytes": 214044,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_socrata_building_permits_metadata_browser.json",
+      "sha256": "7f3d54b7e15083aa7e41ce303567bed15c0cf31bc7859973d59d2ef6d2eefae6"
+    },
+    "chicago_socrata_building_permits_metadata_browser.json.capture.json": {
+      "bytes": 918,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_socrata_building_permits_metadata_browser.json.capture.json",
+      "sha256": "9b746bd7762530b97b1b8b6189bcabcb1e92e4c040a6c52138749981f9c03567"
+    },
+    "chicago_socrata_building_permits_race_crosscheck_browser.json": {
+      "bytes": 2961,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_socrata_building_permits_race_crosscheck_browser.json",
+      "sha256": "cc01904e4aa42857a2758ac56c05c8b4dd0741c69a559a0105f90f109a95de1a"
+    },
+    "chicago_socrata_building_permits_race_crosscheck_browser.json.capture.json": {
+      "bytes": 1889,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_socrata_building_permits_race_crosscheck_browser.json.capture.json",
+      "sha256": "321487c326ad46967eb442d65ff418c45bed5eeb184954f309f45c1e9cd241f0"
+    },
+    "cook_county_parcel_2021_arcgis_item.json": {
+      "bytes": 5052,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/cook_county_parcel_2021_arcgis_item.json",
+      "sha256": "09fd006c86fb9a7c3f7df931e9820febda69474fec92d99add4c4d4b69177fba"
+    },
+    "cook_county_parcel_2021_hub_metadata.json": {
+      "bytes": 87334,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/cook_county_parcel_2021_hub_metadata.json",
+      "sha256": "74f5d4597261b481b3cd0ea6f05d454aee5616f347e26be95314e05d2032466d"
+    },
+    "datagov_chicago_building_permits_harvest_raw.json": {
+      "bytes": 2252,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/datagov_chicago_building_permits_harvest_raw.json",
+      "sha256": "109bd23bd32b46dea5cc254f7f290d8229b550302f6567a720fd7b90b2264f0a"
+    },
+    "datagov_tiger2020_illinois_harvest_raw.xml": {
+      "bytes": 48058,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/datagov_tiger2020_illinois_harvest_raw.xml",
+      "sha256": "3548c6f3598b4032f7bff5d656b2b90132ed1500910198ef38ea08bfec9b3f91"
+    },
+    "datagov_v4_chicago_building_permits_search.json": {
+      "bytes": 11024,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/datagov_v4_chicago_building_permits_search.json",
+      "sha256": "430abebd90955456a6f292e6377e9c679744735f44932729a313e943beb68504"
+    },
+    "datagov_v4_cook_county_parcel_2021_search.json": {
+      "bytes": 42196,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/datagov_v4_cook_county_parcel_2021_search.json",
+      "sha256": "e80ed5dc94a3ffef4778cbd8850dddbc2ecf04ed7ed07fc5257432319c88a0e2"
+    },
+    "datagov_v4_tiger2020_illinois_tract_search.json": {
+      "bytes": 11334,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/datagov_v4_tiger2020_illinois_tract_search.json",
+      "sha256": "c55e58c8505571f9077d5f46cdf8c22fde3ab4cd9e302da5c51bda5093f7a193"
+    },
+    "fcc_census_block_6716_s_bishop.json": {
+      "bytes": 220,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/fcc_census_block_6716_s_bishop.json",
+      "sha256": "532c2bdf38a43142689101e0fe34f63c335bc77f7ca0f185ccb44a8a8895b5c8"
+    },
+    "fcc_census_block_O2024_0012247_race.json": {
+      "bytes": 216,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/fcc_census_block_O2024_0012247_race.json",
+      "sha256": "086c5c1ac62e2998e79e1c4e3b58c61cab62bd74383c65b2bc4a88cd310dc259"
+    },
+    "fcc_census_block_O2024_0012334_troy.json": {
+      "bytes": 219,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/fcc_census_block_O2024_0012334_troy.json",
+      "sha256": "ed2c6dec68b15a51be9828db4c5d1595f27e2ef8bb06df570579f3a00f7e351c"
+    },
+    "fcc_census_block_O2024_0012532_bosworth.json": {
+      "bytes": 219,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/fcc_census_block_O2024_0012532_bosworth.json",
+      "sha256": "f5d824a404ae7d2a8ffc555b97d4f9f180c7165b4b8e287119d57fb9439262d7"
+    },
+    "historical_cohort_preregistration.json": {
+      "bytes": 19459,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/historical_cohort_preregistration.json",
+      "sha256": "f34d07f290ac29ba0696778cf229113336e076cbf33dd33e9c7c916c0ac9d15b"
+    },
+    "historical_cohort_spatial_crosswalk.json": {
+      "bytes": 79430,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/historical_cohort_spatial_crosswalk.json",
+      "sha256": "90ca576ea332818ea8024bd2699bfdbd2d59690e757a1a194af05eeef96cf92a"
+    },
+    "tiger2020_illinois_place/tl_2020_17_place.cpg": {
+      "bytes": 5,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/tiger2020_illinois_place/tl_2020_17_place.cpg",
+      "sha256": "3ad3031f5503a4404af825262ee8232cc04d4ea6683d42c5dd0a2f2a27ac9824"
+    },
+    "tiger2020_illinois_place/tl_2020_17_place.dbf": {
+      "bytes": 419822,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/tiger2020_illinois_place/tl_2020_17_place.dbf",
+      "sha256": "0e1f037c9ad084dd24add05f75e7f3baec213b8d63bc80c565a43a916033d2e6"
+    },
+    "tiger2020_illinois_place/tl_2020_17_place.prj": {
+      "bytes": 165,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/tiger2020_illinois_place/tl_2020_17_place.prj",
+      "sha256": "0b9041e921d9ebb43247d314608fe9e38a0b008ee793067fc1806199ea1fb9dd"
+    },
+    "tiger2020_illinois_place/tl_2020_17_place.shp": {
+      "bytes": 9608328,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/tiger2020_illinois_place/tl_2020_17_place.shp",
+      "sha256": "f18a8f5c7d03f2a915fd8699a20a00fba861d0608f2e156bcd05852a6928a61d"
+    },
+    "tiger2020_illinois_place/tl_2020_17_place.shp.ea.iso.xml": {
+      "bytes": 46867,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/tiger2020_illinois_place/tl_2020_17_place.shp.ea.iso.xml",
+      "sha256": "f97d1eebb2aeeb4d5b9b810122876b7f24e85af33373c9035b79309b7f7f5dfb"
+    },
+    "tiger2020_illinois_place/tl_2020_17_place.shp.iso.xml": {
+      "bytes": 39195,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/tiger2020_illinois_place/tl_2020_17_place.shp.iso.xml",
+      "sha256": "d8c2717ec90304907d3e1ccb8ba5ffd64adffd03a8dc695329916f1cd1a36e53"
+    },
+    "tiger2020_illinois_place/tl_2020_17_place.shx": {
+      "bytes": 11828,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/tiger2020_illinois_place/tl_2020_17_place.shx",
+      "sha256": "c387b4e37ddfc1afe3566fb306956955f632f6c8768368f25b5d764305a824f5"
+    },
+    "tiger2020_illinois_tract/tl_2020_17_tract.cpg": {
+      "bytes": 5,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/tiger2020_illinois_tract/tl_2020_17_tract.cpg",
+      "sha256": "3ad3031f5503a4404af825262ee8232cc04d4ea6683d42c5dd0a2f2a27ac9824"
+    },
+    "tiger2020_illinois_tract/tl_2020_17_tract.dbf": {
+      "bytes": 349773,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/tiger2020_illinois_tract/tl_2020_17_tract.dbf",
+      "sha256": "3f09f2b8b29e694abf267386358ce5afed252dbe2f24b0223e2c673cc9f0db00"
+    },
+    "tiger2020_illinois_tract/tl_2020_17_tract.prj": {
+      "bytes": 165,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/tiger2020_illinois_tract/tl_2020_17_tract.prj",
+      "sha256": "0b9041e921d9ebb43247d314608fe9e38a0b008ee793067fc1806199ea1fb9dd"
+    },
+    "tiger2020_illinois_tract/tl_2020_17_tract.shp": {
+      "bytes": 16964256,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/tiger2020_illinois_tract/tl_2020_17_tract.shp",
+      "sha256": "d224e75ff7640543f703212a40b3e3dd914de507597d05527d99aadcc44e2747"
+    },
+    "tiger2020_illinois_tract/tl_2020_17_tract.shp.ea.iso.xml": {
+      "bytes": 21354,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/tiger2020_illinois_tract/tl_2020_17_tract.shp.ea.iso.xml",
+      "sha256": "5620c9e210121c0e85ab68f5ecf795e12acb0d14333cc7cb468329762cd7b93f"
+    },
+    "tiger2020_illinois_tract/tl_2020_17_tract.shp.iso.xml": {
+      "bytes": 39583,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/tiger2020_illinois_tract/tl_2020_17_tract.shp.iso.xml",
+      "sha256": "73d26dcf221007ca535b2154c1ae6124451f83adf1821786c9367548181ccf0a"
+    },
+    "tiger2020_illinois_tract/tl_2020_17_tract.shx": {
+      "bytes": 26220,
+      "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/tiger2020_illinois_tract/tl_2020_17_tract.shx",
+      "sha256": "af67c04e2e0af56d9efd847d82e9788f1960464232463d1c7fc42baf7cd22490"
+    }
+  },
+  "checks": {
+    "candidate_control_claim_boundary_remains_closed": {
+      "details": {
+        "candidate_control_tract_count": 700,
+        "queen_interference_buffer_tract_count": 84,
+        "treated_event_tract_count": 17,
+        "verified_untreated_control_status_ready": false
+      },
+      "passed": true
+    },
+    "effective_date_semantics_remain_unresolved": {
+      "details": {
+        "effective_onset_verified": false,
+        "effective_rule": "after passage and due publication",
+        "elms_last_publication_timestamp": "2026-07-17T14:25:18+00:00",
+        "last_publication_field_legal_semantics_documented": false,
+        "passage_timestamp": "2026-07-15T15:00:00+00:00"
+      },
+      "passed": true
+    },
+    "enacted_zoning_transition_and_legal_boundary": {
+      "details": {
+        "east_boundary": "South Bishop Street",
+        "from_zoning": "RS-3",
+        "legal_boundary_verified": true,
+        "machine_polygon_verified": false,
+        "north_offset_from_west_marquette_road_feet": 166,
+        "north_south_depth_feet": 25,
+        "south_offset_from_west_marquette_road_feet": 191,
+        "to_zoning": "RM-4.5",
+        "west_boundary": "alley next west of and parallel to South Bishop Street"
+      },
+      "passed": true
+    },
+    "expanded_historical_cohort_preregistration": {
+      "details": {
+        "all_seed_records_retained": true,
+        "cohort_digest": "35f8d6d5e2523ca3400bc87ada22e539d5511550e1fffe77c71790c1490d622c",
+        "excluded_row_count": 267,
+        "selected_event_count": 23,
+        "selection_blind_to_outcomes": true,
+        "source_row_count": 290
+      },
+      "passed": true
+    },
+    "expanded_historical_cohort_spatial_crosswalk": {
+      "details": {
+        "cohort_event_count": 23,
+        "crosswalk_digest": "95f2d7ed8422b4a44df6ffed06a913460915065cada7e6a64b2e87b9c3bc59e4",
+        "current_parcel_crosswalk_ready_count": 19,
+        "joint_spatial_crosswalk_ready_count": 17,
+        "missing_zoning_map_records": [
+          "O2024-0013362"
+        ],
+        "point_address_ready_count": 19,
+        "point_polygon_mismatch_records": [
+          "O2024-0012332"
+        ],
+        "tract_crosswalk_ready_count": 19,
+        "zoning_map_ready_count": 22
+      },
+      "passed": true
+    },
+    "historical_candidate_point_and_tract_crosswalk": {
+      "details": {
+        "address_provider": "City of Chicago AddressPoints GeocodeServer",
+        "candidate_count": 3,
+        "pins_verified": true,
+        "point_addresses_verified": true,
+        "prior_geocode_http_statuses": [
+          503,
+          503,
+          504
+        ],
+        "tract_crosswalks_verified": true,
+        "tract_geoids": [
+          "17031243400",
+          "17031300900",
+          "17031830600"
+        ],
+        "tract_provider": "FCC Census Block API, 2020 vintage"
+      },
+      "passed": true
+    },
+    "historical_current_zoning_map_update": {
+      "details": {
+        "candidate_count": 3,
+        "clerk_document_numbers_verified": true,
+        "destination_zone_classes_verified": true,
+        "known_area_ratios_to_legal_lot": {
+          "O2024-0012247": 1.365344,
+          "O2024-0012532": 1.403035
+        },
+        "machine_legal_parcel_geometries_verified": false,
+        "projected_polygon_geometries_verified": true,
+        "provider": "City of Chicago current Zoning FeatureServer"
+      },
+      "passed": true
+    },
+    "historical_zoning_candidate_filter": {
+      "details": {
+        "filtered_result_count": 290,
+        "query_endpoint": "Chicago eLMS /matter",
+        "query_top": 100,
+        "required_attachment_type": "Exhibits",
+        "required_final_action_before": "2025-01-01T00:00:00Z",
+        "required_status": "90-Final",
+        "zoning_rows_in_first_page": 88
+      },
+      "passed": true
+    },
+    "historical_zoning_cohort_remains_screening_only": {
+      "details": {
+        "attachment_metadata_verified": true,
+        "bounded_treated_address_outcome_rows_verified": true,
+        "candidate_count": 3,
+        "cohort_panel_materialized": false,
+        "complete_tract_outcome_rows_verified": false,
+        "effective_dates_verified": false,
+        "final_document_bytes": 2898496,
+        "final_documents_downloaded": true,
+        "legal_boundaries_parsed": true,
+        "point_addresses_verified": true,
+        "point_to_tract_crosswalks_verified": true,
+        "screening_status": "treated_address_outcome_sample_ready_but_tract_universe_controls_effective_onset_and_geometry_blocked",
+        "treatment_geometries_verified": false,
+        "untreated_control_outcome_rows_verified": false,
+        "zoning_map_polygons_verified": true,
+        "zoning_transitions_verified": true
+      },
+      "passed": true
+    },
+    "historical_zoning_final_document_integrity": {
+      "details": {
+        "candidate_count": 3,
+        "document_count": 6,
+        "ocr_method": "Apple Vision local OCR",
+        "pdf_magic_and_sha256_verified": true,
+        "total_bytes": 2898496
+      },
+      "passed": true
+    },
+    "historical_zoning_narrative_project_scale": {
+      "details": {
+        "candidate_specifications": {
+          "O2024-0012247": {
+            "address": "1228 W Race Ave",
+            "dwelling_units_after": 3,
+            "dwelling_units_before": 2,
+            "from_zoning": "B3-2",
+            "legal_width_feet": 24,
+            "lot_area_square_feet": 2088,
+            "to_zoning": "B2-3"
+          },
+          "O2024-0012334": {
+            "address": "2437 S Troy St",
+            "dwelling_units_after": 5,
+            "dwelling_units_before": 3,
+            "from_zoning": "RT4",
+            "legal_width_feet": 24,
+            "lot_area_square_feet": null,
+            "to_zoning": "RM5"
+          },
+          "O2024-0012532": {
+            "address": "6453 N Bosworth Ave",
+            "dwelling_units_after": 4,
+            "dwelling_units_before": 3,
+            "from_zoning": "RS3",
+            "legal_width_feet": 31,
+            "lot_area_square_feet": 3885,
+            "to_zoning": "RM4.5"
+          }
+        },
+        "ocr_is_derived_evidence": true,
+        "project_scale_text_verified": true
+      },
+      "passed": true
+    },
+    "historical_zoning_seed_details": {
+      "details": {
+        "candidate_count": 3,
+        "candidate_record_numbers": [
+          "O2024-0012247",
+          "O2024-0012334",
+          "O2024-0012532"
+        ],
+        "final_action_date": "2024-10-30T15:00:00+00:00",
+        "final_narrative_and_plans_present": true,
+        "final_ordinance_present": true,
+        "minimum_complete_post_publication_months": 19,
+        "publication_date": "2024-11-21",
+        "status": "90-Final",
+        "sub_status": "Passed"
+      },
+      "passed": true
+    },
+    "historical_zoning_transitions_and_legal_boundaries": {
+      "details": {
+        "candidate_specifications": {
+          "O2024-0012247": {
+            "address": "1228 W Race Ave",
+            "dwelling_units_after": 3,
+            "dwelling_units_before": 2,
+            "from_zoning": "B3-2",
+            "legal_width_feet": 24,
+            "lot_area_square_feet": 2088,
+            "to_zoning": "B2-3"
+          },
+          "O2024-0012334": {
+            "address": "2437 S Troy St",
+            "dwelling_units_after": 5,
+            "dwelling_units_before": 3,
+            "from_zoning": "RT4",
+            "legal_width_feet": 24,
+            "lot_area_square_feet": null,
+            "to_zoning": "RM5"
+          },
+          "O2024-0012532": {
+            "address": "6453 N Bosworth Ave",
+            "dwelling_units_after": 4,
+            "dwelling_units_before": 3,
+            "from_zoning": "RS3",
+            "legal_width_feet": 31,
+            "lot_area_square_feet": 3885,
+            "to_zoning": "RM4.5"
+          }
+        },
+        "effective_onsets_verified": false,
+        "effective_rule": "after passage and due publication",
+        "legal_boundary_text_verified": true,
+        "machine_treatment_geometries_verified": false
+      },
+      "passed": true
+    },
+    "monthly_post_treatment_horizon_unavailable": {
+      "details": {
+        "candidate_temporal_role": "crosswalk_fixture_not_effect_estimation_pilot",
+        "complete_post_treatment_months_available": 0,
+        "elms_last_publication_timestamp": "2026-07-17T14:25:18+00:00",
+        "latest_official_permit_catalog_date": "2026-07-21",
+        "minimum_structural_requirement": "at least one complete post-treatment period",
+        "passage_timestamp": "2026-07-15T15:00:00+00:00",
+        "target_cadence": "monthly"
+      },
+      "passed": true
+    },
+    "official_arcgis_building_permit_discovery_adjudication": {
+      "details": {
+        "building_permit_layer_discovered": false,
+        "official_externalapps_service_count": 32,
+        "permit_map_layer_count": 21,
+        "permit_named_leaf_layers": [
+          "SPADE.PWU_PERMITS"
+        ],
+        "permit_named_services": [
+          {
+            "name": "ExternalApps/Permit_Map",
+            "type": "MapServer"
+          }
+        ],
+        "public_way_use_permit_layer_rejected": true,
+        "search_scope": "official ExternalApps ArcGIS service directory"
+      },
+      "passed": true
+    },
+    "official_building_records_bounded_permit_rows": {
+      "details": {
+        "address_history_with_permits_count": 16,
+        "blank_description_of_work_count": 1,
+        "blank_descriptions_imputed": false,
+        "issue_date_is_construction_start": false,
+        "permit_row_count": 70,
+        "queried_address_count": 17,
+        "stable_id_field": "PERMIT #",
+        "time_field": "DATE ISSUED"
+      },
+      "passed": true
+    },
+    "official_building_records_cohort_selection_crosswalk": {
+      "details": {
+        "distinct_crosswalked_tract_count": 17,
+        "eligible_event_count": 17,
+        "queried_event_count": 17,
+        "selection_rule": "spatial_consistency.ready == true"
+      },
+      "passed": true
+    },
+    "official_building_records_current_address_schema": {
+      "details": {
+        "current_permit_columns": [
+          "PERMIT #",
+          "DATE ISSUED",
+          "DESCRIPTION OF WORK"
+        ],
+        "html_application_schema_is_socrata_bulk_schema": false,
+        "nonempty_address_histories_with_matching_schema": 16,
+        "zero_permit_address_histories": 1
+      },
+      "passed": true
+    },
+    "official_building_records_identity_and_agreement": {
+      "details": {
+        "access_boundary": "interactive_selection_required",
+        "access_mode": "public_html_application_after_user_agreement",
+        "agreement_http_status": 200,
+        "canonical_url": "https://webapps1.chicago.gov/buildingrecords/",
+        "license_terms_require_review": true,
+        "publisher": "City of Chicago Department of Buildings"
+      },
+      "passed": true
+    },
+    "official_building_records_post_publication_observation": {
+      "details": {
+        "address_history_with_post_publication_permits_count": 11,
+        "post_publication_is_causal_effect": false,
+        "post_publication_permit_row_count": 18,
+        "publication_date_is_verified_effective_onset": false
+      },
+      "passed": true
+    },
+    "official_building_records_raw_pages_hash_bound": {
+      "details": {
+        "agreement_page_hash_bound": true,
+        "result_page_count": 17,
+        "result_pages_hash_bound": 17
+      },
+      "passed": true
+    },
+    "official_building_records_remains_bounded_outcome_evidence": {
+      "details": {
+        "address_level_rows_verified": true,
+        "causal_estimation_admitted": false,
+        "complete_tract_permit_universe_verified": false,
+        "tract_month_panel_materialized": false,
+        "untreated_control_outcomes_verified": false
+      },
+      "passed": true
+    },
+    "official_chicago_2020_tract_universe": {
+      "details": {
+        "city_tract_count": 801,
+        "membership_rule": "positive area intersection with Chicago city",
+        "place_geoid": "1714000"
+      },
+      "passed": true
+    },
+    "official_chicago_city_network_is_cook_dupage_complete": {
+      "details": {
+        "adjacency_digest": "fead03de4916430aa989cf60c7b6710d8bd0e33bbbca29e94cec277b93925b06",
+        "city_tract_count": 801,
+        "county_counts": {
+          "031": 799,
+          "043": 2
+        },
+        "outside_city_interference_ready": false,
+        "queen_edge_count": 2636,
+        "rook_edge_count": 1889,
+        "topology_quality_pass": true
+      },
+      "passed": true
+    },
+    "official_chicago_developer_repository_identity": {
+      "details": {
+        "description": "Developer resources provided by the City of Chicago and sister agencies and get technical updates from the developer blog.",
+        "fork": false,
+        "owner": "Chicago",
+        "owner_type": "Organization",
+        "repository": "Chicago/dev.cityofchicago.org",
+        "visibility": "public"
+      },
+      "passed": true
+    },
+    "official_chicago_point_address": {
+      "details": {
+        "address": "6716 S BISHOP ST, 60636",
+        "address_type": "PointAddress",
+        "community": "WEST ENGLEWOOD",
+        "pin": "2020302029",
+        "score": 100,
+        "ward": 16
+      },
+      "passed": true
+    },
+    "official_city_arcgis_candidate_role_adjudication": {
+      "details": {
+        "city_census_tract_feature_count": 878,
+        "city_census_tract_rejected_for_2020_adjacency": true,
+        "city_census_tract_year": 2000,
+        "parcel_addresses_layer_discovered": true,
+        "public_way_permit_layer": "SPADE.PWU_PERMITS",
+        "public_way_permit_rejected_as_building_outcome": true
+      },
+      "passed": true
+    },
+    "official_cook_county_parcel_metadata": {
+      "details": {
+        "access": "public",
+        "access_information": "Cook County Clerk",
+        "arcgis_item_id": "34021b4f3b834a69bf737e6c3344888e",
+        "dataset_id": "77tz-riq7",
+        "geometry_type": "esriGeometryPolygon",
+        "license_declared": true,
+        "owner": "Cook_County_GIS",
+        "pin_fields_present": true,
+        "query_observation": "official feature query timed out",
+        "source": "Cook County Government",
+        "target_pin10": "2020302029",
+        "target_row_or_geometry_sample_verified": false,
+        "tract_field_present": true
+      },
+      "passed": true
+    },
+    "official_current_zoning_context": {
+      "details": {
+        "feature_count": 1,
+        "object_id": 1661018,
+        "zone_class": "RS-3"
+      },
+      "passed": true
+    },
+    "official_elms_matter_and_final_attachments": {
+      "details": {
+        "attachment_count": 7,
+        "final_action_date": "2026-07-15T15:00:00+00:00",
+        "last_publication_date": "2026-07-17T14:25:18+00:00",
+        "matter_id": "86390664-2D38-F111-88B3-001DD8033B18",
+        "record_number": "O2026-0024863",
+        "status": "90-Final",
+        "sub_status": "Passed"
+      },
+      "passed": true
+    },
+    "official_fcc_block_to_tract": {
+      "details": {
+        "block_fips": "170316716001013",
+        "derived_tract_geoid": "17031671600"
+      },
+      "passed": true
+    },
+    "official_final_document_integrity": {
+      "details": {
+        "extraction_method": "Apple Vision local OCR",
+        "final_narrative_and_plans_bytes": 291862,
+        "final_ordinance_bytes": 26692,
+        "ocr_is_derived_evidence": true
+      },
+      "passed": true
+    },
+    "official_final_narrative_land_use": {
+      "details": {
+        "building_height_feet": 28,
+        "lot_area_square_feet": 3115,
+        "proposed_dwelling_units": 2,
+        "proposed_zoning": "RM-4.5"
+      },
+      "passed": true
+    },
+    "official_permit_catalog_coverage": {
+      "details": {
+        "distribution_count": 6,
+        "license_declared": false,
+        "modified": "2026-07-21"
+      },
+      "passed": true
+    },
+    "official_permit_catalog_identity": {
+      "details": {
+        "access_level": "public",
+        "organization": "City of Chicago",
+        "organization_type": "City Government",
+        "title": "Building Permits"
+      },
+      "passed": true
+    },
+    "official_permit_contact_field_removal_semantics": {
+      "details": {
+        "bulk_contact_addresses_removed": true,
+        "bulk_contact_phones_removed": true,
+        "dataset_id": "ydr8-5enu",
+        "documented_at": "2019-07-16T14:45:00-05:00",
+        "not_a_random_missingness_mechanism": true,
+        "removal_reason": "privacy and misuse risk"
+      },
+      "passed": true
+    },
+    "official_permit_historical_schema_semantics": {
+      "details": {
+        "current_schema_verified": false,
+        "dataset_id": "ydr8-5enu",
+        "documented_at": "2019-07-09T16:00:00-05:00",
+        "documented_candidate_cost_field": "REPORTED_COST",
+        "documented_candidate_spatial_fields": [
+          "COMMUNITY_AREA",
+          "CENSUS_TRACT",
+          "WARD",
+          "XCOORDINATE",
+          "YCOORDINATE"
+        ],
+        "documented_candidate_time_fields": [
+          "APPLICATION_START_DATE",
+          "ISSUE_DATE",
+          "PROCESSING_TIME"
+        ]
+      },
+      "passed": true
+    },
+    "official_permit_issue_date_fallback_semantics": {
+      "details": {
+        "causal_warning": "ISSUE_DATE may combine two source-system date fields and is not evidence of construction start",
+        "current_row_level_issue_date_complete_verified": false,
+        "dataset_id": "ydr8-5enu",
+        "documented_at": "2017-11-20T11:00:00-06:00",
+        "fallback_only_when_primary_blank": true,
+        "historical_missing_share_approximate": 0.05,
+        "issue_date_primary_field_fallback_documented": true
+      },
+      "passed": true
+    },
+    "official_permit_tract_month_panel_materialized": {
+      "details": {
+        "month_count": 42,
+        "panel_digest": "352731108199f82fa76b3edaffd0f7bfb295af413fb3c3c10145026b7d1119b3",
+        "panel_row_count": 33642,
+        "permit_count": 114816,
+        "unit_count": 801
+      },
+      "passed": true
+    },
+    "official_socrata_browser_capture_hash_chain": {
+      "details": {
+        "cookies_or_credentials_persisted": false,
+        "hash_bound_artifact_count": 41,
+        "panel_source_artifact_count": 41
+      },
+      "passed": true
+    },
+    "official_socrata_permit_snapshot_identity": {
+      "details": {
+        "complete_month_count": 42,
+        "dataset_id": "ydr8-5enu",
+        "part_counts": [
+          25000,
+          25000,
+          25000,
+          25000,
+          14896
+        ],
+        "row_count": 114896
+      },
+      "passed": true
+    },
+    "official_tiger2020_adjacency_topology_passes": {
+      "details": {
+        "causal_estimation_admitted": false,
+        "node_count": 1332,
+        "queen_connected_component_count": 1,
+        "queen_edge_count": 4410,
+        "rook_connected_component_count": 1,
+        "rook_edge_count": 3416,
+        "target_tract_count": 17,
+        "topology_quality_pass": true
+      },
+      "passed": true
+    },
+    "official_tiger2020_geometry_components_verified": {
+      "details": {
+        "adjacency_digest": "0febf92459507466e8987ad80f0d9ba0ce0158ab3a251f5e2ad36a9f7d3ce21f",
+        "component_count": 7,
+        "component_level_hashes_verified": true,
+        "cook_county_feature_count": 1332,
+        "crs": "EPSG:4269",
+        "original_archive_bytes_preserved": false,
+        "source_feature_count": 3265
+      },
+      "passed": true
+    },
+    "official_tiger2020_illinois_catalog_identity": {
+      "details": {
+        "downloaded_components_verified": true,
+        "issued": "2020-01-01T00:00:00.000+00:00",
+        "last_harvested_date": "2026-04-11T19:43:58.141424",
+        "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "organization": "U.S. Census Bureau, Department of Commerce",
+        "organization_type": "Federal Government",
+        "publisher": {
+          "@type": "org:Organization",
+          "name": "U.S. Department of Commerce, U.S. Census Bureau, Geography Division, Spatial Data Collection and Products Branch"
+        },
+        "title": "TIGER/Line Shapefile, 2020, State, Illinois, Census Tracts",
+        "zip_bytes_verified": false,
+        "zip_url": "https://www2.census.gov/geo/tiger/TIGER2020/TRACT/tl_2020_17_tract.zip"
+      },
+      "passed": true
+    },
+    "official_tiger2020_illinois_iso_metadata": {
+      "details": {
+        "actual_geoid_fields_verified": true,
+        "actual_geometry_sample_verified": true,
+        "bbox": {
+          "east": "-87.019935",
+          "north": "42.508481",
+          "south": "36.970298",
+          "west": "-91.513079"
+        },
+        "component_level_hashes_verified": true,
+        "crs": "urn:ogc:def:crs:EPSG::4269",
+        "feature_type": "Census Tracts",
+        "fees": "The online copy of the TIGER/Line Shapefiles may be accessed without charge.",
+        "file_identifier": "tl_2020_17_tract.shp.iso.xml",
+        "transfer_url_count": 5
+      },
+      "passed": true
+    },
+    "permit_missing_coordinate_recovery_fail_closed": {
+      "details": {
+        "exact_address_geocoder_recovered_row_count": 44,
+        "fuzzy_address_matches_admitted": false,
+        "initial_unresolved_row_count": 1658,
+        "missingness_assumed_random": false,
+        "remaining_unresolved_row_count": 72,
+        "state_plane_recovered_row_count": 1542
+      },
+      "passed": true
+    },
+    "permit_spatial_assignment_fail_closed": {
+      "details": {
+        "admitted_row_count": 114816,
+        "admitted_share": 0.999303718,
+        "direct_point_conflict_count": 363,
+        "outside_city_row_count": 8,
+        "unresolved_row_count": 72
+      },
+      "passed": true
+    },
+    "point_inside_secondary_tract_geometry": {
+      "details": {
+        "point_inside_or_on_boundary": true,
+        "point_wgs84": [
+          -87.66061727108206,
+          41.77166529892371
+        ],
+        "tract_geoid": "17031671600"
+      },
+      "passed": true
+    },
+    "remaining_pin_and_facility_recovery_stays_fail_closed": {
+      "details": {
+        "adjudication_digest": "4ca61668bf1ebc68457146ebcd3469899e1f07b226f076ec1013a3d2f234a2f2",
+        "facility_context_row_count": 26,
+        "facility_point_used_as_permit_location": false,
+        "pin_bearing_row_count": 14,
+        "pin_recovered_row_count": 0,
+        "remaining_unresolved_row_count": 72,
+        "returned_unique_pin_polygon_count": 11
+      },
+      "passed": true
+    },
+    "secondary_acs2024_sample": {
+      "details": {
+        "authority": "secondary",
+        "estimate_moe_complete": true,
+        "provider": "Census Reporter",
+        "release_id": "acs2024_5yr",
+        "release_years": "2020-2024",
+        "table_ids": [
+          "B01003",
+          "B19013",
+          "B23025",
+          "B25001"
+        ]
+      },
+      "passed": true
+    },
+    "secondary_cook_county_tract_geometry_coverage": {
+      "details": {
+        "authority": "verified_secondary_not_official_admission",
+        "feature_count": 1332,
+        "geometry_types": [
+          "Polygon"
+        ],
+        "official_tiger_geometry_verified": false,
+        "provider": "Census Reporter",
+        "target_distinct_tract_count": 17,
+        "target_event_count": 17,
+        "unique_geoid_count": 1332
+      },
+      "passed": true
+    },
+    "secondary_provisional_adjacency_reproducible": {
+      "details": {
+        "adjacency_digest": "07520fd49560ff5f747547a6dd068e2d1c5e5cd54cff9b2c07859a1804ac915f",
+        "node_count": 1332,
+        "official_network_admitted": false,
+        "queen_edge_count": 2458,
+        "rook_edge_count": 1081,
+        "target_tract_count": 17
+      },
+      "passed": true
+    },
+    "secondary_provisional_adjacency_topology_fails_closed": {
+      "details": {
+        "failure_reason": "secondary simplified geometry does not preserve tract boundary topology well enough for interference exposure mapping",
+        "queen_connected_component_count": 100,
+        "queen_isolated_node_count": 67,
+        "rook_connected_component_count": 378,
+        "rook_isolated_node_count": 234,
+        "target_tracts_with_zero_rook_neighbors": [
+          "17031242700",
+          "17031243500",
+          "17031836000"
+        ],
+        "topology_quality_pass": false
+      },
+      "passed": true
+    },
+    "secondary_tiger2024_geometry_sample": {
+      "details": {
+        "authority": "secondary",
+        "geoid": "14000US17031671600",
+        "geometry_type": "Polygon",
+        "outer_ring_vertex_count": 7,
+        "provider": "Census Reporter"
+      },
+      "passed": true
+    },
+    "treatment_polygon_remains_unresolved": {
+      "details": {
+        "case_23063_feature_count": 0,
+        "current_case_number": null,
+        "current_clerk_document_number": null,
+        "current_ordinance_number": null,
+        "interpretation": "negative evidence; current zoning is not treatment polygon"
+      },
+      "passed": true
+    }
+  },
+  "claim_boundary": {
+    "bounded_treated_address_outcomes_not_untreated_controls": true,
+    "building_records_address_history_not_complete_tract_outcome": true,
+    "building_records_html_schema_not_socrata_bulk_schema": true,
+    "candidate_controls_not_verified_globally_untreated": true,
+    "catalog_metadata_not_permit_rows": true,
+    "city_census_tract_2000_not_2020_spatial_unit": true,
+    "city_internal_network_not_outside_city_interference": true,
+    "current_event_not_temporally_viable_for_monthly_effect_estimation": true,
+    "current_parcel_geometry_not_historical_vintage": true,
+    "elms_last_publication_not_verified_effective_onset": true,
+    "event_point_to_tract_not_treatment_polygon": true,
+    "expanded_cohort_partial_crosswalk_not_panel": true,
+    "fuzzy_address_geocoder_matches_not_admitted": true,
+    "general_geospatial_kernel_validated": false,
+    "gwm_k0_validated": false,
+    "historical_issue_date_completeness_not_current_row_validation": true,
+    "historical_legal_boundary_text_not_machine_geometry": true,
+    "historical_matter_metadata_not_cohort_panel": true,
+    "official_change_log_not_current_schema_or_rows": true,
+    "official_cook_adjacency_not_cross_county_network": true,
+    "official_static_adjacency_not_causal_identification": true,
+    "official_static_adjacency_not_outcome_panel": true,
+    "official_tiger_archive_bytes_not_preserved": true,
+    "ohare_facility_point_not_permit_location": true,
+    "ordinance_legal_boundary_not_machine_polygon": true,
+    "outcome_panel_materialization_not_causal_identification": true,
+    "outcome_panel_materialization_not_complete_spatial_assignment": true,
+    "parcel_metadata_not_target_parcel_sample": true,
+    "permit_spatial_missingness_not_assumed_random": true,
+    "pin_without_address_consistency_not_permit_location": true,
+    "point_address_not_treatment_polygon": true,
+    "provisional_adjacency_not_causal_identification": true,
+    "public_way_permits_not_building_permit_outcome": true,
+    "secondary_acs_not_official_source_admission": true,
+    "secondary_computed_edges_not_topology_quality_pass": true,
+    "secondary_full_geometry_not_official_tiger_admission": true,
+    "secondary_geometry_not_official_tiger_admission": true,
+    "simplified_secondary_geometry_not_interference_network": true,
+    "single_tract_not_interference_network": true,
+    "zoning_map_polygon_not_legal_parcel_polygon": true
+  },
+  "historical_candidate_screening": {
+    "bounded_official_document_bytes": 2898496,
+    "candidate_count": 3,
+    "candidate_record_numbers": [
+      "O2024-0012247",
+      "O2024-0012334",
+      "O2024-0012532"
+    ],
+    "candidate_specifications": {
+      "O2024-0012247": {
+        "address": "1228 W Race Ave",
+        "dwelling_units_after": 3,
+        "dwelling_units_before": 2,
+        "from_zoning": "B3-2",
+        "legal_width_feet": 24,
+        "lot_area_square_feet": 2088,
+        "to_zoning": "B2-3"
+      },
+      "O2024-0012334": {
+        "address": "2437 S Troy St",
+        "dwelling_units_after": 5,
+        "dwelling_units_before": 3,
+        "from_zoning": "RT4",
+        "legal_width_feet": 24,
+        "lot_area_square_feet": null,
+        "to_zoning": "RM5"
+      },
+      "O2024-0012532": {
+        "address": "6453 N Bosworth Ave",
+        "dwelling_units_after": 4,
+        "dwelling_units_before": 3,
+        "from_zoning": "RS3",
+        "legal_width_feet": 31,
+        "lot_area_square_feet": 3885,
+        "to_zoning": "RM4.5"
+      }
+    },
+    "causal_estimation_ready": false,
+    "cohort_panel_ready": false,
+    "current_zoning_map_polygons_ready": true,
+    "effective_onsets_ready": false,
+    "event_crosswalks": {
+      "O2024-0012247": {
+        "address_type": "PointAddress",
+        "block_fips_2020": "170312434002007",
+        "community": "WEST TOWN",
+        "match_score": 74.29,
+        "matched_address": "1228 W RACE AVE, 60642",
+        "pin10": "1708126021",
+        "point_epsg_3435": [
+          1167951.401312642,
+          1903946.2914013513
+        ],
+        "point_wgs84": [
+          -87.658642710961,
+          41.891978546929
+        ],
+        "record_number": "O2024-0012247",
+        "source_artifacts": {
+          "chicago_addresspoints_O2024_0012247_race.json": {
+            "bytes": 1440,
+            "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_addresspoints_O2024_0012247_race.json",
+            "sha256": "808f6720dd2664cd3515fd2e991e7290f9cce0e6ffb7cafe4a9165cecf35814c"
+          },
+          "chicago_current_zoning_O2024_0012247_race.json": {
+            "bytes": 1893,
+            "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_current_zoning_O2024_0012247_race.json",
+            "sha256": "83b6e7ea12149e658da1b8c37951ac0a95309ce387fd015f1aa694444f19efe8"
+          },
+          "fcc_census_block_O2024_0012247_race.json": {
+            "bytes": 216,
+            "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/fcc_census_block_O2024_0012247_race.json",
+            "sha256": "086c5c1ac62e2998e79e1c4e3b58c61cab62bd74383c65b2bc4a88cd310dc259"
+          }
+        },
+        "tract_geoid": "17031243400",
+        "validation": {
+          "checks": {
+            "block_derives_expected_tract": true,
+            "bounded_match_score": true,
+            "exact_normalized_address": true,
+            "expected_2020_block": true,
+            "expected_pin10": true,
+            "fcc_status_ok": true,
+            "finite_wgs84_point": true,
+            "point_address_type": true,
+            "single_address_candidate": true,
+            "wgs84_output": true
+          },
+          "passed": true
+        },
+        "ward": 1,
+        "zoning_map_polygon": {
+          "area_ratio_to_legal_lot": 1.365344,
+          "clerk_document_number": "O2024-0012247",
+          "legal_lot_area_square_feet": 2088,
+          "legal_parcel_area_consistent": false,
+          "object_id": 1661744,
+          "ordinance_date_epoch_ms": 1730246400000,
+          "ordinance_number": "22539T1",
+          "ring_count": 1,
+          "shape_area_square_feet": 2850.838134765625,
+          "spatial_reference_latest_wkid": 3435,
+          "spatial_reference_wkid": 102671,
+          "vertex_count": 9,
+          "zone_class": "B2-3"
+        },
+        "zoning_map_validation": {
+          "checks": {
+            "address_point_inside_polygon": true,
+            "clerk_document_matches_event": true,
+            "destination_zone_class_matches_ordinance": true,
+            "illinois_state_plane_output": true,
+            "ordinance_date_matches_final_action": true,
+            "polygon_geometry_present": true,
+            "positive_polygon_area": true,
+            "single_polygon_feature": true
+          },
+          "machine_legal_parcel_polygon_verified": false,
+          "machine_zoning_map_update_verified": true,
+          "passed": true
+        }
+      },
+      "O2024-0012334": {
+        "address_type": "PointAddress",
+        "block_fips_2020": "170313009002011",
+        "community": "SOUTH LAWNDALE",
+        "match_score": 73,
+        "matched_address": "2437 S TROY ST, 60623",
+        "pin10": "1625115015",
+        "point_epsg_3435": [
+          1155885.5240542549,
+          1887486.8033113407
+        ],
+        "point_wgs84": [
+          -87.703399056433,
+          41.847063783488
+        ],
+        "record_number": "O2024-0012334",
+        "source_artifacts": {
+          "chicago_addresspoints_O2024_0012334_troy.json": {
+            "bytes": 1430,
+            "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_addresspoints_O2024_0012334_troy.json",
+            "sha256": "a609bf0ca6651f01220c3b8b736622b8a52fad881fe89939ba9b4518dfc4990a"
+          },
+          "chicago_current_zoning_O2024_0012334_troy.json": {
+            "bytes": 1891,
+            "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_current_zoning_O2024_0012334_troy.json",
+            "sha256": "594af1c994bdc617275cdffe5414e6154f4d495aa6702dfff4a9aed2a2d4a715"
+          },
+          "fcc_census_block_O2024_0012334_troy.json": {
+            "bytes": 219,
+            "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/fcc_census_block_O2024_0012334_troy.json",
+            "sha256": "ed2c6dec68b15a51be9828db4c5d1595f27e2ef8bb06df570579f3a00f7e351c"
+          }
+        },
+        "tract_geoid": "17031300900",
+        "validation": {
+          "checks": {
+            "block_derives_expected_tract": true,
+            "bounded_match_score": true,
+            "exact_normalized_address": true,
+            "expected_2020_block": true,
+            "expected_pin10": true,
+            "fcc_status_ok": true,
+            "finite_wgs84_point": true,
+            "point_address_type": true,
+            "single_address_candidate": true,
+            "wgs84_output": true
+          },
+          "passed": true
+        },
+        "ward": 12,
+        "zoning_map_polygon": {
+          "area_ratio_to_legal_lot": null,
+          "clerk_document_number": "O2024-0012334",
+          "legal_lot_area_square_feet": null,
+          "legal_parcel_area_consistent": null,
+          "object_id": 1661758,
+          "ordinance_date_epoch_ms": 1730246400000,
+          "ordinance_number": "22544T1",
+          "ring_count": 1,
+          "shape_area_square_feet": 4031.9547119140625,
+          "spatial_reference_latest_wkid": 3435,
+          "spatial_reference_wkid": 102671,
+          "vertex_count": 9,
+          "zone_class": "RM-5"
+        },
+        "zoning_map_validation": {
+          "checks": {
+            "address_point_inside_polygon": true,
+            "clerk_document_matches_event": true,
+            "destination_zone_class_matches_ordinance": true,
+            "illinois_state_plane_output": true,
+            "ordinance_date_matches_final_action": true,
+            "polygon_geometry_present": true,
+            "positive_polygon_area": true,
+            "single_polygon_feature": true
+          },
+          "machine_legal_parcel_polygon_verified": false,
+          "machine_zoning_map_update_verified": true,
+          "passed": true
+        }
+      },
+      "O2024-0012532": {
+        "address_type": "PointAddress",
+        "block_fips_2020": "170318306001008",
+        "community": "ROGERS PARK",
+        "match_score": 78.4,
+        "matched_address": "6453 N BOSWORTH AVE, 60626",
+        "pin10": "1132323002",
+        "point_epsg_3435": [
+          1164847.9950355224,
+          1943160.291120241
+        ],
+        "point_wgs84": [
+          -87.668923785758,
+          41.999650128188
+        ],
+        "record_number": "O2024-0012532",
+        "source_artifacts": {
+          "chicago_addresspoints_O2024_0012532_bosworth.json": {
+            "bytes": 1468,
+            "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_addresspoints_O2024_0012532_bosworth.json",
+            "sha256": "a93eeb923cfca68f8e41a74c489bb34838280fbc8207d79ea0ab253fde84fb1b"
+          },
+          "chicago_current_zoning_O2024_0012532_bosworth.json": {
+            "bytes": 1897,
+            "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_current_zoning_O2024_0012532_bosworth.json",
+            "sha256": "9b15e7997b71807c936cf2c32247cf76e1900d32d068c85623ea277c69c9739d"
+          },
+          "fcc_census_block_O2024_0012532_bosworth.json": {
+            "bytes": 219,
+            "path": "benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/fcc_census_block_O2024_0012532_bosworth.json",
+            "sha256": "f5d824a404ae7d2a8ffc555b97d4f9f180c7165b4b8e287119d57fb9439262d7"
+          }
+        },
+        "tract_geoid": "17031830600",
+        "validation": {
+          "checks": {
+            "block_derives_expected_tract": true,
+            "bounded_match_score": true,
+            "exact_normalized_address": true,
+            "expected_2020_block": true,
+            "expected_pin10": true,
+            "fcc_status_ok": true,
+            "finite_wgs84_point": true,
+            "point_address_type": true,
+            "single_address_candidate": true,
+            "wgs84_output": true
+          },
+          "passed": true
+        },
+        "ward": 40,
+        "zoning_map_polygon": {
+          "area_ratio_to_legal_lot": 1.403035,
+          "clerk_document_number": "O2024-0012532",
+          "legal_lot_area_square_feet": 3885,
+          "legal_parcel_area_consistent": false,
+          "object_id": 1661741,
+          "ordinance_date_epoch_ms": 1730246400000,
+          "ordinance_number": "22570T1",
+          "ring_count": 1,
+          "shape_area_square_feet": 5450.791259765625,
+          "spatial_reference_latest_wkid": 3435,
+          "spatial_reference_wkid": 102671,
+          "vertex_count": 9,
+          "zone_class": "RM-4.5"
+        },
+        "zoning_map_validation": {
+          "checks": {
+            "address_point_inside_polygon": true,
+            "clerk_document_matches_event": true,
+            "destination_zone_class_matches_ordinance": true,
+            "illinois_state_plane_output": true,
+            "ordinance_date_matches_final_action": true,
+            "polygon_geometry_present": true,
+            "positive_polygon_area": true,
+            "single_polygon_feature": true
+          },
+          "machine_legal_parcel_polygon_verified": false,
+          "machine_zoning_map_update_verified": true,
+          "passed": true
+        }
+      }
+    },
+    "expanded_preregistered_cohort": {
+      "causal_estimation_ready": false,
+      "cohort_crosswalk_complete": false,
+      "cohort_digest": "35f8d6d5e2523ca3400bc87ada22e539d5511550e1fffe77c71790c1490d622c",
+      "cohort_id": "chicago_single_address_t1_zoning_2023_2024_v1",
+      "crosswalk_digest": "95f2d7ed8422b4a44df6ffed06a913460915065cada7e6a64b2e87b9c3bc59e4",
+      "current_parcel_crosswalk_ready_count": 19,
+      "joint_spatial_crosswalk_ready_count": 17,
+      "missing_zoning_map_records": [
+        "O2024-0013362"
+      ],
+      "outcome_panel_ready": false,
+      "point_address_ready_count": 19,
+      "point_polygon_mismatch_records": [
+        "O2024-0012332"
+      ],
+      "selected_event_count": 23,
+      "source_row_count": 290,
+      "tract_crosswalk_ready_count": 19,
+      "zoning_map_ready_count": 22
+    },
+    "final_attachment_metadata_ready": true,
+    "final_document_evidence_ready": true,
+    "final_documents_downloaded": true,
+    "legal_boundary_text_ready": true,
+    "machine_treatment_geometries_ready": false,
+    "minimum_complete_post_publication_months": 19,
+    "official_pins_ready": true,
+    "official_point_addresses_ready": true,
+    "point_to_tract_crosswalks_ready": true,
+    "source_and_crosswalk_ready": false,
+    "temporal_screen_ready": true,
+    "zoning_transition_text_ready": true
+  },
+  "report_digest": "cb1fb6df9c6d5f6074b4f7ad980976e09a70e2f730375b7298ab3aed46bd5a35",
+  "schema": "gwm.chicago_longitudinal_data_foundation_audit.v1",
+  "source_role_progress": {
+    "interference_network": {
+      "adjacency_constructed": true,
+      "city_tract_2000_not_usable_for_2020_adjacency": true,
+      "dynamic_network_ready": false,
+      "network_to_unit_time_ready": true,
+      "official_adjacency_constructed": true,
+      "official_city_queen_edge_count": 2636,
+      "official_city_rook_edge_count": 1889,
+      "official_city_tract_count": 801,
+      "official_cook_county_queen_edge_count": 4410,
+      "official_cook_county_rook_edge_count": 3416,
+      "official_cook_dupage_city_internal_network_ready": true,
+      "official_cook_internal_interference_network_usable": true,
+      "official_queen_connected_component_count": 1,
+      "official_rook_connected_component_count": 1,
+      "official_topology_quality_pass": true,
+      "outside_city_interference_ready": false,
+      "provisional_interference_network_usable": false,
+      "provisional_queen_adjacency_constructed": true,
+      "provisional_queen_edge_count": 2458,
+      "provisional_rook_adjacency_constructed": true,
+      "provisional_rook_edge_count": 1081,
+      "provisional_topology_quality_pass": false,
+      "secondary_full_cook_geometry_available": true,
+      "single_tract_geometry_available": true
+    },
+    "observed_outcomes": {
+      "blank_description_of_work_count": 1,
+      "bounded_permit_row_count": 70,
+      "bounded_post_publication_permit_row_count": 18,
+      "bounded_socrata_snapshot_complete": true,
+      "bounded_socrata_snapshot_row_count": 114896,
+      "bounded_treated_address_count": 17,
+      "candidate_control_outcomes_materialized": true,
+      "complete_tract_permit_universe_verified": false,
+      "exact_address_geocoder_recovered_permit_row_count": 44,
+      "facility_context_permit_row_count": 26,
+      "license_verified": true,
+      "official_bounded_address_level_rows_verified": true,
+      "official_catalog_metadata_verified": true,
+      "official_contact_field_removal_semantics_verified": true,
+      "official_current_address_level_schema_verified": true,
+      "official_current_socrata_metadata_verified": true,
+      "official_current_socrata_schema_verified": true,
+      "official_historical_schema_semantics_verified": true,
+      "official_issue_date_fallback_semantics_verified": true,
+      "official_terms_of_use_verified": true,
+      "outside_chicago_permit_row_count": 8,
+      "pin_parcel_recovered_permit_row_count": 0,
+      "public_way_permits_rejected_as_building_outcome": true,
+      "row_sample_verified": true,
+      "row_schema_verified": true,
+      "socrata_bulk_row_schema_verified": true,
+      "spatial_assignment_admitted_share": 0.999303718,
+      "spatially_admitted_permit_row_count": 114816,
+      "spatially_unresolved_permit_row_count": 72,
+      "state_plane_recovered_permit_row_count": 1542,
+      "tract_month_outcome_panel_materialized": true,
+      "tract_month_outcome_panel_ready": false,
+      "untreated_control_outcomes_verified": false
+    },
+    "spatial_units": {
+      "city_census_tract_candidate_rejected_for_2020_panel": true,
+      "city_census_tract_candidate_year": 2000,
+      "city_current_parcel_crosswalk_ready_count": 19,
+      "city_current_parcel_historical_vintage_verified": false,
+      "official_chicago_cook_tract_count": 799,
+      "official_chicago_dupage_tract_count": 2,
+      "official_chicago_place_geometry_verified": true,
+      "official_chicago_tract_count": 801,
+      "official_chicago_tract_universe_verified": true,
+      "official_cook_county_parcel_metadata_verified": true,
+      "official_cook_tract_count": 1332,
+      "official_target_parcel_sample_verified": false,
+      "official_tiger2020_archive_bytes_preserved": false,
+      "official_tiger2020_catalog_identity_verified": true,
+      "official_tiger2020_declared_crs": "EPSG:4269",
+      "official_tiger2020_iso_metadata_verified": true,
+      "official_tiger2020_license_verified": true,
+      "official_tiger2020_zip_accessible_in_browser": true,
+      "official_tiger_component_hashes_verified": true,
+      "official_tiger_geometry_verified": true,
+      "secondary_cook_tract_count": 1332,
+      "secondary_full_cook_geometry_verified": true,
+      "secondary_geometry_sample_verified": true
+    },
+    "time_varying_confounders": {
+      "official_acs_sample_verified": false,
+      "secondary_acs_sample_verified": true
+    },
+    "treatment_events": {
+      "candidate_temporal_role": "crosswalk_fixture_not_effect_estimation_pilot",
+      "complete_monthly_post_treatment_periods": 0,
+      "effective_date_verified": false,
+      "enacted_zoning_transition_verified": true,
+      "expanded_current_parcel_crosswalk_ready_count": 19,
+      "expanded_joint_spatial_crosswalk_ready_count": 17,
+      "expanded_point_address_ready_count": 19,
+      "expanded_preregistered_event_count": 23,
+      "expanded_tract_crosswalk_ready_count": 19,
+      "expanded_zoning_map_ready_count": 22,
+      "historical_candidate_pins_verified": true,
+      "historical_candidate_point_addresses_verified": true,
+      "historical_candidate_point_to_tract_verified": true,
+      "historical_current_zoning_map_polygons_verified": true,
+      "historical_machine_legal_parcel_polygons_verified": false,
+      "legal_boundary_verified": true,
+      "machine_polygon_verified": false,
+      "official_point_address_verified": true,
+      "point_to_tract_verified": true,
+      "temporally_viable_for_effect_estimation": false
+    }
+  },
+  "status": "bounded_evidence_valid_partial_outcome_panel_materialized",
+  "summary": {
+    "all_checks_passed": true,
+    "check_count": 55,
+    "passed_check_count": 55,
+    "raw_artifact_count": 126
+  },
+  "target": {
+    "address": "6716 S BISHOP ST, 60636",
+    "application_number": "23063T1",
+    "matter_record_number": "O2026-0024863",
+    "pin10": "2020302029",
+    "point_wgs84": [
+      -87.66061727108206,
+      41.77166529892371
+    ],
+    "tract_geoid": "17031671600"
+  }
+}

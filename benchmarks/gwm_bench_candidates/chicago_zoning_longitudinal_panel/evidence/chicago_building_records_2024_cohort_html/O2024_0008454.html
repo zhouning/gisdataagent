@@ -1,0 +1,1095 @@
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-Q7XJP1T5WP"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-Q7XJP1T5WP');
+</script>
+
+    <title>Building Permit and Inspection Records</title>
+
+    <!-- CSS -->
+	<link href="https://webapps1.cityofchicago.org/cdn/Bootstrap-4.0.0-beta.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://webapps1.cityofchicago.org/cdn/jQuery-UI-1.12.1/jquery-ui.min.css" rel="stylesheet">
+    <link href="https://webapps1.cityofchicago.org/cdn/DataTables-1.10.16/css/dataTables.jqueryui.min.css" rel="stylesheet">
+	<link href="https://webapps1.cityofchicago.org/cdn/Responsive-2.2.1/css/responsive.jqueryui.min.css" rel="stylesheet">
+    <link href="https://webapps1.cityofchicago.org/cdn/Bootstrap-ComboBox-1.1.8/bootstrap-combobox.css" rel="stylesheet">
+    <link href="https://webapps1.cityofchicago.org/cdn/TypeAhead-0.11.1/typeahead.css" rel="stylesheet">
+    <link href="https://webapps1.cityofchicago.org/cdn/City-1.0/city.css" rel="stylesheet">
+    <link href="https://webapps1.cityofchicago.org/cdn/MegaNavbar-2.2.0/skins/city.css" rel="stylesheet">
+    <link href="/buildingrecords/resources/FontAwesome-5.0.6/css/fontawesome-all.min.css" rel="stylesheet">
+    <link href="/buildingrecords/resources/City-1.0/application.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet" type="text/css">
+	
+	<!-- JavaScript -->
+	<script src="https://webapps1.cityofchicago.org/cdn/jQuery-3.2.1/jquery-3.2.1.min.js"></script>
+	<script src="https://webapps1.cityofchicago.org/cdn/jQuery-UI-1.12.1/jquery-ui.min.js"></script>
+	<script src="https://webapps1.cityofchicago.org/cdn/Moment-2.18.1/moment.min.js"></script>
+	<script src="https://webapps1.cityofchicago.org/cdn/DataTables-1.10.16/js/jquery.dataTables.min.js"></script>
+	<script src="https://webapps1.cityofchicago.org/cdn/DataTables-1.10.16/js/dataTables.jqueryui.min.js"></script>
+	<script src="https://webapps1.cityofchicago.org/cdn/Responsive-2.2.1/js/dataTables.responsive.min.js"></script>
+	<script src="https://webapps1.cityofchicago.org/cdn/Responsive-2.2.1/js/responsive.jqueryui.min.js"></script>
+	<script src="https://webapps1.cityofchicago.org/cdn/Bootstrap-ComboBox-1.1.8/bootstrap-combobox.js"></script>
+	<script src="https://webapps1.cityofchicago.org/cdn/TypeAhead-0.11.1/typeahead.bundle.js"></script>
+	<script src="https://webapps1.cityofchicago.org/cdn/TypeAhead-0.11.1/typeahead.jquery.js"></script>
+		
+	<link rel="Shortcut Icon" type="image/ico" href="/buildingrecords/resources/City-1.0/favicon-32x32.png">
+</head>
+
+<body>
+
+<div  class="page-wrapper">
+
+	<!-- Header -->
+	<div class="container-fluid" style="margin-bottom:0px;margin-top:0px;padding-bottom:10px;padding-top:10px;padding-right:20px;padding-left:20px;background-color: #0198DD">
+		<img class="img-fluid" src="/buildingrecords/resources/City-1.0/city-logo.png" alt="City of Chicago"/>
+	</div>
+	<!-- End Header -->
+	
+	<!--Narrow Header-->
+	<div class="container-fluid app-header" style="padding-left:0px;padding-right:0px;"> 
+		<a href='/buildingrecords/home' title="The City of Chicago's Official Site">
+			<img class="img-responsive" src="/buildingrecords/resources/City-1.0/banner.jpg" alt="Building Permit and Inspection Records" style="width:100%;"/>
+		</a>
+	</div>
+	<!--End Narrow Header -->
+		
+	<!--Start Navigation-->
+	
+
+
+
+<div class="container-fluid" style="padding-left:0px;padding-right:0px" id="noprint">
+
+<nav class="navbar navbar-expand-lg navbar-light bg-light city-top-nav">
+
+	<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+		<span class="navbar-toggler-icon"></span>
+	</button>
+	
+	<div class="collapse navbar-collapse" id="navbarSupportedContent">
+		<ul class="navbar-nav mr-auto dropdown-onhover navbar-nav-city">	
+		
+			
+			
+					
+				
+					<li class="nav-item nav-item-city">
+						<li class="nav-item nav-item-city">
+	            		<a class="nav-link" href='/buildingrecords/search'>
+	            			Search
+	            		</a>
+	            	</li>
+	            	
+	            		
+	            	
+						<li class="nav-item nav-item-city">
+	            			<a class="nav-link" style="background-color:#013248; color:#FFFFFF;" href="#">
+	            				Results
+	            			</a>
+	            	</li>		     
+					
+						  
+					
+						
+	            	
+						       
+				
+								
+				
+				
+			
+						
+					
+		</ul>
+		
+		<ul class="navbar-nav dropdown-onhover navbar-nav-city" style="float: right; margin-right:0;">			
+			<li class="nav-item nav-item-city">
+				<a class="nav-link" href="/buildingrecords/buildingpermit" target="_blank">
+					Building Permit Application Status 
+				</a>
+			</li>
+			<li class="nav-item nav-item-city">
+				<a class="nav-link" href="http://www.cookcountyclerkofcourt.org/CourtCaseSearch/DocketSearch.aspx" target="_blank">
+					Circuit Court Case Status 
+				</a>
+			</li>
+			<li class="nav-item nav-item-city">
+				<a class="nav-link" href="https://data.cityofchicago.org/Administration-Finance/Ordinance-Violations-Buildings-/awqx-tuwv" target="_blank">
+					Administrative Hearing Case Status
+				</a>
+			</li>
+		</ul>
+	</div>
+</nav>
+</div>
+	<!--End Navigation-->
+	
+	
+	<!-- Body of the Site -->
+	<div class="container-fluid page-body">
+		
+
+
+
+
+<div class="city-row city-row-title">
+	<h3>Building Permit and Inspection Records</h3>
+</div>
+
+<div class="city-row" style="background-color:#e9ecef;border: 1px solid #ddd;">
+	<div class="city-row city-row-title">
+	<h6><b>Disclaimer</b></h6>
+	<p style="text-align: justify;">The information presented on this website is informational only and does not necessarily reflect the current condition of the building or property. The fact that a permit was issued does not confirm that work was performed, or that work was performed in accordance with that permit and the requirements of the Municipal Code.</p>
+	<p style="text-align: justify;">Information on inspections and alleged violations reflect conditions found by the inspector at the time of the inspection and not necessarily the current status of those alleged violations or the current condition of the property. The absence of alleged violations on this website does not mean a building or property is in compliance with the requirements of the Municipal Code.</p>
+	<p style="text-align: justify;">The Department of Buildings may refer certain alleged violations to the City's Department of Law for enforcement proceedings in the Department of Administrative Hearings or the Circuit Court of Cook County. Please contact the <a href="https://data.cityofchicago.org/Administration-Finance/Ordinance-Violations-Buildings-/awqx-tuwv" target="_blank">Department of Administrative Hearings</a> or the <a href="http://www.cookcountyclerkofcourt.org/CourtCaseSearch/DocketSearch.aspx" target="_blank">Clerk of the Circuit Court</a>, respectively to obtain records of these proceedings.</p>
+	</div>
+</div>
+
+
+<!-- INPUT ADDRESS --> 
+<div class="city-row city-row-title">
+	<h6 style="text-transform:uppercase;"><b>Input Address</b> </h6>
+	<p style="margin-bottom:0;">1806  N  MONTICELLO  AVE</p>	
+</div>
+
+
+<!-- RANGE ADDRESS SEARCH RESULTS --> 
+
+
+<div class="city-row city-row-title">
+	<h6 style="text-transform:uppercase;"><b>Range address</b></h6>
+	
+	<p style="margin-bottom:0;">1806-1806 N MONTICELLO AVE CHICAGO IL 60647</p>	
+	
+</div>
+
+
+
+<!-- BUILDING ATTRIBUTES SEARCH RESULTS --> 
+
+    
+    	<div id="scrolltoerror"></div>
+		<div class="city-row city-row-title">
+			<h6 style="margin-bottom:0px; text-transform:uppercase;"><b>Building Attributes</b></h6>
+		</div>
+	    <div  class="city-row" style="margin-bottom:30px;">
+		<table id=resultstable_attributes class="table-bordered table-striped display nowrap" style="width: 100%;" data-pagination="true">	
+			<thead>  
+			<tr>  
+				<th>BLDG ID</th>
+				<th>STORIES</th>
+				<th>BASEMENT</th>
+				<th>LENGTH</th>
+				<th>WIDTH</th>
+				<th>HEIGHT</th>
+				<th>FLR AREA</th>
+				<th>CONSTR TYPE</th>
+				<th>PORCH</th>
+				<th>LOT WIDTH</th>
+				<th>LOT LENGTH</th>
+				<th>DU</th>
+			</tr>  
+			</thead>
+			<tbody>
+			
+			<tr>
+				<td>295831</td>
+				<td>2</td>
+				<td>Y</td>			
+				<td>80</td>
+				<td>20</td>
+				<td>0</td>
+				<td>1600</td>
+				<td>4B</td>
+				<td></td>
+				<td>25</td>
+				<td>125</td>
+				<td>4</td>
+			</tr>				
+			
+			</tbody>
+		</table>
+		</div>
+	
+
+
+<!-- PERMITS SEARCH RESULTS -->  
+
+
+	<div class="city-row city-row-title">
+		<h6 style="margin-bottom:0px; text-transform:uppercase;"><b>Building Permits</b></h6>
+	</div>	
+	<div class="city-row">
+		<table id=resultstable_permits class="table table-bordered table-striped compact display tdisplay dt-responsive dataTables_scrollBody" data-pagination="true" data-height="200" style="width:100%;">	
+			<thead>  
+				<tr>  
+					<th style="width:75px;">PERMIT #</th>
+					<th style="width:95px;">DATE ISSUED</th>
+					<th>DESCRIPTION OF WORK</th>
+				</tr>  
+			</thead>
+			<tbody>
+			
+				<tr>
+					<td>101070249</td>
+					<td>
+						<span style="display:none;">20250929</span>
+						09/29/2025
+					</td>
+					<td>SPR 2019 CBC: INTERIOR ALTERATIONS AND REMODELING TO CONVERT 4 D.U. TO 5 D.U. BY ADDING APARTMENT UNIT IN THE BASEMENT FOR AN EXISTING 2 STORY FRAME RESIDENTIAL BUILDING WITH BASEMENT AS PER PLANS.**conditional permit subject to field inspections**</td>
+				</tr>				
+			
+				<tr>
+					<td>B793286</td>
+					<td>
+						<span style="display:none;">19940927</span>
+						09/27/1994
+					</td>
+					<td>REPAIR DRYWALL 5/8"UL 3 APTS ONLY SAME AREA</td>
+				</tr>				
+			
+			</tbody>
+		</table>
+	</div>	
+
+
+
+<!-- CASE ACTIVITY SEARCH RESULTS --> 
+
+	
+	<div class="city-row city-row-title">
+		<h6 style="margin-bottom:0px; text-transform:uppercase;"><b>Building Code Enforcement Case Activity</b></h6>
+	</div>
+	<div class="city-row">
+		<table id=resultstable_caseactivity class="table table-bordered table-striped compact display tdisplay dt-responsive dataTables_scrollBody" data-pagination="true" data-height="200" style="width:100%;">	
+			<thead>  
+				<tr>  
+					<th style="width:50%;">CASE NUMBER</th>
+					<th style="width:50%;">CASE TYPE</th>					
+				</tr>  
+			</thead>
+			<tbody>
+			
+				<tr>
+					<td>18M1400343</td>					
+					<td>CIRCUIT COURT</td>
+				</tr>				
+			
+			</tbody>
+		</table>
+	</div>
+
+
+
+<!-- INSPECTIONS SEARCH RESULTS --> 
+
+
+	<div class="city-row city-row-title">
+		<h6 style="margin-bottom:0px; text-transform:uppercase;"><b>Department of Buildings Inspections</b></h6>
+	</div>	
+	<div class="city-row">
+		<table id=resultstable_inspections class="table table-bordered table-striped compact display tdisplay dt-responsive dataTables_scrollBody" data-pagination="true" data-height="200" style="width:100%;">	
+			<thead>  
+				<tr>  
+					<th style="width:75px;">INSP #</th>
+					<th style="width:120px;">INSPECTION DATE</th>
+					<th style="width:100px;">STATUS</th>
+					<th>TYPE DESCRIPTION</th>				
+				</tr>  
+			</thead>
+			<tbody>
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=119917&amp;insp=14732525" target="_blank">14732525</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20260312</span>
+						03/12/2026				
+					</td>
+					<td>PARTIAL PASSED</td>
+					<td>ELECTRICAL PERMIT INSPECTION</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=119917&amp;insp=14731518" target="_blank">14731518</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20260305</span>
+						03/05/2026				
+					</td>
+					<td>PASSED</td>
+					<td>DOB PLUMBING INSPECTION</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=119917&amp;insp=14702182" target="_blank">14702182</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20260114</span>
+						01/14/2026				
+					</td>
+					<td>PARTIAL PASSED</td>
+					<td>ELECTRICAL PERMIT INSPECTION</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=119917&amp;insp=14714280" target="_blank">14714280</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20260112</span>
+						01/12/2026				
+					</td>
+					<td>PARTIAL PASSED</td>
+					<td>DOB PLUMBING INSPECTION</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=119917&amp;insp=14702185" target="_blank">14702185</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20260102</span>
+						01/02/2026				
+					</td>
+					<td>PARTIAL PASSED</td>
+					<td>DOB VENT/FURNACE INSPECTION</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=119917&amp;insp=14702183" target="_blank">14702183</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20251107</span>
+						11/07/2025				
+					</td>
+					<td>PARTIAL PASSED</td>
+					<td>DOB PLUMBING INSPECTION</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=119917&amp;insp=14435161" target="_blank">14435161</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20240913</span>
+						09/13/2024				
+					</td>
+					<td>PASSED</td>
+					<td>CONSERVATION COMPLAINT INSPECT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=119917&amp;insp=14323298" target="_blank">14323298</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20240830</span>
+						08/30/2024				
+					</td>
+					<td>FAILED</td>
+					<td>CONSERVATION COMPLAINT INSPECT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=119917&amp;insp=14260391" target="_blank">14260391</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20240412</span>
+						04/12/2024				
+					</td>
+					<td>FAILED</td>
+					<td>CONSERVATION COMPLAINT INSPECT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=119917&amp;insp=14120824" target="_blank">14120824</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20240308</span>
+						03/08/2024				
+					</td>
+					<td>FAILED</td>
+					<td>CONSERVATION COMPLAINT INSPECT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=119917&amp;insp=12348278" target="_blank">12348278</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20230717</span>
+						07/17/2023				
+					</td>
+					<td>FAILED</td>
+					<td>CONSERVATION COMPLAINT INSPECT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=119917&amp;insp=12348277" target="_blank">12348277</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20171019</span>
+						10/19/2017				
+					</td>
+					<td>FAILED</td>
+					<td>CONSERVATION COMPLAINT INSPECT</td>
+				</tr>				
+			
+				<tr>
+					<td>
+						
+						<a href="/buildingrecords/inspectiondetails?addr=119917&amp;insp=11758858" target="_blank">11758858</a>					
+					</td>
+					<td>					
+						<span style="display:none;">20160115</span>
+						01/15/2016				
+					</td>
+					<td>FAILED</td>
+					<td>CONSERVATION COMPLAINT INSPECT</td>
+				</tr>				
+			
+			</tbody>
+		</table>
+	</div>	
+
+
+
+<!-- ALLEGED CODE VIOLATIONS SEARCH RESULTS -->
+
+
+	<div class="city-row city-row-title">
+		<h6 style="margin-bottom:0px; text-transform:uppercase;"><b>Alleged Code Violations</b></h6>
+	</div>	
+	<div class="city-row">
+		<table id=resultstable_violations class="table table-bordered table-striped compact display tdisplay dt-responsive dataTables_scrollBody" data-pagination="true" data-height="200" style="width:100%;">	
+			<thead>  
+				<tr>
+					<th style="width:5%; min-width:100px;"></th>
+					<th style="width:50%;"></th>
+					<th style="width:45%;"></th>			
+				</tr>
+			</thead>
+			<tbody>			
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">14323298</span></th>
+					<th>
+						CONSERVATION COMPLAINT INSPECT # 14323298
+						&nbsp&nbspINSPECTION DATE: 08/30/2024						
+					</th>	
+					<th>				
+						Number of Violations: 12														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>CN015062</td>
+					<td>Failed to remove obstruction from exitway that hampers travel and evacuation.  (13-160-070, 13-196-080)</td>
+					<td>Rear steel gate-double keyed lock.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN063024</td>
+					<td>Cap masonry chimney with non-combustible, water proof materials. (13-152-250 B, 13-152-240, 13-196-590)</td>
+					<td>South elevation / east and west chimney-missing caps.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN070024</td>
+					<td>Failed to repair or replace defective or missing members of porch system.  (13-196-570, 13-196-641)</td>
+					<td>Front 1 story steel porch-rusted treads,risers,deck and railings.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN076054</td>
+					<td>Failed to connect downspout to sanitary sewer.  (18-29-1101)</td>
+					<td>West elevation / downspout-not connected to sewer.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN111085</td>
+					<td>Increase ceiling height to 7 ft. (13-48-010 thru 13-48-100, 13-200-120, 13-200-160 F, 13-200-230 D)</td>
+					<td>Front basement apartment /  ceiling height,only 6 foot 7 inches with ceiling soffits at 6 foot 3 inches.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN111095</td>
+					<td>Locate minimum window area entirely above ground. (13-172-010 thru 13-172-150, 13-200-230 C, 13-200-370, 13-200-380)</td>
+					<td>Front basement apartment windows-glass block windows.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN196029</td>
+					<td>Post name, address, and telephone of owner, owner's agent for managing, controlling or collecting rents, and any other person managing or controlling building conspicuously where accessible or visible to public way. (13-12-030)</td>
+					<td>Building / no owner's ID sign posted.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN197019</td>
+					<td>Install and maintain approved smoke detectors. (13-196-100 thru 13-196-160) Install a smoke detector in every dwelling unit. Install one on any living level with a habitable room or unenclosed heating plant, on the uppermost ceiling of enclosed porch stairwell, and within 15 feet of every sleeping room. Be sure the detector is at least 4 inches from the wall, 4 to 12 inches from the ceiling, and not above door or window.</td>
+					<td>Rear enclosed porch-missing smoke detector.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN197087</td>
+					<td>Install carbon monoxide detector within 40 feet of every sleeping room in residential structure. (13-64-190, 13-64-210) A carbon monoxide detector is needed whenever there is a heating appliance on the premises that burns fossil fuel such as gas, oil, or coal, or air that is circulated through a heat exchanger. Install according to manufacturer instructions. A hard wired model requires an electrical wiring permit. In a single family residence, be sure the detector is on or below the lowest floor with a place to sleep. In a multiple dwelling residence heated by a boiler, install a detector in the same room as the boiler. Otherwise, each apartment follows single family guidelines. The owner is responsible for installation and written instructions, the tenant for testing, maintenance, and batteries.</td>
+					<td>Front Basement apartment / missing carbon monoxide detector.</td>
+				</tr>
+				 	
+				<tr>
+					<td>EL0036</td>
+					<td>Install cover on outlet or junction box. (18-27-370.25)</td>
+					<td>Front basement apartment / kitchen outlet-missing cover.</td>
+				</tr>
+				 	
+				<tr>
+					<td>NC2011</td>
+					<td>Performed or allowed work to be performed without submitting plans prepared, signed and sealed by a licensed architect or registered structural engineer for approval and without obtaining a permit to perform the work.  (13-32-010, 13-32-040, 13-40-020, 13-12-050)</td>
+					<td>Submit plans and obtain permit for all related work to authorize alterations to basement of restore the building to the original state.</td>
+				</tr>
+				 	
+				<tr>
+					<td>NC2071</td>
+					<td>Remove work performed without permit and restore building or site to original construction. (13-32-130, 13-32-290)</td>
+					<td>Remove all partitions and fixtures (including plumbing and electric) installed in the basement without a permit.</td>
+				</tr>
+									
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">14260391</span></th>
+					<th>
+						CONSERVATION COMPLAINT INSPECT # 14260391
+						&nbsp&nbspINSPECTION DATE: 04/12/2024						
+					</th>	
+					<th>				
+						Number of Violations: 12														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>CN015062</td>
+					<td>Failed to remove obstruction from exitway that hampers travel and evacuation.  (13-160-070, 13-196-080)</td>
+					<td>Rear steel gate-double keyed lock.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN063024</td>
+					<td>Cap masonry chimney with non-combustible, water proof materials. (13-152-250 B, 13-152-240, 13-196-590)</td>
+					<td>South elevation / east and west chimney-missing caps.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN070024</td>
+					<td>Failed to repair or replace defective or missing members of porch system.  (13-196-570, 13-196-641)</td>
+					<td>Front 1 story steel porch-rusted treads,risers,deck and railings.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN076054</td>
+					<td>Failed to connect downspout to sanitary sewer.  (18-29-1101)</td>
+					<td>West elevation / downspout-not connected to sewer.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN111085</td>
+					<td>Increase ceiling height to 7 ft. (13-48-010 thru 13-48-100, 13-200-120, 13-200-160 F, 13-200-230 D)</td>
+					<td>Front basement apartment /  ceiling height,only 6 foot 7 inches with ceiling soffits at 6 foot 3 inches.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN111095</td>
+					<td>Locate minimum window area entirely above ground. (13-172-010 thru 13-172-150, 13-200-230 C, 13-200-370, 13-200-380)</td>
+					<td>Front basement apartment windows-glass block windows.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN196029</td>
+					<td>Post name, address, and telephone of owner, owner's agent for managing, controlling or collecting rents, and any other person managing or controlling building conspicuously where accessible or visible to public way. (13-12-030)</td>
+					<td>Building / no owner's ID sign posted.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN197019</td>
+					<td>Install and maintain approved smoke detectors. (13-196-100 thru 13-196-160) Install a smoke detector in every dwelling unit. Install one on any living level with a habitable room or unenclosed heating plant, on the uppermost ceiling of enclosed porch stairwell, and within 15 feet of every sleeping room. Be sure the detector is at least 4 inches from the wall, 4 to 12 inches from the ceiling, and not above door or window.</td>
+					<td>Rear enclosed porch-missing smoke detector.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN197087</td>
+					<td>Install carbon monoxide detector within 40 feet of every sleeping room in residential structure. (13-64-190, 13-64-210) A carbon monoxide detector is needed whenever there is a heating appliance on the premises that burns fossil fuel such as gas, oil, or coal, or air that is circulated through a heat exchanger. Install according to manufacturer instructions. A hard wired model requires an electrical wiring permit. In a single family residence, be sure the detector is on or below the lowest floor with a place to sleep. In a multiple dwelling residence heated by a boiler, install a detector in the same room as the boiler. Otherwise, each apartment follows single family guidelines. The owner is responsible for installation and written instructions, the tenant for testing, maintenance, and batteries.</td>
+					<td>Front Basement apartment / missing carbon monoxide detector.</td>
+				</tr>
+				 	
+				<tr>
+					<td>EL0036</td>
+					<td>Install cover on outlet or junction box. (18-27-370.25)</td>
+					<td>Front basement apartment / kitchen outlet-missing cover.</td>
+				</tr>
+				 	
+				<tr>
+					<td>NC2011</td>
+					<td>Performed or allowed work to be performed without submitting plans prepared, signed and sealed by a licensed architect or registered structural engineer for approval and without obtaining a permit to perform the work.  (13-32-010, 13-32-040, 13-40-020, 13-12-050)</td>
+					<td>Submit plans and obtain permit for all related work to authorize alterations to basement of restore the building to the original state.</td>
+				</tr>
+				 	
+				<tr>
+					<td>NC2071</td>
+					<td>Remove work performed without permit and restore building or site to original construction. (13-32-130, 13-32-290)</td>
+					<td>Remove all partitions and fixtures (including plumbing and electric) installed in the basement without a permit.</td>
+				</tr>
+									
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">14120824</span></th>
+					<th>
+						CONSERVATION COMPLAINT INSPECT # 14120824
+						&nbsp&nbspINSPECTION DATE: 03/08/2024						
+					</th>	
+					<th>				
+						Number of Violations: 12														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>CN015062</td>
+					<td>Failed to remove obstruction from exitway that hampers travel and evacuation.  (13-160-070, 13-196-080)</td>
+					<td>Rear steel gate-double keyed lock.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN063024</td>
+					<td>Cap masonry chimney with non-combustible, water proof materials. (13-152-250 B, 13-152-240, 13-196-590)</td>
+					<td>South elevation / east and west chimney-missing caps.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN070024</td>
+					<td>Failed to repair or replace defective or missing members of porch system.  (13-196-570, 13-196-641)</td>
+					<td>Front 1 story steel porch-rusted treads,risers,deck and railings.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN076054</td>
+					<td>Failed to connect downspout to sanitary sewer.  (18-29-1101)</td>
+					<td>West elevation / downspout-not connected to sewer.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN111085</td>
+					<td>Increase ceiling height to 7 ft. (13-48-010 thru 13-48-100, 13-200-120, 13-200-160 F, 13-200-230 D)</td>
+					<td>Front basement apartment /  ceiling height,only 6 foot 7 inches with ceiling soffits at 6 foot 3 inches.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN111095</td>
+					<td>Locate minimum window area entirely above ground. (13-172-010 thru 13-172-150, 13-200-230 C, 13-200-370, 13-200-380)</td>
+					<td>Front basement apartment windows-glass block windows.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN196029</td>
+					<td>Post name, address, and telephone of owner, owner's agent for managing, controlling or collecting rents, and any other person managing or controlling building conspicuously where accessible or visible to public way. (13-12-030)</td>
+					<td>Building / no owner's ID sign posted.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN197019</td>
+					<td>Install and maintain approved smoke detectors. (13-196-100 thru 13-196-160) Install a smoke detector in every dwelling unit. Install one on any living level with a habitable room or unenclosed heating plant, on the uppermost ceiling of enclosed porch stairwell, and within 15 feet of every sleeping room. Be sure the detector is at least 4 inches from the wall, 4 to 12 inches from the ceiling, and not above door or window.</td>
+					<td>Rear enclosed porch-missing smoke detector.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN197087</td>
+					<td>Install carbon monoxide detector within 40 feet of every sleeping room in residential structure. (13-64-190, 13-64-210) A carbon monoxide detector is needed whenever there is a heating appliance on the premises that burns fossil fuel such as gas, oil, or coal, or air that is circulated through a heat exchanger. Install according to manufacturer instructions. A hard wired model requires an electrical wiring permit. In a single family residence, be sure the detector is on or below the lowest floor with a place to sleep. In a multiple dwelling residence heated by a boiler, install a detector in the same room as the boiler. Otherwise, each apartment follows single family guidelines. The owner is responsible for installation and written instructions, the tenant for testing, maintenance, and batteries.</td>
+					<td>Front Basement apartment / missing carbon monoxide detector.</td>
+				</tr>
+				 	
+				<tr>
+					<td>EL0036</td>
+					<td>Install cover on outlet or junction box. (18-27-370.25)</td>
+					<td>Front basement apartment / kitchen outlet-missing cover.</td>
+				</tr>
+				 	
+				<tr>
+					<td>NC2011</td>
+					<td>Performed or allowed work to be performed without submitting plans prepared, signed and sealed by a licensed architect or registered structural engineer for approval and without obtaining a permit to perform the work.  (13-32-010, 13-32-040, 13-40-020, 13-12-050)</td>
+					<td>Submit plans and obtain permit for all related work to authorize alterations to basement of restore the building to the original state.</td>
+				</tr>
+				 	
+				<tr>
+					<td>NC2071</td>
+					<td>Remove work performed without permit and restore building or site to original construction. (13-32-130, 13-32-290)</td>
+					<td>Remove all partitions and fixtures (including plumbing and electric) installed in the basement without a permit.</td>
+				</tr>
+									
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">12348278</span></th>
+					<th>
+						CONSERVATION COMPLAINT INSPECT # 12348278
+						&nbsp&nbspINSPECTION DATE: 07/17/2023						
+					</th>	
+					<th>				
+						Number of Violations: 12														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>CN015062</td>
+					<td>Failed to remove obstruction from exitway that hampers travel and evacuation.  (13-160-070, 13-196-080)</td>
+					<td>Rear steel gate-double keyed lock.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN063024</td>
+					<td>Cap masonry chimney with non-combustible, water proof materials. (13-152-250 B, 13-152-240, 13-196-590)</td>
+					<td>South elevation / east and west chimney-missing caps.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN070024</td>
+					<td>Failed to repair or replace defective or missing members of porch system.  (13-196-570, 13-196-641)</td>
+					<td>Front 1 story steel porch-rusted treads,risers,deck and railings.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN076054</td>
+					<td>Failed to connect downspout to sanitary sewer.  (18-29-1101)</td>
+					<td>West elevation / downspout-not connected to sewer.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN111085</td>
+					<td>Increase ceiling height to 7 ft. (13-48-010 thru 13-48-100, 13-200-120, 13-200-160 F, 13-200-230 D)</td>
+					<td>Front basement apartment /  ceiling height,only 6 foot 7 inches with ceiling soffits at 6 foot 3 inches.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN111095</td>
+					<td>Locate minimum window area entirely above ground. (13-172-010 thru 13-172-150, 13-200-230 C, 13-200-370, 13-200-380)</td>
+					<td>Front basement apartment windows-glass block windows.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN196029</td>
+					<td>Post name, address, and telephone of owner, owner's agent for managing, controlling or collecting rents, and any other person managing or controlling building conspicuously where accessible or visible to public way. (13-12-030)</td>
+					<td>Building / no owner's ID sign posted.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN197019</td>
+					<td>Install and maintain approved smoke detectors. (13-196-100 thru 13-196-160) Install a smoke detector in every dwelling unit. Install one on any living level with a habitable room or unenclosed heating plant, on the uppermost ceiling of enclosed porch stairwell, and within 15 feet of every sleeping room. Be sure the detector is at least 4 inches from the wall, 4 to 12 inches from the ceiling, and not above door or window.</td>
+					<td>Rear enclosed porch-missing smoke detector.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN197087</td>
+					<td>Install carbon monoxide detector within 40 feet of every sleeping room in residential structure. (13-64-190, 13-64-210) A carbon monoxide detector is needed whenever there is a heating appliance on the premises that burns fossil fuel such as gas, oil, or coal, or air that is circulated through a heat exchanger. Install according to manufacturer instructions. A hard wired model requires an electrical wiring permit. In a single family residence, be sure the detector is on or below the lowest floor with a place to sleep. In a multiple dwelling residence heated by a boiler, install a detector in the same room as the boiler. Otherwise, each apartment follows single family guidelines. The owner is responsible for installation and written instructions, the tenant for testing, maintenance, and batteries.</td>
+					<td>Front Basement apartment / missing carbon monoxide detector.</td>
+				</tr>
+				 	
+				<tr>
+					<td>EL0036</td>
+					<td>Install cover on outlet or junction box. (18-27-370.25)</td>
+					<td>Front basement apartment / kitchen outlet-missing cover.</td>
+				</tr>
+				 	
+				<tr>
+					<td>NC2011</td>
+					<td>Performed or allowed work to be performed without submitting plans prepared, signed and sealed by a licensed architect or registered structural engineer for approval and without obtaining a permit to perform the work.  (13-32-010, 13-32-040, 13-40-020, 13-12-050)</td>
+					<td>Submit plans and obtain permit for all related work to authorize alterations to basement of restore the building to the original state.</td>
+				</tr>
+				 	
+				<tr>
+					<td>NC2071</td>
+					<td>Remove work performed without permit and restore building or site to original construction. (13-32-130, 13-32-290)</td>
+					<td>Remove all partitions and fixtures (including plumbing and electric) installed in the basement without a permit.</td>
+				</tr>
+									
+			
+				<tr style="background-color:#B6B6B4">
+					<th><span style="display:none;">11758858</span></th>
+					<th>
+						CONSERVATION COMPLAINT INSPECT # 11758858
+						&nbsp&nbspINSPECTION DATE: 01/15/2016						
+					</th>	
+					<th>				
+						Number of Violations: 10														
+					</th>
+				</tr>				
+				<tr>
+					<th style="width:5%; min-width:100px;">VIOLATIONS</th>
+					<th style="width:50%;">BUILDING CODE CITATION</th>
+					<th style="width:45%;">VIOLATION DETAILS</th>			
+				</tr>				
+				 	
+				<tr>
+					<td>CN078014</td>
+					<td>Failed to provide and maintain adequate illumination of exit areas.  (13-160-660, 13-160-670, 13-196-080)</td>
+					<td>East and south exterior stairs - missing exterior light fixtures.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN111085</td>
+					<td>Increase ceiling height to 7 ft. (13-48-010 thru 13-48-100, 13-200-120, 13-200-160 F, 13-200-230 D)</td>
+					<td>Basement front Apt., ceiling height is 6'-7".</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN111095</td>
+					<td>Locate minimum window area entirely above ground. (13-172-010 thru 13-172-150, 13-200-230 C, 13-200-370, 13-200-380)</td>
+					<td>Basement windows are glass block type with 6"x16" vents.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN136016</td>
+					<td>Exterminate roaches and keep dwelling insect-free. (13-196-630 C)</td>
+					<td>1st floor front Apt. - infested with roaches.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN197019</td>
+					<td>Install and maintain approved smoke detectors. (13-196-100 thru 13-196-160) Install a smoke detector in every dwelling unit. Install one on any living level with a habitable room or unenclosed heating plant, on the uppermost ceiling of enclosed porch stairwell, and within 15 feet of every sleeping room. Be sure the detector is at least 4 inches from the wall, 4 to 12 inches from the ceiling, and not above door or window.</td>
+					<td>Front interior stairway - missing smoke detector.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN197087</td>
+					<td>Install carbon monoxide detector within 40 feet of every sleeping room in residential structure. (13-64-190, 13-64-210) A carbon monoxide detector is needed whenever there is a heating appliance on the premises that burns fossil fuel such as gas, oil, or coal, or air that is circulated through a heat exchanger. Install according to manufacturer instructions. A hard wired model requires an electrical wiring permit. In a single family residence, be sure the detector is on or below the lowest floor with a place to sleep. In a multiple dwelling residence heated by a boiler, install a detector in the same room as the boiler. Otherwise, each apartment follows single family guidelines. The owner is responsible for installation and written instructions, the tenant for testing, maintenance, and batteries.</td>
+					<td>2nd floor front Apt. - missing carbon monoxide detector.</td>
+				</tr>
+				 	
+				<tr>
+					<td>CN198019</td>
+					<td>File building registration statement with Building Dept. (13-10-030, 13-10-040)</td>
+					<td>Building - not registered years 1990 thru 2016.</td>
+				</tr>
+				 	
+				<tr>
+					<td>NC2011</td>
+					<td>Performed or allowed work to be performed without submitting plans prepared, signed and sealed by a licensed architect or registered structural engineer for approval and without obtaining a permit to perform the work.  (13-32-010, 13-32-040, 13-40-020, 13-12-050)</td>
+					<td>Submit plans and obtain permit for all related work to autorize alterations to basement or restore the building to the original state.</td>
+				</tr>
+				 	
+				<tr>
+					<td>NC2021</td>
+					<td>Performed or allowed work to be performed erecting, enlarging, altering, repairing, removing or demolishing a building or part of a building without a permit.  (13-12-050, 13-32-010, 13-32-130)</td>
+					<td>Front and rear 6'-0" metal and wood fence built - no permit obtained.</td>
+				</tr>
+				 	
+				<tr>
+					<td>NC2071</td>
+					<td>Remove work performed without permit and restore building or site to original construction. (13-32-130, 13-32-290)</td>
+					<td>Remove all partitions and fixtures (including plumbing and electric) installed in the basement ( Basement front Apt.) without a permit.</td>
+				</tr>
+									
+			
+			</tbody>			
+		</table>
+	</div>	
+
+
+
+<div class="city-row city-row-title">
+	<div id="noprint" style="margin-top:0;padding-top:0; text-align:right;">
+		<a class="btn btn-primary" href="javascript:window.print();" style="margin-top:0;">
+			Print
+		</a>					
+	</div>		
+</div>
+
+	
+<script>
+$(document).ready(function() {
+	var myWorker = new Worker("https://webapps1.cityofchicago.org/cdn/DataTables-1.10.16/js/jquery.dataTables.min.js");
+	myWorker.addEventListener("message", function (oEvent) {
+	  console.log("Called back by the worker!\n");
+	}, false);
+
+	myWorker.postMessage(""); // start the worker.
+						   
+	$('#resultstable_attributes').DataTable({
+        order: [[ 0, 'asc' ]],
+		responsive: true,
+		"paging":   false,
+		"bInfo" : false,	
+		"bSort" : false,  
+		searching: false
+	} );
+
+	$('#resultstable_permits').DataTable({
+        order: [[ 1, 'desc' ]],
+		responsive: true,
+		"paging":   false,
+		"bInfo" : false,	
+		"bSort" : true, 
+		 searching: false
+     } );
+
+	$('#resultstable_caseactivity').DataTable({
+		order: [[ 1, 'desc' ]],
+		responsive: true,
+		"paging":   false,
+		"bInfo" : false,	
+		"bSort" : true, 
+		 searching: false
+	 } );
+
+
+	$('#resultstable_inspections').DataTable({
+		order: [[ 1, 'desc' ]],
+		responsive: true,
+		"paging":   false,
+		"bInfo" : false,	
+		"bSort" : true, 
+		 searching: false
+	 } );   
+
+
+	$('#resultstable_violations').DataTable({
+		 responsive: true,
+		"paging":   false,
+		"bInfo" : false,	
+		"bSort" : false,  
+		searching: false
+    } );
+
+	myWorker.terminate();
+	myWorker=undefined;
+	
+});
+</script>
+	</div>
+	
+	<!-- Footer -->
+	<div class="container-fluid page-footer-container">
+		<div class="page-footer">
+
+
+
+
+
+<!-- Secondary footer-->
+<!--
+<div class="container-fluid footer secondary-footer">
+	<div class="page-footer-container">
+		<div class="footer-column">
+			<h3 class="footer-title">Contact Us</h3>
+			<div class="title-divider"></div>
+			<p><strong>Address:&nbsp;</strong><br>333 S. State Street, Suite LL30<br>Chicago, IL 60604</p>
+			<p><strong>Phone:&nbsp;</strong>312.744.5844</p>
+		</div>
+		<div class="footer-column">
+			<h3 class="footer-title">Quick Links</h3>
+			<div class="title-divider"></div>
+			<p><a href="http://www.cityofchicago.org/city/en/depts/doit.html">Department of Innovation and Technology</a></p>
+		</div>
+		<div class="footer-column">
+			<h3 class="footer-title">Connect With Us</h3>
+			<div class="title-divider"></div>
+			<ul class="footer-social social">
+                <li><a href="https://www.facebook.com/ChicagoMayorsOffice" title="Follow us on Facebook" target="blank"><i class="fa fa-facebook" aria-hidden="true"></i></a> </li>
+                <li><a href="https://twitter.com/ChicagosMayor" title="Follow us on Twitter" target="blank"><i class="fa fa-twitter" aria-hidden="true"></i></a> </li>
+				<li><a href="https://www.youtube.com/user/cityofchicagotv" title="Follow us on YouTube" target="blank"><i class="fa fa-youtube" aria-hidden="true"></i></a> </li>
+            </ul>
+		</div>
+	</div>
+</div>
+ -->
+<!-- End Secondary footer-->
+
+<!-- Primary Footer -->
+<div class="container-fluid footer primary-footer">
+<div class="col-xs-12 page-footer">					
+<div id="footer">
+	<div class="footer-navigation">
+        <ul>
+            <li><a href="http://www.cityofchicago.org" title="The City of Chicago's Official Site">Home</a> : </li>
+            <li><!--googleoff: anchor--><a href="http://www.cityofchicago.org/city/en/general/disclaimer.html">Disclaimer</a><!--googleon: anchor--> : </li>
+            <li><!--googleoff: anchor--><a href="http://www.cityofchicago.org/city/en/general/privacy.html">Privacy Policy</a><!--googleon: anchor--> : </li>
+            <li><!--googleoff: anchor--><a href="http://www.cityofchicago.org/city/en/general/standards.html">Web Standards</a><!--googleon: anchor--> : </li>
+            <li><!--googleoff: anchor--><a href="http://www.cityofchicago.org/city/en/general/credits.html">Site Credits</a><!--googleon: anchor--> : </li>
+            <li><!--googleoff: anchor--><a href="http://www.cityofchicago.org/city/en/general/sitemap.html">Site Map</a><!--googleon: anchor--> : </li>
+            <li><!--googleoff: anchor--><a href="http://www.cityofchicago.org/city/en/general/contact.html">Contact Us</a><!--googleon: anchor--> : </li>
+            <li><!--googleoff: anchor--><a href="http://www.cityofchicago.org/city/en/general/press_room.html">Press Room</a><!--googleon: anchor--></li>
+        </ul>
+	    
+	
+		
+		
+		
+			
+			Copyright © 2018 - 2026 City of Chicago	
+		
+		
+		
+		
+	</div>
+</div>
+</div>
+</div>								
+<!-- End Primary Footer --></div>
+	</div>
+	
+</div>
+
+<!-- JavaScript -->
+<script src="https://webapps1.cityofchicago.org/cdn/Bootstrap-4.0.0-beta.2/assets/js/vendor/popper.min.js"></script>
+<script src="https://webapps1.cityofchicago.org/cdn/Bootstrap-4.0.0-beta.2/js/bootstrap.min.js"></script>
+
+</body>

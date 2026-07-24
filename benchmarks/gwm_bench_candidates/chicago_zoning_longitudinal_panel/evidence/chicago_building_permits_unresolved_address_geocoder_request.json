@@ -1,0 +1,286 @@
+{
+  "records": [
+    {
+      "attributes": {
+        "Address": "10000 N BESSIE COLEMAN DR",
+        "OBJECTID": 1
+      }
+    },
+    {
+      "attributes": {
+        "Address": "1041 N AVERS AVE",
+        "OBJECTID": 2
+      }
+    },
+    {
+      "attributes": {
+        "Address": "1105 N MONTICELLO AVE",
+        "OBJECTID": 3
+      }
+    },
+    {
+      "attributes": {
+        "Address": "11211 S CORLISS AVE",
+        "OBJECTID": 4
+      }
+    },
+    {
+      "attributes": {
+        "Address": "1221 W BELMONT AVE",
+        "OBJECTID": 5
+      }
+    },
+    {
+      "attributes": {
+        "Address": "1223 W CHESTNUT ST",
+        "OBJECTID": 6
+      }
+    },
+    {
+      "attributes": {
+        "Address": "132 E VAN BUREN ST",
+        "OBJECTID": 7
+      }
+    },
+    {
+      "attributes": {
+        "Address": "1331 S WELLS ST",
+        "OBJECTID": 8
+      }
+    },
+    {
+      "attributes": {
+        "Address": "1442 E 66TH PL",
+        "OBJECTID": 9
+      }
+    },
+    {
+      "attributes": {
+        "Address": "150 N RIVERSIDE PLZ",
+        "OBJECTID": 10
+      }
+    },
+    {
+      "attributes": {
+        "Address": "1525 W HOMER ST",
+        "OBJECTID": 11
+      }
+    },
+    {
+      "attributes": {
+        "Address": "1612 N MOBILE AVE",
+        "OBJECTID": 12
+      }
+    },
+    {
+      "attributes": {
+        "Address": "1657 W FOSTER AVE",
+        "OBJECTID": 13
+      }
+    },
+    {
+      "attributes": {
+        "Address": "1942 W PETERSON AVE",
+        "OBJECTID": 14
+      }
+    },
+    {
+      "attributes": {
+        "Address": "2014 W CHURCHILL ST",
+        "OBJECTID": 15
+      }
+    },
+    {
+      "attributes": {
+        "Address": "2028 N RICHMOND ST",
+        "OBJECTID": 16
+      }
+    },
+    {
+      "attributes": {
+        "Address": "205 N SANGAMON ST",
+        "OBJECTID": 17
+      }
+    },
+    {
+      "attributes": {
+        "Address": "2222 W MORSE AVE",
+        "OBJECTID": 18
+      }
+    },
+    {
+      "attributes": {
+        "Address": "2323 W WINNEMAC AVE",
+        "OBJECTID": 19
+      }
+    },
+    {
+      "attributes": {
+        "Address": "2324 N FREMONT ST",
+        "OBJECTID": 20
+      }
+    },
+    {
+      "attributes": {
+        "Address": "2425 E 71ST ST",
+        "OBJECTID": 21
+      }
+    },
+    {
+      "attributes": {
+        "Address": "2705 W PRINDIVILLE ST",
+        "OBJECTID": 22
+      }
+    },
+    {
+      "attributes": {
+        "Address": "2825 S STEWART AVE",
+        "OBJECTID": 23
+      }
+    },
+    {
+      "attributes": {
+        "Address": "2829 S STEWART AVE",
+        "OBJECTID": 24
+      }
+    },
+    {
+      "attributes": {
+        "Address": "2966 S THROOP ST",
+        "OBJECTID": 25
+      }
+    },
+    {
+      "attributes": {
+        "Address": "3118 N OAKLEY AVE",
+        "OBJECTID": 26
+      }
+    },
+    {
+      "attributes": {
+        "Address": "3200 E 96TH ST",
+        "OBJECTID": 27
+      }
+    },
+    {
+      "attributes": {
+        "Address": "3348 N CAMPBELL AVE",
+        "OBJECTID": 28
+      }
+    },
+    {
+      "attributes": {
+        "Address": "3857 S CALUMET AVE",
+        "OBJECTID": 29
+      }
+    },
+    {
+      "attributes": {
+        "Address": "4021 S STATE ST",
+        "OBJECTID": 30
+      }
+    },
+    {
+      "attributes": {
+        "Address": "4125 S STATE ST",
+        "OBJECTID": 31
+      }
+    },
+    {
+      "attributes": {
+        "Address": "4322 W POTOMAC AVE",
+        "OBJECTID": 32
+      }
+    },
+    {
+      "attributes": {
+        "Address": "4332 W SCHOOL ST",
+        "OBJECTID": 33
+      }
+    },
+    {
+      "attributes": {
+        "Address": "4523 N DELPHIA AVE",
+        "OBJECTID": 34
+      }
+    },
+    {
+      "attributes": {
+        "Address": "5020 W WINNEMAC AVE",
+        "OBJECTID": 35
+      }
+    },
+    {
+      "attributes": {
+        "Address": "5217 S BISHOP ST",
+        "OBJECTID": 36
+      }
+    },
+    {
+      "attributes": {
+        "Address": "5234 W STRONG ST",
+        "OBJECTID": 37
+      }
+    },
+    {
+      "attributes": {
+        "Address": "5300 S LOREL AVE",
+        "OBJECTID": 38
+      }
+    },
+    {
+      "attributes": {
+        "Address": "5333 S FAIRFIELD AVE",
+        "OBJECTID": 39
+      }
+    },
+    {
+      "attributes": {
+        "Address": "5835 W TOUHY AVE",
+        "OBJECTID": 40
+      }
+    },
+    {
+      "attributes": {
+        "Address": "6114 S DREXEL AVE",
+        "OBJECTID": 41
+      }
+    },
+    {
+      "attributes": {
+        "Address": "6450 S KIMBARK AVE",
+        "OBJECTID": 42
+      }
+    },
+    {
+      "attributes": {
+        "Address": "6533 W PALMER ST",
+        "OBJECTID": 43
+      }
+    },
+    {
+      "attributes": {
+        "Address": "6541 S MARYLAND AVE",
+        "OBJECTID": 44
+      }
+    },
+    {
+      "attributes": {
+        "Address": "7 W ELM ST",
+        "OBJECTID": 45
+      }
+    },
+    {
+      "attributes": {
+        "Address": "7901 S FARRAGUT DR",
+        "OBJECTID": 46
+      }
+    },
+    {
+      "attributes": {
+        "Address": "800 S LEAMINGTON AVE",
+        "OBJECTID": 47
+      }
+    }
+  ]
+}

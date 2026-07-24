@@ -1,0 +1,26 @@
+{
+  "schema": "gwm.chicago_browser_cdp_capture.v1",
+  "captured_at": "2026-07-24T05:41:21.000Z",
+  "source_url": "https://data.cityofchicago.org/api/views/ydr8-5enu.json",
+  "browser_url": "https://data.cityofchicago.org/api/views/ydr8-5enu.json",
+  "http_status": 200,
+  "content_type": "application/json; charset=utf-8",
+  "output_path": "/Users/zhouning/gisdataagent/benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_socrata_building_permits_metadata_browser.json",
+  "bytes": 214044,
+  "sha256": "7f3d54b7e15083aa7e41ce303567bed15c0cf31bc7859973d59d2ef6d2eefae6",
+  "mode": "json",
+  "validation": {
+    "json_kind": "object",
+    "row_count": null,
+    "required_fields": [
+      "id",
+      "columns",
+      "licenseId",
+      "metadata",
+      "provenance"
+    ],
+    "unique_fields": []
+  },
+  "access_boundary": "browser_or_waf",
+  "cookies_or_credentials_persisted": false
+}

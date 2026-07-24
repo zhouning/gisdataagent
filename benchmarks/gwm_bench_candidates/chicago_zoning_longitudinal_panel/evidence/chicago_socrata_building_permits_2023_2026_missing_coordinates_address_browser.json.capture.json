@@ -1,0 +1,28 @@
+{
+  "schema": "gwm.chicago_browser_cdp_capture.v1",
+  "captured_at": "2026-07-24T06:14:43.659Z",
+  "source_url": "https://data.cityofchicago.org/resource/ydr8-5enu.json?%24select=id%2Cpermit_%2Cpermit_type%2Cissue_date%2Cwork_type%2Cstreet_number%2Cstreet_direction%2Cstreet_name%2Cpin_list%2Ccommunity_area%2Cward%2Cxcoordinate%2Cycoordinate%2Ccensus_tract%2Clatitude%2Clongitude&%24where=issue_date%20%3E%3D%20%272023-01-01T00%3A00%3A00.000%27%20AND%20issue_date%20%3C%20%272026-07-01T00%3A00%3A00.000%27%20AND%20latitude%20is%20null&%24order=id&%24limit=5000",
+  "browser_url": "https://data.cityofchicago.org/resource/ydr8-5enu.json?%24select=id%2Cpermit_%2Cpermit_type%2Cissue_date%2Cwork_type%2Cstreet_number%2Cstreet_direction%2Cstreet_name%2Cpin_list%2Ccommunity_area%2Cward%2Cxcoordinate%2Cycoordinate%2Ccensus_tract%2Clatitude%2Clongitude&%24where=issue_date%20%3E%3D%20%272023-01-01T00%3A00%3A00.000%27%20AND%20issue_date%20%3C%20%272026-07-01T00%3A00%3A00.000%27%20AND%20latitude%20is%20null&%24order=id&%24limit=5000",
+  "http_status": 200,
+  "content_type": "application/json;charset=utf-8",
+  "output_path": "/Users/zhouning/gisdataagent/benchmarks/gwm_bench_candidates/chicago_zoning_longitudinal_panel/evidence/chicago_socrata_building_permits_2023_2026_missing_coordinates_address_browser.json",
+  "bytes": 587127,
+  "sha256": "bafe1a4f7a473d9c2abfe98c0a441f5837f072e5d9d1277c3eea00c29ae0818a",
+  "mode": "json",
+  "validation": {
+    "json_kind": "list",
+    "row_count": 1856,
+    "required_fields": [
+      "id",
+      "permit_",
+      "permit_type",
+      "issue_date"
+    ],
+    "unique_fields": [
+      "id",
+      "permit_"
+    ]
+  },
+  "access_boundary": "browser_or_waf",
+  "cookies_or_credentials_persisted": false
+}
