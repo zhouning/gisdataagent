@@ -25,10 +25,11 @@ resources:
 #
 # Also swap two upstream images that are unreachable from mainland China:
 #   - ghcr.io/maplibre/martin:v0.15 → :v0.18.0 (the v0.15 tag is gone from ghcr)
-#   - bitnami/kubectl:1.30          → alpine/k8s:1.30.4 (bitnami images are
+#   - bitnami/kubectl:1.30          → alpine/k8s:1.35.5 (bitnami images are
 #     blocked by docker.m.daocloud.io as of 2025/04. rancher/kubectl is
 #     distroless without sh, so the init containers' `until ... sleep` loops
-#     can't run there. alpine/k8s ships kubectl + a busybox shell.)
+#     can't run there. alpine/k8s ships kubectl + a busybox shell. Version 1.35
+#     stays within the supported kubectl skew for Docker Desktop K8s 1.35.5.)
 images:
   - name: gis-data-agent
     newTag: dev
@@ -37,7 +38,7 @@ images:
     newTag: v0.18.0
   - name: bitnami/kubectl
     newName: alpine/k8s
-    newTag: 1.30.4
+    newTag: 1.35.5
 
 # Patch the base Secret in-place. Strategic merge with stringData is the
 # cleanest path — kustomize handles base64 encoding for us. Don't ship these

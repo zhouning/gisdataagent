@@ -5,6 +5,16 @@ PostgreSQL/PostGIS/pgvector、Redis、MinIO 全部在集群内自给自足，仅
 
 ## 一句话部署
 
+使用 Docker Desktop 内置 kind 集群（`docker-desktop` context）：
+
+```bash
+cd /path/to/adk
+./scripts/k8s-docker-desktop-bootstrap.sh up
+./scripts/k8s-docker-desktop-bootstrap.sh forward
+```
+
+使用独立 `kind` CLI 创建和管理集群：
+
 ```bash
 cd /path/to/adk
 ./scripts/k8s-kind-bootstrap.sh up         # 创建 kind 集群 + 构建镜像 + 部署
@@ -20,10 +30,28 @@ cd /path/to/adk
 | 工具 | 最低版本 | 验证 |
 |---|---|---|
 | Docker Desktop | 4.30+ | `docker --version` |
-| kind | 0.23+ | `kind --version` |
+| kind（仅独立集群路径） | 0.23+ | `kind --version` |
 | kubectl | 1.28+ | `kubectl version --client` |
 
 机器要求：**16GB RAM 起步，推荐 32GB+**（你有 128GB，绰绰有余）。
+
+### 1.1 Docker Desktop kind 版本兼容性
+
+Docker Desktop overlay 使用 `alpine/k8s:1.35.5` 作为带 shell 的 `kubectl`
+辅助镜像，供 migration 和 app init container 等待 Kubernetes 资源。该
+overlay 已在 Docker Desktop kind server `v1.35.5` 上验证，并支持 Kubernetes
+`kubectl` 与 API server 相差不超过一个 minor 版本的官方版本偏差规则。
+
+启用内置集群后先确认：
+
+```bash
+kubectl config current-context   # docker-desktop
+kubectl version                  # server 建议为 1.34–1.36
+kubectl get nodes                # 所有节点应为 Ready
+```
+
+bootstrap 脚本会从当前集群动态发现 control-plane 和 worker 节点，
+因此 Docker Desktop 中调整 worker 数量后无需修改脚本。
 
 ---
 

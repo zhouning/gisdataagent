@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # =============================================================================
 # k8s-docker-desktop-bootstrap.sh — bring up GIS Data Agent on Docker Desktop's
-# bundled kind cluster (context: docker-desktop, nodes: desktop-control-plane /
-# desktop-worker).
+# bundled kind cluster (context: docker-desktop). Node names are discovered
+# from the active cluster so the script also supports custom worker counts.
 #
 # Usage:
 #   ./scripts/k8s-docker-desktop-bootstrap.sh up        # build images + load + deploy
@@ -31,7 +31,7 @@ NAMESPACE="${NAMESPACE:-gis-agent}"
 OVERLAY="${OVERLAY:-k8s/overlays/docker-desktop}"
 IMAGE_TAG="${IMAGE_TAG:-dev}"
 PIP_INDEX_URL="${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}"
-NODES=(desktop-control-plane desktop-worker)
+NODES=()
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Color helpers — only when stdout is a tty.
@@ -53,6 +53,19 @@ require_cmd() {
 # ----------------------------------------------------------------------------
 # Cluster precheck — verify Docker Desktop's kind cluster is up
 # ----------------------------------------------------------------------------
+discover_nodes() {
+    local node_names node
+    node_names=$(kubectl get nodes \
+        -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}') || \
+        fail "could not list nodes in the Docker Desktop cluster"
+
+    NODES=()
+    while IFS= read -r node; do
+        [ -n "$node" ] && NODES+=("$node")
+    done <<< "$node_names"
+    [ "${#NODES[@]}" -gt 0 ] || fail "Docker Desktop cluster has no nodes"
+}
+
 cluster_check() {
     log "checking Docker Desktop kind cluster"
     local context
@@ -60,6 +73,7 @@ cluster_check() {
     if [ "$context" != "docker-desktop" ]; then
         fail "current kubectl context is '$context', expected 'docker-desktop'.\n       Switch with: kubectl config use-context docker-desktop"
     fi
+    discover_nodes
     for node in "${NODES[@]}"; do
         if ! docker ps --format '{{.Names}}' | grep -qx "$node"; then
             fail "kind node '$node' not running. In Docker Desktop:\n       Settings → Kubernetes → enable kind cluster type → Apply & restart"
