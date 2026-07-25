@@ -265,6 +265,36 @@ def test_approval_requires_human_identity_and_bounded_expiry():
         )
 
 
+def test_platform_command_requires_consistent_claim_and_completion_state():
+    command = contracts.PlatformCommand(
+        tenant_id=TENANT,
+        command_id=TARGET_VERSION_ID,
+        run_id=RUN_ID,
+        command_type="dolphinscheduler.dispatch",
+        execution_plan_artifact_id=DEFINITION_ID,
+        dedupe_key="dispatch:run-1",
+        actor_subject="workload:dataops-adapter",
+        available_at=NOW,
+        created_at=NOW,
+    )
+
+    assert command.status.value == "pending"
+    with pytest.raises(ValidationError, match="requires an active claim"):
+        contracts.PlatformCommand(
+            **{
+                **command.model_dump(),
+                "status": "in_flight",
+            }
+        )
+    with pytest.raises(ValidationError, match="cannot reference"):
+        contracts.PlatformCommand(
+            **{
+                **command.model_dump(),
+                "trigger_observation_id": SOURCE_VERSION_ID,
+            }
+        )
+
+
 def test_run_transition_graph_rejects_terminal_and_skip_transitions():
     contracts.validate_run_transition("accepted", "dispatching")
     contracts.validate_run_transition("running", "succeeded")
@@ -378,9 +408,9 @@ def test_control_ledger_contract_and_migration_catalog_are_valid():
     )
 
     assert report["status"] == "valid"
-    assert report["contract_count"] == 13
+    assert report["contract_count"] == 14
     assert report["migration"]["sha256"] == migration["checksum"]
-    assert migrations[-1]["migration_id"] == "094_platform_control_gateway"
+    assert migrations[-1]["migration_id"] == "095_platform_command_outbox"
 
 
 def test_sql_contract_has_tenant_fks_rls_append_only_and_no_legacy_backfill():

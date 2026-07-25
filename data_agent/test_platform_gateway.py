@@ -10,6 +10,7 @@ from pydantic import ValidationError
 
 from data_agent.api import platform_gateway_routes as routes
 from data_agent.platform_contracts import (
+    PlatformCommand,
     PlatformRun,
     Resource,
     ResourceVersion,
@@ -17,6 +18,7 @@ from data_agent.platform_contracts import (
     platform_definition_fingerprint,
 )
 from data_agent.platform_gateway import (
+    COMMAND_OUTBOX_MIGRATION,
     DefinitionRegistration,
     GATEWAY_ROLE_MIGRATION,
     GatewayConflictError,
@@ -112,6 +114,21 @@ def _run():
         ),
         idempotency_key="publish:parcels:1",
         submitted_at=NOW,
+    )
+
+
+def _command():
+    return PlatformCommand(
+        tenant_id=TENANT,
+        command_id=UUID("00000000-0000-4000-8000-000000000070"),
+        run_id=RUN_ID,
+        command_type="dolphinscheduler.reconcile",
+        execution_plan_artifact_id=DEFINITION_ID,
+        trigger_observation_id=UUID("00000000-0000-4000-8000-000000000060"),
+        dedupe_key="dolphinscheduler.reconcile:callback-1",
+        actor_subject="workload:dataops-adapter",
+        available_at=NOW,
+        created_at=NOW,
     )
 
 
@@ -231,7 +248,9 @@ def test_resource_version_route_rejects_actor_spoofing():
 
 def test_run_route_derives_subject_and_tenant_from_authenticated_principal():
     gateway = MagicMock()
-    gateway.submit_run.side_effect = lambda run: GatewayWriteResult(run, True)
+    gateway.submit_run.side_effect = lambda run, **_kwargs: GatewayWriteResult(
+        run, True
+    )
     body = {
         "run_id": str(RUN_ID),
         "definition_version_id": str(DEFINITION_ID),
@@ -263,7 +282,9 @@ def test_run_route_derives_subject_and_tenant_from_authenticated_principal():
 
 def test_run_route_preserves_policy_refs_for_workload_identity():
     gateway = MagicMock()
-    gateway.submit_run.side_effect = lambda run: GatewayWriteResult(run, True)
+    gateway.submit_run.side_effect = lambda run, **_kwargs: GatewayWriteResult(
+        run, True
+    )
     decision_id = UUID("00000000-0000-4000-8000-000000000080")
     approval_id = UUID("00000000-0000-4000-8000-000000000090")
     body = {
@@ -276,6 +297,7 @@ def test_run_route_preserves_policy_refs_for_workload_identity():
             "policy_decision_artifact_id": str(decision_id),
             "approval_artifact_id": str(approval_id),
         },
+        "request_dispatch": True,
         "purpose": "execute authorized dataops run",
         "submitted_at": NOW.isoformat(),
     }
@@ -295,6 +317,51 @@ def test_run_route_preserves_policy_refs_for_workload_identity():
     assert submitted.subject_context.subject_type.value == "workload"
     assert submitted.policy_refs.policy_decision_artifact_id == decision_id
     assert submitted.policy_refs.approval_artifact_id == approval_id
+    assert gateway.submit_run.call_args.kwargs == {"request_dispatch": True}
+
+
+def test_dolphinscheduler_callback_requires_workload_and_enqueues_reconcile():
+    command = _command()
+    gateway = MagicMock()
+    gateway.record_attempt_and_enqueue_reconcile.return_value = GatewayWriteResult(
+        command, True
+    )
+    body = {
+        "callback_id": "00000000-0000-4000-8000-000000000060",
+        "attempt_no": 1,
+        "project_code": 1001,
+        "workflow_instance_id": 901,
+        "workflow_definition_code": 701,
+        "workflow_definition_version": 1,
+        "provider_state": "SUCCESS",
+        "observed_at": NOW.isoformat(),
+    }
+    request = _request(body=body, path={"run_id": str(RUN_ID)})
+    with patch.object(routes, "_get_user_from_request", return_value=_user()):
+        rejected = asyncio.run(routes.create_dolphinscheduler_callback(request))
+    assert rejected.status_code == 403
+
+    request = _request(body=body, path={"run_id": str(RUN_ID)})
+    with (
+        patch.object(
+            routes,
+            "_get_user_from_request",
+            return_value=_user(
+                subject_type="workload", identifier="dataops-adapter"
+            ),
+        ),
+        patch.object(routes, "_gateway", return_value=gateway),
+    ):
+        response = asyncio.run(routes.create_dolphinscheduler_callback(request))
+
+    assert response.status_code == 202
+    observation = gateway.record_attempt_and_enqueue_reconcile.call_args.args[0]
+    assert observation.framework_kind.value == "dolphinscheduler"
+    assert observation.observation_id == command.trigger_observation_id
+    assert observation.observed_state == "success"
+    assert gateway.record_attempt_and_enqueue_reconcile.call_args.kwargs == {
+        "actor_subject": "workload:dataops-adapter"
+    }
 
 
 def test_gateway_conflict_has_stable_safe_error_envelope():
@@ -331,7 +398,7 @@ def test_run_transition_rejects_negative_state_version_at_http_boundary():
 
 def test_platform_gateway_routes_are_versioned_and_registered():
     registered = routes.get_platform_gateway_routes()
-    assert len(registered) == 9
+    assert len(registered) == 10
     assert all(route.path.startswith("/api/platform/v1/") for route in registered)
 
     from data_agent.frontend_api import get_frontend_api_routes
@@ -344,7 +411,7 @@ def test_platform_gateway_static_contract_and_fail_closed_role(tmp_path):
     report = build_gateway_report()
     assert report["status"] == "valid"
     assert report["database_role"] == "gda_control_gateway"
-    assert report["route_count"] == 9
+    assert report["route_count"] == 10
 
     unsafe = tmp_path / "unsafe_gateway.sql"
     unsafe.write_text(
@@ -356,3 +423,14 @@ def test_platform_gateway_static_contract_and_fail_closed_role(tmp_path):
     unsafe_report = build_gateway_report(role_migration=unsafe)
     assert unsafe_report["status"] == "invalid"
     assert "role_migration" in unsafe_report["missing_markers"]
+
+    unsafe_command = tmp_path / "unsafe_command.sql"
+    unsafe_command.write_text(
+        COMMAND_OUTBOX_MIGRATION.read_text(encoding="utf-8").replace(
+            "FOR UPDATE SKIP LOCKED", "FOR UPDATE"
+        ),
+        encoding="utf-8",
+    )
+    unsafe_report = build_gateway_report(command_migration=unsafe_command)
+    assert unsafe_report["status"] == "invalid"
+    assert "command_migration" in unsafe_report["missing_markers"]

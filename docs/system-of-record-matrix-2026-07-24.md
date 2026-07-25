@@ -30,7 +30,7 @@
 | Definition | `gda_control.platform_definition_version` 已绑定 definition ResourceVersion、完整逻辑 hash 和原子 gateway registration；3.4.2 adapter 可编译、创建并上线 provider DAG；binding 已以 append-only `execution_plan` Artifact 持久化并可按 tenant + artifact UUID 读取，旧 workflow/template/YAML 仍在写入 | 编辑器状态、DolphinScheduler DAG/definition | 旧 workflow 必须规范化并完整 hash 后才可形成 PlatformDefinitionVersion；provider binding 作为 ExecutionPlanArtifact/evidence，不可反写 definition | DataOps | AR-1 binding persistence 代码已验证 -> staging 调用链待验收 |
 | Run 最终状态 | `gda_control.platform_run/event` 已实现受控 submit/read/CAS gateway；adapter 已实现 dispatch/reconcile/cancel 和四字段 correlation，真实 standalone API path 已验证，PlatformGateway 端到端 staging 尚未完成；legacy 路径继续运行 | Redis progress、日志、DolphinScheduler state、attempt observation | 旧 run 到 PlatformRun 永久 prohibited；已有 PlatformRun correlation 时才可转为 attempt observation；provider 终态只进入 `reconciling`，ledger 经 Artifact/Quality/Policy 验证后唯一裁决终态 | DataOps/AgentOps | AR-1 adapter sandbox POC 已验证 -> staging/生产切换待验收 |
 | 调度与补数 | APScheduler、自进化 scheduler 和调用方定时逻辑并存；DolphinScheduler POC 只验证 manual start/list/variables/STOP | UI schedule 列表 | DolphinScheduler 管 DataOps schedule/complement；Temporal 只管需要 durable signal/compensation 的 Agent/GWM workflow | DataOps/AgentOps | AR-1 manual correlation 已验证；schedule/complement/failover 待验收 |
-| 事件交付 | Standards outbox 已数据库耐久；其他 WebSocket/bot/feedback 多为 best effort | 消费者 offset、WebSocket 消息 | command/event 先入 outbox，幂等 consumer 交付；缓存或 socket 不是权威 | Platform/Integrations | AR-1 |
+| 事件交付 | Standards outbox 已数据库耐久；`gda_control.platform_command_outbox` 已为 DolphinScheduler dispatch/reconcile 提供 tenant RLS、lease claim、幂等 callback 和薄 consumer library；其他 WebSocket/bot/feedback 多为 best effort | command delivery status、消费者 claim、WebSocket 消息 | command/event 与源事实同事务入 outbox，幂等 consumer 交付；outbox 状态、缓存或 socket 都不是 Run/业务权威 | Platform/Integrations | AR-1 command delivery 代码已验证 -> staging worker/callback 待部署 |
 | 质量结果 | standards、QC、MMFE 和专项表各自记录 | dashboard 汇总 | 不可变 QualityResult/Evidence 绑定 input version、rule version 和 RunRef；汇总可重建 | Governance/DataOps | AR-1 -> AR-3 |
 | 标准与语义定义 | `std_*`、semantic registry 和 YAML 共同存在，生命周期未统一 | prompt/context、搜索索引 | 版本化 Standard/SemanticDefinition 经审批后为权威；Agent context 只消费批准版本 | Governance | AR-1 -> AR-3 |
 | 身份与权限 | Chainlit user 可显式绑定 tenant；versioned API 从认证 principal 派生 SubjectContext；`gda_control_gateway` 是 non-login/non-bypass 最小权限角色；Run 可引用强类型 PolicyDecision/Approval Artifact，DolphinScheduler dispatch 已绑定配置的 workload/evaluator 并在 provider 调用前校验证据 | session/cache、前端菜单权限、provider token profile | IdP/workload identity 提供真实 service identity；PolicyDecision/Approval 继续绑定不可变资源与 execution plan；完成 OIDC/IAM provisioning、轮换、吊销和 provider 最小权限后才能生产切换 | Security | AR-1 dispatch authorization 代码已验证 -> staging IAM 待验收 |
@@ -52,6 +52,7 @@
 8. `platform_crosswalk` 只验证仓库 inventory、候选 payload 和 golden fixture；它不得连接数据库、分配 identity、回填旧表或写入 `gda_control`。
 9. DolphinScheduler standalone 使用 H2 和默认开发身份，只能证明 adapter API/correlation 合同；不能作为生产 metadata DB、身份、隔离、高可用、备份恢复或升级证据。
 10. workload/evaluator subject 配置和授权 Artifact gate 不是生产 IAM 的替代品；没有 staging 的 credential provisioning、轮换、吊销与 provider 最小权限证据时，不得宣称 workload identity 完成。
+11. `platform_command_outbox` 只拥有投递状态；callback 只触发 reconcile，不能把 provider payload 直接写成 PlatformRun 状态或平台终局。
 
 ## 已建立的 AR-0/AR-1 entry 证据
 
@@ -62,11 +63,12 @@
 - 九个 versioned API 已校验认证角色、tenant 和 actor，未绑定 tenant 的历史/OAuth/bot 身份默认拒绝；生产调用链仍写旧表，尚未切换到 gateway。
 - DolphinScheduler 3.4.2 adapter 已固定 create/online/start/list/variables/control 路由、四字段 Run correlation、未知结果禁止盲目重提和 provider 非终局边界；binding artifact 具备稳定 UUID、canonical 完整性校验、幂等追加和 tenant-scoped 读取；真实 ARM64 standalone 完成 Shell DAG 精确关联，`STOP` 到达 `READY_STOP`，但未形成生产终局裁决证据。
 - PolicyDecision/Approval 已形成强类型、内容寻址的 append-only Artifact，PlatformRun 保存不可变 UUID 引用；gateway 在提交期校验精确资源 scope，adapter 在 dispatch 前强制 workload/evaluator identity、action、effect、有效期和审批关系，失败时不会触达 provider 或改变 Run。
+- migration 095 已建立 tenant/workload-scoped dispatch/reconcile outbox；真实 PostgreSQL 测试已覆盖最小权限、Run+dispatch/callback+reconcile 原子写、完成后幂等 replay、错误 workload 空领取、lease 接管、stale worker 拒绝和 fail/retry/complete，但尚无 staging 常驻 consumer 或真实 provider callback 运行证据。
 
 ## 下一验收证据
 
 - staging/production 的 schema、config 和 runtime snapshot 产物及环境 compare 报告；
 - staging 的 migration role、应用 login membership、连接池 role/tenant 复位和双租户 API 运行产物；
-- DolphinScheduler adapter 的真实 IAM/OIDC、service token provisioning/轮换、provider 最小权限、binding artifact staging 接入、outbox/callback、故障恢复和无双写证据；
+- DolphinScheduler adapter 的真实 IAM/OIDC、service token provisioning/轮换、provider 最小权限、binding artifact staging 接入、常驻 outbox consumer/provider callback 部署、故障恢复和无双写证据；
 - 首条真实图斑链对 golden slice 的运行证据、质量结果、发布 revision 和 rollback 演练；
 - OpenMetadata/Gravitino 与 DolphinScheduler/Temporal sandbox 的独立数据库、备份恢复、身份、版本和升级责任证明；DolphinScheduler standalone/H2 不计入此退出门。

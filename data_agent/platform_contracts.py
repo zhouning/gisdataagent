@@ -149,6 +149,18 @@ class ApprovalVerdict(str, Enum):
     REJECTED = "rejected"
 
 
+class PlatformCommandType(str, Enum):
+    DOLPHINSCHEDULER_DISPATCH = "dolphinscheduler.dispatch"
+    DOLPHINSCHEDULER_RECONCILE = "dolphinscheduler.reconcile"
+
+
+class PlatformCommandStatus(str, Enum):
+    PENDING = "pending"
+    IN_FLIGHT = "in_flight"
+    DONE = "done"
+    FAILED = "failed"
+
+
 class LineageEventType(str, Enum):
     READ = "read"
     WRITE = "write"
@@ -423,6 +435,54 @@ class ApprovalRecord(FrozenContract):
         return self
 
 
+class PlatformCommand(FrozenContract):
+    schema_id = "platform_command"
+
+    tenant_id: TenantId
+    command_id: UUID
+    run_id: UUID
+    command_type: PlatformCommandType
+    execution_plan_artifact_id: UUID
+    trigger_observation_id: UUID | None = None
+    dedupe_key: NonEmptyText
+    actor_subject: NonEmptyText
+    payload: dict[str, Any] = Field(default_factory=dict)
+    status: PlatformCommandStatus = PlatformCommandStatus.PENDING
+    attempt_count: Annotated[int, Field(ge=0)] = 0
+    max_attempts: Annotated[int, Field(ge=1, le=100)] = 5
+    available_at: datetime
+    claimed_by: NonEmptyText | None = None
+    claimed_until: datetime | None = None
+    last_error: NonEmptyText | None = None
+    created_at: datetime
+    completed_at: datetime | None = None
+
+    @field_validator(
+        "available_at", "claimed_until", "created_at", "completed_at"
+    )
+    @classmethod
+    def _utc_command_time(cls, value: datetime | None) -> datetime | None:
+        return _aware_utc(value) if value is not None else None
+
+    @model_validator(mode="after")
+    def _consistent_delivery_state(self) -> PlatformCommand:
+        claimed = self.claimed_by is not None and self.claimed_until is not None
+        if (self.claimed_by is None) != (self.claimed_until is None):
+            raise ValueError("command claim owner and expiry must be set together")
+        if self.status == PlatformCommandStatus.PENDING:
+            if claimed or self.completed_at is not None:
+                raise ValueError("pending command cannot be claimed or completed")
+        elif self.status == PlatformCommandStatus.IN_FLIGHT:
+            if not claimed or self.completed_at is not None:
+                raise ValueError("in-flight command requires an active claim")
+        elif claimed or self.completed_at is None:
+            raise ValueError("completed command must release its claim")
+        if self.command_type == PlatformCommandType.DOLPHINSCHEDULER_DISPATCH:
+            if self.trigger_observation_id is not None:
+                raise ValueError("dispatch command cannot reference a callback observation")
+        return self
+
+
 class Resource(FrozenContract):
     schema_id = "resource"
 
@@ -687,6 +747,7 @@ CONTRACT_MODELS = (
     RunPolicyReferences,
     PolicyDecision,
     ApprovalRecord,
+    PlatformCommand,
     Resource,
     ResourceVersion,
     PlatformDefinitionVersion,

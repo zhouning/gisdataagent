@@ -6,7 +6,7 @@
 
 **Decision owners**: Platform Architecture, Data Platform, DataOps, Security
 
-**Related decisions**: ADR-003、ADR-007、ADR-018、ADR-020、ADR-021、ADR-024
+**Related decisions**: ADR-003、ADR-007、ADR-018、ADR-020、ADR-021、ADR-024、ADR-025
 
 **Related roadmap**: [AR-0/AR-1 平台事实与最小控制面](../roadmap-ar0-platform-truth-2026-07-24.md)
 
@@ -94,6 +94,6 @@ Run 的 SubjectContext 和 transition actor 完全由认证 principal 构造。R
 
 - 新 adapter 需要不同 action、obligation、审批职责分离或 provider policy 下推模型；
 - 需要 workload OIDC/service identity，而不再适合复用交互式 Chainlit user；
-- metadata/orchestrator POC 需要 list/search/callback/outbox 或异步事件合同；
+- metadata/orchestrator POC 需要超出 ADR-025 dispatch/reconcile 范围的 list/search 或异步事件合同；
 - 模块化单体在独立扩缩、故障域、吞吐或发布节奏上达到记录过的瓶颈；
 - 生产切换需要 legacy 双读比较、迁移审计、rollback 和旧 writer 撤权。

@@ -23,6 +23,7 @@ from data_agent.platform_contracts import (
 )
 from data_agent.platform_gateway import (
     DefinitionRegistration,
+    GatewayConflictError,
     GatewayNotFoundError,
     PlatformGateway,
 )
@@ -35,6 +36,7 @@ MIGRATIONS = tuple(
         "092_platform_control_ledger.sql",
         "093_app_user_tenant_context.sql",
         "094_platform_control_gateway.sql",
+        "095_platform_command_outbox.sql",
     )
 )
 TENANT = "gateway-tenant"
@@ -105,6 +107,31 @@ def test_postgres_gateway_role_is_tenant_scoped_and_append_only():
                     """
                 ).one()
                 assert privileges == (True, False, False, False)
+
+                command_privileges = connection.exec_driver_sql(
+                    """
+                    SELECT
+                        has_table_privilege(
+                            'gda_control_gateway',
+                            'gda_control.platform_command_outbox',
+                            'SELECT,INSERT'
+                        ),
+                        has_table_privilege(
+                            'gda_control_gateway',
+                            'gda_control.platform_command_outbox', 'UPDATE'
+                        ),
+                        has_table_privilege(
+                            'gda_control_gateway',
+                            'gda_control.platform_command_outbox', 'DELETE'
+                        ),
+                        has_function_privilege(
+                            'gda_control_gateway',
+                            'gda_control.claim_platform_commands(text,text,text,integer,integer)',
+                            'EXECUTE'
+                        )
+                    """
+                ).one()
+                assert command_privileges == (True, False, False, True)
 
                 connection.exec_driver_sql(
                     f"SET LOCAL app.current_tenant = '{TENANT}'"
@@ -411,11 +438,91 @@ def test_platform_gateway_service_writes_idempotent_control_chain():
             ),
             submitted_at=now,
         )
-        assert gateway.submit_run(run).created is True
-        replay = gateway.submit_run(run)
+        assert gateway.submit_run(run, request_dispatch=True).created is True
+        replay = gateway.submit_run(run, request_dispatch=True)
         assert replay.created is False
         assert replay.value == run
         assert gateway.get_run(tenant, run_id).policy_refs == run.policy_refs
+
+        assert gateway.claim_commands(
+            tenant,
+            "worker:wrong-subject",
+            actor_subject="workload:other-adapter",
+            limit=10,
+            lease_seconds=5,
+        ) == []
+        claimed = gateway.claim_commands(
+            tenant,
+            "worker:first",
+            actor_subject=actor,
+            limit=10,
+            lease_seconds=5,
+        )
+        assert len(claimed) == 1
+        dispatch_command = claimed[0]
+        assert dispatch_command.command_type.value == "dolphinscheduler.dispatch"
+        assert dispatch_command.attempt_count == 1
+        assert dispatch_command.claimed_by == "worker:first"
+        assert gateway.claim_commands(
+            f"other-{tenant}",
+            "worker:other",
+            actor_subject=actor,
+            limit=10,
+            lease_seconds=5,
+        ) == []
+
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    """
+                    UPDATE gda_control.platform_command_outbox
+                    SET claimed_until = now() - interval '1 second'
+                    WHERE tenant_id = :tenant_id AND command_id = :command_id
+                    """
+                ),
+                {"tenant_id": tenant, "command_id": dispatch_command.command_id},
+            )
+        reclaimed = gateway.claim_commands(
+            tenant,
+            "worker:replacement",
+            actor_subject=actor,
+            limit=10,
+            lease_seconds=5,
+        )
+        assert len(reclaimed) == 1
+        assert reclaimed[0].command_id == dispatch_command.command_id
+        assert reclaimed[0].attempt_count == 2
+        with pytest.raises(GatewayConflictError):
+            gateway.complete_command(
+                tenant,
+                dispatch_command.command_id,
+                worker_id="worker:first",
+            )
+        deferred = gateway.defer_dispatch_to_reconcile(
+            reclaimed[0],
+            worker_id="worker:replacement",
+        )
+        assert deferred.command_type.value == "dolphinscheduler.reconcile"
+        completed_dispatch = gateway.get_command(
+            tenant, dispatch_command.command_id
+        )
+        assert completed_dispatch.status.value == "done"
+        replay_after_delivery = gateway.submit_run(run, request_dispatch=True)
+        assert replay_after_delivery.created is False
+        assert replay_after_delivery.value == run
+        deferred_claim = gateway.claim_commands(
+            tenant,
+            "worker:deferred",
+            actor_subject=actor,
+            limit=10,
+            lease_seconds=5,
+        )
+        assert [item.command_id for item in deferred_claim] == [deferred.command_id]
+        gateway.complete_command(
+            tenant,
+            deferred.command_id,
+            worker_id="worker:deferred",
+        )
 
         transitioned = gateway.transition_run(
             tenant,
@@ -446,6 +553,75 @@ def test_platform_gateway_service_writes_idempotent_control_chain():
         )
         assert gateway.record_attempt(observation).created is True
         assert gateway.record_attempt(observation).created is False
+
+        callback_id = uuid4()
+        callback_evidence = {
+            "schema": "gda.dolphinscheduler_callback.v1",
+            "callback_id": str(callback_id),
+            "provider_state": "RUNNING_EXECUTION",
+        }
+        callback = FrameworkAttemptObservation(
+            tenant_id=tenant,
+            observation_id=callback_id,
+            run_id=run_id,
+            attempt_no=1,
+            framework_kind="dolphinscheduler",
+            external_namespace="1001",
+            external_run_id="901",
+            observed_state="running_execution",
+            observation_sha256=canonical_json_fingerprint(callback_evidence),
+            evidence=callback_evidence,
+            observed_at=now,
+        )
+        callback_result = gateway.record_attempt_and_enqueue_reconcile(
+            callback,
+            actor_subject=actor,
+        )
+        assert callback_result.created is True
+        callback_replay = gateway.record_attempt_and_enqueue_reconcile(
+            callback,
+            actor_subject=actor,
+        )
+        assert callback_replay.created is False
+        assert callback_replay.value == callback_result.value
+        reconcile_commands = gateway.claim_commands(
+            tenant,
+            "worker:callback",
+            actor_subject=actor,
+            limit=10,
+            lease_seconds=5,
+        )
+        assert len(reconcile_commands) == 1
+        assert reconcile_commands[0].command_type.value == "dolphinscheduler.reconcile"
+        assert reconcile_commands[0].trigger_observation_id == callback_id
+        retry = gateway.fail_command(
+            tenant,
+            reconcile_commands[0].command_id,
+            worker_id="worker:callback",
+            error="provider temporarily unavailable",
+            retry_delay_seconds=0,
+        )
+        assert retry.status.value == "pending"
+        assert retry.last_error == "provider temporarily unavailable"
+        retried = gateway.claim_commands(
+            tenant,
+            "worker:callback-retry",
+            actor_subject=actor,
+            limit=10,
+            lease_seconds=5,
+        )
+        assert len(retried) == 1
+        gateway.complete_command(
+            tenant,
+            retried[0].command_id,
+            worker_id="worker:callback-retry",
+        )
+        callback_after_delivery = gateway.record_attempt_and_enqueue_reconcile(
+            callback,
+            actor_subject=actor,
+        )
+        assert callback_after_delivery.created is False
+        assert callback_after_delivery.value.status.value == "done"
 
         artifact = Artifact(
             tenant_id=tenant,

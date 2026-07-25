@@ -6,7 +6,7 @@
 
 **Decision owners**: Platform Architecture, DataOps, Data Platform, Security
 
-**Related decisions**: ADR-007、ADR-020、ADR-021、ADR-022、ADR-024
+**Related decisions**: ADR-007、ADR-020、ADR-021、ADR-022、ADR-024、ADR-025
 
 **Related roadmap**: [AR-0/AR-1 平台事实与最小控制面](../roadmap-ar0-platform-truth-2026-07-24.md)
 
@@ -93,7 +93,7 @@ binding publish、dispatch、reconcile 和 cancel 必须使用 profile 配置的
 限制与缓解：
 
 - binding artifact、授权 evidence gate、workload/evaluator 配置绑定和 tenant-scoped gateway 读取已完成，但生产调用方尚未切换，不能视为 staging IAM 或控制链验收；
-- 没有 callback/outbox consumer 或周期 reconcile worker，生产接入前必须建立耐久触发与恢复路径；
+- ADR-025 已实现 callback/outbox 合同与有界 consumer library，但尚未部署常驻 worker、配置 provider callback 或验证告警/恢复 SLO；
 - 真实 standalone 验证了客户端路由，但 PlatformGateway + DolphinScheduler + PostgreSQL 的同一端到端场景仍待 staging 验证；
 - 尚未验证 schedule、complement/backfill、master/worker failover、独立 metadata DB 或 backup/restore，不能宣称 AR-1 退出门完成。
 

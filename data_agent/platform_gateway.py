@@ -8,9 +8,10 @@ import json
 import re
 from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Iterator
-from uuid import UUID
+from uuid import UUID, uuid5
 
 from pydantic import BaseModel, ConfigDict, TypeAdapter, model_validator
 from sqlalchemy import text
@@ -26,8 +27,12 @@ from .platform_contracts import (
     Artifact,
     FrameworkAttemptObservation,
     LineageEvent,
+    PlatformCommand,
+    PlatformCommandStatus,
+    PlatformCommandType,
     PlatformDefinitionVersion,
     PlatformRun,
+    PolicyDecision,
     Resource,
     ResourceVersion,
     RunStatus,
@@ -42,6 +47,11 @@ GATEWAY_ROLE_MIGRATION = (
     / "migrations"
     / "094_platform_control_gateway.sql"
 )
+COMMAND_OUTBOX_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "095_platform_command_outbox.sql"
+)
 USER_TENANT_MIGRATION = (
     Path(__file__).resolve().parent
     / "migrations"
@@ -49,6 +59,9 @@ USER_TENANT_MIGRATION = (
 )
 GATEWAY_ROUTES_SOURCE = (
     Path(__file__).resolve().parent / "api" / "platform_gateway_routes.py"
+)
+COMMAND_CONSUMER_SOURCE = (
+    Path(__file__).resolve().parent / "dolphinscheduler_command_consumer.py"
 )
 _TENANT_ADAPTER = TypeAdapter(TenantId)
 
@@ -423,10 +436,19 @@ class PlatformGateway:
             exclude={"status", "state_version"},
         )
 
-    def _validate_run_policy_references(self, connection, run: PlatformRun) -> None:
+    @staticmethod
+    def _run_actor(run: PlatformRun) -> str:
+        return (
+            f"{run.subject_context.subject_type.value}:"
+            f"{run.subject_context.subject_id}"
+        )
+
+    def _validate_run_policy_references(
+        self, connection, run: PlatformRun
+    ) -> tuple[PolicyDecision | None, Artifact | None]:
         references = run.policy_refs
         if references is None:
-            return
+            return None, None
         decision_artifact = self._load_artifact(
             connection, run.tenant_id, references.policy_decision_artifact_id
         )
@@ -458,14 +480,151 @@ class PlatformGateway:
             )
         except AuthorizationEvidenceError as exc:
             raise GatewayValidationError(str(exc)) from exc
+        return decision, execution_plan_artifact
 
-    def submit_run(self, run: PlatformRun) -> GatewayWriteResult:
-        with self._transaction(run.tenant_id) as connection:
-            self._validate_run_policy_references(connection, run)
-            actor = (
-                f"{run.subject_context.subject_type.value}:"
-                f"{run.subject_context.subject_id}"
+    @staticmethod
+    def _command_from_row(row) -> PlatformCommand:
+        value = dict(row)
+        value["payload"] = _as_json(value["payload"])
+        return PlatformCommand.model_validate(value)
+
+    @staticmethod
+    def _command_binding(command: PlatformCommand) -> dict[str, Any]:
+        """Return fields that identify a logical command, not its delivery state."""
+        return command.model_dump(
+            mode="json",
+            exclude={
+                "status",
+                "attempt_count",
+                "available_at",
+                "claimed_by",
+                "claimed_until",
+                "last_error",
+                "created_at",
+                "completed_at",
+            },
+        )
+
+    @classmethod
+    def _load_command(
+        cls, connection, tenant_id: str, command_id: UUID
+    ) -> PlatformCommand | None:
+        row = connection.execute(
+            text(
+                """
+                SELECT tenant_id, command_id, run_id, command_type,
+                       execution_plan_artifact_id, trigger_observation_id,
+                       dedupe_key, actor_subject, payload, status,
+                       attempt_count, max_attempts, available_at,
+                       claimed_by, claimed_until, last_error,
+                       created_at, completed_at
+                FROM gda_control.platform_command_outbox
+                WHERE tenant_id = :tenant_id AND command_id = :command_id
+                """
+            ),
+            {"tenant_id": tenant_id, "command_id": command_id},
+        ).mappings().one_or_none()
+        return cls._command_from_row(row) if row is not None else None
+
+    @classmethod
+    def _put_command(
+        cls, connection, command: PlatformCommand
+    ) -> GatewayWriteResult:
+        if command.status != PlatformCommandStatus.PENDING:
+            raise GatewayValidationError("new platform command must be pending")
+        inserted = connection.execute(
+            text(
+                """
+                INSERT INTO gda_control.platform_command_outbox (
+                    tenant_id, command_id, run_id, command_type,
+                    execution_plan_artifact_id, trigger_observation_id,
+                    dedupe_key, actor_subject, payload, status,
+                    attempt_count, max_attempts, available_at,
+                    claimed_by, claimed_until, last_error,
+                    created_at, completed_at
+                ) VALUES (
+                    :tenant_id, :command_id, :run_id, :command_type,
+                    :execution_plan_artifact_id, :trigger_observation_id,
+                    :dedupe_key, :actor_subject, CAST(:payload AS jsonb), :status,
+                    :attempt_count, :max_attempts, :available_at,
+                    :claimed_by, :claimed_until, :last_error,
+                    :created_at, :completed_at
+                )
+                ON CONFLICT DO NOTHING
+                RETURNING command_id
+                """
+            ),
+            {
+                **command.model_dump(mode="python", exclude={"payload"}),
+                "command_type": command.command_type.value,
+                "status": command.status.value,
+                "payload": _json(command.payload),
+            },
+        ).first()
+        stored = cls._load_command(
+            connection, command.tenant_id, command.command_id
+        )
+        if (
+            stored is None
+            or cls._command_binding(stored) != cls._command_binding(command)
+        ):
+            raise GatewayConflictError(
+                "platform command identity already has a different payload"
             )
+        return GatewayWriteResult(stored, inserted is not None)
+
+    @classmethod
+    def _dispatch_command(
+        cls,
+        run: PlatformRun,
+        decision: PolicyDecision | None,
+        execution_plan: Artifact | None,
+    ) -> PlatformCommand:
+        if decision is None or execution_plan is None:
+            raise GatewayValidationError(
+                "dispatch request requires immutable policy references"
+            )
+        if run.orchestration_class.value != "dataops":
+            raise GatewayValidationError("dispatch request requires a dataops Run")
+        if run.subject_context.subject_type.value != "workload":
+            raise GatewayValidationError(
+                "dispatch request requires workload SubjectContext"
+            )
+        if decision.action != PlatformCommandType.DOLPHINSCHEDULER_DISPATCH.value:
+            raise GatewayValidationError(
+                "policy decision action does not authorize dispatch"
+            )
+        dedupe_key = (
+            f"dolphinscheduler.dispatch:{run.run_id}:"
+            f"{execution_plan.artifact_id}"
+        )
+        enqueued_at = datetime.now(UTC)
+        return PlatformCommand(
+            tenant_id=run.tenant_id,
+            command_id=uuid5(run.run_id, dedupe_key),
+            run_id=run.run_id,
+            command_type=PlatformCommandType.DOLPHINSCHEDULER_DISPATCH,
+            execution_plan_artifact_id=execution_plan.artifact_id,
+            dedupe_key=dedupe_key,
+            actor_subject=cls._run_actor(run),
+            payload={
+                "schema": "gda.dolphinscheduler_dispatch_command.v1",
+                "policy_decision_artifact_id": str(
+                    run.policy_refs.policy_decision_artifact_id
+                ),
+            },
+            available_at=enqueued_at,
+            created_at=enqueued_at,
+        )
+
+    def submit_run(
+        self, run: PlatformRun, *, request_dispatch: bool = False
+    ) -> GatewayWriteResult:
+        with self._transaction(run.tenant_id) as connection:
+            decision, execution_plan = self._validate_run_policy_references(
+                connection, run
+            )
+            actor = self._run_actor(run)
             inserted = connection.execute(
                 text(
                     """
@@ -551,6 +710,11 @@ class PlatformGateway:
                 raise GatewayConflictError(
                     "Run idempotency key already has a different immutable binding"
                 )
+            if request_dispatch:
+                self._put_command(
+                    connection,
+                    self._dispatch_command(stored, decision, execution_plan),
+                )
             return GatewayWriteResult(stored, inserted is not None)
 
     def get_run(self, tenant_id: str, run_id: UUID) -> PlatformRun:
@@ -620,42 +784,265 @@ class PlatformGateway:
         value["evidence"] = _as_json(value["evidence"])
         return FrameworkAttemptObservation.model_validate(value)
 
+    def _put_observation(
+        self, connection, observation: FrameworkAttemptObservation
+    ) -> GatewayWriteResult:
+        inserted = connection.execute(
+            text(
+                """
+                INSERT INTO gda_control.framework_attempt_observation (
+                    tenant_id, observation_id, run_id, attempt_no,
+                    framework_kind, external_namespace, external_run_id,
+                    external_attempt_id, observed_state,
+                    observation_sha256, evidence, observed_at
+                ) VALUES (
+                    :tenant_id, :observation_id, :run_id, :attempt_no,
+                    :framework_kind, :external_namespace, :external_run_id,
+                    :external_attempt_id, :observed_state,
+                    :observation_sha256, CAST(:evidence AS jsonb), :observed_at
+                )
+                ON CONFLICT DO NOTHING
+                RETURNING observation_id
+                """
+            ),
+            {
+                **observation.model_dump(mode="python", exclude={"evidence"}),
+                "framework_kind": observation.framework_kind.value,
+                "evidence": _json(observation.evidence),
+            },
+        ).first()
+        stored = self._load_observation(
+            connection, observation.tenant_id, observation.observation_id
+        )
+        if stored is None or stored != observation:
+            raise GatewayConflictError(
+                "attempt observation identity already has a different payload"
+            )
+        return GatewayWriteResult(stored, inserted is not None)
+
     def record_attempt(
         self, observation: FrameworkAttemptObservation
     ) -> GatewayWriteResult:
         with self._transaction(observation.tenant_id) as connection:
-            inserted = connection.execute(
+            return self._put_observation(connection, observation)
+
+    @classmethod
+    def _reconcile_command(
+        cls,
+        run: PlatformRun,
+        execution_plan: Artifact,
+        *,
+        source_id: UUID,
+        trigger_observation_id: UUID | None,
+        created_at: datetime,
+        reason: str,
+    ) -> PlatformCommand:
+        dedupe_key = (
+            f"dolphinscheduler.reconcile:{run.run_id}:"
+            f"{execution_plan.artifact_id}:{source_id}"
+        )
+        return PlatformCommand(
+            tenant_id=run.tenant_id,
+            command_id=uuid5(source_id, dedupe_key),
+            run_id=run.run_id,
+            command_type=PlatformCommandType.DOLPHINSCHEDULER_RECONCILE,
+            execution_plan_artifact_id=execution_plan.artifact_id,
+            trigger_observation_id=trigger_observation_id,
+            dedupe_key=dedupe_key,
+            actor_subject=cls._run_actor(run),
+            payload={
+                "schema": "gda.dolphinscheduler_reconcile_command.v1",
+                "reason": reason,
+            },
+            available_at=created_at,
+            created_at=created_at,
+        )
+
+    def record_attempt_and_enqueue_reconcile(
+        self,
+        observation: FrameworkAttemptObservation,
+        *,
+        actor_subject: str,
+    ) -> GatewayWriteResult:
+        with self._transaction(observation.tenant_id) as connection:
+            run = self._load_run(
+                connection, observation.tenant_id, observation.run_id
+            )
+            if run is None:
+                raise GatewayNotFoundError("PlatformRun was not found")
+            if observation.framework_kind.value != "dolphinscheduler":
+                raise GatewayValidationError(
+                    "provider callback must use DolphinScheduler framework kind"
+                )
+            if run.subject_context.subject_type.value != "workload":
+                raise GatewayForbiddenError(
+                    "provider callback requires workload SubjectContext"
+                )
+            if actor_subject != self._run_actor(run):
+                raise GatewayForbiddenError(
+                    "callback actor does not match Run workload identity"
+                )
+            decision, execution_plan = self._validate_run_policy_references(
+                connection, run
+            )
+            if decision is None or execution_plan is None:
+                raise GatewayValidationError(
+                    "provider callback requires immutable execution plan references"
+                )
+            if decision.action != PlatformCommandType.DOLPHINSCHEDULER_DISPATCH.value:
+                raise GatewayValidationError(
+                    "Run policy action does not match DolphinScheduler dispatch"
+                )
+            self._put_observation(connection, observation)
+            enqueued_at = datetime.now(UTC)
+            command = self._reconcile_command(
+                run,
+                execution_plan,
+                source_id=observation.observation_id,
+                trigger_observation_id=observation.observation_id,
+                created_at=enqueued_at,
+                reason="provider_callback",
+            )
+            return self._put_command(connection, command)
+
+    def get_command(self, tenant_id: str, command_id: UUID) -> PlatformCommand:
+        with self._transaction(tenant_id) as connection:
+            command = self._load_command(connection, tenant_id, command_id)
+            if command is None:
+                raise GatewayNotFoundError("Platform command was not found")
+            return command
+
+    def claim_commands(
+        self,
+        tenant_id: str,
+        worker_id: str,
+        *,
+        actor_subject: str,
+        limit: int = 10,
+        lease_seconds: int = 60,
+    ) -> list[PlatformCommand]:
+        with self._transaction(tenant_id) as connection:
+            rows = connection.execute(
                 text(
                     """
-                    INSERT INTO gda_control.framework_attempt_observation (
-                        tenant_id, observation_id, run_id, attempt_no,
-                        framework_kind, external_namespace, external_run_id,
-                        external_attempt_id, observed_state,
-                        observation_sha256, evidence, observed_at
-                    ) VALUES (
-                        :tenant_id, :observation_id, :run_id, :attempt_no,
-                        :framework_kind, :external_namespace, :external_run_id,
-                        :external_attempt_id, :observed_state,
-                        :observation_sha256, CAST(:evidence AS jsonb), :observed_at
+                    SELECT * FROM gda_control.claim_platform_commands(
+                        :tenant_id, :actor_subject, :worker_id,
+                        :limit, :lease_seconds
                     )
-                    ON CONFLICT DO NOTHING
-                    RETURNING observation_id
                     """
                 ),
                 {
-                    **observation.model_dump(mode="python", exclude={"evidence"}),
-                    "framework_kind": observation.framework_kind.value,
-                    "evidence": _json(observation.evidence),
+                    "tenant_id": tenant_id,
+                    "actor_subject": actor_subject,
+                    "worker_id": worker_id,
+                    "limit": limit,
+                    "lease_seconds": lease_seconds,
                 },
-            ).first()
-            stored = self._load_observation(
-                connection, observation.tenant_id, observation.observation_id
+            ).mappings().all()
+            return [self._command_from_row(row) for row in rows]
+
+    def complete_command(
+        self, tenant_id: str, command_id: UUID, *, worker_id: str
+    ) -> PlatformCommand:
+        with self._transaction(tenant_id) as connection:
+            row = connection.execute(
+                text(
+                    """
+                    SELECT * FROM gda_control.complete_platform_command(
+                        :tenant_id, :command_id, :worker_id
+                    )
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "command_id": command_id,
+                    "worker_id": worker_id,
+                },
+            ).mappings().one()
+            return self._command_from_row(row)
+
+    def fail_command(
+        self,
+        tenant_id: str,
+        command_id: UUID,
+        *,
+        worker_id: str,
+        error: str,
+        retry_delay_seconds: int = 30,
+    ) -> PlatformCommand:
+        with self._transaction(tenant_id) as connection:
+            row = connection.execute(
+                text(
+                    """
+                    SELECT * FROM gda_control.fail_platform_command(
+                        :tenant_id, :command_id, :worker_id,
+                        :error, :retry_delay_seconds
+                    )
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "command_id": command_id,
+                    "worker_id": worker_id,
+                    "error": error,
+                    "retry_delay_seconds": retry_delay_seconds,
+                },
+            ).mappings().one()
+            return self._command_from_row(row)
+
+    def defer_dispatch_to_reconcile(
+        self,
+        command: PlatformCommand,
+        *,
+        worker_id: str,
+    ) -> PlatformCommand:
+        with self._transaction(command.tenant_id) as connection:
+            stored = self._load_command(
+                connection, command.tenant_id, command.command_id
             )
-            if stored is None or stored != observation:
-                raise GatewayConflictError(
-                    "attempt observation identity already has a different payload"
+            if stored != command:
+                raise GatewayConflictError("platform command claim changed")
+            if (
+                command.command_type
+                != PlatformCommandType.DOLPHINSCHEDULER_DISPATCH
+                or command.status != PlatformCommandStatus.IN_FLIGHT
+                or command.claimed_by != worker_id
+            ):
+                raise GatewayValidationError(
+                    "only the dispatch claim owner can defer to reconcile"
                 )
-            return GatewayWriteResult(stored, inserted is not None)
+            run = self._load_run(connection, command.tenant_id, command.run_id)
+            execution_plan = self._load_artifact(
+                connection,
+                command.tenant_id,
+                command.execution_plan_artifact_id,
+            )
+            if run is None or execution_plan is None:
+                raise GatewayNotFoundError("dispatch command binding was not found")
+            reconcile = self._reconcile_command(
+                run,
+                execution_plan,
+                source_id=command.command_id,
+                trigger_observation_id=None,
+                created_at=datetime.now(UTC),
+                reason="dispatch_outcome_unknown",
+            )
+            result = self._put_command(connection, reconcile)
+            connection.execute(
+                text(
+                    """
+                    SELECT * FROM gda_control.complete_platform_command(
+                        :tenant_id, :command_id, :worker_id
+                    )
+                    """
+                ),
+                {
+                    "tenant_id": command.tenant_id,
+                    "command_id": command.command_id,
+                    "worker_id": worker_id,
+                },
+            ).mappings().one()
+            return result.value
 
     @staticmethod
     def _load_artifact(
@@ -785,15 +1172,23 @@ def build_gateway_report(
     *,
     tenant_migration: Path | None = None,
     role_migration: Path | None = None,
+    command_migration: Path | None = None,
     gateway_source: Path | None = None,
     routes_source: Path | None = None,
+    command_consumer_source: Path | None = None,
 ) -> dict[str, Any]:
     """Validate the static role, transaction, and HTTP boundary markers."""
     paths = {
         "tenant_migration": (tenant_migration or USER_TENANT_MIGRATION).resolve(),
         "role_migration": (role_migration or GATEWAY_ROLE_MIGRATION).resolve(),
+        "command_migration": (
+            command_migration or COMMAND_OUTBOX_MIGRATION
+        ).resolve(),
         "gateway_source": (gateway_source or Path(__file__)).resolve(),
         "routes_source": (routes_source or GATEWAY_ROUTES_SOURCE).resolve(),
+        "command_consumer_source": (
+            command_consumer_source or COMMAND_CONSUMER_SOURCE
+        ).resolve(),
     }
     texts: dict[str, str] = {}
     errors: list[str] = []
@@ -822,18 +1217,39 @@ def build_gateway_report(
             "GRANT EXECUTE ON FUNCTION gda_control.transition_platform_run(",
             "ALTER FUNCTION gda_control.initialize_platform_run_event() SECURITY DEFINER",
         ),
+        "command_migration": (
+            "CREATE TABLE IF NOT EXISTS gda_control.platform_command_outbox",
+            "FOR UPDATE SKIP LOCKED",
+            "AND actor_subject = p_actor_subject",
+            "claimed_until <= clock_timestamp()",
+            "REVOKE ALL ON TABLE gda_control.platform_command_outbox",
+            "GRANT SELECT, INSERT ON gda_control.platform_command_outbox",
+            "claim_platform_commands",
+            "complete_platform_command",
+            "fail_platform_command",
+        ),
         "gateway_source": (
             'SET LOCAL ROLE "{GATEWAY_DATABASE_ROLE}"',
             "SELECT set_config('app.current_tenant', :tenant, true)",
             "ON CONFLICT DO NOTHING",
             "def get_artifact(",
             "def _validate_run_policy_references(",
+            "def record_attempt_and_enqueue_reconcile(",
+            "def claim_commands(",
         ),
         "routes_source": (
             'base = "/api/platform/v1"',
             'frozenset({"admin", "platform_operator"})',
             '"tenant_context_required"',
             '"actor_mismatch"',
+            "create_dolphinscheduler_callback",
+        ),
+        "command_consumer_source": (
+            "class DolphinSchedulerCommandConsumer",
+            "self.gateway.claim_commands(",
+            "self.gateway.defer_dispatch_to_reconcile(",
+            "self.gateway.complete_command(",
+            "self.gateway.fail_command(",
         ),
     }
     missing_markers: dict[str, list[str]] = {}
@@ -855,14 +1271,20 @@ def build_gateway_report(
     elif "platform_run_event" in insert_grant.group("relations"):
         errors.append("gateway role must not INSERT platform_run_event directly")
     for forbidden in ("GRANT UPDATE ON", "GRANT DELETE ON"):
-        if forbidden in role_sql:
+        if forbidden in role_sql or forbidden in texts.get("command_migration", ""):
             errors.append(f"gateway role contains forbidden privilege: {forbidden}")
+    consumer_source = texts.get("command_consumer_source", "")
+    for forbidden in ("while True", "asyncio.create_task", "start_workflow("):
+        if forbidden in consumer_source:
+            errors.append(
+                f"command consumer contains forbidden runtime marker: {forbidden}"
+            )
 
     return {
         "schema": GATEWAY_SCHEMA_VERSION,
         "status": "valid" if not errors else "invalid",
         "database_role": GATEWAY_DATABASE_ROLE,
-        "route_count": 9,
+        "route_count": 10,
         "files": files,
         "missing_markers": missing_markers,
         "errors": errors,

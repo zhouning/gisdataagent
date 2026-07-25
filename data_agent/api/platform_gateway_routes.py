@@ -31,6 +31,7 @@ from ..platform_contracts import (
     SubjectContext,
     SubjectType,
     TenantId,
+    canonical_json_fingerprint,
 )
 from ..platform_gateway import (
     DefinitionRegistration,
@@ -60,6 +61,7 @@ class RunSubmissionRequest(StrictRequest):
     input_bindings: tuple[ResourceBinding, ...] = ()
     idempotency_key: NonEmptyText
     policy_refs: RunPolicyReferences | None = None
+    request_dispatch: bool = False
     config_fingerprint: Sha256 | None = None
     purpose: NonEmptyText
     trace_id: ShortName | None = None
@@ -71,6 +73,17 @@ class RunTransitionRequest(StrictRequest):
     to_status: RunStatus
     reason: NonEmptyText
     details: dict[str, Any] = Field(default_factory=dict)
+
+
+class DolphinSchedulerCallbackRequest(StrictRequest):
+    callback_id: UUID
+    attempt_no: int = Field(default=1, ge=1)
+    project_code: int = Field(gt=0)
+    workflow_instance_id: int = Field(gt=0)
+    workflow_definition_code: int = Field(gt=0)
+    workflow_definition_version: int = Field(gt=0)
+    provider_state: ShortName
+    observed_at: datetime
 
 
 @dataclass(frozen=True)
@@ -339,7 +352,11 @@ async def create_run(request: Request) -> JSONResponse:
             config_fingerprint=submission.config_fingerprint,
             submitted_at=submission.submitted_at,
         )
-        result = await asyncio.to_thread(_gateway().submit_run, run)
+        result = await asyncio.to_thread(
+            _gateway().submit_run,
+            run,
+            request_dispatch=submission.request_dispatch,
+        )
         return _success(
             request,
             result.value,
@@ -423,6 +440,73 @@ async def create_attempt_observation(request: Request) -> JSONResponse:
         return _gateway_error(request, exc)
 
 
+async def create_dolphinscheduler_callback(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.subject_type != SubjectType.WORKLOAD:
+        return _error(
+            request,
+            403,
+            "workload_identity_required",
+            "Provider callback requires workload identity",
+        )
+    callback = await _parse(request, DolphinSchedulerCallbackRequest)
+    if isinstance(callback, JSONResponse):
+        return callback
+    try:
+        run_id = UUID(request.path_params["run_id"])
+    except (KeyError, ValueError):
+        return _error(request, 400, "invalid_run_id", "run_id must be a UUID")
+    evidence = {
+        "schema": "gda.dolphinscheduler_callback.v1",
+        "source": "authenticated_callback_trigger",
+        "correlation_verified": False,
+        "callback_id": str(callback.callback_id),
+        "project_code": callback.project_code,
+        "workflow_instance_id": callback.workflow_instance_id,
+        "workflow_definition_code": callback.workflow_definition_code,
+        "workflow_definition_version": callback.workflow_definition_version,
+        "provider_state": callback.provider_state,
+    }
+    try:
+        observation = FrameworkAttemptObservation(
+            tenant_id=principal.tenant_id,
+            observation_id=callback.callback_id,
+            run_id=run_id,
+            attempt_no=callback.attempt_no,
+            framework_kind="dolphinscheduler",
+            external_namespace=str(callback.project_code),
+            external_run_id=str(callback.workflow_instance_id),
+            external_attempt_id=None,
+            observed_state=callback.provider_state.lower(),
+            observation_sha256=canonical_json_fingerprint(evidence),
+            evidence=evidence,
+            observed_at=callback.observed_at,
+        )
+        result = await asyncio.to_thread(
+            _gateway().record_attempt_and_enqueue_reconcile,
+            observation,
+            actor_subject=principal.actor_ref,
+        )
+        return _success(
+            request,
+            result.value,
+            status_code=202 if result.created else 200,
+            created=result.created,
+        )
+    except ValidationError as exc:
+        return _error(
+            request,
+            422,
+            "contract_validation_failed",
+            "Callback does not satisfy the platform contract",
+            _validation_details(exc),
+        )
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
 async def create_artifact(request: Request) -> JSONResponse:
     principal = _principal(request)
     if isinstance(principal, JSONResponse):
@@ -493,6 +577,11 @@ def get_platform_gateway_routes() -> list[Route]:
         Route(
             f"{base}/attempt-observations",
             create_attempt_observation,
+            methods=["POST"],
+        ),
+        Route(
+            f"{base}/runs/{{run_id}}/callbacks/dolphinscheduler",
+            create_dolphinscheduler_callback,
             methods=["POST"],
         ),
         Route(f"{base}/artifacts", create_artifact, methods=["POST"]),
