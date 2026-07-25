@@ -40,7 +40,6 @@ from .observability import get_logger, setup_logging
 from .platform_contracts import TenantId
 from .platform_gateway import PlatformGateway, PlatformGatewayError
 
-
 WORKER_SCHEMA = "gda.dolphinscheduler_command_worker.v1"
 DEFAULT_STATUS_FILE = Path("/tmp/gda-dolphinscheduler-command-worker.json")
 
@@ -78,7 +77,7 @@ class DolphinSchedulerCommandWorkerConfig(_FrozenModel):
     health_max_age_seconds: float = Field(default=30.0, ge=1, le=7200)
 
     @model_validator(mode="after")
-    def _safe_runtime_bounds(self) -> "DolphinSchedulerCommandWorkerConfig":
+    def _safe_runtime_bounds(self) -> DolphinSchedulerCommandWorkerConfig:
         if not self.token_file.is_absolute():
             raise ValueError("DolphinScheduler token file must be an absolute path")
         if not self.status_file.is_absolute():
@@ -94,7 +93,7 @@ class DolphinSchedulerCommandWorkerConfig(_FrozenModel):
         return self
 
     @classmethod
-    def from_env(cls) -> "DolphinSchedulerCommandWorkerConfig":
+    def from_env(cls) -> DolphinSchedulerCommandWorkerConfig:
         try:
             token_file = str(
                 os.getenv("DOLPHINSCHEDULER_TOKEN_FILE") or ""
@@ -418,6 +417,56 @@ def evaluate_worker_health(
     }, True
 
 
+def evaluate_worker_liveness(
+    status_store: WorkerStatusStore,
+    *,
+    max_age_seconds: float,
+    now: datetime | None = None,
+) -> tuple[dict[str, object], bool]:
+    current = now or datetime.now(UTC)
+    if (
+        current.tzinfo is None
+        or current.utcoffset() is None
+        or not math.isfinite(max_age_seconds)
+        or max_age_seconds <= 0
+    ):
+        return {"status": "unhealthy", "reason": "invalid_liveness_window"}, False
+    try:
+        status = status_store.read()
+    except (OSError, ValueError, json.JSONDecodeError, ValidationError):
+        return {"status": "unhealthy", "reason": "status_unavailable"}, False
+    if status.state == "stopped":
+        return {
+            "status": "unhealthy",
+            "reason": "worker_stopped",
+            "tenant_id": status.tenant_id,
+            "worker_id": status.worker_id,
+        }, False
+    age_seconds = (current - status.updated_at).total_seconds()
+    if age_seconds < -5:
+        return {
+            "status": "unhealthy",
+            "reason": "clock_skew",
+            "tenant_id": status.tenant_id,
+            "worker_id": status.worker_id,
+        }, False
+    if age_seconds > max_age_seconds:
+        return {
+            "status": "unhealthy",
+            "reason": "status_stale",
+            "age_seconds": round(age_seconds, 3),
+            "tenant_id": status.tenant_id,
+            "worker_id": status.worker_id,
+        }, False
+    return {
+        "status": "healthy",
+        "worker_state": status.state,
+        "age_seconds": round(max(0.0, age_seconds), 3),
+        "tenant_id": status.tenant_id,
+        "worker_id": status.worker_id,
+    }, True
+
+
 def _build_worker(
     config: DolphinSchedulerCommandWorkerConfig,
     profile: DolphinSchedulerProfile,
@@ -455,12 +504,13 @@ def main(argv: list[str] | None = None) -> int:
     run_parser = subparsers.add_parser("run")
     run_parser.add_argument("--once", action="store_true")
     subparsers.add_parser("validate")
-    health_parser = subparsers.add_parser("health")
-    health_parser.add_argument("--status-file", type=Path)
-    health_parser.add_argument("--max-age-seconds", type=float)
+    for probe_command in ("health", "liveness"):
+        probe_parser = subparsers.add_parser(probe_command)
+        probe_parser.add_argument("--status-file", type=Path)
+        probe_parser.add_argument("--max-age-seconds", type=float)
     args = parser.parse_args(argv)
 
-    if args.command == "health":
+    if args.command in {"health", "liveness"}:
         status_file = args.status_file or Path(
             os.getenv("DOLPHINSCHEDULER_COMMAND_STATUS_FILE")
             or DEFAULT_STATUS_FILE
@@ -480,7 +530,12 @@ def main(argv: list[str] | None = None) -> int:
         if max_age <= 0:
             _render({"status": "unhealthy", "reason": "invalid_max_age"})
             return 1
-        report, healthy = evaluate_worker_health(
+        evaluator = (
+            evaluate_worker_health
+            if args.command == "health"
+            else evaluate_worker_liveness
+        )
+        report, healthy = evaluator(
             WorkerStatusStore(status_file),
             max_age_seconds=max_age,
         )

@@ -13,10 +13,10 @@ from data_agent.dolphinscheduler_command_worker import (
     WorkerConfigurationError,
     WorkerStatusStore,
     evaluate_worker_health,
+    evaluate_worker_liveness,
     main,
 )
 from data_agent.platform_gateway import GatewayUnavailableError
-
 
 NOW = datetime(2026, 7, 25, 14, 0, tzinfo=UTC)
 TENANT = "tenant-a"
@@ -176,6 +176,38 @@ def test_gateway_failure_marks_worker_degraded_without_leaking_error(tmp_path):
     )
     assert healthy is False
     assert health["reason"] == "worker_degraded"
+    liveness, live = evaluate_worker_liveness(
+        WorkerStatusStore(config.status_file),
+        max_age_seconds=30,
+        now=NOW,
+    )
+    assert live is True
+    assert liveness["worker_state"] == "degraded"
+
+
+def test_probe_cli_keeps_fresh_degraded_worker_live(tmp_path, capsys):
+    config = _config(tmp_path)
+    worker = DolphinSchedulerCommandWorker(
+        _Consumer([GatewayUnavailableError("database unavailable")]),
+        config,
+        clock=lambda: datetime.now(UTC),
+    )
+    assert worker.run_cycle() is None
+
+    probe_args = [
+        "--status-file",
+        str(config.status_file),
+        "--max-age-seconds",
+        "30",
+    ]
+    assert main(["health", *probe_args]) == 1
+    readiness = json.loads(capsys.readouterr().out)
+    assert readiness["reason"] == "worker_degraded"
+
+    assert main(["liveness", *probe_args]) == 0
+    liveness = json.loads(capsys.readouterr().out)
+    assert liveness["status"] == "healthy"
+    assert liveness["worker_state"] == "degraded"
 
 
 def test_health_fails_closed_for_stale_or_missing_status(tmp_path):
@@ -214,10 +246,18 @@ def test_health_fails_closed_for_stale_or_missing_status(tmp_path):
     invalid_now, healthy = evaluate_worker_health(
         WorkerStatusStore(config.status_file),
         max_age_seconds=30,
-        now=datetime(2026, 7, 25, 14, 0),
+        now=datetime(2026, 7, 25, 14, 0),  # noqa: DTZ001 - invalid input fixture
     )
     assert healthy is False
     assert invalid_now["reason"] == "invalid_health_window"
+
+    stale_liveness, live = evaluate_worker_liveness(
+        WorkerStatusStore(config.status_file),
+        max_age_seconds=30,
+        now=NOW + timedelta(seconds=31),
+    )
+    assert live is False
+    assert stale_liveness["reason"] == "status_stale"
 
 
 def test_worker_drains_current_batch_then_stops_on_signal_event(tmp_path):
@@ -241,6 +281,13 @@ def test_worker_drains_current_batch_then_stops_on_signal_event(tmp_path):
     assert worker.run() == 0
     assert len(consumer.calls) == 1
     assert WorkerStatusStore(config.status_file).read().state == "stopped"
+    liveness, live = evaluate_worker_liveness(
+        WorkerStatusStore(config.status_file),
+        max_age_seconds=30,
+        now=NOW,
+    )
+    assert live is False
+    assert liveness["reason"] == "worker_stopped"
 
 
 def test_unexpected_consumer_bug_stops_process_instead_of_retrying_forever(

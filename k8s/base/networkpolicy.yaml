@@ -7,7 +7,7 @@
 # NetworkPolicy. Install Calico or Cilium if you actually want the rules
 # below to bite. Otherwise the manifests are documentation.
 
-# ----- Postgres: only app + outbox-worker + martin + migrate Job -----
+# ----- Postgres: app + workers + martin + migrate Job -----
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -27,6 +27,9 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: gis-agent-outbox-worker
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gis-agent-dolphinscheduler-command-worker
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: gis-agent-migrate

@@ -18,7 +18,7 @@
 | 事实域 | 当前权威/状态 | 非权威副本或投影 | 目标权威与迁移规则 | Owner | 阶段 |
 |---|---|---|---|---|---|
 | SQL schema 历史 | PostgreSQL `schema_migrations`，以完整 migration ID + checksum 为权威 | migration CLI 的 JSON 报告 | 保持现有 ledger；任何 drift fail closed | Data Platform | AR-0，已验证 |
-| 部署配置策略 | Compose/K8s/进程环境；`platform_truth.CONFIG_SPECS` 定义关键类型与策略 | `.env` 仅补默认；脱敏 snapshot 是观测 | 版本化 DeploymentProfile + secret reference；部署环境始终优先 | Platform/SRE/Security | AR-0，部分实现 |
+| 部署配置策略 | Compose/K8s/进程环境；`platform_truth.CONFIG_SPECS` 定义关键类型与策略；DolphinScheduler worker 有默认零副本、外部 ConfigMap/Secret 驱动的 Kustomize 模板和静态 validator | `.env` 仅补默认；脱敏 snapshot、未扩容 Deployment 是观测/模板 | 版本化 DeploymentProfile + secret reference；部署环境始终优先；模板存在不等于环境已启用 | Platform/SRE/Security | AR-0，部分实现；worker 模板本地已验证 |
 | 后台运行时清单 | `platform_truth.RUNTIME_INVENTORY` 是代码层登记；`gda_control` 已有受控 PlatformRun 写入口；DolphinScheduler adapter 与 tenant-scoped managed command worker 已有代码和本地测试，但尚无生产业务调用方，多数执行状态仍分散 | AST primitive report、worker status JSON、FrameworkAttemptObservation、DolphinScheduler instance state | PlatformRun ledger 唯一登记最终状态；framework/provider attempt 只能回报观测；worker status 仅为进程健康投影 | Platform Architecture | AR-1 adapter/worker 本地已验证 -> staging 控制链待接入 |
 | 原始文件/对象 | 当前 local uploads、S3/MinIO/OBS 均可能被直接写入，权威边界未统一 | 临时上传、下载缓存、预览文件 | Landing object 以 immutable URI + checksum + retention 为权威；本地 scratch 可删除 | Data Platform | AR-2 |
 | 湖仓表与 snapshot | Iceberg/STAC/S3A 有局部实现，尚无通用发布权威 | STAC item、GeoParquet export | Iceberg catalog snapshot 是分析表版本权威；对象是物理内容，STAC 是发现投影 | Data Platform | AR-2 |
@@ -65,13 +65,13 @@
 - DolphinScheduler 3.4.2 adapter 已固定 create/online/start/list/variables/control 路由、四字段 Run correlation、未知结果禁止盲目重提和 provider 非终局边界；binding artifact 具备稳定 UUID、canonical 完整性校验、幂等追加和 tenant-scoped 读取；真实 ARM64 standalone 完成 Shell DAG 精确关联，`STOP` 到达 `READY_STOP`，但未形成生产终局裁决证据。
 - PolicyDecision/Approval 已形成强类型、内容寻址的 append-only Artifact，PlatformRun 保存不可变 UUID 引用；gateway 在提交期校验精确资源 scope，adapter 在 dispatch 前强制 workload/evaluator identity、action、effect、有效期和审批关系，失败时不会触达 provider 或改变 Run。
 - migration 095 已建立 tenant/workload-scoped dispatch/reconcile outbox；真实 PostgreSQL 测试已覆盖最小权限、Run+dispatch/callback+reconcile 原子写、完成后幂等 replay、错误 workload 空领取、lease 接管、stale worker 拒绝和 fail/retry/complete，但尚无 staging 常驻 consumer 或真实 provider callback 运行证据。
-- managed DolphinScheduler command worker 已提供严格 env/config、0600 token file、tenant/workload-scoped polling、SIGINT/SIGTERM drain、interruptible wait、脱敏原子 status 和 fail-closed health CLI；每个进程/Pod 必须使用唯一 worker ID，代码尚未部署到 staging/production。
+- managed DolphinScheduler command worker 已提供严格 env/config、0600 token file、tenant/workload-scoped polling、SIGINT/SIGTERM drain、interruptible wait、脱敏原子 status 和 fail-closed health CLI；默认零副本 Kustomize 模板由 Pod UID 生成 worker ID，只向 PostgreSQL NetworkPolicy 增加该 selector，主容器无原始 provider Secret、Kubernetes API token 或 RBAC；模板尚未在 staging/production 扩容运行。
 - migration 096 已建立 append-only QualityResult 和专用成功 finalizer；真实 PostgreSQL 16 测试已证明 gateway 不能执行私有 transition 或用通用 transition 写 `succeeded`，错误 output hash、failed quality、缺失 lineage、篡改 evidence fingerprint 均拒绝，有效证据成功且 replay 幂等。该证据仍是合成数据和本地数据库，不是 staging/生产运行证明。
 
 ## 下一验收证据
 
 - staging/production 的 schema、config 和 runtime snapshot 产物及环境 compare 报告；
 - staging 的 migration role、应用 login membership、连接池 role/tenant 复位、双租户 API 和 success finalization 运行产物；
-- DolphinScheduler adapter 的真实 IAM/OIDC、service token provisioning/轮换、provider 最小权限、binding artifact staging 接入、managed outbox worker/provider callback 部署、唯一 worker ID、status/lease 故障恢复和无双写证据；
+- DolphinScheduler adapter 的真实 IAM/OIDC、service token provisioning/轮换、provider 最小权限、binding artifact staging 接入、managed outbox worker/provider callback 实际扩容部署、唯一 worker ID、status/lease 故障恢复和无双写证据；
 - 首条真实图斑链对 golden slice 的 output hash、独立质量结果/evidence、血缘、发布 revision 和 rollback 演练；
 - OpenMetadata/Gravitino 与 DolphinScheduler/Temporal sandbox 的独立数据库、备份恢复、身份、版本和升级责任证明；DolphinScheduler standalone/H2 不计入此退出门。

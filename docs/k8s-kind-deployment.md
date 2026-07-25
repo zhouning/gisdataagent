@@ -98,6 +98,7 @@ k8s/
 │   ├── app-deployment.yaml            # Chainlit + HPA-aware
 │   ├── app-service.yaml
 │   ├── outbox-worker.yaml             # Standards Platform 异步消费者
+│   ├── dolphinscheduler-command-worker.yaml # 默认零副本的 provider command worker
 │   ├── qc-subsystems.yaml             # cv-service / cad-parser / reference-data
 │   ├── martin-deployment.yaml
 │   ├── martin-service.yaml
@@ -131,6 +132,8 @@ k8s/
    - `gis-reference-data:dev`（参考数据 API）
 3. **`kubectl apply -k k8s/overlays/local-kind`** 部署所有 manifest
 4. **等待**：postgres → redis → minio → migration Job → app deployment
+
+DolphinScheduler command worker 在 base 中固定为零副本，local-kind 不会启动它，也不要求本地提供 provider ConfigMap/Secret。只有 staging/production 环境 overlay 完成外部 provider 与数据库凭据配置后才能显式扩容。
 
 整套流程约 **15-25 分钟**（首次构建主镜像 ~10min，后续增量 <2min）。
 
@@ -417,6 +420,7 @@ k8s/overlays/
 5. **GPU 节点亲和**：`cv-service` 用 nvidia.com/gpu 资源
 6. **PriorityClass**：postgres > app > outbox-worker
 7. **Velero 备份策略**：volume snapshot
+8. **DolphinScheduler Worker**：创建专用 ConfigMap/Secret、固定镜像 digest，再将默认零副本 Deployment 显式扩容
 
 ---
 
@@ -425,6 +429,9 @@ k8s/overlays/
 ```bash
 # 验证 base
 kubectl kustomize k8s/base/ | less
+
+# 验证默认关闭的 DolphinScheduler worker 部署合同
+python -m data_agent.dolphinscheduler_worker_deployment validate
 
 # 验证 overlay
 kubectl kustomize k8s/overlays/local-kind/ | less

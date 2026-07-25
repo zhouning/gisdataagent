@@ -22,6 +22,7 @@ resources:
   - app-deployment.yaml
   - app-service.yaml
   - outbox-worker.yaml
+  - dolphinscheduler-command-worker.yaml
 
   # ----- Local LLM backend (host Ollama) -----
   - ollama-service.yaml

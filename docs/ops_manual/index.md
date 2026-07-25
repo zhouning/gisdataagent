@@ -195,7 +195,7 @@ GitHub Actions (`.github/workflows/ci.yml`)：
 
 ## 10. DolphinScheduler 命令 Worker（当前未部署）
 
-该进程只负责从 PostgreSQL `platform_command_outbox` 领取并投递命令；outbox、PlatformRun 和 provider instance 仍是各自领域的事实源。当前代码已具备本地运行和健康检查能力，但尚未形成 staging/production 部署证据。
+该进程只负责从 PostgreSQL `platform_command_outbox` 领取并投递命令；outbox、PlatformRun 和 provider instance 仍是各自领域的事实源。当前代码已具备本地运行、健康检查和默认关闭的 Kubernetes 模板，但尚未形成 staging/production 运行证据。
 
 部署前必须满足：
 
@@ -212,6 +212,27 @@ python -m data_agent.dolphinscheduler_command_worker validate
 python -m data_agent.dolphinscheduler_command_worker run
 python -m data_agent.dolphinscheduler_command_worker run --once
 python -m data_agent.dolphinscheduler_command_worker health
+python -m data_agent.dolphinscheduler_command_worker liveness
 ```
 
-`health` 返回非零表示 status 缺失、过期、worker degraded/stopped 或输入窗口非法。单条 command 的 terminal failure 不等于进程失活，应通过 `failed_commands` 和 outbox 告警处理；worker 收到 SIGINT/SIGTERM 后完成当前批次，再停止。
+`health` 用作 readiness，status 缺失、过期、worker degraded/stopped 或输入窗口非法时返回非零。`liveness` 只要求非 stopped 状态持续刷新，因此数据库短时故障不会触发无效重启。单条 command 的 terminal failure 不等于进程失活，应通过 `failed_commands` 和 outbox 告警处理；worker 收到 SIGINT/SIGTERM 后完成当前批次，再停止。
+
+### 10.1 Kubernetes 启用合同
+
+`k8s/base/dolphinscheduler-command-worker.yaml` 固定为 `replicas: 0`。base/local-kind 可以正常渲染，但不会运行 Worker。环境 overlay 启用前必须创建同名的专用 ConfigMap 和 Secret：
+
+| 资源 | 必需 key |
+|---|---|
+| ConfigMap `gis-agent-dolphinscheduler-command-worker` | `base-url`、`project-code`、`workload-subject`、`policy-evaluator-subject`、`command-tenant-id`、`provider-tenant-code`、`provider-worker-group` |
+| Secret `gis-agent-dolphinscheduler-command-worker` | `database-url`、`access-token` |
+
+`access-token` 只投影给 init container，再复制为主容器可读的 `0600` 文件；主容器不挂载原始 Secret，也不挂载 Kubernetes API token。Worker ID 由 Pod UID 生成。环境 overlay 还必须把 `gis-data-agent:latest` 替换为不可变 image digest，然后才可把副本数设为 1 或更高。
+
+提交 overlay 前执行：
+
+```bash
+python -m data_agent.dolphinscheduler_worker_deployment validate
+kubectl kustomize k8s/base/ >/dev/null
+```
+
+扩容成功后必须留存 rollout、health、唯一 worker ID、lease 接管和重启 drain 产物；只有清单或零副本 Deployment 不算 staging 部署证据。

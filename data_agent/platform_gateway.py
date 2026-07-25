@@ -1409,6 +1409,7 @@ def build_gateway_report(
             "signal.SIGTERM",
             "stop_event.wait(",
             "evaluate_worker_health",
+            "evaluate_worker_liveness",
             "DOLPHINSCHEDULER_TOKEN_FILE",
         ),
     }

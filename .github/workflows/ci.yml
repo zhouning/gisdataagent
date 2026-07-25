@@ -69,6 +69,9 @@ jobs:
       - name: Validate DolphinScheduler adapter boundary
         run: python -m data_agent.dolphinscheduler_adapter validate
 
+      - name: Validate DolphinScheduler worker deployment boundary
+        run: python -m data_agent.dolphinscheduler_worker_deployment validate
+
       - name: Verify platform control ledger on PostgreSQL
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gis_agent_test
