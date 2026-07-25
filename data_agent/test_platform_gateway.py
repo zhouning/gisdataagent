@@ -46,10 +46,19 @@ def _request(*, body=None, path=None, headers=None):
     return request
 
 
-def _user(role="platform_operator", tenant_id=TENANT):
+def _user(
+    role="platform_operator",
+    tenant_id=TENANT,
+    *,
+    subject_type=None,
+    identifier="operator-1",
+):
+    metadata = {"role": role, "tenant_id": tenant_id}
+    if subject_type is not None:
+        metadata["subject_type"] = subject_type
     return SimpleNamespace(
-        identifier="operator-1",
-        metadata={"role": role, "tenant_id": tenant_id},
+        identifier=identifier,
+        metadata=metadata,
     )
 
 
@@ -250,6 +259,42 @@ def test_run_route_derives_subject_and_tenant_from_authenticated_principal():
     assert submitted == _run()
     assert submitted.subject_context.tenant_id == TENANT
     assert submitted.subject_context.subject_id == "operator-1"
+
+
+def test_run_route_preserves_policy_refs_for_workload_identity():
+    gateway = MagicMock()
+    gateway.submit_run.side_effect = lambda run: GatewayWriteResult(run, True)
+    decision_id = UUID("00000000-0000-4000-8000-000000000080")
+    approval_id = UUID("00000000-0000-4000-8000-000000000090")
+    body = {
+        "run_id": str(RUN_ID),
+        "definition_version_id": str(DEFINITION_ID),
+        "orchestration_class": "dataops",
+        "input_bindings": [],
+        "idempotency_key": "publish:authorized:1",
+        "policy_refs": {
+            "policy_decision_artifact_id": str(decision_id),
+            "approval_artifact_id": str(approval_id),
+        },
+        "purpose": "execute authorized dataops run",
+        "submitted_at": NOW.isoformat(),
+    }
+    request = _request(body=body)
+    with (
+        patch.object(
+            routes,
+            "_get_user_from_request",
+            return_value=_user(subject_type="workload", identifier="dataops-adapter"),
+        ),
+        patch.object(routes, "_gateway", return_value=gateway),
+    ):
+        response = asyncio.run(routes.create_run(request))
+
+    assert response.status_code == 201
+    submitted = gateway.submit_run.call_args.args[0]
+    assert submitted.subject_context.subject_type.value == "workload"
+    assert submitted.policy_refs.policy_decision_artifact_id == decision_id
+    assert submitted.policy_refs.approval_artifact_id == approval_id
 
 
 def test_gateway_conflict_has_stable_safe_error_envelope():

@@ -1,5 +1,5 @@
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.parse import parse_qs
 from uuid import UUID
@@ -27,11 +27,19 @@ from data_agent.dolphinscheduler_adapter import (
     compile_dolphinscheduler_workflow,
     parse_dolphinscheduler_binding_artifact,
 )
+from data_agent.platform_authorization import (
+    build_approval_artifact,
+    build_policy_decision_artifact,
+)
 from data_agent.platform_contracts import (
+    ApprovalRecord,
     ArtifactRole,
     OrchestrationClass,
     PlatformDefinitionVersion,
     PlatformRun,
+    PolicyDecision,
+    PolicyEffect,
+    RunPolicyReferences,
     RunStatus,
     SubjectContext,
     platform_definition_fingerprint,
@@ -45,6 +53,8 @@ RUN_ID = UUID("20000000-0000-4000-8000-000000000020")
 SOURCE_ID = UUID("20000000-0000-4000-8000-000000000030")
 NOW = datetime(2026, 7, 24, 12, 0, tzinfo=UTC)
 ACTOR = "workload:dataops-adapter"
+POLICY_EVALUATOR = "workload:policy-evaluator"
+APPROVER = "human:dataops-approver"
 
 
 def _profile(**overrides):
@@ -52,6 +62,8 @@ def _profile(**overrides):
         "base_url": "https://ds.example.test/dolphinscheduler",
         "access_token": "sandbox-token-value",
         "project_code": 123456789,
+        "workload_subject": ACTOR,
+        "policy_evaluator_subject": POLICY_EVALUATOR,
         "tenant_code": "gda",
         "worker_group": "gda-dataops",
     }
@@ -103,29 +115,31 @@ def _definition(**document_overrides):
     )
 
 
-def _run():
-    return PlatformRun(
-        tenant_id=TENANT,
-        run_id=RUN_ID,
-        definition_version_id=DEFINITION_ID,
-        orchestration_class="dataops",
-        subject_context=SubjectContext(
+def _run(**overrides):
+    values = {
+        "tenant_id": TENANT,
+        "run_id": RUN_ID,
+        "definition_version_id": DEFINITION_ID,
+        "orchestration_class": "dataops",
+        "subject_context": SubjectContext(
             tenant_id=TENANT,
             subject_id="dataops-adapter",
             subject_type="workload",
             roles=("platform_operator",),
             purpose="publish controlled land-use slice",
         ),
-        input_bindings=(
+        "input_bindings": (
             {
                 "binding_name": "source",
                 "resource_version_id": SOURCE_ID,
                 "semantic_type": "gis.land_use.parcels",
             },
         ),
-        idempotency_key="land-use:publish:snapshot-1",
-        submitted_at=NOW,
-    )
+        "idempotency_key": "land-use:publish:snapshot-1",
+        "submitted_at": NOW,
+    }
+    values.update(overrides)
+    return PlatformRun(**values)
 
 
 def _binding():
@@ -141,11 +155,76 @@ def _binding():
 
 
 class _FakeGateway:
-    def __init__(self):
-        self.run = _run()
+    def __init__(
+        self,
+        *,
+        authorized=True,
+        policy_effect=PolicyEffect.ALLOW,
+        requires_approval=False,
+        include_approval=True,
+        approval_verdict="approved",
+        policy_evaluator=POLICY_EVALUATOR,
+    ):
         self.transitions = []
         self.observations = {}
         self.artifacts = {}
+        run = _run()
+        if not authorized:
+            self.run = run
+            return
+        binding_artifact = build_dolphinscheduler_binding_artifact(
+            _binding(), created_by=ACTOR, created_at=NOW
+        )
+        decision = PolicyDecision(
+            tenant_id=TENANT,
+            run_id=RUN_ID,
+            subject_context=run.subject_context,
+            action="dolphinscheduler.dispatch",
+            definition_version_id=DEFINITION_ID,
+            resource_version_ids=(DEFINITION_ID, SOURCE_ID),
+            execution_plan_artifact_id=binding_artifact.artifact_id,
+            effect=policy_effect,
+            policy_version_ref="gda://tenant-a/policy/dataops-dispatch:v1",
+            evaluator_subject=policy_evaluator,
+            requires_approval=requires_approval,
+            decided_at=NOW,
+            expires_at=NOW + timedelta(days=3650),
+        )
+        decision_artifact = build_policy_decision_artifact(decision)
+        approval_artifact = None
+        if requires_approval and include_approval:
+            approval_artifact = build_approval_artifact(
+                ApprovalRecord(
+                    tenant_id=TENANT,
+                    run_id=RUN_ID,
+                    definition_version_id=DEFINITION_ID,
+                    policy_decision_artifact_id=decision_artifact.artifact_id,
+                    policy_decision_sha256=decision_artifact.content_sha256,
+                    verdict=approval_verdict,
+                    approver_subject=APPROVER,
+                    reason="approved controlled land-use publication",
+                    decided_at=NOW + timedelta(minutes=1),
+                    expires_at=decision.expires_at,
+                )
+            )
+        self.artifacts = {
+            binding_artifact.artifact_id: binding_artifact,
+            decision_artifact.artifact_id: decision_artifact,
+        }
+        if approval_artifact is not None:
+            self.artifacts[approval_artifact.artifact_id] = approval_artifact
+        self.run = run.model_copy(
+            update={
+                "policy_refs": RunPolicyReferences(
+                    policy_decision_artifact_id=decision_artifact.artifact_id,
+                    approval_artifact_id=(
+                        approval_artifact.artifact_id
+                        if approval_artifact is not None
+                        else None
+                    ),
+                )
+            }
+        )
 
     def get_run(self, tenant_id, run_id):
         assert tenant_id == self.run.tenant_id
@@ -302,7 +381,7 @@ def test_binding_artifact_manifest_tampering_fails_closed():
 
 
 def test_persisted_binding_is_idempotent_and_loadable():
-    gateway = _FakeGateway()
+    gateway = _FakeGateway(authorized=False)
     adapter = DolphinSchedulerAdapter(_profile(), gateway=gateway, client=_FakeClient())
 
     first = adapter.persist_binding(_binding(), actor_subject=ACTOR, created_at=NOW)
@@ -352,6 +431,84 @@ def test_missing_binding_artifact_is_not_reconstructed_or_submitted():
     with pytest.raises(DolphinSchedulerContractError, match="artifact UUID"):
         adapter.dispatch(TENANT, RUN_ID, str(DEFINITION_ID), actor_subject=ACTOR)
     assert client.start_calls == 0
+
+
+@pytest.mark.parametrize(
+    ("gateway", "message"),
+    (
+        (_FakeGateway(policy_effect=PolicyEffect.DENY), "does not allow"),
+        (
+            _FakeGateway(requires_approval=True, include_approval=False),
+            "requires approval",
+        ),
+        (
+            _FakeGateway(requires_approval=True, approval_verdict="rejected"),
+            "does not authorize",
+        ),
+    ),
+)
+def test_dispatch_authorization_failures_never_reach_provider(gateway, message):
+    client = _FakeClient()
+    adapter = DolphinSchedulerAdapter(_profile(), gateway=gateway, client=client)
+
+    with pytest.raises(DolphinSchedulerContractError, match=message):
+        adapter.dispatch(TENANT, RUN_ID, _binding(), actor_subject=ACTOR)
+
+    assert gateway.run.status == RunStatus.ACCEPTED
+    assert gateway.transitions == []
+    assert client.start_calls == 0
+
+
+def test_dispatch_requires_policy_references_and_configured_evaluator():
+    gateway = _FakeGateway()
+    gateway.run = gateway.run.model_copy(update={"policy_refs": None})
+    client = _FakeClient()
+    adapter = DolphinSchedulerAdapter(_profile(), gateway=gateway, client=client)
+
+    with pytest.raises(DolphinSchedulerContractError, match="policy decision"):
+        adapter.dispatch(TENANT, RUN_ID, _binding(), actor_subject=ACTOR)
+
+    gateway = _FakeGateway(policy_evaluator="workload:other-evaluator")
+    adapter = DolphinSchedulerAdapter(_profile(), gateway=gateway, client=client)
+    with pytest.raises(DolphinSchedulerContractError, match="configured evaluator"):
+        adapter.dispatch(TENANT, RUN_ID, _binding(), actor_subject=ACTOR)
+    assert client.start_calls == 0
+
+
+def test_dispatch_requires_exact_workload_identity():
+    gateway = _FakeGateway()
+    client = _FakeClient()
+    adapter = DolphinSchedulerAdapter(_profile(), gateway=gateway, client=client)
+
+    with pytest.raises(DolphinSchedulerContractError, match="workload identity"):
+        adapter.dispatch(
+            TENANT, RUN_ID, _binding(), actor_subject="human:dataops-adapter"
+        )
+
+    gateway.run = gateway.run.model_copy(
+        update={
+            "subject_context": SubjectContext(
+                **{
+                    **gateway.run.subject_context.model_dump(),
+                    "subject_type": "human",
+                }
+            )
+        }
+    )
+    with pytest.raises(DolphinSchedulerContractError, match="workload SubjectContext"):
+        adapter.dispatch(TENANT, RUN_ID, _binding(), actor_subject=ACTOR)
+    assert client.start_calls == 0
+
+
+def test_dispatch_accepts_independent_human_approval():
+    gateway = _FakeGateway(requires_approval=True)
+    client = _FakeClient()
+    adapter = DolphinSchedulerAdapter(_profile(), gateway=gateway, client=client)
+
+    result = adapter.dispatch(TENANT, RUN_ID, _binding(), actor_subject=ACTOR)
+
+    assert result.run.status == RunStatus.DISPATCHING
+    assert client.start_calls == 1
 
 
 def test_compiler_rejects_non_dataops_and_inline_secrets():

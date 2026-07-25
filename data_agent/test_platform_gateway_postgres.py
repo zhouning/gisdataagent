@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
 
@@ -7,13 +7,16 @@ import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import DBAPIError
 
+from data_agent.platform_authorization import build_policy_decision_artifact
 from data_agent.platform_contracts import (
     Artifact,
     FrameworkAttemptObservation,
     LineageEvent,
     PlatformRun,
+    PolicyDecision,
     Resource,
     ResourceVersion,
+    RunPolicyReferences,
     SubjectContext,
     canonical_json_fingerprint,
     platform_definition_fingerprint,
@@ -346,18 +349,55 @@ def test_platform_gateway_service_writes_idempotent_control_chain():
             assert gateway.register_resource_version(version).created is True
             assert gateway.register_resource_version(version).created is False
 
+        plan_manifest = {"schema": "gda.gateway_test_execution_plan.v1"}
+        execution_plan = Artifact(
+            tenant_id=tenant,
+            artifact_id=uuid4(),
+            artifact_key="gateway-test-execution-plan",
+            artifact_role="execution_plan",
+            storage_uri=f"postgresql://gda-control/execution-plans/{tenant}/test",
+            media_type="application/vnd.gda.test-plan+json",
+            content_sha256=canonical_json_fingerprint(plan_manifest),
+            size_bytes=len(b'{"schema":"gda.gateway_test_execution_plan.v1"}'),
+            run_id=None,
+            resource_version_id=definition_id,
+            manifest=plan_manifest,
+            created_by=actor,
+            created_at=now,
+        )
+        assert gateway.record_artifact(execution_plan).created is True
+
+        run_subject = SubjectContext(
+            tenant_id=tenant,
+            subject_id="gateway-test",
+            subject_type="workload",
+            roles=("platform_operator",),
+            purpose="exercise the controlled write chain",
+        )
+        policy_artifact = build_policy_decision_artifact(
+            PolicyDecision(
+                tenant_id=tenant,
+                run_id=run_id,
+                subject_context=run_subject,
+                action="dolphinscheduler.dispatch",
+                definition_version_id=definition_id,
+                resource_version_ids=(definition_id, source_version_id),
+                execution_plan_artifact_id=execution_plan.artifact_id,
+                effect="allow",
+                policy_version_ref=f"gda://{tenant}/policy/dataops-dispatch:v1",
+                evaluator_subject="workload:policy-evaluator",
+                decided_at=now,
+                expires_at=now + timedelta(hours=1),
+            )
+        )
+        assert gateway.record_artifact(policy_artifact).created is True
+
         run = PlatformRun(
             tenant_id=tenant,
             run_id=run_id,
             definition_version_id=definition_id,
             orchestration_class="dataops",
-            subject_context=SubjectContext(
-                tenant_id=tenant,
-                subject_id="gateway-test",
-                subject_type="workload",
-                roles=("platform_operator",),
-                purpose="exercise the controlled write chain",
-            ),
+            subject_context=run_subject,
             input_bindings=(
                 {
                     "binding_name": "source",
@@ -366,12 +406,16 @@ def test_platform_gateway_service_writes_idempotent_control_chain():
                 },
             ),
             idempotency_key=f"publish:{source_version_id}",
+            policy_refs=RunPolicyReferences(
+                policy_decision_artifact_id=policy_artifact.artifact_id
+            ),
             submitted_at=now,
         )
         assert gateway.submit_run(run).created is True
         replay = gateway.submit_run(run)
         assert replay.created is False
         assert replay.value == run
+        assert gateway.get_run(tenant, run_id).policy_refs == run.policy_refs
 
         transitioned = gateway.transition_run(
             tenant,

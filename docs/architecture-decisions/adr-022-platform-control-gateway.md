@@ -6,7 +6,7 @@
 
 **Decision owners**: Platform Architecture, Data Platform, DataOps, Security
 
-**Related decisions**: ADR-003、ADR-007、ADR-018、ADR-020、ADR-021
+**Related decisions**: ADR-003、ADR-007、ADR-018、ADR-020、ADR-021、ADR-024
 
 **Related roadmap**: [AR-0/AR-1 平台事实与最小控制面](../roadmap-ar0-platform-truth-2026-07-24.md)
 
@@ -77,7 +77,7 @@ Run 的 SubjectContext 和 transition actor 完全由认证 principal 构造。R
 
 限制与缓解：
 
-- 当前 `platform_operator` 在其 tenant 内具有整个 gateway 写面，尚无资源级 PolicyDecision/Approval；首个生产 adapter 前必须补 policy enforcement 和 workload identity；
+- 资源级 PolicyDecision/Approval 与 workload SubjectContext 已按 ADR-024 接入 Run 提交和 DolphinScheduler dispatch，但 API 角色仍是 tenant 级 `platform_operator`；生产切换前仍需真实 IAM/OIDC、service credential provisioning 和 provider 侧最小权限验收；
 - tenant GUC 是应用登录设置的纵深防御上下文，不是独立加密身份；数据库凭据、role membership 和连接权限仍必须由部署/IAM 控制；
 - 当前只有 Run read，没有 catalog/list/search 或 mutation API；这些能力应由后续 metadata fabric 和 policy-aware query facade 提供；
 - 生产调用方仍写 legacy 表；本包验证的是新写入口，不是生产数据迁移或旧链退役；
@@ -92,7 +92,7 @@ Run 的 SubjectContext 和 transition actor 完全由认证 principal 构造。R
 
 ## Revisit Triggers
 
-- 首个真实 adapter 需要资源级授权、Approval 或 PolicyDecision；
+- 新 adapter 需要不同 action、obligation、审批职责分离或 provider policy 下推模型；
 - 需要 workload OIDC/service identity，而不再适合复用交互式 Chainlit user；
 - metadata/orchestrator POC 需要 list/search/callback/outbox 或异步事件合同；
 - 模块化单体在独立扩缩、故障域、吞吐或发布节奏上达到记录过的瓶颈；

@@ -17,6 +17,11 @@ from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 
 from .db_engine import get_engine
+from .platform_authorization import (
+    AuthorizationEvidenceError,
+    parse_policy_decision_artifact,
+    validate_run_authorization_evidence,
+)
 from .platform_contracts import (
     Artifact,
     FrameworkAttemptObservation,
@@ -384,7 +389,7 @@ class PlatformGateway:
             text(
                 """
                 SELECT tenant_id, run_id, definition_version_id,
-                       orchestration_class, subject_context, idempotency_key,
+                       orchestration_class, subject_context, idempotency_key, policy_refs,
                        config_fingerprint, status, state_version, submitted_at
                 FROM gda_control.platform_run
                 WHERE tenant_id = :tenant_id AND run_id = :run_id
@@ -407,6 +412,7 @@ class PlatformGateway:
         ).mappings().all()
         value = dict(row)
         value["subject_context"] = _as_json(value["subject_context"])
+        value["policy_refs"] = _as_json(value["policy_refs"]) or None
         value["input_bindings"] = [dict(binding) for binding in bindings]
         return PlatformRun.model_validate(value)
 
@@ -417,8 +423,45 @@ class PlatformGateway:
             exclude={"status", "state_version"},
         )
 
+    def _validate_run_policy_references(self, connection, run: PlatformRun) -> None:
+        references = run.policy_refs
+        if references is None:
+            return
+        decision_artifact = self._load_artifact(
+            connection, run.tenant_id, references.policy_decision_artifact_id
+        )
+        if decision_artifact is None:
+            raise GatewayValidationError("Policy decision artifact was not found")
+        try:
+            decision = parse_policy_decision_artifact(decision_artifact)
+        except AuthorizationEvidenceError as exc:
+            raise GatewayValidationError(str(exc)) from exc
+        execution_plan_artifact = self._load_artifact(
+            connection, run.tenant_id, decision.execution_plan_artifact_id
+        )
+        if execution_plan_artifact is None:
+            raise GatewayValidationError("Execution plan artifact was not found")
+        approval_artifact = None
+        if references.approval_artifact_id is not None:
+            approval_artifact = self._load_artifact(
+                connection, run.tenant_id, references.approval_artifact_id
+            )
+            if approval_artifact is None:
+                raise GatewayValidationError("Approval artifact was not found")
+        try:
+            validate_run_authorization_evidence(
+                run,
+                decision_artifact,
+                approval_artifact,
+                execution_plan_artifact,
+                at=run.submitted_at,
+            )
+        except AuthorizationEvidenceError as exc:
+            raise GatewayValidationError(str(exc)) from exc
+
     def submit_run(self, run: PlatformRun) -> GatewayWriteResult:
         with self._transaction(run.tenant_id) as connection:
+            self._validate_run_policy_references(connection, run)
             actor = (
                 f"{run.subject_context.subject_type.value}:"
                 f"{run.subject_context.subject_id}"
@@ -429,11 +472,11 @@ class PlatformGateway:
                     INSERT INTO gda_control.platform_run (
                         tenant_id, run_id, definition_version_id,
                         orchestration_class, subject_context, idempotency_key,
-                        config_fingerprint, submitted_by, submitted_at
+                        policy_refs, config_fingerprint, submitted_by, submitted_at
                     ) VALUES (
                         :tenant_id, :run_id, :definition_version_id,
                         :orchestration_class, CAST(:subject_context AS jsonb),
-                        :idempotency_key, :config_fingerprint,
+                        :idempotency_key, CAST(:policy_refs AS jsonb), :config_fingerprint,
                         :submitted_by, :submitted_at
                     )
                     ON CONFLICT DO NOTHING
@@ -449,6 +492,11 @@ class PlatformGateway:
                         run.subject_context.model_dump(mode="json")
                     ),
                     "idempotency_key": run.idempotency_key,
+                    "policy_refs": _json(
+                        run.policy_refs.model_dump(mode="json")
+                        if run.policy_refs is not None
+                        else {}
+                    ),
                     "config_fingerprint": run.config_fingerprint,
                     "submitted_by": actor,
                     "submitted_at": run.submitted_at,
@@ -779,6 +827,7 @@ def build_gateway_report(
             "SELECT set_config('app.current_tenant', :tenant, true)",
             "ON CONFLICT DO NOTHING",
             "def get_artifact(",
+            "def _validate_run_policy_references(",
         ),
         "routes_source": (
             'base = "/api/platform/v1"',

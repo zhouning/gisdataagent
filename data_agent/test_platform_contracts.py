@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import UUID
 
@@ -206,6 +206,65 @@ def test_platform_run_freezes_tenant_bindings_and_initial_state():
         _run(status="accepted", state_version=1)
 
 
+def test_policy_decision_canonicalizes_exact_resource_scope():
+    decision = contracts.PolicyDecision(
+        tenant_id=TENANT,
+        run_id=RUN_ID,
+        subject_context=_run().subject_context,
+        action="dolphinscheduler.dispatch",
+        definition_version_id=DEFINITION_ID,
+        resource_version_ids=(SOURCE_VERSION_ID, DEFINITION_ID),
+        execution_plan_artifact_id=TARGET_VERSION_ID,
+        effect="allow",
+        policy_version_ref="gda://tenant-a/policy/dataops-dispatch:v1",
+        evaluator_subject="workload:policy-evaluator",
+        obligations=("retain_evidence", "emit_audit"),
+        decided_at=NOW,
+        expires_at=NOW + timedelta(hours=1),
+    )
+
+    assert decision.resource_version_ids == (DEFINITION_ID, SOURCE_VERSION_ID)
+    assert decision.obligations == ("emit_audit", "retain_evidence")
+    with pytest.raises(ValidationError, match="include the definition"):
+        contracts.PolicyDecision(
+            **{
+                **decision.model_dump(),
+                "resource_version_ids": (SOURCE_VERSION_ID,),
+            }
+        )
+    with pytest.raises(ValidationError, match="workload identity"):
+        contracts.PolicyDecision(
+            **{
+                **decision.model_dump(),
+                "evaluator_subject": "human:operator",
+            }
+        )
+
+
+def test_approval_requires_human_identity_and_bounded_expiry():
+    approval = contracts.ApprovalRecord(
+        tenant_id=TENANT,
+        run_id=RUN_ID,
+        definition_version_id=DEFINITION_ID,
+        policy_decision_artifact_id=TARGET_VERSION_ID,
+        policy_decision_sha256=SHA_A,
+        verdict="approved",
+        approver_subject="human:dataops-approver",
+        reason="approved controlled publication",
+        decided_at=NOW,
+        expires_at=NOW + timedelta(hours=1),
+    )
+
+    assert approval.verdict.value == "approved"
+    with pytest.raises(ValidationError, match="human identity"):
+        contracts.ApprovalRecord(
+            **{
+                **approval.model_dump(),
+                "approver_subject": "workload:dataops-adapter",
+            }
+        )
+
+
 def test_run_transition_graph_rejects_terminal_and_skip_transitions():
     contracts.validate_run_transition("accepted", "dispatching")
     contracts.validate_run_transition("running", "succeeded")
@@ -319,7 +378,7 @@ def test_control_ledger_contract_and_migration_catalog_are_valid():
     )
 
     assert report["status"] == "valid"
-    assert report["contract_count"] == 10
+    assert report["contract_count"] == 13
     assert report["migration"]["sha256"] == migration["checksum"]
     assert migrations[-1]["migration_id"] == "094_platform_control_gateway"
 

@@ -33,7 +33,7 @@
 | 事件交付 | Standards outbox 已数据库耐久；其他 WebSocket/bot/feedback 多为 best effort | 消费者 offset、WebSocket 消息 | command/event 先入 outbox，幂等 consumer 交付；缓存或 socket 不是权威 | Platform/Integrations | AR-1 |
 | 质量结果 | standards、QC、MMFE 和专项表各自记录 | dashboard 汇总 | 不可变 QualityResult/Evidence 绑定 input version、rule version 和 RunRef；汇总可重建 | Governance/DataOps | AR-1 -> AR-3 |
 | 标准与语义定义 | `std_*`、semantic registry 和 YAML 共同存在，生命周期未统一 | prompt/context、搜索索引 | 版本化 Standard/SemanticDefinition 经审批后为权威；Agent context 只消费批准版本 | Governance | AR-1 -> AR-3 |
-| 身份与权限 | Chainlit user 可显式绑定 tenant；`admin/platform_operator` 可进入 versioned API；`gda_control_gateway` 是 non-login/non-bypass 最小权限角色，RLS 与 actor/tenant 校验已验证 | session/cache、前端菜单权限 | IdP/workload identity 提供 SubjectContext；补齐资源级 PolicyDecision/Approval 和 provider 下推后才能生产切换 | Security | AR-1 tenant gateway 已验证 -> policy/workload identity 待实现 |
+| 身份与权限 | Chainlit user 可显式绑定 tenant；versioned API 从认证 principal 派生 SubjectContext；`gda_control_gateway` 是 non-login/non-bypass 最小权限角色；Run 可引用强类型 PolicyDecision/Approval Artifact，DolphinScheduler dispatch 已绑定配置的 workload/evaluator 并在 provider 调用前校验证据 | session/cache、前端菜单权限、provider token profile | IdP/workload identity 提供真实 service identity；PolicyDecision/Approval 继续绑定不可变资源与 execution plan；完成 OIDC/IAM provisioning、轮换、吊销和 provider 最小权限后才能生产切换 | Security | AR-1 dispatch authorization 代码已验证 -> staging IAM 待验收 |
 | GIS 服务定义与 active revision | Martin、REST/MVT/STAC endpoints 和配置直接暴露 | Ingress、tile cache、客户端图层 | GIS Service Control Plane 管 Service/Layer/Style/TMS/DeploymentRevision；provider/Gateway 仅执行 | GIS Platform | AR-4 |
 | 缓存与进度 | Redis、进程内 dict/task map | UI progress、tile/context cache | 永不作为资产、Run、workflow 或产品权威；丢失后必须从 ledger/provider 重建 | SRE/Platform | 持续约束 |
 | Agent/Prompt/Model bundle | 多个 registry 与 YAML 存在，尚无统一 deployment revision | trace、eval dashboard | AgentSpecBundle + EvaluationBinding + DeploymentRevision；只消费已发布 DataProductVersion | AgentOps | AR-5 |
@@ -51,6 +51,7 @@
 7. 旧资产、workflow、run 和 lineage 行缺少稳定 tenant/version/checksum 证据时禁止自动 backfill，也不得猜测生成 ResourceVersion。
 8. `platform_crosswalk` 只验证仓库 inventory、候选 payload 和 golden fixture；它不得连接数据库、分配 identity、回填旧表或写入 `gda_control`。
 9. DolphinScheduler standalone 使用 H2 和默认开发身份，只能证明 adapter API/correlation 合同；不能作为生产 metadata DB、身份、隔离、高可用、备份恢复或升级证据。
+10. workload/evaluator subject 配置和授权 Artifact gate 不是生产 IAM 的替代品；没有 staging 的 credential provisioning、轮换、吊销与 provider 最小权限证据时，不得宣称 workload identity 完成。
 
 ## 已建立的 AR-0/AR-1 entry 证据
 
@@ -60,11 +61,12 @@
 - `gda_control_gateway` 的最小 grant、FORCE RLS、跨租户拒绝、禁止直接 RunEvent/UPDATE/DELETE，以及服务层 Definition -> Run -> attempt/artifact/lineage 全链已在真实 PostgreSQL 验证。
 - 九个 versioned API 已校验认证角色、tenant 和 actor，未绑定 tenant 的历史/OAuth/bot 身份默认拒绝；生产调用链仍写旧表，尚未切换到 gateway。
 - DolphinScheduler 3.4.2 adapter 已固定 create/online/start/list/variables/control 路由、四字段 Run correlation、未知结果禁止盲目重提和 provider 非终局边界；binding artifact 具备稳定 UUID、canonical 完整性校验、幂等追加和 tenant-scoped 读取；真实 ARM64 standalone 完成 Shell DAG 精确关联，`STOP` 到达 `READY_STOP`，但未形成生产终局裁决证据。
+- PolicyDecision/Approval 已形成强类型、内容寻址的 append-only Artifact，PlatformRun 保存不可变 UUID 引用；gateway 在提交期校验精确资源 scope，adapter 在 dispatch 前强制 workload/evaluator identity、action、effect、有效期和审批关系，失败时不会触达 provider 或改变 Run。
 
 ## 下一验收证据
 
 - staging/production 的 schema、config 和 runtime snapshot 产物及环境 compare 报告；
 - staging 的 migration role、应用 login membership、连接池 role/tenant 复位和双租户 API 运行产物；
-- DolphinScheduler adapter 的资源级 PolicyDecision/workload identity、binding artifact staging 接入、outbox/callback、故障恢复和无双写证据；
+- DolphinScheduler adapter 的真实 IAM/OIDC、service token provisioning/轮换、provider 最小权限、binding artifact staging 接入、outbox/callback、故障恢复和无双写证据；
 - 首条真实图斑链对 golden slice 的运行证据、质量结果、发布 revision 和 rollback 演练；
 - OpenMetadata/Gravitino 与 DolphinScheduler/Temporal sandbox 的独立数据库、备份恢复、身份、版本和升级责任证明；DolphinScheduler standalone/H2 不计入此退出门。

@@ -11,6 +11,7 @@ import argparse
 import json
 import re
 import stat
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal, Self
@@ -29,6 +30,10 @@ from pydantic import (
     model_validator,
 )
 
+from .platform_authorization import (
+    AuthorizationEvidenceError,
+    validate_run_authorization_evidence,
+)
 from .platform_contracts import (
     Artifact,
     FrameworkAttemptObservation,
@@ -137,6 +142,8 @@ class DolphinSchedulerProfile(_FrozenModel):
     base_url: str
     access_token: SecretStr
     project_code: int = Field(gt=0)
+    workload_subject: str = Field(min_length=10, max_length=512)
+    policy_evaluator_subject: str = Field(min_length=10, max_length=512)
     tenant_code: str = Field(default="default", min_length=1, max_length=128)
     worker_group: str = Field(default="default", min_length=1, max_length=255)
     timezone_name: str = Field(default="UTC", min_length=1, max_length=64)
@@ -144,6 +151,24 @@ class DolphinSchedulerProfile(_FrozenModel):
     reconciliation_page_limit: int = Field(default=5, ge=1, le=100)
     api_profile: Literal["3.4"] = DOLPHINSCHEDULER_API_PROFILE
     server_version: Literal["3.4.2"] = DOLPHINSCHEDULER_SERVER_VERSION
+
+    @field_validator("workload_subject", "policy_evaluator_subject")
+    @classmethod
+    def _workload_identity(cls, value: str) -> str:
+        if (
+            not value.startswith("workload:")
+            or not value.removeprefix("workload:").strip()
+        ):
+            raise ValueError("DolphinScheduler identities must use workload subjects")
+        return value
+
+    @model_validator(mode="after")
+    def _separate_policy_evaluator(self) -> DolphinSchedulerProfile:
+        if self.workload_subject == self.policy_evaluator_subject:
+            raise ValueError(
+                "policy evaluator must be independent from adapter workload"
+            )
+        return self
 
     @field_validator("base_url")
     @classmethod
@@ -770,10 +795,12 @@ class DolphinSchedulerAdapter:
         *,
         gateway: PlatformGateway | None = None,
         client: DolphinSchedulerClient | None = None,
+        clock: Callable[[], datetime] | None = None,
     ):
         self.profile = profile
         self.gateway = gateway or PlatformGateway()
         self.client = client or DolphinSchedulerClient(profile)
+        self.clock = clock or (lambda: datetime.now(UTC))
 
     def persist_binding(
         self,
@@ -782,6 +809,10 @@ class DolphinSchedulerAdapter:
         actor_subject: str,
         created_at: datetime,
     ) -> GatewayWriteResult:
+        if actor_subject != self.profile.workload_subject:
+            raise DolphinSchedulerContractError(
+                "binding publisher does not match adapter workload identity"
+            )
         if binding.project_code != self.profile.project_code:
             raise DolphinSchedulerContractError(
                 "binding project does not match profile"
@@ -804,14 +835,71 @@ class DolphinSchedulerAdapter:
         self,
         tenant_id: str,
         binding: DolphinSchedulerDefinitionBinding | UUID,
-    ) -> DolphinSchedulerDefinitionBinding:
+    ) -> tuple[DolphinSchedulerDefinitionBinding, Artifact]:
         if isinstance(binding, UUID):
-            return self.load_binding(tenant_id, binding)
-        if isinstance(binding, DolphinSchedulerDefinitionBinding):
-            return binding
-        raise DolphinSchedulerContractError(
-            "binding must be a DolphinSchedulerDefinitionBinding or artifact UUID"
+            artifact = self.gateway.get_artifact(tenant_id, binding)
+            return parse_dolphinscheduler_binding_artifact(artifact), artifact
+        if not isinstance(binding, DolphinSchedulerDefinitionBinding):
+            raise DolphinSchedulerContractError(
+                "binding must be a DolphinSchedulerDefinitionBinding or artifact UUID"
+            )
+        artifact_id = _binding_artifact_id(binding)
+        artifact = self.gateway.get_artifact(tenant_id, artifact_id)
+        persisted = parse_dolphinscheduler_binding_artifact(artifact)
+        if persisted != binding:
+            raise DolphinSchedulerContractError(
+                "in-memory binding does not match persisted execution plan"
+            )
+        return binding, artifact
+
+    def _validate_workload_identity(self, run: PlatformRun, actor_subject: str) -> None:
+        run_actor = (
+            f"{run.subject_context.subject_type.value}:{run.subject_context.subject_id}"
         )
+        if run.subject_context.subject_type.value != "workload":
+            raise DolphinSchedulerContractError(
+                "DolphinScheduler commands require workload SubjectContext"
+            )
+        if actor_subject != self.profile.workload_subject or actor_subject != run_actor:
+            raise DolphinSchedulerContractError(
+                "command actor does not match adapter workload identity"
+            )
+
+    def _authorize_dispatch(
+        self,
+        run: PlatformRun,
+        execution_plan_artifact: Artifact,
+    ) -> None:
+        references = run.policy_refs
+        if references is None:
+            raise DolphinSchedulerContractError(
+                "dispatch requires immutable policy decision references"
+            )
+        decision_artifact = self.gateway.get_artifact(
+            run.tenant_id, references.policy_decision_artifact_id
+        )
+        approval_artifact = None
+        if references.approval_artifact_id is not None:
+            approval_artifact = self.gateway.get_artifact(
+                run.tenant_id, references.approval_artifact_id
+            )
+        try:
+            decision, _approval = validate_run_authorization_evidence(
+                run,
+                decision_artifact,
+                approval_artifact,
+                execution_plan_artifact,
+                at=self.clock(),
+                expected_action="dolphinscheduler.dispatch",
+            )
+        except AuthorizationEvidenceError as exc:
+            raise DolphinSchedulerContractError(
+                f"dispatch authorization rejected: {exc}"
+            ) from exc
+        if decision.evaluator_subject != self.profile.policy_evaluator_subject:
+            raise DolphinSchedulerContractError(
+                "policy decision does not come from the configured evaluator workload"
+            )
 
     def _validate_binding(
         self, run: PlatformRun, binding: DolphinSchedulerDefinitionBinding
@@ -886,8 +974,10 @@ class DolphinSchedulerAdapter:
     ) -> DolphinSchedulerDispatchResult:
         tenant = _TENANT_ADAPTER.validate_python(tenant_id)
         run = self.gateway.get_run(tenant, run_id)
-        binding = self._resolve_binding(tenant, binding)
+        binding, execution_plan_artifact = self._resolve_binding(tenant, binding)
         self._validate_binding(run, binding)
+        self._validate_workload_identity(run, actor_subject)
+        self._authorize_dispatch(run, execution_plan_artifact)
 
         existing = self._find_one(binding, run)
         if existing is not None:
@@ -1028,8 +1118,9 @@ class DolphinSchedulerAdapter:
     ) -> DolphinSchedulerReconcileResult:
         tenant = _TENANT_ADAPTER.validate_python(tenant_id)
         run = self.gateway.get_run(tenant, run_id)
-        binding = self._resolve_binding(tenant, binding)
+        binding, _artifact = self._resolve_binding(tenant, binding)
         self._validate_binding(run, binding)
+        self._validate_workload_identity(run, actor_subject)
         match = self._find_one(binding, run)
         if match is None:
             raise DolphinSchedulerCorrelationNotFoundError(
@@ -1098,8 +1189,9 @@ class DolphinSchedulerAdapter:
     ) -> PlatformRun:
         tenant = _TENANT_ADAPTER.validate_python(tenant_id)
         run = self.gateway.get_run(tenant, run_id)
-        binding = self._resolve_binding(tenant, binding)
+        binding, _artifact = self._resolve_binding(tenant, binding)
         self._validate_binding(run, binding)
+        self._validate_workload_identity(run, actor_subject)
         match = self._find_one(binding, run)
         if match is None:
             raise DolphinSchedulerCorrelationNotFoundError(
@@ -1153,6 +1245,8 @@ def build_dolphinscheduler_adapter_report(
         "def persist_binding(",
         "def load_binding(",
         "parse_dolphinscheduler_binding_artifact",
+        "dispatch requires immutable policy decision references",
+        "validate_run_authorization_evidence",
     )
     missing = [marker for marker in required if marker not in source]
     if missing:
@@ -1191,6 +1285,8 @@ def main(argv: list[str] | None = None) -> int:
     probe_parser.add_argument("--base-url", required=True)
     probe_parser.add_argument("--token-file", type=Path, required=True)
     probe_parser.add_argument("--project-code", type=int, required=True)
+    probe_parser.add_argument("--workload-subject", required=True)
+    probe_parser.add_argument("--policy-evaluator-subject", required=True)
     probe_parser.add_argument("--tenant-code", default="default")
     probe_parser.add_argument("--worker-group", default="default")
     args = parser.parse_args(argv)
@@ -1208,6 +1304,8 @@ def main(argv: list[str] | None = None) -> int:
         base_url=args.base_url,
         access_token=token,
         project_code=args.project_code,
+        workload_subject=args.workload_subject,
+        policy_evaluator_subject=args.policy_evaluator_subject,
         tenant_code=args.tenant_code,
         worker_group=args.worker_group,
     )

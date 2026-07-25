@@ -24,6 +24,7 @@ from ..platform_contracts import (
     Resource,
     ResourceBinding,
     ResourceVersion,
+    RunPolicyReferences,
     RunStatus,
     Sha256,
     ShortName,
@@ -58,6 +59,7 @@ class RunSubmissionRequest(StrictRequest):
     orchestration_class: OrchestrationClass
     input_bindings: tuple[ResourceBinding, ...] = ()
     idempotency_key: NonEmptyText
+    policy_refs: RunPolicyReferences | None = None
     config_fingerprint: Sha256 | None = None
     purpose: NonEmptyText
     trace_id: ShortName | None = None
@@ -333,6 +335,7 @@ async def create_run(request: Request) -> JSONResponse:
             ),
             input_bindings=submission.input_bindings,
             idempotency_key=submission.idempotency_key,
+            policy_refs=submission.policy_refs,
             config_fingerprint=submission.config_fingerprint,
             submitted_at=submission.submitted_at,
         )

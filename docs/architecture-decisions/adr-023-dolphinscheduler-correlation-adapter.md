@@ -6,7 +6,7 @@
 
 **Decision owners**: Platform Architecture, DataOps, Data Platform, Security
 
-**Related decisions**: ADR-007、ADR-020、ADR-021、ADR-022
+**Related decisions**: ADR-007、ADR-020、ADR-021、ADR-022、ADR-024
 
 **Related roadmap**: [AR-0/AR-1 平台事实与最小控制面](../roadmap-ar0-platform-truth-2026-07-24.md)
 
@@ -55,6 +55,8 @@ ADR-007 已选择 DolphinScheduler 承担 DataOps 编排，ADR-022 已提供受�
 
 binding 通过现有 append-only `gda_control.artifact` 持久化，不新增 registry 或数据表。artifact 固定 `artifact_role=execution_plan`、`run_id=NULL`，并以 `resource_version_id` 关联 PlatformDefinitionVersion；版本化 envelope、canonical content hash/size、artifact key、PostgreSQL URI 和 artifact UUID 必须相互一致。UUID 从完整 binding 确定性生成，重复写入沿用 gateway 的幂等冲突检查。dispatch、reconcile 和 cancel 可以接收内存 binding，也可以通过 tenant-scoped PlatformGateway 读取 artifact UUID；任何缺失或篡改均 fail closed。
 
+binding publish、dispatch、reconcile 和 cancel 必须使用 profile 配置的 workload subject，并与 Run 的 authenticated workload SubjectContext 完全一致。dispatch 只能使用已持久化的 binding Artifact；任何仅存在于内存、无法从 tenant-scoped gateway 恢复的 binding 都不得提交 provider。
+
 ### 3. PlatformRun correlation
 
 手工启动通过 `startParams` 携带：
@@ -65,6 +67,8 @@ binding 通过现有 append-only `gda_control.artifact` 持久化，不新增 re
 - `gda_idempotency_key`。
 
 对账必须读取 instance variables 并要求四项完全相等；零个结果返回 not found，多个结果 fail closed。未知分页结构、缺失 correlation variables 或达到配置的扫描页数上限也必须 fail closed，不能被解释成空结果。adapter 先把 PlatformRun 从 `accepted` CAS 到 `dispatching`，再提交外部运行。网络或 timeout 后先查询 correlation；不可见时转到 `reconciling`，后续调用不得盲目重提。
+
+在上述 CAS 和任何 provider 调用前，adapter 必须重新加载 Run 引用的 PolicyDecision、可选 Approval 和 execution-plan Artifact，并按 ADR-024 验证精确资源 scope、`dolphinscheduler.dispatch` action、allow effect、有效期、职责分离和配置的 evaluator workload。失败时 provider 调用数和 Run transition 数都必须为零。
 
 ### 4. 状态和取消边界
 
@@ -88,14 +92,14 @@ binding 通过现有 append-only `gda_control.artifact` 持久化，不新增 re
 
 限制与缓解：
 
-- binding artifact 的代码、幂等 replay 和 tenant-scoped gateway 读取已完成，但生产调用方尚未切换，不能视为 staging 控制链验收；
+- binding artifact、授权 evidence gate、workload/evaluator 配置绑定和 tenant-scoped gateway 读取已完成，但生产调用方尚未切换，不能视为 staging IAM 或控制链验收；
 - 没有 callback/outbox consumer 或周期 reconcile worker，生产接入前必须建立耐久触发与恢复路径；
 - 真实 standalone 验证了客户端路由，但 PlatformGateway + DolphinScheduler + PostgreSQL 的同一端到端场景仍待 staging 验证；
 - 尚未验证 schedule、complement/backfill、master/worker failover、独立 metadata DB 或 backup/restore，不能宣称 AR-1 退出门完成。
 
 ## Verification
 
-- 30 个定向测试覆盖编译 fingerprint、内联密钥拒绝、context path、token redaction/文件权限、创建/上线、binding artifact round-trip/篡改拒绝/幂等 replay/UUID 驱动、startParams、变量关联、分页/扫描上限、未知结果、丢失响应恢复、非终局 provider state、取消和多 correlation 拒绝。
+- 36 个定向测试覆盖编译 fingerprint、内联密钥拒绝、context path、token redaction/文件权限、创建/上线、binding artifact round-trip/篡改拒绝/幂等 replay/UUID 驱动、workload/evaluator identity、PolicyDecision/Approval gate、startParams、变量关联、分页/扫描上限、未知结果、丢失响应恢复、非终局 provider state、取消和多 correlation 拒绝。
 - 静态 validator 已进入 CI，固定版本、路由、上线、binding persistence、未知结果与平台裁决边界。
 - 官方 ARM64 standalone image `apache/dolphinscheduler-standalone-server:3.4.2`（digest `sha256:485a1b37dd1c4088c8c8335f9fccbd229e5e703c32e21f318eb00cbb60b1af9d`）通过只读 probe。
 - 真实 Shell DAG 完成 create -> online -> start -> list -> variables -> exact correlation，instance 到达 `SUCCESS`，六个 `gda_*` 参数可见。

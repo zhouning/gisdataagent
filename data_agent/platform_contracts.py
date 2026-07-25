@@ -139,6 +139,16 @@ class ArtifactRole(str, Enum):
     EXECUTION_PLAN = "execution_plan"
 
 
+class PolicyEffect(str, Enum):
+    ALLOW = "allow"
+    DENY = "deny"
+
+
+class ApprovalVerdict(str, Enum):
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
 class LineageEventType(str, Enum):
     READ = "read"
     WRITE = "write"
@@ -328,6 +338,91 @@ class SubjectContext(FrozenContract):
         return tuple(sorted(value))
 
 
+class RunPolicyReferences(FrozenContract):
+    schema_id = "run_policy_references"
+
+    policy_decision_artifact_id: UUID
+    approval_artifact_id: UUID | None = None
+
+
+class PolicyDecision(FrozenContract):
+    schema_id = "policy_decision"
+
+    tenant_id: TenantId
+    run_id: UUID
+    subject_context: SubjectContext
+    action: ShortName
+    definition_version_id: UUID
+    resource_version_ids: tuple[UUID, ...] = Field(min_length=1)
+    execution_plan_artifact_id: UUID
+    effect: PolicyEffect
+    policy_version_ref: NonEmptyText
+    evaluator_subject: NonEmptyText
+    requires_approval: bool = False
+    obligations: tuple[ShortName, ...] = ()
+    decided_at: datetime
+    expires_at: datetime
+
+    @field_validator("resource_version_ids")
+    @classmethod
+    def _canonical_resource_versions(cls, value: tuple[UUID, ...]) -> tuple[UUID, ...]:
+        if len(value) != len(set(value)):
+            raise ValueError("resource_version_ids must not contain duplicates")
+        return tuple(sorted(value, key=str))
+
+    @field_validator("obligations")
+    @classmethod
+    def _canonical_obligations(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(value) != len(set(value)):
+            raise ValueError("obligations must not contain duplicates")
+        return tuple(sorted(value))
+
+    @field_validator("decided_at", "expires_at")
+    @classmethod
+    def _utc_decision_time(cls, value: datetime) -> datetime:
+        return _aware_utc(value)
+
+    @model_validator(mode="after")
+    def _consistent_scope(self) -> PolicyDecision:
+        if self.subject_context.tenant_id != self.tenant_id:
+            raise ValueError("policy subject tenant must match decision tenant")
+        if self.definition_version_id not in self.resource_version_ids:
+            raise ValueError("policy scope must include the definition version")
+        if not self.evaluator_subject.startswith("workload:"):
+            raise ValueError("policy evaluator must use workload identity")
+        if self.expires_at <= self.decided_at:
+            raise ValueError("policy decision expiry must follow decision time")
+        return self
+
+
+class ApprovalRecord(FrozenContract):
+    schema_id = "approval_record"
+
+    tenant_id: TenantId
+    run_id: UUID
+    definition_version_id: UUID
+    policy_decision_artifact_id: UUID
+    policy_decision_sha256: Sha256
+    verdict: ApprovalVerdict
+    approver_subject: NonEmptyText
+    reason: NonEmptyText
+    decided_at: datetime
+    expires_at: datetime
+
+    @field_validator("decided_at", "expires_at")
+    @classmethod
+    def _utc_approval_time(cls, value: datetime) -> datetime:
+        return _aware_utc(value)
+
+    @model_validator(mode="after")
+    def _consistent_approval(self) -> ApprovalRecord:
+        if not self.approver_subject.startswith("human:"):
+            raise ValueError("approval must use human identity")
+        if self.expires_at <= self.decided_at:
+            raise ValueError("approval expiry must follow decision time")
+        return self
+
+
 class Resource(FrozenContract):
     schema_id = "resource"
 
@@ -441,6 +536,7 @@ class PlatformRun(FrozenContract):
     subject_context: SubjectContext
     input_bindings: tuple[ResourceBinding, ...] = ()
     idempotency_key: NonEmptyText
+    policy_refs: RunPolicyReferences | None = None
     config_fingerprint: Sha256 | None = None
     status: RunStatus = RunStatus.ACCEPTED
     state_version: Annotated[int, Field(ge=0)] = 0
@@ -588,6 +684,9 @@ class LineageEvent(FrozenContract):
 
 CONTRACT_MODELS = (
     SubjectContext,
+    RunPolicyReferences,
+    PolicyDecision,
+    ApprovalRecord,
     Resource,
     ResourceVersion,
     PlatformDefinitionVersion,
