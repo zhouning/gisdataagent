@@ -6,7 +6,7 @@
 
 **Decision owners**: Platform Architecture, Data Platform, DataOps, Security
 
-**Related decisions**: ADR-003、ADR-007、ADR-018、ADR-020、ADR-021、ADR-024、ADR-025
+**Related decisions**: ADR-003、ADR-007、ADR-018、ADR-020、ADR-021、ADR-024、ADR-025、ADR-026
 
 **Related roadmap**: [AR-0/AR-1 平台事实与最小控制面](../roadmap-ar0-platform-truth-2026-07-24.md)
 
@@ -49,13 +49,14 @@ migration `094_platform_control_gateway.sql` 创建 `gda_control_gateway`：`NOL
 - Resource 和 ResourceVersion 幂等登记；
 - Resource + ResourceVersion + PlatformDefinitionVersion 原子登记；
 - PlatformRun + input binding 原子提交、读取和 CAS transition；
-- FrameworkAttemptObservation、Artifact 和 LineageEvent 幂等追加。
+- FrameworkAttemptObservation、Artifact、QualityResult 和 LineageEvent 幂等追加；
+- 基于 RunSuccessEvidence 的专用成功终局裁决。
 
 所有 insert 使用稳定 identity 或 idempotency key 查重，并在返回前比较完整不可变 payload。相同请求返回已有对象；同一 identity/key 对应不同 payload 时整个事务回滚并返回 conflict。它不更新旧资产/workflow/run/lineage 表。
 
 ### 3. Versioned HTTP boundary
 
-九个 `/api/platform/v1/...` 路由复用现有应用认证，但只允许 `admin` 和 `platform_operator`。密码身份的 JWT metadata 携带 `tenant_id`；管理员通过独立 user-tenant binding API 显式赋值。现有用户、OAuth/bot 或其他缺少合法 tenant 的身份默认拒绝访问。
+十二个 `/api/platform/v1/...` 路由复用现有应用认证，但只允许 `admin` 和 `platform_operator`。密码身份的 JWT metadata 携带 `tenant_id`；管理员通过独立 user-tenant binding API 显式赋值。现有用户、OAuth/bot 或其他缺少合法 tenant 的身份默认拒绝访问。QualityResult 写入和成功终结还要求 workload subject，分别匹配 evaluator 和 Run workload。
 
 Run 的 SubjectContext 和 transition actor 完全由认证 principal 构造。ResourceVersion `created_by`、Artifact `created_by` 和 LineageEvent `producer` 必须与认证 actor 一致；payload tenant 必须与 JWT tenant 一致。响应统一使用 `data/error/request_id` envelope。
 
@@ -73,6 +74,7 @@ Run 的 SubjectContext 和 transition actor 完全由认证 principal 构造。R
 - 表级最小授权、RLS、append-only trigger 和应用授权形成分层边界；
 - Definition bundle 和 Run input 在单一事务中提交，不会留下半条控制链；
 - provider 仍只能追加 attempt evidence，不能自行裁决 PlatformRun 终局；
+- ADR-026 已使 gateway 的通用 transition 无法写 `succeeded`，专用 finalizer 必须核验完整证据链；
 - 外部 catalog/orchestrator POC 可以复用稳定入口，而不需要直接访问内部表。
 
 限制与缓解：
@@ -87,7 +89,7 @@ Run 的 SubjectContext 和 transition actor 完全由认证 principal 构造。R
 
 - 静态 validator 检查 non-bypass role、最小 grant、transaction-local role/tenant marker、版本化路由和禁止的 `UPDATE/DELETE/RunEvent INSERT`。
 - PostgreSQL 权限测试证明 gateway role 无 login/superuser/create/inherit/bypass 能力，只能访问当前 tenant，不能直接更新、删除、伪造 RunEvent 或跨 tenant insert。
-- 服务层 PostgreSQL 测试通过真实 `PlatformGateway` 跑通 Definition、ResourceVersion、Run/input、CAS transition、attempt、Artifact 和 Lineage，并验证相同请求幂等重放。
+- 服务层 PostgreSQL 测试通过真实 `PlatformGateway` 跑通 Definition、ResourceVersion、Run/input、CAS transition、attempt、Artifact、QualityResult、Lineage 和 evidence-gated success，并验证相同请求幂等重放。
 - HTTP 测试覆盖未认证、错误角色、缺失 tenant、tenant/actor spoofing、请求 envelope 和路由注册；认证/API 回归测试保持通过。
 
 ## Revisit Triggers

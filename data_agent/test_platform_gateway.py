@@ -12,17 +12,22 @@ from data_agent.api import platform_gateway_routes as routes
 from data_agent.platform_contracts import (
     PlatformCommand,
     PlatformRun,
+    QualityResult,
     Resource,
     ResourceVersion,
+    RunStatus,
     SubjectContext,
     platform_definition_fingerprint,
+    quality_result_fingerprint,
 )
 from data_agent.platform_gateway import (
     COMMAND_OUTBOX_MIGRATION,
     DefinitionRegistration,
     GATEWAY_ROLE_MIGRATION,
     GatewayConflictError,
+    GatewayValidationError,
     GatewayWriteResult,
+    PlatformGateway,
     build_gateway_report,
 )
 
@@ -129,6 +134,35 @@ def _command():
         actor_subject="workload:dataops-adapter",
         available_at=NOW,
         created_at=NOW,
+    )
+
+
+def _quality():
+    quality_result_id = UUID("00000000-0000-4000-8000-0000000000a0")
+    evidence_artifact_id = UUID("00000000-0000-4000-8000-0000000000b0")
+    metrics = {"feature_count": 3, "geometry_errors": 0}
+    return QualityResult(
+        tenant_id=TENANT,
+        quality_result_id=quality_result_id,
+        run_id=RUN_ID,
+        resource_version_id=DEFINITION_ID,
+        rule_version_ref="gda://tenant-a/quality-rule/dltb-v1",
+        verdict="passed",
+        metrics=metrics,
+        evidence_artifact_id=evidence_artifact_id,
+        result_sha256=quality_result_fingerprint(
+            tenant_id=TENANT,
+            run_id=RUN_ID,
+            resource_version_id=DEFINITION_ID,
+            rule_version_ref="gda://tenant-a/quality-rule/dltb-v1",
+            verdict="passed",
+            metrics=metrics,
+            evidence_artifact_id=evidence_artifact_id,
+            evaluated_by="workload:quality-evaluator",
+            evaluated_at=NOW,
+        ),
+        evaluated_by="workload:quality-evaluator",
+        evaluated_at=NOW,
     )
 
 
@@ -364,6 +398,87 @@ def test_dolphinscheduler_callback_requires_workload_and_enqueues_reconcile():
     }
 
 
+def test_quality_result_requires_evaluator_identity_and_preserves_contract():
+    quality = _quality()
+    gateway = MagicMock()
+    gateway.record_quality_result.return_value = GatewayWriteResult(quality, True)
+    body = quality.model_dump(mode="json")
+
+    request = _request(body=body)
+    with patch.object(routes, "_get_user_from_request", return_value=_user()):
+        rejected = asyncio.run(routes.create_quality_result(request))
+    assert rejected.status_code == 403
+
+    request = _request(body=body)
+    with (
+        patch.object(
+            routes,
+            "_get_user_from_request",
+            return_value=_user(
+                subject_type="workload", identifier="quality-evaluator"
+            ),
+        ),
+        patch.object(routes, "_gateway", return_value=gateway),
+    ):
+        response = asyncio.run(routes.create_quality_result(request))
+    assert response.status_code == 201
+    assert gateway.record_quality_result.call_args.args == (quality,)
+
+
+def test_success_finalization_requires_run_workload_and_builds_evidence():
+    succeeded = _run().model_copy(
+        update={"status": RunStatus.SUCCEEDED, "state_version": 3}
+    )
+    gateway = MagicMock()
+    gateway.finalize_run_success.return_value = succeeded
+    body = {
+        "expected_state_version": 2,
+        "attempt_observation_id": "00000000-0000-4000-8000-000000000050",
+        "output_artifact_id": "00000000-0000-4000-8000-000000000060",
+        "quality_result_id": "00000000-0000-4000-8000-000000000090",
+        "lineage_event_id": "00000000-0000-4000-8000-000000000070",
+        "reason": "all platform success evidence passed",
+    }
+    request = _request(body=body, path={"run_id": str(RUN_ID)})
+    with patch.object(routes, "_get_user_from_request", return_value=_user()):
+        rejected = asyncio.run(routes.finalize_run_success(request))
+    assert rejected.status_code == 403
+
+    request = _request(body=body, path={"run_id": str(RUN_ID)})
+    with (
+        patch.object(
+            routes,
+            "_get_user_from_request",
+            return_value=_user(
+                subject_type="workload", identifier="dataops-adapter"
+            ),
+        ),
+        patch.object(routes, "_gateway", return_value=gateway),
+    ):
+        response = asyncio.run(routes.finalize_run_success(request))
+    assert response.status_code == 200
+    evidence = gateway.finalize_run_success.call_args.args[0]
+    assert evidence.tenant_id == TENANT
+    assert evidence.run_id == RUN_ID
+    assert gateway.finalize_run_success.call_args.kwargs == {
+        "expected_state_version": 2,
+        "actor_subject": "workload:dataops-adapter",
+        "reason": "all platform success evidence passed",
+    }
+
+
+def test_generic_gateway_transition_cannot_bypass_success_evidence_gate():
+    with pytest.raises(GatewayValidationError, match="evidence-gated"):
+        PlatformGateway().transition_run(
+            TENANT,
+            RUN_ID,
+            2,
+            "succeeded",
+            "workload:dataops-adapter",
+            "provider said success",
+        )
+
+
 def test_gateway_conflict_has_stable_safe_error_envelope():
     gateway = MagicMock()
     gateway.register_resource.side_effect = GatewayConflictError("identity conflict")
@@ -398,7 +513,7 @@ def test_run_transition_rejects_negative_state_version_at_http_boundary():
 
 def test_platform_gateway_routes_are_versioned_and_registered():
     registered = routes.get_platform_gateway_routes()
-    assert len(registered) == 10
+    assert len(registered) == 12
     assert all(route.path.startswith("/api/platform/v1/") for route in registered)
 
     from data_agent.frontend_api import get_frontend_api_routes
@@ -411,7 +526,7 @@ def test_platform_gateway_static_contract_and_fail_closed_role(tmp_path):
     report = build_gateway_report()
     assert report["status"] == "valid"
     assert report["database_role"] == "gda_control_gateway"
-    assert report["route_count"] == 10
+    assert report["route_count"] == 12
 
     unsafe = tmp_path / "unsafe_gateway.sql"
     unsafe.write_text(

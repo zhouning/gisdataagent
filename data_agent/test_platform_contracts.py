@@ -295,6 +295,67 @@ def test_platform_command_requires_consistent_claim_and_completion_state():
         )
 
 
+def test_quality_result_and_success_evidence_are_content_bound():
+    evidence_artifact_id = UUID("00000000-0000-4000-8000-000000000080")
+    quality_result_id = UUID("00000000-0000-4000-8000-000000000090")
+    metrics = {"feature_count": 3, "geometry_errors": 0}
+    quality_sha256 = contracts.quality_result_fingerprint(
+        tenant_id=TENANT,
+        run_id=RUN_ID,
+        resource_version_id=TARGET_VERSION_ID,
+        rule_version_ref="gda://tenant-a/quality-rule/dltb-v1",
+        verdict="passed",
+        metrics=metrics,
+        evidence_artifact_id=evidence_artifact_id,
+        evaluated_by="workload:quality-evaluator",
+        evaluated_at=NOW,
+    )
+    quality = contracts.QualityResult(
+        tenant_id=TENANT,
+        quality_result_id=quality_result_id,
+        run_id=RUN_ID,
+        resource_version_id=TARGET_VERSION_ID,
+        rule_version_ref="gda://tenant-a/quality-rule/dltb-v1",
+        verdict="passed",
+        metrics=metrics,
+        evidence_artifact_id=evidence_artifact_id,
+        result_sha256=quality_sha256,
+        evaluated_by="workload:quality-evaluator",
+        evaluated_at=NOW,
+    )
+    success_sha256 = contracts.run_success_evidence_fingerprint(
+        tenant_id=TENANT,
+        run_id=RUN_ID,
+        attempt_observation_id=SOURCE_VERSION_ID,
+        output_artifact_id=TARGET_VERSION_ID,
+        quality_result_id=quality_result_id,
+        lineage_event_id=DEFINITION_ID,
+    )
+    success = contracts.RunSuccessEvidence(
+        tenant_id=TENANT,
+        run_id=RUN_ID,
+        attempt_observation_id=SOURCE_VERSION_ID,
+        output_artifact_id=TARGET_VERSION_ID,
+        quality_result_id=quality_result_id,
+        lineage_event_id=DEFINITION_ID,
+        evidence_sha256=success_sha256,
+    )
+
+    assert quality.verdict == contracts.QualityVerdict.PASSED
+    assert success.evidence_sha256 == success_sha256
+    with pytest.raises(ValidationError, match="result_sha256"):
+        contracts.QualityResult(
+            **{**quality.model_dump(), "metrics": {"feature_count": 2}}
+        )
+    with pytest.raises(ValidationError, match="workload identity"):
+        contracts.QualityResult(
+            **{
+                **quality.model_dump(),
+                "evaluated_by": "human:quality-evaluator",
+            }
+        )
+
+
 def test_run_transition_graph_rejects_terminal_and_skip_transitions():
     contracts.validate_run_transition("accepted", "dispatching")
     contracts.validate_run_transition("running", "succeeded")
@@ -408,9 +469,9 @@ def test_control_ledger_contract_and_migration_catalog_are_valid():
     )
 
     assert report["status"] == "valid"
-    assert report["contract_count"] == 14
+    assert report["contract_count"] == 16
     assert report["migration"]["sha256"] == migration["checksum"]
-    assert migrations[-1]["migration_id"] == "095_platform_command_outbox"
+    assert migrations[-1]["migration_id"] == "096_platform_success_verdict"
 
 
 def test_sql_contract_has_tenant_fks_rls_append_only_and_no_legacy_backfill():

@@ -6,7 +6,7 @@
 
 **Decision owners**: Platform Architecture, DataOps, Data Platform, Security
 
-**Related decisions**: ADR-007、ADR-020、ADR-021、ADR-022、ADR-024、ADR-025
+**Related decisions**: ADR-007、ADR-020、ADR-021、ADR-022、ADR-024、ADR-025、ADR-026
 
 **Related roadmap**: [AR-0/AR-1 平台事实与最小控制面](../roadmap-ar0-platform-truth-2026-07-24.md)
 
@@ -72,7 +72,7 @@ binding publish、dispatch、reconcile 和 cancel 必须使用 profile 配置的
 
 ### 4. 状态和取消边界
 
-运行中 provider state 可以把 `dispatching/reconciling` 投影为 `running`。`SUCCESS`、`FAILURE`、`STOP`、`KILL` 等 provider 终态只能追加 FrameworkAttemptObservation，并将 PlatformRun 移到 `reconciling`。只有平台在验证 Artifact、质量和策略后，才能写入 `succeeded/failed/cancelled/timed_out`。
+运行中 provider state 可以把 `dispatching/reconciling` 投影为 `running`。`SUCCESS`、`FAILURE`、`STOP`、`KILL` 等 provider 终态只能追加 FrameworkAttemptObservation，并将 PlatformRun 移到 `reconciling`。ADR-026 已使通用 transition 无法写 `succeeded`；成功必须由数据库核验 output Artifact、独立 passed QualityResult/evidence 和 input-to-output LineageEvent。其他终态仍按各自状态规则处理。
 
 取消先对 PlatformRun 做 CAS 到 `cancelling`，再发送 DolphinScheduler `STOP`。请求失败仍由后续 reconcile 处理，不能因 provider 接受命令就直接写 `cancelled`。
 
@@ -94,6 +94,7 @@ binding publish、dispatch、reconcile 和 cancel 必须使用 profile 配置的
 
 - binding artifact、授权 evidence gate、workload/evaluator 配置绑定和 tenant-scoped gateway 读取已完成，但生产调用方尚未切换，不能视为 staging IAM 或控制链验收；
 - ADR-025 已实现 callback/outbox 合同与有界 consumer library，但尚未部署常驻 worker、配置 provider callback 或验证告警/恢复 SLO；
+- ADR-026 已在本地合同和真实 PostgreSQL 16 上封闭 success authority，但尚未用真实 staging DAG 和数据产物验证该链；
 - 真实 standalone 验证了客户端路由，但 PlatformGateway + DolphinScheduler + PostgreSQL 的同一端到端场景仍待 staging 验证；
 - 尚未验证 schedule、complement/backfill、master/worker failover、独立 metadata DB 或 backup/restore，不能宣称 AR-1 退出门完成。
 
@@ -104,6 +105,7 @@ binding publish、dispatch、reconcile 和 cancel 必须使用 profile 配置的
 - 官方 ARM64 standalone image `apache/dolphinscheduler-standalone-server:3.4.2`（digest `sha256:485a1b37dd1c4088c8c8335f9fccbd229e5e703c32e21f318eb00cbb60b1af9d`）通过只读 probe。
 - 真实 Shell DAG 完成 create -> online -> start -> list -> variables -> exact correlation，instance 到达 `SUCCESS`，六个 `gda_*` 参数可见。
 - 真实长任务从 `RUNNING_EXECUTION` 接受 `STOP` 并进入 `READY_STOP`；这只证明控制命令与过渡状态，不等于平台取消终态验收。
+- gateway PostgreSQL 回归已验证 provider `SUCCESS` 本身不能写平台成功，只有 ADR-026 完整证据集合可以幂等终结 Run。
 
 ## Revisit Triggers
 

@@ -153,7 +153,7 @@ MMFE、GWM 和生态扩展继续保留为战略方向，但必须由已发布 Da
 3. Resource/ResourceVersion 幂等登记和 Definition bundle 原子事务；
 4. PlatformRun/input 原子提交、幂等 key、读取与 CAS transition；
 5. FrameworkAttemptObservation、Artifact 和 LineageEvent 幂等追加，禁止直接伪造 RunEvent；
-6. 九个 `/api/platform/v1` 路由、`platform_operator`、JWT tenant context、actor/tenant spoofing 拒绝和统一错误 envelope；
+6. 十二个 `/api/platform/v1` 路由、`platform_operator`、JWT tenant context、actor/tenant spoofing 拒绝和统一错误 envelope；
 7. 静态 validator、真实 PostgreSQL 角色/服务链测试、CI 门禁、[ADR-022](architecture-decisions/adr-022-platform-control-gateway.md) 与更新后的 [System-of-Record 矩阵](system-of-record-matrix-2026-07-24.md)。
 
 此切片证明新的受控写入口可用，但没有切换任何生产业务调用方。现有 legacy 表仍是兼容写路径，OpenMetadata、Gravitino、DolphinScheduler 和 Temporal 仍未部署或接入。生产部署还要求 migration/DBA 具备 role 管理权限、应用 login 获得 gateway role membership，并先在 staging 完成双租户和连接池复位验收。
@@ -173,20 +173,21 @@ MMFE、GWM 和生态扩展继续保留为战略方向，但必须由已发布 Da
 
 真实 `3.4.2` ARM64 standalone 已验证 create -> online -> start -> list -> variables -> exact correlation，Shell instance 到达 `SUCCESS`；长任务接受 `STOP` 后进入 `READY_STOP`。standalone 使用 H2 和开发身份，因此这些是 adapter HTTP/correlation 证据，不是生产部署、高可用、最终取消裁决或 AR-1 全部退出门。
 
-### 4.7 下一开发包（binding、authorization 与 outbox/callback 代码切片已完成）
+### 4.7 下一开发包（本地 authority 闭环已完成，staging 待接入）
 
 下一块把 adapter POC 接到地类图斑 golden slice 的真实控制链，而不是再接第二套外部平台：
 
 1. 已建立 authenticated workload SubjectContext、profile workload/evaluator identity 和资源级 PolicyDecision/Approval evidence gate：Run 提交期校验证据引用，DolphinScheduler dispatch 前再次按真实时钟 fail closed，授权失败不调用 provider、不改变 Run；真实 IAM/OIDC、service token provisioning/轮换与 provider 侧最小权限仍待 staging；
 2. 已将 DolphinSchedulerDefinitionBinding 持久化为现有 append-only Artifact 的 `execution_plan` 角色：稳定 UUID、版本化 manifest、canonical hash/size 和 definition ResourceVersion 关联均受校验；dispatch/reconcile/cancel 可通过 tenant-scoped gateway 读取 artifact UUID，不新增 binding registry；
 3. 已以 tenant-scoped PostgreSQL command outbox 和 authenticated callback 建立耐久 dispatch/reconcile 触发：Run+dispatch、callback observation+reconcile 分别同事务提交，claim 使用 lease/`SKIP LOCKED`，薄 consumer 只调用 adapter；尚未部署常驻 worker、配置真实 provider callback 或验证告警 SLO；
-4. 在同一 staging 场景跑通 PlatformGateway PostgreSQL、DolphinScheduler 独立 metadata PostgreSQL、Artifact/Quality/Lineage 和平台终局裁决；
-5. 注入提交超时、callback 重复/乱序、worker 重启、双租户访问、凭据轮换和无双写恢复故障；
-6. 验证 schedule、complement/backfill、备份恢复、升级和 master/worker failover 后，再判断 AR-1 是否达到退出门。
+4. 已新增 immutable QualityResult、content-bound RunSuccessEvidence 和数据库 evidence gate：通用 transition 不能写 `succeeded`；只有精确 workload、DolphinScheduler success observation、内容匹配的 output Artifact、独立 passed QualityResult/evidence 和 input-to-output LineageEvent 完整时才能幂等终结 Run；见 [ADR-026](architecture-decisions/adr-026-evidence-gated-run-success.md)；
+5. 下一步在同一 staging 场景跑通 PlatformGateway PostgreSQL、DolphinScheduler 独立 metadata PostgreSQL、常驻 outbox worker/callback 和真实 Artifact/Quality/Lineage 终局裁决；
+6. 注入提交超时、callback 重复/乱序、worker 重启、双租户访问、凭据轮换和无双写恢复故障；
+7. 验证 schedule、complement/backfill、备份恢复、升级和 master/worker failover 后，再判断 AR-1 是否达到退出门。
 
 OpenMetadata/Gravitino 和 Temporal 继续保持目标组件状态，不在这一包并行接入。
 
-当前完成仅指本地合同、授权 evidence、outbox/callback 代码、定向测试和 PostgreSQL gateway 事务边界。真实 IAM/OIDC 与 service token 生命周期、worker/callback 部署、golden slice staging 链、独立 DolphinScheduler metadata PostgreSQL 和平台终局裁决仍属于 4.7 后续切片。
+当前完成仅指本地合同、授权 evidence、outbox/callback 代码、数据库成功终局门、合成 golden slice、定向测试和真实 PostgreSQL 16 事务边界。真实 IAM/OIDC 与 service token 生命周期、worker/callback 部署、golden slice staging 运行链、独立 DolphinScheduler metadata PostgreSQL 和真实数据终局证据仍属于 4.7 后续切片。
 
 ## 5. 重新评估条件
 

@@ -33,8 +33,10 @@ from .platform_contracts import (
     PlatformDefinitionVersion,
     PlatformRun,
     PolicyDecision,
+    QualityResult,
     Resource,
     ResourceVersion,
+    RunSuccessEvidence,
     RunStatus,
     TenantId,
 )
@@ -51,6 +53,11 @@ COMMAND_OUTBOX_MIGRATION = (
     Path(__file__).resolve().parent
     / "migrations"
     / "095_platform_command_outbox.sql"
+)
+SUCCESS_VERDICT_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "096_platform_success_verdict.sql"
 )
 USER_TENANT_MIGRATION = (
     Path(__file__).resolve().parent
@@ -188,7 +195,7 @@ class PlatformGateway:
                 raise GatewayNotFoundError("platform object was not found") from exc
             if state == "42501":
                 raise GatewayForbiddenError("platform tenant access was denied") from exc
-            if state in {"22023", "23502", "23503", "23514"}:
+            if state in {"22023", "22P02", "23502", "23503", "23514"}:
                 raise GatewayValidationError("platform contract was rejected") from exc
             raise GatewayUnavailableError("platform database operation failed") from exc
         except SQLAlchemyError as exc:
@@ -735,6 +742,10 @@ class PlatformGateway:
         details: dict[str, Any] | None = None,
     ) -> PlatformRun:
         status = RunStatus(to_status)
+        if status == RunStatus.SUCCEEDED:
+            raise GatewayValidationError(
+                "succeeded requires evidence-gated Run finalization"
+            )
         with self._transaction(tenant_id) as connection:
             connection.execute(
                 text(
@@ -825,6 +836,121 @@ class PlatformGateway:
     ) -> GatewayWriteResult:
         with self._transaction(observation.tenant_id) as connection:
             return self._put_observation(connection, observation)
+
+    @staticmethod
+    def _load_quality_result(
+        connection, tenant_id: str, quality_result_id: UUID
+    ) -> QualityResult | None:
+        row = connection.execute(
+            text(
+                """
+                SELECT tenant_id, quality_result_id, run_id,
+                       resource_version_id, rule_version_ref, verdict,
+                       metrics, evidence_artifact_id, result_sha256,
+                       evaluated_by, evaluated_at
+                FROM gda_control.quality_result
+                WHERE tenant_id = :tenant_id
+                  AND quality_result_id = :quality_result_id
+                """
+            ),
+            {
+                "tenant_id": tenant_id,
+                "quality_result_id": quality_result_id,
+            },
+        ).mappings().one_or_none()
+        if row is None:
+            return None
+        value = dict(row)
+        value["metrics"] = _as_json(value["metrics"])
+        return QualityResult.model_validate(value)
+
+    def record_quality_result(
+        self, quality: QualityResult
+    ) -> GatewayWriteResult:
+        with self._transaction(quality.tenant_id) as connection:
+            inserted = connection.execute(
+                text(
+                    """
+                    INSERT INTO gda_control.quality_result (
+                        tenant_id, quality_result_id, run_id,
+                        resource_version_id, rule_version_ref, verdict,
+                        metrics, evidence_artifact_id, result_sha256,
+                        evaluated_by, evaluated_at
+                    ) VALUES (
+                        :tenant_id, :quality_result_id, :run_id,
+                        :resource_version_id, :rule_version_ref, :verdict,
+                        CAST(:metrics AS jsonb), :evidence_artifact_id,
+                        :result_sha256, :evaluated_by, :evaluated_at
+                    )
+                    ON CONFLICT DO NOTHING
+                    RETURNING quality_result_id
+                    """
+                ),
+                {
+                    **quality.model_dump(mode="python", exclude={"metrics"}),
+                    "verdict": quality.verdict.value,
+                    "metrics": _json(quality.metrics),
+                },
+            ).first()
+            stored = self._load_quality_result(
+                connection,
+                quality.tenant_id,
+                quality.quality_result_id,
+            )
+            if stored is None or stored != quality:
+                raise GatewayConflictError(
+                    "QualityResult identity already has a different payload"
+                )
+            return GatewayWriteResult(stored, inserted is not None)
+
+    def get_quality_result(
+        self, tenant_id: str, quality_result_id: UUID
+    ) -> QualityResult:
+        with self._transaction(tenant_id) as connection:
+            quality = self._load_quality_result(
+                connection, tenant_id, quality_result_id
+            )
+            if quality is None:
+                raise GatewayNotFoundError("QualityResult was not found")
+            return quality
+
+    def finalize_run_success(
+        self,
+        evidence: RunSuccessEvidence,
+        *,
+        expected_state_version: int,
+        actor_subject: str,
+        reason: str,
+    ) -> PlatformRun:
+        details = {
+            "schema": "gda.run_success_evidence.v1",
+            **evidence.model_dump(mode="json"),
+        }
+        with self._transaction(evidence.tenant_id) as connection:
+            connection.execute(
+                text(
+                    """
+                    SELECT gda_control.finalize_platform_run_success(
+                        :tenant_id, :run_id, :expected_state_version,
+                        :actor_subject, :reason, CAST(:details AS jsonb)
+                    )
+                    """
+                ),
+                {
+                    "tenant_id": evidence.tenant_id,
+                    "run_id": evidence.run_id,
+                    "expected_state_version": expected_state_version,
+                    "actor_subject": actor_subject,
+                    "reason": reason,
+                    "details": _json(details),
+                },
+            ).scalar_one()
+            run = self._load_run(
+                connection, evidence.tenant_id, evidence.run_id
+            )
+            if run is None:
+                raise GatewayNotFoundError("PlatformRun was not found")
+            return run
 
     @classmethod
     def _reconcile_command(
@@ -1173,6 +1299,7 @@ def build_gateway_report(
     tenant_migration: Path | None = None,
     role_migration: Path | None = None,
     command_migration: Path | None = None,
+    success_migration: Path | None = None,
     gateway_source: Path | None = None,
     routes_source: Path | None = None,
     command_consumer_source: Path | None = None,
@@ -1183,6 +1310,9 @@ def build_gateway_report(
         "role_migration": (role_migration or GATEWAY_ROLE_MIGRATION).resolve(),
         "command_migration": (
             command_migration or COMMAND_OUTBOX_MIGRATION
+        ).resolve(),
+        "success_migration": (
+            success_migration or SUCCESS_VERDICT_MIGRATION
         ).resolve(),
         "gateway_source": (gateway_source or Path(__file__)).resolve(),
         "routes_source": (routes_source or GATEWAY_ROUTES_SOURCE).resolve(),
@@ -1228,6 +1358,17 @@ def build_gateway_report(
             "complete_platform_command",
             "fail_platform_command",
         ),
+        "success_migration": (
+            "CREATE TABLE IF NOT EXISTS gda_control.quality_result",
+            "RENAME TO apply_platform_run_transition",
+            "succeeded requires gda_control.finalize_platform_run_success()",
+            "DolphinScheduler success observation was not found",
+            "content-bound output Artifact was not found",
+            "independent passed QualityResult was not found",
+            "input-to-output LineageEvent was not found",
+            "GRANT SELECT, INSERT ON gda_control.quality_result",
+            "finalize_platform_run_success",
+        ),
         "gateway_source": (
             'SET LOCAL ROLE "{GATEWAY_DATABASE_ROLE}"',
             "SELECT set_config('app.current_tenant', :tenant, true)",
@@ -1236,6 +1377,8 @@ def build_gateway_report(
             "def _validate_run_policy_references(",
             "def record_attempt_and_enqueue_reconcile(",
             "def claim_commands(",
+            "def record_quality_result(",
+            "def finalize_run_success(",
         ),
         "routes_source": (
             'base = "/api/platform/v1"',
@@ -1243,6 +1386,8 @@ def build_gateway_report(
             '"tenant_context_required"',
             '"actor_mismatch"',
             "create_dolphinscheduler_callback",
+            "create_quality_result",
+            "finalize_run_success",
         ),
         "command_consumer_source": (
             "class DolphinSchedulerCommandConsumer",
@@ -1271,7 +1416,11 @@ def build_gateway_report(
     elif "platform_run_event" in insert_grant.group("relations"):
         errors.append("gateway role must not INSERT platform_run_event directly")
     for forbidden in ("GRANT UPDATE ON", "GRANT DELETE ON"):
-        if forbidden in role_sql or forbidden in texts.get("command_migration", ""):
+        if (
+            forbidden in role_sql
+            or forbidden in texts.get("command_migration", "")
+            or forbidden in texts.get("success_migration", "")
+        ):
             errors.append(f"gateway role contains forbidden privilege: {forbidden}")
     consumer_source = texts.get("command_consumer_source", "")
     for forbidden in ("while True", "asyncio.create_task", "start_workflow("):
@@ -1284,7 +1433,7 @@ def build_gateway_report(
         "schema": GATEWAY_SCHEMA_VERSION,
         "status": "valid" if not errors else "invalid",
         "database_role": GATEWAY_DATABASE_ROLE,
-        "route_count": 10,
+        "route_count": 12,
         "files": files,
         "missing_markers": missing_markers,
         "errors": errors,

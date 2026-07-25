@@ -6,7 +6,7 @@
 
 **Decision owners**: Platform Architecture, Data Platform, DataOps, Governance
 
-**Related decisions**: ADR-002、ADR-003、ADR-006、ADR-007、ADR-020
+**Related decisions**: ADR-002、ADR-003、ADR-006、ADR-007、ADR-020、ADR-026
 
 **Related roadmap**: [AR-0 平台事实源](../roadmap-ar0-platform-truth-2026-07-24.md)
 
@@ -67,7 +67,7 @@ planner 不连接数据库、不分配 UUID、不回填、不修改旧表，也�
 
 - 3 个 Resource 与 definition/source/target ResourceVersion；
 - PlatformDefinitionVersion、SubjectContext、initial PlatformRun 和合法状态转换；
-- legacy attempt observation、output Artifact、LineageEvent；
+- legacy attempt observation、output/quality evidence Artifact、QualityResult、LineageEvent 和 RunSuccessEvidence；
 - required fields、结构性 geometry 检查、BSM 唯一性、总面积；
 - owner、runtime SLO、rollback point、消费者和终局裁决条件。
 
@@ -95,8 +95,8 @@ CI 在全量测试之前运行 `python -m data_agent.platform_crosswalk validate
 ## Verification
 
 - repository inventory 当前覆盖 5 张 legacy 表及资产兼容视图写入路径，fingerprint 为 `f81c5142e0355531ea0a59e8e68608834c088dee02a9bdf2a013f6d5489376ba`。
-- golden fixture fingerprint 为 `b226622af6544cf0368d5a29f9e744aa1e3aed5511193c8e69f2f9f4ce5e7aac`；input/output fingerprint 分别为 `b37cf0a49954d2421ac8d48122952c490e3930dc3a389b0329246cbe95669aa4` 和 `7c6abe2639707fa8c78265024d500784e4a40ab9ba8c9206558eaceb6fb5ead8`，canonical output size 为 `956` bytes。
-- golden 验证贯通 3 个 Resource、3 个 ResourceVersion、9 个平台合同和 3 条合法 Run transition；输出包含 3 个 feature、0 个结构性 geometry error、0 个必填缺失、0 个重复 BSM，总面积为 `17500.50`。
+- golden fixture fingerprint 为 `9c18a58248c7f34666cc2eb1a959694725dead05fdab7bf855e57ee71b2091b5`；input/output fingerprint 分别为 `b37cf0a49954d2421ac8d48122952c490e3930dc3a389b0329246cbe95669aa4` 和 `7c6abe2639707fa8c78265024d500784e4a40ab9ba8c9206558eaceb6fb5ead8`，canonical output size 为 `956` bytes。
+- golden 验证贯通 3 个 Resource、3 个 ResourceVersion、12 个平台合同和 3 条合法 Run transition；输出包含 3 个 feature、0 个结构性 geometry error、0 个必填缺失、0 个重复 BSM，总面积为 `17500.50`。
 - 定向测试覆盖未登记 writer、eligible/blocked/prohibited、naive timestamp、legacy run 隔离、fixture 篡改和 canonical JSON 稳定性。
 
 ## Revisit Triggers

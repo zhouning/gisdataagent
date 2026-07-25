@@ -149,6 +149,11 @@ class ApprovalVerdict(str, Enum):
     REJECTED = "rejected"
 
 
+class QualityVerdict(str, Enum):
+    PASSED = "passed"
+    FAILED = "failed"
+
+
 class PlatformCommandType(str, Enum):
     DOLPHINSCHEDULER_DISPATCH = "dolphinscheduler.dispatch"
     DOLPHINSCHEDULER_RECONCILE = "dolphinscheduler.reconcile"
@@ -311,6 +316,57 @@ def platform_definition_fingerprint(
             "definition_document": definition_document,
             "input_contract": input_contract,
             "output_contract": output_contract,
+        }
+    )
+
+
+def quality_result_fingerprint(
+    *,
+    tenant_id: str,
+    run_id: UUID,
+    resource_version_id: UUID,
+    rule_version_ref: str,
+    verdict: QualityVerdict | str,
+    metrics: dict[str, Any],
+    evidence_artifact_id: UUID,
+    evaluated_by: str,
+    evaluated_at: datetime,
+) -> str:
+    """Fingerprint the immutable quality verdict and its evidence binding."""
+    evaluated_at = _aware_utc(evaluated_at)
+    return _json_fingerprint(
+        {
+            "tenant_id": tenant_id,
+            "run_id": str(run_id),
+            "resource_version_id": str(resource_version_id),
+            "rule_version_ref": rule_version_ref,
+            "verdict": QualityVerdict(verdict).value,
+            "metrics": metrics,
+            "evidence_artifact_id": str(evidence_artifact_id),
+            "evaluated_by": evaluated_by,
+            "evaluated_at": evaluated_at.isoformat().replace("+00:00", "Z"),
+        }
+    )
+
+
+def run_success_evidence_fingerprint(
+    *,
+    tenant_id: str,
+    run_id: UUID,
+    attempt_observation_id: UUID,
+    output_artifact_id: UUID,
+    quality_result_id: UUID,
+    lineage_event_id: UUID,
+) -> str:
+    """Fingerprint the exact evidence set used for a successful Run verdict."""
+    return _json_fingerprint(
+        {
+            "tenant_id": tenant_id,
+            "run_id": str(run_id),
+            "attempt_observation_id": str(attempt_observation_id),
+            "output_artifact_id": str(output_artifact_id),
+            "quality_result_id": str(quality_result_id),
+            "lineage_event_id": str(lineage_event_id),
         }
     )
 
@@ -672,6 +728,72 @@ class FrameworkAttemptObservation(FrozenContract):
         return _aware_utc(value)
 
 
+class QualityResult(FrozenContract):
+    schema_id = "quality_result"
+
+    tenant_id: TenantId
+    quality_result_id: UUID
+    run_id: UUID
+    resource_version_id: UUID
+    rule_version_ref: NonEmptyText
+    verdict: QualityVerdict
+    metrics: dict[str, Any] = Field(min_length=1)
+    evidence_artifact_id: UUID
+    result_sha256: Sha256
+    evaluated_by: NonEmptyText
+    evaluated_at: datetime
+
+    @field_validator("evaluated_at")
+    @classmethod
+    def _utc_evaluated_at(cls, value: datetime) -> datetime:
+        return _aware_utc(value)
+
+    @model_validator(mode="after")
+    def _consistent_result(self) -> QualityResult:
+        if not self.evaluated_by.startswith("workload:"):
+            raise ValueError("quality evaluator must use workload identity")
+        expected = quality_result_fingerprint(
+            tenant_id=self.tenant_id,
+            run_id=self.run_id,
+            resource_version_id=self.resource_version_id,
+            rule_version_ref=self.rule_version_ref,
+            verdict=self.verdict,
+            metrics=self.metrics,
+            evidence_artifact_id=self.evidence_artifact_id,
+            evaluated_by=self.evaluated_by,
+            evaluated_at=self.evaluated_at,
+        )
+        if self.result_sha256 != expected:
+            raise ValueError("result_sha256 does not match quality result")
+        return self
+
+
+class RunSuccessEvidence(FrozenContract):
+    schema_id = "run_success_evidence"
+
+    tenant_id: TenantId
+    run_id: UUID
+    attempt_observation_id: UUID
+    output_artifact_id: UUID
+    quality_result_id: UUID
+    lineage_event_id: UUID
+    evidence_sha256: Sha256
+
+    @model_validator(mode="after")
+    def _consistent_evidence(self) -> RunSuccessEvidence:
+        expected = run_success_evidence_fingerprint(
+            tenant_id=self.tenant_id,
+            run_id=self.run_id,
+            attempt_observation_id=self.attempt_observation_id,
+            output_artifact_id=self.output_artifact_id,
+            quality_result_id=self.quality_result_id,
+            lineage_event_id=self.lineage_event_id,
+        )
+        if self.evidence_sha256 != expected:
+            raise ValueError("evidence_sha256 does not match success evidence")
+        return self
+
+
 class Artifact(FrozenContract):
     schema_id = "artifact"
 
@@ -755,6 +877,8 @@ CONTRACT_MODELS = (
     PlatformRun,
     PlatformRunEvent,
     FrameworkAttemptObservation,
+    QualityResult,
+    RunSuccessEvidence,
     Artifact,
     LineageEvent,
 )

@@ -291,6 +291,49 @@
       "created_by": "workload:golden-fixture-runner",
       "created_at": "2026-07-24T12:05:00Z"
     },
+    "quality_evidence_artifact": {
+      "tenant_id": "ar0-golden",
+      "artifact_id": "00000000-0000-4000-8000-000000000080",
+      "artifact_key": "published-land-use-parcels-quality-evidence",
+      "artifact_role": "evidence",
+      "storage_uri": "s3://gda-golden/land-use/parcels/quality-evidence.json",
+      "media_type": "application/json",
+      "content_sha256": "5146295cbc14766e1044fd0857db8ad26beb04cc78bfbb690dc65bab8a28c8fc",
+      "size_bytes": 175,
+      "run_id": "00000000-0000-4000-8000-000000000020",
+      "resource_version_id": "00000000-0000-4000-8000-000000000040",
+      "manifest": {
+        "fixture_only": true,
+        "quality_expectations": {
+          "feature_count": 3,
+          "geometry_structure_errors": 0,
+          "required_field_missing_count": 0,
+          "duplicate_bsm_count": 0,
+          "total_area": "17500.50"
+        }
+      },
+      "created_by": "workload:golden-quality-evaluator",
+      "created_at": "2026-07-24T12:06:00Z"
+    },
+    "quality_result": {
+      "tenant_id": "ar0-golden",
+      "quality_result_id": "00000000-0000-4000-8000-000000000090",
+      "run_id": "00000000-0000-4000-8000-000000000020",
+      "resource_version_id": "00000000-0000-4000-8000-000000000040",
+      "rule_version_ref": "gda://ar0-golden/quality-rule/dltb-publish-v1",
+      "verdict": "passed",
+      "metrics": {
+        "feature_count": 3,
+        "geometry_structure_errors": 0,
+        "required_field_missing_count": 0,
+        "duplicate_bsm_count": 0,
+        "total_area": "17500.50"
+      },
+      "evidence_artifact_id": "00000000-0000-4000-8000-000000000080",
+      "result_sha256": "1b09d65b0c54f7ec9f139d58157f84bf889ac28aac08e6d0d84469152983cb5a",
+      "evaluated_by": "workload:golden-quality-evaluator",
+      "evaluated_at": "2026-07-24T12:06:00Z"
+    },
     "lineage_event": {
       "tenant_id": "ar0-golden",
       "lineage_event_id": "00000000-0000-4000-8000-000000000070",
@@ -304,6 +347,15 @@
       "artifact_id": "00000000-0000-4000-8000-000000000060",
       "facets": {"fixture_only": true, "standard_code": "DLTB"},
       "occurred_at": "2026-07-24T12:05:00Z"
+    },
+    "run_success_evidence": {
+      "tenant_id": "ar0-golden",
+      "run_id": "00000000-0000-4000-8000-000000000020",
+      "attempt_observation_id": "00000000-0000-4000-8000-000000000050",
+      "output_artifact_id": "00000000-0000-4000-8000-000000000060",
+      "quality_result_id": "00000000-0000-4000-8000-000000000090",
+      "lineage_event_id": "00000000-0000-4000-8000-000000000070",
+      "evidence_sha256": "17d2bbc6852d58cff99987df9ea672c399ef464f85d0d08b4dc8f84cab265da6"
     }
   },
   "expected_run_transitions": ["dispatching", "running", "succeeded"],

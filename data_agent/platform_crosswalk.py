@@ -32,8 +32,10 @@ from .platform_contracts import (
     LineageEvent,
     PlatformDefinitionVersion,
     PlatformRun,
+    QualityResult,
     Resource,
     ResourceVersion,
+    RunSuccessEvidence,
     SubjectContext,
     canonical_json_bytes,
     canonical_json_fingerprint,
@@ -827,7 +829,10 @@ def validate_golden_fixture(path: Path | None = None) -> dict[str, Any]:
         ("run", PlatformRun),
         ("attempt_observation", FrameworkAttemptObservation),
         ("artifact", Artifact),
+        ("quality_evidence_artifact", Artifact),
+        ("quality_result", QualityResult),
         ("lineage_event", LineageEvent),
+        ("run_success_evidence", RunSuccessEvidence),
     )
     for name, model in contract_models:
         try:
@@ -857,7 +862,10 @@ def validate_golden_fixture(path: Path | None = None) -> dict[str, Any]:
     run = parsed_contracts.get("run")
     observation = parsed_contracts.get("attempt_observation")
     artifact = parsed_contracts.get("artifact")
+    quality_artifact = parsed_contracts.get("quality_evidence_artifact")
+    quality_result = parsed_contracts.get("quality_result")
     lineage = parsed_contracts.get("lineage_event")
+    success_evidence = parsed_contracts.get("run_success_evidence")
     subject = parsed_contracts.get("subject_context")
 
     if isinstance(source, ResourceVersion) and source.content_sha256 != input_sha256:
@@ -927,6 +935,36 @@ def validate_golden_fixture(path: Path | None = None) -> dict[str, Any]:
             errors.append("artifact does not match target ResourceVersion")
         if artifact.size_bytes != output_size_bytes:
             errors.append("artifact size does not match expected output")
+    if isinstance(quality_artifact, Artifact):
+        if quality_artifact.artifact_role.value != "evidence":
+            errors.append("quality evidence Artifact must use evidence role")
+        if isinstance(run, PlatformRun) and quality_artifact.run_id != run.run_id:
+            errors.append("quality evidence Artifact does not match run")
+        if isinstance(target, ResourceVersion) and (
+            quality_artifact.resource_version_id != target.resource_version_id
+        ):
+            errors.append(
+                "quality evidence Artifact does not match target ResourceVersion"
+            )
+        if quality_artifact.content_sha256 != canonical_json_fingerprint(
+            quality_artifact.manifest
+        ):
+            errors.append("quality evidence Artifact hash does not match manifest")
+        if quality_artifact.size_bytes != len(
+            canonical_json_bytes(quality_artifact.manifest)
+        ):
+            errors.append("quality evidence Artifact size does not match manifest")
+    if isinstance(quality_result, QualityResult):
+        if isinstance(run, PlatformRun) and quality_result.run_id != run.run_id:
+            errors.append("QualityResult does not match run")
+        if isinstance(target, ResourceVersion) and (
+            quality_result.resource_version_id != target.resource_version_id
+        ):
+            errors.append("QualityResult does not match target ResourceVersion")
+        if isinstance(quality_artifact, Artifact) and (
+            quality_result.evidence_artifact_id != quality_artifact.artifact_id
+        ):
+            errors.append("QualityResult does not match evidence Artifact")
     if isinstance(lineage, LineageEvent):
         if isinstance(source, ResourceVersion) and (
             lineage.source_resource_version_id != source.resource_version_id
@@ -957,12 +995,40 @@ def validate_golden_fixture(path: Path | None = None) -> dict[str, Any]:
         }
         if lineage.event_sha256 != canonical_json_fingerprint(lineage_evidence):
             errors.append("lineage event hash does not match event evidence")
+    if isinstance(success_evidence, RunSuccessEvidence):
+        if isinstance(run, PlatformRun) and (
+            success_evidence.run_id != run.run_id
+            or success_evidence.tenant_id != run.tenant_id
+        ):
+            errors.append("RunSuccessEvidence does not match run")
+        if isinstance(observation, FrameworkAttemptObservation) and (
+            success_evidence.attempt_observation_id != observation.observation_id
+        ):
+            errors.append("RunSuccessEvidence does not match attempt observation")
+        if isinstance(artifact, Artifact) and (
+            success_evidence.output_artifact_id != artifact.artifact_id
+        ):
+            errors.append("RunSuccessEvidence does not match output Artifact")
+        if isinstance(quality_result, QualityResult) and (
+            success_evidence.quality_result_id
+            != quality_result.quality_result_id
+        ):
+            errors.append("RunSuccessEvidence does not match QualityResult")
+        if isinstance(lineage, LineageEvent) and (
+            success_evidence.lineage_event_id != lineage.lineage_event_id
+        ):
+            errors.append("RunSuccessEvidence does not match LineageEvent")
 
     required_fields = fixture.get("required_fields", [])
     actual_quality = _dataset_quality(output_dataset, required_fields)
     expected_quality = fixture.get("quality_expectations", {})
     if actual_quality != expected_quality:
         errors.append("expected output quality does not match quality expectations")
+    if isinstance(quality_result, QualityResult):
+        if quality_result.verdict.value != "passed":
+            errors.append("golden QualityResult must pass")
+        if quality_result.metrics != actual_quality:
+            errors.append("QualityResult metrics do not match measured output quality")
 
     acceptance = fixture.get("acceptance", {})
     for required in ("owner", "rollback_point", "consumers"):

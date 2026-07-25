@@ -1,3 +1,4 @@
+import json
 import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -14,17 +15,22 @@ from data_agent.platform_contracts import (
     LineageEvent,
     PlatformRun,
     PolicyDecision,
+    QualityResult,
     Resource,
     ResourceVersion,
     RunPolicyReferences,
+    RunSuccessEvidence,
     SubjectContext,
     canonical_json_fingerprint,
     platform_definition_fingerprint,
+    quality_result_fingerprint,
+    run_success_evidence_fingerprint,
 )
 from data_agent.platform_gateway import (
     DefinitionRegistration,
     GatewayConflictError,
     GatewayNotFoundError,
+    GatewayValidationError,
     PlatformGateway,
 )
 
@@ -37,6 +43,7 @@ MIGRATIONS = tuple(
         "093_app_user_tenant_context.sql",
         "094_platform_control_gateway.sql",
         "095_platform_command_outbox.sql",
+        "096_platform_success_verdict.sql",
     )
 )
 TENANT = "gateway-tenant"
@@ -132,6 +139,35 @@ def test_postgres_gateway_role_is_tenant_scoped_and_append_only():
                     """
                 ).one()
                 assert command_privileges == (True, False, False, True)
+
+                success_privileges = connection.exec_driver_sql(
+                    """
+                    SELECT
+                        has_table_privilege(
+                            'gda_control_gateway',
+                            'gda_control.quality_result', 'SELECT,INSERT'
+                        ),
+                        has_table_privilege(
+                            'gda_control_gateway',
+                            'gda_control.quality_result', 'UPDATE'
+                        ),
+                        has_table_privilege(
+                            'gda_control_gateway',
+                            'gda_control.quality_result', 'DELETE'
+                        ),
+                        has_function_privilege(
+                            'gda_control_gateway',
+                            'gda_control.apply_platform_run_transition(text,uuid,integer,text,text,text,jsonb)',
+                            'EXECUTE'
+                        ),
+                        has_function_privilege(
+                            'gda_control_gateway',
+                            'gda_control.finalize_platform_run_success(text,uuid,integer,text,text,jsonb)',
+                            'EXECUTE'
+                        )
+                    """
+                ).one()
+                assert success_privileges == (True, False, False, False, True)
 
                 connection.exec_driver_sql(
                     f"SET LOCAL app.current_tenant = '{TENANT}'"
@@ -244,6 +280,24 @@ def test_postgres_gateway_role_is_tenant_scoped_and_append_only():
                     """
                 ).scalar_one()
                 assert next_version == 1
+                _assert_rejected(
+                    connection,
+                    f"""
+                    SELECT gda_control.transition_platform_run(
+                        '{TENANT}', '{RUN_ID}', 1, 'succeeded',
+                        'workload:operator', 'provider said success', '{{}}'
+                    )
+                    """,
+                )
+                _assert_rejected(
+                    connection,
+                    f"""
+                    SELECT gda_control.apply_platform_run_transition(
+                        '{TENANT}', '{RUN_ID}', 1, 'running',
+                        'workload:operator', 'bypass attempt', '{{}}'
+                    )
+                    """,
+                )
             finally:
                 connection.exec_driver_sql("RESET ROLE")
                 if connection.in_transaction():
@@ -623,6 +677,55 @@ def test_platform_gateway_service_writes_idempotent_control_chain():
         assert callback_after_delivery.created is False
         assert callback_after_delivery.value.status.value == "done"
 
+        running = gateway.transition_run(
+            tenant,
+            run_id,
+            1,
+            "running",
+            actor,
+            "provider correlation verified",
+        )
+        assert running.status.value == "running"
+        assert running.state_version == 2
+
+        success_observation_evidence = {
+            "schema": "gda.dolphinscheduler_observation.v1",
+            "provider_state": "SUCCESS",
+        }
+        success_observation = FrameworkAttemptObservation(
+            tenant_id=tenant,
+            observation_id=uuid4(),
+            run_id=run_id,
+            attempt_no=1,
+            framework_kind="dolphinscheduler",
+            external_namespace="1001",
+            external_run_id="901",
+            observed_state="success",
+            observation_sha256=canonical_json_fingerprint(
+                success_observation_evidence
+            ),
+            evidence=success_observation_evidence,
+            observed_at=now,
+        )
+        assert gateway.record_attempt(success_observation).created is True
+
+        mismatched_artifact = Artifact(
+            tenant_id=tenant,
+            artifact_id=uuid4(),
+            artifact_key="published-parcels-unbound",
+            artifact_role="output",
+            storage_uri=f"s3://gateway-test/{tenant}/unbound.parquet",
+            media_type="application/vnd.apache.parquet",
+            content_sha256="c" * 64,
+            size_bytes=1024,
+            run_id=run_id,
+            resource_version_id=target_version_id,
+            manifest={"row_count": 3},
+            created_by=actor,
+            created_at=now,
+        )
+        assert gateway.record_artifact(mismatched_artifact).created is True
+
         artifact = Artifact(
             tenant_id=tenant,
             artifact_id=uuid4(),
@@ -630,7 +733,7 @@ def test_platform_gateway_service_writes_idempotent_control_chain():
             artifact_role="output",
             storage_uri=f"s3://gateway-test/{tenant}/published.parquet",
             media_type="application/vnd.apache.parquet",
-            content_sha256="c" * 64,
+            content_sha256="b" * 64,
             size_bytes=1024,
             run_id=run_id,
             resource_version_id=target_version_id,
@@ -643,6 +746,94 @@ def test_platform_gateway_service_writes_idempotent_control_chain():
         assert gateway.get_artifact(tenant, artifact.artifact_id) == artifact
         with pytest.raises(GatewayNotFoundError, match="Artifact was not found"):
             gateway.get_artifact(f"other-{tenant}", artifact.artifact_id)
+
+        quality_evaluator = "workload:quality-evaluator"
+        quality_metrics = {"feature_count": 3, "geometry_errors": 0}
+        quality_manifest = {
+            "schema": "gda.quality_evidence.v1",
+            "metrics": quality_metrics,
+        }
+        quality_evidence = Artifact(
+            tenant_id=tenant,
+            artifact_id=uuid4(),
+            artifact_key="published-parcels-quality-evidence",
+            artifact_role="evidence",
+            storage_uri=f"s3://gateway-test/{tenant}/quality-result.json",
+            media_type="application/vnd.gda.quality-evidence+json",
+            content_sha256=canonical_json_fingerprint(quality_manifest),
+            size_bytes=128,
+            run_id=run_id,
+            resource_version_id=target_version_id,
+            manifest=quality_manifest,
+            created_by=quality_evaluator,
+            created_at=now,
+        )
+        assert gateway.record_artifact(quality_evidence).created is True
+
+        same_actor_evidence = Artifact(
+            tenant_id=tenant,
+            artifact_id=uuid4(),
+            artifact_key="same-actor-quality-evidence",
+            artifact_role="evidence",
+            storage_uri=f"s3://gateway-test/{tenant}/same-actor-quality.json",
+            media_type="application/vnd.gda.quality-evidence+json",
+            content_sha256=canonical_json_fingerprint(quality_manifest),
+            size_bytes=128,
+            run_id=run_id,
+            resource_version_id=target_version_id,
+            manifest=quality_manifest,
+            created_by=actor,
+            created_at=now,
+        )
+        assert gateway.record_artifact(same_actor_evidence).created is True
+
+        def quality_result(
+            verdict: str,
+            *,
+            evaluator=quality_evaluator,
+            evidence_artifact=quality_evidence,
+        ) -> QualityResult:
+            quality_result_id = uuid4()
+            return QualityResult(
+                tenant_id=tenant,
+                quality_result_id=quality_result_id,
+                run_id=run_id,
+                resource_version_id=target_version_id,
+                rule_version_ref=f"gda://{tenant}/quality-rule/dltb-v1",
+                verdict=verdict,
+                metrics=quality_metrics,
+                evidence_artifact_id=evidence_artifact.artifact_id,
+                result_sha256=quality_result_fingerprint(
+                    tenant_id=tenant,
+                    run_id=run_id,
+                    resource_version_id=target_version_id,
+                    rule_version_ref=(
+                        f"gda://{tenant}/quality-rule/dltb-v1"
+                    ),
+                    verdict=verdict,
+                    metrics=quality_metrics,
+                    evidence_artifact_id=evidence_artifact.artifact_id,
+                    evaluated_by=evaluator,
+                    evaluated_at=now,
+                ),
+                evaluated_by=evaluator,
+                evaluated_at=now,
+            )
+
+        failed_quality = quality_result("failed")
+        passed_quality = quality_result("passed")
+        same_actor_quality = quality_result(
+            "passed",
+            evaluator=actor,
+            evidence_artifact=same_actor_evidence,
+        )
+        assert gateway.record_quality_result(failed_quality).created is True
+        assert gateway.record_quality_result(passed_quality).created is True
+        assert gateway.record_quality_result(same_actor_quality).created is True
+        assert (
+            gateway.get_quality_result(tenant, passed_quality.quality_result_id)
+            == passed_quality
+        )
 
         lineage_facets = {"operation": "publish"}
         lineage = LineageEvent(
@@ -668,5 +859,116 @@ def test_platform_gateway_service_writes_idempotent_control_chain():
         )
         assert gateway.record_lineage(lineage).created is True
         assert gateway.record_lineage(lineage).created is False
+
+        def success_evidence(
+            *,
+            output_artifact_id=artifact.artifact_id,
+            quality_result_id=passed_quality.quality_result_id,
+            lineage_event_id=lineage.lineage_event_id,
+        ) -> RunSuccessEvidence:
+            fingerprint = run_success_evidence_fingerprint(
+                tenant_id=tenant,
+                run_id=run_id,
+                attempt_observation_id=success_observation.observation_id,
+                output_artifact_id=output_artifact_id,
+                quality_result_id=quality_result_id,
+                lineage_event_id=lineage_event_id,
+            )
+            return RunSuccessEvidence(
+                tenant_id=tenant,
+                run_id=run_id,
+                attempt_observation_id=success_observation.observation_id,
+                output_artifact_id=output_artifact_id,
+                quality_result_id=quality_result_id,
+                lineage_event_id=lineage_event_id,
+                evidence_sha256=fingerprint,
+            )
+
+        with pytest.raises(GatewayValidationError, match="evidence-gated"):
+            gateway.transition_run(
+                tenant,
+                run_id,
+                2,
+                "succeeded",
+                actor,
+                "provider said success",
+            )
+        with pytest.raises(GatewayValidationError):
+            gateway.finalize_run_success(
+                success_evidence(
+                    output_artifact_id=mismatched_artifact.artifact_id
+                ),
+                expected_state_version=2,
+                actor_subject=actor,
+                reason="mismatched output must fail",
+            )
+        with pytest.raises(GatewayValidationError):
+            gateway.finalize_run_success(
+                success_evidence(
+                    quality_result_id=failed_quality.quality_result_id
+                ),
+                expected_state_version=2,
+                actor_subject=actor,
+                reason="failed quality must fail",
+            )
+        with pytest.raises(GatewayValidationError):
+            gateway.finalize_run_success(
+                success_evidence(
+                    quality_result_id=same_actor_quality.quality_result_id
+                ),
+                expected_state_version=2,
+                actor_subject=actor,
+                reason="same actor quality must fail",
+            )
+        with pytest.raises(GatewayValidationError):
+            gateway.finalize_run_success(
+                success_evidence(lineage_event_id=uuid4()),
+                expected_state_version=2,
+                actor_subject=actor,
+                reason="missing lineage must fail",
+            )
+
+        valid_evidence = success_evidence()
+        tampered_details = {
+            "schema": "gda.run_success_evidence.v1",
+            **valid_evidence.model_dump(mode="json"),
+            "evidence_sha256": "0" * 64,
+        }
+        with pytest.raises(GatewayValidationError):
+            with gateway._transaction(tenant) as connection:
+                connection.execute(
+                    text(
+                        """
+                        SELECT gda_control.finalize_platform_run_success(
+                            :tenant_id, :run_id, :expected_state_version,
+                            :actor_subject, :reason, CAST(:details AS jsonb)
+                        )
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant,
+                        "run_id": run_id,
+                        "expected_state_version": 2,
+                        "actor_subject": actor,
+                        "reason": "tampered fingerprint must fail",
+                        "details": json.dumps(tampered_details),
+                    },
+                ).scalar_one()
+
+        succeeded = gateway.finalize_run_success(
+            valid_evidence,
+            expected_state_version=2,
+            actor_subject=actor,
+            reason="all success evidence passed",
+        )
+        assert succeeded.status.value == "succeeded"
+        assert succeeded.state_version == 3
+        replayed_success = gateway.finalize_run_success(
+            valid_evidence,
+            expected_state_version=2,
+            actor_subject=actor,
+            reason="all success evidence passed",
+        )
+        assert replayed_success == succeeded
     finally:
         engine.dispose()

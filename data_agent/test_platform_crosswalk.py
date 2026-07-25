@@ -192,7 +192,7 @@ def test_land_use_golden_fixture_binds_contracts_hashes_quality_and_exit_gates()
 
     assert report["status"] == "valid"
     assert report["resource_count"] == 3
-    assert report["contract_count"] == 9
+    assert report["contract_count"] == 12
     assert report["output_size_bytes"] == 956
     assert report["quality"] == {
         "feature_count": 3,

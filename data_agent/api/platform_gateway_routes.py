@@ -21,17 +21,20 @@ from ..platform_contracts import (
     NonEmptyText,
     OrchestrationClass,
     PlatformRun,
+    QualityResult,
     Resource,
     ResourceBinding,
     ResourceVersion,
     RunPolicyReferences,
     RunStatus,
+    RunSuccessEvidence,
     Sha256,
     ShortName,
     SubjectContext,
     SubjectType,
     TenantId,
     canonical_json_fingerprint,
+    run_success_evidence_fingerprint,
 )
 from ..platform_gateway import (
     DefinitionRegistration,
@@ -84,6 +87,15 @@ class DolphinSchedulerCallbackRequest(StrictRequest):
     workflow_definition_version: int = Field(gt=0)
     provider_state: ShortName
     observed_at: datetime
+
+
+class RunSuccessRequest(StrictRequest):
+    expected_state_version: int = Field(ge=0)
+    attempt_observation_id: UUID
+    output_artifact_id: UUID
+    quality_result_id: UUID
+    lineage_event_id: UUID
+    reason: NonEmptyText
 
 
 @dataclass(frozen=True)
@@ -532,6 +544,91 @@ async def create_artifact(request: Request) -> JSONResponse:
         return _gateway_error(request, exc)
 
 
+async def create_quality_result(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.subject_type != SubjectType.WORKLOAD:
+        return _error(
+            request,
+            403,
+            "workload_identity_required",
+            "Quality evaluation requires workload identity",
+        )
+    quality = await _parse(request, QualityResult)
+    if isinstance(quality, JSONResponse):
+        return quality
+    if mismatch := _tenant_matches(request, principal, quality.tenant_id):
+        return mismatch
+    if quality.evaluated_by != principal.actor_ref:
+        return _error(
+            request,
+            403,
+            "actor_mismatch",
+            "evaluated_by must match authenticated actor",
+        )
+    try:
+        result = await asyncio.to_thread(
+            _gateway().record_quality_result, quality
+        )
+        return _success(
+            request,
+            result.value,
+            status_code=201 if result.created else 200,
+            created=result.created,
+        )
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
+async def finalize_run_success(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.subject_type != SubjectType.WORKLOAD:
+        return _error(
+            request,
+            403,
+            "workload_identity_required",
+            "Run finalization requires workload identity",
+        )
+    finalization = await _parse(request, RunSuccessRequest)
+    if isinstance(finalization, JSONResponse):
+        return finalization
+    try:
+        run_id = UUID(request.path_params["run_id"])
+    except (KeyError, ValueError):
+        return _error(request, 400, "invalid_run_id", "run_id must be a UUID")
+    evidence_sha256 = run_success_evidence_fingerprint(
+        tenant_id=principal.tenant_id,
+        run_id=run_id,
+        attempt_observation_id=finalization.attempt_observation_id,
+        output_artifact_id=finalization.output_artifact_id,
+        quality_result_id=finalization.quality_result_id,
+        lineage_event_id=finalization.lineage_event_id,
+    )
+    evidence = RunSuccessEvidence(
+        tenant_id=principal.tenant_id,
+        run_id=run_id,
+        attempt_observation_id=finalization.attempt_observation_id,
+        output_artifact_id=finalization.output_artifact_id,
+        quality_result_id=finalization.quality_result_id,
+        lineage_event_id=finalization.lineage_event_id,
+        evidence_sha256=evidence_sha256,
+    )
+    try:
+        run = await asyncio.to_thread(
+            _gateway().finalize_run_success,
+            evidence,
+            expected_state_version=finalization.expected_state_version,
+            actor_subject=principal.actor_ref,
+            reason=finalization.reason,
+        )
+        return _success(request, run)
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
 async def create_lineage_event(request: Request) -> JSONResponse:
     principal = _principal(request)
     if isinstance(principal, JSONResponse):
@@ -585,5 +682,11 @@ def get_platform_gateway_routes() -> list[Route]:
             methods=["POST"],
         ),
         Route(f"{base}/artifacts", create_artifact, methods=["POST"]),
+        Route(f"{base}/quality-results", create_quality_result, methods=["POST"]),
+        Route(
+            f"{base}/runs/{{run_id}}/finalize-success",
+            finalize_run_success,
+            methods=["POST"],
+        ),
         Route(f"{base}/lineage-events", create_lineage_event, methods=["POST"]),
     ]

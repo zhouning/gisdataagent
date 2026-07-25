@@ -6,7 +6,7 @@
 
 **Decision owners**: Platform Architecture, DataOps, Data Platform, Security, SRE
 
-**Related decisions**: ADR-003、ADR-007、ADR-020、ADR-022、ADR-023、ADR-024
+**Related decisions**: ADR-003、ADR-007、ADR-020、ADR-022、ADR-023、ADR-024、ADR-026
 
 **Related roadmap**: [AR-0/AR-1 平台事实与最小控制面](../roadmap-ar0-platform-truth-2026-07-24.md)
 
@@ -50,7 +50,7 @@ gateway role 对 outbox 只有 `SELECT/INSERT`，没有直接 `UPDATE/DELETE`。
 
 ### 4. Consumer 保持薄且可替换
 
-`DolphinSchedulerCommandConsumer.run_once` claim 有界批次，只调用现有 adapter 的 dispatch/reconcile，再 complete 或 fail。它没有循环、schedule、DAG、provider 状态投影或 Run 终局裁决，因此不是自研 scheduler/queue runtime。
+`DolphinSchedulerCommandConsumer.run_once` claim 有界批次，只调用现有 adapter 的 dispatch/reconcile，再 complete 或 fail。它没有循环、schedule、DAG、provider 状态投影或 Run 终局裁决，因此不是自研 scheduler/queue runtime。即使 consumer 看见 provider `SUCCESS`，通用 gateway transition 也不能越过 ADR-026 的成功 evidence gate。
 
 dispatch 网络结果不确定时，consumer 在同一数据库事务把当前 dispatch command 标为 done 并创建确定性 reconcile command。若 lease 在 provider 调用期间过期，旧 worker 无法确认；adapter 的四字段 correlation 和非 accepted Run 禁止重提规则继续承担 at-least-once delivery 下的外部幂等保护。
 
@@ -61,6 +61,7 @@ dispatch 网络结果不确定时，consumer 在同一数据库事务把当前 d
 - Run+dispatch、callback evidence+reconcile 都没有 best-effort 双写窗口；
 - worker 重启、重复 callback 和多 worker claim 可通过数据库状态恢复；
 - callback 乱序不会直接倒退 Run，provider 当前状态仍由 adapter 重新读取；
+- provider success 只能形成 observation/reconcile，不能借 outbox delivery 权限升级为平台 success；
 - 没有新增 broker、微服务、scheduler 或第二个 Run authority。
 
 限制与缓解：
@@ -76,6 +77,7 @@ dispatch 网络结果不确定时，consumer 在同一数据库事务把当前 d
 - HTTP 测试覆盖 human callback 拒绝、workload callback observation 构造和原子 enqueue 调用。
 - 真实 PostgreSQL 16 测试覆盖最小 grant、无直接 UPDATE/DELETE、幂等 Run+dispatch、跨租户与错误 workload 空读、lease 过期接管、stale owner 拒绝、dispatch 转 reconcile、完成后 callback replay 和 fail/retry/complete。
 - migration、platform contract 和 gateway 静态 validator 固定 migration 095、`SKIP LOCKED`、lease recovery、受控函数、callback route 和薄 consumer marker。
+- migration 096 与 PostgreSQL gateway 回归证明 consumer/gateway role 没有私有 transition 权限，成功终局必须经过 evidence finalizer。
 
 ## Revisit Triggers
 

@@ -6,7 +6,7 @@
 
 **Decision owners**: Platform Architecture, Data Platform, DataOps, Security
 
-**Related decisions**: ADR-006、ADR-007、ADR-018、ADR-019
+**Related decisions**: ADR-006、ADR-007、ADR-018、ADR-019、ADR-026
 
 **Related roadmap**: [AR-0 平台事实源](../roadmap-ar0-platform-truth-2026-07-24.md)
 
@@ -48,9 +48,9 @@ cancelling -> reconciling | cancelled | failed
 reconciling -> dispatching | running | cancelling | succeeded | failed | cancelled | timed_out
 ```
 
-终态没有出边。每次变更必须调用 `gda_control.transition_platform_run(...)`，提供 tenant、expected state version、actor、reason 和 details；数据库以行锁和 CAS 拒绝 stale、skip、自循环与终态重启，并追加同 sequence number 的 `PlatformRunEvent`。
+终态没有出边。除 `succeeded` 外的变更调用 `gda_control.transition_platform_run(...)`；成功按 ADR-026 调用 `gda_control.finalize_platform_run_success(...)`。两者都提供 tenant、expected state version、actor、reason 和 details；数据库以行锁和 CAS 拒绝 stale、skip、自循环与终态重启，并追加同 sequence number 的 `PlatformRunEvent`。
 
-transition 是 `SECURITY DEFINER` 封装，但同时要求参数 tenant 与 session `app.current_tenant` 完全相同。未来 gateway role 只获得所需函数执行权，不能获得 `platform_run` 的直接 UPDATE 权。当前 migration 撤销 PUBLIC 的 schema、table 和 function 权限，在 AR-1 专用角色落地前保持 fail closed。
+transition 是 `SECURITY DEFINER` 封装，但同时要求参数 tenant 与 session `app.current_tenant` 完全相同。gateway role 只获得所需函数执行权，不能获得 `platform_run` 的直接 UPDATE 权。ADR-026 进一步禁止通用 transition 写 `succeeded`；成功只能通过数据库 evidence gate 调用私有 transition primitive。
 
 ### 3. Input、attempt、artifact 与 lineage
 
@@ -58,6 +58,7 @@ transition 是 `SECURITY DEFINER` 封装，但同时要求参数 tenant 与 sess
 - `FrameworkAttemptObservation` 保存 DolphinScheduler、Temporal、Spark、Flink、Kubernetes、ArcPy 等外部尝试的不可变观测。provider 报告 `SUCCESS` 不会触发或暗示 PlatformRun 成功；平台仍需核验 artifact、质量和策略。
 - `Artifact` 保存稳定 URI、media type、content SHA-256、size 和 manifest。URI 禁止 userinfo credential、query/fragment 签名；本地文件只接受 `file:///absolute/path`。
 - `LineageEvent` 保存 version-to-version 的不可变证据，可关联 run、definition 和 artifact；不允许 self-edge。OpenMetadata lineage graph 是可重建投影，不能覆盖事件证据。
+- `QualityResult` 保存与 Run/output ResourceVersion、规则版本、metrics、evidence Artifact 和 evaluator 绑定的不可变 verdict；`RunSuccessEvidence` 固定成功裁决采用的 observation、output、quality 和 lineage UUID 集合。
 
 ### 4. PostgreSQL control/evidence ledger
 
@@ -72,6 +73,7 @@ transition 是 `SECURITY DEFINER` 封装，但同时要求参数 tenant 与 sess
 - `framework_attempt_observation`
 - `artifact`
 - `lineage_event`
+- `quality_result`（由后续 migration 096 增加）
 
 所有跨表引用使用 tenant composite foreign key，防止只凭全局 UUID 形成跨租户关联。Version、Definition、input binding、run event、attempt observation、Artifact 和 LineageEvent 通过 trigger 禁止 UPDATE/DELETE。全部表启用并强制 RLS，tenant policy 读取 `app.current_tenant`；未设置 tenant 或没有显式权限时返回零行或拒绝写入。
 
@@ -82,7 +84,7 @@ transition 是 `SECURITY DEFINER` 封装，但同时要求参数 tenant 与 sess
 - `agent_data_assets`、asset version、workflow、workflow run 和 lineage 等旧表仍服务现有兼容路径。本迁移不自动 backfill，也不修改其写入逻辑。
 - 没有可靠 tenant、version identity、checksum 或 authority reference 的旧行，不得猜测性映射到新 ledger。AR-1 crosswalk 必须逐类定义来源、冲突处理、幂等 key、证据和退出条件。
 - OpenMetadata、Gravitino、DolphinScheduler 和 Temporal 没有在本切片部署或进入生产写链路。它们仍按 ADR-006/007 通过 POC 与退出门进入。
-- 本切片未提供生产 gateway API、角色/授权 migration、outbox adapter、backup/restore runbook 或 provider reconciliation worker，因此不能宣称 production-ready orchestration。
+- 后续 ADR-022 至 ADR-026 已提供 gateway role/API、授权 evidence、outbox/callback 和成功终局门；生产业务切换、常驻 worker、IAM、backup/restore 与 staging 端到端仍未完成，因此不能宣称 production-ready orchestration。
 
 ## Consequences
 
@@ -96,19 +98,19 @@ transition 是 `SECURITY DEFINER` 封装，但同时要求参数 tenant 与 sess
 负面影响与缓解：
 
 - 新 ledger 与旧表会暂时并存；通过显式 crosswalk 和按纵向场景切换，禁止无证据批量回填。
-- `SECURITY DEFINER` 需要严格 owner、search path 和 grant 管理；函数固定 search path、强制 tenant context，PUBLIC 全部撤权，并在 AR-1 增加专用 non-bypass role 测试。
+- `SECURITY DEFINER` 需要严格 owner、search path 和 grant 管理；函数固定 search path、强制 tenant context，PUBLIC 全部撤权，并由专用 non-bypass role 和真实 PostgreSQL 测试持续验证。
 - 数据库不能自行重算 Python canonical definition fingerprint；gateway 必须先验证 Pydantic 合同，数据库再以 FK 固定该 hash 与 ResourceVersion 的一致性。
 
 ## Verification
 
-- 23 个 Python/静态测试覆盖 URN、version、definition fingerprint、SubjectContext、run binding/transition、event、Artifact URI、Lineage、JSON Schema、迁移目录与 SQL marker。
-- PostgreSQL 回归测试在事务中验证 initial event、合法 CAS、stale/invalid/terminal 拒绝、append-only、跨租户 FK、最小函数授权、RLS 和 attempt observation 不改变终局状态。
-- 项目官方 PostGIS 16 / PostGIS 3.4 / pgvector 镜像配合 `docker-db-init.sql`，从空库重放 93 个 migration 后 catalog/database fingerprint 一致。
+- Python/静态测试覆盖 URN、version、definition fingerprint、SubjectContext、run binding/transition、QualityResult、RunSuccessEvidence、Artifact、Lineage、JSON Schema、迁移目录与 SQL marker。
+- PostgreSQL 回归测试验证 initial event、CAS、append-only、跨租户 FK、最小函数授权、RLS、通用 success 拒绝和 evidence-gated success。
+- 项目官方 PostgreSQL 16 / PostGIS 3.4 / pgvector 镜像已真实重放 migration 092-096 并通过 gateway 服务链测试。
 - CI 在全量测试前执行 platform contract validator 与 PostgreSQL ledger regression。
 
 ## Revisit Triggers
 
-- AR-1 gateway role/API 落地，需要冻结 create-run、input binding、transition、artifact 和 event ingest 的最小 grant；
+- 新增终局状态或 provider observation profile，需要冻结对应 evidence gate 和最小 grant；
 - 首条地类图斑链进入 adapter，需要发布 legacy crosswalk 与 OpenMetadata/Gravitino/DolphinScheduler mapping conformance tests；
 - 多区域或高吞吐写入使单 PostgreSQL ledger 达到有证据的瓶颈；
 - 需要 OpenLineage、CloudEvents 或外部 SDK wire compatibility 时，在保持领域不变量的前提下版本化 envelope，不直接改写既有事件。
