@@ -123,6 +123,8 @@ def build_deployment_report(
     manifest_path: Path | None = None,
     kustomization_path: Path | None = None,
     network_policy_path: Path | None = None,
+    *,
+    expected_replicas: int = 0,
 ) -> dict[str, Any]:
     """Validate deployment safety without claiming that it has been applied."""
     manifest = (manifest_path or DEFAULT_MANIFEST).resolve()
@@ -189,8 +191,20 @@ def build_deployment_report(
 
     if deployment is not None:
         spec = deployment.get("spec") or {}
-        if spec.get("replicas") != 0:
-            errors.append("base worker Deployment must default to zero replicas")
+        replicas = spec.get("replicas")
+        valid_replicas = (
+            isinstance(replicas, int)
+            and not isinstance(replicas, bool)
+            and replicas == expected_replicas
+        )
+        if not valid_replicas:
+            if expected_replicas == 0:
+                errors.append("base worker Deployment must default to zero replicas")
+            else:
+                errors.append(
+                    "worker Deployment must use exactly "
+                    f"{expected_replicas} replica(s) for this activation contract"
+                )
         if (spec.get("strategy") or {}).get("type") != "RollingUpdate":
             errors.append("worker Deployment must use RollingUpdate")
 

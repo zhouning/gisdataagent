@@ -236,3 +236,32 @@ kubectl kustomize k8s/base/ >/dev/null
 ```
 
 扩容成功后必须留存 rollout、health、唯一 worker ID、lease 接管和重启 drain 产物；只有清单或零副本 Deployment 不算 staging 部署证据。
+
+### 10.2 Staging activation preflight
+
+首次扩容固定为一个副本。preflight 需要环境 overlay 的完整渲染结果、集群中带 uid/resourceVersion 的 ConfigMap YAML 快照，以及只保留 Secret key 名称、uid 和 resourceVersion 的脱敏 attestation。禁止把原始 Secret JSON 写入文件或 CI artifact。
+
+```bash
+kubectl kustomize /path/to/staging-overlay > /tmp/gda-worker-staging.yaml
+kubectl -n gis-agent get configmap gis-agent-dolphinscheduler-command-worker \
+  -o yaml > /tmp/gda-worker-configmap.yaml
+kubectl -n gis-agent get secret gis-agent-dolphinscheduler-command-worker -o json | \
+  jq '{
+    schema: "gda.dolphinscheduler_worker_secret_attestation.v1",
+    environment: "staging",
+    namespace: .metadata.namespace,
+    secret_name: .metadata.name,
+    keys: (.data | keys),
+    resource_uid: .metadata.uid,
+    resource_version: .metadata.resourceVersion,
+    observed_at: (now | todateiso8601)
+  }' > /tmp/gda-worker-secret-attestation.json
+
+python -m data_agent.dolphinscheduler_worker_activation validate \
+  --manifest /tmp/gda-worker-staging.yaml \
+  --config-map /tmp/gda-worker-configmap.yaml \
+  --secret-attestation /tmp/gda-worker-secret-attestation.json \
+  --environment staging
+```
+
+只有 `status=ready_for_activation` 才能进入扩容步骤。该结果仍固定包含 `deployed=false` 和 `live_cluster_verified=false`；随后必须另行采集 Deployment rollout、Pod readiness/liveness、worker status、唯一 Pod UID、lease 接管和重启 drain 证据。

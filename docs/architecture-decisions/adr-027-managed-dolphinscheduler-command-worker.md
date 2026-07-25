@@ -24,6 +24,8 @@ ADR-025 先建立了 PostgreSQL command outbox 和 `run_once` consumer library�
 | B. 引入外部 broker 或独立 command service | 可扩展、可唤醒 | 新增 broker、凭据、部署、重复投递和第二套恢复语义，当前没有吞吐证据支持 | 暂缓 |
 | C. 复用 consumer 的受管模块化进程 | 复用已验证的 claim/lease/adapter 边界；可以由 systemd/Kubernetes 托管 | 轮询延迟受限于数据库与 poll interval；暂时没有 lease heartbeat | **选择** |
 
+staging 激活还比较了三种证据路径：提交带占位配置/Secret 的 overlay 容易渲染，但会把模板误当环境并增加凭据入库风险，因此拒绝；只在扩容后检查 live cluster 能提供真实状态，但无法阻断 tag 镜像或错误凭据引用进入 rollout，因此不足；最终选择“脱敏离线 preflight + 后续 live-cluster 验收”两阶段路径。前者只决定是否允许激活，后者才证明已经部署和运行。
+
 ## Decision
 
 1. `data_agent.dolphinscheduler_command_worker` 是复用 `DolphinSchedulerCommandConsumer.run_once` 的托管进程入口。它不直接调用 `start_workflow`、Run transition 或 success finalizer。
@@ -34,7 +36,8 @@ ADR-025 先建立了 PostgreSQL command outbox 和 `run_once` consumer library�
 6. worker 捕获 gateway availability failure 后写入 degraded 并继续轮询；未预期的编程异常停止进程，使进程管理器负责拉起并暴露故障。worker 不维护第二个 retry store，也不把 status 文件当作命令事实源。
 7. Kustomize base 登记默认 `replicas: 0` 的 Deployment。只有环境 overlay 配置外部 ConfigMap/Secret、固定镜像版本并显式扩容后才运行；Pod UID 生成唯一 worker ID，探针读取 status，PostgreSQL NetworkPolicy 只增加该 Pod selector，ServiceAccount 不挂载 Kubernetes API token，也没有 RBAC。
 8. Worker 不等待可能被 TTL 清理的 migration Job；数据库/schema 暂不可用时由既有 degraded/retry 语义恢复。基础 startup probe 为该恢复保留十分钟窗口。
-9. 本 ADR 完成代码、默认关闭的部署模板和本地验证，不宣称 staging/production 部署、真实 IAM/OIDC、provider callback、独立 DolphinScheduler metadata PostgreSQL 或故障恢复 SLO 已完成。
+9. staging 首次扩容前必须通过离线 activation preflight：渲染清单只能请求一个副本，主容器/init container 使用同一不可变 image digest，ConfigMap 使用 HTTPS provider 和不同 workload/evaluator identity，并绑定 Kubernetes uid/resourceVersion；Secret 只以固定 key 名、uid、resourceVersion 和新鲜观测时间的脱敏 attestation 出现。preflight 不读取或输出 Secret 值，并固定返回 `deployed=false`、`live_cluster_verified=false`。
+10. 本 ADR 完成代码、默认关闭的部署模板和本地 preflight，不宣称 staging/production 部署、真实 IAM/OIDC、provider callback、独立 DolphinScheduler metadata PostgreSQL 或故障恢复 SLO 已完成。
 
 ## Consequences
 
@@ -58,6 +61,7 @@ ADR-025 先建立了 PostgreSQL command outbox 和 `run_once` consumer library�
 - gateway static validator 固定 worker class、consumer reuse、SIGTERM、interruptible wait、health evaluation 和 token-file markers，并拒绝 worker 直接拥有 provider/Run authority；
 - `platform_truth` runtime inventory 登记 worker 的 owner、耐久性、状态权威和代码证据，环境访问指纹显式更新；
 - deployment validator 结构化解析 Deployment、Kustomization 和 NetworkPolicy，固定零副本默认值、独立 Secret、0600 token 收敛、Pod UID、探针、无 API token/RBAC 和数据库网络入口；Kustomize base 已完成本地渲染；
+- activation preflight 复用 deployment validator，并以单副本、immutable digest、脱敏 ConfigMap fingerprint、新鲜 Secret key attestation 和无内嵌 Secret 作为 staging 扩容前 fail-closed 门；
 - staging/production 仍需补充真实 IAM/OIDC、唯一 worker ID、部署 status、lease 接管、重启 drain、callback 和告警 SLO 证据。
 
 ## Revisit Triggers
