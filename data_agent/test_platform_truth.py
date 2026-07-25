@@ -111,6 +111,67 @@ def test_database_url_strips_sqlalchemy_driver_for_shared_plain_dsn():
     ) == "postgresql://agent:secret@db:5432/gis"
 
 
+def test_dolphinscheduler_worker_config_is_complete_only_when_enabled():
+    incomplete = platform_truth.build_config_report(
+        {"DOLPHINSCHEDULER_COMMAND_WORKER_ENABLED": "true"},
+        profile="development",
+    )
+    assert {
+        issue["key"]
+        for issue in incomplete["errors"]
+        if issue["code"] == "dolphinscheduler_worker_required"
+    } == {
+        "DOLPHINSCHEDULER_BASE_URL",
+        "DOLPHINSCHEDULER_TOKEN_FILE",
+        "DOLPHINSCHEDULER_PROJECT_CODE",
+        "DOLPHINSCHEDULER_WORKLOAD_SUBJECT",
+        "DOLPHINSCHEDULER_POLICY_EVALUATOR_SUBJECT",
+        "DOLPHINSCHEDULER_COMMAND_TENANT_ID",
+        "DOLPHINSCHEDULER_COMMAND_WORKER_ID",
+    }
+
+    complete = platform_truth.build_config_report(
+        {
+            "DOLPHINSCHEDULER_COMMAND_WORKER_ENABLED": "true",
+            "DOLPHINSCHEDULER_BASE_URL": "https://ds.example.com",
+            "DOLPHINSCHEDULER_TOKEN_FILE": "/run/secrets/ds-token",
+            "DOLPHINSCHEDULER_PROJECT_CODE": "1001",
+            "DOLPHINSCHEDULER_WORKLOAD_SUBJECT": "workload:dataops-adapter",
+            "DOLPHINSCHEDULER_POLICY_EVALUATOR_SUBJECT": (
+                "workload:policy-evaluator"
+            ),
+            "DOLPHINSCHEDULER_COMMAND_TENANT_ID": "tenant-a",
+            "DOLPHINSCHEDULER_COMMAND_WORKER_ID": (
+                "worker:dolphinscheduler:pod-a"
+            ),
+        },
+        profile="development",
+    )
+    assert not any(
+        issue["code"] == "dolphinscheduler_worker_required"
+        for issue in complete["errors"]
+    )
+    assert complete["entries"]["DOLPHINSCHEDULER_TOKEN_FILE"]["value"] == (
+        "<redacted>"
+    )
+
+
+def test_dolphinscheduler_worker_lease_and_health_windows_fail_closed():
+    report = platform_truth.build_config_report(
+        {
+            "DOLPHINSCHEDULER_REQUEST_TIMEOUT_SECONDS": "60",
+            "DOLPHINSCHEDULER_COMMAND_LEASE_SECONDS": "60",
+            "DOLPHINSCHEDULER_COMMAND_POLL_INTERVAL_SECONDS": "20",
+            "DOLPHINSCHEDULER_COMMAND_HEALTH_MAX_AGE_SECONDS": "30",
+        },
+        profile="development",
+    )
+    assert {issue["code"] for issue in report["errors"]} >= {
+        "dolphinscheduler_lease_timeout",
+        "dolphinscheduler_health_window",
+    }
+
+
 def test_repository_source_access_and_runtime_baselines_match():
     static_report = platform_truth.validate_static_contract()
 
@@ -118,6 +179,10 @@ def test_repository_source_access_and_runtime_baselines_match():
     assert static_report["environment_access"]["matches_baseline"] is True
     assert static_report["runtime"]["matches_primitive_baseline"] is True
     assert static_report["runtime"]["unregistered_primitives"] == {}
+    assert any(
+        item["runtime_id"] == "dolphinscheduler_command_worker"
+        for item in static_report["runtime"]["inventory"]
+    )
 
 
 def test_runtime_report_detects_unregistered_background_mechanism(tmp_path):

@@ -93,7 +93,7 @@ binding publish、dispatch、reconcile 和 cancel 必须使用 profile 配置的
 限制与缓解：
 
 - binding artifact、授权 evidence gate、workload/evaluator 配置绑定和 tenant-scoped gateway 读取已完成，但生产调用方尚未切换，不能视为 staging IAM 或控制链验收；
-- ADR-025 已实现 callback/outbox 合同与有界 consumer library，但尚未部署常驻 worker、配置 provider callback 或验证告警/恢复 SLO；
+- ADR-025 已实现 callback/outbox 合同与有界 consumer library，ADR-027 已补齐可受管 worker 进程代码，但尚未部署常驻 worker、配置 provider callback 或验证告警/恢复 SLO；
 - ADR-026 已在本地合同和真实 PostgreSQL 16 上封闭 success authority，但尚未用真实 staging DAG 和数据产物验证该链；
 - 真实 standalone 验证了客户端路由，但 PlatformGateway + DolphinScheduler + PostgreSQL 的同一端到端场景仍待 staging 验证；
 - 尚未验证 schedule、complement/backfill、master/worker failover、独立 metadata DB 或 backup/restore，不能宣称 AR-1 退出门完成。

@@ -6,7 +6,7 @@
 
 **Decision owners**: Platform Architecture, DataOps, Data Platform, Security, SRE
 
-**Related decisions**: ADR-003、ADR-007、ADR-020、ADR-022、ADR-023、ADR-024、ADR-026
+**Related decisions**: ADR-003、ADR-007、ADR-020、ADR-022、ADR-023、ADR-024、ADR-026、ADR-027
 
 **Related roadmap**: [AR-0/AR-1 平台事实与最小控制面](../roadmap-ar0-platform-truth-2026-07-24.md)
 
@@ -66,10 +66,12 @@ dispatch 网络结果不确定时，consumer 在同一数据库事务把当前 d
 
 限制与缓解：
 
-- 当前只提供 `run_once` library，不包含常驻进程部署、通知唤醒或 autoscaling；staging 可先由受管进程周期调用，再依据延迟/吞吐决定是否引入 broker；
+- 当前提供可运行的 tenant-scoped managed worker，但尚未部署到 staging/production；它不包含通知唤醒或 autoscaling，部署前每个进程/Pod 必须拥有跨副本唯一的 `DOLPHINSCHEDULER_COMMAND_WORKER_ID`，否则 stale-owner 隔离会被削弱；
 - 没有 lease heartbeat；provider HTTP timeout 必须小于部署配置的 lease，长调用需求出现时再增加受控 renew function；
 - callback API 依赖现有 workload principal，不等于 provider OIDC/IAM 和网络入口已配置；
 - reconcile command 失败只表示投递耗尽，不裁决 PlatformRun failed，必须由运维告警和人工恢复处理。
+
+worker status JSON 是进程健康的可读投影，不是 command、Run 或 provider 状态的事实源；丢失或过期时必须从 PostgreSQL outbox 和 provider 重新建立判断。
 
 ## Verification
 
@@ -78,6 +80,7 @@ dispatch 网络结果不确定时，consumer 在同一数据库事务把当前 d
 - 真实 PostgreSQL 16 测试覆盖最小 grant、无直接 UPDATE/DELETE、幂等 Run+dispatch、跨租户与错误 workload 空读、lease 过期接管、stale owner 拒绝、dispatch 转 reconcile、完成后 callback replay 和 fail/retry/complete。
 - migration、platform contract 和 gateway 静态 validator 固定 migration 095、`SKIP LOCKED`、lease recovery、受控函数、callback route 和薄 consumer marker。
 - migration 096 与 PostgreSQL gateway 回归证明 consumer/gateway role 没有私有 transition 权限，成功终局必须经过 evidence finalizer。
+- managed worker 单元测试覆盖 token 文件权限、租约/轮询边界、SIGTERM drain、可中断等待、脱敏 status、stale health、gateway degraded 和 terminal command failure 与进程 liveness 的分离。
 
 ## Revisit Triggers
 

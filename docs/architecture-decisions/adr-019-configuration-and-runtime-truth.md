@@ -10,7 +10,7 @@
 
 ## Context
 
-应用的配置读取分散在生产 Python 模块、Compose、Kubernetes 和 `.env` 中。基线扫描发现 177 个被直接读取的环境变量，但此前没有统一的类型、默认值、密钥边界或环境策略。`app.py` 还使用 `load_dotenv(..., override=True)`，使镜像内 `.env` 可以覆盖部署系统注入的值。
+应用的配置读取分散在生产 Python 模块、Compose、Kubernetes 和 `.env` 中。基线扫描发现 193 个被直接读取的环境变量，但此前没有统一的类型、默认值、密钥边界或环境策略。`app.py` 还使用 `load_dotenv(..., override=True)`，使镜像内 `.env` 可以覆盖部署系统注入的值。
 
 数据库同时存在 `DATABASE_URL` 和 `POSTGRES_*` 两种配置路径。CI 只设置前者，部分数据库模块只读取后者，导致测试可能落入“未配置数据库”的降级分支。后台执行也分散在 APScheduler、自有队列、SparkGateway、stream loop、outbox worker 和裸 `asyncio.create_task` 中，缺少可审查的所有者、耐久性和替换目标。
 
@@ -27,7 +27,7 @@
 |---|---|---|---|
 | A. 只补充部署文档 | 改动最小 | 无法阻止源码、默认值和运行时继续漂移 | 拒绝 |
 | B. 立即迁移所有配置到新框架，并同时替换所有后台运行时 | 最终形态统一 | 跨越过多模块；在 PlatformRun 和编排合同冻结前容易制造另一套临时框架 | 延后 |
-| C. 建立关键配置类型注册表、脱敏快照、源码指纹和运行时清单，再增量迁移调用方 | 先封住新增漂移；范围可验证；保留后续替换空间 | 存量 177 个变量不会在本切片全部成为统一读取 API | **选择** |
+| C. 建立关键配置类型注册表、脱敏快照、源码指纹和运行时清单，再增量迁移调用方 | 先封住新增漂移；范围可验证；保留后续替换空间 | 存量 193 个变量不会在本切片全部成为统一读取 API | **选择** |
 
 ## Decision
 
@@ -36,8 +36,8 @@
 3. 部署环境优先于仓库 `.env`。本地 `.env` 只填补未设置值，不得覆盖 Compose、Kubernetes 或进程环境。
 4. `DATABASE_URL` 是应用数据库连接的首选事实源；未设置时才由 `POSTGRES_*` 安全编码生成。两组配置同时存在且指向不同数据库时报告冲突。需要管理员身份的 migration 入口必须显式清除 `DATABASE_URL`，再使用 admin 组件。
 5. 配置报告包含类型、owner、来源、是否配置、脱敏值和稳定 SHA-256 指纹。密钥只记录 configured/unset 状态，密钥变化不会进入日志、JSON 或指纹明文。
-6. 当前注册表覆盖数据库、认证、对象存储、模型、核心运行时、ArcPy MCP 和日志等 62 个关键项。其余存量直接读取由完整 AST 指纹冻结；增加、删除或移动直接读取都必须显式评审并更新基线。
-7. 后台运行时以 `RuntimeSpec` 登记 ID、类型、owner、耐久性、状态权威、生产角色、代码证据和目标形态。AST 同时冻结线程、进程池、subprocess、scheduler 和 async task 原语；未登记路径或原语指纹变化使 CI 失败。
+6. 当前注册表覆盖数据库、认证、对象存储、模型、核心运行时、ArcPy MCP、日志和 DolphinScheduler 托管 worker 等 79 个关键项。其余存量直接读取由完整 AST 指纹冻结；增加、删除或移动直接读取都必须显式评审并更新基线。
+7. 后台运行时以 `RuntimeSpec` 登记 ID、类型、owner、耐久性、状态权威、生产角色、代码证据和目标形态。AST 同时冻结线程、进程池、subprocess、scheduler 和 async task 原语；未登记路径或原语指纹变化使 CI 失败。DolphinScheduler command worker 只拥有进程生命周期，命令状态仍由 PostgreSQL outbox 权威管理。
 8. `legacy`、`governed` 和 `ephemeral` 是事实分类，不是完成状态。存在 `replacement_required` 的运行时进入 `production_blockers`；静态清单可合法，但 `production_ready` 必须保持 false，直到统一 PlatformRun/编排退出门通过。
 9. CI 运行 `python -m data_agent.platform_truth validate`。CLI 另提供 `snapshot`、`runtime` 和 `compare`，供环境导出与漂移比较。
 
@@ -67,12 +67,12 @@
 ## Verification
 
 - 9 个单元测试覆盖密钥脱敏、production fail-closed、development 降级、数据库优先级/冲突/编码、源码基线、未登记运行时和快照比较。
-- 静态报告确认 177 个环境键读取基线匹配、20 个运行原语文件均已登记、无解析错误和未登记路径。
+- 静态报告确认 193 个环境键读取基线匹配、17 个运行原语文件均已登记、无解析错误和未登记路径；新增 worker 的 provider、tenant、lease、poll 和 health 配置已进入注册表。
 - Compose development/staging/production 合并配置通过解析；Kubernetes manifests 可由 Kustomize 构建。
 
 ## Revisit Triggers
 
-- 关键配置已完成统一读取迁移，需要将 177 个源码读取基线缩减为只允许平台配置模块访问；
+- 关键配置已完成统一读取迁移，需要将 193 个源码读取基线缩减为只允许平台配置模块访问；
 - 引入 Vault、云 Secret Manager、配置服务或 workload identity，需要增加 secret reference/version 合同；
 - PlatformRun 与 DolphinScheduler/Temporal adapter 通过真实故障恢复验收，可以移除对应 legacy runtime blocker；
 - 需要证明跨环境使用相同密钥版本时，改为比较密钥管理系统的不可逆 version ID，而不是密钥值摘要；

@@ -192,3 +192,26 @@ GitHub Actions (`.github/workflows/ci.yml`)：
 | 注册失败 | 密码不符合要求 | 密码需 ≥8 位且包含字母和数字 |
 | OAuth 登录不可用 | 未配置 OAuth 环境变量 | 设置 `OAUTH_GOOGLE_CLIENT_ID` |
 | 标注不显示 | 数据库迁移未执行 | 执行 `016_create_map_annotations.sql` |
+
+## 10. DolphinScheduler 命令 Worker（当前未部署）
+
+该进程只负责从 PostgreSQL `platform_command_outbox` 领取并投递命令；outbox、PlatformRun 和 provider instance 仍是各自领域的事实源。当前代码已具备本地运行和健康检查能力，但尚未形成 staging/production 部署证据。
+
+部署前必须满足：
+
+- `DOLPHINSCHEDULER_COMMAND_WORKER_ENABLED=true` 时补齐 provider URL、绝对 token 文件、project code、workload/evaluator subject、command tenant 和 worker ID；
+- token 文件权限为 `0600`，不把 token 放入环境快照、日志或 status JSON；
+- 每个进程/Pod 使用跨副本唯一的 `DOLPHINSCHEDULER_COMMAND_WORKER_ID`，同一 ID 只能对应一个活跃进程；
+- `DOLPHINSCHEDULER_COMMAND_LEASE_SECONDS` 大于 provider request timeout，health max age 至少覆盖两个 poll interval；
+- status JSON 路径为本地可写绝对路径，权限为 `0600`，仅作为 liveness/readiness 投影。
+
+常用命令：
+
+```bash
+python -m data_agent.dolphinscheduler_command_worker validate
+python -m data_agent.dolphinscheduler_command_worker run
+python -m data_agent.dolphinscheduler_command_worker run --once
+python -m data_agent.dolphinscheduler_command_worker health
+```
+
+`health` 返回非零表示 status 缺失、过期、worker degraded/stopped 或输入窗口非法。单条 command 的 terminal failure 不等于进程失活，应通过 `failed_commands` 和 outbox 告警处理；worker 收到 SIGINT/SIGTERM 后完成当前批次，再停止。

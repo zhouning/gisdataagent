@@ -70,6 +70,9 @@ GATEWAY_ROUTES_SOURCE = (
 COMMAND_CONSUMER_SOURCE = (
     Path(__file__).resolve().parent / "dolphinscheduler_command_consumer.py"
 )
+COMMAND_WORKER_SOURCE = (
+    Path(__file__).resolve().parent / "dolphinscheduler_command_worker.py"
+)
 _TENANT_ADAPTER = TypeAdapter(TenantId)
 
 
@@ -1303,6 +1306,7 @@ def build_gateway_report(
     gateway_source: Path | None = None,
     routes_source: Path | None = None,
     command_consumer_source: Path | None = None,
+    command_worker_source: Path | None = None,
 ) -> dict[str, Any]:
     """Validate the static role, transaction, and HTTP boundary markers."""
     paths = {
@@ -1318,6 +1322,9 @@ def build_gateway_report(
         "routes_source": (routes_source or GATEWAY_ROUTES_SOURCE).resolve(),
         "command_consumer_source": (
             command_consumer_source or COMMAND_CONSUMER_SOURCE
+        ).resolve(),
+        "command_worker_source": (
+            command_worker_source or COMMAND_WORKER_SOURCE
         ).resolve(),
     }
     texts: dict[str, str] = {}
@@ -1396,6 +1403,14 @@ def build_gateway_report(
             "self.gateway.complete_command(",
             "self.gateway.fail_command(",
         ),
+        "command_worker_source": (
+            "class DolphinSchedulerCommandWorker",
+            "DolphinSchedulerCommandConsumer",
+            "signal.SIGTERM",
+            "stop_event.wait(",
+            "evaluate_worker_health",
+            "DOLPHINSCHEDULER_TOKEN_FILE",
+        ),
     }
     missing_markers: dict[str, list[str]] = {}
     for name, markers in required.items():
@@ -1427,6 +1442,16 @@ def build_gateway_report(
         if forbidden in consumer_source:
             errors.append(
                 f"command consumer contains forbidden runtime marker: {forbidden}"
+            )
+    worker_source = texts.get("command_worker_source", "")
+    for forbidden in (
+        "start_workflow(",
+        ".transition_run(",
+        ".finalize_run_success(",
+    ):
+        if forbidden in worker_source:
+            errors.append(
+                f"command worker contains forbidden authority marker: {forbidden}"
             )
 
     return {

@@ -186,6 +186,103 @@ CONFIG_SPECS = (
     ),
     _config("STANDARDS_OUTBOX_WORKER_INTERVAL_SEC", "int", 5, minimum=1, maximum=3600, owner="data-platform"),
     _config("STANDARDS_OUTBOX_MAX_ATTEMPTS", "int", 5, minimum=1, maximum=100, owner="data-platform"),
+    _config(
+        "DOLPHINSCHEDULER_COMMAND_WORKER_ENABLED",
+        "bool",
+        False,
+        owner="dataops",
+        description="Enable the managed DolphinScheduler command worker process.",
+    ),
+    _config("DOLPHINSCHEDULER_BASE_URL", "url", None, owner="dataops"),
+    _config(
+        "DOLPHINSCHEDULER_TOKEN_FILE",
+        "str",
+        None,
+        secret=True,
+        owner="security",
+    ),
+    _config(
+        "DOLPHINSCHEDULER_PROJECT_CODE",
+        "int",
+        None,
+        minimum=1,
+        owner="dataops",
+    ),
+    _config("DOLPHINSCHEDULER_WORKLOAD_SUBJECT", "str", None, owner="security"),
+    _config(
+        "DOLPHINSCHEDULER_POLICY_EVALUATOR_SUBJECT",
+        "str",
+        None,
+        owner="security",
+    ),
+    _config("DOLPHINSCHEDULER_TENANT_CODE", "str", "default", owner="dataops"),
+    _config("DOLPHINSCHEDULER_WORKER_GROUP", "str", "default", owner="dataops"),
+    _config(
+        "DOLPHINSCHEDULER_REQUEST_TIMEOUT_SECONDS",
+        "float",
+        15,
+        minimum=1,
+        maximum=300,
+        owner="dataops",
+    ),
+    _config(
+        "DOLPHINSCHEDULER_RECONCILIATION_PAGE_LIMIT",
+        "int",
+        5,
+        minimum=1,
+        maximum=100,
+        owner="dataops",
+    ),
+    _config(
+        "DOLPHINSCHEDULER_COMMAND_TENANT_ID",
+        "str",
+        None,
+        owner="data-platform",
+    ),
+    _config(
+        "DOLPHINSCHEDULER_COMMAND_WORKER_ID",
+        "str",
+        None,
+        owner="sre",
+    ),
+    _config(
+        "DOLPHINSCHEDULER_COMMAND_BATCH_SIZE",
+        "int",
+        10,
+        minimum=1,
+        maximum=100,
+        owner="dataops",
+    ),
+    _config(
+        "DOLPHINSCHEDULER_COMMAND_LEASE_SECONDS",
+        "int",
+        60,
+        minimum=5,
+        maximum=3600,
+        owner="dataops",
+    ),
+    _config(
+        "DOLPHINSCHEDULER_COMMAND_POLL_INTERVAL_SECONDS",
+        "float",
+        5,
+        minimum=0.1,
+        maximum=3600,
+        owner="dataops",
+    ),
+    _config(
+        "DOLPHINSCHEDULER_COMMAND_STATUS_FILE",
+        "str",
+        "/tmp/gda-dolphinscheduler-command-worker.json",
+        owner="sre",
+    ),
+    _config(
+        "DOLPHINSCHEDULER_COMMAND_HEALTH_MAX_AGE_SECONDS",
+        "float",
+        30,
+        minimum=1,
+        maximum=7200,
+        owner="sre",
+    ),
     _config("ARCPY_MCP_ENABLED", "bool", False, owner="gis-runtime"),
     _config("ARCPY_MCP_URL", "url", None, owner="gis-runtime"),
     _config("ARCPY_MCP_TOKEN", "str", None, secret=True, owner="gis-runtime"),
@@ -274,6 +371,30 @@ RUNTIME_INVENTORY = (
         ("data_agent/standards_platform/outbox_worker.py",),
         (("data_agent/standards_platform/outbox_worker.py", "outbox.claim_batch"),),
         "Retain as reliable command/event delivery",
+    ),
+    RuntimeSpec(
+        "dolphinscheduler_command_worker",
+        "outbox_worker",
+        "governed",
+        "database_durable",
+        "gda_control.platform_command_outbox",
+        "dataops",
+        "provider_command_delivery",
+        (
+            "data_agent/dolphinscheduler_command_worker.py",
+            "data_agent/dolphinscheduler_command_consumer.py",
+        ),
+        (
+            (
+                "data_agent/dolphinscheduler_command_worker.py",
+                "class DolphinSchedulerCommandWorker",
+            ),
+            (
+                "data_agent/dolphinscheduler_command_consumer.py",
+                "self.gateway.claim_commands(",
+            ),
+        ),
+        "Retain as tenant-scoped managed provider command delivery",
     ),
     RuntimeSpec(
         "api_workflow_background",
@@ -417,7 +538,7 @@ RUNTIME_INVENTORY = (
 # Fingerprint of literal environment reads in production Python modules.  It is
 # intentionally updated only with an explicit config-contract review.
 ENV_ACCESS_BASELINE_FINGERPRINT = (
-    "c00046a8f1262b3e56fe75c7474a7cede2cecebe60ecefad1ad0e30f0fbdf2ca"
+    "41949811ca1d12a9d8bdbd5e7ecb1ba528be7049af96742306d6f317ab0791b8"
 )
 RUNTIME_PRIMITIVE_BASELINE_FINGERPRINT = (
     "724d0c4751f92637e366602848b511c432afc9dcf10c723178f25daab9cf61e4"
@@ -779,6 +900,57 @@ def _validate_runtime_config(
                 "SELF_EVOLUTION_SCHEDULER_ENABLED",
                 "legacy_scheduler_enabled",
                 "self-evolution still uses a process-local scheduler",
+            )
+        )
+    if parsed.get("DOLPHINSCHEDULER_COMMAND_WORKER_ENABLED"):
+        required = (
+            "DOLPHINSCHEDULER_BASE_URL",
+            "DOLPHINSCHEDULER_TOKEN_FILE",
+            "DOLPHINSCHEDULER_PROJECT_CODE",
+            "DOLPHINSCHEDULER_WORKLOAD_SUBJECT",
+            "DOLPHINSCHEDULER_POLICY_EVALUATOR_SUBJECT",
+            "DOLPHINSCHEDULER_COMMAND_TENANT_ID",
+            "DOLPHINSCHEDULER_COMMAND_WORKER_ID",
+        )
+        for key in required:
+            if not parsed.get(key):
+                errors.append(
+                    _issue(
+                        key,
+                        "dolphinscheduler_worker_required",
+                        f"{key} is required when the command worker is enabled",
+                    )
+                )
+    provider_timeout = parsed.get("DOLPHINSCHEDULER_REQUEST_TIMEOUT_SECONDS")
+    command_lease = parsed.get("DOLPHINSCHEDULER_COMMAND_LEASE_SECONDS")
+    if (
+        provider_timeout is not None
+        and command_lease is not None
+        and command_lease <= provider_timeout
+    ):
+        errors.append(
+            _issue(
+                "DOLPHINSCHEDULER_COMMAND_LEASE_SECONDS",
+                "dolphinscheduler_lease_timeout",
+                "command lease must exceed provider request timeout",
+            )
+        )
+    poll_interval = parsed.get(
+        "DOLPHINSCHEDULER_COMMAND_POLL_INTERVAL_SECONDS"
+    )
+    health_max_age = parsed.get(
+        "DOLPHINSCHEDULER_COMMAND_HEALTH_MAX_AGE_SECONDS"
+    )
+    if (
+        poll_interval is not None
+        and health_max_age is not None
+        and health_max_age < poll_interval * 2
+    ):
+        errors.append(
+            _issue(
+                "DOLPHINSCHEDULER_COMMAND_HEALTH_MAX_AGE_SECONDS",
+                "dolphinscheduler_health_window",
+                "health max age must cover at least two polling intervals",
             )
         )
 

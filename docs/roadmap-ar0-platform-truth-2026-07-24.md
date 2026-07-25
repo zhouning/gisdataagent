@@ -179,15 +179,15 @@ MMFE、GWM 和生态扩展继续保留为战略方向，但必须由已发布 Da
 
 1. 已建立 authenticated workload SubjectContext、profile workload/evaluator identity 和资源级 PolicyDecision/Approval evidence gate：Run 提交期校验证据引用，DolphinScheduler dispatch 前再次按真实时钟 fail closed，授权失败不调用 provider、不改变 Run；真实 IAM/OIDC、service token provisioning/轮换与 provider 侧最小权限仍待 staging；
 2. 已将 DolphinSchedulerDefinitionBinding 持久化为现有 append-only Artifact 的 `execution_plan` 角色：稳定 UUID、版本化 manifest、canonical hash/size 和 definition ResourceVersion 关联均受校验；dispatch/reconcile/cancel 可通过 tenant-scoped gateway 读取 artifact UUID，不新增 binding registry；
-3. 已以 tenant-scoped PostgreSQL command outbox 和 authenticated callback 建立耐久 dispatch/reconcile 触发：Run+dispatch、callback observation+reconcile 分别同事务提交，claim 使用 lease/`SKIP LOCKED`，薄 consumer 只调用 adapter；尚未部署常驻 worker、配置真实 provider callback 或验证告警 SLO；
+3. 已以 tenant-scoped PostgreSQL command outbox 和 authenticated callback 建立耐久 dispatch/reconcile 触发：Run+dispatch、callback observation+reconcile 分别同事务提交，claim 使用 lease/`SKIP LOCKED`，薄 consumer 只调用 adapter；新增 tenant-scoped managed worker（见 [ADR-027](architecture-decisions/adr-027-managed-dolphinscheduler-command-worker.md)），负责严格配置、0600 token 文件、优雅退出、可中断轮询和脱敏 health projection；尚未部署常驻 worker、配置真实 provider callback 或验证告警 SLO；
 4. 已新增 immutable QualityResult、content-bound RunSuccessEvidence 和数据库 evidence gate：通用 transition 不能写 `succeeded`；只有精确 workload、DolphinScheduler success observation、内容匹配的 output Artifact、独立 passed QualityResult/evidence 和 input-to-output LineageEvent 完整时才能幂等终结 Run；见 [ADR-026](architecture-decisions/adr-026-evidence-gated-run-success.md)；
-5. 下一步在同一 staging 场景跑通 PlatformGateway PostgreSQL、DolphinScheduler 独立 metadata PostgreSQL、常驻 outbox worker/callback 和真实 Artifact/Quality/Lineage 终局裁决；
+5. 下一步在同一 staging 场景跑通 PlatformGateway PostgreSQL、DolphinScheduler 独立 metadata PostgreSQL、托管 outbox worker/callback 和真实 Artifact/Quality/Lineage 终局裁决；部署前为每个 worker process/Pod 分配唯一 worker ID，并验证 status projection、lease 接管和重启 drain；
 6. 注入提交超时、callback 重复/乱序、worker 重启、双租户访问、凭据轮换和无双写恢复故障；
 7. 验证 schedule、complement/backfill、备份恢复、升级和 master/worker failover 后，再判断 AR-1 是否达到退出门。
 
 OpenMetadata/Gravitino 和 Temporal 继续保持目标组件状态，不在这一包并行接入。
 
-当前完成仅指本地合同、授权 evidence、outbox/callback 代码、数据库成功终局门、合成 golden slice、定向测试和真实 PostgreSQL 16 事务边界。真实 IAM/OIDC 与 service token 生命周期、worker/callback 部署、golden slice staging 运行链、独立 DolphinScheduler metadata PostgreSQL 和真实数据终局证据仍属于 4.7 后续切片。
+当前完成仅指本地合同、授权 evidence、outbox/callback 代码、数据库成功终局门、托管 worker 代码、合成 golden slice、定向测试和真实 PostgreSQL 16 事务边界。真实 IAM/OIDC 与 service token 生命周期、worker/callback 部署、golden slice staging 运行链、独立 DolphinScheduler metadata PostgreSQL 和真实数据终局证据仍属于 4.7 后续切片。
 
 ## 5. 重新评估条件
 
