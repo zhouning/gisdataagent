@@ -30,18 +30,24 @@ from pydantic import (
 )
 
 from .platform_contracts import (
+    Artifact,
     FrameworkAttemptObservation,
     PlatformDefinitionVersion,
     PlatformRun,
     RunStatus,
     TenantId,
+    canonical_json_bytes,
     canonical_json_fingerprint,
 )
-from .platform_gateway import PlatformGateway
+from .platform_gateway import GatewayWriteResult, PlatformGateway
 
 DOLPHINSCHEDULER_SERVER_VERSION = "3.4.2"
 DOLPHINSCHEDULER_API_PROFILE = "3.4"
 DOLPHINSCHEDULER_ADAPTER_SCHEMA = "gda.dolphinscheduler_adapter.v1"
+DOLPHINSCHEDULER_BINDING_SCHEMA = "gda.dolphinscheduler_definition_binding.v1"
+DOLPHINSCHEDULER_BINDING_MEDIA_TYPE = (
+    "application/vnd.gda.dolphinscheduler-binding+json"
+)
 DOLPHINSCHEDULER_RELEASE_URL = (
     "https://github.com/apache/dolphinscheduler/releases/tag/3.4.2"
 )
@@ -244,6 +250,14 @@ class DolphinSchedulerDefinitionBinding(_FrozenModel):
     server_version: Literal["3.4.2"] = DOLPHINSCHEDULER_SERVER_VERSION
 
 
+class DolphinSchedulerBindingEnvelope(_FrozenModel):
+    binding_schema: Literal["gda.dolphinscheduler_definition_binding.v1"] = Field(
+        default=DOLPHINSCHEDULER_BINDING_SCHEMA,
+        alias="schema",
+    )
+    binding: DolphinSchedulerDefinitionBinding
+
+
 class DolphinSchedulerInstance(_FrozenModel):
     instance_id: int = Field(gt=0)
     workflow_definition_code: int = Field(gt=0)
@@ -272,6 +286,90 @@ class DolphinSchedulerReconcileResult(_FrozenModel):
 
 def _json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
+
+
+def _binding_artifact_id(binding: DolphinSchedulerDefinitionBinding) -> UUID:
+    identity = binding.model_dump(mode="json")
+    return uuid5(
+        binding.definition_version_id,
+        f"dolphinscheduler-binding:{canonical_json_fingerprint(identity)}",
+    )
+
+
+def _binding_artifact_key(binding: DolphinSchedulerDefinitionBinding) -> str:
+    return (
+        f"dolphinscheduler-binding:{binding.workflow_definition_code}:"
+        f"v{binding.workflow_definition_version}"
+    )
+
+
+def _binding_storage_uri(tenant_id: str, artifact_id: UUID) -> str:
+    return f"postgresql://gda-control/execution-plans/{tenant_id}/{artifact_id}"
+
+
+def build_dolphinscheduler_binding_artifact(
+    binding: DolphinSchedulerDefinitionBinding,
+    *,
+    created_by: str,
+    created_at: datetime,
+) -> Artifact:
+    """Build the immutable execution-plan evidence for a provider binding."""
+    envelope = DolphinSchedulerBindingEnvelope(binding=binding)
+    manifest = envelope.model_dump(mode="json", by_alias=True)
+    artifact_id = _binding_artifact_id(binding)
+    content = canonical_json_bytes(manifest)
+    return Artifact(
+        tenant_id=binding.tenant_id,
+        artifact_id=artifact_id,
+        artifact_key=_binding_artifact_key(binding),
+        artifact_role="execution_plan",
+        storage_uri=_binding_storage_uri(binding.tenant_id, artifact_id),
+        media_type=DOLPHINSCHEDULER_BINDING_MEDIA_TYPE,
+        content_sha256=canonical_json_fingerprint(manifest),
+        size_bytes=len(content),
+        run_id=None,
+        resource_version_id=binding.definition_version_id,
+        manifest=manifest,
+        created_by=created_by,
+        created_at=created_at,
+    )
+
+
+def parse_dolphinscheduler_binding_artifact(
+    artifact: Artifact,
+) -> DolphinSchedulerDefinitionBinding:
+    """Validate every immutable artifact field before returning its binding."""
+    try:
+        envelope = DolphinSchedulerBindingEnvelope.model_validate(artifact.manifest)
+    except Exception as exc:
+        raise DolphinSchedulerContractError(
+            "binding artifact manifest does not satisfy the envelope contract"
+        ) from exc
+
+    binding = envelope.binding
+    artifact_id = _binding_artifact_id(binding)
+    expected = {
+        "tenant_id": binding.tenant_id,
+        "artifact_id": artifact_id,
+        "artifact_key": _binding_artifact_key(binding),
+        "artifact_role": "execution_plan",
+        "storage_uri": _binding_storage_uri(binding.tenant_id, artifact_id),
+        "media_type": DOLPHINSCHEDULER_BINDING_MEDIA_TYPE,
+        "content_sha256": canonical_json_fingerprint(artifact.manifest),
+        "size_bytes": len(canonical_json_bytes(artifact.manifest)),
+        "run_id": None,
+        "resource_version_id": binding.definition_version_id,
+    }
+    actual = artifact.model_dump(mode="python", include=set(expected))
+    actual["artifact_role"] = getattr(
+        artifact.artifact_role, "value", artifact.artifact_role
+    )
+    mismatches = [name for name, value in expected.items() if actual[name] != value]
+    if mismatches:
+        raise DolphinSchedulerContractError(
+            "binding artifact metadata does not match its manifest"
+        )
+    return binding
 
 
 def _reject_inline_secrets(value: Any, path: str = "definition") -> None:
@@ -677,6 +775,44 @@ class DolphinSchedulerAdapter:
         self.gateway = gateway or PlatformGateway()
         self.client = client or DolphinSchedulerClient(profile)
 
+    def persist_binding(
+        self,
+        binding: DolphinSchedulerDefinitionBinding,
+        *,
+        actor_subject: str,
+        created_at: datetime,
+    ) -> GatewayWriteResult:
+        if binding.project_code != self.profile.project_code:
+            raise DolphinSchedulerContractError(
+                "binding project does not match profile"
+            )
+        artifact = build_dolphinscheduler_binding_artifact(
+            binding,
+            created_by=actor_subject,
+            created_at=created_at,
+        )
+        return self.gateway.record_artifact(artifact)
+
+    def load_binding(
+        self, tenant_id: str, artifact_id: UUID
+    ) -> DolphinSchedulerDefinitionBinding:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        artifact = self.gateway.get_artifact(tenant, artifact_id)
+        return parse_dolphinscheduler_binding_artifact(artifact)
+
+    def _resolve_binding(
+        self,
+        tenant_id: str,
+        binding: DolphinSchedulerDefinitionBinding | UUID,
+    ) -> DolphinSchedulerDefinitionBinding:
+        if isinstance(binding, UUID):
+            return self.load_binding(tenant_id, binding)
+        if isinstance(binding, DolphinSchedulerDefinitionBinding):
+            return binding
+        raise DolphinSchedulerContractError(
+            "binding must be a DolphinSchedulerDefinitionBinding or artifact UUID"
+        )
+
     def _validate_binding(
         self, run: PlatformRun, binding: DolphinSchedulerDefinitionBinding
     ) -> None:
@@ -743,13 +879,14 @@ class DolphinSchedulerAdapter:
         self,
         tenant_id: str,
         run_id: UUID,
-        binding: DolphinSchedulerDefinitionBinding,
+        binding: DolphinSchedulerDefinitionBinding | UUID,
         *,
         actor_subject: str,
         attempt_no: int = 1,
     ) -> DolphinSchedulerDispatchResult:
         tenant = _TENANT_ADAPTER.validate_python(tenant_id)
         run = self.gateway.get_run(tenant, run_id)
+        binding = self._resolve_binding(tenant, binding)
         self._validate_binding(run, binding)
 
         existing = self._find_one(binding, run)
@@ -884,13 +1021,14 @@ class DolphinSchedulerAdapter:
         self,
         tenant_id: str,
         run_id: UUID,
-        binding: DolphinSchedulerDefinitionBinding,
+        binding: DolphinSchedulerDefinitionBinding | UUID,
         *,
         actor_subject: str,
         attempt_no: int = 1,
     ) -> DolphinSchedulerReconcileResult:
         tenant = _TENANT_ADAPTER.validate_python(tenant_id)
         run = self.gateway.get_run(tenant, run_id)
+        binding = self._resolve_binding(tenant, binding)
         self._validate_binding(run, binding)
         match = self._find_one(binding, run)
         if match is None:
@@ -954,12 +1092,13 @@ class DolphinSchedulerAdapter:
         self,
         tenant_id: str,
         run_id: UUID,
-        binding: DolphinSchedulerDefinitionBinding,
+        binding: DolphinSchedulerDefinitionBinding | UUID,
         *,
         actor_subject: str,
     ) -> PlatformRun:
         tenant = _TENANT_ADAPTER.validate_python(tenant_id)
         run = self.gateway.get_run(tenant, run_id)
+        binding = self._resolve_binding(tenant, binding)
         self._validate_binding(run, binding)
         match = self._find_one(binding, run)
         if match is None:
@@ -1011,6 +1150,9 @@ def build_dolphinscheduler_adapter_report(
         "correlation scan reached the configured page limit",
         "dispatch outcome is unknown; reconcile before retry",
         "platform verdict still pending",
+        "def persist_binding(",
+        "def load_binding(",
+        "parse_dolphinscheduler_binding_artifact",
     )
     missing = [marker for marker in required if marker not in source]
     if missing:

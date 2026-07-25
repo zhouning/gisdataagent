@@ -51,7 +51,9 @@ ADR-007 已选择 DolphinScheduler 承担 DataOps 编排，ADR-022 已提供受�
 
 只有 `orchestration_class=dataops` 的 PlatformDefinitionVersion 可以编译。`definition_document.dolphinscheduler` 保存 provider-native DAG 文档；编译器注入稳定的 definition id、URN、tenant 和 hash 参数，排序后产生 `compiled_sha256`。任何常见 token、password、secret、private key 或 access key 字段含有内联值时 fail closed。
 
-创建 workflow 后必须显式上线，只有上线成功才返回 `DolphinSchedulerDefinitionBinding`。binding 固定 project code、workflow definition code/version、compiled hash、API profile 和 server version；后续需要作为 ExecutionPlanArtifact 或等价的不可变证据持久化，目前尚未形成生产 binding registry。
+创建 workflow 后必须显式上线，只有上线成功才返回 `DolphinSchedulerDefinitionBinding`。binding 固定 project code、workflow definition code/version、compiled hash、API profile 和 server version。
+
+binding 通过现有 append-only `gda_control.artifact` 持久化，不新增 registry 或数据表。artifact 固定 `artifact_role=execution_plan`、`run_id=NULL`，并以 `resource_version_id` 关联 PlatformDefinitionVersion；版本化 envelope、canonical content hash/size、artifact key、PostgreSQL URI 和 artifact UUID 必须相互一致。UUID 从完整 binding 确定性生成，重复写入沿用 gateway 的幂等冲突检查。dispatch、reconcile 和 cancel 可以接收内存 binding，也可以通过 tenant-scoped PlatformGateway 读取 artifact UUID；任何缺失或篡改均 fail closed。
 
 ### 3. PlatformRun correlation
 
@@ -79,21 +81,22 @@ ADR-007 已选择 DolphinScheduler 承担 DataOps 编排，ADR-022 已提供受�
 正面影响：
 
 - PlatformRun 与 DolphinScheduler instance 有可恢复的稳定关联；
+- provider binding 成为可按 definition version 复核的不可变 execution-plan evidence；
 - 未知提交结果不会触发重复 DataOps 运行；
 - provider 终态与平台终局裁决保持分离；
 - 模块化单体继续复用既有 gateway、CAS、RLS 和 evidence 合同。
 
 限制与缓解：
 
-- 当前 binding 未持久化，先作为下一开发包的 ExecutionPlanArtifact/evidence 工作处理；
+- binding artifact 的代码、幂等 replay 和 tenant-scoped gateway 读取已完成，但生产调用方尚未切换，不能视为 staging 控制链验收；
 - 没有 callback/outbox consumer 或周期 reconcile worker，生产接入前必须建立耐久触发与恢复路径；
 - 真实 standalone 验证了客户端路由，但 PlatformGateway + DolphinScheduler + PostgreSQL 的同一端到端场景仍待 staging 验证；
 - 尚未验证 schedule、complement/backfill、master/worker failover、独立 metadata DB 或 backup/restore，不能宣称 AR-1 退出门完成。
 
 ## Verification
 
-- 16 个定向测试覆盖编译 fingerprint、内联密钥拒绝、context path、token redaction/文件权限、创建/上线、startParams、变量关联、分页/扫描上限、未知结果、丢失响应恢复、幂等 replay、非终局 provider state、取消和多 correlation 拒绝。
-- 静态 validator 已进入 CI，固定版本、路由、上线、未知结果与平台裁决边界。
+- 30 个定向测试覆盖编译 fingerprint、内联密钥拒绝、context path、token redaction/文件权限、创建/上线、binding artifact round-trip/篡改拒绝/幂等 replay/UUID 驱动、startParams、变量关联、分页/扫描上限、未知结果、丢失响应恢复、非终局 provider state、取消和多 correlation 拒绝。
+- 静态 validator 已进入 CI，固定版本、路由、上线、binding persistence、未知结果与平台裁决边界。
 - 官方 ARM64 standalone image `apache/dolphinscheduler-standalone-server:3.4.2`（digest `sha256:485a1b37dd1c4088c8c8335f9fccbd229e5e703c32e21f318eb00cbb60b1af9d`）通过只读 probe。
 - 真实 Shell DAG 完成 create -> online -> start -> list -> variables -> exact correlation，instance 到达 `SUCCESS`，六个 `gda_*` 参数可见。
 - 真实长任务从 `RUNNING_EXECUTION` 接受 `STOP` 并进入 `READY_STOP`；这只证明控制命令与过渡状态，不等于平台取消终态验收。

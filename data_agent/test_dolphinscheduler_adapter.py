@@ -8,6 +8,7 @@ import httpx
 import pytest
 
 from data_agent.dolphinscheduler_adapter import (
+    DOLPHINSCHEDULER_BINDING_MEDIA_TYPE,
     DolphinSchedulerAdapter,
     DolphinSchedulerClient,
     DolphinSchedulerConfigurationError,
@@ -22,9 +23,12 @@ from data_agent.dolphinscheduler_adapter import (
     DolphinSchedulerUnavailableError,
     _read_token_file,
     build_dolphinscheduler_adapter_report,
+    build_dolphinscheduler_binding_artifact,
     compile_dolphinscheduler_workflow,
+    parse_dolphinscheduler_binding_artifact,
 )
 from data_agent.platform_contracts import (
+    ArtifactRole,
     OrchestrationClass,
     PlatformDefinitionVersion,
     PlatformRun,
@@ -33,7 +37,7 @@ from data_agent.platform_contracts import (
     platform_definition_fingerprint,
     validate_run_transition,
 )
-from data_agent.platform_gateway import GatewayWriteResult
+from data_agent.platform_gateway import GatewayNotFoundError, GatewayWriteResult
 
 TENANT = "tenant-a"
 DEFINITION_ID = UUID("20000000-0000-4000-8000-000000000010")
@@ -141,6 +145,7 @@ class _FakeGateway:
         self.run = _run()
         self.transitions = []
         self.observations = {}
+        self.artifacts = {}
 
     def get_run(self, tenant_id, run_id):
         assert tenant_id == self.run.tenant_id
@@ -175,6 +180,20 @@ class _FakeGateway:
             return GatewayWriteResult(existing, False)
         self.observations[observation.observation_id] = observation
         return GatewayWriteResult(observation, True)
+
+    def record_artifact(self, artifact):
+        existing = self.artifacts.get(artifact.artifact_id)
+        if existing is not None:
+            assert existing == artifact
+            return GatewayWriteResult(existing, False)
+        self.artifacts[artifact.artifact_id] = artifact
+        return GatewayWriteResult(artifact, True)
+
+    def get_artifact(self, tenant_id, artifact_id):
+        artifact = self.artifacts.get(artifact_id)
+        if artifact is None or artifact.tenant_id != tenant_id:
+            raise GatewayNotFoundError("Artifact was not found")
+        return artifact
 
 
 class _FakeClient:
@@ -227,6 +246,112 @@ def test_compiler_adds_stable_control_params_and_fingerprint():
     assert params["gda_definition_version_id"] == str(DEFINITION_ID)
     assert params["gda_definition_sha256"] == _definition().definition_sha256
     assert spec == compile_dolphinscheduler_workflow(_definition())
+
+
+def test_binding_artifact_round_trip_has_stable_identity_and_exact_content():
+    first = build_dolphinscheduler_binding_artifact(
+        _binding(), created_by=ACTOR, created_at=NOW
+    )
+    second = build_dolphinscheduler_binding_artifact(
+        _binding(), created_by="workload:replay", created_at=NOW
+    )
+
+    assert first.artifact_id == second.artifact_id
+    assert first.artifact_role.value == "execution_plan"
+    assert first.media_type == DOLPHINSCHEDULER_BINDING_MEDIA_TYPE
+    assert first.resource_version_id == DEFINITION_ID
+    assert first.run_id is None
+    assert parse_dolphinscheduler_binding_artifact(first) == _binding()
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("artifact_id", UUID("20000000-0000-4000-8000-000000000099")),
+        ("artifact_key", "dolphinscheduler-binding:tampered:v1"),
+        ("artifact_role", ArtifactRole.EVIDENCE),
+        ("storage_uri", "postgresql://gda-control/execution-plans/tampered"),
+        ("media_type", "application/json"),
+        ("content_sha256", "f" * 64),
+        ("size_bytes", 1),
+        ("run_id", RUN_ID),
+        ("resource_version_id", SOURCE_ID),
+    ),
+)
+def test_binding_artifact_metadata_tampering_fails_closed(field, value):
+    artifact = build_dolphinscheduler_binding_artifact(
+        _binding(), created_by=ACTOR, created_at=NOW
+    ).model_copy(update={field: value})
+
+    with pytest.raises(DolphinSchedulerContractError, match="metadata"):
+        parse_dolphinscheduler_binding_artifact(artifact)
+
+
+def test_binding_artifact_manifest_tampering_fails_closed():
+    artifact = build_dolphinscheduler_binding_artifact(
+        _binding(), created_by=ACTOR, created_at=NOW
+    )
+    manifest = artifact.manifest | {
+        "binding": artifact.manifest["binding"] | {"workflow_definition_version": 2}
+    }
+
+    with pytest.raises(DolphinSchedulerContractError, match="metadata"):
+        parse_dolphinscheduler_binding_artifact(
+            artifact.model_copy(update={"manifest": manifest})
+        )
+
+
+def test_persisted_binding_is_idempotent_and_loadable():
+    gateway = _FakeGateway()
+    adapter = DolphinSchedulerAdapter(_profile(), gateway=gateway, client=_FakeClient())
+
+    first = adapter.persist_binding(_binding(), actor_subject=ACTOR, created_at=NOW)
+    replay = adapter.persist_binding(_binding(), actor_subject=ACTOR, created_at=NOW)
+
+    assert first.created is True
+    assert replay.created is False
+    assert replay.value == first.value
+    assert adapter.load_binding(TENANT, first.value.artifact_id) == _binding()
+
+
+def test_artifact_uuid_drives_dispatch_reconcile_and_cancel():
+    gateway = _FakeGateway()
+    client = _FakeClient()
+    adapter = DolphinSchedulerAdapter(_profile(), gateway=gateway, client=client)
+    persisted = adapter.persist_binding(_binding(), actor_subject=ACTOR, created_at=NOW)
+
+    dispatched = adapter.dispatch(
+        TENANT, RUN_ID, persisted.value.artifact_id, actor_subject=ACTOR
+    )
+    client.state = "RUNNING_EXECUTION"
+    reconciled = adapter.reconcile(
+        TENANT, RUN_ID, persisted.value.artifact_id, actor_subject=ACTOR
+    )
+    cancelled = adapter.cancel(
+        TENANT, RUN_ID, persisted.value.artifact_id, actor_subject=ACTOR
+    )
+
+    assert dispatched.workflow_instance_id == 901
+    assert reconciled.run.status == RunStatus.RUNNING
+    assert cancelled.status == RunStatus.CANCELLING
+    assert client.control_calls == [(901, "STOP")]
+
+
+def test_missing_binding_artifact_is_not_reconstructed_or_submitted():
+    gateway = _FakeGateway()
+    client = _FakeClient()
+    adapter = DolphinSchedulerAdapter(_profile(), gateway=gateway, client=client)
+
+    with pytest.raises(GatewayNotFoundError, match="Artifact was not found"):
+        adapter.dispatch(
+            TENANT,
+            RUN_ID,
+            UUID("20000000-0000-4000-8000-000000000099"),
+            actor_subject=ACTOR,
+        )
+    with pytest.raises(DolphinSchedulerContractError, match="artifact UUID"):
+        adapter.dispatch(TENANT, RUN_ID, str(DEFINITION_ID), actor_subject=ACTOR)
+    assert client.start_calls == 0
 
 
 def test_compiler_rejects_non_dataops_and_inline_secrets():

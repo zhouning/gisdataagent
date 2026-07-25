@@ -631,6 +631,14 @@ class PlatformGateway:
         value["manifest"] = _as_json(value["manifest"])
         return Artifact.model_validate(value)
 
+    def get_artifact(self, tenant_id: str, artifact_id: UUID) -> Artifact:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            artifact = self._load_artifact(connection, tenant, artifact_id)
+            if artifact is None:
+                raise GatewayNotFoundError("Artifact was not found")
+            return artifact
+
     def record_artifact(self, artifact: Artifact) -> GatewayWriteResult:
         with self._transaction(artifact.tenant_id) as connection:
             inserted = connection.execute(
@@ -770,6 +778,7 @@ def build_gateway_report(
             'SET LOCAL ROLE "{GATEWAY_DATABASE_ROLE}"',
             "SELECT set_config('app.current_tenant', :tenant, true)",
             "ON CONFLICT DO NOTHING",
+            "def get_artifact(",
         ),
         "routes_source": (
             'base = "/api/platform/v1"',

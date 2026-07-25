@@ -18,7 +18,11 @@ from data_agent.platform_contracts import (
     canonical_json_fingerprint,
     platform_definition_fingerprint,
 )
-from data_agent.platform_gateway import DefinitionRegistration, PlatformGateway
+from data_agent.platform_gateway import (
+    DefinitionRegistration,
+    GatewayNotFoundError,
+    PlatformGateway,
+)
 
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
@@ -416,6 +420,9 @@ def test_platform_gateway_service_writes_idempotent_control_chain():
         )
         assert gateway.record_artifact(artifact).created is True
         assert gateway.record_artifact(artifact).created is False
+        assert gateway.get_artifact(tenant, artifact.artifact_id) == artifact
+        with pytest.raises(GatewayNotFoundError, match="Artifact was not found"):
+            gateway.get_artifact(f"other-{tenant}", artifact.artifact_id)
 
         lineage_facets = {"operation": "publish"}
         lineage = LineageEvent(

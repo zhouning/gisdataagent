@@ -173,18 +173,20 @@ MMFE、GWM 和生态扩展继续保留为战略方向，但必须由已发布 Da
 
 真实 `3.4.2` ARM64 standalone 已验证 create -> online -> start -> list -> variables -> exact correlation，Shell instance 到达 `SUCCESS`；长任务接受 `STOP` 后进入 `READY_STOP`。standalone 使用 H2 和开发身份，因此这些是 adapter HTTP/correlation 证据，不是生产部署、高可用、最终取消裁决或 AR-1 全部退出门。
 
-### 4.7 下一开发包
+### 4.7 下一开发包（binding persistence 切片已完成）
 
 下一块把 adapter POC 接到地类图斑 golden slice 的真实控制链，而不是再接第二套外部平台：
 
 1. 用 workload identity、资源级 PolicyDecision/Approval 替代交互式管理员 token；
-2. 将 DolphinSchedulerDefinitionBinding 持久化为 ExecutionPlanArtifact 或等价不可变证据；
+2. 已将 DolphinSchedulerDefinitionBinding 持久化为现有 append-only Artifact 的 `execution_plan` 角色：稳定 UUID、版本化 manifest、canonical hash/size 和 definition ResourceVersion 关联均受校验；dispatch/reconcile/cancel 可通过 tenant-scoped gateway 读取 artifact UUID，不新增 binding registry；
 3. 以 PostgreSQL outbox/callback 建立耐久 dispatch/reconcile 触发，不增加自研 scheduler 或 Redis queue；
 4. 在同一 staging 场景跑通 PlatformGateway PostgreSQL、DolphinScheduler 独立 metadata PostgreSQL、Artifact/Quality/Lineage 和平台终局裁决；
 5. 注入提交超时、callback 重复/乱序、worker 重启、双租户访问、凭据轮换和无双写恢复故障；
 6. 验证 schedule、complement/backfill、备份恢复、升级和 master/worker failover 后，再判断 AR-1 是否达到退出门。
 
 OpenMetadata/Gravitino 和 Temporal 继续保持目标组件状态，不在这一包并行接入。
+
+当前完成仅指本地代码、定向测试和 PostgreSQL gateway 读取合同。workload identity、outbox/callback、真实 golden slice staging 链、独立 DolphinScheduler metadata PostgreSQL 和平台终局裁决仍属于 4.7 后续切片。
 
 ## 5. 重新评估条件
 
