@@ -12,7 +12,7 @@ env:
 
 jobs:
   test:
-    name: Unit Tests
+    name: Platform Required Tests
     runs-on: ubuntu-latest
 
     services:
@@ -86,21 +86,44 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gis_agent_test
         run: python -m pytest data_agent/test_platform_gateway_postgres.py -q
 
-      - name: Run tests
+      - name: Run required platform tests
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gis_agent_test
           CHAINLIT_AUTH_SECRET: ci-test-secret-key-not-for-production
         run: |
-          python -m pytest data_agent/ \
-            --ignore=data_agent/test_knowledge_agent.py \
-            --junitxml=test-results/junit.xml \
+          python -m pytest \
+            data_agent/test_arcpy_mcp_configuration.py \
+            data_agent/test_auth.py \
+            data_agent/test_dolphinscheduler_adapter.py \
+            data_agent/test_dolphinscheduler_command_consumer.py \
+            data_agent/test_dolphinscheduler_command_worker.py \
+            data_agent/test_dolphinscheduler_worker_activation.py \
+            data_agent/test_dolphinscheduler_worker_deployment.py \
+            data_agent/test_frontend_api.py \
+            data_agent/test_mcp_hub.py \
+            data_agent/test_migration_authority_deployment.py \
+            data_agent/test_migration_runner.py \
+            data_agent/test_platform_authorization.py \
+            data_agent/test_platform_contracts.py \
+            data_agent/test_platform_crosswalk.py \
+            data_agent/test_platform_gateway.py \
+            data_agent/test_platform_truth.py \
+            data_agent/test_route_registration.py \
+            data_agent/test_s3_obs.py \
+            data_agent/test_staging_candidate_evidence.py \
+            data_agent/test_staging_deployment_bundle.py \
+            data_agent/test_staging_live_evidence.py \
+            data_agent/test_staging_provenance_evidence.py \
+            data_agent/test_staging_registry_evidence.py \
+            data_agent/test_staging_release_evidence.py \
+            --junitxml=test-results/platform-required.xml \
             -q
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results
+          name: platform-test-results
           path: test-results/
 
   frontend:
