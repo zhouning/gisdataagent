@@ -4,7 +4,8 @@ on:
   push:
     branches: [main, develop]
   pull_request:
-    branches: [main]
+    # Keep the active lineage reviewable until ADR-035 promotes it to main.
+    branches: [main, feat/v12-extensible-platform]
 
 env:
   PYTHON_VERSION: "3.13"
