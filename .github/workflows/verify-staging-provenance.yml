@@ -1,4 +1,4 @@
-# Independently verifies the published OCI subject from a successful main push.
+# Independently verifies the OCI subject from a successful manual main publish.
 # This workflow does not deploy staging and cannot authorize production.
 name: Verify - Staging Image Provenance
 
@@ -19,7 +19,7 @@ jobs:
     name: Verify publisher identity and OCI subject
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.event == 'workflow_dispatch' &&
       github.event.workflow_run.head_branch == 'main' &&
       github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
