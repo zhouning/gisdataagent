@@ -135,10 +135,12 @@ build_image() {
     local context="$1"
     local image="$2"
     log "building ${image}:${IMAGE_TAG} from ${context}"
-    docker build \
-        --build-arg "PIP_INDEX_URL=${PIP_INDEX_URL}" \
-        -t "${image}:${IMAGE_TAG}" \
-        "$context"
+    if ! docker build \
+            --build-arg "PIP_INDEX_URL=${PIP_INDEX_URL}" \
+            -t "${image}:${IMAGE_TAG}" \
+            "$context"; then
+        fail "failed to build ${image}:${IMAGE_TAG}; refusing to load a stale local image"
+    fi
     load_to_nodes "$image"
 }
 
@@ -160,7 +162,9 @@ build_image_no_arg() {
     local image="$2"
     local tag="${3:-$IMAGE_TAG}"
     log "building ${image}:${tag} from ${context}"
-    docker build -t "${image}:${tag}" "$context"
+    if ! docker build -t "${image}:${tag}" "$context"; then
+        fail "failed to build ${image}:${tag}; refusing to load a stale local image"
+    fi
     log "exporting ${image}:${tag} and importing into kind nodes"
     local tarball
     tarball=$(mktemp -t gis-img.XXXXXX.tar)
@@ -253,7 +257,12 @@ require_cmd kubectl
 
 cmd="${1:-up}"
 case "$cmd" in
-    up)        cluster_check && ollama_check && build_all && deploy ;;
+    up)
+        cluster_check
+        ollama_check
+        build_all
+        deploy
+        ;;
     build)     build_all ;;
     deploy)    deploy ;;
     forward)   forward ;;
