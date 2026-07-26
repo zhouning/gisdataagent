@@ -42,6 +42,21 @@ REQUIRED_STAGING_EVIDENCE = (
     "bind the verified OCI subject to a protected staging release bundle",
     "collect live staging observation and golden-slice evidence after apply",
 )
+PROVENANCE_STABLE_FIELDS = (
+    "schema",
+    "source_revision",
+    "verifier_revision",
+    "candidate_evidence_fingerprint",
+    "registry_evidence_fingerprint",
+    "repository",
+    "digest",
+    "image",
+    "verification_policy",
+    "verified_attestation_count",
+    "provenance_attestation_verified",
+    "registry_digest_verified",
+    "errors",
+)
 
 CommandRunner = Callable[[list[str]], str]
 
@@ -58,6 +73,12 @@ def _canonical_sha256(value: object) -> str:
         sort_keys=True,
     ).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
+
+
+def provenance_evidence_fingerprint(value: Mapping[str, Any]) -> str:
+    """Return the canonical fingerprint of a provenance verification report."""
+    stable = {field: value.get(field) for field in PROVENANCE_STABLE_FIELDS}
+    return _canonical_sha256(stable)
 
 
 def _load_json_object(path: Path) -> dict[str, Any]:
@@ -234,6 +255,7 @@ def verify_registry_provenance(
     *,
     source_repository: str,
     source_revision: str,
+    verifier_revision: str,
     run: CommandRunner | None = None,
 ) -> dict[str, Any]:
     """Verify the bound OCI subject with a fixed GitHub identity policy."""
@@ -242,6 +264,8 @@ def verify_registry_provenance(
         source_repository=source_repository,
         source_revision=source_revision,
     )
+    if not SOURCE_REVISION_PATTERN.fullmatch(verifier_revision):
+        errors.append("verifier revision must be a full lowercase Git SHA-1")
     repository = str(registry.get("repository") or "")
     digest = str(registry.get("digest") or "")
     image = str(registry.get("image") or "")
@@ -276,6 +300,7 @@ def verify_registry_provenance(
     stable = {
         "schema": PROVENANCE_EVIDENCE_SCHEMA,
         "source_revision": source_revision,
+        "verifier_revision": verifier_revision,
         "candidate_evidence_fingerprint": registry.get(
             "candidate_evidence_fingerprint"
         ),
@@ -302,7 +327,7 @@ def verify_registry_provenance(
         "live_cluster_verified": False,
         "production_promotion_allowed": False,
         "required_staging_evidence": list(REQUIRED_STAGING_EVIDENCE),
-        "evidence_fingerprint": _canonical_sha256(stable),
+        "evidence_fingerprint": provenance_evidence_fingerprint(stable),
     }
 
 
@@ -321,6 +346,7 @@ def main(argv: list[str] | None = None) -> int:
     verify.add_argument("--registry-evidence", type=Path, required=True)
     verify.add_argument("--source-repository", required=True)
     verify.add_argument("--source-revision", required=True)
+    verify.add_argument("--verifier-revision", required=True)
     verify.add_argument("--output", type=Path)
     args = parser.parse_args(argv)
 
@@ -329,6 +355,7 @@ def main(argv: list[str] | None = None) -> int:
             _load_json_object(args.registry_evidence),
             source_repository=args.source_repository,
             source_revision=args.source_revision,
+            verifier_revision=args.verifier_revision,
         )
     except (
         OSError,

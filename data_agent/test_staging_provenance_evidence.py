@@ -11,6 +11,7 @@ from data_agent import (
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_REPOSITORY = "zhouning/gisdataagent"
 SOURCE_REVISION = "a" * 40
+VERIFIER_REVISION = "9" * 40
 REPOSITORY = f"ghcr.io/{SOURCE_REPOSITORY}"
 DIGEST = "sha256:" + "b" * 64
 IMAGE = f"{REPOSITORY}@{DIGEST}"
@@ -83,6 +84,7 @@ def test_protected_verifier_enforces_exact_identity_and_keeps_promotion_false():
         _registry(),
         source_repository=SOURCE_REPOSITORY,
         source_revision=SOURCE_REVISION,
+        verifier_revision=VERIFIER_REVISION,
         run=run,
     )
 
@@ -98,6 +100,7 @@ def test_protected_verifier_enforces_exact_identity_and_keeps_promotion_false():
     assert report["live_cluster_verified"] is False
     assert report["production_promotion_allowed"] is False
     assert report["verified_attestation_count"] == 1
+    assert report["verifier_revision"] == VERIFIER_REVISION
 
     command = commands[0]
     assert command[:4] == ["gh", "attestation", "verify", f"oci://{IMAGE}"]
@@ -126,6 +129,7 @@ def test_registry_drift_blocks_before_attestation_command_runs():
         registry,
         source_repository=SOURCE_REPOSITORY,
         source_revision=SOURCE_REVISION,
+        verifier_revision=VERIFIER_REVISION,
         run=forbidden,
     )
 
@@ -138,17 +142,36 @@ def test_registry_drift_blocks_before_attestation_command_runs():
     assert report["production_promotion_allowed"] is False
 
 
+def test_invalid_verifier_revision_blocks_before_attestation_command_runs():
+    def forbidden(_: list[str]) -> str:
+        raise AssertionError("attestation command must not run")
+
+    report = staging_provenance_evidence.verify_registry_provenance(
+        _registry(),
+        source_repository=SOURCE_REPOSITORY,
+        source_revision=SOURCE_REVISION,
+        verifier_revision="main",
+        run=forbidden,
+    )
+
+    assert report["status"] == "blocked"
+    assert "verifier revision must be" in "\n".join(report["errors"])
+    assert report["provenance_attestation_verified"] is False
+
+
 def test_empty_or_mismatched_attestation_output_fails_closed():
     empty = staging_provenance_evidence.verify_registry_provenance(
         _registry(),
         source_repository=SOURCE_REPOSITORY,
         source_revision=SOURCE_REVISION,
+        verifier_revision=VERIFIER_REVISION,
         run=lambda _: "[]",
     )
     mismatched = staging_provenance_evidence.verify_registry_provenance(
         _registry(),
         source_repository=SOURCE_REPOSITORY,
         source_revision=SOURCE_REVISION,
+        verifier_revision=VERIFIER_REVISION,
         run=lambda _: _attestation(repository="ghcr.io/other/repository"),
     )
 
@@ -181,6 +204,8 @@ def test_cli_writes_machine_readable_verified_evidence(
             SOURCE_REPOSITORY,
             "--source-revision",
             SOURCE_REVISION,
+            "--verifier-revision",
+            VERIFIER_REVISION,
             "--output",
             str(output),
         ]
@@ -214,6 +239,8 @@ def test_cli_hides_attestation_command_failure(
             SOURCE_REPOSITORY,
             "--source-revision",
             SOURCE_REVISION,
+            "--verifier-revision",
+            VERIFIER_REVISION,
             "--output",
             str(output),
         ]
@@ -250,6 +277,9 @@ def test_protected_workflow_verifies_and_attests_without_deploying():
     assert "github.event.workflow_run.event == 'push'" in job["if"]
     assert "github.event.workflow_run.head_branch == 'main'" in job["if"]
     assert "head_repository.full_name == github.repository" in job["if"]
+    checkout = steps[0]
+    assert checkout["name"] == "Check out the protected verifier revision"
+    assert checkout["with"]["ref"] == "${{ github.sha }}"
     assert "kubectl" not in text
     assert "helm" not in text
 
@@ -264,6 +294,7 @@ def test_protected_workflow_verifies_and_attests_without_deploying():
     )
     assert verify["env"]["GH_TOKEN"] == "${{ secrets.GITHUB_TOKEN }}"
     assert "data_agent.staging_provenance_evidence verify" in verify["run"]
+    assert '--verifier-revision "$GITHUB_SHA"' in verify["run"]
     assert attest["uses"] == "actions/attest-build-provenance@v3"
     assert attest["with"]["subject-path"] == (
         "staging-provenance-evidence/provenance.json"

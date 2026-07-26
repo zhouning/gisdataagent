@@ -289,11 +289,12 @@ workflow 权限只能是 `contents: read`、`packages: write`、`id-token: write
 python -m data_agent.staging_provenance_evidence verify \
   --registry-evidence /path/to/registry.json \
   --source-repository zhouning/gisdataagent \
-  --source-revision <full-main-commit-sha> \
+  --source-revision <publisher-main-commit-sha> \
+  --verifier-revision <verifier-workflow-commit-sha> \
   --output /tmp/gda-staging-provenance.json
 ```
 
-模块固定调用 `gh attestation verify` 并校验 repository、`cd-staging.yml` signer workflow、signer/source digest、`refs/heads/main`、GitHub OIDC issuer、SLSA v1 和非 self-hosted publisher。原始 attestation、证书和 stderr 不写入 GDA evidence。
+模块固定调用 `gh attestation verify` 并校验 repository、`cd-staging.yml` signer workflow、publisher signer/source digest、`refs/heads/main`、GitHub OIDC issuer、SLSA v1 和非 self-hosted publisher。workflow 必须 checkout 自身 `github.sha` 的 verifier revision 执行代码，不能 checkout publisher `workflow_run.head_sha` 执行 verifier；两个 SHA 都写入 evidence。原始 attestation、证书和 stderr 不写入 GDA evidence。
 
 远端首次启用前必须创建 GitHub environment `staging-provenance`：配置 required reviewers、禁止未经审核 bypass，并仅在该 environment 设置 `GDA_STAGING_PROVENANCE_PROTECTED=true`。不要用同名 repository/organization variable 冒充 environment 配置。workflow 会对生成的 `provenance.json` 再做 artifact attestation，成功后才上传。
 
@@ -301,7 +302,7 @@ python -m data_agent.staging_provenance_evidence verify \
 
 ### 10.5 Staging release bundle
 
-公共 `k8s/overlays/staging` 不包含 Secret，也故意保留会被 gate 阻断的本地模型默认值和基础设施 image tag。受保护环境必须先提供 Secret 和环境 ConfigMap overlay，把模型入口改为非本地 HTTPS endpoint，并把所有依赖镜像 pin 到 `@sha256:` digest，再渲染 template。随后将 validated candidate、预期 live platform snapshot 和应用 registry digest 结构化绑定：
+公共 `k8s/overlays/staging` 不包含 Secret，也故意保留会被 gate 阻断的本地模型默认值和基础设施 image tag。受保护环境必须先提供 Secret 和环境 ConfigMap overlay，把模型入口改为非本地 HTTPS endpoint，并把所有依赖镜像 pin 到 `@sha256:` digest，再渲染 template。可先用纯 preflight 将 validated candidate、预期 live platform snapshot 和声明的应用 registry digest 结构化绑定：
 
 ```bash
 kubectl kustomize /path/to/protected-staging-overlay \
@@ -316,7 +317,22 @@ python -m data_agent.staging_deployment_bundle build \
   --report-output /tmp/gda-staging-bundle-report.json
 ```
 
-只有 `status=ready_for_staging_apply` 才会写出 manifest。该报告仍固定 `registry_digest_verified=false`、`staging_deployed=false`、`live_cluster_verified=false` 和 `production_promotion_allowed=false`；protected runner 必须另行验证 registry provenance，apply 后再执行 live observation。
+`status=ready_for_staging_apply` 仍只是离线 bundle preflight，固定 `registry_digest_verified=false`，不能作为受保护 apply authority。真实 protected runner 必须使用 attested provenance 入口，且不再接受独立 `--image` 参数：
+
+```bash
+python -m data_agent.staging_release_evidence build \
+  --template-manifest /tmp/gda-staging-template.yaml \
+  --candidate-evidence /path/to/candidate.json \
+  --platform-snapshot /path/to/expected-live-platform.json \
+  --provenance-evidence /path/to/provenance.json \
+  --source-repository zhouning/gisdataagent \
+  --source-revision <publisher-main-commit-sha> \
+  --verifier-revision <verifier-workflow-commit-sha> \
+  --manifest-output /tmp/gda-verified-staging-release.yaml \
+  --report-output /tmp/gda-verified-staging-release.json
+```
+
+该入口先按 `verify-staging-provenance.yml`、verifier SHA、main ref、GitHub OIDC 和 hosted runner 固定策略验证 `provenance.json` 的 artifact attestation，再核对文件 digest、provenance/candidate/registry fingerprint，并从 provenance 内部取得唯一 image。只有 `status=verified_for_staging_apply` 才会写 manifest；它允许 `registry_digest_verified=true`，但仍固定 `staging_deployed=false`、`live_cluster_verified=false` 和 `production_promotion_allowed=false`。apply 后必须另行执行 live observation。
 
 ### 10.6 Live staging observation
 

@@ -454,7 +454,7 @@ k8s/overlays/
 └── prod/              # 生产 + Velero 备份 + GPU 节点选择器
 ```
 
-`staging/` 不能直接代表已部署环境。它固定 strict staging 与单副本，删除占位 Secret、本地 Ingress 和本地 Ollama Service；受保护环境补齐 HTTPS 模型入口与 Secret、将所有依赖镜像 pin 到 digest 后，必须通过 `data_agent.staging_deployment_bundle` 绑定 candidate、platform fingerprint 和应用 registry digest，才会生成可进入 apply 步骤的 manifest。
+`staging/` 不能直接代表已部署环境。它固定 strict staging 与单副本，删除占位 Secret、本地 Ingress 和本地 Ollama Service；受保护环境补齐 HTTPS 模型入口与 Secret、将所有依赖镜像 pin 到 digest 后，可先通过 `data_agent.staging_deployment_bundle` 做非权威 template preflight。真实 apply 输入必须再由 `data_agent.staging_release_evidence` 验证 provenance artifact 的 workflow/revision/digest 身份，并从其中唯一的 registry digest 物化；两种报告都不表示 staging 已部署。
 
 `prod` overlay 应该补：
 

@@ -27,10 +27,10 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - name: Check out the exact published revision
+      - name: Check out the protected verifier revision
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
 
       - name: Set up Python 3.13
@@ -73,6 +73,7 @@ jobs:
             --registry-evidence staging-provenance-input/registry.json \
             --source-repository "$GITHUB_REPOSITORY" \
             --source-revision "${{ github.event.workflow_run.head_sha }}" \
+            --verifier-revision "$GITHUB_SHA" \
             --output staging-provenance-evidence/provenance.json
 
       - name: Attest protected provenance evidence
