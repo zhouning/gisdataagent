@@ -43,3 +43,11 @@ def test_google_adk_23_does_not_pin_incompatible_langchain_google_genai_adapter(
     assert Version("2.3.0") in google_adk
     assert Version("2.8.0") in google_genai
     assert "langchain-google-genai" not in requirements
+
+
+def test_python_313_cloud_storage_floor_is_compatible_with_vertex_ai() -> None:
+    requirements = runtime_requirements()
+    cloud_storage = requirements["google-cloud-storage"].specifier
+
+    assert Version("3.10.0") in cloud_storage
+    assert Version("3.7.0") not in cloud_storage

@@ -52,6 +52,9 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Validate runtime dependency constraints
+        run: python -m pytest tests/test_runtime_dependency_constraints.py -q
+
       - name: Validate migration catalog
         run: python -m data_agent.migration_runner validate
 
