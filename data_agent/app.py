@@ -19,6 +19,9 @@ from data_agent.multimodal import (
     UploadType, classify_upload, prepare_image_part,
     extract_pdf_text, prepare_pdf_part,
 )
+from data_agent.route_registration import (
+    insert_routes_before_frontend_fallback as _insert_routes_before_frontend_fallback,
+)
 
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -482,12 +485,10 @@ async def _serve_register_page(request: Request):
 
 # Insert GET /register BEFORE Chainlit's catch-all /{full_path:path}
 _register_route = Route("/register", endpoint=_serve_register_page, methods=["GET"])
-for _i, _r in enumerate(chainlit_app.router.routes):
-    if hasattr(_r, 'path') and _r.path == "/{full_path:path}":
-        chainlit_app.router.routes.insert(_i, _register_route)
-        break
-else:
-    chainlit_app.router.routes.append(_register_route)
+_insert_routes_before_frontend_fallback(
+    chainlit_app.router,
+    [_register_route],
+)
 
 logger.info("Self-registration enabled at /register")
 
@@ -555,12 +556,10 @@ _share_validate_get_route = Route(
     "/api/share/{token}/validate",
     endpoint=_api_share_validate_get, methods=["GET"]
 )
-for _i, _r in enumerate(chainlit_app.router.routes):
-    if hasattr(_r, 'path') and _r.path == "/{full_path:path}":
-        chainlit_app.router.routes.insert(_i, _share_page_route)
-        chainlit_app.router.routes.insert(_i, _share_file_route)
-        chainlit_app.router.routes.insert(_i, _share_validate_get_route)
-        break
+_insert_routes_before_frontend_fallback(
+    chainlit_app.router,
+    [_share_page_route, _share_file_route, _share_validate_get_route],
+)
 
 logger.info("Public share routes enabled at /s/{token}")
 
@@ -703,19 +702,10 @@ _file_upload_route = Route("/api/user/files", endpoint=_api_upload_user_file, me
 _file_serve_route = Route("/api/user/files/{filename:path}", endpoint=_api_serve_user_file, methods=["GET"])
 
 
-def _is_frontend_fallback_route(route) -> bool:
-    path = getattr(route, "path", None)
-    return path == "/{full_path:path}" or type(route).__name__ == "_IncludedRouter"
-
-
-for _i, _r in enumerate(chainlit_app.router.routes):
-    if _is_frontend_fallback_route(_r):
-        chainlit_app.router.routes.insert(_i, _file_list_route)
-        chainlit_app.router.routes.insert(_i + 1, _file_upload_route)
-        break
-else:
-    chainlit_app.router.routes.append(_file_list_route)
-    chainlit_app.router.routes.append(_file_upload_route)
+_insert_routes_before_frontend_fallback(
+    chainlit_app.router,
+    [_file_list_route, _file_upload_route],
+)
 
 logger.info("User file API routes enabled at /api/user/files")
 
@@ -967,16 +957,10 @@ async def _api_admin_audit_stats(request: Request):
 _audit_page_route = Route("/admin/audit", endpoint=_serve_audit_page, methods=["GET"])
 _audit_api_route = Route("/api/admin/audit", endpoint=_api_admin_audit, methods=["GET"])
 _audit_stats_route = Route("/api/admin/audit/stats", endpoint=_api_admin_audit_stats, methods=["GET"])
-for _i, _r in enumerate(chainlit_app.router.routes):
-    if hasattr(_r, 'path') and _r.path == "/{full_path:path}":
-        chainlit_app.router.routes.insert(_i, _audit_page_route)
-        chainlit_app.router.routes.insert(_i, _audit_api_route)
-        chainlit_app.router.routes.insert(_i, _audit_stats_route)
-        break
-else:
-    chainlit_app.router.routes.append(_audit_page_route)
-    chainlit_app.router.routes.append(_audit_api_route)
-    chainlit_app.router.routes.append(_audit_stats_route)
+_insert_routes_before_frontend_fallback(
+    chainlit_app.router,
+    [_audit_page_route, _audit_api_route, _audit_stats_route],
+)
 
 logger.info("Admin audit viewer enabled at /admin/audit")
 
@@ -1019,18 +1003,10 @@ _health_route = Route("/health", endpoint=_health_endpoint, methods=["GET"])
 _ready_route = Route("/ready", endpoint=_ready_endpoint, methods=["GET"])
 _sysinfo_route = Route("/api/admin/system-info", endpoint=_system_info_endpoint, methods=["GET"])
 _metrics_route = Route("/metrics", endpoint=_metrics_endpoint, methods=["GET"])
-for _i, _r in enumerate(chainlit_app.router.routes):
-    if hasattr(_r, 'path') and _r.path == "/{full_path:path}":
-        chainlit_app.router.routes.insert(_i, _health_route)
-        chainlit_app.router.routes.insert(_i, _ready_route)
-        chainlit_app.router.routes.insert(_i, _sysinfo_route)
-        chainlit_app.router.routes.insert(_i, _metrics_route)
-        break
-else:
-    chainlit_app.router.routes.append(_health_route)
-    chainlit_app.router.routes.append(_ready_route)
-    chainlit_app.router.routes.append(_sysinfo_route)
-    chainlit_app.router.routes.append(_metrics_route)
+_insert_routes_before_frontend_fallback(
+    chainlit_app.router,
+    [_health_route, _ready_route, _sysinfo_route, _metrics_route],
+)
 
 # --- Mount Enterprise WeChat bot routes (conditional) ---
 if is_wecom_configured():
@@ -1093,12 +1069,10 @@ except Exception as _fe_err:
 
 # Register the greedy file serve route AFTER frontend_api routes to avoid
 # /api/user/files/{filename:path} swallowing /api/user/files/browse etc.
-for _i, _r in enumerate(chainlit_app.router.routes):
-    if _is_frontend_fallback_route(_r):
-        chainlit_app.router.routes.insert(_i, _file_serve_route)
-        break
-else:
-    chainlit_app.router.routes.append(_file_serve_route)
+_insert_routes_before_frontend_fallback(
+    chainlit_app.router,
+    [_file_serve_route],
+)
 
 # --- Workflow Scheduler (v5.4) ---
 _workflow_scheduler = None
