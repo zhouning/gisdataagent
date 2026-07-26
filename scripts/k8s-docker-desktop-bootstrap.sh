@@ -31,6 +31,7 @@ NAMESPACE="${NAMESPACE:-gis-agent}"
 OVERLAY="${OVERLAY:-k8s/overlays/docker-desktop}"
 IMAGE_TAG="${IMAGE_TAG:-dev}"
 PIP_INDEX_URL="${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}"
+PAPER9_DEMO_SOURCE="${PAPER9_DEMO_SOURCE:-}"
 NODES=()
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
@@ -80,6 +81,63 @@ cluster_check() {
         fi
     done
     ok "cluster context=docker-desktop, nodes=${NODES[*]}"
+}
+
+# ----------------------------------------------------------------------------
+# Optional Paper9 demo data — stage the minimum runtime bundle on every node
+# ----------------------------------------------------------------------------
+resolve_paper9_demo_source() {
+    [ -n "$PAPER9_DEMO_SOURCE" ] && return 0
+
+    local candidate git_common_dir
+    candidate="$(cd "$ROOT/.." 2>/dev/null && pwd)/arcgis-farmland-mpc"
+    if [ -d "$candidate" ]; then
+        PAPER9_DEMO_SOURCE="$candidate"
+        return 0
+    fi
+
+    git_common_dir=$(git -C "$ROOT" rev-parse --path-format=absolute \
+        --git-common-dir 2>/dev/null || true)
+    if [ -n "$git_common_dir" ]; then
+        candidate="$(dirname "$(dirname "$git_common_dir")")/arcgis-farmland-mpc"
+        [ -d "$candidate" ] && PAPER9_DEMO_SOURCE="$candidate"
+    fi
+}
+
+stage_paper9_demo() {
+    resolve_paper9_demo_source
+    local relative parent node
+    local paths=(
+        "farmland_mpc"
+        "runs/restoration/buchanan_va/prepared_watershed"
+        "paper/checkpoints/restoration/profiles/buchanan_va/watershed/ensemble_seed0"
+    )
+
+    for node in "${NODES[@]}"; do
+        docker exec "$node" mkdir -p /paper9-demo
+    done
+
+    if [ -z "$PAPER9_DEMO_SOURCE" ] || [ ! -d "$PAPER9_DEMO_SOURCE" ]; then
+        warn "Paper9 source not found; app will start but WorldModel v2.1 will be unavailable"
+        warn "  Set PAPER9_DEMO_SOURCE=/path/to/arcgis-farmland-mpc and rerun deploy."
+        return 0
+    fi
+
+    for relative in "${paths[@]}"; do
+        if [ ! -e "$PAPER9_DEMO_SOURCE/$relative" ]; then
+            warn "Paper9 demo path missing: $PAPER9_DEMO_SOURCE/$relative"
+            warn "  WorldModel v2.1 defaults may be unavailable."
+            continue
+        fi
+        parent=$(dirname "$relative")
+        for node in "${NODES[@]}"; do
+            log "staging Paper9 $relative on $node"
+            docker exec "$node" mkdir -p "/paper9-demo/$parent"
+            docker cp "$PAPER9_DEMO_SOURCE/$relative" \
+                "$node:/paper9-demo/$parent/"
+        done
+    done
+    ok "Paper9 minimum demo bundle staged from $PAPER9_DEMO_SOURCE"
 }
 
 # ----------------------------------------------------------------------------
@@ -183,6 +241,7 @@ build_image_no_arg() {
 # ----------------------------------------------------------------------------
 deploy() {
     cluster_check
+    stage_paper9_demo
     log "applying $OVERLAY"
     kubectl apply -k "$OVERLAY"
     log "waiting for postgres rollout (up to 5min)"

@@ -53,6 +53,19 @@ kubectl get nodes                # 所有节点应为 Ready
 bootstrap 脚本会从当前集群动态发现 control-plane 和 worker 节点，
 因此 Docker Desktop 中调整 worker 数量后无需修改脚本。
 
+Docker Desktop overlay 还会把 Paper9 WorldModel v2.1 的最小演示包复制到
+每个节点的 `/paper9-demo`：`farmland_mpc` 包、Buchanan prepared 数据和
+`ensemble_seed0`。脚本默认查找与主仓库同级的 `arcgis-farmland-mpc`；
+其他位置可显式指定：
+
+```bash
+PAPER9_DEMO_SOURCE=/absolute/path/to/arcgis-farmland-mpc \
+  ./scripts/k8s-docker-desktop-bootstrap.sh deploy
+```
+
+如果没有 Paper9 数据，脚本仍会创建空 HostPath，保证主平台正常启动，
+但会明确警告 WorldModel v2.1 不可用。
+
 ---
 
 ## 2. 部署架构
