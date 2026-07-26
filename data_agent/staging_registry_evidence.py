@@ -43,6 +43,17 @@ REQUIRED_PROVENANCE = (
     "verify the attestation repository and workflow identity",
     "bind the verified subject to a protected staging release bundle",
 )
+REGISTRY_STABLE_FIELDS = (
+    "schema",
+    "source_revision",
+    "candidate_evidence_fingerprint",
+    "local_image_id",
+    "repository",
+    "digest",
+    "image",
+    "registry_subject_bound",
+    "errors",
+)
 
 
 class StagingRegistryEvidenceError(RuntimeError):
@@ -64,6 +75,12 @@ def _load_json_object(path: Path) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise StagingRegistryEvidenceError("JSON evidence must be an object")
     return value
+
+
+def registry_evidence_fingerprint(value: Mapping[str, Any]) -> str:
+    """Return the canonical fingerprint of a registry binding report."""
+    stable = {field: value.get(field) for field in REGISTRY_STABLE_FIELDS}
+    return _canonical_sha256(stable)
 
 
 def _positive_int(value: Any) -> bool:
@@ -178,7 +195,7 @@ def build_registry_evidence(
         "live_cluster_verified": False,
         "production_promotion_allowed": False,
         "required_provenance": list(REQUIRED_PROVENANCE),
-        "evidence_fingerprint": _canonical_sha256(stable),
+        "evidence_fingerprint": registry_evidence_fingerprint(stable),
     }
 
 

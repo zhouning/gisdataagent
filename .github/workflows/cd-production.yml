@@ -1,9 +1,9 @@
 # Production promotion is intentionally disabled. The previous workflow only
 # printed hypothetical deployment commands and could claim success without a
 # live staging deployment. A read-only live observation verifier now exists,
-# but it deliberately cannot authorize production. Re-enable this workflow
-# only after a protected runner can attest that observation and bind approval
-# to the same source revision.
+# and an independent OCI provenance verifier now exists, but neither can
+# authorize production. Re-enable this workflow only after a protected runner
+# attests live evidence and binds approval to the same source revision.
 name: CD - Production (Blocked)
 
 on:
@@ -19,6 +19,6 @@ jobs:
     steps:
       - name: Block unverified production promotion
         run: |
-          echo "Production promotion is disabled: protected staging provenance and artifact attestation are not implemented." >&2
-          echo "Candidate or live observation JSON alone cannot authorize production." >&2
+          echo "Production promotion is disabled: no attested live staging evidence and same-revision approval have been verified." >&2
+          echo "Candidate, registry, provenance, or live observation JSON alone cannot authorize production." >&2
           exit 1

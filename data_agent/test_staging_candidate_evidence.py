@@ -213,8 +213,9 @@ def test_production_workflow_fails_closed_until_attested_promotion_gate_exists()
         step.get("run", "")
         for step in workflow["jobs"]["promotion-gate"]["steps"]
     )
-    assert "protected staging provenance" in commands
-    assert "live observation JSON alone cannot authorize production" in commands
+    assert "no attested live staging evidence" in commands
+    assert "same-revision approval" in commands
+    assert "provenance, or live observation JSON alone" in commands
     assert "exit 1" in commands
     assert "docker build" not in commands
     assert "Canary deployment" not in commands
