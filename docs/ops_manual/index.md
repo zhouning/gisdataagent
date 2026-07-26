@@ -266,7 +266,26 @@ python -m data_agent.dolphinscheduler_worker_activation validate \
 
 只有 `status=ready_for_activation` 才能进入扩容步骤。该结果仍固定包含 `deployed=false` 和 `live_cluster_verified=false`；随后必须另行采集 Deployment rollout、Pod readiness/liveness、worker status、唯一 Pod UID、lease 接管和重启 drain 证据。
 
-### 10.3 Live staging observation
+### 10.3 Staging release bundle
+
+公共 `k8s/overlays/staging` 不包含 Secret，也故意保留会被 gate 阻断的本地模型默认值和基础设施 image tag。受保护环境必须先提供 Secret 和环境 ConfigMap overlay，把模型入口改为非本地 HTTPS endpoint，并把所有依赖镜像 pin 到 `@sha256:` digest，再渲染 template。随后将 validated candidate、预期 live platform snapshot 和应用 registry digest 结构化绑定：
+
+```bash
+kubectl kustomize /path/to/protected-staging-overlay \
+  > /tmp/gda-staging-template.yaml
+
+python -m data_agent.staging_deployment_bundle build \
+  --template-manifest /tmp/gda-staging-template.yaml \
+  --candidate-evidence /path/to/candidate.json \
+  --platform-snapshot /path/to/expected-live-platform.json \
+  --image ghcr.io/zhouning/gisdataagent@sha256:<digest> \
+  --manifest-output /tmp/gda-staging-bundle.yaml \
+  --report-output /tmp/gda-staging-bundle-report.json
+```
+
+只有 `status=ready_for_staging_apply` 才会写出 manifest。该报告仍固定 `registry_digest_verified=false`、`staging_deployed=false`、`live_cluster_verified=false` 和 `production_promotion_allowed=false`；protected runner 必须另行验证 registry provenance，apply 后再执行 live observation。
+
+### 10.4 Live staging observation
 
 应用 Deployment 的 Pod template 必须由 staging overlay 写入以下注解；放在 Deployment metadata 而不放在 Pod template 不算 revision 绑定：
 

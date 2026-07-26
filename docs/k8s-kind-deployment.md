@@ -445,14 +445,16 @@ kubectl apply -k k8s/overlays/local-kind
 
 ---
 
-## 9. 生产化路径（未来扩展 overlays）
+## 9. 生产化路径
 
 ```
 k8s/overlays/
 ├── local-kind/        # 本指南
-├── staging/           # 上游集群 + cert-manager + ServiceMonitor
+├── staging/           # Secret-free 公共发布模板；需受保护环境覆盖
 └── prod/              # 生产 + Velero 备份 + GPU 节点选择器
 ```
+
+`staging/` 不能直接代表已部署环境。它固定 strict staging 与单副本，删除占位 Secret、本地 Ingress 和本地 Ollama Service；受保护环境补齐 HTTPS 模型入口与 Secret、将所有依赖镜像 pin 到 digest 后，必须通过 `data_agent.staging_deployment_bundle` 绑定 candidate、platform fingerprint 和应用 registry digest，才会生成可进入 apply 步骤的 manifest。
 
 `prod` overlay 应该补：
 
