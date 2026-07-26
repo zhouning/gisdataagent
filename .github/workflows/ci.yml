@@ -4,14 +4,15 @@ on:
   push:
     branches: [main, develop]
   pull_request:
-    branches: [main]
+    # Keep the active lineage reviewable until ADR-035 promotes it to main.
+    branches: [main, feat/v12-extensible-platform]
 
 env:
   PYTHON_VERSION: "3.13"
 
 jobs:
   test:
-    name: Unit Tests
+    name: Platform Required Tests
     runs-on: ubuntu-latest
 
     services:
@@ -51,21 +52,79 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run tests
+      - name: Validate runtime dependency constraints
+        run: python -m pytest tests/test_runtime_dependency_constraints.py -q
+
+      - name: Validate migration catalog
+        run: python -m data_agent.migration_runner validate
+
+      - name: Validate platform configuration and runtime contracts
+        run: python -m data_agent.platform_truth validate
+
+      - name: Validate platform resource and run contracts
+        run: python -m data_agent.platform_contracts validate
+
+      - name: Validate legacy crosswalk and golden slice
+        run: python -m data_agent.platform_crosswalk validate
+
+      - name: Validate platform gateway boundary
+        run: python -m data_agent.platform_gateway validate
+
+      - name: Validate DolphinScheduler adapter boundary
+        run: python -m data_agent.dolphinscheduler_adapter validate
+
+      - name: Validate DolphinScheduler worker deployment boundary
+        run: python -m data_agent.dolphinscheduler_worker_deployment validate
+
+      - name: Verify platform control ledger on PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gis_agent_test
+        run: python -m pytest data_agent/test_platform_control_ledger_postgres.py -q
+
+      - name: Verify platform gateway role on PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gis_agent_test
+        run: python -m pytest data_agent/test_platform_gateway_postgres.py -q
+
+      - name: Run required platform tests
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gis_agent_test
           CHAINLIT_AUTH_SECRET: ci-test-secret-key-not-for-production
         run: |
-          python -m pytest data_agent/ \
-            --ignore=data_agent/test_knowledge_agent.py \
-            --junitxml=test-results/junit.xml \
+          python -m pytest \
+            data_agent/test_adk_compat.py \
+            data_agent/test_arcpy_mcp_configuration.py \
+            data_agent/test_auth.py \
+            data_agent/test_dolphinscheduler_adapter.py \
+            data_agent/test_dolphinscheduler_command_consumer.py \
+            data_agent/test_dolphinscheduler_command_worker.py \
+            data_agent/test_dolphinscheduler_worker_activation.py \
+            data_agent/test_dolphinscheduler_worker_deployment.py \
+            data_agent/test_frontend_api.py \
+            data_agent/test_mcp_hub.py \
+            data_agent/test_migration_authority_deployment.py \
+            data_agent/test_migration_runner.py \
+            data_agent/test_platform_authorization.py \
+            data_agent/test_platform_contracts.py \
+            data_agent/test_platform_crosswalk.py \
+            data_agent/test_platform_gateway.py \
+            data_agent/test_platform_truth.py \
+            data_agent/test_route_registration.py \
+            data_agent/test_s3_obs.py \
+            data_agent/test_staging_candidate_evidence.py \
+            data_agent/test_staging_deployment_bundle.py \
+            data_agent/test_staging_live_evidence.py \
+            data_agent/test_staging_provenance_evidence.py \
+            data_agent/test_staging_registry_evidence.py \
+            data_agent/test_staging_release_evidence.py \
+            --junitxml=test-results/platform-required.xml \
             -q
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results
+          name: platform-test-results
           path: test-results/
 
   frontend:
@@ -153,7 +212,7 @@ jobs:
           path: data_agent/eval_results/
 
   route-eval:
-    name: Route Evaluation (PR)
+    name: Route Evaluation Contract (PR)
     runs-on: ubuntu-latest
     needs: test
     if: github.event_name == 'pull_request'
@@ -179,33 +238,18 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run route evaluation (general pipeline only)
-        env:
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-          GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
-          GOOGLE_CLOUD_LOCATION: us-central1
+      - name: Validate route evaluation contracts without model credentials
         run: |
-          python data_agent/run_evaluation.py general
+          python -m pytest \
+            data_agent/test_adk_compat.py \
+            data_agent/test_evaluation.py \
+            --junitxml=route-eval-results/junit.xml \
+            -q
 
-      - name: Check route evaluation result
-        if: always()
-        run: |
-          python -c "
-          import json, sys
-          with open('data_agent/eval_results/eval_summary.json') as f:
-              s = json.load(f)
-          verdict = s.get('pipeline_verdicts', {}).get('general', False)
-          rate = s['pipelines'].get('general', {}).get('pass_rate', 0)
-          thr = s.get('thresholds', {}).get('general', 0.7)
-          print(f'General pipeline: {rate:.0%} (threshold {thr:.0%}) -> {\"PASS\" if verdict else \"FAIL\"}')
-          if not verdict:
-              print('ROUTE EVALUATION FAILED')
-              sys.exit(1)
-          "
-
-      - name: Upload route eval results
+      - name: Upload route evaluation contract results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: route-eval-results
-          path: data_agent/eval_results/
+          name: route-eval-contract-results
+          path: route-eval-results/
+          if-no-files-found: error

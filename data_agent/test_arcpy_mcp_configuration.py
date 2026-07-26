@@ -26,7 +26,7 @@ def _clear_arcpy_environment(monkeypatch):
 
 def _config_only_hub():
     hub = McpHubManager()
-    hub._ensure_table = MagicMock(return_value=False)
+    hub._table_available = MagicMock(return_value=False)
     hub._load_from_db = MagicMock(return_value=[])
     hub._load_yaml = MagicMock(return_value=[])
     return hub
@@ -96,7 +96,7 @@ def test_explicit_false_disables_stale_db_arcpy(monkeypatch, value):
         source="db",
     )
     hub = McpHubManager()
-    hub._ensure_table = MagicMock(return_value=True)
+    hub._table_available = MagicMock(return_value=True)
     hub._load_from_db = MagicMock(return_value=[stale])
     hub._load_yaml = MagicMock(return_value=[])
     hub._update_enabled_in_db = MagicMock()
@@ -123,7 +123,7 @@ def test_explicit_false_disables_stale_yaml_arcpy_without_persisting(monkeypatch
         source="yaml",
     )
     hub = McpHubManager()
-    hub._ensure_table = MagicMock(return_value=False)
+    hub._table_available = MagicMock(return_value=False)
     hub._load_from_db = MagicMock(return_value=[])
     hub._load_yaml = MagicMock(return_value=[stale])
     hub._update_enabled_in_db = MagicMock()
@@ -149,7 +149,7 @@ def test_unset_enabled_does_not_override_stale_persisted_arcpy(monkeypatch):
         source="db",
     )
     hub = McpHubManager()
-    hub._ensure_table = MagicMock(return_value=True)
+    hub._table_available = MagicMock(return_value=True)
     hub._load_from_db = MagicMock(return_value=[stale])
     hub._load_yaml = MagicMock(return_value=[])
     hub._update_enabled_in_db = MagicMock()
@@ -174,7 +174,7 @@ def test_invalid_enablement_suppresses_stale_config_with_stable_error(
         source="db",
     )
     hub = McpHubManager()
-    hub._ensure_table = MagicMock(return_value=True)
+    hub._table_available = MagicMock(return_value=True)
     hub._load_from_db = MagicMock(return_value=[stale])
     hub._load_yaml = MagicMock(return_value=[])
     hub._update_enabled_in_db = MagicMock()
@@ -202,7 +202,7 @@ def test_invalid_enablement_suppresses_stale_yaml_without_persisting(monkeypatch
         source="yaml",
     )
     hub = McpHubManager()
-    hub._ensure_table = MagicMock(return_value=False)
+    hub._table_available = MagicMock(return_value=False)
     hub._load_from_db = MagicMock(return_value=[])
     hub._load_yaml = MagicMock(return_value=[stale])
     hub._update_enabled_in_db = MagicMock()
@@ -261,7 +261,7 @@ def test_environment_arcpy_overrides_same_name_db_and_yaml(monkeypatch):
         name="arcpy-remote", url="https://yaml.example/mcp", source="yaml"
     )
     hub = McpHubManager()
-    hub._ensure_table = MagicMock(return_value=True)
+    hub._table_available = MagicMock(return_value=True)
     hub._load_from_db = MagicMock(return_value=[db_config])
     hub._load_yaml = MagicMock(return_value=[yaml_config])
 
@@ -289,7 +289,7 @@ def test_persisted_db_and_yaml_configs_cannot_claim_managed_provenance(monkeypat
         source="yaml",
     )
     hub = McpHubManager()
-    hub._ensure_table = MagicMock(return_value=True)
+    hub._table_available = MagicMock(return_value=True)
     hub._load_from_db = MagicMock(return_value=[db_config])
     hub._load_yaml = MagicMock(return_value=[yaml_config])
 
@@ -403,7 +403,7 @@ def test_remote_disables_only_legacy_windows_stdio_configuration(monkeypatch):
         source="db",
     )
     hub = McpHubManager()
-    hub._ensure_table = MagicMock(return_value=True)
+    hub._table_available = MagicMock(return_value=True)
     hub._load_from_db = MagicMock(return_value=[legacy, other_stdio])
     hub._load_yaml = MagicMock(return_value=[])
     hub._update_enabled_in_db = MagicMock()
@@ -444,7 +444,7 @@ def test_non_windows_or_non_stdio_legacy_row_is_not_forced_disabled(monkeypatch)
         ),
     ]
     hub = McpHubManager()
-    hub._ensure_table = MagicMock(return_value=True)
+    hub._table_available = MagicMock(return_value=True)
     hub._load_from_db = MagicMock(return_value=configs)
     hub._load_yaml = MagicMock(return_value=[])
     hub._update_enabled_in_db = MagicMock()

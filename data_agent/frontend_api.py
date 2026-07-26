@@ -977,7 +977,8 @@ async def _api_admin_users_list(request: Request):
         from .database_tools import T_APP_USERS
         with engine.connect() as conn:
             rows = conn.execute(text(f"""
-                SELECT id, username, display_name, role, auth_provider, created_at
+                SELECT id, username, display_name, role, tenant_id,
+                       auth_provider, created_at
                 FROM {T_APP_USERS}
                 ORDER BY created_at DESC
             """)).fetchall()
@@ -988,8 +989,9 @@ async def _api_admin_users_list(request: Request):
                 "username": r[1],
                 "display_name": r[2] or "",
                 "role": r[3] or "analyst",
-                "auth_provider": r[4] or "password",
-                "created_at": r[5].isoformat() if r[5] else None,
+                "tenant_id": r[4],
+                "auth_provider": r[5] or "password",
+                "created_at": r[6].isoformat() if r[6] else None,
             })
         return JSONResponse({"users": users, "count": len(users)})
     except Exception as e:
@@ -1010,7 +1012,7 @@ async def _api_admin_update_role(request: Request):
         return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
 
     new_role = body.get("role", "")
-    if new_role not in ("admin", "analyst", "viewer"):
+    if new_role not in ("admin", "analyst", "viewer", "platform_operator"):
         return JSONResponse({"error": f"Invalid role: {new_role}"}, status_code=400)
 
     engine = get_engine()
@@ -1030,6 +1032,52 @@ async def _api_admin_update_role(request: Request):
     except Exception as e:
         logger.warning("Role update failed: %s", e)
         return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def _api_admin_update_tenant(request: Request):
+    """PUT /api/admin/users/{username}/tenant - bind or revoke tenant access."""
+    _, _, _, err = _require_admin(request)
+    if err:
+        return err
+
+    target_username = request.path_params.get("username", "")
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    tenant_id = body.get("tenant_id")
+    if tenant_id is not None and not re.fullmatch(
+        r"[a-z0-9][a-z0-9._-]{0,63}", str(tenant_id)
+    ):
+        return JSONResponse({"error": "Invalid tenant_id"}, status_code=400)
+
+    engine = get_engine()
+    if not engine:
+        return JSONResponse({"error": "Database not configured"}, status_code=503)
+
+    try:
+        from .database_tools import T_APP_USERS
+        with engine.begin() as conn:
+            result = conn.execute(
+                text(f"UPDATE {T_APP_USERS} SET tenant_id = :tenant_id "
+                     "WHERE username = :username"),
+                {"tenant_id": tenant_id, "username": target_username},
+            )
+            if result.rowcount == 0:
+                return JSONResponse({"error": "User not found"}, status_code=404)
+        return JSONResponse(
+            {
+                "status": "ok",
+                "username": target_username,
+                "tenant_id": tenant_id,
+            }
+        )
+    except Exception as exc:
+        logger.warning("Tenant update failed: %s", exc)
+        return JSONResponse({"error": "Tenant update failed"}, status_code=500)
 
 
 async def _api_admin_delete_user(request: Request):
@@ -4251,6 +4299,7 @@ def get_frontend_api_routes():
     from .api.intake_routes import get_intake_routes
     from .api.classification_routes import get_classification_routes
     from .api.standards_routes import get_standards_routes
+    from .api.platform_gateway_routes import get_platform_gateway_routes
 
     return [
         Route("/api/catalog", endpoint=_api_catalog_list, methods=["GET"]),
@@ -4274,6 +4323,7 @@ def get_frontend_api_routes():
         Route("/api/user/token-usage", endpoint=_api_user_token_usage, methods=["GET"]),
         Route("/api/admin/users", endpoint=_api_admin_users_list, methods=["GET"]),
         Route("/api/admin/users/{username}/role", endpoint=_api_admin_update_role, methods=["PUT"]),
+        Route("/api/admin/users/{username}/tenant", endpoint=_api_admin_update_tenant, methods=["PUT"]),
         Route("/api/admin/users/{username}", endpoint=_api_admin_delete_user, methods=["DELETE"]),
         Route("/api/admin/metrics/summary", endpoint=_api_admin_metrics_summary, methods=["GET"]),
         Route("/api/annotations", endpoint=_api_annotations_list, methods=["GET"]),
@@ -4297,6 +4347,7 @@ def get_frontend_api_routes():
         # Workflows (v5.4)
         # Workflows (S-4: delegated to api/workflow_routes.py)
         *get_workflow_routes(),
+        *get_platform_gateway_routes(),
         # Map/Data pending updates (v7.0 — bypass Chainlit metadata limitation)
         Route("/api/map/pending", endpoint=_api_map_pending, methods=["GET"]),
         Route("/api/chart/pending", endpoint=_api_chart_pending, methods=["GET"]),

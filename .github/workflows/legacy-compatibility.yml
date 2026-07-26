@@ -1,0 +1,72 @@
+name: Diagnostic - Legacy Compatibility
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  inventory:
+    name: Legacy Compatibility Inventory
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: gis_agent_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libspatialindex-dev \
+            postgresql-client \
+            gdal-bin \
+            libgdal-dev
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run legacy compatibility inventory
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gis_agent_test
+          CHAINLIT_AUTH_SECRET: diagnostic-test-secret-not-for-production
+        run: |
+          python -m pytest data_agent/ \
+            --ignore=data_agent/test_knowledge_agent.py \
+            --junitxml=legacy-test-results/junit.xml \
+            -q --tb=short
+
+      - name: Upload legacy compatibility results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: legacy-compatibility-results
+          path: legacy-test-results/
+          if-no-files-found: error
+          retention-days: 30

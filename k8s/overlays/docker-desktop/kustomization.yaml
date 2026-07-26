@@ -23,21 +23,14 @@ resources:
 # Override images to match the local-built `:dev` tags. Pull policy on the base
 # Deployments is already IfNotPresent so the kubelet won't reach for a registry.
 #
-# Also swap two upstream images that are unreachable from mainland China:
+# Also swap an upstream image whose old tag is no longer available:
 #   - ghcr.io/maplibre/martin:v0.15 → :v0.18.0 (the v0.15 tag is gone from ghcr)
-#   - bitnami/kubectl:1.30          → alpine/k8s:1.30.4 (bitnami images are
-#     blocked by docker.m.daocloud.io as of 2025/04. rancher/kubectl is
-#     distroless without sh, so the init containers' `until ... sleep` loops
-#     can't run there. alpine/k8s ships kubectl + a busybox shell.)
 images:
   - name: gis-data-agent
     newTag: dev
   - name: ghcr.io/maplibre/martin
     newName: ghcr.io/maplibre/martin
     newTag: v0.18.0
-  - name: bitnami/kubectl
-    newName: alpine/k8s
-    newTag: 1.30.4
 
 # Patch the base Secret in-place. Strategic merge with stringData is the
 # cleanest path — kustomize handles base64 encoding for us. Don't ship these
@@ -77,13 +70,6 @@ patches:
     target:
       kind: ConfigMap
       name: postgres-init
-
-  # Fix another base manifest bug: app Deployment disables SA token automount
-  # but the wait-for-migrate init container needs it for `kubectl wait`.
-  - path: app-sa-token-patch.yaml
-    target:
-      kind: Deployment
-      name: gis-agent-app
 
   # Mount the minimal Paper9 demo bundle copied into Docker Desktop kind nodes.
   - path: paper9-hostpath-patch.yaml

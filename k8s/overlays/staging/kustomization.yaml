@@ -1,0 +1,83 @@
+# Public staging template. Render it, then materialize release-specific values
+# with `python -m data_agent.staging_deployment_bundle build` before applying.
+# Environment Secrets must already exist in the target namespace and are never
+# included in the rendered release bundle.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: gis-agent
+
+resources:
+  - ../../base
+
+patches:
+  - target:
+      kind: ConfigMap
+      name: gis-agent-config
+    patch: |-
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: gis-agent-config
+      data:
+        GDA_DEPLOYMENT_PROFILE: "staging"
+        GDA_CONFIG_STRICT: "true"
+
+  # Secrets are provisioned by the protected staging environment. Keeping
+  # their placeholder values in a rendered manifest would be unsafe.
+  - target:
+      kind: Secret
+      name: gis-agent-secret
+    patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: gis-agent-secret
+
+  - target:
+      kind: Secret
+      name: minio-root
+    patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: minio-root
+
+  # v1 live observation reads one app Pod. Do not allow HPA scale-out until
+  # per-Pod config/runtime/health collection exists.
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: gis-agent-app-hpa
+    patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 1
+      - op: replace
+        path: /spec/maxReplicas
+        value: 1
+
+  # Exposure is owned by protected environment infrastructure, not by the
+  # public template's local hostname.
+  - target:
+      kind: Ingress
+      name: gis-agent-ingress
+    patch: |-
+      $patch: delete
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: gis-agent-ingress
+
+  # A real staging model endpoint comes from configuration. The local host
+  # ExternalName service is not valid outside laptop clusters.
+  - target:
+      kind: Service
+      name: ollama
+    patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: ollama

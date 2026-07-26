@@ -1,0 +1,377 @@
+{
+  "schema": "gda.land_use_parcel_golden.v1",
+  "scenario_id": "ar0-land-use-parcel-publish",
+  "synthetic": true,
+  "not_for_production": true,
+  "standard_evidence": {
+    "path": "data_agent/standards/compiled_docx/02_统一调查监测.yaml",
+    "marker": "table_code: DLTB"
+  },
+  "required_fields": [
+    "BSM",
+    "YSDM",
+    "TBBH",
+    "DLBM",
+    "DLMC",
+    "TBMJ"
+  ],
+  "input_dataset": {
+    "type": "FeatureCollection",
+    "name": "land_use_parcels_raw",
+    "crs": "EPSG:4490",
+    "features": [
+      {
+        "type": "Feature",
+        "id": "raw-003",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [[[106.02, 29.0], [106.03, 29.0], [106.03, 29.01], [106.02, 29.01], [106.02, 29.0]]]
+        },
+        "properties": {
+          "BSM": "500227000000000003",
+          "YSDM": "2001010100",
+          "TBBH": "DLTB-003",
+          "DLBM": "0301",
+          "DLMC": "forest_land",
+          "TBMJ": 6000.5,
+          "source_revision": "survey-2026-07-24"
+        }
+      },
+      {
+        "type": "Feature",
+        "id": "raw-001",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [[[106.0, 29.0], [106.01, 29.0], [106.01, 29.01], [106.0, 29.01], [106.0, 29.0]]]
+        },
+        "properties": {
+          "BSM": "500227000000000001",
+          "YSDM": "2001010100",
+          "TBBH": "DLTB-001",
+          "DLBM": "0101",
+          "DLMC": "cultivated_land",
+          "TBMJ": 6000.25,
+          "source_revision": "survey-2026-07-24"
+        }
+      },
+      {
+        "type": "Feature",
+        "id": "raw-002",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [[[106.01, 29.0], [106.02, 29.0], [106.02, 29.01], [106.01, 29.01], [106.01, 29.0]]]
+        },
+        "properties": {
+          "BSM": "500227000000000002",
+          "YSDM": "2001010100",
+          "TBBH": "DLTB-002",
+          "DLBM": "0201",
+          "DLMC": "garden_land",
+          "TBMJ": 5499.75,
+          "source_revision": "survey-2026-07-24"
+        }
+      }
+    ]
+  },
+  "expected_output_dataset": {
+    "type": "FeatureCollection",
+    "name": "land_use_parcels_published",
+    "crs": "EPSG:4490",
+    "features": [
+      {
+        "type": "Feature",
+        "id": "parcel-001",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [[[106.0, 29.0], [106.01, 29.0], [106.01, 29.01], [106.0, 29.01], [106.0, 29.0]]]
+        },
+        "properties": {
+          "BSM": "500227000000000001",
+          "YSDM": "2001010100",
+          "TBBH": "DLTB-001",
+          "DLBM": "0101",
+          "DLMC": "cultivated_land",
+          "TBMJ": 6000.25
+        }
+      },
+      {
+        "type": "Feature",
+        "id": "parcel-002",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [[[106.01, 29.0], [106.02, 29.0], [106.02, 29.01], [106.01, 29.01], [106.01, 29.0]]]
+        },
+        "properties": {
+          "BSM": "500227000000000002",
+          "YSDM": "2001010100",
+          "TBBH": "DLTB-002",
+          "DLBM": "0201",
+          "DLMC": "garden_land",
+          "TBMJ": 5499.75
+        }
+      },
+      {
+        "type": "Feature",
+        "id": "parcel-003",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [[[106.02, 29.0], [106.03, 29.0], [106.03, 29.01], [106.02, 29.01], [106.02, 29.0]]]
+        },
+        "properties": {
+          "BSM": "500227000000000003",
+          "YSDM": "2001010100",
+          "TBBH": "DLTB-003",
+          "DLBM": "0301",
+          "DLMC": "forest_land",
+          "TBMJ": 6000.5
+        }
+      }
+    ]
+  },
+  "quality_expectations": {
+    "feature_count": 3,
+    "geometry_structure_errors": 0,
+    "required_field_missing_count": 0,
+    "duplicate_bsm_count": 0,
+    "total_area": "17500.50"
+  },
+  "contracts": {
+    "resources": [
+      {
+        "tenant_id": "ar0-golden",
+        "resource_urn": "gda://ar0-golden/definition/land-use-parcel-publish",
+        "resource_kind": "definition",
+        "authority_system": "gda",
+        "authority_locator": "definition/land-use-parcel-publish",
+        "owner_ref": "team:data-platform",
+        "governance_ref": {"fixture_only": true},
+        "technical_refs": []
+      },
+      {
+        "tenant_id": "ar0-golden",
+        "resource_urn": "gda://ar0-golden/dataset/land-use-parcels-raw",
+        "resource_kind": "dataset",
+        "authority_system": "fixture",
+        "authority_locator": "land_use_parcel_golden.json#input_dataset",
+        "owner_ref": "team:data-platform",
+        "governance_ref": {"fixture_only": true},
+        "technical_refs": []
+      },
+      {
+        "tenant_id": "ar0-golden",
+        "resource_urn": "gda://ar0-golden/dataset/land-use-parcels-published",
+        "resource_kind": "dataset",
+        "authority_system": "fixture",
+        "authority_locator": "land_use_parcel_golden.json#expected_output_dataset",
+        "owner_ref": "team:data-platform",
+        "governance_ref": {"fixture_only": true},
+        "technical_refs": []
+      }
+    ],
+    "subject_context": {
+      "tenant_id": "ar0-golden",
+      "subject_id": "golden-fixture-runner",
+      "subject_type": "workload",
+      "roles": ["dataops", "steward"],
+      "purpose": "validate the synthetic land-use parcel platform slice",
+      "trace_id": "ar0-golden-trace"
+    },
+    "definition_resource_version": {
+      "tenant_id": "ar0-golden",
+      "resource_urn": "gda://ar0-golden/definition/land-use-parcel-publish",
+      "resource_version_id": "00000000-0000-4000-8000-000000000010",
+      "version_key": "definition-1",
+      "predecessor_version_id": null,
+      "content_sha256": "3c54b56931edd088705a3a6ef447fb92e14252b0af1ada4a706d5d5f562efa1a",
+      "authority_version_ref": {"fixture_section": "contracts.definition"},
+      "created_by": "workload:golden-fixture-runner",
+      "created_at": "2026-07-24T12:00:00Z"
+    },
+    "source_resource_version": {
+      "tenant_id": "ar0-golden",
+      "resource_urn": "gda://ar0-golden/dataset/land-use-parcels-raw",
+      "resource_version_id": "00000000-0000-4000-8000-000000000030",
+      "version_key": "survey-2026-07-24",
+      "predecessor_version_id": null,
+      "content_sha256": "b37cf0a49954d2421ac8d48122952c490e3930dc3a389b0329246cbe95669aa4",
+      "authority_version_ref": {"fixture_section": "input_dataset"},
+      "created_by": "workload:golden-fixture-runner",
+      "created_at": "2026-07-24T12:00:00Z"
+    },
+    "target_resource_version": {
+      "tenant_id": "ar0-golden",
+      "resource_urn": "gda://ar0-golden/dataset/land-use-parcels-published",
+      "resource_version_id": "00000000-0000-4000-8000-000000000040",
+      "version_key": "publish-2026-07-24",
+      "predecessor_version_id": null,
+      "content_sha256": "7c6abe2639707fa8c78265024d500784e4a40ab9ba8c9206558eaceb6fb5ead8",
+      "authority_version_ref": {"fixture_section": "expected_output_dataset"},
+      "created_by": "workload:golden-fixture-runner",
+      "created_at": "2026-07-24T12:05:00Z"
+    },
+    "definition": {
+      "tenant_id": "ar0-golden",
+      "definition_urn": "gda://ar0-golden/definition/land-use-parcel-publish",
+      "definition_version_id": "00000000-0000-4000-8000-000000000010",
+      "orchestration_class": "dataops",
+      "capability_id": "land_use.publish",
+      "portability_class": "portable",
+      "definition_document": {
+        "tasks": ["ingest", "validate_dltb", "normalize", "publish"],
+        "standard_code": "DLTB",
+        "fixture_only": true
+      },
+      "input_contract": {
+        "semantic_type": "gis.land_use.parcel_set.raw",
+        "crs": "EPSG:4490"
+      },
+      "output_contract": {
+        "semantic_type": "gis.land_use.parcel_set.published",
+        "quality_required": true
+      },
+      "definition_sha256": "3c54b56931edd088705a3a6ef447fb92e14252b0af1ada4a706d5d5f562efa1a"
+    },
+    "run": {
+      "tenant_id": "ar0-golden",
+      "run_id": "00000000-0000-4000-8000-000000000020",
+      "definition_version_id": "00000000-0000-4000-8000-000000000010",
+      "orchestration_class": "dataops",
+      "subject_context": {
+        "tenant_id": "ar0-golden",
+        "subject_id": "golden-fixture-runner",
+        "subject_type": "workload",
+        "roles": ["dataops", "steward"],
+        "purpose": "validate the synthetic land-use parcel platform slice",
+        "trace_id": "ar0-golden-trace"
+      },
+      "input_bindings": [
+        {
+          "binding_name": "source",
+          "resource_version_id": "00000000-0000-4000-8000-000000000030",
+          "semantic_type": "gis.land_use.parcel_set.raw"
+        }
+      ],
+      "idempotency_key": "golden:land-use-parcel-publish:v1",
+      "config_fingerprint": null,
+      "status": "accepted",
+      "state_version": 0,
+      "submitted_at": "2026-07-24T12:01:00Z"
+    },
+    "attempt_observation": {
+      "tenant_id": "ar0-golden",
+      "observation_id": "00000000-0000-4000-8000-000000000050",
+      "run_id": "00000000-0000-4000-8000-000000000020",
+      "attempt_no": 1,
+      "framework_kind": "legacy",
+      "external_namespace": "ar0-golden-fixture",
+      "external_run_id": "legacy-workflow-run-42",
+      "external_attempt_id": "fixture-attempt-1",
+      "observed_state": "completed_fixture_only",
+      "observation_sha256": "8c20e4b12a63d84c13c7810cde6be9f92c9416202d45e336d66c305956483e2f",
+      "evidence": {
+        "fixture_only": true,
+        "legacy_run_id": 42,
+        "provider_status": "completed",
+        "platform_verdict_effect": "none"
+      },
+      "observed_at": "2026-07-24T12:04:00Z"
+    },
+    "artifact": {
+      "tenant_id": "ar0-golden",
+      "artifact_id": "00000000-0000-4000-8000-000000000060",
+      "artifact_key": "published-land-use-parcels",
+      "artifact_role": "output",
+      "storage_uri": "s3://gda-golden/land-use/parcels/published.json",
+      "media_type": "application/geo+json",
+      "content_sha256": "7c6abe2639707fa8c78265024d500784e4a40ab9ba8c9206558eaceb6fb5ead8",
+      "size_bytes": 956,
+      "run_id": "00000000-0000-4000-8000-000000000020",
+      "resource_version_id": "00000000-0000-4000-8000-000000000040",
+      "manifest": {"fixture_only": true, "feature_count": 3},
+      "created_by": "workload:golden-fixture-runner",
+      "created_at": "2026-07-24T12:05:00Z"
+    },
+    "quality_evidence_artifact": {
+      "tenant_id": "ar0-golden",
+      "artifact_id": "00000000-0000-4000-8000-000000000080",
+      "artifact_key": "published-land-use-parcels-quality-evidence",
+      "artifact_role": "evidence",
+      "storage_uri": "s3://gda-golden/land-use/parcels/quality-evidence.json",
+      "media_type": "application/json",
+      "content_sha256": "5146295cbc14766e1044fd0857db8ad26beb04cc78bfbb690dc65bab8a28c8fc",
+      "size_bytes": 175,
+      "run_id": "00000000-0000-4000-8000-000000000020",
+      "resource_version_id": "00000000-0000-4000-8000-000000000040",
+      "manifest": {
+        "fixture_only": true,
+        "quality_expectations": {
+          "feature_count": 3,
+          "geometry_structure_errors": 0,
+          "required_field_missing_count": 0,
+          "duplicate_bsm_count": 0,
+          "total_area": "17500.50"
+        }
+      },
+      "created_by": "workload:golden-quality-evaluator",
+      "created_at": "2026-07-24T12:06:00Z"
+    },
+    "quality_result": {
+      "tenant_id": "ar0-golden",
+      "quality_result_id": "00000000-0000-4000-8000-000000000090",
+      "run_id": "00000000-0000-4000-8000-000000000020",
+      "resource_version_id": "00000000-0000-4000-8000-000000000040",
+      "rule_version_ref": "gda://ar0-golden/quality-rule/dltb-publish-v1",
+      "verdict": "passed",
+      "metrics": {
+        "feature_count": 3,
+        "geometry_structure_errors": 0,
+        "required_field_missing_count": 0,
+        "duplicate_bsm_count": 0,
+        "total_area": "17500.50"
+      },
+      "evidence_artifact_id": "00000000-0000-4000-8000-000000000080",
+      "result_sha256": "1b09d65b0c54f7ec9f139d58157f84bf889ac28aac08e6d0d84469152983cb5a",
+      "evaluated_by": "workload:golden-quality-evaluator",
+      "evaluated_at": "2026-07-24T12:06:00Z"
+    },
+    "lineage_event": {
+      "tenant_id": "ar0-golden",
+      "lineage_event_id": "00000000-0000-4000-8000-000000000070",
+      "event_type": "derive",
+      "source_resource_version_id": "00000000-0000-4000-8000-000000000030",
+      "target_resource_version_id": "00000000-0000-4000-8000-000000000040",
+      "producer": "gda-ar0-golden-validator",
+      "event_sha256": "466938c463c412af6884e40853a771c00def5e0e6a4820e43414d307319e6877",
+      "run_id": "00000000-0000-4000-8000-000000000020",
+      "definition_version_id": "00000000-0000-4000-8000-000000000010",
+      "artifact_id": "00000000-0000-4000-8000-000000000060",
+      "facets": {"fixture_only": true, "standard_code": "DLTB"},
+      "occurred_at": "2026-07-24T12:05:00Z"
+    },
+    "run_success_evidence": {
+      "tenant_id": "ar0-golden",
+      "run_id": "00000000-0000-4000-8000-000000000020",
+      "attempt_observation_id": "00000000-0000-4000-8000-000000000050",
+      "output_artifact_id": "00000000-0000-4000-8000-000000000060",
+      "quality_result_id": "00000000-0000-4000-8000-000000000090",
+      "lineage_event_id": "00000000-0000-4000-8000-000000000070",
+      "evidence_sha256": "17d2bbc6852d58cff99987df9ea672c399ef464f85d0d08b4dc8f84cab265da6"
+    }
+  },
+  "expected_run_transitions": ["dispatching", "running", "succeeded"],
+  "acceptance": {
+    "owner": "team:data-platform",
+    "slo": {
+      "max_runtime_seconds": 900,
+      "required_quality_pass_rate": 1.0
+    },
+    "rollback_point": "00000000-0000-4000-8000-000000000030",
+    "consumers": ["postgis-serving-projection", "stac-discovery-projection"],
+    "terminal_verdict_requires": [
+      "artifact_hash_match",
+      "dltb_required_fields",
+      "geometry_structure",
+      "lineage_event"
+    ]
+  }
+}

@@ -32,8 +32,9 @@ from .utils import _configure_fonts
 
 logger = logging.getLogger(__name__)
 
-# Dedicated GenAI client for causal reasoning (outside ADK agents)
-_client = genai_client.Client()
+# Dedicated GenAI client for causal reasoning (outside ADK agents).
+# Defer credential validation until a causal LLM tool is actually invoked.
+_client = None
 
 # Model aliases
 _MODEL_PRO = "gemini-2.5-pro"
@@ -55,12 +56,19 @@ _NODE_COLORS = {
 #  Internal helpers — LLM interaction
 # ====================================================================
 
+def _ensure_genai_client() -> genai_client.Client:
+    global _client
+    if _client is None:
+        _client = genai_client.Client()
+    return _client
+
+
 def _call_gemini(model: str, prompt: str, timeout: int = 90_000) -> tuple[str, dict]:
     """Call Gemini and return (text, usage_dict).
 
     Logs token usage for observability.
     """
-    response = _client.models.generate_content(
+    response = _ensure_genai_client().models.generate_content(
         model=model,
         contents=prompt,
         config=types.GenerateContentConfig(

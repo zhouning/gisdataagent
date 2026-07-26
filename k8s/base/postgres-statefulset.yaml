@@ -94,7 +94,7 @@ spec:
 ---
 # Bootstrap script — runs ONCE on a fresh PGDATA (postgres image convention:
 # anything in /docker-entrypoint-initdb.d is executed on first init only,
-# never on restart). After that the app's own migration_runner takes over.
+# never on restart). After that the dedicated migration Job takes over.
 #
 # We use a .sh wrapper rather than a .sql so AGENT_USER_PASSWORD can be read
 # from the env without splicing through psql here-doc quoting.

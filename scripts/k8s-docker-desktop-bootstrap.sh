@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # =============================================================================
 # k8s-docker-desktop-bootstrap.sh — bring up GIS Data Agent on Docker Desktop's
-# bundled kind cluster (context: docker-desktop, nodes: desktop-control-plane /
-# desktop-worker).
+# bundled kind cluster (context: docker-desktop). Node names are discovered
+# from the active cluster so the script also supports custom worker counts.
 #
 # Usage:
 #   ./scripts/k8s-docker-desktop-bootstrap.sh up        # build images + load + deploy
@@ -31,7 +31,8 @@ NAMESPACE="${NAMESPACE:-gis-agent}"
 OVERLAY="${OVERLAY:-k8s/overlays/docker-desktop}"
 IMAGE_TAG="${IMAGE_TAG:-dev}"
 PIP_INDEX_URL="${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}"
-NODES=(desktop-control-plane desktop-worker)
+PAPER9_DEMO_SOURCE="${PAPER9_DEMO_SOURCE:-}"
+NODES=()
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Color helpers — only when stdout is a tty.
@@ -53,6 +54,19 @@ require_cmd() {
 # ----------------------------------------------------------------------------
 # Cluster precheck — verify Docker Desktop's kind cluster is up
 # ----------------------------------------------------------------------------
+discover_nodes() {
+    local node_names node
+    node_names=$(kubectl get nodes \
+        -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}') || \
+        fail "could not list nodes in the Docker Desktop cluster"
+
+    NODES=()
+    while IFS= read -r node; do
+        [ -n "$node" ] && NODES+=("$node")
+    done <<< "$node_names"
+    [ "${#NODES[@]}" -gt 0 ] || fail "Docker Desktop cluster has no nodes"
+}
+
 cluster_check() {
     log "checking Docker Desktop kind cluster"
     local context
@@ -60,12 +74,70 @@ cluster_check() {
     if [ "$context" != "docker-desktop" ]; then
         fail "current kubectl context is '$context', expected 'docker-desktop'.\n       Switch with: kubectl config use-context docker-desktop"
     fi
+    discover_nodes
     for node in "${NODES[@]}"; do
         if ! docker ps --format '{{.Names}}' | grep -qx "$node"; then
             fail "kind node '$node' not running. In Docker Desktop:\n       Settings → Kubernetes → enable kind cluster type → Apply & restart"
         fi
     done
     ok "cluster context=docker-desktop, nodes=${NODES[*]}"
+}
+
+# ----------------------------------------------------------------------------
+# Optional Paper9 demo data — stage the minimum runtime bundle on every node
+# ----------------------------------------------------------------------------
+resolve_paper9_demo_source() {
+    [ -n "$PAPER9_DEMO_SOURCE" ] && return 0
+
+    local candidate git_common_dir
+    candidate="$(cd "$ROOT/.." 2>/dev/null && pwd)/arcgis-farmland-mpc"
+    if [ -d "$candidate" ]; then
+        PAPER9_DEMO_SOURCE="$candidate"
+        return 0
+    fi
+
+    git_common_dir=$(git -C "$ROOT" rev-parse --path-format=absolute \
+        --git-common-dir 2>/dev/null || true)
+    if [ -n "$git_common_dir" ]; then
+        candidate="$(dirname "$(dirname "$git_common_dir")")/arcgis-farmland-mpc"
+        [ -d "$candidate" ] && PAPER9_DEMO_SOURCE="$candidate"
+    fi
+}
+
+stage_paper9_demo() {
+    resolve_paper9_demo_source
+    local relative parent node
+    local paths=(
+        "farmland_mpc"
+        "runs/restoration/buchanan_va/prepared_watershed"
+        "paper/checkpoints/restoration/profiles/buchanan_va/watershed/ensemble_seed0"
+    )
+
+    for node in "${NODES[@]}"; do
+        docker exec "$node" mkdir -p /paper9-demo
+    done
+
+    if [ -z "$PAPER9_DEMO_SOURCE" ] || [ ! -d "$PAPER9_DEMO_SOURCE" ]; then
+        warn "Paper9 source not found; app will start but WorldModel v2.1 will be unavailable"
+        warn "  Set PAPER9_DEMO_SOURCE=/path/to/arcgis-farmland-mpc and rerun deploy."
+        return 0
+    fi
+
+    for relative in "${paths[@]}"; do
+        if [ ! -e "$PAPER9_DEMO_SOURCE/$relative" ]; then
+            warn "Paper9 demo path missing: $PAPER9_DEMO_SOURCE/$relative"
+            warn "  WorldModel v2.1 defaults may be unavailable."
+            continue
+        fi
+        parent=$(dirname "$relative")
+        for node in "${NODES[@]}"; do
+            log "staging Paper9 $relative on $node"
+            docker exec "$node" mkdir -p "/paper9-demo/$parent"
+            docker cp "$PAPER9_DEMO_SOURCE/$relative" \
+                "$node:/paper9-demo/$parent/"
+        done
+    done
+    ok "Paper9 minimum demo bundle staged from $PAPER9_DEMO_SOURCE"
 }
 
 # ----------------------------------------------------------------------------
@@ -121,10 +193,12 @@ build_image() {
     local context="$1"
     local image="$2"
     log "building ${image}:${IMAGE_TAG} from ${context}"
-    docker build \
-        --build-arg "PIP_INDEX_URL=${PIP_INDEX_URL}" \
-        -t "${image}:${IMAGE_TAG}" \
-        "$context"
+    if ! docker build \
+            --build-arg "PIP_INDEX_URL=${PIP_INDEX_URL}" \
+            -t "${image}:${IMAGE_TAG}" \
+            "$context"; then
+        fail "failed to build ${image}:${IMAGE_TAG}; refusing to load a stale local image"
+    fi
     load_to_nodes "$image"
 }
 
@@ -146,7 +220,9 @@ build_image_no_arg() {
     local image="$2"
     local tag="${3:-$IMAGE_TAG}"
     log "building ${image}:${tag} from ${context}"
-    docker build -t "${image}:${tag}" "$context"
+    if ! docker build -t "${image}:${tag}" "$context"; then
+        fail "failed to build ${image}:${tag}; refusing to load a stale local image"
+    fi
     log "exporting ${image}:${tag} and importing into kind nodes"
     local tarball
     tarball=$(mktemp -t gis-img.XXXXXX.tar)
@@ -165,6 +241,7 @@ build_image_no_arg() {
 # ----------------------------------------------------------------------------
 deploy() {
     cluster_check
+    stage_paper9_demo
     log "applying $OVERLAY"
     kubectl apply -k "$OVERLAY"
     log "waiting for postgres rollout (up to 5min)"
@@ -239,7 +316,12 @@ require_cmd kubectl
 
 cmd="${1:-up}"
 case "$cmd" in
-    up)        cluster_check && ollama_check && build_all && deploy ;;
+    up)
+        cluster_check
+        ollama_check
+        build_all
+        deploy
+        ;;
     build)     build_all ;;
     deploy)    deploy ;;
     forward)   forward ;;

@@ -19,6 +19,9 @@ from data_agent.multimodal import (
     UploadType, classify_upload, prepare_image_part,
     extract_pdf_text, prepare_pdf_part,
 )
+from data_agent.route_registration import (
+    insert_routes_before_frontend_fallback as _insert_routes_before_frontend_fallback,
+)
 
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -26,7 +29,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Load env
 env_path = os.path.join(os.path.dirname(__file__), '.env')
 if os.path.exists(env_path):
-    load_dotenv(env_path, override=True)
+    load_dotenv(env_path, override=False)
 
 # --- Observability: init structured logging early ---
 from data_agent.observability import (
@@ -36,6 +39,23 @@ from data_agent.observability import (
 )
 setup_logging()
 logger = get_logger("app")
+from data_agent.platform_truth import assert_startup_config
+
+_platform_config_report = assert_startup_config()
+logger.info(
+    "Platform config validated: profile=%s strict=%s valid=%s fingerprint=%s",
+    _platform_config_report["profile"],
+    _platform_config_report["strict"],
+    _platform_config_report["valid"],
+    _platform_config_report["config_fingerprint"],
+)
+for _config_warning in _platform_config_report["warnings"]:
+    logger.warning(
+        "Platform config warning: key=%s code=%s message=%s",
+        _config_warning["key"],
+        _config_warning["code"],
+        _config_warning["message"],
+    )
 from data_agent.model_requirements import configured_models_require_google_cloud_project
 
 from google.adk.runners import Runner
@@ -85,13 +105,8 @@ try:
         current_user_id, current_session_id, current_user_role,
         current_trace_id, get_user_upload_dir
     )
-    from data_agent.auth import ensure_users_table
-    from data_agent.memory import ensure_memory_table
-    from data_agent.token_tracker import ensure_token_table
-    from data_agent.database_tools import ensure_table_ownership_table
-    from data_agent.sharing import ensure_share_links_table
     from data_agent.audit_logger import (
-        ensure_audit_table, record_audit,
+        record_audit,
         ACTION_SESSION_START, ACTION_FILE_UPLOAD, ACTION_PIPELINE_COMPLETE,
         ACTION_REPORT_EXPORT, ACTION_SHARE_CREATE, ACTION_RBAC_DENIED,
         ACTION_USER_REGISTER,
@@ -104,13 +119,8 @@ except ImportError:
         current_user_id, current_session_id, current_user_role,
         get_user_upload_dir
     )
-    from auth import ensure_users_table
-    from memory import ensure_memory_table
-    from token_tracker import ensure_token_table
-    from database_tools import ensure_table_ownership_table
-    from sharing import ensure_share_links_table
     from audit_logger import (
-        ensure_audit_table, record_audit,
+        record_audit,
         ACTION_SESSION_START, ACTION_FILE_UPLOAD, ACTION_PIPELINE_COMPLETE,
         ACTION_REPORT_EXPORT, ACTION_SHARE_CREATE, ACTION_RBAC_DENIED,
         ACTION_USER_REGISTER,
@@ -126,73 +136,38 @@ except ImportError:
     generate_word_report = report_generator.generate_word_report
     ARCPY_AVAILABLE = getattr(agent, 'ARCPY_AVAILABLE', False)
 
-# Initialize DB tables (resilient — if PostgreSQL is down, non-DB features still work)
+# The migration Job/CLI is the only schema writer. Application startup verifies
+# the immutable ledger without issuing CREATE, ALTER, or migration DML.
+from data_agent.migration_runner import verify_schema_state
+verify_schema_state()
+
+# Runtime imports and maintenance are intentionally separate from schema setup.
+# A deployment without database credentials can still use non-DB features.
 try:
-    ensure_users_table()
-    ensure_memory_table()
-    ensure_token_table()
-    ensure_table_ownership_table()
-    ensure_share_links_table()
-    ensure_audit_table()
-    from data_agent.template_manager import ensure_templates_table
-    ensure_templates_table()
-    from data_agent.semantic_layer import ensure_semantic_tables, resolve_semantic_context, build_context_prompt
-    ensure_semantic_tables()
-    from data_agent.team_manager import ensure_teams_table
-    ensure_teams_table()
-    from data_agent.data_catalog import ensure_data_catalog_table
-    ensure_data_catalog_table()
-    from data_agent.map_annotations import ensure_annotations_table
-    ensure_annotations_table()
-    from data_agent.session_storage import ensure_chainlit_tables
-    ensure_chainlit_tables()
-    from data_agent.workflow_engine import ensure_workflow_tables
-    ensure_workflow_tables()
-    from data_agent.fusion_engine import ensure_fusion_tables
-    ensure_fusion_tables()
-    from data_agent.knowledge_graph import ensure_knowledge_graph_tables
-    ensure_knowledge_graph_tables()
-    from data_agent.failure_learning import ensure_failure_table
-    ensure_failure_table()
-    from data_agent.self_evolution import ensure_self_evolution_tables
-    ensure_self_evolution_tables()
-    from data_agent.custom_skills import ensure_custom_skills_table
-    ensure_custom_skills_table()
-    from data_agent.knowledge_base import ensure_kb_tables
-    ensure_kb_tables()
-    from data_agent.user_tools import ensure_user_tools_table
-    ensure_user_tools_table()
-    from data_agent.workflow_templates import ensure_workflow_template_tables, seed_builtin_templates
-    ensure_workflow_template_tables()
+    from data_agent.semantic_layer import resolve_semantic_context, build_context_prompt
+except Exception as _semantic_import_err:
+    logger.warning("Semantic context import failed: %s", _semantic_import_err)
+    resolve_semantic_context = None
+    build_context_prompt = None
+
+try:
+    from data_agent.workflow_templates import seed_builtin_templates
     seed_builtin_templates()
-    from data_agent.custom_skill_bundles import ensure_skill_bundles_table
-    ensure_skill_bundles_table()
-    from data_agent.virtual_sources import ensure_virtual_sources_table
-    ensure_virtual_sources_table()
-    from data_agent.agent_registry import ensure_registry_table
-    ensure_registry_table()
-    from data_agent.analysis_chains import ensure_chains_table
-    ensure_chains_table()
+except Exception as _template_seed_err:
+    logger.warning("Built-in workflow template seed failed: %s", _template_seed_err)
+
+try:
     from data_agent.workflow_engine import recover_incomplete_runs
     recover_incomplete_runs()
-    from data_agent.plugin_registry import ensure_plugins_table
-    ensure_plugins_table()
-    from data_agent.proactive_explorer import ensure_observations_table
-    ensure_observations_table()
-    # Run pending SQL migrations after all ensure_*_table() calls
-    from data_agent.migration_runner import run_pending_migrations
-    run_pending_migrations()
-    # Cleanup expired MVT tile layers from previous sessions
+except Exception as _workflow_recovery_err:
+    logger.warning("Workflow recovery failed: %s", _workflow_recovery_err)
+
+try:
+    # MVT layer tables are ephemeral runtime resources, not platform schema.
     from data_agent.tile_server import cleanup_expired_layers
     cleanup_expired_layers()
-except Exception as _startup_err:
-    logger.warning("DB initialization partially failed: %s", _startup_err)
-    # Ensure resolve_semantic_context/build_context_prompt are importable even on failure
-    try:
-        from data_agent.semantic_layer import resolve_semantic_context, build_context_prompt
-    except Exception:
-        resolve_semantic_context = None
-        build_context_prompt = None
+except Exception as _tile_cleanup_err:
+    logger.warning("Expired tile layer cleanup failed: %s", _tile_cleanup_err)
 
 from data_agent.obs_storage import ensure_obs_connection, is_obs_configured, upload_file_smart
 from data_agent.gis_processors import sync_to_obs
@@ -461,12 +436,10 @@ async def _serve_register_page(request: Request):
 
 # Insert GET /register BEFORE Chainlit's catch-all /{full_path:path}
 _register_route = Route("/register", endpoint=_serve_register_page, methods=["GET"])
-for _i, _r in enumerate(chainlit_app.router.routes):
-    if hasattr(_r, 'path') and _r.path == "/{full_path:path}":
-        chainlit_app.router.routes.insert(_i, _register_route)
-        break
-else:
-    chainlit_app.router.routes.append(_register_route)
+_insert_routes_before_frontend_fallback(
+    chainlit_app.router,
+    [_register_route],
+)
 
 logger.info("Self-registration enabled at /register")
 
@@ -534,12 +507,10 @@ _share_validate_get_route = Route(
     "/api/share/{token}/validate",
     endpoint=_api_share_validate_get, methods=["GET"]
 )
-for _i, _r in enumerate(chainlit_app.router.routes):
-    if hasattr(_r, 'path') and _r.path == "/{full_path:path}":
-        chainlit_app.router.routes.insert(_i, _share_page_route)
-        chainlit_app.router.routes.insert(_i, _share_file_route)
-        chainlit_app.router.routes.insert(_i, _share_validate_get_route)
-        break
+_insert_routes_before_frontend_fallback(
+    chainlit_app.router,
+    [_share_page_route, _share_file_route, _share_validate_get_route],
+)
 
 logger.info("Public share routes enabled at /s/{token}")
 
@@ -682,19 +653,10 @@ _file_upload_route = Route("/api/user/files", endpoint=_api_upload_user_file, me
 _file_serve_route = Route("/api/user/files/{filename:path}", endpoint=_api_serve_user_file, methods=["GET"])
 
 
-def _is_frontend_fallback_route(route) -> bool:
-    path = getattr(route, "path", None)
-    return path == "/{full_path:path}" or type(route).__name__ == "_IncludedRouter"
-
-
-for _i, _r in enumerate(chainlit_app.router.routes):
-    if _is_frontend_fallback_route(_r):
-        chainlit_app.router.routes.insert(_i, _file_list_route)
-        chainlit_app.router.routes.insert(_i + 1, _file_upload_route)
-        break
-else:
-    chainlit_app.router.routes.append(_file_list_route)
-    chainlit_app.router.routes.append(_file_upload_route)
+_insert_routes_before_frontend_fallback(
+    chainlit_app.router,
+    [_file_list_route, _file_upload_route],
+)
 
 logger.info("User file API routes enabled at /api/user/files")
 
@@ -946,16 +908,10 @@ async def _api_admin_audit_stats(request: Request):
 _audit_page_route = Route("/admin/audit", endpoint=_serve_audit_page, methods=["GET"])
 _audit_api_route = Route("/api/admin/audit", endpoint=_api_admin_audit, methods=["GET"])
 _audit_stats_route = Route("/api/admin/audit/stats", endpoint=_api_admin_audit_stats, methods=["GET"])
-for _i, _r in enumerate(chainlit_app.router.routes):
-    if hasattr(_r, 'path') and _r.path == "/{full_path:path}":
-        chainlit_app.router.routes.insert(_i, _audit_page_route)
-        chainlit_app.router.routes.insert(_i, _audit_api_route)
-        chainlit_app.router.routes.insert(_i, _audit_stats_route)
-        break
-else:
-    chainlit_app.router.routes.append(_audit_page_route)
-    chainlit_app.router.routes.append(_audit_api_route)
-    chainlit_app.router.routes.append(_audit_stats_route)
+_insert_routes_before_frontend_fallback(
+    chainlit_app.router,
+    [_audit_page_route, _audit_api_route, _audit_stats_route],
+)
 
 logger.info("Admin audit viewer enabled at /admin/audit")
 
@@ -998,18 +954,10 @@ _health_route = Route("/health", endpoint=_health_endpoint, methods=["GET"])
 _ready_route = Route("/ready", endpoint=_ready_endpoint, methods=["GET"])
 _sysinfo_route = Route("/api/admin/system-info", endpoint=_system_info_endpoint, methods=["GET"])
 _metrics_route = Route("/metrics", endpoint=_metrics_endpoint, methods=["GET"])
-for _i, _r in enumerate(chainlit_app.router.routes):
-    if hasattr(_r, 'path') and _r.path == "/{full_path:path}":
-        chainlit_app.router.routes.insert(_i, _health_route)
-        chainlit_app.router.routes.insert(_i, _ready_route)
-        chainlit_app.router.routes.insert(_i, _sysinfo_route)
-        chainlit_app.router.routes.insert(_i, _metrics_route)
-        break
-else:
-    chainlit_app.router.routes.append(_health_route)
-    chainlit_app.router.routes.append(_ready_route)
-    chainlit_app.router.routes.append(_sysinfo_route)
-    chainlit_app.router.routes.append(_metrics_route)
+_insert_routes_before_frontend_fallback(
+    chainlit_app.router,
+    [_health_route, _ready_route, _sysinfo_route, _metrics_route],
+)
 
 # --- Mount Enterprise WeChat bot routes (conditional) ---
 if is_wecom_configured():
@@ -1072,12 +1020,10 @@ except Exception as _fe_err:
 
 # Register the greedy file serve route AFTER frontend_api routes to avoid
 # /api/user/files/{filename:path} swallowing /api/user/files/browse etc.
-for _i, _r in enumerate(chainlit_app.router.routes):
-    if _is_frontend_fallback_route(_r):
-        chainlit_app.router.routes.insert(_i, _file_serve_route)
-        break
-else:
-    chainlit_app.router.routes.append(_file_serve_route)
+_insert_routes_before_frontend_fallback(
+    chainlit_app.router,
+    [_file_serve_route],
+)
 
 # --- Workflow Scheduler (v5.4) ---
 _workflow_scheduler = None

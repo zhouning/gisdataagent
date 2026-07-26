@@ -7,15 +7,14 @@ compatible with the workflow engine's create_workflow() format.
 import json
 import logging
 import re
-from typing import Optional
 
 from google import genai as genai_client
 from google.genai import types
 
 logger = logging.getLogger("data_agent.nl2workflow")
 
-# Dedicated GenAI client (same pattern as intent_router.py)
-_nl2wf_client = genai_client.Client()
+# Dedicated GenAI client, initialized only when an LLM workflow call is made.
+_nl2wf_client = None
 
 # ---------------------------------------------------------------------------
 # Valid pipeline types and built-in skill descriptions
@@ -54,9 +53,16 @@ BUILTIN_SKILLS = {
 # LLM call (separated for easy mocking in tests)
 # ---------------------------------------------------------------------------
 
+def _ensure_genai_client() -> genai_client.Client:
+    global _nl2wf_client
+    if _nl2wf_client is None:
+        _nl2wf_client = genai_client.Client()
+    return _nl2wf_client
+
+
 async def _call_llm(prompt: str) -> str:
     """Call Gemini to generate workflow JSON from the prompt."""
-    response = _nl2wf_client.models.generate_content(
+    response = _ensure_genai_client().models.generate_content(
         model="gemini-2.0-flash",
         contents=prompt,
         config=types.GenerateContentConfig(

@@ -6,6 +6,9 @@ metadata:
   labels:
     app.kubernetes.io/name: gis-agent
 data:
+  # Base is used by local overlays. Production overlays must set production.
+  GDA_DEPLOYMENT_PROFILE: "development"
+
   # ----- Postgres connection (non-secret parts) -----
   POSTGRES_HOST: "postgres"
   POSTGRES_PORT: "5432"
@@ -45,5 +48,5 @@ data:
   AUDIT_LOG_RETENTION_DAYS: "90"
 
   # ----- Standards Platform (Wave 6+ outbox worker) -----
-  OUTBOX_WORKER_INTERVAL_SEC: "5"
-  OUTBOX_MAX_ATTEMPTS: "5"
+  STANDARDS_OUTBOX_WORKER_INTERVAL_SEC: "5"
+  STANDARDS_OUTBOX_MAX_ATTEMPTS: "5"

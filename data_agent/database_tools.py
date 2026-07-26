@@ -9,8 +9,6 @@ from .gis_processors import _generate_output_path, _resolve_path
 from .user_context import current_user_id, current_user_role
 from .observability import get_logger
 
-import urllib.parse
-
 logger = get_logger("database_tools")
 
 # --- System table name constants (prefixed to avoid collisions in shared DB) ---
@@ -35,18 +33,10 @@ T_USER_TOOLS = f"{TABLE_PREFIX}user_tools"
 T_VIRTUAL_SOURCES = f"{TABLE_PREFIX}virtual_sources"
 
 def get_db_connection_url():
-    """Constructs database URL from environment variables."""
-    user = os.environ.get("POSTGRES_USER")
-    password = os.environ.get("POSTGRES_PASSWORD")
-    host = os.environ.get("POSTGRES_HOST", "localhost")
-    port = os.environ.get("POSTGRES_PORT", "5432")
-    db = os.environ.get("POSTGRES_DATABASE")
+    """Return the authoritative PostgreSQL URL for synchronous clients."""
+    from .platform_truth import resolve_database_url
 
-    if not all([user, password, db]):
-        return None
-
-    password = urllib.parse.quote_plus(password)
-    return f"postgresql://{user}:{password}@{host}:{port}/{db}"
+    return resolve_database_url()
 
 def get_async_db_url():
     """Async database URL for DatabaseSessionService (asyncpg driver)."""

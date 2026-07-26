@@ -54,8 +54,15 @@ COPY requirements.txt /app/requirements.txt
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --upgrade pip \
         --index-url "${PIP_INDEX_URL}" && \
-    pip install -r requirements.txt \
-        --index-url "${PIP_INDEX_URL}"
+    for attempt in 1 2 3; do \
+        pip install -r requirements.txt \
+            --index-url "${PIP_INDEX_URL}" \
+            --retries 10 \
+            --timeout 60 && break; \
+        [ "${attempt}" -eq 3 ] && exit 1; \
+        echo "pip install interrupted; retrying with the shared download cache" >&2; \
+        sleep $((attempt * 5)); \
+    done
 
 # pyproj 3.7+ can lose the PROJ database context in worker threads unless the
 # data directory is explicit. TWM state builds run through FastAPI's threadpool.

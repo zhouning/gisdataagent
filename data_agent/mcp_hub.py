@@ -237,6 +237,23 @@ class McpHubManager:
 
     # ----- DB table -----
 
+    def _table_available(self) -> bool:
+        """Check migration-owned MCP storage without attempting schema writes."""
+        from .db_engine import get_engine
+        engine = get_engine()
+        if not engine:
+            return False
+        try:
+            with engine.connect() as conn:
+                conn.execute(text(f"SELECT 1 FROM {T_MCP_SERVERS} LIMIT 0"))
+            return True
+        except Exception as exc:
+            logger.warning(
+                "MCP servers table unavailable; run database migrations: %s",
+                exc,
+            )
+            return False
+
     def _ensure_table(self):
         """Create agent_mcp_servers table if it doesn't exist."""
         from .db_engine import get_engine
@@ -472,8 +489,8 @@ class McpHubManager:
 
     def load_config(self) -> list[McpServerConfig]:
         """Load DB/YAML configs, then overlay system-managed environment configs."""
-        # 1. Ensure DB table exists and load DB configs
-        db_ok = self._ensure_table()
+        # 1. Schema is migration-owned; startup only probes and loads it.
+        db_ok = self._table_available()
         db_configs = self._load_from_db() if db_ok else []
         db_names = {c.name for c in db_configs}
 

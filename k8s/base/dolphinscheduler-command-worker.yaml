@@ -1,0 +1,203 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gis-agent-dolphinscheduler-command-worker
+  namespace: gis-agent
+  labels:
+    app.kubernetes.io/name: gis-agent-dolphinscheduler-command-worker
+    app.kubernetes.io/component: worker
+spec:
+  # The base is intentionally inert. An environment overlay may scale this
+  # only after provisioning the referenced ConfigMap and Secret.
+  replicas: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gis-agent-dolphinscheduler-command-worker
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gis-agent-dolphinscheduler-command-worker
+        app.kubernetes.io/component: worker
+    spec:
+      serviceAccountName: gis-agent-dolphinscheduler-command-worker
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 120
+      initContainers:
+        - name: prepare-provider-token
+          image: gis-data-agent:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -ec
+            - |
+              install -d -o agent -g agent -m 0700 \
+                /var/run/gis-agent/dolphinscheduler \
+                /var/run/gis-agent/worker
+              install -o agent -g agent -m 0600 \
+                /var/run/secrets/dolphinscheduler/access-token \
+                /var/run/gis-agent/dolphinscheduler/access-token
+          securityContext:
+            runAsUser: 0
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - name: provider-token-source
+              mountPath: /var/run/secrets/dolphinscheduler
+              readOnly: true
+            - name: worker-runtime
+              mountPath: /var/run/gis-agent
+      containers:
+        - name: worker
+          image: gis-data-agent:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -ec
+          args:
+            - |
+              export DOLPHINSCHEDULER_COMMAND_WORKER_ID="worker:dolphinscheduler:${POD_UID}"
+              exec python -m data_agent.dolphinscheduler_command_worker run
+          env:
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+            - name: POD_UID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: gis-agent-dolphinscheduler-command-worker
+                  key: database-url
+            - name: DOLPHINSCHEDULER_COMMAND_WORKER_ENABLED
+              value: "true"
+            - name: DOLPHINSCHEDULER_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: gis-agent-dolphinscheduler-command-worker
+                  key: base-url
+            - name: DOLPHINSCHEDULER_PROJECT_CODE
+              valueFrom:
+                configMapKeyRef:
+                  name: gis-agent-dolphinscheduler-command-worker
+                  key: project-code
+            - name: DOLPHINSCHEDULER_WORKLOAD_SUBJECT
+              valueFrom:
+                configMapKeyRef:
+                  name: gis-agent-dolphinscheduler-command-worker
+                  key: workload-subject
+            - name: DOLPHINSCHEDULER_POLICY_EVALUATOR_SUBJECT
+              valueFrom:
+                configMapKeyRef:
+                  name: gis-agent-dolphinscheduler-command-worker
+                  key: policy-evaluator-subject
+            - name: DOLPHINSCHEDULER_COMMAND_TENANT_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: gis-agent-dolphinscheduler-command-worker
+                  key: command-tenant-id
+            - name: DOLPHINSCHEDULER_TENANT_CODE
+              valueFrom:
+                configMapKeyRef:
+                  name: gis-agent-dolphinscheduler-command-worker
+                  key: provider-tenant-code
+            - name: DOLPHINSCHEDULER_WORKER_GROUP
+              valueFrom:
+                configMapKeyRef:
+                  name: gis-agent-dolphinscheduler-command-worker
+                  key: provider-worker-group
+            - name: DOLPHINSCHEDULER_TOKEN_FILE
+              value: /var/run/gis-agent/dolphinscheduler/access-token
+            - name: DOLPHINSCHEDULER_COMMAND_STATUS_FILE
+              value: /var/run/gis-agent/worker/status.json
+            - name: DOLPHINSCHEDULER_COMMAND_BATCH_SIZE
+              value: "1"
+            - name: DOLPHINSCHEDULER_REQUEST_TIMEOUT_SECONDS
+              value: "15"
+            - name: DOLPHINSCHEDULER_RECONCILIATION_PAGE_LIMIT
+              value: "5"
+            - name: DOLPHINSCHEDULER_COMMAND_LEASE_SECONDS
+              value: "300"
+            - name: DOLPHINSCHEDULER_COMMAND_POLL_INTERVAL_SECONDS
+              value: "5"
+            - name: DOLPHINSCHEDULER_COMMAND_HEALTH_MAX_AGE_SECONDS
+              value: "30"
+          volumeMounts:
+            - name: worker-runtime
+              mountPath: /var/run/gis-agent
+          startupProbe:
+            exec:
+              command:
+                - python
+                - -m
+                - data_agent.dolphinscheduler_command_worker
+                - liveness
+                - --status-file
+                - /var/run/gis-agent/worker/status.json
+                - --max-age-seconds
+                - "30"
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 120
+          readinessProbe:
+            exec:
+              command:
+                - python
+                - -m
+                - data_agent.dolphinscheduler_command_worker
+                - health
+                - --status-file
+                - /var/run/gis-agent/worker/status.json
+                - --max-age-seconds
+                - "30"
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - python
+                - -m
+                - data_agent.dolphinscheduler_command_worker
+                - liveness
+                - --status-file
+                - /var/run/gis-agent/worker/status.json
+                - --max-age-seconds
+                - "90"
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+      volumes:
+        - name: provider-token-source
+          secret:
+            secretName: gis-agent-dolphinscheduler-command-worker
+            defaultMode: 0400
+            items:
+              - key: access-token
+                path: access-token
+        - name: worker-runtime
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Mi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gis-agent-dolphinscheduler-command-worker
+  namespace: gis-agent

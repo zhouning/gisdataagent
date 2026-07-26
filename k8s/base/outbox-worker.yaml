@@ -23,25 +23,29 @@ spec:
         app.kubernetes.io/name: gis-agent-outbox-worker
         app.kubernetes.io/component: worker
     spec:
+      serviceAccountName: gis-agent-outbox-worker
+      automountServiceAccountToken: false
       initContainers:
         - name: wait-for-migrate
-          # Block until the migrations Job's pod has succeeded. This avoids
-          # the worker reading from std_outbox_event before the table exists
-          # on a fresh cluster.
-          image: bitnami/kubectl:1.30
+          # Read the migration ledger as the application role; no Kubernetes
+          # API token is needed by this worker Pod.
+          image: gis-data-agent:latest
+          imagePullPolicy: IfNotPresent
           command:
-            - sh
-            - -c
-            - |
-              echo "[wait-for-migrate] polling Job/gis-agent-migrate"
-              until kubectl -n gis-agent wait --for=condition=complete \
-                       --timeout=10s job/gis-agent-migrate 2>/dev/null; do
-                echo "[wait-for-migrate] not yet, sleeping 5s"
-                sleep 5
-              done
-          securityContext:
-            runAsNonRoot: false  # bitnami/kubectl needs uid 0 to talk to API
-      serviceAccountName: gis-agent-outbox-worker
+            - python
+            - -m
+            - data_agent.migration_runner
+            - status
+          envFrom:
+            - configMapRef:
+                name: gis-agent-config
+            - secretRef:
+                name: gis-agent-secret
+          env:
+            - name: POSTGRES_ADMIN_USER
+              value: ""
+            - name: POSTGRES_ADMIN_PASSWORD
+              value: ""
       containers:
         - name: worker
           image: gis-data-agent:latest
@@ -55,6 +59,13 @@ spec:
                 name: gis-agent-config
             - secretRef:
                 name: gis-agent-secret
+          # The worker only uses the application role. Explicit values
+          # override administrator credentials inherited through envFrom.
+          env:
+            - name: POSTGRES_ADMIN_USER
+              value: ""
+            - name: POSTGRES_ADMIN_PASSWORD
+              value: ""
           resources:
             requests:
               cpu: 250m
@@ -70,29 +81,3 @@ kind: ServiceAccount
 metadata:
   name: gis-agent-outbox-worker
   namespace: gis-agent
----
-# Minimal RBAC: outbox-worker init container needs to wait on the migrate
-# Job, nothing else.
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: gis-agent-outbox-worker
-  namespace: gis-agent
-rules:
-  - apiGroups: ["batch"]
-    resources: ["jobs"]
-    verbs: ["get", "watch", "list"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: gis-agent-outbox-worker
-  namespace: gis-agent
-subjects:
-  - kind: ServiceAccount
-    name: gis-agent-outbox-worker
-    namespace: gis-agent
-roleRef:
-  kind: Role
-  name: gis-agent-outbox-worker
-  apiGroup: rbac.authorization.k8s.io

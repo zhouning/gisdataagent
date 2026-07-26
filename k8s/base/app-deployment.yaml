@@ -60,23 +60,25 @@ spec:
                   sleep 2
               done
         - name: wait-for-migrate
-          # The migrations Job seeds the schema. App must not start before
-          # it succeeds — chainlit's import path triggers semantic_layer +
-          # context_engine bootstrap which reads tables that may not exist.
-          image: bitnami/kubectl:1.30
+          # Verify the migration ledger through the application database role.
+          # This avoids granting the runtime Pod Kubernetes API credentials.
+          image: gis-data-agent:latest
+          imagePullPolicy: IfNotPresent
           command:
-            - sh
-            - -c
-            - |
-              echo "[wait-for-migrate] polling Job/gis-agent-migrate"
-              until kubectl -n gis-agent wait --for=condition=complete \
-                       --timeout=10s job/gis-agent-migrate 2>/dev/null; do
-                echo "[wait-for-migrate] not yet, sleeping 5s"
-                sleep 5
-              done
-              echo "[wait-for-migrate] migrations complete"
-          securityContext:
-            runAsNonRoot: false
+            - python
+            - -m
+            - data_agent.migration_runner
+            - status
+          envFrom:
+            - configMapRef:
+                name: gis-agent-config
+            - secretRef:
+                name: gis-agent-secret
+          env:
+            - name: POSTGRES_ADMIN_USER
+              value: ""
+            - name: POSTGRES_ADMIN_PASSWORD
+              value: ""
       containers:
         - name: app
           image: gis-data-agent:latest
@@ -89,6 +91,13 @@ spec:
                 name: gis-agent-config
             - secretRef:
                 name: gis-agent-secret
+          # env entries override envFrom. Only the migration Job may retain
+          # the shared Secret's administrator credentials.
+          env:
+            - name: POSTGRES_ADMIN_USER
+              value: ""
+            - name: POSTGRES_ADMIN_PASSWORD
+              value: ""
           volumeMounts:
             # Local scratch / temp files. Production uploads now go to
             # MinIO via StorageManager (s3:// URI). This PVC is kept for
@@ -129,30 +138,6 @@ kind: ServiceAccount
 metadata:
   name: gis-agent-app
   namespace: gis-agent
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: gis-agent-app
-  namespace: gis-agent
-rules:
-  - apiGroups: ["batch"]
-    resources: ["jobs"]
-    verbs: ["get", "watch", "list"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: gis-agent-app
-  namespace: gis-agent
-subjects:
-  - kind: ServiceAccount
-    name: gis-agent-app
-    namespace: gis-agent
-roleRef:
-  kind: Role
-  name: gis-agent-app
-  apiGroup: rbac.authorization.k8s.io
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget

@@ -192,3 +192,180 @@ GitHub Actions (`.github/workflows/ci.yml`)：
 | 注册失败 | 密码不符合要求 | 密码需 ≥8 位且包含字母和数字 |
 | OAuth 登录不可用 | 未配置 OAuth 环境变量 | 设置 `OAUTH_GOOGLE_CLIENT_ID` |
 | 标注不显示 | 数据库迁移未执行 | 执行 `016_create_map_annotations.sql` |
+
+## 10. DolphinScheduler 命令 Worker（当前未部署）
+
+该进程只负责从 PostgreSQL `platform_command_outbox` 领取并投递命令；outbox、PlatformRun 和 provider instance 仍是各自领域的事实源。当前代码已具备本地运行、健康检查和默认关闭的 Kubernetes 模板，但尚未形成 staging/production 运行证据。
+
+部署前必须满足：
+
+- `DOLPHINSCHEDULER_COMMAND_WORKER_ENABLED=true` 时补齐 provider URL、绝对 token 文件、project code、workload/evaluator subject、command tenant 和 worker ID；
+- token 文件权限为 `0600`，不把 token 放入环境快照、日志或 status JSON；
+- 每个进程/Pod 使用跨副本唯一的 `DOLPHINSCHEDULER_COMMAND_WORKER_ID`，同一 ID 只能对应一个活跃进程；
+- `DOLPHINSCHEDULER_COMMAND_LEASE_SECONDS` 大于 provider request timeout，health max age 至少覆盖两个 poll interval；
+- status JSON 路径为本地可写绝对路径，权限为 `0600`，仅作为 liveness/readiness 投影。
+
+常用命令：
+
+```bash
+python -m data_agent.dolphinscheduler_command_worker validate
+python -m data_agent.dolphinscheduler_command_worker run
+python -m data_agent.dolphinscheduler_command_worker run --once
+python -m data_agent.dolphinscheduler_command_worker health
+python -m data_agent.dolphinscheduler_command_worker liveness
+```
+
+`health` 用作 readiness，status 缺失、过期、worker degraded/stopped 或输入窗口非法时返回非零。`liveness` 只要求非 stopped 状态持续刷新，因此数据库短时故障不会触发无效重启。单条 command 的 terminal failure 不等于进程失活，应通过 `failed_commands` 和 outbox 告警处理；worker 收到 SIGINT/SIGTERM 后完成当前批次，再停止。
+
+### 10.1 Kubernetes 启用合同
+
+`k8s/base/dolphinscheduler-command-worker.yaml` 固定为 `replicas: 0`。base/local-kind 可以正常渲染，但不会运行 Worker。环境 overlay 启用前必须创建同名的专用 ConfigMap 和 Secret：
+
+| 资源 | 必需 key |
+|---|---|
+| ConfigMap `gis-agent-dolphinscheduler-command-worker` | `base-url`、`project-code`、`workload-subject`、`policy-evaluator-subject`、`command-tenant-id`、`provider-tenant-code`、`provider-worker-group` |
+| Secret `gis-agent-dolphinscheduler-command-worker` | `database-url`、`access-token` |
+
+`access-token` 只投影给 init container，再复制为主容器可读的 `0600` 文件；主容器不挂载原始 Secret，也不挂载 Kubernetes API token。Worker ID 由 Pod UID 生成。环境 overlay 还必须把 `gis-data-agent:latest` 替换为不可变 image digest，然后才可把副本数设为 1 或更高。
+
+提交 overlay 前执行：
+
+```bash
+python -m data_agent.dolphinscheduler_worker_deployment validate
+kubectl kustomize k8s/base/ >/dev/null
+```
+
+扩容成功后必须留存 rollout、health、唯一 worker ID、lease 接管和重启 drain 产物；只有清单或零副本 Deployment 不算 staging 部署证据。
+
+### 10.2 Staging activation preflight
+
+首次扩容固定为一个副本。preflight 需要环境 overlay 的完整渲染结果、集群中带 uid/resourceVersion 的 ConfigMap YAML 快照，以及只保留 Secret key 名称、uid 和 resourceVersion 的脱敏 attestation。禁止把原始 Secret JSON 写入文件或 CI artifact。
+
+```bash
+kubectl kustomize /path/to/staging-overlay > /tmp/gda-worker-staging.yaml
+kubectl -n gis-agent get configmap gis-agent-dolphinscheduler-command-worker \
+  -o yaml > /tmp/gda-worker-configmap.yaml
+kubectl -n gis-agent get secret gis-agent-dolphinscheduler-command-worker -o json | \
+  jq '{
+    schema: "gda.dolphinscheduler_worker_secret_attestation.v1",
+    environment: "staging",
+    namespace: .metadata.namespace,
+    secret_name: .metadata.name,
+    keys: (.data | keys),
+    resource_uid: .metadata.uid,
+    resource_version: .metadata.resourceVersion,
+    observed_at: (now | todateiso8601)
+  }' > /tmp/gda-worker-secret-attestation.json
+
+python -m data_agent.dolphinscheduler_worker_activation validate \
+  --manifest /tmp/gda-worker-staging.yaml \
+  --config-map /tmp/gda-worker-configmap.yaml \
+  --secret-attestation /tmp/gda-worker-secret-attestation.json \
+  --environment staging
+```
+
+只有 `status=ready_for_activation` 才能进入扩容步骤。该结果仍固定包含 `deployed=false` 和 `live_cluster_verified=false`；随后必须另行采集 Deployment rollout、Pod readiness/liveness、worker status、唯一 Pod UID、lease 接管和重启 drain 证据。
+
+### 10.3 Staging candidate registry publication
+
+#### Remote mainline prerequisite
+
+2026-07-26 只读审计确认 GitHub 默认 `main@f339e13` 与当前 AR-1 历史没有共同祖先；当前分支仅与远端 `feat/v12-extensible-platform@ebd99f8` 共享 lineage，并领先 25 个提交。仓库同时没有 classic branch protection、repository ruleset 或任何 environment。详见 [ADR-035](../architecture-decisions/adr-035-github-mainline-history-recovery.md)。
+
+在 ADR-035 被 owner 接受并完成 archive refs、ruleset、active-lineage review、主线改名/default branch 复核前，禁止直接 push/force push 到旧 `main`，也禁止用 `--allow-unrelated-histories` 合并。`cd-staging.yml` 固定监听 `main`，所以旧主线未恢复时不能把 workflow 未触发解释为 CI 或发布故障。
+
+`.github/workflows/cd-staging.yml` 在 candidate 验证后发布同一个 application image，不做第二次 application build。它把 OCI revision/source label、candidate fingerprint、本地 image ID、GHCR repository 和远端 manifest digest 绑定到 `registry.json`，再使用 GitHub OIDC 为 `repository@digest` 请求 provenance attestation。
+
+workflow 权限只能是 `contents: read`、`packages: write`、`id-token: write` 和 `attestations: write`。digest 必须来自 `docker buildx imagetools inspect --raw` 的远端 manifest 内容并按 `sha256` 复查，禁止从 `docker push` 输出提取。candidate artifact 使用 `if: always()`；只有 provenance action 成功后才上传 registry artifact。
+
+截至 2026-07-26，本机 `127.0.0.1:7897` 代理和 `gh` 登录已恢复，账号、仓库 admin/push 与 Actions 权限均已只读验证；当前分支仍未 push，因此该 workflow 尚未真实运行。首次受控运行必须留存：
+
+- `candidate.json` 与 `registry.json`，且 source revision、candidate fingerprint 和 local image ID 一致；
+- GHCR `repository@sha256:digest`，tag 不能作为 release 输入；
+- GitHub artifact attestation 及其 repository、workflow、source revision identity；
+- 独立 protected runner 的 OCI attestation verify 结果。
+
+`registry_subject_bound=true` 只表示字段内部一致；报告仍固定 `provenance_attestation_verified=false`、`registry_digest_verified=false`、`staging_deployed=false`、`live_cluster_verified=false` 和 `production_promotion_allowed=false`。publication workflow 不调用 `kubectl` 或 Helm。未完成独立 verify 时，不得把 registry subject 交给 staging apply 或解除 production 阻断。
+
+### 10.4 Protected staging provenance verification
+
+`.github/workflows/verify-staging-provenance.yml` 与 publisher 分开运行。它只接受本仓库 `main` push 的成功 `Publish - Staging Candidate Image` run，下载该 run 的 `registry.json`，再执行：
+
+```bash
+python -m data_agent.staging_provenance_evidence verify \
+  --registry-evidence /path/to/registry.json \
+  --source-repository zhouning/gisdataagent \
+  --source-revision <publisher-main-commit-sha> \
+  --verifier-revision <verifier-workflow-commit-sha> \
+  --output /tmp/gda-staging-provenance.json
+```
+
+模块固定调用 `gh attestation verify` 并校验 repository、`cd-staging.yml` signer workflow、publisher signer/source digest、`refs/heads/main`、GitHub OIDC issuer、SLSA v1 和非 self-hosted publisher。workflow 必须 checkout 自身 `github.sha` 的 verifier revision 执行代码，不能 checkout publisher `workflow_run.head_sha` 执行 verifier；两个 SHA 都写入 evidence。原始 attestation、证书和 stderr 不写入 GDA evidence。
+
+远端首次启用前必须创建 GitHub environment `staging-provenance`：配置 required reviewers、禁止未经审核 bypass，并仅在该 environment 设置 `GDA_STAGING_PROVENANCE_PROTECTED=true`。不要用同名 repository/organization variable 冒充 environment 配置。workflow 会对生成的 `provenance.json` 再做 artifact attestation，成功后才上传。
+
+`status=provenance_verified` 允许 `provenance_attestation_verified=true` 和 `registry_digest_verified=true`，但仍固定 `staging_deployed=false`、`live_cluster_verified=false` 和 `production_promotion_allowed=false`。release bundle 消费该 JSON 前还必须验证它自己的 artifact attestation；不能把本地伪造或未 attested JSON 当成 apply authority。
+
+### 10.5 Staging release bundle
+
+公共 `k8s/overlays/staging` 不包含 Secret，也故意保留会被 gate 阻断的本地模型默认值和基础设施 image tag。受保护环境必须先提供 Secret 和环境 ConfigMap overlay，把模型入口改为非本地 HTTPS endpoint，并把所有依赖镜像 pin 到 `@sha256:` digest，再渲染 template。可先用纯 preflight 将 validated candidate、预期 live platform snapshot 和声明的应用 registry digest 结构化绑定：
+
+```bash
+kubectl kustomize /path/to/protected-staging-overlay \
+  > /tmp/gda-staging-template.yaml
+
+python -m data_agent.staging_deployment_bundle build \
+  --template-manifest /tmp/gda-staging-template.yaml \
+  --candidate-evidence /path/to/candidate.json \
+  --platform-snapshot /path/to/expected-live-platform.json \
+  --image ghcr.io/zhouning/gisdataagent@sha256:<digest> \
+  --manifest-output /tmp/gda-staging-bundle.yaml \
+  --report-output /tmp/gda-staging-bundle-report.json
+```
+
+`status=ready_for_staging_apply` 仍只是离线 bundle preflight，固定 `registry_digest_verified=false`，不能作为受保护 apply authority。真实 protected runner 必须使用 attested provenance 入口，且不再接受独立 `--image` 参数：
+
+```bash
+python -m data_agent.staging_release_evidence build \
+  --template-manifest /tmp/gda-staging-template.yaml \
+  --candidate-evidence /path/to/candidate.json \
+  --platform-snapshot /path/to/expected-live-platform.json \
+  --provenance-evidence /path/to/provenance.json \
+  --source-repository zhouning/gisdataagent \
+  --source-revision <publisher-main-commit-sha> \
+  --verifier-revision <verifier-workflow-commit-sha> \
+  --manifest-output /tmp/gda-verified-staging-release.yaml \
+  --report-output /tmp/gda-verified-staging-release.json
+```
+
+该入口先按 `verify-staging-provenance.yml`、verifier SHA、main ref、GitHub OIDC 和 hosted runner 固定策略验证 `provenance.json` 的 artifact attestation，再核对文件 digest、provenance/candidate/registry fingerprint，并从 provenance 内部取得唯一 image。只有 `status=verified_for_staging_apply` 才会写 manifest；它允许 `registry_digest_verified=true`，但仍固定 `staging_deployed=false`、`live_cluster_verified=false` 和 `production_promotion_allowed=false`。apply 后必须另行执行 live observation。
+
+### 10.6 Live staging observation
+
+应用 Deployment 的 Pod template 必须由 staging overlay 写入以下注解；放在 Deployment metadata 而不放在 Pod template 不算 revision 绑定：
+
+| 注解 | 值 |
+|---|---|
+| `org.opencontainers.image.revision` | candidate 的完整 Git SHA |
+| `gisdataagent.io/candidate-evidence-fingerprint` | `candidate.json` 的 evidence fingerprint |
+| `gisdataagent.io/environment` | 固定 `staging` |
+| `gisdataagent.io/platform-fingerprint` | 预期 live config/runtime 组合 fingerprint |
+
+v1 只接受单副本 staging Deployment；多副本逐 Pod config/runtime/health 采集实现前不得放宽。容器镜像必须使用 registry `@sha256:` digest。应用 Pod 必须设置 `automountServiceAccountToken: false`。运行时的 migration readiness 由 init container 以普通应用数据库角色执行 `python -m data_agent.migration_runner status` 判断，不得通过 `kubectl wait`、ServiceAccount token 或 Job RBAC 判断。受保护环境配置还要保存目标 `kube-system` namespace UID 和 `gis-agent` namespace UID，collector 观察值必须与这两个固定值一致，不能从本次采集结果反向填入 expected 参数。
+
+collector 不读取 Secret，只输出 Deployment/Pod/ServiceAccount/EndpointSlice 白名单字段、应用角色 migration report、脱敏后的 platform fingerprint 和 health/readiness 状态：
+
+```bash
+python -m data_agent.staging_live_evidence collect \
+  --output /tmp/gda-staging-live-collection.json
+
+python -m data_agent.staging_live_evidence validate \
+  --candidate-evidence /path/to/candidate.json \
+  --live-collection /tmp/gda-staging-live-collection.json \
+  --golden-slice /path/to/live-golden-slice.json \
+  --expected-cluster-uid "$STAGING_CLUSTER_UID" \
+  --expected-namespace-uid "$STAGING_NAMESPACE_UID" \
+  --output /tmp/gda-staging-live-evidence.json
+```
+
+`live_staging_verified=true` 只证明 observation 内部绑定完整。v1 固定 `promotion_authority_verified=false` 和 `production_promotion_allowed=false`；在受保护 runner identity、evidence artifact attestation 和同 revision production approval 接入前，不得解除 production workflow 的固定阻断。

@@ -5,6 +5,16 @@ PostgreSQL/PostGIS/pgvector、Redis、MinIO 全部在集群内自给自足，仅
 
 ## 一句话部署
 
+使用 Docker Desktop 内置 kind 集群（`docker-desktop` context）：
+
+```bash
+cd /path/to/adk
+./scripts/k8s-docker-desktop-bootstrap.sh up
+./scripts/k8s-docker-desktop-bootstrap.sh forward
+```
+
+使用独立 `kind` CLI 创建和管理集群：
+
 ```bash
 cd /path/to/adk
 ./scripts/k8s-kind-bootstrap.sh up         # 创建 kind 集群 + 构建镜像 + 部署
@@ -20,10 +30,41 @@ cd /path/to/adk
 | 工具 | 最低版本 | 验证 |
 |---|---|---|
 | Docker Desktop | 4.30+ | `docker --version` |
-| kind | 0.23+ | `kind --version` |
+| kind（仅独立集群路径） | 0.23+ | `kind --version` |
 | kubectl | 1.28+ | `kubectl version --client` |
 
 机器要求：**16GB RAM 起步，推荐 32GB+**（你有 128GB，绰绰有余）。
+
+### 1.1 Docker Desktop kind 版本兼容性
+
+Docker Desktop overlay 使用 `alpine/k8s:1.35.5` 作为带 shell 的 `kubectl`
+辅助镜像，供 migration 和 app init container 等待 Kubernetes 资源。该
+overlay 已在 Docker Desktop kind server `v1.35.5` 上验证，并支持 Kubernetes
+`kubectl` 与 API server 相差不超过一个 minor 版本的官方版本偏差规则。
+
+启用内置集群后先确认：
+
+```bash
+kubectl config current-context   # docker-desktop
+kubectl version                  # server 建议为 1.34–1.36
+kubectl get nodes                # 所有节点应为 Ready
+```
+
+bootstrap 脚本会从当前集群动态发现 control-plane 和 worker 节点，
+因此 Docker Desktop 中调整 worker 数量后无需修改脚本。
+
+Docker Desktop overlay 还会把 Paper9 WorldModel v2.1 的最小演示包复制到
+每个节点的 `/paper9-demo`：`farmland_mpc` 包、Buchanan prepared 数据和
+`ensemble_seed0`。脚本默认查找与主仓库同级的 `arcgis-farmland-mpc`；
+其他位置可显式指定：
+
+```bash
+PAPER9_DEMO_SOURCE=/absolute/path/to/arcgis-farmland-mpc \
+  ./scripts/k8s-docker-desktop-bootstrap.sh deploy
+```
+
+如果没有 Paper9 数据，脚本仍会创建空 HostPath，保证主平台正常启动，
+但会明确警告 WorldModel v2.1 不可用。
 
 ---
 
@@ -98,6 +139,7 @@ k8s/
 │   ├── app-deployment.yaml            # Chainlit + HPA-aware
 │   ├── app-service.yaml
 │   ├── outbox-worker.yaml             # Standards Platform 异步消费者
+│   ├── dolphinscheduler-command-worker.yaml # 默认零副本的 provider command worker
 │   ├── qc-subsystems.yaml             # cv-service / cad-parser / reference-data
 │   ├── martin-deployment.yaml
 │   ├── martin-service.yaml
@@ -131,6 +173,10 @@ k8s/
    - `gis-reference-data:dev`（参考数据 API）
 3. **`kubectl apply -k k8s/overlays/local-kind`** 部署所有 manifest
 4. **等待**：postgres → redis → minio → migration Job → app deployment
+
+DolphinScheduler command worker 在 base 中固定为零副本，local-kind 不会启动它，也不要求本地提供 provider ConfigMap/Secret。只有 staging/production 环境 overlay 完成外部 provider 与数据库凭据配置后才能显式扩容。
+
+部署脚本会等待 migration Job 提供运维反馈；App 和 Outbox Worker 自身不访问 Kubernetes API，而是以普通应用数据库角色读取 checksummed migration ledger。两者都禁用 ServiceAccount token automount，ledger 未达到 `in_sync` 时运行容器不会启动。
 
 整套流程约 **15-25 分钟**（首次构建主镜像 ~10min，后续增量 <2min）。
 
@@ -399,14 +445,16 @@ kubectl apply -k k8s/overlays/local-kind
 
 ---
 
-## 9. 生产化路径（未来扩展 overlays）
+## 9. 生产化路径
 
 ```
 k8s/overlays/
 ├── local-kind/        # 本指南
-├── staging/           # 上游集群 + cert-manager + ServiceMonitor
+├── staging/           # Secret-free 公共发布模板；需受保护环境覆盖
 └── prod/              # 生产 + Velero 备份 + GPU 节点选择器
 ```
+
+`staging/` 不能直接代表已部署环境。它固定 strict staging 与单副本，删除占位 Secret、本地 Ingress 和本地 Ollama Service；受保护环境补齐 HTTPS 模型入口与 Secret、将所有依赖镜像 pin 到 digest 后，可先通过 `data_agent.staging_deployment_bundle` 做非权威 template preflight。真实 apply 输入必须再由 `data_agent.staging_release_evidence` 验证 provenance artifact 的 workflow/revision/digest 身份，并从其中唯一的 registry digest 物化；两种报告都不表示 staging 已部署。
 
 `prod` overlay 应该补：
 
@@ -417,6 +465,7 @@ k8s/overlays/
 5. **GPU 节点亲和**：`cv-service` 用 nvidia.com/gpu 资源
 6. **PriorityClass**：postgres > app > outbox-worker
 7. **Velero 备份策略**：volume snapshot
+8. **DolphinScheduler Worker**：创建专用 ConfigMap/Secret、固定镜像 digest，再将默认零副本 Deployment 显式扩容
 
 ---
 
@@ -425,6 +474,9 @@ k8s/overlays/
 ```bash
 # 验证 base
 kubectl kustomize k8s/base/ | less
+
+# 验证默认关闭的 DolphinScheduler worker 部署合同
+python -m data_agent.dolphinscheduler_worker_deployment validate
 
 # 验证 overlay
 kubectl kustomize k8s/overlays/local-kind/ | less
