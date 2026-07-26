@@ -70,7 +70,7 @@
 - managed DolphinScheduler command worker 已提供严格 env/config、0600 token file、tenant/workload-scoped polling、SIGINT/SIGTERM drain、interruptible wait、脱敏原子 status 和 fail-closed health CLI；默认零副本 Kustomize 模板由 Pod UID 生成 worker ID，只向 PostgreSQL NetworkPolicy 增加该 selector，主容器无原始 provider Secret、Kubernetes API token 或 RBAC；activation preflight 已固定单副本、immutable digest、ConfigMap fingerprint 和脱敏 Secret key attestation，但模板尚未在 staging/production 扩容运行。
 - migration 096 已建立 append-only QualityResult 和专用成功 finalizer；真实 PostgreSQL 16 测试已证明 gateway 不能执行私有 transition 或用通用 transition 写 `succeeded`，错误 output hash、failed quality、缺失 lineage、篡改 evidence fingerprint 均拒绝，有效证据成功且 replay 幂等。该证据仍是合成数据和本地数据库，不是 staging/生产运行证明。
 - staging candidate evidence 已在本地绑定 Git SHA、本地 image ID、97/97 schema fingerprint、严格脱敏配置、runtime inventory 和 JUnit 汇总；管理员/普通角色 ledger 一致，candidate 仍固定 `staging_deployed=false`、`production_promotion_allowed=false`。GitHub Runner 和真实 staging 尚未运行该链。
-- live staging collector 已对 Docker Desktop 集群完成只读实采：candidate、collection freshness、97/97 应用角色 schema、runtime baseline 和 health/readiness 通过；tagged 本地镜像、缺 source/candidate/platform 注解、非 strict staging profile、Pod token 挂载漂移及缺真实 golden-slice 使结果正确阻断。合成完整 evidence 可验证 live 绑定，但因缺受保护 provenance/attestation 仍固定禁止 production promotion。
+- live staging collector 已对 Docker Desktop 集群完成只读实采：candidate、collection freshness、97/97 应用角色 schema、runtime baseline 和 health/readiness 通过；App/Outbox 已改为直接读取 migration ledger 并禁用 token automount，重采确认 token 隔离通过。tagged 本地镜像、缺 source/candidate/platform 注解、非 strict staging profile 及缺真实 golden-slice 仍正确阻断；合成完整 evidence 可验证 live 绑定，但因缺受保护 provenance/attestation 仍固定禁止 production promotion。
 
 ## 下一验收证据
 

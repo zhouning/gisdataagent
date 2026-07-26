@@ -176,6 +176,8 @@ k8s/
 
 DolphinScheduler command worker 在 base 中固定为零副本，local-kind 不会启动它，也不要求本地提供 provider ConfigMap/Secret。只有 staging/production 环境 overlay 完成外部 provider 与数据库凭据配置后才能显式扩容。
 
+部署脚本会等待 migration Job 提供运维反馈；App 和 Outbox Worker 自身不访问 Kubernetes API，而是以普通应用数据库角色读取 checksummed migration ledger。两者都禁用 ServiceAccount token automount，ledger 未达到 `in_sync` 时运行容器不会启动。
+
 整套流程约 **15-25 分钟**（首次构建主镜像 ~10min，后续增量 <2min）。
 
 ### 4.2 端口转发（kind 没有 Ingress）

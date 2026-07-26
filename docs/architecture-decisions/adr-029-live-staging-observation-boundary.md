@@ -14,7 +14,7 @@
 
 ADR-028 已把 CI candidate 与真实 staging deployment 分开，但 production 仍缺少机器可验证的 live observation。单独查看 `kubectl rollout status`、Pod Ready 或 HTTP 200 不能证明运行镜像来自指定 source revision，也不能证明 schema、配置、运行时清单和 golden-slice 终局属于同一 Deployment。
 
-Docker Desktop 当前实例证明了该风险：应用 Deployment 为 1/1 Ready，`/health` 与 `/ready` 正常，应用角色可读取 97/97 in-sync migration ledger；但运行镜像是本地 tag，Pod template 没有 source/candidate/platform fingerprint 注解，实际 profile 是 development，运行对象仍挂载 service-account token，且没有真实 golden-slice 证据。把这些状态称为 staging verified 会继续制造平台事实错误。
+Docker Desktop 首次实采证明了该风险：应用 Deployment 为 1/1 Ready，`/health` 与 `/ready` 正常，应用角色可读取 97/97 in-sync migration ledger；但运行镜像是本地 tag，Pod template 没有 source/candidate/platform fingerprint 注解，实际 profile 是 development，运行对象仍挂载 service-account token，且没有真实 golden-slice 证据。把这些状态称为 staging verified 会继续制造平台事实错误。随后 ADR-030 已消除 token 挂载，其他缺口仍继续阻断。
 
 ## Options Considered
 
@@ -54,7 +54,7 @@ Docker Desktop 当前实例证明了该风险：应用 Deployment 为 1/1 Ready�
 
 - 行为测试覆盖完整 live binding、candidate/revision/digest/identity/schema/config/health/golden drift、过期/缺失 evidence、CLI fail closed 和 collector 字段白名单；
 - 完整 fixture 可得到 `live_staging_verified=true`，同时保持 production promotion 为 false；
-- Docker Desktop 实采验证 schema/runtime/health 通过，缺 immutable digest/revision/platform 注解、strict staging、token 隔离和 golden-slice 时输出分域阻断；
+- Docker Desktop 首次实采验证 schema/runtime/health 通过，并正确识别 token 挂载；ADR-030 修复后重采得到 `automount_service_account_token=false`，immutable digest/revision/platform 注解、strict staging 和 golden-slice 缺口继续分域阻断；
 - collector 输出未包含测试注入的 Secret、完整 last-applied annotation、health detail 或 platform config entries。
 
 ## Revisit Triggers

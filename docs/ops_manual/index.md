@@ -277,7 +277,7 @@ python -m data_agent.dolphinscheduler_worker_activation validate \
 | `gisdataagent.io/environment` | 固定 `staging` |
 | `gisdataagent.io/platform-fingerprint` | 预期 live config/runtime 组合 fingerprint |
 
-v1 只接受单副本 staging Deployment；多副本逐 Pod config/runtime/health 采集实现前不得放宽。容器镜像必须使用 registry `@sha256:` digest。应用 Pod 必须设置 `automountServiceAccountToken: false`。受保护环境配置还要保存目标 `kube-system` namespace UID 和 `gis-agent` namespace UID，collector 观察值必须与这两个固定值一致，不能从本次采集结果反向填入 expected 参数。
+v1 只接受单副本 staging Deployment；多副本逐 Pod config/runtime/health 采集实现前不得放宽。容器镜像必须使用 registry `@sha256:` digest。应用 Pod 必须设置 `automountServiceAccountToken: false`。运行时的 migration readiness 由 init container 以普通应用数据库角色执行 `python -m data_agent.migration_runner status` 判断，不得通过 `kubectl wait`、ServiceAccount token 或 Job RBAC 判断。受保护环境配置还要保存目标 `kube-system` namespace UID 和 `gis-agent` namespace UID，collector 观察值必须与这两个固定值一致，不能从本次采集结果反向填入 expected 参数。
 
 collector 不读取 Secret，只输出 Deployment/Pod/ServiceAccount/EndpointSlice 白名单字段、应用角色 migration report、脱敏后的 platform fingerprint 和 health/readiness 状态：
 

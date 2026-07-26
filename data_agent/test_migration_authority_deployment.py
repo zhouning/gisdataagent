@@ -36,6 +36,11 @@ def _container(deployment: dict, name: str) -> dict:
     return next(container for container in containers if container["name"] == name)
 
 
+def _init_container(deployment: dict, name: str) -> dict:
+    containers = deployment["spec"]["template"]["spec"]["initContainers"]
+    return next(container for container in containers if container["name"] == name)
+
+
 @pytest.mark.parametrize(
     ("filename", "app_name", "migration_name"),
     [
@@ -114,3 +119,49 @@ def test_kubernetes_migration_job_retains_admin_database_authority():
     assert 'export POSTGRES_USER="${POSTGRES_ADMIN_USER}"' in command
     assert 'export POSTGRES_PASSWORD="${POSTGRES_ADMIN_PASSWORD}"' in command
     assert "python -m data_agent.migration_runner migrate" in command
+
+
+@pytest.mark.parametrize(
+    ("filename", "deployment_name"),
+    [
+        ("k8s/base/app-deployment.yaml", "gis-agent-app"),
+        ("k8s/base/outbox-worker.yaml", "gis-agent-outbox-worker"),
+    ],
+)
+def test_kubernetes_runtime_waits_on_read_only_schema_without_api_token(
+    filename: str,
+    deployment_name: str,
+):
+    documents = _documents(filename)
+    deployment = next(
+        document
+        for document in documents
+        if document.get("kind") == "Deployment"
+        and (document.get("metadata") or {}).get("name") == deployment_name
+    )
+    pod = deployment["spec"]["template"]["spec"]
+    waiter = _init_container(deployment, "wait-for-migrate")
+    environment = {
+        item["name"]: item.get("value") for item in waiter.get("env", [])
+    }
+
+    assert pod["automountServiceAccountToken"] is False
+    assert waiter["image"] == "gis-data-agent:latest"
+    assert waiter["command"] == [
+        "python",
+        "-m",
+        "data_agent.migration_runner",
+        "status",
+    ]
+    assert {next(iter(source)) for source in waiter["envFrom"]} == {
+        "configMapRef",
+        "secretRef",
+    }
+    assert environment == {
+        "POSTGRES_ADMIN_USER": "",
+        "POSTGRES_ADMIN_PASSWORD": "",
+    }
+    assert not any(
+        document.get("kind") in {"Role", "RoleBinding"}
+        for document in documents
+    )
