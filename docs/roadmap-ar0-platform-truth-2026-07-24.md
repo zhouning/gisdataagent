@@ -184,13 +184,14 @@ MMFE、GWM 和生态扩展继续保留为战略方向，但必须由已发布 Da
 2. 已将 DolphinSchedulerDefinitionBinding 持久化为现有 append-only Artifact 的 `execution_plan` 角色：稳定 UUID、版本化 manifest、canonical hash/size 和 definition ResourceVersion 关联均受校验；dispatch/reconcile/cancel 可通过 tenant-scoped gateway 读取 artifact UUID，不新增 binding registry；
 3. 已以 tenant-scoped PostgreSQL command outbox 和 authenticated callback 建立耐久 dispatch/reconcile 触发：Run+dispatch、callback observation+reconcile 分别同事务提交，claim 使用 lease/`SKIP LOCKED`，薄 consumer 只调用 adapter；新增 tenant-scoped managed worker（见 [ADR-027](architecture-decisions/adr-027-managed-dolphinscheduler-command-worker.md)），负责严格配置、0600 token 文件、优雅退出、可中断轮询和脱敏 health projection；Kustomize base 已登记默认零副本的 Deployment，并以 CI validator 固定独立 Secret、Pod UID、探针和 NetworkPolicy；staging activation preflight 进一步固定单副本首发、immutable digest、HTTPS provider、ConfigMap fingerprint 和新鲜 Secret key attestation，但仍未在 staging 扩容运行、配置真实 provider callback 或验证告警 SLO；
 4. 已新增 immutable QualityResult、content-bound RunSuccessEvidence 和数据库 evidence gate：通用 transition 不能写 `succeeded`；只有精确 workload、DolphinScheduler success observation、内容匹配的 output Artifact、独立 passed QualityResult/evidence 和 input-to-output LineageEvent 完整时才能幂等终结 Run；见 [ADR-026](architecture-decisions/adr-026-evidence-gated-run-success.md)；
-5. 下一步在同一 staging 场景跑通 PlatformGateway PostgreSQL、DolphinScheduler 独立 metadata PostgreSQL、托管 outbox worker/callback 和真实 Artifact/Quality/Lineage 终局裁决；部署前为每个 worker process/Pod 分配唯一 worker ID，并验证 status projection、lease 接管和重启 drain；
-6. 注入提交超时、callback 重复/乱序、worker 重启、双租户访问、凭据轮换和无双写恢复故障；
-7. 验证 schedule、complement/backfill、备份恢复、升级和 master/worker failover 后，再判断 AR-1 是否达到退出门。
+5. 已建立 staging candidate truth gate（见 [ADR-028](architecture-decisions/adr-028-staging-candidate-and-promotion-truth.md)）：临时 CI 环境由管理员执行 migration、普通应用角色复核 ledger，并将完整 Git SHA、本地 image ID、schema/config/runtime fingerprint 和 JUnit 汇总绑定为脱敏 evidence；candidate 固定不等于 staging deployment，旧 production 假部署 workflow 在 live verifier 完成前 fail closed；本地临时数据库与 evidence 组合已验证，GitHub Runner 尚未实际产出远端 artifact；
+6. 下一步在同一 staging 场景跑通 PlatformGateway PostgreSQL、DolphinScheduler 独立 metadata PostgreSQL、托管 outbox worker/callback 和真实 Artifact/Quality/Lineage 终局裁决；部署前为每个 worker process/Pod 分配唯一 worker ID，并验证 status projection、lease 接管和重启 drain；
+7. 注入提交超时、callback 重复/乱序、worker 重启、双租户访问、凭据轮换和无双写恢复故障；
+8. 验证 schedule、complement/backfill、备份恢复、升级和 master/worker failover 后，再判断 AR-1 是否达到退出门。
 
 OpenMetadata/Gravitino 和 Temporal 继续保持目标组件状态，不在这一包并行接入。
 
-当前完成仅指本地合同、授权 evidence、outbox/callback 代码、数据库成功终局门、托管 worker 代码、默认关闭的部署模板及离线 activation preflight、合成 golden slice、定向测试和真实 PostgreSQL 16 事务边界。`ready_for_activation` 不等于已部署；真实 IAM/OIDC 与 service token 生命周期、worker/callback staging 扩容运行、golden slice staging 运行链、独立 DolphinScheduler metadata PostgreSQL 和真实数据终局证据仍属于 4.7 后续切片。
+当前完成仅指本地合同、授权 evidence、outbox/callback 代码、数据库成功终局门、托管 worker 代码、默认关闭的部署模板及离线 activation preflight、candidate evidence gate、合成 golden slice、定向测试和真实 PostgreSQL 16 事务边界。`candidate_validated` 和 `ready_for_activation` 都不等于已部署；真实 IAM/OIDC 与 service token 生命周期、registry digest、live staging revision、worker/callback 扩容运行、golden slice staging 运行链、独立 DolphinScheduler metadata PostgreSQL 和真实数据终局证据仍属于 4.7 后续切片。
 
 ## 5. 重新评估条件
 

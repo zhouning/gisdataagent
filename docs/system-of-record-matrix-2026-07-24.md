@@ -19,6 +19,7 @@
 |---|---|---|---|---|---|
 | SQL schema 历史 | PostgreSQL `schema_migrations`，以完整 migration ID + checksum 为权威 | migration CLI 的 JSON 报告 | 保持现有 ledger；任何 drift fail closed | Data Platform | AR-0，已验证 |
 | 部署配置策略 | Compose/K8s/进程环境；`platform_truth.CONFIG_SPECS` 定义关键类型与策略；DolphinScheduler worker 有默认零副本、外部 ConfigMap/Secret 驱动的 Kustomize 模板、静态 validator 和 staging activation preflight | `.env` 仅补默认；脱敏 snapshot、Secret key attestation、未扩容 Deployment 和 `ready_for_activation` 都是观测/模板 | 版本化 DeploymentProfile + secret reference；部署环境始终优先；模板或 preflight 通过都不等于环境已启用 | Platform/SRE/Security | AR-0，部分实现；worker 模板/preflight 本地已验证 |
+| 环境发布与晋级 | `staging_candidate_evidence` 已将临时 CI 的 source SHA、本地 image ID、schema/config/runtime fingerprint 与 JUnit 绑定；旧 staging/production 假部署语义已移除，production 在 live verifier 前固定阻断 | CI artifact、candidate summary、离线 activation report 都是非 live evidence，不能证明环境 revision | 受保护环境的 DeploymentRevision 绑定 registry digest、live schema/config/runtime、workload identity、健康和 golden-slice verdict 后，才可成为 promotion authority | Platform/SRE/Security | AR-1 candidate gate 本地已验证 -> live staging verifier 待实现 |
 | 后台运行时清单 | `platform_truth.RUNTIME_INVENTORY` 是代码层登记；`gda_control` 已有受控 PlatformRun 写入口；DolphinScheduler adapter 与 tenant-scoped managed command worker 已有代码和本地测试，但尚无生产业务调用方，多数执行状态仍分散 | AST primitive report、worker status JSON、FrameworkAttemptObservation、DolphinScheduler instance state | PlatformRun ledger 唯一登记最终状态；framework/provider attempt 只能回报观测；worker status 仅为进程健康投影 | Platform Architecture | AR-1 adapter/worker 本地已验证 -> staging 控制链待接入 |
 | 原始文件/对象 | 当前 local uploads、S3/MinIO/OBS 均可能被直接写入，权威边界未统一 | 临时上传、下载缓存、预览文件 | Landing object 以 immutable URI + checksum + retention 为权威；本地 scratch 可删除 | Data Platform | AR-2 |
 | 湖仓表与 snapshot | Iceberg/STAC/S3A 有局部实现，尚无通用发布权威 | STAC item、GeoParquet export | Iceberg catalog snapshot 是分析表版本权威；对象是物理内容，STAC 是发现投影 | Data Platform | AR-2 |
@@ -54,6 +55,7 @@
 10. workload/evaluator subject 配置和授权 Artifact gate 不是生产 IAM 的替代品；没有 staging 的 credential provisioning、轮换、吊销与 provider 最小权限证据时，不得宣称 workload identity 完成。
 11. `platform_command_outbox` 只拥有投递状态；callback 只触发 reconcile，不能把 provider payload 直接写成 PlatformRun 状态或平台终局。
 12. QualityResult evaluator 必须是 workload，且成功终局中的 evaluator 不能等于 Run workload；该代码级职责分离不替代生产 IAM。
+13. `candidate_validated`、CI artifact、离线 preflight 或人工批准都不等于环境已部署；缺少同一 source revision 的 registry/live revision/identity/health/golden-slice 证据时，production promotion 必须失败。
 
 ## 已建立的 AR-0/AR-1 entry 证据
 
@@ -67,10 +69,11 @@
 - migration 095 已建立 tenant/workload-scoped dispatch/reconcile outbox；真实 PostgreSQL 测试已覆盖最小权限、Run+dispatch/callback+reconcile 原子写、完成后幂等 replay、错误 workload 空领取、lease 接管、stale worker 拒绝和 fail/retry/complete，但尚无 staging 常驻 consumer 或真实 provider callback 运行证据。
 - managed DolphinScheduler command worker 已提供严格 env/config、0600 token file、tenant/workload-scoped polling、SIGINT/SIGTERM drain、interruptible wait、脱敏原子 status 和 fail-closed health CLI；默认零副本 Kustomize 模板由 Pod UID 生成 worker ID，只向 PostgreSQL NetworkPolicy 增加该 selector，主容器无原始 provider Secret、Kubernetes API token 或 RBAC；activation preflight 已固定单副本、immutable digest、ConfigMap fingerprint 和脱敏 Secret key attestation，但模板尚未在 staging/production 扩容运行。
 - migration 096 已建立 append-only QualityResult 和专用成功 finalizer；真实 PostgreSQL 16 测试已证明 gateway 不能执行私有 transition 或用通用 transition 写 `succeeded`，错误 output hash、failed quality、缺失 lineage、篡改 evidence fingerprint 均拒绝，有效证据成功且 replay 幂等。该证据仍是合成数据和本地数据库，不是 staging/生产运行证明。
+- staging candidate evidence 已在本地绑定 Git SHA、本地 image ID、97/97 schema fingerprint、严格脱敏配置、runtime inventory 和 JUnit 汇总；管理员/普通角色 ledger 一致，candidate 仍固定 `staging_deployed=false`、`production_promotion_allowed=false`。GitHub Runner 和真实 staging 尚未运行该链。
 
 ## 下一验收证据
 
-- staging/production 的 schema、config 和 runtime snapshot 产物及环境 compare 报告；
+- 真实 staging/production 的 schema、config 和 runtime snapshot 产物、registry/live DeploymentRevision 绑定及环境 compare 报告；
 - staging 的 migration role、应用 login membership、连接池 role/tenant 复位、双租户 API 和 success finalization 运行产物；
 - DolphinScheduler adapter 的真实 IAM/OIDC、service token provisioning/轮换、provider 最小权限、binding artifact staging 接入、managed outbox worker/provider callback 实际扩容部署、唯一 worker ID、status/lease 故障恢复和无双写证据；
 - 首条真实图斑链对 golden slice 的 output hash、独立质量结果/evidence、血缘、发布 revision 和 rollback 演练；
