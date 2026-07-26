@@ -6,7 +6,7 @@
 
 **Decision owners**: Platform Architecture, Data Platform, SRE, Security
 
-**Related decisions**: ADR-018、ADR-019、ADR-027
+**Related decisions**: ADR-018、ADR-019、ADR-027、ADR-029
 
 **Related roadmap**: [AR-0/AR-1 平台事实与最小控制面](../roadmap-ar0-platform-truth-2026-07-24.md)
 
@@ -23,7 +23,7 @@
 3. candidate evidence 绑定完整 Git SHA、本地不可变 Docker image ID、97 条 migration 的 database fingerprint、严格且脱敏的 staging config fingerprint、runtime inventory fingerprint 和 JUnit 汇总。JUnit 只保留数量，不复制 testcase 名称或输出。
 4. `data_agent.staging_candidate_evidence` 对 schema pending/drift、配置非 staging/非 strict、runtime baseline 漂移、测试失败、非法 source revision 或非 sha256 image ID 全部 fail closed。
 5. candidate evidence 固定输出 `staging_deployed=false`、`live_cluster_verified=false`、`registry_digest_verified=false` 和 `production_promotion_allowed=false`。`candidate_validated` 只表示临时环境内的候选一致性。
-6. production workflow 在 live staging verifier 实现前固定失败，不再构建镜像、打印假部署步骤或记录虚假 deployment。恢复 production promotion 前必须验证 registry digest、live Deployment revision、live schema/config/runtime fingerprint、workload identity、健康状态和 golden-slice verdict 绑定到同一 source revision。
+6. production workflow 在 live staging verifier 和受保护 provenance/attestation authority 完整实现前固定失败，不再构建镜像、打印假部署步骤或记录虚假 deployment。ADR-029 已实现只读 live observation verifier，但它不具备 promotion authority；恢复 production promotion 前仍必须验证 registry digest、live Deployment revision、live schema/config/runtime fingerprint、workload identity、健康状态和 golden-slice verdict 绑定到同一 source revision，并证明采集来源。
 7. GitHub artifact 是非权威 evidence bundle。真实 DeploymentRevision 与受保护环境的 live evidence 才能成为 promotion authority；CI、离线 activation preflight 和人工文本确认都不能单独解锁 production。
 
 ## Consequences
@@ -50,6 +50,6 @@
 
 ## Revisit Triggers
 
-- 已有受保护 staging 集群、registry 和 workload identity，可实现 live evidence collector；
+- 已有受保护 staging 集群、registry 和 workload identity，可运行 ADR-029 collector 并证明 runner/artifact provenance；
 - 可以将 registry digest、Kubernetes revision、schema/config/runtime snapshot 和 golden-slice verdict 绑定为签名 DeploymentRevision；
 - production rollout/rollback provider 已选定并能返回机器可验证状态，而不是文本日志。

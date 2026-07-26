@@ -265,3 +265,33 @@ python -m data_agent.dolphinscheduler_worker_activation validate \
 ```
 
 只有 `status=ready_for_activation` 才能进入扩容步骤。该结果仍固定包含 `deployed=false` 和 `live_cluster_verified=false`；随后必须另行采集 Deployment rollout、Pod readiness/liveness、worker status、唯一 Pod UID、lease 接管和重启 drain 证据。
+
+### 10.3 Live staging observation
+
+应用 Deployment 的 Pod template 必须由 staging overlay 写入以下注解；放在 Deployment metadata 而不放在 Pod template 不算 revision 绑定：
+
+| 注解 | 值 |
+|---|---|
+| `org.opencontainers.image.revision` | candidate 的完整 Git SHA |
+| `gisdataagent.io/candidate-evidence-fingerprint` | `candidate.json` 的 evidence fingerprint |
+| `gisdataagent.io/environment` | 固定 `staging` |
+| `gisdataagent.io/platform-fingerprint` | 预期 live config/runtime 组合 fingerprint |
+
+v1 只接受单副本 staging Deployment；多副本逐 Pod config/runtime/health 采集实现前不得放宽。容器镜像必须使用 registry `@sha256:` digest。应用 Pod 必须设置 `automountServiceAccountToken: false`。受保护环境配置还要保存目标 `kube-system` namespace UID 和 `gis-agent` namespace UID，collector 观察值必须与这两个固定值一致，不能从本次采集结果反向填入 expected 参数。
+
+collector 不读取 Secret，只输出 Deployment/Pod/ServiceAccount/EndpointSlice 白名单字段、应用角色 migration report、脱敏后的 platform fingerprint 和 health/readiness 状态：
+
+```bash
+python -m data_agent.staging_live_evidence collect \
+  --output /tmp/gda-staging-live-collection.json
+
+python -m data_agent.staging_live_evidence validate \
+  --candidate-evidence /path/to/candidate.json \
+  --live-collection /tmp/gda-staging-live-collection.json \
+  --golden-slice /path/to/live-golden-slice.json \
+  --expected-cluster-uid "$STAGING_CLUSTER_UID" \
+  --expected-namespace-uid "$STAGING_NAMESPACE_UID" \
+  --output /tmp/gda-staging-live-evidence.json
+```
+
+`live_staging_verified=true` 只证明 observation 内部绑定完整。v1 固定 `promotion_authority_verified=false` 和 `production_promotion_allowed=false`；在受保护 runner identity、evidence artifact attestation 和同 revision production approval 接入前，不得解除 production workflow 的固定阻断。

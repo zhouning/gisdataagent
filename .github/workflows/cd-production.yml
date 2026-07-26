@@ -1,8 +1,9 @@
 # Production promotion is intentionally disabled. The previous workflow only
 # printed hypothetical deployment commands and could claim success without a
-# live staging deployment. Re-enable this workflow only after a verifier can
-# bind immutable registry, live staging, migration, identity, health, and
-# golden-slice evidence to the requested source revision.
+# live staging deployment. A read-only live observation verifier now exists,
+# but it deliberately cannot authorize production. Re-enable this workflow
+# only after a protected runner can attest that observation and bind approval
+# to the same source revision.
 name: CD - Production (Blocked)
 
 on:
@@ -13,11 +14,11 @@ permissions:
 
 jobs:
   promotion-gate:
-    name: Require live staging evidence
+    name: Require attested live staging evidence
     runs-on: ubuntu-latest
     steps:
       - name: Block unverified production promotion
         run: |
-          echo "Production promotion is disabled: the live staging evidence verifier is not implemented." >&2
-          echo "CI candidate evidence is not deployment evidence and cannot authorize production." >&2
+          echo "Production promotion is disabled: protected staging provenance and artifact attestation are not implemented." >&2
+          echo "Candidate or live observation JSON alone cannot authorize production." >&2
           exit 1
