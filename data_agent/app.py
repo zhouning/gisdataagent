@@ -105,13 +105,8 @@ try:
         current_user_id, current_session_id, current_user_role,
         current_trace_id, get_user_upload_dir
     )
-    from data_agent.auth import ensure_users_table
-    from data_agent.memory import ensure_memory_table
-    from data_agent.token_tracker import ensure_token_table
-    from data_agent.database_tools import ensure_table_ownership_table
-    from data_agent.sharing import ensure_share_links_table
     from data_agent.audit_logger import (
-        ensure_audit_table, record_audit,
+        record_audit,
         ACTION_SESSION_START, ACTION_FILE_UPLOAD, ACTION_PIPELINE_COMPLETE,
         ACTION_REPORT_EXPORT, ACTION_SHARE_CREATE, ACTION_RBAC_DENIED,
         ACTION_USER_REGISTER,
@@ -124,13 +119,8 @@ except ImportError:
         current_user_id, current_session_id, current_user_role,
         get_user_upload_dir
     )
-    from auth import ensure_users_table
-    from memory import ensure_memory_table
-    from token_tracker import ensure_token_table
-    from database_tools import ensure_table_ownership_table
-    from sharing import ensure_share_links_table
     from audit_logger import (
-        ensure_audit_table, record_audit,
+        record_audit,
         ACTION_SESSION_START, ACTION_FILE_UPLOAD, ACTION_PIPELINE_COMPLETE,
         ACTION_REPORT_EXPORT, ACTION_SHARE_CREATE, ACTION_RBAC_DENIED,
         ACTION_USER_REGISTER,
@@ -146,77 +136,38 @@ except ImportError:
     generate_word_report = report_generator.generate_word_report
     ARCPY_AVAILABLE = getattr(agent, 'ARCPY_AVAILABLE', False)
 
-# Migrations are the schema authority.  When a database is configured, drift or
-# a failed migration must block startup rather than leave a partially-valid app.
-from data_agent.migration_runner import run_pending_migrations
-run_pending_migrations()
+# The migration Job/CLI is the only schema writer. Application startup verifies
+# the immutable ledger without issuing CREATE, ALTER, or migration DML.
+from data_agent.migration_runner import verify_schema_state
+verify_schema_state()
 
-# Initialize compatibility tables.  A deployment without database credentials
-# can still use non-DB features, but configured databases have already passed
-# the strict migration gate above.
+# Runtime imports and maintenance are intentionally separate from schema setup.
+# A deployment without database credentials can still use non-DB features.
 try:
-    ensure_users_table()
-    ensure_memory_table()
-    ensure_token_table()
-    ensure_table_ownership_table()
-    ensure_share_links_table()
-    ensure_audit_table()
-    from data_agent.template_manager import ensure_templates_table
-    ensure_templates_table()
-    from data_agent.semantic_layer import ensure_semantic_tables, resolve_semantic_context, build_context_prompt
-    ensure_semantic_tables()
-    from data_agent.team_manager import ensure_teams_table
-    ensure_teams_table()
-    from data_agent.data_catalog import ensure_data_catalog_table
-    ensure_data_catalog_table()
-    from data_agent.map_annotations import ensure_annotations_table
-    ensure_annotations_table()
-    from data_agent.session_storage import ensure_chainlit_tables
-    ensure_chainlit_tables()
-    from data_agent.workflow_engine import ensure_workflow_tables
-    ensure_workflow_tables()
-    from data_agent.fusion_engine import ensure_fusion_tables
-    ensure_fusion_tables()
-    from data_agent.knowledge_graph import ensure_knowledge_graph_tables
-    ensure_knowledge_graph_tables()
-    from data_agent.failure_learning import ensure_failure_table
-    ensure_failure_table()
-    from data_agent.self_evolution import ensure_self_evolution_tables
-    ensure_self_evolution_tables()
-    from data_agent.custom_skills import ensure_custom_skills_table
-    ensure_custom_skills_table()
-    from data_agent.knowledge_base import ensure_kb_tables
-    ensure_kb_tables()
-    from data_agent.user_tools import ensure_user_tools_table
-    ensure_user_tools_table()
-    from data_agent.workflow_templates import ensure_workflow_template_tables, seed_builtin_templates
-    ensure_workflow_template_tables()
+    from data_agent.semantic_layer import resolve_semantic_context, build_context_prompt
+except Exception as _semantic_import_err:
+    logger.warning("Semantic context import failed: %s", _semantic_import_err)
+    resolve_semantic_context = None
+    build_context_prompt = None
+
+try:
+    from data_agent.workflow_templates import seed_builtin_templates
     seed_builtin_templates()
-    from data_agent.custom_skill_bundles import ensure_skill_bundles_table
-    ensure_skill_bundles_table()
-    from data_agent.virtual_sources import ensure_virtual_sources_table
-    ensure_virtual_sources_table()
-    from data_agent.agent_registry import ensure_registry_table
-    ensure_registry_table()
-    from data_agent.analysis_chains import ensure_chains_table
-    ensure_chains_table()
+except Exception as _template_seed_err:
+    logger.warning("Built-in workflow template seed failed: %s", _template_seed_err)
+
+try:
     from data_agent.workflow_engine import recover_incomplete_runs
     recover_incomplete_runs()
-    from data_agent.plugin_registry import ensure_plugins_table
-    ensure_plugins_table()
-    from data_agent.proactive_explorer import ensure_observations_table
-    ensure_observations_table()
-    # Cleanup expired MVT tile layers from previous sessions
+except Exception as _workflow_recovery_err:
+    logger.warning("Workflow recovery failed: %s", _workflow_recovery_err)
+
+try:
+    # MVT layer tables are ephemeral runtime resources, not platform schema.
     from data_agent.tile_server import cleanup_expired_layers
     cleanup_expired_layers()
-except Exception as _startup_err:
-    logger.warning("DB initialization partially failed: %s", _startup_err)
-    # Ensure resolve_semantic_context/build_context_prompt are importable even on failure
-    try:
-        from data_agent.semantic_layer import resolve_semantic_context, build_context_prompt
-    except Exception:
-        resolve_semantic_context = None
-        build_context_prompt = None
+except Exception as _tile_cleanup_err:
+    logger.warning("Expired tile layer cleanup failed: %s", _tile_cleanup_err)
 
 from data_agent.obs_storage import ensure_obs_connection, is_obs_configured, upload_file_smart
 from data_agent.gis_processors import sync_to_obs

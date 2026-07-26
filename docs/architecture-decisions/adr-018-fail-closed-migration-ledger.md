@@ -18,7 +18,7 @@
 
 - 已发布 migration 文件不能改名或改写，以免失去历史可解释性。
 - 既有数据库必须原地升级，保留 version、filename 和 applied_at。
-- 空库、遗留库、应用启动、CLI 和 K8s Job 必须共享同一执行语义。
+- 空库和遗留库必须由同一 CLI/部署 migration authority 收敛；应用启动只读验证账本并沿用相同 drift 判定。
 - 当前只支持项目既有的 PostgreSQL/PostGIS 生产数据库，不为未采用的数据库方言增加抽象。
 
 ## Options Considered
@@ -39,8 +39,9 @@
 5. 新增幂等 `000_legacy_runtime_prerequisites.sql`，把此前只由应用 helper 创建、但被 SQL migration 依赖的 user tools、MCP 和 knowledge base 表纳入 SQL 权威链。
 6. 旧账本原地增加 `migration_id` 与 `checksum`，按 filename 回填；移除 version 唯一约束并增加 migration_id 唯一约束。无法映射、checksum 缺失或重复 ID 均作为 drift。
 7. PostgreSQL advisory lock 串行化 runner。每条 migration 独立事务提交；任一 SQL 失败立即回滚并抛错，不处理后续 migration。
-8. 应用启动、K8s Job 和 `scripts/migrate.sh` 都调用同一个 Python runner。K8s Job 使用管理员角色；应用没有配置数据库时允许非 DB 模式，有配置但迁移失败时阻断启动。
+8. K8s Job、Compose 一次性 migration service 和 `scripts/migrate.sh` 是唯一结构写入方，均调用同一个 Python runner 并使用管理员角色。应用启动只调用只读 `verify_schema_state()`，不创建/修改表，也不接收管理员凭据；没有配置数据库时允许非 DB 模式，有配置但 ledger 缺失、pending 或 drift 时阻断启动。
 9. CLI 提供 `validate`、`migrate`、`status` 和 `compare`，输出 catalog/database fingerprint、pending、unknown、checksum 和 metadata 差异。
+10. 历史 `ensure_*` 兼容 helper 不再进入应用/MCP 启动路径。模板 seed、未完成运行恢复和临时 MVT 资源清理仍是独立的运行时数据维护，不拥有平台 schema。
 
 ## Consequences
 
@@ -49,6 +50,7 @@
 - 同编号的两条历史 migration 都能被独立识别和补齐。
 - migration 失败、历史内容漂移和环境不一致变成可观测的部署失败。
 - 正式 PostGIS/pgvector 镜像可从空库重放完整 SQL 链，不再依赖应用 helper 的执行时机。
+- Web 应用和普通 worker 无管理员凭据，副本扩缩容不再隐式竞争 DDL ownership。
 - staging/production 报告可以离线比较，支持发布门禁与事故定位。
 
 负面影响：
@@ -64,6 +66,7 @@
 - 旧版 `version UNIQUE` 账本保留 filename/applied_at，成功回填 ID/checksum，并将约束替换为 migration ID 唯一。
 - 人工篡改已执行 checksum 后，migrate 在执行 SQL 前以非零退出码阻断；恢复后重新 `in_sync`。
 - 单元测试覆盖目录合同、遗留顺序、checksum、pending、drift、回滚和环境报告比较。
+- 2026-07-26 Docker Desktop kind 本地验证：新 App/Outbox Pod 使用普通数据库角色且管理员变量为空，应用只读校验 97/97 `in_sync`，启动日志无 table ownership/DDL 错误，`/health` 与 `/ready` 均正常。该结果是本地部署证据，不替代 staging/production 验收。
 
 ## Revisit Triggers
 

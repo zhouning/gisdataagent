@@ -1,3 +1,4 @@
+import ast
 from pathlib import Path
 
 import pytest
@@ -245,4 +246,69 @@ def test_environment_report_comparison_surfaces_exact_fields():
                 "right": "database-b",
             }
         },
+    }
+
+
+def test_schema_report_reads_existing_ledger_without_schema_writes(
+    tmp_path, monkeypatch
+):
+    path = tmp_path / "100_example.sql"
+    path.write_text("SELECT 1;\n", encoding="utf-8")
+    migration = _migration(path)
+    connection = _FakeConnection()
+    applied = {
+        "migration_id": migration["migration_id"],
+        "version": migration["version"],
+        "filename": migration["filename"],
+        "checksum": migration["checksum"],
+        "applied_at": None,
+    }
+    inspector = type("Inspector", (), {"has_table": lambda self, name: True})()
+
+    monkeypatch.setattr(migration_runner, "discover_migrations", lambda: [migration])
+    monkeypatch.setattr(
+        migration_runner, "get_engine", lambda: _FakeEngine(connection)
+    )
+    monkeypatch.setattr(migration_runner, "inspect", lambda conn: inspector)
+    monkeypatch.setattr(
+        migration_runner, "_load_applied", lambda conn: [applied]
+    )
+
+    report = migration_runner.get_schema_report()
+
+    assert report["status"] == "in_sync"
+    assert report["ledger_present"] is True
+    assert connection.executed == []
+    assert connection.commits == 0
+
+
+def test_schema_verification_fails_closed_when_migrations_are_pending(monkeypatch):
+    monkeypatch.setattr(
+        migration_runner,
+        "get_schema_report",
+        lambda: {"status": "pending", "pending": ["100_example"]},
+    )
+
+    with pytest.raises(
+        migration_runner.MigrationStateError,
+        match="run the migration authority",
+    ):
+        migration_runner.verify_schema_state()
+
+
+def test_app_startup_only_verifies_migrations_and_has_no_ensure_table_calls():
+    app_path = Path(__file__).with_name("app.py")
+    tree = ast.parse(app_path.read_text(encoding="utf-8"))
+    calls = {
+        node.func.id
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+    }
+
+    assert "verify_schema_state" in calls
+    assert "run_pending_migrations" not in calls
+    assert not {
+        name
+        for name in calls
+        if name.startswith("ensure_") and "connection" not in name
     }

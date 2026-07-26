@@ -6,8 +6,8 @@
 #   - schema_migrations table tracks applied versions
 #   - run_pending_migrations() is idempotent and skips already-applied files
 #
-# Triggered by `kubectl apply -k k8s/`. App deployment uses an init container
-# to wait for this Job's completion before starting Chainlit.
+# Triggered by `kubectl apply -k k8s/`. App and worker deployments wait for
+# this Job, then perform read-only schema verification at runtime.
 apiVersion: batch/v1
 kind: Job
 metadata:

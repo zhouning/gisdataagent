@@ -194,7 +194,7 @@ class TestMcpHubManager(unittest.TestCase):
         from data_agent.mcp_hub import McpHubManager
         hub = McpHubManager()
         hub._config_path = "/nonexistent/mcp_servers.yaml"
-        hub._ensure_table = MagicMock(return_value=False)
+        hub._table_available = MagicMock(return_value=False)
         hub._load_from_db = MagicMock(return_value=[])
         configs = hub.load_config()
         self.assertEqual(configs, [])
@@ -202,7 +202,7 @@ class TestMcpHubManager(unittest.TestCase):
     def test_load_config_valid(self):
         from data_agent.mcp_hub import McpHubManager
         hub = McpHubManager()
-        hub._ensure_table = MagicMock(return_value=False)
+        hub._table_available = MagicMock(return_value=False)
         hub._load_from_db = MagicMock(return_value=[])
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -256,7 +256,7 @@ class TestMcpHubManager(unittest.TestCase):
     def test_load_config_skips_invalid_entries(self):
         from data_agent.mcp_hub import McpHubManager
         hub = McpHubManager()
-        hub._ensure_table = MagicMock(return_value=False)
+        hub._table_available = MagicMock(return_value=False)
         hub._load_from_db = MagicMock(return_value=[])
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -276,7 +276,7 @@ class TestMcpHubManager(unittest.TestCase):
     def test_load_config_empty_yaml(self):
         from data_agent.mcp_hub import McpHubManager
         hub = McpHubManager()
-        hub._ensure_table = MagicMock(return_value=False)
+        hub._table_available = MagicMock(return_value=False)
         hub._load_from_db = MagicMock(return_value=[])
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -291,7 +291,7 @@ class TestMcpHubManager(unittest.TestCase):
     def test_load_config_malformed_yaml(self):
         from data_agent.mcp_hub import McpHubManager
         hub = McpHubManager()
-        hub._ensure_table = MagicMock(return_value=False)
+        hub._table_available = MagicMock(return_value=False)
         hub._load_from_db = MagicMock(return_value=[])
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -312,7 +312,7 @@ class TestMcpHubManager(unittest.TestCase):
     def test_get_server_statuses_after_load(self):
         from data_agent.mcp_hub import McpHubManager
         hub = McpHubManager()
-        hub._ensure_table = MagicMock(return_value=False)
+        hub._table_available = MagicMock(return_value=False)
         hub._load_from_db = MagicMock(return_value=[])
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -389,7 +389,7 @@ class TestMcpHubManager(unittest.TestCase):
     def test_startup_connects_enabled_only(self, mock_connect):
         from data_agent.mcp_hub import McpHubManager
         hub = McpHubManager()
-        hub._ensure_table = MagicMock(return_value=False)
+        hub._table_available = MagicMock(return_value=False)
         hub._load_from_db = MagicMock(return_value=[])
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -417,7 +417,7 @@ class TestMcpHubManager(unittest.TestCase):
     def test_startup_idempotent(self, mock_connect):
         from data_agent.mcp_hub import McpHubManager
         hub = McpHubManager()
-        hub._ensure_table = MagicMock(return_value=False)
+        hub._table_available = MagicMock(return_value=False)
         hub._load_from_db = MagicMock(return_value=[])
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -448,7 +448,7 @@ class TestMcpHubManager(unittest.TestCase):
     def test_get_all_tools_no_connected(self):
         from data_agent.mcp_hub import McpHubManager
         hub = McpHubManager()
-        hub._ensure_table = MagicMock(return_value=False)
+        hub._table_available = MagicMock(return_value=False)
         hub._load_from_db = MagicMock(return_value=[])
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -527,7 +527,7 @@ class TestMcpHubManager(unittest.TestCase):
     def test_get_tools_for_server_disconnected(self):
         from data_agent.mcp_hub import McpHubManager
         hub = McpHubManager()
-        hub._ensure_table = MagicMock(return_value=False)
+        hub._table_available = MagicMock(return_value=False)
         hub._load_from_db = MagicMock(return_value=[])
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -1986,6 +1986,29 @@ class TestMcpHubCrud(unittest.TestCase):
 
 class TestMcpHubDbMethods(unittest.TestCase):
     """Tests for MCP Hub DB helper methods (no actual DB)."""
+
+    def test_table_available_no_engine(self):
+        from data_agent.mcp_hub import McpHubManager
+        hub = McpHubManager()
+        with patch("data_agent.db_engine.get_engine", return_value=None):
+            result = hub._table_available()
+        self.assertFalse(result)
+
+    def test_table_available_uses_read_only_probe(self):
+        from data_agent.mcp_hub import McpHubManager
+
+        connection = MagicMock()
+        connection.__enter__.return_value = connection
+        engine = MagicMock()
+        engine.connect.return_value = connection
+
+        with patch("data_agent.db_engine.get_engine", return_value=engine):
+            result = McpHubManager()._table_available()
+
+        self.assertTrue(result)
+        sql = str(connection.execute.call_args.args[0])
+        self.assertEqual(sql, "SELECT 1 FROM agent_mcp_servers LIMIT 0")
+        connection.commit.assert_not_called()
 
     def test_ensure_table_no_engine(self):
         from data_agent.mcp_hub import McpHubManager

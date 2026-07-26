@@ -55,6 +55,13 @@ spec:
                 name: gis-agent-config
             - secretRef:
                 name: gis-agent-secret
+          # The worker only uses the application role. Explicit values
+          # override administrator credentials inherited through envFrom.
+          env:
+            - name: POSTGRES_ADMIN_USER
+              value: ""
+            - name: POSTGRES_ADMIN_PASSWORD
+              value: ""
           resources:
             requests:
               cpu: 250m

@@ -33,12 +33,33 @@ services:
     networks:
       - staging-net
 
+  migrate-staging:
+    build: .
+    restart: "no"
+    depends_on:
+      db-staging:
+        condition: service_healthy
+    environment:
+      DEPLOY_ENV: staging
+      GDA_DEPLOYMENT_PROFILE: staging
+      POSTGRES_HOST: db-staging
+      POSTGRES_PORT: 5432
+      POSTGRES_DATABASE: gis_agent_staging
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${STAGING_POSTGRES_PASSWORD:-staging_password}
+    entrypoint: ["python", "-m", "data_agent.migration_runner"]
+    command: ["migrate"]
+    networks:
+      - staging-net
+
   app-staging:
     build: .
     restart: unless-stopped
     depends_on:
       db-staging:
         condition: service_healthy
+      migrate-staging:
+        condition: service_completed_successfully
     ports:
       - "8001:8000"  # Staging on port 8001
     environment:
@@ -51,8 +72,6 @@ services:
       POSTGRES_DATABASE: gis_agent_staging
       POSTGRES_USER: agent_user
       POSTGRES_PASSWORD: ${STAGING_POSTGRES_PASSWORD:-staging_password}
-      POSTGRES_ADMIN_USER: postgres
-      POSTGRES_ADMIN_PASSWORD: ${STAGING_POSTGRES_PASSWORD:-staging_password}
       # Google AI
       GOOGLE_GENAI_USE_VERTEXAI: ${GOOGLE_GENAI_USE_VERTEXAI:-}
       GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}

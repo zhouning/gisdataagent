@@ -86,6 +86,10 @@ class MigrationExecutionError(MigrationError):
     """A migration failed and was rolled back."""
 
 
+class MigrationStateError(MigrationError):
+    """The configured database is not ready for application traffic."""
+
+
 def _checksum(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -471,7 +475,7 @@ def _build_schema_report(
 
 
 def get_schema_report() -> dict[str, Any]:
-    """Return code/database fingerprints and actionable schema differences."""
+    """Return a read-only code/database schema comparison report."""
     migrations = discover_migrations()
     engine = get_engine()
     if engine is None:
@@ -485,8 +489,48 @@ def get_schema_report() -> dict[str, Any]:
 
     with engine.connect() as conn:
         with _migration_lock(conn):
-            _ensure_migrations_table(conn, migrations)
-            return _build_schema_report(migrations, _load_applied(conn))
+            if not inspect(conn).has_table(T_MIGRATIONS):
+                report = _build_schema_report(migrations, [])
+                report["status"] = "ledger_missing"
+                report["ledger_present"] = False
+                return report
+            report = _build_schema_report(migrations, _load_applied(conn))
+            report["ledger_present"] = True
+            return report
+
+
+def verify_schema_state() -> dict[str, Any]:
+    """Fail closed unless the configured database matches the migration catalog."""
+    report = get_schema_report()
+    status = report["status"]
+    if status == "database_unconfigured":
+        logger.info("[Migrations] Database is not configured; verification skipped")
+        return report
+    if status == "in_sync":
+        logger.info(
+            "[Migrations] Verified %d migrations; schema fingerprint %s",
+            report["applied_count"],
+            report["database_fingerprint"],
+        )
+        return report
+
+    detail = json.dumps(
+        {
+            "status": status,
+            "pending": report.get("pending", []),
+            "unknown_applied": report.get("unknown_applied", []),
+            "missing_checksums": report.get("missing_checksums", []),
+            "checksum_mismatches": report.get("checksum_mismatches", []),
+            "metadata_mismatches": report.get("metadata_mismatches", []),
+        },
+        sort_keys=True,
+    )
+    if status == "drift":
+        raise MigrationDriftError(f"Migration ledger drift detected: {detail}")
+    raise MigrationStateError(
+        "Database schema is not ready; run the migration authority before "
+        f"starting the application: {detail}"
+    )
 
 
 def compare_schema_reports(

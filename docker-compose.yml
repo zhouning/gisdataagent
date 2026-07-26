@@ -32,6 +32,27 @@ services:
       - agent-net
 
   # ---------------------------------------------------------------------------
+  # Database Migration Authority (one shot)
+  # ---------------------------------------------------------------------------
+  migrate:
+    build: .
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GDA_DEPLOYMENT_PROFILE: ${GDA_DEPLOYMENT_PROFILE:-development}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DATABASE: gis_agent
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:-postgres}
+    entrypoint: ["python", "-m", "data_agent.migration_runner"]
+    command: ["migrate"]
+    networks:
+      - agent-net
+
+  # ---------------------------------------------------------------------------
   # GIS Data Agent Application
   # ---------------------------------------------------------------------------
   app:
@@ -40,6 +61,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       minio:
         condition: service_healthy
       minio-bucket-init:
@@ -55,9 +78,6 @@ services:
       POSTGRES_DATABASE: gis_agent
       POSTGRES_USER: agent_user
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_strong_password}
-      # Admin credentials for migrations
-      POSTGRES_ADMIN_USER: postgres
-      POSTGRES_ADMIN_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:-postgres}
       # Google AI — set in .env or pass at runtime
       GOOGLE_GENAI_USE_VERTEXAI: ${GOOGLE_GENAI_USE_VERTEXAI:-}
       GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}

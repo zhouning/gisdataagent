@@ -89,6 +89,13 @@ spec:
                 name: gis-agent-config
             - secretRef:
                 name: gis-agent-secret
+          # env entries override envFrom. Only the migration Job may retain
+          # the shared Secret's administrator credentials.
+          env:
+            - name: POSTGRES_ADMIN_USER
+              value: ""
+            - name: POSTGRES_ADMIN_PASSWORD
+              value: ""
           volumeMounts:
             # Local scratch / temp files. Production uploads now go to
             # MinIO via StorageManager (s3:// URI). This PVC is kept for

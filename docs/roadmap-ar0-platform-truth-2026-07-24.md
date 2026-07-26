@@ -102,7 +102,10 @@ MMFE、GWM 和生态扩展继续保留为战略方向，但必须由已发布 Da
 3. 遗留 schema ledger 前向升级；
 4. SQL 失败、账本漂移和启动失败的统一退出语义；
 5. schema 状态导出与跨环境比较；
-6. 单元测试、PostgreSQL 集成验证和 CI 门禁。
+6. 单元测试、PostgreSQL 集成验证和 CI 门禁；
+7. 结构写入权收敛到 K8s Job、Compose 一次性 service 和 CLI；应用/MCP 启动仅只读验证，Web/普通 worker 不再获得管理员数据库凭据。
+
+2026-07-26 本地 Docker Desktop kind 证据：双节点集群中的 App/Outbox 新 Pod 均就绪且零重启，容器管理员数据库变量为空，应用以普通角色读取 migration ledger 并得到 97/97 `in_sync`；启动日志无 `must be owner of table`，外部 `/health`、`/ready` 均通过。该结果只证明本地部署合同，staging 的独立凭据、升级与故障注入验收仍未完成。
 
 ### 4.2 Config / runtime truth（已完成）
 
