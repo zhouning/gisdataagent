@@ -268,6 +268,12 @@ python -m data_agent.dolphinscheduler_worker_activation validate \
 
 ### 10.3 Staging candidate registry publication
 
+#### Remote mainline prerequisite
+
+2026-07-26 只读审计确认 GitHub 默认 `main@f339e13` 与当前 AR-1 历史没有共同祖先；当前分支仅与远端 `feat/v12-extensible-platform@ebd99f8` 共享 lineage，并领先 25 个提交。仓库同时没有 classic branch protection、repository ruleset 或任何 environment。详见 [ADR-035](../architecture-decisions/adr-035-github-mainline-history-recovery.md)。
+
+在 ADR-035 被 owner 接受并完成 archive refs、ruleset、active-lineage review、主线改名/default branch 复核前，禁止直接 push/force push 到旧 `main`，也禁止用 `--allow-unrelated-histories` 合并。`cd-staging.yml` 固定监听 `main`，所以旧主线未恢复时不能把 workflow 未触发解释为 CI 或发布故障。
+
 `.github/workflows/cd-staging.yml` 在 candidate 验证后发布同一个 application image，不做第二次 application build。它把 OCI revision/source label、candidate fingerprint、本地 image ID、GHCR repository 和远端 manifest digest 绑定到 `registry.json`，再使用 GitHub OIDC 为 `repository@digest` 请求 provenance attestation。
 
 workflow 权限只能是 `contents: read`、`packages: write`、`id-token: write` 和 `attestations: write`。digest 必须来自 `docker buildx imagetools inspect --raw` 的远端 manifest 内容并按 `sha256` 复查，禁止从 `docker push` 输出提取。candidate artifact 使用 `if: always()`；只有 provenance action 成功后才上传 registry artifact。
