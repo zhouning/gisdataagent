@@ -266,7 +266,22 @@ python -m data_agent.dolphinscheduler_worker_activation validate \
 
 只有 `status=ready_for_activation` 才能进入扩容步骤。该结果仍固定包含 `deployed=false` 和 `live_cluster_verified=false`；随后必须另行采集 Deployment rollout、Pod readiness/liveness、worker status、唯一 Pod UID、lease 接管和重启 drain 证据。
 
-### 10.3 Staging release bundle
+### 10.3 Staging candidate registry publication
+
+`.github/workflows/cd-staging.yml` 在 candidate 验证后发布同一个 application image，不做第二次 application build。它把 OCI revision/source label、candidate fingerprint、本地 image ID、GHCR repository 和远端 manifest digest 绑定到 `registry.json`，再使用 GitHub OIDC 为 `repository@digest` 请求 provenance attestation。
+
+workflow 权限只能是 `contents: read`、`packages: write`、`id-token: write` 和 `attestations: write`。digest 必须来自 `docker buildx imagetools inspect --raw` 的远端 manifest 内容并按 `sha256` 复查，禁止从 `docker push` 输出提取。candidate artifact 使用 `if: always()`；只有 provenance action 成功后才上传 registry artifact。
+
+截至 2026-07-26，本机 `127.0.0.1:7897` 代理已可读取公开 GitHub action 与 Buildx 元数据，但 `gh` 登录仍失效，因此该 workflow 尚未真实运行。恢复身份后的首次受控运行必须留存：
+
+- `candidate.json` 与 `registry.json`，且 source revision、candidate fingerprint 和 local image ID 一致；
+- GHCR `repository@sha256:digest`，tag 不能作为 release 输入；
+- GitHub artifact attestation 及其 repository、workflow、source revision identity；
+- 独立 protected runner 的 OCI attestation verify 结果。
+
+`registry_subject_bound=true` 只表示字段内部一致；报告仍固定 `provenance_attestation_verified=false`、`registry_digest_verified=false`、`staging_deployed=false`、`live_cluster_verified=false` 和 `production_promotion_allowed=false`。publication workflow 不调用 `kubectl` 或 Helm。未完成独立 verify 时，不得把 registry subject 交给 staging apply 或解除 production 阻断。
+
+### 10.4 Staging release bundle
 
 公共 `k8s/overlays/staging` 不包含 Secret，也故意保留会被 gate 阻断的本地模型默认值和基础设施 image tag。受保护环境必须先提供 Secret 和环境 ConfigMap overlay，把模型入口改为非本地 HTTPS endpoint，并把所有依赖镜像 pin 到 `@sha256:` digest，再渲染 template。随后将 validated candidate、预期 live platform snapshot 和应用 registry digest 结构化绑定：
 
@@ -285,7 +300,7 @@ python -m data_agent.staging_deployment_bundle build \
 
 只有 `status=ready_for_staging_apply` 才会写出 manifest。该报告仍固定 `registry_digest_verified=false`、`staging_deployed=false`、`live_cluster_verified=false` 和 `production_promotion_allowed=false`；protected runner 必须另行验证 registry provenance，apply 后再执行 live observation。
 
-### 10.4 Live staging observation
+### 10.5 Live staging observation
 
 应用 Deployment 的 Pod template 必须由 staging overlay 写入以下注解；放在 Deployment metadata 而不放在 Pod template 不算 revision 绑定：
 

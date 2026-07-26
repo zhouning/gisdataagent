@@ -162,7 +162,7 @@ def test_staging_workflow_is_candidate_validation_not_fake_deployment():
     workflow = yaml.safe_load(text)
     jobs = workflow["jobs"]
 
-    assert workflow["name"] == "Validate - Staging Candidate"
+    assert workflow["name"] == "Publish - Staging Candidate Image"
     assert set(jobs) == {"validate-candidate", "candidate-summary"}
     assert "deploy-staging" not in text
     assert "Ready for production" not in text
@@ -181,8 +181,9 @@ def test_staging_workflow_is_candidate_validation_not_fake_deployment():
     upload = next(
         step
         for step in jobs["validate-candidate"]["steps"]
-        if step.get("uses") == "actions/upload-artifact@v4"
+        if step.get("name") == "Upload candidate evidence"
     )
+    assert upload["uses"] == "actions/upload-artifact@v4"
     uploaded_paths = set(upload["with"]["path"].splitlines())
     assert uploaded_paths == {
         "staging-candidate-evidence/candidate.json",

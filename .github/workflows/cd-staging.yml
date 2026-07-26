@@ -1,6 +1,7 @@
-# Validates a staging candidate in an ephemeral CI environment. This workflow
-# does not deploy staging and cannot authorize production promotion.
-name: Validate - Staging Candidate
+# Validates a staging candidate, publishes that exact image to GHCR, and asks
+# GitHub's OIDC attestation authority to sign the registry subject. This
+# workflow does not deploy staging and cannot authorize production promotion.
+name: Publish - Staging Candidate Image
 
 on:
   push:
@@ -9,6 +10,9 @@ on:
 
 permissions:
   contents: read
+  packages: write
+  id-token: write
+  attestations: write
 
 concurrency:
   group: staging-candidate-${{ github.ref }}
@@ -16,7 +20,7 @@ concurrency:
 
 jobs:
   validate-candidate:
-    name: Build and validate candidate evidence
+    name: Validate candidate and publish attested image
     runs-on: ubuntu-latest
     timeout-minutes: 90
 
@@ -156,7 +160,10 @@ jobs:
 
       - name: Build the application candidate image
         run: |
-          docker build -t "gis-data-agent:${GITHUB_SHA}" .
+          docker build \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            -t "gis-data-agent:${GITHUB_SHA}" .
           IMAGE_ID=$(docker image inspect \
             --format '{{.Id}}' "gis-data-agent:${GITHUB_SHA}")
           echo "CANDIDATE_IMAGE_ID=$IMAGE_ID" >> "$GITHUB_ENV"
@@ -170,6 +177,67 @@ jobs:
             --source-revision "$GITHUB_SHA" \
             --image-id "$CANDIDATE_IMAGE_ID" \
             --output staging-candidate-evidence/candidate.json
+
+      - name: Set up Docker Buildx for remote manifest inspection
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push exact candidate image and resolve registry digest
+        id: registry
+        run: |
+          set -euo pipefail
+          REPOSITORY="ghcr.io/${GITHUB_REPOSITORY,,}"
+          TAGGED_IMAGE="${REPOSITORY}:${GITHUB_SHA}"
+          docker tag "gis-data-agent:${GITHUB_SHA}" "$TAGGED_IMAGE"
+          docker push "$TAGGED_IMAGE"
+
+          MANIFEST_FILE=$(mktemp)
+          docker buildx imagetools inspect \
+            "$TAGGED_IMAGE" --raw > "$MANIFEST_FILE"
+          DIGEST="sha256:$(sha256sum "$MANIFEST_FILE" | awk '{print $1}')"
+          if [[ ! "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "registry did not return a canonical sha256 manifest digest" >&2
+            exit 1
+          fi
+          docker buildx imagetools inspect "${REPOSITORY}@${DIGEST}" >/dev/null
+          {
+            echo "repository=$REPOSITORY"
+            echo "digest=$DIGEST"
+            echo "image=${REPOSITORY}@${DIGEST}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Bind candidate evidence to registry subject
+        run: |
+          EXPECTED_REPOSITORY="ghcr.io/${GITHUB_REPOSITORY,,}"
+          python -m data_agent.staging_registry_evidence validate \
+            --candidate-evidence staging-candidate-evidence/candidate.json \
+            --source-revision "$GITHUB_SHA" \
+            --local-image-id "$CANDIDATE_IMAGE_ID" \
+            --repository "${{ steps.registry.outputs.repository }}" \
+            --digest "${{ steps.registry.outputs.digest }}" \
+            --expected-repository "$EXPECTED_REPOSITORY" \
+            --output staging-candidate-evidence/registry.json
+
+      - name: Attest registry image provenance with GitHub OIDC
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-name: ${{ steps.registry.outputs.repository }}
+          subject-digest: ${{ steps.registry.outputs.digest }}
+          push-to-registry: true
+
+      - name: Upload registry binding evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-registry-evidence-${{ github.sha }}
+          path: staging-candidate-evidence/registry.json
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Upload candidate evidence
         uses: actions/upload-artifact@v4
@@ -193,9 +261,9 @@ jobs:
       - name: Report validated candidate boundary
         if: needs.validate-candidate.result == 'success'
         run: |
-          echo "Candidate validation passed."
+          echo "Candidate validation and attested registry publication passed."
           echo "No staging deployment was performed."
-          echo "Production promotion remains blocked pending live staging evidence."
+          echo "Production promotion remains blocked pending protected verification and live staging evidence."
 
       - name: Preserve candidate validation failure
         if: needs.validate-candidate.result != 'success'
