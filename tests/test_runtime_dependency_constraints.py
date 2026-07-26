@@ -51,3 +51,10 @@ def test_python_313_cloud_storage_floor_is_compatible_with_vertex_ai() -> None:
 
     assert Version("3.10.0") in cloud_storage
     assert Version("3.7.0") not in cloud_storage
+
+
+def test_chap_netcdf_reader_dependency_is_pinned() -> None:
+    requirements = runtime_requirements()
+    h5py = requirements["h5py"].specifier
+
+    assert Version("3.15.1") in h5py
