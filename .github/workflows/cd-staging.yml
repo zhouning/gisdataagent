@@ -4,8 +4,6 @@
 name: Publish - Staging Candidate Image
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -21,6 +19,7 @@ concurrency:
 jobs:
   validate-candidate:
     name: Validate candidate and publish attested image
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 90
 

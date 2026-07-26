@@ -274,7 +274,7 @@ def test_protected_workflow_verifies_and_attests_without_deploying():
     assert job["environment"] == "staging-provenance"
     assert "workflow_run" in text
     assert 'workflows: ["Publish - Staging Candidate Image"]' in text
-    assert "github.event.workflow_run.event == 'push'" in job["if"]
+    assert "github.event.workflow_run.event == 'workflow_dispatch'" in job["if"]
     assert "github.event.workflow_run.head_branch == 'main'" in job["if"]
     assert "head_repository.full_name == github.repository" in job["if"]
     checkout = steps[0]

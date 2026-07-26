@@ -161,12 +161,18 @@ def test_staging_workflow_is_candidate_validation_not_fake_deployment():
     text = path.read_text(encoding="utf-8")
     workflow = yaml.safe_load(text)
     jobs = workflow["jobs"]
+    triggers = workflow.get("on", workflow.get(True))
 
     assert workflow["name"] == "Publish - Staging Candidate Image"
+    assert triggers == {"workflow_dispatch": None}
     assert set(jobs) == {"validate-candidate", "candidate-summary"}
     assert "deploy-staging" not in text
     assert "Ready for production" not in text
     assert "environment: staging" not in text
+    assert jobs["validate-candidate"]["if"] == (
+        "github.event_name == 'workflow_dispatch' && "
+        "github.ref == 'refs/heads/main'"
+    )
 
     validation_commands = "\n".join(
         step.get("run", "") for step in jobs["validate-candidate"]["steps"]
