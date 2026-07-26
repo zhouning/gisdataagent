@@ -43,6 +43,13 @@ configuration, migrations, contracts, gateway, DolphinScheduler adapter and
 worker, staging evidence chain, authentication boundaries, and PostgreSQL
 control-ledger behavior.
 
+`Route Evaluation Contract (PR)` is a hermetic gate for evaluation fixtures,
+tool names, thresholds, and ADK Workflow target selection. It does not call a
+model and is not model-quality evidence. Credentialed scoring remains the
+`Agent Evaluation (Full)` job on a `main` push; an absent credential, a skipped
+job, or a contract-only pass cannot be represented as a successful live
+evaluation.
+
 The complete legacy inventory is retained as the manually dispatched
 `Diagnostic - Legacy Compatibility` workflow. That workflow is expected to
 remain red until its prerequisites and assertions are migrated. A red legacy

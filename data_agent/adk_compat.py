@@ -7,6 +7,7 @@ import sys
 import warnings
 from collections.abc import Iterable, Iterator
 from pathlib import Path
+from types import MethodType
 from typing import Any
 
 
@@ -175,6 +176,19 @@ def walk_adk_tree(root: Any) -> Iterator[Any]:
     yield from _walk(root)
 
 
+def find_adk_node(root: Any, name: str) -> Any | None:
+    """Find a named node across Workflow graphs and legacy agent trees."""
+    for node in walk_adk_tree(root):
+        if _node_name(node) == name:
+            return node
+    return None
+
+
+def _workflow_find_agent(workflow: Any, name: str) -> Any | None:
+    """Bridge ADK AgentEvaluator's legacy lookup to Workflow graph nodes."""
+    return find_adk_node(workflow, name)
+
+
 def set_workflow_compat_attrs(
     workflow: Any,
     *,
@@ -182,6 +196,12 @@ def set_workflow_compat_attrs(
     max_iterations: int | None = None,
 ) -> Any:
     """Attach compatibility attrs used by older local code/tests."""
+    if not callable(getattr(workflow, "find_agent", None)):
+        object.__setattr__(
+            workflow,
+            "find_agent",
+            MethodType(_workflow_find_agent, workflow),
+        )
     if sub_agents is not None:
         object.__setattr__(workflow, "sub_agents", list(sub_agents))
     if max_iterations is not None:
