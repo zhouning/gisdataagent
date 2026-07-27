@@ -1,7 +1,9 @@
 # Data Agent 竞品分析报告
 
 > 分析日期: 2026-02-12
+> 最近更新: 2026-07-27（新增 Databricks 产品体系专项对标）
 > 目标: 分析 Data Agent 市场竞争格局，识别 GIS + Data Agent 差异化定位机会
+> 专项报告: [GIS Data Agent 与 Databricks 最新产品体系对比分析](docs/reports/gis-data-agent-vs-databricks-product-system-comparison-2026-07-27.md)
 
 ---
 
@@ -43,11 +45,17 @@
 │  │          │ │ Data     │ │          │ │          │         │
 │  └──────────┘ └──────────┘ └──────────┘ └───────────┘         │
 │                                                                 │
-│  【相邻竞争者】 企业 BI + AI                                      │
-│  ┌──────────┐ ┌──────────┐ ┌───────────┐ ┌──────────┐         │
-│  │ Power BI │ │ Tableau  │ │Databricks │ │ DataRobot│         │
-│  │ Copilot  │ │ AI       │ │           │ │          │         │
-│  └──────────┘ └──────────┘ └───────────┘ └──────────┘         │
+│  【核心横向平台标杆 / 潜在底座】                                 │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ Databricks Data Intelligence Platform                    │  │
+│  │ Lakeflow + Unity Catalog + Genie/Agents + Apps/Lakebase  │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│  【相邻竞争者】 企业 BI + AI                                     │
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐            │
+│  │ Power BI     │ │ Tableau AI   │ │ DataRobot    │            │
+│  │ Copilot      │ │              │ │              │            │
+│  └──────────────┘ └──────────────┘ └──────────────┘            │
 │                                                                 │
 │  【替代方案】                                                    │
 │  ┌──────────────┐ ┌─────────────┐ ┌──────────────────┐         │
@@ -69,12 +77,12 @@
     CARTO       │
     Agentic GIS │
                 │
-  Google Earth  │
-  + Gemini      │
+  Google Earth  │           Databricks
+  + Gemini      │           Native Spatial + Agents
                 │
   ──────────────┼──────────────────────────► 数据分析 Agent 能力强
                 │
-    Power BI    │    Databricks
+    Power BI    │
     Copilot     │
                 │
     Tableau AI  │    Julius AI    ChatGPT
@@ -85,7 +93,7 @@
   GIS/空间能力弱 │
 ```
 
-**核心发现**: 目前市场上 **右上角区域（强 GIS + 强 Data Agent）几乎是空白**。CARTO 最接近但偏 GIS 工具侧，Julius/ChatGPT 偏通用数据分析侧。这正是你的机会窗口。
+**更新后的核心发现**: 强 GIS + 强 Data Agent 区域仍没有单一平台完全占据，但已经不能视为“几乎空白”。CARTO 从云原生 GIS 侧进入，Databricks 则通过原生 `GEOMETRY`/`GEOGRAPHY`、H3、Lakeflow 空间管道、Lakebase PostGIS、Genie 和 Agent Bricks 从数据与 AI 平台侧逼近。GIS Data Agent 的机会不再只是“GIS + 对话”，而是自然资源标准、专业 GIS 执行、证据约束行动、规划推演和 GWM。
 
 ---
 
@@ -131,7 +139,24 @@
 | **劣势** | 仍在试点阶段; 功能有限; 非专业 GIS 工具级别 |
 | **威胁等级** | ★★★☆☆ (潜在威胁大，但短期竞争有限) |
 
-### 3.2 间接竞争者 (通用 Data Agent)
+### 3.2 核心横向平台标杆
+
+#### Databricks - Data Intelligence Platform
+
+| 维度 | 详情 |
+|------|------|
+| **定位** | 面向企业的数据、分析、AI Agent 和应用统一平台，不是完整 GIS 产品 |
+| **产品体系** | Lakehouse/Databricks SQL + Lakeflow + Unity Catalog + AI/BI + Genie + Agent Bricks/Framework + Apps + Lakebase |
+| **Agent 能力** | Genie One/Agents/Code、Supervisor Agent、MCP、AI Search、Model Serving、MLflow 评测监控、Unity AI Gateway |
+| **空间能力** | 原生 `GEOMETRY`（GA）、`GEOGRAPHY`（Public Preview）、`ST_*`、H3、Lakeflow 空间管道、Lakebase PostGIS/PostgREST |
+| **优势** | 数据工程、湖仓、批流、治理、语义、BI、AgentOps、应用运行时和企业产品成熟度形成完整闭环 |
+| **边界** | 不是栅格/遥感、STAC/OGC、复杂制图、3D GIS、自然资源标准和规划推演的完整专业平台 |
+| **竞争关系** | 通用 Data Platform 层是核心标杆；矢量空间分析层是实质竞争者；已有 Databricks 客户中可作为 GDA 底座 |
+| **威胁等级** | ★★★★★（通用平台）；★★★★☆（矢量空间分析）；★★☆☆☆（自然资源/GWM） |
+
+**关键判断**：旧报告只把 Databricks 视为“企业 BI + AI”相邻竞争者，且以 `Databricks Assistant` 代表其 AI 能力。2026 年这一口径已经过时。Databricks 应升级为“核心横向平台标杆/潜在底座”，详细分析见 [Databricks 专项对标报告](docs/reports/gis-data-agent-vs-databricks-product-system-comparison-2026-07-27.md)。
+
+### 3.3 间接竞争者 (通用 Data Agent)
 
 #### Julius AI
 
@@ -170,29 +195,33 @@
 
 ## 四、功能对比矩阵
 
-| 能力领域 | 你的产品 (目标) | CARTO | Esri ArcGIS | Julius AI | ChatGPT | Power BI |
-|---------|:----------:|:-----:|:-----------:|:---------:|:-------:|:--------:|
-| **空间分析** | | | | | | |
-| 地图可视化 | ★★★★ | ★★★★★ | ★★★★★ | ✗ | ✗ | ★★ |
-| 空间查询 (缓冲区/叠加) | ★★★★ | ★★★★★ | ★★★★★ | ✗ | ✗ | ✗ |
-| 地理编码/逆地理编码 | ★★★ | ★★★★ | ★★★★★ | ✗ | ✗ | ★ |
-| 路径分析/网络分析 | ★★★ | ★★★ | ★★★★★ | ✗ | ✗ | ✗ |
-| **数据分析** | | | | | | |
-| 自然语言查询 | ★★★★ | ★★★ | ★★★ | ★★★★ | ★★★★★ | ★★★ |
-| 多格式数据导入 | ★★★ | ★★★ | ★★★ | ★★★★★ | ★★ | ★★★★ |
-| 统计分析 | ★★★ | ★★ | ★★★ | ★★★★ | ★★★ | ★★★ |
-| 数据可视化/图表 | ★★★ | ★★★ | ★★★ | ★★★★★ | ★★★ | ★★★★★ |
-| **AI Agent 能力** | | | | | | |
-| 自主多步推理 | ★★★★ | ★★★ | ★★ | ★★★★ | ★★★ | ★★ |
-| 空间推理 | ★★★★ | ★★★★ | ★★★ | ✗ | ★ | ✗ |
-| 代码生成与执行 | ★★★ | ★★ | ★★★ | ★★★★ | ★★★★ | ★★ |
-| 工具调用/MCP 集成 | ★★★ | ★★★★ | ★★★ | ★★ | ★★★ | ★★ |
-| **产品体验** | | | | | | |
-| 上手难度 (低=好) | ★★★★ | ★★ | ★ | ★★★★ | ★★★★★ | ★★★ |
-| 中文支持 | ★★★★★ | ★★ | ★★ | ★★★ | ★★★★ | ★★★★ |
-| 价格亲民度 | ★★★★ | ★ | ★ | ★★★★ | ★★★★ | ★★★ |
+| 能力领域 | 你的产品 (目标) | CARTO | Esri ArcGIS | Databricks | Julius AI | ChatGPT | Power BI |
+|---------|:----------:|:-----:|:-----------:|:----------:|:---------:|:-------:|:--------:|
+| **空间分析** | | | | | | | |
+| 地图可视化 | ★★★★ | ★★★★★ | ★★★★★ | ★★★ | ✗ | ✗ | ★★ |
+| 空间查询 (缓冲区/叠加) | ★★★★ | ★★★★★ | ★★★★★ | ★★★★ | ✗ | ✗ | ✗ |
+| 地理编码/逆地理编码 | ★★★ | ★★★★ | ★★★★★ | ★★ | ✗ | ✗ | ★ |
+| 路径分析/网络分析 | ★★★ | ★★★ | ★★★★★ | ★★ | ✗ | ✗ | ✗ |
+| 栅格/遥感/OGC/STAC | ★★★★★ | ★★★★ | ★★★★★ | ★★ | ✗ | ✗ | ✗ |
+| **数据平台与分析** | | | | | | | |
+| 批流、CDC 与调度 | ★★★ | ★★ | ★★ | ★★★★★ | ✗ | ✗ | ★★ |
+| 统一治理、血缘与审计 | ★★★★ | ★★★ | ★★★★ | ★★★★★ | ✗ | ✗ | ★★★ |
+| 自然语言查询 | ★★★★ | ★★★ | ★★★ | ★★★★★ | ★★★★ | ★★★★★ | ★★★ |
+| 多格式数据导入 | ★★★ | ★★★ | ★★★ | ★★★★★ | ★★★★★ | ★★ | ★★★★ |
+| 统计分析 | ★★★ | ★★ | ★★★ | ★★★★★ | ★★★★ | ★★★ | ★★★ |
+| 数据可视化/图表 | ★★★ | ★★★ | ★★★ | ★★★★ | ★★★★★ | ★★★ | ★★★★★ |
+| **AI Agent 能力** | | | | | | | |
+| 自主多步推理 | ★★★★ | ★★★ | ★★ | ★★★★★ | ★★★★ | ★★★ | ★★ |
+| 空间推理 | ★★★★ | ★★★★ | ★★★ | ★★★ | ✗ | ★ | ✗ |
+| 代码生成与执行 | ★★★ | ★★ | ★★★ | ★★★★★ | ★★★★ | ★★★★ | ★★ |
+| 工具调用/MCP 集成 | ★★★★ | ★★★★ | ★★★ | ★★★★★ | ★★ | ★★★ | ★★ |
+| Agent 评测、网关与监控 | ★★★★ | ★★ | ★★ | ★★★★★ | ★ | ★★ | ★★ |
+| **产品体验** | | | | | | | |
+| 上手难度 (低=好) | ★★★★ | ★★ | ★ | ★★ | ★★★★ | ★★★★★ | ★★★ |
+| 中文支持 | ★★★★★ | ★★ | ★★ | ★★★ | ★★★ | ★★★★ | ★★★★ |
+| 价格亲民度 | ★★★★ | ★ | ★ | ★ | ★★★★ | ★★★★ | ★★★ |
 
-> ★★★★★=最强 ★★★★=强 ★★★=够用 ★★=弱 ★=很弱 ✗=不具备
+> ★★★★★=最强 ★★★★=强 ★★★=够用 ★★=弱 ★=很弱 ✗=未发现一等产品能力。该矩阵是战略判断，不替代实测 benchmark；“你的产品”列为目标能力，当前实现与目标状态见专项报告。
 
 ---
 
@@ -204,22 +233,24 @@
 |------|---------|
 | **CARTO** | "For GIS teams who need to scale spatial intelligence, CARTO is an agentic GIS platform that democratizes location analytics. Unlike Esri, CARTO is cloud-native and AI-first." |
 | **Esri** | "For organizations needing comprehensive geospatial solutions, ArcGIS is the industry-standard GIS platform with AI. Unlike startups, Esri offers 50+ years of trust and the deepest toolset." |
+| **Databricks** | 通用 Data Intelligence Platform，统一数据工程、湖仓、治理、BI、Agent、应用和事务数据库；不是完整 GIS，但已具备原生空间数据工程能力。 |
 | **Julius AI** | "For analysts who need to turn data into insights, Julius is a purpose-built AI data analyst. Unlike ChatGPT, Julius handles 32GB files with multi-model flexibility." |
 | **ChatGPT** | "For everyone who needs AI assistance, ChatGPT is the most versatile AI. Unlike specialized tools, ChatGPT does everything." |
 
-### 5.2 定位空白机会
+### 5.2 可防守的定位机会
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│              定位空白地图                             │
+│              差异化定位地图                           │
 │                                                     │
 │  ❌ 拥挤定位: "通用 AI 助手" (ChatGPT, Copilot...)   │
 │  ❌ 拥挤定位: "企业 GIS 平台" (Esri, CARTO)          │
 │  ❌ 拥挤定位: "数据分析工具" (Julius, Powerdrill)     │
+│  ❌ 高风险定位: "通用 Data + AI 平台" (Databricks)    │
 │                                                     │
-│  ✅ 空白定位: "空间数据智能分析 Agent"                │
-│  ✅ 空白定位: "GIS + 数据分析一体化 Agent"            │
-│  ✅ 空白定位: "非 GIS 专家的空间洞察 Agent"           │
+│  ✅ 用户定位: "非 GIS 专家的可信空间洞察 Agent"       │
+│  ✅ 产品定位: "受治理的地理空间决策与行动层"          │
+│  ✅ 技术定位: "专业 GIS + Evidence + GWM"             │
 │                                                     │
 └─────────────────────────────────────────────────────┘
 ```
@@ -233,6 +264,12 @@
 > **Unlike** CARTO/Esri 需要专业 GIS 知识，或 Julius/ChatGPT 缺乏空间分析能力，
 > **[Product]** **让每个人都能用自然语言完成专业级的空间数据分析**。
 
+面向企业架构和平台采购，不建议使用“GIS 版 Databricks”或“替代 Databricks”作为定位。推荐表述为：
+
+> **Databricks-compatible 的受治理地理空间决策与行动层。**
+
+对于已经采用 Databricks 的客户，GIS Data Agent 可作为 Databricks App、MCP/Agent、GIS 服务控制层和自然资源领域包；对于私有化、国产化和数据主权场景，则保留开放湖仓、PostGIS、STAC/OGC 和可替换 provider 主线。
+
 ---
 
 ## 六、市场趋势与战略影响
@@ -243,7 +280,8 @@
 |------|---------|--------|------------|---------|
 | **Agentic GIS 兴起** | AI 技术成熟 + 空间分析民主化需求 | 正在发生 | 验证了 GIS+Agent 赛道 | CARTO 已率先定义品类 |
 | **MCP 协议标准化** | Anthropic 推动 + 企业集成需求 | 正在发生 | 应支持 MCP 以融入生态 | CARTO 已支持 MCP |
-| **多 Agent 协作** | 复杂任务需求 | 1-2 年 | 空间 Agent 可作为专家 Agent 被编排 | Google, Microsoft 布局 |
+| **多 Agent 协作** | 复杂任务需求 | 正在发生 | 空间 Agent 可作为专家 Agent 被编排 | Databricks Supervisor 已编排 Genie、MCP 和 custom agents |
+| **空间能力进入 Lakehouse** | 原生空间类型、H3、空间流处理 | 正在发生 | 仅有 PostGIS/GIS 算子不再构成充分壁垒 | Databricks Geometry/H3/Lakeflow/Lakebase PostGIS |
 | **空间数据民主化** | 非 GIS 用户增长 | 正在发生 | 核心机会 — 降低门槛 | Esri/CARTO 开始但做得不够 |
 | **实时空间 AI** | IoT + 边缘计算 | 1-3 年 | 差异化方向 | Esri ArcGIS 2026 |
 | **中国市场空白** | 国产化需求 + 数据安全 | 正在发生 | 巨大机会 — 无直接竞品 | 国外产品未深入中国市场 |
@@ -254,7 +292,9 @@
 |------|---------|------|
 | Agentic GIS | **Lead（领先）** | 在中国市场率先定义 "GIS Data Agent" 品类 |
 | MCP 协议 | **Fast Follow（快速跟进）** | 支持 MCP，让产品可被 Claude/其他 Agent 调用 |
-| 多 Agent 协作 | **Monitor（观察）** | 预留 multi-agent 架构，但不作为 v1 重点 |
+| 多 Agent 协作 | **Build Selectively（选择性建设）** | 聚焦 GIS Specialist、权限、证据和行动边界，不复制通用 Supervisor |
+| Databricks 兼容 | **Integrate（集成）** | 建设 SQL/Unity Catalog/OpenSharing/Apps/MCP/Lakebase provider 与互操作 benchmark |
+| 通用 Data Platform | **Avoid Head-on（避免正面竞争）** | 通用接入、湖仓、BI 和模型托管优先复用成熟 provider |
 | 空间数据民主化 | **Lead（领先）** | 这是核心价值主张，用自然语言消除 GIS 门槛 |
 | 中国市场 | **Lead（领先）** | 国产化 + 中文优先是独有优势 |
 
@@ -296,10 +336,11 @@
 | | 本土化/中文优势 | 产品从 0 到 1 |
 | | 交叉领域先发 | 团队规模有限 |
 | **外部** | **Opportunities** | **Threats** |
-| | 右上角定位空白 | CARTO 快速迭代 |
+| | 尚无单一平台覆盖完整 GIS + Agent + Evidence + GWM | CARTO 快速迭代 |
 | | 垂直 Agent CAGR 62.7% | Esri+Microsoft 联盟 |
 | | 中国市场无直接竞品 | Google Earth+Gemini 潜力 |
-| | 空间数据民主化趋势 | 通用 Agent 可能添加 GIS 能力 |
+| | 空间数据民主化趋势 | Databricks 原生空间、PostGIS、Apps 与 Agents 组合下沉 |
+| | Databricks-compatible 领域层机会 | 通用 Agent/Data Platform 可能吸收基础 GIS 能力 |
 
 ---
 
@@ -335,6 +376,8 @@
 - [ ] CARTO 产品更新 (blog.carto.com) — 每月
 - [ ] Esri ArcGIS AI 功能发布 (esri.com/arcnews) — 每季度
 - [ ] Google Earth + Gemini 进展 — 每季度
+- [ ] Databricks Genie/Agent Bricks/Unity AI Gateway 更新 — 每月
+- [ ] Databricks Geometry/Geography/H3/Lakebase PostGIS 更新 — 每月
 - [ ] Julius AI 功能更新 — 每月
 - [ ] 国内竞品出现 (关注超图、中地数码的 AI 动向) — 持续
 - [ ] AI Agent 开源框架发展 (LangChain, CrewAI) — 每月
@@ -356,3 +399,13 @@
 - [Straive - Top Agentic AI Companies 2026](https://www.straive.com/blogs/top-agentic-ai-companies-2026/)
 - [GeoAI AAG 2026](https://giscience.psu.edu/2026/02/04/autonomousgis_2026aag/)
 - [Geospatial Intelligence Market](https://www.marketsandmarkets.com/PressReleases/geospatial-intelligence.asp)
+- [Databricks Platform](https://www.databricks.com/product/platform)
+- [Databricks Lakeflow](https://www.databricks.com/product/data-engineering)
+- [Databricks Artificial Intelligence](https://www.databricks.com/product/artificial-intelligence)
+- [Databricks Unity Catalog](https://docs.databricks.com/aws/en/data-governance/unity-catalog/)
+- [Databricks Genie](https://docs.databricks.com/aws/en/genie/)
+- [Databricks Apps](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/)
+- [Databricks Lakebase](https://www.databricks.com/product/lakebase)
+- [Databricks ST geospatial functions](https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-st-geospatial-functions)
+- [Databricks Lakeflow spatial pipeline tutorial](https://docs.databricks.com/aws/en/ldp/tutorial-spatial-pipelines)
+- [Databricks 专项对标报告](docs/reports/gis-data-agent-vs-databricks-product-system-comparison-2026-07-27.md)
