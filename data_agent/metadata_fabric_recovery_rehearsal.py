@@ -1,8 +1,9 @@
 """Verify an isolated backup/restore rehearsal for the metadata fabric.
 
 The live runner quiesces only the two metadata provider applications, creates
-logical PostgreSQL dumps and an OpenSearch filesystem snapshot, restores all
-three stores into an ephemeral namespace with new PVCs, compares allowlisted
+logical PostgreSQL dumps and an OpenSearch filesystem snapshot, optionally
+round-trips those artifacts through an external repository callback, restores
+all three stores into an ephemeral namespace with new PVCs, compares allowlisted
 content markers, restores source availability, and removes the recovery
 namespace and local backup files. It does not prove production RPO/RTO,
 cross-cluster disaster recovery, OIDC, or production readiness.
@@ -23,7 +24,7 @@ import sys
 import tempfile
 import time
 import tarfile
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -86,6 +87,11 @@ SENSITIVE_KEY_PATTERN = re.compile(
 
 class MetadataFabricRecoveryError(RuntimeError):
     """The recovery contract or live rehearsal failed closed."""
+
+
+ArtifactRoundTrip = Callable[
+    [Mapping[str, Path], Mapping[str, Mapping[str, Any]]], Mapping[str, Any]
+]
 
 
 def _canonical_sha256(value: object) -> str:
@@ -1095,7 +1101,9 @@ def _restore_source_services(
 
 
 def run_live_recovery_rehearsal(
-    *, kubectl: str = "kubectl"
+    *,
+    kubectl: str = "kubectl",
+    artifact_round_trip: ArtifactRoundTrip | None = None,
 ) -> dict[str, Any]:
     """Execute the bounded local rehearsal and return an allowlisted observation."""
     runner = _CommandRunner(kubectl)
@@ -1136,6 +1144,7 @@ def run_live_recovery_rehearsal(
     failure: Exception | None = None
     source_repository_created = False
     snapshot_name: str | None = None
+    repository_round_trip: dict[str, Any] | None = None
 
     try:
         runner.kubectl_run(
@@ -1312,6 +1321,26 @@ def run_live_recovery_rehearsal(
             os_backup_path, "opensearch_fs_snapshot_tar_gzip_v1"
         )
         _validate_snapshot_archive(os_backup_path.read_bytes())
+
+        if artifact_round_trip is not None:
+            artifact_paths = {
+                "openmetadata_postgresql": temp_root / "openmetadata_postgresql.dump",
+                "gravitino_postgresql": temp_root / "gravitino_postgresql.dump",
+                "opensearch": os_backup_path,
+            }
+            repository_round_trip = dict(
+                artifact_round_trip(artifact_paths, artifacts)
+            )
+            for name, path in artifact_paths.items():
+                if not path.is_file():
+                    raise MetadataFabricRecoveryError(
+                        f"repository round-trip did not restore {name} locally"
+                    )
+                restored_artifact = _artifact(path, str(artifacts[name]["format"]))
+                if restored_artifact != artifacts[name]:
+                    raise MetadataFabricRecoveryError(
+                        f"repository round-trip changed {name} content"
+                    )
 
         runner.kubectl_run(
             ["apply", "-f", str(DEFAULT_RECOVERY_MANIFEST_DIR / "namespace.yaml")],
@@ -1569,6 +1598,8 @@ def run_live_recovery_rehearsal(
             "local_artifacts_removed": local_artifacts_removed,
         },
     }
+    if repository_round_trip is not None:
+        observation["repository_round_trip"] = repository_round_trip
     if _sensitive_paths(observation):
         raise MetadataFabricRecoveryError("allowlisted observation rejected a field")
     return observation

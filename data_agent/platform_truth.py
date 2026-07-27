@@ -478,6 +478,23 @@ RUNTIME_INVENTORY = (
         "PlatformRun-correlated execution provider",
     ),
     RuntimeSpec(
+        "metadata_backup_repository_rehearsal",
+        "recovery_rehearsal",
+        "governed",
+        "evidence_durable",
+        "versioned S3 observation + committed recovery evidence",
+        "sre",
+        "local_verification_only",
+        ("data_agent/metadata_fabric_backup_repository.py",),
+        (
+            (
+                "data_agent/metadata_fabric_backup_repository.py",
+                "class _RepositoryRoundTrip",
+            ),
+        ),
+        "Production backup controller and independent recovery reader",
+    ),
+    RuntimeSpec(
         "datalake_monitor",
         "monitor_loop",
         "legacy",
@@ -541,7 +558,7 @@ ENV_ACCESS_BASELINE_FINGERPRINT = (
     "41949811ca1d12a9d8bdbd5e7ecb1ba528be7049af96742306d6f317ab0791b8"
 )
 RUNTIME_PRIMITIVE_BASELINE_FINGERPRINT = (
-    "724d0c4751f92637e366602848b511c432afc9dcf10c723178f25daab9cf61e4"
+    "959d2c54745fc082e529a84b3cf55f6b7adbb260bb540775b12f5184ed514ed8"
 )
 
 _IGNORED_SOURCE_PARTS = frozenset(
