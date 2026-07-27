@@ -199,7 +199,7 @@ Temporal 继续保持目标组件状态，不在这一包并行接入。OpenMeta
 
 当前完成仅指本地合同、授权 evidence、outbox/callback 代码、数据库成功终局门、托管 worker 代码、默认关闭的部署模板及离线 activation/release preflight、candidate/registry/provenance/artifact-release/live observation evidence gate、合成 golden slice、定向测试、真实 PostgreSQL 16 事务边界和 canonical mainline 治理。`candidate_validated`、`registry_subject_bound`、本地合成 `provenance_verified`、`ready_for_activation`、`ready_for_staging_apply`、`verified_for_staging_apply` 和本地 live collection 都不等于真实镜像已 attested 或 staging 已部署；真实 IAM/OIDC 与 service token 生命周期、首次 GHCR publish/verify、真实 provenance artifact verify、registry-backed live staging revision、worker/callback 扩容运行、golden slice staging 运行链、受保护 release/live evidence provenance、独立 DolphinScheduler metadata PostgreSQL 和真实数据终局证据仍属于 4.7 后续切片。
 
-### 4.8 Metadata Fabric Bridge M1 + M2a（只读合同与本地 foundation 已验证）
+### 4.8 Metadata Fabric Bridge M1 + M2a + M2b-1（只读、foundation 与本地恢复已验证）
 
 第八块回到 AR-1 的 metadata control plane，以 [ADR-036](architecture-decisions/adr-036-read-only-metadata-fabric-bridge-contract.md) 固定 OpenMetadata + Gravitino + GDA Control Ledger 的首条 table slice：
 
@@ -211,8 +211,9 @@ Temporal 继续保持目标组件状态，不在这一包并行接入。OpenMeta
 6. 地类图斑合成 ResourceVersion 的 binding/reconciliation fingerprint 已冻结，24 个定向测试与 required CI validator 覆盖正向 replay、双租户和 authority/security 负例。
 7. [ADR-037](architecture-decisions/adr-037-local-metadata-fabric-foundation-sandbox.md) 已在两节点 ARM64 Docker Desktop Kubernetes 中运行 OpenMetadata `1.13.1`、Gravitino `1.3.0`、两个独立 PostgreSQL 和 OpenSearch；三块 PVC、五个专用 ServiceAccount、ClusterIP-only Service、无 token mount 与外部 Secret 边界均进入静态合同；
 8. Secret-free live collector 已验证固定 provider version/revision、176/39 张 PostgreSQL 表、78 个 OpenSearch 索引、三块 PVC identity 和五个 Pod 的受控替换；最终 evidence fingerprint 为 `ac21ee50ba3c1f27f949420cc7e4483963714b6b955bb0157eca1dd39cf102c3`。
+9. [ADR-038](architecture-decisions/adr-038-local-metadata-fabric-recovery-rehearsal.md) 已将两个 PostgreSQL custom dump 和 OpenSearch native snapshot 恢复到独立临时 namespace 的三块新 PVC，验证 176/39 张表的 table/row/sequence/extension fingerprints 与 79 个索引的 name/document fingerprints，恢复 source availability 并清理临时资源；evidence fingerprint 为 `ebb0db3646010d427601c5d06760f984c742a7a4b6fa143fd2d6c7833246ab30`。
 
-此处 M1 只证明静态合同和只读 HTTP 边界；M2a 只证明本地 live foundation 与 PVC 重挂载连续性。它没有写入或连接真实 GDA Resource，`production_provider_verified`、`production_table_catalog_provider_verified`、`network_policy_enforcement_verified`、`oidc_verified`、`backup_restore_verified`、`upgrade_verified`、`writes_to_gda_enabled` 和 `production_ready` 均固定为 `false`。OIDC、备份恢复、升级回滚、registry provenance、受控 ingestion、OpenLineage、bridge replay、无双写和 Gravitino Spark/Sedona/Flink conformance 仍是 M2b/M3 退出门。
+此处 M1 只证明静态合同和只读 HTTP 边界；M2a 只证明本地 live foundation 与 PVC 重挂载连续性；M2b-1 只将 `backup_restore_verified` 推进到 `local_same_cluster_new_namespace_and_pvcs` scope。它没有写入或连接真实 GDA Resource，`production_provider_verified`、`production_table_catalog_provider_verified`、`production_backup_restore_verified`、`network_policy_enforcement_verified`、`oidc_verified`、`upgrade_verified`、`writes_to_gda_enabled` 和 `production_ready` 仍为 `false`。生产 backup target/retention、跨集群恢复、OIDC、升级回滚、registry provenance、受控 ingestion、OpenLineage、bridge replay、无双写和 Gravitino Spark/Sedona/Flink conformance 仍是 M2b/M3 退出门。
 
 ## 5. 重新评估条件
 

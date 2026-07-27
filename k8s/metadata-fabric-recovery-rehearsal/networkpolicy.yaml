@@ -1,0 +1,8 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: recovery-default-deny
+  namespace: gda-metadata-recovery-rehearsal
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]

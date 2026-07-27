@@ -1,39 +1,26 @@
-apiVersion: v1
-kind: Service
-metadata:
-  name: metadata-opensearch
-  namespace: gda-metadata-sandbox
-  labels:
-    app.kubernetes.io/name: metadata-opensearch
-spec:
-  type: ClusterIP
-  selector:
-    app.kubernetes.io/name: metadata-opensearch
-  ports:
-    - name: http
-      port: 9200
-      targetPort: http
----
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: metadata-opensearch
-  namespace: gda-metadata-sandbox
+  name: recovery-opensearch
+  namespace: gda-metadata-recovery-rehearsal
 spec:
-  serviceName: metadata-opensearch
+  serviceName: recovery-opensearch
   replicas: 1
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Delete
+    whenScaled: Delete
   selector:
     matchLabels:
-      app.kubernetes.io/name: metadata-opensearch
+      app.kubernetes.io/name: recovery-opensearch
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: metadata-opensearch
-        app.kubernetes.io/component: search
+        app.kubernetes.io/name: recovery-opensearch
+        app.kubernetes.io/component: recovery-search
     spec:
-      serviceAccountName: metadata-opensearch
+      serviceAccountName: recovery-opensearch
       automountServiceAccountToken: false
-      terminationGracePeriodSeconds: 120
+      terminationGracePeriodSeconds: 60
       securityContext:
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
@@ -80,25 +67,22 @@ spec:
               value: -Xms1g -Xmx1g
             - name: path.repo
               value: /var/lib/gda-snapshots
-          ports:
-            - name: http
-              containerPort: 9200
           startupProbe:
             httpGet:
               path: /_cluster/health
-              port: http
+              port: 9200
             periodSeconds: 10
             failureThreshold: 90
           readinessProbe:
             httpGet:
               path: /_cluster/health
-              port: http
+              port: 9200
             periodSeconds: 15
             failureThreshold: 8
           livenessProbe:
             httpGet:
               path: /
-              port: http
+              port: 9200
             periodSeconds: 30
             failureThreshold: 5
           resources:
@@ -113,25 +97,26 @@ spec:
             runAsUser: 1000
             runAsGroup: 1000
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
           volumeMounts:
-            - name: opensearch-data
+            - name: recovery-opensearch-data
               mountPath: /usr/share/opensearch/data
-            - name: tmp
-              mountPath: /tmp
             - name: snapshot-staging
               mountPath: /var/lib/gda-snapshots
+            - name: tmp
+              mountPath: /tmp
             - name: logs
               mountPath: /usr/share/opensearch/logs
             - name: config
               mountPath: /usr/share/opensearch/config
       volumes:
-        - name: tmp
-          emptyDir: {}
         - name: snapshot-staging
           emptyDir:
             sizeLimit: 8Gi
+        - name: tmp
+          emptyDir: {}
         - name: logs
           emptyDir:
             sizeLimit: 1Gi
@@ -140,9 +125,9 @@ spec:
             sizeLimit: 128Mi
   volumeClaimTemplates:
     - metadata:
-        name: opensearch-data
+        name: recovery-opensearch-data
       spec:
         accessModes: ["ReadWriteOnce"]
         resources:
           requests:
-            storage: 16Gi
+            storage: 8Gi

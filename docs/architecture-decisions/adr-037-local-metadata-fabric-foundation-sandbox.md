@@ -102,3 +102,5 @@ Pod 重建后 PVC/schema/index 连续只证明本地持久卷被重新挂载和�
 **Negative**：本地 profile 仍是单副本、basic auth、local-path storage；运行 Gravitino local release image 还没有独立 registry provenance。
 
 **Next gate**：M2b 完成 OIDC/workload identity、NetworkPolicy enforcement、backup/restore、upgrade/rollback、metrics/OTel、registry provenance 和 owner/runbook；M3 在同一地类图斑 ResourceVersion 上完成受控 ingestion/replay、OpenLineage、无双写和 Gravitino Spark/Sedona/Flink catalog conformance。
+
+2026-07-27 更新： [ADR-038](adr-038-local-metadata-fabric-recovery-rehearsal.md) 已完成 M2b-1 本地同集群新 namespace/PVC 的三存储恢复演练；生产 backup target/retention、PITR、RPO/RTO 与跨集群恢复仍属于上述 next gate。
