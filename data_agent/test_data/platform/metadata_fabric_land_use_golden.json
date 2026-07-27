@@ -30,7 +30,7 @@
         "table_name": "land_use_parcels",
         "provider_revision": "iceberg-snapshot-20260724-1",
         "api_profile": "v1",
-        "server_version": "1.3.1"
+        "server_version": "1.3.0"
       }
     ]
   },
@@ -66,7 +66,7 @@
       "table_name": "land_use_parcels",
       "provider_revision": "iceberg-snapshot-20260724-1",
       "api_profile": "v1",
-      "server_version": "1.3.1"
+      "server_version": "1.3.0"
     }
   ],
   "openmetadata_response": {
@@ -145,7 +145,7 @@
     }
   ],
   "expected": {
-    "binding_sha256": "6c4b4ab2ac8f7957ec5088fff58e8759aedf6c552267a812935a6d79f108fddb",
-    "reconciliation_sha256": "62d7431d82a61816c06248be2b77a0321540dc9e9a209f719ef4ab801434a9a8"
+    "binding_sha256": "88475f3a5ab9de8e9604fcf19651ea1515349fdc634bc921371910d8a0d03f1c",
+    "reconciliation_sha256": "cd298ffa399988565824900cef66d451f35a39acd07bd1a71860054230ecce4d"
   }
 }

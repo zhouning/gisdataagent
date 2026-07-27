@@ -1,0 +1,174 @@
+replicaCount: 1
+
+image:
+  repository: docker.getcollate.io/openmetadata/server
+  tag: "1.13.1"
+  pullPolicy: Never
+
+fullnameOverride: openmetadata
+serviceAccount:
+  create: true
+  name: openmetadata
+automountServiceAccountToken: false
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+
+service:
+  type: ClusterIP
+  port: 8585
+  adminPort: 8586
+ingress:
+  enabled: false
+gateway:
+  enabled: false
+route:
+  enabled: false
+istio:
+  enabled: false
+networkPolicy:
+  enabled: false
+
+openmetadata:
+  config:
+    clusterName: gda-metadata-sandbox
+    upgradeMigrationConfigs:
+      debug: false
+      additionalArgs: ""
+    deployPipelinesConfig:
+      enabled: false
+      debug: false
+      additionalArgs: ""
+    reindexConfig:
+      enabled: false
+      debug: false
+      additionalArgs: ""
+    database:
+      enabled: true
+      host: metadata-openmetadata-postgresql
+      port: 5432
+      driverClass: org.postgresql.Driver
+      dbScheme: postgresql
+      databaseName: openmetadata_db
+      auth:
+        username: openmetadata_user
+        password:
+          secretRef: metadata-openmetadata-postgresql
+          secretKey: password
+      dbParams: sslmode=disable
+      maxSize: 20
+      minSize: 2
+      initialSize: 2
+      checkConnectionWhileIdle: true
+      checkConnectionOnBorrow: true
+      evictionInterval: 5 minutes
+      minIdleTime: 1 minute
+    elasticsearch:
+      enabled: true
+      host: metadata-opensearch
+      searchType: opensearch
+      port: 9200
+      scheme: http
+      clusterAlias: ""
+      payLoadSize: 10485760
+      connectionTimeoutSecs: 5
+      socketTimeoutSecs: 60
+      batchSize: 10
+      searchIndexMappingLanguage: EN
+      keepAliveTimeoutSecs: 600
+      trustStore:
+        enabled: false
+        path: ""
+        password:
+          secretRef: ""
+          secretKey: ""
+      auth:
+        enabled: false
+        username: ""
+        password:
+          secretRef: ""
+          secretKey: ""
+    pipelineServiceClientConfig:
+      enabled: false
+      type: airflow
+      airflow:
+        auth:
+          enabled: false
+    authentication:
+      enabled: true
+      clientType: public
+      provider: basic
+      publicKeys:
+        - http://openmetadata:8585/api/v1/system/config/jwks
+      authority: https://accounts.google.com
+      clientId: ""
+      callbackUrl: ""
+      responseType: id_token
+      jwtPrincipalClaims: ["email", "preferred_username", "sub"]
+      jwtPrincipalClaimsMapping: []
+      enableSelfSignup: false
+      oidcConfiguration:
+        enabled: false
+    authorizer:
+      enabled: true
+      className: org.openmetadata.service.security.DefaultAuthorizer
+      containerRequestFilter: org.openmetadata.service.security.JwtFilter
+      initialAdmins: ["admin"]
+      principalDomain: open-metadata.org
+      allowedDomains: []
+      allowedEmailRegistrationDomains: []
+      enforcePrincipalDomain: false
+      enableSecureSocketConnection: false
+      useRolesFromProvider: false
+    fernetkey:
+      secretRef: metadata-openmetadata-runtime
+      secretKey: fernet-key
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 2Gi
+  limits:
+    cpu: "3"
+    memory: 6Gi
+
+startupProbe:
+  periodSeconds: 15
+  failureThreshold: 80
+  successThreshold: 1
+  httpGet:
+    path: /healthcheck
+    port: http-admin
+readinessProbe:
+  initialDelaySeconds: 30
+  periodSeconds: 15
+  failureThreshold: 8
+  httpGet:
+    path: /api/v1/system/health
+    port: http
+livenessProbe:
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  failureThreshold: 5
+  httpGet:
+    path: /api/v1/system/health
+    port: http
+
+hpa:
+  enabled: false
+podDisruptionBudget:
+  enabled: false
+omjobOperator:
+  enabled: false

@@ -1,0 +1,635 @@
+{
+  "after": {
+    "cluster": {
+      "context": "docker-desktop",
+      "nodes": [
+        {
+          "architecture": "arm64",
+          "kubelet_version": "v1.35.5",
+          "name": "desktop-control-plane"
+        },
+        {
+          "architecture": "arm64",
+          "kubelet_version": "v1.35.5",
+          "name": "desktop-worker"
+        }
+      ],
+      "server_version": "v1.35.5",
+      "uid": "c3c9bbab-2b36-4359-a7ac-e3de194445ab"
+    },
+    "collection_fingerprint": "3f0243797921bfc951769903a9750ac9d070fd04ff2aa0c4b138962bcb589966",
+    "namespace": {
+      "name": "gda-metadata-sandbox",
+      "uid": "812c9c5c-9ce2-409e-a6a8-a3f24785aa0c"
+    },
+    "network_policy_names": [
+      "metadata-default-deny",
+      "metadata-dns-egress",
+      "metadata-gravitino-egress",
+      "metadata-gravitino-postgresql-ingress",
+      "metadata-openmetadata-egress",
+      "metadata-openmetadata-postgresql-ingress",
+      "metadata-opensearch-ingress",
+      "metadata-provider-ingress"
+    ],
+    "observed_at": "2026-07-27T04:40:08.676273+00:00",
+    "providers": {
+      "gravitino": {
+        "ready": true,
+        "revision": "40fdf6ab96ac87b47e6d3e14e7c4dc0d815e68f0",
+        "version": "1.3.0"
+      },
+      "openmetadata": {
+        "health": "OK",
+        "revision": "afcb2d2cd7e7c28f1d0ce60538c60a96f4eb9dc9",
+        "version": "1.13.1"
+      }
+    },
+    "pvcs": {
+      "data-metadata-openmetadata-postgresql-0": {
+        "access_modes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": "8Gi",
+        "name": "data-metadata-openmetadata-postgresql-0",
+        "phase": "Bound",
+        "storage_class": "standard",
+        "uid": "690590c1-ff93-43d0-8186-21d121bed6cb",
+        "volume_name": "pvc-690590c1-ff93-43d0-8186-21d121bed6cb"
+      },
+      "gravitino-data-metadata-gravitino-postgresql-0": {
+        "access_modes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": "8Gi",
+        "name": "gravitino-data-metadata-gravitino-postgresql-0",
+        "phase": "Bound",
+        "storage_class": "standard",
+        "uid": "b132b223-934e-49e7-b8a9-916b38086efd",
+        "volume_name": "pvc-b132b223-934e-49e7-b8a9-916b38086efd"
+      },
+      "opensearch-data-metadata-opensearch-0": {
+        "access_modes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": "16Gi",
+        "name": "opensearch-data-metadata-opensearch-0",
+        "phase": "Bound",
+        "storage_class": "standard",
+        "uid": "0feac1e5-77e2-4406-8937-6cf4820a9430",
+        "volume_name": "pvc-0feac1e5-77e2-4406-8937-6cf4820a9430"
+      }
+    },
+    "schema": "gda.metadata_fabric_live_collection.v1",
+    "services": {
+      "metadata-gravitino": {
+        "external_ips": [],
+        "name": "metadata-gravitino",
+        "node_ports": [],
+        "ports": [
+          {
+            "name": "http",
+            "port": 8090,
+            "protocol": "TCP"
+          }
+        ],
+        "type": "ClusterIP",
+        "uid": "b2fda004-0e59-40dd-b08e-45481593d179"
+      },
+      "metadata-gravitino-postgresql": {
+        "external_ips": [],
+        "name": "metadata-gravitino-postgresql",
+        "node_ports": [],
+        "ports": [
+          {
+            "name": "postgresql",
+            "port": 5432,
+            "protocol": "TCP"
+          }
+        ],
+        "type": "ClusterIP",
+        "uid": "046e60c9-4045-45ab-8ab2-28221fa5da61"
+      },
+      "metadata-openmetadata-postgresql": {
+        "external_ips": [],
+        "name": "metadata-openmetadata-postgresql",
+        "node_ports": [],
+        "ports": [
+          {
+            "name": "postgresql",
+            "port": 5432,
+            "protocol": "TCP"
+          }
+        ],
+        "type": "ClusterIP",
+        "uid": "4cbeb682-a1b9-449f-b2d1-5d9a2bb7b63b"
+      },
+      "metadata-opensearch": {
+        "external_ips": [],
+        "name": "metadata-opensearch",
+        "node_ports": [],
+        "ports": [
+          {
+            "name": "http",
+            "port": 9200,
+            "protocol": "TCP"
+          }
+        ],
+        "type": "ClusterIP",
+        "uid": "74cc0d19-ed5b-4767-aaec-eadb7f9f1750"
+      },
+      "openmetadata": {
+        "external_ips": [],
+        "name": "openmetadata",
+        "node_ports": [],
+        "ports": [
+          {
+            "name": "http",
+            "port": 8585,
+            "protocol": "TCP"
+          },
+          {
+            "name": "http-admin",
+            "port": 8586,
+            "protocol": "TCP"
+          }
+        ],
+        "type": "ClusterIP",
+        "uid": "c903a96c-9aa9-420c-93d1-d2224df0cc85"
+      }
+    },
+    "source_contract": {
+      "fingerprint": "e81ad7aec836b684e384aa9fbe7641e8f758dc7f419c5d2af7aba255595b726e",
+      "schema": "gda.metadata_fabric_sandbox.v1",
+      "static_contract_verified": true
+    },
+    "storage_markers": {
+      "gravitino_postgresql": {
+        "table_count": 39,
+        "table_name_fingerprint": "8908fb1d89f9a8b72ccc79f9eb65533cdaf25175e3ef70719429547ba3585812"
+      },
+      "openmetadata_postgresql": {
+        "table_count": 176,
+        "table_name_fingerprint": "1ef3fd5e84a585e6737e736318338abee54965124cd8ade5564367bc61c3ec4b"
+      },
+      "opensearch": {
+        "cluster_uuid": "_h-TPGNqQq65KEOkhWpTyg",
+        "index_count": 78,
+        "index_name_fingerprint": "76e9d221ffcdb92a829842b1a8cb301c7c9a2d9525f9aeb4a0a46aa1d43d0c88",
+        "version": "3.3.2"
+      }
+    },
+    "workloads": {
+      "metadata-gravitino": {
+        "automount_service_account_token": false,
+        "desired_replicas": 1,
+        "image": "gda/gravitino:1.3.0-local-arm64",
+        "image_pull_policy": "Never",
+        "kind": "StatefulSet",
+        "name": "metadata-gravitino",
+        "pods": [
+          {
+            "automount_service_account_token": false,
+            "image": "gda/gravitino:1.3.0-local-arm64",
+            "image_id": "sha256:18e24b43be854dabdc13e96b1019eb3dc691d59cc64e411aa6a3cc49225fe2d3",
+            "name": "metadata-gravitino-0",
+            "phase": "Running",
+            "ready": true,
+            "restart_count": 0,
+            "service_account_name": "metadata-gravitino",
+            "uid": "2d986d6c-eb07-4e61-9e03-81528a75c022"
+          }
+        ],
+        "ready_replicas": 1,
+        "service_account_name": "metadata-gravitino",
+        "uid": "57a914fb-eca6-49f8-9c24-67c6d520a172"
+      },
+      "metadata-gravitino-postgresql": {
+        "automount_service_account_token": false,
+        "desired_replicas": 1,
+        "image": "postgres:16.10-bookworm",
+        "image_pull_policy": "IfNotPresent",
+        "kind": "StatefulSet",
+        "name": "metadata-gravitino-postgresql",
+        "pods": [
+          {
+            "automount_service_account_token": false,
+            "image": "postgres:16.10-bookworm",
+            "image_id": "docker.io/library/postgres@sha256:38471f330eb885e04de130b768d6db4e10469e2311879c7e5c699f6d2d8a1c74",
+            "name": "metadata-gravitino-postgresql-0",
+            "phase": "Running",
+            "ready": true,
+            "restart_count": 0,
+            "service_account_name": "metadata-gravitino-postgresql",
+            "uid": "f1e838d6-b9bc-4a05-81ae-2fce3bf39a19"
+          }
+        ],
+        "ready_replicas": 1,
+        "service_account_name": "metadata-gravitino-postgresql",
+        "uid": "84bc1461-f7cc-4637-a720-7a18be6372d0"
+      },
+      "metadata-openmetadata-postgresql": {
+        "automount_service_account_token": false,
+        "desired_replicas": 1,
+        "image": "postgres:16.10-bookworm",
+        "image_pull_policy": "IfNotPresent",
+        "kind": "StatefulSet",
+        "name": "metadata-openmetadata-postgresql",
+        "pods": [
+          {
+            "automount_service_account_token": false,
+            "image": "postgres:16.10-bookworm",
+            "image_id": "docker.io/library/postgres@sha256:38471f330eb885e04de130b768d6db4e10469e2311879c7e5c699f6d2d8a1c74",
+            "name": "metadata-openmetadata-postgresql-0",
+            "phase": "Running",
+            "ready": true,
+            "restart_count": 0,
+            "service_account_name": "metadata-openmetadata-postgresql",
+            "uid": "e8a1bfed-4843-4ae6-a57e-44e99124ce1a"
+          }
+        ],
+        "ready_replicas": 1,
+        "service_account_name": "metadata-openmetadata-postgresql",
+        "uid": "187eb65f-bee8-47b4-abce-8f243b0929c7"
+      },
+      "metadata-opensearch": {
+        "automount_service_account_token": false,
+        "desired_replicas": 1,
+        "image": "opensearchproject/opensearch:3.3.2",
+        "image_pull_policy": "IfNotPresent",
+        "kind": "StatefulSet",
+        "name": "metadata-opensearch",
+        "pods": [
+          {
+            "automount_service_account_token": false,
+            "image": "opensearchproject/opensearch:3.3.2",
+            "image_id": "docker.io/opensearchproject/opensearch@sha256:798cf28e226a32f5c928dd1ed9478dd3a33d2212176aad3679020088ad3afa1a",
+            "name": "metadata-opensearch-0",
+            "phase": "Running",
+            "ready": true,
+            "restart_count": 0,
+            "service_account_name": "metadata-opensearch",
+            "uid": "a6f27d6d-17a1-45b8-a294-6cf49f8858da"
+          }
+        ],
+        "ready_replicas": 1,
+        "service_account_name": "metadata-opensearch",
+        "uid": "907d6f25-29b5-44c0-b70a-f65785ba8da0"
+      },
+      "openmetadata": {
+        "automount_service_account_token": false,
+        "desired_replicas": 1,
+        "image": "docker.getcollate.io/openmetadata/server:1.13.1",
+        "image_pull_policy": "Never",
+        "kind": "Deployment",
+        "name": "openmetadata",
+        "pods": [
+          {
+            "automount_service_account_token": false,
+            "image": "docker.getcollate.io/openmetadata/server:1.13.1",
+            "image_id": "docker.getcollate.io/openmetadata/server@sha256:eaa318584c52d4a492a2c56c95818b5564c6ea28b2e9695ac532c856b2c61bc9",
+            "name": "openmetadata-df575c967-q6jkd",
+            "phase": "Running",
+            "ready": true,
+            "restart_count": 0,
+            "service_account_name": "openmetadata",
+            "uid": "1df99cbb-222b-486c-b4da-66dc846dae5e"
+          }
+        ],
+        "ready_replicas": 1,
+        "service_account_name": "openmetadata",
+        "uid": "39bba7aa-b48e-4f5c-a9a8-c9cc9ca4ec1f"
+      }
+    }
+  },
+  "after_collection_fingerprint": "3f0243797921bfc951769903a9750ac9d070fd04ff2aa0c4b138962bcb589966",
+  "backup_restore_verified": false,
+  "before": {
+    "cluster": {
+      "context": "docker-desktop",
+      "nodes": [
+        {
+          "architecture": "arm64",
+          "kubelet_version": "v1.35.5",
+          "name": "desktop-control-plane"
+        },
+        {
+          "architecture": "arm64",
+          "kubelet_version": "v1.35.5",
+          "name": "desktop-worker"
+        }
+      ],
+      "server_version": "v1.35.5",
+      "uid": "c3c9bbab-2b36-4359-a7ac-e3de194445ab"
+    },
+    "collection_fingerprint": "8b65d4f9a7dd30458f8e60731ab0b8b08e67c4627a3b864954278b2735638602",
+    "namespace": {
+      "name": "gda-metadata-sandbox",
+      "uid": "812c9c5c-9ce2-409e-a6a8-a3f24785aa0c"
+    },
+    "network_policy_names": [
+      "metadata-default-deny",
+      "metadata-dns-egress",
+      "metadata-gravitino-egress",
+      "metadata-gravitino-postgresql-ingress",
+      "metadata-openmetadata-egress",
+      "metadata-openmetadata-postgresql-ingress",
+      "metadata-opensearch-ingress",
+      "metadata-provider-ingress"
+    ],
+    "observed_at": "2026-07-27T04:36:13.897961+00:00",
+    "providers": {
+      "gravitino": {
+        "ready": true,
+        "revision": "40fdf6ab96ac87b47e6d3e14e7c4dc0d815e68f0",
+        "version": "1.3.0"
+      },
+      "openmetadata": {
+        "health": "OK",
+        "revision": "afcb2d2cd7e7c28f1d0ce60538c60a96f4eb9dc9",
+        "version": "1.13.1"
+      }
+    },
+    "pvcs": {
+      "data-metadata-openmetadata-postgresql-0": {
+        "access_modes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": "8Gi",
+        "name": "data-metadata-openmetadata-postgresql-0",
+        "phase": "Bound",
+        "storage_class": "standard",
+        "uid": "690590c1-ff93-43d0-8186-21d121bed6cb",
+        "volume_name": "pvc-690590c1-ff93-43d0-8186-21d121bed6cb"
+      },
+      "gravitino-data-metadata-gravitino-postgresql-0": {
+        "access_modes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": "8Gi",
+        "name": "gravitino-data-metadata-gravitino-postgresql-0",
+        "phase": "Bound",
+        "storage_class": "standard",
+        "uid": "b132b223-934e-49e7-b8a9-916b38086efd",
+        "volume_name": "pvc-b132b223-934e-49e7-b8a9-916b38086efd"
+      },
+      "opensearch-data-metadata-opensearch-0": {
+        "access_modes": [
+          "ReadWriteOnce"
+        ],
+        "capacity": "16Gi",
+        "name": "opensearch-data-metadata-opensearch-0",
+        "phase": "Bound",
+        "storage_class": "standard",
+        "uid": "0feac1e5-77e2-4406-8937-6cf4820a9430",
+        "volume_name": "pvc-0feac1e5-77e2-4406-8937-6cf4820a9430"
+      }
+    },
+    "schema": "gda.metadata_fabric_live_collection.v1",
+    "services": {
+      "metadata-gravitino": {
+        "external_ips": [],
+        "name": "metadata-gravitino",
+        "node_ports": [],
+        "ports": [
+          {
+            "name": "http",
+            "port": 8090,
+            "protocol": "TCP"
+          }
+        ],
+        "type": "ClusterIP",
+        "uid": "b2fda004-0e59-40dd-b08e-45481593d179"
+      },
+      "metadata-gravitino-postgresql": {
+        "external_ips": [],
+        "name": "metadata-gravitino-postgresql",
+        "node_ports": [],
+        "ports": [
+          {
+            "name": "postgresql",
+            "port": 5432,
+            "protocol": "TCP"
+          }
+        ],
+        "type": "ClusterIP",
+        "uid": "046e60c9-4045-45ab-8ab2-28221fa5da61"
+      },
+      "metadata-openmetadata-postgresql": {
+        "external_ips": [],
+        "name": "metadata-openmetadata-postgresql",
+        "node_ports": [],
+        "ports": [
+          {
+            "name": "postgresql",
+            "port": 5432,
+            "protocol": "TCP"
+          }
+        ],
+        "type": "ClusterIP",
+        "uid": "4cbeb682-a1b9-449f-b2d1-5d9a2bb7b63b"
+      },
+      "metadata-opensearch": {
+        "external_ips": [],
+        "name": "metadata-opensearch",
+        "node_ports": [],
+        "ports": [
+          {
+            "name": "http",
+            "port": 9200,
+            "protocol": "TCP"
+          }
+        ],
+        "type": "ClusterIP",
+        "uid": "74cc0d19-ed5b-4767-aaec-eadb7f9f1750"
+      },
+      "openmetadata": {
+        "external_ips": [],
+        "name": "openmetadata",
+        "node_ports": [],
+        "ports": [
+          {
+            "name": "http",
+            "port": 8585,
+            "protocol": "TCP"
+          },
+          {
+            "name": "http-admin",
+            "port": 8586,
+            "protocol": "TCP"
+          }
+        ],
+        "type": "ClusterIP",
+        "uid": "c903a96c-9aa9-420c-93d1-d2224df0cc85"
+      }
+    },
+    "source_contract": {
+      "fingerprint": "e81ad7aec836b684e384aa9fbe7641e8f758dc7f419c5d2af7aba255595b726e",
+      "schema": "gda.metadata_fabric_sandbox.v1",
+      "static_contract_verified": true
+    },
+    "storage_markers": {
+      "gravitino_postgresql": {
+        "table_count": 39,
+        "table_name_fingerprint": "8908fb1d89f9a8b72ccc79f9eb65533cdaf25175e3ef70719429547ba3585812"
+      },
+      "openmetadata_postgresql": {
+        "table_count": 176,
+        "table_name_fingerprint": "1ef3fd5e84a585e6737e736318338abee54965124cd8ade5564367bc61c3ec4b"
+      },
+      "opensearch": {
+        "cluster_uuid": "_h-TPGNqQq65KEOkhWpTyg",
+        "index_count": 78,
+        "index_name_fingerprint": "76e9d221ffcdb92a829842b1a8cb301c7c9a2d9525f9aeb4a0a46aa1d43d0c88",
+        "version": "3.3.2"
+      }
+    },
+    "workloads": {
+      "metadata-gravitino": {
+        "automount_service_account_token": false,
+        "desired_replicas": 1,
+        "image": "gda/gravitino:1.3.0-local-arm64",
+        "image_pull_policy": "Never",
+        "kind": "StatefulSet",
+        "name": "metadata-gravitino",
+        "pods": [
+          {
+            "automount_service_account_token": false,
+            "image": "gda/gravitino:1.3.0-local-arm64",
+            "image_id": "sha256:18e24b43be854dabdc13e96b1019eb3dc691d59cc64e411aa6a3cc49225fe2d3",
+            "name": "metadata-gravitino-0",
+            "phase": "Running",
+            "ready": true,
+            "restart_count": 0,
+            "service_account_name": "metadata-gravitino",
+            "uid": "62bad31a-0f9c-4bdb-a52d-5246ed00e951"
+          }
+        ],
+        "ready_replicas": 1,
+        "service_account_name": "metadata-gravitino",
+        "uid": "57a914fb-eca6-49f8-9c24-67c6d520a172"
+      },
+      "metadata-gravitino-postgresql": {
+        "automount_service_account_token": false,
+        "desired_replicas": 1,
+        "image": "postgres:16.10-bookworm",
+        "image_pull_policy": "IfNotPresent",
+        "kind": "StatefulSet",
+        "name": "metadata-gravitino-postgresql",
+        "pods": [
+          {
+            "automount_service_account_token": false,
+            "image": "postgres:16.10-bookworm",
+            "image_id": "docker.io/library/postgres@sha256:38471f330eb885e04de130b768d6db4e10469e2311879c7e5c699f6d2d8a1c74",
+            "name": "metadata-gravitino-postgresql-0",
+            "phase": "Running",
+            "ready": true,
+            "restart_count": 0,
+            "service_account_name": "metadata-gravitino-postgresql",
+            "uid": "cf703cd0-f33b-4fc5-96b8-931f935065f3"
+          }
+        ],
+        "ready_replicas": 1,
+        "service_account_name": "metadata-gravitino-postgresql",
+        "uid": "84bc1461-f7cc-4637-a720-7a18be6372d0"
+      },
+      "metadata-openmetadata-postgresql": {
+        "automount_service_account_token": false,
+        "desired_replicas": 1,
+        "image": "postgres:16.10-bookworm",
+        "image_pull_policy": "IfNotPresent",
+        "kind": "StatefulSet",
+        "name": "metadata-openmetadata-postgresql",
+        "pods": [
+          {
+            "automount_service_account_token": false,
+            "image": "postgres:16.10-bookworm",
+            "image_id": "docker.io/library/postgres@sha256:38471f330eb885e04de130b768d6db4e10469e2311879c7e5c699f6d2d8a1c74",
+            "name": "metadata-openmetadata-postgresql-0",
+            "phase": "Running",
+            "ready": true,
+            "restart_count": 0,
+            "service_account_name": "metadata-openmetadata-postgresql",
+            "uid": "687e8bde-3734-43d6-8ca9-eeae31bc3c94"
+          }
+        ],
+        "ready_replicas": 1,
+        "service_account_name": "metadata-openmetadata-postgresql",
+        "uid": "187eb65f-bee8-47b4-abce-8f243b0929c7"
+      },
+      "metadata-opensearch": {
+        "automount_service_account_token": false,
+        "desired_replicas": 1,
+        "image": "opensearchproject/opensearch:3.3.2",
+        "image_pull_policy": "IfNotPresent",
+        "kind": "StatefulSet",
+        "name": "metadata-opensearch",
+        "pods": [
+          {
+            "automount_service_account_token": false,
+            "image": "opensearchproject/opensearch:3.3.2",
+            "image_id": "docker.io/opensearchproject/opensearch@sha256:798cf28e226a32f5c928dd1ed9478dd3a33d2212176aad3679020088ad3afa1a",
+            "name": "metadata-opensearch-0",
+            "phase": "Running",
+            "ready": true,
+            "restart_count": 0,
+            "service_account_name": "metadata-opensearch",
+            "uid": "391c0665-01a9-4a46-a971-f707ca499eb0"
+          }
+        ],
+        "ready_replicas": 1,
+        "service_account_name": "metadata-opensearch",
+        "uid": "907d6f25-29b5-44c0-b70a-f65785ba8da0"
+      },
+      "openmetadata": {
+        "automount_service_account_token": false,
+        "desired_replicas": 1,
+        "image": "docker.getcollate.io/openmetadata/server:1.13.1",
+        "image_pull_policy": "Never",
+        "kind": "Deployment",
+        "name": "openmetadata",
+        "pods": [
+          {
+            "automount_service_account_token": false,
+            "image": "docker.getcollate.io/openmetadata/server:1.13.1",
+            "image_id": "docker.getcollate.io/openmetadata/server@sha256:eaa318584c52d4a492a2c56c95818b5564c6ea28b2e9695ac532c856b2c61bc9",
+            "name": "openmetadata-979bb6b4d-jmzzs",
+            "phase": "Running",
+            "ready": true,
+            "restart_count": 0,
+            "service_account_name": "openmetadata",
+            "uid": "d8e795be-a55b-4c04-a2ec-c235870ed2cf"
+          }
+        ],
+        "ready_replicas": 1,
+        "service_account_name": "openmetadata",
+        "uid": "39bba7aa-b48e-4f5c-a9a8-c9cc9ca4ec1f"
+      }
+    }
+  },
+  "before_collection_fingerprint": "8b65d4f9a7dd30458f8e60731ab0b8b08e67c4627a3b864954278b2735638602",
+  "checks": {
+    "after_collection": "passed",
+    "before_collection": "passed",
+    "controlled_restart": "passed",
+    "production_boundaries": "passed"
+  },
+  "environment": "local_foundation_sandbox",
+  "errors": [],
+  "evidence_fingerprint": "ac21ee50ba3c1f27f949420cc7e4483963714b6b955bb0157eca1dd39cf102c3",
+  "generated_at": "2026-07-27T04:40:19.970748+00:00",
+  "live_foundation_verified": true,
+  "local_persistence_restart_verified": true,
+  "namespace": "gda-metadata-sandbox",
+  "network_policy_enforcement_verified": false,
+  "oidc_verified": false,
+  "persistence_configured": true,
+  "production_provider_verified": false,
+  "production_ready": false,
+  "production_table_catalog_provider_verified": false,
+  "schema": "gda.metadata_fabric_live_evidence.v1",
+  "source_contract_fingerprint": "e81ad7aec836b684e384aa9fbe7641e8f758dc7f419c5d2af7aba255595b726e",
+  "status": "live_foundation_verified",
+  "upgrade_verified": false,
+  "writes_to_gda_enabled": false
+}

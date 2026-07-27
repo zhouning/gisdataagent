@@ -1,0 +1,154 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: metadata-default-deny
+  namespace: gda-metadata-sandbox
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: metadata-dns-egress
+  namespace: gda-metadata-sandbox
+spec:
+  podSelector: {}
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: metadata-provider-ingress
+  namespace: gda-metadata-sandbox
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: In
+        values: ["openmetadata", "metadata-gravitino"]
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              gda.openai.com/metadata-sandbox-client: "true"
+      ports:
+        - protocol: TCP
+          port: 8585
+        - protocol: TCP
+          port: 8586
+        - protocol: TCP
+          port: 8090
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: metadata-openmetadata-egress
+  namespace: gda-metadata-sandbox
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: openmetadata
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: metadata-openmetadata-postgresql
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: metadata-opensearch
+      ports:
+        - protocol: TCP
+          port: 9200
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: metadata-gravitino-egress
+  namespace: gda-metadata-sandbox
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: metadata-gravitino
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: metadata-gravitino-postgresql
+      ports:
+        - protocol: TCP
+          port: 5432
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: metadata-openmetadata-postgresql-ingress
+  namespace: gda-metadata-sandbox
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: metadata-openmetadata-postgresql
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: openmetadata
+      ports:
+        - protocol: TCP
+          port: 5432
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: metadata-gravitino-postgresql-ingress
+  namespace: gda-metadata-sandbox
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: metadata-gravitino-postgresql
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: metadata-gravitino
+      ports:
+        - protocol: TCP
+          port: 5432
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: metadata-opensearch-ingress
+  namespace: gda-metadata-sandbox
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: metadata-opensearch
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: openmetadata
+      ports:
+        - protocol: TCP
+          port: 9200
