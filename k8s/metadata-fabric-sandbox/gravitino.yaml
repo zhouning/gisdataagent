@@ -1,0 +1,144 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: metadata-gravitino-config
+  namespace: gda-metadata-sandbox
+data:
+  gravitino.conf: |
+    gravitino.server.shutdown.timeout = 30000
+    gravitino.server.webserver.host = 0.0.0.0
+    gravitino.server.webserver.httpPort = 8090
+    gravitino.server.health.entityStore.probeTimeoutMs = 5000
+    gravitino.entity.store = relational
+    gravitino.entity.store.relational = JDBCBackend
+    gravitino.entity.store.relational.jdbcUrl = jdbc:postgresql://metadata-gravitino-postgresql:5432/gravitino
+    gravitino.entity.store.relational.jdbcDriver = org.postgresql.Driver
+    gravitino.entity.store.relational.jdbcUser = gravitino
+    gravitino.authenticators = simple
+    gravitino.authorization.enable = false
+    gravitino.cache.enabled = true
+    gravitino.auxService.names =
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: metadata-gravitino
+  namespace: gda-metadata-sandbox
+  labels:
+    app.kubernetes.io/name: metadata-gravitino
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: metadata-gravitino
+  ports:
+    - name: http
+      port: 8090
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: metadata-gravitino
+  namespace: gda-metadata-sandbox
+spec:
+  serviceName: metadata-gravitino
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: metadata-gravitino
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: metadata-gravitino
+        app.kubernetes.io/component: technical-metadata
+    spec:
+      serviceAccountName: metadata-gravitino
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 90
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: gravitino
+          image: gda/gravitino:1.3.0-local-arm64
+          imagePullPolicy: Never
+          command: ["/bin/bash", "-ec"]
+          args:
+            - |
+              install -d -m 0700 /var/run/gravitino/conf
+              install -m 0600 /etc/gravitino/gravitino.conf /var/run/gravitino/conf/gravitino.conf
+              install -m 0444 /opt/gravitino/conf/gravitino-env.sh /var/run/gravitino/conf/gravitino-env.sh
+              printf '\ngravitino.entity.store.relational.jdbcPassword = ' >> /var/run/gravitino/conf/gravitino.conf
+              cat /var/run/secrets/gravitino-postgresql/password >> /var/run/gravitino/conf/gravitino.conf
+              printf '\n' >> /var/run/gravitino/conf/gravitino.conf
+              exec /opt/gravitino/bin/gravitino.sh --config /var/run/gravitino/conf run
+          env:
+            - name: GRAVITINO_MEM
+              value: -Xms512m -Xmx1536m -XX:MaxMetaspaceSize=512m
+          ports:
+            - name: http
+              containerPort: 8090
+          startupProbe:
+            httpGet:
+              path: /api/health/ready
+              port: http
+            periodSeconds: 10
+            failureThreshold: 90
+          readinessProbe:
+            httpGet:
+              path: /api/health/ready
+              port: http
+            periodSeconds: 15
+            failureThreshold: 8
+          livenessProbe:
+            httpGet:
+              path: /api/health/live
+              port: http
+            periodSeconds: 30
+            failureThreshold: 5
+          resources:
+            requests:
+              cpu: 250m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 3Gi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: config
+              mountPath: /etc/gravitino
+              readOnly: true
+            - name: database-secret
+              mountPath: /var/run/secrets/gravitino-postgresql
+              readOnly: true
+            - name: runtime
+              mountPath: /var/run/gravitino
+            - name: logs
+              mountPath: /opt/gravitino/logs
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: metadata-gravitino-config
+        - name: database-secret
+          secret:
+            secretName: metadata-gravitino-postgresql
+            defaultMode: 0400
+            items:
+              - key: password
+                path: password
+        - name: runtime
+          emptyDir: {}
+        - name: logs
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}

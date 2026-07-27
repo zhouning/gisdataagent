@@ -4,9 +4,11 @@
 
 **Date**: 2026-07-27
 
+**Updated**: 2026-07-27 after the local foundation sandbox verification
+
 **Decision owners**: Platform Architecture, Metadata Platform, Data Governance, Security
 
-**Related decisions**: [ADR-006](adr-006-openmetadata-governance-and-active-metadata-platform.md) · [ADR-020](adr-020-platform-resource-run-and-evidence-contracts.md) · [ADR-021](adr-021-legacy-crosswalk-and-golden-slice.md)
+**Related decisions**: [ADR-006](adr-006-openmetadata-governance-and-active-metadata-platform.md) · [ADR-020](adr-020-platform-resource-run-and-evidence-contracts.md) · [ADR-021](adr-021-legacy-crosswalk-and-golden-slice.md) · [ADR-037](adr-037-local-metadata-fabric-foundation-sandbox.md)
 
 ## Context
 
@@ -69,12 +71,12 @@ M1 退出条件：
 4. mock transport 证明客户端只调用已批准 GET 路径；
 5. CI 同时运行模块 validator 与定向测试。
 
-这些条件不等于 ADR-006 的完整退出门。M2/M3 仍需真实部署 OpenMetadata/Gravitino，配置独立 persistence、OIDC、backup/restore 和升级责任，并在同一地类图斑产品上完成受控 ingestion、replay、OpenLineage、Gravitino Spark/Sedona/Flink conformance 和无双写验收。
+这些条件不等于 ADR-006 的完整退出门。ADR-037 后续完成了 M2a 本地 foundation sandbox：OpenMetadata/Gravitino 真实进程、独立 persistence、固定版本、健康端点和 Pod 重启连续性已有 Docker Desktop Kubernetes 证据。OIDC、backup/restore、升级、网络策略执行、registry provenance、生产 provider/table catalog、同一地类图斑受控 ingestion/replay、OpenLineage、Gravitino Spark/Sedona/Flink conformance 和无双写仍属于 M2b/M3，不能由本地 sandbox 代替。
 
 ## Consequences
 
 **Positive**：在引入多套外部控制面前先固定身份和权威冲突语义；provider 故障或脏 payload 不会改变 GDA 真值；后续写入 adapter 可复用相同 binding 和 reconciliation evidence。
 
-**Negative**：M1 不能向用户提供 OpenMetadata 搜索 UI，也不能证明 Gravitino 能作为 production TableCatalogProvider。
+**Negative**：M1 合同和 M2a 本地 foundation 都不能证明 Gravitino 能作为 production TableCatalogProvider，也不能授权生产写流量。
 
 **Mitigation**：保持范围为首条 table slice，后续每个 object kind 和 provider 独立增加 contract/conformance；未通过真实 POC 的类型不进入生产 profile。

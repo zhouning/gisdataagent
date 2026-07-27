@@ -246,17 +246,17 @@ def test_gravitino_client_checks_live_version_then_uses_pinned_read_route():
     def handler(request):
         requests.append(request)
         if request.url.path == "/api/version":
-            return httpx.Response(200, json={"version": "1.3.1"})
+            return httpx.Response(200, json={"version": "1.3.0"})
         return httpx.Response(200, json=payload["gravitino_responses"][0])
 
     profile = GravitinoProfile(
         base_url="https://gravitino.example.test/api",
         access_token=SecretStr("test-token"),
-        server_version="1.3.1",
+        server_version="1.3.0",
     )
     ref = GravitinoTableRef.model_validate(payload["gravitino_refs"][0])
     with GravitinoClient(profile, transport=httpx.MockTransport(handler)) as client:
-        assert client.get_version() == "1.3.1"
+        assert client.get_version() == "1.3.0"
         assert client.get_table(ref)["code"] == 0
 
     assert [request.method for request in requests] == ["GET", "GET"]
