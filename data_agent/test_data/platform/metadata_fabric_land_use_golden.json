@@ -1,0 +1,151 @@
+{
+  "schema": "gda.metadata_fabric_golden.v1",
+  "scenario_id": "ar1-metadata-fabric-land-use-table",
+  "synthetic": true,
+  "not_for_production": true,
+  "observed_at": "2026-07-27T09:00:00Z",
+  "resource": {
+    "tenant_id": "ar0-golden",
+    "resource_urn": "gda://ar0-golden/dataset/land-use-parcels-published",
+    "resource_kind": "dataset",
+    "authority_system": "fixture",
+    "authority_locator": "land_use_parcel_golden.json#expected_output_dataset",
+    "owner_ref": "team:data-platform",
+    "governance_ref": {
+      "provider": "openmetadata",
+      "entity_type": "table",
+      "entity_id": "10000000-0000-4000-8000-000000000001",
+      "fully_qualified_name": "gda_lakehouse.land_use.published.land_use_parcels",
+      "entity_version": "1.0",
+      "api_profile": "v1",
+      "server_version": "1.13.1"
+    },
+    "technical_refs": [
+      {
+        "provider": "gravitino",
+        "object_type": "table",
+        "metalake": "gda_lakehouse",
+        "catalog": "iceberg",
+        "schema_name": "land_use",
+        "table_name": "land_use_parcels",
+        "provider_revision": "iceberg-snapshot-20260724-1",
+        "api_profile": "v1",
+        "server_version": "1.3.1"
+      }
+    ]
+  },
+  "resource_version": {
+    "tenant_id": "ar0-golden",
+    "resource_urn": "gda://ar0-golden/dataset/land-use-parcels-published",
+    "resource_version_id": "00000000-0000-4000-8000-000000000040",
+    "version_key": "publish-2026-07-24",
+    "predecessor_version_id": null,
+    "content_sha256": "7c6abe2639707fa8c78265024d500784e4a40ab9ba8c9206558eaceb6fb5ead8",
+    "authority_version_ref": {
+      "fixture_section": "expected_output_dataset"
+    },
+    "created_by": "workload:golden-fixture-runner",
+    "created_at": "2026-07-24T12:05:00Z"
+  },
+  "openmetadata_ref": {
+    "provider": "openmetadata",
+    "entity_type": "table",
+    "entity_id": "10000000-0000-4000-8000-000000000001",
+    "fully_qualified_name": "gda_lakehouse.land_use.published.land_use_parcels",
+    "entity_version": "1.0",
+    "api_profile": "v1",
+    "server_version": "1.13.1"
+  },
+  "gravitino_refs": [
+    {
+      "provider": "gravitino",
+      "object_type": "table",
+      "metalake": "gda_lakehouse",
+      "catalog": "iceberg",
+      "schema_name": "land_use",
+      "table_name": "land_use_parcels",
+      "provider_revision": "iceberg-snapshot-20260724-1",
+      "api_profile": "v1",
+      "server_version": "1.3.1"
+    }
+  ],
+  "openmetadata_response": {
+    "id": "10000000-0000-4000-8000-000000000001",
+    "name": "land_use_parcels",
+    "fullyQualifiedName": "gda_lakehouse.land_use.published.land_use_parcels",
+    "version": 1.0,
+    "deleted": false,
+    "owners": [
+      {
+        "id": "10000000-0000-4000-8000-000000000002",
+        "type": "team",
+        "name": "data-platform",
+        "fullyQualifiedName": "data-platform"
+      }
+    ],
+    "domains": [
+      {
+        "id": "10000000-0000-4000-8000-000000000003",
+        "type": "domain",
+        "name": "natural-resources",
+        "fullyQualifiedName": "natural-resources"
+      }
+    ],
+    "tags": [
+      {
+        "tagFQN": "Sensitivity.Internal",
+        "source": "Classification"
+      },
+      {
+        "tagFQN": "LandUse.DLTB",
+        "source": "Glossary"
+      }
+    ],
+    "extension": {
+      "gdaResourceUrn": "gda://ar0-golden/dataset/land-use-parcels-published",
+      "gdaResourceVersionId": "00000000-0000-4000-8000-000000000040",
+      "gdaContentSha256": "7c6abe2639707fa8c78265024d500784e4a40ab9ba8c9206558eaceb6fb5ead8",
+      "gdaCrs": "EPSG:4490",
+      "gdaGeometryType": "Polygon",
+      "gdaEvidenceClass": "synthetic_fixture"
+    }
+  },
+  "gravitino_responses": [
+    {
+      "code": 0,
+      "table": {
+        "name": "land_use_parcels",
+        "comment": "Synthetic DLTB publication contract fixture",
+        "columns": [
+          {
+            "name": "BSM",
+            "type": "string",
+            "nullable": false
+          },
+          {
+            "name": "geometry",
+            "type": "binary",
+            "nullable": false
+          }
+        ],
+        "properties": {
+          "format-version": "2",
+          "gda.resource_urn": "gda://ar0-golden/dataset/land-use-parcels-published",
+          "gda.resource_version_id": "00000000-0000-4000-8000-000000000040",
+          "gda.content_sha256": "7c6abe2639707fa8c78265024d500784e4a40ab9ba8c9206558eaceb6fb5ead8",
+          "gda.provider_revision": "iceberg-snapshot-20260724-1",
+          "gda.crs": "EPSG:4490",
+          "gda.geometry_type": "Polygon"
+        },
+        "audit": {
+          "creator": "gda-metadata-bridge",
+          "createTime": "2026-07-27T08:55:00Z"
+        }
+      }
+    }
+  ],
+  "expected": {
+    "binding_sha256": "6c4b4ab2ac8f7957ec5088fff58e8759aedf6c552267a812935a6d79f108fddb",
+    "reconciliation_sha256": "62d7431d82a61816c06248be2b77a0321540dc9e9a209f719ef4ab801434a9a8"
+  }
+}
