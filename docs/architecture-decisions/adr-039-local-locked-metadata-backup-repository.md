@@ -6,7 +6,7 @@
 
 **Decision owners**: Metadata Platform, SRE, Security, Platform Architecture
 
-**Related decisions**: [ADR-019](adr-019-configuration-and-runtime-truth.md) · [ADR-037](adr-037-local-metadata-fabric-foundation-sandbox.md) · [ADR-038](adr-038-local-metadata-fabric-recovery-rehearsal.md)
+**Related decisions**: [ADR-019](adr-019-configuration-and-runtime-truth.md) · [ADR-037](adr-037-local-metadata-fabric-foundation-sandbox.md) · [ADR-038](adr-038-local-metadata-fabric-recovery-rehearsal.md) · [ADR-040](adr-040-local-cross-cluster-metadata-recovery.md)
 
 **Evidence**: [metadata-fabric-backup-repository-2026-07-27.json](../evidence/metadata-fabric-backup-repository-2026-07-27.json)
 
@@ -63,14 +63,14 @@ ADR-038 runner 增加可选 artifact callback，不改变默认恢复路径。M2
 
 2026-07-27 的真实本地演练结果：
 
-- 总耗时 `143.107` 秒，repository-backed recovery 子流程 `115.137` 秒；二者都不是 RTO SLO；
-- 独立 repository PVC 为 8 Gi，UID `bd4056b1-0782-4c2f-99ca-4c06ee8021f9`；
+- 总耗时 `137.914` 秒，repository-backed recovery 子流程 `111.123` 秒；二者都不是 RTO SLO；
+- 独立 repository PVC 为 8 Gi，UID `22204802-c426-4840-8045-ad03a53c88e4`；
 - bucket versioning 与 Object Lock 均启用；三个对象均获得唯一 version ID、`GOVERNANCE` retention 和次日 retain-until；
 - 三个 retained version 的无 bypass 删除全部被拒绝；
 - 本地 artifact 全部删除后重新下载，恢复 OpenMetadata 176 张表、Gravitino 39 张表和 OpenSearch 79 个索引；
 - source 五个 Pod 恢复 Ready，repository/recovery namespace、临时 PVC、credential 与 port-forward 全部清理；
-- repository evidence fingerprint 为 `07834430fb140e147624f4ab3c93e6d7907648e91a149cb19db178ea6085d1ed`；
-- recovery evidence fingerprint 为 `3cf46cc83a8feaa4142893a06f84e9008a7d805a64fb6708d176ca976a4dbd62`。
+- repository evidence fingerprint 为 `2897f9e6aaae21fb366da0b72edea5cf072d5b2c1aeac0807d263bd0a5f5f133`；
+- recovery evidence fingerprint 为 `da1214294045f8b0abe2e2775b81ef33967eac9ab0e97055ae80212ac0c08a4b`。
 
 ## Claim Boundary
 
@@ -95,4 +95,4 @@ ADR-038 runner 增加可选 artifact callback，不改变默认恢复路径。M2
 
 **Negative**：本地 MinIO 与 source 仍在同一 kind cluster；root 管理员和 namespace/PVC 删除仍能绕过 API retention；没有 TLS、KMS、workload identity、跨 account 或第二 cluster。
 
-**Next gate**：在独立 account/project 建立真实 S3-compatible bucket、KMS 与 writer/reader identity，验证 COMPLIANCE retention、独立 read-after-write、source cluster loss 后的跨集群恢复，再冻结 RPO/RTO。若云/provider 不支持等价 Object Lock、KMS 或 identity，必须阻断该 DeploymentProfile，不能降级为普通 versioned bucket。
+**Next gate**：[ADR-040](adr-040-local-cross-cluster-metadata-recovery.md) 已将本地 repository 移出两个 Kubernetes cluster，并验证本机双集群恢复、`COMPLIANCE/1 day` 与独立 MinIO writer/reader。下一步仍须在 source host/cluster 外的独立 account/project 建立真实 S3-compatible bucket、KMS、TLS 与 workload identity，验证 source loss 后恢复并冻结 RPO/RTO。若云/provider 不支持等价 Object Lock、KMS、identity 或独立故障域，必须阻断该 DeploymentProfile，不能降级为普通 versioned bucket。

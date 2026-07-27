@@ -14,34 +14,37 @@
   "cross_region_recovery_verified": false,
   "environment": "local_isolated_recovery_rehearsal",
   "errors": [],
-  "evidence_fingerprint": "3cf46cc83a8feaa4142893a06f84e9008a7d805a64fb6708d176ca976a4dbd62",
-  "generated_at": "2026-07-27T07:37:28.806368+00:00",
+  "evidence_fingerprint": "da1214294045f8b0abe2e2775b81ef33967eac9ab0e97055ae80212ac0c08a4b",
+  "generated_at": "2026-07-27T09:07:09.480972+00:00",
   "local_backup_restore_verified": true,
+  "local_cross_cluster_recovery_verified": false,
   "network_policy_enforcement_verified": false,
   "observation": {
     "artifacts": {
       "gravitino_postgresql": {
         "bytes": 188109,
         "format": "postgresql_custom_dump_v1",
-        "sha256": "b56fae7ba17166690df1ac52814734d10aaab6d036e467141601aa13913493fa"
+        "sha256": "6d6013aa01872c335eb07ea3733eae49acbdab5b6f9d241144663bf21585d2f1"
       },
       "openmetadata_postgresql": {
-        "bytes": 1209521,
+        "bytes": 1298657,
         "format": "postgresql_custom_dump_v1",
-        "sha256": "2f6de329c6ebff68227a27958040c29d41396c9f1a61421eaf0630ac344a7e26"
+        "sha256": "7aff5a3b62ddfae6ccc46cc1dcf13b72c326085b08a6f3a78a78c87609eaacad"
       },
       "opensearch": {
-        "bytes": 387684,
+        "bytes": 396797,
         "format": "opensearch_fs_snapshot_tar_gzip_v1",
-        "sha256": "7732ffc33827b9ffc4ed5e3f3744e4f54b1a73a2d9e0444fe7b34e16c8f37da3"
+        "sha256": "b36dec1ca16827ab5c363bb98a7f994d211bc139d2ad84b2498fdf3bcdfdc59d"
       }
     },
     "cluster": {
       "context": "docker-desktop",
+      "recovery_context": "docker-desktop",
       "recovery_namespace": {
         "name": "gda-metadata-recovery-rehearsal",
-        "uid": "d9236d7c-8c9c-45af-a46b-7148b47b4db0"
+        "uid": "58c6389c-3f89-4f83-a392-02d9f3c679a7"
       },
+      "recovery_uid": "c3c9bbab-2b36-4359-a7ac-e3de194445ab",
       "source_namespace": {
         "name": "gda-metadata-sandbox",
         "uid": "812c9c5c-9ce2-409e-a6a8-a3f24785aa0c"
@@ -49,11 +52,11 @@
       "uid": "c3c9bbab-2b36-4359-a7ac-e3de194445ab"
     },
     "contract": {
-      "contract_fingerprint": "83e3f86542076987b36cb8b99fb01c2db7e92c15624164f9766ff0a6fe26640a",
+      "contract_fingerprint": "afb168b7586113eda95b874c10351f1e4f5eb33c6e661e1bfedfda7103ee6121",
       "static_contract_verified": true
     },
-    "duration_seconds": 115.137,
-    "observed_at": "2026-07-27T07:37:28.805987+00:00",
+    "duration_seconds": 111.123,
+    "observed_at": "2026-07-27T09:07:09.480617+00:00",
     "recovered_markers": {
       "gravitino_postgresql": {
         "extension_fingerprint": "6a0a92045f06baabcf22b103007285ec0bcb00cdbf6f6f30b34b0a41a73c6c2f",
@@ -67,14 +70,14 @@
       "openmetadata_postgresql": {
         "extension_fingerprint": "5425606415e192199fdbef130acb53a732064cb692916f5278b9e8eebc5b2f59",
         "image_version": "16.10-bookworm",
-        "row_count_fingerprint": "dbb8f15b9df8780d3be128ef2a9ddad7b292980e811a81a65349e831e64b40f9",
-        "sequence_state_fingerprint": "769c215213fe71957ea945bd85ad0db889cda410f47443173f19457a17af5ac4",
+        "row_count_fingerprint": "97d270fe6fb399e6fc3a4788ba8da13d647772857c8b61a60d6695c30cd04cb9",
+        "sequence_state_fingerprint": "089f6120440918b8ea1502c0372ee8f687c5284aa17b26bf8dc826c5b7500d39",
         "server_version": "16.10 (Debian 16.10-1.pgdg12+1)",
         "table_count": 176,
         "table_name_fingerprint": "9b56cb8952f4680c1972aeafb461b0ef8c204326432ed8bab6226e2eedbb1167"
       },
       "opensearch": {
-        "cluster_uuid": "9o2bzn8fS5mfJ0nEHkGQlQ",
+        "cluster_uuid": "sY84Z4TpSHyS5uywqpyt9Q",
         "document_count_fingerprint": "b9a9da89701697d1778735a3cd1196422f624049847009a593c56e5fdfe7f109",
         "index_count": 79,
         "index_name_fingerprint": "5dd3252013d217ea4e014951fbd687ef912dac847ee8d385adf6bd561070f00a",
@@ -86,20 +89,20 @@
       "recovery-gravitino-data-recovery-gravitino-postgresql-0": {
         "capacity": "2Gi",
         "phase": "Bound",
-        "uid": "9ba5f905-6f4d-4763-b9ba-6092207036d0",
-        "volume_name": "pvc-9ba5f905-6f4d-4763-b9ba-6092207036d0"
+        "uid": "abe89775-0d29-4186-b032-75f8c5c77ce5",
+        "volume_name": "pvc-abe89775-0d29-4186-b032-75f8c5c77ce5"
       },
       "recovery-openmetadata-data-recovery-openmetadata-postgresql-0": {
         "capacity": "2Gi",
         "phase": "Bound",
-        "uid": "6d1b0cae-869e-4923-bd66-315b29abf887",
-        "volume_name": "pvc-6d1b0cae-869e-4923-bd66-315b29abf887"
+        "uid": "6383ada0-c77b-4614-b389-ffc099625f96",
+        "volume_name": "pvc-6383ada0-c77b-4614-b389-ffc099625f96"
       },
       "recovery-opensearch-data-recovery-opensearch-0": {
         "capacity": "8Gi",
         "phase": "Bound",
-        "uid": "c3d5585e-89f6-45ee-b43f-f2a155204916",
-        "volume_name": "pvc-c3d5585e-89f6-45ee-b43f-f2a155204916"
+        "uid": "ee77c740-cfd2-4f21-9b11-4129b0e2b389",
+        "volume_name": "pvc-ee77c740-cfd2-4f21-9b11-4129b0e2b389"
       }
     },
     "repository_round_trip": {
@@ -107,32 +110,32 @@
         "gravitino_postgresql": {
           "bytes": 188109,
           "format": "postgresql_custom_dump_v1",
-          "object_path": "metadata-fabric/rp-20260727073521z/gravitino_postgresql.dump",
-          "retained_until": "2026-07-28T07:36:07.228000+00:00",
+          "object_path": "metadata-fabric/rp-20260727090506z/gravitino_postgresql.dump",
+          "retained_until": "2026-07-28T09:05:51.903000+00:00",
           "retained_version_delete_blocked": true,
           "retention_mode": "GOVERNANCE",
-          "sha256": "b56fae7ba17166690df1ac52814734d10aaab6d036e467141601aa13913493fa",
-          "version_id": "ea0d2e75-185d-4f44-8ed9-74655b0423db"
+          "sha256": "6d6013aa01872c335eb07ea3733eae49acbdab5b6f9d241144663bf21585d2f1",
+          "version_id": "ce7ccab6-6706-42ad-a3c1-de284563fd97"
         },
         "openmetadata_postgresql": {
-          "bytes": 1209521,
+          "bytes": 1298657,
           "format": "postgresql_custom_dump_v1",
-          "object_path": "metadata-fabric/rp-20260727073521z/openmetadata_postgresql.dump",
-          "retained_until": "2026-07-28T07:36:07.241000+00:00",
+          "object_path": "metadata-fabric/rp-20260727090506z/openmetadata_postgresql.dump",
+          "retained_until": "2026-07-28T09:05:51.917000+00:00",
           "retained_version_delete_blocked": true,
           "retention_mode": "GOVERNANCE",
-          "sha256": "2f6de329c6ebff68227a27958040c29d41396c9f1a61421eaf0630ac344a7e26",
-          "version_id": "b6ce20d7-6e95-4612-9740-d0bd5682ff81"
+          "sha256": "7aff5a3b62ddfae6ccc46cc1dcf13b72c326085b08a6f3a78a78c87609eaacad",
+          "version_id": "0ebe97e1-c692-4a84-b565-3b0d5426737c"
         },
         "opensearch": {
-          "bytes": 387684,
+          "bytes": 396797,
           "format": "opensearch_fs_snapshot_tar_gzip_v1",
-          "object_path": "metadata-fabric/rp-20260727073521z/opensearch.tar.gz",
-          "retained_until": "2026-07-28T07:36:07.256000+00:00",
+          "object_path": "metadata-fabric/rp-20260727090506z/opensearch.tar.gz",
+          "retained_until": "2026-07-28T09:05:51.930000+00:00",
           "retained_version_delete_blocked": true,
           "retention_mode": "GOVERNANCE",
-          "sha256": "7732ffc33827b9ffc4ed5e3f3744e4f54b1a73a2d9e0444fe7b34e16c8f37da3",
-          "version_id": "a9591f1d-c984-4323-925d-0c4ff0b0de04"
+          "sha256": "b36dec1ca16827ab5c363bb98a7f994d211bc139d2ad84b2498fdf3bcdfdc59d",
+          "version_id": "f3d0f897-29a6-4317-a233-d2a93c7594d7"
         }
       },
       "bucket": "gda-metadata-fabric-backups",
@@ -170,8 +173,8 @@
       "openmetadata_postgresql": {
         "extension_fingerprint": "5425606415e192199fdbef130acb53a732064cb692916f5278b9e8eebc5b2f59",
         "image_version": "16.10-bookworm",
-        "row_count_fingerprint": "dbb8f15b9df8780d3be128ef2a9ddad7b292980e811a81a65349e831e64b40f9",
-        "sequence_state_fingerprint": "769c215213fe71957ea945bd85ad0db889cda410f47443173f19457a17af5ac4",
+        "row_count_fingerprint": "97d270fe6fb399e6fc3a4788ba8da13d647772857c8b61a60d6695c30cd04cb9",
+        "sequence_state_fingerprint": "089f6120440918b8ea1502c0372ee8f687c5284aa17b26bf8dc826c5b7500d39",
         "server_version": "16.10 (Debian 16.10-1.pgdg12+1)",
         "table_count": 176,
         "table_name_fingerprint": "9b56cb8952f4680c1972aeafb461b0ef8c204326432ed8bab6226e2eedbb1167"
@@ -185,11 +188,12 @@
         "version": "3.3.2"
       }
     },
-    "started_at": "2026-07-27T07:35:33.668759+00:00"
+    "started_at": "2026-07-27T09:05:18.357484+00:00"
   },
-  "observation_fingerprint": "938c0f9842cf0c6218ad4ade675b4e773b538270a605ca33d9215859a0e5f6a1",
+  "observation_fingerprint": "06a6d5bba92a3f75b5b25cf3ea2c7f91d321454eaf4b5f5608416f468cff0dc1",
   "oidc_verified": false,
   "production_backup_restore_verified": false,
+  "production_cross_cluster_recovery_verified": false,
   "production_ready": false,
   "recovery_namespace": "gda-metadata-recovery-rehearsal",
   "rpo_slo_verified": false,

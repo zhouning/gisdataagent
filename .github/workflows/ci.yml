@@ -5,7 +5,10 @@ on:
     branches: [main, develop]
   pull_request:
     # Keep the active lineage reviewable until ADR-035 promotes it to main.
-    branches: [main, feat/v12-extensible-platform]
+    branches:
+      - main
+      - feat/v12-extensible-platform
+      - feat/ar1-metadata-fabric-durable-backup-contract
 
 env:
   PYTHON_VERSION: "3.13"
@@ -82,6 +85,9 @@ jobs:
       - name: Validate metadata fabric backup repository
         run: python -m data_agent.metadata_fabric_backup_repository validate
 
+      - name: Validate metadata fabric cross-cluster recovery
+        run: python -m data_agent.metadata_fabric_cross_cluster_recovery validate
+
       - name: Validate DolphinScheduler adapter boundary
         run: python -m data_agent.dolphinscheduler_adapter validate
 
@@ -119,6 +125,7 @@ jobs:
             data_agent/test_metadata_fabric_bridge.py \
             data_agent/test_metadata_fabric_live_evidence.py \
             data_agent/test_metadata_fabric_backup_repository.py \
+            data_agent/test_metadata_fabric_cross_cluster_recovery.py \
             data_agent/test_metadata_fabric_recovery_rehearsal.py \
             data_agent/test_metadata_fabric_sandbox.py \
             data_agent/test_platform_authorization.py \
