@@ -1,10 +1,10 @@
 # GIS Data Agent System-of-Record 矩阵
 
-日期：2026-07-24
+日期：2026-07-27
 
-阶段：AR-0 `in_progress`；AR-1 gateway、成功终局 evidence gate 已验证，DolphinScheduler adapter sandbox POC 已完成，生产切换仍 `in_progress`
+阶段：AR-0 `in_progress`；AR-1 gateway、成功终局 evidence gate、DolphinScheduler adapter sandbox POC 与 Metadata Fabric M1 只读合同已验证，生产切换仍 `in_progress`
 
-适用分支：`feat/ar1-dolphinscheduler-adapter`
+适用分支：`feat/ar1-metadata-fabric-bridge`
 
 ## 判定规则
 
@@ -19,14 +19,14 @@
 |---|---|---|---|---|---|
 | SQL schema 历史 | PostgreSQL `schema_migrations`，以完整 migration ID + checksum 为权威 | migration CLI 的 JSON 报告 | 保持现有 ledger；任何 drift fail closed | Data Platform | AR-0，已验证 |
 | 部署配置策略 | Compose/K8s/进程环境；`platform_truth.CONFIG_SPECS` 定义关键类型与策略；DolphinScheduler worker 有默认零副本、外部 ConfigMap/Secret 驱动的 Kustomize 模板、静态 validator 和 staging activation preflight | `.env` 仅补默认；脱敏 snapshot、Secret key attestation、未扩容 Deployment 和 `ready_for_activation` 都是观测/模板 | 版本化 DeploymentProfile + secret reference；部署环境始终优先；模板或 preflight 通过都不等于环境已启用 | Platform/SRE/Security | AR-0，部分实现；worker 模板/preflight 本地已验证 |
-| 环境发布与晋级 | 本地 candidate/registry/provenance/release/live 合同已绑定 publisher、verifier、OCI 和 manifest identity；但 GitHub 默认 `main@f339e13` 与 active AR-1 lineage 无共同祖先，且无 branch protection/ruleset/environment，ADR-035 仍为 Proposed | 旧 `main`、未保护 feature branch、CI artifact、JSON、离线 report 和合成 `verified_for_staging_apply` 都不能单独成为发布权威；publisher SHA、verifier SHA 与 branch lineage 必须分别验证 | 先归档旧 mainline 并以不重写历史的 branch promotion 恢复 protected canonical `main`；再由受保护 environment 的 DeploymentRevision 绑定 OCI、provenance artifact、release manifest 与全部 live verdict | Platform/SRE/Security/Repository Owner | AR-1 本地发布合同已验证 -> mainline 治理恢复 -> 首次 GHCR publish/verify -> 真实 staging |
+| 环境发布与晋级 | 本地 candidate/registry/provenance/release/live 合同已绑定 publisher、verifier、OCI 和 manifest identity；canonical `main@0182406`、archive refs、三组 active ruleset 与 `staging-provenance` protected environment 已建立，但尚无成功 publisher/verifier 或 deployment | 旧 mainline、feature branch、CI artifact、JSON、离线 report 和合成 `verified_for_staging_apply` 都不能单独成为发布权威；publisher SHA、verifier SHA 与 branch lineage 必须分别验证 | 由受保护 environment 的 DeploymentRevision 绑定 OCI、provenance artifact、release manifest 与全部 live verdict | Platform/SRE/Security/Repository Owner | AR-1 mainline 治理已恢复 -> 首次 GHCR publish/verify -> 真实 staging |
 | 后台运行时清单 | `platform_truth.RUNTIME_INVENTORY` 是代码层登记；`gda_control` 已有受控 PlatformRun 写入口；DolphinScheduler adapter 与 tenant-scoped managed command worker 已有代码和本地测试，但尚无生产业务调用方，多数执行状态仍分散 | AST primitive report、worker status JSON、FrameworkAttemptObservation、DolphinScheduler instance state | PlatformRun ledger 唯一登记最终状态；framework/provider attempt 只能回报观测；worker status 仅为进程健康投影 | Platform Architecture | AR-1 adapter/worker 本地已验证 -> staging 控制链待接入 |
 | 原始文件/对象 | 当前 local uploads、S3/MinIO/OBS 均可能被直接写入，权威边界未统一 | 临时上传、下载缓存、预览文件 | Landing object 以 immutable URI + checksum + retention 为权威；本地 scratch 可删除 | Data Platform | AR-2 |
 | 湖仓表与 snapshot | Iceberg/STAC/S3A 有局部实现，尚无通用发布权威 | STAC item、GeoParquet export | Iceberg catalog snapshot 是分析表版本权威；对象是物理内容，STAC 是发现投影 | Data Platform | AR-2 |
 | 在线空间数据 | PostGIS 业务表是当前编辑/查询事实，部分临时表混入 | Martin MVT、API JSON、导出文件 | 已批准 DataProductVersion 物化到 PostGIS；不能由瓦片或临时表反向定义产品版本 | GIS/Data Platform | AR-2 -> AR-4 |
 | 数据资产身份与版本 | `gda_control.resource/resource_version` 已实现 identity、hash、predecessor、tenant FK 和幂等 gateway 写入；`agent_data_assets`、`agent_asset_versions` 仍是兼容写路径 | UI catalog、search index、STAC | GDA ledger 管身份与版本绑定；旧行只有在 tenant、authority identity、checksum 和 version evidence 完整时才可形成 eligible plan；OpenMetadata 管治理目录，Gravitino 管技术对象映射 | Metadata Platform | AR-1 gateway 已验证 -> 生产切换待验收 |
-| 技术元数据 | PostGIS schema、Iceberg/STAC 和专项 JSONB 各自记录 | harvester 结果 | 源系统技术对象是原始证据；Gravitino 映射并联邦，不能覆盖业务 ResourceVersion | Metadata Platform | AR-1 |
-| 治理目录 | 当前 catalog、tag、standard、semantic registry 分散 | 搜索/页面视图 | OpenMetadata 为 owner/glossary/classification/quality discoverability 权威；GDA ledger 保留审批证据 | Governance | AR-1 |
+| 技术元数据 | PostGIS schema、Iceberg/STAC 和专项 JSONB 各自记录；M1 已冻结 Gravitino table ref、provider revision 和只读 snapshot reconciliation | harvester 结果、合成 Gravitino response | 源系统技术对象是原始证据；Gravitino 映射并联邦，不能覆盖业务 ResourceVersion | Metadata Platform | AR-1 M1 合同已验证 -> live M2/M3 待执行 |
+| 治理目录 | 当前 catalog、tag、standard、semantic registry 分散；M1 已冻结 OpenMetadata table ID/FQN/version、owner 与 GDA identity 的只读 reconciliation | 搜索/页面视图、合成 OpenMetadata response | OpenMetadata 为 owner/glossary/classification/quality discoverability 权威；GDA ledger 保留审批证据 | Governance | AR-1 M1 合同已验证 -> live M2/M3 待执行 |
 | 血缘 | `gda_control.lineage_event` 已实现 immutable version edge 和幂等 gateway ingest；`agent_asset_lineage` 旧记录仍是可变 asset edge | OpenMetadata lineage graph、UI DAG | 只有 source/target ResourceVersion 与 event checksum 证据完整的旧记录可形成 eligible plan；目录图只作可重建投影 | Data Platform | AR-1 gateway 已验证 -> adapter 待接入 |
 | Definition | `gda_control.platform_definition_version` 已绑定 definition ResourceVersion、完整逻辑 hash 和原子 gateway registration；3.4.2 adapter 可编译、创建并上线 provider DAG；binding 已以 append-only `execution_plan` Artifact 持久化并可按 tenant + artifact UUID 读取，旧 workflow/template/YAML 仍在写入 | 编辑器状态、DolphinScheduler DAG/definition | 旧 workflow 必须规范化并完整 hash 后才可形成 PlatformDefinitionVersion；provider binding 作为 ExecutionPlanArtifact/evidence，不可反写 definition | DataOps | AR-1 binding persistence 代码已验证 -> staging 调用链待验收 |
 | Run 最终状态 | `gda_control.platform_run/event` 已实现受控 submit/read/CAS；通用 transition 已禁止 `succeeded`，专用数据库 finalizer 只接受精确 workload、DolphinScheduler success observation、内容匹配 output、独立 passed QualityResult/evidence 和 input-to-output lineage；adapter standalone API path 已验证，但端到端 staging 尚未完成，legacy 路径继续运行 | Redis progress、日志、DolphinScheduler state、attempt observation | 旧 run 到 PlatformRun 永久 prohibited；已有 PlatformRun correlation 时才可转为 observation；provider 终态只进入 `reconciling`，ledger 经证据门唯一裁决成功 | DataOps/AgentOps | AR-1 success authority 本地/PostgreSQL 已验证 -> staging/生产切换待验收 |
@@ -56,6 +56,7 @@
 11. `platform_command_outbox` 只拥有投递状态；callback 只触发 reconcile，不能把 provider payload 直接写成 PlatformRun 状态或平台终局。
 12. QualityResult evaluator 必须是 workload，且成功终局中的 evaluator 不能等于 Run workload；该代码级职责分离不替代生产 IAM。
 13. `candidate_validated`、`registry_subject_bound`、GitHub provenance action 成功、CI artifact、离线 preflight、未独立 attested 的 live observation JSON 或人工批准都不能单独授权 production；缺少同一 source revision 的 OCI subject 独立验证、registry/live revision/identity/health/golden-slice 绑定及受保护 provenance 时，promotion 必须失败。
+14. Metadata Fabric M1 只允许 OpenMetadata/Gravitino GET；`m1_contract_verified` 和合成 snapshot hash 不等于 provider 已部署或获得写权威。任一 provider identity、owner、version、checksum 或 revision 漂移都必须阻断，不能反向覆盖 GDA ResourceVersion。
 
 ## 已建立的 AR-0/AR-1 entry 证据
 
@@ -70,15 +71,16 @@
 - managed DolphinScheduler command worker 已提供严格 env/config、0600 token file、tenant/workload-scoped polling、SIGINT/SIGTERM drain、interruptible wait、脱敏原子 status 和 fail-closed health CLI；默认零副本 Kustomize 模板由 Pod UID 生成 worker ID，只向 PostgreSQL NetworkPolicy 增加该 selector，主容器无原始 provider Secret、Kubernetes API token 或 RBAC；activation preflight 已固定单副本、immutable digest、ConfigMap fingerprint 和脱敏 Secret key attestation，但模板尚未在 staging/production 扩容运行。
 - migration 096 已建立 append-only QualityResult 和专用成功 finalizer；真实 PostgreSQL 16 测试已证明 gateway 不能执行私有 transition 或用通用 transition 写 `succeeded`，错误 output hash、failed quality、缺失 lineage、篡改 evidence fingerprint 均拒绝，有效证据成功且 replay 幂等。该证据仍是合成数据和本地数据库，不是 staging/生产运行证明。
 - staging candidate evidence 已在本地绑定 Git SHA、本地 image ID、97/97 schema fingerprint、严格脱敏配置、runtime inventory 和 JUnit 汇总；管理员/普通角色 ledger 一致，candidate 仍固定 `staging_deployed=false`、`production_promotion_allowed=false`。GitHub Runner 和真实 staging 尚未运行该链。
-- GHCR publication contract 已固定单次 application image build、OCI revision/source label、远端 raw manifest `sha256`、candidate-to-subject binding 和 GitHub OIDC provenance；独立 verifier 已区分 publisher/verifier revision，固定证书 repository/workflow/ref/digest/issuer/runner 策略并对验证 evidence 再 attested；release gate 已验证该 evidence artifact 身份并从中唯一派生 manifest image。GitHub 登录、仓库 admin/push 和 Actions 权限已恢复验证，但分支未 push、protected environment 未配置，尚无真实 published/verified subject、provenance artifact 或 verified release。
+- GHCR publication contract 已固定单次 application image build、OCI revision/source label、远端 raw manifest `sha256`、candidate-to-subject binding 和 GitHub OIDC provenance；独立 verifier 已区分 publisher/verifier revision，固定证书 repository/workflow/ref/digest/issuer/runner 策略并对验证 evidence 再 attested；release gate 已验证该 evidence artifact 身份并从中唯一派生 manifest image。canonical mainline、protected environment、reviewer 和 Actions 权限已配置；一次意外 publisher run 在依赖安装阶段取消，尚无真实 published/verified subject、provenance artifact 或 verified release。
 - live staging collector 已对 Docker Desktop 集群完成只读实采：candidate、collection freshness、97/97 应用角色 schema、runtime baseline 和 health/readiness 通过；App/Outbox 已改为直接读取 migration ledger 并禁用 token automount，重采确认 token 隔离通过。tagged 本地镜像、缺 source/candidate/platform 注解、非 strict staging profile 及缺真实 golden-slice 仍正确阻断；合成完整 evidence 可验证 live 绑定，但因缺受保护 provenance/attestation 仍固定禁止 production promotion。
+- Metadata Fabric M1 已将地类图斑目标 ResourceVersion 绑定到一个 OpenMetadata table ref 和一个 Gravitino table ref，冻结 binding/reconciliation fingerprint；只读客户端、authority drift、重复/缺失映射、跨 tenant 和 secret-bearing payload 负例已进入 required CI。该证据来自合成 provider response，`production_provider_verified=false`。
 
 ## 下一验收证据
 
-- owner 接受 ADR-035；保留旧 `main@f339e13` 的 archive branch/tag，在 `ebd99f8` 共同祖先上评审当前 25 个提交，并证明 canonical `main` 切换后 ruleset/default branch/workflow ref 一致；
-- 配置 `staging-provenance` required reviewers/禁止 bypass/environment-level enable variable，并完成首次 application subject publish 与 protected verifier run；
+- 完成首次 application subject publish 与 protected verifier run；当前 mainline、archive refs、ruleset、required reviewer、禁止 bypass 和 environment enable variable 已配置并复核；
 - 真实 provenance artifact verify、受保护 overlay 的 `verified_for_staging_apply` release report，以及 staging/production 的 schema、config/runtime snapshot、registry/live DeploymentRevision 绑定、release/live artifact attestation 和环境 compare 报告；
 - staging 的 migration role、应用 login membership、连接池 role/tenant 复位、双租户 API 和 success finalization 运行产物；
 - DolphinScheduler adapter 的真实 IAM/OIDC、service token provisioning/轮换、provider 最小权限、binding artifact staging 接入、managed outbox worker/provider callback 实际扩容部署、唯一 worker ID、status/lease 故障恢复和无双写证据；
 - 首条真实图斑链对 golden slice 的 output hash、独立质量结果/evidence、血缘、发布 revision 和 rollback 演练；
-- OpenMetadata/Gravitino 与 DolphinScheduler/Temporal sandbox 的独立数据库、备份恢复、身份、版本和升级责任证明；DolphinScheduler standalone/H2 不计入此退出门。
+- OpenMetadata/Gravitino live sandbox 的独立数据库、备份恢复、身份、版本和升级责任证明，以及同一地类图斑 ResourceVersion 的受控 ingestion/replay、OpenLineage 和无双写证据；M1 合同 fixture 不计入此退出门；
+- DolphinScheduler/Temporal sandbox 的独立数据库、备份恢复、身份、版本和升级责任证明；DolphinScheduler standalone/H2 不计入此退出门。

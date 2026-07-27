@@ -70,6 +70,9 @@ jobs:
       - name: Validate platform gateway boundary
         run: python -m data_agent.platform_gateway validate
 
+      - name: Validate metadata fabric bridge boundary
+        run: python -m data_agent.metadata_fabric_bridge validate
+
       - name: Validate DolphinScheduler adapter boundary
         run: python -m data_agent.dolphinscheduler_adapter validate
 
@@ -104,6 +107,7 @@ jobs:
             data_agent/test_mcp_hub.py \
             data_agent/test_migration_authority_deployment.py \
             data_agent/test_migration_runner.py \
+            data_agent/test_metadata_fabric_bridge.py \
             data_agent/test_platform_authorization.py \
             data_agent/test_platform_contracts.py \
             data_agent/test_platform_crosswalk.py \
