@@ -10,6 +10,7 @@ on:
       - feat/v12-extensible-platform
       - feat/ar1-metadata-fabric-durable-backup-contract
       - feat/ar1-metadata-fabric-cross-cluster-recovery
+      - feat/ar1-metadata-fabric-provider-metrics
 
 env:
   PYTHON_VERSION: "3.13"
