@@ -1,0 +1,157 @@
+{
+  "backup_restore_scope": "local_same_cluster_new_namespace_and_pvcs",
+  "backup_restore_verified": true,
+  "checks": {
+    "artifact_integrity": "passed",
+    "ephemeral_cleanup": "passed",
+    "opensearch_restore": "passed",
+    "postgresql_restore": "passed",
+    "production_boundaries": "passed",
+    "source_availability_restored": "passed",
+    "static_contract": "passed"
+  },
+  "cross_cluster_recovery_verified": false,
+  "cross_region_recovery_verified": false,
+  "environment": "local_isolated_recovery_rehearsal",
+  "errors": [],
+  "evidence_fingerprint": "ebb0db3646010d427601c5d06760f984c742a7a4b6fa143fd2d6c7833246ab30",
+  "generated_at": "2026-07-27T06:42:54.995405+00:00",
+  "local_backup_restore_verified": true,
+  "network_policy_enforcement_verified": false,
+  "observation": {
+    "artifacts": {
+      "gravitino_postgresql": {
+        "bytes": 188109,
+        "format": "postgresql_custom_dump_v1",
+        "sha256": "6832f3dd8853e4014e473e260288e3e5c31e3a92811263bd1d04ea72dd238f3b"
+      },
+      "openmetadata_postgresql": {
+        "bytes": 1179744,
+        "format": "postgresql_custom_dump_v1",
+        "sha256": "11a42c76d420eaa51694ed1c28f6834a3c689d3c240784eca0f19cdacfd779b6"
+      },
+      "opensearch": {
+        "bytes": 400544,
+        "format": "opensearch_fs_snapshot_tar_gzip_v1",
+        "sha256": "dd55f58e8e3e5516eeab37674868ce1632fef3d445030e2317c96b9e9c8fee24"
+      }
+    },
+    "cluster": {
+      "context": "docker-desktop",
+      "recovery_namespace": {
+        "name": "gda-metadata-recovery-rehearsal",
+        "uid": "896cad79-ae47-4319-ad63-8102e49cc1d8"
+      },
+      "source_namespace": {
+        "name": "gda-metadata-sandbox",
+        "uid": "812c9c5c-9ce2-409e-a6a8-a3f24785aa0c"
+      },
+      "uid": "c3c9bbab-2b36-4359-a7ac-e3de194445ab"
+    },
+    "contract": {
+      "contract_fingerprint": "64701810d4d4403febd78cf7c8802de03b31e47d6a3f625739ba7910c16179b5",
+      "static_contract_verified": true
+    },
+    "duration_seconds": 113.926,
+    "observed_at": "2026-07-27T06:42:54.995146+00:00",
+    "recovered_markers": {
+      "gravitino_postgresql": {
+        "extension_fingerprint": "6a0a92045f06baabcf22b103007285ec0bcb00cdbf6f6f30b34b0a41a73c6c2f",
+        "image_version": "16.10-bookworm",
+        "row_count_fingerprint": "9af129a1e57abefe0e5ada16bd7d93d7d6f614def8814e8c853b87c539e6e9a6",
+        "sequence_state_fingerprint": "51fe857234adbc1e7462e24022f0b3ba383ff0b87b4b833d2c99f1674b60c9a4",
+        "server_version": "16.10 (Debian 16.10-1.pgdg12+1)",
+        "table_count": 39,
+        "table_name_fingerprint": "7db0d765156ca83f8cfab3c48b0acd40eefb04c8bad3170c2d7cf6079cbfe9fe"
+      },
+      "openmetadata_postgresql": {
+        "extension_fingerprint": "5425606415e192199fdbef130acb53a732064cb692916f5278b9e8eebc5b2f59",
+        "image_version": "16.10-bookworm",
+        "row_count_fingerprint": "891abe3f510e11dd6b0141a86b871514a29a8185281f10ad09269201ab775228",
+        "sequence_state_fingerprint": "3580db7847de59d2d7f71ced3ad5526dd62f37f82c3830a6465decaea4b0a8cc",
+        "server_version": "16.10 (Debian 16.10-1.pgdg12+1)",
+        "table_count": 176,
+        "table_name_fingerprint": "9b56cb8952f4680c1972aeafb461b0ef8c204326432ed8bab6226e2eedbb1167"
+      },
+      "opensearch": {
+        "cluster_uuid": "Wp7d96iaQa6C4PjCq2xS0A",
+        "document_count_fingerprint": "b9a9da89701697d1778735a3cd1196422f624049847009a593c56e5fdfe7f109",
+        "index_count": 79,
+        "index_name_fingerprint": "5dd3252013d217ea4e014951fbd687ef912dac847ee8d385adf6bd561070f00a",
+        "total_index_count": 79,
+        "version": "3.3.2"
+      }
+    },
+    "recovery_pvcs": {
+      "recovery-gravitino-data-recovery-gravitino-postgresql-0": {
+        "capacity": "2Gi",
+        "phase": "Bound",
+        "uid": "58b01aa7-20e6-479d-8df6-81c256faad2b",
+        "volume_name": "pvc-58b01aa7-20e6-479d-8df6-81c256faad2b"
+      },
+      "recovery-openmetadata-data-recovery-openmetadata-postgresql-0": {
+        "capacity": "2Gi",
+        "phase": "Bound",
+        "uid": "7a2d3e27-5e7b-4c71-aeb6-6cf8c1890f0f",
+        "volume_name": "pvc-7a2d3e27-5e7b-4c71-aeb6-6cf8c1890f0f"
+      },
+      "recovery-opensearch-data-recovery-opensearch-0": {
+        "capacity": "8Gi",
+        "phase": "Bound",
+        "uid": "65db4f7d-db0a-4031-a354-029c55e0d106",
+        "volume_name": "pvc-65db4f7d-db0a-4031-a354-029c55e0d106"
+      }
+    },
+    "runtime_checks": {
+      "local_artifacts_removed": true,
+      "recovery_namespace_removed": true,
+      "recovery_search_target_cleared": true,
+      "source_quiesced": true,
+      "source_services_restored": true,
+      "source_snapshot_staging_cleaned": true,
+      "source_snapshot_staging_initially_empty": true
+    },
+    "schema": "gda.metadata_fabric_recovery_observation.v1",
+    "source_markers": {
+      "gravitino_postgresql": {
+        "extension_fingerprint": "6a0a92045f06baabcf22b103007285ec0bcb00cdbf6f6f30b34b0a41a73c6c2f",
+        "image_version": "16.10-bookworm",
+        "row_count_fingerprint": "9af129a1e57abefe0e5ada16bd7d93d7d6f614def8814e8c853b87c539e6e9a6",
+        "sequence_state_fingerprint": "51fe857234adbc1e7462e24022f0b3ba383ff0b87b4b833d2c99f1674b60c9a4",
+        "server_version": "16.10 (Debian 16.10-1.pgdg12+1)",
+        "table_count": 39,
+        "table_name_fingerprint": "7db0d765156ca83f8cfab3c48b0acd40eefb04c8bad3170c2d7cf6079cbfe9fe"
+      },
+      "openmetadata_postgresql": {
+        "extension_fingerprint": "5425606415e192199fdbef130acb53a732064cb692916f5278b9e8eebc5b2f59",
+        "image_version": "16.10-bookworm",
+        "row_count_fingerprint": "891abe3f510e11dd6b0141a86b871514a29a8185281f10ad09269201ab775228",
+        "sequence_state_fingerprint": "3580db7847de59d2d7f71ced3ad5526dd62f37f82c3830a6465decaea4b0a8cc",
+        "server_version": "16.10 (Debian 16.10-1.pgdg12+1)",
+        "table_count": 176,
+        "table_name_fingerprint": "9b56cb8952f4680c1972aeafb461b0ef8c204326432ed8bab6226e2eedbb1167"
+      },
+      "opensearch": {
+        "cluster_uuid": "_h-TPGNqQq65KEOkhWpTyg",
+        "document_count_fingerprint": "b9a9da89701697d1778735a3cd1196422f624049847009a593c56e5fdfe7f109",
+        "index_count": 79,
+        "index_name_fingerprint": "5dd3252013d217ea4e014951fbd687ef912dac847ee8d385adf6bd561070f00a",
+        "total_index_count": 79,
+        "version": "3.3.2"
+      }
+    },
+    "started_at": "2026-07-27T06:41:01.068734+00:00"
+  },
+  "observation_fingerprint": "18d1777f686ef0349a958d6ada287fb27b6861f1d4f35daa13bc62b9b814dc5f",
+  "oidc_verified": false,
+  "production_backup_restore_verified": false,
+  "production_ready": false,
+  "recovery_namespace": "gda-metadata-recovery-rehearsal",
+  "rpo_slo_verified": false,
+  "rto_slo_verified": false,
+  "schema": "gda.metadata_fabric_recovery_evidence.v1",
+  "source_namespace": "gda-metadata-sandbox",
+  "status": "local_backup_restore_verified",
+  "upgrade_verified": false,
+  "writes_to_gda_enabled": false
+}
