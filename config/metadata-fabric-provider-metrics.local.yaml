@@ -1,0 +1,33 @@
+schema: gda.metadata_fabric_provider_metrics_profile.v1
+environment: local_docker_desktop
+cluster:
+  context: docker-desktop
+  namespace: gda-metadata-sandbox
+providers:
+  openmetadata:
+    version: "1.13.1"
+    workload: deployment/openmetadata
+    service: openmetadata
+    admin_port: 8586
+    endpoints:
+      dropwizard: /metrics
+      prometheus: /prometheus
+  gravitino:
+    version: "1.3.0"
+    workload: statefulset/metadata-gravitino
+    service: metadata-gravitino
+    metrics_port: 8090
+    endpoints:
+      dropwizard: /metrics
+claims:
+  local_provider_metrics_verified: false
+  production_metrics_verified: false
+  otel_pipeline_verified: false
+  alert_delivery_verified: false
+  slo_verified: false
+  metrics_tls_verified: false
+  oidc_verified: false
+  network_policy_enforcement_verified: false
+  upgrade_verified: false
+  writes_to_gda_enabled: false
+  production_ready: false
