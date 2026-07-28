@@ -22,6 +22,7 @@ on:
       - feat/ar1-metadata-fabric-openlineage-delivery
       - feat/ar1-metadata-fabric-provider-identity
       - feat/ar1-metadata-fabric-gravitino-identity
+      - feat/ar1-metadata-fabric-identity-readiness-gate
 
 env:
   PYTHON_VERSION: "3.13"
@@ -137,6 +138,9 @@ jobs:
       - name: Validate metadata fabric Gravitino identity evidence
         run: python -m data_agent.metadata_fabric_gravitino_identity validate
 
+      - name: Validate metadata fabric production identity gate
+        run: python -m data_agent.metadata_fabric_identity_gate validate
+
       - name: Validate DolphinScheduler adapter boundary
         run: python -m data_agent.dolphinscheduler_adapter validate
 
@@ -194,6 +198,7 @@ jobs:
             data_agent/test_metadata_fabric_lineage_delivery.py \
             data_agent/test_metadata_fabric_provider_identity.py \
             data_agent/test_metadata_fabric_gravitino_identity.py \
+            data_agent/test_metadata_fabric_identity_gate.py \
             data_agent/test_metadata_fabric_otel_failure_rehearsal.py \
             data_agent/test_metadata_fabric_otel_metrics.py \
             data_agent/test_metadata_fabric_provider_metrics.py \
