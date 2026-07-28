@@ -629,6 +629,26 @@ RUNTIME_INVENTORY = (
         "Protected OIDC workload identity and authenticated Gravitino access control",
     ),
     RuntimeSpec(
+        "metadata_gravitino_identity_rehearsal",
+        "gravitino_identity_rehearsal",
+        "governed",
+        "evidence_durable",
+        "committed local Gravitino Basic bounded identity evidence",
+        "metadata-platform",
+        "local_verification_only",
+        (
+            "data_agent/metadata_fabric_gravitino_identity.py",
+            "scripts/metadata-fabric-gravitino-identity.sh",
+        ),
+        (
+            (
+                "data_agent/metadata_fabric_gravitino_identity.py",
+                "subprocess.run",
+            ),
+        ),
+        "Protected OIDC workload identity, TLS and production Gravitino catalog",
+    ),
+    RuntimeSpec(
         "datalake_monitor",
         "monitor_loop",
         "legacy",

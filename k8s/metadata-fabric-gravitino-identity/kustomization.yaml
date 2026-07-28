@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: gda-metadata-identity
+resources:
+  - namespace.yaml
+  - runtime.yaml
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: gda-metadata-fabric-gravitino-identity
+      gda.openai.com/environment: identity-rehearsal
+    includeSelectors: false

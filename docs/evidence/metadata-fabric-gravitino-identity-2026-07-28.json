@@ -1,0 +1,152 @@
+{
+  "errors": [],
+  "evidence_fingerprint": "f0b0de1f80f079d43318937e0a0cc151a8546e9e307bef204738b1367f9b29fd",
+  "gravitino_authentication_verified": false,
+  "local_gravitino_basic_identity_verified": true,
+  "local_gravitino_login_rotation_verified": true,
+  "local_gravitino_minimum_privilege_verified": true,
+  "local_gravitino_revocation_verified": true,
+  "observation": {
+    "contract": {
+      "contract_fingerprint": "c1c8b08e52c88742fd273378735491626bc4a185f3416746eafa4932374a3704",
+      "local_static_contract_verified": true
+    },
+    "gravitino": {
+      "allowed_probe": {
+        "create_status": 200,
+        "full_name": "lakehouse.published.gda_identity_probe",
+        "operation": "CREATE_TABLE",
+        "read_status": 200,
+        "readback_table": "gda_identity_probe",
+        "resource": "SCHEMA",
+        "rotated_readback_table": "gda_identity_probe",
+        "table": "gda_identity_probe"
+      },
+      "authentication": {
+        "bounded_user_status": 200,
+        "material_recorded": false,
+        "service_admin_status": 200,
+        "unregistered_principal_status": 401
+      },
+      "bootstrap": {
+        "catalog": "lakehouse",
+        "metalake": "gda_identity",
+        "minimum_privilege": false,
+        "schema": "published",
+        "service_admin_used": true
+      },
+      "configuration": {
+        "access_control_enabled": true,
+        "authenticator": "basic",
+        "built_in_idp_scope": "local_poc_only",
+        "idp_extension": "org.apache.gravitino.idp.web.rest.feature",
+        "simple_authenticator_trusted": false
+      },
+      "denied_probe": {
+        "catalog": "unauthorized_catalog",
+        "operation": "CREATE_CATALOG",
+        "resource": "METALAKE",
+        "status": 403
+      },
+      "idp_create_response_present": true,
+      "login_lifecycle": {
+        "after_revocation_status": 401,
+        "idp_principal_absent": true,
+        "material_recorded": false,
+        "old_after_rotation_status": 401,
+        "revocation_mode": "idp_user_delete",
+        "rotated_authentication_status": 200,
+        "rotation_mode": "administrator_reset"
+      },
+      "principal": {
+        "granted_name": "gda-metadata-projection",
+        "is_service_admin": false,
+        "name": "gda-metadata-projection",
+        "roles": [
+          "gda-table-projection"
+        ]
+      },
+      "role": {
+        "name": "gda-table-projection",
+        "readback_name": "gda-table-projection",
+        "securable_objects": [
+          {
+            "fullName": "lakehouse",
+            "privileges": [
+              {
+                "condition": "ALLOW",
+                "name": "USE_CATALOG"
+              }
+            ],
+            "type": "CATALOG"
+          },
+          {
+            "fullName": "lakehouse.published",
+            "privileges": [
+              {
+                "condition": "ALLOW",
+                "name": "CREATE_TABLE"
+              },
+              {
+                "condition": "ALLOW",
+                "name": "USE_SCHEMA"
+              }
+            ],
+            "type": "SCHEMA"
+          }
+        ]
+      },
+      "version": "1.3.0"
+    },
+    "observed_at": "2026-07-28T15:01:18.018090+00:00",
+    "runtime": {
+      "context": "docker-desktop",
+      "gravitino": {
+        "image": "gda/gravitino:1.3.0-local-arm64",
+        "kind": "StatefulSet",
+        "name": "gravitino-identity",
+        "ready_replicas": 1,
+        "service_account": "gravitino-identity",
+        "service_account_automount_disabled": true,
+        "uid": "7973b9fc-0383-4749-aad2-7d350b9a73a2"
+      },
+      "namespace": {
+        "name": "gda-metadata-identity",
+        "uid": "319ca844-b66a-4d70-b256-4df9134601c7"
+      },
+      "postgresql": {
+        "ephemeral_data_volume": true,
+        "image": "postgres:16.10-bookworm",
+        "kind": "StatefulSet",
+        "name": "gravitino-identity-postgresql",
+        "ready_replicas": 1,
+        "service_account": "gravitino-identity-postgresql",
+        "service_account_automount_disabled": true,
+        "uid": "ca890e8d-6bfd-4b82-ba64-c8bce0c69831"
+      },
+      "service": {
+        "name": "gravitino-identity",
+        "type": "ClusterIP",
+        "uid": "a80396a3-a9a0-407c-90c1-a3402278a9a6"
+      },
+      "source_schema_sha256": "7a2d605a677a462ca619dba594ce7ebcf500358345560ad084c1b67a25c722df"
+    },
+    "runtime_checks": {
+      "all_port_forwards_stopped": true,
+      "kubernetes_service_account_used_for_provider_login": false,
+      "material_recorded": false,
+      "namespace_absent": true,
+      "namespace_delete_completed": true,
+      "provider_objects_retained": false
+    },
+    "schema": "gda.metadata_fabric_gravitino_identity_observation.v1"
+  },
+  "oidc_verified": false,
+  "production_identity_verified": false,
+  "production_ready": false,
+  "protected_workload_identity_verified": false,
+  "provider_minimum_privilege_verified": false,
+  "schema": "gda.metadata_fabric_gravitino_identity_evidence.v1",
+  "status": "local_gravitino_basic_identity_verified",
+  "tls_verified": false
+}

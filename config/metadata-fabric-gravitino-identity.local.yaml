@@ -1,0 +1,64 @@
+schema: gda.metadata_fabric_gravitino_identity_profile.v1
+environment: local_docker_desktop
+
+cluster:
+  context: docker-desktop
+  source_namespace: gda-metadata-sandbox
+  rehearsal_namespace: gda-metadata-identity
+  source_schema_configmap: metadata-gravitino-schema-1-3-0
+
+runtime:
+  manifest: k8s/metadata-fabric-gravitino-identity
+  gravitino_version: 1.3.0
+  gravitino_image: gda/gravitino:1.3.0-local-arm64
+  postgresql_version: 16.10-bookworm
+  postgresql_image: postgres:16.10-bookworm
+  service: gravitino-identity
+  service_port: 8090
+  authenticator: basic
+  idp_extension: org.apache.gravitino.idp.web.rest.feature
+  access_control_enabled: true
+  service_account: gravitino-identity
+  service_account_automount_disabled: true
+  transport: local_loopback_http
+
+identity:
+  service_admin: gda-identity-admin
+  user: gda-metadata-projection
+  role: gda-table-projection
+  material_delivery: runtime_generated_ephemeral_kubernetes_object
+  login_rotation: administrator_reset
+  revocation: idp_user_delete
+
+scope:
+  metalake: gda_identity
+  catalog: lakehouse
+  schema: published
+  table: gda_identity_probe
+  denied_catalog: unauthorized_catalog
+  role_securable_objects:
+    - full_name: lakehouse
+      type: CATALOG
+      privileges:
+        - name: USE_CATALOG
+          condition: ALLOW
+    - full_name: lakehouse.published
+      type: SCHEMA
+      privileges:
+        - name: CREATE_TABLE
+          condition: ALLOW
+        - name: USE_SCHEMA
+          condition: ALLOW
+
+claims:
+  local_gravitino_basic_identity_verified: false
+  local_gravitino_minimum_privilege_verified: false
+  local_gravitino_login_rotation_verified: false
+  local_gravitino_revocation_verified: false
+  gravitino_authentication_verified: false
+  provider_minimum_privilege_verified: false
+  protected_workload_identity_verified: false
+  oidc_verified: false
+  tls_verified: false
+  production_identity_verified: false
+  production_ready: false
