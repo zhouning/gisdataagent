@@ -17,6 +17,7 @@ on:
       - feat/ar1-metadata-fabric-network-policy-enforcement
       - feat/ar1-metadata-fabric-network-policy-readiness-gate
       - feat/ar1-metadata-fabric-ingestion-contract
+      - feat/ar1-metadata-fabric-local-ingestion-replay
 
 env:
   PYTHON_VERSION: "3.13"
@@ -117,6 +118,9 @@ jobs:
       - name: Validate metadata fabric ingestion projection contract
         run: python -m data_agent.metadata_fabric_ingestion validate
 
+      - name: Validate metadata fabric local ingestion replay evidence
+        run: python -m data_agent.metadata_fabric_ingestion_replay validate
+
       - name: Validate DolphinScheduler adapter boundary
         run: python -m data_agent.dolphinscheduler_adapter validate
 
@@ -159,6 +163,7 @@ jobs:
             data_agent/test_metadata_fabric_network_policy_enforcement.py \
             data_agent/test_metadata_fabric_network_policy_gate.py \
             data_agent/test_metadata_fabric_ingestion.py \
+            data_agent/test_metadata_fabric_ingestion_replay.py \
             data_agent/test_metadata_fabric_otel_failure_rehearsal.py \
             data_agent/test_metadata_fabric_otel_metrics.py \
             data_agent/test_metadata_fabric_provider_metrics.py \

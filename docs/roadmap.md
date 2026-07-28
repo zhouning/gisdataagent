@@ -417,7 +417,7 @@ AR-0 Architecture / Schema / Runtime Truth
 - Web、DolphinScheduler、OpenMetadata、Gravitino、worker 和 bridge 重启后不丢版本、产品、血缘、PlatformRun correlation 或审批状态。
 - DataOps 状态可从 DolphinScheduler/OpenMetadata/Gravitino/GDA evidence 恢复；任何 release/deployment 都能从事件、Artifact、评测、策略、incident 和 rollback pointer 重放。Temporal durable recovery 在 AR-5/AR-7 单独验收。
 
-当前 Metadata Fabric 证据边界：M1 只读 bridge 合同已验证；ADR-037 的 M2a 本地 foundation 已验证五个 Pod/PVC 连续性；ADR-038 的 M2b-1 已验证两份 PostgreSQL dump 和 OpenSearch snapshot 到新 namespace/PVC 的内容恢复；ADR-039 的 M2b-2 又在独立 MinIO/PVC 启用 versioning/Object Lock，将三份真实 artifact 上传、锁定、删除本地副本、按 version 下载并完成恢复；ADR-040 的 M2b-3 已从 `docker-desktop` 恢复到独立 kind cluster，并将 `COMPLIANCE/1 day` repository 置于两个 Kubernetes cluster 之外的 Docker host container，验证独立 writer/reader 权限。`local_cross_cluster_recovery_verified=true` 的 scope 仅为同一 Docker Desktop 主机内的两个 Kubernetes cluster；它不证明 source-host loss、外部生产 bucket、生产 retention、TLS/KMS、workload identity、PITR、RPO/RTO、生产跨集群/跨区域恢复、OIDC、upgrade、NetworkPolicy enforcement 或 production ready。
+当前 Metadata Fabric 证据边界：M1 只读 bridge 合同已验证；ADR-037 至 ADR-046 分别覆盖本地 foundation/recovery/metrics/network-policy 演练与 production readiness contracts；ADR-047 的 M3-1 已建立 deterministic projection plan；ADR-048 的 M3-2 已用 exact local PolicyDecision/Approval 对本地 OpenMetadata/Gravitino 执行 natural-key create/read-back，并证明第二次 replay 为 `no_op/0 mutations`。M3-2 使用 OpenMetadata bootstrap admin、未认证 Gravitino 与 memory catalog，binding candidate 不写 GDA Control，OpenLineage 不发送；因此只允许 `local_live_provider_ingestion_verified=true`，不证明 provider 最小权限、OIDC、持久 catalog、生产 ingestion/conformance、live lineage 或 `production_ready`。
 
 ### AR-2 — Source, Ingestion and Geospatial Lakehouse Vertical Slice（P0）
 
