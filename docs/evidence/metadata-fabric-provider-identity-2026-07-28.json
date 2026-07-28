@@ -1,0 +1,147 @@
+{
+  "errors": [],
+  "evidence_fingerprint": "61b6a3429ae948f563bfc2bd012d8b586be581704cec646fd5e74b991243f03f",
+  "gravitino_authentication_verified": false,
+  "local_openmetadata_bounded_identity_verified": true,
+  "local_openmetadata_jwt_revocation_verified": true,
+  "local_openmetadata_jwt_rotation_verified": true,
+  "local_openmetadata_minimum_privilege_verified": true,
+  "observation": {
+    "contract": {
+      "contract_fingerprint": "707f90aa0b7472380a43bf5aac0a6542db619d06da95c7d0536434f74852965e",
+      "local_static_contract_verified": true
+    },
+    "gravitino": {
+      "access_control_enabled": false,
+      "authentication_verified": false,
+      "authenticator": "simple",
+      "version": "1.3.0"
+    },
+    "observed_at": "2026-07-28T13:29:46.197981+00:00",
+    "openmetadata": {
+      "allowed_probe": {
+        "create_status": 201,
+        "entity_id": "740124bc-b972-419e-9990-5b071ba8ca1e",
+        "fully_qualified_name": "gda_lakehouse.land_use.published.gda_provider_identity_probe",
+        "operation": "Create",
+        "read_status": 200,
+        "resource": "table"
+      },
+      "bot": {
+        "id": "94ed8f54-d1eb-44a4-a28b-34f19a5c5505",
+        "name": "gda-metadata-table-projection-bot",
+        "provider": "automation"
+      },
+      "cleanup": {
+        "absence": {
+          "bot": true,
+          "policy": true,
+          "role": true,
+          "table": true,
+          "unauthorized_policy": true,
+          "user": true
+        },
+        "all_rehearsal_objects_absent": true,
+        "delete_statuses": {
+          "bot": 200,
+          "policy": 200,
+          "role": 200,
+          "table": 200,
+          "user": 404
+        },
+        "jwt_revocation_attempted": true
+      },
+      "denied_probe": {
+        "operation": "Create",
+        "resource": "policy",
+        "status": 403
+      },
+      "jwt_lifecycle": {
+        "after_revocation_status": 401,
+        "expiry": "OneHour",
+        "initial_authentication_status": 200,
+        "old_after_rotation_status": 401,
+        "rotated_authentication_status": 200,
+        "rotated_principal_matches": true,
+        "sensitive_material_recorded": false
+      },
+      "policy": {
+        "enabled": true,
+        "id": "df3b5584-6185-49b9-8e29-e43fbadd174c",
+        "name": "GdaMetadataTableProjectionPolicy",
+        "rules": [
+          {
+            "effect": "allow",
+            "name": "GdaMetadataTableCreate",
+            "operations": [
+              "Create"
+            ],
+            "resources": [
+              "table"
+            ]
+          }
+        ]
+      },
+      "principal": {
+        "effective_roles": [
+          "DefaultBotRole",
+          "GdaMetadataTableProjectionRole"
+        ],
+        "id": "4b492bb1-b32d-4f05-9cb6-878a6a2bce45",
+        "is_admin": false,
+        "is_bot": true,
+        "minimum_privilege_scope": "dedicated_table_create_grant_with_provider_mandatory_default_role",
+        "name": "gda-metadata-table-projection",
+        "provider_mandatory_default_role_inherited": true
+      },
+      "provisioner": {
+        "auth_mode": "local_basic_bootstrap_provisioner",
+        "bootstrap_admin_used": true,
+        "minimum_privilege": false
+      },
+      "role": {
+        "id": "e41ffd2b-2bea-41a0-beaa-22fe0df9f21c",
+        "mandatory_default_role": "DefaultBotRole",
+        "name": "GdaMetadataTableProjectionRole",
+        "policy_ids": [
+          "df3b5584-6185-49b9-8e29-e43fbadd174c"
+        ]
+      }
+    },
+    "runtime": {
+      "context": "docker-desktop",
+      "namespace": {
+        "name": "gda-metadata-sandbox",
+        "uid": "812c9c5c-9ce2-409e-a6a8-a3f24785aa0c"
+      },
+      "service": {
+        "name": "openmetadata",
+        "type": "ClusterIP",
+        "uid": "c903a96c-9aa9-420c-93d1-d2224df0cc85"
+      },
+      "workload": {
+        "image": "docker.getcollate.io/openmetadata/server:1.13.1",
+        "kind": "Deployment",
+        "name": "openmetadata",
+        "ready_replicas": 1,
+        "service_account": "openmetadata",
+        "service_account_automount_disabled": true,
+        "uid": "39bba7aa-b48e-4f5c-a9a8-c9cc9ca4ec1f"
+      }
+    },
+    "runtime_checks": {
+      "all_port_forwards_stopped": true,
+      "kubernetes_service_account_used_for_provider_login": false,
+      "provider_objects_retained": false,
+      "sensitive_material_recorded": false
+    },
+    "schema": "gda.metadata_fabric_provider_identity_observation.v1"
+  },
+  "oidc_verified": false,
+  "production_identity_verified": false,
+  "production_ready": false,
+  "protected_workload_identity_verified": false,
+  "provider_minimum_privilege_verified": false,
+  "schema": "gda.metadata_fabric_provider_identity_evidence.v1",
+  "status": "local_openmetadata_bounded_identity_verified"
+}
