@@ -1,0 +1,8 @@
+{
+  "schema": "gda.metadata_fabric_ingestion_expected.v1",
+  "platform_fixture_sha256": "9c18a58248c7f34666cc2eb1a959694725dead05fdab7bf855e57ee71b2091b5",
+  "metadata_fixture_sha256": "74ac611b5ccd5c0f63e13931217172e24bdbaea37f3053c7669ca94096c991f8",
+  "plan_sha256": "a5c8ef636c03a38d0c6edaacff7d1edeba9c4b8a7f1491c493e9308257c5a94d",
+  "openlineage_event_sha256": "4929e51c4126e09415a9fc1578c9401077c5d7c374294e70deeebd29c8216dd2",
+  "replay_sha256": "c33857b2ae75f1106ed7d59e8e53296a3f76f4b90ef386238159b328d47c57ca"
+}
