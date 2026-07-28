@@ -1,0 +1,371 @@
+{
+  "alert_delivery_verified": false,
+  "checks": {
+    "baseline_scrape": "passed",
+    "configuration_recovery": "passed",
+    "ephemeral_cleanup": "passed",
+    "isolated_fault_detection": "passed",
+    "production_boundaries": "passed",
+    "provider_identity_preservation": "passed",
+    "recovered_scrape": "passed",
+    "static_contract": "passed"
+  },
+  "context": "docker-desktop",
+  "environment": "local_docker_desktop_ephemeral_otel_failure_rehearsal",
+  "errors": [],
+  "evidence_fingerprint": "c70211268b62ba2e4b78c2e6d356878d875216a4f5dd7a6b4894bbdff6460a8c",
+  "generated_at": "2026-07-28T00:09:52.011304+00:00",
+  "local_otel_scrape_failure_recovery_verified": true,
+  "metrics_scope": "local_ephemeral_otel_scrape_failure_recovery",
+  "metrics_tls_verified": false,
+  "namespace": "gda-metadata-sandbox",
+  "network_policy_enforcement_verified": false,
+  "observation": {
+    "cluster": {
+      "context": "docker-desktop",
+      "namespace": {
+        "name": "gda-metadata-sandbox",
+        "uid": "812c9c5c-9ce2-409e-a6a8-a3f24785aa0c"
+      },
+      "uid": "c3c9bbab-2b36-4359-a7ac-e3de194445ab"
+    },
+    "components": {
+      "baseline": {
+        "configmaps": {
+          "metadata-json-exporter-config": {
+            "config_sha256": "efa09a7dd8081cfe6891fed33225d58bf320c84aded5b77c477a77caa849d4aa",
+            "matches_static_contract": true,
+            "uid": "337add3a-f872-4372-a012-77dd315e640f"
+          },
+          "metadata-otel-collector-config": {
+            "config_sha256": "c600738d523b052e849d820f2ac616f9c34285b82094058f6ab2e98345d9ed63",
+            "matches_static_contract": true,
+            "uid": "74f686c3-2f20-4ab9-9d07-918b8bc9af94"
+          }
+        },
+        "deployments": {
+          "metadata-json-exporter": {
+            "image": "prometheuscommunity/json-exporter@sha256:62370e6e39818966ae1ddfbb69ebf480c697a313cc05ddd76c910b9fbe6934ec",
+            "ready_replicas": 1,
+            "service_account": "metadata-json-exporter",
+            "uid": "88a03544-7316-4a67-93cb-d4919ba40528"
+          },
+          "metadata-otel-collector": {
+            "image": "otel/opentelemetry-collector-contrib@sha256:330e0c7e4f4f60dc94f9657e5fb96ce9cfcf333b9aaa41a5c06b4ce4532de92d",
+            "ready_replicas": 1,
+            "service_account": "metadata-otel-collector",
+            "uid": "bb2df0bc-cdb9-4828-99cd-4011cfed7f12"
+          }
+        },
+        "services": {
+          "metadata-json-exporter": {
+            "ports": [
+              7979
+            ],
+            "type": "ClusterIP",
+            "uid": "216d81c5-0483-4f69-8744-5311f437af41"
+          },
+          "metadata-otel-collector": {
+            "ports": [
+              8889,
+              13133
+            ],
+            "type": "ClusterIP",
+            "uid": "53d136b4-0380-44fe-b6ae-41902e310f39"
+          }
+        }
+      },
+      "recovery": {
+        "configmaps": {
+          "metadata-json-exporter-config": {
+            "config_sha256": "efa09a7dd8081cfe6891fed33225d58bf320c84aded5b77c477a77caa849d4aa",
+            "matches_static_contract": true,
+            "uid": "337add3a-f872-4372-a012-77dd315e640f"
+          },
+          "metadata-otel-collector-config": {
+            "config_sha256": "c600738d523b052e849d820f2ac616f9c34285b82094058f6ab2e98345d9ed63",
+            "matches_static_contract": true,
+            "uid": "74f686c3-2f20-4ab9-9d07-918b8bc9af94"
+          }
+        },
+        "deployments": {
+          "metadata-json-exporter": {
+            "image": "prometheuscommunity/json-exporter@sha256:62370e6e39818966ae1ddfbb69ebf480c697a313cc05ddd76c910b9fbe6934ec",
+            "ready_replicas": 1,
+            "service_account": "metadata-json-exporter",
+            "uid": "88a03544-7316-4a67-93cb-d4919ba40528"
+          },
+          "metadata-otel-collector": {
+            "image": "otel/opentelemetry-collector-contrib@sha256:330e0c7e4f4f60dc94f9657e5fb96ce9cfcf333b9aaa41a5c06b4ce4532de92d",
+            "ready_replicas": 1,
+            "service_account": "metadata-otel-collector",
+            "uid": "bb2df0bc-cdb9-4828-99cd-4011cfed7f12"
+          }
+        },
+        "services": {
+          "metadata-json-exporter": {
+            "ports": [
+              7979
+            ],
+            "type": "ClusterIP",
+            "uid": "216d81c5-0483-4f69-8744-5311f437af41"
+          },
+          "metadata-otel-collector": {
+            "ports": [
+              8889,
+              13133
+            ],
+            "type": "ClusterIP",
+            "uid": "53d136b4-0380-44fe-b6ae-41902e310f39"
+          }
+        }
+      }
+    },
+    "contract": {
+      "contract_fingerprint": "917af171390e32d731a5b6b95843a2fbbb28c1c99223ed490f773416a2096aac",
+      "local_static_contract_verified": true
+    },
+    "duration_seconds": 33.766,
+    "fault_injection": {
+      "baseline_config_sha256": "c600738d523b052e849d820f2ac616f9c34285b82094058f6ab2e98345d9ed63",
+      "configmap_uid_preserved": true,
+      "expected_fault_config_sha256": "6e9196902febd5c35f4bfa47c5687e139f21deeaff58fe29a5988eace42f79d3",
+      "fault_config_sha256": "6e9196902febd5c35f4bfa47c5687e139f21deeaff58fe29a5988eace42f79d3",
+      "fault_endpoint": "metadata-json-exporter:1",
+      "job": "gravitino",
+      "original_endpoint": "metadata-json-exporter:7979",
+      "recovery_config_sha256": "c600738d523b052e849d820f2ac616f9c34285b82094058f6ab2e98345d9ed63",
+      "type": "collector_scrape_endpoint_replacement"
+    },
+    "observed_at": "2026-07-28T00:09:52.011224+00:00",
+    "runtime_checks": {
+      "apply_completed": true,
+      "cleanup_command_completed": true,
+      "ephemeral_resources_removed": true,
+      "fallback_restore_completed": false,
+      "fault_config_applied": true,
+      "fault_rollout_completed": true,
+      "initial_rollouts_completed": {
+        "metadata-json-exporter": true,
+        "metadata-otel-collector": true
+      },
+      "kubernetes_credential_resources_requested": false,
+      "persistent_volume_resources_requested": false,
+      "port_forwards_stopped": {
+        "baseline": true,
+        "fault": true,
+        "recovery": true
+      },
+      "provider_identities_preserved": true,
+      "rbac_resources_requested": false,
+      "recovery_config_applied": true,
+      "recovery_rollout_completed": true,
+      "remaining_resources": [],
+      "resources_absent_before_apply": true,
+      "runtime_resource_inventory": [
+        "ConfigMap/metadata-json-exporter-config",
+        "ConfigMap/metadata-otel-collector-config",
+        "Deployment/metadata-json-exporter",
+        "Deployment/metadata-otel-collector",
+        "NetworkPolicy/metadata-json-exporter-egress",
+        "NetworkPolicy/metadata-json-exporter-ingress",
+        "NetworkPolicy/metadata-otel-collector-egress",
+        "Service/metadata-json-exporter",
+        "Service/metadata-otel-collector",
+        "ServiceAccount/metadata-json-exporter",
+        "ServiceAccount/metadata-otel-collector"
+      ],
+      "runtime_resource_inventory_matches": true
+    },
+    "schema": "gda.metadata_fabric_otel_failure_rehearsal_observation.v1",
+    "stages": {
+      "baseline": {
+        "constant_labels_verified": true,
+        "format": "prometheus_text_0.0.4",
+        "gravitino_values": {
+          "gda_gravitino_datasource_active_connections": 0.0,
+          "gda_gravitino_datasource_max_connections": 100.0,
+          "gda_gravitino_http_threads": 8.0,
+          "gda_gravitino_jvm_heap_max_bytes": 1610612736.0,
+          "gda_gravitino_jvm_heap_used_bytes": 201236456.0
+        },
+        "jobs": {
+          "gravitino": {
+            "scrape_samples_scraped": 5.0,
+            "up": 1.0
+          },
+          "openmetadata": {
+            "scrape_samples_scraped": 417.0,
+            "up": 1.0
+          }
+        },
+        "label_name_count": 33,
+        "label_name_fingerprint": "9c8083ad70b1433d642686cc428f4775aa689cfe5eb6dbd090a55484d5007054",
+        "metric_family_count": 174,
+        "metric_family_name_fingerprint": "d9b1a60120ebd5c6f83c6e0625179306ecee24dfa5b5f232db767094940c09e5",
+        "metric_family_type_fingerprint": "9c7e955f7ef2dff392f890317235c02d711c3ae2ca27a07f7ca9015c3c43e83c",
+        "metric_type_counts": {
+          "counter": 36,
+          "gauge": 114,
+          "histogram": 9,
+          "summary": 15
+        },
+        "missing_required_families": {
+          "gravitino": [],
+          "openmetadata": []
+        },
+        "observed_at": "2026-07-28T00:09:28.638696+00:00",
+        "raw_metrics_retained": false,
+        "required_families": {
+          "gravitino": [
+            "gda_gravitino_datasource_active_connections",
+            "gda_gravitino_datasource_max_connections",
+            "gda_gravitino_http_threads",
+            "gda_gravitino_jvm_heap_used_bytes",
+            "gda_gravitino_jvm_heap_max_bytes"
+          ],
+          "openmetadata": [
+            "auth_attempts",
+            "db_connections",
+            "http_server_requests_sec_seconds",
+            "jvm_memory_used_bytes"
+          ]
+        },
+        "sample_count": 440,
+        "sequence": 1,
+        "stage": "baseline"
+      },
+      "fault": {
+        "constant_labels_verified": true,
+        "format": "prometheus_text_0.0.4",
+        "gravitino_values": {
+          "gda_gravitino_datasource_active_connections": null,
+          "gda_gravitino_datasource_max_connections": null,
+          "gda_gravitino_http_threads": null,
+          "gda_gravitino_jvm_heap_max_bytes": null,
+          "gda_gravitino_jvm_heap_used_bytes": null
+        },
+        "jobs": {
+          "gravitino": {
+            "scrape_samples_scraped": 0.0,
+            "up": 0.0
+          },
+          "openmetadata": {
+            "scrape_samples_scraped": 417.0,
+            "up": 1.0
+          }
+        },
+        "label_name_count": 33,
+        "label_name_fingerprint": "9c8083ad70b1433d642686cc428f4775aa689cfe5eb6dbd090a55484d5007054",
+        "metric_family_count": 169,
+        "metric_family_name_fingerprint": "e10b590f04ca4cab678e2173aa9f50467d5b7bbd01abf10ae1f7696cc249cd68",
+        "metric_family_type_fingerprint": "b093dbe8237970018d6570c0dc77fe800d236b2c9dcd7849047611835ced99c8",
+        "metric_type_counts": {
+          "counter": 36,
+          "gauge": 109,
+          "histogram": 9,
+          "summary": 15
+        },
+        "missing_required_families": {
+          "gravitino": [
+            "gda_gravitino_datasource_active_connections",
+            "gda_gravitino_datasource_max_connections",
+            "gda_gravitino_http_threads",
+            "gda_gravitino_jvm_heap_used_bytes",
+            "gda_gravitino_jvm_heap_max_bytes"
+          ],
+          "openmetadata": []
+        },
+        "observed_at": "2026-07-28T00:09:40.411996+00:00",
+        "raw_metrics_retained": false,
+        "required_families": {
+          "gravitino": [
+            "gda_gravitino_datasource_active_connections",
+            "gda_gravitino_datasource_max_connections",
+            "gda_gravitino_http_threads",
+            "gda_gravitino_jvm_heap_used_bytes",
+            "gda_gravitino_jvm_heap_max_bytes"
+          ],
+          "openmetadata": [
+            "auth_attempts",
+            "db_connections",
+            "http_server_requests_sec_seconds",
+            "jvm_memory_used_bytes"
+          ]
+        },
+        "sample_count": 435,
+        "sequence": 2,
+        "stage": "fault"
+      },
+      "recovery": {
+        "constant_labels_verified": true,
+        "format": "prometheus_text_0.0.4",
+        "gravitino_values": {
+          "gda_gravitino_datasource_active_connections": 0.0,
+          "gda_gravitino_datasource_max_connections": 100.0,
+          "gda_gravitino_http_threads": 8.0,
+          "gda_gravitino_jvm_heap_max_bytes": 1610612736.0,
+          "gda_gravitino_jvm_heap_used_bytes": 201236456.0
+        },
+        "jobs": {
+          "gravitino": {
+            "scrape_samples_scraped": 5.0,
+            "up": 1.0
+          },
+          "openmetadata": {
+            "scrape_samples_scraped": 417.0,
+            "up": 1.0
+          }
+        },
+        "label_name_count": 33,
+        "label_name_fingerprint": "9c8083ad70b1433d642686cc428f4775aa689cfe5eb6dbd090a55484d5007054",
+        "metric_family_count": 174,
+        "metric_family_name_fingerprint": "d9b1a60120ebd5c6f83c6e0625179306ecee24dfa5b5f232db767094940c09e5",
+        "metric_family_type_fingerprint": "9c7e955f7ef2dff392f890317235c02d711c3ae2ca27a07f7ca9015c3c43e83c",
+        "metric_type_counts": {
+          "counter": 36,
+          "gauge": 114,
+          "histogram": 9,
+          "summary": 15
+        },
+        "missing_required_families": {
+          "gravitino": [],
+          "openmetadata": []
+        },
+        "observed_at": "2026-07-28T00:09:51.584349+00:00",
+        "raw_metrics_retained": false,
+        "required_families": {
+          "gravitino": [
+            "gda_gravitino_datasource_active_connections",
+            "gda_gravitino_datasource_max_connections",
+            "gda_gravitino_http_threads",
+            "gda_gravitino_jvm_heap_used_bytes",
+            "gda_gravitino_jvm_heap_max_bytes"
+          ],
+          "openmetadata": [
+            "auth_attempts",
+            "db_connections",
+            "http_server_requests_sec_seconds",
+            "jvm_memory_used_bytes"
+          ]
+        },
+        "sample_count": 440,
+        "sequence": 3,
+        "stage": "recovery"
+      }
+    },
+    "started_at": "2026-07-28T00:09:18.245020+00:00"
+  },
+  "observation_fingerprint": "a011a708b772b2541415d5a17a2fe53ac2ba8aae238afe56dff75e52647d15a0",
+  "oidc_verified": false,
+  "otel_pipeline_verified": false,
+  "persistent_metrics_storage_verified": false,
+  "production_metrics_verified": false,
+  "production_ready": false,
+  "schema": "gda.metadata_fabric_otel_failure_rehearsal_evidence.v1",
+  "slo_verified": false,
+  "status": "local_otel_scrape_failure_recovery_verified",
+  "tenant_isolation_verified": false,
+  "upgrade_verified": false,
+  "writes_to_gda_enabled": false
+}

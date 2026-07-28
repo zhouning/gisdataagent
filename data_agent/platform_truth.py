@@ -549,6 +549,26 @@ RUNTIME_INVENTORY = (
         "Durable production metrics backend with TLS, alerting, and SLO ownership",
     ),
     RuntimeSpec(
+        "metadata_otel_failure_rehearsal",
+        "metrics_failure_rehearsal",
+        "governed",
+        "evidence_durable",
+        "committed local OTel scrape failure/recovery evidence",
+        "sre",
+        "local_verification_only",
+        (
+            "data_agent/metadata_fabric_otel_failure_rehearsal.py",
+            "scripts/metadata-fabric-otel-failure-rehearsal.sh",
+        ),
+        (
+            (
+                "data_agent/metadata_fabric_otel_failure_rehearsal.py",
+                "def collect_live_otel_failure_rehearsal",
+            ),
+        ),
+        "Protected-environment failure injection tied to alert and SLO runbooks",
+    ),
+    RuntimeSpec(
         "datalake_monitor",
         "monitor_loop",
         "legacy",
