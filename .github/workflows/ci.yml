@@ -12,6 +12,8 @@ on:
       - feat/ar1-metadata-fabric-cross-cluster-recovery
       - feat/ar1-metadata-fabric-provider-metrics
       - feat/ar1-metadata-fabric-otel-metrics-pipeline
+      - feat/ar1-metadata-fabric-otel-failure-rehearsal
+      - feat/ar1-metadata-fabric-observability-gate
 
 env:
   PYTHON_VERSION: "3.13"
@@ -100,6 +102,9 @@ jobs:
       - name: Validate metadata fabric OTel failure rehearsal
         run: python -m data_agent.metadata_fabric_otel_failure_rehearsal validate
 
+      - name: Validate metadata fabric production observability gate
+        run: python -m data_agent.metadata_fabric_observability_gate validate
+
       - name: Validate DolphinScheduler adapter boundary
         run: python -m data_agent.dolphinscheduler_adapter validate
 
@@ -138,6 +143,7 @@ jobs:
             data_agent/test_metadata_fabric_live_evidence.py \
             data_agent/test_metadata_fabric_backup_repository.py \
             data_agent/test_metadata_fabric_cross_cluster_recovery.py \
+            data_agent/test_metadata_fabric_observability_gate.py \
             data_agent/test_metadata_fabric_otel_failure_rehearsal.py \
             data_agent/test_metadata_fabric_otel_metrics.py \
             data_agent/test_metadata_fabric_provider_metrics.py \
