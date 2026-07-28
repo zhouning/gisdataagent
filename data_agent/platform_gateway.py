@@ -29,6 +29,14 @@ from .metadata_fabric_bridge import (
     MetadataFabricConfigurationError,
     build_metadata_fabric_binding,
 )
+from .metadata_fabric_ingestion import MetadataFabricIngestionPlan
+from .metadata_fabric_lineage_delivery_contract import (
+    LineageDeliveryStatus,
+    MetadataFabricLineageDelivery,
+    delivery_binding_payload,
+    openlineage_receipt_sha256,
+    validate_delivery_source,
+)
 from .platform_authorization import (
     AuthorizationEvidenceError,
     parse_approval_artifact,
@@ -75,6 +83,11 @@ METADATA_FABRIC_BINDING_MIGRATION = (
     Path(__file__).resolve().parent
     / "migrations"
     / "097_metadata_fabric_binding_ledger.sql"
+)
+METADATA_FABRIC_LINEAGE_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "098_metadata_fabric_openlineage_delivery.sql"
 )
 USER_TENANT_MIGRATION = (
     Path(__file__).resolve().parent
@@ -1287,6 +1300,29 @@ class PlatformGateway:
             return None
         return cls._metadata_fabric_binding_from_row(row)
 
+    @classmethod
+    def _load_metadata_fabric_binding_by_id(
+        cls, connection, tenant_id: str, binding_id: UUID
+    ) -> MetadataFabricBindingRecord | None:
+        row = connection.execute(
+            text(
+                """
+                SELECT tenant_id, binding_id, binding_document,
+                       execution_plan_artifact_id,
+                       policy_decision_artifact_id, approval_artifact_id,
+                       provider_evidence_artifact_id, recorded_by, recorded_at,
+                       record_sha256
+                FROM gda_control.metadata_fabric_binding
+                WHERE tenant_id = :tenant_id
+                  AND binding_id = :binding_id
+                """
+            ),
+            {"tenant_id": tenant_id, "binding_id": binding_id},
+        ).mappings().one_or_none()
+        if row is None:
+            return None
+        return cls._metadata_fabric_binding_from_row(row)
+
     def get_metadata_fabric_binding(
         self, tenant_id: str, resource_version_id: UUID
     ) -> MetadataFabricBindingRecord:
@@ -1508,6 +1544,284 @@ class PlatformGateway:
             return GatewayWriteResult(stored, inserted is not None)
 
     @staticmethod
+    def _metadata_fabric_lineage_from_row(
+        row,
+    ) -> MetadataFabricLineageDelivery:
+        value = dict(row)
+        value["event"] = _as_json(value["event"])
+        return MetadataFabricLineageDelivery.model_validate(value)
+
+    @classmethod
+    def _load_metadata_fabric_lineage_delivery(
+        cls, connection, tenant_id: str, delivery_id: UUID
+    ) -> MetadataFabricLineageDelivery | None:
+        row = connection.execute(
+            text(
+                """
+                SELECT tenant_id, delivery_id, binding_id,
+                       resource_version_id, run_id, source_plan_sha256,
+                       target_name, event, event_sha256, idempotency_key,
+                       actor_subject, status, attempt_count, max_attempts,
+                       available_at, claimed_by, claimed_until,
+                       last_error_code, response_status,
+                       response_body_sha256, receipt_sha256,
+                       created_at, completed_at
+                FROM gda_control.metadata_fabric_lineage_outbox
+                WHERE tenant_id = :tenant_id
+                  AND delivery_id = :delivery_id
+                """
+            ),
+            {"tenant_id": tenant_id, "delivery_id": delivery_id},
+        ).mappings().one_or_none()
+        if row is None:
+            return None
+        return cls._metadata_fabric_lineage_from_row(row)
+
+    def enqueue_metadata_fabric_lineage(
+        self,
+        delivery: MetadataFabricLineageDelivery,
+        *,
+        source_plan: MetadataFabricIngestionPlan,
+    ) -> GatewayWriteResult:
+        try:
+            delivery = MetadataFabricLineageDelivery.model_validate(
+                delivery.model_dump(mode="json", by_alias=True)
+            )
+            source_plan = MetadataFabricIngestionPlan.model_validate(
+                source_plan.model_dump(mode="json", by_alias=True)
+            )
+        except ValueError as exc:
+            raise GatewayValidationError(
+                "Metadata Fabric lineage input is not content-bound"
+            ) from exc
+        if delivery.status != LineageDeliveryStatus.PENDING:
+            raise GatewayValidationError("new lineage delivery must be pending")
+        with self._transaction(delivery.tenant_id) as connection:
+            binding = self._load_metadata_fabric_binding_by_id(
+                connection, delivery.tenant_id, delivery.binding_id
+            )
+            if binding is None:
+                raise GatewayValidationError(
+                    "Metadata Fabric lineage binding was not found"
+                )
+            artifact = self._load_artifact(
+                connection,
+                delivery.tenant_id,
+                binding.execution_plan_artifact_id,
+            )
+            if artifact is None:
+                raise GatewayValidationError(
+                    "Metadata Fabric lineage execution plan was not found"
+                )
+            apply_plan = self._parse_metadata_fabric_execution_plan(artifact)
+            try:
+                validate_delivery_source(
+                    binding=binding,
+                    source_plan=source_plan,
+                    apply_plan=apply_plan,
+                )
+            except ValueError as exc:
+                raise GatewayValidationError(str(exc)) from exc
+            expected = (
+                binding.tenant_id,
+                binding.binding_id,
+                binding.binding.resource_version_id,
+                source_plan.run_id,
+                source_plan.plan_sha256,
+                source_plan.openlineage_event,
+                source_plan.openlineage_event_sha256,
+            )
+            observed = (
+                delivery.tenant_id,
+                delivery.binding_id,
+                delivery.resource_version_id,
+                delivery.run_id,
+                delivery.source_plan_sha256,
+                delivery.event,
+                delivery.event_sha256,
+            )
+            if observed != expected or delivery.created_at < binding.recorded_at:
+                raise GatewayValidationError(
+                    "Metadata Fabric lineage delivery does not match the binding"
+                )
+            if delivery.actor_subject == binding.recorded_by:
+                raise GatewayValidationError(
+                    "Metadata Fabric lineage emitter must be independent"
+                )
+            inserted = connection.execute(
+                text(
+                    """
+                    INSERT INTO gda_control.metadata_fabric_lineage_outbox (
+                        tenant_id, delivery_id, binding_id,
+                        resource_version_id, run_id, source_plan_sha256,
+                        target_name, event, event_sha256, idempotency_key,
+                        actor_subject, status, attempt_count, max_attempts,
+                        available_at, claimed_by, claimed_until,
+                        last_error_code, response_status,
+                        response_body_sha256, receipt_sha256,
+                        created_at, completed_at
+                    ) VALUES (
+                        :tenant_id, :delivery_id, :binding_id,
+                        :resource_version_id, :run_id, :source_plan_sha256,
+                        :target_name, CAST(:event AS jsonb), :event_sha256,
+                        :idempotency_key, :actor_subject, :status,
+                        :attempt_count, :max_attempts, :available_at,
+                        :claimed_by, :claimed_until, :last_error_code,
+                        :response_status, :response_body_sha256,
+                        :receipt_sha256, :created_at, :completed_at
+                    )
+                    ON CONFLICT DO NOTHING
+                    RETURNING delivery_id
+                    """
+                ),
+                {
+                    **delivery.model_dump(
+                        mode="python",
+                        exclude={"delivery_schema", "event"},
+                    ),
+                    "event": _json(
+                        delivery.event.model_dump(mode="json", by_alias=True)
+                    ),
+                    "status": delivery.status.value,
+                },
+            ).first()
+            stored = self._load_metadata_fabric_lineage_delivery(
+                connection, delivery.tenant_id, delivery.delivery_id
+            )
+            if (
+                stored is None
+                or delivery_binding_payload(stored)
+                != delivery_binding_payload(delivery)
+            ):
+                raise GatewayConflictError(
+                    "OpenLineage delivery identity has different content"
+                )
+            return GatewayWriteResult(stored, inserted is not None)
+
+    def get_metadata_fabric_lineage_delivery(
+        self, tenant_id: str, delivery_id: UUID
+    ) -> MetadataFabricLineageDelivery:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            delivery = self._load_metadata_fabric_lineage_delivery(
+                connection, tenant, delivery_id
+            )
+            if delivery is None:
+                raise GatewayNotFoundError(
+                    "Metadata Fabric lineage delivery was not found"
+                )
+            return delivery
+
+    def claim_metadata_fabric_lineage(
+        self,
+        tenant_id: str,
+        worker_id: str,
+        *,
+        actor_subject: str,
+        limit: int = 10,
+        lease_seconds: int = 60,
+    ) -> list[MetadataFabricLineageDelivery]:
+        with self._transaction(tenant_id) as connection:
+            rows = connection.execute(
+                text(
+                    """
+                    SELECT * FROM gda_control.claim_metadata_fabric_lineage(
+                        :tenant_id, :actor_subject, :worker_id,
+                        :limit, :lease_seconds
+                    )
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "actor_subject": actor_subject,
+                    "worker_id": worker_id,
+                    "limit": limit,
+                    "lease_seconds": lease_seconds,
+                },
+            ).mappings().all()
+            return [
+                self._metadata_fabric_lineage_from_row(row) for row in rows
+            ]
+
+    def complete_metadata_fabric_lineage(
+        self,
+        tenant_id: str,
+        delivery_id: UUID,
+        *,
+        worker_id: str,
+        response_status: int,
+        response_body_sha256: str,
+    ) -> MetadataFabricLineageDelivery:
+        with self._transaction(tenant_id) as connection:
+            claimed = self._load_metadata_fabric_lineage_delivery(
+                connection, tenant_id, delivery_id
+            )
+            if claimed is None:
+                raise GatewayNotFoundError(
+                    "Metadata Fabric lineage delivery was not found"
+                )
+            receipt = openlineage_receipt_sha256(
+                claimed,
+                response_status=response_status,
+                response_body_sha256=response_body_sha256,
+            )
+            row = connection.execute(
+                text(
+                    """
+                    SELECT * FROM gda_control.complete_metadata_fabric_lineage(
+                        :tenant_id, :delivery_id, :worker_id,
+                        :response_status, :response_body_sha256,
+                        :receipt_sha256
+                    )
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "delivery_id": delivery_id,
+                    "worker_id": worker_id,
+                    "response_status": response_status,
+                    "response_body_sha256": response_body_sha256,
+                    "receipt_sha256": receipt,
+                },
+            ).mappings().one()
+            return self._metadata_fabric_lineage_from_row(row)
+
+    def fail_metadata_fabric_lineage(
+        self,
+        tenant_id: str,
+        delivery_id: UUID,
+        *,
+        worker_id: str,
+        error_code: str,
+        response_status: int | None = None,
+        retryable: bool = True,
+        retry_delay_seconds: int = 30,
+    ) -> MetadataFabricLineageDelivery:
+        if not re.fullmatch(r"[a-z0-9_]{1,64}", error_code):
+            raise GatewayValidationError("lineage failure code is invalid")
+        with self._transaction(tenant_id) as connection:
+            row = connection.execute(
+                text(
+                    """
+                    SELECT * FROM gda_control.fail_metadata_fabric_lineage(
+                        :tenant_id, :delivery_id, :worker_id, :error_code,
+                        :response_status, :retryable, :retry_delay_seconds
+                    )
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "delivery_id": delivery_id,
+                    "worker_id": worker_id,
+                    "error_code": error_code,
+                    "response_status": response_status,
+                    "retryable": retryable,
+                    "retry_delay_seconds": retry_delay_seconds,
+                },
+            ).mappings().one()
+            return self._metadata_fabric_lineage_from_row(row)
+
+    @staticmethod
     def _load_lineage(
         connection, tenant_id: str, lineage_event_id: UUID
     ) -> LineageEvent | None:
@@ -1574,6 +1888,7 @@ def build_gateway_report(
     command_migration: Path | None = None,
     success_migration: Path | None = None,
     binding_migration: Path | None = None,
+    lineage_migration: Path | None = None,
     gateway_source: Path | None = None,
     routes_source: Path | None = None,
     command_consumer_source: Path | None = None,
@@ -1591,6 +1906,9 @@ def build_gateway_report(
         ).resolve(),
         "binding_migration": (
             binding_migration or METADATA_FABRIC_BINDING_MIGRATION
+        ).resolve(),
+        "lineage_migration": (
+            lineage_migration or METADATA_FABRIC_LINEAGE_MIGRATION
         ).resolve(),
         "gateway_source": (gateway_source or Path(__file__)).resolve(),
         "routes_source": (routes_source or GATEWAY_ROUTES_SOURCE).resolve(),
@@ -1660,6 +1978,17 @@ def build_gateway_report(
             "ALTER TABLE gda_control.metadata_fabric_binding FORCE ROW LEVEL SECURITY",
             "GRANT SELECT, INSERT ON gda_control.metadata_fabric_binding",
         ),
+        "lineage_migration": (
+            "CREATE TABLE IF NOT EXISTS gda_control.metadata_fabric_lineage_outbox",
+            "FOREIGN KEY (tenant_id, binding_id)",
+            "FOR UPDATE SKIP LOCKED",
+            "claim_metadata_fabric_lineage",
+            "complete_metadata_fabric_lineage",
+            "fail_metadata_fabric_lineage",
+            "ALTER TABLE gda_control.metadata_fabric_lineage_outbox",
+            "FORCE ROW LEVEL SECURITY",
+            "GRANT SELECT, INSERT ON gda_control.metadata_fabric_lineage_outbox",
+        ),
         "gateway_source": (
             'SET LOCAL ROLE "{GATEWAY_DATABASE_ROLE}"',
             "SELECT set_config('app.current_tenant', :tenant, true)",
@@ -1672,6 +2001,10 @@ def build_gateway_report(
             "def finalize_run_success(",
             "def commit_metadata_fabric_binding(",
             "def get_metadata_fabric_binding(",
+            "def enqueue_metadata_fabric_lineage(",
+            "def claim_metadata_fabric_lineage(",
+            "def complete_metadata_fabric_lineage(",
+            "def fail_metadata_fabric_lineage(",
         ),
         "routes_source": (
             'base = "/api/platform/v1"',
@@ -1723,6 +2056,7 @@ def build_gateway_report(
             or forbidden in texts.get("command_migration", "")
             or forbidden in texts.get("success_migration", "")
             or forbidden in texts.get("binding_migration", "")
+            or forbidden in texts.get("lineage_migration", "")
         ):
             errors.append(f"gateway role contains forbidden privilege: {forbidden}")
     consumer_source = texts.get("command_consumer_source", "")

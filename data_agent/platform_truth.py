@@ -589,6 +589,26 @@ RUNTIME_INVENTORY = (
         "Protected-environment NetworkPolicy enforcement and tenant isolation gate",
     ),
     RuntimeSpec(
+        "metadata_openlineage_delivery_rehearsal",
+        "lineage_delivery_rehearsal",
+        "governed",
+        "evidence_durable",
+        "temporary PostgreSQL outbox + committed local wire evidence",
+        "metadata-platform",
+        "local_verification_only",
+        (
+            "data_agent/metadata_fabric_lineage_delivery.py",
+            "scripts/metadata-fabric-openlineage-delivery.sh",
+        ),
+        (
+            (
+                "data_agent/metadata_fabric_lineage_delivery.py",
+                "threading.Thread",
+            ),
+        ),
+        "Managed outbox worker and protected authenticated OpenLineage receiver",
+    ),
+    RuntimeSpec(
         "datalake_monitor",
         "monitor_loop",
         "legacy",
@@ -652,7 +672,7 @@ ENV_ACCESS_BASELINE_FINGERPRINT = (
     "41949811ca1d12a9d8bdbd5e7ecb1ba528be7049af96742306d6f317ab0791b8"
 )
 RUNTIME_PRIMITIVE_BASELINE_FINGERPRINT = (
-    "03da85670462b4f77cf37714a9af3dc675c24b578d795efe0e2627075eb7d265"
+    "d6402d91e40ddb61591a7d258925d79e5eee964c3a9c0ace7de34acd10facbfd"
 )
 
 _IGNORED_SOURCE_PARTS = frozenset(
