@@ -15,6 +15,7 @@ on:
       - feat/ar1-metadata-fabric-otel-failure-rehearsal
       - feat/ar1-metadata-fabric-observability-gate
       - feat/ar1-metadata-fabric-network-policy-enforcement
+      - feat/ar1-metadata-fabric-network-policy-readiness-gate
 
 env:
   PYTHON_VERSION: "3.13"
@@ -109,6 +110,9 @@ jobs:
       - name: Validate metadata fabric NetworkPolicy enforcement contract
         run: python -m data_agent.metadata_fabric_network_policy_enforcement validate
 
+      - name: Validate metadata fabric production NetworkPolicy gate
+        run: python -m data_agent.metadata_fabric_network_policy_gate validate
+
       - name: Validate DolphinScheduler adapter boundary
         run: python -m data_agent.dolphinscheduler_adapter validate
 
@@ -149,6 +153,7 @@ jobs:
             data_agent/test_metadata_fabric_cross_cluster_recovery.py \
             data_agent/test_metadata_fabric_observability_gate.py \
             data_agent/test_metadata_fabric_network_policy_enforcement.py \
+            data_agent/test_metadata_fabric_network_policy_gate.py \
             data_agent/test_metadata_fabric_otel_failure_rehearsal.py \
             data_agent/test_metadata_fabric_otel_metrics.py \
             data_agent/test_metadata_fabric_provider_metrics.py \
