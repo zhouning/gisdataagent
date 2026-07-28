@@ -1,0 +1,339 @@
+{
+  "checks": {
+    "cross_node_baseline": "passed",
+    "dns_and_target_egress_allow": "passed",
+    "egress_default_deny": "passed",
+    "ephemeral_cleanup": "passed",
+    "ingress_default_deny": "passed",
+    "ingress_selector_allow": "passed",
+    "production_boundaries": "passed",
+    "provider_identity_preservation": "passed",
+    "static_contract": "passed"
+  },
+  "context": "docker-desktop",
+  "environment": "local_docker_desktop_cross_node_network_policy_rehearsal",
+  "errors": [],
+  "evidence_fingerprint": "22b1ebe55e47bd05fee9cc17577c4eac861031b6b5bbb6c417c4b9f1ca29d060",
+  "generated_at": "2026-07-28T01:35:51.371311+00:00",
+  "local_network_policy_enforcement_verified": true,
+  "metadata_provider_network_policy_verified": false,
+  "namespace": "gda-metadata-network-policy-rehearsal",
+  "network_policy_scope": "isolated_local_cross_node_kindnet_enforcement",
+  "observation": {
+    "cluster": {
+      "cni": {
+        "available": 2,
+        "daemonset": "kindnet",
+        "desired": 2,
+        "image": "docker.io/kindest/kindnetd:v20260528-9350166c",
+        "namespace": "kube-system",
+        "ready": 2,
+        "uid": "080f10fa-e6c2-46a3-9a77-351be05ae224"
+      },
+      "context": "docker-desktop",
+      "nodes": {
+        "desktop-control-plane": {
+          "internal_ip": "172.19.0.3",
+          "ready": true,
+          "uid": "d8f2ee40-40c5-409f-bda6-a7a59470e27e",
+          "version": "v1.35.5"
+        },
+        "desktop-worker": {
+          "internal_ip": "172.19.0.4",
+          "ready": true,
+          "uid": "96a19d44-1487-4cad-be5c-02ef6220f142",
+          "version": "v1.35.5"
+        }
+      },
+      "server_version": "v1.35.5",
+      "uid": "c3c9bbab-2b36-4359-a7ac-e3de194445ab"
+    },
+    "contract": {
+      "contract_fingerprint": "b22dd622a68b7a413a22b1e51fd38724a3753d25797973e826f9bd411f20de42",
+      "local_static_contract_verified": true
+    },
+    "duration_seconds": 29.953,
+    "observed_at": "2026-07-28T01:35:51.371230+00:00",
+    "resources": {
+      "namespace": {
+        "labels": {
+          "app.kubernetes.io/part-of": "gda-metadata-network-policy-rehearsal",
+          "gda.openai.com/environment": "local-network-policy-evidence",
+          "gda.openai.com/ephemeral-owner": "metadata-network-policy-rehearsal",
+          "kubernetes.io/metadata.name": "gda-metadata-network-policy-rehearsal",
+          "pod-security.kubernetes.io/audit": "restricted",
+          "pod-security.kubernetes.io/audit-version": "v1.35",
+          "pod-security.kubernetes.io/enforce": "restricted",
+          "pod-security.kubernetes.io/enforce-version": "v1.35",
+          "pod-security.kubernetes.io/warn": "restricted",
+          "pod-security.kubernetes.io/warn-version": "v1.35"
+        },
+        "name": "gda-metadata-network-policy-rehearsal",
+        "uid": "53921c17-41d5-4d30-9573-9b9683a505f7"
+      },
+      "pods": {
+        "probe-allowed": {
+          "image": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662",
+          "ip": "10.244.1.140",
+          "labels": {
+            "access": "allowed",
+            "app.kubernetes.io/part-of": "gda-metadata-network-policy-rehearsal",
+            "role": "client"
+          },
+          "node": "desktop-worker",
+          "ready": true,
+          "service_account": "probe",
+          "uid": "7febf14e-cfab-4f73-9a81-32461ac1a029"
+        },
+        "probe-denied": {
+          "image": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662",
+          "ip": "10.244.1.141",
+          "labels": {
+            "access": "denied",
+            "app.kubernetes.io/part-of": "gda-metadata-network-policy-rehearsal",
+            "role": "client"
+          },
+          "node": "desktop-worker",
+          "ready": true,
+          "service_account": "probe",
+          "uid": "f383294b-3569-4fbd-a749-4970001c2353"
+        },
+        "probe-server": {
+          "image": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662",
+          "ip": "10.244.0.8",
+          "labels": {
+            "app.kubernetes.io/part-of": "gda-metadata-network-policy-rehearsal",
+            "role": "server"
+          },
+          "node": "desktop-control-plane",
+          "ready": true,
+          "service_account": "probe",
+          "uid": "e52d9e00-2bc3-4dfa-b71a-ec552bc8047a"
+        }
+      },
+      "policies": {
+        "probe-authorized-allow-dns-and-server": {
+          "spec_fingerprint": "6e3c6d0143f96439252936eba5f5a6246b058f3710a4faa43d5d6a74623f885e",
+          "uid": "9bb4af50-419d-4bdd-925d-774fc43222c1"
+        },
+        "probe-authorized-default-deny": {
+          "spec_fingerprint": "7d26b0ca50d596a06cfea98fe1b0c8f33bd4583283dbd1a14aa12212c4a50120",
+          "uid": "2410d2e9-3f0e-42bb-8425-77f166aab2af"
+        },
+        "probe-server-allow-authorized": {
+          "spec_fingerprint": "5685af8e50beaaf462909fc8dcd7e8dce0f8183286c5936f44bead3a8b1516e9",
+          "uid": "9279bd69-68d0-4e10-a0fe-4f58707ce986"
+        },
+        "probe-server-default-deny": {
+          "spec_fingerprint": "8a638a59ef9fab203b61a866f4005396d4082f316394807b2809b1ba851dfebd",
+          "uid": "7efcc6f2-d539-4e3c-af42-a878b13b1031"
+        }
+      },
+      "service": {
+        "cluster_ip": "10.96.96.171",
+        "name": "probe-server",
+        "ports": [
+          8080
+        ],
+        "type": "ClusterIP",
+        "uid": "c8d51fe2-ceb0-433b-a437-713fe74e491b"
+      }
+    },
+    "runtime_checks": {
+      "base_apply_completed": true,
+      "cleanup_command_completed": true,
+      "cluster_and_cni_identities_preserved": true,
+      "cross_node_placement_verified": true,
+      "ephemeral_namespace_removed": true,
+      "kubernetes_credential_resources_requested": false,
+      "metadata_provider_namespaces_modified": false,
+      "namespace_absent_before_apply": true,
+      "persistent_volume_resources_requested": false,
+      "policies_applied": {
+        "probe-authorized-allow-dns-and-server": true,
+        "probe-authorized-default-deny": true,
+        "probe-server-allow-authorized": true,
+        "probe-server-default-deny": true
+      },
+      "probe_pods_ready": true,
+      "provider_identities_preserved": true,
+      "rbac_resources_requested": false,
+      "remaining_resources": [],
+      "runtime_resource_inventory": [
+        "NetworkPolicy/probe-authorized-allow-dns-and-server",
+        "NetworkPolicy/probe-authorized-default-deny",
+        "NetworkPolicy/probe-server-allow-authorized",
+        "NetworkPolicy/probe-server-default-deny",
+        "Pod/probe-allowed",
+        "Pod/probe-denied",
+        "Pod/probe-server",
+        "ResourceQuota/metadata-network-policy-rehearsal",
+        "Service/probe-server",
+        "ServiceAccount/probe"
+      ],
+      "runtime_resource_inventory_matches": true
+    },
+    "schema": "gda.metadata_fabric_network_policy_enforcement_observation.v1",
+    "stages": [
+      {
+        "active_policies": [],
+        "attempt_count": 1,
+        "clients": {
+          "allowed": {
+            "duration_seconds": 0.169,
+            "exec_channel_healthy": true,
+            "outcome": "connected",
+            "raw_response_retained": false,
+            "response_sha256": "6fb8253669d5f2ac9e7649312ff9fb24580719e8f040a1241cb0dfd47b75c785",
+            "response_valid": true,
+            "return_code": 0
+          },
+          "denied": {
+            "duration_seconds": 0.128,
+            "exec_channel_healthy": true,
+            "outcome": "connected",
+            "raw_response_retained": false,
+            "response_sha256": "6fb8253669d5f2ac9e7649312ff9fb24580719e8f040a1241cb0dfd47b75c785",
+            "response_valid": true,
+            "return_code": 0
+          }
+        },
+        "name": "baseline",
+        "pods_ready_after_probe": true,
+        "sequence": 1
+      },
+      {
+        "active_policies": [
+          "probe-server-default-deny"
+        ],
+        "attempt_count": 1,
+        "clients": {
+          "allowed": {
+            "duration_seconds": 2.278,
+            "exec_channel_healthy": true,
+            "outcome": "blocked",
+            "raw_response_retained": false,
+            "response_sha256": null,
+            "response_valid": false,
+            "return_code": 143
+          },
+          "denied": {
+            "duration_seconds": 2.131,
+            "exec_channel_healthy": true,
+            "outcome": "blocked",
+            "raw_response_retained": false,
+            "response_sha256": null,
+            "response_valid": false,
+            "return_code": 143
+          }
+        },
+        "name": "ingress_default_deny",
+        "pods_ready_after_probe": true,
+        "sequence": 2
+      },
+      {
+        "active_policies": [
+          "probe-server-default-deny",
+          "probe-server-allow-authorized"
+        ],
+        "attempt_count": 1,
+        "clients": {
+          "allowed": {
+            "duration_seconds": 0.158,
+            "exec_channel_healthy": true,
+            "outcome": "connected",
+            "raw_response_retained": false,
+            "response_sha256": "6fb8253669d5f2ac9e7649312ff9fb24580719e8f040a1241cb0dfd47b75c785",
+            "response_valid": true,
+            "return_code": 0
+          },
+          "denied": {
+            "duration_seconds": 2.304,
+            "exec_channel_healthy": true,
+            "outcome": "blocked",
+            "raw_response_retained": false,
+            "response_sha256": null,
+            "response_valid": false,
+            "return_code": 143
+          }
+        },
+        "name": "ingress_authorized",
+        "pods_ready_after_probe": true,
+        "sequence": 3
+      },
+      {
+        "active_policies": [
+          "probe-server-default-deny",
+          "probe-server-allow-authorized",
+          "probe-authorized-default-deny"
+        ],
+        "attempt_count": 1,
+        "clients": {
+          "allowed": {
+            "duration_seconds": 2.105,
+            "exec_channel_healthy": true,
+            "outcome": "blocked",
+            "raw_response_retained": false,
+            "response_sha256": null,
+            "response_valid": false,
+            "return_code": 143
+          },
+          "denied": {
+            "duration_seconds": 2.174,
+            "exec_channel_healthy": true,
+            "outcome": "blocked",
+            "raw_response_retained": false,
+            "response_sha256": null,
+            "response_valid": false,
+            "return_code": 143
+          }
+        },
+        "name": "egress_default_deny",
+        "pods_ready_after_probe": true,
+        "sequence": 4
+      },
+      {
+        "active_policies": [
+          "probe-server-default-deny",
+          "probe-server-allow-authorized",
+          "probe-authorized-default-deny",
+          "probe-authorized-allow-dns-and-server"
+        ],
+        "attempt_count": 1,
+        "clients": {
+          "allowed": {
+            "duration_seconds": 0.153,
+            "exec_channel_healthy": true,
+            "outcome": "connected",
+            "raw_response_retained": false,
+            "response_sha256": "6fb8253669d5f2ac9e7649312ff9fb24580719e8f040a1241cb0dfd47b75c785",
+            "response_valid": true,
+            "return_code": 0
+          },
+          "denied": {
+            "duration_seconds": 2.106,
+            "exec_channel_healthy": true,
+            "outcome": "blocked",
+            "raw_response_retained": false,
+            "response_sha256": null,
+            "response_valid": false,
+            "return_code": 143
+          }
+        },
+        "name": "egress_authorized",
+        "pods_ready_after_probe": true,
+        "sequence": 5
+      }
+    ],
+    "started_at": "2026-07-28T01:35:21.418318+00:00"
+  },
+  "observation_fingerprint": "cc48a5344a728c605f1eba07629b8a9a2e90da81695673b3c9dcc45e0a6d7a2f",
+  "oidc_verified": false,
+  "production_network_policy_enforcement_verified": false,
+  "production_ready": false,
+  "schema": "gda.metadata_fabric_network_policy_enforcement_evidence.v1",
+  "status": "local_network_policy_enforcement_verified",
+  "tenant_isolation_verified": false,
+  "upgrade_verified": false,
+  "writes_to_gda_enabled": false
+}

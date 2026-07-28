@@ -1,0 +1,13 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: probe-authorized-default-deny
+  namespace: gda-metadata-network-policy-rehearsal
+  labels:
+    app.kubernetes.io/part-of: gda-metadata-network-policy-rehearsal
+spec:
+  podSelector:
+    matchLabels:
+      access: allowed
+  policyTypes: [Egress]
+  egress: []
