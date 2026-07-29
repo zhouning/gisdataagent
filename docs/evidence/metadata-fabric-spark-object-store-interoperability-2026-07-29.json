@@ -1,0 +1,423 @@
+{
+  "errors": [],
+  "evidence_fingerprint": "05844457efb378581fb7fc2e7ed3c706819b2d8fa5a52b2f82577051d38c2cd1",
+  "flink_conformance_verified": false,
+  "gravitino_api_metadata_readback_verified": true,
+  "local_cross_node_object_store_verified": true,
+  "local_spark_create_read_write_verified": true,
+  "local_spark_object_store_interoperability_verified": true,
+  "local_spark_schema_evolution_verified": true,
+  "local_spark_snapshot_time_travel_verified": true,
+  "local_static_contract_verified": true,
+  "object_store_metadata_verified": true,
+  "observation": {
+    "contract": {
+      "contract_fingerprint": "9713cdb3040e1b6532489f329aef7ed7b5266e0757551252f537cb83476b4bee",
+      "local_static_contract_verified": true,
+      "spark_interoperability_evidence_fingerprint": "50f9d0021db11e22364697d1ad8928ee068d28dc8046556bbca1a4e1c819f8e0"
+    },
+    "object_store": {
+      "bucket": "gda-metadata-warehouse",
+      "data_keys": [
+        "warehouse/published/gda_spark_object_store_probe/data/00000-2-4d8ff62e-d5d7-4b94-ab34-440745eb1a96-0-00001.parquet",
+        "warehouse/published/gda_spark_object_store_probe/data/00000-6-e5ec1e78-25df-4f64-a9ea-f4957f3856b8-0-00001.parquet"
+      ],
+      "latest_metadata": {
+        "current_schema_id": 1,
+        "current_snapshot_id": 3666197204644042853,
+        "fields": [
+          {
+            "name": "probe_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "quality",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "key": "warehouse/published/gda_spark_object_store_probe/metadata/00003-811ab0a6-5536-418a-8375-d266143170d6.metadata.json",
+        "location": "s3://gda-metadata-warehouse/warehouse/published/gda_spark_object_store_probe"
+      },
+      "manifest_keys": [
+        "warehouse/published/gda_spark_object_store_probe/metadata/812286a1-39f9-43dc-a4c5-8ecbf6f3a78c-m0.avro",
+        "warehouse/published/gda_spark_object_store_probe/metadata/b430fb3f-ae00-4f2f-8d5e-66c28b8137f4-m0.avro",
+        "warehouse/published/gda_spark_object_store_probe/metadata/snap-3666197204644042853-1-b430fb3f-ae00-4f2f-8d5e-66c28b8137f4.avro",
+        "warehouse/published/gda_spark_object_store_probe/metadata/snap-8436160407083304575-1-812286a1-39f9-43dc-a4c5-8ecbf6f3a78c.avro"
+      ],
+      "material_recorded": false,
+      "metadata_keys": [
+        "warehouse/published/gda_spark_object_store_probe/metadata/00000-8edbc916-95cb-438a-b1fd-4d600d91c2d7.metadata.json",
+        "warehouse/published/gda_spark_object_store_probe/metadata/00001-7de3b3d7-0c51-4bbe-8c4b-2de607531e0a.metadata.json",
+        "warehouse/published/gda_spark_object_store_probe/metadata/00002-c21f465d-ca36-4c0e-9a19-17c44212d673.metadata.json",
+        "warehouse/published/gda_spark_object_store_probe/metadata/00003-811ab0a6-5536-418a-8375-d266143170d6.metadata.json"
+      ],
+      "object_count": 10,
+      "objects": [
+        {
+          "etag": "6ae5073342e6d9326e7518032576d465",
+          "key": "warehouse/published/gda_spark_object_store_probe/data/00000-2-4d8ff62e-d5d7-4b94-ab34-440745eb1a96-0-00001.parquet",
+          "size": 470
+        },
+        {
+          "etag": "b84b5588ae4ecfdc8030e60706a11feb",
+          "key": "warehouse/published/gda_spark_object_store_probe/data/00000-6-e5ec1e78-25df-4f64-a9ea-f4957f3856b8-0-00001.parquet",
+          "size": 754
+        },
+        {
+          "etag": "c8f2343bfa646f77d75005ec188967d4",
+          "key": "warehouse/published/gda_spark_object_store_probe/metadata/00000-8edbc916-95cb-438a-b1fd-4d600d91c2d7.metadata.json",
+          "size": 939
+        },
+        {
+          "etag": "250b2c6d7d40600e0904dc8a378b7f36",
+          "key": "warehouse/published/gda_spark_object_store_probe/metadata/00001-7de3b3d7-0c51-4bbe-8c4b-2de607531e0a.metadata.json",
+          "size": 2028
+        },
+        {
+          "etag": "41c6ff3e7f2ab3709f797965f6332507",
+          "key": "warehouse/published/gda_spark_object_store_probe/metadata/00002-c21f465d-ca36-4c0e-9a19-17c44212d673.metadata.json",
+          "size": 2419
+        },
+        {
+          "etag": "ca0f3bbb9b31dfdf40dc71cfa1ab23af",
+          "key": "warehouse/published/gda_spark_object_store_probe/metadata/00003-811ab0a6-5536-418a-8375-d266143170d6.metadata.json",
+          "size": 3478
+        },
+        {
+          "etag": "d075f7fec2dea7d957fffa3abf0fd73e",
+          "key": "warehouse/published/gda_spark_object_store_probe/metadata/812286a1-39f9-43dc-a4c5-8ecbf6f3a78c-m0.avro",
+          "size": 6677
+        },
+        {
+          "etag": "d6192740f71fdf34aeb28b39d9486932",
+          "key": "warehouse/published/gda_spark_object_store_probe/metadata/b430fb3f-ae00-4f2f-8d5e-66c28b8137f4-m0.avro",
+          "size": 6748
+        },
+        {
+          "etag": "528cd015af474bf5a65ccf223d7979f2",
+          "key": "warehouse/published/gda_spark_object_store_probe/metadata/snap-3666197204644042853-1-b430fb3f-ae00-4f2f-8d5e-66c28b8137f4.avro",
+          "size": 4548
+        },
+        {
+          "etag": "81f6f53f2339311210fa54556ace1151",
+          "key": "warehouse/published/gda_spark_object_store_probe/metadata/snap-8436160407083304575-1-812286a1-39f9-43dc-a4c5-8ecbf6f3a78c.avro",
+          "size": 4474
+        }
+      ],
+      "prefix": "warehouse/published/gda_spark_object_store_probe/"
+    },
+    "object_store_prepared": {
+      "bucket": "gda-metadata-warehouse",
+      "created": true,
+      "head_bucket_verified": true,
+      "material_recorded": false,
+      "path_style_access": true,
+      "region": "us-east-1",
+      "service": "metadata-object-store"
+    },
+    "observed_at": "2026-07-29T12:08:11.934685+00:00",
+    "post_spark": {
+      "authentication_status": 200,
+      "denied_catalog_create_status": 403,
+      "read_status": 200,
+      "table": {
+        "fingerprint": "0ddd64ff404f9595ad2a57c26545cbe1982f61cb8cdedfea02e5f95a489cfd17",
+        "name": "gda_spark_object_store_probe",
+        "projection": {
+          "columns": [
+            {
+              "name": "probe_id",
+              "nullable": false,
+              "type": "string"
+            },
+            {
+              "name": "quality",
+              "nullable": true,
+              "type": "string"
+            }
+          ],
+          "name": "gda_spark_object_store_probe",
+          "probe_property": "true"
+        }
+      }
+    },
+    "pre_spark": {
+      "authentication": {
+        "admin_status": 200,
+        "bounded_status": 200,
+        "material_recorded": false
+      },
+      "catalog": {
+        "backend": "jdbc",
+        "catalog": "lakehouse",
+        "io_impl": "org.apache.iceberg.aws.s3.S3FileIO",
+        "jdbc_initialize": true,
+        "material_recorded": false,
+        "metalake": "gda_object_store",
+        "provider": "lakehouse-iceberg",
+        "s3_endpoint": "http://metadata-object-store:9000",
+        "s3_path_style_access": true,
+        "s3_region": "us-east-1",
+        "schema": "published",
+        "uri": "jdbc:postgresql://gravitino-persistence-postgresql:5432/iceberg",
+        "warehouse": "s3://gda-metadata-warehouse/warehouse"
+      },
+      "denied_catalog_create_status": 403,
+      "role": {
+        "name": "gda-table-projection",
+        "securable_objects": [
+          {
+            "fullName": "lakehouse",
+            "privileges": [
+              {
+                "condition": "ALLOW",
+                "name": "USE_CATALOG"
+              }
+            ],
+            "type": "CATALOG"
+          },
+          {
+            "fullName": "lakehouse.published",
+            "privileges": [
+              {
+                "condition": "ALLOW",
+                "name": "CREATE_TABLE"
+              },
+              {
+                "condition": "ALLOW",
+                "name": "USE_SCHEMA"
+              }
+            ],
+            "type": "SCHEMA"
+          }
+        ]
+      },
+      "table": {
+        "create_status": 200,
+        "fingerprint": "f78cbc56512a9b8698f1737ff4f45196fc910f9dfa03a00ba09ac227ab80481b",
+        "name": "gda_spark_object_store_probe",
+        "projection": {
+          "columns": [
+            {
+              "name": "probe_id",
+              "nullable": false,
+              "type": "string"
+            }
+          ],
+          "name": "gda_spark_object_store_probe",
+          "probe_property": "true"
+        },
+        "read_status": 200
+      }
+    },
+    "runtime": {
+      "context": "docker-desktop",
+      "gravitino": {
+        "image": "docker.io/gda/gravitino:1.3.0-local-arm64",
+        "image_id": "sha256:18e24b43be854dabdc13e96b1019eb3dc691d59cc64e411aa6a3cc49225fe2d3",
+        "node_name": "desktop-worker",
+        "persistent_volume_claims": [],
+        "pod_name": "gravitino-persistence-0",
+        "pod_uid": "6ad8aea7-3881-4303-878d-489c2c9a847c",
+        "pvc": null,
+        "ready_replicas": 1,
+        "service_account": "gravitino-persistence",
+        "service_account_automount_disabled": true,
+        "statefulset_uid": "918f55ba-19a0-4175-b842-627030212eb6"
+      },
+      "gravitino_aws_sdk_mounted": true,
+      "gravitino_host_image_id": "sha256:d355dc7e92f9e3545d717f3eab2cbdf412115f2b82e1e544d7f6235c1eacd5a5",
+      "gravitino_jdbc_driver_mounted": true,
+      "iceberg_rest": {
+        "aws_sdk_mounted": true,
+        "image": "docker.io/gda/gravitino:1.3.0-local-arm64",
+        "image_id": "sha256:18e24b43be854dabdc13e96b1019eb3dc691d59cc64e411aa6a3cc49225fe2d3",
+        "jdbc_driver_mounted": true,
+        "path": "/iceberg",
+        "ready": true
+      },
+      "minio_host_image_id": "sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e",
+      "namespace": {
+        "name": "gda-metadata-spark-object-store",
+        "uid": "d732f100-d87e-4861-8cae-76c8a92af851"
+      },
+      "object_store": {
+        "image": "docker.io/minio/minio:RELEASE.2025-04-22T22-12-26Z",
+        "image_id": "docker.io/minio/minio@sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e",
+        "node_name": "desktop-control-plane",
+        "persistent_volume_claims": [
+          "data-metadata-object-store-0"
+        ],
+        "pod_name": "metadata-object-store-0",
+        "pod_uid": "fc400a09-fdcd-41a2-bff9-629ee4a7e4b3",
+        "pvc": {
+          "name": "data-metadata-object-store-0",
+          "phase": "Bound",
+          "storage_class": "standard",
+          "uid": "e6885209-889f-4a86-b884-95280c6f421a",
+          "volume_name": "pvc-e6885209-889f-4a86-b884-95280c6f421a"
+        },
+        "ready_replicas": 1,
+        "service_account": "metadata-object-store",
+        "service_account_automount_disabled": true,
+        "statefulset_uid": "8f91a27c-9f2b-4e8d-8a4b-0956679c9e74"
+      },
+      "object_store_service": {
+        "name": "metadata-object-store",
+        "ports": [
+          {
+            "name": "api",
+            "port": 9000
+          }
+        ],
+        "type": "ClusterIP",
+        "uid": "a634e343-9580-43c1-8ec1-4afcb49e9d1c"
+      },
+      "postgresql": {
+        "image": "docker.io/library/postgres:16.10-bookworm",
+        "image_id": "docker.io/library/postgres@sha256:38471f330eb885e04de130b768d6db4e10469e2311879c7e5c699f6d2d8a1c74",
+        "node_name": "desktop-worker",
+        "persistent_volume_claims": [
+          "data-gravitino-persistence-postgresql-0"
+        ],
+        "pod_name": "gravitino-persistence-postgresql-0",
+        "pod_uid": "4208dc58-1237-4644-b8d8-5242feb108d0",
+        "pvc": {
+          "name": "data-gravitino-persistence-postgresql-0",
+          "phase": "Bound",
+          "storage_class": "standard",
+          "uid": "baffad0d-0ef6-4098-a05e-e54f1df81d7a",
+          "volume_name": "pvc-baffad0d-0ef6-4098-a05e-e54f1df81d7a"
+        },
+        "ready_replicas": 1,
+        "service_account": "gravitino-persistence-postgresql",
+        "service_account_automount_disabled": true,
+        "statefulset_uid": "dcf9a109-fc53-49bb-957a-d66d4fadb802"
+      },
+      "service": {
+        "name": "gravitino-persistence",
+        "ports": [
+          {
+            "name": "http",
+            "port": 8090
+          },
+          {
+            "name": "iceberg-rest",
+            "port": 9001
+          }
+        ],
+        "type": "ClusterIP",
+        "uid": "edc3b255-21f5-4a63-a341-44c3da1b2757"
+      },
+      "source_schema_sha256": "7a2d605a677a462ca619dba594ce7ebcf500358345560ad084c1b67a25c722df",
+      "spark_host_image_id": "sha256:f201367640c7583add224796a629150e63d3859ddd7fe9fd47741662a6d415bb"
+    },
+    "runtime_checks": {
+      "all_port_forwards_stopped": true,
+      "kubernetes_service_account_used_for_provider_login": false,
+      "material_recorded": false,
+      "namespace_absent": true,
+      "namespace_delete_completed": true,
+      "object_store_objects_retained": false,
+      "persistent_volume_names": [
+        "pvc-baffad0d-0ef6-4098-a05e-e54f1df81d7a",
+        "pvc-e6885209-889f-4a86-b884-95280c6f421a"
+      ],
+      "persistent_volumes_absent": true,
+      "provider_objects_retained": false
+    },
+    "schema": "gda.metadata_fabric_spark_object_store_interoperability_observation.v1",
+    "spark": {
+      "failure_diagnostic": [],
+      "job": {
+        "completion_time": "2026-07-29T12:06:54Z",
+        "failed": 0,
+        "name": "spark-object-store-probe",
+        "succeeded": 1,
+        "uid": "ed1b8ab2-885e-4a6c-a3fc-87fbd31775f8"
+      },
+      "log_recorded": false,
+      "log_sha256": "2ad8c3e1c8698c24da660e18e517aead649df17469f59405c303f88d1c9e1e6a",
+      "pod": {
+        "image": "docker.io/gisdataagent/mmfe-spark-runtime:local",
+        "image_id": "sha256:4a4522bfd4e6d1c6c90a244d0145841fbfbbf21ed16ee29ca8b681b5cec60058",
+        "name": "spark-object-store-probe-mv5j2",
+        "node_name": "desktop-worker",
+        "persistent_volume_claims": [],
+        "phase": "Succeeded",
+        "service_account": "spark-object-store-probe",
+        "service_account_automount_disabled": true,
+        "uid": "724f472b-68bb-4ce8-9ffa-ad4a9792f8bb"
+      },
+      "result": {
+        "catalog_uri": "http://gravitino-persistence:9001/iceberg",
+        "create_read_write_verified": true,
+        "current_columns": [
+          "probe_id",
+          "quality"
+        ],
+        "current_rows": [
+          [
+            "spark-a",
+            null
+          ],
+          [
+            "spark-b",
+            null
+          ],
+          [
+            "spark-c",
+            "verified"
+          ]
+        ],
+        "data_file_paths": [
+          "s3://gda-metadata-warehouse/warehouse/published/gda_spark_object_store_probe/data/00000-2-4d8ff62e-d5d7-4b94-ab34-440745eb1a96-0-00001.parquet",
+          "s3://gda-metadata-warehouse/warehouse/published/gda_spark_object_store_probe/data/00000-6-e5ec1e78-25df-4f64-a9ea-f4957f3856b8-0-00001.parquet"
+        ],
+        "file_io": "org.apache.iceberg.aws.s3.S3FileIO",
+        "iceberg_runtime": "1.6.1",
+        "initial_columns": [
+          "probe_id"
+        ],
+        "initial_row_count": 0,
+        "object_store_data_files_verified": true,
+        "object_store_endpoint": "http://metadata-object-store:9000",
+        "schema": "gda.spark_object_store_probe_result.v1",
+        "schema_evolution_verified": true,
+        "snapshot_history_verified": true,
+        "snapshot_ids": [
+          8436160407083304575,
+          3666197204644042853
+        ],
+        "snapshot_operations": [
+          "append",
+          "append"
+        ],
+        "spark_version": "3.5.0",
+        "table": "rest.published.gda_spark_object_store_probe",
+        "time_travel_rows": [
+          "spark-a",
+          "spark-b"
+        ],
+        "time_travel_snapshot_id": 8436160407083304575,
+        "time_travel_verified": true,
+        "warehouse": "s3://gda-metadata-warehouse/warehouse"
+      },
+      "result_line_count": 1,
+      "terminal_condition": "Complete",
+      "wait_completed": true
+    }
+  },
+  "observed_at": "2026-07-29T12:08:11.934685+00:00",
+  "oidc_verified": false,
+  "persistent_catalog_identity_binding_verified": false,
+  "production_ingestion_verified": false,
+  "production_object_store_verified": false,
+  "production_ready": false,
+  "protected_workload_identity_verified": false,
+  "schema": "gda.metadata_fabric_spark_object_store_interoperability_evidence.v1",
+  "spark_conformance_verified": false,
+  "tls_verified": false
+}

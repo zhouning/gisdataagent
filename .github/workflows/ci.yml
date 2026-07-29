@@ -25,6 +25,7 @@ on:
       - feat/ar1-metadata-fabric-identity-readiness-gate
       - feat/ar1-metadata-fabric-jdbc-catalog-restart
       - feat/ar1-metadata-fabric-spark-iceberg-rest-interoperability
+      - feat/ar1-metadata-fabric-spark-object-store-interoperability
 
 env:
   PYTHON_VERSION: "3.13"
@@ -149,6 +150,9 @@ jobs:
       - name: Validate metadata fabric Spark/Iceberg REST interoperability evidence
         run: python -m data_agent.metadata_fabric_spark_iceberg_rest_interoperability validate
 
+      - name: Validate metadata fabric Spark/object-store interoperability evidence
+        run: python -m data_agent.metadata_fabric_spark_object_store_interoperability validate
+
       - name: Validate DolphinScheduler adapter boundary
         run: python -m data_agent.dolphinscheduler_adapter validate
 
@@ -209,6 +213,7 @@ jobs:
             data_agent/test_metadata_fabric_identity_gate.py \
             data_agent/test_metadata_fabric_gravitino_jdbc_restart.py \
             data_agent/test_metadata_fabric_spark_iceberg_rest_interoperability.py \
+            data_agent/test_metadata_fabric_spark_object_store_interoperability.py \
             data_agent/test_metadata_fabric_otel_failure_rehearsal.py \
             data_agent/test_metadata_fabric_otel_metrics.py \
             data_agent/test_metadata_fabric_provider_metrics.py \

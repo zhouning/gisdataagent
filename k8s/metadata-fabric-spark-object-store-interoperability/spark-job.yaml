@@ -1,0 +1,234 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spark-object-store-probe
+  namespace: gda-metadata-spark-object-store
+data:
+  probe.py: |
+    import json
+    import os
+
+    from pyspark.sql import SparkSession
+
+
+    TABLE = "rest.published.gda_spark_object_store_probe"
+    WAREHOUSE = "s3://gda-metadata-warehouse/warehouse"
+    OBJECT_STORE_ENDPOINT = "http://metadata-object-store:9000"
+    DATA_PREFIX = WAREHOUSE + "/published/gda_spark_object_store_probe/data/"
+    EXPECTED_INITIAL_COLUMNS = ["probe_id"]
+    EXPECTED_CURRENT_COLUMNS = ["probe_id", "quality"]
+    EXPECTED_CURRENT_ROWS = [
+        ["spark-a", None],
+        ["spark-b", None],
+        ["spark-c", "verified"],
+    ]
+
+    spark = (
+        SparkSession.builder.appName("gda-spark-object-store-interoperability")
+        .master("local[2]")
+        .config(
+            "spark.sql.extensions",
+            "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
+        )
+        .config("spark.jars", "/opt/spark/jars-extra/iceberg-aws-bundle-1.6.1.jar")
+        .config("spark.sql.catalog.rest", "org.apache.iceberg.spark.SparkCatalog")
+        .config("spark.sql.catalog.rest.type", "rest")
+        .config(
+            "spark.sql.catalog.rest.uri",
+            "http://gravitino-persistence:9001/iceberg",
+        )
+        .config(
+            "spark.sql.catalog.rest.io-impl",
+            "org.apache.iceberg.aws.s3.S3FileIO",
+        )
+        .config("spark.sql.catalog.rest.s3.endpoint", OBJECT_STORE_ENDPOINT)
+        .config("spark.sql.catalog.rest.s3.path-style-access", "true")
+        .config(
+            "spark.sql.catalog.rest.s3.access-key-id",
+            os.environ["AWS_ACCESS_KEY_ID"],
+        )
+        .config(
+            "spark.sql.catalog.rest.s3.secret-access-key",
+            os.environ["AWS_SECRET_ACCESS_KEY"],
+        )
+        .config("spark.sql.catalog.rest.client.region", "us-east-1")
+        .config("spark.sql.catalog.rest.cache-enabled", "false")
+        .config("spark.sql.shuffle.partitions", "2")
+        .getOrCreate()
+    )
+    spark.sparkContext.setLogLevel("WARN")
+
+    initial = spark.table(TABLE)
+    initial_columns = initial.columns
+    initial_count = initial.count()
+    if initial_columns != EXPECTED_INITIAL_COLUMNS or initial_count != 0:
+        raise RuntimeError(
+            f"unexpected Gravitino-created table: {initial_columns=} {initial_count=}"
+        )
+
+    (
+        spark.createDataFrame([("spark-a",), ("spark-b",)], ["probe_id"])
+        .coalesce(1)
+        .writeTo(TABLE)
+        .append()
+    )
+    first_snapshots = spark.sql(
+        f"SELECT snapshot_id, committed_at FROM {TABLE}.snapshots ORDER BY committed_at"
+    ).collect()
+    if len(first_snapshots) != 1:
+        raise RuntimeError(f"expected one snapshot after first append: {first_snapshots}")
+    first_snapshot_id = first_snapshots[0]["snapshot_id"]
+
+    spark.sql(f"ALTER TABLE {TABLE} ADD COLUMN quality STRING")
+    (
+        spark.createDataFrame(
+            [("spark-c", "verified")], ["probe_id", "quality"]
+        )
+        .coalesce(1)
+        .writeTo(TABLE)
+        .append()
+    )
+
+    current = spark.table(TABLE)
+    current_columns = current.columns
+    current_rows = [list(row) for row in current.orderBy("probe_id").collect()]
+    snapshots = spark.sql(
+        f"SELECT snapshot_id, parent_id, operation FROM {TABLE}.snapshots "
+        "ORDER BY committed_at"
+    ).collect()
+    historical_rows = [
+        row["probe_id"]
+        for row in spark.sql(
+            f"SELECT probe_id FROM {TABLE} VERSION AS OF {first_snapshot_id} "
+            "ORDER BY probe_id"
+        ).collect()
+    ]
+    data_file_paths = sorted(
+        row["file_path"]
+        for row in spark.sql(f"SELECT file_path FROM {TABLE}.files").collect()
+    )
+
+    if current_columns != EXPECTED_CURRENT_COLUMNS:
+        raise RuntimeError(f"unexpected evolved schema: {current_columns}")
+    if current_rows != EXPECTED_CURRENT_ROWS:
+        raise RuntimeError(f"unexpected current rows: {current_rows}")
+    if len(snapshots) != 2:
+        raise RuntimeError(f"expected two snapshots: {snapshots}")
+    if historical_rows != ["spark-a", "spark-b"]:
+        raise RuntimeError(f"unexpected time-travel rows: {historical_rows}")
+    if len(data_file_paths) != 2 or not all(
+        path.startswith(DATA_PREFIX) for path in data_file_paths
+    ):
+        raise RuntimeError(f"unexpected object-store data files: {data_file_paths}")
+
+    result = {
+        "schema": "gda.spark_object_store_probe_result.v1",
+        "spark_version": spark.version,
+        "iceberg_runtime": "1.6.1",
+        "catalog_uri": "http://gravitino-persistence:9001/iceberg",
+        "warehouse": WAREHOUSE,
+        "object_store_endpoint": OBJECT_STORE_ENDPOINT,
+        "file_io": "org.apache.iceberg.aws.s3.S3FileIO",
+        "table": TABLE,
+        "initial_columns": initial_columns,
+        "initial_row_count": initial_count,
+        "current_columns": current_columns,
+        "current_rows": current_rows,
+        "snapshot_ids": [row["snapshot_id"] for row in snapshots],
+        "snapshot_operations": [row["operation"] for row in snapshots],
+        "time_travel_snapshot_id": first_snapshot_id,
+        "time_travel_rows": historical_rows,
+        "data_file_paths": data_file_paths,
+        "create_read_write_verified": True,
+        "schema_evolution_verified": True,
+        "snapshot_history_verified": True,
+        "time_travel_verified": True,
+        "object_store_data_files_verified": True,
+    }
+    print("GDA_SPARK_OBJECT_STORE_RESULT=" + json.dumps(result, sort_keys=True))
+    spark.stop()
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: spark-object-store-probe
+  namespace: gda-metadata-spark-object-store
+spec:
+  suspend: true
+  backoffLimit: 0
+  activeDeadlineSeconds: 900
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: spark-object-store-probe
+        app.kubernetes.io/component: interoperability-probe
+    spec:
+      serviceAccountName: spark-object-store-probe
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/hostname: desktop-worker
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 100
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: spark
+          image: gisdataagent/mmfe-spark-runtime:local
+          imagePullPolicy: Never
+          command: ["python", "/opt/gda/probe.py"]
+          env:
+            - name: JAVA_HOME
+              value: /usr/lib/jvm/java-17-openjdk-arm64
+            - name: HOME
+              value: /tmp/spark-home
+            - name: SPARK_LOCAL_DIRS
+              value: /tmp/spark-local
+            - name: PYSPARK_PYTHON
+              value: python
+            - name: PYSPARK_SUBMIT_ARGS
+              value: >-
+                --jars /opt/spark/jars-extra/iceberg-aws-bundle-1.6.1.jar
+                --driver-class-path /opt/spark/jars-extra/iceberg-aws-bundle-1.6.1.jar
+                pyspark-shell
+            - name: AWS_REGION
+              value: us-east-1
+            - name: AWS_DEFAULT_REGION
+              value: us-east-1
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: metadata-object-store-runtime
+                  key: access-key-id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: metadata-object-store-runtime
+                  key: secret-access-key
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+            limits:
+              cpu: "4"
+              memory: 5Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: probe
+              mountPath: /opt/gda
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: probe
+          configMap:
+            name: spark-object-store-probe
+        - name: tmp
+          emptyDir: {}
