@@ -649,6 +649,26 @@ RUNTIME_INVENTORY = (
         "Protected OIDC workload identity, TLS and production Gravitino catalog",
     ),
     RuntimeSpec(
+        "metadata_gravitino_jdbc_restart_rehearsal",
+        "gravitino_catalog_restart_rehearsal",
+        "governed",
+        "evidence_durable",
+        "committed local authenticated JDBC catalog restart evidence",
+        "metadata-platform",
+        "local_verification_only",
+        (
+            "data_agent/metadata_fabric_gravitino_jdbc_restart.py",
+            "scripts/metadata-fabric-gravitino-jdbc-restart.sh",
+        ),
+        (
+            (
+                "data_agent/metadata_fabric_gravitino_jdbc_restart.py",
+                "subprocess.run",
+            ),
+        ),
+        "Protected identity and production catalog durability/conformance gate",
+    ),
+    RuntimeSpec(
         "datalake_monitor",
         "monitor_loop",
         "legacy",
