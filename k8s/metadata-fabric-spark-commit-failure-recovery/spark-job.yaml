@@ -1,0 +1,430 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spark-commit-failure-probe
+  namespace: gda-metadata-spark-commit-failure
+data:
+  probe.py: |
+    import json
+    import os
+    import threading
+    import urllib.error
+    import urllib.request
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    from pyspark.sql import SparkSession
+
+
+    TABLE = "rest.published.gda_spark_commit_failure_probe"
+    UPSTREAM = "http://gravitino-persistence:9001"
+    PROXY = "http://127.0.0.1:19001"
+    WAREHOUSE = "s3://gda-metadata-warehouse/warehouse"
+    OBJECT_STORE_ENDPOINT = "http://metadata-object-store:9000"
+    DATA_PREFIX = WAREHOUSE + "/published/gda_spark_commit_failure_probe/data/"
+    BASELINE_ROWS = ["spark-baseline-a", "spark-baseline-b"]
+    RETRY_ROW = "spark-recovery"
+
+
+    class ProxyState:
+        def __init__(self):
+            self.lock = threading.Lock()
+            self.failure_armed = False
+            self.failed_commit_requests = 0
+            self.forwarded_commit_requests = 0
+            self.total_requests = 0
+
+
+    state = ProxyState()
+
+
+    def is_table_commit(path, body):
+        if "/tables/" not in path:
+            return False
+        try:
+            payload = json.loads(body or b"{}")
+        except json.JSONDecodeError:
+            return False
+        return isinstance(payload.get("requirements"), list) and isinstance(
+            payload.get("updates"), list
+        )
+
+
+    class CommitFailureProxy(BaseHTTPRequestHandler):
+        protocol_version = "HTTP/1.1"
+
+        def do_GET(self):
+            self.forward()
+
+        def do_HEAD(self):
+            self.forward()
+
+        def do_POST(self):
+            self.forward()
+
+        def do_DELETE(self):
+            self.forward()
+
+        def forward(self):
+            length = int(self.headers.get("Content-Length", "0"))
+            body = self.rfile.read(length) if length else b""
+            commit = self.command == "POST" and is_table_commit(self.path, body)
+            with state.lock:
+                state.total_requests += 1
+                inject = commit and state.failure_armed
+                if inject:
+                    state.failed_commit_requests += 1
+                elif commit:
+                    state.forwarded_commit_requests += 1
+            if inject:
+                payload = json.dumps(
+                    {
+                        "error": {
+                            "message": "injected pre-forward catalog commit failure",
+                            "type": "CommitFailedException",
+                            "code": 503,
+                        }
+                    },
+                    sort_keys=True,
+                ).encode("utf-8")
+                self.send_response(503)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(payload)))
+                self.send_header("Connection", "close")
+                self.end_headers()
+                self.wfile.write(payload)
+                return
+
+            headers = {
+                key: value
+                for key, value in self.headers.items()
+                if key.lower()
+                not in {
+                    "connection",
+                    "content-length",
+                    "host",
+                    "proxy-connection",
+                    "transfer-encoding",
+                }
+            }
+            request = urllib.request.Request(
+                UPSTREAM + self.path,
+                data=body if self.command in {"POST", "PUT", "PATCH"} else None,
+                headers=headers,
+                method=self.command,
+            )
+            try:
+                response = urllib.request.urlopen(request, timeout=30)
+                status = response.status
+                response_body = response.read()
+                content_type = response.headers.get("Content-Type")
+            except urllib.error.HTTPError as exc:
+                status = exc.code
+                response_body = exc.read()
+                content_type = exc.headers.get("Content-Type")
+            except urllib.error.URLError:
+                status = 502
+                response_body = json.dumps(
+                    {
+                        "error": {
+                            "message": "catalog upstream unavailable",
+                            "type": "ServiceFailureException",
+                            "code": 502,
+                        }
+                    },
+                    sort_keys=True,
+                ).encode("utf-8")
+                content_type = "application/json"
+            self.send_response(status)
+            if content_type:
+                self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(response_body)))
+            self.send_header("Connection", "close")
+            self.end_headers()
+            if self.command != "HEAD":
+                self.wfile.write(response_body)
+
+        def log_message(self, _format, *_args):
+            return
+
+
+    server = ThreadingHTTPServer(("127.0.0.1", 19001), CommitFailureProxy)
+    server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+    server_thread.start()
+
+    spark = (
+        SparkSession.builder.appName("gda-spark-commit-failure-recovery")
+        .master("local[2]")
+        .config(
+            "spark.sql.extensions",
+            "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
+        )
+        .config("spark.jars", "/opt/spark/jars-extra/iceberg-aws-bundle-1.6.1.jar")
+        .config("spark.sql.catalog.rest", "org.apache.iceberg.spark.SparkCatalog")
+        .config("spark.sql.catalog.rest.type", "rest")
+        .config("spark.sql.catalog.rest.uri", PROXY + "/iceberg")
+        .config(
+            "spark.sql.catalog.rest.io-impl",
+            "org.apache.iceberg.aws.s3.S3FileIO",
+        )
+        .config("spark.sql.catalog.rest.s3.endpoint", OBJECT_STORE_ENDPOINT)
+        .config("spark.sql.catalog.rest.s3.path-style-access", "true")
+        .config(
+            "spark.sql.catalog.rest.s3.access-key-id",
+            os.environ["AWS_ACCESS_KEY_ID"],
+        )
+        .config(
+            "spark.sql.catalog.rest.s3.secret-access-key",
+            os.environ["AWS_SECRET_ACCESS_KEY"],
+        )
+        .config("spark.sql.catalog.rest.client.region", "us-east-1")
+        .config("spark.sql.catalog.rest.cache-enabled", "false")
+        .config("spark.sql.catalog.rest.rest.client.max-retries", "1")
+        .config("spark.sql.catalog.rest.commit.retry.num-retries", "0")
+        .config("spark.sql.catalog.rest.commit.retry.total-timeout-ms", "1000")
+        .config("spark.sql.shuffle.partitions", "2")
+        .getOrCreate()
+    )
+    spark.sparkContext.setLogLevel("WARN")
+
+    def snapshots():
+        return [
+            {
+                "snapshot_id": row["snapshot_id"],
+                "parent_id": row["parent_id"],
+                "operation": row["operation"],
+            }
+            for row in spark.sql(
+                f"SELECT snapshot_id, parent_id, operation FROM {TABLE}.snapshots "
+                "ORDER BY committed_at, snapshot_id"
+            ).collect()
+        ]
+
+    def rows():
+        return [
+            row["probe_id"]
+            for row in spark.sql(
+                f"SELECT probe_id FROM {TABLE} ORDER BY probe_id"
+            ).collect()
+        ]
+
+    def data_files():
+        return sorted(
+            row["file_path"]
+            for row in spark.sql(f"SELECT file_path FROM {TABLE}.files").collect()
+        )
+
+    try:
+        initial_columns = spark.table(TABLE).columns
+        initial_rows = rows()
+        initial_snapshots = snapshots()
+        if initial_columns != ["probe_id"] or initial_rows or initial_snapshots:
+            raise RuntimeError("unexpected Gravitino-created table baseline")
+
+        (
+            spark.createDataFrame([(value,) for value in BASELINE_ROWS], ["probe_id"])
+            .coalesce(1)
+            .writeTo(TABLE)
+            .append()
+        )
+        baseline_snapshots = snapshots()
+        baseline_rows = rows()
+        baseline_files = data_files()
+        if (
+            len(baseline_snapshots) != 1
+            or baseline_rows != BASELINE_ROWS
+            or len(baseline_files) != 1
+        ):
+            raise RuntimeError("baseline commit did not produce one visible snapshot")
+
+        failure_type = None
+        with state.lock:
+            state.failure_armed = True
+        try:
+            (
+                spark.createDataFrame([(RETRY_ROW,)], ["probe_id"])
+                .coalesce(1)
+                .writeTo(TABLE)
+                .append()
+            )
+        except Exception as exc:
+            failure_type = type(exc).__name__
+        finally:
+            with state.lock:
+                state.failure_armed = False
+        if failure_type is None:
+            raise RuntimeError("injected catalog commit failure was not observed")
+
+        spark.catalog.refreshTable(TABLE)
+        failed_attempt_snapshots = snapshots()
+        failed_attempt_rows = rows()
+        failed_attempt_files = data_files()
+        if (
+            failed_attempt_snapshots != baseline_snapshots
+            or failed_attempt_rows != BASELINE_ROWS
+            or failed_attempt_files != baseline_files
+        ):
+            raise RuntimeError("failed commit changed visible table state")
+
+        (
+            spark.createDataFrame([(RETRY_ROW,)], ["probe_id"])
+            .coalesce(1)
+            .writeTo(TABLE)
+            .append()
+        )
+        spark.catalog.refreshTable(TABLE)
+        retry_snapshots = snapshots()
+        retry_rows = rows()
+        retry_files = data_files()
+        expected_rows = sorted(BASELINE_ROWS + [RETRY_ROW])
+        if (
+            len(retry_snapshots) != 2
+            or retry_snapshots[1]["parent_id"]
+            != retry_snapshots[0]["snapshot_id"]
+            or [item["operation"] for item in retry_snapshots]
+            != ["append", "append"]
+            or retry_rows != expected_rows
+            or len(retry_files) != 2
+            or not all(path.startswith(DATA_PREFIX) for path in retry_files)
+        ):
+            raise RuntimeError("retry did not produce one exact visible commit")
+
+        with state.lock:
+            proxy = {
+                "failed_commit_requests": state.failed_commit_requests,
+                "forwarded_commit_requests": state.forwarded_commit_requests,
+                "total_requests": state.total_requests,
+                "injection_mode": "pre_forward_http_503",
+                "loopback_only": True,
+            }
+        if proxy["failed_commit_requests"] < 1:
+            raise RuntimeError("catalog commit failure was not intercepted")
+        if proxy["forwarded_commit_requests"] != 2:
+            raise RuntimeError("unexpected successful catalog commit count")
+
+        result = {
+            "schema": "gda.spark_commit_failure_probe_result.v1",
+            "spark_version": spark.version,
+            "iceberg_runtime": "1.6.1",
+            "catalog_uri": PROXY + "/iceberg",
+            "catalog_upstream": UPSTREAM + "/iceberg",
+            "warehouse": WAREHOUSE,
+            "object_store_endpoint": OBJECT_STORE_ENDPOINT,
+            "file_io": "org.apache.iceberg.aws.s3.S3FileIO",
+            "table": TABLE,
+            "initial_columns": initial_columns,
+            "initial_rows": initial_rows,
+            "initial_snapshots": initial_snapshots,
+            "baseline": {
+                "rows": baseline_rows,
+                "snapshots": baseline_snapshots,
+                "data_file_paths": baseline_files,
+            },
+            "failed_attempt": {
+                "exception_observed": True,
+                "exception_type": failure_type,
+                "rows": failed_attempt_rows,
+                "snapshots": failed_attempt_snapshots,
+                "data_file_paths": failed_attempt_files,
+            },
+            "retry": {
+                "rows": retry_rows,
+                "snapshots": retry_snapshots,
+                "data_file_paths": retry_files,
+            },
+            "proxy": proxy,
+            "failed_commit_atomicity_verified": True,
+            "retry_recovery_verified": True,
+            "exactly_once_visible_effect_verified": True,
+            "object_store_data_files_verified": True,
+            "material_recorded": False,
+        }
+        print("GDA_SPARK_COMMIT_FAILURE_RESULT=" + json.dumps(result, sort_keys=True))
+    finally:
+        server.shutdown()
+        server.server_close()
+        spark.stop()
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: spark-commit-failure-probe
+  namespace: gda-metadata-spark-commit-failure
+spec:
+  suspend: true
+  backoffLimit: 0
+  activeDeadlineSeconds: 900
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: spark-commit-failure-probe
+        app.kubernetes.io/component: commit-failure-probe
+    spec:
+      serviceAccountName: spark-commit-failure-probe
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/hostname: desktop-worker
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 100
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: spark
+          image: gisdataagent/mmfe-spark-runtime:local
+          imagePullPolicy: Never
+          command: ["python", "/opt/gda/probe.py"]
+          env:
+            - name: JAVA_HOME
+              value: /usr/lib/jvm/java-17-openjdk-arm64
+            - name: HOME
+              value: /tmp/spark-home
+            - name: SPARK_LOCAL_DIRS
+              value: /tmp/spark-local
+            - name: PYSPARK_PYTHON
+              value: python
+            - name: PYSPARK_SUBMIT_ARGS
+              value: >-
+                --jars /opt/spark/jars-extra/iceberg-aws-bundle-1.6.1.jar
+                --driver-class-path /opt/spark/jars-extra/iceberg-aws-bundle-1.6.1.jar
+                pyspark-shell
+            - name: AWS_REGION
+              value: us-east-1
+            - name: AWS_DEFAULT_REGION
+              value: us-east-1
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: metadata-object-store-runtime
+                  key: access-key-id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: metadata-object-store-runtime
+                  key: secret-access-key
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+            limits:
+              cpu: "4"
+              memory: 5Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: probe
+              mountPath: /opt/gda
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: probe
+          configMap:
+            name: spark-commit-failure-probe
+        - name: tmp
+          emptyDir: {}

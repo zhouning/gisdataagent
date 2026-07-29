@@ -27,6 +27,7 @@ on:
       - feat/ar1-metadata-fabric-spark-iceberg-rest-interoperability
       - feat/ar1-metadata-fabric-spark-object-store-interoperability
       - feat/ar1-metadata-fabric-object-store-readiness-gate
+      - feat/ar1-metadata-fabric-spark-commit-failure-recovery
 
 env:
   PYTHON_VERSION: "3.13"
@@ -157,6 +158,9 @@ jobs:
       - name: Validate metadata fabric production object-store gate
         run: python -m data_agent.metadata_fabric_object_store_gate validate
 
+      - name: Validate metadata fabric Spark commit-failure recovery evidence
+        run: python -m data_agent.metadata_fabric_spark_commit_failure_recovery validate
+
       - name: Validate DolphinScheduler adapter boundary
         run: python -m data_agent.dolphinscheduler_adapter validate
 
@@ -219,6 +223,7 @@ jobs:
             data_agent/test_metadata_fabric_spark_iceberg_rest_interoperability.py \
             data_agent/test_metadata_fabric_spark_object_store_interoperability.py \
             data_agent/test_metadata_fabric_object_store_gate.py \
+            data_agent/test_metadata_fabric_spark_commit_failure_recovery.py \
             data_agent/test_metadata_fabric_otel_failure_rehearsal.py \
             data_agent/test_metadata_fabric_otel_metrics.py \
             data_agent/test_metadata_fabric_provider_metrics.py \
