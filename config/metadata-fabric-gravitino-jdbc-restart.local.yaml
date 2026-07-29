@@ -1,0 +1,85 @@
+schema: gda.metadata_fabric_gravitino_jdbc_restart_profile.v1
+environment: local_docker_desktop
+
+cluster:
+  context: docker-desktop
+  source_namespace: gda-metadata-sandbox
+  rehearsal_namespace: gda-metadata-catalog-persistence
+  source_schema_configmap: metadata-gravitino-schema-1-3-0
+  storage_class: standard
+
+runtime:
+  manifest: k8s/metadata-fabric-gravitino-jdbc-restart
+  gravitino_version: 1.3.0
+  gravitino_image: gda/gravitino:1.3.0-local-arm64
+  gravitino_host_image_id: sha256:d355dc7e92f9e3545d717f3eab2cbdf412115f2b82e1e544d7f6235c1eacd5a5
+  gravitino_kubernetes_image_id: sha256:18e24b43be854dabdc13e96b1019eb3dc691d59cc64e411aa6a3cc49225fe2d3
+  postgresql_version: 16.10-bookworm
+  postgresql_image: postgres:16.10-bookworm
+  postgresql_image_digest: sha256:38471f330eb885e04de130b768d6db4e10469e2311879c7e5c699f6d2d8a1c74
+  service: gravitino-persistence
+  service_port: 8090
+  authenticator: basic
+  idp_extension: org.apache.gravitino.idp.web.rest.feature
+  access_control_enabled: true
+  service_account: gravitino-persistence
+  service_account_automount_disabled: true
+  transport: local_loopback_http
+
+dependency:
+  evidence_path: docs/evidence/metadata-fabric-gravitino-identity-2026-07-28.json
+  evidence_fingerprint: f0b0de1f80f079d43318937e0a0cc151a8546e9e307bef204738b1367f9b29fd
+  required_claim: local_gravitino_minimum_privilege_verified
+
+identity:
+  service_admin: gda-persistence-admin
+  user: gda-metadata-projection
+  role: gda-table-projection
+  material_delivery: runtime_generated_ephemeral_kubernetes_object
+
+catalog:
+  provider: lakehouse-iceberg
+  backend: jdbc
+  uri: jdbc:postgresql://gravitino-persistence-postgresql:5432/iceberg
+  jdbc_driver: org.postgresql.Driver
+  jdbc_driver_source: /opt/gravitino/libs/postgresql-42.7.0.jar
+  jdbc_driver_mount: /opt/gravitino/catalogs/lakehouse-iceberg/libs/postgresql-42.7.0.jar
+  jdbc_initialize: true
+  warehouse: file:///var/lib/gravitino/warehouse
+  postgresql_pvc: data-gravitino-persistence-postgresql-0
+  warehouse_pvc: warehouse-gravitino-persistence-0
+  restart_scope: postgresql_then_gravitino
+
+scope:
+  metalake: gda_persistence
+  catalog: lakehouse
+  schema: published
+  table: gda_persistence_probe
+  denied_catalog: unauthorized_catalog
+  role_securable_objects:
+    - full_name: lakehouse
+      type: CATALOG
+      privileges:
+        - name: USE_CATALOG
+          condition: ALLOW
+    - full_name: lakehouse.published
+      type: SCHEMA
+      privileges:
+        - name: CREATE_TABLE
+          condition: ALLOW
+        - name: USE_SCHEMA
+          condition: ALLOW
+
+claims:
+  local_gravitino_jdbc_catalog_restart_verified: false
+  local_authenticated_catalog_persistence_verified: false
+  local_postgresql_pvc_restart_verified: false
+  local_warehouse_pvc_restart_verified: false
+  persistent_catalog_identity_binding_verified: false
+  protected_workload_identity_verified: false
+  oidc_verified: false
+  tls_verified: false
+  spark_conformance_verified: false
+  flink_conformance_verified: false
+  production_ingestion_verified: false
+  production_ready: false

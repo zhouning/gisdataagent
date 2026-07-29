@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gda-metadata-catalog-persistence
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: gravitino-jdbc-restart-rehearsal
+  namespace: gda-metadata-catalog-persistence
+spec:
+  hard:
+    requests.cpu: "3"
+    requests.memory: 4Gi
+    limits.cpu: "6"
+    limits.memory: 8Gi
+    pods: "6"
+    persistentvolumeclaims: "4"
+    requests.storage: 6Gi
+    secrets: "4"
+    configmaps: "6"
