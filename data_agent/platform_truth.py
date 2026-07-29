@@ -669,6 +669,26 @@ RUNTIME_INVENTORY = (
         "Protected identity and production catalog durability/conformance gate",
     ),
     RuntimeSpec(
+        "metadata_spark_iceberg_rest_interoperability_rehearsal",
+        "spark_iceberg_rest_interoperability_rehearsal",
+        "governed",
+        "evidence_durable",
+        "committed local Spark/Iceberg REST interoperability evidence",
+        "metadata-platform",
+        "local_verification_only",
+        (
+            "data_agent/metadata_fabric_spark_iceberg_rest_interoperability.py",
+            "scripts/metadata-fabric-spark-iceberg-rest-interoperability.sh",
+        ),
+        (
+            (
+                "data_agent/metadata_fabric_spark_iceberg_rest_interoperability.py",
+                "subprocess.run",
+            ),
+        ),
+        "Protected Spark/Flink conformance and production object-store catalog gate",
+    ),
+    RuntimeSpec(
         "datalake_monitor",
         "monitor_loop",
         "legacy",

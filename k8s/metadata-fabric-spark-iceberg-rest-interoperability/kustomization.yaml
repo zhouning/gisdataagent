@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: gda-metadata-spark-interop
+resources:
+  - namespace.yaml
+  - runtime.yaml
+  - spark-job.yaml
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: gda-metadata-fabric-spark-iceberg-rest-interoperability
+      gda.openai.com/environment: spark-iceberg-rest-interoperability-rehearsal
+    includeSelectors: false

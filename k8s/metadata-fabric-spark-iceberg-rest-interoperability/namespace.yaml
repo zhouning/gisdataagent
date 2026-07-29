@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gda-metadata-spark-interop
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: spark-iceberg-rest-interoperability
+  namespace: gda-metadata-spark-interop
+spec:
+  hard:
+    requests.cpu: "6"
+    requests.memory: 8Gi
+    limits.cpu: "12"
+    limits.memory: 14Gi
+    pods: "8"
+    persistentvolumeclaims: "4"
+    requests.storage: 6Gi
+    secrets: "4"
+    configmaps: "8"

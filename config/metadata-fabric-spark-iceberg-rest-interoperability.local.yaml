@@ -1,0 +1,95 @@
+schema: gda.metadata_fabric_spark_iceberg_rest_interoperability_profile.v1
+environment: local_docker_desktop
+
+cluster:
+  context: docker-desktop
+  source_namespace: gda-metadata-sandbox
+  rehearsal_namespace: gda-metadata-spark-interop
+  source_schema_configmap: metadata-gravitino-schema-1-3-0
+  storage_class: standard
+  node: desktop-worker
+
+runtime:
+  manifest: k8s/metadata-fabric-spark-iceberg-rest-interoperability
+  gravitino_version: 1.3.0
+  gravitino_image: gda/gravitino:1.3.0-local-arm64
+  gravitino_host_image_id: sha256:d355dc7e92f9e3545d717f3eab2cbdf412115f2b82e1e544d7f6235c1eacd5a5
+  gravitino_kubernetes_image_id: sha256:18e24b43be854dabdc13e96b1019eb3dc691d59cc64e411aa6a3cc49225fe2d3
+  iceberg_rest_version: 1.11.0
+  postgresql_version: 16.10-bookworm
+  postgresql_image: postgres:16.10-bookworm
+  postgresql_image_digest: sha256:38471f330eb885e04de130b768d6db4e10469e2311879c7e5c699f6d2d8a1c74
+  spark_version: 3.5.0
+  iceberg_spark_runtime_version: 1.6.1
+  spark_image: gisdataagent/mmfe-spark-runtime:local
+  spark_host_image_id: sha256:f201367640c7583add224796a629150e63d3859ddd7fe9fd47741662a6d415bb
+  spark_kubernetes_image_id: sha256:4a4522bfd4e6d1c6c90a244d0145841fbfbbf21ed16ee29ca8b681b5cec60058
+  service: gravitino-persistence
+  gravitino_service_port: 8090
+  iceberg_rest_service_port: 9001
+  iceberg_rest_path: /iceberg
+  spark_job: spark-iceberg-rest-probe
+  authenticator: basic
+  access_control_enabled: true
+  transport: local_cluster_http
+
+dependency:
+  evidence_path: docs/evidence/metadata-fabric-gravitino-jdbc-restart-2026-07-29.json
+  evidence_fingerprint: 34792bb47ad71041a87adeb644439bf9b6aa3f4855cdc98782d6e3b4282bf1aa
+  required_claim: local_gravitino_jdbc_catalog_restart_verified
+
+identity:
+  service_admin: gda-interop-admin
+  user: gda-metadata-projection
+  role: gda-table-projection
+  material_delivery: runtime_generated_ephemeral_kubernetes_object
+
+catalog:
+  provider: lakehouse-iceberg
+  backend: jdbc
+  uri: jdbc:postgresql://gravitino-persistence-postgresql:5432/iceberg
+  jdbc_driver: org.postgresql.Driver
+  jdbc_driver_source: /opt/gravitino/libs/postgresql-42.7.0.jar
+  gravitino_jdbc_driver_mount: /opt/gravitino/catalogs/lakehouse-iceberg/libs/postgresql-42.7.0.jar
+  rest_jdbc_driver_mount: /opt/gravitino/iceberg-rest-server/libs/postgresql-42.7.0.jar
+  jdbc_initialize: true
+  warehouse: file:///var/lib/gravitino/warehouse
+  postgresql_pvc: data-gravitino-persistence-postgresql-0
+  warehouse_pvc: warehouse-gravitino-persistence-0
+  interoperability_scope: local_same_node_shared_rwo_pvc
+
+scope:
+  metalake: gda_interop
+  catalog: lakehouse
+  schema: published
+  table: gda_spark_interop_probe
+  denied_catalog: unauthorized_catalog
+  role_securable_objects:
+    - full_name: lakehouse
+      type: CATALOG
+      privileges:
+        - name: USE_CATALOG
+          condition: ALLOW
+    - full_name: lakehouse.published
+      type: SCHEMA
+      privileges:
+        - name: CREATE_TABLE
+          condition: ALLOW
+        - name: USE_SCHEMA
+          condition: ALLOW
+
+claims:
+  local_spark_iceberg_rest_interoperability_verified: false
+  local_spark_create_read_write_verified: false
+  local_spark_schema_evolution_verified: false
+  local_spark_snapshot_time_travel_verified: false
+  gravitino_api_metadata_readback_verified: false
+  local_same_node_shared_pvc_verified: false
+  persistent_catalog_identity_binding_verified: false
+  protected_workload_identity_verified: false
+  oidc_verified: false
+  tls_verified: false
+  spark_conformance_verified: false
+  flink_conformance_verified: false
+  production_ingestion_verified: false
+  production_ready: false
