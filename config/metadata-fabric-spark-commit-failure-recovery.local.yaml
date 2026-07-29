@@ -1,0 +1,114 @@
+schema: gda.metadata_fabric_spark_commit_failure_recovery_profile.v1
+environment: local_docker_desktop
+
+cluster:
+  context: docker-desktop
+  source_namespace: gda-metadata-sandbox
+  rehearsal_namespace: gda-metadata-spark-commit-failure
+  source_schema_configmap: metadata-gravitino-schema-1-3-0
+  storage_class: standard
+  object_store_node: desktop-control-plane
+  compute_node: desktop-worker
+
+runtime:
+  manifest: k8s/metadata-fabric-spark-commit-failure-recovery
+  gravitino_version: 1.3.0
+  gravitino_image: gda/gravitino:1.3.0-local-arm64
+  gravitino_host_image_id: sha256:d355dc7e92f9e3545d717f3eab2cbdf412115f2b82e1e544d7f6235c1eacd5a5
+  gravitino_kubernetes_image_id: sha256:18e24b43be854dabdc13e96b1019eb3dc691d59cc64e411aa6a3cc49225fe2d3
+  iceberg_rest_version: 1.11.0
+  postgresql_version: 16.10-bookworm
+  postgresql_image: postgres:16.10-bookworm
+  postgresql_image_digest: sha256:38471f330eb885e04de130b768d6db4e10469e2311879c7e5c699f6d2d8a1c74
+  spark_version: 3.5.0
+  iceberg_spark_runtime_version: 1.6.1
+  spark_image: gisdataagent/mmfe-spark-runtime:local
+  spark_host_image_id: sha256:f201367640c7583add224796a629150e63d3859ddd7fe9fd47741662a6d415bb
+  spark_kubernetes_image_id: sha256:4a4522bfd4e6d1c6c90a244d0145841fbfbbf21ed16ee29ca8b681b5cec60058
+  minio_version: RELEASE.2025-04-22T22-12-26Z
+  minio_image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+  minio_host_image_id: sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e
+  minio_kubernetes_image_id: sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e
+  service: gravitino-persistence
+  gravitino_service_port: 8090
+  iceberg_rest_service_port: 9001
+  iceberg_rest_path: /iceberg
+  object_store_service: metadata-object-store
+  object_store_service_port: 9000
+  spark_job: spark-commit-failure-probe
+  authenticator: basic
+  access_control_enabled: true
+  transport: local_cluster_http
+
+dependency:
+  evidence_path: docs/evidence/metadata-fabric-spark-object-store-interoperability-2026-07-29.json
+  evidence_fingerprint: 05844457efb378581fb7fc2e7ed3c706819b2d8fa5a52b2f82577051d38c2cd1
+  required_claim: local_spark_object_store_interoperability_verified
+
+identity:
+  service_admin: gda-object-store-admin
+  user: gda-metadata-projection
+  role: gda-table-projection
+  material_delivery: runtime_generated_ephemeral_kubernetes_object
+
+catalog:
+  provider: lakehouse-iceberg
+  backend: jdbc
+  uri: jdbc:postgresql://gravitino-persistence-postgresql:5432/iceberg
+  jdbc_driver: org.postgresql.Driver
+  jdbc_driver_source: /opt/gravitino/libs/postgresql-42.7.0.jar
+  gravitino_jdbc_driver_mount: /opt/gravitino/catalogs/lakehouse-iceberg/libs/postgresql-42.7.0.jar
+  rest_jdbc_driver_mount: /opt/gravitino/iceberg-rest-server/libs/postgresql-42.7.0.jar
+  jdbc_initialize: true
+  warehouse: s3://gda-metadata-warehouse/warehouse
+  io_impl: org.apache.iceberg.aws.s3.S3FileIO
+  s3_endpoint: http://metadata-object-store:9000
+  s3_region: us-east-1
+  s3_path_style_access: true
+  bucket: gda-metadata-warehouse
+  object_prefix: warehouse/published/gda_spark_commit_failure_probe/
+  authentication_mode: runtime_generated_static_local_material
+  postgresql_pvc: data-gravitino-persistence-postgresql-0
+  object_store_pvc: data-metadata-object-store-0
+  interoperability_scope: local_cross_node_s3_commit_failure_recovery
+
+scope:
+  metalake: gda_commit_failure
+  catalog: lakehouse
+  schema: published
+  table: gda_spark_commit_failure_probe
+  denied_catalog: unauthorized_catalog
+  role_securable_objects:
+    - full_name: lakehouse
+      type: CATALOG
+      privileges:
+        - name: USE_CATALOG
+          condition: ALLOW
+    - full_name: lakehouse.published
+      type: SCHEMA
+      privileges:
+        - name: CREATE_TABLE
+          condition: ALLOW
+        - name: USE_SCHEMA
+          condition: ALLOW
+
+claims:
+  local_spark_commit_failure_recovery_verified: false
+  local_failed_commit_atomicity_verified: false
+  local_retry_recovery_verified: false
+  local_exactly_once_visible_effect_verified: false
+  gravitino_api_metadata_readback_verified: false
+  local_cross_node_object_store_verified: false
+  object_store_metadata_verified: false
+  spark_cancel_verified: false
+  spark_reconcile_verified: false
+  spark_lineage_verified: false
+  persistent_catalog_identity_binding_verified: false
+  protected_workload_identity_verified: false
+  oidc_verified: false
+  tls_verified: false
+  production_object_store_verified: false
+  spark_conformance_verified: false
+  flink_conformance_verified: false
+  production_ingestion_verified: false
+  production_ready: false

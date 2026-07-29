@@ -1,0 +1,572 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gravitino-persistence-postgresql
+  namespace: gda-metadata-spark-commit-failure
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: metadata-object-store
+  namespace: gda-metadata-spark-commit-failure
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gravitino-persistence
+  namespace: gda-metadata-spark-commit-failure
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: spark-commit-failure-probe
+  namespace: gda-metadata-spark-commit-failure
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gravitino-persistence-iceberg-init
+  namespace: gda-metadata-spark-commit-failure
+data:
+  002-iceberg.sql: |
+    CREATE DATABASE iceberg OWNER gravitino;
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gravitino-persistence-config
+  namespace: gda-metadata-spark-commit-failure
+data:
+  gravitino.conf: |
+    gravitino.server.shutdown.timeout = 30000
+    gravitino.server.webserver.host = 0.0.0.0
+    gravitino.server.webserver.httpPort = 8090
+    gravitino.server.health.entityStore.probeTimeoutMs = 5000
+    gravitino.entity.store = relational
+    gravitino.entity.store.relational = JDBCBackend
+    gravitino.entity.store.relational.jdbcUrl = jdbc:postgresql://gravitino-persistence-postgresql:5432/gravitino
+    gravitino.entity.store.relational.jdbcDriver = org.postgresql.Driver
+    gravitino.entity.store.relational.jdbcUser = gravitino
+    gravitino.authenticators = basic
+    gravitino.server.rest.extensionPackages = org.apache.gravitino.idp.web.rest.feature
+    gravitino.authorization.enable = true
+    gravitino.authorization.serviceAdmins = gda-object-store-admin
+    gravitino.cache.enabled = false
+    gravitino.auxService.names =
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gravitino-iceberg-rest-config
+  namespace: gda-metadata-spark-commit-failure
+data:
+  gravitino-iceberg-rest-server.conf: |
+    gravitino.iceberg-rest.shutdown.timeout = 3000
+    gravitino.iceberg-rest.host = 0.0.0.0
+    gravitino.iceberg-rest.httpPort = 9001
+    gravitino.iceberg-rest.minThreads = 4
+    gravitino.iceberg-rest.maxThreads = 32
+    gravitino.iceberg-rest.stopTimeout = 30000
+    gravitino.iceberg-rest.idleTimeout = 30000
+    gravitino.iceberg-rest.threadPoolWorkQueueSize = 100
+    gravitino.iceberg-rest.requestHeaderSize = 131072
+    gravitino.iceberg-rest.responseHeaderSize = 131072
+    gravitino.iceberg-rest.catalog-backend = jdbc
+    gravitino.iceberg-rest.jdbc-driver = org.postgresql.Driver
+    gravitino.iceberg-rest.uri = jdbc:postgresql://gravitino-persistence-postgresql:5432/iceberg
+    gravitino.iceberg-rest.jdbc-user = gravitino
+    gravitino.iceberg-rest.jdbc-initialize = true
+    gravitino.iceberg-rest.warehouse = s3://gda-metadata-warehouse/warehouse
+    gravitino.iceberg-rest.io-impl = org.apache.iceberg.aws.s3.S3FileIO
+    gravitino.iceberg-rest.s3-endpoint = http://metadata-object-store:9000
+    gravitino.iceberg-rest.s3-region = us-east-1
+    gravitino.iceberg-rest.s3-path-style-access = true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gravitino-persistence-postgresql
+  namespace: gda-metadata-spark-commit-failure
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: gravitino-persistence-postgresql
+  ports:
+    - name: postgresql
+      port: 5432
+      targetPort: postgresql
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: gravitino-persistence-postgresql
+  namespace: gda-metadata-spark-commit-failure
+spec:
+  serviceName: gravitino-persistence-postgresql
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gravitino-persistence-postgresql
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gravitino-persistence-postgresql
+        app.kubernetes.io/component: database
+    spec:
+      serviceAccountName: gravitino-persistence-postgresql
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/hostname: desktop-worker
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        fsGroup: 999
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgresql
+          image: postgres:16.10-bookworm
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: POSTGRES_USER
+              value: gravitino
+            - name: POSTGRES_DB
+              value: gravitino
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: gravitino-persistence-runtime
+                  key: database-password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          ports:
+            - name: postgresql
+              containerPort: 5432
+          startupProbe:
+            exec:
+              command: ["pg_isready", "-U", "gravitino", "-d", "gravitino"]
+            periodSeconds: 3
+            failureThreshold: 60
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "gravitino", "-d", "gravitino"]
+            periodSeconds: 5
+            failureThreshold: 12
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: runtime
+              mountPath: /var/run/postgresql
+            - name: tmp
+              mountPath: /tmp
+            - name: schema
+              mountPath: /docker-entrypoint-initdb.d/001-schema.sql
+              subPath: 001-schema.sql
+              readOnly: true
+            - name: iceberg-init
+              mountPath: /docker-entrypoint-initdb.d/002-iceberg.sql
+              subPath: 002-iceberg.sql
+              readOnly: true
+      volumes:
+        - name: runtime
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: schema
+          configMap:
+            name: gravitino-persistence-schema
+        - name: iceberg-init
+          configMap:
+            name: gravitino-persistence-iceberg-init
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: standard
+        resources:
+          requests:
+            storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: metadata-object-store
+  namespace: gda-metadata-spark-commit-failure
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: metadata-object-store
+  ports:
+    - name: api
+      port: 9000
+      targetPort: api
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: metadata-object-store
+  namespace: gda-metadata-spark-commit-failure
+spec:
+  serviceName: metadata-object-store
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: metadata-object-store
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: metadata-object-store
+        app.kubernetes.io/component: object-store
+    spec:
+      serviceAccountName: metadata-object-store
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/hostname: desktop-control-plane
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: minio
+          image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+          imagePullPolicy: IfNotPresent
+          args: ["server", "/data", "--address", ":9000"]
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: metadata-object-store-runtime
+                  key: access-key-id
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: metadata-object-store-runtime
+                  key: secret-access-key
+            - name: MINIO_BROWSER
+              value: "off"
+            - name: HOME
+              value: /home/minio
+          ports:
+            - name: api
+              containerPort: 9000
+          startupProbe:
+            httpGet:
+              path: /minio/health/live
+              port: api
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /minio/health/ready
+              port: api
+            periodSeconds: 10
+            failureThreshold: 12
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: config
+              mountPath: /home/minio/.minio
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          emptyDir:
+            sizeLimit: 128Mi
+        - name: tmp
+          emptyDir:
+            sizeLimit: 1Gi
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: standard
+        resources:
+          requests:
+            storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gravitino-persistence
+  namespace: gda-metadata-spark-commit-failure
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: gravitino-persistence
+  ports:
+    - name: http
+      port: 8090
+      targetPort: http
+    - name: iceberg-rest
+      port: 9001
+      targetPort: iceberg-rest
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: gravitino-persistence
+  namespace: gda-metadata-spark-commit-failure
+spec:
+  serviceName: gravitino-persistence
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gravitino-persistence
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gravitino-persistence
+        app.kubernetes.io/component: technical-metadata
+    spec:
+      serviceAccountName: gravitino-persistence
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/hostname: desktop-worker
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: stage-object-store-runtime-libs
+          image: gda/gravitino:1.3.0-local-arm64
+          imagePullPolicy: Never
+          command: ["/bin/bash", "-ec"]
+          args:
+            - |
+              test -w /runtime-libs/catalog
+              test -w /runtime-libs/rest
+              cp -R /opt/gravitino/catalogs/lakehouse-iceberg/libs/. /runtime-libs/catalog/
+              cp -R /opt/gravitino/iceberg-rest-server/libs/. /runtime-libs/rest/
+              for target in /runtime-libs/catalog /runtime-libs/rest; do
+                for jar in /opt/gravitino/catalogs/glue/libs/*.jar; do
+                  case "$(basename "$jar")" in
+                    gravitino-catalog-lakehouse-glue-*) continue ;;
+                  esac
+                  cp -n "$jar" "$target/"
+                done
+                install -m 0444 /opt/gravitino/libs/postgresql-42.7.0.jar "$target/postgresql-42.7.0.jar"
+              done
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 512Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: catalog-libs
+              mountPath: /runtime-libs/catalog
+            - name: rest-libs
+              mountPath: /runtime-libs/rest
+      containers:
+        - name: gravitino
+          image: gda/gravitino:1.3.0-local-arm64
+          imagePullPolicy: Never
+          command: ["/bin/bash", "-ec"]
+          args:
+            - |
+              install -d -m 0700 /var/run/gravitino/conf
+              install -m 0600 /etc/gravitino/gravitino.conf /var/run/gravitino/conf/gravitino.conf
+              install -m 0444 /opt/gravitino/conf/gravitino-env.sh /var/run/gravitino/conf/gravitino-env.sh
+              printf '\ngravitino.entity.store.relational.jdbcPassword = ' >> /var/run/gravitino/conf/gravitino.conf
+              cat /var/run/secrets/gravitino/database-password >> /var/run/gravitino/conf/gravitino.conf
+              printf '\n' >> /var/run/gravitino/conf/gravitino.conf
+              exec /opt/gravitino/bin/gravitino.sh --config /var/run/gravitino/conf run
+          env:
+            - name: GRAVITINO_MEM
+              value: -Xms384m -Xmx1024m -XX:MaxMetaspaceSize=384m
+            - name: GRAVITINO_INITIAL_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: gravitino-persistence-runtime
+                  key: admin-password
+          ports:
+            - name: http
+              containerPort: 8090
+          startupProbe:
+            httpGet:
+              path: /api/health/ready
+              port: http
+            periodSeconds: 5
+            failureThreshold: 120
+          readinessProbe:
+            httpGet:
+              path: /api/health/ready
+              port: http
+            periodSeconds: 10
+            failureThreshold: 12
+          resources:
+            requests:
+              cpu: 250m
+              memory: 768Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: config
+              mountPath: /etc/gravitino
+              readOnly: true
+            - name: secrets
+              mountPath: /var/run/secrets/gravitino
+              readOnly: true
+            - name: runtime
+              mountPath: /var/run/gravitino
+            - name: logs
+              mountPath: /opt/gravitino/logs
+            - name: tmp
+              mountPath: /tmp
+            - name: catalog-libs
+              mountPath: /opt/gravitino/catalogs/lakehouse-iceberg/libs
+              readOnly: true
+        - name: iceberg-rest
+          image: gda/gravitino:1.3.0-local-arm64
+          imagePullPolicy: Never
+          command: ["/bin/bash", "-ec"]
+          args:
+            - |
+              install -d -m 0700 /var/run/gravitino/iceberg-rest-conf
+              install -m 0600 /etc/gravitino-iceberg-rest/gravitino-iceberg-rest-server.conf /var/run/gravitino/iceberg-rest-conf/gravitino-iceberg-rest-server.conf
+              install -m 0444 /opt/gravitino/conf/gravitino-iceberg-rest-log4j2.properties /var/run/gravitino/iceberg-rest-conf/gravitino-iceberg-rest-log4j2.properties
+              install -m 0444 /opt/gravitino/conf/gravitino-env.sh /var/run/gravitino/iceberg-rest-conf/gravitino-env.sh
+              printf '\ngravitino.iceberg-rest.jdbc-password = ' >> /var/run/gravitino/iceberg-rest-conf/gravitino-iceberg-rest-server.conf
+              cat /var/run/secrets/gravitino/database-password >> /var/run/gravitino/iceberg-rest-conf/gravitino-iceberg-rest-server.conf
+              printf '\ngravitino.iceberg-rest.s3-access-key-id = ' >> /var/run/gravitino/iceberg-rest-conf/gravitino-iceberg-rest-server.conf
+              cat /var/run/secrets/object-store/access-key-id >> /var/run/gravitino/iceberg-rest-conf/gravitino-iceberg-rest-server.conf
+              printf '\ngravitino.iceberg-rest.s3-secret-access-key = ' >> /var/run/gravitino/iceberg-rest-conf/gravitino-iceberg-rest-server.conf
+              cat /var/run/secrets/object-store/secret-access-key >> /var/run/gravitino/iceberg-rest-conf/gravitino-iceberg-rest-server.conf
+              printf '\n' >> /var/run/gravitino/iceberg-rest-conf/gravitino-iceberg-rest-server.conf
+              exec /opt/gravitino/bin/gravitino-iceberg-rest-server.sh --config /var/run/gravitino/iceberg-rest-conf run
+          env:
+            - name: GRAVITINO_MEM
+              value: -Xms256m -Xmx768m -XX:MaxMetaspaceSize=256m
+          ports:
+            - name: iceberg-rest
+              containerPort: 9001
+          startupProbe:
+            httpGet:
+              path: /iceberg/v1/config
+              port: iceberg-rest
+            periodSeconds: 5
+            failureThreshold: 120
+          readinessProbe:
+            httpGet:
+              path: /iceberg/v1/config
+              port: iceberg-rest
+            periodSeconds: 10
+            failureThreshold: 12
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 1536Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: iceberg-rest-config
+              mountPath: /etc/gravitino-iceberg-rest
+              readOnly: true
+            - name: secrets
+              mountPath: /var/run/secrets/gravitino
+              readOnly: true
+            - name: object-store-secrets
+              mountPath: /var/run/secrets/object-store
+              readOnly: true
+            - name: runtime
+              mountPath: /var/run/gravitino
+            - name: logs
+              mountPath: /opt/gravitino/logs
+            - name: tmp
+              mountPath: /tmp
+            - name: rest-libs
+              mountPath: /opt/gravitino/iceberg-rest-server/libs
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: gravitino-persistence-config
+        - name: iceberg-rest-config
+          configMap:
+            name: gravitino-iceberg-rest-config
+        - name: secrets
+          secret:
+            secretName: gravitino-persistence-runtime
+            defaultMode: 0400
+        - name: object-store-secrets
+          secret:
+            secretName: metadata-object-store-runtime
+            defaultMode: 0400
+        - name: runtime
+          emptyDir: {}
+        - name: logs
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: catalog-libs
+          emptyDir: {}
+        - name: rest-libs
+          emptyDir: {}

@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: gda-metadata-spark-commit-failure
+resources:
+  - namespace.yaml
+  - runtime.yaml
+  - spark-job.yaml
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: gda-metadata-fabric-spark-commit-failure-recovery
+      gda.openai.com/environment: spark-commit-failure-recovery-rehearsal
+    includeSelectors: false

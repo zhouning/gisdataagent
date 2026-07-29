@@ -709,6 +709,26 @@ RUNTIME_INVENTORY = (
         "Protected identity/TLS, production object storage and full Spark/Flink conformance",
     ),
     RuntimeSpec(
+        "metadata_spark_commit_failure_recovery_rehearsal",
+        "spark_commit_failure_recovery_rehearsal",
+        "governed",
+        "evidence_durable",
+        "committed local Spark/Iceberg commit-failure recovery evidence",
+        "metadata-platform",
+        "local_verification_only",
+        (
+            "data_agent/metadata_fabric_spark_commit_failure_recovery.py",
+            "scripts/metadata-fabric-spark-commit-failure-recovery.sh",
+        ),
+        (
+            (
+                "data_agent/metadata_fabric_spark_commit_failure_recovery.py",
+                "class IsolatedSparkCommitFailureRuntime",
+            ),
+        ),
+        "Protected identity/TLS, production object storage and full Spark/Flink conformance",
+    ),
+    RuntimeSpec(
         "datalake_monitor",
         "monitor_loop",
         "legacy",

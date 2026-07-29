@@ -1,0 +1,441 @@
+{
+  "errors": [],
+  "evidence_fingerprint": "39571cdac1e4043bcfc2d03a73b2b12ff925210daf8ae36bc640b8cb14d89401",
+  "flink_conformance_verified": false,
+  "gravitino_api_metadata_readback_verified": true,
+  "local_cross_node_object_store_verified": true,
+  "local_exactly_once_visible_effect_verified": true,
+  "local_failed_commit_atomicity_verified": true,
+  "local_retry_recovery_verified": true,
+  "local_spark_commit_failure_recovery_verified": true,
+  "local_static_contract_verified": true,
+  "object_store_metadata_verified": true,
+  "observation": {
+    "contract": {
+      "contract_fingerprint": "6d8944ab80246dc65891aa81118cb8b73f7ecad699be9a2af5e62d8260c41002",
+      "dependency_evidence_fingerprint": "05844457efb378581fb7fc2e7ed3c706819b2d8fa5a52b2f82577051d38c2cd1",
+      "local_static_contract_verified": true
+    },
+    "object_store": {
+      "bucket": "gda-metadata-warehouse",
+      "data_keys": [
+        "warehouse/published/gda_spark_commit_failure_probe/data/00000-18-543d9570-963e-412f-8ac1-a75c6bf80aa0-0-00001.parquet",
+        "warehouse/published/gda_spark_commit_failure_probe/data/00000-2-19eb221c-7e2c-4cab-930f-77ef89d03927-0-00001.parquet"
+      ],
+      "latest_metadata": {
+        "current_schema_id": 0,
+        "current_snapshot_id": 1171791550326378509,
+        "fields": [
+          {
+            "name": "probe_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "key": "warehouse/published/gda_spark_commit_failure_probe/metadata/00002-32f93a75-39d6-40aa-881f-6b9d57192503.metadata.json",
+        "location": "s3://gda-metadata-warehouse/warehouse/published/gda_spark_commit_failure_probe"
+      },
+      "manifest_keys": [
+        "warehouse/published/gda_spark_commit_failure_probe/metadata/2350057a-46fd-40ac-91ed-468ee8ad8b8e-m0.avro",
+        "warehouse/published/gda_spark_commit_failure_probe/metadata/e9c95f10-f043-47f7-88aa-13ae11823373-m0.avro",
+        "warehouse/published/gda_spark_commit_failure_probe/metadata/snap-1171791550326378509-1-2350057a-46fd-40ac-91ed-468ee8ad8b8e.avro",
+        "warehouse/published/gda_spark_commit_failure_probe/metadata/snap-2210755464671173100-1-e9c95f10-f043-47f7-88aa-13ae11823373.avro"
+      ],
+      "material_recorded": false,
+      "metadata_keys": [
+        "warehouse/published/gda_spark_commit_failure_probe/metadata/00000-02981c65-1a6f-44be-adad-e97f531ea23c.metadata.json",
+        "warehouse/published/gda_spark_commit_failure_probe/metadata/00001-8d0e3b9e-72d1-4b65-b7e2-0f26ec8ef8aa.metadata.json",
+        "warehouse/published/gda_spark_commit_failure_probe/metadata/00002-32f93a75-39d6-40aa-881f-6b9d57192503.metadata.json"
+      ],
+      "object_count": 9,
+      "objects": [
+        {
+          "etag": "78b522410b090567edd93e582646aea8",
+          "key": "warehouse/published/gda_spark_commit_failure_probe/data/00000-18-543d9570-963e-412f-8ac1-a75c6bf80aa0-0-00001.parquet",
+          "size": 530
+        },
+        {
+          "etag": "b95c2838ca10b35fe904dc1a0ce1e9a6",
+          "key": "warehouse/published/gda_spark_commit_failure_probe/data/00000-2-19eb221c-7e2c-4cab-930f-77ef89d03927-0-00001.parquet",
+          "size": 515
+        },
+        {
+          "etag": "3ef49f3c755f3c90c50edc7aed2a3c0a",
+          "key": "warehouse/published/gda_spark_commit_failure_probe/metadata/00000-02981c65-1a6f-44be-adad-e97f531ea23c.metadata.json",
+          "size": 941
+        },
+        {
+          "etag": "dcf2a6b6b70e282c92b0398b5fd3698c",
+          "key": "warehouse/published/gda_spark_commit_failure_probe/metadata/00001-8d0e3b9e-72d1-4b65-b7e2-0f26ec8ef8aa.metadata.json",
+          "size": 2034
+        },
+        {
+          "etag": "394669cc7501a0b6bfe9f447558326dc",
+          "key": "warehouse/published/gda_spark_commit_failure_probe/metadata/00002-32f93a75-39d6-40aa-881f-6b9d57192503.metadata.json",
+          "size": 3097
+        },
+        {
+          "etag": "55c93739f2e2550bb9bf08a0e27e776e",
+          "key": "warehouse/published/gda_spark_commit_failure_probe/metadata/2350057a-46fd-40ac-91ed-468ee8ad8b8e-m0.avro",
+          "size": 6684
+        },
+        {
+          "etag": "356d9c5c3753b25d53f6dd1ba8b1f74b",
+          "key": "warehouse/published/gda_spark_commit_failure_probe/metadata/e9c95f10-f043-47f7-88aa-13ae11823373-m0.avro",
+          "size": 6690
+        },
+        {
+          "etag": "df464d7e3df361b65f4054961702ae4c",
+          "key": "warehouse/published/gda_spark_commit_failure_probe/metadata/snap-1171791550326378509-1-2350057a-46fd-40ac-91ed-468ee8ad8b8e.avro",
+          "size": 4549
+        },
+        {
+          "etag": "825dd1393c9d743d270b7ead2cb49d17",
+          "key": "warehouse/published/gda_spark_commit_failure_probe/metadata/snap-2210755464671173100-1-e9c95f10-f043-47f7-88aa-13ae11823373.avro",
+          "size": 4474
+        }
+      ],
+      "prefix": "warehouse/published/gda_spark_commit_failure_probe/"
+    },
+    "object_store_prepared": {
+      "bucket": "gda-metadata-warehouse",
+      "created": true,
+      "head_bucket_verified": true,
+      "material_recorded": false,
+      "path_style_access": true,
+      "region": "us-east-1",
+      "service": "metadata-object-store"
+    },
+    "observed_at": "2026-07-29T15:52:11.793548+00:00",
+    "post_spark": {
+      "authentication_status": 200,
+      "denied_catalog_create_status": 403,
+      "read_status": 200,
+      "table": {
+        "fingerprint": "ffe896cf5439c074f642dc7c6f9e6817134ac60b04e5b467d4d896b408022244",
+        "name": "gda_spark_commit_failure_probe",
+        "projection": {
+          "columns": [
+            {
+              "name": "probe_id",
+              "nullable": false,
+              "type": "string"
+            }
+          ],
+          "name": "gda_spark_commit_failure_probe",
+          "probe_property": "true"
+        }
+      }
+    },
+    "pre_spark": {
+      "authentication": {
+        "admin_status": 200,
+        "bounded_status": 200,
+        "material_recorded": false
+      },
+      "catalog": {
+        "backend": "jdbc",
+        "catalog": "lakehouse",
+        "io_impl": "org.apache.iceberg.aws.s3.S3FileIO",
+        "jdbc_initialize": true,
+        "material_recorded": false,
+        "metalake": "gda_commit_failure",
+        "provider": "lakehouse-iceberg",
+        "s3_endpoint": "http://metadata-object-store:9000",
+        "s3_path_style_access": true,
+        "s3_region": "us-east-1",
+        "schema": "published",
+        "uri": "jdbc:postgresql://gravitino-persistence-postgresql:5432/iceberg",
+        "warehouse": "s3://gda-metadata-warehouse/warehouse"
+      },
+      "denied_catalog_create_status": 403,
+      "role": {
+        "name": "gda-table-projection",
+        "securable_objects": [
+          {
+            "fullName": "lakehouse",
+            "privileges": [
+              {
+                "condition": "ALLOW",
+                "name": "USE_CATALOG"
+              }
+            ],
+            "type": "CATALOG"
+          },
+          {
+            "fullName": "lakehouse.published",
+            "privileges": [
+              {
+                "condition": "ALLOW",
+                "name": "CREATE_TABLE"
+              },
+              {
+                "condition": "ALLOW",
+                "name": "USE_SCHEMA"
+              }
+            ],
+            "type": "SCHEMA"
+          }
+        ]
+      },
+      "table": {
+        "create_status": 200,
+        "fingerprint": "ffe896cf5439c074f642dc7c6f9e6817134ac60b04e5b467d4d896b408022244",
+        "name": "gda_spark_commit_failure_probe",
+        "projection": {
+          "columns": [
+            {
+              "name": "probe_id",
+              "nullable": false,
+              "type": "string"
+            }
+          ],
+          "name": "gda_spark_commit_failure_probe",
+          "probe_property": "true"
+        },
+        "read_status": 200
+      }
+    },
+    "runtime": {
+      "context": "docker-desktop",
+      "gravitino": {
+        "image": "docker.io/gda/gravitino:1.3.0-local-arm64",
+        "image_id": "sha256:18e24b43be854dabdc13e96b1019eb3dc691d59cc64e411aa6a3cc49225fe2d3",
+        "node_name": "desktop-worker",
+        "persistent_volume_claims": [],
+        "pod_name": "gravitino-persistence-0",
+        "pod_uid": "c5e85e2d-072e-407c-82b9-a8241f48f19e",
+        "pvc": null,
+        "ready_replicas": 1,
+        "service_account": "gravitino-persistence",
+        "service_account_automount_disabled": true,
+        "statefulset_uid": "48b780c2-bfc1-4f43-a655-05b6be3fde3d"
+      },
+      "gravitino_aws_sdk_mounted": true,
+      "gravitino_host_image_id": "sha256:d355dc7e92f9e3545d717f3eab2cbdf412115f2b82e1e544d7f6235c1eacd5a5",
+      "gravitino_jdbc_driver_mounted": true,
+      "iceberg_rest": {
+        "aws_sdk_mounted": true,
+        "image": "docker.io/gda/gravitino:1.3.0-local-arm64",
+        "image_id": "sha256:18e24b43be854dabdc13e96b1019eb3dc691d59cc64e411aa6a3cc49225fe2d3",
+        "jdbc_driver_mounted": true,
+        "path": "/iceberg",
+        "ready": true
+      },
+      "minio_host_image_id": "sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e",
+      "namespace": {
+        "name": "gda-metadata-spark-commit-failure",
+        "uid": "1d9aef17-10fb-4e88-8703-8ff9bd4fb7fa"
+      },
+      "object_store": {
+        "image": "docker.io/minio/minio:RELEASE.2025-04-22T22-12-26Z",
+        "image_id": "docker.io/minio/minio@sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e",
+        "node_name": "desktop-control-plane",
+        "persistent_volume_claims": [
+          "data-metadata-object-store-0"
+        ],
+        "pod_name": "metadata-object-store-0",
+        "pod_uid": "c41e9567-74db-425d-9030-7c1bd77f8afa",
+        "pvc": {
+          "name": "data-metadata-object-store-0",
+          "phase": "Bound",
+          "storage_class": "standard",
+          "uid": "47b457fc-bd66-4a2e-ac91-afb2604ed4e0",
+          "volume_name": "pvc-47b457fc-bd66-4a2e-ac91-afb2604ed4e0"
+        },
+        "ready_replicas": 1,
+        "service_account": "metadata-object-store",
+        "service_account_automount_disabled": true,
+        "statefulset_uid": "a53c0fdf-a3f4-4268-aad8-97cb92f1050f"
+      },
+      "object_store_service": {
+        "name": "metadata-object-store",
+        "ports": [
+          {
+            "name": "api",
+            "port": 9000
+          }
+        ],
+        "type": "ClusterIP",
+        "uid": "6d91dfc9-4d67-42f9-bf47-88e7297e3b25"
+      },
+      "postgresql": {
+        "image": "docker.io/library/postgres:16.10-bookworm",
+        "image_id": "docker.io/library/postgres@sha256:38471f330eb885e04de130b768d6db4e10469e2311879c7e5c699f6d2d8a1c74",
+        "node_name": "desktop-worker",
+        "persistent_volume_claims": [
+          "data-gravitino-persistence-postgresql-0"
+        ],
+        "pod_name": "gravitino-persistence-postgresql-0",
+        "pod_uid": "dcc1069f-1018-4168-a29e-20114f7f1ba7",
+        "pvc": {
+          "name": "data-gravitino-persistence-postgresql-0",
+          "phase": "Bound",
+          "storage_class": "standard",
+          "uid": "c1edb070-9de9-461b-b3aa-97712bd710af",
+          "volume_name": "pvc-c1edb070-9de9-461b-b3aa-97712bd710af"
+        },
+        "ready_replicas": 1,
+        "service_account": "gravitino-persistence-postgresql",
+        "service_account_automount_disabled": true,
+        "statefulset_uid": "c982c6a1-f053-4433-b7b3-8408d42d4621"
+      },
+      "service": {
+        "name": "gravitino-persistence",
+        "ports": [
+          {
+            "name": "http",
+            "port": 8090
+          },
+          {
+            "name": "iceberg-rest",
+            "port": 9001
+          }
+        ],
+        "type": "ClusterIP",
+        "uid": "47465c3d-b506-457f-8e9d-860a5bcecfc1"
+      },
+      "source_schema_sha256": "7a2d605a677a462ca619dba594ce7ebcf500358345560ad084c1b67a25c722df",
+      "spark_host_image_id": "sha256:f201367640c7583add224796a629150e63d3859ddd7fe9fd47741662a6d415bb"
+    },
+    "runtime_checks": {
+      "all_port_forwards_stopped": true,
+      "kubernetes_service_account_used_for_provider_login": false,
+      "material_recorded": false,
+      "namespace_absent": true,
+      "namespace_delete_completed": true,
+      "object_store_objects_retained": false,
+      "persistent_volume_names": [
+        "pvc-47b457fc-bd66-4a2e-ac91-afb2604ed4e0",
+        "pvc-c1edb070-9de9-461b-b3aa-97712bd710af"
+      ],
+      "persistent_volumes_absent": true,
+      "provider_objects_retained": false
+    },
+    "schema": "gda.metadata_fabric_spark_commit_failure_recovery_observation.v1",
+    "spark": {
+      "failure_diagnostic": [],
+      "job": {
+        "completion_time": "2026-07-29T15:50:53Z",
+        "failed": 0,
+        "name": "spark-commit-failure-probe",
+        "succeeded": 1,
+        "uid": "6867fb28-75af-4ef8-a187-7650bf351eec"
+      },
+      "log_recorded": false,
+      "log_sha256": "9f36da88a9c69982b37b93f22d2b60dd4d73fc7e6baaa52379886c05b89d94f5",
+      "pod": {
+        "image": "docker.io/gisdataagent/mmfe-spark-runtime:local",
+        "image_id": "sha256:4a4522bfd4e6d1c6c90a244d0145841fbfbbf21ed16ee29ca8b681b5cec60058",
+        "name": "spark-commit-failure-probe-vf4r5",
+        "node_name": "desktop-worker",
+        "persistent_volume_claims": [],
+        "phase": "Succeeded",
+        "service_account": "spark-commit-failure-probe",
+        "service_account_automount_disabled": true,
+        "uid": "8237341f-7ee8-4e19-a69e-8a470c82aa52"
+      },
+      "result": {
+        "baseline": {
+          "data_file_paths": [
+            "s3://gda-metadata-warehouse/warehouse/published/gda_spark_commit_failure_probe/data/00000-2-19eb221c-7e2c-4cab-930f-77ef89d03927-0-00001.parquet"
+          ],
+          "rows": [
+            "spark-baseline-a",
+            "spark-baseline-b"
+          ],
+          "snapshots": [
+            {
+              "operation": "append",
+              "parent_id": null,
+              "snapshot_id": 2210755464671173100
+            }
+          ]
+        },
+        "catalog_upstream": "http://gravitino-persistence:9001/iceberg",
+        "catalog_uri": "http://127.0.0.1:19001/iceberg",
+        "exactly_once_visible_effect_verified": true,
+        "failed_attempt": {
+          "data_file_paths": [
+            "s3://gda-metadata-warehouse/warehouse/published/gda_spark_commit_failure_probe/data/00000-2-19eb221c-7e2c-4cab-930f-77ef89d03927-0-00001.parquet"
+          ],
+          "exception_observed": true,
+          "exception_type": "Py4JJavaError",
+          "rows": [
+            "spark-baseline-a",
+            "spark-baseline-b"
+          ],
+          "snapshots": [
+            {
+              "operation": "append",
+              "parent_id": null,
+              "snapshot_id": 2210755464671173100
+            }
+          ]
+        },
+        "failed_commit_atomicity_verified": true,
+        "file_io": "org.apache.iceberg.aws.s3.S3FileIO",
+        "iceberg_runtime": "1.6.1",
+        "initial_columns": [
+          "probe_id"
+        ],
+        "initial_rows": [],
+        "initial_snapshots": [],
+        "material_recorded": false,
+        "object_store_data_files_verified": true,
+        "object_store_endpoint": "http://metadata-object-store:9000",
+        "proxy": {
+          "failed_commit_requests": 2,
+          "forwarded_commit_requests": 2,
+          "injection_mode": "pre_forward_http_503",
+          "loopback_only": true,
+          "total_requests": 52
+        },
+        "retry": {
+          "data_file_paths": [
+            "s3://gda-metadata-warehouse/warehouse/published/gda_spark_commit_failure_probe/data/00000-18-543d9570-963e-412f-8ac1-a75c6bf80aa0-0-00001.parquet",
+            "s3://gda-metadata-warehouse/warehouse/published/gda_spark_commit_failure_probe/data/00000-2-19eb221c-7e2c-4cab-930f-77ef89d03927-0-00001.parquet"
+          ],
+          "rows": [
+            "spark-baseline-a",
+            "spark-baseline-b",
+            "spark-recovery"
+          ],
+          "snapshots": [
+            {
+              "operation": "append",
+              "parent_id": null,
+              "snapshot_id": 2210755464671173100
+            },
+            {
+              "operation": "append",
+              "parent_id": 2210755464671173100,
+              "snapshot_id": 1171791550326378509
+            }
+          ]
+        },
+        "retry_recovery_verified": true,
+        "schema": "gda.spark_commit_failure_probe_result.v1",
+        "spark_version": "3.5.0",
+        "table": "rest.published.gda_spark_commit_failure_probe",
+        "warehouse": "s3://gda-metadata-warehouse/warehouse"
+      },
+      "result_line_count": 1,
+      "terminal_condition": "Complete",
+      "wait_completed": true
+    }
+  },
+  "observed_at": "2026-07-29T15:52:11.793548+00:00",
+  "oidc_verified": false,
+  "persistent_catalog_identity_binding_verified": false,
+  "production_ingestion_verified": false,
+  "production_object_store_verified": false,
+  "production_ready": false,
+  "protected_workload_identity_verified": false,
+  "schema": "gda.metadata_fabric_spark_commit_failure_recovery_evidence.v1",
+  "spark_cancel_verified": false,
+  "spark_conformance_verified": false,
+  "spark_lineage_verified": false,
+  "spark_reconcile_verified": false,
+  "tls_verified": false
+}
