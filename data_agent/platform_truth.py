@@ -729,6 +729,26 @@ RUNTIME_INVENTORY = (
         "Protected identity/TLS, production object storage and full Spark/Flink conformance",
     ),
     RuntimeSpec(
+        "metadata_spark_uncertain_commit_reconciliation_rehearsal",
+        "spark_uncertain_commit_reconciliation_rehearsal",
+        "governed",
+        "evidence_durable",
+        "committed local Spark/Iceberg uncertain-commit reconciliation evidence",
+        "metadata-platform",
+        "local_verification_only",
+        (
+            "data_agent/metadata_fabric_spark_uncertain_commit_reconciliation.py",
+            "scripts/metadata-fabric-spark-uncertain-commit-reconciliation.sh",
+        ),
+        (
+            (
+                "data_agent/metadata_fabric_spark_uncertain_commit_reconciliation.py",
+                "class IsolatedSparkUncertainCommitRuntime",
+            ),
+        ),
+        "Protected identity/TLS, production object storage and full Spark/Flink conformance",
+    ),
+    RuntimeSpec(
         "datalake_monitor",
         "monitor_loop",
         "legacy",
