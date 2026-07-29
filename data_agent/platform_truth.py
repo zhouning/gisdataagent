@@ -689,6 +689,26 @@ RUNTIME_INVENTORY = (
         "Protected Spark/Flink conformance and production object-store catalog gate",
     ),
     RuntimeSpec(
+        "metadata_spark_object_store_interoperability_rehearsal",
+        "spark_object_store_interoperability_rehearsal",
+        "governed",
+        "evidence_durable",
+        "committed local cross-node Spark/S3 object-store interoperability evidence",
+        "metadata-platform",
+        "local_verification_only",
+        (
+            "data_agent/metadata_fabric_spark_object_store_interoperability.py",
+            "scripts/metadata-fabric-spark-object-store-interoperability.sh",
+        ),
+        (
+            (
+                "data_agent/metadata_fabric_spark_object_store_interoperability.py",
+                "subprocess.run",
+            ),
+        ),
+        "Protected identity/TLS, production object storage and full Spark/Flink conformance",
+    ),
+    RuntimeSpec(
         "datalake_monitor",
         "monitor_loop",
         "legacy",
