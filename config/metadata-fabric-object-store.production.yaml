@@ -1,0 +1,118 @@
+schema: gda.metadata_fabric_object_store_production_profile.v1
+environment: production
+
+scope:
+  engines:
+    spark: 3.5.0
+    iceberg: 1.6.1
+    gravitino: 1.3.0
+  local_evidence:
+    path: docs/evidence/metadata-fabric-spark-object-store-interoperability-2026-07-29.json
+    evidence_fingerprint: 05844457efb378581fb7fc2e7ed3c706819b2d8fa5a52b2f82577051d38c2cd1
+    required_claim: local_spark_object_store_interoperability_verified
+
+provider:
+  decision_status: pending
+  provider_type: null
+  account_reference: null
+  region: null
+  endpoint: null
+  bucket: null
+  warehouse_prefix: warehouse/
+  infrastructure_reference: null
+  failure_domain_reference: null
+  recovery_region: null
+  multi_az_required: true
+  source_cluster_independent: true
+
+identity:
+  integration_mode: null
+  workload_identity_reference: null
+  kubernetes_service_account: null
+  least_privilege_policy_reference: null
+  bucket_policy_reference: null
+  allowed_operations:
+    - s3:AbortMultipartUpload
+    - s3:DeleteObject
+    - s3:GetBucketLocation
+    - s3:GetObject
+    - s3:ListBucket
+    - s3:ListBucketMultipartUploads
+    - s3:ListMultipartUploadParts
+    - s3:PutObject
+  static_credentials_forbidden: true
+  maximum_session_ttl_seconds: 900
+
+transport:
+  tls_required: true
+  minimum_version: TLSv1.2
+  endpoint: null
+  private_connectivity_reference: null
+  dns_policy_reference: null
+  trust_bundle_reference: null
+  certificate_policy_reference: null
+
+encryption:
+  server_side_required: true
+  mode: kms
+  key_reference: null
+  key_policy_reference: null
+  rotation_days: null
+  bucket_key_enabled: true
+
+durability:
+  versioning_enabled: true
+  delete_protection_mode: versioned_recovery
+  retention_policy_reference: null
+  replication_mode: asynchronous_cross_region
+  replication_policy_reference: null
+  recovery_bucket_reference: null
+  maximum_rpo_minutes: 15
+  maximum_rto_minutes: 60
+
+consistency:
+  strong_read_after_write_required: true
+  strong_list_after_write_required: true
+  atomic_rename_required: false
+  multipart_upload_cleanup_reference: null
+  orphan_file_cleanup_reference: null
+
+tenancy:
+  isolation_mode: bucket_prefix_and_provider_policy
+  tenant_prefix_template: tenants/{tenant_id}/warehouse/
+  policy_reference: null
+  cross_tenant_denial_required: true
+  public_access_blocked: true
+
+operations:
+  platform_owner: null
+  security_owner: null
+  storage_owner: null
+  incident_owner: null
+  audit_log_reference: null
+  metrics_alert_reference: null
+  availability_slo_percent: null
+  latency_slo_ms: null
+  runbook:
+    uri: null
+    version: null
+  recovery_runbook:
+    uri: null
+    version: null
+  rollback_runbook:
+    uri: null
+    version: null
+  attestation_environment: production-object-store
+  attestation_policy_reference: null
+
+claims:
+  object_store_decision_frozen: false
+  protected_workload_identity_verified: false
+  tls_verified: false
+  kms_encryption_verified: false
+  tenant_isolation_verified: false
+  object_store_durability_verified: false
+  object_store_failure_recovery_verified: false
+  production_object_store_verified: false
+  production_object_store_gate_passed: false
+  production_ready: false
