@@ -879,6 +879,26 @@ RUNTIME_INVENTORY = (
         "Protected authorization and scheduler promotion of durable requests",
     ),
     RuntimeSpec(
+        "metadata_active_metadata_authorization_rehearsal",
+        "active_metadata_authorization_rehearsal",
+        "governed",
+        "evidence_durable",
+        "temporary PostgreSQL authorization/dispatch + committed local evidence",
+        "metadata-platform",
+        "local_verification_only",
+        (
+            "data_agent/metadata_fabric_active_metadata_authorization.py",
+            "scripts/metadata-fabric-active-metadata-authorization.sh",
+        ),
+        (
+            (
+                "data_agent/metadata_fabric_active_metadata_authorization.py",
+                "def run_local_rehearsal",
+            ),
+        ),
+        "Protected workload identity and real scheduler submission/read-back",
+    ),
+    RuntimeSpec(
         "datalake_monitor",
         "monitor_loop",
         "legacy",

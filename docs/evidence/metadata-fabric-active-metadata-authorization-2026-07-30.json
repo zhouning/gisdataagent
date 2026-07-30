@@ -1,0 +1,106 @@
+{
+  "approval_artifact_id": "f3e9fac1-d67f-5943-942f-c92a7a7e2f63",
+  "authorization_absent_after_rollback": true,
+  "authorization_count": 1,
+  "authorization_id": "8c2738e2-848c-5069-ac89-d47057a1bff9",
+  "authorization_sha256": "6cdf1def214d503da39a786cd92bef3a2875e10bd4157eeb8d52ba10d8e97f28",
+  "command_id": "bea71c2e-ac58-52df-8942-8740c8590df0",
+  "contract_sha256": "cef78f91058a8529f4e86330790e714b52b73725a45ffe4dc9eded35bc8ccfa4",
+  "dataset_absolute_path_committed": false,
+  "dataset_bundle": {
+    "components": [
+      {
+        "component": ".cpg",
+        "sha256": "3ad3031f5503a4404af825262ee8232cc04d4ea6683d42c5dd0a2f2a27ac9824",
+        "size_bytes": 5
+      },
+      {
+        "component": ".dbf",
+        "sha256": "ee7c6c4c6957aea296b69d62118d416e5ee989aa77f7b98cf0fe580874ce5127",
+        "size_bytes": 44990
+      },
+      {
+        "component": ".prj",
+        "sha256": "b10dbe4d6d1de908d340f892c90b3d31a552630af3742bb515bfe1bd26124f2c",
+        "size_bytes": 176
+      },
+      {
+        "component": ".sbn",
+        "sha256": "7d0279465b18beec40308717e0ef0ea5701a586bc5c84e6a9aa309d5bc0ec99a",
+        "size_bytes": 308
+      },
+      {
+        "component": ".sbx",
+        "sha256": "019156149b2c7771ec0dd249c757dd7aa01a98075e246a77f77b080860c57333",
+        "size_bytes": 124
+      },
+      {
+        "component": ".shp",
+        "sha256": "6ac0d5c8c8db66fc0e2a74d8232b7779bd2454257df14efa2930e3dbc181aed0",
+        "size_bytes": 283640
+      },
+      {
+        "component": ".shp.xml",
+        "sha256": "8ef222ce1952552b366acf14a996e1c8cbdbe3eed0bb829dacfe7eafd068d948",
+        "size_bytes": 43100
+      },
+      {
+        "component": ".shx",
+        "sha256": "f3fbb6a7775ca833c066e3a3f2a332f99f979840045909ae187d08dac126a119",
+        "size_bytes": 260
+      }
+    ],
+    "content_sha256": "fd474fd65c8e4a71da241eb3fd07748ca3b972fbd2d3c32833376dbe71104007",
+    "format": "ESRI Shapefile",
+    "schema": "gda.spatial_dataset_bundle.v1",
+    "source_label": "chongqing-central-cultural-districts",
+    "spatial_inventory": {
+      "bounds": [
+        106.37987914500007,
+        29.558008447000077,
+        106.59532712300008,
+        29.877271985000025
+      ],
+      "crs": {
+        "authority": "EPSG",
+        "code": 4490,
+        "name": "China Geodetic Coordinate System 2000"
+      },
+      "driver": "ESRI Shapefile",
+      "feature_count": 20,
+      "field_count": 33,
+      "geometry_type": "PolygonZ"
+    }
+  },
+  "dataset_required_in_ci": false,
+  "dataset_source_committed": false,
+  "definition_version_id": "a6000000-0000-4000-8000-000000000002",
+  "deployment_applied": false,
+  "direct_authorization_mutation_blocked": true,
+  "dispatch_command_count": 1,
+  "dispatch_command_status": "pending",
+  "errors": [],
+  "evidence_sha256": "6ae387240e3bcebaafe2ad7acc73f4e09d53df2e73b2ec63cd92edbc262d831e",
+  "exact_authorization_replay_created": false,
+  "execution_plan_artifact_id": "a6000000-0000-4000-8000-000000000004",
+  "force_rls_verified": true,
+  "gateway_function_only_insert_verified": true,
+  "local_postgresql_authorization_dispatch_verified": true,
+  "ordinary_dispatch_without_activation_authorization_blocked": true,
+  "orphan_authorization_rollback_verified": true,
+  "policy_decision_artifact_id": "3b978b60-6e4c-5b0f-b885-a87243233d9b",
+  "production_ingestion_verified": false,
+  "production_ready": false,
+  "production_scheduler_submission_verified": false,
+  "production_workload_identity_verified": false,
+  "provider_apply_authorized": false,
+  "provider_mutations_executed": false,
+  "real_dataset_inspected": true,
+  "real_dataset_resource_version_bound": true,
+  "request_id": "e52b84fc-b39d-534b-9445-e627836fd607",
+  "resource_version_content_sha256": "fd474fd65c8e4a71da241eb3fd07748ca3b972fbd2d3c32833376dbe71104007",
+  "resource_version_id": "a6000000-0000-4000-8000-000000000001",
+  "run_id": "a6000000-0000-4000-8000-000000000003",
+  "schema": "gda.active_metadata_authorization_evidence.v1",
+  "status": "local_real_data_authorization_dispatch_verified"
+}

@@ -17,7 +17,13 @@ from pydantic import BaseModel, ConfigDict, TypeAdapter, model_validator
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 
+from .active_metadata_authorization import (
+    MetadataActivationAuthorization,
+    MetadataActivationAuthorizationError,
+    build_metadata_activation_authorization,
+)
 from .active_metadata_change_contract import (
+    METADATA_PROJECTION_ROUTE,
     ActiveMetadataRegistration,
     MetadataActivationIntent,
     MetadataActivationRequest,
@@ -67,11 +73,10 @@ from .platform_contracts import (
     QualityResult,
     Resource,
     ResourceVersion,
-    RunSuccessEvidence,
     RunStatus,
+    RunSuccessEvidence,
     TenantId,
 )
-
 
 GATEWAY_DATABASE_ROLE = "gda_control_gateway"
 GATEWAY_SCHEMA_VERSION = "gda.platform_gateway.v1"
@@ -109,6 +114,11 @@ ACTIVE_METADATA_ACTIVATION_MIGRATION = (
     Path(__file__).resolve().parent
     / "migrations"
     / "100_active_metadata_activation_request.sql"
+)
+ACTIVE_METADATA_AUTHORIZATION_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "101_active_metadata_authorization.sql"
 )
 USER_TENANT_MIGRATION = (
     Path(__file__).resolve().parent
@@ -624,23 +634,34 @@ class PlatformGateway:
         request_id: UUID,
     ) -> MetadataActivationRequest:
         with self._transaction(tenant_id) as connection:
-            row = connection.execute(
-                text(
-                    """
-                    SELECT request
-                    FROM gda_control.metadata_activation_request
-                    WHERE tenant_id = :tenant_id AND request_id = :request_id
-                    """
-                ),
-                {"tenant_id": tenant_id, "request_id": request_id},
-            ).mappings().one_or_none()
-            if row is None:
+            request = self._load_metadata_activation_request(
+                connection, tenant_id, request_id
+            )
+            if request is None:
                 raise GatewayNotFoundError(
                     "MetadataActivationRequest was not found"
                 )
-            return MetadataActivationRequest.model_validate(
-                _as_json(row["request"])
-            )
+            return request
+
+    @staticmethod
+    def _load_metadata_activation_request(
+        connection, tenant_id: str, request_id: UUID
+    ) -> MetadataActivationRequest | None:
+        row = connection.execute(
+            text(
+                """
+                SELECT request
+                FROM gda_control.metadata_activation_request
+                WHERE tenant_id = :tenant_id AND request_id = :request_id
+                """
+            ),
+            {"tenant_id": tenant_id, "request_id": request_id},
+        ).mappings().one_or_none()
+        return (
+            MetadataActivationRequest.model_validate(_as_json(row["request"]))
+            if row is not None
+            else None
+        )
 
     def stage_metadata_activation_request(
         self,
@@ -999,6 +1020,7 @@ class PlatformGateway:
         run: PlatformRun,
         decision: PolicyDecision | None,
         execution_plan: Artifact | None,
+        activation_authorization: MetadataActivationAuthorization | None = None,
     ) -> PlatformCommand:
         if decision is None or execution_plan is None:
             raise GatewayValidationError(
@@ -1019,6 +1041,23 @@ class PlatformGateway:
             f"{execution_plan.artifact_id}"
         )
         enqueued_at = datetime.now(UTC)
+        payload = {
+            "schema": "gda.dolphinscheduler_dispatch_command.v1",
+            "policy_decision_artifact_id": str(
+                run.policy_refs.policy_decision_artifact_id
+            ),
+        }
+        if activation_authorization is not None:
+            payload.update(
+                {
+                    "metadata_activation_authorization_id": str(
+                        activation_authorization.authorization_id
+                    ),
+                    "metadata_activation_request_id": str(
+                        activation_authorization.request_id
+                    ),
+                }
+            )
         return PlatformCommand(
             tenant_id=run.tenant_id,
             command_id=uuid5(run.run_id, dedupe_key),
@@ -1027,12 +1066,7 @@ class PlatformGateway:
             execution_plan_artifact_id=execution_plan.artifact_id,
             dedupe_key=dedupe_key,
             actor_subject=cls._run_actor(run),
-            payload={
-                "schema": "gda.dolphinscheduler_dispatch_command.v1",
-                "policy_decision_artifact_id": str(
-                    run.policy_refs.policy_decision_artifact_id
-                ),
-            },
+            payload=payload,
             available_at=enqueued_at,
             created_at=enqueued_at,
         )
@@ -1044,6 +1078,17 @@ class PlatformGateway:
             decision, execution_plan = self._validate_run_policy_references(
                 connection, run
             )
+            definition = self._load_definition(
+                connection, run.tenant_id, run.definition_version_id
+            )
+            if (
+                request_dispatch
+                and definition is not None
+                and definition.capability_id == METADATA_PROJECTION_ROUTE
+            ):
+                raise GatewayValidationError(
+                    "Active Metadata dispatch requires activation authorization"
+                )
             actor = self._run_actor(run)
             inserted = connection.execute(
                 text(
@@ -1136,6 +1181,143 @@ class PlatformGateway:
                     self._dispatch_command(stored, decision, execution_plan),
                 )
             return GatewayWriteResult(stored, inserted is not None)
+
+    @staticmethod
+    def _load_metadata_activation_authorization(
+        connection, tenant_id: str, authorization_id: UUID
+    ) -> MetadataActivationAuthorization | None:
+        row = connection.execute(
+            text(
+                """
+                SELECT authorization_document
+                FROM gda_control.metadata_activation_authorization
+                WHERE tenant_id = :tenant_id
+                  AND authorization_id = :authorization_id
+                """
+            ),
+            {"tenant_id": tenant_id, "authorization_id": authorization_id},
+        ).mappings().one_or_none()
+        return (
+            MetadataActivationAuthorization.model_validate(
+                _as_json(row["authorization_document"])
+            )
+            if row is not None
+            else None
+        )
+
+    def get_metadata_activation_authorization(
+        self, tenant_id: str, authorization_id: UUID
+    ) -> MetadataActivationAuthorization:
+        with self._transaction(tenant_id) as connection:
+            authorization = self._load_metadata_activation_authorization(
+                connection, tenant_id, authorization_id
+            )
+            if authorization is None:
+                raise GatewayNotFoundError(
+                    "MetadataActivationAuthorization was not found"
+                )
+            return authorization
+
+    def authorize_metadata_activation(
+        self, authorization: MetadataActivationAuthorization
+    ) -> GatewayWriteResult:
+        """Atomically append exact authorization and its pending dispatch."""
+        with self._transaction(authorization.tenant_id) as connection:
+            request = self._load_metadata_activation_request(
+                connection, authorization.tenant_id, authorization.request_id
+            )
+            version = self._load_resource_version(
+                connection,
+                authorization.tenant_id,
+                authorization.resource_version_id,
+            )
+            definition = self._load_definition(
+                connection,
+                authorization.tenant_id,
+                authorization.definition_version_id,
+            )
+            run = self._load_run(
+                connection, authorization.tenant_id, authorization.run_id
+            )
+            plan = self._load_artifact(
+                connection,
+                authorization.tenant_id,
+                authorization.execution_plan_artifact_id,
+            )
+            policy = self._load_artifact(
+                connection,
+                authorization.tenant_id,
+                authorization.policy_decision_artifact_id,
+            )
+            approval = self._load_artifact(
+                connection,
+                authorization.tenant_id,
+                authorization.approval_artifact_id,
+            )
+            if any(
+                item is None
+                for item in (
+                    request,
+                    version,
+                    definition,
+                    run,
+                    plan,
+                    policy,
+                    approval,
+                )
+            ):
+                raise GatewayValidationError(
+                    "activation authorization evidence was not found"
+                )
+            try:
+                expected = build_metadata_activation_authorization(
+                    request,
+                    version,
+                    definition,
+                    run,
+                    plan,
+                    policy,
+                    approval,
+                    authorized_by=authorization.authorized_by,
+                    authorized_at=authorization.authorized_at,
+                )
+            except MetadataActivationAuthorizationError as exc:
+                raise GatewayValidationError(str(exc)) from exc
+            if expected != authorization:
+                raise GatewayValidationError(
+                    "activation authorization does not match stored evidence"
+                )
+            decision = parse_policy_decision_artifact(policy)
+            command = self._dispatch_command(
+                run,
+                decision,
+                plan,
+                activation_authorization=authorization,
+            )
+            row = connection.execute(
+                text(
+                    """
+                    SELECT * FROM gda_control.authorize_metadata_activation(
+                        :tenant_id, CAST(:authorization AS jsonb)
+                    )
+                    """
+                ),
+                {
+                    "tenant_id": authorization.tenant_id,
+                    "authorization": _json(
+                        authorization.model_dump(mode="json", by_alias=True)
+                    ),
+                },
+            ).mappings().one()
+            stored = MetadataActivationAuthorization.model_validate(
+                _as_json(row["activation_authorization"])
+            )
+            if stored != authorization:
+                raise GatewayConflictError(
+                    "stored activation authorization differs from input"
+                )
+            self._put_command(connection, command)
+            return GatewayWriteResult(stored, bool(row["created"]))
 
     def get_run(self, tenant_id: str, run_id: UUID) -> PlatformRun:
         with self._transaction(tenant_id) as connection:
@@ -2270,6 +2452,7 @@ def build_gateway_report(
     lineage_migration: Path | None = None,
     active_metadata_migration: Path | None = None,
     activation_request_migration: Path | None = None,
+    activation_authorization_migration: Path | None = None,
     gateway_source: Path | None = None,
     routes_source: Path | None = None,
     command_consumer_source: Path | None = None,
@@ -2297,6 +2480,10 @@ def build_gateway_report(
         "activation_request_migration": (
             activation_request_migration
             or ACTIVE_METADATA_ACTIVATION_MIGRATION
+        ).resolve(),
+        "activation_authorization_migration": (
+            activation_authorization_migration
+            or ACTIVE_METADATA_AUTHORIZATION_MIGRATION
         ).resolve(),
         "gateway_source": (gateway_source or Path(__file__)).resolve(),
         "routes_source": (routes_source or GATEWAY_ROUTES_SOURCE).resolve(),
@@ -2397,6 +2584,14 @@ def build_gateway_report(
             "ALTER TABLE gda_control.metadata_activation_request FORCE ROW LEVEL SECURITY",
             "GRANT SELECT, INSERT ON gda_control.metadata_activation_request",
         ),
+        "activation_authorization_migration": (
+            "CREATE TABLE IF NOT EXISTS gda_control.metadata_activation_authorization",
+            "authorize_metadata_activation",
+            "Active Metadata dispatch requires exact authorization",
+            "DEFERRABLE INITIALLY DEFERRED",
+            "FORCE ROW LEVEL SECURITY",
+            "GRANT SELECT ON gda_control.metadata_activation_authorization",
+        ),
         "gateway_source": (
             'SET LOCAL ROLE "{GATEWAY_DATABASE_ROLE}"',
             "SELECT set_config('app.current_tenant', :tenant, true)",
@@ -2419,6 +2614,8 @@ def build_gateway_report(
             "def fail_metadata_change(",
             "def get_metadata_activation_request(",
             "def stage_metadata_activation_request(",
+            "def authorize_metadata_activation(",
+            "def get_metadata_activation_authorization(",
         ),
         "routes_source": (
             'base = "/api/platform/v1"',
@@ -2472,6 +2669,7 @@ def build_gateway_report(
             or forbidden in texts.get("binding_migration", "")
             or forbidden in texts.get("lineage_migration", "")
             or forbidden in texts.get("active_metadata_migration", "")
+            or forbidden in texts.get("activation_authorization_migration", "")
         ):
             errors.append(f"gateway role contains forbidden privilege: {forbidden}")
     consumer_source = texts.get("command_consumer_source", "")
