@@ -12,6 +12,10 @@ def test_static_contract_binds_transactional_event_and_safe_activation_route():
     assert report["activation_route"] == "metadata_fabric.projection_plan"
     assert report["consumer_subject"] == outbox.CONSUMER_SUBJECT
     assert report["production_ready"] is False
+    assert all(
+        not item["path"].startswith("/")
+        for item in report["files"].values()
+    )
 
 
 def test_checked_evidence_is_current_content_bound_and_locally_scoped():

@@ -168,12 +168,15 @@ def build_contract_report() -> dict[str, Any]:
     for name, path in paths.items():
         if not path.is_file():
             errors.append(f"{name} is missing")
-            files[name] = {"path": path.resolve().as_posix(), "sha256": None}
+            files[name] = {
+                "path": path.resolve().relative_to(REPO_ROOT).as_posix(),
+                "sha256": None,
+            }
             continue
         raw = path.read_bytes()
         source = raw.decode("utf-8")
         files[name] = {
-            "path": path.resolve().as_posix(),
+            "path": path.resolve().relative_to(REPO_ROOT).as_posix(),
             "sha256": hashlib.sha256(raw).hexdigest(),
         }
         missing = [marker for marker in required[name] if marker not in source]
