@@ -1,0 +1,68 @@
+{
+  "config": {
+    "horizon": 1,
+    "top_k": 1,
+    "gamma": 0.99,
+    "continuation": "greedy",
+    "scoring": "reward",
+    "mpc_batch_size": 1024,
+    "n_episodes": 1,
+    "threads": 0,
+    "max_steps": 100,
+    "n_blocks": 2640,
+    "n_parcels": 53004,
+    "prepared_dir": "/app/bishan-runs/prepared",
+    "proj_crs": "EPSG:32648",
+    "reward_overrides": {},
+    "cultivated_area_floor_delta_ha": 0.0,
+    "baimu_area_floor_delta_ha": null,
+    "pair_selection_overrides": {
+      "gamma_conn": null,
+      "delta_conn": null
+    }
+  },
+  "ensemble": {
+    "n_members": 3,
+    "paths": [
+      "ensemble_member0.onnx",
+      "ensemble_member1.onnx",
+      "ensemble_member2.onnx"
+    ]
+  },
+  "results": [
+    {
+      "episode": 0,
+      "seed": 0,
+      "slope_change_pct": -0.6077654972924247,
+      "cont_change": 0.020184135977336926,
+      "baimu_count_change": 0,
+      "baimu_area_change_ha": 35.13161927157044,
+      "total_reward": 37.40937856603974,
+      "steps_run": 100,
+      "swaps_completed": 406,
+      "mean_step_time_s": 0.5115316987037659,
+      "total_time_s": 57.81345272064209,
+      "cultivated_area_ha": 48278.9065452229,
+      "cultivated_area_change_ha": 1.935935926192999,
+      "cultivated_area_change_pct": 0.004010060908461798,
+      "cultivated_area_floor_delta_ha": 0.0,
+      "cultivated_area_floor_ha": 48276.9706092967,
+      "baimu_area_floor_delta_ha": null,
+      "baimu_area_floor_ha": null
+    }
+  ],
+  "aggregate": {
+    "slope_pct_mean": -0.6077654972924247,
+    "slope_pct_std": 0.0,
+    "cont_mean": 0.020184135977336926,
+    "baimu_ha_mean": 35.13161927157044
+  },
+  "shapefile_output": {
+    "n_input": 101657,
+    "n_in_env": 53004,
+    "n_farm_to_forest": 406,
+    "n_forest_to_farm": 406,
+    "n_unchanged": 52192,
+    "land_use_code_scheme": "legacy_three_digit_test_data"
+  }
+}

@@ -138,6 +138,68 @@ def test_run_plan_calls_paper9_with_expected_args(tmp_path, monkeypatch):
     assert result["summary"]["steps_run"] == 50
 
 
+def test_county_plan_uses_output_codes_matching_detected_input_scheme(
+    tmp_path, monkeypatch
+):
+    prepared = tmp_path / "prepared"
+    input_dir = prepared / "dem_slope_analysis" / "output"
+    input_dir.mkdir(parents=True)
+    (input_dir / "DLTB_with_slope.shp").write_bytes(b"shp")
+    ensemble = tmp_path / "ensemble"
+    ensemble.mkdir()
+    (ensemble / "ensemble_member0.onnx").write_bytes(b"onnx")
+    calls = {}
+
+    def fake_run(**kwargs):
+        calls.update(kwargs)
+        out_dir = Path(kwargs["out_dir"])
+        summary = {
+            "config": {"n_blocks": 1, "n_parcels": 2, "max_steps": 1},
+            "results": [
+                {
+                    "episode": 0,
+                    "cultivated_area_change_ha": 0.0,
+                    "slope_change_pct": -0.1,
+                    "cont_change": 0.1,
+                    "steps_run": 1,
+                }
+            ],
+        }
+        (out_dir / "mpc_summary.json").write_text(
+            json.dumps(summary), encoding="utf-8"
+        )
+        Path(kwargs["output_fc"]).write_bytes(b"shp")
+        return summary
+
+    svc = WorldModelV21Service(repo_path=tmp_path)
+    monkeypatch.setattr(svc, "_load_paper9_plan_run", lambda: fake_run)
+    monkeypatch.setattr(
+        svc,
+        "_detect_land_use_code_contract",
+        lambda path: {
+            "compatible": True,
+            "scheme": "legacy_three_digit_test_data",
+            "farm_dlbm": "011",
+            "forest_dlbm": "031",
+            "code_counts": {"011": 1, "031": 1},
+        },
+    )
+    monkeypatch.setattr(svc, "_convert_optimized_shp_to_fgb", lambda *args: None)
+
+    result = svc.run_plan(
+        {
+            "prepared_dir": str(prepared),
+            "ensemble_dir": str(ensemble),
+            "env_kind": "county",
+        },
+        user_id="pytest",
+    )
+
+    assert calls["farm_dlbm"] == "011"
+    assert calls["forest_dlbm"] == "031"
+    assert result["land_use_code_contract"]["compatible"] is True
+
+
 def test_run_prepare_calls_paper9_prepare_and_returns_artifacts(tmp_path, monkeypatch):
     dltb = tmp_path / "DLTB.shp"
     dem = tmp_path / "dem.tif"

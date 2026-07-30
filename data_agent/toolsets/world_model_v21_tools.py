@@ -97,6 +97,123 @@ def world_model_v21_status() -> str:
         return _json({"error": str(exc)})
 
 
+def paper9_inspect_resources(
+    dataset: str = "",
+    prepared_dir: str = "",
+    ensemble_dir: str = "",
+) -> str:
+    """Inspect Paper9 version binding and reusable stages before execution.
+
+    Use after world_model_v21_status and before planning. Set dataset to
+    "bishan" or "dongxing" to resolve the corresponding demo paths. This tool
+    never runs training or planning; it returns stages that can be safely
+    reused and any version or artifact gaps that must be repaired first.
+    """
+
+    dataset_key = _dataset_key(dataset)
+    resolved_prepared = _dataset_path(
+        prepared_dir,
+        "PAPER9_FARMLAND_MPC_DEFAULT_PREPARED_DIR",
+        dataset_key,
+        "prepared_dir",
+    )
+    resolved_ensemble = _dataset_path(
+        ensemble_dir,
+        "PAPER9_FARMLAND_MPC_DEFAULT_ENSEMBLE_DIR",
+        dataset_key,
+        "ensemble_dir",
+    )
+    try:
+        return _json(
+            get_world_model_v21_service().inspect_resources(
+                dataset=dataset_key,
+                prepared_dir=resolved_prepared,
+                ensemble_dir=resolved_ensemble,
+            )
+        )
+    except Exception as exc:
+        return _json(
+            {
+                "error": str(exc),
+                "dataset": dataset_key or None,
+                "prepared_dir": resolved_prepared,
+                "ensemble_dir": resolved_ensemble,
+            }
+        )
+
+
+def paper9_audit_run(
+    out_dir: str,
+    attempt: str = "0",
+    cultivated_area_floor_delta_ha: str = "0",
+) -> str:
+    """Audit a Paper9 run with deterministic hard gates after every plan.
+
+    Pass the out_dir returned by world_model_v21_plan or pipeline. The result
+    explicitly selects one branch: commit_verified_episode, replan_once, or
+    stop_and_request_human_review. Never commit or present a run before this
+    tool reports hard_constraint_passed=true.
+    """
+
+    try:
+        result = get_world_model_v21_service().audit_run(
+            out_dir=str(out_dir or "").strip(),
+            attempt=_int_arg(attempt, 0),
+            cultivated_area_floor_delta_ha=(
+                _optional_float_arg(cultivated_area_floor_delta_ha) or 0.0
+            ),
+        )
+        return _json(result)
+    except Exception as exc:
+        return _json({"error": str(exc), "out_dir": out_dir})
+
+
+def paper9_recall_verified_episodes(dataset: str = "", limit: str = "3") -> str:
+    """Recall prior hard-gate-passed Paper9 episodes for the named dataset.
+
+    Use before planning when prior experience may help choose supported search
+    parameters. Returned records are verified evidence, not unreviewed chat
+    history. An empty result is valid and should not block a new plan.
+    """
+
+    try:
+        result = get_world_model_v21_service().recall_verified_episodes(
+            dataset=_dataset_key(dataset),
+            limit=max(0, min(_int_arg(limit, 3), 20)),
+        )
+        return _json(result)
+    except Exception as exc:
+        return _json({"error": str(exc), "dataset": _dataset_key(dataset) or None})
+
+
+def paper9_commit_verified_episode(
+    out_dir: str,
+    dataset: str = "",
+    goal: str = "",
+    plan_args_json: str = "{}",
+) -> str:
+    """Commit an audited successful Paper9 run to verified episodic memory.
+
+    Call only when paper9_audit_run returned next_action=commit_verified_episode.
+    plan_args_json must be a JSON object containing the actual planning search
+    parameters. Failed, unaudited, or incomplete runs are rejected by code.
+    """
+
+    try:
+        plan_args = json.loads(plan_args_json or "{}")
+        if not isinstance(plan_args, dict):
+            raise ValueError("plan_args_json must decode to a JSON object")
+        result = get_world_model_v21_service().commit_verified_episode(
+            out_dir=str(out_dir or "").strip(),
+            dataset=_dataset_key(dataset) or str(dataset or "unknown").strip().lower(),
+            goal=str(goal or "").strip(),
+            plan_args=plan_args,
+        )
+        return _json(result)
+    except Exception as exc:
+        return _json({"error": str(exc), "out_dir": out_dir})
+
+
 def _world_model_v21_plan_sync(
     prepared_dir: str = "",
     ensemble_dir: str = "",
@@ -314,6 +431,10 @@ def _world_model_v21_pipeline_sync(
     n_members: str = "3",
     epochs: str = "30",
     out_subdir: str = "tool3",
+    cultivated_area_floor_delta_ha: str = "0",
+    baimu_area_floor_delta_ha: str = "",
+    gamma_conn: str = "",
+    delta_conn: str = "",
 ) -> str:
     """Run/reuse the full World Model v2.1 A->B->C->D pipeline.
 
@@ -356,6 +477,15 @@ def _world_model_v21_pipeline_sync(
         "n_members": _int_arg(n_members, 3),
         "epochs": _int_arg(epochs, 30),
         "out_subdir": str(out_subdir or "tool3").strip() or "tool3",
+        "cultivated_area_floor_delta_ha": max(
+            _optional_float_arg(cultivated_area_floor_delta_ha) or 0.0,
+            0.0,
+        ),
+        "baimu_area_floor_delta_ha": _optional_float_arg(
+            baimu_area_floor_delta_ha
+        ),
+        "gamma_conn": _optional_float_arg(gamma_conn),
+        "delta_conn": _optional_float_arg(delta_conn),
     }
     try:
         from ..user_context import current_user_id
@@ -534,6 +664,10 @@ async def world_model_v21_pipeline(
     n_members: str = "3",
     epochs: str = "30",
     out_subdir: str = "tool3",
+    cultivated_area_floor_delta_ha: str = "0",
+    baimu_area_floor_delta_ha: str = "",
+    gamma_conn: str = "",
+    delta_conn: str = "",
 ) -> str:
     """Run/reuse Paper9 Tools 1-4 as one long-running ADK tool.
 
@@ -566,6 +700,10 @@ async def world_model_v21_pipeline(
         n_members,
         epochs,
         out_subdir,
+        cultivated_area_floor_delta_ha,
+        baimu_area_floor_delta_ha,
+        gamma_conn,
+        delta_conn,
     )
 
 
@@ -581,7 +719,13 @@ world_model_v21_pipeline.__name__ = "world_model_v21_pipeline"
 world_model_v21_pipeline.__qualname__ = "world_model_v21_pipeline"
 
 
-_SYNC_FUNCS = [world_model_v21_status]
+_SYNC_FUNCS = [
+    world_model_v21_status,
+    paper9_inspect_resources,
+    paper9_recall_verified_episodes,
+    paper9_audit_run,
+    paper9_commit_verified_episode,
+]
 _LONG_RUNNING_FUNCS = [
     world_model_v21_prepare,
     world_model_v21_sample,

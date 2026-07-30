@@ -1730,6 +1730,10 @@ async def _execute_pipeline(
     _final_chart_updates = []   # accumulated chart configs
     _world_model_v21_result = None
     _world_model_v21_args = None
+    _world_model_v21_status = None
+    _paper9_audit_result = None
+    _paper9_commit_result = None
+    _world_model_v21_trace = []
     _drl_optimization_result = None
     _drl_optimization_args = None
     _drl_comparison_map_seen = False
@@ -1757,7 +1761,16 @@ async def _execute_pipeline(
     await progress_msg.send()
 
     try:
-        run_config = RunConfig(max_llm_calls=50) if (DYNAMIC_PLANNER and pipeline_type == "planner") else None
+        _selected_agent_name = getattr(selected_agent, "name", "") or ""
+        if DYNAMIC_PLANNER and pipeline_type == "planner":
+            run_config = RunConfig(max_llm_calls=50)
+        elif (
+            pipeline_type == "sub_agent_direct"
+            and _selected_agent_name == "MentionWorldModelV21"
+        ):
+            run_config = RunConfig(max_llm_calls=12)
+        else:
+            run_config = None
         events = runner.run_async(user_id=user_id, session_id=session_id, new_message=content, run_config=run_config)
 
         # Token accumulation counters
@@ -1935,6 +1948,29 @@ async def _execute_pipeline(
                         except Exception:
                             pass
                         try:
+                            _paper9_trace_tools = {
+                                "world_model_v21_status",
+                                "paper9_inspect_resources",
+                                "paper9_recall_verified_episodes",
+                                "world_model_v21_prepare",
+                                "world_model_v21_sample",
+                                "world_model_v21_train",
+                                "world_model_v21_plan",
+                                "world_model_v21_pipeline",
+                                "paper9_audit_run",
+                                "paper9_commit_verified_episode",
+                            }
+                            if current_tool_name in _paper9_trace_tools:
+                                _trace_duration = None
+                                if _pending_tool_call:
+                                    _trace_duration = (
+                                        time.time() - _pending_tool_call["start_time"]
+                                    )
+                                _world_model_v21_trace.append({
+                                    "tool_name": current_tool_name,
+                                    "duration_s": _trace_duration,
+                                })
+
                             if current_tool_name in {"world_model_v21_plan", "world_model_v21_pipeline"}:
                                 from data_agent.world_model_v21_presentation import parse_world_model_v21_tool_response
 
@@ -1946,6 +1982,20 @@ async def _execute_pipeline(
                                         if _pending_tool_call else {}
                                     )
                                     logger.info("[WorldModelV21Presentation] Captured planning result for deterministic summary")
+                            elif current_tool_name in {
+                                "world_model_v21_status",
+                                "paper9_audit_run",
+                                "paper9_commit_verified_episode",
+                            }:
+                                from data_agent.world_model_v21_presentation import parse_structured_tool_response
+
+                                _parsed_paper9 = parse_structured_tool_response(_resp_val)
+                                if current_tool_name == "world_model_v21_status":
+                                    _world_model_v21_status = _parsed_paper9
+                                elif current_tool_name == "paper9_audit_run":
+                                    _paper9_audit_result = _parsed_paper9
+                                elif current_tool_name == "paper9_commit_verified_episode":
+                                    _paper9_commit_result = _parsed_paper9
                         except Exception as _wm_present_capture_err:
                             logger.debug("WorldModelV21 presentation capture skipped: %s", _wm_present_capture_err)
                         try:
@@ -2364,11 +2414,11 @@ async def _execute_pipeline(
             )
             if _is_nl2sql_direct and full_response_text:
                 from data_agent.nl2sql_presentation import (
-                    build_bridge_building_map_update,
+                    build_nl2sql_map_update,
                     describe_map_update,
                     format_nl2sql_result_for_chat,
                 )
-                _nl2sql_map_update = build_bridge_building_map_update(
+                _nl2sql_map_update = build_nl2sql_map_update(
                     full_response_text,
                     question=full_prompt,
                 )
@@ -2402,10 +2452,19 @@ async def _execute_pipeline(
                 full_response_text = format_world_model_v21_result_for_chat(
                     _world_model_v21_result,
                     tool_args=_world_model_v21_args or {},
+                    status_result=_world_model_v21_status,
+                    audit_result=_paper9_audit_result,
+                    commit_result=_paper9_commit_result,
+                    tool_trace=_world_model_v21_trace,
+                    total_duration_s=total_duration,
                 )
                 progress_msg.content = format_world_model_v21_progress_for_chat(
                     _world_model_v21_result,
                     pipeline_label=pipeline_name,
+                    audit_result=_paper9_audit_result,
+                    commit_result=_paper9_commit_result,
+                    tool_trace=_world_model_v21_trace,
+                    total_duration_s=total_duration,
                 )
                 await progress_msg.update()
         except Exception as _wm_present_err:
@@ -2519,11 +2578,24 @@ async def _execute_pipeline(
             output_path = tool_step.get("output_path")
             if output_path and os.path.exists(output_path) and output_path not in generated_files:
                 generated_files.append(output_path)
-        cl.user_session.set("last_context", {
+        last_context_payload = {
             "pipeline": pipeline_type,
             "files": generated_files,
             "summary": report_text[:800] if report_text else "",
-        })
+        }
+        if _world_model_v21_result:
+            # Preserve the structured evidence needed to rebuild a visual,
+            # run-specific report. Public chat text intentionally omits paths.
+            last_context_payload["world_model_v21_report"] = {
+                "result": _world_model_v21_result,
+                "tool_args": _world_model_v21_args or {},
+                "status_result": _world_model_v21_status or {},
+                "audit_result": _paper9_audit_result or {},
+                "commit_result": _paper9_commit_result or {},
+                "tool_trace": _world_model_v21_trace,
+                "total_duration_s": total_duration,
+            }
+        cl.user_session.set("last_context", last_context_payload)
         cl.user_session.set("tool_execution_log", tool_execution_log)
         cl.user_session.set("last_intent", intent)
 
@@ -4600,61 +4672,78 @@ async def on_export_report(action: cl.Action):
     await msg.send()
     try:
         user_dir = get_user_upload_dir()
+        last_ctx = cl.user_session.get("last_context", {}) or {}
+        world_model_report = last_ctx.get("world_model_v21_report")
 
-        # Enrich report text with recent PNG visualizations for image embedding
-        enriched_text = text
-        try:
-            import glob
-            import time as _time
-            
-            # Prefer PNGs that were explicitly generated in this session's context
-            last_ctx = cl.user_session.get("last_context", {})
-            session_files = last_ctx.get("files", [])
-            recent_pngs = [f for f in session_files if f.lower().endswith(".png") and os.path.exists(f)]
-            
-            # Fallback to scanning the directory for very recent PNGs (last 5 mins)
-            if not recent_pngs:
-                recent_pngs = sorted(
-                    glob.glob(os.path.join(user_dir, "*.png")),
-                    key=os.path.getmtime, reverse=True
+        if isinstance(world_model_report, dict) and world_model_report.get("result"):
+            from data_agent.world_model_v21_report import (
+                generate_world_model_v21_pdf_report,
+                generate_world_model_v21_word_report,
+            )
+
+            if fmt == "pdf":
+                output_path = os.path.join(user_dir, "County_Farmland_Planning_Report.pdf")
+                result_path = generate_world_model_v21_pdf_report(
+                    world_model_report, output_path, author=author
                 )
-                cutoff = _time.time() - 300
-                recent_pngs = [p for p in recent_pngs if os.path.getmtime(p) > cutoff]
+            else:
+                output_path = os.path.join(user_dir, "County_Farmland_Planning_Report.docx")
+                result_path = generate_world_model_v21_word_report(
+                    world_model_report, output_path, author=author
+                )
+        else:
+            # Enrich general reports with session PNG visualizations when available.
+            enriched_text = text
+            try:
+                import glob
+                import time as _time
 
-            if recent_pngs:
-                # Deduplicate and normalize paths
+                session_files = last_ctx.get("files", [])
+                recent_pngs = [
+                    f for f in session_files
+                    if f.lower().endswith(".png") and os.path.exists(f)
+                ]
+                if not recent_pngs:
+                    recent_pngs = sorted(
+                        glob.glob(os.path.join(user_dir, "*.png")),
+                        key=os.path.getmtime,
+                        reverse=True,
+                    )
+                    cutoff = _time.time() - 300
+                    recent_pngs = [
+                        path for path in recent_pngs
+                        if os.path.getmtime(path) > cutoff
+                    ]
+
                 unique_pngs = []
-                for p in recent_pngs:
-                    norm_p = os.path.abspath(p)
-                    if norm_p not in unique_pngs:
-                        unique_pngs.append(norm_p)
-                
-                # Only append if not already prominently featured in the text
+                for path in recent_pngs:
+                    normalized = os.path.abspath(path)
+                    if normalized not in unique_pngs:
+                        unique_pngs.append(normalized)
                 images_to_add = []
-                for p in unique_pngs:
-                    p_unix = p.replace("\\", "/")
-                    p_win = p.replace("/", "\\")
-                    if p_unix not in text and p_win not in text:
-                        images_to_add.append(p)
-                
+                for path in unique_pngs:
+                    if path.replace("\\", "/") not in text and path.replace("/", "\\") not in text:
+                        images_to_add.append(path)
                 if images_to_add:
                     enriched_text += "\n\n## 分析可视化成果\n\n"
-                    for png_path in images_to_add[:4]:  # max 4 images
+                    for png_path in images_to_add[:4]:
                         enriched_text += f"{png_path}\n\n"
-        except Exception as _enrich_err:
-            logger.warning("Report enrichment failed: %s", _enrich_err)
-        if fmt == "pdf":
-            from data_agent.report_generator import generate_pdf_report
-            output_path = os.path.join(user_dir, "Analysis_Report.pdf")
-            result_path = generate_pdf_report(
-                enriched_text, output_path, author=author, pipeline_type=pipeline_type
-            )
-        else:
-            output_path = os.path.join(user_dir, "Analysis_Report.docx")
-            generate_word_report(
-                enriched_text, output_path, author=author, pipeline_type=pipeline_type
-            )
-            result_path = output_path
+            except Exception as _enrich_err:
+                logger.warning("Report enrichment failed: %s", _enrich_err)
+
+            if fmt == "pdf":
+                from data_agent.report_generator import generate_pdf_report
+
+                output_path = os.path.join(user_dir, "Analysis_Report.pdf")
+                result_path = generate_pdf_report(
+                    enriched_text, output_path, author=author, pipeline_type=pipeline_type
+                )
+            else:
+                output_path = os.path.join(user_dir, "Analysis_Report.docx")
+                generate_word_report(
+                    enriched_text, output_path, author=author, pipeline_type=pipeline_type
+                )
+                result_path = output_path
 
         sync_to_obs(result_path)
         filename = os.path.basename(result_path)

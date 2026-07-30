@@ -143,9 +143,10 @@ class TestClassifyIntentToolCats(unittest.TestCase):
         mock_client.models.generate_content.return_value = mock_resp
 
         from data_agent.app import classify_intent
-        intent, reason, tokens, cats, lang = classify_intent("创建缓冲区")
+        intent, reason, tokens, cats, lang, execution_mode = classify_intent("创建缓冲区")
         self.assertEqual(intent, "GENERAL")
         self.assertEqual(cats, {"spatial_processing"})
+        self.assertEqual(execution_mode, "agentic")
 
     @patch("data_agent.intent_router._router_client")
     def test_multiple_tools(self, mock_client):
@@ -157,9 +158,12 @@ class TestClassifyIntentToolCats(unittest.TestCase):
         mock_client.models.generate_content.return_value = mock_resp
 
         from data_agent.app import classify_intent
-        intent, reason, tokens, cats, lang = classify_intent("搜索POI并生成热力图")
+        intent, reason, tokens, cats, lang, execution_mode = classify_intent(
+            "搜索POI并生成热力图"
+        )
         self.assertEqual(intent, "GENERAL")
         self.assertEqual(cats, {"poi_location", "spatial_processing"})
+        self.assertEqual(execution_mode, "agentic")
 
     @patch("data_agent.intent_router._router_client")
     def test_tools_all_returns_empty(self, mock_client):
@@ -171,9 +175,10 @@ class TestClassifyIntentToolCats(unittest.TestCase):
         mock_client.models.generate_content.return_value = mock_resp
 
         from data_agent.app import classify_intent
-        intent, reason, tokens, cats, lang = classify_intent("你好")
+        intent, reason, tokens, cats, lang, execution_mode = classify_intent("你好")
         self.assertEqual(intent, "AMBIGUOUS")
         self.assertEqual(cats, set())
+        self.assertEqual(execution_mode, "agentic")
 
     @patch("data_agent.intent_router._router_client")
     def test_no_tools_field_returns_empty(self, mock_client):
@@ -185,19 +190,21 @@ class TestClassifyIntentToolCats(unittest.TestCase):
         mock_client.models.generate_content.return_value = mock_resp
 
         from data_agent.app import classify_intent
-        intent, reason, tokens, cats, lang = classify_intent("查看地图")
+        intent, reason, tokens, cats, lang, execution_mode = classify_intent("查看地图")
         self.assertEqual(intent, "GENERAL")
         self.assertEqual(cats, set())
+        self.assertEqual(execution_mode, "agentic")
 
     @patch("data_agent.intent_router._router_client")
     def test_error_returns_empty_cats(self, mock_client):
-        """API error returns 4-tuple with empty set."""
+        """API error returns the six-field fallback with empty categories."""
         mock_client.models.generate_content.side_effect = Exception("API down")
 
         from data_agent.app import classify_intent
-        intent, reason, tokens, cats, lang = classify_intent("test")
+        intent, reason, tokens, cats, lang, execution_mode = classify_intent("test")
         self.assertEqual(intent, "GENERAL")
         self.assertEqual(cats, set())
+        self.assertEqual(execution_mode, "agentic")
 
     @patch("data_agent.intent_router._router_client")
     def test_governance_with_tools(self, mock_client):
@@ -209,9 +216,10 @@ class TestClassifyIntentToolCats(unittest.TestCase):
         mock_client.models.generate_content.return_value = mock_resp
 
         from data_agent.app import classify_intent
-        intent, reason, tokens, cats, lang = classify_intent("检查拓扑")
+        intent, reason, tokens, cats, lang, execution_mode = classify_intent("检查拓扑")
         self.assertEqual(intent, "GOVERNANCE")
         self.assertEqual(cats, {"quality_audit"})
+        self.assertEqual(execution_mode, "agentic")
 
 
 if __name__ == "__main__":

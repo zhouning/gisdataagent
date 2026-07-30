@@ -1,0 +1,269 @@
+{
+  "generated_at": "2026-07-30T02:50:18.812579+00:00",
+  "nl2sql": {
+    "passed": true,
+    "reference_passed": true,
+    "reference_sql": "WITH longest_bridge AS (\n  SELECT geometry\n  FROM cq_osm_roads_2021\n  WHERE bridge = 'T'\n  ORDER BY ST_Length(geometry::geography) DESC\n  LIMIT 1\n)\nSELECT COUNT(DISTINCT p.\"ID\") AS poi_count\nFROM cq_amap_poi_2024 AS p\nCROSS JOIN longest_bridge AS lb\nWHERE ST_DWithin(p.geometry::geography, lb.geometry::geography, 100)",
+    "reference_value": 35,
+    "repeats": 3,
+    "runs": [
+      {
+        "checks": {
+          "single_result_is_35": true,
+          "status_ok": true,
+          "uses_100_meters": true,
+          "uses_expected_tables": true,
+          "uses_geography": true,
+          "uses_st_dwithin": true
+        },
+        "corrections": [
+          "semantic_column_alias"
+        ],
+        "error": null,
+        "latency_s": 14.414,
+        "passed": true,
+        "run": 1,
+        "sql": "WITH longest_bridge AS (SELECT geometry FROM cq_osm_roads_2021 WHERE bridge = 'T' ORDER BY ST_LENGTH(CAST(geometry AS GEOGRAPHY)) DESC LIMIT 1) SELECT COUNT(DISTINCT p.\"ID\") FROM cq_amap_poi_2024 AS p, longest_bridge AS lb WHERE ST_DWITHIN(CAST(p.geometry AS GEOGRAPHY), CAST(lb.geometry AS GEOGRAPHY), 100)",
+        "status": "ok",
+        "value": 35
+      },
+      {
+        "checks": {
+          "single_result_is_35": true,
+          "status_ok": true,
+          "uses_100_meters": true,
+          "uses_expected_tables": true,
+          "uses_geography": true,
+          "uses_st_dwithin": true
+        },
+        "corrections": [
+          "semantic_column_alias"
+        ],
+        "error": null,
+        "latency_s": 6.761,
+        "passed": true,
+        "run": 2,
+        "sql": "WITH longest_bridge AS (SELECT geometry FROM cq_osm_roads_2021 WHERE bridge = 'T' ORDER BY ST_LENGTH(CAST(geometry AS GEOGRAPHY)) DESC LIMIT 1) SELECT COUNT(DISTINCT p.\"ID\") FROM cq_amap_poi_2024 AS p, longest_bridge AS lb WHERE ST_DWITHIN(CAST(p.geometry AS GEOGRAPHY), CAST(lb.geometry AS GEOGRAPHY), 100)",
+        "status": "ok",
+        "value": 35
+      },
+      {
+        "checks": {
+          "single_result_is_35": true,
+          "status_ok": true,
+          "uses_100_meters": true,
+          "uses_expected_tables": true,
+          "uses_geography": true,
+          "uses_st_dwithin": true
+        },
+        "corrections": [
+          "semantic_column_alias"
+        ],
+        "error": null,
+        "latency_s": 6.884,
+        "passed": true,
+        "run": 3,
+        "sql": "WITH longest_bridge AS (SELECT geometry FROM cq_osm_roads_2021 WHERE bridge = 'T' ORDER BY ST_LENGTH(CAST(geometry AS GEOGRAPHY)) DESC LIMIT 1) SELECT COUNT(DISTINCT p.\"ID\") FROM cq_amap_poi_2024 AS p, longest_bridge AS lb WHERE ST_DWITHIN(CAST(p.geometry AS GEOGRAPHY), CAST(lb.geometry AS GEOGRAPHY), 100)",
+        "status": "ok",
+        "value": 35
+      }
+    ],
+    "ui_prompt": "@NL2SQL 统计距离道路网络中最长桥梁100米范围内的高德POI数量。"
+  },
+  "paper9_live_agent": {
+    "checks": {
+      "all_outputs_exist": true,
+      "contiguity_improved": true,
+      "cultivated_area_not_reduced": true,
+      "exact_six_tool_trace": true,
+      "final_summary_loaded": true,
+      "hard_gate_passed": true,
+      "optimized_spatial_artifact": true,
+      "pipeline_ok": true,
+      "slope_reduced": true,
+      "tool4_plan_ok": true,
+      "verified_memory_committed": true
+    },
+    "error": null,
+    "expected_trace": [
+      "world_model_v21_status",
+      "paper9_inspect_resources",
+      "paper9_recall_verified_episodes",
+      "world_model_v21_pipeline",
+      "paper9_audit_run",
+      "paper9_commit_verified_episode"
+    ],
+    "final_text": "本次任务成功完成了 bishan 数据集的快速县域 MPC 规划。\n\n**任务总结：**\n- **package_version**: 0.3.3\n- **algorithm_version**: 2.2.3\n- **mode**: pipeline (A $\\to$ D, reuse_existing=true)\n- **env_kind**: county\n- **steps_run**: 100 (MPC 前瞻步长 horizon=1)\n- **n_blocks**: 2640\n- **n_selected**: N/A\n- **total_reward**: 37.409\n- **硬约束审计**: 通过 (hard_constraint_passed=true)，耕地面积增加约 1.94 ha，符合不减少约束。\n- **经验提交状态**: 已成功提交至已验证经验库 (committed)。\n- **artifacts**: 包含优化后的矢量数据 (`optimized_dltb.shp`) 及可视化图层。\n\n**地图说明：**\n右侧地图展示了耕地空间布局的优化变化（基于 CHG_FLAG 图层）：\n- **灰色**: 保持不变\n- **红色**: 耕地 $\\to$ 林地\n- **绿色**: 林地 $\\to$ 耕地\n\n**工具调用轨迹：**\n1. `world_model_v21_status`: 检查系统版本与可用性。\n2. `paper9_inspect_resources`: 检查 bishan 数据集资源及可用阶段。\n3. `paper9_recall_verified_episodes`: 检索历史经验（返回为空）。\n4. `world_model_v21_pipeline`: 执行全链路规划（复用已存在的 prepare/sample/train 阶段，仅运行 plan）。\n5. `paper9_audit_run`: 对规划结果进行硬约束审计。\n6. `paper9_commit_verified_episode`: 将通过审计的实验结果存入经验库。",
+    "latency_s": 112.94,
+    "metrics": {
+      "baimu_area_change_ha": 35.13161927157044,
+      "cont_change": 0.020184135977336926,
+      "cultivated_area_change_ha": 1.935935926192999,
+      "episode_id": "903da9b3e041fd16e042",
+      "land_use_code_scheme": "legacy_three_digit_test_data",
+      "n_farm_to_forest": 406,
+      "n_forest_to_farm": 406,
+      "n_in_env": 53004,
+      "n_input": 101657,
+      "out_dir": "/app/data_agent/uploads/agent_world_model_v21/world_model_v21/20260730_104830_359700",
+      "slope_change_pct": -0.6077654972924247,
+      "steps_run": 100,
+      "summary_error": null,
+      "swaps_completed": 406
+    },
+    "passed": true,
+    "session_id": "finals-demo-5589cfa734",
+    "trace": [
+      "world_model_v21_status",
+      "paper9_inspect_resources",
+      "paper9_recall_verified_episodes",
+      "world_model_v21_pipeline",
+      "paper9_audit_run",
+      "paper9_commit_verified_episode"
+    ],
+    "ui_prompt": "@WorldModelV21 请使用 bishan 数据集运行一次快速县域 MPC 规划，完成硬约束审计，并仅在通过后保存已验证经验。"
+  },
+  "paper9_preflight": {
+    "checks": {
+      "algorithm_2_2_3": true,
+      "package_0_3_3": true,
+      "planning_ready": true,
+      "status_ready": true,
+      "three_onnx_members": true,
+      "version_compatible": true
+    },
+    "inspect": {
+      "dataset": "bishan",
+      "finals": {
+        "expected_algorithm_version": "2.2.3",
+        "expected_package_version": "0.3.3",
+        "ready": true,
+        "version_compatible": true
+      },
+      "land_use_code_contract": {
+        "code_counts": {
+          "011": 14021,
+          "012": 45,
+          "013": 25496,
+          "021": 3428,
+          "022": 175,
+          "023": 542,
+          "031": 13004,
+          "032": 115,
+          "033": 405,
+          "043": 222,
+          "101": 161,
+          "102": 1066,
+          "104": 21,
+          "111": 340,
+          "112": 11,
+          "113": 132,
+          "114": 5072,
+          "118": 103,
+          "122": 407,
+          "127": 221,
+          "202": 2744,
+          "203": 33500,
+          "204": 374,
+          "205": 52
+        },
+        "compatible": true,
+        "farm_dlbm": "011",
+        "forest_dlbm": "031",
+        "scheme": "legacy_three_digit_test_data"
+      },
+      "paper9": {
+        "algorithm_name": "paper9v2",
+        "algorithm_version": "2.2.3",
+        "commit": null,
+        "commit_date": null,
+        "error": null,
+        "importable": true,
+        "module_path": "/app/paper9-demo/src/farmland_mpc/__init__.py",
+        "package_version": "0.3.3",
+        "remote": null,
+        "repo_exists": true,
+        "repo_path": "/app/paper9-demo",
+        "source_matches_repo": true
+      },
+      "planning_ready": true,
+      "recommended_next_action": "run_plan",
+      "required_stages": [],
+      "reusable_stages": [
+        "prepare",
+        "sample",
+        "train"
+      ],
+      "stages": {
+        "prepare": {
+          "path": "/app/bishan-runs/prepared",
+          "ready": true
+        },
+        "sample": {
+          "path": "/app/bishan-runs/prepared/tool2",
+          "ready": true
+        },
+        "train": {
+          "onnx_member_count": 3,
+          "path": "/app/bishan-runs/prepared/ensemble_seed0",
+          "ready": true
+        }
+      },
+      "status": "ready",
+      "version": "2.1.0"
+    },
+    "passed": true,
+    "status": {
+      "capabilities": {
+        "baimu_area_floor": true,
+        "bounded_replan": true,
+        "county_env": true,
+        "cultivated_area_floor": true,
+        "hard_gate_audit": true,
+        "onnx_inference": true,
+        "pipeline_a_to_d": true,
+        "prepare_sample_train": true,
+        "restoration_env": true,
+        "tool1_prepare": true,
+        "tool2_sample": true,
+        "tool3_train": true,
+        "tool4_plan": true,
+        "verified_episode_memory": true
+      },
+      "defaults": {
+        "ensemble_dir": "/app/bishan-runs/prepared/ensemble_seed0",
+        "out_dir_policy": "per-user timestamped uploads directory",
+        "prepared_dir": "/app/bishan-runs/prepared"
+      },
+      "finals": {
+        "expected_algorithm_version": "2.2.3",
+        "expected_package_version": "0.3.3",
+        "ready": true,
+        "version_compatible": true
+      },
+      "onnx_member_count": 3,
+      "paper9": {
+        "algorithm_name": "paper9v2",
+        "algorithm_version": "2.2.3",
+        "commit": null,
+        "commit_date": null,
+        "error": null,
+        "importable": true,
+        "module_path": "/app/paper9-demo/src/farmland_mpc/__init__.py",
+        "package_version": "0.3.3",
+        "remote": null,
+        "repo_exists": true,
+        "repo_path": "/app/paper9-demo",
+        "source_matches_repo": true
+      },
+      "runtime": {
+        "proj_data_dir": "/app/.venv/lib/python3.12/site-packages/pyproj/proj_dir/share/proj"
+      },
+      "status": "ready",
+      "version": "2.1.0"
+    }
+  },
+  "passed": true,
+  "schema_version": "gemma4.finals_demo_verification.v1",
+  "scope": "exact_production_prompts_against_running_data_and_tools"
+}

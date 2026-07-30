@@ -2416,6 +2416,67 @@ def test_semantic_rewrite_cq_hard_14_dwithin_uses_geography_and_floor_quote():
     assert "semantic_column_alias" in corrections
 
 
+def test_semantic_rewrite_keeps_longest_bridge_cte_on_roads_table():
+    from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
+
+    context = {
+        "candidate_tables": [
+            {
+                "table_name": "cq_amap_poi_2024",
+                "table_aliases": ["高德POI", "POI", "兴趣点"],
+                "schema_complete": True,
+                "columns": [
+                    {"column_name": "ID", "quoted_ref": '"ID"', "needs_quoting": True},
+                    {"column_name": "名称", "quoted_ref": '"名称"', "needs_quoting": True},
+                    {"column_name": "geometry", "is_geometry": True},
+                ],
+            },
+            {
+                "table_name": "cq_osm_roads_2021",
+                "table_aliases": ["路网", "道路网 2021"],
+                "schema_complete": True,
+                "columns": [
+                    {"column_name": "name"},
+                    {"column_name": "fclass"},
+                    {"column_name": "bridge"},
+                    {"column_name": "geometry", "is_geometry": True},
+                ],
+            },
+            {
+                "table_name": "cq_osm_roads",
+                "table_aliases": ["路网", "道路数据"],
+                "schema_complete": True,
+                "columns": [
+                    {"column_name": "name"},
+                    {"column_name": "fclass"},
+                    {"column_name": "bridge"},
+                    {"column_name": "geometry", "is_geometry": True},
+                ],
+            },
+        ]
+    }
+    sql = (
+        "WITH longest_bridge AS ("
+        "SELECT geometry FROM cq_osm_roads_2021 WHERE bridge = 'T' "
+        "ORDER BY ST_Length(geometry::geography) DESC LIMIT 1"
+        ") "
+        'SELECT COUNT(DISTINCT p."ID") FROM cq_amap_poi_2024 AS p, '
+        "longest_bridge AS lb WHERE "
+        "ST_DWithin(p.geometry::geography, lb.geometry::geography, 100)"
+    )
+
+    rewritten, corrections = apply_semantic_sql_rewrites(
+        "统计距离道路网络中最长桥梁100米范围内的高德POI数量。",
+        sql,
+        context,
+    )
+
+    assert "FROM cq_osm_roads_2021" in rewritten
+    assert "FROM cq_amap_poi_2024 WHERE bridge" not in rewritten
+    assert rewritten != "SELECT 1"
+    assert "semantic_unknown_column_refusal" not in corrections
+
+
 def test_semantic_rewrite_cq_hard_25_grouped_road_length_uses_geography_km():
     from data_agent.nl2sql_semantic_rewrite import apply_semantic_sql_rewrites
 
