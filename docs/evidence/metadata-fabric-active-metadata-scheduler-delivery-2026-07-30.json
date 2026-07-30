@@ -1,0 +1,140 @@
+{
+  "attempt_observation_count": 2,
+  "attempt_states": [
+    "submitted",
+    "success"
+  ],
+  "authorization_created": true,
+  "authorization_id": "9d9e985b-b698-5aa3-b3c2-ce9f65c85310",
+  "authorization_sha256": "4fca1b84ee1fd9056054e91ef25123c80cae08b959ef4c39b276058a788acda8",
+  "command_claimed_count": 1,
+  "command_completed_count": 1,
+  "command_id": "6db53d29-a37e-5f4a-b222-5df5ab837e58",
+  "command_status": "done",
+  "compiled_workflow_sha256": "66ce899d55caaa668da20a7b189fb7b64992c2e04a38d74c60a39e549b8792bd",
+  "contract_sha256": "dcf97c8fa002e9fe6b6bc3a7603ee2ebd5ddb053544801ce35143a095e648edb",
+  "correlation_variables": {
+    "gda_definition_sha256": "96d77bb34e1cfbb802fa6b34782e39ed5b1a2256ee543c3ce81052833334a37c",
+    "gda_definition_urn": "gda://metadata-authorization-local/definition/metadata-projection-delivery",
+    "gda_definition_version_id": "a7000000-0000-4000-8000-000000000002",
+    "gda_idempotency_key": "metadata-projection:cultural-districts:scheduler-delivery:v1",
+    "gda_run_id": "a7000000-0000-4000-8000-000000000003",
+    "gda_tenant_id": "metadata-authorization-local"
+  },
+  "dataset_absolute_path_committed": false,
+  "dataset_bundle": {
+    "components": [
+      {
+        "component": ".cpg",
+        "sha256": "3ad3031f5503a4404af825262ee8232cc04d4ea6683d42c5dd0a2f2a27ac9824",
+        "size_bytes": 5
+      },
+      {
+        "component": ".dbf",
+        "sha256": "ee7c6c4c6957aea296b69d62118d416e5ee989aa77f7b98cf0fe580874ce5127",
+        "size_bytes": 44990
+      },
+      {
+        "component": ".prj",
+        "sha256": "b10dbe4d6d1de908d340f892c90b3d31a552630af3742bb515bfe1bd26124f2c",
+        "size_bytes": 176
+      },
+      {
+        "component": ".sbn",
+        "sha256": "7d0279465b18beec40308717e0ef0ea5701a586bc5c84e6a9aa309d5bc0ec99a",
+        "size_bytes": 308
+      },
+      {
+        "component": ".sbx",
+        "sha256": "019156149b2c7771ec0dd249c757dd7aa01a98075e246a77f77b080860c57333",
+        "size_bytes": 124
+      },
+      {
+        "component": ".shp",
+        "sha256": "6ac0d5c8c8db66fc0e2a74d8232b7779bd2454257df14efa2930e3dbc181aed0",
+        "size_bytes": 283640
+      },
+      {
+        "component": ".shp.xml",
+        "sha256": "8ef222ce1952552b366acf14a996e1c8cbdbe3eed0bb829dacfe7eafd068d948",
+        "size_bytes": 43100
+      },
+      {
+        "component": ".shx",
+        "sha256": "f3fbb6a7775ca833c066e3a3f2a332f99f979840045909ae187d08dac126a119",
+        "size_bytes": 260
+      }
+    ],
+    "content_sha256": "fd474fd65c8e4a71da241eb3fd07748ca3b972fbd2d3c32833376dbe71104007",
+    "format": "ESRI Shapefile",
+    "schema": "gda.spatial_dataset_bundle.v1",
+    "source_label": "chongqing-central-cultural-districts",
+    "spatial_inventory": {
+      "bounds": [
+        106.37987914500007,
+        29.558008447000077,
+        106.59532712300008,
+        29.877271985000025
+      ],
+      "crs": {
+        "authority": "EPSG",
+        "code": 4490,
+        "name": "China Geodetic Coordinate System 2000"
+      },
+      "driver": "ESRI Shapefile",
+      "feature_count": 20,
+      "field_count": 33,
+      "geometry_type": "PolygonZ"
+    }
+  },
+  "dataset_required_in_ci": false,
+  "dataset_source_committed": false,
+  "definition_sha256": "96d77bb34e1cfbb802fa6b34782e39ed5b1a2256ee543c3ce81052833334a37c",
+  "definition_version_id": "a7000000-0000-4000-8000-000000000002",
+  "dependency_evidence_sha256": "6ae387240e3bcebaafe2ad7acc73f4e09d53df2e73b2ec63cd92edbc262d831e",
+  "deployment_applied": false,
+  "errors": [],
+  "evidence_sha256": "00d4ea062c40f8d97557eadc357a36c6d1ccd56e12a94a44694113681e5d55f4",
+  "exact_authorization_replay_created": false,
+  "exact_correlation_variable_readback_verified": true,
+  "execution_plan_artifact_id": "88a4dbdc-19b8-5155-b67b-7f337506e026",
+  "execution_plan_sha256": "8f111f84cac5b4146586107f289f1c45162941c928bd6a13b81b9ff9c6c0f65c",
+  "external_correlation_count": 1,
+  "local_scheduler_submission_readback_verified": true,
+  "matching_provider_instance_count": 1,
+  "no_side_effect_workflow_verified": true,
+  "platform_run_status": "reconciling",
+  "platform_run_succeeded": false,
+  "production_ingestion_verified": false,
+  "production_ready": false,
+  "production_scheduler_submission_verified": false,
+  "production_workload_identity_verified": false,
+  "provider": {
+    "api_profile": "3.4",
+    "architecture": "arm64",
+    "image": "apache/dolphinscheduler-standalone-server:3.4.2",
+    "image_id": "sha256:485a1b37dd1c4088c8c8335f9fccbd229e5e703c32e21f318eb00cbb60b1af9d",
+    "name": "apache-dolphinscheduler",
+    "project_code": 180200967129920,
+    "server_version": "3.4.2",
+    "terminal_state": "SUCCESS",
+    "workflow_definition_code": 180200967308096,
+    "workflow_definition_version": 1,
+    "workflow_instance_id": 1
+  },
+  "provider_apply_authorized": false,
+  "provider_mutations_executed": false,
+  "provider_success_readback_verified": true,
+  "provider_workflow_definition_created": true,
+  "provider_workflow_instance_executed": true,
+  "real_dataset_resource_version_bound": true,
+  "resource_version_content_sha256": "fd474fd65c8e4a71da241eb3fd07748ca3b972fbd2d3c32833376dbe71104007",
+  "resource_version_id": "a6000000-0000-4000-8000-000000000001",
+  "run_id": "a7000000-0000-4000-8000-000000000003",
+  "schema": "gda.active_metadata_scheduler_delivery_evidence.v1",
+  "standalone_container_cleanup_verified": true,
+  "status": "local_real_data_authorized_scheduler_delivery_verified",
+  "submitted_observation_count": 1,
+  "success_observation_count": 1,
+  "temporary_database_cleanup_verified": true
+}
