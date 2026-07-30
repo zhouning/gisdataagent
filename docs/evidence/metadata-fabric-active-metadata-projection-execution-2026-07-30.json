@@ -1,0 +1,285 @@
+{
+  "attempt_observation_count": 2,
+  "attempt_states": [
+    "submitted",
+    "success"
+  ],
+  "binding_persisted_to_gda_control": false,
+  "callback_server_cleanup_verified": true,
+  "command_claimed_count": 1,
+  "command_completed_count": 1,
+  "command_id": "0f99a36f-b1f8-5a2b-8d19-178058075ae2",
+  "command_status": "done",
+  "compiled_workflow_sha256": "53fa7450ac7cb020d8e842d80d090cfb7c6ee0892b8a9038ccddcc27a74efe42",
+  "contract_sha256": "a6632ae0edd4d4f3389129a8c07411a8d101ae56fbfc26b03fb0aff6928bb7bd",
+  "correlation_variables": {
+    "gda_definition_sha256": "3b2318d538d33f97b20fd500b3ec36adb57b19f654ac21d2ab03f9fd16434ac5",
+    "gda_definition_urn": "gda://metadata-authorization-local/definition/metadata-projection-execution",
+    "gda_definition_version_id": "a8000000-0000-4000-8000-000000000002",
+    "gda_idempotency_key": "metadata-projection:cultural-districts:execution:v1",
+    "gda_run_id": "a8000000-0000-4000-8000-000000000003",
+    "gda_tenant_id": "metadata-authorization-local"
+  },
+  "dataset_absolute_path_committed": false,
+  "dataset_bundle": {
+    "components": [
+      {
+        "component": ".cpg",
+        "sha256": "3ad3031f5503a4404af825262ee8232cc04d4ea6683d42c5dd0a2f2a27ac9824",
+        "size_bytes": 5
+      },
+      {
+        "component": ".dbf",
+        "sha256": "ee7c6c4c6957aea296b69d62118d416e5ee989aa77f7b98cf0fe580874ce5127",
+        "size_bytes": 44990
+      },
+      {
+        "component": ".prj",
+        "sha256": "b10dbe4d6d1de908d340f892c90b3d31a552630af3742bb515bfe1bd26124f2c",
+        "size_bytes": 176
+      },
+      {
+        "component": ".sbn",
+        "sha256": "7d0279465b18beec40308717e0ef0ea5701a586bc5c84e6a9aa309d5bc0ec99a",
+        "size_bytes": 308
+      },
+      {
+        "component": ".sbx",
+        "sha256": "019156149b2c7771ec0dd249c757dd7aa01a98075e246a77f77b080860c57333",
+        "size_bytes": 124
+      },
+      {
+        "component": ".shp",
+        "sha256": "6ac0d5c8c8db66fc0e2a74d8232b7779bd2454257df14efa2930e3dbc181aed0",
+        "size_bytes": 283640
+      },
+      {
+        "component": ".shp.xml",
+        "sha256": "8ef222ce1952552b366acf14a996e1c8cbdbe3eed0bb829dacfe7eafd068d948",
+        "size_bytes": 43100
+      },
+      {
+        "component": ".shx",
+        "sha256": "f3fbb6a7775ca833c066e3a3f2a332f99f979840045909ae187d08dac126a119",
+        "size_bytes": 260
+      }
+    ],
+    "content_sha256": "fd474fd65c8e4a71da241eb3fd07748ca3b972fbd2d3c32833376dbe71104007",
+    "format": "ESRI Shapefile",
+    "schema": "gda.spatial_dataset_bundle.v1",
+    "source_label": "chongqing-central-cultural-districts",
+    "spatial_inventory": {
+      "bounds": [
+        106.37987914500007,
+        29.558008447000077,
+        106.59532712300008,
+        29.877271985000025
+      ],
+      "crs": {
+        "authority": "EPSG",
+        "code": 4490,
+        "name": "China Geodetic Coordinate System 2000"
+      },
+      "driver": "ESRI Shapefile",
+      "feature_count": 20,
+      "field_count": 33,
+      "geometry_type": "PolygonZ"
+    }
+  },
+  "dataset_required_in_ci": false,
+  "dataset_source_committed": false,
+  "definition_sha256": "3b2318d538d33f97b20fd500b3ec36adb57b19f654ac21d2ab03f9fd16434ac5",
+  "definition_version_id": "a8000000-0000-4000-8000-000000000002",
+  "deployment_applied": false,
+  "deterministic_live_replay_verified": true,
+  "dispatch_authorization_created": true,
+  "dispatch_authorization_id": "3d0a25e5-24ee-5304-a202-587065f1b67d",
+  "dispatch_authorization_sha256": "648cf42d2272c64c1720f2e5a203ef0219126e8b24dee47acad3dcee1f5fcdc0",
+  "dispatch_execution_plan_artifact_id": "ff320c6f-54ea-5906-9358-96676a962e6e",
+  "errors": [],
+  "evidence_sha256": "397c0f1a29f53935c5508155470c4972cfc50260f0d0686fb48cb3f75519b17b",
+  "exact_correlation_variable_readback_verified": true,
+  "exact_dispatch_authorization_replay_created": false,
+  "execution_callback_exact_request_verified": true,
+  "execution_callback_request_count": 1,
+  "execution_request_sha256": "462d738064fb2352acee3b72b1b966bc5ce4f524904bc991b87c8c56d1f2f8ae",
+  "external_correlation_count": 1,
+  "first_apply": {
+    "binding_candidate_sha256": "7de24cee9dd50dfeefcc886cf43024f4d92b7650767d71d064fdce19ffccb16b",
+    "gravitino": {
+      "content_sha256": "fd474fd65c8e4a71da241eb3fd07748ca3b972fbd2d3c32833376dbe71104007",
+      "identity": "gda_chongqing_m3_18/iceberg/cultural_heritage/cultural_districts",
+      "provider_revision": "shapefile-bundle-fd474fd65c8e4a71",
+      "resource_urn": "gda://metadata-authorization-local/dataset/chongqing-cultural-districts",
+      "resource_version_id": "a6000000-0000-4000-8000-000000000001",
+      "snapshot_sha256": "396497819b4187a0d71b5ea74d999775c9ec7201c0f1ae02f4194a11bb1f630c"
+    },
+    "mutation_count": 10,
+    "mutations": [
+      "openmetadata.glossary.create",
+      "openmetadata.glossary_term.create",
+      "openmetadata.database_service.create",
+      "openmetadata.database.create",
+      "openmetadata.database_schema.create",
+      "openmetadata.table.create",
+      "gravitino.metalake.create",
+      "gravitino.catalog.create",
+      "gravitino.schema.create",
+      "gravitino.table.create"
+    ],
+    "openmetadata": {
+      "content_sha256": "fd474fd65c8e4a71da241eb3fd07748ca3b972fbd2d3c32833376dbe71104007",
+      "domain_refs": [
+        "domain:natural-resources"
+      ],
+      "entity_id": "9d043410-02b5-487d-bb70-da5f3969a978",
+      "entity_version": "0.1",
+      "fully_qualified_name": "gda_chongqing_m3_18.cultural_heritage.published.cultural_districts",
+      "owner_refs": [
+        "team:data-platform"
+      ],
+      "resource_urn": "gda://metadata-authorization-local/dataset/chongqing-cultural-districts",
+      "resource_version_id": "a6000000-0000-4000-8000-000000000001",
+      "snapshot_sha256": "a3ed5e2195c2f5847b5f5b59d78c8ba547c1f7170b3396cdd56b45f8559b0077",
+      "tag_refs": [
+        "CulturalHeritage.CulturalDistrict",
+        "Sensitivity.Internal"
+      ]
+    },
+    "status": "created"
+  },
+  "gravitino_authentication_verified": false,
+  "gravitino_readback_verified": true,
+  "ingestion_dependency_evidence_sha256": "3d5fb07267680520d2f03bf27f354787b7253210eb93ab85aae83d5f5a714dbe",
+  "live_openlineage_emission_verified": false,
+  "local_scheduler_projection_execution_verified": true,
+  "matching_provider_instance_count": 1,
+  "oidc_verified": false,
+  "openmetadata_readback_verified": true,
+  "platform_run_status": "reconciling",
+  "platform_run_succeeded": false,
+  "production_ingestion_verified": false,
+  "production_ready": false,
+  "production_scheduler_submission_verified": false,
+  "projection_targets": {
+    "gravitino": "gda_chongqing_m3_18.iceberg.cultural_heritage.cultural_districts",
+    "openmetadata": "gda_chongqing_m3_18.cultural_heritage.published.cultural_districts"
+  },
+  "protected_workload_identity_verified": false,
+  "provider_apply_authorization_sha256": "571ec4b872a678fad13210f3317ec15a22f779c732c330aa9064dcec6c9f18d2",
+  "provider_apply_authorized": true,
+  "provider_apply_execution_plan_artifact_id": "f678c10a-e878-53c8-9ae6-2c5719d76796",
+  "provider_minimum_privilege_verified": false,
+  "provider_mutations_executed": true,
+  "provider_objects_retained_for_readback": true,
+  "provider_port_forwards_cleanup_verified": true,
+  "provider_runtime": {
+    "context": "docker-desktop",
+    "namespace": {
+      "name": "gda-metadata-sandbox",
+      "uid": "812c9c5c-9ce2-409e-a6a8-a3f24785aa0c"
+    },
+    "services": {
+      "gravitino": {
+        "name": "metadata-gravitino",
+        "type": "ClusterIP",
+        "uid": "b2fda004-0e59-40dd-b08e-45481593d179"
+      },
+      "openmetadata": {
+        "name": "openmetadata",
+        "type": "ClusterIP",
+        "uid": "c903a96c-9aa9-420c-93d1-d2224df0cc85"
+      }
+    },
+    "workloads": {
+      "gravitino": {
+        "kind": "StatefulSet",
+        "name": "metadata-gravitino",
+        "ready_replicas": 1,
+        "uid": "57a914fb-eca6-49f8-9c24-67c6d520a172"
+      },
+      "openmetadata": {
+        "kind": "Deployment",
+        "name": "openmetadata",
+        "ready_replicas": 1,
+        "uid": "39bba7aa-b48e-4f5c-a9a8-c9cc9ca4ec1f"
+      }
+    }
+  },
+  "provider_security": {
+    "gravitino": {
+      "auth_mode": "disabled",
+      "authentication_verified": false,
+      "version": "1.3.0"
+    },
+    "openmetadata": {
+      "auth_mode": "local_basic_bootstrap",
+      "authenticated_principal": {
+        "id": "bfe46857-217e-43f5-a530-b0b33d73d624",
+        "is_admin": true,
+        "name": "admin"
+      },
+      "minimum_privilege_verified": false
+    }
+  },
+  "real_dataset_resource_version_bound": true,
+  "replay": {
+    "binding_candidate_sha256": "7de24cee9dd50dfeefcc886cf43024f4d92b7650767d71d064fdce19ffccb16b",
+    "gravitino": {
+      "content_sha256": "fd474fd65c8e4a71da241eb3fd07748ca3b972fbd2d3c32833376dbe71104007",
+      "identity": "gda_chongqing_m3_18/iceberg/cultural_heritage/cultural_districts",
+      "provider_revision": "shapefile-bundle-fd474fd65c8e4a71",
+      "resource_urn": "gda://metadata-authorization-local/dataset/chongqing-cultural-districts",
+      "resource_version_id": "a6000000-0000-4000-8000-000000000001",
+      "snapshot_sha256": "396497819b4187a0d71b5ea74d999775c9ec7201c0f1ae02f4194a11bb1f630c"
+    },
+    "mutation_count": 0,
+    "mutations": [],
+    "openmetadata": {
+      "content_sha256": "fd474fd65c8e4a71da241eb3fd07748ca3b972fbd2d3c32833376dbe71104007",
+      "domain_refs": [
+        "domain:natural-resources"
+      ],
+      "entity_id": "9d043410-02b5-487d-bb70-da5f3969a978",
+      "entity_version": "0.1",
+      "fully_qualified_name": "gda_chongqing_m3_18.cultural_heritage.published.cultural_districts",
+      "owner_refs": [
+        "team:data-platform"
+      ],
+      "resource_urn": "gda://metadata-authorization-local/dataset/chongqing-cultural-districts",
+      "resource_version_id": "a6000000-0000-4000-8000-000000000001",
+      "snapshot_sha256": "a3ed5e2195c2f5847b5f5b59d78c8ba547c1f7170b3396cdd56b45f8559b0077",
+      "tag_refs": [
+        "CulturalHeritage.CulturalDistrict",
+        "Sensitivity.Internal"
+      ]
+    },
+    "status": "no_op"
+  },
+  "resource_version_content_sha256": "fd474fd65c8e4a71da241eb3fd07748ca3b972fbd2d3c32833376dbe71104007",
+  "resource_version_id": "a6000000-0000-4000-8000-000000000001",
+  "run_id": "a8000000-0000-4000-8000-000000000003",
+  "scheduler_dependency_evidence_sha256": "00d4ea062c40f8d97557eadc357a36c6d1ccd56e12a94a44694113681e5d55f4",
+  "scheduler_provider": {
+    "api_profile": "3.4",
+    "architecture": "arm64",
+    "image": "apache/dolphinscheduler-standalone-server:3.4.2",
+    "image_id": "sha256:485a1b37dd1c4088c8c8335f9fccbd229e5e703c32e21f318eb00cbb60b1af9d",
+    "name": "apache-dolphinscheduler",
+    "project_code": 180204965431360,
+    "server_version": "3.4.2",
+    "terminal_state": "SUCCESS",
+    "workflow_definition_code": 180204965513280,
+    "workflow_definition_version": 1,
+    "workflow_instance_id": 1
+  },
+  "scheduler_success_readback_verified": true,
+  "schema": "gda.active_metadata_projection_execution_evidence.v1",
+  "standalone_container_cleanup_verified": true,
+  "status": "local_scheduler_provider_projection_execution_verified",
+  "submitted_observation_count": 1,
+  "success_observation_count": 1,
+  "temporary_database_cleanup_verified": true,
+  "tls_verified": false,
+  "writes_to_legacy": false
+}

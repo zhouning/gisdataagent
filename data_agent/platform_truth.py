@@ -919,6 +919,26 @@ RUNTIME_INVENTORY = (
         "Protected identity, deployed controller and production scheduler/provider path",
     ),
     RuntimeSpec(
+        "metadata_active_metadata_projection_execution_rehearsal",
+        "active_metadata_projection_execution_rehearsal",
+        "governed",
+        "evidence_durable",
+        "temporary scheduler/executor/provider session + committed local evidence",
+        "metadata-platform",
+        "local_verification_only",
+        (
+            "data_agent/metadata_fabric_active_metadata_projection_execution.py",
+            "scripts/metadata-fabric-active-metadata-projection-execution.sh",
+        ),
+        (
+            (
+                "data_agent/metadata_fabric_active_metadata_projection_execution.py",
+                "def run_scheduler_projection_rehearsal",
+            ),
+        ),
+        "Protected identity, durable executor and production scheduler/provider path",
+    ),
+    RuntimeSpec(
         "datalake_monitor",
         "monitor_loop",
         "legacy",
@@ -982,7 +1002,7 @@ ENV_ACCESS_BASELINE_FINGERPRINT = (
     "5ee717911c109b480328a050893296e37591bfca748e3ed1743b7e3def3d9048"
 )
 RUNTIME_PRIMITIVE_BASELINE_FINGERPRINT = (
-    "d6402d91e40ddb61591a7d258925d79e5eee964c3a9c0ace7de34acd10facbfd"
+    "499c531821c2138977724d8a9c12e0328cb45525944634c0cfba3763137652b6"
 )
 
 _IGNORED_SOURCE_PARTS = frozenset(
