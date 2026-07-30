@@ -959,6 +959,26 @@ RUNTIME_INVENTORY = (
         "Protected identity, durable catalog/executor and production binding ledger",
     ),
     RuntimeSpec(
+        "metadata_durable_active_metadata_promotion_rehearsal",
+        "durable_active_metadata_promotion_rehearsal",
+        "governed",
+        "evidence_durable",
+        "temporary JDBC/PVC provider runtime + committed local evidence",
+        "metadata-platform",
+        "local_verification_only",
+        (
+            "data_agent/metadata_fabric_durable_active_metadata_promotion.py",
+            "scripts/metadata-fabric-durable-active-metadata-promotion.sh",
+        ),
+        (
+            (
+                "data_agent/metadata_fabric_durable_active_metadata_promotion.py",
+                "def run_live_rehearsal",
+            ),
+        ),
+        "Object-store-backed durable provider, protected identity and production binding promotion",
+    ),
+    RuntimeSpec(
         "datalake_monitor",
         "monitor_loop",
         "legacy",

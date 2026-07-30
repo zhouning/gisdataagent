@@ -1,0 +1,45 @@
+schema: gda.durable_active_metadata_promotion_profile.v1
+environment: local_docker_desktop
+
+dependencies:
+  m319_evidence_path: docs/evidence/metadata-fabric-active-metadata-binding-reconciliation-2026-07-30.json
+  m319_evidence_sha256: e6d0e3ac4e052029dad0c18d0804626a8af61554a54081c37d8cc9a80c55cd33
+  jdbc_restart_profile_path: config/metadata-fabric-gravitino-jdbc-restart.local.yaml
+  jdbc_restart_evidence_path: docs/evidence/metadata-fabric-gravitino-jdbc-restart-2026-07-29.json
+  jdbc_restart_evidence_fingerprint: 34792bb47ad71041a87adeb644439bf9b6aa3f4855cdc98782d6e3b4282bf1aa
+
+target:
+  metalake: gda_chongqing_m3_20
+  catalog: lakehouse
+  schema: cultural_heritage
+  table: cultural_districts
+  catalog_type: RELATIONAL
+  catalog_provider: lakehouse-iceberg
+  catalog_backend: jdbc
+  uri: jdbc:postgresql://gravitino-persistence-postgresql:5432/iceberg
+  warehouse: file:///var/lib/gravitino/warehouse
+  jdbc_driver: org.postgresql.Driver
+
+identity:
+  service_admin: gda-persistence-admin
+  user: gda-active-metadata-promoter
+  role: gda-cultural-district-projector
+  material_delivery: runtime_generated_ephemeral_kubernetes_object
+
+authorization:
+  policy_version_ref: gda://metadata-authorization-local/policy/durable-metadata-promotion-v1
+  evaluator_subject: workload:durable-metadata-policy-evaluator
+  approver_subject: human:metadata-platform-owner
+  approval_reason: approved local durable Active Metadata promotion rehearsal
+
+claims:
+  binding_schema_changed: false
+  durable_candidate_persisted_to_gda_control: false
+  protected_workload_identity_verified: false
+  provider_minimum_privilege_verified: false
+  durable_catalog_verified: false
+  production_object_store_verified: false
+  oidc_verified: false
+  tls_verified: false
+  production_ingestion_verified: false
+  production_ready: false
