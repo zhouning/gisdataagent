@@ -173,6 +173,9 @@ jobs:
       - name: Validate metadata fabric Active Metadata consumer evidence
         run: python -m data_agent.metadata_fabric_active_metadata_consumer validate
 
+      - name: Validate metadata fabric Active Metadata authorization evidence
+        run: python -m data_agent.metadata_fabric_active_metadata_authorization validate
+
       - name: Validate Active Metadata consumer deployment boundary
         run: python -m data_agent.active_metadata_consumer_deployment validate
 
@@ -212,6 +215,11 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gis_agent_test
         run: python -m pytest data_agent/test_active_metadata_consumer_postgres.py -q
 
+      - name: Verify Active Metadata authorization on PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gis_agent_test
+        run: python -m pytest data_agent/test_active_metadata_authorization_postgres.py -q
+
       - name: Run required platform tests
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gis_agent_test
@@ -241,11 +249,13 @@ jobs:
             data_agent/test_metadata_fabric_ingestion_replay.py \
             data_agent/test_metadata_fabric_binding_contract.py \
             data_agent/test_active_metadata_change_contract.py \
+            data_agent/test_active_metadata_authorization.py \
             data_agent/test_active_metadata_consumer.py \
             data_agent/test_active_metadata_consumer_deployment.py \
             data_agent/test_active_metadata_consumer_worker.py \
             data_agent/test_metadata_fabric_active_metadata_outbox.py \
             data_agent/test_metadata_fabric_active_metadata_consumer.py \
+            data_agent/test_metadata_fabric_active_metadata_authorization.py \
             data_agent/test_metadata_fabric_lineage_delivery.py \
             data_agent/test_metadata_fabric_provider_identity.py \
             data_agent/test_metadata_fabric_gravitino_identity.py \
@@ -268,6 +278,7 @@ jobs:
             data_agent/test_platform_truth.py \
             data_agent/test_route_registration.py \
             data_agent/test_s3_obs.py \
+            data_agent/test_spatial_dataset_bundle.py \
             data_agent/test_staging_candidate_evidence.py \
             data_agent/test_staging_deployment_bundle.py \
             data_agent/test_staging_live_evidence.py \

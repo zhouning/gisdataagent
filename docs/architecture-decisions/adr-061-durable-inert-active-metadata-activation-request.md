@@ -86,9 +86,9 @@ scheduler secret, disabled Kubernetes token mounting, and admission of the
 consumer selector to PostgreSQL ingress.
 
 - Contract fingerprint:
-  `7a0bc0e3aaa53509443f031e7c40d7c5ff0f304510ddfeceedbad00147b505f5`
+  `2256daa97c1f3a2e71f4d7026592171daea802b371f5616fbbd72a63939ee6b5`
 - Evidence fingerprint:
-  `480a2d651c1389feed471cb6ff082537ddfcd2f108e2652b9168b16ea4d02977`
+  `029aaf7de476115dcf6385ca4a0e05bb84492ebea8ddecf6c3edf36edd76dbef`
 
 `deployment_applied`, `production_workload_identity_verified`,
 `production_scheduler_submission_verified`, `production_ingestion_verified`,
