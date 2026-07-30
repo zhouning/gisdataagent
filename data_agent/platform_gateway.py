@@ -17,6 +17,16 @@ from pydantic import BaseModel, ConfigDict, TypeAdapter, model_validator
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 
+from .active_metadata_change_contract import (
+    ActiveMetadataRegistration,
+    MetadataActivationIntent,
+    MetadataChangeDelivery,
+    MetadataChangeDeliveryStatus,
+    MetadataChangeEvent,
+    build_metadata_activation_intent,
+    build_metadata_change_delivery,
+    metadata_change_binding_payload,
+)
 from .db_engine import get_engine
 from .metadata_fabric_binding_contract import (
     MetadataFabricApplyPlan,
@@ -88,6 +98,11 @@ METADATA_FABRIC_LINEAGE_MIGRATION = (
     Path(__file__).resolve().parent
     / "migrations"
     / "098_metadata_fabric_openlineage_delivery.sql"
+)
+ACTIVE_METADATA_CHANGE_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "099_active_metadata_change_outbox.sql"
 )
 USER_TENANT_MIGRATION = (
     Path(__file__).resolve().parent
@@ -349,6 +364,288 @@ class PlatformGateway:
     ) -> GatewayWriteResult:
         with self._transaction(version.tenant_id) as connection:
             return self._put_resource_version(connection, version)
+
+    @staticmethod
+    def _metadata_change_from_row(row) -> MetadataChangeDelivery:
+        fields = {
+            "event",
+            "status",
+            "attempt_count",
+            "max_attempts",
+            "available_at",
+            "claimed_by",
+            "claimed_until",
+            "last_error_code",
+            "activation_intent_sha256",
+            "completed_at",
+        }
+        value = {name: row[name] for name in fields}
+        value["event"] = _as_json(value["event"])
+        return MetadataChangeDelivery.model_validate(value)
+
+    @classmethod
+    def _load_metadata_change_delivery(
+        cls, connection, tenant_id: str, event_id: UUID
+    ) -> MetadataChangeDelivery | None:
+        row = connection.execute(
+            text(
+                """
+                SELECT event, status, attempt_count, max_attempts,
+                       available_at, claimed_by, claimed_until,
+                       last_error_code, activation_intent_sha256, completed_at
+                FROM gda_control.metadata_change_outbox
+                WHERE tenant_id = :tenant_id AND event_id = :event_id
+                """
+            ),
+            {"tenant_id": tenant_id, "event_id": event_id},
+        ).mappings().one_or_none()
+        if row is None:
+            return None
+        return cls._metadata_change_from_row(row)
+
+    def _put_metadata_change_event(
+        self,
+        connection,
+        event: MetadataChangeEvent,
+        *,
+        max_attempts: int,
+    ) -> GatewayWriteResult:
+        delivery = build_metadata_change_delivery(
+            event,
+            max_attempts=max_attempts,
+        )
+        inserted = connection.execute(
+            text(
+                """
+                INSERT INTO gda_control.metadata_change_outbox (
+                    tenant_id, event_id, event_type, resource_urn,
+                    resource_version_id, version_key,
+                    predecessor_version_id, content_sha256,
+                    producer_subject, consumer_subject, occurred_at,
+                    event, event_sha256, status, attempt_count,
+                    max_attempts, available_at, claimed_by, claimed_until,
+                    last_error_code, activation_intent_sha256, completed_at
+                ) VALUES (
+                    :tenant_id, :event_id, :event_type, :resource_urn,
+                    :resource_version_id, :version_key,
+                    :predecessor_version_id, :content_sha256,
+                    :producer_subject, :consumer_subject, :occurred_at,
+                    CAST(:event AS jsonb), :event_sha256, :status,
+                    :attempt_count, :max_attempts, :available_at,
+                    :claimed_by, :claimed_until, :last_error_code,
+                    :activation_intent_sha256, :completed_at
+                )
+                ON CONFLICT DO NOTHING
+                RETURNING event_id
+                """
+            ),
+            {
+                **event.model_dump(
+                    mode="python",
+                    by_alias=False,
+                    exclude={"event_schema"},
+                ),
+                "event": _json(event.model_dump(mode="json", by_alias=True)),
+                "status": delivery.status.value,
+                "attempt_count": delivery.attempt_count,
+                "max_attempts": delivery.max_attempts,
+                "available_at": delivery.available_at,
+                "claimed_by": delivery.claimed_by,
+                "claimed_until": delivery.claimed_until,
+                "last_error_code": delivery.last_error_code,
+                "activation_intent_sha256": delivery.activation_intent_sha256,
+                "completed_at": delivery.completed_at,
+            },
+        ).first()
+        stored = self._load_metadata_change_delivery(
+            connection,
+            event.tenant_id,
+            event.event_id,
+        )
+        if (
+            stored is None
+            or metadata_change_binding_payload(stored)
+            != metadata_change_binding_payload(delivery)
+        ):
+            raise GatewayConflictError(
+                "MetadataChangeEvent identity already has different content"
+            )
+        return GatewayWriteResult(stored, inserted is not None)
+
+    def register_resource_version_with_metadata_event(
+        self,
+        registration: ActiveMetadataRegistration,
+        *,
+        max_attempts: int = 5,
+    ) -> GatewayWriteResult:
+        try:
+            registration = ActiveMetadataRegistration.model_validate(
+                registration.model_dump(mode="json", by_alias=True)
+            )
+            build_metadata_change_delivery(
+                registration.event,
+                max_attempts=max_attempts,
+            )
+        except ValueError as exc:
+            raise GatewayValidationError(
+                "Active Metadata registration is not content-bound"
+            ) from exc
+        with self._transaction(registration.resource_version.tenant_id) as connection:
+            version_result = self._put_resource_version(
+                connection,
+                registration.resource_version,
+            )
+            event_result = self._put_metadata_change_event(
+                connection,
+                registration.event,
+                max_attempts=max_attempts,
+            )
+            if version_result.created != event_result.created:
+                raise GatewayConflictError(
+                    "ResourceVersion and MetadataChangeEvent creation state diverged"
+                )
+            stored = ActiveMetadataRegistration(
+                resource_version=version_result.value,
+                event=event_result.value.event,
+            )
+            return GatewayWriteResult(stored, version_result.created)
+
+    def get_metadata_change_delivery(
+        self,
+        tenant_id: str,
+        event_id: UUID,
+    ) -> MetadataChangeDelivery:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            delivery = self._load_metadata_change_delivery(
+                connection,
+                tenant,
+                event_id,
+            )
+            if delivery is None:
+                raise GatewayNotFoundError(
+                    "MetadataChangeEvent delivery was not found"
+                )
+            return delivery
+
+    def claim_metadata_changes(
+        self,
+        tenant_id: str,
+        worker_id: str,
+        *,
+        consumer_subject: str,
+        limit: int = 10,
+        lease_seconds: int = 60,
+    ) -> list[MetadataChangeDelivery]:
+        with self._transaction(tenant_id) as connection:
+            rows = connection.execute(
+                text(
+                    """
+                    SELECT * FROM gda_control.claim_metadata_changes(
+                        :tenant_id, :consumer_subject, :worker_id,
+                        :limit, :lease_seconds
+                    )
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "consumer_subject": consumer_subject,
+                    "worker_id": worker_id,
+                    "limit": limit,
+                    "lease_seconds": lease_seconds,
+                },
+            ).mappings().all()
+            return [self._metadata_change_from_row(row) for row in rows]
+
+    def complete_metadata_change(
+        self,
+        tenant_id: str,
+        event_id: UUID,
+        *,
+        worker_id: str,
+        activation_intent: MetadataActivationIntent,
+    ) -> MetadataChangeDelivery:
+        try:
+            activation_intent = MetadataActivationIntent.model_validate(
+                activation_intent.model_dump(mode="json", by_alias=True)
+            )
+        except ValueError as exc:
+            raise GatewayValidationError(
+                "metadata activation intent is not content-bound"
+            ) from exc
+        with self._transaction(tenant_id) as connection:
+            claimed = self._load_metadata_change_delivery(
+                connection,
+                tenant_id,
+                event_id,
+            )
+            if claimed is None:
+                raise GatewayNotFoundError(
+                    "MetadataChangeEvent delivery was not found"
+                )
+            expected = build_metadata_activation_intent(
+                claimed.event,
+                routed_by=claimed.event.consumer_subject,
+            )
+            if (
+                claimed.status != MetadataChangeDeliveryStatus.IN_FLIGHT
+                or activation_intent != expected
+            ):
+                raise GatewayValidationError(
+                    "activation intent does not match the claimed metadata change"
+                )
+            row = connection.execute(
+                text(
+                    """
+                    SELECT * FROM gda_control.complete_metadata_change(
+                        :tenant_id, :event_id, :worker_id,
+                        :activation_intent_sha256
+                    )
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "event_id": event_id,
+                    "worker_id": worker_id,
+                    "activation_intent_sha256": activation_intent.intent_sha256,
+                },
+            ).mappings().one()
+            return self._metadata_change_from_row(row)
+
+    def fail_metadata_change(
+        self,
+        tenant_id: str,
+        event_id: UUID,
+        *,
+        worker_id: str,
+        error_code: str,
+        retryable: bool = True,
+        retry_delay_seconds: int = 30,
+    ) -> MetadataChangeDelivery:
+        if not re.fullmatch(r"[a-z0-9_]{1,64}", error_code):
+            raise GatewayValidationError(
+                "metadata change failure code is invalid"
+            )
+        with self._transaction(tenant_id) as connection:
+            row = connection.execute(
+                text(
+                    """
+                    SELECT * FROM gda_control.fail_metadata_change(
+                        :tenant_id, :event_id, :worker_id, :error_code,
+                        :retryable, :retry_delay_seconds
+                    )
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "event_id": event_id,
+                    "worker_id": worker_id,
+                    "error_code": error_code,
+                    "retryable": retryable,
+                    "retry_delay_seconds": retry_delay_seconds,
+                },
+            ).mappings().one()
+            return self._metadata_change_from_row(row)
 
     @staticmethod
     def _load_definition(
@@ -1889,6 +2186,7 @@ def build_gateway_report(
     success_migration: Path | None = None,
     binding_migration: Path | None = None,
     lineage_migration: Path | None = None,
+    active_metadata_migration: Path | None = None,
     gateway_source: Path | None = None,
     routes_source: Path | None = None,
     command_consumer_source: Path | None = None,
@@ -1909,6 +2207,9 @@ def build_gateway_report(
         ).resolve(),
         "lineage_migration": (
             lineage_migration or METADATA_FABRIC_LINEAGE_MIGRATION
+        ).resolve(),
+        "active_metadata_migration": (
+            active_metadata_migration or ACTIVE_METADATA_CHANGE_MIGRATION
         ).resolve(),
         "gateway_source": (gateway_source or Path(__file__)).resolve(),
         "routes_source": (routes_source or GATEWAY_ROUTES_SOURCE).resolve(),
@@ -1989,6 +2290,17 @@ def build_gateway_report(
             "FORCE ROW LEVEL SECURITY",
             "GRANT SELECT, INSERT ON gda_control.metadata_fabric_lineage_outbox",
         ),
+        "active_metadata_migration": (
+            "CREATE TABLE IF NOT EXISTS gda_control.metadata_change_outbox",
+            "FOREIGN KEY (",
+            "resource_version_id, content_sha256",
+            "FOR UPDATE SKIP LOCKED",
+            "claim_metadata_changes",
+            "complete_metadata_change",
+            "fail_metadata_change",
+            "ALTER TABLE gda_control.metadata_change_outbox FORCE ROW LEVEL SECURITY",
+            "GRANT SELECT, INSERT ON gda_control.metadata_change_outbox",
+        ),
         "gateway_source": (
             'SET LOCAL ROLE "{GATEWAY_DATABASE_ROLE}"',
             "SELECT set_config('app.current_tenant', :tenant, true)",
@@ -2005,6 +2317,10 @@ def build_gateway_report(
             "def claim_metadata_fabric_lineage(",
             "def complete_metadata_fabric_lineage(",
             "def fail_metadata_fabric_lineage(",
+            "def register_resource_version_with_metadata_event(",
+            "def claim_metadata_changes(",
+            "def complete_metadata_change(",
+            "def fail_metadata_change(",
         ),
         "routes_source": (
             'base = "/api/platform/v1"',
@@ -2057,6 +2373,7 @@ def build_gateway_report(
             or forbidden in texts.get("success_migration", "")
             or forbidden in texts.get("binding_migration", "")
             or forbidden in texts.get("lineage_migration", "")
+            or forbidden in texts.get("active_metadata_migration", "")
         ):
             errors.append(f"gateway role contains forbidden privilege: {forbidden}")
     consumer_source = texts.get("command_consumer_source", "")
