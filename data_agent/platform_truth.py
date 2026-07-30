@@ -538,7 +538,7 @@ RUNTIME_INVENTORY = (
 # Fingerprint of literal environment reads in production Python modules.  It is
 # intentionally updated only with an explicit config-contract review.
 ENV_ACCESS_BASELINE_FINGERPRINT = (
-    "41949811ca1d12a9d8bdbd5e7ecb1ba528be7049af96742306d6f317ab0791b8"
+    "e092d287c0db895fe0c8b2f1bd04354ad6e59377efef25516b5c3c64ad3fce9a"
 )
 RUNTIME_PRIMITIVE_BASELINE_FINGERPRINT = (
     "724d0c4751f92637e366602848b511c432afc9dcf10c723178f25daab9cf61e4"
