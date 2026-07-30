@@ -33,6 +33,7 @@ on:
       - feat/ar1-metadata-fabric-active-metadata-consumer
       - feat/ar1-metadata-fabric-active-metadata-authorization
       - feat/ar1-metadata-fabric-active-metadata-scheduler-delivery
+      - feat/ar1-metadata-fabric-active-metadata-projection-execution
 
 env:
   PYTHON_VERSION: "3.13"
@@ -181,6 +182,9 @@ jobs:
       - name: Validate metadata fabric Active Metadata scheduler delivery evidence
         run: python -m data_agent.metadata_fabric_active_metadata_scheduler_delivery validate
 
+      - name: Validate metadata fabric Active Metadata projection execution evidence
+        run: python -m data_agent.metadata_fabric_active_metadata_projection_execution validate
+
       - name: Validate Active Metadata consumer deployment boundary
         run: python -m data_agent.active_metadata_consumer_deployment validate
 
@@ -262,6 +266,7 @@ jobs:
             data_agent/test_metadata_fabric_active_metadata_consumer.py \
             data_agent/test_metadata_fabric_active_metadata_authorization.py \
             data_agent/test_metadata_fabric_active_metadata_scheduler_delivery.py \
+            data_agent/test_metadata_fabric_active_metadata_projection_execution.py \
             data_agent/test_metadata_fabric_lineage_delivery.py \
             data_agent/test_metadata_fabric_provider_identity.py \
             data_agent/test_metadata_fabric_gravitino_identity.py \
