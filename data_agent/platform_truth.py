@@ -899,6 +899,26 @@ RUNTIME_INVENTORY = (
         "Protected workload identity and real scheduler submission/read-back",
     ),
     RuntimeSpec(
+        "metadata_active_metadata_scheduler_delivery_rehearsal",
+        "active_metadata_scheduler_delivery_rehearsal",
+        "governed",
+        "evidence_durable",
+        "temporary PostgreSQL/DolphinScheduler + committed local evidence",
+        "metadata-platform",
+        "local_verification_only",
+        (
+            "data_agent/metadata_fabric_active_metadata_scheduler_delivery.py",
+            "scripts/metadata-fabric-active-metadata-scheduler-delivery.sh",
+        ),
+        (
+            (
+                "data_agent/metadata_fabric_active_metadata_scheduler_delivery.py",
+                "def run_local_rehearsal",
+            ),
+        ),
+        "Protected identity, deployed controller and production scheduler/provider path",
+    ),
+    RuntimeSpec(
         "datalake_monitor",
         "monitor_loop",
         "legacy",
