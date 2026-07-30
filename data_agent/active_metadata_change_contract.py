@@ -29,6 +29,7 @@ EVENT_SCHEMA = "gda.metadata_change_event.v1"
 DELIVERY_SCHEMA = "gda.metadata_change_delivery.v1"
 REGISTRATION_SCHEMA = "gda.active_metadata_registration.v1"
 ACTIVATION_INTENT_SCHEMA = "gda.metadata_activation_intent.v1"
+ACTIVATION_REQUEST_SCHEMA = "gda.metadata_activation_request.v1"
 RESOURCE_VERSION_REGISTERED = "resource_version.registered"
 METADATA_PROJECTION_ROUTE = "metadata_fabric.projection_plan"
 
@@ -281,6 +282,64 @@ def build_metadata_activation_intent(
     return MetadataActivationIntent(
         **values,
         intent_sha256=canonical_json_fingerprint(stable),
+    )
+
+
+class MetadataActivationRequest(_FrozenModel):
+    request_schema: Literal["gda.metadata_activation_request.v1"] = Field(
+        default=ACTIVATION_REQUEST_SCHEMA,
+        alias="schema",
+    )
+    request_id: UUID
+    intent: MetadataActivationIntent
+    status: Literal["awaiting_authorization"] = "awaiting_authorization"
+    provider_apply_authorized: Literal[False] = False
+    provider_mutations_executed: Literal[False] = False
+    production_scheduler_submission_verified: Literal[False] = False
+    production_ingestion_verified: Literal[False] = False
+    production_ready: Literal[False] = False
+    request_sha256: Sha256
+
+    @model_validator(mode="after")
+    def _content_bound(self) -> Self:
+        expected_id = uuid5(
+            self.intent.event_id,
+            f"metadata-activation-request:{self.intent.intent_sha256}",
+        )
+        if self.request_id != expected_id:
+            raise ValueError("MetadataActivationRequest ID does not match its intent")
+        stable = self.model_dump(
+            mode="json",
+            by_alias=True,
+            exclude={"request_sha256"},
+        )
+        if self.request_sha256 != canonical_json_fingerprint(stable):
+            raise ValueError("MetadataActivationRequest SHA-256 does not match")
+        return self
+
+
+def build_metadata_activation_request(
+    intent: MetadataActivationIntent,
+) -> MetadataActivationRequest:
+    request_id = uuid5(
+        intent.event_id,
+        f"metadata-activation-request:{intent.intent_sha256}",
+    )
+    stable = {
+        "schema": ACTIVATION_REQUEST_SCHEMA,
+        "request_id": str(request_id),
+        "intent": intent.model_dump(mode="json", by_alias=True),
+        "status": "awaiting_authorization",
+        "provider_apply_authorized": False,
+        "provider_mutations_executed": False,
+        "production_scheduler_submission_verified": False,
+        "production_ingestion_verified": False,
+        "production_ready": False,
+    }
+    return MetadataActivationRequest(
+        request_id=request_id,
+        intent=intent,
+        request_sha256=canonical_json_fingerprint(stable),
     )
 
 

@@ -23,6 +23,7 @@ resources:
   - app-service.yaml
   - outbox-worker.yaml
   - dolphinscheduler-command-worker.yaml
+  - active-metadata-consumer.yaml
 
   # ----- Local LLM backend (host Ollama) -----
   - ollama-service.yaml

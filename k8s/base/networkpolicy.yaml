@@ -32,6 +32,9 @@ spec:
               app.kubernetes.io/name: gis-agent-dolphinscheduler-command-worker
         - podSelector:
             matchLabels:
+              app.kubernetes.io/name: gis-agent-active-metadata-consumer
+        - podSelector:
+            matchLabels:
               app.kubernetes.io/name: gis-agent-migrate
         - podSelector:
             matchLabels:

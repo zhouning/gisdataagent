@@ -283,6 +283,69 @@ CONFIG_SPECS = (
         maximum=7200,
         owner="sre",
     ),
+    _config(
+        "ACTIVE_METADATA_CONSUMER_ENABLED",
+        "bool",
+        False,
+        owner="metadata-platform",
+        description="Enable the managed Active Metadata request staging worker.",
+    ),
+    _config(
+        "ACTIVE_METADATA_CONSUMER_TENANT_ID",
+        "str",
+        None,
+        owner="metadata-platform",
+    ),
+    _config(
+        "ACTIVE_METADATA_CONSUMER_WORKER_ID",
+        "str",
+        None,
+        owner="sre",
+    ),
+    _config(
+        "ACTIVE_METADATA_CONSUMER_SUBJECT",
+        "str",
+        None,
+        owner="security",
+    ),
+    _config(
+        "ACTIVE_METADATA_CONSUMER_BATCH_SIZE",
+        "int",
+        10,
+        minimum=1,
+        maximum=100,
+        owner="metadata-platform",
+    ),
+    _config(
+        "ACTIVE_METADATA_CONSUMER_LEASE_SECONDS",
+        "int",
+        60,
+        minimum=5,
+        maximum=3600,
+        owner="metadata-platform",
+    ),
+    _config(
+        "ACTIVE_METADATA_CONSUMER_POLL_INTERVAL_SECONDS",
+        "float",
+        5,
+        minimum=0.1,
+        maximum=3600,
+        owner="metadata-platform",
+    ),
+    _config(
+        "ACTIVE_METADATA_CONSUMER_STATUS_FILE",
+        "str",
+        "/tmp/gda-active-metadata-consumer.json",
+        owner="sre",
+    ),
+    _config(
+        "ACTIVE_METADATA_CONSUMER_HEALTH_MAX_AGE_SECONDS",
+        "float",
+        30,
+        minimum=1,
+        maximum=7200,
+        owner="sre",
+    ),
     _config("ARCPY_MCP_ENABLED", "bool", False, owner="gis-runtime"),
     _config("ARCPY_MCP_URL", "url", None, owner="gis-runtime"),
     _config("ARCPY_MCP_TOKEN", "str", None, secret=True, owner="gis-runtime"),
@@ -395,6 +458,33 @@ RUNTIME_INVENTORY = (
             ),
         ),
         "Retain as tenant-scoped managed provider command delivery",
+    ),
+    RuntimeSpec(
+        "active_metadata_consumer_worker",
+        "outbox_worker",
+        "governed",
+        "database_durable",
+        (
+            "gda_control.metadata_change_outbox + "
+            "gda_control.metadata_activation_request"
+        ),
+        "metadata-platform",
+        "activation_request_staging_only",
+        (
+            "data_agent/active_metadata_consumer_worker.py",
+            "data_agent/active_metadata_consumer.py",
+        ),
+        (
+            (
+                "data_agent/active_metadata_consumer_worker.py",
+                "class ActiveMetadataConsumerWorker",
+            ),
+            (
+                "data_agent/active_metadata_consumer.py",
+                "self.gateway.stage_metadata_activation_request(",
+            ),
+        ),
+        "Retain as tenant-scoped inert activation request staging",
     ),
     RuntimeSpec(
         "api_workflow_background",
@@ -766,7 +856,27 @@ RUNTIME_INVENTORY = (
                 "def run_local_rehearsal",
             ),
         ),
-        "Managed consumer submission to DolphinScheduler with protected identity",
+        "Durable inert activation request staging before authorization",
+    ),
+    RuntimeSpec(
+        "metadata_active_metadata_consumer_rehearsal",
+        "active_metadata_consumer_rehearsal",
+        "governed",
+        "evidence_durable",
+        "temporary PostgreSQL activation requests + committed local evidence",
+        "metadata-platform",
+        "local_verification_only",
+        (
+            "data_agent/metadata_fabric_active_metadata_consumer.py",
+            "scripts/metadata-fabric-active-metadata-consumer.sh",
+        ),
+        (
+            (
+                "data_agent/metadata_fabric_active_metadata_consumer.py",
+                "def run_local_rehearsal",
+            ),
+        ),
+        "Protected authorization and scheduler promotion of durable requests",
     ),
     RuntimeSpec(
         "datalake_monitor",
@@ -829,7 +939,7 @@ RUNTIME_INVENTORY = (
 # Fingerprint of literal environment reads in production Python modules.  It is
 # intentionally updated only with an explicit config-contract review.
 ENV_ACCESS_BASELINE_FINGERPRINT = (
-    "41949811ca1d12a9d8bdbd5e7ecb1ba528be7049af96742306d6f317ab0791b8"
+    "5ee717911c109b480328a050893296e37591bfca748e3ed1743b7e3def3d9048"
 )
 RUNTIME_PRIMITIVE_BASELINE_FINGERPRINT = (
     "d6402d91e40ddb61591a7d258925d79e5eee964c3a9c0ace7de34acd10facbfd"

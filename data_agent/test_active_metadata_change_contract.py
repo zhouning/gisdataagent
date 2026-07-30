@@ -7,10 +7,12 @@ from pydantic import ValidationError
 from data_agent.active_metadata_change_contract import (
     ActiveMetadataContractError,
     MetadataActivationIntent,
+    MetadataActivationRequest,
     MetadataChangeDelivery,
     MetadataChangeEvent,
     build_active_metadata_registration,
     build_metadata_activation_intent,
+    build_metadata_activation_request,
     build_metadata_change_delivery,
 )
 from data_agent.platform_contracts import ResourceVersion
@@ -50,6 +52,7 @@ def test_registration_event_and_activation_intent_are_deterministic():
         first.event,
         routed_by=CONSUMER,
     )
+    request = build_metadata_activation_request(intent)
 
     assert first == second
     assert str(first.event.event_id) == "23bce695-edf5-53ef-b266-f053628f3446"
@@ -62,6 +65,14 @@ def test_registration_event_and_activation_intent_are_deterministic():
     assert intent.production_ingestion_verified is False
     assert intent.intent_sha256 == (
         "169ac6b822d9af2ff75071eccc69a9468bffcacbe576bdad8430b95215d1a88c"
+    )
+    assert str(request.request_id) == "dc9257ee-7103-5eac-9c56-74830839a678"
+    assert request.status == "awaiting_authorization"
+    assert request.provider_apply_authorized is False
+    assert request.production_scheduler_submission_verified is False
+    assert request.production_ready is False
+    assert request.request_sha256 == (
+        "ce2cc874a5306d8370bbbcdb1f5d17df47051ab523deffe4eb9a800578b05771"
     )
 
 
@@ -83,6 +94,12 @@ def test_event_and_activation_intent_reject_content_tampering():
     intent_payload["resource_urn"] = "gda://tenant-a/dataset/private"
     with pytest.raises(ValidationError, match="SHA-256"):
         MetadataActivationIntent.model_validate(intent_payload)
+
+    request = build_metadata_activation_request(intent)
+    request_payload = request.model_dump(mode="json", by_alias=True)
+    request_payload["production_ready"] = True
+    with pytest.raises(ValidationError):
+        MetadataActivationRequest.model_validate(request_payload)
 
 
 def test_authenticated_producer_and_exact_consumer_are_required():
