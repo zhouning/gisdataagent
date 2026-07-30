@@ -1,0 +1,142 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gis-agent-active-metadata-consumer
+  namespace: gis-agent
+  labels:
+    app.kubernetes.io/name: gis-agent-active-metadata-consumer
+    app.kubernetes.io/component: worker
+spec:
+  # The base stays inert until an environment supplies the tenant-scoped
+  # database login and explicitly scales the deployment.
+  replicas: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gis-agent-active-metadata-consumer
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gis-agent-active-metadata-consumer
+        app.kubernetes.io/component: worker
+    spec:
+      serviceAccountName: gis-agent-active-metadata-consumer
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: worker
+          image: gis-data-agent:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -ec
+          args:
+            - |
+              export ACTIVE_METADATA_CONSUMER_WORKER_ID="worker:active-metadata:${POD_UID}"
+              exec python -m data_agent.active_metadata_consumer_worker run
+          env:
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+            - name: POD_UID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: gis-agent-active-metadata-consumer
+                  key: database-url
+            - name: ACTIVE_METADATA_CONSUMER_ENABLED
+              value: "true"
+            - name: ACTIVE_METADATA_CONSUMER_TENANT_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: gis-agent-active-metadata-consumer
+                  key: tenant-id
+            - name: ACTIVE_METADATA_CONSUMER_SUBJECT
+              valueFrom:
+                configMapKeyRef:
+                  name: gis-agent-active-metadata-consumer
+                  key: consumer-subject
+            - name: ACTIVE_METADATA_CONSUMER_STATUS_FILE
+              value: /var/run/gis-agent/active-metadata/status.json
+            - name: ACTIVE_METADATA_CONSUMER_BATCH_SIZE
+              value: "1"
+            - name: ACTIVE_METADATA_CONSUMER_LEASE_SECONDS
+              value: "60"
+            - name: ACTIVE_METADATA_CONSUMER_POLL_INTERVAL_SECONDS
+              value: "5"
+            - name: ACTIVE_METADATA_CONSUMER_HEALTH_MAX_AGE_SECONDS
+              value: "30"
+          volumeMounts:
+            - name: worker-runtime
+              mountPath: /var/run/gis-agent/active-metadata
+          startupProbe:
+            exec:
+              command:
+                - python
+                - -m
+                - data_agent.active_metadata_consumer_worker
+                - liveness
+                - --status-file
+                - /var/run/gis-agent/active-metadata/status.json
+                - --max-age-seconds
+                - "30"
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 120
+          readinessProbe:
+            exec:
+              command:
+                - python
+                - -m
+                - data_agent.active_metadata_consumer_worker
+                - health
+                - --status-file
+                - /var/run/gis-agent/active-metadata/status.json
+                - --max-age-seconds
+                - "30"
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - python
+                - -m
+                - data_agent.active_metadata_consumer_worker
+                - liveness
+                - --status-file
+                - /var/run/gis-agent/active-metadata/status.json
+                - --max-age-seconds
+                - "90"
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: worker-runtime
+          emptyDir:
+            medium: Memory
+            sizeLimit: 8Mi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gis-agent-active-metadata-consumer
+  namespace: gis-agent

@@ -54,9 +54,9 @@ consumer scoping, wrong-worker rejection, retry, lease-expiry reclaim,
 processed finality, tenant isolation, forced RLS, direct update/delete denial,
 and rollback of a legacy-version event attempt. It records one authoritative
 event, three delivery attempts, contract fingerprint
-`b4b9d77d716f0e5d62389378aec60bdc366b2d847ace07a6b476310eb3ff6732`,
+`b6162ed687c6554859b0056e34dd5cf9f051818deb533daf708eeea67b18eca5`,
 and evidence fingerprint
-`fcd44cf9043e144016644b0d04e72f348a777668d853081d9d21ded341bb2b59`.
+`807444bb1adb2ea633bf98d845ba8a62fee608a4c6eff18c17c0c94f406e8a2`.
 
 This is local transactional evidence only and does not establish production
 Active Metadata readiness.

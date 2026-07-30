@@ -20,6 +20,7 @@ from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 from .active_metadata_change_contract import (
     ActiveMetadataRegistration,
     MetadataActivationIntent,
+    MetadataActivationRequest,
     MetadataChangeDelivery,
     MetadataChangeDeliveryStatus,
     MetadataChangeEvent,
@@ -103,6 +104,11 @@ ACTIVE_METADATA_CHANGE_MIGRATION = (
     Path(__file__).resolve().parent
     / "migrations"
     / "099_active_metadata_change_outbox.sql"
+)
+ACTIVE_METADATA_ACTIVATION_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "100_active_metadata_activation_request.sql"
 )
 USER_TENANT_MIGRATION = (
     Path(__file__).resolve().parent
@@ -611,6 +617,82 @@ class PlatformGateway:
                 },
             ).mappings().one()
             return self._metadata_change_from_row(row)
+
+    def get_metadata_activation_request(
+        self,
+        tenant_id: str,
+        request_id: UUID,
+    ) -> MetadataActivationRequest:
+        with self._transaction(tenant_id) as connection:
+            row = connection.execute(
+                text(
+                    """
+                    SELECT request
+                    FROM gda_control.metadata_activation_request
+                    WHERE tenant_id = :tenant_id AND request_id = :request_id
+                    """
+                ),
+                {"tenant_id": tenant_id, "request_id": request_id},
+            ).mappings().one_or_none()
+            if row is None:
+                raise GatewayNotFoundError(
+                    "MetadataActivationRequest was not found"
+                )
+            return MetadataActivationRequest.model_validate(
+                _as_json(row["request"])
+            )
+
+    def stage_metadata_activation_request(
+        self,
+        tenant_id: str,
+        event_id: UUID,
+        *,
+        worker_id: str,
+        request: MetadataActivationRequest,
+    ) -> GatewayWriteResult:
+        try:
+            request = MetadataActivationRequest.model_validate(
+                request.model_dump(mode="json", by_alias=True)
+            )
+        except ValueError as exc:
+            raise GatewayValidationError(
+                "metadata activation request is not content-bound"
+            ) from exc
+        if (
+            request.intent.tenant_id != tenant_id
+            or request.intent.event_id != event_id
+        ):
+            raise GatewayValidationError(
+                "metadata activation request does not match the claimed event"
+            )
+        with self._transaction(tenant_id) as connection:
+            row = connection.execute(
+                text(
+                    """
+                    SELECT *
+                    FROM gda_control.stage_metadata_activation_request(
+                        :tenant_id, :event_id, :worker_id,
+                        CAST(:request AS jsonb)
+                    )
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "event_id": event_id,
+                    "worker_id": worker_id,
+                    "request": _json(
+                        request.model_dump(mode="json", by_alias=True)
+                    ),
+                },
+            ).mappings().one()
+            stored = MetadataActivationRequest.model_validate(
+                _as_json(row["activation_request"])
+            )
+            if stored != request:
+                raise GatewayConflictError(
+                    "stored metadata activation request differs from input"
+                )
+            return GatewayWriteResult(stored, bool(row["created"]))
 
     def fail_metadata_change(
         self,
@@ -2187,6 +2269,7 @@ def build_gateway_report(
     binding_migration: Path | None = None,
     lineage_migration: Path | None = None,
     active_metadata_migration: Path | None = None,
+    activation_request_migration: Path | None = None,
     gateway_source: Path | None = None,
     routes_source: Path | None = None,
     command_consumer_source: Path | None = None,
@@ -2210,6 +2293,10 @@ def build_gateway_report(
         ).resolve(),
         "active_metadata_migration": (
             active_metadata_migration or ACTIVE_METADATA_CHANGE_MIGRATION
+        ).resolve(),
+        "activation_request_migration": (
+            activation_request_migration
+            or ACTIVE_METADATA_ACTIVATION_MIGRATION
         ).resolve(),
         "gateway_source": (gateway_source or Path(__file__)).resolve(),
         "routes_source": (routes_source or GATEWAY_ROUTES_SOURCE).resolve(),
@@ -2301,6 +2388,15 @@ def build_gateway_report(
             "ALTER TABLE gda_control.metadata_change_outbox FORCE ROW LEVEL SECURITY",
             "GRANT SELECT, INSERT ON gda_control.metadata_change_outbox",
         ),
+        "activation_request_migration": (
+            "CREATE TABLE IF NOT EXISTS gda_control.metadata_activation_request",
+            "status = 'awaiting_authorization'",
+            "stage_metadata_activation_request",
+            "processed metadata change has no exact activation request",
+            "durable activation request is required before completion",
+            "ALTER TABLE gda_control.metadata_activation_request FORCE ROW LEVEL SECURITY",
+            "GRANT SELECT, INSERT ON gda_control.metadata_activation_request",
+        ),
         "gateway_source": (
             'SET LOCAL ROLE "{GATEWAY_DATABASE_ROLE}"',
             "SELECT set_config('app.current_tenant', :tenant, true)",
@@ -2321,6 +2417,8 @@ def build_gateway_report(
             "def claim_metadata_changes(",
             "def complete_metadata_change(",
             "def fail_metadata_change(",
+            "def get_metadata_activation_request(",
+            "def stage_metadata_activation_request(",
         ),
         "routes_source": (
             'base = "/api/platform/v1"',
