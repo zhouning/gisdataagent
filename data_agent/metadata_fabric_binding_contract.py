@@ -37,6 +37,9 @@ PROVIDER_EVIDENCE_MEDIA_TYPE = (
     "application/vnd.gda.metadata-fabric-provider-binding-evidence+json"
 )
 SOURCE_EVIDENCE_SCHEMA = "gda.metadata_fabric_local_ingestion_evidence.v1"
+ACTIVE_METADATA_PROJECTION_EVIDENCE_SCHEMA = (
+    "gda.active_metadata_projection_execution_evidence.v1"
+)
 
 NonEmptyText = Annotated[
     str,
@@ -163,6 +166,7 @@ def parse_metadata_fabric_execution_plan_artifact(
 def metadata_fabric_provider_evidence_fingerprint(
     *,
     binding: MetadataFabricBinding,
+    source_evidence_schema: str = SOURCE_EVIDENCE_SCHEMA,
     source_evidence_sha256: str,
     openmetadata_snapshot_sha256: str,
     gravitino_snapshot_sha256: str,
@@ -175,7 +179,7 @@ def metadata_fabric_provider_evidence_fingerprint(
     return canonical_json_fingerprint(
         {
             "binding": binding.model_dump(mode="json", by_alias=True),
-            "source_evidence_schema": SOURCE_EVIDENCE_SCHEMA,
+            "source_evidence_schema": source_evidence_schema,
             "source_evidence_sha256": source_evidence_sha256,
             "openmetadata_snapshot_sha256": openmetadata_snapshot_sha256,
             "gravitino_snapshot_sha256": gravitino_snapshot_sha256,
@@ -196,7 +200,8 @@ class MetadataFabricProviderEvidence(_FrozenModel):
     ] = Field(default=PROVIDER_EVIDENCE_SCHEMA, alias="schema")
     binding: MetadataFabricBinding
     source_evidence_schema: Literal[
-        "gda.metadata_fabric_local_ingestion_evidence.v1"
+        "gda.metadata_fabric_local_ingestion_evidence.v1",
+        "gda.active_metadata_projection_execution_evidence.v1",
     ] = SOURCE_EVIDENCE_SCHEMA
     source_evidence_sha256: Sha256
     openmetadata_snapshot_sha256: Sha256
@@ -225,6 +230,7 @@ class MetadataFabricProviderEvidence(_FrozenModel):
             raise ValueError("first apply status does not match its mutation count")
         expected = metadata_fabric_provider_evidence_fingerprint(
             binding=self.binding,
+            source_evidence_schema=self.source_evidence_schema,
             source_evidence_sha256=self.source_evidence_sha256,
             openmetadata_snapshot_sha256=self.openmetadata_snapshot_sha256,
             gravitino_snapshot_sha256=self.gravitino_snapshot_sha256,
@@ -242,6 +248,10 @@ class MetadataFabricProviderEvidence(_FrozenModel):
 def build_metadata_fabric_provider_evidence(
     *,
     binding: MetadataFabricBinding,
+    source_evidence_schema: Literal[
+        "gda.metadata_fabric_local_ingestion_evidence.v1",
+        "gda.active_metadata_projection_execution_evidence.v1",
+    ] = SOURCE_EVIDENCE_SCHEMA,
     source_evidence_sha256: str,
     openmetadata_snapshot_sha256: str,
     gravitino_snapshot_sha256: str,
@@ -251,6 +261,7 @@ def build_metadata_fabric_provider_evidence(
 ) -> MetadataFabricProviderEvidence:
     values: dict[str, Any] = {
         "binding": binding,
+        "source_evidence_schema": source_evidence_schema,
         "source_evidence_sha256": source_evidence_sha256,
         "openmetadata_snapshot_sha256": openmetadata_snapshot_sha256,
         "gravitino_snapshot_sha256": gravitino_snapshot_sha256,

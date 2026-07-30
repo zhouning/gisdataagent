@@ -34,6 +34,7 @@ on:
       - feat/ar1-metadata-fabric-active-metadata-authorization
       - feat/ar1-metadata-fabric-active-metadata-scheduler-delivery
       - feat/ar1-metadata-fabric-active-metadata-projection-execution
+      - feat/ar1-metadata-fabric-active-metadata-binding-reconciliation
 
 env:
   PYTHON_VERSION: "3.13"
@@ -185,6 +186,9 @@ jobs:
       - name: Validate metadata fabric Active Metadata projection execution evidence
         run: python -m data_agent.metadata_fabric_active_metadata_projection_execution validate
 
+      - name: Validate metadata fabric Active Metadata binding reconciliation evidence
+        run: python -m data_agent.metadata_fabric_active_metadata_binding_reconciliation validate
+
       - name: Validate Active Metadata consumer deployment boundary
         run: python -m data_agent.active_metadata_consumer_deployment validate
 
@@ -229,6 +233,11 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gis_agent_test
         run: python -m pytest data_agent/test_active_metadata_authorization_postgres.py -q
 
+      - name: Verify Active Metadata binding reconciliation on PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gis_agent_test
+        run: python -m pytest data_agent/test_metadata_fabric_active_metadata_binding_reconciliation_postgres.py -q
+
       - name: Run required platform tests
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gis_agent_test
@@ -267,6 +276,7 @@ jobs:
             data_agent/test_metadata_fabric_active_metadata_authorization.py \
             data_agent/test_metadata_fabric_active_metadata_scheduler_delivery.py \
             data_agent/test_metadata_fabric_active_metadata_projection_execution.py \
+            data_agent/test_metadata_fabric_active_metadata_binding_reconciliation.py \
             data_agent/test_metadata_fabric_lineage_delivery.py \
             data_agent/test_metadata_fabric_provider_identity.py \
             data_agent/test_metadata_fabric_gravitino_identity.py \
