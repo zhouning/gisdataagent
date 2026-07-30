@@ -14,6 +14,39 @@ class FakeWorldModelV21Service:
             "paper9": {"repo_path": "paper9", "importable": True},
         }
 
+    def inspect_resources(self, *, dataset, prepared_dir, ensemble_dir):
+        self.payload = {
+            "dataset": dataset,
+            "prepared_dir": prepared_dir,
+            "ensemble_dir": ensemble_dir,
+        }
+        return {"status": "ready", "planning_ready": True, **self.payload}
+
+    def audit_run(self, *, out_dir, attempt, cultivated_area_floor_delta_ha):
+        self.payload = {
+            "out_dir": out_dir,
+            "attempt": attempt,
+            "cultivated_area_floor_delta_ha": cultivated_area_floor_delta_ha,
+        }
+        return {
+            "hard_constraint_passed": True,
+            "next_action": "commit_verified_episode",
+            **self.payload,
+        }
+
+    def recall_verified_episodes(self, *, dataset, limit):
+        self.payload = {"dataset": dataset, "limit": limit}
+        return {"status": "ok", "count": 0, "episodes": []}
+
+    def commit_verified_episode(self, *, out_dir, dataset, goal, plan_args):
+        self.payload = {
+            "out_dir": out_dir,
+            "dataset": dataset,
+            "goal": goal,
+            "plan_args": plan_args,
+        }
+        return {"status": "committed", "episode": {"episode_id": "demo"}}
+
     def run_plan(self, payload, user_id):
         self.payload = payload
         self.user_id = user_id
@@ -82,6 +115,37 @@ def test_world_model_v21_status_tool_returns_service_status(monkeypatch):
     assert result["status"] == "ready"
     assert result["version"] == "2.1.0"
     assert result["paper9"]["repo_path"] == "paper9"
+
+
+def test_paper9_governance_tools_call_service_with_structured_values(monkeypatch):
+    from data_agent.toolsets import world_model_v21_tools as tools
+
+    fake = FakeWorldModelV21Service()
+    monkeypatch.setattr(tools, "get_world_model_v21_service", lambda: fake)
+
+    inspected = json.loads(tools.paper9_inspect_resources(dataset="东兴"))
+    assert inspected["planning_ready"] is True
+    assert fake.payload["dataset"] == "dongxing"
+    assert fake.payload["prepared_dir"] == "/app/dongxing-runs/prepared"
+
+    recalled = json.loads(tools.paper9_recall_verified_episodes("东兴", "5"))
+    assert recalled["count"] == 0
+    assert fake.payload == {"dataset": "dongxing", "limit": 5}
+
+    audited = json.loads(tools.paper9_audit_run("/tmp/run", "1", "0"))
+    assert audited["hard_constraint_passed"] is True
+    assert fake.payload["attempt"] == 1
+
+    committed = json.loads(
+        tools.paper9_commit_verified_episode(
+            "/tmp/run",
+            "东兴",
+            "优化耕地布局",
+            '{"horizon": 1, "top_k": 1}',
+        )
+    )
+    assert committed["status"] == "committed"
+    assert fake.payload["plan_args"] == {"horizon": 1, "top_k": 1}
 
 
 def test_world_model_v21_plan_tool_normalizes_payload_and_returns_map_update(monkeypatch):
@@ -191,6 +255,46 @@ def test_world_model_v21_pipeline_uses_demo_defaults_and_env_paths(monkeypatch):
     assert fake.payload["horizon"] == 1
     assert fake.payload["top_k"] == 1
     assert fake.payload["continuation"] == "greedy"
+    assert fake.payload["cultivated_area_floor_delta_ha"] == 0.0
+    assert fake.payload["baimu_area_floor_delta_ha"] is None
+
+
+def test_world_model_v21_pipeline_forwards_planning_constraints(monkeypatch):
+    from data_agent.toolsets import world_model_v21_tools as tools
+
+    fake = FakeWorldModelV21Service()
+    monkeypatch.setattr(tools, "get_world_model_v21_service", lambda: fake)
+
+    result = json.loads(
+        tools._world_model_v21_pipeline_sync(
+            cultivated_area_floor_delta_ha="1.25",
+            baimu_area_floor_delta_ha="2.5",
+            gamma_conn="3.5",
+            delta_conn="4.5",
+        )
+    )
+
+    assert result["status"] == "ok"
+    assert fake.payload["cultivated_area_floor_delta_ha"] == 1.25
+    assert fake.payload["baimu_area_floor_delta_ha"] == 2.5
+    assert fake.payload["gamma_conn"] == 3.5
+    assert fake.payload["delta_conn"] == 4.5
+
+
+def test_world_model_v21_pipeline_cannot_lower_cultivated_area_floor(monkeypatch):
+    from data_agent.toolsets import world_model_v21_tools as tools
+
+    fake = FakeWorldModelV21Service()
+    monkeypatch.setattr(tools, "get_world_model_v21_service", lambda: fake)
+
+    result = json.loads(
+        tools._world_model_v21_pipeline_sync(
+            cultivated_area_floor_delta_ha="-100",
+        )
+    )
+
+    assert result["status"] == "ok"
+    assert fake.payload["cultivated_area_floor_delta_ha"] == 0.0
 
 
 def test_world_model_v21_pipeline_dataset_dongxing_overrides_bishan_env(monkeypatch):
@@ -289,6 +393,11 @@ def test_world_model_v21_toolset_lists_all_v21_tools():
     assert "world_model_v21_train" in names
     assert "world_model_v21_plan" in names
     assert "world_model_v21_pipeline" in names
+    assert "paper9_inspect_resources" in names
+    assert "paper9_recall_verified_episodes" in names
+    assert "paper9_audit_run" in names
+    assert "paper9_commit_verified_episode" in names
+    assert len(names) == 10
 
 
 def test_world_model_category_includes_v21_tools():
@@ -300,6 +409,10 @@ def test_world_model_category_includes_v21_tools():
     assert "world_model_v21_train" in TOOL_CATEGORIES["world_model"]
     assert "world_model_v21_plan" in TOOL_CATEGORIES["world_model"]
     assert "world_model_v21_pipeline" in TOOL_CATEGORIES["world_model"]
+    assert "paper9_inspect_resources" in TOOL_CATEGORIES["world_model"]
+    assert "paper9_recall_verified_episodes" in TOOL_CATEGORIES["world_model"]
+    assert "paper9_audit_run" in TOOL_CATEGORIES["world_model"]
+    assert "paper9_commit_verified_episode" in TOOL_CATEGORIES["world_model"]
 
 
 def test_world_model_category_includes_twm_tools():
@@ -354,6 +467,12 @@ def test_world_model_v21_agent_instruction_uses_fast_defaults():
     assert "dataset='bishan'" in instruction
     assert "CHG_FLAG" in instruction
     assert "红色为耕地 -> 林地" in instruction
+    assert "paper9_inspect_resources" in instruction
+    assert "paper9_audit_run" in instruction
+    assert "paper9_commit_verified_episode" in instruction
+    assert "只允许再调用一次" in instruction
+    assert "算法版本 2.2.3" in instruction
+    assert "首次 pipeline 必须设置 cultivated_area_floor_delta_ha='0'" in instruction
 
 
 def test_territory_world_model_agent_is_directly_mentionable():

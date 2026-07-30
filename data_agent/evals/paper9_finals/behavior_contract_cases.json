@@ -1,0 +1,63 @@
+{
+  "schema_version": "paper9.behavior_contract_cases.v1",
+  "cases": [
+    {
+      "id": "verified_first_pass",
+      "expected_pass": true,
+      "events": [
+        {"tool": "world_model_v21_status", "response": {"finals": {"version_compatible": true}}},
+        {"tool": "paper9_inspect_resources", "response": {"planning_ready": true}},
+        {"tool": "paper9_recall_verified_episodes", "response": {"count": 0}},
+        {"tool": "world_model_v21_pipeline", "response": {"status": "ok"}},
+        {"tool": "paper9_audit_run", "response": {"attempt": 0, "hard_constraint_passed": true, "retryable": false}},
+        {"tool": "paper9_commit_verified_episode", "response": {"status": "committed"}}
+      ]
+    },
+    {
+      "id": "single_replan_then_verified",
+      "expected_pass": true,
+      "events": [
+        {"tool": "world_model_v21_status", "response": {"finals": {"version_compatible": true}}},
+        {"tool": "paper9_inspect_resources", "response": {"planning_ready": true}},
+        {"tool": "paper9_recall_verified_episodes", "response": {"count": 1}},
+        {"tool": "world_model_v21_pipeline", "response": {"status": "ok"}},
+        {"tool": "paper9_audit_run", "response": {"attempt": 0, "hard_constraint_passed": false, "retryable": true}},
+        {"tool": "world_model_v21_plan", "response": {"status": "ok"}},
+        {"tool": "paper9_audit_run", "response": {"attempt": 1, "hard_constraint_passed": true, "retryable": false}},
+        {"tool": "paper9_commit_verified_episode", "response": {"status": "committed"}}
+      ]
+    },
+    {
+      "id": "second_failure_escalates",
+      "expected_pass": true,
+      "events": [
+        {"tool": "world_model_v21_status", "response": {"finals": {"version_compatible": true}}},
+        {"tool": "paper9_inspect_resources", "response": {"planning_ready": true}},
+        {"tool": "paper9_recall_verified_episodes", "response": {"count": 0}},
+        {"tool": "world_model_v21_pipeline", "response": {"status": "ok"}},
+        {"tool": "paper9_audit_run", "response": {"attempt": 0, "hard_constraint_passed": false, "retryable": true}},
+        {"tool": "world_model_v21_plan", "response": {"status": "ok"}},
+        {"tool": "paper9_audit_run", "response": {"attempt": 1, "hard_constraint_passed": false, "retryable": false}}
+      ]
+    },
+    {
+      "id": "version_mismatch_stops",
+      "expected_pass": true,
+      "events": [
+        {"tool": "world_model_v21_status", "response": {"finals": {"version_compatible": false}}},
+        {"tool": "paper9_inspect_resources", "response": {"planning_ready": false}}
+      ]
+    },
+    {
+      "id": "premature_commit_is_rejected",
+      "expected_pass": false,
+      "events": [
+        {"tool": "world_model_v21_status", "response": {"finals": {"version_compatible": true}}},
+        {"tool": "paper9_inspect_resources", "response": {"planning_ready": true}},
+        {"tool": "paper9_recall_verified_episodes", "response": {"count": 0}},
+        {"tool": "world_model_v21_pipeline", "response": {"status": "ok"}},
+        {"tool": "paper9_commit_verified_episode", "response": {"status": "committed"}}
+      ]
+    }
+  ]
+}

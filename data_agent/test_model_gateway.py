@@ -201,7 +201,10 @@ class TestCreateModel(unittest.TestCase):
         })
         self.assertEqual(os.environ["OPENAI_API_BASE"], "https://api.deepseek.com")
         self.assertEqual(os.environ["OPENAI_API_KEY"], "test-key")
-        mock_litellm.assert_called_once_with(model="openai/deepseek-v4-flash")
+        mock_litellm.assert_called_once_with(
+            model="openai/deepseek-v4-flash",
+            extra_body={"thinking": {"type": "disabled"}},
+        )
 
     def test_create_deepseek_model_requires_dedicated_api_key(self):
         from data_agent.model_gateway import _create_deepseek_model
@@ -276,7 +279,7 @@ class TestModelRouter(unittest.TestCase):
         from data_agent.model_gateway import ModelRouter
         router = ModelRouter()
         result = router.route(prefer_offline=True)
-        self.assertEqual(result, "gemma-3-4b")
+        self.assertEqual(result, "gemma4-26b-ollama")
 
     def test_route_with_task_type(self):
         from data_agent.model_gateway import ModelRouter
@@ -304,9 +307,15 @@ class TestAgentIntegration(unittest.TestCase):
 
     @patch("data_agent.model_gateway.create_model")
     def test_create_model_with_retry_delegates(self, mock_create):
-        mock_create.return_value = MagicMock()
+        # agent.py constructs module-level ADK agents during import. Return a
+        # valid model identifier so current ADK type validation can complete.
+        mock_create.return_value = "gemini-2.5-flash"
         from data_agent.agent import _create_model_with_retry
-        _create_model_with_retry("gemini-2.5-flash")
+
+        mock_create.reset_mock()
+        result = _create_model_with_retry("gemini-2.5-flash")
+
+        self.assertEqual(result, "gemini-2.5-flash")
         mock_create.assert_called_once_with("gemini-2.5-flash")
 
 

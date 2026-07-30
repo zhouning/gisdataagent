@@ -266,6 +266,8 @@ class ModelRegistry:
                              "reasoning", "analysis", "generation", "coding"],
             "api_base": "http://localhost:11434",
             "model_id": "ollama_chat/Gemma4:26b",
+            "extra_body": {"think": False},
+            "request_timeout": 600,
         },
         # Back-compat alias — older configs/env still reference the 31B name.
         # Points at the same Gemma4 tag the user actually has pulled locally

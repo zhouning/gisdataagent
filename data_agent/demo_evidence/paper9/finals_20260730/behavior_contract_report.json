@@ -1,0 +1,112 @@
+{
+  "generated_at": "2026-07-30T15:05:59.840771+00:00",
+  "limitations": [
+    "This report validates control-flow invariants, not stochastic Gemma 4 tool-selection reliability.",
+    "Live model reliability must be measured separately with repeated ADK runs."
+  ],
+  "results": [
+    {
+      "evaluation": {
+        "passed": true,
+        "terminal": "verified_commit",
+        "tool_count": 6,
+        "tool_trace": [
+          "world_model_v21_status",
+          "paper9_inspect_resources",
+          "paper9_recall_verified_episodes",
+          "world_model_v21_pipeline",
+          "paper9_audit_run",
+          "paper9_commit_verified_episode"
+        ],
+        "violations": []
+      },
+      "expected_pass": true,
+      "id": "verified_first_pass",
+      "matched_expectation": true
+    },
+    {
+      "evaluation": {
+        "passed": true,
+        "terminal": "verified_commit",
+        "tool_count": 8,
+        "tool_trace": [
+          "world_model_v21_status",
+          "paper9_inspect_resources",
+          "paper9_recall_verified_episodes",
+          "world_model_v21_pipeline",
+          "paper9_audit_run",
+          "world_model_v21_plan",
+          "paper9_audit_run",
+          "paper9_commit_verified_episode"
+        ],
+        "violations": []
+      },
+      "expected_pass": true,
+      "id": "single_replan_then_verified",
+      "matched_expectation": true
+    },
+    {
+      "evaluation": {
+        "passed": true,
+        "terminal": "human_review",
+        "tool_count": 7,
+        "tool_trace": [
+          "world_model_v21_status",
+          "paper9_inspect_resources",
+          "paper9_recall_verified_episodes",
+          "world_model_v21_pipeline",
+          "paper9_audit_run",
+          "world_model_v21_plan",
+          "paper9_audit_run"
+        ],
+        "violations": []
+      },
+      "expected_pass": true,
+      "id": "second_failure_escalates",
+      "matched_expectation": true
+    },
+    {
+      "evaluation": {
+        "passed": true,
+        "terminal": "preflight_stop",
+        "tool_count": 2,
+        "tool_trace": [
+          "world_model_v21_status",
+          "paper9_inspect_resources"
+        ],
+        "violations": []
+      },
+      "expected_pass": true,
+      "id": "version_mismatch_stops",
+      "matched_expectation": true
+    },
+    {
+      "evaluation": {
+        "passed": false,
+        "terminal": "incomplete",
+        "tool_count": 5,
+        "tool_trace": [
+          "world_model_v21_status",
+          "paper9_inspect_resources",
+          "paper9_recall_verified_episodes",
+          "world_model_v21_pipeline",
+          "paper9_commit_verified_episode"
+        ],
+        "violations": [
+          "Every planning call must be immediately followed by an audit.",
+          "An unverified or failed run was committed to memory."
+        ]
+      },
+      "expected_pass": false,
+      "id": "premature_commit_is_rejected",
+      "matched_expectation": true
+    }
+  ],
+  "schema_version": "paper9.behavior_contract_report.v1",
+  "scope": "deterministic_offline_behavior_contracts",
+  "summary": {
+    "matched": 5,
+    "pass_rate": 1.0,
+    "total": 5
+  }
+}

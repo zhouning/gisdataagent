@@ -1,0 +1,56 @@
+{
+  "checks": [
+    {
+      "actual": "/app/paper9-demo",
+      "name": "paper9_repo",
+      "passed": true
+    },
+    {
+      "actual": "0.3.3",
+      "expected": "0.3.3",
+      "name": "paper9_package_version",
+      "passed": true
+    },
+    {
+      "actual": "2.2.3",
+      "expected": "2.2.3",
+      "name": "paper9_algorithm_version",
+      "passed": true
+    },
+    {
+      "actual": "/app/bishan-runs/prepared/dem_slope_analysis/output/DLTB_with_slope.shp",
+      "name": "bishan_prepared",
+      "passed": true
+    },
+    {
+      "actual": {
+        "directory": "/app/bishan-runs/prepared/ensemble_seed0",
+        "member_count": 3
+      },
+      "name": "bishan_onnx_ensemble",
+      "passed": true
+    },
+    {
+      "actual": {
+        "available": [
+          "Gemma4:12b",
+          "Gemma4:26b",
+          "Gemma4:31b",
+          "Gemma4:e2b",
+          "Gemma4:e4b",
+          "Gemma4:latest",
+          "Qwen3.6:27b",
+          "Qwen3.6:35b",
+          "nomic-embed-text-v2-moe:latest",
+          "qwen3-vl:32b"
+        ],
+        "required": "Gemma4:26b"
+      },
+      "name": "ollama_model_tag",
+      "passed": true
+    }
+  ],
+  "failed_checks": [],
+  "ready": true,
+  "schema_version": "gemma4.finals_preflight.v1"
+}

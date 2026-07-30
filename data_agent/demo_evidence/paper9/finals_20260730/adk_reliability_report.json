@@ -1,0 +1,791 @@
+{
+  "generated_at": "2026-07-29T17:13:20.299593+00:00",
+  "limitations": [
+    "This report measures live Gemma 4 and Google ADK tool orchestration.",
+    "Tool responses are deterministic doubles; this report does not rerun Paper9 computation.",
+    "Real Paper9 algorithm and artifact evidence is maintained as a separate evidence class."
+  ],
+  "model": "gemma4-26b-ollama",
+  "ollama_api_base": "http://localhost:11434",
+  "prompt_sha256": "8829094cb6772c25dfff3ef1f8e46f9feaaa6ad4f91bbfb8e226f3b90aa6c20a",
+  "runs": [
+    {
+      "error": null,
+      "expected_terminal": "verified_commit",
+      "final_response": "本次任务已成功完成。\n\n**总结报告：**\n- **package_version**: 0.3.3\n- **algorithm_version**: 2.2.3\n- **mode**: pipeline_a_to_d (reuse_existing=true)\n- **env_kind**: county\n- **steps_run**: 1 (plan)\n- **n_blocks**: 未知 (取决于数据集具体规模)\n- **n_selected**: 1\n- **total_reward**: 未在返回中直接给出，但审计通过\n- **硬约束审计**: 通过 (all_expected_outputs_exist=true, cultivated_area_floor_delta_ha=0.0)\n- **经验提交状态**: 已成功提交至 bishan 经验库 (episode_id: eval-verified_first_pass-1-00d1c938)\n- **artifacts**: /evidence/verified_first_pass-1-00d1c938\n\n**工具调用轨迹：**\n1. `world_model_v21_status`: 检查版本兼容性。\n2. `paper9_inspect_resources`: 检查 bishan 数据集资源状态，确认可复用。\n3. `paper9_recall_verified_episodes`: 检索历史经验，未发现匹配记录。\n4. `world_model_v21_pipeline`: 执行规划流水线（跳过已存在的 prepare/sample/train 阶段，直接运行 plan）。\n5. `paper9_audit_run`: 对生成的规划结果进行硬约束审计（attempt=0）。\n6. `paper9_commit_verified_episode`: 审计通过，将结果写入经验库。",
+      "input_tokens": 12655,
+      "latency_ms": 8967.658000066876,
+      "output_tokens": 604,
+      "passed": true,
+      "run_id": "verified_first_pass-1-00d1c938",
+      "run_number": 1,
+      "scenario": "verified_first_pass",
+      "terminal": "verified_commit",
+      "tool_count": 6,
+      "tool_trace": [
+        "world_model_v21_status",
+        "paper9_inspect_resources",
+        "paper9_recall_verified_episodes",
+        "world_model_v21_pipeline",
+        "paper9_audit_run",
+        "paper9_commit_verified_episode"
+      ],
+      "violations": []
+    },
+    {
+      "error": null,
+      "expected_terminal": "verified_commit",
+      "final_response": "任务执行完毕。\n\n**总结报告：**\n- **Package Version**: 0.3.3\n- **Algorithm Version**: 2.2.3\n- **Mode**: Pipeline (Reuse Existing)\n- **Env Kind**: county\n- **Steps Run**: 1 (Plan stage only, previous stages reused)\n- **N Blocks**: 未直接提供，由规划器生成\n- **N Selected**: 1\n- **Total Reward**: 已通过审计\n- **硬约束审计**: 通过 (Passed)\n- **经验提交状态**: 已成功提交至 verified memory\n- **Artifacts**: `/evidence/verified_first_pass-2-8dd2ca48`\n\n**工具调用轨迹：**\n1. `world_model_v21_status`\n2. `paper9_inspect_resources`\n3. `paper9_recall_verified_episodes`\n4. `world_model_v21_pipeline`\n5. `paper9_audit_run`\n6. `paper9_commit_verified_episode`",
+      "input_tokens": 12605,
+      "latency_ms": 6468.744416953996,
+      "output_tokens": 450,
+      "passed": true,
+      "run_id": "verified_first_pass-2-8dd2ca48",
+      "run_number": 2,
+      "scenario": "verified_first_pass",
+      "terminal": "verified_commit",
+      "tool_count": 6,
+      "tool_trace": [
+        "world_model_v21_status",
+        "paper9_inspect_resources",
+        "paper9_recall_verified_episodes",
+        "world_model_v21_pipeline",
+        "paper9_audit_run",
+        "paper9_commit_verified_episode"
+      ],
+      "violations": []
+    },
+    {
+      "error": null,
+      "expected_terminal": "verified_commit",
+      "final_response": "任务完成。本次运行使用 bishan 数据集执行了快速县域 MPC 规划，并成功通过硬约束审计及经验提交。\n\n**运行总结：**\n- **package_version**: 0.3.3\n- **algorithm_version**: 2.2.3\n- **mode**: pipeline_a_to_d (reuse_existing=true)\n- **env_kind**: county\n- **steps_run**: 1 (plan)\n- **n_blocks**: 未知 (由于复用阶段，仅执行了 planning step)\n- **n_selected**: 1\n- **total_reward**: 未直接提供（结果已通过审计）\n- **硬约束审计**: 通过 (hard_constraint_passed: true)\n- **经验提交状态**: 已成功提交至经验库 (committed)\n- **artifacts**: /evidence/verified_first_pass-3-bb1e4840\n\n**工具调用轨迹：**\n1. `world_model_v21_status`\n2. `paper9_inspect_resources`\n3. `paper9_recall_verified_episodes`\n4. `world_model_v21_pipeline`\n5. `paper9_audit_run`\n6. `paper9_commit_verified_episode`",
+      "input_tokens": 12625,
+      "latency_ms": 7025.1306251157075,
+      "output_tokens": 505,
+      "passed": true,
+      "run_id": "verified_first_pass-3-bb1e4840",
+      "run_number": 3,
+      "scenario": "verified_first_pass",
+      "terminal": "verified_commit",
+      "tool_count": 6,
+      "tool_trace": [
+        "world_model_v21_status",
+        "paper9_inspect_resources",
+        "paper9_recall_verified_episodes",
+        "world_model_v21_pipeline",
+        "paper9_audit_run",
+        "paper9_commit_verified_episode"
+      ],
+      "violations": []
+    },
+    {
+      "error": null,
+      "expected_terminal": "verified_commit",
+      "final_response": "package_version: 0.3.3\nalgorithm_version: 2.2.3\nmode: pipeline_a_to_d (reuse_existing=true)\nenv_kind: county\nsteps_run: 1 (plan only, others skipped via reuse)\nn_blocks: 不适用 (未在输出中直接提供块数量)\nn_selected: 1\ntotal_reward: 未在汇总中明确提供具体数值\n硬约束审计: 通过 (hard_constraint_passed=true)\n经验提交状态: 已成功提交至 verified episodic memory\n\n工具调用轨迹:\n1. world_model_v21_status\n2. paper9_inspect_resources\n3. paper9_recall_verified_episodes\n4. world_model_v21_pipeline\n5. paper9_audit_run\n6. paper9_commit_verified_episode",
+      "input_tokens": 12645,
+      "latency_ms": 6935.097791953012,
+      "output_tokens": 423,
+      "passed": true,
+      "run_id": "verified_first_pass-4-4752806f",
+      "run_number": 4,
+      "scenario": "verified_first_pass",
+      "terminal": "verified_commit",
+      "tool_count": 6,
+      "tool_trace": [
+        "world_model_v21_status",
+        "paper9_inspect_resources",
+        "paper9_recall_verified_episodes",
+        "world_model_v21_pipeline",
+        "paper9_audit_run",
+        "paper9_commit_verified_episode"
+      ],
+      "violations": []
+    },
+    {
+      "error": null,
+      "expected_terminal": "verified_commit",
+      "final_response": "本次任务已成功完成。使用 bishan 数据集执行了快速县域 MPC 规划，并通过了硬约束审计并成功提交至经验库。\n\n**总结报告：**\n* **package_version**: 0.3.3\n* **algorithm_version**: 2.2.3\n* **mode**: pipeline (reuse_existing=true)\n* **env_kind**: county\n* **steps_run**: 1 (Plan)\n* **n_blocks/n_selected**: 未在输出中直接提供具体数量，但完成了单轨迹规划\n* **total_reward**: 已通过审计验证\n* **硬约束审计**: 通过 (hard_constraint_passed: true)\n* **经验提交状态**: 成功 (committed)\n* **artifacts**: `/evidence/verified_first_pass-5-d7d26139`\n\n**工具调用轨迹：**\n1. `world_model_v21_status`\n2. `paper9_inspect_resources`\n3. `paper9_recall_verified_episodes`\n4. `world_model_v21_pipeline`\n5. `paper9_audit_run`\n6. `paper9_commit_verified_episode`",
+      "input_tokens": 12611,
+      "latency_ms": 7990.186208859086,
+      "output_tokens": 487,
+      "passed": true,
+      "run_id": "verified_first_pass-5-d7d26139",
+      "run_number": 5,
+      "scenario": "verified_first_pass",
+      "terminal": "verified_commit",
+      "tool_count": 6,
+      "tool_trace": [
+        "world_model_v21_status",
+        "paper9_inspect_resources",
+        "paper9_recall_verified_episodes",
+        "world_model_v21_pipeline",
+        "paper9_audit_run",
+        "paper9_commit_verified_episode"
+      ],
+      "violations": []
+    },
+    {
+      "error": null,
+      "expected_terminal": "verified_commit",
+      "final_response": "package_version: 0.3.3\nalgorithm_version: 2.2.3\nmode: pipeline_a_to_d (reuse_existing=true)\nenv_kind: county\nsteps_run: 1 (Plan only, others reused)\nn_blocks: 未知 (取决于数据集内容)\nn_selected: 1\ntotal_reward: 未在结果中直接给出具体数值\n硬约束审计: 通过 (hard_constraint_passed=true)\n经验提交状态: 已成功提交 (committed)\nartifacts: /evidence/verified_first_pass-6-446f8d55\n\n工具调用轨迹:\n1. world_model_v21_status\n2. paper9_inspect_resources\n3. paper9_recall_verified_episodes\n4. world_model_v21_pipeline\n5. paper9_audit_run\n6. paper9_commit_verified_episode",
+      "input_tokens": 12858,
+      "latency_ms": 7916.07958287932,
+      "output_tokens": 482,
+      "passed": true,
+      "run_id": "verified_first_pass-6-446f8d55",
+      "run_number": 6,
+      "scenario": "verified_first_pass",
+      "terminal": "verified_commit",
+      "tool_count": 6,
+      "tool_trace": [
+        "world_model_v21_status",
+        "paper9_inspect_resources",
+        "paper9_recall_verified_episodes",
+        "world_model_v21_pipeline",
+        "paper9_audit_run",
+        "paper9_commit_verified_episode"
+      ],
+      "violations": []
+    },
+    {
+      "error": null,
+      "expected_terminal": "verified_commit",
+      "final_response": "package_version: 0.3.3\nalgorithm_version: 2.2.3\nmode: pipeline_a_to_d (reuse_existing=true)\nenv_kind: county\nsteps_run: 1 (plan only)\nn_blocks: 未知 (取决于规划结果)\nn_selected: 未知 (取决于规划结果)\ntotal_reward: 未知 (取决于规划结果)\n硬约束审计: 通过 (hard_constraint_passed=true)\n经验提交状态: 已成功提交至 bishan 经验库\n\n右侧地图按 CHG_FLAG 展示优化变化：灰色为保持不变，红色为耕地 -> 林地，绿色为林地 -> 耕地。\n\n工具调用轨迹：\n1. world_model_v21_status\n2. paper9_inspect_resources\n3. paper9_recall_verified_episodes\n4. world_model_v21_pipeline\n5. paper9_audit_run\n6. paper9_commit_verified_episode",
+      "input_tokens": 12611,
+      "latency_ms": 7606.1374170240015,
+      "output_tokens": 441,
+      "passed": true,
+      "run_id": "verified_first_pass-7-2714622d",
+      "run_number": 7,
+      "scenario": "verified_first_pass",
+      "terminal": "verified_commit",
+      "tool_count": 6,
+      "tool_trace": [
+        "world_model_v21_status",
+        "paper9_inspect_resources",
+        "paper9_recall_verified_episodes",
+        "world_model_v21_pipeline",
+        "paper9_audit_run",
+        "paper9_commit_verified_episode"
+      ],
+      "violations": []
+    },
+    {
+      "error": null,
+      "expected_terminal": "verified_commit",
+      "final_response": "任务完成。本次运行使用 bishan 数据集执行了快速县域 MPC 规划，流程已通过硬约束审计并成功提交至经验库。\n\n**统计摘要：**\n*   **Package Version:** 0.3.3\n*   **Algorithm Version:** 2.2.3\n*   **Mode:** Pipeline (Reuse Existing)\n*   **Env Kind:** county\n*   **Steps Run:** 1 (Plan only, others reused)\n*   **n_blocks/n_selected:** N/A (直接复用已有模型进行规划)\n*   **Total Reward:** 未在摘要中明确显示，但审计结果为通过\n*   **硬约束审计:** 通过 (Passed)\n*   **经验提交状态:** 成功 (Committed)\n*   **Artifacts:** `/evidence/verified_first_pass-8-2224bd77`\n\n**工具调用轨迹：**\n1. `world_model_v21_status`: 检查版本兼容性。\n2. `paper9_inspect_resources`: 检查 bishan 资源状态（发现已就绪）。\n3. `paper9_recall_verified_episodes`: 检索历史经验（未找到匹配记录）。\n4. `world_model_v21_pipeline`: 执行规划流水线（跳过前置步骤，直接执行 Tool 4）。\n5. `paper9_audit_run`: 对规划输出进行硬约束审计。\n6. `paper9_commit_verified_episode`: 将通过审计的结果提交至经验库。",
+      "input_tokens": 12625,
+      "latency_ms": 9479.003290878609,
+      "output_tokens": 563,
+      "passed": true,
+      "run_id": "verified_first_pass-8-2224bd77",
+      "run_number": 8,
+      "scenario": "verified_first_pass",
+      "terminal": "verified_commit",
+      "tool_count": 6,
+      "tool_trace": [
+        "world_model_v21_status",
+        "paper9_inspect_resources",
+        "paper9_recall_verified_episodes",
+        "world_model_v21_pipeline",
+        "paper9_audit_run",
+        "paper9_commit_verified_episode"
+      ],
+      "violations": []
+    },
+    {
+      "error": null,
+      "expected_terminal": "verified_commit",
+      "final_response": "package_version: 0.3.3\nalgorithm_version: 2.2.3\nmode: pipeline_a_to_d (reuse_existing=true)\nenv_kind: county\nsteps_run: 1 (plan only)\nn_blocks: N/A\nn_selected: 1\ntotal_reward: N/A\n硬约束审计: 通过 (passed)\n经验提交状态: 已成功提交至 bishan 经验库\nartifacts: /evidence/verified_first_pass-9-5968b0f0\n\n工具调用轨迹：\n1. world_model_v21_status\n2. paper9_inspect_resources\n3. paper9_recall_verified_episodes\n4. world_model_v21_pipeline\n5. paper9_audit_run\n6. paper9_commit_verified_episode",
+      "input_tokens": 12627,
+      "latency_ms": 7690.490333130583,
+      "output_tokens": 413,
+      "passed": true,
+      "run_id": "verified_first_pass-9-5968b0f0",
+      "run_number": 9,
+      "scenario": "verified_first_pass",
+      "terminal": "verified_commit",
+      "tool_count": 6,
+      "tool_trace": [
+        "world_model_v21_status",
+        "paper9_inspect_resources",
+        "paper9_recall_verified_episodes",
+        "world_model_v21_pipeline",
+        "paper9_audit_run",
+        "paper9_commit_verified_episode"
+      ],
+      "violations": []
+    },
+    {
+      "error": null,
+      "expected_terminal": "verified_commit",
+      "final_response": "任务完成。本次运行使用了已有的资源进行快速 MPC 规划与审计。\n\n**执行摘要：**\n- **package_version**: 0.3.3\n- **algorithm_version**: 2.2.3\n- **mode**: pipeline_a_to_d (reuse_existing=true)\n- **env_kind**: county\n- **steps_run**: 1 (Plan step executed, others reused)\n- **n_blocks**: 未知 (由工具内部计算)\n- **n_selected**: 1\n- **total_reward**: 未直接提供数值，已通过审计\n- **硬约束审计**: 通过 (Passed)\n- **经验提交状态**: 已成功提交至 bishan 经验库\n- **artifacts**: `/evidence/verified_first_pass-10-4463eac0`\n\n**工具调用轨迹：**\n1. `world_model_v21_status` (检查版本)\n2. `paper9_inspect_resources` (检查 bishan 资源)\n3. `paper9_recall_verified_episodes` (检索历史经验)\n4. `world_model_v21_pipeline` (执行规划链路，复用 A/B/C 阶段)\n5. `paper9_audit_run` (对输出结果进行约束审计, attempt=0)\n6. `paper9_commit_verified_episode` (提交验证成功的经验)",
+      "input_tokens": 12637,
+      "latency_ms": 9573.755458928645,
+      "output_tokens": 542,
+      "passed": true,
+      "run_id": "verified_first_pass-10-4463eac0",
+      "run_number": 10,
+      "scenario": "verified_first_pass",
+      "terminal": "verified_commit",
+      "tool_count": 6,
+      "tool_trace": [
+        "world_model_v21_status",
+        "paper9_inspect_resources",
+        "paper9_recall_verified_episodes",
+        "world_model_v21_pipeline",
+        "paper9_audit_run",
+        "paper9_commit_verified_episode"
+      ],
+      "violations": []
+    },
+    {
+      "error": null,
+      "expected_terminal": "preflight_stop",
+      "final_response": "版本不兼容，无法执行任务。\n\n**资源缺口报告：**\n*   **Package Version:** 期望 0.3.3, 当前 0.2.1 (不匹配)\n*   **Algorithm Version:** 期望 2.2.3, 当前 2.1.0 (不匹配)\n*   **Status:** 发现版本冲突，系统已停止运行。",
+      "input_tokens": 4654,
+      "latency_ms": 2340.3914580121636,
+      "output_tokens": 121,
+      "passed": true,
+      "run_id": "version_mismatch_stops-1-227c16e0",
+      "run_number": 1,
+      "scenario": "version_mismatch_stops",
+      "terminal": "preflight_stop",
+      "tool_count": 2,
+      "tool_trace": [
+        "world_model_v21_status",
+        "paper9_inspect_resources"
+      ],
+      "violations": []
+    },
+    {
+      "error": null,
+      "expected_terminal": "preflight_stop",
+      "final_response": "由于 Paper9 包版本 (0.2.1) 与算法版本 (2.1.0) 存在不兼容（要求 package_version 0.3.3, algorithm_version 2.2.3），且系统状态显示 `version_compatible: false`，任务无法继续执行。\n\n**资源缺口报告：**\n- **Package Version 缺口**: 当前 0.2.1 $\\neq$ 要求的 0.3.3\n- **Algorithm Version 缺口**: 当前 2.1.0 $\\neq$ 要求的 2.2.3\n\n**总结：**\n- package_version: 0.2.1\n- algorithm_version: 2.1.0\n- mode: N/A (Version Mismatch)\n- env_kind: county\n- steps_run: 0\n- n_blocks: N/A\n- n_selected: N/A\n- total_reward: N/A\n- 硬约束审计: 未通过（版本不兼容）\n- 经验提交状态: 未执行\n- artifacts: 无\n\n**工具调用轨迹：**\n1. `world_model_v21_status`\n2. `paper9_inspect_resources`",
+      "input_tokens": 4654,
+      "latency_ms": 5034.812292084098,
+      "output_tokens": 304,
+      "passed": true,
+      "run_id": "version_mismatch_stops-2-6815a821",
+      "run_number": 2,
+      "scenario": "version_mismatch_stops",
+      "terminal": "preflight_stop",
+      "tool_count": 2,
+      "tool_trace": [
+        "world_model_v21_status",
+        "paper9_inspect_resources"
+      ],
+      "violations": []
+    },
+    {
+      "error": null,
+      "expected_terminal": "preflight_stop",
+      "final_response": "版本不兼容，无法执行任务。\n\n**资源缺口报告：**\n*   **Paper9 Package Version:** 预期 0.3.3，当前 0.2.1 (不兼容)\n*   **Algorithm Version:** 预期 2.2.3，当前 2.1.0 (不兼容)\n*   **Status:** 任务已停止。",
+      "input_tokens": 4654,
+      "latency_ms": 2270.90095798485,
+      "output_tokens": 118,
+      "passed": true,
+      "run_id": "version_mismatch_stops-3-2ada3140",
+      "run_number": 3,
+      "scenario": "version_mismatch_stops",
+      "terminal": "preflight_stop",
+      "tool_count": 2,
+      "tool_trace": [
+        "world_model_v21_status",
+        "paper9_inspect_resources"
+      ],
+      "violations": []
+    },
+    {
+      "error": null,
+      "expected_terminal": "preflight_stop",
+      "final_response": "版本不兼容，无法执行任务。\n\n**资源缺口报告：**\n*   Paper9 Package 版本: 0.2.1 (需要 0.3.3)\n*   Algorithm 版本: 2.1.0 (需要 2.2.3)\n*   状态: 停止操作，请升级环境版本。\n\n**工具调用轨迹：**\n1. `world_model_v21_status` (识别到版本不兼容)\n2. `paper9_inspect_resources` (记录资源缺口)",
+      "input_tokens": 4654,
+      "latency_ms": 2878.7406249903142,
+      "output_tokens": 154,
+      "passed": true,
+      "run_id": "version_mismatch_stops-4-d9389f69",
+      "run_number": 4,
+      "scenario": "version_mismatch_stops",
+      "terminal": "preflight_stop",
+      "tool_count": 2,
+      "tool_trace": [
+        "world_model_v21_status",
+        "paper9_inspect_resources"
+      ],
+      "violations": []
+    },
+    {
+      "error": null,
+      "expected_terminal": "preflight_stop",
+      "final_response": "版本不兼容且存在资源缺口，无法执行任务。\n\n**版本与资源差异报告：**\n*   **Paper9 Package Version:** 0.2.1 (需要 0.3.3)\n*   **Algorithm Version:** 2.1.0 (需要 2.2.3)\n*   **资源缺口：** 检测到 `planning_ready=false`，系统要求执行 `repair_version` 以修复版本不一致问题。\n\n**工具调用轨迹：**\n1. `world_model_v21_status`: 检测到版本不兼容 (package 0.2.1 / algorithm 2.1.0)。\n2. `paper9_inspect_resources`: 记录资源状态，确认存在版本冲突及修复需求。",
+      "input_tokens": 4654,
+      "latency_ms": 3587.2179169673473,
+      "output_tokens": 204,
+      "passed": true,
+      "run_id": "version_mismatch_stops-5-800b31c1",
+      "run_number": 5,
+      "scenario": "version_mismatch_stops",
+      "terminal": "preflight_stop",
+      "tool_count": 2,
+      "tool_trace": [
+        "world_model_v21_status",
+        "paper9_inspect_resources"
+      ],
+      "violations": []
+    },
+    {
+      "error": null,
+      "expected_terminal": "preflight_stop",
+      "final_response": "版本不兼容且资源未就绪，无法执行任务。\n\n**缺口报告：**\n*   **Paper9 Package Version:** 期望 0.3.3, 当前 0.2.1 (不兼容)\n*   **Algorithm Version:** 期望 2.2.3, 当前 2.1.0 (不兼容)\n*   **资源状态:** `planning_ready` 为 `false`，需要执行 `repair_version` 流程。",
+      "input_tokens": 4654,
+      "latency_ms": 2601.7046668566763,
+      "output_tokens": 138,
+      "passed": true,
+      "run_id": "version_mismatch_stops-6-0a83ad82",
+      "run_number": 6,
+      "scenario": "version_mismatch_stops",
+      "terminal": "preflight_stop",
+      "tool_count": 2,
+      "tool_trace": [
+        "world_model_v21_status",
+        "paper9_inspect_resources"
+      ],
+      "violations": []
+    },
+    {
+      "error": null,
+      "expected_terminal": "preflight_stop",
+      "final_response": "版本不兼容，无法继续执行任务。\n\n**资源缺口报告：**\n*   **Paper9 包版本：** 期望 0.3.3，实际 0.2.1 (存在版本差异)\n*   **算法版本：** 期望 2.2.3，实际 2.1.0 (存在版本差异)\n*   **状态：** `planning_ready=false`，由于检测到核心组件版本不兼容且需要执行 `repair_version` 修复流程，任务已停止。",
+      "input_tokens": 4654,
+      "latency_ms": 2880.0046660471708,
+      "output_tokens": 151,
+      "passed": true,
+      "run_id": "version_mismatch_stops-7-6dc637de",
+      "run_number": 7,
+      "scenario": "version_mismatch_stops",
+      "terminal": "preflight_stop",
+      "tool_count": 2,
+      "tool_trace": [
+        "world_model_v21_status",
+        "paper9_inspect_resources"
+      ],
+      "violations": []
+    },
+    {
+      "error": null,
+      "expected_terminal": "preflight_stop",
+      "final_response": "由于 Paper9 包版本 (0.2.1) 与算法版本 (2.1.0) 不兼容（要求的 package_version 为 0.3.3，algorithm_version 为 2.2.3），且检测到需要进行版本修复 (`required_stages: [\"repair_version\"]`)，当前环境无法执行规划任务。\n\n**资源缺口报告：**\n- **Package Version Gap:** 当前版本 0.2.1 $\\neq$ 要求的 0.3.3\n- **Algorithm Version Gap:** 当前版本 2.1.0 $\\neq$ 要求的 2.2.3\n- **Status:** 任务已停止，请升级环境版本后重试。",
+      "input_tokens": 4654,
+      "latency_ms": 3581.8437919951975,
+      "output_tokens": 187,
+      "passed": true,
+      "run_id": "version_mismatch_stops-8-811e5ea4",
+      "run_number": 8,
+      "scenario": "version_mismatch_stops",
+      "terminal": "preflight_stop",
+      "tool_count": 2,
+      "tool_trace": [
+        "world_model_v21_status",
+        "paper9_inspect_resources"
+      ],
+      "violations": []
+    },
+    {
+      "error": null,
+      "expected_terminal": "preflight_stop",
+      "final_response": "版本不兼容，无法执行任务。\n\n**资源缺口报告：**\n*   Package Version: 0.2.1 (需要 0.3.3)\n*   Algorithm Version: 2.1.0 (需要 2.2.3)\n*   状态：由于版本不匹配且 `planning_ready=false`，系统已停止运行。",
+      "input_tokens": 4654,
+      "latency_ms": 2483.1494169775397,
+      "output_tokens": 116,
+      "passed": true,
+      "run_id": "version_mismatch_stops-9-4a403499",
+      "run_number": 9,
+      "scenario": "version_mismatch_stops",
+      "terminal": "preflight_stop",
+      "tool_count": 2,
+      "tool_trace": [
+        "world_model_v21_status",
+        "paper9_inspect_resources"
+      ],
+      "violations": []
+    },
+    {
+      "error": null,
+      "expected_terminal": "preflight_stop",
+      "final_response": "版本不兼容。当前 Paper9 包版本为 0.2.1，算法版本为 2.1.0，要求版本为 Package 0.3.3 及 Algorithm 2.2.3。由于存在版本缺口且 `planning_ready` 为 false，任务停止并请求人工修复版本环境。\n\n**资源检查报告：**\n- **数据集**: bishan\n- **Package Version**: 0.2.1 (需 0.3.3)\n- **Algorithm Version**: 2.1.0 (需 2.2.3)\n- **Prepared Dir**: /app/bishan-runs/prepared\n- **Ensemble Dir**: /app/bishan-runs/prepared/ensemble_seed0\n- **缺口说明**: 检测到版本不兼容，无法进行后续规划。\n\n**工具调用轨迹：**\n1. `world_model_v21_status` (检测到版本冲突)\n2. `paper9_inspect_resources` (记录资源路径与需求)",
+      "input_tokens": 4654,
+      "latency_ms": 4700.67866705358,
+      "output_tokens": 259,
+      "passed": true,
+      "run_id": "version_mismatch_stops-10-f033c4fc",
+      "run_number": 10,
+      "scenario": "version_mismatch_stops",
+      "terminal": "preflight_stop",
+      "tool_count": 2,
+      "tool_trace": [
+        "world_model_v21_status",
+        "paper9_inspect_resources"
+      ],
+      "violations": []
+    },
+    {
+      "error": null,
+      "expected_terminal": "verified_commit",
+      "final_response": "任务已完成。在首次规划中由于硬约束未通过，系统自动执行了一次重规划（replan_once），并在调整参数后成功通过审计并提交经验。\n\n**运行摘要：**\n- **版本信息**：Package 0.3.3 / Algorithm 2.2.3\n- **运行模式**：Pipeline (Reuse existing stages) -> Plan -> Replan -> Audit & Commit\n- **环境配置**：Dataset: bishan | env_kind: county | horizon: 1\n- **规划结果**：n_blocks: N/A | n_selected: 1 | total_reward: N/A (视具体输出而定)\n- **硬约束审计**：首次 attempt=0 失败 (hard_constraint_passed: false)，第二次 attempt=1 成功\n- **经验提交状态**：已成功提交至验证集 (episode_id: eval-single_replan_then_verified-1-82b8e08c)\n- **生成产物**：`/evidence/single_replan_then_verified-1-82b8e08c`\n\n**工具调用轨迹：**\n1. `world_model_v21_status` (检查版本)\n2. `paper9_inspect_resources` (检查 bishan 资源)\n3. `paper9_recall_verified_episodes` (检索历史经验)\n4. `world_model_v21_pipeline` (执行 A->D 链路，复用已有阶段)\n5. `paper9_audit_run` (第一次审计：发现硬约束失败)\n6. `world_model_v21_plan` (执行重规划)\n7. `paper9_audit_run` (第二次审计：验证通过)\n8. `paper9_commit_verified_episode` (提交成功结果)",
+      "input_tokens": 18180,
+      "latency_ms": 15567.985750036314,
+      "output_tokens": 851,
+      "passed": true,
+      "run_id": "single_replan_then_verified-1-82b8e08c",
+      "run_number": 1,
+      "scenario": "single_replan_then_verified",
+      "terminal": "verified_commit",
+      "tool_count": 8,
+      "tool_trace": [
+        "world_model_v21_status",
+        "paper9_inspect_resources",
+        "paper9_recall_verified_episodes",
+        "world_model_v21_pipeline",
+        "paper9_audit_run",
+        "world_model_v21_plan",
+        "paper9_audit_run",
+        "paper9_commit_verified_episode"
+      ],
+      "violations": []
+    },
+    {
+      "error": null,
+      "expected_terminal": "verified_commit",
+      "final_response": "package_version: 0.3.3\nalgorithm_version: 2.2.3\nmode: pipeline (with replan)\nenv_kind: county\nsteps_run: 1 (Plan step executed via Tool 4 after first attempt failed)\nn_blocks: N/A\nn_selected: 1\ntotal_reward: N/A\n硬约束审计: 通过 (Attempt 1 Passed)\n经验提交状态: 已提交 (Committed)\nartifacts: /evidence/single_replan_then_verified-2-65229910\n\n工具调用轨迹:\n1. world_model_v21_status\n2. paper9_inspect_resources\n3. paper9_recall_verified_episodes\n4. world_model_v21_pipeline (Reuse existing stages)\n5. paper9_audit_run (Attempt 0: Failed hard constraints)\n6. world_model_v21_plan (Replan to satisfy constraints)\n7. paper9_audit_run (Attempt 1: Passed)\n8. paper9_commit_verified_episode",
+      "input_tokens": 18156,
+      "latency_ms": 12964.159333147109,
+      "output_tokens": 687,
+      "passed": true,
+      "run_id": "single_replan_then_verified-2-65229910",
+      "run_number": 2,
+      "scenario": "single_replan_then_verified",
+      "terminal": "verified_commit",
+      "tool_count": 8,
+      "tool_trace": [
+        "world_model_v21_status",
+        "paper9_inspect_resources",
+        "paper9_recall_verified_episodes",
+        "world_model_v21_pipeline",
+        "paper9_audit_run",
+        "world_model_v21_plan",
+        "paper9_audit_run",
+        "paper9_commit_verified_episode"
+      ],
+      "violations": []
+    },
+    {
+      "error": null,
+      "expected_terminal": "verified_commit",
+      "final_response": "package_version: 0.3.3\nalgorithm_version: 2.2.3\nmode: pipeline (reuse_existing=true)\nenv_kind: county\nsteps_run: 1 (plan step executed after reuse)\nn_blocks: N/A\nn_selected: 1\ntotal_reward: N/A\n硬约束审计: 通过 (经过一次重规划后通过)\n经验提交状态: 已提交 (committed)\nartifacts: /evidence/single_replan_then_verified-3-0558d679\n\n工具调用轨迹:\n1. world_model_v21_status\n2. paper9_inspect_resources\n3. paper9_recall_verified_episodes\n4. world_model_v21_pipeline\n5. paper9_audit_run (attempt=0, 失败)\n6. world_model_v21_plan (重规划)\n7. paper9_audit_run (attempt=1, 成功)\n8. paper9_commit_verified_episode",
+      "input_tokens": 18161,
+      "latency_ms": 12435.85720914416,
+      "output_tokens": 670,
+      "passed": true,
+      "run_id": "single_replan_then_verified-3-0558d679",
+      "run_number": 3,
+      "scenario": "single_replan_then_verified",
+      "terminal": "verified_commit",
+      "tool_count": 8,
+      "tool_trace": [
+        "world_model_v21_status",
+        "paper9_inspect_resources",
+        "paper9_recall_verified_episodes",
+        "world_model_v21_pipeline",
+        "paper9_audit_run",
+        "world_model_v21_plan",
+        "paper9_audit_run",
+        "paper9_commit_verified_episode"
+      ],
+      "violations": []
+    },
+    {
+      "error": null,
+      "expected_terminal": "verified_commit",
+      "final_response": "任务完成。已成功通过重规划（Replan）修复硬约束失败问题，并提交经验至数据集 bishan 的验证库中。\n\n**任务总结：**\n* **Package Version**: 0.3.3\n* **Algorithm Version**: 2.2.3\n* **Mode**: Pipeline (Reuse existing stages + Replan)\n* **Env Kind**: county\n* **Steps Run**: 1 (Plan stage only, as previous stages were reused)\n* **N Blocks**: 1\n* **N Selected**: 1\n* **Total Reward**: N/A (Audit passed on hard constraints)\n* **硬约束审计**: 第一次尝试失败（hard_constraint_passed=false），执行单次重规划后第二次尝试成功。\n* **经验提交状态**: 已成功提交 (Committed)\n* **Artifacts**: `/evidence/single_replan_then_verified-4-e5dbc5f2`\n\n**工具调用轨迹：**\n1. `world_model_v21_status`\n2. `paper9_inspect_resources`\n3. `paper9_recall_verified_episodes`\n4. `world_model_v21_pipeline` (Reuse existing)\n5. `paper9_audit_run` (Attempt 0: Failed)\n6. `world_model_v21_plan` (Replan)\n7. `paper9_audit_run` (Attempt 1: Passed)\n8. `paper9_commit_verified_episode`",
+      "input_tokens": 18100,
+      "latency_ms": 13687.30629212223,
+      "output_tokens": 764,
+      "passed": true,
+      "run_id": "single_replan_then_verified-4-e5dbc5f2",
+      "run_number": 4,
+      "scenario": "single_replan_then_verified",
+      "terminal": "verified_commit",
+      "tool_count": 8,
+      "tool_trace": [
+        "world_model_v21_status",
+        "paper9_inspect_resources",
+        "paper9_recall_verified_episodes",
+        "world_model_v21_pipeline",
+        "paper9_audit_run",
+        "world_model_v21_plan",
+        "paper9_audit_run",
+        "paper9_commit_verified_episode"
+      ],
+      "violations": []
+    },
+    {
+      "error": null,
+      "expected_terminal": "verified_commit",
+      "final_response": "package_version: 0.3.3\nalgorithm_version: 2.2.3\nmode: pipeline_a_to_d (with replan)\nenv_kind: county\nsteps_run: 1 (plan stage reused, retried once via plan tool)\nn_blocks: 未知 (取决于具体地理单元)\nn_selected: 1\ntotal_reward: 未知 (由工具输出决定)\n硬约束审计: 通过 (第二次尝试通过)\n经验提交状态: 已成功提交至 bishan 记忆库\nartifacts: /evidence/single_replan_then_verified-5-d52830f5\n\n**工具调用轨迹：**\n1. world_model_v21_status\n2. paper9_inspect_resources\n3. paper9_recall_verified_episodes\n4. world_model_v21_pipeline (reuse_existing=true)\n5. paper9_audit_run (attempt=0, 结果: hard_constraint_passed=false)\n6. world_model_v21_plan (重规划)\n7. paper9_audit_run (attempt=1, 结果: hard_constraint_passed=true)\n8. paper9_commit_verified_episode",
+      "input_tokens": 18174,
+      "latency_ms": 13075.500250095502,
+      "output_tokens": 717,
+      "passed": true,
+      "run_id": "single_replan_then_verified-5-d52830f5",
+      "run_number": 5,
+      "scenario": "single_replan_then_verified",
+      "terminal": "verified_commit",
+      "tool_count": 8,
+      "tool_trace": [
+        "world_model_v21_status",
+        "paper9_inspect_resources",
+        "paper9_recall_verified_episodes",
+        "world_model_v21_pipeline",
+        "paper9_audit_run",
+        "world_model_v21_plan",
+        "paper9_audit_run",
+        "paper9_commit_verified_episode"
+      ],
+      "violations": []
+    },
+    {
+      "error": null,
+      "expected_terminal": "verified_commit",
+      "final_response": "package_version: 0.3.3\nalgorithm_version: 2.2.3\nmode: pipeline (reuse existing stages)\nenv_kind: county\nsteps_run: 1 (Plan only, as others were reused)\nn_blocks: N/A\nn_selected: 1\ntotal_reward: N/A (Audit passed on constraints)\n硬约束审计: 第一次尝试失败 (replan_once)，第二次尝试成功 (commit_verified_episode)\n经验提交状态: 已提交至 bishan 数据集经验库\nartifacts: /evidence/single_replan_then_verified-6-218f3f36\n\n工具调用轨迹:\n1. world_model_v21_status\n2. paper9_inspect_resources\n3. paper9_recall_verified_episodes\n4. world_model_v21_pipeline (reuse_existing=true)\n5. paper9_audit_run (attempt=0, result: hard_constraint_passed=false)\n6. world_model_v21_plan (replan)\n7. paper9_audit_run (attempt=1, result: hard_constraint_passed=true)\n8. paper9_commit_verified_episode",
+      "input_tokens": 17507,
+      "latency_ms": 10746.36908294633,
+      "output_tokens": 587,
+      "passed": true,
+      "run_id": "single_replan_then_verified-6-218f3f36",
+      "run_number": 6,
+      "scenario": "single_replan_then_verified",
+      "terminal": "verified_commit",
+      "tool_count": 8,
+      "tool_trace": [
+        "world_model_v21_status",
+        "paper9_inspect_resources",
+        "paper9_recall_verified_episodes",
+        "world_model_v21_pipeline",
+        "paper9_audit_run",
+        "world_model_v21_plan",
+        "paper9_audit_run",
+        "paper9_commit_verified_episode"
+      ],
+      "violations": []
+    },
+    {
+      "error": null,
+      "expected_terminal": "verified_commit",
+      "final_response": "本次任务已成功完成。通过一次重规划（Replan），成功修正了初始规划中的硬约束失败问题，并最终通过审计验证。\n\n**总结报告：**\n*   **Package Version**: 0.3.3\n*   **Algorithm Version**: 2.2.3\n*   **Mode**: Pipeline (Reuse Existing Stages + Replan)\n*   **Env Kind**: county\n*   **Steps Run**: 1 (Tool 4 Planning)\n*   **N Blocks**: N/A (根据配置执行)\n*   **N Selected**: 1\n*   **Total Reward**: N/A (由于主要关注硬约束通过情况)\n*   **硬约束审计**: 第一次 Attempt 0 失败（Hard Constraint Failed），第二次 Attempt 1 成功（Hard Constraint Passed）。\n*   **经验提交状态**: 已提交至 verified episodic memory。\n*   **Artifacts**: `/evidence/single_replan_then_verified-7-460aaf5c`\n\n**工具调用轨迹：**\n1. `world_model_v21_status`: 检查版本兼容性。\n2. `paper9_inspect_resources`: 检查 bishan 数据集资源，确认可复用阶段。\n3. `paper9_recall_verified_episodes`: 检索历史经验（无）。\n4. `world_model_v21_pipeline`: 执行 A->D 链路（复用 Tool 1/2/3，运行 Tool 4）。\n5. `paper9_audit_run`: 对第一次规划结果进行审计（识别到硬约束失败并要求重规划）。\n6. `world_model_v21_plan`: 按照允许范围执行第二次规划。\n7. `paper9_audit_run`: 对第二次规划结果进行审计（验证通过）。\n8. `paper9_commit_verified_episode`: 将通过审计的成功案例存入经验库。",
+      "input_tokens": 18125,
+      "latency_ms": 14446.675916900858,
+      "output_tokens": 856,
+      "passed": true,
+      "run_id": "single_replan_then_verified-7-460aaf5c",
+      "run_number": 7,
+      "scenario": "single_replan_then_verified",
+      "terminal": "verified_commit",
+      "tool_count": 8,
+      "tool_trace": [
+        "world_model_v21_status",
+        "paper9_inspect_resources",
+        "paper9_recall_verified_episodes",
+        "world_model_v21_pipeline",
+        "paper9_audit_run",
+        "world_model_v21_plan",
+        "paper9_audit_run",
+        "paper9_commit_verified_episode"
+      ],
+      "violations": []
+    },
+    {
+      "error": null,
+      "expected_terminal": "verified_commit",
+      "final_response": "任务完成。通过一次重规划成功通过了硬约束审计。\n\n**总结报告：**\n- **package_version**: 0.3.3\n- **algorithm_version**: 2.2.3\n- **mode**: pipeline (reuse_existing=true) -> replan (tool4)\n- **env_kind**: county\n- **steps_run**: 1 (Plan stage executed)\n- **n_blocks**: 未在输出中明确，沿用默认配置\n- **n_selected**: 1\n- **total_reward**: 已通过审计验证\n- **硬约束审计**: 第一次尝试失败（hard_constraint_passed: false），经一次重规划后第二次尝试成功（hard_constraint_passed: true）\n- **经验提交状态**: 已提交至 verified episodic memory\n- **artifacts**: `/evidence/single_replan_then_verified-8-7fe360cf`\n\n**工具调用轨迹：**\n1. `world_model_v21_status` (检查版本)\n2. `paper9_inspect_resources` (检查 bishan 资源)\n3. `paper9_recall_verified_episodes` (检索历史经验)\n4. `world_model_v21_pipeline` (执行 A->D 链路，复用已有资源)\n5. `paper9_audit_run` (首次审计，判定失败并要求重规划)\n6. `world_model_v21_plan` (执行 Tool 4 重规划)\n7. `paper9_audit_run` (第二次审计，判定成功)\n8. `paper9_commit_verified_episode` (提交验证后的经验)",
+      "input_tokens": 18144,
+      "latency_ms": 14189.139124937356,
+      "output_tokens": 810,
+      "passed": true,
+      "run_id": "single_replan_then_verified-8-7fe360cf",
+      "run_number": 8,
+      "scenario": "single_replan_then_verified",
+      "terminal": "verified_commit",
+      "tool_count": 8,
+      "tool_trace": [
+        "world_model_v21_status",
+        "paper9_inspect_resources",
+        "paper9_recall_verified_episodes",
+        "world_model_v21_pipeline",
+        "paper9_audit_run",
+        "world_model_v21_plan",
+        "paper9_audit_run",
+        "paper9_commit_verified_episode"
+      ],
+      "violations": []
+    },
+    {
+      "error": null,
+      "expected_terminal": "verified_commit",
+      "final_response": "任务完成。本次运行通过重规划成功修复了硬约束冲突。\n\n**运行摘要：**\n- **package_version**: 0.3.3\n- **algorithm_version**: 2.2.3\n- **mode**: pipeline (reuse_existing=true) $\\rightarrow$ replan (tool4)\n- **env_kind**: county\n- **steps_run**: 1 (Plan stage executed)\n- **n_blocks**: 未知 (由 Tool 4 内部确定)\n- **n_selected**: 1\n- **total_reward**: 未在日志中直接显示具体数值\n- **硬约束审计**: 首次尝试失败 (hard_constraint_passed=false)，经一次重规划后通过 (attempt=1, passed=true)\n- **经验提交状态**: 已成功提交至 bishan 经验库 (episode_id: eval-single_replan_then_verified-9-6e932256)\n- **artifacts**: `/evidence/single_replan_then_verified-9-6e932256`\n\n**工具调用轨迹：**\n1. `world_model_v21_status` (检查版本)\n2. `paper9_inspect_resources` (检查 bishan 资源)\n3. `paper9_recall_verified_episodes` (检索历史经验)\n4. `world_model_v21_pipeline` (执行 A $\\rightarrow$ D 链路，复用现有阶段)\n5. `paper9_audit_run` (第一次审计：识别硬约束失败)\n6. `world_model_v21_plan` (执行重规划)\n7. `paper9_audit_run` (第二次审计：确认通过)\n8. `paper9_commit_verified_episode` (提交成功经验)",
+      "input_tokens": 18192,
+      "latency_ms": 14992.618374992162,
+      "output_tokens": 847,
+      "passed": true,
+      "run_id": "single_replan_then_verified-9-6e932256",
+      "run_number": 9,
+      "scenario": "single_replan_then_verified",
+      "terminal": "verified_commit",
+      "tool_count": 8,
+      "tool_trace": [
+        "world_model_v21_status",
+        "paper9_inspect_resources",
+        "paper9_recall_verified_episodes",
+        "world_model_v21_pipeline",
+        "paper9_audit_run",
+        "world_model_v21_plan",
+        "paper9_audit_run",
+        "paper9_commit_verified_episode"
+      ],
+      "violations": []
+    },
+    {
+      "error": null,
+      "expected_terminal": "verified_commit",
+      "final_response": "任务完成。通过一次重规划成功修复了硬约束违规问题。\n\n**运行总结：**\n- **Package Version**: 0.3.3\n- **Algorithm Version**: 2.2.3\n- **Mode**: pipeline (reuse_existing=true) -> replan (tool4)\n- **Env Kind**: county\n- **Steps Run**: 1 (Planning only, stages reused)\n- **n_blocks**: N/A\n- **n_selected**: 1\n- **Total Reward**: N/A\n- **硬约束审计**: 通过 (Attempt 1: Passed)\n- **经验提交状态**: 已成功提交至 bishan 经验库\n- **Artifacts**: `/evidence/single_replan_then_verified-10-80a3dad3`\n\n**工具调用轨迹：**\n1. `world_model_v21_status`\n2. `paper9_inspect_resources`\n3. `paper9_recall_verified_episodes`\n4. `world_model_v21_pipeline` (Reuse existing stages)\n5. `paper9_audit_run` (Attempt 0: Failed hard constraint)\n6. `world_model_v21_plan` (Replan with delta=0)\n7. `paper9_audit_run` (Attempt 1: Passed)\n8. `paper9_commit_verified_episode`",
+      "input_tokens": 18137,
+      "latency_ms": 13639.83133295551,
+      "output_tokens": 745,
+      "passed": true,
+      "run_id": "single_replan_then_verified-10-80a3dad3",
+      "run_number": 10,
+      "scenario": "single_replan_then_verified",
+      "terminal": "verified_commit",
+      "tool_count": 8,
+      "tool_trace": [
+        "world_model_v21_status",
+        "paper9_inspect_resources",
+        "paper9_recall_verified_episodes",
+        "world_model_v21_pipeline",
+        "paper9_audit_run",
+        "world_model_v21_plan",
+        "paper9_audit_run",
+        "paper9_commit_verified_episode"
+      ],
+      "violations": []
+    }
+  ],
+  "runs_per_scenario": 10,
+  "scenarios": [
+    "verified_first_pass",
+    "version_mismatch_stops",
+    "single_replan_then_verified"
+  ],
+  "schema_version": "paper9.adk_reliability_report.v1",
+  "scope": "live_gemma4_adk_orchestration_with_deterministic_tool_doubles",
+  "statistics": {
+    "by_scenario": {
+      "single_replan_then_verified": {
+        "confidence_95_wilson": [
+          0.7224598312333834,
+          1.0
+        ],
+        "error_count": 0,
+        "exact_trace_consistency": 1.0,
+        "mean_latency_ms": 13574.544266727753,
+        "mean_tool_count": 8.0,
+        "p95_latency_ms": 15309.070431266446,
+        "pairwise_trace_consistency": 1.0,
+        "pass_rate": 1.0,
+        "passed": 10,
+        "terminal_distribution": {
+          "verified_commit": 10
+        },
+        "total": 10,
+        "trace_distribution": {
+          "world_model_v21_status -> paper9_inspect_resources -> paper9_recall_verified_episodes -> world_model_v21_pipeline -> paper9_audit_run -> world_model_v21_plan -> paper9_audit_run -> paper9_commit_verified_episode": 10
+        },
+        "unique_trace_count": 1
+      },
+      "verified_first_pass": {
+        "confidence_95_wilson": [
+          0.7224598312333834,
+          1.0
+        ],
+        "error_count": 0,
+        "exact_trace_consistency": 1.0,
+        "mean_latency_ms": 7965.228312578984,
+        "mean_tool_count": 6.0,
+        "p95_latency_ms": 9531.116983306129,
+        "pairwise_trace_consistency": 1.0,
+        "pass_rate": 1.0,
+        "passed": 10,
+        "terminal_distribution": {
+          "verified_commit": 10
+        },
+        "total": 10,
+        "trace_distribution": {
+          "world_model_v21_status -> paper9_inspect_resources -> paper9_recall_verified_episodes -> world_model_v21_pipeline -> paper9_audit_run -> paper9_commit_verified_episode": 10
+        },
+        "unique_trace_count": 1
+      },
+      "version_mismatch_stops": {
+        "confidence_95_wilson": [
+          0.7224598312333834,
+          1.0
+        ],
+        "error_count": 0,
+        "exact_trace_consistency": 1.0,
+        "mean_latency_ms": 3235.9444458968937,
+        "mean_tool_count": 2.0,
+        "p95_latency_ms": 4884.452160820365,
+        "pairwise_trace_consistency": 1.0,
+        "pass_rate": 1.0,
+        "passed": 10,
+        "terminal_distribution": {
+          "preflight_stop": 10
+        },
+        "total": 10,
+        "trace_distribution": {
+          "world_model_v21_status -> paper9_inspect_resources": 10
+        },
+        "unique_trace_count": 1
+      }
+    },
+    "overall": {
+      "confidence_95_wilson": [
+        0.8864829086095221,
+        1.0
+      ],
+      "error_count": 0,
+      "exact_trace_consistency": 0.3333333333333333,
+      "mean_latency_ms": 8258.572341734543,
+      "mean_tool_count": 5.333333333333333,
+      "p95_latency_ms": 14746.944268851075,
+      "pairwise_trace_consistency": 0.572158365261813,
+      "pass_rate": 1.0,
+      "passed": 30,
+      "terminal_distribution": {
+        "preflight_stop": 10,
+        "verified_commit": 20
+      },
+      "total": 30,
+      "trace_distribution": {
+        "world_model_v21_status -> paper9_inspect_resources": 10,
+        "world_model_v21_status -> paper9_inspect_resources -> paper9_recall_verified_episodes -> world_model_v21_pipeline -> paper9_audit_run -> paper9_commit_verified_episode": 10,
+        "world_model_v21_status -> paper9_inspect_resources -> paper9_recall_verified_episodes -> world_model_v21_pipeline -> paper9_audit_run -> world_model_v21_plan -> paper9_audit_run -> paper9_commit_verified_episode": 10
+      },
+      "unique_trace_count": 3
+    },
+    "release_gate": {
+      "failed_scenarios": [],
+      "pass_rate_threshold": 0.8,
+      "passed": true
+    }
+  }
+}

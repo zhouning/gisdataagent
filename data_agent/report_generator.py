@@ -586,6 +586,17 @@ def generate_pdf_report(
     docx_path = output_path.rsplit('.', 1)[0] + '.docx'
     generate_word_report(markdown_text, docx_path, title, author, logo_path, pipeline_type)
 
+    return convert_word_to_pdf(docx_path, output_path, remove_source=True)
+
+
+def convert_word_to_pdf(
+    docx_path: str,
+    output_path: str,
+    *,
+    remove_source: bool = False,
+) -> str:
+    """Convert an existing Word report to PDF using the configured office backend."""
+
     output_abs = os.path.abspath(output_path)
     out_dir = os.path.dirname(output_abs) or os.getcwd()
     os.makedirs(out_dir, exist_ok=True)
@@ -633,10 +644,11 @@ def generate_pdf_report(
                 if os.path.abspath(generated_pdf) != output_abs and os.path.exists(generated_pdf):
                     os.replace(generated_pdf, output_abs)
                 if os.path.exists(output_abs):
-                    try:
-                        os.remove(docx_path)
-                    except OSError:
-                        pass
+                    if remove_source:
+                        try:
+                            os.remove(docx_path)
+                        except OSError:
+                            pass
                     return output_abs
                 raise RuntimeError(f"LibreOffice did not create PDF: {output_abs}")
         except Exception as e:
@@ -648,10 +660,11 @@ def generate_pdf_report(
 
         convert(docx_path, output_abs)
         if os.path.exists(output_abs):
-            try:
-                os.remove(docx_path)
-            except OSError:
-                pass
+            if remove_source:
+                try:
+                    os.remove(docx_path)
+                except OSError:
+                    pass
             return output_abs
         raise RuntimeError(f"docx2pdf did not create PDF: {output_abs}")
     except Exception as e:

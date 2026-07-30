@@ -1,0 +1,40 @@
+{
+  "all_expected_outputs_exist": true,
+  "artifacts": {
+    "optimized_spatial_result": {
+      "exists": true,
+      "path": "/app/data_agent/uploads/admin/world_model_v21/20260730_155442_050986/optimized_dltb.shp"
+    },
+    "summary": {
+      "exists": true,
+      "path": "/app/data_agent/uploads/admin/world_model_v21/20260730_155442_050986/mpc_summary.json",
+      "sha256": "fda6d569410097edf80333835d7632689ec753a7ec232518833685493df5eeb9"
+    }
+  },
+  "attempt": 0,
+  "failure_reasons": [],
+  "hard_constraint_passed": true,
+  "next_action": "commit_verified_episode",
+  "out_dir": "/app/data_agent/uploads/admin/world_model_v21/20260730_155442_050986",
+  "policy": {
+    "cultivated_area_floor_delta_ha": 0.0,
+    "max_replans": 1,
+    "require_contiguity_improvement": true,
+    "require_slope_improvement": true
+  },
+  "records": [
+    {
+      "baimu_area_change_ha": 35.13161927157044,
+      "baimu_count_change": 0.0,
+      "cont_change": 0.020184135977336926,
+      "cultivated_area_change_ha": 1.935935926192999,
+      "episode": 0,
+      "slope_change_pct": -0.6077654972924247,
+      "steps_run": 100,
+      "total_reward": 37.40937856603974
+    }
+  ],
+  "recovery_hints": [],
+  "retryable": false,
+  "schema_version": "paper9.agent_audit.v1"
+}

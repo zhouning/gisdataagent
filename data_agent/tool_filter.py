@@ -111,6 +111,8 @@ TOOL_CATEGORIES: dict[str, frozenset[str]] = {
         "world_model_v21_status", "world_model_v21_prepare",
         "world_model_v21_sample", "world_model_v21_train",
         "world_model_v21_plan", "world_model_v21_pipeline",
+        "paper9_inspect_resources", "paper9_recall_verified_episodes",
+        "paper9_audit_run", "paper9_commit_verified_episode",
         "twm_status", "twm_status_detail", "twm_create_project",
         "twm_list_projects", "twm_bind_layer", "twm_list_layer_bindings",
         "twm_build_state", "twm_build_state_async", "twm_evaluate_rules",

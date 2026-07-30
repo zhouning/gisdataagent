@@ -97,9 +97,9 @@ services:
       DYNAMIC_PLANNER: "true"
     volumes:
       - gemma4_demo_uploads:/app/data_agent/uploads
-      - /Users/zhouning/arcgis-farmland-mpc:/app/paper9-demo:ro
-      - /Users/zhouning/farmland_mpc_runs/bishan:/app/bishan-runs:ro
-      - /Users/zhouning/arcgis-farmland-mpc/runs/dongxing:/app/dongxing-runs:ro
+      - ${PAPER9_HOST_REPO:-./vendor/paper9-mnr-offline-package}:/app/paper9-demo:ro
+      - ${PAPER9_BISHAN_RUNS_HOST:-./demo-data/bishan}:/app/bishan-runs:ro
+      - ${PAPER9_DONGXING_RUNS_HOST:-./demo-data/dongxing}:/app/dongxing-runs:ro
     networks:
       - gemma4-demo-net
 
