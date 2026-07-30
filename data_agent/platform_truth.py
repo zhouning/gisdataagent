@@ -979,6 +979,26 @@ RUNTIME_INVENTORY = (
         "Object-store-backed durable provider, protected identity and production binding promotion",
     ),
     RuntimeSpec(
+        "metadata_object_store_active_metadata_promotion_rehearsal",
+        "object_store_active_metadata_promotion_rehearsal",
+        "governed",
+        "evidence_durable",
+        "temporary JDBC/S3 provider runtime + committed local evidence",
+        "metadata-platform",
+        "local_verification_only",
+        (
+            "data_agent/metadata_fabric_object_store_active_metadata_promotion.py",
+            "scripts/metadata-fabric-object-store-active-metadata-promotion.sh",
+        ),
+        (
+            (
+                "data_agent/metadata_fabric_object_store_active_metadata_promotion.py",
+                "def run_live_rehearsal",
+            ),
+        ),
+        "Protected object-store identity/TLS/KMS, real row ingestion and versioned promotion ledger",
+    ),
+    RuntimeSpec(
         "datalake_monitor",
         "monitor_loop",
         "legacy",
