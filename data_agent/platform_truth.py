@@ -939,6 +939,26 @@ RUNTIME_INVENTORY = (
         "Protected identity, durable executor and production scheduler/provider path",
     ),
     RuntimeSpec(
+        "metadata_active_metadata_binding_reconciliation_rehearsal",
+        "active_metadata_binding_reconciliation_rehearsal",
+        "governed",
+        "evidence_durable",
+        "temporary scheduler/provider/PostgreSQL session + committed local evidence",
+        "metadata-platform",
+        "local_verification_only",
+        (
+            "data_agent/metadata_fabric_active_metadata_binding_reconciliation.py",
+            "scripts/metadata-fabric-active-metadata-binding-reconciliation.sh",
+        ),
+        (
+            (
+                "data_agent/metadata_fabric_active_metadata_binding_reconciliation.py",
+                "def run_managed_rehearsal",
+            ),
+        ),
+        "Protected identity, durable catalog/executor and production binding ledger",
+    ),
+    RuntimeSpec(
         "datalake_monitor",
         "monitor_loop",
         "legacy",
