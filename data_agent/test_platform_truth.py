@@ -286,6 +286,12 @@ def test_repository_source_access_and_runtime_baselines_match():
         and item["production_role"] == "local_verification_only"
         for item in static_report["runtime"]["inventory"]
     )
+    assert any(
+        item["runtime_id"]
+        == "metadata_object_store_active_metadata_promotion_rehearsal"
+        and item["production_role"] == "local_verification_only"
+        for item in static_report["runtime"]["inventory"]
+    )
 
 
 def test_runtime_report_detects_unregistered_background_mechanism(tmp_path):

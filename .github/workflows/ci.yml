@@ -35,6 +35,7 @@ on:
       - feat/ar1-metadata-fabric-active-metadata-scheduler-delivery
       - feat/ar1-metadata-fabric-active-metadata-projection-execution
       - feat/ar1-metadata-fabric-active-metadata-binding-reconciliation
+      - feat/ar1-metadata-fabric-durable-active-metadata-promotion
 
 env:
   PYTHON_VERSION: "3.13"
@@ -192,6 +193,9 @@ jobs:
       - name: Validate metadata fabric durable Active Metadata promotion evidence
         run: python -m data_agent.metadata_fabric_durable_active_metadata_promotion validate
 
+      - name: Validate metadata fabric object-store Active Metadata promotion evidence
+        run: python -m data_agent.metadata_fabric_object_store_active_metadata_promotion validate
+
       - name: Validate Active Metadata consumer deployment boundary
         run: python -m data_agent.active_metadata_consumer_deployment validate
 
@@ -281,6 +285,7 @@ jobs:
             data_agent/test_metadata_fabric_active_metadata_projection_execution.py \
             data_agent/test_metadata_fabric_active_metadata_binding_reconciliation.py \
             data_agent/test_metadata_fabric_durable_active_metadata_promotion.py \
+            data_agent/test_metadata_fabric_object_store_active_metadata_promotion.py \
             data_agent/test_metadata_fabric_lineage_delivery.py \
             data_agent/test_metadata_fabric_provider_identity.py \
             data_agent/test_metadata_fabric_gravitino_identity.py \
