@@ -749,6 +749,26 @@ RUNTIME_INVENTORY = (
         "Protected identity/TLS, production object storage and full Spark/Flink conformance",
     ),
     RuntimeSpec(
+        "metadata_active_metadata_outbox_rehearsal",
+        "active_metadata_outbox_rehearsal",
+        "governed",
+        "evidence_durable",
+        "committed local PostgreSQL Active Metadata outbox evidence",
+        "metadata-platform",
+        "local_verification_only",
+        (
+            "data_agent/metadata_fabric_active_metadata_outbox.py",
+            "scripts/metadata-fabric-active-metadata-outbox.sh",
+        ),
+        (
+            (
+                "data_agent/metadata_fabric_active_metadata_outbox.py",
+                "def run_local_rehearsal",
+            ),
+        ),
+        "Managed consumer submission to DolphinScheduler with protected identity",
+    ),
+    RuntimeSpec(
         "datalake_monitor",
         "monitor_loop",
         "legacy",

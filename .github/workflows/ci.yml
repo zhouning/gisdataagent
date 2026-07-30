@@ -29,6 +29,7 @@ on:
       - feat/ar1-metadata-fabric-object-store-readiness-gate
       - feat/ar1-metadata-fabric-spark-commit-failure-recovery
       - feat/ar1-metadata-fabric-spark-uncertain-commit-reconciliation
+      - feat/ar1-metadata-fabric-active-metadata-outbox
 
 env:
   PYTHON_VERSION: "3.13"
@@ -165,6 +166,9 @@ jobs:
       - name: Validate metadata fabric Spark uncertain-commit reconciliation evidence
         run: python -m data_agent.metadata_fabric_spark_uncertain_commit_reconciliation validate
 
+      - name: Validate metadata fabric Active Metadata outbox evidence
+        run: python -m data_agent.metadata_fabric_active_metadata_outbox validate
+
       - name: Validate DolphinScheduler adapter boundary
         run: python -m data_agent.dolphinscheduler_adapter validate
 
@@ -190,6 +194,11 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gis_agent_test
         run: python -m pytest data_agent/test_metadata_fabric_lineage_delivery_postgres.py -q
+
+      - name: Verify metadata fabric Active Metadata outbox on PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gis_agent_test
+        run: python -m pytest data_agent/test_metadata_fabric_active_metadata_outbox_postgres.py -q
 
       - name: Run required platform tests
         env:
@@ -219,6 +228,8 @@ jobs:
             data_agent/test_metadata_fabric_ingestion.py \
             data_agent/test_metadata_fabric_ingestion_replay.py \
             data_agent/test_metadata_fabric_binding_contract.py \
+            data_agent/test_active_metadata_change_contract.py \
+            data_agent/test_metadata_fabric_active_metadata_outbox.py \
             data_agent/test_metadata_fabric_lineage_delivery.py \
             data_agent/test_metadata_fabric_provider_identity.py \
             data_agent/test_metadata_fabric_gravitino_identity.py \

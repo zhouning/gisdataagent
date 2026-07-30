@@ -21,6 +21,7 @@ from data_agent.platform_contracts import (
     quality_result_fingerprint,
 )
 from data_agent.platform_gateway import (
+    ACTIVE_METADATA_CHANGE_MIGRATION,
     COMMAND_OUTBOX_MIGRATION,
     DefinitionRegistration,
     GATEWAY_ROLE_MIGRATION,
@@ -549,3 +550,17 @@ def test_platform_gateway_static_contract_and_fail_closed_role(tmp_path):
     unsafe_report = build_gateway_report(command_migration=unsafe_command)
     assert unsafe_report["status"] == "invalid"
     assert "command_migration" in unsafe_report["missing_markers"]
+
+    unsafe_active_metadata = tmp_path / "unsafe_active_metadata.sql"
+    unsafe_active_metadata.write_text(
+        ACTIVE_METADATA_CHANGE_MIGRATION.read_text(encoding="utf-8").replace(
+            "FOR UPDATE SKIP LOCKED",
+            "FOR UPDATE",
+        ),
+        encoding="utf-8",
+    )
+    unsafe_report = build_gateway_report(
+        active_metadata_migration=unsafe_active_metadata
+    )
+    assert unsafe_report["status"] == "invalid"
+    assert "active_metadata_migration" in unsafe_report["missing_markers"]

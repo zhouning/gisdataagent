@@ -472,7 +472,7 @@ def test_control_ledger_contract_and_migration_catalog_are_valid():
     assert report["contract_count"] == 16
     assert report["migration"]["sha256"] == migration["checksum"]
     assert migrations[-1]["migration_id"] == (
-        "098_metadata_fabric_openlineage_delivery"
+        "099_active_metadata_change_outbox"
     )
 
 
