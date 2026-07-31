@@ -1039,6 +1039,32 @@ RUNTIME_INVENTORY = (
         "Retained output material, terminal success evidence and production promotion",
     ),
     RuntimeSpec(
+        "metadata_retained_real_feature_terminal_success_rehearsal",
+        "retained_real_feature_terminal_success_rehearsal",
+        "governed",
+        "retained_evidence_durable",
+        (
+            "retained namespace/PVC/Iceberg material and dedicated GDA Control "
+            "PostgreSQL until bounded expiry"
+        ),
+        "metadata-platform",
+        "local_verification_only",
+        (
+            "data_agent/metadata_fabric_retained_real_feature_terminal_success.py",
+            "scripts/metadata-fabric-retained-real-feature-terminal-success.sh",
+        ),
+        (
+            (
+                "data_agent/metadata_fabric_retained_real_feature_terminal_success.py",
+                "def run_live_rehearsal",
+            ),
+        ),
+        (
+            "Protected production identities/storage/tenant binding, persistent "
+            "scheduler/executor and restart/recovery"
+        ),
+    ),
+    RuntimeSpec(
         "datalake_monitor",
         "monitor_loop",
         "legacy",
@@ -1102,7 +1128,7 @@ ENV_ACCESS_BASELINE_FINGERPRINT = (
     "5ee717911c109b480328a050893296e37591bfca748e3ed1743b7e3def3d9048"
 )
 RUNTIME_PRIMITIVE_BASELINE_FINGERPRINT = (
-    "499c531821c2138977724d8a9c12e0328cb45525944634c0cfba3763137652b6"
+    "eecb6bda87e47f3056fbe5772907bba7e6508215825e993d53c735ca5cfa9298"
 )
 
 _IGNORED_SOURCE_PARTS = frozenset(
