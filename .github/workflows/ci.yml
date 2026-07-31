@@ -42,6 +42,7 @@ on:
       - feat/ar1-metadata-fabric-retained-real-feature-terminal-success
       - feat/ar1-metadata-fabric-retained-real-feature-restart-recovery
       - feat/ar1-metadata-fabric-protected-real-feature-reexecution-gate
+      - feat/ar1-metadata-fabric-protected-profile-decision-packet
 
 env:
   PYTHON_VERSION: "3.13"
@@ -220,6 +221,9 @@ jobs:
       - name: Validate protected profile owner decision packet
         run: python -m data_agent.metadata_fabric_protected_profile_decision_packet validate
 
+      - name: Validate Chongqing real-source admission evidence
+        run: python -m data_agent.chongqing_real_source_admission validate
+
       - name: Validate Active Metadata consumer deployment boundary
         run: python -m data_agent.active_metadata_consumer_deployment validate
 
@@ -321,6 +325,7 @@ jobs:
             data_agent/test_metadata_fabric_retained_real_feature_restart_recovery.py \
             data_agent/test_metadata_fabric_protected_real_feature_reexecution_gate.py \
             data_agent/test_metadata_fabric_protected_profile_decision_packet.py \
+            data_agent/test_chongqing_real_source_admission.py \
             data_agent/test_metadata_fabric_lineage_delivery.py \
             data_agent/test_metadata_fabric_provider_identity.py \
             data_agent/test_metadata_fabric_gravitino_identity.py \
