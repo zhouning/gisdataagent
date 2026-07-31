@@ -1065,6 +1065,32 @@ RUNTIME_INVENTORY = (
         ),
     ),
     RuntimeSpec(
+        "metadata_retained_real_feature_restart_recovery_rehearsal",
+        "retained_real_feature_restart_recovery_rehearsal",
+        "governed",
+        "retained_evidence_durable",
+        (
+            "identity-bound restart of retained namespace/PVC/Iceberg material "
+            "and dedicated GDA Control PostgreSQL + committed local evidence"
+        ),
+        "metadata-platform",
+        "local_verification_only",
+        (
+            "data_agent/metadata_fabric_retained_real_feature_restart_recovery.py",
+            "scripts/metadata-fabric-retained-real-feature-restart-recovery.sh",
+        ),
+        (
+            (
+                "data_agent/metadata_fabric_retained_real_feature_restart_recovery.py",
+                "def run_live_rehearsal",
+            ),
+        ),
+        (
+            "Protected production identities/storage/tenant binding, persistent "
+            "scheduler/executor, backup/PITR and independent failure domains"
+        ),
+    ),
+    RuntimeSpec(
         "datalake_monitor",
         "monitor_loop",
         "legacy",

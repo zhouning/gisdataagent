@@ -208,6 +208,9 @@ jobs:
       - name: Validate retained real-feature terminal success evidence
         run: python -m data_agent.metadata_fabric_retained_real_feature_terminal_success validate
 
+      - name: Validate retained real-feature restart recovery evidence
+        run: python -m data_agent.metadata_fabric_retained_real_feature_restart_recovery validate
+
       - name: Validate Active Metadata consumer deployment boundary
         run: python -m data_agent.active_metadata_consumer_deployment validate
 
@@ -306,6 +309,7 @@ jobs:
             data_agent/test_metadata_fabric_real_feature_ingestion.py \
             data_agent/test_metadata_fabric_real_feature_ledger_promotion.py \
             data_agent/test_metadata_fabric_retained_real_feature_terminal_success.py \
+            data_agent/test_metadata_fabric_retained_real_feature_restart_recovery.py \
             data_agent/test_metadata_fabric_lineage_delivery.py \
             data_agent/test_metadata_fabric_provider_identity.py \
             data_agent/test_metadata_fabric_gravitino_identity.py \
