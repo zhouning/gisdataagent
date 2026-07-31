@@ -1,10 +1,10 @@
 # GIS Data Agent System-of-Record 矩阵
 
-日期：2026-07-30
+日期：2026-07-31
 
-阶段：AR-0 `in_progress`；AR-1 gateway、成功终局 evidence gate、DolphinScheduler adapter sandbox POC、Metadata Fabric M1/M2、M2c-4/M2d-2 production readiness contracts、M3-1 至 M3-19 local Active Metadata binding reconciliation 已验证，生产 provider ingestion、生产观测、生产 policy/tenant isolation、生产 identity/object-store attestation、生产 consumer/scheduler/executor 和生产切换仍 `in_progress`
+阶段：AR-0 `in_progress`；AR-1 gateway、成功终局 evidence gate、DolphinScheduler adapter sandbox POC、Metadata Fabric M1/M2、M2c-4/M2d-2 production readiness contracts、M3-1 至 M3-22 local authorized real-feature ingestion 已验证，权威 output promotion、生产观测、生产 policy/tenant isolation、生产 identity/object-store attestation、生产 consumer/scheduler/executor 和生产切换仍 `in_progress`
 
-适用分支：`feat/ar1-metadata-fabric-active-metadata-binding-reconciliation`
+适用分支：`feat/ar1-metadata-fabric-real-feature-ingestion`
 
 ## 判定规则
 
@@ -65,6 +65,7 @@
 20. M3-19 只允许在 retained OpenMetadata UUID/FQN/version/content/governance/snapshot 完全匹配时修复缺失 Gravitino target；专用 `memory` catalog 只有配置精确且可见 schema inventory 为空才可 provider-native reset。修复限于 4 个 `gravitino.*` mutations，OpenMetadata 零写入，即时 replay 为 `no_op/0 mutations`，binding 通过临时 PostgreSQL PlatformGateway 幂等追加且 Run 留在 `reconciling`。这不证明 durable catalog、protected identity、生产 executor/scheduler/provider、生产 binding deployment/ingestion 或 terminal success。
 21. M3-20 不修改 M3-19 binding schema、ledger 或 evidence，而是为同一重庆 ResourceVersion 新建 runtime-bound durable promotion candidate。受限 Basic principal 在隔离 JDBC metadata + warehouse PVC target 中只创建一次表；即时 replay 与 PostgreSQL/Gravitino restart 后第一次 replay 均为 `no_op/0 mutations`。cluster/namespace/Service/StatefulSet/PVC/image identity 被绑定且重启前后稳定，Pod UID 必须变化；candidate 未写 GDA Control，namespace/PVC 已清理。这只证明本地 restart continuity，不证明生产 durable catalog/object store、protected identity、OIDC/TLS、生产 ingestion 或 readiness。
 22. M3-21 不修改 M3-20/M3-19 历史，而是以 M3-20 candidate 为 predecessor，将同一重庆 ResourceVersion 投影到 JDBC catalog + 跨节点 MinIO warehouse。稳定 binding 包含双 Service、三个 StatefulSet、PostgreSQL/MinIO PVC、镜像、节点和 S3 配置，Gravitino 无 warehouse PVC。首次 apply 为 1 个 table create，即时及有序重启后首个 replay 均为 `no_op/0`；直接 S3 metadata key/ETag/body SHA/表 schema 不变。该表没有 source feature rows，candidate 未落账，所有临时资源已清理。这不证明生产对象存储、durable catalog、protected identity、TLS/OIDC、生产 ingestion 或 readiness。
+23. M3-22 以 M3-21 candidate 为 predecessor，将同一重庆 bundle 的 20 个真实 EPSG:4490 feature rows 规范化为八列、由精确 PolicyDecision/Approval 授权 Spark/Sedona 写入 JDBC/S3 Iceberg。六项质量计数均为 20，首次执行 `appended/1` 且只有 1 个 snapshot/Parquet，即时 replay 为 `no_op/0`；S3 直读为 1 data + 2 metadata + 2 manifest。输出 ResourceVersion、Artifact、passed QualityResult 与 LineageEvent 只是 path-free candidates，未写 GDA Control，Run 未成功终局；namespace/PV/port-forward 已清理。这不证明生产对象存储、protected identity、完整 engine conformance、生产 ingestion 或 readiness。
 
 ## 已建立的 AR-0/AR-1 entry 证据
 
@@ -112,7 +113,8 @@
 
 ## 下一验收证据
 
-- M3-21 的本地 MinIO 空表 metadata promotion 不计入生产对象存储或 ingestion 退出门；下一步需要受授权 Spark/Sedona 写入真实重庆 feature slice，并继续保持生产 provider attestation 与 ledger promotion 独立验收；
+- M3-21 的本地 MinIO 空表 metadata promotion 不计入生产对象存储或 ingestion 退出门；其真实重庆 feature slice 后续由 M3-22 独立验收，历史 candidate 与 evidence 保持不变；
+- M3-22 的本地真实 feature slice 已通过受授权 Spark/Sedona、单 snapshot/no-op replay 与直接 S3 readback，但不计入生产 ingestion 退出门；下一步是将 output/quality/lineage candidates 原子晋级到 GDA Control，并继续把 Run 终局、生产 provider attestation 与 staging-scale ingestion 独立验收；
 - 完成首次 application subject publish 与 protected verifier run；当前 mainline、archive refs、ruleset、required reviewer、禁止 bypass 和 environment enable variable 已配置并复核；
 - 真实 provenance artifact verify、受保护 overlay 的 `verified_for_staging_apply` release report，以及 staging/production 的 schema、config/runtime snapshot、registry/live DeploymentRevision 绑定、release/live artifact attestation 和环境 compare 报告；
 - staging 的 migration role、应用 login membership、连接池 role/tenant 复位、双租户 API 和 success finalization 运行产物；

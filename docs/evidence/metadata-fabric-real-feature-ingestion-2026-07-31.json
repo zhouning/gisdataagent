@@ -1,0 +1,1022 @@
+{
+  "authorized_spark_execution_verified": true,
+  "contract_sha256": "af211f2d2f4830decb9ffe369cd9e7ec2c9349c2e2c8bd789347a6fdc288e1dc",
+  "dataset_bundle": {
+    "components": [
+      {
+        "component": ".cpg",
+        "sha256": "3ad3031f5503a4404af825262ee8232cc04d4ea6683d42c5dd0a2f2a27ac9824",
+        "size_bytes": 5
+      },
+      {
+        "component": ".dbf",
+        "sha256": "ee7c6c4c6957aea296b69d62118d416e5ee989aa77f7b98cf0fe580874ce5127",
+        "size_bytes": 44990
+      },
+      {
+        "component": ".prj",
+        "sha256": "b10dbe4d6d1de908d340f892c90b3d31a552630af3742bb515bfe1bd26124f2c",
+        "size_bytes": 176
+      },
+      {
+        "component": ".sbn",
+        "sha256": "7d0279465b18beec40308717e0ef0ea5701a586bc5c84e6a9aa309d5bc0ec99a",
+        "size_bytes": 308
+      },
+      {
+        "component": ".sbx",
+        "sha256": "019156149b2c7771ec0dd249c757dd7aa01a98075e246a77f77b080860c57333",
+        "size_bytes": 124
+      },
+      {
+        "component": ".shp",
+        "sha256": "6ac0d5c8c8db66fc0e2a74d8232b7779bd2454257df14efa2930e3dbc181aed0",
+        "size_bytes": 283640
+      },
+      {
+        "component": ".shp.xml",
+        "sha256": "8ef222ce1952552b366acf14a996e1c8cbdbe3eed0bb829dacfe7eafd068d948",
+        "size_bytes": 43100
+      },
+      {
+        "component": ".shx",
+        "sha256": "f3fbb6a7775ca833c066e3a3f2a332f99f979840045909ae187d08dac126a119",
+        "size_bytes": 260
+      }
+    ],
+    "content_sha256": "fd474fd65c8e4a71da241eb3fd07748ca3b972fbd2d3c32833376dbe71104007",
+    "format": "ESRI Shapefile",
+    "schema": "gda.spatial_dataset_bundle.v1",
+    "source_label": "chongqing-central-cultural-districts",
+    "spatial_inventory": {
+      "bounds": [
+        106.37987914500007,
+        29.558008447000077,
+        106.59532712300008,
+        29.877271985000025
+      ],
+      "crs": {
+        "authority": "EPSG",
+        "code": 4490,
+        "name": "China Geodetic Coordinate System 2000"
+      },
+      "driver": "ESRI Shapefile",
+      "feature_count": 20,
+      "field_count": 33,
+      "geometry_type": "PolygonZ"
+    }
+  },
+  "direct_object_store_data_verified": true,
+  "durable_catalog_verified": false,
+  "environment": "local_docker_desktop",
+  "errors": [],
+  "evidence_sha256": "42abd82613eaf28cb53c64280258bc75dba6cf841f9a513a4c801a9f798b9899",
+  "exact_ingestion_replay_no_op_verified": true,
+  "flink_conformance_verified": false,
+  "iceberg_single_snapshot_verified": true,
+  "ingestion_persisted_to_gda_control": false,
+  "local_real_feature_ingestion_verified": true,
+  "m310_evidence_fingerprint": "05844457efb378581fb7fc2e7ed3c706819b2d8fa5a52b2f82577051d38c2cd1",
+  "m321_evidence_sha256": "d73754c53cf16d888aa345baa5d079cc7fd98d8b84db747f52188c1a69bf1628",
+  "observation": {
+    "authorization": {
+      "action": "metadata_fabric.ingest_real_feature_slice",
+      "approval_artifact_id": "6a8169f5-4f71-5132-8594-9d24bda77cb0",
+      "authorization_sha256": "7eb8bfae2306221e1f816d139a5347df8d3b7107058417cebb10e038f2175d9c",
+      "execution_plan_artifact_id": "486ac882-31c9-5afe-859f-81629b3298fe",
+      "policy_decision_artifact_id": "89e759f9-de00-5bf7-ae1c-1add3d9fa0a8",
+      "provider_apply_authorized": true,
+      "run_id": "a9000000-0000-4000-8000-000000000009"
+    },
+    "bootstrap": {
+      "admin_authentication_status": 200,
+      "bounded_authentication_status": 200,
+      "bucket": "gda-metadata-warehouse",
+      "catalog": "lakehouse",
+      "catalog_backend": "jdbc",
+      "catalog_uri": "jdbc:postgresql://gravitino-persistence-postgresql:5432/iceberg",
+      "denied_catalog_create_status": 403,
+      "io_impl": "org.apache.iceberg.aws.s3.S3FileIO",
+      "material_recorded": false,
+      "metalake": "gda_chongqing_m3_22",
+      "role": {
+        "name": "gda-object-store-cultural-district-projector",
+        "securable_objects": [
+          {
+            "fullName": "lakehouse",
+            "privileges": [
+              {
+                "condition": "ALLOW",
+                "name": "USE_CATALOG"
+              }
+            ],
+            "type": "CATALOG"
+          },
+          {
+            "fullName": "lakehouse.cultural_heritage",
+            "privileges": [
+              {
+                "condition": "ALLOW",
+                "name": "CREATE_TABLE"
+              },
+              {
+                "condition": "ALLOW",
+                "name": "USE_SCHEMA"
+              }
+            ],
+            "type": "SCHEMA"
+          }
+        ]
+      },
+      "s3_endpoint": "http://metadata-object-store:9000",
+      "s3_path_style_access": true,
+      "s3_region": "us-east-1",
+      "schema": "cultural_heritage",
+      "server_version": "1.3.0",
+      "warehouse": "s3://gda-metadata-warehouse/warehouse"
+    },
+    "cluster_uid": "c3c9bbab-2b36-4359-a7ac-e3de194445ab",
+    "contract": {
+      "contract_sha256": "af211f2d2f4830decb9ffe369cd9e7ec2c9349c2e2c8bd789347a6fdc288e1dc",
+      "m310_evidence_fingerprint": "05844457efb378581fb7fc2e7ed3c706819b2d8fa5a52b2f82577051d38c2cd1",
+      "m321_evidence_sha256": "d73754c53cf16d888aa345baa5d079cc7fd98d8b84db747f52188c1a69bf1628"
+    },
+    "dataset_bundle": {
+      "components": [
+        {
+          "component": ".cpg",
+          "sha256": "3ad3031f5503a4404af825262ee8232cc04d4ea6683d42c5dd0a2f2a27ac9824",
+          "size_bytes": 5
+        },
+        {
+          "component": ".dbf",
+          "sha256": "ee7c6c4c6957aea296b69d62118d416e5ee989aa77f7b98cf0fe580874ce5127",
+          "size_bytes": 44990
+        },
+        {
+          "component": ".prj",
+          "sha256": "b10dbe4d6d1de908d340f892c90b3d31a552630af3742bb515bfe1bd26124f2c",
+          "size_bytes": 176
+        },
+        {
+          "component": ".sbn",
+          "sha256": "7d0279465b18beec40308717e0ef0ea5701a586bc5c84e6a9aa309d5bc0ec99a",
+          "size_bytes": 308
+        },
+        {
+          "component": ".sbx",
+          "sha256": "019156149b2c7771ec0dd249c757dd7aa01a98075e246a77f77b080860c57333",
+          "size_bytes": 124
+        },
+        {
+          "component": ".shp",
+          "sha256": "6ac0d5c8c8db66fc0e2a74d8232b7779bd2454257df14efa2930e3dbc181aed0",
+          "size_bytes": 283640
+        },
+        {
+          "component": ".shp.xml",
+          "sha256": "8ef222ce1952552b366acf14a996e1c8cbdbe3eed0bb829dacfe7eafd068d948",
+          "size_bytes": 43100
+        },
+        {
+          "component": ".shx",
+          "sha256": "f3fbb6a7775ca833c066e3a3f2a332f99f979840045909ae187d08dac126a119",
+          "size_bytes": 260
+        }
+      ],
+      "content_sha256": "fd474fd65c8e4a71da241eb3fd07748ca3b972fbd2d3c32833376dbe71104007",
+      "format": "ESRI Shapefile",
+      "schema": "gda.spatial_dataset_bundle.v1",
+      "source_label": "chongqing-central-cultural-districts",
+      "spatial_inventory": {
+        "bounds": [
+          106.37987914500007,
+          29.558008447000077,
+          106.59532712300008,
+          29.877271985000025
+        ],
+        "crs": {
+          "authority": "EPSG",
+          "code": 4490,
+          "name": "China Geodetic Coordinate System 2000"
+        },
+        "driver": "ESRI Shapefile",
+        "feature_count": 20,
+        "field_count": 33,
+        "geometry_type": "PolygonZ"
+      }
+    },
+    "initial_runtime": {
+      "context": "docker-desktop",
+      "gravitino": {
+        "image": "docker.io/gda/gravitino:1.3.0-local-arm64",
+        "image_id": "sha256:18e24b43be854dabdc13e96b1019eb3dc691d59cc64e411aa6a3cc49225fe2d3",
+        "node_name": "desktop-worker",
+        "persistent_volume_claims": [],
+        "pod_name": "gravitino-persistence-0",
+        "pod_uid": "089a6d11-4842-4836-a9f4-f3628b95775b",
+        "pvc": null,
+        "ready_replicas": 1,
+        "service_account": "gravitino-persistence",
+        "service_account_automount_disabled": true,
+        "statefulset_uid": "1353b086-efbb-4faf-bd3d-a9904343ac2c"
+      },
+      "gravitino_aws_sdk_mounted": true,
+      "gravitino_host_image_id": "sha256:d355dc7e92f9e3545d717f3eab2cbdf412115f2b82e1e544d7f6235c1eacd5a5",
+      "gravitino_jdbc_driver_mounted": true,
+      "iceberg_rest": {
+        "aws_sdk_mounted": true,
+        "image": "docker.io/gda/gravitino:1.3.0-local-arm64",
+        "image_id": "sha256:18e24b43be854dabdc13e96b1019eb3dc691d59cc64e411aa6a3cc49225fe2d3",
+        "jdbc_driver_mounted": true,
+        "path": "/iceberg",
+        "ready": true
+      },
+      "minio_host_image_id": "sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e",
+      "namespace": {
+        "name": "gda-metadata-spark-object-store",
+        "uid": "d48b10a6-d144-4983-b988-e68def2172a8"
+      },
+      "object_store": {
+        "image": "docker.io/minio/minio:RELEASE.2025-04-22T22-12-26Z",
+        "image_id": "docker.io/minio/minio@sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e",
+        "node_name": "desktop-control-plane",
+        "persistent_volume_claims": [
+          "data-metadata-object-store-0"
+        ],
+        "pod_name": "metadata-object-store-0",
+        "pod_uid": "42c60720-b3b2-45d4-bee0-7a24160f2d3f",
+        "pvc": {
+          "name": "data-metadata-object-store-0",
+          "phase": "Bound",
+          "storage_class": "standard",
+          "uid": "360086c0-7a38-40b3-a959-576764a5e17b",
+          "volume_name": "pvc-360086c0-7a38-40b3-a959-576764a5e17b"
+        },
+        "ready_replicas": 1,
+        "service_account": "metadata-object-store",
+        "service_account_automount_disabled": true,
+        "statefulset_uid": "00141278-7192-470c-825b-4a2111504014"
+      },
+      "object_store_service": {
+        "name": "metadata-object-store",
+        "ports": [
+          {
+            "name": "api",
+            "port": 9000
+          }
+        ],
+        "type": "ClusterIP",
+        "uid": "1f285fe0-734d-48e5-bf65-5512659b1425"
+      },
+      "postgresql": {
+        "image": "docker.io/library/postgres:16.10-bookworm",
+        "image_id": "docker.io/library/postgres@sha256:38471f330eb885e04de130b768d6db4e10469e2311879c7e5c699f6d2d8a1c74",
+        "node_name": "desktop-worker",
+        "persistent_volume_claims": [
+          "data-gravitino-persistence-postgresql-0"
+        ],
+        "pod_name": "gravitino-persistence-postgresql-0",
+        "pod_uid": "da1719c7-66e7-4f05-ae2c-b93ee7a6dff4",
+        "pvc": {
+          "name": "data-gravitino-persistence-postgresql-0",
+          "phase": "Bound",
+          "storage_class": "standard",
+          "uid": "a525f752-aa0a-48bb-84af-7a7996b6d280",
+          "volume_name": "pvc-a525f752-aa0a-48bb-84af-7a7996b6d280"
+        },
+        "ready_replicas": 1,
+        "service_account": "gravitino-persistence-postgresql",
+        "service_account_automount_disabled": true,
+        "statefulset_uid": "afe740f4-5f47-47f6-9ea7-8ee9b18bdfa3"
+      },
+      "service": {
+        "name": "gravitino-persistence",
+        "ports": [
+          {
+            "name": "http",
+            "port": 8090
+          },
+          {
+            "name": "iceberg-rest",
+            "port": 9001
+          }
+        ],
+        "type": "ClusterIP",
+        "uid": "cef7ef5d-92ff-4cb5-acf8-042bf3f3b63f"
+      },
+      "source_schema_sha256": "7a2d605a677a462ca619dba594ce7ebcf500358345560ad084c1b67a25c722df",
+      "spark_host_image_id": "sha256:f201367640c7583add224796a629150e63d3859ddd7fe9fd47741662a6d415bb"
+    },
+    "object_store": {
+      "bucket": "gda-metadata-warehouse",
+      "data_keys": [
+        "warehouse/cultural_heritage/cultural_districts/data/00000-8-11851edc-05b2-4ce0-9a1c-17b7ef344b4d-0-00001.parquet"
+      ],
+      "latest_metadata": {
+        "body_sha256": "7806fe74a812ca716ee42d33bd6b51aba4673d12d2244f0a736d052a8fdb4503",
+        "current_schema_id": 0,
+        "current_snapshot_id": 6084664108418947049,
+        "fields": [
+          {
+            "name": "BSM",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "geometry",
+            "required": true,
+            "type": "binary"
+          },
+          {
+            "name": "srid",
+            "required": true,
+            "type": "int"
+          },
+          {
+            "name": "min_x",
+            "required": true,
+            "type": "double"
+          },
+          {
+            "name": "min_y",
+            "required": true,
+            "type": "double"
+          },
+          {
+            "name": "max_x",
+            "required": true,
+            "type": "double"
+          },
+          {
+            "name": "max_y",
+            "required": true,
+            "type": "double"
+          },
+          {
+            "name": "row_sha256",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "key": "warehouse/cultural_heritage/cultural_districts/metadata/00001-f5fb2587-7669-4380-93cf-c2f78fffad94.metadata.json",
+        "location": "s3://gda-metadata-warehouse/warehouse/cultural_heritage/cultural_districts",
+        "size_bytes": 3424
+      },
+      "manifest_keys": [
+        "warehouse/cultural_heritage/cultural_districts/metadata/0b8023c0-8240-4ea4-9b35-8eb39dce609f-m0.avro",
+        "warehouse/cultural_heritage/cultural_districts/metadata/snap-6084664108418947049-1-0b8023c0-8240-4ea4-9b35-8eb39dce609f.avro"
+      ],
+      "material_recorded": false,
+      "metadata_keys": [
+        "warehouse/cultural_heritage/cultural_districts/metadata/00000-c2bfa142-e4eb-4fca-afcd-908a13ab3edd.metadata.json",
+        "warehouse/cultural_heritage/cultural_districts/metadata/00001-f5fb2587-7669-4380-93cf-c2f78fffad94.metadata.json"
+      ],
+      "object_count": 5,
+      "object_inventory_sha256": "032dd799082946a8c3cdc7e3267f0b6b5265a18ce406f30123fdedcd69068aca",
+      "objects": [
+        {
+          "etag": "dd4e0f599837c5926ba4ec69d9c7371c",
+          "key": "warehouse/cultural_heritage/cultural_districts/data/00000-8-11851edc-05b2-4ce0-9a1c-17b7ef344b4d-0-00001.parquet",
+          "size": 94603
+        },
+        {
+          "etag": "bd798071453afef7d7b1efa75fb23d7f",
+          "key": "warehouse/cultural_heritage/cultural_districts/metadata/00000-c2bfa142-e4eb-4fca-afcd-908a13ab3edd.metadata.json",
+          "size": 2333
+        },
+        {
+          "etag": "60b3ff46145f0457349a03d65b0ca2f9",
+          "key": "warehouse/cultural_heritage/cultural_districts/metadata/00001-f5fb2587-7669-4380-93cf-c2f78fffad94.metadata.json",
+          "size": 3424
+        },
+        {
+          "etag": "d2fe842c48b1b18860635043d342f4e5",
+          "key": "warehouse/cultural_heritage/cultural_districts/metadata/0b8023c0-8240-4ea4-9b35-8eb39dce609f-m0.avro",
+          "size": 7613
+        },
+        {
+          "etag": "e11682b00b6863d330f612f65bd58cd8",
+          "key": "warehouse/cultural_heritage/cultural_districts/metadata/snap-6084664108418947049-1-0b8023c0-8240-4ea4-9b35-8eb39dce609f.avro",
+          "size": 4465
+        }
+      ],
+      "prefix": "warehouse/cultural_heritage/cultural_districts/",
+      "source_feature_payload_recorded": false
+    },
+    "object_store_prepared": {
+      "bucket": "gda-metadata-warehouse",
+      "created": true,
+      "head_bucket_verified": true,
+      "material_recorded": false,
+      "path_style_access": true,
+      "region": "us-east-1",
+      "service": "metadata-object-store"
+    },
+    "observed_at": "2026-07-31T01:16:51.085417+00:00",
+    "output_contracts": {
+      "lineage_event": {
+        "artifact_id": "1f73db93-92e7-5970-842f-2477d6de394b",
+        "definition_version_id": "a9000000-0000-4000-8000-000000000008",
+        "event_sha256": "9269b95ef3d5400628939520ed9ada93cf1801db6a7ad1880f2ebdc996db88dc",
+        "event_type": "derive",
+        "facets": {
+          "feature_count": 20,
+          "row_set_sha256": "c26ff708f4b6be082327dff63a6a8659420dbc4cab37dea1cac7b40f147512df",
+          "snapshot_id": 6084664108418947049
+        },
+        "lineage_event_id": "06f11901-1623-564b-bcd6-389808c774f2",
+        "occurred_at": "2026-07-31T01:15:33.501911Z",
+        "producer": "workload:real-feature-ingestion-executor",
+        "run_id": "a9000000-0000-4000-8000-000000000009",
+        "source_resource_version_id": "a6000000-0000-4000-8000-000000000001",
+        "target_resource_version_id": "a6000000-0000-4000-8000-000000000002",
+        "tenant_id": "metadata-authorization-local"
+      },
+      "output_artifact": {
+        "artifact_id": "1f73db93-92e7-5970-842f-2477d6de394b",
+        "artifact_key": "cultural-districts-iceberg:1f73db93-92e7-5970-842f-2477d6de394b",
+        "artifact_role": "output",
+        "content_sha256": "bdc06792e8b935176ee6df6f6f6d4be1535622d54d9b994a778cabfe5a574618",
+        "created_at": "2026-07-31T01:15:33.501911Z",
+        "created_by": "workload:real-feature-ingestion-executor",
+        "manifest": {
+          "data_file_count": 1,
+          "feature_count": 20,
+          "row_set_sha256": "c26ff708f4b6be082327dff63a6a8659420dbc4cab37dea1cac7b40f147512df",
+          "snapshot_id": 6084664108418947049
+        },
+        "media_type": "application/vnd.apache.iceberg.table",
+        "resource_version_id": "a6000000-0000-4000-8000-000000000002",
+        "run_id": "a9000000-0000-4000-8000-000000000009",
+        "size_bytes": 94603,
+        "storage_uri": "s3://gda-metadata-warehouse/warehouse/cultural_heritage/cultural_districts",
+        "tenant_id": "metadata-authorization-local"
+      },
+      "output_resource_version": {
+        "authority_version_ref": {
+          "catalog": "lakehouse",
+          "row_set_sha256": "c26ff708f4b6be082327dff63a6a8659420dbc4cab37dea1cac7b40f147512df",
+          "schema": "cultural_heritage",
+          "snapshot_id": 6084664108418947049,
+          "table": "cultural_districts"
+        },
+        "content_sha256": "bdc06792e8b935176ee6df6f6f6d4be1535622d54d9b994a778cabfe5a574618",
+        "created_at": "2026-07-31T01:15:33.501911Z",
+        "created_by": "workload:real-feature-ingestion-executor",
+        "predecessor_version_id": null,
+        "resource_urn": "gda://metadata-authorization-local/data_product/chongqing-cultural-districts-iceberg",
+        "resource_version_id": "a6000000-0000-4000-8000-000000000002",
+        "tenant_id": "metadata-authorization-local",
+        "version_key": "rows-bdc06792e8b9"
+      },
+      "persisted_to_gda_control": false,
+      "quality_evidence_artifact": {
+        "artifact_id": "bd85b0cb-df7e-5d90-8f3f-585664cd1188",
+        "artifact_key": "real-feature-quality:bd85b0cb-df7e-5d90-8f3f-585664cd1188",
+        "artifact_role": "evidence",
+        "content_sha256": "7806fe74a812ca716ee42d33bd6b51aba4673d12d2244f0a736d052a8fdb4503",
+        "created_at": "2026-07-31T01:15:33.501911Z",
+        "created_by": "workload:real-feature-ingestion-executor",
+        "manifest": {
+          "metrics": {
+            "bbox_match_count": 20,
+            "feature_count": 20,
+            "positive_area_count": 20,
+            "srid_match_count": 20,
+            "unique_bsm_count": 20,
+            "valid_geometry_count": 20
+          },
+          "row_set_sha256": "c26ff708f4b6be082327dff63a6a8659420dbc4cab37dea1cac7b40f147512df",
+          "rule_version_ref": "quality://gda/spatial/real-feature-ingestion/v1"
+        },
+        "media_type": "application/vnd.apache.iceberg+json",
+        "resource_version_id": "a6000000-0000-4000-8000-000000000002",
+        "run_id": "a9000000-0000-4000-8000-000000000009",
+        "size_bytes": 3424,
+        "storage_uri": "s3://gda-metadata-warehouse/warehouse/cultural_heritage/cultural_districts/metadata/00001-f5fb2587-7669-4380-93cf-c2f78fffad94.metadata.json",
+        "tenant_id": "metadata-authorization-local"
+      },
+      "quality_result": {
+        "evaluated_at": "2026-07-31T01:15:34.501911Z",
+        "evaluated_by": "workload:real-feature-spatial-quality-evaluator",
+        "evidence_artifact_id": "bd85b0cb-df7e-5d90-8f3f-585664cd1188",
+        "metrics": {
+          "bbox_match_count": 20,
+          "feature_count": 20,
+          "positive_area_count": 20,
+          "srid_match_count": 20,
+          "unique_bsm_count": 20,
+          "valid_geometry_count": 20
+        },
+        "quality_result_id": "52d38e8a-181f-5d16-8948-8432d3113f06",
+        "resource_version_id": "a6000000-0000-4000-8000-000000000002",
+        "result_sha256": "6a68a7c832ac6c2de23a43f0049cdb9cb2c808c3e8e289a093483be967b19635",
+        "rule_version_ref": "quality://gda/spatial/real-feature-ingestion/v1",
+        "run_id": "a9000000-0000-4000-8000-000000000009",
+        "tenant_id": "metadata-authorization-local",
+        "verdict": "passed"
+      }
+    },
+    "plan": {
+      "definition_version_id": "a9000000-0000-4000-8000-000000000008",
+      "expected_feature_count": 20,
+      "ingestion_plan_sha256": "6282e636cc9399e5f8ddc41defb2123a2a31d1d2ae925e3b3660c48198dfbf84",
+      "output_content_sha256": "bdc06792e8b935176ee6df6f6f6d4be1535622d54d9b994a778cabfe5a574618",
+      "output_resource_urn": "gda://metadata-authorization-local/data_product/chongqing-cultural-districts-iceberg",
+      "output_resource_version_id": "a6000000-0000-4000-8000-000000000002",
+      "predecessor_promotion_candidate_sha256": "63812c311b3f239bc6a944748c4ff384250eb9c9ed9009d3384fc699f1d3eaa9",
+      "row_set_sha256": "c26ff708f4b6be082327dff63a6a8659420dbc4cab37dea1cac7b40f147512df",
+      "run_id": "a9000000-0000-4000-8000-000000000009",
+      "runtime_binding": {
+        "catalog": {
+          "backend": "jdbc",
+          "bucket": "gda-metadata-warehouse",
+          "io_impl": "org.apache.iceberg.aws.s3.S3FileIO",
+          "s3_endpoint": "http://metadata-object-store:9000",
+          "s3_path_style_access": true,
+          "s3_region": "us-east-1",
+          "uri": "jdbc:postgresql://gravitino-persistence-postgresql:5432/iceberg",
+          "warehouse": "s3://gda-metadata-warehouse/warehouse"
+        },
+        "cluster_uid": "c3c9bbab-2b36-4359-a7ac-e3de194445ab",
+        "context": "docker-desktop",
+        "images": {
+          "gravitino_image_id": "sha256:18e24b43be854dabdc13e96b1019eb3dc691d59cc64e411aa6a3cc49225fe2d3",
+          "object_store_image_id": "docker.io/minio/minio@sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e",
+          "postgresql_image_id": "docker.io/library/postgres@sha256:38471f330eb885e04de130b768d6db4e10469e2311879c7e5c699f6d2d8a1c74"
+        },
+        "namespace": {
+          "name": "gda-metadata-spark-object-store",
+          "uid": "d48b10a6-d144-4983-b988-e68def2172a8"
+        },
+        "schema": "gda.object_store_provider_runtime_binding.v1",
+        "services": {
+          "gravitino": {
+            "name": "gravitino-persistence",
+            "uid": "cef7ef5d-92ff-4cb5-acf8-042bf3f3b63f"
+          },
+          "object_store": {
+            "name": "metadata-object-store",
+            "uid": "1f285fe0-734d-48e5-bf65-5512659b1425"
+          }
+        },
+        "storage": {
+          "gravitino_persistent_volume_claims": [],
+          "object_store_pvc_uid": "360086c0-7a38-40b3-a959-576764a5e17b",
+          "object_store_volume_name": "pvc-360086c0-7a38-40b3-a959-576764a5e17b",
+          "postgresql_pvc_uid": "a525f752-aa0a-48bb-84af-7a7996b6d280",
+          "postgresql_volume_name": "pvc-a525f752-aa0a-48bb-84af-7a7996b6d280"
+        },
+        "topology": {
+          "object_store_node": "desktop-control-plane",
+          "provider_node": "desktop-worker"
+        },
+        "workloads": {
+          "gravitino_statefulset_uid": "1353b086-efbb-4faf-bd3d-a9904343ac2c",
+          "object_store_statefulset_uid": "00141278-7192-470c-825b-4a2111504014",
+          "postgresql_statefulset_uid": "afe740f4-5f47-47f6-9ea7-8ee9b18bdfa3"
+        }
+      },
+      "runtime_binding_sha256": "556bf74f97f91c6ca3910e5e51175ae1ce8fec125b7bb17a341bd61447c444b7",
+      "schema": "gda.real_feature_ingestion_plan.v1",
+      "source_content_sha256": "fd474fd65c8e4a71da241eb3fd07748ca3b972fbd2d3c32833376dbe71104007",
+      "source_resource_urn": "gda://metadata-authorization-local/dataset/chongqing-cultural-districts",
+      "source_resource_version_id": "a6000000-0000-4000-8000-000000000001",
+      "table_columns": [
+        {
+          "name": "BSM",
+          "nullable": false,
+          "type": "string"
+        },
+        {
+          "name": "geometry",
+          "nullable": false,
+          "type": "binary"
+        },
+        {
+          "name": "srid",
+          "nullable": false,
+          "type": "integer"
+        },
+        {
+          "name": "min_x",
+          "nullable": false,
+          "type": "double"
+        },
+        {
+          "name": "min_y",
+          "nullable": false,
+          "type": "double"
+        },
+        {
+          "name": "max_x",
+          "nullable": false,
+          "type": "double"
+        },
+        {
+          "name": "max_y",
+          "nullable": false,
+          "type": "double"
+        },
+        {
+          "name": "row_sha256",
+          "nullable": false,
+          "type": "string"
+        }
+      ],
+      "target": {
+        "bucket": "gda-metadata-warehouse",
+        "catalog": "lakehouse",
+        "catalog_backend": "jdbc",
+        "catalog_provider": "lakehouse-iceberg",
+        "catalog_type": "RELATIONAL",
+        "io_impl": "org.apache.iceberg.aws.s3.S3FileIO",
+        "jdbc_driver": "org.postgresql.Driver",
+        "metalake": "gda_chongqing_m3_22",
+        "object_prefix": "warehouse/cultural_heritage/cultural_districts/",
+        "s3_endpoint": "http://metadata-object-store:9000",
+        "s3_path_style_access": true,
+        "s3_region": "us-east-1",
+        "schema": "cultural_heritage",
+        "table": "cultural_districts",
+        "uri": "jdbc:postgresql://gravitino-persistence-postgresql:5432/iceberg",
+        "warehouse": "s3://gda-metadata-warehouse/warehouse"
+      },
+      "tenant_id": "metadata-authorization-local",
+      "writes_to_gda_control": false,
+      "writes_to_legacy": false
+    },
+    "runtime_binding": {
+      "catalog": {
+        "backend": "jdbc",
+        "bucket": "gda-metadata-warehouse",
+        "io_impl": "org.apache.iceberg.aws.s3.S3FileIO",
+        "s3_endpoint": "http://metadata-object-store:9000",
+        "s3_path_style_access": true,
+        "s3_region": "us-east-1",
+        "uri": "jdbc:postgresql://gravitino-persistence-postgresql:5432/iceberg",
+        "warehouse": "s3://gda-metadata-warehouse/warehouse"
+      },
+      "cluster_uid": "c3c9bbab-2b36-4359-a7ac-e3de194445ab",
+      "context": "docker-desktop",
+      "images": {
+        "gravitino_image_id": "sha256:18e24b43be854dabdc13e96b1019eb3dc691d59cc64e411aa6a3cc49225fe2d3",
+        "object_store_image_id": "docker.io/minio/minio@sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e",
+        "postgresql_image_id": "docker.io/library/postgres@sha256:38471f330eb885e04de130b768d6db4e10469e2311879c7e5c699f6d2d8a1c74"
+      },
+      "namespace": {
+        "name": "gda-metadata-spark-object-store",
+        "uid": "d48b10a6-d144-4983-b988-e68def2172a8"
+      },
+      "schema": "gda.object_store_provider_runtime_binding.v1",
+      "services": {
+        "gravitino": {
+          "name": "gravitino-persistence",
+          "uid": "cef7ef5d-92ff-4cb5-acf8-042bf3f3b63f"
+        },
+        "object_store": {
+          "name": "metadata-object-store",
+          "uid": "1f285fe0-734d-48e5-bf65-5512659b1425"
+        }
+      },
+      "storage": {
+        "gravitino_persistent_volume_claims": [],
+        "object_store_pvc_uid": "360086c0-7a38-40b3-a959-576764a5e17b",
+        "object_store_volume_name": "pvc-360086c0-7a38-40b3-a959-576764a5e17b",
+        "postgresql_pvc_uid": "a525f752-aa0a-48bb-84af-7a7996b6d280",
+        "postgresql_volume_name": "pvc-a525f752-aa0a-48bb-84af-7a7996b6d280"
+      },
+      "topology": {
+        "object_store_node": "desktop-control-plane",
+        "provider_node": "desktop-worker"
+      },
+      "workloads": {
+        "gravitino_statefulset_uid": "1353b086-efbb-4faf-bd3d-a9904343ac2c",
+        "object_store_statefulset_uid": "00141278-7192-470c-825b-4a2111504014",
+        "postgresql_statefulset_uid": "afe740f4-5f47-47f6-9ea7-8ee9b18bdfa3"
+      }
+    },
+    "runtime_binding_sha256": "556bf74f97f91c6ca3910e5e51175ae1ce8fec125b7bb17a341bd61447c444b7",
+    "runtime_checks": {
+      "all_runtime_port_forwards_stopped": true,
+      "material_recorded": false,
+      "namespace_absent": true,
+      "namespace_delete_completed": true,
+      "object_store_objects_retained": false,
+      "persistent_volume_names": [
+        "pvc-360086c0-7a38-40b3-a959-576764a5e17b",
+        "pvc-a525f752-aa0a-48bb-84af-7a7996b6d280"
+      ],
+      "persistent_volumes_absent": true,
+      "provider_objects_retained": false
+    },
+    "schema": "gda.real_feature_ingestion_observation.v1",
+    "source_projection": {
+      "bounds": [
+        106.37987914500007,
+        29.558008447000077,
+        106.59532712300006,
+        29.87727198500005
+      ],
+      "feature_count": 20,
+      "geometry_types": [
+        "MultiPolygon",
+        "Polygon"
+      ],
+      "geometry_z_count": 20,
+      "non_empty_geometry_count": 20,
+      "payload_sha256": "f60e33c9ef890eb20c87e6cde82e658aaa3b20151e528ffbb293b9b64fabbbe1",
+      "payload_size_bytes": 430066,
+      "row_set_sha256": "c26ff708f4b6be082327dff63a6a8659420dbc4cab37dea1cac7b40f147512df",
+      "row_sha256": [
+        "0527a75a86c70503302f673535003792e135c0097fcb3a44ec3b081ab74e4a76",
+        "08113e2f628a656b9e3a23ada3b94e0c7568ec7585ae9f25efe7702662d1f2fd",
+        "176093ff06f206a65fa98bcc0cb0851cb66b91b8f223d28c1b60317298ca9190",
+        "2305d14edf0ba61478a7e8d0511d904e36574dd691c7e580026416ed891cc18a",
+        "307531c08ac817f34fd4f40b2f0e9afc96758e67a4a9af2c199a9966242ffc88",
+        "492fee3e36f8a4ba7919ffcd6b9c4d1977baf335670a7d81159e55ee89d38506",
+        "4939fa3bb87d941c8a5a3e328f45bb0077982fa7d172968ed9afc76495a0a8bd",
+        "52de730203b330e1fa66790c2f6670d3248c0cb2620788c045e26aba3f4263a0",
+        "62b781771b8aa704b34fe556ace2afa47e843611fbf82c4f487ac5323a956952",
+        "6e96076e7ee2cfbc37b5bd093eedcd1bc9a03a4618fb30f5a7d63581aad77ca9",
+        "7c5d3112549cfc3b8c95cad896179060d2c9b9c5e56edd9646026ba2c9ffc039",
+        "8d346f09d4b606cd7ade5b196d10a3a5f54b3dff40205f1e21bea4aae10df5da",
+        "947b9485ed7d084e02ef780e82fd6a4fb1c37c601fe19a4be37962cd5526979b",
+        "a55e54b78a5b64ee6e629586968f7b304521b28be94b55b9c7ebe8670e0b83db",
+        "c284f86d861e265b918fd14a3f5653133bbdcd01f7f52d1cc3cde509044106ff",
+        "c55ed9b57879c11ea1f606e3318147893d54a4f02e9e96d4948e92cfc0880eb7",
+        "c84e602b9cb743f5f40b4e7c93ee4322e62c23edecf90d4b6d14c441e7c5113f",
+        "ce29800e1a902c1c1435277f328b599a05a7d431543cf9994ef2528f7913e34f",
+        "e12c4abaa5df83bdccfc33852a2f6e2e2483aa3c0ce2e77e0f470e9e76113968",
+        "e271fe60f1ecf40813c21b727a88b9f95b2a07c5e8df797d9370414e1a161d23"
+      ],
+      "schema": "gda.real_feature_row_set.v1",
+      "source_payload_recorded": false,
+      "srid": 4490,
+      "unique_identifier_count": 20,
+      "valid_geometry_count": 20
+    },
+    "spark": {
+      "failure_diagnostic": [],
+      "job": {
+        "completion_time": "2026-07-31T01:15:32Z",
+        "failed": 0,
+        "name": "real-feature-ingestion-probe",
+        "succeeded": 1,
+        "uid": "4d524055-72e7-4614-86d2-b36c55707b9a"
+      },
+      "log_recorded": false,
+      "log_sha256": "e1be1925e6bd4985d6161cbe9812cb99f9df6a6e647fbcd001da3dd0a92ac6c5",
+      "pod": {
+        "image": "docker.io/gisdataagent/mmfe-spark-runtime:local",
+        "image_id": "sha256:4a4522bfd4e6d1c6c90a244d0145841fbfbbf21ed16ee29ca8b681b5cec60058",
+        "name": "real-feature-ingestion-probe-8pvrn",
+        "node_name": "desktop-worker",
+        "persistent_volume_claims": [],
+        "phase": "Succeeded",
+        "service_account": "spark-object-store-probe",
+        "service_account_automount_disabled": true,
+        "uid": "ef842b60-eeab-43b5-9b80-343a93a35d45"
+      },
+      "result": {
+        "authorization_sha256": "7eb8bfae2306221e1f816d139a5347df8d3b7107058417cebb10e038f2175d9c",
+        "first_execution": {
+          "data_files": [
+            {
+              "file_path": "s3://gda-metadata-warehouse/warehouse/cultural_heritage/cultural_districts/data/00000-8-11851edc-05b2-4ce0-9a1c-17b7ef344b4d-0-00001.parquet",
+              "record_count": 20
+            }
+          ],
+          "mutation_count": 1,
+          "row_sha256": [
+            "0527a75a86c70503302f673535003792e135c0097fcb3a44ec3b081ab74e4a76",
+            "08113e2f628a656b9e3a23ada3b94e0c7568ec7585ae9f25efe7702662d1f2fd",
+            "176093ff06f206a65fa98bcc0cb0851cb66b91b8f223d28c1b60317298ca9190",
+            "2305d14edf0ba61478a7e8d0511d904e36574dd691c7e580026416ed891cc18a",
+            "307531c08ac817f34fd4f40b2f0e9afc96758e67a4a9af2c199a9966242ffc88",
+            "492fee3e36f8a4ba7919ffcd6b9c4d1977baf335670a7d81159e55ee89d38506",
+            "4939fa3bb87d941c8a5a3e328f45bb0077982fa7d172968ed9afc76495a0a8bd",
+            "52de730203b330e1fa66790c2f6670d3248c0cb2620788c045e26aba3f4263a0",
+            "62b781771b8aa704b34fe556ace2afa47e843611fbf82c4f487ac5323a956952",
+            "6e96076e7ee2cfbc37b5bd093eedcd1bc9a03a4618fb30f5a7d63581aad77ca9",
+            "7c5d3112549cfc3b8c95cad896179060d2c9b9c5e56edd9646026ba2c9ffc039",
+            "8d346f09d4b606cd7ade5b196d10a3a5f54b3dff40205f1e21bea4aae10df5da",
+            "947b9485ed7d084e02ef780e82fd6a4fb1c37c601fe19a4be37962cd5526979b",
+            "a55e54b78a5b64ee6e629586968f7b304521b28be94b55b9c7ebe8670e0b83db",
+            "c284f86d861e265b918fd14a3f5653133bbdcd01f7f52d1cc3cde509044106ff",
+            "c55ed9b57879c11ea1f606e3318147893d54a4f02e9e96d4948e92cfc0880eb7",
+            "c84e602b9cb743f5f40b4e7c93ee4322e62c23edecf90d4b6d14c441e7c5113f",
+            "ce29800e1a902c1c1435277f328b599a05a7d431543cf9994ef2528f7913e34f",
+            "e12c4abaa5df83bdccfc33852a2f6e2e2483aa3c0ce2e77e0f470e9e76113968",
+            "e271fe60f1ecf40813c21b727a88b9f95b2a07c5e8df797d9370414e1a161d23"
+          ],
+          "snapshots": [
+            {
+              "operation": "append",
+              "parent_id": null,
+              "snapshot_id": 6084664108418947049
+            }
+          ],
+          "status": "appended"
+        },
+        "iceberg_runtime": "1.6.1",
+        "immediate_replay": {
+          "data_files": [
+            {
+              "file_path": "s3://gda-metadata-warehouse/warehouse/cultural_heritage/cultural_districts/data/00000-8-11851edc-05b2-4ce0-9a1c-17b7ef344b4d-0-00001.parquet",
+              "record_count": 20
+            }
+          ],
+          "mutation_count": 0,
+          "row_sha256": [
+            "0527a75a86c70503302f673535003792e135c0097fcb3a44ec3b081ab74e4a76",
+            "08113e2f628a656b9e3a23ada3b94e0c7568ec7585ae9f25efe7702662d1f2fd",
+            "176093ff06f206a65fa98bcc0cb0851cb66b91b8f223d28c1b60317298ca9190",
+            "2305d14edf0ba61478a7e8d0511d904e36574dd691c7e580026416ed891cc18a",
+            "307531c08ac817f34fd4f40b2f0e9afc96758e67a4a9af2c199a9966242ffc88",
+            "492fee3e36f8a4ba7919ffcd6b9c4d1977baf335670a7d81159e55ee89d38506",
+            "4939fa3bb87d941c8a5a3e328f45bb0077982fa7d172968ed9afc76495a0a8bd",
+            "52de730203b330e1fa66790c2f6670d3248c0cb2620788c045e26aba3f4263a0",
+            "62b781771b8aa704b34fe556ace2afa47e843611fbf82c4f487ac5323a956952",
+            "6e96076e7ee2cfbc37b5bd093eedcd1bc9a03a4618fb30f5a7d63581aad77ca9",
+            "7c5d3112549cfc3b8c95cad896179060d2c9b9c5e56edd9646026ba2c9ffc039",
+            "8d346f09d4b606cd7ade5b196d10a3a5f54b3dff40205f1e21bea4aae10df5da",
+            "947b9485ed7d084e02ef780e82fd6a4fb1c37c601fe19a4be37962cd5526979b",
+            "a55e54b78a5b64ee6e629586968f7b304521b28be94b55b9c7ebe8670e0b83db",
+            "c284f86d861e265b918fd14a3f5653133bbdcd01f7f52d1cc3cde509044106ff",
+            "c55ed9b57879c11ea1f606e3318147893d54a4f02e9e96d4948e92cfc0880eb7",
+            "c84e602b9cb743f5f40b4e7c93ee4322e62c23edecf90d4b6d14c441e7c5113f",
+            "ce29800e1a902c1c1435277f328b599a05a7d431543cf9994ef2528f7913e34f",
+            "e12c4abaa5df83bdccfc33852a2f6e2e2483aa3c0ce2e77e0f470e9e76113968",
+            "e271fe60f1ecf40813c21b727a88b9f95b2a07c5e8df797d9370414e1a161d23"
+          ],
+          "snapshots": [
+            {
+              "operation": "append",
+              "parent_id": null,
+              "snapshot_id": 6084664108418947049
+            }
+          ],
+          "status": "no_op"
+        },
+        "material_recorded": false,
+        "output_content_sha256": "bdc06792e8b935176ee6df6f6f6d4be1535622d54d9b994a778cabfe5a574618",
+        "output_resource_version_id": "a6000000-0000-4000-8000-000000000002",
+        "plan_sha256": "6282e636cc9399e5f8ddc41defb2123a2a31d1d2ae925e3b3660c48198dfbf84",
+        "quality": {
+          "bbox_match_count": 20,
+          "feature_count": 20,
+          "positive_area_count": 20,
+          "srid_match_count": 20,
+          "unique_bsm_count": 20,
+          "valid_geometry_count": 20
+        },
+        "row_set_sha256": "c26ff708f4b6be082327dff63a6a8659420dbc4cab37dea1cac7b40f147512df",
+        "schema": "gda.real_feature_ingestion_probe_result.v1",
+        "sedona_version": "1.9.0",
+        "source_content_sha256": "fd474fd65c8e4a71da241eb3fd07748ca3b972fbd2d3c32833376dbe71104007",
+        "source_payload_recorded": false,
+        "source_resource_version_id": "a6000000-0000-4000-8000-000000000001",
+        "spark_version": "3.5.0",
+        "table": "rest.cultural_heritage.cultural_districts",
+        "table_columns": [
+          "BSM",
+          "geometry",
+          "srid",
+          "min_x",
+          "min_y",
+          "max_x",
+          "max_y",
+          "row_sha256"
+        ]
+      },
+      "result_line_count": 1,
+      "terminal_condition": "Complete",
+      "wait_completed": true
+    },
+    "table_create": {
+      "mutation_count": 1,
+      "mutations": [
+        "gravitino.table.create"
+      ],
+      "source_binding_verified": true,
+      "status": "created",
+      "table_projection": {
+        "columns": [
+          {
+            "name": "BSM",
+            "nullable": false,
+            "type": "string"
+          },
+          {
+            "name": "geometry",
+            "nullable": false,
+            "type": "binary"
+          },
+          {
+            "name": "srid",
+            "nullable": false,
+            "type": "integer"
+          },
+          {
+            "name": "min_x",
+            "nullable": false,
+            "type": "double"
+          },
+          {
+            "name": "min_y",
+            "nullable": false,
+            "type": "double"
+          },
+          {
+            "name": "max_x",
+            "nullable": false,
+            "type": "double"
+          },
+          {
+            "name": "max_y",
+            "nullable": false,
+            "type": "double"
+          },
+          {
+            "name": "row_sha256",
+            "nullable": false,
+            "type": "string"
+          }
+        ],
+        "content_sha256": "bdc06792e8b935176ee6df6f6f6d4be1535622d54d9b994a778cabfe5a574618",
+        "name": "cultural_districts",
+        "provider_revision": "m3-22-real-feature-ingestion-v1",
+        "resource_urn": "gda://metadata-authorization-local/data_product/chongqing-cultural-districts-iceberg",
+        "resource_version_id": "a6000000-0000-4000-8000-000000000002"
+      },
+      "table_projection_sha256": "f30feb94a5a8280597f331a7f965762bfabb9b82397af49dda05b61ce00bbb1e"
+    }
+  },
+  "oidc_verified": false,
+  "output_resource_version_id": "a6000000-0000-4000-8000-000000000002",
+  "path_free_lineage_candidate_verified": true,
+  "platform_run_succeeded": false,
+  "predecessor_history_changed": false,
+  "predecessor_promotion_candidate_sha256": "63812c311b3f239bc6a944748c4ff384250eb9c9ed9009d3384fc699f1d3eaa9",
+  "production_ingestion_verified": false,
+  "production_object_store_verified": false,
+  "production_ready": false,
+  "protected_workload_identity_verified": false,
+  "real_dataset_resource_version_bound": true,
+  "schema": "gda.real_feature_ingestion_evidence.v1",
+  "sedona_spatial_quality_verified": true,
+  "source_absolute_path_committed": false,
+  "source_dataset_committed": false,
+  "source_feature_payload_committed": false,
+  "source_projection": {
+    "bounds": [
+      106.37987914500007,
+      29.558008447000077,
+      106.59532712300006,
+      29.87727198500005
+    ],
+    "feature_count": 20,
+    "geometry_types": [
+      "MultiPolygon",
+      "Polygon"
+    ],
+    "geometry_z_count": 20,
+    "non_empty_geometry_count": 20,
+    "payload_sha256": "f60e33c9ef890eb20c87e6cde82e658aaa3b20151e528ffbb293b9b64fabbbe1",
+    "payload_size_bytes": 430066,
+    "row_set_sha256": "c26ff708f4b6be082327dff63a6a8659420dbc4cab37dea1cac7b40f147512df",
+    "row_sha256": [
+      "0527a75a86c70503302f673535003792e135c0097fcb3a44ec3b081ab74e4a76",
+      "08113e2f628a656b9e3a23ada3b94e0c7568ec7585ae9f25efe7702662d1f2fd",
+      "176093ff06f206a65fa98bcc0cb0851cb66b91b8f223d28c1b60317298ca9190",
+      "2305d14edf0ba61478a7e8d0511d904e36574dd691c7e580026416ed891cc18a",
+      "307531c08ac817f34fd4f40b2f0e9afc96758e67a4a9af2c199a9966242ffc88",
+      "492fee3e36f8a4ba7919ffcd6b9c4d1977baf335670a7d81159e55ee89d38506",
+      "4939fa3bb87d941c8a5a3e328f45bb0077982fa7d172968ed9afc76495a0a8bd",
+      "52de730203b330e1fa66790c2f6670d3248c0cb2620788c045e26aba3f4263a0",
+      "62b781771b8aa704b34fe556ace2afa47e843611fbf82c4f487ac5323a956952",
+      "6e96076e7ee2cfbc37b5bd093eedcd1bc9a03a4618fb30f5a7d63581aad77ca9",
+      "7c5d3112549cfc3b8c95cad896179060d2c9b9c5e56edd9646026ba2c9ffc039",
+      "8d346f09d4b606cd7ade5b196d10a3a5f54b3dff40205f1e21bea4aae10df5da",
+      "947b9485ed7d084e02ef780e82fd6a4fb1c37c601fe19a4be37962cd5526979b",
+      "a55e54b78a5b64ee6e629586968f7b304521b28be94b55b9c7ebe8670e0b83db",
+      "c284f86d861e265b918fd14a3f5653133bbdcd01f7f52d1cc3cde509044106ff",
+      "c55ed9b57879c11ea1f606e3318147893d54a4f02e9e96d4948e92cfc0880eb7",
+      "c84e602b9cb743f5f40b4e7c93ee4322e62c23edecf90d4b6d14c441e7c5113f",
+      "ce29800e1a902c1c1435277f328b599a05a7d431543cf9994ef2528f7913e34f",
+      "e12c4abaa5df83bdccfc33852a2f6e2e2483aa3c0ce2e77e0f470e9e76113968",
+      "e271fe60f1ecf40813c21b727a88b9f95b2a07c5e8df797d9370414e1a161d23"
+    ],
+    "schema": "gda.real_feature_row_set.v1",
+    "source_payload_recorded": false,
+    "srid": 4490,
+    "unique_identifier_count": 20,
+    "valid_geometry_count": 20
+  },
+  "source_resource_version_id": "a6000000-0000-4000-8000-000000000001",
+  "spark_conformance_verified": false,
+  "status": "local_real_feature_ingestion_verified",
+  "tls_verified": false
+}

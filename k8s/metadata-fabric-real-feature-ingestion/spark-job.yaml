@@ -1,0 +1,300 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: real-feature-ingestion-probe
+  namespace: gda-metadata-spark-object-store
+data:
+  probe.py: |
+    import json
+    import os
+
+    from pyspark.sql import functions as F
+    from pyspark.sql import types as T
+    from sedona.spark import SedonaContext
+
+
+    TABLE = "rest.cultural_heritage.cultural_districts"
+    INPUT_PATH = "/opt/gda/input/ingestion.json"
+    WAREHOUSE = "s3://gda-metadata-warehouse/warehouse"
+    OBJECT_STORE_ENDPOINT = "http://metadata-object-store:9000"
+    DATA_PREFIX = WAREHOUSE + "/cultural_heritage/cultural_districts/data/"
+
+
+    with open(INPUT_PATH, encoding="utf-8") as handle:
+        payload = json.load(handle)
+
+    builder = (
+        SedonaContext.builder()
+        .appName("gda-real-feature-iceberg-ingestion")
+        .master("local[2]")
+        .config(
+            "spark.sql.extensions",
+            "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
+        )
+        .config("spark.jars", "/opt/spark/jars-extra/iceberg-aws-bundle-1.6.1.jar")
+        .config("spark.sql.catalog.rest", "org.apache.iceberg.spark.SparkCatalog")
+        .config("spark.sql.catalog.rest.type", "rest")
+        .config(
+            "spark.sql.catalog.rest.uri",
+            "http://gravitino-persistence:9001/iceberg",
+        )
+        .config(
+            "spark.sql.catalog.rest.io-impl",
+            "org.apache.iceberg.aws.s3.S3FileIO",
+        )
+        .config("spark.sql.catalog.rest.s3.endpoint", OBJECT_STORE_ENDPOINT)
+        .config("spark.sql.catalog.rest.s3.path-style-access", "true")
+        .config(
+            "spark.sql.catalog.rest.s3.access-key-id",
+            os.environ["AWS_ACCESS_KEY_ID"],
+        )
+        .config(
+            "spark.sql.catalog.rest.s3.secret-access-key",
+            os.environ["AWS_SECRET_ACCESS_KEY"],
+        )
+        .config("spark.sql.catalog.rest.client.region", "us-east-1")
+        .config("spark.sql.catalog.rest.cache-enabled", "false")
+        .config("spark.sql.shuffle.partitions", "2")
+    )
+    spark = builder.getOrCreate()
+    sedona = SedonaContext.create(spark)
+    spark.sparkContext.setLogLevel("WARN")
+
+    input_schema = T.StructType(
+        [
+            T.StructField("BSM", T.StringType(), False),
+            T.StructField("geometry_wkb_hex", T.StringType(), False),
+            T.StructField("srid", T.IntegerType(), False),
+            T.StructField("min_x", T.DoubleType(), False),
+            T.StructField("min_y", T.DoubleType(), False),
+            T.StructField("max_x", T.DoubleType(), False),
+            T.StructField("max_y", T.DoubleType(), False),
+            T.StructField("row_sha256", T.StringType(), False),
+        ]
+    )
+    source = (
+        spark.createDataFrame(payload["rows"], schema=input_schema)
+        .withColumn("geometry", F.unhex("geometry_wkb_hex"))
+        .select(
+            "BSM",
+            "geometry",
+            "srid",
+            "min_x",
+            "min_y",
+            "max_x",
+            "max_y",
+            "row_sha256",
+        )
+    )
+    source.createOrReplaceTempView("real_feature_source")
+
+    quality = sedona.sql(
+        """
+        WITH spatial AS (
+          SELECT *, ST_SetSRID(ST_GeomFromWKB(geometry), srid) AS geom
+          FROM real_feature_source
+        )
+        SELECT
+          COUNT(*) AS feature_count,
+          COUNT(DISTINCT BSM) AS unique_bsm_count,
+          SUM(CASE WHEN ST_IsValid(geom) THEN 1 ELSE 0 END) AS valid_geometry_count,
+          SUM(CASE WHEN ST_SRID(geom) = 4490 THEN 1 ELSE 0 END) AS srid_match_count,
+          SUM(CASE WHEN ST_Area(geom) > 0 THEN 1 ELSE 0 END) AS positive_area_count,
+          SUM(
+            CASE WHEN
+              ABS(ST_XMin(geom) - min_x) <= 1e-12 AND
+              ABS(ST_YMin(geom) - min_y) <= 1e-12 AND
+              ABS(ST_XMax(geom) - max_x) <= 1e-12 AND
+              ABS(ST_YMax(geom) - max_y) <= 1e-12
+            THEN 1 ELSE 0 END
+          ) AS bbox_match_count
+        FROM spatial
+        """
+    ).collect()[0].asDict()
+    expected_count = payload["expected_feature_count"]
+    if any(
+        quality[key] != expected_count
+        for key in (
+            "feature_count",
+            "unique_bsm_count",
+            "valid_geometry_count",
+            "srid_match_count",
+            "positive_area_count",
+            "bbox_match_count",
+        )
+    ):
+        raise RuntimeError(f"Sedona quality gate failed: {quality}")
+
+
+    def table_state():
+        rows = spark.sql(
+            f"SELECT row_sha256 FROM {TABLE} ORDER BY row_sha256"
+        ).collect()
+        snapshots = spark.sql(
+            f"SELECT snapshot_id, parent_id, operation FROM {TABLE}.snapshots "
+            "ORDER BY committed_at, snapshot_id"
+        ).collect()
+        files = spark.sql(
+            f"SELECT file_path, record_count FROM {TABLE}.files ORDER BY file_path"
+        ).collect()
+        return {
+            "row_sha256": [row["row_sha256"] for row in rows],
+            "snapshots": [row.asDict() for row in snapshots],
+            "data_files": [row.asDict() for row in files],
+        }
+
+
+    expected_rows = sorted(payload["expected_row_sha256"])
+
+
+    def apply_once():
+        before = table_state()
+        if not before["row_sha256"] and not before["snapshots"]:
+            source.coalesce(1).writeTo(TABLE).append()
+            status = "appended"
+            mutation_count = 1
+        elif before["row_sha256"] == expected_rows and len(before["snapshots"]) == 1:
+            status = "no_op"
+            mutation_count = 0
+        else:
+            raise RuntimeError("existing Iceberg table is partial or content-drifted")
+        spark.catalog.refreshTable(TABLE)
+        after = table_state()
+        if (
+            after["row_sha256"] != expected_rows
+            or len(after["snapshots"]) != 1
+            or after["snapshots"][0]["operation"] != "append"
+            or len(after["data_files"]) != 1
+            or after["data_files"][0]["record_count"] != expected_count
+            or not after["data_files"][0]["file_path"].startswith(DATA_PREFIX)
+        ):
+            raise RuntimeError("Iceberg content readback does not match the input binding")
+        return {
+            "status": status,
+            "mutation_count": mutation_count,
+            "row_sha256": after["row_sha256"],
+            "snapshots": after["snapshots"],
+            "data_files": after["data_files"],
+        }
+
+
+    first = apply_once()
+    replay = apply_once()
+    if first["status"] != "appended" or replay["status"] != "no_op":
+        raise RuntimeError("real feature ingestion replay boundary failed")
+    if first != {**replay, "status": "appended", "mutation_count": 1}:
+        raise RuntimeError("real feature table changed during no-op replay")
+
+    result = {
+        "schema": "gda.real_feature_ingestion_probe_result.v1",
+        "plan_sha256": payload["plan_sha256"],
+        "authorization_sha256": payload["authorization_sha256"],
+        "source_resource_version_id": payload["source_resource_version_id"],
+        "source_content_sha256": payload["source_content_sha256"],
+        "output_resource_version_id": payload["output_resource_version_id"],
+        "output_content_sha256": payload["output_content_sha256"],
+        "row_set_sha256": payload["row_set_sha256"],
+        "spark_version": spark.version,
+        "sedona_version": "1.9.0",
+        "iceberg_runtime": "1.6.1",
+        "table": TABLE,
+        "quality": quality,
+        "first_execution": first,
+        "immediate_replay": replay,
+        "table_columns": spark.table(TABLE).columns,
+        "source_payload_recorded": False,
+        "material_recorded": False,
+    }
+    print("GDA_REAL_FEATURE_INGESTION_RESULT=" + json.dumps(result, sort_keys=True))
+    spark.stop()
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: real-feature-ingestion-probe
+  namespace: gda-metadata-spark-object-store
+spec:
+  suspend: true
+  backoffLimit: 0
+  activeDeadlineSeconds: 900
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: real-feature-ingestion-probe
+        app.kubernetes.io/component: real-feature-ingestion
+    spec:
+      serviceAccountName: spark-object-store-probe
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/hostname: desktop-worker
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 100
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: spark
+          image: gisdataagent/mmfe-spark-runtime:local
+          imagePullPolicy: Never
+          command: ["python", "/opt/gda/probe.py"]
+          env:
+            - name: JAVA_HOME
+              value: /usr/lib/jvm/java-17-openjdk-arm64
+            - name: HOME
+              value: /tmp/spark-home
+            - name: SPARK_LOCAL_DIRS
+              value: /tmp/spark-local
+            - name: PYSPARK_PYTHON
+              value: python
+            - name: PYSPARK_SUBMIT_ARGS
+              value: >-
+                --jars /opt/spark/jars-extra/iceberg-aws-bundle-1.6.1.jar
+                --driver-class-path /opt/spark/jars-extra/iceberg-aws-bundle-1.6.1.jar
+                pyspark-shell
+            - name: AWS_REGION
+              value: us-east-1
+            - name: AWS_DEFAULT_REGION
+              value: us-east-1
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: metadata-object-store-runtime
+                  key: access-key-id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: metadata-object-store-runtime
+                  key: secret-access-key
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+            limits:
+              cpu: "4"
+              memory: 5Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: probe
+              mountPath: /opt/gda
+              readOnly: true
+            - name: input
+              mountPath: /opt/gda/input
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: probe
+          configMap:
+            name: real-feature-ingestion-probe
+        - name: input
+          configMap:
+            name: real-feature-ingestion-input
+        - name: tmp
+          emptyDir: {}

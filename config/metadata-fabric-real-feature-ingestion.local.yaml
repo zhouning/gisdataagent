@@ -1,0 +1,60 @@
+schema: gda.real_feature_ingestion_profile.v1
+environment: local_docker_desktop
+
+dependencies:
+  m321_profile_path: config/metadata-fabric-object-store-active-metadata-promotion.local.yaml
+  m321_evidence_path: docs/evidence/metadata-fabric-object-store-active-metadata-promotion-2026-07-31.json
+  m321_evidence_sha256: d73754c53cf16d888aa345baa5d079cc7fd98d8b84db747f52188c1a69bf1628
+  m310_profile_path: config/metadata-fabric-spark-object-store-interoperability.local.yaml
+  m310_evidence_path: docs/evidence/metadata-fabric-spark-object-store-interoperability-2026-07-29.json
+  m310_evidence_fingerprint: 05844457efb378581fb7fc2e7ed3c706819b2d8fa5a52b2f82577051d38c2cd1
+
+source:
+  source_label: chongqing-central-cultural-districts
+  identifier_field: Bsm
+  expected_feature_count: 20
+  expected_srid: 4490
+  expected_geometry_dimension: 3
+  expected_geometry_family: polygon
+
+target:
+  metalake: gda_chongqing_m3_22
+  catalog: lakehouse
+  schema: cultural_heritage
+  table: cultural_districts
+  catalog_type: RELATIONAL
+  catalog_provider: lakehouse-iceberg
+  catalog_backend: jdbc
+  uri: jdbc:postgresql://gravitino-persistence-postgresql:5432/iceberg
+  warehouse: s3://gda-metadata-warehouse/warehouse
+  jdbc_driver: org.postgresql.Driver
+  io_impl: org.apache.iceberg.aws.s3.S3FileIO
+  s3_endpoint: http://metadata-object-store:9000
+  s3_region: us-east-1
+  s3_path_style_access: true
+  bucket: gda-metadata-warehouse
+  object_prefix: warehouse/cultural_heritage/cultural_districts/
+
+identity:
+  service_admin: gda-object-store-admin
+  user: gda-object-store-active-metadata-promoter
+  role: gda-object-store-cultural-district-projector
+  material_delivery: runtime_generated_ephemeral_kubernetes_object
+
+authorization:
+  policy_version_ref: policy://gda/metadata-fabric/real-feature-ingestion/v1
+  evaluator_subject: workload:real-feature-ingestion-policy-evaluator
+  approver_subject: human:metadata-platform-owner
+  approval_reason: Approve one content-bound local Spark/Sedona ingestion rehearsal.
+
+claims:
+  predecessor_history_changed: false
+  ingestion_persisted_to_gda_control: false
+  protected_workload_identity_verified: false
+  durable_catalog_verified: false
+  production_object_store_verified: false
+  oidc_verified: false
+  tls_verified: false
+  flink_conformance_verified: false
+  production_ingestion_verified: false
+  production_ready: false
