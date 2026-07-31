@@ -439,6 +439,7 @@ AR-0 Architecture / Schema / Runtime Truth
 
 交付：
 
+- 真实源 admission contract：以不可变 archive checksum、解压 payload fingerprint、source-group manifest、metadata profile 和治理 blocker 建立准入基线；证据不得含源 payload、绝对路径、记录值或 geometry，profiling 不等于 content admission。
 - SourceDefinition、CredentialReference、SourceCapability、SyncDefinition/Version、SyncRun、Cursor/Watermark、SchemaDriftEvent 和 Reconciliation。
 - 数据库、对象存储/空间文件、HTTP/STAC 三类代表 source 的连接、凭据、连通、发现、preview、profile 和 owner 登记。
 - 全量/增量微批的 Append/Overwrite/Merge 策略，以及至少一个真实 CDC 或事件流 source 通过 Flink 写入版本化 Bronze；覆盖 watermark/offset、checkpoint、迟到/乱序、源端删除、幂等、对账、重放和失败恢复。
@@ -686,7 +687,7 @@ Golden checks 至少覆盖：
 3. 冻结 ResourceURN、ResourceVersion、PlatformDefinition/PlatformRun/FrameworkAttemptObservation/Artifact/LineageEvent、SubjectContext 与 storage/table/compute provider 最小合同。
 4. 分阶段实现 `gda-metadata-fabric-bridge`：M1 只读 mapping/reconciliation、M2a 本地 foundation/重启连续性、M2b-1 本地三存储恢复、M2b-2 隔离 versioned/Object-Locked repository round-trip、M2b-3 本机双集群 + Kubernetes 外 COMPLIANCE repository + 独立 writer/reader、M2c-1 provider-native metrics、M2c-2 临时 OTel Collector + JSON Exporter 的双周期本地 pipeline、M2c-3 本地单 job scrape 故障检测/配置恢复/完整清理 evidence、M2c-4 绑定 source revision 的 production observability readiness contract，以及 M2d-1 本地 kindnet 跨节点 NetworkPolicy enforcement 已验证；M2c-4 当前仍有 20 项 blockers，M2d-1 也未验证生产 provider policy 或 tenant isolation。下一步完成 source host/cluster 外的生产 bucket、KMS/TLS/workload identity、source-loss recovery 与 RPO/RTO，并批准 metrics backend、retention、OTel/TLS、tenant、alert/SLO/owner 后在受保护环境验证持续采集、存储、查询、真实告警投递、runbook 响应和 provider NetworkPolicy；再推进 OIDC、upgrade/rollback、registry provenance 和 owner/runbook；之后才进入 M3 ingestion/OpenLineage/conformance。
 5. 实现 `gda-orchestration-gateway`、DolphinScheduler process/task/schedule/complement/worker-group、Spark/Flink provider task adapter 和故障注入；不再开发新的 lease/queue/scheduler。
-6. 冻结首条地类图斑数据、标准版本、敏感级别、owner、SLO 和 golden result。
+6. M3-28 已冻结全量重庆真实源的 path-free physical/metadata admission baseline；下一步补齐解压派生 provenance，并由 owner 决定首条地类图斑源的 license、retention、access、privacy/sensitivity、标准版本、SLO 和 golden result，未获批准前不得 content admission。
 7. 冻结 Default Lakehouse、Cloud Managed、Lightweight Integrated profiles；以统一 Run 完成默认 MinIO/Iceberg/Spark/Flink、轻量 PostGIS/DuckDB 和 Azure 代表 adapter 的 conformance smoke。
 8. 实现跨 profile 的 Raw -> ODS -> DIM/DWD -> DWS -> ADS 通用生产、质量、发布、回滚和 golden equivalence。
 9. 建立 DataProductBlueprint、模型版本和 Visual/SQL/Notebook 共用 definition 的 Build 工作台，打通 preview、test、publish、approval 和 rollback。

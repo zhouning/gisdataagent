@@ -1,0 +1,1119 @@
+{
+  "admission_blockers": [
+    "source_binding:extraction_derivation_provenance_missing",
+    "source_group:baidu-aoi-2024:access_policy_missing",
+    "source_group:baidu-aoi-2024:contact_field_privacy_review_missing",
+    "source_group:baidu-aoi-2024:license_terms_unverified",
+    "source_group:baidu-aoi-2024:owner_reference_missing",
+    "source_group:baidu-aoi-2024:retention_policy_missing",
+    "source_group:baidu-search-index-2023:access_policy_missing",
+    "source_group:baidu-search-index-2023:commercial_terms_review_missing",
+    "source_group:baidu-search-index-2023:license_terms_unverified",
+    "source_group:baidu-search-index-2023:owner_reference_missing",
+    "source_group:baidu-search-index-2023:retention_policy_missing",
+    "source_group:bishan-planning-materials:access_policy_missing",
+    "source_group:bishan-planning-materials:license_terms_unverified",
+    "source_group:bishan-planning-materials:owner_reference_missing",
+    "source_group:bishan-planning-materials:planning_sensitivity_review_missing",
+    "source_group:bishan-planning-materials:retention_policy_missing",
+    "source_group:chongqing-central-buildings-2021:access_policy_missing",
+    "source_group:chongqing-central-buildings-2021:license_terms_unverified",
+    "source_group:chongqing-central-buildings-2021:owner_reference_missing",
+    "source_group:chongqing-central-buildings-2021:retention_policy_missing",
+    "source_group:chongqing-central-buildings-2021:source_vintage_unverified",
+    "source_group:chongqing-clcd-2020:access_policy_missing",
+    "source_group:chongqing-clcd-2020:classification_lineage_unverified",
+    "source_group:chongqing-clcd-2020:license_terms_unverified",
+    "source_group:chongqing-clcd-2020:owner_reference_missing",
+    "source_group:chongqing-clcd-2020:retention_policy_missing",
+    "source_group:chongqing-dem-2020:access_policy_missing",
+    "source_group:chongqing-dem-2020:license_terms_unverified",
+    "source_group:chongqing-dem-2020:owner_reference_missing",
+    "source_group:chongqing-dem-2020:retention_policy_missing",
+    "source_group:chongqing-dem-2020:source_vintage_unverified",
+    "source_group:chongqing-district-population-2021:access_policy_missing",
+    "source_group:chongqing-district-population-2021:license_terms_unverified",
+    "source_group:chongqing-district-population-2021:owner_reference_missing",
+    "source_group:chongqing-district-population-2021:retention_policy_missing",
+    "source_group:chongqing-district-population-2021:statistics_vintage_review_missing",
+    "source_group:chongqing-historic-districts:access_policy_missing",
+    "source_group:chongqing-historic-districts:license_terms_unverified",
+    "source_group:chongqing-historic-districts:owner_reference_missing",
+    "source_group:chongqing-historic-districts:retention_policy_missing",
+    "source_group:chongqing-historic-districts:source_vintage_unverified",
+    "source_group:chongqing-osm-roads-2021:access_policy_missing",
+    "source_group:chongqing-osm-roads-2021:license_terms_unverified",
+    "source_group:chongqing-osm-roads-2021:odbl_attribution_policy_missing",
+    "source_group:chongqing-osm-roads-2021:owner_reference_missing",
+    "source_group:chongqing-osm-roads-2021:retention_policy_missing",
+    "source_group:gaode-poi-2024:access_policy_missing",
+    "source_group:gaode-poi-2024:contact_field_privacy_review_missing",
+    "source_group:gaode-poi-2024:license_terms_unverified",
+    "source_group:gaode-poi-2024:owner_reference_missing",
+    "source_group:gaode-poi-2024:retention_policy_missing",
+    "source_group:unicom-commuting-2023:access_policy_missing",
+    "source_group:unicom-commuting-2023:grid_geometry_dictionary_missing",
+    "source_group:unicom-commuting-2023:license_terms_unverified",
+    "source_group:unicom-commuting-2023:owner_reference_missing",
+    "source_group:unicom-commuting-2023:privacy_impact_assessment_missing",
+    "source_group:unicom-commuting-2023:retention_policy_missing"
+  ],
+  "admission_policy": {
+    "ci_requires_local_source_payload": false,
+    "content_admission_requires_owner_license_retention_and_access_approval": true,
+    "fresh_protected_ingestion_required_after_admission": true,
+    "local_profile_is_not_production_admission": true,
+    "metadata_profiling_allowed": true,
+    "restricted_fields_require_privacy_review": true,
+    "source_payload_copy_to_repository_forbidden": true
+  },
+  "asset_profiles": [
+    {
+      "admission_status": "blocked_pending_source_governance",
+      "asset_id": "baidu_aoi_2024",
+      "asset_kind": "vector",
+      "data_classification": "highly_restricted_commercial_location",
+      "metadata_profiled": true,
+      "profile_sha256": "2b6ce471d518ff7205eb9d5690e40cf7de39de1328260276b39673afad4ad9bc",
+      "record_metrics": {
+        "feature_count": 26292
+      },
+      "roles": [
+        "baseline",
+        "planner_targeting",
+        "service_accessibility",
+        "urban_form"
+      ],
+      "schema_fields": [
+        "uid",
+        "名称",
+        "地址",
+        "省份",
+        "城市",
+        "区县",
+        "街镇乡",
+        "类型",
+        "第一分类",
+        "第二分类",
+        "评分",
+        "更新时间",
+        "评论数",
+        "开业时间",
+        "人均价格_元",
+        "街道id",
+        "电话",
+        "创建时间",
+        "其他",
+        "高德分类",
+        "经度wgs84",
+        "纬度wgs84",
+        "SHAPE_Length",
+        "SHAPE_Area"
+      ],
+      "source_content_in_evidence": false,
+      "source_group_id": "baidu-aoi-2024",
+      "source_ref": "source://chongqing-planning-institute-sample/assets/baidu_aoi_2024",
+      "spatial_profile": {
+        "bounds": [
+          105.31552411900009,
+          28.18493382400004,
+          110.16574626100004,
+          32.16731932000005
+        ],
+        "crs": "EPSG:4490",
+        "dtype": [],
+        "geometry_type": "MultiPolygon",
+        "nodata": null
+      }
+    },
+    {
+      "admission_status": "blocked_pending_source_governance",
+      "asset_id": "baidu_search_index_2023_local",
+      "asset_kind": "vector",
+      "data_classification": "highly_restricted_commercial_activity",
+      "metadata_profiled": true,
+      "profile_sha256": "b6bc2eeaa4e0b6626551a9e7732632ee5983ae5572709d109d4996665dbf3202",
+      "record_metrics": {
+        "feature_count": 325
+      },
+      "roles": [
+        "mmfe_alignment",
+        "mobility_activity",
+        "planner_targeting",
+        "simulator_context",
+        "urban_activity_proxy"
+      ],
+      "schema_fields": [
+        "id",
+        "ODJSMC",
+        "DDJSMC",
+        "PCSSCS",
+        "YDSSCS",
+        "SSZS",
+        "Shape_Length"
+      ],
+      "source_content_in_evidence": false,
+      "source_group_id": "baidu-search-index-2023",
+      "source_ref": "source://chongqing-planning-institute-sample/assets/baidu_search_index_2023_local",
+      "spatial_profile": {
+        "bounds": [
+          102.66382204100006,
+          27.822151572568785,
+          111.13525443382999,
+          33.09055455500004
+        ],
+        "crs": "EPSG:4490",
+        "dtype": [],
+        "geometry_type": "MultiLineString",
+        "nodata": null
+      }
+    },
+    {
+      "admission_status": "blocked_pending_source_governance",
+      "asset_id": "bishan_admin_boundary_cjdcq_local",
+      "asset_kind": "vector",
+      "data_classification": "highly_restricted_planning",
+      "metadata_profiled": true,
+      "profile_sha256": "0c7607470d2b0049e23b86639eba4e5109a0909e7f40bbeb357639ccb6e2ed9c",
+      "record_metrics": {
+        "feature_count": 1488
+      },
+      "roles": [
+        "administrative_units",
+        "baseline",
+        "land_use_context",
+        "planning_constraints"
+      ],
+      "schema_fields": [
+        "BSM",
+        "YSDM",
+        "ZLDWDM",
+        "ZLDWMC",
+        "DCMJ",
+        "JSMJ",
+        "MSSM",
+        "HDMC",
+        "BZ",
+        "SHAPE_Length",
+        "SHAPE_Area"
+      ],
+      "source_content_in_evidence": false,
+      "source_group_id": "bishan-planning-materials",
+      "source_ref": "source://chongqing-planning-institute-sample/assets/bishan_admin_boundary_cjdcq_local",
+      "spatial_profile": {
+        "bounds": [
+          35601015.4985,
+          3241091.9637,
+          35632312.22315,
+          3308361.5723
+        ],
+        "crs": "EPSG:4523+EPSG:5737",
+        "dtype": [],
+        "geometry_type": "MultiPolygon",
+        "nodata": null
+      }
+    },
+    {
+      "admission_status": "blocked_pending_source_governance",
+      "asset_id": "bishan_admin_boundary_xzq_local",
+      "asset_kind": "vector",
+      "data_classification": "highly_restricted_planning",
+      "metadata_profiled": true,
+      "profile_sha256": "384675e6d9888d701b9ae88875fcc11488f45ee7778bdf729a31cba8e8270d70",
+      "record_metrics": {
+        "feature_count": 15
+      },
+      "roles": [
+        "administrative_units",
+        "baseline",
+        "land_use_context",
+        "planning_constraints"
+      ],
+      "schema_fields": [
+        "BSM",
+        "YSDM",
+        "XZQDM",
+        "XZQMC",
+        "DCMJ",
+        "JSMJ",
+        "MSSM",
+        "HDMC",
+        "BZ",
+        "SHAPE_Length",
+        "SHAPE_Area"
+      ],
+      "source_content_in_evidence": false,
+      "source_group_id": "bishan-planning-materials",
+      "source_ref": "source://chongqing-planning-institute-sample/assets/bishan_admin_boundary_xzq_local",
+      "spatial_profile": {
+        "bounds": [
+          35601015.4985,
+          3241091.9637,
+          35632312.22315,
+          3308361.5723
+        ],
+        "crs": "EPSG:4523+EPSG:5737",
+        "dtype": [],
+        "geometry_type": "MultiPolygon",
+        "nodata": null
+      }
+    },
+    {
+      "admission_status": "blocked_pending_source_governance",
+      "asset_id": "bishan_land_development_ledger_2019_local",
+      "asset_kind": "workbook_collection",
+      "data_classification": "highly_restricted_planning",
+      "metadata_profiled": true,
+      "profile_sha256": "b62a42e2cf0c1a3a269ecaf53edb583ce5ce066ffd95e1e6cc28ca9357435cb7",
+      "record_metrics": {
+        "row_count": 1438,
+        "sheet_count": 4
+      },
+      "roles": [
+        "land_development_pressure",
+        "planner_constraints",
+        "planning_context",
+        "simulator_context"
+      ],
+      "schema_fields": [],
+      "source_content_in_evidence": false,
+      "source_group_id": "bishan-planning-materials",
+      "source_ref": "source://chongqing-planning-institute-sample/assets/bishan_land_development_ledger_2019_local",
+      "spatial_profile": null
+    },
+    {
+      "admission_status": "blocked_pending_source_governance",
+      "asset_id": "bishan_land_use_dltb_local",
+      "asset_kind": "vector",
+      "data_classification": "highly_restricted_planning",
+      "metadata_profiled": true,
+      "profile_sha256": "dd0f4eab16f69cc59fe320eeeff3aed747ed8de35a948a5cb87ee649ae3813c9",
+      "record_metrics": {
+        "feature_count": 101657
+      },
+      "roles": [
+        "baseline",
+        "land_use_context",
+        "planning_constraints",
+        "simulator_context",
+        "urban_form"
+      ],
+      "schema_fields": [
+        "BSM",
+        "YSDM",
+        "DLBM",
+        "DLMC",
+        "QSDWDM",
+        "QSDWMC",
+        "ZLDWDM",
+        "ZLDWMC",
+        "TBMJ",
+        "SHAPE_Length",
+        "SHAPE_Area"
+      ],
+      "source_content_in_evidence": false,
+      "source_group_id": "bishan-planning-materials",
+      "source_ref": "source://chongqing-planning-institute-sample/assets/bishan_land_use_dltb_local",
+      "spatial_profile": {
+        "bounds": [
+          106.04001576200005,
+          29.282454706000067,
+          106.36873229600008,
+          29.887474954000083
+        ],
+        "crs": "EPSG:4610",
+        "dtype": [],
+        "geometry_type": "MultiPolygon",
+        "nodata": null
+      }
+    },
+    {
+      "admission_status": "blocked_pending_source_governance",
+      "asset_id": "chongqing_central_buildings_2021",
+      "asset_kind": "vector",
+      "data_classification": "restricted_local_built_environment",
+      "metadata_profiled": true,
+      "profile_sha256": "2e4997ea793c5a841a03a4da56e6dffc2962f196cbbaa1f8a3e8b5bc091dbce7",
+      "record_metrics": {
+        "feature_count": 107452
+      },
+      "roles": [
+        "baseline",
+        "renderer",
+        "urban_form"
+      ],
+      "schema_fields": [
+        "Id",
+        "Floor"
+      ],
+      "source_content_in_evidence": false,
+      "source_group_id": "chongqing-central-buildings-2021",
+      "source_ref": "source://chongqing-planning-institute-sample/assets/chongqing_central_buildings_2021",
+      "spatial_profile": {
+        "bounds": [
+          106.20951745600001,
+          29.212573738600042,
+          106.821612684,
+          29.831229147900103
+        ],
+        "crs": "EPSG:4326",
+        "dtype": [],
+        "geometry_type": "Polygon",
+        "nodata": null
+      }
+    },
+    {
+      "admission_status": "blocked_pending_source_governance",
+      "asset_id": "chongqing_clcd_2020",
+      "asset_kind": "raster",
+      "data_classification": "restricted_local_remote_sensing",
+      "metadata_profiled": true,
+      "profile_sha256": "653f7c175ff192b3fc4135eee60aa0754e389fe0de7b8301718f66148bf63571",
+      "record_metrics": {
+        "band_count": 1,
+        "height": 15082,
+        "pixel_count": 280208478,
+        "width": 18579
+      },
+      "roles": [
+        "baseline",
+        "remote_sensing_state",
+        "urban_form"
+      ],
+      "schema_fields": [],
+      "source_content_in_evidence": false,
+      "source_group_id": "chongqing-clcd-2020",
+      "source_ref": "source://chongqing-planning-institute-sample/assets/chongqing_clcd_2020",
+      "spatial_profile": {
+        "bounds": [
+          105.21303750199797,
+          28.140836217657494,
+          110.21997740109495,
+          32.20535355218468
+        ],
+        "crs": "EPSG:4326",
+        "dtype": [
+          "uint8"
+        ],
+        "geometry_type": "",
+        "nodata": 15.0
+      }
+    },
+    {
+      "admission_status": "blocked_pending_source_governance",
+      "asset_id": "chongqing_dem_80m",
+      "asset_kind": "raster",
+      "data_classification": "restricted_local_baseline",
+      "metadata_profiled": true,
+      "profile_sha256": "a145f700de59f65a895bcace518250648db4ee130c147e7ff262fb529976893e",
+      "record_metrics": {
+        "band_count": 1,
+        "height": 1454,
+        "pixel_count": 2567764,
+        "width": 1766
+      },
+      "roles": [
+        "heat_exposure",
+        "renderer"
+      ],
+      "schema_fields": [],
+      "source_content_in_evidence": false,
+      "source_group_id": "chongqing-dem-2020",
+      "source_ref": "source://chongqing-planning-institute-sample/assets/chongqing_dem_80m",
+      "spatial_profile": {
+        "bounds": [
+          105.28983805000004,
+          28.165268865555987,
+          110.19539360948005,
+          32.204157757675986
+        ],
+        "crs": "EPSG:4490",
+        "dtype": [
+          "int16"
+        ],
+        "geometry_type": "",
+        "nodata": 32767.0
+      }
+    },
+    {
+      "admission_status": "blocked_pending_source_governance",
+      "asset_id": "chongqing_district_population_stats_2021_local",
+      "asset_kind": "workbook",
+      "data_classification": "restricted_aggregate_population",
+      "metadata_profiled": true,
+      "profile_sha256": "d16f10876967f0c31d2dba850bda33fe82c0df2dde71945a7d239504a6a83840",
+      "record_metrics": {
+        "row_count": 41,
+        "sheet_count": 1
+      },
+      "roles": [
+        "equity_evaluation",
+        "population_vulnerability"
+      ],
+      "schema_fields": [],
+      "source_content_in_evidence": false,
+      "source_group_id": "chongqing-district-population-2021",
+      "source_ref": "source://chongqing-planning-institute-sample/assets/chongqing_district_population_stats_2021_local",
+      "spatial_profile": null
+    },
+    {
+      "admission_status": "blocked_pending_source_governance",
+      "asset_id": "chongqing_historic_districts_local",
+      "asset_kind": "vector",
+      "data_classification": "restricted_local_cultural_planning",
+      "metadata_profiled": true,
+      "profile_sha256": "d51869b52b11220da25690d7e890c14da7c0188b2ef381716daa07b58fceb385",
+      "record_metrics": {
+        "feature_count": 20
+      },
+      "roles": [
+        "cultural_heritage",
+        "livability_context",
+        "planner_targeting",
+        "renderer",
+        "service_accessibility",
+        "urban_form"
+      ],
+      "schema_fields": [
+        "OBJECTID",
+        "Jqmc",
+        "Fwlx",
+        "fwmc",
+        "Xzqmc",
+        "Fwkzyq",
+        "Fwmj",
+        "Bhbkydwwsl",
+        "Bhbkydwwzj",
+        "Bhlsjzsl",
+        "Bhlsjzmc",
+        "Bhlsjzzjzm",
+        "Bhlshjyssl",
+        "Bhlshjysmc",
+        "Bhlsjxsl",
+        "Bhlsjxzcd",
+        "Bhlsjxmcjc",
+        "Bhfwzwhycm",
+        "Bhqtfwzycs",
+        "Bhqtfwzycm",
+        "Bz",
+        "Jj",
+        "Bsm",
+        "Bhctfmjzsl",
+        "Bhbkydwwmc",
+        "Bhctfmjzzj",
+        "Bhgsmmsl",
+        "Bhgsmmmc",
+        "Bhfwzwhy_1",
+        "Tymj",
+        "Tycd",
+        "Shape_Leng",
+        "Shape_Area"
+      ],
+      "source_content_in_evidence": false,
+      "source_group_id": "chongqing-historic-districts",
+      "source_ref": "source://chongqing-planning-institute-sample/assets/chongqing_historic_districts_local",
+      "spatial_profile": {
+        "bounds": [
+          106.37987914500007,
+          29.558008447000077,
+          106.59532712300008,
+          29.877271985000025
+        ],
+        "crs": "EPSG:4490",
+        "dtype": [],
+        "geometry_type": "Polygon Z",
+        "nodata": null
+      }
+    },
+    {
+      "admission_status": "blocked_pending_source_governance",
+      "asset_id": "chongqing_osm_roads_2021",
+      "asset_kind": "vector",
+      "data_classification": "restricted_local_open_data_copy",
+      "metadata_profiled": true,
+      "profile_sha256": "ff1129bc6b54ae32891e8dbeea0262942155ea4a08e89393720fd1cbd799fbe6",
+      "record_metrics": {
+        "feature_count": 50366
+      },
+      "roles": [
+        "baseline",
+        "mobility_activity",
+        "mobility_graph",
+        "renderer"
+      ],
+      "schema_fields": [
+        "osm_id",
+        "code",
+        "fclass",
+        "name",
+        "ref",
+        "oneway",
+        "maxspeed",
+        "layer",
+        "bridge",
+        "tunnel"
+      ],
+      "source_content_in_evidence": false,
+      "source_group_id": "chongqing-osm-roads-2021",
+      "source_ref": "source://chongqing-planning-institute-sample/assets/chongqing_osm_roads_2021",
+      "spatial_profile": {
+        "bounds": [
+          105.30804952870155,
+          28.163572226020626,
+          110.1732225690069,
+          32.1562025
+        ],
+        "crs": "EPSG:4326",
+        "dtype": [],
+        "geometry_type": "LineString",
+        "nodata": null
+      }
+    },
+    {
+      "admission_status": "blocked_pending_source_governance",
+      "asset_id": "chongqing_unicom_commuting_2023_local",
+      "asset_kind": "table",
+      "data_classification": "highly_restricted_aggregate_mobility",
+      "metadata_profiled": true,
+      "profile_sha256": "d7d0661e3e97356ca74d2e601d76c4b30184691f0266e8a27c8284eaade7008b",
+      "record_metrics": {
+        "column_count": 7,
+        "row_count": 2120
+      },
+      "roles": [
+        "commuting_od",
+        "mobility_activity",
+        "planner_targeting",
+        "population_vulnerability",
+        "simulator_context"
+      ],
+      "schema_fields": [
+        "居住格网",
+        "工作格网",
+        "职住格网是否重合",
+        "性别",
+        "年龄",
+        "扩样前人口",
+        "扩样后人口"
+      ],
+      "source_content_in_evidence": false,
+      "source_group_id": "unicom-commuting-2023",
+      "source_ref": "source://chongqing-planning-institute-sample/assets/chongqing_unicom_commuting_2023_local",
+      "spatial_profile": null
+    },
+    {
+      "admission_status": "blocked_pending_source_governance",
+      "asset_id": "clcd_classification_dictionary_local",
+      "asset_kind": "workbook",
+      "data_classification": "restricted_local_remote_sensing",
+      "metadata_profiled": true,
+      "profile_sha256": "5e2dead48038cf37d37ddcf69ee28be06d5bc636c5c390d9602a0ee2c60bc21d",
+      "record_metrics": {
+        "row_count": 10,
+        "sheet_count": 1
+      },
+      "roles": [
+        "baseline_context",
+        "remote_sensing_state",
+        "renderer"
+      ],
+      "schema_fields": [],
+      "source_content_in_evidence": false,
+      "source_group_id": "chongqing-clcd-2020",
+      "source_ref": "source://chongqing-planning-institute-sample/assets/clcd_classification_dictionary_local",
+      "spatial_profile": null
+    },
+    {
+      "admission_status": "blocked_pending_source_governance",
+      "asset_id": "fulu_village_planning_database_local",
+      "asset_kind": "vector_collection",
+      "data_classification": "highly_restricted_planning",
+      "metadata_profiled": true,
+      "profile_sha256": "a7046403283e32c6972382b882940407f3a6205a4d6f63561863d8e1cb24d743",
+      "record_metrics": {
+        "feature_count": 8050,
+        "layer_count": 28,
+        "nonempty_layer_count": 20
+      },
+      "roles": [
+        "land_use_context",
+        "planning_constraints",
+        "simulator_context",
+        "village_livability_context"
+      ],
+      "schema_fields": [],
+      "source_content_in_evidence": false,
+      "source_group_id": "bishan-planning-materials",
+      "source_ref": "source://chongqing-planning-institute-sample/assets/fulu_village_planning_database_local",
+      "spatial_profile": {
+        "bounds": null,
+        "crs": "mixed_CGCS2000_GK_zone_35_EPSG4523",
+        "dtype": [],
+        "geometry_type": "mixed",
+        "nodata": null
+      }
+    },
+    {
+      "admission_status": "blocked_pending_source_governance",
+      "asset_id": "gaode_poi_2024",
+      "asset_kind": "vector",
+      "data_classification": "highly_restricted_commercial_location",
+      "metadata_profiled": true,
+      "profile_sha256": "fc8e70f04bfab1c9305a1edff49d2cc39d9c1eee4f71d5b8bfe99780ed57dd5c",
+      "record_metrics": {
+        "feature_count": 1194351
+      },
+      "roles": [
+        "baseline",
+        "planner_targeting",
+        "service_accessibility"
+      ],
+      "schema_fields": [
+        "ID",
+        "名称",
+        "地址",
+        "电话",
+        "类型",
+        "区域ID",
+        "经度wgs84",
+        "纬度wgs84",
+        "百度经度",
+        "百度纬度",
+        "更新时间"
+      ],
+      "source_content_in_evidence": false,
+      "source_group_id": "gaode-poi-2024",
+      "source_ref": "source://chongqing-planning-institute-sample/assets/gaode_poi_2024",
+      "spatial_profile": {
+        "bounds": [
+          105.28943500000003,
+          28.164064000000053,
+          110.18358100000006,
+          32.190248000000054
+        ],
+        "crs": "EPSG:4490",
+        "dtype": [],
+        "geometry_type": "Point",
+        "nodata": null
+      }
+    }
+  ],
+  "captured_at": "2026-07-31T07:54:06.279487Z",
+  "claims": {
+    "archive_extracted_entry_multiset_verified": false,
+    "archive_integrity_verified": true,
+    "full_source_metadata_profiled": true,
+    "production_ingestion_verified": false,
+    "production_ready": false,
+    "provider_mutation_authorized": false,
+    "scheduler_submission_authorized": false,
+    "source_content_admitted": false,
+    "source_governance_approved": false,
+    "source_publication_authorized": false
+  },
+  "evidence_sha256": "a2196495d845d61be939c7fc36a7f05c3567e365599d2d04be0aab9c568459c1",
+  "research_audit_binding": {
+    "admission_authority": false,
+    "asset_ids_sha256": "c7cb765c2b653dbf5619e2fe1cf027d108a5951b752b6dd4bfd60b4c00d91947",
+    "authority": "research_inventory_only",
+    "file_sha256": "69b4167955f950041988dd174b75ea5376af146ef3e52f815aa57715fd24f70d",
+    "path": "data/uwm_public_proxy/chongqing_central/local_planning_zip_audit_2026_07_05/uwm_local_planning_zip_inventory.csv",
+    "row_count": 16
+  },
+  "schema": "gda.chongqing_real_source_admission.v1",
+  "source_binding": {
+    "absolute_source_paths_in_evidence": false,
+    "archive_entry_count": 533,
+    "archive_extracted_entry_multiset_verified": false,
+    "archive_integrity_verified": true,
+    "archive_original_entry_exact_match_count": 526,
+    "archive_original_entry_missing_count": 0,
+    "archive_original_entry_modified_count": 6,
+    "archive_sha256": "2043b60c2f4f7f32a31388a634fae4ac28534990e205aa86b8df0e4b64dcbbca",
+    "archive_size_bytes": 468462251,
+    "archive_source_scope_entry_count": 532,
+    "archive_source_scope_size_bytes": 694147946,
+    "archive_uncompressed_size_bytes": 694164379,
+    "extracted_additional_file_count": 52,
+    "extracted_file_count": 584,
+    "extracted_payload_sha256": "e7e81e4f53f9f174792f500fbfdfde6bee30ec03beac8cbd91771fe09f548ea6",
+    "extracted_size_bytes": 700610744,
+    "logical_group_inventory_sha256": "5aa5f1aebd135956c550f392deb5965e7c088d4cb09070b60b4db45e5ce9503b",
+    "source_id": "chongqing-planning-institute-sample",
+    "source_payload_in_repository": false
+  },
+  "source_groups": [
+    {
+      "admission_status": "blocked_pending_source_governance",
+      "blockers": [
+        "source_group:chongqing-dem-2020:owner_reference_missing",
+        "source_group:chongqing-dem-2020:license_terms_unverified",
+        "source_group:chongqing-dem-2020:retention_policy_missing",
+        "source_group:chongqing-dem-2020:access_policy_missing",
+        "source_group:chongqing-dem-2020:source_vintage_unverified"
+      ],
+      "content_admitted": false,
+      "content_manifest_sha256": "9796f99f214d6ae1e9cef659ffe341465ec48a93a25bba1b966c4ba3052630b0",
+      "data_classification": "restricted_local_baseline",
+      "data_domains": [
+        "elevation",
+        "terrain",
+        "raster"
+      ],
+      "extension_counts": {
+        "cpg": 1,
+        "dbf": 1,
+        "ovr": 1,
+        "tfw": 1,
+        "tif": 1,
+        "xml": 2
+      },
+      "file_count": 7,
+      "license_status": "unverified_restricted",
+      "metadata_profiled": true,
+      "ordinal": "01",
+      "size_bytes": 2360205,
+      "source_group_id": "chongqing-dem-2020"
+    },
+    {
+      "admission_status": "blocked_pending_source_governance",
+      "blockers": [
+        "source_group:chongqing-osm-roads-2021:owner_reference_missing",
+        "source_group:chongqing-osm-roads-2021:license_terms_unverified",
+        "source_group:chongqing-osm-roads-2021:retention_policy_missing",
+        "source_group:chongqing-osm-roads-2021:access_policy_missing",
+        "source_group:chongqing-osm-roads-2021:odbl_attribution_policy_missing"
+      ],
+      "content_admitted": false,
+      "content_manifest_sha256": "8298af4d695e701f1346e5792f9bca491c0be490d8a3c0cf20baa5eed941da7a",
+      "data_classification": "restricted_local_open_data_copy",
+      "data_domains": [
+        "transport_network",
+        "vector"
+      ],
+      "extension_counts": {
+        "cpg": 1,
+        "dbf": 1,
+        "prj": 1,
+        "sbn": 1,
+        "sbx": 1,
+        "shp": 1,
+        "shx": 1,
+        "xml": 1
+      },
+      "file_count": 8,
+      "license_status": "unverified_restricted",
+      "metadata_profiled": true,
+      "ordinal": "02",
+      "size_bytes": 25416298,
+      "source_group_id": "chongqing-osm-roads-2021"
+    },
+    {
+      "admission_status": "blocked_pending_source_governance",
+      "blockers": [
+        "source_group:chongqing-clcd-2020:owner_reference_missing",
+        "source_group:chongqing-clcd-2020:license_terms_unverified",
+        "source_group:chongqing-clcd-2020:retention_policy_missing",
+        "source_group:chongqing-clcd-2020:access_policy_missing",
+        "source_group:chongqing-clcd-2020:classification_lineage_unverified"
+      ],
+      "content_admitted": false,
+      "content_manifest_sha256": "e3bd232f24c41c6b77e067690b4c70d68b20da6600f8be59c60de5868077420e",
+      "data_classification": "restricted_local_remote_sensing",
+      "data_domains": [
+        "land_cover",
+        "remote_sensing",
+        "raster"
+      ],
+      "extension_counts": {
+        "cpg": 1,
+        "dbf": 1,
+        "tfw": 1,
+        "tif": 1,
+        "xlsx": 1,
+        "xml": 2
+      },
+      "file_count": 7,
+      "license_status": "unverified_restricted",
+      "metadata_profiled": true,
+      "ordinal": "03",
+      "size_bytes": 9879957,
+      "source_group_id": "chongqing-clcd-2020"
+    },
+    {
+      "admission_status": "blocked_pending_source_governance",
+      "blockers": [
+        "source_group:chongqing-central-buildings-2021:owner_reference_missing",
+        "source_group:chongqing-central-buildings-2021:license_terms_unverified",
+        "source_group:chongqing-central-buildings-2021:retention_policy_missing",
+        "source_group:chongqing-central-buildings-2021:access_policy_missing",
+        "source_group:chongqing-central-buildings-2021:source_vintage_unverified"
+      ],
+      "content_admitted": false,
+      "content_manifest_sha256": "a9343b5f8971c731fefee08864fd6b586d989e4f52d0cca584d6d70152de5039",
+      "data_classification": "restricted_local_built_environment",
+      "data_domains": [
+        "buildings",
+        "urban_form",
+        "vector"
+      ],
+      "extension_counts": {
+        "dbf": 1,
+        "prj": 1,
+        "sbn": 1,
+        "sbx": 1,
+        "shp": 1,
+        "shx": 1,
+        "xml": 1
+      },
+      "file_count": 7,
+      "license_status": "unverified_restricted",
+      "metadata_profiled": true,
+      "ordinal": "04",
+      "size_bytes": 22006362,
+      "source_group_id": "chongqing-central-buildings-2021"
+    },
+    {
+      "admission_status": "blocked_pending_source_governance",
+      "blockers": [
+        "source_group:chongqing-historic-districts:owner_reference_missing",
+        "source_group:chongqing-historic-districts:license_terms_unverified",
+        "source_group:chongqing-historic-districts:retention_policy_missing",
+        "source_group:chongqing-historic-districts:access_policy_missing",
+        "source_group:chongqing-historic-districts:source_vintage_unverified"
+      ],
+      "content_admitted": false,
+      "content_manifest_sha256": "4ea511bb915b54fd21bd1addedad93cfa65de6f87a2940bdbddb0cf6f95b6f96",
+      "data_classification": "restricted_local_cultural_planning",
+      "data_domains": [
+        "cultural_heritage",
+        "planning_constraints",
+        "vector"
+      ],
+      "extension_counts": {
+        "cpg": 1,
+        "dbf": 1,
+        "prj": 1,
+        "sbn": 1,
+        "sbx": 1,
+        "shp": 1,
+        "shx": 1,
+        "xml": 1
+      },
+      "file_count": 8,
+      "license_status": "unverified_restricted",
+      "metadata_profiled": true,
+      "ordinal": "05",
+      "size_bytes": 372603,
+      "source_group_id": "chongqing-historic-districts"
+    },
+    {
+      "admission_status": "blocked_pending_source_governance",
+      "blockers": [
+        "source_group:bishan-planning-materials:owner_reference_missing",
+        "source_group:bishan-planning-materials:license_terms_unverified",
+        "source_group:bishan-planning-materials:retention_policy_missing",
+        "source_group:bishan-planning-materials:access_policy_missing",
+        "source_group:bishan-planning-materials:planning_sensitivity_review_missing"
+      ],
+      "content_admitted": false,
+      "content_manifest_sha256": "1d2ff573f09b991fffb79dbc85f630e0176192b3a98ab86aba1706fef414877c",
+      "data_classification": "highly_restricted_planning",
+      "data_domains": [
+        "land_use",
+        "planning",
+        "documents",
+        "vector",
+        "tables"
+      ],
+      "extension_counts": {
+        "[no_ext]": 4,
+        "atx": 34,
+        "cpg": 18,
+        "dbf": 28,
+        "doc": 6,
+        "docx": 6,
+        "dwg": 17,
+        "dwl": 2,
+        "dwl2": 2,
+        "freelist": 3,
+        "gdbindexes": 15,
+        "gdbtable": 17,
+        "gdbtablx": 17,
+        "horizon": 5,
+        "jpg": 34,
+        "pdf": 8,
+        "png": 2,
+        "prj": 28,
+        "sbn": 28,
+        "sbx": 28,
+        "shp": 28,
+        "shx": 28,
+        "spx": 4,
+        "xls": 5,
+        "xlsx": 12,
+        "xml": 33,
+        "zip": 1
+      },
+      "file_count": 413,
+      "license_status": "unverified_restricted",
+      "metadata_profiled": true,
+      "ordinal": "07",
+      "size_bytes": 389617168,
+      "source_group_id": "bishan-planning-materials"
+    },
+    {
+      "admission_status": "blocked_pending_source_governance",
+      "blockers": [
+        "source_group:chongqing-district-population-2021:owner_reference_missing",
+        "source_group:chongqing-district-population-2021:license_terms_unverified",
+        "source_group:chongqing-district-population-2021:retention_policy_missing",
+        "source_group:chongqing-district-population-2021:access_policy_missing",
+        "source_group:chongqing-district-population-2021:statistics_vintage_review_missing"
+      ],
+      "content_admitted": false,
+      "content_manifest_sha256": "8ac775d79db7c98fa25e0f697ee5f86ee8e35a095a0fd906890251c664684757",
+      "data_classification": "restricted_aggregate_population",
+      "data_domains": [
+        "population",
+        "statistics",
+        "table"
+      ],
+      "extension_counts": {
+        "xlsx": 1
+      },
+      "file_count": 1,
+      "license_status": "unverified_restricted",
+      "metadata_profiled": true,
+      "ordinal": "08",
+      "size_bytes": 13036,
+      "source_group_id": "chongqing-district-population-2021"
+    },
+    {
+      "admission_status": "blocked_pending_source_governance",
+      "blockers": [
+        "source_group:gaode-poi-2024:owner_reference_missing",
+        "source_group:gaode-poi-2024:license_terms_unverified",
+        "source_group:gaode-poi-2024:retention_policy_missing",
+        "source_group:gaode-poi-2024:access_policy_missing",
+        "source_group:gaode-poi-2024:contact_field_privacy_review_missing"
+      ],
+      "content_admitted": false,
+      "content_manifest_sha256": "a5def66308dc5d3bee6a7be235fce935fd5b8a0182d6669551493f392d0e8918",
+      "data_classification": "highly_restricted_commercial_location",
+      "data_domains": [
+        "poi",
+        "commercial_location",
+        "vector"
+      ],
+      "extension_counts": {
+        "[no_ext]": 2,
+        "atx": 17,
+        "gdbindexes": 7,
+        "gdbtable": 8,
+        "gdbtablx": 8,
+        "spx": 2
+      },
+      "file_count": 44,
+      "license_status": "unverified_restricted",
+      "metadata_profiled": true,
+      "ordinal": "09",
+      "size_bytes": 233667334,
+      "source_group_id": "gaode-poi-2024"
+    },
+    {
+      "admission_status": "blocked_pending_source_governance",
+      "blockers": [
+        "source_group:baidu-aoi-2024:owner_reference_missing",
+        "source_group:baidu-aoi-2024:license_terms_unverified",
+        "source_group:baidu-aoi-2024:retention_policy_missing",
+        "source_group:baidu-aoi-2024:access_policy_missing",
+        "source_group:baidu-aoi-2024:contact_field_privacy_review_missing"
+      ],
+      "content_admitted": false,
+      "content_manifest_sha256": "09e1d3034316e936300607637ae3f220444d89004629aa9e2ea8ccfefbe6100a",
+      "data_classification": "highly_restricted_commercial_location",
+      "data_domains": [
+        "aoi",
+        "commercial_location",
+        "vector"
+      ],
+      "extension_counts": {
+        "[no_ext]": 2,
+        "atx": 17,
+        "gdbindexes": 7,
+        "gdbtable": 8,
+        "gdbtablx": 8,
+        "spx": 2
+      },
+      "file_count": 44,
+      "license_status": "unverified_restricted",
+      "metadata_profiled": true,
+      "ordinal": "10",
+      "size_bytes": 17006652,
+      "source_group_id": "baidu-aoi-2024"
+    },
+    {
+      "admission_status": "blocked_pending_source_governance",
+      "blockers": [
+        "source_group:unicom-commuting-2023:owner_reference_missing",
+        "source_group:unicom-commuting-2023:license_terms_unverified",
+        "source_group:unicom-commuting-2023:retention_policy_missing",
+        "source_group:unicom-commuting-2023:access_policy_missing",
+        "source_group:unicom-commuting-2023:privacy_impact_assessment_missing",
+        "source_group:unicom-commuting-2023:grid_geometry_dictionary_missing"
+      ],
+      "content_admitted": false,
+      "content_manifest_sha256": "8c494e7fce9e43208ab8ec09872cf0febd48bebe5b425629b71278ad285fae32",
+      "data_classification": "highly_restricted_aggregate_mobility",
+      "data_domains": [
+        "mobility",
+        "population",
+        "aggregate_signaling",
+        "table"
+      ],
+      "extension_counts": {
+        "csv": 1
+      },
+      "file_count": 1,
+      "license_status": "unverified_restricted",
+      "metadata_profiled": true,
+      "ordinal": "11",
+      "size_bytes": 69667,
+      "source_group_id": "unicom-commuting-2023"
+    },
+    {
+      "admission_status": "blocked_pending_source_governance",
+      "blockers": [
+        "source_group:baidu-search-index-2023:owner_reference_missing",
+        "source_group:baidu-search-index-2023:license_terms_unverified",
+        "source_group:baidu-search-index-2023:retention_policy_missing",
+        "source_group:baidu-search-index-2023:access_policy_missing",
+        "source_group:baidu-search-index-2023:commercial_terms_review_missing"
+      ],
+      "content_admitted": false,
+      "content_manifest_sha256": "87db57d0821164492800c4271f817165ce884d6b261b46595c6e3f1e6b4ee1cf",
+      "data_classification": "highly_restricted_commercial_activity",
+      "data_domains": [
+        "search_activity",
+        "intercity_flow",
+        "vector"
+      ],
+      "extension_counts": {
+        "[no_ext]": 2,
+        "atx": 17,
+        "gdbindexes": 7,
+        "gdbtable": 8,
+        "gdbtablx": 8,
+        "spx": 2
+      },
+      "file_count": 44,
+      "license_status": "unverified_restricted",
+      "metadata_profiled": true,
+      "ordinal": "12",
+      "size_bytes": 201462,
+      "source_group_id": "baidu-search-index-2023"
+    }
+  ],
+  "status": "blocked_pending_source_governance"
+}
