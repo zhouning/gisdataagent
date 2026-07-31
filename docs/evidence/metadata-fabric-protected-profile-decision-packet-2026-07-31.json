@@ -1,0 +1,702 @@
+{
+  "blocker_summary": {
+    "assigned": 85,
+    "decision_groups": 16,
+    "expected": 85,
+    "identity_attestation": 1,
+    "identity_profile": 40,
+    "object_store_attestation": 1,
+    "object_store_profile": 43,
+    "unique": 85,
+    "unresolved_decision_groups": 16
+  },
+  "claims": {
+    "owner_decisions_approved": false,
+    "production_ingestion_verified": false,
+    "production_profiles_ready": false,
+    "production_ready": false,
+    "protected_identity_attested": false,
+    "protected_object_store_attested": false,
+    "provider_mutation_authorized": false,
+    "ready_for_protected_reexecution": false,
+    "scheduler_submission_authorized": false
+  },
+  "decision_groups": [
+    {
+      "allowed_choices": [
+        "An approved production OIDC authority with discovery and JWKS endpoints",
+        "A short-lived token exchange mode and reviewed trust-policy reference accepted by ADR-053"
+      ],
+      "blockers": [
+        "identity.profile:federation.audience",
+        "identity.profile:federation.decision_status",
+        "identity.profile:federation.discovery_uri",
+        "identity.profile:federation.issuer",
+        "identity.profile:federation.jwks_uri",
+        "identity.profile:federation.token_exchange_mode",
+        "identity.profile:federation.trust_policy_reference"
+      ],
+      "decision_id": "identity-federation",
+      "depends_on": [],
+      "forbidden_choices": [
+        "Static or long-lived workload credentials",
+        "Local, cluster-only, example, or unreviewed identity endpoints"
+      ],
+      "owner_roles": [
+        "Security Architecture",
+        "IAM Platform"
+      ],
+      "profile_paths": [
+        "config/metadata-fabric-identity.production.yaml#federation.audience",
+        "config/metadata-fabric-identity.production.yaml#federation.decision_status",
+        "config/metadata-fabric-identity.production.yaml#federation.discovery_uri",
+        "config/metadata-fabric-identity.production.yaml#federation.issuer",
+        "config/metadata-fabric-identity.production.yaml#federation.jwks_uri",
+        "config/metadata-fabric-identity.production.yaml#federation.token_exchange_mode",
+        "config/metadata-fabric-identity.production.yaml#federation.trust_policy_reference"
+      ],
+      "protected_verification_command": "python -m data_agent.metadata_fabric_identity_gate evaluate --profile config/metadata-fabric-identity.production.yaml --attestation $GDA_IDENTITY_ATTESTATION",
+      "required_artifacts": [
+        "Approved identity federation architecture decision",
+        "OIDC authority ownership and trust-policy review evidence"
+      ],
+      "status": "unresolved",
+      "title": "Identity federation"
+    },
+    {
+      "allowed_choices": [
+        "Provider-native OIDC or an approved identity-aware proxy",
+        "A tenant-bound workload identity and least-privilege service account"
+      ],
+      "blockers": [
+        "identity.profile:providers.openmetadata.authentication_component_reference",
+        "identity.profile:providers.openmetadata.environment_binding",
+        "identity.profile:providers.openmetadata.integration_mode",
+        "identity.profile:providers.openmetadata.kubernetes_service_account",
+        "identity.profile:providers.openmetadata.namespace_template",
+        "identity.profile:providers.openmetadata.workload_identity_reference"
+      ],
+      "decision_id": "openmetadata-identity-binding",
+      "depends_on": [
+        "identity-federation"
+      ],
+      "forbidden_choices": [
+        "Bootstrap administrator identity for production projection",
+        "Direct provider access outside the attested workload identity path"
+      ],
+      "owner_roles": [
+        "Metadata Platform",
+        "IAM Platform"
+      ],
+      "profile_paths": [
+        "config/metadata-fabric-identity.production.yaml#providers.openmetadata.authentication_component_reference",
+        "config/metadata-fabric-identity.production.yaml#providers.openmetadata.environment_binding",
+        "config/metadata-fabric-identity.production.yaml#providers.openmetadata.integration_mode",
+        "config/metadata-fabric-identity.production.yaml#providers.openmetadata.kubernetes_service_account",
+        "config/metadata-fabric-identity.production.yaml#providers.openmetadata.namespace_template",
+        "config/metadata-fabric-identity.production.yaml#providers.openmetadata.workload_identity_reference"
+      ],
+      "protected_verification_command": "python -m data_agent.metadata_fabric_identity_gate evaluate --profile config/metadata-fabric-identity.production.yaml --attestation $GDA_IDENTITY_ATTESTATION",
+      "required_artifacts": [
+        "OpenMetadata authentication component and environment binding references",
+        "Service-account and workload-subject ownership review"
+      ],
+      "status": "unresolved",
+      "title": "OpenMetadata identity binding"
+    },
+    {
+      "allowed_choices": [
+        "An approved OIDC authenticator or identity-aware proxy",
+        "A tenant-bound workload identity and least-privilege service account"
+      ],
+      "blockers": [
+        "identity.profile:providers.gravitino.authentication_component_reference",
+        "identity.profile:providers.gravitino.environment_binding",
+        "identity.profile:providers.gravitino.integration_mode",
+        "identity.profile:providers.gravitino.kubernetes_service_account",
+        "identity.profile:providers.gravitino.namespace_template",
+        "identity.profile:providers.gravitino.workload_identity_reference"
+      ],
+      "decision_id": "gravitino-identity-binding",
+      "depends_on": [
+        "identity-federation"
+      ],
+      "forbidden_choices": [
+        "Unauthenticated production catalog access",
+        "Direct provider access outside the attested workload identity path"
+      ],
+      "owner_roles": [
+        "Lakehouse Platform",
+        "IAM Platform"
+      ],
+      "profile_paths": [
+        "config/metadata-fabric-identity.production.yaml#providers.gravitino.authentication_component_reference",
+        "config/metadata-fabric-identity.production.yaml#providers.gravitino.environment_binding",
+        "config/metadata-fabric-identity.production.yaml#providers.gravitino.integration_mode",
+        "config/metadata-fabric-identity.production.yaml#providers.gravitino.kubernetes_service_account",
+        "config/metadata-fabric-identity.production.yaml#providers.gravitino.namespace_template",
+        "config/metadata-fabric-identity.production.yaml#providers.gravitino.workload_identity_reference"
+      ],
+      "protected_verification_command": "python -m data_agent.metadata_fabric_identity_gate evaluate --profile config/metadata-fabric-identity.production.yaml --attestation $GDA_IDENTITY_ATTESTATION",
+      "required_artifacts": [
+        "Gravitino authentication component and environment binding references",
+        "Service-account and workload-subject ownership review"
+      ],
+      "status": "unresolved",
+      "title": "Gravitino identity binding"
+    },
+    {
+      "allowed_choices": [
+        "Production HTTPS endpoints with reviewed certificate and trust-bundle policies",
+        "TLS 1.2 or newer with mTLS on internal hops as frozen in the profile"
+      ],
+      "blockers": [
+        "identity.profile:tls.certificate_policy_reference",
+        "identity.profile:tls.gravitino_endpoint",
+        "identity.profile:tls.openmetadata_endpoint",
+        "identity.profile:tls.trust_bundle_reference"
+      ],
+      "decision_id": "metadata-tls",
+      "depends_on": [
+        "identity-federation"
+      ],
+      "forbidden_choices": [
+        "Plaintext provider endpoints",
+        "Local, cluster-only, example, or certificate-bypass endpoints"
+      ],
+      "owner_roles": [
+        "Security Architecture",
+        "Platform SRE"
+      ],
+      "profile_paths": [
+        "config/metadata-fabric-identity.production.yaml#tls.certificate_policy_reference",
+        "config/metadata-fabric-identity.production.yaml#tls.gravitino_endpoint",
+        "config/metadata-fabric-identity.production.yaml#tls.openmetadata_endpoint",
+        "config/metadata-fabric-identity.production.yaml#tls.trust_bundle_reference"
+      ],
+      "protected_verification_command": "python -m data_agent.metadata_fabric_identity_gate evaluate --profile config/metadata-fabric-identity.production.yaml --attestation $GDA_IDENTITY_ATTESTATION",
+      "required_artifacts": [
+        "Certificate lifecycle policy",
+        "Trust-bundle ownership and endpoint inventory"
+      ],
+      "status": "unresolved",
+      "title": "Metadata transport security"
+    },
+    {
+      "allowed_choices": [
+        "An approved Iceberg REST or JDBC catalog with persistent metadata storage",
+        "A catalog binding with reviewed backup and restore policy"
+      ],
+      "blockers": [
+        "identity.profile:catalog.backup_policy_reference",
+        "identity.profile:catalog.catalog_reference",
+        "identity.profile:catalog.decision_status",
+        "identity.profile:catalog.gravitino_backend",
+        "identity.profile:catalog.persistence_reference"
+      ],
+      "decision_id": "persistent-catalog",
+      "depends_on": [
+        "gravitino-identity-binding",
+        "metadata-tls"
+      ],
+      "forbidden_choices": [
+        "In-memory catalog authority",
+        "Ephemeral metadata storage or unverified backup claims"
+      ],
+      "owner_roles": [
+        "Lakehouse Platform",
+        "Database SRE"
+      ],
+      "profile_paths": [
+        "config/metadata-fabric-identity.production.yaml#catalog.backup_policy_reference",
+        "config/metadata-fabric-identity.production.yaml#catalog.catalog_reference",
+        "config/metadata-fabric-identity.production.yaml#catalog.decision_status",
+        "config/metadata-fabric-identity.production.yaml#catalog.gravitino_backend",
+        "config/metadata-fabric-identity.production.yaml#catalog.persistence_reference"
+      ],
+      "protected_verification_command": "python -m data_agent.metadata_fabric_identity_gate evaluate --profile config/metadata-fabric-identity.production.yaml --attestation $GDA_IDENTITY_ATTESTATION",
+      "required_artifacts": [
+        "Approved catalog backend decision",
+        "Persistence, backup, and restore ownership references"
+      ],
+      "status": "unresolved",
+      "title": "Persistent catalog"
+    },
+    {
+      "allowed_choices": [
+        "An explicit tenant-isolation mode bound to the gda_tenant_id claim",
+        "A reviewed policy that includes cross-tenant denial probes"
+      ],
+      "blockers": [
+        "identity.profile:tenancy.isolation_mode",
+        "identity.profile:tenancy.policy_reference"
+      ],
+      "decision_id": "metadata-tenancy",
+      "depends_on": [
+        "openmetadata-identity-binding",
+        "gravitino-identity-binding"
+      ],
+      "forbidden_choices": [
+        "Shared unscoped provider identity",
+        "Tenant isolation based only on caller-supplied naming conventions"
+      ],
+      "owner_roles": [
+        "Data Governance",
+        "Security Architecture"
+      ],
+      "profile_paths": [
+        "config/metadata-fabric-identity.production.yaml#tenancy.isolation_mode",
+        "config/metadata-fabric-identity.production.yaml#tenancy.policy_reference"
+      ],
+      "protected_verification_command": "python -m data_agent.metadata_fabric_identity_gate evaluate --profile config/metadata-fabric-identity.production.yaml --attestation $GDA_IDENTITY_ATTESTATION",
+      "required_artifacts": [
+        "Tenant isolation policy",
+        "Cross-tenant denial test plan"
+      ],
+      "status": "unresolved",
+      "title": "Metadata tenancy"
+    },
+    {
+      "allowed_choices": [
+        "Named ownership references, measurable rotation and revocation SLOs",
+        "Versioned production runbooks and auditable identity events"
+      ],
+      "blockers": [
+        "identity.profile:operations.audit_log_reference",
+        "identity.profile:operations.identity_owner",
+        "identity.profile:operations.incident_owner",
+        "identity.profile:operations.revocation_slo_minutes",
+        "identity.profile:operations.rollback_runbook.uri",
+        "identity.profile:operations.rollback_runbook.version",
+        "identity.profile:operations.rotation_slo_minutes",
+        "identity.profile:operations.runbook.uri",
+        "identity.profile:operations.runbook.version",
+        "identity.profile:operations.security_owner"
+      ],
+      "decision_id": "identity-operations",
+      "depends_on": [
+        "identity-federation",
+        "openmetadata-identity-binding",
+        "gravitino-identity-binding",
+        "metadata-tls",
+        "persistent-catalog",
+        "metadata-tenancy"
+      ],
+      "forbidden_choices": [
+        "Unowned incident response or unversioned runbooks",
+        "Manual credential rotation without a protected audit trail"
+      ],
+      "owner_roles": [
+        "IAM Platform",
+        "Security Operations",
+        "Platform SRE"
+      ],
+      "profile_paths": [
+        "config/metadata-fabric-identity.production.yaml#operations.audit_log_reference",
+        "config/metadata-fabric-identity.production.yaml#operations.identity_owner",
+        "config/metadata-fabric-identity.production.yaml#operations.incident_owner",
+        "config/metadata-fabric-identity.production.yaml#operations.revocation_slo_minutes",
+        "config/metadata-fabric-identity.production.yaml#operations.rollback_runbook.uri",
+        "config/metadata-fabric-identity.production.yaml#operations.rollback_runbook.version",
+        "config/metadata-fabric-identity.production.yaml#operations.rotation_slo_minutes",
+        "config/metadata-fabric-identity.production.yaml#operations.runbook.uri",
+        "config/metadata-fabric-identity.production.yaml#operations.runbook.version",
+        "config/metadata-fabric-identity.production.yaml#operations.security_owner"
+      ],
+      "protected_verification_command": "python -m data_agent.metadata_fabric_identity_gate evaluate --profile config/metadata-fabric-identity.production.yaml --attestation $GDA_IDENTITY_ATTESTATION",
+      "required_artifacts": [
+        "Identity operations ownership record",
+        "Versioned incident, rotation, revocation, and rollback runbooks",
+        "Audit-log delivery reference"
+      ],
+      "status": "unresolved",
+      "title": "Identity operations and runbooks"
+    },
+    {
+      "allowed_choices": [
+        "A production provider accepted by ADR-057 with independently owned infrastructure",
+        "Distinct primary and recovery regions with multi-zone durability"
+      ],
+      "blockers": [
+        "object_store.profile:provider.account_reference",
+        "object_store.profile:provider.bucket",
+        "object_store.profile:provider.decision_status",
+        "object_store.profile:provider.endpoint",
+        "object_store.profile:provider.failure_domain_reference",
+        "object_store.profile:provider.infrastructure_reference",
+        "object_store.profile:provider.provider_type",
+        "object_store.profile:provider.recovery_region",
+        "object_store.profile:provider.region"
+      ],
+      "decision_id": "object-store-provider",
+      "depends_on": [],
+      "forbidden_choices": [
+        "The retained local MinIO namespace as production authority",
+        "A provider account, bucket, or failure domain selected without owner approval"
+      ],
+      "owner_roles": [
+        "Cloud Platform",
+        "Storage Platform"
+      ],
+      "profile_paths": [
+        "config/metadata-fabric-object-store.production.yaml#provider.account_reference",
+        "config/metadata-fabric-object-store.production.yaml#provider.bucket",
+        "config/metadata-fabric-object-store.production.yaml#provider.decision_status",
+        "config/metadata-fabric-object-store.production.yaml#provider.endpoint",
+        "config/metadata-fabric-object-store.production.yaml#provider.failure_domain_reference",
+        "config/metadata-fabric-object-store.production.yaml#provider.infrastructure_reference",
+        "config/metadata-fabric-object-store.production.yaml#provider.provider_type",
+        "config/metadata-fabric-object-store.production.yaml#provider.recovery_region",
+        "config/metadata-fabric-object-store.production.yaml#provider.region"
+      ],
+      "protected_verification_command": "python -m data_agent.metadata_fabric_object_store_gate evaluate --profile config/metadata-fabric-object-store.production.yaml --attestation $GDA_OBJECT_STORE_ATTESTATION",
+      "required_artifacts": [
+        "Approved provider and region architecture decision",
+        "Infrastructure, account, bucket, and failure-domain ownership references"
+      ],
+      "status": "unresolved",
+      "title": "Object-store provider"
+    },
+    {
+      "allowed_choices": [
+        "OIDC workload federation with the frozen least-privilege operation inventory",
+        "A tenant-bound service account with a maximum 900-second session"
+      ],
+      "blockers": [
+        "object_store.profile:identity.bucket_policy_reference",
+        "object_store.profile:identity.integration_mode",
+        "object_store.profile:identity.kubernetes_service_account",
+        "object_store.profile:identity.least_privilege_policy_reference",
+        "object_store.profile:identity.workload_identity_reference"
+      ],
+      "decision_id": "object-store-workload-identity",
+      "depends_on": [
+        "identity-federation",
+        "object-store-provider"
+      ],
+      "forbidden_choices": [
+        "Static access keys or node-wide provider credentials",
+        "Bucket permissions broader than the checked operation inventory"
+      ],
+      "owner_roles": [
+        "Cloud Platform",
+        "IAM Platform",
+        "Security Architecture"
+      ],
+      "profile_paths": [
+        "config/metadata-fabric-object-store.production.yaml#identity.bucket_policy_reference",
+        "config/metadata-fabric-object-store.production.yaml#identity.integration_mode",
+        "config/metadata-fabric-object-store.production.yaml#identity.kubernetes_service_account",
+        "config/metadata-fabric-object-store.production.yaml#identity.least_privilege_policy_reference",
+        "config/metadata-fabric-object-store.production.yaml#identity.workload_identity_reference"
+      ],
+      "protected_verification_command": "python -m data_agent.metadata_fabric_object_store_gate evaluate --profile config/metadata-fabric-object-store.production.yaml --attestation $GDA_OBJECT_STORE_ATTESTATION",
+      "required_artifacts": [
+        "Workload identity and service-account binding",
+        "Least-privilege and bucket-policy reviews"
+      ],
+      "status": "unresolved",
+      "title": "Object-store workload identity"
+    },
+    {
+      "allowed_choices": [
+        "The approved provider HTTPS endpoint over reviewed private connectivity and DNS",
+        "TLS 1.2 or newer with managed trust and certificate lifecycle"
+      ],
+      "blockers": [
+        "object_store.profile:transport.certificate_policy_reference",
+        "object_store.profile:transport.dns_policy_reference",
+        "object_store.profile:transport.endpoint",
+        "object_store.profile:transport.private_connectivity_reference",
+        "object_store.profile:transport.trust_bundle_reference"
+      ],
+      "decision_id": "object-store-transport",
+      "depends_on": [
+        "object-store-provider"
+      ],
+      "forbidden_choices": [
+        "Public or plaintext data paths not covered by the network policy",
+        "Local, example, certificate-bypass, or split-horizon endpoints without review"
+      ],
+      "owner_roles": [
+        "Network Platform",
+        "Security Architecture"
+      ],
+      "profile_paths": [
+        "config/metadata-fabric-object-store.production.yaml#transport.certificate_policy_reference",
+        "config/metadata-fabric-object-store.production.yaml#transport.dns_policy_reference",
+        "config/metadata-fabric-object-store.production.yaml#transport.endpoint",
+        "config/metadata-fabric-object-store.production.yaml#transport.private_connectivity_reference",
+        "config/metadata-fabric-object-store.production.yaml#transport.trust_bundle_reference"
+      ],
+      "protected_verification_command": "python -m data_agent.metadata_fabric_object_store_gate evaluate --profile config/metadata-fabric-object-store.production.yaml --attestation $GDA_OBJECT_STORE_ATTESTATION",
+      "required_artifacts": [
+        "Private connectivity and DNS policy references",
+        "Certificate lifecycle and trust-bundle references"
+      ],
+      "status": "unresolved",
+      "title": "Object-store transport"
+    },
+    {
+      "allowed_choices": [
+        "A provider KMS key with reviewed key policy and rotation of at most 365 days",
+        "Server-side KMS encryption with bucket-key support as frozen in the profile"
+      ],
+      "blockers": [
+        "object_store.profile:encryption.key_policy_reference",
+        "object_store.profile:encryption.key_reference",
+        "object_store.profile:encryption.rotation_days"
+      ],
+      "decision_id": "object-store-encryption",
+      "depends_on": [
+        "object-store-provider",
+        "object-store-workload-identity"
+      ],
+      "forbidden_choices": [
+        "Unmanaged or shared encryption keys without tenant and workload controls",
+        "Encryption claims without protected read/write verification"
+      ],
+      "owner_roles": [
+        "Cloud Security",
+        "Key Management"
+      ],
+      "profile_paths": [
+        "config/metadata-fabric-object-store.production.yaml#encryption.key_policy_reference",
+        "config/metadata-fabric-object-store.production.yaml#encryption.key_reference",
+        "config/metadata-fabric-object-store.production.yaml#encryption.rotation_days"
+      ],
+      "protected_verification_command": "python -m data_agent.metadata_fabric_object_store_gate evaluate --profile config/metadata-fabric-object-store.production.yaml --attestation $GDA_OBJECT_STORE_ATTESTATION",
+      "required_artifacts": [
+        "KMS key ownership and policy review",
+        "Key rotation decision and recovery procedure"
+      ],
+      "status": "unresolved",
+      "title": "Object-store encryption and KMS"
+    },
+    {
+      "allowed_choices": [
+        "Versioned recovery and asynchronous cross-region replication meeting the frozen RPO/RTO",
+        "Reviewed multipart-upload and orphan-file cleanup controls"
+      ],
+      "blockers": [
+        "object_store.profile:consistency.multipart_upload_cleanup_reference",
+        "object_store.profile:consistency.orphan_file_cleanup_reference",
+        "object_store.profile:durability.recovery_bucket_reference",
+        "object_store.profile:durability.replication_policy_reference",
+        "object_store.profile:durability.retention_policy_reference"
+      ],
+      "decision_id": "object-store-durability-consistency",
+      "depends_on": [
+        "object-store-provider",
+        "object-store-transport",
+        "object-store-encryption"
+      ],
+      "forbidden_choices": [
+        "Single-copy durability or same-region recovery authority",
+        "Rename-based correctness assumptions for object storage"
+      ],
+      "owner_roles": [
+        "Storage Platform",
+        "Platform SRE"
+      ],
+      "profile_paths": [
+        "config/metadata-fabric-object-store.production.yaml#consistency.multipart_upload_cleanup_reference",
+        "config/metadata-fabric-object-store.production.yaml#consistency.orphan_file_cleanup_reference",
+        "config/metadata-fabric-object-store.production.yaml#durability.recovery_bucket_reference",
+        "config/metadata-fabric-object-store.production.yaml#durability.replication_policy_reference",
+        "config/metadata-fabric-object-store.production.yaml#durability.retention_policy_reference"
+      ],
+      "protected_verification_command": "python -m data_agent.metadata_fabric_object_store_gate evaluate --profile config/metadata-fabric-object-store.production.yaml --attestation $GDA_OBJECT_STORE_ATTESTATION",
+      "required_artifacts": [
+        "Retention and replication policies",
+        "Recovery bucket ownership and cleanup-control references"
+      ],
+      "status": "unresolved",
+      "title": "Object-store durability and consistency"
+    },
+    {
+      "allowed_choices": [
+        "Bucket-prefix and provider-policy isolation bound to tenants/{tenant_id}/warehouse/",
+        "A policy with public-access blocking and cross-tenant denial probes"
+      ],
+      "blockers": [
+        "object_store.profile:tenancy.policy_reference"
+      ],
+      "decision_id": "object-store-tenancy",
+      "depends_on": [
+        "object-store-provider",
+        "object-store-workload-identity"
+      ],
+      "forbidden_choices": [
+        "Shared prefixes without provider-enforced tenant policy",
+        "Public access or client-only tenant filtering"
+      ],
+      "owner_roles": [
+        "Data Governance",
+        "Cloud Security"
+      ],
+      "profile_paths": [
+        "config/metadata-fabric-object-store.production.yaml#tenancy.policy_reference"
+      ],
+      "protected_verification_command": "python -m data_agent.metadata_fabric_object_store_gate evaluate --profile config/metadata-fabric-object-store.production.yaml --attestation $GDA_OBJECT_STORE_ATTESTATION",
+      "required_artifacts": [
+        "Tenant storage isolation policy",
+        "Cross-tenant and public-access denial test plan"
+      ],
+      "status": "unresolved",
+      "title": "Object-store tenancy"
+    },
+    {
+      "allowed_choices": [
+        "Named ownership, measurable availability and latency SLOs, and actionable alerts",
+        "Versioned operation, recovery, and rollback runbooks tied to protected attestation policy"
+      ],
+      "blockers": [
+        "object_store.profile:operations.attestation_policy_reference",
+        "object_store.profile:operations.audit_log_reference",
+        "object_store.profile:operations.availability_slo_percent",
+        "object_store.profile:operations.incident_owner",
+        "object_store.profile:operations.latency_slo_ms",
+        "object_store.profile:operations.metrics_alert_reference",
+        "object_store.profile:operations.platform_owner",
+        "object_store.profile:operations.recovery_runbook.uri",
+        "object_store.profile:operations.recovery_runbook.version",
+        "object_store.profile:operations.rollback_runbook.uri",
+        "object_store.profile:operations.rollback_runbook.version",
+        "object_store.profile:operations.runbook.uri",
+        "object_store.profile:operations.runbook.version",
+        "object_store.profile:operations.security_owner",
+        "object_store.profile:operations.storage_owner"
+      ],
+      "decision_id": "object-store-operations",
+      "depends_on": [
+        "object-store-provider",
+        "object-store-workload-identity",
+        "object-store-transport",
+        "object-store-encryption",
+        "object-store-durability-consistency",
+        "object-store-tenancy"
+      ],
+      "forbidden_choices": [
+        "Unowned incidents, unversioned runbooks, or synthetic-only alerts",
+        "Availability or recovery claims without protected failure rehearsal"
+      ],
+      "owner_roles": [
+        "Storage Platform",
+        "Platform SRE",
+        "Security Operations"
+      ],
+      "profile_paths": [
+        "config/metadata-fabric-object-store.production.yaml#operations.attestation_policy_reference",
+        "config/metadata-fabric-object-store.production.yaml#operations.audit_log_reference",
+        "config/metadata-fabric-object-store.production.yaml#operations.availability_slo_percent",
+        "config/metadata-fabric-object-store.production.yaml#operations.incident_owner",
+        "config/metadata-fabric-object-store.production.yaml#operations.latency_slo_ms",
+        "config/metadata-fabric-object-store.production.yaml#operations.metrics_alert_reference",
+        "config/metadata-fabric-object-store.production.yaml#operations.platform_owner",
+        "config/metadata-fabric-object-store.production.yaml#operations.recovery_runbook.uri",
+        "config/metadata-fabric-object-store.production.yaml#operations.recovery_runbook.version",
+        "config/metadata-fabric-object-store.production.yaml#operations.rollback_runbook.uri",
+        "config/metadata-fabric-object-store.production.yaml#operations.rollback_runbook.version",
+        "config/metadata-fabric-object-store.production.yaml#operations.runbook.uri",
+        "config/metadata-fabric-object-store.production.yaml#operations.runbook.version",
+        "config/metadata-fabric-object-store.production.yaml#operations.security_owner",
+        "config/metadata-fabric-object-store.production.yaml#operations.storage_owner"
+      ],
+      "protected_verification_command": "python -m data_agent.metadata_fabric_object_store_gate evaluate --profile config/metadata-fabric-object-store.production.yaml --attestation $GDA_OBJECT_STORE_ATTESTATION",
+      "required_artifacts": [
+        "Operations and incident ownership record",
+        "SLO, alert, audit-log, and attestation policy references",
+        "Versioned operation, recovery, and rollback runbooks"
+      ],
+      "status": "unresolved",
+      "title": "Object-store operations, SLOs, and runbooks"
+    },
+    {
+      "allowed_choices": [
+        "A fresh ADR-053 attestation emitted by the protected production identity environment",
+        "An attestation bound to the approved profile, exact source revision, tenant denial, and audit evidence"
+      ],
+      "blockers": [
+        "identity.attestation:production identity attestation is missing"
+      ],
+      "decision_id": "protected-identity-attestation",
+      "depends_on": [
+        "identity-operations"
+      ],
+      "forbidden_choices": [
+        "A local, manually asserted, expired, or cross-revision attestation",
+        "Reusing M3-24 or M3-25 retained material as production identity evidence"
+      ],
+      "owner_roles": [
+        "Security Operations",
+        "Platform SRE"
+      ],
+      "profile_paths": [],
+      "protected_verification_command": "python -m data_agent.metadata_fabric_identity_gate evaluate --profile config/metadata-fabric-identity.production.yaml --attestation $GDA_IDENTITY_ATTESTATION",
+      "required_artifacts": [
+        "Fresh protected identity attestation",
+        "Protected workflow and reviewer evidence URI"
+      ],
+      "status": "unresolved",
+      "title": "Protected identity attestation"
+    },
+    {
+      "allowed_choices": [
+        "A fresh ADR-057 attestation emitted by the protected production object-store environment",
+        "An attestation bound to the approved profile, exact source revision, tenant controls, KMS, and recovery evidence"
+      ],
+      "blockers": [
+        "object_store.attestation:production object-store attestation is required"
+      ],
+      "decision_id": "protected-object-store-attestation",
+      "depends_on": [
+        "object-store-operations"
+      ],
+      "forbidden_choices": [
+        "A local, manually asserted, expired, or cross-revision attestation",
+        "Treating the retained MinIO rehearsal as a production object-store attestation"
+      ],
+      "owner_roles": [
+        "Storage Platform",
+        "Security Operations",
+        "Platform SRE"
+      ],
+      "profile_paths": [],
+      "protected_verification_command": "python -m data_agent.metadata_fabric_object_store_gate evaluate --profile config/metadata-fabric-object-store.production.yaml --attestation $GDA_OBJECT_STORE_ATTESTATION",
+      "required_artifacts": [
+        "Fresh protected object-store attestation",
+        "Protected workflow and reviewer evidence URI"
+      ],
+      "status": "unresolved",
+      "title": "Protected object-store attestation"
+    }
+  ],
+  "generated_at": "2026-07-31T07:22:25.389762Z",
+  "packet_sha256": "b23e1becafa0c91541a653d467e7959107008d4dc41576018b57b564e6b46a36",
+  "predecessor_binding": {
+    "blocker_count": 85,
+    "contract_sha256": "39411248b37b7d8d43ac7ad37737de15d6b6d4c5e4feb2088f0a87cec888b5f9",
+    "decision_sha256": "39246eacdd1793f23aecb71195cc4c9d8c63d7125aad8cd9bbb59a96c588cd73",
+    "evaluated_at": "2026-07-31T06:32:10.229686Z",
+    "file_sha256": "62624b96d83b085cbb82d29d618042d7f4faa5193847c26af859ec1c87cd4f11",
+    "path": "docs/evidence/metadata-fabric-protected-real-feature-reexecution-gate-2026-07-31.json",
+    "ready_for_protected_reexecution": false,
+    "status": "blocked_pending_protected_attestation"
+  },
+  "resolution_policy": {
+    "attestations_must_be_fresh_protected_outputs": true,
+    "attestations_must_share_source_revision": true,
+    "authoritative_profile_paths": [
+      "config/metadata-fabric-identity.production.yaml",
+      "config/metadata-fabric-object-store.production.yaml"
+    ],
+    "credential_material_forbidden": true,
+    "local_retained_material_promotion_forbidden": true,
+    "packet_grants_execution_authority": false,
+    "packet_records_decisions": false,
+    "profile_changes_require_owner_approval": true
+  },
+  "schema": "gda.protected_profile_owner_decision_packet.v1",
+  "status": "unresolved_owner_decisions"
+}
