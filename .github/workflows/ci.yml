@@ -37,6 +37,7 @@ on:
       - feat/ar1-metadata-fabric-active-metadata-binding-reconciliation
       - feat/ar1-metadata-fabric-durable-active-metadata-promotion
       - feat/ar1-metadata-fabric-object-store-active-metadata-promotion
+      - feat/ar1-metadata-fabric-real-feature-ingestion
 
 env:
   PYTHON_VERSION: "3.13"
@@ -200,6 +201,9 @@ jobs:
       - name: Validate metadata fabric real-feature ingestion evidence
         run: python -m data_agent.metadata_fabric_real_feature_ingestion validate
 
+      - name: Validate metadata fabric real-feature ledger promotion evidence
+        run: python -m data_agent.metadata_fabric_real_feature_ledger_promotion validate
+
       - name: Validate Active Metadata consumer deployment boundary
         run: python -m data_agent.active_metadata_consumer_deployment validate
 
@@ -244,10 +248,14 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gis_agent_test
         run: python -m pytest data_agent/test_active_metadata_authorization_postgres.py -q
 
-      - name: Verify Active Metadata binding reconciliation on PostgreSQL
+      - name: Verify binding reconciliation and real-feature ledger promotion on PostgreSQL
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gis_agent_test
-        run: python -m pytest data_agent/test_metadata_fabric_active_metadata_binding_reconciliation_postgres.py -q
+        run: >-
+          python -m pytest
+          data_agent/test_metadata_fabric_active_metadata_binding_reconciliation_postgres.py
+          data_agent/test_metadata_fabric_real_feature_ledger_promotion_postgres.py
+          -q
 
       - name: Run required platform tests
         env:
@@ -291,6 +299,7 @@ jobs:
             data_agent/test_metadata_fabric_durable_active_metadata_promotion.py \
             data_agent/test_metadata_fabric_object_store_active_metadata_promotion.py \
             data_agent/test_metadata_fabric_real_feature_ingestion.py \
+            data_agent/test_metadata_fabric_real_feature_ledger_promotion.py \
             data_agent/test_metadata_fabric_lineage_delivery.py \
             data_agent/test_metadata_fabric_provider_identity.py \
             data_agent/test_metadata_fabric_gravitino_identity.py \
