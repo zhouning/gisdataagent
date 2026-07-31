@@ -39,6 +39,7 @@ on:
       - feat/ar1-metadata-fabric-object-store-active-metadata-promotion
       - feat/ar1-metadata-fabric-real-feature-ingestion
       - feat/ar1-metadata-fabric-real-feature-ledger-promotion
+      - feat/ar1-metadata-fabric-retained-real-feature-terminal-success
 
 env:
   PYTHON_VERSION: "3.13"
