@@ -1,0 +1,412 @@
+{
+  "atomic_output_promotion_verified": true,
+  "authorization": {
+    "approval_artifact_id": "66045674-a229-5c12-81e7-53750c215d63",
+    "authorization_sha256": "ecfa760b8f607d3b5fe16c851cf632eec227e37e8620d4d82809b3f15c885cd2",
+    "execution_plan_artifact_id": "6190821e-d05e-5d08-8db8-bc077ac42c42",
+    "payload_recorded": false,
+    "policy_decision_artifact_id": "8df5b46d-8bb8-5501-827e-6cea9fe35597"
+  },
+  "bootstrap": {
+    "admin_authentication_status": 200,
+    "bounded_authentication_status": 200,
+    "bucket": "gda-metadata-warehouse",
+    "catalog": "lakehouse",
+    "catalog_backend": "jdbc",
+    "catalog_uri": "jdbc:postgresql://gravitino-persistence-postgresql:5432/iceberg",
+    "denied_catalog_create_status": 403,
+    "io_impl": "org.apache.iceberg.aws.s3.S3FileIO",
+    "material_recorded": false,
+    "metalake": "gda_chongqing_m3_22",
+    "role": {
+      "name": "gda-object-store-cultural-district-projector",
+      "securable_objects": [
+        {
+          "fullName": "lakehouse",
+          "privileges": [
+            {
+              "condition": "ALLOW",
+              "name": "USE_CATALOG"
+            }
+          ],
+          "type": "CATALOG"
+        },
+        {
+          "fullName": "lakehouse.cultural_heritage",
+          "privileges": [
+            {
+              "condition": "ALLOW",
+              "name": "CREATE_TABLE"
+            },
+            {
+              "condition": "ALLOW",
+              "name": "USE_SCHEMA"
+            }
+          ],
+          "type": "SCHEMA"
+        }
+      ]
+    },
+    "s3_endpoint": "http://metadata-object-store:9000",
+    "s3_path_style_access": true,
+    "s3_region": "us-east-1",
+    "schema": "cultural_heritage",
+    "server_version": "1.3.0",
+    "warehouse": "s3://gda-metadata-warehouse/warehouse"
+  },
+  "compiled_workflow_sha256": "fca992829a21d46deaa653eb5ffd5f1072a98ad6111509e3a248c066f6228a9a",
+  "complete_authorization_artifacts_persisted": true,
+  "contract_sha256": "9c8f20ca1fb9995530c4e988ced627f665857ecdf0e104bb7d07c4a4a486057a",
+  "control_database": {
+    "container_name": "gda-m3-24-control-229740ac50ebb53b",
+    "container_running": true,
+    "container_status": "running",
+    "credential_recorded": false,
+    "database_ref": "docker:gda-m3-24-control-229740ac50ebb53b/postgres",
+    "expires_at": "2026-08-07T04:15:23.082316Z",
+    "host_port": 64667,
+    "owner": "team:metadata-platform",
+    "retention_id": "m3-24-229740ac50ebb53b",
+    "volume_name": "gda-m3-24-control-229740ac50ebb53b",
+    "volume_retained": true
+  },
+  "dataset_bundle": {
+    "components": [
+      {
+        "component": ".cpg",
+        "sha256": "3ad3031f5503a4404af825262ee8232cc04d4ea6683d42c5dd0a2f2a27ac9824",
+        "size_bytes": 5
+      },
+      {
+        "component": ".dbf",
+        "sha256": "ee7c6c4c6957aea296b69d62118d416e5ee989aa77f7b98cf0fe580874ce5127",
+        "size_bytes": 44990
+      },
+      {
+        "component": ".prj",
+        "sha256": "b10dbe4d6d1de908d340f892c90b3d31a552630af3742bb515bfe1bd26124f2c",
+        "size_bytes": 176
+      },
+      {
+        "component": ".sbn",
+        "sha256": "7d0279465b18beec40308717e0ef0ea5701a586bc5c84e6a9aa309d5bc0ec99a",
+        "size_bytes": 308
+      },
+      {
+        "component": ".sbx",
+        "sha256": "019156149b2c7771ec0dd249c757dd7aa01a98075e246a77f77b080860c57333",
+        "size_bytes": 124
+      },
+      {
+        "component": ".shp",
+        "sha256": "6ac0d5c8c8db66fc0e2a74d8232b7779bd2454257df14efa2930e3dbc181aed0",
+        "size_bytes": 283640
+      },
+      {
+        "component": ".shp.xml",
+        "sha256": "8ef222ce1952552b366acf14a996e1c8cbdbe3eed0bb829dacfe7eafd068d948",
+        "size_bytes": 43100
+      },
+      {
+        "component": ".shx",
+        "sha256": "f3fbb6a7775ca833c066e3a3f2a332f99f979840045909ae187d08dac126a119",
+        "size_bytes": 260
+      }
+    ],
+    "content_sha256": "fd474fd65c8e4a71da241eb3fd07748ca3b972fbd2d3c32833376dbe71104007",
+    "format": "ESRI Shapefile",
+    "schema": "gda.spatial_dataset_bundle.v1",
+    "source_label": "chongqing-central-cultural-districts",
+    "spatial_inventory": {
+      "bounds": [
+        106.37987914500007,
+        29.558008447000077,
+        106.59532712300008,
+        29.877271985000025
+      ],
+      "crs": {
+        "authority": "EPSG",
+        "code": 4490,
+        "name": "China Geodetic Coordinate System 2000"
+      },
+      "driver": "ESRI Shapefile",
+      "feature_count": 20,
+      "field_count": 33,
+      "geometry_type": "PolygonZ"
+    }
+  },
+  "definition_sha256": "214fd4b960144ca822de7871c2d4bf3f8da5735f7f455e7a1720e7b4d6532a3b",
+  "definition_version_id": "a9000000-0000-4000-8000-000000000008",
+  "dolphinscheduler_success_observed": true,
+  "durable_catalog_verified": false,
+  "errors": [],
+  "evidence_sha256": "d966668b5a2ea57c7a4b2a3bc9824daab9b0128d9f94e515d7be649b145de418",
+  "exact_terminal_replay_verified": true,
+  "execution_callback_cleanup_verified": true,
+  "execution_request_sha256": "1307e7ce78583e9fd0fb2d30b1aa5976bc87d30e17f1b0c5973ce2d8c10b2d7c",
+  "independent_quality": {
+    "data_body_sha256": "6cc0fc9eaf48f8106f9afe192704c44407c86c9ea119ae20894bf369a8e74779",
+    "data_key_sha256": "fbbb249a176bff74f3ee1b756aad1a5233fa007347f68cf466606ddae78e8402",
+    "data_size_bytes": 94603,
+    "feature_payload_recorded": false,
+    "geometry_values_recorded": false,
+    "identifier_values_recorded": false,
+    "metrics": {
+      "bbox_match_count": 20,
+      "feature_count": 20,
+      "geometry_z_count": 20,
+      "non_empty_geometry_count": 20,
+      "positive_area_count": 20,
+      "row_fingerprint_match_count": 20,
+      "srid_match_count": 20,
+      "unique_bsm_count": 20,
+      "valid_geometry_count": 20
+    },
+    "row_set_sha256": "c26ff708f4b6be082327dff63a6a8659420dbc4cab37dea1cac7b40f147512df"
+  },
+  "independent_quality_evidence_persisted": true,
+  "initial_runtime": {
+    "context": "docker-desktop",
+    "gravitino": {
+      "image": "docker.io/gda/gravitino:1.3.0-local-arm64",
+      "image_id": "sha256:18e24b43be854dabdc13e96b1019eb3dc691d59cc64e411aa6a3cc49225fe2d3",
+      "node_name": "desktop-worker",
+      "persistent_volume_claims": [],
+      "pod_name": "gravitino-persistence-0",
+      "pod_uid": "f5e93b4f-e3ab-4fe5-a457-3ad4c7bcb326",
+      "pvc": null,
+      "ready_replicas": 1,
+      "service_account": "gravitino-persistence",
+      "service_account_automount_disabled": true,
+      "statefulset_uid": "a316201a-8ba0-4b27-8ce8-bc27965d9b10"
+    },
+    "gravitino_aws_sdk_mounted": true,
+    "gravitino_host_image_id": "sha256:d355dc7e92f9e3545d717f3eab2cbdf412115f2b82e1e544d7f6235c1eacd5a5",
+    "gravitino_jdbc_driver_mounted": true,
+    "iceberg_rest": {
+      "aws_sdk_mounted": true,
+      "image": "docker.io/gda/gravitino:1.3.0-local-arm64",
+      "image_id": "sha256:18e24b43be854dabdc13e96b1019eb3dc691d59cc64e411aa6a3cc49225fe2d3",
+      "jdbc_driver_mounted": true,
+      "path": "/iceberg",
+      "ready": true
+    },
+    "minio_host_image_id": "sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e",
+    "namespace": {
+      "name": "gda-metadata-spark-object-store",
+      "uid": "824a5904-70cc-4a85-8503-ca83acbcde16"
+    },
+    "object_store": {
+      "image": "docker.io/minio/minio:RELEASE.2025-04-22T22-12-26Z",
+      "image_id": "docker.io/minio/minio@sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e",
+      "node_name": "desktop-control-plane",
+      "persistent_volume_claims": [
+        "data-metadata-object-store-0"
+      ],
+      "pod_name": "metadata-object-store-0",
+      "pod_uid": "2509ebb5-7ba0-49ea-a6e8-5bffb1a1d4b7",
+      "pvc": {
+        "name": "data-metadata-object-store-0",
+        "phase": "Bound",
+        "storage_class": "standard",
+        "uid": "bddccc8e-1da2-4155-9c8c-a8a23a87b7a4",
+        "volume_name": "pvc-bddccc8e-1da2-4155-9c8c-a8a23a87b7a4"
+      },
+      "ready_replicas": 1,
+      "service_account": "metadata-object-store",
+      "service_account_automount_disabled": true,
+      "statefulset_uid": "d8e3727b-8812-4c6c-9dc3-248f6f1132cd"
+    },
+    "object_store_service": {
+      "name": "metadata-object-store",
+      "ports": [
+        {
+          "name": "api",
+          "port": 9000
+        }
+      ],
+      "type": "ClusterIP",
+      "uid": "47b4845f-6776-40f5-8f31-781c5eea460c"
+    },
+    "postgresql": {
+      "image": "docker.io/library/postgres:16.10-bookworm",
+      "image_id": "docker.io/library/postgres@sha256:38471f330eb885e04de130b768d6db4e10469e2311879c7e5c699f6d2d8a1c74",
+      "node_name": "desktop-worker",
+      "persistent_volume_claims": [
+        "data-gravitino-persistence-postgresql-0"
+      ],
+      "pod_name": "gravitino-persistence-postgresql-0",
+      "pod_uid": "370c3e58-f3bd-4e86-8c75-984b8332ee48",
+      "pvc": {
+        "name": "data-gravitino-persistence-postgresql-0",
+        "phase": "Bound",
+        "storage_class": "standard",
+        "uid": "6b4cdb87-5f96-4f65-a571-d8390f6ab405",
+        "volume_name": "pvc-6b4cdb87-5f96-4f65-a571-d8390f6ab405"
+      },
+      "ready_replicas": 1,
+      "service_account": "gravitino-persistence-postgresql",
+      "service_account_automount_disabled": true,
+      "statefulset_uid": "a2711eb2-a329-4264-8ac8-a6b52b186cbb"
+    },
+    "service": {
+      "name": "gravitino-persistence",
+      "ports": [
+        {
+          "name": "http",
+          "port": 8090
+        },
+        {
+          "name": "iceberg-rest",
+          "port": 9001
+        }
+      ],
+      "type": "ClusterIP",
+      "uid": "dd03d369-7873-4514-b6fc-aadbb35ce0ab"
+    },
+    "source_schema_sha256": "7a2d605a677a462ca619dba594ce7ebcf500358345560ad084c1b67a25c722df",
+    "spark_host_image_id": "sha256:f201367640c7583add224796a629150e63d3859ddd7fe9fd47741662a6d415bb"
+  },
+  "ledger_counts": {
+    "approvals": 1,
+    "artifacts": 5,
+    "attempts": 2,
+    "evaluator_evidence": 1,
+    "execution_plans": 1,
+    "lineage_events": 1,
+    "policy_decisions": 1,
+    "quality_results": 1,
+    "run_events": 4
+  },
+  "lineage_event_id": "76548f25-e8cc-561f-ad68-56bbc4b2d9b8",
+  "namespace_retention": {
+    "cleanup_command_recorded": true,
+    "expires_at": "2026-08-07T04:15:23.082316Z",
+    "name": "gda-metadata-spark-object-store",
+    "owner": "metadata-platform",
+    "retention_id": "m3-24-229740ac50ebb53b",
+    "uid": "824a5904-70cc-4a85-8503-ca83acbcde16"
+  },
+  "object_store_prepared": {
+    "bucket": "gda-metadata-warehouse",
+    "created": true,
+    "head_bucket_verified": true,
+    "material_recorded": false,
+    "path_style_access": true,
+    "region": "us-east-1",
+    "service": "metadata-object-store"
+  },
+  "oidc_verified": false,
+  "output_artifact_id": "1f73db93-92e7-5970-842f-2477d6de394b",
+  "output_content_sha256": "bdc06792e8b935176ee6df6f6f6d4be1535622d54d9b994a778cabfe5a574618",
+  "output_resource_version_id": "a6000000-0000-4000-8000-000000000002",
+  "platform_run_state_version": 3,
+  "platform_run_status": "succeeded",
+  "platform_run_succeeded": true,
+  "production_ingestion_verified": false,
+  "production_object_store_verified": false,
+  "production_ready": false,
+  "production_scheduler_verified": false,
+  "production_tenant_attestation_verified": false,
+  "protected_workload_identity_verified": false,
+  "provider_observation": {
+    "external_namespace": "180265934794176",
+    "external_run_id": "1",
+    "observation_id": "85bead83-1901-5649-b6e4-fe46d01c9ea9",
+    "observation_sha256": "eed782687756dcddbf7f0966f70902edd037f0fc1e2acf3bb72a860e780d0819",
+    "observed_state": "success",
+    "provider_state": "SUCCESS"
+  },
+  "quality_evidence_artifact_id": "130ee0f2-a817-5cd7-bb00-9bb79ff6aec4",
+  "quality_result_id": "80653601-7b44-55ca-b535-1e0ff080b17f",
+  "retained_control_database_verified": true,
+  "retained_staging_material_verified": true,
+  "retention_id": "m3-24-229740ac50ebb53b",
+  "retention_observation": {
+    "control_database_ref": "docker:gda-m3-24-control-229740ac50ebb53b/postgres",
+    "data_file_count": 1,
+    "data_size_bytes": 94603,
+    "expires_at": "2026-08-07T04:15:23.082316Z",
+    "feature_count": 20,
+    "materialized_at": "2026-07-31T04:16:04.123191Z",
+    "metadata_body_sha256": "6cceb8ba61378122a989e9b6046c328c517d134ee4513af5697d92c672ab772c",
+    "namespace": "gda-metadata-spark-object-store",
+    "namespace_uid": "824a5904-70cc-4a85-8503-ca83acbcde16",
+    "object_inventory_sha256": "de4a0efed9fdb68f0019b843377f6c8de71664de955130d0dd38e99eccdb8034",
+    "observation_sha256": "66000897ae58d30c84c60ee8bae2162b9fe32387fe75c8605c114dad297978c8",
+    "observed_at": "2026-07-31T04:16:05.189349Z",
+    "output_content_sha256": "bdc06792e8b935176ee6df6f6f6d4be1535622d54d9b994a778cabfe5a574618",
+    "output_resource_version_id": "a6000000-0000-4000-8000-000000000002",
+    "owner": "team:metadata-platform",
+    "readable": true,
+    "retention_id": "m3-24-229740ac50ebb53b",
+    "row_set_sha256": "c26ff708f4b6be082327dff63a6a8659420dbc4cab37dea1cac7b40f147512df",
+    "run_id": "a9000000-0000-4000-8000-000000000009",
+    "schema": "gda.retained_real_feature_material_observation.v1",
+    "snapshot_id": 8034081021802585202,
+    "source_payload_retained": false,
+    "storage_uri": "s3://gda-metadata-warehouse/warehouse/cultural_heritage/cultural_districts",
+    "tenant_id": "metadata-authorization-local"
+  },
+  "retention_observation_sha256": "66000897ae58d30c84c60ee8bae2162b9fe32387fe75c8605c114dad297978c8",
+  "run_id": "a9000000-0000-4000-8000-000000000009",
+  "runtime_port_forwards_stopped": true,
+  "scheduler_container_cleanup_verified": true,
+  "schema": "gda.retained_real_feature_terminal_success_evidence.v1",
+  "source_absolute_path_committed": false,
+  "source_dataset_committed": false,
+  "source_feature_payload_committed": false,
+  "source_ingestion_evidence_sha256": "42abd82613eaf28cb53c64280258bc75dba6cf841f9a513a4c801a9f798b9899",
+  "source_payload_removed_from_runtime": true,
+  "source_projection": {
+    "bounds": [
+      106.37987914500007,
+      29.558008447000077,
+      106.59532712300006,
+      29.87727198500005
+    ],
+    "feature_count": 20,
+    "geometry_types": [
+      "MultiPolygon",
+      "Polygon"
+    ],
+    "geometry_z_count": 20,
+    "non_empty_geometry_count": 20,
+    "payload_sha256": "f60e33c9ef890eb20c87e6cde82e658aaa3b20151e528ffbb293b9b64fabbbe1",
+    "payload_size_bytes": 430066,
+    "row_set_sha256": "c26ff708f4b6be082327dff63a6a8659420dbc4cab37dea1cac7b40f147512df",
+    "row_sha256": [
+      "0527a75a86c70503302f673535003792e135c0097fcb3a44ec3b081ab74e4a76",
+      "08113e2f628a656b9e3a23ada3b94e0c7568ec7585ae9f25efe7702662d1f2fd",
+      "176093ff06f206a65fa98bcc0cb0851cb66b91b8f223d28c1b60317298ca9190",
+      "2305d14edf0ba61478a7e8d0511d904e36574dd691c7e580026416ed891cc18a",
+      "307531c08ac817f34fd4f40b2f0e9afc96758e67a4a9af2c199a9966242ffc88",
+      "492fee3e36f8a4ba7919ffcd6b9c4d1977baf335670a7d81159e55ee89d38506",
+      "4939fa3bb87d941c8a5a3e328f45bb0077982fa7d172968ed9afc76495a0a8bd",
+      "52de730203b330e1fa66790c2f6670d3248c0cb2620788c045e26aba3f4263a0",
+      "62b781771b8aa704b34fe556ace2afa47e843611fbf82c4f487ac5323a956952",
+      "6e96076e7ee2cfbc37b5bd093eedcd1bc9a03a4618fb30f5a7d63581aad77ca9",
+      "7c5d3112549cfc3b8c95cad896179060d2c9b9c5e56edd9646026ba2c9ffc039",
+      "8d346f09d4b606cd7ade5b196d10a3a5f54b3dff40205f1e21bea4aae10df5da",
+      "947b9485ed7d084e02ef780e82fd6a4fb1c37c601fe19a4be37962cd5526979b",
+      "a55e54b78a5b64ee6e629586968f7b304521b28be94b55b9c7ebe8670e0b83db",
+      "c284f86d861e265b918fd14a3f5653133bbdcd01f7f52d1cc3cde509044106ff",
+      "c55ed9b57879c11ea1f606e3318147893d54a4f02e9e96d4948e92cfc0880eb7",
+      "c84e602b9cb743f5f40b4e7c93ee4322e62c23edecf90d4b6d14c441e7c5113f",
+      "ce29800e1a902c1c1435277f328b599a05a7d431543cf9994ef2528f7913e34f",
+      "e12c4abaa5df83bdccfc33852a2f6e2e2483aa3c0ce2e77e0f470e9e76113968",
+      "e271fe60f1ecf40813c21b727a88b9f95b2a07c5e8df797d9370414e1a161d23"
+    ],
+    "schema": "gda.real_feature_row_set.v1",
+    "source_payload_recorded": false,
+    "srid": 4490,
+    "unique_identifier_count": 20,
+    "valid_geometry_count": 20
+  },
+  "source_promotion_evidence_sha256": "f6efea5000791dec1716a8354a8e39a8425b083ca4d409f4bcb61f0e7e03580d",
+  "source_resource_version_id": "a6000000-0000-4000-8000-000000000001",
+  "status": "local_retained_real_feature_terminal_success_verified",
+  "tenant_id": "metadata-authorization-local",
+  "tls_verified": false,
+  "writes_to_legacy": false
+}
