@@ -419,6 +419,8 @@ AR-0 Architecture / Schema / Runtime Truth
 
 当前 Metadata Fabric 证据边界：M1 只读 bridge 合同已验证；ADR-037 至 ADR-046 分别覆盖本地 foundation/recovery/metrics/network-policy 演练与 production readiness contracts；ADR-047 至 ADR-050 已依次建立 deterministic projection plan、本地双 provider replay、tenant-scoped binding ledger 与本地 OpenLineage 幂等 wire delivery；ADR-051 以临时非管理员 OpenMetadata bot 证明项目专用 grant 只有 `table/Create`、`policy/Create` 被 403 拒绝，且 JWT 轮换/吊销后旧值/当前值均返回 401；ADR-052 又在隔离 Gravitino `1.3.0` Basic IdP 中证明 bounded user 的 `USE_CATALOG`、`USE_SCHEMA`、`CREATE_TABLE` 范围、catalog-create 403、密码轮换和用户吊销；ADR-053 将生产 OIDC federation、双 provider integration/workload identity、最小权限、TLS/mTLS、持久 Gravitino catalog、tenant isolation、运营责任和新鲜 protected attestation 冻结为 fail-closed readiness contract。Gravitino `1.3.0` 镜像只发现 Basic IdP，不假设 native OIDC；当前 profile 仍有 40 个外部 blockers 且未提交真实 attestation。`local_openmetadata_minimum_privilege_verified=true` 与 `local_gravitino_minimum_privilege_verified=true` 都只描述各自临时 provider rehearsal；M3-2 ingestion 仍使用 bootstrap admin，Gravitino probe catalog 仍是 memory catalog。因此 `provider_minimum_privilege_verified`、protected workload identity、OIDC、TLS、持久 catalog、生产 ingestion/conformance、生产 lineage receiver、`production_identity_gate_passed` 与 `production_ready` 仍为 false。
 
+M3-22/M3-23 已把一份真实重庆 20-feature EPSG:4490 slice 从受授权 Spark/Sedona + JDBC/S3 Iceberg ingestion 推进到临时 GDA Control 的原子 `ResourceVersion + 2 Artifacts + QualityResult + LineageEvent` 晋级，并验证失败整笔回滚、精确 replay、FORCE RLS、跨租户和 direct mutation 拒绝。该结果仍限定在已删除的本地 material 与临时 PostgreSQL；Run 保持 `accepted@0`，完整 PolicyDecision/Approval Artifact、成功 observation、独立 quality evidence provenance、持久 staging material 和生产 identity/storage/tenant attestation 仍是下一门槛。
+
 ### AR-2 — Source, Ingestion and Geospatial Lakehouse Vertical Slice（P0）
 
 **依赖**：AR-1 两个控制面的最小合同通过故障注入和隔离验收。
@@ -726,7 +728,7 @@ AR-4 parity/control gate 退出前暂停以下主线扩张：
 | 阶段 | 状态 | 下一证据 |
 |---|---|---|
 | AR-0 Architecture/Schema/Runtime Truth Freeze | `in_progress` | 全环境 schema/config fingerprint、迁移 fail-closed、事实清单、storage/compute/GIS serving provider profile/capability、ADR-017 benchmark、owner/SLO 和首条数据/服务验收集冻结 |
-| AR-1 Unified Metadata + Orchestration Control Planes | `in_progress` | controlled gateway、DolphinScheduler adapter、Metadata Fabric M1/M2a/M2b、M2c-1 provider metrics、M2c-2 本地临时 OTel pipeline 与 M2c-3 本地 scrape failure/recovery 已验证；下一证据是 source host/cluster 外的生产 recovery、持久 metrics backend/TLS/tenant/真实 alert delivery/SLO、OIDC、NetworkPolicy enforcement、升级回滚/registry provenance，以及受控 ingestion/replay 与无双写验收 |
+| AR-1 Unified Metadata + Orchestration Control Planes | `in_progress` | controlled gateway、DolphinScheduler adapter、Metadata Fabric 本地 recovery/metrics/policy/identity/interoperability、真实 feature ingestion 与临时 GDA Control 原子 output promotion 已验证；下一证据是可保留 staging material、完整授权/成功/独立质量 provenance、source host/cluster 外 recovery、持久 metrics/TLS/tenant/alert/SLO、OIDC、NetworkPolicy、升级回滚/registry provenance 与无双写验收 |
 | AR-2 Source/Ingestion + Geospatial Lakehouse Vertical Slice | `planned` | 三类代表源、`DriveTransfer` 云盘客户端和大文件恢复通过统一控制面；默认湖仓、轻量存算一体及 Azure 代表 adapter 通过 provider conformance 与 Raw -> ADS 验收 |
 | AR-3 Data Product Engineering + Governance Workbench | `planned` | Blueprint、模型、Visual/SQL/Notebook、DataOps CI/CD、质量/安全/审批共用 definition 和产品生命周期 |
 | AR-4 Asset/GIS Service/Spatial Experience Operations | `planned` | Service Control Plane、Features/Tiles/MVT/COG/STAC/export 及条件 legacy OGC/3D/EDR provider、Gateway/权限/缓存、原子切换/回滚、Discover/Operate/Govern 和无 LLM 多入口通过 conformance/parity/control gate |

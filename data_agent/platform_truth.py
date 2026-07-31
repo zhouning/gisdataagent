@@ -1019,6 +1019,26 @@ RUNTIME_INVENTORY = (
         "Versioned GDA Control promotion, protected identity/storage and production ingestion",
     ),
     RuntimeSpec(
+        "metadata_real_feature_ledger_promotion_rehearsal",
+        "real_feature_ledger_promotion_rehearsal",
+        "governed",
+        "evidence_durable",
+        "temporary PostgreSQL control ledger + committed local evidence",
+        "metadata-platform",
+        "local_verification_only",
+        (
+            "data_agent/metadata_fabric_real_feature_ledger_promotion.py",
+            "scripts/metadata-fabric-real-feature-ledger-promotion.sh",
+        ),
+        (
+            (
+                "data_agent/metadata_fabric_real_feature_ledger_promotion.py",
+                "def run_postgres_rehearsal",
+            ),
+        ),
+        "Retained output material, terminal success evidence and production promotion",
+    ),
+    RuntimeSpec(
         "datalake_monitor",
         "monitor_loop",
         "legacy",
