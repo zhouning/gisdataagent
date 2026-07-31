@@ -1,0 +1,652 @@
+{
+  "backup_restore_verified": false,
+  "contract_sha256": "83ed15ae4eed85e0c261c2b3a04ea2ad559f3deb7b86c7c2f2dedd0cf28d23d0",
+  "control_database_restart_verified": true,
+  "control_ledger": {
+    "after_restart": {
+      "authority_counts": {
+        "definition_versions": 1,
+        "platform_runs": 1,
+        "resource_versions": 3,
+        "resources": 3
+      },
+      "facts_sha256": "5c0b8a58729e551c250b0410bcebdfe3f019f215a50b20d503f094fe1562d8b5",
+      "ledger_counts": {
+        "approvals": 1,
+        "artifacts": 5,
+        "attempts": 2,
+        "evaluator_evidence": 1,
+        "execution_plans": 1,
+        "lineage_events": 1,
+        "policy_decisions": 1,
+        "quality_results": 1,
+        "run_events": 4
+      },
+      "platform_run_state_version": 3,
+      "platform_run_status": "succeeded",
+      "provider_observation_id": "85bead83-1901-5649-b6e4-fe46d01c9ea9",
+      "provider_observation_sha256": "eed782687756dcddbf7f0966f70902edd037f0fc1e2acf3bb72a860e780d0819"
+    },
+    "after_terminal_replay": {
+      "authority_counts": {
+        "definition_versions": 1,
+        "platform_runs": 1,
+        "resource_versions": 3,
+        "resources": 3
+      },
+      "facts_sha256": "5c0b8a58729e551c250b0410bcebdfe3f019f215a50b20d503f094fe1562d8b5",
+      "ledger_counts": {
+        "approvals": 1,
+        "artifacts": 5,
+        "attempts": 2,
+        "evaluator_evidence": 1,
+        "execution_plans": 1,
+        "lineage_events": 1,
+        "policy_decisions": 1,
+        "quality_results": 1,
+        "run_events": 4
+      },
+      "platform_run_state_version": 3,
+      "platform_run_status": "succeeded",
+      "provider_observation_id": "85bead83-1901-5649-b6e4-fe46d01c9ea9",
+      "provider_observation_sha256": "eed782687756dcddbf7f0966f70902edd037f0fc1e2acf3bb72a860e780d0819"
+    },
+    "before": {
+      "authority_counts": {
+        "definition_versions": 1,
+        "platform_runs": 1,
+        "resource_versions": 3,
+        "resources": 3
+      },
+      "facts_sha256": "5c0b8a58729e551c250b0410bcebdfe3f019f215a50b20d503f094fe1562d8b5",
+      "ledger_counts": {
+        "approvals": 1,
+        "artifacts": 5,
+        "attempts": 2,
+        "evaluator_evidence": 1,
+        "execution_plans": 1,
+        "lineage_events": 1,
+        "policy_decisions": 1,
+        "quality_results": 1,
+        "run_events": 4
+      },
+      "platform_run_state_version": 3,
+      "platform_run_status": "succeeded",
+      "provider_observation_id": "85bead83-1901-5649-b6e4-fe46d01c9ea9",
+      "provider_observation_sha256": "eed782687756dcddbf7f0966f70902edd037f0fc1e2acf3bb72a860e780d0819"
+    }
+  },
+  "control_ledger_continuity_verified": true,
+  "control_restart": {
+    "after": {
+      "container_id": "6cacc704c64aa75295341396101f535300f8aadc117cff59fd1cff7717c99494",
+      "container_name": "gda-m3-24-control-229740ac50ebb53b",
+      "container_running": true,
+      "container_status": "running",
+      "credential_material_recorded": false,
+      "database_ref": "docker:gda-m3-24-control-229740ac50ebb53b/postgres",
+      "expires_at": "2026-08-07T04:15:23.082316Z",
+      "host_port": 64667,
+      "owner": "team:metadata-platform",
+      "process_id": 2093386,
+      "retention_id": "m3-24-229740ac50ebb53b",
+      "started_at": "2026-07-31T05:43:15.197296672Z",
+      "volume_name": "gda-m3-24-control-229740ac50ebb53b",
+      "volume_retained": true
+    },
+    "before": {
+      "container_id": "6cacc704c64aa75295341396101f535300f8aadc117cff59fd1cff7717c99494",
+      "container_name": "gda-m3-24-control-229740ac50ebb53b",
+      "container_running": true,
+      "container_status": "running",
+      "credential_material_recorded": false,
+      "database_ref": "docker:gda-m3-24-control-229740ac50ebb53b/postgres",
+      "expires_at": "2026-08-07T04:15:23.082316Z",
+      "host_port": 64667,
+      "owner": "team:metadata-platform",
+      "process_id": 2087977,
+      "retention_id": "m3-24-229740ac50ebb53b",
+      "started_at": "2026-07-31T05:40:53.703034343Z",
+      "volume_name": "gda-m3-24-control-229740ac50ebb53b",
+      "volume_retained": true
+    }
+  },
+  "credential_material_recorded": false,
+  "durable_catalog_verified": false,
+  "errors": [],
+  "evidence_sha256": "1b5a5ceeadee88868bab6237b3f3280c8b13793cc54193592fec7dbbfdd4e8a6",
+  "exact_terminal_replay_after_restart_verified": true,
+  "gravitino": {
+    "after": {
+      "read_status": 200,
+      "table_projection": {
+        "columns": [
+          {
+            "name": "BSM",
+            "nullable": false,
+            "type": "string"
+          },
+          {
+            "name": "geometry",
+            "nullable": false,
+            "type": "binary"
+          },
+          {
+            "name": "srid",
+            "nullable": false,
+            "type": "integer"
+          },
+          {
+            "name": "min_x",
+            "nullable": false,
+            "type": "double"
+          },
+          {
+            "name": "min_y",
+            "nullable": false,
+            "type": "double"
+          },
+          {
+            "name": "max_x",
+            "nullable": false,
+            "type": "double"
+          },
+          {
+            "name": "max_y",
+            "nullable": false,
+            "type": "double"
+          },
+          {
+            "name": "row_sha256",
+            "nullable": false,
+            "type": "string"
+          }
+        ],
+        "content_sha256": "bdc06792e8b935176ee6df6f6f6d4be1535622d54d9b994a778cabfe5a574618",
+        "name": "cultural_districts",
+        "provider_revision": "m3-22-real-feature-ingestion-v1",
+        "resource_urn": "gda://metadata-authorization-local/data_product/chongqing-cultural-districts-iceberg",
+        "resource_version_id": "a6000000-0000-4000-8000-000000000002"
+      },
+      "table_projection_sha256": "f30feb94a5a8280597f331a7f965762bfabb9b82397af49dda05b61ce00bbb1e"
+    },
+    "before": {
+      "read_status": 200,
+      "table_projection": {
+        "columns": [
+          {
+            "name": "BSM",
+            "nullable": false,
+            "type": "string"
+          },
+          {
+            "name": "geometry",
+            "nullable": false,
+            "type": "binary"
+          },
+          {
+            "name": "srid",
+            "nullable": false,
+            "type": "integer"
+          },
+          {
+            "name": "min_x",
+            "nullable": false,
+            "type": "double"
+          },
+          {
+            "name": "min_y",
+            "nullable": false,
+            "type": "double"
+          },
+          {
+            "name": "max_x",
+            "nullable": false,
+            "type": "double"
+          },
+          {
+            "name": "max_y",
+            "nullable": false,
+            "type": "double"
+          },
+          {
+            "name": "row_sha256",
+            "nullable": false,
+            "type": "string"
+          }
+        ],
+        "content_sha256": "bdc06792e8b935176ee6df6f6f6d4be1535622d54d9b994a778cabfe5a574618",
+        "name": "cultural_districts",
+        "provider_revision": "m3-22-real-feature-ingestion-v1",
+        "resource_urn": "gda://metadata-authorization-local/data_product/chongqing-cultural-districts-iceberg",
+        "resource_version_id": "a6000000-0000-4000-8000-000000000002"
+      },
+      "table_projection_sha256": "f30feb94a5a8280597f331a7f965762bfabb9b82397af49dda05b61ce00bbb1e"
+    }
+  },
+  "gravitino_catalog_continuity_verified": true,
+  "iceberg_material_continuity_verified": true,
+  "independent_failure_domains_verified": false,
+  "independent_quality": {
+    "after": {
+      "data_body_sha256": "6cc0fc9eaf48f8106f9afe192704c44407c86c9ea119ae20894bf369a8e74779",
+      "data_key_sha256": "fbbb249a176bff74f3ee1b756aad1a5233fa007347f68cf466606ddae78e8402",
+      "data_size_bytes": 94603,
+      "feature_payload_recorded": false,
+      "geometry_values_recorded": false,
+      "identifier_values_recorded": false,
+      "metrics": {
+        "bbox_match_count": 20,
+        "feature_count": 20,
+        "geometry_z_count": 20,
+        "non_empty_geometry_count": 20,
+        "positive_area_count": 20,
+        "row_fingerprint_match_count": 20,
+        "srid_match_count": 20,
+        "unique_bsm_count": 20,
+        "valid_geometry_count": 20
+      },
+      "row_set_sha256": "c26ff708f4b6be082327dff63a6a8659420dbc4cab37dea1cac7b40f147512df"
+    },
+    "before": {
+      "data_body_sha256": "6cc0fc9eaf48f8106f9afe192704c44407c86c9ea119ae20894bf369a8e74779",
+      "data_key_sha256": "fbbb249a176bff74f3ee1b756aad1a5233fa007347f68cf466606ddae78e8402",
+      "data_size_bytes": 94603,
+      "feature_payload_recorded": false,
+      "geometry_values_recorded": false,
+      "identifier_values_recorded": false,
+      "metrics": {
+        "bbox_match_count": 20,
+        "feature_count": 20,
+        "geometry_z_count": 20,
+        "non_empty_geometry_count": 20,
+        "positive_area_count": 20,
+        "row_fingerprint_match_count": 20,
+        "srid_match_count": 20,
+        "unique_bsm_count": 20,
+        "valid_geometry_count": 20
+      },
+      "row_set_sha256": "c26ff708f4b6be082327dff63a6a8659420dbc4cab37dea1cac7b40f147512df"
+    }
+  },
+  "independent_quality_continuity_verified": true,
+  "kubernetes_restart": {
+    "after": {
+      "context": "docker-desktop",
+      "gravitino": {
+        "image": "docker.io/gda/gravitino:1.3.0-local-arm64",
+        "image_id": "sha256:18e24b43be854dabdc13e96b1019eb3dc691d59cc64e411aa6a3cc49225fe2d3",
+        "node_name": "desktop-worker",
+        "persistent_volume_claims": [],
+        "pod_name": "gravitino-persistence-0",
+        "pod_uid": "76bfc413-582b-4e4e-a830-2436d5a0e7a3",
+        "pvc": null,
+        "ready_replicas": 1,
+        "service_account": "gravitino-persistence",
+        "service_account_automount_disabled": true,
+        "statefulset_uid": "a316201a-8ba0-4b27-8ce8-bc27965d9b10"
+      },
+      "gravitino_aws_sdk_mounted": true,
+      "gravitino_host_image_id": "sha256:d355dc7e92f9e3545d717f3eab2cbdf412115f2b82e1e544d7f6235c1eacd5a5",
+      "gravitino_jdbc_driver_mounted": true,
+      "iceberg_rest": {
+        "aws_sdk_mounted": true,
+        "image": "docker.io/gda/gravitino:1.3.0-local-arm64",
+        "image_id": "sha256:18e24b43be854dabdc13e96b1019eb3dc691d59cc64e411aa6a3cc49225fe2d3",
+        "jdbc_driver_mounted": true,
+        "path": "/iceberg",
+        "ready": true
+      },
+      "minio_host_image_id": "sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e",
+      "namespace": {
+        "name": "gda-metadata-spark-object-store",
+        "uid": "824a5904-70cc-4a85-8503-ca83acbcde16"
+      },
+      "object_store": {
+        "image": "docker.io/minio/minio:RELEASE.2025-04-22T22-12-26Z",
+        "image_id": "docker.io/minio/minio@sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e",
+        "node_name": "desktop-control-plane",
+        "persistent_volume_claims": [
+          "data-metadata-object-store-0"
+        ],
+        "pod_name": "metadata-object-store-0",
+        "pod_uid": "f56f3a9b-8f57-434d-bcd0-50cca28e0fe6",
+        "pvc": {
+          "name": "data-metadata-object-store-0",
+          "phase": "Bound",
+          "storage_class": "standard",
+          "uid": "bddccc8e-1da2-4155-9c8c-a8a23a87b7a4",
+          "volume_name": "pvc-bddccc8e-1da2-4155-9c8c-a8a23a87b7a4"
+        },
+        "ready_replicas": 1,
+        "service_account": "metadata-object-store",
+        "service_account_automount_disabled": true,
+        "statefulset_uid": "d8e3727b-8812-4c6c-9dc3-248f6f1132cd"
+      },
+      "object_store_service": {
+        "name": "metadata-object-store",
+        "ports": [
+          {
+            "name": "api",
+            "port": 9000
+          }
+        ],
+        "type": "ClusterIP",
+        "uid": "47b4845f-6776-40f5-8f31-781c5eea460c"
+      },
+      "postgresql": {
+        "image": "docker.io/library/postgres:16.10-bookworm",
+        "image_id": "docker.io/library/postgres@sha256:38471f330eb885e04de130b768d6db4e10469e2311879c7e5c699f6d2d8a1c74",
+        "node_name": "desktop-worker",
+        "persistent_volume_claims": [
+          "data-gravitino-persistence-postgresql-0"
+        ],
+        "pod_name": "gravitino-persistence-postgresql-0",
+        "pod_uid": "e8c09043-da48-42c0-b7bc-f7188ce71fda",
+        "pvc": {
+          "name": "data-gravitino-persistence-postgresql-0",
+          "phase": "Bound",
+          "storage_class": "standard",
+          "uid": "6b4cdb87-5f96-4f65-a571-d8390f6ab405",
+          "volume_name": "pvc-6b4cdb87-5f96-4f65-a571-d8390f6ab405"
+        },
+        "ready_replicas": 1,
+        "service_account": "gravitino-persistence-postgresql",
+        "service_account_automount_disabled": true,
+        "statefulset_uid": "a2711eb2-a329-4264-8ac8-a6b52b186cbb"
+      },
+      "postgresql_service": {
+        "name": "gravitino-persistence-postgresql",
+        "ports": [
+          {
+            "name": "postgresql",
+            "port": 5432
+          }
+        ],
+        "type": "ClusterIP",
+        "uid": "de4f8f3a-65fa-4d9e-bdf4-a4db57b6c51d"
+      },
+      "service": {
+        "name": "gravitino-persistence",
+        "ports": [
+          {
+            "name": "http",
+            "port": 8090
+          },
+          {
+            "name": "iceberg-rest",
+            "port": 9001
+          }
+        ],
+        "type": "ClusterIP",
+        "uid": "dd03d369-7873-4514-b6fc-aadbb35ce0ab"
+      },
+      "source_schema_sha256": "7a2d605a677a462ca619dba594ce7ebcf500358345560ad084c1b67a25c722df",
+      "spark_host_image_id": "sha256:f201367640c7583add224796a629150e63d3859ddd7fe9fd47741662a6d415bb"
+    },
+    "before": {
+      "context": "docker-desktop",
+      "gravitino": {
+        "image": "docker.io/gda/gravitino:1.3.0-local-arm64",
+        "image_id": "sha256:18e24b43be854dabdc13e96b1019eb3dc691d59cc64e411aa6a3cc49225fe2d3",
+        "node_name": "desktop-worker",
+        "persistent_volume_claims": [],
+        "pod_name": "gravitino-persistence-0",
+        "pod_uid": "baa6d86a-709c-4cd3-a77d-3f3cff07409c",
+        "pvc": null,
+        "ready_replicas": 1,
+        "service_account": "gravitino-persistence",
+        "service_account_automount_disabled": true,
+        "statefulset_uid": "a316201a-8ba0-4b27-8ce8-bc27965d9b10"
+      },
+      "gravitino_aws_sdk_mounted": true,
+      "gravitino_host_image_id": "sha256:d355dc7e92f9e3545d717f3eab2cbdf412115f2b82e1e544d7f6235c1eacd5a5",
+      "gravitino_jdbc_driver_mounted": true,
+      "iceberg_rest": {
+        "aws_sdk_mounted": true,
+        "image": "docker.io/gda/gravitino:1.3.0-local-arm64",
+        "image_id": "sha256:18e24b43be854dabdc13e96b1019eb3dc691d59cc64e411aa6a3cc49225fe2d3",
+        "jdbc_driver_mounted": true,
+        "path": "/iceberg",
+        "ready": true
+      },
+      "minio_host_image_id": "sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e",
+      "namespace": {
+        "name": "gda-metadata-spark-object-store",
+        "uid": "824a5904-70cc-4a85-8503-ca83acbcde16"
+      },
+      "object_store": {
+        "image": "docker.io/minio/minio:RELEASE.2025-04-22T22-12-26Z",
+        "image_id": "docker.io/minio/minio@sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e",
+        "node_name": "desktop-control-plane",
+        "persistent_volume_claims": [
+          "data-metadata-object-store-0"
+        ],
+        "pod_name": "metadata-object-store-0",
+        "pod_uid": "17c0ca93-2e1f-4ec8-b2d3-566365812922",
+        "pvc": {
+          "name": "data-metadata-object-store-0",
+          "phase": "Bound",
+          "storage_class": "standard",
+          "uid": "bddccc8e-1da2-4155-9c8c-a8a23a87b7a4",
+          "volume_name": "pvc-bddccc8e-1da2-4155-9c8c-a8a23a87b7a4"
+        },
+        "ready_replicas": 1,
+        "service_account": "metadata-object-store",
+        "service_account_automount_disabled": true,
+        "statefulset_uid": "d8e3727b-8812-4c6c-9dc3-248f6f1132cd"
+      },
+      "object_store_service": {
+        "name": "metadata-object-store",
+        "ports": [
+          {
+            "name": "api",
+            "port": 9000
+          }
+        ],
+        "type": "ClusterIP",
+        "uid": "47b4845f-6776-40f5-8f31-781c5eea460c"
+      },
+      "postgresql": {
+        "image": "docker.io/library/postgres:16.10-bookworm",
+        "image_id": "docker.io/library/postgres@sha256:38471f330eb885e04de130b768d6db4e10469e2311879c7e5c699f6d2d8a1c74",
+        "node_name": "desktop-worker",
+        "persistent_volume_claims": [
+          "data-gravitino-persistence-postgresql-0"
+        ],
+        "pod_name": "gravitino-persistence-postgresql-0",
+        "pod_uid": "110029b4-6c93-49a3-8ff3-625d51971243",
+        "pvc": {
+          "name": "data-gravitino-persistence-postgresql-0",
+          "phase": "Bound",
+          "storage_class": "standard",
+          "uid": "6b4cdb87-5f96-4f65-a571-d8390f6ab405",
+          "volume_name": "pvc-6b4cdb87-5f96-4f65-a571-d8390f6ab405"
+        },
+        "ready_replicas": 1,
+        "service_account": "gravitino-persistence-postgresql",
+        "service_account_automount_disabled": true,
+        "statefulset_uid": "a2711eb2-a329-4264-8ac8-a6b52b186cbb"
+      },
+      "postgresql_service": {
+        "name": "gravitino-persistence-postgresql",
+        "ports": [
+          {
+            "name": "postgresql",
+            "port": 5432
+          }
+        ],
+        "type": "ClusterIP",
+        "uid": "de4f8f3a-65fa-4d9e-bdf4-a4db57b6c51d"
+      },
+      "service": {
+        "name": "gravitino-persistence",
+        "ports": [
+          {
+            "name": "http",
+            "port": 8090
+          },
+          {
+            "name": "iceberg-rest",
+            "port": 9001
+          }
+        ],
+        "type": "ClusterIP",
+        "uid": "dd03d369-7873-4514-b6fc-aadbb35ce0ab"
+      },
+      "source_schema_sha256": "7a2d605a677a462ca619dba594ce7ebcf500358345560ad084c1b67a25c722df",
+      "spark_host_image_id": "sha256:f201367640c7583add224796a629150e63d3859ddd7fe9fd47741662a6d415bb"
+    },
+    "order": [
+      "statefulset/gravitino-persistence-postgresql",
+      "statefulset/metadata-object-store",
+      "statefulset/gravitino-persistence"
+    ]
+  },
+  "kubernetes_runtime_restart_verified": true,
+  "local_retained_real_feature_restart_recovery_verified": true,
+  "material": {
+    "after": {
+      "data_file_count": 1,
+      "fields": [
+        {
+          "name": "BSM",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "geometry",
+          "required": true,
+          "type": "binary"
+        },
+        {
+          "name": "srid",
+          "required": true,
+          "type": "int"
+        },
+        {
+          "name": "min_x",
+          "required": true,
+          "type": "double"
+        },
+        {
+          "name": "min_y",
+          "required": true,
+          "type": "double"
+        },
+        {
+          "name": "max_x",
+          "required": true,
+          "type": "double"
+        },
+        {
+          "name": "max_y",
+          "required": true,
+          "type": "double"
+        },
+        {
+          "name": "row_sha256",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "manifest_file_count": 2,
+      "metadata_body_sha256": "6cceb8ba61378122a989e9b6046c328c517d134ee4513af5697d92c672ab772c",
+      "metadata_file_count": 2,
+      "object_count": 5,
+      "object_inventory_sha256": "de4a0efed9fdb68f0019b843377f6c8de71664de955130d0dd38e99eccdb8034",
+      "schema_id": 0,
+      "snapshot_id": 8034081021802585202,
+      "table_location": "s3://gda-metadata-warehouse/warehouse/cultural_heritage/cultural_districts"
+    },
+    "before": {
+      "data_file_count": 1,
+      "fields": [
+        {
+          "name": "BSM",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "geometry",
+          "required": true,
+          "type": "binary"
+        },
+        {
+          "name": "srid",
+          "required": true,
+          "type": "int"
+        },
+        {
+          "name": "min_x",
+          "required": true,
+          "type": "double"
+        },
+        {
+          "name": "min_y",
+          "required": true,
+          "type": "double"
+        },
+        {
+          "name": "max_x",
+          "required": true,
+          "type": "double"
+        },
+        {
+          "name": "max_y",
+          "required": true,
+          "type": "double"
+        },
+        {
+          "name": "row_sha256",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "manifest_file_count": 2,
+      "metadata_body_sha256": "6cceb8ba61378122a989e9b6046c328c517d134ee4513af5697d92c672ab772c",
+      "metadata_file_count": 2,
+      "object_count": 5,
+      "object_inventory_sha256": "de4a0efed9fdb68f0019b843377f6c8de71664de955130d0dd38e99eccdb8034",
+      "schema_id": 0,
+      "snapshot_id": 8034081021802585202,
+      "table_location": "s3://gda-metadata-warehouse/warehouse/cultural_heritage/cultural_districts"
+    }
+  },
+  "new_authority_facts_created": false,
+  "new_ingestion_executed": false,
+  "oidc_verified": false,
+  "ordered_stateful_restart_verified": true,
+  "output_content_sha256": "bdc06792e8b935176ee6df6f6f6d4be1535622d54d9b994a778cabfe5a574618",
+  "output_resource_version_id": "a6000000-0000-4000-8000-000000000002",
+  "persistent_scheduler_verified": false,
+  "point_in_time_recovery_verified": false,
+  "production_ingestion_verified": false,
+  "production_object_store_verified": false,
+  "production_ready": false,
+  "production_restart_recovery_verified": false,
+  "production_scheduler_verified": false,
+  "production_tenant_attestation_verified": false,
+  "protected_workload_identity_verified": false,
+  "retention_expires_at": "2026-08-07T04:15:23.082316Z",
+  "retention_id": "m3-24-229740ac50ebb53b",
+  "run_id": "a9000000-0000-4000-8000-000000000009",
+  "runtime_port_forwards_stopped": true,
+  "same_retention_identity_verified": true,
+  "schema": "gda.retained_real_feature_restart_recovery_evidence.v1",
+  "source_absolute_path_committed": false,
+  "source_dataset_committed": false,
+  "source_evidence_sha256": "d966668b5a2ea57c7a4b2a3bc9824daab9b0128d9f94e515d7be649b145de418",
+  "source_feature_payload_committed": false,
+  "source_payload_absent_after": true,
+  "source_payload_absent_before": true,
+  "status": "local_retained_real_feature_restart_recovery_verified",
+  "tenant_id": "metadata-authorization-local",
+  "terminal_replay": {
+    "platform_run_state_version": 3,
+    "platform_run_status": "succeeded",
+    "promotion_created": false
+  },
+  "tls_verified": false,
+  "writes_to_legacy": false
+}
