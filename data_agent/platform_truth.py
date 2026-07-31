@@ -999,6 +999,26 @@ RUNTIME_INVENTORY = (
         "Protected object-store identity/TLS/KMS, real row ingestion and versioned promotion ledger",
     ),
     RuntimeSpec(
+        "metadata_real_feature_ingestion_rehearsal",
+        "real_feature_ingestion_rehearsal",
+        "governed",
+        "evidence_durable",
+        "temporary authorized Spark/Sedona + JDBC/S3 ingestion and committed local evidence",
+        "metadata-platform",
+        "local_verification_only",
+        (
+            "data_agent/metadata_fabric_real_feature_ingestion.py",
+            "scripts/metadata-fabric-real-feature-ingestion.sh",
+        ),
+        (
+            (
+                "data_agent/metadata_fabric_real_feature_ingestion.py",
+                "def run_live_rehearsal",
+            ),
+        ),
+        "Versioned GDA Control promotion, protected identity/storage and production ingestion",
+    ),
+    RuntimeSpec(
         "datalake_monitor",
         "monitor_loop",
         "legacy",
