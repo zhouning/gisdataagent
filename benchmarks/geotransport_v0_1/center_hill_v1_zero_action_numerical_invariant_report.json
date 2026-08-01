@@ -1,0 +1,103 @@
+{
+  "active_reach_count": 26,
+  "claim_boundary": {
+    "frozen_v1_failure_reproduced": true,
+    "frozen_v1_repaired": false,
+    "geospatial_kernel_validated": false,
+    "hydrodynamic_mechanism_validated": false,
+    "v2_numerical_strategy_admitted": false
+  },
+  "completed_step_count": 130,
+  "data_isolation": {
+    "action_values_loaded": false,
+    "outcome_values_loaded": false,
+    "panel_artifacts_loaded": false,
+    "transition_inputs": [
+      "linear_referenced_path",
+      "nwm_q_lateral_modeled_forcing",
+      "nwm_river_velocity_proxy"
+    ]
+  },
+  "diagnosis": {
+    "componentwise_cleanup_changed_conserved_mass": true,
+    "frozen_v1_failure_mechanism": "componentwise near-zero storage cleanup precedes the global mass-balance gate and can remove more than one global tolerance when several reaches are cleaned in the same step",
+    "physical_state_divergence_observed": false,
+    "raw_matrix_exponential_conservation_passed_at_failure": true,
+    "scientific_adjudication_changed": false,
+    "v1_operator_modified": false
+  },
+  "excluded_zero_length_feature_ids": [
+    18434275
+  ],
+  "first_failure": {
+    "cleaned_mass_balance_residual_m3": -1.0463272701599635e-06,
+    "cleaned_next_storage_sum_m3": 18366.898740910066,
+    "cleaned_outlet_volume_m3": 1519.8428189693616,
+    "cleaned_residual_to_tolerance_ratio": 1.0422249401003687,
+    "cleanup_mass_change_m3": -1.0463656963111134e-06,
+    "completed_step_count": 130,
+    "failure_stage": "post_componentwise_near_zero_cleanup",
+    "forcing_rate_sum_m3s": 0.6000000090000001,
+    "forcing_volume_m3": 2160.0000324000002,
+    "initial_storage_m3": 17726.741528525756,
+    "maximum_effective_reach_length_m": 3876.9120155980067,
+    "maximum_residence_time_seconds": 11376.630307557532,
+    "minimum_effective_reach_length_m": 1.5214577067411046,
+    "minimum_raw_next_storage_m3": 0.0,
+    "minimum_raw_transferred_volume_m3": 0.0,
+    "minimum_residence_time_seconds": 3.3782038505140193,
+    "numeric_tolerance_m3": 1.0039361273193095e-06,
+    "operator_error": "reach_transport_global_mass_balance_exceeded",
+    "raw_mass_balance_residual_m3": 3.9108272176235914e-11,
+    "raw_next_storage_sum_m3": 18366.898741956433,
+    "raw_outlet_volume_m3": 1519.8428189693616,
+    "residence_time_scale_ratio": 3367.656545008819,
+    "step_index_zero_based": 130,
+    "support_start_utc": "2021-12-14T11:00:00Z",
+    "thresholded_outflow_count": 7,
+    "thresholded_storage_count": 7
+  },
+  "generated_at": "2026-07-26T11:57:43.198535+00:00",
+  "operator_schema": "gwm.geospatial_kernel.state_dependent_reach_transport.v1",
+  "pre_failure_summary": {
+    "maximum_absolute_cleaned_mass_balance_residual_m3": 8.327945124619873e-07,
+    "maximum_absolute_raw_mass_balance_residual_m3": 7.342896424233913e-08
+  },
+  "scenario": "zero_action_with_public_modeled_lateral_forcing",
+  "schema": "gwm.geotransport.center_hill_v1_zero_action_numerical_invariant.v1",
+  "source_artifacts": {
+    "q_lateral_manifest": {
+      "path": "data/geotransport_v0_1/nwm_q_lateral_672h/extraction_manifest.json",
+      "sha256": "e3d9dc0dc3ecee09c254574346ceb484e2d699eecb534657e08c817345a8ba40",
+      "size_bytes": 4870
+    },
+    "q_lateral_values": {
+      "path": "data/geotransport_v0_1/nwm_q_lateral_672h/values/center_hill.csv",
+      "sha256": "49f3a83727aa48be6ba73b730e87b6bbf47288e17f9bec276b3d9efc38111828",
+      "size_bytes": 931359
+    },
+    "travel_report": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_travel_time_prior_report.json",
+      "sha256": "e29fc54273e2f5f650d49599e8c98c6ec98c13c1025041e0f8c2ba41340c425e",
+      "size_bytes": 11456
+    },
+    "velocity_values": {
+      "path": "data/geotransport_v0_1/nwm_velocity/values/center_hill.csv",
+      "sha256": "993b235a90374ad9ce794ace9b86a4c07a6f186b62be38370c5c4dba633df9bb",
+      "size_bytes": 1165181
+    }
+  },
+  "status": "frozen_v1_failure_reproduced",
+  "time_window": {
+    "end_exclusive": "2022-01-06T01:00:00Z",
+    "registered_hour_count": 672,
+    "start_inclusive": "2021-12-09T01:00:00Z"
+  },
+  "v2_invariant_lock": {
+    "componentwise_cleanup_may_not_spend_global_tolerance_per_component": true,
+    "failure_is_non_compensatory": true,
+    "outcome_access_permitted": false,
+    "raw_and_returned_state_must_each_be_globally_conservative": true,
+    "zero_action_must_complete_full_window": true
+  }
+}

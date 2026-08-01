@@ -1,0 +1,73 @@
+{
+  "action_change_coefficient": 0.32988884570396676,
+  "admitted": false,
+  "asymptotic_stability_claimed": false,
+  "baseline_drift_m3s_per_hour": -1.034640722461434,
+  "evidence_level": "candidate",
+  "forcing_coefficient": 0.7141335342714641,
+  "formula": "q[t] = q[t-1] + drift + action_change_beta*(sum(w_lag*action[t-lag]) - sum(w_lag*action[t-1-lag])) + forcing_beta*nwm_lateral[t]",
+  "mass_conserving_network_routing_replacement": false,
+  "maximum_discharge_m3s": 10000.0,
+  "outcome_calibrated": true,
+  "provenance_id": "center-hill:kernel-action-innovation:ols-increment-fit:panel=3ab31194e1687b2a4556bdf4f0889acfa62afe2a53e6dd5ad056f168b55cc746:fixed-path-lags-and-uniform-weights",
+  "schema": "gwm.geospatial_kernel.action_innovation_transition_parameters.v1",
+  "state_persistence_coefficient_fixed": 1.0,
+  "support": {
+    "action_entry_feature_id": 18434265,
+    "admitted": false,
+    "empirical_lag_is_physical_travel_time": false,
+    "evidence_level": "candidate",
+    "lag_hours": [
+      5,
+      6,
+      7
+    ],
+    "lag_weights": [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    "network_id": "center-hill:dam-to-gauge:full-incremental-subnetwork-v1",
+    "outlet_feature_id": 18421703,
+    "path_feature_ids": [
+      18434265,
+      18421763,
+      18421761,
+      18421759,
+      18421753,
+      18421821,
+      18427677,
+      18421751,
+      18421811,
+      18421817,
+      18421831,
+      18421747,
+      18421829,
+      18421727,
+      18421737,
+      18421807,
+      18421719,
+      18421721,
+      18421803,
+      18421799,
+      18421731,
+      18421739,
+      18421741,
+      18421795,
+      18421707,
+      18421703
+    ],
+    "provenance_id": "center-hill:directed-full-subnetwork-path:network=9ae3611462c731ef1508dd091f499425b8befe338fa85e6649df696ee7a1b951:candidate-lag-union=175101fc441395c82a2a2870986ed074bd91aa49d9e639d92d0540dcdba938fc",
+    "schema": "gwm.geospatial_kernel.geographic_response_support.v1"
+  },
+  "supported_forecast_horizons_hours": [
+    1,
+    3,
+    6,
+    12
+  ],
+  "timestep_seconds": 3600,
+  "training_data_end": "2021-12-16T01:00:00+00:00",
+  "training_data_start": "2021-12-09T02:00:00+00:00",
+  "training_sample_count": 160
+}

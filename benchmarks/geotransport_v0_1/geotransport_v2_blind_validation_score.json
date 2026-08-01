@@ -1,0 +1,161 @@
+{
+  "claim_boundary": {
+    "geospatial_kernel_predictively_validated": false,
+    "no_post_score_tuning_or_revision_permitted": true,
+    "predictive_gate_passed": false,
+    "strict_confirmatory_validation_passed": false,
+    "two_system_blind_score_available": true
+  },
+  "generated_at": "2026-07-27T05:33:20.352272+00:00",
+  "independence_limits": {
+    "external_tributary_streamflow_boundary_used": false,
+    "fully_observation_independent_inputs": false,
+    "nwm_initial_streamflow_ground_truth": false,
+    "nwm_initial_streamflow_possible_nudging": true,
+    "nwm_q_lateral_ground_truth": false,
+    "outcome_loaded_only_after_joint_prediction_seal": true
+  },
+  "multi_system_gates": {
+    "both_systems_predictive_and_execution_gates_passed": false,
+    "confirmatory_validation_gate_passed": false,
+    "non_compensatory": true,
+    "strict_protocol_conformance_passed": false
+  },
+  "protocol_conformance": {
+    "both_predictions_sealed_before_outcome_access": true,
+    "deviation": "The protocol specified one-hour observed streamflow but did not predeclare that Center Hill has 30-minute IV samples and J. Percy Priest has 15-minute IV samples. After the joint seal, both were reduced by the same complete-native-sample interval-mean rule.",
+    "effect_on_claim": "results are a strong prospective replication but not a fully protocol-conformant confirmatory validation",
+    "metrics_baseline_missingness_and_gates_predeclared": true,
+    "model_prediction_or_gate_changed_after_outcome_access": false,
+    "native_cadence_hourly_aggregation_fully_predeclared": false,
+    "window_systems_operator_topology_and_parameters_predeclared": true
+  },
+  "schema": "gwm.geotransport.v2_blind_validation_score.v1",
+  "source_artifacts": {
+    "joint_prediction_seal_sha256": "98fc3257ffe53c24245db80c36d1a376b9d332ceb0e82300c2ea5a1dbb94526c",
+    "outcomes": {
+      "path": "benchmarks/geotransport_v0_1/geotransport_v2_blind_validation_outcomes_report.json",
+      "sha256": "9f299c3610501f9d223f658c538a1db612f1d2ff3e02bc565abf0c55f20731d6",
+      "size_bytes": 5549
+    },
+    "protocol": {
+      "path": "benchmarks/geotransport_v0_1/geotransport_v2_blind_validation_protocol.json",
+      "sha256": "7b99c0a7765f2e491e12e9dd110cdfcdcdeed72e70f3f30c65b9b9aac3d167cb",
+      "size_bytes": 13509
+    },
+    "sealed_rollout": {
+      "path": "benchmarks/geotransport_v0_1/geotransport_v2_blind_validation_rollout_report.json",
+      "sha256": "b7430983224d4c3facfede6df87484f0a37414da6fd0f6e7bd96052c527114db",
+      "size_bytes": 5834
+    }
+  },
+  "status": "two_system_blind_validation_scored_once",
+  "systems": {
+    "center_hill": {
+      "diagnostics": {
+        "kernel_beats_branch_silent_rmse": true,
+        "kernel_rmse_minus_branch_silent_rmse_m3s": -11.238636339176878,
+        "kernel_rmse_minus_persistence_rmse_m3s": 66.46850946956252
+      },
+      "gates": {
+        "all_predictive_and_execution_gates_passed": false,
+        "execution_and_mass_invariants_passed": true,
+        "kernel_beats_observed_persistence_rmse": false,
+        "minimum_scored_hours_passed": true
+      },
+      "mask_audit": {
+        "common_complete_case_mask": true,
+        "excluded_current_observation_missing": 1,
+        "excluded_immediate_previous_observation_missing": 1,
+        "outcomes_imputed": false,
+        "target_hour_count": 672
+      },
+      "metrics": {
+        "branch_silent_negative_control": {
+          "bias_m3s": -38.760684297658514,
+          "mae_m3s": 73.15624775415603,
+          "nse": -0.23633755483811703,
+          "rmse_m3s": 93.91314952972088
+        },
+        "kernel_full_subnetwork": {
+          "bias_m3s": -25.11646377027565,
+          "mae_m3s": 64.01784731965265,
+          "nse": 0.04186315082785841,
+          "rmse_m3s": 82.674513190544
+        },
+        "observed_persistence": {
+          "bias_m3s": 0.16250488828358203,
+          "mae_m3s": 12.487518026522388,
+          "nse": 0.9631840408898174,
+          "rmse_m3s": 16.206003720981485
+        },
+        "same_hour_boundary_release": {
+          "bias_m3s": -39.49035727983581,
+          "mae_m3s": 94.6549132909403,
+          "nse": -0.945517981581619,
+          "rmse_m3s": 117.80819429092229
+        }
+      },
+      "outcome_sampling": {
+        "expected_native_samples_per_complete_hour": 2,
+        "hourly_rule": "mean_of_all_complete_native_samples_on_(t-1h,t]",
+        "native_sample_cadence_seconds": 1800
+      },
+      "scored_hour_count": 670,
+      "system_id": "center_hill"
+    },
+    "j_percy_priest": {
+      "diagnostics": {
+        "kernel_beats_branch_silent_rmse": true,
+        "kernel_rmse_minus_branch_silent_rmse_m3s": -0.8918320339781758,
+        "kernel_rmse_minus_persistence_rmse_m3s": 5.64012689427922
+      },
+      "gates": {
+        "all_predictive_and_execution_gates_passed": false,
+        "execution_and_mass_invariants_passed": true,
+        "kernel_beats_observed_persistence_rmse": false,
+        "minimum_scored_hours_passed": true
+      },
+      "mask_audit": {
+        "common_complete_case_mask": true,
+        "excluded_current_observation_missing": 2,
+        "excluded_immediate_previous_observation_missing": 2,
+        "outcomes_imputed": false,
+        "target_hour_count": 672
+      },
+      "metrics": {
+        "branch_silent_negative_control": {
+          "bias_m3s": -7.767624138540012,
+          "mae_m3s": 16.270570755161675,
+          "nse": 0.8015555206864531,
+          "rmse_m3s": 27.435059053743075
+        },
+        "kernel_full_subnetwork": {
+          "bias_m3s": -4.26662232905091,
+          "mae_m3s": 15.359413876984485,
+          "nse": 0.8142475007496127,
+          "rmse_m3s": 26.5432270197649
+        },
+        "observed_persistence": {
+          "bias_m3s": -0.010385669760479038,
+          "mae_m3s": 9.46428474063973,
+          "nse": 0.8848010224867426,
+          "rmse_m3s": 20.90310012548568
+        },
+        "same_hour_boundary_release": {
+          "bias_m3s": -7.70833673837835,
+          "mae_m3s": 12.311377498735595,
+          "nse": 0.8886340867620165,
+          "rmse_m3s": 20.552399349345645
+        }
+      },
+      "outcome_sampling": {
+        "expected_native_samples_per_complete_hour": 4,
+        "hourly_rule": "mean_of_all_complete_native_samples_on_(t-1h,t]",
+        "native_sample_cadence_seconds": 900
+      },
+      "scored_hour_count": 668,
+      "system_id": "j_percy_priest"
+    }
+  }
+}

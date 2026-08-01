@@ -1,0 +1,86 @@
+{
+  "claim_boundary": {
+    "candidate_promoted": false,
+    "candidate_support_gate_evaluated": false,
+    "geospatial_kernel_validated": false,
+    "holdout_outcomes_acquired_for_scoring": false,
+    "holdout_scored": false,
+    "outcome_free_predictions_verified": true,
+    "runtime_default_enabled": false
+  },
+  "execution_gates": {
+    "all_execution_gates_passed": true,
+    "analysis_ledger_check_count": 448,
+    "analysis_ledger_pass_count": 448,
+    "maximum_nominal_conformance_error_m3s": 0.0,
+    "next_canonical_state_hash_check_count": 112,
+    "nominal_conformance_check_count": 112,
+    "nominal_conformance_pass_count": 112,
+    "physical_mass_balance_check_count": 5376,
+    "physical_mass_balance_pass_count": 5376,
+    "prediction_csv_reconstructed_exactly": true,
+    "raw_issue_observation_hash_check_count": 112
+  },
+  "generated_at": "2026-08-01T03:19:17.315037+00:00",
+  "observations": {
+    "center_hill": {
+      "exact_timestamp_count": 56,
+      "issue_count": 56,
+      "nonnegative_value_count": 56
+    },
+    "j_percy_priest": {
+      "exact_timestamp_count": 56,
+      "issue_count": 56,
+      "negative_value_count": 6,
+      "nonnegative_value_count": 50
+    }
+  },
+  "request_boundary": {
+    "frozen_request_count_completed": 122,
+    "full_outcome_request_count": 0,
+    "full_outcome_series_loaded": false,
+    "issue_only_usgs_request_count": 112,
+    "static_request_count": 10
+  },
+  "schema": "gwm.geotransport.horizon_assimilation_holdout_rollout_verification.v1",
+  "seal_chain": {
+    "all_issue_artifact_hashes_verified": true,
+    "all_previous_seal_links_verified": true,
+    "chronological_chain_verified": true,
+    "final_joint_issue_seal_sha256": "49448d2230c47214d0f3b8cc4b8a969dfc5cbae8efcbfcb2dfe33a7a0ca712d5",
+    "joint_issue_seal_count": 56
+  },
+  "status": "pass_chronological_outcome_free_rollout_verification",
+  "verified_artifacts": {
+    "execution_wrapper_recorded_after_execution": {
+      "path": "scripts/run_geospatial_kernel_horizon_assimilation_holdout_outcome_free.py",
+      "sha256": "5363992f34ac553fdfd23def90e9b6c195b79fb696d79efb7a5282e738f6150b",
+      "size_bytes": 33484
+    },
+    "input_plan": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_input_plan.json",
+      "sha256": "bab7c4386501abd69bb8dd29353eadea01eae05039f9f91797a94266dc675bf9",
+      "size_bytes": 68421
+    },
+    "prediction_artifact": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/predictions.csv",
+      "sha256": "7cace0b963bfc2914130f3e002627f0aa48f0109abc4a82fbd09de93df53ac5a",
+      "size_bytes": 242583
+    },
+    "protocol": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_protocol.json",
+      "sha256": "b17e5a8fb36e05c111a8b87e5298e534516b9b3e3ce3ec46e4c003f1b5853722",
+      "size_bytes": 19562
+    },
+    "rollout_report": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_rollout_report.json",
+      "sha256": "59d3e818c1db3ec8a7a26424b8ffb50d4b2ac86197443bede9b1ea081fb9cd45",
+      "size_bytes": 26777
+    },
+    "static_input_report": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_static_inputs_report.json",
+      "sha256": "00b80bbb00ef9222c95661e1226e6003204d130f0020043f5c54994674cd65e4",
+      "size_bytes": 27487
+    }
+  }
+}

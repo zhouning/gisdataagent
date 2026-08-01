@@ -1,0 +1,118 @@
+{
+  "allowed_future_use": {
+    "current_exposed_outcomes_may_select_future_rules": false,
+    "new_claim_requires_new_predeclared_gate_and_unused_window": true,
+    "new_model_requires_new_candidate_id": true,
+    "offline_diagnostic_or_comparator": true,
+    "production_prediction": false
+  },
+  "candidate": {
+    "admitted": false,
+    "candidate_id": "distance_localized_horizon_policy_v1",
+    "policy_sha256": "69d191ee497c80aa1340d39a0932a726eba23dcd1061c14c1f0f8c6e0e148278",
+    "runtime_default_enabled": false,
+    "selected_mode_by_horizon_hours": {
+      "1": "linear_distance_localized_mainstem_update",
+      "12": "nominal",
+      "3": "quadratic_distance_localized_mainstem_update",
+      "6": "outlet_only_observation_update"
+    }
+  },
+  "claim_boundary": {
+    "candidate_disposition_finalized": true,
+    "candidate_promoted": false,
+    "candidate_support_gate_passed": false,
+    "geospatial_kernel_validated": false,
+    "runtime_default_enabled": false,
+    "superiority_claim_supported": false
+  },
+  "decision": {
+    "disposition": "rejected_for_promotion",
+    "failed_group_count": 5,
+    "final_for_candidate_id": true,
+    "formal_support_gate_passed": false,
+    "passed_group_count": 3,
+    "reason_codes": [
+      "formal_noncompensatory_support_gate_failed",
+      "performance_not_stable_across_both_systems_and_all_horizons",
+      "three_hour_candidate_equals_fixed_quadratic_comparator"
+    ],
+    "structural_self_comparison_groups": [
+      "center_hill:3h",
+      "j_percy_priest:3h"
+    ]
+  },
+  "evidence_chain": {
+    "independent_score_verification": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_score_verification.json",
+      "sha256": "7b64f03e8f5f33d5536e44cef9ae609358a03e4476be2012fb3c86a7763cdca9",
+      "size_bytes": 3707
+    },
+    "policy_freeze": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_policy_freeze.json",
+      "sha256": "340fe49e6beadc52ac7192f6edc29092ce20a39227ac7a6cc5788ba95dbaa928",
+      "size_bytes": 5635
+    },
+    "policy_source": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/horizon_assimilation_policy.py",
+      "sha256": "9cd79a6c081945390878e7a10632c1feb56234be555c8a51dcb099ffba4d9680",
+      "size_bytes": 4773
+    },
+    "rollout_source": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/horizon_assimilation_rollout.py",
+      "sha256": "5ac32f6381ebc6d2c1532f255b6fa44fa9cb4fcce56be2e2b9e330ccb83ab413",
+      "size_bytes": 24365
+    },
+    "scoring_protocol": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_scoring_protocol.json",
+      "sha256": "bd16a743e79e189810e79170e02bdbd3f0d2ea35766a2f72caaf98e79a845539",
+      "size_bytes": 6104
+    },
+    "single_score": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_score.json",
+      "sha256": "0f19f6086b5ce1c3d047a45578c48599cbd66b0ffd4177af7bbfddad8e471289",
+      "size_bytes": 13954
+    }
+  },
+  "generated_at": "2026-08-01T03:54:10.068182+00:00",
+  "post_score_controls": {
+    "failed_gate_reinterpretation_as_promotion_permitted": false,
+    "formal_score_execution_count": 1,
+    "outcomes_imputed": false,
+    "post_score_tuning_performed": false,
+    "same_candidate_id_reopen_permitted": false,
+    "same_holdout_rescore_permitted": false
+  },
+  "runtime_containment": {
+    "policy_deserialization_enforces_admitted_false": true,
+    "policy_deserialization_enforces_runtime_default_false": true,
+    "production_entrypoint_scan": {
+      "explicit_entry_files": [
+        "data_agent/app.py",
+        "data_agent/agent.py",
+        "data_agent/frontend_api.py"
+      ],
+      "matching_source_files": [],
+      "no_production_entrypoint_reference_found": true,
+      "scan_roots": [
+        "data_agent/api",
+        "data_agent/toolsets",
+        "frontend/src"
+      ],
+      "source_file_count": 242
+    },
+    "production_runtime_reachable": false
+  },
+  "schema": "gwm.geotransport.horizon_assimilation_candidate_disposition.v1",
+  "scientific_boundary": {
+    "cwms_actions_archived": true,
+    "functional_evidence_level": "L2",
+    "geospatial_kernel_stage": 2,
+    "historical_holdout_not_real_time_prospective": true,
+    "historical_usgs_publication_latency_verified": false,
+    "nwm_retrospective": true,
+    "overall_evidence_level": "L1-L2",
+    "trl": "3-4"
+  },
+  "status": "candidate_rejected_after_verified_historical_holdout"
+}

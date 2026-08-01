@@ -1,0 +1,117 @@
+{
+  "claim_boundary": {
+    "full_subnetwork_routing_ready": false,
+    "geospatial_kernel_validated": false,
+    "independent_end_to_end_prediction": false,
+    "modeled_tributary_boundary_executed": true,
+    "predictions_scored": false,
+    "predictive_improvement_validated": false
+  },
+  "data_isolation": {
+    "d3_window_role": "post_failure_public_development_diagnostic",
+    "outcome_columns_accepted_by_executor": false,
+    "outcome_manifest_accepted_by_executor": false,
+    "outcome_values_loaded": false,
+    "usgs_observation_loaded": false
+  },
+  "generated_at": "2026-07-27T04:20:59.731275+00:00",
+  "input_artifacts": {
+    "action_manifest": {
+      "path": "data/geotransport_v0_1/center_hill_v2_d3_inputs/action/acquisition_manifest.json",
+      "sha256": "f9b619afd3e98855f8853b8253df1b7632c23b2d67d53abaf6881c5961a3bbc2",
+      "size_bytes": 1602
+    },
+    "branching_boundary_network": {
+      "path": "data/geotransport_v0_1/center_hill_v2_d4_topology/branching_boundary_network.json",
+      "sha256": "1f2c4a82d29056c4470e98ef711bf3278ed12f6c2bada1617f8d5db9501e2206",
+      "size_bytes": 12333
+    },
+    "d3_predictions": {
+      "path": "data/geotransport_v0_1/center_hill_v2_d3_rollout/predictions.csv",
+      "sha256": "0a309b2c37b3ca4e503dfea0e2e96832bbe6d06b54f913728cdb2d5da784f074",
+      "size_bytes": 144015
+    },
+    "d3_rollout_report": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_v2_d3_rollout_report.json",
+      "sha256": "4e2123d71ff3542081d60bae91bb8f393c8af54927e1ae5d879ff43067d70c66",
+      "size_bytes": 7069
+    },
+    "domain": {
+      "forcing_support": {
+        "path": "data/geotransport_v0_1/center_hill_terminal_forcing_support_nhdplus_v21/forcing_support.json",
+        "sha256": "6cb12bd529055ba9506c5e39d991b1a1b4f6dee5956690144ddf4f1b13e036e8",
+        "size_bytes": 1522
+      },
+      "initial_state_manifest": {
+        "path": "data/geotransport_v0_1/center_hill_initial_state_nwm_v3/acquisition_manifest.json",
+        "sha256": "d2c6ce64131ba0d7499391a4c0e1e778ea34e07a4abfc23c32311efbb9205e65",
+        "size_bytes": 13437
+      },
+      "linear_referenced_path": {
+        "path": "benchmarks/geotransport_v0_1/center_hill_travel_time_prior_report.json",
+        "sha256": "e29fc54273e2f5f650d49599e8c98c6ec98c13c1025041e0f8c2ba41340c425e",
+        "size_bytes": 11456
+      },
+      "route_link_manifest": {
+        "path": "data/geotransport_v0_1/route_link_nwm_v3_center_hill/acquisition_manifest.json",
+        "sha256": "064345dceac9c20bafde491a3362f25e3c23990c30428af2515248561349ce2b",
+        "size_bytes": 17549
+      },
+      "route_link_subset": {
+        "path": "data/geotransport_v0_1/route_link_nwm_v3_center_hill/RouteLink_CONUS_NWMv3_CenterHill.nc",
+        "sha256": "ce0e34c12cf6ce4c6c46088ae3311944f71e977ba220d2ec152e17c2ed612502",
+        "size_bytes": 8588
+      }
+    },
+    "modeled_forcing_manifest": {
+      "path": "data/geotransport_v0_1/center_hill_v2_d3_inputs/nwm/acquisition_manifest.json",
+      "sha256": "92b166efdbe294358f01d1db571abb7f1ec1edd79d09699de16edaf2f5e3358d",
+      "size_bytes": 2328
+    },
+    "topology_report": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_v2_d4_topology_report.json",
+      "sha256": "503d6691019378aae9b6e7e25856b3f8de348791f7a6724676772b2853f3fbdd",
+      "size_bytes": 16071
+    },
+    "tributary_boundary_report": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_v2_d4_tributary_boundary_report.json",
+      "sha256": "4fab9cc285df7dc1f71faadac4ae62dfbb5b2dbcb72d6c0d5fd3939060b0f863",
+      "size_bytes": 10405
+    },
+    "tributary_boundary_values": {
+      "path": "data/geotransport_v0_1/center_hill_v2_d4_tributary_boundary/tributary_streamflow_values.csv",
+      "sha256": "d37cdbaf0bb4aa89803734dd90bc9896534c479137a1dd2edd40e035389a722a",
+      "size_bytes": 208162
+    }
+  },
+  "invariants": {
+    "boundary_conservation_passed": true,
+    "boundary_maximum_mass_residual_to_tolerance_ratio": 0.0007866385467333657,
+    "d3_mainstem_reference_maximum_absolute_difference_m3s": 3.979039320256561e-13,
+    "d3_mainstem_reference_reproduced": true,
+    "mainstem_conservation_passed": true,
+    "mainstem_maximum_mass_residual_to_tolerance_ratio": 0.0005894610212344617
+  },
+  "prediction_artifact": {
+    "path": "data/geotransport_v0_1/center_hill_v2_d4_boundary_rollout/predictions.csv",
+    "sha256": "25d69d97411eee6dfaec533136c151ef23dbe57d5d3222fb6bebdbcd29847e41",
+    "size_bytes": 78469
+  },
+  "registered_execution": {
+    "integration_substep_seconds": 300,
+    "network_mode": "mainstem_with_external_confluence_attachments",
+    "operator": "BranchingManningNetworkTransportOperator",
+    "terminal_forcing_support": "D2 central",
+    "timestep_seconds": 3600,
+    "tributary_boundary_ground_truth": false,
+    "tributary_boundary_possible_nudging": true,
+    "tributary_boundary_variable_role": "modeled_tributary_boundary_flux"
+  },
+  "schema": "gwm.geotransport.center_hill_v2_d4_boundary_rollout.v1",
+  "status": "outcome_free_boundary_rollout_complete",
+  "window": {
+    "end_exclusive": "2022-03-03T01:00:00Z",
+    "hour_count": 672,
+    "start_inclusive": "2022-02-03T01:00:00Z"
+  }
+}

@@ -1,0 +1,520 @@
+{
+  "aggregate_gate": {
+    "all_windows_transfer_gate_passed": false,
+    "geospatial_kernel_temporal_transfer_gate_passed": false
+  },
+  "claim_boundary": {
+    "action_conditioned_closure_admitted_as_default": false,
+    "action_conditioned_mechanism_remains_development_candidate": true,
+    "fixed_parameter_temporal_transfer_passed": false,
+    "geospatial_kernel_validated": false,
+    "mass_conserving_graph_operator_replaced": false,
+    "operational_forecast_validated": false
+  },
+  "data_isolation": {
+    "existing_public_windows_only": true,
+    "new_target_data_acquired": false,
+    "stage45_usgs_requests_executed": false,
+    "untouched_blind_window_consumed": false
+  },
+  "evaluation_role": "previously_public_posthoc_fixed_parameter_temporal_transfer",
+  "gate_policy": {
+    "aggregation": "non_compensatory_all_required_checks_and_windows_must_pass",
+    "all_horizons_must_beat_causal_persistence": [
+      1,
+      3,
+      6,
+      12
+    ],
+    "all_horizons_must_beat_no_future_forcing": [
+      1,
+      3,
+      6,
+      12
+    ],
+    "gate_changed_after_metric_computation": false,
+    "gate_was_prospectively_registered_before_source_outcome_access": false,
+    "horizons_that_must_beat_no_future_action": [
+      6,
+      12
+    ]
+  },
+  "generated_at": "2026-07-30T15:04:08.252888+00:00",
+  "implementation_artifact": {
+    "path": "scripts/evaluate_geospatial_kernel_mvp_temporal_transfer.py",
+    "sha256": "3918de3c001f62f4d33f33b961d6d7d4d9824598529b0894e6d4da6fe8bd35ec",
+    "size_bytes": 33032
+  },
+  "information_boundary": {
+    "action_plan_vintage_verified": false,
+    "archive_oracle_scenario_replay": true,
+    "forcing_forecast_vintage_verified": false,
+    "future_outlet_observations_used_by_kernel": false,
+    "future_realized_action_archive_used": true,
+    "future_retrospective_nwm_forcing_used": true,
+    "latest_outlet_state_is_one_hour_old_at_issue": true,
+    "operational_forecast_claim_permitted": false
+  },
+  "parameter_lock": {
+    "development_parameter_sha256": "2a20128857a8bd0a7290a3946962cd31dbc3144985dd4cc7bf7d3ae40eb9fbc8",
+    "free_parameter_count": 4,
+    "hash_unchanged": true,
+    "loaded_parameter_sha256": "2a20128857a8bd0a7290a3946962cd31dbc3144985dd4cc7bf7d3ae40eb9fbc8",
+    "parameter_refit_performed": false,
+    "parameter_selection_or_revision_from_transfer_outcomes": false
+  },
+  "schema": "gwm.geotransport.geospatial_kernel_mvp_temporal_transfer.v1",
+  "source_artifacts": {
+    "development_report": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_mvp_development_report.json",
+      "sha256": "0b820760688da373d86771916b0f9426f7d18116268f6cc7fe915ff3aeef6002",
+      "size_bytes": 17094
+    },
+    "unchanged_parameters": {
+      "path": "data/geotransport_v0_1/kernel_mvp/parameters.json",
+      "sha256": "2a20128857a8bd0a7290a3946962cd31dbc3144985dd4cc7bf7d3ae40eb9fbc8",
+      "size_bytes": 2052
+    }
+  },
+  "status": "fixed_parameter_temporal_transfer_failed",
+  "windows": {
+    "february_d3": {
+      "diagnostic_hard_gate": {
+        "all_horizons_beat_causal_persistence": false,
+        "all_horizons_beat_no_future_forcing": true,
+        "clipped_candidate_step_count": 0,
+        "no_future_outcome_and_no_refit_gate_passed": true,
+        "per_horizon": {
+          "1": {
+            "action_effect_required_at_horizon": false,
+            "candidate_beats_causal_persistence_rmse": false,
+            "candidate_beats_no_future_action_rmse": false,
+            "candidate_beats_no_future_forcing_rmse": true
+          },
+          "12": {
+            "action_effect_required_at_horizon": true,
+            "candidate_beats_causal_persistence_rmse": true,
+            "candidate_beats_no_future_action_rmse": true,
+            "candidate_beats_no_future_forcing_rmse": true
+          },
+          "3": {
+            "action_effect_required_at_horizon": false,
+            "candidate_beats_causal_persistence_rmse": true,
+            "candidate_beats_no_future_action_rmse": false,
+            "candidate_beats_no_future_forcing_rmse": true
+          },
+          "6": {
+            "action_effect_required_at_horizon": true,
+            "candidate_beats_causal_persistence_rmse": true,
+            "candidate_beats_no_future_action_rmse": true,
+            "candidate_beats_no_future_forcing_rmse": true
+          }
+        },
+        "state_writeback_gate_passed": true,
+        "supported_horizons_beat_no_future_action": true,
+        "unchanged_parameter_hash_gate_passed": true,
+        "window_transfer_gate_passed": false
+      },
+      "metrics_by_horizon": {
+        "1": {
+          "causal_persistence": {
+            "bias_m3s": -1.5341845724849394,
+            "mae_m3s": 21.952166215466868,
+            "nse": 0.9696262522581157,
+            "rmse_m3s": 29.221007862547157,
+            "sample_count": 664
+          },
+          "kernel_mvp": {
+            "bias_m3s": -8.353540074672546,
+            "mae_m3s": 23.36415066038456,
+            "nse": 0.9696117569728354,
+            "rmse_m3s": 29.227979612066186,
+            "sample_count": 664
+          },
+          "no_future_action": {
+            "bias_m3s": -8.353540074672546,
+            "mae_m3s": 23.36415066038456,
+            "nse": 0.9696117569728354,
+            "rmse_m3s": 29.227979612066186,
+            "sample_count": 664
+          },
+          "no_future_forcing": {
+            "bias_m3s": -9.901426295846205,
+            "mae_m3s": 24.406388370997863,
+            "nse": 0.9658548832987969,
+            "rmse_m3s": 30.982060733022514,
+            "sample_count": 664
+          }
+        },
+        "12": {
+          "causal_persistence": {
+            "bias_m3s": -10.104452577641654,
+            "mae_m3s": 71.02452710385911,
+            "nse": 0.6032188814470656,
+            "rmse_m3s": 104.37291960500343,
+            "sample_count": 653
+          },
+          "kernel_mvp": {
+            "bias_m3s": -40.53992456806823,
+            "mae_m3s": 62.642960445977394,
+            "nse": 0.7256475901831829,
+            "rmse_m3s": 86.78940739937693,
+            "sample_count": 653
+          },
+          "no_future_action": {
+            "bias_m3s": -79.27386221506598,
+            "mae_m3s": 92.8662736132486,
+            "nse": 0.48514172676047684,
+            "rmse_m3s": 118.89297142861808,
+            "sample_count": 653
+          },
+          "no_future_forcing": {
+            "bias_m3s": -54.34398809828349,
+            "mae_m3s": 74.80028334439992,
+            "nse": 0.5476460598231339,
+            "rmse_m3s": 111.44267348063961,
+            "sample_count": 653
+          }
+        },
+        "3": {
+          "causal_persistence": {
+            "bias_m3s": -3.1051004951963748,
+            "mae_m3s": 39.966576931752265,
+            "nse": 0.9002037019565554,
+            "rmse_m3s": 52.839930388631245,
+            "sample_count": 662
+          },
+          "kernel_mvp": {
+            "bias_m3s": -15.82603425747,
+            "mae_m3s": 40.29656452964493,
+            "nse": 0.9103878453332658,
+            "rmse_m3s": 50.071255483224675,
+            "sample_count": 662
+          },
+          "no_future_action": {
+            "bias_m3s": -15.82603425747,
+            "mae_m3s": 40.29656452964493,
+            "nse": 0.9103878453332658,
+            "rmse_m3s": 50.071255483224675,
+            "sample_count": 662
+          },
+          "no_future_forcing": {
+            "bias_m3s": -20.215323656002223,
+            "mae_m3s": 43.64361801611657,
+            "nse": 0.88776591248506,
+            "rmse_m3s": 56.036036709346256,
+            "sample_count": 662
+          }
+        },
+        "6": {
+          "causal_persistence": {
+            "bias_m3s": -5.505993824157815,
+            "mae_m3s": 56.14914853738998,
+            "nse": 0.7920783438463327,
+            "rmse_m3s": 75.97662128074174,
+            "sample_count": 659
+          },
+          "kernel_mvp": {
+            "bias_m3s": -25.578577449956455,
+            "mae_m3s": 53.30981890933201,
+            "nse": 0.8353240462739404,
+            "rmse_m3s": 67.61533547450811,
+            "sample_count": 659
+          },
+          "no_future_action": {
+            "bias_m3s": -28.078238095532825,
+            "mae_m3s": 55.297074455514725,
+            "nse": 0.8264828791268599,
+            "rmse_m3s": 69.40668144943585,
+            "sample_count": 659
+          },
+          "no_future_forcing": {
+            "bias_m3s": -33.6638774341789,
+            "mae_m3s": 59.979900458771525,
+            "nse": 0.7661412972685848,
+            "rmse_m3s": 80.5762184612211,
+            "sample_count": 659
+          }
+        }
+      },
+      "predictions": {
+        "path": "data/geotransport_v0_1/kernel_mvp/temporal_transfer/february_d3_predictions.csv",
+        "sha256": "682f4802d8fb5ef447b4febb481c19bb726a8bb8652af42d921f33c15c9e78d9",
+        "size_bytes": 797680
+      },
+      "role": "previously_scored_independent_d3_window_posthoc_for_mvp",
+      "scoring": {
+        "common_complete_case_count_by_horizon": {
+          "1": 664,
+          "12": 653,
+          "3": 662,
+          "6": 659
+        },
+        "comparison_uses_identical_rows_within_each_horizon": true,
+        "future_outlet_values_used_for_prediction": false,
+        "missing_values_imputed": false
+      },
+      "source_artifacts": {
+        "action_manifest": {
+          "path": "data/geotransport_v0_1/center_hill_v2_d3_inputs/action/acquisition_manifest.json",
+          "sha256": "f9b619afd3e98855f8853b8253df1b7632c23b2d67d53abaf6881c5961a3bbc2",
+          "size_bytes": 1602
+        },
+        "action_values": {
+          "path": "data/geotransport_v0_1/center_hill_v2_d3_inputs/action/action_values.csv",
+          "sha256": "78122fcd81c03e755dd374194892962a502adb8e4988646d98e122a19c2f2180",
+          "size_bytes": 46649
+        },
+        "frozen_protocol": {
+          "path": "benchmarks/geotransport_v0_1/center_hill_v2_d3_protocol.json",
+          "sha256": "d3675aaadd1274949748da754bc843f11aa7e31bed8e7c4cf74c28fe1e689f8c",
+          "size_bytes": 8961
+        },
+        "nwm_manifest": {
+          "path": "data/geotransport_v0_1/center_hill_v2_d3_inputs/nwm/acquisition_manifest.json",
+          "sha256": "92b166efdbe294358f01d1db571abb7f1ec1edd79d09699de16edaf2f5e3358d",
+          "size_bytes": 2328
+        },
+        "outcome_manifest": {
+          "path": "data/geotransport_v0_1/center_hill_v2_d3_inputs/outcome/acquisition_manifest.json",
+          "sha256": "00b9f3d8da9f3920b7b15782ad54a6e564fed0ab00ae0db7f639829c33e1a580",
+          "size_bytes": 2783
+        },
+        "outcome_values": {
+          "path": "data/geotransport_v0_1/center_hill_v2_d3_inputs/outcome/outcome_values.csv",
+          "sha256": "3babe22584fde65dc3b132968d472f279dd4c16fe1fb5e93af2c9dc3cc36ada9",
+          "size_bytes": 38937
+        },
+        "prior_observation": {
+          "discharge_m3s": 109.58619631104,
+          "support_end_utc": "2022-02-03T01:00:00Z",
+          "used_as_scored_future_input": false
+        },
+        "q_lateral_values": {
+          "path": "data/geotransport_v0_1/center_hill_v2_d3_inputs/nwm/q_lateral_values.csv",
+          "sha256": "fe9214694386f0933f6f6baebc31ade687d07aa46c0d54444a17072a08bb5b5e",
+          "size_bytes": 893662
+        }
+      },
+      "window": {
+        "first_issue_index": 7,
+        "first_issue_time_utc": "2022-02-03T09:00:00Z",
+        "horizons_hours": [
+          1,
+          3,
+          6,
+          12
+        ],
+        "input_end_utc": "2022-03-03T01:00:00Z",
+        "input_hour_count": 672,
+        "input_start_utc": "2022-02-03T02:00:00Z",
+        "last_scored_target_utc": "2022-03-03T01:00:00Z",
+        "terminal_input_reserved_as_next_window_boundary": false
+      }
+    },
+    "january_temporal_holdout": {
+      "diagnostic_hard_gate": {
+        "all_horizons_beat_causal_persistence": false,
+        "all_horizons_beat_no_future_forcing": true,
+        "clipped_candidate_step_count": 0,
+        "no_future_outcome_and_no_refit_gate_passed": true,
+        "per_horizon": {
+          "1": {
+            "action_effect_required_at_horizon": false,
+            "candidate_beats_causal_persistence_rmse": false,
+            "candidate_beats_no_future_action_rmse": false,
+            "candidate_beats_no_future_forcing_rmse": true
+          },
+          "12": {
+            "action_effect_required_at_horizon": true,
+            "candidate_beats_causal_persistence_rmse": false,
+            "candidate_beats_no_future_action_rmse": true,
+            "candidate_beats_no_future_forcing_rmse": true
+          },
+          "3": {
+            "action_effect_required_at_horizon": false,
+            "candidate_beats_causal_persistence_rmse": false,
+            "candidate_beats_no_future_action_rmse": false,
+            "candidate_beats_no_future_forcing_rmse": true
+          },
+          "6": {
+            "action_effect_required_at_horizon": true,
+            "candidate_beats_causal_persistence_rmse": false,
+            "candidate_beats_no_future_action_rmse": true,
+            "candidate_beats_no_future_forcing_rmse": true
+          }
+        },
+        "state_writeback_gate_passed": true,
+        "supported_horizons_beat_no_future_action": true,
+        "unchanged_parameter_hash_gate_passed": true,
+        "window_transfer_gate_passed": false
+      },
+      "metrics_by_horizon": {
+        "1": {
+          "causal_persistence": {
+            "bias_m3s": 1.08275272974502,
+            "mae_m3s": 5.730212870625498,
+            "nse": 0.9880329323975965,
+            "rmse_m3s": 12.036177746324755,
+            "sample_count": 502
+          },
+          "kernel_mvp": {
+            "bias_m3s": -9.11668333049663,
+            "mae_m3s": 10.933985681221536,
+            "nse": 0.9799775485878707,
+            "rmse_m3s": 15.568735652984346,
+            "sample_count": 502
+          },
+          "no_future_action": {
+            "bias_m3s": -9.11668333049663,
+            "mae_m3s": 10.933985681221536,
+            "nse": 0.9799775485878707,
+            "rmse_m3s": 15.568735652984346,
+            "sample_count": 502
+          },
+          "no_future_forcing": {
+            "bias_m3s": -10.412771397404528,
+            "mae_m3s": 12.087285310889358,
+            "nse": 0.9761159620698909,
+            "rmse_m3s": 17.00390212730713,
+            "sample_count": 502
+          }
+        },
+        "12": {
+          "causal_persistence": {
+            "bias_m3s": 5.72421305190835,
+            "mae_m3s": 29.847167415480648,
+            "nse": 0.7442992394174354,
+            "rmse_m3s": 56.20006675533911,
+            "sample_count": 491
+          },
+          "kernel_mvp": {
+            "bias_m3s": -45.27783081714585,
+            "mae_m3s": 48.6904105345324,
+            "nse": 0.6657238695888001,
+            "rmse_m3s": 64.25745260508246,
+            "sample_count": 491
+          },
+          "no_future_action": {
+            "bias_m3s": -102.26888569513169,
+            "mae_m3s": 102.87865080820544,
+            "nse": -0.07182766100861904,
+            "rmse_m3s": 115.06236649100772,
+            "sample_count": 491
+          },
+          "no_future_forcing": {
+            "bias_m3s": -56.619476766203476,
+            "mae_m3s": 59.13782723478279,
+            "nse": 0.46216493754975996,
+            "rmse_m3s": 81.50708795250334,
+            "sample_count": 491
+          }
+        },
+        "3": {
+          "causal_persistence": {
+            "bias_m3s": 1.9626406372879999,
+            "mae_m3s": 10.919259214363999,
+            "nse": 0.9586919909478264,
+            "rmse_m3s": 22.40241732065982,
+            "sample_count": 500
+          },
+          "kernel_mvp": {
+            "bias_m3s": -17.443510370134668,
+            "mae_m3s": 20.214224522019364,
+            "nse": 0.9344089400875267,
+            "rmse_m3s": 28.229297838875922,
+            "sample_count": 500
+          },
+          "no_future_action": {
+            "bias_m3s": -17.443510370134668,
+            "mae_m3s": 20.214224522019364,
+            "nse": 0.9344089400875267,
+            "rmse_m3s": 28.229297838875922,
+            "sample_count": 500
+          },
+          "no_future_forcing": {
+            "bias_m3s": -21.094717157155802,
+            "mae_m3s": 23.552682539927606,
+            "nse": 0.9103705994692998,
+            "rmse_m3s": 32.99916853387527,
+            "sample_count": 500
+          }
+        },
+        "6": {
+          "causal_persistence": {
+            "bias_m3s": 3.0721214652696176,
+            "mae_m3s": 17.562142441720322,
+            "nse": 0.9001924920220084,
+            "rmse_m3s": 34.917742685597545,
+            "sample_count": 497
+          },
+          "kernel_mvp": {
+            "bias_m3s": -28.4534722493576,
+            "mae_m3s": 31.589876116083193,
+            "nse": 0.8494002608285096,
+            "rmse_m3s": 42.8920362191464,
+            "sample_count": 497
+          },
+          "no_future_action": {
+            "bias_m3s": -32.10629358690324,
+            "mae_m3s": 35.02494489353822,
+            "nse": 0.8289877472629158,
+            "rmse_m3s": 45.706521254319945,
+            "sample_count": 497
+          },
+          "no_future_forcing": {
+            "bias_m3s": -35.13756050526726,
+            "mae_m3s": 37.76732282624579,
+            "nse": 0.7742471280796686,
+            "rmse_m3s": 52.514737160049556,
+            "sample_count": 497
+          }
+        }
+      },
+      "predictions": {
+        "path": "data/geotransport_v0_1/kernel_mvp/temporal_transfer/january_temporal_holdout_predictions.csv",
+        "sha256": "7e0d41e082dde1a2c6cc5639d5a36f26260276aae67ef3c36b1f7d96a8d31c91",
+        "size_bytes": 634744
+      },
+      "role": "previously_scored_external_temporal_holdout_posthoc_for_mvp",
+      "scoring": {
+        "common_complete_case_count_by_horizon": {
+          "1": 502,
+          "12": 491,
+          "3": 500,
+          "6": 497
+        },
+        "comparison_uses_identical_rows_within_each_horizon": true,
+        "future_outlet_values_used_for_prediction": false,
+        "missing_values_imputed": false
+      },
+      "source_artifacts": {
+        "panel": {
+          "path": "data/geotransport_v0_1/center_hill_evaluation/panel/center_hill_temporal_holdout.csv",
+          "sha256": "02148a88cfa44499caf94e1d995a899692f5a3ad0c7ac4f0a8b76ba66c445f8f",
+          "size_bytes": 149396
+        },
+        "panel_report": {
+          "path": "benchmarks/geotransport_v0_1/center_hill_temporal_holdout_panel_report.json",
+          "sha256": "65eccd5ae38450b92e17fa4d5ee2ce9477315a4da0dc1c8038d57a0c308bc5b7",
+          "size_bytes": 6431
+        }
+      },
+      "window": {
+        "first_issue_index": 168,
+        "first_issue_time_utc": "2022-01-13T02:00:00Z",
+        "horizons_hours": [
+          1,
+          3,
+          6,
+          12
+        ],
+        "input_end_utc": "2022-02-03T01:00:00Z",
+        "input_hour_count": 672,
+        "input_start_utc": "2022-01-06T02:00:00Z",
+        "last_scored_target_utc": "2022-02-03T00:00:00Z",
+        "terminal_input_reserved_as_next_window_boundary": true
+      }
+    }
+  }
+}

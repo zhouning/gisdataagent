@@ -1,0 +1,729 @@
+{
+  "claim_boundary": {
+    "candidate_admitted": false,
+    "cross_system_diagnostic_gate_passed": false,
+    "cross_system_failure_replicated": true,
+    "cross_system_posthoc_diagnostic_executed": true,
+    "geospatial_kernel_validated": false,
+    "multi_system_generalization_validated": false,
+    "operational_forecast_validated": false,
+    "runtime_default_enabled": false,
+    "source_candidate_artifacts_unchanged": true,
+    "transferred_parameter_identity_is_separate_diagnostic_artifact": true
+  },
+  "diagnostic_gate": {
+    "all_required_accuracy_comparisons_passed": false,
+    "clipped_candidate_step_count": 2255,
+    "cross_system_diagnostic_gate_passed": false,
+    "no_future_outcome_gate_passed": true,
+    "per_horizon": {
+      "1": {
+        "action_effect_required_at_horizon": false,
+        "candidate_beats_causal_persistence_rmse": false,
+        "candidate_beats_no_future_action_rmse": false,
+        "candidate_beats_no_future_forcing_rmse": true
+      },
+      "12": {
+        "action_effect_required_at_horizon": true,
+        "candidate_beats_causal_persistence_rmse": true,
+        "candidate_beats_no_future_action_rmse": true,
+        "candidate_beats_no_future_forcing_rmse": false
+      },
+      "3": {
+        "action_effect_required_at_horizon": false,
+        "candidate_beats_causal_persistence_rmse": false,
+        "candidate_beats_no_future_action_rmse": false,
+        "candidate_beats_no_future_forcing_rmse": true
+      },
+      "6": {
+        "action_effect_required_at_horizon": true,
+        "candidate_beats_causal_persistence_rmse": false,
+        "candidate_beats_no_future_action_rmse": false,
+        "candidate_beats_no_future_forcing_rmse": false
+      }
+    },
+    "state_writeback_gate_passed": true,
+    "supported_horizons_beat_no_future_action": false
+  },
+  "diagnostic_interpretation": {
+    "candidate_beats_persistence_horizons_hours": [
+      12
+    ],
+    "candidate_clipping_observed": true,
+    "failure_replicated_on_second_historical_window": true,
+    "reason": "posthoc_target_outcomes_were_exposed_before_source_candidate_freeze",
+    "replication_candidate_beats_persistence_horizons_hours": [
+      12
+    ],
+    "result_may_motivate_new_candidate_identity": true,
+    "result_may_trigger_refit_on_these_windows": false,
+    "zero_refit_transfer_supported": false
+  },
+  "execution": {
+    "candidate_step_count": 7429,
+    "clipped_candidate_step_count": 2255,
+    "clipped_candidate_step_fraction": 0.30354018037420916,
+    "forecast_issue_count": 578,
+    "prediction_row_count": 2294,
+    "skipped_missing_state_issue_count": 2,
+    "skipped_nonphysical_state_issue_count": 83
+  },
+  "generated_at": "2026-07-31T02:43:19.891020+00:00",
+  "implementation_artifacts": {
+    "evaluator": {
+      "path": "scripts/evaluate_geospatial_kernel_action_innovation_cross_system.py",
+      "sha256": "d2cb879360b56033d9d896ea79ddb404445e802f0d5e34b8ed188d85d08adf3a",
+      "size_bytes": 38728
+    },
+    "frozen_core_operator": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/action_innovation_transition.py",
+      "sha256": "f44b1e5867c2b2f9c0a46b0e7ea6ae8878ec2e7acaa7c23c07308cb78fad0a2a",
+      "size_bytes": 22501
+    }
+  },
+  "information_boundary": {
+    "fresh_prospective_window_consumed": false,
+    "future_outcomes_used_inside_each_rollout": false,
+    "historical_action_archive_used": true,
+    "historical_window_count": 2,
+    "latest_observation_latency_assumption_hours": 1,
+    "operational_issue_time_vintages_verified": false,
+    "retrospective_nwm_forcing_used": true,
+    "target_outcomes_were_exposed_before_candidate_freeze": true
+  },
+  "metrics_by_horizon": {
+    "1": {
+      "candidate": {
+        "bias_m3s": 0.8244216224891604,
+        "mae_m3s": 19.51265921315045,
+        "nse": 0.646769791094052,
+        "rmse_m3s": 37.452141837233604,
+        "sample_count": 576
+      },
+      "causal_persistence": {
+        "bias_m3s": 0.9850152740197393,
+        "mae_m3s": 17.557804685987378,
+        "nse": 0.6745883528675837,
+        "rmse_m3s": 35.94713535431853,
+        "sample_count": 576
+      },
+      "no_future_action": {
+        "bias_m3s": 0.8244216224891604,
+        "mae_m3s": 19.51265921315045,
+        "nse": 0.646769791094052,
+        "rmse_m3s": 37.452141837233604,
+        "sample_count": 576
+      },
+      "no_future_forcing": {
+        "bias_m3s": 0.5643211856606698,
+        "mae_m3s": 19.53131614158449,
+        "nse": 0.6463515867677845,
+        "rmse_m3s": 37.474305873848365,
+        "sample_count": 576
+      }
+    },
+    "12": {
+      "candidate": {
+        "bias_m3s": -2.886725584936859,
+        "mae_m3s": 40.61404517678235,
+        "nse": 0.07322617389178554,
+        "rmse_m3s": 61.19132655293238,
+        "sample_count": 565
+      },
+      "causal_persistence": {
+        "bias_m3s": -0.5589244334863722,
+        "mae_m3s": 42.71855946488982,
+        "nse": -0.12351479530998666,
+        "rmse_m3s": 67.37400838124933,
+        "sample_count": 565
+      },
+      "no_future_action": {
+        "bias_m3s": -19.322110676753965,
+        "mae_m3s": 46.88372139235717,
+        "nse": -0.0848288033762643,
+        "rmse_m3s": 66.20390276005548,
+        "sample_count": 565
+      },
+      "no_future_forcing": {
+        "bias_m3s": -5.805682925437328,
+        "mae_m3s": 41.03279503676823,
+        "nse": 0.07707828445232778,
+        "rmse_m3s": 61.064024078748595,
+        "sample_count": 565
+      }
+    },
+    "3": {
+      "candidate": {
+        "bias_m3s": 1.2387620160981825,
+        "mae_m3s": 31.010004292860184,
+        "nse": 0.2591769245157286,
+        "rmse_m3s": 54.60310100466059,
+        "sample_count": 574
+      },
+      "causal_persistence": {
+        "bias_m3s": 1.1211918509814984,
+        "mae_m3s": 28.454524063050943,
+        "nse": 0.3442233177442461,
+        "rmse_m3s": 51.3733684045948,
+        "sample_count": 574
+      },
+      "no_future_action": {
+        "bias_m3s": 1.2387620160981825,
+        "mae_m3s": 31.010004292860184,
+        "nse": 0.2591769245157286,
+        "rmse_m3s": 54.60310100466059,
+        "sample_count": 574
+      },
+      "no_future_forcing": {
+        "bias_m3s": 0.5230189612592102,
+        "mae_m3s": 31.144443646857027,
+        "nse": 0.25891420132244347,
+        "rmse_m3s": 54.61278228342902,
+        "sample_count": 574
+      }
+    },
+    "6": {
+      "candidate": {
+        "bias_m3s": -0.4035674295228307,
+        "mae_m3s": 37.49598369752867,
+        "nse": 0.06797248145075874,
+        "rmse_m3s": 61.28225774305266,
+        "sample_count": 571
+      },
+      "causal_persistence": {
+        "bias_m3s": 0.036922613944693275,
+        "mae_m3s": 37.42427729771886,
+        "nse": 0.08041216548826158,
+        "rmse_m3s": 60.871919679225456,
+        "sample_count": 571
+      },
+      "no_future_action": {
+        "bias_m3s": -5.9468712123885705,
+        "mae_m3s": 38.42265344909203,
+        "nse": 0.09086268154111732,
+        "rmse_m3s": 60.5250465310171,
+        "sample_count": 571
+      },
+      "no_future_forcing": {
+        "bias_m3s": -1.828738594666509,
+        "mae_m3s": 37.884569822388336,
+        "nse": 0.0708027439279032,
+        "rmse_m3s": 61.1891399191244,
+        "sample_count": 571
+      }
+    }
+  },
+  "outputs": {
+    "predictions": {
+      "path": "data/geotransport_v0_1/kernel_innovation_cross_system_posthoc/j_percy_priest_predictions.csv",
+      "sha256": "e0ad26184c5fcdd08368e3ee5beeae206aa221d5e7431982361c8fc5698d8f16",
+      "size_bytes": 634452
+    },
+    "replication_predictions": {
+      "path": "data/geotransport_v0_1/kernel_innovation_cross_system_posthoc/j_percy_priest_replication_predictions.csv",
+      "sha256": "e57b7eee796b71a469728dad6aee81f0e6327af6197e61ee01100fa38f7b0ecf",
+      "size_bytes": 584222
+    },
+    "transferred_parameters": {
+      "path": "data/geotransport_v0_1/kernel_innovation_cross_system_posthoc/j_percy_priest_transferred_parameters.json",
+      "sha256": "09f15be7bbdbcce24b68bd9ce57a9aaf5cfa2b7ea0ea4ced7ebb30e7bee5840b",
+      "size_bytes": 2078
+    }
+  },
+  "replication_window": {
+    "diagnostic_gate": {
+      "all_required_accuracy_comparisons_passed": false,
+      "clipped_candidate_step_count": 2373,
+      "cross_system_diagnostic_gate_passed": false,
+      "no_future_outcome_gate_passed": true,
+      "per_horizon": {
+        "1": {
+          "action_effect_required_at_horizon": false,
+          "candidate_beats_causal_persistence_rmse": false,
+          "candidate_beats_no_future_action_rmse": false,
+          "candidate_beats_no_future_forcing_rmse": true
+        },
+        "12": {
+          "action_effect_required_at_horizon": true,
+          "candidate_beats_causal_persistence_rmse": true,
+          "candidate_beats_no_future_action_rmse": true,
+          "candidate_beats_no_future_forcing_rmse": false
+        },
+        "3": {
+          "action_effect_required_at_horizon": false,
+          "candidate_beats_causal_persistence_rmse": false,
+          "candidate_beats_no_future_action_rmse": false,
+          "candidate_beats_no_future_forcing_rmse": false
+        },
+        "6": {
+          "action_effect_required_at_horizon": true,
+          "candidate_beats_causal_persistence_rmse": false,
+          "candidate_beats_no_future_action_rmse": false,
+          "candidate_beats_no_future_forcing_rmse": false
+        }
+      },
+      "state_writeback_gate_passed": true,
+      "supported_horizons_beat_no_future_action": false
+    },
+    "execution": {
+      "candidate_step_count": 7000,
+      "clipped_candidate_step_count": 2373,
+      "clipped_candidate_step_fraction": 0.339,
+      "forecast_issue_count": 545,
+      "prediction_row_count": 2162,
+      "skipped_missing_state_issue_count": 35,
+      "skipped_nonphysical_state_issue_count": 83
+    },
+    "metrics_by_horizon": {
+      "1": {
+        "candidate": {
+          "bias_m3s": 3.510753630652714,
+          "mae_m3s": 32.76429835489835,
+          "nse": 0.29156491137951124,
+          "rmse_m3s": 52.6194597436948,
+          "sample_count": 538
+        },
+        "causal_persistence": {
+          "bias_m3s": 1.7625990906522864,
+          "mae_m3s": 29.34339478198046,
+          "nse": 0.3971668945355078,
+          "rmse_m3s": 48.53945548367039,
+          "sample_count": 538
+        },
+        "no_future_action": {
+          "bias_m3s": 3.510753630652714,
+          "mae_m3s": 32.76429835489835,
+          "nse": 0.29156491137951124,
+          "rmse_m3s": 52.6194597436948,
+          "sample_count": 538
+        },
+        "no_future_forcing": {
+          "bias_m3s": 3.3699887105556887,
+          "mae_m3s": 32.76274763302891,
+          "nse": 0.29129983805380555,
+          "rmse_m3s": 52.62930306663007,
+          "sample_count": 538
+        }
+      },
+      "12": {
+        "candidate": {
+          "bias_m3s": 2.804485041112423,
+          "mae_m3s": 53.11209883385893,
+          "nse": -0.4065481843886649,
+          "rmse_m3s": 74.03080655632233,
+          "sample_count": 507
+        },
+        "causal_persistence": {
+          "bias_m3s": 4.724635275249882,
+          "mae_m3s": 56.134873081747436,
+          "nse": -0.6367893275813588,
+          "rmse_m3s": 79.86041561972385,
+          "sample_count": 507
+        },
+        "no_future_action": {
+          "bias_m3s": -11.570326244113101,
+          "mae_m3s": 55.46075452357803,
+          "nse": -0.4908057772172234,
+          "rmse_m3s": 76.21592192075427,
+          "sample_count": 507
+        },
+        "no_future_forcing": {
+          "bias_m3s": 1.4564569796238034,
+          "mae_m3s": 53.09761128333338,
+          "nse": -0.4060846545151715,
+          "rmse_m3s": 74.01860707449025,
+          "sample_count": 507
+        }
+      },
+      "3": {
+        "candidate": {
+          "bias_m3s": 6.796970834056319,
+          "mae_m3s": 54.937161450707436,
+          "nse": -0.6774435253700282,
+          "rmse_m3s": 80.77565504097973,
+          "sample_count": 532
+        },
+        "causal_persistence": {
+          "bias_m3s": 3.6325557400645683,
+          "mae_m3s": 50.17483564636926,
+          "nse": -0.3621846197365779,
+          "rmse_m3s": 72.79046955742237,
+          "sample_count": 532
+        },
+        "no_future_action": {
+          "bias_m3s": 6.796970834056319,
+          "mae_m3s": 54.937161450707436,
+          "nse": -0.6774435253700282,
+          "rmse_m3s": 80.77565504097973,
+          "sample_count": 532
+        },
+        "no_future_forcing": {
+          "bias_m3s": 6.451075869561815,
+          "mae_m3s": 55.00155637671958,
+          "nse": -0.6771570890951082,
+          "rmse_m3s": 80.76875821698039,
+          "sample_count": 532
+        }
+      },
+      "6": {
+        "candidate": {
+          "bias_m3s": 6.174948893526848,
+          "mae_m3s": 65.62291980112714,
+          "nse": -1.0965792746441436,
+          "rmse_m3s": 90.06086410164593,
+          "sample_count": 524
+        },
+        "causal_persistence": {
+          "bias_m3s": 4.189399906284065,
+          "mae_m3s": 63.47169339413525,
+          "nse": -0.895321056756355,
+          "rmse_m3s": 85.6291945916844,
+          "sample_count": 524
+        },
+        "no_future_action": {
+          "bias_m3s": 1.009537489995725,
+          "mae_m3s": 65.37678559775112,
+          "nse": -1.0218583361119467,
+          "rmse_m3s": 88.44144442493838,
+          "sample_count": 524
+        },
+        "no_future_forcing": {
+          "bias_m3s": 5.550295584202548,
+          "mae_m3s": 65.68216564550991,
+          "nse": -1.0954493055623638,
+          "rmse_m3s": 90.03659129957487,
+          "sample_count": 524
+        }
+      }
+    },
+    "rmse_deltas_by_horizon": {
+      "1": {
+        "candidate_minus_causal_persistence_rmse_m3s": 4.08000426002441,
+        "candidate_minus_no_future_action_rmse_m3s": 0.0,
+        "candidate_minus_no_future_forcing_rmse_m3s": -0.009843322935275012
+      },
+      "12": {
+        "candidate_minus_causal_persistence_rmse_m3s": -5.82960906340152,
+        "candidate_minus_no_future_action_rmse_m3s": -2.1851153644319368,
+        "candidate_minus_no_future_forcing_rmse_m3s": 0.012199481832084302
+      },
+      "3": {
+        "candidate_minus_causal_persistence_rmse_m3s": 7.985185483557359,
+        "candidate_minus_no_future_action_rmse_m3s": 0.0,
+        "candidate_minus_no_future_forcing_rmse_m3s": 0.006896823999340995
+      },
+      "6": {
+        "candidate_minus_causal_persistence_rmse_m3s": 4.431669509961537,
+        "candidate_minus_no_future_action_rmse_m3s": 1.619419676707551,
+        "candidate_minus_no_future_forcing_rmse_m3s": 0.02427280207106719
+      }
+    },
+    "scoring": {
+      "common_complete_case_count_by_horizon": {
+        "1": 538,
+        "12": 507,
+        "3": 532,
+        "6": 524
+      },
+      "comparison_uses_identical_rows_within_each_horizon": true,
+      "missing_values_imputed": false,
+      "omitted_target_times_by_horizon": {
+        "1": [
+          "2022-11-19T18:00:00Z",
+          "2022-11-27T06:00:00Z",
+          "2022-11-27T18:00:00Z",
+          "2022-11-28T19:00:00Z",
+          "2022-11-29T19:00:00Z",
+          "2022-11-30T00:00:00Z",
+          "2022-12-01T11:00:00Z"
+        ],
+        "12": [
+          "2022-11-19T14:00:00Z",
+          "2022-11-19T15:00:00Z",
+          "2022-11-19T17:00:00Z",
+          "2022-11-19T18:00:00Z",
+          "2022-11-19T19:00:00Z",
+          "2022-11-19T20:00:00Z",
+          "2022-11-19T21:00:00Z",
+          "2022-11-19T22:00:00Z",
+          "2022-11-19T23:00:00Z",
+          "2022-11-20T18:00:00Z",
+          "2022-11-20T20:00:00Z",
+          "2022-11-20T23:00:00Z",
+          "2022-11-27T06:00:00Z",
+          "2022-11-27T15:00:00Z",
+          "2022-11-27T17:00:00Z",
+          "2022-11-27T18:00:00Z",
+          "2022-11-28T19:00:00Z",
+          "2022-11-29T19:00:00Z",
+          "2022-11-29T21:00:00Z",
+          "2022-11-29T23:00:00Z",
+          "2022-11-30T00:00:00Z",
+          "2022-11-30T01:00:00Z",
+          "2022-11-30T02:00:00Z",
+          "2022-11-30T03:00:00Z",
+          "2022-11-30T04:00:00Z",
+          "2022-11-30T06:00:00Z",
+          "2022-12-01T11:00:00Z"
+        ],
+        "3": [
+          "2022-11-19T14:00:00Z",
+          "2022-11-19T15:00:00Z",
+          "2022-11-19T20:00:00Z",
+          "2022-11-24T02:00:00Z",
+          "2022-11-27T06:00:00Z",
+          "2022-11-28T19:00:00Z",
+          "2022-11-29T19:00:00Z",
+          "2022-11-29T21:00:00Z",
+          "2022-11-30T00:00:00Z",
+          "2022-11-30T02:00:00Z",
+          "2022-12-01T11:00:00Z"
+        ],
+        "6": [
+          "2022-11-19T14:00:00Z",
+          "2022-11-19T15:00:00Z",
+          "2022-11-19T17:00:00Z",
+          "2022-11-19T18:00:00Z",
+          "2022-11-19T23:00:00Z",
+          "2022-11-20T17:00:00Z",
+          "2022-11-24T02:00:00Z",
+          "2022-11-27T06:00:00Z",
+          "2022-11-27T15:00:00Z",
+          "2022-11-29T19:00:00Z",
+          "2022-11-29T21:00:00Z",
+          "2022-11-29T23:00:00Z",
+          "2022-11-30T00:00:00Z",
+          "2022-11-30T01:00:00Z",
+          "2022-11-30T03:00:00Z",
+          "2022-12-01T11:00:00Z"
+        ]
+      }
+    },
+    "window": {
+      "first_issue_time_utc": "2022-11-10T10:00:00Z",
+      "horizons_hours": [
+        1,
+        3,
+        6,
+        12
+      ],
+      "input_end_utc": "2022-12-08T01:00:00Z",
+      "input_hour_count": 672,
+      "input_start_utc": "2022-11-10T02:00:00Z"
+    }
+  },
+  "rmse_deltas_by_horizon": {
+    "1": {
+      "candidate_minus_causal_persistence_rmse_m3s": 1.5050064829150713,
+      "candidate_minus_no_future_action_rmse_m3s": 0.0,
+      "candidate_minus_no_future_forcing_rmse_m3s": -0.022164036614761073
+    },
+    "12": {
+      "candidate_minus_causal_persistence_rmse_m3s": -6.1826818283169445,
+      "candidate_minus_no_future_action_rmse_m3s": -5.012576207123104,
+      "candidate_minus_no_future_forcing_rmse_m3s": 0.12730247418378582
+    },
+    "3": {
+      "candidate_minus_causal_persistence_rmse_m3s": 3.2297326000657876,
+      "candidate_minus_no_future_action_rmse_m3s": 0.0,
+      "candidate_minus_no_future_forcing_rmse_m3s": -0.009681278768432833
+    },
+    "6": {
+      "candidate_minus_causal_persistence_rmse_m3s": 0.4103380638272043,
+      "candidate_minus_no_future_action_rmse_m3s": 0.7572112120355641,
+      "candidate_minus_no_future_forcing_rmse_m3s": 0.09311782392826018
+    }
+  },
+  "schema": "gwm.geotransport.action_innovation_cross_system_posthoc.v1",
+  "scoring": {
+    "common_complete_case_count_by_horizon": {
+      "1": 576,
+      "12": 565,
+      "3": 574,
+      "6": 571
+    },
+    "comparison_uses_identical_rows_within_each_horizon": true,
+    "missing_values_imputed": false,
+    "omitted_target_times_by_horizon": {
+      "1": [
+        "2022-04-19T22:00:00Z",
+        "2022-04-20T04:00:00Z"
+      ],
+      "12": [
+        "2022-04-19T22:00:00Z",
+        "2022-04-20T04:00:00Z"
+      ],
+      "3": [
+        "2022-04-19T22:00:00Z",
+        "2022-04-20T04:00:00Z"
+      ],
+      "6": [
+        "2022-04-19T22:00:00Z",
+        "2022-04-20T04:00:00Z"
+      ]
+    }
+  },
+  "source_artifacts": {
+    "candidate_freeze": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_action_innovation_candidate_freeze.json",
+      "sha256": "cf13add56e60912fef6d10daab8bcfc31605e04dba5ae1905b4bb39f872f7970",
+      "size_bytes": 5430
+    },
+    "input_report": {
+      "path": "benchmarks/geotransport_v0_1/geotransport_v2_blind_validation_inputs_report.json",
+      "sha256": "9bf183173b782a40c03f69ed73a839811bfa0718e4ad7bf35fdf67c5e7060aa0",
+      "size_bytes": 16854
+    },
+    "outcome_report": {
+      "path": "benchmarks/geotransport_v0_1/geotransport_v2_blind_validation_outcomes_report.json",
+      "sha256": "9f299c3610501f9d223f658c538a1db612f1d2ff3e02bc565abf0c55f20731d6",
+      "size_bytes": 5549
+    },
+    "protocol": {
+      "path": "benchmarks/geotransport_v0_1/geotransport_v2_blind_validation_protocol.json",
+      "sha256": "7b99c0a7765f2e491e12e9dd110cdfcdcdeed72e70f3f30c65b9b9aac3d167cb",
+      "size_bytes": 13509
+    },
+    "replication_action": {
+      "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/j_percy_priest/action_values.csv",
+      "sha256": "5bc87a79a1cb3abe93be51ce97d60cb91625284303c024ac9174f13c59b5e867",
+      "size_bytes": 42990
+    },
+    "replication_feature_axis": {
+      "dtype": "int64",
+      "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/j_percy_priest/decoded/feature_ids.npy",
+      "sha256": "33b7a9e3996c3b4c6823f1b66d61ba9e608c117bbc92be125e30331e3e9d3373",
+      "shape": [
+        43
+      ],
+      "size_bytes": 472
+    },
+    "replication_forcing_time": {
+      "dtype": "<U20",
+      "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/j_percy_priest/decoded/forcing_timestamps_utc.npy",
+      "sha256": "6a0fb8ccdff2577896345a0168d145088013168c6cf12c20faa5a850b6568488",
+      "shape": [
+        672
+      ],
+      "size_bytes": 53888
+    },
+    "replication_input_report": {
+      "path": "benchmarks/geotransport_v0_1/kinematic_wave_holdout_v2_inputs_report.json",
+      "sha256": "79bbc235dbef5da8a6d284cb307b2753183773bfd7a28305b9ed896696394435",
+      "size_bytes": 13239
+    },
+    "replication_outcome_report": {
+      "path": "benchmarks/geotransport_v0_1/kinematic_wave_holdout_v2_outcomes_report.json",
+      "sha256": "2e61b7440746a33eb5a9ab51bb8248325e31206a7c153baa470fbbe625cfbd38",
+      "size_bytes": 6778
+    },
+    "replication_outcomes": {
+      "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/outcomes/values/j_percy_priest.csv",
+      "sha256": "d9a7a01201fbbe05af0c8e2f08a0b1aa523eaa4fd4c3fa7c1f51e67d39afeb33",
+      "size_bytes": 43595
+    },
+    "replication_protocol": {
+      "path": "benchmarks/geotransport_v0_1/kinematic_wave_holdout_v2_protocol.json",
+      "sha256": "0f59c130e2fe45d080bcaa488611f9c5556daf2488f14801f3c9c0a1a5998723",
+      "size_bytes": 18307
+    },
+    "replication_q_lateral": {
+      "dtype": "float64",
+      "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/j_percy_priest/decoded/q_lateral_m3s.npy",
+      "sha256": "6b8a965fef0a9dd23af9e282f58522ebe20be4d8a4b009c9db8590ecff97a441",
+      "shape": [
+        672,
+        43
+      ],
+      "size_bytes": 231296
+    },
+    "source_parameters": {
+      "path": "data/geotransport_v0_1/kernel_innovation_candidate/parameters.json",
+      "sha256": "56990a10610c3ab7d6e6479906237463f1d9d17ea9e630bdacc22528961106ad",
+      "size_bytes": 2246
+    },
+    "target_action": {
+      "path": "data/geotransport_v0_1/geotransport_v2_blind_validation/inputs/systems/j_percy_priest/action_values.csv",
+      "sha256": "d7001cd1b4b6cb5548e00e1e3d9515d9b9b28346ed65a6d688fc8d50fc95162d",
+      "size_bytes": 43445
+    },
+    "target_feature_axis": {
+      "dtype": "int64",
+      "path": "data/geotransport_v0_1/geotransport_v2_blind_validation/inputs/systems/j_percy_priest/decoded/feature_ids.npy",
+      "sha256": "33b7a9e3996c3b4c6823f1b66d61ba9e608c117bbc92be125e30331e3e9d3373",
+      "shape": [
+        43
+      ],
+      "size_bytes": 472
+    },
+    "target_forcing_time": {
+      "dtype": "<U20",
+      "path": "data/geotransport_v0_1/geotransport_v2_blind_validation/inputs/systems/j_percy_priest/decoded/forcing_timestamps_utc.npy",
+      "sha256": "024441cee9eb1e1e3fc0727a7dcf7d60fb4a7054a37212b1664e3d40376f8d32",
+      "shape": [
+        672
+      ],
+      "size_bytes": 53888
+    },
+    "target_network": {
+      "path": "data/geotransport_v0_1/j_percy_priest_v1_full_subnetwork/full_subnetwork.json",
+      "sha256": "5c6ed663ebe08c160f580ae9ca1c9a17037c947bcf3c6df33d80081e3fb6ea5a",
+      "size_bytes": 6351
+    },
+    "target_outcomes": {
+      "path": "data/geotransport_v0_1/geotransport_v2_blind_validation/outcomes/values/j_percy_priest.csv",
+      "sha256": "3e7ff3623ee421e07311aac01039f607c37758b8c3bec03227f841735d0bfd18",
+      "size_bytes": 43880
+    },
+    "target_q_lateral": {
+      "dtype": "float64",
+      "path": "data/geotransport_v0_1/geotransport_v2_blind_validation/inputs/systems/j_percy_priest/decoded/q_lateral_m3s.npy",
+      "sha256": "40edc0e5ff7b18309671aed2852cb02b64484b23f4b12fe39b8909ce381e9da7",
+      "shape": [
+        672,
+        43
+      ],
+      "size_bytes": 231296
+    },
+    "target_topology_report": {
+      "path": "benchmarks/geotransport_v0_1/j_percy_priest_v1_full_subnetwork_report.json",
+      "sha256": "2159b88b57ae2a4d476ab025190b64a1cd2b62c1c4d6c9e45bca9e844d2fe3d6",
+      "size_bytes": 13504
+    }
+  },
+  "status": "zero_refit_cross_system_posthoc_failure_replicated",
+  "system_id": "j_percy_priest",
+  "transfer_contract": {
+    "action_change_coefficient_unchanged": true,
+    "adapted_fields": [
+      "support.network_id",
+      "support.action_entry_feature_id",
+      "support.outlet_feature_id",
+      "support.path_feature_ids",
+      "support.provenance_id",
+      "parameter.provenance_id"
+    ],
+    "baseline_drift_unchanged": true,
+    "coefficient_refit_performed": false,
+    "forcing_coefficient_unchanged": true,
+    "forcing_support": "sum_of_target_mainstem_q_lateral_rows",
+    "lag_hours_unchanged": true,
+    "lag_weights_unchanged": true,
+    "source_network_id": "center-hill:dam-to-gauge:full-incremental-subnetwork-v1",
+    "target_network_id": "j-percy-priest:dam-to-gauge:full-incremental-subnetwork-v1",
+    "target_outcomes_used_for_parameter_fit": false,
+    "target_path_feature_count": 5
+  },
+  "window": {
+    "first_issue_time_utc": "2022-03-31T10:00:00Z",
+    "horizons_hours": [
+      1,
+      3,
+      6,
+      12
+    ],
+    "input_end_utc": "2022-04-28T01:00:00Z",
+    "input_hour_count": 672,
+    "input_start_utc": "2022-03-31T02:00:00Z"
+  }
+}

@@ -1,0 +1,329 @@
+{
+  "adjudication": {
+    "full_subnetwork_replacement": false,
+    "independent_end_to_end_prediction": false,
+    "next_use": "outcome-free branch-boundary rollout invariant and public post-failure D3 flux accounting diagnostic",
+    "usable_as_conservation_oracle": false,
+    "usable_as_observation": false,
+    "usable_as_transition_input": true,
+    "usable_to_select_or_tune_on_d3": false
+  },
+  "claim_boundary": {
+    "full_subnetwork_routing_ready": false,
+    "geospatial_kernel_validated": false,
+    "modeled_tributary_boundary_available": true,
+    "modeled_tributary_boundary_ground_truth": false,
+    "modeled_tributary_boundary_possible_nudging": true,
+    "predictive_improvement_validated": false
+  },
+  "data_isolation": {
+    "d3_window_use": "post_failure_input_flux_diagnostic_only",
+    "outcome_values_loaded": false
+  },
+  "feature_chunk_indices": [
+    63,
+    87
+  ],
+  "feature_ids": [
+    18421757,
+    18421755,
+    25242911,
+    18421819,
+    18421815,
+    18421749,
+    18421833,
+    18421729,
+    18421725,
+    18421717,
+    18421723,
+    18421805,
+    18421801,
+    18421715,
+    18421733,
+    18421743,
+    18421797,
+    18421709,
+    18421705
+  ],
+  "feature_indices": [
+    1896607,
+    1896606,
+    2632241,
+    1896638,
+    1896636,
+    1896603,
+    1896645,
+    1896595,
+    1896593,
+    1896589,
+    1896592,
+    1896631,
+    1896629,
+    1896588,
+    1896597,
+    1896601,
+    1896627,
+    1896586,
+    1896584
+  ],
+  "generated_at": "2026-07-27T04:20:44.415324+00:00",
+  "mode": "acquired",
+  "normalized_values": {
+    "path": "data/geotransport_v0_1/center_hill_v2_d4_tributary_boundary/tributary_streamflow_values.csv",
+    "sha256": "d37cdbaf0bb4aa89803734dd90bc9896534c479137a1dd2edd40e035389a722a",
+    "size_bytes": 208162
+  },
+  "raw_artifacts": {
+    "streamflow": {
+      "561.63": {
+        "attempt_count": 1,
+        "content_type": "binary/octet-stream",
+        "http_status": 200,
+        "path": "data/geotransport_v0_1/center_hill_v2_d4_tributary_boundary/raw/streamflow/561.63.zst",
+        "retrieved_at": "2026-07-27T04:20:40.413659+00:00",
+        "sha256": "58e09ae3cae1d52bc4ec26f48e89063f3f37f392caeb798b0afd026c6e09edcb",
+        "size_bytes": 18558200,
+        "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/streamflow/561.63"
+      },
+      "561.87": {
+        "attempt_count": 1,
+        "content_type": "binary/octet-stream",
+        "http_status": 200,
+        "path": "data/geotransport_v0_1/center_hill_v2_d4_tributary_boundary/raw/streamflow/561.87.zst",
+        "retrieved_at": "2026-07-27T04:20:44.186323+00:00",
+        "sha256": "083a6e0833b8cb5918a624a2f9037627bb0213b7cf3a24b0a75117482361dbfe",
+        "size_bytes": 6746515,
+        "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/streamflow/561.87"
+      }
+    },
+    "time": {
+      "path": "data/geotransport_v0_1/center_hill_v2_d3_inputs/nwm/raw/time/561.zst",
+      "sha256": "b500491cc457a330fdddd7d771fcffef09f5ac0a99c080ff39969cd6e8159a79",
+      "size_bytes": 729
+    }
+  },
+  "requests": [
+    {
+      "chunk_key": "561.63",
+      "maximum_bytes": 100000000,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/streamflow/561.63",
+      "variable": "streamflow"
+    },
+    {
+      "chunk_key": "561.87",
+      "maximum_bytes": 100000000,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/streamflow/561.87",
+      "variable": "streamflow"
+    }
+  ],
+  "result": {
+    "fill_value_count": 0,
+    "hour_count": 672,
+    "per_tributary": [
+      {
+        "maximum_m3s": 12.709999715909362,
+        "mean_m3s": 0.8242112911012511,
+        "minimum_m3s": 0.03999999910593033,
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896607,
+        "receiving_feature_id": 18421759,
+        "tributary_feature_id": 18421757
+      },
+      {
+        "maximum_m3s": 9.129999795928597,
+        "mean_m3s": 0.3203124928404577,
+        "minimum_m3s": 0.019999999552965164,
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896606,
+        "receiving_feature_id": 18421753,
+        "tributary_feature_id": 18421755
+      },
+      {
+        "maximum_m3s": 7.819999825209379,
+        "mean_m3s": 0.2406547565257088,
+        "minimum_m3s": 0.009999999776482582,
+        "nwm_feature_chunk_index": 87,
+        "nwm_feature_index": 2632241,
+        "receiving_feature_id": 18427677,
+        "tributary_feature_id": 25242911
+      },
+      {
+        "maximum_m3s": 0.14999999664723873,
+        "mean_m3s": 0.013318452083261772,
+        "minimum_m3s": 0.0,
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896638,
+        "receiving_feature_id": 18421751,
+        "tributary_feature_id": 18421819
+      },
+      {
+        "maximum_m3s": 0.40999999083578587,
+        "mean_m3s": 0.0366666658471028,
+        "minimum_m3s": 0.0,
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896636,
+        "receiving_feature_id": 18421817,
+        "tributary_feature_id": 18421815
+      },
+      {
+        "maximum_m3s": 6.69999985024333,
+        "mean_m3s": 0.22394344737542615,
+        "minimum_m3s": 0.009999999776482582,
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896603,
+        "receiving_feature_id": 18421747,
+        "tributary_feature_id": 18421749
+      },
+      {
+        "maximum_m3s": 0.4399999901652336,
+        "mean_m3s": 0.026473213693991835,
+        "minimum_m3s": 0.0,
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896645,
+        "receiving_feature_id": 18421829,
+        "tributary_feature_id": 18421833
+      },
+      {
+        "maximum_m3s": 64.39999856054783,
+        "mean_m3s": 5.619374874397181,
+        "minimum_m3s": 0.23999999463558197,
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896595,
+        "receiving_feature_id": 18421727,
+        "tributary_feature_id": 18421729
+      },
+      {
+        "maximum_m3s": 18.07999959588051,
+        "mean_m3s": 1.0151785487375622,
+        "minimum_m3s": 0.04999999888241291,
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896593,
+        "receiving_feature_id": 18421737,
+        "tributary_feature_id": 18421725
+      },
+      {
+        "maximum_m3s": 11.509999742731452,
+        "mean_m3s": 0.6270237955087352,
+        "minimum_m3s": 0.029999999329447746,
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896589,
+        "receiving_feature_id": 18421807,
+        "tributary_feature_id": 18421717
+      },
+      {
+        "maximum_m3s": 3.5999999195337296,
+        "mean_m3s": 0.09650297403346658,
+        "minimum_m3s": 0.009999999776482582,
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896592,
+        "receiving_feature_id": 18421721,
+        "tributary_feature_id": 18421723
+      },
+      {
+        "maximum_m3s": 0.7499999832361937,
+        "mean_m3s": 0.03165178500681317,
+        "minimum_m3s": 0.0,
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896631,
+        "receiving_feature_id": 18421803,
+        "tributary_feature_id": 18421805
+      },
+      {
+        "maximum_m3s": 9.659999784082174,
+        "mean_m3s": 0.38145832480707514,
+        "minimum_m3s": 0.019999999552965164,
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896629,
+        "receiving_feature_id": 18421799,
+        "tributary_feature_id": 18421801
+      },
+      {
+        "maximum_m3s": 6.9999998435378075,
+        "mean_m3s": 0.36409225376666565,
+        "minimum_m3s": 0.019999999552965164,
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896588,
+        "receiving_feature_id": 18421731,
+        "tributary_feature_id": 18421715
+      },
+      {
+        "maximum_m3s": 0.4499999899417162,
+        "mean_m3s": 0.022306547120457425,
+        "minimum_m3s": 0.0,
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896597,
+        "receiving_feature_id": 18421739,
+        "tributary_feature_id": 18421733
+      },
+      {
+        "maximum_m3s": 406.6999909095466,
+        "mean_m3s": 44.0828859194326,
+        "minimum_m3s": 5.249999882653356,
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896601,
+        "receiving_feature_id": 18421741,
+        "tributary_feature_id": 18421743
+      },
+      {
+        "maximum_m3s": 3.36999992467463,
+        "mean_m3s": 0.0963839264170799,
+        "minimum_m3s": 0.0,
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896627,
+        "receiving_feature_id": 18421795,
+        "tributary_feature_id": 18421797
+      },
+      {
+        "maximum_m3s": 14.469999676570296,
+        "mean_m3s": 0.5977380818776077,
+        "minimum_m3s": 0.029999999329447746,
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896586,
+        "receiving_feature_id": 18421707,
+        "tributary_feature_id": 18421709
+      },
+      {
+        "maximum_m3s": 130.57999708130956,
+        "mean_m3s": 9.286294435292282,
+        "minimum_m3s": 0.2899999935179949,
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896584,
+        "receiving_feature_id": 18421703,
+        "tributary_feature_id": 18421705
+      }
+    ],
+    "total_boundary_flow_m3s": {
+      "maximum": 500.47998881340027,
+      "mean": 63.906471785864724,
+      "median": 17.264999614097178,
+      "minimum": 6.019999865442514
+    },
+    "tributary_count": 19,
+    "value_count": 12768
+  },
+  "schema": "gwm.geotransport.center_hill_v2_d4_tributary_boundary.v1",
+  "semantic_contract": {
+    "conservation_oracle": false,
+    "evaluation_outcome": false,
+    "ground_truth": false,
+    "modeled": true,
+    "possible_nudging": true,
+    "variable_role": "modeled_tributary_boundary_flux"
+  },
+  "status": "pass_outcome_free_tributary_boundary_acquired",
+  "time_chunk_indices": [
+    561
+  ],
+  "topology_report": {
+    "path": "benchmarks/geotransport_v0_1/center_hill_v2_d4_topology_report.json",
+    "sha256": "503d6691019378aae9b6e7e25856b3f8de348791f7a6724676772b2853f3fbdd",
+    "size_bytes": 16071
+  },
+  "window": {
+    "end_exclusive_utc": "2022-03-03T01:00:00Z",
+    "hour_count": 672,
+    "start_utc": "2022-02-03T01:00:00Z",
+    "support_kind": "interval_mean",
+    "timestamp_position": "beginning"
+  }
+}

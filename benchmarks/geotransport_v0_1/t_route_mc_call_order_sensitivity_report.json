@@ -1,0 +1,238 @@
+{
+  "call_order_invariance": {
+    "cold_process_execution_trace_changes_mc_result": true,
+    "expected_for_stateless_segment_kernel": true,
+    "passed": false
+  },
+  "claim_boundary": {
+    "all_negative_lobes_explained_by_initialization_defect": false,
+    "call_order_invariance_passed": false,
+    "fixed_commit_kernel_promotion_gate_passed": false,
+    "generic_muskingum_cunge_method_rejected": false,
+    "geospatial_kernel_validated": false,
+    "professional_transfer_operator_certified": false,
+    "undefined_initialization_path_found": true
+  },
+  "data_isolation": {
+    "observed_discharge_loaded": false,
+    "observed_forcing_loaded": false,
+    "outcome_values_loaded": false,
+    "synthetic_boundary_only": true
+  },
+  "generated_at": "2026-07-27T11:31:25.842060+00:00",
+  "metric_differences_mc_only_minus_interleaved": {
+    "minimum_response_m3s": -3.516674041748047e-05,
+    "negative_outlet_volume_m3": 2.880173921585083,
+    "net_outlet_volume_m3": 454.33080196380615,
+    "t05_seconds": 5.181420823493681,
+    "t50_seconds": 5.919291426849668,
+    "t95_seconds": -6.450391727335955
+  },
+  "protocol": {
+    "assume_short_timestep": false,
+    "background_flow_m3s": 2.0,
+    "invariance_absolute_tolerance": 1e-09,
+    "pulse_duration_seconds": 3600.0,
+    "pulse_rate_m3s": 10.0,
+    "pulse_scenario_order": [
+      0.1,
+      1.0,
+      10.0
+    ],
+    "reported_pulse_rate_m3s": 10.0,
+    "rollout_hours": 240,
+    "shared_state_between_operators": false,
+    "timestep_seconds": 300.0,
+    "trace_a": "MC calls only",
+    "trace_b": "identical MC calls with an independent conservative Manning operator advanced after each MC base/pulse step",
+    "trace_process_isolation": true,
+    "warmup_hours": 240
+  },
+  "responses": {
+    "manning_interleaved": {
+      "center_of_positive_response_seconds": 42114.36480866133,
+      "final_incremental_storage_m3": -35505.593151362846,
+      "first_arrival_above_threshold_seconds": 900.0,
+      "input_recovery_quantile_basis": "net cumulative outlet-response volume divided by input volume; null means the fraction was not reached inside the window",
+      "input_recovery_quantile_seconds": {
+        "t01": 19236.14266713118,
+        "t05": 20484.742641569665,
+        "t50": 27171.342612735945,
+        "t95": 31714.5852080002
+      },
+      "input_volume_m3": 36000.0,
+      "mass_balance_passed": false,
+      "mass_balance_residual_m3": -53598.0222696939,
+      "mass_balance_residual_to_input_ratio": 1.4888339519359417,
+      "mass_balance_tolerance_m3": 0.00013510361542105675,
+      "minimum_response_m3s": -0.16311705112457275,
+      "negative_lobe_tolerance_m3": 4.6e-05,
+      "negative_lobe_within_tolerance": false,
+      "negative_outlet_volume_m3": 1087.305772304535,
+      "negative_to_positive_volume_ratio": 0.008616354980390907,
+      "net_outlet_volume_m3": 125103.61542105675,
+      "net_recovered_fraction": 3.4751004283626874,
+      "peak_positive_interval_end_seconds": 33600.0,
+      "peak_positive_response_m3s": 3.7705026865005493,
+      "positive_outlet_volume_m3": 126190.92119336128,
+      "positive_recovered_fraction": 3.505303366482258,
+      "quantile_time_semantics": "linear interpolation within each constant-rate interval",
+      "response_rate_semantics": "interval_mean_incremental_outlet_flow",
+      "response_threshold_m3s": 1e-06,
+      "sample_count": 2880,
+      "schema": "gwm.geospatial_kernel.dynamic_transfer_response_metrics.v1",
+      "timestep_seconds": 300.0,
+      "within_window_positive_volume_quantile_seconds": {
+        "t01": 19021.291880695917,
+        "t05": 22492.72560911102,
+        "t50": 39227.929318652685,
+        "t95": 71150.8998972985
+      },
+      "within_window_quantile_basis": "positive outlet-response volume recovered inside the simulated window"
+    },
+    "mc_only": {
+      "center_of_positive_response_seconds": 42130.85520139451,
+      "final_incremental_storage_m3": -35505.593151362846,
+      "first_arrival_above_threshold_seconds": 900.0,
+      "input_recovery_quantile_basis": "net cumulative outlet-response volume divided by input volume; null means the fraction was not reached inside the window",
+      "input_recovery_quantile_seconds": {
+        "t01": 19242.72704169682,
+        "t05": 20489.92406239316,
+        "t50": 27177.261904162795,
+        "t95": 31708.134816272865
+      },
+      "input_volume_m3": 36000.0,
+      "mass_balance_passed": false,
+      "mass_balance_residual_m3": -54052.35307165771,
+      "mass_balance_residual_to_input_ratio": 1.5014542519904919,
+      "mass_balance_tolerance_m3": 0.00013555794622302055,
+      "minimum_response_m3s": -0.16315221786499023,
+      "negative_lobe_tolerance_m3": 4.6e-05,
+      "negative_lobe_within_tolerance": false,
+      "negative_outlet_volume_m3": 1090.18594622612,
+      "negative_to_positive_volume_ratio": 0.008607990718483288,
+      "net_outlet_volume_m3": 125557.94622302055,
+      "net_recovered_fraction": 3.4877207284172376,
+      "peak_positive_interval_end_seconds": 33600.0,
+      "peak_positive_response_m3s": 3.7791754007339478,
+      "positive_outlet_volume_m3": 126648.13216924667,
+      "positive_recovered_fraction": 3.518003671367963,
+      "quantile_time_semantics": "linear interpolation within each constant-rate interval",
+      "response_rate_semantics": "interval_mean_incremental_outlet_flow",
+      "response_threshold_m3s": 1e-06,
+      "sample_count": 2880,
+      "schema": "gwm.geospatial_kernel.dynamic_transfer_response_metrics.v1",
+      "timestep_seconds": 300.0,
+      "within_window_positive_volume_quantile_seconds": {
+        "t01": 19030.593488545353,
+        "t05": 22507.834856203524,
+        "t50": 39268.85945143798,
+        "t95": 71133.84655242552
+      },
+      "within_window_quantile_basis": "positive outlet-response volume recovered inside the simulated window"
+    }
+  },
+  "schema": "gwm.geotransport.t_route_mc_call_order_sensitivity.v1",
+  "source_artifacts": {
+    "fortran_kernel_source": {
+      "path": "data/geotransport_v0_1/t_route_mc_source_audit/raw/MCsingleSegStime_f2py_NOLOOP.f90",
+      "sha256": "1c0e47b3528c3fdf20c960408e41138921cb903e5035bd19e6c4e68f8f4b46da",
+      "size_bytes": 15804
+    },
+    "route_link_fixture": {
+      "path": "data/geotransport_v0_1/route_link_public_audit/raw/RouteLink_HurricaneLaura_NWMv2.1.nc",
+      "sha256": "bce1ef6e80fc80ad0cabae5e4e1401428f2fac14786f74fd2ac659919914f97e",
+      "size_bytes": 24151
+    },
+    "route_link_manifest": {
+      "path": "data/geotransport_v0_1/route_link_public_audit/acquisition_manifest.json",
+      "sha256": "c42ccbe2f272a482f6a123e9b67863a909374ac58e5eebf0e10207f5ca3a48aa",
+      "size_bytes": 19909
+    },
+    "t_route_build_manifest": {
+      "path": "data/geotransport_v0_1/t_route_mc_runtime/build_manifest.json",
+      "sha256": "26780f3c6cb9bcc4fa61b608c8e93843b4db2054a469ce0114c3880ba4b6a7f4",
+      "size_bytes": 1771
+    },
+    "t_route_shared_library": {
+      "path": "data/geotransport_v0_1/t_route_mc_runtime/libtroute_mc_12a8eae.so",
+      "sha256": "9d1cb42b189192007c2d62ac1c9e2e7b6814e967baa4fe147ed5c9a849c4b32b",
+      "size_bytes": 70080
+    },
+    "t_route_source_manifest": {
+      "path": "data/geotransport_v0_1/t_route_mc_source_audit/acquisition_manifest.json",
+      "sha256": "6bb67aaaeb70cb97ed8795b9a15dd2ef7db2c8db8092393c0a7f824577b25e1d",
+      "size_bytes": 13012
+    }
+  },
+  "static_source_evidence": {
+    "qdc_intent_out_read_before_assignment": {
+      "conclusion": "qdc is read in a guard before assignment.",
+      "evidence": [
+        {
+          "line": 24,
+          "path": "data/geotransport_v0_1/t_route_mc_source_audit/raw/MCsingleSegStime_f2py_NOLOOP.f90",
+          "source": "real(prec), intent(out) :: qdc, velc, depthc"
+        },
+        {
+          "line": 74,
+          "path": "data/geotransport_v0_1/t_route_mc_source_audit/raw/MCsingleSegStime_f2py_NOLOOP.f90",
+          "source": ".or. qdp .gt. 0.0_prec .or. qdc .gt. 0.0_prec) then  !only solve if there's water to flux"
+        }
+      ],
+      "finding_id": "qdc_intent_out_read_before_assignment",
+      "verified": true
+    },
+    "secant_outputs_read_before_assignment": {
+      "conclusion": "Qj or C1..C4 feed X before those intent(out) values are assigned.",
+      "evidence": [
+        {
+          "line": 207,
+          "path": "data/geotransport_v0_1/t_route_mc_source_audit/raw/MCsingleSegStime_f2py_NOLOOP.f90",
+          "source": "real(prec), intent(out) :: Qj, C1, C2, C3, C4, X"
+        },
+        {
+          "line": 291,
+          "path": "data/geotransport_v0_1/t_route_mc_source_audit/raw/MCsingleSegStime_f2py_NOLOOP.f90",
+          "source": "X = min(0.5_prec,max(0.0_prec,0.5_prec*(1.0_prec-(Qj/(2.0_prec*twl*s0*Ck*dx)))))"
+        },
+        {
+          "line": 309,
+          "path": "data/geotransport_v0_1/t_route_mc_source_audit/raw/MCsingleSegStime_f2py_NOLOOP.f90",
+          "source": "C1 =  (Km*X + dt/2.0_prec)/D"
+        },
+        {
+          "line": 328,
+          "path": "data/geotransport_v0_1/t_route_mc_source_audit/raw/MCsingleSegStime_f2py_NOLOOP.f90",
+          "source": "Qj =  ((C1*qup)+(C2*quc)+(C3*qdp) + C4) - ((1.0_prec/(((WP*n)+(WPC*ncc))/(WP+WPC))) * &"
+        }
+      ],
+      "finding_id": "secant_outputs_read_before_assignment",
+      "verified": true
+    }
+  },
+  "status": "fixed_commit_cold_process_trace_sensitivity_detected",
+  "warmup": {
+    "manning_interleaved": {
+      "background_flow_m3s": 2.0,
+      "nonlinear_maximum_step_mass_residual_to_tolerance_ratio": 2.416261786169739e-05,
+      "nonlinear_outlet_relative_steady_error": 3.6848302187308946e-12,
+      "nonlinear_storage_outlet_endpoint_flow_m3s": 2.0000000000073697,
+      "states_nonnegative_finite": true,
+      "t_route_mc_outlet_flow_m3s": 1.9999922513961792,
+      "t_route_mc_outlet_relative_steady_error": 3.874301910400391e-06,
+      "timestep_seconds": 300.0,
+      "warmup_step_count": 2880
+    },
+    "mc_only": {
+      "assume_short_timestep": false,
+      "background_flow_m3s": 2.0,
+      "mode": "default_current_upstream",
+      "outlet_flow_m3s": 1.9999922513961792,
+      "outlet_relative_steady_error": 3.874301910400391e-06,
+      "states_nonnegative_finite": true,
+      "timestep_seconds": 300.0,
+      "warmup_step_count": 2880
+    }
+  }
+}

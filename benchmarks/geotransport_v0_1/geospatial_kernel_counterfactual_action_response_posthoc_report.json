@@ -1,0 +1,1026 @@
+{
+  "aggregate_gate": {
+    "counterfactual_interface_promotion_gate_passed": false,
+    "four_window_numerical_usability_gate_passed": false,
+    "four_window_structural_response_gate_passed": true,
+    "interventional_causal_validation_gate_passed": false
+  },
+  "claim_boundary": {
+    "action_innovation_candidate_changed": false,
+    "candidate_admitted": false,
+    "counterfactual_release_effect_causally_validated": false,
+    "counterfactual_release_interface_structurally_audited": true,
+    "geospatial_kernel_validated": false,
+    "operational_forecast_validated": false,
+    "prospective_v5_changed": false,
+    "runtime_default_enabled": false
+  },
+  "diagnostic_interpretation": {
+    "alternative_release_outcomes_observed": false,
+    "candidate_may_be_used_for_policy_effect_claims": false,
+    "fixed_lag_and_nonnegative_coefficient_enforce_response_direction": true,
+    "historical_observational_action_archive_identifies_do_release_effect": false,
+    "numerically_usable_without_pathological_clipping_in_all_windows": false,
+    "structural_monotonicity_is_empirical_causal_identification": false
+  },
+  "generated_at": "2026-07-31T15:58:15.344901+00:00",
+  "implementation_artifacts": {
+    "counterfactual_action_response_operator": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/counterfactual_action_response.py",
+      "sha256": "94e7817e4d17657432f84ddf6295008e9173284aaf8b2d59401d5a2217f3f8a8",
+      "size_bytes": 11287
+    },
+    "evaluator": {
+      "path": "scripts/audit_geospatial_kernel_counterfactual_action_response.py",
+      "sha256": "a2d37a499e00750df506feb3466f6e8a8ba9729d7c2259e09d2d2dd71c419154",
+      "size_bytes": 25703
+    }
+  },
+  "information_boundary": {
+    "evaluation_counts_as_fresh_validation": false,
+    "future_outcome_used_inside_counterfactual_rollout": false,
+    "historical_cwms_release_archive_used": true,
+    "historical_outcome_used_only_as_pre_issue_initial_state": true,
+    "observed_outcome_under_alternative_release_available": false,
+    "randomized_or_natural_release_experiment_available": false,
+    "retrospective_nwm_forcing_used": true
+  },
+  "outputs": {
+    "responses": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_counterfactual_action_response_posthoc/responses.csv",
+      "sha256": "4521db2ea37f4978f219ef5345c674e64654de332579362ea7725da698dd2b89",
+      "size_bytes": 12803733
+    }
+  },
+  "protocol": {
+    "coefficient_refit_performed": false,
+    "horizons_hours": [
+      1,
+      3,
+      6,
+      12
+    ],
+    "intervention_starts_strictly_after_issue_time": true,
+    "maximum_clipped_scenario_step_fraction": 0.05,
+    "maximum_post_lag_response_collapse_fraction": 0.05,
+    "negative_release_floored_at_zero": true,
+    "pre_issue_action_history_preserved": true,
+    "release_step_deltas_m3s": [
+      -50.0,
+      -10.0,
+      10.0,
+      50.0
+    ],
+    "same_frozen_action_innovation_coefficients_used_in_all_windows": true,
+    "systems": [
+      "center_hill",
+      "j_percy_priest"
+    ],
+    "windows": [
+      "center_hill_primary",
+      "center_hill_replication",
+      "j_percy_priest_primary",
+      "j_percy_priest_replication"
+    ]
+  },
+  "schema": "gwm.geotransport.counterfactual_action_response_posthoc.v1",
+  "source_artifacts": {
+    "candidate_freeze": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_action_innovation_candidate_freeze.json",
+      "sha256": "cf13add56e60912fef6d10daab8bcfc31605e04dba5ae1905b4bb39f872f7970",
+      "size_bytes": 5430
+    },
+    "frozen_source_parameters": {
+      "path": "data/geotransport_v0_1/kernel_innovation_candidate/parameters.json",
+      "sha256": "56990a10610c3ab7d6e6479906237463f1d9d17ea9e630bdacc22528961106ad",
+      "size_bytes": 2246
+    },
+    "primary_input_report": {
+      "path": "benchmarks/geotransport_v0_1/geotransport_v2_blind_validation_inputs_report.json",
+      "sha256": "9bf183173b782a40c03f69ed73a839811bfa0718e4ad7bf35fdf67c5e7060aa0",
+      "size_bytes": 16854
+    },
+    "primary_outcome_report": {
+      "path": "benchmarks/geotransport_v0_1/geotransport_v2_blind_validation_outcomes_report.json",
+      "sha256": "9f299c3610501f9d223f658c538a1db612f1d2ff3e02bc565abf0c55f20731d6",
+      "size_bytes": 5549
+    },
+    "replication_input_report": {
+      "path": "benchmarks/geotransport_v0_1/kinematic_wave_holdout_v2_inputs_report.json",
+      "sha256": "79bbc235dbef5da8a6d284cb307b2753183773bfd7a28305b9ed896696394435",
+      "size_bytes": 13239
+    },
+    "replication_outcome_report": {
+      "path": "benchmarks/geotransport_v0_1/kinematic_wave_holdout_v2_outcomes_report.json",
+      "sha256": "2e61b7440746a33eb5a9ab51bb8248325e31206a7c153baa470fbbe625cfbd38",
+      "size_bytes": 6778
+    }
+  },
+  "status": "counterfactual_action_response_posthoc_complete_not_causally_validated",
+  "windows": {
+    "center_hill_primary": {
+      "execution": {
+        "action_floor_step_count": 4848,
+        "action_floor_step_fraction": 0.15514592933947774,
+        "action_step_count": 31248,
+        "baseline_clipped_step_count": 0,
+        "baseline_clipped_step_fraction": 0.0,
+        "baseline_step_count": 8463,
+        "first_issue_time_utc": "2022-03-31T10:00:00Z",
+        "forecast_issue_count": 651,
+        "last_issue_time_utc": "2022-04-27T13:00:00Z",
+        "response_row_count": 10416,
+        "scenario_clipped_step_count": 0,
+        "scenario_clipped_step_fraction": 0.0,
+        "scenario_step_count": 33852,
+        "skipped_missing_state_issue_count": 1,
+        "skipped_negative_state_issue_count": 0
+      },
+      "metrics_by_release_delta_and_horizon": {
+        "-10.0": {
+          "1": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 651,
+            "signed_response_pass_count": 651,
+            "zero_response_before_lag_pass_count": 651
+          },
+          "12": {
+            "effective_intervention_count": 520,
+            "maximum_response_per_effective_release_unit": 0.3298888457040191,
+            "mean_discharge_response_m3s": -2.280546696855455,
+            "median_response_per_effective_release_unit": 0.3298888457039657,
+            "minimum_response_per_effective_release_unit": 0.32988884570394683,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 651,
+            "signed_response_pass_count": 651,
+            "zero_response_before_lag_pass_count": 651
+          },
+          "3": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 651,
+            "signed_response_pass_count": 651,
+            "zero_response_before_lag_pass_count": 651
+          },
+          "6": {
+            "effective_intervention_count": 456,
+            "maximum_response_per_effective_release_unit": 0.32988884570399685,
+            "mean_discharge_response_m3s": -0.7613083249484178,
+            "median_response_per_effective_release_unit": 0.3298888457039671,
+            "minimum_response_per_effective_release_unit": 0.32988884570393745,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 651,
+            "signed_response_pass_count": 651,
+            "zero_response_before_lag_pass_count": 651
+          }
+        },
+        "-50.0": {
+          "1": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 651,
+            "signed_response_pass_count": 651,
+            "zero_response_before_lag_pass_count": 651
+          },
+          "12": {
+            "effective_intervention_count": 520,
+            "maximum_response_per_effective_release_unit": 0.32988884570399774,
+            "mean_discharge_response_m3s": -11.388384157356231,
+            "median_response_per_effective_release_unit": 0.3298888457039668,
+            "minimum_response_per_effective_release_unit": 0.32988884570391286,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 651,
+            "signed_response_pass_count": 651,
+            "zero_response_before_lag_pass_count": 651
+          },
+          "3": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 651,
+            "signed_response_pass_count": 651,
+            "zero_response_before_lag_pass_count": 651
+          },
+          "6": {
+            "effective_intervention_count": 456,
+            "maximum_response_per_effective_release_unit": 0.32988884570399685,
+            "mean_discharge_response_m3s": -3.8017585157684213,
+            "median_response_per_effective_release_unit": 0.3298888457039668,
+            "minimum_response_per_effective_release_unit": 0.32988884570393745,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 651,
+            "signed_response_pass_count": 651,
+            "zero_response_before_lag_pass_count": 651
+          }
+        },
+        "10.0": {
+          "1": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 651,
+            "signed_response_pass_count": 651,
+            "zero_response_before_lag_pass_count": 651
+          },
+          "12": {
+            "effective_intervention_count": 651,
+            "maximum_response_per_effective_release_unit": 0.3298888457039766,
+            "mean_discharge_response_m3s": 3.298888457039665,
+            "median_response_per_effective_release_unit": 0.32988884570396615,
+            "minimum_response_per_effective_release_unit": 0.32988884570395854,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 651,
+            "signed_response_pass_count": 651,
+            "zero_response_before_lag_pass_count": 651
+          },
+          "3": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 651,
+            "signed_response_pass_count": 651,
+            "zero_response_before_lag_pass_count": 651
+          },
+          "6": {
+            "effective_intervention_count": 651,
+            "maximum_response_per_effective_release_unit": 0.32988884570398136,
+            "mean_discharge_response_m3s": 1.0996294856798854,
+            "median_response_per_effective_release_unit": 0.3298888457039657,
+            "minimum_response_per_effective_release_unit": 0.3298888457039615,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 651,
+            "signed_response_pass_count": 651,
+            "zero_response_before_lag_pass_count": 651
+          }
+        },
+        "50.0": {
+          "1": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 651,
+            "signed_response_pass_count": 651,
+            "zero_response_before_lag_pass_count": 651
+          },
+          "12": {
+            "effective_intervention_count": 651,
+            "maximum_response_per_effective_release_unit": 0.3298888457039692,
+            "mean_discharge_response_m3s": 16.49444228519847,
+            "median_response_per_effective_release_unit": 0.32988884570396676,
+            "minimum_response_per_effective_release_unit": 0.3298888457039641,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 651,
+            "signed_response_pass_count": 651,
+            "zero_response_before_lag_pass_count": 651
+          },
+          "3": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 651,
+            "signed_response_pass_count": 651,
+            "zero_response_before_lag_pass_count": 651
+          },
+          "6": {
+            "effective_intervention_count": 651,
+            "maximum_response_per_effective_release_unit": 0.32988884570396937,
+            "mean_discharge_response_m3s": 5.498147428399506,
+            "median_response_per_effective_release_unit": 0.3298888457039668,
+            "minimum_response_per_effective_release_unit": 0.3298888457039648,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 651,
+            "signed_response_pass_count": 651,
+            "zero_response_before_lag_pass_count": 651
+          }
+        }
+      },
+      "numerical_usability_gate": {
+        "maximum_clipped_step_fraction": 0.05,
+        "maximum_post_lag_response_collapse_fraction": 0.05,
+        "numerical_usability_gate_passed": true,
+        "post_lag_effective_response_count": 4556,
+        "post_lag_response_collapse_count": 0,
+        "post_lag_response_collapse_fraction": 0.0,
+        "scenario_clipped_step_fraction": 0.0
+      },
+      "structural_gate": {
+        "monotonicity_check_count": 2604,
+        "monotonicity_gate_passed": true,
+        "monotonicity_pass_count": 2604,
+        "pre_lag_zero_response_check_count": 5208,
+        "pre_lag_zero_response_gate_passed": true,
+        "signed_response_check_count": 10416,
+        "signed_response_gate_passed": true,
+        "structural_response_gate_passed": true
+      },
+      "system_id": "center_hill",
+      "window_id": "center_hill_primary"
+    },
+    "center_hill_replication": {
+      "execution": {
+        "action_floor_step_count": 11436,
+        "action_floor_step_fraction": 0.3654141104294479,
+        "action_step_count": 31296,
+        "baseline_clipped_step_count": 662,
+        "baseline_clipped_step_fraction": 0.07810287871637565,
+        "baseline_step_count": 8476,
+        "first_issue_time_utc": "2022-11-10T10:00:00Z",
+        "forecast_issue_count": 652,
+        "last_issue_time_utc": "2022-12-07T13:00:00Z",
+        "response_row_count": 10432,
+        "scenario_clipped_step_count": 2080,
+        "scenario_clipped_step_fraction": 0.06134969325153374,
+        "scenario_step_count": 33904,
+        "skipped_missing_state_issue_count": 0,
+        "skipped_negative_state_issue_count": 0
+      },
+      "metrics_by_release_delta_and_horizon": {
+        "-10.0": {
+          "1": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 652,
+            "signed_response_pass_count": 652,
+            "zero_response_before_lag_pass_count": 652
+          },
+          "12": {
+            "effective_intervention_count": 320,
+            "maximum_response_per_effective_release_unit": 0.32988884570397775,
+            "mean_discharge_response_m3s": -0.888810949314877,
+            "median_response_per_effective_release_unit": 0.32988884570396665,
+            "minimum_response_per_effective_release_unit": 0.32988884570396215,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 652,
+            "signed_response_pass_count": 652,
+            "zero_response_before_lag_pass_count": 652
+          },
+          "3": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 652,
+            "signed_response_pass_count": 652,
+            "zero_response_before_lag_pass_count": 652
+          },
+          "6": {
+            "effective_intervention_count": 171,
+            "maximum_response_per_effective_release_unit": 0.3298888457039699,
+            "mean_discharge_response_m3s": -0.28839975774733223,
+            "median_response_per_effective_release_unit": 0.3298888457039666,
+            "minimum_response_per_effective_release_unit": 0.3298888457039628,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 652,
+            "signed_response_pass_count": 652,
+            "zero_response_before_lag_pass_count": 652
+          }
+        },
+        "-50.0": {
+          "1": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 652,
+            "signed_response_pass_count": 652,
+            "zero_response_before_lag_pass_count": 652
+          },
+          "12": {
+            "effective_intervention_count": 320,
+            "maximum_response_per_effective_release_unit": 0.32988884570396926,
+            "mean_discharge_response_m3s": -4.427096637163648,
+            "median_response_per_effective_release_unit": 0.32988884570396676,
+            "minimum_response_per_effective_release_unit": 0.28399229505485485,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 652,
+            "signed_response_pass_count": 652,
+            "zero_response_before_lag_pass_count": 652
+          },
+          "3": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 652,
+            "signed_response_pass_count": 652,
+            "zero_response_before_lag_pass_count": 652
+          },
+          "6": {
+            "effective_intervention_count": 171,
+            "maximum_response_per_effective_release_unit": 0.3298888457039674,
+            "mean_discharge_response_m3s": -1.4367371605030232,
+            "median_response_per_effective_release_unit": 0.32988884570396676,
+            "minimum_response_per_effective_release_unit": 0.329888845703966,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 652,
+            "signed_response_pass_count": 652,
+            "zero_response_before_lag_pass_count": 652
+          }
+        },
+        "10.0": {
+          "1": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 652,
+            "signed_response_pass_count": 652,
+            "zero_response_before_lag_pass_count": 652
+          },
+          "12": {
+            "effective_intervention_count": 652,
+            "maximum_response_per_effective_release_unit": 0.3298888457039702,
+            "mean_discharge_response_m3s": 2.723425163203096,
+            "median_response_per_effective_release_unit": 0.32988884570396665,
+            "minimum_response_per_effective_release_unit": -7.105427357601012e-16,
+            "post_lag_response_collapse_count": 104,
+            "sample_count": 652,
+            "signed_response_pass_count": 652,
+            "zero_response_before_lag_pass_count": 652
+          },
+          "3": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 652,
+            "signed_response_pass_count": 652,
+            "zero_response_before_lag_pass_count": 652
+          },
+          "6": {
+            "effective_intervention_count": 652,
+            "maximum_response_per_effective_release_unit": 0.32988884570397,
+            "mean_discharge_response_m3s": 1.0475759633255965,
+            "median_response_per_effective_release_unit": 0.32988884570396676,
+            "minimum_response_per_effective_release_unit": 0.0,
+            "post_lag_response_collapse_count": 1,
+            "sample_count": 652,
+            "signed_response_pass_count": 652,
+            "zero_response_before_lag_pass_count": 652
+          }
+        },
+        "50.0": {
+          "1": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 652,
+            "signed_response_pass_count": 652,
+            "zero_response_before_lag_pass_count": 652
+          },
+          "12": {
+            "effective_intervention_count": 652,
+            "maximum_response_per_effective_release_unit": 0.32988884570396776,
+            "mean_discharge_response_m3s": 15.374892313359586,
+            "median_response_per_effective_release_unit": 0.3298888457039667,
+            "minimum_response_per_effective_release_unit": 0.12296070121167973,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 652,
+            "signed_response_pass_count": 652,
+            "zero_response_before_lag_pass_count": 652
+          },
+          "3": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 652,
+            "signed_response_pass_count": 652,
+            "zero_response_before_lag_pass_count": 652
+          },
+          "6": {
+            "effective_intervention_count": 652,
+            "maximum_response_per_effective_release_unit": 0.3298888457039674,
+            "mean_discharge_response_m3s": 5.443998339184537,
+            "median_response_per_effective_release_unit": 0.32988884570396676,
+            "minimum_response_per_effective_release_unit": 0.18193250097360159,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 652,
+            "signed_response_pass_count": 652,
+            "zero_response_before_lag_pass_count": 652
+          }
+        }
+      },
+      "numerical_usability_gate": {
+        "maximum_clipped_step_fraction": 0.05,
+        "maximum_post_lag_response_collapse_fraction": 0.05,
+        "numerical_usability_gate_passed": false,
+        "post_lag_effective_response_count": 3590,
+        "post_lag_response_collapse_count": 105,
+        "post_lag_response_collapse_fraction": 0.02924791086350975,
+        "scenario_clipped_step_fraction": 0.06134969325153374
+      },
+      "structural_gate": {
+        "monotonicity_check_count": 2608,
+        "monotonicity_gate_passed": true,
+        "monotonicity_pass_count": 2608,
+        "pre_lag_zero_response_check_count": 5216,
+        "pre_lag_zero_response_gate_passed": true,
+        "signed_response_check_count": 10432,
+        "signed_response_gate_passed": true,
+        "structural_response_gate_passed": true
+      },
+      "system_id": "center_hill",
+      "window_id": "center_hill_replication"
+    },
+    "j_percy_priest_primary": {
+      "execution": {
+        "action_floor_step_count": 8162,
+        "action_floor_step_fraction": 0.29989711934156377,
+        "action_step_count": 27216,
+        "baseline_clipped_step_count": 2255,
+        "baseline_clipped_step_fraction": 0.3059286392619726,
+        "baseline_step_count": 7371,
+        "first_issue_time_utc": "2022-03-31T10:00:00Z",
+        "forecast_issue_count": 567,
+        "last_issue_time_utc": "2022-04-27T13:00:00Z",
+        "response_row_count": 9072,
+        "scenario_clipped_step_count": 7010,
+        "scenario_clipped_step_fraction": 0.2377560710894044,
+        "scenario_step_count": 29484,
+        "skipped_missing_state_issue_count": 2,
+        "skipped_negative_state_issue_count": 83
+      },
+      "metrics_by_release_delta_and_horizon": {
+        "-10.0": {
+          "1": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 567,
+            "signed_response_pass_count": 567,
+            "zero_response_before_lag_pass_count": 567
+          },
+          "12": {
+            "effective_intervention_count": 266,
+            "maximum_response_per_effective_release_unit": 0.32988884570397353,
+            "mean_discharge_response_m3s": -1.335422305356895,
+            "median_response_per_effective_release_unit": 0.32988884570396665,
+            "minimum_response_per_effective_release_unit": 0.28386199609572293,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 567,
+            "signed_response_pass_count": 567,
+            "zero_response_before_lag_pass_count": 567
+          },
+          "3": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 567,
+            "signed_response_pass_count": 567,
+            "zero_response_before_lag_pass_count": 567
+          },
+          "6": {
+            "effective_intervention_count": 223,
+            "maximum_response_per_effective_release_unit": 0.3298888457039742,
+            "mean_discharge_response_m3s": -0.43167038238189165,
+            "median_response_per_effective_release_unit": 0.32988884570396426,
+            "minimum_response_per_effective_release_unit": 0.1918082968792337,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 567,
+            "signed_response_pass_count": 567,
+            "zero_response_before_lag_pass_count": 567
+          }
+        },
+        "-50.0": {
+          "1": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 567,
+            "signed_response_pass_count": 567,
+            "zero_response_before_lag_pass_count": 567
+          },
+          "12": {
+            "effective_intervention_count": 266,
+            "maximum_response_per_effective_release_unit": 0.32988884570396865,
+            "mean_discharge_response_m3s": -6.643354255744125,
+            "median_response_per_effective_release_unit": 0.3298888457039667,
+            "minimum_response_per_effective_release_unit": 0.1722295015286349,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 567,
+            "signed_response_pass_count": 567,
+            "zero_response_before_lag_pass_count": 567
+          },
+          "3": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 567,
+            "signed_response_pass_count": 567,
+            "zero_response_before_lag_pass_count": 567
+          },
+          "6": {
+            "effective_intervention_count": 223,
+            "maximum_response_per_effective_release_unit": 0.32988884570396826,
+            "mean_discharge_response_m3s": -2.1458703834987047,
+            "median_response_per_effective_release_unit": 0.32988884570396654,
+            "minimum_response_per_effective_release_unit": 0.03836165937584668,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 567,
+            "signed_response_pass_count": 567,
+            "zero_response_before_lag_pass_count": 567
+          }
+        },
+        "10.0": {
+          "1": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 567,
+            "signed_response_pass_count": 567,
+            "zero_response_before_lag_pass_count": 567
+          },
+          "12": {
+            "effective_intervention_count": 567,
+            "maximum_response_per_effective_release_unit": 0.32988884570397375,
+            "mean_discharge_response_m3s": 1.980179529989155,
+            "median_response_per_effective_release_unit": 0.3298888457039652,
+            "minimum_response_per_effective_release_unit": -7.105427357601012e-16,
+            "post_lag_response_collapse_count": 201,
+            "sample_count": 567,
+            "signed_response_pass_count": 567,
+            "zero_response_before_lag_pass_count": 567
+          },
+          "3": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 567,
+            "signed_response_pass_count": 567,
+            "zero_response_before_lag_pass_count": 567
+          },
+          "6": {
+            "effective_intervention_count": 567,
+            "maximum_response_per_effective_release_unit": 0.3298888457039742,
+            "mean_discharge_response_m3s": 0.7526019945778986,
+            "median_response_per_effective_release_unit": 0.3298888457039663,
+            "minimum_response_per_effective_release_unit": 0.0,
+            "post_lag_response_collapse_count": 1,
+            "sample_count": 567,
+            "signed_response_pass_count": 567,
+            "zero_response_before_lag_pass_count": 567
+          }
+        },
+        "50.0": {
+          "1": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 567,
+            "signed_response_pass_count": 567,
+            "zero_response_before_lag_pass_count": 567
+          },
+          "12": {
+            "effective_intervention_count": 567,
+            "maximum_response_per_effective_release_unit": 0.32988884570396826,
+            "mean_discharge_response_m3s": 14.075658700959965,
+            "median_response_per_effective_release_unit": 0.3298888457039664,
+            "minimum_response_per_effective_release_unit": 0.12360316033896321,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 567,
+            "signed_response_pass_count": 567,
+            "zero_response_before_lag_pass_count": 567
+          },
+          "3": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 567,
+            "signed_response_pass_count": 567,
+            "zero_response_before_lag_pass_count": 567
+          },
+          "6": {
+            "effective_intervention_count": 567,
+            "maximum_response_per_effective_release_unit": 0.32988884570396826,
+            "mean_discharge_response_m3s": 5.143362410061656,
+            "median_response_per_effective_release_unit": 0.32988884570396665,
+            "minimum_response_per_effective_release_unit": 0.0,
+            "post_lag_response_collapse_count": 1,
+            "sample_count": 567,
+            "signed_response_pass_count": 567,
+            "zero_response_before_lag_pass_count": 567
+          }
+        }
+      },
+      "numerical_usability_gate": {
+        "maximum_clipped_step_fraction": 0.05,
+        "maximum_post_lag_response_collapse_fraction": 0.05,
+        "numerical_usability_gate_passed": false,
+        "post_lag_effective_response_count": 3246,
+        "post_lag_response_collapse_count": 203,
+        "post_lag_response_collapse_fraction": 0.0625385089340727,
+        "scenario_clipped_step_fraction": 0.2377560710894044
+      },
+      "structural_gate": {
+        "monotonicity_check_count": 2268,
+        "monotonicity_gate_passed": true,
+        "monotonicity_pass_count": 2268,
+        "pre_lag_zero_response_check_count": 4536,
+        "pre_lag_zero_response_gate_passed": true,
+        "signed_response_check_count": 9072,
+        "signed_response_gate_passed": true,
+        "structural_response_gate_passed": true
+      },
+      "system_id": "j_percy_priest",
+      "window_id": "j_percy_priest_primary"
+    },
+    "j_percy_priest_replication": {
+      "execution": {
+        "action_floor_step_count": 8474,
+        "action_floor_step_fraction": 0.3306023720349563,
+        "action_step_count": 25632,
+        "baseline_clipped_step_count": 2373,
+        "baseline_clipped_step_fraction": 0.3418323249783924,
+        "baseline_step_count": 6942,
+        "first_issue_time_utc": "2022-11-10T10:00:00Z",
+        "forecast_issue_count": 534,
+        "last_issue_time_utc": "2022-12-07T13:00:00Z",
+        "response_row_count": 8544,
+        "scenario_clipped_step_count": 7785,
+        "scenario_clipped_step_fraction": 0.28035868625756266,
+        "scenario_step_count": 27768,
+        "skipped_missing_state_issue_count": 35,
+        "skipped_negative_state_issue_count": 83
+      },
+      "metrics_by_release_delta_and_horizon": {
+        "-10.0": {
+          "1": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 534,
+            "signed_response_pass_count": 534,
+            "zero_response_before_lag_pass_count": 534
+          },
+          "12": {
+            "effective_intervention_count": 237,
+            "maximum_response_per_effective_release_unit": 0.329888845703982,
+            "mean_discharge_response_m3s": -1.1243402606389858,
+            "median_response_per_effective_release_unit": 0.3298888457039666,
+            "minimum_response_per_effective_release_unit": 0.3298888457039607,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 534,
+            "signed_response_pass_count": 534,
+            "zero_response_before_lag_pass_count": 534
+          },
+          "3": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 534,
+            "signed_response_pass_count": 534,
+            "zero_response_before_lag_pass_count": 534
+          },
+          "6": {
+            "effective_intervention_count": 185,
+            "maximum_response_per_effective_release_unit": 0.3298888457039728,
+            "mean_discharge_response_m3s": -0.38095778061943636,
+            "median_response_per_effective_release_unit": 0.32988884570396426,
+            "minimum_response_per_effective_release_unit": 0.32988884570396426,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 534,
+            "signed_response_pass_count": 534,
+            "zero_response_before_lag_pass_count": 534
+          }
+        },
+        "-50.0": {
+          "1": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 534,
+            "signed_response_pass_count": 534,
+            "zero_response_before_lag_pass_count": 534
+          },
+          "12": {
+            "effective_intervention_count": 237,
+            "maximum_response_per_effective_release_unit": 0.32988884570396865,
+            "mean_discharge_response_m3s": -5.621701303194935,
+            "median_response_per_effective_release_unit": 0.32988884570396676,
+            "minimum_response_per_effective_release_unit": 0.3298888457039661,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 534,
+            "signed_response_pass_count": 534,
+            "zero_response_before_lag_pass_count": 534
+          },
+          "3": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 534,
+            "signed_response_pass_count": 534,
+            "zero_response_before_lag_pass_count": 534
+          },
+          "6": {
+            "effective_intervention_count": 185,
+            "maximum_response_per_effective_release_unit": 0.32988884570396826,
+            "mean_discharge_response_m3s": -1.904788903097181,
+            "median_response_per_effective_release_unit": 0.32988884570396654,
+            "minimum_response_per_effective_release_unit": 0.329888845703966,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 534,
+            "signed_response_pass_count": 534,
+            "zero_response_before_lag_pass_count": 534
+          }
+        },
+        "10.0": {
+          "1": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 534,
+            "signed_response_pass_count": 534,
+            "zero_response_before_lag_pass_count": 534
+          },
+          "12": {
+            "effective_intervention_count": 534,
+            "maximum_response_per_effective_release_unit": 0.3298888457039723,
+            "mean_discharge_response_m3s": 1.9552727261098972,
+            "median_response_per_effective_release_unit": 0.3298888457039652,
+            "minimum_response_per_effective_release_unit": -7.105427357601012e-16,
+            "post_lag_response_collapse_count": 179,
+            "sample_count": 534,
+            "signed_response_pass_count": 534,
+            "zero_response_before_lag_pass_count": 534
+          },
+          "3": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 534,
+            "signed_response_pass_count": 534,
+            "zero_response_before_lag_pass_count": 534
+          },
+          "6": {
+            "effective_intervention_count": 534,
+            "maximum_response_per_effective_release_unit": 0.3298888457039742,
+            "mean_discharge_response_m3s": 0.7174750956933248,
+            "median_response_per_effective_release_unit": 0.3298888457039657,
+            "minimum_response_per_effective_release_unit": 0.019496628965536545,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 534,
+            "signed_response_pass_count": 534,
+            "zero_response_before_lag_pass_count": 534
+          }
+        },
+        "50.0": {
+          "1": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 534,
+            "signed_response_pass_count": 534,
+            "zero_response_before_lag_pass_count": 534
+          },
+          "12": {
+            "effective_intervention_count": 534,
+            "maximum_response_per_effective_release_unit": 0.3298888457039677,
+            "mean_discharge_response_m3s": 14.009274178156378,
+            "median_response_per_effective_release_unit": 0.32988884570396654,
+            "minimum_response_per_effective_release_unit": 0.14365351566090845,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 534,
+            "signed_response_pass_count": 534,
+            "zero_response_before_lag_pass_count": 534
+          },
+          "3": {
+            "effective_intervention_count": 0,
+            "maximum_response_per_effective_release_unit": null,
+            "mean_discharge_response_m3s": 0.0,
+            "median_response_per_effective_release_unit": null,
+            "minimum_response_per_effective_release_unit": null,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 534,
+            "signed_response_pass_count": 534,
+            "zero_response_before_lag_pass_count": 534
+          },
+          "6": {
+            "effective_intervention_count": 534,
+            "maximum_response_per_effective_release_unit": 0.3298888457039678,
+            "mean_discharge_response_m3s": 5.115993038412918,
+            "median_response_per_effective_release_unit": 0.32988884570396676,
+            "minimum_response_per_effective_release_unit": 0.2678104023562807,
+            "post_lag_response_collapse_count": 0,
+            "sample_count": 534,
+            "signed_response_pass_count": 534,
+            "zero_response_before_lag_pass_count": 534
+          }
+        }
+      },
+      "numerical_usability_gate": {
+        "maximum_clipped_step_fraction": 0.05,
+        "maximum_post_lag_response_collapse_fraction": 0.05,
+        "numerical_usability_gate_passed": false,
+        "post_lag_effective_response_count": 2980,
+        "post_lag_response_collapse_count": 179,
+        "post_lag_response_collapse_fraction": 0.060067114093959734,
+        "scenario_clipped_step_fraction": 0.28035868625756266
+      },
+      "structural_gate": {
+        "monotonicity_check_count": 2136,
+        "monotonicity_gate_passed": true,
+        "monotonicity_pass_count": 2136,
+        "pre_lag_zero_response_check_count": 4272,
+        "pre_lag_zero_response_gate_passed": true,
+        "signed_response_check_count": 8544,
+        "signed_response_gate_passed": true,
+        "structural_response_gate_passed": true
+      },
+      "system_id": "j_percy_priest",
+      "window_id": "j_percy_priest_replication"
+    }
+  }
+}

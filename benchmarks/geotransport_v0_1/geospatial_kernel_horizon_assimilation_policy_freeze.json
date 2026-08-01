@@ -1,0 +1,186 @@
+{
+  "claim_boundary": {
+    "candidate_identity_frozen": true,
+    "candidate_promoted": false,
+    "current_validation_can_validate_candidate": false,
+    "geospatial_kernel_validated": false,
+    "prospective_v5_changed": false,
+    "runtime_default_enabled": false
+  },
+  "frozen_at": "2026-08-01T02:28:46.908081+00:00",
+  "future_evaluation_contract": {
+    "all_system_all_horizon_gate_required": true,
+    "current_parent_validation_issue_indices": [
+      336,
+      348,
+      360,
+      372,
+      384,
+      396,
+      408,
+      420,
+      432,
+      444,
+      456,
+      468,
+      480,
+      492,
+      504,
+      516,
+      528,
+      540,
+      552,
+      564,
+      576,
+      588,
+      600,
+      612,
+      624,
+      636,
+      648,
+      660
+    ],
+    "current_parent_validation_split_eligible_for_scoring": false,
+    "policy_change_after_future_outcome_access_permitted": false,
+    "required_horizons_hours": [
+      1,
+      3,
+      6,
+      12
+    ],
+    "required_systems": [
+      "center_hill",
+      "j_percy_priest"
+    ],
+    "required_window": "genuinely_unused_after_frozen_at",
+    "same_policy_sha256_required": true
+  },
+  "implementation_artifacts": {
+    "freezer": {
+      "path": "scripts/freeze_geospatial_kernel_horizon_assimilation_policy.py",
+      "sha256": "8d83c9d3dd335f772741f314858f9e233c88678d595de1324e743b83c410b869",
+      "size_bytes": 11629
+    },
+    "outcome_free_rollout_core": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/horizon_assimilation_rollout.py",
+      "sha256": "5ac32f6381ebc6d2c1532f255b6fa44fa9cb4fcce56be2e2b9e330ccb83ab413",
+      "size_bytes": 24365
+    },
+    "policy_contract": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/horizon_assimilation_policy.py",
+      "sha256": "9cd79a6c081945390878e7a10632c1feb56234be555c8a51dcb099ffba4d9680",
+      "size_bytes": 4773
+    }
+  },
+  "information_boundary": {
+    "calibration_targets_used_for_selection": true,
+    "fresh_prospective_window_consumed": false,
+    "parent_report_contains_exposed_validation_results": true,
+    "validation_results_were_exposed_before_candidate_design": true,
+    "validation_targets_used_for_selection": false
+  },
+  "parent_evidence": {
+    "distance_localized_assimilation_report": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_distance_localized_assimilation_posthoc_report.json",
+      "sha256": "6d9059a39c3d201e0a8e013ae8cc4497603e404d6303edbbbdcc531d3cb6eb24",
+      "size_bytes": 79622
+    },
+    "parent_candidate_promoted": false,
+    "parent_selected_single_mode": "quadratic_distance_localized_mainstem_update"
+  },
+  "policy": {
+    "admitted": false,
+    "candidate_id": "distance_localized_horizon_policy_v1",
+    "runtime_default_enabled": false,
+    "schema": "gwm.geospatial_kernel.horizon_assimilation_policy.v1",
+    "selected_mode_by_horizon_hours": {
+      "1": "linear_distance_localized_mainstem_update",
+      "12": "nominal",
+      "3": "quadratic_distance_localized_mainstem_update",
+      "6": "outlet_only_observation_update"
+    },
+    "selection_scope": "joint_two_system_calibration_split_per_horizon_only",
+    "supported_forecast_horizons_hours": [
+      1,
+      3,
+      6,
+      12
+    ]
+  },
+  "policy_sha256": "69d191ee497c80aa1340d39a0932a726eba23dcd1061c14c1f0f8c6e0e148278",
+  "schema": "gwm.geotransport.horizon_assimilation_policy_freeze.v1",
+  "scientific_role": "freeze a calibration-derived horizon router after the current validation outcomes were exposed; this is candidate identity, not validation",
+  "selection": {
+    "calibration_equal_system_mse_m6s2_by_horizon": {
+      "1": {
+        "linear_distance_localized_mainstem_update": 230.49911049126882,
+        "nominal": 4028.4298464878766,
+        "outlet_only_observation_update": 865.151329773156,
+        "quadratic_distance_localized_mainstem_update": 252.3753277770588
+      },
+      "12": {
+        "linear_distance_localized_mainstem_update": 5513.937111203734,
+        "nominal": 4577.367415122389,
+        "outlet_only_observation_update": 4577.390925686118,
+        "quadratic_distance_localized_mainstem_update": 4880.666150441872
+      },
+      "3": {
+        "linear_distance_localized_mainstem_update": 1258.358353001041,
+        "nominal": 2619.009281941725,
+        "outlet_only_observation_update": 2281.8808005575365,
+        "quadratic_distance_localized_mainstem_update": 1219.405544677113
+      },
+      "6": {
+        "linear_distance_localized_mainstem_update": 3500.842409380208,
+        "nominal": 2662.4042369327935,
+        "outlet_only_observation_update": 2655.8069105306267,
+        "quadratic_distance_localized_mainstem_update": 3035.7661364615474
+      }
+    },
+    "calibration_issue_count": 28,
+    "calibration_issue_indices": [
+      0,
+      12,
+      24,
+      36,
+      48,
+      60,
+      72,
+      84,
+      96,
+      108,
+      120,
+      132,
+      144,
+      156,
+      168,
+      180,
+      192,
+      204,
+      216,
+      228,
+      240,
+      252,
+      264,
+      276,
+      288,
+      300,
+      312,
+      324
+    ],
+    "objective": "minimum equal-system mean prediction MSE independently at each registered horizon",
+    "scope": "joint_two_system_calibration_split_per_horizon_only",
+    "systems": [
+      "center_hill",
+      "j_percy_priest"
+    ],
+    "tie_break_order": [
+      "nominal",
+      "outlet_only_observation_update",
+      "linear_distance_localized_mainstem_update",
+      "quadratic_distance_localized_mainstem_update"
+    ],
+    "validation_issue_indices_used_for_selection": []
+  },
+  "status": "horizon_assimilation_candidate_frozen_awaiting_unused_window"
+}

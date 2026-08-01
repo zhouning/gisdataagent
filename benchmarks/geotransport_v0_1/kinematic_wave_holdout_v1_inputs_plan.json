@@ -1,0 +1,125 @@
+{
+  "action_request_count": 2,
+  "claim_boundary": {
+    "dynamic_inputs_acquired": false,
+    "geospatial_kernel_validated": false,
+    "outcome_free_predictions_sealed": false,
+    "outcomes_acquired": false,
+    "public_data_without_user_supplied_data": true,
+    "request_plan_only": true
+  },
+  "data_isolation": {
+    "outcome_artifacts_present": false,
+    "outcome_path_accepted": false,
+    "outcome_url_requested": false,
+    "outcome_values_loaded": false
+  },
+  "generated_at": "2026-07-28T00:10:32.094210+00:00",
+  "mode": "plan",
+  "nwm_requests": [
+    {
+      "chunk_key": "570.63",
+      "maximum_bytes": 100000000,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/q_lateral/570.63",
+      "variable": "q_lateral"
+    },
+    {
+      "chunk_key": "570.87",
+      "maximum_bytes": 100000000,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/q_lateral/570.87",
+      "variable": "q_lateral"
+    },
+    {
+      "chunk_key": "569.63",
+      "maximum_bytes": 100000000,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/streamflow/569.63",
+      "variable": "streamflow"
+    },
+    {
+      "chunk_key": "569.87",
+      "maximum_bytes": 100000000,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/streamflow/569.87",
+      "variable": "streamflow"
+    },
+    {
+      "chunk_key": "569",
+      "maximum_bytes": 1000000,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/time/569",
+      "variable": "time"
+    },
+    {
+      "chunk_key": "570",
+      "maximum_bytes": 1000000,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/time/570",
+      "variable": "time"
+    }
+  ],
+  "nwm_unique_object_count": 6,
+  "protocol": {
+    "path": "benchmarks/geotransport_v0_1/kinematic_wave_holdout_v1_protocol.json",
+    "sha256": "cd8b5d7eb2c52472a145b2ccecbd7fbf469aa05888fa5121f2e6c31e243bde8b",
+    "size_bytes": 14873
+  },
+  "registry": {
+    "path": "benchmarks/geotransport_v0_1/public_data_registry.json",
+    "sha256": "399144ec64cef6ac74c780ce447b213f33dd97b5dafad5407342ffca37a6bc13",
+    "size_bytes": 23686
+  },
+  "schema": "gwm.geotransport.kinematic_wave_holdout_inputs.v1",
+  "semantic_contract": {
+    "action": {
+      "ground_truth_for_downstream_streamflow": false,
+      "outcome": false,
+      "role": "observed_boundary_action"
+    },
+    "initial_streamflow": {
+      "ground_truth": false,
+      "modeled": true,
+      "possible_nudging": true,
+      "role": "retrospective_modeled_initial_state",
+      "transformation": "operator_Manning_Q_to_A_without_velocity"
+    },
+    "q_lateral": {
+      "ground_truth": false,
+      "modeled": true,
+      "role": "modeled_distributed_reach_forcing"
+    }
+  },
+  "status": "ready_to_acquire_outcome_free_two_system_inputs",
+  "systems": {
+    "center_hill": {
+      "action_url": "https://cwms-data.usace.army.mil/cwms-data/timeseries?name=CETT1-CENTER_HILL.Flow.Ave.1Hour.1Hour.man-rev&office=LRN&begin=2022-10-13T01%3A00%3A00Z&end=2022-11-10T01%3A00%3A00Z&unit=cms&page-size=50000",
+      "feature_chunk_indices": [
+        63,
+        87
+      ],
+      "feature_count": 435,
+      "topology_report": {
+        "path": "benchmarks/geotransport_v0_1/center_hill_v2_d5_full_subnetwork_report.json",
+        "sha256": "9d066189ed23f0bf91fecdefa9327bcfc4a92704d4fb23e6e07c3bbe78559bbd",
+        "size_bytes": 19899
+      }
+    },
+    "j_percy_priest": {
+      "action_url": "https://cwms-data.usace.army.mil/cwms-data/timeseries?name=JPPT1-J_PERCY_PRIEST.Flow.Ave.1Hour.1Hour.man-rev&office=LRN&begin=2022-10-13T01%3A00%3A00Z&end=2022-11-10T01%3A00%3A00Z&unit=cms&page-size=50000",
+      "feature_chunk_indices": [
+        63
+      ],
+      "feature_count": 43,
+      "topology_report": {
+        "path": "benchmarks/geotransport_v0_1/j_percy_priest_v1_full_subnetwork_report.json",
+        "sha256": "2159b88b57ae2a4d476ab025190b64a1cd2b62c1c4d6c9e45bca9e844d2fe3d6",
+        "size_bytes": 13504
+      }
+    }
+  },
+  "window": {
+    "end_exclusive": "2022-11-10T01:00:00Z",
+    "forcing_time_chunk_index": 570,
+    "hour_count": 672,
+    "initial_state_time_chunk_index": 569,
+    "initial_state_valid_at": "2022-10-13T00:00:00Z",
+    "start_inclusive": "2022-10-13T01:00:00Z",
+    "time_step": "PT1H"
+  }
+}

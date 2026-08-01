@@ -1,0 +1,223 @@
+{
+  "all_gates_passed": true,
+  "candidate_ledger_artifact": {
+    "path": "data/geotransport_v0_1/stage44_center_hill_component_lag_replication/replication_candidate_ledger.json",
+    "sha256": "8ee23589977a0bf0520da90a4fb062b72f7448ba05fca4cda2ad84da2564f12b",
+    "size_bytes": 3798487
+  },
+  "decision": {
+    "causal_or_physical_relation_admitted": false,
+    "complete_known_target_exposure_boundary_admitted": true,
+    "eligible_candidate_count": 1343,
+    "new_network_request_count": 0,
+    "new_target_values_acquired": false,
+    "non_turbine_component_contrast_admitted": false,
+    "runtime_operator_admitted": false,
+    "selected_event_count": 4,
+    "source_only_replication_cohort_frozen": true,
+    "stage30_historical_falsification_overturned": false,
+    "stage43_pattern_replicated": false,
+    "target_request_plan_created": false,
+    "universal_lag_admitted": false
+  },
+  "event_manifest_artifact": {
+    "path": "data/geotransport_v0_1/stage44_center_hill_component_lag_replication/replication_event_manifest.json",
+    "sha256": "b98851b30c5c3556eb52daff493546d7832e072beee256d9a6dd82e5c99abe9f",
+    "size_bytes": 30083
+  },
+  "frozen_artifacts": {
+    "data/geotransport_v0_1/stage44_center_hill_component_lag_replication/replication_candidate_ledger.json": {
+      "expected_sha256": "8ee23589977a0bf0520da90a4fb062b72f7448ba05fca4cda2ad84da2564f12b",
+      "matches": true,
+      "path": "data/geotransport_v0_1/stage44_center_hill_component_lag_replication/replication_candidate_ledger.json",
+      "sha256": "8ee23589977a0bf0520da90a4fb062b72f7448ba05fca4cda2ad84da2564f12b",
+      "size_bytes": 3798487
+    },
+    "data/geotransport_v0_1/stage44_center_hill_component_lag_replication/replication_event_manifest.json": {
+      "expected_sha256": "b98851b30c5c3556eb52daff493546d7832e072beee256d9a6dd82e5c99abe9f",
+      "matches": true,
+      "path": "data/geotransport_v0_1/stage44_center_hill_component_lag_replication/replication_event_manifest.json",
+      "sha256": "b98851b30c5c3556eb52daff493546d7832e072beee256d9a6dd82e5c99abe9f",
+      "size_bytes": 30083
+    },
+    "data/geotransport_v0_1/stage44_center_hill_component_lag_replication/replication_protocol.json": {
+      "expected_sha256": "ee84167cf3b58b6ce1721795286f6539448f9fec5d781cd2212abfc67e47006d",
+      "matches": true,
+      "path": "data/geotransport_v0_1/stage44_center_hill_component_lag_replication/replication_protocol.json",
+      "sha256": "ee84167cf3b58b6ce1721795286f6539448f9fec5d781cd2212abfc67e47006d",
+      "size_bytes": 9240
+    },
+    "data_agent/test_compile_geotransport_stage44_component_lag_replication_events.py": {
+      "expected_sha256": "7ce6b1894906d82a3791239e3d839386aaea6fd28764e9bb2b952d3fb91e3b31",
+      "matches": true,
+      "path": "data_agent/test_compile_geotransport_stage44_component_lag_replication_events.py",
+      "sha256": "7ce6b1894906d82a3791239e3d839386aaea6fd28764e9bb2b952d3fb91e3b31",
+      "size_bytes": 2121
+    },
+    "data_agent/test_compile_geotransport_stage44_target_exposure_inventory.py": {
+      "expected_sha256": "c990f30df91a5a0b706ec8188ef05c1934fd5d5e4abcb0f7c25b235b7f7c036f",
+      "matches": true,
+      "path": "data_agent/test_compile_geotransport_stage44_target_exposure_inventory.py",
+      "sha256": "c990f30df91a5a0b706ec8188ef05c1934fd5d5e4abcb0f7c25b235b7f7c036f",
+      "size_bytes": 2556
+    },
+    "data_agent/test_freeze_geotransport_stage44_component_lag_replication_protocol.py": {
+      "expected_sha256": "f90c1729475ec3ded5db999446e1a4b2540c65ff7b2afd64dff944d6b719d7bb",
+      "matches": true,
+      "path": "data_agent/test_freeze_geotransport_stage44_component_lag_replication_protocol.py",
+      "sha256": "f90c1729475ec3ded5db999446e1a4b2540c65ff7b2afd64dff944d6b719d7bb",
+      "size_bytes": 1992
+    },
+    "data_agent/test_geospatial_kernel_target_exposure_inventory.py": {
+      "expected_sha256": "a0b578d9a195bc881a061ebfda0afa51a93246efc2c58f4b7d9048aa3449e829",
+      "matches": true,
+      "path": "data_agent/test_geospatial_kernel_target_exposure_inventory.py",
+      "sha256": "a0b578d9a195bc881a061ebfda0afa51a93246efc2c58f4b7d9048aa3449e829",
+      "size_bytes": 1786
+    },
+    "scripts/compile_geotransport_stage44_component_lag_replication_events.py": {
+      "expected_sha256": "a2c0eff4b639d1c7e85a3578bcb65388db3dab755c40e25b73fb23704595ea29",
+      "matches": true,
+      "path": "scripts/compile_geotransport_stage44_component_lag_replication_events.py",
+      "sha256": "a2c0eff4b639d1c7e85a3578bcb65388db3dab755c40e25b73fb23704595ea29",
+      "size_bytes": 6809
+    },
+    "scripts/freeze_geotransport_stage44_component_lag_replication_protocol.py": {
+      "expected_sha256": "dd2954fe76ba36a0e9a30fc7eb40ca29529c96e8528c62764a1c6d552ce98798",
+      "matches": true,
+      "path": "scripts/freeze_geotransport_stage44_component_lag_replication_protocol.py",
+      "sha256": "dd2954fe76ba36a0e9a30fc7eb40ca29529c96e8528c62764a1c6d552ce98798",
+      "size_bytes": 10422
+    }
+  },
+  "gates": {
+    "all_fifteen_exposure_source_artifacts_are_hash_frozen": true,
+    "all_fifteen_stage29_through_stage32_event_windows_are_included": true,
+    "all_four_stage36_target_windows_are_included": true,
+    "all_four_stage42_target_windows_are_included": true,
+    "all_nine_stage44_implementation_test_and_output_artifacts_match": true,
+    "all_selected_events_are_at_least_180_days_apart": true,
+    "all_selected_events_pass_frozen_excitation_identifiability": true,
+    "all_selected_ranges_exceed_one_hundred_cms": true,
+    "all_selected_source_windows_have_exact_73_hour_support": true,
+    "all_selected_steps_are_turbine_only": true,
+    "all_selected_steps_exceed_fifty_cms": true,
+    "all_ten_upstream_protocol_inputs_match": true,
+    "all_thirty_four_target_exposure_records_are_preserved": true,
+    "blind_and_kinematic_broad_holdout_windows_are_included": true,
+    "both_high_flow_direction_strata_remain_available": true,
+    "both_low_flow_direction_strata_remain_available": true,
+    "candidate_stratum_counts_are_exact": true,
+    "component_gate_candidate_counts_are_exact": true,
+    "development_companion_and_d3_broad_windows_are_included": true,
+    "eligible_candidate_count_is_exactly_1343": true,
+    "exactly_four_source_only_replication_events_are_selected": true,
+    "four_exact_event_ids_are_frozen": true,
+    "four_exact_event_times_are_frozen": true,
+    "four_strata_remain_in_predeclared_order": true,
+    "inventory_compiler_loads_no_target_value_payloads": true,
+    "post_target_retuning_and_event_reselection_are_forbidden": true,
+    "replication_protocol_is_exactly_reproducible": true,
+    "request_boundaries_are_used_without_analysis_support_trimming": true,
+    "selected_source_windows_do_not_overlap_expanded_exposure_intervals": true,
+    "selected_source_windows_do_not_overlap_raw_exposure_intervals": true,
+    "selector_compatibility_anchor_is_contained_by_first_exposure_window": true,
+    "source_cohort_is_frozen_while_replication_remains_pending": true,
+    "source_quality_codes_are_preserved_without_approval_semantics": true,
+    "source_support_retains_all_43825_synchronized_hours": true,
+    "stage27_probes_and_stage28_three_day_windows_are_included": true,
+    "stage30_historical_falsification_is_explicitly_preserved": true,
+    "stage43_target_operator_thresholds_remain_unchanged": true,
+    "stage44_creates_no_target_request_plan": true,
+    "stage44_makes_no_network_request_and_acquires_no_values": true,
+    "strict_high_five_low_six_bidirectional_hypothesis_is_frozen": true,
+    "target_exposure_inventory_artifact_is_exactly_reproducible": true,
+    "target_exposures_merge_to_twenty_seven_unique_intervals": true,
+    "thirty_day_closed_window_exclusion_is_frozen": true,
+    "universal_causal_physical_component_and_runtime_promotions_are_rejected": true
+  },
+  "protocol_artifact": {
+    "path": "data/geotransport_v0_1/stage44_center_hill_component_lag_replication/replication_protocol.json",
+    "sha256": "ee84167cf3b58b6ce1721795286f6539448f9fec5d781cd2212abfc67e47006d",
+    "size_bytes": 9240
+  },
+  "schema": "gwm.geotransport.stage44_component_lag_replication_gates.v1",
+  "status": "stage44_component_lag_replication_cohort_frozen_source_only",
+  "target_exposure_inventory_artifact": {
+    "path": "data/geotransport_v0_1/stage44_center_hill_component_lag_replication/target_exposure_inventory.json",
+    "sha256": "ccb102452ec522c8303d52d71fc01969504f668e5c17f17011eac3041517aa9d",
+    "size_bytes": 28808
+  },
+  "upstream_frozen_artifacts": {
+    "benchmarks/geotransport_v0_1/stage40_component_discharge_value_support_gates.json": {
+      "expected_sha256": "6d9c78138d635467814a372b2faafb9eb534fd6c8cc66ebe4063e933f5a72dec",
+      "matches": true,
+      "path": "benchmarks/geotransport_v0_1/stage40_component_discharge_value_support_gates.json",
+      "sha256": "6d9c78138d635467814a372b2faafb9eb534fd6c8cc66ebe4063e933f5a72dec",
+      "size_bytes": 11219
+    },
+    "benchmarks/geotransport_v0_1/stage43_component_event_lag_support_gates.json": {
+      "expected_sha256": "c18c11f2d637e272304b1b60a9ab39e8e135a27cc6fb4e89a86a531a4471c46c",
+      "matches": true,
+      "path": "benchmarks/geotransport_v0_1/stage43_component_event_lag_support_gates.json",
+      "sha256": "c18c11f2d637e272304b1b60a9ab39e8e135a27cc6fb4e89a86a531a4471c46c",
+      "size_bytes": 13562
+    },
+    "data/geotransport_v0_1/stage30_center_hill_regime_validation_events/regime_transfer_evidence_ledger.json": {
+      "expected_sha256": "6153cdea6451e8ff8b2126ce5776d2f4dc33d4bc616cb8e5eb201e56cebf283c",
+      "matches": true,
+      "path": "data/geotransport_v0_1/stage30_center_hill_regime_validation_events/regime_transfer_evidence_ledger.json",
+      "sha256": "6153cdea6451e8ff8b2126ce5776d2f4dc33d4bc616cb8e5eb201e56cebf283c",
+      "size_bytes": 442463
+    },
+    "data/geotransport_v0_1/stage40_center_hill_component_discharge_value_support/component_discharge_value_support_ledger.json": {
+      "expected_sha256": "d4d8b1b145ddd9f45e6c5d0905d6d5cabbdf99da0414cacaa43f6c0798d70de1",
+      "matches": true,
+      "path": "data/geotransport_v0_1/stage40_center_hill_component_discharge_value_support/component_discharge_value_support_ledger.json",
+      "sha256": "d4d8b1b145ddd9f45e6c5d0905d6d5cabbdf99da0414cacaa43f6c0798d70de1",
+      "size_bytes": 13087
+    },
+    "data/geotransport_v0_1/stage43_center_hill_component_event_lag_support/component_event_lag_support_evidence_ledger.json": {
+      "expected_sha256": "91c85ba78d1f4bd8e500b800b3496f395b378244549c7e0b1a68fa107e85e94a",
+      "matches": true,
+      "path": "data/geotransport_v0_1/stage43_center_hill_component_event_lag_support/component_event_lag_support_evidence_ledger.json",
+      "sha256": "91c85ba78d1f4bd8e500b800b3496f395b378244549c7e0b1a68fa107e85e94a",
+      "size_bytes": 625458
+    },
+    "data/geotransport_v0_1/stage44_center_hill_component_lag_replication/target_exposure_inventory.json": {
+      "expected_sha256": "ccb102452ec522c8303d52d71fc01969504f668e5c17f17011eac3041517aa9d",
+      "matches": true,
+      "path": "data/geotransport_v0_1/stage44_center_hill_component_lag_replication/target_exposure_inventory.json",
+      "sha256": "ccb102452ec522c8303d52d71fc01969504f668e5c17f17011eac3041517aa9d",
+      "size_bytes": 28808
+    },
+    "data_agent/uwm/geospatial_kernel_v2/component_discharge_event_selection.py": {
+      "expected_sha256": "f3f72959befaf70384994f9a47265ac6cd87e1fa63824fbf9879c7bf37784d04",
+      "matches": true,
+      "path": "data_agent/uwm/geospatial_kernel_v2/component_discharge_event_selection.py",
+      "sha256": "f3f72959befaf70384994f9a47265ac6cd87e1fa63824fbf9879c7bf37784d04",
+      "size_bytes": 17378
+    },
+    "data_agent/uwm/geospatial_kernel_v2/empirical_lag_support.py": {
+      "expected_sha256": "43d561732f0aba563ea5a1138fd748a5017fdfde9c2b850ac4327e3a1e2ec4fc",
+      "matches": true,
+      "path": "data_agent/uwm/geospatial_kernel_v2/empirical_lag_support.py",
+      "sha256": "43d561732f0aba563ea5a1138fd748a5017fdfde9c2b850ac4327e3a1e2ec4fc",
+      "size_bytes": 8399
+    },
+    "data_agent/uwm/geospatial_kernel_v2/target_exposure_inventory.py": {
+      "expected_sha256": "983fbe82b59a3dba4fa77085c1cd65f869086b9f2f13cd73b9a02e1b99ed7794",
+      "matches": true,
+      "path": "data_agent/uwm/geospatial_kernel_v2/target_exposure_inventory.py",
+      "sha256": "983fbe82b59a3dba4fa77085c1cd65f869086b9f2f13cd73b9a02e1b99ed7794",
+      "size_bytes": 6218
+    },
+    "scripts/compile_geotransport_stage44_target_exposure_inventory.py": {
+      "expected_sha256": "5f624bff41a1a10b90db463690d24d325af90e988980a2ced4c3f82427468f1f",
+      "matches": true,
+      "path": "scripts/compile_geotransport_stage44_target_exposure_inventory.py",
+      "sha256": "5f624bff41a1a10b90db463690d24d325af90e988980a2ced4c3f82427468f1f",
+      "size_bytes": 13020
+    }
+  }
+}

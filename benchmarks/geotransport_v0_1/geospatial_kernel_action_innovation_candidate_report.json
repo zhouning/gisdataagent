@@ -1,0 +1,883 @@
+{
+  "aggregate_gate": {
+    "admission_gate_passed": false,
+    "both_posthoc_temporal_window_gates_passed": true,
+    "candidate_diagnostic_gate_passed": true,
+    "development_gate_passed": true
+  },
+  "claim_boundary": {
+    "action_innovation_candidate_implemented": true,
+    "action_innovation_closure_admitted_as_default": false,
+    "geospatial_kernel_validated": false,
+    "multi_system_generalization_validated": false,
+    "operational_forecast_validated": false,
+    "posthoc_public_diagnostics_passed": true
+  },
+  "development": {
+    "causal_state_unavailable_row_count": 8,
+    "hard_gate": {
+      "all_required_accuracy_comparisons_passed": true,
+      "clipped_candidate_step_count": 0,
+      "development_gate_passed": true,
+      "no_future_outcome_gate_passed": true,
+      "per_horizon": {
+        "1": {
+          "action_effect_required_at_horizon": false,
+          "candidate_beats_causal_persistence_rmse": true,
+          "candidate_beats_graph_manning_rmse": true,
+          "candidate_beats_local_manning_rmse": true,
+          "candidate_beats_no_future_action_rmse": false,
+          "candidate_beats_no_future_forcing_rmse": true
+        },
+        "12": {
+          "action_effect_required_at_horizon": true,
+          "candidate_beats_causal_persistence_rmse": true,
+          "candidate_beats_graph_manning_rmse": true,
+          "candidate_beats_local_manning_rmse": true,
+          "candidate_beats_no_future_action_rmse": true,
+          "candidate_beats_no_future_forcing_rmse": true
+        },
+        "3": {
+          "action_effect_required_at_horizon": false,
+          "candidate_beats_causal_persistence_rmse": true,
+          "candidate_beats_graph_manning_rmse": true,
+          "candidate_beats_local_manning_rmse": true,
+          "candidate_beats_no_future_action_rmse": false,
+          "candidate_beats_no_future_forcing_rmse": true
+        },
+        "6": {
+          "action_effect_required_at_horizon": true,
+          "candidate_beats_causal_persistence_rmse": true,
+          "candidate_beats_graph_manning_rmse": true,
+          "candidate_beats_local_manning_rmse": true,
+          "candidate_beats_no_future_action_rmse": true,
+          "candidate_beats_no_future_forcing_rmse": true
+        }
+      },
+      "state_writeback_gate_passed": true,
+      "supported_horizons_beat_no_future_action": true
+    },
+    "metrics_by_horizon": {
+      "1": {
+        "candidate": {
+          "bias_m3s": 0.11296858704359167,
+          "mae_m3s": 18.909415876273428,
+          "nse": 0.9406480928059713,
+          "rmse_m3s": 25.493343489086406,
+          "sample_count": 475
+        },
+        "causal_persistence": {
+          "bias_m3s": -0.8351979384273682,
+          "mae_m3s": 27.143098397173475,
+          "nse": 0.8906159829325593,
+          "rmse_m3s": 34.60878814168572,
+          "sample_count": 475
+        },
+        "graph_manning": {
+          "bias_m3s": -6.2242204119162645,
+          "mae_m3s": 39.155886427883885,
+          "nse": 0.7852745845520992,
+          "rmse_m3s": 48.48988832431166,
+          "sample_count": 475
+        },
+        "local_manning": {
+          "bias_m3s": -5.71878504119973,
+          "mae_m3s": 38.547213362134535,
+          "nse": 0.7889265452916137,
+          "rmse_m3s": 48.075772046949,
+          "sample_count": 475
+        },
+        "no_future_action": {
+          "bias_m3s": 0.11296858704359167,
+          "mae_m3s": 18.909415876273428,
+          "nse": 0.9406480928059713,
+          "rmse_m3s": 25.493343489086406,
+          "sample_count": 475
+        },
+        "no_future_forcing": {
+          "bias_m3s": -1.258919538753691,
+          "mae_m3s": 18.881466779963084,
+          "nse": 0.9399143591227523,
+          "rmse_m3s": 25.65043927162278,
+          "sample_count": 475
+        }
+      },
+      "12": {
+        "candidate": {
+          "bias_m3s": 0.040996984584451064,
+          "mae_m3s": 53.67416094906251,
+          "nse": 0.5738197410687966,
+          "rmse_m3s": 69.51336935092924,
+          "sample_count": 475
+        },
+        "causal_persistence": {
+          "bias_m3s": -5.851154722112631,
+          "mae_m3s": 88.83429961132357,
+          "nse": -0.1597740035121864,
+          "rmse_m3s": 114.67225686113191,
+          "sample_count": 475
+        },
+        "graph_manning": {
+          "bias_m3s": -11.430479532301414,
+          "mae_m3s": 69.01247697449415,
+          "nse": 0.3555819515769266,
+          "rmse_m3s": 85.47823041044312,
+          "sample_count": 475
+        },
+        "local_manning": {
+          "bias_m3s": -11.6012552091988,
+          "mae_m3s": 66.90048611088974,
+          "nse": 0.384054167719287,
+          "rmse_m3s": 83.56856323076794,
+          "sample_count": 475
+        },
+        "no_future_action": {
+          "bias_m3s": -54.54639855699427,
+          "mae_m3s": 86.05872000935338,
+          "nse": 0.04151934747316244,
+          "rmse_m3s": 104.24694831521104,
+          "sample_count": 475
+        },
+        "no_future_forcing": {
+          "bias_m3s": -16.69769193308663,
+          "mae_m3s": 59.033055092142014,
+          "nse": 0.3979807448851461,
+          "rmse_m3s": 82.61841635358302,
+          "sample_count": 475
+        }
+      },
+      "3": {
+        "candidate": {
+          "bias_m3s": 0.5020511281636815,
+          "mae_m3s": 31.238687937276946,
+          "nse": 0.8524455016532443,
+          "rmse_m3s": 40.372651258181754,
+          "sample_count": 475
+        },
+        "causal_persistence": {
+          "bias_m3s": -1.3899100595621052,
+          "mae_m3s": 49.78393741503199,
+          "nse": 0.6452344106130925,
+          "rmse_m3s": 62.60107450933363,
+          "sample_count": 475
+        },
+        "graph_manning": {
+          "bias_m3s": -11.028730705368995,
+          "mae_m3s": 66.05894090546276,
+          "nse": 0.3954916393101503,
+          "rmse_m3s": 81.71695951337163,
+          "sample_count": 475
+        },
+        "local_manning": {
+          "bias_m3s": -9.998215599403215,
+          "mae_m3s": 65.26561729064251,
+          "nse": 0.40255600027138505,
+          "rmse_m3s": 81.23807898864702,
+          "sample_count": 475
+        },
+        "no_future_action": {
+          "bias_m3s": 0.5020511281636815,
+          "mae_m3s": 31.238687937276946,
+          "nse": 0.8524455016532443,
+          "rmse_m3s": 40.372651258181754,
+          "sample_count": 475
+        },
+        "no_future_forcing": {
+          "bias_m3s": -3.6250393859488055,
+          "mae_m3s": 31.992042468023975,
+          "nse": 0.8396315478213074,
+          "rmse_m3s": 42.089184595106225,
+          "sample_count": 475
+        }
+      },
+      "6": {
+        "candidate": {
+          "bias_m3s": 0.4981253212910207,
+          "mae_m3s": 42.81589179029944,
+          "nse": 0.758773652456197,
+          "rmse_m3s": 51.903930494795226,
+          "sample_count": 475
+        },
+        "causal_persistence": {
+          "bias_m3s": -2.2906838532589475,
+          "mae_m3s": 72.13063891481264,
+          "nse": 0.26403041461777244,
+          "rmse_m3s": 90.66043731133838,
+          "sample_count": 475
+        },
+        "graph_manning": {
+          "bias_m3s": -11.129896366862978,
+          "mae_m3s": 68.05059555193245,
+          "nse": 0.36284484986125276,
+          "rmse_m3s": 84.35493109108633,
+          "sample_count": 475
+        },
+        "local_manning": {
+          "bias_m3s": -10.1853847057819,
+          "mae_m3s": 67.18049831572765,
+          "nse": 0.37076061316474007,
+          "rmse_m3s": 83.82929729044496,
+          "sample_count": 475
+        },
+        "no_future_action": {
+          "bias_m3s": -17.39958710202503,
+          "mae_m3s": 50.4815487084072,
+          "nse": 0.6593925475395558,
+          "rmse_m3s": 61.67582238506088,
+          "sample_count": 475
+        },
+        "no_future_forcing": {
+          "bias_m3s": -7.794694090310653,
+          "mae_m3s": 45.48798510652693,
+          "nse": 0.7001847773586145,
+          "rmse_m3s": 57.864834575399215,
+          "sample_count": 475
+        }
+      }
+    },
+    "role": "original_public_development_scoring",
+    "scoring": {
+      "common_complete_case_count_by_horizon": {
+        "1": 475,
+        "12": 475,
+        "3": 475,
+        "6": 475
+      },
+      "comparison_uses_identical_rows_within_each_horizon": true,
+      "missing_values_imputed": false,
+      "omitted_target_times_by_horizon": {
+        "1": [
+          "2022-01-03T05:00:00Z",
+          "2022-01-03T06:00:00Z",
+          "2022-01-03T07:00:00Z",
+          "2022-01-03T08:00:00Z",
+          "2022-01-03T09:00:00Z"
+        ],
+        "12": [
+          "2022-01-03T05:00:00Z",
+          "2022-01-03T06:00:00Z",
+          "2022-01-03T07:00:00Z",
+          "2022-01-03T19:00:00Z",
+          "2022-01-03T20:00:00Z"
+        ],
+        "3": [
+          "2022-01-03T05:00:00Z",
+          "2022-01-03T06:00:00Z",
+          "2022-01-03T07:00:00Z",
+          "2022-01-03T10:00:00Z",
+          "2022-01-03T11:00:00Z"
+        ],
+        "6": [
+          "2022-01-03T05:00:00Z",
+          "2022-01-03T06:00:00Z",
+          "2022-01-03T07:00:00Z",
+          "2022-01-03T13:00:00Z",
+          "2022-01-03T14:00:00Z"
+        ]
+      }
+    },
+    "source_artifacts": {
+      "lead_time_predictions": {
+        "path": "data/geotransport_v0_1/center_hill_lead_time_development/predictions.csv",
+        "sha256": "7c208b1479aa035c58c701252f7f1fd3a122c6dc73cbf31e0b4e6599dc38dbb2",
+        "size_bytes": 512472
+      },
+      "lead_time_report": {
+        "path": "benchmarks/geotransport_v0_1/center_hill_lead_time_development_report.json",
+        "sha256": "f6c6c7a8c0b27469e1f098cd16a07b45d188e470a9481ee10a7e3392177319c9",
+        "size_bytes": 16650
+      }
+    }
+  },
+  "generated_at": "2026-07-30T15:18:51.447092+00:00",
+  "implementation_artifacts": {
+    "core_operator": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/action_innovation_transition.py",
+      "sha256": "f44b1e5867c2b2f9c0a46b0e7ea6ae8878ec2e7acaa7c23c07308cb78fad0a2a",
+      "size_bytes": 22501
+    },
+    "evaluator": {
+      "path": "scripts/evaluate_geospatial_kernel_action_innovation_candidate.py",
+      "sha256": "04027374f434820fbdca1c011a8aafe96c27546000d87d959c337c14e8c7cb0a",
+      "size_bytes": 27739
+    }
+  },
+  "information_boundary": {
+    "future_outlet_observations_used_by_kernel": false,
+    "future_realized_action_archive_used": true,
+    "future_retrospective_nwm_forcing_used": true,
+    "operational_forecast_claim_permitted": false
+  },
+  "kernel": {
+    "absolute_outlet_level_coefficient_fitted": false,
+    "asymptotic_stability_claimed": false,
+    "fit": {
+      "design_condition_number": 42.31174249904882,
+      "design_rank": 3,
+      "design_singular_values": [
+        524.1434483254586,
+        143.60809388521966,
+        12.387659249373664
+      ],
+      "parameters": {
+        "action_change_coefficient": 0.32988884570396676,
+        "admitted": false,
+        "asymptotic_stability_claimed": false,
+        "baseline_drift_m3s_per_hour": -1.034640722461434,
+        "evidence_level": "candidate",
+        "forcing_coefficient": 0.7141335342714641,
+        "formula": "q[t] = q[t-1] + drift + action_change_beta*(sum(w_lag*action[t-lag]) - sum(w_lag*action[t-1-lag])) + forcing_beta*nwm_lateral[t]",
+        "mass_conserving_network_routing_replacement": false,
+        "maximum_discharge_m3s": 10000.0,
+        "outcome_calibrated": true,
+        "provenance_id": "center-hill:kernel-action-innovation:ols-increment-fit:panel=3ab31194e1687b2a4556bdf4f0889acfa62afe2a53e6dd5ad056f168b55cc746:fixed-path-lags-and-uniform-weights",
+        "schema": "gwm.geospatial_kernel.action_innovation_transition_parameters.v1",
+        "state_persistence_coefficient_fixed": 1.0,
+        "support": {
+          "action_entry_feature_id": 18434265,
+          "admitted": false,
+          "empirical_lag_is_physical_travel_time": false,
+          "evidence_level": "candidate",
+          "lag_hours": [
+            5,
+            6,
+            7
+          ],
+          "lag_weights": [
+            0.3333333333333333,
+            0.3333333333333333,
+            0.3333333333333333
+          ],
+          "network_id": "center-hill:dam-to-gauge:full-incremental-subnetwork-v1",
+          "outlet_feature_id": 18421703,
+          "path_feature_ids": [
+            18434265,
+            18421763,
+            18421761,
+            18421759,
+            18421753,
+            18421821,
+            18427677,
+            18421751,
+            18421811,
+            18421817,
+            18421831,
+            18421747,
+            18421829,
+            18421727,
+            18421737,
+            18421807,
+            18421719,
+            18421721,
+            18421803,
+            18421799,
+            18421731,
+            18421739,
+            18421741,
+            18421795,
+            18421707,
+            18421703
+          ],
+          "provenance_id": "center-hill:directed-full-subnetwork-path:network=9ae3611462c731ef1508dd091f499425b8befe338fa85e6649df696ee7a1b951:candidate-lag-union=175101fc441395c82a2a2870986ed074bd91aa49d9e639d92d0540dcdba938fc",
+          "schema": "gwm.geospatial_kernel.geographic_response_support.v1"
+        },
+        "supported_forecast_horizons_hours": [
+          1,
+          3,
+          6,
+          12
+        ],
+        "timestep_seconds": 3600,
+        "training_data_end": "2021-12-16T01:00:00+00:00",
+        "training_data_start": "2021-12-09T02:00:00+00:00",
+        "training_sample_count": 160
+      },
+      "training_increment_rmse_m3s": 14.063359533067445
+    },
+    "free_parameter_count": 3,
+    "mass_conserving_network_routing_replacement": false,
+    "role": "state_anchored_action_innovation_predictive_closure",
+    "state_persistence_coefficient_fixed": 1.0
+  },
+  "outputs": {
+    "development_predictions": {
+      "path": "data/geotransport_v0_1/kernel_innovation_candidate/development_predictions.csv",
+      "sha256": "79dc2b726482d4d400fd8eb1c221e04661010ba3e597b6d74bdca56b95f58306",
+      "size_bytes": 628509
+    },
+    "february_d3_predictions": {
+      "path": "data/geotransport_v0_1/kernel_innovation_candidate/february_d3_predictions.csv",
+      "sha256": "e47407e94d707ddc9a12962e6383b68c7e9992fa0354ab841cc726305b55cb95",
+      "size_bytes": 753702
+    },
+    "january_temporal_holdout_predictions": {
+      "path": "data/geotransport_v0_1/kernel_innovation_candidate/january_temporal_holdout_predictions.csv",
+      "sha256": "7236dc5093194f3446303667fad3df5eb2351f95fb989a2075f5a3e7b96f4272",
+      "size_bytes": 602689
+    },
+    "parameters": {
+      "path": "data/geotransport_v0_1/kernel_innovation_candidate/parameters.json",
+      "sha256": "56990a10610c3ab7d6e6479906237463f1d9d17ea9e630bdacc22528961106ad",
+      "size_bytes": 2246
+    }
+  },
+  "parameter_lock": {
+    "all_evaluations_use_deserialized_parameter_artifact": true,
+    "per_window_refit_performed": false,
+    "serialized_parameter_sha256": "56990a10610c3ab7d6e6479906237463f1d9d17ea9e630bdacc22528961106ad"
+  },
+  "posthoc_temporal_diagnostics": {
+    "february_d3": {
+      "hard_gate": {
+        "all_required_accuracy_comparisons_passed": true,
+        "clipped_candidate_step_count": 0,
+        "no_future_outcome_gate_passed": true,
+        "per_horizon": {
+          "1": {
+            "action_effect_required_at_horizon": false,
+            "candidate_beats_causal_persistence_rmse": true,
+            "candidate_beats_no_future_action_rmse": false,
+            "candidate_beats_no_future_forcing_rmse": true
+          },
+          "12": {
+            "action_effect_required_at_horizon": true,
+            "candidate_beats_causal_persistence_rmse": true,
+            "candidate_beats_no_future_action_rmse": true,
+            "candidate_beats_no_future_forcing_rmse": true
+          },
+          "3": {
+            "action_effect_required_at_horizon": false,
+            "candidate_beats_causal_persistence_rmse": true,
+            "candidate_beats_no_future_action_rmse": false,
+            "candidate_beats_no_future_forcing_rmse": true
+          },
+          "6": {
+            "action_effect_required_at_horizon": true,
+            "candidate_beats_causal_persistence_rmse": true,
+            "candidate_beats_no_future_action_rmse": true,
+            "candidate_beats_no_future_forcing_rmse": true
+          }
+        },
+        "state_writeback_gate_passed": true,
+        "supported_horizons_beat_no_future_action": true,
+        "window_diagnostic_gate_passed": true
+      },
+      "metrics_by_horizon": {
+        "1": {
+          "candidate": {
+            "bias_m3s": -0.2205332849306461,
+            "mae_m3s": 14.460738150197654,
+            "nse": 0.9852048726722915,
+            "rmse_m3s": 20.370158746158733,
+            "sample_count": 663
+          },
+          "causal_persistence": {
+            "bias_m3s": -1.5458948150527902,
+            "mae_m3s": 21.97588033306184,
+            "nse": 0.969510866312679,
+            "rmse_m3s": 29.242035650936604,
+            "sample_count": 663
+          },
+          "no_future_action": {
+            "bias_m3s": -0.2205332849306461,
+            "mae_m3s": 14.460738150197654,
+            "nse": 0.9852048726722915,
+            "rmse_m3s": 20.370158746158733,
+            "sample_count": 663
+          },
+          "no_future_forcing": {
+            "bias_m3s": -1.6508469113456283,
+            "mae_m3s": 15.016299396750947,
+            "nse": 0.983914567064456,
+            "rmse_m3s": 21.239849598018495,
+            "sample_count": 663
+          }
+        },
+        "12": {
+          "candidate": {
+            "bias_m3s": -1.1635658851370243,
+            "mae_m3s": 46.30960831838984,
+            "nse": 0.8199492482794526,
+            "rmse_m3s": 70.34280834748138,
+            "sample_count": 652
+          },
+          "causal_persistence": {
+            "bias_m3s": -9.866314645935583,
+            "mae_m3s": 70.87982486927915,
+            "nse": 0.6045205050334868,
+            "rmse_m3s": 104.25195765906167,
+            "sample_count": 652
+          },
+          "no_future_action": {
+            "bias_m3s": -71.4794149451047,
+            "mae_m3s": 97.02159675265284,
+            "nse": 0.49966532279542286,
+            "rmse_m3s": 117.26071434076717,
+            "sample_count": 652
+          },
+          "no_future_forcing": {
+            "bias_m3s": -18.492585907225944,
+            "mae_m3s": 54.52577551006351,
+            "nse": 0.7200378150639857,
+            "rmse_m3s": 87.7146067519871,
+            "sample_count": 652
+          }
+        },
+        "3": {
+          "candidate": {
+            "bias_m3s": -0.45848132475128744,
+            "mae_m3s": 24.65035514217297,
+            "nse": 0.9589889425945403,
+            "rmse_m3s": 33.83065640650401,
+            "sample_count": 661
+          },
+          "causal_persistence": {
+            "bias_m3s": -3.1247704473676254,
+            "mae_m3s": 40.01206836751891,
+            "nse": 0.8998068322682278,
+            "rmse_m3s": 52.87848387695451,
+            "sample_count": 661
+          },
+          "no_future_action": {
+            "bias_m3s": -0.45848132475128744,
+            "mae_m3s": 24.65035514217297,
+            "nse": 0.9589889425945403,
+            "rmse_m3s": 33.83065640650401,
+            "sample_count": 661
+          },
+          "no_future_forcing": {
+            "bias_m3s": -4.757975810991782,
+            "mae_m3s": 26.516314494071057,
+            "nse": 0.9492832937572664,
+            "rmse_m3s": 37.621444043056684,
+            "sample_count": 661
+          }
+        },
+        "6": {
+          "candidate": {
+            "bias_m3s": -0.8286358124272445,
+            "mae_m3s": 34.45018890759388,
+            "nse": 0.916448339093023,
+            "rmse_m3s": 48.097959521481116,
+            "sample_count": 658
+          },
+          "causal_persistence": {
+            "bias_m3s": -5.533684185775075,
+            "mae_m3s": 56.21515900003039,
+            "nse": 0.7912133142064761,
+            "rmse_m3s": 76.03271680338277,
+            "sample_count": 658
+          },
+          "no_future_action": {
+            "bias_m3s": -24.203611846410247,
+            "mae_m3s": 49.029660939297635,
+            "nse": 0.8699258143886597,
+            "rmse_m3s": 60.01290729803011,
+            "sample_count": 658
+          },
+          "no_future_forcing": {
+            "bias_m3s": -9.451527040125828,
+            "mae_m3s": 38.446991783796285,
+            "nse": 0.882251108336509,
+            "rmse_m3s": 57.09887120424181,
+            "sample_count": 658
+          }
+        }
+      },
+      "role": "previously_scored_independent_d3_window_posthoc_for_mvp",
+      "scoring": {
+        "common_complete_case_count_by_horizon": {
+          "1": 663,
+          "12": 652,
+          "3": 661,
+          "6": 658
+        },
+        "comparison_uses_identical_rows_within_each_horizon": true,
+        "missing_values_imputed": false,
+        "omitted_target_times_by_horizon": {
+          "1": [],
+          "12": [],
+          "3": [],
+          "6": []
+        }
+      },
+      "source_artifacts": {
+        "action_manifest": {
+          "path": "data/geotransport_v0_1/center_hill_v2_d3_inputs/action/acquisition_manifest.json",
+          "sha256": "f9b619afd3e98855f8853b8253df1b7632c23b2d67d53abaf6881c5961a3bbc2",
+          "size_bytes": 1602
+        },
+        "action_values": {
+          "path": "data/geotransport_v0_1/center_hill_v2_d3_inputs/action/action_values.csv",
+          "sha256": "78122fcd81c03e755dd374194892962a502adb8e4988646d98e122a19c2f2180",
+          "size_bytes": 46649
+        },
+        "frozen_protocol": {
+          "path": "benchmarks/geotransport_v0_1/center_hill_v2_d3_protocol.json",
+          "sha256": "d3675aaadd1274949748da754bc843f11aa7e31bed8e7c4cf74c28fe1e689f8c",
+          "size_bytes": 8961
+        },
+        "nwm_manifest": {
+          "path": "data/geotransport_v0_1/center_hill_v2_d3_inputs/nwm/acquisition_manifest.json",
+          "sha256": "92b166efdbe294358f01d1db571abb7f1ec1edd79d09699de16edaf2f5e3358d",
+          "size_bytes": 2328
+        },
+        "outcome_manifest": {
+          "path": "data/geotransport_v0_1/center_hill_v2_d3_inputs/outcome/acquisition_manifest.json",
+          "sha256": "00b9f3d8da9f3920b7b15782ad54a6e564fed0ab00ae0db7f639829c33e1a580",
+          "size_bytes": 2783
+        },
+        "outcome_values": {
+          "path": "data/geotransport_v0_1/center_hill_v2_d3_inputs/outcome/outcome_values.csv",
+          "sha256": "3babe22584fde65dc3b132968d472f279dd4c16fe1fb5e93af2c9dc3cc36ada9",
+          "size_bytes": 38937
+        },
+        "prior_observation": {
+          "discharge_m3s": 109.58619631104,
+          "support_end_utc": "2022-02-03T01:00:00Z",
+          "used_as_scored_future_input": false
+        },
+        "q_lateral_values": {
+          "path": "data/geotransport_v0_1/center_hill_v2_d3_inputs/nwm/q_lateral_values.csv",
+          "sha256": "fe9214694386f0933f6f6baebc31ade687d07aa46c0d54444a17072a08bb5b5e",
+          "size_bytes": 893662
+        }
+      },
+      "window": {
+        "first_issue_time_utc": "2022-02-03T10:00:00Z",
+        "horizons_hours": [
+          1,
+          3,
+          6,
+          12
+        ],
+        "last_scored_target_utc": "2022-03-03T01:00:00Z"
+      }
+    },
+    "january_temporal_holdout": {
+      "hard_gate": {
+        "all_required_accuracy_comparisons_passed": true,
+        "clipped_candidate_step_count": 0,
+        "no_future_outcome_gate_passed": true,
+        "per_horizon": {
+          "1": {
+            "action_effect_required_at_horizon": false,
+            "candidate_beats_causal_persistence_rmse": true,
+            "candidate_beats_no_future_action_rmse": false,
+            "candidate_beats_no_future_forcing_rmse": true
+          },
+          "12": {
+            "action_effect_required_at_horizon": true,
+            "candidate_beats_causal_persistence_rmse": true,
+            "candidate_beats_no_future_action_rmse": true,
+            "candidate_beats_no_future_forcing_rmse": true
+          },
+          "3": {
+            "action_effect_required_at_horizon": false,
+            "candidate_beats_causal_persistence_rmse": true,
+            "candidate_beats_no_future_action_rmse": false,
+            "candidate_beats_no_future_forcing_rmse": true
+          },
+          "6": {
+            "action_effect_required_at_horizon": true,
+            "candidate_beats_causal_persistence_rmse": true,
+            "candidate_beats_no_future_action_rmse": true,
+            "candidate_beats_no_future_forcing_rmse": true
+          }
+        },
+        "state_writeback_gate_passed": true,
+        "supported_horizons_beat_no_future_action": true,
+        "window_diagnostic_gate_passed": true
+      },
+      "metrics_by_horizon": {
+        "1": {
+          "candidate": {
+            "bias_m3s": 1.084833484206362,
+            "mae_m3s": 5.03400214419612,
+            "nse": 0.992380287213885,
+            "rmse_m3s": 9.604262493454396,
+            "sample_count": 502
+          },
+          "causal_persistence": {
+            "bias_m3s": 1.08275272974502,
+            "mae_m3s": 5.730212870625498,
+            "nse": 0.9880329323975965,
+            "rmse_m3s": 12.036177746324755,
+            "sample_count": 502
+          },
+          "no_future_action": {
+            "bias_m3s": 1.084833484206362,
+            "mae_m3s": 5.03400214419612,
+            "nse": 0.992380287213885,
+            "rmse_m3s": 9.604262493454396,
+            "sample_count": 502
+          },
+          "no_future_forcing": {
+            "bias_m3s": -0.11226487847056066,
+            "mae_m3s": 5.0112801240024085,
+            "nse": 0.9919958116647403,
+            "rmse_m3s": 9.84358667872207,
+            "sample_count": 502
+          }
+        },
+        "12": {
+          "candidate": {
+            "bias_m3s": 5.936231272673572,
+            "mae_m3s": 25.724595416691532,
+            "nse": 0.8460367553327626,
+            "rmse_m3s": 43.60932343653482,
+            "sample_count": 491
+          },
+          "causal_persistence": {
+            "bias_m3s": 5.72421305190835,
+            "mae_m3s": 29.847167415480648,
+            "nse": 0.7442992394174354,
+            "rmse_m3s": 56.20006675533911,
+            "sample_count": 491
+          },
+          "no_future_action": {
+            "bias_m3s": -96.3859347859626,
+            "mae_m3s": 96.61468613315905,
+            "nse": 0.08246286474647746,
+            "rmse_m3s": 106.45906478706458,
+            "sample_count": 491
+          },
+          "no_future_forcing": {
+            "bias_m3s": -8.243755658072809,
+            "mae_m3s": 29.1887141457049,
+            "nse": 0.7687727947605807,
+            "rmse_m3s": 53.44293323558318,
+            "sample_count": 491
+          }
+        },
+        "3": {
+          "candidate": {
+            "bias_m3s": 2.080615685924527,
+            "mae_m3s": 9.513816401410056,
+            "nse": 0.9739688190481919,
+            "rmse_m3s": 17.783804971582313,
+            "sample_count": 500
+          },
+          "causal_persistence": {
+            "bias_m3s": 1.9626406372879999,
+            "mae_m3s": 10.919259214363999,
+            "nse": 0.9586919909478264,
+            "rmse_m3s": 22.40241732065982,
+            "sample_count": 500
+          },
+          "no_future_action": {
+            "bias_m3s": 2.080615685924527,
+            "mae_m3s": 9.513816401410056,
+            "nse": 0.9739688190481919,
+            "rmse_m3s": 17.783804971582313,
+            "sample_count": 500
+          },
+          "no_future_forcing": {
+            "bias_m3s": -1.49276574622554,
+            "mae_m3s": 9.8595945890977,
+            "nse": 0.9687845555617012,
+            "rmse_m3s": 19.47432945031003,
+            "sample_count": 500
+          }
+        },
+        "6": {
+          "candidate": {
+            "bias_m3s": 3.355826748409703,
+            "mae_m3s": 15.346108526490815,
+            "nse": 0.937967874650729,
+            "rmse_m3s": 27.527887504149472,
+            "sample_count": 497
+          },
+          "causal_persistence": {
+            "bias_m3s": 3.0721214652696176,
+            "mae_m3s": 17.562142441720322,
+            "nse": 0.9001924920220084,
+            "rmse_m3s": 34.917742685597545,
+            "sample_count": 497
+          },
+          "no_future_action": {
+            "bias_m3s": -30.75082066223912,
+            "mae_m3s": 34.67882487208886,
+            "nse": 0.8592963097099908,
+            "rmse_m3s": 41.45885447536517,
+            "sample_count": 497
+          },
+          "no_future_forcing": {
+            "bias_m3s": -3.7622311085373386,
+            "mae_m3s": 16.63230357388607,
+            "nse": 0.9161815360119229,
+            "rmse_m3s": 31.998852400390465,
+            "sample_count": 497
+          }
+        }
+      },
+      "role": "previously_scored_external_temporal_holdout_posthoc_for_mvp",
+      "scoring": {
+        "common_complete_case_count_by_horizon": {
+          "1": 502,
+          "12": 491,
+          "3": 500,
+          "6": 497
+        },
+        "comparison_uses_identical_rows_within_each_horizon": true,
+        "missing_values_imputed": false,
+        "omitted_target_times_by_horizon": {
+          "1": [],
+          "12": [],
+          "3": [],
+          "6": []
+        }
+      },
+      "source_artifacts": {
+        "panel": {
+          "path": "data/geotransport_v0_1/center_hill_evaluation/panel/center_hill_temporal_holdout.csv",
+          "sha256": "02148a88cfa44499caf94e1d995a899692f5a3ad0c7ac4f0a8b76ba66c445f8f",
+          "size_bytes": 149396
+        },
+        "panel_report": {
+          "path": "benchmarks/geotransport_v0_1/center_hill_temporal_holdout_panel_report.json",
+          "sha256": "65eccd5ae38450b92e17fa4d5ee2ce9477315a4da0dc1c8038d57a0c308bc5b7",
+          "size_bytes": 6431
+        }
+      },
+      "window": {
+        "first_issue_time_utc": "2022-01-13T02:00:00Z",
+        "horizons_hours": [
+          1,
+          3,
+          6,
+          12
+        ],
+        "last_scored_target_utc": "2022-02-03T00:00:00Z"
+      }
+    }
+  },
+  "schema": "gwm.geotransport.geospatial_kernel_action_innovation_candidate.v1",
+  "selection_boundary": {
+    "architecture_revised_after_prior_mvp_transfer_outcomes_were_seen": true,
+    "fit_uses_first_168_original_development_hours_only": true,
+    "fit_uses_temporal_transfer_outcomes": false,
+    "fresh_blind_window_consumed": false,
+    "new_target_data_acquired": false,
+    "public_transfer_windows_can_validate_revised_architecture": false,
+    "stage45_usgs_requests_executed": false
+  },
+  "source_artifacts": {
+    "development_panel": {
+      "path": "data/geotransport_v0_1/panels/center_hill_672h_development.csv",
+      "sha256": "3ab31194e1687b2a4556bdf4f0889acfa62afe2a53e6dd5ad056f168b55cc746",
+      "size_bytes": 142536
+    },
+    "development_panel_report": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_672h_development_panel_report.json",
+      "sha256": "68cc96629b0e798230082299c61fa9a42afd699130c112c29a28954626db0e9a",
+      "size_bytes": 8116
+    },
+    "prior_mvp_parameters_used_for_support_only": {
+      "path": "data/geotransport_v0_1/kernel_mvp/parameters.json",
+      "sha256": "2a20128857a8bd0a7290a3946962cd31dbc3144985dd4cc7bf7d3ae40eb9fbc8",
+      "size_bytes": 2052
+    }
+  },
+  "status": "action_innovation_candidate_posthoc_gates_passed_not_validated"
+}

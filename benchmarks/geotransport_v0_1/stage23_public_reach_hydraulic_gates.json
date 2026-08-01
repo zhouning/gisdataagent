@@ -1,0 +1,206 @@
+{
+  "all_gates_passed": true,
+  "claim_boundary": {
+    "confluence_bathymetry_completed": false,
+    "fixed_reach_geometry_admitted": false,
+    "gage_height_treated_as_bed_referenced_depth": false,
+    "measurement_location_is_junction_patch": false,
+    "operator_admitted": false,
+    "public_downstream_reach_hydraulic_states_compiled": true,
+    "state_conditioned_equivalent_sections_compiled": true
+  },
+  "frozen_stage22_hashes": {
+    "benchmarks/geotransport_v0_1/stage22_public_roughness_ensemble_gates.json": {
+      "actual_sha256": "8c8791b95842330c47106300a0c2c9c0d54f17707b81e750e519feb127f54a47",
+      "expected_sha256": "8c8791b95842330c47106300a0c2c9c0d54f17707b81e750e519feb127f54a47",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage22_center_hill_roughness_ensemble/friction_propagation.json": {
+      "actual_sha256": "aac4aa4c22d5c388bcc686de0a82d20cee309893f35ce2ec452d208b119effb6",
+      "expected_sha256": "aac4aa4c22d5c388bcc686de0a82d20cee309893f35ce2ec452d208b119effb6",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage22_center_hill_roughness_ensemble/roughness_ensemble.json": {
+      "actual_sha256": "0f6609bd3c62fe2eec682c6655f6727ec44e62a864696b8d945f2bd63a234292",
+      "expected_sha256": "0f6609bd3c62fe2eec682c6655f6727ec44e62a864696b8d945f2bd63a234292",
+      "matches": true
+    },
+    "data_agent/test_geospatial_kernel_public_confluence_roughness_ensemble.py": {
+      "actual_sha256": "4fa14a99a39f2179711d91442826b61fb4f113015df87428100bfae8db370bf2",
+      "expected_sha256": "4fa14a99a39f2179711d91442826b61fb4f113015df87428100bfae8db370bf2",
+      "matches": true
+    },
+    "data_agent/uwm/geospatial_kernel_v2/public_confluence_roughness_ensemble.py": {
+      "actual_sha256": "41033fda6a7894cff08d5db46721a308383b65b0439be958498ad618555a7aa2",
+      "expected_sha256": "41033fda6a7894cff08d5db46721a308383b65b0439be958498ad618555a7aa2",
+      "matches": true
+    },
+    "docs/architecture-decisions/adr-063-public-roughness-support-uncertainty-ensemble.md": {
+      "actual_sha256": "c510a28b8ecbc4ad0d796a08dd9d2784270b1dcf68d75b6c96f2a888f8e0b6db",
+      "expected_sha256": "c510a28b8ecbc4ad0d796a08dd9d2784270b1dcf68d75b6c96f2a888f8e0b6db",
+      "matches": true
+    },
+    "scripts/compile_geotransport_stage22_public_roughness_ensemble_gates.py": {
+      "actual_sha256": "4a9d2bad6d46834828753454746da0f279bbccf449b7b8d9356a324a9ce4d1be",
+      "expected_sha256": "4a9d2bad6d46834828753454746da0f279bbccf449b7b8d9356a324a9ce4d1be",
+      "matches": true
+    }
+  },
+  "frozen_usgs_source_hashes": {
+    "data/geotransport_v0_1/stage23_usgs_channel_measurements_03424860/raw/channel_measurements_03424860.json": {
+      "actual_sha256": "71b5edf3df2190bf31308f6af1b167d22e197c0c19cf7d7350f48548ef4589b1",
+      "expected_sha256": "71b5edf3df2190bf31308f6af1b167d22e197c0c19cf7d7350f48548ef4589b1",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage23_usgs_channel_measurements_03424860/raw/channel_measurements_queryables.json": {
+      "actual_sha256": "fdd11da8be0ec9e54a8c45e1912cf916fdbf13a3c97ea64b2a045929e8de8027",
+      "expected_sha256": "fdd11da8be0ec9e54a8c45e1912cf916fdbf13a3c97ea64b2a045929e8de8027",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage23_usgs_channel_measurements_03424860/raw/field_measurements_03424860.json": {
+      "actual_sha256": "1a60512bad9a6f717e9c17fe46f768911a88e65a99c88a9020eb91b6266c0b92",
+      "expected_sha256": "1a60512bad9a6f717e9c17fe46f768911a88e65a99c88a9020eb91b6266c0b92",
+      "matches": true
+    }
+  },
+  "gates": {
+    "all_110_measurements_compiled": true,
+    "all_characteristic_speeds_straddle_zero": true,
+    "all_dynamic_wave_states_are_positive_and_finite": true,
+    "all_field_visits_join_a_mean_gage_height": true,
+    "all_hydraulic_values_are_normalized_positive_and_finite": true,
+    "all_observed_states_are_subcritical": true,
+    "all_source_measurement_uuids_are_unique": true,
+    "candidate_operator_remains_unadmitted": true,
+    "equivalent_rectangles_recover_observed_area_and_width": true,
+    "field_and_instrument_method_diversity_is_retained": true,
+    "fixed_geometry_and_patch_bathymetry_fail_closed": true,
+    "flow_area_velocity_identity_closes_within_two_percent": true,
+    "gage_height_is_not_treated_as_bed_referenced_depth": true,
+    "gauge_is_same_reach_but_not_the_junction_patch": true,
+    "measurement_coordinates_match_the_gauge_location": true,
+    "stage22_artifacts_hash_frozen": true,
+    "three_public_usgs_source_objects_hash_frozen": true,
+    "unnumbered_source_record_is_retained_by_uuid": true
+  },
+  "generated_at": "2026-07-29T11:27:49.196978+00:00",
+  "measurement_artifact": {
+    "path": "data/geotransport_v0_1/stage23_usgs_channel_measurements_03424860/public_reach_hydraulic_measurements.json",
+    "sha256": "1aa43986eae52d49dc666b218edd14866f1ebb15d10ad1c04f72cb78f6346849",
+    "size_bytes": 226192
+  },
+  "observation_summary": {
+    "channel_measurement_type_counts": {
+      "adcp": 82,
+      "point_velocity": 28
+    },
+    "maximum_equivalent_geometry_error": 5.684341886080802e-14,
+    "maximum_flow_closure_relative_error": 0.012612612612612553,
+    "maximum_froude_number": 0.6208727770686445,
+    "measurement_count": 110,
+    "method_counts": {
+      "BridgeDownstreamSide": 81,
+      "MannedMovingBoat": 1,
+      "Unknown": 1,
+      "Unspecified": 2,
+      "Wading": 25
+    },
+    "observed_ranges_and_quantiles": {
+      "equivalent_mean_depth_m": {
+        "maximum": 6.154136239782017,
+        "median": 2.666131187122736,
+        "minimum": 0.3452326530612245,
+        "p05": 0.559192643923241,
+        "p95": 4.961200433721876
+      },
+      "flow_area_m2": {
+        "maximum": 688.4115264000001,
+        "median": 171.87062400000002,
+        "minimum": 10.31223744,
+        "p05": 23.207179392,
+        "p95": 391.91147423999996
+      },
+      "flow_m3s": {
+        "maximum": 741.9013807104001,
+        "median": 64.27924176383999,
+        "minimum": 7.702182273024,
+        "p05": 9.842935875379201,
+        "p95": 449.6715238809599
+      },
+      "froude_number": {
+        "maximum": 0.6208727770686445,
+        "median": 0.14465918544156647,
+        "minimum": 0.021710340944219274,
+        "p05": 0.03256299474679588,
+        "p95": 0.2634076730534468
+      },
+      "gage_height_m": {
+        "maximum": 8.936736,
+        "median": 2.753868,
+        "minimum": 1.8105120000000001,
+        "p05": 1.8830544,
+        "p95": 5.822442
+      },
+      "kernel_mean_velocity_mps": {
+        "maximum": 1.3539669421487603,
+        "median": 0.5491840597758406,
+        "minimum": 0.09679145038167938,
+        "p05": 0.14444761560836394,
+        "p95": 1.1743886400171473
+      },
+      "top_width_m": {
+        "maximum": 111.86160000000001,
+        "median": 66.4464,
+        "minimum": 24.0792,
+        "p05": 37.4904,
+        "p95": 80.61959999999999
+      }
+    },
+    "subcritical_observation_count": 110,
+    "time_range": [
+      "2011-01-25T18:37:30+00:00",
+      "2026-05-20T15:54:29+00:00"
+    ]
+  },
+  "schema": "gwm.geotransport.stage23_public_reach_hydraulic_gates.v1",
+  "site_and_reach": {
+    "gauge_coordinate_wgs84": [
+      -85.90444444444445,
+      36.18611111111111
+    ],
+    "gauge_distance_from_junction_m": 925.4563554985091,
+    "monitoring_location_id": "USGS-03424860",
+    "reach_id": "18421703"
+  },
+  "source_artifacts": [
+    {
+      "identity_matches": true,
+      "path": "data/geotransport_v0_1/stage23_usgs_channel_measurements_03424860/raw/channel_measurements_queryables.json",
+      "role": "machine_readable_field_semantics",
+      "sha256": "fdd11da8be0ec9e54a8c45e1912cf916fdbf13a3c97ea64b2a045929e8de8027",
+      "size_bytes": 7372,
+      "source_id": "usgs_channel_measurements_queryables"
+    },
+    {
+      "identity_matches": true,
+      "path": "data/geotransport_v0_1/stage23_usgs_channel_measurements_03424860/raw/channel_measurements_03424860.json",
+      "role": "observed_width_area_velocity_and_discharge",
+      "sha256": "71b5edf3df2190bf31308f6af1b167d22e197c0c19cf7d7350f48548ef4589b1",
+      "size_bytes": 187936,
+      "source_id": "usgs_channel_measurements_03424860"
+    },
+    {
+      "identity_matches": true,
+      "path": "data/geotransport_v0_1/stage23_usgs_channel_measurements_03424860/raw/field_measurements_03424860.json",
+      "role": "field_visit_gage_height_and_discharge_join",
+      "sha256": "1a60512bad9a6f717e9c17fe46f768911a88e65a99c88a9020eb91b6266c0b92",
+      "size_bytes": 541077,
+      "source_id": "usgs_field_measurements_03424860"
+    }
+  ],
+  "status": "public_downstream_reach_hydraulic_states_compiled_fixed_geometry_and_operator_admission_pending",
+  "typed_refusals": {
+    "confluence_patch_bathymetry": true,
+    "fixed_reach_geometry": true
+  }
+}

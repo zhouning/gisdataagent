@@ -1,0 +1,38 @@
+{
+  "blocker": "no_candidate_dossiers_submitted",
+  "candidate_dossier_count": 0,
+  "candidate_registration_ready": false,
+  "candidates": [],
+  "claim_boundary": {
+    "candidate_assessment_is_registration": false,
+    "candidate_promoted": false,
+    "geospatial_kernel_validated": false,
+    "innovation_fitted": false,
+    "production_authority_registered": false,
+    "prospective_manifest_acquired": false,
+    "real_prospective_receipt_timestamped": false,
+    "runtime_enabled": false,
+    "trusted_external_timestamp_verified_for_prospective_episode": false
+  },
+  "execution_boundary": {
+    "innovation_fit_executed": false,
+    "network_requests_performed": false,
+    "outcome_artifacts_opened": false,
+    "outcome_values_loaded": false,
+    "physical_rollout_executed": false,
+    "registry_modified": false,
+    "registry_opened_for_write": false,
+    "timestamp_authority_contacted": false
+  },
+  "generated_at": "2026-07-31T12:00:00+00:00",
+  "inventory_gates": {
+    "at_least_one_candidate_passes_every_non_compensatory_gate": false,
+    "candidate_dossier_submitted": false,
+    "candidate_ids_unique": true
+  },
+  "registration_ready_candidate_count": 0,
+  "registration_ready_candidate_ids": [],
+  "schema": "gwm.geospatial_kernel.timestamp_authority_candidate_assessment.v1",
+  "status": "awaiting_timestamp_authority_candidate_dossier",
+  "submitted_production_candidate_count": 0
+}

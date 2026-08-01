@@ -1,0 +1,176 @@
+{
+  "admitted_source_identities": [
+    {
+      "catalog_interval": "1Hour",
+      "catalog_time_zone": "US/Central",
+      "component": "orifice",
+      "display_alias": "Orifice Flow",
+      "evidence_role": "observed_component_discharge_boundary_flux",
+      "office": "LRN",
+      "series_id": "CETT1-CENTER_HILL.Flow-Orifice.Ave.1Hour.1Hour.man-rev",
+      "unit": "cms"
+    },
+    {
+      "catalog_interval": "1Hour",
+      "catalog_time_zone": "US/Central",
+      "component": "sluice",
+      "display_alias": "Sluice Gate Flow",
+      "evidence_role": "observed_component_discharge_boundary_flux",
+      "office": "LRN",
+      "series_id": "CETT1-CENTER_HILL.Flow-Sluice.Ave.1Hour.1Hour.man-rev",
+      "unit": "cms"
+    },
+    {
+      "catalog_interval": "1Hour",
+      "catalog_time_zone": "US/Central",
+      "component": "spillway",
+      "display_alias": "Spillway Flow",
+      "evidence_role": "observed_component_discharge_boundary_flux",
+      "office": "LRN",
+      "series_id": "CETT1-CENTER_HILL.Flow-Spillway.Ave.1Hour.1Hour.man-rev",
+      "unit": "cms"
+    },
+    {
+      "catalog_interval": "1Hour",
+      "catalog_time_zone": "US/Central",
+      "component": "turbine",
+      "display_alias": "Turbine Flow",
+      "evidence_role": "observed_component_discharge_boundary_flux",
+      "office": "LRN",
+      "series_id": "CETT1-CENTER_HILL.Flow-Turbine.Ave.1Hour.1Hour.man-rev",
+      "unit": "cms"
+    }
+  ],
+  "blinding_protocol": {
+    "component_values_are_source_only": true,
+    "event_selector_must_be_frozen_after_source_audit_and_before_new_outcomes": true,
+    "known_outcome_windows_do_not_define_value_requests": true,
+    "no_downstream_values_enter_stage39": true,
+    "target_functional_must_be_frozen_before_new_outcomes": true
+  },
+  "claim_boundary": {
+    "causal_intervention_admitted": false,
+    "component_discharge_event_admitted": false,
+    "component_value_protocol_frozen": true,
+    "component_values_acquired": false,
+    "coverage_or_quality_support_admitted": false,
+    "gate_command_admitted": false,
+    "human_action_admitted": false,
+    "physical_response_time_admitted": false,
+    "runtime_operator_admitted": false,
+    "stage38_source_identity_checkpoint_preserved": true,
+    "synchronized_total_discharge_admitted": false
+  },
+  "data_boundary": {
+    "component_values_acquired": false,
+    "downstream_outcome_values_acquired": false,
+    "fresh_approval_required_for_component_value_acquisition": true,
+    "fresh_approval_required_for_later_outcome_acquisition": true,
+    "network_requests_allowed_during_protocol_freeze": false,
+    "workspace_or_private_data_requested": false
+  },
+  "frozen_inputs": {
+    "stage34_temporal_semantics_gates": {
+      "path": "benchmarks/geotransport_v0_1/stage34_temporal_semantics_gates.json",
+      "sha256": "482024d6517f1da7a4f5cd4ee793515e97d7eb39269db03a343f90c3c273fba7",
+      "size_bytes": 12068
+    },
+    "stage34_temporal_semantics_ledger": {
+      "path": "data/geotransport_v0_1/stage34_center_hill_temporal_semantics/temporal_response_semantics_ledger.json",
+      "sha256": "45b5a51d4ec0500e9288dd97b1a41a9632c9c95d45c7a959a65ffc4cab8a101c",
+      "size_bytes": 15162
+    },
+    "stage38_catalog_gates": {
+      "path": "benchmarks/geotransport_v0_1/stage38_cwms_component_discharge_catalog_gates.json",
+      "sha256": "0eeab2e425200a0698041acdb64ae91bc4233c6c657b55817fc7b303862ea021",
+      "size_bytes": 11223
+    },
+    "stage38_catalog_ledger": {
+      "path": "data/geotransport_v0_1/stage38_center_hill_cwms_component_discharge_catalog/cwms_component_discharge_catalog_ledger.json",
+      "sha256": "1cbd80d6ffde6c142dbf2f364475c6b94713b93d8f6de348d8bfecb40e4af7b4",
+      "size_bytes": 8986
+    }
+  },
+  "frozen_value_window": {
+    "annual_windows": [
+      [
+        "2021-01-01T00:00:00Z",
+        "2022-01-01T00:00:00Z"
+      ],
+      [
+        "2022-01-01T00:00:00Z",
+        "2023-01-01T00:00:00Z"
+      ],
+      [
+        "2023-01-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      [
+        "2024-01-01T00:00:00Z",
+        "2025-01-01T00:00:00Z"
+      ],
+      [
+        "2025-01-01T00:00:00Z",
+        "2026-01-01T00:00:00Z"
+      ]
+    ],
+    "annual_windows_share_boundary_samples": true,
+    "begin_utc": "2021-01-01T00:00:00Z",
+    "duplicate_boundary_policy": "require_identical_then_keep_one",
+    "end_utc": "2026-01-01T00:00:00Z",
+    "expected_combined_component_positions": 175300,
+    "expected_unique_inclusive_positions_per_component": 43825,
+    "sample_interval_minutes": 60
+  },
+  "post_acquisition_assessment_boundary": {
+    "downstream_outcome_request_allowed": false,
+    "duplicate_boundary_audit_allowed": true,
+    "event_selection_allowed": false,
+    "model_fitting_or_scoring_allowed": false,
+    "per_component_time_coverage_audit_allowed": true,
+    "quality_code_inventory_allowed": true,
+    "raw_hash_and_request_provenance_audit_allowed": true,
+    "simultaneous_four_component_support_audit_allowed": true,
+    "source_or_target_threshold_definition_allowed": false
+  },
+  "protocol_id": "center-hill-component-discharge-values-v1",
+  "schema": "gwm.geotransport.stage39_component_discharge_value_protocol.v1",
+  "source_observation_semantics": {
+    "component_value_is_causal_intervention": false,
+    "component_value_is_gate_command": false,
+    "component_value_is_human_action": false,
+    "cwms_composite_default_timestamp_position": "end",
+    "cwms_storage_time_basis": "UTC",
+    "measurement_statistic": "one_hour_interval_average",
+    "quantity": "component_discharge",
+    "source_marker_is_release_actuation_instant": false,
+    "source_time_support_offsets_minutes": [
+      -60,
+      0
+    ]
+  },
+  "synchronized_total_discharge_eligibility": {
+    "all_four_component_values_required_at_same_hour": true,
+    "formula": "orifice+sluice+spillway+turbine",
+    "missing_component_imputation_allowed": false,
+    "negative_component_value_allowed": false,
+    "partial_component_sum_allowed": false,
+    "total_discharge_values_compiled_during_stage39": false
+  },
+  "value_shape_contract": {
+    "explicit_null_values_preserved": true,
+    "missing_values_filled": false,
+    "out_of_window_values_rejected": true,
+    "quality_codes_preserved_without_approval_interpretation": true,
+    "required_interval": "PT1H",
+    "required_office_id": "LRN",
+    "required_payload_name_matches_requested_series": true,
+    "required_units": "cms",
+    "timestamps_normalized_to_utc": true,
+    "value_row_shape": [
+      "epoch_milliseconds",
+      "value",
+      "quality_code"
+    ]
+  }
+}

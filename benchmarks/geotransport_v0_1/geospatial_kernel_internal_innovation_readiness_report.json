@@ -1,0 +1,594 @@
+{
+  "assessment_integrity_passed": true,
+  "claim_boundary": {
+    "current_rollouts_expose_internal_training_state": false,
+    "current_rollouts_support_aggregate_conservation": true,
+    "geospatial_kernel_validated_by_this_assessment": false,
+    "missing_internal_quantities_inferred_or_fabricated": false,
+    "posthoc_comparison_reclassified_as_prospective_validation": false
+  },
+  "combinations": {
+    "primary:center_hill": {
+      "aggregate_conservation": {
+        "available": true,
+        "passed": true
+      },
+      "alignment_assertions": {
+        "causal_availability_recorded": false,
+        "edge_axis_matches_edge_flux": false,
+        "every_step_has_mass_ledger": false,
+        "every_step_mass_ledger_conservative": false,
+        "feature_axis_matches_reach_state": false
+      },
+      "all_alignment_assertions_passed": false,
+      "decision": "blocked_missing_or_invalid_internal_instrumentation",
+      "execution_boundary": {
+        "fit_executed": false,
+        "outcome_values_loaded": false,
+        "prediction_reexecuted": false,
+        "prediction_values_parsed": false
+      },
+      "internal_artifacts": {
+        "edge_axis_artifact": {
+          "contract_and_identity_match": false,
+          "declared": false,
+          "descriptor_complete": false,
+          "exists": false,
+          "expected_schema": "gwm.geospatial_kernel.edge_axis.v1",
+          "identity_matches": false,
+          "path_within_repo": false,
+          "schema_matches": false
+        },
+        "edge_flux_artifact": {
+          "contract_and_identity_match": false,
+          "declared": false,
+          "descriptor_complete": false,
+          "exists": false,
+          "expected_schema": "gwm.geospatial_kernel.edge_flux_timeseries.v1",
+          "identity_matches": false,
+          "path_within_repo": false,
+          "schema_matches": false
+        },
+        "feature_axis_artifact": {
+          "contract_and_identity_match": false,
+          "declared": false,
+          "descriptor_complete": false,
+          "exists": false,
+          "expected_schema": "gwm.geospatial_kernel.feature_axis.v1",
+          "identity_matches": false,
+          "path_within_repo": false,
+          "schema_matches": false
+        },
+        "reach_state_artifact": {
+          "contract_and_identity_match": false,
+          "declared": false,
+          "descriptor_complete": false,
+          "exists": false,
+          "expected_schema": "gwm.geospatial_kernel.reach_state_timeseries.v1",
+          "identity_matches": false,
+          "path_within_repo": false,
+          "schema_matches": false
+        },
+        "step_mass_ledger_artifact": {
+          "contract_and_identity_match": false,
+          "declared": false,
+          "descriptor_complete": false,
+          "exists": false,
+          "expected_schema": "gwm.geospatial_kernel.step_mass_ledger.v1",
+          "identity_matches": false,
+          "path_within_repo": false,
+          "schema_matches": false
+        }
+      },
+      "internal_innovation_fit_ready": false,
+      "missing_or_invalid_internal_artifacts": [
+        "feature_axis_artifact",
+        "edge_axis_artifact",
+        "reach_state_artifact",
+        "edge_flux_artifact",
+        "step_mass_ledger_artifact"
+      ],
+      "operator": "BranchingManningNetworkTransportOperator",
+      "rollout_id": "primary",
+      "sealed_outlet_prediction": {
+        "actual_sha256": "ade3586c0b62d65d459b8acce554ee13eed1d1ba0bbec1bf2e52b792431554ef",
+        "actual_size_bytes": 85258,
+        "declared": true,
+        "descriptor_complete": true,
+        "exists": true,
+        "expected_sha256": "ade3586c0b62d65d459b8acce554ee13eed1d1ba0bbec1bf2e52b792431554ef",
+        "expected_size_bytes": 85258,
+        "identity_matches": true,
+        "path": "data/geotransport_v0_1/geotransport_v2_blind_validation/predictions/center_hill.csv",
+        "path_within_repo": true
+      },
+      "semantic_validation": {
+        "all_checks_passed": false,
+        "checks": {
+          "artifact_system_operator_and_network_identity_match": false,
+          "causal_step_time_and_input_lineage_valid": false,
+          "cross_artifact_hash_bindings_match": false,
+          "feature_and_edge_axes_valid": false,
+          "json_payloads_match_declared_schemas": false,
+          "modeled_state_and_flux_claim_boundary_valid": false,
+          "state_and_flux_rows_match_immutable_axes": false,
+          "state_transition_continuity_verified": false,
+          "step_mass_ledgers_recomputed_conservative": false,
+          "telemetry_bundle_contract_valid": false
+        },
+        "failed_checks": [
+          "json_payloads_match_declared_schemas",
+          "artifact_system_operator_and_network_identity_match",
+          "cross_artifact_hash_bindings_match",
+          "feature_and_edge_axes_valid",
+          "state_and_flux_rows_match_immutable_axes",
+          "state_transition_continuity_verified",
+          "causal_step_time_and_input_lineage_valid",
+          "step_mass_ledgers_recomputed_conservative",
+          "modeled_state_and_flux_claim_boundary_valid",
+          "telemetry_bundle_contract_valid"
+        ]
+      },
+      "system_id": "center_hill",
+      "system_record_present": true
+    },
+    "primary:j_percy_priest": {
+      "aggregate_conservation": {
+        "available": true,
+        "passed": true
+      },
+      "alignment_assertions": {
+        "causal_availability_recorded": false,
+        "edge_axis_matches_edge_flux": false,
+        "every_step_has_mass_ledger": false,
+        "every_step_mass_ledger_conservative": false,
+        "feature_axis_matches_reach_state": false
+      },
+      "all_alignment_assertions_passed": false,
+      "decision": "blocked_missing_or_invalid_internal_instrumentation",
+      "execution_boundary": {
+        "fit_executed": false,
+        "outcome_values_loaded": false,
+        "prediction_reexecuted": false,
+        "prediction_values_parsed": false
+      },
+      "internal_artifacts": {
+        "edge_axis_artifact": {
+          "contract_and_identity_match": false,
+          "declared": false,
+          "descriptor_complete": false,
+          "exists": false,
+          "expected_schema": "gwm.geospatial_kernel.edge_axis.v1",
+          "identity_matches": false,
+          "path_within_repo": false,
+          "schema_matches": false
+        },
+        "edge_flux_artifact": {
+          "contract_and_identity_match": false,
+          "declared": false,
+          "descriptor_complete": false,
+          "exists": false,
+          "expected_schema": "gwm.geospatial_kernel.edge_flux_timeseries.v1",
+          "identity_matches": false,
+          "path_within_repo": false,
+          "schema_matches": false
+        },
+        "feature_axis_artifact": {
+          "contract_and_identity_match": false,
+          "declared": false,
+          "descriptor_complete": false,
+          "exists": false,
+          "expected_schema": "gwm.geospatial_kernel.feature_axis.v1",
+          "identity_matches": false,
+          "path_within_repo": false,
+          "schema_matches": false
+        },
+        "reach_state_artifact": {
+          "contract_and_identity_match": false,
+          "declared": false,
+          "descriptor_complete": false,
+          "exists": false,
+          "expected_schema": "gwm.geospatial_kernel.reach_state_timeseries.v1",
+          "identity_matches": false,
+          "path_within_repo": false,
+          "schema_matches": false
+        },
+        "step_mass_ledger_artifact": {
+          "contract_and_identity_match": false,
+          "declared": false,
+          "descriptor_complete": false,
+          "exists": false,
+          "expected_schema": "gwm.geospatial_kernel.step_mass_ledger.v1",
+          "identity_matches": false,
+          "path_within_repo": false,
+          "schema_matches": false
+        }
+      },
+      "internal_innovation_fit_ready": false,
+      "missing_or_invalid_internal_artifacts": [
+        "feature_axis_artifact",
+        "edge_axis_artifact",
+        "reach_state_artifact",
+        "edge_flux_artifact",
+        "step_mass_ledger_artifact"
+      ],
+      "operator": "BranchingManningNetworkTransportOperator",
+      "rollout_id": "primary",
+      "sealed_outlet_prediction": {
+        "actual_sha256": "5d6ae07d156af4bcae20b999d0555753160365871b19be3fc9b77ef30dba1819",
+        "actual_size_bytes": 84328,
+        "declared": true,
+        "descriptor_complete": true,
+        "exists": true,
+        "expected_sha256": "5d6ae07d156af4bcae20b999d0555753160365871b19be3fc9b77ef30dba1819",
+        "expected_size_bytes": 84328,
+        "identity_matches": true,
+        "path": "data/geotransport_v0_1/geotransport_v2_blind_validation/predictions/j_percy_priest.csv",
+        "path_within_repo": true
+      },
+      "semantic_validation": {
+        "all_checks_passed": false,
+        "checks": {
+          "artifact_system_operator_and_network_identity_match": false,
+          "causal_step_time_and_input_lineage_valid": false,
+          "cross_artifact_hash_bindings_match": false,
+          "feature_and_edge_axes_valid": false,
+          "json_payloads_match_declared_schemas": false,
+          "modeled_state_and_flux_claim_boundary_valid": false,
+          "state_and_flux_rows_match_immutable_axes": false,
+          "state_transition_continuity_verified": false,
+          "step_mass_ledgers_recomputed_conservative": false,
+          "telemetry_bundle_contract_valid": false
+        },
+        "failed_checks": [
+          "json_payloads_match_declared_schemas",
+          "artifact_system_operator_and_network_identity_match",
+          "cross_artifact_hash_bindings_match",
+          "feature_and_edge_axes_valid",
+          "state_and_flux_rows_match_immutable_axes",
+          "state_transition_continuity_verified",
+          "causal_step_time_and_input_lineage_valid",
+          "step_mass_ledgers_recomputed_conservative",
+          "modeled_state_and_flux_claim_boundary_valid",
+          "telemetry_bundle_contract_valid"
+        ]
+      },
+      "system_id": "j_percy_priest",
+      "system_record_present": true
+    },
+    "replication:center_hill": {
+      "aggregate_conservation": {
+        "available": true,
+        "passed": true
+      },
+      "alignment_assertions": {
+        "causal_availability_recorded": false,
+        "edge_axis_matches_edge_flux": false,
+        "every_step_has_mass_ledger": false,
+        "every_step_mass_ledger_conservative": false,
+        "feature_axis_matches_reach_state": false
+      },
+      "all_alignment_assertions_passed": false,
+      "decision": "blocked_missing_or_invalid_internal_instrumentation",
+      "execution_boundary": {
+        "fit_executed": false,
+        "outcome_values_loaded": false,
+        "prediction_reexecuted": false,
+        "prediction_values_parsed": false
+      },
+      "internal_artifacts": {
+        "edge_axis_artifact": {
+          "contract_and_identity_match": false,
+          "declared": false,
+          "descriptor_complete": false,
+          "exists": false,
+          "expected_schema": "gwm.geospatial_kernel.edge_axis.v1",
+          "identity_matches": false,
+          "path_within_repo": false,
+          "schema_matches": false
+        },
+        "edge_flux_artifact": {
+          "contract_and_identity_match": false,
+          "declared": false,
+          "descriptor_complete": false,
+          "exists": false,
+          "expected_schema": "gwm.geospatial_kernel.edge_flux_timeseries.v1",
+          "identity_matches": false,
+          "path_within_repo": false,
+          "schema_matches": false
+        },
+        "feature_axis_artifact": {
+          "contract_and_identity_match": false,
+          "declared": false,
+          "descriptor_complete": false,
+          "exists": false,
+          "expected_schema": "gwm.geospatial_kernel.feature_axis.v1",
+          "identity_matches": false,
+          "path_within_repo": false,
+          "schema_matches": false
+        },
+        "reach_state_artifact": {
+          "contract_and_identity_match": false,
+          "declared": false,
+          "descriptor_complete": false,
+          "exists": false,
+          "expected_schema": "gwm.geospatial_kernel.reach_state_timeseries.v1",
+          "identity_matches": false,
+          "path_within_repo": false,
+          "schema_matches": false
+        },
+        "step_mass_ledger_artifact": {
+          "contract_and_identity_match": false,
+          "declared": false,
+          "descriptor_complete": false,
+          "exists": false,
+          "expected_schema": "gwm.geospatial_kernel.step_mass_ledger.v1",
+          "identity_matches": false,
+          "path_within_repo": false,
+          "schema_matches": false
+        }
+      },
+      "internal_innovation_fit_ready": false,
+      "missing_or_invalid_internal_artifacts": [
+        "feature_axis_artifact",
+        "edge_axis_artifact",
+        "reach_state_artifact",
+        "edge_flux_artifact",
+        "step_mass_ledger_artifact"
+      ],
+      "operator": "BranchingFiniteVolumeKinematicWaveOperator",
+      "rollout_id": "replication",
+      "sealed_outlet_prediction": {
+        "actual_sha256": "2994c046171ec033b22bd5db7ef483a46c0219cb5a21119320a830be9414420d",
+        "actual_size_bytes": 65443,
+        "declared": true,
+        "descriptor_complete": true,
+        "exists": true,
+        "expected_sha256": "2994c046171ec033b22bd5db7ef483a46c0219cb5a21119320a830be9414420d",
+        "expected_size_bytes": 65443,
+        "identity_matches": true,
+        "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/predictions/center_hill.csv",
+        "path_within_repo": true
+      },
+      "semantic_validation": {
+        "all_checks_passed": false,
+        "checks": {
+          "artifact_system_operator_and_network_identity_match": false,
+          "causal_step_time_and_input_lineage_valid": false,
+          "cross_artifact_hash_bindings_match": false,
+          "feature_and_edge_axes_valid": false,
+          "json_payloads_match_declared_schemas": false,
+          "modeled_state_and_flux_claim_boundary_valid": false,
+          "state_and_flux_rows_match_immutable_axes": false,
+          "state_transition_continuity_verified": false,
+          "step_mass_ledgers_recomputed_conservative": false,
+          "telemetry_bundle_contract_valid": false
+        },
+        "failed_checks": [
+          "json_payloads_match_declared_schemas",
+          "artifact_system_operator_and_network_identity_match",
+          "cross_artifact_hash_bindings_match",
+          "feature_and_edge_axes_valid",
+          "state_and_flux_rows_match_immutable_axes",
+          "state_transition_continuity_verified",
+          "causal_step_time_and_input_lineage_valid",
+          "step_mass_ledgers_recomputed_conservative",
+          "modeled_state_and_flux_claim_boundary_valid",
+          "telemetry_bundle_contract_valid"
+        ]
+      },
+      "system_id": "center_hill",
+      "system_record_present": true
+    },
+    "replication:j_percy_priest": {
+      "aggregate_conservation": {
+        "available": true,
+        "passed": true
+      },
+      "alignment_assertions": {
+        "causal_availability_recorded": false,
+        "edge_axis_matches_edge_flux": false,
+        "every_step_has_mass_ledger": false,
+        "every_step_mass_ledger_conservative": false,
+        "feature_axis_matches_reach_state": false
+      },
+      "all_alignment_assertions_passed": false,
+      "decision": "blocked_missing_or_invalid_internal_instrumentation",
+      "execution_boundary": {
+        "fit_executed": false,
+        "outcome_values_loaded": false,
+        "prediction_reexecuted": false,
+        "prediction_values_parsed": false
+      },
+      "internal_artifacts": {
+        "edge_axis_artifact": {
+          "contract_and_identity_match": false,
+          "declared": false,
+          "descriptor_complete": false,
+          "exists": false,
+          "expected_schema": "gwm.geospatial_kernel.edge_axis.v1",
+          "identity_matches": false,
+          "path_within_repo": false,
+          "schema_matches": false
+        },
+        "edge_flux_artifact": {
+          "contract_and_identity_match": false,
+          "declared": false,
+          "descriptor_complete": false,
+          "exists": false,
+          "expected_schema": "gwm.geospatial_kernel.edge_flux_timeseries.v1",
+          "identity_matches": false,
+          "path_within_repo": false,
+          "schema_matches": false
+        },
+        "feature_axis_artifact": {
+          "contract_and_identity_match": false,
+          "declared": false,
+          "descriptor_complete": false,
+          "exists": false,
+          "expected_schema": "gwm.geospatial_kernel.feature_axis.v1",
+          "identity_matches": false,
+          "path_within_repo": false,
+          "schema_matches": false
+        },
+        "reach_state_artifact": {
+          "contract_and_identity_match": false,
+          "declared": false,
+          "descriptor_complete": false,
+          "exists": false,
+          "expected_schema": "gwm.geospatial_kernel.reach_state_timeseries.v1",
+          "identity_matches": false,
+          "path_within_repo": false,
+          "schema_matches": false
+        },
+        "step_mass_ledger_artifact": {
+          "contract_and_identity_match": false,
+          "declared": false,
+          "descriptor_complete": false,
+          "exists": false,
+          "expected_schema": "gwm.geospatial_kernel.step_mass_ledger.v1",
+          "identity_matches": false,
+          "path_within_repo": false,
+          "schema_matches": false
+        }
+      },
+      "internal_innovation_fit_ready": false,
+      "missing_or_invalid_internal_artifacts": [
+        "feature_axis_artifact",
+        "edge_axis_artifact",
+        "reach_state_artifact",
+        "edge_flux_artifact",
+        "step_mass_ledger_artifact"
+      ],
+      "operator": "BranchingFiniteVolumeKinematicWaveOperator",
+      "rollout_id": "replication",
+      "sealed_outlet_prediction": {
+        "actual_sha256": "bc5249fbd565855b6dd1034a8652f3fcfc337c479158386daa791d47cfe72fd4",
+        "actual_size_bytes": 81094,
+        "declared": true,
+        "descriptor_complete": true,
+        "exists": true,
+        "expected_sha256": "bc5249fbd565855b6dd1034a8652f3fcfc337c479158386daa791d47cfe72fd4",
+        "expected_size_bytes": 81094,
+        "identity_matches": true,
+        "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/predictions/j_percy_priest.csv",
+        "path_within_repo": true
+      },
+      "semantic_validation": {
+        "all_checks_passed": false,
+        "checks": {
+          "artifact_system_operator_and_network_identity_match": false,
+          "causal_step_time_and_input_lineage_valid": false,
+          "cross_artifact_hash_bindings_match": false,
+          "feature_and_edge_axes_valid": false,
+          "json_payloads_match_declared_schemas": false,
+          "modeled_state_and_flux_claim_boundary_valid": false,
+          "state_and_flux_rows_match_immutable_axes": false,
+          "state_transition_continuity_verified": false,
+          "step_mass_ledgers_recomputed_conservative": false,
+          "telemetry_bundle_contract_valid": false
+        },
+        "failed_checks": [
+          "json_payloads_match_declared_schemas",
+          "artifact_system_operator_and_network_identity_match",
+          "cross_artifact_hash_bindings_match",
+          "feature_and_edge_axes_valid",
+          "state_and_flux_rows_match_immutable_axes",
+          "state_transition_continuity_verified",
+          "causal_step_time_and_input_lineage_valid",
+          "step_mass_ledgers_recomputed_conservative",
+          "modeled_state_and_flux_claim_boundary_valid",
+          "telemetry_bundle_contract_valid"
+        ]
+      },
+      "system_id": "j_percy_priest",
+      "system_record_present": true
+    }
+  },
+  "decision": {
+    "aggregate_conservation_evidence_available": true,
+    "candidate_promoted": false,
+    "fit_executed": false,
+    "internal_innovation_fit_ready": false,
+    "outcome_values_loaded": false,
+    "prediction_reexecution_performed": false,
+    "prediction_values_parsed": false,
+    "runtime_enabled": false
+  },
+  "gates": {
+    "aggregate_conservation_available_and_passed": true,
+    "expected_system_window_combinations_present": true,
+    "internal_artifact_alignment_assertions_passed": false,
+    "internal_artifact_semantics_validated": false,
+    "outcome_free_rollout_contracts_match": true,
+    "required_internal_artifacts_hash_bound": false,
+    "sealed_prediction_identities_match": true,
+    "source_rollout_identities_match": true
+  },
+  "generated_at": "2026-07-31T05:57:19.151461+00:00",
+  "instrumentation_contract": {
+    "artifact_container": "systems.<system_id>.internal_innovation_artifacts",
+    "artifact_identity_algorithm": "sha256_streaming_bytes",
+    "outcome_artifacts_are_not_opened": true,
+    "prediction_values_are_not_parsed": true,
+    "required_alignment_assertions": [
+      "feature_axis_matches_reach_state",
+      "edge_axis_matches_edge_flux",
+      "every_step_has_mass_ledger",
+      "every_step_mass_ledger_conservative",
+      "causal_availability_recorded"
+    ],
+    "required_artifacts": {
+      "edge_axis_artifact": "gwm.geospatial_kernel.edge_axis.v1",
+      "edge_flux_artifact": "gwm.geospatial_kernel.edge_flux_timeseries.v1",
+      "feature_axis_artifact": "gwm.geospatial_kernel.feature_axis.v1",
+      "reach_state_artifact": "gwm.geospatial_kernel.reach_state_timeseries.v1",
+      "step_mass_ledger_artifact": "gwm.geospatial_kernel.step_mass_ledger.v1"
+    },
+    "required_descriptor_fields": [
+      "path",
+      "sha256",
+      "size_bytes",
+      "schema"
+    ],
+    "semantic_validation_required": true
+  },
+  "schema": "gwm.geospatial_kernel.internal_innovation_readiness.v1",
+  "source_rollouts": {
+    "primary": {
+      "actual_schema": "gwm.geotransport.v2_blind_validation_rollout.v1",
+      "actual_sha256": "b7430983224d4c3facfede6df87484f0a37414da6fd0f6e7bd96052c527114db",
+      "actual_size_bytes": 5834,
+      "declared": true,
+      "descriptor_complete": true,
+      "exists": true,
+      "expected_schema": "gwm.geotransport.v2_blind_validation_rollout.v1",
+      "expected_sha256": "b7430983224d4c3facfede6df87484f0a37414da6fd0f6e7bd96052c527114db",
+      "expected_size_bytes": null,
+      "identity_matches": true,
+      "json_error": null,
+      "json_object_loaded": true,
+      "outcome_free_rollout_contract_matches": true,
+      "path": "benchmarks/geotransport_v0_1/geotransport_v2_blind_validation_rollout_report.json",
+      "path_within_repo": true
+    },
+    "replication": {
+      "actual_schema": "gwm.geotransport.kinematic_wave_holdout_rollout.v2",
+      "actual_sha256": "82be075838f1579bcd24af3bfb3b1f20dc02f047da30c7d6e0e22ae1359b66e3",
+      "actual_size_bytes": 8242,
+      "declared": true,
+      "descriptor_complete": true,
+      "exists": true,
+      "expected_schema": "gwm.geotransport.kinematic_wave_holdout_rollout.v2",
+      "expected_sha256": "82be075838f1579bcd24af3bfb3b1f20dc02f047da30c7d6e0e22ae1359b66e3",
+      "expected_size_bytes": null,
+      "identity_matches": true,
+      "json_error": null,
+      "json_object_loaded": true,
+      "outcome_free_rollout_contract_matches": true,
+      "path": "benchmarks/geotransport_v0_1/kinematic_wave_holdout_v2_rollout_report.json",
+      "path_within_repo": true
+    }
+  },
+  "status": "blocked_missing_or_invalid_internal_state_and_flux_artifacts"
+}

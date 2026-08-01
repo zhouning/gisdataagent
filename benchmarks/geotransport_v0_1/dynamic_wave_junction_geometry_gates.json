@@ -1,0 +1,266 @@
+{
+  "all_gates_passed": true,
+  "authoritative_semantics": {
+    "hec_ras_energy_and_momentum_child_pages": {
+      "findings": [
+        "Energy-based junction calculations evaluate friction from reach length and average friction slope and also evaluate contraction or expansion losses.",
+        "The angle-aware alternative is a one-dimensional momentum balance with cross-section specific force, friction, weight, and flow-weighted area terms."
+      ],
+      "page_ids": {
+        "energy_based_junction_method": 43816554,
+        "momentum_based_junction_method": 43816560
+      },
+      "retrieved_snapshot_sha256": "59bdf525ebc59d2cd34e4523e255bebae41d08af2f3435237844e33b32790563",
+      "url": "https://www.hec.usace.army.mil/confluence/rest/api/content/43816552/child/page?limit=100&expand=body.storage,version"
+    },
+    "hec_ras_modeling_stream_junctions": {
+      "finding": "The energy method uses standard-step calculations and does not account for tributary-flow angle.",
+      "retrieved_snapshot_sha256": "3858127f64666d61d438c5660ac9d910b17abe6477f2479c334f03a3aa8c03a0",
+      "url": "https://www.hec.usace.army.mil/confluence/rasdocs/ras1dtechref/latest/overview-of-optional-capabilities/modeling-stream-junctions"
+    },
+    "retrieved_at": "2026-07-28",
+    "stage8_compatibility_adjudication": {
+      "centerline_angle_is_a_documented_stage8_k_model": false,
+      "positive_loss_coefficient_derivation_admitted": false,
+      "required_hec_energy_inputs_present_in_nldi_centerlines": false,
+      "required_hec_momentum_inputs_present_in_nldi_centerlines": false
+    }
+  },
+  "claim_boundary": {
+    "candidate_operator_admitted": false,
+    "centerline_angle_loss_formula_implemented": false,
+    "ellipsoidal_branch_azimuths_and_angles_compiled": true,
+    "evidence_gated_stage8_dag_binding_implemented": true,
+    "geometry_provenance_preserved": true,
+    "geospatial_kernel_validated": false,
+    "junction_vector_momentum_closure_implemented": false,
+    "predictive_validation_complete": false,
+    "public_case_bound_to_loss_aware_dag": false,
+    "public_geographic_junction_geometry_compiled": true,
+    "public_loss_coefficient_admitted": false,
+    "structure_type_verified": false
+  },
+  "data_isolation": {
+    "action_values_read": false,
+    "coefficient_calibration_performed": false,
+    "observation_values_read": false,
+    "public_topology_and_centerline_geometry_read": true,
+    "saved_prediction_values_read": false
+  },
+  "gates": {
+    "all_public_branch_endpoints_snap_to_junction": true,
+    "all_public_branches_support_fixed_geodesic_window": true,
+    "centerline_only_loss_coefficient_fails_closed": true,
+    "coordinate_sequence_orientation_is_invariant": true,
+    "d5_topology_hash_matches_compiled_public_asset": true,
+    "hec_ras_semantics_do_not_authorize_angle_to_k_mapping": true,
+    "nldi_source_hash_matches_frozen_public_asset": true,
+    "no_action_observation_or_prediction_values_read": true,
+    "no_implicit_zero_loss_is_substituted": true,
+    "non_admitted_public_loss_cannot_bind_to_dag": true,
+    "public_azimuths_and_angles_are_finite": true,
+    "public_centerlines_have_no_structure_metadata": true,
+    "public_dag_has_expected_two_in_one_out_junction": true,
+    "source_uri_hash_crs_and_feature_ids_are_preserved": true,
+    "wrong_junction_coordinate_fails_snap_gate": true
+  },
+  "generated_at": "2026-07-28T07:41:18.052662+00:00",
+  "negative_controls": {
+    "non_admitted_dag_binding_error": "geographic_junction_energy_loss_dag_binding_not_admitted",
+    "wrong_junction_coordinate_error": "geographic_junction_branch_endpoint_not_snapped"
+  },
+  "orientation_invariance": {
+    "forward_flow_azimuths_degrees": [
+      43.54826316837713,
+      320.5663004227973,
+      354.67425201614765
+    ],
+    "maximum_absolute_difference_degrees": 0.0,
+    "reversed_coordinate_flow_azimuths_degrees": [
+      43.54826316837713,
+      320.5663004227973,
+      354.67425201614765
+    ]
+  },
+  "public_case": {
+    "dag_binding": {
+      "error": "geographic_junction_energy_loss_dag_binding_not_admitted",
+      "stage7_common_stage_remains_available_when_map_omitted": true,
+      "status": "not_bound_loss_contract_not_admitted",
+      "topology": {
+        "acyclic": true,
+        "bifurcation_supported": false,
+        "downstream_reach_ids": [
+          "18421703",
+          "18421703",
+          null
+        ],
+        "junction_reach_ids": [
+          "18421703"
+        ],
+        "outlet_reach_id": "18421703",
+        "reach_ids": [
+          "18421705",
+          "18421707",
+          "18421703"
+        ],
+        "single_outlet": true,
+        "source_reach_ids": [
+          "18421705",
+          "18421707"
+        ]
+      }
+    },
+    "generated_at": "2026-07-28T07:41:18.051928+00:00",
+    "geometry": {
+      "downstream_branch": {
+        "available_terminal_path_length_m": 1144.3157321224098,
+        "azimuth_method": "WGS84_ellipsoidal_geodesic",
+        "branch_id": "18421703",
+        "coordinate_count": 9,
+        "flow_azimuth_degrees": 354.67425201614765,
+        "junction_endpoint": [
+          -85.909170702,
+          36.178724498
+        ],
+        "local_reference_coordinate": [
+          -85.90920165527776,
+          36.17899369291461
+        ],
+        "requested_window_length_m": 30.0,
+        "role": "downstream",
+        "sampled_window_length_m": 30.0,
+        "source_crs": "EPSG:4326",
+        "source_feature_id": "18421703",
+        "source_sha256": "1f8bc9bdb6fae8e4a6e40c34531ae0a002dbaddde0fd475b53e956630a0b262c",
+        "source_uri": "https://api.water.usgs.gov/nldi/linked-data/nwissite/USGS-03424860/navigation/UT/flowlines?distance=30.0",
+        "terminal_snap_distance_m": 0.0,
+        "window_truncated_by_feature_length": false
+      },
+      "junction_coordinate": [
+        -85.909170702,
+        36.178724498
+      ],
+      "junction_id": "18421703",
+      "quality": {
+        "at_least_two_upstream_branches": true,
+        "branch_ids_unique": true,
+        "geometry_admitted": true,
+        "maximum_terminal_snap_distance_m": 0.0,
+        "minimum_required_terminal_path_length_m": 20.0,
+        "minimum_sampled_terminal_path_length_m": 30.0,
+        "one_downstream_branch": true,
+        "terminal_snap_tolerance_m": 0.25
+      },
+      "schema": "gwm.geospatial_kernel.geographic_junction_geometry.v1",
+      "semantic_limits": {
+        "centerline_geometry_determines_loss_coefficient": false,
+        "cross_sections_present": false,
+        "flow_partition_present": false,
+        "vector_momentum_closure_present": false
+      },
+      "source_crs": "EPSG:4326",
+      "structure_classification": "unknown",
+      "structure_evidence": null,
+      "upstream_branches": [
+        {
+          "available_terminal_path_length_m": 41.15389475592683,
+          "azimuth_method": "WGS84_ellipsoidal_geodesic",
+          "branch_id": "18421705",
+          "coordinate_count": 3,
+          "flow_azimuth_degrees": 43.54826316837713,
+          "junction_endpoint": [
+            -85.909170702,
+            36.178724498
+          ],
+          "local_reference_coordinate": [
+            -85.90940045972843,
+            36.17852854134767
+          ],
+          "requested_window_length_m": 30.0,
+          "role": "upstream",
+          "sampled_window_length_m": 30.0,
+          "source_crs": "EPSG:4326",
+          "source_feature_id": "18421705",
+          "source_sha256": "1f8bc9bdb6fae8e4a6e40c34531ae0a002dbaddde0fd475b53e956630a0b262c",
+          "source_uri": "https://api.water.usgs.gov/nldi/linked-data/nwissite/USGS-03424860/navigation/UT/flowlines?distance=30.0",
+          "terminal_snap_distance_m": 0.0,
+          "window_truncated_by_feature_length": false
+        },
+        {
+          "available_terminal_path_length_m": 1522.8014696069235,
+          "azimuth_method": "WGS84_ellipsoidal_geodesic",
+          "branch_id": "18421707",
+          "coordinate_count": 8,
+          "flow_azimuth_degrees": 320.5663004227973,
+          "junction_endpoint": [
+            -85.909170702,
+            36.178724498
+          ],
+          "local_reference_coordinate": [
+            -85.90895887909817,
+            36.178515681317606
+          ],
+          "requested_window_length_m": 30.0,
+          "role": "upstream",
+          "sampled_window_length_m": 30.0,
+          "source_crs": "EPSG:4326",
+          "source_feature_id": "18421707",
+          "source_sha256": "1f8bc9bdb6fae8e4a6e40c34531ae0a002dbaddde0fd475b53e956630a0b262c",
+          "source_uri": "https://api.water.usgs.gov/nldi/linked-data/nwissite/USGS-03424860/navigation/UT/flowlines?distance=30.0",
+          "terminal_snap_distance_m": 0.0,
+          "window_truncated_by_feature_length": false
+        }
+      ],
+      "upstream_pair_angles": [
+        {
+          "angle_degrees": 82.98196274557984,
+          "branch_ids": [
+            "18421705",
+            "18421707"
+          ]
+        }
+      ],
+      "upstream_to_downstream_deflection_degrees": {
+        "18421705": 48.874011152229514,
+        "18421707": 34.10795159335032
+      }
+    },
+    "loss_admission": {
+      "admitted": false,
+      "centerline_angle_used_as_loss_formula": false,
+      "coefficient_evidence": null,
+      "energy_loss": null,
+      "implicit_zero_loss_assumed": false,
+      "junction_id": "18421703",
+      "reason_codes": [
+        "structure_classification_unknown",
+        "loss_coefficient_evidence_missing",
+        "centerline_geometry_does_not_determine_loss_coefficient"
+      ],
+      "schema": "gwm.geospatial_kernel.geographic_junction_loss_admission.v1",
+      "status": "not_admitted"
+    },
+    "schema": "gwm.geotransport.center_hill_public_junction_geometry.v1",
+    "source_artifacts": {
+      "d5_full_subnetwork": {
+        "path": "data/geotransport_v0_1/center_hill_v2_d5_full_subnetwork/full_subnetwork.json",
+        "sha256": "9ae3611462c731ef1508dd091f499425b8befe338fa85e6649df696ee7a1b951",
+        "size_bytes": 50413
+      },
+      "nldi_upstream_tributaries": {
+        "path": "data/geotransport_v0_1/center_hill_v2_d4_topology/raw/gauge_upstream_tributaries_30km.json",
+        "sha256": "1f8bc9bdb6fae8e4a6e40c34531ae0a002dbaddde0fd475b53e956630a0b262c",
+        "size_bytes": 104740,
+        "source_uri": "https://api.water.usgs.gov/nldi/linked-data/nwissite/USGS-03424860/navigation/UT/flowlines?distance=30.0"
+      }
+    }
+  },
+  "public_geometry_artifact": {
+    "path": "data/geotransport_v0_1/center_hill_v2_d5_full_subnetwork/junction_geometry_18421703.json",
+    "sha256": "ba12696fe8045941c31bd4fc804b702cf3cc20b180e7bd83a1a502c2d4fefd6b",
+    "size_bytes": 6063
+  },
+  "schema": "gwm.geotransport.dynamic_wave_junction_geometry_gates.v1",
+  "status": "public_geometry_compiled_loss_semantics_fail_closed"
+}

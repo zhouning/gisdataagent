@@ -1,0 +1,505 @@
+{
+  "claim_boundary": {
+    "boundary_transition_upstream_holdout_passed": true,
+    "downstream_improvement_validated": false,
+    "dynamic_internal_boundary_development_gate_passed": false,
+    "dynamic_internal_boundary_diagnostic_executed": true,
+    "forecast_closure_validated": false,
+    "geospatial_kernel_validated": false,
+    "internal_boundary_reference_admitted": false,
+    "operational_forecast_evaluated": false,
+    "partial_forcing_support_admitted": false
+  },
+  "conservation": {
+    "branch_maximum_residual_to_tolerance_ratio": 0.0004685420258842925,
+    "passed": true,
+    "unique_cycling_boundary_ledger": {
+      "displaced_upstream_outflow_volume_m3": 59796652.27535187,
+      "net_boundary_analysis_volume_m3": -2782561.769226472,
+      "observed_boundary_input_volume_m3": 57014090.50612543
+    },
+    "warmup_maximum_residual_to_tolerance_ratio": 0.0004694440556672494
+  },
+  "data_isolation": {
+    "boundary_parameters_fitted_from_current_window": false,
+    "d3_or_two_system_blind_outcomes_used": false,
+    "missing_observations_imputed": false,
+    "outlet_target_fitted_parameters": 0,
+    "untouched_window_consumed": false
+  },
+  "diagnostics": {
+    "candidate_minus_held_boundary_rmse_m3s_by_horizon": {
+      "1": 0.2014292926903778,
+      "12": 1.0056082787547496,
+      "24": -0.85532773156676,
+      "3": 0.4075864532675837,
+      "6": 0.432661278702696
+    },
+    "candidate_minus_modeled_cut_rmse_m3s_by_horizon": {
+      "1": 0.5507707386751051,
+      "12": 2.3394414493989615,
+      "24": 5.544005700640781,
+      "3": 0.7305345888351269,
+      "6": 0.5693540576046985
+    },
+    "future_observation_update_count": 0,
+    "scored_issue_history_fallback_count": 16,
+    "warmup_history_fallback_count": 12
+  },
+  "domain_compilation": {
+    "boundary_feature_id": 18421273,
+    "cut_effective_length_m": 334.86428898246527,
+    "cut_initial_storage_m3": 2368.4672106155617,
+    "diagnostic_only": true,
+    "downstream_fraction": 0.5844053908943547,
+    "feature_count": 435,
+    "forcing_support_admitted": false,
+    "network_admitted": false,
+    "original_effective_length_m": 573.0,
+    "original_initial_storage_m3": 4052.78125
+  },
+  "generated_at": "2026-07-27T09:09:49.167330+00:00",
+  "information_boundary": {
+    "boundary_transition_fitted_before_current_window": true,
+    "future_outlet_target_used_by_model": false,
+    "future_realized_action_used": true,
+    "future_retrospective_q_lateral_used": true,
+    "future_smith_fork_observation_used": false,
+    "operational_forecast_claim_permitted": false,
+    "operational_observation_vintage_verified": false
+  },
+  "metrics_by_horizon": {
+    "1": {
+      "autoregressive_internal_boundary": {
+        "bias_m3s": -6.200434219265638,
+        "mae_m3s": 39.28474741454622,
+        "nse": 0.7838139006625122,
+        "rmse_m3s": 48.65453663289357,
+        "sample_count": 475
+      },
+      "causal_latency_matched_persistence": {
+        "bias_m3s": -0.8351979384273682,
+        "mae_m3s": 27.143098397173475,
+        "nse": 0.8906159829325593,
+        "rmse_m3s": 34.60878814168572,
+        "sample_count": 475
+      },
+      "held_observed_internal_boundary": {
+        "bias_m3s": -6.372638808922951,
+        "mae_m3s": 39.09432310260576,
+        "nse": 0.7856002118944808,
+        "rmse_m3s": 48.45310734020319,
+        "sample_count": 475
+      },
+      "modeled_cut_control": {
+        "bias_m3s": -5.732179360555153,
+        "mae_m3s": 38.528171555689994,
+        "nse": 0.7886806635056108,
+        "rmse_m3s": 48.10376589421846,
+        "sample_count": 475
+      },
+      "parent_local_multi_gauge": {
+        "bias_m3s": -5.71878504119973,
+        "mae_m3s": 38.547213362134535,
+        "nse": 0.7889265452916137,
+        "rmse_m3s": 48.075772046949,
+        "sample_count": 475
+      },
+      "zero_internal_boundary": {
+        "bias_m3s": -20.22548589968159,
+        "mae_m3s": 44.30952718838444,
+        "nse": 0.7343760672844499,
+        "rmse_m3s": 53.93156951030311,
+        "sample_count": 475
+      },
+      "zero_latency_archive_persistence": {
+        "bias_m3s": -0.3830226091642106,
+        "mae_m3s": 13.903929363165474,
+        "nse": 0.9709752791233208,
+        "rmse_m3s": 17.827624745699804,
+        "sample_count": 475
+      }
+    },
+    "12": {
+      "autoregressive_internal_boundary": {
+        "bias_m3s": -13.035998754686448,
+        "mae_m3s": 69.48104161288022,
+        "nse": 0.3450763269166548,
+        "rmse_m3s": 85.72017991442466,
+        "sample_count": 473
+      },
+      "causal_latency_matched_persistence": {
+        "bias_m3s": -5.19940407296723,
+        "mae_m3s": 88.53342906741797,
+        "nse": -0.1673441645446363,
+        "rmse_m3s": 114.44246083507136,
+        "sample_count": 473
+      },
+      "held_observed_internal_boundary": {
+        "bias_m3s": -12.867814346735107,
+        "mae_m3s": 68.24433996151461,
+        "nse": 0.36035239316031775,
+        "rmse_m3s": 84.71457163566991,
+        "sample_count": 473
+      },
+      "modeled_cut_control": {
+        "bias_m3s": -11.288577766870256,
+        "mae_m3s": 66.68225528924506,
+        "nse": 0.38033635774148855,
+        "rmse_m3s": 83.3807384650257,
+        "sample_count": 473
+      },
+      "parent_local_multi_gauge": {
+        "bias_m3s": -11.112432265317967,
+        "mae_m3s": 66.6454865534854,
+        "nse": 0.3810248407388447,
+        "rmse_m3s": 83.33440512293808,
+        "sample_count": 473
+      },
+      "zero_internal_boundary": {
+        "bias_m3s": -44.595003491165045,
+        "mae_m3s": 82.1731475650824,
+        "nse": 0.11094955320350797,
+        "rmse_m3s": 99.87365224651849,
+        "sample_count": 473
+      },
+      "zero_latency_archive_persistence": {
+        "bias_m3s": -4.693831621658562,
+        "mae_m3s": 87.28491355859599,
+        "nse": -0.12901335960190607,
+        "rmse_m3s": 112.5478673232477,
+        "sample_count": 473
+      }
+    },
+    "24": {
+      "autoregressive_internal_boundary": {
+        "bias_m3s": -18.596899363596386,
+        "mae_m3s": 70.49104218704818,
+        "nse": 0.34170634733615446,
+        "rmse_m3s": 87.8611756110899,
+        "sample_count": 473
+      },
+      "causal_latency_matched_persistence": {
+        "bias_m3s": -9.961782817984991,
+        "mae_m3s": 59.60474701631015,
+        "nse": 0.36063936977371625,
+        "rmse_m3s": 86.58848106552954,
+        "sample_count": 473
+      },
+      "held_observed_internal_boundary": {
+        "bias_m3s": -13.98080146606111,
+        "mae_m3s": 69.82579950612394,
+        "nse": 0.32882699558260786,
+        "rmse_m3s": 88.71650334265667,
+        "sample_count": 473
+      },
+      "modeled_cut_control": {
+        "bias_m3s": -12.417558359502072,
+        "mae_m3s": 65.88043678222603,
+        "nse": 0.42216145363041313,
+        "rmse_m3s": 82.31716991044912,
+        "sample_count": 473
+      },
+      "parent_local_multi_gauge": {
+        "bias_m3s": -12.375914456935657,
+        "mae_m3s": 65.87570683865178,
+        "nse": 0.4222982417762051,
+        "rmse_m3s": 82.30742611647169,
+        "sample_count": 473
+      },
+      "zero_internal_boundary": {
+        "bias_m3s": -46.31329672902751,
+        "mae_m3s": 82.02734912048382,
+        "nse": 0.14442326889760504,
+        "rmse_m3s": 100.16515294604923,
+        "sample_count": 473
+      },
+      "zero_latency_archive_persistence": {
+        "bias_m3s": -9.64538845384334,
+        "mae_m3s": 58.265833117728754,
+        "nse": 0.3551899256795288,
+        "rmse_m3s": 86.95670666537896,
+        "sample_count": 473
+      }
+    },
+    "3": {
+      "autoregressive_internal_boundary": {
+        "bias_m3s": -10.931218878616686,
+        "mae_m3s": 66.4366234676052,
+        "nse": 0.3901919326939063,
+        "rmse_m3s": 82.21478301093224,
+        "sample_count": 473
+      },
+      "causal_latency_matched_persistence": {
+        "bias_m3s": -1.382915763792812,
+        "mae_m3s": 49.956425104765756,
+        "nse": 0.6449844815828484,
+        "rmse_m3s": 62.730247470557536,
+        "sample_count": 473
+      },
+      "held_observed_internal_boundary": {
+        "bias_m3s": -11.272102792389646,
+        "mae_m3s": 66.12767179082344,
+        "nse": 0.39622329095038966,
+        "rmse_m3s": 81.80719655766465,
+        "sample_count": 473
+      },
+      "modeled_cut_control": {
+        "bias_m3s": -10.213947609261268,
+        "mae_m3s": 65.45529570224721,
+        "nse": 0.40098090874062875,
+        "rmse_m3s": 81.48424842209711,
+        "sample_count": 473
+      },
+      "parent_local_multi_gauge": {
+        "bias_m3s": -10.160174701956704,
+        "mae_m3s": 65.42189849629217,
+        "nse": 0.40243818577463686,
+        "rmse_m3s": 81.38507175683307,
+        "sample_count": 473
+      },
+      "zero_internal_boundary": {
+        "bias_m3s": -40.76893733165498,
+        "mae_m3s": 79.20133310722447,
+        "nse": 0.16068873624114,
+        "rmse_m3s": 96.45280406259279,
+        "sample_count": 473
+      },
+      "zero_latency_archive_persistence": {
+        "bias_m3s": -0.8878199470570822,
+        "mae_m3s": 39.10652300729894,
+        "nse": 0.7785399362088046,
+        "rmse_m3s": 49.54513801149953,
+        "sample_count": 473
+      }
+    },
+    "6": {
+      "autoregressive_internal_boundary": {
+        "bias_m3s": -10.817518602778387,
+        "mae_m3s": 68.09000999511494,
+        "nse": 0.3585519100432375,
+        "rmse_m3s": 84.58193652612634,
+        "sample_count": 473
+      },
+      "causal_latency_matched_persistence": {
+        "bias_m3s": -1.9651173137061309,
+        "mae_m3s": 72.10037873915645,
+        "nse": 0.2623655693033796,
+        "rmse_m3s": 90.70212378470066,
+        "sample_count": 473
+      },
+      "held_observed_internal_boundary": {
+        "bias_m3s": -11.165302104084928,
+        "mae_m3s": 67.77710952809568,
+        "nse": 0.36509751397179735,
+        "rmse_m3s": 84.14927524742365,
+        "sample_count": 473
+      },
+      "modeled_cut_control": {
+        "bias_m3s": -10.048657503846039,
+        "mae_m3s": 67.25072310263579,
+        "nse": 0.3671585203552403,
+        "rmse_m3s": 84.01258246852164,
+        "sample_count": 473
+      },
+      "parent_local_multi_gauge": {
+        "bias_m3s": -9.962462674506455,
+        "mae_m3s": 67.19857042233781,
+        "nse": 0.36883860140475644,
+        "rmse_m3s": 83.90098915686798,
+        "sample_count": 473
+      },
+      "zero_internal_boundary": {
+        "bias_m3s": -42.80799325043801,
+        "mae_m3s": 82.12545053972839,
+        "nse": 0.10528472261799127,
+        "rmse_m3s": 99.89397444737271,
+        "sample_count": 473
+      },
+      "zero_latency_archive_persistence": {
+        "bias_m3s": -1.444578241577168,
+        "mae_m3s": 65.86797849716828,
+        "nse": 0.38596572493651937,
+        "rmse_m3s": 82.75479611418268,
+        "sample_count": 473
+      }
+    }
+  },
+  "outputs": {
+    "predictions": {
+      "path": "data/geotransport_v0_1/center_hill_dynamic_internal_boundary/predictions.csv",
+      "sha256": "02123360d27163c5a62512ad267cfd6cf4b5ff3e5f6ab5593fe353bce190b119",
+      "size_bytes": 657027
+    }
+  },
+  "protocol": {
+    "path": "benchmarks/geotransport_v0_1/center_hill_dynamic_internal_boundary_protocol.json",
+    "sha256": "c2eade8b3d0e0d63d2909765a8bc44e46a4fcce88658066842fe32794175c6f4",
+    "size_bytes": 7005
+  },
+  "registered_gates": {
+    "all_core_horizons_accuracy_gate_passed": false,
+    "core_horizons": [
+      3,
+      6,
+      12,
+      24
+    ],
+    "development_gate_passed": false,
+    "mass_gate_passed": true,
+    "per_horizon": {
+      "1": {
+        "accuracy_gate_passed": false,
+        "candidate_beats_causal_persistence_rmse": false,
+        "candidate_beats_held_boundary_rmse": false,
+        "candidate_beats_modeled_cut_rmse": false,
+        "candidate_beats_parent_local_rmse": false,
+        "candidate_beats_zero_boundary_rmse": true
+      },
+      "12": {
+        "accuracy_gate_passed": false,
+        "candidate_beats_causal_persistence_rmse": true,
+        "candidate_beats_held_boundary_rmse": false,
+        "candidate_beats_modeled_cut_rmse": false,
+        "candidate_beats_parent_local_rmse": false,
+        "candidate_beats_zero_boundary_rmse": true
+      },
+      "24": {
+        "accuracy_gate_passed": false,
+        "candidate_beats_causal_persistence_rmse": false,
+        "candidate_beats_held_boundary_rmse": true,
+        "candidate_beats_modeled_cut_rmse": false,
+        "candidate_beats_parent_local_rmse": false,
+        "candidate_beats_zero_boundary_rmse": true
+      },
+      "3": {
+        "accuracy_gate_passed": false,
+        "candidate_beats_causal_persistence_rmse": false,
+        "candidate_beats_held_boundary_rmse": false,
+        "candidate_beats_modeled_cut_rmse": false,
+        "candidate_beats_parent_local_rmse": false,
+        "candidate_beats_zero_boundary_rmse": true
+      },
+      "6": {
+        "accuracy_gate_passed": false,
+        "candidate_beats_causal_persistence_rmse": true,
+        "candidate_beats_held_boundary_rmse": false,
+        "candidate_beats_modeled_cut_rmse": false,
+        "candidate_beats_parent_local_rmse": false,
+        "candidate_beats_zero_boundary_rmse": true
+      }
+    }
+  },
+  "schema": "gwm.geotransport.center_hill_dynamic_internal_boundary.v1",
+  "scoring": {
+    "common_complete_case_mask_per_horizon": true,
+    "common_complete_sample_count_by_horizon": {
+      "1": 475,
+      "12": 473,
+      "24": 473,
+      "3": 473,
+      "6": 473
+    },
+    "issue_count": 480,
+    "missing_values_imputed": false,
+    "omitted_target_support_end_utc_by_horizon": {
+      "1": [
+        "2022-01-03T05:00:00Z",
+        "2022-01-03T06:00:00Z",
+        "2022-01-03T07:00:00Z",
+        "2022-01-03T08:00:00Z",
+        "2022-01-03T09:00:00Z"
+      ],
+      "12": [
+        "2022-01-03T05:00:00Z",
+        "2022-01-03T06:00:00Z",
+        "2022-01-03T07:00:00Z",
+        "2022-01-03T17:00:00Z",
+        "2022-01-03T18:00:00Z",
+        "2022-01-03T19:00:00Z",
+        "2022-01-03T20:00:00Z"
+      ],
+      "24": [
+        "2022-01-03T05:00:00Z",
+        "2022-01-03T06:00:00Z",
+        "2022-01-03T07:00:00Z",
+        "2022-01-04T05:00:00Z",
+        "2022-01-04T06:00:00Z",
+        "2022-01-04T07:00:00Z",
+        "2022-01-04T08:00:00Z"
+      ],
+      "3": [
+        "2022-01-03T05:00:00Z",
+        "2022-01-03T06:00:00Z",
+        "2022-01-03T07:00:00Z",
+        "2022-01-03T08:00:00Z",
+        "2022-01-03T09:00:00Z",
+        "2022-01-03T10:00:00Z",
+        "2022-01-03T11:00:00Z"
+      ],
+      "6": [
+        "2022-01-03T05:00:00Z",
+        "2022-01-03T06:00:00Z",
+        "2022-01-03T07:00:00Z",
+        "2022-01-03T11:00:00Z",
+        "2022-01-03T12:00:00Z",
+        "2022-01-03T13:00:00Z",
+        "2022-01-03T14:00:00Z"
+      ]
+    },
+    "row_count": 2400
+  },
+  "source_artifacts": {
+    "boundary_transition_parameters": {
+      "path": "data/geotransport_v0_1/smith_fork_boundary_transition/parameters.json",
+      "sha256": "1f2e5dfefa5f21bca60e5f36f5fed59d18dd5519d02baa0236628ec1a51eeed9",
+      "size_bytes": 781
+    },
+    "boundary_transition_report": {
+      "path": "benchmarks/geotransport_v0_1/smith_fork_boundary_transition_report.json",
+      "sha256": "599ff46086e1f49cc02cd0f85dcde52391a54c6a60a68d7fd83220a9b70db5db",
+      "size_bytes": 5885
+    },
+    "development_input_report": {
+      "path": "benchmarks/geotransport_v0_1/forecast_closure_center_hill_development_inputs_report.json",
+      "sha256": "8b6b42ba3cd07403d2c1a7b96d8a521717200758e1d369734aa0f6e21b9cb67c",
+      "size_bytes": 10625
+    },
+    "development_panel_report": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_672h_development_panel_report.json",
+      "sha256": "68cc96629b0e798230082299c61fa9a42afd699130c112c29a28954626db0e9a",
+      "size_bytes": 8116
+    },
+    "internal_boundary_reference": {
+      "path": "benchmarks/geotransport_v0_1/smith_fork_internal_boundary_reference_report.json",
+      "sha256": "c0be689aaab2a2b6b13aab3fc3fe8481a61c7ebb844e198ef2b596b35d60f69b",
+      "size_bytes": 5953
+    },
+    "multigauge_input_report": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_multigauge_development_inputs_report.json",
+      "sha256": "f96d059434668bd564932d5ae5bf03cb9ecdf0d4826f34013b7fafad3621cc2b",
+      "size_bytes": 6411
+    },
+    "parent_internal_boundary_predictions": {
+      "path": "data/geotransport_v0_1/center_hill_internal_boundary_development/predictions.csv",
+      "sha256": "d737452afba873f02bbbaf070cdf72ed7a2af2d908138bf5f63cea6316b766ad",
+      "size_bytes": 634082
+    },
+    "parent_internal_boundary_report": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_internal_boundary_development_report.json",
+      "sha256": "78549912fe362142a109fd8957dd3cc18a5654987cecbbe75b29edd3056b2528",
+      "size_bytes": 16379
+    },
+    "prior_mainstem_support": {
+      "path": "data/geotransport_v0_1/center_hill_terminal_forcing_support_nhdplus_v21/forcing_support.json",
+      "sha256": "6cb12bd529055ba9506c5e39d991b1a1b4f6dee5956690144ddf4f1b13e036e8",
+      "size_bytes": 1522
+    },
+    "topology_report": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_v2_d5_full_subnetwork_report.json",
+      "sha256": "9d066189ed23f0bf91fecdefa9327bcfc4a92704d4fb23e6e07c3bbe78559bbd",
+      "size_bytes": 19899
+    }
+  },
+  "status": "dynamic_internal_boundary_development_diagnostic_complete"
+}

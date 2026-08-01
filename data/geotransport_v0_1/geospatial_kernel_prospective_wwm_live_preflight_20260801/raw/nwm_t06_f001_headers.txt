@@ -1,0 +1,19 @@
+HTTP/2 200 
+server: Apache
+x-frame-options: SAMEORIGIN
+x-content-type-options: nosniff
+x-xss-protection: 1; mode=block
+content-security-policy: script-src 'self' 'unsafe-inline' 'unsafe-eval' *;
+referrer-policy: no-referrer
+cache-control: no-cache, private, max-age=14400
+last-modified: Sat, 01 Aug 2026 07:29:40 GMT
+accept-ranges: bytes
+content-length: 12631792
+expires: Sat, 01 Aug 2026 11:57:20 GMT
+content-type: application/x-netcdf
+date: Sat, 01 Aug 2026 07:57:21 GMT
+set-cookie: session=expiry=1785571640993255;Max-Age=600;path=/; HttpOnly; Secure;
+set-cookie: session=expiry=1785571640993255;Max-Age=600;path=/; HttpOnly; Secure;
+akamai-request-bc: [a=23.52.12.55,b=383026407,c=g,n=US_CA_SANJOSE,o=20940],[c=c,n=US_CA_SANJOSE,o=20940],[a=18,c=o]
+strict-transport-security: max-age=31536000 ; preload
+

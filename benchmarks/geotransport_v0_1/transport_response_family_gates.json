@@ -1,0 +1,195 @@
+{
+  "cases": [
+    {
+      "case": {
+        "advection_celerity_mps": 2.0,
+        "analytic_components": [
+          {
+            "center_m": 600.0,
+            "variance_m2": 10000.0,
+            "volume_m3": 1000.0
+          }
+        ],
+        "case_id": "linearized-kinematic-gaussian-v1",
+        "diffusion_coefficient_m2s": null,
+        "elapsed_seconds": 300.0,
+        "expected_centroid_m": 600.0,
+        "expected_variance_m2": 10000.0,
+        "expected_volume_m3": 1000.0,
+        "family": "kinematic",
+        "governing_equation": "da/dt + c_k da/dx = 0",
+        "gravity_wave_celerity_mps": null,
+        "initial_center_m": 0.0,
+        "initial_standard_deviation_m": 100.0,
+        "initial_volume_m3": 1000.0,
+        "integrated_quantity": "incremental_volume",
+        "operator_admitted": false,
+        "outcome_calibrated": false,
+        "schema": "gwm.geospatial_kernel.analytic_transport_family_case.v1",
+        "state_quantity": "incremental_cross_section_area"
+      },
+      "sampled_profile_gate": {
+        "absolute_centroid_error_m": 1.1368683772161603e-13,
+        "all_gates_passed": true,
+        "case_id": "linearized-kinematic-gaussian-v1",
+        "centroid_gate_passed": true,
+        "centroid_m": 600.0000000000001,
+        "family": "kinematic",
+        "finite": true,
+        "integrated_volume_m3": 999.9999999999999,
+        "nonnegative": true,
+        "relative_variance_error": 1.8189894035458566e-16,
+        "relative_volume_error": 1.1368683772161603e-16,
+        "schema": "gwm.geospatial_kernel.transport_family_profile_gate.v1",
+        "variance_gate_passed": true,
+        "variance_m2": 10000.000000000002,
+        "volume_gate_passed": true
+      }
+    },
+    {
+      "case": {
+        "advection_celerity_mps": 2.0,
+        "analytic_components": [
+          {
+            "center_m": 600.0,
+            "variance_m2": 25000.0,
+            "volume_m3": 1000.0
+          }
+        ],
+        "case_id": "linearized-diffusive-gaussian-v1",
+        "diffusion_coefficient_m2s": 25.0,
+        "elapsed_seconds": 300.0,
+        "expected_centroid_m": 600.0,
+        "expected_variance_m2": 25000.0,
+        "expected_volume_m3": 1000.0,
+        "family": "diffusive",
+        "governing_equation": "da/dt + c_k da/dx = D d2a/dx2",
+        "gravity_wave_celerity_mps": null,
+        "initial_center_m": 0.0,
+        "initial_standard_deviation_m": 100.0,
+        "initial_volume_m3": 1000.0,
+        "integrated_quantity": "incremental_volume",
+        "operator_admitted": false,
+        "outcome_calibrated": false,
+        "schema": "gwm.geospatial_kernel.analytic_transport_family_case.v1",
+        "state_quantity": "incremental_cross_section_area"
+      },
+      "sampled_profile_gate": {
+        "absolute_centroid_error_m": 1.1368683772161603e-13,
+        "all_gates_passed": true,
+        "case_id": "linearized-diffusive-gaussian-v1",
+        "centroid_gate_passed": true,
+        "centroid_m": 599.9999999999999,
+        "family": "diffusive",
+        "finite": true,
+        "integrated_volume_m3": 1000.0000000000001,
+        "nonnegative": true,
+        "relative_variance_error": 0.0,
+        "relative_volume_error": 1.1368683772161603e-16,
+        "schema": "gwm.geospatial_kernel.transport_family_profile_gate.v1",
+        "variance_gate_passed": true,
+        "variance_m2": 25000.0,
+        "volume_gate_passed": true
+      }
+    },
+    {
+      "case": {
+        "advection_celerity_mps": null,
+        "analytic_components": [
+          {
+            "center_m": -1200.0,
+            "variance_m2": 10000.0,
+            "volume_m3": 500.0
+          },
+          {
+            "center_m": 1200.0,
+            "variance_m2": 10000.0,
+            "volume_m3": 500.0
+          }
+        ],
+        "case_id": "linearized-local-inertial-gaussian-v1",
+        "diffusion_coefficient_m2s": null,
+        "elapsed_seconds": 300.0,
+        "expected_centroid_m": 0.0,
+        "expected_variance_m2": 1450000.0,
+        "expected_volume_m3": 1000.0,
+        "family": "local_inertial",
+        "governing_equation": "d2a/dt2 = c_g^2 d2a/dx2; initial da/dt = 0",
+        "gravity_wave_celerity_mps": 4.0,
+        "initial_center_m": 0.0,
+        "initial_standard_deviation_m": 100.0,
+        "initial_volume_m3": 1000.0,
+        "integrated_quantity": "incremental_volume",
+        "operator_admitted": false,
+        "outcome_calibrated": false,
+        "schema": "gwm.geospatial_kernel.analytic_transport_family_case.v1",
+        "state_quantity": "incremental_cross_section_area"
+      },
+      "sampled_profile_gate": {
+        "absolute_centroid_error_m": 1.1641532182693482e-13,
+        "all_gates_passed": true,
+        "case_id": "linearized-local-inertial-gaussian-v1",
+        "centroid_gate_passed": true,
+        "centroid_m": 1.1641532182693482e-13,
+        "family": "local_inertial",
+        "finite": true,
+        "integrated_volume_m3": 1000.0,
+        "nonnegative": true,
+        "relative_variance_error": 1.6057285769232389e-16,
+        "relative_volume_error": 0.0,
+        "schema": "gwm.geospatial_kernel.transport_family_profile_gate.v1",
+        "variance_gate_passed": true,
+        "variance_m2": 1449999.9999999998,
+        "volume_gate_passed": true
+      }
+    }
+  ],
+  "claim_boundary": {
+    "analytic_reference_families_available": true,
+    "candidate_operator_admitted": false,
+    "candidate_operator_implemented": false,
+    "geospatial_kernel_validated": false,
+    "physical_parameter_values_admitted": false,
+    "predictive_validation_complete": false
+  },
+  "data_isolation": {
+    "action_values_read": false,
+    "cases_outcome_calibrated": false,
+    "observation_values_read": false,
+    "public_or_user_data_read": false,
+    "saved_prediction_values_read": false
+  },
+  "gates": {
+    "all_limiting_gates_passed": true,
+    "all_sampled_profile_gates_passed": true,
+    "candidate_operator_compared": false,
+    "mass_centroid_variance_contract_fixed": true
+  },
+  "generated_at": "2026-07-28T02:14:57.391332+00:00",
+  "limiting_gates": {
+    "all_families_share_initial_identity": true,
+    "diffusive_zero_coefficient_equals_kinematic": true,
+    "local_inertial_has_two_counterpropagating_components": true,
+    "selected_cases_have_distinct_variance_growth": true
+  },
+  "linearized_equation_scope": {
+    "diffusive": "advection-diffusion of an area perturbation",
+    "kinematic": "first-order translation of an area perturbation",
+    "local_inertial": "undamped linear gravity-wave limit with zero initial time tendency",
+    "nonlinear_river_operator_implemented": false
+  },
+  "numeric_tolerances": {
+    "initial_identity_absolute_area_m2": 1e-15,
+    "profile_absolute_centroid_m": 1e-08,
+    "profile_relative_variance": 1e-10,
+    "profile_relative_volume": 1e-10
+  },
+  "sample_axis": {
+    "count": 12001,
+    "end_m": 6000.0,
+    "spacing_m": 1.0,
+    "start_m": -6000.0
+  },
+  "schema": "gwm.geotransport.transport_response_family_gates.v1",
+  "status": "analytic_response_family_gates_compiled_not_operator_admission"
+}

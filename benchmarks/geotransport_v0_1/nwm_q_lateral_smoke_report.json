@@ -1,0 +1,148 @@
+{
+  "artifacts": {
+    "q_lateral_chunk": {
+      "http_status": 200,
+      "path": "data/geotransport_v0_1/nwm_q_lateral/raw/q_lateral/559.63.zst",
+      "retrieved_at": "2026-07-26T09:19:12.126981+00:00",
+      "sha256": "085e310f3af2217772c1242364b32ea85ecebb85b61d88435b1e728f60444c82",
+      "size_bytes": 4678054,
+      "source_url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/q_lateral/559.63"
+    },
+    "selected_values": {
+      "http_status": null,
+      "path": "data/geotransport_v0_1/nwm_q_lateral/values/center_hill.csv",
+      "retrieved_at": null,
+      "sha256": "6698bc9d90266da00966b3dd25dcdc305d807c63e2efd1f6e49b11b5f0d17560",
+      "size_bytes": 33752,
+      "source_url": null
+    },
+    "time_chunk": {
+      "http_status": 200,
+      "path": "data/geotransport_v0_1/nwm_q_lateral/raw/time/559.zst",
+      "retrieved_at": "2026-07-26T09:19:08.953379+00:00",
+      "sha256": "537fd90e89f7dea546f9880fef48101f42d076d50545e4dffa90a261fd82f225",
+      "size_bytes": 727,
+      "source_url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/time/559"
+    }
+  },
+  "checks": {
+    "csv_reproduces_raw_zarr_selection": true,
+    "input_registry_lineage_verified": true,
+    "official_nwm_source_and_modeled_forcing_semantics_verified": true,
+    "packed_fill_value_masked_before_scaling": true,
+    "raw_and_value_artifact_hashes_verified": true,
+    "registry_feature_order_reconstructed": true,
+    "single_system_24_hour_chunk_boundary_verified": true,
+    "time_coordinate_contiguous_and_hourly": true
+  },
+  "claim_boundary": {
+    "action_state_or_outcome_values_acquired": false,
+    "benchmark_validated": false,
+    "bounded_nwm_q_lateral_value_smoke_verified": true,
+    "geospatial_kernel_validated": false,
+    "training_or_evaluation_panel_ready": false
+  },
+  "extraction_manifest": {
+    "path": "data/geotransport_v0_1/nwm_q_lateral/extraction_manifest.json",
+    "sha256": "9d55aa39d944ed45af150c393cc44009c8b9ceb814930f739958ef3443c33711",
+    "size_bytes": 4517
+  },
+  "generated_at": "2026-07-26T09:23:10.519360+00:00",
+  "input_registry_sha256": "d72f2980b229d3fe1f8a8bc27cadf718cd1d049d8f9ba3bab7f4222626e88d44",
+  "schema": "gwm.geotransport.nwm_q_lateral_smoke_audit.v1",
+  "source_semantics": {
+    "ground_truth": false,
+    "modeled": true,
+    "role": "modeled_forcing",
+    "source": "noaa_nwm_v3_retrospective",
+    "streamflow_used": false,
+    "units": "m3 s-1",
+    "variable": "q_lateral"
+  },
+  "spatial_selection": {
+    "feature_chunk_indices": [
+      63
+    ],
+    "feature_count": 27,
+    "feature_ids": [
+      18434275,
+      18434265,
+      18421763,
+      18421761,
+      18421759,
+      18421753,
+      18421821,
+      18427677,
+      18421751,
+      18421811,
+      18421817,
+      18421831,
+      18421747,
+      18421829,
+      18421727,
+      18421737,
+      18421807,
+      18421719,
+      18421721,
+      18421803,
+      18421799,
+      18421731,
+      18421739,
+      18421741,
+      18421795,
+      18421707,
+      18421703
+    ],
+    "q_chunk_keys": [
+      [
+        559,
+        63
+      ]
+    ],
+    "system_id": "center_hill",
+    "time_chunk_indices": [
+      559
+    ]
+  },
+  "status": "pass",
+  "value_summary": {
+    "fill_value_count": 0,
+    "finite_value_count": 648,
+    "hourly_path_sum_m3s": [
+      0.5000000074505806,
+      0.5000000074505806,
+      0.800000011920929,
+      0.6000000089406967,
+      0.7000000104308128,
+      0.5000000074505806,
+      0.5000000074505806,
+      0.7000000104308128,
+      0.4000000059604645,
+      0.7000000104308128,
+      0.7000000104308128,
+      0.4000000059604645,
+      0.4000000059604645,
+      1.0000000149011612,
+      1.2000000178813934,
+      2.500000037252903,
+      1.2000000178813934,
+      0.6000000089406967,
+      0.30000000447034836,
+      0.6000000089406967,
+      4.90000007301569,
+      6.800000101327896,
+      5.000000074505806,
+      11.200000166893005
+    ],
+    "maximum_m3s": 2.500000037252903,
+    "minimum_m3s": 0.0,
+    "nonzero_value_count": 182,
+    "sum_over_reach_hours_m3s": 42.70000063627958,
+    "value_count": 648
+  },
+  "window": {
+    "end_exclusive": "2022-01-02T00:00:00Z",
+    "start_inclusive": "2022-01-01T00:00:00Z",
+    "time_count": 24
+  }
+}

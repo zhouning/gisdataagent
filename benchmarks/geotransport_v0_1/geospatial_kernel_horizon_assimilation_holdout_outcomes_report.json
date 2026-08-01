@@ -1,0 +1,153 @@
+{
+  "claim_boundary": {
+    "candidate_promoted": false,
+    "candidate_support_gate_evaluated": false,
+    "geospatial_kernel_validated": false,
+    "holdout_outcomes_acquired": true,
+    "holdout_scored": false,
+    "outcomes_imputed": false,
+    "runtime_default_enabled": false
+  },
+  "generated_at": "2026-08-01T03:42:02.325390+00:00",
+  "ordering_audit": {
+    "acquisition_and_scorer_hashes_frozen_before_access": true,
+    "joint_predictions_verified_before_first_outcome_request": true,
+    "outcome_free_rollout_independently_verified_before_access": true,
+    "predictions_modified_after_outcome_access": false
+  },
+  "request_execution": {
+    "additional_outcome_requests_made": false,
+    "all_requests_match_frozen_urls": true,
+    "logical_request_count": 2,
+    "maximum_remote_attempts": 2,
+    "remote_attempt_count": 2
+  },
+  "schema": "gwm.geotransport.horizon_assimilation_holdout_outcomes.v1",
+  "scoring_protocol": {
+    "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_scoring_protocol.json",
+    "sha256": "bd16a743e79e189810e79170e02bdbd3f0d2ea35766a2f72caaf98e79a845539",
+    "size_bytes": 6104
+  },
+  "sealed_artifacts": {
+    "holdout_protocol": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_protocol.json",
+      "sha256": "b17e5a8fb36e05c111a8b87e5298e534516b9b3e3ce3ec46e4c003f1b5853722",
+      "size_bytes": 19562
+    },
+    "input_plan": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_input_plan.json",
+      "sha256": "bab7c4386501abd69bb8dd29353eadea01eae05039f9f91797a94266dc675bf9",
+      "size_bytes": 68421
+    },
+    "native_hourly_parser_helper": {
+      "path": "scripts/acquire_geotransport_v2_blind_validation_outcomes.py",
+      "sha256": "8113d5525038805ef2ab23841a00bd197bba1fd0124c29f9c4b9f8243c99c447",
+      "size_bytes": 18670
+    },
+    "outcome_acquisition_script": {
+      "path": "scripts/acquire_geospatial_kernel_horizon_assimilation_holdout_outcomes.py",
+      "sha256": "434175e64133dedf5f73812456bbc62186680c382b6ea32ba5d462f643307384",
+      "size_bytes": 12816
+    },
+    "predictions": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/predictions.csv",
+      "sha256": "7cace0b963bfc2914130f3e002627f0aa48f0109abc4a82fbd09de93df53ac5a",
+      "size_bytes": 242583
+    },
+    "rollout_report": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_rollout_report.json",
+      "sha256": "59d3e818c1db3ec8a7a26424b8ffb50d4b2ac86197443bede9b1ea081fb9cd45",
+      "size_bytes": 26777
+    },
+    "rollout_verification": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_rollout_verification.json",
+      "sha256": "bf5f5ca54e9593c7139b10aec4d3b7b4243805cb6ab33bf60a7bf95bbd92d7e6",
+      "size_bytes": 3448
+    },
+    "scorer_script": {
+      "path": "scripts/score_geospatial_kernel_horizon_assimilation_holdout.py",
+      "sha256": "e102b335e0aba5c7382abcfff7d18932614bab9dd237c4dd87bda5b8ea914c44",
+      "size_bytes": 21631
+    }
+  },
+  "status": "two_full_outcome_series_acquired_after_joint_prediction_seal",
+  "systems": {
+    "center_hill": {
+      "outcome_values": {
+        "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcomes/values/center_hill.csv",
+        "sha256": "4c08ab3e0be94d7d0e0f592d7c6db9819095f67811642b20914cbcfbfb7f2ad2",
+        "size_bytes": 47910
+      },
+      "parameter_code": "00060",
+      "quality": {
+        "complete_target_hour_count": 672,
+        "expected_native_samples_per_complete_hour": 2,
+        "hourly_support": "(target_time_minus_1h,target_time]",
+        "missing_target_hour_count": 0,
+        "missing_values_imputed": false,
+        "native_sample_cadence_seconds": 1800,
+        "qualifiers": [
+          "A"
+        ],
+        "sample_counts": [
+          2
+        ],
+        "target_hour_count": 672
+      },
+      "raw_outcome": {
+        "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcomes/raw/center_hill.json",
+        "sha256": "c970b86b9e02bef6a749202db783d4837ea54f72cfdb691e8c616ce691a6fd02",
+        "size_bytes": 108301
+      },
+      "site_id": "03424860",
+      "source": {
+        "attempt_count": 1,
+        "content_type": "application/json",
+        "final_url": "https://nwis.waterservices.usgs.gov/nwis/iv/?format=json&sites=03424860&parameterCd=00060&startDT=2022-04-28T01%3A00%3A00Z&endDT=2022-05-26T01%3A00%3A00Z&siteStatus=all",
+        "http_status": 200,
+        "retrieved_at": "2026-08-01T03:42:00.015382+00:00",
+        "url": "https://waterservices.usgs.gov/nwis/iv/?format=json&sites=03424860&parameterCd=00060&startDT=2022-04-28T01%3A00%3A00Z&endDT=2022-05-26T01%3A00%3A00Z&siteStatus=all"
+      },
+      "system_id": "center_hill"
+    },
+    "j_percy_priest": {
+      "outcome_values": {
+        "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcomes/values/j_percy_priest.csv",
+        "sha256": "7c17b9a08e3fa043c89f041f576e665106318caeef58235fa59d19d1a485689d",
+        "size_bytes": 48115
+      },
+      "parameter_code": "00060",
+      "quality": {
+        "complete_target_hour_count": 666,
+        "expected_native_samples_per_complete_hour": 4,
+        "hourly_support": "(target_time_minus_1h,target_time]",
+        "missing_target_hour_count": 6,
+        "missing_values_imputed": false,
+        "native_sample_cadence_seconds": 900,
+        "qualifiers": [
+          "A"
+        ],
+        "sample_counts": [
+          3,
+          4
+        ],
+        "target_hour_count": 672
+      },
+      "raw_outcome": {
+        "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcomes/raw/j_percy_priest.json",
+        "sha256": "acb0c3e79b1f342082716b127ba756a6bd4eb192b12206653c9dd2f50b199beb",
+        "size_bytes": 213511
+      },
+      "site_id": "03430200",
+      "source": {
+        "attempt_count": 1,
+        "content_type": "application/json",
+        "final_url": "https://nwis.waterservices.usgs.gov/nwis/iv/?format=json&sites=03430200&parameterCd=00060&startDT=2022-04-28T01%3A00%3A00Z&endDT=2022-05-26T01%3A00%3A00Z&siteStatus=all",
+        "http_status": 200,
+        "retrieved_at": "2026-08-01T03:42:02.310024+00:00",
+        "url": "https://waterservices.usgs.gov/nwis/iv/?format=json&sites=03430200&parameterCd=00060&startDT=2022-04-28T01%3A00%3A00Z&endDT=2022-05-26T01%3A00%3A00Z&siteStatus=all"
+      },
+      "system_id": "j_percy_priest"
+    }
+  }
+}

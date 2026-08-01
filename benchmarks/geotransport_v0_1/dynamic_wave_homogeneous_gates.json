@@ -1,0 +1,120 @@
+{
+  "all_gates_passed": true,
+  "analytic_diagnostics": {
+    "local_inertial_decomposition_absolute_error_m4s2": 0.0,
+    "pressure_flux_derivative_relative_error": 7.466987176566412e-11,
+    "subcritical_characteristic_speeds_mps": [
+      -3.23764279988542,
+      3.73764279988542
+    ],
+    "subcritical_hll_flux": {
+      "area_flux_m3s": 8.005563213065937,
+      "convective_momentum_retained": true,
+      "diagnostic_only": true,
+      "hydrostatic_pressure_retained": true,
+      "maximum_signal_speed_mps": 3.73764279988542,
+      "minimum_signal_speed_mps": -3.23764279988542,
+      "momentum_flux_m4s2": 130.34157222640405,
+      "operator_admitted": false,
+      "schema": "gwm.geospatial_kernel.dynamic_wave_hll_flux.v1",
+      "wave_regime": "subcritical_or_transcritical"
+    },
+    "supercritical_characteristic_speeds_mps": [
+      5.9643020887011,
+      10.0356979112989
+    ],
+    "supercritical_hll_flux": {
+      "area_flux_m3s": 40.0,
+      "convective_momentum_retained": true,
+      "diagnostic_only": true,
+      "hydrostatic_pressure_retained": true,
+      "maximum_signal_speed_mps": 10.0356979112989,
+      "minimum_signal_speed_mps": 5.9643020887011,
+      "momentum_flux_m4s2": 330.91546231688716,
+      "operator_admitted": false,
+      "schema": "gwm.geospatial_kernel.dynamic_wave_hll_flux.v1",
+      "wave_regime": "right_going_supercritical"
+    }
+  },
+  "claim_boundary": {
+    "candidate_operator_admitted": false,
+    "geospatial_kernel_validated": false,
+    "homogeneous_prismatic_flux_implemented": true,
+    "network_operator_implemented": false,
+    "predictive_validation_complete": false,
+    "subcritical_and_supercritical_riemann_gates_passed": true,
+    "well_balanced_source_operator_implemented": false
+  },
+  "data_isolation": {
+    "action_values_read": false,
+    "observation_values_read": false,
+    "public_or_user_data_read": false,
+    "saved_prediction_values_read": false
+  },
+  "dry_bed_100_step": {
+    "cell_count": 64,
+    "discharge_integral_after_m4s": -8.526512829121202e-12,
+    "discharge_integral_balance_error_m4s": -8.526512829121202e-12,
+    "discharge_integral_before_m4s": 0.0,
+    "elapsed_seconds": 739.9452708404027,
+    "final_minimum_area_m2": 9.488925276938572,
+    "maximum_reported_courant_number": 0.5000000000000001,
+    "minimum_area_m2": 0.0,
+    "step_count": 100,
+    "volume_after_m3": 95999.99999999997,
+    "volume_balance_error_m3": -2.9103830456733704e-11,
+    "volume_before_m3": 96000.0
+  },
+  "equation_contract": {
+    "area_flux": "Q",
+    "bed_slope_source_included": false,
+    "gravity_characteristics": "u plus_or_minus sqrt(gA/T)",
+    "lateral_inflow_source_included": false,
+    "manning_friction_source_included": false,
+    "momentum_flux": "Q^2/A + g I1(A)",
+    "network_junction_coupling_included": false,
+    "riemann_flux": "HLL",
+    "spatial_domain": "periodic_prismatic_single_section",
+    "state": [
+      "wetted_area_A_m2",
+      "discharge_Q_m3s"
+    ]
+  },
+  "gates": {
+    "dry_bed_100_step_area_nonnegative": true,
+    "dry_bed_100_step_cfl_respected": true,
+    "dry_bed_100_step_momentum_conserved": true,
+    "dry_bed_100_step_volume_conserved": true,
+    "hydrostatic_pressure_derivative_matches_c_squared": true,
+    "local_inertial_limit_is_explicit_flux_decomposition": true,
+    "subcritical_characteristics_straddle_zero": true,
+    "subcritical_hll_flux_finite": true,
+    "supercritical_characteristics_are_downstream": true,
+    "supercritical_hll_uses_upstream_physical_flux": true,
+    "uniform_periodic_momentum_conserved": true,
+    "uniform_periodic_state_is_exact_identity": true,
+    "uniform_periodic_volume_conserved": true
+  },
+  "generated_at": "2026-07-28T03:38:55.108561+00:00",
+  "schema": "gwm.geotransport.dynamic_wave_homogeneous_gates.v1",
+  "status": "homogeneous_dynamic_wave_candidate_gates_compiled",
+  "uniform_identity_step": {
+    "cell_length_m": 100.0,
+    "diagnostic_only": true,
+    "discharge_integral_after_m4s": 4000.0,
+    "discharge_integral_balance_error_m4s": 0.0,
+    "discharge_integral_before_m4s": 4000.0,
+    "finite_state": true,
+    "maximum_courant_number": 0.8,
+    "minimum_area_m2": 20.0,
+    "nonnegative_area": true,
+    "operator_admitted": false,
+    "periodic_homogeneous_momentum_conserved": true,
+    "periodic_homogeneous_volume_conserved": true,
+    "schema": "gwm.geospatial_kernel.dynamic_wave_homogeneous_step.v1",
+    "timestep_seconds": 21.40386448979353,
+    "volume_after_m3": 16000.0,
+    "volume_balance_error_m3": 0.0,
+    "volume_before_m3": 16000.0
+  }
+}

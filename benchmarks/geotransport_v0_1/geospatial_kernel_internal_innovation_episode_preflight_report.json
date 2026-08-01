@@ -1,0 +1,27 @@
+{
+  "all_submitted_episodes_ready": false,
+  "assessment_integrity_passed": true,
+  "episodes": {},
+  "execution_boundary": {
+    "candidate_fit_executed": false,
+    "network_requests_performed": false,
+    "outcome_artifacts_opened": false,
+    "physical_rollout_executed": false,
+    "runtime_enabled": false
+  },
+  "generated_at": "2026-07-31T06:25:24.076732+00:00",
+  "protocol": {
+    "actual_protocol_seal_sha256": "9d69d960c43a972d77d42267fa4fe854e6b85f9f13dae9ea7cf50b7888901fd3",
+    "expected_protocol_seal_sha256": "9d69d960c43a972d77d42267fa4fe854e6b85f9f13dae9ea7cf50b7888901fd3",
+    "expected_sha256": "411071ad99c597358199710365e1267e2ce0847685484208b2a1169056ba8f41",
+    "frozen_at": "2026-07-31T06:06:33Z",
+    "identity_matches": true,
+    "json_error": null,
+    "path": "benchmarks/geotransport_v0_1/geospatial_kernel_internal_innovation_rollout_protocol.json",
+    "sha256": "411071ad99c597358199710365e1267e2ce0847685484208b2a1169056ba8f41",
+    "size_bytes": 7020
+  },
+  "schema": "gwm.geospatial_kernel.internal_innovation_episode_preflight.v1",
+  "status": "awaiting_prospective_episode_manifests",
+  "submitted_episode_count": 0
+}

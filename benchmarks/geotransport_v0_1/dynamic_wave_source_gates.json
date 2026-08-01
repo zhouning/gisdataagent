@@ -1,0 +1,120 @@
+{
+  "all_gates_passed": true,
+  "claim_boundary": {
+    "candidate_operator_admitted": false,
+    "geospatial_kernel_validated": false,
+    "hydrostatic_bed_primitive_implemented": true,
+    "lateral_volume_source_implemented": true,
+    "manning_slope_friction_primitive_implemented": true,
+    "network_operator_implemented": false,
+    "source_primitives_coupled_with_homogeneous_flux": false,
+    "variable_geometry_operator_implemented": false
+  },
+  "data_isolation": {
+    "action_values_read": false,
+    "observation_values_read": false,
+    "public_or_user_data_read": false,
+    "saved_prediction_values_read": false
+  },
+  "gates": {
+    "flat_bed_friction_dissipates_discharge": true,
+    "flat_bed_friction_preserves_area": true,
+    "flat_bed_friction_preserves_direction": true,
+    "lake_at_rest_area_identity_100_steps": true,
+    "lake_at_rest_discharge_identity_100_steps": true,
+    "lake_at_rest_no_spurious_discharge": true,
+    "lake_at_rest_surface_unchanged": true,
+    "lake_at_rest_volume_closed": true,
+    "lateral_matched_velocity_preserves_velocity": true,
+    "lateral_matched_velocity_volume_closed": true,
+    "lateral_zero_momentum_discharge_unchanged": true,
+    "lateral_zero_momentum_volume_closed": true,
+    "manning_uniform_friction_equals_bed_slope": true,
+    "manning_uniform_source_is_exact_identity": true
+  },
+  "generated_at": "2026-07-28T03:53:48.542318+00:00",
+  "hydrostatic_reconstruction": {
+    "bed_elevation_m": [
+      0.0,
+      0.2,
+      0.5,
+      0.8,
+      0.5,
+      0.2
+    ],
+    "elapsed_seconds": 1280.167812437199,
+    "free_surface_elevation_m": 2.0,
+    "maximum_absolute_discharge_m3s": 7.276911517449198e-15,
+    "maximum_absolute_step_volume_error_m3": 0.0,
+    "maximum_free_surface_change_m": 0.0,
+    "method": "Audusse-style interface bed maximum and pressure correction",
+    "step_count": 100
+  },
+  "lateral_inflow_source": {
+    "matched_local_velocity": {
+      "cell_length_m": 100.0,
+      "diagnostic_only": true,
+      "momentum_convention": "matched_local_velocity",
+      "negative_lateral_inflow_supported": false,
+      "operator_admitted": false,
+      "prescribed_lateral_volume_m3": 300.00000000000006,
+      "schema": "gwm.geospatial_kernel.dynamic_wave_lateral_inflow_source_step.v1",
+      "timestep_seconds": 10.0,
+      "volume_after_m3": 3300.0,
+      "volume_balance_error_m3": -5.684341886080802e-14,
+      "volume_before_m3": 3000.0
+    },
+    "negative_lateral_inflow_supported": false,
+    "zero_longitudinal_momentum": {
+      "cell_length_m": 100.0,
+      "diagnostic_only": true,
+      "momentum_convention": "zero_longitudinal_momentum",
+      "negative_lateral_inflow_supported": false,
+      "operator_admitted": false,
+      "prescribed_lateral_volume_m3": 300.00000000000006,
+      "schema": "gwm.geospatial_kernel.dynamic_wave_lateral_inflow_source_step.v1",
+      "timestep_seconds": 10.0,
+      "volume_after_m3": 3300.0,
+      "volume_balance_error_m3": -5.684341886080802e-14,
+      "volume_before_m3": 3000.0
+    }
+  },
+  "manning_source": {
+    "computed_friction_slope": 0.002,
+    "equilibrium_area_m2": 20.0,
+    "equilibrium_bed_slope": 0.002,
+    "equilibrium_discharge_m3s": 28.65110687725851,
+    "equilibrium_manning_n": 0.035,
+    "equilibrium_step": {
+      "area_unchanged": true,
+      "diagnostic_only": true,
+      "discharge_sum_after_m3s": 114.60442750903404,
+      "discharge_sum_before_m3s": 114.60442750903404,
+      "flow_direction_preserved": true,
+      "maximum_absolute_equilibrium_residual": 0.0,
+      "operator_admitted": false,
+      "schema": "gwm.geospatial_kernel.dynamic_wave_manning_source_step.v1",
+      "timestep_seconds": 300.0,
+      "volume_after_m3": 8000.0,
+      "volume_balance_error_m3": 0.0,
+      "volume_before_m3": 8000.0
+    },
+    "flat_bed_friction_step": {
+      "area_unchanged": true,
+      "diagnostic_only": true,
+      "discharge_sum_after_m3s": 1.0910056508930128,
+      "discharge_sum_before_m3s": 35.0,
+      "flow_direction_preserved": true,
+      "maximum_absolute_equilibrium_residual": 0.002192752908218665,
+      "operator_admitted": false,
+      "schema": "gwm.geospatial_kernel.dynamic_wave_manning_source_step.v1",
+      "timestep_seconds": 3600.0,
+      "volume_after_m3": 4000.0,
+      "volume_balance_error_m3": 0.0,
+      "volume_before_m3": 4000.0
+    },
+    "integration": "analytic fixed-area solution of dQ/dt = g A (S0-Sf) for nonnegative Q"
+  },
+  "schema": "gwm.geotransport.dynamic_wave_source_gates.v1",
+  "status": "separate_dynamic_wave_source_primitives_gated"
+}

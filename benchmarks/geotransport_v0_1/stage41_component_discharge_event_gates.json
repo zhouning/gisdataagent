@@ -1,0 +1,537 @@
+{
+  "all_gates_passed": true,
+  "candidate_summary": {
+    "candidate_counts_by_stratum": {
+      "high_decrease": 77,
+      "high_increase": 51,
+      "low_decrease": 1157,
+      "low_increase": 1262
+    },
+    "component_gate_candidate_counts": {
+      "orifice": 0,
+      "sluice": 0,
+      "spillway": 0,
+      "turbine": 2542
+    },
+    "eligible_candidate_count": 2547
+  },
+  "compiled_at": "2026-07-30T10:31:41.198469+00:00",
+  "decision": {
+    "causal_interventions_admitted": false,
+    "downstream_or_tributary_values_acquired": false,
+    "eligible_source_event_count": 2547,
+    "event_protocol_frozen": true,
+    "fresh_approval_required_for_target_acquisition": true,
+    "full_derived_total_series_persisted": false,
+    "gate_commands_admitted": false,
+    "human_actions_admitted": false,
+    "new_network_request_count": 0,
+    "non_turbine_component_contrast_admitted": false,
+    "observed_downstream_response_admitted": false,
+    "physical_response_time_admitted": false,
+    "quality_code_approval_semantics_admitted": false,
+    "runtime_operators_admitted": false,
+    "selected_dominant_components": [
+      "turbine",
+      "turbine",
+      "turbine",
+      "turbine"
+    ],
+    "source_artifact_count": 20,
+    "source_only_total_discharge_event_count": 4,
+    "source_only_total_discharge_events_admitted": true,
+    "stage40_source_support_preserved": true,
+    "synchronized_total_discharge_derivation_admitted": true,
+    "target_functional_frozen": true
+  },
+  "frozen_artifacts": {
+    "benchmarks/geotransport_v0_1/stage40_component_discharge_value_support_gates.json": {
+      "actual_sha256": "6d9c78138d635467814a372b2faafb9eb534fd6c8cc66ebe4063e933f5a72dec",
+      "expected_sha256": "6d9c78138d635467814a372b2faafb9eb534fd6c8cc66ebe4063e933f5a72dec",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage40_center_hill_component_discharge_value_support/component_discharge_value_support_ledger.json": {
+      "actual_sha256": "d4d8b1b145ddd9f45e6c5d0905d6d5cabbdf99da0414cacaa43f6c0798d70de1",
+      "expected_sha256": "d4d8b1b145ddd9f45e6c5d0905d6d5cabbdf99da0414cacaa43f6c0798d70de1",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage41_center_hill_component_discharge_events/component_total_event_candidate_ledger.json": {
+      "actual_sha256": "625b1bee79ccf1eb83059a906250497c3460eb247cdfe06d6b3fb3ef8bcab60f",
+      "expected_sha256": "625b1bee79ccf1eb83059a906250497c3460eb247cdfe06d6b3fb3ef8bcab60f",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage41_center_hill_component_discharge_events/event_selection_manifest.json": {
+      "actual_sha256": "3ffecd85ce74147eb11e1ccc084b4ac5b2774bae81511a416c54735b156d7e6a",
+      "expected_sha256": "3ffecd85ce74147eb11e1ccc084b4ac5b2774bae81511a416c54735b156d7e6a",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage41_center_hill_component_discharge_events/protocol.json": {
+      "actual_sha256": "e5da6a7c3a8b9dba355f41e92114cf3ae8bd726c2c6026fdb1d8fd4b5ed88f33",
+      "expected_sha256": "e5da6a7c3a8b9dba355f41e92114cf3ae8bd726c2c6026fdb1d8fd4b5ed88f33",
+      "matches": true
+    },
+    "data_agent/test_freeze_geotransport_stage41_component_discharge_event_protocol.py": {
+      "actual_sha256": "cbcc48383366d9708b894ca311c9735aa9ea90e5c12f9b4bdbc3259a542c8292",
+      "expected_sha256": "cbcc48383366d9708b894ca311c9735aa9ea90e5c12f9b4bdbc3259a542c8292",
+      "matches": true
+    },
+    "data_agent/test_geospatial_kernel_component_discharge_event_selection.py": {
+      "actual_sha256": "6433586c74d99c0133e94aff3174c35c956c7957f16ead27ac8b72156289252a",
+      "expected_sha256": "6433586c74d99c0133e94aff3174c35c956c7957f16ead27ac8b72156289252a",
+      "matches": true
+    },
+    "data_agent/test_geospatial_kernel_public_component_discharge_event_evidence.py": {
+      "actual_sha256": "147d204ce48c8f35e71a326a0e505e48a9e8572a903ddf8c42042e415986dbe2",
+      "expected_sha256": "147d204ce48c8f35e71a326a0e505e48a9e8572a903ddf8c42042e415986dbe2",
+      "matches": true
+    },
+    "data_agent/uwm/geospatial_kernel_v2/component_discharge_event_selection.py": {
+      "actual_sha256": "f3f72959befaf70384994f9a47265ac6cd87e1fa63824fbf9879c7bf37784d04",
+      "expected_sha256": "f3f72959befaf70384994f9a47265ac6cd87e1fa63824fbf9879c7bf37784d04",
+      "matches": true
+    },
+    "data_agent/uwm/geospatial_kernel_v2/public_component_discharge_event_evidence.py": {
+      "actual_sha256": "a5566c33790f1d8b3f0e6b1865eb2aca0a250732766550c38947fa3916f1bd2a",
+      "expected_sha256": "a5566c33790f1d8b3f0e6b1865eb2aca0a250732766550c38947fa3916f1bd2a",
+      "matches": true
+    },
+    "scripts/compile_geotransport_stage41_component_discharge_events.py": {
+      "actual_sha256": "7e4b26113692a3eebb8f0353a7ca96c08ec182d1cccfad21ef64a8b468734190",
+      "expected_sha256": "7e4b26113692a3eebb8f0353a7ca96c08ec182d1cccfad21ef64a8b468734190",
+      "matches": true
+    },
+    "scripts/freeze_geotransport_stage41_component_discharge_event_protocol.py": {
+      "actual_sha256": "84335dd7fdbcb6caa69fb319b5c2525cb126d1891d28810571dcd5bb1aa3908a",
+      "expected_sha256": "84335dd7fdbcb6caa69fb319b5c2525cb126d1891d28810571dcd5bb1aa3908a",
+      "matches": true
+    }
+  },
+  "gates": {
+    "all_43825_hours_support_exact_four_component_sums": true,
+    "all_selected_events_pass_excitation_identifiability": true,
+    "all_selected_ranges_exceed_100_m3s": true,
+    "all_selected_steps_are_turbine_only": true,
+    "all_selected_steps_exceed_50_m3s": true,
+    "all_twelve_stage40_and_stage41_artifacts_match": true,
+    "all_twenty_exclusion_intervals_are_applied": true,
+    "all_twenty_stage40_source_artifacts_are_preserved": true,
+    "candidate_stratum_counts_are_exact": true,
+    "candidate_window_uses_exact_73_hour_support": true,
+    "causal_interventions_remain_rejected": true,
+    "component_specific_candidate_counts_are_exact": true,
+    "derived_total_is_source_only_and_not_fully_persisted": true,
+    "eight_typed_refusal_controls_fail_closed": true,
+    "eligible_candidate_count_is_exact": true,
+    "four_events_are_selected_in_frozen_stratum_order": true,
+    "four_exact_event_ids_are_preserved": true,
+    "fresh_approval_is_required_for_target_acquisition": true,
+    "gate_commands_remain_rejected": true,
+    "human_actions_remain_rejected": true,
+    "no_downstream_or_tributary_values_were_acquired": true,
+    "no_new_network_requests_were_made": true,
+    "non_turbine_component_contrast_is_rejected": true,
+    "observed_downstream_response_remains_unadmitted": true,
+    "physical_response_time_remains_rejected": true,
+    "public_provenance_is_content_addressed": true,
+    "quality_codes_are_not_approval_semantics": true,
+    "runtime_operators_remain_rejected": true,
+    "selected_events_are_at_least_180_days_apart": true,
+    "source_only_total_discharge_events_are_admitted": true,
+    "stage40_ledger_and_gates_are_preserved": true,
+    "stage41_candidate_ledger_is_exactly_bound": true,
+    "stage41_event_manifest_is_exactly_bound": true,
+    "stage41_ledger_is_content_addressed": true,
+    "stage41_protocol_is_exactly_bound": true,
+    "target_functional_is_frozen_before_new_values": true,
+    "thirty_day_window_overlap_exclusion_is_frozen": true
+  },
+  "refusal_controls": {
+    "causal_intervention": true,
+    "downstream_response": true,
+    "gate_command": true,
+    "human_action": true,
+    "non_turbine_contrast": true,
+    "physical_response_time": true,
+    "quality_approval": true,
+    "runtime_operator": true
+  },
+  "schema": "gwm.geotransport.stage41_component_discharge_event_gates.v1",
+  "selected_events": [
+    {
+      "absolute_total_step_m3s": 110.60560279,
+      "active_step_components": [
+        "turbine"
+      ],
+      "antecedent_flow_class": "high",
+      "antecedent_total_mean_m3s": 243.59567280750002,
+      "component_quality_codes_in_window": {
+        "orifice": [
+          0
+        ],
+        "sluice": [
+          0
+        ],
+        "spillway": [
+          0
+        ],
+        "turbine": [
+          0
+        ]
+      },
+      "component_signed_steps_m3s": {
+        "orifice": 0.0,
+        "sluice": 0.0,
+        "spillway": 0.0,
+        "turbine": 110.60560279
+      },
+      "component_values_at_step_m3s": {
+        "orifice": 0.0,
+        "sluice": 0.0,
+        "spillway": 0.0,
+        "turbine": 217.75655029
+      },
+      "component_values_before_step_m3s": {
+        "orifice": 0.0,
+        "sluice": 0.0,
+        "spillway": 0.0,
+        "turbine": 107.1509475
+      },
+      "dominant_step_component": "turbine",
+      "end_utc": "2025-04-17T16:00:00Z",
+      "event_id": "component_total_step_20250415T1600Z",
+      "inclusive_total_value_count": 73,
+      "quality_codes_interpreted_as_approval": false,
+      "release_excitation_identifiability": {
+        "blind_response_test_admissible": true,
+        "exact_lag_identified": false,
+        "excitation_mode": "recovery",
+        "excitation_sign": -1,
+        "excursion_support_hours": 12,
+        "excursion_threshold_fraction_of_primary_step": 0.25,
+        "input_support_only": true,
+        "lag_design_condition_number": 9.11530227065262,
+        "max_absolute_lag_autocorrelation": 0.7983189401039896,
+        "normalized_excitation_volume_step_hours": 16.967997951724737,
+        "observed_downstream_response_admitted": false,
+        "physical_travel_time_admitted": false,
+        "reference_release_m3s": 329.367401135,
+        "reference_support_offsets_hours": [
+          -24,
+          -6
+        ],
+        "rejection_reasons": [],
+        "release_standard_deviation_m3s": 128.26854322201163,
+        "schema": "gwm.geospatial.release_excitation_identifiability.v1",
+        "signed_primary_step_m3s": 110.60560279,
+        "thresholds": {
+          "maximum_absolute_lag_autocorrelation": 0.97,
+          "maximum_lag_design_condition_number": 50.0,
+          "minimum_excursion_support_hours": 3,
+          "minimum_normalized_volume_step_hours": 3.0,
+          "minimum_release_standard_deviation_m3s": 30.0
+        }
+      },
+      "role": "blind_component_total_discharge_event",
+      "selected_without_downstream_values": true,
+      "selection_rank": 1,
+      "selection_stratum": "high_increase",
+      "signed_total_step_m3s": 110.60560279,
+      "source_and_target_operators_frozen_before_event_manifest": true,
+      "source_time_support_offsets_minutes": [
+        -60,
+        0
+      ],
+      "start_utc": "2025-04-14T16:00:00Z",
+      "step_time_utc": "2025-04-15T16:00:00Z",
+      "total_at_step_m3s": 217.75655029,
+      "total_before_step_m3s": 107.1509475,
+      "total_direction": "increase",
+      "total_window_range_m3s": 335.95106797
+    },
+    {
+      "absolute_total_step_m3s": 116.94857642,
+      "active_step_components": [
+        "turbine"
+      ],
+      "antecedent_flow_class": "high",
+      "antecedent_total_mean_m3s": 298.62474468416667,
+      "component_quality_codes_in_window": {
+        "orifice": [
+          0
+        ],
+        "sluice": [
+          0
+        ],
+        "spillway": [
+          0
+        ],
+        "turbine": [
+          0
+        ]
+      },
+      "component_signed_steps_m3s": {
+        "orifice": 0.0,
+        "sluice": 0.0,
+        "spillway": 0.0,
+        "turbine": -116.94857642
+      },
+      "component_values_at_step_m3s": {
+        "orifice": 0.0,
+        "sluice": 0.0,
+        "spillway": 0.0,
+        "turbine": 0.0
+      },
+      "component_values_before_step_m3s": {
+        "orifice": 0.0,
+        "sluice": 0.0,
+        "spillway": 0.0,
+        "turbine": 116.94857642
+      },
+      "dominant_step_component": "turbine",
+      "end_utc": "2023-03-13T20:00:00Z",
+      "event_id": "component_total_step_20230311T2000Z",
+      "inclusive_total_value_count": 73,
+      "quality_codes_interpreted_as_approval": false,
+      "release_excitation_identifiability": {
+        "blind_response_test_admissible": true,
+        "exact_lag_identified": false,
+        "excitation_mode": "onset",
+        "excitation_sign": -1,
+        "excursion_support_hours": 12,
+        "excursion_threshold_fraction_of_primary_step": 0.25,
+        "input_support_only": true,
+        "lag_design_condition_number": 12.787850005506069,
+        "max_absolute_lag_autocorrelation": 0.8766641726864615,
+        "normalized_excitation_volume_step_hours": 26.918886199384488,
+        "observed_downstream_response_admitted": false,
+        "physical_travel_time_admitted": false,
+        "reference_release_m3s": 359.1284069,
+        "reference_support_offsets_hours": [
+          -24,
+          -6
+        ],
+        "rejection_reasons": [],
+        "release_standard_deviation_m3s": 133.84577364821797,
+        "schema": "gwm.geospatial.release_excitation_identifiability.v1",
+        "signed_primary_step_m3s": -116.94857642,
+        "thresholds": {
+          "maximum_absolute_lag_autocorrelation": 0.97,
+          "maximum_lag_design_condition_number": 50.0,
+          "minimum_excursion_support_hours": 3,
+          "minimum_normalized_volume_step_hours": 3.0,
+          "minimum_release_standard_deviation_m3s": 30.0
+        }
+      },
+      "role": "blind_component_total_discharge_event",
+      "selected_without_downstream_values": true,
+      "selection_rank": 2,
+      "selection_stratum": "high_decrease",
+      "signed_total_step_m3s": -116.94857642,
+      "source_and_target_operators_frozen_before_event_manifest": true,
+      "source_time_support_offsets_minutes": [
+        -60,
+        0
+      ],
+      "start_utc": "2023-03-10T20:00:00Z",
+      "step_time_utc": "2023-03-11T20:00:00Z",
+      "total_at_step_m3s": 0.0,
+      "total_before_step_m3s": 116.94857642,
+      "total_direction": "decrease",
+      "total_window_range_m3s": 361.46454675
+    },
+    {
+      "absolute_total_step_m3s": 53.66042429999999,
+      "active_step_components": [
+        "turbine"
+      ],
+      "antecedent_flow_class": "low",
+      "antecedent_total_mean_m3s": 16.324662060416667,
+      "component_quality_codes_in_window": {
+        "orifice": [
+          0
+        ],
+        "sluice": [
+          0
+        ],
+        "spillway": [
+          0
+        ],
+        "turbine": [
+          0
+        ]
+      },
+      "component_signed_steps_m3s": {
+        "orifice": 0.0,
+        "sluice": 0.0,
+        "spillway": 0.0,
+        "turbine": 53.66042429999999
+      },
+      "component_values_at_step_m3s": {
+        "orifice": 0.0,
+        "sluice": 0.0,
+        "spillway": 0.0,
+        "turbine": 222.45714683
+      },
+      "component_values_before_step_m3s": {
+        "orifice": 0.0,
+        "sluice": 0.0,
+        "spillway": 0.0,
+        "turbine": 168.79672253
+      },
+      "dominant_step_component": "turbine",
+      "end_utc": "2021-01-14T16:00:00Z",
+      "event_id": "component_total_step_20210112T1600Z",
+      "inclusive_total_value_count": 73,
+      "quality_codes_interpreted_as_approval": false,
+      "release_excitation_identifiability": {
+        "blind_response_test_admissible": true,
+        "exact_lag_identified": false,
+        "excitation_mode": "onset",
+        "excitation_sign": 1,
+        "excursion_support_hours": 12,
+        "excursion_threshold_fraction_of_primary_step": 0.25,
+        "input_support_only": true,
+        "lag_design_condition_number": 35.178237407446005,
+        "max_absolute_lag_autocorrelation": 0.9206912269113654,
+        "normalized_excitation_volume_step_hours": 47.85646437238478,
+        "observed_downstream_response_admitted": false,
+        "physical_travel_time_admitted": false,
+        "reference_release_m3s": 0.0,
+        "reference_support_offsets_hours": [
+          -24,
+          -6
+        ],
+        "rejection_reasons": [],
+        "release_standard_deviation_m3s": 83.29922196290669,
+        "schema": "gwm.geospatial.release_excitation_identifiability.v1",
+        "signed_primary_step_m3s": 53.66042429999999,
+        "thresholds": {
+          "maximum_absolute_lag_autocorrelation": 0.97,
+          "maximum_lag_design_condition_number": 50.0,
+          "minimum_excursion_support_hours": 3,
+          "minimum_normalized_volume_step_hours": 3.0,
+          "minimum_release_standard_deviation_m3s": 30.0
+        }
+      },
+      "role": "blind_component_total_discharge_event",
+      "selected_without_downstream_values": true,
+      "selection_rank": 3,
+      "selection_stratum": "low_increase",
+      "signed_total_step_m3s": 53.66042429999999,
+      "source_and_target_operators_frozen_before_event_manifest": true,
+      "source_time_support_offsets_minutes": [
+        -60,
+        0
+      ],
+      "start_utc": "2021-01-11T16:00:00Z",
+      "step_time_utc": "2021-01-12T16:00:00Z",
+      "total_at_step_m3s": 222.45714683,
+      "total_before_step_m3s": 168.79672253,
+      "total_direction": "increase",
+      "total_window_range_m3s": 223.64645438
+    },
+    {
+      "absolute_total_step_m3s": 111.73827665000002,
+      "active_step_components": [
+        "turbine"
+      ],
+      "antecedent_flow_class": "low",
+      "antecedent_total_mean_m3s": 121.22913973416667,
+      "component_quality_codes_in_window": {
+        "orifice": [
+          0
+        ],
+        "sluice": [
+          0
+        ],
+        "spillway": [
+          0
+        ],
+        "turbine": [
+          -2147478653,
+          0
+        ]
+      },
+      "component_signed_steps_m3s": {
+        "orifice": 0.0,
+        "sluice": 0.0,
+        "spillway": 0.0,
+        "turbine": -111.73827665000002
+      },
+      "component_values_at_step_m3s": {
+        "orifice": 0.0,
+        "sluice": 0.0,
+        "spillway": 0.0,
+        "turbine": 113.66382222000001
+      },
+      "component_values_before_step_m3s": {
+        "orifice": 0.0,
+        "sluice": 0.0,
+        "spillway": 0.0,
+        "turbine": 225.40209887000003
+      },
+      "dominant_step_component": "turbine",
+      "end_utc": "2021-07-29T03:00:00Z",
+      "event_id": "component_total_step_20210727T0300Z",
+      "inclusive_total_value_count": 73,
+      "quality_codes_interpreted_as_approval": false,
+      "release_excitation_identifiability": {
+        "blind_response_test_admissible": true,
+        "exact_lag_identified": false,
+        "excitation_mode": "recovery",
+        "excitation_sign": 1,
+        "excursion_support_hours": 12,
+        "excursion_threshold_fraction_of_primary_step": 0.25,
+        "input_support_only": true,
+        "lag_design_condition_number": 13.07568414078329,
+        "max_absolute_lag_autocorrelation": 0.881078706886494,
+        "normalized_excitation_volume_step_hours": 24.078053725558323,
+        "observed_downstream_response_admitted": false,
+        "physical_travel_time_admitted": false,
+        "reference_release_m3s": 0.0,
+        "reference_support_offsets_hours": [
+          -24,
+          -6
+        ],
+        "rejection_reasons": [],
+        "release_standard_deviation_m3s": 128.8885417250604,
+        "schema": "gwm.geospatial.release_excitation_identifiability.v1",
+        "signed_primary_step_m3s": -111.73827665000002,
+        "thresholds": {
+          "maximum_absolute_lag_autocorrelation": 0.97,
+          "maximum_lag_design_condition_number": 50.0,
+          "minimum_excursion_support_hours": 3,
+          "minimum_normalized_volume_step_hours": 3.0,
+          "minimum_release_standard_deviation_m3s": 30.0
+        }
+      },
+      "role": "blind_component_total_discharge_event",
+      "selected_without_downstream_values": true,
+      "selection_rank": 4,
+      "selection_stratum": "low_decrease",
+      "signed_total_step_m3s": -111.73827665000002,
+      "source_and_target_operators_frozen_before_event_manifest": true,
+      "source_time_support_offsets_minutes": [
+        -60,
+        0
+      ],
+      "start_utc": "2021-07-26T03:00:00Z",
+      "step_time_utc": "2021-07-27T03:00:00Z",
+      "total_at_step_m3s": 113.66382222000001,
+      "total_before_step_m3s": 225.40209887000003,
+      "total_direction": "decrease",
+      "total_window_range_m3s": 347.02295498
+    }
+  ],
+  "source_summary": {
+    "inherited_source_artifact_count": 20,
+    "new_network_request_count": 0,
+    "total_hour_count": 43825
+  },
+  "stage41_ledger_artifact": {
+    "path": "data/geotransport_v0_1/stage41_center_hill_component_discharge_events/component_discharge_event_evidence_ledger.json",
+    "sha256": "6c859b4cc52455beea308e2418832c9ce71a679f9ca882d3bcea9facbaf7a1d3",
+    "size_bytes": 23427
+  },
+  "status": "stage41_complete_source_only_total_discharge_events_admitted"
+}

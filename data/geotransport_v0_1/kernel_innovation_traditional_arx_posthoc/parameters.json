@@ -1,0 +1,36 @@
+{
+  "action_level_coefficient": 0.035331089570226085,
+  "admitted": false,
+  "asymptotically_stable": true,
+  "autoregressive_coefficient": 0.9423431036513937,
+  "forcing_coefficient": 0.7731862149391386,
+  "formula": "q[t] = intercept + phi*q[t-1] + action_beta*sum(w_lag*action[t-lag]) + forcing_beta*forcing[t]",
+  "free_parameter_count": 4,
+  "intercept_m3s": 4.461125413775087,
+  "lag_hours": [
+    5,
+    6,
+    7
+  ],
+  "lag_weights": [
+    0.3333333333333333,
+    0.3333333333333333,
+    0.3333333333333333
+  ],
+  "maximum_discharge_m3s": 10000.0,
+  "outcome_calibrated": true,
+  "provenance_id": "classical-arx1:center-hill:first-168-hours:fixed-action-lag-support=5,6,7",
+  "schema": "gwm.geospatial_kernel.classical_causal_arx_parameters.v1",
+  "source_artifact_sha256": "3ab31194e1687b2a4556bdf4f0889acfa62afe2a53e6dd5ad056f168b55cc746",
+  "supported_forecast_horizons_hours": [
+    1,
+    3,
+    6,
+    12
+  ],
+  "target_outcomes_used_for_fit": false,
+  "timestep_seconds": 3600,
+  "training_data_end": "2021-12-16T01:00:00+00:00",
+  "training_data_start": "2021-12-09T09:00:00+00:00",
+  "training_sample_count": 161
+}

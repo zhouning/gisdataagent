@@ -1,0 +1,297 @@
+{
+  "claim_boundary": {
+    "candidate_admitted": false,
+    "development_integration_only": true,
+    "forecast_skill_scored": false,
+    "geospatial_kernel_validated": false,
+    "graph_partition_ensemble_executed": false,
+    "physical_ensemble_cycle_integrated": true,
+    "predictive_validation_complete": false,
+    "real_center_hill_cycle_executed": true,
+    "real_j_percy_priest_cycle_executed": true,
+    "runtime_default_enabled": false,
+    "superiority_claim_supported": false
+  },
+  "data_isolation": {
+    "forecast_skill_computed": false,
+    "future_target_values_loaded": false,
+    "historical_issue_observation_publication_at_issue_time_verified": false,
+    "input_accepts_future_target": false,
+    "input_accepts_outcome_path": false,
+    "input_accepts_score_or_loss": false,
+    "issue_observation_source": "sealed_outcome_free_predictions_issue_observed_outlet_m3s",
+    "outcome_artifact_loaded": false,
+    "scoring_artifact_loaded": false
+  },
+  "design": {
+    "ensemble_design": "symmetric_one_factor_at_a_time",
+    "ensemble_member_count": 7,
+    "forecast_horizon_hours": 12,
+    "graph_partition_mode_count": 0,
+    "graph_partition_semantics": null,
+    "initial_storage_fraction": 0.1,
+    "integration_substep_seconds": 300.0,
+    "issue_observation_used_to_construct_members": false,
+    "localization_radius_m": 100000.0,
+    "manning_n_fraction": 0.1,
+    "modeled_forcing_fraction": 0.2,
+    "observation_error_model": {
+      "absolute_floor_m3s": 1.0,
+      "relative_fraction": 0.1
+    },
+    "per_feature_sample_variance_by_source": {
+      "initial_storage_multiplier": 0.003333333333333334,
+      "manning_n_multiplier": 0.003333333333333334,
+      "modeled_forcing_multiplier": 0.013333333333333336
+    },
+    "perturbations_selected_without_future_target_fit": true,
+    "spatial_modes_derived_from_topology_only": false,
+    "timestep_seconds": 3600.0
+  },
+  "execution_gates": {
+    "all_system_gates_passed": true,
+    "system_count": 2
+  },
+  "input_artifacts": {
+    "outcome_free_rollout_report": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_rollout_report.json",
+      "sha256": "59d3e818c1db3ec8a7a26424b8ffb50d4b2ac86197443bede9b1ea081fb9cd45",
+      "size_bytes": 26777
+    },
+    "protocol": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_protocol.json",
+      "sha256": "b17e5a8fb36e05c111a8b87e5298e534516b9b3e3ce3ec46e4c003f1b5853722",
+      "size_bytes": 19562
+    },
+    "sealed_prediction_source": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/predictions.csv",
+      "sha256": "7cace0b963bfc2914130f3e002627f0aa48f0109abc4a82fbd09de93df53ac5a",
+      "size_bytes": 242583
+    },
+    "static_input_report": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_static_inputs_report.json",
+      "sha256": "00b80bbb00ef9222c95661e1226e6003204d130f0020043f5c54994674cd65e4",
+      "size_bytes": 27487
+    }
+  },
+  "issue_time_utc": "2022-04-28T01:00:00Z",
+  "reference_time_utc": "2022-04-28T00:00:00Z",
+  "schema": "gwm.geospatial_kernel.real_ensemble_first_issue.v1",
+  "status": "real_two_system_first_issue_ensemble_cycle_executed",
+  "systems": {
+    "center_hill": {
+      "ensemble_design": "symmetric_one_factor_at_a_time",
+      "ensemble_member_count": 7,
+      "execution_gates": {
+        "all_passed": true,
+        "all_physical_mass_balances_passed": true,
+        "analysis_mass_accounting_passed": true,
+        "expected_physical_members_executed": true,
+        "feature_axis_matches_real_network": true,
+        "forecast_ensemble_spread_nonzero": true,
+        "issue_innovation_absolute_value_reduced": true,
+        "physical_mass_check_counts_match": true,
+        "prior_gauge_ensemble_spread_nonzero": true
+      },
+      "feature_count": 435,
+      "forecast_by_horizon_hours": {
+        "1": {
+          "mean_m3s": 109.17817117311849,
+          "median_m3s": 108.95134469364675,
+          "p05_m3s": 97.69809825306652,
+          "p90_spread_m3s": 23.094190782934916,
+          "p95_m3s": 120.79228903600143,
+          "valid_time_utc": "2022-04-28T02:00:00Z"
+        },
+        "12": {
+          "mean_m3s": 117.88230585211623,
+          "median_m3s": 118.04928796143905,
+          "p05_m3s": 107.05270652204317,
+          "p90_spread_m3s": 21.515747586969866,
+          "p95_m3s": 128.56845410901303,
+          "valid_time_utc": "2022-04-28T13:00:00Z"
+        },
+        "3": {
+          "mean_m3s": 109.53702627055007,
+          "median_m3s": 109.29483459431526,
+          "p05_m3s": 97.88721611985868,
+          "p90_spread_m3s": 23.440688085391173,
+          "p95_m3s": 121.32790420524985,
+          "valid_time_utc": "2022-04-28T04:00:00Z"
+        },
+        "6": {
+          "mean_m3s": 110.50815784685217,
+          "median_m3s": 110.24393132299078,
+          "p05_m3s": 98.66208496316345,
+          "p90_spread_m3s": 23.838952050870674,
+          "p95_m3s": 122.50103701403413,
+          "valid_time_utc": "2022-04-28T07:00:00Z"
+        }
+      },
+      "historical_transition": {
+        "distributed_q_lateral_total_m3s": 0.800000011920929,
+        "reservoir_release_m3s": 199.46386739,
+        "step_count": 1
+      },
+      "member_ids": [
+        "nominal",
+        "initial_storage_low",
+        "initial_storage_high",
+        "manning_n_low",
+        "manning_n_high",
+        "modeled_forcing_low",
+        "modeled_forcing_high"
+      ],
+      "outlet_feature_id": 18421703,
+      "physical_mass_ledger": {
+        "all_passed": true,
+        "check_count": 91,
+        "maximum_absolute_residual_m3": 4.304572939872742e-06,
+        "pass_count": 91
+      },
+      "prior_state_ensemble": {
+        "anomaly_matrix_rank": 6,
+        "covariance_effective_rank": 1.02268461758647,
+        "feature_count_with_nonzero_sample_variance": 391,
+        "maximum_possible_rank": 6
+      },
+      "state_analysis": {
+        "absolute_innovation_reduction_fraction": 0.38670195104272986,
+        "absolute_innovation_to_prior_std_ratio": 1.9946117380880763,
+        "analysis_ensemble_mean_at_gauge_m3s": 109.29246642182659,
+        "analysis_ensemble_std_at_gauge_m3s": 8.920746215208418,
+        "forecast_ensemble_mean_at_gauge_m3s": 118.21309775036333,
+        "forecast_ensemble_std_at_gauge_m3s": 11.565405317104721,
+        "innovation_after_analysis_m3s": -14.147861872706585,
+        "innovation_before_analysis_m3s": -23.068493201243328,
+        "issue_observed_outlet_m3s": 95.14460454912,
+        "localization_supported_feature_count": 435,
+        "localized_nonzero_gain_feature_count": 391,
+        "mass_accounting_passed": true,
+        "maximum_absolute_mass_accounting_residual_m3": 4.307366907596588e-09,
+        "mean_external_analysis_increment_m3": -431222.325976377,
+        "observation_covariance_condition_number": 1.0,
+        "observation_error_std_m3s": 9.514460454912001
+      },
+      "system_id": "center_hill",
+      "uncertainty_sources_varied": {
+        "boundary_action": false,
+        "initial_storage": true,
+        "manning_roughness": true,
+        "modeled_forcing": true
+      }
+    },
+    "j_percy_priest": {
+      "ensemble_design": "symmetric_one_factor_at_a_time",
+      "ensemble_member_count": 7,
+      "execution_gates": {
+        "all_passed": true,
+        "all_physical_mass_balances_passed": true,
+        "analysis_mass_accounting_passed": true,
+        "expected_physical_members_executed": true,
+        "feature_axis_matches_real_network": true,
+        "forecast_ensemble_spread_nonzero": true,
+        "issue_innovation_absolute_value_reduced": true,
+        "physical_mass_check_counts_match": true,
+        "prior_gauge_ensemble_spread_nonzero": true
+      },
+      "feature_count": 43,
+      "forecast_by_horizon_hours": {
+        "1": {
+          "mean_m3s": 77.89612336630307,
+          "median_m3s": 77.7855080920892,
+          "p05_m3s": 71.45169253686444,
+          "p90_spread_m3s": 13.222969940688913,
+          "p95_m3s": 84.67466247755335,
+          "valid_time_utc": "2022-04-28T02:00:00Z"
+        },
+        "12": {
+          "mean_m3s": 29.225100074467502,
+          "median_m3s": 29.08581342574449,
+          "p05_m3s": 27.06639334983231,
+          "p90_spread_m3s": 4.721895914561927,
+          "p95_m3s": 31.788289264394237,
+          "valid_time_utc": "2022-04-28T13:00:00Z"
+        },
+        "3": {
+          "mean_m3s": 107.41604737291904,
+          "median_m3s": 107.50343690852519,
+          "p05_m3s": 105.1705100376657,
+          "p90_spread_m3s": 4.250229889930807,
+          "p95_m3s": 109.4207399275965,
+          "valid_time_utc": "2022-04-28T04:00:00Z"
+        },
+        "6": {
+          "mean_m3s": 30.782370603457377,
+          "median_m3s": 30.8168102733087,
+          "p05_m3s": 28.54438003919777,
+          "p90_spread_m3s": 4.376833004983503,
+          "p95_m3s": 32.92121304418127,
+          "valid_time_utc": "2022-04-28T07:00:00Z"
+        }
+      },
+      "historical_transition": {
+        "distributed_q_lateral_total_m3s": 0.5000000074505806,
+        "reservoir_release_m3s": 130.25749432,
+        "step_count": 1
+      },
+      "member_ids": [
+        "nominal",
+        "initial_storage_low",
+        "initial_storage_high",
+        "manning_n_low",
+        "manning_n_high",
+        "modeled_forcing_low",
+        "modeled_forcing_high"
+      ],
+      "outlet_feature_id": 18401497,
+      "physical_mass_ledger": {
+        "all_passed": true,
+        "check_count": 91,
+        "maximum_absolute_residual_m3": 4.884786903858185e-07,
+        "pass_count": 91
+      },
+      "prior_state_ensemble": {
+        "anomaly_matrix_rank": 6,
+        "covariance_effective_rank": 1.1561240866254334,
+        "feature_count_with_nonzero_sample_variance": 37,
+        "maximum_possible_rank": 6
+      },
+      "state_analysis": {
+        "absolute_innovation_reduction_fraction": 0.059200562696968606,
+        "absolute_innovation_to_prior_std_ratio": 16.924023026842782,
+        "analysis_ensemble_mean_at_gauge_m3s": 64.15509000278809,
+        "analysis_ensemble_std_at_gauge_m3s": 5.343666085906,
+        "forecast_ensemble_mean_at_gauge_m3s": 58.926426711149084,
+        "forecast_ensemble_std_at_gauge_m3s": 5.218686799655545,
+        "innovation_after_analysis_m3s": 83.09251227561191,
+        "innovation_before_analysis_m3s": 88.32117556725092,
+        "issue_observed_outlet_m3s": 147.2476022784,
+        "localization_supported_feature_count": 43,
+        "localized_nonzero_gain_feature_count": 37,
+        "mass_accounting_passed": true,
+        "maximum_absolute_mass_accounting_residual_m3": 1.8189894035458565e-10,
+        "mean_external_analysis_increment_m3": 16384.829778678308,
+        "observation_covariance_condition_number": 1.0,
+        "observation_error_std_m3s": 14.724760227840001
+      },
+      "system_id": "j_percy_priest",
+      "uncertainty_sources_varied": {
+        "boundary_action": false,
+        "initial_storage": true,
+        "manning_roughness": true,
+        "modeled_forcing": true
+      }
+    }
+  },
+  "time_alignment": {
+    "analysis_observation_valid_at_utc": "2022-04-28T01:00:00Z",
+    "forecast_action_rows_start_at_issue_time": true,
+    "forecast_q_lateral_rows_start_after_issue_time": true,
+    "historical_cwms_action_timestamp_role": "support_end",
+    "historical_nwm_q_lateral_timestamp_role": "assumed_support_end_for_hourly_transition",
+    "historical_transition_support": "[reference_time, issue_time]",
+    "initial_modeled_state_valid_at_utc": "2022-04-28T00:00:00Z",
+    "nwm_q_lateral_interval_support_verified": false
+  }
+}

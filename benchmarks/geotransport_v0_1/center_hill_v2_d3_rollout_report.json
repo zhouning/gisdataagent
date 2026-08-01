@@ -1,0 +1,168 @@
+{
+  "claim_boundary": {
+    "geospatial_kernel_validated": false,
+    "predictions_scored": false,
+    "retrospective_transition_inputs_executed": true,
+    "single_system_validated": false
+  },
+  "data_isolation": {
+    "outcome_columns_accepted_by_executor": false,
+    "outcome_manifest_accepted_by_executor": false,
+    "outcome_values_loaded": false,
+    "usgs_observation_loaded": false
+  },
+  "domain_artifacts": {
+    "forcing_support": {
+      "path": "data/geotransport_v0_1/center_hill_terminal_forcing_support_nhdplus_v21/forcing_support.json",
+      "sha256": "6cb12bd529055ba9506c5e39d991b1a1b4f6dee5956690144ddf4f1b13e036e8",
+      "size_bytes": 1522
+    },
+    "initial_state_manifest": {
+      "path": "data/geotransport_v0_1/center_hill_initial_state_nwm_v3/acquisition_manifest.json",
+      "sha256": "d2c6ce64131ba0d7499391a4c0e1e778ea34e07a4abfc23c32311efbb9205e65",
+      "size_bytes": 13437
+    },
+    "linear_referenced_path": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_travel_time_prior_report.json",
+      "sha256": "e29fc54273e2f5f650d49599e8c98c6ec98c13c1025041e0f8c2ba41340c425e",
+      "size_bytes": 11456
+    },
+    "route_link_manifest": {
+      "path": "data/geotransport_v0_1/route_link_nwm_v3_center_hill/acquisition_manifest.json",
+      "sha256": "064345dceac9c20bafde491a3362f25e3c23990c30428af2515248561349ce2b",
+      "size_bytes": 17549
+    },
+    "route_link_subset": {
+      "path": "data/geotransport_v0_1/route_link_nwm_v3_center_hill/RouteLink_CONUS_NWMv3_CenterHill.nc",
+      "sha256": "ce0e34c12cf6ce4c6c46088ae3311944f71e977ba220d2ec152e17c2ed612502",
+      "size_bytes": 8588
+    }
+  },
+  "input_artifacts": {
+    "action_values": {
+      "path": "data/geotransport_v0_1/center_hill_v2_d3_inputs/action/action_values.csv",
+      "sha256": "78122fcd81c03e755dd374194892962a502adb8e4988646d98e122a19c2f2180",
+      "size_bytes": 46649
+    },
+    "q_lateral_values": {
+      "path": "data/geotransport_v0_1/center_hill_v2_d3_inputs/nwm/q_lateral_values.csv",
+      "sha256": "fe9214694386f0933f6f6baebc31ade687d07aa46c0d54444a17072a08bb5b5e",
+      "size_bytes": 893662
+    }
+  },
+  "input_manifests": {
+    "action": {
+      "path": "data/geotransport_v0_1/center_hill_v2_d3_inputs/action/acquisition_manifest.json",
+      "sha256": "f9b619afd3e98855f8853b8253df1b7632c23b2d67d53abaf6881c5961a3bbc2",
+      "size_bytes": 1602
+    },
+    "modeled_forcing": {
+      "path": "data/geotransport_v0_1/center_hill_v2_d3_inputs/nwm/acquisition_manifest.json",
+      "sha256": "92b166efdbe294358f01d1db571abb7f1ec1edd79d09699de16edaf2f5e3358d",
+      "size_bytes": 2328
+    }
+  },
+  "nonlinear_conservation": {
+    "no_forcing": {
+      "accumulated_numeric_tolerance_m3": 9.421427886600299,
+      "final_storage_m3": 29149049.957824968,
+      "initial_storage_m3": 12612311.808145775,
+      "input_volume_m3": 513128036.6676712,
+      "maximum_step_residual_to_tolerance_ratio": 0.000616450175528318,
+      "outlet_volume_m3": 496591298.51796246,
+      "passed": true,
+      "rollout_mass_balance_residual_m3": -2.956390380859375e-05
+    },
+    "nonlinear_central": {
+      "accumulated_numeric_tolerance_m3": 9.461092647669373,
+      "final_storage_m3": 29149859.418298297,
+      "initial_storage_m3": 12612311.808145775,
+      "input_volume_m3": 517948730.9655733,
+      "maximum_step_residual_to_tolerance_ratio": 0.0005894610212344617,
+      "outlet_volume_m3": 501411183.35540885,
+      "passed": true,
+      "rollout_mass_balance_residual_m3": -1.1920928955078125e-05
+    },
+    "nonlinear_support_lower": {
+      "accumulated_numeric_tolerance_m3": 9.461088912412919,
+      "final_storage_m3": 29149859.418298297,
+      "initial_storage_m3": 12612311.808145775,
+      "input_volume_m3": 517945109.0872112,
+      "maximum_step_residual_to_tolerance_ratio": 0.0005892218413740642,
+      "outlet_volume_m3": 501407561.4770469,
+      "passed": true,
+      "rollout_mass_balance_residual_m3": -1.1742115020751953e-05
+    },
+    "nonlinear_support_upper": {
+      "accumulated_numeric_tolerance_m3": 9.461114831804256,
+      "final_storage_m3": 29149859.418298297,
+      "initial_storage_m3": 12612311.808145775,
+      "input_volume_m3": 517970245.4074414,
+      "maximum_step_residual_to_tolerance_ratio": 0.0005905110395194968,
+      "outlet_volume_m3": 501432697.7972775,
+      "passed": true,
+      "rollout_mass_balance_residual_m3": -1.1324882507324219e-05
+    },
+    "reversed_topology": {
+      "accumulated_numeric_tolerance_m3": 9.468895655849774,
+      "final_storage_m3": 29151754.55437153,
+      "initial_storage_m3": 12612311.808145775,
+      "input_volume_m3": 517948730.9655733,
+      "maximum_step_residual_to_tolerance_ratio": 0.0005143196364116883,
+      "outlet_volume_m3": 501409288.21953714,
+      "passed": true,
+      "rollout_mass_balance_residual_m3": 0.00018960237503051758
+    },
+    "state_only": {
+      "accumulated_numeric_tolerance_m3": 0.19362593316604282,
+      "final_storage_m3": 5221.721479171544,
+      "initial_storage_m3": 12612311.808145775,
+      "input_volume_m3": 0.0,
+      "maximum_step_residual_to_tolerance_ratio": 0.0005624655752766348,
+      "outlet_volume_m3": 12607090.086671846,
+      "passed": true,
+      "rollout_mass_balance_residual_m3": 5.243346095085144e-06
+    },
+    "zero_action": {
+      "accumulated_numeric_tolerance_m3": 0.34171596052123027,
+      "final_storage_m3": 109048.91452299088,
+      "initial_storage_m3": 12612311.808145775,
+      "input_volume_m3": 4820694.2979015,
+      "maximum_step_residual_to_tolerance_ratio": 0.0005807822193965021,
+      "outlet_volume_m3": 17323957.19154148,
+      "passed": true,
+      "rollout_mass_balance_residual_m3": 1.7197802662849426e-05
+    }
+  },
+  "prediction_artifact": {
+    "path": "data/geotransport_v0_1/center_hill_v2_d3_rollout/predictions.csv",
+    "sha256": "0a309b2c37b3ca4e503dfea0e2e96832bbe6d06b54f913728cdb2d5da784f074",
+    "size_bytes": 144015
+  },
+  "registered_execution": {
+    "nonlinear_substep_seconds": 300,
+    "nonlinear_timestep_seconds": 3600,
+    "support_lower_upper_are_report_only": true,
+    "t_route_boundary_previous_equals_current_hourly_interval_mean": true,
+    "t_route_substep_seconds": 300,
+    "t_route_substeps_per_hour": 12,
+    "terminal_forcing_support_central_preselected": true
+  },
+  "schema": "gwm.geotransport.center_hill_v2_outcome_free_rollout.v1",
+  "status": "outcome_free_rollout_complete",
+  "t_route_diagnostics": {
+    "boundary_interpretation": "piecewise_constant_interval_mean_previous_equals_current",
+    "conservation_gate_role": "not_a_conservation_oracle",
+    "hourly_prediction_aggregation": "arithmetic_mean_of_12_end_of_substep_Q_values",
+    "maximum_absolute_reconstructed_local_equation_residual_m3": 9957696.531963538,
+    "q_lateral_interpretation": "piecewise_constant_reach_lateral_inflow_rate",
+    "substep_seconds": 300.0,
+    "substeps_per_hour": 12
+  },
+  "window": {
+    "end_exclusive": "2022-03-03T01:00:00Z",
+    "hour_count": 672,
+    "start_inclusive": "2022-02-03T01:00:00Z",
+    "time_step": "PT1H"
+  }
+}

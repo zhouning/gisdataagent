@@ -1,0 +1,163 @@
+{
+  "admission_policy": {
+    "accepted_qualifiers": [
+      "A"
+    ],
+    "hourly_support": "native samples in (t-1h,t]",
+    "minimum_complete_hour_count": 500,
+    "missing_values_imputed": false,
+    "parameter_code": "00060",
+    "station_must_attach_to_frozen_feature_axis": true,
+    "unit": "ft3/s"
+  },
+  "claim_boundary": {
+    "geospatial_kernel_validated": false,
+    "in_domain_multigauge_development_data_available": true,
+    "multigauge_state_estimation_validated": false,
+    "operational_vintage_availability_verified": false,
+    "predictive_improvement_validated": false,
+    "public_data_without_user_supplied_data": true,
+    "request_plan_only": false
+  },
+  "data_isolation": {
+    "d3_outcomes_read": false,
+    "only_pre_d3_development_window_requested": true,
+    "two_system_blind_outcomes_read": false
+  },
+  "feature_count": 435,
+  "full_subnetwork": {
+    "path": "data/geotransport_v0_1/center_hill_v2_d5_full_subnetwork/full_subnetwork.json",
+    "sha256": "9ae3611462c731ef1508dd091f499425b8befe338fa85e6649df696ee7a1b951",
+    "size_bytes": 50413
+  },
+  "generated_at": "2026-07-27T06:43:52.956975+00:00",
+  "hourly_observations": {
+    "path": "data/geotransport_v0_1/center_hill_multigauge_development/values/hourly_discharge.csv",
+    "sha256": "3a98624ba0bc076afcff1c6d11eda67d8d606f591d572a89f2343d10ac1f50f1",
+    "size_bytes": 52611
+  },
+  "mode": "acquired",
+  "outlet": {
+    "feature_id": 18421703,
+    "site_id": "03424860"
+  },
+  "requests": {
+    "nldi_upstream_nwissite": {
+      "catalog_snapshot_is_historical_vintage": false,
+      "maximum_bytes": 2000000,
+      "url": "https://api.water.usgs.gov/nldi/linked-data/comid/18421703/navigation/UT/nwissite?distance=1000&f=json"
+    },
+    "nwis_iv": {
+      "maximum_bytes": 20000000,
+      "url_template": "https://nwis.waterservices.usgs.gov/nwis/iv/?format=json&sites={site_ids}&parameterCd=00060&startDT=2021-12-09T01:00:00Z&endDT=2022-01-06T01:00:00Z&siteStatus=all"
+    }
+  },
+  "schema": "gwm.geotransport.center_hill_multigauge_development_inputs.v1",
+  "semantics": {
+    "approved_qualifier_means_processing_and_review_complete": true,
+    "missing_values_imputed": false,
+    "nwm_modeled_state_possible_nudging": true,
+    "operational_vintage_availability_verified": false,
+    "publication_lag_evidence_level": "derived",
+    "publication_lag_seconds_used_by_closure": 3600,
+    "source_is_currently_retrieved_revised_archive": true,
+    "variable_role": "historical_state_update"
+  },
+  "sources": {
+    "nldi_upstream_nwissite": {
+      "attempt_count": 1,
+      "content_type": "application/geo+json",
+      "final_url": "https://api.water.usgs.gov/nldi/linked-data/comid/18421703/navigation/UT/nwissite?distance=1000&f=json",
+      "http_status": 200,
+      "path": "data/geotransport_v0_1/center_hill_multigauge_development/raw/nldi_upstream_nwissite.json",
+      "retrieved_at": "2026-07-27T06:43:39.592248+00:00",
+      "sha256": "b9a1220316666b8f050aec64c9292aba7b89c33b35210191bf149cfb07f8615a",
+      "size_bytes": 87614,
+      "url": "https://api.water.usgs.gov/nldi/linked-data/comid/18421703/navigation/UT/nwissite?distance=1000&f=json"
+    },
+    "nwis_iv": {
+      "attempt_count": 1,
+      "content_type": "application/json",
+      "final_url": "https://nwis.waterservices.usgs.gov/nwis/iv/?format=json&sites=03424010%2C03424500%2C03424510%2C03424515%2C03424520%2C03424529%2C03424530%2C03424532%2C03424540%2C03424600%2C03424620%2C03424640%2C03424645%2C03424650%2C03424660%2C03424670%2C03424678%2C03424680%2C03424730%2C03424735%2C03424750%2C03424790%2C03424800%2C03424810%2C03424825%2C03424840%2C03424850%2C03424860&parameterCd=00060&startDT=2021-12-09T01%3A00%3A00Z&endDT=2022-01-06T01%3A00%3A00Z&siteStatus=all",
+      "http_status": 200,
+      "path": "data/geotransport_v0_1/center_hill_multigauge_development/raw/nwis_iv.json",
+      "retrieved_at": "2026-07-27T06:43:52.939726+00:00",
+      "sha256": "500845f7cd13b453e73293e44d0a1af201198acdc79e62f7ef0212829323d2a6",
+      "size_bytes": 213565,
+      "url": "https://nwis.waterservices.usgs.gov/nwis/iv/?format=json&sites=03424010%2C03424500%2C03424510%2C03424515%2C03424520%2C03424529%2C03424530%2C03424532%2C03424540%2C03424600%2C03424620%2C03424640%2C03424645%2C03424650%2C03424660%2C03424670%2C03424678%2C03424680%2C03424730%2C03424735%2C03424750%2C03424790%2C03424800%2C03424810%2C03424825%2C03424840%2C03424850%2C03424860&parameterCd=00060&startDT=2021-12-09T01%3A00%3A00Z&endDT=2022-01-06T01%3A00%3A00Z&siteStatus=all"
+    }
+  },
+  "station_screening": {
+    "eligible_site_count": 2,
+    "eligible_sites": [
+      {
+        "complete_hour_count": 639,
+        "feature_id": 18421273,
+        "missing_hour_count": 33,
+        "name": "SMITH FORK AT TEMPERANCE HALL, TN",
+        "native_cadence_seconds": 1800,
+        "native_sample_count": 1303,
+        "qualifiers": [
+          "A"
+        ],
+        "site_id": "03424730"
+      },
+      {
+        "complete_hour_count": 668,
+        "feature_id": 18421703,
+        "missing_hour_count": 4,
+        "name": "CANEY FORK AT STONEWALL",
+        "native_cadence_seconds": 1800,
+        "native_sample_count": 1339,
+        "qualifiers": [
+          "A"
+        ],
+        "site_id": "03424860"
+      }
+    ],
+    "in_domain_feature_count": 26,
+    "in_domain_site_count": 28,
+    "in_domain_sites_without_returned_discharge_series": [
+      "03424010",
+      "03424500",
+      "03424510",
+      "03424515",
+      "03424520",
+      "03424529",
+      "03424530",
+      "03424532",
+      "03424540",
+      "03424600",
+      "03424620",
+      "03424640",
+      "03424645",
+      "03424650",
+      "03424660",
+      "03424670",
+      "03424678",
+      "03424680",
+      "03424735",
+      "03424750",
+      "03424790",
+      "03424800",
+      "03424810",
+      "03424825",
+      "03424840",
+      "03424850"
+    ],
+    "nldi_returned_site_count": 160,
+    "nwis_returned_series_count": 2
+  },
+  "status": "pass_public_multigauge_development_inputs_acquired",
+  "topology_report": {
+    "path": "benchmarks/geotransport_v0_1/center_hill_v2_d5_full_subnetwork_report.json",
+    "sha256": "9d066189ed23f0bf91fecdefa9327bcfc4a92704d4fb23e6e07c3bbe78559bbd",
+    "size_bytes": 19899
+  },
+  "window": {
+    "end_exclusive_utc": "2022-01-06T01:00:00Z",
+    "hour_count": 672,
+    "role": "pre_d3_public_development_only",
+    "start_inclusive_utc": "2021-12-09T01:00:00Z"
+  }
+}

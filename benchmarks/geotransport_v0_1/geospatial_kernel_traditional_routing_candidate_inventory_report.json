@@ -1,0 +1,205 @@
+{
+  "assessment_integrity_passed": true,
+  "candidates": {},
+  "decision": {
+    "candidate_registration_ready": false,
+    "geospatial_kernel_validated": false,
+    "local_network_isolation_available": true,
+    "matched_two_system_execution_permitted": false,
+    "professional_runtime_available": false,
+    "recommended_next_action": "register_one_versioned_independent_runtime_then_execute_the_frozen_outcome_free_synthetic_conformance_suite",
+    "registered_candidate_ids": [],
+    "runtime_admitted": false,
+    "runtime_default_enabled": false,
+    "synthetic_conformance_executed": false,
+    "synthetic_conformance_execution_permitted": false,
+    "traditional_predictions_executed": false
+  },
+  "execution_boundary": {
+    "candidate_parameters_fitted": false,
+    "candidate_runtime_invoked": false,
+    "network_requests_performed": false,
+    "outcome_artifacts_opened": false,
+    "two_system_dynamic_inputs_opened": false
+  },
+  "generated_at": "2026-07-31T09:34:16.609094+00:00",
+  "host_inventory": {
+    "ambient_discovery_alone_can_register_a_candidate": false,
+    "discovered_hydrologic_distribution_count": 0,
+    "discovered_hydrologic_executable_count": 0,
+    "docker_routing_image_inventory": {
+      "candidate_runtime_invoked": false,
+      "discovery_scope": "repository_and_tag_names_only",
+      "image_filesystem_or_layer_contents_inspected": false,
+      "malformed_row_count": 0,
+      "name_discovery_implies_candidate_registration": false,
+      "network_requests_performed": false,
+      "probe_attempted": true,
+      "probe_returncode": 0,
+      "routing_name_tokens": [
+        "troute",
+        "t-route",
+        "rapid",
+        "mizuroute",
+        "raven",
+        "swmm",
+        "hec-hms",
+        "muskingum"
+      ],
+      "routing_named_image_count": 1,
+      "routing_named_images": [
+        {
+          "candidate_manifest_registered": false,
+          "disposition": "known_rejected_runtime",
+          "image_id": "sha256:afa5e3952d81fed3836e370fa780e3f904d99823c27be2b6622cd35433477c1c",
+          "known_rejected_runtime": true,
+          "known_rejection": {
+            "reason": "official_fixed_commit_uninitialized_carry_reads",
+            "source_revision": "12a8eae0cdfed437143c590659fa7077605a5e70"
+          },
+          "matching_references": [
+            "gisdataagent-troute-mc:12a8eae"
+          ],
+          "professional_candidate_eligible": false
+        }
+      ],
+      "status": "only_known_rejected_routing_images_found",
+      "total_unique_local_image_count": 109,
+      "unregistered_unreviewed_routing_named_image_count": 0
+    },
+    "execution_isolation": {
+      "docker": {
+        "daemon_available": true,
+        "path": "/usr/local/bin/docker",
+        "probe_attempted": true,
+        "probe_returncode": 0,
+        "required_network_mode": "none"
+      },
+      "plain_subprocess_is_professional_execution": false,
+      "professional_backend_available": true,
+      "sandbox_exec": {
+        "network_deny_verified": false,
+        "path": "/usr/bin/sandbox-exec",
+        "profile_probe_attempted": true,
+        "profile_probe_returncode": 0,
+        "sandboxed_socket_probe_returncode": 0,
+        "socket_control_succeeded": true
+      }
+    },
+    "hydrologic_executables": {
+      "hec-hms": null,
+      "mizuroute": null,
+      "rapid": null,
+      "raven": null,
+      "swmm5": null,
+      "troute": null
+    },
+    "hydrologic_python_distributions": {
+      "mizuroute": null,
+      "pyswmm": null,
+      "rapidpy": null,
+      "swmm-toolkit": null,
+      "troute": null
+    },
+    "os_network_route_false_positive": {
+      "is_hydrologic_routing_candidate": false,
+      "path": "/sbin/route"
+    },
+    "platform": {
+      "machine": "arm64",
+      "python": "3.11.15",
+      "system": "Darwin"
+    }
+  },
+  "known_repository_runtimes": {
+    "any_professional_runtime_available": false,
+    "derived_initialized_diagnostic": {
+      "build_manifest": {
+        "actual_sha256": "5dc6cba8e1260db25499791e8dc5282f5705c72b0500f3e32aec8ec7c9988c9f",
+        "actual_size_bytes": 2634,
+        "declared_sha256": "5dc6cba8e1260db25499791e8dc5282f5705c72b0500f3e32aec8ec7c9988c9f",
+        "declared_size_bytes": 2634,
+        "identity_matches": true,
+        "path": "data/geotransport_v0_1/t_route_mc_initialized_diagnostic_runtime/build_manifest.json"
+      },
+      "current_host_direct_execution_compatible": false,
+      "professional_runtime_eligible": false,
+      "rejection_reason": "negative-response and timestep-stability gates fail",
+      "runtime_platform": {
+        "machine": "aarch64",
+        "python": "3.12.3",
+        "system": "Linux"
+      },
+      "source_commit": "12a8eae0cdfed437143c590659fa7077605a5e70"
+    },
+    "official_fixed_commit": {
+      "build_manifest": {
+        "actual_sha256": "26780f3c6cb9bcc4fa61b608c8e93843b4db2054a469ce0114c3880ba4b6a7f4",
+        "actual_size_bytes": 1771,
+        "declared_sha256": "26780f3c6cb9bcc4fa61b608c8e93843b4db2054a469ce0114c3880ba4b6a7f4",
+        "declared_size_bytes": 1771,
+        "identity_matches": true,
+        "path": "data/geotransport_v0_1/t_route_mc_runtime/build_manifest.json"
+      },
+      "current_host_direct_execution_compatible": false,
+      "professional_runtime_eligible": false,
+      "rejection_reason": "required carry or output values are read before assignment",
+      "runtime_platform": {
+        "machine": "aarch64",
+        "python": "3.12.3",
+        "system": "Linux"
+      },
+      "source_commit": "12a8eae0cdfed437143c590659fa7077605a5e70"
+    },
+    "shared_upstream_license": {
+      "actual_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "actual_size_bytes": 11358,
+      "declared_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "declared_size_bytes": 11358,
+      "identity_matches": true,
+      "path": "data/geotransport_v0_1/t_route_mc_source_audit/raw/LICENSE",
+      "spdx_identifier": "Apache-2.0"
+    }
+  },
+  "protocol": {
+    "expected_sha256": "b674db451955d656f31719434a8aa0ac4f29525cc12acd553d594332e5dee744",
+    "frozen_at": "2026-07-31T07:04:56Z",
+    "identity_matches": true,
+    "json_error": null,
+    "path": "benchmarks/geotransport_v0_1/geospatial_kernel_traditional_routing_comparator_protocol.json",
+    "protocol_seal_sha256": "5a5031c95d245fcdd628d967fd0fd8f5a5ae7208c8236dee65511d46abb6a899",
+    "recomputed_protocol_seal_sha256": "5a5031c95d245fcdd628d967fd0fd8f5a5ae7208c8236dee65511d46abb6a899",
+    "sha256": "b674db451955d656f31719434a8aa0ac4f29525cc12acd553d594332e5dee744",
+    "size_bytes": 17127
+  },
+  "registration_contract": {
+    "artifacts_must_be_inside_repository": true,
+    "every_artifact_hash_and_size_recomputed": true,
+    "immutable_docker_image_id_required": true,
+    "manifest_schema": "gwm.geospatial_kernel.traditional_routing_candidate_manifest.v1",
+    "preexecution_audits_bind_complete_registration_identity": true,
+    "production_execution_recomputes_audit_artifact_files": true,
+    "registration_executes_candidate_runtime": false,
+    "registration_implies_runtime_admission": false,
+    "registration_implies_semantic_certification": false,
+    "required_execution_backend": "docker_network_none_v1",
+    "required_independence_assertions": [
+      "routing_equations_external_to_geospatial_kernel_learned_code",
+      "no_learned_innovation_operator_imports_or_calls",
+      "no_shared_fitted_parameters_with_gwm_wwm",
+      "adapter_is_axis_and_unit_translation_only"
+    ],
+    "required_interface_declarations": [
+      "abi_or_api_signature",
+      "explicit_initialization_semantics",
+      "restart_state_serialization",
+      "mass_ledger_capability"
+    ],
+    "runtime_and_adapter_mount_targets_hash_bound": true,
+    "sealed_source_and_abi_audits_required_before_conformance": true,
+    "synthetic_zero_state_artifact_hash_bound": true
+  },
+  "schema": "gwm.geospatial_kernel.traditional_routing_candidate_inventory.v1",
+  "status": "blocked_no_registered_independent_candidate",
+  "submitted_candidate_count": 0
+}

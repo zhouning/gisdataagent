@@ -1,0 +1,144 @@
+{
+  "claim_boundary": {
+    "boundary_transition_validated": false,
+    "forecast_closure_validated": false,
+    "geospatial_kernel_validated": false,
+    "post_outcome_error_attribution_only": true,
+    "spatial_transfer_validated": false
+  },
+  "current_window_boundary_metrics_by_horizon": {
+    "1": {
+      "autoregressive_log_boundary": {
+        "bias_m3s": 0.14643454049988916,
+        "mae_m3s": 3.5659252253519536,
+        "nse": 0.9245486307315178,
+        "rmse_m3s": 12.535060230090865,
+        "sample_count": 441
+      },
+      "candidate_beats_persistence_rmse": true,
+      "causal_persistence": {
+        "bias_m3s": -0.13490633716492062,
+        "mae_m3s": 5.373137693467279,
+        "nse": 0.8772301735612609,
+        "rmse_m3s": 15.989639899816218,
+        "sample_count": 441
+      }
+    },
+    "12": {
+      "autoregressive_log_boundary": {
+        "bias_m3s": -4.58036913613762,
+        "mae_m3s": 19.880339527136716,
+        "nse": -0.2273950811380998,
+        "rmse_m3s": 50.321068412992076,
+        "sample_count": 440
+      },
+      "candidate_beats_persistence_rmse": true,
+      "causal_persistence": {
+        "bias_m3s": -0.7368172196179316,
+        "mae_m3s": 23.116843854201342,
+        "nse": -0.3852153378153915,
+        "rmse_m3s": 53.458443544361714,
+        "sample_count": 440
+      }
+    },
+    "24": {
+      "autoregressive_log_boundary": {
+        "bias_m3s": -9.178095505421318,
+        "mae_m3s": 23.50676257226195,
+        "nse": -0.3305306338799836,
+        "rmse_m3s": 51.17434559182343,
+        "sample_count": 441
+      },
+      "candidate_beats_persistence_rmse": true,
+      "causal_persistence": {
+        "bias_m3s": -0.8556696092635829,
+        "mae_m3s": 29.869521574863267,
+        "nse": -0.7165139117058388,
+        "rmse_m3s": 58.12507448367478,
+        "sample_count": 441
+      }
+    },
+    "3": {
+      "autoregressive_log_boundary": {
+        "bias_m3s": -0.29969934634275275,
+        "mae_m3s": 7.755435990419516,
+        "nse": 0.7056787532981916,
+        "rmse_m3s": 24.751605509059637,
+        "sample_count": 440
+      },
+      "candidate_beats_persistence_rmse": true,
+      "causal_persistence": {
+        "bias_m3s": -0.2875768840825227,
+        "mae_m3s": 10.214111813380795,
+        "nse": 0.6280116458383354,
+        "rmse_m3s": 27.826413806231756,
+        "sample_count": 440
+      }
+    },
+    "6": {
+      "autoregressive_log_boundary": {
+        "bias_m3s": -1.6822610549447539,
+        "mae_m3s": 12.689261181960887,
+        "nse": 0.39572330601259387,
+        "rmse_m3s": 35.3737717697453,
+        "sample_count": 442
+      },
+      "candidate_beats_persistence_rmse": true,
+      "causal_persistence": {
+        "bias_m3s": -0.5321581136119683,
+        "mae_m3s": 16.029225096358935,
+        "nse": 0.20455648475805677,
+        "rmse_m3s": 40.58524014120969,
+        "sample_count": 442
+      }
+    }
+  },
+  "diagnosis": {
+    "boundary_forecast_beats_persistence_all_horizons": true,
+    "boundary_skill_transfer_gate_passed": false,
+    "downstream_beats_held_boundary_all_core_horizons": false,
+    "failure_location": "spatial_support_or_downstream_dynamic_transfer"
+  },
+  "downstream_candidate_beats_held_boundary_by_horizon": {
+    "1": false,
+    "12": false,
+    "24": true,
+    "3": false,
+    "6": false
+  },
+  "information_boundary": {
+    "center_hill_outlet_target_used": false,
+    "future_smith_fork_observations_used_by_forecast": false,
+    "future_smith_fork_observations_used_only_for_posthoc_scoring": true,
+    "operational_observation_vintage_verified": false
+  },
+  "schema": "gwm.geotransport.smith_fork_boundary_skill_transfer_diagnostic.v1",
+  "source_artifacts": {
+    "boundary_transition_parameters": {
+      "path": "data/geotransport_v0_1/smith_fork_boundary_transition/parameters.json",
+      "sha256": "1f2e5dfefa5f21bca60e5f36f5fed59d18dd5519d02baa0236628ec1a51eeed9",
+      "size_bytes": 781
+    },
+    "boundary_transition_report": {
+      "path": "benchmarks/geotransport_v0_1/smith_fork_boundary_transition_report.json",
+      "sha256": "599ff46086e1f49cc02cd0f85dcde52391a54c6a60a68d7fd83220a9b70db5db",
+      "size_bytes": 5885
+    },
+    "dynamic_internal_boundary_predictions": {
+      "path": "data/geotransport_v0_1/center_hill_dynamic_internal_boundary/predictions.csv",
+      "sha256": "02123360d27163c5a62512ad267cfd6cf4b5ff3e5f6ab5593fe353bce190b119",
+      "size_bytes": 657027
+    },
+    "dynamic_internal_boundary_report": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_dynamic_internal_boundary_report.json",
+      "sha256": "596c6895d4bc73ca6afe4ee11cef8d10cce9f8616fa42bc1faf883cd93ee9fea",
+      "size_bytes": 17313
+    },
+    "multigauge_observations": {
+      "path": "data/geotransport_v0_1/center_hill_multigauge_development/values/hourly_discharge.csv",
+      "sha256": "3a98624ba0bc076afcff1c6d11eda67d8d606f591d572a89f2343d10ac1f50f1",
+      "size_bytes": 52611
+    }
+  },
+  "status": "boundary_skill_transfer_diagnostic_complete"
+}

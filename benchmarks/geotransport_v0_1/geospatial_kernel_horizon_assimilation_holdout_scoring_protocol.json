@@ -1,0 +1,132 @@
+{
+  "claim_boundary": {
+    "candidate_promoted": false,
+    "candidate_support_gate_evaluated": false,
+    "geospatial_kernel_validated": false,
+    "holdout_outcomes_acquired": false,
+    "holdout_scored": false,
+    "runtime_default_enabled": false,
+    "scoring_protocol_frozen": true
+  },
+  "frozen_artifacts": {
+    "holdout_protocol": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_protocol.json",
+      "sha256": "b17e5a8fb36e05c111a8b87e5298e534516b9b3e3ce3ec46e4c003f1b5853722",
+      "size_bytes": 19562
+    },
+    "input_plan": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_input_plan.json",
+      "sha256": "bab7c4386501abd69bb8dd29353eadea01eae05039f9f91797a94266dc675bf9",
+      "size_bytes": 68421
+    },
+    "native_hourly_parser_helper": {
+      "path": "scripts/acquire_geotransport_v2_blind_validation_outcomes.py",
+      "sha256": "8113d5525038805ef2ab23841a00bd197bba1fd0124c29f9c4b9f8243c99c447",
+      "size_bytes": 18670
+    },
+    "outcome_acquisition_script": {
+      "path": "scripts/acquire_geospatial_kernel_horizon_assimilation_holdout_outcomes.py",
+      "sha256": "434175e64133dedf5f73812456bbc62186680c382b6ea32ba5d462f643307384",
+      "size_bytes": 12816
+    },
+    "predictions": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/predictions.csv",
+      "sha256": "7cace0b963bfc2914130f3e002627f0aa48f0109abc4a82fbd09de93df53ac5a",
+      "size_bytes": 242583
+    },
+    "rollout_report": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_rollout_report.json",
+      "sha256": "59d3e818c1db3ec8a7a26424b8ffb50d4b2ac86197443bede9b1ea081fb9cd45",
+      "size_bytes": 26777
+    },
+    "rollout_verification": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_rollout_verification.json",
+      "sha256": "bf5f5ca54e9593c7139b10aec4d3b7b4243805cb6ab33bf60a7bf95bbd92d7e6",
+      "size_bytes": 3448
+    },
+    "scorer_script": {
+      "path": "scripts/score_geospatial_kernel_horizon_assimilation_holdout.py",
+      "sha256": "e102b335e0aba5c7382abcfff7d18932614bab9dd237c4dd87bda5b8ea914c44",
+      "size_bytes": 21631
+    }
+  },
+  "frozen_at": "2026-08-01T03:41:13.299133+00:00",
+  "outcome_request_lock": {
+    "additional_outcome_request_permitted": false,
+    "logical_request_count": 2,
+    "maximum_total_remote_attempts": 2,
+    "requests": [
+      {
+        "logical_request_count": 1,
+        "maximum_remote_attempts": 1,
+        "method": "GET",
+        "parameter_code": "00060",
+        "request_end_utc": "2022-05-26T01:00:00Z",
+        "request_start_utc": "2022-04-28T01:00:00Z",
+        "site_id": "03424860",
+        "system_id": "center_hill",
+        "url": "https://waterservices.usgs.gov/nwis/iv/?format=json&sites=03424860&parameterCd=00060&startDT=2022-04-28T01%3A00%3A00Z&endDT=2022-05-26T01%3A00%3A00Z&siteStatus=all"
+      },
+      {
+        "logical_request_count": 1,
+        "maximum_remote_attempts": 1,
+        "method": "GET",
+        "parameter_code": "00060",
+        "request_end_utc": "2022-05-26T01:00:00Z",
+        "request_start_utc": "2022-04-28T01:00:00Z",
+        "site_id": "03430200",
+        "system_id": "j_percy_priest",
+        "url": "https://waterservices.usgs.gov/nwis/iv/?format=json&sites=03430200&parameterCd=00060&startDT=2022-04-28T01%3A00%3A00Z&endDT=2022-05-26T01%3A00%3A00Z&siteStatus=all"
+      }
+    ],
+    "source": "USGS Water Services IV"
+  },
+  "pre_access_audit": {
+    "exact_outcome_urls_frozen": true,
+    "outcome_acquisition_and_scorer_hashes_frozen": true,
+    "outcome_full_series_loaded": false,
+    "outcome_full_series_requested": false,
+    "rollout_verification_passed": true,
+    "score_computed": false
+  },
+  "schema": "gwm.geotransport.horizon_assimilation_holdout_scoring_protocol.v1",
+  "scientific_role": "single-use scoring addendum for a frozen-after-design historical holdout; not real-time prospective evidence",
+  "scoring_interpretation": {
+    "candidate": "one_prediction_marked_selected_by_policy_per_issue_horizon",
+    "fixed_comparator_mode": "quadratic_distance_localized_mainstem_update",
+    "gate_count": 8,
+    "mask": "common finite complete case across target candidate fixed comparator and persistence separately per system and horizon",
+    "post_score_tuning_or_rescoring_permitted": false,
+    "score_execution_count": 1,
+    "strict_below": "candidate_rmse < each_comparator_rmse; ties_fail",
+    "traditional_comparator_value": "sealed_exact_issue_observed_outlet_m3s_held_constant_to_target"
+  },
+  "scoring_lock": {
+    "candidate_support_gate": "policy_RMSE_strictly_below_fixed_quadratic_and_persistence_for_every_system_and_horizon_with_all_execution_gates_passed",
+    "common_complete_case_mask_per_system_and_horizon": true,
+    "cross_system_or_cross_horizon_compensation_permitted": false,
+    "fixed_single_mode_comparator": "quadratic_distance_localized_mainstem_update",
+    "minimum_scored_issues_per_system_and_horizon": 48,
+    "primary_metric": "rmse_m3s",
+    "score_once_after_joint_prediction_seal": true,
+    "secondary_metrics": [
+      "mae_m3s",
+      "bias_m3s"
+    ],
+    "traditional_comparator": "causal_issue_observation_persistence"
+  },
+  "status": "frozen_before_full_outcome_access",
+  "target_lock": {
+    "accepted_qualifiers": [
+      "A"
+    ],
+    "complete_hour_rule": "exactly_3600_divided_by_native_cadence_approved_samples",
+    "missing_hour_imputation": false,
+    "native_cadence_rule": "greatest_common_divisor_of_positive_sample_time_deltas; 300_to_3600_seconds_and_must_divide_3600",
+    "predicted_quantity": "outlet_discharge_hourly_interval_mean_m3s",
+    "request_boundary_samples": "timestamps_equal_to_request_start_are_excluded; timestamps equal_to_request_end_are_included",
+    "support_interval": "(target_time_minus_1h,target_time]",
+    "target_quantity": "USGS_00060_complete_native_sample_hourly_mean_m3s",
+    "unit_conversion_ft3s_to_m3s": 0.028316846592
+  }
+}

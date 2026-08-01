@@ -1,0 +1,40 @@
+{
+  "claim_boundary": {
+    "frozen_v1_prediction_sealed": false,
+    "operator_form_admitted": false,
+    "outcome_access_permitted": false,
+    "v1_gate_passed": false
+  },
+  "data_isolation": {
+    "outcome_path_loaded": false,
+    "outcome_url_requested": false,
+    "outcome_values_loaded": false,
+    "prediction_artifact_written": false
+  },
+  "error": "kinematic_holdout_center_hill_rollout_invariant_failed",
+  "error_type": "RuntimeError",
+  "generated_at": "2026-07-28T00:20:12.462764+00:00",
+  "input_report_sha256": "0a683a01494488cc58ca3d8f4e05d6b7ac4b181d86acef018e3671e4552e722d",
+  "invariants": {
+    "actual_all_cell_volumes_nonnegative_finite": true,
+    "actual_cfl_passed": false,
+    "actual_conservation_passed": true,
+    "actual_maximum_courant_number": 0.8000000000000003,
+    "actual_maximum_mass_residual_to_tolerance_ratio": 8.830287085533862e-05,
+    "all_execution_gates_passed": false,
+    "branch_silent_all_cell_volumes_nonnegative_finite": true,
+    "branch_silent_cfl_passed": false,
+    "branch_silent_conservation_passed": true,
+    "branch_silent_maximum_courant_number": 0.8000000000000003,
+    "branch_silent_maximum_mass_residual_to_tolerance_ratio": 9.211539911552441e-05,
+    "cfl_comparison_limit_one_binary64_ulp": 0.8000000000000002,
+    "diagnostic_only_always": true,
+    "independent_end_to_end_prediction_always": true,
+    "operator_form_never_admitted": true,
+    "zero_state_zero_input_identity_passed": true
+  },
+  "protocol_sha256": "cd8b5d7eb2c52472a145b2ccecbd7fbf469aa05888fa5121f2e6c31e243bde8b",
+  "schema": "gwm.geotransport.kinematic_wave_holdout_execution_failure.v1",
+  "status": "frozen_v1_outcome_free_execution_gate_failed",
+  "system_id": "center_hill"
+}

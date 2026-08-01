@@ -1,0 +1,125 @@
+{
+  "generated_at": "2026-07-28T00:40:35.714698+00:00",
+  "interpretation_boundary": {
+    "lag_or_affine_result_admissible_as_model": false,
+    "operator_form_admitted": false,
+    "outcomes_available_when_diagnostic_defined": true,
+    "prediction_rerun_permitted": false,
+    "registered_prediction_metric_or_gate_changed": false
+  },
+  "schema": "gwm.geotransport.kinematic_wave_holdout_postscore_diagnostic.v1",
+  "source_artifacts": {
+    "outcomes": {
+      "path": "benchmarks/geotransport_v0_1/kinematic_wave_holdout_v2_outcomes_report.json",
+      "sha256": "2e61b7440746a33eb5a9ab51bb8248325e31206a7c153baa470fbbe625cfbd38",
+      "size_bytes": 6778
+    },
+    "rollout": {
+      "path": "benchmarks/geotransport_v0_1/kinematic_wave_holdout_v2_rollout_report.json",
+      "sha256": "82be075838f1579bcd24af3bfb3b1f20dc02f047da30c7d6e0e22ae1359b66e3",
+      "size_bytes": 8242
+    },
+    "score": {
+      "path": "benchmarks/geotransport_v0_1/kinematic_wave_holdout_v2_score.json",
+      "sha256": "97eabc58c5cf9cff681e46793fa8f6167eff1217b31fbd8150cb256a97c47ed0",
+      "size_bytes": 9893
+    }
+  },
+  "status": "posthoc_diagnostic_not_registered_evaluation",
+  "systems": {
+    "center_hill": {
+      "distribution": {
+        "branch_silent_mean_m3s": 30.450045003630414,
+        "kinematic_mean_m3s": 31.296824535666477,
+        "kinematic_standard_deviation_m3s": 22.187460974572613,
+        "maximum_absolute_branch_effect_m3s": 11.754740232147213,
+        "mean_branch_effect_m3s": 0.8467795320360659,
+        "observed_mean_m3s": 39.614761971251866,
+        "observed_standard_deviation_m3s": 33.055419712314496
+      },
+      "posthoc_affine_oracle": {
+        "admissible_prediction": false,
+        "intercept_m3s": 16.811118194926827,
+        "outcome_fitted": true,
+        "rmse_m3s": 28.83245356061341,
+        "slope": 0.728624840208231
+      },
+      "posthoc_lag_scan": {
+        "best_correlation_prediction_time_shift_hours": -12,
+        "best_pearson_correlation": 0.9012596453925275,
+        "best_rmse_m3s": 15.81726419611871,
+        "best_rmse_prediction_time_shift_hours": -12,
+        "prediction_time_shift_definition": "positive moves a prediction to a later observation timestamp",
+        "range_hours": [
+          -48,
+          48
+        ],
+        "registered_gate_use": false
+      },
+      "registered_score_unchanged": {
+        "accuracy_gate_passed": false,
+        "kinematic_rmse_m3s": 30.60641137104229,
+        "persistence_rmse_m3s": 8.756117143414999,
+        "scored_hour_count": 671
+      },
+      "shape": {
+        "first_difference_pearson_correlation": 9.197131073670342e-05,
+        "standard_deviation_ratio_prediction_to_observed": 0.6712200652018003,
+        "zero_lag_pearson_correlation": 0.48906761275222027
+      },
+      "top_observed_decile": {
+        "hour_count": 68,
+        "kinematic_bias_m3s": -61.252131891712466,
+        "kinematic_rmse_m3s": 69.24770480436082,
+        "threshold_m3s": 83.25152898
+      }
+    },
+    "j_percy_priest": {
+      "distribution": {
+        "branch_silent_mean_m3s": 43.08703585707546,
+        "kinematic_mean_m3s": 45.082139068369315,
+        "kinematic_standard_deviation_m3s": 51.935124880620045,
+        "maximum_absolute_branch_effect_m3s": 61.02945087177335,
+        "mean_branch_effect_m3s": 1.9951032112938452,
+        "observed_mean_m3s": 51.19667875104163,
+        "observed_standard_deviation_m3s": 61.504751037855726
+      },
+      "posthoc_affine_oracle": {
+        "admissible_prediction": false,
+        "intercept_m3s": 8.597190320016665,
+        "outcome_fitted": true,
+        "rmse_m3s": 37.07385268285763,
+        "slope": 0.9449305048817817
+      },
+      "posthoc_lag_scan": {
+        "best_correlation_prediction_time_shift_hours": -2,
+        "best_pearson_correlation": 0.9711044867725724,
+        "best_rmse_m3s": 17.75995046868221,
+        "best_rmse_prediction_time_shift_hours": -2,
+        "prediction_time_shift_definition": "positive moves a prediction to a later observation timestamp",
+        "range_hours": [
+          -48,
+          48
+        ],
+        "registered_gate_use": false
+      },
+      "registered_score_unchanged": {
+        "accuracy_gate_passed": false,
+        "kinematic_rmse_m3s": 37.683391346980116,
+        "persistence_rmse_m3s": 27.53185762767469,
+        "scored_hour_count": 621
+      },
+      "shape": {
+        "first_difference_pearson_correlation": 0.2387039581646034,
+        "standard_deviation_ratio_prediction_to_observed": 0.8444083425141312,
+        "zero_lag_pearson_correlation": 0.797907201418267
+      },
+      "top_observed_decile": {
+        "hour_count": 63,
+        "kinematic_bias_m3s": -24.558990747240166,
+        "kinematic_rmse_m3s": 28.9304884473679,
+        "threshold_m3s": 148.6634446
+      }
+    }
+  }
+}

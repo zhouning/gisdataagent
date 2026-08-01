@@ -1,0 +1,216 @@
+{
+  "ablation_diagnostics": {
+    "no_forcing": {
+      "gate_status": "pass",
+      "mean_absolute_prediction_change_m3s": 1.6236281337122216,
+      "rmse_degradation_m3s": 2.544269138624202
+    },
+    "reversed_topology": {
+      "gate_status": "fail",
+      "mean_absolute_prediction_change_m3s": 4.939828026192194,
+      "rmse_degradation_m3s": -1.8718780361337366
+    },
+    "zero_action": {
+      "available_scored_hours": 0,
+      "failure": {
+        "error": "reach_transport_global_mass_balance_exceeded",
+        "phase": "development_recompute",
+        "support_start_utc": "2021-12-14T11:00:00Z"
+      },
+      "gate_status": "fail",
+      "reason": "registered_ablation_series_unavailable"
+    }
+  },
+  "aggregation": "non_compensatory_all_registered_gates_must_pass",
+  "claim_boundary": {
+    "benchmark_validated": false,
+    "empirical_support_for_candidate_operator": false,
+    "evaluation_scored": true,
+    "evaluation_values_acquired": true,
+    "flood_wave_transport_admitted": false,
+    "geospatial_kernel_validated": false,
+    "hydrodynamically_validated": false,
+    "identified_causal_action_effect": false,
+    "multi_system_generalization_validated": false,
+    "registered_single_system_temporal_holdout_passed": false,
+    "river_velocity_admitted_as_flood_wave_celerity": false
+  },
+  "conservation": {
+    "candidate": {
+      "cumulative_numeric_tolerance_m3": 0.0036354105243132685,
+      "final_storage_m3": 8260307.432246514,
+      "gate_status": "pass",
+      "horizon_residual_m3": 6.031990051269531e-05,
+      "initial_storage_m3": 21172256.74128441,
+      "input_volume_m3": 761693172.8553288,
+      "maximum_absolute_step_residual_m3": 9.136274456977844e-07,
+      "outlet_volume_m3": 774605122.1644269
+    },
+    "no_forcing": {
+      "cumulative_numeric_tolerance_m3": 0.00362817406838895,
+      "final_storage_m3": 8145695.287062627,
+      "gate_status": "pass",
+      "horizon_residual_m3": 6.151199340820312e-05,
+      "initial_storage_m3": 21157692.79871621,
+      "input_volume_m3": 757243572.7888812,
+      "maximum_absolute_step_residual_m3": 8.996576070785522e-07,
+      "outlet_volume_m3": 770255570.3005962
+    },
+    "reversed_topology": {
+      "cumulative_numeric_tolerance_m3": 0.0036381496637019465,
+      "final_storage_m3": 8344238.466471024,
+      "gate_status": "pass",
+      "horizon_residual_m3": 3.266334533691406e-05,
+      "initial_storage_m3": 21180798.388579592,
+      "input_volume_m3": 761693172.8553288,
+      "maximum_absolute_step_residual_m3": 3.7136487662792206e-07,
+      "outlet_volume_m3": 774529732.77747
+    },
+    "zero_action": {
+      "failure": {
+        "error": "reach_transport_global_mass_balance_exceeded",
+        "phase": "development_recompute",
+        "support_start_utc": "2021-12-14T11:00:00Z"
+      },
+      "gate_status": "fail",
+      "reason": "operator_step_failed_before_complete_series"
+    }
+  },
+  "evaluation_role": "external_temporal_holdout",
+  "gate_statuses": {
+    "accuracy_better_than_direct_release": "pass",
+    "accuracy_better_than_persistence": "fail",
+    "all_scenarios_conservative": "fail",
+    "no_forcing_degrades_accuracy_and_changes_prediction": "pass",
+    "reversed_topology_degrades_accuracy_and_changes_prediction": "fail",
+    "zero_action_degrades_accuracy_and_changes_prediction": "fail"
+  },
+  "generated_at": "2026-07-26T11:38:02.894796+00:00",
+  "initial_state": {
+    "outcome_used": false,
+    "reach_count": 26,
+    "source": "recomputed_frozen_development_final_per_reach_state_per_scenario",
+    "state_reset_at_evaluation_boundary": false,
+    "total_storage_m3_by_scenario": {
+      "candidate": 21172256.74128441,
+      "no_forcing": 21157692.79871621,
+      "reversed_topology": 21180798.388579592,
+      "zero_action": null
+    }
+  },
+  "metrics": {
+    "candidate": {
+      "bias_m3s": -64.32540244018163,
+      "mae_m3s": 67.7878073833083,
+      "nse": 0.2979144682135946,
+      "rmse_m3s": 92.57157150079969,
+      "sample_count": 504
+    },
+    "direct_release": {
+      "bias_m3s": -73.64037548386509,
+      "mae_m3s": 74.66011906647618,
+      "nse": 0.17066901895880449,
+      "rmse_m3s": 100.61125572276569,
+      "sample_count": 504
+    },
+    "no_forcing": {
+      "bias_m3s": -65.94903057389386,
+      "mae_m3s": 69.30818185257375,
+      "nse": 0.25879139639021864,
+      "rmse_m3s": 95.1158406394239,
+      "sample_count": 504
+    },
+    "persistence": {
+      "bias_m3s": 0.6084750964107143,
+      "mae_m3s": 2.987876789220237,
+      "nse": 0.996783466261087,
+      "rmse_m3s": 6.265802191439143,
+      "sample_count": 504
+    },
+    "reversed_topology": {
+      "bias_m3s": -64.37733014248744,
+      "mae_m3s": 67.57582876948882,
+      "nse": 0.32602096230180266,
+      "rmse_m3s": 90.69969346466596,
+      "sample_count": 504
+    },
+    "zero_action": null
+  },
+  "output_artifact": {
+    "path": "data/geotransport_v0_1/center_hill_evaluation/evaluation/center_hill_temporal_holdout_predictions.csv",
+    "sha256": "65780a37b48cf944587bce3cf74a98e9f3fc87d5e14e6f61292cad89cbb95e77",
+    "size_bytes": 72505
+  },
+  "overall_gate_status": "fail",
+  "protocol_compliance": {
+    "all_registered_ablation_series_produced": false,
+    "common_complete_case_mask_used": true,
+    "dates_unchanged": true,
+    "metric_and_gate_thresholds_unchanged": true,
+    "missing_outcome_imputation": false,
+    "operator_unchanged": true,
+    "parameter_fitting_on_evaluation_outcome": false,
+    "score_run_count": 1,
+    "warmup_length_unchanged": true
+  },
+  "scenario_failures": {
+    "zero_action": {
+      "error": "reach_transport_global_mass_balance_exceeded",
+      "phase": "development_recompute",
+      "support_start_utc": "2021-12-14T11:00:00Z"
+    }
+  },
+  "schema": "gwm.geotransport.center_hill_temporal_holdout_evaluation.v1",
+  "source_artifacts": {
+    "development_rollout_report": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_672h_reach_transport_rollout_report.json",
+      "sha256": "8a8dea0fd8f8529aaf934fe6890d3b1a64db0b3ed9d95f86455fefa6d40e4acc",
+      "size_bytes": 6772
+    },
+    "evaluation_nwm_manifest": {
+      "path": "data/geotransport_v0_1/center_hill_evaluation/nwm/acquisition_manifest.json",
+      "sha256": "073d1077dcb5774a8b7d66613ec3412b16c513cc83e675c5a1b0f891d3ea0ca4",
+      "size_bytes": 5730
+    },
+    "evaluation_panel": {
+      "path": "data/geotransport_v0_1/center_hill_evaluation/panel/center_hill_temporal_holdout.csv",
+      "sha256": "02148a88cfa44499caf94e1d995a899692f5a3ad0c7ac4f0a8b76ba66c445f8f",
+      "size_bytes": 149396
+    },
+    "evaluation_panel_report": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_temporal_holdout_panel_report.json",
+      "sha256": "65eccd5ae38450b92e17fa4d5ee2ce9477315a4da0dc1c8038d57a0c308bc5b7",
+      "size_bytes": 6431
+    },
+    "evaluation_protocol": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_temporal_holdout_protocol_v1.json",
+      "sha256": "5aff4489afc74a3c759a625a7655f2cee9cab06037a72160b7847dca15b16862",
+      "size_bytes": 6167
+    },
+    "q_lateral_values": {
+      "path": "data/geotransport_v0_1/center_hill_evaluation/nwm/values/q_lateral.csv",
+      "sha256": "cdd4fb0d315164dbd6ac5e868ca3f7075b8d70aa43294acf59a3251964d94207",
+      "size_bytes": 936877
+    },
+    "travel_time_prior_report": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_travel_time_prior_report.json",
+      "sha256": "e29fc54273e2f5f650d49599e8c98c6ec98c13c1025041e0f8c2ba41340c425e",
+      "size_bytes": 11456
+    },
+    "velocity_values": {
+      "path": "data/geotransport_v0_1/center_hill_evaluation/nwm/values/velocity.csv",
+      "sha256": "29bfd7352179720bb130cab0d25683306f92539196a2053b25bad32dda98ef3d",
+      "size_bytes": 1183849
+    }
+  },
+  "status": "registered_single_system_temporal_holdout_fail",
+  "window": {
+    "acquisition_start_inclusive": "2022-01-06T01:00:00Z",
+    "end_exclusive": "2022-02-03T01:00:00Z",
+    "evaluation_warmup_hours": 168,
+    "excluded_primary_scored_hours": 0,
+    "maximum_scored_hours": 504,
+    "primary_common_complete_scored_hours": 504,
+    "scored_start_inclusive": "2022-01-13T01:00:00Z"
+  }
+}

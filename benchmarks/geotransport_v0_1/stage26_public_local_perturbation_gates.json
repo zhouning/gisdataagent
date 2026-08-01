@@ -1,0 +1,179 @@
+{
+  "all_gates_passed": true,
+  "claim_boundary": {
+    "confluence_geometry_completed": false,
+    "observed_states_used_as_anchors": true,
+    "operator_admitted": false,
+    "periodic_ring_represents_real_reach": false,
+    "perturbed_states_observed": false,
+    "reach_boundary_conditions_observed": false
+  },
+  "decision": {
+    "geometry_changes_local_transition": true,
+    "local_hll_transition_exercised": true,
+    "observed_spatial_rollout_completed": false,
+    "operator_admitted": false,
+    "periodic_mass_and_momentum_conserved": true,
+    "perturbation_reversal_covariant": true,
+    "real_reach_grid_admitted": false,
+    "runtime_operator_admitted": false
+  },
+  "frozen_stage25_hashes": {
+    "benchmarks/geotransport_v0_1/stage25_public_geometry_response_gates.json": {
+      "actual_sha256": "492512f5e8cf87f5f4e59c022c82ef890073f24975a3a24065ac608c1e83e1c9",
+      "expected_sha256": "492512f5e8cf87f5f4e59c022c82ef890073f24975a3a24065ac608c1e83e1c9",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage25_center_hill_geometry_response/README.md": {
+      "actual_sha256": "f01aa3fc3f1f5393c20d7af286dba3c231daf5cb75532aa051c03a7f992cf6ab",
+      "expected_sha256": "f01aa3fc3f1f5393c20d7af286dba3c231daf5cb75532aa051c03a7f992cf6ab",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage25_center_hill_geometry_response/geometry_hydrodynamic_response.json": {
+      "actual_sha256": "48e212176dc833a1d8c8bdac196d70d7314a53d2a1b9172b2e1cbc65020a090b",
+      "expected_sha256": "48e212176dc833a1d8c8bdac196d70d7314a53d2a1b9172b2e1cbc65020a090b",
+      "matches": true
+    },
+    "data_agent/test_geospatial_kernel_public_reach_geometry_response.py": {
+      "actual_sha256": "9fe357149895d1fb54167e6ca29dec83b5b6b2b22f9e008420779599934cbcf7",
+      "expected_sha256": "9fe357149895d1fb54167e6ca29dec83b5b6b2b22f9e008420779599934cbcf7",
+      "matches": true
+    },
+    "data_agent/uwm/geospatial_kernel_v2/public_reach_geometry_response.py": {
+      "actual_sha256": "849d60993c6e06bdd2661000a8aef413c58a5075d93e92c84d0fcb7e71818112",
+      "expected_sha256": "849d60993c6e06bdd2661000a8aef413c58a5075d93e92c84d0fcb7e71818112",
+      "matches": true
+    },
+    "docs/architecture-decisions/adr-066-public-observed-state-geometry-response.md": {
+      "actual_sha256": "243a8a12051f56b752eb2ca1b6575c478c776e8e757217df3ab85023d11d0785",
+      "expected_sha256": "243a8a12051f56b752eb2ca1b6575c478c776e8e757217df3ab85023d11d0785",
+      "matches": true
+    },
+    "scripts/compile_geotransport_stage25_public_geometry_response_gates.py": {
+      "actual_sha256": "0063261abe72a82a669f3b99f6db804188b7efb4c3c3ec056b1685a35cb67ff0",
+      "expected_sha256": "0063261abe72a82a669f3b99f6db804188b7efb4c3c3ec056b1685a35cb67ff0",
+      "matches": true
+    }
+  },
+  "gates": {
+    "all_shared_timesteps_are_positive_and_finite": true,
+    "all_steps_remain_finite_and_strictly_wet": true,
+    "all_steps_respect_target_courant_number": true,
+    "both_geometries_receive_identical_manufactured_input": true,
+    "candidate_operator_remains_unadmitted": true,
+    "declared_symmetric_five_percent_patterns_are_exact": true,
+    "every_anchor_uses_minimum_stable_timestep_across_geometries": true,
+    "exactly_twenty_observed_anchor_states_are_used": true,
+    "geometry_changes_stability_limit_without_one_fixed_winner": true,
+    "geometry_response_is_material_in_updated_discharge_for_some_anchor": true,
+    "geometry_response_propagates_into_updated_area": true,
+    "observed_anchors_and_manufactured_perturbations_are_distinguished": true,
+    "observed_spatial_rollout_remains_unclaimed": true,
+    "periodic_discharge_integral_ledger_closes": true,
+    "periodic_grid_is_explicitly_numerical_not_real_reach_topology": true,
+    "periodic_volume_ledger_closes": true,
+    "perturbation_reversal_is_translation_covariant": true,
+    "real_reach_grid_and_runtime_operator_remain_closed": true,
+    "stage25_artifacts_hash_frozen": true,
+    "unsupported_observed_grid_and_runtime_claims_fail_closed": true
+  },
+  "generated_at": "2026-07-29T12:37:53.214372+00:00",
+  "invariant_summary": {
+    "maximum_absolute_discharge_ledger_error_m4s": 1.4551915228366852e-11,
+    "maximum_absolute_volume_ledger_error_m3": 2.9103830456733704e-11,
+    "maximum_courant_number": 0.4000000000000001,
+    "maximum_reversal_area_covariance_error_m2": 0.0,
+    "maximum_reversal_discharge_covariance_error_m3s": 0.0,
+    "minimum_area_after_m2": 115.2334032644856
+  },
+  "limiting_geometry_counts": {
+    "stage24_bridge_trapezoid_candidate": 15,
+    "state_conditioned_observed_rectangle": 5
+  },
+  "perturbation_artifact": {
+    "path": "data/geotransport_v0_1/stage26_center_hill_local_perturbation/observed_anchor_local_perturbation.json",
+    "sha256": "0fb7728dc281b366f6439389181a629125982d01413d7bf6e6e8f687313782fb",
+    "size_bytes": 81319
+  },
+  "perturbation_contract": {
+    "anchor_state_observed": true,
+    "area_and_discharge_perturbation_fraction": 0.05,
+    "area_multipliers": [
+      1.05,
+      1.0,
+      0.95,
+      1.0
+    ],
+    "cell_count": 4,
+    "cell_length_is_observed_reach_discretization": false,
+    "discharge_multipliers": [
+      1.0,
+      1.05,
+      1.0,
+      0.95
+    ],
+    "numerical_cell_length_m": 100.0,
+    "periodic_ring_is_real_reach_topology": false,
+    "perturbed_states_observed": false,
+    "reversal_shift_cells": 2,
+    "shared_timestep_is_minimum_across_geometries": true,
+    "target_courant_number": 0.4
+  },
+  "response_summary": {
+    "area_geometry_response_l2_relative": {
+      "maximum": 0.0006129390600278867,
+      "maximum_absolute": 0.0006129390600278867,
+      "median": 0.00022898580158093858,
+      "minimum": 6.266098969766127e-05,
+      "p05": 8.21218445859284e-05,
+      "p95": 0.0005293232241906483
+    },
+    "discharge_geometry_response_l2_relative": {
+      "maximum": 0.03277455701266446,
+      "maximum_absolute": 0.03277455701266446,
+      "median": 0.00553767359125697,
+      "minimum": 0.00012540761629226103,
+      "p05": 0.0006616189928266045,
+      "p95": 0.03217123077466105
+    },
+    "maximum_area_geometry_response_relative": {
+      "maximum": 0.0009066378095856008,
+      "maximum_absolute": 0.0009066378095856008,
+      "median": 0.000371159224781377,
+      "minimum": 7.169979285691351e-05,
+      "p05": 0.00013641047847051752,
+      "p95": 0.0007874900029626383
+    },
+    "maximum_discharge_geometry_response_relative": {
+      "maximum": 0.046401506602369795,
+      "maximum_absolute": 0.046401506602369795,
+      "median": 0.00788003566391872,
+      "minimum": 0.00020946812135946678,
+      "p05": 0.000985298265965137,
+      "p95": 0.045549366193621516
+    },
+    "shared_timestep_seconds": {
+      "maximum": 8.578232202780596,
+      "maximum_absolute": 8.578232202780596,
+      "median": 7.261655364667884,
+      "minimum": 5.040041865848004,
+      "p05": 5.446103380829538,
+      "p95": 8.475993565251686
+    },
+    "stable_timestep_candidate_relative_to_rectangle": {
+      "maximum": 0.02733371334035173,
+      "maximum_absolute": 0.04109417161805651,
+      "median": -0.010513028092105303,
+      "minimum": -0.04109417161805651,
+      "p05": -0.03522165092607048,
+      "p95": 0.018688445512529978
+    }
+  },
+  "schema": "gwm.geotransport.stage26_public_local_perturbation_gates.v1",
+  "status": "observed_anchor_local_transition_verified_real_reach_runtime_admission_pending",
+  "typed_refusals": {
+    "observed_spatial_rollout": true,
+    "real_reach_discretization": true,
+    "runtime_operator": true
+  }
+}

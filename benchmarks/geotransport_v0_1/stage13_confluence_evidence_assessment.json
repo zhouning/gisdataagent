@@ -1,0 +1,131 @@
+{
+  "admission_requirements": {
+    "admitted_dataset": null,
+    "all_required": [
+      "publicly accessible machine-readable values",
+      "terminal or cross-section geometry",
+      "branch flow or velocity state",
+      "stage or water-surface observation",
+      "reusable terms or permission"
+    ]
+  },
+  "all_gates_passed": true,
+  "artifacts": {
+    "crossref_open_channel_junction_catalog.json": {
+      "expected_sha256": "fb4c8b7fdc540d4e2b1f9b1dda20c684b2bf278e5a72392043452a5a1c234734",
+      "expected_size_bytes": 2330,
+      "identity_matches": true,
+      "path": ".tmp/geotransport/stage13_confluence_evidence/crossref_open_channel_junction_catalog.json",
+      "sha256": "fb4c8b7fdc540d4e2b1f9b1dda20c684b2bf278e5a72392043452a5a1c234734",
+      "size_bytes": 2330
+    },
+    "github_confluence_data_repository_search.json": {
+      "expected_sha256": "4af480b8ee5b87b369a76c49bd22c9a783908272ebffbe97898f8ab0f0772a5f",
+      "expected_size_bytes": 55,
+      "identity_matches": true,
+      "path": ".tmp/geotransport/stage13_confluence_evidence/github_confluence_data_repository_search.json",
+      "sha256": "4af480b8ee5b87b369a76c49bd22c9a783908272ebffbe97898f8ab0f0772a5f",
+      "size_bytes": 55
+    },
+    "openalex_shumate_junction_thesis.json": {
+      "expected_sha256": "e5c780d0ae54f7678f2dfe9c8d709de926ee8523f94d0b4b87d6d675a5f6ce05",
+      "expected_size_bytes": 6920,
+      "identity_matches": true,
+      "path": ".tmp/geotransport/stage13_confluence_evidence/openalex_shumate_junction_thesis.json",
+      "sha256": "e5c780d0ae54f7678f2dfe9c8d709de926ee8523f94d0b4b87d6d675a5f6ce05",
+      "size_bytes": 6920
+    },
+    "zenodo_confluence_angle_record.json": {
+      "expected_sha256": "85cc02086037425f8cc71ac1a032743ec80be8100eef1b627779aaefeafc00ff",
+      "expected_size_bytes": 7403,
+      "identity_matches": true,
+      "path": ".tmp/geotransport/stage13_confluence_evidence/zenodo_confluence_angle_record.json",
+      "sha256": "85cc02086037425f8cc71ac1a032743ec80be8100eef1b627779aaefeafc00ff",
+      "size_bytes": 7403
+    }
+  },
+  "claim_boundary": {
+    "article_pdf_treated_as_raw_dataset": false,
+    "candidate_operator_admitted": false,
+    "literature_metadata_treated_as_observation": false,
+    "public_confluence_validation_completed": false,
+    "reaction_independently_observed": false,
+    "search_result_is_global_negative_proof": false
+  },
+  "evidence_scope": {
+    "public_metadata_used_to_define_native_law": false,
+    "search_is_exhaustive": false,
+    "sources": [
+      "Crossref",
+      "OpenAlex",
+      "Zenodo",
+      "GitHub"
+    ],
+    "workspace_or_private_data_sent": false
+  },
+  "gates": {
+    "acquisition_boundary_respected": true,
+    "literature_catalog_identifies_known_experimental_lineage": true,
+    "public_snapshot_identities_frozen": true,
+    "publication_not_misrepresented_as_numeric_dataset": true,
+    "relevant_thesis_not_misrepresented_as_open_data": true,
+    "repository_search_not_misrepresented_as_negative_proof": true
+  },
+  "generated_at": "2026-07-28T14:41:14.946103+00:00",
+  "github_repository_search": {
+    "assessment": "no exact public repository match in this query snapshot; this is a bounded discovery result, not a claim that no such repository exists",
+    "query_total_count": 0,
+    "returned_repository_count": 0
+  },
+  "literature_catalog": {
+    "dois": [
+      "10.1061/(asce)0733-9429(1998)124:8(847)",
+      "10.1201/b16994-56",
+      "10.1016/j.advwatres.2007.08.007",
+      "10.1061/(asce)0733-9429(1998)124:2(186)",
+      "10.21608/bfemu.2020.132676",
+      "10.17077/etd.9q5a2qez",
+      "10.1061/(asce)0733-9429(2001)127:5(340)",
+      "10.4324/9780429273315-9",
+      "10.1061/(asce)0733-9429(2001)127:9(788)",
+      "10.1201/9780429423116-17"
+    ],
+    "item_count": 10
+  },
+  "open_confluence_angle_publication": {
+    "assessment": "not_usable: a CC-BY article PDF is a useful scientific context source, but its record exposes no raw numeric measurement file; the article was not treated as a validation data table",
+    "files": [
+      {
+        "checksum": "md5:fa6de9370f77334883911f32ae680cfa",
+        "key": "ETASR_2014_02_576-580.pdf",
+        "size_bytes": 1041420
+      }
+    ],
+    "license": {
+      "id": "cc-by-4.0"
+    },
+    "machine_readable_numeric_dataset": false,
+    "record_id": 14033,
+    "resource_type": {
+      "subtype": "article",
+      "title": "Journal article",
+      "type": "publication"
+    },
+    "title": "The Effect of Confluence Angle on the Flow Pattern at a Rectangular Open-Channel"
+  },
+  "relevant_experimental_thesis": {
+    "assessment": "not_usable: public metadata identifies a relevant experimental thesis but provides neither an open full text nor a PDF URL; no machine-readable geometry, discharge, stage, or velocity data is available from this source snapshot",
+    "doi": "https://doi.org/10.17077/etd.9q5a2qez",
+    "has_fulltext": false,
+    "open_access": {
+      "any_repository_has_fulltext": false,
+      "is_oa": false,
+      "oa_status": "closed",
+      "oa_url": null
+    },
+    "pdf_urls": [],
+    "title": "Experimental Description of Flow at an Open-Channel Junction"
+  },
+  "schema": "gwm.geotransport.stage13_confluence_evidence_assessment.v1",
+  "status": "no_independent_open_machine_readable_confluence_validation_dataset_identified_in_bounded_search"
+}

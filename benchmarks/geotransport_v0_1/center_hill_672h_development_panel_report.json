@@ -1,0 +1,192 @@
+{
+  "checks": {
+    "all_input_channels_cover_672_supports": true,
+    "cwms_eop_semantics_preserved": true,
+    "first_168_hours_frozen_as_warmup": true,
+    "nwm_valid_time_kept_at_support_start": true,
+    "outcome_missing_values_not_imputed": true,
+    "source_artifact_hashes_verified": true,
+    "usgs_observation_gap_preserved": true
+  },
+  "claim_boundary": {
+    "benchmark_validated": false,
+    "bounded_672h_development_panel_compiled": true,
+    "flood_wave_transport_admitted": false,
+    "geospatial_kernel_validated": false,
+    "input_channels_complete": true,
+    "outcome_channel_complete": false,
+    "outcome_values_imputed": false,
+    "training_or_evaluation_panel_ready": false,
+    "warmup_window_frozen": true
+  },
+  "generated_at": "2026-07-26T10:59:27.993629+00:00",
+  "panel_artifact": {
+    "path": "data/geotransport_v0_1/panels/center_hill_672h_development.csv",
+    "sha256": "3ab31194e1687b2a4556bdf4f0889acfa62afe2a53e6dd5ad056f168b55cc746",
+    "size_bytes": 142536
+  },
+  "quality_summary": {
+    "development_outcome_missing_hour_count": 3,
+    "input_channel_missing_value_count": 0,
+    "outcome_available_hour_count": 669,
+    "outcome_imputed_hour_count": 0,
+    "outcome_missing_hour_count": 3,
+    "outcome_missing_sample_counts": [
+      1,
+      0,
+      1
+    ],
+    "outcome_missing_support_end_utc": [
+      "2022-01-03T05:00:00Z",
+      "2022-01-03T06:00:00Z",
+      "2022-01-03T07:00:00Z"
+    ],
+    "usgs_all_returned_target_samples_approved": true,
+    "warmup_outcome_missing_hour_count": 0
+  },
+  "registry_sha256": "399144ec64cef6ac74c780ce447b213f33dd97b5dafad5407342ffca37a6bc13",
+  "schema": "gwm.geotransport.center_hill_672h_development_panel.v1",
+  "source_artifacts": {
+    "boundary_action": {
+      "path": "data/geotransport_v0_1/center_hill_672h/raw/center_hill-CETT1-CENTER-HILL-Flow-Ave-1Hour-1Hour-man-rev-20211209T010000Z-20220106T010000Z.json",
+      "retrieved_at": "2026-07-26T10:52:34.472436+00:00",
+      "sha256": "cb8213d287a11bbe4ab456cb2174e3dc321aeee6a5dec9dc49b2feb3b30ceb08",
+      "size_bytes": 20662,
+      "source": "usace_cwms",
+      "source_url": "https://cwms-data.usace.army.mil/cwms-data/timeseries?name=CETT1-CENTER_HILL.Flow.Ave.1Hour.1Hour.man-rev&office=LRN&begin=2021-12-09T01%3A00%3A00Z&end=2022-01-06T01%3A00%3A00Z&unit=cms&page-size=50000"
+    },
+    "context_not_independent_forcing": {
+      "path": "data/geotransport_v0_1/center_hill_672h/raw/center_hill-CEHT1-CENTER-HILL-Flow-In-Ave-1Hour-1Hour-man-rev-20211209T010000Z-20220106T010000Z.json",
+      "retrieved_at": "2026-07-26T10:52:36.380619+00:00",
+      "sha256": "4722031bf2447313ba2046c37079c58a97bd19fa5c38ce35a9d2ff7fe856fd3c",
+      "size_bytes": 24094,
+      "source": "usace_cwms",
+      "source_url": "https://cwms-data.usace.army.mil/cwms-data/timeseries?name=CEHT1-CENTER_HILL.Flow-In.Ave.1Hour.1Hour.man-rev&office=LRN&begin=2021-12-09T01%3A00%3A00Z&end=2022-01-06T01%3A00%3A00Z&unit=cms&page-size=50000"
+    },
+    "independent_observation": {
+      "path": "data/geotransport_v0_1/center_hill_672h/raw/center_hill-usgs-iv-20211209T010000Z-20220106T010000Z.json",
+      "retrieved_at": "2026-07-26T10:52:38.781634+00:00",
+      "sha256": "e2fa408dfa55f30514768e2cf92492ddb686ba9150986868fe7e04ab12d5d8f9",
+      "size_bytes": 109152,
+      "source": "usgs_water_data",
+      "source_url": "https://waterservices.usgs.gov/nwis/iv/?format=json&sites=03424860&parameterCd=00060&startDT=2021-12-09T00%3A00%3A00Z&endDT=2022-01-06T02%3A00%3A00Z&siteStatus=all"
+    },
+    "nwm_advective_travel_time": {
+      "path": "data/geotransport_v0_1/nwm_velocity/values/center_hill_advective_travel_time.csv",
+      "retrieved_at": null,
+      "sha256": "212b48f55fcf9f6ca0008e4c9b7ef6ee2e7043422563791b662d2d0a918ab29e",
+      "size_bytes": 25504,
+      "source": null,
+      "source_url": null
+    },
+    "nwm_q_lateral_selected_values": {
+      "path": "data/geotransport_v0_1/nwm_q_lateral_672h/values/center_hill.csv",
+      "retrieved_at": null,
+      "sha256": "49f3a83727aa48be6ba73b730e87b6bbf47288e17f9bec276b3d9efc38111828",
+      "size_bytes": 931359,
+      "source": null,
+      "source_url": null
+    },
+    "stock": {
+      "path": "data/geotransport_v0_1/center_hill_672h/raw/center_hill-CEHT1-CENTER-HILL-Stor-Inst-1Hour-0-man-rev-20211209T010000Z-20220106T010000Z.json",
+      "retrieved_at": "2026-07-26T10:52:35.430193+00:00",
+      "sha256": "f9e2b4dc6d47763b4fa5100620a505f499c910dd016313b73ae045fe6f1a7a66",
+      "size_bytes": 26580,
+      "source": "usace_cwms",
+      "source_url": "https://cwms-data.usace.army.mil/cwms-data/timeseries?name=CEHT1-CENTER_HILL.Stor.Inst.1Hour.0.man-rev&office=LRN&begin=2021-12-09T01%3A00%3A00Z&end=2022-01-06T01%3A00%3A00Z&unit=m3&page-size=50000"
+    }
+  },
+  "source_manifests": {
+    "companion_values": {
+      "path": "data/geotransport_v0_1/center_hill_672h/acquisition_manifest.json",
+      "sha256": "9c0611755e0099ed2caf02660b108b94529579e8f809c4e8f7f0dafb38222b87",
+      "size_bytes": 6789
+    },
+    "nwm_q_lateral_672h": {
+      "path": "data/geotransport_v0_1/nwm_q_lateral_672h/extraction_manifest.json",
+      "sha256": "e3d9dc0dc3ecee09c254574346ceb484e2d699eecb534657e08c817345a8ba40",
+      "size_bytes": 4870
+    },
+    "travel_time_prior": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_travel_time_prior_report.json",
+      "sha256": "e29fc54273e2f5f650d49599e8c98c6ec98c13c1025041e0f8c2ba41340c425e",
+      "size_bytes": 11456
+    }
+  },
+  "status": "compiled_with_observation_gap_not_admitted",
+  "temporal_supports": {
+    "action_release_m3s": {
+      "duration_seconds": 3600.0,
+      "evidence_level": "authoritative",
+      "kind": "interval_mean",
+      "provenance_id": "USACE/cwms-data-api@beb8d507c9da8ec074d444117bda7d7daf69e5ee:docs/source/data/timeseries.rst#L97-L118",
+      "schema": "gwm.geospatial_kernel.temporal_support.v1",
+      "timestamp_position": "end"
+    },
+    "inflow_context_m3s": {
+      "duration_seconds": 3600.0,
+      "evidence_level": "authoritative",
+      "kind": "interval_mean",
+      "provenance_id": "USACE/cwms-data-api@beb8d507c9da8ec074d444117bda7d7daf69e5ee:docs/source/data/timeseries.rst#L97-L118",
+      "schema": "gwm.geospatial_kernel.temporal_support.v1",
+      "timestamp_position": "end"
+    },
+    "outcome_discharge_interval_sample_mean_m3s": {
+      "duration_seconds": 3600.0,
+      "evidence_level": "derived",
+      "kind": "interval_sample_mean",
+      "provenance_id": "USGS:03424860:00060:IV:open-left-closed-right-hour",
+      "schema": "gwm.geospatial_kernel.temporal_support.v1",
+      "timestamp_position": "end"
+    },
+    "storage_m3": {
+      "duration_seconds": 0.0,
+      "evidence_level": "authoritative",
+      "kind": "instantaneous",
+      "provenance_id": "USACE/cwms-data-api@beb8d507c9da8ec074d444117bda7d7daf69e5ee:docs/source/data/timeseries.rst#L97-L118",
+      "schema": "gwm.geospatial_kernel.temporal_support.v1",
+      "timestamp_position": "instant"
+    }
+  },
+  "value_summary": {
+    "action_release_m3s": {
+      "maximum": 339.94374334,
+      "mean": 152.23949994450894,
+      "minimum": 0.0
+    },
+    "inflow_context_m3s": {
+      "maximum": 1363.6902733741258,
+      "mean": 225.7521849974642,
+      "minimum": -55.246908414608846
+    },
+    "nwm_q_lateral_active_reach_sum_m3s": {
+      "maximum": 111.3000016634,
+      "mean": 1.9690476484479167,
+      "minimum": 0.0
+    },
+    "nwm_velocity_proxy_residence_time_seconds": {
+      "maximum": 87082.06675,
+      "mean": 80314.08597089286,
+      "minimum": 65392.44464
+    },
+    "outcome_discharge_interval_sample_mean_m3s": {
+      "maximum": 457.3170724608,
+      "mean": 212.83862513514876,
+      "minimum": 19.878426307584
+    },
+    "storage_change_m3": {
+      "maximum": 4105644.1713018417,
+      "mean": 264649.48568977666,
+      "minimum": -972600.3993012905
+    }
+  },
+  "window": {
+    "development_hours": 504,
+    "end_exclusive": "2022-01-06T01:00:00Z",
+    "evaluation_hours": 0,
+    "row_count": 672,
+    "start_inclusive": "2021-12-09T01:00:00Z",
+    "time_step": "PT1H",
+    "warmup_hours": 168
+  }
+}

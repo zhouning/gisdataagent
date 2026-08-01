@@ -1,0 +1,101 @@
+{
+  "claim_boundary": {
+    "d5_predictive_improvement_validated": false,
+    "executor_outcome_isolation_verified": true,
+    "external_modeled_tributary_boundary_used": false,
+    "full_subnetwork_executed": true,
+    "full_subnetwork_routing_validated": false,
+    "geospatial_kernel_validated": false,
+    "new_frozen_evaluation_window_required": true,
+    "score_is_post_hoc": true,
+    "second_system_required": true
+  },
+  "context_metrics": {
+    "d4_modeled_tributary_boundary": {
+      "bias_m3s": -21.013482122675306,
+      "mae_m3s": 52.08516542729352,
+      "nse": 0.8251999165648498,
+      "rmse_m3s": 70.54540119390298
+    }
+  },
+  "generated_at": "2026-07-27T04:58:34.479252+00:00",
+  "independence_limits": {
+    "evaluation_outcome_loaded_only_after_prediction_seal": true,
+    "external_tributary_streamflow_boundary_used": false,
+    "fully_observation_independent_inputs": false,
+    "nwm_initial_streamflow_ground_truth": false,
+    "nwm_initial_streamflow_possible_nudging": true
+  },
+  "input_side_flux": {
+    "branch_fraction_of_q_lateral_mean": 0.9673303434781767,
+    "branch_q_lateral_mean_m3s": 59.44360207625488,
+    "distributed_q_lateral_mean_m3s": 61.45119139188457
+  },
+  "metrics": {
+    "d5_branch_silent_negative_control": {
+      "bias_m3s": -84.86860177753265,
+      "mae_m3s": 104.2341791056529,
+      "nse": 0.06962127279521246,
+      "rmse_m3s": 162.75254024724768
+    },
+    "d5_full_subnetwork": {
+      "bias_m3s": -24.2891865723505,
+      "mae_m3s": 53.86388064129352,
+      "nse": 0.8115328476058377,
+      "rmse_m3s": 73.25136538317227
+    },
+    "persistence": {
+      "bias_m3s": -0.6417642464121429,
+      "mae_m3s": 11.296019914272382,
+      "nse": 0.9920356783180612,
+      "rmse_m3s": 15.05817313955653
+    }
+  },
+  "non_gating_diagnostics": {
+    "absolute_bias_change_from_branch_silent_m3s": -60.579415205182144,
+    "d5_beats_branch_silent_rmse": true,
+    "d5_beats_d4_boundary_rmse": false,
+    "d5_beats_persistence_rmse": false,
+    "interpretation": "These comparisons diagnose an already public development window after the D5 artifact was sealed. They cannot validate, select, tune, or revise D5.",
+    "rmse_change_from_branch_silent_m3s": -89.50117486407541,
+    "rmse_change_from_d4_boundary_m3s": 2.705964189269295
+  },
+  "schema": "gwm.geotransport.center_hill_v2_d5_full_subnetwork_diagnostic_score.v1",
+  "scored_hour_count": 672,
+  "source_artifacts": {
+    "d4_post_hoc_score": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_v2_d4_boundary_diagnostic_score.json",
+      "sha256": "4e00c6dd54a83905984f39974634ab1a1663480d64285f952373762c067421a6",
+      "size_bytes": 2909
+    },
+    "independent_outcomes": {
+      "path": "data/geotransport_v0_1/center_hill_v2_d3_inputs/outcome/outcome_values.csv",
+      "sha256": "3babe22584fde65dc3b132968d472f279dd4c16fe1fb5e93af2c9dc3cc36ada9",
+      "size_bytes": 38937
+    },
+    "outcome_manifest": {
+      "path": "data/geotransport_v0_1/center_hill_v2_d3_inputs/outcome/acquisition_manifest.json",
+      "sha256": "00b9f3d8da9f3920b7b15782ad54a6e564fed0ab00ae0db7f639829c33e1a580",
+      "size_bytes": 2783
+    },
+    "sealed_outcome_free_rollout": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_v2_d5_full_subnetwork_rollout_report.json",
+      "sha256": "3471dc0c8ec69eb7c067f7a892e8763fb8289bdfa2a4b170dac8bdddcce95905",
+      "size_bytes": 16716
+    },
+    "sealed_predictions": {
+      "path": "data/geotransport_v0_1/center_hill_v2_d5_full_subnetwork_rollout/predictions.csv",
+      "sha256": "3c612fe5942d3672040d696e03de22d90f58191569484e34cbeec108a48ed49a",
+      "size_bytes": 85858
+    }
+  },
+  "status": "post_hoc_diagnostic_complete_no_activation_gate",
+  "window_role": {
+    "activation_gate_registered": false,
+    "model_selection_allowed": false,
+    "name": "D3 public falsification/development window",
+    "parameter_tuning_allowed": false,
+    "prospective_holdout": false,
+    "topology_revision_allowed": false
+  }
+}

@@ -1,0 +1,183 @@
+{
+  "claim_boundary": {
+    "boundary_transition_fitted": true,
+    "downstream_improvement_validated": false,
+    "geospatial_kernel_validated": false,
+    "operational_forecast_evaluated": false,
+    "upstream_temporal_holdout_evaluated": true,
+    "upstream_temporal_holdout_passed": true
+  },
+  "data_isolation": {
+    "center_hill_outlet_target_used": false,
+    "d3_or_two_system_blind_outcomes_used": false,
+    "downstream_development_window_used_for_fit": false,
+    "fit_uses_only_smith_fork_pre_holdout_history": true,
+    "missing_values_imputed": false
+  },
+  "fit": {
+    "characteristic_root_magnitudes": [
+      0.9935791435869263,
+      0.6005736668369945
+    ],
+    "design_rank": 3,
+    "design_singular_values": [
+      237.2124906624771,
+      32.66471876261242,
+      3.0092531482314415
+    ],
+    "fit_target_count": 5568,
+    "intercept": 0.00493892670453884,
+    "lag1_coefficient": 1.5941528104239209,
+    "lag2_coefficient": -0.5967174695567611,
+    "least_squares_residual_sum": 11.643354858404116,
+    "outlet_target_fitted_parameter_count": 0,
+    "stationary": true
+  },
+  "generated_at": "2026-07-27T08:54:43.861967+00:00",
+  "information_boundary": {
+    "future_observations_used": false,
+    "operational_forecast_claim_permitted": false,
+    "operational_observation_vintage_verified": false,
+    "publication_lag_seconds": 3600
+  },
+  "metrics_by_horizon": {
+    "1": {
+      "autoregressive_log_boundary": {
+        "bias_m3s": 0.16785953030258824,
+        "mae_m3s": 0.8676981138516872,
+        "nse": 0.9276461013796988,
+        "rmse_m3s": 6.408931727353923,
+        "sample_count": 2314
+      },
+      "causal_persistence": {
+        "bias_m3s": 0.01922033496101121,
+        "mae_m3s": 1.248221649512604,
+        "nse": 0.888930022579344,
+        "rmse_m3s": 7.940594497497568,
+        "sample_count": 2314
+      }
+    },
+    "12": {
+      "autoregressive_log_boundary": {
+        "bias_m3s": 0.09964660370792704,
+        "mae_m3s": 4.992774557391743,
+        "nse": -0.3819862779523635,
+        "rmse_m3s": 27.340714507019463,
+        "sample_count": 2304
+      },
+      "causal_persistence": {
+        "bias_m3s": 0.3895532854081165,
+        "mae_m3s": 5.360473695159508,
+        "nse": -0.42138984989355155,
+        "rmse_m3s": 27.727748071537494,
+        "sample_count": 2304
+      }
+    },
+    "24": {
+      "autoregressive_log_boundary": {
+        "bias_m3s": -0.4594724666256759,
+        "mae_m3s": 5.9367614950715355,
+        "nse": -0.3054083016106208,
+        "rmse_m3s": 26.535152081262815,
+        "sample_count": 2293
+      },
+      "causal_persistence": {
+        "bias_m3s": 0.5110974697856646,
+        "mae_m3s": 6.902139354833191,
+        "nse": -0.7066075549912352,
+        "rmse_m3s": 30.33997564877755,
+        "sample_count": 2293
+      }
+    },
+    "3": {
+      "autoregressive_log_boundary": {
+        "bias_m3s": 0.28789536770577506,
+        "mae_m3s": 1.9186703075039138,
+        "nse": 0.6824172153680599,
+        "rmse_m3s": 13.385491909665268,
+        "sample_count": 2314
+      },
+      "causal_persistence": {
+        "bias_m3s": 0.07218470815769663,
+        "mae_m3s": 2.356025269817493,
+        "nse": 0.6310540465491667,
+        "rmse_m3s": 14.427372182833265,
+        "sample_count": 2314
+      }
+    },
+    "6": {
+      "autoregressive_log_boundary": {
+        "bias_m3s": 0.3042840792751131,
+        "mae_m3s": 3.228867921998013,
+        "nse": 0.23615649016937712,
+        "rmse_m3s": 20.56262115301067,
+        "sample_count": 2311
+      },
+      "causal_persistence": {
+        "bias_m3s": 0.1960840538662613,
+        "mae_m3s": 3.704688383464682,
+        "nse": 0.1634977158584081,
+        "rmse_m3s": 21.518393411250752,
+        "sample_count": 2311
+      }
+    }
+  },
+  "outputs": {
+    "holdout_predictions": {
+      "path": "data/geotransport_v0_1/smith_fork_boundary_transition/holdout_predictions.csv",
+      "sha256": "3cc6a10ff65d7759efe830bfa82a16795244236e7b634ecc9d89c9610d7e7a16",
+      "size_bytes": 1369198
+    },
+    "parameters": {
+      "path": "data/geotransport_v0_1/smith_fork_boundary_transition/parameters.json",
+      "sha256": "1f2e5dfefa5f21bca60e5f36f5fed59d18dd5519d02baa0236628ec1a51eeed9",
+      "size_bytes": 781
+    }
+  },
+  "protocol": {
+    "path": "benchmarks/geotransport_v0_1/smith_fork_boundary_transition_protocol.json",
+    "sha256": "599191c671d006620df8ba1fbd864c8d2b8b9fe145f2ccc4708d877a8e2934ce",
+    "size_bytes": 3339
+  },
+  "registered_gates": {
+    "all_horizons_holdout_gate_passed": true,
+    "boundary_transition_development_gate_passed": true,
+    "per_horizon": {
+      "1": {
+        "candidate_beats_causal_persistence_rmse": true
+      },
+      "12": {
+        "candidate_beats_causal_persistence_rmse": true
+      },
+      "24": {
+        "candidate_beats_causal_persistence_rmse": true
+      },
+      "3": {
+        "candidate_beats_causal_persistence_rmse": true
+      },
+      "6": {
+        "candidate_beats_causal_persistence_rmse": true
+      }
+    },
+    "stationarity_gate_passed": true
+  },
+  "schema": "gwm.geotransport.smith_fork_boundary_transition_report.v1",
+  "source_artifacts": {
+    "core_operator": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/boundary_hydrograph.py",
+      "sha256": "29dab909471bc55c835b4177172f8d346ed6f8ed8c258708a8b93e9993da0609",
+      "size_bytes": 9969
+    },
+    "history_report": {
+      "path": "benchmarks/geotransport_v0_1/smith_fork_boundary_history_report.json",
+      "sha256": "cb11057963e68b1f78390e84e98cb77a6350b7c12ef4ea9c3b1e582f4b2c1709",
+      "size_bytes": 3055
+    },
+    "hourly_observations": {
+      "path": "data/geotransport_v0_1/smith_fork_boundary_history/values/hourly_discharge.csv",
+      "sha256": "db94fae54ef2590ae8146b636d5252567429fffdfcebf31cceb153fb5586fd0f",
+      "size_bytes": 498096
+    }
+  },
+  "status": "boundary_transition_fit_and_holdout_complete"
+}

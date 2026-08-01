@@ -1,0 +1,790 @@
+{
+  "claim_boundary": {
+    "geospatial_kernel_validated": false,
+    "multi_system_generalization_validated": false,
+    "operational_forecast_validated": false,
+    "physical_operator_admitted": false,
+    "physical_residual_decay_admitted": false,
+    "physical_residual_decay_posthoc_executed": true,
+    "physical_residual_decay_promoted": false,
+    "runtime_default_enabled": false,
+    "wwm_candidate_admitted": false
+  },
+  "diagnostic_interpretation": {
+    "decay_beats_constant_correction_all_horizons_in_both_windows": true,
+    "decay_beats_raw_physical_all_horizons_in_both_windows": false,
+    "decay_beats_wwm_all_horizons_in_both_windows": true,
+    "raw_physical_remains_required_minimum_physical_bar": true,
+    "result_may_trigger_refit_on_these_windows": false
+  },
+  "generated_at": "2026-07-31T04:30:58.897399+00:00",
+  "implementation_artifacts": {
+    "evaluator": {
+      "path": "scripts/evaluate_geospatial_kernel_physical_residual_decay_transfer.py",
+      "sha256": "aeb7c3c7927a6e31c45f583e4e0a75aa91422bb6cf5899060e0be1a1e72b55a0",
+      "size_bytes": 30813
+    },
+    "physical_residual_decay_operator": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/physical_residual_decay.py",
+      "sha256": "cda208e0217bfff68e73a961731130874d75885d1dacf15dbebcdc5f13955630",
+      "size_bytes": 13169
+    }
+  },
+  "information_boundary": {
+    "evaluation_counts_as_fresh_validation": false,
+    "fresh_prospective_window_consumed": false,
+    "future_target_observation_used_inside_forecast": false,
+    "operational_issue_time_vintages_verified": false,
+    "source_center_hill_outcomes_used_for_parameter_fit": true,
+    "target_j_percy_priest_outcomes_used_for_parameter_fit": false,
+    "target_outcomes_were_exposed_before_model_design": true
+  },
+  "outputs": {
+    "parameters": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_physical_residual_decay_transfer_posthoc/parameters.json",
+      "sha256": "13347435dbbc4f7e82ea4b3e259aa55f2999299fa4031703d32afe205c4cebcf",
+      "size_bytes": 1247
+    },
+    "primary_predictions": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_physical_residual_decay_transfer_posthoc/j_percy_priest_primary_predictions.csv",
+      "sha256": "dbed99b9d354a39cf044568a1ccdb17f28fc8450698bac840d6ceacf0d9213df",
+      "size_bytes": 1272168
+    },
+    "replication_predictions": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_physical_residual_decay_transfer_posthoc/j_percy_priest_replication_predictions.csv",
+      "sha256": "d96c35d5479d8e3f5cb98cb5afc419eea138d2e062a82315402529c8a0b4161c",
+      "size_bytes": 1186005
+    }
+  },
+  "parameter_lock": {
+    "all_target_windows_use_deserialized_parameter_artifact": true,
+    "parameter_body_compiled_before_target_comparison_row_load": true,
+    "parameter_sha256": "13347435dbbc4f7e82ea4b3e259aa55f2999299fa4031703d32afe205c4cebcf",
+    "schema": "gwm.geospatial_kernel.physical_residual_decay_parameters.v1"
+  },
+  "primary_window": {
+    "comparison": {
+      "decay_beats_arx_all_horizons": true,
+      "decay_beats_arx_horizons_hours": [
+        1,
+        3,
+        6,
+        12
+      ],
+      "decay_beats_constant_correction_all_horizons": true,
+      "decay_beats_constant_correction_horizons_hours": [
+        1,
+        3,
+        6,
+        12
+      ],
+      "decay_beats_persistence_all_horizons": true,
+      "decay_beats_persistence_horizons_hours": [
+        1,
+        3,
+        6,
+        12
+      ],
+      "decay_beats_raw_physical_all_horizons": false,
+      "decay_beats_raw_physical_horizons_hours": [],
+      "decay_beats_wwm_all_horizons": true,
+      "decay_beats_wwm_horizons_hours": [
+        1,
+        3,
+        6,
+        12
+      ],
+      "per_horizon": {
+        "1": {
+          "decay_minus_arx_rmse_m3s": -3.9257870975883797,
+          "decay_minus_constant_correction_rmse_m3s": -0.8588706032141822,
+          "decay_minus_persistence_rmse_m3s": -4.273626865742731,
+          "decay_minus_raw_physical_rmse_m3s": 4.040575424574097,
+          "decay_minus_wwm_rmse_m3s": -5.778633348657802
+        },
+        "12": {
+          "decay_minus_arx_rmse_m3s": -31.63899232072776,
+          "decay_minus_constant_correction_rmse_m3s": -5.575794419858191,
+          "decay_minus_persistence_rmse_m3s": -35.385646453213745,
+          "decay_minus_raw_physical_rmse_m3s": 4.670433458252809,
+          "decay_minus_wwm_rmse_m3s": -29.2029646248968
+        },
+        "3": {
+          "decay_minus_arx_rmse_m3s": -12.320666362737597,
+          "decay_minus_constant_correction_rmse_m3s": -2.2992224259289884,
+          "decay_minus_persistence_rmse_m3s": -13.395958686220517,
+          "decay_minus_raw_physical_rmse_m3s": 10.446976331313788,
+          "decay_minus_wwm_rmse_m3s": -16.625691286286305
+        },
+        "6": {
+          "decay_minus_arx_rmse_m3s": -23.98179157587947,
+          "decay_minus_constant_correction_rmse_m3s": -3.3568315373980653,
+          "decay_minus_persistence_rmse_m3s": -25.703775521177967,
+          "decay_minus_raw_physical_rmse_m3s": 6.922017029045566,
+          "decay_minus_wwm_rmse_m3s": -26.11411358500517
+        }
+      }
+    },
+    "execution": {
+      "forecast_issue_count": 578,
+      "future_target_observation_used_for_correction": false,
+      "prediction_row_count": 2294,
+      "residual_decay_clipped_row_count": 225,
+      "target_parameter_refit_performed": false
+    },
+    "metrics_by_horizon": {
+      "1": {
+        "action_innovation_wwm": {
+          "bias_m3s": 0.8244216224891604,
+          "mae_m3s": 19.51265921315045,
+          "nse": 0.646769791094052,
+          "rmse_m3s": 37.452141837233604,
+          "sample_count": 576
+        },
+        "causal_persistence": {
+          "bias_m3s": 0.9850152740197393,
+          "mae_m3s": 17.557804685987378,
+          "nse": 0.6745883528675837,
+          "rmse_m3s": 35.94713535431853,
+          "sample_count": 576
+        },
+        "classical_arx": {
+          "bias_m3s": 6.980486648531714,
+          "mae_m3s": 21.273513094737446,
+          "nse": 0.6808555264888729,
+          "rmse_m3s": 35.59929558616418,
+          "sample_count": 576
+        },
+        "physical_constant_state_correction": {
+          "bias_m3s": 2.2709329613847165,
+          "mae_m3s": 16.640525824918157,
+          "nse": 0.7334760948345689,
+          "rmse_m3s": 32.532379091789984,
+          "sample_count": 576
+        },
+        "physical_open_loop": {
+          "bias_m3s": -4.49417960682791,
+          "mae_m3s": 16.2589659443613,
+          "nse": 0.8077092075131062,
+          "rmse_m3s": 27.632933064001705,
+          "sample_count": 576
+        },
+        "physical_residual_decay": {
+          "bias_m3s": 1.6911323804839589,
+          "mae_m3s": 16.077100278676525,
+          "nse": 0.7473630525003281,
+          "rmse_m3s": 31.673508488575802,
+          "sample_count": 576
+        }
+      },
+      "12": {
+        "action_innovation_wwm": {
+          "bias_m3s": -2.886725584936859,
+          "mae_m3s": 40.61404517678235,
+          "nse": 0.07322617389178554,
+          "rmse_m3s": 61.19132655293238,
+          "sample_count": 565
+        },
+        "causal_persistence": {
+          "bias_m3s": -0.5589244334863722,
+          "mae_m3s": 42.71855946488982,
+          "nse": -0.12351479530998666,
+          "rmse_m3s": 67.37400838124933,
+          "sample_count": 565
+        },
+        "classical_arx": {
+          "bias_m3s": 28.954775770214567,
+          "mae_m3s": 52.22197221497489,
+          "nse": -0.0020323738074508046,
+          "rmse_m3s": 63.62735424876334,
+          "sample_count": 565
+        },
+        "physical_constant_state_correction": {
+          "bias_m3s": 2.4279469249789893,
+          "mae_m3s": 23.77040557903196,
+          "nse": 0.6507460694740013,
+          "rmse_m3s": 37.56415634789377,
+          "sample_count": 565
+        },
+        "physical_open_loop": {
+          "bias_m3s": -4.497912596082751,
+          "mae_m3s": 15.919749780053753,
+          "nse": 0.8152903648468625,
+          "rmse_m3s": 27.31792846978277,
+          "sample_count": 565
+        },
+        "physical_residual_decay": {
+          "bias_m3s": -0.16639997323823524,
+          "mae_m3s": 20.025341468799546,
+          "nse": 0.7467333384586305,
+          "rmse_m3s": 31.98836192803558,
+          "sample_count": 565
+        }
+      },
+      "3": {
+        "action_innovation_wwm": {
+          "bias_m3s": 1.2387620160981825,
+          "mae_m3s": 31.010004292860184,
+          "nse": 0.2591769245157286,
+          "rmse_m3s": 54.60310100466059,
+          "sample_count": 574
+        },
+        "causal_persistence": {
+          "bias_m3s": 1.1211918509814984,
+          "mae_m3s": 28.454524063050943,
+          "nse": 0.3442233177442461,
+          "rmse_m3s": 51.3733684045948,
+          "sample_count": 574
+        },
+        "classical_arx": {
+          "bias_m3s": 12.42560801819781,
+          "mae_m3s": 34.28463033488953,
+          "nse": 0.37138804977034423,
+          "rmse_m3s": 50.29807608111188,
+          "sample_count": 574
+        },
+        "physical_constant_state_correction": {
+          "bias_m3s": 2.996168081530427,
+          "mae_m3s": 22.9041063266659,
+          "nse": 0.5969247026520075,
+          "rmse_m3s": 40.27663214430327,
+          "sample_count": 574
+        },
+        "physical_open_loop": {
+          "bias_m3s": -4.534980656957857,
+          "mae_m3s": 16.191733022065883,
+          "nse": 0.8116758645736816,
+          "rmse_m3s": 27.530433387060494,
+          "sample_count": 574
+        },
+        "physical_residual_decay": {
+          "bias_m3s": 1.8655534567178398,
+          "mae_m3s": 21.56894020067351,
+          "nse": 0.6416308917875582,
+          "rmse_m3s": 37.97740971837428,
+          "sample_count": 574
+        }
+      },
+      "6": {
+        "action_innovation_wwm": {
+          "bias_m3s": -0.4035674295228307,
+          "mae_m3s": 37.49598369752867,
+          "nse": 0.06797248145075874,
+          "rmse_m3s": 61.28225774305266,
+          "sample_count": 571
+        },
+        "causal_persistence": {
+          "bias_m3s": 0.036922613944693275,
+          "mae_m3s": 37.42427729771886,
+          "nse": 0.08041216548826158,
+          "rmse_m3s": 60.871919679225456,
+          "sample_count": 571
+        },
+        "classical_arx": {
+          "bias_m3s": 18.354444090060145,
+          "mae_m3s": 44.2190052483699,
+          "nse": 0.13170404996192753,
+          "rmse_m3s": 59.14993573392696,
+          "sample_count": 571
+        },
+        "physical_constant_state_correction": {
+          "bias_m3s": 2.8622467906337725,
+          "mae_m3s": 23.46799273276355,
+          "nse": 0.6316641692384506,
+          "rmse_m3s": 38.524975695445555,
+          "sample_count": 571
+        },
+        "physical_open_loop": {
+          "bias_m3s": -5.118024158966015,
+          "mae_m3s": 16.76228138812062,
+          "nse": 0.8019945974787414,
+          "rmse_m3s": 28.246127129001923,
+          "sample_count": 571
+        },
+        "physical_residual_decay": {
+          "bias_m3s": 0.9926079102287695,
+          "mae_m3s": 21.319189486725108,
+          "nse": 0.6930567246621238,
+          "rmse_m3s": 35.16814415804749,
+          "sample_count": 571
+        }
+      }
+    },
+    "scoring": {
+      "common_complete_case_count_by_horizon": {
+        "1": 576,
+        "12": 565,
+        "3": 574,
+        "6": 571
+      },
+      "comparison_uses_identical_rows_within_each_horizon": true,
+      "missing_values_imputed": false,
+      "omitted_target_times_by_horizon": {
+        "1": [
+          "2022-04-19T22:00:00Z",
+          "2022-04-20T04:00:00Z"
+        ],
+        "12": [
+          "2022-04-19T22:00:00Z",
+          "2022-04-20T04:00:00Z"
+        ],
+        "3": [
+          "2022-04-19T22:00:00Z",
+          "2022-04-20T04:00:00Z"
+        ],
+        "6": [
+          "2022-04-19T22:00:00Z",
+          "2022-04-20T04:00:00Z"
+        ]
+      }
+    },
+    "window": {
+      "first_issue_time_utc": "2022-03-31T10:00:00Z",
+      "horizons_hours": [
+        1,
+        3,
+        6,
+        12
+      ],
+      "last_issue_time_utc": "2022-04-28T00:00:00Z"
+    }
+  },
+  "promotion_gate": {
+    "accuracy_requirement_passed": false,
+    "must_beat_raw_physical_all_horizons_in_both_windows": true,
+    "physical_residual_decay_promotion_gate_passed": false,
+    "prospective_model_design_passed": false,
+    "prospective_model_design_required": true,
+    "target_outcome_free_parameter_fit_passed": true,
+    "target_outcome_free_parameter_fit_required": true
+  },
+  "replication_source_diagnostic": {
+    "admission_evidence": false,
+    "coefficient_minus_frozen_parameter": -0.003224507327655668,
+    "operator": "BranchingFiniteVolumeKinematicWaveOperator",
+    "residual_decay_coefficient": 0.9636751508935915,
+    "system_id": "center_hill",
+    "training_pair_count": 671,
+    "used_for_target_prediction": false
+  },
+  "replication_window": {
+    "comparison": {
+      "decay_beats_arx_all_horizons": true,
+      "decay_beats_arx_horizons_hours": [
+        1,
+        3,
+        6,
+        12
+      ],
+      "decay_beats_constant_correction_all_horizons": true,
+      "decay_beats_constant_correction_horizons_hours": [
+        1,
+        3,
+        6,
+        12
+      ],
+      "decay_beats_persistence_all_horizons": true,
+      "decay_beats_persistence_horizons_hours": [
+        1,
+        3,
+        6,
+        12
+      ],
+      "decay_beats_raw_physical_all_horizons": false,
+      "decay_beats_raw_physical_horizons_hours": [],
+      "decay_beats_wwm_all_horizons": true,
+      "decay_beats_wwm_horizons_hours": [
+        1,
+        3,
+        6,
+        12
+      ],
+      "per_horizon": {
+        "1": {
+          "decay_minus_arx_rmse_m3s": -1.868478929577563,
+          "decay_minus_constant_correction_rmse_m3s": -1.4242753520004143,
+          "decay_minus_persistence_rmse_m3s": -2.3194409659440183,
+          "decay_minus_raw_physical_rmse_m3s": 8.235253850114326,
+          "decay_minus_wwm_rmse_m3s": -6.399445225968428
+        },
+        "12": {
+          "decay_minus_arx_rmse_m3s": -33.392071371481485,
+          "decay_minus_constant_correction_rmse_m3s": -7.303086876788015,
+          "decay_minus_persistence_rmse_m3s": -39.95162683647579,
+          "decay_minus_raw_physical_rmse_m3s": 4.038170717125567,
+          "decay_minus_wwm_rmse_m3s": -34.12201777307427
+        },
+        "3": {
+          "decay_minus_arx_rmse_m3s": -15.44160495289659,
+          "decay_minus_constant_correction_rmse_m3s": -3.36451852899679,
+          "decay_minus_persistence_rmse_m3s": -18.01238923533321,
+          "decay_minus_raw_physical_rmse_m3s": 16.99245534160977,
+          "decay_minus_wwm_rmse_m3s": -25.99757471889057
+        },
+        "6": {
+          "decay_minus_arx_rmse_m3s": -29.066688330420384,
+          "decay_minus_constant_correction_rmse_m3s": -5.253983762769373,
+          "decay_minus_persistence_rmse_m3s": -34.95670193885692,
+          "decay_minus_raw_physical_rmse_m3s": 12.728792571827334,
+          "decay_minus_wwm_rmse_m3s": -39.388371448818454
+        }
+      }
+    },
+    "execution": {
+      "forecast_issue_count": 545,
+      "future_target_observation_used_for_correction": false,
+      "prediction_row_count": 2162,
+      "residual_decay_clipped_row_count": 574,
+      "target_parameter_refit_performed": false
+    },
+    "metrics_by_horizon": {
+      "1": {
+        "action_innovation_wwm": {
+          "bias_m3s": 3.510753630652714,
+          "mae_m3s": 32.76429835489835,
+          "nse": 0.29156491137951124,
+          "rmse_m3s": 52.6194597436948,
+          "sample_count": 538
+        },
+        "causal_persistence": {
+          "bias_m3s": 1.7625990906522864,
+          "mae_m3s": 29.34339478198046,
+          "nse": 0.3971668945355078,
+          "rmse_m3s": 48.53945548367039,
+          "sample_count": 538
+        },
+        "classical_arx": {
+          "bias_m3s": 7.549340248352314,
+          "mae_m3s": 33.47220576450929,
+          "nse": 0.40831625708943053,
+          "rmse_m3s": 48.08849344730393,
+          "sample_count": 538
+        },
+        "physical_constant_state_correction": {
+          "bias_m3s": 4.806360615109357,
+          "mae_m3s": 27.665305840331353,
+          "nse": 0.4191967866125976,
+          "rmse_m3s": 47.644289869726784,
+          "sample_count": 538
+        },
+        "physical_open_loop": {
+          "bias_m3s": -5.581171886283738,
+          "mae_m3s": 24.780865950247087,
+          "nse": 0.6308302709952118,
+          "rmse_m3s": 37.98476066761204,
+          "sample_count": 538
+        },
+        "physical_residual_decay": {
+          "bias_m3s": 3.8701904658150657,
+          "mae_m3s": 26.799409041663427,
+          "nse": 0.45340274150158766,
+          "rmse_m3s": 46.22001451772637,
+          "sample_count": 538
+        }
+      },
+      "12": {
+        "action_innovation_wwm": {
+          "bias_m3s": 2.804485041112423,
+          "mae_m3s": 53.11209883385893,
+          "nse": -0.4065481843886649,
+          "rmse_m3s": 74.03080655632233,
+          "sample_count": 507
+        },
+        "causal_persistence": {
+          "bias_m3s": 4.724635275249882,
+          "mae_m3s": 56.134873081747436,
+          "nse": -0.6367893275813588,
+          "rmse_m3s": 79.86041561972385,
+          "sample_count": 507
+        },
+        "classical_arx": {
+          "bias_m3s": 32.28313681623751,
+          "mae_m3s": 62.42055332659557,
+          "nse": -0.3789476985795257,
+          "rmse_m3s": 73.30086015472955,
+          "sample_count": 507
+        },
+        "physical_constant_state_correction": {
+          "bias_m3s": 6.118486736091872,
+          "mae_m3s": 31.347174839666756,
+          "nse": 0.4279524079786571,
+          "rmse_m3s": 47.21187566003608,
+          "sample_count": 507
+        },
+        "physical_open_loop": {
+          "bias_m3s": -5.00370309170637,
+          "mae_m3s": 22.579968246017465,
+          "nse": 0.669776959264575,
+          "rmse_m3s": 35.870618066122496,
+          "sample_count": 507
+        },
+        "physical_residual_decay": {
+          "bias_m3s": 1.8774487267764706,
+          "mae_m3s": 26.728612209055406,
+          "nse": 0.5912415467533803,
+          "rmse_m3s": 39.90878878324806,
+          "sample_count": 507
+        }
+      },
+      "3": {
+        "action_innovation_wwm": {
+          "bias_m3s": 6.796970834056319,
+          "mae_m3s": 54.937161450707436,
+          "nse": -0.6774435253700282,
+          "rmse_m3s": 80.77565504097973,
+          "sample_count": 532
+        },
+        "causal_persistence": {
+          "bias_m3s": 3.6325557400645683,
+          "mae_m3s": 50.17483564636926,
+          "nse": -0.3621846197365779,
+          "rmse_m3s": 72.79046955742237,
+          "sample_count": 532
+        },
+        "classical_arx": {
+          "bias_m3s": 14.511431103752852,
+          "mae_m3s": 54.24928572645939,
+          "nse": -0.26766554896563655,
+          "rmse_m3s": 70.21968527498575,
+          "sample_count": 532
+        },
+        "physical_constant_state_correction": {
+          "bias_m3s": 8.46704382498367,
+          "mae_m3s": 35.770784251014824,
+          "nse": 0.13088787192665252,
+          "rmse_m3s": 58.14259885108595,
+          "sample_count": 532
+        },
+        "physical_open_loop": {
+          "bias_m3s": -4.9815857647849615,
+          "mae_m3s": 24.262743224394708,
+          "nse": 0.6329373882892094,
+          "rmse_m3s": 37.78562498047939,
+          "sample_count": 532
+        },
+        "physical_residual_decay": {
+          "bias_m3s": 6.465152861911539,
+          "mae_m3s": 33.76302665297565,
+          "nse": 0.2285628531705749,
+          "rmse_m3s": 54.77808032208916,
+          "sample_count": 532
+        }
+      },
+      "6": {
+        "action_innovation_wwm": {
+          "bias_m3s": 6.174948893526848,
+          "mae_m3s": 65.62291980112714,
+          "nse": -1.0965792746441436,
+          "rmse_m3s": 90.06086410164593,
+          "sample_count": 524
+        },
+        "causal_persistence": {
+          "bias_m3s": 4.189399906284065,
+          "mae_m3s": 63.47169339413525,
+          "nse": -0.895321056756355,
+          "rmse_m3s": 85.6291945916844,
+          "sample_count": 524
+        },
+        "classical_arx": {
+          "bias_m3s": 21.75369244909545,
+          "mae_m3s": 64.84877954174756,
+          "nse": -0.6435488260583424,
+          "rmse_m3s": 79.73918098324786,
+          "sample_count": 524
+        },
+        "physical_constant_state_correction": {
+          "bias_m3s": 7.796657763654537,
+          "mae_m3s": 37.28099392985153,
+          "nse": 0.19151124251203844,
+          "rmse_m3s": 55.92647641559685,
+          "sample_count": 524
+        },
+        "physical_open_loop": {
+          "bias_m3s": -5.783394787109478,
+          "mae_m3s": 24.074507840769808,
+          "nse": 0.6278496541228189,
+          "rmse_m3s": 37.943700081000145,
+          "sample_count": 524
+        },
+        "physical_residual_decay": {
+          "bias_m3s": 4.744550987602093,
+          "mae_m3s": 33.92940957168047,
+          "nse": 0.33628198444944224,
+          "rmse_m3s": 50.67249265282748,
+          "sample_count": 524
+        }
+      }
+    },
+    "scoring": {
+      "common_complete_case_count_by_horizon": {
+        "1": 538,
+        "12": 507,
+        "3": 532,
+        "6": 524
+      },
+      "comparison_uses_identical_rows_within_each_horizon": true,
+      "missing_values_imputed": false,
+      "omitted_target_times_by_horizon": {
+        "1": [
+          "2022-11-19T18:00:00Z",
+          "2022-11-27T06:00:00Z",
+          "2022-11-27T18:00:00Z",
+          "2022-11-28T19:00:00Z",
+          "2022-11-29T19:00:00Z",
+          "2022-11-30T00:00:00Z",
+          "2022-12-01T11:00:00Z"
+        ],
+        "12": [
+          "2022-11-19T14:00:00Z",
+          "2022-11-19T15:00:00Z",
+          "2022-11-19T17:00:00Z",
+          "2022-11-19T18:00:00Z",
+          "2022-11-19T19:00:00Z",
+          "2022-11-19T20:00:00Z",
+          "2022-11-19T21:00:00Z",
+          "2022-11-19T22:00:00Z",
+          "2022-11-19T23:00:00Z",
+          "2022-11-20T18:00:00Z",
+          "2022-11-20T20:00:00Z",
+          "2022-11-20T23:00:00Z",
+          "2022-11-27T06:00:00Z",
+          "2022-11-27T15:00:00Z",
+          "2022-11-27T17:00:00Z",
+          "2022-11-27T18:00:00Z",
+          "2022-11-28T19:00:00Z",
+          "2022-11-29T19:00:00Z",
+          "2022-11-29T21:00:00Z",
+          "2022-11-29T23:00:00Z",
+          "2022-11-30T00:00:00Z",
+          "2022-11-30T01:00:00Z",
+          "2022-11-30T02:00:00Z",
+          "2022-11-30T03:00:00Z",
+          "2022-11-30T04:00:00Z",
+          "2022-11-30T06:00:00Z",
+          "2022-12-01T11:00:00Z"
+        ],
+        "3": [
+          "2022-11-19T14:00:00Z",
+          "2022-11-19T15:00:00Z",
+          "2022-11-19T20:00:00Z",
+          "2022-11-24T02:00:00Z",
+          "2022-11-27T06:00:00Z",
+          "2022-11-28T19:00:00Z",
+          "2022-11-29T19:00:00Z",
+          "2022-11-29T21:00:00Z",
+          "2022-11-30T00:00:00Z",
+          "2022-11-30T02:00:00Z",
+          "2022-12-01T11:00:00Z"
+        ],
+        "6": [
+          "2022-11-19T14:00:00Z",
+          "2022-11-19T15:00:00Z",
+          "2022-11-19T17:00:00Z",
+          "2022-11-19T18:00:00Z",
+          "2022-11-19T23:00:00Z",
+          "2022-11-20T17:00:00Z",
+          "2022-11-24T02:00:00Z",
+          "2022-11-27T06:00:00Z",
+          "2022-11-27T15:00:00Z",
+          "2022-11-29T19:00:00Z",
+          "2022-11-29T21:00:00Z",
+          "2022-11-29T23:00:00Z",
+          "2022-11-30T00:00:00Z",
+          "2022-11-30T01:00:00Z",
+          "2022-11-30T03:00:00Z",
+          "2022-12-01T11:00:00Z"
+        ]
+      }
+    },
+    "window": {
+      "first_issue_time_utc": "2022-11-10T10:00:00Z",
+      "horizons_hours": [
+        1,
+        3,
+        6,
+        12
+      ],
+      "last_issue_time_utc": "2022-12-08T00:00:00Z"
+    }
+  },
+  "schema": "gwm.geotransport.geospatial_kernel_physical_residual_decay_transfer.v1",
+  "source_artifacts": {
+    "primary_target_comparison_rows": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_physical_routing_state_correction_posthoc/j_percy_priest_primary_predictions.csv",
+      "sha256": "679a24052e50015025f0126081041231021f4949870c6ffb241d3f40be2456da",
+      "size_bytes": 1128961
+    },
+    "replication_source_outcome_report": {
+      "path": "benchmarks/geotransport_v0_1/kinematic_wave_holdout_v2_outcomes_report.json",
+      "sha256": "2e61b7440746a33eb5a9ab51bb8248325e31206a7c153baa470fbbe625cfbd38",
+      "size_bytes": 6778
+    },
+    "replication_source_outcome_values": {
+      "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/outcomes/values/center_hill.csv",
+      "sha256": "5e90e6fcb393a412ce7a3223a45aeff55ed2594bfb37829dec5c5d39946eeae5",
+      "size_bytes": 43724
+    },
+    "replication_source_physical_rollout_report": {
+      "path": "benchmarks/geotransport_v0_1/kinematic_wave_holdout_v2_rollout_report.json",
+      "sha256": "82be075838f1579bcd24af3bfb3b1f20dc02f047da30c7d6e0e22ae1359b66e3",
+      "size_bytes": 8242
+    },
+    "replication_source_sealed_physical_predictions": {
+      "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/predictions/center_hill.csv",
+      "sha256": "2994c046171ec033b22bd5db7ef483a46c0219cb5a21119320a830be9414420d",
+      "size_bytes": 65443
+    },
+    "replication_target_comparison_rows": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_physical_routing_state_correction_posthoc/j_percy_priest_replication_predictions.csv",
+      "sha256": "7773338b8f54b37b8e6dfc56c26bc2d6781f720094362a262454609a74f7bb07",
+      "size_bytes": 1060579
+    },
+    "source_outcome_report": {
+      "path": "benchmarks/geotransport_v0_1/geotransport_v2_blind_validation_outcomes_report.json",
+      "sha256": "9f299c3610501f9d223f658c538a1db612f1d2ff3e02bc565abf0c55f20731d6",
+      "size_bytes": 5549
+    },
+    "source_outcome_values": {
+      "path": "data/geotransport_v0_1/geotransport_v2_blind_validation/outcomes/values/center_hill.csv",
+      "sha256": "e26c77c58aa6aa8849dde1522193330d55aa300acebcc66591fcd89f7f4ea23f",
+      "size_bytes": 43749
+    },
+    "source_physical_rollout_report": {
+      "path": "benchmarks/geotransport_v0_1/geotransport_v2_blind_validation_rollout_report.json",
+      "sha256": "b7430983224d4c3facfede6df87484f0a37414da6fd0f6e7bd96052c527114db",
+      "size_bytes": 5834
+    },
+    "source_sealed_physical_predictions": {
+      "path": "data/geotransport_v0_1/geotransport_v2_blind_validation/predictions/center_hill.csv",
+      "sha256": "ade3586c0b62d65d459b8acce554ee13eed1d1ba0bbec1bf2e52b792431554ef",
+      "size_bytes": 85258
+    },
+    "target_comparison_report": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_physical_routing_state_correction_posthoc_report.json",
+      "sha256": "8185ea7e781cb3de4175908e91a42a5b7f4bf5ed2957bb3d285521b398437fd6",
+      "size_bytes": 27460
+    }
+  },
+  "source_fit_contract": {
+    "coefficient_lower_bound": 0.0,
+    "coefficient_upper_bound": 1.0,
+    "formula": "max(0, physical(target) + rho^(horizon + observation_latency) * (observed(latest) - physical(latest)))",
+    "free_parameter_count": 1,
+    "model_family": "bounded_zero_intercept_physical_residual_AR1",
+    "per_target_window_refit_performed": false,
+    "residual_decay_coefficient": 0.9668996582212471,
+    "same_parameter_used_across_target_windows": true,
+    "source_operator": "BranchingManningNetworkTransportOperator",
+    "source_system_id": "center_hill",
+    "target_outcomes_used_for_fit": false,
+    "target_system_id": "j_percy_priest",
+    "training_pair_count": 669
+  },
+  "status": "source_fitted_physical_residual_decay_transfer_posthoc_complete",
+  "transfer_contract": {
+    "primary_to_replication_parameter_refit_performed": false,
+    "primary_window": "cross_system_same_window_same_physical_operator_form",
+    "replication_window": "cross_system_temporal_and_physical_operator_form_transfer",
+    "source_to_target_parameter_refit_performed": false
+  }
+}

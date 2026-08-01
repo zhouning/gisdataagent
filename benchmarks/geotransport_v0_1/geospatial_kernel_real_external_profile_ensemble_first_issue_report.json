@@ -1,0 +1,420 @@
+{
+  "claim_boundary": {
+    "candidate_admitted": false,
+    "development_integration_only": true,
+    "external_physical_uncertainty_profile_executed": true,
+    "forecast_skill_scored": false,
+    "geospatial_kernel_validated": false,
+    "graph_partition_ensemble_executed": true,
+    "physical_ensemble_cycle_integrated": true,
+    "predictive_validation_complete": false,
+    "real_center_hill_cycle_executed": true,
+    "real_j_percy_priest_cycle_executed": true,
+    "runtime_default_enabled": false,
+    "superiority_claim_supported": false
+  },
+  "data_isolation": {
+    "forecast_skill_computed": false,
+    "future_target_values_loaded": false,
+    "historical_issue_observation_publication_at_issue_time_verified": false,
+    "input_accepts_future_target": false,
+    "input_accepts_outcome_path": false,
+    "input_accepts_score_or_loss": false,
+    "issue_observation_source": "sealed_outcome_free_predictions_issue_observed_outlet_m3s",
+    "outcome_artifact_loaded": false,
+    "scoring_artifact_loaded": false
+  },
+  "design": {
+    "ensemble_design": "external_profile_graph_partition",
+    "ensemble_member_count": 25,
+    "external_feature_profile_used": true,
+    "forecast_horizon_hours": 12,
+    "graph_partition_mode_count": 3,
+    "graph_partition_semantics": "normalized_length_weighted_graph_laplacian_low_frequency_sign_partitions",
+    "initial_storage_fraction": null,
+    "integration_substep_seconds": 300.0,
+    "issue_observation_used_to_construct_members": false,
+    "localization_radius_m": 100000.0,
+    "manning_n_fraction": null,
+    "modeled_forcing_fraction": null,
+    "observation_error_model": {
+      "absolute_floor_m3s": 1.0,
+      "relative_fraction": 0.1
+    },
+    "per_feature_sample_variance_by_source": "feature_fraction_squared_divided_by_three",
+    "perturbations_selected_without_future_target_fit": true,
+    "spatial_modes_derived_from_topology_only": true,
+    "timestep_seconds": 3600.0
+  },
+  "execution_gates": {
+    "all_system_gates_passed": true,
+    "system_count": 2
+  },
+  "input_artifacts": {
+    "external_physical_uncertainty_profile": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_external_physical_uncertainty_profiles.json",
+      "sha256": "9fe4cf7d70e920ac1e90a40f7650abca14079b741b55999b61f7342714793512",
+      "size_bytes": 60577
+    },
+    "outcome_free_rollout_report": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_rollout_report.json",
+      "sha256": "59d3e818c1db3ec8a7a26424b8ffb50d4b2ac86197443bede9b1ea081fb9cd45",
+      "size_bytes": 26777
+    },
+    "protocol": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_protocol.json",
+      "sha256": "b17e5a8fb36e05c111a8b87e5298e534516b9b3e3ce3ec46e4c003f1b5853722",
+      "size_bytes": 19562
+    },
+    "sealed_prediction_source": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/predictions.csv",
+      "sha256": "7cace0b963bfc2914130f3e002627f0aa48f0109abc4a82fbd09de93df53ac5a",
+      "size_bytes": 242583
+    },
+    "static_input_report": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_static_inputs_report.json",
+      "sha256": "00b80bbb00ef9222c95661e1226e6003204d130f0020043f5c54994674cd65e4",
+      "size_bytes": 27487
+    }
+  },
+  "issue_time_utc": "2022-04-28T01:00:00Z",
+  "reference_time_utc": "2022-04-28T00:00:00Z",
+  "schema": "gwm.geospatial_kernel.real_ensemble_first_issue.v1",
+  "status": "real_two_system_first_issue_ensemble_cycle_executed",
+  "systems": {
+    "center_hill": {
+      "ensemble_design": "external_profile_graph_partition",
+      "ensemble_member_count": 25,
+      "execution_gates": {
+        "all_passed": true,
+        "all_physical_mass_balances_passed": true,
+        "analysis_mass_accounting_passed": true,
+        "expected_physical_members_executed": true,
+        "feature_axis_matches_real_network": true,
+        "forecast_ensemble_spread_nonzero": true,
+        "issue_innovation_absolute_value_reduced": true,
+        "physical_mass_check_counts_match": true,
+        "prior_gauge_ensemble_spread_nonzero": true
+      },
+      "external_uncertainty_profile": {
+        "admitted": false,
+        "amplitude_summary": {
+          "initial_storage": {
+            "maximum": 0.9963001504819633,
+            "median": 0.8862929222667452,
+            "minimum": 0.0,
+            "nonzero_feature_count": 425,
+            "p25": 0.3866600251459671,
+            "p75": 0.9688785429509865,
+            "p90": 0.9845413441970133,
+            "p95": 0.9869037876627018
+          },
+          "manning_n": {
+            "maximum": 0.3333333333333333,
+            "median": 0.3333333333333333,
+            "minimum": 0.3333333333333333,
+            "nonzero_feature_count": 435,
+            "p25": 0.3333333333333333,
+            "p75": 0.3333333333333333,
+            "p90": 0.3333333333333333,
+            "p95": 0.3333333333333333
+          },
+          "modeled_forcing": {
+            "maximum": 0.3125000002910383,
+            "median": 0.0,
+            "minimum": 0.0,
+            "nonzero_feature_count": 42,
+            "p25": 0.0,
+            "p75": 0.0,
+            "p90": 0.0,
+            "p95": 0.10460752891977922
+          }
+        },
+        "evaluation_outcome_derived": false,
+        "profile_id": "external-physical-diagnostic:center_hill",
+        "source_semantic_roles": {
+          "initial_storage": "model_closure_discrepancy",
+          "manning_n": "hydraulic_structural_contrast",
+          "modeled_forcing": "forcing_change_proxy"
+        }
+      },
+      "feature_count": 435,
+      "forecast_by_horizon_hours": {
+        "1": {
+          "mean_m3s": 121.26540030283927,
+          "median_m3s": 116.7513293535219,
+          "p05_m3s": 88.04455947596459,
+          "p90_spread_m3s": 85.22535369224268,
+          "p95_m3s": 173.26991316820727,
+          "valid_time_utc": "2022-04-28T02:00:00Z"
+        },
+        "12": {
+          "mean_m3s": 122.62698119382665,
+          "median_m3s": 124.17406296857939,
+          "p05_m3s": 93.63635786493928,
+          "p90_spread_m3s": 44.82454468820039,
+          "p95_m3s": 138.46090255313968,
+          "valid_time_utc": "2022-04-28T13:00:00Z"
+        },
+        "3": {
+          "mean_m3s": 121.16414274356396,
+          "median_m3s": 117.1669536297802,
+          "p05_m3s": 87.92805117438661,
+          "p90_spread_m3s": 88.88556418986704,
+          "p95_m3s": 176.81361536425365,
+          "valid_time_utc": "2022-04-28T04:00:00Z"
+        },
+        "6": {
+          "mean_m3s": 121.29800115051427,
+          "median_m3s": 119.62980619655504,
+          "p05_m3s": 90.0460125453571,
+          "p90_spread_m3s": 82.08039834521973,
+          "p95_m3s": 172.12641089057684,
+          "valid_time_utc": "2022-04-28T07:00:00Z"
+        }
+      },
+      "historical_transition": {
+        "distributed_q_lateral_total_m3s": 0.800000011920929,
+        "reservoir_release_m3s": 199.46386739,
+        "step_count": 1
+      },
+      "member_ids": [
+        "nominal",
+        "initial_storage_low",
+        "initial_storage_high",
+        "initial_storage_graph_partition_01_minus",
+        "initial_storage_graph_partition_01_plus",
+        "initial_storage_graph_partition_02_minus",
+        "initial_storage_graph_partition_02_plus",
+        "initial_storage_graph_partition_03_minus",
+        "initial_storage_graph_partition_03_plus",
+        "manning_n_low",
+        "manning_n_high",
+        "manning_n_graph_partition_01_minus",
+        "manning_n_graph_partition_01_plus",
+        "manning_n_graph_partition_02_minus",
+        "manning_n_graph_partition_02_plus",
+        "manning_n_graph_partition_03_minus",
+        "manning_n_graph_partition_03_plus",
+        "modeled_forcing_low",
+        "modeled_forcing_high",
+        "modeled_forcing_graph_partition_01_minus",
+        "modeled_forcing_graph_partition_01_plus",
+        "modeled_forcing_graph_partition_02_minus",
+        "modeled_forcing_graph_partition_02_plus",
+        "modeled_forcing_graph_partition_03_minus",
+        "modeled_forcing_graph_partition_03_plus"
+      ],
+      "outlet_feature_id": 18421703,
+      "physical_mass_ledger": {
+        "all_passed": true,
+        "check_count": 325,
+        "maximum_absolute_residual_m3": 4.079192876815796e-06,
+        "pass_count": 325
+      },
+      "prior_state_ensemble": {
+        "anomaly_matrix_rank": 19,
+        "covariance_effective_rank": 3.739110835513507,
+        "feature_count_with_nonzero_sample_variance": 391,
+        "maximum_possible_rank": 24
+      },
+      "state_analysis": {
+        "absolute_innovation_reduction_fraction": 0.030473396714932766,
+        "absolute_innovation_to_prior_std_ratio": 1.0233437889777823,
+        "analysis_ensemble_mean_at_gauge_m3s": 121.72229927659023,
+        "analysis_ensemble_std_at_gauge_m3s": 26.17334561065272,
+        "forecast_ensemble_mean_at_gauge_m3s": 122.55766844795112,
+        "forecast_ensemble_std_at_gauge_m3s": 26.787736627799354,
+        "innovation_after_analysis_m3s": -26.57769472747023,
+        "innovation_before_analysis_m3s": -27.413063898831112,
+        "issue_observed_outlet_m3s": 95.14460454912,
+        "localization_supported_feature_count": 435,
+        "localized_nonzero_gain_feature_count": 391,
+        "mass_accounting_passed": true,
+        "maximum_absolute_mass_accounting_residual_m3": 4.48198989033699e-09,
+        "mean_external_analysis_increment_m3": 31828.73582277625,
+        "observation_covariance_condition_number": 1.0,
+        "observation_error_std_m3s": 9.514460454912001
+      },
+      "system_id": "center_hill",
+      "uncertainty_sources_varied": {
+        "boundary_action": false,
+        "initial_storage": true,
+        "manning_roughness": true,
+        "modeled_forcing": true
+      }
+    },
+    "j_percy_priest": {
+      "ensemble_design": "external_profile_graph_partition",
+      "ensemble_member_count": 25,
+      "execution_gates": {
+        "all_passed": true,
+        "all_physical_mass_balances_passed": true,
+        "analysis_mass_accounting_passed": true,
+        "expected_physical_members_executed": true,
+        "feature_axis_matches_real_network": true,
+        "forecast_ensemble_spread_nonzero": true,
+        "issue_innovation_absolute_value_reduced": true,
+        "physical_mass_check_counts_match": true,
+        "prior_gauge_ensemble_spread_nonzero": true
+      },
+      "external_uncertainty_profile": {
+        "admitted": false,
+        "amplitude_summary": {
+          "initial_storage": {
+            "maximum": 0.9956469282883991,
+            "median": 0.38330425389778433,
+            "minimum": 0.0,
+            "nonzero_feature_count": 40,
+            "p25": 0.16413560703232663,
+            "p75": 0.930970125535511,
+            "p90": 0.9734159645694729,
+            "p95": 0.9842505865318801
+          },
+          "manning_n": {
+            "maximum": 0.3333333333333333,
+            "median": 0.3333333333333333,
+            "minimum": 0.3333333333333333,
+            "nonzero_feature_count": 43,
+            "p25": 0.3333333333333333,
+            "p75": 0.3333333333333333,
+            "p90": 0.3333333333333333,
+            "p95": 0.3333333333333333
+          },
+          "modeled_forcing": {
+            "maximum": 0.6182795699420058,
+            "median": 0.09900990100470655,
+            "minimum": 0.0,
+            "nonzero_feature_count": 22,
+            "p25": 0.0,
+            "p75": 0.3125000002910383,
+            "p90": 0.4325396826154743,
+            "p95": 0.44613161239852606
+          }
+        },
+        "evaluation_outcome_derived": false,
+        "profile_id": "external-physical-diagnostic:j_percy_priest",
+        "source_semantic_roles": {
+          "initial_storage": "model_closure_discrepancy",
+          "manning_n": "hydraulic_structural_contrast",
+          "modeled_forcing": "forcing_change_proxy"
+        }
+      },
+      "feature_count": 43,
+      "forecast_by_horizon_hours": {
+        "1": {
+          "mean_m3s": 98.06488527422347,
+          "median_m3s": 97.11014549621956,
+          "p05_m3s": 77.38241726814108,
+          "p90_spread_m3s": 45.06520932409933,
+          "p95_m3s": 122.44762659224041,
+          "valid_time_utc": "2022-04-28T02:00:00Z"
+        },
+        "12": {
+          "mean_m3s": 30.468986276583337,
+          "median_m3s": 29.080878609258296,
+          "p05_m3s": 22.991961052362875,
+          "p90_spread_m3s": 22.585533906874808,
+          "p95_m3s": 45.57749495923768,
+          "valid_time_utc": "2022-04-28T13:00:00Z"
+        },
+        "3": {
+          "mean_m3s": 107.4586768968976,
+          "median_m3s": 108.26248283060623,
+          "p05_m3s": 99.02623086366604,
+          "p90_spread_m3s": 14.701094210432714,
+          "p95_m3s": 113.72732507409876,
+          "valid_time_utc": "2022-04-28T04:00:00Z"
+        },
+        "6": {
+          "mean_m3s": 30.430308226520136,
+          "median_m3s": 30.835659595765225,
+          "p05_m3s": 20.220263350019884,
+          "p90_spread_m3s": 18.714234256154022,
+          "p95_m3s": 38.934497606173906,
+          "valid_time_utc": "2022-04-28T07:00:00Z"
+        }
+      },
+      "historical_transition": {
+        "distributed_q_lateral_total_m3s": 0.5000000074505806,
+        "reservoir_release_m3s": 130.25749432,
+        "step_count": 1
+      },
+      "member_ids": [
+        "nominal",
+        "initial_storage_low",
+        "initial_storage_high",
+        "initial_storage_graph_partition_01_minus",
+        "initial_storage_graph_partition_01_plus",
+        "initial_storage_graph_partition_02_minus",
+        "initial_storage_graph_partition_02_plus",
+        "initial_storage_graph_partition_03_minus",
+        "initial_storage_graph_partition_03_plus",
+        "manning_n_low",
+        "manning_n_high",
+        "manning_n_graph_partition_01_minus",
+        "manning_n_graph_partition_01_plus",
+        "manning_n_graph_partition_02_minus",
+        "manning_n_graph_partition_02_plus",
+        "manning_n_graph_partition_03_minus",
+        "manning_n_graph_partition_03_plus",
+        "modeled_forcing_low",
+        "modeled_forcing_high",
+        "modeled_forcing_graph_partition_01_minus",
+        "modeled_forcing_graph_partition_01_plus",
+        "modeled_forcing_graph_partition_02_minus",
+        "modeled_forcing_graph_partition_02_plus",
+        "modeled_forcing_graph_partition_03_minus",
+        "modeled_forcing_graph_partition_03_plus"
+      ],
+      "outlet_feature_id": 18401497,
+      "physical_mass_ledger": {
+        "all_passed": true,
+        "check_count": 325,
+        "maximum_absolute_residual_m3": 1.417938619852066e-06,
+        "pass_count": 325
+      },
+      "prior_state_ensemble": {
+        "anomaly_matrix_rank": 17,
+        "covariance_effective_rank": 1.4833145216272214,
+        "feature_count_with_nonzero_sample_variance": 37,
+        "maximum_possible_rank": 24
+      },
+      "state_analysis": {
+        "absolute_innovation_reduction_fraction": 0.525272068467785,
+        "absolute_innovation_to_prior_std_ratio": 5.336832599422554,
+        "analysis_ensemble_mean_at_gauge_m3s": 106.1268998257665,
+        "analysis_ensemble_std_at_gauge_m3s": 16.975927267601534,
+        "forecast_ensemble_mean_at_gauge_m3s": 60.628088823790804,
+        "forecast_ensemble_std_at_gauge_m3s": 16.230509734178554,
+        "innovation_after_analysis_m3s": 41.120702452633495,
+        "innovation_before_analysis_m3s": 86.61951345460919,
+        "issue_observed_outlet_m3s": 147.2476022784,
+        "localization_supported_feature_count": 43,
+        "localized_nonzero_gain_feature_count": 37,
+        "mass_accounting_passed": true,
+        "maximum_absolute_mass_accounting_residual_m3": 1.7462298274040222e-10,
+        "mean_external_analysis_increment_m3": 102253.79080408112,
+        "observation_covariance_condition_number": 1.0,
+        "observation_error_std_m3s": 14.724760227840001
+      },
+      "system_id": "j_percy_priest",
+      "uncertainty_sources_varied": {
+        "boundary_action": false,
+        "initial_storage": true,
+        "manning_roughness": true,
+        "modeled_forcing": true
+      }
+    }
+  },
+  "time_alignment": {
+    "analysis_observation_valid_at_utc": "2022-04-28T01:00:00Z",
+    "forecast_action_rows_start_at_issue_time": true,
+    "forecast_q_lateral_rows_start_after_issue_time": true,
+    "historical_cwms_action_timestamp_role": "support_end",
+    "historical_nwm_q_lateral_timestamp_role": "assumed_support_end_for_hourly_transition",
+    "historical_transition_support": "[reference_time, issue_time]",
+    "initial_modeled_state_valid_at_utc": "2022-04-28T00:00:00Z",
+    "nwm_q_lateral_interval_support_verified": false
+  }
+}

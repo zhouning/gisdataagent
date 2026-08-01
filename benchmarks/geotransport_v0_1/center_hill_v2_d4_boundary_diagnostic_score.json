@@ -1,0 +1,76 @@
+{
+  "claim_boundary": {
+    "d4_predictive_improvement_validated": false,
+    "executor_outcome_isolation_verified": true,
+    "full_subnetwork_routing_validated": false,
+    "geospatial_kernel_validated": false,
+    "modeled_boundary_ground_truth": false,
+    "modeled_boundary_possible_nudging": true,
+    "score_is_post_hoc": true
+  },
+  "generated_at": "2026-07-27T04:21:07.332473+00:00",
+  "input_side_flux": {
+    "d3_mean_bias_magnitude_m3s": 84.86860175757249,
+    "modeled_tributary_boundary_mean_m3s": 63.90647178587286,
+    "ratio_to_d3_mean_bias_magnitude": 0.7530048859343996
+  },
+  "metrics": {
+    "d3_nonlinear_central": {
+      "bias_m3s": -84.86860175757249,
+      "mae_m3s": 104.23417909598517,
+      "nse": 0.06962127304459043,
+      "rmse_m3s": 162.75254022543567
+    },
+    "d4_modeled_tributary_boundary": {
+      "bias_m3s": -21.013482122675306,
+      "mae_m3s": 52.08516542729352,
+      "nse": 0.8251999165648498,
+      "rmse_m3s": 70.54540119390298
+    },
+    "persistence": {
+      "bias_m3s": -0.6417642464121429,
+      "mae_m3s": 11.296019914272382,
+      "nse": 0.9920356783180612,
+      "rmse_m3s": 15.05817313955653
+    }
+  },
+  "non_gating_diagnostics": {
+    "absolute_bias_change_from_d3_m3s": -63.855119634897186,
+    "d4_beats_d3_central_rmse": true,
+    "d4_beats_persistence_rmse": false,
+    "interpretation": "These comparisons diagnose the already public failure window; they do not validate or select the D4 model.",
+    "rmse_change_from_d3_m3s": -92.20713903153269
+  },
+  "schema": "gwm.geotransport.center_hill_v2_d4_boundary_diagnostic_score.v1",
+  "scored_hour_count": 672,
+  "source_artifacts": {
+    "independent_outcomes": {
+      "path": "data/geotransport_v0_1/center_hill_v2_d3_inputs/outcome/outcome_values.csv",
+      "sha256": "3babe22584fde65dc3b132968d472f279dd4c16fe1fb5e93af2c9dc3cc36ada9",
+      "size_bytes": 38937
+    },
+    "outcome_manifest": {
+      "path": "data/geotransport_v0_1/center_hill_v2_d3_inputs/outcome/acquisition_manifest.json",
+      "sha256": "00b9f3d8da9f3920b7b15782ad54a6e564fed0ab00ae0db7f639829c33e1a580",
+      "size_bytes": 2783
+    },
+    "sealed_outcome_free_rollout": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_v2_d4_boundary_rollout_report.json",
+      "sha256": "4b09b8ac71760230a779e8f2816ba797fe4b0a0d3661fe9b6016bdb7c41f01bf",
+      "size_bytes": 5193
+    },
+    "sealed_predictions": {
+      "path": "data/geotransport_v0_1/center_hill_v2_d4_boundary_rollout/predictions.csv",
+      "sha256": "25d69d97411eee6dfaec533136c151ef23dbe57d5d3222fb6bebdbcd29847e41",
+      "size_bytes": 78469
+    }
+  },
+  "status": "post_hoc_diagnostic_complete_no_activation_gate",
+  "window_role": {
+    "activation_gate_registered": false,
+    "model_selection_allowed": false,
+    "name": "D3 public falsification/development window",
+    "parameter_tuning_allowed": false,
+    "prospective_holdout": false
+  }
+}

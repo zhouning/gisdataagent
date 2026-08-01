@@ -1,0 +1,286 @@
+{
+  "all_gates_passed": true,
+  "catalog_summary": {
+    "catalog_total": 37,
+    "catalog_type": "TIMESERIES",
+    "entry_count": 37,
+    "next_page_token_present": false,
+    "office": "LRN",
+    "page_size": 500,
+    "pagination_followed": false,
+    "selected_component_count": 4
+  },
+  "compiled_at": "2026-07-30T09:15:12.823977+00:00",
+  "component_summary": [
+    {
+      "aliases": [
+        {
+          "name": "Lakes-CEHT1-CENTER_HILL",
+          "value": "Orifice Flow"
+        },
+        {
+          "name": "StrGages-CETT1-CENTER_HILL",
+          "value": "Orifice"
+        },
+        {
+          "name": "null-null",
+          "value": "CETT1-CENTER_HILL.Flow-Orifice.Ave.1Hour.1Hour.man-rev"
+        }
+      ],
+      "catalog_identity_only": true,
+      "causal_intervention_admitted": false,
+      "component": "orifice",
+      "coverage_continuity_verified": false,
+      "display_alias": "Orifice Flow",
+      "earliest_time_utc": "2008-08-04T06:00:00Z",
+      "extent_record_count": 1,
+      "gate_command_admitted": false,
+      "human_action_admitted": false,
+      "interval": "1Hour",
+      "interval_offset": 0,
+      "last_update_utc": "2026-07-28T05:23:11.791484Z",
+      "latest_time_utc": "2026-07-28T05:00:00Z",
+      "manually_revised": true,
+      "office": "LRN",
+      "runtime_operator_admitted": false,
+      "series_id": "CETT1-CENTER_HILL.Flow-Orifice.Ave.1Hour.1Hour.man-rev",
+      "time_zone": "US/Central",
+      "unique_extent_count": 1,
+      "units": "cms",
+      "values_acquired": false
+    },
+    {
+      "aliases": [
+        {
+          "name": "Lakes-CEHT1-CENTER_HILL",
+          "value": "Sluice Gate Flow"
+        },
+        {
+          "name": "StrGages-CETT1-CENTER_HILL",
+          "value": "Sluice"
+        },
+        {
+          "name": "null-null",
+          "value": "CETT1-CENTER_HILL.Flow-Sluice.Ave.1Hour.1Hour.man-rev"
+        }
+      ],
+      "catalog_identity_only": true,
+      "causal_intervention_admitted": false,
+      "component": "sluice",
+      "coverage_continuity_verified": false,
+      "display_alias": "Sluice Gate Flow",
+      "earliest_time_utc": "2004-09-30T19:00:00Z",
+      "extent_record_count": 9,
+      "gate_command_admitted": false,
+      "human_action_admitted": false,
+      "interval": "1Hour",
+      "interval_offset": 0,
+      "last_update_utc": "2026-07-28T05:23:11.223287Z",
+      "latest_time_utc": "2026-07-28T05:00:00Z",
+      "manually_revised": true,
+      "office": "LRN",
+      "runtime_operator_admitted": false,
+      "series_id": "CETT1-CENTER_HILL.Flow-Sluice.Ave.1Hour.1Hour.man-rev",
+      "time_zone": "US/Central",
+      "unique_extent_count": 1,
+      "units": "cms",
+      "values_acquired": false
+    },
+    {
+      "aliases": [
+        {
+          "name": "Lakes-CEHT1-CENTER_HILL",
+          "value": "Spillway Flow"
+        },
+        {
+          "name": "SHEF Export-CETT1",
+          "value": "CETT1.QU.RZZZ.1001:TZ=UTC;DLTime=false;Units=cfs"
+        },
+        {
+          "name": "SHEF Export-COERR1LRN",
+          "value": "CETT1.QU.RZZZ.1001:TZ=UTC;DLTime=false;Units=cfs"
+        },
+        {
+          "name": "StrGages-CETT1-CENTER_HILL",
+          "value": "Spillway"
+        },
+        {
+          "name": "null-null",
+          "value": "CETT1-CENTER_HILL.Flow-Spillway.Ave.1Hour.1Hour.man-rev"
+        }
+      ],
+      "catalog_identity_only": true,
+      "causal_intervention_admitted": false,
+      "component": "spillway",
+      "coverage_continuity_verified": false,
+      "display_alias": "Spillway Flow",
+      "earliest_time_utc": "1987-05-20T05:00:00Z",
+      "extent_record_count": 9,
+      "gate_command_admitted": false,
+      "human_action_admitted": false,
+      "interval": "1Hour",
+      "interval_offset": 0,
+      "last_update_utc": "2026-07-28T05:25:22.176377Z",
+      "latest_time_utc": "2026-07-28T05:00:00Z",
+      "manually_revised": true,
+      "office": "LRN",
+      "runtime_operator_admitted": false,
+      "series_id": "CETT1-CENTER_HILL.Flow-Spillway.Ave.1Hour.1Hour.man-rev",
+      "time_zone": "US/Central",
+      "unique_extent_count": 1,
+      "units": "cms",
+      "values_acquired": false
+    },
+    {
+      "aliases": [
+        {
+          "name": "Lakes-CEHT1-CENTER_HILL",
+          "value": "Turbine Flow"
+        },
+        {
+          "name": "SHEF Export-CETT1",
+          "value": "CETT1.QG.RZZZ.1001:TZ=UTC;DLTime=false;Units=cfs"
+        },
+        {
+          "name": "SHEF Export-COERR1LRN",
+          "value": "CETT1.QG.RZZZ.1001:TZ=UTC;DLTime=false;Units=cfs"
+        },
+        {
+          "name": "StrGages-CETT1-CENTER_HILL",
+          "value": "Turbine"
+        },
+        {
+          "name": "null-null",
+          "value": "CETT1-CENTER_HILL.Flow-Turbine.Ave.1Hour.1Hour.man-rev"
+        }
+      ],
+      "catalog_identity_only": true,
+      "causal_intervention_admitted": false,
+      "component": "turbine",
+      "coverage_continuity_verified": false,
+      "display_alias": "Turbine Flow",
+      "earliest_time_utc": "1987-05-20T05:00:00Z",
+      "extent_record_count": 1,
+      "gate_command_admitted": false,
+      "human_action_admitted": false,
+      "interval": "1Hour",
+      "interval_offset": 0,
+      "last_update_utc": "2026-07-28T05:25:21.080918Z",
+      "latest_time_utc": "2026-07-28T05:00:00Z",
+      "manually_revised": true,
+      "office": "LRN",
+      "runtime_operator_admitted": false,
+      "series_id": "CETT1-CENTER_HILL.Flow-Turbine.Ave.1Hour.1Hour.man-rev",
+      "time_zone": "US/Central",
+      "unique_extent_count": 1,
+      "units": "cms",
+      "values_acquired": false
+    }
+  ],
+  "decision": {
+    "catalog_checkpoint_admitted": true,
+    "causal_interventions_admitted": false,
+    "component_discharge_source_identities_admitted": true,
+    "component_discharge_source_identity_count": 4,
+    "component_values_acquisition_admitted": false,
+    "coverage_continuity_admitted": false,
+    "gate_commands_admitted": false,
+    "human_actions_admitted": false,
+    "runtime_operators_admitted": false,
+    "separate_bounded_value_acquisition_plan_required": true,
+    "stage37_negative_result_preserved": true
+  },
+  "frozen_artifacts": {
+    "benchmarks/geotransport_v0_1/stage37_hydraulic_boundary_falsification_gates.json": {
+      "actual_sha256": "f1326a8b2ae2e766b71556697849fe5ea84daa4b706337be1b2f08c0aa81e71d",
+      "expected_sha256": "f1326a8b2ae2e766b71556697849fe5ea84daa4b706337be1b2f08c0aa81e71d",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage37_center_hill_hydraulic_boundary_falsification/hydraulic_boundary_falsification_ledger.json": {
+      "actual_sha256": "2bad541ec95387ca57bdf63a916b72c95a50db346befa96de77f56f0d1a7a989",
+      "expected_sha256": "2bad541ec95387ca57bdf63a916b72c95a50db346befa96de77f56f0d1a7a989",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage38_center_hill_cwms_component_discharge_catalog/catalog_acquisition_manifest.json": {
+      "actual_sha256": "2c908e632c9f389730f7c5184ed719bdc87bf49f5058ee29832ef19c8d3601ac",
+      "expected_sha256": "2c908e632c9f389730f7c5184ed719bdc87bf49f5058ee29832ef19c8d3601ac",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage38_center_hill_cwms_component_discharge_catalog/raw/center_hill_timeseries_catalog.json": {
+      "actual_sha256": "845f357258d6c2729363df7eb0ba85735a35dbdfc82e8e455d34a1f1c66a2312",
+      "expected_sha256": "845f357258d6c2729363df7eb0ba85735a35dbdfc82e8e455d34a1f1c66a2312",
+      "matches": true
+    },
+    "data_agent/test_geospatial_kernel_cwms_component_discharge_catalog.py": {
+      "actual_sha256": "1c9ce5c35db9cab487b242108f3bba3b876cc95e8055fe9520e5dddc0b852dc1",
+      "expected_sha256": "1c9ce5c35db9cab487b242108f3bba3b876cc95e8055fe9520e5dddc0b852dc1",
+      "matches": true
+    },
+    "data_agent/test_geospatial_kernel_public_cwms_component_discharge_catalog.py": {
+      "actual_sha256": "373a5b85dac993c78ed5c883785e50677235e58c0c5488c2ee8ac64dc1b2887a",
+      "expected_sha256": "373a5b85dac993c78ed5c883785e50677235e58c0c5488c2ee8ac64dc1b2887a",
+      "matches": true
+    },
+    "data_agent/uwm/geospatial_kernel_v2/cwms_component_discharge_catalog.py": {
+      "actual_sha256": "53d308373fa1a75343056a32bb7878c3ccea773f68f3bf74cd3ee4a32e727bb7",
+      "expected_sha256": "53d308373fa1a75343056a32bb7878c3ccea773f68f3bf74cd3ee4a32e727bb7",
+      "matches": true
+    },
+    "data_agent/uwm/geospatial_kernel_v2/public_cwms_component_discharge_catalog.py": {
+      "actual_sha256": "c215c5a77465519d5f0863f896e023540cb3e1b9bf48496e685680a16bf1fdb3",
+      "expected_sha256": "c215c5a77465519d5f0863f896e023540cb3e1b9bf48496e685680a16bf1fdb3",
+      "matches": true
+    }
+  },
+  "gates": {
+    "all_component_sources_are_hourly_with_zero_offset": true,
+    "all_component_sources_are_lrn": true,
+    "all_component_sources_are_manual_revision_series": true,
+    "all_component_sources_use_cubic_metres_per_second": true,
+    "all_component_sources_use_us_central_catalog_timezone": true,
+    "all_eight_stage37_and_stage38_artifacts_match": true,
+    "approved_exact_catalog_url_is_preserved": true,
+    "catalog_download_remained_below_one_megabyte": true,
+    "catalog_extents_do_not_admit_continuous_coverage": true,
+    "catalog_identities_do_not_admit_causal_interventions": true,
+    "catalog_identities_do_not_admit_gate_commands": true,
+    "catalog_identities_do_not_admit_human_actions": true,
+    "catalog_identities_do_not_admit_runtime_operators": true,
+    "catalog_manifest_is_content_addressed": true,
+    "catalog_request_succeeded_on_first_attempt": true,
+    "catalog_response_has_37_entries_and_no_pagination": true,
+    "catalog_total_is_exactly_thirty_seven": true,
+    "component_earliest_catalog_extents_are_exact": true,
+    "component_latest_catalog_extents_are_exact": true,
+    "component_order_is_orifice_sluice_spillway_turbine": true,
+    "exactly_four_component_sources_are_selected": true,
+    "four_display_aliases_are_explicit": true,
+    "four_hourly_manual_revision_series_ids_are_exact": true,
+    "historical_value_acquisition_is_not_admitted": true,
+    "no_workspace_data_or_timeseries_values_were_requested": true,
+    "one_logical_catalog_request_was_made": true,
+    "raw_catalog_sha256_is_exact": true,
+    "raw_catalog_size_is_exact": true,
+    "separate_bounded_value_plan_is_required": true,
+    "six_typed_refusal_controls_fail_closed": true,
+    "stage37_gate_report_is_exactly_bound": true,
+    "stage37_ledger_is_exactly_bound": true,
+    "stage37_negative_result_is_preserved": true,
+    "stage38_ledger_is_content_addressed": true
+  },
+  "refusal_controls": {
+    "causal_intervention": true,
+    "continuous_coverage": true,
+    "gate_command": true,
+    "historical_values": true,
+    "human_action": true,
+    "runtime_operator": true
+  },
+  "schema": "gwm.geotransport.stage38_cwms_component_discharge_catalog_gates.v1",
+  "stage38_ledger_artifact": {
+    "path": "data/geotransport_v0_1/stage38_center_hill_cwms_component_discharge_catalog/cwms_component_discharge_catalog_ledger.json",
+    "sha256": "1cbd80d6ffde6c142dbf2f364475c6b94713b93d8f6de348d8bfecb40e4af7b4",
+    "size_bytes": 8986
+  },
+  "status": "stage38_cwms_component_discharge_catalog_checkpoint_admitted"
+}

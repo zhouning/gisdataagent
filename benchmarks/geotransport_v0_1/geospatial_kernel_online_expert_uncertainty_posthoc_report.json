@@ -1,0 +1,657 @@
+{
+  "claim_boundary": {
+    "conditional_coverage_guarantee_claimed": false,
+    "empirical_historical_coverage_audited": true,
+    "finite_sample_coverage_guarantee_claimed": false,
+    "geospatial_kernel_validated": false,
+    "online_uncertainty_operator_implemented": true,
+    "runtime_default_enabled": false,
+    "uncertainty_candidate_admitted": false,
+    "v5_or_selector_superiority_validated": false
+  },
+  "diagnostic_interpretation": {
+    "all_four_windows_have_evaluable_intervals": true,
+    "equal_mean_interval_score_count": 8,
+    "new_point_model_version_created": false,
+    "prospective_primary_point_candidate_changed": false,
+    "result_may_trigger_point_model_refit_on_these_windows": false,
+    "selector_coverage_at_or_above_target_count": 11,
+    "selector_lower_mean_interval_score_count": 5,
+    "selector_minimum_coverage_minus_target": -0.0512287334593573,
+    "selector_signed_negative_observation_covered_count": 414,
+    "signed_negative_observation_count": 418,
+    "target_marginal_coverage": 0.9,
+    "v5_coverage_at_or_above_target_count": 11,
+    "v5_lower_mean_interval_score_count": 3,
+    "v5_minimum_coverage_minus_target": -0.0512287334593573,
+    "v5_signed_negative_observation_covered_count": 414,
+    "window_horizon_comparison_count": 16
+  },
+  "fixed_uncertainty_contract": {
+    "calibration_window": "expanding_horizon_specific_matured_absolute_errors",
+    "conditional_coverage_guarantee_claimed": false,
+    "finite_sample_coverage_guarantee_claimed": false,
+    "lower_bound_clipped_to_zero": false,
+    "minimum_matured_sample_count": 24,
+    "models": {
+      "traditional_selector": "evidence_gated_follow_the_leader_m3s",
+      "v5": "physical_online_expert_blend_m3s"
+    },
+    "negative_lower_bound_implies_reverse_flow_dynamics": false,
+    "one_independent_calibration_state_per_window_model_and_horizon": true,
+    "only_errors_matured_by_issue_time_enter_interval": true,
+    "point_predictions_modified": false,
+    "quantile_rank": "ceil((matured_sample_count + 1) * target_coverage)",
+    "raw_observations_retained_by_interval_state": false,
+    "schema": "gwm.geospatial_kernel.online_residual_envelope.v1",
+    "signed_observation_interval_lower_bound_allowed": true,
+    "supported_forecast_horizons_hours": [
+      1,
+      3,
+      6,
+      12
+    ],
+    "target_marginal_coverage": 0.9
+  },
+  "generated_at": "2026-07-31T15:24:34.643794+00:00",
+  "implementation_artifacts": {
+    "evaluator": {
+      "path": "scripts/evaluate_geospatial_kernel_online_expert_uncertainty.py",
+      "sha256": "fb0439645783e6649be2e612feb99cdacb88e3e5a27ce8f4e7efe3017d5fae86",
+      "size_bytes": 20277
+    },
+    "online_residual_envelope": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/online_residual_envelope.py",
+      "sha256": "a3e341581093a2ebd41ac107f94a27a063dccc892377cd7b96d13e116bb8e185",
+      "size_bytes": 7932
+    }
+  },
+  "information_boundary": {
+    "all_target_windows_exposed_before_interval_design": true,
+    "evaluation_counts_as_fresh_validation": false,
+    "fresh_prospective_window_consumed": false,
+    "future_target_observation_used_at_interval_inference": false,
+    "only_matured_historical_errors_used_at_interval_inference": true,
+    "operational_issue_time_vintages_verified": false,
+    "time_series_exchangeability_claimed": false
+  },
+  "outputs": {
+    "center_hill_primary": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_online_expert_uncertainty_posthoc/center_hill_primary_intervals.csv",
+      "sha256": "e0619c245f81c93b4e49ddca348dbaafc61f424315674080a00e474de8f76552",
+      "size_bytes": 831282
+    },
+    "center_hill_replication": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_online_expert_uncertainty_posthoc/center_hill_replication_intervals.csv",
+      "sha256": "e0824b07637ac72374bb68cf759d1cf501a3b6bb985845e8a057aaea1e7e548e",
+      "size_bytes": 829003
+    },
+    "j_percy_priest_primary": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_online_expert_uncertainty_posthoc/j_percy_priest_primary_intervals.csv",
+      "sha256": "99c714f2a2ed105c7c0eb2f12784afd783a8d5ab3776f1c998841f6ddd5a48e0",
+      "size_bytes": 726053
+    },
+    "j_percy_priest_replication": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_online_expert_uncertainty_posthoc/j_percy_priest_replication_intervals.csv",
+      "sha256": "5ce39331abab5ffd07cde34d0b1d224b304e25daed9be9c2dd44be2d857fe087",
+      "size_bytes": 677815
+    }
+  },
+  "schema": "gwm.geotransport.online_expert_uncertainty_posthoc.v1",
+  "source_artifacts": {
+    "point_predictions_by_window": {
+      "center_hill_primary": {
+        "path": "data/geotransport_v0_1/geospatial_kernel_online_expert_traditional_baselines_posthoc/center_hill_primary_predictions.csv",
+        "sha256": "56e34865e4814db34084bd4f11e38f82d6a027f2f9af1e050170f1e6a7eb72f4",
+        "size_bytes": 1440174
+      },
+      "center_hill_replication": {
+        "path": "data/geotransport_v0_1/geospatial_kernel_online_expert_traditional_baselines_posthoc/center_hill_replication_predictions.csv",
+        "sha256": "0b9d7adad2d571fdecb004c6ef01f7ccc3c9eb4b310a9475d2c08bd1dfc516cb",
+        "size_bytes": 1587958
+      },
+      "j_percy_priest_primary": {
+        "path": "data/geotransport_v0_1/geospatial_kernel_online_expert_traditional_baselines_posthoc/j_percy_priest_primary_predictions.csv",
+        "sha256": "eee3ba6ecf7492b8e370491fc3fcc544cad286f12b055bea82390c42446383d8",
+        "size_bytes": 1197798
+      },
+      "j_percy_priest_replication": {
+        "path": "data/geotransport_v0_1/geospatial_kernel_online_expert_traditional_baselines_posthoc/j_percy_priest_replication_predictions.csv",
+        "sha256": "eb23e4e0b71cdeda9c7745e3920bb09f5890742742cee2397407076bee7de10b",
+        "size_bytes": 1115445
+      }
+    },
+    "traditional_online_expert_report": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_online_expert_traditional_baselines_posthoc_report.json",
+      "sha256": "69c296aee7f3503a548f88316e18fe1c6b504b32d20828d4614d8536cd5543c3",
+      "size_bytes": 109293
+    }
+  },
+  "status": "online_expert_uncertainty_posthoc_complete",
+  "windows": {
+    "center_hill_primary": {
+      "comparison_by_horizon": {
+        "1": {
+          "comparison_is_posthoc": true,
+          "equal_mean_interval_score": false,
+          "selector_lower_mean_interval_score": true,
+          "v5_lower_mean_interval_score": false,
+          "v5_minus_selector_mean_interval_score_m3s": 32.576792520833465
+        },
+        "12": {
+          "comparison_is_posthoc": true,
+          "equal_mean_interval_score": false,
+          "selector_lower_mean_interval_score": false,
+          "v5_lower_mean_interval_score": true,
+          "v5_minus_selector_mean_interval_score_m3s": -0.16450692312855608
+        },
+        "3": {
+          "comparison_is_posthoc": true,
+          "equal_mean_interval_score": false,
+          "selector_lower_mean_interval_score": true,
+          "v5_lower_mean_interval_score": false,
+          "v5_minus_selector_mean_interval_score_m3s": 21.591674899508433
+        },
+        "6": {
+          "comparison_is_posthoc": true,
+          "equal_mean_interval_score": false,
+          "selector_lower_mean_interval_score": true,
+          "v5_lower_mean_interval_score": false,
+          "v5_minus_selector_mean_interval_score_m3s": 10.074473479828526
+        }
+      },
+      "execution": {
+        "both_models_interval_prediction_count": 2512,
+        "future_target_observation_used_at_interval_inference": false,
+        "interval_output_count": 2630,
+        "matured_target_update_count": 2618,
+        "point_predictions_modified": false,
+        "source_prediction_count": 2630
+      },
+      "metrics_by_horizon": {
+        "1": {
+          "traditional_selector": {
+            "coverage_minus_target": 0.057547169811320686,
+            "empirical_marginal_coverage": 0.9575471698113207,
+            "evaluable_interval_count": 636,
+            "mean_interval_score_m3s": 120.98816007346952,
+            "mean_interval_width_m3s": 104.94691319055703,
+            "median_interval_width_m3s": 86.25756760637557,
+            "negative_observation_count": 0,
+            "negative_observation_covered_count": 0
+          },
+          "v5": {
+            "coverage_minus_target": 0.06855345911949684,
+            "empirical_marginal_coverage": 0.9685534591194969,
+            "evaluable_interval_count": 636,
+            "mean_interval_score_m3s": 153.56495259430298,
+            "mean_interval_width_m3s": 144.3450196549395,
+            "median_interval_width_m3s": 121.5754672363006,
+            "negative_observation_count": 0,
+            "negative_observation_covered_count": 0
+          }
+        },
+        "12": {
+          "traditional_selector": {
+            "coverage_minus_target": 0.007166123778501565,
+            "empirical_marginal_coverage": 0.9071661237785016,
+            "evaluable_interval_count": 614,
+            "mean_interval_score_m3s": 289.1836798936319,
+            "mean_interval_width_m3s": 204.43138845588928,
+            "median_interval_width_m3s": 206.96160535658476,
+            "negative_observation_count": 0,
+            "negative_observation_covered_count": 0
+          },
+          "v5": {
+            "coverage_minus_target": 0.015309446254071601,
+            "empirical_marginal_coverage": 0.9153094462540716,
+            "evaluable_interval_count": 614,
+            "mean_interval_score_m3s": 289.01917297050335,
+            "mean_interval_width_m3s": 220.35315465259072,
+            "median_interval_width_m3s": 218.64885968026186,
+            "negative_observation_count": 0,
+            "negative_observation_covered_count": 0
+          }
+        },
+        "3": {
+          "traditional_selector": {
+            "coverage_minus_target": 0.04303797468354431,
+            "empirical_marginal_coverage": 0.9430379746835443,
+            "evaluable_interval_count": 632,
+            "mean_interval_score_m3s": 171.21397566837047,
+            "mean_interval_width_m3s": 135.9642906911788,
+            "median_interval_width_m3s": 119.36189543674439,
+            "negative_observation_count": 0,
+            "negative_observation_covered_count": 0
+          },
+          "v5": {
+            "coverage_minus_target": 0.0525316455696202,
+            "empirical_marginal_coverage": 0.9525316455696202,
+            "evaluable_interval_count": 632,
+            "mean_interval_score_m3s": 192.8056505678789,
+            "mean_interval_width_m3s": 169.26436198761377,
+            "median_interval_width_m3s": 161.54529531757026,
+            "negative_observation_count": 0,
+            "negative_observation_covered_count": 0
+          }
+        },
+        "6": {
+          "traditional_selector": {
+            "coverage_minus_target": 0.039297124600638944,
+            "empirical_marginal_coverage": 0.939297124600639,
+            "evaluable_interval_count": 626,
+            "mean_interval_score_m3s": 224.6668639549567,
+            "mean_interval_width_m3s": 171.79139100476237,
+            "median_interval_width_m3s": 168.55902276441975,
+            "negative_observation_count": 0,
+            "negative_observation_covered_count": 0
+          },
+          "v5": {
+            "coverage_minus_target": 0.05527156549520762,
+            "empirical_marginal_coverage": 0.9552715654952076,
+            "evaluable_interval_count": 626,
+            "mean_interval_score_m3s": 234.74133743478524,
+            "mean_interval_width_m3s": 196.8730863353136,
+            "median_interval_width_m3s": 185.79788544382313,
+            "negative_observation_count": 0,
+            "negative_observation_covered_count": 0
+          }
+        }
+      },
+      "system_id": "center_hill"
+    },
+    "center_hill_replication": {
+      "comparison_by_horizon": {
+        "1": {
+          "comparison_is_posthoc": true,
+          "equal_mean_interval_score": false,
+          "selector_lower_mean_interval_score": true,
+          "v5_lower_mean_interval_score": false,
+          "v5_minus_selector_mean_interval_score_m3s": 6.098373536208726
+        },
+        "12": {
+          "comparison_is_posthoc": true,
+          "equal_mean_interval_score": false,
+          "selector_lower_mean_interval_score": false,
+          "v5_lower_mean_interval_score": true,
+          "v5_minus_selector_mean_interval_score_m3s": -7.708599030298004
+        },
+        "3": {
+          "comparison_is_posthoc": true,
+          "equal_mean_interval_score": false,
+          "selector_lower_mean_interval_score": true,
+          "v5_lower_mean_interval_score": false,
+          "v5_minus_selector_mean_interval_score_m3s": 2.7363713741026032
+        },
+        "6": {
+          "comparison_is_posthoc": true,
+          "equal_mean_interval_score": false,
+          "selector_lower_mean_interval_score": false,
+          "v5_lower_mean_interval_score": true,
+          "v5_minus_selector_mean_interval_score_m3s": -0.7955376964123815
+        }
+      },
+      "execution": {
+        "both_models_interval_prediction_count": 2516,
+        "future_target_observation_used_at_interval_inference": false,
+        "interval_output_count": 2634,
+        "matured_target_update_count": 2626,
+        "point_predictions_modified": false,
+        "source_prediction_count": 2634
+      },
+      "metrics_by_horizon": {
+        "1": {
+          "traditional_selector": {
+            "coverage_minus_target": 0.0012539184952977678,
+            "empirical_marginal_coverage": 0.9012539184952978,
+            "evaluable_interval_count": 638,
+            "mean_interval_score_m3s": 55.36771496493748,
+            "mean_interval_width_m3s": 42.09236107680379,
+            "median_interval_width_m3s": 39.328715683408234,
+            "negative_observation_count": 0,
+            "negative_observation_covered_count": 0
+          },
+          "v5": {
+            "coverage_minus_target": 0.02006269592476484,
+            "empirical_marginal_coverage": 0.9200626959247649,
+            "evaluable_interval_count": 638,
+            "mean_interval_score_m3s": 61.4660885011462,
+            "mean_interval_width_m3s": 46.4077534319089,
+            "median_interval_width_m3s": 40.908453265545134,
+            "negative_observation_count": 0,
+            "negative_observation_covered_count": 0
+          }
+        },
+        "12": {
+          "traditional_selector": {
+            "coverage_minus_target": -0.04610389610389609,
+            "empirical_marginal_coverage": 0.8538961038961039,
+            "evaluable_interval_count": 616,
+            "mean_interval_score_m3s": 130.74972049842833,
+            "mean_interval_width_m3s": 78.87832127071945,
+            "median_interval_width_m3s": 80.37224013464305,
+            "negative_observation_count": 0,
+            "negative_observation_covered_count": 0
+          },
+          "v5": {
+            "coverage_minus_target": -0.044480519480519454,
+            "empirical_marginal_coverage": 0.8555194805194806,
+            "evaluable_interval_count": 616,
+            "mean_interval_score_m3s": 123.04112146813033,
+            "mean_interval_width_m3s": 75.80163602572594,
+            "median_interval_width_m3s": 75.19980553966856,
+            "negative_observation_count": 0,
+            "negative_observation_covered_count": 0
+          }
+        },
+        "3": {
+          "traditional_selector": {
+            "coverage_minus_target": -0.00883280757097793,
+            "empirical_marginal_coverage": 0.8911671924290221,
+            "evaluable_interval_count": 634,
+            "mean_interval_score_m3s": 89.56262235771835,
+            "mean_interval_width_m3s": 58.6276789922347,
+            "median_interval_width_m3s": 55.77079788887097,
+            "negative_observation_count": 0,
+            "negative_observation_covered_count": 0
+          },
+          "v5": {
+            "coverage_minus_target": -0.026182965299684557,
+            "empirical_marginal_coverage": 0.8738170347003155,
+            "evaluable_interval_count": 634,
+            "mean_interval_score_m3s": 92.29899373182096,
+            "mean_interval_width_m3s": 58.999980696663116,
+            "median_interval_width_m3s": 55.77079788887099,
+            "negative_observation_count": 0,
+            "negative_observation_covered_count": 0
+          }
+        },
+        "6": {
+          "traditional_selector": {
+            "coverage_minus_target": -0.028980891719745272,
+            "empirical_marginal_coverage": 0.8710191082802548,
+            "evaluable_interval_count": 628,
+            "mean_interval_score_m3s": 107.84538134593797,
+            "mean_interval_width_m3s": 66.11150409746661,
+            "median_interval_width_m3s": 64.30763320730074,
+            "negative_observation_count": 0,
+            "negative_observation_covered_count": 0
+          },
+          "v5": {
+            "coverage_minus_target": -0.043312101910828016,
+            "empirical_marginal_coverage": 0.856687898089172,
+            "evaluable_interval_count": 628,
+            "mean_interval_score_m3s": 107.04984364952558,
+            "mean_interval_width_m3s": 64.55528581425216,
+            "median_interval_width_m3s": 61.20897693890254,
+            "negative_observation_count": 0,
+            "negative_observation_covered_count": 0
+          }
+        }
+      },
+      "system_id": "center_hill"
+    },
+    "j_percy_priest_primary": {
+      "comparison_by_horizon": {
+        "1": {
+          "comparison_is_posthoc": true,
+          "equal_mean_interval_score": true,
+          "selector_lower_mean_interval_score": false,
+          "v5_lower_mean_interval_score": false,
+          "v5_minus_selector_mean_interval_score_m3s": 0.0
+        },
+        "12": {
+          "comparison_is_posthoc": true,
+          "equal_mean_interval_score": true,
+          "selector_lower_mean_interval_score": false,
+          "v5_lower_mean_interval_score": false,
+          "v5_minus_selector_mean_interval_score_m3s": 0.0
+        },
+        "3": {
+          "comparison_is_posthoc": true,
+          "equal_mean_interval_score": true,
+          "selector_lower_mean_interval_score": false,
+          "v5_lower_mean_interval_score": false,
+          "v5_minus_selector_mean_interval_score_m3s": 0.0
+        },
+        "6": {
+          "comparison_is_posthoc": true,
+          "equal_mean_interval_score": true,
+          "selector_lower_mean_interval_score": false,
+          "v5_lower_mean_interval_score": false,
+          "v5_minus_selector_mean_interval_score_m3s": 0.0
+        }
+      },
+      "execution": {
+        "both_models_interval_prediction_count": 2176,
+        "future_target_observation_used_at_interval_inference": false,
+        "interval_output_count": 2294,
+        "matured_target_update_count": 2278,
+        "point_predictions_modified": false,
+        "source_prediction_count": 2294
+      },
+      "metrics_by_horizon": {
+        "1": {
+          "traditional_selector": {
+            "coverage_minus_target": 0.005626134301270347,
+            "empirical_marginal_coverage": 0.9056261343012704,
+            "evaluable_interval_count": 551,
+            "mean_interval_score_m3s": 97.69738773150776,
+            "mean_interval_width_m3s": 67.0629433770967,
+            "median_interval_width_m3s": 55.76520552255886,
+            "negative_observation_count": 42,
+            "negative_observation_covered_count": 40
+          },
+          "v5": {
+            "coverage_minus_target": 0.005626134301270347,
+            "empirical_marginal_coverage": 0.9056261343012704,
+            "evaluable_interval_count": 551,
+            "mean_interval_score_m3s": 97.69738773150776,
+            "mean_interval_width_m3s": 67.0629433770967,
+            "median_interval_width_m3s": 55.76520552255886,
+            "negative_observation_count": 42,
+            "negative_observation_covered_count": 40
+          }
+        },
+        "12": {
+          "traditional_selector": {
+            "coverage_minus_target": -0.0512287334593573,
+            "empirical_marginal_coverage": 0.8487712665406427,
+            "evaluable_interval_count": 529,
+            "mean_interval_score_m3s": 149.46403678376524,
+            "mean_interval_width_m3s": 74.90414436076394,
+            "median_interval_width_m3s": 69.59032642262626,
+            "negative_observation_count": 55,
+            "negative_observation_covered_count": 53
+          },
+          "v5": {
+            "coverage_minus_target": -0.0512287334593573,
+            "empirical_marginal_coverage": 0.8487712665406427,
+            "evaluable_interval_count": 529,
+            "mean_interval_score_m3s": 149.46403678376524,
+            "mean_interval_width_m3s": 74.90414436076394,
+            "median_interval_width_m3s": 69.59032642262626,
+            "negative_observation_count": 55,
+            "negative_observation_covered_count": 53
+          }
+        },
+        "3": {
+          "traditional_selector": {
+            "coverage_minus_target": 0.001279707495429605,
+            "empirical_marginal_coverage": 0.9012797074954296,
+            "evaluable_interval_count": 547,
+            "mean_interval_score_m3s": 121.12739165373934,
+            "mean_interval_width_m3s": 80.35179832313224,
+            "median_interval_width_m3s": 74.2757280893698,
+            "negative_observation_count": 61,
+            "negative_observation_covered_count": 61
+          },
+          "v5": {
+            "coverage_minus_target": 0.001279707495429605,
+            "empirical_marginal_coverage": 0.9012797074954296,
+            "evaluable_interval_count": 547,
+            "mean_interval_score_m3s": 121.12739165373934,
+            "mean_interval_width_m3s": 80.35179832313224,
+            "median_interval_width_m3s": 74.2757280893698,
+            "negative_observation_count": 61,
+            "negative_observation_covered_count": 61
+          }
+        },
+        "6": {
+          "traditional_selector": {
+            "coverage_minus_target": -0.016451016635859572,
+            "empirical_marginal_coverage": 0.8835489833641405,
+            "evaluable_interval_count": 541,
+            "mean_interval_score_m3s": 144.37903866303708,
+            "mean_interval_width_m3s": 92.66306892954778,
+            "median_interval_width_m3s": 90.0257279586505,
+            "negative_observation_count": 70,
+            "negative_observation_covered_count": 70
+          },
+          "v5": {
+            "coverage_minus_target": -0.016451016635859572,
+            "empirical_marginal_coverage": 0.8835489833641405,
+            "evaluable_interval_count": 541,
+            "mean_interval_score_m3s": 144.37903866303708,
+            "mean_interval_width_m3s": 92.66306892954778,
+            "median_interval_width_m3s": 90.0257279586505,
+            "negative_observation_count": 70,
+            "negative_observation_covered_count": 70
+          }
+        }
+      },
+      "system_id": "j_percy_priest"
+    },
+    "j_percy_priest_replication": {
+      "comparison_by_horizon": {
+        "1": {
+          "comparison_is_posthoc": true,
+          "equal_mean_interval_score": true,
+          "selector_lower_mean_interval_score": false,
+          "v5_lower_mean_interval_score": false,
+          "v5_minus_selector_mean_interval_score_m3s": 0.0
+        },
+        "12": {
+          "comparison_is_posthoc": true,
+          "equal_mean_interval_score": true,
+          "selector_lower_mean_interval_score": false,
+          "v5_lower_mean_interval_score": false,
+          "v5_minus_selector_mean_interval_score_m3s": 0.0
+        },
+        "3": {
+          "comparison_is_posthoc": true,
+          "equal_mean_interval_score": true,
+          "selector_lower_mean_interval_score": false,
+          "v5_lower_mean_interval_score": false,
+          "v5_minus_selector_mean_interval_score_m3s": 0.0
+        },
+        "6": {
+          "comparison_is_posthoc": true,
+          "equal_mean_interval_score": true,
+          "selector_lower_mean_interval_score": false,
+          "v5_lower_mean_interval_score": false,
+          "v5_minus_selector_mean_interval_score_m3s": 0.0
+        }
+      },
+      "execution": {
+        "both_models_interval_prediction_count": 2048,
+        "future_target_observation_used_at_interval_inference": false,
+        "interval_output_count": 2162,
+        "matured_target_update_count": 2093,
+        "point_predictions_modified": false,
+        "source_prediction_count": 2162
+      },
+      "metrics_by_horizon": {
+        "1": {
+          "traditional_selector": {
+            "coverage_minus_target": 0.04357976653696494,
+            "empirical_marginal_coverage": 0.943579766536965,
+            "evaluable_interval_count": 514,
+            "mean_interval_score_m3s": 111.22063152095463,
+            "mean_interval_width_m3s": 97.81402308093479,
+            "median_interval_width_m3s": 78.24541597752943,
+            "negative_observation_count": 33,
+            "negative_observation_covered_count": 33
+          },
+          "v5": {
+            "coverage_minus_target": 0.04357976653696494,
+            "empirical_marginal_coverage": 0.943579766536965,
+            "evaluable_interval_count": 514,
+            "mean_interval_score_m3s": 111.22063152095463,
+            "mean_interval_width_m3s": 97.81402308093479,
+            "median_interval_width_m3s": 78.24541597752943,
+            "negative_observation_count": 33,
+            "negative_observation_covered_count": 33
+          }
+        },
+        "12": {
+          "traditional_selector": {
+            "coverage_minus_target": 0.025847457627118597,
+            "empirical_marginal_coverage": 0.9258474576271186,
+            "evaluable_interval_count": 472,
+            "mean_interval_score_m3s": 179.50451285146988,
+            "mean_interval_width_m3s": 149.10830101402541,
+            "median_interval_width_m3s": 158.71122700459165,
+            "negative_observation_count": 51,
+            "negative_observation_covered_count": 51
+          },
+          "v5": {
+            "coverage_minus_target": 0.025847457627118597,
+            "empirical_marginal_coverage": 0.9258474576271186,
+            "evaluable_interval_count": 472,
+            "mean_interval_score_m3s": 179.50451285146988,
+            "mean_interval_width_m3s": 149.10830101402541,
+            "median_interval_width_m3s": 158.71122700459165,
+            "negative_observation_count": 51,
+            "negative_observation_covered_count": 51
+          }
+        },
+        "3": {
+          "traditional_selector": {
+            "coverage_minus_target": 0.048616600790513775,
+            "empirical_marginal_coverage": 0.9486166007905138,
+            "evaluable_interval_count": 506,
+            "mean_interval_score_m3s": 146.16319510184914,
+            "mean_interval_width_m3s": 133.29819613086542,
+            "median_interval_width_m3s": 123.79568498422094,
+            "negative_observation_count": 50,
+            "negative_observation_covered_count": 50
+          },
+          "v5": {
+            "coverage_minus_target": 0.048616600790513775,
+            "empirical_marginal_coverage": 0.9486166007905138,
+            "evaluable_interval_count": 506,
+            "mean_interval_score_m3s": 146.16319510184914,
+            "mean_interval_width_m3s": 133.29819613086542,
+            "median_interval_width_m3s": 123.79568498422094,
+            "negative_observation_count": 50,
+            "negative_observation_covered_count": 50
+          }
+        },
+        "6": {
+          "traditional_selector": {
+            "coverage_minus_target": 0.02929292929292926,
+            "empirical_marginal_coverage": 0.9292929292929293,
+            "evaluable_interval_count": 495,
+            "mean_interval_score_m3s": 192.30113873012957,
+            "mean_interval_width_m3s": 163.42292840164993,
+            "median_interval_width_m3s": 165.97004212493044,
+            "negative_observation_count": 56,
+            "negative_observation_covered_count": 56
+          },
+          "v5": {
+            "coverage_minus_target": 0.02929292929292926,
+            "empirical_marginal_coverage": 0.9292929292929293,
+            "evaluable_interval_count": 495,
+            "mean_interval_score_m3s": 192.30113873012957,
+            "mean_interval_width_m3s": 163.42292840164993,
+            "median_interval_width_m3s": 165.97004212493044,
+            "negative_observation_count": 56,
+            "negative_observation_covered_count": 56
+          }
+        }
+      },
+      "system_id": "j_percy_priest"
+    }
+  }
+}

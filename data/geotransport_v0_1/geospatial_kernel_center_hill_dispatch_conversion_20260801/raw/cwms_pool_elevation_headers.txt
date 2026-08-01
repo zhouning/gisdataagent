@@ -1,0 +1,24 @@
+HTTP/1.1 200 
+Date: Sat, 01 Aug 2026 08:50:52 GMT
+Server: cwms-data-api
+Set-Cookie: session=expiry=1785574852717717;Max-Age=600;httpOnly;secure;
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Credentials: true
+Access-Control-Allow-Headers: x-requested-with, Content-Type, origin, authorization, accept, client-security-token
+Access-Control-Allow-Methods: POST, GET, OPTIONS, DELETE, PUT
+Content-Security-Policy: frame-src 'self' *.usace.army.mil *.sec.usace.army.mil *.ops.usace.army.mil *.cwbi.mil; frame-ancestors 'self' *.usace.army.mil *.sec.usace.army.mil *.ops.usace.army.mil *.cwbi.mil
+Access-Control-Max-Age: 600
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+Strict-Transport-Security: max-age=31536000; includeSubDomains
+Content-Type: application/json;version=2
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+X-XSS-Protection: 1; mode=block
+Link: <https://cwms-data.usace.army.mil/cwms-data/timeseries?name=CEHT1-CENTER_HILL.Elev-Pool.Inst.1Hour.0.man-rev&office=LRN&begin=2021-01-01T00%3A00%3A00Z&end=2026-01-01T00%3A00%3A00Z&unit=m&page-size=50000&page=MTYwOTQ1OTIwMDAwMHx8NDM4MjV8fDUwMDAw>; rel=self; type="application/json;version=2"
+Cache-Control: max-age=300
+ETag: 3447915311
+Set-Cookie: session=expiry=1785574852717717;Max-Age=600;httpOnly;secure;
+Vary: Origin
+Transfer-Encoding: chunked
+

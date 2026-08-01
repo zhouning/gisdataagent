@@ -1,0 +1,163 @@
+{
+  "baseline_and_gate_lock": {
+    "baselines_reused_from_hash_verified_parent": [
+      "held_observed_internal_boundary",
+      "modeled_cut_control",
+      "zero_internal_boundary",
+      "parent_local_multi_gauge",
+      "causal_latency_matched_persistence",
+      "zero_latency_archive_persistence"
+    ],
+    "common_complete_case_mask_per_horizon": true,
+    "development_gate": "all four core horizons plus conservation; no compensation",
+    "one_hour_can_change_development_gate": false,
+    "per_core_horizon_gate": "dynamic boundary RMSE below held boundary, modeled cut, zero boundary, parent local, and causal persistence",
+    "primary_metric": "rmse_m3s"
+  },
+  "claim_boundary_before_execution": {
+    "boundary_transition_upstream_holdout_passed": true,
+    "downstream_improvement_validated": false,
+    "dynamic_internal_boundary_diagnostic_executed": false,
+    "geospatial_kernel_validated": false,
+    "internal_boundary_reference_admitted": false,
+    "operational_forecast_evaluated": false,
+    "partial_forcing_support_admitted": false
+  },
+  "core_code": {
+    "data_agent/uwm/geospatial_kernel_v2/boundary_hydrograph.py": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/boundary_hydrograph.py",
+      "sha256": "29dab909471bc55c835b4177172f8d346ed6f8ed8c258708a8b93e9993da0609",
+      "size_bytes": 9969
+    },
+    "data_agent/uwm/geospatial_kernel_v2/branching_network.py": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/branching_network.py",
+      "sha256": "b86630170f1a8f0de4ae188a3f7bca200b5c95ee7818f3968bd66e1d24d1e084",
+      "size_bytes": 39343
+    },
+    "data_agent/uwm/geospatial_kernel_v2/forecast_closure.py": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/forecast_closure.py",
+      "sha256": "af52a39acf3294b1b9098539eac833adef484f67438f17a4ead6c6902c8228ab",
+      "size_bytes": 36842
+    }
+  },
+  "data_isolation": {
+    "boundary_parameters_fitted_from_current_window": false,
+    "boundary_parameters_fitted_from_outlet_targets": false,
+    "prospective_or_validation_claim_permitted": false,
+    "untouched_window_consumed": false,
+    "window_outcomes_previously_accessed": true
+  },
+  "forbidden_after_freeze": [
+    "change AR2 coefficients or maximum discharge",
+    "change cut geometry or forcing support fraction",
+    "fit any parameter from Center Hill outlet targets",
+    "use future Smith Fork observations within a branch",
+    "omit a failed horizon",
+    "claim the linear reference or partial forcing support is admitted"
+  ],
+  "frozen_at": "2026-07-27T08:56:52.031674+00:00",
+  "gis_compilation_lock": {
+    "boundary_feature_id": 18421273,
+    "central_downstream_fraction": 0.5844053908943547,
+    "central_downstream_partial_length_m": 334.86428898246527,
+    "diagnostic_only": true,
+    "downstream_feature_id": 18421279,
+    "downstream_fraction_uncertainty_bracket": [
+      0.56817,
+      0.5844053908943547
+    ],
+    "full_route_link_length_m": 573.0,
+    "gauge_initial_storage_scaling": "central_downstream_fraction",
+    "gauge_q_lateral_support_scaling": "central downstream length fraction; candidate approximation",
+    "linear_reference_admitted": false,
+    "site_id": "03424730",
+    "snap_distance_m": 52.070872366767695
+  },
+  "information_track": {
+    "future_outlet_target_used": false,
+    "future_realized_action_used": true,
+    "future_retrospective_q_lateral_used": true,
+    "future_smith_fork_observation_used": false,
+    "name": "retrospective_oracle_action_forcing_causal_boundary_forecast",
+    "observation_operational_vintage_verified": false,
+    "operational_forecast_claim_permitted": false
+  },
+  "operator_lock": {
+    "boundary_admitted": false,
+    "boundary_flow_alignment": "for transition ending issue_time_plus_k use AR2 forecast valid at issue_time_plus_k",
+    "boundary_transition": "stationary_ar2_on_log1p_hourly_discharge",
+    "future_boundary_observations": "forbidden",
+    "internal_boundary_is_generic_forcing": false,
+    "latest_observation_at_issue": "issue_time_minus_one_hour",
+    "mass_identity": "initial + action + supported forcing + observed boundary = final + outlet + displaced upstream outflow",
+    "missing_history": "fall back to modeled upstream transfer",
+    "operator": "ObservedInternalBoundaryReplacement",
+    "partial_network_topology_mutation_after_compile": false,
+    "replacement_rule": "observed flow enters the cut boundary reach once; modeled direct upstream transfer exits as displaced_upstream_outflow_volume_m3",
+    "required_history": "two consecutive available hourly observations",
+    "transition_parameter_source": "pre_window_smith_fork_only"
+  },
+  "parent_evidence": {
+    "boundary_transition_parameters": {
+      "path": "data/geotransport_v0_1/smith_fork_boundary_transition/parameters.json",
+      "sha256": "1f2e5dfefa5f21bca60e5f36f5fed59d18dd5519d02baa0236628ec1a51eeed9",
+      "size_bytes": 781
+    },
+    "boundary_transition_report": {
+      "path": "benchmarks/geotransport_v0_1/smith_fork_boundary_transition_report.json",
+      "sha256": "599ff46086e1f49cc02cd0f85dcde52391a54c6a60a68d7fd83220a9b70db5db",
+      "size_bytes": 5885
+    },
+    "internal_boundary_reference": {
+      "path": "benchmarks/geotransport_v0_1/smith_fork_internal_boundary_reference_report.json",
+      "sha256": "c0be689aaab2a2b6b13aab3fc3fe8481a61c7ebb844e198ef2b596b35d60f69b",
+      "size_bytes": 5953
+    },
+    "parent_internal_boundary_predictions": {
+      "path": "data/geotransport_v0_1/center_hill_internal_boundary_development/predictions.csv",
+      "sha256": "d737452afba873f02bbbaf070cdf72ed7a2af2d908138bf5f63cea6316b766ad",
+      "size_bytes": 634082
+    },
+    "parent_internal_boundary_protocol": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_internal_boundary_development_protocol.json",
+      "sha256": "9366c726a1af9a8a9c609b34ddd7ff849c8143f3273e62b217984e721e710ab0",
+      "size_bytes": 6649
+    },
+    "parent_internal_boundary_report": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_internal_boundary_development_report.json",
+      "sha256": "78549912fe362142a109fd8957dd3cc18a5654987cecbbe75b29edd3056b2528",
+      "size_bytes": 16379
+    }
+  },
+  "schema": "gwm.geotransport.center_hill_dynamic_internal_boundary_protocol.v1",
+  "status": "frozen_before_dynamic_internal_boundary_execution",
+  "window_and_horizons": {
+    "all_horizons_hours": [
+      1,
+      3,
+      6,
+      12,
+      24
+    ],
+    "core_horizons_hours": [
+      3,
+      6,
+      12,
+      24
+    ],
+    "diagnostic_horizons_hours": [
+      1
+    ],
+    "reuse_exact_parent_issue_axis": true,
+    "window": {
+      "all_issues_have_all_registered_horizons": true,
+      "first_issue_time": "2021-12-16T02:00:00Z",
+      "input_end_exclusive": "2022-01-06T01:00:00Z",
+      "input_start_inclusive": "2021-12-09T01:00:00Z",
+      "issue_count": 480,
+      "last_issue_time": "2022-01-05T01:00:00Z",
+      "maximum_horizon_hours": 24,
+      "role": "public_development_only_not_validation"
+    }
+  }
+}

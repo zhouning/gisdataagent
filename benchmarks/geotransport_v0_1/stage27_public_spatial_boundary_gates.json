@@ -1,0 +1,227 @@
+{
+  "all_gates_passed": true,
+  "candidate_summary": {
+    "candidate_count": 11,
+    "same_mainstem_spatial_candidate_count": 6,
+    "spatially_distinct_candidate_count": 10
+  },
+  "claim_boundary": {
+    "observed_spatial_rollout_completed": false,
+    "operator_admitted": false,
+    "reach_boundary_conditions_observed": false,
+    "snapshot_pairs_are_continuous_boundary_conditions": false,
+    "snapshot_pairs_define_reach_wide_geometry": false,
+    "snapshot_pairs_define_travel_time": false,
+    "two_observed_spatial_snapshot_pairs_found": true
+  },
+  "decision": {
+    "continuous_boundary_hydrographs_admitted": false,
+    "observed_spatial_rollout_completed": false,
+    "runtime_operator_admitted": false,
+    "spatial_snapshot_evidence_admitted": true
+  },
+  "frozen_stage26_hashes": {
+    "benchmarks/geotransport_v0_1/stage26_public_local_perturbation_gates.json": {
+      "actual_sha256": "20a3502f0fd29e3693906ad942958f448f339d4272662cfa88fbf1182da9fb2f",
+      "expected_sha256": "20a3502f0fd29e3693906ad942958f448f339d4272662cfa88fbf1182da9fb2f",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage26_center_hill_local_perturbation/README.md": {
+      "actual_sha256": "bd9db4917b9b5e9e778478f5da555a3292b51d5558809bae45ea35568cb70e69",
+      "expected_sha256": "bd9db4917b9b5e9e778478f5da555a3292b51d5558809bae45ea35568cb70e69",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage26_center_hill_local_perturbation/observed_anchor_local_perturbation.json": {
+      "actual_sha256": "0fb7728dc281b366f6439389181a629125982d01413d7bf6e6e8f687313782fb",
+      "expected_sha256": "0fb7728dc281b366f6439389181a629125982d01413d7bf6e6e8f687313782fb",
+      "matches": true
+    },
+    "data_agent/test_geospatial_kernel_public_reach_local_perturbation.py": {
+      "actual_sha256": "71d749e6b819f5752adf3562d4a6ba239caa823ed0c2c1f5d083986b14aaf60c",
+      "expected_sha256": "71d749e6b819f5752adf3562d4a6ba239caa823ed0c2c1f5d083986b14aaf60c",
+      "matches": true
+    },
+    "data_agent/uwm/geospatial_kernel_v2/public_reach_local_perturbation.py": {
+      "actual_sha256": "effe52c819020fb4729a26c02024b784a587772bc8d74acbd9cb2b0f7c98f5e5",
+      "expected_sha256": "effe52c819020fb4729a26c02024b784a587772bc8d74acbd9cb2b0f7c98f5e5",
+      "matches": true
+    },
+    "docs/architecture-decisions/adr-067-observed-anchor-local-perturbation-transition.md": {
+      "actual_sha256": "576ec572af43e62a969590d6796e5b75340b380c13d02fb5d2f03511337419a0",
+      "expected_sha256": "576ec572af43e62a969590d6796e5b75340b380c13d02fb5d2f03511337419a0",
+      "matches": true
+    },
+    "scripts/compile_geotransport_stage26_public_local_perturbation_gates.py": {
+      "actual_sha256": "04d7a9c4314e84567385e82fd250f59989e4bab223c6a0a74991fcb9782a8cf9",
+      "expected_sha256": "04d7a9c4314e84567385e82fd250f59989e4bab223c6a0a74991fcb9782a8cf9",
+      "matches": true
+    }
+  },
+  "gates": {
+    "acquisition_is_public_bounded_and_private_free": true,
+    "all_navigation_directions_are_represented": true,
+    "all_source_artifacts_are_hash_verified": true,
+    "anchor_brackets_respect_thirty_minute_limit": true,
+    "anchor_is_bound_to_target_comid": true,
+    "candidate_provisional_status_is_preserved": true,
+    "candidate_times_are_bracketed_without_interpolation": true,
+    "every_spatial_candidate_has_comid_coordinate_and_distance": true,
+    "exactly_eleven_nldi_sites_and_ten_spatial_candidates_are_bound": true,
+    "nearest_time_offsets_respect_fifteen_minute_tolerance": true,
+    "observed_spatial_rollout_remains_unclaimed": true,
+    "parameter_units_and_time_support_are_explicit": true,
+    "runtime_operator_remains_unadmitted": true,
+    "six_spatial_candidates_share_anchor_mainstem": true,
+    "snapshot_candidate_is_nldi_upstream_main_on_same_mainstem": true,
+    "snapshot_parameters_and_units_match": true,
+    "snapshots_are_not_relabelled_as_continuous_boundaries": true,
+    "source_license_and_request_limits_are_recorded": true,
+    "stage26_artifacts_hash_frozen": true,
+    "two_spatially_distinct_synchronized_snapshots_are_found": true,
+    "unsupported_boundary_claims_fail_closed": true
+  },
+  "generated_at": "2026-07-29T13:44:01.425199+00:00",
+  "ledger_artifact": {
+    "path": "data/geotransport_v0_1/stage27_center_hill_spatial_boundary_evidence/spatial_boundary_evidence_ledger.json",
+    "sha256": "d98fd049669181e698d0cfbf72c867c7bc3c7fac8cb857e43a9b719433a66db0",
+    "size_bytes": 73385
+  },
+  "schema": "gwm.geotransport.stage27_public_spatial_boundary_gates.v1",
+  "snapshot_summary": [
+    {
+      "anchor_bracket": {
+        "after": {
+          "approval_status": "Approved",
+          "monitoring_location_id": "USGS-03424860",
+          "observation_id": "fba37b02-bd43-4a3d-8fa9-7bcbfec74053",
+          "observation_kind": "continuous_observation",
+          "parameter_code": "00060",
+          "time": "2024-05-16T15:00:00+00:00",
+          "unit": "ft^3/s",
+          "value": 22400.0
+        },
+        "before": {
+          "approval_status": "Approved",
+          "monitoring_location_id": "USGS-03424860",
+          "observation_id": "75913cd1-1978-4995-a5aa-2aa654b7b9af",
+          "observation_kind": "continuous_observation",
+          "parameter_code": "00060",
+          "time": "2024-05-16T14:30:00+00:00",
+          "unit": "ft^3/s",
+          "value": 22400.0
+        },
+        "mean_value": 22400.0
+      },
+      "candidate": {
+        "approval_status": "Provisional",
+        "monitoring_location_id": "USGS-03424010",
+        "observation_id": "399e3583-808e-4497-80d8-65c629c7b3b7",
+        "observation_kind": "field_measurement",
+        "parameter_code": "00060",
+        "time": "2024-05-16T14:40:55+00:00",
+        "unit": "ft^3/s",
+        "value": 22700.0
+      },
+      "candidate_to_anchor_bracket_mean_ratio": 1.0133928571428572,
+      "fully_approved": false,
+      "source_artifact": {
+        "license": "USGS public-domain data",
+        "license_url": "https://www.usgs.gov/information-policies-and-instructions/copyrights-and-credits",
+        "path": "data/geotransport_v0_1/stage27_center_hill_spatial_boundary_evidence/raw/anchor_continuous_match_03424010_20240516T144055Z_00060.json",
+        "role": "anchor_continuous_values_bracketing_candidate_field_time",
+        "sha256": "f09c5a0280dc94b4da3038782d4bb696e69f7bc64fb73f02ebc409446d3ff859",
+        "size_bytes": 5176,
+        "source_id": "usgs_anchor_continuous_match_03424010_20240516T144055Z_00060",
+        "url": "https://api.waterdata.usgs.gov/ogcapi/v0/collections/continuous/items?f=json&limit=10000&monitoring_location_id=USGS-03424860&parameter_code=00060&datetime=2024-05-16T13%3A40%3A55Z%2F2024-05-16T15%3A40%3A55Z"
+      },
+      "spatial_binding": {
+        "candidate_comid": 18421761,
+        "candidate_distance_from_anchor_m": 12018.661066894827,
+        "candidate_same_mainstem_as_anchor": true,
+        "candidate_topology_directions": [
+          "upstream_main"
+        ]
+      },
+      "synchronization": {
+        "bracket_width_seconds": 1800.0,
+        "linear_interpolation_performed": false,
+        "maximum_bracket_seconds": 1800.0,
+        "method": "candidate_field_time_bracketed_by_anchor_continuous_values",
+        "nearest_time_difference_seconds": 655.0,
+        "nearest_tolerance_seconds": 900.0,
+        "passes": true
+      }
+    },
+    {
+      "anchor_bracket": {
+        "after": {
+          "approval_status": "Approved",
+          "monitoring_location_id": "USGS-03424860",
+          "observation_id": "305b44a5-c692-4507-b62e-ad748dc4a927",
+          "observation_kind": "continuous_observation",
+          "parameter_code": "00060",
+          "time": "2026-02-10T17:00:00+00:00",
+          "unit": "ft^3/s",
+          "value": 602.0
+        },
+        "before": {
+          "approval_status": "Approved",
+          "monitoring_location_id": "USGS-03424860",
+          "observation_id": "7d59eda1-f2e1-47a6-92f5-a5b7d41e6f31",
+          "observation_kind": "continuous_observation",
+          "parameter_code": "00060",
+          "time": "2026-02-10T16:30:00+00:00",
+          "unit": "ft^3/s",
+          "value": 602.0
+        },
+        "mean_value": 602.0
+      },
+      "candidate": {
+        "approval_status": "Provisional",
+        "monitoring_location_id": "USGS-03424010",
+        "observation_id": "01f57a10-0623-40b2-bc25-c0cc7be3999f",
+        "observation_kind": "field_measurement",
+        "parameter_code": "00060",
+        "time": "2026-02-10T16:49:30+00:00",
+        "unit": "ft^3/s",
+        "value": 274.0
+      },
+      "candidate_to_anchor_bracket_mean_ratio": 0.45514950166112955,
+      "fully_approved": false,
+      "source_artifact": {
+        "license": "USGS public-domain data",
+        "license_url": "https://www.usgs.gov/information-policies-and-instructions/copyrights-and-credits",
+        "path": "data/geotransport_v0_1/stage27_center_hill_spatial_boundary_evidence/raw/anchor_continuous_match_03424010_20260210T164930Z_00060.json",
+        "role": "anchor_continuous_values_bracketing_candidate_field_time",
+        "sha256": "37cf97ba1bcb626c353f6faae352f9dcda6c15d37007fff11ad1d70e7409bb6f",
+        "size_bytes": 5168,
+        "source_id": "usgs_anchor_continuous_match_03424010_20260210T164930Z_00060",
+        "url": "https://api.waterdata.usgs.gov/ogcapi/v0/collections/continuous/items?f=json&limit=10000&monitoring_location_id=USGS-03424860&parameter_code=00060&datetime=2026-02-10T15%3A49%3A30Z%2F2026-02-10T17%3A49%3A30Z"
+      },
+      "spatial_binding": {
+        "candidate_comid": 18421761,
+        "candidate_distance_from_anchor_m": 12018.661066894827,
+        "candidate_same_mainstem_as_anchor": true,
+        "candidate_topology_directions": [
+          "upstream_main"
+        ]
+      },
+      "synchronization": {
+        "bracket_width_seconds": 1800.0,
+        "linear_interpolation_performed": false,
+        "maximum_bracket_seconds": 1800.0,
+        "method": "candidate_field_time_bracketed_by_anchor_continuous_values",
+        "nearest_time_difference_seconds": 630.0,
+        "nearest_tolerance_seconds": 900.0,
+        "passes": true
+      }
+    }
+  ],
+  "status": "two_public_spatial_snapshots_verified_continuous_boundary_hydrographs_pending",
+  "typed_refusals": {
+    "continuous_boundary_hydrographs": true,
+    "fully_approved_spatial_snapshots": true,
+    "observed_spatial_rollout": true,
+    "same_site_temporal_substitution": true
+  }
+}

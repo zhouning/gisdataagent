@@ -1,0 +1,55 @@
+{
+  "authority_admission_contract": {
+    "certificate_validity_covers_prospective_campaign": true,
+    "endpoint_and_policy_oid_frozen_before_first_real_receipt": true,
+    "independent_of_gwm_runtime": true,
+    "legal_entity_and_service_identity_documented": true,
+    "manual_waiver_allowed": false,
+    "revocation_check_strategy_documented": true,
+    "service_policy_and_cps_artifacts_hash_bound": true,
+    "tsa_certificate_extended_key_usage_timestamping_required": true
+  },
+  "claim_boundary": {
+    "candidate_promoted": false,
+    "geospatial_kernel_validated": false,
+    "innovation_fitted": false,
+    "network_requests_performed": false,
+    "outcomes_loaded": false,
+    "physical_prediction_executed": false,
+    "prospective_manifest_acquired": false,
+    "real_timestamp_token_acquired": false,
+    "registry_frozen": true,
+    "runtime_enabled": false,
+    "timestamp_authority_selected": false,
+    "trusted_external_timestamp_verified": false
+  },
+  "evidence_contract": {
+    "accepted_standard": "RFC3161",
+    "ca_bundle_sha256_required": true,
+    "http_date_header_alone_accepted": false,
+    "local_clock_alone_accepted": false,
+    "message_imprint_algorithm": "sha256",
+    "message_imprint_must_equal_exact_source_receipt_sha256": true,
+    "policy_oid_allowlist_required": true,
+    "self_signed_test_authority_accepted_as_production": false,
+    "signature_chain_verified_offline": true,
+    "timestamp_response_der_required": true,
+    "token_time_must_not_follow_forecast_issue_time": true,
+    "token_time_must_not_precede_receipt_issued_at": true,
+    "tsa_leaf_certificate_sha256_required": true
+  },
+  "frozen_at": "2026-07-31T10:37:43Z",
+  "readiness": {
+    "blocker": "no_registered_rfc3161_timestamp_authority",
+    "real_rfc3161_token_acquired": false,
+    "registered_authority_count": 0,
+    "trusted_external_timestamp_verification_ready": false
+  },
+  "registered_authorities": {},
+  "registry_seal": {
+    "algorithm": "sha256_canonical_json_without_registry_seal",
+    "sha256": "92d192e89e6e3390a3d8ac5e7d869230b389e767ba6090af56d5e63f8d494a1c"
+  },
+  "schema": "gwm.geospatial_kernel.timestamp_authority_registry.v1",
+  "status": "frozen_no_registered_rfc3161_timestamp_authority"
+}

@@ -1,0 +1,173 @@
+{
+  "all_gates_passed": true,
+  "claim_boundary": {
+    "bathymetry_uncertainty_propagated": false,
+    "diagnostic_state_observed": false,
+    "operator_admitted": false,
+    "public_land_cover_support_uncertainty_propagated": true,
+    "public_vector_momentum_validation_completed": false,
+    "roughness_calibrated": false,
+    "roughness_lookup_uncertainty_propagated": true,
+    "runtime_hydraulic_geometry_admitted": false
+  },
+  "ensemble_artifact": {
+    "path": "data/geotransport_v0_1/stage22_center_hill_roughness_ensemble/roughness_ensemble.json",
+    "sha256": "0f6609bd3c62fe2eec682c6655f6727ec44e62a864696b8d945f2bd63a234292",
+    "size_bytes": 28959
+  },
+  "frozen_stage21_hashes": {
+    "benchmarks/geotransport_v0_1/stage21_public_confluence_fixture_gates.json": {
+      "actual_sha256": "a29cfef7af46d5bc6f518f9279cbe8cd715958dfd86f5d0ca6b404f6ef8da30b",
+      "expected_sha256": "a29cfef7af46d5bc6f518f9279cbe8cd715958dfd86f5d0ca6b404f6ef8da30b"
+    },
+    "data/geotransport_v0_1/stage21_center_hill_public_confluence/acquisition_manifest.json": {
+      "actual_sha256": "bba4e55fd4b144b3b72a4fc7251011812d6febc1aca5b3768cce16e02bac81c7",
+      "expected_sha256": "bba4e55fd4b144b3b72a4fc7251011812d6febc1aca5b3768cce16e02bac81c7"
+    },
+    "data/geotransport_v0_1/stage21_center_hill_public_confluence/public_confluence_fixture.json": {
+      "actual_sha256": "80682b074867e26d6a1d84a3c1b1b5bf59c91d41efe9e49baa239b10ef146e5c",
+      "expected_sha256": "80682b074867e26d6a1d84a3c1b1b5bf59c91d41efe9e49baa239b10ef146e5c"
+    },
+    "data_agent/test_acquire_geotransport_stage21_public_confluence_fixture.py": {
+      "actual_sha256": "d1468619f5bd5f07e96dc6a2257eb907a1691d62066dbd00352abb6885e2c77f",
+      "expected_sha256": "d1468619f5bd5f07e96dc6a2257eb907a1691d62066dbd00352abb6885e2c77f"
+    },
+    "data_agent/test_geospatial_kernel_public_confluence_fixture.py": {
+      "actual_sha256": "3e766ec20d488e32fc53b39cab317603ac8388b3aa7cbc4567a4d4e27261e1ba",
+      "expected_sha256": "3e766ec20d488e32fc53b39cab317603ac8388b3aa7cbc4567a4d4e27261e1ba"
+    },
+    "data_agent/uwm/geospatial_kernel_v2/public_confluence_fixture.py": {
+      "actual_sha256": "5319a34855f184c0e321e033e4d112aee60a0cd4b7b921ccd8d20de750f0bf4c",
+      "expected_sha256": "5319a34855f184c0e321e033e4d112aee60a0cd4b7b921ccd8d20de750f0bf4c"
+    },
+    "docs/architecture-decisions/adr-062-bounded-public-confluence-spatial-fixture.md": {
+      "actual_sha256": "9e70672f00570155e2ff4fa2f9343ead6a75414a039c73cba09a15a9818b531e",
+      "expected_sha256": "9e70672f00570155e2ff4fa2f9343ead6a75414a039c73cba09a15a9818b531e"
+    },
+    "scripts/acquire_geotransport_stage21_public_confluence_fixture.py": {
+      "actual_sha256": "e1c2ca9d78e80ac8f363b5e430f2724924318f76e5251959f62c33e63648068c",
+      "expected_sha256": "e1c2ca9d78e80ac8f363b5e430f2724924318f76e5251959f62c33e63648068c"
+    },
+    "scripts/compile_geotransport_stage21_public_confluence_fixture_gates.py": {
+      "actual_sha256": "d4aa87f3b6db749ec9a447ec200eb632a226329779b7b03db124c231caa59125",
+      "expected_sha256": "d4aa87f3b6db749ec9a447ec200eb632a226329779b7b03db124c231caa59125"
+    }
+  },
+  "gates": {
+    "candidate_operator_remains_unadmitted": true,
+    "diagnostic_state_is_not_misrepresented_as_observation": true,
+    "eight_ordered_roughness_members_are_compiled": true,
+    "ensemble_propagation_is_rotation_covariant": true,
+    "every_member_closes_mass_and_momentum_ledgers": true,
+    "every_member_dissipates_kinetic_energy": true,
+    "every_member_preserves_exact_stage20_spatial_binding": true,
+    "footprint_aggregation_exposes_mixed_class_support": true,
+    "joint_bounds_are_cellwise_dissipation_monotone": true,
+    "joint_bounds_bracket_total_energy_dissipation": true,
+    "joint_intervals_envelope_both_support_rules": true,
+    "nearest_pixel_dependency_is_explicit": true,
+    "pixel_footprints_cover_every_patch_cell": true,
+    "roughness_ensemble_remains_uncalibrated": true,
+    "runtime_hydraulic_admission_remains_closed": true,
+    "stage21_artifacts_hash_frozen": true,
+    "support_rule_difference_propagates_to_friction_response": true,
+    "support_rule_sensitivity_is_nonzero_and_localized": true,
+    "two_explicit_spatial_support_rules_are_compiled": true,
+    "unsupported_class_and_state_contracts_fail_closed": true
+  },
+  "generated_at": "2026-07-29T10:40:36.318626+00:00",
+  "propagation_artifact": {
+    "path": "data/geotransport_v0_1/stage22_center_hill_roughness_ensemble/friction_propagation.json",
+    "sha256": "aac4aa4c22d5c388bcc686de0a82d20cee309893f35ce2ec452d208b119effb6",
+    "size_bytes": 11713
+  },
+  "propagation_summary": {
+    "diagnostic_state_is_observed": false,
+    "energy_dissipation_envelope_m5s2": [
+      1.2248348536860192,
+      8.36466687398081
+    ],
+    "energy_dissipation_m5s2_by_member": {
+      "footprint_center": 2.759143794939831,
+      "footprint_lower": 1.5225777180349098,
+      "footprint_upper": 6.024900268659309,
+      "joint_lower": 1.2248348536860192,
+      "joint_upper": 8.36466687398081,
+      "point_center": 3.10678652467584,
+      "point_lower": 1.7000207957741509,
+      "point_upper": 6.895465128774106
+    },
+    "maximum_mass_ledger_error_m3": 0.0,
+    "maximum_momentum_ledger_error_m4s": 3.657742603375525e-14,
+    "timestep_seconds": 1.0
+  },
+  "rotation_control": {
+    "maximum_energy_rotation_error_m5s2": 5.684341886080802e-14,
+    "maximum_momentum_rotation_error_m4s": 3.1776437161565096e-14,
+    "rotation_degrees": 37.0
+  },
+  "roughness_summary": {
+    "cell_joint_intervals": {
+      "cell-00": [
+        0.025,
+        0.04894845302325008
+      ],
+      "cell-01": [
+        0.025,
+        0.04
+      ],
+      "cell-02": [
+        0.025,
+        0.04
+      ],
+      "cell-03": [
+        0.025,
+        0.04
+      ],
+      "cell-04": [
+        0.025,
+        0.07813852632203297
+      ],
+      "cell-05": [
+        0.05436402314077413,
+        0.16
+      ]
+    },
+    "ensemble_member_order": [
+      "joint_lower",
+      "point_lower",
+      "footprint_lower",
+      "point_center",
+      "footprint_center",
+      "point_upper",
+      "footprint_upper",
+      "joint_upper"
+    ],
+    "maximum_support_rule_center_difference": 0.023819669277357278
+  },
+  "schema": "gwm.geotransport.stage22_public_roughness_ensemble_gates.v1",
+  "spatial_support_summary": {
+    "mixed_footprint_cells": [
+      "cell-00",
+      "cell-04",
+      "cell-05"
+    ],
+    "native_pixel_size_m": 30.0,
+    "nearest_pixel_fallback_cell_count": 5,
+    "patch_cell_count": 6,
+    "resampled_pixel_area_m2": 881.6724462201263,
+    "resampled_pixel_height_m": 33.049778645919154,
+    "resampled_pixel_width_m": 26.677105939679006,
+    "support_sensitive_cells": [
+      "cell-00",
+      "cell-04",
+      "cell-05"
+    ]
+  },
+  "status": "public_roughness_support_and_parameter_uncertainty_propagated_runtime_hydraulic_admission_pending",
+  "typed_refusals": {
+    "state_order": true,
+    "timestep": true,
+    "unmapped_class": true
+  }
+}

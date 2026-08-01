@@ -1,0 +1,1026 @@
+{
+  "claim_boundary": {
+    "context_conditioned_gate_validated": false,
+    "context_sufficiency_posthoc_audited": true,
+    "geospatial_kernel_validated": false,
+    "runtime_default_enabled": false,
+    "wwm_or_gwm_superiority_validated": false
+  },
+  "diagnostic_interpretation": {
+    "center_hill_context_maximum_minimum_absolute_correlation": 0.04024203728371998,
+    "center_hill_context_same_sign_estimable_count": 7,
+    "center_hill_prediction_derived_maximum_minimum_absolute_correlation": 0.040402572132814965,
+    "context_gate_candidate_identified": false,
+    "existing_prediction_artifacts_sufficient_for_context_gate": false,
+    "explicit_context_absent_from_prediction_artifacts": true,
+    "historical_context_strengthens_cross_window_signal_over_prediction_derived_features": false,
+    "historical_release_and_nwm_forcing_available_separately": true,
+    "historical_release_and_nwm_forcing_context_audited": true,
+    "j_percy_priest_comparison_target_degenerate": true,
+    "j_percy_priest_context_association_estimable": false,
+    "maximum_absolute_candidate_feature_correlation_center_hill_primary": 0.06638619001437154,
+    "maximum_absolute_candidate_feature_correlation_center_hill_replication": 0.32543782452427283,
+    "new_model_version_created": false,
+    "prospective_primary_candidate_changed": false,
+    "result_may_trigger_refit_on_these_windows": false
+  },
+  "explicit_hydrologic_context_availability": {
+    "all_explicit_context_absent_from_prediction_artifacts": true,
+    "historical_release_and_nwm_forcing_joined_to_issue_times": true,
+    "operational_issue_time_vintages_verified": false,
+    "prediction_artifacts": {
+      "nwm_lateral_inflow": false,
+      "precipitation": false,
+      "reservoir_release": false,
+      "soil_moisture_or_saturation": false
+    },
+    "separately_bound_historical_inputs": {
+      "nwm_lateral_inflow": true,
+      "precipitation": false,
+      "reservoir_release": true,
+      "soil_moisture_or_saturation": false
+    }
+  },
+  "feature_contract": {
+    "candidate_features_historically_available_within_replay": true,
+    "candidate_features_use_target_outcome": false,
+    "feature_selection_or_gate_fitting_performed": false,
+    "operational_issue_time_vintages_verified": false,
+    "prediction_derived_candidate_features": [
+      "expert_delta_scaled",
+      "absolute_expert_delta_scaled",
+      "latest_physical_residual_scaled",
+      "raw_physical_target_change_scaled",
+      "v4_target_change_scaled"
+    ],
+    "retrospective_hydrologic_features": [
+      "action_release_scaled",
+      "effective_action_change_scaled",
+      "absolute_effective_action_change_scaled",
+      "path_lateral_inflow_scaled"
+    ],
+    "retrospective_values_are_operational_forecasts": false,
+    "source_publication_latency_audited": false,
+    "target": "selector_squared_error_minus_v5_squared_error",
+    "target_used_for_prediction": false
+  },
+  "generated_at": "2026-07-31T15:06:24.881285+00:00",
+  "implementation_artifacts": {
+    "auditor": {
+      "path": "scripts/audit_geospatial_kernel_online_expert_context_sufficiency.py",
+      "sha256": "1c04fcfdd61cb57c19c420e26f8d0b93cd0982cbfdc88867eaf37c4cdf41ee6f",
+      "size_bytes": 31354
+    }
+  },
+  "retrospective_context_transfer_diagnostics": {
+    "center_hill": {
+      "prediction_derived_context": {
+        "any_association_estimable": true,
+        "association_comparison_count": 20,
+        "by_horizon": {
+          "1": {
+            "absolute_expert_delta_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.003224785241643824,
+              "primary_correlation": -0.032210396765778734,
+              "replication_correlation": 0.003224785241643824,
+              "same_sign": false
+            },
+            "expert_delta_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.047449098745947965,
+              "primary_correlation": 0.047449098745947965,
+              "replication_correlation": -0.15499772170599546,
+              "same_sign": false
+            },
+            "latest_physical_residual_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.009819022133096714,
+              "primary_correlation": 0.009819022133096714,
+              "replication_correlation": -0.08110235147584102,
+              "same_sign": false
+            },
+            "raw_physical_target_change_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.002866243757967331,
+              "primary_correlation": -0.002866243757967331,
+              "replication_correlation": -0.01664874380538471,
+              "same_sign": true
+            },
+            "v4_target_change_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.03260707439300234,
+              "primary_correlation": -0.03260707439300234,
+              "replication_correlation": 0.08119845578744705,
+              "same_sign": false
+            }
+          },
+          "12": {
+            "absolute_expert_delta_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.022920751443283725,
+              "primary_correlation": 0.022920751443283725,
+              "replication_correlation": 0.13174586049165143,
+              "same_sign": true
+            },
+            "expert_delta_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.001817156170408786,
+              "primary_correlation": 0.001817156170408786,
+              "replication_correlation": 0.32543782452427283,
+              "same_sign": true
+            },
+            "latest_physical_residual_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.006201288446300808,
+              "primary_correlation": -0.051523087819568804,
+              "replication_correlation": 0.006201288446300808,
+              "same_sign": false
+            },
+            "raw_physical_target_change_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.010065507852181023,
+              "primary_correlation": -0.04024278944918042,
+              "replication_correlation": -0.010065507852181023,
+              "same_sign": true
+            },
+            "v4_target_change_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.04655081065297559,
+              "primary_correlation": 0.06638619001437154,
+              "replication_correlation": -0.04655081065297559,
+              "same_sign": false
+            }
+          },
+          "3": {
+            "absolute_expert_delta_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.011758451676133446,
+              "primary_correlation": -0.011758451676133446,
+              "replication_correlation": 0.1212379956182347,
+              "same_sign": false
+            },
+            "expert_delta_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.01915231758385175,
+              "primary_correlation": 0.01915231758385175,
+              "replication_correlation": -0.15406144932723134,
+              "same_sign": false
+            },
+            "latest_physical_residual_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.009240197428269007,
+              "primary_correlation": -0.009240197428269007,
+              "replication_correlation": -0.056534297441217754,
+              "same_sign": true
+            },
+            "raw_physical_target_change_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.008559511917073081,
+              "primary_correlation": -0.008559511917073081,
+              "replication_correlation": -0.04934926677217577,
+              "same_sign": true
+            },
+            "v4_target_change_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.007627533664524577,
+              "primary_correlation": 0.007627533664524577,
+              "replication_correlation": 0.03683553324332701,
+              "same_sign": true
+            }
+          },
+          "6": {
+            "absolute_expert_delta_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.00803181775179132,
+              "primary_correlation": 0.00803181775179132,
+              "replication_correlation": 0.09944260584171,
+              "same_sign": true
+            },
+            "expert_delta_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.030815240903051707,
+              "primary_correlation": 0.030815240903051707,
+              "replication_correlation": -0.04400622408093212,
+              "same_sign": false
+            },
+            "latest_physical_residual_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.01790820682042547,
+              "primary_correlation": 0.01790820682042547,
+              "replication_correlation": 0.05287392010168049,
+              "same_sign": true
+            },
+            "raw_physical_target_change_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.011629284319308694,
+              "primary_correlation": 0.011629284319308694,
+              "replication_correlation": 0.033522844157999825,
+              "same_sign": true
+            },
+            "v4_target_change_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.040402572132814965,
+              "primary_correlation": -0.0511791064608471,
+              "replication_correlation": -0.040402572132814965,
+              "same_sign": true
+            }
+          }
+        },
+        "estimable_comparison_count": 20,
+        "maximum_minimum_absolute_correlation_across_windows": 0.040402572132814965,
+        "maximum_minimum_absolute_correlation_across_windows_ignoring_sign": 0.047449098745947965,
+        "same_sign_estimable_count": 11
+      },
+      "retrospective_hydrologic_context": {
+        "any_association_estimable": true,
+        "association_comparison_count": 16,
+        "by_horizon": {
+          "1": {
+            "absolute_effective_action_change_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.0322432292894936,
+              "primary_correlation": 0.050048311859618284,
+              "replication_correlation": -0.0322432292894936,
+              "same_sign": false
+            },
+            "action_release_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.021838755661627025,
+              "primary_correlation": -0.021838755661627025,
+              "replication_correlation": 0.10580185766219584,
+              "same_sign": false
+            },
+            "effective_action_change_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.031882174360540215,
+              "primary_correlation": 0.031882174360540215,
+              "replication_correlation": -0.09924266288139973,
+              "same_sign": false
+            },
+            "path_lateral_inflow_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.006945316323368081,
+              "primary_correlation": 0.024710146799458217,
+              "replication_correlation": 0.006945316323368081,
+              "same_sign": true
+            }
+          },
+          "12": {
+            "absolute_effective_action_change_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.008728572230966625,
+              "primary_correlation": 0.10467028505224761,
+              "replication_correlation": -0.008728572230966625,
+              "same_sign": false
+            },
+            "action_release_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.00011315054445694589,
+              "primary_correlation": 0.024284018304622387,
+              "replication_correlation": 0.00011315054445694589,
+              "same_sign": true
+            },
+            "effective_action_change_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.04024203728371998,
+              "primary_correlation": 0.04024203728371998,
+              "replication_correlation": 0.06364792038820549,
+              "same_sign": true
+            },
+            "path_lateral_inflow_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.022415014245460853,
+              "primary_correlation": 0.028004916654023042,
+              "replication_correlation": -0.022415014245460853,
+              "same_sign": false
+            }
+          },
+          "3": {
+            "absolute_effective_action_change_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.0002389420084740937,
+              "primary_correlation": 0.022283056840331453,
+              "replication_correlation": -0.0002389420084740937,
+              "same_sign": false
+            },
+            "action_release_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.0028346737641401897,
+              "primary_correlation": 0.0028346737641401897,
+              "replication_correlation": 0.05206197264459897,
+              "same_sign": true
+            },
+            "effective_action_change_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.009642532754596388,
+              "primary_correlation": 0.009642532754596388,
+              "replication_correlation": -0.037433700693455696,
+              "same_sign": false
+            },
+            "path_lateral_inflow_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.010911322896181842,
+              "primary_correlation": 0.02269816452590125,
+              "replication_correlation": -0.010911322896181842,
+              "same_sign": false
+            }
+          },
+          "6": {
+            "absolute_effective_action_change_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.0386051327352688,
+              "primary_correlation": 0.053800201914746555,
+              "replication_correlation": 0.0386051327352688,
+              "same_sign": true
+            },
+            "action_release_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.027470893773463942,
+              "primary_correlation": -0.027470893773463942,
+              "replication_correlation": -0.05798391467583312,
+              "same_sign": true
+            },
+            "effective_action_change_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.03297601572273585,
+              "primary_correlation": -0.04871803894296264,
+              "replication_correlation": 0.03297601572273585,
+              "same_sign": false
+            },
+            "path_lateral_inflow_scaled": {
+              "both_estimable": true,
+              "minimum_absolute_correlation": 0.020614547105656716,
+              "primary_correlation": 0.02702601008757113,
+              "replication_correlation": 0.020614547105656716,
+              "same_sign": true
+            }
+          }
+        },
+        "estimable_comparison_count": 16,
+        "maximum_minimum_absolute_correlation_across_windows": 0.04024203728371998,
+        "maximum_minimum_absolute_correlation_across_windows_ignoring_sign": 0.04024203728371998,
+        "same_sign_estimable_count": 7
+      }
+    },
+    "j_percy_priest": {
+      "retrospective_hydrologic_context": {
+        "any_association_estimable": false,
+        "association_comparison_count": 16,
+        "by_horizon": {
+          "1": {
+            "absolute_effective_action_change_scaled": {
+              "both_estimable": false,
+              "minimum_absolute_correlation": null,
+              "primary_correlation": null,
+              "replication_correlation": null,
+              "same_sign": false
+            },
+            "action_release_scaled": {
+              "both_estimable": false,
+              "minimum_absolute_correlation": null,
+              "primary_correlation": null,
+              "replication_correlation": null,
+              "same_sign": false
+            },
+            "effective_action_change_scaled": {
+              "both_estimable": false,
+              "minimum_absolute_correlation": null,
+              "primary_correlation": null,
+              "replication_correlation": null,
+              "same_sign": false
+            },
+            "path_lateral_inflow_scaled": {
+              "both_estimable": false,
+              "minimum_absolute_correlation": null,
+              "primary_correlation": null,
+              "replication_correlation": null,
+              "same_sign": false
+            }
+          },
+          "12": {
+            "absolute_effective_action_change_scaled": {
+              "both_estimable": false,
+              "minimum_absolute_correlation": null,
+              "primary_correlation": null,
+              "replication_correlation": null,
+              "same_sign": false
+            },
+            "action_release_scaled": {
+              "both_estimable": false,
+              "minimum_absolute_correlation": null,
+              "primary_correlation": null,
+              "replication_correlation": null,
+              "same_sign": false
+            },
+            "effective_action_change_scaled": {
+              "both_estimable": false,
+              "minimum_absolute_correlation": null,
+              "primary_correlation": null,
+              "replication_correlation": null,
+              "same_sign": false
+            },
+            "path_lateral_inflow_scaled": {
+              "both_estimable": false,
+              "minimum_absolute_correlation": null,
+              "primary_correlation": null,
+              "replication_correlation": null,
+              "same_sign": false
+            }
+          },
+          "3": {
+            "absolute_effective_action_change_scaled": {
+              "both_estimable": false,
+              "minimum_absolute_correlation": null,
+              "primary_correlation": null,
+              "replication_correlation": null,
+              "same_sign": false
+            },
+            "action_release_scaled": {
+              "both_estimable": false,
+              "minimum_absolute_correlation": null,
+              "primary_correlation": null,
+              "replication_correlation": null,
+              "same_sign": false
+            },
+            "effective_action_change_scaled": {
+              "both_estimable": false,
+              "minimum_absolute_correlation": null,
+              "primary_correlation": null,
+              "replication_correlation": null,
+              "same_sign": false
+            },
+            "path_lateral_inflow_scaled": {
+              "both_estimable": false,
+              "minimum_absolute_correlation": null,
+              "primary_correlation": null,
+              "replication_correlation": null,
+              "same_sign": false
+            }
+          },
+          "6": {
+            "absolute_effective_action_change_scaled": {
+              "both_estimable": false,
+              "minimum_absolute_correlation": null,
+              "primary_correlation": null,
+              "replication_correlation": null,
+              "same_sign": false
+            },
+            "action_release_scaled": {
+              "both_estimable": false,
+              "minimum_absolute_correlation": null,
+              "primary_correlation": null,
+              "replication_correlation": null,
+              "same_sign": false
+            },
+            "effective_action_change_scaled": {
+              "both_estimable": false,
+              "minimum_absolute_correlation": null,
+              "primary_correlation": null,
+              "replication_correlation": null,
+              "same_sign": false
+            },
+            "path_lateral_inflow_scaled": {
+              "both_estimable": false,
+              "minimum_absolute_correlation": null,
+              "primary_correlation": null,
+              "replication_correlation": null,
+              "same_sign": false
+            }
+          }
+        },
+        "estimable_comparison_count": 0,
+        "maximum_minimum_absolute_correlation_across_windows": 0.0,
+        "maximum_minimum_absolute_correlation_across_windows_ignoring_sign": 0.0,
+        "same_sign_estimable_count": 0
+      }
+    }
+  },
+  "schema": "gwm.geotransport.online_expert_context_sufficiency_audit.v2",
+  "source_artifacts": {
+    "action_innovation_cross_system_report": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_action_innovation_cross_system_posthoc_report.json",
+      "sha256": "c6b46aa11e075f206398b340da31b20e905ad9bcd6213e969ec52a1961f98e15",
+      "size_bytes": 25611
+    },
+    "center_hill_v4_report": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_physical_online_residual_adaptation_center_hill_posthoc_report.json",
+      "sha256": "ee314f1c531ed241d781a10dffbdfb569846460bf31a26228b0708ca2eab992f",
+      "size_bytes": 23920
+    },
+    "j_percy_priest_v4_report": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_physical_online_residual_adaptation_posthoc_report.json",
+      "sha256": "0a1c118152ed5c9a880c52ef1a2e1c19d5a0368ed2253a2f145e28ee3265a827",
+      "size_bytes": 34446
+    },
+    "retrospective_hydrologic_context": {
+      "center_hill_parameters": {
+        "path": "data/geotransport_v0_1/kernel_innovation_candidate/parameters.json",
+        "sha256": "56990a10610c3ab7d6e6479906237463f1d9d17ea9e630bdacc22528961106ad",
+        "size_bytes": 2246
+      },
+      "j_percy_priest_transferred_parameters": {
+        "path": "data/geotransport_v0_1/kernel_innovation_cross_system_posthoc/j_percy_priest_transferred_parameters.json",
+        "sha256": "09f15be7bbdbcce24b68bd9ce57a9aaf5cfa2b7ea0ea4ced7ebb30e7bee5840b",
+        "size_bytes": 2078
+      },
+      "primary_input_report": {
+        "path": "benchmarks/geotransport_v0_1/geotransport_v2_blind_validation_inputs_report.json",
+        "sha256": "9bf183173b782a40c03f69ed73a839811bfa0718e4ad7bf35fdf67c5e7060aa0",
+        "size_bytes": 16854
+      },
+      "replication_input_report": {
+        "path": "benchmarks/geotransport_v0_1/kinematic_wave_holdout_v2_inputs_report.json",
+        "sha256": "79bbc235dbef5da8a6d284cb307b2753183773bfd7a28305b9ed896696394435",
+        "size_bytes": 13239
+      }
+    },
+    "traditional_predictions_by_window": {
+      "center_hill_primary": {
+        "path": "data/geotransport_v0_1/geospatial_kernel_online_expert_traditional_baselines_posthoc/center_hill_primary_predictions.csv",
+        "sha256": "56e34865e4814db34084bd4f11e38f82d6a027f2f9af1e050170f1e6a7eb72f4",
+        "size_bytes": 1440174
+      },
+      "center_hill_replication": {
+        "path": "data/geotransport_v0_1/geospatial_kernel_online_expert_traditional_baselines_posthoc/center_hill_replication_predictions.csv",
+        "sha256": "0b9d7adad2d571fdecb004c6ef01f7ccc3c9eb4b310a9475d2c08bd1dfc516cb",
+        "size_bytes": 1587958
+      },
+      "j_percy_priest_primary": {
+        "path": "data/geotransport_v0_1/geospatial_kernel_online_expert_traditional_baselines_posthoc/j_percy_priest_primary_predictions.csv",
+        "sha256": "eee3ba6ecf7492b8e370491fc3fcc544cad286f12b055bea82390c42446383d8",
+        "size_bytes": 1197798
+      },
+      "j_percy_priest_replication": {
+        "path": "data/geotransport_v0_1/geospatial_kernel_online_expert_traditional_baselines_posthoc/j_percy_priest_replication_predictions.csv",
+        "sha256": "eb23e4e0b71cdeda9c7745e3920bb09f5890742742cee2397407076bee7de10b",
+        "size_bytes": 1115445
+      }
+    },
+    "traditional_selector_report": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_online_expert_traditional_baselines_posthoc_report.json",
+      "sha256": "69c296aee7f3503a548f88316e18fe1c6b504b32d20828d4614d8536cd5543c3",
+      "size_bytes": 109293
+    },
+    "v4_predictions_by_window": {
+      "center_hill_primary": {
+        "path": "data/geotransport_v0_1/geospatial_kernel_physical_online_residual_adaptation_center_hill_posthoc/center_hill_primary_predictions.csv",
+        "sha256": "ce846682c2de58e1a43f67506c92f726334f9b09bfccf1baa3bb7826113b1d65",
+        "size_bytes": 877531
+      },
+      "center_hill_replication": {
+        "path": "data/geotransport_v0_1/geospatial_kernel_physical_online_residual_adaptation_center_hill_posthoc/center_hill_replication_predictions.csv",
+        "sha256": "32ed801a96a808c9a529086a196261a02a86bb481771ea9bbf753857e17c4bfc",
+        "size_bytes": 863760
+      },
+      "j_percy_priest_primary": {
+        "path": "data/geotransport_v0_1/geospatial_kernel_physical_online_residual_adaptation_posthoc/j_percy_priest_primary_predictions.csv",
+        "sha256": "38249de097840b6f763dd677619c222cd16aeb69064d873eb997c3904ae79e69",
+        "size_bytes": 1328234
+      },
+      "j_percy_priest_replication": {
+        "path": "data/geotransport_v0_1/geospatial_kernel_physical_online_residual_adaptation_posthoc/j_percy_priest_replication_predictions.csv",
+        "sha256": "1b7d814d8300609d4e452f6bc52f3bc9bc53f30cf4e4cac90481f2861a599ab0",
+        "size_bytes": 1245341
+      }
+    },
+    "v5_predictions_by_window": {
+      "center_hill_primary": {
+        "path": "data/geotransport_v0_1/geospatial_kernel_physical_online_expert_blend_posthoc/center_hill_primary_predictions.csv",
+        "sha256": "5ade8eb1e5064cda62238c41166b976af894b25e7e91908e238743efa0149984",
+        "size_bytes": 951644
+      },
+      "center_hill_replication": {
+        "path": "data/geotransport_v0_1/geospatial_kernel_physical_online_expert_blend_posthoc/center_hill_replication_predictions.csv",
+        "sha256": "f88fd5a00dda35a723930365368681242a97ed1e0da52a307c41ae4d3fa47a45",
+        "size_bytes": 1020789
+      },
+      "j_percy_priest_primary": {
+        "path": "data/geotransport_v0_1/geospatial_kernel_physical_online_expert_blend_posthoc/j_percy_priest_primary_predictions.csv",
+        "sha256": "4556f7baa13041bf85655401ff4d159b50dd106ec63c672c0c93c20e58f53497",
+        "size_bytes": 779017
+      },
+      "j_percy_priest_replication": {
+        "path": "data/geotransport_v0_1/geospatial_kernel_physical_online_expert_blend_posthoc/j_percy_priest_replication_predictions.csv",
+        "sha256": "1f0afa0f6d41285fe4fa2225946dffdf3690b9c91949a3690be367b7bd40acb7",
+        "size_bytes": 728358
+      }
+    },
+    "v5_report": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_physical_online_expert_blend_posthoc_report.json",
+      "sha256": "bee60c68a826c33703c9ae410d5cd1a1763c9cd376fa70d4b32557d15b948c80",
+      "size_bytes": 63220
+    }
+  },
+  "status": "online_expert_context_sufficiency_audit_complete",
+  "windows": {
+    "center_hill_primary": {
+      "future_target_observation_used_in_candidate_features": false,
+      "loss_association_by_horizon": {
+        "1": {
+          "complete_case_count": 661,
+          "mean_selector_minus_v5_squared_loss_m6s2": -276.037649443376,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_expert_delta_scaled": -0.032210396765778734,
+            "expert_delta_scaled": 0.047449098745947965,
+            "latest_physical_residual_scaled": 0.009819022133096714,
+            "raw_physical_target_change_scaled": -0.002866243757967331,
+            "v4_target_change_scaled": -0.03260707439300234
+          }
+        },
+        "12": {
+          "complete_case_count": 650,
+          "mean_selector_minus_v5_squared_loss_m6s2": -283.4908995526792,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_expert_delta_scaled": 0.022920751443283725,
+            "expert_delta_scaled": 0.001817156170408786,
+            "latest_physical_residual_scaled": -0.051523087819568804,
+            "raw_physical_target_change_scaled": -0.04024278944918042,
+            "v4_target_change_scaled": 0.06638619001437154
+          }
+        },
+        "3": {
+          "complete_case_count": 659,
+          "mean_selector_minus_v5_squared_loss_m6s2": -240.70960407760145,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_expert_delta_scaled": -0.011758451676133446,
+            "expert_delta_scaled": 0.01915231758385175,
+            "latest_physical_residual_scaled": -0.009240197428269007,
+            "raw_physical_target_change_scaled": -0.008559511917073081,
+            "v4_target_change_scaled": 0.007627533664524577
+          }
+        },
+        "6": {
+          "complete_case_count": 656,
+          "mean_selector_minus_v5_squared_loss_m6s2": -260.81135823070963,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_expert_delta_scaled": 0.00803181775179132,
+            "expert_delta_scaled": 0.030815240903051707,
+            "latest_physical_residual_scaled": 0.01790820682042547,
+            "raw_physical_target_change_scaled": 0.011629284319308694,
+            "v4_target_change_scaled": -0.0511791064608471
+          }
+        }
+      },
+      "online_physical_trajectory_change_missing_count_by_horizon": {
+        "1": 2,
+        "12": 651,
+        "3": 3,
+        "6": 6
+      },
+      "retrospective_context_input_hour_count": 672,
+      "retrospective_context_operational_vintages_verified": false,
+      "retrospective_context_path_feature_count": 26,
+      "retrospective_hydrologic_context_loss_association_by_horizon": {
+        "1": {
+          "complete_case_count": 661,
+          "mean_selector_minus_v5_squared_loss_m6s2": -276.037649443376,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_effective_action_change_scaled": 0.050048311859618284,
+            "action_release_scaled": -0.021838755661627025,
+            "effective_action_change_scaled": 0.031882174360540215,
+            "path_lateral_inflow_scaled": 0.024710146799458217
+          }
+        },
+        "12": {
+          "complete_case_count": 650,
+          "mean_selector_minus_v5_squared_loss_m6s2": -283.4908995526792,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_effective_action_change_scaled": 0.10467028505224761,
+            "action_release_scaled": 0.024284018304622387,
+            "effective_action_change_scaled": 0.04024203728371998,
+            "path_lateral_inflow_scaled": 0.028004916654023042
+          }
+        },
+        "3": {
+          "complete_case_count": 659,
+          "mean_selector_minus_v5_squared_loss_m6s2": -240.70960407760145,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_effective_action_change_scaled": 0.022283056840331453,
+            "action_release_scaled": 0.0028346737641401897,
+            "effective_action_change_scaled": 0.009642532754596388,
+            "path_lateral_inflow_scaled": 0.02269816452590125
+          }
+        },
+        "6": {
+          "complete_case_count": 656,
+          "mean_selector_minus_v5_squared_loss_m6s2": -260.81135823070963,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_effective_action_change_scaled": 0.053800201914746555,
+            "action_release_scaled": -0.027470893773463942,
+            "effective_action_change_scaled": -0.04871803894296264,
+            "path_lateral_inflow_scaled": 0.02702601008757113
+          }
+        }
+      },
+      "selector_minus_v5_squared_loss_target_variance": 2900338.8069115365,
+      "system_id": "center_hill"
+    },
+    "center_hill_replication": {
+      "future_target_observation_used_in_candidate_features": false,
+      "loss_association_by_horizon": {
+        "1": {
+          "complete_case_count": 663,
+          "mean_selector_minus_v5_squared_loss_m6s2": -16.79965809668126,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_expert_delta_scaled": 0.003224785241643824,
+            "expert_delta_scaled": -0.15499772170599546,
+            "latest_physical_residual_scaled": -0.08110235147584102,
+            "raw_physical_target_change_scaled": -0.01664874380538471,
+            "v4_target_change_scaled": 0.08119845578744705
+          }
+        },
+        "12": {
+          "complete_case_count": 652,
+          "mean_selector_minus_v5_squared_loss_m6s2": 59.03709212895523,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_expert_delta_scaled": 0.13174586049165143,
+            "expert_delta_scaled": 0.32543782452427283,
+            "latest_physical_residual_scaled": 0.006201288446300808,
+            "raw_physical_target_change_scaled": -0.010065507852181023,
+            "v4_target_change_scaled": -0.04655081065297559
+          }
+        },
+        "3": {
+          "complete_case_count": 661,
+          "mean_selector_minus_v5_squared_loss_m6s2": 17.65208044972535,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_expert_delta_scaled": 0.1212379956182347,
+            "expert_delta_scaled": -0.15406144932723134,
+            "latest_physical_residual_scaled": -0.056534297441217754,
+            "raw_physical_target_change_scaled": -0.04934926677217577,
+            "v4_target_change_scaled": 0.03683553324332701
+          }
+        },
+        "6": {
+          "complete_case_count": 658,
+          "mean_selector_minus_v5_squared_loss_m6s2": 12.123269216034029,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_expert_delta_scaled": 0.09944260584171,
+            "expert_delta_scaled": -0.04400622408093212,
+            "latest_physical_residual_scaled": 0.05287392010168049,
+            "raw_physical_target_change_scaled": 0.033522844157999825,
+            "v4_target_change_scaled": -0.040402572132814965
+          }
+        }
+      },
+      "online_physical_trajectory_change_missing_count_by_horizon": {
+        "1": 2,
+        "12": 652,
+        "3": 3,
+        "6": 6
+      },
+      "retrospective_context_input_hour_count": 672,
+      "retrospective_context_operational_vintages_verified": false,
+      "retrospective_context_path_feature_count": 26,
+      "retrospective_hydrologic_context_loss_association_by_horizon": {
+        "1": {
+          "complete_case_count": 663,
+          "mean_selector_minus_v5_squared_loss_m6s2": -16.79965809668126,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_effective_action_change_scaled": -0.0322432292894936,
+            "action_release_scaled": 0.10580185766219584,
+            "effective_action_change_scaled": -0.09924266288139973,
+            "path_lateral_inflow_scaled": 0.006945316323368081
+          }
+        },
+        "12": {
+          "complete_case_count": 652,
+          "mean_selector_minus_v5_squared_loss_m6s2": 59.03709212895523,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_effective_action_change_scaled": -0.008728572230966625,
+            "action_release_scaled": 0.00011315054445694589,
+            "effective_action_change_scaled": 0.06364792038820549,
+            "path_lateral_inflow_scaled": -0.022415014245460853
+          }
+        },
+        "3": {
+          "complete_case_count": 661,
+          "mean_selector_minus_v5_squared_loss_m6s2": 17.65208044972535,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_effective_action_change_scaled": -0.0002389420084740937,
+            "action_release_scaled": 0.05206197264459897,
+            "effective_action_change_scaled": -0.037433700693455696,
+            "path_lateral_inflow_scaled": -0.010911322896181842
+          }
+        },
+        "6": {
+          "complete_case_count": 658,
+          "mean_selector_minus_v5_squared_loss_m6s2": 12.123269216034029,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_effective_action_change_scaled": 0.0386051327352688,
+            "action_release_scaled": -0.05798391467583312,
+            "effective_action_change_scaled": 0.03297601572273585,
+            "path_lateral_inflow_scaled": 0.020614547105656716
+          }
+        }
+      },
+      "selector_minus_v5_squared_loss_target_variance": 96859.49481910566,
+      "system_id": "center_hill"
+    },
+    "j_percy_priest_primary": {
+      "future_target_observation_used_in_candidate_features": false,
+      "loss_association_by_horizon": {
+        "1": {
+          "complete_case_count": 576,
+          "mean_selector_minus_v5_squared_loss_m6s2": 0.0,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_expert_delta_scaled": null,
+            "expert_delta_scaled": null,
+            "latest_physical_residual_scaled": null,
+            "raw_physical_target_change_scaled": null,
+            "v4_target_change_scaled": null
+          }
+        },
+        "12": {
+          "complete_case_count": 565,
+          "mean_selector_minus_v5_squared_loss_m6s2": 0.0,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_expert_delta_scaled": null,
+            "expert_delta_scaled": null,
+            "latest_physical_residual_scaled": null,
+            "raw_physical_target_change_scaled": null,
+            "v4_target_change_scaled": null
+          }
+        },
+        "3": {
+          "complete_case_count": 574,
+          "mean_selector_minus_v5_squared_loss_m6s2": 0.0,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_expert_delta_scaled": null,
+            "expert_delta_scaled": null,
+            "latest_physical_residual_scaled": null,
+            "raw_physical_target_change_scaled": null,
+            "v4_target_change_scaled": null
+          }
+        },
+        "6": {
+          "complete_case_count": 571,
+          "mean_selector_minus_v5_squared_loss_m6s2": 0.0,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_expert_delta_scaled": null,
+            "expert_delta_scaled": null,
+            "latest_physical_residual_scaled": null,
+            "raw_physical_target_change_scaled": null,
+            "v4_target_change_scaled": null
+          }
+        }
+      },
+      "online_physical_trajectory_change_missing_count_by_horizon": {
+        "1": 2,
+        "12": 567,
+        "3": 3,
+        "6": 6
+      },
+      "retrospective_context_input_hour_count": 672,
+      "retrospective_context_operational_vintages_verified": false,
+      "retrospective_context_path_feature_count": 5,
+      "retrospective_hydrologic_context_loss_association_by_horizon": {
+        "1": {
+          "complete_case_count": 576,
+          "mean_selector_minus_v5_squared_loss_m6s2": 0.0,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_effective_action_change_scaled": null,
+            "action_release_scaled": null,
+            "effective_action_change_scaled": null,
+            "path_lateral_inflow_scaled": null
+          }
+        },
+        "12": {
+          "complete_case_count": 565,
+          "mean_selector_minus_v5_squared_loss_m6s2": 0.0,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_effective_action_change_scaled": null,
+            "action_release_scaled": null,
+            "effective_action_change_scaled": null,
+            "path_lateral_inflow_scaled": null
+          }
+        },
+        "3": {
+          "complete_case_count": 574,
+          "mean_selector_minus_v5_squared_loss_m6s2": 0.0,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_effective_action_change_scaled": null,
+            "action_release_scaled": null,
+            "effective_action_change_scaled": null,
+            "path_lateral_inflow_scaled": null
+          }
+        },
+        "6": {
+          "complete_case_count": 571,
+          "mean_selector_minus_v5_squared_loss_m6s2": 0.0,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_effective_action_change_scaled": null,
+            "action_release_scaled": null,
+            "effective_action_change_scaled": null,
+            "path_lateral_inflow_scaled": null
+          }
+        }
+      },
+      "selector_minus_v5_squared_loss_target_variance": 0.0,
+      "system_id": "j_percy_priest"
+    },
+    "j_percy_priest_replication": {
+      "future_target_observation_used_in_candidate_features": false,
+      "loss_association_by_horizon": {
+        "1": {
+          "complete_case_count": 538,
+          "mean_selector_minus_v5_squared_loss_m6s2": 0.0,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_expert_delta_scaled": null,
+            "expert_delta_scaled": null,
+            "latest_physical_residual_scaled": null,
+            "raw_physical_target_change_scaled": null,
+            "v4_target_change_scaled": null
+          }
+        },
+        "12": {
+          "complete_case_count": 507,
+          "mean_selector_minus_v5_squared_loss_m6s2": 0.0,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_expert_delta_scaled": null,
+            "expert_delta_scaled": null,
+            "latest_physical_residual_scaled": null,
+            "raw_physical_target_change_scaled": null,
+            "v4_target_change_scaled": null
+          }
+        },
+        "3": {
+          "complete_case_count": 532,
+          "mean_selector_minus_v5_squared_loss_m6s2": 0.0,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_expert_delta_scaled": null,
+            "expert_delta_scaled": null,
+            "latest_physical_residual_scaled": null,
+            "raw_physical_target_change_scaled": null,
+            "v4_target_change_scaled": null
+          }
+        },
+        "6": {
+          "complete_case_count": 524,
+          "mean_selector_minus_v5_squared_loss_m6s2": 0.0,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_expert_delta_scaled": null,
+            "expert_delta_scaled": null,
+            "latest_physical_residual_scaled": null,
+            "raw_physical_target_change_scaled": null,
+            "v4_target_change_scaled": null
+          }
+        }
+      },
+      "online_physical_trajectory_change_missing_count_by_horizon": {
+        "1": 2,
+        "12": 534,
+        "3": 3,
+        "6": 6
+      },
+      "retrospective_context_input_hour_count": 672,
+      "retrospective_context_operational_vintages_verified": false,
+      "retrospective_context_path_feature_count": 5,
+      "retrospective_hydrologic_context_loss_association_by_horizon": {
+        "1": {
+          "complete_case_count": 538,
+          "mean_selector_minus_v5_squared_loss_m6s2": 0.0,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_effective_action_change_scaled": null,
+            "action_release_scaled": null,
+            "effective_action_change_scaled": null,
+            "path_lateral_inflow_scaled": null
+          }
+        },
+        "12": {
+          "complete_case_count": 507,
+          "mean_selector_minus_v5_squared_loss_m6s2": 0.0,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_effective_action_change_scaled": null,
+            "action_release_scaled": null,
+            "effective_action_change_scaled": null,
+            "path_lateral_inflow_scaled": null
+          }
+        },
+        "3": {
+          "complete_case_count": 532,
+          "mean_selector_minus_v5_squared_loss_m6s2": 0.0,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_effective_action_change_scaled": null,
+            "action_release_scaled": null,
+            "effective_action_change_scaled": null,
+            "path_lateral_inflow_scaled": null
+          }
+        },
+        "6": {
+          "complete_case_count": 524,
+          "mean_selector_minus_v5_squared_loss_m6s2": 0.0,
+          "pearson_correlation_selector_minus_v5_squared_loss": {
+            "absolute_effective_action_change_scaled": null,
+            "action_release_scaled": null,
+            "effective_action_change_scaled": null,
+            "path_lateral_inflow_scaled": null
+          }
+        }
+      },
+      "selector_minus_v5_squared_loss_target_variance": 0.0,
+      "system_id": "j_percy_priest"
+    }
+  }
+}

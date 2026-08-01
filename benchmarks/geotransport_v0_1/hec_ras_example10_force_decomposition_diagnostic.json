@@ -1,0 +1,1344 @@
+{
+  "claim_boundary": {
+    "coefficient_calibration_performed": false,
+    "equation_variants_evaluated": true,
+    "force_terms_decomposed": true,
+    "geospatial_kernel_validated": false,
+    "independent_predictive_validation_complete": false,
+    "projected_momentum_operator_admitted": false,
+    "variant_selected_from_example10_fit": false
+  },
+  "documentation_audit": {
+    "ambiguity_effect": "the prose defines bed-slope water weight and branch-specific angles; the displayed 4-7 and 4-9 symbols are internally inconsistent",
+    "core_junction_equations_present": true,
+    "equation_4_7_reuses_theta_1": true,
+    "equation_4_9_reuses_branch_and_friction_slope": true,
+    "junction_method_page": {
+      "id": "43816560",
+      "title": "Momentum Based Junction Method",
+      "version": 4
+    },
+    "specific_force_equation_4_3_present": true,
+    "specific_force_page": {
+      "equation": "SF=beta*Q^2/(g*A_m)+A_t*Ybar",
+      "id": "43816541",
+      "title": "Mixed Flow Regime Calculations",
+      "version": 8
+    }
+  },
+  "documented_force_decomposition": {
+    "branches": [
+      {
+        "applied_bed_slope": 0.001000000000000053,
+        "contribution_m3": 75.71355572022468,
+        "deflection_degrees": 0.0,
+        "downstream_allocated_area_m2": 37.925137583001835,
+        "downstream_area_fraction": 0.7317073170731707,
+        "friction_force_m3": 0.9984834914142244,
+        "half_length_area_volume_m3": 902.5452538831121,
+        "invert_tangent_slope": 0.001000000000000053,
+        "net_friction_and_weight_m3": -0.09593823753106456,
+        "projected_convective_momentum_term_m3": 20.383278609640087,
+        "projected_hydrostatic_pressure_term_m3": 55.426215348115655,
+        "projected_specific_force_m3": 75.80949395775573,
+        "projection_cosine": 1.0,
+        "representative_friction_slope": 0.0011062974262158573,
+        "section_force": {
+          "convective_momentum_term_m3": 20.383278609640087,
+          "conveyance_m3s": 2421.52786187707,
+          "discharge_m3s": 84.950539776,
+          "flow_area_m2": 36.10252431685972,
+          "froude_number": 0.4655042425873308,
+          "hydrostatic_pressure_term_m3": 55.426215348115655,
+          "momentum_coefficient_beta": 1.0,
+          "reach_key": [
+            "Spring Creek",
+            "Upper Reach"
+          ],
+          "river_station": "10.106",
+          "specific_force_m3": 75.80949395775573,
+          "water_surface_elevation_m": 23.013555743408205
+        },
+        "section_spacing_m": 24.384,
+        "upstream_control_volume_area_m2": 36.10252431685972,
+        "water_weight_force_m3": 0.9025452538831599
+      },
+      {
+        "applied_bed_slope": 0.0004285714285713888,
+        "contribution_m3": 22.492736451575233,
+        "deflection_degrees": 45.0,
+        "downstream_allocated_area_m2": 13.905883780434007,
+        "downstream_area_fraction": 0.2682926829268293,
+        "friction_force_m3": 0.2895501202167014,
+        "half_length_area_volume_m3": 282.9094540683246,
+        "invert_tangent_slope": 0.0004285714285713888,
+        "net_friction_and_weight_m3": -0.16830321133028783,
+        "projected_convective_momentum_term_m3": 3.931180881931243,
+        "projected_hydrostatic_pressure_term_m3": 18.72985878097428,
+        "projected_specific_force_m3": 22.661039662905523,
+        "projection_cosine": 0.7071067811865476,
+        "representative_friction_slope": 0.001023472761524516,
+        "section_force": {
+          "convective_momentum_term_m3": 5.5595293193689885,
+          "conveyance_m3s": 979.604413080843,
+          "discharge_m3s": 31.1485312512,
+          "flow_area_m2": 17.83827130961317,
+          "froude_number": 0.37509386566428066,
+          "hydrostatic_pressure_term_m3": 26.48802030938663,
+          "momentum_coefficient_beta": 1.0023890623576193,
+          "reach_key": [
+            "Spruce Creek",
+            "Spruce Creek"
+          ],
+          "river_station": "0.013",
+          "specific_force_m3": 32.04754962875562,
+          "water_surface_elevation_m": 23.013555743408205
+        },
+        "section_spacing_m": 21.336000000000002,
+        "upstream_control_volume_area_m2": 12.61356260767291,
+        "water_weight_force_m3": 0.12124690888641357
+      }
+    ],
+    "common_upstream_water_surface_elevation_m": 23.013555743408205,
+    "diagnostic_only": true,
+    "downstream_force": {
+      "convective_momentum_term_m3": 26.51838349705297,
+      "conveyance_m3s": 3623.068225771556,
+      "discharge_m3s": 116.0990710272,
+      "flow_area_m2": 51.83102136343584,
+      "froude_number": 0.44961939650450833,
+      "hydrostatic_pressure_term_m3": 77.15350203491901,
+      "momentum_coefficient_beta": 1.0,
+      "reach_key": [
+        "Spring Creek",
+        "Lower Reach"
+      ],
+      "river_station": "10.091",
+      "specific_force_m3": 103.67188553197198,
+      "water_surface_elevation_m": 22.871508599853517
+    },
+    "downstream_water_surface_elevation_m": 22.871508599853517,
+    "equation": "SF_down - sum(projected_pressure + projected_convective - friction + bed_weight)",
+    "operator_admitted": false,
+    "residual_m3": 5.465593360172079,
+    "schema": "gwm.geospatial_kernel.hec_ras_force_diagnostic.v1",
+    "upstream_contribution_sum_m3": 98.2062921717999,
+    "variant": {
+      "bed_slope_interpretation": "invert_tangent",
+      "calibrated_to_example10": false,
+      "changed_assumption": "none; Stage 11 documented reference",
+      "control_volume_upstream_area_projection": "cosine",
+      "evidence_basis": "USACE equations 4-3 and 4-5 through 4-8: exact specific force, cosine projection, average-conveyance friction, flow-weighted downstream area, and small-slope bed weight",
+      "friction_downstream_allocation": "whole_section",
+      "matches_documented_equations": true,
+      "operator_admitted": false,
+      "pressure_projection": "cosine",
+      "pressure_term_interpretation": "exact_centroid",
+      "variant_id": "documented_full_specific_force_projection"
+    }
+  },
+  "equation_variant_diagnostics": [
+    {
+      "admission_eligible": false,
+      "admission_refusal_reason": "no independently discriminating case; a same-case stage match would not validate an altered equation",
+      "reference_stage_balance": {
+        "branches": [
+          {
+            "applied_bed_slope": 0.001000000000000053,
+            "contribution_m3": 75.71355572022468,
+            "deflection_degrees": 0.0,
+            "downstream_allocated_area_m2": 37.925137583001835,
+            "downstream_area_fraction": 0.7317073170731707,
+            "friction_force_m3": 0.9984834914142244,
+            "half_length_area_volume_m3": 902.5452538831121,
+            "invert_tangent_slope": 0.001000000000000053,
+            "net_friction_and_weight_m3": -0.09593823753106456,
+            "projected_convective_momentum_term_m3": 20.383278609640087,
+            "projected_hydrostatic_pressure_term_m3": 55.426215348115655,
+            "projected_specific_force_m3": 75.80949395775573,
+            "projection_cosine": 1.0,
+            "representative_friction_slope": 0.0011062974262158573,
+            "section_force": {
+              "convective_momentum_term_m3": 20.383278609640087,
+              "conveyance_m3s": 2421.52786187707,
+              "discharge_m3s": 84.950539776,
+              "flow_area_m2": 36.10252431685972,
+              "froude_number": 0.4655042425873308,
+              "hydrostatic_pressure_term_m3": 55.426215348115655,
+              "momentum_coefficient_beta": 1.0,
+              "reach_key": [
+                "Spring Creek",
+                "Upper Reach"
+              ],
+              "river_station": "10.106",
+              "specific_force_m3": 75.80949395775573,
+              "water_surface_elevation_m": 23.013555743408205
+            },
+            "section_spacing_m": 24.384,
+            "upstream_control_volume_area_m2": 36.10252431685972,
+            "water_weight_force_m3": 0.9025452538831599
+          },
+          {
+            "applied_bed_slope": 0.0004285714285713888,
+            "contribution_m3": 22.492736451575233,
+            "deflection_degrees": 45.0,
+            "downstream_allocated_area_m2": 13.905883780434007,
+            "downstream_area_fraction": 0.2682926829268293,
+            "friction_force_m3": 0.2895501202167014,
+            "half_length_area_volume_m3": 282.9094540683246,
+            "invert_tangent_slope": 0.0004285714285713888,
+            "net_friction_and_weight_m3": -0.16830321133028783,
+            "projected_convective_momentum_term_m3": 3.931180881931243,
+            "projected_hydrostatic_pressure_term_m3": 18.72985878097428,
+            "projected_specific_force_m3": 22.661039662905523,
+            "projection_cosine": 0.7071067811865476,
+            "representative_friction_slope": 0.001023472761524516,
+            "section_force": {
+              "convective_momentum_term_m3": 5.5595293193689885,
+              "conveyance_m3s": 979.604413080843,
+              "discharge_m3s": 31.1485312512,
+              "flow_area_m2": 17.83827130961317,
+              "froude_number": 0.37509386566428066,
+              "hydrostatic_pressure_term_m3": 26.48802030938663,
+              "momentum_coefficient_beta": 1.0023890623576193,
+              "reach_key": [
+                "Spruce Creek",
+                "Spruce Creek"
+              ],
+              "river_station": "0.013",
+              "specific_force_m3": 32.04754962875562,
+              "water_surface_elevation_m": 23.013555743408205
+            },
+            "section_spacing_m": 21.336000000000002,
+            "upstream_control_volume_area_m2": 12.61356260767291,
+            "water_weight_force_m3": 0.12124690888641357
+          }
+        ],
+        "common_upstream_water_surface_elevation_m": 23.013555743408205,
+        "diagnostic_only": true,
+        "downstream_force": {
+          "convective_momentum_term_m3": 26.51838349705297,
+          "conveyance_m3s": 3623.068225771556,
+          "discharge_m3s": 116.0990710272,
+          "flow_area_m2": 51.83102136343584,
+          "froude_number": 0.44961939650450833,
+          "hydrostatic_pressure_term_m3": 77.15350203491901,
+          "momentum_coefficient_beta": 1.0,
+          "reach_key": [
+            "Spring Creek",
+            "Lower Reach"
+          ],
+          "river_station": "10.091",
+          "specific_force_m3": 103.67188553197198,
+          "water_surface_elevation_m": 22.871508599853517
+        },
+        "downstream_water_surface_elevation_m": 22.871508599853517,
+        "equation": "SF_down - sum(projected_pressure + projected_convective - friction + bed_weight)",
+        "operator_admitted": false,
+        "residual_m3": 5.465593360172079,
+        "schema": "gwm.geospatial_kernel.hec_ras_force_diagnostic.v1",
+        "upstream_contribution_sum_m3": 98.2062921717999,
+        "variant": {
+          "bed_slope_interpretation": "invert_tangent",
+          "calibrated_to_example10": false,
+          "changed_assumption": "none; Stage 11 documented reference",
+          "control_volume_upstream_area_projection": "cosine",
+          "evidence_basis": "USACE equations 4-3 and 4-5 through 4-8: exact specific force, cosine projection, average-conveyance friction, flow-weighted downstream area, and small-slope bed weight",
+          "friction_downstream_allocation": "whole_section",
+          "matches_documented_equations": true,
+          "operator_admitted": false,
+          "pressure_projection": "cosine",
+          "pressure_term_interpretation": "exact_centroid",
+          "variant_id": "documented_full_specific_force_projection"
+        }
+      },
+      "root": {
+        "all_sections_subcritical": true,
+        "residual_m3": 3.268496584496461e-12,
+        "root_bracket_m": [
+          23.145541640625,
+          23.146940625000003
+        ],
+        "stage_error_ft": 0.4334470083885975,
+        "stage_ft": 75.93723881747063,
+        "status": "root_found",
+        "within_published_stage_tolerance": false
+      },
+      "variant": {
+        "bed_slope_interpretation": "invert_tangent",
+        "calibrated_to_example10": false,
+        "changed_assumption": "none; Stage 11 documented reference",
+        "control_volume_upstream_area_projection": "cosine",
+        "evidence_basis": "USACE equations 4-3 and 4-5 through 4-8: exact specific force, cosine projection, average-conveyance friction, flow-weighted downstream area, and small-slope bed weight",
+        "friction_downstream_allocation": "whole_section",
+        "matches_documented_equations": true,
+        "operator_admitted": false,
+        "pressure_projection": "cosine",
+        "pressure_term_interpretation": "exact_centroid",
+        "variant_id": "documented_full_specific_force_projection"
+      }
+    },
+    {
+      "admission_eligible": false,
+      "admission_refusal_reason": "no independently discriminating case; a same-case stage match would not validate an altered equation",
+      "reference_stage_balance": {
+        "branches": [
+          {
+            "applied_bed_slope": 0.001000000000000053,
+            "contribution_m3": 75.71355572022468,
+            "deflection_degrees": 0.0,
+            "downstream_allocated_area_m2": 37.925137583001835,
+            "downstream_area_fraction": 0.7317073170731707,
+            "friction_force_m3": 0.9984834914142244,
+            "half_length_area_volume_m3": 902.5452538831121,
+            "invert_tangent_slope": 0.001000000000000053,
+            "net_friction_and_weight_m3": -0.09593823753106456,
+            "projected_convective_momentum_term_m3": 20.383278609640087,
+            "projected_hydrostatic_pressure_term_m3": 55.426215348115655,
+            "projected_specific_force_m3": 75.80949395775573,
+            "projection_cosine": 1.0,
+            "representative_friction_slope": 0.0011062974262158573,
+            "section_force": {
+              "convective_momentum_term_m3": 20.383278609640087,
+              "conveyance_m3s": 2421.52786187707,
+              "discharge_m3s": 84.950539776,
+              "flow_area_m2": 36.10252431685972,
+              "froude_number": 0.4655042425873308,
+              "hydrostatic_pressure_term_m3": 55.426215348115655,
+              "momentum_coefficient_beta": 1.0,
+              "reach_key": [
+                "Spring Creek",
+                "Upper Reach"
+              ],
+              "river_station": "10.106",
+              "specific_force_m3": 75.80949395775573,
+              "water_surface_elevation_m": 23.013555743408205
+            },
+            "section_spacing_m": 24.384,
+            "upstream_control_volume_area_m2": 36.10252431685972,
+            "water_weight_force_m3": 0.9025452538831599
+          },
+          {
+            "applied_bed_slope": 0.0004285714285713888,
+            "contribution_m3": 30.250897979987585,
+            "deflection_degrees": 45.0,
+            "downstream_allocated_area_m2": 13.905883780434007,
+            "downstream_area_fraction": 0.2682926829268293,
+            "friction_force_m3": 0.2895501202167014,
+            "half_length_area_volume_m3": 282.9094540683246,
+            "invert_tangent_slope": 0.0004285714285713888,
+            "net_friction_and_weight_m3": -0.16830321133028783,
+            "projected_convective_momentum_term_m3": 3.931180881931243,
+            "projected_hydrostatic_pressure_term_m3": 26.48802030938663,
+            "projected_specific_force_m3": 30.419201191317875,
+            "projection_cosine": 0.7071067811865476,
+            "representative_friction_slope": 0.001023472761524516,
+            "section_force": {
+              "convective_momentum_term_m3": 5.5595293193689885,
+              "conveyance_m3s": 979.604413080843,
+              "discharge_m3s": 31.1485312512,
+              "flow_area_m2": 17.83827130961317,
+              "froude_number": 0.37509386566428066,
+              "hydrostatic_pressure_term_m3": 26.48802030938663,
+              "momentum_coefficient_beta": 1.0023890623576193,
+              "reach_key": [
+                "Spruce Creek",
+                "Spruce Creek"
+              ],
+              "river_station": "0.013",
+              "specific_force_m3": 32.04754962875562,
+              "water_surface_elevation_m": 23.013555743408205
+            },
+            "section_spacing_m": 21.336000000000002,
+            "upstream_control_volume_area_m2": 12.61356260767291,
+            "water_weight_force_m3": 0.12124690888641357
+          }
+        ],
+        "common_upstream_water_surface_elevation_m": 23.013555743408205,
+        "diagnostic_only": true,
+        "downstream_force": {
+          "convective_momentum_term_m3": 26.51838349705297,
+          "conveyance_m3s": 3623.068225771556,
+          "discharge_m3s": 116.0990710272,
+          "flow_area_m2": 51.83102136343584,
+          "froude_number": 0.44961939650450833,
+          "hydrostatic_pressure_term_m3": 77.15350203491901,
+          "momentum_coefficient_beta": 1.0,
+          "reach_key": [
+            "Spring Creek",
+            "Lower Reach"
+          ],
+          "river_station": "10.091",
+          "specific_force_m3": 103.67188553197198,
+          "water_surface_elevation_m": 22.871508599853517
+        },
+        "downstream_water_surface_elevation_m": 22.871508599853517,
+        "equation": "SF_down - sum(projected_pressure + projected_convective - friction + bed_weight)",
+        "operator_admitted": false,
+        "residual_m3": -2.2925681682402796,
+        "schema": "gwm.geospatial_kernel.hec_ras_force_diagnostic.v1",
+        "upstream_contribution_sum_m3": 105.96445370021226,
+        "variant": {
+          "bed_slope_interpretation": "invert_tangent",
+          "calibrated_to_example10": false,
+          "changed_assumption": "leave hydrostatic pressure unprojected while projecting convective momentum",
+          "control_volume_upstream_area_projection": "cosine",
+          "evidence_basis": "pre-specified alternative vector treatment of bank pressure; conflicts with the literal SF*cos(theta) in USACE equation 4-5",
+          "friction_downstream_allocation": "whole_section",
+          "matches_documented_equations": false,
+          "operator_admitted": false,
+          "pressure_projection": "unprojected",
+          "pressure_term_interpretation": "exact_centroid",
+          "variant_id": "unprojected_hydrostatic_pressure"
+        }
+      },
+      "root": {
+        "all_sections_subcritical": true,
+        "residual_m3": -2.1174173525650986e-12,
+        "root_bracket_m": [
+          22.960875703125,
+          22.962274687500003
+        ],
+        "stage_error_ft": -0.17025339186949395,
+        "stage_ft": 75.33353841721254,
+        "status": "root_found",
+        "within_published_stage_tolerance": false
+      },
+      "variant": {
+        "bed_slope_interpretation": "invert_tangent",
+        "calibrated_to_example10": false,
+        "changed_assumption": "leave hydrostatic pressure unprojected while projecting convective momentum",
+        "control_volume_upstream_area_projection": "cosine",
+        "evidence_basis": "pre-specified alternative vector treatment of bank pressure; conflicts with the literal SF*cos(theta) in USACE equation 4-5",
+        "friction_downstream_allocation": "whole_section",
+        "matches_documented_equations": false,
+        "operator_admitted": false,
+        "pressure_projection": "unprojected",
+        "pressure_term_interpretation": "exact_centroid",
+        "variant_id": "unprojected_hydrostatic_pressure"
+      }
+    },
+    {
+      "admission_eligible": false,
+      "admission_refusal_reason": "no independently discriminating case; a same-case stage match would not validate an altered equation",
+      "reference_stage_balance": {
+        "branches": [
+          {
+            "applied_bed_slope": 0.001000000000000053,
+            "contribution_m3": 75.71355572022468,
+            "deflection_degrees": 0.0,
+            "downstream_allocated_area_m2": 37.925137583001835,
+            "downstream_area_fraction": 0.7317073170731707,
+            "friction_force_m3": 0.9984834914142244,
+            "half_length_area_volume_m3": 902.5452538831121,
+            "invert_tangent_slope": 0.001000000000000053,
+            "net_friction_and_weight_m3": -0.09593823753106456,
+            "projected_convective_momentum_term_m3": 20.383278609640087,
+            "projected_hydrostatic_pressure_term_m3": 55.426215348115655,
+            "projected_specific_force_m3": 75.80949395775573,
+            "projection_cosine": 1.0,
+            "representative_friction_slope": 0.0011062974262158573,
+            "section_force": {
+              "convective_momentum_term_m3": 20.383278609640087,
+              "conveyance_m3s": 2421.52786187707,
+              "discharge_m3s": 84.950539776,
+              "flow_area_m2": 36.10252431685972,
+              "froude_number": 0.4655042425873308,
+              "hydrostatic_pressure_term_m3": 55.426215348115655,
+              "momentum_coefficient_beta": 1.0,
+              "reach_key": [
+                "Spring Creek",
+                "Upper Reach"
+              ],
+              "river_station": "10.106",
+              "specific_force_m3": 75.80949395775573,
+              "water_surface_elevation_m": 23.013555743408205
+            },
+            "section_spacing_m": 24.384,
+            "upstream_control_volume_area_m2": 36.10252431685972,
+            "water_weight_force_m3": 0.9025452538831599
+          },
+          {
+            "applied_bed_slope": 0.0004285714285713888,
+            "contribution_m3": 22.459578321502196,
+            "deflection_degrees": 45.0,
+            "downstream_allocated_area_m2": 13.905883780434007,
+            "downstream_area_fraction": 0.2682926829268293,
+            "friction_force_m3": 0.3465956184750095,
+            "half_length_area_volume_m3": 338.6466465006233,
+            "invert_tangent_slope": 0.0004285714285713888,
+            "net_friction_and_weight_m3": -0.20146134140332728,
+            "projected_convective_momentum_term_m3": 3.931180881931243,
+            "projected_hydrostatic_pressure_term_m3": 18.72985878097428,
+            "projected_specific_force_m3": 22.661039662905523,
+            "projection_cosine": 0.7071067811865476,
+            "representative_friction_slope": 0.001023472761524516,
+            "section_force": {
+              "convective_momentum_term_m3": 5.5595293193689885,
+              "conveyance_m3s": 979.604413080843,
+              "discharge_m3s": 31.1485312512,
+              "flow_area_m2": 17.83827130961317,
+              "froude_number": 0.37509386566428066,
+              "hydrostatic_pressure_term_m3": 26.48802030938663,
+              "momentum_coefficient_beta": 1.0023890623576193,
+              "reach_key": [
+                "Spruce Creek",
+                "Spruce Creek"
+              ],
+              "river_station": "0.013",
+              "specific_force_m3": 32.04754962875562,
+              "water_surface_elevation_m": 23.013555743408205
+            },
+            "section_spacing_m": 21.336000000000002,
+            "upstream_control_volume_area_m2": 17.83827130961317,
+            "water_weight_force_m3": 0.14513427707168225
+          }
+        ],
+        "common_upstream_water_surface_elevation_m": 23.013555743408205,
+        "diagnostic_only": true,
+        "downstream_force": {
+          "convective_momentum_term_m3": 26.51838349705297,
+          "conveyance_m3s": 3623.068225771556,
+          "discharge_m3s": 116.0990710272,
+          "flow_area_m2": 51.83102136343584,
+          "froude_number": 0.44961939650450833,
+          "hydrostatic_pressure_term_m3": 77.15350203491901,
+          "momentum_coefficient_beta": 1.0,
+          "reach_key": [
+            "Spring Creek",
+            "Lower Reach"
+          ],
+          "river_station": "10.091",
+          "specific_force_m3": 103.67188553197198,
+          "water_surface_elevation_m": 22.871508599853517
+        },
+        "downstream_water_surface_elevation_m": 22.871508599853517,
+        "equation": "SF_down - sum(projected_pressure + projected_convective - friction + bed_weight)",
+        "operator_admitted": false,
+        "residual_m3": 5.4987514902451124,
+        "schema": "gwm.geospatial_kernel.hec_ras_force_diagnostic.v1",
+        "upstream_contribution_sum_m3": 98.17313404172687,
+        "variant": {
+          "bed_slope_interpretation": "invert_tangent",
+          "calibrated_to_example10": false,
+          "changed_assumption": "do not cosine-project the upstream half of friction and weight area",
+          "control_volume_upstream_area_projection": "unprojected",
+          "evidence_basis": "pre-specified control-volume area-placement alternative; conflicts with the upstream A*cos(theta) terms in USACE equations 4-6 and 4-8",
+          "friction_downstream_allocation": "whole_section",
+          "matches_documented_equations": false,
+          "operator_admitted": false,
+          "pressure_projection": "cosine",
+          "pressure_term_interpretation": "exact_centroid",
+          "variant_id": "unprojected_upstream_control_volume_area"
+        }
+      },
+      "root": {
+        "all_sections_subcritical": true,
+        "residual_m3": -5.684341886080801e-13,
+        "root_bracket_m": [
+          23.145541640625,
+          23.146940625000003
+        ],
+        "stage_error_ft": 0.4359492223034209,
+        "stage_ft": 75.93974103138545,
+        "status": "root_found",
+        "within_published_stage_tolerance": false
+      },
+      "variant": {
+        "bed_slope_interpretation": "invert_tangent",
+        "calibrated_to_example10": false,
+        "changed_assumption": "do not cosine-project the upstream half of friction and weight area",
+        "control_volume_upstream_area_projection": "unprojected",
+        "evidence_basis": "pre-specified control-volume area-placement alternative; conflicts with the upstream A*cos(theta) terms in USACE equations 4-6 and 4-8",
+        "friction_downstream_allocation": "whole_section",
+        "matches_documented_equations": false,
+        "operator_admitted": false,
+        "pressure_projection": "cosine",
+        "pressure_term_interpretation": "exact_centroid",
+        "variant_id": "unprojected_upstream_control_volume_area"
+      }
+    },
+    {
+      "admission_eligible": false,
+      "admission_refusal_reason": "no independently discriminating case; a same-case stage match would not validate an altered equation",
+      "reference_stage_balance": {
+        "branches": [
+          {
+            "applied_bed_slope": 0.000999999500000428,
+            "contribution_m3": 75.71355526895239,
+            "deflection_degrees": 0.0,
+            "downstream_allocated_area_m2": 37.925137583001835,
+            "downstream_area_fraction": 0.7317073170731707,
+            "friction_force_m3": 0.9984834914142244,
+            "half_length_area_volume_m3": 902.5452538831121,
+            "invert_tangent_slope": 0.001000000000000053,
+            "net_friction_and_weight_m3": -0.0959386888033531,
+            "projected_convective_momentum_term_m3": 20.383278609640087,
+            "projected_hydrostatic_pressure_term_m3": 55.426215348115655,
+            "projected_specific_force_m3": 75.80949395775573,
+            "projection_cosine": 1.0,
+            "representative_friction_slope": 0.0011062974262158573,
+            "section_force": {
+              "convective_momentum_term_m3": 20.383278609640087,
+              "conveyance_m3s": 2421.52786187707,
+              "discharge_m3s": 84.950539776,
+              "flow_area_m2": 36.10252431685972,
+              "froude_number": 0.4655042425873308,
+              "hydrostatic_pressure_term_m3": 55.426215348115655,
+              "momentum_coefficient_beta": 1.0,
+              "reach_key": [
+                "Spring Creek",
+                "Upper Reach"
+              ],
+              "river_station": "10.106",
+              "specific_force_m3": 75.80949395775573,
+              "water_surface_elevation_m": 23.013555743408205
+            },
+            "section_spacing_m": 24.384,
+            "upstream_control_volume_area_m2": 36.10252431685972,
+            "water_weight_force_m3": 0.9025448026108713
+          },
+          {
+            "applied_bed_slope": 0.00042857138921279365,
+            "contribution_m3": 22.492736440440314,
+            "deflection_degrees": 45.0,
+            "downstream_allocated_area_m2": 13.905883780434007,
+            "downstream_area_fraction": 0.2682926829268293,
+            "friction_force_m3": 0.2895501202167014,
+            "half_length_area_volume_m3": 282.9094540683246,
+            "invert_tangent_slope": 0.0004285714285713888,
+            "net_friction_and_weight_m3": -0.16830322246520651,
+            "projected_convective_momentum_term_m3": 3.931180881931243,
+            "projected_hydrostatic_pressure_term_m3": 18.72985878097428,
+            "projected_specific_force_m3": 22.661039662905523,
+            "projection_cosine": 0.7071067811865476,
+            "representative_friction_slope": 0.001023472761524516,
+            "section_force": {
+              "convective_momentum_term_m3": 5.5595293193689885,
+              "conveyance_m3s": 979.604413080843,
+              "discharge_m3s": 31.1485312512,
+              "flow_area_m2": 17.83827130961317,
+              "froude_number": 0.37509386566428066,
+              "hydrostatic_pressure_term_m3": 26.48802030938663,
+              "momentum_coefficient_beta": 1.0023890623576193,
+              "reach_key": [
+                "Spruce Creek",
+                "Spruce Creek"
+              ],
+              "river_station": "0.013",
+              "specific_force_m3": 32.04754962875562,
+              "water_surface_elevation_m": 23.013555743408205
+            },
+            "section_spacing_m": 21.336000000000002,
+            "upstream_control_volume_area_m2": 12.61356260767291,
+            "water_weight_force_m3": 0.1212468977514949
+          }
+        ],
+        "common_upstream_water_surface_elevation_m": 23.013555743408205,
+        "diagnostic_only": true,
+        "downstream_force": {
+          "convective_momentum_term_m3": 26.51838349705297,
+          "conveyance_m3s": 3623.068225771556,
+          "discharge_m3s": 116.0990710272,
+          "flow_area_m2": 51.83102136343584,
+          "froude_number": 0.44961939650450833,
+          "hydrostatic_pressure_term_m3": 77.15350203491901,
+          "momentum_coefficient_beta": 1.0,
+          "reach_key": [
+            "Spring Creek",
+            "Lower Reach"
+          ],
+          "river_station": "10.091",
+          "specific_force_m3": 103.67188553197198,
+          "water_surface_elevation_m": 22.871508599853517
+        },
+        "downstream_water_surface_elevation_m": 22.871508599853517,
+        "equation": "SF_down - sum(projected_pressure + projected_convective - friction + bed_weight)",
+        "operator_admitted": false,
+        "residual_m3": 5.4655938225792795,
+        "schema": "gwm.geospatial_kernel.hec_ras_force_diagnostic.v1",
+        "upstream_contribution_sum_m3": 98.2062917093927,
+        "variant": {
+          "bed_slope_interpretation": "invert_sine",
+          "calibrated_to_example10": false,
+          "changed_assumption": "replace tan(slope angle) by its exact sine",
+          "control_volume_upstream_area_projection": "cosine",
+          "evidence_basis": "USACE momentum derivation states sin(angle) is approximated by tangent for natural-river small slopes",
+          "friction_downstream_allocation": "whole_section",
+          "matches_documented_equations": false,
+          "operator_admitted": false,
+          "pressure_projection": "cosine",
+          "pressure_term_interpretation": "exact_centroid",
+          "variant_id": "exact_bed_sine"
+        }
+      },
+      "root": {
+        "all_sections_subcritical": true,
+        "residual_m3": -3.694822225952521e-13,
+        "root_bracket_m": [
+          23.145541640625,
+          23.146940625000003
+        ],
+        "stage_error_ft": 0.43344704450596794,
+        "stage_ft": 75.937238853588,
+        "status": "root_found",
+        "within_published_stage_tolerance": false
+      },
+      "variant": {
+        "bed_slope_interpretation": "invert_sine",
+        "calibrated_to_example10": false,
+        "changed_assumption": "replace tan(slope angle) by its exact sine",
+        "control_volume_upstream_area_projection": "cosine",
+        "evidence_basis": "USACE momentum derivation states sin(angle) is approximated by tangent for natural-river small slopes",
+        "friction_downstream_allocation": "whole_section",
+        "matches_documented_equations": false,
+        "operator_admitted": false,
+        "pressure_projection": "cosine",
+        "pressure_term_interpretation": "exact_centroid",
+        "variant_id": "exact_bed_sine"
+      }
+    },
+    {
+      "admission_eligible": false,
+      "admission_refusal_reason": "no independently discriminating case; a same-case stage match would not validate an altered equation",
+      "reference_stage_balance": {
+        "branches": [
+          {
+            "applied_bed_slope": 0.001000000000000053,
+            "contribution_m3": 75.69950895570987,
+            "deflection_degrees": 0.0,
+            "downstream_allocated_area_m2": 37.925137583001835,
+            "downstream_area_fraction": 0.7317073170731707,
+            "friction_force_m3": 1.0125302559290186,
+            "half_length_area_volume_m3": 902.5452538831121,
+            "invert_tangent_slope": 0.001000000000000053,
+            "net_friction_and_weight_m3": -0.1099850020458587,
+            "projected_convective_momentum_term_m3": 20.383278609640087,
+            "projected_hydrostatic_pressure_term_m3": 55.426215348115655,
+            "projected_specific_force_m3": 75.80949395775573,
+            "projection_cosine": 1.0,
+            "representative_friction_slope": 0.0011218609278290555,
+            "section_force": {
+              "convective_momentum_term_m3": 20.383278609640087,
+              "conveyance_m3s": 2421.52786187707,
+              "discharge_m3s": 84.950539776,
+              "flow_area_m2": 36.10252431685972,
+              "froude_number": 0.4655042425873308,
+              "hydrostatic_pressure_term_m3": 55.426215348115655,
+              "momentum_coefficient_beta": 1.0,
+              "reach_key": [
+                "Spring Creek",
+                "Upper Reach"
+              ],
+              "river_station": "10.106",
+              "specific_force_m3": 75.80949395775573,
+              "water_surface_elevation_m": 23.013555743408205
+            },
+            "section_spacing_m": 24.384,
+            "upstream_control_volume_area_m2": 36.10252431685972,
+            "water_weight_force_m3": 0.9025452538831599
+          },
+          {
+            "applied_bed_slope": 0.0004285714285713888,
+            "contribution_m3": 22.494029471448165,
+            "deflection_degrees": 45.0,
+            "downstream_allocated_area_m2": 13.905883780434007,
+            "downstream_area_fraction": 0.2682926829268293,
+            "friction_force_m3": 0.2882571003437702,
+            "half_length_area_volume_m3": 282.9094540683246,
+            "invert_tangent_slope": 0.0004285714285713888,
+            "net_friction_and_weight_m3": -0.16701019145735665,
+            "projected_convective_momentum_term_m3": 3.931180881931243,
+            "projected_hydrostatic_pressure_term_m3": 18.72985878097428,
+            "projected_specific_force_m3": 22.661039662905523,
+            "projection_cosine": 0.7071067811865476,
+            "representative_friction_slope": 0.0010189023243958265,
+            "section_force": {
+              "convective_momentum_term_m3": 5.5595293193689885,
+              "conveyance_m3s": 979.604413080843,
+              "discharge_m3s": 31.1485312512,
+              "flow_area_m2": 17.83827130961317,
+              "froude_number": 0.37509386566428066,
+              "hydrostatic_pressure_term_m3": 26.48802030938663,
+              "momentum_coefficient_beta": 1.0023890623576193,
+              "reach_key": [
+                "Spruce Creek",
+                "Spruce Creek"
+              ],
+              "river_station": "0.013",
+              "specific_force_m3": 32.04754962875562,
+              "water_surface_elevation_m": 23.013555743408205
+            },
+            "section_spacing_m": 21.336000000000002,
+            "upstream_control_volume_area_m2": 12.61356260767291,
+            "water_weight_force_m3": 0.12124690888641357
+          }
+        ],
+        "common_upstream_water_surface_elevation_m": 23.013555743408205,
+        "diagnostic_only": true,
+        "downstream_force": {
+          "convective_momentum_term_m3": 26.51838349705297,
+          "conveyance_m3s": 3623.068225771556,
+          "discharge_m3s": 116.0990710272,
+          "flow_area_m2": 51.83102136343584,
+          "froude_number": 0.44961939650450833,
+          "hydrostatic_pressure_term_m3": 77.15350203491901,
+          "momentum_coefficient_beta": 1.0,
+          "reach_key": [
+            "Spring Creek",
+            "Lower Reach"
+          ],
+          "river_station": "10.091",
+          "specific_force_m3": 103.67188553197198,
+          "water_surface_elevation_m": 22.871508599853517
+        },
+        "downstream_water_surface_elevation_m": 22.871508599853517,
+        "equation": "SF_down - sum(projected_pressure + projected_convective - friction + bed_weight)",
+        "operator_admitted": false,
+        "residual_m3": 5.478347104813935,
+        "schema": "gwm.geospatial_kernel.hec_ras_force_diagnostic.v1",
+        "upstream_contribution_sum_m3": 98.19353842715805,
+        "variant": {
+          "bed_slope_interpretation": "invert_tangent",
+          "calibrated_to_example10": false,
+          "changed_assumption": "allocate downstream conveyance and discharge to each virtual branch before evaluating representative friction slope",
+          "control_volume_upstream_area_projection": "cosine",
+          "evidence_basis": "pre-specified branch-control-volume interpretation of the documented flow-weighted downstream area; not stated by USACE equation 4-6",
+          "friction_downstream_allocation": "flow_weighted_branch_share",
+          "matches_documented_equations": false,
+          "operator_admitted": false,
+          "pressure_projection": "cosine",
+          "pressure_term_interpretation": "exact_centroid",
+          "variant_id": "flow_weighted_downstream_friction_share"
+        }
+      },
+      "root": {
+        "all_sections_subcritical": true,
+        "residual_m3": -4.945377440890297e-12,
+        "root_bracket_m": [
+          23.14414265625,
+          23.145541640625
+        ],
+        "stage_error_ft": 0.4324843646000289,
+        "stage_ft": 75.93627617368206,
+        "status": "root_found",
+        "within_published_stage_tolerance": false
+      },
+      "variant": {
+        "bed_slope_interpretation": "invert_tangent",
+        "calibrated_to_example10": false,
+        "changed_assumption": "allocate downstream conveyance and discharge to each virtual branch before evaluating representative friction slope",
+        "control_volume_upstream_area_projection": "cosine",
+        "evidence_basis": "pre-specified branch-control-volume interpretation of the documented flow-weighted downstream area; not stated by USACE equation 4-6",
+        "friction_downstream_allocation": "flow_weighted_branch_share",
+        "matches_documented_equations": false,
+        "operator_admitted": false,
+        "pressure_projection": "cosine",
+        "pressure_term_interpretation": "exact_centroid",
+        "variant_id": "flow_weighted_downstream_friction_share"
+      }
+    },
+    {
+      "admission_eligible": false,
+      "admission_refusal_reason": "no independently discriminating case; a same-case stage match would not validate an altered equation",
+      "reference_stage_balance": {
+        "branches": [
+          {
+            "applied_bed_slope": 0.0011062974262158573,
+            "contribution_m3": 75.80949395775573,
+            "deflection_degrees": 0.0,
+            "downstream_allocated_area_m2": 37.925137583001835,
+            "downstream_area_fraction": 0.7317073170731707,
+            "friction_force_m3": 0.9984834914142244,
+            "half_length_area_volume_m3": 902.5452538831121,
+            "invert_tangent_slope": 0.001000000000000053,
+            "net_friction_and_weight_m3": 0.0,
+            "projected_convective_momentum_term_m3": 20.383278609640087,
+            "projected_hydrostatic_pressure_term_m3": 55.426215348115655,
+            "projected_specific_force_m3": 75.80949395775573,
+            "projection_cosine": 1.0,
+            "representative_friction_slope": 0.0011062974262158573,
+            "section_force": {
+              "convective_momentum_term_m3": 20.383278609640087,
+              "conveyance_m3s": 2421.52786187707,
+              "discharge_m3s": 84.950539776,
+              "flow_area_m2": 36.10252431685972,
+              "froude_number": 0.4655042425873308,
+              "hydrostatic_pressure_term_m3": 55.426215348115655,
+              "momentum_coefficient_beta": 1.0,
+              "reach_key": [
+                "Spring Creek",
+                "Upper Reach"
+              ],
+              "river_station": "10.106",
+              "specific_force_m3": 75.80949395775573,
+              "water_surface_elevation_m": 23.013555743408205
+            },
+            "section_spacing_m": 24.384,
+            "upstream_control_volume_area_m2": 36.10252431685972,
+            "water_weight_force_m3": 0.9984834914142244
+          },
+          {
+            "applied_bed_slope": 0.001023472761524516,
+            "contribution_m3": 22.661039662905523,
+            "deflection_degrees": 45.0,
+            "downstream_allocated_area_m2": 13.905883780434007,
+            "downstream_area_fraction": 0.2682926829268293,
+            "friction_force_m3": 0.2895501202167014,
+            "half_length_area_volume_m3": 282.9094540683246,
+            "invert_tangent_slope": 0.0004285714285713888,
+            "net_friction_and_weight_m3": 0.0,
+            "projected_convective_momentum_term_m3": 3.931180881931243,
+            "projected_hydrostatic_pressure_term_m3": 18.72985878097428,
+            "projected_specific_force_m3": 22.661039662905523,
+            "projection_cosine": 0.7071067811865476,
+            "representative_friction_slope": 0.001023472761524516,
+            "section_force": {
+              "convective_momentum_term_m3": 5.5595293193689885,
+              "conveyance_m3s": 979.604413080843,
+              "discharge_m3s": 31.1485312512,
+              "flow_area_m2": 17.83827130961317,
+              "froude_number": 0.37509386566428066,
+              "hydrostatic_pressure_term_m3": 26.48802030938663,
+              "momentum_coefficient_beta": 1.0023890623576193,
+              "reach_key": [
+                "Spruce Creek",
+                "Spruce Creek"
+              ],
+              "river_station": "0.013",
+              "specific_force_m3": 32.04754962875562,
+              "water_surface_elevation_m": 23.013555743408205
+            },
+            "section_spacing_m": 21.336000000000002,
+            "upstream_control_volume_area_m2": 12.61356260767291,
+            "water_weight_force_m3": 0.2895501202167014
+          }
+        ],
+        "common_upstream_water_surface_elevation_m": 23.013555743408205,
+        "diagnostic_only": true,
+        "downstream_force": {
+          "convective_momentum_term_m3": 26.51838349705297,
+          "conveyance_m3s": 3623.068225771556,
+          "discharge_m3s": 116.0990710272,
+          "flow_area_m2": 51.83102136343584,
+          "froude_number": 0.44961939650450833,
+          "hydrostatic_pressure_term_m3": 77.15350203491901,
+          "momentum_coefficient_beta": 1.0,
+          "reach_key": [
+            "Spring Creek",
+            "Lower Reach"
+          ],
+          "river_station": "10.091",
+          "specific_force_m3": 103.67188553197198,
+          "water_surface_elevation_m": 22.871508599853517
+        },
+        "downstream_water_surface_elevation_m": 22.871508599853517,
+        "equation": "SF_down - sum(projected_pressure + projected_convective - friction + bed_weight)",
+        "operator_admitted": false,
+        "residual_m3": 5.201351911310724,
+        "schema": "gwm.geospatial_kernel.hec_ras_force_diagnostic.v1",
+        "upstream_contribution_sum_m3": 98.47053362066126,
+        "variant": {
+          "bed_slope_interpretation": "friction_slope",
+          "calibrated_to_example10": false,
+          "changed_assumption": "use representative friction slope for the water-weight term",
+          "control_volume_upstream_area_projection": "cosine",
+          "evidence_basis": "literal reading of the published second water-weight equation 4-9; the page repeats the first branch label and contradicts equation 4-8, so this is treated as a documentation-error diagnostic",
+          "friction_downstream_allocation": "whole_section",
+          "matches_documented_equations": false,
+          "operator_admitted": false,
+          "pressure_projection": "cosine",
+          "pressure_term_interpretation": "exact_centroid",
+          "variant_id": "friction_slope_as_water_weight"
+        }
+      },
+      "root": {
+        "all_sections_subcritical": true,
+        "residual_m3": 3.126388037344441e-13,
+        "root_bracket_m": [
+          23.139945703125,
+          23.141344687500002
+        ],
+        "stage_error_ft": 0.4177161232201172,
+        "stage_ft": 75.92150793230215,
+        "status": "root_found",
+        "within_published_stage_tolerance": false
+      },
+      "variant": {
+        "bed_slope_interpretation": "friction_slope",
+        "calibrated_to_example10": false,
+        "changed_assumption": "use representative friction slope for the water-weight term",
+        "control_volume_upstream_area_projection": "cosine",
+        "evidence_basis": "literal reading of the published second water-weight equation 4-9; the page repeats the first branch label and contradicts equation 4-8, so this is treated as a documentation-error diagnostic",
+        "friction_downstream_allocation": "whole_section",
+        "matches_documented_equations": false,
+        "operator_admitted": false,
+        "pressure_projection": "cosine",
+        "pressure_term_interpretation": "exact_centroid",
+        "variant_id": "friction_slope_as_water_weight"
+      }
+    },
+    {
+      "admission_eligible": false,
+      "admission_refusal_reason": "no independently discriminating case; a same-case stage match would not validate an altered equation",
+      "reference_stage_balance": {
+        "branches": [
+          {
+            "applied_bed_slope": 0.001000000000000053,
+            "contribution_m3": 87.98310688179825,
+            "deflection_degrees": 0.0,
+            "downstream_allocated_area_m2": 37.925137583001835,
+            "downstream_area_fraction": 0.7317073170731707,
+            "friction_force_m3": 0.9984834914142244,
+            "half_length_area_volume_m3": 902.5452538831121,
+            "invert_tangent_slope": 0.001000000000000053,
+            "net_friction_and_weight_m3": -0.09593823753106456,
+            "projected_convective_momentum_term_m3": 20.383278609640087,
+            "projected_hydrostatic_pressure_term_m3": 67.69576650968922,
+            "projected_specific_force_m3": 88.07904511932931,
+            "projection_cosine": 1.0,
+            "representative_friction_slope": 0.0011062974262158573,
+            "section_force": {
+              "convective_momentum_term_m3": 20.383278609640087,
+              "conveyance_m3s": 2421.52786187707,
+              "discharge_m3s": 84.950539776,
+              "flow_area_m2": 36.10252431685972,
+              "froude_number": 0.4655042425873308,
+              "hydrostatic_pressure_term_m3": 67.69576650968922,
+              "momentum_coefficient_beta": 1.0,
+              "reach_key": [
+                "Spring Creek",
+                "Upper Reach"
+              ],
+              "river_station": "10.106",
+              "specific_force_m3": 88.07904511932931,
+              "water_surface_elevation_m": 23.013555743408205
+            },
+            "section_spacing_m": 24.384,
+            "upstream_control_volume_area_m2": 36.10252431685972,
+            "water_weight_force_m3": 0.9025452538831599
+          },
+          {
+            "applied_bed_slope": 0.0004285714285713888,
+            "contribution_m3": 27.510657417925337,
+            "deflection_degrees": 45.0,
+            "downstream_allocated_area_m2": 13.905883780434007,
+            "downstream_area_fraction": 0.2682926829268293,
+            "friction_force_m3": 0.2895501202167014,
+            "half_length_area_volume_m3": 282.9094540683246,
+            "invert_tangent_slope": 0.0004285714285713888,
+            "net_friction_and_weight_m3": -0.16830321133028783,
+            "projected_convective_momentum_term_m3": 3.931180881931243,
+            "projected_hydrostatic_pressure_term_m3": 23.747779747324383,
+            "projected_specific_force_m3": 27.678960629255627,
+            "projection_cosine": 0.7071067811865476,
+            "representative_friction_slope": 0.001023472761524516,
+            "section_force": {
+              "convective_momentum_term_m3": 5.5595293193689885,
+              "conveyance_m3s": 979.604413080843,
+              "discharge_m3s": 31.1485312512,
+              "flow_area_m2": 17.83827130961317,
+              "froude_number": 0.37509386566428066,
+              "hydrostatic_pressure_term_m3": 33.58443219491525,
+              "momentum_coefficient_beta": 1.0023890623576193,
+              "reach_key": [
+                "Spruce Creek",
+                "Spruce Creek"
+              ],
+              "river_station": "0.013",
+              "specific_force_m3": 39.14396151428424,
+              "water_surface_elevation_m": 23.013555743408205
+            },
+            "section_spacing_m": 21.336000000000002,
+            "upstream_control_volume_area_m2": 12.61356260767291,
+            "water_weight_force_m3": 0.12124690888641357
+          }
+        ],
+        "common_upstream_water_surface_elevation_m": 23.013555743408205,
+        "diagnostic_only": true,
+        "downstream_force": {
+          "convective_momentum_term_m3": 26.51838349705297,
+          "conveyance_m3s": 3623.068225771556,
+          "discharge_m3s": 116.0990710272,
+          "flow_area_m2": 51.83102136343584,
+          "froude_number": 0.44961939650450833,
+          "hydrostatic_pressure_term_m3": 94.13893739319235,
+          "momentum_coefficient_beta": 1.0,
+          "reach_key": [
+            "Spring Creek",
+            "Lower Reach"
+          ],
+          "river_station": "10.091",
+          "specific_force_m3": 120.65732089024532,
+          "water_surface_elevation_m": 22.871508599853517
+        },
+        "downstream_water_surface_elevation_m": 22.871508599853517,
+        "equation": "SF_down - sum(projected_pressure + projected_convective - friction + bed_weight)",
+        "operator_admitted": false,
+        "residual_m3": 5.163556590521736,
+        "schema": "gwm.geospatial_kernel.hec_ras_force_diagnostic.v1",
+        "upstream_contribution_sum_m3": 115.49376429972358,
+        "variant": {
+          "bed_slope_interpretation": "invert_tangent",
+          "calibrated_to_example10": false,
+          "changed_assumption": "replace exact irregular-section centroid pressure by A*maximum_depth/2",
+          "control_volume_upstream_area_projection": "cosine",
+          "evidence_basis": "standard rectangular-channel approximation specified before evaluation; USACE equation 4-3 instead requires total area times centroid depth",
+          "friction_downstream_allocation": "whole_section",
+          "matches_documented_equations": false,
+          "operator_admitted": false,
+          "pressure_projection": "cosine",
+          "pressure_term_interpretation": "rectangular_half_max_depth",
+          "variant_id": "rectangular_half_max_depth_pressure"
+        }
+      },
+      "root": {
+        "all_sections_subcritical": true,
+        "residual_m3": 4.121147867408581e-13,
+        "root_bracket_m": [
+          23.109168046875002,
+          23.11056703125
+        ],
+        "stage_error_ft": 0.3153215272358665,
+        "stage_ft": 75.8191133363179,
+        "status": "root_found",
+        "within_published_stage_tolerance": false
+      },
+      "variant": {
+        "bed_slope_interpretation": "invert_tangent",
+        "calibrated_to_example10": false,
+        "changed_assumption": "replace exact irregular-section centroid pressure by A*maximum_depth/2",
+        "control_volume_upstream_area_projection": "cosine",
+        "evidence_basis": "standard rectangular-channel approximation specified before evaluation; USACE equation 4-3 instead requires total area times centroid depth",
+        "friction_downstream_allocation": "whole_section",
+        "matches_documented_equations": false,
+        "operator_admitted": false,
+        "pressure_projection": "cosine",
+        "pressure_term_interpretation": "rectangular_half_max_depth",
+        "variant_id": "rectangular_half_max_depth_pressure"
+      }
+    }
+  ],
+  "frozen_stage10_and_stage11": {
+    "benchmarks/geotransport_v0_1/hec_ras_example10_momentum_gates.json": {
+      "actual_sha256": "9b48df0851bdfd93f03e3beda3deb021d877e92e8e598a7cf360d50522e63b17",
+      "expected_sha256": "9b48df0851bdfd93f03e3beda3deb021d877e92e8e598a7cf360d50522e63b17"
+    },
+    "data_agent/uwm/geospatial_kernel_v2/__init__.py": {
+      "actual_sha256": "7db7e6459143d2a54e742a732fcd3f85c422a9775559296dc39a985ab632315d",
+      "expected_sha256": "7db7e6459143d2a54e742a732fcd3f85c422a9775559296dc39a985ab632315d"
+    },
+    "data_agent/uwm/geospatial_kernel_v2/dynamic_wave_junction_momentum.py": {
+      "actual_sha256": "64cd7ae682784a2d9fc4be48bf6a3a7fc2eb074d5e31bca97fdc5bd6f298a873",
+      "expected_sha256": "64cd7ae682784a2d9fc4be48bf6a3a7fc2eb074d5e31bca97fdc5bd6f298a873"
+    },
+    "data_agent/uwm/geospatial_kernel_v2/hec_ras_reference.py": {
+      "actual_sha256": "9536a02990743a456574a737059be6d0a4134d44bf98a629095d7ce28515b39d",
+      "expected_sha256": "9536a02990743a456574a737059be6d0a4134d44bf98a629095d7ce28515b39d"
+    },
+    "data_agent/uwm/geospatial_kernel_v2/irregular_section.py": {
+      "actual_sha256": "3cde5d5bbdce22738516fed8ff2dd078f9eb50824b66b7155e10849f440e07cd",
+      "expected_sha256": "3cde5d5bbdce22738516fed8ff2dd078f9eb50824b66b7155e10849f440e07cd"
+    },
+    "docs/architecture-decisions/adr-052-hec-ras-irregular-junction-reference.md": {
+      "actual_sha256": "53fc825a6db189c29707084ebec556db82022e04b7aa8112f49b6d8d1622310d",
+      "expected_sha256": "53fc825a6db189c29707084ebec556db82022e04b7aa8112f49b6d8d1622310d"
+    },
+    "scripts/acquire_geotransport_hec_ras_example10.py": {
+      "actual_sha256": "f9bcde3128eb8c4eabd536be79b0eb5d79651f6b84869eae8286cad2bece708e",
+      "expected_sha256": "f9bcde3128eb8c4eabd536be79b0eb5d79651f6b84869eae8286cad2bece708e"
+    },
+    "scripts/compile_geotransport_hec_ras_example10_gates.py": {
+      "actual_sha256": "0eeb5fa702a0dbbe55afcb1f46a74318769d255a4f62771e913d2470098403e3",
+      "expected_sha256": "0eeb5fa702a0dbbe55afcb1f46a74318769d255a4f62771e913d2470098403e3"
+    }
+  },
+  "gate_summary": {
+    "all_expected_behaviors_passed": true,
+    "passed": 14,
+    "total": 14
+  },
+  "gates": {
+    "all_source_artifact_identities_match": true,
+    "all_variants_are_uncalibrated_and_diagnostic_only": true,
+    "documented_force_decomposition_matches_stage11_residual": true,
+    "documented_variant_root_matches_stage11_root": true,
+    "frozen_stage10_and_stage11_evidence_is_unchanged": true,
+    "junction_force_equations_4_5_to_4_8_are_present": true,
+    "moving_and_total_areas_are_equal_in_this_case": true,
+    "no_predeclared_variant_matches_reference_stage": true,
+    "no_second_official_combining_junction_case_found": true,
+    "operator_remains_refused": true,
+    "published_equation_4_7_angle_ambiguity_is_exposed": true,
+    "published_equation_4_9_weight_ambiguity_is_exposed": true,
+    "specific_force_equation_4_3_is_present": true,
+    "transparent_candidate_does_not_implement_momentum_junction": true
+  },
+  "generated_at": "2026-07-28T14:07:00.416643+00:00",
+  "independent_evidence_search": {
+    "independent_discriminating_case_available": false,
+    "official_catalog": {
+      "independent_same_method_case_found": false,
+      "negative_search_is_not_proof_of_global_absence": true,
+      "query": "type=page AND (title~\"junction\" OR text~\"momentum based junction\")",
+      "ras_application_guide_junction_pages": [
+        {
+          "id": "80528340",
+          "space": "RASAppGuide",
+          "title": ".Stream Junction - Example 10 v6"
+        },
+        {
+          "id": "66719806",
+          "space": "RASAppGuide",
+          "title": "Stream Junction - Example 10"
+        },
+        {
+          "id": "80525576",
+          "space": "RASAppGuide",
+          "title": ".Split Flow Junction with Lateral Weir/Spillway - Example 15 v6"
+        },
+        {
+          "id": "66718833",
+          "space": "RASAppGuide",
+          "title": "Split Flow Junction with Lateral Weir/Spillway - Example 15"
+        }
+      ],
+      "result_count": 62,
+      "same_example10_pages": [
+        {
+          "id": "80528340",
+          "space": "RASAppGuide",
+          "title": ".Stream Junction - Example 10 v6"
+        },
+        {
+          "id": "66719806",
+          "space": "RASAppGuide",
+          "title": "Stream Junction - Example 10"
+        }
+      ],
+      "scope_note": "the two Example 10 page IDs are current/versioned presentations of the same model; Example 15 is a lateral-weir split-flow problem",
+      "split_flow_lateral_weir_pages": [
+        {
+          "id": "80525576",
+          "space": "RASAppGuide",
+          "title": ".Split Flow Junction with Lateral Weir/Spillway - Example 15 v6"
+        },
+        {
+          "id": "66718833",
+          "space": "RASAppGuide",
+          "title": "Split Flow Junction with Lateral Weir/Spillway - Example 15"
+        }
+      ],
+      "unique_combining_example_ids": [
+        "Example 10"
+      ]
+    },
+    "transparent_source_candidate": {
+      "commit": "f0f5f07ceecd416cf6a1fbe629d3e1050d6d2a74",
+      "declares_momentum_junction_option": true,
+      "momentum_junction_implemented": false,
+      "path": "src/Simulator/solve_network_mod.f90",
+      "reason": "both upstream and downstream momentum-junction branches explicitly state that only the energy-based option is implemented",
+      "repository": "babakpst/RiverNetwork",
+      "source_is_reference_truth": false,
+      "unimplemented_marker_count": 2,
+      "usable_as_independent_discriminating_case": false
+    }
+  },
+  "ineffective_area_semantics_audit": [
+    {
+      "areas_equal_at_terminal_state": true,
+      "difference_ft2": 0.0,
+      "moving_flow_area_ft2": 388.6042785644531,
+      "reach_key": [
+        "Spring Creek",
+        "Upper Reach"
+      ],
+      "river_station": "10.106",
+      "total_area_including_ineffective_ft2": 388.6042785644531
+    },
+    {
+      "areas_equal_at_terminal_state": true,
+      "difference_ft2": 0.0,
+      "moving_flow_area_ft2": 192.0095672607422,
+      "reach_key": [
+        "Spruce Creek",
+        "Spruce Creek"
+      ],
+      "river_station": "0.013",
+      "total_area_including_ineffective_ft2": 192.0095672607422
+    },
+    {
+      "areas_equal_at_terminal_state": true,
+      "difference_ft2": 0.0,
+      "moving_flow_area_ft2": 557.9046020507812,
+      "reach_key": [
+        "Spring Creek",
+        "Lower Reach"
+      ],
+      "river_station": "10.091",
+      "total_area_including_ineffective_ft2": 557.9046020507812
+    }
+  ],
+  "reference_state": {
+    "common_upstream_stage_ft": 75.50379180908203,
+    "downstream_stage_ft": 75.03775787353516,
+    "published_rounding_tolerance_ft": 0.005,
+    "secondary_hdf_metadata": {
+      "gravity_ft_s2": 32.174049377441406,
+      "gravity_m_s2": 9.806650250244141,
+      "is_independent_field_truth": false,
+      "is_official_usace_observation": false,
+      "program_version": "HEC-RAS 6.6 September 2024"
+    }
+  },
+  "schema": "gwm.geotransport.hec_ras_stage12_force_diagnostic.v1",
+  "selection_decision": {
+    "reason": "none of the predeclared variants reproduces the reference stage, and Example 10 cannot both generate and validate a changed law",
+    "selected_variant_id": null,
+    "selection_performed": false
+  },
+  "source_artifacts": {
+    "archive": {
+      "path": ".tmp/geotransport/hec_ras_example10/Example 10 - Stream Junction.zip",
+      "sha256": "c17a7e0e48c9578ce04caa9ffbdb798b979f4f7beb1be027f543b8e45f7f98c2",
+      "size_bytes": 10838
+    },
+    "junction_method": {
+      "path": ".tmp/geotransport/hec_ras_stage12/momentum_based_junction_method.json",
+      "sha256": "c1c8e383101863cf1d88c7eaeebad87ee2dccc0ca8440cfaaf3620ca8a89d7dd",
+      "size_bytes": 11533
+    },
+    "junction_search": {
+      "canonical_sha256": "255615d8257d9f721c1a501ce97c5578b7e359c48b535d767beafad139ea4326",
+      "canonicalization": "remove_dynamic_searchDuration_then_sorted_compact_json",
+      "path": ".tmp/geotransport/hec_ras_stage12/junction_search_snapshot.json",
+      "sha256": "a7589bdf6a62134843e4ec1b5d0054e279f1222082c9eabddfd30cc55f99fc8d",
+      "size_bytes": 156673
+    },
+    "secondary_hdf": {
+      "path": ".tmp/geotransport/hec_ras_example10/secondary_JUNCTION.p02.hdf",
+      "sha256": "762b14a079570c2dabd2e4ffdef29bfde561a13cd0fcd09b15353f6de3efa4b6",
+      "size_bytes": 377015
+    },
+    "specific_force": {
+      "path": ".tmp/geotransport/hec_ras_stage12/mixed_flow_specific_force.json",
+      "sha256": "fd505acdd8bfd404fa76c227e4e307729106b1920c2e8c46bbf2fc5b826dd539",
+      "size_bytes": 11446
+    },
+    "transparent_source": {
+      "path": ".tmp/geotransport/hec_ras_stage12/rivernetwork_solve_network_mod.f90",
+      "sha256": "ea4846d397e5b3f2f7bfac7a486f904c671eda3c98338fc636336ee820f74148",
+      "size_bytes": 100473
+    }
+  },
+  "source_roles": {
+    "archive": "USACE authoritative Example 10 model input",
+    "junction_method": "USACE authoritative equation documentation",
+    "junction_search": "official catalog discovery snapshot; absence is not universal proof that another case does not exist",
+    "secondary_hdf": "fixed-commit HEC-RAS 6.6 recomputation; diagnostic precision only, not official observation or independent truth",
+    "specific_force": "USACE authoritative specific-force documentation",
+    "transparent_source": "fixed-commit public source candidate audit; not hydraulic truth"
+  },
+  "status": "diagnostic_refusal_no_independent_discriminator"
+}

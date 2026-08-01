@@ -1,0 +1,774 @@
+{
+  "claim_boundary": {
+    "candidate_promoted": false,
+    "issue_observations_acquired": false,
+    "outcome_free_predictions_executed": false,
+    "request_plan_only": false,
+    "runtime_default_enabled": false,
+    "static_inputs_acquired": true
+  },
+  "data_isolation": {
+    "future_target_loaded": false,
+    "issue_observation_loaded": false,
+    "score_or_loss_loaded": false,
+    "usgs_url_requested": false
+  },
+  "frozen_artifacts": {
+    "input_plan": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_input_plan.json",
+      "sha256": "bab7c4386501abd69bb8dd29353eadea01eae05039f9f91797a94266dc675bf9",
+      "size_bytes": 68421
+    },
+    "protocol": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_protocol.json",
+      "sha256": "b17e5a8fb36e05c111a8b87e5298e534516b9b3e3ce3ec46e4c003f1b5853722",
+      "size_bytes": 19562
+    },
+    "registry": {
+      "path": "benchmarks/geotransport_v0_1/public_data_registry.json",
+      "sha256": "399144ec64cef6ac74c780ce447b213f33dd97b5dafad5407342ffca37a6bc13",
+      "size_bytes": 23686
+    }
+  },
+  "generated_at": "2026-08-01T02:57:54.745269+00:00",
+  "mode": "acquired",
+  "nwm_requests": [
+    {
+      "chunk_key": "564.63",
+      "maximum_bytes": 100000000,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/q_lateral/564.63",
+      "variable": "q_lateral"
+    },
+    {
+      "chunk_key": "564.87",
+      "maximum_bytes": 100000000,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/q_lateral/564.87",
+      "variable": "q_lateral"
+    },
+    {
+      "chunk_key": "563.63",
+      "maximum_bytes": 100000000,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/streamflow/563.63",
+      "variable": "streamflow"
+    },
+    {
+      "chunk_key": "563.87",
+      "maximum_bytes": 100000000,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/streamflow/563.87",
+      "variable": "streamflow"
+    },
+    {
+      "chunk_key": "563",
+      "maximum_bytes": 1000000,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/time/563",
+      "variable": "time"
+    },
+    {
+      "chunk_key": "564",
+      "maximum_bytes": 1000000,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/time/564",
+      "variable": "time"
+    },
+    {
+      "chunk_key": "563.63",
+      "maximum_bytes": 100000000,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/velocity/563.63",
+      "variable": "velocity"
+    },
+    {
+      "chunk_key": "563.87",
+      "maximum_bytes": 100000000,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/velocity/563.87",
+      "variable": "velocity"
+    }
+  ],
+  "raw_nwm_artifacts": [
+    {
+      "attempt_count": 1,
+      "chunk_key": "564.63",
+      "content_type": "binary/octet-stream",
+      "http_status": 200,
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/static_inputs/raw/nwm/q_lateral/564.63.zst",
+      "retrieved_at": "2026-08-01T02:57:28.303109+00:00",
+      "sha256": "a81187662232321e8f0f23013f217384d7cb65f439504cb8fe8db06dd38b2acb",
+      "size_bytes": 1930845,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/q_lateral/564.63",
+      "variable": "q_lateral"
+    },
+    {
+      "attempt_count": 1,
+      "chunk_key": "564.87",
+      "content_type": "binary/octet-stream",
+      "http_status": 200,
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/static_inputs/raw/nwm/q_lateral/564.87.zst",
+      "retrieved_at": "2026-08-01T02:57:30.321172+00:00",
+      "sha256": "2fc9bbf693966e39d36b4c9c7698cc579d434499e410f1ae9885e2469b1ff821",
+      "size_bytes": 1292535,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/q_lateral/564.87",
+      "variable": "q_lateral"
+    },
+    {
+      "attempt_count": 1,
+      "chunk_key": "563.63",
+      "content_type": "binary/octet-stream",
+      "http_status": 200,
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/static_inputs/raw/nwm/streamflow/563.63.zst",
+      "retrieved_at": "2026-08-01T02:57:32.761130+00:00",
+      "sha256": "cfadd39bede20df9502f01e69d4b8114ca02d5f956b6e97ac8bdff0804328a71",
+      "size_bytes": 17373892,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/streamflow/563.63",
+      "variable": "streamflow"
+    },
+    {
+      "attempt_count": 1,
+      "chunk_key": "563.87",
+      "content_type": "binary/octet-stream",
+      "http_status": 200,
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/static_inputs/raw/nwm/streamflow/563.87.zst",
+      "retrieved_at": "2026-08-01T02:57:35.120155+00:00",
+      "sha256": "c97ecc9e23d357ccf524c12c68aff893fca29048c0b05f8ec6afe8449f20bd45",
+      "size_bytes": 8618431,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/streamflow/563.87",
+      "variable": "streamflow"
+    },
+    {
+      "attempt_count": 1,
+      "chunk_key": "563",
+      "content_type": "binary/octet-stream",
+      "http_status": 200,
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/static_inputs/raw/nwm/time/563.zst",
+      "retrieved_at": "2026-08-01T02:57:35.913565+00:00",
+      "sha256": "223075355eaa763fcf83b2db122fe51629504d84b843069f3925fe03103a9365",
+      "size_bytes": 729,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/time/563",
+      "variable": "time"
+    },
+    {
+      "attempt_count": 1,
+      "chunk_key": "564",
+      "content_type": "binary/octet-stream",
+      "http_status": 200,
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/static_inputs/raw/nwm/time/564.zst",
+      "retrieved_at": "2026-08-01T02:57:36.688747+00:00",
+      "sha256": "8596a52e8c2e784312da434c6e6b926a456378b0b940db038f723663dbf55ead",
+      "size_bytes": 729,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/time/564",
+      "variable": "time"
+    },
+    {
+      "attempt_count": 1,
+      "chunk_key": "563.63",
+      "content_type": "binary/octet-stream",
+      "http_status": 200,
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/static_inputs/raw/nwm/velocity/563.63.zst",
+      "retrieved_at": "2026-08-01T02:57:38.758029+00:00",
+      "sha256": "32a8f523c045b62b3d5ff86de83ad3ddf78e426c0aad2c640ef1e23a4bc48944",
+      "size_bytes": 8437046,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/velocity/563.63",
+      "variable": "velocity"
+    },
+    {
+      "attempt_count": 1,
+      "chunk_key": "563.87",
+      "content_type": "binary/octet-stream",
+      "http_status": 200,
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/static_inputs/raw/nwm/velocity/563.87.zst",
+      "retrieved_at": "2026-08-01T02:57:40.713877+00:00",
+      "sha256": "c4e62cbc1774df041ab1c12ca096423411aeb357911033710d90faea9325ccdb",
+      "size_bytes": 2954650,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/velocity/563.87",
+      "variable": "velocity"
+    }
+  ],
+  "request_execution": {
+    "bulk_issue_observation_prefetch_permitted": false,
+    "cwms_request_count": 2,
+    "frozen_total_request_count": 122,
+    "nwm_request_count": 8,
+    "static_request_count": 10,
+    "static_request_count_executed_or_verified_reuse": 10,
+    "usgs_issue_request_count_deferred": 112,
+    "usgs_issue_request_count_executed": 0
+  },
+  "schema": "gwm.geotransport.horizon_assimilation_holdout_static_inputs.v1",
+  "status": "static_inputs_acquired_issue_observations_deferred",
+  "systems": {
+    "center_hill": {
+      "action_quality_codes": [
+        0
+      ],
+      "action_raw": {
+        "attempt_count": 1,
+        "content_type": "application/json;version=2",
+        "http_status": 200,
+        "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/static_inputs/raw/action/center_hill.json",
+        "retrieved_at": "2026-08-01T02:57:48.073991+00:00",
+        "sha256": "8e6ad797fc5dc39e3c1caa3300f86c452cf49cfa5a83680524e96dc9c30d14c5",
+        "size_bytes": 17734,
+        "url": "https://cwms-data.usace.army.mil/cwms-data/timeseries?name=CETT1-CENTER_HILL.Flow.Ave.1Hour.1Hour.man-rev&office=LRN&begin=2022-04-28T01%3A00%3A00Z&end=2022-05-26T01%3A00%3A00Z&unit=cms&page-size=50000"
+      },
+      "action_values": {
+        "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/static_inputs/systems/center_hill/action_values.csv",
+        "sha256": "94add162a20b4c88bcbb99ebf2216bb41995a5149007ed72f2ddd07621393d33",
+        "size_bytes": 43577
+      },
+      "decoded_arrays": {
+        "feature_ids": {
+          "dtype": "int64",
+          "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/static_inputs/systems/center_hill/decoded/feature_ids.npy",
+          "sha256": "306787f4b6a37cbd82713e885355697d2a4ae25d9dc61f6c117021136b4491f0",
+          "shape": [
+            435
+          ],
+          "size_bytes": 3608
+        },
+        "forcing_timestamps_utc": {
+          "dtype": "<U20",
+          "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/static_inputs/systems/center_hill/decoded/forcing_timestamps_utc.npy",
+          "sha256": "ce24ddbff3d6105846d34e9d571908a90db8b1e669ecbf8f3405eef3ab606ee9",
+          "shape": [
+            672
+          ],
+          "size_bytes": 53888
+        },
+        "initial_cross_section_area_m2": {
+          "dtype": "float64",
+          "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/static_inputs/systems/center_hill/decoded/initial_cross_section_area_m2.npy",
+          "sha256": "e3247961f97539c270a598b727cd798d787a71d414adca51476da55f7b8fcfd9",
+          "shape": [
+            435
+          ],
+          "size_bytes": 3608
+        },
+        "initial_storage_m3": {
+          "dtype": "float64",
+          "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/static_inputs/systems/center_hill/decoded/initial_storage_m3.npy",
+          "sha256": "ad9a473f463a15023b0dbd448f0e71cec1e4b9cb671aff1dc1811b7e821c4226",
+          "shape": [
+            435
+          ],
+          "size_bytes": 3608
+        },
+        "initial_streamflow_m3s": {
+          "dtype": "float64",
+          "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/static_inputs/systems/center_hill/decoded/initial_streamflow_m3s.npy",
+          "sha256": "a2460d28d2eebe8313b6a2f80ad65fbc9087445400e95b90b866aa75204c9a76",
+          "shape": [
+            435
+          ],
+          "size_bytes": 3608
+        },
+        "initial_velocity_ms": {
+          "dtype": "float64",
+          "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/static_inputs/systems/center_hill/decoded/initial_velocity_ms.npy",
+          "sha256": "a6c4e15046249f64122e7f1738f7bc76cc9edcf8f6ccdc2da5a457b90b67d98d",
+          "shape": [
+            435
+          ],
+          "size_bytes": 3608
+        },
+        "q_lateral_m3s": {
+          "dtype": "float64",
+          "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/static_inputs/systems/center_hill/decoded/q_lateral_m3s.npy",
+          "sha256": "807169f7c3615c20f95e0e41d8f529a984db62547d46443182c908177437161a",
+          "shape": [
+            672,
+            435
+          ],
+          "size_bytes": 2338688
+        }
+      },
+      "feature_chunk_indices": [
+        63,
+        87
+      ],
+      "feature_count": 435,
+      "result": {
+        "action_missing_value_count": 0,
+        "distributed_q_lateral_total_maximum_m3s": 109.8000016361475,
+        "distributed_q_lateral_total_mean_m3s": 1.459672640798436,
+        "distributed_q_lateral_total_minimum_m3s": 0.0,
+        "hour_count": 672,
+        "initial_storage_total_m3": 10303092.749186851,
+        "initial_streamflow_fill_value_count": 0,
+        "initial_velocity_fill_value_count": 0,
+        "q_lateral_fill_value_count": 0
+      },
+      "topology_report": {
+        "path": "benchmarks/geotransport_v0_1/center_hill_v2_d5_full_subnetwork_report.json",
+        "sha256": "9d066189ed23f0bf91fecdefa9327bcfc4a92704d4fb23e6e07c3bbe78559bbd",
+        "size_bytes": 19899
+      }
+    },
+    "j_percy_priest": {
+      "action_quality_codes": [
+        0
+      ],
+      "action_raw": {
+        "attempt_count": 1,
+        "content_type": "application/json;version=2",
+        "http_status": 200,
+        "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/static_inputs/raw/action/j_percy_priest.json",
+        "retrieved_at": "2026-08-01T02:57:54.399702+00:00",
+        "sha256": "01807a28704bf33ccc40d728d15d707f6b12bb01024cba0cc6d0d6f74765fed5",
+        "size_bytes": 17548,
+        "url": "https://cwms-data.usace.army.mil/cwms-data/timeseries?name=JPPT1-J_PERCY_PRIEST.Flow.Ave.1Hour.1Hour.man-rev&office=LRN&begin=2022-04-28T01%3A00%3A00Z&end=2022-05-26T01%3A00%3A00Z&unit=cms&page-size=50000"
+      },
+      "action_values": {
+        "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/static_inputs/systems/j_percy_priest/action_values.csv",
+        "sha256": "c80215a8f8ace78b5ee19b1468a2dba48218928adbc3d29f4616ce11f2312252",
+        "size_bytes": 43787
+      },
+      "decoded_arrays": {
+        "feature_ids": {
+          "dtype": "int64",
+          "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/static_inputs/systems/j_percy_priest/decoded/feature_ids.npy",
+          "sha256": "33b7a9e3996c3b4c6823f1b66d61ba9e608c117bbc92be125e30331e3e9d3373",
+          "shape": [
+            43
+          ],
+          "size_bytes": 472
+        },
+        "forcing_timestamps_utc": {
+          "dtype": "<U20",
+          "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/static_inputs/systems/j_percy_priest/decoded/forcing_timestamps_utc.npy",
+          "sha256": "ce24ddbff3d6105846d34e9d571908a90db8b1e669ecbf8f3405eef3ab606ee9",
+          "shape": [
+            672
+          ],
+          "size_bytes": 53888
+        },
+        "initial_cross_section_area_m2": {
+          "dtype": "float64",
+          "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/static_inputs/systems/j_percy_priest/decoded/initial_cross_section_area_m2.npy",
+          "sha256": "17b81c93a96d26c4aca9f765ae7105155010fe4c7773cc0c200b5c005c200d81",
+          "shape": [
+            43
+          ],
+          "size_bytes": 472
+        },
+        "initial_storage_m3": {
+          "dtype": "float64",
+          "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/static_inputs/systems/j_percy_priest/decoded/initial_storage_m3.npy",
+          "sha256": "037335e82364635beaf285f6b79a4743ad38e20fed9b3ac7a994f9f04a20f5d0",
+          "shape": [
+            43
+          ],
+          "size_bytes": 472
+        },
+        "initial_streamflow_m3s": {
+          "dtype": "float64",
+          "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/static_inputs/systems/j_percy_priest/decoded/initial_streamflow_m3s.npy",
+          "sha256": "5f2d643d59fafca64161aba454886dd75dfb2324178c1e9d8d05f94f9d4decf6",
+          "shape": [
+            43
+          ],
+          "size_bytes": 472
+        },
+        "initial_velocity_ms": {
+          "dtype": "float64",
+          "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/static_inputs/systems/j_percy_priest/decoded/initial_velocity_ms.npy",
+          "sha256": "7671908dfcdb6f662afe64f58b451c0e8bd2e0631c18834944973f8ab91e1bdf",
+          "shape": [
+            43
+          ],
+          "size_bytes": 472
+        },
+        "q_lateral_m3s": {
+          "dtype": "float64",
+          "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/static_inputs/systems/j_percy_priest/decoded/q_lateral_m3s.npy",
+          "sha256": "5896332796113942048abf87af9d87a9ef57d7ad49dcbad716706fb59d5465b0",
+          "shape": [
+            672,
+            43
+          ],
+          "size_bytes": 231296
+        }
+      },
+      "feature_chunk_indices": [
+        63
+      ],
+      "feature_count": 43,
+      "result": {
+        "action_missing_value_count": 0,
+        "distributed_q_lateral_total_maximum_m3s": 61.30000091344118,
+        "distributed_q_lateral_total_mean_m3s": 1.044196444131168,
+        "distributed_q_lateral_total_minimum_m3s": 0.0,
+        "hour_count": 672,
+        "initial_storage_total_m3": 658081.8192823958,
+        "initial_streamflow_fill_value_count": 0,
+        "initial_velocity_fill_value_count": 0,
+        "q_lateral_fill_value_count": 0
+      },
+      "topology_report": {
+        "path": "benchmarks/geotransport_v0_1/j_percy_priest_v1_full_subnetwork_report.json",
+        "sha256": "2159b88b57ae2a4d476ab025190b64a1cd2b62c1c4d6c9e45bca9e844d2fe3d6",
+        "size_bytes": 13504
+      }
+    }
+  },
+  "window": {
+    "end_exclusive_utc": "2022-05-26T01:00:00Z",
+    "horizons_hours": [
+      1,
+      3,
+      6,
+      12
+    ],
+    "hour_count": 672,
+    "initial_state_valid_at_utc": "2022-04-28T00:00:00Z",
+    "issue_count_per_system": 56,
+    "issue_indices": [
+      0,
+      12,
+      24,
+      36,
+      48,
+      60,
+      72,
+      84,
+      96,
+      108,
+      120,
+      132,
+      144,
+      156,
+      168,
+      180,
+      192,
+      204,
+      216,
+      228,
+      240,
+      252,
+      264,
+      276,
+      288,
+      300,
+      312,
+      324,
+      336,
+      348,
+      360,
+      372,
+      384,
+      396,
+      408,
+      420,
+      432,
+      444,
+      456,
+      468,
+      480,
+      492,
+      504,
+      516,
+      528,
+      540,
+      552,
+      564,
+      576,
+      588,
+      600,
+      612,
+      624,
+      636,
+      648,
+      660
+    ],
+    "issue_stride_hours": 12,
+    "issue_times_utc": [
+      "2022-04-28T01:00:00Z",
+      "2022-04-28T13:00:00Z",
+      "2022-04-29T01:00:00Z",
+      "2022-04-29T13:00:00Z",
+      "2022-04-30T01:00:00Z",
+      "2022-04-30T13:00:00Z",
+      "2022-05-01T01:00:00Z",
+      "2022-05-01T13:00:00Z",
+      "2022-05-02T01:00:00Z",
+      "2022-05-02T13:00:00Z",
+      "2022-05-03T01:00:00Z",
+      "2022-05-03T13:00:00Z",
+      "2022-05-04T01:00:00Z",
+      "2022-05-04T13:00:00Z",
+      "2022-05-05T01:00:00Z",
+      "2022-05-05T13:00:00Z",
+      "2022-05-06T01:00:00Z",
+      "2022-05-06T13:00:00Z",
+      "2022-05-07T01:00:00Z",
+      "2022-05-07T13:00:00Z",
+      "2022-05-08T01:00:00Z",
+      "2022-05-08T13:00:00Z",
+      "2022-05-09T01:00:00Z",
+      "2022-05-09T13:00:00Z",
+      "2022-05-10T01:00:00Z",
+      "2022-05-10T13:00:00Z",
+      "2022-05-11T01:00:00Z",
+      "2022-05-11T13:00:00Z",
+      "2022-05-12T01:00:00Z",
+      "2022-05-12T13:00:00Z",
+      "2022-05-13T01:00:00Z",
+      "2022-05-13T13:00:00Z",
+      "2022-05-14T01:00:00Z",
+      "2022-05-14T13:00:00Z",
+      "2022-05-15T01:00:00Z",
+      "2022-05-15T13:00:00Z",
+      "2022-05-16T01:00:00Z",
+      "2022-05-16T13:00:00Z",
+      "2022-05-17T01:00:00Z",
+      "2022-05-17T13:00:00Z",
+      "2022-05-18T01:00:00Z",
+      "2022-05-18T13:00:00Z",
+      "2022-05-19T01:00:00Z",
+      "2022-05-19T13:00:00Z",
+      "2022-05-20T01:00:00Z",
+      "2022-05-20T13:00:00Z",
+      "2022-05-21T01:00:00Z",
+      "2022-05-21T13:00:00Z",
+      "2022-05-22T01:00:00Z",
+      "2022-05-22T13:00:00Z",
+      "2022-05-23T01:00:00Z",
+      "2022-05-23T13:00:00Z",
+      "2022-05-24T01:00:00Z",
+      "2022-05-24T13:00:00Z",
+      "2022-05-25T01:00:00Z",
+      "2022-05-25T13:00:00Z"
+    ],
+    "start_inclusive_utc": "2022-04-28T01:00:00Z",
+    "target_times_utc_by_horizon": {
+      "1": [
+        "2022-04-28T02:00:00Z",
+        "2022-04-28T14:00:00Z",
+        "2022-04-29T02:00:00Z",
+        "2022-04-29T14:00:00Z",
+        "2022-04-30T02:00:00Z",
+        "2022-04-30T14:00:00Z",
+        "2022-05-01T02:00:00Z",
+        "2022-05-01T14:00:00Z",
+        "2022-05-02T02:00:00Z",
+        "2022-05-02T14:00:00Z",
+        "2022-05-03T02:00:00Z",
+        "2022-05-03T14:00:00Z",
+        "2022-05-04T02:00:00Z",
+        "2022-05-04T14:00:00Z",
+        "2022-05-05T02:00:00Z",
+        "2022-05-05T14:00:00Z",
+        "2022-05-06T02:00:00Z",
+        "2022-05-06T14:00:00Z",
+        "2022-05-07T02:00:00Z",
+        "2022-05-07T14:00:00Z",
+        "2022-05-08T02:00:00Z",
+        "2022-05-08T14:00:00Z",
+        "2022-05-09T02:00:00Z",
+        "2022-05-09T14:00:00Z",
+        "2022-05-10T02:00:00Z",
+        "2022-05-10T14:00:00Z",
+        "2022-05-11T02:00:00Z",
+        "2022-05-11T14:00:00Z",
+        "2022-05-12T02:00:00Z",
+        "2022-05-12T14:00:00Z",
+        "2022-05-13T02:00:00Z",
+        "2022-05-13T14:00:00Z",
+        "2022-05-14T02:00:00Z",
+        "2022-05-14T14:00:00Z",
+        "2022-05-15T02:00:00Z",
+        "2022-05-15T14:00:00Z",
+        "2022-05-16T02:00:00Z",
+        "2022-05-16T14:00:00Z",
+        "2022-05-17T02:00:00Z",
+        "2022-05-17T14:00:00Z",
+        "2022-05-18T02:00:00Z",
+        "2022-05-18T14:00:00Z",
+        "2022-05-19T02:00:00Z",
+        "2022-05-19T14:00:00Z",
+        "2022-05-20T02:00:00Z",
+        "2022-05-20T14:00:00Z",
+        "2022-05-21T02:00:00Z",
+        "2022-05-21T14:00:00Z",
+        "2022-05-22T02:00:00Z",
+        "2022-05-22T14:00:00Z",
+        "2022-05-23T02:00:00Z",
+        "2022-05-23T14:00:00Z",
+        "2022-05-24T02:00:00Z",
+        "2022-05-24T14:00:00Z",
+        "2022-05-25T02:00:00Z",
+        "2022-05-25T14:00:00Z"
+      ],
+      "12": [
+        "2022-04-28T13:00:00Z",
+        "2022-04-29T01:00:00Z",
+        "2022-04-29T13:00:00Z",
+        "2022-04-30T01:00:00Z",
+        "2022-04-30T13:00:00Z",
+        "2022-05-01T01:00:00Z",
+        "2022-05-01T13:00:00Z",
+        "2022-05-02T01:00:00Z",
+        "2022-05-02T13:00:00Z",
+        "2022-05-03T01:00:00Z",
+        "2022-05-03T13:00:00Z",
+        "2022-05-04T01:00:00Z",
+        "2022-05-04T13:00:00Z",
+        "2022-05-05T01:00:00Z",
+        "2022-05-05T13:00:00Z",
+        "2022-05-06T01:00:00Z",
+        "2022-05-06T13:00:00Z",
+        "2022-05-07T01:00:00Z",
+        "2022-05-07T13:00:00Z",
+        "2022-05-08T01:00:00Z",
+        "2022-05-08T13:00:00Z",
+        "2022-05-09T01:00:00Z",
+        "2022-05-09T13:00:00Z",
+        "2022-05-10T01:00:00Z",
+        "2022-05-10T13:00:00Z",
+        "2022-05-11T01:00:00Z",
+        "2022-05-11T13:00:00Z",
+        "2022-05-12T01:00:00Z",
+        "2022-05-12T13:00:00Z",
+        "2022-05-13T01:00:00Z",
+        "2022-05-13T13:00:00Z",
+        "2022-05-14T01:00:00Z",
+        "2022-05-14T13:00:00Z",
+        "2022-05-15T01:00:00Z",
+        "2022-05-15T13:00:00Z",
+        "2022-05-16T01:00:00Z",
+        "2022-05-16T13:00:00Z",
+        "2022-05-17T01:00:00Z",
+        "2022-05-17T13:00:00Z",
+        "2022-05-18T01:00:00Z",
+        "2022-05-18T13:00:00Z",
+        "2022-05-19T01:00:00Z",
+        "2022-05-19T13:00:00Z",
+        "2022-05-20T01:00:00Z",
+        "2022-05-20T13:00:00Z",
+        "2022-05-21T01:00:00Z",
+        "2022-05-21T13:00:00Z",
+        "2022-05-22T01:00:00Z",
+        "2022-05-22T13:00:00Z",
+        "2022-05-23T01:00:00Z",
+        "2022-05-23T13:00:00Z",
+        "2022-05-24T01:00:00Z",
+        "2022-05-24T13:00:00Z",
+        "2022-05-25T01:00:00Z",
+        "2022-05-25T13:00:00Z",
+        "2022-05-26T01:00:00Z"
+      ],
+      "3": [
+        "2022-04-28T04:00:00Z",
+        "2022-04-28T16:00:00Z",
+        "2022-04-29T04:00:00Z",
+        "2022-04-29T16:00:00Z",
+        "2022-04-30T04:00:00Z",
+        "2022-04-30T16:00:00Z",
+        "2022-05-01T04:00:00Z",
+        "2022-05-01T16:00:00Z",
+        "2022-05-02T04:00:00Z",
+        "2022-05-02T16:00:00Z",
+        "2022-05-03T04:00:00Z",
+        "2022-05-03T16:00:00Z",
+        "2022-05-04T04:00:00Z",
+        "2022-05-04T16:00:00Z",
+        "2022-05-05T04:00:00Z",
+        "2022-05-05T16:00:00Z",
+        "2022-05-06T04:00:00Z",
+        "2022-05-06T16:00:00Z",
+        "2022-05-07T04:00:00Z",
+        "2022-05-07T16:00:00Z",
+        "2022-05-08T04:00:00Z",
+        "2022-05-08T16:00:00Z",
+        "2022-05-09T04:00:00Z",
+        "2022-05-09T16:00:00Z",
+        "2022-05-10T04:00:00Z",
+        "2022-05-10T16:00:00Z",
+        "2022-05-11T04:00:00Z",
+        "2022-05-11T16:00:00Z",
+        "2022-05-12T04:00:00Z",
+        "2022-05-12T16:00:00Z",
+        "2022-05-13T04:00:00Z",
+        "2022-05-13T16:00:00Z",
+        "2022-05-14T04:00:00Z",
+        "2022-05-14T16:00:00Z",
+        "2022-05-15T04:00:00Z",
+        "2022-05-15T16:00:00Z",
+        "2022-05-16T04:00:00Z",
+        "2022-05-16T16:00:00Z",
+        "2022-05-17T04:00:00Z",
+        "2022-05-17T16:00:00Z",
+        "2022-05-18T04:00:00Z",
+        "2022-05-18T16:00:00Z",
+        "2022-05-19T04:00:00Z",
+        "2022-05-19T16:00:00Z",
+        "2022-05-20T04:00:00Z",
+        "2022-05-20T16:00:00Z",
+        "2022-05-21T04:00:00Z",
+        "2022-05-21T16:00:00Z",
+        "2022-05-22T04:00:00Z",
+        "2022-05-22T16:00:00Z",
+        "2022-05-23T04:00:00Z",
+        "2022-05-23T16:00:00Z",
+        "2022-05-24T04:00:00Z",
+        "2022-05-24T16:00:00Z",
+        "2022-05-25T04:00:00Z",
+        "2022-05-25T16:00:00Z"
+      ],
+      "6": [
+        "2022-04-28T07:00:00Z",
+        "2022-04-28T19:00:00Z",
+        "2022-04-29T07:00:00Z",
+        "2022-04-29T19:00:00Z",
+        "2022-04-30T07:00:00Z",
+        "2022-04-30T19:00:00Z",
+        "2022-05-01T07:00:00Z",
+        "2022-05-01T19:00:00Z",
+        "2022-05-02T07:00:00Z",
+        "2022-05-02T19:00:00Z",
+        "2022-05-03T07:00:00Z",
+        "2022-05-03T19:00:00Z",
+        "2022-05-04T07:00:00Z",
+        "2022-05-04T19:00:00Z",
+        "2022-05-05T07:00:00Z",
+        "2022-05-05T19:00:00Z",
+        "2022-05-06T07:00:00Z",
+        "2022-05-06T19:00:00Z",
+        "2022-05-07T07:00:00Z",
+        "2022-05-07T19:00:00Z",
+        "2022-05-08T07:00:00Z",
+        "2022-05-08T19:00:00Z",
+        "2022-05-09T07:00:00Z",
+        "2022-05-09T19:00:00Z",
+        "2022-05-10T07:00:00Z",
+        "2022-05-10T19:00:00Z",
+        "2022-05-11T07:00:00Z",
+        "2022-05-11T19:00:00Z",
+        "2022-05-12T07:00:00Z",
+        "2022-05-12T19:00:00Z",
+        "2022-05-13T07:00:00Z",
+        "2022-05-13T19:00:00Z",
+        "2022-05-14T07:00:00Z",
+        "2022-05-14T19:00:00Z",
+        "2022-05-15T07:00:00Z",
+        "2022-05-15T19:00:00Z",
+        "2022-05-16T07:00:00Z",
+        "2022-05-16T19:00:00Z",
+        "2022-05-17T07:00:00Z",
+        "2022-05-17T19:00:00Z",
+        "2022-05-18T07:00:00Z",
+        "2022-05-18T19:00:00Z",
+        "2022-05-19T07:00:00Z",
+        "2022-05-19T19:00:00Z",
+        "2022-05-20T07:00:00Z",
+        "2022-05-20T19:00:00Z",
+        "2022-05-21T07:00:00Z",
+        "2022-05-21T19:00:00Z",
+        "2022-05-22T07:00:00Z",
+        "2022-05-22T19:00:00Z",
+        "2022-05-23T07:00:00Z",
+        "2022-05-23T19:00:00Z",
+        "2022-05-24T07:00:00Z",
+        "2022-05-24T19:00:00Z",
+        "2022-05-25T07:00:00Z",
+        "2022-05-25T19:00:00Z"
+      ]
+    }
+  }
+}

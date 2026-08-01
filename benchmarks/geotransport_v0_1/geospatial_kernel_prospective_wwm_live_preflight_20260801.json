@@ -1,0 +1,187 @@
+{
+  "audited_at_utc": "2026-08-01T09:00:00Z",
+  "campaign_blocking_reasons": [
+    "native_dispatch_action_covers_issue_minus_7h_through_plus_12h",
+    "generator_dispatch_to_physical_release_boundary_frozen",
+    "nwm_exact_forcing_transform_and_12h_axis_verified",
+    "sealed_physical_forecast_receipt_available",
+    "j_percy_priest_action_candidate_transfer_supported",
+    "trusted_external_timestamp_authority_ready"
+  ],
+  "center_hill_blocking_reasons": [
+    "native_dispatch_action_covers_issue_minus_7h_through_plus_12h",
+    "generator_dispatch_to_physical_release_boundary_frozen",
+    "nwm_exact_forcing_transform_and_12h_axis_verified",
+    "sealed_physical_forecast_receipt_available"
+  ],
+  "center_hill_live_wwm_v3_issue_ready": false,
+  "claim_boundary": {
+    "candidate_promoted": false,
+    "future_outcome_loaded": false,
+    "geospatial_kernel_validated": false,
+    "live_public_input_readiness_audited": true,
+    "physical_prediction_executed": false,
+    "runtime_default_enabled": false,
+    "wwm_v3_issue_compiled": false
+  },
+  "implementation_artifacts": {
+    "live_preflight_auditor": {
+      "path": "scripts/audit_geospatial_kernel_prospective_wwm_live_preflight.py",
+      "sha256": "899a36b3786989924a63843301d33e70f2c11f1eb4bee2ea33b92096a7ee37c4",
+      "size_bytes": 25353
+    }
+  },
+  "live_inputs": {
+    "center_hill_archival_release_source": {
+      "catalog_interval_semantics": "approximately_1_day",
+      "hourly_resolution_available": false,
+      "operational_action_vintage_verified": false,
+      "requested_begin_utc": "2026-08-01T00:00:00Z",
+      "requested_end_utc": "2026-08-03T00:00:00Z",
+      "required_hourly_axis_available": false,
+      "returned_value_count": 0,
+      "series_id": "CETT1-CENTER_HILL.Flow.Ave.~1Day.1Day.celrn-cwms-forecast"
+    },
+    "center_hill_native_dispatch_candidate": {
+      "api_http_status": 403,
+      "candidate_status": "blocked_native_dispatch_api_access",
+      "endpoint": "https://apigw-public.tva.gov/river/generation-releases/CEHT1",
+      "generator_count_to_release_m3s_mapping_frozen": false,
+      "geographic_access_policy_denial_observed": true,
+      "native_action_unit": "generator_count",
+      "native_dispatch_action_ready": false,
+      "native_dispatch_externally_timestamped": false,
+      "native_dispatch_payload_verified": false,
+      "official_app_package": "com.tva.lakeinfo",
+      "official_app_version": "5.2.0",
+      "physical_release_boundary_blockers": [
+        "no_independently_observed_hourly_generator_count_labels",
+        "no_generator_loading_or_megawatt_schedule",
+        "contemporaneous_tailwater_is_not_a_preissue_exogenous_input",
+        "no_prospective_non_turbine_release_schedule",
+        "historical_man_rev_values_are_not_operational_vintages"
+      ],
+      "physical_release_boundary_ready": false,
+      "physical_release_output_unit": "m3/s",
+      "required_axis_explicitly_covered": false,
+      "server_schedule_publication_time_available": false
+    },
+    "center_hill_outlet_observation": {
+      "accepted_by_wwm_v3_issue_contract": true,
+      "latest_discharge_cfs": 16.8,
+      "latest_discharge_m3s": 0.4757230227456,
+      "latest_qualifiers": [
+        "P"
+      ],
+      "latest_valid_at_utc": "2026-08-01T07:00:00Z",
+      "latest_value_is_approved": false,
+      "latest_value_is_provisional": true,
+      "latest_value_not_after_audit": true,
+      "parameter_code": "00060",
+      "site_id": "03424730",
+      "source_authoritative": true
+    },
+    "nwm_short_range_candidate": {
+      "content_length_bytes": 12631792,
+      "exact_forcing_contract_ready": false,
+      "full_1h_3h_6h_12h_axis_acquired": false,
+      "historical_q_lateral_to_operational_channel_transform_frozen": false,
+      "http_200": true,
+      "last_modified_utc": "2026-08-01T07:29:40Z",
+      "one_short_range_channel_file_available": true,
+      "source_url": "https://nomads.ncep.noaa.gov/pub/data/nccf/com/nwm/prod/nwm.20260801/short_range/nwm.t06z.short_range.channel_rt.f001.conus.nc"
+    }
+  },
+  "model_support": {
+    "cross_system_action_transfer": {
+      "historical_failure_replicated": true,
+      "target_system": "j_percy_priest",
+      "zero_refit_transfer_supported": false
+    },
+    "external_timestamping": {
+      "blocker": "no_registered_rfc3161_timestamp_authority",
+      "registered_authority_count": 0,
+      "trusted_external_timestamp_verification_ready": false
+    },
+    "frozen_action_candidate": {
+      "candidate_admitted": false,
+      "center_hill_network_identity_verified": true,
+      "lag_hours": [
+        5,
+        6,
+        7
+      ],
+      "multi_system_support_frozen": false,
+      "network_id": "center-hill:dam-to-gauge:full-incremental-subnetwork-v1",
+      "parameter_path": "data/geotransport_v0_1/kernel_innovation_candidate/parameters.json"
+    }
+  },
+  "readiness_gates": {
+    "center_hill_action_candidate_identity_verified": true,
+    "current_observation_is_authoritative_unimputed_and_preissue": true,
+    "generator_dispatch_to_physical_release_boundary_frozen": false,
+    "j_percy_priest_action_candidate_transfer_supported": false,
+    "native_dispatch_action_covers_issue_minus_7h_through_plus_12h": false,
+    "nwm_exact_forcing_transform_and_12h_axis_verified": false,
+    "sealed_physical_forecast_receipt_available": false,
+    "trusted_external_timestamp_authority_ready": false
+  },
+  "schema": "gwm.geospatial_kernel.prospective_wwm_live_preflight.v3",
+  "scope": {
+    "action_contract_layers": [
+      "native_dispatch_action_generator_count",
+      "physical_release_boundary_m3s"
+    ],
+    "candidate_issue_schema": "gwm.geospatial_kernel.prospective_wwm_candidate_issue.v3",
+    "forecast_horizons_hours": [
+      1,
+      3,
+      6,
+      12
+    ],
+    "network_requests_performed_by_compiler": false,
+    "systems_required_for_promotion": [
+      "center_hill",
+      "j_percy_priest"
+    ]
+  },
+  "source_artifacts": {
+    "action_candidate_freeze": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_action_innovation_candidate_freeze.json",
+      "sha256": "cf13add56e60912fef6d10daab8bcfc31605e04dba5ae1905b4bb39f872f7970",
+      "size_bytes": 5430
+    },
+    "cross_system_action_report": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_action_innovation_cross_system_posthoc_report.json",
+      "sha256": "c6b46aa11e075f206398b340da31b20e905ad9bcd6213e969ec52a1961f98e15",
+      "size_bytes": 25611
+    },
+    "cwms_action_response": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_prospective_wwm_live_preflight_20260801/raw/cwms_center_hill_release_forecast.json",
+      "sha256": "a0cec5fa57dee6f4c5341fe5dab078be333873159c785b7f82c5808ac5f8e86d",
+      "size_bytes": 500
+    },
+    "nwm_response_headers": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_prospective_wwm_live_preflight_20260801/raw/nwm_t06_f001_headers.txt",
+      "sha256": "2f2c8682f68e04d8bba6614e477dcb6ac4d06be5d8cc3b0c5fd567342f769cfe",
+      "size_bytes": 827
+    },
+    "timestamp_authority_registry": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_internal_innovation_timestamp_authority_registry.json",
+      "sha256": "1cd300deb5c8d981bda874304d946f311555fae4ef1f76288911658e8412be3c",
+      "size_bytes": 2237
+    },
+    "tva_native_dispatch_candidate_report": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_tva_native_dispatch_candidate_20260801.json",
+      "sha256": "ac79cc1c09f907f952a1b8d9d96c72f99a560835732670d3766b0a949b29b917",
+      "size_bytes": 6649
+    },
+    "usgs_observation_response": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_prospective_wwm_live_preflight_20260801/raw/usgs_03424730_current.json",
+      "sha256": "b1aa4655604eabdde197685dd8f379847dc981a690db1e7c6aaf6d9b85591431",
+      "size_bytes": 6066
+    }
+  },
+  "status": "blocked_live_wwm_v3_issue_inputs_not_ready",
+  "trusted_dual_system_campaign_ready": false
+}

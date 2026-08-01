@@ -1,0 +1,137 @@
+{
+  "checks": {
+    "action_enters_only_first_active_reach": true,
+    "all_step_mass_balance_residuals_within_tolerance": true,
+    "exact_matrix_exponential_used": true,
+    "horizon_mass_balance_residual_within_tolerance": true,
+    "outcome_values_used": false,
+    "state_specific_velocity_proxy_used_each_hour": true,
+    "zero_effective_length_action_reach_excluded": true
+  },
+  "claim_boundary": {
+    "benchmark_validated": false,
+    "cold_start_operator_smoke_completed": true,
+    "flood_wave_transport_admitted": false,
+    "geospatial_kernel_validated": false,
+    "linear_reservoir_cascade_hydrodynamically_validated": false,
+    "outcome_calibrated": false,
+    "real_boundary_action_used": true,
+    "real_modeled_q_lateral_used": true,
+    "real_nwm_river_velocity_proxy_used": true,
+    "river_velocity_admitted_as_flood_wave_celerity": false,
+    "training_or_evaluation_panel_ready": false
+  },
+  "diagnostics": {
+    "cumulative_input_volume_m3": 11510315.92219788,
+    "cumulative_outlet_volume_m3": 2782574.210562902,
+    "diagnostic_outlet_mean_flow_m3s": {
+      "maximum": 114.73625578514208,
+      "mean": 32.20572002966321,
+      "minimum": 0.0009184766334214339
+    },
+    "final_reach_storage_m3": 8727741.711637195,
+    "horizon_mass_balance_residual_m3": 2.216547727584839e-06,
+    "horizon_mass_tolerance_m3": 2.4e-05,
+    "maximum_absolute_step_mass_balance_residual_m3": 1.737498678267002e-07,
+    "proxy_residence_time_sum_seconds": {
+      "maximum": 79285.02601480154,
+      "mean": 78161.71723351518,
+      "minimum": 77368.04652028419
+    },
+    "step_mass_tolerance_m3": 1e-06
+  },
+  "generated_at": "2026-07-26T10:47:38.831685+00:00",
+  "operator": {
+    "constant_input_support": "[support_start_utc,support_end_utc]",
+    "initial_condition": "zero_reach_storage_cold_start",
+    "method": "ordered_first_order_reach_storage_cascade_exact_matrix_exponential",
+    "operator_form_admitted": false,
+    "path_admitted": false,
+    "propagation_relation": "K_i=effective_length_i/river_velocity_proxy_i",
+    "schema": "gwm.geospatial_kernel.state_dependent_reach_transport.v1",
+    "timestep_seconds": 3600.0
+  },
+  "output_artifact": {
+    "path": "data/geotransport_v0_1/diagnostics/center_hill_reach_transport_cold_start_20220101.csv",
+    "sha256": "f82966f1408a54a9fe785fd4e67cb9864626a5c35542497f9cfada5ba15d2326",
+    "size_bytes": 4968
+  },
+  "schema": "gwm.geotransport.center_hill_reach_transport_smoke.v1",
+  "source_artifacts": {
+    "panel": {
+      "path": "data/geotransport_v0_1/panels/center_hill_20220101.csv",
+      "sha256": "959753c8a5cbd00c1e64e51d459caf8954ee406278308bc1fc176425cce2688c",
+      "size_bytes": 4962
+    },
+    "panel_report": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_smoke_panel_report.json",
+      "sha256": "d649ba553cddc1d2a87f2b00a1e6fba15afb10670b882ed7215167b8186cbd36",
+      "size_bytes": 9795
+    },
+    "q_lateral_extraction_manifest": {
+      "path": "data/geotransport_v0_1/nwm_q_lateral/extraction_manifest.json",
+      "sha256": "9d55aa39d944ed45af150c393cc44009c8b9ceb814930f739958ef3443c33711",
+      "size_bytes": 4517
+    },
+    "q_lateral_selected_values": {
+      "path": "data/geotransport_v0_1/nwm_q_lateral/values/center_hill.csv",
+      "sha256": "6698bc9d90266da00966b3dd25dcdc305d807c63e2efd1f6e49b11b5f0d17560",
+      "size_bytes": 33752
+    },
+    "travel_time_prior_report": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_travel_time_prior_report.json",
+      "sha256": "e29fc54273e2f5f650d49599e8c98c6ec98c13c1025041e0f8c2ba41340c425e",
+      "size_bytes": 11456
+    },
+    "velocity_selected_values": {
+      "path": "data/geotransport_v0_1/nwm_velocity/values/center_hill.csv",
+      "sha256": "993b235a90374ad9ce794ace9b86a4c07a6f186b62be38370c5c4dba633df9bb",
+      "size_bytes": 1165181
+    }
+  },
+  "spatial_support": {
+    "active_feature_count": 26,
+    "active_feature_ids": [
+      18434265,
+      18421763,
+      18421761,
+      18421759,
+      18421753,
+      18421821,
+      18427677,
+      18421751,
+      18421811,
+      18421817,
+      18421831,
+      18421747,
+      18421829,
+      18421727,
+      18421737,
+      18421807,
+      18421719,
+      18421721,
+      18421803,
+      18421799,
+      18421731,
+      18421739,
+      18421741,
+      18421795,
+      18421707,
+      18421703
+    ],
+    "effective_path_length_m": 25172.759480695615,
+    "excluded_zero_length_feature_ids": [
+      18434275
+    ],
+    "full_feature_count": 27,
+    "partial_gauge_reach_q_lateral_remains_full_reach_approximation": true,
+    "path_id": "center_hill:CETT1-CENTER_HILL:USGS-03424860"
+  },
+  "status": "operator_smoke_passed_not_scientifically_admitted",
+  "window": {
+    "end_exclusive": "2022-01-02T00:00:00Z",
+    "start_inclusive": "2022-01-01T00:00:00Z",
+    "step_count": 24,
+    "time_step": "PT1H"
+  }
+}

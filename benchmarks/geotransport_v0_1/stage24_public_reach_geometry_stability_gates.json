@@ -1,0 +1,276 @@
+{
+  "all_gates_passed": true,
+  "audit_artifact": {
+    "path": "data/geotransport_v0_1/stage24_center_hill_reach_geometry_stability/reach_geometry_stability_audit.json",
+    "sha256": "b4955bc4d8669f70f49425661d73c81166e7e28dc6a7ee761d37d657b8c365c9",
+    "size_bytes": 14961
+  },
+  "candidate_summary": {
+    "area_at_reference_m2": 255.8038919112326,
+    "diagnostic_candidate_only": true,
+    "gage_height_used_as_depth": false,
+    "model": "gage_datum_referenced_trapezoidal_stage_geometry",
+    "reference_gage_height_m": 4.041648,
+    "section": {
+      "bottom_width_m": 45.42405602979682,
+      "side_slope_horizontal_per_vertical": 2.950214308896597
+    },
+    "side_slope_horizontal_per_vertical": 2.950214308896597,
+    "structural_identity": "dA_dH_equals_top_width",
+    "structural_identity_maximum_error_m": 0.0,
+    "top_width_at_reference_m": 71.28849889673613,
+    "training_measurement_count": 55,
+    "training_measurement_ids": [
+      "b6b29b1d-7eaf-423f-88a3-fd9841815ad5",
+      "618dfb83-dbba-4c73-8380-0d8d788a64e7",
+      "1644600c-6026-4d73-a55c-62af6bfcd61e",
+      "c966ed7c-1e86-4ab1-bd5c-c68f53326e3a",
+      "7625df85-da70-497a-a080-43a82b08e1d5",
+      "230785b9-6b02-4fef-a1fd-a60f2361f7e3",
+      "b0286c3f-0f03-4879-8f77-5acd3701b742",
+      "c7244dc5-abbc-44af-93a7-64e80607aead",
+      "e09030db-99ed-4ddc-909f-8b7d9f5cf8fb",
+      "d003b3e9-bd7d-4ecb-a16e-a5a66337d25c",
+      "855230f9-551f-4bb5-a055-637c9db8244d",
+      "4c1a464c-6c10-480e-bf35-8b0fe1fa662c",
+      "6a48c407-3e09-4474-8a56-94dbb953b64f",
+      "3eee6178-556f-437e-a5c5-8e70210e9f09",
+      "8de42f17-9813-4b5c-8898-9bc31bc2aa71",
+      "f138930b-89a8-496d-b6b3-c6ba03c641ed",
+      "d31d04fc-5b1c-4f01-89f1-9a8e1ac30f4f",
+      "0527f081-a097-42bc-98b3-dd89d4b98dd5",
+      "73b76079-dd6e-466c-a014-c041440feb41",
+      "eafbb436-2dc2-4703-8adf-52ece6449e27",
+      "88e81cfb-126b-4ff9-90cf-3fb7e60a68bc",
+      "6448e9a8-2b05-470d-b56c-e1a48a01dfe3",
+      "9acac630-9ce8-4b4a-a39f-ca63b34f447f",
+      "16958fe9-b14f-4aad-a700-3aa2a75f3c6b",
+      "b4115313-d7a1-4760-8e23-84763222541f",
+      "28c518ef-db2f-4fbb-97e6-a87c992d5810",
+      "f4d11b8a-9bdc-403e-99a5-f1c14bb92d03",
+      "f921e25b-7441-44d6-b633-28b1f660af78",
+      "cd7e6b6f-ad37-4e70-9209-e24383b79773",
+      "413c8bac-0cfc-4033-897c-976af27f0396",
+      "241734ca-33f4-4e24-80da-02a0fcfd89cf",
+      "54366403-d50f-4d80-903b-0dbe8975d5f8",
+      "c65f8d2c-d8f1-4539-ad64-60a38a63e7e9",
+      "41ca0520-ec72-4864-84c1-c6a610c0645f",
+      "63e9e14a-2080-4f26-a123-e9ac961cf8c6",
+      "c6d40d9d-8798-4413-b5df-38c2b4ab92ff",
+      "9b882416-7491-46b5-aef0-bb02afad2386",
+      "157964b7-ed98-41f7-844b-7e6f1fdb5f38",
+      "6367533e-83bc-4c58-9ab5-5be973cd537f",
+      "7864f30d-236b-44c3-a2f3-0cf31279b999",
+      "ec115726-48ec-4eff-b844-7f82c27c60ed",
+      "52deec6f-9bc9-4d17-947f-9cc66fecffd6",
+      "60e3b2ae-4b8a-4030-ba78-878f6a8ed90f",
+      "be00d387-9c45-461d-bbce-9ad728f6586b",
+      "6b584435-9d52-47e1-b4e5-e741dd8c5c76",
+      "81fd452d-8172-4ba2-9aa9-6c337dfa6357",
+      "edb738c2-6eb2-478a-bf8a-8bbdbf919006",
+      "7a37fe65-5d8c-47b1-a540-1a2316e1f2bd",
+      "37ca7c62-4ada-467e-ad39-3a0eaf7b4f36",
+      "6fd1a4e2-bbf8-480e-92eb-1cbe7b3a49e5",
+      "e06a8ee0-8427-49d2-a2eb-7e52d02e1997",
+      "c0f9669d-ef7b-4b15-980f-54177d7d695e",
+      "200e072e-957e-481c-8bbd-0e05375a9e9a",
+      "3c7077be-0e0b-4c7c-b06d-91bced54565a",
+      "0e81ca9b-4e43-422f-825f-aa2a6c4a52b9"
+    ],
+    "training_stage_range_m": [
+      1.9385280000000003,
+      8.936736
+    ],
+    "zero_area_gage_height_m": -0.3418374283200878
+  },
+  "claim_boundary": {
+    "bridge_candidate_is_surveyed_cross_section": false,
+    "confluence_bathymetry_completed": false,
+    "gage_height_treated_as_bed_referenced_depth": false,
+    "observed_geometry_stability_audited": true,
+    "operator_admitted": false,
+    "reach_wide_fixed_geometry_admitted": false,
+    "zero_area_stage_is_surveyed_bed_elevation": false
+  },
+  "cohort_counts": {
+    "development": 55,
+    "method_spatial_holdout": 25,
+    "other_retained": 7,
+    "provisional_primary": 1,
+    "simultaneous_component_channels": 2,
+    "temporal_holdout": 20
+  },
+  "decision": {
+    "bridge_location_candidate_temporally_supported": true,
+    "confluence_patch_bathymetry_admitted": false,
+    "method_spatial_transfer_supported": false,
+    "operator_admitted": false,
+    "reach_wide_fixed_geometry_admitted": false,
+    "runtime_hydraulic_geometry_admitted": false
+  },
+  "evaluation_summary": {
+    "development": {
+      "accuracy_passed": true,
+      "area_mae_m2": 8.852752893686914,
+      "area_mean_signed_error_m2": -1.3177338008641858e-14,
+      "area_median_absolute_percentage_error": 0.030713859238286803,
+      "area_p90_absolute_percentage_error": 0.06162579407933833,
+      "cohort_id": "development",
+      "derivative_width_median_absolute_percentage_error": 0.0640837696582052,
+      "derivative_width_p90_absolute_percentage_error": 0.12352031292009737,
+      "measurement_count": 55,
+      "stage_range_m": [
+        1.9385280000000003,
+        8.936736
+      ],
+      "thresholds": {
+        "median_absolute_percentage_error": 0.1,
+        "p90_absolute_percentage_error": 0.15
+      },
+      "time_range": [
+        "2011-02-25T16:30:30+00:00",
+        "2022-12-16T16:19:08+00:00"
+      ],
+      "width_mae_m": 3.118035017059241,
+      "width_mean_signed_error_m": -0.16859713130911172,
+      "width_median_absolute_percentage_error": 0.035323819590006536,
+      "width_p90_absolute_percentage_error": 0.07890022533517917
+    },
+    "method_spatial_holdout_inside_stage_support": {
+      "accuracy_passed": false,
+      "area_mae_m2": 91.87594437784747,
+      "area_mean_signed_error_m2": 91.87594437784747,
+      "area_median_absolute_percentage_error": 2.3457822847901686,
+      "area_p90_absolute_percentage_error": 5.72760791082159,
+      "cohort_id": "method_spatial_holdout_inside_stage_support",
+      "derivative_width_median_absolute_percentage_error": 0.2125114652113109,
+      "derivative_width_p90_absolute_percentage_error": 0.4546621961657396,
+      "measurement_count": 17,
+      "stage_range_m": [
+        1.9385280000000003,
+        2.471928
+      ],
+      "thresholds": {
+        "median_absolute_percentage_error": 0.1,
+        "p90_absolute_percentage_error": 0.15
+      },
+      "time_range": [
+        "2011-01-25T18:37:30+00:00",
+        "2016-08-16T13:49:00+00:00"
+      ],
+      "width_mae_m": 12.19559500547218,
+      "width_mean_signed_error_m": 3.662474601671145,
+      "width_median_absolute_percentage_error": 0.15909369940237886,
+      "width_p90_absolute_percentage_error": 0.5727003908235314
+    },
+    "temporal_holdout": {
+      "accuracy_passed": true,
+      "area_mae_m2": 2.945902257624784,
+      "area_mean_signed_error_m2": 0.8848630177340873,
+      "area_median_absolute_percentage_error": 0.017022840543599864,
+      "area_p90_absolute_percentage_error": 0.03196849636018871,
+      "cohort_id": "temporal_holdout",
+      "derivative_width_median_absolute_percentage_error": 0.08354732244529621,
+      "derivative_width_p90_absolute_percentage_error": 0.12945114998461194,
+      "measurement_count": 20,
+      "stage_range_m": [
+        1.987296,
+        5.346192
+      ],
+      "thresholds": {
+        "median_absolute_percentage_error": 0.1,
+        "p90_absolute_percentage_error": 0.15
+      },
+      "time_range": [
+        "2023-02-10T15:04:14+00:00",
+        "2026-03-27T14:14:47+00:00"
+      ],
+      "width_mae_m": 2.6551750033324915,
+      "width_mean_signed_error_m": -1.834649114300119,
+      "width_median_absolute_percentage_error": 0.040415226105877826,
+      "width_p90_absolute_percentage_error": 0.06028138049449903
+    }
+  },
+  "frozen_stage23_hashes": {
+    "benchmarks/geotransport_v0_1/stage23_public_reach_hydraulic_gates.json": {
+      "actual_sha256": "60149e1102bd5f2843d19df58b483b11e74448c7048a455898f0d265b030ae0e",
+      "expected_sha256": "60149e1102bd5f2843d19df58b483b11e74448c7048a455898f0d265b030ae0e",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage23_usgs_channel_measurements_03424860/README.md": {
+      "actual_sha256": "82160f31aba27414287e069b27e4b62bd53c2e31d9505b5c3247d9f1a76a641b",
+      "expected_sha256": "82160f31aba27414287e069b27e4b62bd53c2e31d9505b5c3247d9f1a76a641b",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage23_usgs_channel_measurements_03424860/acquisition_manifest.json": {
+      "actual_sha256": "fee1c83979c8e03fc4ae692a9fa44a3437f0c099f270d01550bb14799cbb57c8",
+      "expected_sha256": "fee1c83979c8e03fc4ae692a9fa44a3437f0c099f270d01550bb14799cbb57c8",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage23_usgs_channel_measurements_03424860/public_reach_hydraulic_measurements.json": {
+      "actual_sha256": "1aa43986eae52d49dc666b218edd14866f1ebb15d10ad1c04f72cb78f6346849",
+      "expected_sha256": "1aa43986eae52d49dc666b218edd14866f1ebb15d10ad1c04f72cb78f6346849",
+      "matches": true
+    },
+    "data_agent/test_acquire_geotransport_stage23_usgs_channel_measurements.py": {
+      "actual_sha256": "dc852b66877bc0e2bb28d161f7df15e290dfe20a1daddda94ac7b83ddd3e3949",
+      "expected_sha256": "dc852b66877bc0e2bb28d161f7df15e290dfe20a1daddda94ac7b83ddd3e3949",
+      "matches": true
+    },
+    "data_agent/test_geospatial_kernel_public_reach_hydraulic_measurements.py": {
+      "actual_sha256": "52f0d04c3351671ec327352cf5666e625167682333fa57bf3f75d23d04f0fbb8",
+      "expected_sha256": "52f0d04c3351671ec327352cf5666e625167682333fa57bf3f75d23d04f0fbb8",
+      "matches": true
+    },
+    "data_agent/uwm/geospatial_kernel_v2/public_reach_hydraulic_measurements.py": {
+      "actual_sha256": "45b9c440bcd690bf5a2aeea629199bb01b701cc3d51c0a8f9991e0068e7d4754",
+      "expected_sha256": "45b9c440bcd690bf5a2aeea629199bb01b701cc3d51c0a8f9991e0068e7d4754",
+      "matches": true
+    },
+    "docs/architecture-decisions/adr-064-public-reach-observed-hydraulic-state-binding.md": {
+      "actual_sha256": "a9ba4b02c7feb98b1755f86ec2df661a5937301020bc45564ad6a9908d80df30",
+      "expected_sha256": "a9ba4b02c7feb98b1755f86ec2df661a5937301020bc45564ad6a9908d80df30",
+      "matches": true
+    },
+    "scripts/acquire_geotransport_stage23_usgs_channel_measurements.py": {
+      "actual_sha256": "e77eb8b89eb42b002d201190025ce87a488c648b5e73b699c67fac66830c55e7",
+      "expected_sha256": "e77eb8b89eb42b002d201190025ce87a488c648b5e73b699c67fac66830c55e7",
+      "matches": true
+    },
+    "scripts/compile_geotransport_stage23_public_reach_hydraulic_gates.py": {
+      "actual_sha256": "9a046cc786ef99efe34bab4f91ac056d4a2f369699f829224309378d5331e6bb",
+      "expected_sha256": "9a046cc786ef99efe34bab4f91ac056d4a2f369699f829224309378d5331e6bb",
+      "matches": true
+    }
+  },
+  "gates": {
+    "all_110_observations_are_partitioned": true,
+    "area_only_derivative_audit_does_not_fit_observed_width": true,
+    "candidate_has_positive_physical_trapezoid_parameters": true,
+    "candidate_operator_remains_unadmitted": true,
+    "development_accuracy_thresholds_pass": true,
+    "development_temporal_and_method_cohorts_are_disjoint": true,
+    "fifty_five_pre_2023_bridge_adcp_records_form_development": true,
+    "gage_datum_and_inferred_zero_area_stage_are_not_bed_survey": true,
+    "joint_candidate_enforces_dA_dH_equals_top_width": true,
+    "method_spatial_holdout_is_evaluated_inside_stage_support": true,
+    "method_spatial_rejection_is_material_in_area_width_and_derivative": true,
+    "method_spatial_transfer_is_empirically_rejected": true,
+    "provisional_stage_is_retained_but_excluded_from_training": true,
+    "runtime_and_reach_wide_geometry_admission_remain_closed": true,
+    "simultaneous_component_channels_are_excluded_from_training": true,
+    "stage23_artifacts_hash_frozen": true,
+    "temporal_holdout_accuracy_thresholds_pass": true,
+    "temporal_holdout_has_no_training_identity_leakage": true,
+    "twenty_post_2023_bridge_adcp_records_form_temporal_holdout": true,
+    "unsupported_geometry_claims_fail_closed": true
+  },
+  "generated_at": "2026-07-29T11:59:33.696325+00:00",
+  "schema": "gwm.geotransport.stage24_public_reach_geometry_stability_gates.v1",
+  "status": "bridge_location_geometry_temporally_supported_reach_wide_and_runtime_admission_rejected",
+  "typed_refusals": {
+    "confluence_patch_bathymetry": true,
+    "reach_wide_fixed_geometry": true,
+    "runtime_hydraulic_geometry": true
+  }
+}

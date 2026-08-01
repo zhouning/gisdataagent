@@ -1,0 +1,210 @@
+{
+  "all_gates_passed": true,
+  "analytic_diagnostics": {
+    "downstream_stage_boundary": {
+      "bed_elevation_m": 0.0,
+      "boundary_characteristic_speeds_mps": [
+        -2.055087456022495,
+        4.920198143748344
+      ],
+      "boundary_outgoing_invariant_mps": 9.506791501898942,
+      "diagnostic_only": true,
+      "incoming_characteristic": "u_minus_c",
+      "incoming_characteristic_count": 1,
+      "interior_characteristic_speeds_mps": [
+        -2.0550874560224943,
+        4.920198143748346
+      ],
+      "interior_outgoing_invariant_mps": 9.506791501898942,
+      "operator_admitted": false,
+      "outgoing_characteristic": "u_plus_c",
+      "outgoing_characteristic_count": 1,
+      "outgoing_invariant_residual_mps": 0.0,
+      "prescribed_quantity": "free_surface_elevation_m",
+      "prescribed_value": 1.5311288741492748,
+      "quadrature": "dry_regularized_gauss_legendre_24",
+      "schema": "gwm.geospatial_kernel.dynamic_wave_characteristic_boundary.v1",
+      "side": "right",
+      "state": {
+        "area_m2": 20.0,
+        "discharge_m3s": 28.651106877258492
+      },
+      "subcritical_only": true
+    },
+    "rectangular_potential_absolute_error_mps": 0.0,
+    "supercritical_interior_rejected": true,
+    "trapezoidal_potential_derivative_relative_error": 2.3261681874108213e-11,
+    "upstream_discharge_boundary": {
+      "bed_elevation_m": 0.0,
+      "boundary_characteristic_speeds_mps": [
+        -2.0550874560224943,
+        4.920198143748346
+      ],
+      "boundary_outgoing_invariant_mps": -6.641680814173092,
+      "diagnostic_only": true,
+      "incoming_characteristic": "u_plus_c",
+      "incoming_characteristic_count": 1,
+      "interior_characteristic_speeds_mps": [
+        -2.0550874560224943,
+        4.920198143748346
+      ],
+      "interior_outgoing_invariant_mps": -6.641680814173092,
+      "operator_admitted": false,
+      "outgoing_characteristic": "u_minus_c",
+      "outgoing_characteristic_count": 1,
+      "outgoing_invariant_residual_mps": 0.0,
+      "prescribed_quantity": "discharge_m3s",
+      "prescribed_value": 28.65110687725851,
+      "quadrature": "dry_regularized_gauss_legendre_24",
+      "schema": "gwm.geospatial_kernel.dynamic_wave_characteristic_boundary.v1",
+      "side": "left",
+      "state": {
+        "area_m2": 20.0,
+        "discharge_m3s": 28.65110687725851
+      },
+      "subcritical_only": true
+    }
+  },
+  "boundary_contract": {
+    "discharge_root_policy": "nearest_subcritical_root_to_adjacent_interior_area",
+    "dry_boundary_supported": false,
+    "incoming_characteristics_per_boundary": 1,
+    "left_outgoing_invariant": "u - integral_0^A c(a)/a da",
+    "prescribed_quantities": [
+      "area_m2",
+      "discharge_m3s",
+      "free_surface_elevation_m"
+    ],
+    "right_outgoing_invariant": "u + integral_0^A c(a)/a da",
+    "subcritical_only": true,
+    "supercritical_boundary_supported": false,
+    "transcritical_boundary_supported": false
+  },
+  "claim_boundary": {
+    "candidate_operator_admitted": false,
+    "downstream_stage_boundary_implemented": true,
+    "dry_characteristic_boundaries_implemented": false,
+    "geospatial_kernel_validated": false,
+    "network_operator_implemented": false,
+    "predictive_validation_complete": false,
+    "subcritical_characteristic_boundaries_implemented": true,
+    "supercritical_characteristic_boundaries_implemented": false,
+    "time_series_boundary_adapter_implemented": false,
+    "upstream_discharge_boundary_implemented": true,
+    "variable_geometry_operator_implemented": false
+  },
+  "data_isolation": {
+    "action_values_read": false,
+    "observation_values_read": false,
+    "public_or_user_data_read": false,
+    "saved_prediction_values_read": false
+  },
+  "flat_lake_at_rest": {
+    "elapsed_seconds": 1152.1510311934792,
+    "maximum_absolute_discharge_m3s": 0.0,
+    "maximum_absolute_outgoing_invariant_residual_mps": 0.0,
+    "maximum_absolute_step_momentum_ledger_error_m4s": 0.0,
+    "maximum_absolute_step_volume_ledger_error_m3": 0.0,
+    "maximum_area_drift_m2": 0.0,
+    "step_count": 100
+  },
+  "gates": {
+    "all_step_momentum_ledgers_close": true,
+    "all_step_volume_ledgers_close": true,
+    "characteristic_flat_lake_identity_100_steps": true,
+    "downstream_stage_boundary_recovers_uniform_state": true,
+    "fine_grid_area_drift_below_two_percent": true,
+    "fine_grid_discharge_drift_below_two_percent": true,
+    "moving_flow_area_refinement_ratio_below_limit": true,
+    "moving_flow_cumulative_momentum_ledgers_close": true,
+    "moving_flow_cumulative_volume_ledgers_close": true,
+    "moving_flow_discharge_refinement_ratio_below_limit": true,
+    "moving_flow_states_remain_wet_and_cfl_compliant": true,
+    "outgoing_invariant_residual_bounded": true,
+    "rectangular_potential_equals_two_c": true,
+    "supercritical_interior_fails_closed": true,
+    "trapezoidal_potential_derivative_equals_c_over_a": true,
+    "upstream_discharge_boundary_recovers_uniform_state": true
+  },
+  "generated_at": "2026-07-28T04:49:46.279487+00:00",
+  "moving_uniform_flow": {
+    "area_refinement_error_ratios": [
+      0.5070261449392341,
+      0.5034644645971256
+    ],
+    "bed_slope": 0.002,
+    "cell_counts": [
+      24,
+      48,
+      96
+    ],
+    "constant_area_m2": 20.0,
+    "discharge_refinement_error_ratios": [
+      0.5219543539729408,
+      0.511033282024252
+    ],
+    "downstream_boundary": "prescribed_free_surface_elevation",
+    "duration_seconds": 1800.0,
+    "fine_relative_drift_limit": 0.02,
+    "manning_equilibrium_discharge_m3s": 28.65110687725851,
+    "manning_n": 0.035,
+    "physical_length_m": 2400.0,
+    "refinement_error_ratio_limit": 0.6,
+    "refinements": [
+      {
+        "cell_count": 24,
+        "cell_length_m": 100.0,
+        "cumulative_momentum_ledger_error_m4s": 4.656612873077393e-10,
+        "cumulative_volume_ledger_error_m3": 4.547473508864641e-13,
+        "elapsed_seconds": 1800.0,
+        "maximum_absolute_outgoing_invariant_residual_mps": 9.414691248821327e-13,
+        "maximum_absolute_step_momentum_ledger_error_m4s": 7.275957614183426e-12,
+        "maximum_absolute_step_volume_ledger_error_m3": 2.275868382639601e-11,
+        "maximum_relative_area_drift": 0.06914101209154352,
+        "maximum_relative_discharge_drift": 0.057390128350307594,
+        "maximum_reported_courant_number": 0.4496684104673561,
+        "mean_relative_area_drift": 0.06146365044235206,
+        "mean_relative_discharge_drift": 0.05311315710007628,
+        "minimum_area_m2": 19.999999999999996,
+        "step_count": 200
+      },
+      {
+        "cell_count": 48,
+        "cell_length_m": 50.0,
+        "cumulative_momentum_ledger_error_m4s": 4.656612873077393e-10,
+        "cumulative_volume_ledger_error_m3": 2.2737367544323206e-12,
+        "elapsed_seconds": 1800.0,
+        "maximum_absolute_outgoing_invariant_residual_mps": 9.556799795973347e-13,
+        "maximum_absolute_step_momentum_ledger_error_m4s": 0.0,
+        "maximum_absolute_step_volume_ledger_error_m3": 3.583178198596215e-11,
+        "maximum_relative_area_drift": 0.035056300817972286,
+        "maximum_relative_discharge_drift": 0.029955027367508952,
+        "maximum_reported_courant_number": 0.44982371456421305,
+        "mean_relative_area_drift": 0.03147050560287826,
+        "mean_relative_discharge_drift": 0.028372234647159916,
+        "minimum_area_m2": 19.999999999999986,
+        "step_count": 397
+      },
+      {
+        "cell_count": 96,
+        "cell_length_m": 25.0,
+        "cumulative_momentum_ledger_error_m4s": -4.656612873077393e-10,
+        "cumulative_volume_ledger_error_m3": -1.000444171950221e-11,
+        "elapsed_seconds": 1800.0,
+        "maximum_absolute_outgoing_invariant_residual_mps": 9.938716516444401e-13,
+        "maximum_absolute_step_momentum_ledger_error_m4s": 0.0,
+        "maximum_absolute_step_volume_ledger_error_m3": 5.65762992010832e-11,
+        "maximum_relative_area_drift": 0.01764960172207619,
+        "maximum_relative_discharge_drift": 0.015308015948744392,
+        "maximum_reported_courant_number": 0.4499090449182636,
+        "mean_relative_area_drift": 0.015916994346460305,
+        "mean_relative_discharge_drift": 0.014662729260384448,
+        "minimum_area_m2": 19.999999999999982,
+        "step_count": 791
+      }
+    ],
+    "upstream_boundary": "prescribed_discharge"
+  },
+  "schema": "gwm.geotransport.dynamic_wave_characteristic_boundary_gates.v1",
+  "status": "subcritical_characteristic_boundary_diagnostic_gated"
+}

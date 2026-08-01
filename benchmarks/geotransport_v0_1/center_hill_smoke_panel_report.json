@@ -1,0 +1,224 @@
+{
+  "channel_semantics": {
+    "action_release_m3s": "CWMS EOP hourly average boundary action over the row support",
+    "inflow_context_m3s": "CWMS EOP hourly average context; not independent forcing",
+    "nwm_q_lateral_full_reach_overlap_sum_m3s": "modeled point value at support start summed over 26 reaches with nonzero linear-reference overlap; final partial reach remains a full-reach approximation",
+    "outcome_discharge_interval_sample_mean_m3s": "mean of two approved USGS IV point samples in (support_start,support_end]",
+    "storage_change_m3": "support-end stock minus support-start stock",
+    "storage_end_m3": "CWMS instantaneous stock at support end",
+    "storage_start_m3": "CWMS instantaneous stock at support start"
+  },
+  "checks": {
+    "all_interval_channels_cover_same_24_utc_supports": true,
+    "current_registry_and_manifest_lineage_verified": true,
+    "cwms_eop_labels_mapped_to_preceding_hour_support": true,
+    "four_companion_artifact_hashes_verified": true,
+    "linear_referenced_zero_overlap_action_reach_excluded": true,
+    "missing_panel_value_count_is_zero": true,
+    "native_units_explicitly_normalized_to_si": true,
+    "nwm_selected_value_hash_verified": true,
+    "nwm_valid_time_kept_distinct_from_interval_end_label": true,
+    "source_quality_fields_preserved": true,
+    "usgs_half_hour_samples_aggregated_open_left_closed_right": true
+  },
+  "claim_boundary": {
+    "benchmark_validated": false,
+    "bounded_multisource_smoke_panel_compiled": true,
+    "bounded_nwm_velocity_prior_compiled": true,
+    "cwms_interval_timestamp_semantics_admitted": true,
+    "flood_wave_travel_time_admitted": false,
+    "geospatial_kernel_validated": false,
+    "linear_referenced_path_compiled": true,
+    "nwm_q_lateral_partial_gauge_reach_resolved": false,
+    "training_or_evaluation_panel_ready": false,
+    "travel_time_or_lag_calibrated": false
+  },
+  "generated_at": "2026-07-26T10:23:47.561347+00:00",
+  "panel_artifact": {
+    "path": "data/geotransport_v0_1/panels/center_hill_20220101.csv",
+    "sha256": "959753c8a5cbd00c1e64e51d459caf8954ee406278308bc1fc176425cce2688c",
+    "size_bytes": 4962
+  },
+  "quality_summary": {
+    "cwms_action_quality_codes": [
+      0
+    ],
+    "cwms_inflow_quality_codes": [
+      0
+    ],
+    "cwms_storage_quality_codes": [
+      0
+    ],
+    "missing_panel_value_count": 0,
+    "usgs_all_samples_approved": true,
+    "usgs_qualifiers": [
+      "A"
+    ]
+  },
+  "registry_sha256": "92a15bec145324347a74be3d81be04ce52c63295a526da0de064dc285473a3e5",
+  "schema": "gwm.geotransport.center_hill_smoke_panel.v2",
+  "source_artifacts": {
+    "boundary_action": {
+      "path": "data/geotransport_v0_1/raw/center_hill-CETT1-CENTER-HILL-Flow-Ave-1Hour-1Hour-man-rev-20220101T000000Z-20220102T000000Z.json",
+      "retrieved_at": "2026-07-26T09:37:11.514592+00:00",
+      "sha256": "c002944ffc56a9ce13b1da0a4a0786154eb57a8515ca129559bcd40545c65633",
+      "size_bytes": 1296,
+      "source": "usace_cwms",
+      "source_url": "https://cwms-data.usace.army.mil/cwms-data/timeseries?name=CETT1-CENTER_HILL.Flow.Ave.1Hour.1Hour.man-rev&office=LRN&begin=2022-01-01T00%3A00%3A00Z&end=2022-01-02T00%3A00%3A00Z&unit=cms&page-size=50000"
+    },
+    "context_not_independent_forcing": {
+      "path": "data/geotransport_v0_1/raw/center_hill-CEHT1-CENTER-HILL-Flow-In-Ave-1Hour-1Hour-man-rev-20220101T000000Z-20220102T000000Z.json",
+      "retrieved_at": "2026-07-26T09:37:13.011090+00:00",
+      "sha256": "6af1a5168ac6ebefd8f7005bc3b556286aa015d6ea4e343a0566db8330c133ba",
+      "size_bytes": 1429,
+      "source": "usace_cwms",
+      "source_url": "https://cwms-data.usace.army.mil/cwms-data/timeseries?name=CEHT1-CENTER_HILL.Flow-In.Ave.1Hour.1Hour.man-rev&office=LRN&begin=2022-01-01T00%3A00%3A00Z&end=2022-01-02T00%3A00%3A00Z&unit=cms&page-size=50000"
+    },
+    "independent_observation": {
+      "path": "data/geotransport_v0_1/raw/center_hill-usgs-iv-20220101T000000Z-20220102T000000Z.json",
+      "retrieved_at": "2026-07-26T09:37:15.122081+00:00",
+      "sha256": "84ebb336edf45d22cfa33cbc8d97011f39f0685d7d3e9db527535230f69e3bbc",
+      "size_bytes": 6774,
+      "source": "usgs_water_data",
+      "source_url": "https://waterservices.usgs.gov/nwis/iv/?format=json&sites=03424860&parameterCd=00060&startDT=2021-12-31T23%3A00%3A00Z&endDT=2022-01-02T01%3A00%3A00Z&siteStatus=all"
+    },
+    "nwm_selected_values": {
+      "path": "data/geotransport_v0_1/nwm_q_lateral/values/center_hill.csv",
+      "retrieved_at": null,
+      "sha256": "6698bc9d90266da00966b3dd25dcdc305d807c63e2efd1f6e49b11b5f0d17560",
+      "size_bytes": 33752,
+      "source": null,
+      "source_url": null
+    },
+    "stock": {
+      "path": "data/geotransport_v0_1/raw/center_hill-CEHT1-CENTER-HILL-Stor-Inst-1Hour-0-man-rev-20220101T000000Z-20220102T000000Z.json",
+      "retrieved_at": "2026-07-26T09:37:12.268280+00:00",
+      "sha256": "f554752405419c6bbb336494924fb22d22b16632f89f0077d7a5a3fc6255a5e4",
+      "size_bytes": 1487,
+      "source": "usace_cwms",
+      "source_url": "https://cwms-data.usace.army.mil/cwms-data/timeseries?name=CEHT1-CENTER_HILL.Stor.Inst.1Hour.0.man-rev&office=LRN&begin=2022-01-01T00%3A00%3A00Z&end=2022-01-02T00%3A00%3A00Z&unit=m3&page-size=50000"
+    }
+  },
+  "source_manifests": {
+    "companion_values": {
+      "path": "data/geotransport_v0_1/acquisition_manifest.json",
+      "sha256": "08d322ee9ee580e2d5f74cfe1dd8d7a85f5052f340a9d25c4cffcc860047e8c0",
+      "size_bytes": 6711
+    },
+    "nwm_q_lateral": {
+      "path": "data/geotransport_v0_1/nwm_q_lateral/extraction_manifest.json",
+      "sha256": "9d55aa39d944ed45af150c393cc44009c8b9ceb814930f739958ef3443c33711",
+      "size_bytes": 4517
+    },
+    "travel_time_prior": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_travel_time_prior_report.json",
+      "sha256": "e29fc54273e2f5f650d49599e8c98c6ec98c13c1025041e0f8c2ba41340c425e",
+      "size_bytes": 11456
+    }
+  },
+  "spatial_support": {
+    "full_reach_feature_count": 27,
+    "full_reach_path_length_m": 28380.83999943029,
+    "linear_referenced_path_length_m": 25172.759480695615,
+    "nonzero_overlap_feature_count": 26,
+    "partial_gauge_reach_included_as_full_reach_for_q_lateral": true,
+    "path_id": "center_hill:CETT1-CENTER_HILL:USGS-03424860",
+    "zero_overlap_action_reach_excluded": true
+  },
+  "status": "compiled_not_admitted",
+  "temporal_supports": {
+    "action_release_m3s": {
+      "duration_seconds": 3600.0,
+      "evidence_level": "authoritative",
+      "kind": "interval_mean",
+      "provenance_id": "USACE/cwms-data-api@beb8d507c9da8ec074d444117bda7d7daf69e5ee:docs/source/data/timeseries.rst#L97-L118",
+      "schema": "gwm.geospatial_kernel.temporal_support.v1",
+      "timestamp_position": "end"
+    },
+    "inflow_context_m3s": {
+      "duration_seconds": 3600.0,
+      "evidence_level": "authoritative",
+      "kind": "interval_mean",
+      "provenance_id": "USACE/cwms-data-api@beb8d507c9da8ec074d444117bda7d7daf69e5ee:docs/source/data/timeseries.rst#L97-L118",
+      "schema": "gwm.geospatial_kernel.temporal_support.v1",
+      "timestamp_position": "end"
+    },
+    "nwm_q_lateral_full_reach_overlap_sum_m3s": {
+      "duration_seconds": 0.0,
+      "evidence_level": "derived",
+      "kind": "instantaneous",
+      "provenance_id": "NOAA:NWM-v3-retrospective:valid-output-time",
+      "schema": "gwm.geospatial_kernel.temporal_support.v1",
+      "timestamp_position": "instant"
+    },
+    "outcome_discharge_interval_sample_mean_m3s": {
+      "duration_seconds": 3600.0,
+      "evidence_level": "derived",
+      "kind": "interval_sample_mean",
+      "provenance_id": "USGS:03424860:00060:IV:two-approved-samples-in-open-left-closed-right-hour",
+      "schema": "gwm.geospatial_kernel.temporal_support.v1",
+      "timestamp_position": "end"
+    },
+    "storage_end_m3": {
+      "duration_seconds": 0.0,
+      "evidence_level": "authoritative",
+      "kind": "instantaneous",
+      "provenance_id": "USACE/cwms-data-api@beb8d507c9da8ec074d444117bda7d7daf69e5ee:docs/source/data/timeseries.rst#L97-L118",
+      "schema": "gwm.geospatial_kernel.temporal_support.v1",
+      "timestamp_position": "instant"
+    },
+    "storage_start_m3": {
+      "duration_seconds": 0.0,
+      "evidence_level": "authoritative",
+      "kind": "instantaneous",
+      "provenance_id": "USACE/cwms-data-api@beb8d507c9da8ec074d444117bda7d7daf69e5ee:docs/source/data/timeseries.rst#L97-L118",
+      "schema": "gwm.geospatial_kernel.temporal_support.v1",
+      "timestamp_position": "instant"
+    }
+  },
+  "value_summary": {
+    "action_release_m3s": {
+      "maximum": 334.53522564,
+      "mean": 131.44208240625002,
+      "minimum": 107.46243282
+    },
+    "inflow_context_m3s": {
+      "maximum": 498.68872604413025,
+      "mean": 289.92650232885836,
+      "minimum": 162.84839261964126
+    },
+    "nwm_q_lateral_full_reach_overlap_sum_m3s": {
+      "maximum": 11.2000001667,
+      "mean": 1.7791666932625005,
+      "minimum": 0.30000000450000003
+    },
+    "outcome_discharge_interval_sample_mean_m3s": {
+      "maximum": 314.3169971712,
+      "mean": 208.5122797488,
+      "minimum": 149.08819730687998
+    },
+    "storage_change_m3": {
+      "maximum": 991102.6263010502,
+      "mean": 570552.1460976005,
+      "minimum": 0.0
+    },
+    "storage_end_m3": {
+      "maximum": 1276708552.9401011,
+      "mean": 1269596900.7734299,
+      "minimum": 1263606262.5641382
+    },
+    "storage_start_m3": {
+      "maximum": 1275717450.3138,
+      "mean": 1269026348.6273324,
+      "minimum": 1263015301.4337587
+    }
+  },
+  "window": {
+    "end_exclusive": "2022-01-02T00:00:00Z",
+    "row_count": 24,
+    "row_label": "support_end_utc",
+    "row_support": "[support_start_utc,support_end_utc]",
+    "start_inclusive": "2022-01-01T00:00:00Z",
+    "time_step": "PT1H"
+  }
+}

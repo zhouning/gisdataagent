@@ -1,0 +1,107 @@
+{
+  "admission_contract": {
+    "automatic_admission_from_posthoc_coverage": false,
+    "multi_system_uncertainty_validated": false,
+    "operational_forecast_validated": false,
+    "runtime_default_enabled": false,
+    "uncertainty_candidate_admitted": false
+  },
+  "candidate_artifacts": {
+    "development_intervals": {
+      "path": "data/geotransport_v0_1/kernel_innovation_uncertainty_candidate/development_intervals.csv",
+      "sha256": "79f4f985965e3e29f70c0e83a712bf660ea1cd8b20ab00d3f264092194c40628",
+      "size_bytes": 564891
+    },
+    "february_d3_intervals": {
+      "path": "data/geotransport_v0_1/kernel_innovation_uncertainty_candidate/february_d3_intervals.csv",
+      "sha256": "63a54924bdc138c9f693aa7b2104a5592241e37114b2d63659f9975f411501ef",
+      "size_bytes": 775979
+    },
+    "january_temporal_holdout_intervals": {
+      "path": "data/geotransport_v0_1/kernel_innovation_uncertainty_candidate/january_temporal_holdout_intervals.csv",
+      "sha256": "9cd4bf4d8cfb3cf66e503d292bde8c9aad61474556c9c267a330dd5e07417b9b",
+      "size_bytes": 618165
+    },
+    "point_candidate_freeze": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_action_innovation_candidate_freeze.json",
+      "sha256": "cf13add56e60912fef6d10daab8bcfc31605e04dba5ae1905b4bb39f872f7970",
+      "size_bytes": 5430
+    },
+    "uncertainty_evaluator": {
+      "path": "scripts/evaluate_geospatial_kernel_action_innovation_uncertainty.py",
+      "sha256": "fe17e2a1ca2d197bfaa81f4b76494f23cb88cb032b02935081e373b2ae85a043",
+      "size_bytes": 17103
+    },
+    "uncertainty_operator": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/action_innovation_uncertainty.py",
+      "sha256": "5241740050affd81453e2e017b0ebf74823a86696d677fb745a57fea4b959346",
+      "size_bytes": 15825
+    },
+    "uncertainty_parameters": {
+      "path": "data/geotransport_v0_1/kernel_innovation_uncertainty_candidate/parameters.json",
+      "sha256": "ab6e434bed57bf77897c1f32297589f08ed834631e7d963e427aa02ea1ee8980",
+      "size_bytes": 1206
+    },
+    "uncertainty_report": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_action_innovation_uncertainty_report.json",
+      "sha256": "ff5334e0433081b13634dcd08b6302a778b0a0902b452fea38b7d63acc70d85d",
+      "size_bytes": 10976
+    }
+  },
+  "forbidden_after_freeze": [
+    "change_target_coverage_method_horizons_or_radii",
+    "recalibrate_on_a_prospective_evaluation_window",
+    "change_point_candidate_identity",
+    "drop_rows_based_on_interval_miss",
+    "claim_IID_exchangeability_or_finite_sample_coverage_guarantee",
+    "treat_January_or_D3_posthoc_coverage_as_validation",
+    "enable_as_runtime_default_without_separate_admission"
+  ],
+  "frozen_at": "2026-07-30T16:15:40.650112+00:00",
+  "prospective_evaluation_contract": {
+    "coverage_target_may_be_changed_after_outcome_access": false,
+    "fresh_prospective_window_required": true,
+    "issue_time_action_and_nwm_vintages_required_for_operational_claim": true,
+    "multi_system_evaluation_required": true,
+    "radii_may_be_changed_after_outcome_access": false,
+    "same_point_candidate_freeze_required": true,
+    "same_uncertainty_parameters_required": true
+  },
+  "schema": "gwm.geotransport.geospatial_kernel_action_innovation_uncertainty_freeze.v1",
+  "scientific_role": "freeze a horizon-specific empirical residual envelope before any fresh prospective or multi-system coverage evaluation",
+  "statistical_claim_boundary": {
+    "calibration_outcomes_used": true,
+    "conditional_coverage_guarantee_claimed": false,
+    "finite_sample_coverage_guarantee_claimed": false,
+    "january_or_d3_coverage_counts_as_validation": false,
+    "time_series_exchangeability_claimed": false
+  },
+  "status": "frozen_uncertainty_candidate_not_admitted",
+  "uncertainty_lock": {
+    "absolute_error_radius_m3s": [
+      42.737514574192005,
+      68.0869787241802,
+      85.63042695458358,
+      124.1804238182454
+    ],
+    "bounds_clipped_to_physical_discharge_range": true,
+    "calibration_sample_count": [
+      475,
+      475,
+      475,
+      475
+    ],
+    "calibration_target_end": "2022-01-05T13:00:00+00:00",
+    "calibration_target_start": "2021-12-16T03:00:00+00:00",
+    "horizons_hours": [
+      1,
+      3,
+      6,
+      12
+    ],
+    "method": "horizon_specific_empirical_absolute_error_finite_sample_rank",
+    "per_window_recalibration_permitted": false,
+    "point_parameter_artifact_sha256": "56990a10610c3ab7d6e6479906237463f1d9d17ea9e630bdacc22528961106ad",
+    "target_marginal_coverage": 0.9
+  }
+}

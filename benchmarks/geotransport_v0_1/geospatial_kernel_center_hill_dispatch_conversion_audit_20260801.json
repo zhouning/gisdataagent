@@ -1,0 +1,403 @@
+{
+  "aligned_historical_support": {
+    "aligned_hour_count": 43825,
+    "all_series_are_posthoc_man_rev": true,
+    "complete_six_series_hour_count": 43825,
+    "hydraulic_head_m": {
+      "count": 43825,
+      "maximum": 57.18048000000002,
+      "median": 48.18888000000001,
+      "minimum": 42.24527999999998,
+      "p05": 44.77511999999993,
+      "p95": 51.9684
+    },
+    "missing_value_counts": {},
+    "quality_code_counts": {
+      "orifice": {
+        "-2147478653": 1571,
+        "-2147480957": 83,
+        "0": 42171
+      },
+      "pool": {
+        "-2147478653": 1669,
+        "-2147480957": 10,
+        "0": 42146
+      },
+      "sluice": {
+        "-2147478653": 1501,
+        "-2147480957": 83,
+        "0": 42241
+      },
+      "spillway": {
+        "-2147478653": 1535,
+        "-2147480957": 78,
+        "0": 42212
+      },
+      "tail": {
+        "-2147474557": 3,
+        "-2147478653": 1898,
+        "-2147480957": 7,
+        "0": 41917
+      },
+      "turbine": {
+        "-2147478653": 1664,
+        "-2147480957": 4,
+        "0": 42157
+      }
+    },
+    "quality_codes_interpreted_as_scientific_approval": false
+  },
+  "audited_at_utc": "2026-08-01T09:00:00Z",
+  "claim_boundary": {
+    "conversion_calibrated": false,
+    "conversion_frozen": false,
+    "future_outcome_loaded": false,
+    "geospatial_kernel_validated": false,
+    "historical_head_and_component_diagnostic_completed": true,
+    "native_generator_count_labels_observed": false,
+    "prospective_wwm_issue_compiled": false,
+    "runtime_operator_admitted": false
+  },
+  "elevation_acquisition": {
+    "fixed_ip": "3.30.180.152",
+    "pool": {
+      "content_type": "application/json;version=2",
+      "http_status": 200,
+      "response_date_utc": "2026-08-01T08:50:52Z",
+      "row_count": 43825,
+      "series_id": "CEHT1-CENTER_HILL.Elev-Pool.Inst.1Hour.0.man-rev",
+      "server": "cwms-data-api",
+      "tls_hostname_verification_retained": true
+    },
+    "tail": {
+      "content_type": "application/json;version=2",
+      "http_status": 200,
+      "response_date_utc": "2026-08-01T08:52:40Z",
+      "row_count": 43825,
+      "series_id": "CETT1-CENTER_HILL.Elev-Tail.Inst.1Hour.0.man-rev",
+      "server": "cwms-data-api",
+      "tls_hostname_verification_retained": true
+    },
+    "tls_hostname": "cwms-data.usace.army.mil",
+    "transport": "curl_fixed_ipv4_fallback_with_tls_hostname_verification"
+  },
+  "identifiability": {
+    "constant_flow_per_generator_supported": false,
+    "flow_band_role": "posthoc_latent_diagnostic_only",
+    "flow_bands_are_independent_generator_labels": false,
+    "generator_count_alone_identifies_total_release": false,
+    "head_regression_is_forward_causal_boundary": false,
+    "rejection_reasons": [
+      "no_independently_observed_hourly_generator_count_labels",
+      "no_generator_loading_or_megawatt_schedule",
+      "contemporaneous_tailwater_is_not_a_preissue_exogenous_input",
+      "no_prospective_non_turbine_release_schedule",
+      "historical_man_rev_values_are_not_operational_vintages"
+    ],
+    "tailwater_is_contemporaneously_affected_by_release": true
+  },
+  "implementation_artifacts": {
+    "conversion_auditor": {
+      "path": "scripts/audit_geospatial_kernel_center_hill_dispatch_conversion.py",
+      "sha256": "f461ccc358f0835d786275fdf1e9bb6071879e2ce5613f98e1481faa204cc51e",
+      "size_bytes": 26107
+    }
+  },
+  "latent_generator_band_diagnostic": {
+    "band_definition_m3s": {
+      "latent_1": [
+        80.0,
+        165.0
+      ],
+      "latent_2": [
+        165.0,
+        275.0
+      ],
+      "latent_3": [
+        275.0,
+        null
+      ],
+      "partial_or_unclassified": [
+        0.0,
+        80.0
+      ]
+    },
+    "bands": {
+      "1": {
+        "hydraulic_head_m": {
+          "count": 9934,
+          "maximum": 56.113680000000016,
+          "median": 47.42688000000001,
+          "minimum": 43.15967999999998,
+          "p05": 44.62271999999999,
+          "p95": 50.84063999999998
+        },
+        "per_latent_unit_flow_m3s": {
+          "count": 9934,
+          "maximum": 164.43592816,
+          "median": 110.747187021312,
+          "minimum": 81.29766657,
+          "p05": 98.65589352999999,
+          "p95": 122.21550989
+        },
+        "sample_count": 9934,
+        "turbine_flow_m3s": {
+          "count": 9934,
+          "maximum": 164.43592816,
+          "median": 110.747187021312,
+          "minimum": 81.29766657,
+          "p05": 98.65589352999999,
+          "p95": 122.21550989
+        }
+      },
+      "2": {
+        "hydraulic_head_m": {
+          "count": 7023,
+          "maximum": 55.56503999999998,
+          "median": 47.762159999999994,
+          "minimum": 42.70247999999998,
+          "p05": 44.10760800000001,
+          "p95": 50.962559999999996
+        },
+        "per_latent_unit_flow_m3s": {
+          "count": 7023,
+          "maximum": 136.72789377,
+          "median": 113.125802135,
+          "minimum": 82.86925155,
+          "p05": 100.100052705,
+          "p95": 123.46145114
+        },
+        "sample_count": 7023,
+        "turbine_flow_m3s": {
+          "count": 7023,
+          "maximum": 273.45578754,
+          "median": 226.25160427,
+          "minimum": 165.7385031,
+          "p05": 200.20010541,
+          "p95": 246.92290228
+        }
+      },
+      "3": {
+        "hydraulic_head_m": {
+          "count": 4253,
+          "maximum": 53.980080000000015,
+          "median": 47.152559999999966,
+          "minimum": 42.24527999999998,
+          "p05": 43.5864,
+          "p95": 50.048159999999996
+        },
+        "per_latent_unit_flow_m3s": {
+          "count": 4253,
+          "maximum": 125.20765668,
+          "median": 112.33293042999999,
+          "minimum": 92.31291989,
+          "p05": 102.42203412333333,
+          "p95": 122.1399983
+        },
+        "sample_count": 4253,
+        "turbine_flow_m3s": {
+          "count": 4253,
+          "maximum": 375.62297004,
+          "median": 336.99879129,
+          "minimum": 276.93875967,
+          "p05": 307.26610237,
+          "p95": 366.4199949
+        }
+      }
+    },
+    "constant_per_latent_unit_diagnostic": {
+      "flow_rmse_m3s": 12.132338652647237,
+      "median_m3s": 111.625009265
+    },
+    "contemporaneous_head_regression_diagnostic": {
+      "flow_rmse_m3s": 11.197297507327875,
+      "forward_causal_use_admitted": false,
+      "intercept_m3s_per_latent_unit": 156.87744618066336,
+      "rmse_change_vs_constant_percent": -7.7070148805592265,
+      "slope_m3s_per_latent_unit_per_head_m": -0.9436675452210146
+    },
+    "negative_turbine_hour_count": 0,
+    "partial_or_unclassified_positive_hour_count": 356,
+    "role": "posthoc_latent_flow_band_diagnostic_not_generator_labels",
+    "stable_latent_band_hour_count": 21210,
+    "zero_turbine_hour_count": 22259
+  },
+  "non_turbine_release_diagnostic": {
+    "component_names": [
+      "orifice",
+      "sluice",
+      "spillway"
+    ],
+    "negative_revision_component_hour_count": 0,
+    "nonzero_component_hour_count": 9687,
+    "nonzero_component_hour_fraction": 0.22103822019395322,
+    "positive_non_turbine_total_m3s": {
+      "count": 43825,
+      "maximum": 355.03662257,
+      "median": 0.0,
+      "minimum": 0.0,
+      "p05": 0.0,
+      "p95": 7.0792116499999995
+    },
+    "represented_by_native_generator_count_schedule": false
+  },
+  "physical_release_boundary_ready": false,
+  "readiness_gates": {
+    "generator_count_to_total_release_m3s_mapping_frozen": false,
+    "generator_loading_or_megawatt_dispatch_available": false,
+    "head_dependent_generator_to_turbine_flow_mapping_frozen": false,
+    "historical_hourly_pool_tail_and_components_aligned": true,
+    "historical_quality_codes_scientifically_approved": false,
+    "independent_generator_count_labels_paired_with_flow": false,
+    "prospective_non_turbine_release_components_available": false,
+    "prospective_pool_and_tailwater_boundary_available": false
+  },
+  "schema": "gwm.geospatial_kernel.center_hill_dispatch_conversion_audit.v1",
+  "scope": {
+    "future_outcome_or_skill_values_loaded": false,
+    "historical_support_begin_utc": "2021-01-01T00:00:00Z",
+    "historical_support_end_utc": "2026-01-01T00:00:00Z",
+    "native_dispatch_unit": "generator_count",
+    "network_requests_performed_by_auditor": false,
+    "required_physical_boundary_unit": "m3/s",
+    "system_id": "center_hill"
+  },
+  "source_artifacts": {
+    "component_series": {
+      "orifice": [
+        {
+          "path": "data/geotransport_v0_1/stage39_center_hill_component_discharge_value_protocol/raw/cwms_orifice_flow_2021.json",
+          "sha256": "a2af2420aadb02cd7cf9dcf9c3cf28d953a41cbe5817e3082670e818ebce30b3",
+          "size_bytes": 195265
+        },
+        {
+          "path": "data/geotransport_v0_1/stage39_center_hill_component_discharge_value_protocol/raw/cwms_orifice_flow_2022.json",
+          "sha256": "f3cc3ee8c482e63f9242a66bf29af3d0e21c2d5484a9e2a0d94638960a0eb599",
+          "size_bytes": 203287
+        },
+        {
+          "path": "data/geotransport_v0_1/stage39_center_hill_component_discharge_value_protocol/raw/cwms_orifice_flow_2023.json",
+          "sha256": "8be4f956ff76816bfcefa0be4a3531a276e736490bb19efd39171fb788496de2",
+          "size_bytes": 194060
+        },
+        {
+          "path": "data/geotransport_v0_1/stage39_center_hill_component_discharge_value_protocol/raw/cwms_orifice_flow_2024.json",
+          "sha256": "42ffd1abf8d99d2679aff63cc4e35a89d79d528bacb61d1762bd2d89261f5375",
+          "size_bytes": 226789
+        },
+        {
+          "path": "data/geotransport_v0_1/stage39_center_hill_component_discharge_value_protocol/raw/cwms_orifice_flow_2025.json",
+          "sha256": "dd94ebe2f5aa368c263fa9e5908843f501a51795c43478b62938182eb7a4e6fc",
+          "size_bytes": 231432
+        }
+      ],
+      "sluice": [
+        {
+          "path": "data/geotransport_v0_1/stage39_center_hill_component_discharge_value_protocol/raw/cwms_sluice_flow_2021.json",
+          "sha256": "79a973eed6ef68d76b14afc7c6a45d38590f9ac3cf0a07f043087f12a13a56a3",
+          "size_bytes": 196663
+        },
+        {
+          "path": "data/geotransport_v0_1/stage39_center_hill_component_discharge_value_protocol/raw/cwms_sluice_flow_2022.json",
+          "sha256": "0e83f162e906cb0f9ce4c2d3428c247a0e5cd2c61da87f4d470535869486dfa8",
+          "size_bytes": 204969
+        },
+        {
+          "path": "data/geotransport_v0_1/stage39_center_hill_component_discharge_value_protocol/raw/cwms_sluice_flow_2023.json",
+          "sha256": "32dfb60c4cea6723413d6603be11d41fe05e3f97a9a74d4e33c21c321ae23f93",
+          "size_bytes": 194038
+        },
+        {
+          "path": "data/geotransport_v0_1/stage39_center_hill_component_discharge_value_protocol/raw/cwms_sluice_flow_2024.json",
+          "sha256": "87caca53b117398704fefb8bc0e8675046d9f4e54867a484d68fb0f52084799b",
+          "size_bytes": 195046
+        },
+        {
+          "path": "data/geotransport_v0_1/stage39_center_hill_component_discharge_value_protocol/raw/cwms_sluice_flow_2025.json",
+          "sha256": "7157aa1a74e1fc1c8eaa8741ca1340c37b86ee991e7e83c508553e11b706f521",
+          "size_bytes": 195388
+        }
+      ],
+      "spillway": [
+        {
+          "path": "data/geotransport_v0_1/stage39_center_hill_component_discharge_value_protocol/raw/cwms_spillway_flow_2021.json",
+          "sha256": "fc588bb6dc520780929301bcb930fa99eba8734cbfd7f5952eee50dd1906b30f",
+          "size_bytes": 199995
+        },
+        {
+          "path": "data/geotransport_v0_1/stage39_center_hill_component_discharge_value_protocol/raw/cwms_spillway_flow_2022.json",
+          "sha256": "b6549e10840a3011fe2c5bdf548a2e05b7e9137db196613fb926ad2fa984b0ce",
+          "size_bytes": 206161
+        },
+        {
+          "path": "data/geotransport_v0_1/stage39_center_hill_component_discharge_value_protocol/raw/cwms_spillway_flow_2023.json",
+          "sha256": "4e2027c7277e653878612f9454d6f33b738c7170dd0e55830954ab5fd60f159a",
+          "size_bytes": 194040
+        },
+        {
+          "path": "data/geotransport_v0_1/stage39_center_hill_component_discharge_value_protocol/raw/cwms_spillway_flow_2024.json",
+          "sha256": "5d991bed7da61cb6ad1bacfd38c5774771707bf68a9a5ace9843763ded5017fc",
+          "size_bytes": 196956
+        },
+        {
+          "path": "data/geotransport_v0_1/stage39_center_hill_component_discharge_value_protocol/raw/cwms_spillway_flow_2025.json",
+          "sha256": "0739e8cd983b66863f55cf82ebb0c6d2775306d24f1a9f62c115b48a536da491",
+          "size_bytes": 195390
+        }
+      ],
+      "turbine": [
+        {
+          "path": "data/geotransport_v0_1/stage39_center_hill_component_discharge_value_protocol/raw/cwms_turbine_flow_2021.json",
+          "sha256": "3b34563c6de0950967a4c91cc67ed8acb38c1a5855bcc132d566e23b56a5786f",
+          "size_bytes": 241884
+        },
+        {
+          "path": "data/geotransport_v0_1/stage39_center_hill_component_discharge_value_protocol/raw/cwms_turbine_flow_2022.json",
+          "sha256": "14f4112b53ce76022a01aeebfe1f8349232b547667734f6c16ce62c53b6a73e2",
+          "size_bytes": 252591
+        },
+        {
+          "path": "data/geotransport_v0_1/stage39_center_hill_component_discharge_value_protocol/raw/cwms_turbine_flow_2023.json",
+          "sha256": "f6518a1caef5e69893324c6d04850ce4c8141ddedf5c5a524a22f308f28b6adf",
+          "size_bytes": 232514
+        },
+        {
+          "path": "data/geotransport_v0_1/stage39_center_hill_component_discharge_value_protocol/raw/cwms_turbine_flow_2024.json",
+          "sha256": "1038f8b26362c9a266e755884b04c598b08f65a7cec76841dcb6210f1650d387",
+          "size_bytes": 231078
+        },
+        {
+          "path": "data/geotransport_v0_1/stage39_center_hill_component_discharge_value_protocol/raw/cwms_turbine_flow_2025.json",
+          "sha256": "7796b14b3f27460715af090522453063701b932fe55ccb87a712d1eb37e84494",
+          "size_bytes": 238151
+        }
+      ]
+    },
+    "pool_elevation": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_center_hill_dispatch_conversion_20260801/raw/cwms_pool_elevation_2021_2025.json",
+      "sha256": "5ba8c75bbd2aad3d5b3160b4f98da0878b04971fd8f0178907b9660b21accfa4",
+      "size_bytes": 1315468
+    },
+    "pool_elevation_response_headers": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_center_hill_dispatch_conversion_20260801/raw/cwms_pool_elevation_headers.txt",
+      "sha256": "27540402c6fc1822a5b67de088678714d1df0639bdf623df05407626431b4fee",
+      "size_bytes": 1361
+    },
+    "stage39_component_acquisition_manifest": {
+      "path": "data/geotransport_v0_1/stage39_center_hill_component_discharge_value_protocol/value_acquisition_manifest.json",
+      "sha256": "ed77dacf3743713817177ba6fd7e553c71823693d831af5d38523dbb5fb45a0b",
+      "size_bytes": 28518
+    },
+    "tail_elevation": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_center_hill_dispatch_conversion_20260801/raw/cwms_tail_elevation_2021_2025.json",
+      "sha256": "02a2a167d441bf7e83d57e46c6c82f6bed308eaa2b4348ef8944b33dbfcf4375",
+      "size_bytes": 1303227
+    },
+    "tail_elevation_response_headers": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_center_hill_dispatch_conversion_20260801/raw/cwms_tail_elevation_headers.txt",
+      "sha256": "e439d894794479083b7a62fa65c885fc705064cfbbd0ea4dbf3be9166e991268",
+      "size_bytes": 1361
+    }
+  },
+  "status": "blocked_independent_labels_and_prospective_boundary_missing"
+}

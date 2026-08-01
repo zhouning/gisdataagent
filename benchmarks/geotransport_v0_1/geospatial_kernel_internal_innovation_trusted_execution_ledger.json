@@ -1,0 +1,131 @@
+{
+  "base_execution_ledger": {
+    "coverage_by_system": {
+      "center_hill": {
+        "episode_minimum_met": false,
+        "first_issue_time": null,
+        "hourly_prediction_step_minimum_met": false,
+        "last_issue_time": null,
+        "minimum_episode_count_required": 28,
+        "minimum_hourly_prediction_step_count_required": 672,
+        "sealed_episode_count": 0,
+        "sealed_hourly_prediction_step_count": 0,
+        "unique_issue_time_count": 0,
+        "unique_issue_time_minimum_met": false
+      },
+      "j_percy_priest": {
+        "episode_minimum_met": false,
+        "first_issue_time": null,
+        "hourly_prediction_step_minimum_met": false,
+        "last_issue_time": null,
+        "minimum_episode_count_required": 28,
+        "minimum_hourly_prediction_step_count_required": 672,
+        "sealed_episode_count": 0,
+        "sealed_hourly_prediction_step_count": 0,
+        "unique_issue_time_count": 0,
+        "unique_issue_time_minimum_met": false
+      }
+    },
+    "diagnostic_fit_gates": {
+      "all_episode_semantics_recomputed": true,
+      "all_output_artifact_identities_recomputed": true,
+      "both_required_systems_have_sealed_episodes": false,
+      "every_execution_report_bound_to_exact_manifest": true,
+      "every_ready_manifest_executed_and_sealed": false,
+      "frozen_protocol_identity_verified": true,
+      "innovation_fit_never_executed": true,
+      "minimum_28_unique_issue_times_per_system": false,
+      "minimum_672_sealed_hourly_steps_per_system": false,
+      "no_duplicate_episode_or_system_issue_identity": true,
+      "no_invalid_submitted_manifest": true,
+      "no_reused_prediction_or_telemetry_hash": true,
+      "outcome_values_never_loaded": true,
+      "submitted_manifest_inventory_nonempty": false
+    },
+    "diagnostic_fit_ready": false,
+    "ledger_integrity_passed": true,
+    "protocol": {
+      "actual_protocol_seal_sha256": "9d69d960c43a972d77d42267fa4fe854e6b85f9f13dae9ea7cf50b7888901fd3",
+      "expected_protocol_seal_sha256": "9d69d960c43a972d77d42267fa4fe854e6b85f9f13dae9ea7cf50b7888901fd3",
+      "expected_sha256": "411071ad99c597358199710365e1267e2ce0847685484208b2a1169056ba8f41",
+      "frozen_at": "2026-07-31T06:06:33Z",
+      "identity_matches": true,
+      "json_error": null,
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_internal_innovation_rollout_protocol.json",
+      "sha256": "411071ad99c597358199710365e1267e2ce0847685484208b2a1169056ba8f41",
+      "size_bytes": 7020
+    },
+    "reconciliation": {
+      "entries": [],
+      "executed_and_sealed_count": 0,
+      "invalid_manifest_count": 0,
+      "pending_execution_count": 0
+    },
+    "schema": "gwm.geospatial_kernel.internal_innovation_execution_ledger.v1",
+    "status": "awaiting_prospective_episode_manifests",
+    "submitted_execution_report_count": 0,
+    "submitted_manifest_count": 0
+  },
+  "claim_boundary": {
+    "all_manifest_receipts_externally_timestamped": false,
+    "base_execution_coverage_sufficient": false,
+    "candidate_outperformed_raw_physical": false,
+    "candidate_promoted": false,
+    "diagnostic_fit_authorized": false,
+    "geospatial_kernel_validated": false,
+    "innovation_fitted": false,
+    "outcomes_acquired": false,
+    "runtime_enabled": false
+  },
+  "data_isolation": {
+    "innovation_fit_executed": false,
+    "manifest_and_execution_artifacts_recomputed": true,
+    "network_requests_performed": false,
+    "outcome_argument_accepted": false,
+    "outcome_artifacts_opened": false,
+    "outcome_values_loaded": false,
+    "timestamp_binding_artifacts_recomputed": false,
+    "timestamp_response_artifacts_opened_for_identity_recomputation": false,
+    "timestamp_responses_cryptographically_verified": false
+  },
+  "diagnostic_fit_gates": {
+    "base_diagnostic_fit_coverage_ready": false,
+    "base_execution_ledger_integrity_passed": true,
+    "complete_one_to_one_timestamp_binding_inventory": false,
+    "every_manifest_receipt_has_trusted_external_timestamp": false,
+    "frozen_timestamp_authority_registry_identity_verified": true,
+    "innovation_fit_never_executed": true,
+    "outcome_values_never_loaded": true,
+    "registered_production_timestamp_authority_available": false
+  },
+  "diagnostic_fit_ready": false,
+  "generated_at": "2026-07-31T12:30:00+00:00",
+  "ledger_integrity_passed": true,
+  "schema": "gwm.geospatial_kernel.trusted_internal_innovation_execution_ledger.v1",
+  "status": "blocked_no_registered_rfc3161_timestamp_authority",
+  "submitted_execution_report_count": 0,
+  "submitted_manifest_count": 0,
+  "submitted_timestamp_binding_count": 0,
+  "timestamp_authority_registry": {
+    "gates": {
+      "at_least_one_authority_registered": false,
+      "every_registered_authority_admitted_not_test_only": false,
+      "frozen_registry_identity_verified": true
+    },
+    "registered_authority_count": 0,
+    "registry_artifact": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_internal_innovation_timestamp_authority_registry.json",
+      "sha256": "1cd300deb5c8d981bda874304d946f311555fae4ef1f76288911658e8412be3c",
+      "size_bytes": 2237
+    },
+    "schema": "gwm.geospatial_kernel.timestamp_authority_readiness.v1",
+    "status": "blocked_no_registered_rfc3161_timestamp_authority",
+    "trusted_external_timestamp_verification_ready": false
+  },
+  "timestamp_reconciliation": {
+    "entries": [],
+    "invalid_external_timestamp_count": 0,
+    "missing_timestamp_binding_count": 0,
+    "trusted_timestamp_count": 0
+  }
+}

@@ -1,0 +1,224 @@
+{
+  "all_gates_passed": true,
+  "claim_boundary": {
+    "cwms_location_and_usgs_site_are_same_sensor": false,
+    "cwms_quality_code_zero_means_approved": false,
+    "cwms_values_are_bounded_operational_release_evidence": true,
+    "development_best_lag_is_calibrated_travel_time": false,
+    "field_measurements_validate_exact_sensor_crosswalk": false,
+    "observed_spatial_rollout_completed": false,
+    "runtime_operator_admitted": false,
+    "transfer_event_can_identify_lag": false,
+    "travel_time_stable_across_events": false
+  },
+  "decision": {
+    "development_lag_diagnostic_admitted": true,
+    "observed_spatial_rollout_completed": false,
+    "operational_boundary_evidence_admitted": true,
+    "runtime_operator_admitted": false,
+    "travel_time_admitted": false
+  },
+  "event_summary": [
+    {
+      "event_id": "high_release_2024",
+      "lag_selection_status": "development_correlation_lag_diagnostic_only",
+      "release_value_range_m3s": 157.80978605999996,
+      "role": "development",
+      "selected_lag_hours": 6
+    },
+    {
+      "event_id": "low_release_2026",
+      "lag_selection_status": "release_variance_zero_lag_unidentifiable",
+      "release_value_range_m3s": 0.0,
+      "role": "transfer",
+      "selected_lag_hours": null
+    }
+  ],
+  "field_release_comparisons": [
+    {
+      "comparison_role": "cross_source_consistency_diagnostic",
+      "containing_release_support": {
+        "end_utc": "2024-05-16T15:00:00Z",
+        "release_m3s": 640.75360469,
+        "start_utc": "2024-05-16T14:00:00Z"
+      },
+      "event_id": "high_release_2024",
+      "exact_sensor_crosswalk_claimed": false,
+      "field_approval_status": "Provisional",
+      "field_discharge_cfs": 22700.0,
+      "field_discharge_m3s": 642.7924176384,
+      "field_minus_release_m3s": 2.03881294840005,
+      "field_observation_time_utc": "2024-05-16T14:40:55+00:00",
+      "field_to_release_ratio": 1.0031818985230467
+    },
+    {
+      "comparison_role": "cross_source_consistency_diagnostic",
+      "containing_release_support": {
+        "end_utc": "2026-02-10T17:00:00Z",
+        "release_m3s": 7.07921165,
+        "start_utc": "2026-02-10T16:00:00Z"
+      },
+      "event_id": "low_release_2026",
+      "exact_sensor_crosswalk_claimed": false,
+      "field_approval_status": "Provisional",
+      "field_discharge_cfs": 274.0,
+      "field_discharge_m3s": 7.758815966208,
+      "field_minus_release_m3s": 0.6796043162079997,
+      "field_observation_time_utc": "2026-02-10T16:49:30+00:00",
+      "field_to_release_ratio": 1.0959999996903609
+    }
+  ],
+  "frozen_stage27_hashes": {
+    "benchmarks/geotransport_v0_1/stage27_public_spatial_boundary_gates.json": {
+      "actual_sha256": "b4600f27e406849b8b07f20441bafe3e03728085d2f8a72e5ac8038ba138de47",
+      "expected_sha256": "b4600f27e406849b8b07f20441bafe3e03728085d2f8a72e5ac8038ba138de47",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage27_center_hill_spatial_boundary_evidence/README.md": {
+      "actual_sha256": "de4a25c33123453f2d8fe3893e474012fa2c1e42c69880ccc53dcf502453a3c4",
+      "expected_sha256": "de4a25c33123453f2d8fe3893e474012fa2c1e42c69880ccc53dcf502453a3c4",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage27_center_hill_spatial_boundary_evidence/spatial_boundary_evidence_ledger.json": {
+      "actual_sha256": "d98fd049669181e698d0cfbf72c867c7bc3c7fac8cb857e43a9b719433a66db0",
+      "expected_sha256": "d98fd049669181e698d0cfbf72c867c7bc3c7fac8cb857e43a9b719433a66db0",
+      "matches": true
+    },
+    "data_agent/test_acquire_geotransport_stage27_public_spatial_boundary_evidence.py": {
+      "actual_sha256": "ad43e30d95bb443aa403ee8feab1bb117d708b2e979f4af690e59f864ea7a56f",
+      "expected_sha256": "ad43e30d95bb443aa403ee8feab1bb117d708b2e979f4af690e59f864ea7a56f",
+      "matches": true
+    },
+    "data_agent/test_geospatial_kernel_public_spatial_boundary_evidence.py": {
+      "actual_sha256": "562dfece893f24abb6dea07e654a1b11ac03efc23f09e4b1d6e4dce6879261c5",
+      "expected_sha256": "562dfece893f24abb6dea07e654a1b11ac03efc23f09e4b1d6e4dce6879261c5",
+      "matches": true
+    },
+    "data_agent/uwm/geospatial_kernel_v2/public_spatial_boundary_evidence.py": {
+      "actual_sha256": "4bec90e7a8420cdccd79e4a972ba0c5fe0ab8f2b8b9106cfe4e48835cddb41c5",
+      "expected_sha256": "4bec90e7a8420cdccd79e4a972ba0c5fe0ab8f2b8b9106cfe4e48835cddb41c5",
+      "matches": true
+    },
+    "docs/architecture-decisions/adr-068-public-spatial-boundary-evidence-ledger.md": {
+      "actual_sha256": "f25c003baf6bb795abbbc5217643bb040a713c56fcdfbd377879f8cc2ffd884e",
+      "expected_sha256": "f25c003baf6bb795abbbc5217643bb040a713c56fcdfbd377879f8cc2ffd884e",
+      "matches": true
+    },
+    "scripts/acquire_geotransport_stage27_public_spatial_boundary_evidence.py": {
+      "actual_sha256": "e9b549ebac145ab774357bec74ef5387021a47e4e9643815c32e6b6e8d3d7589",
+      "expected_sha256": "e9b549ebac145ab774357bec74ef5387021a47e4e9643815c32e6b6e8d3d7589",
+      "matches": true
+    },
+    "scripts/compile_geotransport_stage27_public_spatial_boundary_gates.py": {
+      "actual_sha256": "0c5e3611a49a1efd199c854751e918fdd377f212fbfdf6e30e0297f53268b532",
+      "expected_sha256": "0c5e3611a49a1efd199c854751e918fdd377f212fbfdf6e30e0297f53268b532",
+      "matches": true
+    }
+  },
+  "gates": {
+    "acquisition_is_public_bounded_and_private_free": true,
+    "all_downstream_samples_are_approved": true,
+    "bounded_operational_evidence_is_admitted": true,
+    "cwms_fixed_ip_fallback_retained_tls_verification": true,
+    "cwms_quality_zero_is_preserved_not_relabelled_approved": true,
+    "development_event_has_nonzero_release_variance": true,
+    "development_lag_is_not_relabelled_travel_time": true,
+    "development_six_hour_correlation_diagnostic_is_reproducible": true,
+    "every_predeclared_lag_has_real_pairs": true,
+    "exact_cwms_release_catalog_and_aliases_are_bound": true,
+    "field_release_comparison_remains_consistency_only": true,
+    "hour_average_end_support_semantics_are_preserved": true,
+    "lag_candidates_were_frozen_before_value_access": true,
+    "lag_stability_across_events_remains_unevaluable": true,
+    "observed_spatial_rollout_remains_unclaimed": true,
+    "runtime_operator_remains_unadmitted": true,
+    "site_zone_binding_does_not_claim_sensor_identity": true,
+    "six_source_artifacts_are_hash_verified": true,
+    "stage27_artifacts_hash_frozen": true,
+    "tailwater_location_is_bound_to_stage27_upstream_site_zone": true,
+    "transfer_zero_variance_refuses_lag_selection": true,
+    "two_seventy_two_hour_release_windows_are_admitted": true,
+    "two_stage27_field_measurements_have_containing_release_support": true,
+    "unsupported_operational_claims_fail_closed": true,
+    "usgs_half_hour_samples_are_aggregated_without_filling": true
+  },
+  "generated_at": "2026-07-29T14:20:50.729531+00:00",
+  "ledger_artifact": {
+    "path": "data/geotransport_v0_1/stage28_center_hill_operational_boundary_evidence/operational_boundary_evidence_ledger.json",
+    "sha256": "d3ae3752c098592f2861aade525d82748432cf086fe208bd736a49cd6b4837a1",
+    "size_bytes": 156064
+  },
+  "location_binding": {
+    "binding_method": "nad83_to_wgs84_coordinate_proximity_without_datum_transform",
+    "coordinate_distance_m": 100.98614590402315,
+    "cwms_coordinate": {
+      "horizontal_datum": "NAD83",
+      "latitude": 36.0975966,
+      "longitude": -85.8261235
+    },
+    "cwms_location_id": "CETT1-CENTER_HILL",
+    "cwms_location_type": "Tailwater",
+    "cwms_public_name": "Center Hill Dam Tailwater",
+    "same_physical_tailwater_zone_admitted": true,
+    "same_sensor_or_measurement_process_admitted": false,
+    "stage27_upstream_site": {
+      "coordinate_wgs84": [
+        -85.8272071200994,
+        36.0978377798611
+      ],
+      "monitoring_location_id": "USGS-03424010",
+      "name": "CANEY FORK AT CENTER HILL DAM (TAILWATER), TN"
+    },
+    "within_upstream_site_zone": true,
+    "zone_radius_m": 250.0
+  },
+  "schema": "gwm.geotransport.stage28_public_operational_boundary_gates.v1",
+  "series_catalog": {
+    "aliases": [
+      {
+        "name": "CWMS Mobile LiveView-CETT1-CENTER_HILL",
+        "value": "Outflow"
+      },
+      {
+        "name": "Lakes-CEHT1-CENTER_HILL",
+        "value": "Total Flow"
+      },
+      {
+        "name": "SHEF Export-CETT1",
+        "value": "CETT1.QT.RZZZ.1001:TZ=UTC;DLTime=false;Units=cfs"
+      },
+      {
+        "name": "SHEF Export-COERR1LRN",
+        "value": "CETT1.QT.RZZZ.1001:TZ=UTC;DLTime=false;Units=cfs"
+      },
+      {
+        "name": "StrGages-CETT1-CENTER_HILL",
+        "value": "Flow"
+      },
+      {
+        "name": "null-null",
+        "value": "CETT1-CENTER_HILL.Flow.Ave.1Hour.1Hour.man-rev"
+      }
+    ],
+    "earliest_time": "1987-05-20T05:00:00Z",
+    "interval": "1Hour",
+    "interval_offset_minutes": 0,
+    "latest_time": "2026-07-28T05:00:00Z",
+    "name": "CETT1-CENTER_HILL.Flow.Ave.1Hour.1Hour.man-rev",
+    "office": "LRN",
+    "outflow_alias_present": true,
+    "quality_code_zero_interpreted_as_approved": false,
+    "support_semantics": "one_hour_average_with_timestamp_at_support_end",
+    "time_zone": "US/Central",
+    "total_flow_alias_present": true,
+    "units": "cms"
+  },
+  "status": "bounded_operational_boundaries_verified_transfer_lag_unidentifiable_rollout_pending",
+  "typed_refusals": {
+    "boundary_conditioned_rollout": true,
+    "exact_sensor_crosswalk": true,
+    "runtime_lag_operator": true,
+    "stable_travel_time": true,
+    "transfer_identified_lag": true
+  }
+}

@@ -1,0 +1,177 @@
+{
+  "all_gates_passed": true,
+  "claim_boundary": {
+    "empirical_lag_equals_physical_travel_time": false,
+    "events_selected_without_stage30_observations": true,
+    "regime_rule_derived_without_stage30_outcomes": true,
+    "runtime_operator_admitted": false,
+    "smith_fork_is_mass_conservation_oracle": false,
+    "smith_fork_is_observed_state_at_comid_18421273": true,
+    "smith_fork_is_tributary_mouth_flux": false,
+    "smith_fork_represents_all_lateral_inflow": false
+  },
+  "decision": {
+    "blind_regime_validation_admitted": true,
+    "mass_conservation_oracle_admitted": false,
+    "observed_graph_state_contract_admitted": true,
+    "observed_lateral_inflow_total_admitted": false,
+    "physical_travel_time_admitted": false,
+    "regime_conditioned_empirical_lag_admitted": false,
+    "runtime_operator_admitted": false,
+    "tributary_mouth_flux_admitted": false
+  },
+  "event_summary": [
+    {
+      "antecedent_release_mean_m3s": 231.94565017499997,
+      "best_lag_hours": 4,
+      "event_id": "release_step_20210925T1900Z",
+      "graph_state_complete_hour_count": 84,
+      "predicted_lag_hours": 5,
+      "predicted_lag_pearson_r": 0.42541305790444195,
+      "rule_supported": false,
+      "selection_stratum": "high_increase"
+    },
+    {
+      "antecedent_release_mean_m3s": 340.13370218333347,
+      "best_lag_hours": 6,
+      "event_id": "release_step_20251215T1700Z",
+      "graph_state_complete_hour_count": 80,
+      "predicted_lag_hours": 5,
+      "predicted_lag_pearson_r": 0.9324142144179708,
+      "rule_supported": true,
+      "selection_stratum": "high_decrease"
+    },
+    {
+      "antecedent_release_mean_m3s": 65.11576860874996,
+      "best_lag_hours": 6,
+      "event_id": "release_step_20240821T2000Z",
+      "graph_state_complete_hour_count": 82,
+      "predicted_lag_hours": 6,
+      "predicted_lag_pearson_r": 0.8990338841735641,
+      "rule_supported": true,
+      "selection_stratum": "low_increase"
+    },
+    {
+      "antecedent_release_mean_m3s": 59.92788633833333,
+      "best_lag_hours": 6,
+      "event_id": "release_step_20230613T0000Z",
+      "graph_state_complete_hour_count": 84,
+      "predicted_lag_hours": 6,
+      "predicted_lag_pearson_r": 0.8546508671711874,
+      "rule_supported": true,
+      "selection_stratum": "low_decrease"
+    }
+  ],
+  "frozen_stage29_hashes": {
+    "benchmarks/geotransport_v0_1/stage29_blind_transfer_gates.json": {
+      "actual_sha256": "621c11f66cdc4c3b1462b0de4b1864e4fc0972b51d06ccb12bc64bb5fb39d71b",
+      "expected_sha256": "621c11f66cdc4c3b1462b0de4b1864e4fc0972b51d06ccb12bc64bb5fb39d71b",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage29_center_hill_blind_transfer_events/README.md": {
+      "actual_sha256": "0dd6707eea0b73b1ba553deb627e35cac8793fb73e57f700f46ba158722e1d2b",
+      "expected_sha256": "0dd6707eea0b73b1ba553deb627e35cac8793fb73e57f700f46ba158722e1d2b",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage29_center_hill_blind_transfer_events/blind_transfer_evidence_ledger.json": {
+      "actual_sha256": "dc87665b11ed243859cf8f7ff8cfd0b640c7998e83966b4eb3f5f9bfe558ce0f",
+      "expected_sha256": "dc87665b11ed243859cf8f7ff8cfd0b640c7998e83966b4eb3f5f9bfe558ce0f",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage29_center_hill_blind_transfer_events/event_selection_manifest.json": {
+      "actual_sha256": "480734abcdb2a535e7a2bc794dbf2a5d7e708d3d6faac7becbdea9429d05c91b",
+      "expected_sha256": "480734abcdb2a535e7a2bc794dbf2a5d7e708d3d6faac7becbdea9429d05c91b",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage29_center_hill_blind_transfer_events/observation_acquisition_manifest.json": {
+      "actual_sha256": "6e4597cc00612c4846e2f3cfdc1affbe5c9e75572fd81c2260d833c01d9864a8",
+      "expected_sha256": "6e4597cc00612c4846e2f3cfdc1affbe5c9e75572fd81c2260d833c01d9864a8",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage29_center_hill_blind_transfer_events/observation_plan.json": {
+      "actual_sha256": "ab90b2795616242c27c80cf06b5cba3c43462c535f4da1d8424a92c4a7b53727",
+      "expected_sha256": "ab90b2795616242c27c80cf06b5cba3c43462c535f4da1d8424a92c4a7b53727",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage29_center_hill_blind_transfer_events/selection_plan.json": {
+      "actual_sha256": "6b1a2b776ac1cc8d91ef1722e9b82fe48046f86cc242d88b091388090408dff5",
+      "expected_sha256": "6b1a2b776ac1cc8d91ef1722e9b82fe48046f86cc242d88b091388090408dff5",
+      "matches": true
+    },
+    "data_agent/test_acquire_geotransport_stage29_blind_transfer_events.py": {
+      "actual_sha256": "690b09f56382aeb586c5f54a5e344bb51dd139bec1c844d9ab7b217fba2645c5",
+      "expected_sha256": "690b09f56382aeb586c5f54a5e344bb51dd139bec1c844d9ab7b217fba2645c5",
+      "matches": true
+    },
+    "data_agent/test_geospatial_kernel_public_blind_transfer_evidence.py": {
+      "actual_sha256": "aacc61177f64de9b3cf52d530544ce6fd801f2292b8076f8b198a27da139789e",
+      "expected_sha256": "aacc61177f64de9b3cf52d530544ce6fd801f2292b8076f8b198a27da139789e",
+      "matches": true
+    },
+    "data_agent/uwm/geospatial_kernel_v2/public_blind_transfer_evidence.py": {
+      "actual_sha256": "8e7ebbd4fb08b1d639771cb2bcd887763828767937eaf7ef176a25624afc8449",
+      "expected_sha256": "8e7ebbd4fb08b1d639771cb2bcd887763828767937eaf7ef176a25624afc8449",
+      "matches": true
+    },
+    "docs/architecture-decisions/adr-070-release-selected-blind-transfer-and-observed-tributary-state.md": {
+      "actual_sha256": "8bcfe70a026b94fc604b65393febdc12b4b804235c7274f251cfa8f420cccfca",
+      "expected_sha256": "8bcfe70a026b94fc604b65393febdc12b4b804235c7274f251cfa8f420cccfca",
+      "matches": true
+    },
+    "scripts/acquire_geotransport_stage29_blind_transfer_events.py": {
+      "actual_sha256": "3eab4bc9d5721660f43ac28b154f2ea54f6da88dba9d8bbe1a5e08f7de2452ef",
+      "expected_sha256": "3eab4bc9d5721660f43ac28b154f2ea54f6da88dba9d8bbe1a5e08f7de2452ef",
+      "matches": true
+    },
+    "scripts/compile_geotransport_stage29_blind_transfer_gates.py": {
+      "actual_sha256": "d308a464f4be2bd34d5e9c9299a0a707fd61ca60e7ab67b08b00cb8b4394389e",
+      "expected_sha256": "d308a464f4be2bd34d5e9c9299a0a707fd61ca60e7ab67b08b00cb8b4394389e",
+      "matches": true
+    }
+  },
+  "gates": {
+    "all_compiled_graph_states_are_approved": true,
+    "all_downstream_windows_are_complete_and_approved": true,
+    "all_release_windows_have_seventy_two_real_hours": true,
+    "all_thirteen_lags_have_equal_real_pair_counts": true,
+    "all_thirteen_stage29_artifacts_remain_hash_frozen": true,
+    "direction_flow_and_magnitude_classes_are_explicit": true,
+    "empirical_lag_is_not_physical_travel_time": true,
+    "event_manifest_froze_events_before_observations": true,
+    "five_year_release_pool_is_complete_and_unpaginated": true,
+    "four_required_release_strata_are_present_once": true,
+    "frozen_rule_predicts_five_for_high_and_six_for_low": true,
+    "graph_state_gaps_are_preserved_without_fill": true,
+    "graph_state_is_not_mouth_flux_lateral_total_or_oracle": true,
+    "high_decrease_supports_frozen_prediction": true,
+    "high_increase_counterexample_is_preserved": true,
+    "low_decrease_supports_frozen_prediction": true,
+    "low_increase_supports_frozen_prediction": true,
+    "nine_public_sources_are_hash_and_tls_verified": true,
+    "observation_plan_was_hash_frozen_before_values": true,
+    "observed_graph_state_contract_is_admitted": true,
+    "runtime_operator_remains_unadmitted": true,
+    "selected_events_are_pairwise_separated_by_180_days": true,
+    "selection_is_one_public_request_and_private_free": true,
+    "selection_plan_froze_rule_before_release_values": true,
+    "smith_fork_graph_state_is_bound_to_observed_comid": true,
+    "three_of_four_support_and_regime_rule_is_rejected": true,
+    "unsupported_claims_fail_closed": true
+  },
+  "generated_at": "2026-07-29T17:32:34.115165+00:00",
+  "ledger_artifact": {
+    "path": "data/geotransport_v0_1/stage30_center_hill_regime_validation_events/regime_transfer_evidence_ledger.json",
+    "sha256": "6153cdea6451e8ff8b2126ce5776d2f4dc33d4bc616cb8e5eb201e56cebf283c",
+    "size_bytes": 442463
+  },
+  "schema": "gwm.geotransport.stage30_regime_validation_gates.v1",
+  "status": "four_strata_scored_regime_rule_rejected_graph_state_admitted",
+  "typed_refusals": {
+    "conservation_oracle": true,
+    "physical_travel_time": true,
+    "regime_conditioned_lag_rule": true,
+    "runtime_operator": true,
+    "total_lateral_inflow": true,
+    "tributary_mouth_flux": true
+  }
+}

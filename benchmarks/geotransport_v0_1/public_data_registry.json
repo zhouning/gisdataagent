@@ -1,0 +1,657 @@
+{
+  "schema": "gwm.geotransport.public_data_registry.v1",
+  "registry_id": "geotransport-v0.1-minimal-2026-07-26",
+  "frozen_at": "2026-07-26T00:00:00Z",
+  "status": "temporal_support_and_advective_prior_compiled_not_admitted",
+  "parent_registry_sha256": "92a15bec145324347a74be3d81be04ce52c63295a526da0de064dc285473a3e5",
+  "crosswalk_evidence": {
+    "parent_registry_sha256": "c07497e39e59b115a2d826193cfc15f536b12efe3c0f09b472089fe9e7572c57",
+    "nldi_path_report": {
+      "path": "benchmarks/geotransport_v0_1/nldi_path_crosswalk_report.json",
+      "sha256": "9302319ac8a12a58065c4f7df7455afa3fa471d205b42ae27ab611d1006219ef"
+    },
+    "nwm_feature_membership_report": {
+      "path": "benchmarks/geotransport_v0_1/nwm_feature_membership_report.json",
+      "sha256": "d725f22a2609596ea06e516a480cc807cf8c1ca8c6efd1444803b7d6f82acbd0"
+    }
+  },
+  "nwm_q_lateral_smoke_evidence": {
+    "parent_registry_sha256": "d72f2980b229d3fe1f8a8bc27cadf718cd1d049d8f9ba3bab7f4222626e88d44",
+    "report": {
+      "path": "benchmarks/geotransport_v0_1/nwm_q_lateral_smoke_report.json",
+      "sha256": "69a5cb69d8081419310ebae3bb22b8ca454b0899eae326d47897b46fff927d47"
+    }
+  },
+  "center_hill_smoke_panel_evidence": {
+    "parent_registry_sha256": "92a15bec145324347a74be3d81be04ce52c63295a526da0de064dc285473a3e5",
+    "acquisition_registry_sha256": "d02458aaef356dccf35483034395db61f90925f57ec0534c3325428940b9d0dd",
+    "report": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_smoke_panel_report.json",
+      "sha256": "d649ba553cddc1d2a87f2b00a1e6fba15afb10670b882ed7215167b8186cbd36"
+    }
+  },
+  "center_hill_travel_time_prior_evidence": {
+    "parent_registry_sha256": "92a15bec145324347a74be3d81be04ce52c63295a526da0de064dc285473a3e5",
+    "report": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_travel_time_prior_report.json",
+      "sha256": "e29fc54273e2f5f650d49599e8c98c6ec98c13c1025041e0f8c2ba41340c425e"
+    }
+  },
+  "claim_boundary": {
+    "public_metadata_verified": true,
+    "nwm_feature_crosswalk_complete": true,
+    "bounded_nwm_q_lateral_smoke_verified": true,
+    "bounded_multisource_smoke_panel_compiled": true,
+    "cwms_interval_timestamp_semantics_admitted": true,
+    "linear_referenced_path_compiled": true,
+    "bounded_nwm_velocity_prior_compiled": true,
+    "flood_wave_travel_time_admitted": false,
+    "benchmark_time_series_bundle_acquired": false,
+    "training_or_evaluation_panel_ready": false,
+    "benchmark_validated": false,
+    "geospatial_kernel_validated": false
+  },
+  "recommended_window": {
+    "start_inclusive": "2015-01-01T00:00:00Z",
+    "end_exclusive": "2023-01-01T00:00:00Z",
+    "reason": "Common modern window within NWM v3 retrospective coverage; values remain provisional until acquired and audited."
+  },
+  "source_contracts": {
+    "usace_cwms": {
+      "authority": "United States Army Corps of Engineers",
+      "api_root": "https://cwms-data.usace.army.mil/cwms-data",
+      "metadata_endpoint": "/catalog/TIMESERIES",
+      "value_endpoint": "/timeseries",
+      "access": "public_machine_readable",
+      "redistribution": "pending_final_data_license_review",
+      "quality": "revised series selected where available; retain series version and retrieval metadata"
+    },
+    "usbr_rise": {
+      "authority": "United States Bureau of Reclamation",
+      "api_root": "https://data.usbr.gov/rise/api",
+      "metadata_endpoint": "/catalog-item/{item_id}",
+      "value_endpoint": "/result",
+      "access": "public_machine_readable",
+      "redistribution": "federal_materials_generally_public_domain_subject_to_item_review",
+      "quality": "provisional_and_subject_to_revision"
+    },
+    "usgs_water_data": {
+      "authority": "United States Geological Survey",
+      "api_root": "https://waterservices.usgs.gov/nwis",
+      "metadata_root": "https://api.waterdata.usgs.gov/ogcapi/v0",
+      "parameter_code": "00060",
+      "access": "public_machine_readable",
+      "redistribution": "federal_data_subject_to_source_and_third_party_notices",
+      "quality": "approval_status_and_provisional_flags_must_be_retained"
+    },
+    "usgs_nldi": {
+      "authority": "United States Geological Survey",
+      "api_root": "https://api.water.usgs.gov/nldi/linked-data",
+      "access": "public_machine_readable",
+      "redistribution": "federal_data_subject_to_source_and_third_party_notices",
+      "quality": "topology_and_linear_reference_evidence_only"
+    },
+    "noaa_nwm_v3_retrospective": {
+      "authority": "National Oceanic and Atmospheric Administration",
+      "bucket": "noaa-nwm-retrospective-3-0-pds",
+      "api_root": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com",
+      "zarr_group": "CONUS/zarr/chrtout.zarr/q_lateral",
+      "variable": "q_lateral",
+      "long_name": "Runoff into channel reach",
+      "dimensions": [
+        "time",
+        "feature_id"
+      ],
+      "shape": [
+        385704,
+        2776734
+      ],
+      "unit": "m3 s-1",
+      "scale_factor": 0.1,
+      "coverage": "1979-02-01T01:00:00Z/2023-02-01T00:00:00Z",
+      "data_assimilation": false,
+      "access": "public_machine_readable",
+      "redistribution": "open_data_no_use_restrictions",
+      "quality": "modeled_uncontrolled_lateral_forcing_not_observation_or_ground_truth"
+    }
+  },
+  "cohorts": {
+    "minimal": [
+      "center_hill",
+      "j_percy_priest",
+      "wolf_creek",
+      "flaming_gorge",
+      "fontenelle",
+      "glen_canyon",
+      "navajo",
+      "rifle_gap_conservation",
+      "blue_mesa_conservation"
+    ]
+  },
+  "systems": [
+    {
+      "system_id": "center_hill",
+      "name": "Center Hill Dam to USGS 03424860",
+      "track": "GeoTransport-H",
+      "time_step": "1hour",
+      "study_window": [
+        "2015-01-01T00:00:00Z",
+        "2023-01-01T00:00:00Z"
+      ],
+      "action": {
+        "source": "usace_cwms",
+        "office": "LRN",
+        "location_id": "CETT1-CENTER_HILL",
+        "series_id": "CETT1-CENTER_HILL.Flow.Ave.1Hour.1Hour.man-rev",
+        "role": "boundary_action",
+        "operator_sign": 1,
+        "native_unit": "cms",
+        "canonical_unit": "m3 s-1"
+      },
+      "state_context": [
+        {
+          "source": "usace_cwms",
+          "office": "LRN",
+          "series_id": "CEHT1-CENTER_HILL.Stor.Inst.1Hour.0.man-rev",
+          "role": "stock",
+          "native_unit": "m3"
+        },
+        {
+          "source": "usace_cwms",
+          "office": "LRN",
+          "series_id": "CEHT1-CENTER_HILL.Flow-In.Ave.1Hour.1Hour.man-rev",
+          "role": "context_not_independent_forcing",
+          "native_unit": "cms"
+        }
+      ],
+      "forcing": {
+        "source": "noaa_nwm_v3_retrospective",
+        "variable": "q_lateral",
+        "role": "modeled_forcing",
+        "ground_truth": false,
+        "feature_ids": [18434275, 18434265, 18421763, 18421761, 18421759, 18421753, 18421821, 18427677, 18421751, 18421811, 18421817, 18421831, 18421747, 18421829, 18421727, 18421737, 18421807, 18421719, 18421721, 18421803, 18421799, 18421731, 18421739, 18421741, 18421795, 18421707, 18421703],
+        "feature_indices": [1898753, 1898748, 1896610, 1896609, 1896608, 1896605, 1896639, 1897790, 1896604, 1896634, 1896637, 1896644, 1896602, 1896643, 1896594, 1896598, 1896632, 1896590, 1896591, 1896630, 1896628, 1896596, 1896599, 1896600, 1896626, 1896585, 1896583],
+        "q_lateral_feature_chunk_indices": [63],
+        "crosswalk_status": "admitted_nldi_path_and_nwm_v3_membership"
+      },
+      "outcome": {
+        "source": "usgs_water_data",
+        "site_id": "03424860",
+        "service": "iv",
+        "parameter_code": "00060",
+        "role": "independent_observation",
+        "native_unit": "ft3 s-1",
+        "canonical_unit": "m3 s-1"
+      },
+      "topology": {
+        "source": "usgs_nldi",
+        "screening": "no_additional_major_downstream_control_identified",
+        "admission": "candidate_only_pending_feature_crosswalk"
+      }
+    },
+    {
+      "system_id": "j_percy_priest",
+      "name": "J. Percy Priest Dam to USGS 03430200",
+      "track": "GeoTransport-H",
+      "time_step": "1hour",
+      "study_window": [
+        "2015-01-01T00:00:00Z",
+        "2023-01-01T00:00:00Z"
+      ],
+      "action": {
+        "source": "usace_cwms",
+        "office": "LRN",
+        "location_id": "JPPT1-J_PERCY_PRIEST",
+        "series_id": "JPPT1-J_PERCY_PRIEST.Flow.Ave.1Hour.1Hour.man-rev",
+        "role": "boundary_action",
+        "operator_sign": 1,
+        "native_unit": "cms",
+        "canonical_unit": "m3 s-1"
+      },
+      "state_context": [
+        {
+          "source": "usace_cwms",
+          "office": "LRN",
+          "series_id": "JPHT1-J_PERCY_PRIEST.Stor.Inst.1Hour.0.man-rev",
+          "role": "stock",
+          "native_unit": "m3"
+        },
+        {
+          "source": "usace_cwms",
+          "office": "LRN",
+          "series_id": "JPHT1-J_PERCY_PRIEST.Flow-In.Ave.1Hour.1Hour.man-rev",
+          "role": "context_not_independent_forcing",
+          "native_unit": "cms"
+        }
+      ],
+      "forcing": {
+        "source": "noaa_nwm_v3_retrospective",
+        "variable": "q_lateral",
+        "role": "modeled_forcing",
+        "ground_truth": false,
+        "feature_ids": [18401827, 18401881, 18401817, 18401509, 18401503, 18401497],
+        "feature_indices": [1893491, 1893518, 1893486, 1893351, 1893348, 1893345],
+        "q_lateral_feature_chunk_indices": [63],
+        "crosswalk_status": "admitted_nldi_path_and_nwm_v3_membership"
+      },
+      "outcome": {
+        "source": "usgs_water_data",
+        "site_id": "03430200",
+        "service": "iv",
+        "parameter_code": "00060",
+        "role": "independent_observation",
+        "native_unit": "ft3 s-1",
+        "canonical_unit": "m3 s-1"
+      },
+      "topology": {
+        "source": "usgs_nldi",
+        "screening": "no_additional_major_downstream_control_identified",
+        "admission": "candidate_only_pending_feature_crosswalk"
+      }
+    },
+    {
+      "system_id": "wolf_creek",
+      "name": "Wolf Creek Dam to USGS 03414100",
+      "track": "GeoTransport-H",
+      "time_step": "1hour",
+      "study_window": [
+        "2015-01-01T00:00:00Z",
+        "2023-01-01T00:00:00Z"
+      ],
+      "action": {
+        "source": "usace_cwms",
+        "office": "LRN",
+        "location_id": "RWNK2-WOLF_CREEK",
+        "series_id": "RWNK2-WOLF_CREEK.Flow.Ave.1Hour.1Hour.man-rev",
+        "role": "boundary_action",
+        "operator_sign": 1,
+        "native_unit": "cms",
+        "canonical_unit": "m3 s-1"
+      },
+      "state_context": [
+        {
+          "source": "usace_cwms",
+          "office": "LRN",
+          "series_id": "WLCK2-WOLF_CREEK.Stor.Inst.1Hour.0.man-rev",
+          "role": "stock",
+          "native_unit": "m3"
+        },
+        {
+          "source": "usace_cwms",
+          "office": "LRN",
+          "series_id": "WLCK2-WOLF_CREEK.Flow-In.Ave.1Hour.1Hour.man-rev",
+          "role": "context_not_independent_forcing",
+          "native_unit": "cms"
+        }
+      ],
+      "forcing": {
+        "source": "noaa_nwm_v3_retrospective",
+        "variable": "q_lateral",
+        "role": "modeled_forcing",
+        "ground_truth": false,
+        "feature_ids": [3577500, 3577456, 3577934, 3577938, 3577452, 3577470, 3577480, 3577482, 3577488, 3577502, 3577498, 3577494, 3577946, 3577942, 3577474, 3577524, 3577530, 3577918, 3577540, 3577538, 3577528, 3577546, 3577568, 3577586, 3577600, 3577614, 3577616, 3577612, 3577954, 3577950, 3577574, 3577564, 3577560, 3577552, 3577578, 3577590, 3577606, 3577960, 3577624, 3577964, 3577642, 3577654, 3577682],
+        "feature_indices": [351319, 351297, 351536, 351538, 351295, 351304, 351309, 351310, 351313, 351320, 351318, 351316, 351542, 351540, 351306, 351331, 351334, 351528, 351339, 351338, 351333, 351342, 351353, 351362, 351369, 351376, 351377, 351375, 351546, 351544, 351356, 351351, 351349, 351345, 351358, 351364, 351372, 351549, 351381, 351551, 351390, 351396, 351410],
+        "q_lateral_feature_chunk_indices": [11],
+        "crosswalk_status": "admitted_nldi_path_and_nwm_v3_membership"
+      },
+      "outcome": {
+        "source": "usgs_water_data",
+        "site_id": "03414100",
+        "service": "iv",
+        "parameter_code": "00060",
+        "role": "independent_observation",
+        "native_unit": "ft3 s-1",
+        "canonical_unit": "m3 s-1"
+      },
+      "topology": {
+        "source": "usgs_nldi",
+        "screening": "no_additional_major_downstream_control_identified",
+        "admission": "candidate_only_pending_feature_crosswalk"
+      }
+    },
+    {
+      "system_id": "flaming_gorge",
+      "name": "Flaming Gorge Dam to USGS 09234500",
+      "track": "GeoTransport-D",
+      "time_step": "1day",
+      "study_window": [
+        "2015-01-01T00:00:00Z",
+        "2023-01-01T00:00:00Z"
+      ],
+      "rise_record_id": 2300,
+      "action": {
+        "source": "usbr_rise",
+        "item_id": 4314,
+        "role": "boundary_action",
+        "operator_sign": 1,
+        "native_unit": "cfs",
+        "canonical_unit": "m3 s-1"
+      },
+      "state_context": [
+        {
+          "source": "usbr_rise",
+          "item_id": 337,
+          "role": "stock",
+          "native_unit": "af",
+          "canonical_unit": "m3"
+        },
+        {
+          "source": "usbr_rise",
+          "item_id": 339,
+          "role": "inflow_context",
+          "native_unit": "cfs",
+          "canonical_unit": "m3 s-1"
+        }
+      ],
+      "forcing": {
+        "source": "noaa_nwm_v3_retrospective",
+        "variable": "q_lateral",
+        "role": "modeled_forcing",
+        "ground_truth": false,
+        "feature_ids": [10040794, 10040808, 10040820, 10040812, 10040810, 10040818, 10040824, 10040822, 10040826, 10040830, 10040836, 10040860, 10040862, 10040924, 10040920, 10040908, 10040906, 10040928, 10040926, 10040938, 10040882, 10040874, 10040878, 10040888, 10040902, 10040904, 10040932, 10040898, 10040912, 10040914, 10040950],
+        "feature_indices": [1091148, 1091155, 1091161, 1091157, 1091156, 1091160, 1091163, 1091162, 1091164, 1091166, 1091169, 1091181, 1091182, 1091213, 1091211, 1091205, 1091204, 1091215, 1091214, 1091220, 1091192, 1091188, 1091190, 1091195, 1091202, 1091203, 1091217, 1091200, 1091207, 1091208, 1091226],
+        "q_lateral_feature_chunk_indices": [36],
+        "crosswalk_status": "admitted_nldi_path_and_nwm_v3_membership"
+      },
+      "outcome": {
+        "source": "usgs_water_data",
+        "site_id": "09234500",
+        "service": "dv",
+        "parameter_code": "00060",
+        "role": "independent_observation"
+      },
+      "topology": {
+        "source": "usgs_nldi",
+        "screening": "nontrivial_downstream_propagation_candidate",
+        "admission": "candidate_only_pending_feature_crosswalk"
+      }
+    },
+    {
+      "system_id": "fontenelle",
+      "name": "Fontenelle Dam to USGS 09211200",
+      "track": "GeoTransport-D",
+      "time_step": "1day",
+      "study_window": [
+        "2015-01-01T00:00:00Z",
+        "2023-01-01T00:00:00Z"
+      ],
+      "rise_record_id": 2305,
+      "action": {
+        "source": "usbr_rise",
+        "item_id": 4313,
+        "role": "boundary_action",
+        "operator_sign": 1,
+        "native_unit": "cfs",
+        "canonical_unit": "m3 s-1"
+      },
+      "state_context": [
+        {
+          "source": "usbr_rise",
+          "item_id": 347,
+          "role": "stock",
+          "native_unit": "af",
+          "canonical_unit": "m3"
+        },
+        {
+          "source": "usbr_rise",
+          "item_id": 4281,
+          "role": "inflow_context",
+          "native_unit": "cfs",
+          "canonical_unit": "m3 s-1"
+        }
+      ],
+      "forcing": {
+        "source": "noaa_nwm_v3_retrospective",
+        "variable": "q_lateral",
+        "role": "modeled_forcing",
+        "ground_truth": false,
+        "feature_ids": [18355215, 18355223, 18355227, 18355233, 18355235, 18355237, 18355239, 18355241, 18312272, 18312276, 18312286, 18312564, 18312566, 18312556],
+        "feature_indices": [1888869, 1888873, 1888875, 1888878, 1888879, 1888880, 1888881, 1888882, 1881610, 1881612, 1881617, 1881662, 1881663, 1881658],
+        "q_lateral_feature_chunk_indices": [62],
+        "crosswalk_status": "admitted_nldi_path_and_nwm_v3_membership"
+      },
+      "outcome": {
+        "source": "usgs_water_data",
+        "site_id": "09211200",
+        "service": "dv",
+        "parameter_code": "00060",
+        "role": "independent_observation"
+      },
+      "topology": {
+        "source": "usgs_nldi",
+        "screening": "shorter_distance_transport_candidate",
+        "admission": "candidate_only_pending_feature_crosswalk"
+      }
+    },
+    {
+      "system_id": "glen_canyon",
+      "name": "Glen Canyon Dam to USGS 09380000",
+      "track": "GeoTransport-D",
+      "time_step": "1day",
+      "study_window": [
+        "2015-01-01T00:00:00Z",
+        "2023-01-01T00:00:00Z"
+      ],
+      "rise_record_id": 2362,
+      "action": {
+        "source": "usbr_rise",
+        "item_id": 4315,
+        "role": "boundary_action",
+        "operator_sign": 1,
+        "native_unit": "cfs",
+        "canonical_unit": "m3 s-1"
+      },
+      "state_context": [
+        {
+          "source": "usbr_rise",
+          "item_id": 509,
+          "role": "stock",
+          "native_unit": "af",
+          "canonical_unit": "m3"
+        },
+        {
+          "source": "usbr_rise",
+          "item_id": 511,
+          "role": "inflow_context",
+          "native_unit": "cfs",
+          "canonical_unit": "m3 s-1"
+        }
+      ],
+      "forcing": {
+        "source": "noaa_nwm_v3_retrospective",
+        "variable": "q_lateral",
+        "role": "modeled_forcing",
+        "ground_truth": false,
+        "feature_ids": [3528035, 3527969, 3527975, 3527979, 3528005, 3528021, 3528007, 3528015, 3528909, 3528919, 3528925, 3528927, 3529025, 3528937, 3528941, 3528943, 3528951, 3528953, 3528957, 3528971, 3528973, 3528963, 3528965, 3528987, 3529001, 20733843, 20733845],
+        "feature_indices": [344109, 344076, 344079, 344081, 344094, 344102, 344095, 344099, 344360, 344365, 344368, 344369, 344415, 344374, 344376, 344377, 344381, 344382, 344384, 344391, 344392, 344387, 344388, 344399, 344404, 2164135, 2164136],
+        "q_lateral_feature_chunk_indices": [11, 72],
+        "crosswalk_status": "admitted_nldi_path_and_nwm_v3_membership"
+      },
+      "outcome": {
+        "source": "usgs_water_data",
+        "site_id": "09380000",
+        "service": "dv",
+        "parameter_code": "00060",
+        "role": "independent_observation"
+      },
+      "topology": {
+        "source": "usgs_nldi",
+        "screening": "nontrivial_downstream_propagation_candidate",
+        "admission": "candidate_only_pending_feature_crosswalk"
+      }
+    },
+    {
+      "system_id": "navajo",
+      "name": "Navajo Dam to USGS 09355500",
+      "track": "GeoTransport-D",
+      "time_step": "1day",
+      "study_window": [
+        "2015-01-01T00:00:00Z",
+        "2023-01-01T00:00:00Z"
+      ],
+      "rise_record_id": 2392,
+      "action": {
+        "source": "usbr_rise",
+        "item_id": 4316,
+        "role": "boundary_action",
+        "operator_sign": 1,
+        "native_unit": "cfs",
+        "canonical_unit": "m3 s-1"
+      },
+      "state_context": [
+        {
+          "source": "usbr_rise",
+          "item_id": 613,
+          "role": "stock",
+          "native_unit": "af",
+          "canonical_unit": "m3"
+        },
+        {
+          "source": "usbr_rise",
+          "item_id": 616,
+          "role": "inflow_context",
+          "native_unit": "cfs",
+          "canonical_unit": "m3 s-1"
+        }
+      ],
+      "forcing": {
+        "source": "noaa_nwm_v3_retrospective",
+        "variable": "q_lateral",
+        "role": "modeled_forcing",
+        "ground_truth": false,
+        "feature_ids": [17040419, 17040427, 17040433, 17040431, 17040447, 17040457, 17040459, 17039561, 17040463, 17040461],
+        "feature_indices": [1742352, 1742356, 1742359, 1742358, 1742366, 1742371, 1742372, 1742027, 1742374, 1742373],
+        "q_lateral_feature_chunk_indices": [58],
+        "crosswalk_status": "admitted_nldi_path_and_nwm_v3_membership"
+      },
+      "outcome": {
+        "source": "usgs_water_data",
+        "site_id": "09355500",
+        "service": "dv",
+        "parameter_code": "00060",
+        "role": "independent_observation"
+      },
+      "topology": {
+        "source": "usgs_nldi",
+        "screening": "nontrivial_downstream_propagation_candidate",
+        "admission": "candidate_only_pending_feature_crosswalk"
+      }
+    },
+    {
+      "system_id": "rifle_gap_conservation",
+      "name": "Rifle Gap Reservoir conservation panel",
+      "track": "GeoConservation-D",
+      "time_step": "1day",
+      "study_window": [
+        "2015-01-01T00:00:00Z",
+        "2023-01-01T00:00:00Z"
+      ],
+      "rise_record_id": 8572,
+      "action": {
+        "source": "usbr_rise",
+        "item_id": 134097,
+        "role": "boundary_action",
+        "operator_sign": -1,
+        "native_unit": "af day-1",
+        "canonical_unit": "m3 day-1"
+      },
+      "state_context": [
+        {
+          "source": "usbr_rise",
+          "item_id": 134092,
+          "role": "stock",
+          "native_unit": "af",
+          "canonical_unit": "m3"
+        },
+        {
+          "source": "usbr_rise",
+          "item_id": 134095,
+          "role": "source",
+          "operator_sign": 1,
+          "native_unit": "af day-1",
+          "canonical_unit": "m3 day-1"
+        },
+        {
+          "source": "usbr_rise",
+          "item_id": 134093,
+          "role": "sink",
+          "operator_sign": -1,
+          "native_unit": "af day-1",
+          "canonical_unit": "m3 day-1"
+        },
+        {
+          "source": "usbr_rise",
+          "item_id": 134098,
+          "role": "observed_stock_change",
+          "native_unit": "af day-1",
+          "canonical_unit": "m3 day-1"
+        }
+      ],
+      "forcing": null,
+      "outcome": null,
+      "topology": {
+        "source": "usbr_rise",
+        "screening": "single_reservoir_mass_balance",
+        "admission": "candidate_metadata_verified"
+      }
+    },
+    {
+      "system_id": "blue_mesa_conservation",
+      "name": "Blue Mesa Reservoir conservation panel",
+      "track": "GeoConservation-D",
+      "time_step": "1day",
+      "study_window": [
+        "2015-01-01T00:00:00Z",
+        "2023-01-01T00:00:00Z"
+      ],
+      "rise_record_id": 2249,
+      "action": {
+        "source": "usbr_rise",
+        "item_id": 4349,
+        "role": "boundary_action",
+        "operator_sign": -1,
+        "native_unit": "af day-1",
+        "canonical_unit": "m3 day-1"
+      },
+      "state_context": [
+        {
+          "source": "usbr_rise",
+          "item_id": 76,
+          "role": "stock",
+          "native_unit": "af",
+          "canonical_unit": "m3"
+        },
+        {
+          "source": "usbr_rise",
+          "item_id": 4283,
+          "role": "source",
+          "operator_sign": 1,
+          "native_unit": "af day-1",
+          "canonical_unit": "m3 day-1"
+        },
+        {
+          "source": "usbr_rise",
+          "item_id": 79,
+          "role": "sink",
+          "operator_sign": -1,
+          "native_unit": "af day-1",
+          "canonical_unit": "m3 day-1"
+        },
+        {
+          "source": "usbr_rise",
+          "item_id": 4398,
+          "role": "observed_stock_change",
+          "native_unit": "af day-1",
+          "canonical_unit": "m3 day-1"
+        }
+      ],
+      "forcing": null,
+      "outcome": null,
+      "topology": {
+        "source": "usbr_rise",
+        "screening": "single_reservoir_mass_balance",
+        "admission": "candidate_metadata_verified"
+      }
+    }
+  ]
+}

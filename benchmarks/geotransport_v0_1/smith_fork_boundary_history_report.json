@@ -1,0 +1,77 @@
+{
+  "admission_policy": {
+    "accepted_qualifiers": [
+      "A"
+    ],
+    "expected_native_cadence_seconds": 1800,
+    "hourly_support": "complete native samples in (t-1h,t]",
+    "missing_values_imputed": false,
+    "parameter_code": "00060",
+    "required_unit": "ft3/s"
+  },
+  "claim_boundary": {
+    "boundary_history_available": true,
+    "boundary_transition_fitted": false,
+    "geospatial_kernel_validated": false,
+    "operational_vintage_verified": false,
+    "public_data_without_user_supplied_data": true,
+    "request_plan_only": false
+  },
+  "data_isolation": {
+    "center_hill_outlet_target_requested": false,
+    "current_downstream_development_window_requested": false,
+    "d3_or_blind_outcomes_requested": false
+  },
+  "generated_at": "2026-07-27T08:51:32.187542+00:00",
+  "hourly_observations": {
+    "path": "data/geotransport_v0_1/smith_fork_boundary_history/values/hourly_discharge.csv",
+    "sha256": "db94fae54ef2590ae8146b636d5252567429fffdfcebf31cceb153fb5586fd0f",
+    "size_bytes": 498096
+  },
+  "mode": "acquired",
+  "request": {
+    "accept_encoding": "gzip",
+    "maximum_uncompressed_bytes": 5000000,
+    "url": "https://nwis.waterservices.usgs.gov/nwis/iv/?format=json&sites=03424730&parameterCd=00060&startDT=2021-01-01T00%3A00%3A00Z&endDT=2021-12-09T01%3A00%3A00Z&siteStatus=all"
+  },
+  "schema": "gwm.geotransport.smith_fork_boundary_history.v1",
+  "semantics": {
+    "archive_revised": true,
+    "missing_values_imputed": false,
+    "observation_publication_lag_seconds_for_diagnostic": 3600,
+    "operational_vintage_verified": false,
+    "publication_lag_evidence_level": "derived"
+  },
+  "site": {
+    "feature_id": 18421273,
+    "site_id": "03424730"
+  },
+  "source": {
+    "attempt_count": 1,
+    "content_encoding": "gzip",
+    "content_type": "application/json",
+    "final_url": "https://nwis.waterservices.usgs.gov/nwis/iv/?format=json&sites=03424730&parameterCd=00060&startDT=2021-01-01T00%3A00%3A00Z&endDT=2021-12-09T01%3A00%3A00Z&siteStatus=all",
+    "http_status": 200,
+    "path": "data/geotransport_v0_1/smith_fork_boundary_history/raw/nwis_iv.json",
+    "retrieved_at": "2026-07-27T08:51:32.115680+00:00",
+    "sha256": "6886eb3c85ca87cc2f4d7923e9afbfb4d44bb3f4edcec679c00c3f982405a50b",
+    "size_bytes": 1276416,
+    "url": "https://nwis.waterservices.usgs.gov/nwis/iv/?format=json&sites=03424730&parameterCd=00060&startDT=2021-01-01T00%3A00%3A00Z&endDT=2021-12-09T01%3A00%3A00Z&siteStatus=all"
+  },
+  "status": "pass_public_boundary_history_acquired",
+  "summary": {
+    "complete_fit_hour_count": 5719,
+    "complete_holdout_hour_count": 2338,
+    "missing_hour_count": 152,
+    "native_cadence_seconds": 1800,
+    "native_sample_count": 16236,
+    "total_hour_count": 8209
+  },
+  "window": {
+    "end_exclusive_utc": "2021-12-09T01:00:00Z",
+    "fit_end_exclusive_utc": "2021-09-01T00:00:00Z",
+    "holdout_start_inclusive_utc": "2021-09-01T00:00:00Z",
+    "role": "boundary_only_fit_and_temporal_holdout_before_downstream_development",
+    "start_inclusive_utc": "2021-01-01T00:00:00Z"
+  }
+}

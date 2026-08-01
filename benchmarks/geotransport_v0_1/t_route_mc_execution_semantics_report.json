@@ -1,0 +1,314 @@
+{
+  "adapter_conformance": {
+    "float32_fortran_call_boundary_matches": true,
+    "fortran_abi_matches": true,
+    "global_timestep_semantics_match": true,
+    "lateral_flow_rate_semantics_match": true,
+    "missing_full_python_driver_explains_response_matrix_failure": false,
+    "open_loop_serial_chain_default_upstream_recursion_matches": true,
+    "open_loop_serial_chain_short_ts_recursion_matches": true
+  },
+  "claim_boundary": {
+    "adapter_default_chain_semantics_match": true,
+    "execution_semantics_audited": true,
+    "fixed_commit_kernel_initialization_gate_passed": false,
+    "full_t_route_application_equivalence_claimed": false,
+    "geospatial_kernel_validated": false,
+    "response_matrix_failure_attributed_to_driver_omission": false,
+    "t_route_mc_promotion_gate_passed": false
+  },
+  "data_isolation": {
+    "observed_discharge_loaded": false,
+    "observed_forcing_loaded": false,
+    "outcome_values_loaded": false,
+    "source_code_only": true
+  },
+  "findings": [
+    {
+      "conclusion": "The full driver separately sums current-step and previous-step upstream reach discharge.",
+      "evidence": [
+        {
+          "line": 501,
+          "path": "data/geotransport_v0_1/t_route_mc_execution_source_audit/raw/mc_reach.pyx",
+          "source": "upstream_flows += flowveldepth[id, timestep, 0]"
+        },
+        {
+          "line": 502,
+          "path": "data/geotransport_v0_1/t_route_mc_execution_source_audit/raw/mc_reach.pyx",
+          "source": "previous_upstream_flows += flowveldepth[id, timestep-1, 0]"
+        }
+      ],
+      "finding_id": "network_current_and_previous_upstream_aggregation",
+      "verified": true
+    },
+    {
+      "conclusion": "The fixed Cython entrypoint defaults assume_short_ts to false; true replaces current upstream flow with previous upstream flow.",
+      "evidence": [
+        {
+          "line": 220,
+          "path": "data/geotransport_v0_1/t_route_mc_execution_source_audit/raw/mc_reach.pyx",
+          "source": "bint assume_short_ts=False,"
+        },
+        {
+          "line": 135,
+          "path": "data/geotransport_v0_1/t_route_mc_execution_source_audit/raw/mc_reach.pyx",
+          "source": "if assume_short_ts:"
+        },
+        {
+          "line": 505,
+          "path": "data/geotransport_v0_1/t_route_mc_execution_source_audit/raw/mc_reach.pyx",
+          "source": "upstream_flows = previous_upstream_flows"
+        }
+      ],
+      "finding_id": "short_timestep_switch_and_default",
+      "verified": true
+    },
+    {
+      "conclusion": "For the next segment, previous upstream flow is the upstream segment's previous discharge. Current upstream flow is its newly computed discharge by default, or the previous value in short-ts mode.",
+      "evidence": [
+        {
+          "line": 133,
+          "path": "data/geotransport_v0_1/t_route_mc_execution_source_audit/raw/mc_reach.pyx",
+          "source": "qup = qdp"
+        },
+        {
+          "line": 136,
+          "path": "data/geotransport_v0_1/t_route_mc_execution_source_audit/raw/mc_reach.pyx",
+          "source": "quc = qup"
+        },
+        {
+          "line": 123,
+          "path": "data/geotransport_v0_1/t_route_mc_execution_source_audit/raw/mc_reach.pyx",
+          "source": "#        output_buf[i, 0] = quc = out.qdc # this will ignore short TS assumption at seg-to-set scale?"
+        }
+      ],
+      "finding_id": "within_reach_segment_recursion",
+      "verified": true
+    },
+    {
+      "conclusion": "qts_subdivisions selects a held lateral-flow time column; it is not a spatial reach subdivision or an internal solver substep.",
+      "evidence": [
+        {
+          "line": 723,
+          "path": "data/geotransport_v0_1/t_route_mc_execution_source_audit/raw/mc_reach.pyx",
+          "source": "buf_view[_i, 0] = qlat_array[ segment.id, <int>((timestep-1)/qts_subdivisions)]"
+        }
+      ],
+      "finding_id": "lateral_flow_temporal_hold",
+      "verified": true
+    },
+    {
+      "conclusion": "The Python driver writes the global routing timestep into every parameter row and casts the parameter table to float32.",
+      "evidence": [
+        {
+          "line": 548,
+          "path": "data/geotransport_v0_1/t_route_mc_execution_source_audit/raw/compute.py",
+          "source": "param_df[\"dt\"] = dt"
+        },
+        {
+          "line": 549,
+          "path": "data/geotransport_v0_1/t_route_mc_execution_source_audit/raw/compute.py",
+          "source": "param_df = param_df.astype(\"float32\")"
+        }
+      ],
+      "finding_id": "global_timestep_and_float32_input_path",
+      "verified": true
+    },
+    {
+      "conclusion": "The full execution path passes zero previous velocity and records that velp is unused by this kernel.",
+      "evidence": [
+        {
+          "line": 370,
+          "path": "data/geotransport_v0_1/t_route_mc_execution_source_audit/raw/mc_reach.pyx",
+          "source": "#flowdepthvel array, but they could be used I suppose.  Note that velp isn't used anywhere, so"
+        },
+        {
+          "line": 734,
+          "path": "data/geotransport_v0_1/t_route_mc_execution_source_audit/raw/mc_reach.pyx",
+          "source": "buf_view[_i, 11] = 0.0 #flowveldepth[segment.id, timestep-1, 1]"
+        }
+      ],
+      "finding_id": "previous_velocity_zeroed_by_full_driver",
+      "verified": true
+    },
+    {
+      "conclusion": "The segment kernel integrates ql over dt, so adapter lateral input has discharge-rate units rather than per-step volume units.",
+      "evidence": [
+        {
+          "line": 312,
+          "path": "data/geotransport_v0_1/t_route_mc_source_audit/raw/MCsingleSegStime_f2py_NOLOOP.f90",
+          "source": "C4 =  (ql*dt)/D"
+        }
+      ],
+      "finding_id": "lateral_inflow_is_a_rate",
+      "verified": true
+    },
+    {
+      "conclusion": "qdc is declared intent(out) and is read in the wet/dry guard before the subroutine assigns it. This is an undefined initialization path.",
+      "evidence": [
+        {
+          "line": 24,
+          "path": "data/geotransport_v0_1/t_route_mc_source_audit/raw/MCsingleSegStime_f2py_NOLOOP.f90",
+          "source": "real(prec), intent(out) :: qdc, velc, depthc"
+        },
+        {
+          "line": 74,
+          "path": "data/geotransport_v0_1/t_route_mc_source_audit/raw/MCsingleSegStime_f2py_NOLOOP.f90",
+          "source": ".or. qdp .gt. 0.0_prec .or. qdc .gt. 0.0_prec) then  !only solve if there's water to flux"
+        }
+      ],
+      "finding_id": "output_qdc_read_before_assignment",
+      "verified": true
+    },
+    {
+      "conclusion": "secant2_h computes X from intent(out) Qj in the upper interval, or from intent(out) C1..C4 in the lower interval, before assigning those outputs later in the subroutine.",
+      "evidence": [
+        {
+          "line": 207,
+          "path": "data/geotransport_v0_1/t_route_mc_source_audit/raw/MCsingleSegStime_f2py_NOLOOP.f90",
+          "source": "real(prec), intent(out) :: Qj, C1, C2, C3, C4, X"
+        },
+        {
+          "line": 291,
+          "path": "data/geotransport_v0_1/t_route_mc_source_audit/raw/MCsingleSegStime_f2py_NOLOOP.f90",
+          "source": "X = min(0.5_prec,max(0.0_prec,0.5_prec*(1.0_prec-(Qj/(2.0_prec*twl*s0*Ck*dx)))))"
+        },
+        {
+          "line": 285,
+          "path": "data/geotransport_v0_1/t_route_mc_source_audit/raw/MCsingleSegStime_f2py_NOLOOP.f90",
+          "source": "X = min(0.5_prec,max(0.25_prec,0.5_prec*(1.0_prec-(((C1*qup)+(C2*quc)+(C3*qdp) + C4)/(2.0_prec*twcc*s0*Ck*dx)))))"
+        },
+        {
+          "line": 309,
+          "path": "data/geotransport_v0_1/t_route_mc_source_audit/raw/MCsingleSegStime_f2py_NOLOOP.f90",
+          "source": "C1 =  (Km*X + dt/2.0_prec)/D"
+        },
+        {
+          "line": 328,
+          "path": "data/geotransport_v0_1/t_route_mc_source_audit/raw/MCsingleSegStime_f2py_NOLOOP.f90",
+          "source": "Qj =  ((C1*qup)+(C2*quc)+(C3*qdp) + C4) - ((1.0_prec/(((WP*n)+(WPC*ncc))/(WP+WPC))) * &"
+        }
+      ],
+      "finding_id": "secant_outputs_read_before_assignment",
+      "verified": true
+    },
+    {
+      "conclusion": "The acquired ABI declaration agrees with the adapter's 15 inputs followed by qdc, velc, depthc, ck, cn, and X.",
+      "evidence": [
+        {
+          "line": 20,
+          "path": "data/geotransport_v0_1/t_route_mc_execution_source_audit/raw/fortran_wrappers.pxd",
+          "source": "void c_muskingcungenwm(float *dt,"
+        },
+        {
+          "line": 21,
+          "path": "data/geotransport_v0_1/t_route_mc_execution_source_audit/raw/fortran_wrappers.pxd",
+          "source": "float *qup,"
+        },
+        {
+          "line": 22,
+          "path": "data/geotransport_v0_1/t_route_mc_execution_source_audit/raw/fortran_wrappers.pxd",
+          "source": "float *quc,"
+        },
+        {
+          "line": 23,
+          "path": "data/geotransport_v0_1/t_route_mc_execution_source_audit/raw/fortran_wrappers.pxd",
+          "source": "float *qdp,"
+        },
+        {
+          "line": 5,
+          "path": "data/geotransport_v0_1/t_route_mc_execution_source_audit/raw/fortran_wrappers.pxd",
+          "source": "float *ql,"
+        },
+        {
+          "line": 33,
+          "path": "data/geotransport_v0_1/t_route_mc_execution_source_audit/raw/fortran_wrappers.pxd",
+          "source": "float *velp,"
+        },
+        {
+          "line": 34,
+          "path": "data/geotransport_v0_1/t_route_mc_execution_source_audit/raw/fortran_wrappers.pxd",
+          "source": "float *depthp,"
+        },
+        {
+          "line": 35,
+          "path": "data/geotransport_v0_1/t_route_mc_execution_source_audit/raw/fortran_wrappers.pxd",
+          "source": "float *qdc,"
+        },
+        {
+          "line": 36,
+          "path": "data/geotransport_v0_1/t_route_mc_execution_source_audit/raw/fortran_wrappers.pxd",
+          "source": "float *velc,"
+        },
+        {
+          "line": 37,
+          "path": "data/geotransport_v0_1/t_route_mc_execution_source_audit/raw/fortran_wrappers.pxd",
+          "source": "float *depthc,"
+        }
+      ],
+      "finding_id": "fortran_abi_argument_order",
+      "verified": true
+    },
+    {
+      "conclusion": "The local chain adapter exposes the official switch, defaults it to false, and applies it at both the external boundary and every within-chain segment transition.",
+      "evidence": [
+        {
+          "line": 240,
+          "path": "data_agent/uwm/geospatial_kernel_v2/troute_muskingum_cunge.py",
+          "source": "assume_short_timestep: bool = False,"
+        },
+        {
+          "line": 251,
+          "path": "data_agent/uwm/geospatial_kernel_v2/troute_muskingum_cunge.py",
+          "source": "self.assume_short_timestep = assume_short_timestep"
+        },
+        {
+          "line": 304,
+          "path": "data_agent/uwm/geospatial_kernel_v2/troute_muskingum_cunge.py",
+          "source": "quc = qup if self.assume_short_timestep else ("
+        }
+      ],
+      "finding_id": "adapter_default_and_short_ts_mapping",
+      "verified": true
+    }
+  ],
+  "generated_at": "2026-07-27T11:33:11.815198+00:00",
+  "non_equivalence_boundary": {
+    "authoritative_mc_storage_exposed": false,
+    "branching_reach_scheduler_reproduced": false,
+    "data_assimilation_reproduced": false,
+    "full_network_application_reproduced": false,
+    "parallel_subnetwork_execution_reproduced": false,
+    "reservoir_routing_reproduced": false
+  },
+  "numerical_initialization_audit": {
+    "fixed_commit_kernel_numerically_well_defined": false,
+    "generic_muskingum_cunge_method_impugned": false,
+    "output_read_before_assignment_found": true,
+    "stateless_call_order_invariance_required": true
+  },
+  "runtime_identity": {
+    "commit": "12a8eae0cdfed437143c590659fa7077605a5e70",
+    "official_source_unmodified": true,
+    "repository": "NOAA-OWP/t-route"
+  },
+  "schema": "gwm.geotransport.t_route_mc_execution_semantics.v1",
+  "source_artifacts": {
+    "execution_manifest": {
+      "path": "data/geotransport_v0_1/t_route_mc_execution_source_audit/acquisition_manifest.json",
+      "sha256": "b711f5a3ec33a8cd64cb8a3c95e357698657023b9b8606986ed00cceeced3016",
+      "size_bytes": 5614
+    },
+    "kernel_manifest": {
+      "path": "data/geotransport_v0_1/t_route_mc_source_audit/acquisition_manifest.json",
+      "sha256": "6bb67aaaeb70cb97ed8795b9a15dd2ef7db2c8db8092393c0a7f824577b25e1d",
+      "size_bytes": 13012
+    },
+    "local_adapter": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/troute_muskingum_cunge.py",
+      "sha256": "ea7f3fbe50073cf4d3c6e94faec8a5b501e6f9fb798b9472292b1917dbc22e20",
+      "size_bytes": 14269
+    }
+  },
+  "status": "fixed_commit_execution_semantics_audited"
+}

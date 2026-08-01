@@ -1,5 +1,6 @@
 import json
 import importlib.util
+import shutil
 from dataclasses import replace
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from data_agent.uwm.dam_geospatial_kernel import (
     build_twm_dynamic_world_transition,
     build_twm_dynamic_world_sequence,
     TWM_SEQUENCE_CONTEXT_DIM,
+    TWM_SEQUENCE_CONTEXT_DIM_WITH_ANNUAL_VIIRS,
     dam_gk_objective,
     multiscale_consistency_loss,
     permute_coordinate_context,
@@ -56,6 +58,28 @@ def _load_cross_validation_module():
     path = ROOT / "scripts/run_dam_gk_twm_region_cross_validation.py"
     spec = importlib.util.spec_from_file_location(
         "run_dam_gk_twm_region_cross_validation", path
+    )
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _load_annual_viirs_download_module():
+    path = ROOT / "scripts/download_dam_gk_annual_viirs.py"
+    spec = importlib.util.spec_from_file_location(
+        "download_dam_gk_annual_viirs", path
+    )
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _load_ohsome_probe_module():
+    path = ROOT / "scripts/probe_dam_gk_ohsome_temporal_coverage.py"
+    spec = importlib.util.spec_from_file_location(
+        "probe_dam_gk_ohsome_temporal_coverage", path
     )
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
@@ -347,6 +371,138 @@ def test_twm_sequence_uses_one_geographic_node_set_and_stepwise_time_context():
     assert torch.all(temporal_features >= 0.0)
     assert torch.all(temporal_features <= 1.0)
     assert sequence.metadata["claim_boundary"]["policy_effect_claim"] is False
+
+
+def test_twm_sequence_annual_viirs_is_current_year_only_and_lagged(tmp_path):
+    import rasterio
+
+    region_id = "上海市_浦东新区_祝桥镇"
+    source_dir = ROOT / "data/twm_public_landcover/gee_dynamic_world" / region_id
+    region_dir = tmp_path / region_id
+    region_dir.mkdir()
+    for path in source_dir.glob("*.tif"):
+        shutil.copy2(path, region_dir / path.name)
+
+    static_path = region_dir / f"{region_id}_viirs_nightlight_mean_100m.tif"
+    with rasterio.open(static_path) as source:
+        profile = source.profile.copy()
+        base = source.read(1)
+    for year, offset in ((2019, 0.0), (2020, 1.0), (2021, 3.0), (2022, 6.0)):
+        output = region_dir / f"{region_id}_viirs_nightlight_{year}_100m.tif"
+        values = base.copy()
+        valid = values != profile["nodata"]
+        values[valid] = values[valid] + offset
+        with rasterio.open(output, "w", **profile) as destination:
+            destination.write(values, 1)
+
+    sequence = build_twm_dynamic_world_sequence(
+        region_dir=region_dir,
+        region_id=region_id,
+        years=(2020, 2021, 2022),
+        sample_stride=24,
+        coarse_block_size=3,
+        terrain_similarity_scope="local_spatial_window",
+        annual_viirs_context_mode="rolling",
+    )
+
+    context = sequence.batch.node_context_by_step
+    assert context.shape[-1] == TWM_SEQUENCE_CONTEXT_DIM_WITH_ANNUAL_VIIRS
+    annual = context[:, :, -2:]
+    assert torch.all(annual[:, 1, 0] >= annual[:, 0, 0])
+    assert torch.count_nonzero(annual[:, :, 1]) > 0
+    metadata = sequence.metadata["annual_viirs_context"]
+    assert metadata["input_years"] == [2020, 2021]
+    assert metadata["target_years"] == [2021, 2022]
+    assert metadata["uses_target_year_viirs"] is False
+    assert metadata["initial_graph_nightlight_year"] == 2020
+    assert metadata["temporal_protocol"] == "rolling_observed_current_year_covariate"
+    assert metadata["open_loop_multiyear_forecast"] is False
+    assert sequence.metadata["claim_boundary"]["max_claim_level"] == (
+        "rolling_observed_covariate_multiyear_land_state_prediction"
+    )
+
+    initial_only = build_twm_dynamic_world_sequence(
+        region_dir=region_dir,
+        region_id=region_id,
+        years=(2020, 2021, 2022),
+        sample_stride=24,
+        coarse_block_size=3,
+        terrain_similarity_scope="local_spatial_window",
+        annual_viirs_context_mode="initial_only",
+    )
+    initial_annual = initial_only.batch.node_context_by_step[:, :, -2:]
+    assert torch.allclose(initial_annual[:, 0], initial_annual[:, 1])
+    assert torch.count_nonzero(initial_annual[:, :, 1]) == 0
+    initial_metadata = initial_only.metadata["annual_viirs_context"]
+    assert initial_metadata["input_years"] == [2020]
+    assert initial_metadata["open_loop_multiyear_forecast"] is True
+    assert initial_metadata["temporal_protocol"] == (
+        "sequence_initial_year_covariate_only"
+    )
+
+
+def test_annual_viirs_download_dry_run_records_leakage_boundary(tmp_path):
+    module = _load_annual_viirs_download_module()
+
+    report = module.download_annual_viirs(
+        project="",
+        data_root=tmp_path,
+        regions=[
+            {
+                "region_id": "test-region",
+                "bbox": [120.0, 30.0, 120.1, 30.1],
+            }
+        ],
+        years=[2016, 2017, 2018],
+        scale=100,
+        crs="EPSG:3857",
+        sleep_seconds=0.0,
+        dry_run=True,
+    )
+
+    assert report["summary"] == {
+        "region_count": 1,
+        "expected_raster_count": 3,
+        "completed_raster_count": 0,
+        "failed_count": 0,
+        "status": "planned",
+    }
+    assert report["temporal_semantics"]["target_year_data_allowed"] is False
+    assert report["temporal_semantics"]["lag_year_downloaded"] is True
+
+
+def test_ohsome_coverage_diagnostics_separate_mapping_stability_from_events():
+    module = _load_ohsome_probe_module()
+
+    stable = module._diagnose_series(
+        [
+            {"timestamp": "2017-01-01T00:00:00Z", "value": 80.0},
+            {"timestamp": "2018-01-01T00:00:00Z", "value": 90.0},
+            {"timestamp": "2019-01-01T00:00:00Z", "value": 100.0},
+        ]
+    )
+    backfilled = module._diagnose_series(
+        [
+            {"timestamp": "2017-01-01T00:00:00Z", "value": 5.0},
+            {"timestamp": "2018-01-01T00:00:00Z", "value": 20.0},
+            {"timestamp": "2019-01-01T00:00:00Z", "value": 100.0},
+        ]
+    )
+
+    assert stable["start_to_end_ratio"] == 0.8
+    assert stable["maximum_positive_annual_growth"] == 0.125
+    assert backfilled["start_to_end_ratio"] == 0.05
+    assert backfilled["maximum_positive_annual_growth"] == 4.0
+
+    zero_started = module._diagnose_series(
+        [
+            {"timestamp": "2017-01-01T00:00:00Z", "value": 0.0},
+            {"timestamp": "2018-01-01T00:00:00Z", "value": 10.0},
+            {"timestamp": "2019-01-01T00:00:00Z", "value": 12.0},
+        ]
+    )
+    assert zero_started["zero_to_positive_transition_count"] == 1
+    assert zero_started["maximum_positive_annual_growth"] == 0.2
 
 
 def test_dam_gk_masks_geographically_invalid_candidate_edges():

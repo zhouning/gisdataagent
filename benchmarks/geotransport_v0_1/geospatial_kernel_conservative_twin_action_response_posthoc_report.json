@@ -1,0 +1,206 @@
+{
+  "aggregate_gates": {
+    "fresh_prospective_validation_passed": false,
+    "mechanistic_candidate_promotion_gate_passed": false,
+    "two_system_structural_gate_passed": true
+  },
+  "claim_boundary": {
+    "candidate_promoted": false,
+    "counterfactual_release_effect_causally_validated": false,
+    "geospatial_kernel_validated": false,
+    "hydrodynamic_response_validated": false,
+    "mechanistic_action_response_implemented": true,
+    "prospective_v5_changed": false,
+    "runtime_default_enabled": false
+  },
+  "design": {
+    "empirical_minimum_lag_hours_diagnostic": 5,
+    "forecast_horizons_hours": [
+      1,
+      3,
+      6,
+      12
+    ],
+    "future_archived_release_used_as_declared_scenario_schedule": true,
+    "issue_indices": [
+      0,
+      168,
+      336,
+      504
+    ],
+    "issue_stride_hours": 168,
+    "new_fitted_parameter_count": 0,
+    "operational_action_schedule_vintage_verified": false,
+    "release_deltas_m3s": [
+      -50.0,
+      -10.0,
+      10.0,
+      50.0
+    ],
+    "shared_distributed_forcing_per_pair": true,
+    "shared_initial_reach_storage_per_pair": true,
+    "systems": [
+      "center_hill",
+      "j_percy_priest"
+    ]
+  },
+  "diagnostic_interpretation": {
+    "action_response_now_has_explicit_reach_storage_continuity": true,
+    "counterfactual_effect_identified_from_outcomes": false,
+    "predictive_accuracy_evaluated": false,
+    "reservoir_storage_required_for_this_routing_diagnostic": false,
+    "response_attenuation_can_be_partitioned_into_outlet_and_storage": true
+  },
+  "generated_at": "2026-07-31T17:00:16.892122+00:00",
+  "implementation_artifacts": {
+    "conservative_twin_operator": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/conservative_twin_action_response.py",
+      "sha256": "a39cddaf470a331692ca468827840850764c7adf9a22e073dd9810aedff49f39",
+      "size_bytes": 17081
+    },
+    "evaluator": {
+      "path": "scripts/audit_geospatial_kernel_conservative_twin_action_response.py",
+      "sha256": "ba363dcde000ff85f0a4333c7bc0e8cf9c26a11f899f82b7dc204614f4031209",
+      "size_bytes": 26746
+    }
+  },
+  "information_boundary": {
+    "historical_archived_actions_loaded": true,
+    "initial_reach_storage_is_modeled_not_observed": true,
+    "nwm_v3_retrospective_forcing_loaded": true,
+    "outcome_columns_accepted": false,
+    "outcome_values_loaded": false,
+    "usgs_outcome_files_opened": false
+  },
+  "outputs": {
+    "responses": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_conservative_twin_action_response_posthoc/responses.csv",
+      "sha256": "68b388371f3ad571346150ebe8b9d758fb9f46f1b29b1d639d91835a547dba1f",
+      "size_bytes": 30278
+    }
+  },
+  "reference_action_change_coefficient": 0.32988884570396676,
+  "schema": "gwm.geotransport.conservative_twin_action_response_posthoc.v1",
+  "source_artifacts": {
+    "blind_validation_input_report": {
+      "path": "benchmarks/geotransport_v0_1/geotransport_v2_blind_validation_inputs_report.json",
+      "sha256": "9bf183173b782a40c03f69ed73a839811bfa0718e4ad7bf35fdf67c5e7060aa0",
+      "size_bytes": 16854
+    },
+    "blind_validation_protocol": {
+      "path": "benchmarks/geotransport_v0_1/geotransport_v2_blind_validation_protocol.json",
+      "sha256": "7b99c0a7765f2e491e12e9dd110cdfcdcdeed72e70f3f30c65b9b9aac3d167cb",
+      "size_bytes": 13509
+    },
+    "frozen_action_innovation_parameters": {
+      "path": "data/geotransport_v0_1/kernel_innovation_candidate/parameters.json",
+      "sha256": "56990a10610c3ab7d6e6479906237463f1d9d17ea9e630bdacc22528961106ad",
+      "size_bytes": 2246
+    }
+  },
+  "status": "mechanistic_twin_response_posthoc_complete_not_promoted",
+  "systems": {
+    "center_hill": {
+      "claim_boundary": {
+        "causal_effect_validated": false,
+        "outcomes_used": false,
+        "predictive_accuracy_scored": false,
+        "two_schedule_mechanistic_response_computed": true
+      },
+      "execution": {
+        "issue_count": 4,
+        "paired_rollout_count": 16,
+        "paired_step_count": 192,
+        "reported_horizon_row_count": 64
+      },
+      "network": {
+        "action_entry_feature_id": 18434265,
+        "feature_count": 435,
+        "initial_network_storage_m3": 12032606.8678711,
+        "initial_state_ground_truth": false,
+        "outlet_feature_id": 18421703
+      },
+      "structural_gates": {
+        "all_mass_balances_passed": true,
+        "all_structural_gates_passed": true,
+        "mass_balance_check_count": 192,
+        "mass_balance_pass_count": 192,
+        "release_ordering_check_count": 16,
+        "release_ordering_gate_passed": true,
+        "release_ordering_pass_count": 16,
+        "signed_response_check_count": 192,
+        "signed_response_gate_passed": true,
+        "signed_response_pass_count": 192
+      },
+      "system_id": "center_hill",
+      "temporal_response_diagnostic": {
+        "absolute_outlet_response_volume_before_empirical_lag_fraction": 3.15875527476956e-05,
+        "empirical_minimum_lag_hours_reference": 5,
+        "first_response_arrival_maximum_hours": 2,
+        "first_response_arrival_median_hours": 2.0,
+        "first_response_arrival_minimum_hours": 2,
+        "response_zero_tolerance_m3s": 1e-09,
+        "temporal_alignment_promoted": false
+      },
+      "twelve_hour_partition": {
+        "maximum_absolute_partition_residual_fraction": 3.159113004113789e-11,
+        "median_input_recovered_at_outlet_fraction": 0.04148107210594182,
+        "median_input_retained_in_storage_fraction": 0.9585189278933638,
+        "median_response_rate_gain": 0.21945725870646354,
+        "partition_roundoff_fraction": -6.943334796005729e-13,
+        "reference_learned_action_change_coefficient": 0.32988884570396676
+      }
+    },
+    "j_percy_priest": {
+      "claim_boundary": {
+        "causal_effect_validated": false,
+        "outcomes_used": false,
+        "predictive_accuracy_scored": false,
+        "two_schedule_mechanistic_response_computed": true
+      },
+      "execution": {
+        "issue_count": 4,
+        "paired_rollout_count": 16,
+        "paired_step_count": 192,
+        "reported_horizon_row_count": 64
+      },
+      "network": {
+        "action_entry_feature_id": 18401881,
+        "feature_count": 43,
+        "initial_network_storage_m3": 650631.9424811483,
+        "initial_state_ground_truth": false,
+        "outlet_feature_id": 18401497
+      },
+      "structural_gates": {
+        "all_mass_balances_passed": true,
+        "all_structural_gates_passed": true,
+        "mass_balance_check_count": 192,
+        "mass_balance_pass_count": 192,
+        "release_ordering_check_count": 16,
+        "release_ordering_gate_passed": true,
+        "release_ordering_pass_count": 16,
+        "signed_response_check_count": 192,
+        "signed_response_gate_passed": true,
+        "signed_response_pass_count": 192
+      },
+      "system_id": "j_percy_priest",
+      "temporal_response_diagnostic": {
+        "absolute_outlet_response_volume_before_empirical_lag_fraction": 0.17049532885045068,
+        "empirical_minimum_lag_hours_reference": 5,
+        "first_response_arrival_maximum_hours": 10,
+        "first_response_arrival_median_hours": 1.0,
+        "first_response_arrival_minimum_hours": 1,
+        "response_zero_tolerance_m3s": 1e-09,
+        "temporal_alignment_promoted": false
+      },
+      "twelve_hour_partition": {
+        "maximum_absolute_partition_residual_fraction": 5.369387239355731e-13,
+        "median_input_recovered_at_outlet_fraction": 0.718994759642128,
+        "median_input_retained_in_storage_fraction": 0.2810052403579869,
+        "median_response_rate_gain": 0.9546727715385686,
+        "partition_roundoff_fraction": 1.1501910535116622e-13,
+        "reference_learned_action_change_coefficient": 0.32988884570396676
+      }
+    }
+  }
+}

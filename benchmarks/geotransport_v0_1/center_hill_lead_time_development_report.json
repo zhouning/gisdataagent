@@ -1,0 +1,473 @@
+{
+  "claim_boundary": {
+    "development_gate_passed": false,
+    "forecast_closure_validated": false,
+    "geospatial_kernel_validated": false,
+    "graph_state_estimation_validated": false,
+    "lagged_graph_kernel_fitted": false,
+    "lead_time_diagnostic_executed": true,
+    "lead_time_protocol_preregistered": true,
+    "operational_forecast_evaluated": false,
+    "operational_forecast_executed": false,
+    "operational_observation_vintage_verified": false,
+    "oracle_forcing_diagnostic_executed": true
+  },
+  "conservation": {
+    "all_executed_scenarios_passed": true,
+    "scenario_maximum_residual_to_tolerance_ratio": {
+      "graph_multi_gauge": 0.00048494848413442967,
+      "local_multi_gauge": 0.00047751977183763464,
+      "outlet_only": 0.00047627964467438497
+    },
+    "warmup_maximum_residual_to_tolerance_ratio": 0.00046204628533267467
+  },
+  "data_isolation": {
+    "d3_outcomes_used": false,
+    "future_observations_assimilated_within_rollout": false,
+    "future_target_outcomes_used_by_model": false,
+    "graph_gain_search_on_this_window": false,
+    "graph_parameters_reused_without_refit": true,
+    "operational_input_vintages_used": false,
+    "realized_future_action_used": true,
+    "retrospective_future_q_lateral_used": true,
+    "target_outcomes_present_for_development_scoring": true,
+    "two_system_blind_outcomes_used": false,
+    "untouched_window_consumed": false
+  },
+  "diagnostics": {
+    "future_observation_update_count": {
+      "graph_multi_gauge": 0,
+      "local_multi_gauge": 0,
+      "outlet_only": 0
+    },
+    "graph_minus_local_rmse_m3s_by_horizon": {
+      "1": 0.414116277362659,
+      "12": 1.7466458772131546,
+      "24": -0.26674809832847757,
+      "3": 0.48121823271571884,
+      "6": 0.33051098508080656
+    },
+    "issue_observation_update_count": {
+      "graph_multi_gauge": 945,
+      "local_multi_gauge": 945,
+      "outlet_only": 478
+    },
+    "one_hour_parent_prediction_regression": {
+      "compared_value_count": 1440,
+      "maximum_absolute_difference_m3s": 0.0,
+      "passed": true
+    }
+  },
+  "forecast_cycle": {
+    "branch_rollout": "clone each scenario analysis at issue time and execute one continuous 24-hour rollout, recording registered intermediate horizons",
+    "cycling_state": "each scenario advances one hour between issue times using only its registered issue-time observations",
+    "graph_gain_artifact_mutation": false,
+    "graph_gain_search_on_this_window": false,
+    "horizon_rollout_mutates_cycling_state": false,
+    "observations_after_issue_time": "forbidden",
+    "scenarios": [
+      "graph_multi_gauge",
+      "local_multi_gauge",
+      "outlet_only"
+    ],
+    "topology_geometry_and_solver": "unchanged_from_parent_graph_diagnostic"
+  },
+  "generated_at": "2026-07-27T07:37:53.647125+00:00",
+  "horizons": {
+    "all_horizons_hours": [
+      1,
+      3,
+      6,
+      12,
+      24
+    ],
+    "core_horizons_hours": [
+      3,
+      6,
+      12,
+      24
+    ],
+    "diagnostic_horizons_hours": [
+      1
+    ],
+    "horizon_selection_from_target_errors": false,
+    "target_definition": "outlet mean discharge over the final hourly interval ending issue_time_plus_horizon"
+  },
+  "information_tracks": {
+    "operational_forecast": {
+      "fabricated_substitution_used": false,
+      "metrics_by_horizon": null,
+      "required_missing_inputs": [
+        "historical issue-time NWM forcing forecast vintages",
+        "historical issue-time reservoir release plan vintages",
+        "verified historical USGS observation publication vintages"
+      ],
+      "status": "not_executable_missing_issue_time_vintages"
+    },
+    "retrospective_oracle_forcing": {
+      "future_observations_assimilated": false,
+      "metrics_by_horizon": {
+        "1": {
+          "causal_latency_matched_persistence": {
+            "bias_m3s": -0.8351979384273682,
+            "mae_m3s": 27.143098397173475,
+            "nse": 0.8906159829325593,
+            "rmse_m3s": 34.60878814168572,
+            "sample_count": 475
+          },
+          "graph_multi_gauge": {
+            "bias_m3s": -6.2242204119162645,
+            "mae_m3s": 39.155886427883885,
+            "nse": 0.7852745845520992,
+            "rmse_m3s": 48.48988832431166,
+            "sample_count": 475
+          },
+          "local_multi_gauge": {
+            "bias_m3s": -5.71878504119973,
+            "mae_m3s": 38.547213362134535,
+            "nse": 0.7889265452916137,
+            "rmse_m3s": 48.075772046949,
+            "sample_count": 475
+          },
+          "outlet_only": {
+            "bias_m3s": -5.733681815041212,
+            "mae_m3s": 38.5287183266581,
+            "nse": 0.7886651120469089,
+            "rmse_m3s": 48.105535893070304,
+            "sample_count": 475
+          },
+          "zero_latency_archive_persistence": {
+            "bias_m3s": -0.3830226091642106,
+            "mae_m3s": 13.903929363165474,
+            "nse": 0.9709752791233208,
+            "rmse_m3s": 17.827624745699804,
+            "sample_count": 475
+          }
+        },
+        "12": {
+          "causal_latency_matched_persistence": {
+            "bias_m3s": -5.19940407296723,
+            "mae_m3s": 88.53342906741797,
+            "nse": -0.1673441645446363,
+            "rmse_m3s": 114.44246083507136,
+            "sample_count": 473
+          },
+          "graph_multi_gauge": {
+            "bias_m3s": -10.833970677826589,
+            "mae_m3s": 68.65944379630767,
+            "nse": 0.35480612892277097,
+            "rmse_m3s": 85.08105100015123,
+            "sample_count": 473
+          },
+          "local_multi_gauge": {
+            "bias_m3s": -11.112432265317967,
+            "mae_m3s": 66.6454865534854,
+            "nse": 0.3810248407388447,
+            "rmse_m3s": 83.33440512293808,
+            "sample_count": 473
+          },
+          "outlet_only": {
+            "bias_m3s": -11.290532683844567,
+            "mae_m3s": 66.6863121868741,
+            "nse": 0.3802755155012306,
+            "rmse_m3s": 83.38483177150418,
+            "sample_count": 473
+          },
+          "zero_latency_archive_persistence": {
+            "bias_m3s": -4.693831621658562,
+            "mae_m3s": 87.28491355859599,
+            "nse": -0.12901335960190607,
+            "rmse_m3s": 112.5478673232477,
+            "sample_count": 473
+          }
+        },
+        "24": {
+          "causal_latency_matched_persistence": {
+            "bias_m3s": -9.961782817984991,
+            "mae_m3s": 59.60474701631015,
+            "nse": 0.36063936977371625,
+            "rmse_m3s": 86.58848106552954,
+            "sample_count": 473
+          },
+          "graph_multi_gauge": {
+            "bias_m3s": -11.925886375311146,
+            "mae_m3s": 65.80374944495091,
+            "nse": 0.42603669265142274,
+            "rmse_m3s": 82.04067801814321,
+            "sample_count": 473
+          },
+          "local_multi_gauge": {
+            "bias_m3s": -12.375914456935657,
+            "mae_m3s": 65.87570683865178,
+            "nse": 0.4222982417762051,
+            "rmse_m3s": 82.30742611647169,
+            "sample_count": 473
+          },
+          "outlet_only": {
+            "bias_m3s": -12.41878149907595,
+            "mae_m3s": 65.88371124085135,
+            "nse": 0.42211797573436993,
+            "rmse_m3s": 82.32026671842286,
+            "sample_count": 473
+          },
+          "zero_latency_archive_persistence": {
+            "bias_m3s": -9.64538845384334,
+            "mae_m3s": 58.265833117728754,
+            "nse": 0.3551899256795288,
+            "rmse_m3s": 86.95670666537896,
+            "sample_count": 473
+          }
+        },
+        "3": {
+          "causal_latency_matched_persistence": {
+            "bias_m3s": -1.382915763792812,
+            "mae_m3s": 49.956425104765756,
+            "nse": 0.6449844815828484,
+            "rmse_m3s": 62.730247470557536,
+            "sample_count": 473
+          },
+          "graph_multi_gauge": {
+            "bias_m3s": -10.955430673102533,
+            "mae_m3s": 66.2183267514208,
+            "nse": 0.39535069964349234,
+            "rmse_m3s": 81.86628998954879,
+            "sample_count": 473
+          },
+          "local_multi_gauge": {
+            "bias_m3s": -10.160174701956704,
+            "mae_m3s": 65.42189849629217,
+            "nse": 0.40243818577463686,
+            "rmse_m3s": 81.38507175683307,
+            "sample_count": 473
+          },
+          "outlet_only": {
+            "bias_m3s": -10.217328195805305,
+            "mae_m3s": 65.45952456822943,
+            "nse": 0.40092939314722886,
+            "rmse_m3s": 81.48775216615525,
+            "sample_count": 473
+          },
+          "zero_latency_archive_persistence": {
+            "bias_m3s": -0.8878199470570822,
+            "mae_m3s": 39.10652300729894,
+            "nse": 0.7785399362088046,
+            "rmse_m3s": 49.54513801149953,
+            "sample_count": 473
+          }
+        },
+        "6": {
+          "causal_latency_matched_persistence": {
+            "bias_m3s": -1.9651173137061309,
+            "mae_m3s": 72.10037873915645,
+            "nse": 0.2623655693033796,
+            "rmse_m3s": 90.70212378470066,
+            "sample_count": 473
+          },
+          "graph_multi_gauge": {
+            "bias_m3s": -10.716156372335078,
+            "mae_m3s": 67.87753504655916,
+            "nse": 0.36385614153544155,
+            "rmse_m3s": 84.23150014194879,
+            "sample_count": 473
+          },
+          "local_multi_gauge": {
+            "bias_m3s": -9.962462674506455,
+            "mae_m3s": 67.19857042233781,
+            "nse": 0.36883860140475644,
+            "rmse_m3s": 83.90098915686798,
+            "sample_count": 473
+          },
+          "outlet_only": {
+            "bias_m3s": -10.051509949760433,
+            "mae_m3s": 67.25575707612413,
+            "nse": 0.36708876463752416,
+            "rmse_m3s": 84.0172125352077,
+            "sample_count": 473
+          },
+          "zero_latency_archive_persistence": {
+            "bias_m3s": -1.444578241577168,
+            "mae_m3s": 65.86797849716828,
+            "nse": 0.38596572493651937,
+            "rmse_m3s": 82.75479611418268,
+            "sample_count": 473
+          }
+        }
+      },
+      "operational_forecast_claim_permitted": false,
+      "scoring": {
+        "common_complete_case_mask_per_horizon": true,
+        "common_complete_sample_count_by_horizon": {
+          "1": 475,
+          "12": 473,
+          "24": 473,
+          "3": 473,
+          "6": 473
+        },
+        "issue_count": 480,
+        "missing_values_imputed": false,
+        "omitted_target_support_end_utc_by_horizon": {
+          "1": [
+            "2022-01-03T05:00:00Z",
+            "2022-01-03T06:00:00Z",
+            "2022-01-03T07:00:00Z",
+            "2022-01-03T08:00:00Z",
+            "2022-01-03T09:00:00Z"
+          ],
+          "12": [
+            "2022-01-03T05:00:00Z",
+            "2022-01-03T06:00:00Z",
+            "2022-01-03T07:00:00Z",
+            "2022-01-03T17:00:00Z",
+            "2022-01-03T18:00:00Z",
+            "2022-01-03T19:00:00Z",
+            "2022-01-03T20:00:00Z"
+          ],
+          "24": [
+            "2022-01-03T05:00:00Z",
+            "2022-01-03T06:00:00Z",
+            "2022-01-03T07:00:00Z",
+            "2022-01-04T05:00:00Z",
+            "2022-01-04T06:00:00Z",
+            "2022-01-04T07:00:00Z",
+            "2022-01-04T08:00:00Z"
+          ],
+          "3": [
+            "2022-01-03T05:00:00Z",
+            "2022-01-03T06:00:00Z",
+            "2022-01-03T07:00:00Z",
+            "2022-01-03T08:00:00Z",
+            "2022-01-03T09:00:00Z",
+            "2022-01-03T10:00:00Z",
+            "2022-01-03T11:00:00Z"
+          ],
+          "6": [
+            "2022-01-03T05:00:00Z",
+            "2022-01-03T06:00:00Z",
+            "2022-01-03T07:00:00Z",
+            "2022-01-03T11:00:00Z",
+            "2022-01-03T12:00:00Z",
+            "2022-01-03T13:00:00Z",
+            "2022-01-03T14:00:00Z"
+          ]
+        },
+        "row_count": 2400
+      },
+      "status": "executed_archive_replay_diagnostic"
+    }
+  },
+  "outputs": {
+    "predictions": {
+      "path": "data/geotransport_v0_1/center_hill_lead_time_development/predictions.csv",
+      "sha256": "7c208b1479aa035c58c701252f7f1fd3a122c6dc73cbf31e0b4e6599dc38dbb2",
+      "size_bytes": 512472
+    }
+  },
+  "protocol": {
+    "path": "benchmarks/geotransport_v0_1/center_hill_lead_time_development_protocol.json",
+    "sha256": "201beae6cf04fbab6ad2966e73d677d39ff4bde81a1f5252f031a1d04c3752c3",
+    "size_bytes": 5745
+  },
+  "registered_gates": {
+    "all_core_horizons_accuracy_gate_passed": false,
+    "core_horizons": [
+      3,
+      6,
+      12,
+      24
+    ],
+    "development_gate_passed": false,
+    "mass_gate_passed": true,
+    "operational_gate_assessable": false,
+    "per_horizon": {
+      "1": {
+        "accuracy_gate_passed": false,
+        "graph_beats_causal_persistence_rmse": false,
+        "graph_beats_local_multi_gauge_rmse": false,
+        "graph_beats_outlet_only_rmse": false
+      },
+      "12": {
+        "accuracy_gate_passed": false,
+        "graph_beats_causal_persistence_rmse": true,
+        "graph_beats_local_multi_gauge_rmse": false,
+        "graph_beats_outlet_only_rmse": false
+      },
+      "24": {
+        "accuracy_gate_passed": true,
+        "graph_beats_causal_persistence_rmse": true,
+        "graph_beats_local_multi_gauge_rmse": true,
+        "graph_beats_outlet_only_rmse": true
+      },
+      "3": {
+        "accuracy_gate_passed": false,
+        "graph_beats_causal_persistence_rmse": false,
+        "graph_beats_local_multi_gauge_rmse": false,
+        "graph_beats_outlet_only_rmse": false
+      },
+      "6": {
+        "accuracy_gate_passed": false,
+        "graph_beats_causal_persistence_rmse": true,
+        "graph_beats_local_multi_gauge_rmse": false,
+        "graph_beats_outlet_only_rmse": false
+      }
+    }
+  },
+  "schema": "gwm.geotransport.center_hill_lead_time_development.v1",
+  "source_artifacts": {
+    "development_input_report": {
+      "path": "benchmarks/geotransport_v0_1/forecast_closure_center_hill_development_inputs_report.json",
+      "sha256": "8b6b42ba3cd07403d2c1a7b96d8a521717200758e1d369734aa0f6e21b9cb67c",
+      "size_bytes": 10625
+    },
+    "development_panel": {
+      "path": "data/geotransport_v0_1/panels/center_hill_672h_development.csv",
+      "sha256": "3ab31194e1687b2a4556bdf4f0889acfa62afe2a53e6dd5ad056f168b55cc746",
+      "size_bytes": 142536
+    },
+    "development_panel_report": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_672h_development_panel_report.json",
+      "sha256": "68cc96629b0e798230082299c61fa9a42afd699130c112c29a28954626db0e9a",
+      "size_bytes": 8116
+    },
+    "graph_multigauge_report": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_graph_multigauge_development_report.json",
+      "sha256": "fdd1b0996eb2ead2b03be75606f320d054b6983e5337c434e53b2a5e5e850492",
+      "size_bytes": 18548
+    },
+    "graph_parameters": {
+      "path": "data/geotransport_v0_1/center_hill_graph_multigauge_development/graph_state_update_parameters.json",
+      "sha256": "7128a100867af237b00f3d83bca67288b4df12f4f15f1386f344e0ddfd40f633",
+      "size_bytes": 29404
+    },
+    "multigauge_hourly_observations": {
+      "path": "data/geotransport_v0_1/center_hill_multigauge_development/values/hourly_discharge.csv",
+      "sha256": "3a98624ba0bc076afcff1c6d11eda67d8d606f591d572a89f2343d10ac1f50f1",
+      "size_bytes": 52611
+    },
+    "multigauge_input_report": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_multigauge_development_inputs_report.json",
+      "sha256": "f96d059434668bd564932d5ae5bf03cb9ecdf0d4826f34013b7fafad3621cc2b",
+      "size_bytes": 6411
+    },
+    "prior_mainstem_support": {
+      "path": "data/geotransport_v0_1/center_hill_terminal_forcing_support_nhdplus_v21/forcing_support.json",
+      "sha256": "6cb12bd529055ba9506c5e39d991b1a1b4f6dee5956690144ddf4f1b13e036e8",
+      "size_bytes": 1522
+    },
+    "topology_report": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_v2_d5_full_subnetwork_report.json",
+      "sha256": "9d066189ed23f0bf91fecdefa9327bcfc4a92704d4fb23e6e07c3bbe78559bbd",
+      "size_bytes": 19899
+    }
+  },
+  "status": "public_development_lead_time_diagnostic_complete",
+  "window": {
+    "all_issues_have_all_registered_horizons": true,
+    "first_issue_time": "2021-12-16T02:00:00Z",
+    "input_end_exclusive": "2022-01-06T01:00:00Z",
+    "input_start_inclusive": "2021-12-09T01:00:00Z",
+    "issue_count": 480,
+    "last_issue_time": "2022-01-05T01:00:00Z",
+    "maximum_horizon_hours": 24,
+    "role": "public_development_only_not_validation"
+  }
+}

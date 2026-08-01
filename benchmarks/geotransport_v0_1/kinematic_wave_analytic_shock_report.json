@@ -1,0 +1,174 @@
+{
+  "analytic_solution": {
+    "background_area_m2": 3.470396979002537,
+    "exact_cell_average_semantics": "length-weighted left/right Riemann state split at analytic shock",
+    "lax_entropy_condition": true,
+    "left_characteristic_speed_mps": 1.537287140008707,
+    "rankine_hugoniot_shock_speed_mps": 1.2625943101608106,
+    "right_characteristic_speed_mps": 0.9144604303252546,
+    "shock_position_at_horizon_m": 4545.339516578918,
+    "solution_type": "entropy_satisfying_shock_for_convex_flux",
+    "step_area_m2": 9.806557324110601
+  },
+  "claim_boundary": {
+    "analytic_solution_is_independent_observed_evidence": false,
+    "finite_volume_consistency_supported": true,
+    "geospatial_kernel_validated": false,
+    "operator_form_admitted": false,
+    "professional_transfer_operator_certified": false,
+    "real_world_transfer_validated": false
+  },
+  "convergence": {
+    "all_comparisons_passed": true,
+    "comparison_count": 3,
+    "comparisons": [
+      {
+        "coarse_normalized_l1_area_error": 0.1402648914487037,
+        "coarse_target_cell_length_m": 2000.0,
+        "fine_normalized_l1_area_error": 0.08911073168053478,
+        "fine_target_cell_length_m": 1000.0,
+        "observed_order": 0.6544828527111796,
+        "passed": true
+      },
+      {
+        "coarse_normalized_l1_area_error": 0.08911073168053478,
+        "coarse_target_cell_length_m": 1000.0,
+        "fine_normalized_l1_area_error": 0.07418129379835162,
+        "fine_target_cell_length_m": 500.0,
+        "observed_order": 0.2645437570387391,
+        "passed": true
+      },
+      {
+        "coarse_normalized_l1_area_error": 0.07418129379835162,
+        "coarse_target_cell_length_m": 500.0,
+        "fine_normalized_l1_area_error": 0.03716482118325153,
+        "fine_target_cell_length_m": 250.0,
+        "observed_order": 0.9971177635761153,
+        "passed": true
+      }
+    ]
+  },
+  "data_isolation": {
+    "external_data_loaded": false,
+    "fitted_parameters": 0,
+    "inputs": [
+      "registered_geometry",
+      "analytic_riemann_states"
+    ],
+    "observed_outcomes_loaded": false
+  },
+  "gates": {
+    "all_cfl_limits_respected": true,
+    "all_registered_analytic_gates_passed": true,
+    "all_states_bounded_by_riemann_states": true,
+    "all_step_mass_identities_passed": true,
+    "analytic_front_remains_inside_domain": true,
+    "lax_entropy_condition": true,
+    "normalized_l1_error_strictly_decreases": true,
+    "operator_remains_diagnostic_only": true,
+    "outcome_isolation": true
+  },
+  "generated_at": "2026-07-27T12:00:50.926722+00:00",
+  "registered_protocol": {
+    "cfl_number": 0.8,
+    "equation": "dA/dt + dQ(A)/dx = 0",
+    "external_timestep_seconds": 60.0,
+    "geometry": {
+      "bed_slope": 0.002,
+      "bottom_width_m": 10.0,
+      "manning_n": 0.035,
+      "side_slope_horizontal_per_vertical": 2.0
+    },
+    "horizon_seconds": 3600.0,
+    "reach_length_m": 10000.0,
+    "registration_phase": "before_execution",
+    "riemann_left_boundary_flow_m3s": 10.0,
+    "riemann_right_initial_flow_m3s": 2.0,
+    "target_cell_lengths_m": [
+      2000.0,
+      1000.0,
+      500.0,
+      250.0
+    ]
+  },
+  "resolutions": [
+    {
+      "actual_cell_count": 5,
+      "actual_cell_length_m": 2000.0,
+      "configured_cfl_number": 0.8,
+      "diagnostic_only": true,
+      "integration_substep_count": 60,
+      "l1_area_error_m3": 8887.408430081636,
+      "maximum_area_m2": 9.362900286354861,
+      "maximum_courant_number": 0.04611861420048192,
+      "maximum_step_mass_residual_to_tolerance_ratio": 2.403756413143841e-06,
+      "minimum_area_m2": 3.7777792624534814,
+      "normalized_l1_area_error": 0.1402648914487037,
+      "numerical_excess_mass_shock_position_m": 4516.650610481729,
+      "operator_form_admitted": false,
+      "outlet_mean_flow_m3s_at_horizon": 2.267812523762585,
+      "shock_position_absolute_error_m": 28.68890609718892,
+      "state_bounded_by_riemann_states": true,
+      "target_cell_length_m": 2000.0
+    },
+    {
+      "actual_cell_count": 10,
+      "actual_cell_length_m": 1000.0,
+      "configured_cfl_number": 0.8,
+      "diagnostic_only": true,
+      "integration_substep_count": 60,
+      "l1_area_error_m3": 5646.198843977693,
+      "maximum_area_m2": 9.783412285442964,
+      "maximum_courant_number": 0.09223722840096384,
+      "maximum_step_mass_residual_to_tolerance_ratio": 2.0746329016458447e-06,
+      "minimum_area_m2": 3.4912844015987896,
+      "normalized_l1_area_error": 0.08911073168053478,
+      "numerical_excess_mass_shock_position_m": 4544.319371662727,
+      "operator_form_admitted": false,
+      "outlet_mean_flow_m3s_at_horizon": 2.0165699072803718,
+      "shock_position_absolute_error_m": 1.0201449161913843,
+      "state_bounded_by_riemann_states": true,
+      "target_cell_length_m": 1000.0
+    },
+    {
+      "actual_cell_count": 20,
+      "actual_cell_length_m": 500.0,
+      "configured_cfl_number": 0.8,
+      "diagnostic_only": true,
+      "integration_substep_count": 60,
+      "l1_area_error_m3": 4700.245721139263,
+      "maximum_area_m2": 9.806519075371215,
+      "maximum_courant_number": 0.18447445680192767,
+      "maximum_step_mass_residual_to_tolerance_ratio": 3.4678258958611027e-06,
+      "minimum_area_m2": 3.4704454548108687,
+      "normalized_l1_area_error": 0.07418129379835162,
+      "numerical_excess_mass_shock_position_m": 4545.338451677208,
+      "operator_form_admitted": false,
+      "outlet_mean_flow_m3s_at_horizon": 2.0000324786652723,
+      "shock_position_absolute_error_m": 0.0010649017103787628,
+      "state_bounded_by_riemann_states": true,
+      "target_cell_length_m": 500.0
+    },
+    {
+      "actual_cell_count": 40,
+      "actual_cell_length_m": 250.0,
+      "configured_cfl_number": 0.8,
+      "diagnostic_only": true,
+      "integration_substep_count": 60,
+      "l1_area_error_m3": 2354.822662143505,
+      "maximum_area_m2": 9.806557324102249,
+      "maximum_courant_number": 0.36894891360385534,
+      "maximum_step_mass_residual_to_tolerance_ratio": 2.1329622525856555e-06,
+      "minimum_area_m2": 3.4703969790046494,
+      "normalized_l1_area_error": 0.03716482118325153,
+      "numerical_excess_mass_shock_position_m": 4545.339516578932,
+      "operator_form_admitted": false,
+      "outlet_mean_flow_m3s_at_horizon": 2.0000000000007603,
+      "shock_position_absolute_error_m": 1.3642420526593924e-11,
+      "state_bounded_by_riemann_states": true,
+      "target_cell_length_m": 250.0
+    }
+  ],
+  "schema": "gwm.geotransport.kinematic_wave_analytic_shock.v1",
+  "status": "analytic_riemann_shock_diagnostic_complete"
+}

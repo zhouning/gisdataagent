@@ -1,0 +1,525 @@
+{
+  "adjudication_rule": {
+    "candidate_window_interval": "right_open_[start,end)",
+    "direct_nwm_object_rule": "any raw/nwm/{q_lateral,time,streamflow}/<candidate_chunk>[.<feature_chunk>].zst filename is prior local consumption",
+    "external_prior_access_proven_absent": false,
+    "selection_order": "earliest_complete_candidate_chunk_first",
+    "ties_or_ambiguity_fail_closed": true,
+    "timestamp_rule": "any timezone-aware ISO timestamp token in a scoped local text file that falls in a candidate block is prior local consumption",
+    "zero_total_hits_required": true
+  },
+  "bound_artifacts": {
+    "consumption_hit_ledger": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_selector_unused_window_adjudication/consumption_hits.csv",
+      "sha256": "26eebc72e5a5c3cbdc9c2c16ef6f7639c0ac53f0b8f835badee6c0d9b39ea419",
+      "size_bytes": 63051
+    },
+    "frozen_replication_design": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_selector_replication_design.json",
+      "sha256": "91a81b49b1a1993ad5072b37566e45faa1b70e0c17719545f01d540d8c30c9d5",
+      "size_bytes": 6476
+    },
+    "nwm_time_zarray": {
+      "path": "data/geotransport_v0_1/metadata/nwm-time-zarray.json",
+      "sha256": "ae0ddee2855d4a92fb759c63935dadb2fedd93791aa39f52c13c5756082c4ea4",
+      "size_bytes": 247
+    },
+    "nwm_time_zattrs": {
+      "path": "data/geotransport_v0_1/metadata/nwm-time-zattrs.json",
+      "sha256": "470f9e6a2e037520fefcf924d672a57d30b553c6f3d72479c70269f78def0455",
+      "size_bytes": 205
+    }
+  },
+  "candidate_chunks": [
+    {
+      "direct_nwm_object_file_count": 0,
+      "direct_nwm_object_hit_count": 0,
+      "distinct_evidence_file_count": 40,
+      "eligible_for_selection": false,
+      "evidence_examples": [
+        {
+          "evidence_kind": "timezone_aware_iso_timestamp_token",
+          "first_timestamp_utc": "2022-05-26T01:00:00Z",
+          "last_timestamp_utc": "2022-05-26T01:00:00Z",
+          "occurrence_count_in_file": 2,
+          "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_input_plan.json"
+        },
+        {
+          "evidence_kind": "timezone_aware_iso_timestamp_token",
+          "first_timestamp_utc": "2022-05-26T01:00:00Z",
+          "last_timestamp_utc": "2022-05-26T01:00:00Z",
+          "occurrence_count_in_file": 2,
+          "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_protocol.json"
+        },
+        {
+          "evidence_kind": "timezone_aware_iso_timestamp_token",
+          "first_timestamp_utc": "2022-05-26T01:00:00Z",
+          "last_timestamp_utc": "2022-05-26T01:00:00Z",
+          "occurrence_count_in_file": 2,
+          "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_scoring_protocol.json"
+        },
+        {
+          "evidence_kind": "timezone_aware_iso_timestamp_token",
+          "first_timestamp_utc": "2022-05-26T01:00:00Z",
+          "last_timestamp_utc": "2022-05-26T01:00:00Z",
+          "occurrence_count_in_file": 2,
+          "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_static_inputs_report.json"
+        },
+        {
+          "evidence_kind": "timezone_aware_iso_timestamp_token",
+          "first_timestamp_utc": "2022-05-26T01:00:00Z",
+          "last_timestamp_utc": "2022-05-26T01:00:00Z",
+          "occurrence_count_in_file": 1,
+          "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_selector_replication_design.json"
+        }
+      ],
+      "hour_count": 672,
+      "nwm_time_chunk_index": 565,
+      "prior_local_consumption_found": true,
+      "timestamp_evidence_file_count": 40,
+      "timestamp_token_hit_count": 2231,
+      "total_prior_local_consumption_hit_count": 2231,
+      "window_end_exclusive_utc": "2022-06-23T01:00:00Z",
+      "window_start_inclusive_utc": "2022-05-26T01:00:00Z"
+    },
+    {
+      "direct_nwm_object_file_count": 0,
+      "direct_nwm_object_hit_count": 0,
+      "distinct_evidence_file_count": 6,
+      "eligible_for_selection": false,
+      "evidence_examples": [
+        {
+          "evidence_kind": "timezone_aware_iso_timestamp_token",
+          "first_timestamp_utc": "2022-06-23T01:00:00Z",
+          "last_timestamp_utc": "2022-07-21T00:00:00Z",
+          "occurrence_count_in_file": 518,
+          "path": "data/geotransport_v0_1/stage29_center_hill_blind_transfer_events/release_event_candidate_ledger.json"
+        },
+        {
+          "evidence_kind": "timezone_aware_iso_timestamp_token",
+          "first_timestamp_utc": "2022-06-23T01:00:00Z",
+          "last_timestamp_utc": "2022-07-21T00:00:00Z",
+          "occurrence_count_in_file": 518,
+          "path": "data/geotransport_v0_1/stage30_center_hill_regime_validation_events/release_event_candidate_ledger.json"
+        },
+        {
+          "evidence_kind": "timezone_aware_iso_timestamp_token",
+          "first_timestamp_utc": "2022-06-23T01:00:00Z",
+          "last_timestamp_utc": "2022-07-21T00:00:00Z",
+          "occurrence_count_in_file": 326,
+          "path": "data/geotransport_v0_1/stage31_center_hill_identifiable_response_events/release_event_candidate_ledger.json"
+        },
+        {
+          "evidence_kind": "timezone_aware_iso_timestamp_token",
+          "first_timestamp_utc": "2022-06-26T16:30:00Z",
+          "last_timestamp_utc": "2022-07-21T00:30:00Z",
+          "occurrence_count_in_file": 966,
+          "path": "data/geotransport_v0_1/stage36_center_hill_hydraulic_boundary_events/tailwater_event_candidate_ledger.json"
+        },
+        {
+          "evidence_kind": "timezone_aware_iso_timestamp_token",
+          "first_timestamp_utc": "2022-07-13T17:00:00Z",
+          "last_timestamp_utc": "2022-07-21T00:00:00Z",
+          "occurrence_count_in_file": 67,
+          "path": "data/geotransport_v0_1/stage41_center_hill_component_discharge_events/component_total_event_candidate_ledger.json"
+        }
+      ],
+      "hour_count": 672,
+      "nwm_time_chunk_index": 566,
+      "prior_local_consumption_found": true,
+      "timestamp_evidence_file_count": 6,
+      "timestamp_token_hit_count": 2423,
+      "total_prior_local_consumption_hit_count": 2423,
+      "window_end_exclusive_utc": "2022-07-21T01:00:00Z",
+      "window_start_inclusive_utc": "2022-06-23T01:00:00Z"
+    },
+    {
+      "direct_nwm_object_file_count": 0,
+      "direct_nwm_object_hit_count": 0,
+      "distinct_evidence_file_count": 6,
+      "eligible_for_selection": false,
+      "evidence_examples": [
+        {
+          "evidence_kind": "timezone_aware_iso_timestamp_token",
+          "first_timestamp_utc": "2022-07-21T01:00:00Z",
+          "last_timestamp_utc": "2022-08-18T00:00:00Z",
+          "occurrence_count_in_file": 519,
+          "path": "data/geotransport_v0_1/stage29_center_hill_blind_transfer_events/release_event_candidate_ledger.json"
+        },
+        {
+          "evidence_kind": "timezone_aware_iso_timestamp_token",
+          "first_timestamp_utc": "2022-07-21T01:00:00Z",
+          "last_timestamp_utc": "2022-08-18T00:00:00Z",
+          "occurrence_count_in_file": 519,
+          "path": "data/geotransport_v0_1/stage30_center_hill_regime_validation_events/release_event_candidate_ledger.json"
+        },
+        {
+          "evidence_kind": "timezone_aware_iso_timestamp_token",
+          "first_timestamp_utc": "2022-07-21T01:00:00Z",
+          "last_timestamp_utc": "2022-08-18T00:00:00Z",
+          "occurrence_count_in_file": 348,
+          "path": "data/geotransport_v0_1/stage31_center_hill_identifiable_response_events/release_event_candidate_ledger.json"
+        },
+        {
+          "evidence_kind": "timezone_aware_iso_timestamp_token",
+          "first_timestamp_utc": "2022-07-21T01:00:00Z",
+          "last_timestamp_utc": "2022-08-14T10:00:00Z",
+          "occurrence_count_in_file": 439,
+          "path": "data/geotransport_v0_1/stage36_center_hill_hydraulic_boundary_events/tailwater_event_candidate_ledger.json"
+        },
+        {
+          "evidence_kind": "timezone_aware_iso_timestamp_token",
+          "first_timestamp_utc": "2022-07-21T01:00:00Z",
+          "last_timestamp_utc": "2022-08-04T11:00:00Z",
+          "occurrence_count_in_file": 146,
+          "path": "data/geotransport_v0_1/stage41_center_hill_component_discharge_events/component_total_event_candidate_ledger.json"
+        }
+      ],
+      "hour_count": 672,
+      "nwm_time_chunk_index": 567,
+      "prior_local_consumption_found": true,
+      "timestamp_evidence_file_count": 6,
+      "timestamp_token_hit_count": 2093,
+      "total_prior_local_consumption_hit_count": 2093,
+      "window_end_exclusive_utc": "2022-08-18T01:00:00Z",
+      "window_start_inclusive_utc": "2022-07-21T01:00:00Z"
+    },
+    {
+      "direct_nwm_object_file_count": 0,
+      "direct_nwm_object_hit_count": 0,
+      "distinct_evidence_file_count": 20,
+      "eligible_for_selection": false,
+      "evidence_examples": [
+        {
+          "evidence_kind": "timezone_aware_iso_timestamp_token",
+          "first_timestamp_utc": "2022-09-03T16:30:00Z",
+          "last_timestamp_utc": "2022-09-03T16:30:00Z",
+          "occurrence_count_in_file": 1,
+          "path": "benchmarks/geotransport_v0_1/README.md"
+        },
+        {
+          "evidence_kind": "timezone_aware_iso_timestamp_token",
+          "first_timestamp_utc": "2022-08-19T17:09:07Z",
+          "last_timestamp_utc": "2022-08-19T17:09:07Z",
+          "occurrence_count_in_file": 1,
+          "path": "data/geotransport_v0_1/stage23_usgs_channel_measurements_03424860/public_reach_hydraulic_measurements.json"
+        },
+        {
+          "evidence_kind": "timezone_aware_iso_timestamp_token",
+          "first_timestamp_utc": "2022-08-19T17:09:07Z",
+          "last_timestamp_utc": "2022-08-19T17:09:07Z",
+          "occurrence_count_in_file": 1,
+          "path": "data/geotransport_v0_1/stage23_usgs_channel_measurements_03424860/raw/channel_measurements_03424860.json"
+        },
+        {
+          "evidence_kind": "timezone_aware_iso_timestamp_token",
+          "first_timestamp_utc": "2022-08-19T16:30:00Z",
+          "last_timestamp_utc": "2022-08-19T17:30:00Z",
+          "occurrence_count_in_file": 4,
+          "path": "data/geotransport_v0_1/stage23_usgs_channel_measurements_03424860/raw/field_measurements_03424860.json"
+        },
+        {
+          "evidence_kind": "timezone_aware_iso_timestamp_token",
+          "first_timestamp_utc": "2022-08-19T16:30:00Z",
+          "last_timestamp_utc": "2022-08-19T17:30:00Z",
+          "occurrence_count_in_file": 4,
+          "path": "data/geotransport_v0_1/stage27_center_hill_spatial_boundary_evidence/raw/field_measurements_03424860.json"
+        }
+      ],
+      "hour_count": 672,
+      "nwm_time_chunk_index": 568,
+      "prior_local_consumption_found": true,
+      "timestamp_evidence_file_count": 20,
+      "timestamp_token_hit_count": 1870,
+      "total_prior_local_consumption_hit_count": 1870,
+      "window_end_exclusive_utc": "2022-09-15T01:00:00Z",
+      "window_start_inclusive_utc": "2022-08-18T01:00:00Z"
+    },
+    {
+      "direct_nwm_object_file_count": 3,
+      "direct_nwm_object_hit_count": 3,
+      "distinct_evidence_file_count": 25,
+      "eligible_for_selection": false,
+      "evidence_examples": [
+        {
+          "evidence_kind": "direct_raw_nwm_object_filename",
+          "nwm_object_name": "569.63.zst",
+          "nwm_variable": "streamflow",
+          "occurrence_count_in_file": 1,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v1/inputs/raw/nwm/streamflow/569.63.zst"
+        },
+        {
+          "evidence_kind": "direct_raw_nwm_object_filename",
+          "nwm_object_name": "569.87.zst",
+          "nwm_variable": "streamflow",
+          "occurrence_count_in_file": 1,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v1/inputs/raw/nwm/streamflow/569.87.zst"
+        },
+        {
+          "evidence_kind": "direct_raw_nwm_object_filename",
+          "nwm_object_name": "569.zst",
+          "nwm_variable": "time",
+          "occurrence_count_in_file": 1,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v1/inputs/raw/nwm/time/569.zst"
+        },
+        {
+          "evidence_kind": "timezone_aware_iso_timestamp_token",
+          "first_timestamp_utc": "2022-10-13T00:00:00Z",
+          "last_timestamp_utc": "2022-10-13T00:00:00Z",
+          "occurrence_count_in_file": 1,
+          "path": "benchmarks/geotransport_v0_1/kinematic_wave_holdout_v1_inputs_plan.json"
+        },
+        {
+          "evidence_kind": "timezone_aware_iso_timestamp_token",
+          "first_timestamp_utc": "2022-10-13T00:00:00Z",
+          "last_timestamp_utc": "2022-10-13T00:00:00Z",
+          "occurrence_count_in_file": 1,
+          "path": "benchmarks/geotransport_v0_1/kinematic_wave_holdout_v1_inputs_report.json"
+        }
+      ],
+      "hour_count": 672,
+      "nwm_time_chunk_index": 569,
+      "prior_local_consumption_found": true,
+      "timestamp_evidence_file_count": 22,
+      "timestamp_token_hit_count": 1646,
+      "total_prior_local_consumption_hit_count": 1649,
+      "window_end_exclusive_utc": "2022-10-13T01:00:00Z",
+      "window_start_inclusive_utc": "2022-09-15T01:00:00Z"
+    },
+    {
+      "direct_nwm_object_file_count": 6,
+      "direct_nwm_object_hit_count": 6,
+      "distinct_evidence_file_count": 25,
+      "eligible_for_selection": false,
+      "evidence_examples": [
+        {
+          "evidence_kind": "direct_raw_nwm_object_filename",
+          "nwm_object_name": "570.63.zst",
+          "nwm_variable": "q_lateral",
+          "occurrence_count_in_file": 1,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v1/inputs/raw/nwm/q_lateral/570.63.zst"
+        },
+        {
+          "evidence_kind": "direct_raw_nwm_object_filename",
+          "nwm_object_name": "570.87.zst",
+          "nwm_variable": "q_lateral",
+          "occurrence_count_in_file": 1,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v1/inputs/raw/nwm/q_lateral/570.87.zst"
+        },
+        {
+          "evidence_kind": "direct_raw_nwm_object_filename",
+          "nwm_object_name": "570.zst",
+          "nwm_variable": "time",
+          "occurrence_count_in_file": 1,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v1/inputs/raw/nwm/time/570.zst"
+        },
+        {
+          "evidence_kind": "direct_raw_nwm_object_filename",
+          "nwm_object_name": "570.63.zst",
+          "nwm_variable": "streamflow",
+          "occurrence_count_in_file": 1,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/raw/nwm/streamflow/570.63.zst"
+        },
+        {
+          "evidence_kind": "direct_raw_nwm_object_filename",
+          "nwm_object_name": "570.87.zst",
+          "nwm_variable": "streamflow",
+          "occurrence_count_in_file": 1,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/raw/nwm/streamflow/570.87.zst"
+        }
+      ],
+      "hour_count": 672,
+      "nwm_time_chunk_index": 570,
+      "prior_local_consumption_found": true,
+      "timestamp_evidence_file_count": 19,
+      "timestamp_token_hit_count": 3263,
+      "total_prior_local_consumption_hit_count": 3269,
+      "window_end_exclusive_utc": "2022-11-10T01:00:00Z",
+      "window_start_inclusive_utc": "2022-10-13T01:00:00Z"
+    },
+    {
+      "direct_nwm_object_file_count": 3,
+      "direct_nwm_object_hit_count": 3,
+      "distinct_evidence_file_count": 61,
+      "eligible_for_selection": false,
+      "evidence_examples": [
+        {
+          "evidence_kind": "direct_raw_nwm_object_filename",
+          "nwm_object_name": "571.63.zst",
+          "nwm_variable": "q_lateral",
+          "occurrence_count_in_file": 1,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/raw/nwm/q_lateral/571.63.zst"
+        },
+        {
+          "evidence_kind": "direct_raw_nwm_object_filename",
+          "nwm_object_name": "571.87.zst",
+          "nwm_variable": "q_lateral",
+          "occurrence_count_in_file": 1,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/raw/nwm/q_lateral/571.87.zst"
+        },
+        {
+          "evidence_kind": "direct_raw_nwm_object_filename",
+          "nwm_object_name": "571.zst",
+          "nwm_variable": "time",
+          "occurrence_count_in_file": 1,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/raw/nwm/time/571.zst"
+        },
+        {
+          "evidence_kind": "timezone_aware_iso_timestamp_token",
+          "first_timestamp_utc": "2022-11-10T02:00:00Z",
+          "last_timestamp_utc": "2022-12-01T11:00:00Z",
+          "occurrence_count_in_file": 63,
+          "path": "benchmarks/geotransport_v0_1/geospatial_kernel_action_innovation_cross_system_posthoc_report.json"
+        },
+        {
+          "evidence_kind": "timezone_aware_iso_timestamp_token",
+          "first_timestamp_utc": "2022-11-10T10:00:00Z",
+          "last_timestamp_utc": "2022-12-07T13:00:00Z",
+          "occurrence_count_in_file": 4,
+          "path": "benchmarks/geotransport_v0_1/geospatial_kernel_boundary_preserving_action_innovation_posthoc_report.json"
+        }
+      ],
+      "hour_count": 672,
+      "nwm_time_chunk_index": 571,
+      "prior_local_consumption_found": true,
+      "timestamp_evidence_file_count": 58,
+      "timestamp_token_hit_count": 211947,
+      "total_prior_local_consumption_hit_count": 211950,
+      "window_end_exclusive_utc": "2022-12-08T01:00:00Z",
+      "window_start_inclusive_utc": "2022-11-10T01:00:00Z"
+    },
+    {
+      "direct_nwm_object_file_count": 0,
+      "direct_nwm_object_hit_count": 0,
+      "distinct_evidence_file_count": 84,
+      "eligible_for_selection": false,
+      "evidence_examples": [
+        {
+          "evidence_kind": "timezone_aware_iso_timestamp_token",
+          "first_timestamp_utc": "2022-12-08T01:00:00Z",
+          "last_timestamp_utc": "2022-12-08T01:00:00Z",
+          "occurrence_count_in_file": 1,
+          "path": "benchmarks/geotransport_v0_1/geospatial_kernel_action_innovation_cross_system_posthoc_report.json"
+        },
+        {
+          "evidence_kind": "timezone_aware_iso_timestamp_token",
+          "first_timestamp_utc": "2022-12-08T01:00:00Z",
+          "last_timestamp_utc": "2022-12-08T01:00:00Z",
+          "occurrence_count_in_file": 1,
+          "path": "benchmarks/geotransport_v0_1/geospatial_kernel_scale_normalized_action_innovation_report.json"
+        },
+        {
+          "evidence_kind": "timezone_aware_iso_timestamp_token",
+          "first_timestamp_utc": "2022-12-08T01:00:00Z",
+          "last_timestamp_utc": "2022-12-08T01:00:00Z",
+          "occurrence_count_in_file": 1,
+          "path": "benchmarks/geotransport_v0_1/geospatial_kernel_traditional_arx_posthoc_report.json"
+        },
+        {
+          "evidence_kind": "timezone_aware_iso_timestamp_token",
+          "first_timestamp_utc": "2022-12-08T01:00:00Z",
+          "last_timestamp_utc": "2022-12-08T01:00:00Z",
+          "occurrence_count_in_file": 1,
+          "path": "benchmarks/geotransport_v0_1/kinematic_wave_holdout_v2_inputs_plan.json"
+        },
+        {
+          "evidence_kind": "timezone_aware_iso_timestamp_token",
+          "first_timestamp_utc": "2022-12-08T01:00:00Z",
+          "last_timestamp_utc": "2022-12-08T01:00:00Z",
+          "occurrence_count_in_file": 1,
+          "path": "benchmarks/geotransport_v0_1/kinematic_wave_holdout_v2_inputs_report.json"
+        }
+      ],
+      "hour_count": 672,
+      "nwm_time_chunk_index": 572,
+      "prior_local_consumption_found": true,
+      "timestamp_evidence_file_count": 84,
+      "timestamp_token_hit_count": 1418,
+      "total_prior_local_consumption_hit_count": 1418,
+      "window_end_exclusive_utc": "2023-01-05T01:00:00Z",
+      "window_start_inclusive_utc": "2022-12-08T01:00:00Z"
+    }
+  ],
+  "claim_boundary": {
+    "candidate_promoted": false,
+    "geospatial_kernel_validated": false,
+    "globally_unseen_window_proven": false,
+    "prior_rejected_candidate_reopened": false,
+    "replication_predictions_executed": false,
+    "replication_scored": false,
+    "repository_consumption_audit_completed": true,
+    "repository_unconsumed_full_historical_chunk_found": false,
+    "runtime_default_enabled": false
+  },
+  "data_access_boundary": {
+    "candidate_window_request_count": 0,
+    "candidate_window_url_compiled": false,
+    "existing_local_non_timestamp_values_parsed": false,
+    "network_access_performed": false,
+    "new_candidate_window_values_loaded": false,
+    "new_candidate_window_values_requested": false
+  },
+  "decision": {
+    "automatic_execution_authorized": false,
+    "historical_replication_can_proceed": false,
+    "next_gate": "prospective_sealed_campaign_or_new_archive_period_required",
+    "replication_protocol_frozen": false
+  },
+  "design_id": "horizon_selector_mechanism_replication_v1",
+  "generated_at": "2026-08-01T04:09:14.779585+00:00",
+  "nwm_time_axis": {
+    "calendar": "proleptic_gregorian",
+    "candidate_full_chunk_indices": [
+      565,
+      566,
+      567,
+      568,
+      569,
+      570,
+      571,
+      572
+    ],
+    "chunk_size_hours": 672,
+    "complete_chunk_count": 573,
+    "origin_utc": "1979-02-01T01:00:00Z",
+    "partial_terminal_chunk": {
+      "archive_end_exclusive_utc": "2023-02-01T01:00:00Z",
+      "available_hour_count": 648,
+      "eligible": false,
+      "nwm_time_chunk_index": 573,
+      "reason": "partial_terminal_chunk",
+      "required_hour_count": 672,
+      "start_inclusive_utc": "2023-01-05T01:00:00Z"
+    },
+    "shape_hours": 385704
+  },
+  "repository_scan": {
+    "candidate_block_timestamp_occurrences": 226891,
+    "candidate_chunk_nwm_object_files": 12,
+    "files_enumerated": 1116,
+    "inventory_path_size_sha256": "b79cf6506bd4547add69bb1760ab066e1a3590d6c6532c4683245a9518eaa458",
+    "non_text_files_filename_scanned_only": 245,
+    "roots": [
+      "data/geotransport_v0_1",
+      "benchmarks/geotransport_v0_1"
+    ],
+    "scan_errors": [],
+    "source_payload_fields_parsed": false,
+    "text_bytes_scanned": 137140762,
+    "text_files_scanned": 871,
+    "timestamp_tokens_and_filenames_only": true,
+    "timestamp_tokens_rejected_as_invalid": 0,
+    "timezone_aware_timestamp_tokens_matched": 848204,
+    "timezone_aware_timestamp_tokens_parsed": 848204
+  },
+  "schema": "gwm.geotransport.horizon_selector_unused_window_adjudication.v1",
+  "selection": {
+    "eligible_candidate_count": 0,
+    "nwm_time_chunk_index": null,
+    "reason": "every_complete_candidate_chunk_has_prior_local_consumption",
+    "window_end_exclusive_utc": null,
+    "window_selected": false,
+    "window_start_inclusive_utc": null
+  },
+  "status": "no_repository_unconsumed_full_historical_chunk_found"
+}

@@ -1,0 +1,205 @@
+{
+  "all_gates_passed": true,
+  "claim_boundary": {
+    "common_support_is_cross_event_set_intersection": true,
+    "empirical_lag_equals_physical_travel_time": false,
+    "empirical_lag_is_hydraulic_edge_travel_time": false,
+    "lag_output_is_discrete_empirical_support_set": true,
+    "operators_and_events_frozen_before_stage32_outcomes": true,
+    "release_gate_is_input_support_not_response_model": true,
+    "runtime_operator_admitted": false,
+    "smith_fork_is_observed_state_at_comid_18421273": true,
+    "smith_fork_is_tributary_mouth_flux": false
+  },
+  "decision": {
+    "blind_lag_support_evidence_admitted": true,
+    "common_empirical_support_admitted": false,
+    "common_supported_lags_hours": [],
+    "hydraulic_edge_travel_time_admitted": false,
+    "observed_graph_state_contract_admitted": true,
+    "physical_travel_time_admitted": false,
+    "runtime_operator_admitted": false,
+    "tributary_mouth_flux_admitted": false
+  },
+  "event_summary": [
+    {
+      "best_lag_hours": 6,
+      "best_lag_pearson_r": 0.8533970825151787,
+      "downstream_complete_hour_count": 84,
+      "event_id": "release_step_20220202T1900Z",
+      "excursion_support_hours": 12,
+      "graph_state_complete_hour_count": 74,
+      "release_direction": "decrease",
+      "response_detectable": true,
+      "supported_lags_hours": [
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "best_lag_hours": 6,
+      "best_lag_pearson_r": 0.8672719516081647,
+      "downstream_complete_hour_count": 84,
+      "event_id": "release_step_20220919T1500Z",
+      "excursion_support_hours": 12,
+      "graph_state_complete_hour_count": 84,
+      "release_direction": "increase",
+      "response_detectable": true,
+      "supported_lags_hours": [
+        6,
+        7
+      ]
+    },
+    {
+      "best_lag_hours": 7,
+      "best_lag_pearson_r": 0.8561258336937435,
+      "downstream_complete_hour_count": 77,
+      "event_id": "release_step_20230911T1500Z",
+      "excursion_support_hours": 12,
+      "graph_state_complete_hour_count": 84,
+      "release_direction": "increase",
+      "response_detectable": true,
+      "supported_lags_hours": [
+        7
+      ]
+    },
+    {
+      "best_lag_hours": 7,
+      "best_lag_pearson_r": 0.7476521168447066,
+      "downstream_complete_hour_count": 84,
+      "event_id": "release_step_20210625T1600Z",
+      "excursion_support_hours": 7,
+      "graph_state_complete_hour_count": 81,
+      "release_direction": "increase",
+      "response_detectable": false,
+      "supported_lags_hours": []
+    }
+  ],
+  "frozen_stage31_hashes": {
+    "benchmarks/geotransport_v0_1/stage31_identifiable_response_gates.json": {
+      "actual_sha256": "20f50e2e4d8aba5c67a4150116cc7134061bdff47c4946cc00bf766633983fb5",
+      "expected_sha256": "20f50e2e4d8aba5c67a4150116cc7134061bdff47c4946cc00bf766633983fb5",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage31_center_hill_identifiable_response_events/README.md": {
+      "actual_sha256": "99de369ce7190a822e88c5aefac822fcde16d263a5c1f0f8b14182a40d5ee04f",
+      "expected_sha256": "99de369ce7190a822e88c5aefac822fcde16d263a5c1f0f8b14182a40d5ee04f",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage31_center_hill_identifiable_response_events/event_selection_manifest.json": {
+      "actual_sha256": "d03f6a8de7511c77105ba1a051f7b57292c43c48d7081256aecdf9db13b1bf3d",
+      "expected_sha256": "d03f6a8de7511c77105ba1a051f7b57292c43c48d7081256aecdf9db13b1bf3d",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage31_center_hill_identifiable_response_events/identifiable_response_evidence_ledger.json": {
+      "actual_sha256": "31d2a47b078d448c3bd8cbe682416a9521f63b4cd1e0256bfd1b84a9eb688d96",
+      "expected_sha256": "31d2a47b078d448c3bd8cbe682416a9521f63b4cd1e0256bfd1b84a9eb688d96",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage31_center_hill_identifiable_response_events/observation_acquisition_manifest.json": {
+      "actual_sha256": "8f84fe838c5a7cf641195a8bbc941a2a1396360c510043e9ffedb22547122b97",
+      "expected_sha256": "8f84fe838c5a7cf641195a8bbc941a2a1396360c510043e9ffedb22547122b97",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage31_center_hill_identifiable_response_events/observation_plan.json": {
+      "actual_sha256": "34169db80643a05a51c8579811c7c99320ba594734871c63cc70fc8ac8464e35",
+      "expected_sha256": "34169db80643a05a51c8579811c7c99320ba594734871c63cc70fc8ac8464e35",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage31_center_hill_identifiable_response_events/selection_plan.json": {
+      "actual_sha256": "0ebb39f688776b64458283d1b39ad67312381bbf9acf8bdd7f9ee864f37e53f7",
+      "expected_sha256": "0ebb39f688776b64458283d1b39ad67312381bbf9acf8bdd7f9ee864f37e53f7",
+      "matches": true
+    },
+    "data_agent/test_acquire_geotransport_stage31_identifiable_response_events.py": {
+      "actual_sha256": "0e1e91b3965b774989fc4589da0f515d4c028cd9e7bdab6b1e7f8ba2bf8f1b28",
+      "expected_sha256": "0e1e91b3965b774989fc4589da0f515d4c028cd9e7bdab6b1e7f8ba2bf8f1b28",
+      "matches": true
+    },
+    "data_agent/test_geospatial_kernel_public_identifiable_response_evidence.py": {
+      "actual_sha256": "1acfe1a62db10ddca6ba4ab25b88c18e4e5bf70bfa87eeeef618a6c2d9263281",
+      "expected_sha256": "1acfe1a62db10ddca6ba4ab25b88c18e4e5bf70bfa87eeeef618a6c2d9263281",
+      "matches": true
+    },
+    "data_agent/test_geospatial_kernel_release_excitation_identifiability.py": {
+      "actual_sha256": "00759703c7dc1c2f48e4c550bdd89880aa80f93a1c1cca5093e87b72f3e9664e",
+      "expected_sha256": "00759703c7dc1c2f48e4c550bdd89880aa80f93a1c1cca5093e87b72f3e9664e",
+      "matches": true
+    },
+    "data_agent/uwm/geospatial_kernel_v2/public_identifiable_response_evidence.py": {
+      "actual_sha256": "c8955dbd6b69a51f2d4f8a708ca05696a731485e1cf0d75e400d808417382530",
+      "expected_sha256": "c8955dbd6b69a51f2d4f8a708ca05696a731485e1cf0d75e400d808417382530",
+      "matches": true
+    },
+    "data_agent/uwm/geospatial_kernel_v2/release_excitation_identifiability.py": {
+      "actual_sha256": "6dd4266e60c569bb19f7b79387d2d6cf9da06ee81c68d886e74cc0d6564226eb",
+      "expected_sha256": "6dd4266e60c569bb19f7b79387d2d6cf9da06ee81c68d886e74cc0d6564226eb",
+      "matches": true
+    },
+    "docs/architecture-decisions/adr-072-admit-release-excitation-support-not-universal-exact-lag.md": {
+      "actual_sha256": "a5f3ce6e5cd00100655ae705b1bf9b49f00bb50b5fa9663495df052168e9f9bc",
+      "expected_sha256": "a5f3ce6e5cd00100655ae705b1bf9b49f00bb50b5fa9663495df052168e9f9bc",
+      "matches": true
+    },
+    "scripts/acquire_geotransport_stage31_identifiable_response_events.py": {
+      "actual_sha256": "63ad0c813ee2359b67672bb344732100d6c55313457beef7ded7a7f0fd26dc83",
+      "expected_sha256": "63ad0c813ee2359b67672bb344732100d6c55313457beef7ded7a7f0fd26dc83",
+      "matches": true
+    },
+    "scripts/compile_geotransport_stage31_identifiable_response_gates.py": {
+      "actual_sha256": "8b893fde567c20abe29e1698470a81651dad443615ed02057067d63b20785b37",
+      "expected_sha256": "8b893fde567c20abe29e1698470a81651dad443615ed02057067d63b20785b37",
+      "matches": true
+    }
+  },
+  "gates": {
+    "admitted_relations_bind_boundary_to_observed_outlet_node": true,
+    "all_compiled_downstream_hours_are_approved": true,
+    "all_compiled_graph_states_are_approved": true,
+    "all_fifteen_stage31_artifacts_remain_hash_frozen": true,
+    "all_release_windows_have_seventy_two_real_hours": true,
+    "all_selected_events_pass_frozen_release_gate": true,
+    "common_empirical_support_remains_unadmitted": true,
+    "cross_event_support_intersection_is_empty": true,
+    "downstream_gaps_are_preserved_without_fill": true,
+    "empirical_lag_support_operator_is_hash_frozen": true,
+    "empirical_support_is_neither_physical_nor_hydraulic_time": true,
+    "event_manifest_froze_events_before_observations": true,
+    "first_event_support_is_five_six_seven": true,
+    "five_year_release_pool_is_complete_and_unpaginated": true,
+    "four_expected_release_only_events_are_present": true,
+    "fourth_event_fails_frozen_response_threshold": true,
+    "graph_state_gaps_are_preserved_without_fill": true,
+    "lag_pair_counts_use_only_real_aligned_hours": true,
+    "nine_public_sources_are_hash_and_tls_verified": true,
+    "not_all_blind_events_have_detectable_response": true,
+    "observation_plan_was_hash_frozen_before_values": true,
+    "observed_graph_state_contract_remains_admitted": true,
+    "only_detectable_events_receive_graph_relation_bindings": true,
+    "release_support_operator_is_hash_frozen": true,
+    "runtime_operator_remains_unadmitted": true,
+    "second_event_support_is_six_seven": true,
+    "selected_events_are_pairwise_separated_by_180_days": true,
+    "selection_is_one_public_request_and_private_free": true,
+    "selection_plan_froze_both_operators_before_release_values": true,
+    "smith_fork_graph_state_is_bound_to_observed_comid": true,
+    "third_event_resolves_seven_hour_empirical_support": true,
+    "unsupported_support_spatial_flux_and_runtime_claims_fail_closed": true
+  },
+  "generated_at": "2026-07-30T01:18:04.661938+00:00",
+  "ledger_artifact": {
+    "path": "data/geotransport_v0_1/stage32_center_hill_lag_support_events/lag_support_evidence_ledger.json",
+    "sha256": "c95bbf18d3d606161fc9b5cb6fe9d6f8b8439d495b25e326d4a9cf675d416b74",
+    "size_bytes": 454065
+  },
+  "schema": "gwm.geotransport.stage32_lag_support_gates.v1",
+  "status": "blind_common_empirical_lag_support_rejected",
+  "typed_refusals": {
+    "common_empirical_support": true,
+    "hydraulic_edge_travel_time": true,
+    "physical_travel_time": true,
+    "runtime_operator": true,
+    "tributary_mouth_flux": true
+  }
+}

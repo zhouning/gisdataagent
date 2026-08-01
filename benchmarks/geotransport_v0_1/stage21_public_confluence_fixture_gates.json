@@ -1,0 +1,117 @@
+{
+  "all_gates_passed": true,
+  "claim_boundary": {
+    "gauge_treated_as_vector_momentum": false,
+    "operator_admitted": false,
+    "public_vector_momentum_validation_completed": false,
+    "real_public_hydrography_bound": true,
+    "real_public_land_cover_bound": true,
+    "real_public_scalar_gauge_observation_bound": true,
+    "real_public_terrain_context_bound": true,
+    "roughness_calibrated": false,
+    "terrain_treated_as_channel_bathymetry": false
+  },
+  "fixture_artifact": {
+    "path": "data/geotransport_v0_1/stage21_center_hill_public_confluence/public_confluence_fixture.json",
+    "sha256": "80682b074867e26d6a1d84a3c1b1b5bf59c91d41efe9e49baa239b10ef146e5c",
+    "size_bytes": 27840
+  },
+  "frozen_stage20_hashes": {
+    "benchmarks/geotransport_v0_1/stage20_patch_friction_source_split_gates.json": {
+      "actual_sha256": "cc7e5b04232b2ad45530ba299990fe34294a9a346ee0c1c85057c44172ca63b6",
+      "expected_sha256": "cc7e5b04232b2ad45530ba299990fe34294a9a346ee0c1c85057c44172ca63b6"
+    },
+    "data_agent/test_geospatial_kernel_coupled_junction_patch_reach_patch_friction.py": {
+      "actual_sha256": "1ac5d64f6e9cc20ef75b83ca19b927096bb32e542f5a7926a77c8bdc0e974bfc",
+      "expected_sha256": "1ac5d64f6e9cc20ef75b83ca19b927096bb32e542f5a7926a77c8bdc0e974bfc"
+    },
+    "data_agent/uwm/geospatial_kernel_v2/coupled_junction_patch_reach_patch_friction.py": {
+      "actual_sha256": "87d1a38bf5fbe0521a90ae21f307e5ec0c8dee18c813cdd777636d280680298f",
+      "expected_sha256": "87d1a38bf5fbe0521a90ae21f307e5ec0c8dee18c813cdd777636d280680298f"
+    },
+    "docs/architecture-decisions/adr-061-spatially-supported-patch-manning-friction.md": {
+      "actual_sha256": "928d3b7428dde887ac0edee66b74b54f2cb2b5dbad248449939e516aa7508c69",
+      "expected_sha256": "928d3b7428dde887ac0edee66b74b54f2cb2b5dbad248449939e516aa7508c69"
+    },
+    "scripts/compile_geotransport_stage20_patch_friction_source_split_gates.py": {
+      "actual_sha256": "b0f5d9c3aaf93fd204b140ec76fdefb002ceb4e6d59ce26a8c1ed1d01677e3dd",
+      "expected_sha256": "b0f5d9c3aaf93fd204b140ec76fdefb002ceb4e6d59ce26a8c1ed1d01677e3dd"
+    }
+  },
+  "gates": {
+    "acquisition_is_public_bounded_and_sends_no_workspace_data": true,
+    "all_branch_terminals_snap_to_one_real_junction": true,
+    "all_source_and_derived_artifacts_are_hash_bound": true,
+    "branch_directions_use_thirty_meter_centerline_support": true,
+    "candidate_operator_remains_unadmitted": true,
+    "computational_patch_is_explicitly_local_and_bounded": true,
+    "every_cell_has_public_terrain_support": true,
+    "every_land_cover_class_has_an_explicit_prior_mapping": true,
+    "gauge_is_not_misrepresented_as_vector_momentum": true,
+    "opening_normals_match_public_centerline_directions": true,
+    "public_gauge_is_bound_as_scalar_discharge": true,
+    "public_vector_momentum_validation_remains_incomplete": true,
+    "real_three_branch_single_outlet_topology_is_bound": true,
+    "roughness_prior_has_exact_cell_area_binding": true,
+    "roughness_prior_is_not_misrepresented_as_calibration": true,
+    "runtime_binding_fails_closed_without_hydraulic_geometry": true,
+    "six_cell_three_opening_patch_is_kernel_conforming": true,
+    "stage20_artifacts_hash_frozen": true,
+    "terrain_is_not_misrepresented_as_bathymetry": true
+  },
+  "generated_at": "2026-07-29T10:19:57.203397+00:00",
+  "kernel_boundary": {
+    "runtime_hydraulic_geometry_admitted": false,
+    "runtime_refusal_reasons": [
+      "public_bathymetry_missing",
+      "surveyed_cross_sections_missing",
+      "land_cover_to_manning_mapping_not_calibrated",
+      "two_dimensional_momentum_observations_missing"
+    ],
+    "stage17_horizontal_geometry_contract_compiles": true,
+    "stage20_spatial_roughness_contract_compiles": true
+  },
+  "schema": "gwm.geotransport.stage21_public_confluence_fixture_gates.v1",
+  "source_summary": {
+    "downloaded_artifact_count": 6,
+    "downloaded_bytes": 87468,
+    "sources": [
+      "USGS NLDI/NHDPlus",
+      "USGS NWIS",
+      "USGS 3DEP",
+      "USDA NASS CDL 2024"
+    ],
+    "verified_artifact_count_including_derived_and_reused": 9,
+    "workspace_or_private_data_sent": false
+  },
+  "spatial_summary": {
+    "downstream_feature_id": "18421703",
+    "gauge_distance_from_junction_m": 925.4563554985091,
+    "junction_coordinate_wgs84": [
+      -85.909170702,
+      36.178724498
+    ],
+    "junction_id": "18421703",
+    "land_cover_class_codes": [
+      111,
+      141
+    ],
+    "manning_n_prior_range": [
+      0.03,
+      0.1
+    ],
+    "maximum_opening_alignment_error_degrees": 0.0,
+    "maximum_patch_radius_m": 38.40433453147531,
+    "patch_cell_count": 6,
+    "patch_plan_area_m2": 1223.0165245956414,
+    "terrain_elevation_range_m": [
+      143.51536560058594,
+      143.58480834960938
+    ],
+    "upstream_feature_ids": [
+      "18421705",
+      "18421707"
+    ]
+  },
+  "status": "real_public_confluence_spatial_fixture_compiled_hydraulic_geometry_calibration_and_vector_validation_pending"
+}

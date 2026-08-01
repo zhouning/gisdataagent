@@ -1,0 +1,100 @@
+{
+  "addendum_seal": {
+    "algorithm": "sha256_canonical_json_without_addendum_seal",
+    "sha256": "7119405b5ba2497d25dc00d25cb574467c06ba772e26e9c9960ee8a8b2181b7e"
+  },
+  "base_rollout_protocol": {
+    "bytes_modified": false,
+    "path": "benchmarks/geotransport_v0_1/geospatial_kernel_internal_innovation_rollout_protocol.json",
+    "protocol_seal_sha256": "9d69d960c43a972d77d42267fa4fe854e6b85f9f13dae9ea7cf50b7888901fd3",
+    "schema": "gwm.geospatial_kernel.internal_innovation_rollout_protocol.v1",
+    "sha256": "411071ad99c597358199710365e1267e2ce0847685484208b2a1169056ba8f41",
+    "size_bytes": 7020
+  },
+  "claim_boundary": {
+    "base_rollout_protocol_modified": false,
+    "candidate_promoted": false,
+    "geospatial_kernel_validated": false,
+    "internal_innovation_fitted": false,
+    "manning_execution_chain_frozen": true,
+    "outcomes_loaded": false,
+    "prospective_manifests_acquired": false,
+    "prospective_predictions_executed": false,
+    "runtime_enabled": false
+  },
+  "execution_ledger_contract": {
+    "complete_execution_report_inventory_required": true,
+    "complete_manifest_inventory_required": true,
+    "diagnostic_fit_gate_logic": "all_noncompensatory_gates_must_pass",
+    "duplicate_episode_system_issue_or_output_hash_rejected": true,
+    "innovation_fit_executed": false,
+    "manifest_prediction_and_five_telemetry_identities_recomputed": true,
+    "minimum_sealed_hourly_prediction_steps_per_system": 672,
+    "minimum_unique_issue_times_per_system": 28,
+    "outcome_argument_accepted": false,
+    "required_system_ids": [
+      "center_hill",
+      "j_percy_priest"
+    ],
+    "schema": "gwm.geospatial_kernel.internal_innovation_execution_ledger.v1"
+  },
+  "executor_contract": {
+    "all_input_identities_recomputed_before_execution": true,
+    "episode_horizon_hours": 24,
+    "execution_schema": "gwm.geospatial_kernel.prospective_manning_episode_execution.v2",
+    "hourly_step_count": 24,
+    "integration_substep_seconds": 300.0,
+    "network_requests_performed": false,
+    "operator": "BranchingManningNetworkTransportOperator",
+    "operator_schema": "gwm.geospatial_kernel.branching_manning_network_storage.v1",
+    "outcome_argument_accepted": false,
+    "output_directory_must_not_exist": true,
+    "prediction_and_five_telemetry_artifacts_hash_bound": true,
+    "prediction_schema": "gwm.geospatial_kernel.prospective_physical_prediction.v1",
+    "timestep_seconds": 3600.0
+  },
+  "forbidden_inputs": [
+    "outcome_values",
+    "outcome_columns",
+    "outcome_manifest",
+    "outcome_path",
+    "outcome_url",
+    "future_target_observations",
+    "score_report",
+    "candidate_fit_parameters"
+  ],
+  "frozen_at": "2026-07-31T10:23:29Z",
+  "frozen_code": {
+    "scripts/assess_geospatial_kernel_internal_innovation_episode_preflight.py": {
+      "path": "scripts/assess_geospatial_kernel_internal_innovation_episode_preflight.py",
+      "sha256": "8f66a31b61db32a958caed7d64689a1fb09976f8ca80eb12f0f081349b641e6a",
+      "size_bytes": 31025
+    },
+    "scripts/compile_geospatial_kernel_internal_innovation_execution_ledger.py": {
+      "path": "scripts/compile_geospatial_kernel_internal_innovation_execution_ledger.py",
+      "sha256": "5fd649042c8226e544d1071c7705160f8247c5e38fb6dff2f6283df28eb6d0c3",
+      "size_bytes": 38955
+    },
+    "scripts/run_geospatial_kernel_internal_innovation_manning_episode.py": {
+      "path": "scripts/run_geospatial_kernel_internal_innovation_manning_episode.py",
+      "sha256": "43d636794ccb81e0eaa3d669a16a7ac31d69ea5db503f81f5af414e502617f99",
+      "size_bytes": 21432
+    }
+  },
+  "manifest_binding_contract": {
+    "addendum_file_identity_recomputed": true,
+    "addendum_seal_recomputed": true,
+    "base_rollout_protocol_identity_recomputed": true,
+    "descriptor_fields": [
+      "path",
+      "sha256",
+      "size_bytes",
+      "schema",
+      "addendum_seal_sha256"
+    ],
+    "every_frozen_code_identity_recomputed": true,
+    "execution_addendum_descriptor_required": true
+  },
+  "schema": "gwm.geospatial_kernel.internal_innovation_manning_execution_addendum.v1",
+  "status": "frozen_before_prospective_manning_episode_execution"
+}

@@ -1,0 +1,146 @@
+{
+  "checks": {
+    "auxiliary_context_gap_preserved_without_imputation": true,
+    "first_168_hours_reserved_for_evaluation_warmup": true,
+    "frozen_protocol_lineage_verified": true,
+    "nwm_and_companion_windows_match_protocol": true,
+    "operator_inputs_cover_672_supports": true,
+    "outcome_missing_values_not_imputed": true,
+    "source_artifact_hashes_verified": true
+  },
+  "claim_boundary": {
+    "auxiliary_context_complete": false,
+    "benchmark_validated": false,
+    "evaluation_panel_compiled": true,
+    "evaluation_scored": false,
+    "evaluation_values_acquired": true,
+    "flood_wave_transport_admitted": false,
+    "geospatial_kernel_validated": false,
+    "multi_system_generalization_validated": false,
+    "operator_inputs_complete": true,
+    "outcome_values_imputed": false
+  },
+  "generated_at": "2026-07-26T11:28:29.295650+00:00",
+  "panel_artifact": {
+    "path": "data/geotransport_v0_1/center_hill_evaluation/panel/center_hill_temporal_holdout.csv",
+    "sha256": "02148a88cfa44499caf94e1d995a899692f5a3ad0c7ac4f0a8b76ba66c445f8f",
+    "size_bytes": 149396
+  },
+  "quality_summary": {
+    "auxiliary_context_missing_support_end_utc": [
+      "2022-01-26T19:00:00Z"
+    ],
+    "auxiliary_context_missing_value_count": 1,
+    "cwms_all_target_quality_codes_zero": true,
+    "evaluation_warmup_outcome_missing_hour_count": 0,
+    "operator_input_missing_value_count": 0,
+    "outcome_available_hour_count": 672,
+    "outcome_imputed_hour_count": 0,
+    "outcome_missing_hour_count": 0,
+    "outcome_missing_sample_counts": [],
+    "outcome_missing_support_end_utc": [],
+    "scored_window_outcome_missing_hour_count": 0,
+    "usgs_all_returned_target_samples_approved": true
+  },
+  "registry_sha256": "399144ec64cef6ac74c780ce447b213f33dd97b5dafad5407342ffca37a6bc13",
+  "schema": "gwm.geotransport.center_hill_temporal_holdout_panel.v1",
+  "source_artifacts": {
+    "boundary_action": {
+      "path": "data/geotransport_v0_1/center_hill_evaluation/companion/raw/center_hill-CETT1-CENTER-HILL-Flow-Ave-1Hour-1Hour-man-rev-20220106T010000Z-20220203T010000Z.json",
+      "sha256": "c2b03f9c4ee9b91825e25b1fbd06e5e5273a7c2f7827e015b4cfc85bc11b509e",
+      "size_bytes": 22167
+    },
+    "context_not_independent_forcing": {
+      "path": "data/geotransport_v0_1/center_hill_evaluation/companion/raw/center_hill-CEHT1-CENTER-HILL-Flow-In-Ave-1Hour-1Hour-man-rev-20220106T010000Z-20220203T010000Z.json",
+      "sha256": "1fbffe40355a973721b3b9b78de3d8b644ed3b9633f1cda67797fed58202e841",
+      "size_bytes": 24725
+    },
+    "independent_observation": {
+      "path": "data/geotransport_v0_1/center_hill_evaluation/companion/raw/center_hill-usgs-iv-20220106T010000Z-20220203T010000Z.json",
+      "sha256": "4d58c6f626b957069e80dca890e1c1e924342e0f22860c8f61db5a8d052bf55f",
+      "size_bytes": 110169
+    },
+    "nwm_q_lateral_values": {
+      "path": "data/geotransport_v0_1/center_hill_evaluation/nwm/values/q_lateral.csv",
+      "sha256": "cdd4fb0d315164dbd6ac5e868ca3f7075b8d70aa43294acf59a3251964d94207",
+      "size_bytes": 936877
+    },
+    "nwm_velocity_values": {
+      "path": "data/geotransport_v0_1/center_hill_evaluation/nwm/values/velocity.csv",
+      "sha256": "29bfd7352179720bb130cab0d25683306f92539196a2053b25bad32dda98ef3d",
+      "size_bytes": 1183849
+    },
+    "stock": {
+      "path": "data/geotransport_v0_1/center_hill_evaluation/companion/raw/center_hill-CEHT1-CENTER-HILL-Stor-Inst-1Hour-0-man-rev-20220106T010000Z-20220203T010000Z.json",
+      "sha256": "64d084a83aec3ac1c1f681419c2b21191c8de50b4f8a2372a9ec6243e779d51f",
+      "size_bytes": 26491
+    }
+  },
+  "source_manifests": {
+    "companion_values": {
+      "path": "data/geotransport_v0_1/center_hill_evaluation/companion/acquisition_manifest.json",
+      "sha256": "5989e1bfc87a788e9ba7daf6760e5e147aa459792e5b81eb17418f7d0ed1bf27",
+      "size_bytes": 7089
+    },
+    "evaluation_protocol": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_temporal_holdout_protocol_v1.json",
+      "sha256": "5aff4489afc74a3c759a625a7655f2cee9cab06037a72160b7847dca15b16862",
+      "size_bytes": 6167
+    },
+    "nwm_inputs": {
+      "path": "data/geotransport_v0_1/center_hill_evaluation/nwm/acquisition_manifest.json",
+      "sha256": "073d1077dcb5774a8b7d66613ec3412b16c513cc83e675c5a1b0f891d3ea0ca4",
+      "size_bytes": 5730
+    },
+    "travel_time_prior": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_travel_time_prior_report.json",
+      "sha256": "e29fc54273e2f5f650d49599e8c98c6ec98c13c1025041e0f8c2ba41340c425e",
+      "size_bytes": 11456
+    }
+  },
+  "status": "compiled_from_frozen_protocol_not_scored",
+  "temporal_supports": {
+    "action_release_m3s": {
+      "duration_seconds": 3600.0,
+      "evidence_level": "authoritative",
+      "kind": "interval_mean",
+      "provenance_id": "USACE/cwms-data-api@beb8d507c9da8ec074d444117bda7d7daf69e5ee:docs/source/data/timeseries.rst#L97-L118",
+      "schema": "gwm.geospatial_kernel.temporal_support.v1",
+      "timestamp_position": "end"
+    },
+    "inflow_context_m3s": {
+      "duration_seconds": 3600.0,
+      "evidence_level": "authoritative",
+      "kind": "interval_mean",
+      "provenance_id": "USACE/cwms-data-api@beb8d507c9da8ec074d444117bda7d7daf69e5ee:docs/source/data/timeseries.rst#L97-L118",
+      "schema": "gwm.geospatial_kernel.temporal_support.v1",
+      "timestamp_position": "end"
+    },
+    "outcome_discharge_interval_sample_mean_m3s": {
+      "hourly_statistic": "mean_of_exactly_two_half_hour_samples",
+      "imputation": "forbidden",
+      "incomplete_hours": "visible_and_excluded_from_all_compared_series",
+      "required_qualifier": "A",
+      "required_sample_count": 2,
+      "source": "USGS:03424860:00060:IV",
+      "support": "(support_start_utc,support_end_utc]"
+    },
+    "storage_m3": {
+      "duration_seconds": 0.0,
+      "evidence_level": "authoritative",
+      "kind": "instantaneous",
+      "provenance_id": "USACE/cwms-data-api@beb8d507c9da8ec074d444117bda7d7daf69e5ee:docs/source/data/timeseries.rst#L97-L118",
+      "schema": "gwm.geospatial_kernel.temporal_support.v1",
+      "timestamp_position": "instant"
+    }
+  },
+  "window": {
+    "end_exclusive": "2022-02-03T01:00:00Z",
+    "evaluation_warmup_hours": 168,
+    "maximum_scored_hours": 504,
+    "row_count": 672,
+    "scored_start_inclusive": "2022-01-13T01:00:00Z",
+    "start_inclusive": "2022-01-06T01:00:00Z",
+    "time_step": "PT1H"
+  }
+}

@@ -1,0 +1,161 @@
+{
+  "acquisition_recovery": {
+    "initial_attempt_wrote_outcome_artifacts": false,
+    "initial_error": "kinematic_holdout_center_hill_persistence_prior_missing",
+    "initial_frozen_attempt_failed_after_first_outcome_response": true,
+    "outcome_values_imputed": false,
+    "prediction_or_score_gate_changed": false,
+    "pristine_frozen_code_confirmatory_process": false,
+    "protocol_missingness_policy_changed": false,
+    "recovery_code_frozen_before_first_outcome_access": false,
+    "recovery_decision": {
+      "path": "docs/architecture-decisions/adr-034-kinematic-wave-holdout-v2-outcome-missingness-recovery.md",
+      "sha256": "b85b9503b1ca454a77d9af4b827ac99c78bbacad92488f64932509e1a7273e1c",
+      "size_bytes": 2238
+    }
+  },
+  "claim_boundary": {
+    "geospatial_kernel_validated": false,
+    "operator_form_admitted": false,
+    "outcome_values_imputed": false,
+    "outcomes_acquired": true,
+    "predictions_scored": false,
+    "predictive_validation_complete": false,
+    "strict_end_to_end_protocol_conformance": false
+  },
+  "generated_at": "2026-07-28T00:36:27.241651+00:00",
+  "ordering_audit": {
+    "both_predictions_reverified_after_last_outcome_response": true,
+    "both_predictions_verified_before_first_outcome_request": true,
+    "joint_seal_recomputed_before_first_outcome_request": true,
+    "outcome_access_phase_compliant": true,
+    "prediction_content_changed_during_outcome_access": false
+  },
+  "schema": "gwm.geotransport.kinematic_wave_holdout_outcomes.v2",
+  "sealed_artifacts": {
+    "joint_seal_sha256": "afd55975e192aace40d70b6eabfc5efb0646a197122c9f4e04fd4c33b37f7446",
+    "predictions": {
+      "center_hill": {
+        "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/predictions/center_hill.csv",
+        "sha256": "2994c046171ec033b22bd5db7ef483a46c0219cb5a21119320a830be9414420d",
+        "size_bytes": 65443
+      },
+      "j_percy_priest": {
+        "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/predictions/j_percy_priest.csv",
+        "sha256": "bc5249fbd565855b6dd1034a8652f3fcfc337c479158386daa791d47cfe72fd4",
+        "size_bytes": 81094
+      }
+    },
+    "protocol": {
+      "path": "benchmarks/geotransport_v0_1/kinematic_wave_holdout_v2_protocol.json",
+      "sha256": "0f59c130e2fe45d080bcaa488611f9c5556daf2488f14801f3c9c0a1a5998723",
+      "size_bytes": 18307
+    },
+    "rollout_report": {
+      "path": "benchmarks/geotransport_v0_1/kinematic_wave_holdout_v2_rollout_report.json",
+      "sha256": "82be075838f1579bcd24af3bfb3b1f20dc02f047da30c7d6e0e22ae1359b66e3",
+      "size_bytes": 8242
+    }
+  },
+  "status": "two_system_outcomes_acquired_after_joint_seal",
+  "systems": {
+    "center_hill": {
+      "outcome_values": {
+        "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/outcomes/values/center_hill.csv",
+        "sha256": "5e90e6fcb393a412ce7a3223a45aeff55ed2594bfb37829dec5c5d39946eeae5",
+        "size_bytes": 43724
+      },
+      "parameter_code": "00060",
+      "prior_observation_complete": false,
+      "prior_observation_m3s": null,
+      "prior_observation_support_end_utc": "2022-11-10T01:00:00Z",
+      "quality": {
+        "all_support_complete_hour_count": 672,
+        "expected_native_samples_per_complete_hour": 2,
+        "hourly_aggregation": "mean_of_every_complete_approved_native_sample_on_(t-1h,t]",
+        "missing_values_imputed": false,
+        "native_cadence_predeclared": true,
+        "native_sample_cadence_seconds": 1800,
+        "qualifiers": [
+          "A"
+        ],
+        "sample_counts": [
+          1,
+          2
+        ],
+        "target_complete_hour_count": 672,
+        "target_hour_count": 672,
+        "target_missing_hour_count": 0
+      },
+      "raw_outcome": {
+        "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/outcomes/raw/center_hill.json",
+        "sha256": "246ac4ed5dba6c586cc41d357e45c62b1c4925548b4bef879a14c8f0243a841b",
+        "size_bytes": 108387
+      },
+      "site_id": "03424860",
+      "source": {
+        "attempt_count": 1,
+        "content_type": "application/json",
+        "final_url": "https://nwis.waterservices.usgs.gov/nwis/iv/?format=json&sites=03424860&parameterCd=00060&startDT=2022-11-10T00%3A00%3A00Z&endDT=2022-12-08T02%3A00%3A00Z&siteStatus=all",
+        "http_status": 200,
+        "retrieved_at": "2026-07-28T00:36:24.306530+00:00",
+        "url": "https://waterservices.usgs.gov/nwis/iv/?format=json&sites=03424860&parameterCd=00060&startDT=2022-11-10T00%3A00%3A00Z&endDT=2022-12-08T02%3A00%3A00Z&siteStatus=all"
+      },
+      "system_id": "center_hill",
+      "variable_role": "independent_observation"
+    },
+    "j_percy_priest": {
+      "outcome_values": {
+        "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/outcomes/values/j_percy_priest.csv",
+        "sha256": "d9a7a01201fbbe05af0c8e2f08a0b1aa523eaa4fd4c3fa7c1f51e67d39afeb33",
+        "size_bytes": 43595
+      },
+      "parameter_code": "00060",
+      "prior_observation_complete": false,
+      "prior_observation_m3s": null,
+      "prior_observation_support_end_utc": "2022-11-10T01:00:00Z",
+      "quality": {
+        "all_support_complete_hour_count": 637,
+        "expected_native_samples_per_complete_hour": 4,
+        "hourly_aggregation": "mean_of_every_complete_approved_native_sample_on_(t-1h,t]",
+        "missing_values_imputed": false,
+        "native_cadence_predeclared": true,
+        "native_sample_cadence_seconds": 900,
+        "qualifiers": [
+          "A"
+        ],
+        "sample_counts": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "target_complete_hour_count": 637,
+        "target_hour_count": 672,
+        "target_missing_hour_count": 35
+      },
+      "raw_outcome": {
+        "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/outcomes/raw/j_percy_priest.json",
+        "sha256": "cb9741ba39bcc6f423604e3af63036efff54a9292ab51306c3920b339cbdd2d5",
+        "size_bytes": 211048
+      },
+      "site_id": "03430200",
+      "source": {
+        "attempt_count": 1,
+        "content_type": "application/json",
+        "final_url": "https://nwis.waterservices.usgs.gov/nwis/iv/?format=json&sites=03430200&parameterCd=00060&startDT=2022-11-10T00%3A00%3A00Z&endDT=2022-12-08T02%3A00%3A00Z&siteStatus=all",
+        "http_status": 200,
+        "retrieved_at": "2026-07-28T00:36:27.227390+00:00",
+        "url": "https://waterservices.usgs.gov/nwis/iv/?format=json&sites=03430200&parameterCd=00060&startDT=2022-11-10T00%3A00%3A00Z&endDT=2022-12-08T02%3A00%3A00Z&siteStatus=all"
+      },
+      "system_id": "j_percy_priest",
+      "variable_role": "independent_observation"
+    }
+  },
+  "window": {
+    "end_exclusive": "2022-12-08T01:00:00Z",
+    "hour_count": 672,
+    "start_inclusive": "2022-11-10T01:00:00Z"
+  }
+}

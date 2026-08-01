@@ -1,0 +1,556 @@
+{
+  "claim_boundary": {
+    "both_gauge_measures_resolved": true,
+    "center_hill_action_measure_resolved": true,
+    "endpoint_measure_primary_phase_failure_supported": false,
+    "geospatial_kernel_validated": false,
+    "j_percy_priest_action_measure_resolved": false,
+    "j_percy_priest_candidate_action_measure_admitted": false,
+    "operator_form_admitted": false,
+    "outcome_visible_development_diagnostic": true,
+    "public_data_without_user_supplied_data": true
+  },
+  "generated_at": "2026-07-28T02:05:10.276587+00:00",
+  "schema": "gwm.geotransport.kinematic_wave_spatial_measure_audit.v1",
+  "source_artifacts": {
+    "development_attribution_report": {
+      "path": "benchmarks/geotransport_v0_1/kinematic_wave_development_attribution_report.json",
+      "sha256": "5e573ebbc6776b23fa44128737401543d0d95530ab4f2a03081a173fe92f0bc0",
+      "size_bytes": 250979
+    },
+    "nldi_path_report": {
+      "path": "benchmarks/geotransport_v0_1/nldi_path_crosswalk_report.json",
+      "sha256": "9302319ac8a12a58065c4f7df7455afa3fa471d205b42ae27ab611d1006219ef",
+      "size_bytes": 21326
+    }
+  },
+  "spatial_contract": {
+    "candidate_projection_retained_when_unresolved": true,
+    "control_reach_exclusion_semantics": "release enters first downstream reach; excluded control reach cannot shorten the current active path",
+    "maximum_connection_gap_m": 100.0,
+    "maximum_resolved_endpoint_snap_distance_m": 100.0,
+    "unresolved_projection_admitted_as_linear_measure": false
+  },
+  "status": "endpoint_measure_not_primary_phase_failure_with_j_percy_priest_action_measure_unresolved",
+  "systems": [
+    {
+      "action_boundary_measure": {
+        "admitted_measure_from_oriented_start_m": 3000.731368126199,
+        "admitted_remaining_to_oriented_end_m": 0.0,
+        "candidate_measure_fraction": 1.0,
+        "candidate_measure_from_oriented_start_m": 3000.731368126199,
+        "candidate_remaining_to_oriented_end_m": 0.0,
+        "distance_to_oriented_end_m": 10.784218675231383,
+        "distance_to_oriented_start_m": 2663.4812066813893,
+        "endpoint_role": "action_boundary",
+        "evidence_level": "derived",
+        "feature_id": 18434275,
+        "full_length_m": 3000.731368126199,
+        "maximum_resolved_snap_distance_m": 100.0,
+        "measure_resolved": true,
+        "point_lonlat": [
+          -85.8261235,
+          36.0975966
+        ],
+        "provenance_id": "usace_cwms:319d5099a4dd1955ad2b4f13bf10dc6982047586c2c8a9e12b2c009bc6b500a6",
+        "schema": "gwm.geospatial_kernel.endpoint_spatial_measure_audit.v1",
+        "snap_distance_m": 10.784216091932144
+      },
+      "current_kernel_path": {
+        "action_entry_feature_id": 18434265,
+        "control_feature_excluded": true,
+        "control_feature_id": 18434275,
+        "effective_lengths_m": [
+          1.5214577067411046,
+          26.68780982111867,
+          1104.197788899001,
+          323.09177353039996,
+          1744.9116236760024,
+          181.02422534938066,
+          738.9058321357994,
+          2007.765065774854,
+          888.6096919153072,
+          1584.5747170033578,
+          235.99295540066763,
+          622.2113914447318,
+          400.4657640692435,
+          518.7895558481309,
+          3754.287917306922,
+          41.60867223253164,
+          68.31748941042935,
+          403.2842888042295,
+          998.1641242825664,
+          264.66373076126933,
+          1091.8638383813638,
+          581.0428521463845,
+          3876.9120155980067,
+          1253.8766714165502,
+          1521.557403862792,
+          938.4308239178366
+        ],
+        "feature_ids": [
+          18434265,
+          18421763,
+          18421761,
+          18421759,
+          18421753,
+          18421821,
+          18427677,
+          18421751,
+          18421811,
+          18421817,
+          18421831,
+          18421747,
+          18421829,
+          18421727,
+          18421737,
+          18421807,
+          18421719,
+          18421721,
+          18421803,
+          18421799,
+          18421731,
+          18421739,
+          18421741,
+          18421795,
+          18421707,
+          18421703
+        ],
+        "outlet_feature_id": 18421703,
+        "terminal_measure_matches_gauge_projection": true,
+        "total_effective_length_m": 25172.759480695615
+      },
+      "gates": {
+        "action_measure_resolved": true,
+        "control_feature_is_immediately_upstream_of_action_entry": true,
+        "directed_path_continuous": true,
+        "endpoint_measure_primary_phase_failure": false,
+        "full_path_length_reproduced": true,
+        "gauge_feature_is_kernel_outlet": true,
+        "gauge_measure_resolved": true,
+        "kernel_terminal_measure_matches_gauge": true
+      },
+      "gauge_observation_measure": {
+        "admitted_measure_from_oriented_start_m": 938.4308239178366,
+        "admitted_remaining_to_oriented_end_m": 207.34915060847118,
+        "candidate_measure_fraction": 0.8190323140407527,
+        "candidate_measure_from_oriented_start_m": 938.4308239178366,
+        "candidate_remaining_to_oriented_end_m": 207.34915060847118,
+        "distance_to_oriented_end_m": 211.2386607610628,
+        "distance_to_oriented_start_m": 924.4220663330224,
+        "endpoint_role": "observation_gauge",
+        "evidence_level": "derived",
+        "feature_id": 18421703,
+        "full_length_m": 1145.7799745263078,
+        "maximum_resolved_snap_distance_m": 100.0,
+        "measure_resolved": true,
+        "point_lonlat": [
+          -85.9044444,
+          36.1861111
+        ],
+        "provenance_id": "usgs_nldi:f3c0c82a8c8a315d333ab9ed126192d5388ee712091d294640fdd4549f132fb0",
+        "schema": "gwm.geospatial_kernel.endpoint_spatial_measure_audit.v1",
+        "snap_distance_m": 54.38799116342806
+      },
+      "path_geometry": {
+        "connection_gaps_m": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "continuous": true,
+        "evidence_level": "derived",
+        "feature_ids": [
+          18434275,
+          18434265,
+          18421763,
+          18421761,
+          18421759,
+          18421753,
+          18421821,
+          18427677,
+          18421751,
+          18421811,
+          18421817,
+          18421831,
+          18421747,
+          18421829,
+          18421727,
+          18421737,
+          18421807,
+          18421719,
+          18421721,
+          18421803,
+          18421799,
+          18421731,
+          18421739,
+          18421741,
+          18421795,
+          18421707,
+          18421703
+        ],
+        "full_lengths_m": [
+          3000.731368126199,
+          1.5214577067411046,
+          26.68780982111867,
+          1104.197788899001,
+          323.09177353039996,
+          1744.9116236760024,
+          181.02422534938066,
+          738.9058321357994,
+          2007.765065774854,
+          888.6096919153072,
+          1584.5747170033578,
+          235.99295540066763,
+          622.2113914447318,
+          400.4657640692435,
+          518.7895558481309,
+          3754.287917306922,
+          41.60867223253164,
+          68.31748941042935,
+          403.2842888042295,
+          998.1641242825664,
+          264.66373076126933,
+          1091.8638383813638,
+          581.0428521463845,
+          3876.9120155980067,
+          1253.8766714165502,
+          1521.557403862792,
+          1145.7799745263078
+        ],
+        "maximum_connection_gap_m": 100.0,
+        "nldi_reported_full_length_m": 28380.84,
+        "orientation_by_feature": [
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18434275
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18434265
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18421763
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18421761
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18421759
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18421753
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18421821
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18427677
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18421751
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18421811
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18421817
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18421831
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18421747
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18421829
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18421727
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18421737
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18421807
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18421719
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18421721
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18421803
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18421799
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18421731
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18421739
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18421741
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18421795
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18421707
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18421703
+          }
+        ],
+        "path_id": "center_hill:action-to-gauge:nldi",
+        "projection_method": "local_equirectangular_segment_projection_with_haversine_along_line_measure",
+        "provenance_id": "nldi-path-report:9302319ac8a12a58065c4f7df7455afa3fa471d205b42ae27ab611d1006219ef",
+        "reproduction_error_m": -5.697111191693693e-07,
+        "schema": "gwm.geospatial_kernel.directed_path_geometry_audit.v1",
+        "total_full_length_m": 28380.83999943029
+      },
+      "posthoc_phase_explanatory_bound": {
+        "action_to_observation_statistical_phase_hours": 6.0,
+        "bound_method": "remove_entire_first_active_and_terminal_reach_times; larger_than_supported_endpoint_measure_error",
+        "conservative_minimum_path_time_hours": 14.63447229603916,
+        "current_initial_manning_path_time_hours": 15.563314372461415,
+        "endpoint_measure_error_can_explain_phase_failure": false,
+        "first_active_reach_time_hours": 0.0015211221884185032,
+        "outcome_visible_development_only": true,
+        "prediction_statistical_correction_hours": -10.0,
+        "residual_excess_over_action_phase_hours": 8.63447229603916,
+        "statistical_shift_admitted_as_flood_wave_lag": false,
+        "terminal_reach_time_hours": 0.9273209542338368
+      },
+      "source_artifacts": {
+        "gauge": {
+          "path": "data/geotransport_v0_1/metadata/nldi-link-03424860.json",
+          "sha256": "f3c0c82a8c8a315d333ab9ed126192d5388ee712091d294640fdd4549f132fb0",
+          "size_bytes": 589
+        },
+        "navigation": {
+          "path": "data/geotransport_v0_1/topology/raw/center_hill-downstream-flowlines.json",
+          "sha256": "cf5f7a086104134667f77825bfd5b4314b610e83348b05d908c71bad0bab650b",
+          "size_bytes": 106060
+        }
+      },
+      "system_id": "center_hill"
+    },
+    {
+      "action_boundary_measure": {
+        "admitted_measure_from_oriented_start_m": null,
+        "admitted_remaining_to_oriented_end_m": null,
+        "candidate_measure_fraction": 0.7430838878971125,
+        "candidate_measure_from_oriented_start_m": 2682.6204628128344,
+        "candidate_remaining_to_oriented_end_m": 927.4974612946389,
+        "distance_to_oriented_end_m": 827.9027072086362,
+        "distance_to_oriented_start_m": 2821.9154168762334,
+        "endpoint_role": "action_boundary",
+        "evidence_level": "derived",
+        "feature_id": 18401827,
+        "full_length_m": 3610.1179241074733,
+        "maximum_resolved_snap_distance_m": 100.0,
+        "measure_resolved": false,
+        "point_lonlat": [
+          -86.621111,
+          36.150278
+        ],
+        "provenance_id": "usace_cwms:f7886b920839f1ec032db344a8baacd504c547247070ef8af8d1ba8710d4abfa",
+        "schema": "gwm.geospatial_kernel.endpoint_spatial_measure_audit.v1",
+        "snap_distance_m": 676.3208634983874
+      },
+      "current_kernel_path": {
+        "action_entry_feature_id": 18401881,
+        "control_feature_excluded": true,
+        "control_feature_id": 18401827,
+        "effective_lengths_m": [
+          109.6399825474271,
+          268.7784833199903,
+          1276.5147641452638,
+          2501.9922646289056,
+          612.0301131955829
+        ],
+        "feature_ids": [
+          18401881,
+          18401817,
+          18401509,
+          18401503,
+          18401497
+        ],
+        "outlet_feature_id": 18401497,
+        "terminal_measure_matches_gauge_projection": true,
+        "total_effective_length_m": 4768.95560783717
+      },
+      "gates": {
+        "action_measure_resolved": false,
+        "control_feature_is_immediately_upstream_of_action_entry": true,
+        "directed_path_continuous": true,
+        "endpoint_measure_primary_phase_failure": false,
+        "full_path_length_reproduced": true,
+        "gauge_feature_is_kernel_outlet": true,
+        "gauge_measure_resolved": true,
+        "kernel_terminal_measure_matches_gauge": true
+      },
+      "gauge_observation_measure": {
+        "admitted_measure_from_oriented_start_m": 612.0301131955829,
+        "admitted_remaining_to_oriented_end_m": 6321.093131414691,
+        "candidate_measure_fraction": 0.08827624889999866,
+        "candidate_measure_from_oriented_start_m": 612.0301131955829,
+        "candidate_remaining_to_oriented_end_m": 6321.093131414691,
+        "distance_to_oriented_end_m": 2798.5970229255536,
+        "distance_to_oriented_start_m": 632.7941082613859,
+        "endpoint_role": "observation_gauge",
+        "evidence_level": "derived",
+        "feature_id": 18401497,
+        "full_length_m": 6933.123244610274,
+        "maximum_resolved_snap_distance_m": 100.0,
+        "measure_resolved": true,
+        "point_lonlat": [
+          -86.6327739,
+          36.1864446
+        ],
+        "provenance_id": "usgs_nldi:8f7ed469dd9186819f92a11c01cc0e2f12b74e3965628aab5ce6897366337275",
+        "schema": "gwm.geospatial_kernel.endpoint_spatial_measure_audit.v1",
+        "snap_distance_m": 86.28019746984762
+      },
+      "path_geometry": {
+        "connection_gaps_m": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "continuous": true,
+        "evidence_level": "derived",
+        "feature_ids": [
+          18401827,
+          18401881,
+          18401817,
+          18401509,
+          18401503,
+          18401497
+        ],
+        "full_lengths_m": [
+          3610.1179241074733,
+          109.6399825474271,
+          268.7784833199903,
+          1276.5147641452638,
+          2501.9922646289056,
+          6933.123244610274
+        ],
+        "maximum_connection_gap_m": 100.0,
+        "nldi_reported_full_length_m": 14700.167000000001,
+        "orientation_by_feature": [
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18401827
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18401881
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18401817
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18401509
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18401503
+          },
+          {
+            "coordinate_order": "source_order",
+            "feature_id": 18401497
+          }
+        ],
+        "path_id": "j_percy_priest:action-to-gauge:nldi",
+        "projection_method": "local_equirectangular_segment_projection_with_haversine_along_line_measure",
+        "provenance_id": "nldi-path-report:9302319ac8a12a58065c4f7df7455afa3fa471d205b42ae27ab611d1006219ef",
+        "reproduction_error_m": -0.00033664066722849384,
+        "schema": "gwm.geospatial_kernel.directed_path_geometry_audit.v1",
+        "total_full_length_m": 14700.166663359334
+      },
+      "posthoc_phase_explanatory_bound": {
+        "action_to_observation_statistical_phase_hours": 0.0,
+        "bound_method": "remove_entire_first_active_and_terminal_reach_times; larger_than_supported_endpoint_measure_error",
+        "conservative_minimum_path_time_hours": 2.217945505046707,
+        "current_initial_manning_path_time_hours": 2.6417921244263116,
+        "endpoint_measure_error_can_explain_phase_failure": false,
+        "first_active_reach_time_hours": 0.0036641121457742934,
+        "outcome_visible_development_only": true,
+        "prediction_statistical_correction_hours": -2.0,
+        "residual_excess_over_action_phase_hours": 2.217945505046707,
+        "statistical_shift_admitted_as_flood_wave_lag": false,
+        "terminal_reach_time_hours": 0.4201825072338308
+      },
+      "source_artifacts": {
+        "gauge": {
+          "path": "data/geotransport_v0_1/metadata/nldi-link-03430200.json",
+          "sha256": "8f7ed469dd9186819f92a11c01cc0e2f12b74e3965628aab5ce6897366337275",
+          "size_bytes": 609
+        },
+        "navigation": {
+          "path": "data/geotransport_v0_1/topology/raw/j_percy_priest-downstream-flowlines.json",
+          "sha256": "c46da9f156b38de1d9f1fe2f2b84a2068445eb04c870792b7f7b504956b7ecf8",
+          "size_bytes": 106036
+        }
+      },
+      "system_id": "j_percy_priest"
+    }
+  ]
+}

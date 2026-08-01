@@ -1,0 +1,1062 @@
+{
+  "claim_boundary": {
+    "candidate_operator_admitted": false,
+    "candidate_operator_implemented": false,
+    "diffusive_spread_admitted_as_flood_wave_lag": false,
+    "geospatial_kernel_validated": false,
+    "gravity_wave_time_admitted_as_flood_wave_lag": false,
+    "outcome_values_used": false,
+    "public_data_without_user_supplied_data": true,
+    "state_dependent_diffusive_scale_compiled": true,
+    "state_dependent_gravity_wave_scale_compiled": true
+  },
+  "generated_at": "2026-07-28T03:32:35.796571+00:00",
+  "physics_contract": {
+    "base_state_area": "Manning Q-to-A using RouteLink trapezoid geometry",
+    "diffusive_centroid_celerity": "c_k = dQ/dA",
+    "diffusive_first_passage_variance": "sum(2 D L / c_k^3)",
+    "diffusive_variance_assumption": "independent linearized reach first-passage moments",
+    "gravity_wave_celerity": "c_g = sqrt(g A / T)",
+    "hydraulic_diffusivity": "D = Q / (2 S0 T)",
+    "top_width": "T = b + 2 z y"
+  },
+  "schema": "gwm.geotransport.hydrodynamic_scale_envelope.v1",
+  "source_artifact": {
+    "path": "benchmarks/geotransport_v0_1/kinematic_wave_celerity_envelope_report.json",
+    "sha256": "f2511dc889110089e30b41389d43ad3fd199e88862a48f511a4663f4f90a2afe",
+    "size_bytes": 11916
+  },
+  "status": "public_state_hydrodynamic_scales_compiled_not_operator_admission",
+  "systems": [
+    {
+      "envelopes": {
+        "diffusive_first_passage_standard_deviation_hours_q05_q50_q95": [
+          72.11736842040881,
+          72.6196304659567,
+          73.17413642191745
+        ],
+        "diffusive_spread_to_manning_time_ratio_q05_q50_q95": [
+          4.35492810316227,
+          4.4980986897422275,
+          4.627685857585693
+        ],
+        "gravity_to_manning_time_ratio_q05_q50_q95": [
+          0.0739450507148227,
+          0.07444888238879052,
+          0.07483098354969209
+        ],
+        "gravity_wave_travel_time_hours_q05_q50_q95": [
+          1.1636556564598701,
+          1.2017945393393767,
+          1.2434852223876611
+        ],
+        "manning_centroid_travel_time_hours_q05_q50_q95": [
+          15.582960350766653,
+          16.144952135344774,
+          16.802247333679684
+        ],
+        "maximum_path_froude_number_q05_q50_q95": [
+          4.348189271938341,
+          4.409059373904357,
+          4.463858677852158
+        ],
+        "minimum_reach_peclet_number_q05_q50_q95": [
+          6.9325711532596785e-06,
+          7.321300393792648e-06,
+          7.785308137871488e-06
+        ],
+        "supercritical_effective_length_fraction_q05_q50_q95": [
+          0.04492497533245684,
+          0.04492497533245684,
+          0.04492497533245684
+        ],
+        "supercritical_gravity_time_fraction_q05_q50_q95": [
+          0.08356922342278095,
+          0.0841273014272928,
+          0.08590230765732554
+        ],
+        "supercritical_manning_time_fraction_q05_q50_q95": [
+          0.003945904367513378,
+          0.0039739663583040164,
+          0.0040535701032939995
+        ]
+      },
+      "path_feature_ids": [
+        18434265,
+        18421763,
+        18421761,
+        18421759,
+        18421753,
+        18421821,
+        18427677,
+        18421751,
+        18421811,
+        18421817,
+        18421831,
+        18421747,
+        18421829,
+        18421727,
+        18421737,
+        18421807,
+        18421719,
+        18421721,
+        18421803,
+        18421799,
+        18421731,
+        18421739,
+        18421741,
+        18421795,
+        18421707,
+        18421703
+      ],
+      "path_response_schema": "gwm.geospatial_kernel.hydrodynamic_path_response_diagnostic.v1",
+      "path_scale_values": {
+        "path": "data/geotransport_v0_1/hydrodynamic_scale_envelope/systems/center_hill/path_scales.csv",
+        "sha256": "1f01b40d0baba98d1912f123bea6ef81ed47958d88b2e4e4a25760cd3c77789f",
+        "size_bytes": 116598
+      },
+      "quality": {
+        "finite_path_scale_hour_count": 672,
+        "fully_subcritical_path_hour_count": 0,
+        "gravity_time_shorter_than_manning_hour_count": 672,
+        "nonpropagating_path_hour_count": 0,
+        "state_hour_count": 672
+      },
+      "reach_regime_envelopes": [
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            0.00012940732493199754,
+            0.00012946200206228532,
+            0.00013035582010387234
+          ],
+          "effective_length_m": 1.5214577067411046,
+          "feature_id": 18434265,
+          "froude_number_q05_q50_q95": [
+            0.026362558445307858,
+            0.026621399698408217,
+            0.02685403621845233
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            50264.24217202649,
+            55524.24782418342,
+            60666.16504512479
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            6.9325711532596785e-06,
+            7.321300393792648e-06,
+            7.785308137871488e-06
+          ],
+          "supercritical_hour_count": 0
+        },
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            8.146036083509724e-13,
+            8.156202209449748e-13,
+            8.213927467167602e-13
+          ],
+          "effective_length_m": 26.68780982111867,
+          "feature_id": 18421763,
+          "froude_number_q05_q50_q95": [
+            4.348189271938341,
+            4.409059373904357,
+            4.463858677852158
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            2.658912504027806,
+            3.0597420066168586,
+            3.4666122519173825
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            115.34789636849936,
+            124.77297921761857,
+            136.264675874758
+          ],
+          "supercritical_hour_count": 672
+        },
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            1.8019740661785388e-08,
+            1.814764803918468e-08,
+            1.829929627454217e-08
+          ],
+          "effective_length_m": 1104.197788899001,
+          "feature_id": 18421761,
+          "froude_number_q05_q50_q95": [
+            1.0077846901691114,
+            1.0205407802438389,
+            1.0319347423671859
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            55.00705736701467,
+            62.52886248212971,
+            70.02503311028119
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            78.95856193447612,
+            84.95176351661561,
+            92.27383195235157
+          ],
+          "supercritical_hour_count": 672
+        },
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            0.027477859760112234,
+            0.02748891525644364,
+            0.02766588553826724
+          ],
+          "effective_length_m": 323.09177353039996,
+          "feature_id": 18421759,
+          "froude_number_q05_q50_q95": [
+            0.026366377819481937,
+            0.026623092315559205,
+            0.026854631913955953
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            50332.85858697805,
+            55553.93719585018,
+            60672.97193166307
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            0.0014721096197002886,
+            0.0015542518611219138,
+            0.0016519104177224685
+          ],
+          "supercritical_hour_count": 0
+        },
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            0.1483738082942187,
+            0.14842378530351208,
+            0.149378324237448
+          ],
+          "effective_length_m": 1744.9116236760024,
+          "feature_id": 18421753,
+          "froude_number_q05_q50_q95": [
+            0.026367324589510237,
+            0.026624566423958336,
+            0.026855322066166084
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            50348.84568362557,
+            55582.559919855616,
+            60685.867341588804
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            0.007949413878265803,
+            0.00839141949332189,
+            0.008919766546150456
+          ],
+          "supercritical_hour_count": 0
+        },
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            0.015392623886801812,
+            0.015397602683061097,
+            0.015496892094063741
+          ],
+          "effective_length_m": 181.02422534938066,
+          "feature_id": 18421821,
+          "froude_number_q05_q50_q95": [
+            0.026367555432836306,
+            0.026624980418545552,
+            0.026855241807419796
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            50353.32591413568,
+            55591.34771619126,
+            60684.008012581464
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            0.0008247201048311217,
+            0.000870475144935581,
+            0.0009253219908544566
+          ],
+          "supercritical_hour_count": 0
+        },
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            0.06282506444925579,
+            0.06284258282493482,
+            0.06324600687093589
+          ],
+          "effective_length_m": 738.9058321357994,
+          "feature_id": 18427677,
+          "froude_number_q05_q50_q95": [
+            0.026367923263054524,
+            0.02662547735015951,
+            0.026855659336211108
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            50359.29432113877,
+            55600.58991950705,
+            60692.15565526698
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            0.00336608567863598,
+            0.003552764578197091,
+            0.003776728553077345
+          ],
+          "supercritical_hour_count": 0
+        },
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            0.1706779894067824,
+            0.17070943725642493,
+            0.17182643092792638
+          ],
+          "effective_length_m": 2007.765065774854,
+          "feature_id": 18421751,
+          "froude_number_q05_q50_q95": [
+            0.02636941627616517,
+            0.02662732447222918,
+            0.026856192290527974
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            50387.519133088295,
+            55638.945151800246,
+            60703.38899595051
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            0.009145363149983488,
+            0.009649550333508302,
+            0.010258662932901612
+          ],
+          "supercritical_hour_count": 0
+        },
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            0.07553384765938848,
+            0.0755459359648559,
+            0.07604840843420446
+          ],
+          "effective_length_m": 888.6096919153072,
+          "feature_id": 18421811,
+          "froude_number_q05_q50_q95": [
+            0.026370266847993915,
+            0.0266277803512962,
+            0.02685658433057147
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            50403.82254557059,
+            55648.353530896566,
+            60712.086357972374
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            0.004047261590400151,
+            0.004270320060043484,
+            0.004539443207361063
+          ],
+          "supercritical_hour_count": 0
+        },
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            1.108280741198862e-06,
+            1.1178633894709867e-06,
+            1.1283756805443383e-06
+          ],
+          "effective_length_m": 1584.5747170033578,
+          "feature_id": 18421817,
+          "froude_number_q05_q50_q95": [
+            0.4203918231568599,
+            0.42523857300247186,
+            0.4295498235376947
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            311.1019424067472,
+            349.83433721205995,
+            387.9066106782605
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            10.331537402396195,
+            11.0470871640218,
+            11.92057838679381
+          ],
+          "supercritical_hour_count": 0
+        },
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            0.020058833558111746,
+            0.020061903730695205,
+            0.020195008606618808
+          ],
+          "effective_length_m": 235.99295540066763,
+          "feature_id": 18421831,
+          "froude_number_q05_q50_q95": [
+            0.026373364900781647,
+            0.026628715376208548,
+            0.026856849726992017
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            50463.23551609972,
+            55667.19140739758,
+            60717.02601402908
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            0.0010748037714845822,
+            0.001133860232822922,
+            0.001204692299023298
+          ],
+          "supercritical_hour_count": 0
+        },
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            3.5453600303900638e-06,
+            3.573657217950931e-06,
+            3.6064155756573507e-06
+          ],
+          "effective_length_m": 622.2113914447318,
+          "feature_id": 18421747,
+          "froude_number_q05_q50_q95": [
+            0.25749787043990197,
+            0.26033108590411497,
+            0.2628541092346857
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            796.0245771756911,
+            890.5107133078947,
+            983.06422366895
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            1.08509340921379,
+            1.1565689875203033,
+            1.2435178472729305
+          ],
+          "supercritical_hour_count": 0
+        },
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            0.03403591751537374,
+            0.03404081408258225,
+            0.034266355701450715
+          ],
+          "effective_length_m": 400.4657640692435,
+          "feature_id": 18421829,
+          "froude_number_q05_q50_q95": [
+            0.026375526926206976,
+            0.02662930503183208,
+            0.02685695021401274
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            50503.79526903338,
+            55677.9572430968,
+            60717.37704691156
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            0.0018238821530565065,
+            0.0019238757703508805,
+            0.002043289515927947
+          ],
+          "supercritical_hour_count": 0
+        },
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            0.044045564390349706,
+            0.04408249212836794,
+            0.04431861393488043
+          ],
+          "effective_length_m": 518.7895558481309,
+          "feature_id": 18421727,
+          "froude_number_q05_q50_q95": [
+            0.02638395594811258,
+            0.026640965057236097,
+            0.026863491066131565
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            50638.31419002516,
+            55893.124132069555,
+            60831.2716296552
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            0.0023603368815389154,
+            0.0024867085729927394,
+            0.002643016937845141
+          ],
+          "supercritical_hour_count": 0
+        },
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            0.013686773536652833,
+            0.013725773536717917,
+            0.013791121256787102
+          ],
+          "effective_length_m": 3754.287917306922,
+          "feature_id": 18421737,
+          "froude_number_q05_q50_q95": [
+            0.0559943096034195,
+            0.056545985842637383,
+            0.05702914305265994
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            13286.815302905425,
+            14687.366502642952,
+            16021.095986348879
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            0.11857259448703444,
+            0.12519313239656019,
+            0.13331048141355795
+          ],
+          "supercritical_hour_count": 0
+        },
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            0.0035285007113591447,
+            0.00353430457696726,
+            0.0035544916976073277
+          ],
+          "effective_length_m": 41.60867223253164,
+          "feature_id": 18421807,
+          "froude_number_q05_q50_q95": [
+            0.026394647449103005,
+            0.026645610301851905,
+            0.026865919696096432
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            50836.7700355519,
+            55980.22093731711,
+            60873.896605334885
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            0.00018923367897577328,
+            0.00019926019847078726,
+            0.00021147728025746118
+          ],
+          "supercritical_hour_count": 0
+        },
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            0.005793056124127224,
+            0.0058029266994774845,
+            0.005836182850072982
+          ],
+          "effective_length_m": 68.31748941042935,
+          "feature_id": 18421719,
+          "froude_number_q05_q50_q95": [
+            0.02639297175702714,
+            0.026645063896666876,
+            0.026866214658355522
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            50803.89186858429,
+            55968.52865778554,
+            60880.69110807505
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            0.0003106823997517835,
+            0.0003272084775654512,
+            0.00034736450936842024
+          ],
+          "supercritical_hour_count": 0
+        },
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            0.03419838699547501,
+            0.03425335544499781,
+            0.034450995697320005
+          ],
+          "effective_length_m": 403.2842888042295,
+          "feature_id": 18421721,
+          "froude_number_q05_q50_q95": [
+            0.026393935253848238,
+            0.026645255850064182,
+            0.02686734046007237
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            50822.02680112682,
+            55971.78513643811,
+            60905.724367204115
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            0.0018335278155740822,
+            0.001931477993249417,
+            0.0020500786450082906
+          ],
+          "supercritical_hour_count": 0
+        },
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            0.08465232220087361,
+            0.08477071644439381,
+            0.08527411456830453
+          ],
+          "effective_length_m": 998.1641242825664,
+          "feature_id": 18421803,
+          "froude_number_q05_q50_q95": [
+            0.026394209289552294,
+            0.02664446526773053,
+            0.02686771709669584
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            50827.02813798068,
+            55954.464771266896,
+            60913.95688816294
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            0.004537772107125743,
+            0.004781498221171129,
+            0.00507382496339632
+          ],
+          "supercritical_hour_count": 0
+        },
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            0.02244002208375756,
+            0.02247585056788111,
+            0.022610747848752118
+          ],
+          "effective_length_m": 264.66373076126933,
+          "feature_id": 18421799,
+          "froude_number_q05_q50_q95": [
+            0.02639505827502879,
+            0.02664465899584264,
+            0.026868359876569596
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            50841.648213514454,
+            55956.347223188925,
+            60926.31158293486
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            0.0012030522171918622,
+            0.0012678012307757406,
+            0.0013451002761263057
+          ],
+          "supercritical_hour_count": 0
+        },
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            0.002056485532386915,
+            0.0020637252481967407,
+            0.0020747970303264156
+          ],
+          "effective_length_m": 1091.8638383813638,
+          "feature_id": 18421731,
+          "froude_number_q05_q50_q95": [
+            0.06553202854128444,
+            0.06617317524583788,
+            0.06674162376951716
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            10038.161501198425,
+            11089.247841997196,
+            12102.558094286327
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            0.0517920456480106,
+            0.05471217382343656,
+            0.05824937048323417
+          ],
+          "supercritical_hour_count": 0
+        },
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            0.04925798252102789,
+            0.04933555254962947,
+            0.049638860319223536
+          ],
+          "effective_length_m": 581.0428521463845,
+          "feature_id": 18421739,
+          "froude_number_q05_q50_q95": [
+            0.02639808424450513,
+            0.02664824059344094,
+            0.026869576707918424
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            50898.18326510179,
+            56029.78188342844,
+            60950.90156687177
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            0.0026405557912824082,
+            0.002781114675517404,
+            0.002951043218235473
+          ],
+          "supercritical_hour_count": 0
+        },
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            0.00012470133144130743,
+            0.00012612120280027,
+            0.0001269224376989233
+          ],
+          "effective_length_m": 3876.9120155980067,
+          "feature_id": 18421741,
+          "froude_number_q05_q50_q95": [
+            0.1715513226027352,
+            0.1737490688878287,
+            0.17683023710308488
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            1772.5699625286059,
+            2019.4502079040133,
+            2417.8027974140923
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            2.0875439320770606,
+            2.342330608889624,
+            2.5469073991110665
+          ],
+          "supercritical_hour_count": 0
+        },
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            0.10366506725868825,
+            0.10596258125907967,
+            0.1059923937149093
+          ],
+          "effective_length_m": 1253.8766714165502,
+          "feature_id": 18421795,
+          "froude_number_q05_q50_q95": [
+            0.02647062611098946,
+            0.026779651124503916,
+            0.027212299316123293
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            52153.150308227436,
+            58693.28749746451,
+            69082.05561971419
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            0.005279816352093689,
+            0.005836668805456739,
+            0.0062782727801416974
+          ],
+          "supercritical_hour_count": 0
+        },
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            1.3664874392017975e-05,
+            1.3806245717043076e-05,
+            1.390260517305192e-05
+          ],
+          "effective_length_m": 1521.557403862792,
+          "feature_id": 18421707,
+          "froude_number_q05_q50_q95": [
+            0.2315914143957862,
+            0.23463843578936958,
+            0.2388351687278947
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            1011.2750270273658,
+            1156.1414688441703,
+            1386.3622707407221
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            1.8155642039130742,
+            2.040527085349853,
+            2.224630714936588
+          ],
+          "supercritical_hour_count": 0
+        },
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            0.07727865678450334,
+            0.07925132782153538,
+            0.07928908201878652
+          ],
+          "effective_length_m": 938.4308239178366,
+          "feature_id": 18421703,
+          "froude_number_q05_q50_q95": [
+            0.02648302127025568,
+            0.026792038605136913,
+            0.027339325210911536
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            52365.85243040478,
+            58928.642913767064,
+            72378.18918529458
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            0.0038406080706705637,
+            0.004358194775969255,
+            0.004687757663920347
+          ],
+          "supercritical_hour_count": 0
+        }
+      ],
+      "semantic_contract": {
+        "diffusive_centroid_changed_from_manning": false,
+        "diffusive_spread_admitted_as_flood_wave_lag": false,
+        "gravity_wave_time_admitted_as_flood_wave_lag": false,
+        "operator_implemented": false,
+        "outcome_values_used": false
+      },
+      "state_source": {
+        "feature_ids": {
+          "dtype": "int64",
+          "path": "data/geotransport_v0_1/kinematic_wave_celerity_envelope/systems/center_hill/decoded/feature_ids.npy",
+          "sha256": "306787f4b6a37cbd82713e885355697d2a4ae25d9dc61f6c117021136b4491f0",
+          "shape": [
+            435
+          ],
+          "size_bytes": 3608
+        },
+        "state_timestamps_utc": {
+          "dtype": "<U20",
+          "path": "data/geotransport_v0_1/kinematic_wave_celerity_envelope/systems/center_hill/decoded/state_timestamps_utc.npy",
+          "sha256": "024441cee9eb1e1e3fc0727a7dcf7d60fb4a7054a37212b1664e3d40376f8d32",
+          "shape": [
+            672
+          ],
+          "size_bytes": 53888
+        },
+        "streamflow_m3s": {
+          "dtype": "float64",
+          "path": "data/geotransport_v0_1/kinematic_wave_celerity_envelope/systems/center_hill/decoded/streamflow_m3s.npy",
+          "sha256": "a8f39cc6f685ec5e1df39e29409fe18a481dea38782403ed4e8613e78f2c6ea7",
+          "shape": [
+            672,
+            435
+          ],
+          "size_bytes": 2338688
+        }
+      },
+      "system_id": "center_hill"
+    },
+    {
+      "envelopes": {
+        "diffusive_first_passage_standard_deviation_hours_q05_q50_q95": [
+          24.984180510173104,
+          25.34493522683411,
+          25.6802622053727
+        ],
+        "diffusive_spread_to_manning_time_ratio_q05_q50_q95": [
+          9.053159642971416,
+          9.625575356324156,
+          10.237772180257418
+        ],
+        "gravity_to_manning_time_ratio_q05_q50_q95": [
+          0.11214235360150213,
+          0.11319956395171266,
+          0.11432244562937977
+        ],
+        "gravity_wave_travel_time_hours_q05_q50_q95": [
+          0.2788419776623122,
+          0.2980667059089157,
+          0.3181753488747295
+        ],
+        "manning_centroid_travel_time_hours_q05_q50_q95": [
+          2.4404274381657998,
+          2.6336727155762416,
+          2.8370042223299974
+        ],
+        "maximum_path_froude_number_q05_q50_q95": [
+          2.5955328914301723,
+          2.666648079636462,
+          2.740037092624559
+        ],
+        "minimum_reach_peclet_number_q05_q50_q95": [
+          0.007256206685369516,
+          0.008208352961141798,
+          0.009265529574582971
+        ],
+        "supercritical_effective_length_fraction_q05_q50_q95": [
+          0.02299035503019734,
+          0.02299035503019734,
+          0.02299035503019734
+        ],
+        "supercritical_gravity_time_fraction_q05_q50_q95": [
+          0.05056953306602525,
+          0.051421405851215865,
+          0.05252645957000302
+        ],
+        "supercritical_manning_time_fraction_q05_q50_q95": [
+          0.0013533694269591934,
+          0.001387726161532345,
+          0.0014238399328459768
+        ]
+      },
+      "path_feature_ids": [
+        18401881,
+        18401817,
+        18401509,
+        18401503,
+        18401497
+      ],
+      "path_response_schema": "gwm.geospatial_kernel.hydrodynamic_path_response_diagnostic.v1",
+      "path_scale_values": {
+        "path": "data/geotransport_v0_1/hydrodynamic_scale_envelope/systems/j_percy_priest/path_scales.csv",
+        "sha256": "2c5296b688ad589239913e9866cc179062eeb19ec39b12ac1ce57d37ea3afb9f",
+        "size_bytes": 115904
+      },
+      "quality": {
+        "finite_path_scale_hour_count": 672,
+        "fully_subcritical_path_hour_count": 0,
+        "gravity_time_shorter_than_manning_hour_count": 672,
+        "nonpropagating_path_hour_count": 0,
+        "state_hour_count": 672
+      },
+      "reach_regime_envelopes": [
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            2.042050379826907e-10,
+            2.0446061969757916e-10,
+            2.0524019248100042e-10
+          ],
+          "effective_length_m": 109.6399825474271,
+          "feature_id": 18401881,
+          "froude_number_q05_q50_q95": [
+            2.5955328914301723,
+            2.666648079636462,
+            2.740037092624559
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            3.4135236480734616,
+            4.489794432456035,
+            5.915779568328824
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            170.9059237368307,
+            203.49714191572755,
+            241.7966693096505
+          ],
+          "supercritical_hour_count": 672
+        },
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            0.00021276163284984062,
+            0.00021521813790252093,
+            0.00021772438943898828
+          ],
+          "effective_length_m": 268.7784833199903,
+          "feature_id": 18401817,
+          "froude_number_q05_q50_q95": [
+            0.12665534419816085,
+            0.12935987227959672,
+            0.1321173674093182
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            1444.3857329856526,
+            1796.7780039947636,
+            2234.214895774254
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            0.10588654087582115,
+            0.12174624543547045,
+            0.14012125597598313
+          ],
+          "supercritical_hour_count": 0
+        },
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            0.9795260768127106,
+            0.9796535162634545,
+            0.9800365499328435
+          ],
+          "effective_length_m": 1276.5147641452638,
+          "feature_id": 18401509,
+          "froude_number_q05_q50_q95": [
+            0.024827339712329338,
+            0.02530308858312494,
+            0.02580025814505778
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            28235.583863042175,
+            34310.6033459161,
+            41881.87014335268
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            0.007256206685369516,
+            0.008208352961141798,
+            0.009265529574582971
+          ],
+          "supercritical_hour_count": 0
+        },
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            0.0001333074051985975,
+            0.00013519683905705663,
+            0.00013729821505300971
+          ],
+          "effective_length_m": 2501.9922646289056,
+          "feature_id": 18401503,
+          "froude_number_q05_q50_q95": [
+            0.23850565934935566,
+            0.24371751151014856,
+            0.24926206683885727
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            441.5560322541383,
+            551.879843211818,
+            696.1921463445675
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            5.261003357381183,
+            6.114300092531958,
+            7.065939556913769
+          ],
+          "supercritical_hour_count": 0
+        },
+        {
+          "diffusive_variance_fraction_q05_q50_q95": [
+            0.019615839098744207,
+            0.019996581998026376,
+            0.02011878902714364
+          ],
+          "effective_length_m": 612.0301131955829,
+          "feature_id": 18401497,
+          "froude_number_q05_q50_q95": [
+            0.052787658749767076,
+            0.05394331580218215,
+            0.05493768083496499
+          ],
+          "hydraulic_diffusivity_m2s_q05_q50_q95": [
+            7500.243248851798,
+            9375.546591581791,
+            11314.247189585316
+          ],
+          "reach_peclet_number_q05_q50_q95": [
+            0.023801403126710974,
+            0.026781520403438223,
+            0.030836030428989903
+          ],
+          "supercritical_hour_count": 0
+        }
+      ],
+      "semantic_contract": {
+        "diffusive_centroid_changed_from_manning": false,
+        "diffusive_spread_admitted_as_flood_wave_lag": false,
+        "gravity_wave_time_admitted_as_flood_wave_lag": false,
+        "operator_implemented": false,
+        "outcome_values_used": false
+      },
+      "state_source": {
+        "feature_ids": {
+          "dtype": "int64",
+          "path": "data/geotransport_v0_1/kinematic_wave_celerity_envelope/systems/j_percy_priest/decoded/feature_ids.npy",
+          "sha256": "33b7a9e3996c3b4c6823f1b66d61ba9e608c117bbc92be125e30331e3e9d3373",
+          "shape": [
+            43
+          ],
+          "size_bytes": 472
+        },
+        "state_timestamps_utc": {
+          "dtype": "<U20",
+          "path": "data/geotransport_v0_1/kinematic_wave_celerity_envelope/systems/j_percy_priest/decoded/state_timestamps_utc.npy",
+          "sha256": "024441cee9eb1e1e3fc0727a7dcf7d60fb4a7054a37212b1664e3d40376f8d32",
+          "shape": [
+            672
+          ],
+          "size_bytes": 53888
+        },
+        "streamflow_m3s": {
+          "dtype": "float64",
+          "path": "data/geotransport_v0_1/kinematic_wave_celerity_envelope/systems/j_percy_priest/decoded/streamflow_m3s.npy",
+          "sha256": "9ed9bf1966c5697addabb7cc3f276126895d547e33729aee8e6b04c1bd133350",
+          "shape": [
+            672,
+            43
+          ],
+          "size_bytes": 231296
+        }
+      },
+      "system_id": "j_percy_priest"
+    }
+  ],
+  "window": {
+    "end_exclusive": "2022-04-28T01:00:00Z",
+    "hour_count": 672,
+    "start_inclusive": "2022-03-31T01:00:00Z",
+    "time_chunk": 563
+  }
+}

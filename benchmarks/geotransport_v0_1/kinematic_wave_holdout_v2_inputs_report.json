@@ -1,0 +1,334 @@
+{
+  "action_request_count": 2,
+  "claim_boundary": {
+    "dynamic_inputs_acquired": true,
+    "geospatial_kernel_validated": false,
+    "initial_state_ground_truth": false,
+    "initial_state_possible_nudging": true,
+    "outcome_free_predictions_sealed": false,
+    "outcomes_acquired": false,
+    "public_data_without_user_supplied_data": true,
+    "q_lateral_ground_truth": false,
+    "request_plan_only": false
+  },
+  "data_isolation": {
+    "outcome_artifacts_present": false,
+    "outcome_path_accepted": false,
+    "outcome_url_requested": false,
+    "outcome_values_loaded": false
+  },
+  "generated_at": "2026-07-28T00:29:58.558384+00:00",
+  "mode": "acquired",
+  "nwm_requests": [
+    {
+      "chunk_key": "571.63",
+      "maximum_bytes": 100000000,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/q_lateral/571.63",
+      "variable": "q_lateral"
+    },
+    {
+      "chunk_key": "571.87",
+      "maximum_bytes": 100000000,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/q_lateral/571.87",
+      "variable": "q_lateral"
+    },
+    {
+      "chunk_key": "570.63",
+      "maximum_bytes": 100000000,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/streamflow/570.63",
+      "variable": "streamflow"
+    },
+    {
+      "chunk_key": "570.87",
+      "maximum_bytes": 100000000,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/streamflow/570.87",
+      "variable": "streamflow"
+    },
+    {
+      "chunk_key": "570",
+      "maximum_bytes": 1000000,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/time/570",
+      "variable": "time"
+    },
+    {
+      "chunk_key": "571",
+      "maximum_bytes": 1000000,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/time/571",
+      "variable": "time"
+    }
+  ],
+  "nwm_unique_object_count": 6,
+  "protocol": {
+    "path": "benchmarks/geotransport_v0_1/kinematic_wave_holdout_v2_protocol.json",
+    "sha256": "0f59c130e2fe45d080bcaa488611f9c5556daf2488f14801f3c9c0a1a5998723",
+    "size_bytes": 18307
+  },
+  "raw_nwm_artifacts": [
+    {
+      "attempt_count": 1,
+      "chunk_key": "571.63",
+      "content_type": "binary/octet-stream",
+      "http_status": 200,
+      "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/raw/nwm/q_lateral/571.63.zst",
+      "retrieved_at": "2026-07-28T00:29:37.597911+00:00",
+      "sha256": "f33b9f10a3dc88042625adf18e6fb5f47e695e72645eb331f9d667bb6a2b0ac4",
+      "size_bytes": 1154401,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/q_lateral/571.63",
+      "variable": "q_lateral"
+    },
+    {
+      "attempt_count": 1,
+      "chunk_key": "571.87",
+      "content_type": "binary/octet-stream",
+      "http_status": 200,
+      "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/raw/nwm/q_lateral/571.87.zst",
+      "retrieved_at": "2026-07-28T00:29:39.259350+00:00",
+      "sha256": "1c21a5ee66e8ee616ed5847a7deb7af97be69fdeefd2f83501b4f63b33fb7034",
+      "size_bytes": 406044,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/q_lateral/571.87",
+      "variable": "q_lateral"
+    },
+    {
+      "attempt_count": 1,
+      "chunk_key": "570.63",
+      "content_type": "binary/octet-stream",
+      "http_status": 200,
+      "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/raw/nwm/streamflow/570.63.zst",
+      "retrieved_at": "2026-07-28T00:29:42.142227+00:00",
+      "sha256": "a2300d4edad0f3a0d280cceb5834ee899cc2d2c369e027063e52a0e773618b87",
+      "size_bytes": 4057946,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/streamflow/570.63",
+      "variable": "streamflow"
+    },
+    {
+      "attempt_count": 1,
+      "chunk_key": "570.87",
+      "content_type": "binary/octet-stream",
+      "http_status": 200,
+      "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/raw/nwm/streamflow/570.87.zst",
+      "retrieved_at": "2026-07-28T00:29:44.369143+00:00",
+      "sha256": "0b88778c37cdffa5f80aabd624d3087fb219fae40510c79d7b252561eb0a1bd6",
+      "size_bytes": 3180351,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/streamflow/570.87",
+      "variable": "streamflow"
+    },
+    {
+      "attempt_count": 1,
+      "chunk_key": "570",
+      "content_type": "binary/octet-stream",
+      "http_status": 200,
+      "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/raw/nwm/time/570.zst",
+      "retrieved_at": "2026-07-28T00:29:45.289228+00:00",
+      "sha256": "09206806f1d1ca3eab160cd4de897a4e018d9d4b32b7834d503bde352447aed5",
+      "size_bytes": 726,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/time/570",
+      "variable": "time"
+    },
+    {
+      "attempt_count": 1,
+      "chunk_key": "571",
+      "content_type": "binary/octet-stream",
+      "http_status": 200,
+      "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/raw/nwm/time/571.zst",
+      "retrieved_at": "2026-07-28T00:29:46.259177+00:00",
+      "sha256": "af6a51ddfa0d9092ebd03d927d1219c5767425beea80b05515c67339ba951070",
+      "size_bytes": 729,
+      "url": "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/time/571",
+      "variable": "time"
+    }
+  ],
+  "registry": {
+    "path": "benchmarks/geotransport_v0_1/public_data_registry.json",
+    "sha256": "399144ec64cef6ac74c780ce447b213f33dd97b5dafad5407342ffca37a6bc13",
+    "size_bytes": 23686
+  },
+  "schema": "gwm.geotransport.kinematic_wave_holdout_inputs.v2",
+  "semantic_contract": {
+    "action": {
+      "ground_truth_for_downstream_streamflow": false,
+      "outcome": false,
+      "role": "observed_boundary_action"
+    },
+    "initial_streamflow": {
+      "ground_truth": false,
+      "modeled": true,
+      "possible_nudging": true,
+      "role": "retrospective_modeled_initial_state",
+      "transformation": "operator_Manning_Q_to_A_without_velocity"
+    },
+    "q_lateral": {
+      "ground_truth": false,
+      "modeled": true,
+      "role": "modeled_distributed_reach_forcing"
+    }
+  },
+  "status": "pass_outcome_free_two_system_inputs_acquired",
+  "systems": {
+    "center_hill": {
+      "action_quality_codes": [
+        0
+      ],
+      "action_raw": {
+        "attempt_count": 1,
+        "content_type": "application/json;version=2",
+        "http_status": 200,
+        "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/raw/action/center_hill.json",
+        "retrieved_at": "2026-07-28T00:29:52.236146+00:00",
+        "sha256": "17d8dd32249232c68a32aa6b95f0507badee31353c0ab569486ee7f2d29fe616",
+        "size_bytes": 17169,
+        "url": "https://cwms-data.usace.army.mil/cwms-data/timeseries?name=CETT1-CENTER_HILL.Flow.Ave.1Hour.1Hour.man-rev&office=LRN&begin=2022-11-10T01%3A00%3A00Z&end=2022-12-08T01%3A00%3A00Z&unit=cms&page-size=50000"
+      },
+      "action_values": {
+        "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/center_hill/action_values.csv",
+        "sha256": "87a3726e577eb65e05f6859b37e35102b749cecd29a50ec02c83aa9e2f8ae0d6",
+        "size_bytes": 42859
+      },
+      "decoded_arrays": {
+        "feature_ids": {
+          "dtype": "int64",
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/center_hill/decoded/feature_ids.npy",
+          "sha256": "306787f4b6a37cbd82713e885355697d2a4ae25d9dc61f6c117021136b4491f0",
+          "shape": [
+            435
+          ],
+          "size_bytes": 3608
+        },
+        "forcing_timestamps_utc": {
+          "dtype": "<U20",
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/center_hill/decoded/forcing_timestamps_utc.npy",
+          "sha256": "6a0fb8ccdff2577896345a0168d145088013168c6cf12c20faa5a850b6568488",
+          "shape": [
+            672
+          ],
+          "size_bytes": 53888
+        },
+        "initial_streamflow_m3s": {
+          "dtype": "float64",
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/center_hill/decoded/initial_streamflow_m3s.npy",
+          "sha256": "bbb3ccaeb46f7b25e18e1f36f34f55bed000ad9e8bb6bca073813c88786b7486",
+          "shape": [
+            435
+          ],
+          "size_bytes": 3608
+        },
+        "q_lateral_m3s": {
+          "dtype": "float64",
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/center_hill/decoded/q_lateral_m3s.npy",
+          "sha256": "3ba41c4dff692d404b76fdef03f8b6c5d0bc169c6e2125fe2992097f6768ca9f",
+          "shape": [
+            672,
+            435
+          ],
+          "size_bytes": 2338688
+        }
+      },
+      "feature_chunk_indices": [
+        63,
+        87
+      ],
+      "feature_count": 435,
+      "result": {
+        "action_missing_value_count": 0,
+        "distributed_q_lateral_total_maximum_m3s": 314.4000046849251,
+        "distributed_q_lateral_total_mean_m3s": 3.9107143439884697,
+        "distributed_q_lateral_total_minimum_m3s": 0.0,
+        "hour_count": 672,
+        "initial_streamflow_fill_value_count": 0,
+        "initial_streamflow_total_m3s": 1135.6699746157974,
+        "q_lateral_fill_value_count": 0
+      },
+      "topology_report": {
+        "path": "benchmarks/geotransport_v0_1/center_hill_v2_d5_full_subnetwork_report.json",
+        "sha256": "9d066189ed23f0bf91fecdefa9327bcfc4a92704d4fb23e6e07c3bbe78559bbd",
+        "size_bytes": 19899
+      }
+    },
+    "j_percy_priest": {
+      "action_quality_codes": [
+        0
+      ],
+      "action_raw": {
+        "attempt_count": 1,
+        "content_type": "application/json;version=2",
+        "http_status": 200,
+        "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/raw/action/j_percy_priest.json",
+        "retrieved_at": "2026-07-28T00:29:58.375525+00:00",
+        "sha256": "78c95f1a3726e1dc6121852ed8513de88281a0bc16854bdbad0e78de5ee08ef3",
+        "size_bytes": 17210,
+        "url": "https://cwms-data.usace.army.mil/cwms-data/timeseries?name=JPPT1-J_PERCY_PRIEST.Flow.Ave.1Hour.1Hour.man-rev&office=LRN&begin=2022-11-10T01%3A00%3A00Z&end=2022-12-08T01%3A00%3A00Z&unit=cms&page-size=50000"
+      },
+      "action_values": {
+        "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/j_percy_priest/action_values.csv",
+        "sha256": "5bc87a79a1cb3abe93be51ce97d60cb91625284303c024ac9174f13c59b5e867",
+        "size_bytes": 42990
+      },
+      "decoded_arrays": {
+        "feature_ids": {
+          "dtype": "int64",
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/j_percy_priest/decoded/feature_ids.npy",
+          "sha256": "33b7a9e3996c3b4c6823f1b66d61ba9e608c117bbc92be125e30331e3e9d3373",
+          "shape": [
+            43
+          ],
+          "size_bytes": 472
+        },
+        "forcing_timestamps_utc": {
+          "dtype": "<U20",
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/j_percy_priest/decoded/forcing_timestamps_utc.npy",
+          "sha256": "6a0fb8ccdff2577896345a0168d145088013168c6cf12c20faa5a850b6568488",
+          "shape": [
+            672
+          ],
+          "size_bytes": 53888
+        },
+        "initial_streamflow_m3s": {
+          "dtype": "float64",
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/j_percy_priest/decoded/initial_streamflow_m3s.npy",
+          "sha256": "0a4a68df6fe04e7c6f37c6efeeae13f737a37623921b67d56c843ac233d49749",
+          "shape": [
+            43
+          ],
+          "size_bytes": 472
+        },
+        "q_lateral_m3s": {
+          "dtype": "float64",
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/j_percy_priest/decoded/q_lateral_m3s.npy",
+          "sha256": "6b8a965fef0a9dd23af9e282f58522ebe20be4d8a4b009c9db8590ecff97a441",
+          "shape": [
+            672,
+            43
+          ],
+          "size_bytes": 231296
+        }
+      },
+      "feature_chunk_indices": [
+        63
+      ],
+      "feature_count": 43,
+      "result": {
+        "action_missing_value_count": 0,
+        "distributed_q_lateral_total_maximum_m3s": 107.10000159591436,
+        "distributed_q_lateral_total_mean_m3s": 2.2339286047167013,
+        "distributed_q_lateral_total_minimum_m3s": 0.0,
+        "hour_count": 672,
+        "initial_streamflow_fill_value_count": 0,
+        "initial_streamflow_total_m3s": 76.07999829947948,
+        "q_lateral_fill_value_count": 0
+      },
+      "topology_report": {
+        "path": "benchmarks/geotransport_v0_1/j_percy_priest_v1_full_subnetwork_report.json",
+        "sha256": "2159b88b57ae2a4d476ab025190b64a1cd2b62c1c4d6c9e45bca9e844d2fe3d6",
+        "size_bytes": 13504
+      }
+    }
+  },
+  "window": {
+    "end_exclusive": "2022-12-08T01:00:00Z",
+    "forcing_time_chunk_index": 571,
+    "hour_count": 672,
+    "initial_state_time_chunk_index": 570,
+    "initial_state_valid_at": "2022-11-10T00:00:00Z",
+    "start_inclusive": "2022-11-10T01:00:00Z",
+    "time_step": "PT1H"
+  }
+}

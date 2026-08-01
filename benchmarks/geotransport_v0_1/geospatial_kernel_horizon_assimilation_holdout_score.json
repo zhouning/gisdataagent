@@ -1,0 +1,397 @@
+{
+  "aggregate_gate": {
+    "all_execution_gates_passed": true,
+    "candidate_support_gate_passed": false,
+    "cross_system_or_cross_horizon_compensation_used": false,
+    "failed_group_count": 5,
+    "passed_group_count": 3,
+    "system_horizon_group_count": 8,
+    "ties_count_as_pass": false
+  },
+  "claim_boundary": {
+    "candidate_promoted": false,
+    "candidate_support_gate_evaluated": true,
+    "candidate_support_gate_passed": false,
+    "geospatial_kernel_validated": false,
+    "historical_holdout_not_real_time_prospective": true,
+    "holdout_outcomes_acquired": true,
+    "holdout_scored": true,
+    "runtime_default_enabled": false
+  },
+  "generated_at": "2026-08-01T03:42:24.097562+00:00",
+  "groups": {
+    "center_hill:12h": {
+      "common_complete_case_mask": true,
+      "excluded_issue_count": 0,
+      "exclusion_counts": {
+        "nonfinite_prediction": 0,
+        "persistence_issue_observation_missing": 0,
+        "target_hour_incomplete": 0
+      },
+      "gates": {
+        "all_group_gates_passed": true,
+        "execution_gates_passed": true,
+        "minimum_scored_issues_passed": true,
+        "policy_strictly_beats_fixed_quadratic_rmse": true,
+        "policy_strictly_beats_persistence_rmse": true
+      },
+      "horizon_hours": 12,
+      "issue_count": 56,
+      "metrics": {
+        "causal_issue_observation_persistence": {
+          "bias_m3s": 2.114661650852571,
+          "mae_m3s": 41.81285794093714,
+          "rmse_m3s": 67.78836481554902
+        },
+        "fixed_quadratic_distance_localized_mainstem_update": {
+          "bias_m3s": 1.0339781117844238,
+          "mae_m3s": 38.24006332466909,
+          "rmse_m3s": 60.751568897546676
+        },
+        "frozen_horizon_policy": {
+          "bias_m3s": 1.232891125809002,
+          "mae_m3s": 34.96833295902645,
+          "rmse_m3s": 55.123787994792956
+        }
+      },
+      "policy_mode": "nominal",
+      "rmse_deltas_m3s": {
+        "policy_minus_fixed_quadratic": -5.62778090275372,
+        "policy_minus_persistence": -12.66457682075606
+      },
+      "scored_issue_count": 56,
+      "system_id": "center_hill"
+    },
+    "center_hill:1h": {
+      "common_complete_case_mask": true,
+      "excluded_issue_count": 0,
+      "exclusion_counts": {
+        "nonfinite_prediction": 0,
+        "persistence_issue_observation_missing": 0,
+        "target_hour_incomplete": 0
+      },
+      "gates": {
+        "all_group_gates_passed": false,
+        "execution_gates_passed": true,
+        "minimum_scored_issues_passed": true,
+        "policy_strictly_beats_fixed_quadratic_rmse": true,
+        "policy_strictly_beats_persistence_rmse": false
+      },
+      "horizon_hours": 1,
+      "issue_count": 56,
+      "metrics": {
+        "causal_issue_observation_persistence": {
+          "bias_m3s": -4.380009378212572,
+          "mae_m3s": 7.197535614116572,
+          "rmse_m3s": 10.934891715331245
+        },
+        "fixed_quadratic_distance_localized_mainstem_update": {
+          "bias_m3s": -5.029341367119046,
+          "mae_m3s": 9.477430831043861,
+          "rmse_m3s": 13.649830680659255
+        },
+        "frozen_horizon_policy": {
+          "bias_m3s": -4.702807265206696,
+          "mae_m3s": 8.603855471488707,
+          "rmse_m3s": 12.607094354272846
+        }
+      },
+      "policy_mode": "linear_distance_localized_mainstem_update",
+      "rmse_deltas_m3s": {
+        "policy_minus_fixed_quadratic": -1.0427363263864091,
+        "policy_minus_persistence": 1.6722026389416005
+      },
+      "scored_issue_count": 56,
+      "system_id": "center_hill"
+    },
+    "center_hill:3h": {
+      "common_complete_case_mask": true,
+      "excluded_issue_count": 0,
+      "exclusion_counts": {
+        "nonfinite_prediction": 0,
+        "persistence_issue_observation_missing": 0,
+        "target_hour_incomplete": 0
+      },
+      "gates": {
+        "all_group_gates_passed": false,
+        "execution_gates_passed": true,
+        "minimum_scored_issues_passed": true,
+        "policy_strictly_beats_fixed_quadratic_rmse": false,
+        "policy_strictly_beats_persistence_rmse": false
+      },
+      "horizon_hours": 3,
+      "issue_count": 56,
+      "metrics": {
+        "causal_issue_observation_persistence": {
+          "bias_m3s": -16.93853084176457,
+          "mae_m3s": 20.908957260342856,
+          "rmse_m3s": 32.152037176120544
+        },
+        "fixed_quadratic_distance_localized_mainstem_update": {
+          "bias_m3s": -18.68726354919588,
+          "mae_m3s": 28.33229278709956,
+          "rmse_m3s": 39.635759605300926
+        },
+        "frozen_horizon_policy": {
+          "bias_m3s": -18.68726354919588,
+          "mae_m3s": 28.33229278709956,
+          "rmse_m3s": 39.635759605300926
+        }
+      },
+      "policy_mode": "quadratic_distance_localized_mainstem_update",
+      "rmse_deltas_m3s": {
+        "policy_minus_fixed_quadratic": 0.0,
+        "policy_minus_persistence": 7.483722429180382
+      },
+      "scored_issue_count": 56,
+      "system_id": "center_hill"
+    },
+    "center_hill:6h": {
+      "common_complete_case_mask": true,
+      "excluded_issue_count": 0,
+      "exclusion_counts": {
+        "nonfinite_prediction": 0,
+        "persistence_issue_observation_missing": 0,
+        "target_hour_incomplete": 0
+      },
+      "gates": {
+        "all_group_gates_passed": false,
+        "execution_gates_passed": true,
+        "minimum_scored_issues_passed": true,
+        "policy_strictly_beats_fixed_quadratic_rmse": false,
+        "policy_strictly_beats_persistence_rmse": false
+      },
+      "horizon_hours": 6,
+      "issue_count": 56,
+      "metrics": {
+        "causal_issue_observation_persistence": {
+          "bias_m3s": -13.118537670706287,
+          "mae_m3s": 26.191818952662857,
+          "rmse_m3s": 36.32068094231036
+        },
+        "fixed_quadratic_distance_localized_mainstem_update": {
+          "bias_m3s": -14.899717811330584,
+          "mae_m3s": 28.80858851968812,
+          "rmse_m3s": 36.75206641109628
+        },
+        "frozen_horizon_policy": {
+          "bias_m3s": -14.886508167351115,
+          "mae_m3s": 30.544031191788527,
+          "rmse_m3s": 39.935479176931786
+        }
+      },
+      "policy_mode": "outlet_only_observation_update",
+      "rmse_deltas_m3s": {
+        "policy_minus_fixed_quadratic": 3.183412765835506,
+        "policy_minus_persistence": 3.614798234621425
+      },
+      "scored_issue_count": 56,
+      "system_id": "center_hill"
+    },
+    "j_percy_priest:12h": {
+      "common_complete_case_mask": true,
+      "excluded_issue_count": 0,
+      "exclusion_counts": {
+        "nonfinite_prediction": 0,
+        "persistence_issue_observation_missing": 0,
+        "target_hour_incomplete": 0
+      },
+      "gates": {
+        "all_group_gates_passed": false,
+        "execution_gates_passed": true,
+        "minimum_scored_issues_passed": true,
+        "policy_strictly_beats_fixed_quadratic_rmse": false,
+        "policy_strictly_beats_persistence_rmse": true
+      },
+      "horizon_hours": 12,
+      "issue_count": 56,
+      "metrics": {
+        "causal_issue_observation_persistence": {
+          "bias_m3s": -0.7325176328419881,
+          "mae_m3s": 33.15921571682763,
+          "rmse_m3s": 56.3109179474362
+        },
+        "fixed_quadratic_distance_localized_mainstem_update": {
+          "bias_m3s": 2.1159051926222037,
+          "mae_m3s": 10.520183786954737,
+          "rmse_m3s": 20.968059340605855
+        },
+        "frozen_horizon_policy": {
+          "bias_m3s": 2.129747090747321,
+          "mae_m3s": 10.525899969029691,
+          "rmse_m3s": 20.974092813999164
+        }
+      },
+      "policy_mode": "nominal",
+      "rmse_deltas_m3s": {
+        "policy_minus_fixed_quadratic": 0.006033473393308952,
+        "policy_minus_persistence": -35.33682513343704
+      },
+      "scored_issue_count": 56,
+      "system_id": "j_percy_priest"
+    },
+    "j_percy_priest:1h": {
+      "common_complete_case_mask": true,
+      "excluded_issue_count": 1,
+      "exclusion_counts": {
+        "nonfinite_prediction": 0,
+        "persistence_issue_observation_missing": 0,
+        "target_hour_incomplete": 1
+      },
+      "gates": {
+        "all_group_gates_passed": true,
+        "execution_gates_passed": true,
+        "minimum_scored_issues_passed": true,
+        "policy_strictly_beats_fixed_quadratic_rmse": true,
+        "policy_strictly_beats_persistence_rmse": true
+      },
+      "horizon_hours": 1,
+      "issue_count": 56,
+      "metrics": {
+        "causal_issue_observation_persistence": {
+          "bias_m3s": 4.680685929729652,
+          "mae_m3s": 6.374748999872396,
+          "rmse_m3s": 14.466713856138197
+        },
+        "fixed_quadratic_distance_localized_mainstem_update": {
+          "bias_m3s": 3.8803370162486233,
+          "mae_m3s": 7.2028213593487544,
+          "rmse_m3s": 13.894599598557853
+        },
+        "frozen_horizon_policy": {
+          "bias_m3s": 3.981964417896655,
+          "mae_m3s": 6.527258715984645,
+          "rmse_m3s": 13.074805962743152
+        }
+      },
+      "policy_mode": "linear_distance_localized_mainstem_update",
+      "rmse_deltas_m3s": {
+        "policy_minus_fixed_quadratic": -0.8197936358147011,
+        "policy_minus_persistence": -1.3919078933950448
+      },
+      "scored_issue_count": 55,
+      "system_id": "j_percy_priest"
+    },
+    "j_percy_priest:3h": {
+      "common_complete_case_mask": true,
+      "excluded_issue_count": 1,
+      "exclusion_counts": {
+        "nonfinite_prediction": 0,
+        "persistence_issue_observation_missing": 0,
+        "target_hour_incomplete": 1
+      },
+      "gates": {
+        "all_group_gates_passed": false,
+        "execution_gates_passed": true,
+        "minimum_scored_issues_passed": true,
+        "policy_strictly_beats_fixed_quadratic_rmse": false,
+        "policy_strictly_beats_persistence_rmse": true
+      },
+      "horizon_hours": 3,
+      "issue_count": 56,
+      "metrics": {
+        "causal_issue_observation_persistence": {
+          "bias_m3s": 8.05958592654371,
+          "mae_m3s": 16.594489430074997,
+          "rmse_m3s": 33.83214703437226
+        },
+        "fixed_quadratic_distance_localized_mainstem_update": {
+          "bias_m3s": 1.144845643563091,
+          "mae_m3s": 8.291542347648864,
+          "rmse_m3s": 15.360289280564194
+        },
+        "frozen_horizon_policy": {
+          "bias_m3s": 1.144845643563091,
+          "mae_m3s": 8.291542347648864,
+          "rmse_m3s": 15.360289280564194
+        }
+      },
+      "policy_mode": "quadratic_distance_localized_mainstem_update",
+      "rmse_deltas_m3s": {
+        "policy_minus_fixed_quadratic": 0.0,
+        "policy_minus_persistence": -18.471857753808067
+      },
+      "scored_issue_count": 55,
+      "system_id": "j_percy_priest"
+    },
+    "j_percy_priest:6h": {
+      "common_complete_case_mask": true,
+      "excluded_issue_count": 1,
+      "exclusion_counts": {
+        "nonfinite_prediction": 0,
+        "persistence_issue_observation_missing": 0,
+        "target_hour_incomplete": 1
+      },
+      "gates": {
+        "all_group_gates_passed": true,
+        "execution_gates_passed": true,
+        "minimum_scored_issues_passed": true,
+        "policy_strictly_beats_fixed_quadratic_rmse": true,
+        "policy_strictly_beats_persistence_rmse": true
+      },
+      "horizon_hours": 6,
+      "issue_count": 56,
+      "metrics": {
+        "causal_issue_observation_persistence": {
+          "bias_m3s": 14.184966478291829,
+          "mae_m3s": 19.787415962637315,
+          "rmse_m3s": 41.75328956457292
+        },
+        "fixed_quadratic_distance_localized_mainstem_update": {
+          "bias_m3s": -0.21307826305576488,
+          "mae_m3s": 4.9133283773025465,
+          "rmse_m3s": 7.9117946818323075
+        },
+        "frozen_horizon_policy": {
+          "bias_m3s": -0.11974703673857166,
+          "mae_m3s": 4.8667620176648345,
+          "rmse_m3s": 7.881480267948428
+        }
+      },
+      "policy_mode": "outlet_only_observation_update",
+      "rmse_deltas_m3s": {
+        "policy_minus_fixed_quadratic": -0.030314413883879787,
+        "policy_minus_persistence": -33.87180929662449
+      },
+      "scored_issue_count": 55,
+      "system_id": "j_percy_priest"
+    }
+  },
+  "schema": "gwm.geotransport.horizon_assimilation_holdout_score.v1",
+  "score_execution_audit": {
+    "common_complete_case_mask_applied_per_system_horizon": true,
+    "outcome_values_imputed": false,
+    "policy_or_comparator_changed_after_outcome_access": false,
+    "post_score_tuning_performed": false,
+    "rescore_permitted": false,
+    "score_execution_count": 1
+  },
+  "scored_cases": {
+    "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/scoring/scored_cases.csv",
+    "sha256": "c106de0c6006e2e728f00aae4dcb028bce402c5010af40090d5c848fb8c904fb",
+    "size_bytes": 78466
+  },
+  "source_artifacts": {
+    "outcomes_report": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_outcomes_report.json",
+      "sha256": "8b26fc11a2fd4d4d7a7cc1c068ec19e39741b5aa764e93d566014e7ab72f0557",
+      "size_bytes": 6630
+    },
+    "predictions": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/predictions.csv",
+      "sha256": "7cace0b963bfc2914130f3e002627f0aa48f0109abc4a82fbd09de93df53ac5a",
+      "size_bytes": 242583
+    },
+    "rollout_verification": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_rollout_verification.json",
+      "sha256": "bf5f5ca54e9593c7139b10aec4d3b7b4243805cb6ab33bf60a7bf95bbd92d7e6",
+      "size_bytes": 3448
+    },
+    "scoring_protocol": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_scoring_protocol.json",
+      "sha256": "bd16a743e79e189810e79170e02bdbd3f0d2ea35766a2f72caaf98e79a845539",
+      "size_bytes": 6104
+    }
+  },
+  "status": "holdout_scored_exactly_once_no_post_score_tuning"
+}

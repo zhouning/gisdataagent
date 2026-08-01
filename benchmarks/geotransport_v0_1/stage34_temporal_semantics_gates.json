@@ -1,0 +1,248 @@
+{
+  "all_gates_passed": true,
+  "claim_boundary": {
+    "cwms_interval_end_label_is_actuation_instant": false,
+    "label_shift_diagnostic_is_physical_response_time": false,
+    "runtime_transition_admitted": false,
+    "same_path_and_time_dimension_imply_same_process": false,
+    "two_instantaneous_samples_equal_continuous_hour_mean": false
+  },
+  "decision": {
+    "interval_end_label_shift_diagnostic_admitted": true,
+    "label_shift_grid_seconds": 3600.0,
+    "physical_observation_equivalence_admitted": false,
+    "physical_response_time_admitted": false,
+    "public_temporal_semantics_evidence_admitted": true,
+    "release_actuation_instant_admitted": false,
+    "runtime_transition_admitted": false,
+    "target_continuous_interval_average_admitted": false
+  },
+  "field_summary": {
+    "label_shift_grid_seconds": 3600.0,
+    "source": {
+      "actuation_instant_admitted": false,
+      "continuous_interval_average_admitted": true,
+      "field_id": "cwms-center-hill-release",
+      "native_samples_per_compiled_support": null,
+      "native_sampling_interval_seconds": null,
+      "provenance_id": "cwms:CETT1-CENTER_HILL.Flow.Ave.1Hour.1Hour.man-rev:b2174bfe0a58eb3d293cc891804268c8fd620ab3b5dcf07133d7d0fbc1a73b41",
+      "schema": "gwm.geospatial.temporal_field_semantics.v1",
+      "spatial_role": "operational_tailwater_zone",
+      "statistic": "interval_average",
+      "temporal_support": {
+        "duration_seconds": 3600.0,
+        "evidence_level": "authoritative",
+        "kind": "interval_mean",
+        "provenance_id": "USACE/cwms-data-api@beb8d507c9da8ec074d444117bda7d7daf69e5ee:docs/source/data/timeseries.rst#L97-L118",
+        "schema": "gwm.geospatial_kernel.temporal_support.v1",
+        "timestamp_position": "end"
+      },
+      "unit": "m3/s",
+      "variable": "discharge"
+    },
+    "target": {
+      "actuation_instant_admitted": false,
+      "continuous_interval_average_admitted": false,
+      "field_id": "usgs-stonewall-hourly-sample-mean",
+      "native_samples_per_compiled_support": 2,
+      "native_sampling_interval_seconds": 1800.0,
+      "provenance_id": "usgs:USGS-03424860:1eed13fd6d90461fa6a04892af197e6d:ce9d4d61337d76c015f620a92f18d43f6435e0c370dea33f6e606a08e65cb5d8",
+      "schema": "gwm.geospatial.temporal_field_semantics.v1",
+      "spatial_role": "observed_outlet_node",
+      "statistic": "instantaneous_sample_mean",
+      "temporal_support": {
+        "duration_seconds": 3600.0,
+        "evidence_level": "derived",
+        "kind": "interval_sample_mean",
+        "provenance_id": "USGS:03424860:00060:IV:two-approved-samples-in-open-left-closed-right-hour",
+        "schema": "gwm.geospatial_kernel.temporal_support.v1",
+        "timestamp_position": "end"
+      },
+      "unit": "m3/s",
+      "variable": "discharge"
+    }
+  },
+  "frozen_stage33_hashes": {
+    "benchmarks/geotransport_v0_1/stage33_temporal_support_gates.json": {
+      "actual_sha256": "a4ec722e078fc67a3940d8cb06621b1ebe9ac5eb99f1c03bf6738c6f6a4d3fab",
+      "expected_sha256": "a4ec722e078fc67a3940d8cb06621b1ebe9ac5eb99f1c03bf6738c6f6a4d3fab",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage33_center_hill_temporal_support_path/README.md": {
+      "actual_sha256": "dd8ab5ea307c78a3450e88edccdcc959843cf745bfc7077b96d802b6ef68ca78",
+      "expected_sha256": "dd8ab5ea307c78a3450e88edccdcc959843cf745bfc7077b96d802b6ef68ca78",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage33_center_hill_temporal_support_path/acquisition_manifest.json": {
+      "actual_sha256": "79895bfd9f499b8a383d29b4deb06b0326bc9a6cb62e09e10c390371657921f3",
+      "expected_sha256": "79895bfd9f499b8a383d29b4deb06b0326bc9a6cb62e09e10c390371657921f3",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage33_center_hill_temporal_support_path/acquisition_plan.json": {
+      "actual_sha256": "55f2618d7d6508a0b6e0ef4556d934514f8f42ea20a208e4272d53e27d0f76b8",
+      "expected_sha256": "55f2618d7d6508a0b6e0ef4556d934514f8f42ea20a208e4272d53e27d0f76b8",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage33_center_hill_temporal_support_path/temporal_support_reconciliation_ledger.json": {
+      "actual_sha256": "7e69e9dc4eaa027ae23503cf6fb121035030f953260a989df29c9515fcf9b7df",
+      "expected_sha256": "7e69e9dc4eaa027ae23503cf6fb121035030f953260a989df29c9515fcf9b7df",
+      "matches": true
+    },
+    "data_agent/test_acquire_geotransport_stage33_temporal_support_path.py": {
+      "actual_sha256": "7e4b77aac2632a6e96cad0181ac4feac28ce5e56665408992b75fc9e68cf1fd0",
+      "expected_sha256": "7e4b77aac2632a6e96cad0181ac4feac28ce5e56665408992b75fc9e68cf1fd0",
+      "matches": true
+    },
+    "data_agent/test_geospatial_kernel_geospatial_temporal_support.py": {
+      "actual_sha256": "cc322ac4e58b2e2a6b946ac6e1522be0aa39eaef3ab12592c1f66ddb96518d73",
+      "expected_sha256": "cc322ac4e58b2e2a6b946ac6e1522be0aa39eaef3ab12592c1f66ddb96518d73",
+      "matches": true
+    },
+    "data_agent/test_geospatial_kernel_public_temporal_support_reconciliation.py": {
+      "actual_sha256": "47aa14e044802477f120a9543c9083301ca21c97d48e45b92d9aef2cdc468eca",
+      "expected_sha256": "47aa14e044802477f120a9543c9083301ca21c97d48e45b92d9aef2cdc468eca",
+      "matches": true
+    },
+    "data_agent/uwm/geospatial_kernel_v2/geospatial_temporal_support.py": {
+      "actual_sha256": "62bda56dedfb65995556aa4964ea220c4ea8a9976738694f2e784cd664b360d1",
+      "expected_sha256": "62bda56dedfb65995556aa4964ea220c4ea8a9976738694f2e784cd664b360d1",
+      "matches": true
+    },
+    "data_agent/uwm/geospatial_kernel_v2/public_temporal_support_reconciliation.py": {
+      "actual_sha256": "63537c92af92af3fcc35003fc3575ceadff6ddccc79e02c82bd791a7da02cdc6",
+      "expected_sha256": "63537c92af92af3fcc35003fc3575ceadff6ddccc79e02c82bd791a7da02cdc6",
+      "matches": true
+    },
+    "docs/architecture-decisions/adr-074-admit-spatial-path-reject-temporal-reconciliation.md": {
+      "actual_sha256": "a5155f9e4c16737d2199b42094555aab7926106188c29c5caa0aa1eb9308a1f7",
+      "expected_sha256": "a5155f9e4c16737d2199b42094555aab7926106188c29c5caa0aa1eb9308a1f7",
+      "matches": true
+    },
+    "scripts/acquire_geotransport_stage33_temporal_support_path.py": {
+      "actual_sha256": "f868905ac4610f0b84b69ae13e40f1473588e58b7086c55b1ec94e421686a504",
+      "expected_sha256": "f868905ac4610f0b84b69ae13e40f1473588e58b7086c55b1ec94e421686a504",
+      "matches": true
+    },
+    "scripts/compile_geotransport_stage33_temporal_support_gates.py": {
+      "actual_sha256": "3ef5089ad1cabf843f8f5e5efd157f621fad3bf86326c80032b9d4d7fe1fb09e",
+      "expected_sha256": "3ef5089ad1cabf843f8f5e5efd157f621fad3bf86326c80032b9d4d7fe1fb09e",
+      "matches": true
+    }
+  },
+  "gates": {
+    "acquisition_manifest_is_hash_bound": true,
+    "acquisition_plan_was_hash_frozen_before_document_values": true,
+    "admitted_label_shift_grid_is_exactly_one_hour": true,
+    "all_event_common_empirical_support_remains_false": true,
+    "all_process_candidates_remain_numerically_disjoint": true,
+    "all_process_candidates_share_admitted_spatial_path": true,
+    "all_thirteen_stage33_artifacts_remain_hash_frozen": true,
+    "authoritative_document_defines_composite_eop_and_utc_semantics": true,
+    "compiled_observations_are_approved_and_unfilled": true,
+    "decision_admits_semantics_only_not_physical_transition": true,
+    "document_is_bound_to_fixed_upstream_commit": true,
+    "document_request_is_outcome_free_and_private_data_free": true,
+    "empirical_quantity_is_windowed_label_association_peak": true,
+    "every_process_substitution_has_five_typed_rejection_reasons": true,
+    "one_public_document_is_hash_and_tls_verified": true,
+    "physical_observation_equivalence_access_fails_closed": true,
+    "physical_response_comparison_remains_unadmitted": true,
+    "physical_response_time_access_fails_closed": true,
+    "physics_source_event_markers_remain_distinct": true,
+    "physics_target_response_functionals_remain_distinct": true,
+    "physics_transport_carriers_remain_distinct": true,
+    "runtime_transition_access_fails_closed": true,
+    "semantic_equivalence_remains_unadmitted": true,
+    "source_actuation_instant_access_fails_closed": true,
+    "source_and_target_admit_interval_end_label_shift": true,
+    "source_is_authoritative_hourly_eop_interval_average": true,
+    "source_is_center_hill_operational_discharge": true,
+    "stage32_complete_observation_hours_are_preserved": true,
+    "stage32_real_missing_hours_are_preserved": true,
+    "target_continuous_hour_mean_access_fails_closed": true,
+    "target_is_derived_interval_sample_mean": true,
+    "target_is_primary_usgs_instantaneous_discharge_series": true,
+    "target_native_sampling_is_two_half_hour_points": true,
+    "temporal_response_semantics_operator_is_hash_frozen": true
+  },
+  "generated_at": "2026-07-30T02:49:09.653885+00:00",
+  "ledger_artifact": {
+    "path": "data/geotransport_v0_1/stage34_center_hill_temporal_semantics/temporal_response_semantics_ledger.json",
+    "sha256": "45b5a51d4ec0500e9288dd97b1a41a9632c9c95d45c7a959a65ffc4cab8a101c",
+    "size_bytes": 15162
+  },
+  "process_summary": [
+    {
+      "candidate_physical_response_time_admitted": false,
+      "candidate_quantity": "gravity_wave_time",
+      "empirical_quantity": "empirical_downstream_response_lag",
+      "numerical_overlap": false,
+      "physical_response_comparison_admitted": false,
+      "rejection_reasons": [
+        "transport_carrier_mismatch",
+        "source_event_marker_mismatch",
+        "target_response_functional_mismatch",
+        "candidate_physical_response_time_unadmitted",
+        "numerical_support_disjoint"
+      ],
+      "same_source_event_marker": false,
+      "same_spatial_path": true,
+      "same_target_response_functional": false,
+      "same_time_dimension": true,
+      "same_transport_carrier": false,
+      "schema": "gwm.geospatial.response_semantic_compatibility.v1",
+      "semantic_equivalence_admitted": false
+    },
+    {
+      "candidate_physical_response_time_admitted": false,
+      "candidate_quantity": "manning_kinematic_centroid_time",
+      "empirical_quantity": "empirical_downstream_response_lag",
+      "numerical_overlap": false,
+      "physical_response_comparison_admitted": false,
+      "rejection_reasons": [
+        "transport_carrier_mismatch",
+        "source_event_marker_mismatch",
+        "target_response_functional_mismatch",
+        "candidate_physical_response_time_unadmitted",
+        "numerical_support_disjoint"
+      ],
+      "same_source_event_marker": false,
+      "same_spatial_path": true,
+      "same_target_response_functional": false,
+      "same_time_dimension": true,
+      "same_transport_carrier": false,
+      "schema": "gwm.geospatial.response_semantic_compatibility.v1",
+      "semantic_equivalence_admitted": false
+    },
+    {
+      "candidate_physical_response_time_admitted": false,
+      "candidate_quantity": "advective_residence_time",
+      "empirical_quantity": "empirical_downstream_response_lag",
+      "numerical_overlap": false,
+      "physical_response_comparison_admitted": false,
+      "rejection_reasons": [
+        "transport_carrier_mismatch",
+        "source_event_marker_mismatch",
+        "target_response_functional_mismatch",
+        "candidate_physical_response_time_unadmitted",
+        "numerical_support_disjoint"
+      ],
+      "same_source_event_marker": false,
+      "same_spatial_path": true,
+      "same_target_response_functional": false,
+      "same_time_dimension": true,
+      "same_transport_carrier": false,
+      "schema": "gwm.geospatial.response_semantic_compatibility.v1",
+      "semantic_equivalence_admitted": false
+    }
+  ],
+  "schema": "gwm.geotransport.stage34_temporal_semantics_gates.v1",
+  "status": "interval_label_shift_admitted_physical_response_semantics_rejected",
+  "typed_controls": {
+    "physical_observation_equivalence": true,
+    "physical_response_time": true,
+    "release_actuation_instant": true,
+    "runtime_transition": true,
+    "target_continuous_interval_average": true
+  }
+}

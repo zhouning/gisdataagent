@@ -1,0 +1,1477 @@
+{
+  "all_gates_passed": true,
+  "baseline_step": {
+    "complete_vector_opening_flux_audited": true,
+    "diagnostic_only": true,
+    "downstream_reach_step": {
+      "cell_length_m": 100.0,
+      "diagnostic_only": true,
+      "discharge_integral_after_m4s": 4796.6657419439,
+      "discharge_integral_before_m4s": 4800.0,
+      "discharge_integral_change_m4s": -3.334258056100225,
+      "finite_state": true,
+      "interface_geometry_rule": "arithmetic_parameter_midpoint",
+      "left_boundary_area_flux_m3s": 5.868998642989695,
+      "maximum_courant_number": 0.005438358046173584,
+      "maximum_free_surface_change_m": 0.0006630469745598777,
+      "minimum_area_m2": 19.9933695302544,
+      "nonnegative_area": true,
+      "operator_admitted": false,
+      "prescribed_boundary_volume_change_m3": -0.6630469745600104,
+      "right_boundary_area_flux_m3s": 12.0,
+      "schema": "gwm.geospatial_kernel.variable_geometry_hydrostatic_open_step.v1",
+      "timestep_seconds": 0.10814660378469329,
+      "volume_after_m3": 7999.3369530254395,
+      "volume_balance_error_m3": -5.192513086171857e-13,
+      "volume_before_m3": 8000.0
+    },
+    "downstream_state": {
+      "area_m2": [
+        19.9933695302544,
+        20.0,
+        20.0,
+        20.0
+      ],
+      "discharge_m3s": [
+        11.966657419439002,
+        12.0,
+        12.0,
+        12.0
+      ]
+    },
+    "flat_bed_uniform_rectangular_reaches_only": true,
+    "friction_and_lateral_source_splitting": false,
+    "geographic_momentum_ledger": {
+      "error_east_north_m4s": [
+        3.220479438681423e-13,
+        1.207506317157936e-13
+      ],
+      "error_magnitude_m4s": 3.4394126418541485e-13,
+      "external_boundary_impulse_east_north_m4s": [
+        -0.643472292518922,
+        21.476077019375744
+      ],
+      "momentum_after_east_north_m4s": [
+        6813.009235803916,
+        2804.068842395817
+      ],
+      "momentum_before_east_north_m4s": [
+        6816.0,
+        2804.0000000000005
+      ],
+      "patch_solid_wall_fluid_impulse_east_north_m4s": [
+        -2.1741395786105833,
+        -21.317173429303764
+      ],
+      "transition_wall_fluid_impulse_east_north_m4s": [
+        -0.17315232495436303,
+        -0.09006119425578159
+      ]
+    },
+    "junction_patch_step": {
+      "branch_reach_states_updated": false,
+      "diagnostic_only": true,
+      "face_fluxes": [
+        {
+          "boundary_type": "branch_opening",
+          "branch_id": "up-a",
+          "branch_role": "upstream",
+          "face_id": "opening-up-a",
+          "left_cell_id": "nw",
+          "maximum_signal_speed_mps": 4.284974654754458,
+          "minimum_signal_speed_mps": -4.678690551393267,
+          "outward_mass_flux_m3s": -5.133224738070393,
+          "outward_momentum_flux_east_north_m4s2": [
+            -197.49400922263817,
+            1.7771976068365103
+          ],
+          "right_cell_id": null,
+          "wave_regime": "hll_mixed"
+        },
+        {
+          "boundary_type": "branch_opening",
+          "branch_id": "up-b",
+          "branch_role": "upstream",
+          "face_id": "opening-up-b",
+          "left_cell_id": "sw",
+          "maximum_signal_speed_mps": 4.413690551393267,
+          "minimum_signal_speed_mps": -4.778690551393266,
+          "outward_mass_flux_m3s": -3.7830177661617297,
+          "outward_momentum_flux_east_north_m4s2": [
+            1.6010888820798128,
+            -212.78176408949193
+          ],
+          "right_cell_id": null,
+          "wave_regime": "hll_mixed"
+        },
+        {
+          "boundary_type": "branch_opening",
+          "branch_id": "down",
+          "branch_role": "downstream",
+          "face_id": "opening-down",
+          "left_cell_id": "se",
+          "maximum_signal_speed_mps": 5.028690551393266,
+          "minimum_signal_speed_mps": -4.403690551393266,
+          "outward_mass_flux_m3s": 5.868998642989695,
+          "outward_momentum_flux_east_north_m4s2": [
+            172.502091405423,
+            -0.9444280967085519
+          ],
+          "right_cell_id": null,
+          "wave_regime": "hll_mixed"
+        },
+        {
+          "boundary_type": "internal",
+          "branch_id": null,
+          "branch_role": null,
+          "face_id": "internal-sw-se",
+          "left_cell_id": "sw",
+          "maximum_signal_speed_mps": 4.463690551393267,
+          "minimum_signal_speed_mps": -4.403690551393266,
+          "outward_mass_flux_m3s": 0.6006766372089404,
+          "outward_momentum_flux_east_north_m4s2": [
+            196.59488935425557,
+            1.552040001394621
+          ],
+          "right_cell_id": "se",
+          "wave_regime": "hll_mixed"
+        },
+        {
+          "boundary_type": "internal",
+          "branch_id": null,
+          "branch_role": null,
+          "face_id": "internal-sw-nw",
+          "left_cell_id": "sw",
+          "maximum_signal_speed_mps": 4.443690551393266,
+          "minimum_signal_speed_mps": -4.413690551393267,
+          "outward_mass_flux_m3s": 2.7634731217370896,
+          "outward_momentum_flux_east_north_m4s2": [
+            0.23928856481304628,
+            185.51578379479992
+          ],
+          "right_cell_id": "nw",
+          "wave_regime": "hll_mixed"
+        },
+        {
+          "boundary_type": "internal",
+          "branch_id": null,
+          "branch_role": null,
+          "face_id": "internal-se-ne",
+          "left_cell_id": "se",
+          "maximum_signal_speed_mps": 4.523771689494013,
+          "minimum_signal_speed_mps": -4.5523431180654415,
+          "outward_mass_flux_m3s": -2.618848817314159,
+          "outward_momentum_flux_east_north_m4s2": [
+            1.5847531598658686,
+            205.9956955565336
+          ],
+          "right_cell_id": "ne",
+          "wave_regime": "hll_mixed"
+        },
+        {
+          "boundary_type": "internal",
+          "branch_id": null,
+          "branch_role": null,
+          "face_id": "internal-nw-ne",
+          "left_cell_id": "nw",
+          "maximum_signal_speed_mps": 4.528533594255918,
+          "minimum_signal_speed_mps": -4.547581213303537,
+          "outward_mass_flux_m3s": -4.338876877957952,
+          "outward_momentum_flux_east_north_m4s2": [
+            198.49011716694446,
+            2.5099572182788648
+          ],
+          "right_cell_id": "ne",
+          "wave_regime": "hll_mixed"
+        },
+        {
+          "boundary_type": "solid_wall",
+          "branch_id": null,
+          "branch_role": null,
+          "face_id": "wall-sw-west",
+          "left_cell_id": "sw",
+          "maximum_signal_speed_mps": 4.3936905513932665,
+          "minimum_signal_speed_mps": -4.463690551393267,
+          "outward_mass_flux_m3s": 0.0,
+          "outward_momentum_flux_east_north_m4s2": [
+            -196.13299999999998,
+            -0.0
+          ],
+          "right_cell_id": null,
+          "wave_regime": "reflective_slip_wall"
+        },
+        {
+          "boundary_type": "solid_wall",
+          "branch_id": null,
+          "branch_role": null,
+          "face_id": "wall-se-south",
+          "left_cell_id": "se",
+          "maximum_signal_speed_mps": 4.448690551393266,
+          "minimum_signal_speed_mps": -4.408690551393267,
+          "outward_mass_flux_m3s": 0.0,
+          "outward_momentum_flux_east_north_m4s2": [
+            0.0,
+            -196.13299999999998
+          ],
+          "right_cell_id": null,
+          "wave_regime": "reflective_slip_wall"
+        },
+        {
+          "boundary_type": "solid_wall",
+          "branch_id": null,
+          "branch_role": null,
+          "face_id": "wall-ne-east",
+          "left_cell_id": "ne",
+          "maximum_signal_speed_mps": 4.528533594255918,
+          "minimum_signal_speed_mps": -4.547581213303537,
+          "outward_mass_flux_m3s": 0.0,
+          "outward_momentum_flux_east_north_m4s2": [
+            216.23663249999998,
+            -0.0
+          ],
+          "right_cell_id": null,
+          "wave_regime": "reflective_slip_wall"
+        },
+        {
+          "boundary_type": "solid_wall",
+          "branch_id": null,
+          "branch_role": null,
+          "face_id": "wall-ne-north",
+          "left_cell_id": "ne",
+          "maximum_signal_speed_mps": 4.523771689494013,
+          "minimum_signal_speed_mps": -4.5523431180654415,
+          "outward_mass_flux_m3s": 0.0,
+          "outward_momentum_flux_east_north_m4s2": [
+            0.0,
+            216.23663249999998
+          ],
+          "right_cell_id": null,
+          "wave_regime": "reflective_slip_wall"
+        },
+        {
+          "boundary_type": "solid_wall",
+          "branch_id": null,
+          "branch_role": null,
+          "face_id": "wall-nw-north",
+          "left_cell_id": "nw",
+          "maximum_signal_speed_mps": 4.358658865280773,
+          "minimum_signal_speed_mps": -4.274448338964984,
+          "outward_mass_flux_m3s": 0.0,
+          "outward_momentum_flux_east_north_m4s2": [
+            0.0,
+            177.0100325
+          ],
+          "right_cell_id": null,
+          "wave_regime": "reflective_slip_wall"
+        }
+      ],
+      "flat_bed_wet_rectangular_openings_only": true,
+      "geometry": {
+        "bed_elevation_m": 0.0,
+        "cells": [
+          {
+            "cell_id": "sw",
+            "plan_area_m2": 100.0,
+            "vertex_ids_counterclockwise": [
+              "v00",
+              "v10",
+              "v11",
+              "v01"
+            ]
+          },
+          {
+            "cell_id": "se",
+            "plan_area_m2": 100.0,
+            "vertex_ids_counterclockwise": [
+              "v10",
+              "v20",
+              "v21",
+              "v11"
+            ]
+          },
+          {
+            "cell_id": "nw",
+            "plan_area_m2": 100.0,
+            "vertex_ids_counterclockwise": [
+              "v01",
+              "v11",
+              "v12",
+              "v02"
+            ]
+          },
+          {
+            "cell_id": "ne",
+            "plan_area_m2": 100.0,
+            "vertex_ids_counterclockwise": [
+              "v11",
+              "v21",
+              "v22",
+              "v12"
+            ]
+          }
+        ],
+        "complete_cell_edge_coverage_verified": true,
+        "conforming_internal_edge_pairs_verified": true,
+        "connected_cell_graph_verified": true,
+        "counterclockwise_cell_polygons_verified": true,
+        "downstream_branch_id": "down",
+        "external_boundary_measure_closed": true,
+        "external_closure_east_north_m": [
+          0.0,
+          0.0
+        ],
+        "faces": [
+          {
+            "boundary_type": "branch_opening",
+            "branch_id": "up-a",
+            "branch_role": "upstream",
+            "end_vertex_id": "v01",
+            "face_id": "opening-up-a",
+            "left_cell_id": "nw",
+            "length_m": 10.0,
+            "oriented_tangent_east_north": [
+              0.0,
+              -1.0
+            ],
+            "outward_from_left_normal_east_north": [
+              -1.0,
+              -0.0
+            ],
+            "right_cell_id": null,
+            "start_vertex_id": "v02"
+          },
+          {
+            "boundary_type": "branch_opening",
+            "branch_id": "up-b",
+            "branch_role": "upstream",
+            "end_vertex_id": "v10",
+            "face_id": "opening-up-b",
+            "left_cell_id": "sw",
+            "length_m": 10.0,
+            "oriented_tangent_east_north": [
+              1.0,
+              0.0
+            ],
+            "outward_from_left_normal_east_north": [
+              0.0,
+              -1.0
+            ],
+            "right_cell_id": null,
+            "start_vertex_id": "v00"
+          },
+          {
+            "boundary_type": "branch_opening",
+            "branch_id": "down",
+            "branch_role": "downstream",
+            "end_vertex_id": "v21",
+            "face_id": "opening-down",
+            "left_cell_id": "se",
+            "length_m": 10.0,
+            "oriented_tangent_east_north": [
+              0.0,
+              1.0
+            ],
+            "outward_from_left_normal_east_north": [
+              1.0,
+              -0.0
+            ],
+            "right_cell_id": null,
+            "start_vertex_id": "v20"
+          },
+          {
+            "boundary_type": "internal",
+            "branch_id": null,
+            "branch_role": null,
+            "end_vertex_id": "v11",
+            "face_id": "internal-sw-se",
+            "left_cell_id": "sw",
+            "length_m": 10.0,
+            "oriented_tangent_east_north": [
+              0.0,
+              1.0
+            ],
+            "outward_from_left_normal_east_north": [
+              1.0,
+              -0.0
+            ],
+            "right_cell_id": "se",
+            "start_vertex_id": "v10"
+          },
+          {
+            "boundary_type": "internal",
+            "branch_id": null,
+            "branch_role": null,
+            "end_vertex_id": "v01",
+            "face_id": "internal-sw-nw",
+            "left_cell_id": "sw",
+            "length_m": 10.0,
+            "oriented_tangent_east_north": [
+              -1.0,
+              0.0
+            ],
+            "outward_from_left_normal_east_north": [
+              0.0,
+              1.0
+            ],
+            "right_cell_id": "nw",
+            "start_vertex_id": "v11"
+          },
+          {
+            "boundary_type": "internal",
+            "branch_id": null,
+            "branch_role": null,
+            "end_vertex_id": "v11",
+            "face_id": "internal-se-ne",
+            "left_cell_id": "se",
+            "length_m": 10.0,
+            "oriented_tangent_east_north": [
+              -1.0,
+              0.0
+            ],
+            "outward_from_left_normal_east_north": [
+              0.0,
+              1.0
+            ],
+            "right_cell_id": "ne",
+            "start_vertex_id": "v21"
+          },
+          {
+            "boundary_type": "internal",
+            "branch_id": null,
+            "branch_role": null,
+            "end_vertex_id": "v12",
+            "face_id": "internal-nw-ne",
+            "left_cell_id": "nw",
+            "length_m": 10.0,
+            "oriented_tangent_east_north": [
+              0.0,
+              1.0
+            ],
+            "outward_from_left_normal_east_north": [
+              1.0,
+              -0.0
+            ],
+            "right_cell_id": "ne",
+            "start_vertex_id": "v11"
+          },
+          {
+            "boundary_type": "solid_wall",
+            "branch_id": null,
+            "branch_role": null,
+            "end_vertex_id": "v00",
+            "face_id": "wall-sw-west",
+            "left_cell_id": "sw",
+            "length_m": 10.0,
+            "oriented_tangent_east_north": [
+              0.0,
+              -1.0
+            ],
+            "outward_from_left_normal_east_north": [
+              -1.0,
+              -0.0
+            ],
+            "right_cell_id": null,
+            "start_vertex_id": "v01"
+          },
+          {
+            "boundary_type": "solid_wall",
+            "branch_id": null,
+            "branch_role": null,
+            "end_vertex_id": "v20",
+            "face_id": "wall-se-south",
+            "left_cell_id": "se",
+            "length_m": 10.0,
+            "oriented_tangent_east_north": [
+              1.0,
+              0.0
+            ],
+            "outward_from_left_normal_east_north": [
+              0.0,
+              -1.0
+            ],
+            "right_cell_id": null,
+            "start_vertex_id": "v10"
+          },
+          {
+            "boundary_type": "solid_wall",
+            "branch_id": null,
+            "branch_role": null,
+            "end_vertex_id": "v22",
+            "face_id": "wall-ne-east",
+            "left_cell_id": "ne",
+            "length_m": 10.0,
+            "oriented_tangent_east_north": [
+              0.0,
+              1.0
+            ],
+            "outward_from_left_normal_east_north": [
+              1.0,
+              -0.0
+            ],
+            "right_cell_id": null,
+            "start_vertex_id": "v21"
+          },
+          {
+            "boundary_type": "solid_wall",
+            "branch_id": null,
+            "branch_role": null,
+            "end_vertex_id": "v12",
+            "face_id": "wall-ne-north",
+            "left_cell_id": "ne",
+            "length_m": 10.0,
+            "oriented_tangent_east_north": [
+              -1.0,
+              0.0
+            ],
+            "outward_from_left_normal_east_north": [
+              0.0,
+              1.0
+            ],
+            "right_cell_id": null,
+            "start_vertex_id": "v22"
+          },
+          {
+            "boundary_type": "solid_wall",
+            "branch_id": null,
+            "branch_role": null,
+            "end_vertex_id": "v02",
+            "face_id": "wall-nw-north",
+            "left_cell_id": "nw",
+            "length_m": 10.0,
+            "oriented_tangent_east_north": [
+              -1.0,
+              0.0
+            ],
+            "outward_from_left_normal_east_north": [
+              0.0,
+              1.0
+            ],
+            "right_cell_id": null,
+            "start_vertex_id": "v12"
+          }
+        ],
+        "junction_id": "junction-grid",
+        "pairwise_polygon_overlap_independently_verified": false,
+        "provenance_id": "manufactured:stage17-conforming-four-cell-grid",
+        "schema": "gwm.geospatial_kernel.shallow_water_junction_patch_geometry.v1",
+        "simple_cell_polygons_verified": true,
+        "total_plan_area_m2": 400.0,
+        "upstream_branch_ids": [
+          "up-a",
+          "up-b"
+        ],
+        "vertices": [
+          {
+            "east_north_m": [
+              0.0,
+              0.0
+            ],
+            "vertex_id": "v00"
+          },
+          {
+            "east_north_m": [
+              10.0,
+              0.0
+            ],
+            "vertex_id": "v10"
+          },
+          {
+            "east_north_m": [
+              20.0,
+              0.0
+            ],
+            "vertex_id": "v20"
+          },
+          {
+            "east_north_m": [
+              0.0,
+              10.0
+            ],
+            "vertex_id": "v01"
+          },
+          {
+            "east_north_m": [
+              10.0,
+              10.0
+            ],
+            "vertex_id": "v11"
+          },
+          {
+            "east_north_m": [
+              20.0,
+              10.0
+            ],
+            "vertex_id": "v21"
+          },
+          {
+            "east_north_m": [
+              0.0,
+              20.0
+            ],
+            "vertex_id": "v02"
+          },
+          {
+            "east_north_m": [
+              10.0,
+              20.0
+            ],
+            "vertex_id": "v12"
+          },
+          {
+            "east_north_m": [
+              20.0,
+              20.0
+            ],
+            "vertex_id": "v22"
+          }
+        ]
+      },
+      "internal_hll_exchange": true,
+      "mass_ledger": {
+        "error_m3": -2.8976820942716586e-14,
+        "external_opening_mass_flux_m3s": -3.0472438612424284,
+        "volume_after_m3": 800.3295490744971,
+        "volume_before_m3": 800.0
+      },
+      "maximum_cell_mass_ledger_error_m3": 1.083855227790309e-14,
+      "maximum_cell_momentum_ledger_error_m4s": 4.577566798522237e-16,
+      "maximum_courant_number": 0.4,
+      "maximum_internal_mass_cancellation_error_m3": 0.0,
+      "maximum_internal_momentum_cancellation_error_m4s": 0.0,
+      "maximum_stable_timestep_seconds": 0.21629320756938658,
+      "minimum_cell_volume_m3": 191.32323585324312,
+      "momentum_ledger": {
+        "error_east_north_m4s": [
+          -2.609024107869118e-15,
+          -6.661338147750939e-16
+        ],
+        "error_magnitude_m4s": 2.6927200104409418e-15,
+        "external_opening_flux_east_north_m4s2": [
+          -23.390828935135374,
+          -211.94899457936395
+        ],
+        "wall_pressure_flux_east_north_m4s2": [
+          20.103632500000003,
+          197.113665
+        ]
+      },
+      "multi_cell_finite_area_patch": true,
+      "operator_admitted": false,
+      "polygon_edge_topology_verified": true,
+      "schema": "gwm.geospatial_kernel.shallow_water_junction_patch_step.v1",
+      "single_evaluation_equal_opposite_internal_flux": true,
+      "state_after": {
+        "cells": [
+          {
+            "cell_id": "sw",
+            "depth_m": 2.0004529915241442,
+            "free_surface_elevation_m": 2.0004529915241442,
+            "momentum_east_north_m4s": [
+              6.751017664449545,
+              5.780875312642492
+            ],
+            "velocity_east_north_mps": [
+              0.03374744466904942,
+              0.028897831326883845
+            ],
+            "volume_m3": 200.04529915241443
+          },
+          {
+            "cell_id": "se",
+            "depth_m": 1.9971346847284874,
+            "free_surface_elevation_m": 1.9971346847284874,
+            "momentum_east_north_m4s": [
+              7.434168601760513,
+              -4.796632482334806
+            ],
+            "velocity_east_north_mps": [
+              0.037224172503774806,
+              -0.0240175713686877
+            ],
+            "volume_m3": 199.71346847284875
+          },
+          {
+            "cell_id": "nw",
+            "depth_m": 1.9132323585324311,
+            "free_surface_elevation_m": 1.9132323585324311,
+            "momentum_east_north_m4s": [
+              5.918152554429367,
+              8.45622688093448
+            ],
+            "velocity_east_north_mps": [
+              0.030932743365102607,
+              0.04419864029176746
+            ],
+            "volume_m3": 191.32323585324312
+          },
+          {
+            "cell_id": "ne",
+            "depth_m": 2.0924754559599084,
+            "free_surface_elevation_m": 2.0924754559599084,
+            "momentum_east_north_m4s": [
+              -3.7478396902063853,
+              -3.836079201207352
+            ],
+            "velocity_east_north_mps": [
+              -0.01791103298025109,
+              -0.018332732124915548
+            ],
+            "volume_m3": 209.24754559599083
+          }
+        ],
+        "total_momentum_east_north_m4s": [
+          16.35549913043304,
+          5.604390510034814
+        ],
+        "total_volume_m3": 800.3295490744971
+      },
+      "state_before": {
+        "cells": [
+          {
+            "cell_id": "sw",
+            "depth_m": 2.0,
+            "free_surface_elevation_m": 2.0,
+            "momentum_east_north_m4s": [
+              7.0,
+              3.0
+            ],
+            "velocity_east_north_mps": [
+              0.035,
+              0.015
+            ],
+            "volume_m3": 200.0
+          },
+          {
+            "cell_id": "se",
+            "depth_m": 2.0,
+            "free_surface_elevation_m": 2.0,
+            "momentum_east_north_m4s": [
+              5.0,
+              -4.0
+            ],
+            "velocity_east_north_mps": [
+              0.025,
+              -0.02
+            ],
+            "volume_m3": 200.0
+          },
+          {
+            "cell_id": "nw",
+            "depth_m": 1.9,
+            "free_surface_elevation_m": 1.9,
+            "momentum_east_north_m4s": [
+              6.0,
+              8.0
+            ],
+            "velocity_east_north_mps": [
+              0.031578947368421054,
+              0.042105263157894736
+            ],
+            "volume_m3": 190.0
+          },
+          {
+            "cell_id": "ne",
+            "depth_m": 2.1,
+            "free_surface_elevation_m": 2.1,
+            "momentum_east_north_m4s": [
+              -2.0,
+              -3.0
+            ],
+            "velocity_east_north_mps": [
+              -0.009523809523809525,
+              -0.014285714285714285
+            ],
+            "volume_m3": 210.0
+          }
+        ],
+        "total_momentum_east_north_m4s": [
+          16.0,
+          4.0
+        ],
+        "total_volume_m3": 800.0
+      },
+      "timestep_seconds": 0.10814660378469329
+    },
+    "junction_solution": {
+      "branch_fluxes": [
+        {
+          "branch_id": "up-a",
+          "flow_azimuth_degrees": 90.0,
+          "outward_normal_sign": -1.0,
+          "outward_vector_flux_east_north": {
+            "convective_m4s2": [
+              -1.25,
+              -7.654042494670958e-17
+            ],
+            "hydrostatic_m4s2": [
+              -196.13299999999998,
+              -1.200968253285839e-14
+            ],
+            "total_m4s2": [
+              -197.38299999999998,
+              -1.2086222957805099e-14
+            ]
+          },
+          "role": "upstream",
+          "scalar_flux": {
+            "convective_m4s2": 1.25,
+            "hydrostatic_m4s2": 196.13299999999998,
+            "total_m4s2": 197.38299999999998
+          },
+          "state": {
+            "area_m2": 20.0,
+            "discharge_m3s": 5.0
+          },
+          "unit_tangent_east_north": [
+            1.0,
+            6.123233995736766e-17
+          ]
+        },
+        {
+          "branch_id": "up-b",
+          "flow_azimuth_degrees": 0.0,
+          "outward_normal_sign": -1.0,
+          "outward_vector_flux_east_north": {
+            "convective_m4s2": [
+              -0.0,
+              -2.449999999999995
+            ],
+            "hydrostatic_m4s2": [
+              -0.0,
+              -196.13299999999998
+            ],
+            "total_m4s2": [
+              -0.0,
+              -198.58299999999997
+            ]
+          },
+          "role": "upstream",
+          "scalar_flux": {
+            "convective_m4s2": 2.449999999999995,
+            "hydrostatic_m4s2": 196.13299999999998,
+            "total_m4s2": 198.58299999999997
+          },
+          "state": {
+            "area_m2": 20.0,
+            "discharge_m3s": 6.999999999999993
+          },
+          "unit_tangent_east_north": [
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "branch_id": "down",
+          "flow_azimuth_degrees": 90.0,
+          "outward_normal_sign": 1.0,
+          "outward_vector_flux_east_north": {
+            "convective_m4s2": [
+              7.199999999999991,
+              4.408728476930466e-16
+            ],
+            "hydrostatic_m4s2": [
+              196.13299999999998,
+              1.200968253285839e-14
+            ],
+            "total_m4s2": [
+              203.33299999999997,
+              1.2450555380551437e-14
+            ]
+          },
+          "role": "downstream",
+          "scalar_flux": {
+            "convective_m4s2": 7.199999999999991,
+            "hydrostatic_m4s2": 196.13299999999998,
+            "total_m4s2": 203.33299999999997
+          },
+          "state": {
+            "area_m2": 20.0,
+            "discharge_m3s": 11.999999999999993
+          },
+          "unit_tangent_east_north": [
+            1.0,
+            6.123233995736766e-17
+          ]
+        }
+      ],
+      "closure_conditions": [
+        "common_free_surface_elevation",
+        "zero_storage_mass_conservation",
+        "one_outgoing_characteristic_invariant_per_branch",
+        "explicit_two_dimensional_junction_reaction"
+      ],
+      "contract": {
+        "azimuth_reference": "degrees_clockwise_from_true_north",
+        "coordinate_components": [
+          "east",
+          "north"
+        ],
+        "downstream_branch_id": "down",
+        "downstream_flow_azimuth_degrees": 90.0,
+        "implicit_zero_reaction_assumed": false,
+        "junction_id": "junction-grid",
+        "provenance_id": "manufactured:stage18",
+        "saint_venant_momentum_coefficient_beta": 1.0,
+        "schema": "gwm.geospatial_kernel.conservative_vector_junction_contract.v1",
+        "upstream_branch_ids": [
+          "up-a",
+          "up-b"
+        ],
+        "upstream_flow_azimuth_degrees": {
+          "up-a": 90.0,
+          "up-b": 0.0
+        },
+        "zero_junction_storage": true
+      },
+      "diagnostic_only": true,
+      "hydraulic_solution": {
+        "closure_conditions": [
+          "common_free_surface_elevation",
+          "sum_upstream_discharge_equals_downstream_discharge",
+          "one_outgoing_characteristic_invariant_per_branch"
+        ],
+        "common_free_surface_elevation_m": 2.0,
+        "diagnostic_only": true,
+        "downstream_boundary": {
+          "bed_elevation_m": 0.0,
+          "boundary_characteristic_speeds_mps": [
+            -3.828690551393267,
+            5.028690551393266
+          ],
+          "boundary_outgoing_invariant_mps": -8.257381102786534,
+          "diagnostic_only": true,
+          "incoming_characteristic": "u_plus_c",
+          "incoming_characteristic_count": 1,
+          "interior_characteristic_speeds_mps": [
+            -3.8286905513932665,
+            5.028690551393266
+          ],
+          "interior_outgoing_invariant_mps": -8.257381102786534,
+          "operator_admitted": false,
+          "outgoing_characteristic": "u_minus_c",
+          "outgoing_characteristic_count": 1,
+          "outgoing_invariant_residual_mps": 0.0,
+          "prescribed_quantity": "free_surface_elevation_m",
+          "prescribed_value": 2.0,
+          "quadrature": "dry_regularized_gauss_legendre_24",
+          "schema": "gwm.geospatial_kernel.dynamic_wave_characteristic_boundary.v1",
+          "side": "left",
+          "state": {
+            "area_m2": 20.0,
+            "discharge_m3s": 11.999999999999993
+          },
+          "subcritical_only": true
+        },
+        "downstream_branch_id": "down",
+        "downstream_discharge_m3s": 11.999999999999993,
+        "junction_mass_balance_residual_m3s": 0.0,
+        "junction_storage_m3": 0.0,
+        "maximum_absolute_outgoing_invariant_residual_mps": 0.0,
+        "momentum_or_energy_junction_closure": null,
+        "operator_admitted": false,
+        "schema": "gwm.geospatial_kernel.subcritical_dynamic_wave_confluence.v1",
+        "subcritical_only": true,
+        "total_upstream_discharge_m3s": 11.999999999999993,
+        "upstream_boundaries": [
+          {
+            "bed_elevation_m": 0.0,
+            "boundary_characteristic_speeds_mps": [
+              -4.178690551393267,
+              4.678690551393267
+            ],
+            "boundary_outgoing_invariant_mps": 9.107381102786533,
+            "diagnostic_only": true,
+            "incoming_characteristic": "u_minus_c",
+            "incoming_characteristic_count": 1,
+            "interior_characteristic_speeds_mps": [
+              -4.178690551393267,
+              4.678690551393267
+            ],
+            "interior_outgoing_invariant_mps": 9.107381102786533,
+            "operator_admitted": false,
+            "outgoing_characteristic": "u_plus_c",
+            "outgoing_characteristic_count": 1,
+            "outgoing_invariant_residual_mps": 0.0,
+            "prescribed_quantity": "free_surface_elevation_m",
+            "prescribed_value": 2.0,
+            "quadrature": "dry_regularized_gauss_legendre_24",
+            "schema": "gwm.geospatial_kernel.dynamic_wave_characteristic_boundary.v1",
+            "side": "right",
+            "state": {
+              "area_m2": 20.0,
+              "discharge_m3s": 5.0
+            },
+            "subcritical_only": true
+          },
+          {
+            "bed_elevation_m": 0.0,
+            "boundary_characteristic_speeds_mps": [
+              -4.078690551393267,
+              4.778690551393266
+            ],
+            "boundary_outgoing_invariant_mps": 9.207381102786533,
+            "diagnostic_only": true,
+            "incoming_characteristic": "u_minus_c",
+            "incoming_characteristic_count": 1,
+            "interior_characteristic_speeds_mps": [
+              -4.078690551393267,
+              4.778690551393266
+            ],
+            "interior_outgoing_invariant_mps": 9.207381102786533,
+            "operator_admitted": false,
+            "outgoing_characteristic": "u_plus_c",
+            "outgoing_characteristic_count": 1,
+            "outgoing_invariant_residual_mps": 0.0,
+            "prescribed_quantity": "free_surface_elevation_m",
+            "prescribed_value": 2.0,
+            "quadrature": "dry_regularized_gauss_legendre_24",
+            "schema": "gwm.geospatial_kernel.dynamic_wave_characteristic_boundary.v1",
+            "side": "right",
+            "state": {
+              "area_m2": 20.0,
+              "discharge_m3s": 6.999999999999993
+            },
+            "subcritical_only": true
+          }
+        ],
+        "upstream_branch_ids": [
+          "up-a",
+          "up-b"
+        ]
+      },
+      "mass_ledger": {
+        "net_outward_mass_flux_m3s": 0.0,
+        "residual_m3s": 0.0,
+        "storage_rate_m3s": 0.0
+      },
+      "momentum_ledger": {
+        "balance_equation": "boundary_generalized_flux-junction_on_fluid_reaction=0",
+        "boundary_convective_flux_east_north_m4s2": [
+          5.949999999999991,
+          -2.4499999999999944
+        ],
+        "boundary_hydrostatic_flux_east_north_m4s2": [
+          0.0,
+          -196.13299999999998
+        ],
+        "boundary_total_flux_east_north_m4s2": [
+          5.949999999999991,
+          -198.58299999999997
+        ],
+        "junction_on_fluid_reaction_east_north_m4s2": [
+          5.949999999999991,
+          -198.58299999999997
+        ],
+        "reaction_magnitude_m4s2": 198.67211779462156,
+        "residual_east_north_m4s2": [
+          0.0,
+          0.0
+        ],
+        "residual_magnitude_m4s2": 0.0
+      },
+      "multidimensional_junction_state_solved": false,
+      "operator_admitted": false,
+      "reaction_is_inferred_not_observed": true,
+      "schema": "gwm.geospatial_kernel.conservative_vector_junction.v1",
+      "vector_momentum_ledger_closed_with_explicit_reaction": true,
+      "zero_reaction_assumed": false
+    },
+    "mass_ledger": {
+      "error_m3": 0.0,
+      "external_boundary_volume_change_m3": 0.0,
+      "total_volume_after_m3": 24800.0,
+      "total_volume_before_m3": 24800.0
+    },
+    "maximum_courant_number": 0.4,
+    "maximum_opening_mass_cancellation_error_m3": 0.0,
+    "maximum_opening_momentum_closure_error_m4s": 2.7755575615628914e-17,
+    "maximum_stable_timestep_seconds": 0.21629320756938658,
+    "minimum_patch_cell_volume_m3": 191.32323585324312,
+    "minimum_reach_area_m2": 19.9933695302544,
+    "one_dimensional_longitudinal_projection": true,
+    "opening_exchanges": [
+      {
+        "branch_id": "up-a",
+        "branch_longitudinal_impulse_east_north_m4s": [
+          -21.358306365251213,
+          -1.3078190762706719e-15
+        ],
+        "branch_role": "upstream",
+        "branch_volume_impulse_m3": -0.5551408218858848,
+        "longitudinal_momentum_flux_m4s2": -197.49400922263817,
+        "mass_cancellation_error_m3": 0.0,
+        "momentum_closure_error_east_north_m4s": [
+          0.0,
+          -2.7755575615628914e-17
+        ],
+        "momentum_closure_error_magnitude_m4s": 2.7755575615628914e-17,
+        "outward_mass_flux_m3s": -5.133224738070393,
+        "outward_momentum_flux_east_north_m4s2": [
+          -197.49400922263817,
+          1.7771976068365103
+        ],
+        "patch_momentum_impulse_east_north_m4s": [
+          21.358306365251213,
+          -0.1921978854336532
+        ],
+        "patch_volume_impulse_m3": 0.5551408218858848,
+        "transition_wall_fluid_impulse_east_north_m4s": [
+          -0.0,
+          -0.1921978854336545
+        ],
+        "transition_wall_structure_reaction_east_north_m4s": [
+          0.0,
+          0.1921978854336545
+        ],
+        "transverse_closure": "instantaneous_transition_wall_reaction",
+        "transverse_momentum_flux_east_north_m4s2": [
+          0.0,
+          1.7771976068365223
+        ],
+        "transverse_momentum_flux_magnitude_m4s2": 1.7771976068365223
+      },
+      {
+        "branch_id": "up-b",
+        "branch_longitudinal_impulse_east_north_m4s": [
+          -0.0,
+          -23.011625133594364
+        ],
+        "branch_role": "upstream",
+        "branch_volume_impulse_m3": -0.40912052346754807,
+        "longitudinal_momentum_flux_m4s2": -212.78176408949193,
+        "mass_cancellation_error_m3": 0.0,
+        "momentum_closure_error_east_north_m4s": [
+          0.0,
+          0.0
+        ],
+        "momentum_closure_error_magnitude_m4s": 0.0,
+        "outward_mass_flux_m3s": -3.7830177661617297,
+        "outward_momentum_flux_east_north_m4s2": [
+          1.6010888820798128,
+          -212.78176408949193
+        ],
+        "patch_momentum_impulse_east_north_m4s": [
+          -0.17315232495436303,
+          23.011625133594364
+        ],
+        "patch_volume_impulse_m3": 0.40912052346754807,
+        "transition_wall_fluid_impulse_east_north_m4s": [
+          -0.17315232495436303,
+          -0.0
+        ],
+        "transition_wall_structure_reaction_east_north_m4s": [
+          0.17315232495436303,
+          0.0
+        ],
+        "transverse_closure": "instantaneous_transition_wall_reaction",
+        "transverse_momentum_flux_east_north_m4s2": [
+          1.6010888820798128,
+          0.0
+        ],
+        "transverse_momentum_flux_magnitude_m4s2": 1.6010888820798128
+      },
+      {
+        "branch_id": "down",
+        "branch_longitudinal_impulse_east_north_m4s": [
+          18.655515331253227,
+          1.142320856843182e-15
+        ],
+        "branch_role": "downstream",
+        "branch_volume_impulse_m3": 0.6347122708563091,
+        "longitudinal_momentum_flux_m4s2": 172.502091405423,
+        "mass_cancellation_error_m3": 0.0,
+        "momentum_closure_error_east_north_m4s": [
+          0.0,
+          0.0
+        ],
+        "momentum_closure_error_magnitude_m4s": 0.0,
+        "outward_mass_flux_m3s": 5.868998642989695,
+        "outward_momentum_flux_east_north_m4s2": [
+          172.502091405423,
+          -0.9444280967085519
+        ],
+        "patch_momentum_impulse_east_north_m4s": [
+          -18.655515331253227,
+          0.10213669117787176
+        ],
+        "patch_volume_impulse_m3": -0.6347122708563091,
+        "transition_wall_fluid_impulse_east_north_m4s": [
+          -0.0,
+          0.1021366911778729
+        ],
+        "transition_wall_structure_reaction_east_north_m4s": [
+          0.0,
+          -0.1021366911778729
+        ],
+        "transverse_closure": "instantaneous_transition_wall_reaction",
+        "transverse_momentum_flux_east_north_m4s2": [
+          0.0,
+          -0.9444280967085624
+        ],
+        "transverse_momentum_flux_magnitude_m4s2": 0.9444280967085624
+      }
+    ],
+    "operator_admitted": false,
+    "persistent_transverse_momentum_reservoir": false,
+    "public_validation_completed": false,
+    "schema": "gwm.geospatial_kernel.coupled_junction_patch_reach_step.v1",
+    "synchronous_patch_reach_exchange": true,
+    "timestep_seconds": 0.10814660378469329,
+    "transition_reaction_feedback_to_flux": false,
+    "transverse_closure": "instantaneous_transition_wall_reaction",
+    "upstream_reach_steps": [
+      {
+        "cell_length_m": 100.0,
+        "diagnostic_only": true,
+        "discharge_integral_after_m4s": 1999.987994729583,
+        "discharge_integral_before_m4s": 2000.0,
+        "discharge_integral_change_m4s": -0.012005270416921121,
+        "finite_state": true,
+        "interface_geometry_rule": "arithmetic_parameter_midpoint",
+        "left_boundary_area_flux_m3s": 5.0,
+        "maximum_courant_number": 0.005059844932927158,
+        "maximum_free_surface_change_m": 1.4407802962468352e-05,
+        "minimum_area_m2": 19.999855921970376,
+        "nonnegative_area": true,
+        "operator_admitted": false,
+        "prescribed_boundary_volume_change_m3": -0.014407802962418292,
+        "right_boundary_area_flux_m3s": 5.133224738070393,
+        "schema": "gwm.geospatial_kernel.variable_geometry_hydrostatic_open_step.v1",
+        "timestep_seconds": 0.10814660378469329,
+        "volume_after_m3": 7999.9855921970375,
+        "volume_balance_error_m3": -1.0512771209114646e-13,
+        "volume_before_m3": 8000.0
+      },
+      {
+        "cell_length_m": 100.0,
+        "diagnostic_only": true,
+        "discharge_integral_after_m4s": 2798.4644518857813,
+        "discharge_integral_before_m4s": 2800.0,
+        "discharge_integral_change_m4s": -1.5355481142187273,
+        "finite_state": true,
+        "interface_geometry_rule": "arithmetic_parameter_midpoint",
+        "left_boundary_area_flux_m3s": 7.0,
+        "maximum_courant_number": 0.0051679915367118506,
+        "maximum_free_surface_change_m": 0.0003479057030255639,
+        "minimum_area_m2": 20.0,
+        "nonnegative_area": true,
+        "operator_admitted": false,
+        "prescribed_boundary_volume_change_m3": 0.34790570302530494,
+        "right_boundary_area_flux_m3s": 3.7830177661617297,
+        "schema": "gwm.geospatial_kernel.variable_geometry_hydrostatic_open_step.v1",
+        "timestep_seconds": 0.10814660378469329,
+        "volume_after_m3": 8000.347905703026,
+        "volume_balance_error_m3": 9.943712520055215e-13,
+        "volume_before_m3": 8000.0
+      }
+    ],
+    "upstream_states": [
+      {
+        "area_m2": [
+          20.0,
+          20.0,
+          20.0,
+          19.999855921970376
+        ],
+        "discharge_m3s": [
+          5.0,
+          5.0,
+          5.0,
+          4.999879947295829
+        ]
+      },
+      {
+        "area_m2": [
+          20.0,
+          20.0,
+          20.0,
+          20.003479057030255
+        ],
+        "discharge_m3s": [
+          7.0,
+          7.0,
+          7.0,
+          6.984644518857814
+        ]
+      }
+    ]
+  },
+  "claim_boundary": {
+    "candidate_operator_admitted": false,
+    "complete_opening_vector_flux_audited": true,
+    "instantaneous_transition_wall_reaction_implemented": true,
+    "persistent_transverse_momentum_reservoir": false,
+    "public_confluence_validation_completed": false,
+    "source_split_reach_coupling_integrated": false,
+    "synchronous_multi_cell_patch_reach_coupling_implemented": true,
+    "transition_reaction_feedback_to_flux": false,
+    "uniform_flat_rectangular_reaches_only": true,
+    "variable_bed_or_dry_fronts_supported": false,
+    "whole_system_mass_ledger_implemented": true,
+    "whole_system_two_component_momentum_ledger_implemented": true
+  },
+  "frozen_stage17_hashes": {
+    "benchmarks/geotransport_v0_1/stage17_shallow_water_junction_patch_gates.json": {
+      "actual_sha256": "41a5fa947bcd1cbef458640fe4503a5c6292777f9102e069a4ecd7847c3e3536",
+      "expected_sha256": "41a5fa947bcd1cbef458640fe4503a5c6292777f9102e069a4ecd7847c3e3536"
+    },
+    "data_agent/test_geospatial_kernel_shallow_water_junction_patch.py": {
+      "actual_sha256": "47e554eb596587550ad041826ae9d9e6a8416295d2e4d82114e2533bf877c80d",
+      "expected_sha256": "47e554eb596587550ad041826ae9d9e6a8416295d2e4d82114e2533bf877c80d"
+    },
+    "data_agent/uwm/geospatial_kernel_v2/shallow_water_junction_patch.py": {
+      "actual_sha256": "55c4ae72ed54e851f7ddac98007d886dbfb25c27ec2143aaf3ad65963261f467",
+      "expected_sha256": "55c4ae72ed54e851f7ddac98007d886dbfb25c27ec2143aaf3ad65963261f467"
+    },
+    "docs/architecture-decisions/adr-058-conforming-multi-cell-junction-patch.md": {
+      "actual_sha256": "a665339766412cac750e1a0c473d92d4ce7e60128d8fb9804d950ba333685e60",
+      "expected_sha256": "a665339766412cac750e1a0c473d92d4ce7e60128d8fb9804d950ba333685e60"
+    },
+    "scripts/compile_geotransport_stage17_junction_patch_gates.py": {
+      "actual_sha256": "b211f20133e20ae91409becc319137c9713a0724c6be4087f4c8df1d4f009ea0",
+      "expected_sha256": "b211f20133e20ae91409becc319137c9713a0724c6be4087f4c8df1d4f009ea0"
+    }
+  },
+  "gates": {
+    "candidate_remains_unadmitted": true,
+    "common_patch_reach_cfl_timestep_is_positive": true,
+    "east_geographic_momentum_ledger_closes": true,
+    "fluid_and_structure_transition_impulses_are_opposite": true,
+    "internal_patch_exchange_remains_conservative": true,
+    "lake_at_rest_global_ledgers_close": true,
+    "lake_at_rest_preserves_patch_and_reaches": true,
+    "multistep_global_ledgers_close": true,
+    "multistep_has_no_persistent_transverse_reservoir": true,
+    "multistep_primary_states_remain_positive": true,
+    "nonzero_transverse_opening_flux_is_exercised": true,
+    "north_geographic_momentum_ledger_closes": true,
+    "opening_mass_impulses_cancel": true,
+    "opening_vector_impulses_close_with_transition_reaction": true,
+    "patch_and_reach_states_update_synchronously": true,
+    "rotation_covaries_every_patch_cell_momentum": true,
+    "rotation_covaries_transition_wall_impulses": true,
+    "rotation_preserves_scalar_reach_states": true,
+    "stage17_artifacts_hash_frozen": true,
+    "unsupported_contracts_fail_closed": true,
+    "whole_system_mass_ledger_closes": true
+  },
+  "generated_at": "2026-07-28T16:29:15.888139+00:00",
+  "lake_at_rest_control": {
+    "mass_ledger_error_m3": 0.0,
+    "maximum_patch_state_error": 0.0,
+    "maximum_reach_state_error": 0.0,
+    "maximum_transverse_flux_m4s2": 1.200968253285839e-14,
+    "momentum_ledger_error_m4s": 0.0,
+    "timestep_seconds": 0.22580037787589377
+  },
+  "law": {
+    "external_forces": [
+      "patch_solid_wall_hydrostatic_pressure",
+      "2d_to_1d_transition_wall_reaction"
+    ],
+    "fitted_parameters": [],
+    "one_dimensional_projection": "dot(vector_momentum_flux,tangent)",
+    "opening_exchange": "one_shared_2d_HLL_flux_per_opening",
+    "patch_state": [
+      "per_cell_water_volume_m3",
+      "per_cell_east_momentum_m4s",
+      "per_cell_north_momentum_m4s"
+    ],
+    "persistent_transverse_storage": false,
+    "reach_state": [
+      "cross_section_area_m2",
+      "longitudinal_discharge_m3s"
+    ],
+    "transverse_closure": "instantaneous_transition_wall_reaction"
+  },
+  "multistep_control": {
+    "elapsed_seconds": 2.703263479461792,
+    "final_patch_state": {
+      "cells": [
+        {
+          "cell_id": "sw",
+          "depth_m": 2.0130718515380384,
+          "free_surface_elevation_m": 2.0130718515380384,
+          "momentum_east_north_m4s": [
+            16.097879008554383,
+            20.04797252871297
+          ],
+          "velocity_east_north_mps": [
+            0.07996673837675089,
+            0.0995889566157105
+          ],
+          "volume_m3": 201.30718515380383
+        },
+        {
+          "cell_id": "se",
+          "depth_m": 1.9578825844608747,
+          "free_surface_elevation_m": 1.9578825844608747,
+          "momentum_east_north_m4s": [
+            35.95267751312602,
+            -5.813124136389711
+          ],
+          "velocity_east_north_mps": [
+            0.18363040663659613,
+            -0.0296908720805156
+          ],
+          "volume_m3": 195.78825844608747
+        },
+        {
+          "cell_id": "nw",
+          "depth_m": 2.0455728448365913,
+          "free_surface_elevation_m": 2.0455728448365913,
+          "momentum_east_north_m4s": [
+            14.782205392040911,
+            3.258577149840485
+          ],
+          "velocity_east_north_mps": [
+            0.07226438026567454,
+            0.0159299003116205
+          ],
+          "volume_m3": 204.55728448365915
+        },
+        {
+          "cell_id": "ne",
+          "depth_m": 2.0160970990593783,
+          "free_surface_elevation_m": 2.0160970990593783,
+          "momentum_east_north_m4s": [
+            7.819649482982716,
+            -10.82561924250466
+          ],
+          "velocity_east_north_mps": [
+            0.03878607576307221,
+            -0.053695921925364674
+          ],
+          "volume_m3": 201.60970990593785
+        }
+      ],
+      "total_momentum_east_north_m4s": [
+        74.65241139670403,
+        6.667806299659086
+      ],
+      "total_volume_m3": 803.2624379894883
+    },
+    "maximum_mass_ledger_error_m3": 5.411002101741232e-12,
+    "maximum_momentum_ledger_error_m4s": 1.6794655489007547e-12,
+    "maximum_transverse_flux_m4s2": 3.4566327062873627,
+    "minimum_patch_cell_volume_m3": 190.0,
+    "minimum_reach_area_m2": 19.852712168011678,
+    "persistent_transverse_state_observed": false,
+    "step_count": 25
+  },
+  "rotation_control": {
+    "maximum_patch_momentum_rotation_error_m4s": 5.617333549722722e-15,
+    "maximum_scalar_reach_error": 0.0,
+    "maximum_transition_impulse_rotation_error_m4s": 6.410156047202795e-15,
+    "rotation_degrees": 37.0,
+    "stable_timestep_error_seconds": 0.0
+  },
+  "schema": "gwm.geotransport.stage18_coupled_junction_patch_reach_gates.v1",
+  "status": "synchronous_multi_cell_patch_reach_invariants_pass_source_splitting_and_public_validation_pending",
+  "typed_refusals": {
+    "branch_binding": true,
+    "cfl_exceeded": true,
+    "external_boundary": true,
+    "reach_geometry": true
+  }
+}

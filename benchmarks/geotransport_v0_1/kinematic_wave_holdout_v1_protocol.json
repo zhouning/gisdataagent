@@ -1,0 +1,329 @@
+{
+  "baseline_lock": {
+    "baseline_parameters_fitted": false,
+    "changeable_after_outcome_access": false,
+    "diagnostic": "same_hour_boundary_action_release",
+    "persistence_definition": "prediction for support end t equals the immediately previous complete hourly observation",
+    "primary": "one_hour_observed_streamflow_persistence"
+  },
+  "claim_boundary_before_execution": {
+    "branching_kinematic_operator_implemented": true,
+    "dynamic_inputs_acquired": false,
+    "geospatial_kernel_validated": false,
+    "operator_form_admitted": false,
+    "outcome_free_predictions_sealed": false,
+    "outcomes_acquired": false,
+    "protocol_frozen": true,
+    "scored": false,
+    "two_system_topology_and_parameters_compiled": true
+  },
+  "data_isolation_at_freeze": {
+    "action_values_loaded_for_this_window": false,
+    "forcing_chunk_570_loaded_for_this_protocol": false,
+    "initial_state_chunk_569_loaded_for_this_protocol": false,
+    "outcome_artifacts_present": false,
+    "outcome_values_loaded_for_this_window": false
+  },
+  "fixed_evidence": {
+    "center_hill_terminal_support": {
+      "path": "data/geotransport_v0_1/center_hill_terminal_forcing_support_nhdplus_v21/forcing_support.json",
+      "sha256": "6cb12bd529055ba9506c5e39d991b1a1b4f6dee5956690144ddf4f1b13e036e8",
+      "size_bytes": 1522
+    },
+    "center_hill_topology": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_v2_d5_full_subnetwork_report.json",
+      "sha256": "9d066189ed23f0bf91fecdefa9327bcfc4a92704d4fb23e6e07c3bbe78559bbd",
+      "size_bytes": 19899
+    },
+    "j_percy_priest_topology": {
+      "path": "benchmarks/geotransport_v0_1/j_percy_priest_v1_full_subnetwork_report.json",
+      "sha256": "2159b88b57ae2a4d476ab025190b64a1cd2b62c1c4d6c9e45bca9e844d2fe3d6",
+      "size_bytes": 13504
+    },
+    "nwm_time_attributes": {
+      "path": "data/geotransport_v0_1/metadata/nwm-time-zattrs.json",
+      "sha256": "470f9e6a2e037520fefcf924d672a57d30b553c6f3d72479c70269f78def0455",
+      "size_bytes": 205
+    },
+    "nwm_time_schema": {
+      "path": "data/geotransport_v0_1/metadata/nwm-time-zarray.json",
+      "sha256": "ae0ddee2855d4a92fb759c63935dadb2fedd93791aa39f52c13c5756082c4ea4",
+      "size_bytes": 247
+    }
+  },
+  "forbidden_after_freeze": [
+    "change_window_systems_topology_geometry_or_spatial_support",
+    "change_cell_length_CFL_initialization_flux_or_forcing_semantics",
+    "fit_any_parameter_state_scaling_lag_closure_or_correction",
+    "change_metrics_baselines_masks_or_gates",
+    "inspect_either_outcome_before_both_predictions_are_sealed",
+    "rerun_predictions_after_any_outcome_access"
+  ],
+  "frozen_at": "2026-07-28T00:10:12.105076+00:00",
+  "frozen_code": {
+    "data_agent/uwm/geospatial_kernel_v2/__init__.py": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/__init__.py",
+      "sha256": "7db7e6459143d2a54e742a732fcd3f85c422a9775559296dc39a985ab632315d",
+      "size_bytes": 9880
+    },
+    "data_agent/uwm/geospatial_kernel_v2/branching_kinematic_wave.py": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/branching_kinematic_wave.py",
+      "sha256": "b853443a9dc33a7702333c8f238548da1269c20013b41702e5f08560fc3e2eea",
+      "size_bytes": 24913
+    },
+    "data_agent/uwm/geospatial_kernel_v2/branching_network.py": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/branching_network.py",
+      "sha256": "b86630170f1a8f0de4ae188a3f7bca200b5c95ee7818f3968bd66e1d24d1e084",
+      "size_bytes": 39343
+    },
+    "data_agent/uwm/geospatial_kernel_v2/contracts.py": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/contracts.py",
+      "sha256": "cf047f50cef2eeee8497979d0f9e3f037f7e35149bbd15776d038a1b99fcf377",
+      "size_bytes": 26961
+    },
+    "data_agent/uwm/geospatial_kernel_v2/kinematic_wave.py": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/kinematic_wave.py",
+      "sha256": "14525d73b08f239b820d8a75daf2bbe621628ae6143daaf85959209f7f8f79d8",
+      "size_bytes": 21928
+    },
+    "data_agent/uwm/geospatial_kernel_v2/nwm_q_lateral.py": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/nwm_q_lateral.py",
+      "sha256": "5c07a931459f0e7cb9cd9d8a35150c43f1b98ed20be2ecf6a3c5dbee099f4dfa",
+      "size_bytes": 23678
+    },
+    "data_agent/uwm/geospatial_kernel_v2/public_data.py": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/public_data.py",
+      "sha256": "496d298a93f19572d04b44a2584021755946acc667cb0fbab9ac8e1024a7cdf4",
+      "size_bytes": 43941
+    },
+    "scripts/acquire_geotransport_center_hill_v2_d3_inputs.py": {
+      "path": "scripts/acquire_geotransport_center_hill_v2_d3_inputs.py",
+      "sha256": "7aecc4aa250fb3a602b88a8aae5bb834f3dd1c1b9d5d9cd122863f4b8d4aea04",
+      "size_bytes": 18560
+    },
+    "scripts/acquire_geotransport_center_hill_v2_d5_subnetwork_inputs.py": {
+      "path": "scripts/acquire_geotransport_center_hill_v2_d5_subnetwork_inputs.py",
+      "sha256": "5fcf80b9e22379033a4e500aa3c2afad8cad1a5712207e24276ea40384778b76",
+      "size_bytes": 23541
+    },
+    "scripts/acquire_geotransport_kinematic_wave_holdout_v1_inputs.py": {
+      "path": "scripts/acquire_geotransport_kinematic_wave_holdout_v1_inputs.py",
+      "sha256": "90b9f193b8213b328a06a0d0b66053a684a256615f013b8e7c5a7cf79d001427",
+      "size_bytes": 19401
+    },
+    "scripts/acquire_geotransport_kinematic_wave_holdout_v1_outcomes.py": {
+      "path": "scripts/acquire_geotransport_kinematic_wave_holdout_v1_outcomes.py",
+      "sha256": "152bd4e867895031bcc42da083776ca142d8f2c03acc63877b014fba22c50097",
+      "size_bytes": 13948
+    },
+    "scripts/acquire_geotransport_v2_blind_validation_outcomes.py": {
+      "path": "scripts/acquire_geotransport_v2_blind_validation_outcomes.py",
+      "sha256": "8113d5525038805ef2ab23841a00bd197bba1fd0124c29f9c4b9f8243c99c447",
+      "size_bytes": 18670
+    },
+    "scripts/build_geotransport_center_hill_smoke_panel.py": {
+      "path": "scripts/build_geotransport_center_hill_smoke_panel.py",
+      "sha256": "d734d62dcc7daad876dc4058f1e36d10b292b2d7deae0ecebddfe273765b85ab",
+      "size_bytes": 26895
+    },
+    "scripts/run_geotransport_center_hill_v2_d5_full_subnetwork_outcome_free.py": {
+      "path": "scripts/run_geotransport_center_hill_v2_d5_full_subnetwork_outcome_free.py",
+      "sha256": "771daaf6d55863ab5f8e9a46249a41e5b6e65a60aa85b22897b941ab8a62c2b8",
+      "size_bytes": 24240
+    },
+    "scripts/run_geotransport_kinematic_wave_holdout_v1_outcome_free.py": {
+      "path": "scripts/run_geotransport_kinematic_wave_holdout_v1_outcome_free.py",
+      "sha256": "50608807fc0a3d097db8ddaa0d2d4398c2483d5ffaccaea9286da46dcf0a84dd",
+      "size_bytes": 25853
+    },
+    "scripts/score_geotransport_kinematic_wave_holdout_v1.py": {
+      "path": "scripts/score_geotransport_kinematic_wave_holdout_v1.py",
+      "sha256": "c78587ab7d4d51d3a709871d925abdd37b25c414d3b17c0024f86a87ca73450a",
+      "size_bytes": 18757
+    }
+  },
+  "negative_control_lock": {
+    "branch_silent": "zero all off-mainstem initial discharge and q_lateral; retain mainstem initial discharge, mainstem q_lateral, and action",
+    "outcome_used": false,
+    "zero_identity": "zero cell volume plus zero action plus zero forcing"
+  },
+  "operator_lock": {
+    "action_boundary": "one_predeclared_entry_reach_per_system",
+    "cfl_number": 0.8,
+    "closure_or_learned_correction": false,
+    "diagnostic_only_during_holdout": true,
+    "equation": "dA/dt + dQ(A)/dx = q_lateral",
+    "flux": "simultaneous_downstream_upwind_Manning_discharge",
+    "forcing": "NWM_v3_retrospective_q_lateral_per_reach",
+    "forcing_ground_truth": false,
+    "forcing_modeled": true,
+    "initial_state": "NWM_v3_retrospective_streamflow_transformed_by_operator_Manning_Q_to_A_without_velocity_scaling",
+    "initial_state_ground_truth": false,
+    "initial_state_modeled": true,
+    "initial_state_possible_nudging": true,
+    "network_mode": "complete_incremental_tributary_DAG",
+    "operator": "BranchingFiniteVolumeKinematicWaveOperator",
+    "operator_form_admitted_before_holdout": false,
+    "parameter_fitting": false,
+    "route_parameters": "official_NWM_v3_RouteLink_without_substitution",
+    "schema": "gwm.geospatial_kernel.branching_finite_volume_kinematic_wave.v1",
+    "state": "per_cell_physical_water_volume_m3",
+    "target_cell_length_m": 1000.0,
+    "timestep_seconds": 3600.0
+  },
+  "outcome_isolation_lock": {
+    "both_predictions_must_be_sealed_before_any_outcome_request": true,
+    "input_acquisition_may_access_outcomes": false,
+    "outcome_request_margin": "one hour before start through one hour after end",
+    "outcome_source": "USGS Water Services IV parameter 00060",
+    "rollout_executor_accepts_outcome_paths": false
+  },
+  "schema": "gwm.geotransport.kinematic_wave_holdout_protocol.v1",
+  "scientific_role": "first outcome-inaccessible two-system public holdout of the project-owned branching finite-volume kinematic-wave operator",
+  "scoring_lock": {
+    "allowed_native_cadence_seconds": [
+      300,
+      600,
+      900,
+      1200,
+      1800,
+      3600
+    ],
+    "common_complete_case_mask_per_system": true,
+    "minimum_scored_hours_per_system": 600,
+    "missing_outcome_policy": "omit_without_imputation",
+    "multi_system_gate": "both_systems_pass_without_compensation",
+    "native_cadence_rule": "mean of every complete approved native sample on (t-1h,t]",
+    "per_system_accuracy_gate": "kinematic_wave_RMSE_strictly_below_observed_persistence_RMSE",
+    "per_system_execution_gates": [
+      "every_step_mass_residual_within_numeric_tolerance",
+      "every_step_CFL_at_or_below_0.8_plus_one_binary64_ULP",
+      "all_cell_volumes_nonnegative_finite",
+      "zero_state_zero_input_identity"
+    ],
+    "primary_metric": "rmse_m3s",
+    "score_once": true,
+    "secondary_metrics": [
+      "mae_m3s",
+      "bias_m3s",
+      "nse"
+    ]
+  },
+  "status": "frozen_before_dynamic_input_and_outcome_access",
+  "systems": {
+    "center_hill": {
+      "action": {
+        "office": "LRN",
+        "source": "USACE CWMS Data API",
+        "support_kind": "interval_mean",
+        "timeseries": "CETT1-CENTER_HILL.Flow.Ave.1Hour.1Hour.man-rev",
+        "timestamp_position": "end",
+        "unit": "cms",
+        "url": "https://cwms-data.usace.army.mil/cwms-data/timeseries?name=CETT1-CENTER_HILL.Flow.Ave.1Hour.1Hour.man-rev&office=LRN&begin=2022-10-13T01%3A00%3A00Z&end=2022-11-10T01%3A00%3A00Z&unit=cms&page-size=50000",
+        "variable_role": "boundary_action"
+      },
+      "action_entry_feature_id": 18434265,
+      "branch_feature_count": 409,
+      "feature_chunk_indices": [
+        63,
+        87
+      ],
+      "feature_count": 435,
+      "forcing_objects": [
+        "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/q_lateral/570.63",
+        "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/q_lateral/570.87"
+      ],
+      "forcing_support": {
+        "complete_reach_fraction": 1.0,
+        "outcome_calibrated": false,
+        "partial_terminal_reach_fraction": 0.8429738154993436,
+        "partial_terminal_reach_method": "preexisting_D2_NHDPlus_v2.1_flow_accumulation_spatial_support"
+      },
+      "initial_state_objects": [
+        "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/streamflow/569.63",
+        "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/streamflow/569.87"
+      ],
+      "mainstem_feature_count": 26,
+      "outcome": {
+        "access_phase": "after_both_predictions_are_sealed",
+        "parameter_code": "00060",
+        "request_end": "2022-11-10T02:00:00Z",
+        "request_start": "2022-10-13T00:00:00Z",
+        "site_id": "03424860",
+        "source": "USGS Water Services IV",
+        "variable_role": "independent_observation"
+      },
+      "outlet_feature_id": 18421703,
+      "system_id": "center_hill",
+      "time_objects": [
+        "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/time/569",
+        "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/time/570"
+      ],
+      "topology_report": {
+        "path": "benchmarks/geotransport_v0_1/center_hill_v2_d5_full_subnetwork_report.json",
+        "sha256": "9d066189ed23f0bf91fecdefa9327bcfc4a92704d4fb23e6e07c3bbe78559bbd",
+        "size_bytes": 19899
+      }
+    },
+    "j_percy_priest": {
+      "action": {
+        "office": "LRN",
+        "source": "USACE CWMS Data API",
+        "support_kind": "interval_mean",
+        "timeseries": "JPPT1-J_PERCY_PRIEST.Flow.Ave.1Hour.1Hour.man-rev",
+        "timestamp_position": "end",
+        "unit": "cms",
+        "url": "https://cwms-data.usace.army.mil/cwms-data/timeseries?name=JPPT1-J_PERCY_PRIEST.Flow.Ave.1Hour.1Hour.man-rev&office=LRN&begin=2022-10-13T01%3A00%3A00Z&end=2022-11-10T01%3A00%3A00Z&unit=cms&page-size=50000",
+        "variable_role": "boundary_action"
+      },
+      "action_entry_feature_id": 18401881,
+      "branch_feature_count": 38,
+      "feature_chunk_indices": [
+        63
+      ],
+      "feature_count": 43,
+      "forcing_objects": [
+        "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/q_lateral/570.63"
+      ],
+      "forcing_support": {
+        "complete_reach_fraction": 1.0,
+        "outcome_calibrated": false,
+        "partial_terminal_reach_fraction": 0.08827624889999866,
+        "partial_terminal_reach_method": "outcome_free_uniform_lateral_inflow_per_linear_reach_length"
+      },
+      "initial_state_objects": [
+        "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/streamflow/569.63"
+      ],
+      "mainstem_feature_count": 5,
+      "outcome": {
+        "access_phase": "after_both_predictions_are_sealed",
+        "parameter_code": "00060",
+        "request_end": "2022-11-10T02:00:00Z",
+        "request_start": "2022-10-13T00:00:00Z",
+        "site_id": "03430200",
+        "source": "USGS Water Services IV",
+        "variable_role": "independent_observation"
+      },
+      "outlet_feature_id": 18401497,
+      "system_id": "j_percy_priest",
+      "time_objects": [
+        "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/time/569",
+        "https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr/time/570"
+      ],
+      "topology_report": {
+        "path": "benchmarks/geotransport_v0_1/j_percy_priest_v1_full_subnetwork_report.json",
+        "sha256": "2159b88b57ae2a4d476ab025190b64a1cd2b62c1c4d6c9e45bca9e844d2fe3d6",
+        "size_bytes": 13504
+      }
+    }
+  },
+  "window": {
+    "end_exclusive": "2022-11-10T01:00:00Z",
+    "forcing_time_chunk_index": 570,
+    "hour_count": 672,
+    "initial_state_time_chunk_index": 569,
+    "initial_state_valid_at": "2022-10-13T00:00:00Z",
+    "start_inclusive": "2022-10-13T01:00:00Z",
+    "time_step": "PT1H"
+  }
+}

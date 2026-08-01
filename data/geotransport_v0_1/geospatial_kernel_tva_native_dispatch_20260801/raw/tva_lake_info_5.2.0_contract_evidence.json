@@ -1,0 +1,36 @@
+{
+  "schema": "gwm.geospatial_kernel.tva_lake_info_contract_evidence.v1",
+  "application": {
+    "package": "com.tva.lakeinfo",
+    "version": "5.2.0",
+    "xapk_sha256": "2c5daf63a17a980929d74ec3823fd0266701b6ad0e4f00d1fb793154d9000581"
+  },
+  "source_map": {
+    "asset_path": "assets/public/main.js.map",
+    "sha256": "bb2cbcc824e892a3ef34817131578ff15e1a8c5f7859d54a5660dbfff6ac0948",
+    "full_artifact_committed": false,
+    "exclusion_reason": "contains_unrelated_embedded_third_party_credentials"
+  },
+  "sanitized_source_excerpts": {
+    "./src/app/app-config.ts": [
+      "public static readonly environmentName: string = 'prd';",
+      "public static readonly baseUrl: string = 'https://apigw-public.tva.gov/river';"
+    ],
+    "./src/app/providers/generation-release.service.ts": [
+      "const url = AppConfig.baseUrl + '/generation-releases' + '/' + lakeId;",
+      "record.date = fews[i].Day;",
+      "record.timePeriod = fews[i].Time;",
+      "record.generators = fews[i].Generators;"
+    ],
+    "./src/app/models/generation-release.ts": [
+      "date: string;",
+      "timePeriod: string;",
+      "generators: string;"
+    ]
+  },
+  "sanitization": {
+    "only_required_endpoint_and_field_mapping_excerpts_retained": true,
+    "embedded_credentials_retained": false,
+    "parent_source_map_hash_retained": true
+  }
+}

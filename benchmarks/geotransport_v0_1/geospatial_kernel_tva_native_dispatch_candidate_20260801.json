@@ -1,0 +1,161 @@
+{
+  "api_acquisition": {
+    "access_succeeded": false,
+    "cloudflare_error_code": "1009",
+    "content_type": "text/plain; charset=UTF-8",
+    "geographic_access_policy_denial_observed": true,
+    "http_status": 403,
+    "method": "GET",
+    "response_date_utc": "2026-08-01T08:37:05Z",
+    "response_precedes_intended_issue": true,
+    "response_size_bytes": 17,
+    "server": "cloudflare",
+    "tls_hostname_verification_retained": true,
+    "url": "https://apigw-public.tva.gov/river/generation-releases/CEHT1"
+  },
+  "claim_boundary": {
+    "future_outcome_loaded": false,
+    "geospatial_kernel_validated": false,
+    "live_native_dispatch_payload_verified": false,
+    "native_dispatch_action_admitted": false,
+    "official_app_endpoint_contract_verified": true,
+    "physical_release_boundary_admitted": false,
+    "wwm_issue_compiled": false
+  },
+  "implementation_artifacts": {
+    "candidate_auditor": {
+      "path": "scripts/audit_geospatial_kernel_tva_native_dispatch_candidate.py",
+      "sha256": "3c51435a975a5e121472a9f6c5c349df9e51130c88df1561d8c8498d35c420a3",
+      "size_bytes": 24901
+    }
+  },
+  "intended_issue_time_utc": "2026-08-01T09:00:00Z",
+  "native_dispatch_action": {
+    "earliest_interval_start_utc": null,
+    "explicit_zero_generator_interval_count": 0,
+    "explicitly_covered_required_hour_count": 0,
+    "interval_count": 0,
+    "lake_id": "CEHT1",
+    "latest_interval_end_utc": null,
+    "missing_required_hour_starts_utc": [],
+    "native_unit": "generator_count",
+    "omitted_periods_may_be_treated_as_zero": false,
+    "overlapping_required_hour_starts_utc": [],
+    "payload_verified": false,
+    "required_axis_explicitly_covered": false,
+    "required_axis_hour_count": 19,
+    "row_count": 0,
+    "server_schedule_publication_time_available": false,
+    "time_zone": "America/Chicago"
+  },
+  "observed_at_utc": "2026-08-01T08:37:05Z",
+  "official_mobile_app_contract": {
+    "base_url": "https://apigw-public.tva.gov/river",
+    "center_hill_identity": {
+      "generation_and_release_data_enabled": true,
+      "lake_id": "CEHT1",
+      "name": "Center Hill",
+      "source_organization_marker": "USACE"
+    },
+    "center_hill_identity_verified": true,
+    "contract_verified": true,
+    "environment": "prd",
+    "full_source_map_excluded_for_credential_safety": true,
+    "generation_release_endpoint": "https://apigw-public.tva.gov/river/generation-releases/CEHT1",
+    "package": "com.tva.lakeinfo",
+    "response_field_mapping": {
+      "Day": "date",
+      "Generators": "generator_count",
+      "Time": "time_period"
+    },
+    "source_map_sha256": "bb2cbcc824e892a3ef34817131578ff15e1a8c5f7859d54a5660dbfff6ac0948",
+    "verified_source_files": {
+      "./src/app/app-config.ts": {
+        "all_required_snippets_verified": true,
+        "required_snippet_count": 2,
+        "sha256": "98af5c9ecefc23a6c1ce49cac9be82a9cfe0f2e23304c816ba80e8b2cb7a6ba2"
+      },
+      "./src/app/models/generation-release.ts": {
+        "all_required_snippets_verified": true,
+        "required_snippet_count": 3,
+        "sha256": "1937b46b4b89ab2d97aa9fcd5e3f593b9f106b37297008a8e7fd2774fe25d725"
+      },
+      "./src/app/providers/generation-release.service.ts": {
+        "all_required_snippets_verified": true,
+        "required_snippet_count": 4,
+        "sha256": "3d02a2177dd00653ab9ff7f642b174d06ce8a1becb6e1adea22fee7c8212ac40"
+      }
+    },
+    "version": "5.2.0",
+    "xapk_sha256": "2c5daf63a17a980929d74ec3823fd0266701b6ad0e4f00d1fb793154d9000581"
+  },
+  "physical_release_boundary": {
+    "blockers": [
+      "no_independently_observed_hourly_generator_count_labels",
+      "no_generator_loading_or_megawatt_schedule",
+      "contemporaneous_tailwater_is_not_a_preissue_exogenous_input",
+      "no_prospective_non_turbine_release_schedule",
+      "historical_man_rev_values_are_not_operational_vintages"
+    ],
+    "conversion_ready": false,
+    "generator_count_to_release_m3s_mapping_frozen": false,
+    "generator_loading_or_megawatt_dispatch_available": false,
+    "historical_head_and_component_diagnostic_completed": true,
+    "independent_generator_count_labels_available": false,
+    "native_action_unit": "generator_count",
+    "non_turbine_release_components_available_prospectively": false,
+    "prospective_pool_and_tailwater_boundary_available": false,
+    "required_output_unit": "m3/s"
+  },
+  "readiness_gates": {
+    "api_response_200": false,
+    "center_hill_identity_verified": true,
+    "generator_count_to_release_m3s_mapping_frozen": false,
+    "native_dispatch_action_ready": false,
+    "native_dispatch_externally_timestamped": false,
+    "native_dispatch_payload_verified": false,
+    "native_dispatch_required_axis_ready": false,
+    "official_app_contract_verified": true,
+    "physical_release_boundary_ready": false
+  },
+  "schema": "gwm.geospatial_kernel.tva_native_dispatch_candidate.v1",
+  "scope": {
+    "endpoint": "https://apigw-public.tva.gov/river/generation-releases/CEHT1",
+    "lake_id": "CEHT1",
+    "network_requests_performed_by_auditor": false,
+    "required_support": {
+      "forecast_hours": 12,
+      "hour_count": 19,
+      "lookback_hours": 7
+    },
+    "system_id": "center_hill"
+  },
+  "source_artifacts": {
+    "api_response_body": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_tva_native_dispatch_20260801/raw/generation_releases_CEHT1_body.txt",
+      "sha256": "4405f662480d962484c99537f9eb679dea69e850d50e56f187cc364a145323c5",
+      "size_bytes": 17
+    },
+    "api_response_headers": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_tva_native_dispatch_20260801/raw/generation_releases_CEHT1_headers.txt",
+      "sha256": "f33c513762cd38061bdef9b8ee7131edf32aeaa54b66f55523631af893aaa477",
+      "size_bytes": 730
+    },
+    "dispatch_conversion_audit": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_center_hill_dispatch_conversion_audit_20260801.json",
+      "sha256": "0607a6d60f4b955f4cd76ebbbb6f553898bd0cbfac3ad914666c719bd848b96e",
+      "size_bytes": 15455
+    },
+    "official_app_contract_evidence": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_tva_native_dispatch_20260801/raw/tva_lake_info_5.2.0_contract_evidence.json",
+      "sha256": "1936ab684389a08ca6d24175c9dffa8ce33709be9ea146daa471e55903bd1ca4",
+      "size_bytes": 1334
+    },
+    "official_app_lake_configuration": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_tva_native_dispatch_20260801/raw/lakesConfiguration.json",
+      "sha256": "45c91b7c76239759fd8ce28cae8db18eff1946a1738529e06ebfeb09b8dce486",
+      "size_bytes": 15864
+    }
+  },
+  "status": "blocked_native_dispatch_api_access"
+}

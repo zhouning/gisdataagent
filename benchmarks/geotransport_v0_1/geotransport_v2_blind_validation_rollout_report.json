@@ -1,0 +1,143 @@
+{
+  "claim_boundary": {
+    "geospatial_kernel_validated": false,
+    "outcome_free_predictions_sealed": true,
+    "outcomes_acquired": false,
+    "predictions_scored": false,
+    "predictive_validation_complete": false,
+    "two_system_complete_subnetworks_executed": true
+  },
+  "data_isolation": {
+    "outcome_columns_accepted_by_executor": false,
+    "outcome_manifest_accepted_by_executor": false,
+    "outcome_path_accepted_by_executor": false,
+    "outcome_urls_requested": false,
+    "outcome_values_loaded": false,
+    "usgs_observations_loaded": false
+  },
+  "generated_at": "2026-07-27T05:21:19.417397+00:00",
+  "input_artifacts": {
+    "input_report": {
+      "path": "benchmarks/geotransport_v0_1/geotransport_v2_blind_validation_inputs_report.json",
+      "sha256": "9bf183173b782a40c03f69ed73a839811bfa0718e4ad7bf35fdf67c5e7060aa0",
+      "size_bytes": 16854
+    },
+    "protocol": {
+      "path": "benchmarks/geotransport_v0_1/geotransport_v2_blind_validation_protocol.json",
+      "sha256": "7b99c0a7765f2e491e12e9dd110cdfcdcdeed72e70f3f30c65b9b9aac3d167cb",
+      "size_bytes": 13509
+    }
+  },
+  "joint_seal": {
+    "algorithm": "sha256_canonical_json",
+    "all_invariants_passed": true,
+    "all_predictions_present": true,
+    "outcome_access_permitted_after_this_report_is_written": true,
+    "sealed_system_ids": [
+      "center_hill",
+      "j_percy_priest"
+    ],
+    "sha256": "98fc3257ffe53c24245db80c36d1a376b9d332ceb0e82300c2ea5a1dbb94526c"
+  },
+  "schema": "gwm.geotransport.v2_blind_validation_rollout.v1",
+  "status": "joint_outcome_free_predictions_sealed",
+  "systems": {
+    "center_hill": {
+      "data_isolation": {
+        "outcome_columns_accepted": false,
+        "outcome_path_accepted": false,
+        "outcome_values_loaded": false
+      },
+      "invariants": {
+        "actual_conservation_passed": true,
+        "actual_maximum_mass_residual_to_tolerance_ratio": 0.0005708679827718896,
+        "branch_silent_conservation_passed": true,
+        "branch_silent_maximum_mass_residual_to_tolerance_ratio": 0.0006125672879351145,
+        "modeled_tributary_boundary_never_used": true,
+        "zero_state_zero_input_identity_passed": true
+      },
+      "prediction_artifact": {
+        "path": "data/geotransport_v0_1/geotransport_v2_blind_validation/predictions/center_hill.csv",
+        "sha256": "ade3586c0b62d65d459b8acce554ee13eed1d1ba0bbec1bf2e52b792431554ef",
+        "size_bytes": 85258
+      },
+      "registered_execution": {
+        "branch_feature_count": 409,
+        "distributed_q_lateral_ground_truth": false,
+        "feature_count": 435,
+        "initial_state_ground_truth": false,
+        "initial_state_possible_nudging": true,
+        "integration_substep_seconds": 300,
+        "mainstem_feature_count": 26,
+        "modeled_tributary_boundary_used": false,
+        "network_mode": "complete_incremental_tributary_DAG",
+        "operator": "BranchingManningNetworkTransportOperator",
+        "terminal_forcing_support_fraction": 0.8429738154993436,
+        "terminal_forcing_support_method": "preexisting_D2_NHDPlus_v2.1_flow_accumulation_spatial_support",
+        "timestep_seconds": 3600
+      },
+      "result": {
+        "branch_silent_initial_storage_m3": 10988708.32938751,
+        "branch_silent_mean_m3s": 124.6513734176029,
+        "initial_network_storage_m3": 12032606.8678711,
+        "mean_branch_effect_m3s": 13.611723695398785,
+        "prediction_count": 672,
+        "prediction_maximum_m3s": 312.8928129282415,
+        "prediction_mean_m3s": 138.26309711300166,
+        "prediction_minimum_m3s": 29.12436842089592
+      },
+      "system_id": "center_hill"
+    },
+    "j_percy_priest": {
+      "data_isolation": {
+        "outcome_columns_accepted": false,
+        "outcome_path_accepted": false,
+        "outcome_values_loaded": false
+      },
+      "invariants": {
+        "actual_conservation_passed": true,
+        "actual_maximum_mass_residual_to_tolerance_ratio": 0.0008740874682101478,
+        "branch_silent_conservation_passed": true,
+        "branch_silent_maximum_mass_residual_to_tolerance_ratio": 0.0008287410027159938,
+        "modeled_tributary_boundary_never_used": true,
+        "zero_state_zero_input_identity_passed": true
+      },
+      "prediction_artifact": {
+        "path": "data/geotransport_v0_1/geotransport_v2_blind_validation/predictions/j_percy_priest.csv",
+        "sha256": "5d6ae07d156af4bcae20b999d0555753160365871b19be3fc9b77ef30dba1819",
+        "size_bytes": 84328
+      },
+      "registered_execution": {
+        "branch_feature_count": 38,
+        "distributed_q_lateral_ground_truth": false,
+        "feature_count": 43,
+        "initial_state_ground_truth": false,
+        "initial_state_possible_nudging": true,
+        "integration_substep_seconds": 300,
+        "mainstem_feature_count": 5,
+        "modeled_tributary_boundary_used": false,
+        "network_mode": "complete_incremental_tributary_DAG",
+        "operator": "BranchingManningNetworkTransportOperator",
+        "terminal_forcing_support_fraction": 0.08827624889999866,
+        "terminal_forcing_support_method": "outcome_free_uniform_lateral_inflow_per_linear_reach_length",
+        "timestep_seconds": 3600
+      },
+      "result": {
+        "branch_silent_initial_storage_m3": 623863.6816364876,
+        "branch_silent_mean_m3s": 45.22045230264407,
+        "initial_network_storage_m3": 650631.9424811483,
+        "mean_branch_effect_m3s": 3.4933361278618684,
+        "prediction_count": 672,
+        "prediction_maximum_m3s": 153.3167151933989,
+        "prediction_mean_m3s": 48.71378843050593,
+        "prediction_minimum_m3s": 0.3121151300125439
+      },
+      "system_id": "j_percy_priest"
+    }
+  },
+  "window": {
+    "end_exclusive": "2022-04-28T01:00:00Z",
+    "hour_count": 672,
+    "start_inclusive": "2022-03-31T01:00:00Z"
+  }
+}

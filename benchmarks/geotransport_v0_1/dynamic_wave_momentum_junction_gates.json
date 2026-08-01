@@ -1,0 +1,326 @@
+{
+  "authoritative_semantics": {
+    "hec_ras_mixed_flow_regime": {
+      "finding": "The present candidate is restricted to subcritical combining flow.",
+      "official_page_id": 43816541,
+      "retrieved_snapshot_sha256": "adfd85e41624ee7fc7e3fbba528656c6bcf4e4e1445d552cfbb1b395ed5cc49b",
+      "url": "https://www.hec.usace.army.mil/confluence/rest/api/content/43816541?expand=body.storage,version"
+    },
+    "hec_ras_momentum_based_junction_method": {
+      "findings": [
+        "Momentum is balanced only along the downstream X axis.",
+        "Specific force is beta*Q^2/(g*A)+A*Ybar.",
+        "The equation retains branch angles, friction, water weight, and flow-weighted downstream area."
+      ],
+      "official_page_id": 43816560,
+      "source_collection_api_url": "https://www.hec.usace.army.mil/confluence/rest/api/content/43816552/child/page?limit=100&expand=body.storage,version",
+      "source_collection_sha256": "59bdf525ebc59d2cd34e4523e255bebae41d08af2f3435237844e33b32790563",
+      "url": "https://www.hec.usace.army.mil/confluence/rasdocs/ras1dtechref/latest/overview-of-optional-capabilities/modeling-stream-junctions/momentum-based-junction-method"
+    },
+    "retrieved_at": "2026-07-28"
+  },
+  "claim_boundary": {
+    "characteristic_mass_momentum_solver_implemented": true,
+    "cross_section_specific_force_implemented": true,
+    "direction_aware_projected_momentum_operator_implemented": true,
+    "friction_and_water_weight_forces_implemented": true,
+    "geospatial_kernel_validated": false,
+    "predictive_validation_complete": false,
+    "public_beta_evidence_available": false,
+    "public_projected_momentum_operator_admitted": false,
+    "public_site_surveyed_cross_sections_available": false,
+    "two_dimensional_vector_momentum_implemented": false
+  },
+  "data_isolation": {
+    "action_values_read": false,
+    "coefficient_calibration_performed": false,
+    "observation_values_read": false,
+    "public_centerline_geometry_read": true,
+    "public_model_initial_state_read": true,
+    "public_route_parameters_read": true,
+    "saved_prediction_values_read": false
+  },
+  "gate_summary": {
+    "all_passed": true,
+    "passed": 19,
+    "total": 19
+  },
+  "gates": {
+    "all_frozen_public_input_hashes_match": true,
+    "contract_is_direction_section_friction_and_weight_aware": true,
+    "manufactured_nonzero_angle_full_force_state_is_recovered": true,
+    "missing_public_beta_evidence_fails_admission_closed": true,
+    "no_action_observation_or_saved_prediction_values_read": true,
+    "no_angle_to_k_or_implicit_zero_loss_is_used": true,
+    "one_dimensional_projection_does_not_claim_vector_closure": true,
+    "out_of_scope_angle_fails_closed": true,
+    "public_characteristic_scan_is_nonempty_but_has_no_root_bracket": true,
+    "public_geometry_branch_attachment_and_angles_match": true,
+    "public_initial_states_are_wet_downstream_oriented_and_subcritical": true,
+    "public_no_root_is_explicit_not_a_synthetic_solution": true,
+    "public_route_link_has_expected_two_in_one_out_topology": true,
+    "published_initial_velocities_equal_discharge_over_area": true,
+    "raw_public_initial_mass_imbalance_is_exposed_not_treated_as_truth": true,
+    "reverse_flow_fails_closed": true,
+    "route_link_beds_close_geographic_node_within_one_centimeter": true,
+    "route_link_trapezoids_compile_without_parameter_substitution": true,
+    "stage10_does_not_modify_frozen_stage7_stage8_entrypoints": true
+  },
+  "generated_at": "2026-07-28T08:18:30.788077+00:00",
+  "input_hashes": {
+    "dynamic_wave_dag": "ee05ff1af9fd446f5584d9df01f0f7a8c2ac5739c9cf2652b3bba53569e385d9",
+    "feature_ids": "306787f4b6a37cbd82713e885355697d2a4ae25d9dc61f6c117021136b4491f0",
+    "frozen_geospatial_kernel_init": "7db7e6459143d2a54e742a732fcd3f85c422a9775559296dc39a985ab632315d",
+    "initial_cross_section_area_m2": "9106dbe86b17995e6eaa34e2fe8ce527d22592d9b62c89dd5433b0130c17ce2b",
+    "initial_streamflow_m3s": "70061579612367ec336c325c4df937a4f7d9eb2ea90285a480fca69e8e261fd5",
+    "initial_velocity_ms": "19572ac6567225979675308b68f724ffe2a952623d5c92563906692994bc4416",
+    "junction_geometry": "ba12696fe8045941c31bd4fc804b702cf3cc20b180e7bd83a1a502c2d4fefd6b",
+    "route_link": "764dccdf71c4761cf82792f5661fd5f66d61987bd52398fe0b93a24c2f7207be"
+  },
+  "manufactured_positive_control": {
+    "downstream_momentum_coefficient": 53.15079421552813,
+    "friction_forces_m3": [
+      0.07718659018090474,
+      0.11135015803092593
+    ],
+    "mass_residual_m3s": 0.0,
+    "maximum_outgoing_invariant_residual_mps": 0.0,
+    "momentum_residual_m3": 0.0,
+    "solution_elevation_m": 3.0,
+    "upstream_deflection_degrees": [
+      20.0,
+      35.0
+    ],
+    "water_weight_forces_m3": [
+      0.43190778623577253,
+      0.8310657879020648
+    ]
+  },
+  "negative_controls": {
+    "raw_initial_mass_balance_error": "projected_momentum_junction_mass_balance_required",
+    "reverse_flow_error": "projected_momentum_junction_state_not_supported",
+    "unsupported_angle_error": "projected_momentum_junction_angle_not_supported"
+  },
+  "public_case": {
+    "admission": {
+      "angle_to_loss_coefficient_mapping_used": false,
+      "implicit_zero_loss_assumed": false,
+      "operator_admitted": false,
+      "reason_codes": [
+        "structure_classification_unknown",
+        "momentum_coefficient_beta_source_missing",
+        "cross_sections_are_model_parameters_not_site_surveys",
+        "public_initial_state_not_mass_conservative",
+        "public_initial_state_has_no_projected_momentum_root"
+      ],
+      "status": "not_admitted"
+    },
+    "cross_section_compilation": {
+      "bottom_width_m": {
+        "18421703": 28.903358459472656,
+        "18421705": 7.367428779602051,
+        "18421707": 28.724077224731445
+      },
+      "mapping": "horizontal_per_vertical=1/RouteLink_ChSlp",
+      "side_slope_horizontal_per_vertical": {
+        "18421703": 4.735235390553106,
+        "18421705": 2.590865959969729,
+        "18421707": 4.72225473572201
+      },
+      "site_surveyed_cross_sections": false,
+      "source_semantics": "NWM_v3_model_parameterized_trapezoid"
+    },
+    "initial_state_diagnostic": {
+      "branches": {
+        "18421703": {
+          "area_m2": 892.5833333333334,
+          "bed_elevation_at_control_section_m": 141.0,
+          "discharge_m3s": 214.21999521180987,
+          "free_surface_elevation_m": 152.01264029104897,
+          "froude_number": 0.02960572913723987,
+          "published_velocity_mps": 0.23999999463558197,
+          "recomputed_velocity_mps": 0.23999999463558197
+        },
+        "18421705": {
+          "area_m2": 140.73333333333332,
+          "bed_elevation_at_control_section_m": 140.99959000001036,
+          "discharge_m3s": 21.10999952815473,
+          "free_surface_elevation_m": 147.08381749307753,
+          "froude_number": 0.025181129504489645,
+          "published_velocity_mps": 0.14999999664723873,
+          "recomputed_velocity_mps": 0.14999999664723876
+        },
+        "18421707": {
+          "area_m2": 152.89147286821705,
+          "bed_elevation_at_control_section_m": 141.00610616034828,
+          "discharge_m3s": 197.22999559156597,
+          "free_surface_elevation_m": 144.41662344331394,
+          "froude_number": 0.260057996150103,
+          "published_velocity_mps": 1.289999971166253,
+          "recomputed_velocity_mps": 1.289999971166253
+        }
+      },
+      "initial_state_is_conservation_truth": false,
+      "initial_state_is_observation": false,
+      "raw_junction_mass_balance_residual_m3s": 4.119999907910824,
+      "raw_state_momentum_evaluation_error": "projected_momentum_junction_mass_balance_required"
+    },
+    "momentum_coefficient_evidence": {
+      "RouteLink_beta_field_present": false,
+      "RouteLink_beta_fields": [],
+      "assumed_value": 1.0,
+      "assumption_calibrated": false,
+      "assumption_is_explicit": true
+    },
+    "projected_momentum_contract": {
+      "closure_dimension": "one_dimensional_projected_momentum",
+      "downstream_area_partition": "upstream_discharge_fraction",
+      "downstream_bed_slope": 9.999999747378752e-06,
+      "downstream_branch_id": "18421703",
+      "downstream_manning_n": 0.05000000074505806,
+      "downstream_momentum_coefficient": 1.0,
+      "friction_slope_averaging": "arithmetic_endpoint_Manning",
+      "momentum_coefficient_beta_required": true,
+      "projection_axis": "downstream_flow_direction",
+      "provenance_id": "NWM-v3-RouteLink+USGS-NLDI-junction-geometry:beta-explicit-unit-assumption",
+      "schema": "gwm.geospatial_kernel.projected_momentum_junction_contract.v1",
+      "section_spacing_m": {
+        "18421705": 60.0,
+        "18421707": 60.0
+      },
+      "subcritical_combining_only": true,
+      "upstream_bed_slopes": {
+        "18421705": 9.999999747378752e-06,
+        "18421707": 0.0010499999625608325
+      },
+      "upstream_branch_ids": [
+        "18421705",
+        "18421707"
+      ],
+      "upstream_deflection_degrees": {
+        "18421705": 48.874011152229514,
+        "18421707": 34.10795159335032
+      },
+      "upstream_manning_n": {
+        "18421705": 0.054999999701976776,
+        "18421707": 0.05000000074505806
+      },
+      "upstream_momentum_coefficients": {
+        "18421705": 1.0,
+        "18421707": 1.0
+      },
+      "vector_momentum_closure": false
+    },
+    "root_scan": {
+      "admissible_candidate_count": 23,
+      "candidate_count": 4803,
+      "closest_absolute_residual_m3": 3667.4911835923826,
+      "closest_elevation_m": 145.07420460522835,
+      "elevation_sampling": "logarithmic_depth_10^-6_to_10^6",
+      "inadmissible_candidates_break_continuity": true,
+      "maximum_admissible_elevation_m": 145.07420460522835,
+      "maximum_residual_m3": 3908.8247727893695,
+      "minimum_admissible_elevation_m": 144.59029971049551,
+      "minimum_residual_m3": 3667.4911835923826,
+      "root_bracket_found": false,
+      "schema": "gwm.geospatial_kernel.projected_momentum_root_scan.v1",
+      "sign_change_brackets_m": []
+    },
+    "route_link_container_format": "netcdf3",
+    "route_link_variable_names": [
+      "link",
+      "to",
+      "Length",
+      "BtmWdth",
+      "TopWdth",
+      "TopWdthCC",
+      "ChSlp",
+      "So",
+      "n",
+      "nCC",
+      "feature_id",
+      "MusK",
+      "MusX",
+      "Qi",
+      "alt",
+      "lat",
+      "lon",
+      "order",
+      "NHDWaterbodyComID"
+    ],
+    "route_parameters": {
+      "18421703": {
+        "BtmWdth": 28.903358459472656,
+        "ChSlp": 0.21118274331092834,
+        "Length": 1151.0,
+        "So": 9.999999747378752e-06,
+        "alt": 141.0,
+        "link": 18421703,
+        "n": 0.05000000074505806,
+        "to": 18421699
+      },
+      "18421705": {
+        "BtmWdth": 7.367428779602051,
+        "ChSlp": 0.385971337556839,
+        "Length": 41.0,
+        "So": 9.999999747378752e-06,
+        "alt": 141.0,
+        "link": 18421705,
+        "n": 0.054999999701976776,
+        "to": 18421703
+      },
+      "18421707": {
+        "BtmWdth": 28.724077224731445,
+        "ChSlp": 0.21176324784755707,
+        "Length": 1518.0,
+        "So": 0.0010499999625608325,
+        "alt": 142.60000610351562,
+        "link": 18421707,
+        "n": 0.05000000074505806,
+        "to": 18421703
+      }
+    },
+    "schema": "gwm.geotransport.center_hill_projected_momentum_junction.v1",
+    "solver": {
+      "error": "projected_momentum_junction_no_momentum_root",
+      "solution": null,
+      "status": "no_characteristic_projected_momentum_root"
+    },
+    "source_artifacts": {
+      "decoded_initial_state": {
+        "feature_ids": {
+          "path": "data/geotransport_v0_1/center_hill_v2_d5_subnetwork_inputs/decoded/feature_ids.npy",
+          "sha256": "306787f4b6a37cbd82713e885355697d2a4ae25d9dc61f6c117021136b4491f0",
+          "size_bytes": 3608
+        },
+        "initial_cross_section_area_m2": {
+          "path": "data/geotransport_v0_1/center_hill_v2_d5_subnetwork_inputs/decoded/initial_cross_section_area_m2.npy",
+          "sha256": "9106dbe86b17995e6eaa34e2fe8ce527d22592d9b62c89dd5433b0130c17ce2b",
+          "size_bytes": 3608
+        },
+        "initial_streamflow_m3s": {
+          "path": "data/geotransport_v0_1/center_hill_v2_d5_subnetwork_inputs/decoded/initial_streamflow_m3s.npy",
+          "sha256": "70061579612367ec336c325c4df937a4f7d9eb2ea90285a480fca69e8e261fd5",
+          "size_bytes": 3608
+        },
+        "initial_velocity_ms": {
+          "path": "data/geotransport_v0_1/center_hill_v2_d5_subnetwork_inputs/decoded/initial_velocity_ms.npy",
+          "sha256": "19572ac6567225979675308b68f724ffe2a952623d5c92563906692994bc4416",
+          "size_bytes": 3608
+        }
+      },
+      "junction_geometry": {
+        "path": "data/geotransport_v0_1/center_hill_v2_d5_full_subnetwork/junction_geometry_18421703.json",
+        "sha256": "ba12696fe8045941c31bd4fc804b702cf3cc20b180e7bd83a1a502c2d4fefd6b",
+        "size_bytes": 6063
+      },
+      "route_link": {
+        "path": "data/geotransport_v0_1/center_hill_v2_d5_full_subnetwork/RouteLink_CONUS_NWMv3_CenterHill_D5.nc",
+        "sha256": "764dccdf71c4761cf82792f5661fd5f66d61987bd52398fe0b93a24c2f7207be",
+        "size_bytes": 39624
+      }
+    }
+  },
+  "schema": "gwm.geotransport.dynamic_wave_momentum_junction_gates.v1",
+  "status": "candidate_projected_momentum_implemented_public_case_not_admitted"
+}

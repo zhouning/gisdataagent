@@ -1,0 +1,425 @@
+{
+  "artifacts": {
+    "full_subnetwork": {
+      "path": "data/geotransport_v0_1/j_percy_priest_v1_full_subnetwork/full_subnetwork.json",
+      "sha256": "5c6ed663ebe08c160f580ae9ca1c9a17037c947bcf3c6df33d80081e3fb6ea5a",
+      "size_bytes": 6351
+    },
+    "gauge": {
+      "path": "data/geotransport_v0_1/metadata/nldi-link-03430200.json",
+      "sha256": "8f7ed469dd9186819f92a11c01cc0e2f12b74e3965628aab5ce6897366337275",
+      "size_bytes": 609
+    },
+    "navigation": {
+      "path": "data/geotransport_v0_1/topology/raw/j_percy_priest-downstream-flowlines.json",
+      "sha256": "c46da9f156b38de1d9f1fe2f2b84a2068445eb04c870792b7f7b504956b7ecf8",
+      "size_bytes": 106036
+    },
+    "nldi_path_report": {
+      "path": "benchmarks/geotransport_v0_1/nldi_path_crosswalk_report.json",
+      "sha256": "9302319ac8a12a58065c4f7df7455afa3fa471d205b42ae27ab611d1006219ef",
+      "size_bytes": 21326
+    },
+    "nwm_feature_axis": {
+      "path": "data/geotransport_v0_1/nwm/feature_id/0.zst",
+      "sha256": "85122e43b8c0031a783235437c8789badba8f80f08e5aae71af5d964ebd88284",
+      "size_bytes": 2892888
+    },
+    "nwm_feature_crosswalk": {
+      "path": "data/geotransport_v0_1/j_percy_priest_v1_full_subnetwork/nwm_feature_crosswalk.csv",
+      "sha256": "696e6e65d543284dcfd98a39e29fbac3a4bcb2616f43284313d2935026a46903",
+      "size_bytes": 913
+    },
+    "nwm_membership_report": {
+      "path": "benchmarks/geotransport_v0_1/nwm_feature_membership_report.json",
+      "sha256": "d725f22a2609596ea06e516a480cc807cf8c1ca8c6efd1444803b7d6f82acbd0",
+      "size_bytes": 8947
+    },
+    "registry": {
+      "path": "benchmarks/geotransport_v0_1/public_data_registry.json",
+      "sha256": "399144ec64cef6ac74c780ce447b213f33dd97b5dafad5407342ffca37a6bc13",
+      "size_bytes": 23686
+    },
+    "route_link_subset": {
+      "audit": {
+        "all_required_parameter_fields_present": true,
+        "feature_axis_matches_requested_covered_order": true,
+        "feature_count": 43,
+        "feature_ids": [
+          18401457,
+          18401459,
+          18401461,
+          18401463,
+          18401465,
+          18401469,
+          18401471,
+          18401489,
+          18401491,
+          18401487,
+          18401499,
+          18401501,
+          18401505,
+          18401507,
+          18401485,
+          18401511,
+          18401519,
+          18401529,
+          18401589,
+          18401591,
+          18401593,
+          18401565,
+          18401757,
+          18401759,
+          18401481,
+          18401467,
+          18401473,
+          18401475,
+          18401477,
+          18401479,
+          18401483,
+          18401495,
+          18401879,
+          18401569,
+          18401563,
+          18401547,
+          18401521,
+          18401517,
+          18401881,
+          18401817,
+          18401509,
+          18401503,
+          18401497
+        ],
+        "required_parameter_fields_missing": [],
+        "variable_names": [
+          "BtmWdth",
+          "ChSlp",
+          "Length",
+          "MusK",
+          "MusX",
+          "NHDWaterbodyComID",
+          "Qi",
+          "So",
+          "TopWdth",
+          "TopWdthCC",
+          "alt",
+          "feature_id",
+          "lat",
+          "link",
+          "lon",
+          "n",
+          "nCC",
+          "order",
+          "to"
+        ]
+      },
+      "path": "data/geotransport_v0_1/j_percy_priest_v1_full_subnetwork/RouteLink_CONUS_NWMv3_JPercyPriest_V1.nc",
+      "sha256": "2e974662fe06ab30b33029a96a7958962f5a225ee4ffaab9e53503e1110dabc1",
+      "size_bytes": 9836
+    }
+  },
+  "claim_boundary": {
+    "complete_incremental_topology_available": true,
+    "complete_route_link_parameters_available": true,
+    "full_subnetwork_routing_ready": false,
+    "geospatial_kernel_validated": false,
+    "outcome_values_acquired": false,
+    "predictive_validation_complete": false,
+    "public_data_acquired_without_user_supplied_data": true
+  },
+  "data_isolation": {
+    "outcome_artifacts_read": false,
+    "outcome_values_loaded": false,
+    "topology_and_parameter_sources_only": true
+  },
+  "domain": {
+    "action_entry_feature_id": 18401881,
+    "active_mainstem_feature_count": 5,
+    "branch_feature_count_by_direct_mouth": {
+      "18401495": 26,
+      "18401517": 12
+    },
+    "control_feature_id": 18401827,
+    "direct_tributary_mouth_count": 2,
+    "direct_tributary_mouth_feature_ids": [
+      18401495,
+      18401517
+    ],
+    "effective_length_km": 80.78695560783716,
+    "feature_count": 43,
+    "full_length_km": 87.10804873925186,
+    "incremental_branch_feature_count": 38,
+    "internal_confluence_reach_count": 19,
+    "outlet_feature_id": 18401497,
+    "source_reach_count": 20
+  },
+  "gates": {
+    "all_upstream_ancestors_compiled": true,
+    "controlled_upstream_feature_absent": true,
+    "directed_network_contract_admitted": true,
+    "distributed_q_lateral_acquired": false,
+    "initial_state_acquired": false,
+    "nwm_retrospective_feature_coverage_complete": true,
+    "official_route_link_identity_verified": true,
+    "outcome_free_rollout_sealed": false,
+    "public_mainstem_crosswalk_verified": true,
+    "route_link_parameter_coverage_complete": true
+  },
+  "generated_at": "2026-07-27T05:07:50.206636+00:00",
+  "linear_reference": {
+    "active_mainstem_effective_length_m": 4768.95560783717,
+    "active_mainstem_full_length_m": 11090.04873925186,
+    "control_feature_excluded": true,
+    "excluded_control_reach_full_length_m": 3610.1179241074733,
+    "first_active_reach_is_complete": true,
+    "gauge_measure_from_terminal_reach_start_m": 612.0301131955829,
+    "gauge_snap_distance_m": 86.28019746984762,
+    "maximum_connection_gap_m": 0.0,
+    "orientation_by_feature": [
+      {
+        "coordinate_order": "source_order",
+        "feature_id": 18401827
+      },
+      {
+        "coordinate_order": "source_order",
+        "feature_id": 18401881
+      },
+      {
+        "coordinate_order": "source_order",
+        "feature_id": 18401817
+      },
+      {
+        "coordinate_order": "source_order",
+        "feature_id": 18401509
+      },
+      {
+        "coordinate_order": "source_order",
+        "feature_id": 18401503
+      },
+      {
+        "coordinate_order": "source_order",
+        "feature_id": 18401497
+      }
+    ],
+    "reported_full_path_length_m": 14700.167000000001,
+    "reproduced_full_path_length_m": 14700.166663359334,
+    "terminal_reach_trimmed_at_gauge": true
+  },
+  "nwm_crosswalk": {
+    "coverage_complete": true,
+    "covered_feature_count": 43,
+    "feature_chunk_indices": [
+      63
+    ],
+    "feature_chunk_size": 30000,
+    "required_chunk_count_per_time_chunk_and_variable": 1,
+    "source_feature_axis_count": 2776734
+  },
+  "parameters": {
+    "field_audit": {
+      "BtmWdth": {
+        "all_finite": true,
+        "maximum": 20.54088020324707,
+        "minimum": 1.009178876876831,
+        "source_dtype": "float32",
+        "subset_dtype": "float32",
+        "value_count": 43
+      },
+      "ChSlp": {
+        "all_finite": true,
+        "maximum": 0.9277774691581726,
+        "minimum": 0.24552617967128754,
+        "source_dtype": "float32",
+        "subset_dtype": "float32",
+        "value_count": 43
+      },
+      "Length": {
+        "all_finite": true,
+        "maximum": 6946.0,
+        "minimum": 109.0,
+        "source_dtype": "float32",
+        "subset_dtype": "float32",
+        "value_count": 43
+      },
+      "MusK": {
+        "all_finite": true,
+        "maximum": 3600.0,
+        "minimum": 3600.0,
+        "source_dtype": "float32",
+        "subset_dtype": "float32",
+        "value_count": 43
+      },
+      "MusX": {
+        "all_finite": true,
+        "maximum": 0.20000000298023224,
+        "minimum": 0.20000000298023224,
+        "source_dtype": "float32",
+        "subset_dtype": "float32",
+        "value_count": 43
+      },
+      "NHDWaterbodyComID": {
+        "all_finite": true,
+        "maximum": -9999.0,
+        "minimum": -9999.0,
+        "source_dtype": "int32",
+        "subset_dtype": "int32",
+        "value_count": 43
+      },
+      "Qi": {
+        "all_finite": true,
+        "maximum": 0.0,
+        "minimum": 0.0,
+        "source_dtype": "float32",
+        "subset_dtype": "float32",
+        "value_count": 43
+      },
+      "So": {
+        "all_finite": true,
+        "maximum": 0.2375199943780899,
+        "minimum": 9.999999747378752e-06,
+        "source_dtype": "float32",
+        "subset_dtype": "float32",
+        "value_count": 43
+      },
+      "TopWdth": {
+        "all_finite": true,
+        "maximum": 34.23480224609375,
+        "minimum": 1.6819647550582886,
+        "source_dtype": "float32",
+        "subset_dtype": "float32",
+        "value_count": 43
+      },
+      "TopWdthCC": {
+        "all_finite": true,
+        "maximum": 102.70440673828125,
+        "minimum": 5.045894145965576,
+        "source_dtype": "float32",
+        "subset_dtype": "float32",
+        "value_count": 43
+      },
+      "alt": {
+        "all_finite": true,
+        "maximum": 204.8800048828125,
+        "minimum": 118.4800033569336,
+        "source_dtype": "float32",
+        "subset_dtype": "float32",
+        "value_count": 43
+      },
+      "feature_id": {
+        "all_finite": true,
+        "maximum": 0.0,
+        "minimum": 0.0,
+        "source_dtype": ">f4",
+        "subset_dtype": ">f4",
+        "value_count": 43
+      },
+      "lat": {
+        "all_finite": true,
+        "maximum": 36.2212028503418,
+        "minimum": 36.1108512878418,
+        "source_dtype": "float32",
+        "subset_dtype": "float32",
+        "value_count": 43
+      },
+      "link": {
+        "all_finite": true,
+        "maximum": 18401881.0,
+        "minimum": 18401457.0,
+        "source_dtype": "int32",
+        "subset_dtype": "int32",
+        "value_count": 43
+      },
+      "lon": {
+        "all_finite": true,
+        "maximum": -86.47586822509766,
+        "minimum": -86.66883087158203,
+        "source_dtype": "float32",
+        "subset_dtype": "float32",
+        "value_count": 43
+      },
+      "n": {
+        "all_finite": true,
+        "maximum": 0.05999999865889549,
+        "minimum": 0.05000000074505806,
+        "source_dtype": "float32",
+        "subset_dtype": "float32",
+        "value_count": 43
+      },
+      "nCC": {
+        "all_finite": true,
+        "maximum": 0.11999999731779099,
+        "minimum": 0.10000000149011612,
+        "source_dtype": "float32",
+        "subset_dtype": "float32",
+        "value_count": 43
+      },
+      "order": {
+        "all_finite": true,
+        "maximum": 6.0,
+        "minimum": 1.0,
+        "source_dtype": "int32",
+        "subset_dtype": "int32",
+        "value_count": 43
+      },
+      "to": {
+        "all_finite": true,
+        "maximum": 18408590.0,
+        "minimum": 18401461.0,
+        "source_dtype": "int32",
+        "subset_dtype": "int32",
+        "value_count": 43
+      }
+    },
+    "no_default_parameter_substitution": true,
+    "optional_fields_selected": [
+      "feature_id",
+      "MusK",
+      "MusX",
+      "Qi",
+      "alt",
+      "lat",
+      "lon",
+      "order",
+      "NHDWaterbodyComID"
+    ],
+    "required_fields": [
+      "link",
+      "to",
+      "Length",
+      "BtmWdth",
+      "TopWdth",
+      "TopWdthCC",
+      "ChSlp",
+      "So",
+      "n",
+      "nCC"
+    ]
+  },
+  "schema": "gwm.geotransport.j_percy_priest_v1_full_subnetwork.v1",
+  "source": {
+    "archive_sha256": "1d8a7e1eb506ec38a2ff0de64b1b5ebc7472205e0d660ee28080a9e15b6ce38c",
+    "archive_url": "https://www.nohrsc.noaa.gov/owp_files/nwm/nwm_parameters/NWM_parameter_files_v3.0.tar.gz",
+    "parameter_release": "NWM v3.0",
+    "publisher": "NOAA National Water Center / Office of Water Prediction",
+    "route_link_member_path": "v3.0_par/RouteLink_CONUS.nc",
+    "route_link_member_sha256": "e34e58c875e25b93e6692a286ef7004ff59e86ee48435c5a5e0dfa95d2ccb5f4",
+    "route_link_member_size_bytes": 269363375,
+    "route_link_source_feature_count": 2776734,
+    "route_link_source_global_attributes": {
+      "Convention": "CF-1.6",
+      "featureType": "timeSeries",
+      "history": "Created Thu Sep  9 18:11:34 2021",
+      "processing_notes": "This file was produced Thu Sep  9 16:16:38 2021 by Kevin Sampson (NCAR) and has the following attributes: \n   This file uses the NHDPlus v21 \"flattened\" geodatabase v03: NHDPlusV21_National_Flattened.gdb.\n   This file includes only reaches in CONUS.\n   Topology fixes using: Topology_Fixer.csv.\n   NHDFlowlines removed using: Remove_COMIDs_NHDFLowline_Network.csv.\n   Gage preference list: numberOf100QualityObs.2017-03-15.csv.\n   Gage additions made using: Add_Gage_Association.csv.\n   Gage-to-flowline association changes made using: Bad_Gage_Associations.csv.\n   Tidal-influenced gages removed using: TidalGageList_20170316.csv.\n   Waterbody associations performed using spatial join with reservoir feature class C:\\Data\\Projects\\Gochis\\NWM_v3_0\\CONUS\\Reservoirs\\Input_Waterbodies_NWM_v3_0_Edit.shp.   Waterbody feature class used: Input_Waterbodies_NWM_v3_0_Edit.shp"
+    }
+  },
+  "status": "pass_full_incremental_subnetwork_compiled",
+  "topology": {
+    "acyclic": true,
+    "all_downstream_targets_internal_or_outlet": true,
+    "controlled_upstream_feature_excluded": true,
+    "feature_axis_order": "deterministic_Kahn_topological_order",
+    "full_upstream_tributary_subnetworks_compiled": true,
+    "method": "direct off-mainstem parent discovery followed by reverse traversal of official NWM v3 RouteLink link-to topology",
+    "one_outlet": true
+  }
+}

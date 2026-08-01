@@ -1,0 +1,367 @@
+{
+  "admission_decision": {
+    "fresh_validation_permitted": false,
+    "geospatial_kernel_validated": false,
+    "manual_waiver_allowed": false,
+    "matched_posthoc_execution_permitted": false,
+    "required_gate_logic": "all mandatory gates must be true",
+    "runtime_admitted": false,
+    "runtime_default_enabled": false
+  },
+  "bound_evidence": {
+    "derived_runtime_build": {
+      "path": "data/geotransport_v0_1/t_route_mc_initialized_diagnostic_runtime/build_manifest.json",
+      "sha256": "5dc6cba8e1260db25499791e8dc5282f5705c72b0500f3e32aec8ec7c9988c9f",
+      "size_bytes": 2634
+    },
+    "derived_runtime_response_matrix": {
+      "path": "benchmarks/geotransport_v0_1/t_route_mc_initialized_diagnostic_response_matrix.json",
+      "sha256": "83d5ebeaada13505d1d51902903d8d79203e3f3dc243b366b3563b0930781447",
+      "size_bytes": 272572
+    },
+    "official_runtime_build": {
+      "path": "data/geotransport_v0_1/t_route_mc_runtime/build_manifest.json",
+      "sha256": "26780f3c6cb9bcc4fa61b608c8e93843b4db2054a469ce0114c3880ba4b6a7f4",
+      "size_bytes": 1771
+    },
+    "official_runtime_semantics": {
+      "path": "benchmarks/geotransport_v0_1/t_route_mc_execution_semantics_report.json",
+      "sha256": "d5858ca8e0ce1eafee04dc009f24f43003b584ab069b8a822f0dfd70efcc151d",
+      "size_bytes": 12708
+    },
+    "readiness_report": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_traditional_routing_baseline_readiness_report.json",
+      "sha256": "eec9cbd296edd762a346d1df8e3b220f0804f2d64a5647aad86ce69dc5afe965",
+      "size_bytes": 12199
+    },
+    "two_system_input_report": {
+      "path": "benchmarks/geotransport_v0_1/kinematic_wave_holdout_v2_inputs_report.json",
+      "sha256": "79bbc235dbef5da8a6d284cb307b2753183773bfd7a28305b9ed896696394435",
+      "size_bytes": 13239
+    }
+  },
+  "candidate_identity_contract": {
+    "independence": {
+      "adapter_source_hash_and_audit_required": true,
+      "no_import_or_call_into_learned_innovation_operators": true,
+      "no_shared_fitted_parameters_with_gwm_wwm": true,
+      "routing_equations_implemented_outside_geospatial_kernel_learned_code": true,
+      "thin_axis_and_unit_adapter_allowed": true
+    },
+    "required": {
+      "benchmark_and_redistribution_rights_documented": true,
+      "build_flags_and_dependency_lock": true,
+      "compiler_or_interpreter_identity": true,
+      "executable_or_library_sha256": true,
+      "host_platform_identity": true,
+      "immutable_source_revision": true,
+      "license_artifact_sha256": true,
+      "release_or_version": true,
+      "source_artifact_sha256": true,
+      "spdx_license_identifier": true,
+      "upstream_project_and_repository": true
+    }
+  },
+  "claim_boundary": {
+    "candidate_certified": false,
+    "candidate_selected": false,
+    "geospatial_kernel_validated": false,
+    "historical_window_is_prospective": false,
+    "network_requests_performed": false,
+    "new_runtime_acquired_or_built": false,
+    "outcome_values_opened_by_this_freeze": false,
+    "professional_comparator_available": false,
+    "protocol_frozen_before_candidate_selection": true,
+    "runtime_default_enabled": false,
+    "traditional_predictions_executed": false
+  },
+  "deterministic_interface_contract": {
+    "execution_rules": {
+      "cold_process_repeatability_required": true,
+      "explicit_initialization_before_first_read": true,
+      "feature_and_time_axes_may_not_be_reordered_silently": true,
+      "input_arrays_are_read_only": true,
+      "no_implicit_process_global_or_uninitialized_state": true,
+      "restart_from_serialized_state_matches_continuous_run": true
+    },
+    "required_inputs": {
+      "downstream_feature_ids": "int64[n_reaches] with a documented outlet sentinel",
+      "feature_ids": "int64[n_reaches] ordered exactly as the frozen feature axis",
+      "hydraulic_parameters": "finite width, slope, roughness and reach length on the feature axis",
+      "initial_state": "finite nonnegative discharge plus every implementation carry/state value",
+      "lateral_inflow": "float64[n_steps,n_reaches] discharge rate",
+      "reservoir_action": "float64[n_steps] upstream boundary discharge",
+      "timestep_seconds": "positive scalar shared by all reaches in one run"
+    },
+    "required_outputs": {
+      "final_state": "all carry values required for an exact restart",
+      "mass_ledger": "input, output and storage-change volume by step",
+      "outlet_discharge": "float64[n_steps] derived from routed_discharge",
+      "routed_discharge": "float64[n_steps,n_reaches]"
+    },
+    "units": {
+      "discharge": "m3 s-1",
+      "length": "m",
+      "roughness": "s m-1/3",
+      "slope": "m m-1",
+      "storage": "m3",
+      "time": "s"
+    }
+  },
+  "evaluation_policy": {
+    "admission_precedes_any_matched_execution": true,
+    "every_dynamic_input_must_be_available_at_or_before_forecast_issue": true,
+    "existing_672_hour_window": "historical_posthoc_comparison_only",
+    "existing_window_may_be_called_fresh_validation": false,
+    "existing_window_may_tune_or_select_candidate": false,
+    "fresh_validation_requires_unexposed_window": true,
+    "fresh_window_support_must_start_after_protocol_freeze": true
+  },
+  "forbidden_executor_inputs": [
+    "outcome_values",
+    "outcome_columns",
+    "outcome_manifest",
+    "outcome_path",
+    "outcome_url",
+    "score_report",
+    "future_target_observations"
+  ],
+  "frozen_at": "2026-07-31T07:04:56Z",
+  "frozen_code": {
+    "scripts/assess_geospatial_kernel_traditional_routing_baseline_readiness.py": {
+      "path": "scripts/assess_geospatial_kernel_traditional_routing_baseline_readiness.py",
+      "sha256": "4670553b97d54c59aece04dbb77f8e3c07ddf723c090db8e69c39390c2810f14",
+      "size_bytes": 24605
+    },
+    "scripts/audit_geotransport_troute_mc_execution_semantics.py": {
+      "path": "scripts/audit_geotransport_troute_mc_execution_semantics.py",
+      "sha256": "3c0e34c97928b530d6d6dd5be4687776ad97f7d058d38a9ffa4254c63e1d5898",
+      "size_bytes": 14925
+    },
+    "scripts/certify_geotransport_troute_mc_initialized_diagnostic.py": {
+      "path": "scripts/certify_geotransport_troute_mc_initialized_diagnostic.py",
+      "sha256": "326fa618a335a8bd19afeeb076f35aaaebf6d2d98078e5863391e23445094118",
+      "size_bytes": 14735
+    },
+    "scripts/certify_geotransport_troute_mc_response_matrix.py": {
+      "path": "scripts/certify_geotransport_troute_mc_response_matrix.py",
+      "sha256": "ecef7d9b72be25478451366d1d4db8ca77bc697b1a75d1ae6b528426f1fc86b2",
+      "size_bytes": 24346
+    }
+  },
+  "matched_execution_contract": {
+    "candidate_specific_initial_state_invention": false,
+    "candidate_specific_parameter_fitting_on_this_window": false,
+    "hour_count": 672,
+    "predictions_must_be_sealed_before_score_access": true,
+    "same_action_axis_for_all_comparators": true,
+    "same_feature_axis_for_all_comparators": true,
+    "same_initial_discharge_axis_for_all_comparators": true,
+    "same_lateral_forcing_axis_for_all_comparators": true,
+    "same_route_link_geometry_and_topology": true,
+    "systems": {
+      "center_hill": {
+        "action_values": {
+          "actual_sha256": "87a3726e577eb65e05f6859b37e35102b749cecd29a50ec02c83aa9e2f8ae0d6",
+          "actual_size_bytes": 42859,
+          "declared_sha256": "87a3726e577eb65e05f6859b37e35102b749cecd29a50ec02c83aa9e2f8ae0d6",
+          "declared_size_bytes": 42859,
+          "identity_matches": true,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/center_hill/action_values.csv"
+        },
+        "feature_count": 435,
+        "feature_ids": {
+          "actual_sha256": "306787f4b6a37cbd82713e885355697d2a4ae25d9dc61f6c117021136b4491f0",
+          "actual_size_bytes": 3608,
+          "declared_sha256": "306787f4b6a37cbd82713e885355697d2a4ae25d9dc61f6c117021136b4491f0",
+          "declared_size_bytes": 3608,
+          "identity_matches": true,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/center_hill/decoded/feature_ids.npy"
+        },
+        "forcing_timestamps_utc": {
+          "actual_sha256": "6a0fb8ccdff2577896345a0168d145088013168c6cf12c20faa5a850b6568488",
+          "actual_size_bytes": 53888,
+          "declared_sha256": "6a0fb8ccdff2577896345a0168d145088013168c6cf12c20faa5a850b6568488",
+          "declared_size_bytes": 53888,
+          "identity_matches": true,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/center_hill/decoded/forcing_timestamps_utc.npy"
+        },
+        "initial_streamflow_m3s": {
+          "actual_sha256": "bbb3ccaeb46f7b25e18e1f36f34f55bed000ad9e8bb6bca073813c88786b7486",
+          "actual_size_bytes": 3608,
+          "declared_sha256": "bbb3ccaeb46f7b25e18e1f36f34f55bed000ad9e8bb6bca073813c88786b7486",
+          "declared_size_bytes": 3608,
+          "identity_matches": true,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/center_hill/decoded/initial_streamflow_m3s.npy"
+        },
+        "q_lateral_m3s": {
+          "actual_sha256": "3ba41c4dff692d404b76fdef03f8b6c5d0bc169c6e2125fe2992097f6768ca9f",
+          "actual_size_bytes": 2338688,
+          "declared_sha256": "3ba41c4dff692d404b76fdef03f8b6c5d0bc169c6e2125fe2992097f6768ca9f",
+          "declared_size_bytes": 2338688,
+          "identity_matches": true,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/center_hill/decoded/q_lateral_m3s.npy"
+        },
+        "route_link_subset": {
+          "actual_sha256": "764dccdf71c4761cf82792f5661fd5f66d61987bd52398fe0b93a24c2f7207be",
+          "actual_size_bytes": 39624,
+          "declared_sha256": "764dccdf71c4761cf82792f5661fd5f66d61987bd52398fe0b93a24c2f7207be",
+          "declared_size_bytes": 39624,
+          "identity_matches": true,
+          "path": "data/geotransport_v0_1/center_hill_v2_d5_full_subnetwork/RouteLink_CONUS_NWMv3_CenterHill_D5.nc"
+        },
+        "topology_report": {
+          "actual_sha256": "9d066189ed23f0bf91fecdefa9327bcfc4a92704d4fb23e6e07c3bbe78559bbd",
+          "actual_size_bytes": 19899,
+          "declared_sha256": "9d066189ed23f0bf91fecdefa9327bcfc4a92704d4fb23e6e07c3bbe78559bbd",
+          "declared_size_bytes": 19899,
+          "identity_matches": true,
+          "path": "benchmarks/geotransport_v0_1/center_hill_v2_d5_full_subnetwork_report.json"
+        }
+      },
+      "j_percy_priest": {
+        "action_values": {
+          "actual_sha256": "5bc87a79a1cb3abe93be51ce97d60cb91625284303c024ac9174f13c59b5e867",
+          "actual_size_bytes": 42990,
+          "declared_sha256": "5bc87a79a1cb3abe93be51ce97d60cb91625284303c024ac9174f13c59b5e867",
+          "declared_size_bytes": 42990,
+          "identity_matches": true,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/j_percy_priest/action_values.csv"
+        },
+        "feature_count": 43,
+        "feature_ids": {
+          "actual_sha256": "33b7a9e3996c3b4c6823f1b66d61ba9e608c117bbc92be125e30331e3e9d3373",
+          "actual_size_bytes": 472,
+          "declared_sha256": "33b7a9e3996c3b4c6823f1b66d61ba9e608c117bbc92be125e30331e3e9d3373",
+          "declared_size_bytes": 472,
+          "identity_matches": true,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/j_percy_priest/decoded/feature_ids.npy"
+        },
+        "forcing_timestamps_utc": {
+          "actual_sha256": "6a0fb8ccdff2577896345a0168d145088013168c6cf12c20faa5a850b6568488",
+          "actual_size_bytes": 53888,
+          "declared_sha256": "6a0fb8ccdff2577896345a0168d145088013168c6cf12c20faa5a850b6568488",
+          "declared_size_bytes": 53888,
+          "identity_matches": true,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/j_percy_priest/decoded/forcing_timestamps_utc.npy"
+        },
+        "initial_streamflow_m3s": {
+          "actual_sha256": "0a4a68df6fe04e7c6f37c6efeeae13f737a37623921b67d56c843ac233d49749",
+          "actual_size_bytes": 472,
+          "declared_sha256": "0a4a68df6fe04e7c6f37c6efeeae13f737a37623921b67d56c843ac233d49749",
+          "declared_size_bytes": 472,
+          "identity_matches": true,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/j_percy_priest/decoded/initial_streamflow_m3s.npy"
+        },
+        "q_lateral_m3s": {
+          "actual_sha256": "6b8a965fef0a9dd23af9e282f58522ebe20be4d8a4b009c9db8590ecff97a441",
+          "actual_size_bytes": 231296,
+          "declared_sha256": "6b8a965fef0a9dd23af9e282f58522ebe20be4d8a4b009c9db8590ecff97a441",
+          "declared_size_bytes": 231296,
+          "identity_matches": true,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/j_percy_priest/decoded/q_lateral_m3s.npy"
+        },
+        "route_link_subset": {
+          "actual_sha256": "2e974662fe06ab30b33029a96a7958962f5a225ee4ffaab9e53503e1110dabc1",
+          "actual_size_bytes": 9836,
+          "declared_sha256": "2e974662fe06ab30b33029a96a7958962f5a225ee4ffaab9e53503e1110dabc1",
+          "declared_size_bytes": 9836,
+          "identity_matches": true,
+          "path": "data/geotransport_v0_1/j_percy_priest_v1_full_subnetwork/RouteLink_CONUS_NWMv3_JPercyPriest_V1.nc"
+        },
+        "topology_report": {
+          "actual_sha256": "2159b88b57ae2a4d476ab025190b64a1cd2b62c1c4d6c9e45bca9e844d2fe3d6",
+          "actual_size_bytes": 13504,
+          "declared_sha256": "2159b88b57ae2a4d476ab025190b64a1cd2b62c1c4d6c9e45bca9e844d2fe3d6",
+          "declared_size_bytes": 13504,
+          "identity_matches": true,
+          "path": "benchmarks/geotransport_v0_1/j_percy_priest_v1_full_subnetwork_report.json"
+        }
+      }
+    }
+  },
+  "method_scope": {
+    "accepted_family": "Muskingum-Cunge or a documented close traditional routing method",
+    "admission_is_predictive_superiority_evidence": false,
+    "candidate_identity": null,
+    "candidate_selected": false,
+    "generic_muskingum_cunge_family_rejected": false,
+    "previously_examined_runtimes_admitted": false
+  },
+  "previous_runtime_disposition": {
+    "derived_initialized_diagnostic": {
+      "admitted": false,
+      "reason": "negative-response and timestep-stability gates fail",
+      "source_commit": "12a8eae0cdfed437143c590659fa7077605a5e70"
+    },
+    "official_fixed_commit": {
+      "admitted": false,
+      "reason": "required carry or output values are read before assignment",
+      "source_commit": "12a8eae0cdfed437143c590659fa7077605a5e70"
+    }
+  },
+  "protocol_seal": {
+    "algorithm": "sha256_canonical_json_without_protocol_seal",
+    "sha256": "5a5031c95d245fcdd628d967fd0fd8f5a5ae7208c8236dee65511d46abb6a899"
+  },
+  "purpose": "admit one independent professional Muskingum-Cunge-family comparator before any matched two-system execution",
+  "schema": "gwm.geospatial_kernel.traditional_routing_comparator_protocol.v1",
+  "status": "frozen_before_independent_runtime_selection",
+  "synthetic_conformance_suite": {
+    "branching_cases": {
+      "confluence_rule": "current and previous upstream contributions are each summed exactly once",
+      "long_window_requires_residual_storage_accounting": true,
+      "minimum_topologies": [
+        "single_reach",
+        "serial_path",
+        "two_to_one_confluence"
+      ],
+      "outflow_only_volume_recovery_is_not_a_mass_balance_substitute": true
+    },
+    "mandatory_gates": {
+      "abi_signature_and_array_shape_contract_pass": true,
+      "all_impulse_and_step_incremental_responses_are_nonnegative": true,
+      "all_impulse_and_step_states_and_outputs_are_finite": true,
+      "all_required_carry_and_output_values_initialized_before_read": true,
+      "branching_dag_and_confluence_mass_accounting_pass": true,
+      "cold_process_repeats_are_bitwise_equal_on_the_frozen_platform": true,
+      "confluence_upstream_order_permutation_is_invariant": true,
+      "continuous_and_restart_runs_are_bitwise_equal": true,
+      "long_window_input_equals_output_plus_storage_change": true,
+      "no_observed_outcome_or_fitted_target_parameter_is_loaded": true,
+      "source_build_license_and_adapter_identities_match": true,
+      "timestep_response_quantiles_pass_frozen_stability_tolerances": true,
+      "zero_state_zero_boundary_zero_lateral_produces_zero_state_and_output": true
+    },
+    "must_run_before_real_two_system_inputs": true,
+    "numeric_tolerances": {
+      "mass_balance_m3_absolute": 0.001,
+      "mass_balance_relative_to_throughput": 1e-06,
+      "negative_discharge_m3s_absolute": 1e-06,
+      "timestep_quantile_relative": 0.1,
+      "timestep_quantile_seconds_absolute": 3600.0,
+      "zero_identity_m3s_absolute": 1e-12
+    },
+    "outcome_data_allowed": false,
+    "response_matrix": {
+      "background_flows_m3s": [
+        2.0,
+        20.0,
+        100.0
+      ],
+      "pulse_duration_seconds": 3600.0,
+      "pulse_rates_m3s": [
+        0.1,
+        1.0,
+        10.0
+      ],
+      "rollout_hours": 240,
+      "timesteps_seconds": [
+        300.0,
+        900.0,
+        3600.0
+      ],
+      "warmup_hours": 240
+    }
+  }
+}

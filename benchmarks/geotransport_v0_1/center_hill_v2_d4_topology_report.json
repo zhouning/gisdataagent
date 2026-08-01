@@ -1,0 +1,493 @@
+{
+  "adjudication": {
+    "d3_window_use": "public_post_failure_flux_accounting_diagnostic_only_not_model_selection_or_validation",
+    "future_validation_requires_new_frozen_window": true,
+    "future_validation_requires_second_system": true,
+    "scientific_endpoint": "full_subnetwork_distributed_q_lateral_routing",
+    "selected_first_executable_mode": "modeled_tributary_boundary_flux",
+    "selection_reason": "Direct confluence attachments and NWM mouth feature membership are complete; full upstream branch topology, branch geometry, initial state, and forcing support are not yet complete."
+  },
+  "artifacts": {
+    "branching_boundary_network": {
+      "path": "data/geotransport_v0_1/center_hill_v2_d4_topology/branching_boundary_network.json",
+      "sha256": "1f2c4a82d29056c4470e98ef711bf3278ed12f6c2bada1617f8d5db9501e2206",
+      "size_bytes": 12333
+    },
+    "linear_reference_report": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_travel_time_prior_report.json",
+      "sha256": "e29fc54273e2f5f650d49599e8c98c6ec98c13c1025041e0f8c2ba41340c425e",
+      "size_bytes": 11456
+    },
+    "nldi_path_report": {
+      "path": "benchmarks/geotransport_v0_1/nldi_path_crosswalk_report.json",
+      "sha256": "9302319ac8a12a58065c4f7df7455afa3fa471d205b42ae27ab611d1006219ef",
+      "size_bytes": 21326
+    },
+    "nldi_upstream_tributaries_30km": {
+      "path": "data/geotransport_v0_1/center_hill_v2_d4_topology/raw/gauge_upstream_tributaries_30km.json",
+      "sha256": "1f8bc9bdb6fae8e4a6e40c34531ae0a002dbaddde0fd475b53e956630a0b262c",
+      "size_bytes": 104740
+    }
+  },
+  "claim_boundary": {
+    "branching_kernel_contract_ready": true,
+    "d3_mainstem_only_omission_structurally_verified": true,
+    "d4_predictive_improvement_validated": false,
+    "direct_off_path_tributary_count": 19,
+    "full_subnetwork_routing_ready": false,
+    "geospatial_kernel_validated": false,
+    "modeled_tributary_boundary_acquisition_ready": true
+  },
+  "confluences": [
+    {
+      "admitted": true,
+      "coordinate": [
+        -85.8366317,
+        36.102906398
+      ],
+      "evidence_level": "derived",
+      "provenance_id": "usgs-nldi:UT-30km:1f8bc9bdb6fae8e4a6e40c34531ae0a002dbaddde0fd475b53e956630a0b262c",
+      "receiving_feature_id": 18421759,
+      "schema": "gwm.geospatial_kernel.tributary_confluence.v1",
+      "tributary_feature_id": 18421757,
+      "upstream_network_compiled": false
+    },
+    {
+      "admitted": true,
+      "coordinate": [
+        -85.840070404,
+        36.103739299
+      ],
+      "evidence_level": "derived",
+      "provenance_id": "usgs-nldi:UT-30km:1f8bc9bdb6fae8e4a6e40c34531ae0a002dbaddde0fd475b53e956630a0b262c",
+      "receiving_feature_id": 18421753,
+      "schema": "gwm.geospatial_kernel.tributary_confluence.v1",
+      "tributary_feature_id": 18421755,
+      "upstream_network_compiled": false
+    },
+    {
+      "admitted": true,
+      "coordinate": [
+        -85.8480938,
+        36.111968599
+      ],
+      "evidence_level": "derived",
+      "provenance_id": "usgs-nldi:UT-30km:1f8bc9bdb6fae8e4a6e40c34531ae0a002dbaddde0fd475b53e956630a0b262c",
+      "receiving_feature_id": 18427677,
+      "schema": "gwm.geospatial_kernel.tributary_confluence.v1",
+      "tributary_feature_id": 25242911,
+      "upstream_network_compiled": false
+    },
+    {
+      "admitted": true,
+      "coordinate": [
+        -85.843644403,
+        36.117380798
+      ],
+      "evidence_level": "derived",
+      "provenance_id": "usgs-nldi:UT-30km:1f8bc9bdb6fae8e4a6e40c34531ae0a002dbaddde0fd475b53e956630a0b262c",
+      "receiving_feature_id": 18421751,
+      "schema": "gwm.geospatial_kernel.tributary_confluence.v1",
+      "tributary_feature_id": 18421819,
+      "upstream_network_compiled": false
+    },
+    {
+      "admitted": true,
+      "coordinate": [
+        -85.824607901,
+        36.122927494
+      ],
+      "evidence_level": "derived",
+      "provenance_id": "usgs-nldi:UT-30km:1f8bc9bdb6fae8e4a6e40c34531ae0a002dbaddde0fd475b53e956630a0b262c",
+      "receiving_feature_id": 18421817,
+      "schema": "gwm.geospatial_kernel.tributary_confluence.v1",
+      "tributary_feature_id": 18421815,
+      "upstream_network_compiled": false
+    },
+    {
+      "admitted": true,
+      "coordinate": [
+        -85.807418004,
+        36.131387994
+      ],
+      "evidence_level": "derived",
+      "provenance_id": "usgs-nldi:UT-30km:1f8bc9bdb6fae8e4a6e40c34531ae0a002dbaddde0fd475b53e956630a0b262c",
+      "receiving_feature_id": 18421747,
+      "schema": "gwm.geospatial_kernel.tributary_confluence.v1",
+      "tributary_feature_id": 18421749,
+      "upstream_network_compiled": false
+    },
+    {
+      "admitted": true,
+      "coordinate": [
+        -85.803740606,
+        36.135992199
+      ],
+      "evidence_level": "derived",
+      "provenance_id": "usgs-nldi:UT-30km:1f8bc9bdb6fae8e4a6e40c34531ae0a002dbaddde0fd475b53e956630a0b262c",
+      "receiving_feature_id": 18421829,
+      "schema": "gwm.geospatial_kernel.tributary_confluence.v1",
+      "tributary_feature_id": 18421833,
+      "upstream_network_compiled": false
+    },
+    {
+      "admitted": true,
+      "coordinate": [
+        -85.801971406,
+        36.139138296
+      ],
+      "evidence_level": "derived",
+      "provenance_id": "usgs-nldi:UT-30km:1f8bc9bdb6fae8e4a6e40c34531ae0a002dbaddde0fd475b53e956630a0b262c",
+      "receiving_feature_id": 18421727,
+      "schema": "gwm.geospatial_kernel.tributary_confluence.v1",
+      "tributary_feature_id": 18421729,
+      "upstream_network_compiled": false
+    },
+    {
+      "admitted": true,
+      "coordinate": [
+        -85.8055529,
+        36.142678499
+      ],
+      "evidence_level": "derived",
+      "provenance_id": "usgs-nldi:UT-30km:1f8bc9bdb6fae8e4a6e40c34531ae0a002dbaddde0fd475b53e956630a0b262c",
+      "receiving_feature_id": 18421737,
+      "schema": "gwm.geospatial_kernel.tributary_confluence.v1",
+      "tributary_feature_id": 18421725,
+      "upstream_network_compiled": false
+    },
+    {
+      "admitted": true,
+      "coordinate": [
+        -85.838991702,
+        36.146887794
+      ],
+      "evidence_level": "derived",
+      "provenance_id": "usgs-nldi:UT-30km:1f8bc9bdb6fae8e4a6e40c34531ae0a002dbaddde0fd475b53e956630a0b262c",
+      "receiving_feature_id": 18421807,
+      "schema": "gwm.geospatial_kernel.tributary_confluence.v1",
+      "tributary_feature_id": 18421717,
+      "upstream_network_compiled": false
+    },
+    {
+      "admitted": true,
+      "coordinate": [
+        -85.840198502,
+        36.146721497
+      ],
+      "evidence_level": "derived",
+      "provenance_id": "usgs-nldi:UT-30km:1f8bc9bdb6fae8e4a6e40c34531ae0a002dbaddde0fd475b53e956630a0b262c",
+      "receiving_feature_id": 18421721,
+      "schema": "gwm.geospatial_kernel.tributary_confluence.v1",
+      "tributary_feature_id": 18421723,
+      "upstream_network_compiled": false
+    },
+    {
+      "admitted": true,
+      "coordinate": [
+        -85.844221003,
+        36.148160994
+      ],
+      "evidence_level": "derived",
+      "provenance_id": "usgs-nldi:UT-30km:1f8bc9bdb6fae8e4a6e40c34531ae0a002dbaddde0fd475b53e956630a0b262c",
+      "receiving_feature_id": 18421803,
+      "schema": "gwm.geospatial_kernel.tributary_confluence.v1",
+      "tributary_feature_id": 18421805,
+      "upstream_network_compiled": false
+    },
+    {
+      "admitted": true,
+      "coordinate": [
+        -85.854881607,
+        36.150159597
+      ],
+      "evidence_level": "derived",
+      "provenance_id": "usgs-nldi:UT-30km:1f8bc9bdb6fae8e4a6e40c34531ae0a002dbaddde0fd475b53e956630a0b262c",
+      "receiving_feature_id": 18421799,
+      "schema": "gwm.geospatial_kernel.tributary_confluence.v1",
+      "tributary_feature_id": 18421801,
+      "upstream_network_compiled": false
+    },
+    {
+      "admitted": true,
+      "coordinate": [
+        -85.857827306,
+        36.150246896
+      ],
+      "evidence_level": "derived",
+      "provenance_id": "usgs-nldi:UT-30km:1f8bc9bdb6fae8e4a6e40c34531ae0a002dbaddde0fd475b53e956630a0b262c",
+      "receiving_feature_id": 18421731,
+      "schema": "gwm.geospatial_kernel.tributary_confluence.v1",
+      "tributary_feature_id": 18421715,
+      "upstream_network_compiled": false
+    },
+    {
+      "admitted": true,
+      "coordinate": [
+        -85.865407601,
+        36.142945893
+      ],
+      "evidence_level": "derived",
+      "provenance_id": "usgs-nldi:UT-30km:1f8bc9bdb6fae8e4a6e40c34531ae0a002dbaddde0fd475b53e956630a0b262c",
+      "receiving_feature_id": 18421739,
+      "schema": "gwm.geospatial_kernel.tributary_confluence.v1",
+      "tributary_feature_id": 18421733,
+      "upstream_network_compiled": false
+    },
+    {
+      "admitted": true,
+      "coordinate": [
+        -85.869773604,
+        36.139411598
+      ],
+      "evidence_level": "derived",
+      "provenance_id": "usgs-nldi:UT-30km:1f8bc9bdb6fae8e4a6e40c34531ae0a002dbaddde0fd475b53e956630a0b262c",
+      "receiving_feature_id": 18421741,
+      "schema": "gwm.geospatial_kernel.tributary_confluence.v1",
+      "tributary_feature_id": 18421743,
+      "upstream_network_compiled": false
+    },
+    {
+      "admitted": true,
+      "coordinate": [
+        -85.883730501,
+        36.165249497
+      ],
+      "evidence_level": "derived",
+      "provenance_id": "usgs-nldi:UT-30km:1f8bc9bdb6fae8e4a6e40c34531ae0a002dbaddde0fd475b53e956630a0b262c",
+      "receiving_feature_id": 18421795,
+      "schema": "gwm.geospatial_kernel.tributary_confluence.v1",
+      "tributary_feature_id": 18421797,
+      "upstream_network_compiled": false
+    },
+    {
+      "admitted": true,
+      "coordinate": [
+        -85.895469002,
+        36.171096198
+      ],
+      "evidence_level": "derived",
+      "provenance_id": "usgs-nldi:UT-30km:1f8bc9bdb6fae8e4a6e40c34531ae0a002dbaddde0fd475b53e956630a0b262c",
+      "receiving_feature_id": 18421707,
+      "schema": "gwm.geospatial_kernel.tributary_confluence.v1",
+      "tributary_feature_id": 18421709,
+      "upstream_network_compiled": false
+    },
+    {
+      "admitted": true,
+      "coordinate": [
+        -85.909170702,
+        36.178724498
+      ],
+      "evidence_level": "derived",
+      "provenance_id": "usgs-nldi:UT-30km:1f8bc9bdb6fae8e4a6e40c34531ae0a002dbaddde0fd475b53e956630a0b262c",
+      "receiving_feature_id": 18421703,
+      "schema": "gwm.geospatial_kernel.tributary_confluence.v1",
+      "tributary_feature_id": 18421705,
+      "upstream_network_compiled": false
+    }
+  ],
+  "data_isolation": {
+    "d3_outcome_artifacts_read": false,
+    "d3_outcome_values_loaded": false,
+    "topology_sources_only": true
+  },
+  "domain": {
+    "action_comid": 18434275,
+    "action_entry_feature_id": 18434265,
+    "active_mainstem_feature_count": 26,
+    "active_mainstem_feature_ids": [
+      18434265,
+      18421763,
+      18421761,
+      18421759,
+      18421753,
+      18421821,
+      18427677,
+      18421751,
+      18421811,
+      18421817,
+      18421831,
+      18421747,
+      18421829,
+      18421727,
+      18421737,
+      18421807,
+      18421719,
+      18421721,
+      18421803,
+      18421799,
+      18421731,
+      18421739,
+      18421741,
+      18421795,
+      18421707,
+      18421703
+    ],
+    "direct_off_path_tributary_count": 19,
+    "direct_off_path_tributary_feature_ids": [
+      18421757,
+      18421755,
+      25242911,
+      18421819,
+      18421815,
+      18421749,
+      18421833,
+      18421729,
+      18421725,
+      18421717,
+      18421723,
+      18421805,
+      18421801,
+      18421715,
+      18421733,
+      18421743,
+      18421797,
+      18421709,
+      18421705
+    ],
+    "gauge_comid": 18421703,
+    "linear_referenced_effective_length_km": 25.172759480695614,
+    "nldi_full_reach_navigation_length_km": 28.38084,
+    "receiving_mainstem_feature_count": 19
+  },
+  "gates": {
+    "direct_off_path_confluences_present": true,
+    "direct_tributaries_present_on_nwm_feature_axis": true,
+    "direct_tributary_feature_ids_unique": true,
+    "full_subnetwork_compiled": false,
+    "mainstem_geometry_continuous": true,
+    "mainstem_interval_present_in_upstream_navigation": true,
+    "mouth_boundary_semantics_fail_closed": true
+  },
+  "generated_at": "2026-07-27T04:20:14.499107+00:00",
+  "nwm_boundary_crosswalk": {
+    "all_direct_tributaries_present": true,
+    "feature_axis_artifact": {
+      "path": "data/geotransport_v0_1/nwm/feature_id/0.zst",
+      "sha256": "85122e43b8c0031a783235437c8789badba8f80f08e5aae71af5d964ebd88284",
+      "size_bytes": 2892888
+    },
+    "feature_axis_count": 2776734,
+    "ground_truth": false,
+    "possible_nudging": true,
+    "rows": [
+      {
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896607,
+        "tributary_feature_id": 18421757
+      },
+      {
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896606,
+        "tributary_feature_id": 18421755
+      },
+      {
+        "nwm_feature_chunk_index": 87,
+        "nwm_feature_index": 2632241,
+        "tributary_feature_id": 25242911
+      },
+      {
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896638,
+        "tributary_feature_id": 18421819
+      },
+      {
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896636,
+        "tributary_feature_id": 18421815
+      },
+      {
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896603,
+        "tributary_feature_id": 18421749
+      },
+      {
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896645,
+        "tributary_feature_id": 18421833
+      },
+      {
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896595,
+        "tributary_feature_id": 18421729
+      },
+      {
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896593,
+        "tributary_feature_id": 18421725
+      },
+      {
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896589,
+        "tributary_feature_id": 18421717
+      },
+      {
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896592,
+        "tributary_feature_id": 18421723
+      },
+      {
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896631,
+        "tributary_feature_id": 18421805
+      },
+      {
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896629,
+        "tributary_feature_id": 18421801
+      },
+      {
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896588,
+        "tributary_feature_id": 18421715
+      },
+      {
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896597,
+        "tributary_feature_id": 18421733
+      },
+      {
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896601,
+        "tributary_feature_id": 18421743
+      },
+      {
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896627,
+        "tributary_feature_id": 18421797
+      },
+      {
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896586,
+        "tributary_feature_id": 18421709
+      },
+      {
+        "nwm_feature_chunk_index": 63,
+        "nwm_feature_index": 1896584,
+        "tributary_feature_id": 18421705
+      }
+    ],
+    "source": "NOAA NWM v3 retrospective chrtout.zarr/feature_id",
+    "streamflow_feature_chunk_indices": [
+      63,
+      87
+    ],
+    "variable_role": "modeled_tributary_boundary_flux"
+  },
+  "schema": "gwm.geotransport.center_hill_v2_d4_topology_audit.v1",
+  "source_request": {
+    "retrieval": null,
+    "url": "https://api.water.usgs.gov/nldi/linked-data/nwissite/USGS-03424860/navigation/UT/flowlines?distance=30.0"
+  },
+  "status": "pass_direct_confluence_boundary_ready",
+  "topology_method": {
+    "attachment_rule": "tributary downstream endpoint equals receiving mainstem upstream endpoint",
+    "coordinate_normalization": "longitude_latitude_rounded_9_decimals",
+    "full_upstream_tributary_subnetworks_compiled": false,
+    "linear_referenced_effective_length_km": 25.172759480695614,
+    "maximum_navigation_distance_km": 30.0,
+    "navigation": "USGS NLDI upstream tributaries from USGS-03424860",
+    "nldi_full_reach_navigation_length_km": 28.38084
+  }
+}

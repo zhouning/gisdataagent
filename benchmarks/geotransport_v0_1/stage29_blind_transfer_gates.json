@@ -1,0 +1,205 @@
+{
+  "all_gates_passed": true,
+  "claim_boundary": {
+    "empirical_lag_equals_physical_travel_time": false,
+    "events_selected_without_stage29_observation_values": true,
+    "observed_spatial_rollout_completed": false,
+    "observed_tributary_is_mouth_boundary_flux": false,
+    "observed_tributary_is_one_gauged_branch_state": true,
+    "observed_tributary_represents_all_lateral_inflow": false,
+    "runtime_operator_admitted": false
+  },
+  "decision": {
+    "blind_transfer_evidence_admitted": true,
+    "observed_lateral_inflow_total_admitted": false,
+    "observed_spatial_rollout_completed": false,
+    "observed_tributary_state_admitted": true,
+    "physical_travel_time_admitted": false,
+    "runtime_operator_admitted": false,
+    "stable_empirical_lag_admitted": false
+  },
+  "event_summary": [
+    {
+      "best_lag_hours": 5,
+      "best_lag_pearson_r": 0.799624219109659,
+      "event_id": "release_step_20221223T1900Z",
+      "fixed_lag_pearson_r": 0.7270395584160697,
+      "fixed_lag_supported": false,
+      "selection_rank": 1,
+      "tributary_complete_hour_count": 61
+    },
+    {
+      "best_lag_hours": 6,
+      "best_lag_pearson_r": 0.8310662796172466,
+      "event_id": "release_step_20250910T1400Z",
+      "fixed_lag_pearson_r": 0.8310662796172466,
+      "fixed_lag_supported": true,
+      "selection_rank": 2,
+      "tributary_complete_hour_count": 84
+    },
+    {
+      "best_lag_hours": 6,
+      "best_lag_pearson_r": 0.8177595568106913,
+      "event_id": "release_step_20250303T1600Z",
+      "fixed_lag_pearson_r": 0.8177595568106913,
+      "fixed_lag_supported": true,
+      "selection_rank": 3,
+      "tributary_complete_hour_count": 79
+    }
+  ],
+  "frozen_stage28_hashes": {
+    "benchmarks/geotransport_v0_1/stage28_public_operational_boundary_gates.json": {
+      "actual_sha256": "09b2e66b32b01e7bef9c788a0b5f890680ec5bc1386a36a449cb96fb86fb2c55",
+      "expected_sha256": "09b2e66b32b01e7bef9c788a0b5f890680ec5bc1386a36a449cb96fb86fb2c55",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage28_center_hill_operational_boundary_evidence/README.md": {
+      "actual_sha256": "57ae4e6dd26f3d9fb8581025cb0ade75c6cf5df1973951a2ad7947032e87118e",
+      "expected_sha256": "57ae4e6dd26f3d9fb8581025cb0ade75c6cf5df1973951a2ad7947032e87118e",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage28_center_hill_operational_boundary_evidence/acquisition_manifest.json": {
+      "actual_sha256": "1af45b76c416fed176307a6f3acdfabde006c1514a57cddc71f7008b6ea36af6",
+      "expected_sha256": "1af45b76c416fed176307a6f3acdfabde006c1514a57cddc71f7008b6ea36af6",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage28_center_hill_operational_boundary_evidence/acquisition_plan.json": {
+      "actual_sha256": "335cf57dad76c469e1f8e78cf9e93ccba2a606c38258cd69b45153f5ebc4d0bb",
+      "expected_sha256": "335cf57dad76c469e1f8e78cf9e93ccba2a606c38258cd69b45153f5ebc4d0bb",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage28_center_hill_operational_boundary_evidence/operational_boundary_evidence_ledger.json": {
+      "actual_sha256": "d3ae3752c098592f2861aade525d82748432cf086fe208bd736a49cd6b4837a1",
+      "expected_sha256": "d3ae3752c098592f2861aade525d82748432cf086fe208bd736a49cd6b4837a1",
+      "matches": true
+    },
+    "data_agent/test_acquire_geotransport_stage28_public_operational_boundary_evidence.py": {
+      "actual_sha256": "c2eb25be51954ded84243168bc37f86f2c6432e17c65ddad3997232aa0bae70c",
+      "expected_sha256": "c2eb25be51954ded84243168bc37f86f2c6432e17c65ddad3997232aa0bae70c",
+      "matches": true
+    },
+    "data_agent/test_geospatial_kernel_public_operational_boundary_evidence.py": {
+      "actual_sha256": "99b80ce74de5716387234e5bb0d080b319a06b50466a14ac5893fe614fc73cf4",
+      "expected_sha256": "99b80ce74de5716387234e5bb0d080b319a06b50466a14ac5893fe614fc73cf4",
+      "matches": true
+    },
+    "data_agent/uwm/geospatial_kernel_v2/public_operational_boundary_evidence.py": {
+      "actual_sha256": "fc406d649b7d4c845e10f84f1d02190f63d293da0d4678c251afcec5230a1e52",
+      "expected_sha256": "fc406d649b7d4c845e10f84f1d02190f63d293da0d4678c251afcec5230a1e52",
+      "matches": true
+    },
+    "docs/architecture-decisions/adr-069-public-operational-boundary-lag-diagnostic.md": {
+      "actual_sha256": "972769626c629c49651a315a0c95f7c9f01e551ac7798bc32c31a07b5f8197c4",
+      "expected_sha256": "972769626c629c49651a315a0c95f7c9f01e551ac7798bc32c31a07b5f8197c4",
+      "matches": true
+    },
+    "scripts/acquire_geotransport_stage28_public_operational_boundary_evidence.py": {
+      "actual_sha256": "82dd57130d57e623f6413b48bee6814d5a0f67ba60f73e48c49cce138d9c0a98",
+      "expected_sha256": "82dd57130d57e623f6413b48bee6814d5a0f67ba60f73e48c49cce138d9c0a98",
+      "matches": true
+    },
+    "scripts/compile_geotransport_stage28_public_operational_boundary_gates.py": {
+      "actual_sha256": "4e8a95c1dadac96f6df7369f480d628d9b3bcaa771613c57d0f60675cfaba013",
+      "expected_sha256": "4e8a95c1dadac96f6df7369f480d628d9b3bcaa771613c57d0f60675cfaba013",
+      "matches": true
+    }
+  },
+  "gates": {
+    "all_compiled_smith_fork_hours_are_approved": true,
+    "all_downstream_windows_are_complete_and_approved": true,
+    "all_selected_release_windows_have_seventy_two_support_hours": true,
+    "all_thirteen_lags_have_equal_real_pair_counts": true,
+    "eleven_source_artifacts_are_hash_and_tls_verified": true,
+    "empirical_lag_is_not_relabelled_physical_travel_time": true,
+    "event_manifest_was_frozen_before_observation_values": true,
+    "first_blind_event_prefers_five_hours_and_rejects_fixed_six": true,
+    "five_year_release_pool_is_complete_and_unpaginated": true,
+    "observation_plan_was_frozen_before_observation_values": true,
+    "observed_spatial_rollout_remains_unclaimed": true,
+    "observed_tributary_state_is_admitted": true,
+    "runtime_operator_remains_unadmitted": true,
+    "second_blind_event_supports_fixed_six_hours": true,
+    "selected_events_meet_step_range_and_separation_contract": true,
+    "selection_acquisition_is_public_bounded_and_private_free": true,
+    "selection_plan_was_frozen_before_release_values": true,
+    "smith_fork_gaps_are_preserved_without_fill": true,
+    "smith_fork_nldi_path_reaches_stonewall_outlet": true,
+    "smith_fork_site_and_continuous_series_are_bound": true,
+    "stage28_artifacts_hash_frozen": true,
+    "third_blind_event_supports_fixed_six_hours": true,
+    "three_events_are_release_selected_blind_transfers": true,
+    "tributary_gauge_is_not_relabelled_as_mouth_or_total_lateral_flux": true,
+    "two_of_three_blind_events_support_stage28_fixed_lag": true,
+    "unanimous_stable_empirical_lag_remains_unadmitted": true,
+    "unsupported_transfer_and_lateral_claims_fail_closed": true
+  },
+  "generated_at": "2026-07-29T16:46:40.866148+00:00",
+  "ledger_artifact": {
+    "path": "data/geotransport_v0_1/stage29_center_hill_blind_transfer_events/blind_transfer_evidence_ledger.json",
+    "sha256": "dc87665b11ed243859cf8f7ff8cfd0b640c7998e83966b4eb3f5f9bfe558ce0f",
+    "size_bytes": 321775
+  },
+  "schema": "gwm.geotransport.stage29_blind_transfer_gates.v1",
+  "status": "three_blind_events_scored_two_support_six_hours_stable_lag_and_rollout_pending",
+  "tributary_binding": {
+    "admitted_role": "observed_tributary_state_at_gauge",
+    "all_lateral_inflow_admitted": false,
+    "comid": 18421273,
+    "continuous_series": {
+      "begin_utc": "1991-08-01T10:00:00+00:00",
+      "computation": "Instantaneous",
+      "end_utc": "2026-07-29T11:00:00+00:00",
+      "id": "c59c7559af4f4a0ebef64eb811803ea0",
+      "parameter_code": "00060",
+      "statistic_id": "00011",
+      "unit": "ft^3/s"
+    },
+    "coordinate_wgs84": [
+      -85.9074257025393,
+      36.08734569587428
+    ],
+    "downstream_path_feature_ids": [
+      18421273,
+      18421279,
+      18421239,
+      18421259,
+      18421653,
+      18421203,
+      18421111,
+      18421743,
+      18421741,
+      18421795,
+      18421707,
+      18421703,
+      18421699,
+      18421693,
+      18421789,
+      18421685,
+      18421779,
+      18421781,
+      18421783,
+      18421679,
+      18421677,
+      18421775,
+      18418013,
+      18413761,
+      18413753,
+      18416089,
+      18415929
+    ],
+    "drainage_area_square_miles": 214.0,
+    "name": "SMITH FORK AT TEMPERANCE HALL, TN",
+    "path_reaches_outlet_comid": true,
+    "reachcode": "05130108000024",
+    "site_id": "USGS-03424730",
+    "tributary_mouth_flux_admitted": false
+  },
+  "typed_refusals": {
+    "all_lateral_inflow": true,
+    "boundary_conditioned_rollout": true,
+    "physical_travel_time": true,
+    "runtime_operator": true,
+    "stable_empirical_lag": true,
+    "tributary_mouth_flux": true
+  }
+}

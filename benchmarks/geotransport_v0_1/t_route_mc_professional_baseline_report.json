@@ -1,0 +1,3177 @@
+{
+  "claim_boundary": {
+    "authoritative_real_world_direction_validated": false,
+    "benchmark_validated": false,
+    "center_hill_execution_admitted": false,
+    "center_hill_parameters_available": false,
+    "compound_channel_enabled_in_nonlinear_storage": false,
+    "compound_channel_enabled_in_t_route": true,
+    "geospatial_kernel_validated": false,
+    "hydrodynamically_validated": false,
+    "models_numerically_equivalent": false,
+    "official_mc_conservation_verified": false,
+    "official_t_route_kernel_executed": true,
+    "official_t_route_runtime_built": true,
+    "professional_baseline_available_on_official_fixture": true
+  },
+  "data_isolation": {
+    "inputs": [
+      "official_route_link_parameters",
+      "synthetic_boundary_pulse"
+    ],
+    "observed_action_loaded": false,
+    "observed_forcing_loaded": false,
+    "outcome_values_loaded": false
+  },
+  "direction_diagnostics": {
+    "nonlinear_storage": {
+      "absolute_l1_difference_m3s": 37.002365579917274,
+      "forward_peak_m3s": 10.792304151270082,
+      "forward_peak_step_zero_based": 127,
+      "maximum_absolute_difference_m3s": 0.5351264611204494,
+      "relative_l1_difference": 0.025862337480917184,
+      "reverse_peak_m3s": 10.952467064940302,
+      "reverse_peak_step_zero_based": 128,
+      "sample_count": 1440
+    },
+    "t_route_mc": {
+      "absolute_l1_difference_m3s": 428.03921416110825,
+      "forward_peak_m3s": 14.826912879943848,
+      "forward_peak_step_zero_based": 141,
+      "maximum_absolute_difference_m3s": 6.5958638191223145,
+      "relative_l1_difference": 0.2172964111661064,
+      "reverse_peak_m3s": 14.359233856201172,
+      "reverse_peak_step_zero_based": 146,
+      "sample_count": 1440
+    }
+  },
+  "fixture": {
+    "center_hill_parameter_fixture": false,
+    "feature_count": 9,
+    "feature_ids": [
+      1622797,
+      1622687,
+      1623573,
+      1621137,
+      1621139,
+      1623575,
+      1622701,
+      1622703,
+      1622721
+    ],
+    "full_reaches_only": true,
+    "source_id": "t_route_hurricane_laura_nwm_v2_1",
+    "topology_consecutive": true
+  },
+  "forward_authoritative_order": {
+    "feature_ids": [
+      1622797,
+      1622687,
+      1623573,
+      1621137,
+      1621139,
+      1623575,
+      1622701,
+      1622703,
+      1622721
+    ],
+    "nonlinear_storage": {
+      "completed_step_count": 1440,
+      "compound_channel_implemented": false,
+      "horizon_physical_mass_residual_m3": 2.0855804905295372e-07,
+      "horizon_physical_mass_tolerance_m3": 0.07649740836011616,
+      "maximum_absolute_step_physical_mass_residual_m3": 3.6496203392744064e-08,
+      "maximum_depth_m": 7.377155000482776,
+      "outlet_qvd_hourly": [
+        {
+          "hour": 1,
+          "outlet_depth_m": 0.0,
+          "outlet_discharge_m3s": 1.8615356004417658e-53,
+          "outlet_velocity_mps": 3.898402660285545e-23
+        },
+        {
+          "hour": 2,
+          "outlet_depth_m": 2.2790990389123282e-14,
+          "outlet_discharge_m3s": 2.8310495390295793e-23,
+          "outlet_velocity_mps": 4.610172160641736e-11
+        },
+        {
+          "hour": 3,
+          "outlet_depth_m": 2.0775089653168147e-06,
+          "outlet_discharge_m3s": 5.260004331968493e-10,
+          "outlet_velocity_mps": 9.361220422360152e-06
+        },
+        {
+          "hour": 4,
+          "outlet_depth_m": 0.00723426229790503,
+          "outlet_discharge_m3s": 0.00042095280945952793,
+          "outlet_velocity_mps": 0.0021487937875393636
+        },
+        {
+          "hour": 5,
+          "outlet_depth_m": 0.168767666704468,
+          "outlet_discharge_m3s": 0.08088172831383951,
+          "outlet_velocity_mps": 0.017225197704769876
+        },
+        {
+          "hour": 6,
+          "outlet_depth_m": 0.6952846644382482,
+          "outlet_discharge_m3s": 0.8847563222773959,
+          "outlet_velocity_mps": 0.042075113544375875
+        },
+        {
+          "hour": 7,
+          "outlet_depth_m": 1.4335259049615037,
+          "outlet_discharge_m3s": 3.1126374065564155,
+          "outlet_velocity_mps": 0.06454837659692247
+        },
+        {
+          "hour": 8,
+          "outlet_depth_m": 2.1149859103378,
+          "outlet_discharge_m3s": 6.260039380090349,
+          "outlet_velocity_mps": 0.0804912833681281
+        },
+        {
+          "hour": 9,
+          "outlet_depth_m": 2.5794847445570106,
+          "outlet_discharge_m3s": 9.023584100575155,
+          "outlet_velocity_mps": 0.08990912584673735
+        },
+        {
+          "hour": 10,
+          "outlet_depth_m": 2.8010330789489113,
+          "outlet_discharge_m3s": 10.524463917991753,
+          "outlet_velocity_mps": 0.09410526909985537
+        },
+        {
+          "hour": 11,
+          "outlet_depth_m": 2.832512345688697,
+          "outlet_discharge_m3s": 10.747491608707273,
+          "outlet_velocity_mps": 0.09468818291991482
+        },
+        {
+          "hour": 12,
+          "outlet_depth_m": 2.7419770302959203,
+          "outlet_discharge_m3s": 10.112646648967232,
+          "outlet_velocity_mps": 0.09300305936193826
+        },
+        {
+          "hour": 13,
+          "outlet_depth_m": 2.5843096562184313,
+          "outlet_discharge_m3s": 9.054996677404619,
+          "outlet_velocity_mps": 0.0900023454572986
+        },
+        {
+          "hour": 14,
+          "outlet_depth_m": 2.3965330116310843,
+          "outlet_discharge_m3s": 7.873854862964921,
+          "outlet_velocity_mps": 0.08630885662343678
+        },
+        {
+          "hour": 15,
+          "outlet_depth_m": 2.201265667983597,
+          "outlet_discharge_m3s": 6.734757432847172,
+          "outlet_velocity_mps": 0.0823129143711358
+        },
+        {
+          "hour": 16,
+          "outlet_depth_m": 2.0112928129576373,
+          "outlet_discharge_m3s": 5.7124748223290585,
+          "outlet_velocity_mps": 0.07825222641695206
+        },
+        {
+          "hour": 17,
+          "outlet_depth_m": 1.8332037357856839,
+          "outlet_discharge_m3s": 4.830035303650271,
+          "outlet_velocity_mps": 0.07426747656805055
+        },
+        {
+          "hour": 18,
+          "outlet_depth_m": 1.6698736239825078,
+          "outlet_discharge_m3s": 4.084526512160911,
+          "outlet_velocity_mps": 0.0704385566042524
+        },
+        {
+          "hour": 19,
+          "outlet_depth_m": 1.5220434217721444,
+          "outlet_discharge_m3s": 3.461895838297076,
+          "outlet_velocity_mps": 0.0668075530379979
+        },
+        {
+          "hour": 20,
+          "outlet_depth_m": 1.38928793288048,
+          "outlet_discharge_m3s": 2.944680621172179,
+          "outlet_velocity_mps": 0.0633931957548921
+        },
+        {
+          "hour": 21,
+          "outlet_depth_m": 1.2705937268043137,
+          "outlet_discharge_m3s": 2.5156937230653633,
+          "outlet_velocity_mps": 0.06019993256737567
+        },
+        {
+          "hour": 22,
+          "outlet_depth_m": 1.1646958666000062,
+          "outlet_discharge_m3s": 2.1595569400427443,
+          "outlet_velocity_mps": 0.057223644487866064
+        },
+        {
+          "hour": 23,
+          "outlet_depth_m": 1.0702683174134704,
+          "outlet_discharge_m3s": 1.863158110636527,
+          "outlet_velocity_mps": 0.05445525713476631
+        },
+        {
+          "hour": 24,
+          "outlet_depth_m": 0.9860268162113286,
+          "outlet_discharge_m3s": 1.6156093669491856,
+          "outlet_velocity_mps": 0.051883025977144115
+        },
+        {
+          "hour": 25,
+          "outlet_depth_m": 0.9107801100200119,
+          "outlet_discharge_m3s": 1.408002737754267,
+          "outlet_velocity_mps": 0.0494939786272914
+        },
+        {
+          "hour": 26,
+          "outlet_depth_m": 0.8434513055366172,
+          "outlet_discharge_m3s": 1.2331078167526397,
+          "outlet_velocity_mps": 0.04727481682292786
+        },
+        {
+          "hour": 27,
+          "outlet_depth_m": 0.7830824009745877,
+          "outlet_discharge_m3s": 1.0850773565241112,
+          "outlet_velocity_mps": 0.045212469677619424
+        },
+        {
+          "hour": 28,
+          "outlet_depth_m": 0.7288297920218912,
+          "outlet_discharge_m3s": 0.959186964872704,
+          "outlet_velocity_mps": 0.043294420884628024
+        },
+        {
+          "hour": 29,
+          "outlet_depth_m": 0.6799553414645566,
+          "outlet_discharge_m3s": 0.8516159605995293,
+          "outlet_velocity_mps": 0.041508889323558736
+        },
+        {
+          "hour": 30,
+          "outlet_depth_m": 0.6358156659893641,
+          "outlet_discharge_m3s": 0.7592678644932435,
+          "outlet_velocity_mps": 0.03984491502412119
+        },
+        {
+          "hour": 31,
+          "outlet_depth_m": 0.5958511288457692,
+          "outlet_discharge_m3s": 0.6796256675492389,
+          "outlet_velocity_mps": 0.0382923847187437
+        },
+        {
+          "hour": 32,
+          "outlet_depth_m": 0.5595753316472702,
+          "outlet_discharge_m3s": 0.6106361890897247,
+          "outlet_velocity_mps": 0.03684201964596738
+        },
+        {
+          "hour": 33,
+          "outlet_depth_m": 0.5265654886270124,
+          "outlet_discharge_m3s": 0.5506181182144044,
+          "outlet_velocity_mps": 0.035485340628407754
+        },
+        {
+          "hour": 34,
+          "outlet_depth_m": 0.49645382980961394,
+          "outlet_discharge_m3s": 0.4981890330839024,
+          "outlet_velocity_mps": 0.034214620360389636
+        },
+        {
+          "hour": 35,
+          "outlet_depth_m": 0.4689200471708876,
+          "outlet_discharge_m3s": 0.4522074871737504,
+          "outlet_velocity_mps": 0.03302282942723965
+        },
+        {
+          "hour": 36,
+          "outlet_depth_m": 0.44368472796158326,
+          "outlet_discharge_m3s": 0.4117269968187853,
+          "outlet_velocity_mps": 0.0319035802794384
+        },
+        {
+          "hour": 37,
+          "outlet_depth_m": 0.42050368634282226,
+          "outlet_discharge_m3s": 0.37595940755953994,
+          "outlet_velocity_mps": 0.030851071834498537
+        },
+        {
+          "hour": 38,
+          "outlet_depth_m": 0.3991630927169869,
+          "outlet_discharge_m3s": 0.3442456480265203,
+          "outlet_velocity_mps": 0.029860036335589438
+        },
+        {
+          "hour": 39,
+          "outlet_depth_m": 0.37947530019773046,
+          "outlet_discharge_m3s": 0.3160323077568759,
+          "outlet_velocity_mps": 0.028925689396730504
+        },
+        {
+          "hour": 40,
+          "outlet_depth_m": 0.3612752738898981,
+          "outlet_discharge_m3s": 0.29085281434231613,
+          "outlet_velocity_mps": 0.02804368370044441
+        },
+        {
+          "hour": 41,
+          "outlet_depth_m": 0.34441753770863764,
+          "outlet_discharge_m3s": 0.2683122515368328,
+          "outlet_velocity_mps": 0.02721006651059634
+        },
+        {
+          "hour": 42,
+          "outlet_depth_m": 0.328773563438198,
+          "outlet_discharge_m3s": 0.24807506789942038,
+          "outlet_velocity_mps": 0.02642124096969334
+        },
+        {
+          "hour": 43,
+          "outlet_depth_m": 0.3142295365556425,
+          "outlet_discharge_m3s": 0.2298550875153554,
+          "outlet_velocity_mps": 0.02567393103105194
+        },
+        {
+          "hour": 44,
+          "outlet_depth_m": 0.3006844424788395,
+          "outlet_discharge_m3s": 0.21340736037080046,
+          "outlet_velocity_mps": 0.024965149807732154
+        },
+        {
+          "hour": 45,
+          "outlet_depth_m": 0.2880484251009867,
+          "outlet_discharge_m3s": 0.19852148805152428,
+          "outlet_velocity_mps": 0.024292171085260838
+        },
+        {
+          "hour": 46,
+          "outlet_depth_m": 0.2762413766786996,
+          "outlet_discharge_m3s": 0.18501613688146368,
+          "outlet_velocity_mps": 0.023652503732397093
+        },
+        {
+          "hour": 47,
+          "outlet_depth_m": 0.26519172437548855,
+          "outlet_discharge_m3s": 0.1727345103009227,
+          "outlet_velocity_mps": 0.02304386874560091
+        },
+        {
+          "hour": 48,
+          "outlet_depth_m": 0.2548353841033863,
+          "outlet_discharge_m3s": 0.16154059899212259,
+          "outlet_velocity_mps": 0.022464178673035184
+        },
+        {
+          "hour": 49,
+          "outlet_depth_m": 0.24511485684882275,
+          "outlet_discharge_m3s": 0.15131606391168353,
+          "outlet_velocity_mps": 0.021911519179181597
+        },
+        {
+          "hour": 50,
+          "outlet_depth_m": 0.23597844651526895,
+          "outlet_discharge_m3s": 0.1419576362355678,
+          "outlet_velocity_mps": 0.02138413252901774
+        },
+        {
+          "hour": 51,
+          "outlet_depth_m": 0.22737958156121202,
+          "outlet_discharge_m3s": 0.133374940995619,
+          "outlet_velocity_mps": 0.020880402789556454
+        },
+        {
+          "hour": 52,
+          "outlet_depth_m": 0.21927622544595546,
+          "outlet_discharge_m3s": 0.12548866922494673,
+          "outlet_velocity_mps": 0.020398842565344584
+        },
+        {
+          "hour": 53,
+          "outlet_depth_m": 0.21163036319574755,
+          "outlet_discharge_m3s": 0.11822903776427054,
+          "outlet_velocity_mps": 0.019938081102605715
+        },
+        {
+          "hour": 54,
+          "outlet_depth_m": 0.2044075533368917,
+          "outlet_discharge_m3s": 0.11153448731167664,
+          "outlet_velocity_mps": 0.019496853613712343
+        },
+        {
+          "hour": 55,
+          "outlet_depth_m": 0.1975765360690776,
+          "outlet_discharge_m3s": 0.10535057844347596,
+          "outlet_velocity_mps": 0.019073991689391286
+        },
+        {
+          "hour": 56,
+          "outlet_depth_m": 0.19110888992081443,
+          "outlet_discharge_m3s": 0.09962905267558533,
+          "outlet_velocity_mps": 0.018668414680426113
+        },
+        {
+          "hour": 57,
+          "outlet_depth_m": 0.18497873028135145,
+          "outlet_discharge_m3s": 0.09432703154860436,
+          "outlet_velocity_mps": 0.018279121943624004
+        },
+        {
+          "hour": 58,
+          "outlet_depth_m": 0.1791624441750248,
+          "outlet_discharge_m3s": 0.08940633149917292,
+          "outlet_velocity_mps": 0.017905185858512737
+        },
+        {
+          "hour": 59,
+          "outlet_depth_m": 0.1736384564639753,
+          "outlet_discharge_m3s": 0.08483287615557335,
+          "outlet_velocity_mps": 0.017545745531704276
+        },
+        {
+          "hour": 60,
+          "outlet_depth_m": 0.16838702335829592,
+          "outlet_discharge_m3s": 0.08057619084811093,
+          "outlet_velocity_mps": 0.01720000111519916
+        },
+        {
+          "hour": 61,
+          "outlet_depth_m": 0.163390049699382,
+          "outlet_discharge_m3s": 0.07660896669755883,
+          "outlet_velocity_mps": 0.016867208673208428
+        },
+        {
+          "hour": 62,
+          "outlet_depth_m": 0.15863092697972486,
+          "outlet_discharge_m3s": 0.07290668375113582,
+          "outlet_velocity_mps": 0.01654667553943743
+        },
+        {
+          "hour": 63,
+          "outlet_depth_m": 0.1540943894848901,
+          "outlet_discharge_m3s": 0.06944728436500763,
+          "outlet_velocity_mps": 0.016237756113303203
+        },
+        {
+          "hour": 64,
+          "outlet_depth_m": 0.14976638630289818,
+          "outlet_discharge_m3s": 0.06621088945681644,
+          "outlet_velocity_mps": 0.015939848049333905
+        },
+        {
+          "hour": 65,
+          "outlet_depth_m": 0.14563396725256555,
+          "outlet_discharge_m3s": 0.0631795514285031,
+          "outlet_velocity_mps": 0.015652388799107853
+        },
+        {
+          "hour": 66,
+          "outlet_depth_m": 0.14168518104397348,
+          "outlet_discharge_m3s": 0.06033703853459472,
+          "outlet_velocity_mps": 0.015374852469606562
+        },
+        {
+          "hour": 67,
+          "outlet_depth_m": 0.13790898420795555,
+          "outlet_discharge_m3s": 0.05766864628109218,
+          "outlet_velocity_mps": 0.015106746965848922
+        },
+        {
+          "hour": 68,
+          "outlet_depth_m": 0.13429515952325405,
+          "outlet_discharge_m3s": 0.05516103211487368,
+          "outlet_velocity_mps": 0.014847611389202571
+        },
+        {
+          "hour": 69,
+          "outlet_depth_m": 0.13083424283457898,
+          "outlet_discharge_m3s": 0.05280207022721838,
+          "outlet_velocity_mps": 0.014597013665889709
+        },
+        {
+          "hour": 70,
+          "outlet_depth_m": 0.12751745729638117,
+          "outlet_discharge_m3s": 0.05058072376717037,
+          "outlet_velocity_mps": 0.01435454838296457
+        },
+        {
+          "hour": 71,
+          "outlet_depth_m": 0.12433665419910915,
+          "outlet_discharge_m3s": 0.048486932156912875,
+          "outlet_velocity_mps": 0.014119834811482818
+        },
+        {
+          "hour": 72,
+          "outlet_depth_m": 0.12128425964000707,
+          "outlet_discharge_m3s": 0.04651151153506258,
+          "outlet_velocity_mps": 0.013892515098745943
+        },
+        {
+          "hour": 73,
+          "outlet_depth_m": 0.11835322639152088,
+          "outlet_discharge_m3s": 0.044646066635439276,
+          "outlet_velocity_mps": 0.013672252613420487
+        },
+        {
+          "hour": 74,
+          "outlet_depth_m": 0.115536990399245,
+          "outlet_discharge_m3s": 0.04288291264711613,
+          "outlet_velocity_mps": 0.013458730429031366
+        },
+        {
+          "hour": 75,
+          "outlet_depth_m": 0.112829431409732,
+          "outlet_discharge_m3s": 0.04121500580357028,
+          "outlet_velocity_mps": 0.013251649932836779
+        },
+        {
+          "hour": 76,
+          "outlet_depth_m": 0.11022483728795887,
+          "outlet_discharge_m3s": 0.03963588162043381,
+          "outlet_velocity_mps": 0.013050729548431686
+        },
+        {
+          "hour": 77,
+          "outlet_depth_m": 0.10771787163600689,
+          "outlet_discharge_m3s": 0.038139599847573584,
+          "outlet_velocity_mps": 0.012855703561617507
+        },
+        {
+          "hour": 78,
+          "outlet_depth_m": 0.10530354436964923,
+          "outlet_discharge_m3s": 0.03672069532604884,
+          "outlet_velocity_mps": 0.012666321040135214
+        },
+        {
+          "hour": 79,
+          "outlet_depth_m": 0.10297718494898388,
+          "outlet_discharge_m3s": 0.03537413404727062,
+          "outlet_velocity_mps": 0.012482344838802529
+        },
+        {
+          "hour": 80,
+          "outlet_depth_m": 0.10073441799372145,
+          "outlet_discharge_m3s": 0.03409527380321192,
+          "outlet_velocity_mps": 0.012303550682436808
+        },
+        {
+          "hour": 81,
+          "outlet_depth_m": 0.09857114104399779,
+          "outlet_discharge_m3s": 0.03287982889513554,
+          "outlet_velocity_mps": 0.012129726319695883
+        },
+        {
+          "hour": 82,
+          "outlet_depth_m": 0.0964835042540892,
+          "outlet_discharge_m3s": 0.031723838435965,
+          "outlet_velocity_mps": 0.011960670741639078
+        },
+        {
+          "hour": 83,
+          "outlet_depth_m": 0.09446789182972465,
+          "outlet_discharge_m3s": 0.03062363783976981,
+          "outlet_velocity_mps": 0.011796193459409996
+        },
+        {
+          "hour": 84,
+          "outlet_depth_m": 0.09252090504023361,
+          "outlet_discharge_m3s": 0.0295758331422423,
+          "outlet_velocity_mps": 0.011636113835978843
+        },
+        {
+          "hour": 85,
+          "outlet_depth_m": 0.09063934665484445,
+          "outlet_discharge_m3s": 0.028577277839671664,
+          "outlet_velocity_mps": 0.011480260467362169
+        },
+        {
+          "hour": 86,
+          "outlet_depth_m": 0.08882020666843651,
+          "outlet_discharge_m3s": 0.02762505197175353,
+          "outlet_velocity_mps": 0.011328470609168861
+        },
+        {
+          "hour": 87,
+          "outlet_depth_m": 0.08706064919616585,
+          "outlet_discharge_m3s": 0.026716443206433398,
+          "outlet_velocity_mps": 0.011180589644707379
+        },
+        {
+          "hour": 88,
+          "outlet_depth_m": 0.08535800042889428,
+          "outlet_discharge_m3s": 0.02584892971357864,
+          "outlet_velocity_mps": 0.011036470591236806
+        },
+        {
+          "hour": 89,
+          "outlet_depth_m": 0.08370973755243158,
+          "outlet_discharge_m3s": 0.025020164639195607,
+          "outlet_velocity_mps": 0.010895973641256263
+        },
+        {
+          "hour": 90,
+          "outlet_depth_m": 0.08211347854345047,
+          "outlet_discharge_m3s": 0.024227962013669016,
+          "outlet_velocity_mps": 0.010758965736008442
+        },
+        {
+          "hour": 91,
+          "outlet_depth_m": 0.08056697276367696,
+          "outlet_discharge_m3s": 0.023470283946530134,
+          "outlet_velocity_mps": 0.010625320168626579
+        },
+        {
+          "hour": 92,
+          "outlet_depth_m": 0.07906809228173602,
+          "outlet_discharge_m3s": 0.022745228976921748,
+          "outlet_velocity_mps": 0.0104949162145818
+        },
+        {
+          "hour": 93,
+          "outlet_depth_m": 0.07761482385899449,
+          "outlet_discharge_m3s": 0.022051021463550573,
+          "outlet_velocity_mps": 0.010367638787294508
+        },
+        {
+          "hour": 94,
+          "outlet_depth_m": 0.07620526154190706,
+          "outlet_discharge_m3s": 0.021386001910761423,
+          "outlet_velocity_mps": 0.010243378116959898
+        },
+        {
+          "hour": 95,
+          "outlet_depth_m": 0.07483759980893433,
+          "outlet_discharge_m3s": 0.020748618138668025,
+          "outlet_velocity_mps": 0.010122029450806189
+        },
+        {
+          "hour": 96,
+          "outlet_depth_m": 0.07351012722501571,
+          "outlet_discharge_m3s": 0.020137417215226494,
+          "outlet_velocity_mps": 0.01000349277315572
+        },
+        {
+          "hour": 97,
+          "outlet_depth_m": 0.07222122056100683,
+          "outlet_discharge_m3s": 0.019551038076917708,
+          "outlet_velocity_mps": 0.00988767254379598
+        },
+        {
+          "hour": 98,
+          "outlet_depth_m": 0.07096933933956455,
+          "outlet_discharge_m3s": 0.018988204772510866,
+          "outlet_velocity_mps": 0.009774477453301686
+        },
+        {
+          "hour": 99,
+          "outlet_depth_m": 0.06975302077236518,
+          "outlet_discharge_m3s": 0.018447720271179097,
+          "outlet_velocity_mps": 0.009663820194049112
+        },
+        {
+          "hour": 100,
+          "outlet_depth_m": 0.06857087505686113,
+          "outlet_discharge_m3s": 0.017928460782372004,
+          "outlet_velocity_mps": 0.009555617245776611
+        },
+        {
+          "hour": 101,
+          "outlet_depth_m": 0.06742158100362734,
+          "outlet_discharge_m3s": 0.01742937054023488,
+          "outlet_velocity_mps": 0.0094497886746367
+        },
+        {
+          "hour": 102,
+          "outlet_depth_m": 0.06630388196795357,
+          "outlet_discharge_m3s": 0.0169494570101597,
+          "outlet_velocity_mps": 0.009346257944770531
+        },
+        {
+          "hour": 103,
+          "outlet_depth_m": 0.06521658206166309,
+          "outlet_discharge_m3s": 0.016487786479317215,
+          "outlet_velocity_mps": 0.009244951741513492
+        },
+        {
+          "hour": 104,
+          "outlet_depth_m": 0.0641585426232708,
+          "outlet_discharge_m3s": 0.01604347999681751,
+          "outlet_velocity_mps": 0.009145799805411577
+        },
+        {
+          "hour": 105,
+          "outlet_depth_m": 0.06312867892647893,
+          "outlet_discharge_m3s": 0.015615709632532051,
+          "outlet_velocity_mps": 0.009048734776293048
+        },
+        {
+          "hour": 106,
+          "outlet_depth_m": 0.06212595710875208,
+          "outlet_discharge_m3s": 0.015203695026632425,
+          "outlet_velocity_mps": 0.008953692046698972
+        },
+        {
+          "hour": 107,
+          "outlet_depth_m": 0.061149391303265244,
+          "outlet_discharge_m3s": 0.014806700204601507,
+          "outlet_velocity_mps": 0.008860609624030222
+        },
+        {
+          "hour": 108,
+          "outlet_depth_m": 0.06019804095892675,
+          "outlet_discharge_m3s": 0.01442403063488914,
+          "outlet_velocity_mps": 0.008769428000817987
+        },
+        {
+          "hour": 109,
+          "outlet_depth_m": 0.05927100833447954,
+          "outlet_discharge_m3s": 0.014055030508548205,
+          "outlet_velocity_mps": 0.008680090032569985
+        },
+        {
+          "hour": 110,
+          "outlet_depth_m": 0.058367436153828944,
+          "outlet_discharge_m3s": 0.013699080222127567,
+          "outlet_velocity_mps": 0.008592540822686059
+        },
+        {
+          "hour": 111,
+          "outlet_depth_m": 0.0574865054108106,
+          "outlet_discharge_m3s": 0.01335559404683975,
+          "outlet_velocity_mps": 0.008506727613974722
+        },
+        {
+          "hour": 112,
+          "outlet_depth_m": 0.05662743331257712,
+          "outlet_discharge_m3s": 0.013024017968586288,
+          "outlet_velocity_mps": 0.008422599686337042
+        },
+        {
+          "hour": 113,
+          "outlet_depth_m": 0.05578947135165603,
+          "outlet_discharge_m3s": 0.012703827684831148,
+          "outlet_velocity_mps": 0.00834010826021625
+        },
+        {
+          "hour": 114,
+          "outlet_depth_m": 0.05497190349751982,
+          "outlet_discharge_m3s": 0.012394526745580241,
+          "outlet_velocity_mps": 0.008259206405440802
+        },
+        {
+          "hour": 115,
+          "outlet_depth_m": 0.054174044499248605,
+          "outlet_discharge_m3s": 0.01209564482686689,
+          "outlet_velocity_mps": 0.008179848955115554
+        },
+        {
+          "hour": 116,
+          "outlet_depth_m": 0.05339523829152901,
+          "outlet_discharge_m3s": 0.011806736126174028,
+          "outlet_velocity_mps": 0.0081019924242406
+        },
+        {
+          "hour": 117,
+          "outlet_depth_m": 0.05263485649682061,
+          "outlet_discharge_m3s": 0.011527377870154173,
+          "outlet_velocity_mps": 0.008025594932760135
+        },
+        {
+          "hour": 118,
+          "outlet_depth_m": 0.05189229701710067,
+          "outlet_discharge_m3s": 0.011257168925849595,
+          "outlet_velocity_mps": 0.00795061613276483
+        },
+        {
+          "hour": 119,
+          "outlet_depth_m": 0.0511669827090868,
+          "outlet_discharge_m3s": 0.01099572850737573,
+          "outlet_velocity_mps": 0.007877017139590402
+        },
+        {
+          "hour": 120,
+          "outlet_depth_m": 0.05045836013730443,
+          "outlet_discharge_m3s": 0.010742694970720317,
+          "outlet_velocity_mps": 0.007804760466573261
+        }
+      ],
+      "physical_volume_conservation_passed": true,
+      "qvd_nonnegative_finite": true
+    },
+    "qvd_model_family_discrepancy_hourly": {
+      "outlet_depth_m": {
+        "mean_absolute_difference": 0.19007357768530367,
+        "relative_l1_difference": 0.3163184888646245,
+        "root_mean_square_difference": 0.42988799354751034,
+        "unit": "m"
+      },
+      "outlet_discharge_m3s": {
+        "mean_absolute_difference": 0.42101675926166526,
+        "relative_l1_difference": 0.3058010834716159,
+        "root_mean_square_difference": 1.1602716547353584,
+        "unit": "m3 s-1"
+      },
+      "outlet_velocity_mps": {
+        "mean_absolute_difference": 0.005829186151250204,
+        "relative_l1_difference": 0.20610878227230772,
+        "root_mean_square_difference": 0.0103367623552896,
+        "unit": "m s-1"
+      },
+      "sample_count": 120
+    },
+    "t_route_mc": {
+      "completed_step_count": 1440,
+      "compound_channel_activated": true,
+      "derived_physical_volume_conservation_passed": false,
+      "derived_physical_volume_residual_to_input_ratio": 0.3708445209629251,
+      "horizon_derived_physical_mass_residual_m3": 160204.83305598365,
+      "horizon_derived_physical_mass_tolerance_m3": 2181.3308456745,
+      "maximum_absolute_reconstructed_equation_residual_m3": 105478.99762821302,
+      "maximum_absolute_step_derived_physical_mass_residual_m3": 303440.08532625134,
+      "maximum_depth_m": 13.771267890930176,
+      "minimum_bankfull_depth_m": 0.6796875074891346,
+      "outlet_qvd_hourly": [
+        {
+          "hour": 1,
+          "outlet_depth_m": 0.025002088397741318,
+          "outlet_discharge_m3s": 0.0037517971359193325,
+          "outlet_velocity_mps": 0.0049016401171684265
+        },
+        {
+          "hour": 2,
+          "outlet_depth_m": 0.34408655762672424,
+          "outlet_discharge_m3s": 0.26700612902641296,
+          "outlet_velocity_mps": 0.027193531394004822
+        },
+        {
+          "hour": 3,
+          "outlet_depth_m": 0.32719412446022034,
+          "outlet_discharge_m3s": 0.24351158738136292,
+          "outlet_velocity_mps": 0.026340747252106667
+        },
+        {
+          "hour": 4,
+          "outlet_depth_m": 0.3878210484981537,
+          "outlet_discharge_m3s": 0.3278675675392151,
+          "outlet_velocity_mps": 0.02932419814169407
+        },
+        {
+          "hour": 5,
+          "outlet_depth_m": 0.6529490351676941,
+          "outlet_discharge_m3s": 0.8052723407745361,
+          "outlet_velocity_mps": 0.040496889501810074
+        },
+        {
+          "hour": 6,
+          "outlet_depth_m": 2.7232985496520996,
+          "outlet_discharge_m3s": 5.586189270019531,
+          "outlet_velocity_mps": 0.09265204519033432
+        },
+        {
+          "hour": 7,
+          "outlet_depth_m": 2.7240495681762695,
+          "outlet_discharge_m3s": 5.538863182067871,
+          "outlet_velocity_mps": 0.09266618639230728
+        },
+        {
+          "hour": 8,
+          "outlet_depth_m": 2.8923659324645996,
+          "outlet_discharge_m3s": 6.790006160736084,
+          "outlet_velocity_mps": 0.09578792750835419
+        },
+        {
+          "hour": 9,
+          "outlet_depth_m": 3.1472747325897217,
+          "outlet_discharge_m3s": 8.865116119384766,
+          "outlet_velocity_mps": 0.10035336017608643
+        },
+        {
+          "hour": 10,
+          "outlet_depth_m": 3.4941632747650146,
+          "outlet_discharge_m3s": 12.050045013427734,
+          "outlet_velocity_mps": 0.106292225420475
+        },
+        {
+          "hour": 11,
+          "outlet_depth_m": 3.714594602584839,
+          "outlet_discharge_m3s": 14.2432861328125,
+          "outlet_velocity_mps": 0.1099231019616127
+        },
+        {
+          "hour": 12,
+          "outlet_depth_m": 3.768620252609253,
+          "outlet_discharge_m3s": 14.79753589630127,
+          "outlet_velocity_mps": 0.11079764366149902
+        },
+        {
+          "hour": 13,
+          "outlet_depth_m": 3.67700457572937,
+          "outlet_discharge_m3s": 13.83641529083252,
+          "outlet_velocity_mps": 0.10931115597486496
+        },
+        {
+          "hour": 14,
+          "outlet_depth_m": 3.524526357650757,
+          "outlet_discharge_m3s": 12.32296085357666,
+          "outlet_velocity_mps": 0.10679855942726135
+        },
+        {
+          "hour": 15,
+          "outlet_depth_m": 3.350590467453003,
+          "outlet_discharge_m3s": 10.672365188598633,
+          "outlet_velocity_mps": 0.10386957228183746
+        },
+        {
+          "hour": 16,
+          "outlet_depth_m": 3.179723024368286,
+          "outlet_discharge_m3s": 9.144912719726562,
+          "outlet_velocity_mps": 0.10092160850763321
+        },
+        {
+          "hour": 17,
+          "outlet_depth_m": 3.0212416648864746,
+          "outlet_discharge_m3s": 7.8110880851745605,
+          "outlet_velocity_mps": 0.09811920672655106
+        },
+        {
+          "hour": 18,
+          "outlet_depth_m": 2.876682996749878,
+          "outlet_discharge_m3s": 6.668089866638184,
+          "outlet_velocity_mps": 0.09550084918737411
+        },
+        {
+          "hour": 19,
+          "outlet_depth_m": 2.7470901012420654,
+          "outlet_discharge_m3s": 5.70413064956665,
+          "outlet_velocity_mps": 0.093098945915699
+        },
+        {
+          "hour": 20,
+          "outlet_depth_m": 2.5895473957061768,
+          "outlet_discharge_m3s": 4.607637882232666,
+          "outlet_velocity_mps": 0.09010343998670578
+        },
+        {
+          "hour": 21,
+          "outlet_depth_m": 2.451460361480713,
+          "outlet_discharge_m3s": 3.733304500579834,
+          "outlet_velocity_mps": 0.0874035656452179
+        },
+        {
+          "hour": 22,
+          "outlet_depth_m": 1.4086145162582397,
+          "outlet_discharge_m3s": 3.013148784637451,
+          "outlet_velocity_mps": 0.06390009075403214
+        },
+        {
+          "hour": 23,
+          "outlet_depth_m": 1.2322344779968262,
+          "outlet_discharge_m3s": 2.3809497356414795,
+          "outlet_velocity_mps": 0.0591365285217762
+        },
+        {
+          "hour": 24,
+          "outlet_depth_m": 1.0919262170791626,
+          "outlet_discharge_m3s": 1.9274119138717651,
+          "outlet_velocity_mps": 0.0551004596054554
+        },
+        {
+          "hour": 25,
+          "outlet_depth_m": 0.9778404831886292,
+          "outlet_discharge_m3s": 1.5910230875015259,
+          "outlet_velocity_mps": 0.05162747949361801
+        },
+        {
+          "hour": 26,
+          "outlet_depth_m": 0.8834642767906189,
+          "outlet_discharge_m3s": 1.3348000049591064,
+          "outlet_velocity_mps": 0.048603400588035583
+        },
+        {
+          "hour": 27,
+          "outlet_depth_m": 0.8038873076438904,
+          "outlet_discharge_m3s": 1.1343932151794434,
+          "outlet_velocity_mps": 0.045931413769721985
+        },
+        {
+          "hour": 28,
+          "outlet_depth_m": 0.7357380986213684,
+          "outlet_discharge_m3s": 0.9742450714111328,
+          "outlet_velocity_mps": 0.043542273342609406
+        },
+        {
+          "hour": 29,
+          "outlet_depth_m": 0.6762798428535461,
+          "outlet_discharge_m3s": 0.8432619571685791,
+          "outlet_velocity_mps": 0.04137225076556206
+        },
+        {
+          "hour": 30,
+          "outlet_depth_m": 0.6242128014564514,
+          "outlet_discharge_m3s": 0.7353748083114624,
+          "outlet_velocity_mps": 0.03939884155988693
+        },
+        {
+          "hour": 31,
+          "outlet_depth_m": 0.5783566832542419,
+          "outlet_discharge_m3s": 0.64564448595047,
+          "outlet_velocity_mps": 0.03759802132844925
+        },
+        {
+          "hour": 32,
+          "outlet_depth_m": 0.5374062061309814,
+          "outlet_discharge_m3s": 0.5697735548019409,
+          "outlet_velocity_mps": 0.0359349399805069
+        },
+        {
+          "hour": 33,
+          "outlet_depth_m": 0.5007111430168152,
+          "outlet_discharge_m3s": 0.5052469372749329,
+          "outlet_velocity_mps": 0.03439629077911377
+        },
+        {
+          "hour": 34,
+          "outlet_depth_m": 0.4675609767436981,
+          "outlet_discharge_m3s": 0.44979751110076904,
+          "outlet_velocity_mps": 0.03296322375535965
+        },
+        {
+          "hour": 35,
+          "outlet_depth_m": 0.4374288022518158,
+          "outlet_discharge_m3s": 0.40177711844444275,
+          "outlet_velocity_mps": 0.03162190318107605
+        },
+        {
+          "hour": 36,
+          "outlet_depth_m": 0.40987372398376465,
+          "outlet_discharge_m3s": 0.35987186431884766,
+          "outlet_velocity_mps": 0.03036016784608364
+        },
+        {
+          "hour": 37,
+          "outlet_depth_m": 0.3845788240432739,
+          "outlet_discharge_m3s": 0.3231196403503418,
+          "outlet_velocity_mps": 0.02916981466114521
+        },
+        {
+          "hour": 38,
+          "outlet_depth_m": 0.36131957173347473,
+          "outlet_discharge_m3s": 0.29079669713974,
+          "outlet_velocity_mps": 0.02804585173726082
+        },
+        {
+          "hour": 39,
+          "outlet_depth_m": 0.33991697430610657,
+          "outlet_discharge_m3s": 0.2623177766799927,
+          "outlet_velocity_mps": 0.026984671130776405
+        },
+        {
+          "hour": 40,
+          "outlet_depth_m": 0.3202088177204132,
+          "outlet_discharge_m3s": 0.23718072474002838,
+          "outlet_velocity_mps": 0.025982839986681938
+        },
+        {
+          "hour": 41,
+          "outlet_depth_m": 0.30205217003822327,
+          "outlet_discharge_m3s": 0.21495890617370605,
+          "outlet_velocity_mps": 0.02503729984164238
+        },
+        {
+          "hour": 42,
+          "outlet_depth_m": 0.285317987203598,
+          "outlet_discharge_m3s": 0.19528521597385406,
+          "outlet_velocity_mps": 0.02414519712328911
+        },
+        {
+          "hour": 43,
+          "outlet_depth_m": 0.26988768577575684,
+          "outlet_discharge_m3s": 0.17784057557582855,
+          "outlet_velocity_mps": 0.023303745314478874
+        },
+        {
+          "hour": 44,
+          "outlet_depth_m": 0.25466692447662354,
+          "outlet_discharge_m3s": 0.16265356540679932,
+          "outlet_velocity_mps": 0.022454671561717987
+        },
+        {
+          "hour": 45,
+          "outlet_depth_m": 0.24185872077941895,
+          "outlet_discharge_m3s": 0.1491430252790451,
+          "outlet_velocity_mps": 0.021724466234445572
+        },
+        {
+          "hour": 46,
+          "outlet_depth_m": 0.22998245060443878,
+          "outlet_discharge_m3s": 0.1370488852262497,
+          "outlet_velocity_mps": 0.02103365585207939
+        },
+        {
+          "hour": 47,
+          "outlet_depth_m": 0.21885603666305542,
+          "outlet_discharge_m3s": 0.1261024922132492,
+          "outlet_velocity_mps": 0.02037368342280388
+        },
+        {
+          "hour": 48,
+          "outlet_depth_m": 0.20870034396648407,
+          "outlet_discharge_m3s": 0.11643790453672409,
+          "outlet_velocity_mps": 0.019759804010391235
+        },
+        {
+          "hour": 49,
+          "outlet_depth_m": 0.19931451976299286,
+          "outlet_discharge_m3s": 0.10778931528329849,
+          "outlet_velocity_mps": 0.019182102754712105
+        },
+        {
+          "hour": 50,
+          "outlet_depth_m": 0.1905371993780136,
+          "outlet_discharge_m3s": 0.09995028376579285,
+          "outlet_velocity_mps": 0.0186323132365942
+        },
+        {
+          "hour": 51,
+          "outlet_depth_m": 0.18231284618377686,
+          "outlet_discharge_m3s": 0.09282595664262772,
+          "outlet_velocity_mps": 0.018108293414115906
+        },
+        {
+          "hour": 52,
+          "outlet_depth_m": 0.17460517585277557,
+          "outlet_discharge_m3s": 0.0863456130027771,
+          "outlet_velocity_mps": 0.01760895736515522
+        },
+        {
+          "hour": 53,
+          "outlet_depth_m": 0.16738039255142212,
+          "outlet_discharge_m3s": 0.08044599741697311,
+          "outlet_velocity_mps": 0.017133263871073723
+        },
+        {
+          "hour": 54,
+          "outlet_depth_m": 0.16060566902160645,
+          "outlet_discharge_m3s": 0.075069360435009,
+          "outlet_velocity_mps": 0.01668010838329792
+        },
+        {
+          "hour": 55,
+          "outlet_depth_m": 0.15424931049346924,
+          "outlet_discharge_m3s": 0.07016323506832123,
+          "outlet_velocity_mps": 0.016248362138867378
+        },
+        {
+          "hour": 56,
+          "outlet_depth_m": 0.14828123152256012,
+          "outlet_discharge_m3s": 0.06568033248186111,
+          "outlet_velocity_mps": 0.01583688147366047
+        },
+        {
+          "hour": 57,
+          "outlet_depth_m": 0.14267320930957794,
+          "outlet_discharge_m3s": 0.0615781769156456,
+          "outlet_velocity_mps": 0.015444561839103699
+        },
+        {
+          "hour": 58,
+          "outlet_depth_m": 0.13739892840385437,
+          "outlet_discharge_m3s": 0.05781877413392067,
+          "outlet_velocity_mps": 0.015070325694978237
+        },
+        {
+          "hour": 59,
+          "outlet_depth_m": 0.13243381679058075,
+          "outlet_discharge_m3s": 0.05436810478568077,
+          "outlet_velocity_mps": 0.014713134616613388
+        },
+        {
+          "hour": 60,
+          "outlet_depth_m": 0.12775525450706482,
+          "outlet_discharge_m3s": 0.05119587108492851,
+          "outlet_velocity_mps": 0.014372007921338081
+        },
+        {
+          "hour": 61,
+          "outlet_depth_m": 0.12334226071834564,
+          "outlet_discharge_m3s": 0.048274971544742584,
+          "outlet_velocity_mps": 0.01404600590467453
+        },
+        {
+          "hour": 62,
+          "outlet_depth_m": 0.1191755086183548,
+          "outlet_discharge_m3s": 0.045581236481666565,
+          "outlet_velocity_mps": 0.013734244741499424
+        },
+        {
+          "hour": 63,
+          "outlet_depth_m": 0.11523715406656265,
+          "outlet_discharge_m3s": 0.04309307411313057,
+          "outlet_velocity_mps": 0.01343588437885046
+        },
+        {
+          "hour": 64,
+          "outlet_depth_m": 0.11151082813739777,
+          "outlet_discharge_m3s": 0.04079122096300125,
+          "outlet_velocity_mps": 0.013150143437087536
+        },
+        {
+          "hour": 65,
+          "outlet_depth_m": 0.10798146575689316,
+          "outlet_discharge_m3s": 0.03865843638777733,
+          "outlet_velocity_mps": 0.012876286171376705
+        },
+        {
+          "hour": 66,
+          "outlet_depth_m": 0.10463517159223557,
+          "outlet_discharge_m3s": 0.036679308861494064,
+          "outlet_velocity_mps": 0.012613615952432156
+        },
+        {
+          "hour": 67,
+          "outlet_depth_m": 0.10145919770002365,
+          "outlet_discharge_m3s": 0.03484002500772476,
+          "outlet_velocity_mps": 0.01236148551106453
+        },
+        {
+          "hour": 68,
+          "outlet_depth_m": 0.09844185411930084,
+          "outlet_discharge_m3s": 0.033128224313259125,
+          "outlet_velocity_mps": 0.012119293212890625
+        },
+        {
+          "hour": 69,
+          "outlet_depth_m": 0.09557213634252548,
+          "outlet_discharge_m3s": 0.03153279051184654,
+          "outlet_velocity_mps": 0.011886454187333584
+        },
+        {
+          "hour": 70,
+          "outlet_depth_m": 0.09284037351608276,
+          "outlet_discharge_m3s": 0.030043751001358032,
+          "outlet_velocity_mps": 0.011662461794912815
+        },
+        {
+          "hour": 71,
+          "outlet_depth_m": 0.09023743867874146,
+          "outlet_discharge_m3s": 0.028652135282754898,
+          "outlet_velocity_mps": 0.011446819640696049
+        },
+        {
+          "hour": 72,
+          "outlet_depth_m": 0.08775494992733002,
+          "outlet_discharge_m3s": 0.02734985202550888,
+          "outlet_velocity_mps": 0.011239067651331425
+        },
+        {
+          "hour": 73,
+          "outlet_depth_m": 0.08538253605365753,
+          "outlet_discharge_m3s": 0.026128286495804787,
+          "outlet_velocity_mps": 0.011038553901016712
+        },
+        {
+          "hour": 74,
+          "outlet_depth_m": 0.08312913030385971,
+          "outlet_discharge_m3s": 0.02498897723853588,
+          "outlet_velocity_mps": 0.01084624882787466
+        },
+        {
+          "hour": 75,
+          "outlet_depth_m": 0.08092738687992096,
+          "outlet_discharge_m3s": 0.023895837366580963,
+          "outlet_velocity_mps": 0.010656547732651234
+        },
+        {
+          "hour": 76,
+          "outlet_depth_m": 0.0788169801235199,
+          "outlet_discharge_m3s": 0.022866422310471535,
+          "outlet_velocity_mps": 0.010472983121871948
+        },
+        {
+          "hour": 77,
+          "outlet_depth_m": 0.0768212080001831,
+          "outlet_discharge_m3s": 0.021909723058342934,
+          "outlet_velocity_mps": 0.010297776199877262
+        },
+        {
+          "hour": 78,
+          "outlet_depth_m": 0.07493516802787781,
+          "outlet_discharge_m3s": 0.021020837128162384,
+          "outlet_velocity_mps": 0.010130712762475014
+        },
+        {
+          "hour": 79,
+          "outlet_depth_m": 0.0731450617313385,
+          "outlet_discharge_m3s": 0.020190978422760963,
+          "outlet_velocity_mps": 0.00997076090425253
+        },
+        {
+          "hour": 80,
+          "outlet_depth_m": 0.07143709808588028,
+          "outlet_discharge_m3s": 0.01941184140741825,
+          "outlet_velocity_mps": 0.009816853329539299
+        },
+        {
+          "hour": 81,
+          "outlet_depth_m": 0.06979994475841522,
+          "outlet_discharge_m3s": 0.018676666542887688,
+          "outlet_velocity_mps": 0.00966810155659914
+        },
+        {
+          "hour": 82,
+          "outlet_depth_m": 0.06822482496500015,
+          "outlet_discharge_m3s": 0.017980214208364487,
+          "outlet_velocity_mps": 0.009523817338049412
+        },
+        {
+          "hour": 83,
+          "outlet_depth_m": 0.0667051374912262,
+          "outlet_discharge_m3s": 0.017318425700068474,
+          "outlet_velocity_mps": 0.009383495897054672
+        },
+        {
+          "hour": 84,
+          "outlet_depth_m": 0.06523585319519043,
+          "outlet_discharge_m3s": 0.016688145697116852,
+          "outlet_velocity_mps": 0.00924675166606903
+        },
+        {
+          "hour": 85,
+          "outlet_depth_m": 0.06381316483020782,
+          "outlet_discharge_m3s": 0.016086861491203308,
+          "outlet_velocity_mps": 0.009113308973610401
+        },
+        {
+          "hour": 86,
+          "outlet_depth_m": 0.06243408843874931,
+          "outlet_discharge_m3s": 0.015512531623244286,
+          "outlet_velocity_mps": 0.008982954546809196
+        },
+        {
+          "hour": 87,
+          "outlet_depth_m": 0.061096277087926865,
+          "outlet_discharge_m3s": 0.014963451772928238,
+          "outlet_velocity_mps": 0.008855531923472881
+        },
+        {
+          "hour": 88,
+          "outlet_depth_m": 0.059797801077365875,
+          "outlet_discharge_m3s": 0.014438169077038765,
+          "outlet_velocity_mps": 0.008730916306376457
+        },
+        {
+          "hour": 89,
+          "outlet_depth_m": 0.058537039905786514,
+          "outlet_discharge_m3s": 0.01393540296703577,
+          "outlet_velocity_mps": 0.008609008975327015
+        },
+        {
+          "hour": 90,
+          "outlet_depth_m": 0.05731259286403656,
+          "outlet_discharge_m3s": 0.013454013504087925,
+          "outlet_velocity_mps": 0.008489731699228287
+        },
+        {
+          "hour": 91,
+          "outlet_depth_m": 0.05612322688102722,
+          "outlet_discharge_m3s": 0.012992961332201958,
+          "outlet_velocity_mps": 0.008373015560209751
+        },
+        {
+          "hour": 92,
+          "outlet_depth_m": 0.05496780201792717,
+          "outlet_discharge_m3s": 0.01255128625780344,
+          "outlet_velocity_mps": 0.008258798159658909
+        },
+        {
+          "hour": 93,
+          "outlet_depth_m": 0.05383911728858948,
+          "outlet_discharge_m3s": 0.01212579756975174,
+          "outlet_velocity_mps": 0.00814641360193491
+        },
+        {
+          "hour": 94,
+          "outlet_depth_m": 0.0527917742729187,
+          "outlet_discharge_m3s": 0.011735862120985985,
+          "outlet_velocity_mps": 0.008041391149163246
+        },
+        {
+          "hour": 95,
+          "outlet_depth_m": 0.051794733852148056,
+          "outlet_discharge_m3s": 0.011369765736162663,
+          "outlet_velocity_mps": 0.007940736599266529
+        },
+        {
+          "hour": 96,
+          "outlet_depth_m": 0.05081362649798393,
+          "outlet_discharge_m3s": 0.011014191433787346,
+          "outlet_velocity_mps": 0.007841029204428196
+        },
+        {
+          "hour": 97,
+          "outlet_depth_m": 0.049839869141578674,
+          "outlet_discharge_m3s": 0.01066582091152668,
+          "outlet_velocity_mps": 0.007741404231637716
+        },
+        {
+          "hour": 98,
+          "outlet_depth_m": 0.04887289181351662,
+          "outlet_discharge_m3s": 0.01032435242086649,
+          "outlet_velocity_mps": 0.007641801610589027
+        },
+        {
+          "hour": 99,
+          "outlet_depth_m": 0.04791450873017311,
+          "outlet_discharge_m3s": 0.009990341030061245,
+          "outlet_velocity_mps": 0.007542406674474478
+        },
+        {
+          "hour": 100,
+          "outlet_depth_m": 0.04696706309914589,
+          "outlet_discharge_m3s": 0.00966449175029993,
+          "outlet_velocity_mps": 0.007443465758115053
+        },
+        {
+          "hour": 101,
+          "outlet_depth_m": 0.04603283107280731,
+          "outlet_discharge_m3s": 0.009347451850771904,
+          "outlet_velocity_mps": 0.0073452237993478775
+        },
+        {
+          "hour": 102,
+          "outlet_depth_m": 0.045113757252693176,
+          "outlet_discharge_m3s": 0.009039714001119137,
+          "outlet_velocity_mps": 0.007247899658977985
+        },
+        {
+          "hour": 103,
+          "outlet_depth_m": 0.044211454689502716,
+          "outlet_discharge_m3s": 0.008741632103919983,
+          "outlet_velocity_mps": 0.0071516819298267365
+        },
+        {
+          "hour": 104,
+          "outlet_depth_m": 0.043327201157808304,
+          "outlet_discharge_m3s": 0.00845341943204403,
+          "outlet_velocity_mps": 0.007056725677102804
+        },
+        {
+          "hour": 105,
+          "outlet_depth_m": 0.042461976408958435,
+          "outlet_discharge_m3s": 0.008175181224942207,
+          "outlet_velocity_mps": 0.006963163148611784
+        },
+        {
+          "hour": 106,
+          "outlet_depth_m": 0.04161643981933594,
+          "outlet_discharge_m3s": 0.0079068997874856,
+          "outlet_velocity_mps": 0.0068710907362401485
+        },
+        {
+          "hour": 107,
+          "outlet_depth_m": 0.040791042149066925,
+          "outlet_discharge_m3s": 0.007648490369319916,
+          "outlet_velocity_mps": 0.006780585274100304
+        },
+        {
+          "hour": 108,
+          "outlet_depth_m": 0.0399860143661499,
+          "outlet_discharge_m3s": 0.007399793714284897,
+          "outlet_velocity_mps": 0.006691704038530588
+        },
+        {
+          "hour": 109,
+          "outlet_depth_m": 0.03920144960284233,
+          "outlet_discharge_m3s": 0.007160607725381851,
+          "outlet_velocity_mps": 0.006604486145079136
+        },
+        {
+          "hour": 110,
+          "outlet_depth_m": 0.03843725845217705,
+          "outlet_discharge_m3s": 0.006930680014193058,
+          "outlet_velocity_mps": 0.006518952548503876
+        },
+        {
+          "hour": 111,
+          "outlet_depth_m": 0.037693269550800323,
+          "outlet_discharge_m3s": 0.006709737703204155,
+          "outlet_velocity_mps": 0.006435115355998278
+        },
+        {
+          "hour": 112,
+          "outlet_depth_m": 0.036969199776649475,
+          "outlet_discharge_m3s": 0.006497483234852552,
+          "outlet_velocity_mps": 0.006352974567562342
+        },
+        {
+          "hour": 113,
+          "outlet_depth_m": 0.03626471385359764,
+          "outlet_discharge_m3s": 0.00629360880702734,
+          "outlet_velocity_mps": 0.006272522266954184
+        },
+        {
+          "hour": 114,
+          "outlet_depth_m": 0.035579390823841095,
+          "outlet_discharge_m3s": 0.006097795907407999,
+          "outlet_velocity_mps": 0.006193740293383598
+        },
+        {
+          "hour": 115,
+          "outlet_depth_m": 0.034912776201963425,
+          "outlet_discharge_m3s": 0.005909725092351437,
+          "outlet_velocity_mps": 0.006116608157753944
+        },
+        {
+          "hour": 116,
+          "outlet_depth_m": 0.03426440805196762,
+          "outlet_discharge_m3s": 0.005729079712182283,
+          "outlet_velocity_mps": 0.006041100714355707
+        },
+        {
+          "hour": 117,
+          "outlet_depth_m": 0.0336337648332119,
+          "outlet_discharge_m3s": 0.0055555435828864574,
+          "outlet_velocity_mps": 0.0059671844355762005
+        },
+        {
+          "hour": 118,
+          "outlet_depth_m": 0.033020343631505966,
+          "outlet_discharge_m3s": 0.005388811230659485,
+          "outlet_velocity_mps": 0.005894830916076899
+        },
+        {
+          "hour": 119,
+          "outlet_depth_m": 0.03242361173033714,
+          "outlet_discharge_m3s": 0.0052285827696323395,
+          "outlet_velocity_mps": 0.005824000108987093
+        },
+        {
+          "hour": 120,
+          "outlet_depth_m": 0.03184305503964424,
+          "outlet_discharge_m3s": 0.005074568558484316,
+          "outlet_velocity_mps": 0.005754660349339247
+        }
+      ],
+      "physical_volume_audit_completed": true,
+      "qvd_nonnegative_finite": true,
+      "reconstructed_equation_closes_at_float32_tolerance": false,
+      "returned_ck_x_authoritative_for_equation_reconstruction": false
+    }
+  },
+  "gates": {
+    "all_professional_baseline_invariants_passed": true,
+    "nonlinear_direction_response_above_numeric_noise": true,
+    "nonlinear_physical_volume_conservative": true,
+    "official_direction_response_above_numeric_noise": true,
+    "official_mc_conservation_diagnostic_completed": true,
+    "official_qvd_nonnegative_finite": true,
+    "official_reference_conformance": true,
+    "official_zero_state_invariant": true,
+    "outcome_isolation": true
+  },
+  "generated_at": "2026-07-26T13:00:31.052011+00:00",
+  "metric_semantics": {
+    "nonlinear_storage_conservation": "telescoping physical reach volume plus outlet volume",
+    "qvd_discrepancy": "model-family discrepancy on a synthetic probe, not prediction error",
+    "t_route_mc_physical_volume_audit": "independent area(depth)*length stock audit using the official compound-channel geometry; this is not the internal MC storage state",
+    "t_route_mc_returned_ck_x_reconstruction": "diagnostic only: the fixed source does not establish returned ck/X as the exact coefficients used for final Q, and the observed rollout does not reconstruct the MC equation"
+  },
+  "official_reference_conformance": {
+    "absolute_errors": [
+      5.960464477539063e-08,
+      7.450580596923828e-09,
+      0.0
+    ],
+    "absolute_tolerance": 2e-07,
+    "actual_qvd": [
+      0.7570107579231262,
+      0.12373605370521545,
+      0.02334451675415039
+    ],
+    "expected_qvd": [
+      0.7570106983184814,
+      0.12373604625463486,
+      0.02334451675415039
+    ],
+    "passed": true,
+    "source": "official mc_sseg_stime_NOLOOP_demo.py single-precision case"
+  },
+  "official_zero_state_invariant": {
+    "completed_step_count": 288,
+    "maximum_absolute_qvd": 0.0,
+    "passed": true,
+    "registered_hours": 24
+  },
+  "registered_protocol": {
+    "boundary_pulse_hours": 6,
+    "boundary_pulse_rate_m3s": 20.0,
+    "channel_side_slope_compilation": "RouteLink ChSlp is passed unchanged to t-route; nonlinear horizontal_per_vertical side slope is 1/ChSlp",
+    "conformance_absolute_tolerance": 2e-07,
+    "direction_relative_l1_numeric_minimum": 1e-05,
+    "rollout_hours": 120,
+    "timestep_seconds": 300.0
+  },
+  "reversed_order_diagnostic": {
+    "feature_ids": [
+      1622721,
+      1622703,
+      1622701,
+      1623575,
+      1621139,
+      1621137,
+      1623573,
+      1622687,
+      1622797
+    ],
+    "nonlinear_storage": {
+      "completed_step_count": 1440,
+      "compound_channel_implemented": false,
+      "horizon_physical_mass_residual_m3": 8.02741851657629e-07,
+      "horizon_physical_mass_tolerance_m3": 0.07914357022774315,
+      "maximum_absolute_step_physical_mass_residual_m3": 2.8405338525772095e-08,
+      "maximum_depth_m": 6.760540858894178,
+      "outlet_qvd_hourly": [
+        {
+          "hour": 1,
+          "outlet_depth_m": 0.0,
+          "outlet_discharge_m3s": 1.7330555839563662e-63,
+          "outlet_velocity_mps": 4.261177342322055e-26
+        },
+        {
+          "hour": 2,
+          "outlet_depth_m": 0.0,
+          "outlet_discharge_m3s": 1.4097094946185295e-26,
+          "outlet_velocity_mps": 2.4754631298948673e-11
+        },
+        {
+          "hour": 3,
+          "outlet_depth_m": 1.3199321805039013e-07,
+          "outlet_discharge_m3s": 1.2754585727659813e-11,
+          "outlet_velocity_mps": 2.3783246111838275e-05
+        },
+        {
+          "hour": 4,
+          "outlet_depth_m": 0.0012715156156962234,
+          "outlet_discharge_m3s": 5.563276493248793e-05,
+          "outlet_velocity_mps": 0.010762040756309012
+        },
+        {
+          "hour": 5,
+          "outlet_depth_m": 0.0595640058334804,
+          "outlet_discharge_m3s": 0.034058709003668426,
+          "outlet_velocity_mps": 0.13674016116001575
+        },
+        {
+          "hour": 6,
+          "outlet_depth_m": 0.3243892203315275,
+          "outlet_discharge_m3s": 0.5959535083463939,
+          "outlet_velocity_mps": 0.39010919933178767
+        },
+        {
+          "hour": 7,
+          "outlet_depth_m": 0.7475905744966285,
+          "outlet_discharge_m3s": 2.591140542797289,
+          "outlet_velocity_mps": 0.6242107043204681
+        },
+        {
+          "hour": 8,
+          "outlet_depth_m": 1.1561861471443644,
+          "outlet_discharge_m3s": 5.812741074552748,
+          "outlet_velocity_mps": 0.7896516069621958
+        },
+        {
+          "hour": 9,
+          "outlet_depth_m": 1.440059748183025,
+          "outlet_discharge_m3s": 8.864580777317183,
+          "outlet_velocity_mps": 0.8879632041779588
+        },
+        {
+          "hour": 10,
+          "outlet_depth_m": 1.578104657169743,
+          "outlet_discharge_m3s": 10.60629363205743,
+          "outlet_velocity_mps": 0.9324944053178065
+        },
+        {
+          "hour": 11,
+          "outlet_depth_m": 1.601439487062767,
+          "outlet_discharge_m3s": 10.91795462725829,
+          "outlet_velocity_mps": 0.9398454624630809
+        },
+        {
+          "hour": 12,
+          "outlet_depth_m": 1.5519124187267443,
+          "outlet_discharge_m3s": 10.262460658604727,
+          "outlet_velocity_mps": 0.9241849541597958
+        },
+        {
+          "hour": 13,
+          "outlet_depth_m": 1.4631973904965205,
+          "outlet_discharge_m3s": 9.14446219583019,
+          "outlet_velocity_mps": 0.89555827040099
+        },
+        {
+          "hour": 14,
+          "outlet_depth_m": 1.3575876952903947,
+          "outlet_discharge_m3s": 7.905757569018486,
+          "outlet_velocity_mps": 0.8604224712166993
+        },
+        {
+          "hour": 15,
+          "outlet_depth_m": 1.2483127694136469,
+          "outlet_discharge_m3s": 6.727061744791157,
+          "outlet_velocity_mps": 0.8226965658102467
+        },
+        {
+          "hour": 16,
+          "outlet_depth_m": 1.1425732221144393,
+          "outlet_discharge_m3s": 5.683691502286451,
+          "outlet_velocity_mps": 0.7846626279553174
+        },
+        {
+          "hour": 17,
+          "outlet_depth_m": 1.043896831578975,
+          "outlet_discharge_m3s": 4.794073220106199,
+          "outlet_velocity_mps": 0.7475947683528555
+        },
+        {
+          "hour": 18,
+          "outlet_depth_m": 0.9536939695916189,
+          "outlet_discharge_m3s": 4.0501617571932735,
+          "outlet_velocity_mps": 0.7121622011047197
+        },
+        {
+          "hour": 19,
+          "outlet_depth_m": 0.8722109981191989,
+          "outlet_discharge_m3s": 3.433847300001167,
+          "outlet_velocity_mps": 0.6786773851818185
+        },
+        {
+          "hour": 20,
+          "outlet_depth_m": 0.7990910312714028,
+          "outlet_discharge_m3s": 2.9249230505949204,
+          "outlet_velocity_mps": 0.6472458402059494
+        },
+        {
+          "hour": 21,
+          "outlet_depth_m": 0.7336944387805433,
+          "outlet_discharge_m3s": 2.5045352108440477,
+          "outlet_velocity_mps": 0.6178557283451065
+        },
+        {
+          "hour": 22,
+          "outlet_depth_m": 0.6752770985135215,
+          "outlet_discharge_m3s": 2.1563958308419466,
+          "outlet_velocity_mps": 0.5904311243670529
+        },
+        {
+          "hour": 23,
+          "outlet_depth_m": 0.6230860637593475,
+          "outlet_discharge_m3s": 1.8669681168811894,
+          "outlet_velocity_mps": 0.5648635335564451
+        },
+        {
+          "hour": 24,
+          "outlet_depth_m": 0.5764079957250762,
+          "outlet_discharge_m3s": 1.6252288632305025,
+          "outlet_velocity_mps": 0.541030398526343
+        },
+        {
+          "hour": 25,
+          "outlet_depth_m": 0.5345910069461818,
+          "outlet_discharge_m3s": 1.422294733266965,
+          "outlet_velocity_mps": 0.5188058185874995
+        },
+        {
+          "hour": 26,
+          "outlet_depth_m": 0.49705186856863015,
+          "outlet_discharge_m3s": 1.251039454725111,
+          "outlet_velocity_mps": 0.49806660416149245
+        },
+        {
+          "hour": 27,
+          "outlet_depth_m": 0.4632754511828694,
+          "outlet_discharge_m3s": 1.1057518336511218,
+          "outlet_velocity_mps": 0.47869553795965425
+        },
+        {
+          "hour": 28,
+          "outlet_depth_m": 0.43281031145375254,
+          "outlet_discharge_m3s": 0.9818488457187587,
+          "outlet_velocity_mps": 0.4605829693106347
+        },
+        {
+          "hour": 29,
+          "outlet_depth_m": 0.4052626210023611,
+          "outlet_discharge_m3s": 0.875642723033746,
+          "outlet_velocity_mps": 0.44362742223677903
+        },
+        {
+          "hour": 30,
+          "outlet_depth_m": 0.3802896414170923,
+          "outlet_discharge_m3s": 0.7841552398017374,
+          "outlet_velocity_mps": 0.42773562990193414
+        },
+        {
+          "hour": 31,
+          "outlet_depth_m": 0.3575933778635258,
+          "outlet_discharge_m3s": 0.7049710460063887,
+          "outlet_velocity_mps": 0.41282224603258827
+        },
+        {
+          "hour": 32,
+          "outlet_depth_m": 0.336914717765093,
+          "outlet_discharge_m3s": 0.6361223655663256,
+          "outlet_velocity_mps": 0.39880938537925975
+        },
+        {
+          "hour": 33,
+          "outlet_depth_m": 0.3180281780112813,
+          "outlet_discharge_m3s": 0.5759984767525776,
+          "outlet_velocity_mps": 0.3856260850320822
+        },
+        {
+          "hour": 34,
+          "outlet_depth_m": 0.30073728425780116,
+          "outlet_discharge_m3s": 0.5232745997538815,
+          "outlet_velocity_mps": 0.37320774138770735
+        },
+        {
+          "hour": 35,
+          "outlet_depth_m": 0.2848705540575661,
+          "outlet_discharge_m3s": 0.4768559161124583,
+          "outlet_velocity_mps": 0.3614955547539923
+        },
+        {
+          "hour": 36,
+          "outlet_depth_m": 0.27027803122683797,
+          "outlet_discharge_m3s": 0.4358333698815587,
+          "outlet_velocity_mps": 0.3504359995094179
+        },
+        {
+          "hour": 37,
+          "outlet_depth_m": 0.25682830994018924,
+          "outlet_discharge_m3s": 0.3994486468402753,
+          "outlet_velocity_mps": 0.33998032907788167
+        },
+        {
+          "hour": 38,
+          "outlet_depth_m": 0.24440598650315776,
+          "outlet_discharge_m3s": 0.36706631650431354,
+          "outlet_velocity_mps": 0.3300841196934399
+        },
+        {
+          "hour": 39,
+          "outlet_depth_m": 0.23290948047468765,
+          "outlet_discharge_m3s": 0.3381515792634471,
+          "outlet_velocity_mps": 0.32070685375025126
+        },
+        {
+          "hour": 40,
+          "outlet_depth_m": 0.2222491724551424,
+          "outlet_discharge_m3s": 0.31225241416426347,
+          "outlet_velocity_mps": 0.31181154167344644
+        },
+        {
+          "hour": 41,
+          "outlet_depth_m": 0.21234581210604742,
+          "outlet_discharge_m3s": 0.28898519442971726,
+          "outlet_velocity_mps": 0.30336438021337225
+        },
+        {
+          "hour": 42,
+          "outlet_depth_m": 0.20312915611872676,
+          "outlet_discharge_m3s": 0.26802304634952356,
+          "outlet_velocity_mps": 0.2953344445473425
+        },
+        {
+          "hour": 43,
+          "outlet_depth_m": 0.19453680154843372,
+          "outlet_discharge_m3s": 0.24908638737353997,
+          "outlet_velocity_mps": 0.28769341137238574
+        },
+        {
+          "hour": 44,
+          "outlet_depth_m": 0.18651318502897685,
+          "outlet_discharge_m3s": 0.23193520248729455,
+          "outlet_velocity_mps": 0.2804153101640979
+        },
+        {
+          "hour": 45,
+          "outlet_depth_m": 0.17900872284362543,
+          "outlet_discharge_m3s": 0.21636271298752177,
+          "outlet_velocity_mps": 0.2734762998808081
+        },
+        {
+          "hour": 46,
+          "outlet_depth_m": 0.17197907067456775,
+          "outlet_discharge_m3s": 0.20219016527313005,
+          "outlet_velocity_mps": 0.2668544685582203
+        },
+        {
+          "hour": 47,
+          "outlet_depth_m": 0.16538448513773185,
+          "outlet_discharge_m3s": 0.18926252429164797,
+          "outlet_velocity_mps": 0.2605296534355836
+        },
+        {
+          "hour": 48,
+          "outlet_depth_m": 0.15918927199601732,
+          "outlet_discharge_m3s": 0.17744490068118624,
+          "outlet_velocity_mps": 0.25448327946041116
+        },
+        {
+          "hour": 49,
+          "outlet_depth_m": 0.15336130829717126,
+          "outlet_discharge_m3s": 0.16661957534640381,
+          "outlet_velocity_mps": 0.2486982142227381
+        },
+        {
+          "hour": 50,
+          "outlet_depth_m": 0.14787162766438977,
+          "outlet_discharge_m3s": 0.15668351242703987,
+          "outlet_velocity_mps": 0.24315863756482656
+        },
+        {
+          "hour": 51,
+          "outlet_depth_m": 0.1426940596340196,
+          "outlet_discharge_m3s": 0.14754627305364554,
+          "outlet_velocity_mps": 0.23784992429425422
+        },
+        {
+          "hour": 52,
+          "outlet_depth_m": 0.13780491533461647,
+          "outlet_discharge_m3s": 0.13912825923189723,
+          "outlet_velocity_mps": 0.23275853859569337
+        },
+        {
+          "hour": 53,
+          "outlet_depth_m": 0.13318271297743073,
+          "outlet_discharge_m3s": 0.13135923064641458,
+          "outlet_velocity_mps": 0.22787193888888496
+        },
+        {
+          "hour": 54,
+          "outlet_depth_m": 0.1288079376163659,
+          "outlet_discharge_m3s": 0.1241770478901468,
+          "outlet_velocity_mps": 0.2231784920176527
+        },
+        {
+          "hour": 55,
+          "outlet_depth_m": 0.1246628304661459,
+          "outlet_discharge_m3s": 0.11752660419448084,
+          "outlet_velocity_mps": 0.21866739577800204
+        },
+        {
+          "hour": 56,
+          "outlet_depth_m": 0.1207312037665979,
+          "outlet_discharge_m3s": 0.11135891461376947,
+          "outlet_velocity_mps": 0.21432860890342664
+        },
+        {
+          "hour": 57,
+          "outlet_depth_m": 0.11699827777012041,
+          "outlet_discharge_m3s": 0.10563033715979361,
+          "outlet_velocity_mps": 0.21015278772357987
+        },
+        {
+          "hour": 58,
+          "outlet_depth_m": 0.11345053692659798,
+          "outlet_discharge_m3s": 0.10030190486264644,
+          "outlet_velocity_mps": 0.2061312287995957
+        },
+        {
+          "hour": 59,
+          "outlet_depth_m": 0.1100756027602106,
+          "outlet_discharge_m3s": 0.09533875137052365,
+          "outlet_velocity_mps": 0.2022558169166505
+        },
+        {
+          "hour": 60,
+          "outlet_depth_m": 0.10686212128830555,
+          "outlet_discharge_m3s": 0.09070961566145135,
+          "outlet_velocity_mps": 0.19851897788288056
+        },
+        {
+          "hour": 61,
+          "outlet_depth_m": 0.10379966313413416,
+          "outlet_discharge_m3s": 0.08638641385868713,
+          "outlet_velocity_mps": 0.19491363564446426
+        },
+        {
+          "hour": 62,
+          "outlet_depth_m": 0.10087863474150352,
+          "outlet_discharge_m3s": 0.08234386812406735,
+          "outlet_velocity_mps": 0.19143317328042142
+        },
+        {
+          "hour": 63,
+          "outlet_depth_m": 0.0980901993174553,
+          "outlet_discharge_m3s": 0.07855918423381783,
+          "outlet_velocity_mps": 0.18807139748826343
+        },
+        {
+          "hour": 64,
+          "outlet_depth_m": 0.09542620631501508,
+          "outlet_discharge_m3s": 0.07501177078609902,
+          "outlet_velocity_mps": 0.18482250621376223
+        },
+        {
+          "hour": 65,
+          "outlet_depth_m": 0.09287912842686416,
+          "outlet_discharge_m3s": 0.07168299410219452,
+          "outlet_velocity_mps": 0.18168105911541738
+        },
+        {
+          "hour": 66,
+          "outlet_depth_m": 0.09044200519668838,
+          "outlet_discharge_m3s": 0.0685559638065876,
+          "outlet_velocity_mps": 0.17864195058726848
+        },
+        {
+          "hour": 67,
+          "outlet_depth_m": 0.08810839247148779,
+          "outlet_discharge_m3s": 0.06561534483962282,
+          "outlet_velocity_mps": 0.17570038509300492
+        },
+        {
+          "hour": 68,
+          "outlet_depth_m": 0.08587231701820222,
+          "outlet_discharge_m3s": 0.0628471922978116,
+          "outlet_velocity_mps": 0.17285185459032765
+        },
+        {
+          "hour": 69,
+          "outlet_depth_m": 0.0837282357141443,
+          "outlet_discharge_m3s": 0.06023880603359851,
+          "outlet_velocity_mps": 0.17009211784758965
+        },
+        {
+          "hour": 70,
+          "outlet_depth_m": 0.0816709987949689,
+          "outlet_discharge_m3s": 0.05777860239682882,
+          "outlet_velocity_mps": 0.1674171814752443
+        },
+        {
+          "hour": 71,
+          "outlet_depth_m": 0.07969581670804472,
+          "outlet_discharge_m3s": 0.055456000879111546,
+          "outlet_velocity_mps": 0.16482328251284636
+        },
+        {
+          "hour": 72,
+          "outlet_depth_m": 0.07779823017456627,
+          "outlet_discharge_m3s": 0.05326132374191724,
+          "outlet_velocity_mps": 0.16230687242856695
+        },
+        {
+          "hour": 73,
+          "outlet_depth_m": 0.07597408311183547,
+          "outlet_discharge_m3s": 0.05118570697952758,
+          "outlet_velocity_mps": 0.15986460240261535
+        },
+        {
+          "hour": 74,
+          "outlet_depth_m": 0.07421949810889736,
+          "outlet_discharge_m3s": 0.049221021197044676,
+          "outlet_velocity_mps": 0.15749330977882522
+        },
+        {
+          "hour": 75,
+          "outlet_depth_m": 0.07253085418502277,
+          "outlet_discharge_m3s": 0.047359801178306356,
+          "outlet_velocity_mps": 0.15519000558014137
+        },
+        {
+          "hour": 76,
+          "outlet_depth_m": 0.07090476659216693,
+          "outlet_discharge_m3s": 0.04559518308429484,
+          "outlet_velocity_mps": 0.15295186299398472
+        },
+        {
+          "hour": 77,
+          "outlet_depth_m": 0.06933806845014709,
+          "outlet_discharge_m3s": 0.04392084836408116,
+          "outlet_velocity_mps": 0.1507762067426315
+        },
+        {
+          "hour": 78,
+          "outlet_depth_m": 0.06782779402740455,
+          "outlet_discharge_m3s": 0.04233097358133573,
+          "outlet_velocity_mps": 0.1486605032619329
+        },
+        {
+          "hour": 79,
+          "outlet_depth_m": 0.06637116350134722,
+          "outlet_discharge_m3s": 0.04082018546313808,
+          "outlet_velocity_mps": 0.1466023516190337
+        },
+        {
+          "hour": 80,
+          "outlet_depth_m": 0.06496556905079691,
+          "outlet_discharge_m3s": 0.03938352056688828,
+          "outlet_velocity_mps": 0.14459947510631868
+        },
+        {
+          "hour": 81,
+          "outlet_depth_m": 0.06360856214932478,
+          "outlet_discharge_m3s": 0.03801638903778346,
+          "outlet_velocity_mps": 0.14264971345471267
+        },
+        {
+          "hour": 82,
+          "outlet_depth_m": 0.06229784194258291,
+          "outlet_discharge_m3s": 0.03671454199542671,
+          "outlet_velocity_mps": 0.14075101561475054
+        },
+        {
+          "hour": 83,
+          "outlet_depth_m": 0.061031244605328376,
+          "outlet_discharge_m3s": 0.035474042145252946,
+          "outlet_velocity_mps": 0.13890143305859176
+        },
+        {
+          "hour": 84,
+          "outlet_depth_m": 0.05980673358497324,
+          "outlet_discharge_m3s": 0.03429123725989614,
+          "outlet_velocity_mps": 0.13709911356043128
+        },
+        {
+          "hour": 85,
+          "outlet_depth_m": 0.05862239064830325,
+          "outlet_discharge_m3s": 0.033162736218499536,
+          "outlet_velocity_mps": 0.13534229541661197
+        },
+        {
+          "hour": 86,
+          "outlet_depth_m": 0.05747640765670713,
+          "outlet_discharge_m3s": 0.032085387329218805,
+          "outlet_velocity_mps": 0.13362930207021606
+        },
+        {
+          "hour": 87,
+          "outlet_depth_m": 0.056367079002960105,
+          "outlet_discharge_m3s": 0.03105625869258702,
+          "outlet_velocity_mps": 0.13195853710804434
+        },
+        {
+          "hour": 88,
+          "outlet_depth_m": 0.055292794649426456,
+          "outlet_discharge_m3s": 0.03007262039167031,
+          "outlet_velocity_mps": 0.13032847960071942
+        },
+        {
+          "hour": 89,
+          "outlet_depth_m": 0.054252033713624775,
+          "outlet_discharge_m3s": 0.029131928319622316,
+          "outlet_velocity_mps": 0.12873767975920475
+        },
+        {
+          "hour": 90,
+          "outlet_depth_m": 0.05324335855248816,
+          "outlet_discharge_m3s": 0.02823180947683154,
+          "outlet_velocity_mps": 0.12718475488334435
+        },
+        {
+          "hour": 91,
+          "outlet_depth_m": 0.05226540930146491,
+          "outlet_discharge_m3s": 0.027370048588764254,
+          "outlet_velocity_mps": 0.12566838558011695
+        },
+        {
+          "hour": 92,
+          "outlet_depth_m": 0.051316898828884946,
+          "outlet_discharge_m3s": 0.026544575912199102,
+          "outlet_velocity_mps": 0.12418731223119722
+        },
+        {
+          "hour": 93,
+          "outlet_depth_m": 0.050396608069853445,
+          "outlet_discharge_m3s": 0.02575345611212966,
+          "outlet_velocity_mps": 0.12274033169113567
+        },
+        {
+          "hour": 94,
+          "outlet_depth_m": 0.0495033817073446,
+          "outlet_discharge_m3s": 0.024994878104442883,
+          "outlet_velocity_mps": 0.12132629419902825
+        },
+        {
+          "hour": 95,
+          "outlet_depth_m": 0.04863612417123753,
+          "outlet_discharge_m3s": 0.024267145770791136,
+          "outlet_velocity_mps": 0.11994410048796501
+        },
+        {
+          "hour": 96,
+          "outlet_depth_m": 0.04779379592877811,
+          "outlet_discharge_m3s": 0.023568669462057993,
+          "outlet_velocity_mps": 0.11859269907783743
+        },
+        {
+          "hour": 97,
+          "outlet_depth_m": 0.04697541004241021,
+          "outlet_discharge_m3s": 0.0228979582156399,
+          "outlet_velocity_mps": 0.11727108373825469
+        },
+        {
+          "hour": 98,
+          "outlet_depth_m": 0.04618002897313352,
+          "outlet_discharge_m3s": 0.02225361261957507,
+          "outlet_velocity_mps": 0.11597829110938955
+        },
+        {
+          "hour": 99,
+          "outlet_depth_m": 0.045406761609529285,
+          "outlet_discharge_m3s": 0.02163431826347089,
+          "outlet_velocity_mps": 0.11471339846954606
+        },
+        {
+          "hour": 100,
+          "outlet_depth_m": 0.04465476050438543,
+          "outlet_discharge_m3s": 0.02103883972232307,
+          "outlet_velocity_mps": 0.1134755216391319
+        },
+        {
+          "hour": 101,
+          "outlet_depth_m": 0.04392321930246905,
+          "outlet_discharge_m3s": 0.020466015024775505,
+          "outlet_velocity_mps": 0.11226381301152548
+        },
+        {
+          "hour": 102,
+          "outlet_depth_m": 0.04321137034443534,
+          "outlet_discharge_m3s": 0.019914750562225955,
+          "outlet_velocity_mps": 0.11107745970207275
+        },
+        {
+          "hour": 103,
+          "outlet_depth_m": 0.04251848243319212,
+          "outlet_discharge_m3s": 0.01938401639950573,
+          "outlet_velocity_mps": 0.10991568180712101
+        },
+        {
+          "hour": 104,
+          "outlet_depth_m": 0.04184385875020829,
+          "outlet_discharge_m3s": 0.01887284195171942,
+          "outlet_velocity_mps": 0.10877773076562049
+        },
+        {
+          "hour": 105,
+          "outlet_depth_m": 0.04118683491034343,
+          "outlet_discharge_m3s": 0.018380311995276552,
+          "outlet_velocity_mps": 0.10766288781639562
+        },
+        {
+          "hour": 106,
+          "outlet_depth_m": 0.04054677714473426,
+          "outlet_discharge_m3s": 0.01790556298421923,
+          "outlet_velocity_mps": 0.10657046254469403
+        },
+        {
+          "hour": 107,
+          "outlet_depth_m": 0.03992308060216105,
+          "outlet_discharge_m3s": 0.017447779645710922,
+          "outlet_velocity_mps": 0.10549979151211068
+        },
+        {
+          "hour": 108,
+          "outlet_depth_m": 0.039315167760118744,
+          "outlet_discharge_m3s": 0.01700619183101855,
+          "outlet_velocity_mps": 0.1044502369644197
+        },
+        {
+          "hour": 109,
+          "outlet_depth_m": 0.03872248693753834,
+          "outlet_discharge_m3s": 0.016580071600533416,
+          "outlet_velocity_mps": 0.10342118561224505
+        },
+        {
+          "hour": 110,
+          "outlet_depth_m": 0.03814451090176682,
+          "outlet_discharge_m3s": 0.01616873052336552,
+          "outlet_velocity_mps": 0.10241204747987454
+        },
+        {
+          "hour": 111,
+          "outlet_depth_m": 0.03758073556302917,
+          "outlet_discharge_m3s": 0.015771517173841322,
+          "outlet_velocity_mps": 0.10142225481788086
+        },
+        {
+          "hour": 112,
+          "outlet_depth_m": 0.03703067875006263,
+          "outlet_discharge_m3s": 0.015387814808791943,
+          "outlet_velocity_mps": 0.10045126107540009
+        },
+        {
+          "hour": 113,
+          "outlet_depth_m": 0.03649387906127302,
+          "outlet_discharge_m3s": 0.015017039211074733,
+          "outlet_velocity_mps": 0.09949853992847064
+        },
+        {
+          "hour": 114,
+          "outlet_depth_m": 0.03596989478606752,
+          "outlet_discharge_m3s": 0.014658636685974395,
+          "outlet_velocity_mps": 0.0985635843608523
+        },
+        {
+          "hour": 115,
+          "outlet_depth_m": 0.035458302891475516,
+          "outlet_discharge_m3s": 0.01431208219833982,
+          "outlet_velocity_mps": 0.09764590579406238
+        },
+        {
+          "hour": 116,
+          "outlet_depth_m": 0.03495869806957754,
+          "outlet_discharge_m3s": 0.013976877639392806,
+          "outlet_velocity_mps": 0.09674503326363144
+        },
+        {
+          "hour": 117,
+          "outlet_depth_m": 0.03447069184158346,
+          "outlet_discharge_m3s": 0.01365255021309627,
+          "outlet_velocity_mps": 0.09586051263876277
+        },
+        {
+          "hour": 118,
+          "outlet_depth_m": 0.03399391171472941,
+          "outlet_discharge_m3s": 0.013338650932841152,
+          "outlet_velocity_mps": 0.0949919058827723
+        },
+        {
+          "hour": 119,
+          "outlet_depth_m": 0.03352800038844047,
+          "outlet_discharge_m3s": 0.013034753220000675,
+          "outlet_velocity_mps": 0.0941387903518655
+        },
+        {
+          "hour": 120,
+          "outlet_depth_m": 0.03307261500649016,
+          "outlet_discharge_m3s": 0.012740451596615802,
+          "outlet_velocity_mps": 0.09330075812997034
+        }
+      ],
+      "physical_volume_conservation_passed": true,
+      "qvd_nonnegative_finite": true
+    },
+    "qvd_model_family_discrepancy_hourly": {
+      "outlet_depth_m": {
+        "mean_absolute_difference": 0.08105152018208896,
+        "relative_l1_difference": 0.2634044660700781,
+        "root_mean_square_difference": 0.1591084615555272,
+        "unit": "m"
+      },
+      "outlet_discharge_m3s": {
+        "mean_absolute_difference": 0.4809718091884164,
+        "relative_l1_difference": 0.4007108137665884,
+        "root_mean_square_difference": 1.277129858572422,
+        "unit": "m3 s-1"
+      },
+      "outlet_velocity_mps": {
+        "mean_absolute_difference": 0.04853846061997237,
+        "relative_l1_difference": 0.1659471317281547,
+        "root_mean_square_difference": 0.08167016192120942,
+        "unit": "m s-1"
+      },
+      "sample_count": 120
+    },
+    "t_route_mc": {
+      "completed_step_count": 1440,
+      "compound_channel_activated": true,
+      "derived_physical_volume_conservation_passed": false,
+      "derived_physical_volume_residual_to_input_ratio": 0.19896948308089984,
+      "horizon_derived_physical_mass_residual_m3": 85954.81669094873,
+      "horizon_derived_physical_mass_tolerance_m3": 2151.860521633178,
+      "maximum_absolute_reconstructed_equation_residual_m3": 58174.474193703594,
+      "maximum_absolute_step_derived_physical_mass_residual_m3": 140674.26944876602,
+      "maximum_depth_m": 10.89537525177002,
+      "minimum_bankfull_depth_m": 0.6796875074891346,
+      "outlet_qvd_hourly": [
+        {
+          "hour": 1,
+          "outlet_depth_m": 0.02372448891401291,
+          "outlet_discharge_m3s": 0.11480405926704407,
+          "outlet_velocity_mps": 0.07503699511289597
+        },
+        {
+          "hour": 2,
+          "outlet_depth_m": 0.17645086348056793,
+          "outlet_discharge_m3s": 0.2127314954996109,
+          "outlet_velocity_mps": 0.2710808217525482
+        },
+        {
+          "hour": 3,
+          "outlet_depth_m": 0.20054279267787933,
+          "outlet_discharge_m3s": 0.2642049789428711,
+          "outlet_velocity_mps": 0.2930505573749542
+        },
+        {
+          "hour": 4,
+          "outlet_depth_m": 0.26330462098121643,
+          "outlet_discharge_m3s": 0.4167003631591797,
+          "outlet_velocity_mps": 0.3450474441051483
+        },
+        {
+          "hour": 5,
+          "outlet_depth_m": 0.34817561507225037,
+          "outlet_discharge_m3s": 0.6731359958648682,
+          "outlet_velocity_mps": 0.4064927399158478
+        },
+        {
+          "hour": 6,
+          "outlet_depth_m": 0.2018994837999344,
+          "outlet_discharge_m3s": 0.26831984519958496,
+          "outlet_velocity_mps": 0.2942502796649933
+        },
+        {
+          "hour": 7,
+          "outlet_depth_m": 0.5348839163780212,
+          "outlet_discharge_m3s": 3.218961000442505,
+          "outlet_velocity_mps": 0.5189646482467651
+        },
+        {
+          "hour": 8,
+          "outlet_depth_m": 0.7921580076217651,
+          "outlet_discharge_m3s": 1.1363219022750854,
+          "outlet_velocity_mps": 0.6441904306411743
+        },
+        {
+          "hour": 9,
+          "outlet_depth_m": 0.9599875807762146,
+          "outlet_discharge_m3s": 2.3814659118652344,
+          "outlet_velocity_mps": 0.7146874070167542
+        },
+        {
+          "hour": 10,
+          "outlet_depth_m": 1.3751107454299927,
+          "outlet_discharge_m3s": 6.757156848907471,
+          "outlet_velocity_mps": 0.8663376569747925
+        },
+        {
+          "hour": 11,
+          "outlet_depth_m": 1.750638484954834,
+          "outlet_discharge_m3s": 11.99764633178711,
+          "outlet_velocity_mps": 0.985769510269165
+        },
+        {
+          "hour": 12,
+          "outlet_depth_m": 1.8957611322402954,
+          "outlet_discharge_m3s": 14.292447090148926,
+          "outlet_velocity_mps": 1.028830647468567
+        },
+        {
+          "hour": 13,
+          "outlet_depth_m": 1.8665217161178589,
+          "outlet_discharge_m3s": 13.819275856018066,
+          "outlet_velocity_mps": 1.0202714204788208
+        },
+        {
+          "hour": 14,
+          "outlet_depth_m": 1.7702300548553467,
+          "outlet_discharge_m3s": 12.300166130065918,
+          "outlet_velocity_mps": 0.9916700720787048
+        },
+        {
+          "hour": 15,
+          "outlet_depth_m": 1.658242106437683,
+          "outlet_discharge_m3s": 10.612796783447266,
+          "outlet_velocity_mps": 0.957543134689331
+        },
+        {
+          "hour": 16,
+          "outlet_depth_m": 1.5495855808258057,
+          "outlet_discharge_m3s": 9.061600685119629,
+          "outlet_velocity_mps": 0.9234436750411987
+        },
+        {
+          "hour": 17,
+          "outlet_depth_m": 1.4495794773101807,
+          "outlet_discharge_m3s": 7.713011264801025,
+          "outlet_velocity_mps": 0.8910948634147644
+        },
+        {
+          "hour": 18,
+          "outlet_depth_m": 1.3587756156921387,
+          "outlet_discharge_m3s": 6.557919502258301,
+          "outlet_velocity_mps": 0.8608245849609375
+        },
+        {
+          "hour": 19,
+          "outlet_depth_m": 1.2773923873901367,
+          "outlet_discharge_m3s": 5.581874847412109,
+          "outlet_velocity_mps": 0.8328832983970642
+        },
+        {
+          "hour": 20,
+          "outlet_depth_m": 1.2067598104476929,
+          "outlet_discharge_m3s": 4.782427787780762,
+          "outlet_velocity_mps": 0.8079422116279602
+        },
+        {
+          "hour": 21,
+          "outlet_depth_m": 1.1399643421173096,
+          "outlet_discharge_m3s": 4.069276809692383,
+          "outlet_velocity_mps": 0.7837032079696655
+        },
+        {
+          "hour": 22,
+          "outlet_depth_m": 1.080723762512207,
+          "outlet_discharge_m3s": 3.476986885070801,
+          "outlet_velocity_mps": 0.7616219520568848
+        },
+        {
+          "hour": 23,
+          "outlet_depth_m": 1.0292993783950806,
+          "outlet_discharge_m3s": 2.989269256591797,
+          "outlet_velocity_mps": 0.7419672012329102
+        },
+        {
+          "hour": 24,
+          "outlet_depth_m": 0.9853378534317017,
+          "outlet_discharge_m3s": 2.5948076248168945,
+          "outlet_velocity_mps": 0.7247753739356995
+        },
+        {
+          "hour": 25,
+          "outlet_depth_m": 0.9447709918022156,
+          "outlet_discharge_m3s": 2.2499351501464844,
+          "outlet_velocity_mps": 0.70856773853302
+        },
+        {
+          "hour": 26,
+          "outlet_depth_m": 0.6147679090499878,
+          "outlet_discharge_m3s": 1.8231399059295654,
+          "outlet_velocity_mps": 0.5606866478919983
+        },
+        {
+          "hour": 27,
+          "outlet_depth_m": 0.5574188232421875,
+          "outlet_discharge_m3s": 1.5305167436599731,
+          "outlet_velocity_mps": 0.5310465693473816
+        },
+        {
+          "hour": 28,
+          "outlet_depth_m": 0.5118122696876526,
+          "outlet_discharge_m3s": 1.316694736480713,
+          "outlet_velocity_mps": 0.5063158273696899
+        },
+        {
+          "hour": 29,
+          "outlet_depth_m": 0.46416085958480835,
+          "outlet_discharge_m3s": 1.1092913150787354,
+          "outlet_velocity_mps": 0.47921258211135864
+        },
+        {
+          "hour": 30,
+          "outlet_depth_m": 0.42439040541648865,
+          "outlet_discharge_m3s": 0.9486662149429321,
+          "outlet_velocity_mps": 0.4554612934589386
+        },
+        {
+          "hour": 31,
+          "outlet_depth_m": 0.39298003911972046,
+          "outlet_discharge_m3s": 0.829964280128479,
+          "outlet_velocity_mps": 0.43587616086006165
+        },
+        {
+          "hour": 32,
+          "outlet_depth_m": 0.3666827380657196,
+          "outlet_discharge_m3s": 0.7361329793930054,
+          "outlet_velocity_mps": 0.4188511371612549
+        },
+        {
+          "hour": 33,
+          "outlet_depth_m": 0.34368300437927246,
+          "outlet_discharge_m3s": 0.6582269668579102,
+          "outlet_velocity_mps": 0.40344277024269104
+        },
+        {
+          "hour": 34,
+          "outlet_depth_m": 0.3232806622982025,
+          "outlet_discharge_m3s": 0.5923811793327332,
+          "outlet_velocity_mps": 0.3893311619758606
+        },
+        {
+          "hour": 35,
+          "outlet_depth_m": 0.3048594892024994,
+          "outlet_discharge_m3s": 0.5355772376060486,
+          "outlet_velocity_mps": 0.37620002031326294
+        },
+        {
+          "hour": 36,
+          "outlet_depth_m": 0.28808143734931946,
+          "outlet_discharge_m3s": 0.4860394597053528,
+          "outlet_velocity_mps": 0.3638913333415985
+        },
+        {
+          "hour": 37,
+          "outlet_depth_m": 0.2745306193828583,
+          "outlet_discharge_m3s": 0.4475736618041992,
+          "outlet_velocity_mps": 0.35368868708610535
+        },
+        {
+          "hour": 38,
+          "outlet_depth_m": 0.26063817739486694,
+          "outlet_discharge_m3s": 0.409572035074234,
+          "outlet_velocity_mps": 0.3429686725139618
+        },
+        {
+          "hour": 39,
+          "outlet_depth_m": 0.24459263682365417,
+          "outlet_discharge_m3s": 0.37095534801483154,
+          "outlet_velocity_mps": 0.3302345871925354
+        },
+        {
+          "hour": 40,
+          "outlet_depth_m": 0.23030298948287964,
+          "outlet_discharge_m3s": 0.33480721712112427,
+          "outlet_velocity_mps": 0.318550169467926
+        },
+        {
+          "hour": 41,
+          "outlet_depth_m": 0.21671926975250244,
+          "outlet_discharge_m3s": 0.3019295930862427,
+          "outlet_velocity_mps": 0.3071172833442688
+        },
+        {
+          "hour": 42,
+          "outlet_depth_m": 0.2051781266927719,
+          "outlet_discharge_m3s": 0.27514129877090454,
+          "outlet_velocity_mps": 0.297134131193161
+        },
+        {
+          "hour": 43,
+          "outlet_depth_m": 0.1951155811548233,
+          "outlet_discharge_m3s": 0.2526629567146301,
+          "outlet_velocity_mps": 0.28821301460266113
+        },
+        {
+          "hour": 44,
+          "outlet_depth_m": 0.1844785213470459,
+          "outlet_discharge_m3s": 0.22978463768959045,
+          "outlet_velocity_mps": 0.27854683995246887
+        },
+        {
+          "hour": 45,
+          "outlet_depth_m": 0.17403669655323029,
+          "outlet_discharge_m3s": 0.20822131633758545,
+          "outlet_velocity_mps": 0.2688053250312805
+        },
+        {
+          "hour": 46,
+          "outlet_depth_m": 0.16419218480587006,
+          "outlet_discharge_m3s": 0.1887148916721344,
+          "outlet_velocity_mps": 0.25937405228614807
+        },
+        {
+          "hour": 47,
+          "outlet_depth_m": 0.1550358533859253,
+          "outlet_discharge_m3s": 0.1712978333234787,
+          "outlet_velocity_mps": 0.2503703534603119
+        },
+        {
+          "hour": 48,
+          "outlet_depth_m": 0.1467979997396469,
+          "outlet_discharge_m3s": 0.1562339961528778,
+          "outlet_velocity_mps": 0.24206465482711792
+        },
+        {
+          "hour": 49,
+          "outlet_depth_m": 0.13945703208446503,
+          "outlet_discharge_m3s": 0.14330154657363892,
+          "outlet_velocity_mps": 0.23448772728443146
+        },
+        {
+          "hour": 50,
+          "outlet_depth_m": 0.13271518051624298,
+          "outlet_discharge_m3s": 0.13183677196502686,
+          "outlet_velocity_mps": 0.22737360000610352
+        },
+        {
+          "hour": 51,
+          "outlet_depth_m": 0.12646205723285675,
+          "outlet_discharge_m3s": 0.12155988067388535,
+          "outlet_velocity_mps": 0.22063331305980682
+        },
+        {
+          "hour": 52,
+          "outlet_depth_m": 0.12065757066011429,
+          "outlet_discharge_m3s": 0.11233118176460266,
+          "outlet_velocity_mps": 0.21424677968025208
+        },
+        {
+          "hour": 53,
+          "outlet_depth_m": 0.11527976393699646,
+          "outlet_discharge_m3s": 0.10405111312866211,
+          "outlet_velocity_mps": 0.20821131765842438
+        },
+        {
+          "hour": 54,
+          "outlet_depth_m": 0.11030688881874084,
+          "outlet_discharge_m3s": 0.09662854671478271,
+          "outlet_velocity_mps": 0.20252299308776855
+        },
+        {
+          "hour": 55,
+          "outlet_depth_m": 0.1057129055261612,
+          "outlet_discharge_m3s": 0.08997377753257751,
+          "outlet_velocity_mps": 0.1971711665391922
+        },
+        {
+          "hour": 56,
+          "outlet_depth_m": 0.10143531858921051,
+          "outlet_discharge_m3s": 0.08395373821258545,
+          "outlet_velocity_mps": 0.1920996755361557
+        },
+        {
+          "hour": 57,
+          "outlet_depth_m": 0.09750746935606003,
+          "outlet_discharge_m3s": 0.07857750356197357,
+          "outlet_velocity_mps": 0.1873638778924942
+        },
+        {
+          "hour": 58,
+          "outlet_depth_m": 0.09388954192399979,
+          "outlet_discharge_m3s": 0.07375531643629074,
+          "outlet_velocity_mps": 0.18293143808841705
+        },
+        {
+          "hour": 59,
+          "outlet_depth_m": 0.0905417650938034,
+          "outlet_discharge_m3s": 0.06940527260303497,
+          "outlet_velocity_mps": 0.17876701056957245
+        },
+        {
+          "hour": 60,
+          "outlet_depth_m": 0.08742401003837585,
+          "outlet_discharge_m3s": 0.06545192003250122,
+          "outlet_velocity_mps": 0.17483171820640564
+        },
+        {
+          "hour": 61,
+          "outlet_depth_m": 0.08454891294240952,
+          "outlet_discharge_m3s": 0.06189079210162163,
+          "outlet_velocity_mps": 0.171151801943779
+        },
+        {
+          "hour": 62,
+          "outlet_depth_m": 0.08181822299957275,
+          "outlet_discharge_m3s": 0.05858427658677101,
+          "outlet_velocity_mps": 0.16760951280593872
+        },
+        {
+          "hour": 63,
+          "outlet_depth_m": 0.07924246042966843,
+          "outlet_discharge_m3s": 0.05553353577852249,
+          "outlet_velocity_mps": 0.1642242968082428
+        },
+        {
+          "hour": 64,
+          "outlet_depth_m": 0.07683273404836655,
+          "outlet_discharge_m3s": 0.05273997411131859,
+          "outlet_velocity_mps": 0.16101711988449097
+        },
+        {
+          "hour": 65,
+          "outlet_depth_m": 0.07457906752824783,
+          "outlet_discharge_m3s": 0.050180770456790924,
+          "outlet_velocity_mps": 0.15798106789588928
+        },
+        {
+          "hour": 66,
+          "outlet_depth_m": 0.07246237993240356,
+          "outlet_discharge_m3s": 0.04782457277178764,
+          "outlet_velocity_mps": 0.1550961583852768
+        },
+        {
+          "hour": 67,
+          "outlet_depth_m": 0.07046321034431458,
+          "outlet_discharge_m3s": 0.045641735196113586,
+          "outlet_velocity_mps": 0.1523406207561493
+        },
+        {
+          "hour": 68,
+          "outlet_depth_m": 0.06856676936149597,
+          "outlet_discharge_m3s": 0.0436096265912056,
+          "outlet_velocity_mps": 0.14969801902770996
+        },
+        {
+          "hour": 69,
+          "outlet_depth_m": 0.06675182282924652,
+          "outlet_discharge_m3s": 0.04170023277401924,
+          "outlet_velocity_mps": 0.14714190363883972
+        },
+        {
+          "hour": 70,
+          "outlet_depth_m": 0.06501253694295883,
+          "outlet_discharge_m3s": 0.039903171360492706,
+          "outlet_velocity_mps": 0.14466668665409088
+        },
+        {
+          "hour": 71,
+          "outlet_depth_m": 0.06334453076124191,
+          "outlet_discharge_m3s": 0.038210101425647736,
+          "outlet_velocity_mps": 0.14226847887039185
+        },
+        {
+          "hour": 72,
+          "outlet_depth_m": 0.06174364313483238,
+          "outlet_discharge_m3s": 0.03661329299211502,
+          "outlet_velocity_mps": 0.13994355499744415
+        },
+        {
+          "hour": 73,
+          "outlet_depth_m": 0.06020606681704521,
+          "outlet_discharge_m3s": 0.03510579094290733,
+          "outlet_velocity_mps": 0.13768844306468964
+        },
+        {
+          "hour": 74,
+          "outlet_depth_m": 0.058728430420160294,
+          "outlet_discharge_m3s": 0.03368138521909714,
+          "outlet_velocity_mps": 0.13550014793872833
+        },
+        {
+          "hour": 75,
+          "outlet_depth_m": 0.05730772763490677,
+          "outlet_discharge_m3s": 0.03233451396226883,
+          "outlet_velocity_mps": 0.13337606191635132
+        },
+        {
+          "hour": 76,
+          "outlet_depth_m": 0.055941227823495865,
+          "outlet_discharge_m3s": 0.03106013685464859,
+          "outlet_velocity_mps": 0.13131381571292877
+        },
+        {
+          "hour": 77,
+          "outlet_depth_m": 0.0546264611184597,
+          "outlet_discharge_m3s": 0.029853682965040207,
+          "outlet_velocity_mps": 0.12931133806705475
+        },
+        {
+          "hour": 78,
+          "outlet_depth_m": 0.05336110293865204,
+          "outlet_discharge_m3s": 0.028710922226309776,
+          "outlet_velocity_mps": 0.12736660242080688
+        },
+        {
+          "hour": 79,
+          "outlet_depth_m": 0.05214295908808708,
+          "outlet_discharge_m3s": 0.027627944946289062,
+          "outlet_velocity_mps": 0.12547777593135834
+        },
+        {
+          "hour": 80,
+          "outlet_depth_m": 0.05096995085477829,
+          "outlet_discharge_m3s": 0.026601077988743782,
+          "outlet_velocity_mps": 0.12364295870065689
+        },
+        {
+          "hour": 81,
+          "outlet_depth_m": 0.04984007403254509,
+          "outlet_discharge_m3s": 0.02562691643834114,
+          "outlet_velocity_mps": 0.12186042964458466
+        },
+        {
+          "hour": 82,
+          "outlet_depth_m": 0.048751384019851685,
+          "outlet_discharge_m3s": 0.02470223419368267,
+          "outlet_velocity_mps": 0.1201283261179924
+        },
+        {
+          "hour": 83,
+          "outlet_depth_m": 0.047702010720968246,
+          "outlet_discharge_m3s": 0.023824002593755722,
+          "outlet_velocity_mps": 0.11844490468502045
+        },
+        {
+          "hour": 84,
+          "outlet_depth_m": 0.04669017717242241,
+          "outlet_discharge_m3s": 0.022989418357610703,
+          "outlet_velocity_mps": 0.11680842190980911
+        },
+        {
+          "hour": 85,
+          "outlet_depth_m": 0.04571416974067688,
+          "outlet_discharge_m3s": 0.02219582349061966,
+          "outlet_velocity_mps": 0.11521723866462708
+        },
+        {
+          "hour": 86,
+          "outlet_depth_m": 0.044772326946258545,
+          "outlet_discharge_m3s": 0.021440735086798668,
+          "outlet_velocity_mps": 0.11366956681013107
+        },
+        {
+          "hour": 87,
+          "outlet_depth_m": 0.043863020837306976,
+          "outlet_discharge_m3s": 0.020721793174743652,
+          "outlet_velocity_mps": 0.11216377466917038
+        },
+        {
+          "hour": 88,
+          "outlet_depth_m": 0.0429852232336998,
+          "outlet_discharge_m3s": 0.020037198439240456,
+          "outlet_velocity_mps": 0.11069905012845993
+        },
+        {
+          "hour": 89,
+          "outlet_depth_m": 0.04213746637105942,
+          "outlet_discharge_m3s": 0.01938488706946373,
+          "outlet_velocity_mps": 0.10927382856607437
+        },
+        {
+          "hour": 90,
+          "outlet_depth_m": 0.041318073868751526,
+          "outlet_discharge_m3s": 0.01876271888613701,
+          "outlet_velocity_mps": 0.10788610577583313
+        },
+        {
+          "hour": 91,
+          "outlet_depth_m": 0.04052554443478584,
+          "outlet_discharge_m3s": 0.018168777227401733,
+          "outlet_velocity_mps": 0.10653411597013474
+        },
+        {
+          "hour": 92,
+          "outlet_depth_m": 0.03975851088762283,
+          "outlet_discharge_m3s": 0.017601318657398224,
+          "outlet_velocity_mps": 0.10521624982357025
+        },
+        {
+          "hour": 93,
+          "outlet_depth_m": 0.03901573643088341,
+          "outlet_discharge_m3s": 0.017058759927749634,
+          "outlet_velocity_mps": 0.10393106192350388
+        },
+        {
+          "hour": 94,
+          "outlet_depth_m": 0.038296088576316833,
+          "outlet_discharge_m3s": 0.01653965935111046,
+          "outlet_velocity_mps": 0.10267724841833115
+        },
+        {
+          "hour": 95,
+          "outlet_depth_m": 0.03759852796792984,
+          "outlet_discharge_m3s": 0.016042692586779594,
+          "outlet_velocity_mps": 0.10145357251167297
+        },
+        {
+          "hour": 96,
+          "outlet_depth_m": 0.03692207485437393,
+          "outlet_discharge_m3s": 0.015566625632345676,
+          "outlet_velocity_mps": 0.10025891661643982
+        },
+        {
+          "hour": 97,
+          "outlet_depth_m": 0.036265820264816284,
+          "outlet_discharge_m3s": 0.01511032972484827,
+          "outlet_velocity_mps": 0.09909223020076752
+        },
+        {
+          "hour": 98,
+          "outlet_depth_m": 0.035628922283649445,
+          "outlet_discharge_m3s": 0.014672745019197464,
+          "outlet_velocity_mps": 0.09795249998569489
+        },
+        {
+          "hour": 99,
+          "outlet_depth_m": 0.035010579973459244,
+          "outlet_discharge_m3s": 0.014252891764044762,
+          "outlet_velocity_mps": 0.0968388020992279
+        },
+        {
+          "hour": 100,
+          "outlet_depth_m": 0.03441004455089569,
+          "outlet_discharge_m3s": 0.013849854469299316,
+          "outlet_velocity_mps": 0.09575027227401733
+        },
+        {
+          "hour": 101,
+          "outlet_depth_m": 0.033826593309640884,
+          "outlet_discharge_m3s": 0.013462760485708714,
+          "outlet_velocity_mps": 0.09468603134155273
+        },
+        {
+          "hour": 102,
+          "outlet_depth_m": 0.0332595556974411,
+          "outlet_discharge_m3s": 0.013090815395116806,
+          "outlet_velocity_mps": 0.09364528954029083
+        },
+        {
+          "hour": 103,
+          "outlet_depth_m": 0.032708294689655304,
+          "outlet_discharge_m3s": 0.012733262032270432,
+          "outlet_velocity_mps": 0.09262728691101074
+        },
+        {
+          "hour": 104,
+          "outlet_depth_m": 0.032172203063964844,
+          "outlet_discharge_m3s": 0.012389387004077435,
+          "outlet_velocity_mps": 0.09163127839565277
+        },
+        {
+          "hour": 105,
+          "outlet_depth_m": 0.031650688499212265,
+          "outlet_discharge_m3s": 0.012058518826961517,
+          "outlet_velocity_mps": 0.09065653383731842
+        },
+        {
+          "hour": 106,
+          "outlet_depth_m": 0.031143207103013992,
+          "outlet_discharge_m3s": 0.011740035377442837,
+          "outlet_velocity_mps": 0.08970242738723755
+        },
+        {
+          "hour": 107,
+          "outlet_depth_m": 0.03064841590821743,
+          "outlet_discharge_m3s": 0.0114328283816576,
+          "outlet_velocity_mps": 0.08876671642065048
+        },
+        {
+          "hour": 108,
+          "outlet_depth_m": 0.030169814825057983,
+          "outlet_discharge_m3s": 0.011138822883367538,
+          "outlet_velocity_mps": 0.08785640448331833
+        },
+        {
+          "hour": 109,
+          "outlet_depth_m": 0.029693137854337692,
+          "outlet_discharge_m3s": 0.010849066078662872,
+          "outlet_velocity_mps": 0.08694455027580261
+        },
+        {
+          "hour": 110,
+          "outlet_depth_m": 0.029239358380436897,
+          "outlet_discharge_m3s": 0.0105760982260108,
+          "outlet_velocity_mps": 0.08607155084609985
+        },
+        {
+          "hour": 111,
+          "outlet_depth_m": 0.02880525216460228,
+          "outlet_discharge_m3s": 0.010317599400877953,
+          "outlet_velocity_mps": 0.08523182570934296
+        },
+        {
+          "hour": 112,
+          "outlet_depth_m": 0.028381112962961197,
+          "outlet_discharge_m3s": 0.010067540220916271,
+          "outlet_velocity_mps": 0.08440695703029633
+        },
+        {
+          "hour": 113,
+          "outlet_depth_m": 0.027961045503616333,
+          "outlet_discharge_m3s": 0.009822327643632889,
+          "outlet_velocity_mps": 0.08358560502529144
+        },
+        {
+          "hour": 114,
+          "outlet_depth_m": 0.027543628588318825,
+          "outlet_discharge_m3s": 0.009581081569194794,
+          "outlet_velocity_mps": 0.08276504278182983
+        },
+        {
+          "hour": 115,
+          "outlet_depth_m": 0.027130234986543655,
+          "outlet_discharge_m3s": 0.009344547986984253,
+          "outlet_velocity_mps": 0.08194795250892639
+        },
+        {
+          "hour": 116,
+          "outlet_depth_m": 0.026723381131887436,
+          "outlet_discharge_m3s": 0.009114088490605354,
+          "outlet_velocity_mps": 0.08113941550254822
+        },
+        {
+          "hour": 117,
+          "outlet_depth_m": 0.02632572315633297,
+          "outlet_discharge_m3s": 0.008891083300113678,
+          "outlet_velocity_mps": 0.08034488558769226
+        },
+        {
+          "hour": 118,
+          "outlet_depth_m": 0.02593941241502762,
+          "outlet_discharge_m3s": 0.008676579222083092,
+          "outlet_velocity_mps": 0.07956887781620026
+        },
+        {
+          "hour": 119,
+          "outlet_depth_m": 0.025565940886735916,
+          "outlet_discharge_m3s": 0.00847121886909008,
+          "outlet_velocity_mps": 0.07881473004817963
+        },
+        {
+          "hour": 120,
+          "outlet_depth_m": 0.02520604059100151,
+          "outlet_discharge_m3s": 0.008275200612843037,
+          "outlet_velocity_mps": 0.07808423787355423
+        }
+      ],
+      "physical_volume_audit_completed": true,
+      "qvd_nonnegative_finite": true,
+      "reconstructed_equation_closes_at_float32_tolerance": false,
+      "returned_ck_x_authoritative_for_equation_reconstruction": false
+    }
+  },
+  "runtime_identity": {
+    "commit": "12a8eae0cdfed437143c590659fa7077605a5e70",
+    "compiler": {
+      "executable": "/usr/bin/gfortran",
+      "version": "GNU Fortran (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0"
+    },
+    "entrypoint": "c_muskingcungenwm",
+    "official_source_unmodified": true,
+    "platform": {
+      "machine": "aarch64",
+      "python": "3.12.3",
+      "system": "Linux"
+    },
+    "repository": "NOAA-OWP/t-route"
+  },
+  "schema": "gwm.geotransport.t_route_mc_professional_baseline.v1",
+  "scientific_limitations": {
+    "official_mc_conservation_verified": false,
+    "official_mc_forward_physical_volume_conservative": false,
+    "official_mc_reverse_physical_volume_conservative": false,
+    "returned_ck_x_authoritative_for_equation_reconstruction": false
+  },
+  "source_artifacts": {
+    "route_link_fixture": {
+      "path": "data/geotransport_v0_1/route_link_public_audit/raw/RouteLink_HurricaneLaura_NWMv2.1.nc",
+      "sha256": "bce1ef6e80fc80ad0cabae5e4e1401428f2fac14786f74fd2ac659919914f97e",
+      "size_bytes": 24151
+    },
+    "route_link_manifest": {
+      "path": "data/geotransport_v0_1/route_link_public_audit/acquisition_manifest.json",
+      "sha256": "c42ccbe2f272a482f6a123e9b67863a909374ac58e5eebf0e10207f5ca3a48aa",
+      "size_bytes": 19909
+    },
+    "t_route_build_manifest": {
+      "path": "data/geotransport_v0_1/t_route_mc_runtime/build_manifest.json",
+      "sha256": "26780f3c6cb9bcc4fa61b608c8e93843b4db2054a469ce0114c3880ba4b6a7f4",
+      "size_bytes": 1771
+    },
+    "t_route_shared_library": {
+      "path": "data/geotransport_v0_1/t_route_mc_runtime/libtroute_mc_12a8eae.so",
+      "sha256": "9d1cb42b189192007c2d62ac1c9e2e7b6814e967baa4fe147ed5c9a849c4b32b",
+      "size_bytes": 70080
+    },
+    "t_route_source_manifest": {
+      "path": "data/geotransport_v0_1/t_route_mc_source_audit/acquisition_manifest.json",
+      "sha256": "6bb67aaaeb70cb97ed8795b9a15dd2ef7db2c8db8092393c0a7f824577b25e1d",
+      "size_bytes": 13012
+    }
+  },
+  "status": "pass_with_conservation_limitation"
+}

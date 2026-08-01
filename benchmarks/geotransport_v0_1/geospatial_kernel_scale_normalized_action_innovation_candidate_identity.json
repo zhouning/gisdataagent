@@ -1,0 +1,84 @@
+{
+  "admission_contract": {
+    "automatic_admission_from_posthoc_results": false,
+    "candidate_admitted": false,
+    "fresh_prospective_window_required": true,
+    "independent_system_required": true,
+    "operational_issue_time_vintages_required": true,
+    "runtime_default_enabled": false
+  },
+  "candidate_artifacts": {
+    "core_operator": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/action_innovation_scale_normalization.py",
+      "sha256": "a51b5055dd5e482c4f19337437067ed76712db7403b28e6f0d172ea2ba20aa1d",
+      "size_bytes": 15883
+    },
+    "evaluator": {
+      "path": "scripts/evaluate_geospatial_kernel_scale_normalized_action_innovation.py",
+      "sha256": "134de20b98de703bec85cc97908e72b3d15d5f390ffd365c9c38cb50df96fd7d",
+      "size_bytes": 22915
+    },
+    "parameters": {
+      "path": "data/geotransport_v0_1/kernel_innovation_scale_normalized_candidate/parameters.json",
+      "sha256": "c34e11b4f257b7e0c9f3fdb89a8132190438801e6a7eca0135e53e518e5a8629",
+      "size_bytes": 4329
+    },
+    "source_candidate_freeze": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_action_innovation_candidate_freeze.json",
+      "sha256": "cf13add56e60912fef6d10daab8bcfc31605e04dba5ae1905b4bb39f872f7970",
+      "size_bytes": 5430
+    },
+    "source_parameters": {
+      "path": "data/geotransport_v0_1/kernel_innovation_candidate/parameters.json",
+      "sha256": "56990a10610c3ab7d6e6479906237463f1d9d17ea9e630bdacc22528961106ad",
+      "size_bytes": 2246
+    },
+    "source_scale_panel": {
+      "path": "data/geotransport_v0_1/panels/center_hill_672h_development.csv",
+      "sha256": "3ab31194e1687b2a4556bdf4f0889acfa62afe2a53e6dd5ad056f168b55cc746",
+      "size_bytes": 142536
+    },
+    "target_scale_action": {
+      "path": "data/geotransport_v0_1/geotransport_v2_blind_validation/inputs/systems/j_percy_priest/action_values.csv",
+      "sha256": "d7001cd1b4b6cb5548e00e1e3d9515d9b9b28346ed65a6d688fc8d50fc95162d",
+      "size_bytes": 43445
+    },
+    "target_scale_input_report": {
+      "path": "benchmarks/geotransport_v0_1/geotransport_v2_blind_validation_inputs_report.json",
+      "sha256": "9bf183173b782a40c03f69ed73a839811bfa0718e4ad7bf35fdf67c5e7060aa0",
+      "size_bytes": 16854
+    },
+    "target_topology_report": {
+      "path": "benchmarks/geotransport_v0_1/j_percy_priest_v1_full_subnetwork_report.json",
+      "sha256": "2159b88b57ae2a4d476ab025190b64a1cd2b62c1c4d6c9e45bca9e844d2fe3d6",
+      "size_bytes": 13504
+    }
+  },
+  "claim_boundary": {
+    "candidate_admitted": false,
+    "candidate_identity_frozen_for_future_evaluation": true,
+    "geospatial_kernel_validated": false,
+    "multi_system_generalization_validated": false,
+    "operational_forecast_validated": false,
+    "posthoc_design_motivated_by_exposed_cross_system_failures": true,
+    "runtime_default_enabled": false
+  },
+  "operator_lock": {
+    "action_change_coefficient_unchanged": true,
+    "forcing_coefficient_unchanged": true,
+    "formula": "q[t] = q[t-1] + target_action_scale*(source_drift/source_action_scale) + action_change_beta*(sum(w_lag*action[t-lag]) - sum(w_lag*action[t-1-lag])) + forcing_beta*nwm_lateral[t]",
+    "lag_support_unchanged": true,
+    "minimum_scale_m3s": 1.0,
+    "per_window_refit_permitted": false,
+    "scale_quantile": 0.9,
+    "scale_ratio": 0.38976114412958224,
+    "scaled_baseline_drift_m3s_per_hour": -0.40326275174962606,
+    "source_action_scale_m3s": 334.198255167,
+    "source_baseline_drift_m3s_per_hour": -1.034640722461434,
+    "target_action_scale_m3s": 130.2574943,
+    "target_outcomes_used_for_scale_or_parameters": false
+  },
+  "schema": "gwm.geotransport.scale_normalized_action_innovation_candidate_identity.v1",
+  "scientific_role": "lock a drift-scale successor identity for future fresh evaluation; not blind validation and not admission",
+  "status": "frozen_posthoc_scale_normalized_successor_not_admitted"
+}

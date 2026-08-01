@@ -1,0 +1,397 @@
+{
+  "aggregate_gates": {
+    "all_requested_interventions_have_nonzero_action_excitation": false,
+    "cross_system_response_contrast_preserved_under_tested_storage_scales": true,
+    "fresh_prospective_validation_passed": false,
+    "mechanistic_candidate_promotion_gate_passed": false,
+    "two_system_structural_gate_passed": true
+  },
+  "claim_boundary": {
+    "candidate_promoted": false,
+    "counterfactual_release_effect_causally_validated": false,
+    "geospatial_kernel_validated": false,
+    "hydrodynamic_response_validated": false,
+    "modeled_issue_state_sensitivity_audited": true,
+    "prospective_v5_changed": false,
+    "runtime_default_enabled": false
+  },
+  "cross_system_robustness": {
+    "aligned_comparison_count": 6,
+    "aligned_requested_comparison_count": 12,
+    "all_three_partition_rankings_preserved": true,
+    "causal_source_of_cross_system_difference_identified": false,
+    "center_hill_higher_storage_retention_pass_count": 6,
+    "center_hill_lower_outlet_recovery_pass_count": 6,
+    "center_hill_lower_response_gain_pass_count": 6,
+    "comparable_release_deltas_m3s": [
+      50.0
+    ],
+    "excluded_zero_excitation_comparison_count": 6,
+    "interpretation": "tested_issue_state_storage_uncertainty_does_not_explain_away_the_cross_system_response_contrast_on_common_identifiable_action_axes",
+    "tested_issue_state_storage_scaling_reverses_cross_system_contrast": false
+  },
+  "design": {
+    "forecast_horizon_hours": 12,
+    "issue_indices": [
+      0,
+      336
+    ],
+    "issue_state_storage_scale_factors": [
+      0.8,
+      1.0,
+      1.2
+    ],
+    "new_fitted_parameter_count": 0,
+    "non_universal_lag_reference_hours": 5,
+    "release_deltas_m3s": [
+      -50.0,
+      50.0
+    ],
+    "same_geometry_and_network_across_scales_within_system": true,
+    "scale_applied_before_issue_state_spinup": false,
+    "scale_applied_to_modeled_reach_storage_at_each_issue": true,
+    "shared_distributed_forcing_per_twin_pair": true,
+    "shared_scaled_issue_state_per_twin_pair": true,
+    "systems": [
+      "center_hill",
+      "j_percy_priest"
+    ]
+  },
+  "diagnostic_interpretation": {
+    "five_hour_reference_validated_as_travel_time": false,
+    "initial_storage_uncertainty_resolved": false,
+    "j_percy_priest_travel_time_validated": false,
+    "negative_release_response_comparable_across_both_systems": false,
+    "predictive_accuracy_evaluated": false,
+    "tested_storage_scaling_explains_away_cross_system_contrast": false,
+    "tested_storage_scaling_preserves_cross_system_contrast": true,
+    "topology_or_geometry_causally_identified_as_difference_source": false
+  },
+  "generated_at": "2026-07-31T17:17:06.642157+00:00",
+  "implementation_artifacts": {
+    "base_conservative_twin_auditor": {
+      "path": "scripts/audit_geospatial_kernel_conservative_twin_action_response.py",
+      "sha256": "ba363dcde000ff85f0a4333c7bc0e8cf9c26a11f899f82b7dc204614f4031209",
+      "size_bytes": 26746
+    },
+    "conservative_twin_operator": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/conservative_twin_action_response.py",
+      "sha256": "a39cddaf470a331692ca468827840850764c7adf9a22e073dd9810aedff49f39",
+      "size_bytes": 17081
+    },
+    "evaluator": {
+      "path": "scripts/audit_geospatial_kernel_twin_response_state_sensitivity.py",
+      "sha256": "3f0c1f662637181772fc57c93c4ffbbbb0af10ac9ceb4b644ea6236be4edd388",
+      "size_bytes": 36759
+    }
+  },
+  "information_boundary": {
+    "historical_archived_actions_loaded": true,
+    "issue_reach_storage_is_modeled_not_observed": true,
+    "nwm_v3_retrospective_forcing_loaded": true,
+    "outcome_values_used_in_current_twin_rollouts": false,
+    "raw_usgs_outcome_files_opened": false,
+    "stage32_posthoc_outcome_summary_loaded": true,
+    "stage32_summary_used_as_model_target": false
+  },
+  "lag_evidence_boundary": {
+    "center_hill_common_empirical_support_admitted": false,
+    "center_hill_common_supported_lags_hours": [],
+    "center_hill_empirical_lag_is_hydraulic_edge_travel_time": false,
+    "center_hill_empirical_lag_is_physical_travel_time": false,
+    "center_hill_event_response_detectable": [
+      true,
+      true,
+      true,
+      false
+    ],
+    "center_hill_event_supported_lags_hours": [
+      [
+        5,
+        6,
+        7
+      ],
+      [
+        6,
+        7
+      ],
+      [
+        7
+      ],
+      []
+    ],
+    "center_hill_stage32_status": "blind_common_empirical_lag_support_rejected",
+    "five_hour_value_role_in_this_audit": "non_universal_pre_response_volume_reference_only",
+    "j_percy_priest_absence_scope": "no_j_percy_priest_lag_support_artifact_in_bound_stage32_evidence",
+    "j_percy_priest_independent_lag_support_bound": false,
+    "lag_evidence_used_for_parameter_fitting": false,
+    "travel_time_validated_by_this_sensitivity_audit": false
+  },
+  "outputs": {
+    "responses": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_twin_response_state_sensitivity_posthoc/responses.csv",
+      "sha256": "a305713a251bd109270a71adb7bc126111ef7e76a80cb6758920405fa9c9ebfb",
+      "size_bytes": 6415
+    }
+  },
+  "schema": "gwm.geotransport.twin_response_state_sensitivity_posthoc.v1",
+  "source_artifacts": {
+    "blind_validation_input_report": {
+      "path": "benchmarks/geotransport_v0_1/geotransport_v2_blind_validation_inputs_report.json",
+      "sha256": "9bf183173b782a40c03f69ed73a839811bfa0718e4ad7bf35fdf67c5e7060aa0",
+      "size_bytes": 16854
+    },
+    "blind_validation_protocol": {
+      "path": "benchmarks/geotransport_v0_1/geotransport_v2_blind_validation_protocol.json",
+      "sha256": "7b99c0a7765f2e491e12e9dd110cdfcdcdeed72e70f3f30c65b9b9aac3d167cb",
+      "size_bytes": 13509
+    },
+    "stage32_lag_support_gates": {
+      "path": "benchmarks/geotransport_v0_1/stage32_lag_support_gates.json",
+      "sha256": "175101fc441395c82a2a2870986ed074bd91aa49d9e639d92d0540dcdba938fc",
+      "size_bytes": 9732
+    },
+    "stage32_lag_support_ledger": {
+      "path": "data/geotransport_v0_1/stage32_center_hill_lag_support_events/lag_support_evidence_ledger.json",
+      "sha256": "c95bbf18d3d606161fc9b5cb6fe9d6f8b8439d495b25e326d4a9cf675d416b74",
+      "size_bytes": 454065
+    }
+  },
+  "status": "modeled_issue_state_sensitivity_complete_not_promoted",
+  "systems": {
+    "center_hill": {
+      "action_support": {
+        "identifiable_action_excitation_rollout_count": 12,
+        "requested_rollout_count": 12,
+        "zero_excitation_reason": null,
+        "zero_excitation_rollout_count": 0
+      },
+      "claim_boundary": {
+        "causal_effect_validated": false,
+        "issue_state_perturbation_audited": true,
+        "outcomes_used_in_rollouts": false,
+        "physical_travel_time_inferred": false,
+        "predictive_accuracy_scored": false
+      },
+      "execution": {
+        "issue_count": 2,
+        "paired_rollout_count": 12,
+        "paired_step_count": 144,
+        "reported_row_count": 12,
+        "storage_scale_count": 3
+      },
+      "network": {
+        "action_entry_feature_id": 18434265,
+        "feature_count": 435,
+        "issue_state_ground_truth": false,
+        "modeled_issue_state_storage_m3": {
+          "0": 12032606.867871104,
+          "336": 10587801.28566457
+        },
+        "outlet_feature_id": 18421703
+      },
+      "response_envelopes_across_all_tested_states": {
+        "absolute_outlet_response_volume_before_5h_reference_fraction": {
+          "maximum": 3.3906164052654914e-05,
+          "minimum": 5.418905039530957e-06,
+          "span": 2.8487259013123958e-05
+        },
+        "input_recovered_at_outlet_fraction_12h": {
+          "maximum": 0.06343265719427431,
+          "minimum": 0.0228858801111642,
+          "span": 0.04054677708311011
+        },
+        "input_retained_in_storage_fraction_12h": {
+          "maximum": 0.9771141198892095,
+          "minimum": 0.9365673428029997,
+          "span": 0.040546777086209795
+        },
+        "response_rate_gain_12h": {
+          "maximum": 0.30651441160046694,
+          "minimum": 0.13216671815810066,
+          "span": 0.17434769344236628
+        }
+      },
+      "storage_sensitivity": {
+        "any_first_response_hour_changed_across_scales": false,
+        "comparison_pair_count": 4,
+        "first_response_undetected_pair_count": 0,
+        "initial_storage_uncertainty_resolved": false,
+        "maximum_absolute_deviation_from_nominal_by_pair": {
+          "absolute_outlet_response_volume_before_5h_reference_fraction": 1.3762899472369069e-05,
+          "input_recovered_at_outlet_fraction_12h": 0.013048206670914143,
+          "input_retained_in_storage_fraction_12h": 0.01304820668035267,
+          "response_rate_gain_12h": 0.052150049584127334
+        },
+        "maximum_first_response_hour_span_across_scales": 0,
+        "maximum_relative_deviation_from_nominal_by_pair": {
+          "absolute_outlet_response_volume_before_5h_reference_fraction": 0.785968333566717,
+          "input_recovered_at_outlet_fraction_12h": 0.25631683393564736,
+          "input_retained_in_storage_fraction_12h": 0.013748073734328545,
+          "response_rate_gain_12h": 0.1988252760319214
+        },
+        "requested_comparison_pair_count": 4,
+        "scale_medians": {
+          "0.8": {
+            "identifiable_action_excitation_rollout_count": 4,
+            "median_absolute_outlet_response_volume_before_5h_reference_fraction": 7.699807755323861e-06,
+            "median_first_response_hour": 2.0,
+            "median_input_recovered_at_outlet_fraction_12h": 0.026423910472922918,
+            "median_input_retained_in_storage_fraction_12h": 0.9735760895261226,
+            "median_response_rate_gain_12h": 0.15330142566184934,
+            "requested_rollout_count": 4
+          },
+          "1.0": {
+            "identifiable_action_excitation_rollout_count": 4,
+            "median_absolute_outlet_response_volume_before_5h_reference_fraction": 1.5206152460294514e-05,
+            "median_first_response_hour": 2.0,
+            "median_input_recovered_at_outlet_fraction_12h": 0.03435520261204966,
+            "median_input_retained_in_storage_fraction_12h": 0.9656447973847657,
+            "median_response_rate_gain_12h": 0.18535815331676697,
+            "requested_rollout_count": 4
+          },
+          "1.2": {
+            "identifiable_action_excitation_rollout_count": 4,
+            "median_absolute_outlet_response_volume_before_5h_reference_fraction": 2.6332084844034824e-05,
+            "median_first_response_hour": 2.0,
+            "median_input_recovered_at_outlet_fraction_12h": 0.04175001049579968,
+            "median_input_retained_in_storage_fraction_12h": 0.958249989505207,
+            "median_response_rate_gain_12h": 0.21171141093349888,
+            "requested_rollout_count": 4
+          }
+        },
+        "zero_excitation_comparison_pair_count": 0
+      },
+      "structural_gates": {
+        "all_mass_balances_passed": true,
+        "all_structural_gates_passed": true,
+        "mass_balance_check_count": 144,
+        "mass_balance_pass_count": 144,
+        "release_ordering_check_count": 72,
+        "release_ordering_gate_passed": true,
+        "release_ordering_pass_count": 72,
+        "signed_response_check_count": 144,
+        "signed_response_gate_passed": true,
+        "signed_response_pass_count": 144
+      },
+      "system_id": "center_hill"
+    },
+    "j_percy_priest": {
+      "action_support": {
+        "identifiable_action_excitation_rollout_count": 6,
+        "requested_rollout_count": 12,
+        "zero_excitation_reason": "negative_intervention_is_bounded_at_zero_release",
+        "zero_excitation_rollout_count": 6
+      },
+      "claim_boundary": {
+        "causal_effect_validated": false,
+        "issue_state_perturbation_audited": true,
+        "outcomes_used_in_rollouts": false,
+        "physical_travel_time_inferred": false,
+        "predictive_accuracy_scored": false
+      },
+      "execution": {
+        "issue_count": 2,
+        "paired_rollout_count": 12,
+        "paired_step_count": 144,
+        "reported_row_count": 12,
+        "storage_scale_count": 3
+      },
+      "network": {
+        "action_entry_feature_id": 18401881,
+        "feature_count": 43,
+        "issue_state_ground_truth": false,
+        "modeled_issue_state_storage_m3": {
+          "0": 650631.9424811483,
+          "336": 76495.64986479467
+        },
+        "outlet_feature_id": 18401497
+      },
+      "response_envelopes_across_all_tested_states": {
+        "absolute_outlet_response_volume_before_5h_reference_fraction": {
+          "maximum": 0.1765305422417151,
+          "minimum": 0.14685239832410243,
+          "span": 0.02967814391761267
+        },
+        "input_recovered_at_outlet_fraction_12h": {
+          "maximum": 0.7224166414091708,
+          "minimum": 0.7174436411854452,
+          "span": 0.004973000223725599
+        },
+        "input_retained_in_storage_fraction_12h": {
+          "maximum": 0.2825563588146384,
+          "minimum": 0.27758335859096894,
+          "span": 0.004973000223669477
+        },
+        "response_rate_gain_12h": {
+          "maximum": 0.9769802414926041,
+          "minimum": 0.9498700563345145,
+          "span": 0.027110185158089606
+        }
+      },
+      "storage_sensitivity": {
+        "any_first_response_hour_changed_across_scales": false,
+        "comparison_pair_count": 2,
+        "first_response_undetected_pair_count": 0,
+        "initial_storage_uncertainty_resolved": false,
+        "maximum_absolute_deviation_from_nominal_by_pair": {
+          "absolute_outlet_response_volume_before_5h_reference_fraction": 0.004728891572108873,
+          "input_recovered_at_outlet_fraction_12h": 0.0010033641752572597,
+          "input_retained_in_storage_fraction_12h": 0.0010033641752481004,
+          "response_rate_gain_12h": 0.002232398844259187
+        },
+        "maximum_first_response_hour_span_across_scales": 0,
+        "maximum_relative_deviation_from_nominal_by_pair": {
+          "absolute_outlet_response_volume_before_5h_reference_fraction": 0.02741088755079143,
+          "input_recovered_at_outlet_fraction_12h": 0.0013905255503442742,
+          "input_retained_in_storage_fraction_12h": 0.0036036743636122213,
+          "response_rate_gain_12h": 0.0023454631450675082
+        },
+        "requested_comparison_pair_count": 4,
+        "scale_medians": {
+          "0.8": {
+            "identifiable_action_excitation_rollout_count": 2,
+            "median_absolute_outlet_response_volume_before_5h_reference_fraction": 0.15732111953746092,
+            "median_first_response_hour": 1.0,
+            "median_input_recovered_at_outlet_fraction_12h": 0.7190060927828996,
+            "median_input_retained_in_storage_fraction_12h": 0.28099390721720385,
+            "median_response_rate_gain_12h": 0.9655035537177852,
+            "requested_rollout_count": 4
+          },
+          "1.0": {
+            "identifiable_action_excitation_rollout_count": 2,
+            "median_absolute_outlet_response_volume_before_5h_reference_fraction": 0.15982018861279376,
+            "median_first_response_hour": 1.0,
+            "median_input_recovered_at_outlet_fraction_12h": 0.7195352613187916,
+            "median_input_retained_in_storage_fraction_12h": 0.2804647386813153,
+            "median_response_rate_gain_12h": 0.9643414944873681,
+            "requested_rollout_count": 4
+          },
+          "1.2": {
+            "identifiable_action_excitation_rollout_count": 2,
+            "median_absolute_outlet_response_volume_before_5h_reference_fraction": 0.16195691799798034,
+            "median_first_response_hour": 1.0,
+            "median_input_recovered_at_outlet_fraction_12h": 0.7199845097049298,
+            "median_input_retained_in_storage_fraction_12h": 0.2800154902951853,
+            "median_response_rate_gain_12h": 0.9633341820614705,
+            "requested_rollout_count": 4
+          }
+        },
+        "zero_excitation_comparison_pair_count": 2
+      },
+      "structural_gates": {
+        "all_mass_balances_passed": true,
+        "all_structural_gates_passed": true,
+        "mass_balance_check_count": 144,
+        "mass_balance_pass_count": 144,
+        "release_ordering_check_count": 72,
+        "release_ordering_gate_passed": true,
+        "release_ordering_pass_count": 72,
+        "signed_response_check_count": 144,
+        "signed_response_gate_passed": true,
+        "signed_response_pass_count": 144
+      },
+      "system_id": "j_percy_priest"
+    }
+  }
+}

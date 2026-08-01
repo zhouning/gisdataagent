@@ -1,0 +1,153 @@
+{
+  "all_gates_passed": true,
+  "claim_boundary": {
+    "dynamic_time_advance_performed": false,
+    "identical_state_hll_used_as_physical_flux_diagnostic": true,
+    "observed_state_geometry_response_quantified": true,
+    "operator_admitted": false,
+    "runtime_geometry_admitted": false,
+    "spatial_neighbor_state_observed": false
+  },
+  "decision": {
+    "confluence_patch_geometry_admitted": false,
+    "convective_momentum_changes_when_state_is_fixed": false,
+    "geometry_contract_changes_hydrodynamic_response": true,
+    "hydrostatic_momentum_changes_when_state_is_fixed": true,
+    "mass_flux_changes_when_state_is_fixed": false,
+    "operator_admitted": false,
+    "reach_wide_geometry_transfer_admitted": false,
+    "stage24_bridge_geometry_admitted_for_runtime": false
+  },
+  "frozen_stage24_hashes": {
+    "benchmarks/geotransport_v0_1/stage24_public_reach_geometry_stability_gates.json": {
+      "actual_sha256": "41b18e08e69d9b284112da51ff9dcda28b783a9f85b67e00a0cad252bf74ed2d",
+      "expected_sha256": "41b18e08e69d9b284112da51ff9dcda28b783a9f85b67e00a0cad252bf74ed2d",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage24_center_hill_reach_geometry_stability/README.md": {
+      "actual_sha256": "9cd73f271a2aec0dac8f2f89ebe26089e536f33f5739acb3c412c96233f9768e",
+      "expected_sha256": "9cd73f271a2aec0dac8f2f89ebe26089e536f33f5739acb3c412c96233f9768e",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage24_center_hill_reach_geometry_stability/reach_geometry_stability_audit.json": {
+      "actual_sha256": "b4955bc4d8669f70f49425661d73c81166e7e28dc6a7ee761d37d657b8c365c9",
+      "expected_sha256": "b4955bc4d8669f70f49425661d73c81166e7e28dc6a7ee761d37d657b8c365c9",
+      "matches": true
+    },
+    "data_agent/test_geospatial_kernel_public_reach_geometry_stability.py": {
+      "actual_sha256": "7c6f7838b73c0d8a5b119e9d4cdf459602700eda3c4913b63f623f134ed2a04d",
+      "expected_sha256": "7c6f7838b73c0d8a5b119e9d4cdf459602700eda3c4913b63f623f134ed2a04d",
+      "matches": true
+    },
+    "data_agent/uwm/geospatial_kernel_v2/public_reach_geometry_stability.py": {
+      "actual_sha256": "6e15d49516f81de19b8b963847c770b0b59242f1993ba231522a0d83f65faea0",
+      "expected_sha256": "6e15d49516f81de19b8b963847c770b0b59242f1993ba231522a0d83f65faea0",
+      "matches": true
+    },
+    "docs/architecture-decisions/adr-065-location-conditioned-public-reach-geometry-stability.md": {
+      "actual_sha256": "4b76d3c0117ddd8ad54ec99e2c9b9c38c71cab417e894cbcece6b601e320b15a",
+      "expected_sha256": "4b76d3c0117ddd8ad54ec99e2c9b9c38c71cab417e894cbcece6b601e320b15a",
+      "matches": true
+    },
+    "scripts/compile_geotransport_stage24_public_reach_geometry_gates.py": {
+      "actual_sha256": "43903ed88f45772bda8f65b0cd71fbec3c9e9f4705f302376c73ec81fc3dc524",
+      "expected_sha256": "43903ed88f45772bda8f65b0cd71fbec3c9e9f4705f302376c73ec81fc3dc524",
+      "matches": true
+    }
+  },
+  "gates": {
+    "all_geometry_diagnostics_are_positive_and_finite": true,
+    "both_geometries_use_identical_observed_area_and_discharge": true,
+    "both_geometry_hypotheses_retain_subcritical_hll_regime": true,
+    "bridge_candidate_is_deeper_for_all_temporal_states": true,
+    "candidate_operator_remains_unadmitted": true,
+    "candidate_stage_inverse_closes_within_eighteen_centimeters": true,
+    "convective_momentum_is_geometry_invariant_for_fixed_state": true,
+    "exactly_twenty_temporal_holdout_states_are_compared": true,
+    "froude_response_is_finite_without_regime_change": true,
+    "geometry_hypotheses_are_not_numerically_identical": true,
+    "hydrostatic_pressure_response_exceeds_materiality_threshold": true,
+    "identical_state_hll_area_flux_matches_observed_discharge": true,
+    "identical_state_hll_momentum_matches_physical_flux": true,
+    "mass_flux_is_geometry_invariant_for_fixed_state": true,
+    "runtime_geometry_and_dynamic_time_advance_remain_closed": true,
+    "stage24_artifacts_hash_frozen": true,
+    "temporal_records_are_not_invented_as_spatial_neighbors": true,
+    "total_momentum_flux_response_exceeds_materiality_threshold": true,
+    "unsupported_runtime_and_transfer_claims_fail_closed": true,
+    "wave_celerity_response_is_nonzero_and_bounded": true
+  },
+  "generated_at": "2026-07-29T12:14:28.784286+00:00",
+  "maximum_hll_area_flux_identity_error_m3s": 2.842170943040401e-14,
+  "maximum_hll_physical_momentum_identity_error_m4s2": 4.547473508864641e-13,
+  "response_artifact": {
+    "path": "data/geotransport_v0_1/stage25_center_hill_geometry_response/geometry_hydrodynamic_response.json",
+    "sha256": "48e212176dc833a1d8c8bdac196d70d7314a53d2a1b9172b2e1cbc65020a090b",
+    "size_bytes": 56748
+  },
+  "response_summary": {
+    "bridge_candidate_stage_error_m": {
+      "maximum": 0.10642261195157099,
+      "maximum_absolute": 0.1712155589464759,
+      "median": -0.010783595686156833,
+      "minimum": -0.1712155589464759,
+      "p05": -0.0727670833275281,
+      "p95": 0.05538477120424776
+    },
+    "depth": {
+      "maximum": 0.26251494843084466,
+      "maximum_absolute": 0.26251494843084466,
+      "median": 0.20416979174731897,
+      "minimum": 0.15018123269309913,
+      "p05": 0.1650142161745104,
+      "p95": 0.24824826207496903
+    },
+    "froude_number": {
+      "maximum": 0.022994039802694877,
+      "maximum_absolute": 0.04777373347946101,
+      "median": -0.01711886551071312,
+      "minimum": -0.04777373347946101,
+      "p05": -0.041320066277222005,
+      "p95": 0.013702724755327618
+    },
+    "gravity_wave_celerity": {
+      "maximum": 0.05017056886492699,
+      "maximum_absolute": 0.05017056886492699,
+      "median": 0.0174222112017951,
+      "minimum": -0.02247719821234717,
+      "p05": -0.013513173896328312,
+      "p95": 0.04310350646694378
+    },
+    "hydrostatic_pressure_integral": {
+      "maximum": 0.20159173477745296,
+      "maximum_absolute": 0.20159173477745296,
+      "median": 0.13402682814644606,
+      "minimum": 0.0827378906624674,
+      "p05": 0.10263255615115632,
+      "p95": 0.18021985235414226
+    },
+    "physical_momentum_flux": {
+      "maximum": 0.20094839848491786,
+      "maximum_absolute": 0.20094839848491786,
+      "median": 0.13222639942034164,
+      "minimum": 0.08136560222257616,
+      "p05": 0.09798232280716018,
+      "p95": 0.1797999755736611
+    },
+    "top_width": {
+      "maximum": 0.046516805471837896,
+      "maximum_absolute": 0.0932651373483554,
+      "median": -0.033939751312353605,
+      "minimum": -0.0932651373483554,
+      "p05": -0.08093059258148151,
+      "p95": 0.027597757783496983
+    }
+  },
+  "schema": "gwm.geotransport.stage25_public_geometry_response_gates.v1",
+  "status": "location_conditioned_geometry_response_quantified_runtime_admission_pending",
+  "typed_refusals": {
+    "confluence_patch_geometry": true,
+    "reach_wide_geometry_transfer": true,
+    "runtime_geometry_rollout": true
+  }
+}

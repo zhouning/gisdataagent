@@ -1,0 +1,260 @@
+{
+  "all_gates_passed": true,
+  "claim_boundary": {
+    "closed_supports_are_conservative_outer_bounds": true,
+    "empty_empirical_support_can_be_dilated": false,
+    "numerical_overlap_overrides_process_semantics": false,
+    "physical_response_time_admitted": false,
+    "runtime_transition_admitted": false,
+    "uncertainty_envelope_is_physical_delay": false
+  },
+  "decision": {
+    "all_events_have_nonempty_support": false,
+    "any_measurement_support_physics_overlap": false,
+    "common_event_delay_intervals_admitted": false,
+    "event_time_uncertainty_propagation_admitted": true,
+    "hash_bound_prior_evidence_verified": true,
+    "physical_response_time_admitted": false,
+    "runtime_transition_admitted": false,
+    "semantic_equivalence_admitted": false
+  },
+  "diagnostic_summary": {
+    "empirical_union_delay_envelope_hours": [
+      [
+        4.0,
+        8.0
+      ]
+    ],
+    "event_delay_envelopes_hours": [
+      [
+        [
+          4.0,
+          8.0
+        ]
+      ],
+      [
+        [
+          5.0,
+          8.0
+        ]
+      ],
+      [
+        [
+          6.0,
+          8.0
+        ]
+      ],
+      []
+    ],
+    "measurement_support_overlap": [
+      false,
+      false,
+      false
+    ],
+    "minimum_separation_hours": [
+      2.756514777612339,
+      7.582960350766653,
+      10.329537115520722
+    ],
+    "physics_intervals_hours": [
+      [
+        1.1636556564598701,
+        1.2434852223876611
+      ],
+      [
+        15.582960350766653,
+        16.802247333679684
+      ],
+      [
+        18.329537115520722,
+        24.170511891777153
+      ]
+    ],
+    "physics_quantities": [
+      "gravity_wave_time",
+      "manning_kinematic_centroid_time",
+      "advective_residence_time"
+    ]
+  },
+  "frozen_stage34_hashes": {
+    "benchmarks/geotransport_v0_1/stage34_temporal_semantics_gates.json": {
+      "actual_sha256": "482024d6517f1da7a4f5cd4ee793515e97d7eb39269db03a343f90c3c273fba7",
+      "expected_sha256": "482024d6517f1da7a4f5cd4ee793515e97d7eb39269db03a343f90c3c273fba7",
+      "matches": true,
+      "size_bytes": 12068
+    },
+    "data/geotransport_v0_1/stage34_center_hill_temporal_semantics/README.md": {
+      "actual_sha256": "a57eeaa00ebc636c87fd552abaef2a51ba5ae31dc2d97eaf9c1086221af42c0d",
+      "expected_sha256": "a57eeaa00ebc636c87fd552abaef2a51ba5ae31dc2d97eaf9c1086221af42c0d",
+      "matches": true,
+      "size_bytes": 1863
+    },
+    "data/geotransport_v0_1/stage34_center_hill_temporal_semantics/acquisition_manifest.json": {
+      "actual_sha256": "82fbf0460344331f25f567b19665ce3883699f8283ed856820fb0fa49901749d",
+      "expected_sha256": "82fbf0460344331f25f567b19665ce3883699f8283ed856820fb0fa49901749d",
+      "matches": true,
+      "size_bytes": 6956
+    },
+    "data/geotransport_v0_1/stage34_center_hill_temporal_semantics/acquisition_plan.json": {
+      "actual_sha256": "86b646f133e705a226afbc079bd1d4d02f814fc0f6b7f05be589c77413f8c043",
+      "expected_sha256": "86b646f133e705a226afbc079bd1d4d02f814fc0f6b7f05be589c77413f8c043",
+      "matches": true,
+      "size_bytes": 2364
+    },
+    "data/geotransport_v0_1/stage34_center_hill_temporal_semantics/temporal_response_semantics_ledger.json": {
+      "actual_sha256": "45b5a51d4ec0500e9288dd97b1a41a9632c9c95d45c7a959a65ffc4cab8a101c",
+      "expected_sha256": "45b5a51d4ec0500e9288dd97b1a41a9632c9c95d45c7a959a65ffc4cab8a101c",
+      "matches": true,
+      "size_bytes": 15162
+    },
+    "data_agent/test_acquire_geotransport_stage34_temporal_semantics_evidence.py": {
+      "actual_sha256": "d75589648c7158caa83c68d5497d0b27b739f7f151af39c49514baa320b4d345",
+      "expected_sha256": "d75589648c7158caa83c68d5497d0b27b739f7f151af39c49514baa320b4d345",
+      "matches": true,
+      "size_bytes": 2413
+    },
+    "data_agent/test_geospatial_kernel_public_temporal_response_semantics.py": {
+      "actual_sha256": "3792f20f0636be9c58aacae63899e3dc826bf27196a20c206b32647ea7381075",
+      "expected_sha256": "3792f20f0636be9c58aacae63899e3dc826bf27196a20c206b32647ea7381075",
+      "matches": true,
+      "size_bytes": 5850
+    },
+    "data_agent/test_geospatial_kernel_temporal_response_semantics.py": {
+      "actual_sha256": "3bb48799ad34daf2913e0b9f327ad6d76cd31d8d1babd134a197d5bdaec7acfb",
+      "expected_sha256": "3bb48799ad34daf2913e0b9f327ad6d76cd31d8d1babd134a197d5bdaec7acfb",
+      "matches": true,
+      "size_bytes": 7021
+    },
+    "data_agent/uwm/geospatial_kernel_v2/public_temporal_response_semantics.py": {
+      "actual_sha256": "8fe448855cc1a4837abf3f2c2636903440f2b9056aed6ab456fcac67bb955f73",
+      "expected_sha256": "8fe448855cc1a4837abf3f2c2636903440f2b9056aed6ab456fcac67bb955f73",
+      "matches": true,
+      "size_bytes": 18078
+    },
+    "data_agent/uwm/geospatial_kernel_v2/temporal_response_semantics.py": {
+      "actual_sha256": "8632158a2ecfe194f6419fc6ceab5f7eca7ef958cc694a8719742b97ffd90bdd",
+      "expected_sha256": "8632158a2ecfe194f6419fc6ceab5f7eca7ef958cc694a8719742b97ffd90bdd",
+      "matches": true,
+      "size_bytes": 14104
+    },
+    "docs/architecture-decisions/adr-075-admit-interval-label-shift-reject-process-time-substitution.md": {
+      "actual_sha256": "2e88042a6d46ad07dd57a30713c49b083ac1f9c84c2e99d0489dc3a55a1728d6",
+      "expected_sha256": "2e88042a6d46ad07dd57a30713c49b083ac1f9c84c2e99d0489dc3a55a1728d6",
+      "matches": true,
+      "size_bytes": 8486
+    },
+    "scripts/acquire_geotransport_stage34_temporal_semantics_evidence.py": {
+      "actual_sha256": "4ddc6664ae57d1fae613b5b1ac1ab264a49d34e24719cd38e6e8aea7159772c5",
+      "expected_sha256": "4ddc6664ae57d1fae613b5b1ac1ab264a49d34e24719cd38e6e8aea7159772c5",
+      "matches": true,
+      "size_bytes": 10278
+    },
+    "scripts/compile_geotransport_stage34_temporal_semantics_gates.py": {
+      "actual_sha256": "8a9fb54548a8ddeb2a121b6c9532f4811a50899159baf106b3b344e3804fb49b",
+      "expected_sha256": "8a9fb54548a8ddeb2a121b6c9532f4811a50899159baf106b3b344e3804fb49b",
+      "matches": true,
+      "size_bytes": 16213
+    }
+  },
+  "frozen_stage35_hashes": {
+    "data/geotransport_v0_1/stage35_center_hill_event_time_uncertainty/protocol.json": {
+      "actual_sha256": "e3a226937ffb0a15298d2f55d02c8e465fd71a2e6bd1453f9c3c3f7be1963f25",
+      "expected_sha256": "e3a226937ffb0a15298d2f55d02c8e465fd71a2e6bd1453f9c3c3f7be1963f25",
+      "matches": true,
+      "size_bytes": 3864
+    },
+    "data_agent/test_freeze_geotransport_stage35_event_time_uncertainty_protocol.py": {
+      "actual_sha256": "901852ded5265e6901cefb99c3064ffc037b454b1e086e56b65d44511d5b8f16",
+      "expected_sha256": "901852ded5265e6901cefb99c3064ffc037b454b1e086e56b65d44511d5b8f16",
+      "matches": true,
+      "size_bytes": 3808
+    },
+    "data_agent/test_geospatial_kernel_event_time_uncertainty.py": {
+      "actual_sha256": "d096f8391f410ead674934f32b098419c2011d1f2d7e17c66b72256282535e28",
+      "expected_sha256": "d096f8391f410ead674934f32b098419c2011d1f2d7e17c66b72256282535e28",
+      "matches": true,
+      "size_bytes": 4572
+    },
+    "data_agent/test_geospatial_kernel_public_event_time_uncertainty.py": {
+      "actual_sha256": "8896af241ed9a10b49af725c93218417f51e94763186d981a24efee07bf6e540",
+      "expected_sha256": "8896af241ed9a10b49af725c93218417f51e94763186d981a24efee07bf6e540",
+      "matches": true,
+      "size_bytes": 4981
+    },
+    "data_agent/uwm/geospatial_kernel_v2/event_time_uncertainty.py": {
+      "actual_sha256": "660d596341eea9a54c96332834e58d1418953cc4838589ac4826aba35ce4600d",
+      "expected_sha256": "660d596341eea9a54c96332834e58d1418953cc4838589ac4826aba35ce4600d",
+      "matches": true,
+      "size_bytes": 14480
+    },
+    "data_agent/uwm/geospatial_kernel_v2/public_event_time_uncertainty.py": {
+      "actual_sha256": "11df05ca5bb2e01e70e58d8c1c2d3f137bcad94d6bc06f3cc000680866782af7",
+      "expected_sha256": "11df05ca5bb2e01e70e58d8c1c2d3f137bcad94d6bc06f3cc000680866782af7",
+      "matches": true,
+      "size_bytes": 15930
+    },
+    "scripts/freeze_geotransport_stage35_event_time_uncertainty_protocol.py": {
+      "actual_sha256": "1ab6643b7ba9af43d3e9cff97441e63cc8b75afc979eb7c109f81b14e1fd165c",
+      "expected_sha256": "1ab6643b7ba9af43d3e9cff97441e63cc8b75afc979eb7c109f81b14e1fd165c",
+      "matches": true,
+      "size_bytes": 5993
+    }
+  },
+  "gates": {
+    "all_event_uncertainty_intersection_remains_empty": true,
+    "all_four_stage32_discrete_lag_sets_are_preserved": true,
+    "all_four_stage32_event_identities_and_ranks_are_preserved": true,
+    "all_physics_comparison_accesses_fail_closed": true,
+    "all_thirteen_stage34_artifacts_remain_hash_frozen": true,
+    "all_uncertainty_comparisons_share_the_admitted_spatial_path": true,
+    "common_event_delay_access_fails_closed": true,
+    "decision_admits_only_bounded_uncertainty_propagation": true,
+    "delay_dilation_formulas_are_exactly_frozen": true,
+    "disconnected_lag_sets_remain_disconnected_after_dilation": true,
+    "empirical_union_dilates_to_four_through_eight_hours": true,
+    "empty_fourth_event_remains_empty_after_dilation": true,
+    "event_delay_envelopes_match_frozen_dilation": true,
+    "five_hour_label_shift_dilates_to_four_through_six_hours": true,
+    "no_physics_interval_overlaps_maximum_empirical_uncertainty": true,
+    "not_all_events_have_nonempty_uncertainty_support": true,
+    "open_left_observation_supports_are_closed_conservatively": true,
+    "physical_response_time_access_fails_closed": true,
+    "post_dilation_physics_separation_matches_frozen_values": true,
+    "protocol_binds_exact_stage34_gate_report": true,
+    "protocol_binds_exact_stage34_ledger": true,
+    "protocol_forbids_network_new_data_and_posthoc_calibration": true,
+    "runtime_transition_access_fails_closed": true,
+    "source_and_target_timestamps_remain_end_labeled": true,
+    "source_observation_support_is_exactly_one_hour": true,
+    "stage34_common_empirical_support_refusal_is_preserved": true,
+    "stage34_process_semantic_refusals_are_preserved": true,
+    "stage35_evidence_compiler_and_test_are_hash_frozen": true,
+    "stage35_operator_and_unit_test_are_hash_frozen": true,
+    "stage35_protocol_builder_and_test_are_hash_frozen": true,
+    "stage35_protocol_was_hash_frozen_before_evidence_compilation": true,
+    "target_observation_support_is_exactly_one_hour": true,
+    "three_stage33_physics_intervals_are_preserved": true,
+    "three_typed_physics_quantities_are_preserved": true,
+    "uncertainty_envelope_physical_delay_access_fails_closed": true
+  },
+  "generated_at": "2026-07-30T04:31:21.903084+00:00",
+  "ledger_artifact": {
+    "path": "data/geotransport_v0_1/stage35_center_hill_event_time_uncertainty/event_time_uncertainty_ledger.json",
+    "sha256": "2d66862d4b746885d24fb8e52eff4d80c88a93cd1357e9e774077942a6daf3e2",
+    "size_bytes": 12865
+  },
+  "protocol_summary": {
+    "network_requests_allowed": false,
+    "post_stage34_calibration_allowed": false,
+    "protocol_id": "center-hill-event-time-uncertainty-v1"
+  },
+  "schema": "gwm.geotransport.stage35_event_time_uncertainty_gates.v1",
+  "status": "event_time_uncertainty_propagated_physical_response_rejected",
+  "typed_controls": {
+    "common_event_delay": true,
+    "envelope_physical_delay": true,
+    "physical_response_time": true,
+    "physics_comparison": true,
+    "runtime_transition": true
+  }
+}

@@ -1,0 +1,215 @@
+{
+  "claim_boundary": {
+    "benchmark_validated": false,
+    "causal_observation_contract_invariants_passed": true,
+    "center_hill_execution_admitted": false,
+    "center_hill_initial_state_available": false,
+    "geospatial_kernel_validated": false,
+    "partial_forcing_support_invariants_passed": true,
+    "real_forcing_support_validated": false,
+    "real_observation_update_validated": false
+  },
+  "data_isolation": {
+    "center_hill_chunk_560_loaded": false,
+    "center_hill_chunk_561_loaded": false,
+    "inputs": [
+      "official_route_link_geometry",
+      "synthetic_historical_discharge_probe",
+      "synthetic_full_reach_forcing_probe"
+    ],
+    "observed_action_values_loaded": false,
+    "observed_forcing_values_loaded": false,
+    "outcome_values_loaded": false
+  },
+  "fixture": {
+    "center_hill_parameter_fixture": false,
+    "effective_lengths_m": [
+      7153.0,
+      240.8
+    ],
+    "feature_ids": [
+      1622797,
+      1622687
+    ],
+    "full_lengths_m": [
+      7153.0,
+      602.0
+    ],
+    "partial_coverage_fraction": 0.4,
+    "partial_reach_feature_ids": [
+      1622687
+    ],
+    "source_id": "t_route_hurricane_laura_nwm_v2_1",
+    "topology_consecutive": true
+  },
+  "gates": {
+    "all_invariants_passed": true,
+    "analysis_increment_separate_from_transition_flux": true,
+    "center_hill_chunk_561_isolation": true,
+    "future_observation_fail_closed": true,
+    "manning_discharge_to_storage_inversion": true,
+    "outcome_and_action_observation_isolation": true,
+    "partial_forcing_ledger_closes": true,
+    "partial_forcing_without_support_fail_closed": true,
+    "projected_forcing_transition_conservative": true,
+    "stale_observation_fail_closed": true,
+    "unadmitted_partial_forcing_support_fail_closed": true,
+    "unadmitted_quality_fail_closed": true,
+    "unavailable_observation_fail_closed": true
+  },
+  "generated_at": "2026-07-27T01:24:46.004084+00:00",
+  "observation_update_probe": {
+    "analysis_increment_accounting_passed": true,
+    "analysis_time": "2022-01-01T13:00:00+00:00",
+    "forecast_storage_m3": 367.20093865342454,
+    "rejection_reasons": {
+      "future_valid_time": "future_observation_valid_time_forbidden",
+      "not_yet_available": "observation_not_yet_available_at_analysis_time",
+      "provisional_quality": "unadmitted_causal_observation_components_require_explicit_diagnostic_mode",
+      "stale": "causal_observation_exceeds_maximum_age"
+    },
+    "storage_inversion_absolute_error_m3": 0.0,
+    "storage_inversion_passed": true,
+    "synthetic_observation": {
+      "available_at": "2022-01-01T12:05:00+00:00",
+      "discharge_m3s": 5.435519479370344,
+      "evidence_level": "authoritative",
+      "feature_id": 1622687,
+      "provenance_id": "synthetic:historical-discharge-probe",
+      "quality_status": "approved",
+      "role": "historical_state_update",
+      "schema": "gwm.geospatial_kernel.causal_discharge_observation.v1",
+      "valid_at": "2022-01-01T12:00:00+00:00"
+    },
+    "target_storage_m3": 1468.8037546136982,
+    "update_result": {
+      "analysis_discharge_m3s": 5.435519479370344,
+      "analysis_gain": 1.0,
+      "analysis_increment_m3": 1101.6028159602736,
+      "analysis_storage_m3": 1468.8037546136982,
+      "analysis_time": "2022-01-01T13:00:00+00:00",
+      "causal_state_update_admitted": true,
+      "diagnostic_only": false,
+      "forecast_discharge_m3s": 0.72164681405099,
+      "forecast_storage_m3": 367.20093865342454,
+      "geometry_admitted": true,
+      "mass_accounting_role": "external_analysis_increment_not_transition_flux",
+      "observation": {
+        "available_at": "2022-01-01T12:05:00+00:00",
+        "discharge_m3s": 5.435519479370344,
+        "evidence_level": "authoritative",
+        "feature_id": 1622687,
+        "provenance_id": "synthetic:historical-discharge-probe",
+        "quality_status": "approved",
+        "role": "historical_state_update",
+        "schema": "gwm.geospatial_kernel.causal_discharge_observation.v1",
+        "valid_at": "2022-01-01T12:00:00+00:00"
+      },
+      "observation_admitted": true,
+      "observation_age_seconds": 3600.0,
+      "observation_equivalent_storage_m3": 1468.8037546136982,
+      "observed_discharge_m3s": 5.435519479370344,
+      "schema": "gwm.geospatial_kernel.causal_manning_state_update.v1",
+      "updated_stock_m3": [
+        146.88037546136982,
+        1468.8037546136982
+      ]
+    }
+  },
+  "operator_schemas": {
+    "forcing_support": "gwm.geospatial_kernel.reach_forcing_spatial_support.v1",
+    "observation_update": "gwm.geospatial_kernel.causal_manning_state_update.v1",
+    "transition": "gwm.geospatial_kernel.nonlinear_manning_reach_storage.v2"
+  },
+  "partial_forcing_probe": {
+    "expected_applied_forcing_volume_m3": 2340.0,
+    "expected_excluded_forcing_volume_m3": 2160.0,
+    "expected_raw_forcing_volume_m3": 4500.0,
+    "forcing_ledger_passed": true,
+    "projected_conservation_passed": true,
+    "rejection_reasons": {
+      "candidate_support": "unadmitted_partial_reach_forcing_support_requires_explicit_diagnostic_mode",
+      "missing_support": "partial_reach_forcing_requires_admitted_spatial_support"
+    },
+    "support": {
+      "admitted_as_spatial_support": true,
+      "coverage_fractions": [
+        1.0,
+        0.4
+      ],
+      "evidence_level": "derived",
+      "feature_ids": [
+        1622797,
+        1622687
+      ],
+      "provenance_id": "synthetic:partial-forcing-support",
+      "schema": "gwm.geospatial_kernel.reach_forcing_spatial_support.v1",
+      "support_method": "fixed_fixture_intersection_probe"
+    },
+    "synthetic_forcing": {
+      "full_reach_semantics": true,
+      "values_m3s": [
+        0.25,
+        1.0
+      ]
+    },
+    "transition_result": {
+      "active_feature_ids": [
+        1622797,
+        1622687
+      ],
+      "applied_forcing_volume_m3": 2340.0,
+      "diagnostic_only": false,
+      "excluded_forcing_volume_m3": 2160.0,
+      "excluded_zero_length_feature_ids": [],
+      "forcing_coverage_fractions": [
+        1.0,
+        0.4
+      ],
+      "forcing_support_admitted": true,
+      "forcing_support_required": true,
+      "geometry_admitted": true,
+      "global_mass_balance_residual_m3": 2.2737367544323206e-11,
+      "input_volume_m3": 2340.0,
+      "next_stock_m3": [
+        883.5128136697251,
+        252.9854508168209
+      ],
+      "nonlinear_transport_admitted": true,
+      "numeric_mass_tolerance_m3": 3.34e-06,
+      "operator_form_admitted": true,
+      "outlet_mean_flow_m3s": 0.3343060376426324,
+      "outlet_volume_m3": 1203.5017355134767,
+      "partial_reach_feature_ids": [
+        1622687
+      ],
+      "path_admitted": true,
+      "raw_forcing_volume_m3": 4500.0,
+      "reach_end_depth_m": [
+        0.029960310163144946,
+        0.2303881086438225
+      ],
+      "reach_mean_outflow_m3s": [
+        0.004579773980638695,
+        0.3343060376426324
+      ],
+      "schema": "gwm.geospatial_kernel.nonlinear_manning_reach_storage.v2",
+      "solver_function_evaluation_count": 155,
+      "solver_root_iteration_count": 131
+    }
+  },
+  "schema": "gwm.geotransport.kernel_v2_causal_support_invariants.v1",
+  "source_artifacts": {
+    "route_link_fixture": {
+      "path": "data/geotransport_v0_1/route_link_public_audit/raw/RouteLink_HurricaneLaura_NWMv2.1.nc",
+      "sha256": "bce1ef6e80fc80ad0cabae5e4e1401428f2fac14786f74fd2ac659919914f97e",
+      "size_bytes": 24151
+    },
+    "route_link_manifest": {
+      "path": "data/geotransport_v0_1/route_link_public_audit/acquisition_manifest.json",
+      "sha256": "c42ccbe2f272a482f6a123e9b67863a909374ac58e5eebf0e10207f5ca3a48aa",
+      "size_bytes": 19909
+    }
+  },
+  "status": "pass"
+}

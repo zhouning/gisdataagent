@@ -1,0 +1,192 @@
+{
+  "all_gates_passed": true,
+  "claim_boundary": {
+    "advective_residence_time_admitted_as_response_lag": false,
+    "gravity_wave_time_admitted_as_response_lag": false,
+    "manning_centroid_time_admitted_as_response_lag": false,
+    "nldi_source_to_target_path_admitted": true,
+    "numerical_overlap_equals_physical_validation": false,
+    "runtime_transition_admitted": false,
+    "stage32_empirical_union_is_common_support": false
+  },
+  "decision": {
+    "any_numerical_temporal_overlap": false,
+    "physics_consistency_admitted": false,
+    "physics_support_candidates_admitted": true,
+    "runtime_transition_admitted": false,
+    "spatial_path_admitted": true
+  },
+  "frozen_stage32_hashes": {
+    "benchmarks/geotransport_v0_1/stage32_lag_support_gates.json": {
+      "actual_sha256": "175101fc441395c82a2a2870986ed074bd91aa49d9e639d92d0540dcdba938fc",
+      "expected_sha256": "175101fc441395c82a2a2870986ed074bd91aa49d9e639d92d0540dcdba938fc",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage32_center_hill_lag_support_events/README.md": {
+      "actual_sha256": "a0feeb68920ff39cd3b0b549eb9e3203c40566d70b444e458ea35388ca94a789",
+      "expected_sha256": "a0feeb68920ff39cd3b0b549eb9e3203c40566d70b444e458ea35388ca94a789",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage32_center_hill_lag_support_events/event_selection_manifest.json": {
+      "actual_sha256": "d66df4681831774b55bde7b156b52be3673e129b31b601bcff038fcb3ea6b17d",
+      "expected_sha256": "d66df4681831774b55bde7b156b52be3673e129b31b601bcff038fcb3ea6b17d",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage32_center_hill_lag_support_events/lag_support_evidence_ledger.json": {
+      "actual_sha256": "c95bbf18d3d606161fc9b5cb6fe9d6f8b8439d495b25e326d4a9cf675d416b74",
+      "expected_sha256": "c95bbf18d3d606161fc9b5cb6fe9d6f8b8439d495b25e326d4a9cf675d416b74",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage32_center_hill_lag_support_events/observation_acquisition_manifest.json": {
+      "actual_sha256": "8960a952be727defda098de02b3005b7a335c7ef1b8ec40f4c082dbe1294b648",
+      "expected_sha256": "8960a952be727defda098de02b3005b7a335c7ef1b8ec40f4c082dbe1294b648",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage32_center_hill_lag_support_events/observation_plan.json": {
+      "actual_sha256": "f1e5f2e7d6f0183023f29b960deb8ce0a41c38542e2f9e8dbb0dd5a223026af5",
+      "expected_sha256": "f1e5f2e7d6f0183023f29b960deb8ce0a41c38542e2f9e8dbb0dd5a223026af5",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage32_center_hill_lag_support_events/selection_plan.json": {
+      "actual_sha256": "dc43874cb02b865cca760d21dfa7352db7e85e73329c414f65af5168bf491282",
+      "expected_sha256": "dc43874cb02b865cca760d21dfa7352db7e85e73329c414f65af5168bf491282",
+      "matches": true
+    },
+    "data_agent/test_acquire_geotransport_stage32_lag_support_events.py": {
+      "actual_sha256": "86366e6b0429f03df3b51166709440e0a47193994e4f6c018d5434ab2eb1922d",
+      "expected_sha256": "86366e6b0429f03df3b51166709440e0a47193994e4f6c018d5434ab2eb1922d",
+      "matches": true
+    },
+    "data_agent/test_geospatial_kernel_empirical_lag_support.py": {
+      "actual_sha256": "0a14f3a817729b23a7b303831e3d03ddf2108bc302b094345555ad4129c5b0c9",
+      "expected_sha256": "0a14f3a817729b23a7b303831e3d03ddf2108bc302b094345555ad4129c5b0c9",
+      "matches": true
+    },
+    "data_agent/test_geospatial_kernel_public_lag_support_evidence.py": {
+      "actual_sha256": "1318905cde84541bd03831f2a05dc4296cfc82ace5c5745e753a0320ea729185",
+      "expected_sha256": "1318905cde84541bd03831f2a05dc4296cfc82ace5c5745e753a0320ea729185",
+      "matches": true
+    },
+    "data_agent/uwm/geospatial_kernel_v2/empirical_lag_support.py": {
+      "actual_sha256": "43d561732f0aba563ea5a1138fd748a5017fdfde9c2b850ac4327e3a1e2ec4fc",
+      "expected_sha256": "43d561732f0aba563ea5a1138fd748a5017fdfde9c2b850ac4327e3a1e2ec4fc",
+      "matches": true
+    },
+    "data_agent/uwm/geospatial_kernel_v2/public_lag_support_evidence.py": {
+      "actual_sha256": "2079e39d179f371da95abdd545d2fd670fcb6763c87898f7da2c93226ab2a7a1",
+      "expected_sha256": "2079e39d179f371da95abdd545d2fd670fcb6763c87898f7da2c93226ab2a7a1",
+      "matches": true
+    },
+    "docs/architecture-decisions/adr-073-admit-event-local-lag-support-reject-common-support.md": {
+      "actual_sha256": "3cb68a16f50a1bc6e7d7416d67642d1a6850c2cab17f19f008fa274d723d7adf",
+      "expected_sha256": "3cb68a16f50a1bc6e7d7416d67642d1a6850c2cab17f19f008fa274d723d7adf",
+      "matches": true
+    },
+    "scripts/acquire_geotransport_stage32_lag_support_events.py": {
+      "actual_sha256": "a56824920066f6b09af667273b21e2fee6abae834f6cef217bd6ddc0c8a079d3",
+      "expected_sha256": "a56824920066f6b09af667273b21e2fee6abae834f6cef217bd6ddc0c8a079d3",
+      "matches": true
+    },
+    "scripts/compile_geotransport_stage32_lag_support_gates.py": {
+      "actual_sha256": "5b7a23051758124d8ac893c881e06835dc7e5d221f36a12fa04c8454a9939dfc",
+      "expected_sha256": "5b7a23051758124d8ac893c881e06835dc7e5d221f36a12fa04c8454a9939dfc",
+      "matches": true
+    }
+  },
+  "gates": {
+    "acquisition_manifest_is_hash_bound": true,
+    "acquisition_plan_was_hash_frozen_before_path_values": true,
+    "advective_interval_reproduces_nwm_evidence": true,
+    "all_fifteen_stage32_artifacts_remain_hash_frozen": true,
+    "all_temporal_candidates_use_the_admitted_spatial_path": true,
+    "decision_admits_path_but_rejects_temporal_consistency": true,
+    "empirical_union_is_five_six_seven": true,
+    "empirical_union_is_not_mislabeled_as_common_support": true,
+    "geospatial_temporal_support_operator_is_hash_frozen": true,
+    "gravity_wave_interval_reproduces_public_state_evidence": true,
+    "independent_and_physics_path_lengths_are_equivalent": true,
+    "independent_path_matches_both_physics_path_suffixes": true,
+    "manning_interval_reproduces_public_state_evidence": true,
+    "minimum_temporal_separations_are_reproduced": true,
+    "nine_upstream_artifacts_are_hash_bound": true,
+    "no_physics_interval_overlaps_empirical_union": true,
+    "numerical_overlap_is_not_declared_physical_validation": true,
+    "one_public_nldi_path_is_hash_and_tls_verified": true,
+    "only_three_stage32_events_have_detectable_relations": true,
+    "path_flowlines_are_unique_and_connected": true,
+    "path_request_is_outcome_free_and_private_data_free": true,
+    "path_starts_at_source_and_ends_at_target": true,
+    "physics_candidates_are_not_admitted_as_response_lag": true,
+    "physics_candidates_are_not_outcome_calibrated": true,
+    "physics_candidates_are_state_dependent": true,
+    "runtime_transition_remains_unadmitted": true,
+    "source_and_target_pass_predeclared_snap_tolerances": true,
+    "spatial_path_is_admitted_by_typed_binding": true,
+    "stage32_event_support_sets_are_preserved_exactly": true,
+    "three_physics_quantities_are_typed_and_distinct": true,
+    "typed_physics_consistency_access_fails_closed": true,
+    "typed_runtime_transition_promotion_fails_closed": true,
+    "typed_spatial_path_access_succeeds": true
+  },
+  "generated_at": "2026-07-30T02:16:22.564275+00:00",
+  "ledger_artifact": {
+    "path": "data/geotransport_v0_1/stage33_center_hill_temporal_support_path/temporal_support_reconciliation_ledger.json",
+    "sha256": "7e69e9dc4eaa027ae23503cf6fb121035030f953260a989df29c9515fcf9b7df",
+    "size_bytes": 13009
+  },
+  "path_summary": {
+    "feature_count": 24,
+    "linear_referenced_length_m": 25144.549659527587,
+    "maximum_connection_gap_m": 0.0,
+    "source_comid": 18421761,
+    "source_snap_distance_m": 16.742899119724644,
+    "spatial_path_admitted": true,
+    "target_comid": 18421703,
+    "target_snap_distance_m": 54.3838523478399
+  },
+  "schema": "gwm.geotransport.stage33_temporal_support_gates.v1",
+  "status": "spatial_path_admitted_temporal_reconciliation_rejected",
+  "temporal_support_summary": [
+    {
+      "central_hours": 1.2017945393393767,
+      "minimum_separation_hours": 3.756514777612339,
+      "overlapping_empirical_hours": [],
+      "physical_consistency_admitted": false,
+      "quantity": "gravity_wave_time",
+      "support_id": "public-state-gravity-wave-envelope",
+      "support_interval_hours": [
+        1.1636556564598701,
+        1.2434852223876611
+      ]
+    },
+    {
+      "central_hours": 16.144952135344774,
+      "minimum_separation_hours": 8.582960350766653,
+      "overlapping_empirical_hours": [],
+      "physical_consistency_admitted": false,
+      "quantity": "manning_kinematic_centroid_time",
+      "support_id": "public-state-manning-centroid-envelope",
+      "support_interval_hours": [
+        15.582960350766653,
+        16.802247333679684
+      ]
+    },
+    {
+      "central_hours": 22.907743002956767,
+      "minimum_separation_hours": 11.329537115520722,
+      "overlapping_empirical_hours": [],
+      "physical_consistency_admitted": false,
+      "quantity": "advective_residence_time",
+      "support_id": "nwm-v3-advective-residence-envelope",
+      "support_interval_hours": [
+        18.329537115520722,
+        24.170511891777153
+      ]
+    }
+  ],
+  "typed_controls": {
+    "physics_consistency": true,
+    "runtime_transition": true,
+    "spatial_path": true
+  }
+}

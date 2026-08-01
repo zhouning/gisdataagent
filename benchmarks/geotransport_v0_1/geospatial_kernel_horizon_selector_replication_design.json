@@ -1,0 +1,167 @@
+{
+  "claim_boundary": {
+    "candidate_promoted": false,
+    "geospatial_kernel_validated": false,
+    "replication_design_frozen": true,
+    "replication_predictions_executed": false,
+    "replication_protocol_frozen": false,
+    "replication_scored": false,
+    "runtime_default_enabled": false,
+    "unused_window_adjudicated": false
+  },
+  "comparison_validity": {
+    "candidate_differing_horizons_by_uniform_mode": {
+      "linear_distance_localized_mainstem_update": [
+        3,
+        6,
+        12
+      ],
+      "nominal": [
+        1,
+        3,
+        6
+      ],
+      "outlet_only_observation_update": [
+        1,
+        3,
+        12
+      ],
+      "quadratic_distance_localized_mainstem_update": [
+        1,
+        6,
+        12
+      ]
+    },
+    "candidate_is_not_identical_to_any_uniform_strategy_across_all_horizons": true,
+    "constituent_mode_may_tie_candidate_at_selected_horizon": true,
+    "former_three_hour_self_comparison_removed": true,
+    "selected_horizon_tie_does_not_make_system_level_gate_impossible": true
+  },
+  "data_access_boundary": {
+    "current_exposed_holdout_used_to_select_new_window": false,
+    "new_window_request_count": 0,
+    "new_window_url_compiled": false,
+    "new_window_values_loaded": false,
+    "new_window_values_requested": false
+  },
+  "design_id": "horizon_selector_mechanism_replication_v1",
+  "forbidden_after_freeze": [
+    "change_candidate_policy_or_constituent_modes",
+    "change_metrics_aggregation_comparators_masks_or_gates",
+    "use_the_exposed_2022_04_28_to_2022_05_26_outcomes_to_retune_rules",
+    "select_a_window_after_reading_its_values",
+    "score_more_than_once_or_tune_after_score",
+    "reinterpret_mechanism_replication_as_reversal_of_prior_rejection"
+  ],
+  "frozen_artifacts": {
+    "candidate_disposition": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_candidate_disposition.json",
+      "sha256": "f5b10cb1d9c2662d84be1c6297b77a1881d6d854f7175cf3a9aec3c097c7b1ca",
+      "size_bytes": 4494
+    },
+    "design_compiler": {
+      "path": "scripts/freeze_geospatial_kernel_horizon_selector_replication_design.py",
+      "sha256": "63d385627ddf5bb9188147dfc208917e26644352327d78027b7bc7d931b4ba9f",
+      "size_bytes": 12275
+    },
+    "policy_freeze": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_policy_freeze.json",
+      "sha256": "340fe49e6beadc52ac7192f6edc29092ce20a39227ac7a6cc5788ba95dbaa928",
+      "size_bytes": 5635
+    },
+    "rollout_core": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/horizon_assimilation_rollout.py",
+      "sha256": "5ac32f6381ebc6d2c1532f255b6fa44fa9cb4fcce56be2e2b9e330ccb83ab413",
+      "size_bytes": 24365
+    }
+  },
+  "frozen_at": "2026-08-01T03:56:27.764468+00:00",
+  "next_gate": {
+    "automatic_execution_authorized": false,
+    "network_or_value_access_before_next_gate": false,
+    "required_artifact": "unused_window_adjudication_report"
+  },
+  "prediction_lock": {
+    "all_constituent_predictions_sealed_per_issue": true,
+    "candidate_policy_sha256": "69d191ee497c80aa1340d39a0932a726eba23dcd1061c14c1f0f8c6e0e148278",
+    "candidate_selected_mode_by_horizon_hours": {
+      "1": "linear_distance_localized_mainstem_update",
+      "12": "nominal",
+      "3": "quadratic_distance_localized_mainstem_update",
+      "6": "outlet_only_observation_update"
+    },
+    "score_or_loss_argument_accepted_by_runner": false,
+    "target_outcome_argument_accepted_by_runner": false,
+    "traditional_strategy": "causal_issue_observation_persistence",
+    "uniform_fixed_strategy_modes": [
+      "nominal",
+      "outlet_only_observation_update",
+      "linear_distance_localized_mainstem_update",
+      "quadratic_distance_localized_mainstem_update"
+    ]
+  },
+  "prior_candidate_boundary": {
+    "candidate_id": "distance_localized_horizon_policy_v1",
+    "prior_candidate_reopened": false,
+    "prior_disposition": "rejected_for_promotion",
+    "prior_disposition_final": true,
+    "scientific_role": "mechanism-level replication only; not a replacement score for the rejected candidate",
+    "successful_replication_would_reverse_prior_rejection": false
+  },
+  "schema": "gwm.geotransport.horizon_selector_replication_design.v1",
+  "scientific_question": "Does a predeclared horizon selector improve equal-horizon-weighted system accuracy over every uniform constituent strategy and causal issue-observation persistence on a new unused window?",
+  "scoring_design": {
+    "common_complete_case_mask": "per_system_and_horizon_across_target_candidate_all_four_uniform_modes_and_persistence",
+    "cross_horizon_aggregation_within_system_permitted": true,
+    "cross_system_compensation_permitted": false,
+    "horizon_aggregation_within_system": "unweighted_arithmetic_mean_of_1h_3h_6h_12h_RMSE",
+    "minimum_scored_issues_per_system_and_horizon": 48,
+    "overall_gate": "both_system_gates_and_all_execution_gates_pass",
+    "per_horizon_metrics_reported": true,
+    "per_horizon_strict_superiority_gate": false,
+    "post_score_tuning_or_rescoring_permitted": false,
+    "primary_metric": "rmse_m3s",
+    "score_once_after_joint_prediction_seal": true,
+    "secondary_metrics": [
+      "mae_m3s",
+      "bias_m3s"
+    ],
+    "system_gate": "candidate_mean_RMSE_strictly_below_each_of_four_uniform_strategy_mean_RMSEs_and_persistence_mean_RMSE",
+    "ties_pass": false
+  },
+  "status": "design_frozen_awaiting_unused_window_adjudication",
+  "window_adjudication_requirements": {
+    "audit_scope": [
+      "NWM_initial_state_and_forcing_values",
+      "CWMS_action_values",
+      "USGS_issue_observation_values",
+      "USGS_target_outcome_values"
+    ],
+    "external_prior_access_can_be_proven_absent": false,
+    "horizons_hours": [
+      1,
+      3,
+      6,
+      12
+    ],
+    "hour_count": 672,
+    "initial_state_is_immediately_preceding_hour": true,
+    "issue_count_per_system": 56,
+    "issue_stride_hours": 12,
+    "must_not_overlap_prior_scored_window": {
+      "end_exclusive_utc": "2022-05-26T01:00:00Z",
+      "start_inclusive_utc": "2022-04-28T01:00:00Z"
+    },
+    "must_start_on_full_nwm_time_chunk_boundary": true,
+    "nwm_time_chunk_index": null,
+    "repository_value_consumption_audit_required": true,
+    "systems": [
+      "center_hill",
+      "j_percy_priest"
+    ],
+    "window_end_utc": null,
+    "window_selected": false,
+    "window_start_utc": null,
+    "zero_prior_local_target_outcome_consumption_required": true
+  }
+}

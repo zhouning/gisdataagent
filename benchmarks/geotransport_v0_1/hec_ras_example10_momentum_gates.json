@@ -1,0 +1,2337 @@
+{
+  "claim_boundary": {
+    "coefficient_calibration_performed": false,
+    "geospatial_kernel_validated": false,
+    "irregular_section_reference_operator_implemented": true,
+    "predictive_validation_complete": false,
+    "projected_momentum_operator_admitted": false,
+    "secondary_hec_ras_66_values_used_as_authoritative_truth": false
+  },
+  "conformance_summary": {
+    "conveyance_and_flow_partition_conformed": true,
+    "documented_projected_momentum_stage_conformed": false,
+    "full_reference_conformance": false,
+    "irregular_section_geometry_conformed": true,
+    "momentum_coefficient_beta_conformed": true,
+    "operator_admitted": false
+  },
+  "frozen_stage10": {
+    "data_agent/uwm/geospatial_kernel_v2/__init__.py": {
+      "actual_sha256": "7db7e6459143d2a54e742a732fcd3f85c422a9775559296dc39a985ab632315d",
+      "expected_sha256": "7db7e6459143d2a54e742a732fcd3f85c422a9775559296dc39a985ab632315d"
+    },
+    "data_agent/uwm/geospatial_kernel_v2/dynamic_wave_junction_momentum.py": {
+      "actual_sha256": "64cd7ae682784a2d9fc4be48bf6a3a7fc2eb074d5e31bca97fdc5bd6f298a873",
+      "expected_sha256": "64cd7ae682784a2d9fc4be48bf6a3a7fc2eb074d5e31bca97fdc5bd6f298a873"
+    }
+  },
+  "gate_summary": {
+    "all_expected_behaviors_passed": true,
+    "passed": 15,
+    "total": 15
+  },
+  "gates": {
+    "all_source_artifact_hashes_and_sizes_match": true,
+    "all_terminal_section_hydraulics_match_secondary_hec_ras_66": true,
+    "frozen_stage10_entrypoints_are_unchanged": true,
+    "no_coefficient_was_calibrated_to_force_stage_agreement": true,
+    "official_archive_parses_without_parameter_substitution": true,
+    "official_flow_is_mass_conservative": true,
+    "official_geometry_has_19_cross_sections": true,
+    "official_junction_is_expected_two_in_one_out_case": true,
+    "official_lengths_and_angles_parse_exactly": true,
+    "plan_is_subcritical_momentum_with_average_conveyance_friction": true,
+    "reference_stage_projected_momentum_residual_is_exposed": true,
+    "secondary_exact_stages_round_to_official_published_table": true,
+    "solver_root_is_subcritical_on_all_branches": true,
+    "solver_root_satisfies_implemented_momentum_equation": true,
+    "stage_nonconformance_exceeds_published_rounding_uncertainty": true
+  },
+  "generated_at": "2026-07-28T13:40:44.169366+00:00",
+  "official_publication": {
+    "display_precision_decimal_places": 2,
+    "page_id": 80528340,
+    "page_url": "https://www.hec.usace.army.mil/confluence/rasdocs/rasappguide/latest/stream-junction-example-10",
+    "published_terminal_stage_ft": {
+      "common_upstream": 75.5,
+      "downstream": 75.04
+    },
+    "table_attachment_id": 86902570
+  },
+  "parsed_contract": {
+    "archive_members": [
+      "Example 10 - Stream Junction/",
+      "Example 10 - Stream Junction/JUNCTION.F01",
+      "Example 10 - Stream Junction/JUNCTION.G02",
+      "Example 10 - Stream Junction/JUNCTION.P01",
+      "Example 10 - Stream Junction/JUNCTION.P02",
+      "Example 10 - Stream Junction/JUNCTION.color_scales",
+      "Example 10 - Stream Junction/JUNCTION.g01",
+      "Example 10 - Stream Junction/JUNCTION.prj"
+    ],
+    "flow": {
+      "discharges_m3s": {
+        "Spring Creek::Lower Reach": 116.0990710272,
+        "Spring Creek::Upper Reach": 84.950539776,
+        "Spruce Creek::Spruce Creek": 31.1485312512
+      },
+      "downstream_normal_depth_slope": 0.001,
+      "kernel_units": "m3/s",
+      "profile_name": "10 yr",
+      "schema": "gwm.geospatial_kernel.hec_ras_steady_flow.v1",
+      "source_units": "cfs",
+      "title": "10 Year Profile"
+    },
+    "geometry": {
+      "cross_section_count": 19,
+      "cross_sections": [
+        {
+          "bank_stations_m": [
+            13.167360000000002,
+            20.177760000000003
+          ],
+          "downstream_reach_lengths_m": [
+            22.86,
+            24.384,
+            27.432000000000002
+          ],
+          "reach_name": "Spruce Creek",
+          "river_name": "Spruce Creek",
+          "river_station": "0.094",
+          "roughness_zones": [
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 8.2296
+            },
+            {
+              "manning_n": 0.025,
+              "minimum_station_m": 13.167360000000002
+            },
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 20.177760000000003
+            }
+          ],
+          "section": {
+            "artificial_vertical_subsection_walls_in_perimeter": false,
+            "elevations_m": [
+              25.191720000000004,
+              24.1554,
+              23.972520000000003,
+              23.14956,
+              22.26564,
+              21.13788,
+              20.314920000000004,
+              19.5834,
+              19.44624,
+              20.74164,
+              21.68652,
+              22.35708,
+              23.058120000000002,
+              23.5458,
+              25.496520000000004
+            ],
+            "maximum_closed_water_surface_elevation_m": 25.191720000000004,
+            "minimum_elevation_m": 19.44624,
+            "piecewise_linear_geometry": true,
+            "schema": "gwm.geospatial_kernel.irregular_section.v1",
+            "stations_m": [
+              8.2296,
+              9.66216,
+              10.820400000000001,
+              13.167360000000002,
+              13.38072,
+              13.80744,
+              14.26464,
+              15.727680000000001,
+              16.88592,
+              18.07464,
+              18.53184,
+              19.23288,
+              20.177760000000003,
+              21.640800000000002,
+              23.65248
+            ]
+          }
+        },
+        {
+          "bank_stations_m": [
+            13.22832,
+            20.29968
+          ],
+          "downstream_reach_lengths_m": [
+            24.384,
+            26.822400000000002,
+            29.8704
+          ],
+          "reach_name": "Spruce Creek",
+          "river_name": "Spruce Creek",
+          "river_station": "0.079",
+          "roughness_zones": [
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 8.2296
+            },
+            {
+              "manning_n": 0.025,
+              "minimum_station_m": 13.22832
+            },
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 20.29968
+            }
+          ],
+          "section": {
+            "artificial_vertical_subsection_walls_in_perimeter": false,
+            "elevations_m": [
+              25.152096,
+              24.204168,
+              24.198072,
+              23.935944000000003,
+              23.9268,
+              23.091648000000003,
+              22.232112,
+              22.20468,
+              21.104352,
+              21.086064000000004,
+              20.278344,
+              20.272248,
+              19.546824,
+              19.394424,
+              20.689823999999998,
+              20.708112,
+              21.625560000000004,
+              21.649944,
+              22.317456,
+              23.018496,
+              23.588472000000003,
+              23.594568,
+              25.456896
+            ],
+            "maximum_closed_water_surface_elevation_m": 25.152096,
+            "minimum_elevation_m": 19.394424,
+            "piecewise_linear_geometry": true,
+            "schema": "gwm.geospatial_kernel.irregular_section.v1",
+            "stations_m": [
+              8.2296,
+              9.66216,
+              9.69264,
+              10.850880000000002,
+              10.88136,
+              13.22832,
+              13.441680000000002,
+              13.441680000000002,
+              13.868400000000001,
+              13.868400000000001,
+              14.325600000000001,
+              14.325600000000001,
+              15.81912,
+              16.97736,
+              18.16608,
+              18.16608,
+              18.653760000000002,
+              18.653760000000002,
+              19.32432,
+              20.29968,
+              21.76272,
+              21.76272,
+              23.80488
+            ]
+          }
+        },
+        {
+          "bank_stations_m": [
+            13.2588,
+            20.4216
+          ],
+          "downstream_reach_lengths_m": [
+            21.336000000000002,
+            24.384,
+            27.432000000000002
+          ],
+          "reach_name": "Spruce Creek",
+          "river_name": "Spruce Creek",
+          "river_station": "0.062",
+          "roughness_zones": [
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 8.2296
+            },
+            {
+              "manning_n": 0.025,
+              "minimum_station_m": 13.2588
+            },
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 20.4216
+            }
+          ],
+          "section": {
+            "artificial_vertical_subsection_walls_in_perimeter": false,
+            "elevations_m": [
+              25.112472,
+              24.249888000000002,
+              24.243792000000003,
+              23.899368,
+              23.887176000000004,
+              23.033735999999998,
+              22.201632000000004,
+              22.171152,
+              21.067776000000002,
+              21.049488,
+              20.241768,
+              20.232624,
+              19.504152,
+              19.366992,
+              20.653248,
+              20.671536,
+              21.592032000000003,
+              21.613368,
+              22.277832000000004,
+              22.978872000000003,
+              23.634192000000002,
+              23.643335999999998,
+              25.417272
+            ],
+            "maximum_closed_water_surface_elevation_m": 25.112472,
+            "minimum_elevation_m": 19.366992,
+            "piecewise_linear_geometry": true,
+            "schema": "gwm.geospatial_kernel.irregular_section.v1",
+            "stations_m": [
+              8.2296,
+              9.69264,
+              9.72312,
+              10.88136,
+              10.88136,
+              13.2588,
+              13.472160000000002,
+              13.50264,
+              13.92936,
+              13.92936,
+              14.386560000000001,
+              14.41704,
+              15.8496,
+              17.0688,
+              18.25752,
+              18.288,
+              18.7452,
+              18.7452,
+              19.47672,
+              20.4216,
+              21.88464,
+              21.91512,
+              23.95728
+            ]
+          }
+        },
+        {
+          "bank_stations_m": [
+            13.319760000000002,
+            20.543520000000004
+          ],
+          "downstream_reach_lengths_m": [
+            25.908,
+            28.956000000000003,
+            30.48
+          ],
+          "reach_name": "Spruce Creek",
+          "river_name": "Spruce Creek",
+          "river_station": "0.047",
+          "roughness_zones": [
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 8.2296
+            },
+            {
+              "manning_n": 0.025,
+              "minimum_station_m": 13.319760000000002
+            },
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 20.543520000000004
+            }
+          ],
+          "section": {
+            "artificial_vertical_subsection_walls_in_perimeter": false,
+            "elevations_m": [
+              25.072848000000004,
+              24.298656,
+              24.29256,
+              23.859744000000003,
+              23.8506,
+              22.975824,
+              22.168104000000003,
+              22.134576000000003,
+              21.034248,
+              21.012912,
+              20.205192000000004,
+              20.196048,
+              19.464528,
+              19.327368,
+              20.616672,
+              20.638008,
+              21.558504000000003,
+              21.573744,
+              22.238208,
+              22.939248000000003,
+              23.679912,
+              23.689056,
+              25.377648000000004
+            ],
+            "maximum_closed_water_surface_elevation_m": 25.072848000000004,
+            "minimum_elevation_m": 19.327368,
+            "piecewise_linear_geometry": true,
+            "schema": "gwm.geospatial_kernel.irregular_section.v1",
+            "stations_m": [
+              8.2296,
+              9.69264,
+              9.72312,
+              10.91184,
+              10.91184,
+              13.319760000000002,
+              13.53312,
+              13.563600000000001,
+              13.99032,
+              13.99032,
+              14.44752,
+              14.478000000000002,
+              15.94104,
+              17.16024,
+              18.37944,
+              18.37944,
+              18.86712,
+              18.86712,
+              19.568160000000002,
+              20.543520000000004,
+              22.03704,
+              22.067520000000002,
+              24.14016
+            ]
+          }
+        },
+        {
+          "bank_stations_m": [
+            13.35024,
+            20.66544
+          ],
+          "downstream_reach_lengths_m": [
+            22.86,
+            25.908,
+            29.8704
+          ],
+          "reach_name": "Spruce Creek",
+          "river_name": "Spruce Creek",
+          "river_station": "0.029",
+          "roughness_zones": [
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 8.2296
+            },
+            {
+              "manning_n": 0.025,
+              "minimum_station_m": 13.35024
+            },
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 20.66544
+            }
+          ],
+          "section": {
+            "artificial_vertical_subsection_walls_in_perimeter": false,
+            "elevations_m": [
+              25.033224,
+              24.344376000000004,
+              24.33828,
+              23.823168,
+              23.810976000000004,
+              22.917912,
+              22.137624,
+              22.101048000000002,
+              20.997672,
+              20.976336,
+              20.168616,
+              20.156424,
+              19.424904,
+              19.287744,
+              20.580096,
+              20.60448,
+              21.521928000000003,
+              21.537168,
+              22.198584,
+              22.899624,
+              23.72868,
+              23.737824,
+              25.338024
+            ],
+            "maximum_closed_water_surface_elevation_m": 25.033224,
+            "minimum_elevation_m": 19.287744,
+            "piecewise_linear_geometry": true,
+            "schema": "gwm.geospatial_kernel.irregular_section.v1",
+            "stations_m": [
+              8.2296,
+              9.72312,
+              9.7536,
+              10.91184,
+              10.94232,
+              13.35024,
+              13.594080000000002,
+              13.594080000000002,
+              14.051280000000002,
+              14.051280000000002,
+              14.50848,
+              14.50848,
+              16.03248,
+              17.25168,
+              18.47088,
+              18.501360000000002,
+              18.958560000000002,
+              18.958560000000002,
+              19.69008,
+              20.66544,
+              22.18944,
+              22.18944,
+              24.29256
+            ]
+          }
+        },
+        {
+          "bank_stations_m": [
+            13.411200000000001,
+            20.81784
+          ],
+          "downstream_reach_lengths_m": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "reach_name": "Spruce Creek",
+          "river_name": "Spruce Creek",
+          "river_station": "0.013",
+          "roughness_zones": [
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 8.2296
+            },
+            {
+              "manning_n": 0.025,
+              "minimum_station_m": 13.411200000000001
+            },
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 20.81784
+            }
+          ],
+          "section": {
+            "artificial_vertical_subsection_walls_in_perimeter": false,
+            "elevations_m": [
+              24.9936,
+              24.384,
+              23.7744,
+              22.86,
+              22.067520000000002,
+              20.939760000000003,
+              20.1168,
+              19.38528,
+              19.24812,
+              20.543520000000004,
+              21.488400000000002,
+              22.15896,
+              22.86,
+              23.7744,
+              25.2984
+            ],
+            "maximum_closed_water_surface_elevation_m": 24.9936,
+            "minimum_elevation_m": 19.24812,
+            "piecewise_linear_geometry": true,
+            "schema": "gwm.geospatial_kernel.irregular_section.v1",
+            "stations_m": [
+              8.2296,
+              9.7536,
+              10.972800000000001,
+              13.411200000000001,
+              13.65504,
+              14.11224,
+              14.56944,
+              16.123920000000002,
+              17.34312,
+              18.5928,
+              19.08048,
+              19.812,
+              20.81784,
+              22.34184,
+              24.47544
+            ]
+          }
+        },
+        {
+          "bank_stations_m": [
+            8.5344,
+            22.555200000000003
+          ],
+          "downstream_reach_lengths_m": [
+            24.9936,
+            28.041600000000003,
+            30.48
+          ],
+          "reach_name": "Upper Reach",
+          "river_name": "Spring Creek",
+          "river_station": "10.212",
+          "roughness_zones": [
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 0.0
+            },
+            {
+              "manning_n": 0.025,
+              "minimum_station_m": 8.5344
+            },
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 22.555200000000003
+            }
+          ],
+          "section": {
+            "artificial_vertical_subsection_walls_in_perimeter": false,
+            "elevations_m": [
+              26.822400000000002,
+              25.6032,
+              24.6888,
+              23.7744,
+              22.250400000000003,
+              21.031200000000002,
+              20.4216,
+              19.5072,
+              19.44624,
+              20.7264,
+              22.250400000000003,
+              24.2316,
+              24.384,
+              25.908,
+              28.041600000000003
+            ],
+            "maximum_closed_water_surface_elevation_m": 26.822400000000002,
+            "minimum_elevation_m": 19.44624,
+            "piecewise_linear_geometry": true,
+            "schema": "gwm.geospatial_kernel.irregular_section.v1",
+            "stations_m": [
+              0.0,
+              3.048,
+              4.572,
+              8.5344,
+              9.7536,
+              10.668000000000001,
+              12.192,
+              15.24,
+              18.288,
+              19.812,
+              21.336000000000002,
+              22.555200000000003,
+              24.0792,
+              25.2984,
+              26.2128
+            ]
+          }
+        },
+        {
+          "bank_stations_m": [
+            8.32104,
+            22.555200000000003
+          ],
+          "downstream_reach_lengths_m": [
+            22.86,
+            28.956000000000003,
+            33.528
+          ],
+          "reach_name": "Upper Reach",
+          "river_name": "Spring Creek",
+          "river_station": "10.195",
+          "roughness_zones": [
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 0.0
+            },
+            {
+              "manning_n": 0.025,
+              "minimum_station_m": 8.32104
+            },
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 22.555200000000003
+            }
+          ],
+          "section": {
+            "artificial_vertical_subsection_walls_in_perimeter": false,
+            "elevations_m": [
+              26.791920000000005,
+              25.597104,
+              25.31364,
+              24.725376000000004,
+              24.518112000000002,
+              23.750016000000002,
+              22.283928,
+              21.768816,
+              21.086064000000004,
+              20.915376000000002,
+              20.415504000000002,
+              20.28444,
+              19.491960000000002,
+              19.470624,
+              19.424904,
+              20.695920000000005,
+              22.23516,
+              24.201120000000003,
+              24.362664000000002,
+              25.898856000000002,
+              27.889200000000002
+            ],
+            "maximum_closed_water_surface_elevation_m": 26.791920000000005,
+            "minimum_elevation_m": 19.424904,
+            "piecewise_linear_geometry": true,
+            "schema": "gwm.geospatial_kernel.irregular_section.v1",
+            "stations_m": [
+              0.0,
+              2.9870400000000004,
+              3.4747200000000005,
+              4.45008,
+              5.21208,
+              8.32104,
+              9.57072,
+              9.99744,
+              10.515600000000001,
+              10.820400000000001,
+              12.07008,
+              12.46632,
+              15.17904,
+              15.51432,
+              18.288,
+              19.812,
+              21.336000000000002,
+              22.555200000000003,
+              24.0792,
+              25.2984,
+              26.2128
+            ]
+          }
+        },
+        {
+          "bank_stations_m": [
+            8.138160000000001,
+            22.555200000000003
+          ],
+          "downstream_reach_lengths_m": [
+            25.908,
+            28.956000000000003,
+            30.48
+          ],
+          "reach_name": "Upper Reach",
+          "river_name": "Spring Creek",
+          "river_station": "10.177",
+          "roughness_zones": [
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 0.0
+            },
+            {
+              "manning_n": 0.025,
+              "minimum_station_m": 8.138160000000001
+            },
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 22.555200000000003
+            }
+          ],
+          "section": {
+            "artificial_vertical_subsection_walls_in_perimeter": false,
+            "elevations_m": [
+              26.76144,
+              25.591008,
+              25.328879999999998,
+              24.758904,
+              24.521160000000002,
+              23.722584,
+              22.317456,
+              21.826728,
+              21.140928000000002,
+              20.918423999999998,
+              20.412456000000002,
+              20.2692,
+              19.479768,
+              19.443192,
+              19.391376,
+              20.66544,
+              22.219920000000002,
+              24.17064,
+              24.344376000000004,
+              25.886664000000003,
+              27.736800000000002
+            ],
+            "maximum_closed_water_surface_elevation_m": 26.76144,
+            "minimum_elevation_m": 19.391376,
+            "piecewise_linear_geometry": true,
+            "schema": "gwm.geospatial_kernel.irregular_section.v1",
+            "stations_m": [
+              0.0,
+              2.8956,
+              3.38328,
+              4.35864,
+              5.09016,
+              8.138160000000001,
+              9.38784,
+              9.814560000000002,
+              10.3632,
+              10.668000000000001,
+              11.948160000000001,
+              12.374880000000001,
+              15.11808,
+              15.453360000000002,
+              18.288,
+              19.812,
+              21.336000000000002,
+              22.555200000000003,
+              24.0792,
+              25.2984,
+              26.2128
+            ]
+          }
+        },
+        {
+          "bank_stations_m": [
+            7.9248,
+            22.555200000000003
+          ],
+          "downstream_reach_lengths_m": [
+            23.7744,
+            28.041600000000003,
+            31.3944
+          ],
+          "reach_name": "Upper Reach",
+          "river_name": "Spring Creek",
+          "river_station": "10.158",
+          "roughness_zones": [
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 0.0
+            },
+            {
+              "manning_n": 0.025,
+              "minimum_station_m": 7.9248
+            },
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 22.555200000000003
+            }
+          ],
+          "section": {
+            "artificial_vertical_subsection_walls_in_perimeter": false,
+            "elevations_m": [
+              26.730960000000003,
+              25.584912,
+              25.344120000000004,
+              24.795479999999998,
+              24.524207999999998,
+              23.6982,
+              22.354032000000004,
+              21.887688,
+              21.195792000000004,
+              20.92452,
+              20.406360000000003,
+              20.253960000000003,
+              19.464528,
+              19.412712,
+              19.37004,
+              20.634960000000003,
+              22.20468,
+              24.14016,
+              24.32304,
+              25.877520000000004,
+              27.584400000000002
+            ],
+            "maximum_closed_water_surface_elevation_m": 26.730960000000003,
+            "minimum_elevation_m": 19.37004,
+            "piecewise_linear_geometry": true,
+            "schema": "gwm.geospatial_kernel.irregular_section.v1",
+            "stations_m": [
+              0.0,
+              2.8346400000000003,
+              3.2918400000000005,
+              4.23672,
+              4.968240000000001,
+              7.9248,
+              9.23544,
+              9.66216,
+              10.18032,
+              10.515600000000001,
+              11.82624,
+              12.252960000000002,
+              15.057120000000001,
+              15.422880000000001,
+              18.288,
+              19.812,
+              21.336000000000002,
+              22.555200000000003,
+              24.0792,
+              25.2984,
+              26.2128
+            ]
+          }
+        },
+        {
+          "bank_stations_m": [
+            7.7114400000000005,
+            22.555200000000003
+          ],
+          "downstream_reach_lengths_m": [
+            25.6032,
+            27.432000000000002,
+            30.48
+          ],
+          "reach_name": "Upper Reach",
+          "river_name": "Spring Creek",
+          "river_station": "10.141",
+          "roughness_zones": [
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 0.0
+            },
+            {
+              "manning_n": 0.025,
+              "minimum_station_m": 7.7114400000000005
+            },
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 22.555200000000003
+            }
+          ],
+          "section": {
+            "artificial_vertical_subsection_walls_in_perimeter": false,
+            "elevations_m": [
+              26.70048,
+              25.578816000000003,
+              25.359360000000002,
+              24.832056,
+              24.527256,
+              23.673816000000002,
+              22.38756,
+              21.948648000000002,
+              21.250656,
+              20.930616,
+              20.400264000000004,
+              20.238720000000004,
+              19.452336000000003,
+              19.382232000000002,
+              19.32432,
+              20.60448,
+              22.18944,
+              24.10968,
+              24.301704,
+              25.868376,
+              27.432000000000002
+            ],
+            "maximum_closed_water_surface_elevation_m": 26.70048,
+            "minimum_elevation_m": 19.32432,
+            "piecewise_linear_geometry": true,
+            "schema": "gwm.geospatial_kernel.irregular_section.v1",
+            "stations_m": [
+              0.0,
+              2.7432000000000003,
+              3.23088,
+              4.1452800000000005,
+              4.815840000000001,
+              7.7114400000000005,
+              9.05256,
+              9.479280000000001,
+              10.02792,
+              10.3632,
+              11.67384,
+              12.13104,
+              14.996160000000001,
+              15.36192,
+              18.288,
+              19.812,
+              21.336000000000002,
+              22.555200000000003,
+              24.0792,
+              25.2984,
+              26.2128
+            ]
+          }
+        },
+        {
+          "bank_stations_m": [
+            7.528560000000001,
+            22.555200000000003
+          ],
+          "downstream_reach_lengths_m": [
+            24.384,
+            28.956000000000003,
+            33.528
+          ],
+          "reach_name": "Upper Reach",
+          "river_name": "Spring Creek",
+          "river_station": "10.124",
+          "roughness_zones": [
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 0.0
+            },
+            {
+              "manning_n": 0.025,
+              "minimum_station_m": 7.528560000000001
+            },
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 22.555200000000003
+            }
+          ],
+          "section": {
+            "artificial_vertical_subsection_walls_in_perimeter": false,
+            "elevations_m": [
+              26.67,
+              25.572720000000004,
+              25.3746,
+              24.865584000000002,
+              24.533352,
+              23.646384,
+              22.421088,
+              22.00656,
+              21.308568,
+              20.933664000000004,
+              20.397216,
+              20.22348,
+              19.437096,
+              19.3548,
+              19.30908,
+              20.574,
+              22.174200000000003,
+              24.0792,
+              24.283416000000003,
+              25.856184000000002,
+              27.279600000000002
+            ],
+            "maximum_closed_water_surface_elevation_m": 26.67,
+            "minimum_elevation_m": 19.30908,
+            "piecewise_linear_geometry": true,
+            "schema": "gwm.geospatial_kernel.irregular_section.v1",
+            "stations_m": [
+              0.0,
+              2.68224,
+              3.1394400000000005,
+              4.02336,
+              4.69392,
+              7.528560000000001,
+              8.86968,
+              9.326880000000001,
+              9.87552,
+              10.2108,
+              11.55192,
+              12.00912,
+              14.9352,
+              15.300960000000002,
+              18.288,
+              19.812,
+              21.336000000000002,
+              22.555200000000003,
+              24.0792,
+              25.2984,
+              26.2128
+            ]
+          }
+        },
+        {
+          "bank_stations_m": [
+            7.315200000000001,
+            22.555200000000003
+          ],
+          "downstream_reach_lengths_m": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "reach_name": "Upper Reach",
+          "river_name": "Spring Creek",
+          "river_station": "10.106",
+          "roughness_zones": [
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 0.0
+            },
+            {
+              "manning_n": 0.025,
+              "minimum_station_m": 7.315200000000001
+            },
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 22.555200000000003
+            }
+          ],
+          "section": {
+            "artificial_vertical_subsection_walls_in_perimeter": false,
+            "elevations_m": [
+              26.639520000000005,
+              25.38984,
+              24.5364,
+              23.622,
+              22.067520000000002,
+              20.939760000000003,
+              20.20824,
+              19.32432,
+              19.263360000000002,
+              20.543520000000004,
+              22.15896,
+              24.048720000000003,
+              24.26208,
+              25.84704,
+              27.127200000000002
+            ],
+            "maximum_closed_water_surface_elevation_m": 26.639520000000005,
+            "minimum_elevation_m": 19.263360000000002,
+            "piecewise_linear_geometry": true,
+            "schema": "gwm.geospatial_kernel.irregular_section.v1",
+            "stations_m": [
+              0.0,
+              3.048,
+              4.572,
+              7.315200000000001,
+              9.144,
+              10.0584,
+              11.8872,
+              15.24,
+              18.288,
+              19.812,
+              21.336000000000002,
+              22.555200000000003,
+              24.0792,
+              25.2984,
+              26.2128
+            ]
+          }
+        },
+        {
+          "bank_stations_m": [
+            8.77824,
+            31.63824
+          ],
+          "downstream_reach_lengths_m": [
+            24.9936,
+            28.956000000000003,
+            33.528
+          ],
+          "reach_name": "Lower Reach",
+          "river_name": "Spring Creek",
+          "river_station": "10.091",
+          "roughness_zones": [
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 0.0
+            },
+            {
+              "manning_n": 0.025,
+              "minimum_station_m": 8.77824
+            },
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 31.63824
+            }
+          ],
+          "section": {
+            "artificial_vertical_subsection_walls_in_perimeter": false,
+            "elevations_m": [
+              26.60904,
+              25.359360000000002,
+              24.505920000000003,
+              23.591520000000003,
+              22.03704,
+              20.90928,
+              20.177760000000003,
+              19.29384,
+              19.238976,
+              20.51304,
+              22.12848,
+              24.01824,
+              24.2316,
+              25.816560000000003,
+              27.096720000000005
+            ],
+            "maximum_closed_water_surface_elevation_m": 26.60904,
+            "minimum_elevation_m": 19.238976,
+            "piecewise_linear_geometry": true,
+            "schema": "gwm.geospatial_kernel.irregular_section.v1",
+            "stations_m": [
+              0.0,
+              3.6576000000000004,
+              5.486400000000001,
+              8.77824,
+              11.52144,
+              12.89304,
+              15.63624,
+              20.66544,
+              25.23744,
+              27.52344,
+              29.809440000000002,
+              31.63824,
+              33.61944,
+              35.2044,
+              36.39312
+            ]
+          }
+        },
+        {
+          "bank_stations_m": [
+            8.5344,
+            31.63824
+          ],
+          "downstream_reach_lengths_m": [
+            25.908,
+            30.48,
+            36.576
+          ],
+          "reach_name": "Lower Reach",
+          "river_name": "Spring Creek",
+          "river_station": "10.073",
+          "roughness_zones": [
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 0.0
+            },
+            {
+              "manning_n": 0.025,
+              "minimum_station_m": 8.5344
+            },
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 31.63824
+            }
+          ],
+          "section": {
+            "artificial_vertical_subsection_walls_in_perimeter": false,
+            "elevations_m": [
+              26.578560000000003,
+              25.362408,
+              25.121616000000003,
+              24.542496,
+              24.289512000000002,
+              23.561040000000002,
+              22.030944,
+              21.485352,
+              21.019008,
+              20.330160000000003,
+              20.278344,
+              19.6596,
+              19.37004,
+              19.220688000000003,
+              20.305776,
+              20.534376,
+              21.451824,
+              21.91512,
+              22.735032000000004,
+              23.993856,
+              24.207216000000003,
+              25.792176,
+              27.072336
+            ],
+            "maximum_closed_water_surface_elevation_m": 26.578560000000003,
+            "minimum_elevation_m": 19.220688000000003,
+            "piecewise_linear_geometry": true,
+            "schema": "gwm.geospatial_kernel.irregular_section.v1",
+            "stations_m": [
+              0.0,
+              3.56616,
+              4.1148,
+              5.3340000000000005,
+              6.15696,
+              8.5344,
+              11.186160000000001,
+              11.856720000000001,
+              12.4968,
+              14.9352,
+              15.11808,
+              18.22704,
+              19.933920000000004,
+              24.32304,
+              26.944320000000005,
+              27.37104,
+              28.89504,
+              29.535120000000003,
+              30.41904,
+              31.63824,
+              33.61944,
+              35.2044,
+              36.39312
+            ]
+          }
+        },
+        {
+          "bank_stations_m": [
+            8.32104,
+            31.63824
+          ],
+          "downstream_reach_lengths_m": [
+            27.432000000000002,
+            30.48,
+            30.48
+          ],
+          "reach_name": "Lower Reach",
+          "river_name": "Spring Creek",
+          "river_station": "10.054",
+          "roughness_zones": [
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 0.0
+            },
+            {
+              "manning_n": 0.025,
+              "minimum_station_m": 8.32104
+            },
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 31.63824
+            }
+          ],
+          "section": {
+            "artificial_vertical_subsection_walls_in_perimeter": false,
+            "elevations_m": [
+              26.54808,
+              25.365456000000002,
+              25.142952,
+              24.579072,
+              24.304752,
+              23.53056,
+              22.027896,
+              21.524976000000002,
+              21.125688,
+              20.430744,
+              20.37588,
+              19.711416,
+              19.443192,
+              19.199352,
+              20.101560000000003,
+              20.28444,
+              21.180552,
+              21.704808,
+              22.552152,
+              23.969472,
+              24.182832,
+              25.767792000000004,
+              27.047952
+            ],
+            "maximum_closed_water_surface_elevation_m": 26.54808,
+            "minimum_elevation_m": 19.199352,
+            "piecewise_linear_geometry": true,
+            "schema": "gwm.geospatial_kernel.irregular_section.v1",
+            "stations_m": [
+              0.0,
+              3.4747200000000005,
+              3.99288,
+              5.1816,
+              5.974080000000001,
+              8.32104,
+              10.820400000000001,
+              11.490960000000001,
+              12.100560000000002,
+              14.41704,
+              14.599920000000001,
+              17.58696,
+              19.2024,
+              23.408640000000002,
+              26.334720000000004,
+              26.85288,
+              28.55976,
+              29.29128,
+              30.266640000000002,
+              31.63824,
+              33.61944,
+              35.2044,
+              36.39312
+            ]
+          }
+        },
+        {
+          "bank_stations_m": [
+            8.077200000000001,
+            31.63824
+          ],
+          "downstream_reach_lengths_m": [
+            24.384,
+            27.432000000000002,
+            30.48
+          ],
+          "reach_name": "Lower Reach",
+          "river_name": "Spring Creek",
+          "river_station": "10.035",
+          "roughness_zones": [
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 0.0
+            },
+            {
+              "manning_n": 0.025,
+              "minimum_station_m": 8.077200000000001
+            },
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 31.63824
+            }
+          ],
+          "section": {
+            "artificial_vertical_subsection_walls_in_perimeter": false,
+            "elevations_m": [
+              26.5176,
+              25.365456000000002,
+              25.164288000000003,
+              24.615648000000004,
+              24.32304,
+              23.50008,
+              22.021800000000002,
+              21.564600000000002,
+              21.235416,
+              20.52828,
+              20.476464000000004,
+              19.76628,
+              19.519392000000003,
+              19.181064,
+              19.894296,
+              20.034504000000002,
+              20.906232000000003,
+              21.491448000000002,
+              22.369272000000002,
+              23.945088000000002,
+              24.158448000000003,
+              25.743408,
+              27.023568
+            ],
+            "maximum_closed_water_surface_elevation_m": 26.5176,
+            "minimum_elevation_m": 19.181064,
+            "piecewise_linear_geometry": true,
+            "schema": "gwm.geospatial_kernel.irregular_section.v1",
+            "stations_m": [
+              0.0,
+              3.38328,
+              3.87096,
+              5.059680000000001,
+              5.821680000000001,
+              8.077200000000001,
+              10.48512,
+              11.125200000000001,
+              11.67384,
+              13.898880000000002,
+              14.081760000000001,
+              16.94688,
+              18.501360000000002,
+              22.49424,
+              25.7556,
+              26.30424,
+              28.22448,
+              29.01696,
+              30.114240000000002,
+              31.63824,
+              33.61944,
+              35.2044,
+              36.39312
+            ]
+          }
+        },
+        {
+          "bank_stations_m": [
+            7.863840000000001,
+            31.63824
+          ],
+          "downstream_reach_lengths_m": [
+            25.908,
+            28.956000000000003,
+            32.004000000000005
+          ],
+          "reach_name": "Lower Reach",
+          "river_name": "Spring Creek",
+          "river_station": "10.018",
+          "roughness_zones": [
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 0.0
+            },
+            {
+              "manning_n": 0.025,
+              "minimum_station_m": 7.863840000000001
+            },
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 31.63824
+            }
+          ],
+          "section": {
+            "artificial_vertical_subsection_walls_in_perimeter": false,
+            "elevations_m": [
+              26.487120000000004,
+              25.368504,
+              25.185624,
+              24.655272,
+              24.33828,
+              23.4696,
+              22.018752,
+              21.601176000000002,
+              21.345144,
+              20.628864000000004,
+              20.577048,
+              19.818096,
+              19.592544,
+              19.159728,
+              19.687032000000002,
+              19.787616,
+              20.631912,
+              21.278088,
+              22.18944,
+              23.920704000000004,
+              24.134064000000002,
+              25.719024,
+              26.999184
+            ],
+            "maximum_closed_water_surface_elevation_m": 26.487120000000004,
+            "minimum_elevation_m": 19.159728,
+            "piecewise_linear_geometry": true,
+            "schema": "gwm.geospatial_kernel.irregular_section.v1",
+            "stations_m": [
+              0.0,
+              3.26136,
+              3.77952,
+              4.907280000000001,
+              5.638800000000001,
+              7.863840000000001,
+              10.14984,
+              10.72896,
+              11.277600000000001,
+              13.411200000000001,
+              13.563600000000001,
+              16.276320000000002,
+              17.76984,
+              21.57984,
+              25.176479999999998,
+              25.78608,
+              27.85872,
+              28.773120000000002,
+              29.961840000000002,
+              31.63824,
+              33.61944,
+              35.2044,
+              36.39312
+            ]
+          }
+        },
+        {
+          "bank_stations_m": [
+            7.62,
+            31.63824
+          ],
+          "downstream_reach_lengths_m": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "reach_name": "Lower Reach",
+          "river_name": "Spring Creek",
+          "river_station": "10.000",
+          "roughness_zones": [
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 0.0
+            },
+            {
+              "manning_n": 0.025,
+              "minimum_station_m": 7.62
+            },
+            {
+              "manning_n": 0.035,
+              "minimum_station_m": 31.63824
+            }
+          ],
+          "section": {
+            "artificial_vertical_subsection_walls_in_perimeter": false,
+            "elevations_m": [
+              26.45664,
+              25.206960000000002,
+              24.353520000000003,
+              23.439120000000003,
+              21.640800000000002,
+              20.7264,
+              19.872960000000003,
+              19.14144,
+              19.537679999999998,
+              20.36064,
+              22.00656,
+              23.896320000000003,
+              24.10968,
+              25.69464,
+              26.974800000000002
+            ],
+            "maximum_closed_water_surface_elevation_m": 26.45664,
+            "minimum_elevation_m": 19.14144,
+            "piecewise_linear_geometry": true,
+            "schema": "gwm.geospatial_kernel.irregular_section.v1",
+            "stations_m": [
+              0.0,
+              3.6576000000000004,
+              5.486400000000001,
+              7.62,
+              10.3632,
+              12.89304,
+              15.63624,
+              20.66544,
+              25.23744,
+              27.52344,
+              29.809440000000002,
+              31.63824,
+              33.61944,
+              35.2044,
+              36.39312
+            ]
+          }
+        }
+      ],
+      "junction": {
+        "deflection_degrees": [
+          0.0,
+          45.0
+        ],
+        "downstream_reach": [
+          "Spring Creek",
+          "Lower Reach"
+        ],
+        "name": "Pottsville",
+        "raw_description_flags": [
+          -1,
+          -1,
+          -1
+        ],
+        "reach_lengths_m": [
+          24.384,
+          21.336000000000002
+        ],
+        "upstream_reaches": [
+          [
+            "Spring Creek",
+            "Upper Reach"
+          ],
+          [
+            "Spruce Creek",
+            "Spruce Creek"
+          ]
+        ]
+      },
+      "kernel_units": "SI",
+      "schema": "gwm.geospatial_kernel.hec_ras_geometry.v1",
+      "source_units": "US_customary",
+      "title": "Base Geometry - Momemtum Junction"
+    },
+    "plan": {
+      "flow_file": "f01",
+      "friction_slope_method": 1,
+      "geometry_file": "g02",
+      "schema": "gwm.geospatial_kernel.hec_ras_plan.v1",
+      "short_identifier": "Momentum",
+      "subcritical_flow": true,
+      "title": "Junction - Momentum"
+    }
+  },
+  "projected_momentum_diagnostic": {
+    "implemented_equation_solution": {
+      "balance": {
+        "branches": [
+          {
+            "bed_slope": 0.001000000000000053,
+            "contribution_m3": 79.66665056718854,
+            "deflection_degrees": 0.0,
+            "discharge_m3s": 84.950539776,
+            "distribution": {
+              "beta_equation": "A/Q^2*sum(Q_i^2/A_i)",
+              "discharge_partition": "Manning_conveyance_fraction",
+              "friction_slope": 0.0010724767298352243,
+              "momentum_coefficient_beta": 1.0,
+              "schema": "gwm.geospatial_kernel.conveyance_momentum_distribution.v1",
+              "subsections": [
+                {
+                  "area_m2": 0.0,
+                  "conveyance_m3s": 0.0,
+                  "discharge_m3s": 0.0,
+                  "hydraulic_radius_m": 0.0,
+                  "manning_n": 0.035,
+                  "maximum_station_m": 7.315200000000001,
+                  "minimum_station_m": 0.0,
+                  "wetted_perimeter_m": 0.0
+                },
+                {
+                  "area_m2": 37.949046819080024,
+                  "conveyance_m3s": 2594.0133319629686,
+                  "discharge_m3s": 84.950539776,
+                  "hydraulic_radius_m": 2.233916884750785,
+                  "manning_n": 0.025,
+                  "maximum_station_m": 22.555200000000003,
+                  "minimum_station_m": 7.315200000000001,
+                  "wetted_perimeter_m": 16.987671778716873
+                },
+                {
+                  "area_m2": 0.0,
+                  "conveyance_m3s": 0.0,
+                  "discharge_m3s": 0.0,
+                  "hydraulic_radius_m": 0.0,
+                  "manning_n": 0.035,
+                  "maximum_station_m": 26.2128,
+                  "minimum_station_m": 22.555200000000003,
+                  "wetted_perimeter_m": 0.0
+                }
+              ],
+              "total_area_m2": 37.949046819080024,
+              "total_conveyance_m3s": 2594.0133319629686,
+              "total_discharge_m3s": 84.950539776,
+              "water_surface_elevation_m": 23.145670391565048
+            },
+            "downstream_area_fraction": 0.7317073170731707,
+            "friction_force_m3": 0.9673916487583304,
+            "froude_number": 0.43568021691034603,
+            "projected_specific_force_m3": 79.70898415971665,
+            "reach_key": [
+              "Spring Creek",
+              "Upper Reach"
+            ],
+            "representative_friction_slope": 0.001045763173719785,
+            "river_station": "10.106",
+            "section_spacing_m": 24.384,
+            "specific_force_m3": 79.70898415971665,
+            "water_weight_force_m3": 0.9250580562302309
+          },
+          {
+            "bed_slope": 0.0004285714285713888,
+            "contribution_m3": 24.00523496478017,
+            "deflection_degrees": 45.0,
+            "discharge_m3s": 31.1485312512,
+            "distribution": {
+              "beta_equation": "A/Q^2*sum(Q_i^2/A_i)",
+              "discharge_partition": "Manning_conveyance_fraction",
+              "friction_slope": 0.0008441487691109551,
+              "momentum_coefficient_beta": 1.0071461195164626,
+              "schema": "gwm.geospatial_kernel.conveyance_momentum_distribution.v1",
+              "subsections": [
+                {
+                  "area_m2": 0.10881009682257066,
+                  "conveyance_m3s": 0.8130370684061974,
+                  "discharge_m3s": 0.02362217281500677,
+                  "hydraulic_radius_m": 0.13374076139496435,
+                  "manning_n": 0.035,
+                  "maximum_station_m": 13.411200000000001,
+                  "minimum_station_m": 8.2296,
+                  "wetted_perimeter_m": 0.8135896318193655
+                },
+                {
+                  "area_m2": 18.765708320181336,
+                  "conveyance_m3s": 1070.7899341132736,
+                  "discharge_m3s": 31.11098602401762,
+                  "hydraulic_radius_m": 1.703801477129917,
+                  "manning_n": 0.025,
+                  "maximum_station_m": 20.81784,
+                  "minimum_station_m": 13.411200000000001,
+                  "wetted_perimeter_m": 11.014022802581728
+                },
+                {
+                  "area_m2": 0.06800631051410659,
+                  "conveyance_m3s": 0.4792090632291317,
+                  "discharge_m3s": 0.013923054367381619,
+                  "hydraulic_radius_m": 0.12248016992628066,
+                  "manning_n": 0.035,
+                  "maximum_station_m": 24.47544,
+                  "minimum_station_m": 20.81784,
+                  "wetted_perimeter_m": 0.5552434369991385
+                }
+              ],
+              "total_area_m2": 18.942524727518013,
+              "total_conveyance_m3s": 1072.0821802449088,
+              "total_discharge_m3s": 31.1485312512,
+              "water_surface_elevation_m": 23.145670391565048
+            },
+            "downstream_area_fraction": 0.2682926829268293,
+            "friction_force_m3": 0.28644907064764236,
+            "froude_number": 0.35472476654556695,
+            "projected_specific_force_m3": 24.16686719427587,
+            "reach_key": [
+              "Spruce Creek",
+              "Spruce Creek"
+            ],
+            "representative_friction_slope": 0.0009835522697691575,
+            "river_station": "0.013",
+            "section_spacing_m": 21.336000000000002,
+            "specific_force_m3": 34.17711134621436,
+            "water_weight_force_m3": 0.1248168411519398
+          }
+        ],
+        "common_upstream_water_surface_elevation_m": 23.145670391565048,
+        "downstream_distribution": {
+          "beta_equation": "A/Q^2*sum(Q_i^2/A_i)",
+          "discharge_partition": "Manning_conveyance_fraction",
+          "friction_slope": 0.0010268439883501497,
+          "momentum_coefficient_beta": 1.0,
+          "schema": "gwm.geospatial_kernel.conveyance_momentum_distribution.v1",
+          "subsections": [
+            {
+              "area_m2": 0.0,
+              "conveyance_m3s": 0.0,
+              "discharge_m3s": 0.0,
+              "hydraulic_radius_m": 0.0,
+              "manning_n": 0.035,
+              "maximum_station_m": 8.77824,
+              "minimum_station_m": 0.0,
+              "wetted_perimeter_m": 0.0
+            },
+            {
+              "area_m2": 51.83102136343584,
+              "conveyance_m3s": 3623.068225771556,
+              "discharge_m3s": 116.0990710272,
+              "hydraulic_radius_m": 2.3101497396467,
+              "manning_n": 0.025,
+              "maximum_station_m": 31.63824,
+              "minimum_station_m": 8.77824,
+              "wetted_perimeter_m": 22.436217217401047
+            },
+            {
+              "area_m2": 0.0,
+              "conveyance_m3s": 0.0,
+              "discharge_m3s": 0.0,
+              "hydraulic_radius_m": 0.0,
+              "manning_n": 0.035,
+              "maximum_station_m": 36.39312,
+              "minimum_station_m": 31.63824,
+              "wetted_perimeter_m": 0.0
+            }
+          ],
+          "total_area_m2": 51.83102136343584,
+          "total_conveyance_m3s": 3623.068225771556,
+          "total_discharge_m3s": 116.0990710272,
+          "water_surface_elevation_m": 22.871508599853517
+        },
+        "downstream_froude_number": 0.44961939650450833,
+        "downstream_specific_force_m3": 103.67188553197198,
+        "downstream_water_surface_elevation_m": 22.871508599853517,
+        "equation": "SF_down=sum(SF_up*cos(theta)-F_friction+W_bed_slope)",
+        "residual_m3": 3.268496584496461e-12,
+        "upstream_contribution_sum_m3": 103.67188553196871
+      },
+      "calibrated_to_reference_stage": false,
+      "diagnostic_only": true,
+      "downstream_terminal_section": {
+        "reach_key": [
+          "Spring Creek",
+          "Lower Reach"
+        ],
+        "river_station": "10.091"
+      },
+      "flow_title": "10 Year Profile",
+      "friction_slope_method": "average_conveyance",
+      "geometry_title": "Base Geometry - Momemtum Junction",
+      "junction": {
+        "deflection_degrees": [
+          0.0,
+          45.0
+        ],
+        "downstream_reach": [
+          "Spring Creek",
+          "Lower Reach"
+        ],
+        "name": "Pottsville",
+        "raw_description_flags": [
+          -1,
+          -1,
+          -1
+        ],
+        "reach_lengths_m": [
+          24.384,
+          21.336000000000002
+        ],
+        "upstream_reaches": [
+          [
+            "Spring Creek",
+            "Upper Reach"
+          ],
+          [
+            "Spruce Creek",
+            "Spruce Creek"
+          ]
+        ]
+      },
+      "momentum_coefficient_source": "subsection_Manning_conveyance",
+      "operator_admitted": false,
+      "plan": {
+        "flow_file": "f01",
+        "friction_slope_method": 1,
+        "geometry_file": "g02",
+        "schema": "gwm.geospatial_kernel.hec_ras_plan.v1",
+        "short_identifier": "Momentum",
+        "subcritical_flow": true,
+        "title": "Junction - Momentum"
+      },
+      "predictive_validation": false,
+      "reference_stage_error_m": 0.13211464815684337,
+      "reference_upstream_water_surface_elevation_m": 23.013555743408205,
+      "root_bracket_m": [
+        23.145541640625,
+        23.146940625000003
+      ],
+      "schema": "gwm.geospatial_kernel.hec_ras_projected_momentum_reference.v1",
+      "upstream_terminal_sections": [
+        {
+          "reach_key": [
+            "Spring Creek",
+            "Upper Reach"
+          ],
+          "river_station": "10.106"
+        },
+        {
+          "reach_key": [
+            "Spruce Creek",
+            "Spruce Creek"
+          ],
+          "river_station": "0.013"
+        }
+      ]
+    },
+    "implemented_solution_stage_ft": 75.93723881747063,
+    "interpretation": "section geometry, conveyance partition, and beta are not the source of the remaining stage discrepancy; undocumented HEC-RAS internal force treatment remains unresolved",
+    "published_rounding_tolerance_ft": 0.005,
+    "reference_stage_balance": {
+      "branches": [
+        {
+          "bed_slope": 0.001000000000000053,
+          "contribution_m3": 75.71355572022468,
+          "deflection_degrees": 0.0,
+          "discharge_m3s": 84.950539776,
+          "distribution": {
+            "beta_equation": "A/Q^2*sum(Q_i^2/A_i)",
+            "discharge_partition": "Manning_conveyance_fraction",
+            "friction_slope": 0.0012307032422014838,
+            "momentum_coefficient_beta": 1.0,
+            "schema": "gwm.geospatial_kernel.conveyance_momentum_distribution.v1",
+            "subsections": [
+              {
+                "area_m2": 0.0,
+                "conveyance_m3s": 0.0,
+                "discharge_m3s": 0.0,
+                "hydraulic_radius_m": 0.0,
+                "manning_n": 0.035,
+                "maximum_station_m": 7.315200000000001,
+                "minimum_station_m": 0.0,
+                "wetted_perimeter_m": 0.0
+              },
+              {
+                "area_m2": 36.10252431685972,
+                "conveyance_m3s": 2421.52786187707,
+                "discharge_m3s": 84.950539776,
+                "hydraulic_radius_m": 2.1713901568195793,
+                "manning_n": 0.025,
+                "maximum_station_m": 22.555200000000003,
+                "minimum_station_m": 7.315200000000001,
+                "wetted_perimeter_m": 16.62645665196293
+              },
+              {
+                "area_m2": 0.0,
+                "conveyance_m3s": 0.0,
+                "discharge_m3s": 0.0,
+                "hydraulic_radius_m": 0.0,
+                "manning_n": 0.035,
+                "maximum_station_m": 26.2128,
+                "minimum_station_m": 22.555200000000003,
+                "wetted_perimeter_m": 0.0
+              }
+            ],
+            "total_area_m2": 36.10252431685972,
+            "total_conveyance_m3s": 2421.52786187707,
+            "total_discharge_m3s": 84.950539776,
+            "water_surface_elevation_m": 23.013555743408205
+          },
+          "downstream_area_fraction": 0.7317073170731707,
+          "friction_force_m3": 0.9984834914142244,
+          "froude_number": 0.4655042425873308,
+          "projected_specific_force_m3": 75.80949395775573,
+          "reach_key": [
+            "Spring Creek",
+            "Upper Reach"
+          ],
+          "representative_friction_slope": 0.0011062974262158573,
+          "river_station": "10.106",
+          "section_spacing_m": 24.384,
+          "specific_force_m3": 75.80949395775573,
+          "water_weight_force_m3": 0.9025452538831599
+        },
+        {
+          "bed_slope": 0.0004285714285713888,
+          "contribution_m3": 22.492736451575233,
+          "deflection_degrees": 45.0,
+          "discharge_m3s": 31.1485312512,
+          "distribution": {
+            "beta_equation": "A/Q^2*sum(Q_i^2/A_i)",
+            "discharge_partition": "Manning_conveyance_fraction",
+            "friction_slope": 0.0010110524372773577,
+            "momentum_coefficient_beta": 1.0023890623576193,
+            "schema": "gwm.geospatial_kernel.conveyance_momentum_distribution.v1",
+            "subsections": [
+              {
+                "area_m2": 0.0314391551115287,
+                "conveyance_m3s": 0.15530278343057938,
+                "discharge_m3s": 0.004938170488505682,
+                "hydraulic_radius_m": 0.07188936146820395,
+                "manning_n": 0.035,
+                "maximum_station_m": 13.411200000000001,
+                "minimum_station_m": 8.2296,
+                "wetted_perimeter_m": 0.4373269489315741
+              },
+              {
+                "area_m2": 17.787182682556935,
+                "conveyance_m3s": 979.357573878894,
+                "discharge_m3s": 31.140682492565126,
+                "hydraulic_radius_m": 1.6149578588476823,
+                "manning_n": 0.025,
+                "maximum_station_m": 20.81784,
+                "minimum_station_m": 13.411200000000001,
+                "wetted_perimeter_m": 11.014022802581728
+              },
+              {
+                "area_m2": 0.019649471944705437,
+                "conveyance_m3s": 0.09153641851845176,
+                "discharge_m3s": 0.002910588146370076,
+                "hydraulic_radius_m": 0.06583648183753325,
+                "manning_n": 0.035,
+                "maximum_station_m": 24.47544,
+                "minimum_station_m": 20.81784,
+                "wetted_perimeter_m": 0.2984587176634841
+              }
+            ],
+            "total_area_m2": 17.83827130961317,
+            "total_conveyance_m3s": 979.604413080843,
+            "total_discharge_m3s": 31.1485312512,
+            "water_surface_elevation_m": 23.013555743408205
+          },
+          "downstream_area_fraction": 0.2682926829268293,
+          "friction_force_m3": 0.2895501202167014,
+          "froude_number": 0.37509386566428066,
+          "projected_specific_force_m3": 22.661039662905523,
+          "reach_key": [
+            "Spruce Creek",
+            "Spruce Creek"
+          ],
+          "representative_friction_slope": 0.001023472761524516,
+          "river_station": "0.013",
+          "section_spacing_m": 21.336000000000002,
+          "specific_force_m3": 32.04754962875562,
+          "water_weight_force_m3": 0.12124690888641358
+        }
+      ],
+      "common_upstream_water_surface_elevation_m": 23.013555743408205,
+      "downstream_distribution": {
+        "beta_equation": "A/Q^2*sum(Q_i^2/A_i)",
+        "discharge_partition": "Manning_conveyance_fraction",
+        "friction_slope": 0.0010268439883501497,
+        "momentum_coefficient_beta": 1.0,
+        "schema": "gwm.geospatial_kernel.conveyance_momentum_distribution.v1",
+        "subsections": [
+          {
+            "area_m2": 0.0,
+            "conveyance_m3s": 0.0,
+            "discharge_m3s": 0.0,
+            "hydraulic_radius_m": 0.0,
+            "manning_n": 0.035,
+            "maximum_station_m": 8.77824,
+            "minimum_station_m": 0.0,
+            "wetted_perimeter_m": 0.0
+          },
+          {
+            "area_m2": 51.83102136343584,
+            "conveyance_m3s": 3623.068225771556,
+            "discharge_m3s": 116.0990710272,
+            "hydraulic_radius_m": 2.3101497396467,
+            "manning_n": 0.025,
+            "maximum_station_m": 31.63824,
+            "minimum_station_m": 8.77824,
+            "wetted_perimeter_m": 22.436217217401047
+          },
+          {
+            "area_m2": 0.0,
+            "conveyance_m3s": 0.0,
+            "discharge_m3s": 0.0,
+            "hydraulic_radius_m": 0.0,
+            "manning_n": 0.035,
+            "maximum_station_m": 36.39312,
+            "minimum_station_m": 31.63824,
+            "wetted_perimeter_m": 0.0
+          }
+        ],
+        "total_area_m2": 51.83102136343584,
+        "total_conveyance_m3s": 3623.068225771556,
+        "total_discharge_m3s": 116.0990710272,
+        "water_surface_elevation_m": 22.871508599853517
+      },
+      "downstream_froude_number": 0.44961939650450833,
+      "downstream_specific_force_m3": 103.67188553197198,
+      "downstream_water_surface_elevation_m": 22.871508599853517,
+      "equation": "SF_down=sum(SF_up*cos(theta)-F_friction+W_bed_slope)",
+      "residual_m3": 5.465593360172079,
+      "upstream_contribution_sum_m3": 98.2062921717999
+    },
+    "secondary_reference_stage_ft": 75.50379180908203,
+    "stage_conformed": false,
+    "stage_error_ft": 0.4334470083885975
+  },
+  "schema": "gwm.geotransport.hec_ras_example10_momentum_gates.v1",
+  "secondary_recomputation": {
+    "commit": "99f17382ce4dea93055e8d4ecf6732d287be4cc4",
+    "file_type_recorded_in_hdf": "HEC-RAS Results",
+    "file_version_recorded_in_hdf": "HEC-RAS 6.6 September 2024",
+    "is_independent_field_truth": false,
+    "is_official_usace_observation": false,
+    "program_name_recorded_in_hdf": "HEC-RAS - River Analysis System",
+    "program_version_recorded_in_hdf": "HEC-RAS 6.6 September 2024",
+    "repository": "leixiaohui-1974/HydroClaude"
+  },
+  "source_artifacts": {
+    "archive": {
+      "path": ".tmp/geotransport/hec_ras_example10/Example 10 - Stream Junction.zip",
+      "sha256": "c17a7e0e48c9578ce04caa9ffbdb798b979f4f7beb1be027f543b8e45f7f98c2",
+      "size_bytes": 10838,
+      "url": "https://www.hec.usace.army.mil/confluence/download/attachments/80528340/Example%2010%20-%20Stream%20Junction.zip?version=1&modificationDate=1642646172667&api=v2"
+    },
+    "official_table": {
+      "path": ".tmp/geotransport/hec_ras_example10/momentum_standard_table_2.png",
+      "sha256": "e38d571214ec7c6ba842d90d5ec7368694faead75ff61e17bf61aced48d99624",
+      "size_bytes": 98515,
+      "url": "https://www.hec.usace.army.mil/confluence/download/attachments/80528340/worddav48427a90af6fd779f2528e3743d30d6d.png?version=1&modificationDate=1644264027764&api=v2"
+    },
+    "secondary_hdf": {
+      "path": ".tmp/geotransport/hec_ras_example10/secondary_JUNCTION.p02.hdf",
+      "sha256": "762b14a079570c2dabd2e4ffdef29bfde561a13cd0fcd09b15353f6de3efa4b6",
+      "size_bytes": 377015,
+      "url": "https://raw.githubusercontent.com/leixiaohui-1974/HydroClaude/99f17382ce4dea93055e8d4ecf6732d287be4cc4/reports/hecras_examples_raw/Applications%20Guide/Example%2010%20-%20Stream%20Junction/JUNCTION.p02.hdf"
+    }
+  },
+  "source_roles": {
+    "archive": "USACE authoritative model input",
+    "official_table": "USACE authoritative published result table",
+    "secondary_hdf": "fixed-commit public HEC-RAS 6.6 recomputation used only for diagnostic precision; not USACE original output or field truth"
+  },
+  "status": "partial_conformance_projected_momentum_stage_rejected",
+  "terminal_section_conformance": [
+    {
+      "all_within_tolerance": true,
+      "comparisons": {
+        "area_ft2": {
+          "absolute_error": 5.899930926034358e-05,
+          "absolute_tolerance": 0.001,
+          "within_tolerance": true
+        },
+        "beta": {
+          "absolute_error": 0.0,
+          "absolute_tolerance": 1e-06,
+          "within_tolerance": true
+        },
+        "conveyance_cfs": {
+          "absolute_error": 0.05841351242270321,
+          "absolute_tolerance": 0.25,
+          "within_tolerance": true
+        },
+        "flow_partition_cfs": {
+          "absolute_errors": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "absolute_tolerance": 0.001,
+          "maximum_absolute_error": 0.0,
+          "within_tolerance": true
+        },
+        "top_width_ft": {
+          "absolute_error": 9.844379960100014e-07,
+          "absolute_tolerance": 0.001,
+          "within_tolerance": true
+        },
+        "wetted_perimeter_ft": {
+          "absolute_error": 1.9095034105021114e-06,
+          "absolute_tolerance": 0.001,
+          "within_tolerance": true
+        }
+      },
+      "kernel": {
+        "area_ft2": 388.6043375637624,
+        "beta": 1.0,
+        "conveyance_cfs": 85515.44939898758,
+        "flow_partition_cfs": [
+          0.0,
+          3000.0,
+          0.0
+        ],
+        "top_width_ft": 45.46041771673388,
+        "water_surface_ft": 75.50379180908203,
+        "wetted_perimeter_ft": 54.5487422964663
+      },
+      "reach_key": [
+        "Spring Creek",
+        "Upper Reach"
+      ],
+      "reference": {
+        "area_ft2": 388.6042785644531,
+        "beta": 1.0,
+        "conveyance_cfs": 85515.5078125,
+        "flow_channel_cfs": 3000.0,
+        "flow_left_cfs": 0.0,
+        "flow_partition_cfs": [
+          0.0,
+          3000.0,
+          0.0
+        ],
+        "flow_right_cfs": 0.0,
+        "top_width_ft": 45.460418701171875,
+        "water_surface_ft": 75.50379180908203,
+        "wetted_perimeter_ft": 54.54874038696289
+      },
+      "river_station": "10.106"
+    },
+    {
+      "all_within_tolerance": true,
+      "comparisons": {
+        "area_ft2": {
+          "absolute_error": 1.2895102827314986e-05,
+          "absolute_tolerance": 0.001,
+          "within_tolerance": true
+        },
+        "beta": {
+          "absolute_error": 1.1014267942144329e-08,
+          "absolute_tolerance": 1e-06,
+          "within_tolerance": true
+        },
+        "conveyance_cfs": {
+          "absolute_error": 0.041945650591515005,
+          "absolute_tolerance": 0.25,
+          "within_tolerance": true
+        },
+        "flow_partition_cfs": {
+          "absolute_errors": [
+            5.054658894221298e-08,
+            4.538431949185906e-05,
+            3.602733721075335e-08
+          ],
+          "absolute_tolerance": 0.001,
+          "maximum_absolute_error": 4.538431949185906e-05,
+          "within_tolerance": true
+        },
+        "top_width_ft": {
+          "absolute_error": 3.0517577869204615e-06,
+          "absolute_tolerance": 0.001,
+          "within_tolerance": true
+        },
+        "wetted_perimeter_ft": {
+          "absolute_error": 2.7213358322342174e-07,
+          "absolute_tolerance": 0.001,
+          "within_tolerance": true
+        }
+      },
+      "kernel": {
+        "area_ft2": 192.00955436563936,
+        "beta": 1.0023890623576193,
+        "conveyance_cfs": 34594.40336684941,
+        "flow_partition_cfs": [
+          0.17438984501546864,
+          1099.722823704632,
+          0.10278645035257448
+        ],
+        "top_width_ft": 26.483097839355494,
+        "water_surface_ft": 75.50379180908203,
+        "wetted_perimeter_ft": 38.54924038443827
+      },
+      "reach_key": [
+        "Spruce Creek",
+        "Spruce Creek"
+      ],
+      "reference": {
+        "area_ft2": 192.0095672607422,
+        "beta": 1.0023890733718872,
+        "conveyance_cfs": 34594.4453125,
+        "flow_channel_cfs": 1099.7227783203125,
+        "flow_left_cfs": 0.1743897944688797,
+        "flow_partition_cfs": [
+          0.1743897944688797,
+          1099.7227783203125,
+          0.10278641432523727
+        ],
+        "flow_right_cfs": 0.10278641432523727,
+        "top_width_ft": 26.48310089111328,
+        "water_surface_ft": 75.50379180908203,
+        "wetted_perimeter_ft": 38.54924011230469
+      },
+      "river_station": "0.013"
+    },
+    {
+      "all_within_tolerance": true,
+      "comparisons": {
+        "area_ft2": {
+          "absolute_error": 0.0001312881901185392,
+          "absolute_tolerance": 0.001,
+          "within_tolerance": true
+        },
+        "beta": {
+          "absolute_error": 0.0,
+          "absolute_tolerance": 1e-06,
+          "within_tolerance": true
+        },
+        "conveyance_cfs": {
+          "absolute_error": 0.17028516251593828,
+          "absolute_tolerance": 0.25,
+          "within_tolerance": true
+        },
+        "flow_partition_cfs": {
+          "absolute_errors": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "absolute_tolerance": 0.001,
+          "maximum_absolute_error": 0.0,
+          "within_tolerance": true
+        },
+        "top_width_ft": {
+          "absolute_error": 2.25841660039805e-06,
+          "absolute_tolerance": 0.001,
+          "within_tolerance": true
+        },
+        "wetted_perimeter_ft": {
+          "absolute_error": 5.4887789104896e-06,
+          "absolute_tolerance": 0.001,
+          "within_tolerance": true
+        }
+      },
+      "kernel": {
+        "area_ft2": 557.9044707625911,
+        "beta": 1.0,
+        "conveyance_cfs": 127947.44690233748,
+        "flow_partition_cfs": [
+          0.0,
+          4100.0,
+          0.0
+        ],
+        "top_width_ft": 67.19045794666152,
+        "water_surface_ft": 75.03775787353516,
+        "wetted_perimeter_ft": 73.60963654002968
+      },
+      "reach_key": [
+        "Spring Creek",
+        "Lower Reach"
+      ],
+      "reference": {
+        "area_ft2": 557.9046020507812,
+        "beta": 1.0,
+        "conveyance_cfs": 127947.6171875,
+        "flow_channel_cfs": 4100.0,
+        "flow_left_cfs": 0.0,
+        "flow_partition_cfs": [
+          0.0,
+          4100.0,
+          0.0
+        ],
+        "flow_right_cfs": 0.0,
+        "top_width_ft": 67.19046020507812,
+        "water_surface_ft": 75.03775787353516,
+        "wetted_perimeter_ft": 73.6096420288086
+      },
+      "river_station": "10.091"
+    }
+  ]
+}

@@ -1,0 +1,151 @@
+{
+  "claim_boundary": {
+    "candidate_promoted": false,
+    "geospatial_kernel_validated": false,
+    "historical_posthoc_inputs_may_be_relabelled_prospective": false,
+    "internal_innovation_fitted": false,
+    "outcomes_loaded": false,
+    "prospective_inputs_acquired": false,
+    "prospective_predictions_executed": false,
+    "protocol_frozen": true,
+    "runtime_enabled": false
+  },
+  "fit_and_evaluation_order": [
+    "seal outcome-free physical predictions and internal telemetry",
+    "pass independent semantic readiness assessment",
+    "freeze cross-system candidate parameterization",
+    "acquire outcomes only after candidate predictions are sealed",
+    "score raw physical and physical-plus-internal-innovation jointly",
+    "retain candidate only if it beats raw physical on both systems"
+  ],
+  "forbidden_executor_inputs": [
+    "outcome_values",
+    "outcome_columns",
+    "outcome_manifest",
+    "outcome_path",
+    "outcome_url",
+    "future_target_observations"
+  ],
+  "frozen_at": "2026-07-31T06:06:33Z",
+  "frozen_code": {
+    "data_agent/uwm/geospatial_kernel_v2/branching_kinematic_wave.py": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/branching_kinematic_wave.py",
+      "sha256": "b853443a9dc33a7702333c8f238548da1269c20013b41702e5f08560fc3e2eea",
+      "size_bytes": 24913
+    },
+    "data_agent/uwm/geospatial_kernel_v2/branching_network.py": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/branching_network.py",
+      "sha256": "b86630170f1a8f0de4ae188a3f7bca200b5c95ee7818f3968bd66e1d24d1e084",
+      "size_bytes": 39343
+    },
+    "data_agent/uwm/geospatial_kernel_v2/conservative_edge_flux_innovation.py": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/conservative_edge_flux_innovation.py",
+      "sha256": "adb2658de0297f365c4bb1ddf05209fb577a6b5458a89df750c4786886203098",
+      "size_bytes": 13589
+    },
+    "data_agent/uwm/geospatial_kernel_v2/conservative_flux.py": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/conservative_flux.py",
+      "sha256": "a6f55102d485e09f6d6ec38186389fca50d89c0695d6c50010a29e5571f44271",
+      "size_bytes": 11047
+    },
+    "data_agent/uwm/geospatial_kernel_v2/contracts.py": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/contracts.py",
+      "sha256": "cf047f50cef2eeee8497979d0f9e3f037f7e35149bbd15776d038a1b99fcf377",
+      "size_bytes": 26961
+    },
+    "data_agent/uwm/geospatial_kernel_v2/instrumented_physical_rollout.py": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/instrumented_physical_rollout.py",
+      "sha256": "4380f3838b8d51d841205f0617858c02dba33620fcafd12d1617762d9ad5a418",
+      "size_bytes": 9361
+    },
+    "data_agent/uwm/geospatial_kernel_v2/internal_innovation_instrumentation.py": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/internal_innovation_instrumentation.py",
+      "sha256": "70b6b862006de785ae66f304e009f47d8d82688e102c839296572a16d32f005d",
+      "size_bytes": 26505
+    },
+    "data_agent/uwm/geospatial_kernel_v2/kinematic_wave.py": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/kinematic_wave.py",
+      "sha256": "14525d73b08f239b820d8a75daf2bbe621628ae6143daaf85959209f7f8f79d8",
+      "size_bytes": 21928
+    },
+    "scripts/assess_geospatial_kernel_internal_innovation_readiness.py": {
+      "path": "scripts/assess_geospatial_kernel_internal_innovation_readiness.py",
+      "sha256": "20d41e902ea2964d034c71f21fd9a0c0ec724115750be89a53b2dbb4d5910088",
+      "size_bytes": 30196
+    }
+  },
+  "mandatory_gates_before_diagnostic_fit": {
+    "causal_input_availability_verified": true,
+    "every_step_mass_ledger_recomputed_conservative": true,
+    "feature_and_edge_axes_semantically_valid": true,
+    "modeled_internal_state_not_labeled_as_observation": true,
+    "prediction_and_internal_artifacts_sealed_before_outcomes": true,
+    "source_artifact_hashes_match": true,
+    "state_transition_continuity_verified": true,
+    "two_system_episode_minimum_met": true
+  },
+  "operator_roles": {
+    "candidate_internal_innovation": {
+      "default_enabled": false,
+      "operator": "ConservativeEdgeFluxInnovationOperator",
+      "role": "signed_internal_edge_transfer_adjustment",
+      "runtime_admitted": false,
+      "schema": "gwm.geospatial_kernel.conservative_edge_flux_innovation.v1"
+    },
+    "diagnostic_replication": {
+      "operator": "BranchingFiniteVolumeKinematicWaveOperator",
+      "role": "independent_operator_form_diagnostic_only",
+      "schema": "gwm.geospatial_kernel.branching_finite_volume_kinematic_wave.v1"
+    },
+    "primary_accuracy_floor": {
+      "operator": "BranchingManningNetworkTransportOperator",
+      "role": "raw_physical_minimum_accuracy_bar",
+      "schema": "gwm.geospatial_kernel.branching_manning_network_storage.v1"
+    }
+  },
+  "prospective_episode_contract": {
+    "episode_horizon_hours": 24,
+    "episode_selection_after_outcome_access": false,
+    "every_input_available_at_or_before_issue": true,
+    "forecast_issue_must_not_follow_support_start": true,
+    "hourly_steps_per_episode": 24,
+    "minimum_sealed_episodes_per_system_before_diagnostic_fit": 28,
+    "minimum_sealed_hourly_steps_per_system_before_diagnostic_fit": 672,
+    "one_telemetry_bundle_per_issue_time": true,
+    "rolling_issue_times_allowed": true,
+    "support_must_start_after_protocol_freeze": true
+  },
+  "protocol_seal": {
+    "algorithm": "sha256_canonical_json_without_protocol_seal",
+    "sha256": "9d69d960c43a972d77d42267fa4fe854e6b85f9f13dae9ea7cf50b7888901fd3"
+  },
+  "required_hash_bound_inputs_per_episode": {
+    "distributed_forcing_forecast": "modeled lateral inflow values known at forecast issue",
+    "edge_axis": "immutable admitted directed reach connections",
+    "feature_axis": "immutable ordered reach identifiers",
+    "hydraulic_geometry": "width slope roughness and effective length",
+    "initial_state": "modeled stock or cell volume with possible-nudging label",
+    "input_availability_receipts": "source provenance and available_at for every dynamic input",
+    "reservoir_action_schedule": "release boundary values known at forecast issue"
+  },
+  "required_outputs_per_episode": {
+    "edge_axis_artifact": "gwm.geospatial_kernel.edge_axis.v1",
+    "edge_flux_artifact": "gwm.geospatial_kernel.edge_flux_timeseries.v1",
+    "feature_axis_artifact": "gwm.geospatial_kernel.feature_axis.v1",
+    "prediction_artifact": "outlet physical prediction without outcomes",
+    "reach_state_artifact": "gwm.geospatial_kernel.reach_state_timeseries.v1",
+    "step_mass_ledger_artifact": "gwm.geospatial_kernel.step_mass_ledger.v1",
+    "telemetry_bundle": "gwm.geospatial_kernel.internal_innovation_telemetry.v1"
+  },
+  "schema": "gwm.geospatial_kernel.internal_innovation_rollout_protocol.v1",
+  "status": "frozen_awaiting_prospective_outcome_free_inputs",
+  "systems": {
+    "cross_system_parameter_sharing_required": true,
+    "system_count": 2,
+    "system_ids": [
+      "center_hill",
+      "j_percy_priest"
+    ],
+    "system_specific_refit_after_target_outcome_access": false
+  }
+}

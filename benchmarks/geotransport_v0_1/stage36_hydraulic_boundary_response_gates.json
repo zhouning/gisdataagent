@@ -1,0 +1,140 @@
+{
+  "all_gates_passed": true,
+  "compiled_at": "2026-07-30T08:19:36.878001+00:00",
+  "decision": {
+    "all_assessable_events_detect_departure": false,
+    "all_event_statistical_departure_support_admitted": false,
+    "all_events_target_functional_assessable": false,
+    "assessable_event_count": 3,
+    "blind_downstream_evidence_compiled": true,
+    "causal_release_response_admitted": false,
+    "detected_event_count": 0,
+    "physical_first_arrival_admitted": false,
+    "physical_travel_time_admitted": false,
+    "runtime_operator_admitted": false,
+    "stage36_status": "blind_hydraulic_boundary_departure_support_rejected"
+  },
+  "diagnostic_summary": {
+    "assessable_event_count": 3,
+    "detected_event_count": 0,
+    "event_count": 4,
+    "per_event_first_departure_offset_minutes": [
+      null,
+      null,
+      null,
+      null
+    ],
+    "per_event_statistical_departure_detected": [
+      false,
+      false,
+      false,
+      false
+    ],
+    "per_event_target_functional_assessable": [
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "evidence_ledger_artifact": {
+    "path": "data/geotransport_v0_1/stage36_center_hill_hydraulic_boundary_events/hydraulic_boundary_response_evidence_ledger.json",
+    "sha256": "81d981243976d147c2a6b2fba78bef2f478095c21fde118d24f57eab88250689",
+    "size_bytes": 42057
+  },
+  "frozen_stage36_artifacts": {
+    "data/geotransport_v0_1/stage36_center_hill_hydraulic_boundary_events/event_selection_manifest.json": {
+      "actual_sha256": "532a94a860b65d46f2361703c6acd6c1dafa2a4ab5860b801aebe339960a7540",
+      "expected_sha256": "532a94a860b65d46f2361703c6acd6c1dafa2a4ab5860b801aebe339960a7540",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage36_center_hill_hydraulic_boundary_events/observation_acquisition_manifest.json": {
+      "actual_sha256": "88c88416741287984ab5091e3d6e4a6d95384dad14a545832e76c50bf784a269",
+      "expected_sha256": "88c88416741287984ab5091e3d6e4a6d95384dad14a545832e76c50bf784a269",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage36_center_hill_hydraulic_boundary_events/observation_plan.json": {
+      "actual_sha256": "6402bbe5ef8fabca8090590b97379cc422bfbc557df53829f23cbfd5869e4f6f",
+      "expected_sha256": "6402bbe5ef8fabca8090590b97379cc422bfbc557df53829f23cbfd5869e4f6f",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage36_center_hill_hydraulic_boundary_events/protocol.json": {
+      "actual_sha256": "b0be7dedec2b7dfd933f2c81ea16a2b6bf853a3acafa499fd9beef84f7551ff7",
+      "expected_sha256": "b0be7dedec2b7dfd933f2c81ea16a2b6bf853a3acafa499fd9beef84f7551ff7",
+      "matches": true
+    },
+    "data/geotransport_v0_1/stage36_center_hill_hydraulic_boundary_events/selection_plan.json": {
+      "actual_sha256": "bee38f828d4a40fb9322e3cbf9bb14181b7e976b2a6e93c31423493c1f8e66a2",
+      "expected_sha256": "bee38f828d4a40fb9322e3cbf9bb14181b7e976b2a6e93c31423493c1f8e66a2",
+      "matches": true
+    },
+    "data_agent/test_geospatial_kernel_public_hydraulic_boundary_response.py": {
+      "actual_sha256": "24c9aa359489a998f10ce6c231cf946a874529ecbf493f3dfff528ebaa4b047c",
+      "expected_sha256": "24c9aa359489a998f10ce6c231cf946a874529ecbf493f3dfff528ebaa4b047c",
+      "matches": true
+    },
+    "data_agent/uwm/geospatial_kernel_v2/hydraulic_boundary_perturbation.py": {
+      "actual_sha256": "ae3b8e856301d3a0dd2afdf3dc1d03aa4080c66ec2cbe7455243bce6bff13b3f",
+      "expected_sha256": "ae3b8e856301d3a0dd2afdf3dc1d03aa4080c66ec2cbe7455243bce6bff13b3f",
+      "matches": true
+    },
+    "data_agent/uwm/geospatial_kernel_v2/public_hydraulic_boundary_response.py": {
+      "actual_sha256": "d8c1000ddb465e026ce888f56f86185ed9a32294fe2842514c7e8eb485b65823",
+      "expected_sha256": "d8c1000ddb465e026ce888f56f86185ed9a32294fe2842514c7e8eb485b65823",
+      "matches": true
+    },
+    "scripts/acquire_geotransport_stage36_hydraulic_boundary_events.py": {
+      "actual_sha256": "9299138feb32918d930ac423ac644de5ec983fc812eb8643d9029978908d1866",
+      "expected_sha256": "9299138feb32918d930ac423ac644de5ec983fc812eb8643d9029978908d1866",
+      "matches": true
+    },
+    "scripts/freeze_geotransport_stage36_hydraulic_boundary_event_protocol.py": {
+      "actual_sha256": "75b1275d8978d9f1e699f5571653d16ef2f648eac810aa05d8f7d3f185f460b5",
+      "expected_sha256": "75b1275d8978d9f1e699f5571653d16ef2f648eac810aa05d8f7d3f185f460b5",
+      "matches": true
+    }
+  },
+  "gates": {
+    "2023_event_fails_closed_on_baseline_support": true,
+    "acquisition_manifest_records_four_bounded_requests": true,
+    "all_assessable_event_departure_detection_is_rejected": true,
+    "all_downstream_samples_are_approved": true,
+    "all_event_statistical_departure_support_is_rejected": true,
+    "all_event_target_assessability_is_rejected": true,
+    "all_nine_raw_sources_are_hash_and_tls_verified": true,
+    "all_nine_raw_sources_match_exact_hashes": true,
+    "all_source_events_pass_the_frozen_source_gate": true,
+    "all_ten_stage36_code_and_freeze_artifacts_match": true,
+    "assessable_baseline_mads_match_frozen_computation": true,
+    "assessable_baseline_medians_match_frozen_computation": true,
+    "assessable_departure_thresholds_match_frozen_formula": true,
+    "assessable_search_windows_have_no_missing_samples": true,
+    "baseline_real_sample_counts_are_exact": true,
+    "causal_release_response_is_rejected": true,
+    "events_were_frozen_before_downstream_values": true,
+    "evidence_ledger_is_content_addressed": true,
+    "four_expected_blind_events_and_ranks_are_preserved": true,
+    "half_hour_grid_missingness_is_preserved_without_fill": true,
+    "no_assessable_event_crosses_the_frozen_departure_gate": true,
+    "observation_plan_was_frozen_before_downstream_values": true,
+    "physical_first_arrival_is_rejected": true,
+    "physical_travel_time_is_rejected": true,
+    "protocol_was_frozen_before_candidate_or_outcome_values": true,
+    "raw_sample_counts_preserve_the_hourly_2023_window": true,
+    "remaining_three_events_are_target_assessable": true,
+    "runtime_operator_is_rejected": true,
+    "search_real_sample_counts_are_exact": true,
+    "selection_plan_was_frozen_before_candidate_pool_values": true,
+    "source_and_target_operator_remains_hash_frozen": true,
+    "typed_refusal_controls_fail_closed": true
+  },
+  "refusal_controls": {
+    "all_event_departures": true,
+    "causal_release_response": true,
+    "physical_first_arrival": true,
+    "physical_travel_time": true,
+    "runtime_operator": true
+  },
+  "schema": "gwm.geotransport.stage36_hydraulic_boundary_response_gates.v1",
+  "status": "blind_hydraulic_boundary_departure_support_rejected"
+}

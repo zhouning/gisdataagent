@@ -1,0 +1,135 @@
+{
+  "claim_boundary": {
+    "geospatial_kernel_validated": false,
+    "internal_boundary_diagnostic_permitted": true,
+    "internal_boundary_operator_admitted": false,
+    "linear_reference_admission_blocker": "52m point-to-line offset exceeds the registered 30m precision gate",
+    "linear_reference_admitted": false,
+    "linear_reference_candidate_available": true,
+    "linear_reference_compiled": true,
+    "predictive_improvement_validated": false,
+    "public_data_without_user_supplied_data": true
+  },
+  "compile_lock": {
+    "central_partial_length_rule": "RouteLink full length times projected downstream fraction",
+    "gauge_projection_rule": "nearest point on NLDI COMID LineString",
+    "line_direction_rule": "gauge flowline endpoint shared with first downstream-flowline coordinate is the downstream endpoint",
+    "nldi_measure_role": "independent normalized-route address cross-check, not silently treated as a physical COMID length fraction",
+    "projected_crs": "EPSG:32616"
+  },
+  "flow_direction_check": {
+    "downstream_endpoint_matches": true,
+    "gauge_first_to_downstream_last_coordinate_distance_degrees": 0.008590623946410612,
+    "gauge_last_to_downstream_first_coordinate_distance_degrees": 0.0,
+    "gauge_linestring_coordinate_order": "upstream_to_downstream"
+  },
+  "generated_at": "2026-07-27T07:52:17.937013+00:00",
+  "linear_reference": {
+    "admitted": false,
+    "central_selection_uses_outcome": false,
+    "evidence_level": "candidate",
+    "nldi_flowline_length_m": 575.6605284666201,
+    "nldi_measure_0_to_100": 56.817,
+    "nldi_measure_normalized_for_cross_check_only": 0.56817,
+    "nldi_measure_vs_projected_downstream_fraction_abs": 0.016235390894354773,
+    "point_to_line_snap_distance_m": 52.070872366767695,
+    "projected_crs": "EPSG:32616",
+    "projected_downstream_fraction": 0.5844053908943547,
+    "projected_downstream_length_m": 336.41911616098594,
+    "projected_measure_from_upstream_m": 239.24141230563416,
+    "route_link_downstream_partial_length_m": 334.86428898246527,
+    "route_link_full_length_m": 573.0,
+    "route_link_vs_nldi_length_relative_error": 0.004643156137207891,
+    "uncertainty_bracket_downstream_fraction": [
+      0.56817,
+      0.5844053908943547
+    ]
+  },
+  "mode": "acquired",
+  "quality_gates": {
+    "all_admission_gates_passed": false,
+    "downstream_coordinate_order_verified": true,
+    "feature_attachment_verified": true,
+    "nldi_measure_and_projection_difference_below_two_percent": true,
+    "point_to_line_snap_distance_below_30m": false,
+    "route_link_vs_nldi_length_relative_error_below_one_percent": true
+  },
+  "requests": {
+    "downstream_feature_flowline": {
+      "maximum_bytes": 1000000,
+      "url": "https://api.water.usgs.gov/nldi/linked-data/comid/18421279?f=json"
+    },
+    "gauge_feature_flowline": {
+      "maximum_bytes": 1000000,
+      "url": "https://api.water.usgs.gov/nldi/linked-data/comid/18421273?f=json"
+    }
+  },
+  "schema": "gwm.geotransport.smith_fork_internal_boundary_reference.v1",
+  "site": {
+    "downstream_feature_id": 18421279,
+    "feature_id": 18421273,
+    "nldi_measure": 56.817,
+    "point": {
+      "coordinates": [
+        -85.9074506,
+        36.08731209
+      ],
+      "type": "Point"
+    },
+    "reachcode": "05130108000024",
+    "site_id": "03424730"
+  },
+  "source_reports": {
+    "full_subnetwork": {
+      "path": "data/geotransport_v0_1/center_hill_v2_d5_full_subnetwork/full_subnetwork.json",
+      "sha256": "9ae3611462c731ef1508dd091f499425b8befe338fa85e6649df696ee7a1b951",
+      "size_bytes": 50413
+    },
+    "multigauge": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_multigauge_development_inputs_report.json",
+      "sha256": "f96d059434668bd564932d5ae5bf03cb9ecdf0d4826f34013b7fafad3621cc2b",
+      "size_bytes": 6411
+    },
+    "station_catalog": {
+      "attempt_count": 1,
+      "content_type": "application/geo+json",
+      "final_url": "https://api.water.usgs.gov/nldi/linked-data/comid/18421703/navigation/UT/nwissite?distance=1000&f=json",
+      "http_status": 200,
+      "path": "data/geotransport_v0_1/center_hill_multigauge_development/raw/nldi_upstream_nwissite.json",
+      "retrieved_at": "2026-07-27T06:43:39.592248+00:00",
+      "sha256": "b9a1220316666b8f050aec64c9292aba7b89c33b35210191bf149cfb07f8615a",
+      "size_bytes": 87614,
+      "url": "https://api.water.usgs.gov/nldi/linked-data/comid/18421703/navigation/UT/nwissite?distance=1000&f=json"
+    },
+    "topology": {
+      "path": "benchmarks/geotransport_v0_1/center_hill_v2_d5_full_subnetwork_report.json",
+      "sha256": "9d066189ed23f0bf91fecdefa9327bcfc4a92704d4fb23e6e07c3bbe78559bbd",
+      "size_bytes": 19899
+    }
+  },
+  "sources": {
+    "downstream_feature_flowline": {
+      "attempt_count": 1,
+      "content_type": "application/geo+json",
+      "final_url": "https://api.water.usgs.gov/nldi/linked-data/comid/18421279?f=json",
+      "http_status": 200,
+      "path": "data/geotransport_v0_1/smith_fork_internal_boundary_reference/raw/downstream_feature_flowline.json",
+      "retrieved_at": "2026-07-27T07:52:17.933571+00:00",
+      "sha256": "81735df62f94e0c7744d162ca9ad51471d43108e47c8ab2e8f00744c3e9712b9",
+      "size_bytes": 1004,
+      "url": "https://api.water.usgs.gov/nldi/linked-data/comid/18421279?f=json"
+    },
+    "gauge_feature_flowline": {
+      "attempt_count": 1,
+      "content_type": "application/geo+json",
+      "final_url": "https://api.water.usgs.gov/nldi/linked-data/comid/18421273?f=json",
+      "http_status": 200,
+      "path": "data/geotransport_v0_1/smith_fork_internal_boundary_reference/raw/gauge_feature_flowline.json",
+      "retrieved_at": "2026-07-27T07:52:16.985708+00:00",
+      "sha256": "b55a3d1f4eb6db7ff3c0d8a443f7df65429cf35e5bea8d6e2ccc7606460551aa",
+      "size_bytes": 596,
+      "url": "https://api.water.usgs.gov/nldi/linked-data/comid/18421273?f=json"
+    }
+  },
+  "status": "candidate_internal_boundary_reference_compiled"
+}

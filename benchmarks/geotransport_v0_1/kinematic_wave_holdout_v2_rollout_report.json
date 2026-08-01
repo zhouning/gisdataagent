@@ -1,0 +1,190 @@
+{
+  "claim_boundary": {
+    "geospatial_kernel_validated": false,
+    "operator_form_admitted": false,
+    "outcome_free_predictions_sealed": true,
+    "outcomes_acquired": false,
+    "predictions_scored": false,
+    "predictive_validation_complete": false,
+    "two_system_complete_subnetworks_executed": true
+  },
+  "data_isolation": {
+    "outcome_columns_accepted_by_executor": false,
+    "outcome_manifest_accepted_by_executor": false,
+    "outcome_path_accepted_by_executor": false,
+    "outcome_urls_requested": false,
+    "outcome_values_loaded": false,
+    "usgs_observations_loaded": false
+  },
+  "generated_at": "2026-07-28T00:32:49.156243+00:00",
+  "input_artifacts": {
+    "input_report": {
+      "path": "benchmarks/geotransport_v0_1/kinematic_wave_holdout_v2_inputs_report.json",
+      "sha256": "79bbc235dbef5da8a6d284cb307b2753183773bfd7a28305b9ed896696394435",
+      "size_bytes": 13239
+    },
+    "protocol": {
+      "path": "benchmarks/geotransport_v0_1/kinematic_wave_holdout_v2_protocol.json",
+      "sha256": "0f59c130e2fe45d080bcaa488611f9c5556daf2488f14801f3c9c0a1a5998723",
+      "size_bytes": 18307
+    }
+  },
+  "joint_seal": {
+    "algorithm": "sha256_canonical_json",
+    "all_execution_gates_passed": true,
+    "all_predictions_present": true,
+    "outcome_access_permitted_after_this_report_is_written": true,
+    "sealed_system_ids": [
+      "center_hill",
+      "j_percy_priest"
+    ],
+    "sha256": "afd55975e192aace40d70b6eabfc5efb0646a197122c9f4e04fd4c33b37f7446"
+  },
+  "protocol_adjudication": {
+    "operator_flux_state_or_timestep_changed_from_v1": false,
+    "prediction_value_postprocessing": false,
+    "v1_gate_modified": false,
+    "v2_cfl_reporting_limit_binary64": 0.8000000000000003
+  },
+  "schema": "gwm.geotransport.kinematic_wave_holdout_rollout.v2",
+  "status": "joint_outcome_free_predictions_sealed",
+  "systems": {
+    "center_hill": {
+      "data_isolation": {
+        "outcome_columns_accepted": false,
+        "outcome_path_accepted": false,
+        "outcome_values_loaded": false
+      },
+      "invariants": {
+        "actual_all_cell_volumes_nonnegative_finite": true,
+        "actual_cfl_passed": true,
+        "actual_conservation_passed": true,
+        "actual_maximum_courant_number": 0.8000000000000003,
+        "actual_maximum_mass_residual_to_tolerance_ratio": 8.786746697480033e-05,
+        "all_execution_gates_passed": true,
+        "branch_silent_all_cell_volumes_nonnegative_finite": true,
+        "branch_silent_cfl_passed": true,
+        "branch_silent_conservation_passed": true,
+        "branch_silent_maximum_courant_number": 0.8000000000000003,
+        "branch_silent_maximum_mass_residual_to_tolerance_ratio": 8.68937460489967e-05,
+        "cfl_comparison_limit_two_binary64_ulps": 0.8000000000000003,
+        "diagnostic_only_always": true,
+        "independent_end_to_end_prediction_always": true,
+        "operator_form_never_admitted": true,
+        "zero_state_zero_input_identity_passed": true
+      },
+      "prediction_artifact": {
+        "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/predictions/center_hill.csv",
+        "sha256": "2994c046171ec033b22bd5db7ef483a46c0219cb5a21119320a830be9414420d",
+        "size_bytes": 65443
+      },
+      "registered_execution": {
+        "branch_feature_count": 409,
+        "cell_count": 1016,
+        "cfl_number": 0.8,
+        "cfl_reporting_comparison": "configured_CFL_plus_two_binary64_ULPs",
+        "diagnostic_only": true,
+        "distributed_q_lateral_ground_truth": false,
+        "feature_count": 435,
+        "initial_state_ground_truth": false,
+        "initial_state_possible_nudging": true,
+        "initialization": "operator_Manning_Q_to_A_without_velocity_scaling",
+        "mainstem_feature_count": 26,
+        "network_mode": "complete_incremental_tributary_DAG",
+        "operator": "BranchingFiniteVolumeKinematicWaveOperator",
+        "operator_form_admitted": false,
+        "operator_schema": "gwm.geospatial_kernel.branching_finite_volume_kinematic_wave.v1",
+        "target_cell_length_m": 1000.0,
+        "terminal_forcing_support_fraction": 0.8429738154993436,
+        "terminal_forcing_support_method": "preexisting_D2_NHDPlus_v2.1_flow_accumulation_spatial_support",
+        "timestep_seconds": 3600.0
+      },
+      "result": {
+        "actual_maximum_hourly_substeps": 2938,
+        "actual_total_integration_substeps": 452476,
+        "branch_silent_initial_storage_m3": 4489021.90383272,
+        "branch_silent_maximum_hourly_substeps": 2938,
+        "branch_silent_mean_m3s": 30.469777586186204,
+        "branch_silent_total_integration_substeps": 444985,
+        "initial_network_storage_m3": 5051660.309763772,
+        "mean_branch_effect_m3s": 0.8455380166497897,
+        "prediction_count": 672,
+        "prediction_maximum_m3s": 137.3780944895763,
+        "prediction_mean_m3s": 31.315315602835994,
+        "prediction_minimum_m3s": 12.812514540006788
+      },
+      "system_id": "center_hill"
+    },
+    "j_percy_priest": {
+      "data_isolation": {
+        "outcome_columns_accepted": false,
+        "outcome_path_accepted": false,
+        "outcome_values_loaded": false
+      },
+      "invariants": {
+        "actual_all_cell_volumes_nonnegative_finite": true,
+        "actual_cfl_passed": true,
+        "actual_conservation_passed": true,
+        "actual_maximum_courant_number": 0.8000000000000003,
+        "actual_maximum_mass_residual_to_tolerance_ratio": 0.00020366503763319908,
+        "all_execution_gates_passed": true,
+        "branch_silent_all_cell_volumes_nonnegative_finite": true,
+        "branch_silent_cfl_passed": true,
+        "branch_silent_conservation_passed": true,
+        "branch_silent_maximum_courant_number": 0.8000000000000003,
+        "branch_silent_maximum_mass_residual_to_tolerance_ratio": 0.0002748969094619648,
+        "cfl_comparison_limit_two_binary64_ulps": 0.8000000000000003,
+        "diagnostic_only_always": true,
+        "independent_end_to_end_prediction_always": true,
+        "operator_form_never_admitted": true,
+        "zero_state_zero_input_identity_passed": true
+      },
+      "prediction_artifact": {
+        "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/predictions/j_percy_priest.csv",
+        "sha256": "bc5249fbd565855b6dd1034a8652f3fcfc337c479158386daa791d47cfe72fd4",
+        "size_bytes": 81094
+      },
+      "registered_execution": {
+        "branch_feature_count": 38,
+        "cell_count": 101,
+        "cfl_number": 0.8,
+        "cfl_reporting_comparison": "configured_CFL_plus_two_binary64_ULPs",
+        "diagnostic_only": true,
+        "distributed_q_lateral_ground_truth": false,
+        "feature_count": 43,
+        "initial_state_ground_truth": false,
+        "initial_state_possible_nudging": true,
+        "initialization": "operator_Manning_Q_to_A_without_velocity_scaling",
+        "mainstem_feature_count": 5,
+        "network_mode": "complete_incremental_tributary_DAG",
+        "operator": "BranchingFiniteVolumeKinematicWaveOperator",
+        "operator_form_admitted": false,
+        "operator_schema": "gwm.geospatial_kernel.branching_finite_volume_kinematic_wave.v1",
+        "target_cell_length_m": 1000.0,
+        "terminal_forcing_support_fraction": 0.08827624889999866,
+        "terminal_forcing_support_method": "outcome_free_uniform_lateral_inflow_per_linear_reach_length",
+        "timestep_seconds": 3600.0
+      },
+      "result": {
+        "actual_maximum_hourly_substeps": 468,
+        "actual_total_integration_substeps": 98867,
+        "branch_silent_initial_storage_m3": 277047.5283504981,
+        "branch_silent_maximum_hourly_substeps": 468,
+        "branch_silent_mean_m3s": 40.34214360119716,
+        "branch_silent_total_integration_substeps": 98337,
+        "initial_network_storage_m3": 289947.90892520227,
+        "mean_branch_effect_m3s": 1.9759064209866364,
+        "prediction_count": 672,
+        "prediction_maximum_m3s": 175.47617989406191,
+        "prediction_mean_m3s": 42.31805002218378,
+        "prediction_minimum_m3s": 0.02084690435106269
+      },
+      "system_id": "j_percy_priest"
+    }
+  },
+  "window": {
+    "end_exclusive": "2022-12-08T01:00:00Z",
+    "hour_count": 672,
+    "start_inclusive": "2022-11-10T01:00:00Z"
+  }
+}

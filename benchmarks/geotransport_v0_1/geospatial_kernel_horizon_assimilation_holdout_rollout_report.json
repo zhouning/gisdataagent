@@ -1,0 +1,512 @@
+{
+  "claim_boundary": {
+    "candidate_promoted": false,
+    "geospatial_kernel_validated": false,
+    "holdout_outcomes_acquired_for_scoring": false,
+    "holdout_scored": false,
+    "issue_observations_acquired_in_causal_order": true,
+    "outcome_free_predictions_executed": true,
+    "runtime_default_enabled": false,
+    "static_inputs_acquired": true
+  },
+  "data_isolation": {
+    "full_outcome_series_requested": false,
+    "full_outcome_url_compiled": false,
+    "scores_computed": false,
+    "target_or_score_input_accepted": false
+  },
+  "execution": {
+    "constituent_prediction_count": 1792,
+    "frozen_total_request_count_completed": 122,
+    "horizon_count": 4,
+    "issue_count_per_system": 56,
+    "joint_issue_seal_count": 56,
+    "mode_count": 4,
+    "static_request_count": 10,
+    "system_count": 2,
+    "usgs_current_issue_retry_reuse_count": 0,
+    "usgs_issue_request_count": 112,
+    "usgs_remote_request_count": 112
+  },
+  "frozen_artifacts": {
+    "input_plan": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_input_plan.json",
+      "sha256": "bab7c4386501abd69bb8dd29353eadea01eae05039f9f91797a94266dc675bf9",
+      "size_bytes": 68421
+    },
+    "protocol": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_protocol.json",
+      "sha256": "b17e5a8fb36e05c111a8b87e5298e534516b9b3e3ce3ec46e4c003f1b5853722",
+      "size_bytes": 19562
+    },
+    "static_input_report": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout_static_inputs_report.json",
+      "sha256": "00b80bbb00ef9222c95661e1226e6003204d130f0020043f5c54994674cd65e4",
+      "size_bytes": 27487
+    }
+  },
+  "generated_at": "2026-08-01T03:14:07.163053+00:00",
+  "issue_artifacts": [
+    {
+      "issue_index": 0,
+      "issue_time_utc": "2022-04-28T01:00:00Z",
+      "joint_issue_seal_sha256": "a763b4b98ddce332846b840f8c1352bdb777901adc4bbb572ac563b5fd1e0caf",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/000/joint_issue.json",
+      "sha256": "efe0e59ff2da591aa9b9e78eb5bc60536d8415f11685fa49c1d1c4ac2cc99474",
+      "size_bytes": 21851
+    },
+    {
+      "issue_index": 12,
+      "issue_time_utc": "2022-04-28T13:00:00Z",
+      "joint_issue_seal_sha256": "36fd20cb85e66303ff19547129f612817bcea2418b00cf5d475a2f47930ff828",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/012/joint_issue.json",
+      "sha256": "1c4f47c8dc94083465a3181e6a7761d2801a40e9ec83154a1a5b545ff9df5a54",
+      "size_bytes": 21921
+    },
+    {
+      "issue_index": 24,
+      "issue_time_utc": "2022-04-29T01:00:00Z",
+      "joint_issue_seal_sha256": "0480ccc44fff8d499eb8c3c778e6091ce55ffc3c78779c65e3865d86bb6f807c",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/024/joint_issue.json",
+      "sha256": "b793cccc95ed40647c67f2d5beb31e1af01c80426b1e6f8b0a3ed432da9476c5",
+      "size_bytes": 21919
+    },
+    {
+      "issue_index": 36,
+      "issue_time_utc": "2022-04-29T13:00:00Z",
+      "joint_issue_seal_sha256": "376f34db3532f44dcf1eabf8434d4ca4be0d5f29769be2bea6ffdcba1524c402",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/036/joint_issue.json",
+      "sha256": "32f683a10551d7f65801426abe9d22922fafc156fcf3410a133d4ff6387d1444",
+      "size_bytes": 21924
+    },
+    {
+      "issue_index": 48,
+      "issue_time_utc": "2022-04-30T01:00:00Z",
+      "joint_issue_seal_sha256": "0b86d00fcf7cd2bfeb6e3de4ca13909b136f02e78546a2a2964a5f2bfdadc58c",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/048/joint_issue.json",
+      "sha256": "5ecea1a9491ab5d1ef4f567208777e815e7cdf7b9b6bd93b8c121f55370988a0",
+      "size_bytes": 21910
+    },
+    {
+      "issue_index": 60,
+      "issue_time_utc": "2022-04-30T13:00:00Z",
+      "joint_issue_seal_sha256": "b33bfd24fc788e3f59a9331d4f5c00ad72b6deae9b0415ddd12df61427d2b2cf",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/060/joint_issue.json",
+      "sha256": "2a568a2d5f6417f62272204bd2cd57604ab409720c23acc520416671ac01407b",
+      "size_bytes": 21919
+    },
+    {
+      "issue_index": 72,
+      "issue_time_utc": "2022-05-01T01:00:00Z",
+      "joint_issue_seal_sha256": "e67a37b0ac31adf4c86651243de919516e21a94a2023b8ce0324d51d9b92c654",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/072/joint_issue.json",
+      "sha256": "67bfccc72bc7737a59198ebfae5ffb3f4823d0df3bba5e6317c37894dcb277f0",
+      "size_bytes": 21897
+    },
+    {
+      "issue_index": 84,
+      "issue_time_utc": "2022-05-01T13:00:00Z",
+      "joint_issue_seal_sha256": "7925b9d6340b6df62409ecea9e692d5b610891faa80e7ca7eda5f9707c2be9e6",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/084/joint_issue.json",
+      "sha256": "590e455bcc5f16a7260e7b81fa48cbf779277478644ccf3f0cfe321fdf725c1f",
+      "size_bytes": 21922
+    },
+    {
+      "issue_index": 96,
+      "issue_time_utc": "2022-05-02T01:00:00Z",
+      "joint_issue_seal_sha256": "024e02b8941542c18dddb68b2fff4fefc669811908b7d3146979ffc942f6af3a",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/096/joint_issue.json",
+      "sha256": "6d22dbb677dd1c2dbac7af5a2405971649cc5fce5f3ee6c6bb262689f4dced4e",
+      "size_bytes": 21916
+    },
+    {
+      "issue_index": 108,
+      "issue_time_utc": "2022-05-02T13:00:00Z",
+      "joint_issue_seal_sha256": "d1378a90d7076ccfefc8424ae6df35986f5a4dfc0fbbcfc5342ea576c9492b57",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/108/joint_issue.json",
+      "sha256": "006ae42fcdbaf8db81f54dc2a48e8ca26996d8931715f20008ddc720d3a25d4b",
+      "size_bytes": 21983
+    },
+    {
+      "issue_index": 120,
+      "issue_time_utc": "2022-05-03T01:00:00Z",
+      "joint_issue_seal_sha256": "3304804eb9f576168889526ce8bf9466a1f669c0737ccd27be0fa9bdcd05d3f7",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/120/joint_issue.json",
+      "sha256": "5888b6271ae36e4d270d5bcd2b13fc6d95f8571c161dca585963aa4d4ca51d7f",
+      "size_bytes": 21914
+    },
+    {
+      "issue_index": 132,
+      "issue_time_utc": "2022-05-03T13:00:00Z",
+      "joint_issue_seal_sha256": "00ae38202302668adfdf83ad742eccfacb3c3b2259e77b966b715a8f0a08d3a7",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/132/joint_issue.json",
+      "sha256": "2f12064428b23d2f792adec4679b6b165e11b46769e94c683eab3ec87fc11236",
+      "size_bytes": 21998
+    },
+    {
+      "issue_index": 144,
+      "issue_time_utc": "2022-05-04T01:00:00Z",
+      "joint_issue_seal_sha256": "89d09279a7d31f7983275b6cd95d836437a7934ad4fdbd55fa74ba868ef0281c",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/144/joint_issue.json",
+      "sha256": "2fa825cef267c72cee05df2fc007dc8c1f8219b21e16f90f97d494b6cc8142de",
+      "size_bytes": 21923
+    },
+    {
+      "issue_index": 156,
+      "issue_time_utc": "2022-05-04T13:00:00Z",
+      "joint_issue_seal_sha256": "5d1f9b2b1586b82481f2288ae2160be8521f20a469ba7bcd87719ae25277e130",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/156/joint_issue.json",
+      "sha256": "8ea28dca419857e748efba22b4314b946892261971c98fcb462e89f94a25223f",
+      "size_bytes": 21921
+    },
+    {
+      "issue_index": 168,
+      "issue_time_utc": "2022-05-05T01:00:00Z",
+      "joint_issue_seal_sha256": "a88c59e050ffebe1a77f8e1853428974037ca8a633d72e0b9d4dd72c1cb4c791",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/168/joint_issue.json",
+      "sha256": "1e54b1347b6809f709d288f87de06f77aed9b5e0b9a69386cd3f45f79606ca3a",
+      "size_bytes": 21920
+    },
+    {
+      "issue_index": 180,
+      "issue_time_utc": "2022-05-05T13:00:00Z",
+      "joint_issue_seal_sha256": "8aa45390c39e36b2e6dd3b3c397265c883471614ffa4c19130f52e4ec66d4885",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/180/joint_issue.json",
+      "sha256": "deb6fe950027376787cdd5e6eed04d6ba69ccb8d63d98de57544433f0582922a",
+      "size_bytes": 21918
+    },
+    {
+      "issue_index": 192,
+      "issue_time_utc": "2022-05-06T01:00:00Z",
+      "joint_issue_seal_sha256": "9e39391eae0eff6a85224c2709a41cadc753ae122917527a7192ca2ba69878d3",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/192/joint_issue.json",
+      "sha256": "4a38111e892000377c283358b13113d8dd8b2641adf55228dd4e28c8ca691da1",
+      "size_bytes": 21906
+    },
+    {
+      "issue_index": 204,
+      "issue_time_utc": "2022-05-06T13:00:00Z",
+      "joint_issue_seal_sha256": "b89aef2e3f1dba6ef0a011532939a7f53089c0d5c4cb9ca9d7d5a3e4f6f1b01e",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/204/joint_issue.json",
+      "sha256": "3ebf07dabd52dc86abafeda59c8e67c173a2baf4943497bca498c5d3fb8be3d1",
+      "size_bytes": 21901
+    },
+    {
+      "issue_index": 216,
+      "issue_time_utc": "2022-05-07T01:00:00Z",
+      "joint_issue_seal_sha256": "59a727a449c5506a0cb79771ace8720adb3c909b628a6fed300d44fcd7f9896e",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/216/joint_issue.json",
+      "sha256": "79d8b6972375521256da27d136a586c22e5f511b108565507003a2d2a9a70ed4",
+      "size_bytes": 21921
+    },
+    {
+      "issue_index": 228,
+      "issue_time_utc": "2022-05-07T13:00:00Z",
+      "joint_issue_seal_sha256": "d5acb1d12d29b0030e61a512ee082904b1cc0bd545f4e2609540dd885b74c69c",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/228/joint_issue.json",
+      "sha256": "fa67d74073db5ca03cf8a653a514fee211a21b232b3e253acfcc7f0123f2fd3c",
+      "size_bytes": 21911
+    },
+    {
+      "issue_index": 240,
+      "issue_time_utc": "2022-05-08T01:00:00Z",
+      "joint_issue_seal_sha256": "a8dd48cd54904a412c59fda7609701b77570550a1b0a5e05fbb4ac0766498ef2",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/240/joint_issue.json",
+      "sha256": "94cea313ffdae49f652c9b6cfb1788f633efaaf4b0e29ba0501ec7f1a92a6cf0",
+      "size_bytes": 21914
+    },
+    {
+      "issue_index": 252,
+      "issue_time_utc": "2022-05-08T13:00:00Z",
+      "joint_issue_seal_sha256": "c0ac2a343b610aa910eb2e771bcf7d3e563a1b6b44b3183d71c59934957a9335",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/252/joint_issue.json",
+      "sha256": "0d4683efdfc3b1624e9c22119faf35811d6dcc0278f52eeae4f712366c43ac6e",
+      "size_bytes": 21970
+    },
+    {
+      "issue_index": 264,
+      "issue_time_utc": "2022-05-09T01:00:00Z",
+      "joint_issue_seal_sha256": "0c3916bc0321cdc3ce8d519d1932bb8532f05931e451356faa1d2a20687b73c0",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/264/joint_issue.json",
+      "sha256": "1e62a2c031605efb4efd718a1d93ec5e641a9da2884f146a0817887838617b46",
+      "size_bytes": 21919
+    },
+    {
+      "issue_index": 276,
+      "issue_time_utc": "2022-05-09T13:00:00Z",
+      "joint_issue_seal_sha256": "5b85d762c776184d5fdf43b2c110718cb9423a436941d1eb99c564a74339401c",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/276/joint_issue.json",
+      "sha256": "d39a75e153c5cb9c45f01e3c35fbb8741e7f4e51720562860dfcb68e8fa78166",
+      "size_bytes": 21915
+    },
+    {
+      "issue_index": 288,
+      "issue_time_utc": "2022-05-10T01:00:00Z",
+      "joint_issue_seal_sha256": "a24390859654c65a2b9f7e8640fdf39a03d2b669bb4e3207708a47991db7b734",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/288/joint_issue.json",
+      "sha256": "c53dda573ad63527a964367bc880e4aefa0a800d14fca45091397a80bb9d5301",
+      "size_bytes": 21910
+    },
+    {
+      "issue_index": 300,
+      "issue_time_utc": "2022-05-10T13:00:00Z",
+      "joint_issue_seal_sha256": "84906383ea770c48bfca903dad585b89d910d2ee8dec3f8810a59ce1ed871065",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/300/joint_issue.json",
+      "sha256": "d0c8c92458901335c21f2b88f4694e6c1148cbe879818110cba8b479c2cfda21",
+      "size_bytes": 21981
+    },
+    {
+      "issue_index": 312,
+      "issue_time_utc": "2022-05-11T01:00:00Z",
+      "joint_issue_seal_sha256": "4c50e2756d6571d48b9bf6995a404b82c7e0454299b5f1028087043a71c2cd18",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/312/joint_issue.json",
+      "sha256": "29c916b7455730f906cf25e20dbfb550c88548378138c92c983fec3691e352e0",
+      "size_bytes": 21901
+    },
+    {
+      "issue_index": 324,
+      "issue_time_utc": "2022-05-11T13:00:00Z",
+      "joint_issue_seal_sha256": "f4dcc838487ad2cdaf7148095be1872d7e95b4af974354ec0a107261d0adc6a2",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/324/joint_issue.json",
+      "sha256": "6d9e8270c1798d3b081e8d277f04df9183610cac451074c653cd1c615c7dea57",
+      "size_bytes": 21915
+    },
+    {
+      "issue_index": 336,
+      "issue_time_utc": "2022-05-12T01:00:00Z",
+      "joint_issue_seal_sha256": "76391a2d800726ac07cd45adfcd70cf8b0ab3dab059c2e795f4959705018109d",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/336/joint_issue.json",
+      "sha256": "2db5a42891570c96d8c420f33d1b675984dcabbd00d0dabcb5b0923174a88b0a",
+      "size_bytes": 21928
+    },
+    {
+      "issue_index": 348,
+      "issue_time_utc": "2022-05-12T13:00:00Z",
+      "joint_issue_seal_sha256": "bcd18de8230974a8e21efba8f4a5d3ee880e9754a699b9b61a2c25b736cf99ae",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/348/joint_issue.json",
+      "sha256": "92ec4ae1a416993176639557968cc821e4e4e64dbd4476465a97372d343497bf",
+      "size_bytes": 21912
+    },
+    {
+      "issue_index": 360,
+      "issue_time_utc": "2022-05-13T01:00:00Z",
+      "joint_issue_seal_sha256": "69d0c5471ab9c2ffb06b551b220b0190f4ff7ca3e36f1e623ee46087f38a3554",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/360/joint_issue.json",
+      "sha256": "c973c37f43ab91db3e8fe0a286dc704120eb0293fed9bba4f90f635fc86a5d1f",
+      "size_bytes": 21912
+    },
+    {
+      "issue_index": 372,
+      "issue_time_utc": "2022-05-13T13:00:00Z",
+      "joint_issue_seal_sha256": "cf6bbbb15083d0de96bc09aa538b40f9b5f4835956783aba515e894c2e6d3717",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/372/joint_issue.json",
+      "sha256": "7f2606e47c36b2e708572eac5cc77e0f76f088401e871af5d5b9d750a4a3540b",
+      "size_bytes": 21911
+    },
+    {
+      "issue_index": 384,
+      "issue_time_utc": "2022-05-14T01:00:00Z",
+      "joint_issue_seal_sha256": "feb5318ba1bc75d616ea2c943a68787b52712bace554e62a9714728039703d67",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/384/joint_issue.json",
+      "sha256": "9750ddf78db132c2c153e4affcfee28d94d8017c6105858cd827f175135c8b20",
+      "size_bytes": 21902
+    },
+    {
+      "issue_index": 396,
+      "issue_time_utc": "2022-05-14T13:00:00Z",
+      "joint_issue_seal_sha256": "4e7874373ffa81b70e7e9554b71b7af5d205ab1e17644bbfd0c4fe75e9b4f5d3",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/396/joint_issue.json",
+      "sha256": "0178370cf205bccd8e5d070d0ad9136d9850c41f0be5cfab54ca4b3ed7f50ed5",
+      "size_bytes": 21987
+    },
+    {
+      "issue_index": 408,
+      "issue_time_utc": "2022-05-15T01:00:00Z",
+      "joint_issue_seal_sha256": "f08f5a70931b4148529e963afd55477eeeeb0a622c8b95fc2c871a1967950865",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/408/joint_issue.json",
+      "sha256": "a54e3e9936ea44566d3269559ed39ebdf9a08f722111867badf613ddf3a2702f",
+      "size_bytes": 21927
+    },
+    {
+      "issue_index": 420,
+      "issue_time_utc": "2022-05-15T13:00:00Z",
+      "joint_issue_seal_sha256": "45d7de3a92724a07bf8397c84626937581e4b4d81234c46db91e39cb9b353ef4",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/420/joint_issue.json",
+      "sha256": "3d07be55175c54e28431df665778fc676897bcf9cd710ee80341f8b8a0a4e029",
+      "size_bytes": 21957
+    },
+    {
+      "issue_index": 432,
+      "issue_time_utc": "2022-05-16T01:00:00Z",
+      "joint_issue_seal_sha256": "b490057e5f23d93b273b94a4d25a15fe2c4d5278ef86b953614cbbfa1cd5ac74",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/432/joint_issue.json",
+      "sha256": "9845684938d9f799e8a95885d5913da7110133f7f2cdc4de137650097d67647e",
+      "size_bytes": 21988
+    },
+    {
+      "issue_index": 444,
+      "issue_time_utc": "2022-05-16T13:00:00Z",
+      "joint_issue_seal_sha256": "ab5fef5baa9927b02d6ba149395dc939b13b213bdc2a8843864e1b06904bcf6b",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/444/joint_issue.json",
+      "sha256": "1d0a752357e24a7eb108402aed8bbffbe46046b10e05ca8aa0f955c23b4f387c",
+      "size_bytes": 21931
+    },
+    {
+      "issue_index": 456,
+      "issue_time_utc": "2022-05-17T01:00:00Z",
+      "joint_issue_seal_sha256": "928175742cb21185c7edd04190f0fc1bf09853bfcc3fca295557c9ad7fd69a54",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/456/joint_issue.json",
+      "sha256": "11fc87e97a209a6dc45127762183bfb60a1c6d1bed42c2fc47dda75115fd4738",
+      "size_bytes": 21900
+    },
+    {
+      "issue_index": 468,
+      "issue_time_utc": "2022-05-17T13:00:00Z",
+      "joint_issue_seal_sha256": "7381966a6e7c78d1f6882e90dcf9f4aa0f04ab9930ebd98816d6c43beec6f164",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/468/joint_issue.json",
+      "sha256": "df460937cf3eca2782c065b6481c3c49544cbc643f89b2f69ef341d1694d8a07",
+      "size_bytes": 21918
+    },
+    {
+      "issue_index": 480,
+      "issue_time_utc": "2022-05-18T01:00:00Z",
+      "joint_issue_seal_sha256": "eaf3b633aa664d71326bc09ea1739c7bd60c3c7386e87bdb06ddba841b07eaa8",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/480/joint_issue.json",
+      "sha256": "d905a648ae0110545aa3b558b1c6eb56c3048725c7f5cff9f0e0863390ad0931",
+      "size_bytes": 21914
+    },
+    {
+      "issue_index": 492,
+      "issue_time_utc": "2022-05-18T13:00:00Z",
+      "joint_issue_seal_sha256": "66498986ad0b5820a300f3547a2b97c86011760df2d6ee14b82e5b1d5f1a02e5",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/492/joint_issue.json",
+      "sha256": "bd8f58dbe001e5d65b7c1cc6e1e8738bed327ba7fc6c60705bd94d7797acc250",
+      "size_bytes": 21917
+    },
+    {
+      "issue_index": 504,
+      "issue_time_utc": "2022-05-19T01:00:00Z",
+      "joint_issue_seal_sha256": "4a7893bf19245da029193a5896c46701eb7f538b889566a3537beba397231756",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/504/joint_issue.json",
+      "sha256": "d15b221f63cb51f325f37d114b28e234bc4f572d0969776b1fff1f07d2800063",
+      "size_bytes": 21921
+    },
+    {
+      "issue_index": 516,
+      "issue_time_utc": "2022-05-19T13:00:00Z",
+      "joint_issue_seal_sha256": "35c2443b5ff04860c9b530e333a6d79cdf54b2a793a5ae2914b77bb769164190",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/516/joint_issue.json",
+      "sha256": "de4aa44aad360831146c025f20507f37ecb55822cb43cf4991196afbb4b5d0ed",
+      "size_bytes": 21917
+    },
+    {
+      "issue_index": 528,
+      "issue_time_utc": "2022-05-20T01:00:00Z",
+      "joint_issue_seal_sha256": "99eeec9e771d152b3cf892846d90fc76439e0525d2f3e6b7af647e9e3ac89d87",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/528/joint_issue.json",
+      "sha256": "d725f5bce0f6e1b25db6914a34990a528c1c884a7b958e4b49f0d4bbdd4d2ad9",
+      "size_bytes": 21915
+    },
+    {
+      "issue_index": 540,
+      "issue_time_utc": "2022-05-20T13:00:00Z",
+      "joint_issue_seal_sha256": "09c08a38911f58b5ce981e19f1608d8a5aa29e9042d5ae9a79ba42164766d86a",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/540/joint_issue.json",
+      "sha256": "8f466a17b1a1ab25a27343cf0f549f5252cf33dcd5953952565991c19d95c4c0",
+      "size_bytes": 21926
+    },
+    {
+      "issue_index": 552,
+      "issue_time_utc": "2022-05-21T01:00:00Z",
+      "joint_issue_seal_sha256": "01b8390319fe74b299cdc988288e91633ea1e96ba009108b611fa69ec0371265",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/552/joint_issue.json",
+      "sha256": "956465be303d181cc4f71ef1470d073835edc8b499565593c0f85378c0803b42",
+      "size_bytes": 21941
+    },
+    {
+      "issue_index": 564,
+      "issue_time_utc": "2022-05-21T13:00:00Z",
+      "joint_issue_seal_sha256": "6e87c4c9aead7dd35b8ed5c8443d6216147c15d2e612bad37faa23b29bfcccb1",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/564/joint_issue.json",
+      "sha256": "eccc744b8e663b220439b66188617a7f826fed7f9a61face2544dcd2cc0e129d",
+      "size_bytes": 21929
+    },
+    {
+      "issue_index": 576,
+      "issue_time_utc": "2022-05-22T01:00:00Z",
+      "joint_issue_seal_sha256": "935ce75a9d3c43504141e108bfcdacd73955d1b69274a73fec9faa84e6cab6ab",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/576/joint_issue.json",
+      "sha256": "6c9f20c095e37f012645b687db4eedc201453b04707835e3c33cb97e21831b52",
+      "size_bytes": 21925
+    },
+    {
+      "issue_index": 588,
+      "issue_time_utc": "2022-05-22T13:00:00Z",
+      "joint_issue_seal_sha256": "035baaf26d6094d1a16b7f1ca1ae73cccf20eb4f4d2bb820be62005dade93e14",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/588/joint_issue.json",
+      "sha256": "1e31e49db978b298b84682cd1d8fbf913ba3891a1d7481384ac12184463f8c2e",
+      "size_bytes": 21921
+    },
+    {
+      "issue_index": 600,
+      "issue_time_utc": "2022-05-23T01:00:00Z",
+      "joint_issue_seal_sha256": "c5d12ac02993e3ebcba387b5f015f449505fdd49527f3d0965f9818718e1b6f6",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/600/joint_issue.json",
+      "sha256": "46ffe460d23dbbcaf444710313069e4c125149fd54a2316b4fe4f8f47eeee0a8",
+      "size_bytes": 21916
+    },
+    {
+      "issue_index": 612,
+      "issue_time_utc": "2022-05-23T13:00:00Z",
+      "joint_issue_seal_sha256": "a839bc8d29e887fb5a4cd51eb7c8f039b41b06e5dbd9e6e69f818b24aa6f680a",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/612/joint_issue.json",
+      "sha256": "606b48adef931f1d3f5a1d6daef233fcbd3ce007a2e07c53aaa8cecf1ea1e6bc",
+      "size_bytes": 21910
+    },
+    {
+      "issue_index": 624,
+      "issue_time_utc": "2022-05-24T01:00:00Z",
+      "joint_issue_seal_sha256": "578596b1979d3fbe5cc063cc989418bf17eb225c176691c21d44e8ca0186fe34",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/624/joint_issue.json",
+      "sha256": "76ad73f2b1c085f5398379263d0c16f6141c5c21ac410ecd8d065f5ef82c344f",
+      "size_bytes": 21917
+    },
+    {
+      "issue_index": 636,
+      "issue_time_utc": "2022-05-24T13:00:00Z",
+      "joint_issue_seal_sha256": "7f9c67b168057484f9a08bb3e91e7f564df59b47223cab573781d38f0016ff88",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/636/joint_issue.json",
+      "sha256": "03525118087616f21ede272376d6aedbb9bb13908e08b43232b2052bc83c41e5",
+      "size_bytes": 21907
+    },
+    {
+      "issue_index": 648,
+      "issue_time_utc": "2022-05-25T01:00:00Z",
+      "joint_issue_seal_sha256": "6a13c3f5426a6072c9c37e335be917836108864ffaeb42d2af9acf7da751810a",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/648/joint_issue.json",
+      "sha256": "2ac7d67cb1886dc87bf16d5a4c1359e32abd93873a21f3247e2eb6d8cee2e290",
+      "size_bytes": 21930
+    },
+    {
+      "issue_index": 660,
+      "issue_time_utc": "2022-05-25T13:00:00Z",
+      "joint_issue_seal_sha256": "49448d2230c47214d0f3b8cc4b8a969dfc5cbae8efcbfcb2dfe33a7a0ca712d5",
+      "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/issues/660/joint_issue.json",
+      "sha256": "a9352b0ede692f5ab6337143f4e82b851dc0dd34a6b680ca5e97a1aa9e9e1d7c",
+      "size_bytes": 21909
+    }
+  ],
+  "joint_chain": {
+    "chronological_chain_complete": true,
+    "final_joint_issue_seal_sha256": "49448d2230c47214d0f3b8cc4b8a969dfc5cbae8efcbfcb2dfe33a7a0ca712d5",
+    "first_previous_seal_sha256": null,
+    "next_issue_requested_only_after_prior_joint_seal": true
+  },
+  "prediction_artifact": {
+    "path": "data/geotransport_v0_1/geospatial_kernel_horizon_assimilation_holdout/outcome_free_rollout/predictions.csv",
+    "sha256": "7cace0b963bfc2914130f3e002627f0aa48f0109abc4a82fbd09de93df53ac5a",
+    "size_bytes": 242583
+  },
+  "schema": "gwm.geotransport.horizon_assimilation_holdout_rollout.v1",
+  "status": "all_chronological_issue_predictions_jointly_sealed"
+}

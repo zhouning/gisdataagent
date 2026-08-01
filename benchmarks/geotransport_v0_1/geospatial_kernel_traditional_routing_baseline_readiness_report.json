@@ -1,0 +1,247 @@
+{
+  "assessment_integrity_passed": true,
+  "decision": {
+    "fresh_validation_on_existing_window_permitted": false,
+    "generic_muskingum_cunge_family_rejected": false,
+    "geospatial_kernel_validated": false,
+    "historical_posthoc_execution_ready": false,
+    "professional_runtime_ready": false,
+    "recommended_next_action": "freeze_and_validate_an_independent_professional_muskingum_cunge_runtime_before_executing_the_matched_two_system_posthoc_comparison",
+    "runtime_default_enabled": false,
+    "two_system_data_ready": true
+  },
+  "evaluation_exposure": {
+    "fresh_unexposed_window_required_for_validation": true,
+    "new_comparator_may_be_tuned_on_this_window": false,
+    "new_comparator_on_this_window_is_posthoc_only": true,
+    "score_summary_identity_and_claim_valid": true,
+    "target_window_outcomes_already_exposed": true
+  },
+  "execution_boundary": {
+    "candidate_parameters_fitted": false,
+    "network_requests_performed": false,
+    "outcome_value_artifacts_opened": false,
+    "post_outcome_score_summary_read": true,
+    "predictions_scored": false,
+    "traditional_routing_predictions_executed": false
+  },
+  "generated_at": "2026-07-31T06:58:58.080312+00:00",
+  "runtime_candidates": {
+    "derived_initialized_diagnostic": {
+      "build_and_artifact_identity_valid": true,
+      "current_host_direct_execution_compatible": false,
+      "diagnostic_matrix_valid": true,
+      "negative_lobe_gate_passed": false,
+      "official_runtime": false,
+      "professional_baseline_eligible": false,
+      "rejection_reason": "derived_runtime_fails_negative_lobe_and_timestep_stability_gates",
+      "source_commit": "12a8eae0cdfed437143c590659fa7077605a5e70",
+      "timestep_stability_gate_passed": false
+    },
+    "official_fixed_commit": {
+      "build_and_artifact_identity_valid": true,
+      "current_host_direct_execution_compatible": false,
+      "execution_semantics_audit_valid": true,
+      "fixed_commit_initialization_gate_passed": false,
+      "professional_baseline_eligible": false,
+      "rejection_reason": "fixed_commit_kernel_reads_required_carry_values_before_assignment",
+      "source_commit": "12a8eae0cdfed437143c590659fa7077605a5e70"
+    }
+  },
+  "schema": "gwm.geospatial_kernel.traditional_routing_baseline_readiness.v1",
+  "source_artifacts": {
+    "derived_build": {
+      "expected_sha256": "5dc6cba8e1260db25499791e8dc5282f5705c72b0500f3e32aec8ec7c9988c9f",
+      "identity_matches": true,
+      "json_error": null,
+      "path": "data/geotransport_v0_1/t_route_mc_initialized_diagnostic_runtime/build_manifest.json",
+      "sha256": "5dc6cba8e1260db25499791e8dc5282f5705c72b0500f3e32aec8ec7c9988c9f",
+      "size_bytes": 2634
+    },
+    "derived_matrix": {
+      "expected_sha256": "83d5ebeaada13505d1d51902903d8d79203e3f3dc243b366b3563b0930781447",
+      "identity_matches": true,
+      "json_error": null,
+      "path": "benchmarks/geotransport_v0_1/t_route_mc_initialized_diagnostic_response_matrix.json",
+      "sha256": "83d5ebeaada13505d1d51902903d8d79203e3f3dc243b366b3563b0930781447",
+      "size_bytes": 272572
+    },
+    "execution_audit": {
+      "expected_sha256": "d5858ca8e0ce1eafee04dc009f24f43003b584ab069b8a822f0dfd70efcc151d",
+      "identity_matches": true,
+      "json_error": null,
+      "path": "benchmarks/geotransport_v0_1/t_route_mc_execution_semantics_report.json",
+      "sha256": "d5858ca8e0ce1eafee04dc009f24f43003b584ab069b8a822f0dfd70efcc151d",
+      "size_bytes": 12708
+    },
+    "input_report": {
+      "expected_sha256": "79bbc235dbef5da8a6d284cb307b2753183773bfd7a28305b9ed896696394435",
+      "identity_matches": true,
+      "json_error": null,
+      "path": "benchmarks/geotransport_v0_1/kinematic_wave_holdout_v2_inputs_report.json",
+      "sha256": "79bbc235dbef5da8a6d284cb307b2753183773bfd7a28305b9ed896696394435",
+      "size_bytes": 13239
+    },
+    "official_build": {
+      "expected_sha256": "26780f3c6cb9bcc4fa61b608c8e93843b4db2054a469ce0114c3880ba4b6a7f4",
+      "identity_matches": true,
+      "json_error": null,
+      "path": "data/geotransport_v0_1/t_route_mc_runtime/build_manifest.json",
+      "sha256": "26780f3c6cb9bcc4fa61b608c8e93843b4db2054a469ce0114c3880ba4b6a7f4",
+      "size_bytes": 1771
+    },
+    "score_report": {
+      "expected_sha256": "97eabc58c5cf9cff681e46793fa8f6167eff1217b31fbd8150cb256a97c47ed0",
+      "identity_matches": true,
+      "json_error": null,
+      "path": "benchmarks/geotransport_v0_1/kinematic_wave_holdout_v2_score.json",
+      "sha256": "97eabc58c5cf9cff681e46793fa8f6167eff1217b31fbd8150cb256a97c47ed0",
+      "size_bytes": 9893
+    }
+  },
+  "status": "blocked_professional_runtime_semantics",
+  "systems": {
+    "center_hill": {
+      "data_ready": true,
+      "dynamic_artifacts": {
+        "action_values": {
+          "actual_sha256": "87a3726e577eb65e05f6859b37e35102b749cecd29a50ec02c83aa9e2f8ae0d6",
+          "actual_size_bytes": 42859,
+          "declared_sha256": "87a3726e577eb65e05f6859b37e35102b749cecd29a50ec02c83aa9e2f8ae0d6",
+          "declared_size_bytes": 42859,
+          "identity_matches": true,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/center_hill/action_values.csv"
+        },
+        "feature_ids": {
+          "actual_sha256": "306787f4b6a37cbd82713e885355697d2a4ae25d9dc61f6c117021136b4491f0",
+          "actual_size_bytes": 3608,
+          "declared_sha256": "306787f4b6a37cbd82713e885355697d2a4ae25d9dc61f6c117021136b4491f0",
+          "declared_size_bytes": 3608,
+          "identity_matches": true,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/center_hill/decoded/feature_ids.npy"
+        },
+        "forcing_timestamps_utc": {
+          "actual_sha256": "6a0fb8ccdff2577896345a0168d145088013168c6cf12c20faa5a850b6568488",
+          "actual_size_bytes": 53888,
+          "declared_sha256": "6a0fb8ccdff2577896345a0168d145088013168c6cf12c20faa5a850b6568488",
+          "declared_size_bytes": 53888,
+          "identity_matches": true,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/center_hill/decoded/forcing_timestamps_utc.npy"
+        },
+        "initial_streamflow_m3s": {
+          "actual_sha256": "bbb3ccaeb46f7b25e18e1f36f34f55bed000ad9e8bb6bca073813c88786b7486",
+          "actual_size_bytes": 3608,
+          "declared_sha256": "bbb3ccaeb46f7b25e18e1f36f34f55bed000ad9e8bb6bca073813c88786b7486",
+          "declared_size_bytes": 3608,
+          "identity_matches": true,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/center_hill/decoded/initial_streamflow_m3s.npy"
+        },
+        "q_lateral_m3s": {
+          "actual_sha256": "3ba41c4dff692d404b76fdef03f8b6c5d0bc169c6e2125fe2992097f6768ca9f",
+          "actual_size_bytes": 2338688,
+          "declared_sha256": "3ba41c4dff692d404b76fdef03f8b6c5d0bc169c6e2125fe2992097f6768ca9f",
+          "declared_size_bytes": 2338688,
+          "identity_matches": true,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/center_hill/decoded/q_lateral_m3s.npy"
+        }
+      },
+      "feature_count": 435,
+      "gates": {
+        "all_declared_dynamic_artifacts_hash_bound": true,
+        "feature_axis_values_valid": true,
+        "hourly_action_and_forcing_axes_aligned": true,
+        "initial_state_action_and_forcing_values_valid": true,
+        "route_link_topology_and_parameter_axis_valid": true,
+        "source_report_declares_no_fill_or_missing_values": true
+      },
+      "route_link_subset": {
+        "actual_sha256": "764dccdf71c4761cf82792f5661fd5f66d61987bd52398fe0b93a24c2f7207be",
+        "actual_size_bytes": 39624,
+        "declared_sha256": "764dccdf71c4761cf82792f5661fd5f66d61987bd52398fe0b93a24c2f7207be",
+        "declared_size_bytes": 39624,
+        "identity_matches": true,
+        "path": "data/geotransport_v0_1/center_hill_v2_d5_full_subnetwork/RouteLink_CONUS_NWMv3_CenterHill_D5.nc"
+      },
+      "system_id": "center_hill",
+      "topology_report": {
+        "actual_sha256": "9d066189ed23f0bf91fecdefa9327bcfc4a92704d4fb23e6e07c3bbe78559bbd",
+        "actual_size_bytes": 19899,
+        "declared_sha256": "9d066189ed23f0bf91fecdefa9327bcfc4a92704d4fb23e6e07c3bbe78559bbd",
+        "declared_size_bytes": 19899,
+        "identity_matches": true,
+        "path": "benchmarks/geotransport_v0_1/center_hill_v2_d5_full_subnetwork_report.json"
+      }
+    },
+    "j_percy_priest": {
+      "data_ready": true,
+      "dynamic_artifacts": {
+        "action_values": {
+          "actual_sha256": "5bc87a79a1cb3abe93be51ce97d60cb91625284303c024ac9174f13c59b5e867",
+          "actual_size_bytes": 42990,
+          "declared_sha256": "5bc87a79a1cb3abe93be51ce97d60cb91625284303c024ac9174f13c59b5e867",
+          "declared_size_bytes": 42990,
+          "identity_matches": true,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/j_percy_priest/action_values.csv"
+        },
+        "feature_ids": {
+          "actual_sha256": "33b7a9e3996c3b4c6823f1b66d61ba9e608c117bbc92be125e30331e3e9d3373",
+          "actual_size_bytes": 472,
+          "declared_sha256": "33b7a9e3996c3b4c6823f1b66d61ba9e608c117bbc92be125e30331e3e9d3373",
+          "declared_size_bytes": 472,
+          "identity_matches": true,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/j_percy_priest/decoded/feature_ids.npy"
+        },
+        "forcing_timestamps_utc": {
+          "actual_sha256": "6a0fb8ccdff2577896345a0168d145088013168c6cf12c20faa5a850b6568488",
+          "actual_size_bytes": 53888,
+          "declared_sha256": "6a0fb8ccdff2577896345a0168d145088013168c6cf12c20faa5a850b6568488",
+          "declared_size_bytes": 53888,
+          "identity_matches": true,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/j_percy_priest/decoded/forcing_timestamps_utc.npy"
+        },
+        "initial_streamflow_m3s": {
+          "actual_sha256": "0a4a68df6fe04e7c6f37c6efeeae13f737a37623921b67d56c843ac233d49749",
+          "actual_size_bytes": 472,
+          "declared_sha256": "0a4a68df6fe04e7c6f37c6efeeae13f737a37623921b67d56c843ac233d49749",
+          "declared_size_bytes": 472,
+          "identity_matches": true,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/j_percy_priest/decoded/initial_streamflow_m3s.npy"
+        },
+        "q_lateral_m3s": {
+          "actual_sha256": "6b8a965fef0a9dd23af9e282f58522ebe20be4d8a4b009c9db8590ecff97a441",
+          "actual_size_bytes": 231296,
+          "declared_sha256": "6b8a965fef0a9dd23af9e282f58522ebe20be4d8a4b009c9db8590ecff97a441",
+          "declared_size_bytes": 231296,
+          "identity_matches": true,
+          "path": "data/geotransport_v0_1/kinematic_wave_holdout_v2/inputs/systems/j_percy_priest/decoded/q_lateral_m3s.npy"
+        }
+      },
+      "feature_count": 43,
+      "gates": {
+        "all_declared_dynamic_artifacts_hash_bound": true,
+        "feature_axis_values_valid": true,
+        "hourly_action_and_forcing_axes_aligned": true,
+        "initial_state_action_and_forcing_values_valid": true,
+        "route_link_topology_and_parameter_axis_valid": true,
+        "source_report_declares_no_fill_or_missing_values": true
+      },
+      "route_link_subset": {
+        "actual_sha256": "2e974662fe06ab30b33029a96a7958962f5a225ee4ffaab9e53503e1110dabc1",
+        "actual_size_bytes": 9836,
+        "declared_sha256": "2e974662fe06ab30b33029a96a7958962f5a225ee4ffaab9e53503e1110dabc1",
+        "declared_size_bytes": 9836,
+        "identity_matches": true,
+        "path": "data/geotransport_v0_1/j_percy_priest_v1_full_subnetwork/RouteLink_CONUS_NWMv3_JPercyPriest_V1.nc"
+      },
+      "system_id": "j_percy_priest",
+      "topology_report": {
+        "actual_sha256": "2159b88b57ae2a4d476ab025190b64a1cd2b62c1c4d6c9e45bca9e844d2fe3d6",
+        "actual_size_bytes": 13504,
+        "declared_sha256": "2159b88b57ae2a4d476ab025190b64a1cd2b62c1c4d6c9e45bca9e844d2fe3d6",
+        "declared_size_bytes": 13504,
+        "identity_matches": true,
+        "path": "benchmarks/geotransport_v0_1/j_percy_priest_v1_full_subnetwork_report.json"
+      }
+    }
+  }
+}

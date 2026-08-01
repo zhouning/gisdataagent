@@ -1,0 +1,234 @@
+{
+  "claim_boundary": {
+    "geospatial_kernel_validated": false,
+    "no_post_score_tuning_or_prediction_revision_permitted": true,
+    "operator_form_admitted": false,
+    "predictive_gate_passed": false,
+    "prospective_holdout_gate_passed": false,
+    "strict_end_to_end_protocol_conformance": false,
+    "two_system_prospective_score_available": true
+  },
+  "generated_at": "2026-07-28T00:38:54.769758+00:00",
+  "independence_limits": {
+    "external_tributary_streamflow_boundary_used": false,
+    "fully_observation_independent_inputs": false,
+    "nwm_initial_streamflow_ground_truth": false,
+    "nwm_initial_streamflow_possible_nudging": true,
+    "nwm_q_lateral_ground_truth": false,
+    "outcome_loaded_only_after_joint_prediction_seal": true
+  },
+  "multi_system_gates": {
+    "both_systems_predictive_and_execution_gates_passed": false,
+    "non_compensatory": true,
+    "prospective_holdout_gate_passed": false,
+    "strict_protocol_conformance_passed": false
+  },
+  "operator_admission": {
+    "current_role": "diagnostic_geospatial_kernel_candidate",
+    "holdout_gate_passed": false,
+    "operator_form_admitted_before_scoring": false,
+    "operator_form_admitted_by_this_score": false,
+    "raw_predictive_gate_passed": false,
+    "separate_architecture_decision_required": true
+  },
+  "protocol_conformance": {
+    "both_predictions_jointly_sealed_before_outcome_access": true,
+    "deviation": "Frozen acquisition rejected a missing persistence prior despite the omit-without-imputation policy; frozen scoring rejected finite approved negative USGS discharge. Recovery preserved missingness and all published finite values unchanged.",
+    "metrics_baseline_missingness_and_gates_predeclared": true,
+    "model_prediction_or_gate_changed_after_outcome_access": false,
+    "native_cadence_hourly_aggregation_fully_predeclared": true,
+    "post_outcome_acquisition_recovery_required": true,
+    "post_outcome_scoring_recovery_required": true,
+    "prediction_metric_baseline_or_gate_changed": false,
+    "strict_protocol_conformance_passed": false,
+    "window_systems_operator_topology_and_parameters_predeclared": true
+  },
+  "schema": "gwm.geotransport.kinematic_wave_holdout_score.v2",
+  "score_recovery": {
+    "approved_negative_values_preserved": true,
+    "evaluation_mask_metric_baseline_or_gate_changed": false,
+    "frozen_scorer_error": "kinematic_holdout_outcome_value_invalid",
+    "frozen_scorer_wrote_score_before_failure": false,
+    "negative_values_clipped_omitted_or_imputed": false,
+    "prediction_values_changed": false,
+    "recovery_code_frozen_before_outcome_access": false,
+    "recovery_decision": {
+      "path": "docs/architecture-decisions/adr-035-kinematic-wave-holdout-v2-approved-negative-discharge.md",
+      "sha256": "5995caa16b860a9390092d872224ab7438bdb911f34c54c278cccc53a280b26a",
+      "size_bytes": 1941
+    }
+  },
+  "source_artifacts": {
+    "joint_prediction_seal_sha256": "afd55975e192aace40d70b6eabfc5efb0646a197122c9f4e04fd4c33b37f7446",
+    "outcomes": {
+      "path": "benchmarks/geotransport_v0_1/kinematic_wave_holdout_v2_outcomes_report.json",
+      "sha256": "2e61b7440746a33eb5a9ab51bb8248325e31206a7c153baa470fbbe625cfbd38",
+      "size_bytes": 6778
+    },
+    "protocol": {
+      "path": "benchmarks/geotransport_v0_1/kinematic_wave_holdout_v2_protocol.json",
+      "sha256": "0f59c130e2fe45d080bcaa488611f9c5556daf2488f14801f3c9c0a1a5998723",
+      "size_bytes": 18307
+    },
+    "sealed_rollout": {
+      "path": "benchmarks/geotransport_v0_1/kinematic_wave_holdout_v2_rollout_report.json",
+      "sha256": "82be075838f1579bcd24af3bfb3b1f20dc02f047da30c7d6e0e22ae1359b66e3",
+      "size_bytes": 8242
+    }
+  },
+  "status": "two_system_kinematic_wave_holdout_scored_once",
+  "systems": {
+    "center_hill": {
+      "diagnostics": {
+        "branch_silent_is_registered_gate": false,
+        "kinematic_beats_branch_silent_rmse": true,
+        "kinematic_rmse_minus_branch_silent_rmse_m3s": -0.5237092937260748,
+        "kinematic_rmse_minus_persistence_rmse_m3s": 21.850294227627295
+      },
+      "execution_invariants": {
+        "actual_all_cell_volumes_nonnegative_finite": true,
+        "actual_cfl_passed": true,
+        "actual_conservation_passed": true,
+        "actual_maximum_courant_number": 0.8000000000000003,
+        "actual_maximum_mass_residual_to_tolerance_ratio": 8.786746697480033e-05,
+        "all_execution_gates_passed": true,
+        "branch_silent_all_cell_volumes_nonnegative_finite": true,
+        "branch_silent_cfl_passed": true,
+        "branch_silent_conservation_passed": true,
+        "branch_silent_maximum_courant_number": 0.8000000000000003,
+        "branch_silent_maximum_mass_residual_to_tolerance_ratio": 8.68937460489967e-05,
+        "cfl_comparison_limit_two_binary64_ulps": 0.8000000000000003,
+        "diagnostic_only_always": true,
+        "independent_end_to_end_prediction_always": true,
+        "operator_form_never_admitted": true,
+        "zero_state_zero_input_identity_passed": true
+      },
+      "gates": {
+        "all_predictive_and_execution_gates_passed": false,
+        "execution_invariants_passed": true,
+        "kinematic_beats_observed_persistence_rmse": false,
+        "minimum_scored_hours_passed": true
+      },
+      "mask_audit": {
+        "common_complete_case_mask": true,
+        "excluded_current_observation_missing": 0,
+        "excluded_immediate_previous_observation_missing": 1,
+        "outcomes_imputed": false,
+        "target_hour_count": 672
+      },
+      "metrics": {
+        "branch_silent_negative_control": {
+          "bias_m3s": -9.164716967621452,
+          "mae_m3s": 21.14730060567378,
+          "nse": 0.11309672945211702,
+          "rmse_m3s": 31.130120664768366
+        },
+        "kinematic_wave": {
+          "bias_m3s": -8.317937435585387,
+          "mae_m3s": 20.95777043916588,
+          "nse": 0.1426868789363156,
+          "rmse_m3s": 30.60641137104229
+        },
+        "observed_persistence": {
+          "bias_m3s": -0.1500244257824143,
+          "mae_m3s": 5.735364162921014,
+          "nse": 0.9298322138317443,
+          "rmse_m3s": 8.756117143414999
+        },
+        "same_hour_boundary_release": {
+          "bias_m3s": -7.461932187168404,
+          "mae_m3s": 48.037230292086434,
+          "nse": -2.365303443143112,
+          "rmse_m3s": 60.63938538113106
+        }
+      },
+      "outcome_sampling": {
+        "expected_native_samples_per_complete_hour": 2,
+        "hourly_rule": "mean_of_all_complete_approved_native_samples_on_(t-1h,t]",
+        "native_cadence_predeclared": true,
+        "native_sample_cadence_seconds": 1800
+      },
+      "scored_hour_count": 671,
+      "system_id": "center_hill"
+    },
+    "j_percy_priest": {
+      "diagnostics": {
+        "branch_silent_is_registered_gate": false,
+        "kinematic_beats_branch_silent_rmse": true,
+        "kinematic_rmse_minus_branch_silent_rmse_m3s": -0.18088660539650192,
+        "kinematic_rmse_minus_persistence_rmse_m3s": 10.151533719305426
+      },
+      "execution_invariants": {
+        "actual_all_cell_volumes_nonnegative_finite": true,
+        "actual_cfl_passed": true,
+        "actual_conservation_passed": true,
+        "actual_maximum_courant_number": 0.8000000000000003,
+        "actual_maximum_mass_residual_to_tolerance_ratio": 0.00020366503763319908,
+        "all_execution_gates_passed": true,
+        "branch_silent_all_cell_volumes_nonnegative_finite": true,
+        "branch_silent_cfl_passed": true,
+        "branch_silent_conservation_passed": true,
+        "branch_silent_maximum_courant_number": 0.8000000000000003,
+        "branch_silent_maximum_mass_residual_to_tolerance_ratio": 0.0002748969094619648,
+        "cfl_comparison_limit_two_binary64_ulps": 0.8000000000000003,
+        "diagnostic_only_always": true,
+        "independent_end_to_end_prediction_always": true,
+        "operator_form_never_admitted": true,
+        "zero_state_zero_input_identity_passed": true
+      },
+      "gates": {
+        "all_predictive_and_execution_gates_passed": false,
+        "execution_invariants_passed": true,
+        "kinematic_beats_observed_persistence_rmse": false,
+        "minimum_scored_hours_passed": true
+      },
+      "mask_audit": {
+        "common_complete_case_mask": true,
+        "excluded_current_observation_missing": 35,
+        "excluded_immediate_previous_observation_missing": 16,
+        "outcomes_imputed": false,
+        "target_hour_count": 672
+      },
+      "metrics": {
+        "branch_silent_negative_control": {
+          "bias_m3s": -8.109642893966157,
+          "mae_m3s": 23.141440325679714,
+          "nse": 0.6209975396310797,
+          "rmse_m3s": 37.86427795237662
+        },
+        "kinematic_wave": {
+          "bias_m3s": -6.114539682672311,
+          "mae_m3s": 23.445102603812384,
+          "nse": 0.6246100587105171,
+          "rmse_m3s": 37.683391346980116
+        },
+        "observed_persistence": {
+          "bias_m3s": 0.20812335076962965,
+          "mae_m3s": 14.498099602543705,
+          "nse": 0.7996203100022726,
+          "rmse_m3s": 27.53185762767469
+        },
+        "same_hour_boundary_release": {
+          "bias_m3s": -8.347498809721177,
+          "mae_m3s": 18.48938215414501,
+          "nse": 0.7198189428784765,
+          "rmse_m3s": 32.55577584963562
+        }
+      },
+      "outcome_sampling": {
+        "expected_native_samples_per_complete_hour": 4,
+        "hourly_rule": "mean_of_all_complete_approved_native_samples_on_(t-1h,t]",
+        "native_cadence_predeclared": true,
+        "native_sample_cadence_seconds": 900
+      },
+      "scored_hour_count": 621,
+      "system_id": "j_percy_priest"
+    }
+  },
+  "v1_erratum_boundary": {
+    "operator_flux_state_or_timestep_changed": false,
+    "v1_gate_changed": false,
+    "v2_cfl_reporting_limit": "configured_CFL_plus_two_binary64_ULPs",
+    "v2_uses_unseen_candidate_window": true
+  }
+}

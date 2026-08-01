@@ -1,0 +1,612 @@
+{
+  "claim_boundary": {
+    "benchmark_validated": false,
+    "forcing_feature_ids_admitted": false,
+    "nwm_feature_id_membership_verified": false,
+    "time_series_acquired": false,
+    "topology_paths_verified": true
+  },
+  "generated_at": "2026-07-26T08:17:44.165011+00:00",
+  "maximum_action_snap_distance_km": 2.0,
+  "maximum_navigation_distance_km": 500.0,
+  "metadata_manifest_path": "data/geotransport_v0_1/metadata_manifest.json",
+  "metadata_manifest_sha256": "cb8177c8a80db686e1e5cb92f3a01a586ab401f3eb8ce4f21792c5694f8e8eb3",
+  "registry_path": "benchmarks/geotransport_v0_1/public_data_registry.json",
+  "registry_sha256": "c07497e39e59b115a2d826193cfc15f536b12efe3c0f09b472089fe9e7572c57",
+  "schema": "gwm.geotransport.nldi_path_crosswalk.v1",
+  "systems": [
+    {
+      "action_comid": 18434275,
+      "action_point": {
+        "evidence": {
+          "path": "data/geotransport_v0_1/metadata/cwms-location-CETT1-CENTER-HILL.json",
+          "sha256": "319d5099a4dd1955ad2b4f13bf10dc6982047586c2c8a9e12b2c009bc6b500a6",
+          "source": "usace_cwms"
+        },
+        "latitude": 36.0975966,
+        "longitude": -85.8261235
+      },
+      "action_snap_distance_km_vertex_approximation": 0.010784,
+      "claim_boundary": {
+        "forcing_feature_ids_admitted": false,
+        "full_reach_boundary_approximation": true,
+        "intervening_control_screening_inherited_from_registry": true,
+        "nwm_feature_id_membership_verified": false
+      },
+      "gate_statuses": {
+        "action_snap_within_threshold": "pass",
+        "gauge_downstream_reachable": "pass"
+      },
+      "gauge_comid": 18421703,
+      "gauge_evidence": {
+        "path": "data/geotransport_v0_1/metadata/nldi-link-03424860.json",
+        "sha256": "f3c0c82a8c8a315d333ab9ed126192d5388ee712091d294640fdd4549f132fb0",
+        "source": "usgs_nldi"
+      },
+      "gauge_site_id": "03424860",
+      "path": {
+        "feature_ids": [
+          18434275,
+          18434265,
+          18421763,
+          18421761,
+          18421759,
+          18421753,
+          18421821,
+          18427677,
+          18421751,
+          18421811,
+          18421817,
+          18421831,
+          18421747,
+          18421829,
+          18421727,
+          18421737,
+          18421807,
+          18421719,
+          18421721,
+          18421803,
+          18421799,
+          18421731,
+          18421739,
+          18421741,
+          18421795,
+          18421707,
+          18421703
+        ],
+        "full_reach_path_length_km": 28.38084,
+        "gauge_feature_index": 26,
+        "gauge_reachable": true,
+        "path_feature_count": 27,
+        "returned_feature_count": 342
+      },
+      "source_requests": {
+        "action_position": {
+          "attempt_count": 1,
+          "http_status": 200,
+          "path": "data/geotransport_v0_1/topology/raw/center_hill-action-position.json",
+          "retrieved_at": "2026-07-26T08:17:21.431694+00:00",
+          "sha256": "2f0a8f2e257641f6c21ad6191b38642826db269b48d2b4aaaba5d5802201f556",
+          "size_bytes": 712,
+          "url": "https://api.water.usgs.gov/nldi/linked-data/comid/position?coords=POINT%28-85.8261235+36.0975966%29"
+        },
+        "downstream_navigation": {
+          "attempt_count": 1,
+          "http_status": 200,
+          "path": "data/geotransport_v0_1/topology/raw/center_hill-downstream-flowlines.json",
+          "retrieved_at": "2026-07-26T08:17:22.909676+00:00",
+          "sha256": "cf5f7a086104134667f77825bfd5b4314b610e83348b05d908c71bad0bab650b",
+          "size_bytes": 106060,
+          "url": "https://api.water.usgs.gov/nldi/linked-data/comid/18434275/navigation/DM/flowlines?distance=500.0"
+        }
+      },
+      "system_id": "center_hill",
+      "topology_gate_status": "pass",
+      "track": "GeoTransport-H"
+    },
+    {
+      "action_comid": 18401827,
+      "action_point": {
+        "evidence": {
+          "path": "data/geotransport_v0_1/metadata/cwms-location-JPPT1-J-PERCY-PRIEST.json",
+          "sha256": "f7886b920839f1ec032db344a8baacd504c547247070ef8af8d1ba8710d4abfa",
+          "source": "usace_cwms"
+        },
+        "latitude": 36.150278,
+        "longitude": -86.621111
+      },
+      "action_snap_distance_km_vertex_approximation": 0.70626,
+      "claim_boundary": {
+        "forcing_feature_ids_admitted": false,
+        "full_reach_boundary_approximation": true,
+        "intervening_control_screening_inherited_from_registry": true,
+        "nwm_feature_id_membership_verified": false
+      },
+      "gate_statuses": {
+        "action_snap_within_threshold": "pass",
+        "gauge_downstream_reachable": "pass"
+      },
+      "gauge_comid": 18401497,
+      "gauge_evidence": {
+        "path": "data/geotransport_v0_1/metadata/nldi-link-03430200.json",
+        "sha256": "8f7ed469dd9186819f92a11c01cc0e2f12b74e3965628aab5ce6897366337275",
+        "source": "usgs_nldi"
+      },
+      "gauge_site_id": "03430200",
+      "path": {
+        "feature_ids": [
+          18401827,
+          18401881,
+          18401817,
+          18401509,
+          18401503,
+          18401497
+        ],
+        "full_reach_path_length_km": 14.700167,
+        "gauge_feature_index": 5,
+        "gauge_reachable": true,
+        "path_feature_count": 6,
+        "returned_feature_count": 345
+      },
+      "source_requests": {
+        "action_position": {
+          "attempt_count": 1,
+          "http_status": 200,
+          "path": "data/geotransport_v0_1/topology/raw/j_percy_priest-action-position.json",
+          "retrieved_at": "2026-07-26T08:17:23.824419+00:00",
+          "sha256": "34c7dd1cfe4ea84d0ccbf1291e000a83fb49fb57757af8f0e1d3c380310b7cf1",
+          "size_bytes": 652,
+          "url": "https://api.water.usgs.gov/nldi/linked-data/comid/position?coords=POINT%28-86.621111+36.150278%29"
+        },
+        "downstream_navigation": {
+          "attempt_count": 1,
+          "http_status": 200,
+          "path": "data/geotransport_v0_1/topology/raw/j_percy_priest-downstream-flowlines.json",
+          "retrieved_at": "2026-07-26T08:17:25.162249+00:00",
+          "sha256": "c46da9f156b38de1d9f1fe2f2b84a2068445eb04c870792b7f7b504956b7ecf8",
+          "size_bytes": 106036,
+          "url": "https://api.water.usgs.gov/nldi/linked-data/comid/18401827/navigation/DM/flowlines?distance=500.0"
+        }
+      },
+      "system_id": "j_percy_priest",
+      "topology_gate_status": "pass",
+      "track": "GeoTransport-H"
+    },
+    {
+      "action_comid": 3577500,
+      "action_point": {
+        "evidence": {
+          "path": "data/geotransport_v0_1/metadata/cwms-location-RWNK2-WOLF-CREEK.json",
+          "sha256": "8d595bc4b95adec8ee34474a3e0dccef8fb9c682acb1ee55a015d89c19fcc8e9",
+          "source": "usace_cwms"
+        },
+        "latitude": 36.883611,
+        "longitude": -85.139444
+      },
+      "action_snap_distance_km_vertex_approximation": 0.090393,
+      "claim_boundary": {
+        "forcing_feature_ids_admitted": false,
+        "full_reach_boundary_approximation": true,
+        "intervening_control_screening_inherited_from_registry": true,
+        "nwm_feature_id_membership_verified": false
+      },
+      "gate_statuses": {
+        "action_snap_within_threshold": "pass",
+        "gauge_downstream_reachable": "pass"
+      },
+      "gauge_comid": 3577682,
+      "gauge_evidence": {
+        "path": "data/geotransport_v0_1/metadata/nldi-link-03414100.json",
+        "sha256": "10f58db2cdc438e0fad75e3cdba0e5ea52dfc50b3e3c332fad3f30a58e59ed02",
+        "source": "usgs_nldi"
+      },
+      "gauge_site_id": "03414100",
+      "path": {
+        "feature_ids": [
+          3577500,
+          3577456,
+          3577934,
+          3577938,
+          3577452,
+          3577470,
+          3577480,
+          3577482,
+          3577488,
+          3577502,
+          3577498,
+          3577494,
+          3577946,
+          3577942,
+          3577474,
+          3577524,
+          3577530,
+          3577918,
+          3577540,
+          3577538,
+          3577528,
+          3577546,
+          3577568,
+          3577586,
+          3577600,
+          3577614,
+          3577616,
+          3577612,
+          3577954,
+          3577950,
+          3577574,
+          3577564,
+          3577560,
+          3577552,
+          3577578,
+          3577590,
+          3577606,
+          3577960,
+          3577624,
+          3577964,
+          3577642,
+          3577654,
+          3577682
+        ],
+        "full_reach_path_length_km": 58.944282,
+        "gauge_feature_index": 42,
+        "gauge_reachable": true,
+        "path_feature_count": 43,
+        "returned_feature_count": 290
+      },
+      "source_requests": {
+        "action_position": {
+          "attempt_count": 1,
+          "http_status": 200,
+          "path": "data/geotransport_v0_1/topology/raw/wolf_creek-action-position.json",
+          "retrieved_at": "2026-07-26T08:17:26.436961+00:00",
+          "sha256": "ac65fbb941091601fe6c3c725c9ce9f48f7cbcf3b4f7bf1cd142c0cf2e8db590",
+          "size_bytes": 623,
+          "url": "https://api.water.usgs.gov/nldi/linked-data/comid/position?coords=POINT%28-85.139444+36.883611%29"
+        },
+        "downstream_navigation": {
+          "attempt_count": 1,
+          "http_status": 200,
+          "path": "data/geotransport_v0_1/topology/raw/wolf_creek-downstream-flowlines.json",
+          "retrieved_at": "2026-07-26T08:17:28.126562+00:00",
+          "sha256": "146a874d3f1fb788f9db488ed5338a6d53dd8d9ddc2a9d84f0c4afe7c40ae006",
+          "size_bytes": 97144,
+          "url": "https://api.water.usgs.gov/nldi/linked-data/comid/3577500/navigation/DM/flowlines?distance=500.0"
+        }
+      },
+      "system_id": "wolf_creek",
+      "topology_gate_status": "pass",
+      "track": "GeoTransport-H"
+    },
+    {
+      "action_comid": 10040794,
+      "action_point": {
+        "evidence": {
+          "path": "data/geotransport_v0_1/metadata/rise-catalog-item-4314.json",
+          "sha256": "11b02b79a7b73d1b40175c1f304d7571dc60f543527ca7c45809b7281a6254c7",
+          "source": "usbr_rise"
+        },
+        "latitude": 40.97789,
+        "longitude": -109.57304
+      },
+      "action_snap_distance_km_vertex_approximation": 1.01593,
+      "claim_boundary": {
+        "forcing_feature_ids_admitted": false,
+        "full_reach_boundary_approximation": true,
+        "intervening_control_screening_inherited_from_registry": true,
+        "nwm_feature_id_membership_verified": false
+      },
+      "gate_statuses": {
+        "action_snap_within_threshold": "pass",
+        "gauge_downstream_reachable": "pass"
+      },
+      "gauge_comid": 10040950,
+      "gauge_evidence": {
+        "path": "data/geotransport_v0_1/metadata/nldi-link-09234500.json",
+        "sha256": "db99006b2f23bfffeda4785b6b768df073087c500254c9d66e7b89f376e1b95b",
+        "source": "usgs_nldi"
+      },
+      "gauge_site_id": "09234500",
+      "path": {
+        "feature_ids": [
+          10040794,
+          10040808,
+          10040820,
+          10040812,
+          10040810,
+          10040818,
+          10040824,
+          10040822,
+          10040826,
+          10040830,
+          10040836,
+          10040860,
+          10040862,
+          10040924,
+          10040920,
+          10040908,
+          10040906,
+          10040928,
+          10040926,
+          10040938,
+          10040882,
+          10040874,
+          10040878,
+          10040888,
+          10040902,
+          10040904,
+          10040932,
+          10040898,
+          10040912,
+          10040914,
+          10040950
+        ],
+        "full_reach_path_length_km": 45.851948,
+        "gauge_feature_index": 30,
+        "gauge_reachable": true,
+        "path_feature_count": 31,
+        "returned_feature_count": 432
+      },
+      "source_requests": {
+        "action_position": {
+          "attempt_count": 1,
+          "http_status": 200,
+          "path": "data/geotransport_v0_1/topology/raw/flaming_gorge-action-position.json",
+          "retrieved_at": "2026-07-26T08:17:29.305127+00:00",
+          "sha256": "4dc40c90b824769555cf9ff2e3c85014c8a075d6077e944bbdcb41b71980b548",
+          "size_bytes": 637,
+          "url": "https://api.water.usgs.gov/nldi/linked-data/comid/position?coords=POINT%28-109.57304+40.97789%29"
+        },
+        "downstream_navigation": {
+          "attempt_count": 1,
+          "http_status": 200,
+          "path": "data/geotransport_v0_1/topology/raw/flaming_gorge-downstream-flowlines.json",
+          "retrieved_at": "2026-07-26T08:17:32.555937+00:00",
+          "sha256": "242ca8d04c9046e99d7ea006446a8e62cf37660bee400493bd81e1f5fce07b5d",
+          "size_bytes": 207798,
+          "url": "https://api.water.usgs.gov/nldi/linked-data/comid/10040794/navigation/DM/flowlines?distance=500.0"
+        }
+      },
+      "system_id": "flaming_gorge",
+      "topology_gate_status": "pass",
+      "track": "GeoTransport-D"
+    },
+    {
+      "action_comid": 18355215,
+      "action_point": {
+        "evidence": {
+          "path": "data/geotransport_v0_1/metadata/rise-catalog-item-4313.json",
+          "sha256": "f41426be8d0b1fea617b5e8caaccbf1865ec466246816eb92c9b2e569429788e",
+          "source": "usbr_rise"
+        },
+        "latitude": 42.05781,
+        "longitude": -110.09665
+      },
+      "action_snap_distance_km_vertex_approximation": 0.380736,
+      "claim_boundary": {
+        "forcing_feature_ids_admitted": false,
+        "full_reach_boundary_approximation": true,
+        "intervening_control_screening_inherited_from_registry": true,
+        "nwm_feature_id_membership_verified": false
+      },
+      "gate_statuses": {
+        "action_snap_within_threshold": "pass",
+        "gauge_downstream_reachable": "pass"
+      },
+      "gauge_comid": 18312556,
+      "gauge_evidence": {
+        "path": "data/geotransport_v0_1/metadata/nldi-link-09211200.json",
+        "sha256": "88589fb5c809c2e3e6ef6962a029095fcd59ce3a6d40d5a21537c4e08c5e0b57",
+        "source": "usgs_nldi"
+      },
+      "gauge_site_id": "09211200",
+      "path": {
+        "feature_ids": [
+          18355215,
+          18355223,
+          18355227,
+          18355233,
+          18355235,
+          18355237,
+          18355239,
+          18355241,
+          18312272,
+          18312276,
+          18312286,
+          18312564,
+          18312566,
+          18312556
+        ],
+        "full_reach_path_length_km": 7.302627,
+        "gauge_feature_index": 13,
+        "gauge_reachable": true,
+        "path_feature_count": 14,
+        "returned_feature_count": 596
+      },
+      "source_requests": {
+        "action_position": {
+          "attempt_count": 1,
+          "http_status": 200,
+          "path": "data/geotransport_v0_1/topology/raw/fontenelle-action-position.json",
+          "retrieved_at": "2026-07-26T08:17:33.475836+00:00",
+          "sha256": "cffc3c0e58d935b6681fdf491f061e6ee9093620da089df28ad395dd31704d70",
+          "size_bytes": 426,
+          "url": "https://api.water.usgs.gov/nldi/linked-data/comid/position?coords=POINT%28-110.09665+42.05781%29"
+        },
+        "downstream_navigation": {
+          "attempt_count": 1,
+          "http_status": 200,
+          "path": "data/geotransport_v0_1/topology/raw/fontenelle-downstream-flowlines.json",
+          "retrieved_at": "2026-07-26T08:17:35.431917+00:00",
+          "sha256": "b5a2808ea7483dd90f5b307558f10ed7dc4f90024359f41741af25fd77c103b2",
+          "size_bytes": 198088,
+          "url": "https://api.water.usgs.gov/nldi/linked-data/comid/18355215/navigation/DM/flowlines?distance=500.0"
+        }
+      },
+      "system_id": "fontenelle",
+      "topology_gate_status": "pass",
+      "track": "GeoTransport-D"
+    },
+    {
+      "action_comid": 3528035,
+      "action_point": {
+        "evidence": {
+          "path": "data/geotransport_v0_1/metadata/rise-catalog-item-4315.json",
+          "sha256": "0afbd9afe8d90d82c41c37daf397e9f82f0d067784a645472419435c4259d9f5",
+          "source": "usbr_rise"
+        },
+        "latitude": 37.05778,
+        "longitude": -111.30332
+      },
+      "action_snap_distance_km_vertex_approximation": 0.598433,
+      "claim_boundary": {
+        "forcing_feature_ids_admitted": false,
+        "full_reach_boundary_approximation": true,
+        "intervening_control_screening_inherited_from_registry": true,
+        "nwm_feature_id_membership_verified": false
+      },
+      "gate_statuses": {
+        "action_snap_within_threshold": "pass",
+        "gauge_downstream_reachable": "pass"
+      },
+      "gauge_comid": 20733845,
+      "gauge_evidence": {
+        "path": "data/geotransport_v0_1/metadata/nldi-link-09380000.json",
+        "sha256": "d6a840eafa0d3056a049384a7150d40548353e1270d8d6e16f03d937bc7ef5c0",
+        "source": "usgs_nldi"
+      },
+      "gauge_site_id": "09380000",
+      "path": {
+        "feature_ids": [
+          3528035,
+          3527969,
+          3527975,
+          3527979,
+          3528005,
+          3528021,
+          3528007,
+          3528015,
+          3528909,
+          3528919,
+          3528925,
+          3528927,
+          3529025,
+          3528937,
+          3528941,
+          3528943,
+          3528951,
+          3528953,
+          3528957,
+          3528971,
+          3528973,
+          3528963,
+          3528965,
+          3528987,
+          3529001,
+          20733843,
+          20733845
+        ],
+        "full_reach_path_length_km": 63.282282,
+        "gauge_feature_index": 26,
+        "gauge_reachable": true,
+        "path_feature_count": 27,
+        "returned_feature_count": 636
+      },
+      "source_requests": {
+        "action_position": {
+          "attempt_count": 1,
+          "http_status": 200,
+          "path": "data/geotransport_v0_1/topology/raw/glen_canyon-action-position.json",
+          "retrieved_at": "2026-07-26T08:17:37.128381+00:00",
+          "sha256": "b30d305a7d1c91ec8e5dab0ae4d8aace120e9bdce7e8d11797fcdafedd2e84a2",
+          "size_bytes": 8700,
+          "url": "https://api.water.usgs.gov/nldi/linked-data/comid/position?coords=POINT%28-111.30332+37.05778%29"
+        },
+        "downstream_navigation": {
+          "attempt_count": 1,
+          "http_status": 200,
+          "path": "data/geotransport_v0_1/topology/raw/glen_canyon-downstream-flowlines.json",
+          "retrieved_at": "2026-07-26T08:17:39.909171+00:00",
+          "sha256": "baafbe627c1c9d3f42505bc8bcb197c8e116e88598e202314bdae116e78422a1",
+          "size_bytes": 201055,
+          "url": "https://api.water.usgs.gov/nldi/linked-data/comid/3528035/navigation/DM/flowlines?distance=500.0"
+        }
+      },
+      "system_id": "glen_canyon",
+      "topology_gate_status": "pass",
+      "track": "GeoTransport-D"
+    },
+    {
+      "action_comid": 17040419,
+      "action_point": {
+        "evidence": {
+          "path": "data/geotransport_v0_1/metadata/rise-catalog-item-4316.json",
+          "sha256": "5c1e177b4a32a8027f09bcb9d15d64a663051542d8308d3ac39b51894b7bf8c6",
+          "source": "usbr_rise"
+        },
+        "latitude": 36.85932,
+        "longitude": -107.53047
+      },
+      "action_snap_distance_km_vertex_approximation": 0.260741,
+      "claim_boundary": {
+        "forcing_feature_ids_admitted": false,
+        "full_reach_boundary_approximation": true,
+        "intervening_control_screening_inherited_from_registry": true,
+        "nwm_feature_id_membership_verified": false
+      },
+      "gate_statuses": {
+        "action_snap_within_threshold": "pass",
+        "gauge_downstream_reachable": "pass"
+      },
+      "gauge_comid": 17040461,
+      "gauge_evidence": {
+        "path": "data/geotransport_v0_1/metadata/nldi-link-09355500.json",
+        "sha256": "41a14b6181542f2478585ff8fde02208f4682ea312ef0aa359bc127deb2bb1d3",
+        "source": "usgs_nldi"
+      },
+      "gauge_site_id": "09355500",
+      "path": {
+        "feature_ids": [
+          17040419,
+          17040427,
+          17040433,
+          17040431,
+          17040447,
+          17040457,
+          17040459,
+          17039561,
+          17040463,
+          17040461
+        ],
+        "full_reach_path_length_km": 25.948136,
+        "gauge_feature_index": 9,
+        "gauge_reachable": true,
+        "path_feature_count": 10,
+        "returned_feature_count": 446
+      },
+      "source_requests": {
+        "action_position": {
+          "attempt_count": 1,
+          "http_status": 200,
+          "path": "data/geotransport_v0_1/topology/raw/navajo-action-position.json",
+          "retrieved_at": "2026-07-26T08:17:42.077496+00:00",
+          "sha256": "1f342c0e36db6d81d900b6190e136d2d5b4457e3881d40f1ce99d63a0a49bd37",
+          "size_bytes": 638,
+          "url": "https://api.water.usgs.gov/nldi/linked-data/comid/position?coords=POINT%28-107.53047+36.85932%29"
+        },
+        "downstream_navigation": {
+          "attempt_count": 1,
+          "http_status": 200,
+          "path": "data/geotransport_v0_1/topology/raw/navajo-downstream-flowlines.json",
+          "retrieved_at": "2026-07-26T08:17:44.164240+00:00",
+          "sha256": "a92241cd7f196dcea83ba03211e8c678522426d0af80aa14f3451aff119fc436",
+          "size_bytes": 187029,
+          "url": "https://api.water.usgs.gov/nldi/linked-data/comid/17040419/navigation/DM/flowlines?distance=500.0"
+        }
+      },
+      "system_id": "navajo",
+      "topology_gate_status": "pass",
+      "track": "GeoTransport-D"
+    }
+  ],
+  "topology_gate_status": "pass"
+}

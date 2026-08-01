@@ -1,0 +1,262 @@
+{
+  "calibration": {
+    "calibration_outcomes_used": true,
+    "evaluation": {
+      "all_rows_use_frozen_uncertainty_parameters": true,
+      "empirical_coverage_is_posthoc_diagnostic": false,
+      "future_outlet_observation_used_at_interval_inference": false,
+      "metrics_by_horizon": {
+        "1": {
+          "empirical_marginal_coverage": 0.9031578947368422,
+          "lower_bound_clipped_count": 7,
+          "mean_interval_width_m3s": 85.33360730255093,
+          "median_interval_width_m3s": 85.47502914838401,
+          "sample_count": 475,
+          "upper_bound_clipped_count": 0
+        },
+        "12": {
+          "empirical_marginal_coverage": 0.9031578947368422,
+          "lower_bound_clipped_count": 63,
+          "mean_interval_width_m3s": 244.02163553192347,
+          "median_interval_width_m3s": 248.3608476364908,
+          "sample_count": 475,
+          "upper_bound_clipped_count": 0
+        },
+        "3": {
+          "empirical_marginal_coverage": 0.9031578947368422,
+          "lower_bound_clipped_count": 19,
+          "mean_interval_width_m3s": 135.50725100408962,
+          "median_interval_width_m3s": 136.1739574483604,
+          "sample_count": 475,
+          "upper_bound_clipped_count": 0
+        },
+        "6": {
+          "empirical_marginal_coverage": 0.9031578947368422,
+          "lower_bound_clipped_count": 22,
+          "mean_interval_width_m3s": 170.29269307274745,
+          "median_interval_width_m3s": 171.26085390916717,
+          "sample_count": 475,
+          "upper_bound_clipped_count": 0
+        }
+      }
+    },
+    "parameters": {
+      "absolute_error_radius_m3s": [
+        42.737514574192005,
+        68.0869787241802,
+        85.63042695458358,
+        124.1804238182454
+      ],
+      "admitted": false,
+      "calibration_outcomes_used": true,
+      "calibration_sample_count": [
+        475,
+        475,
+        475,
+        475
+      ],
+      "calibration_target_end": "2022-01-05T13:00:00+00:00",
+      "calibration_target_start": "2021-12-16T03:00:00+00:00",
+      "conditional_coverage_guarantee_claimed": false,
+      "evidence_level": "candidate",
+      "finite_sample_coverage_guarantee_claimed": false,
+      "horizons_hours": [
+        1,
+        3,
+        6,
+        12
+      ],
+      "method": "horizon_specific_empirical_absolute_error_finite_sample_rank",
+      "point_parameter_artifact_sha256": "56990a10610c3ab7d6e6479906237463f1d9d17ea9e630bdacc22528961106ad",
+      "point_parameter_semantic_sha256": "10ad1b8ca49ddc187e787bbde5bdad9d9d2fbf2e34a0200fd55d5bf76bdd48e7",
+      "provenance_id": "center-hill:action-innovation:horizon-residual-envelope:point-parameters=56990a10610c3ab7d6e6479906237463f1d9d17ea9e630bdacc22528961106ad:development-post-fit-only",
+      "schema": "gwm.geospatial_kernel.action_innovation_uncertainty_parameters.v1",
+      "target_marginal_coverage": 0.9,
+      "time_series_exchangeability_claimed": false
+    },
+    "point_training_outcomes_reused_for_uncertainty_calibration": false,
+    "role": "original_development_post_point_fit_residual_calibration",
+    "target_marginal_coverage": 0.9
+  },
+  "calibration_gate": {
+    "admission_gate_passed": false,
+    "all_horizons_have_475_post_fit_calibration_rows": true,
+    "calibration_complete": true,
+    "calibration_targets_strictly_follow_point_training": true,
+    "point_parameter_identity_locked": true
+  },
+  "generated_at": "2026-07-30T16:12:58.918284+00:00",
+  "implementation_artifacts": {
+    "evaluator": {
+      "path": "scripts/evaluate_geospatial_kernel_action_innovation_uncertainty.py",
+      "sha256": "fe17e2a1ca2d197bfaa81f4b76494f23cb88cb032b02935081e373b2ae85a043",
+      "size_bytes": 17103
+    },
+    "uncertainty_operator": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/action_innovation_uncertainty.py",
+      "sha256": "5241740050affd81453e2e017b0ebf74823a86696d677fb745a57fea4b959346",
+      "size_bytes": 15825
+    }
+  },
+  "operational_claim_boundary": {
+    "current_point_diagnostics_use_realized_future_action_archive": true,
+    "current_point_diagnostics_use_retrospective_nwm_forcing": true,
+    "future_outlet_observation_used_at_interval_inference": false,
+    "multi_system_uncertainty_validated": false,
+    "operational_forecast_validated": false,
+    "runtime_default_enabled": false,
+    "uncertainty_candidate_admitted": false
+  },
+  "outputs": {
+    "development_intervals": {
+      "path": "data/geotransport_v0_1/kernel_innovation_uncertainty_candidate/development_intervals.csv",
+      "sha256": "79f4f985965e3e29f70c0e83a712bf660ea1cd8b20ab00d3f264092194c40628",
+      "size_bytes": 564891
+    },
+    "february_d3_intervals": {
+      "path": "data/geotransport_v0_1/kernel_innovation_uncertainty_candidate/february_d3_intervals.csv",
+      "sha256": "63a54924bdc138c9f693aa7b2104a5592241e37114b2d63659f9975f411501ef",
+      "size_bytes": 775979
+    },
+    "january_temporal_holdout_intervals": {
+      "path": "data/geotransport_v0_1/kernel_innovation_uncertainty_candidate/january_temporal_holdout_intervals.csv",
+      "sha256": "9cd4bf4d8cfb3cf66e503d292bde8c9aad61474556c9c267a330dd5e07417b9b",
+      "size_bytes": 618165
+    },
+    "parameters": {
+      "path": "data/geotransport_v0_1/kernel_innovation_uncertainty_candidate/parameters.json",
+      "sha256": "ab6e434bed57bf77897c1f32297589f08ed834631e7d963e427aa02ea1ee8980",
+      "size_bytes": 1206
+    }
+  },
+  "parameter_lock": {
+    "all_windows_use_deserialized_uncertainty_parameter_artifact": true,
+    "per_window_uncertainty_refit_performed": false,
+    "point_parameter_artifact_sha256": "56990a10610c3ab7d6e6479906237463f1d9d17ea9e630bdacc22528961106ad",
+    "uncertainty_parameter_artifact_sha256": "ab6e434bed57bf77897c1f32297589f08ed834631e7d963e427aa02ea1ee8980"
+  },
+  "posthoc_temporal_diagnostics": {
+    "february_d3": {
+      "all_rows_use_frozen_uncertainty_parameters": true,
+      "empirical_coverage_is_posthoc_diagnostic": true,
+      "future_outlet_observation_used_at_interval_inference": false,
+      "metrics_by_horizon": {
+        "1": {
+          "empirical_marginal_coverage": 0.9441930618401206,
+          "lower_bound_clipped_count": 26,
+          "mean_interval_width_m3s": 84.78839119356338,
+          "median_interval_width_m3s": 85.47502914838401,
+          "sample_count": 663,
+          "upper_bound_clipped_count": 0
+        },
+        "12": {
+          "empirical_marginal_coverage": 0.911042944785276,
+          "lower_bound_clipped_count": 98,
+          "mean_interval_width_m3s": 241.89816001397327,
+          "median_interval_width_m3s": 248.3608476364908,
+          "sample_count": 652,
+          "upper_bound_clipped_count": 0
+        },
+        "3": {
+          "empirical_marginal_coverage": 0.9470499243570348,
+          "lower_bound_clipped_count": 38,
+          "mean_interval_width_m3s": 134.52114607285182,
+          "median_interval_width_m3s": 136.1739574483604,
+          "sample_count": 661,
+          "upper_bound_clipped_count": 0
+        },
+        "6": {
+          "empirical_marginal_coverage": 0.9118541033434651,
+          "lower_bound_clipped_count": 49,
+          "mean_interval_width_m3s": 168.77241788292932,
+          "median_interval_width_m3s": 171.26085390916717,
+          "sample_count": 658,
+          "upper_bound_clipped_count": 0
+        }
+      }
+    },
+    "january_temporal_holdout": {
+      "all_rows_use_frozen_uncertainty_parameters": true,
+      "empirical_coverage_is_posthoc_diagnostic": true,
+      "future_outlet_observation_used_at_interval_inference": false,
+      "metrics_by_horizon": {
+        "1": {
+          "empirical_marginal_coverage": 0.9940239043824701,
+          "lower_bound_clipped_count": 0,
+          "mean_interval_width_m3s": 85.47502914838401,
+          "median_interval_width_m3s": 85.47502914838401,
+          "sample_count": 502,
+          "upper_bound_clipped_count": 0
+        },
+        "12": {
+          "empirical_marginal_coverage": 0.9694501018329938,
+          "lower_bound_clipped_count": 0,
+          "mean_interval_width_m3s": 248.36084763649075,
+          "median_interval_width_m3s": 248.3608476364908,
+          "sample_count": 491,
+          "upper_bound_clipped_count": 0
+        },
+        "3": {
+          "empirical_marginal_coverage": 0.99,
+          "lower_bound_clipped_count": 0,
+          "mean_interval_width_m3s": 136.1739574483604,
+          "median_interval_width_m3s": 136.1739574483604,
+          "sample_count": 500,
+          "upper_bound_clipped_count": 0
+        },
+        "6": {
+          "empirical_marginal_coverage": 0.9859154929577465,
+          "lower_bound_clipped_count": 0,
+          "mean_interval_width_m3s": 171.26085390916714,
+          "median_interval_width_m3s": 171.26085390916717,
+          "sample_count": 497,
+          "upper_bound_clipped_count": 0
+        }
+      }
+    }
+  },
+  "schema": "gwm.geotransport.geospatial_kernel_action_innovation_uncertainty_candidate.v1",
+  "selection_boundary": {
+    "fresh_prospective_window_consumed": false,
+    "new_target_data_acquired": false,
+    "point_architecture_selected_after_transfer_outcomes_were_seen": true,
+    "uncertainty_fit_uses_development_post_fit_outcomes_only": true,
+    "uncertainty_fit_uses_february_d3_outcomes": false,
+    "uncertainty_fit_uses_january_outcomes": false
+  },
+  "source_artifacts": {
+    "development_predictions": {
+      "path": "data/geotransport_v0_1/kernel_innovation_candidate/development_predictions.csv",
+      "sha256": "79dc2b726482d4d400fd8eb1c221e04661010ba3e597b6d74bdca56b95f58306",
+      "size_bytes": 628509
+    },
+    "february_d3_predictions": {
+      "path": "data/geotransport_v0_1/kernel_innovation_candidate/february_d3_predictions.csv",
+      "sha256": "e47407e94d707ddc9a12962e6383b68c7e9992fa0354ab841cc726305b55cb95",
+      "size_bytes": 753702
+    },
+    "january_temporal_holdout_predictions": {
+      "path": "data/geotransport_v0_1/kernel_innovation_candidate/january_temporal_holdout_predictions.csv",
+      "sha256": "7236dc5093194f3446303667fad3df5eb2351f95fb989a2075f5a3e7b96f4272",
+      "size_bytes": 602689
+    },
+    "point_candidate_report": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_action_innovation_candidate_report.json",
+      "sha256": "eca4b9b4c8e24e08b7572aa7f922374e21d9e4995080b45580dc297e14b7004a",
+      "size_bytes": 31338
+    },
+    "point_parameters": {
+      "path": "data/geotransport_v0_1/kernel_innovation_candidate/parameters.json",
+      "sha256": "56990a10610c3ab7d6e6479906237463f1d9d17ea9e630bdacc22528961106ad",
+      "size_bytes": 2246
+    }
+  },
+  "statistical_claim_boundary": {
+    "conditional_coverage_guarantee_claimed": false,
+    "empirical_horizon_specific_residual_envelope_implemented": true,
+    "finite_sample_coverage_guarantee_claimed": false,
+    "posthoc_coverage_is_validation": false,
+    "time_series_exchangeability_claimed": false
+  },
+  "status": "uncertainty_candidate_calibrated_posthoc_diagnostics_complete_not_validated"
+}

@@ -1,0 +1,230 @@
+{
+  "candidate_results_by_target_horizon": {
+    "1": [
+      {
+        "predictor_horizon_hours": 3,
+        "primary_window": {
+          "online_minus_raw_physical_rmse_m3s": -8.202601404708819,
+          "online_rmse_m3s": 19.430331659292886,
+          "paired_squared_error_improvement_hac_supported": true,
+          "paired_squared_error_improvement_z_score": 6.745277513911295,
+          "raw_physical_rmse_m3s": 27.632933064001705
+        },
+        "replication_window": {
+          "online_minus_raw_physical_rmse_m3s": -14.988355658198849,
+          "online_rmse_m3s": 22.996405009413195,
+          "paired_squared_error_improvement_hac_supported": true,
+          "paired_squared_error_improvement_z_score": 9.690166001877794,
+          "raw_physical_rmse_m3s": 37.98476066761204
+        }
+      },
+      {
+        "predictor_horizon_hours": 6,
+        "primary_window": {
+          "online_minus_raw_physical_rmse_m3s": -3.449970820408609,
+          "online_rmse_m3s": 24.182962243593096,
+          "paired_squared_error_improvement_hac_supported": true,
+          "paired_squared_error_improvement_z_score": 3.985669869428077,
+          "raw_physical_rmse_m3s": 27.632933064001705
+        },
+        "replication_window": {
+          "online_minus_raw_physical_rmse_m3s": -4.885122749587296,
+          "online_rmse_m3s": 33.09963791802475,
+          "paired_squared_error_improvement_hac_supported": true,
+          "paired_squared_error_improvement_z_score": 5.9108192558096295,
+          "raw_physical_rmse_m3s": 37.98476066761204
+        }
+      },
+      {
+        "predictor_horizon_hours": 12,
+        "primary_window": {
+          "online_minus_raw_physical_rmse_m3s": -0.008624620405271344,
+          "online_rmse_m3s": 27.624308443596433,
+          "paired_squared_error_improvement_hac_supported": false,
+          "paired_squared_error_improvement_z_score": 0.41343892720546144,
+          "raw_physical_rmse_m3s": 27.632933064001705
+        },
+        "replication_window": {
+          "online_minus_raw_physical_rmse_m3s": 0.03302046650224355,
+          "online_rmse_m3s": 38.01778113411429,
+          "paired_squared_error_improvement_hac_supported": false,
+          "paired_squared_error_improvement_z_score": -0.14787305402387566,
+          "raw_physical_rmse_m3s": 37.98476066761204
+        }
+      }
+    ],
+    "3": [
+      {
+        "predictor_horizon_hours": 6,
+        "primary_window": {
+          "online_minus_raw_physical_rmse_m3s": -4.129027786327551,
+          "online_rmse_m3s": 23.401405600732943,
+          "paired_squared_error_improvement_hac_supported": true,
+          "paired_squared_error_improvement_z_score": 3.5434100293753934,
+          "raw_physical_rmse_m3s": 27.530433387060494
+        },
+        "replication_window": {
+          "online_minus_raw_physical_rmse_m3s": -8.632747753006665,
+          "online_rmse_m3s": 29.152877227472725,
+          "paired_squared_error_improvement_hac_supported": true,
+          "paired_squared_error_improvement_z_score": 6.3436509112449935,
+          "raw_physical_rmse_m3s": 37.78562498047939
+        }
+      },
+      {
+        "predictor_horizon_hours": 12,
+        "primary_window": {
+          "online_minus_raw_physical_rmse_m3s": 0.23664185542096305,
+          "online_rmse_m3s": 27.767075242481457,
+          "paired_squared_error_improvement_hac_supported": false,
+          "paired_squared_error_improvement_z_score": -0.706908459149652,
+          "raw_physical_rmse_m3s": 27.530433387060494
+        },
+        "replication_window": {
+          "online_minus_raw_physical_rmse_m3s": 0.010302025110689783,
+          "online_rmse_m3s": 37.79592700559008,
+          "paired_squared_error_improvement_hac_supported": false,
+          "paired_squared_error_improvement_z_score": -0.14786324540279233,
+          "raw_physical_rmse_m3s": 37.78562498047939
+        }
+      }
+    ],
+    "6": [
+      {
+        "predictor_horizon_hours": 12,
+        "primary_window": {
+          "online_minus_raw_physical_rmse_m3s": -1.1454376388657614,
+          "online_rmse_m3s": 27.100689490136162,
+          "paired_squared_error_improvement_hac_supported": true,
+          "paired_squared_error_improvement_z_score": 2.1058155765988795,
+          "raw_physical_rmse_m3s": 28.246127129001923
+        },
+        "replication_window": {
+          "online_minus_raw_physical_rmse_m3s": -0.2448830749886639,
+          "online_rmse_m3s": 37.69881700601148,
+          "paired_squared_error_improvement_hac_supported": false,
+          "paired_squared_error_improvement_z_score": 1.5832469555943147,
+          "raw_physical_rmse_m3s": 37.943700081000145
+        }
+      }
+    ]
+  },
+  "claim_boundary": {
+    "geospatial_kernel_validated": false,
+    "historical_mapping_transfer_diagnostic_executed": true,
+    "operational_forecast_validated": false,
+    "phase_lead_mapping_admitted": false,
+    "runtime_default_enabled": false
+  },
+  "diagnostic_contract": {
+    "candidate_predictor_horizons_by_target_horizon": {
+      "1": [
+        3,
+        6,
+        12
+      ],
+      "3": [
+        6,
+        12
+      ],
+      "6": [
+        12
+      ]
+    },
+    "development_window": "primary_window_2022_03_31_to_2022_04_28",
+    "horizon_specialized_online_states_are_independent": true,
+    "mapping_selected_only_from_primary_window_in_this_diagnostic": true,
+    "replication_window_not_used_for_mapping_selection": true,
+    "selection_metric": "minimum_full_window_online_rmse_m3s",
+    "transfer_window": "replication_window_2022_11_10_to_2022_12_08"
+  },
+  "diagnostic_interpretation": {
+    "causal_maturity_ordering_passed_for_all_candidate_replays": true,
+    "full_predictor_ranking_replicated_for_nontrivial_targets": true,
+    "phase_lead_hypothesis_survives_historical_temporal_transfer_diagnostic": true,
+    "primary_selected_mapping_matches_replication_best_for_nontrivial_targets": true,
+    "primary_selected_mapping_matches_v4_fixed_mapping": true,
+    "routing_celerity_error_identified": false,
+    "selected_mapping_beats_raw_physical_all_horizons_in_both_windows": true
+  },
+  "generated_at": "2026-07-31T12:27:34.633075+00:00",
+  "implementation_artifacts": {
+    "diagnostic_evaluator": {
+      "path": "scripts/evaluate_geospatial_kernel_phase_lead_mapping_transfer.py",
+      "sha256": "925c2fd800d488f80f848ab91c5e29deaff272415592de737af869b5f70702e9",
+      "size_bytes": 12779
+    },
+    "online_adapter": {
+      "path": "data_agent/uwm/geospatial_kernel_v2/physical_online_residual_adaptation.py",
+      "sha256": "4fb17c8a30d0648fc86d5d9d7e10c4294d482f591a16a645d934f18844de3bf5",
+      "size_bytes": 18600
+    },
+    "online_evaluator": {
+      "path": "scripts/evaluate_geospatial_kernel_physical_online_residual_adaptation.py",
+      "sha256": "1fcb791a9908237341be2f3e1f930493a53426f682b95f7e9e7eba9e1bbf7931",
+      "size_bytes": 29086
+    }
+  },
+  "information_boundary": {
+    "both_historical_target_windows_exposed_before_diagnostic_design": true,
+    "diagnostic_may_promote_candidate": false,
+    "operational_issue_time_vintages_verified": false,
+    "replication_window_is_fresh_prospective_validation": false,
+    "replication_window_occurs_after_development_window": true
+  },
+  "replication_best_mapping": {
+    "1": 3,
+    "3": 6,
+    "6": 12
+  },
+  "schema": "gwm.geotransport.phase_lead_mapping_transfer_posthoc.v1",
+  "selected_mapping_by_primary_window": {
+    "1": 3,
+    "3": 6,
+    "6": 12
+  },
+  "selection_diagnostics_by_target_horizon": {
+    "1": {
+      "candidate_count": 3,
+      "full_predictor_ranking_replicated": true,
+      "primary_selected_predictor_horizon_hours": 3,
+      "primary_selection_matches_replication_best": true,
+      "replication_best_predictor_horizon_hours": 3,
+      "selection_is_nontrivial": true
+    },
+    "3": {
+      "candidate_count": 2,
+      "full_predictor_ranking_replicated": true,
+      "primary_selected_predictor_horizon_hours": 6,
+      "primary_selection_matches_replication_best": true,
+      "replication_best_predictor_horizon_hours": 6,
+      "selection_is_nontrivial": true
+    },
+    "6": {
+      "candidate_count": 1,
+      "full_predictor_ranking_replicated": true,
+      "primary_selected_predictor_horizon_hours": 12,
+      "primary_selection_matches_replication_best": true,
+      "replication_best_predictor_horizon_hours": 12,
+      "selection_is_nontrivial": false
+    }
+  },
+  "source_artifacts": {
+    "comparison_report": {
+      "path": "benchmarks/geotransport_v0_1/geospatial_kernel_physical_residual_retention_transfer_posthoc_report.json",
+      "sha256": "acd7bb437f6f121fb8a5e03b9c9e5fde4af3923e58653a75d1a7eb829f563996",
+      "size_bytes": 32565
+    },
+    "primary_target_comparison_rows": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_physical_residual_retention_transfer_posthoc/j_percy_priest_primary_predictions.csv",
+      "sha256": "f15434a3495e0befecef9daf61086965e17dd505cfb85a1af18ff69a2aa7adf0",
+      "size_bytes": 1463325
+    },
+    "replication_target_comparison_rows": {
+      "path": "data/geotransport_v0_1/geospatial_kernel_physical_residual_retention_transfer_posthoc/j_percy_priest_replication_predictions.csv",
+      "sha256": "928f8b9bdf9fec761bea9e67a883fecf9685dd08fca00b1eb8b03d8308bfabea",
+      "size_bytes": 1362248
+    }
+  },
+  "status": "phase_lead_mapping_historical_transfer_diagnostic_complete"
+}
