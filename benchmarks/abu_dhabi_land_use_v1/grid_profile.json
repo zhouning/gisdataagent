@@ -1,0 +1,36 @@
+{
+  "benchmark_id": "abu-dhabi-land-use-v1",
+  "boundary_area_km2": 797.6315717443703,
+  "boundary_artifact": {
+    "path": "source/abu_dhabi_city_osm_r4479763.geojson",
+    "sha256": "988cec36a274992ba443d5a1666de22a7cab4fb1961a1fae38b8ec9f604ac454"
+  },
+  "bounds": [
+    226000,
+    2687300,
+    273500,
+    2723300
+  ],
+  "crs": "EPSG:32640",
+  "height": 360,
+  "mask_artifact": {
+    "path": "artifacts/abu_dhabi_city_100m_mask.tif",
+    "sha256": "8dd5a6c6d99658df021ea438ae2b61ac9b579ab040ea3d465d407daf40c94582",
+    "size_bytes": 2800
+  },
+  "pixel_inclusion": "center_within_city_polygon",
+  "rasterized_city_area_km2": 797.75,
+  "resolution_m": 100,
+  "schema": "gwm.canonical_grid_profile.v1",
+  "total_pixel_count": 171000,
+  "transform_gdal": [
+    226000.0,
+    100.0,
+    0.0,
+    2723300.0,
+    0.0,
+    -100.0
+  ],
+  "valid_city_pixel_count": 79775,
+  "width": 475
+}

@@ -1,0 +1,821 @@
+{
+  "benchmark_id": "abu-dhabi-land-use-v1",
+  "created_at": "2026-08-01T15:12:40.122272+00:00",
+  "ensembles": {
+    "geosos_flus": {
+      "2023": {
+        "evaluation": {
+          "actual_class_counts": {
+            "1": 15438,
+            "2": 447,
+            "3": 471,
+            "4": 1011,
+            "5": 12156,
+            "6": 50203
+          },
+          "change_f1": 0.2229260567669631,
+          "change_false_alarms": 2794,
+          "change_figure_of_merit": 0.1254455717027694,
+          "change_hits": 915,
+          "change_misses": 3585,
+          "constraint_violation_pixels": 0,
+          "constraint_violation_rate": 0.0,
+          "demand_l1_error_pixels": 684,
+          "demand_total_variation": 0.004289692195770514,
+          "evaluation_pixel_count": 79726,
+          "macro_f1": 0.8454756676453127,
+          "observed_change_pixels": 4500,
+          "overall_accuracy": 0.9197501442440358,
+          "pixel_count": 79726,
+          "predicted_change_pixels": 3709,
+          "reliability_sensitivity": {
+            "change_f1": 0.0,
+            "change_false_alarms": 120,
+            "change_figure_of_merit": 0.0,
+            "change_hits": 0,
+            "change_misses": 25,
+            "macro_f1": 0.49413971784388716,
+            "observed_change_pixels": 25,
+            "overall_accuracy": 0.9953053163245483,
+            "pixel_count": 30886,
+            "predicted_change_pixels": 120
+          },
+          "requested_class_counts": {
+            "1": 15438,
+            "2": 685,
+            "3": 465,
+            "4": 1011,
+            "5": 12260,
+            "6": 49867
+          }
+        },
+        "prediction_path": "artifacts/predictions/geosos_flus/ensemble/prediction_2023.tif"
+      },
+      "2024": {
+        "evaluation": {
+          "actual_class_counts": {
+            "1": 15438,
+            "2": 476,
+            "3": 386,
+            "4": 1011,
+            "5": 15229,
+            "6": 47186
+          },
+          "change_f1": 0.2939771480214318,
+          "change_false_alarms": 4750,
+          "change_figure_of_merit": 0.17231723929166037,
+          "change_hits": 2277,
+          "change_misses": 6187,
+          "constraint_violation_pixels": 0,
+          "constraint_violation_rate": 0.0,
+          "demand_l1_error_pixels": 2014,
+          "demand_total_variation": 0.012630760354213181,
+          "evaluation_pixel_count": 79726,
+          "macro_f1": 0.754938087200507,
+          "observed_change_pixels": 8464,
+          "overall_accuracy": 0.8622532172691468,
+          "pixel_count": 79726,
+          "predicted_change_pixels": 7027,
+          "reliability_sensitivity": {
+            "change_f1": 0.007905138339920948,
+            "change_false_alarms": 448,
+            "change_figure_of_merit": 0.003968253968253968,
+            "change_hits": 2,
+            "change_misses": 54,
+            "macro_f1": 0.4863026383595656,
+            "observed_change_pixels": 56,
+            "overall_accuracy": 0.982919941478684,
+            "pixel_count": 29391,
+            "predicted_change_pixels": 450
+          },
+          "requested_class_counts": {
+            "1": 15438,
+            "2": 912,
+            "3": 412,
+            "4": 1011,
+            "5": 15774,
+            "6": 46179
+          }
+        },
+        "prediction_path": "artifacts/predictions/geosos_flus/ensemble/prediction_2024.tif"
+      }
+    },
+    "geospatial_kernel": {
+      "2023": {
+        "evaluation": {
+          "actual_class_counts": {
+            "1": 15438,
+            "2": 683,
+            "3": 465,
+            "4": 1011,
+            "5": 12246,
+            "6": 49883
+          },
+          "change_f1": 0.337864590207206,
+          "change_false_alarms": 1797,
+          "change_figure_of_merit": 0.20327139907892647,
+          "change_hits": 1280,
+          "change_misses": 3220,
+          "constraint_violation_pixels": 0,
+          "constraint_violation_rate": 0.0,
+          "demand_l1_error_pixels": 32,
+          "demand_total_variation": 0.00020068735418809423,
+          "evaluation_pixel_count": 79726,
+          "macro_f1": 0.8509571986230803,
+          "observed_change_pixels": 4500,
+          "overall_accuracy": 0.9367207686325666,
+          "pixel_count": 79726,
+          "predicted_change_pixels": 3077,
+          "reliability_sensitivity": {
+            "change_f1": 0.02197802197802198,
+            "change_false_alarms": 65,
+            "change_figure_of_merit": 0.011111111111111112,
+            "change_hits": 1,
+            "change_misses": 24,
+            "macro_f1": 0.498205884676391,
+            "observed_change_pixels": 25,
+            "overall_accuracy": 0.9970860584083403,
+            "pixel_count": 30886,
+            "predicted_change_pixels": 66
+          },
+          "requested_class_counts": {
+            "1": 15438,
+            "2": 685,
+            "3": 465,
+            "4": 1011,
+            "5": 12260,
+            "6": 49867
+          }
+        },
+        "prediction_path": "artifacts/predictions/geospatial_kernel/ensemble/prediction_2023.tif"
+      },
+      "2024": {
+        "evaluation": {
+          "actual_class_counts": {
+            "1": 15438,
+            "2": 899,
+            "3": 416,
+            "4": 1011,
+            "5": 15768,
+            "6": 46194
+          },
+          "change_f1": 0.4158649126251718,
+          "change_false_alarms": 3638,
+          "change_figure_of_merit": 0.2625185919682697,
+          "change_hits": 3177,
+          "change_misses": 5287,
+          "constraint_violation_pixels": 0,
+          "constraint_violation_rate": 0.0,
+          "demand_l1_error_pixels": 38,
+          "demand_total_variation": 0.0002383162330983619,
+          "evaluation_pixel_count": 79726,
+          "macro_f1": 0.7683904657072791,
+          "observed_change_pixels": 8464,
+          "overall_accuracy": 0.8869001329553722,
+          "pixel_count": 79726,
+          "predicted_change_pixels": 6815,
+          "reliability_sensitivity": {
+            "change_f1": 0.0226628895184136,
+            "change_false_alarms": 293,
+            "change_figure_of_merit": 0.011461318051575931,
+            "change_hits": 4,
+            "change_misses": 52,
+            "macro_f1": 0.4962137241570906,
+            "observed_change_pixels": 56,
+            "overall_accuracy": 0.9881936647272975,
+            "pixel_count": 29391,
+            "predicted_change_pixels": 297
+          },
+          "requested_class_counts": {
+            "1": 15438,
+            "2": 912,
+            "3": 412,
+            "4": 1011,
+            "5": 15774,
+            "6": 46179
+          }
+        },
+        "prediction_path": "artifacts/predictions/geospatial_kernel/ensemble/prediction_2024.tif"
+      }
+    },
+    "paper58": {
+      "2023": {
+        "evaluation": {
+          "actual_class_counts": {
+            "1": 15438,
+            "2": 684,
+            "3": 466,
+            "4": 1011,
+            "5": 12246,
+            "6": 49881
+          },
+          "change_f1": 0.28741092636579574,
+          "change_false_alarms": 1989,
+          "change_figure_of_merit": 0.1678224687933426,
+          "change_hits": 1089,
+          "change_misses": 3411,
+          "constraint_violation_pixels": 0,
+          "constraint_violation_rate": 0.0,
+          "demand_l1_error_pixels": 30,
+          "demand_total_variation": 0.00018814439455133833,
+          "evaluation_pixel_count": 79726,
+          "macro_f1": 0.8460826108234896,
+          "observed_change_pixels": 4500,
+          "overall_accuracy": 0.9318290143742317,
+          "pixel_count": 79726,
+          "predicted_change_pixels": 3078,
+          "reliability_sensitivity": {
+            "change_f1": 0.0,
+            "change_false_alarms": 3,
+            "change_figure_of_merit": 0.0,
+            "change_hits": 0,
+            "change_misses": 25,
+            "macro_f1": 0.4996837322078984,
+            "observed_change_pixels": 25,
+            "overall_accuracy": 0.9990934403937058,
+            "pixel_count": 30886,
+            "predicted_change_pixels": 3
+          },
+          "requested_class_counts": {
+            "1": 15438,
+            "2": 685,
+            "3": 465,
+            "4": 1011,
+            "5": 12260,
+            "6": 49867
+          }
+        },
+        "prediction_path": "artifacts/predictions/paper58/ensemble/prediction_2023.tif"
+      },
+      "2024": {
+        "evaluation": {
+          "actual_class_counts": {
+            "1": 15438,
+            "2": 915,
+            "3": 418,
+            "4": 1011,
+            "5": 15624,
+            "6": 46320
+          },
+          "change_f1": 0.43838690515477524,
+          "change_false_alarms": 3366,
+          "change_figure_of_merit": 0.28072696534235,
+          "change_hits": 3321,
+          "change_misses": 5143,
+          "constraint_violation_pixels": 0,
+          "constraint_violation_rate": 0.0,
+          "demand_l1_error_pixels": 300,
+          "demand_total_variation": 0.0018814439455133833,
+          "evaluation_pixel_count": 79726,
+          "macro_f1": 0.7705550129307802,
+          "observed_change_pixels": 8464,
+          "overall_accuracy": 0.8921807189624463,
+          "pixel_count": 79726,
+          "predicted_change_pixels": 6687,
+          "reliability_sensitivity": {
+            "change_f1": 0.04081632653061224,
+            "change_false_alarms": 40,
+            "change_figure_of_merit": 0.020833333333333332,
+            "change_hits": 2,
+            "change_misses": 54,
+            "macro_f1": 0.5119662205771734,
+            "observed_change_pixels": 56,
+            "overall_accuracy": 0.996801742029873,
+            "pixel_count": 29391,
+            "predicted_change_pixels": 42
+          },
+          "requested_class_counts": {
+            "1": 15438,
+            "2": 912,
+            "3": 412,
+            "4": 1011,
+            "5": 15774,
+            "6": 46179
+          }
+        },
+        "prediction_path": "artifacts/predictions/paper58/ensemble/prediction_2024.tif"
+      }
+    }
+  },
+  "interpretation": [
+    "Geospatial Kernel has the strongest one-step 2023 mean change FoM.",
+    "Paper58 has the strongest two-step open-loop 2024 mean change FoM.",
+    "Both proposed candidates exceed external GeoSOS-FLUS mean change FoM in both years.",
+    "High-confidence sensitivity FoM is low for all candidates; full-grid gains may partly reflect Dynamic World label volatility.",
+    "These results establish historical conditional allocation skill, not future policy prediction or causal planning effects."
+  ],
+  "mean_change_fom_deltas": {
+    "2023": {
+      "geospatial_kernel_minus_geosos_flus_change_fom": 0.07209141386865814,
+      "paper58_minus_geosos_flus_change_fom": 0.03877092854457548,
+      "paper58_minus_geospatial_kernel_change_fom": -0.03332048532408266
+    },
+    "2024": {
+      "geospatial_kernel_minus_geosos_flus_change_fom": 0.07904664156149413,
+      "paper58_minus_geosos_flus_change_fom": 0.09630819290163575,
+      "paper58_minus_geospatial_kernel_change_fom": 0.017261551340141623
+    }
+  },
+  "models": [
+    "geosos_flus",
+    "geospatial_kernel",
+    "paper58"
+  ],
+  "persistence": {
+    "2023": {
+      "actual_class_counts": {
+        "1": 15438,
+        "2": 493,
+        "3": 471,
+        "4": 1011,
+        "5": 9359,
+        "6": 52954
+      },
+      "change_f1": 0.0,
+      "change_false_alarms": 0,
+      "change_figure_of_merit": 0.0,
+      "change_hits": 0,
+      "change_misses": 4500,
+      "constraint_violation_pixels": 0,
+      "constraint_violation_rate": 0.0,
+      "demand_l1_error_pixels": 6186,
+      "demand_total_variation": 0.038795374156485964,
+      "evaluation_pixel_count": 79726,
+      "macro_f1": 0.868429656837138,
+      "observed_change_pixels": 4500,
+      "overall_accuracy": 0.9435566816345985,
+      "pixel_count": 79726,
+      "predicted_change_pixels": 0,
+      "reliability_sensitivity": {
+        "change_f1": 0.0,
+        "change_false_alarms": 0,
+        "change_figure_of_merit": 0.0,
+        "change_hits": 0,
+        "change_misses": 25,
+        "macro_f1": 0.4996979573556162,
+        "observed_change_pixels": 25,
+        "overall_accuracy": 0.9991905717800945,
+        "pixel_count": 30886,
+        "predicted_change_pixels": 0
+      },
+      "requested_class_counts": {
+        "1": 15438,
+        "2": 685,
+        "3": 465,
+        "4": 1011,
+        "5": 12260,
+        "6": 49867
+      }
+    },
+    "2024": {
+      "actual_class_counts": {
+        "1": 15438,
+        "2": 493,
+        "3": 471,
+        "4": 1011,
+        "5": 9359,
+        "6": 52954
+      },
+      "change_f1": 0.0,
+      "change_false_alarms": 0,
+      "change_figure_of_merit": 0.0,
+      "change_hits": 0,
+      "change_misses": 8464,
+      "constraint_violation_pixels": 0,
+      "constraint_violation_rate": 0.0,
+      "demand_l1_error_pixels": 13668,
+      "demand_total_variation": 0.08571858615758975,
+      "evaluation_pixel_count": 79726,
+      "macro_f1": 0.7906708471378602,
+      "observed_change_pixels": 8464,
+      "overall_accuracy": 0.8938363896344982,
+      "pixel_count": 79726,
+      "predicted_change_pixels": 0,
+      "reliability_sensitivity": {
+        "change_f1": 0.0,
+        "change_false_alarms": 0,
+        "change_figure_of_merit": 0.0,
+        "change_hits": 0,
+        "change_misses": 56,
+        "macro_f1": 0.6658857436095251,
+        "observed_change_pixels": 56,
+        "overall_accuracy": 0.9980946548263073,
+        "pixel_count": 29391,
+        "predicted_change_pixels": 0
+      },
+      "requested_class_counts": {
+        "1": 15438,
+        "2": 912,
+        "3": 412,
+        "4": 1011,
+        "5": 15774,
+        "6": 46179
+      }
+    }
+  },
+  "schema": "gwm.abu_dhabi_three_model_comparison.v1",
+  "seeds": [
+    31,
+    47,
+    73
+  ],
+  "status": "HISTORICAL_ALLOCATION_COMPLETE",
+  "summaries": {
+    "geosos_flus": {
+      "2023": {
+        "change_f1": {
+          "mean": 0.2273317452025424,
+          "population_std": 0.006775972519591185,
+          "values": [
+            0.2226229114076211,
+            0.2369139465875371,
+            0.222458377612469
+          ]
+        },
+        "change_figure_of_merit": {
+          "mean": 0.12825921982083724,
+          "population_std": 0.004324421174090033,
+          "values": [
+            0.1252536182875693,
+            0.1343745792379157,
+            0.1251494619370267
+          ]
+        },
+        "constraint_violation_rate": {
+          "mean": 0.0,
+          "population_std": 0.0,
+          "values": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "demand_total_variation": {
+          "mean": 0.002834708877906831,
+          "population_std": 0.00020559233463185152,
+          "values": [
+            0.0028597947971803427,
+            0.0025713067255349574,
+            0.003073025111005193
+          ]
+        },
+        "macro_f1": {
+          "mean": 0.8440967599593803,
+          "population_std": 0.0034402609938907116,
+          "values": [
+            0.8462585400685354,
+            0.8467905385828293,
+            0.8392412012267761
+          ]
+        },
+        "overall_accuracy": {
+          "mean": 0.9182993419127178,
+          "population_std": 0.0008381183562585483,
+          "values": [
+            0.918608734917091,
+            0.9191355392218348,
+            0.9171537515992274
+          ]
+        },
+        "reliability_change_figure_of_merit": {
+          "mean": 0.0,
+          "population_std": 0.0,
+          "values": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      },
+      "2024": {
+        "change_f1": {
+          "mean": 0.30709742500236586,
+          "population_std": 0.01796913065095402,
+          "values": [
+            0.2829811179192197,
+            0.3260936823216385,
+            0.3122174747662394
+          ]
+        },
+        "change_figure_of_merit": {
+          "mean": 0.18153544749487147,
+          "population_std": 0.012488406405805142,
+          "values": [
+            0.16480955502148423,
+            0.19480999556409878,
+            0.18498679189903142
+          ]
+        },
+        "constraint_violation_rate": {
+          "mean": 0.0,
+          "population_std": 0.0,
+          "values": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "demand_total_variation": {
+          "mean": 0.005380929684168276,
+          "population_std": 0.0009706554448151514,
+          "values": [
+            0.005957905827459047,
+            0.004013747083761884,
+            0.006171136141283898
+          ]
+        },
+        "macro_f1": {
+          "mean": 0.7482920550059904,
+          "population_std": 0.006160202642579892,
+          "values": [
+            0.7551721822315672,
+            0.7494801694274159,
+            0.7402238133589881
+          ]
+        },
+        "overall_accuracy": {
+          "mean": 0.8595146710817885,
+          "population_std": 0.003033172468749239,
+          "values": [
+            0.855567819782756,
+            0.8629430800491684,
+            0.860033113413441
+          ]
+        },
+        "reliability_change_figure_of_merit": {
+          "mean": 0.0040485067656896205,
+          "population_std": 0.00110909224306026,
+          "values": [
+            0.0030581039755351682,
+            0.005597014925373134,
+            0.0034904013961605585
+          ]
+        }
+      }
+    },
+    "geospatial_kernel": {
+      "2023": {
+        "change_f1": {
+          "mean": 0.33381623425084506,
+          "population_std": 0.002565808717889713,
+          "values": [
+            0.3303042275780324,
+            0.3363624390886343,
+            0.33478203608586854
+          ]
+        },
+        "change_figure_of_merit": {
+          "mean": 0.20035063368949538,
+          "population_std": 0.0018470049842479062,
+          "values": [
+            0.19782300047326076,
+            0.20218492716909436,
+            0.20104397342613098
+          ]
+        },
+        "constraint_violation_rate": {
+          "mean": 0.0,
+          "population_std": 0.0,
+          "values": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "demand_total_variation": {
+          "mean": 0.0,
+          "population_std": 0.0,
+          "values": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "macro_f1": {
+          "mean": 0.8499260861367622,
+          "population_std": 0.0003103378543185399,
+          "values": [
+            0.8503059082090374,
+            0.8495457393613476,
+            0.8499266108399018
+          ]
+        },
+        "overall_accuracy": {
+          "mean": 0.9362148692605508,
+          "population_std": 0.00021021674384730859,
+          "values": [
+            0.9359305621754509,
+            0.9364322805609212,
+            0.93628176504528
+          ]
+        },
+        "reliability_change_figure_of_merit": {
+          "mean": 0.011351156940224795,
+          "population_std": 0.0011301761915315386,
+          "values": [
+            0.009900990099009901,
+            0.012658227848101266,
+            0.011494252873563218
+          ]
+        }
+      },
+      "2024": {
+        "change_f1": {
+          "mean": 0.41343094957946575,
+          "population_std": 0.0008152824741303783,
+          "values": [
+            0.4143025232056478,
+            0.41364884298601123,
+            0.41234148254673814
+          ]
+        },
+        "change_figure_of_merit": {
+          "mean": 0.2605820890563656,
+          "population_std": 0.0006476421764907355,
+          "values": [
+            0.2612746310495507,
+            0.26075490357672654,
+            0.2597167325428195
+          ]
+        },
+        "constraint_violation_rate": {
+          "mean": 0.0,
+          "population_std": 0.0,
+          "values": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "demand_total_variation": {
+          "mean": 0.0,
+          "population_std": 0.0,
+          "values": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "macro_f1": {
+          "mean": 0.7670196918189618,
+          "population_std": 0.0003762901125137306,
+          "values": [
+            0.7673455258395988,
+            0.7672211448354155,
+            0.766492404781871
+          ]
+        },
+        "overall_accuracy": {
+          "mean": 0.8862855279331711,
+          "population_std": 0.00018519457968836558,
+          "values": [
+            0.886498758246996,
+            0.8863106138524446,
+            0.8860472117000727
+          ]
+        },
+        "reliability_change_figure_of_merit": {
+          "mean": 0.01179275937194181,
+          "population_std": 0.0011162709428280358,
+          "values": [
+            0.01092896174863388,
+            0.0110803324099723,
+            0.013368983957219251
+          ]
+        }
+      }
+    },
+    "paper58": {
+      "2023": {
+        "change_f1": {
+          "mean": 0.2862285438342333,
+          "population_std": 0.00581207925314907,
+          "values": [
+            0.27815092848676415,
+            0.28895034900566313,
+            0.2915843540102726
+          ]
+        },
+        "change_figure_of_merit": {
+          "mean": 0.16703014836541272,
+          "population_std": 0.003949838111627,
+          "values": [
+            0.16154199173932995,
+            0.1688731527093596,
+            0.17067530064754857
+          ]
+        },
+        "constraint_violation_rate": {
+          "mean": 0.0,
+          "population_std": 0.0,
+          "values": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "demand_total_variation": {
+          "mean": 0.0,
+          "population_std": 0.0,
+          "values": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "macro_f1": {
+          "mean": 0.8457003980455363,
+          "population_std": 0.0005827088025789025,
+          "values": [
+            0.844937713970595,
+            0.8458114456615374,
+            0.8463520345044766
+          ]
+        },
+        "overall_accuracy": {
+          "mean": 0.9316032411007702,
+          "population_std": 0.0005342181832538194,
+          "values": [
+            0.9308632064822016,
+            0.9318415573338685,
+            0.9321049594862404
+          ]
+        },
+        "reliability_change_figure_of_merit": {
+          "mean": 0.0,
+          "population_std": 0.0,
+          "values": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      },
+      "2024": {
+        "change_f1": {
+          "mean": 0.4348280821022356,
+          "population_std": 0.0074239964107476394,
+          "values": [
+            0.42554582298339655,
+            0.43522029023401754,
+            0.4437181330892927
+          ]
+        },
+        "change_figure_of_merit": {
+          "mean": 0.2778436403965072,
+          "population_std": 0.006058955365430118,
+          "values": [
+            0.27028149132276014,
+            0.2781351825549336,
+            0.28511424731182794
+          ]
+        },
+        "constraint_violation_rate": {
+          "mean": 0.0,
+          "population_std": 0.0,
+          "values": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "demand_total_variation": {
+          "mean": 0.0,
+          "population_std": 0.0,
+          "values": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "macro_f1": {
+          "mean": 0.7693481836370263,
+          "population_std": 0.0010995440336119822,
+          "values": [
+            0.7690951677433429,
+            0.7681459768511525,
+            0.7708034063165835
+          ]
+        },
+        "overall_accuracy": {
+          "mean": 0.8904999623711211,
+          "population_std": 0.001404848809057701,
+          "values": [
+            0.8887314050623385,
+            0.8906003060482152,
+            0.8921681760028096
+          ]
+        },
+        "reliability_change_figure_of_merit": {
+          "mean": 0.018796901276431504,
+          "population_std": 0.0009422794827908782,
+          "values": [
+            0.018691588785046728,
+            0.017699115044247787,
+            0.02
+          ]
+        }
+      }
+    }
+  }
+}

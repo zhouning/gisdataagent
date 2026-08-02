@@ -40,6 +40,7 @@ def run_twm_recursive_benchmark(
     coarse_block_size: int = 3,
     epochs: int = 80,
     use_temporal_history_context: bool = True,
+    annual_viirs_context_mode: str = "none",
 ) -> dict[str, Any]:
     """Train on 2017-2020 and test recursive 2020-2023 prediction."""
 
@@ -55,6 +56,7 @@ def run_twm_recursive_benchmark(
                 coarse_block_size=coarse_block_size,
                 terrain_similarity_scope="local_spatial_window",
                 use_temporal_history_context=use_temporal_history_context,
+                annual_viirs_context_mode=annual_viirs_context_mode,
             )
             for region_id in region_ids
         ]
@@ -69,6 +71,7 @@ def run_twm_recursive_benchmark(
                 coarse_block_size=coarse_block_size,
                 terrain_similarity_scope="local_spatial_window",
                 use_temporal_history_context=use_temporal_history_context,
+                annual_viirs_context_mode=annual_viirs_context_mode,
             )
             for region_id in region_ids
         ]
@@ -100,6 +103,14 @@ def run_twm_recursive_benchmark(
         "test_years": [2020, 2021, 2022, 2023],
         "sample_stride": sample_stride,
         "epochs": epochs,
+        "annual_viirs_context_mode": annual_viirs_context_mode,
+        "forecast_protocol": (
+            "rolling_observed_current_year_covariates"
+            if annual_viirs_context_mode == "rolling"
+            else "sequence_initial_year_covariates_only"
+            if annual_viirs_context_mode == "initial_only"
+            else "static_period_composite_covariates"
+        ),
         "reports": reports,
         "hypothesis_checks": {
             "recursive_writeback_improves_final_change_f1": recursive_final[
@@ -140,6 +151,7 @@ def run_twm_recursive_region_holdout(
     coarse_block_size: int = 3,
     epochs: int = 80,
     use_temporal_history_context: bool = True,
+    annual_viirs_context_mode: str = "none",
 ) -> dict[str, Any]:
     """Evaluate unseen-region recursion with validation-only threshold selection."""
 
@@ -163,6 +175,7 @@ def run_twm_recursive_region_holdout(
         sample_stride=sample_stride,
         coarse_block_size=coarse_block_size,
         use_temporal_history_context=use_temporal_history_context,
+        annual_viirs_context_mode=annual_viirs_context_mode,
     )
     validation = _build_stacked_region_sequences(
         data_root=data_root,
@@ -171,6 +184,7 @@ def run_twm_recursive_region_holdout(
         sample_stride=sample_stride,
         coarse_block_size=coarse_block_size,
         use_temporal_history_context=use_temporal_history_context,
+        annual_viirs_context_mode=annual_viirs_context_mode,
     )
     test = _build_stacked_region_sequences(
         data_root=data_root,
@@ -179,6 +193,7 @@ def run_twm_recursive_region_holdout(
         sample_stride=sample_stride,
         coarse_block_size=coarse_block_size,
         use_temporal_history_context=use_temporal_history_context,
+        annual_viirs_context_mode=annual_viirs_context_mode,
     )
     reports = _fit_variants(
         train=train,
@@ -210,6 +225,14 @@ def run_twm_recursive_region_holdout(
         "test_years": [2020, 2021, 2022, 2023],
         "sample_stride": sample_stride,
         "epochs": epochs,
+        "annual_viirs_context_mode": annual_viirs_context_mode,
+        "forecast_protocol": (
+            "rolling_observed_current_year_covariates"
+            if annual_viirs_context_mode == "rolling"
+            else "sequence_initial_year_covariates_only"
+            if annual_viirs_context_mode == "initial_only"
+            else "static_period_composite_covariates"
+        ),
         "reports": reports,
         "hypothesis_checks": {
             "recursive_writeback_improves_final_change_f1": recursive_final[
@@ -308,6 +331,7 @@ def _build_stacked_region_sequences(
     sample_stride: int,
     coarse_block_size: int,
     use_temporal_history_context: bool,
+    annual_viirs_context_mode: str,
 ) -> _StackedSequence:
     return _stack_sequences(
         [
@@ -319,6 +343,7 @@ def _build_stacked_region_sequences(
                 coarse_block_size=coarse_block_size,
                 terrain_similarity_scope="local_spatial_window",
                 use_temporal_history_context=use_temporal_history_context,
+                annual_viirs_context_mode=annual_viirs_context_mode,
             )
             for region_id in region_ids
         ]

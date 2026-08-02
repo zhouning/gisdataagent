@@ -1,0 +1,1119 @@
+{
+  "alphaearth_by_year": [
+    {
+      "city_coverage_fraction": 1.0,
+      "l2_norm": {
+        "max": 1.0000001192092896,
+        "mean": 1.0,
+        "median": 1.0,
+        "min": 0.9999998807907104
+      },
+      "valid_pixel_count": 79775,
+      "year": 2017
+    },
+    {
+      "city_coverage_fraction": 1.0,
+      "l2_norm": {
+        "max": 1.0000001192092896,
+        "mean": 1.0,
+        "median": 1.0,
+        "min": 0.9999998807907104
+      },
+      "valid_pixel_count": 79775,
+      "year": 2018
+    },
+    {
+      "city_coverage_fraction": 1.0,
+      "l2_norm": {
+        "max": 1.0000001192092896,
+        "mean": 1.0,
+        "median": 1.0,
+        "min": 0.9999998807907104
+      },
+      "valid_pixel_count": 79775,
+      "year": 2019
+    },
+    {
+      "city_coverage_fraction": 1.0,
+      "l2_norm": {
+        "max": 1.0000001192092896,
+        "mean": 1.0,
+        "median": 1.0,
+        "min": 0.9999998807907104
+      },
+      "valid_pixel_count": 79775,
+      "year": 2020
+    },
+    {
+      "city_coverage_fraction": 1.0,
+      "l2_norm": {
+        "max": 1.0000001192092896,
+        "mean": 1.0,
+        "median": 1.0,
+        "min": 0.9999998807907104
+      },
+      "valid_pixel_count": 79775,
+      "year": 2021
+    },
+    {
+      "city_coverage_fraction": 1.0,
+      "l2_norm": {
+        "max": 1.0000001192092896,
+        "mean": 1.0,
+        "median": 1.0,
+        "min": 0.9999998807907104
+      },
+      "valid_pixel_count": 79775,
+      "year": 2022
+    },
+    {
+      "city_coverage_fraction": 1.0,
+      "l2_norm": {
+        "max": 1.0000001192092896,
+        "mean": 1.0,
+        "median": 1.0,
+        "min": 0.9999998807907104
+      },
+      "valid_pixel_count": 79775,
+      "year": 2023
+    },
+    {
+      "city_coverage_fraction": 1.0,
+      "l2_norm": {
+        "max": 1.0000001192092896,
+        "mean": 1.0,
+        "median": 1.0,
+        "min": 0.9999998807907104
+      },
+      "valid_pixel_count": 79775,
+      "year": 2024
+    }
+  ],
+  "alphaearth_transitions": [
+    {
+      "changed_minus_stable_cosine": -0.00561070442199707,
+      "cosine_all": {
+        "max": 0.997258186340332,
+        "mean": 0.9806142449378967,
+        "median": 0.984411358833313,
+        "min": 0.32610049843788147
+      },
+      "cosine_changed_mean": 0.9752066135406494,
+      "cosine_stable_mean": 0.9808173179626465,
+      "start_year": 2017,
+      "target_year": 2018
+    },
+    {
+      "changed_minus_stable_cosine": -0.004124581813812256,
+      "cosine_all": {
+        "max": 0.9978309869766235,
+        "mean": 0.9842426180839539,
+        "median": 0.9881943464279175,
+        "min": 0.5329376459121704
+      },
+      "cosine_changed_mean": 0.9802542924880981,
+      "cosine_stable_mean": 0.9843788743019104,
+      "start_year": 2018,
+      "target_year": 2019
+    },
+    {
+      "changed_minus_stable_cosine": -0.0021854043006896973,
+      "cosine_all": {
+        "max": 0.9983997344970703,
+        "mean": 0.9811675548553467,
+        "median": 0.9865994453430176,
+        "min": 0.6614232063293457
+      },
+      "cosine_changed_mean": 0.9790465831756592,
+      "cosine_stable_mean": 0.9812319874763489,
+      "start_year": 2019,
+      "target_year": 2020
+    },
+    {
+      "changed_minus_stable_cosine": -0.01053529977798462,
+      "cosine_all": {
+        "max": 0.9971044659614563,
+        "mean": 0.9722819328308105,
+        "median": 0.9800688028335571,
+        "min": 0.5507264137268066
+      },
+      "cosine_changed_mean": 0.9620617032051086,
+      "cosine_stable_mean": 0.9725970029830933,
+      "start_year": 2020,
+      "target_year": 2021
+    },
+    {
+      "changed_minus_stable_cosine": -0.010228872299194336,
+      "cosine_all": {
+        "max": 0.9980175495147705,
+        "mean": 0.9789832830429077,
+        "median": 0.9870123863220215,
+        "min": 0.567810595035553
+      },
+      "cosine_changed_mean": 0.9691035151481628,
+      "cosine_stable_mean": 0.9793323874473572,
+      "start_year": 2021,
+      "target_year": 2022
+    },
+    {
+      "changed_minus_stable_cosine": -0.010239601135253906,
+      "cosine_all": {
+        "max": 0.998820424079895,
+        "mean": 0.9811559915542603,
+        "median": 0.9880673885345459,
+        "min": 0.49117398262023926
+      },
+      "cosine_changed_mean": 0.9714938998222351,
+      "cosine_stable_mean": 0.981733500957489,
+      "start_year": 2022,
+      "target_year": 2023
+    },
+    {
+      "changed_minus_stable_cosine": -0.004228115081787109,
+      "cosine_all": {
+        "max": 0.9989330172538757,
+        "mean": 0.9822157025337219,
+        "median": 0.9896544814109802,
+        "min": 0.44051504135131836
+      },
+      "cosine_changed_mean": 0.97825026512146,
+      "cosine_stable_mean": 0.9824783802032471,
+      "start_year": 2023,
+      "target_year": 2024
+    }
+  ],
+  "benchmark_id": "abu-dhabi-land-use-v1",
+  "constraints": {
+    "bands": [
+      "permanent_water",
+      "wetland_or_mangrove"
+    ],
+    "permanent_water_area_km2": 233.31,
+    "permanent_water_pixels": 23331,
+    "wetland_or_mangrove_area_km2": 60.73,
+    "wetland_or_mangrove_pixels": 6073
+  },
+  "created_at": "2026-08-01T14:31:58.367328+00:00",
+  "gates": {
+    "all_outputs_clean_outside_city_mask": true,
+    "all_required_files_aligned": true,
+    "alphaearth_city_coverage_at_least_0_99": true,
+    "alphaearth_l2_norm_error_below_1e_5": true,
+    "every_transition_has_observed_change": true,
+    "maximum_land_cover_nodata_fraction_le_0_001": true
+  },
+  "grid": {
+    "city_pixel_count": 79775,
+    "crs": "EPSG:32640",
+    "height": 360,
+    "resolution_m": 100,
+    "transform": [
+      226000.0,
+      100.0,
+      0.0,
+      2723300.0,
+      0.0,
+      -100.0
+    ],
+    "width": 475
+  },
+  "land_cover_by_year": [
+    {
+      "class_area_km2": {
+        "1": 153.9,
+        "2": 4.4,
+        "3": 3.88,
+        "4": 9.74,
+        "5": 91.05,
+        "6": 534.63
+      },
+      "class_pixel_counts": {
+        "1": 15390,
+        "2": 440,
+        "3": 388,
+        "4": 974,
+        "5": 9105,
+        "6": 53463
+      },
+      "nodata_fraction": 0.0001880288310874334,
+      "nodata_pixel_count": 15,
+      "valid_pixel_count": 79760,
+      "year": 2017
+    },
+    {
+      "class_area_km2": {
+        "1": 148.51,
+        "2": 3.11,
+        "3": 3.63,
+        "4": 9.18,
+        "5": 75.82,
+        "6": 557.44
+      },
+      "class_pixel_counts": {
+        "1": 14851,
+        "2": 311,
+        "3": 363,
+        "4": 918,
+        "5": 7582,
+        "6": 55744
+      },
+      "nodata_fraction": 7.521153243497336e-05,
+      "nodata_pixel_count": 6,
+      "valid_pixel_count": 79769,
+      "year": 2018
+    },
+    {
+      "class_area_km2": {
+        "1": 153.34,
+        "2": 4.4,
+        "3": 4.32,
+        "4": 10.09,
+        "5": 89.07,
+        "6": 536.37
+      },
+      "class_pixel_counts": {
+        "1": 15334,
+        "2": 440,
+        "3": 432,
+        "4": 1009,
+        "5": 8907,
+        "6": 53637
+      },
+      "nodata_fraction": 0.0002005640864932623,
+      "nodata_pixel_count": 16,
+      "valid_pixel_count": 79759,
+      "year": 2019
+    },
+    {
+      "class_area_km2": {
+        "1": 155.67,
+        "2": 5.44,
+        "3": 4.8,
+        "4": 10.14,
+        "5": 96.42,
+        "6": 525.14
+      },
+      "class_pixel_counts": {
+        "1": 15567,
+        "2": 544,
+        "3": 480,
+        "4": 1014,
+        "5": 9642,
+        "6": 52514
+      },
+      "nodata_fraction": 0.0001754935756816045,
+      "nodata_pixel_count": 14,
+      "valid_pixel_count": 79761,
+      "year": 2020
+    },
+    {
+      "class_area_km2": {
+        "1": 155.34,
+        "2": 5.34,
+        "3": 4.68,
+        "4": 10.16,
+        "5": 85.53,
+        "6": 536.42
+      },
+      "class_pixel_counts": {
+        "1": 15534,
+        "2": 534,
+        "3": 468,
+        "4": 1016,
+        "5": 8553,
+        "6": 53642
+      },
+      "nodata_fraction": 0.000350987151363209,
+      "nodata_pixel_count": 28,
+      "valid_pixel_count": 79747,
+      "year": 2021
+    },
+    {
+      "class_area_km2": {
+        "1": 154.38,
+        "2": 4.96,
+        "3": 4.71,
+        "4": 10.11,
+        "5": 93.59,
+        "6": 529.9
+      },
+      "class_pixel_counts": {
+        "1": 15438,
+        "2": 496,
+        "3": 471,
+        "4": 1011,
+        "5": 9359,
+        "6": 52990
+      },
+      "nodata_fraction": 0.00012535255405828893,
+      "nodata_pixel_count": 10,
+      "valid_pixel_count": 79765,
+      "year": 2022
+    },
+    {
+      "class_area_km2": {
+        "1": 159.87,
+        "2": 6.88,
+        "3": 4.61,
+        "4": 10.96,
+        "5": 121.21,
+        "6": 493.97
+      },
+      "class_pixel_counts": {
+        "1": 15987,
+        "2": 688,
+        "3": 461,
+        "4": 1096,
+        "5": 12121,
+        "6": 49397
+      },
+      "nodata_fraction": 0.00031338138514572234,
+      "nodata_pixel_count": 25,
+      "valid_pixel_count": 79750,
+      "year": 2023
+    },
+    {
+      "class_area_km2": {
+        "1": 160.62,
+        "2": 9.17,
+        "3": 4.08,
+        "4": 10.0,
+        "5": 155.98,
+        "6": 457.64
+      },
+      "class_pixel_counts": {
+        "1": 16062,
+        "2": 917,
+        "3": 408,
+        "4": 1000,
+        "5": 15598,
+        "6": 45764
+      },
+      "nodata_fraction": 0.00032591664055155124,
+      "nodata_pixel_count": 26,
+      "valid_pixel_count": 79749,
+      "year": 2024
+    }
+  ],
+  "land_cover_quality_by_year": [
+    {
+      "fraction_below_confidence_0_5": 0.5101598245064243,
+      "mean_top_probability": {
+        "max": 0.7312840819358826,
+        "mean": 0.4886445701122284,
+        "median": 0.4966129660606384,
+        "min": 0.13790404796600342
+      },
+      "observation_count": {
+        "max": 213.0,
+        "mean": 110.67469787597656,
+        "median": 99.0,
+        "min": 43.0
+      },
+      "valid_pixel_count": 79775,
+      "year": 2017
+    },
+    {
+      "fraction_below_confidence_0_5": 0.5205766217486681,
+      "mean_top_probability": {
+        "max": 0.7198818325996399,
+        "mean": 0.48635923862457275,
+        "median": 0.4932980537414551,
+        "min": 0.13789960741996765
+      },
+      "observation_count": {
+        "max": 458.0,
+        "mean": 246.0739288330078,
+        "median": 219.0,
+        "min": 113.0
+      },
+      "valid_pixel_count": 79775,
+      "year": 2018
+    },
+    {
+      "fraction_below_confidence_0_5": 0.5217298652460044,
+      "mean_top_probability": {
+        "max": 0.7236647009849548,
+        "mean": 0.487127423286438,
+        "median": 0.4926801323890686,
+        "min": 0.14450009167194366
+      },
+      "observation_count": {
+        "max": 398.0,
+        "mean": 214.64035034179688,
+        "median": 192.0,
+        "min": 86.0
+      },
+      "valid_pixel_count": 79775,
+      "year": 2019
+    },
+    {
+      "fraction_below_confidence_0_5": 0.5372359761830148,
+      "mean_top_probability": {
+        "max": 0.7259407043457031,
+        "mean": 0.4818689823150635,
+        "median": 0.48685207962989807,
+        "min": 0.14592652022838593
+      },
+      "observation_count": {
+        "max": 458.0,
+        "mean": 244.74769592285156,
+        "median": 219.0,
+        "min": 98.0
+      },
+      "valid_pixel_count": 79775,
+      "year": 2020
+    },
+    {
+      "fraction_below_confidence_0_5": 0.5463365716076465,
+      "mean_top_probability": {
+        "max": 0.726824164390564,
+        "mean": 0.4815042316913605,
+        "median": 0.48414212465286255,
+        "min": 0.13502834737300873
+      },
+      "observation_count": {
+        "max": 494.0,
+        "mean": 268.12255859375,
+        "median": 236.0,
+        "min": 115.0
+      },
+      "valid_pixel_count": 79775,
+      "year": 2021
+    },
+    {
+      "fraction_below_confidence_0_5": 0.567257912879975,
+      "mean_top_probability": {
+        "max": 0.710519552230835,
+        "mean": 0.47418397665023804,
+        "median": 0.4762442708015442,
+        "min": 0.13727937638759613
+      },
+      "observation_count": {
+        "max": 449.0,
+        "mean": 245.7445831298828,
+        "median": 220.0,
+        "min": 94.0
+      },
+      "valid_pixel_count": 79775,
+      "year": 2022
+    },
+    {
+      "fraction_below_confidence_0_5": 0.5810592290817925,
+      "mean_top_probability": {
+        "max": 0.7284397482872009,
+        "mean": 0.4708850681781769,
+        "median": 0.4706636071205139,
+        "min": 0.14524349570274353
+      },
+      "observation_count": {
+        "max": 413.0,
+        "mean": 216.8005828857422,
+        "median": 192.0,
+        "min": 94.0
+      },
+      "valid_pixel_count": 79775,
+      "year": 2023
+    },
+    {
+      "fraction_below_confidence_0_5": 0.6133751175180194,
+      "mean_top_probability": {
+        "max": 0.7314126491546631,
+        "mean": 0.46383756399154663,
+        "median": 0.45923975110054016,
+        "min": 0.14573036134243011
+      },
+      "observation_count": {
+        "max": 460.0,
+        "mean": 242.58412170410156,
+        "median": 214.0,
+        "min": 106.0
+      },
+      "valid_pixel_count": 79775,
+      "year": 2024
+    }
+  ],
+  "land_cover_transitions": [
+    {
+      "built_gain_pixels": 166,
+      "built_loss_pixels": 1689,
+      "change_fraction": 0.036246238716148446,
+      "changed_pixel_count": 2891,
+      "start_year": 2017,
+      "target_year": 2018,
+      "transition_counts": [
+        [
+          14768,
+          2,
+          3,
+          5,
+          11,
+          601
+        ],
+        [
+          2,
+          288,
+          14,
+          76,
+          3,
+          57
+        ],
+        [
+          2,
+          3,
+          307,
+          2,
+          20,
+          54
+        ],
+        [
+          13,
+          14,
+          3,
+          835,
+          0,
+          109
+        ],
+        [
+          13,
+          2,
+          15,
+          0,
+          7416,
+          1659
+        ],
+        [
+          53,
+          2,
+          21,
+          0,
+          132,
+          53255
+        ]
+      ],
+      "valid_pixel_count": 79760
+    },
+    {
+      "built_gain_pixels": 1465,
+      "built_loss_pixels": 140,
+      "change_fraction": 0.033112250655098485,
+      "changed_pixel_count": 2641,
+      "start_year": 2018,
+      "target_year": 2019,
+      "transition_counts": [
+        [
+          14760,
+          1,
+          1,
+          15,
+          19,
+          55
+        ],
+        [
+          1,
+          291,
+          3,
+          10,
+          3,
+          2
+        ],
+        [
+          1,
+          4,
+          319,
+          1,
+          25,
+          13
+        ],
+        [
+          3,
+          52,
+          3,
+          854,
+          0,
+          6
+        ],
+        [
+          6,
+          1,
+          23,
+          1,
+          7442,
+          109
+        ],
+        [
+          563,
+          91,
+          83,
+          128,
+          1418,
+          53452
+        ]
+      ],
+      "valid_pixel_count": 79759
+    },
+    {
+      "built_gain_pixels": 1191,
+      "built_loss_pixels": 456,
+      "change_fraction": 0.0304177742113446,
+      "changed_pixel_count": 2426,
+      "start_year": 2019,
+      "target_year": 2020,
+      "transition_counts": [
+        [
+          15212,
+          1,
+          3,
+          8,
+          20,
+          90
+        ],
+        [
+          2,
+          402,
+          2,
+          26,
+          3,
+          5
+        ],
+        [
+          2,
+          22,
+          372,
+          0,
+          22,
+          14
+        ],
+        [
+          15,
+          62,
+          0,
+          921,
+          1,
+          10
+        ],
+        [
+          5,
+          3,
+          26,
+          1,
+          8451,
+          421
+        ],
+        [
+          331,
+          52,
+          77,
+          57,
+          1145,
+          51972
+        ]
+      ],
+      "valid_pixel_count": 79756
+    },
+    {
+      "built_gain_pixels": 365,
+      "built_loss_pixels": 1454,
+      "change_fraction": 0.0304592079853535,
+      "changed_pixel_count": 2429,
+      "start_year": 2020,
+      "target_year": 2021,
+      "transition_counts": [
+        [
+          15362,
+          0,
+          0,
+          8,
+          9,
+          188
+        ],
+        [
+          1,
+          463,
+          16,
+          36,
+          5,
+          23
+        ],
+        [
+          3,
+          5,
+          407,
+          7,
+          24,
+          34
+        ],
+        [
+          12,
+          42,
+          1,
+          940,
+          0,
+          17
+        ],
+        [
+          15,
+          1,
+          16,
+          0,
+          8188,
+          1422
+        ],
+        [
+          141,
+          23,
+          28,
+          25,
+          327,
+          51957
+        ]
+      ],
+      "valid_pixel_count": 79746
+    },
+    {
+      "built_gain_pixels": 1285,
+      "built_loss_pixels": 479,
+      "change_fraction": 0.034484920684682424,
+      "changed_pixel_count": 2750,
+      "start_year": 2021,
+      "target_year": 2022,
+      "transition_counts": [
+        [
+          15123,
+          6,
+          8,
+          16,
+          27,
+          353
+        ],
+        [
+          3,
+          434,
+          5,
+          54,
+          3,
+          34
+        ],
+        [
+          5,
+          17,
+          380,
+          4,
+          14,
+          48
+        ],
+        [
+          35,
+          16,
+          4,
+          915,
+          0,
+          46
+        ],
+        [
+          20,
+          2,
+          35,
+          0,
+          8074,
+          422
+        ],
+        [
+          252,
+          19,
+          39,
+          22,
+          1241,
+          52069
+        ]
+      ],
+      "valid_pixel_count": 79745
+    },
+    {
+      "built_gain_pixels": 2900,
+      "built_loss_pixels": 138,
+      "change_fraction": 0.05647790540201635,
+      "changed_pixel_count": 4504,
+      "start_year": 2022,
+      "target_year": 2023,
+      "transition_counts": [
+        [
+          15196,
+          8,
+          4,
+          31,
+          43,
+          156
+        ],
+        [
+          5,
+          464,
+          5,
+          19,
+          2,
+          1
+        ],
+        [
+          5,
+          7,
+          367,
+          24,
+          44,
+          24
+        ],
+        [
+          19,
+          86,
+          1,
+          899,
+          1,
+          5
+        ],
+        [
+          15,
+          1,
+          9,
+          0,
+          9221,
+          113
+        ],
+        [
+          747,
+          121,
+          75,
+          123,
+          2810,
+          49097
+        ]
+      ],
+      "valid_pixel_count": 79748
+    },
+    {
+      "built_gain_pixels": 3682,
+      "built_loss_pixels": 205,
+      "change_fraction": 0.06235030033984174,
+      "changed_pixel_count": 4972,
+      "start_year": 2023,
+      "target_year": 2024,
+      "transition_counts": [
+        [
+          15688,
+          3,
+          3,
+          13,
+          29,
+          251
+        ],
+        [
+          4,
+          647,
+          10,
+          15,
+          4,
+          7
+        ],
+        [
+          5,
+          12,
+          335,
+          20,
+          40,
+          49
+        ],
+        [
+          17,
+          152,
+          0,
+          912,
+          0,
+          15
+        ],
+        [
+          16,
+          3,
+          16,
+          1,
+          11916,
+          169
+        ],
+        [
+          332,
+          94,
+          44,
+          39,
+          3609,
+          45273
+        ]
+      ],
+      "valid_pixel_count": 79743
+    }
+  ],
+  "one_year_reversions": [
+    {
+      "middle_year_change_pixels": 2888,
+      "one_year_reversion_fraction": 0.5041551246537396,
+      "one_year_reversion_pixels": 1456,
+      "years": [
+        2017,
+        2018,
+        2019
+      ]
+    },
+    {
+      "middle_year_change_pixels": 2641,
+      "one_year_reversion_fraction": 0.16584627035213934,
+      "one_year_reversion_pixels": 438,
+      "years": [
+        2018,
+        2019,
+        2020
+      ]
+    },
+    {
+      "middle_year_change_pixels": 2425,
+      "one_year_reversion_fraction": 0.4210309278350515,
+      "one_year_reversion_pixels": 1021,
+      "years": [
+        2019,
+        2020,
+        2021
+      ]
+    },
+    {
+      "middle_year_change_pixels": 2429,
+      "one_year_reversion_fraction": 0.38904899135446686,
+      "one_year_reversion_pixels": 945,
+      "years": [
+        2020,
+        2021,
+        2022
+      ]
+    },
+    {
+      "middle_year_change_pixels": 2750,
+      "one_year_reversion_fraction": 0.3330909090909091,
+      "one_year_reversion_pixels": 916,
+      "years": [
+        2021,
+        2022,
+        2023
+      ]
+    },
+    {
+      "middle_year_change_pixels": 4504,
+      "one_year_reversion_fraction": 0.10390763765541741,
+      "one_year_reversion_pixels": 468,
+      "years": [
+        2022,
+        2023,
+        2024
+      ]
+    }
+  ],
+  "schema": "gwm.abu_dhabi_input_audit.v1",
+  "status": "PASS_WITH_LABEL_NOISE_WARNING",
+  "terrain": {
+    "bands": {
+      "elevation": {
+        "max": 58.870765686035156,
+        "mean": 8.766475677490234,
+        "median": 4.656108856201172,
+        "min": -10.930936813354492
+      },
+      "slope": {
+        "max": 20.607385635375977,
+        "mean": 0.631977915763855,
+        "median": 0.40377289056777954,
+        "min": 0.0
+      }
+    },
+    "valid_pixel_count": 79775
+  },
+  "viirs_by_year": [
+    {
+      "annual_mean_radiance": {
+        "max": 288.880126953125,
+        "mean": 55.24351119995117,
+        "median": 44.94302749633789,
+        "min": 1.4484809637069702
+      },
+      "valid_pixel_count": 79775,
+      "year": 2017
+    },
+    {
+      "annual_mean_radiance": {
+        "max": 359.1116638183594,
+        "mean": 57.460113525390625,
+        "median": 48.55083465576172,
+        "min": 1.5858333110809326
+      },
+      "valid_pixel_count": 79775,
+      "year": 2018
+    },
+    {
+      "annual_mean_radiance": {
+        "max": 321.7633361816406,
+        "mean": 60.631370544433594,
+        "median": 51.625,
+        "min": 1.8583333492279053
+      },
+      "valid_pixel_count": 79775,
+      "year": 2019
+    },
+    {
+      "annual_mean_radiance": {
+        "max": 269.42584228515625,
+        "mean": 58.08512878417969,
+        "median": 49.39666748046875,
+        "min": 1.7416666746139526
+      },
+      "valid_pixel_count": 79775,
+      "year": 2020
+    },
+    {
+      "annual_mean_radiance": {
+        "max": 331.29998779296875,
+        "mean": 59.15950012207031,
+        "median": 50.73666763305664,
+        "min": 1.909166693687439
+      },
+      "valid_pixel_count": 79775,
+      "year": 2021
+    },
+    {
+      "annual_mean_radiance": {
+        "max": 334.6858215332031,
+        "mean": 61.209068298339844,
+        "median": 54.143333435058594,
+        "min": 1.8141666650772095
+      },
+      "valid_pixel_count": 79775,
+      "year": 2022
+    },
+    {
+      "annual_mean_radiance": {
+        "max": 349.53082275390625,
+        "mean": 63.46417236328125,
+        "median": 56.40083312988281,
+        "min": 2.0316667556762695
+      },
+      "valid_pixel_count": 79775,
+      "year": 2023
+    },
+    {
+      "annual_mean_radiance": {
+        "max": 375.8550109863281,
+        "mean": 65.05756378173828,
+        "median": 60.12333297729492,
+        "min": 2.3866665363311768
+      },
+      "valid_pixel_count": 79775,
+      "year": 2024
+    }
+  ],
+  "warnings": {
+    "interpretation": "Annual Dynamic World labels contain classification volatility. Models must be scored both on all valid pixels and on a confidence/stability sensitivity mask; observed changes are not treated as observed policy actions.",
+    "mean_fraction_below_dynamic_world_confidence_0_5": 0.5497163898464432,
+    "median_one_year_land_cover_reversion_fraction": 0.36106995022268795
+  }
+}

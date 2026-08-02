@@ -86,7 +86,10 @@ def validate_land_use_action(
         errors.append("schema_mismatch")
     if action.get("parcel_id") != parcel.get("node_id"):
         errors.append("parcel_id_mismatch")
-    if action.get("from_land_use_class") != parcel.get("current_land_use_class"):
+    effective_source_class = parcel.get("effective_land_use_class") or parcel.get(
+        "current_land_use_class"
+    )
+    if action.get("from_land_use_class") != effective_source_class:
         errors.append("from_land_use_class_mismatch")
     classes = set(land_use_dictionary.get("classes") or [])
     if action.get("from_land_use_class") not in classes:

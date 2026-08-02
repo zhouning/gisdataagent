@@ -9,13 +9,21 @@ from typing import Any
 from .causal_calibration import bind_causal_calibration_to_rollout
 from .direct_transition import apply_direct_transition
 from .evidence_gate import build_rollout_evidence_gate
+from .facility_action import (
+    FACILITY_ACTION_SCHEMA,
+    build_no_facility_change_action,
+    validate_facility_action,
+)
 from .land_use_action import (
     bind_server_actor,
     build_change_land_use_action,
     build_no_change_action,
     validate_land_use_action,
 )
-from .spatial_propagation import propagate_spatial_messages
+from .spatial_propagation import (
+    propagate_facility_messages,
+    propagate_spatial_messages,
+)
 
 
 def run_counterfactual_rollout(
@@ -30,32 +38,39 @@ def run_counterfactual_rollout(
     """Compare no-action, intervention and optional controlled alternative worlds."""
 
     parcel = _target_parcel(graph, str(intervention_action.get("parcel_id")))
-    intervention_validation = validate_land_use_action(
-        intervention_action,
+    facility_action = intervention_action.get("schema") == FACILITY_ACTION_SCHEMA
+    intervention_validation = _validate_action(
+        graph=graph,
+        action=intervention_action,
         parcel=parcel,
-        actual_snapshot_digest=str(graph.get("snapshot_digest")),
         land_use_dictionary=land_use_dictionary,
         transition_matrix=transition_matrix,
     )
     if not intervention_validation["valid"]:
         raise ValueError("intervention_action_invalid:" + intervention_validation["errors"][0])
 
-    baseline_action = bind_server_actor(
-        build_no_change_action(
-            parcel_id=str(parcel.get("node_id")),
-            current_land_use_class=str(parcel.get("current_land_use_class")),
-            rationale="counterfactual_no_change_baseline",
-            snapshot_digest=str(graph.get("snapshot_digest")),
-            dictionary_version=str(land_use_dictionary.get("version")),
-            transition_matrix_version=str(transition_matrix.get("version")),
-            requested_at=str(intervention_action.get("requested_at")),
-        ),
-        actor_id=str(intervention_action.get("actor_id")),
+    effective_source_class = str(
+        parcel.get("effective_land_use_class") or parcel.get("current_land_use_class")
     )
-    baseline_validation = validate_land_use_action(
-        baseline_action,
+    if facility_action:
+        baseline_action = build_no_facility_change_action(intervention_action)
+    else:
+        baseline_action = bind_server_actor(
+            build_no_change_action(
+                parcel_id=str(parcel.get("node_id")),
+                current_land_use_class=effective_source_class,
+                rationale="counterfactual_no_change_baseline",
+                snapshot_digest=str(graph.get("snapshot_digest")),
+                dictionary_version=str(land_use_dictionary.get("version")),
+                transition_matrix_version=str(transition_matrix.get("version")),
+                requested_at=str(intervention_action.get("requested_at")),
+            ),
+            actor_id=str(intervention_action.get("actor_id")),
+        )
+    baseline_validation = _validate_action(
+        graph=graph,
+        action=baseline_action,
         parcel=parcel,
-        actual_snapshot_digest=str(graph.get("snapshot_digest")),
         land_use_dictionary=land_use_dictionary,
         transition_matrix=transition_matrix,
     )
@@ -71,11 +86,13 @@ def run_counterfactual_rollout(
     )
 
     alternative = None
-    if alternative_land_use_class is not None:
+    if facility_action and alternative_land_use_class is not None:
+        raise ValueError("facility_action_does_not_accept_land_use_alternative")
+    if not facility_action and alternative_land_use_class is not None:
         alternative_action = bind_server_actor(
             build_change_land_use_action(
                 parcel_id=str(parcel.get("node_id")),
-                from_land_use_class=str(parcel.get("current_land_use_class")),
+                from_land_use_class=effective_source_class,
                 to_land_use_class=str(alternative_land_use_class),
                 rationale="controlled_alternative_land_use_counterfactual",
                 snapshot_digest=str(graph.get("snapshot_digest")),
@@ -155,13 +172,21 @@ def _trajectory(
         action=action,
         action_validation=validation,
     )
-    propagation = propagate_spatial_messages(
-        graph=t1["state_graph"],
-        target_parcel_id=str(action.get("parcel_id")),
-        from_land_use_class=str(action.get("from_land_use_class")),
-        to_land_use_class=str(action.get("to_land_use_class")),
-        kernel_version=str(graph.get("kernel_version")),
-    )
+    if action.get("schema") == FACILITY_ACTION_SCHEMA:
+        propagation = propagate_facility_messages(
+            graph=t1["state_graph"],
+            action=action,
+            direct_state_delta=t1["direct_state_delta"],
+            kernel_version=str(graph.get("kernel_version")),
+        )
+    else:
+        propagation = propagate_spatial_messages(
+            graph=t1["state_graph"],
+            target_parcel_id=str(action.get("parcel_id")),
+            from_land_use_class=str(action.get("from_land_use_class")),
+            to_land_use_class=str(action.get("to_land_use_class")),
+            kernel_version=str(graph.get("kernel_version")),
+        )
     t2 = {
         "state_time": "t2_neighborhood_adaptation",
         **propagation,
@@ -180,6 +205,25 @@ def _target_parcel(graph: dict[str, Any], parcel_id: str) -> dict[str, Any]:
         if node.get("node_id") == parcel_id and node.get("node_type") == "parcel":
             return node
     raise ValueError("target_parcel_missing")
+
+
+def _validate_action(
+    *,
+    graph: dict[str, Any],
+    action: dict[str, Any],
+    parcel: dict[str, Any],
+    land_use_dictionary: dict[str, Any],
+    transition_matrix: dict[str, Any],
+) -> dict[str, Any]:
+    if action.get("schema") == FACILITY_ACTION_SCHEMA:
+        return validate_facility_action(action, graph=graph)
+    return validate_land_use_action(
+        action,
+        parcel=parcel,
+        actual_snapshot_digest=str(graph.get("snapshot_digest")),
+        land_use_dictionary=land_use_dictionary,
+        transition_matrix=transition_matrix,
+    )
 
 
 def _messages_by_priority(

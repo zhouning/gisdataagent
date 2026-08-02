@@ -1,0 +1,282 @@
+{
+  "actions": [
+    {
+      "action_id": "oracle_allocation_2022_2023",
+      "desired_observed_counts": {
+        "1": 15985,
+        "2": 682,
+        "3": 461,
+        "4": 1096,
+        "5": 12121,
+        "6": 49381
+      },
+      "feasible_target_counts": {
+        "1": 15438,
+        "2": 685,
+        "3": 465,
+        "4": 1011,
+        "5": 12260,
+        "6": 49867
+      },
+      "hard_exclusion_origin_year": 2022,
+      "model_may_read_reliability_mask": false,
+      "reliability_mask": "artifacts/bundle/reliability_2022_2023_100m.tif",
+      "schema": "gwm.land_use_demand_action.v1",
+      "source": "observed_allocation",
+      "start_year": 2022,
+      "target_year": 2023
+    },
+    {
+      "action_id": "oracle_allocation_2023_2024",
+      "desired_observed_counts": {
+        "1": 16060,
+        "2": 906,
+        "3": 408,
+        "4": 1000,
+        "5": 15598,
+        "6": 45754
+      },
+      "feasible_target_counts": {
+        "1": 15438,
+        "2": 912,
+        "3": 412,
+        "4": 1011,
+        "5": 15774,
+        "6": 46179
+      },
+      "hard_exclusion_origin_year": 2022,
+      "model_may_read_reliability_mask": false,
+      "reliability_mask": "artifacts/bundle/reliability_2023_2024_100m.tif",
+      "schema": "gwm.land_use_demand_action.v1",
+      "source": "observed_allocation",
+      "start_year": 2023,
+      "target_year": 2024
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "artifacts/bundle/common_valid_mask_100m.tif",
+      "sha256": "64bb412360ce3579c27f2d841d49be88e75abbd90809582261b1d3237b50e392",
+      "size_bytes": 2885
+    },
+    {
+      "path": "artifacts/bundle/hard_exclusion_2022_100m.tif",
+      "sha256": "c8b204a821d61aebbacd8a2a38f541d3c9056d36c207da5c3eb937c29ce3f3fe",
+      "size_bytes": 5605
+    },
+    {
+      "path": "artifacts/bundle/hard_exclusion_2024_100m.tif",
+      "sha256": "5ae9779ccf9d7865cd661af671b349b6b95e5ec52d356467263be865cb5f4bde",
+      "size_bytes": 5647
+    },
+    {
+      "path": "artifacts/bundle/reliability_2022_2023_100m.tif",
+      "sha256": "f2bc5eed1f516d7886042c90de4a6421d1d5771563de96d4ce7b7196b62065cb",
+      "size_bytes": 10225
+    },
+    {
+      "path": "artifacts/bundle/reliability_2023_2024_100m.tif",
+      "sha256": "ca2f2ce8618f78aac27e82651a6c8db05187091f5da2f34499f85d8289341796",
+      "size_bytes": 10297
+    },
+    {
+      "path": "artifacts/bundle/allocation_actions.json",
+      "sha256": "5fe122636d8aaefaaf0d82a31c038e648b77b2af23357b93c397e6e4c551585c",
+      "size_bytes": 1392
+    },
+    {
+      "path": "artifacts/bundle/planning_scenarios.json",
+      "sha256": "5dbdbc4aec497607a9f4eca9895b37975bf33c944b67ec35f824edfbcd7103ee",
+      "size_bytes": 3882
+    }
+  ],
+  "benchmark_id": "abu-dhabi-land-use-v1",
+  "common_valid_pixel_count": 79726,
+  "created_at": "2026-08-01T14:23:48.233882+00:00",
+  "hard_exclusion_pixel_counts": {
+    "2022": 28831,
+    "2024": 28942
+  },
+  "scenarios": [
+    {
+      "annual_built_gain_pixels": 500,
+      "annual_green_gain_pixels": 50,
+      "interpretation": "Planner-supplied stress-test action, not a forecast.",
+      "origin_year": 2024,
+      "scenario_id": "compact",
+      "schema": "gwm.land_use_scenario.v1",
+      "source": "scenario_target",
+      "target_counts_by_year": {
+        "2025": {
+          "1": 16060,
+          "2": 906,
+          "3": 458,
+          "4": 1000,
+          "5": 16098,
+          "6": 45204
+        },
+        "2026": {
+          "1": 16060,
+          "2": 906,
+          "3": 508,
+          "4": 1000,
+          "5": 16598,
+          "6": 44654
+        },
+        "2027": {
+          "1": 16060,
+          "2": 906,
+          "3": 558,
+          "4": 1000,
+          "5": 17098,
+          "6": 44104
+        },
+        "2028": {
+          "1": 16060,
+          "2": 906,
+          "3": 608,
+          "4": 1000,
+          "5": 17598,
+          "6": 43554
+        },
+        "2029": {
+          "1": 16060,
+          "2": 906,
+          "3": 658,
+          "4": 1000,
+          "5": 18098,
+          "6": 43004
+        },
+        "2030": {
+          "1": 16060,
+          "2": 906,
+          "3": 708,
+          "4": 1000,
+          "5": 18598,
+          "6": 42454
+        }
+      }
+    },
+    {
+      "annual_built_gain_pixels": 350,
+      "annual_green_gain_pixels": 150,
+      "interpretation": "Planner-supplied stress-test action, not a forecast.",
+      "origin_year": 2024,
+      "scenario_id": "ecological_priority",
+      "schema": "gwm.land_use_scenario.v1",
+      "source": "scenario_target",
+      "target_counts_by_year": {
+        "2025": {
+          "1": 16060,
+          "2": 906,
+          "3": 558,
+          "4": 1000,
+          "5": 15948,
+          "6": 45254
+        },
+        "2026": {
+          "1": 16060,
+          "2": 906,
+          "3": 708,
+          "4": 1000,
+          "5": 16298,
+          "6": 44754
+        },
+        "2027": {
+          "1": 16060,
+          "2": 906,
+          "3": 858,
+          "4": 1000,
+          "5": 16648,
+          "6": 44254
+        },
+        "2028": {
+          "1": 16060,
+          "2": 906,
+          "3": 1008,
+          "4": 1000,
+          "5": 16998,
+          "6": 43754
+        },
+        "2029": {
+          "1": 16060,
+          "2": 906,
+          "3": 1158,
+          "4": 1000,
+          "5": 17348,
+          "6": 43254
+        },
+        "2030": {
+          "1": 16060,
+          "2": 906,
+          "3": 1308,
+          "4": 1000,
+          "5": 17698,
+          "6": 42754
+        }
+      }
+    },
+    {
+      "annual_built_gain_pixels": 1000,
+      "annual_green_gain_pixels": 25,
+      "interpretation": "Planner-supplied stress-test action, not a forecast.",
+      "origin_year": 2024,
+      "scenario_id": "outward_growth",
+      "schema": "gwm.land_use_scenario.v1",
+      "source": "scenario_target",
+      "target_counts_by_year": {
+        "2025": {
+          "1": 16060,
+          "2": 906,
+          "3": 433,
+          "4": 1000,
+          "5": 16598,
+          "6": 44729
+        },
+        "2026": {
+          "1": 16060,
+          "2": 906,
+          "3": 458,
+          "4": 1000,
+          "5": 17598,
+          "6": 43704
+        },
+        "2027": {
+          "1": 16060,
+          "2": 906,
+          "3": 483,
+          "4": 1000,
+          "5": 18598,
+          "6": 42679
+        },
+        "2028": {
+          "1": 16060,
+          "2": 906,
+          "3": 508,
+          "4": 1000,
+          "5": 19598,
+          "6": 41654
+        },
+        "2029": {
+          "1": 16060,
+          "2": 906,
+          "3": 533,
+          "4": 1000,
+          "5": 20598,
+          "6": 40629
+        },
+        "2030": {
+          "1": 16060,
+          "2": 906,
+          "3": 558,
+          "4": 1000,
+          "5": 21598,
+          "6": 39604
+        }
+      }
+    }
+  ],
+  "schema": "gwm.abu_dhabi_benchmark_bundle.v1",
+  "static_exclusion_pixel_count": 28859,
+  "status": "complete"
+}

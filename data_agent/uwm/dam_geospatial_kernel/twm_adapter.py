@@ -48,6 +48,7 @@ def build_twm_dynamic_world_transition(
     coarse_block_size: int = 4,
     terrain_similarity_scope: str = "global_configuration",
     selected_cells: list[tuple[int, int]] | None = None,
+    nightlight_path: Path | None = None,
 ) -> TWMDAMGKTransition:
     """Build a non-intervention observed land-state transition.
 
@@ -64,7 +65,8 @@ def build_twm_dynamic_world_transition(
     driver_paths = [
         region_dir / f"{region_id}_srtm_elevation_100m.tif",
         region_dir / f"{region_id}_srtm_slope_100m.tif",
-        region_dir / f"{region_id}_viirs_nightlight_mean_100m.tif",
+        nightlight_path
+        or region_dir / f"{region_id}_viirs_nightlight_mean_100m.tif",
     ]
     current, transform, nodata = _read_raster(current_path)
     next_state, next_transform, next_nodata = _read_raster(next_path)
@@ -333,6 +335,14 @@ def build_twm_dynamic_world_transition(
                 "maximum_neighbors": 2,
             },
             "driver_nodata_values": driver_nodata_values,
+            "nightlight_driver": {
+                "path": str(driver_paths[2]),
+                "temporal_semantics": (
+                    "explicit_current_or_sequence_initial_year"
+                    if nightlight_path is not None
+                    else "configured_period_composite"
+                ),
+            },
             "claim_boundary": {
                 "max_claim_level": "observed_land_state_transition",
                 "action_conditioning_claim": False,
@@ -364,10 +374,16 @@ def _valid_continuous(value: float, nodata: float | None) -> bool:
 def _transform_physical_drivers(values: torch.Tensor) -> torch.Tensor:
     elevation = ((values[:, 0] + 100.0) / 4100.0).clamp(0.0, 1.0)
     slope = (values[:, 1] / 65.0).clamp(0.0, 1.0)
-    nightlight = (
-        torch.log1p(values[:, 2].clamp_min(0.0)) / np.log1p(320.0)
-    ).clamp(0.0, 1.0)
+    nightlight = _transform_nightlight(values[:, 2])
     return torch.stack([elevation, slope, nightlight], dim=1)
+
+
+def _transform_nightlight(values: torch.Tensor) -> torch.Tensor:
+    """Map VIIRS radiance to the fixed scale used across regions and years."""
+
+    return (
+        torch.log1p(values.clamp_min(0.0)) / np.log1p(320.0)
+    ).clamp(0.0, 1.0)
 
 
 def _projected_cell_center(transform: Any, row: int, column: int) -> tuple[float, float]:

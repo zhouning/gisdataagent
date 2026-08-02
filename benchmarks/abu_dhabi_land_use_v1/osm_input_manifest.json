@@ -1,0 +1,56 @@
+{
+  "artifacts": [
+    {
+      "path": "artifacts/osm/gcc-states-260731.osm.pbf",
+      "role": "geofabrik_gcc_pbf_snapshot",
+      "sha256": "018c6cf42b25cb755b2555fc60828505d6d90e2ba7aaa0742b527fbc1b869704",
+      "size_bytes": 251917202
+    },
+    {
+      "path": "artifacts/osm/road_accessibility_100m.tif",
+      "role": "road_accessibility",
+      "sha256": "f4360003cfaf04ee8e309e5e2892a6fea11c7b61b90a3ba323a7597ffa673a06",
+      "size_bytes": 128596
+    },
+    {
+      "path": "artifacts/osm/osm_public_proxy_constraints_100m.tif",
+      "role": "public_proxy_constraints",
+      "sha256": "2e8969dedb1e9e8f9d8aa5f29f5d9d895384f851396455c77e19e262f6b1a03a",
+      "size_bytes": 2868
+    }
+  ],
+  "benchmark_id": "abu-dhabi-land-use-v1",
+  "constraint_warning": "OSM protected/airport/port geometry is a public-data proxy, not an authoritative Abu Dhabi statutory planning layer.",
+  "created_at": "2026-08-01T14:17:59.937008+00:00",
+  "raster_counts": {
+    "airport_port_proxy_pixels": 4203,
+    "major_road_pixels": 7984,
+    "protected_proxy_pixels": 1210,
+    "road_pixels": 48111
+  },
+  "schema": "gwm.abu_dhabi_osm_input_manifest.v1",
+  "source": {
+    "bbox_wgs84": [
+      54.2971553,
+      24.2810331,
+      54.7659108,
+      24.601854
+    ],
+    "licence": "OpenStreetMap contributors, ODbL 1.0",
+    "provider": "Geofabrik OpenStreetMap GCC extract",
+    "snapshot_date": "2026-07-31",
+    "url": "https://download.geofabrik.de/asia/gcc-states-260731.osm.pbf"
+  },
+  "source_counts": {
+    "bbox_lines": 113003,
+    "bbox_multipolygons": 124138,
+    "bbox_points": 110024,
+    "highway_features": 103687,
+    "infrastructure_line_features": 891,
+    "infrastructure_point_features": 171,
+    "infrastructure_polygon_features": 411,
+    "major_highway_features": 3902,
+    "protected_features": 1
+  },
+  "status": "complete"
+}

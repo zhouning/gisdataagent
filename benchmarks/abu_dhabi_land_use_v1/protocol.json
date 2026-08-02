@@ -1,0 +1,169 @@
+{
+  "schema": "gwm.abu_dhabi_land_use_benchmark.v1",
+  "benchmark_id": "abu-dhabi-land-use-v1",
+  "title": "Abu Dhabi Bounded Land-Use Simulation and Optimization Benchmark",
+  "status": "historical_and_planning_core_complete_required_controls_pending",
+  "scientific_question": "Under identical observed states, demand actions, spatial constraints and evaluation rules, how do GeoSOS-FLUS, the GWM Geospatial Kernel and Paper58 differ in land-cover allocation, multi-step rollout and constrained planning optimization for Abu Dhabi city?",
+  "claim_boundary": {
+    "supports": [
+      "bounded urban land-cover transition simulation",
+      "oracle-demand spatial allocation comparison",
+      "conditional scenario rollout",
+      "constrained spatial planning optimization"
+    ],
+    "does_not_support": [
+      "exact prediction of Abu Dhabi policy decisions",
+      "causal effects of unobserved planning actions",
+      "a model of all social and economic activity",
+      "transfer to other cities without independent evaluation"
+    ]
+  },
+  "spatial_world": {
+    "name": "Abu Dhabi city",
+    "boundary_source": "OpenStreetMap Nominatim lookup of relation R4479763",
+    "boundary_source_url": "https://nominatim.openstreetmap.org/lookup?osm_ids=R4479763&format=geojson&polygon_geojson=1",
+    "boundary_osm_relation_id": 4479763,
+    "boundary_licence": "OpenStreetMap contributors, ODbL 1.0",
+    "canonical_crs": "EPSG:32640",
+    "canonical_resolution_m": 100,
+    "grid_anchor": [0, 0],
+    "pixel_inclusion": "center_within_city_polygon",
+    "sensitivity_resolution_m": 30,
+    "coastline_policy": "fixed_water_and_coastline_in_v1"
+  },
+  "temporal_world": {
+    "step": "one_year",
+    "observed_years": [2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024],
+    "fit_transitions": [[2017, 2018], [2018, 2019], [2019, 2020], [2020, 2021]],
+    "validation_transition": [2021, 2022],
+    "test_origin_year": 2022,
+    "test_target_years": [2023, 2024],
+    "test_rollout": "two_step_open_loop_from_2022_without_observed_state_writeback",
+    "scenario_origin_year": 2024,
+    "scenario_years": [2025, 2026, 2027, 2028, 2029, 2030]
+  },
+  "class_system": {
+    "nodata": 0,
+    "classes": [
+      {"value": 1, "name": "water", "dynamic_world_values": [0]},
+      {"value": 2, "name": "woody_vegetation", "dynamic_world_values": [1]},
+      {"value": 3, "name": "low_vegetation", "dynamic_world_values": [2, 4, 5]},
+      {"value": 4, "name": "wetland", "dynamic_world_values": [3]},
+      {"value": 5, "name": "built", "dynamic_world_values": [6]},
+      {"value": 6, "name": "bare", "dynamic_world_values": [7]}
+    ],
+    "excluded_dynamic_world_values": [8],
+    "semantic_limit": "Remote-sensing land cover; residential, commercial and industrial land use are not inferred without authoritative planning data."
+  },
+  "state_contract": {
+    "required_dynamic_layers": [
+      "annual_land_cover",
+      "annual_alphaearth_embedding",
+      "annual_viirs_nightlight"
+    ],
+    "required_static_layers": [
+      "city_mask",
+      "elevation",
+      "slope",
+      "road_accessibility",
+      "coast_distance",
+      "protected_or_ecologically_sensitive_mask"
+    ],
+    "optional_authoritative_layers": [
+      "planning_zone",
+      "urban_growth_boundary",
+      "development_permit",
+      "water_capacity",
+      "infrastructure_capacity"
+    ],
+    "alignment_rule": "Every raster must exactly match the canonical CRS, transform, width and height."
+  },
+  "action_contract": {
+    "required": [
+      "target_class_counts_by_year",
+      "allowed_transition_matrix",
+      "hard_exclusion_mask"
+    ],
+    "optional": [
+      "development_priority_surface",
+      "urban_growth_boundary",
+      "road_or_transit_additions",
+      "green_space_target",
+      "approved_reclamation_mask"
+    ],
+    "oracle_demand_rule": "Observed target counts may be used only in allocation-skill evaluation and must be marked observed_allocation.",
+    "scenario_demand_rule": "Future target counts must be supplied by the scenario or a demand model using only origin-time information and must be marked scenario_target."
+  },
+  "hard_constraints": {
+    "immutable_classes": [1],
+    "protected_classes": [4],
+    "airport_port_and_critical_infrastructure_mask_required_when_available": true,
+    "no_unapproved_reclamation": true,
+    "violation_tolerance_pixels": 0
+  },
+  "models": [
+    {
+      "id": "geosos_flus",
+      "role": "traditional_ann_suitability_plus_ca_allocation",
+      "required_seed_count": 3,
+      "seeds": [31, 47, 73]
+    },
+    {
+      "id": "gwm_geospatial_kernel",
+      "role": "explicit_action_constraint_topology_and_state_writeback_rollout",
+      "required_seed_count": 3,
+      "seeds": [31, 47, 73]
+    },
+    {
+      "id": "paper58",
+      "role": "action_conditioned_alphaearth_latent_dynamics_and_semantic_allocation",
+      "required_seed_count": 3,
+      "seeds": [31, 47, 73]
+    }
+  ],
+  "evaluation_tracks": {
+    "allocation_skill": {
+      "demand": "observed_target_class_counts",
+      "purpose": "isolate spatial allocation skill from demand forecast error",
+      "primary_metric": "change_figure_of_merit_on_all_valid_pixels",
+      "secondary_metrics": ["change_f1", "changed_destination_macro_f1", "overall_accuracy", "macro_f1"],
+      "prespecified_label_reliability_sensitivity": {
+        "confidence_threshold": 0.5,
+        "rule": "origin and target Dynamic World mean-top-probability must both be at least 0.5",
+        "model_access": false,
+        "purpose": "quantify sensitivity to annual product-label volatility without hiding full-grid results"
+      }
+    },
+    "end_to_end_rollout": {
+      "demand": "origin_time_scenario_or_forecast_demand",
+      "purpose": "measure accumulated state and demand error without observed writeback",
+      "primary_metric": "mean_horizon_change_f1",
+      "secondary_metrics": ["class_area_error", "demand_error", "constraint_violation_rate", "multistep_error_growth"]
+    },
+    "planning_optimization": {
+      "purpose": "compare feasible plans under one shared objective and constraint set",
+      "objective_terms": [
+        "demand_satisfaction",
+        "ecological_impact",
+        "compactness",
+        "road_accessibility",
+        "new_infrastructure_proxy_cost"
+      ],
+      "reporting": "Pareto frontier plus each objective component; no hidden weighted aggregate."
+    }
+  },
+  "required_controls": [
+    "state_persistence",
+    "markov_ca",
+    "action_deleted",
+    "action_shuffled",
+    "constraint_deleted",
+    "spatial_driver_shuffled"
+  ],
+  "data_firewall": {
+    "fit_may_read_through_year": 2021,
+    "validation_may_read_year": 2022,
+    "test_labels_prohibited_during_fit_or_selection": [2023, 2024],
+    "future_scenario_may_not_read_post_2024_observations": true
+  }
+}

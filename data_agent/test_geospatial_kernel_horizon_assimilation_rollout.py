@@ -14,7 +14,10 @@ from data_agent.uwm.geospatial_kernel_v2.horizon_assimilation_policy import (
     HorizonAssimilationPolicy,
 )
 from data_agent.uwm.geospatial_kernel_v2.horizon_assimilation_rollout import (
-    execute_horizon_assimilation_issue,
+    execute_horizon_assimilation_issue as execute_frozen_horizon_assimilation_issue,
+)
+from data_agent.uwm.geospatial_kernel_v2.horizon_assimilation_runtime_rollout import (
+    execute_runtime_horizon_assimilation_issue,
 )
 from scripts.evaluate_geospatial_kernel_issue_state_assimilation import (
     _iso,
@@ -164,12 +167,12 @@ def real_issue_inputs():
 @pytest.fixture(scope="module")
 def real_rollouts(real_issue_inputs):
     return {
-        system_id: execute_horizon_assimilation_issue(**payload["kwargs"])
+        system_id: execute_runtime_horizon_assimilation_issue(**payload["kwargs"])
         for system_id, payload in real_issue_inputs.items()
     }
 
 
-def test_outcome_free_core_replays_both_real_systems_exactly(
+def test_runtime_conformance_replays_both_real_systems_exactly(
     real_issue_inputs,
     real_rollouts,
 ) -> None:
@@ -180,6 +183,20 @@ def test_outcome_free_core_replays_both_real_systems_exactly(
                 assert rollout.mode_rollout(mode).prediction_for_horizon(
                     horizon
                 ) == pytest.approx(expected[(mode, horizon)], abs=1e-12)
+
+
+def test_runtime_conformance_is_exactly_equal_to_frozen_rollout(
+    real_issue_inputs,
+    real_rollouts,
+) -> None:
+    for system_id, runtime_rollout in real_rollouts.items():
+        frozen_rollout = execute_frozen_horizon_assimilation_issue(
+            **real_issue_inputs[system_id]["kwargs"]
+        )
+        for mode in HORIZON_ASSIMILATION_MODES:
+            assert runtime_rollout.mode_rollout(mode).predictions_m3s == (
+                frozen_rollout.mode_rollout(mode).predictions_m3s
+            )
 
 
 def test_policy_routes_real_predictions_without_changing_constituents(
@@ -197,17 +214,51 @@ def test_policy_routes_real_predictions_without_changing_constituents(
 
 
 def test_real_rollouts_close_all_ledgers_and_expose_no_score(real_rollouts) -> None:
-    parameter_names = set(inspect.signature(execute_horizon_assimilation_issue).parameters)
+    parameter_names = set(
+        inspect.signature(execute_runtime_horizon_assimilation_issue).parameters
+    )
     assert not parameter_names.intersection({"target", "outcome", "score", "loss"})
     for rollout in real_rollouts.values():
         encoded = rollout.as_dict()
         assert rollout.all_analysis_ledgers_passed is True
         assert rollout.all_physical_mass_balances_passed is True
+        assert rollout.all_kernel_runtime_steps_completed is True
         assert rollout.localized_updates_preserved_all_branch_states is True
         assert sum(
             value.physical_mass_balance_check_count
             for value in rollout.mode_rollouts
         ) == 48
+        assert sum(
+            value.kernel_runtime_completed_step_count
+            for value in rollout.mode_rollouts
+        ) == 48
+        assert sum(
+            value.kernel_runtime_admitted_step_count
+            + value.kernel_runtime_projected_step_count
+            for value in rollout.mode_rollouts
+        ) == 48
+        assert any(
+            value.kernel_runtime_projected_step_count
+            for value in rollout.mode_rollouts
+        )
+        assert all(
+            value.kernel_runtime_adapter_id
+            == "gk-v2-branching-hydraulic-runtime-adapter"
+            for value in rollout.mode_rollouts
+        )
+        assert all(
+            value.kernel_runtime_execution_summary["all_expected_steps_completed"] is True
+            for value in rollout.mode_rollouts
+        )
+        assert all(
+            value.kernel_runtime_execution_summary["claim_boundary"]
+            ["execution_completed_does_not_imply_domain_validation"]
+            is True
+            for value in rollout.mode_rollouts
+        )
+        assert encoded["claim_boundary"]["shared_runtime_contract_executed"] is True
+        assert encoded["claim_boundary"]["post_freeze_runtime_conformance_only"] is True
+        assert encoded["claim_boundary"]["frozen_holdout_candidate_modified"] is False
         assert encoded["data_isolation"] == {
             "future_target_argument_accepted": False,
             "score_or_loss_argument_accepted": False,
@@ -219,7 +270,7 @@ def test_real_rollouts_close_all_ledgers_and_expose_no_score(real_rollouts) -> N
 def test_negative_issue_observation_falls_back_to_nominal(real_issue_inputs) -> None:
     kwargs = dict(real_issue_inputs["j_percy_priest"]["kwargs"])
     kwargs["issue_observed_outlet_m3s"] = -1.0
-    rollout = execute_horizon_assimilation_issue(**kwargs)
+    rollout = execute_runtime_horizon_assimilation_issue(**kwargs)
     nominal = rollout.mode_rollout("nominal")
 
     for mode in HORIZON_ASSIMILATION_MODES[1:]:
@@ -236,4 +287,4 @@ def test_observation_not_available_at_issue_is_rejected(real_issue_inputs) -> No
     kwargs["observation_available_at"] = kwargs["issue_time"] + timedelta(seconds=1)
 
     with pytest.raises(ValueError, match="horizon_assimilation_issue_inputs_invalid"):
-        execute_horizon_assimilation_issue(**kwargs)
+        execute_runtime_horizon_assimilation_issue(**kwargs)

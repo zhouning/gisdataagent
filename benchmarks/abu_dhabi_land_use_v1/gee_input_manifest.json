@@ -1,0 +1,338 @@
+{
+  "artifacts": [
+    {
+      "image_count": 1,
+      "path": "artifacts/gee/alphaearth/alphaearth_2017_100m.tif",
+      "role": "annual_alphaearth_embedding",
+      "sha256": "faea516c30b213631c1002ba91232e05eeebb052747a79a4a50e128873894073",
+      "size_bytes": 19100454,
+      "year": 2017
+    },
+    {
+      "image_count": 1,
+      "path": "artifacts/gee/alphaearth/alphaearth_2018_100m.tif",
+      "role": "annual_alphaearth_embedding",
+      "sha256": "a333223e29e405d5800885ca5365b05e23140d5387fe08de40d1a913cd0f1014",
+      "size_bytes": 19087858,
+      "year": 2018
+    },
+    {
+      "image_count": 1,
+      "path": "artifacts/gee/alphaearth/alphaearth_2019_100m.tif",
+      "role": "annual_alphaearth_embedding",
+      "sha256": "7c81312127ecaaee3e1ecad54067f8c35655bf22207462e4ff910c1dcaa27f3c",
+      "size_bytes": 19097688,
+      "year": 2019
+    },
+    {
+      "image_count": 1,
+      "path": "artifacts/gee/alphaearth/alphaearth_2020_100m.tif",
+      "role": "annual_alphaearth_embedding",
+      "sha256": "89169645eef65090e99298bae1b38e2b3a33238684433c6f8574a6d8253bae9b",
+      "size_bytes": 19086578,
+      "year": 2020
+    },
+    {
+      "image_count": 1,
+      "path": "artifacts/gee/alphaearth/alphaearth_2021_100m.tif",
+      "role": "annual_alphaearth_embedding",
+      "sha256": "059c42c21e0f2de7ad759ca2d31a5745118b6d44cbe7353944742200b0d107d8",
+      "size_bytes": 19098660,
+      "year": 2021
+    },
+    {
+      "image_count": 1,
+      "path": "artifacts/gee/alphaearth/alphaearth_2022_100m.tif",
+      "role": "annual_alphaearth_embedding",
+      "sha256": "1affc98c5f2902407c6643f6499c374f21a2da1b70c16988ab21fb80fd640970",
+      "size_bytes": 19095504,
+      "year": 2022
+    },
+    {
+      "image_count": 1,
+      "path": "artifacts/gee/alphaearth/alphaearth_2023_100m.tif",
+      "role": "annual_alphaearth_embedding",
+      "sha256": "4699a65a1102bcc24ae551f947efae4b677bfa955fb2fb1cb95d58d99a9a0101",
+      "size_bytes": 19094928,
+      "year": 2023
+    },
+    {
+      "image_count": 1,
+      "path": "artifacts/gee/alphaearth/alphaearth_2024_100m.tif",
+      "role": "annual_alphaearth_embedding",
+      "sha256": "2ec5050a0140e4b83ff90cde05a081a75265bc74404e84567eca2b52475625d8",
+      "size_bytes": 19092716,
+      "year": 2024
+    },
+    {
+      "path": "artifacts/gee/constraints/esa_worldcover_2021_water_ecological_100m.tif",
+      "role": "static_ecological_constraints",
+      "sha256": "24c5939f95a0abb07b5e98f3c31c5adaa5a1a10b15442d8bb4d398b0b732c3a0",
+      "size_bytes": 8420,
+      "year": 2021
+    },
+    {
+      "image_count": 263,
+      "path": "artifacts/gee/land_cover/land_cover_2017_100m.tif",
+      "role": "annual_land_cover",
+      "sha256": "42289e965921aea64a547659ad80f2f867f34741e4d3455e6249ec931aa50298",
+      "size_bytes": 9905,
+      "year": 2017
+    },
+    {
+      "image_count": 499,
+      "path": "artifacts/gee/land_cover/land_cover_2018_100m.tif",
+      "role": "annual_land_cover",
+      "sha256": "51d5cb5bf6ffa1af6b6e66f8432984e29c3335338991f286ae605d7e87ecdf9c",
+      "size_bytes": 9223,
+      "year": 2018
+    },
+    {
+      "image_count": 456,
+      "path": "artifacts/gee/land_cover/land_cover_2019_100m.tif",
+      "role": "annual_land_cover",
+      "sha256": "e80027491200b14a652b646e3485dadecd233330fb828bbce35277b679e561f8",
+      "size_bytes": 9773,
+      "year": 2019
+    },
+    {
+      "image_count": 519,
+      "path": "artifacts/gee/land_cover/land_cover_2020_100m.tif",
+      "role": "annual_land_cover",
+      "sha256": "fd33fd7970ade44ee63b9ac9262fc7d0ae7c879a6a6d84ff1210c3a4f175c1cc",
+      "size_bytes": 10195,
+      "year": 2020
+    },
+    {
+      "image_count": 527,
+      "path": "artifacts/gee/land_cover/land_cover_2021_100m.tif",
+      "role": "annual_land_cover",
+      "sha256": "4368e74c8bf4b2a508bb651bac88937433b2c6f379fc2b78bc097b46766671d5",
+      "size_bytes": 9567,
+      "year": 2021
+    },
+    {
+      "image_count": 503,
+      "path": "artifacts/gee/land_cover/land_cover_2022_100m.tif",
+      "role": "annual_land_cover",
+      "sha256": "9053048177fa8c4633a5215f9480b9c8141ce7bedf63a26e7cea61d386b93589",
+      "size_bytes": 9971,
+      "year": 2022
+    },
+    {
+      "image_count": 457,
+      "path": "artifacts/gee/land_cover/land_cover_2023_100m.tif",
+      "role": "annual_land_cover",
+      "sha256": "b1e95f035b010b07990557e4f9543e7d630107148e7fb70a99c5ef0c0820d997",
+      "size_bytes": 11107,
+      "year": 2023
+    },
+    {
+      "image_count": 491,
+      "path": "artifacts/gee/land_cover/land_cover_2024_100m.tif",
+      "role": "annual_land_cover",
+      "sha256": "4249304d306648d50d77b1d2bf9b90b9604aa26b494e4df5188835536aff77ba",
+      "size_bytes": 12093,
+      "year": 2024
+    },
+    {
+      "path": "artifacts/gee/land_cover/land_cover_quality_2017_100m.tif",
+      "role": "annual_land_cover_quality",
+      "sha256": "0efe96fdd2a3a384bdc48116b29e82a52319d4962b9a49268c82b063bc690c75",
+      "size_bytes": 360559,
+      "year": 2017
+    },
+    {
+      "path": "artifacts/gee/land_cover/land_cover_quality_2018_100m.tif",
+      "role": "annual_land_cover_quality",
+      "sha256": "ea4ae49e1517aecd1e9fcebd34132fa26c317da85a144e4f0705169aff2bf46b",
+      "size_bytes": 373703,
+      "year": 2018
+    },
+    {
+      "path": "artifacts/gee/land_cover/land_cover_quality_2019_100m.tif",
+      "role": "annual_land_cover_quality",
+      "sha256": "0e3653d2f39e79cad3aa840a43feeb7ef61cde97ac0e4c38b87786ad3de36264",
+      "size_bytes": 370761,
+      "year": 2019
+    },
+    {
+      "path": "artifacts/gee/land_cover/land_cover_quality_2020_100m.tif",
+      "role": "annual_land_cover_quality",
+      "sha256": "fd83341796bb1b881f66555cfacf6f6ebc3543d8243b2ac8a8a221067dffaeb3",
+      "size_bytes": 378215,
+      "year": 2020
+    },
+    {
+      "path": "artifacts/gee/land_cover/land_cover_quality_2021_100m.tif",
+      "role": "annual_land_cover_quality",
+      "sha256": "25c92566ecb3f5aa68b30753aaf666768c73c2017f46f236461aba6d48663806",
+      "size_bytes": 371855,
+      "year": 2021
+    },
+    {
+      "path": "artifacts/gee/land_cover/land_cover_quality_2022_100m.tif",
+      "role": "annual_land_cover_quality",
+      "sha256": "021432ae6f5faca33db37506dc63d00a110a94027cf2f18e3db66b42bb9c7533",
+      "size_bytes": 371575,
+      "year": 2022
+    },
+    {
+      "path": "artifacts/gee/land_cover/land_cover_quality_2023_100m.tif",
+      "role": "annual_land_cover_quality",
+      "sha256": "4c201f87750dc1e939d42ab952bd52eb53f8e2b63a663014253cb29ba5ba5203",
+      "size_bytes": 373983,
+      "year": 2023
+    },
+    {
+      "path": "artifacts/gee/land_cover/land_cover_quality_2024_100m.tif",
+      "role": "annual_land_cover_quality",
+      "sha256": "89d874df784401b28ce6ff29161d751512162e782fea72aa92b24c52378956a7",
+      "size_bytes": 375751,
+      "year": 2024
+    },
+    {
+      "path": "artifacts/gee/terrain/copernicus_dem_2024_1_slope_100m.tif",
+      "role": "static_terrain",
+      "sha256": "fecc3c2bfef7ce076aa56cbb902ce4e1caa9c5c33ed3719e9c49bb99fbd5b903",
+      "size_bytes": 514392
+    },
+    {
+      "image_count": 12,
+      "path": "artifacts/gee/viirs/viirs_2017_100m.tif",
+      "role": "annual_viirs",
+      "sha256": "39bf4ac9dfdc581c6df7031c720543ff94cc354696c6e9bdf430ff034f9512f0",
+      "size_bytes": 26683,
+      "year": 2017
+    },
+    {
+      "image_count": 12,
+      "path": "artifacts/gee/viirs/viirs_2018_100m.tif",
+      "role": "annual_viirs",
+      "sha256": "219750d3a62a4f830d7879d4f44581f116e36043c7c4b19bae358233a7f2dcd5",
+      "size_bytes": 26313,
+      "year": 2018
+    },
+    {
+      "image_count": 12,
+      "path": "artifacts/gee/viirs/viirs_2019_100m.tif",
+      "role": "annual_viirs",
+      "sha256": "718fa3a6d323bf82e1f0886c2da2f30b9be371504b3e812f41bc6c4209a09942",
+      "size_bytes": 26419,
+      "year": 2019
+    },
+    {
+      "image_count": 12,
+      "path": "artifacts/gee/viirs/viirs_2020_100m.tif",
+      "role": "annual_viirs",
+      "sha256": "e77969fe443fcf0fe316439cc82f5871d51622fa5ccb62c6438c715ed7a3e22a",
+      "size_bytes": 26353,
+      "year": 2020
+    },
+    {
+      "image_count": 12,
+      "path": "artifacts/gee/viirs/viirs_2021_100m.tif",
+      "role": "annual_viirs",
+      "sha256": "8bd896d9f522348518dac188e462ca6ffe9b9b6af1b849bf4838688af9956e0a",
+      "size_bytes": 26309,
+      "year": 2021
+    },
+    {
+      "image_count": 12,
+      "path": "artifacts/gee/viirs/viirs_2022_100m.tif",
+      "role": "annual_viirs",
+      "sha256": "f39cba97ab908fc715e1ad36bd083ffb5f1737ef856623ed959f480855d6db70",
+      "size_bytes": 26301,
+      "year": 2022
+    },
+    {
+      "image_count": 12,
+      "path": "artifacts/gee/viirs/viirs_2023_100m.tif",
+      "role": "annual_viirs",
+      "sha256": "25b8a33e667d14b9a9401591d6dee83b636e76572291a460a4fb9baaa6a3f5fa",
+      "size_bytes": 26333,
+      "year": 2023
+    },
+    {
+      "image_count": 12,
+      "path": "artifacts/gee/viirs/viirs_2024_100m.tif",
+      "role": "annual_viirs",
+      "sha256": "a341bc2bc22febbe5bf58f9081fdeeddd0dd3b968a49f3a03d9f25e2c18d1586",
+      "size_bytes": 26333,
+      "year": 2024
+    }
+  ],
+  "benchmark_id": "abu-dhabi-land-use-v1",
+  "created_at": "2026-08-01T14:31:21.510815+00:00",
+  "earth_engine_project": "ee-zn19860115",
+  "grid_profile_sha256": "d2bb0b757db5e7996e1f0fa5fb7ec66f07fc4c98253f391ac1db2046536bb94d",
+  "products": [
+    "alphaearth",
+    "constraints",
+    "landcover",
+    "terrain",
+    "viirs"
+  ],
+  "schema": "gwm.abu_dhabi_gee_input_manifest.v1",
+  "sources": {
+    "alphaearth": {
+      "aggregation": "100m_spatial_mean_then_local_l2_normalization",
+      "collection": "GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL",
+      "dimension": 64
+    },
+    "constraints": {
+      "aggregation": "100m_any_source_pixel",
+      "collection": "ESA/WorldCover/v200",
+      "source_classes": {
+        "permanent_water": [
+          80
+        ],
+        "wetland_or_mangrove": [
+          90,
+          95
+        ]
+      },
+      "source_year": 2021
+    },
+    "land_cover": {
+      "annual_reducer": "mode_of_scene_argmax_label",
+      "canonical_crosswalk": [
+        1,
+        2,
+        3,
+        4,
+        3,
+        3,
+        5,
+        6,
+        0
+      ],
+      "collection": "GOOGLE/DYNAMICWORLD/V1"
+    },
+    "terrain": {
+      "bands": [
+        "DEM",
+        "locally_derived_slope"
+      ],
+      "collection": "COPERNICUS/DEM/GLO30_2024_1",
+      "slope_derivation": "finite_difference_on_canonical_100m_dem"
+    },
+    "viirs": {
+      "annual_reducer": "mean",
+      "band": "avg_rad",
+      "collection": "NOAA/VIIRS/DNB/MONTHLY_V1/VCMSLCFG"
+    }
+  },
+  "status": "complete",
+  "wall_time_seconds": 0.036656291922554374,
+  "years": [
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024
+  ]
+}

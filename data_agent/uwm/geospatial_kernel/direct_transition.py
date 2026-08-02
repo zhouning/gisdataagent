@@ -5,6 +5,8 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
+from .facility_action import FACILITY_ACTION_SCHEMA
+from .facility_transition import apply_facility_transition
 from .state_graph import build_state_graph
 
 
@@ -27,7 +29,14 @@ def apply_direct_transition(
     action: dict[str, Any],
     action_validation: dict[str, Any],
 ) -> dict[str, Any]:
-    """Advance the target parcel to t1 without inventing downstream effects."""
+    """Dispatch a validated typed Action to its direct t1 transition."""
+
+    if action.get("schema") == FACILITY_ACTION_SCHEMA:
+        return apply_facility_transition(
+            graph=graph,
+            action=action,
+            action_validation=action_validation,
+        )
 
     if action_validation.get("valid") is not True:
         raise ValueError("validated_action_required")

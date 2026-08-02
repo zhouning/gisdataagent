@@ -1,0 +1,15 @@
+*
+!.gitignore
+!README.md
+!comparison_report.md
+!planning_comparison_report.md
+!planning_2030_comparison.png
+!figures/
+!figures/*.png
+!阿布扎比土地利用三模型模拟与优化完整报告_2026-08-02.md
+!阿布扎比土地利用三模型模拟与优化完整报告_2026-08-02.docx
+!阿布扎比土地利用三模型模拟与优化完整报告_2026-08-02.pdf
+!*.py
+!*.json
+!source/
+!source/*.geojson

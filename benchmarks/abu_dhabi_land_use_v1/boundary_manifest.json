@@ -1,0 +1,23 @@
+{
+  "artifact": {
+    "path": "source/abu_dhabi_city_osm_r4479763.geojson",
+    "sha256": "988cec36a274992ba443d5a1666de22a7cab4fb1961a1fae38b8ec9f604ac454",
+    "size_bytes": 33139
+  },
+  "bbox_wgs84": [
+    54.2971553,
+    24.2810331,
+    54.7659108,
+    24.601854
+  ],
+  "benchmark_id": "abu-dhabi-land-use-v1",
+  "display_name": "أبو ظبي, أبوظبي, أبو ظبي, الإمارات العربية المتحدة",
+  "geometry_type": "Polygon",
+  "licence": "OpenStreetMap contributors, ODbL 1.0",
+  "osm_id": 4479763,
+  "osm_type": "relation",
+  "provider": "OpenStreetMap via Nominatim",
+  "retrieved_at": "2026-08-01T12:23:42.321627+00:00",
+  "schema": "gwm.boundary_source_manifest.v1",
+  "source_url": "https://nominatim.openstreetmap.org/lookup?osm_ids=R4479763&format=geojson&polygon_geojson=1"
+}

@@ -171,6 +171,93 @@ def propagate_spatial_messages(
     }
 
 
+def propagate_facility_messages(
+    *,
+    graph: dict[str, Any],
+    action: dict[str, Any],
+    direct_state_delta: dict[str, Any],
+    kernel_version: str,
+) -> dict[str, Any]:
+    """Emit bounded messages for facility-node and relation changes."""
+
+    action_type = str(action.get("action_type") or "")
+    parcel_id = str(action.get("parcel_id") or "")
+    facility_id = str(action.get("facility_id") or "")
+    changed = bool(direct_state_delta.get("facility_changed"))
+    messages = [
+        build_spatial_message(
+            source_node_id=parcel_id,
+            target_node_id=facility_id or parcel_id,
+            relation_type="action_direct_transition",
+            effect_type=(
+                "facility_state_unchanged"
+                if action_type == "no_facility_change"
+                else f"{action_type}_state_change"
+            ),
+            direction="self",
+            raw_evidence={
+                "action_type": action_type,
+                "facility_id": facility_id,
+                "facility_class": action.get("facility_class"),
+                "planning_area_id": action.get("planning_area_id"),
+                "facility_changed": changed,
+            },
+            normalization_basis={"basis": "typed_facility_action_contract"},
+            propagation_stage=0,
+            support_level="authoritative_rule",
+            uncertainty="none" if action_type == "no_facility_change" else "bounded",
+            review_priority="direct_action",
+            kernel_version=kernel_version,
+        )
+    ]
+    for delta in direct_state_delta.get("relation_deltas") or []:
+        target_id = str(delta.get("parcel_id") or "")
+        messages.append(
+            build_spatial_message(
+                source_node_id=facility_id,
+                target_node_id=target_id,
+                relation_type="parcel_near_facility",
+                effect_type=f"facility_relation_{delta.get('change_type')}",
+                direction="outbound",
+                raw_evidence={
+                    "action_type": action_type,
+                    "facility_id": facility_id,
+                    "facility_class": action.get("facility_class"),
+                    "distance_m": delta.get("distance_m"),
+                    "relation_change_type": delta.get("change_type"),
+                },
+                normalization_basis={
+                    "basis": "projected_distance_m",
+                    "max_distance_m": MAX_LOCAL_DISTANCE_M,
+                },
+                propagation_stage=1,
+                support_level="bounded_proxy",
+                uncertainty="bounded",
+                review_priority="facility_relation_change",
+                kernel_version=kernel_version,
+            )
+        )
+    messages.sort(key=lambda row: (row["propagation_stage"], row["message_id"]))
+    return {
+        "schema": "uwm.geospatial_kernel.spatial_propagation.v1",
+        "target_parcel_id": parcel_id,
+        "messages": messages,
+        "message_digest": spatial_message_digest(messages),
+        "summary": {
+            "message_count": len(messages),
+            "max_local_distance_m": MAX_LOCAL_DISTANCE_M,
+            "cycle_paths_skipped": 0,
+            "admin_propagation_stopped": True,
+            "learned_effect_enabled": False,
+            "policy_score_emitted": False,
+        },
+        "claim_boundary": {
+            "max_claim_level": "bounded_action_conditioned_spatial_scenario"
+        },
+        "empirical_policy_effect_claim": False,
+    }
+
+
 def _local_message(
     *,
     edge: dict[str, Any],
