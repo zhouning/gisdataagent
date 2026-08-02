@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -13,8 +14,19 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
-from .helpers import _get_user_from_request
+from ..approval_case_authority import (
+    ApprovalCaseAuthority,
+    ApprovalCaseAuthorityError,
+    ApprovalCaseConfigurationError,
+    ApprovalCaseConflictError,
+    ApprovalCaseForbiddenError,
+    ApprovalCaseNotFoundError,
+    ApprovalCaseValidationError,
+)
 from ..platform_contracts import (
+    ApprovalCase,
+    ApprovalCaseEvent,
+    ApprovalCaseStatus,
     Artifact,
     FrameworkAttemptObservation,
     LineageEvent,
@@ -33,6 +45,7 @@ from ..platform_contracts import (
     SubjectContext,
     SubjectType,
     TenantId,
+    build_resource_urn,
     canonical_json_fingerprint,
     run_success_evidence_fingerprint,
 )
@@ -47,7 +60,7 @@ from ..platform_gateway import (
     PlatformGateway,
     PlatformGatewayError,
 )
-
+from .helpers import _get_user_from_request
 
 _TENANT_ADAPTER = TypeAdapter(TenantId)
 _PLATFORM_ROLES = frozenset({"admin", "platform_operator"})
@@ -69,6 +82,33 @@ class RunSubmissionRequest(StrictRequest):
     purpose: NonEmptyText
     trace_id: ShortName | None = None
     submitted_at: datetime
+
+
+class ApprovalCaseCreateRequest(StrictRequest):
+    case_id: str = Field(
+        min_length=1,
+        max_length=128,
+        pattern=r"^[a-z0-9][a-z0-9._-]{0,127}$",
+    )
+    target_resource_urn: str = Field(min_length=12, max_length=256)
+    target_fingerprint: Sha256
+    action: ShortName
+    request_reason: NonEmptyText
+    request_context: dict[str, Any] = Field(default_factory=dict)
+    requested_at: datetime
+    expires_at: datetime
+
+
+class ApprovalCaseDecisionRequest(StrictRequest):
+    expected_state_version: int = Field(ge=0)
+    verdict: ApprovalCaseStatus
+    reason: NonEmptyText
+    details: dict[str, Any] = Field(default_factory=dict)
+
+
+class ApprovalCaseEventListResponse(StrictRequest):
+    items: tuple[ApprovalCaseEvent, ...]
+    count: int = Field(ge=0)
 
 
 class RunTransitionRequest(StrictRequest):
@@ -231,6 +271,10 @@ def _gateway() -> PlatformGateway:
     return PlatformGateway()
 
 
+def _approval_case_authority() -> ApprovalCaseAuthority:
+    return ApprovalCaseAuthority()
+
+
 def _gateway_error(request: Request, error: PlatformGatewayError) -> JSONResponse:
     if isinstance(error, (GatewayConflictError,)):
         status = 409
@@ -245,6 +289,39 @@ def _gateway_error(request: Request, error: PlatformGatewayError) -> JSONRespons
     else:
         status = 500
     return _error(request, status, error.code, str(error))
+
+
+def _approval_case_error(
+    request: Request, error: ApprovalCaseAuthorityError
+) -> JSONResponse:
+    if isinstance(error, ApprovalCaseConflictError):
+        status = 409
+    elif isinstance(error, ApprovalCaseNotFoundError):
+        status = 404
+    elif isinstance(error, ApprovalCaseForbiddenError):
+        status = 403
+    elif isinstance(error, ApprovalCaseValidationError):
+        status = 422
+    elif isinstance(error, ApprovalCaseConfigurationError):
+        status = 503
+    else:
+        status = 500
+    return _error(request, status, error.code, str(error))
+
+
+def _approval_case_ref(
+    request: Request, principal: GatewayPrincipal
+) -> str | JSONResponse:
+    case_id = request.path_params.get("case_id", "")
+    try:
+        return build_resource_urn(principal.tenant_id, "approval_case", case_id)
+    except ValueError:
+        return _error(
+            request,
+            400,
+            "invalid_approval_case_id",
+            "case_id must be a canonical lowercase resource identifier",
+        )
 
 
 def _tenant_matches(
@@ -279,6 +356,145 @@ async def create_resource(request: Request) -> JSONResponse:
         )
     except PlatformGatewayError as exc:
         return _gateway_error(request, exc)
+
+
+async def create_approval_case(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    submission = await _parse(request, ApprovalCaseCreateRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    try:
+        approval_case = ApprovalCase(
+            tenant_id=principal.tenant_id,
+            approval_case_ref=build_resource_urn(
+                principal.tenant_id,
+                "approval_case",
+                submission.case_id,
+            ),
+            target_resource_urn=submission.target_resource_urn,
+            target_fingerprint=submission.target_fingerprint,
+            action=submission.action,
+            requester_subject=principal.actor_ref,
+            request_reason=submission.request_reason,
+            request_context=submission.request_context,
+            requested_at=submission.requested_at,
+            expires_at=submission.expires_at,
+        )
+        result = await asyncio.to_thread(
+            _approval_case_authority().create,
+            approval_case,
+            owner_ref=os.environ.get(
+                "GDA_APPROVAL_CASE_OWNER_REF",
+                "team:data-platform",
+            ),
+        )
+        return _success(
+            request,
+            result.approval_case,
+            status_code=201 if result.created else 200,
+            created=result.created,
+        )
+    except (ValidationError, ValueError) as exc:
+        details = _validation_details(exc) if isinstance(exc, ValidationError) else None
+        return _error(
+            request,
+            422,
+            "contract_validation_failed",
+            "ApprovalCase does not satisfy the platform contract",
+            details,
+        )
+    except ApprovalCaseAuthorityError as exc:
+        return _approval_case_error(request, exc)
+
+
+async def get_approval_case(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    approval_case_ref = _approval_case_ref(request, principal)
+    if isinstance(approval_case_ref, JSONResponse):
+        return approval_case_ref
+    try:
+        approval_case = await asyncio.to_thread(
+            _approval_case_authority().get,
+            principal.tenant_id,
+            approval_case_ref,
+        )
+        return _success(request, approval_case)
+    except ApprovalCaseAuthorityError as exc:
+        return _approval_case_error(request, exc)
+
+
+async def list_approval_case_events(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    approval_case_ref = _approval_case_ref(request, principal)
+    if isinstance(approval_case_ref, JSONResponse):
+        return approval_case_ref
+    try:
+        events = await asyncio.to_thread(
+            _approval_case_authority().events,
+            principal.tenant_id,
+            approval_case_ref,
+        )
+        return _success(
+            request,
+            ApprovalCaseEventListResponse(items=events, count=len(events)),
+        )
+    except ApprovalCaseAuthorityError as exc:
+        return _approval_case_error(request, exc)
+
+
+async def decide_approval_case(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.subject_type != SubjectType.HUMAN:
+        return _error(
+            request,
+            403,
+            "human_identity_required",
+            "ApprovalCase decision requires a human identity",
+        )
+    decision = await _parse(request, ApprovalCaseDecisionRequest)
+    if isinstance(decision, JSONResponse):
+        return decision
+    if decision.verdict is ApprovalCaseStatus.PENDING:
+        return _error(
+            request,
+            422,
+            "terminal_verdict_required",
+            "ApprovalCase decision must be approved, rejected, or cancelled",
+        )
+    approval_case_ref = _approval_case_ref(request, principal)
+    if isinstance(approval_case_ref, JSONResponse):
+        return approval_case_ref
+    try:
+        approval_case = await asyncio.to_thread(
+            _approval_case_authority().decide,
+            tenant_id=principal.tenant_id,
+            approval_case_ref=approval_case_ref,
+            expected_state_version=decision.expected_state_version,
+            verdict=decision.verdict,
+            actor_subject=principal.actor_ref,
+            reason=decision.reason,
+            details=decision.details,
+        )
+        return _success(request, approval_case)
+    except (ValidationError, ValueError) as exc:
+        details = _validation_details(exc) if isinstance(exc, ValidationError) else None
+        return _error(
+            request,
+            422,
+            "contract_validation_failed",
+            "ApprovalCase decision does not satisfy the platform contract",
+            details,
+        )
+    except ApprovalCaseAuthorityError as exc:
+        return _approval_case_error(request, exc)
 
 
 async def create_resource_version(request: Request) -> JSONResponse:
@@ -658,6 +874,22 @@ def get_platform_gateway_routes() -> list[Route]:
     base = "/api/platform/v1"
     return [
         Route(f"{base}/resources", create_resource, methods=["POST"]),
+        Route(f"{base}/approval-cases", create_approval_case, methods=["POST"]),
+        Route(
+            f"{base}/approval-cases/{{case_id}}",
+            get_approval_case,
+            methods=["GET"],
+        ),
+        Route(
+            f"{base}/approval-cases/{{case_id}}/events",
+            list_approval_case_events,
+            methods=["GET"],
+        ),
+        Route(
+            f"{base}/approval-cases/{{case_id}}/decision",
+            decide_approval_case,
+            methods=["POST"],
+        ),
         Route(
             f"{base}/resource-versions",
             create_resource_version,

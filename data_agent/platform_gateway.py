@@ -319,6 +319,15 @@ class PlatformGateway:
         with self._transaction(resource.tenant_id) as connection:
             return self._put_resource(connection, resource)
 
+    def get_resource(self, tenant_id: str, resource_urn: str) -> Resource:
+        """Return one tenant-scoped resource through the gateway role."""
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            resource = self._load_resource(connection, tenant, resource_urn)
+            if resource is None:
+                raise GatewayNotFoundError("Resource was not found")
+            return resource
+
     @staticmethod
     def _load_resource_version(
         connection, tenant_id: str, version_id: UUID
@@ -380,6 +389,19 @@ class PlatformGateway:
     ) -> GatewayWriteResult:
         with self._transaction(version.tenant_id) as connection:
             return self._put_resource_version(connection, version)
+
+    def get_resource_version(
+        self, tenant_id: str, resource_version_id: UUID
+    ) -> ResourceVersion:
+        """Return one immutable resource version through the gateway role."""
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            version = self._load_resource_version(
+                connection, tenant, resource_version_id
+            )
+            if version is None:
+                raise GatewayNotFoundError("ResourceVersion was not found")
+            return version
 
     @staticmethod
     def _metadata_change_from_row(row) -> MetadataChangeDelivery:
@@ -2622,6 +2644,10 @@ def build_gateway_report(
             'frozenset({"admin", "platform_operator"})',
             '"tenant_context_required"',
             '"actor_mismatch"',
+            "create_approval_case",
+            "get_approval_case",
+            "list_approval_case_events",
+            "decide_approval_case",
             "create_dolphinscheduler_callback",
             "create_quality_result",
             "finalize_run_success",
@@ -2693,7 +2719,7 @@ def build_gateway_report(
         "schema": GATEWAY_SCHEMA_VERSION,
         "status": "valid" if not errors else "invalid",
         "database_role": GATEWAY_DATABASE_ROLE,
-        "route_count": 12,
+        "route_count": 16,
         "files": files,
         "missing_markers": missing_markers,
         "errors": errors,

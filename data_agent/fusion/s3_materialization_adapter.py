@@ -55,6 +55,8 @@ def materialize_file_to_s3(
     content_type = str(payload.get("content_type") or "") or _guess_content_type(source_path)
     body = source_path.read_bytes()
     sha256 = hashlib.sha256(body).hexdigest()
+    immutable = bool(payload.get("immutable", False))
+    verify_readback = bool(payload.get("verify_readback", immutable))
 
     endpoint = endpoint_url or os.environ.get("AWS_ENDPOINT_URL") or None
     client_kwargs = {
@@ -67,10 +69,39 @@ def materialize_file_to_s3(
         client_kwargs["config"] = BotoConfig(s3={"addressing_style": "path"})
 
     client = boto3.client("s3", **client_kwargs)
-    client.put_object(Bucket=bucket, Key=key, Body=body, ContentType=content_type)
+    created = True
+    if immutable:
+        existing = _read_existing_object(client, bucket=bucket, key=key)
+        if existing is not None:
+            if existing["sha256"] != sha256 or existing["size_bytes"] != len(body):
+                raise RuntimeError(
+                    "immutable S3 target is already bound to different bytes: "
+                    f"s3://{bucket}/{key}"
+                )
+            created = False
+
+    if created:
+        client.put_object(
+            Bucket=bucket,
+            Key=key,
+            Body=body,
+            ContentType=content_type,
+            Metadata={"sha256": sha256},
+        )
+
+    verified = False
+    if verify_readback:
+        observed = _read_existing_object(client, bucket=bucket, key=key)
+        if observed is None or observed["sha256"] != sha256:
+            raise RuntimeError(f"S3 read-back checksum mismatch: s3://{bucket}/{key}")
+        if observed["size_bytes"] != len(body):
+            raise RuntimeError(f"S3 read-back size mismatch: s3://{bucket}/{key}")
+        verified = True
 
     return {
         "materialized": True,
+        "created": created,
+        "verified": verified,
         "published_count": 1,
         "target": "s3",
         "source_path": str(source_path),
@@ -81,6 +112,21 @@ def materialize_file_to_s3(
         "bytes_written": len(body),
         "sha256": sha256,
         "content_type": content_type,
+    }
+
+
+def _read_existing_object(client, *, bucket: str, key: str) -> dict[str, Any] | None:
+    try:
+        response = client.get_object(Bucket=bucket, Key=key)
+    except Exception as exc:
+        error = getattr(exc, "response", {}).get("Error", {})
+        if str(error.get("Code") or "") in {"404", "NoSuchKey", "NotFound"}:
+            return None
+        raise
+    body = response["Body"].read()
+    return {
+        "sha256": hashlib.sha256(body).hexdigest(),
+        "size_bytes": len(body),
     }
 
 

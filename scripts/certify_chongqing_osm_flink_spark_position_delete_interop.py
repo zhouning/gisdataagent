@@ -1,0 +1,693 @@
+#!/usr/bin/env python3
+"""Certify one Flink position-delete write with independent Spark readback."""
+
+from __future__ import annotations
+
+import argparse
+import io
+import json
+import re
+import secrets
+import shutil
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
+
+import boto3
+import pyarrow.parquet as pq
+
+from data_agent.connectors.database import _connection_url
+from scripts.certify_chongqing_osm_flink_iceberg_interop import (
+    BUCKET,
+    DEFAULT_FLINK_IMAGE,
+    DEFAULT_JAVA_HOME,
+    DEFAULT_JDK_IMAGE,
+    DEFAULT_NETWORK,
+    DEFAULT_SOURCE,
+    DEFAULT_SOURCE_PRODUCT_SHA256,
+    DEFAULT_SPARK_IMAGE,
+    FLINK_AWS,
+    FLINK_ICEBERG,
+    HADOOP_CLIENT_API,
+    HADOOP_CLIENT_RUNTIME,
+    POSTGRES_JDBC,
+    FlinkIcebergSandbox,
+    IcebergCatalogSandbox,
+    _cleanup_prefix,
+    _object_inventory,
+    _run_command,
+    _spark_artifacts,
+    verify_artifact,
+)
+from scripts.certify_chongqing_osm_flink_stream import (
+    REPO_ROOT,
+    _canonical_sha256,
+    _sha256_file,
+    compile_flink_job,
+    docker_image_id,
+)
+from scripts.certify_chongqing_osm_incremental_sync import _main_sync_counts
+from scripts.certify_chongqing_osm_spark_flink_concurrent_append import (
+    _catalog_metadata_location,
+    _metadata_evidence,
+)
+from scripts.certify_chongqing_osm_spark_flink_position_delete_interop import (
+    build_position_delete_plan,
+)
+from scripts.certify_chongqing_osm_spark_flink_update_conflict import (
+    _flink_jobmanager_config,
+)
+from scripts.certify_source_sync_authority import _settings
+
+JAVA_SOURCE = REPO_ROOT / "scripts/flink/ChongqingOsmIcebergPositionDeleteWriteJob.java"
+MAIN_CLASS = "ChongqingOsmIcebergPositionDeleteWriteJob"
+SPARK_SOURCE = (
+    REPO_ROOT / "scripts/spark_chongqing_osm_iceberg_flink_position_delete_interop.py"
+)
+SPARK_MODULE = "scripts.spark_chongqing_osm_iceberg_flink_position_delete_interop"
+DEFAULT_REPORT = (
+    REPO_ROOT
+    / ".tmp/source-sync-certification/"
+    "chongqing-osm-flink-spark-position-delete-interop-report.json"
+)
+COMMITTED_RE = re.compile(
+    r"GDA_POSITION_DELETE_FLINK_COMMITTED snapshot_id=(\d+) "
+    r"delete_file=(\S+) data_file=(\S+) position=(\d+) "
+    r"target_road_id=(\d+) token=([0-9a-f]{64})"
+)
+
+
+def build_flink_position_delete_plan(source_path: Path) -> dict[str, Any]:
+    plan = build_position_delete_plan(source_path)
+    token = _canonical_sha256(
+        {
+            "engine": "flink-1.19.3-iceberg-1.7.2",
+            "operation": "single-position-delete",
+            "target_road_id": plan["target_road_id"],
+            "baseline_content_sha256": plan["baseline_content_sha256"],
+            "source_sha256": plan["source"]["source_parquet_sha256"],
+        }
+    )
+    return {
+        **plan,
+        "schema": "gda.chongqing_osm_flink_position_delete_plan.v1",
+        "flink_commit_token": token,
+    }
+
+
+def parse_flink_commit_marker(
+    output: str,
+    plan: dict[str, Any],
+    *,
+    data_file_path: str,
+    row_position: int,
+    warehouse_uri: str,
+) -> dict[str, Any]:
+    marker = COMMITTED_RE.search(output)
+    delete_file = marker.group(2) if marker else ""
+    checks = {
+        "single_commit_marker_observed": marker is not None,
+        "delete_file_in_acceptance_table": bool(
+            marker
+            and delete_file.startswith(f"{warehouse_uri}/")
+            and delete_file.endswith(".parquet")
+            and delete_file != data_file_path
+        ),
+        "referenced_data_file_exact": bool(
+            marker and marker.group(3) == data_file_path
+        ),
+        "row_position_exact": bool(
+            marker and int(marker.group(4)) == row_position
+        ),
+        "target_road_id_exact": bool(
+            marker and int(marker.group(5)) == plan["target_road_id"]
+        ),
+        "commit_token_exact": bool(
+            marker and marker.group(6) == plan["flink_commit_token"]
+        ),
+    }
+    return {
+        "status": "passed" if all(checks.values()) else "failed",
+        "checks": checks,
+        "snapshot_id": marker.group(1) if marker else None,
+        "delete_file_path": delete_file or None,
+        "data_file_path": marker.group(3) if marker else None,
+        "row_position": int(marker.group(4)) if marker else None,
+        "target_road_id": int(marker.group(5)) if marker else None,
+        "commit_token": marker.group(6) if marker else None,
+    }
+
+
+def _spark_command(
+    args: argparse.Namespace,
+    *,
+    phase: str,
+    plan_path: Path,
+    report_path: Path,
+    warehouse_uri: str,
+    table: str,
+    access_key: str,
+    secret_key: str,
+    catalog_uri: str,
+    catalog_user: str,
+    catalog_password: str,
+    baseline_snapshot_id: str | None = None,
+    delete_snapshot_id: str | None = None,
+    expected_data_file_path: str | None = None,
+    expected_row_position: int | None = None,
+) -> list[str]:
+    command = [
+        "docker",
+        "run",
+        "--rm",
+        "--network",
+        args.docker_network,
+        "-e",
+        f"JAVA_HOME={args.java_home}",
+        "-e",
+        f"AWS_ACCESS_KEY_ID={access_key}",
+        "-e",
+        f"AWS_SECRET_ACCESS_KEY={secret_key}",
+        "-e",
+        "AWS_REGION=us-east-1",
+        "-e",
+        f"ICEBERG_CATALOG_URI={catalog_uri}",
+        "-e",
+        f"ICEBERG_CATALOG_USER={catalog_user}",
+        "-e",
+        f"ICEBERG_CATALOG_PASSWORD={catalog_password}",
+        "-v",
+        f"{REPO_ROOT}:/workspace",
+        "-w",
+        "/workspace",
+        args.spark_image,
+        "python",
+        "-m",
+        SPARK_MODULE,
+        phase,
+        "--plan",
+        plan_path.relative_to(REPO_ROOT).as_posix(),
+        "--report",
+        report_path.relative_to(REPO_ROOT).as_posix(),
+        "--warehouse-uri",
+        warehouse_uri,
+        "--table",
+        table,
+        "--endpoint-url",
+        args.container_endpoint_url,
+    ]
+    if baseline_snapshot_id:
+        command.extend(("--baseline-snapshot-id", baseline_snapshot_id))
+    if delete_snapshot_id:
+        command.extend(("--delete-snapshot-id", delete_snapshot_id))
+    if expected_data_file_path:
+        command.extend(("--expected-data-file-path", expected_data_file_path))
+    if expected_row_position is not None:
+        command.extend(("--expected-row-position", str(expected_row_position)))
+    return command
+
+
+def _spark_phase(args: argparse.Namespace, **kwargs: Any) -> dict[str, Any]:
+    phase = str(kwargs["phase"])
+    report_path = Path(kwargs["report_path"])
+    try:
+        _run_command(
+            _spark_command(args, **kwargs),
+            stage=f"Spark Flink position delete {phase}",
+            timeout=args.timeout_seconds,
+        )
+    except RuntimeError as exc:
+        if report_path.is_file():
+            failed = json.loads(report_path.read_text(encoding="utf-8"))
+            raise RuntimeError(
+                f"Spark Flink position delete {phase} failed evidence: "
+                f"checks={failed.get('checks')}, "
+                f"snapshots={failed.get('snapshots')}, "
+                f"delete_files={failed.get('delete_files')}"
+            ) from exc
+        raise
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    if report.get("status") != "passed" or report.get("phase") != phase:
+        raise RuntimeError(f"Spark Flink position delete {phase} failed evidence")
+    return report
+
+
+def _run_flink_position_delete(
+    flink: FlinkIcebergSandbox,
+    *,
+    jar_path: Path,
+    plan: dict[str, Any],
+    baseline: dict[str, Any],
+    warehouse_uri: str,
+    table: str,
+    catalog_uri: str,
+    catalog_user: str,
+    timeout: int,
+) -> dict[str, Any]:
+    completed = _run_command(
+        [
+            "docker",
+            "exec",
+            flink.container,
+            "flink",
+            "run",
+            "-p",
+            "1",
+            f"/workspace/{jar_path.relative_to(REPO_ROOT).as_posix()}",
+            "--warehouse-uri",
+            warehouse_uri,
+            "--endpoint-url",
+            flink.args.container_endpoint_url,
+            "--catalog-uri",
+            catalog_uri,
+            "--catalog-user",
+            catalog_user,
+            "--table",
+            table,
+            "--baseline-snapshot-id",
+            baseline["baseline_snapshot_id"],
+            "--data-file-path",
+            baseline["target_data_file_path"],
+            "--row-position",
+            str(baseline["target_row_position"]),
+            "--target-road-id",
+            str(plan["target_road_id"]),
+            "--commit-token",
+            plan["flink_commit_token"],
+        ],
+        stage="run isolated Flink position delete writer",
+        timeout=timeout,
+    )
+    return parse_flink_commit_marker(
+        completed.stdout,
+        plan,
+        data_file_path=baseline["target_data_file_path"],
+        row_position=baseline["target_row_position"],
+        warehouse_uri=warehouse_uri,
+    )
+
+
+def _flink_job_evidence(
+    flink: FlinkIcebergSandbox, *, timeout: int
+) -> dict[str, Any]:
+    completed = _run_command(
+        [
+            "docker",
+            "exec",
+            flink.container,
+            "curl",
+            "-fsS",
+            "http://localhost:8081/jobs/overview",
+        ],
+        stage="inspect Flink position delete job",
+        timeout=timeout,
+    )
+    jobs = json.loads(completed.stdout).get("jobs", [])
+    return {
+        "jobs": jobs,
+        "one_finished_job": len(jobs) == 1
+        and jobs[0].get("state") == "FINISHED"
+        and jobs[0].get("tasks", {}).get("total") == 1
+        and jobs[0].get("tasks", {}).get("finished") == 1,
+    }
+
+
+def _read_position_delete_payload(
+    client: Any, *, file_path: str, prefix: str
+) -> dict[str, Any]:
+    expected_prefix = f"s3://{BUCKET}/{prefix}"
+    if not file_path.startswith(expected_prefix) or not file_path.endswith(".parquet"):
+        raise RuntimeError("position delete file is outside acceptance prefix")
+    key = file_path.removeprefix(f"s3://{BUCKET}/")
+    payload = client.get_object(Bucket=BUCKET, Key=key)["Body"].read()
+    table = pq.read_table(io.BytesIO(payload))
+    columns = table.column_names
+    if columns[:2] != ["file_path", "pos"]:
+        raise RuntimeError(f"unexpected position delete columns: {columns}")
+    return {
+        "file_path": file_path,
+        "bytes": len(payload),
+        "sha256": _sha256_file_bytes(payload),
+        "columns": columns,
+        "referenced_data_files": [str(value) for value in table["file_path"].to_pylist()],
+        "positions": [int(value) for value in table["pos"].to_pylist()],
+        "rows": table.num_rows,
+    }
+
+
+def _sha256_file_bytes(payload: bytes) -> str:
+    import hashlib
+
+    return hashlib.sha256(payload).hexdigest()
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--source", type=Path, default=DEFAULT_SOURCE)
+    parser.add_argument("--spark-image", default=DEFAULT_SPARK_IMAGE)
+    parser.add_argument("--flink-image", default=DEFAULT_FLINK_IMAGE)
+    parser.add_argument("--jdk-image", default=DEFAULT_JDK_IMAGE)
+    parser.add_argument("--java-home", default=DEFAULT_JAVA_HOME)
+    parser.add_argument("--docker-network", default=DEFAULT_NETWORK)
+    parser.add_argument("--postgres-image", default="postgres:16-alpine")
+    parser.add_argument("--container-endpoint-url", default="http://minio:9000")
+    parser.add_argument("--host-endpoint-url", default="http://127.0.0.1:9000")
+    parser.add_argument("--postgres-url", default="postgresql://127.0.0.1:5433/gis_agent")
+    parser.add_argument("--timeout-seconds", type=int, default=300)
+    parser.add_argument("--report", type=Path, default=DEFAULT_REPORT)
+    args = parser.parse_args()
+
+    settings = _settings()
+    access_key = settings.get("MINIO_ROOT_USER", "minio_admin")
+    secret_key = settings.get("MINIO_ROOT_PASSWORD", "local_dev_minio_secret")
+    token = secrets.token_hex(5)
+    prefix = f"acceptance/flink-iceberg/gda_flink_iceberg_{token}/"
+    warehouse_uri = f"s3://{BUCKET}/{prefix}warehouse"
+    namespace = f"gda_interop_{token}"
+    table_name = "chongqing_osm_roads"
+    table = f"lakehouse.{namespace}.{table_name}"
+    work_dir = (
+        REPO_ROOT
+        / ".tmp/source-sync-certification"
+        / f"flink_iceberg_position_delete_write_{token}"
+    )
+    plan_path = work_dir / "plan.json"
+    baseline_path = work_dir / "spark-baseline.json"
+    verify_path = work_dir / "spark-verify.json"
+    client = boto3.client(
+        "s3",
+        endpoint_url=args.host_endpoint_url,
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_key,
+        region_name="us-east-1",
+    )
+    admin_url = _connection_url(
+        args.postgres_url,
+        {
+            "type": "basic",
+            "username": settings.get("POSTGRES_USER", "postgres"),
+            "password": settings.get(
+                "POSTGRES_ADMIN_PASSWORD",
+                settings.get("POSTGRES_PASSWORD", "postgres"),
+            ),
+        },
+    )
+    main_counts_before = _main_sync_counts(admin_url)
+    catalog: IcebergCatalogSandbox | None = None
+    flink: FlinkIcebergSandbox | None = None
+    report: dict[str, Any] | None = None
+    cleanup: dict[str, Any] = {}
+    error: str | None = None
+    work_dir.mkdir(parents=True, exist_ok=False)
+    try:
+        flink_artifacts = {
+            "runtime": verify_artifact(FLINK_ICEBERG),
+            "aws_bundle": verify_artifact(FLINK_AWS),
+            "postgresql_jdbc": verify_artifact(POSTGRES_JDBC),
+            "hadoop_client_api": verify_artifact(HADOOP_CLIENT_API),
+            "hadoop_client_runtime": verify_artifact(HADOOP_CLIENT_RUNTIME),
+        }
+        spark_artifacts = _spark_artifacts(args.spark_image, timeout=args.timeout_seconds)
+        plan = build_flink_position_delete_plan(args.source)
+        plan_path.write_text(
+            json.dumps(plan, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        catalog = IcebergCatalogSandbox(
+            image=args.postgres_image,
+            network=args.docker_network,
+            token=token,
+        )
+        catalog_evidence = catalog.start()
+        baseline = _spark_phase(
+            args,
+            phase="baseline",
+            plan_path=plan_path,
+            report_path=baseline_path,
+            warehouse_uri=warehouse_uri,
+            table=table,
+            access_key=access_key,
+            secret_key=secret_key,
+            catalog_uri=catalog.jdbc_uri,
+            catalog_user=catalog.user,
+            catalog_password=catalog.password,
+        )
+        baseline_location = _catalog_metadata_location(
+            catalog,
+            namespace=namespace,
+            table_name=table_name,
+            timeout=30,
+        )
+        baseline_metadata = _metadata_evidence(client, baseline_location)
+        jar_path = compile_flink_job(
+            work_dir=work_dir / "build",
+            flink_image=args.flink_image,
+            jdk_image=args.jdk_image,
+            java_home=args.java_home,
+            timeout=args.timeout_seconds,
+            java_source=JAVA_SOURCE,
+            main_class=MAIN_CLASS,
+            extra_compile_classpath=(Path(FLINK_ICEBERG["path"]),),
+        )
+        flink = FlinkIcebergSandbox(
+            args=args,
+            token=token,
+            access_key=access_key,
+            secret_key=secret_key,
+            catalog_password=catalog.password,
+            extra_flink_properties=("classloader.check-leaked-classloader: true",),
+        )
+        cluster = flink.start()
+        flink_config = _flink_jobmanager_config(flink, timeout=args.timeout_seconds)
+        flink_commit = _run_flink_position_delete(
+            flink,
+            jar_path=jar_path,
+            plan=plan,
+            baseline=baseline,
+            warehouse_uri=warehouse_uri,
+            table=table,
+            catalog_uri=catalog.jdbc_uri,
+            catalog_user=catalog.user,
+            timeout=args.timeout_seconds,
+        )
+        flink_job = _flink_job_evidence(flink, timeout=args.timeout_seconds)
+        delete_location = _catalog_metadata_location(
+            catalog,
+            namespace=namespace,
+            table_name=table_name,
+            timeout=30,
+        )
+        delete_metadata = _metadata_evidence(client, delete_location)
+        verify = _spark_phase(
+            args,
+            phase="verify",
+            plan_path=plan_path,
+            report_path=verify_path,
+            warehouse_uri=warehouse_uri,
+            table=table,
+            access_key=access_key,
+            secret_key=secret_key,
+            catalog_uri=catalog.jdbc_uri,
+            catalog_user=catalog.user,
+            catalog_password=catalog.password,
+            baseline_snapshot_id=baseline["baseline_snapshot_id"],
+            delete_snapshot_id=flink_commit["snapshot_id"],
+            expected_data_file_path=baseline["target_data_file_path"],
+            expected_row_position=baseline["target_row_position"],
+        )
+        physical_delete = _read_position_delete_payload(
+            client,
+            file_path=flink_commit["delete_file_path"],
+            prefix=prefix,
+        )
+        inventory = _object_inventory(client, prefix)
+        checks = {
+            "real_chongqing_osm_source_bound": (
+                plan["source"]["source_feature_count"] == 50_366
+                and plan["source"]["source_product_sha256"]
+                == DEFAULT_SOURCE_PRODUCT_SHA256
+            ),
+            "supply_chain_artifacts_verified": True,
+            "flink_classloader_safety_check_enabled": (
+                flink_config.get("classloader.check-leaked-classloader") == "true"
+            ),
+            "spark_physical_baseline_passed": all(baseline["checks"].values()),
+            "baseline_snapshot_is_catalog_current": (
+                baseline_metadata["current_snapshot"]["snapshot_id"]
+                == baseline["baseline_snapshot_id"]
+            ),
+            "flink_single_position_delete_commit_passed": all(
+                flink_commit["checks"].values()
+            ),
+            "flink_taskmanager_job_finished_once": flink_job["one_finished_job"],
+            "catalog_advanced_to_flink_delete_child": (
+                delete_location != baseline_location
+                and delete_metadata["snapshot_count"] == 2
+                and delete_metadata["current_snapshot"]["snapshot_id"]
+                == flink_commit["snapshot_id"]
+                and delete_metadata["current_snapshot"]["parent_id"]
+                == baseline["baseline_snapshot_id"]
+            ),
+            "independent_spark_read_and_time_travel_passed": all(
+                verify["checks"].values()
+            ),
+            "marker_and_spark_delete_file_exact": (
+                verify["delete_files"][0]["file_path"]
+                == flink_commit["delete_file_path"]
+            ),
+            "physical_position_delete_payload_exact": (
+                physical_delete["rows"] == 1
+                and physical_delete["referenced_data_files"]
+                == [baseline["target_data_file_path"]]
+                and physical_delete["positions"]
+                == [baseline["target_row_position"]]
+            ),
+            "position_delete_object_graph_materialized": (
+                inventory["metadata_json_count"] >= 2
+                and inventory["manifest_avro_count"] >= 3
+                and inventory["data_parquet_count"] == 2
+            ),
+        }
+        report = {
+            "schema": "gda.chongqing_osm_flink_spark_position_delete.acceptance.v1",
+            "status": "passed" if all(checks.values()) else "failed",
+            "generated_at": datetime.now(UTC).isoformat(),
+            "checks": checks,
+            "source": {
+                **plan["source"],
+                "baseline_content_sha256": plan["baseline_content_sha256"],
+                "final_content_sha256": plan["final_content_sha256"],
+                "target_road_id": plan["target_road_id"],
+                "flink_commit_token": plan["flink_commit_token"],
+            },
+            "runtime": {
+                "spark_image": args.spark_image,
+                "spark_image_id": docker_image_id(
+                    args.spark_image, timeout=args.timeout_seconds
+                ),
+                "flink_image": args.flink_image,
+                "flink_image_id": docker_image_id(
+                    args.flink_image, timeout=args.timeout_seconds
+                ),
+                "spark_artifacts": spark_artifacts,
+                "spark_job_source_sha256": _sha256_file(SPARK_SOURCE),
+                "flink_artifacts": flink_artifacts,
+                "flink_job_source_sha256": _sha256_file(JAVA_SOURCE),
+                "flink_job_jar_sha256": _sha256_file(jar_path),
+                "flink_cluster": cluster,
+                "flink_job": flink_job,
+                "flink_classloader_safety": {
+                    "expected": {"classloader.check-leaked-classloader": "true"},
+                    "observed": {
+                        "classloader.check-leaked-classloader": flink_config.get(
+                            "classloader.check-leaked-classloader"
+                        )
+                    },
+                    "job_operations": ["single-task-position-delete-row-delta"],
+                    "verification_owners": ["spark", "jdbc-catalog", "minio"],
+                },
+                "catalog": {
+                    **catalog_evidence,
+                    "provider": "org.apache.iceberg.jdbc.JdbcCatalog",
+                    "image": args.postgres_image,
+                    "image_id": docker_image_id(
+                        args.postgres_image, timeout=args.timeout_seconds
+                    ),
+                },
+            },
+            "table": {
+                "catalog": "jdbc",
+                "file_io": "org.apache.iceberg.aws.s3.S3FileIO",
+                "partition_spec": "unpartitioned",
+                "format_version": 2,
+                "delete_mode": "merge-on-read position delete file",
+                "spark_baseline": baseline,
+                "catalog_after_baseline": baseline_metadata,
+                "flink_position_delete": flink_commit,
+                "catalog_after_delete": delete_metadata,
+                "spark_verify": verify,
+                "physical_position_delete": physical_delete,
+                "object_inventory": inventory,
+            },
+            "control_plane": {
+                "source_sync_advanced": False,
+                "data_product_version_created": False,
+                "provider_commit": "flink-taskmanager-row-delta",
+                "automatic_retry": False,
+            },
+            "not_claimed": [
+                "Flink SQL position-delete support",
+                "concurrent position-delete conflict isolation",
+                "partitioned or multi-file position deletes",
+                "automatic retry policy",
+                "streaming checkpoint position-delete writers",
+                "cross-system exactly-once transaction",
+                "REST or Gravitino catalog interoperability",
+                "production throughput, freshness, HA, or Kubernetes runtime",
+            ],
+        }
+        if report["status"] != "passed":
+            raise RuntimeError(f"Flink position delete checks failed: {checks}")
+    except Exception as exc:
+        safe = f"{type(exc).__name__}: {exc}"
+        catalog_password = catalog.password if catalog is not None else ""
+        for value in (access_key, secret_key, catalog_password):
+            if value:
+                safe = safe.replace(value, "<redacted>")
+        error = safe
+    finally:
+        cleanup["flink_container_removed"] = (
+            flink.cleanup() if flink is not None else True
+        )
+        cleanup["catalog_container_removed"] = (
+            catalog.cleanup() if catalog is not None else True
+        )
+        cleanup.update(_cleanup_prefix(client, prefix))
+        shutil.rmtree(work_dir, ignore_errors=True)
+        cleanup["work_directory_removed"] = not work_dir.exists()
+        main_counts_after = _main_sync_counts(admin_url)
+        cleanup["main_source_sync_unchanged"] = main_counts_after == main_counts_before
+        cleanup["main_source_sync_counts"] = list(main_counts_after)
+    if report is None:
+        report = {
+            "schema": "gda.chongqing_osm_flink_spark_position_delete.acceptance.v1",
+            "status": "failed",
+            "generated_at": datetime.now(UTC).isoformat(),
+            "checks": {},
+            "error": error,
+        }
+    report["cleanup"] = cleanup
+    if not all(
+        cleanup.get(name) is True
+        for name in (
+            "flink_container_removed",
+            "catalog_container_removed",
+            "object_prefix_empty",
+            "work_directory_removed",
+            "main_source_sync_unchanged",
+        )
+    ):
+        report["status"] = "failed"
+    args.report.parent.mkdir(parents=True, exist_ok=True)
+    args.report.write_text(
+        json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    print(
+        json.dumps(
+            {
+                "status": report["status"],
+                "report": str(args.report),
+                "checks": report["checks"],
+                "cleanup": cleanup,
+                "error": report.get("error"),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+    )
+    return 0 if report["status"] == "passed" else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

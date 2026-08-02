@@ -1,6 +1,6 @@
 # GIS Data Agent — 总体架构 Roadmap
 
-**Last updated**: 2026-07-24
+**Last updated**: 2026-08-02
 
 **Status**: Architecture reset, authoritative mainline
 
@@ -425,6 +425,445 @@ M3-22 至 M3-25 已把一份真实重庆 20-feature EPSG:4490 slice 从受授权
 
 **依赖**：AR-1 两个控制面的最小合同通过故障注入和隔离验收。
 
+**状态**：`in_progress`。2026-08-01 已完成第一个真实、可消费的轻量 profile
+vertical slice，但尚未达到 AR-2 退出门：
+
+- [x] 真实重庆 OSM 道路 Shapefile 全量读取 50,366 条要素；源 bundle、成员 checksum、
+  CRS、范围和 schema 形成不可变 `ResourceVersion`。
+- [x] 10 个源字段经标准别名、类型和歧义阈值自动落标，结果为 10 个 recommended、
+  0 review required、0 unmatched、0 conflict；批准映射合同和 fingerprint 可追溯。
+- [x] 全量执行 9 项关键质量门：行数守恒、EPSG:4326、geometry 完整有效、道路 ID
+  唯一、必填语义、值域/速度、重庆范围和 ODbL 许可归属全部通过。
+- [x] 首个受治理 `DataProductVersion` `chongqing-osm-roads/v1.0.0` 已写入不可变
+  注册表；active pointer、append-only 发布/回滚事件、GeoJSON Artifact、PostGIS
+  projection、source -> standardized lineage 已在真实 PostgreSQL/PostGIS 验证。
+- [x] 重复执行返回同一产品版本且无新增 ResourceVersion、Artifact、LineageEvent 或
+  pointer event；目录、详情、要素、下载、血缘 API 和地图页均通过真实 HTTP/浏览器验收。
+- [x] `v1.1.0` 已将同一真实输入扩展为 Lightweight Integrated profile 的
+  Raw -> ODS -> Silver -> Gold -> ADS 分层链：8 个原始 bundle 成员及 Raw manifest、
+  ODS/Silver GeoParquet、Gold 道路分类指标、ADS GeoJSON 共 13 个数据对象，加上
+  catalog/collection/item 三个 STAC 文档，全部写入 MinIO 后回读校验 SHA-256；各层
+  ResourceVersion、Artifact 和 Raw -> ODS -> Silver -> Gold -> ADS 递归 lineage 已写入
+  PostgreSQL 控制账本。STAC Item 可通过产品 API 发现，协议 validator/conformance 仍留在
+  AR-2/AR-4 对应退出门。
+- [x] 产品已有真实 `v1.0.0 -> v1.1.0` predecessor 链；active pointer 已实际回滚到
+  `v1.0.0` 并使 STAC 消费面随版本降级，再通过新的 append-only `promoted` 事件恢复
+  `v1.1.0`。重复分层发布未新增 ResourceVersion、Artifact、lineage 或 pointer event。
+- [x] `v1.2.0` 已把同一 50,366 条真实 OSM 输入接入统一控制链：不可变
+  `PlatformDefinitionVersion c7893029-09cb-522b-88a6-9ea0646fa099` ->
+  `PlatformRun 859195f5-5e81-59a6-855a-de52b3b11d7d` -> DolphinScheduler workflow
+  instance `10` -> 3 条 Attempt observation -> 9 个 Run-bound Artifact -> 5 条
+  Run/Definition-bound lineage -> 独立 `passed` QualityResult -> evidence-gated
+  `succeeded`。active `DataProductVersion` 为
+  `5bdffe0f-edd7-5de2-826f-a36486be44ba`；产品、STAC 和 lineage HTTP API 均返回
+  `v1.2.0` 的 Run/Definition correlation。
+- [x] 真实调度过程验证了失败收敛和自动 retry：首次 Run 因 Raw manifest 错误地混入
+  Run 上下文而触发不可变对象冲突，已终结为 `failed` 且未创建产品版本；后续 Run 又暴露
+  GeoParquet 逻辑/物理 hash 混用和已存在逻辑 Resource 重绑定问题。修复为源 manifest
+  与 Run 证据分离、GeoParquet 逻辑 snapshot + 物理 SHA-256 双重寻址、已存在逻辑版本
+  复用后，DolphinScheduler retry 从已物化分层继续并成功。相同 client request 完整重放时
+  `platform_run_created=false`、`dispatch_command_created=false`、outbox claimed `0`、
+  success observation 未新增、终态未迁移、产品版本数仍为 `3`。验收证据：
+  `.tmp/dolphinscheduler-sandbox/osm-roads-v1.2.0/acceptance-report.json`。
+- [x] `v1.2.0` 的下载消费面已从容器本地文件收敛到受治理 S3 Artifact：端点优先选择
+  `S3GeoJSON`，并在返回前交叉校验 distribution、Artifact 账本、MinIO object metadata、
+  `ContentLength` 和实际 payload SHA-256；旧版 `file://` 分发保持兼容。真实 HTTP 下载返回
+  `200`、`36,427,513` bytes、50,366 条要素，SHA-256
+  `c0e99b5f69239e9ade8360399edc15fa47e71f9cfb68939223d3b8f4c3041164` 与 Artifact/STAC
+  一致。验收证据：`.tmp/dolphinscheduler-sandbox/osm-roads-v1.2.0/download-acceptance-report.json`。
+- [x] 同一 `v1.2.0` 已完成首个真实 Default Lakehouse batch provider 切片：Spark `3.5.0`
+  从 MinIO S3A 读取 ADS GeoJSON，Sedona `1.9.0` 将 50,366 条 MultiLineString 转为
+  `geometry_wkb + srid + bbox` 跨引擎合同，并写入 Iceberg v2 表
+  `lakehouse.gis_dwd.chongqing_osm_roads`。50,366 个道路 ID 唯一，geometry、EPSG:4326、
+  bbox 和内容 fingerprint 均与输入一致；snapshot `6767532492674345422` 可按 snapshot-id
+  time travel 回读。相同输入重跑复用该 snapshot，history 保持 `1`，未制造重复 commit。
+  该报告保留为 batch provider 层验收证据：
+  `.tmp/dolphinscheduler-sandbox/osm-roads-v1.2.0/default-lakehouse-acceptance-report.json`。
+- [x] 上述 Default Lakehouse executor 已进一步接入统一控制链：不可变
+  `PlatformDefinitionVersion 3e436515-2df8-54c5-91f9-6dc842ae03a3` 以 v1.2.0 ADS
+  `ResourceVersion 04eaa6f8-475c-5dcd-8992-e54307fc0395` 为只读输入，通过
+  `PlatformRun 786cf4c2-0014-5e1c-b267-507ea43a0170` 和 DolphinScheduler workflow
+  instance `11` 调用认证 executor；Iceberg snapshot 被登记为
+  `ResourceVersion 9d0602e9-a3d1-523c-9935-05e80c9bdc70`，并生成 Run-bound output/evidence
+  Artifact、Run+Definition-bound materialize lineage 和独立 evaluator 的 passed
+  QualityResult，最终由 evidence gate 收敛为 `succeeded/state_version=4`。相同 client
+  request 完整重放时 PlatformRun/dispatch command 均未创建、outbox claimed `0`、success
+  observation 未新增、终态未迁移，executor 快速返回 `replayed=true` 且不再启动 Spark；
+  Iceberg history 仍为 `1`，active 产品仍为 `v1.2.0` 且版本数保持 `3`。验收证据：
+  `.tmp/dolphinscheduler-sandbox/osm-roads-default-lakehouse-v1/acceptance-report.json`。
+- [x] Default Lakehouse 的 commit 后控制面已从 OSM executor 抽为跨产品通用
+  materialization contract/recorder；OSM 复用该记录器后，既有 Artifact、QualityResult、
+  lineage 和 ResourceVersion 身份保持不变。第二个真实输入选用重庆中心城区建筑：原始
+  bundle SHA-256 `e2697e8215a26de4b5c2a526eb9bce7401ebc27e1fc64d5f6c30bf85ff149c0d`，
+  全量 107,452 条；确定性源快照保留原始 `source_id=0`，以 Fiona `feature.id` 派生
+  107,452 个唯一 `source_fid`，并将 Polygon 无损提升为 MultiPolygon 以形成稳定的
+  Spark 输入合同。46,229,820-byte 快照以物理 SHA-256
+  `6fd8c873ffce0c0a91089c554b3b0d432527102272260a7363744cb75290bf29`
+  不可变写入 MinIO 并完成回读校验。
+- [x] 该 restricted 建筑快照已通过 Spark `3.5.0`/Sedona `1.9.0` 写入 Iceberg v2
+  `lakehouse.gis_ods.chongqing_central_buildings_2021`，snapshot
+  `2900773797038828981` 可 time travel 回读 107,452 行。质量门精确保留并记录 417 条
+  空 geometry、416 条由空值形成的重复 geometry、0 条非空重复、0 条非空无效 geometry、
+  原始 ID 仅 1 个 distinct value 和楼层 1–66；`passed` 仅表示 ODS 全量守恒、缺陷记账、
+  可回放和 commit 幂等，不表示数据已清洗或完成落标。
+- [x] 建筑 ODS 已接入第二条完整控制链：Definition
+  `05cabc57-63a3-5076-a19b-963c5452f7f2` -> PlatformRun
+  `b8cdded1-5e9c-5f6d-acf3-bcbdc8290fc5` -> DolphinScheduler instance `12` ->
+  Iceberg ResourceVersion `e36703d6-ba3b-53be-96c1-fb8aeb8465b6` -> output/evidence
+  Artifact、materialize lineage 和独立 ODS ingestion-integrity QualityResult ->
+  `succeeded/state_version=4`。`classification=restricted`、`logical_stage=ods`、
+  `promotion_eligible=false` 在 Definition、Resource、表属性、Artifact 和 QualityResult
+  一致；DWD/ADS 与建筑 DataProductVersion 均未创建，OSM 产品仍为 `v1.2.0/3 versions`。
+  完整重放未新增 source/definition/binding/Run/command/observation，executor 未启动 Spark，
+  Iceberg history 保持 `1`。验收证据：
+  `.tmp/dolphinscheduler-sandbox/central-buildings-ods-v1/acceptance-report.json`。
+- [x] Source 接入已从产品脚本中的隐含约定收敛为不可变、fail-closed 的声明式 adapter
+  registry：adapter ID/version/fingerprint、source kind、extension/driver、bundle member policy、
+  profiler/transform adapter、目标层、classification、required evidence/checks 和 promotion
+  policy 均进入 Definition 或 source manifest。建筑 Shapefile 迁移后既有 bundle SHA-256
+  `e2697e8215a26de4b5c2a526eb9bce7401ebc27e1fc64d5f6c30bf85ff149c0d`
+  保持不变；未知 adapter/extension/driver、缺少必需成员、未声明同 stem sidecar 和 restricted
+  直接晋升均会被拒绝。
+- [x] 第三类真实数据选择重庆 2020 DEM，证明接入面不局限于 Shapefile/矢量。原始
+  GeoTIFF、world file、GDAL auxiliary、external overview、value table 和 metadata 共 7 个
+  成员按显式 sidecar policy 封存，bundle SHA-256
+  `7e2cdcb92263283167e2305542dd1208e7fc907c56de365ea3b83cddcc60e333`，主 TIFF
+  SHA-256 `d3d167bc94f5d6ed52053942f0e98737557e94c8761497d74d58eb88bf9bd09f`。
+  七个对象均按 bundle + physical SHA-256 不可变写入 MinIO 并回读校验；完整重放全部复用。
+  全分辨率扫描精确记录 1766 x 1454、EPSG:4490、int16、NoData 32767、998,698 个有效
+  像元、1,569,066 个 NoData、高程 24–2802、均值 731.07092834871、128 x 128 block、
+  LZW 和 2/4/8 overviews。
+- [x] DEM 没有被强制行表化或覆盖转换，而是以 byte-preserving `native_raster_bundle`
+  进入对象型 ODS 控制链：raw ResourceVersion
+  `998628d5-ad68-51ea-b36b-6c54cf3663ed` -> Definition
+  `cf9e56cf-8d94-5ded-b8d9-62d3295a4e81` -> PlatformRun
+  `dfc75abf-4779-50d3-8cfb-4b660f379950` -> DolphinScheduler instance `15` -> ODS
+  ResourceVersion `25c9396e-2880-5a04-beb6-c407d8f2cc43` -> output/evidence Artifact、copy
+  lineage 和独立 native-raster ingestion-integrity QualityResult -> `succeeded/state_version=3`。
+  COG conformance、标准映射和产品晋升分别保持 `not_evaluated/not_evaluated/blocked`，没有创建
+  DEM DataProductVersion。首次真实执行还暴露并修复了 raw/ODS authority locator 冲突及跨 Run
+  内容版本时间戳冲突；两个失败 Run 均按 provider STOP 终结为 `failed/state_version=4`，未伪造
+  success observation。相同成功请求完整重放未新增 Run、command、observation 或物理对象，
+  executor 未再次运行 provider。验收证据：
+  `.tmp/dolphinscheduler-sandbox/chongqing-dem-ods-v1/acceptance-report.json`。
+- [x] 数据库、对象存储和 HTTP/STAC 已收敛到 secret-free、owner-bound、不可变
+  `SourceDefinition + CredentialReference` 合同；运行时 resolver 才取得凭据。connector certification
+  逐项记录 `connect/discover/preview/profile` 的通过、失败、未支持或未评估状态，只有真实通过项才能
+  进入 `SourceCapability` matrix。现有 connector 被复用，没有新建第二套查询栈；database preview
+  强制只读事务，MinIO 使用签名 S3 list/get，STAC 同时读取根 conformance 和 collections。
+- [x] 首轮只读真实认证覆盖 PostgreSQL 16.14/PostGIS 3.4.3、MinIO
+  `RELEASE.2025-04-22T22-12-26Z` 的 S3-compatible API，以及由已发布重庆 OSM 道路
+  `v1.2.0` STAC Item 驱动的本地 STAC API 1.0.0 transport。3 个 source 的 12 项能力全部
+  `passed`；重复认证的 discovery/profile fingerprint 稳定。错误 PostgreSQL/MinIO 凭据和 STAC
+  网络中断均 fail closed，认证报告未包含 secret。验收证据：
+  `.tmp/source-connector-certification/acceptance-report.json`。本地 STAC transport 不是生产
+  stac-fastapi/pgSTAC 认证，MinIO 精确 release 来自 compose runtime inventory，S3 响应仅声明
+  `MinIO/S3-compatible`。
+- [x] PostgreSQL provider 已完成隔离 sandbox 中的真实 credential rotation 和字段级 schema
+  mutation/drift 验收：revision v1 的 `connect/discover/preview/profile` 通过后，在服务端执行
+  `ALTER ROLE ... PASSWORD`，stale v1 随即失败，revision v2 恢复通过且 discovery fingerprint
+  不变。新增 nullable `observed_at TIMESTAMPTZ` 被记录为非 breaking `added`，`id INTEGER ->
+  BIGINT` 被记录为 breaking `type_changed`；只授予 `USAGE + SELECT` 的 provider role 尝试
+  `INSERT` 得到 SQLSTATE `42501`，未产生写入。随机 schema/role 在 `finally` 中精确删除并验证
+  不再存在，报告不含运行时密码。验收证据：
+  `.tmp/source-connector-certification/postgresql-rotation-drift-report.json`。该报告负责生成不可变
+  `SchemaDriftEvent`，控制账本持久化和 lifecycle 由迁移 102 及下述独立验收负责。
+- [x] MinIO/object-storage provider 已完成真实 credential rotation 和最小权限验收：已发布重庆
+  OSM 道路 `v1.2.0` STAC Item 被原样复制到随机临时 bucket，随机用户的自定义 policy 只允许
+  list/get 该对象。revision v1 的 `connect/discover/preview/profile` 全部通过；同一 access key 在
+  MinIO 服务端更新 secret 后，stale v1 失败，revision v2 恢复通过，discovery/profile fingerprint
+  均不变。对随机、预先确认不存在的 key 执行 `PutObject` 得到 `AccessDenied`，管理员复查对象仍
+  不存在；临时 user、policy、policy file、object 和 bucket 均被精确删除并验证。报告不包含两版
+  runtime secret。验收证据：
+  `.tmp/source-connector-certification/minio-rotation-report.json`。该 credential rotation 证据本身
+  不宣称 schema mutation/drift、重复摄取或增量摄取已经完成。
+- [x] STAC connector 已完成 authenticated HTTP transport 的 bearer credential rotation：临时
+  transport 只服务已发布重庆 OSM 道路 `v1.2.0` Item，并要求根文档、`/collections` 和 `/search`
+  全部携带运行时 Authorization header。revision v1 的四项能力通过，错误 token 被拒绝；服务端切换
+  到 revision v2 后 stale v1 立即失败，v2 与重复认证均通过，discovery/profile/report fingerprint
+  稳定，网络中断继续 fail closed。provider 记录 15 个授权请求、2 个未授权请求和 accepted revision，
+  不保存 header/token；临时 server 与 thread 均已关闭。验收证据：
+  `.tmp/source-connector-certification/stac-rotation-report.json`。该 transport 是真实 HTTP 认证切换，
+  但不是 production stac-fastapi/pgSTAC provider 认证。
+- [x] `SchemaDriftEvent` 已进入现有 PostgreSQL Control Ledger，而不是停留在 JSON 报告：迁移
+  `102_source_schema_drift_ledger` 新增 tenant-scoped `source_schema_drift` 当前状态投影和 append-only
+  lifecycle event，`SourceSchemaDriftLedger` 通过 transaction-local gateway role/RLS 提供幂等记录、
+  查询和 CAS transition。非 breaking 事件走 `observed -> reconciled`；breaking 事件初始为
+  `approval_required`，不能直接 reconcile，只有携带同租户外部 `ApprovalCase` ResourceURN 才能进入
+  `approved/rejected`，批准后才能 reconcile。该约束只消费审批引用，不创建第二套 ApprovalCase
+  authority。隔离真实 PostgreSQL 验收覆盖重复记录、stale CAS、直接 UPDATE 拒绝、最小权限和跨租户
+  负向，随机 database 已删除。主 Compose 当前已迁移为 106/106 applied records、最新 migration 104，
+  catalog/database fingerprint 一致。验收证据：
+  `.tmp/source-connector-certification/drift-ledger-report.json`。
+- [x] JSON/GeoJSON object-storage 与 STAC Item schema 已接入同一 drift 闭环。两个 connector
+  复用确定性的嵌套字段规范化器：按字段路径记录 JSON 类型和 nullable，值或 ETag 单独变化不冒充
+  schema drift；STAC discovery 按 `collection_id` 通过带认证的 `/search` 取样 Item schema，MinIO
+  discovery 使用同一只读运行时凭据对指定对象取样。`observe_certification_schema_drift` 只接受同一
+  source、connector、provider 和不可变 SourceDefinition 的两次 passed certification，随后才生成并
+  幂等写入 `SchemaDriftEvent` 账本。
+- [x] 同一真实重庆 OSM 道路 `v1.2.0` STAC Item 已在随机 MinIO bucket 与临时 authenticated STAC
+  transport 中分别执行非持久 mutation：新增
+  `properties.gda:schema_drift_probe_v1:string` 被两类 provider 一致识别为 non-breaking `added` 并
+  `observed -> reconciled`；再变为 integer 被一致识别为 breaking `type_changed`，只进入
+  `approval_required`，未伪造审批。两类 provider 的三轮 `connect/discover/preview/profile` 全部通过，
+  重复观察不新增事件，报告不含 runtime secret。12 项行为检查和 8 项清理检查全部通过；随机 MinIO
+  user/policy/bucket、STAC server/thread 和 PostgreSQL database 均已删除，主库 drift/lifecycle 仍为
+  0 行。验收证据：`.tmp/source-connector-certification/object-stac-drift-report.json`，SHA-256
+  `23cf344e592b6519f7d147ed4388dd162745e521be375de6f0301d6d6743efe6`。
+- [x] 通用 `ApprovalCase` 已成为独立于 Run 专用 `ApprovalRecord` 的统一审批权威：每个 case 以
+  `gda://{tenant}/approval_case/{id}` 登记 Resource，并不可变绑定 target ResourceURN、target
+  fingerprint 和 action；current projection 与 append-only event 分离，终态决定通过 CAS 且只允许一次。
+  approved/rejected 必须由未发起该 case 的 human actor 在有效期内作出。迁移
+  `103_unified_approval_case_authority` 已把 breaking schema drift 的 approval reference 改为真实同租户、
+  exact-target、exact-verdict authority 校验；历史迁移 102 的既有事实不被伪造或重写。
+- [x] ApprovalCase 已通过 4 个认证 `/api/platform/v1` 端点暴露创建、查询、event audit 和人工决定；
+  tenant/requester/decider 均由认证 principal 注入，客户端不能覆盖，workload 不能提交决定。主 Compose
+  已由专用 migration authority 前向迁移；主 Compose 当前为 106/106，catalog/database fingerprint 为
+  `ec36731518456a7e3d7c27cf1968cd59b9ac92c25abea5601ed5b23bb4eb8362`。隔离真实 PostgreSQL 验收覆盖
+  未登记/pending/过期/wrong-target/wrong-verdict/self-approval、幂等、stale CAS、RLS、最小权限和租户隔离；
+  相关 Gateway/authority/contract/drift 聚焦测试 58 项通过。详见
+  [ADR-103](architecture-decisions/adr-103-unified-approval-case-authority.md) 和
+  `.tmp/source-connector-certification/drift-ledger-report.json`。主库 case/drift 表保持 0 行。
+- [x] 增量接入控制面已建立唯一 `SourceSyncDefinitionVersion -> SourceSyncCommit ->
+  SourceSyncCheckpoint` 权威。定义冻结 full/incremental、overwrite/append/merge、cursor、主键和删除
+  语义，并与 source/target ResourceURN 及执行 `PlatformDefinitionVersion` 绑定；Resource、
+  ResourceVersion、typed definition 和 version-0 checkpoint 原子创建。commit 通过 PostgreSQL 函数
+  锁定 checkpoint，以 state-version + cursor 做 CAS，在同一事务内追加 provider commit evidence 并精确
+  推进一个版本；同 ID 和跨合法 Run 的相同 source slice 可恢复，target evidence 不同、stale cursor、
+  wrong definition/actor/status/run/tenant 均 fail closed。
+- [x] 迁移 `104_source_sync_checkpoint_authority` 已先通过随机临时 PostgreSQL 的 16 个行为门和 10 个
+  数据库控制检查，再由专用 authority 进入主严格账本。当前 106/106，catalog/database fingerprint 为
+  `ec36731518456a7e3d7c27cf1968cd59b9ac92c25abea5601ed5b23bb4eb8362`；三张主库 sync 表保持 0 行，
+  RLS/FORCE RLS、checkpoint-to-commit 外键、append-only trigger、gateway 最小权限和 membership 均通过。
+  详见 [ADR-104](architecture-decisions/adr-104-source-sync-checkpoint-authority.md) 和
+  `.tmp/source-sync-certification/authority-report.json`。
+- [x] 已发布重庆 OSM 道路 `v1.2.0` 的 50,366 条真实数据完成首条受权威 checkpoint 管理的
+  Spark/Iceberg micro-batch：full baseline 形成 snapshot `4541513947196238885`；第二个 Run 用单次
+  `MERGE INTO` 精确执行 1 insert、1 update、1 delete，形成 snapshot `5267674800802558836`，行数和
+  road ID 唯一性守恒。两个 snapshot 均完成 time travel 回读，checkpoint 从 0 精确推进到 2。
+  第三个合法 Run 在写前以 source-slice SHA-256 命中既有 commit，未再次启动 provider 写入，Iceberg
+  history 和 checkpoint 分别保持 2；跨 Run commit recovery 返回原 commit。随机 PostgreSQL database、
+  Iceberg table 和 MinIO prefix 已删除，主库三张 sync 表前后保持 0 行。10 项端到端检查全部通过；证据
+  `.tmp/source-sync-certification/chongqing-osm-report.json`，SHA-256
+  `42e762e0e16fa8f6e5e3e907467b193ab3b3fba3a88e2a958a605fc9e84b3abf`。
+- [x] 同一 `v1.2.0` Silver GeoParquet 已完成首条真实 Flink 1.19.3 事件流验收。50,366 条道路中
+  确定性选择四条形成 10-event insert/update/delete slice；Flink 在 completed checkpoint `6`、offset
+  `5` 后主动失败，attempt `1` 从 offset `5` 恢复。最终仅提交 8 条唯一 accepted event，重复 delete
+  和超 watermark 的迟到 update 各进入一条 audit；容差内乱序 update 被接受，两个源端 delete 生效，
+  最终状态为 2 条道路。SourceSync checkpoint 从 0 精确推进到 1，第二个合法 Run 在写前命中原 source
+  slice 并跳过 Flink，provider write 保持 1 次。随机数据库和工作目录均删除，主库 sync 表仍为 0 行。
+  该证据使用本地短生命周期 Docker + Flink `local` target，不是 Compose 常驻容器或 K8s runtime；也不
+  宣称 PostgreSQL CDC、Flink/Iceberg、跨系统 exactly-once 或生产 SLO 已完成。详见
+  [ADR-105](architecture-decisions/adr-105-flink-event-stream-source-sync-certification.md) 和
+  `.tmp/source-sync-certification/chongqing-osm-flink-report.json`，报告 SHA-256
+  `f02add8a4a953712d58a2b0973fbab271c583c5182e1889ab88da750e86bc673`。
+- [x] 同一真实 OSM source slice 已完成 PostgreSQL 16.14 WAL -> 官方 PostgreSQL CDC connector 3.3.0 ->
+  Flink 1.19.3 的 log-based CDC 验收。三条初始快照、两次 update、两次 delete 和一条中间 insert 形成
+  10 条唯一 Table changelog（含两组 update-before/update-after）；Flink 在 completed checkpoint `6`、
+  处理计数 `5` 后失败，attempt `1` 从 count `3` 恢复，并在 checkpoint `9` 提交全部变更。最终源状态
+  与 Bronze 重建状态均为 2 条道路；initial/final/confirmed-flush LSN、replication slot、connector/JAR/
+  runtime image 和 drain savepoint 均进入证据。SourceSync checkpoint 仅推进 `0 -> 1`，第二个合法 Run
+  写前命中原 commit，provider 只执行一次。9 项端到端门与 8 项 provider 门全部通过，隔离容器、控制
+  数据库和工作目录已删除，主库 sync 表保持为空。该证据仍是本地短生命周期 Docker，不是 K8s；不
+  代表 Flink/Iceberg、跨系统事务、活跃 CDC schema evolution、生产 SLO 或 HA。详见
+  [ADR-106](architecture-decisions/adr-106-postgresql-cdc-flink-source-sync-certification.md) 和
+  `.tmp/source-sync-certification/chongqing-osm-postgres-cdc-report.json`，报告 SHA-256
+  `3776339344874594809293a6e595f22b1fcebe4a421c4cebf068fdbd8653bba7`。
+- [x] 已完成同一真实 OSM source slice 的 Spark/Flink/MinIO Iceberg 双向互操作。Spark 3.5 + Iceberg
+  1.6.1 先创建 3 行 format-v2 基线 snapshot `4841911483547347489`；Flink 1.19.3 + Iceberg 1.7.2
+  读到基线后增加 `flink_commit_tag` 字段并追加第 4 行，形成 child snapshot
+  `5136003194891216528`；Spark 1.6.1 runtime 随后读到精确 5 列/4 行，并通过旧 snapshot time travel
+  回读原 3 行。随机 JDBC Catalog 与 MinIO S3FileIO 下实际形成 3 个 metadata JSON、4 个 manifest AVRO
+  和 3 个 Parquet；6 项端到端门全部通过，10 个对象、catalog/Flink 容器和工作目录全部删除。该认证
+  冻结了 Flink Iceberg/AWS/Hadoop/JDBC artifact 哈希，但只证明 create/read/add-column/append/readback/
+  time-travel；不代表 streaming checkpoint recovery、cancel/uncertain commit、并发写、REST/Gravitino
+  catalog、生产 SLO、HA 或 K8s。详见
+  [ADR-107](architecture-decisions/adr-107-spark-flink-minio-iceberg-interoperability.md) 和
+  `.tmp/source-sync-certification/chongqing-osm-flink-iceberg-report.json`，报告 SHA-256
+  `778772de0868533c683b042f0d352392c0010a66d654cbce57f0132a863c419c`。
+- [x] 在 ADR-107 同一 Spark/Flink/Iceberg/MinIO 版本矩阵上完成真实 checkpoint recovery。Spark 先创建
+  三行 OSM 基线；Flink checkpointed source 发送四个唯一真实道路事件，在 completed checkpoint `2`、
+  offset `2` 后主动失败，attempt `1` 从 offset `2` 精确恢复并完成 offset `4`。Spark 最终读取 7 行，
+  四个 stream event 无重复/丢失，且能回看恢复前的三行基线 snapshot。基线与三次有效 Flink append
+  形成四层连续 snapshot parent chain；MinIO 物化 6 个 metadata JSON、9 个 manifest AVRO 和 5 个
+  Parquet。6 项端到端、3 项 recovery、7 项 Spark readback 门全部通过；20 个对象、catalog/Flink
+  容器、checkpoint 和工作目录已删除。本证据只声明单 job/单并行度/单表 checkpoint recovery，不代表
+  cancel、uncertain commit、跨引擎并发、跨系统 exactly-once、REST/Gravitino、生产 SLO、HA 或 K8s。
+  详见 [ADR-108](architecture-decisions/adr-108-flink-iceberg-checkpoint-recovery.md) 和
+  `.tmp/source-sync-certification/chongqing-osm-flink-iceberg-recovery-report.json`，报告 SHA-256
+  `8fd1e3727af3864df4f19720c7e312b3d23d5468301cd718324b082415d1e473`。
+- [x] 已完成 Flink/Iceberg checkpoint 前 cancel 与“provider 已提交但控制面确认丢失”的真实对账。
+  取消作业在四条 source event 已发出、completed checkpoint 为 0 时被真实取消，Flink 终态
+  `CANCELED`，Iceberg 仍只有三行基线 snapshot，SourceSync/DataProductVersion 均未推进。随后同一确定性
+  source slice 以自身 SHA-256 作为 commit token，先在 checkpoint offset 3 形成合法部分快照，再在
+  offset 4 形成唯一七行终态 snapshot；
+  验收故意不回写控制面，SourceSync 保持 version 0，再由独立 Spark time-travel probe 按 token、行数、
+  operation 和内容 SHA-256 找回该 snapshot，原子推进 SourceSync `0 -> 1`。第三个合法 Run preflight
+  命中原 commit 并跳过 Flink，snapshot chain、内容 hash 和单条 commit 均无新增；DataProductVersion
+  始终为 0。14 项门全部通过，14 个 MinIO 对象、随机控制数据库、Catalog/Flink 容器、checkpoint 和
+  工作目录已删除，主库 sync 表保持 `0/0/0`。本证据不代表 kill -9/网络分区、跨引擎并发写、
+  跨系统 exactly-once、REST/Gravitino、生产 SLO、HA 或 K8s。详见
+  [ADR-109](architecture-decisions/adr-109-flink-iceberg-cancel-and-uncertain-commit-reconciliation.md) 和
+  `.tmp/source-sync-certification/chongqing-osm-flink-iceberg-reconciliation-report.json`，报告 SHA-256
+  `f3478cc12e1b0f71ae7bbee3095c70e17da9843000cd3f3d05b7ace671ae20ef`。
+- [x] 已完成同一 MinIO Iceberg 表上的 Spark/Flink 受控并发 append。Spark 基于三行 baseline 启动写入
+  并进入 executor barrier；Flink 随后追加第四行，独立 JDBC Catalog 检查确认 pointer 已推进到 Flink
+  child snapshot 后才释放 Spark。Spark 乐观重基到该 child 并追加第五行，最终三个 append snapshot
+  形成线性 parent chain；五行内容、road ID、writer 计数和两个 commit token 均精确且无重复/丢失，
+  baseline 与 Flink 后状态均可 time travel 回读。9 项顶层门全部通过；3 个 metadata JSON、6 个
+  manifest/list AVRO 和 4 个 Parquet 共 13 个对象已真实物化并清理，Spark/Flink/Catalog 容器和工作目录
+  已删除，主库 SourceSync 保持 `0/0/0`。本证据只放行 batch append convergence，不代表 overwrite/
+  delete/update/merge 冲突隔离、并发 streaming writer、REST/Gravitino、HA 或 K8s。详见
+  [ADR-110](architecture-decisions/adr-110-spark-flink-concurrent-append.md) 和
+  `.tmp/source-sync-certification/chongqing-osm-spark-flink-concurrent-append-report.json`，报告 SHA-256
+  `e70c5d487e5264fbdd42ac5b4f336936df1831e5392451d0f4fda9bb4034354d`。
+- [x] 已完成 Spark/Flink 破坏性 overwrite 冲突隔离。Spark 先建立通过
+  `validateFromSnapshot + validateNoConflictingData/Deletes` 绑定三行 baseline 的 Iceberg
+  `OverwriteFiles` transaction；Flink append 第四行并推进 JDBC Catalog 后才释放 Spark。陈旧 overwrite
+  得到 `ValidationException`，没有生成 snapshot，catalog 与四行内容保持在 Flink child，Spark token 为
+  0。独立 Spark retry 先读取精确四行 fresh state，再更新一条道路并保留 Flink 行，只生成一个 overwrite
+  snapshot；最终 Flink/Spark token 各一次，baseline 与 Flink 后状态均可 time travel。12 项顶层门全部
+  通过；3 个 metadata JSON、8 个 manifest/list AVRO 和 5 个 Parquet 共 16 个对象已清理，三个验收容器
+  和工作目录已删除，主库 SourceSync 保持 `0/0/0`。本证据不放行 delete/row-level update/merge、自动
+  retry、并发 streaming writer、REST/Gravitino、HA 或 K8s。详见
+  [ADR-111](architecture-decisions/adr-111-snapshot-bound-overwrite-conflict-isolation.md) 和
+  `.tmp/source-sync-certification/chongqing-osm-spark-flink-overwrite-conflict-report.json`，报告 SHA-256
+  `640684c15c5c88283751b0460107af89309598fd19c9a030f01be1627881bcb3`。
+- [x] 已完成 Spark/Flink 业务键 delete 与同 key insert 的冲突隔离。三行 baseline 不包含目标道路
+  `102262026`；Spark 先建立绑定 baseline、目标 key 和 delete token 的 `OverwriteFiles` conflict intent，
+  Flink 再插入目标道路并推进 catalog。陈旧 intent 得到 `ValidationException`，没有 delete snapshot，
+  四行内容和 catalog 保持 Flink child，delete token 为 0。独立 Spark retry 精确读取 fresh state 后使用
+  `DeleteFiles` 删除该 key，只形成一个带 token 的 delete snapshot；三条非目标道路与 baseline 内容完全
+  一致，baseline/Flink 状态均可 time travel。12 项顶层门全部通过；3 个 metadata JSON、6 个
+  manifest/list AVRO 和 3 个 Parquet 共 12 个对象已清理，三个验收容器和工作目录已删除，主库
+  SourceSync 保持 `0/0/0`。本证据只放行无分区 copy-on-write key delete/insert race，不代表
+  partitioned/equality/position/MOR delete、row-level update/merge、自动 retry、HA 或 K8s。详见
+  [ADR-112](architecture-decisions/adr-112-snapshot-bound-key-delete-conflict-isolation.md) 和
+  `.tmp/source-sync-certification/chongqing-osm-spark-flink-delete-conflict-report.json`，报告 SHA-256
+  `f32cd1bf6dfd786637cfd876c273b76a931d2b21bf8922aa26cd76cc1d3cbf8c`。
+- [x] 已完成 Spark/Flink identity-key 分区替换型 update 冲突隔离。三行 baseline 按 `road_id` identity
+  partition，目标道路 `102262017` 已有 revision 1；Spark 建立绑定 baseline 和目标 key 的
+  `OverwriteFiles` conflict intent 后，Flink 在同一分区追加 revision 2。陈旧 intent 得到
+  `ValidationException`，没有生成 Spark snapshot/token，revision 1/2 和 catalog Flink child 均保持不变。
+  独立 Spark retry 精确重读 Flink snapshot，保留其道路名称与 geometry hash，使用
+  `overwritePartitions()` 只把目标分区更新为 revision 3；最终仍为三个唯一 road ID，两个非目标分区及
+  baseline/Flink time travel 均准确。12 项顶层门全部通过；3 个 metadata JSON、8 个 manifest/list AVRO
+  和 5 个 Parquet 共 16 个对象及全部临时容器/目录已清理，主库 SourceSync 保持 `0/0/0`。首轮证据中
+  Flink/Iceberg partition fanout writer 需要关闭 classloader leak check；ADR-114 随后通过 single-operation
+  writer lifecycle 移除了该 override。本证据不代表通用 SQL UPDATE/MERGE、delete-file/MOR、自动
+  retry、HA 或 K8s。
+  详见 [ADR-113](architecture-decisions/adr-113-partition-replace-update-conflict-isolation.md) 和
+  `.tmp/source-sync-certification/chongqing-osm-spark-flink-update-conflict-report.json`，报告 SHA-256
+  `a1f1ca87aad779493dfb8bab6a1c4e0469b20c6f4aa62cd51f814fe62bb4ddce`。
+- [x] 已完成 Flink partition writer classloader 安全生命周期收敛。新的 Flink job 只执行一次
+  partitioned `INSERT`，baseline admission 和最终 readback 分别由 Spark/JDBC Catalog 独立负责；隔离
+  集群显式保持 `classloader.check-leaked-classloader: true`，并由 JobManager REST 观测实际值。在完全相同
+  的重庆 OSM update 冲突场景中，13 项顶层门全部通过，内容 hash 与 ADR-113 首轮证据一致；3 个
+  metadata JSON、8 个 manifest/list
+  AVRO、5 个 Parquet 共 16 个对象和所有临时容器/目录已清理，主库 SourceSync 保持 `0/0/0`。这只移除
+  当前 partition-replace path 的 override blocker，不放行通用多 query/streaming Flink lifecycle、SQL
+  UPDATE/MERGE、HA 或 K8s。详见
+  [ADR-114](architecture-decisions/adr-114-single-operation-flink-writer-lifecycle.md) 和
+  `.tmp/source-sync-certification/chongqing-osm-spark-flink-update-conflict-no-override-report.json`，报告
+  SHA-256 `4ce57c0237a19e28bb9c3ff3680a2cf80eba503fa7cdda3b45b7818eae8ffd4a`。
+- [x] 已完成 identity-partitioned copy-on-write key delete 冲突隔离。目标道路 `102262017` 在三分区
+  baseline 中已有 revision 1；Spark 建立 snapshot-bound delete intent 后，Flink single-operation writer
+  在同 partition 追加 revision 2。陈旧 intent 得到 `ValidationException`，没有生成 delete snapshot/token；
+  fresh retry 精确重读 Flink child 后使用原生 `DeleteFiles` 删除目标 partition 的两个 data file，两个
+  非目标 partition 逐行保留，baseline/Flink 状态均可 time travel。13 项顶层门全部通过，JobManager REST
+  观测 classloader safety check 为 `true`；3 个 metadata JSON、7 个 manifest/list AVRO、4 个 Parquet 共
+  14 个对象和所有临时容器/目录已清理，主库 SourceSync 保持 `0/0/0`。本证据不放行 equality/position
+  delete file、merge-on-read、通用 SQL UPDATE/MERGE、自动 retry、HA 或 K8s。详见
+  [ADR-115](architecture-decisions/adr-115-partitioned-copy-on-write-delete-conflict-isolation.md) 和
+  `.tmp/source-sync-certification/chongqing-osm-spark-flink-partition-delete-conflict-report.json`，报告
+  SHA-256 `77795e9698c7a989b65aa24e33778e18042e7bca9dee7a430be10ad34e441c82`。
+- [x] 已完成 Spark MOR position delete 到 Flink 的顺序读取互操作。Spark 在无分区 format-v2 表中
+  以单个 Parquet data file 写入三条真实重庆 OSM 道路，再用 SQL `DELETE` 删除道路 `102262020`；
+  metadata 证明原三行 data file 保留，并新增唯一 `content=1`、`record_count=1`、
+  `equality_ids=[]` 的 Parquet delete file，其 position `1` 精确指向原 data file。Flink 1.19.3/
+  Iceberg 1.7.2 single-operation read 返回两行、目标零行和两个唯一 road ID，且 catalog pointer 不变；
+  独立 Spark 会话精确验证最终状态和 baseline time travel。10 项顶层门全部通过，JobManager REST 观测
+  classloader safety check 为 `true`；2 个 metadata JSON、4 个 manifest/list AVRO、2 个 Parquet 共
+  8 个对象及隔离 Flink/JDBC Catalog 容器和工作目录已清理，主库 SourceSync 保持 `0/0/0`。本证据只
+  放行当前版本矩阵下 sequential position-delete/MOR read interoperability，不放行 equality delete、
+  Flink 侧 position-delete 写入、并发 position-delete conflict isolation、自动 retry、HA 或 K8s。详见
+  [ADR-116](architecture-decisions/adr-116-spark-flink-position-delete-read-interoperability.md) 和
+  `.tmp/source-sync-certification/chongqing-osm-spark-flink-position-delete-interop-report.json`，报告 SHA-256
+  `e0a0c5ed96b6e2208a6a2efe05aaba91db37fab1b63cdc5e75e999a340c4eaa5`。
+- [x] 已完成 Flink equality delete 到 Spark 的反向顺序互操作。Spark 用显式 DDL 创建
+  `road_id BIGINT NOT NULL` 的无分区 format-v2 表，把 `road_id` 注册为唯一 identifier field，并以
+  单个 data file 写入三条真实重庆 OSM 道路；Flink bounded streaming job 通过唯一 DELETE changelog
+  删除道路 `102262020`，只执行一次 provider DML。独立 Spark 证明原三行 data file 保留，新增唯一
+  `content=2`、`record_count=1`、`equality_ids=[1]` 的 Parquet equality delete file，当前两行和
+  baseline time travel 均逐行准确；验收进程通过 MinIO 直接读取 480-byte 物理 delete Parquet，确认只含
+  目标 key。10 项顶层门全部通过，JobManager REST 观测 classloader safety check 为 `true`；4 个
+  metadata JSON、4 个 manifest/list AVRO、2 个 Parquet 共 10 个对象及隔离 Flink/JDBC Catalog 容器和
+  工作目录已清理，主库 SourceSync 保持 `0/0/0`。本证据只放行当前版本矩阵下 bounded single-key
+  equality-delete write/read interoperability，不放行并发 equality-delete conflict、Flink
+  position-delete writer、复合 key、持续 checkpoint stream、HA 或 K8s。详见
+  [ADR-117](architecture-decisions/adr-117-flink-spark-equality-delete-write-interoperability.md) 和
+  `.tmp/source-sync-certification/chongqing-osm-flink-spark-equality-delete-interop-report.json`，报告 SHA-256
+  `bbc1c222460b4c8dbd7724be97c5acdc8910e583c4fb88c999052b620917b49b`。
+- [x] 已完成 snapshot-bound Spark update intent 与 Flink equality delete 的同 key 冲突隔离。Spark
+  intent 先绑定三行 baseline snapshot、目标道路 `102262020`、同 key conflict filter 和 update token；
+  Flink bounded single-operation job 再提交该 key 的 equality delete 并推进 JDBC Catalog，之后才释放
+  Spark。陈旧 update 得到 provider `ValidationException`，未生成 Spark snapshot/token，catalog、最终
+  两行和物理 equality delete file 均保持 Flink child。独立 fresh-state reconciliation 观测目标已删除，
+  按 `delete-wins-target-absent-no-resurrection` 返回 `retry_authorized=false`，没有创建第三个 snapshot；
+  独立 Spark verify 精确验证最终状态和 baseline time travel。14 项顶层门全部通过，JobManager REST
+  观测 classloader safety check 为 `true`；4 个 metadata JSON、4 个 manifest/list AVRO、2 个 Parquet
+  共 10 个对象及隔离 Spark/Flink/JDBC Catalog 容器和工作目录已清理，主库 SourceSync 保持
+  `0/0/0`。本证据只放行 update-versus-equality-delete conflict，不放行 equality-delete/insert race、
+  Flink position-delete writer、position/MOR 并发冲突、自动 resurrection/retry、HA 或 K8s。详见
+  [ADR-118](architecture-decisions/adr-118-snapshot-bound-update-versus-equality-delete-conflict-isolation.md)
+  和 `.tmp/source-sync-certification/chongqing-osm-spark-flink-equality-delete-conflict-report.json`，报告
+  SHA-256 `7659f665a5a6e3b10bc68213e56f84320bf26964454750f5fec0f4e10e4be9b5`。
+- [x] 已完成 snapshot-bound Spark equality-delete authorization 与 Flink append insert 的同 key 冲突
+  隔离。三行 baseline 不含目标道路 `102262026`；Spark intent 绑定 baseline、目标 key 和 conflict
+  filter 后等待，Flink single-operation `INSERT INTO` 以 append snapshot 插入目标并推进 JDBC Catalog，
+  再释放 Spark。陈旧 intent 得到 provider `ValidationException`，没有生成 authorization snapshot，四行
+  insert 状态保持 current。独立 Spark fresh-state 会话精确读取四行并返回 `retry_authorized=true`，授权
+  本身不创建 snapshot；单独 Flink bounded DELETE changelog job 随后生成唯一 equality delete file，
+  独立 Spark 验证最终 baseline 三行、baseline/insert time travel 和 `append -> append -> delete` 快照链。
+  物理文件为 `content=2`、`record_count=1`、`equality_ids=[1]`，MinIO 直读只含目标 key。16 项顶层门
+  全部通过，JobManager REST 观测 classloader safety check 为 `true`；5 个 metadata JSON、6 个
+  manifest/list AVRO、3 个 Parquet 共 14 个对象及隔离 Spark/Flink/JDBC Catalog 容器和工作目录已清理，
+  主库 SourceSync 保持 `0/0/0`。本证据只放行 equality-delete authorization versus insert race，不放行
+  Flink position-delete writer、position/MOR 并发冲突、通用 SQL UPDATE/MERGE、自动 retry、HA 或 K8s。
+  详见
+  [ADR-119](architecture-decisions/adr-119-snapshot-bound-equality-delete-versus-insert-conflict-isolation.md)
+  和 `.tmp/source-sync-certification/chongqing-osm-spark-flink-equality-delete-insert-conflict-report.json`，报告
+  SHA-256 `af051adf8d4e54c467b29d42db0b33f7d1c0bd21c965c303d606a8a26398bafe`。
+- [x] 已完成 Flink position delete 到 Spark 的反向写入互操作。Spark 在无分区 format-v2、MOR 表中
+  以单个 data file 建立三行重庆 OSM baseline，并通过隐藏列 `_file/_pos` 把目标道路 `102262020`
+  绑定到原文件 position `1`。Flink 1.19.3 单元素 DataStream 在唯一 TaskManager task 内使用 Iceberg
+  1.7.2 position writer 和一次 `RowDelta.commit()` 提交，显式关闭自动重启并绑定 baseline snapshot、
+  data-file existence 和确定性 commit token。JobManager REST 只观测到一个 `FINISHED` job 和一个
+  finished task；独立 Spark 证明原三行 data file 保留，新增唯一 `content=1`、`record_count=1`、
+  `equality_ids=[]` 的 Parquet delete file，当前两行、baseline time travel 和 `append -> delete` 链均
+  精确。MinIO/PyArrow 直接读取 1,882-byte 物理文件，确认只有 baseline data file 和 position `1`。
+  12 项顶层门全部通过，classloader safety check 为 `true`；2 个 metadata JSON、4 个 manifest/list
+  AVRO、2 个 Parquet 共 8 个对象及隔离 Flink/JDBC Catalog 容器和工作目录已清理，主库 SourceSync
+  保持 `0/0/0`。本证据只放行专用 low-level adapter 的单文件单行 position-delete writer，不代表
+  Flink SQL position delete、position/MOR 并发冲突、自动 retry、checkpoint exactly-once、HA 或 K8s。
+  详见 [ADR-120](architecture-decisions/adr-120-flink-spark-position-delete-write-interoperability.md) 和
+  `.tmp/source-sync-certification/chongqing-osm-flink-spark-position-delete-interop-report.json`，报告
+  SHA-256 `ec13afd09a3d8617519c112461009495da8265131cc3b53beb43489549fd95d5`。
+- [ ] 跨产品 batch/object materialization 的统一控制与证据管线、vector/raster adapter registry，
+  三类 connector 的只读基础能力，以及 PostgreSQL 的真实 credential rotation/schema
+  mutation/drift、MinIO 的真实 credential rotation、authenticated STAC transport 的 credential
+  rotation、三类 source 的字段级 drift、SchemaDriftEvent 账本和受控 reconciliation，以及
+  SourceSync definition/commit/checkpoint authority 已验证；但
+  production STAC provider 认证、非 JSON 对象格式的 schema drift、三类 source 网络故障与重复摄取、
+  其他 source 的重复摄取、活跃 CDC schema evolution/网络分区/slot lifecycle、Flink/Iceberg kill -9/
+  网络分区不确定提交、position/MOR
+  destructive-write 并发冲突隔离及通用 SQL UPDATE/MERGE 冲突隔离、REST/Gravitino catalog 互操作、
+  并发/reconcile、
+  DataSLO/Incident、
+  DriveTransfer、双租户、备份恢复和默认/轻量/
+  云 profile 语义等价仍未完成；ApprovalCase Inbox、委托、通知、SLA timeout automation 和除 schema
+  drift 外的 consumer 接入也未完成，因此 AR-2 仍不得标为 `verified`。
+
 **目标**：用统一元数据和统一调度跑通一条真实自然资源 DataOps 链，并建立可扩展的 Source/Sync 基础，不依赖 LLM 和 GWM。
 
 链路：
@@ -441,7 +880,6 @@ M3-22 至 M3-25 已把一份真实重庆 20-feature EPSG:4490 slice 从受授权
 
 交付：
 
-- 真实源 admission contract：以不可变 archive checksum、解压 payload fingerprint、source-group manifest、metadata profile 和治理 blocker 建立准入基线；证据不得含源 payload、绝对路径、记录值或 geometry，profiling 不等于 content admission。
 - SourceDefinition、CredentialReference、SourceCapability、SyncDefinition/Version、SyncRun、Cursor/Watermark、SchemaDriftEvent 和 Reconciliation。
 - 数据库、对象存储/空间文件、HTTP/STAC 三类代表 source 的连接、凭据、连通、发现、preview、profile 和 owner 登记。
 - 全量/增量微批的 Append/Overwrite/Merge 策略，以及至少一个真实 CDC 或事件流 source 通过 Flink 写入版本化 Bronze；覆盖 watermark/offset、checkpoint、迟到/乱序、源端删除、幂等、对账、重放和失败恢复。

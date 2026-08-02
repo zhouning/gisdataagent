@@ -514,7 +514,7 @@ def test_run_transition_rejects_negative_state_version_at_http_boundary():
 
 def test_platform_gateway_routes_are_versioned_and_registered():
     registered = routes.get_platform_gateway_routes()
-    assert len(registered) == 12
+    assert len(registered) == 16
     assert all(route.path.startswith("/api/platform/v1/") for route in registered)
 
     from data_agent.frontend_api import get_frontend_api_routes
@@ -527,7 +527,7 @@ def test_platform_gateway_static_contract_and_fail_closed_role(tmp_path):
     report = build_gateway_report()
     assert report["status"] == "valid"
     assert report["database_role"] == "gda_control_gateway"
-    assert report["route_count"] == 12
+    assert report["route_count"] == 16
 
     unsafe = tmp_path / "unsafe_gateway.sql"
     unsafe.write_text(

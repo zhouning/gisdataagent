@@ -12,7 +12,7 @@ import hashlib
 import json
 import re
 from datetime import datetime, timezone
-from enum import Enum
+from enum import Enum, StrEnum
 from pathlib import Path
 from typing import Annotated, Any, ClassVar
 from urllib.parse import urlsplit
@@ -26,7 +26,6 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-
 
 CONTRACT_SCHEMA_VERSION = "gda.platform_contracts.v1"
 CONTROL_LEDGER_MIGRATION = (
@@ -147,6 +146,37 @@ class PolicyEffect(str, Enum):
 class ApprovalVerdict(str, Enum):
     APPROVED = "approved"
     REJECTED = "rejected"
+
+
+class ApprovalCaseStatus(StrEnum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    CANCELLED = "cancelled"
+
+
+class SourceSyncMode(StrEnum):
+    FULL = "full"
+    INCREMENTAL = "incremental"
+
+
+class SourceSyncWriteDisposition(StrEnum):
+    OVERWRITE = "overwrite"
+    APPEND = "append"
+    MERGE = "merge"
+
+
+class SourceSyncCursorKind(StrEnum):
+    NONE = "none"
+    FIELD = "field"
+    PROVIDER_TOKEN = "provider_token"
+    OFFSET = "offset"
+
+
+class SourceSyncDeleteMode(StrEnum):
+    IGNORE = "ignore"
+    SOFT_DELETE = "soft_delete"
+    HARD_DELETE = "hard_delete"
 
 
 class QualityVerdict(str, Enum):
@@ -371,6 +401,93 @@ def run_success_evidence_fingerprint(
     )
 
 
+def source_sync_definition_fingerprint(
+    *,
+    tenant_id: str,
+    sync_definition_urn: str,
+    sync_definition_version_id: UUID,
+    platform_definition_version_id: UUID,
+    source_resource_urn: str,
+    source_definition_fingerprint: str,
+    target_resource_urn: str,
+    mode: SourceSyncMode | str,
+    write_disposition: SourceSyncWriteDisposition | str,
+    cursor_kind: SourceSyncCursorKind | str,
+    cursor_field: str | None,
+    primary_keys: tuple[str, ...],
+    delete_mode: SourceSyncDeleteMode | str,
+    config: dict[str, Any],
+) -> str:
+    """Fingerprint one immutable, provider-independent source sync definition."""
+
+    return _json_fingerprint(
+        {
+            "tenant_id": tenant_id,
+            "sync_definition_urn": sync_definition_urn,
+            "sync_definition_version_id": str(sync_definition_version_id),
+            "platform_definition_version_id": str(platform_definition_version_id),
+            "source_resource_urn": source_resource_urn,
+            "source_definition_fingerprint": source_definition_fingerprint,
+            "target_resource_urn": target_resource_urn,
+            "mode": SourceSyncMode(mode).value,
+            "write_disposition": SourceSyncWriteDisposition(write_disposition).value,
+            "cursor_kind": SourceSyncCursorKind(cursor_kind).value,
+            "cursor_field": cursor_field,
+            "primary_keys": list(primary_keys),
+            "delete_mode": SourceSyncDeleteMode(delete_mode).value,
+            "config": config,
+        }
+    )
+
+
+def source_sync_commit_fingerprint(
+    *,
+    tenant_id: str,
+    sync_commit_id: UUID,
+    sync_definition_version_id: UUID,
+    run_id: UUID,
+    from_state_version: int,
+    to_state_version: int,
+    previous_cursor: dict[str, Any],
+    next_cursor: dict[str, Any],
+    source_slice_sha256: str,
+    target_commit_ref: dict[str, Any],
+    target_content_sha256: str,
+    records_read: int,
+    records_inserted: int,
+    records_updated: int,
+    records_deleted: int,
+    records_output: int,
+    committed_by: str,
+    committed_at: datetime,
+) -> str:
+    """Fingerprint the exact source slice, target commit, cursor move and actor."""
+
+    committed_at = _aware_utc(committed_at)
+    return _json_fingerprint(
+        {
+            "tenant_id": tenant_id,
+            "sync_commit_id": str(sync_commit_id),
+            "sync_definition_version_id": str(sync_definition_version_id),
+            "run_id": str(run_id),
+            "from_state_version": from_state_version,
+            "to_state_version": to_state_version,
+            "previous_cursor": previous_cursor,
+            "next_cursor": next_cursor,
+            "source_slice_sha256": source_slice_sha256,
+            "target_commit_ref": target_commit_ref,
+            "target_content_sha256": target_content_sha256,
+            "records_read": records_read,
+            "records_inserted": records_inserted,
+            "records_updated": records_updated,
+            "records_deleted": records_deleted,
+            "records_output": records_output,
+            "committed_by": committed_by,
+            "committed_at": committed_at.isoformat().replace("+00:00", "Z"),
+        }
+    )
+
+
 class FrozenContract(BaseModel):
     """Immutable, extra-forbidden base for fingerprinted contracts."""
 
@@ -488,6 +605,314 @@ class ApprovalRecord(FrozenContract):
             raise ValueError("approval must use human identity")
         if self.expires_at <= self.decided_at:
             raise ValueError("approval expiry must follow decision time")
+        return self
+
+
+class ApprovalCase(FrozenContract):
+    """Generic approval authority bound to one immutable resource action."""
+
+    schema_id = "approval_case"
+
+    tenant_id: TenantId
+    approval_case_ref: ResourceURNText
+    target_resource_urn: ResourceURNText
+    target_fingerprint: Sha256
+    action: ShortName
+    requester_subject: NonEmptyText
+    request_reason: NonEmptyText
+    request_context: dict[str, Any] = Field(default_factory=dict)
+    status: ApprovalCaseStatus = ApprovalCaseStatus.PENDING
+    state_version: Annotated[int, Field(ge=0)] = 0
+    requested_at: datetime
+    expires_at: datetime
+    decided_by: NonEmptyText | None = None
+    decision_reason: NonEmptyText | None = None
+    decided_at: datetime | None = None
+
+    @field_validator("requested_at", "expires_at", "decided_at")
+    @classmethod
+    def _utc_case_time(cls, value: datetime | None) -> datetime | None:
+        return _aware_utc(value) if value is not None else None
+
+    @model_validator(mode="after")
+    def _consistent_case(self) -> "ApprovalCase":
+        case_identity = parse_resource_urn(self.approval_case_ref)
+        target_identity = parse_resource_urn(self.target_resource_urn)
+        if case_identity["tenant_id"] != self.tenant_id:
+            raise ValueError("approval_case_ref tenant must match tenant_id")
+        if case_identity["resource_kind"] != "approval_case":
+            raise ValueError("approval_case_ref must use resource kind 'approval_case'")
+        if target_identity["tenant_id"] != self.tenant_id:
+            raise ValueError("approval target tenant must match tenant_id")
+        if not self.requester_subject.startswith(("human:", "workload:", "agent:")):
+            raise ValueError("approval requester must use a typed subject identity")
+        if self.expires_at <= self.requested_at:
+            raise ValueError("approval case expiry must follow request time")
+
+        decision_values = (self.decided_by, self.decision_reason, self.decided_at)
+        decided = self.status is not ApprovalCaseStatus.PENDING
+        if decided != all(value is not None for value in decision_values):
+            raise ValueError("approval decision fields must be set together for terminal state")
+        if self.state_version == 0:
+            if self.status is not ApprovalCaseStatus.PENDING:
+                raise ValueError("approval case state version zero must be pending")
+        elif self.state_version == 1:
+            if not decided:
+                raise ValueError("approval case state version one must be terminal")
+        else:
+            raise ValueError("approval case supports exactly one terminal decision")
+
+        if self.decided_at is not None:
+            if self.decided_at < self.requested_at:
+                raise ValueError("approval decision cannot predate its request")
+            if self.decided_at >= self.expires_at:
+                raise ValueError("approval decision must occur before case expiry")
+        if self.status in {ApprovalCaseStatus.APPROVED, ApprovalCaseStatus.REJECTED}:
+            if self.decided_by is None or not self.decided_by.startswith("human:"):
+                raise ValueError("approval verdict must use human identity")
+            if self.decided_by == self.requester_subject:
+                raise ValueError("approval verdict must be independent from requester")
+        return self
+
+
+class ApprovalCaseEvent(FrozenContract):
+    schema_id = "approval_case_event"
+
+    tenant_id: TenantId
+    approval_event_id: UUID
+    approval_case_ref: ResourceURNText
+    sequence_no: Annotated[int, Field(ge=0)]
+    from_status: ApprovalCaseStatus | None = None
+    to_status: ApprovalCaseStatus
+    actor_subject: NonEmptyText
+    reason: NonEmptyText
+    details: dict[str, Any] = Field(default_factory=dict)
+    occurred_at: datetime
+
+    @field_validator("occurred_at")
+    @classmethod
+    def _utc_event_time(cls, value: datetime) -> datetime:
+        return _aware_utc(value)
+
+    @model_validator(mode="after")
+    def _consistent_event(self) -> "ApprovalCaseEvent":
+        identity = parse_resource_urn(self.approval_case_ref)
+        if identity["tenant_id"] != self.tenant_id:
+            raise ValueError("approval event tenant must match case tenant")
+        if identity["resource_kind"] != "approval_case":
+            raise ValueError("approval event must reference an ApprovalCase")
+        if self.sequence_no == 0:
+            if self.from_status is not None or self.to_status is not ApprovalCaseStatus.PENDING:
+                raise ValueError("approval event sequence zero must initialize pending state")
+        elif (
+            self.sequence_no != 1
+            or self.from_status is not ApprovalCaseStatus.PENDING
+            or self.to_status is ApprovalCaseStatus.PENDING
+        ):
+            raise ValueError("approval event sequence one must record one terminal decision")
+        if self.to_status in {ApprovalCaseStatus.APPROVED, ApprovalCaseStatus.REJECTED}:
+            if not self.actor_subject.startswith("human:"):
+                raise ValueError("approval verdict event must use human identity")
+        return self
+
+
+class SourceSyncDefinitionVersion(FrozenContract):
+    """Immutable source-to-target synchronization semantics."""
+
+    schema_id = "source_sync_definition_version"
+
+    tenant_id: TenantId
+    sync_definition_urn: ResourceURNText
+    sync_definition_version_id: UUID
+    platform_definition_version_id: UUID
+    source_resource_urn: ResourceURNText
+    source_definition_fingerprint: Sha256
+    target_resource_urn: ResourceURNText
+    mode: SourceSyncMode
+    write_disposition: SourceSyncWriteDisposition
+    cursor_kind: SourceSyncCursorKind
+    cursor_field: ShortName | None = None
+    primary_keys: tuple[ShortName, ...] = ()
+    delete_mode: SourceSyncDeleteMode = SourceSyncDeleteMode.IGNORE
+    config: dict[str, Any] = Field(default_factory=dict)
+    definition_sha256: Sha256
+    created_by: NonEmptyText
+    created_at: datetime
+
+    @field_validator("created_at")
+    @classmethod
+    def _utc_created_at(cls, value: datetime) -> datetime:
+        return _aware_utc(value)
+
+    @model_validator(mode="after")
+    def _consistent_definition(self) -> "SourceSyncDefinitionVersion":
+        sync_identity = parse_resource_urn(self.sync_definition_urn)
+        source_identity = parse_resource_urn(self.source_resource_urn)
+        target_identity = parse_resource_urn(self.target_resource_urn)
+        if sync_identity["tenant_id"] != self.tenant_id:
+            raise ValueError("sync definition tenant must match tenant_id")
+        if sync_identity["resource_kind"] != "sync_definition":
+            raise ValueError("sync definition must use resource kind 'sync_definition'")
+        if source_identity["tenant_id"] != self.tenant_id:
+            raise ValueError("sync source tenant must match tenant_id")
+        if target_identity["tenant_id"] != self.tenant_id:
+            raise ValueError("sync target tenant must match tenant_id")
+        if not self.created_by.startswith(("human:", "workload:", "agent:")):
+            raise ValueError("sync definition creator must use a typed subject identity")
+        if len(set(self.primary_keys)) != len(self.primary_keys):
+            raise ValueError("sync primary keys must be unique")
+
+        if self.mode is SourceSyncMode.FULL:
+            if self.cursor_kind is not SourceSyncCursorKind.NONE or self.cursor_field is not None:
+                raise ValueError("full sync must not declare a cursor")
+            if self.write_disposition is not SourceSyncWriteDisposition.OVERWRITE:
+                raise ValueError("full sync must use overwrite disposition")
+        else:
+            if self.cursor_kind is SourceSyncCursorKind.NONE:
+                raise ValueError("incremental sync requires a cursor")
+            has_field = self.cursor_field is not None
+            if (self.cursor_kind is SourceSyncCursorKind.FIELD) != has_field:
+                raise ValueError("field cursor requires exactly one cursor_field")
+
+        if self.write_disposition is SourceSyncWriteDisposition.MERGE and not self.primary_keys:
+            raise ValueError("merge sync requires primary keys")
+        if self.delete_mode is not SourceSyncDeleteMode.IGNORE:
+            if self.write_disposition is not SourceSyncWriteDisposition.MERGE:
+                raise ValueError("source deletes require merge disposition")
+
+        expected = source_sync_definition_fingerprint(
+            tenant_id=self.tenant_id,
+            sync_definition_urn=self.sync_definition_urn,
+            sync_definition_version_id=self.sync_definition_version_id,
+            platform_definition_version_id=self.platform_definition_version_id,
+            source_resource_urn=self.source_resource_urn,
+            source_definition_fingerprint=self.source_definition_fingerprint,
+            target_resource_urn=self.target_resource_urn,
+            mode=self.mode,
+            write_disposition=self.write_disposition,
+            cursor_kind=self.cursor_kind,
+            cursor_field=self.cursor_field,
+            primary_keys=self.primary_keys,
+            delete_mode=self.delete_mode,
+            config=self.config,
+        )
+        if self.definition_sha256 != expected:
+            raise ValueError("sync definition fingerprint does not match its immutable content")
+        return self
+
+
+class SourceSyncCheckpoint(FrozenContract):
+    """Current cursor projection advanced only by a committed source sync."""
+
+    schema_id = "source_sync_checkpoint"
+
+    tenant_id: TenantId
+    sync_definition_version_id: UUID
+    state_version: Annotated[int, Field(ge=0)] = 0
+    cursor: dict[str, Any] = Field(default_factory=dict)
+    cursor_sha256: Sha256
+    last_sync_commit_id: UUID | None = None
+    last_run_id: UUID | None = None
+    target_commit_ref: dict[str, Any] | None = None
+    target_content_sha256: Sha256 | None = None
+    updated_by: NonEmptyText
+    updated_at: datetime
+
+    @field_validator("updated_at")
+    @classmethod
+    def _utc_updated_at(cls, value: datetime) -> datetime:
+        return _aware_utc(value)
+
+    @model_validator(mode="after")
+    def _consistent_checkpoint(self) -> "SourceSyncCheckpoint":
+        if self.cursor_sha256 != canonical_json_fingerprint(self.cursor):
+            raise ValueError("sync checkpoint cursor fingerprint does not match cursor")
+        if not self.updated_by.startswith(("human:", "workload:", "agent:")):
+            raise ValueError("sync checkpoint updater must use a typed subject identity")
+        commit_values = (
+            self.last_sync_commit_id,
+            self.last_run_id,
+            self.target_commit_ref,
+            self.target_content_sha256,
+        )
+        if self.state_version == 0:
+            if any(value is not None for value in commit_values):
+                raise ValueError("initial sync checkpoint must not contain commit evidence")
+        elif not all(value is not None for value in commit_values):
+            raise ValueError("advanced sync checkpoint requires complete commit evidence")
+        return self
+
+
+class SourceSyncCommit(FrozenContract):
+    """Append-only evidence for one atomic provider commit and cursor advance."""
+
+    schema_id = "source_sync_commit"
+
+    tenant_id: TenantId
+    sync_commit_id: UUID
+    sync_definition_version_id: UUID
+    run_id: UUID
+    from_state_version: Annotated[int, Field(ge=0)]
+    to_state_version: Annotated[int, Field(ge=1)]
+    previous_cursor: dict[str, Any]
+    previous_cursor_sha256: Sha256
+    next_cursor: dict[str, Any]
+    next_cursor_sha256: Sha256
+    source_slice_sha256: Sha256
+    target_commit_ref: dict[str, Any]
+    target_content_sha256: Sha256
+    records_read: Annotated[int, Field(ge=0)]
+    records_inserted: Annotated[int, Field(ge=0)]
+    records_updated: Annotated[int, Field(ge=0)]
+    records_deleted: Annotated[int, Field(ge=0)]
+    records_output: Annotated[int, Field(ge=0)]
+    committed_by: NonEmptyText
+    committed_at: datetime
+    commit_sha256: Sha256
+
+    @field_validator("committed_at")
+    @classmethod
+    def _utc_committed_at(cls, value: datetime) -> datetime:
+        return _aware_utc(value)
+
+    @model_validator(mode="after")
+    def _consistent_commit(self) -> "SourceSyncCommit":
+        if self.to_state_version != self.from_state_version + 1:
+            raise ValueError("sync commit must advance checkpoint by exactly one version")
+        if self.previous_cursor_sha256 != canonical_json_fingerprint(self.previous_cursor):
+            raise ValueError("previous cursor fingerprint does not match cursor")
+        if self.next_cursor_sha256 != canonical_json_fingerprint(self.next_cursor):
+            raise ValueError("next cursor fingerprint does not match cursor")
+        if self.next_cursor_sha256 == self.previous_cursor_sha256:
+            raise ValueError("sync commit must advance to a different cursor")
+        if not self.target_commit_ref:
+            raise ValueError("sync commit requires provider target commit evidence")
+        if not self.committed_by.startswith("workload:"):
+            raise ValueError("sync commit must use workload identity")
+        if self.records_inserted + self.records_updated + self.records_deleted > self.records_read:
+            raise ValueError("sync mutation counts cannot exceed records read")
+        expected = source_sync_commit_fingerprint(
+            tenant_id=self.tenant_id,
+            sync_commit_id=self.sync_commit_id,
+            sync_definition_version_id=self.sync_definition_version_id,
+            run_id=self.run_id,
+            from_state_version=self.from_state_version,
+            to_state_version=self.to_state_version,
+            previous_cursor=self.previous_cursor,
+            next_cursor=self.next_cursor,
+            source_slice_sha256=self.source_slice_sha256,
+            target_commit_ref=self.target_commit_ref,
+            target_content_sha256=self.target_content_sha256,
+            records_read=self.records_read,
+            records_inserted=self.records_inserted,
+            records_updated=self.records_updated,
+            records_deleted=self.records_deleted,
+            records_output=self.records_output,
+            committed_by=self.committed_by,
+            committed_at=self.committed_at,
+        )
+        if self.commit_sha256 != expected:
+            raise ValueError("sync commit fingerprint does not match immutable evidence")
         return self
 
 
@@ -869,6 +1294,11 @@ CONTRACT_MODELS = (
     RunPolicyReferences,
     PolicyDecision,
     ApprovalRecord,
+    ApprovalCase,
+    ApprovalCaseEvent,
+    SourceSyncDefinitionVersion,
+    SourceSyncCheckpoint,
+    SourceSyncCommit,
     PlatformCommand,
     Resource,
     ResourceVersion,

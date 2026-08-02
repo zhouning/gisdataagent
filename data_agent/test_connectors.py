@@ -319,6 +319,32 @@ class TestStacConnector(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(mock_client_cls.call_args.kwargs["proxy"], "http://proxy.example:8080")
 
     @patch("httpx.AsyncClient")
+    async def test_query_pushes_bounded_stac_query_extensions(self, mock_client_cls):
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"features": []}
+        mock_resp.raise_for_status = MagicMock()
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_resp)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client_cls.return_value = mock_client
+
+        from data_agent.connectors.stac import StacConnector
+        await StacConnector().query(
+            "https://example.com/v1",
+            {},
+            {},
+            extra_params={
+                "query": {"eo:cloud_cover": {"lte": 30}},
+                "unapproved": "ignored",
+            },
+        )
+
+        body = mock_client.post.call_args.kwargs["json"]
+        self.assertEqual(body["query"], {"eo:cloud_cover": {"lte": 30}})
+        self.assertNotIn("unapproved", body)
+
+    @patch("httpx.AsyncClient")
     async def test_get_capabilities(self, mock_client_cls):
         coll_resp = {
             "collections": [
@@ -358,7 +384,6 @@ class TestStacConnector(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(mock_client_cls.call_args.kwargs["timeout"], 9)
         self.assertEqual(mock_client_cls.call_args.kwargs["proxy"], "http://proxy.example:8080")
-
 
 # ---------------------------------------------------------------------------
 # Custom API Connector
