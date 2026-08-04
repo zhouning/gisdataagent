@@ -239,6 +239,45 @@ def test_invalid_or_prohibited_alternative_is_rejected():
         raise AssertionError("unknown alternative should fail")
 
 
+def test_second_rollout_uses_the_first_future_state_as_its_source():
+    graph = _graph()
+    first = run_counterfactual_rollout(
+        graph=graph,
+        intervention_action=_action(graph),
+        land_use_dictionary=_dictionary(),
+        transition_matrix=_matrix(),
+        alternative_land_use_class=None,
+    )
+    future_graph = first["intervention"]["t1"]["state_graph"]
+    second_action = bind_server_actor(
+        build_change_land_use_action(
+            parcel_id="parcel-target",
+            from_land_use_class="public_service",
+            to_land_use_class="commercial",
+            rationale="在第一步未来状态上继续推演",
+            snapshot_digest=future_graph["snapshot_digest"],
+            dictionary_version="dict-v1",
+            transition_matrix_version="matrix-v1",
+            requested_at="2026-07-11T08:01:00Z",
+        ),
+        actor_id="user-123",
+    )
+
+    second = run_counterfactual_rollout(
+        graph=future_graph,
+        intervention_action=second_action,
+        land_use_dictionary=_dictionary(),
+        transition_matrix=_matrix(),
+        alternative_land_use_class=None,
+    )
+
+    assert second["baseline"]["action"]["from_land_use_class"] == "public_service"
+    assert second["baseline"]["t1"]["direct_state_delta"]["land_use_changed"] is False
+    assert second["direct_state_delta"]["from_land_use_class"] == "public_service"
+    assert second["direct_state_delta"]["to_land_use_class"] == "commercial"
+    assert second["direct_state_delta"]["land_use_changed"] is True
+
+
 def test_counterfactual_rollout_is_deterministic_for_same_inputs():
     graph = _graph()
     kwargs = {

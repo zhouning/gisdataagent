@@ -8,7 +8,6 @@ from statistics import mean
 from typing import Any
 from urllib.parse import urlencode
 
-
 OPENAQ_STATION_OBSERVATION_PROXY_SCHEMA = "uwm.openaq_station_observation_proxy.v1"
 OPENAQ_MAX_RADIUS_M = 25000
 
@@ -19,19 +18,20 @@ def build_openaq_locations_url(
     longitude: float,
     radius_m: int = OPENAQ_MAX_RADIUS_M,
     limit: int = 20,
+    page: int | None = None,
 ) -> str:
     """Build an OpenAQ v3 locations URL without embedding credentials."""
 
     if radius_m > OPENAQ_MAX_RADIUS_M:
         raise ValueError(f"OpenAQ v3 radius must be <= {OPENAQ_MAX_RADIUS_M} m")
-    query = urlencode(
-        {
-            "coordinates": f"{latitude},{longitude}",
-            "radius": radius_m,
-            "limit": limit,
-        },
-        safe=",",
-    )
+    parameters = {
+        "coordinates": f"{latitude},{longitude}",
+        "radius": radius_m,
+        "limit": limit,
+    }
+    if page is not None:
+        parameters["page"] = page
+    query = urlencode(parameters, safe=",")
     return f"https://api.openaq.org/v3/locations?{query}"
 
 
@@ -41,6 +41,7 @@ def build_openaq_sensor_measurements_url(
     date_from: str | None = None,
     date_to: str | None = None,
     limit: int = 100,
+    page: int | None = None,
 ) -> str:
     """Build an OpenAQ v3 sensor measurements URL without embedding credentials."""
 
@@ -49,6 +50,8 @@ def build_openaq_sensor_measurements_url(
         query["datetime_from"] = date_from
     if date_to:
         query["datetime_to"] = date_to
+    if page is not None:
+        query["page"] = page
     return f"https://api.openaq.org/v3/sensors/{sensor_id}/measurements?{urlencode(query)}"
 
 
@@ -69,7 +72,7 @@ def build_openaq_station_observation_proxy(
         for payload in sensor_measurement_payloads.values()
         for measurement in _measurements(payload)
     ]
-    observed_start, observed_end = _observed_time_range(locations, measurements)
+    observed_start, observed_end = _observed_time_range(measurements)
     scene_holdout_ready = _covers_scene_range(observed_start, observed_end, scene_time_range)
     limitations = [
         "openaq_station_coverage_must_be_checked_for_city_representativeness",
@@ -103,8 +106,9 @@ def build_openaq_station_observation_proxy(
         "claim_boundary": {
             "max_claim_level": "bounded_support",
             "reason": (
-                "OpenAQ station measurements are real public observations, but this snapshot must match "
-                "the UWM scene period and evaluation design before it can serve as observed holdout."
+                "OpenAQ station measurements are real public observations, but this "
+                "snapshot must match the UWM scene period and evaluation design before "
+                "it can serve as observed holdout."
             ),
         },
         "limitations": limitations,
@@ -207,6 +211,19 @@ def build_mmfe_state_input_from_openaq_station_proxy(
                     "object_type": "station_timeseries",
                     "source_dataset_id": "openaq_air_quality_station_observation_proxy",
                     "synthetic_status": "public_proxy",
+                    "geometry_type": "point",
+                    "spatial_support": {
+                        "support_type": "sensor_footprint",
+                        "support_id_field": "station_id",
+                        "crs": "EPSG:4326",
+                    },
+                    "temporal_support": {
+                        "resolution": "sensor_native",
+                        "valid_from": start,
+                        "valid_to": end,
+                    },
+                    "aggregation_semantics": "none",
+                    "observation_semantics": "observed",
                 }
             ],
         },
@@ -222,7 +239,8 @@ def build_mmfe_state_input_from_openaq_station_proxy(
         "empirical_superiority_claim": False,
     }
     payload["warnings"].append(
-        "OpenAQ station observations are not aligned to the UWM scene holdout period unless scene_holdout_ready is true"
+        "OpenAQ station observations are not aligned to the UWM scene holdout period "
+        "unless scene_holdout_ready is true"
     )
     return payload
 
@@ -259,19 +277,19 @@ def _nearest_station(locations: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def _observed_time_range(
-    locations: list[dict[str, Any]],
     measurements: list[dict[str, Any]],
 ) -> tuple[str | None, str | None]:
-    starts = [_datetime_string(location.get("datetimeFirst")) for location in locations]
-    starts += [_measurement_datetime(measurement) for measurement in measurements]
-    ends = [_datetime_string(location.get("datetimeLast")) for location in locations]
-    ends += [_measurement_datetime(measurement) for measurement in measurements]
+    bounds = [_measurement_datetime_bounds(measurement) for measurement in measurements]
+    starts = [start for start, _ in bounds if start]
+    ends = [end for _, end in bounds if end]
     starts = [value for value in starts if value]
     ends = [value for value in ends if value]
     return (min(starts) if starts else None, max(ends) if ends else None)
 
 
-def _covers_scene_range(observed_start: str | None, observed_end: str | None, scene_time_range: dict[str, Any]) -> bool:
+def _covers_scene_range(
+    observed_start: str | None, observed_end: str | None, scene_time_range: dict[str, Any]
+) -> bool:
     scene_start = str(scene_time_range.get("start_date") or "")
     scene_end = str(scene_time_range.get("end_date") or "")
     if not observed_start or not observed_end or not scene_start or not scene_end:
@@ -298,8 +316,14 @@ def _air_pollution_summary(measurements: list[dict[str, Any]]) -> dict[str, floa
     }
 
 
-def _measurement_datetime(row: dict[str, Any]) -> str | None:
-    return _datetime_string(row.get("datetime"))
+def _measurement_datetime_bounds(row: dict[str, Any]) -> tuple[str | None, str | None]:
+    instant = _datetime_string(row.get("datetime"))
+    period = row.get("period") or {}
+    if not isinstance(period, dict):
+        period = {}
+    start = _datetime_string(period.get("datetimeFrom")) or instant
+    end = _datetime_string(period.get("datetimeTo")) or instant
+    return start, end
 
 
 def _datetime_string(value: Any) -> str | None:

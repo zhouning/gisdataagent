@@ -226,3 +226,37 @@ def test_no_change_action_validates_without_fabricating_approval():
     assert validation["valid"], validation["errors"]
     assert validation["transition"]["status"] == "no_change"
     assert validation["approval_claim"] is False
+
+
+def test_change_action_uses_effective_class_for_a_future_scenario_state():
+    future_parcel = {
+        **_parcel(),
+        "effective_land_use_class": "public_service",
+        "candidate_land_use_class": "public_service",
+        "state_time": "t1_post_change",
+    }
+    action = bind_server_actor(
+        build_change_land_use_action(
+            parcel_id="parcel-1",
+            from_land_use_class="public_service",
+            to_land_use_class="commercial",
+            rationale="在第一步情景状态上继续推演",
+            snapshot_digest=SNAPSHOT_DIGEST,
+            dictionary_version="dict-v1",
+            transition_matrix_version="matrix-v1",
+            requested_at="2026-07-11T08:01:00Z",
+        ),
+        actor_id="user-123",
+    )
+
+    validation = validate_land_use_action(
+        action,
+        parcel=future_parcel,
+        actual_snapshot_digest=SNAPSHOT_DIGEST,
+        land_use_dictionary=_dictionary(),
+        transition_matrix=_matrix(),
+    )
+
+    assert validation["valid"], validation["errors"]
+    assert validation["transition"]["status"] == "unresolved"
+    assert validation["review_required"] is True

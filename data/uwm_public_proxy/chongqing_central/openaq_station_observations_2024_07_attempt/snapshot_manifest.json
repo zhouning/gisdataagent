@@ -1,0 +1,47 @@
+{
+  "schema": "uwm.public_proxy_snapshot_manifest.v1",
+  "dataset_id": "openaq_station_observation_proxy_snapshot",
+  "source_dataset_ids": [
+    "openaq_air_quality_station_observation_proxy"
+  ],
+  "fetched_at": "2026-07-05T07:31:19.240765+00:00",
+  "requested_location": {
+    "latitude": 29.563,
+    "longitude": 106.551,
+    "label": "Chongqing central"
+  },
+  "scene_time_range": {
+    "start_date": "2024-07-01",
+    "end_date": "2024-07-07"
+  },
+  "files": {
+    "locations_raw": "openaq_locations_raw.json",
+    "sensor_measurements_raw": "openaq_sensor_measurements_raw.json",
+    "normalized_proxy": "openaq_station_observation_proxy.json"
+  },
+  "record_counts": {
+    "locations": 15,
+    "sensors": 90,
+    "measurements": 0
+  },
+  "observed_time_range": {
+    "start": null,
+    "end": null
+  },
+  "scene_holdout_ready": false,
+  "claim_boundary": {
+    "max_claim_level": "bounded_support",
+    "reason": "OpenAQ station measurements are real public observations, but this snapshot must match the UWM scene period and evaluation design before it can serve as observed holdout."
+  },
+  "limitations": [
+    "openaq_station_coverage_must_be_checked_for_city_representativeness",
+    "not_policy_intervention_holdout_by_itself",
+    "station_observations_not_aligned_to_scene_period"
+  ],
+  "mmfe_target_roles": [
+    "air_pollution_exposure",
+    "evidence_gate",
+    "simulator_context"
+  ],
+  "empirical_superiority_claim": false
+}

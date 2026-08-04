@@ -143,6 +143,12 @@ def test_build_mmfe_state_input_from_ghsl_admin_alignment_keeps_proxy_claim_boun
     assert payload["state_components"]["administrative_units"]["role_count"] == 1
     assert payload["graph_summary"]["relation_type_distribution"]["admin_unit_has_population_proxy"] == 1
     assert payload["graph_summary"]["relation_type_distribution"]["admin_unit_has_built_surface_proxy"] == 1
+    assert payload["native_geometry_contract"]["metadata_complete"] is True
+    assert payload["native_geometry_contract"]["complete_role_count"] == 4
+    assert payload["native_geometry_contract"]["geometry_types"] == ["polygon"]
+    assert payload["native_geometry_contract"]["observation_semantics"] == ["derived", "observed"]
+    assert payload["object_role_registry"][0]["aggregation_semantics"] == "total"
+    assert payload["object_role_registry"][0]["spatial_support"]["support_type"] == "admin_unit"
     assert payload["production_policy"]["authoritative_data_required_for_production"] is True
     assert any("GHSL proxy" in warning for warning in payload["warnings"])
 

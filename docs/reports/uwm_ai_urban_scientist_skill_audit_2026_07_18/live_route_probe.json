@@ -1,0 +1,415 @@
+{
+  "schema": "uwm.ai_urban_scientist_live_route_probe.v1",
+  "created_at": "2026-07-18T07:16:15Z",
+  "request": {
+    "geography": "Chongqing municipality bbox",
+    "bbox_epsg4326": [
+      105.28,
+      28.16,
+      110.2,
+      32.21
+    ],
+    "policy_candidate_bbox_epsg4326": [
+      106.35,
+      29.35,
+      106.75,
+      29.75
+    ],
+    "datetime": "2024-07-01/2024-07-07",
+    "proxy_url": "http://127.0.0.1:7897"
+  },
+  "probes": {
+    "sentinel2_unfiltered_bounded_page": {
+      "status": "success",
+      "message": null,
+      "endpoint_url": "https://earth-search.aws.element84.com/v1",
+      "collection": "sentinel-2-l2a",
+      "returned_count": 20,
+      "limit": 20,
+      "cloud_cover_lte": null,
+      "cloud_cover_summary": {
+        "minimum": 36.236903,
+        "median": 91.86954800000001,
+        "maximum": 99.732459
+      },
+      "candidate_items": [
+        {
+          "id": "S2A_48RWS_20240706_0_L2A",
+          "datetime": "2024-07-06T03:40:23.273000Z",
+          "bbox": [
+            105.45093684332434,
+            27.9326367828399,
+            106.12622876556715,
+            28.926475635814374
+          ],
+          "cloud_cover": 36.236903,
+          "data_href": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/48/R/WS/2024/7/S2A_48RWS_20240706_0_L2A/TCI.tif"
+        },
+        {
+          "id": "S2A_48RXS_20240706_0_L2A",
+          "datetime": "2024-07-06T03:40:20.542000Z",
+          "bbox": [
+            106.01641680775933,
+            27.920653118683106,
+            107.15188453181214,
+            28.924365001907013
+          ],
+          "cloud_cover": 68.822521,
+          "data_href": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/48/R/XS/2024/7/S2A_48RXS_20240706_0_L2A/TCI.tif"
+        },
+        {
+          "id": "S2A_48RYS_20240706_0_L2A",
+          "datetime": "2024-07-06T03:40:17.407000Z",
+          "bbox": [
+            107.03202594426484,
+            27.90120170188809,
+            108.17607277191387,
+            28.912650958379142
+          ],
+          "cloud_cover": 92.554873,
+          "data_href": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/48/R/YS/2024/7/S2A_48RYS_20240706_0_L2A/TCI.tif"
+        },
+        {
+          "id": "S2A_49RBM_20240706_0_L2A",
+          "datetime": "2024-07-06T03:40:14.033000Z",
+          "bbox": [
+            107.92367434461181,
+            27.90432639677755,
+            108.77958154729436,
+            28.909963820486695
+          ],
+          "cloud_cover": 90.716809,
+          "data_href": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/49/R/BM/2024/7/S2A_49RBM_20240706_0_L2A/TCI.tif"
+        },
+        {
+          "id": "S2A_48RWT_20240706_0_L2A",
+          "datetime": "2024-07-06T03:40:09.126000Z",
+          "bbox": [
+            105.67372261255825,
+            28.834781500810376,
+            106.1362035536212,
+            29.82722904231663
+          ],
+          "cloud_cover": 70.456469,
+          "data_href": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/48/R/WT/2024/7/S2A_48RWT_20240706_0_L2A/TCI.tif"
+        }
+      ],
+      "download_performed": false,
+      "evidence_status": "candidate_metadata_not_admitted_data"
+    },
+    "sentinel2_cloud_filtered": {
+      "status": "success",
+      "message": null,
+      "endpoint_url": "https://earth-search.aws.element84.com/v1",
+      "collection": "sentinel-2-l2a",
+      "returned_count": 0,
+      "limit": 5,
+      "cloud_cover_lte": 30.0,
+      "cloud_cover_summary": null,
+      "candidate_items": [],
+      "download_performed": false,
+      "evidence_status": "candidate_metadata_not_admitted_data"
+    },
+    "openaq_without_api_key": {
+      "status": "reachable",
+      "http_status": 401,
+      "message": "Unauthorized. A valid API key must be provided in the X-API-Key header.",
+      "access_boundary": "api_key_required",
+      "download_performed": false,
+      "evidence_status": "access_probe_not_dataset"
+    },
+    "chongqing_urban_renewal_register": {
+      "status": "success",
+      "http_status": 200,
+      "canonical_url": "https://www.cq.gov.cn/zwgk/zfxxgkzl/fdzdgknr/zdxm/zdxmqd/zdxm2023/csgxts/202404/t20240425_13500292.html",
+      "publisher": "市政府办公厅",
+      "title": "城市更新",
+      "published_at": "2024-04-25 00:00",
+      "project_count": 177,
+      "completed_and_commissioned_count": 27,
+      "candidate_projects": [
+        {
+          "project_id": "686",
+          "project_name": "大渡口“两江四岸”治理提升长江北岸线延伸工程钓鱼嘴滨江段",
+          "construction_scope": "整治岸线全长7公里",
+          "start_year": "2022",
+          "planned_completion_year": "2023",
+          "annual_stage": "完工",
+          "annual_target": "建成投用",
+          "responsible_unit": "大渡口区政府"
+        },
+        {
+          "project_id": "687",
+          "project_name": "江北“两江四岸”治理提升西部金融广场",
+          "construction_scope": "整治岸线全长5.2公里",
+          "start_year": "2021",
+          "planned_completion_year": "2023",
+          "annual_stage": "完工",
+          "annual_target": "建成投用",
+          "responsible_unit": "江北区政府"
+        },
+        {
+          "project_id": "688",
+          "project_name": "江北“两江四岸”治理提升嘉陵江岸线贯通工程北滨路洋炮局段",
+          "construction_scope": "整治岸线全长2.1公里",
+          "start_year": "2022",
+          "planned_completion_year": "2023",
+          "annual_stage": "完工",
+          "annual_target": "建成投用",
+          "responsible_unit": "江北区政府"
+        },
+        {
+          "project_id": "703",
+          "project_name": "渝北石坪体育公园",
+          "construction_scope": "总建筑面积1.5万平方米",
+          "start_year": "2019",
+          "planned_completion_year": "2023",
+          "annual_stage": "完工",
+          "annual_target": "建成投用",
+          "responsible_unit": "渝北区政府"
+        }
+      ],
+      "download_performed": false,
+      "evidence_status": "official_metadata_candidate_not_outcome_panel"
+    },
+    "chongqing_traffic_annual_reports": {
+      "status": "success",
+      "http_status": 200,
+      "search_word": "交通发展年度报告",
+      "total": 21,
+      "candidate_records": [
+        {
+          "title": "2025年《重庆市中心城区交通发展年度报告》发布 每5辆车就有1辆新能源",
+          "url": "http://www.cq.gov.cn/zwgk/zfxxgkml/zdlyxxgk/jt/jtzx/202607/t20260716_15827871.html",
+          "published_at": "2026-07-16 17:12:23",
+          "source": "重庆市人民政府网"
+        },
+        {
+          "title": "2025年《重庆市中心城区交通发展年度报告》发布 每5辆车就有1辆新能源",
+          "url": "http://www.cq.gov.cn/zwgk/zfxxgkml/zdlyxxgk/jt/jtzx/202607/t20260716_15827871.html",
+          "published_at": "2026-07-16 17:12:23",
+          "source": "重庆市人民政府网"
+        },
+        {
+          "title": "2024年《重庆市中心城区交通发展年度报告》发布 中心城区交通“含绿量”越来越高",
+          "url": "http://www.cq.gov.cn/ywdt/zwhd/bmdt/202507/t20250722_14835484.html",
+          "published_at": "2025-07-22 10:27:59",
+          "source": "重庆市人民政府网"
+        },
+        {
+          "title": "2023年《重庆市中心城区交通发展年度报告》发布 中心城区新能源汽车拥有量增至27.4万辆",
+          "url": "http://www.cq.gov.cn/ywdt/jrcq/202405/t20240531_13252527.html",
+          "published_at": "2024-05-31 07:21:14",
+          "source": "重庆市人民政府网"
+        },
+        {
+          "title": "重庆城市交通更绿色更畅通更便民 2022年《重庆市中心城区交通发展年度报告》发布",
+          "url": "http://www.cq.gov.cn/ywdt/jrcq/202306/t20230608_12043120.html",
+          "published_at": "2023-06-08 07:34:33",
+          "source": "重庆市人民政府网"
+        },
+        {
+          "title": "重庆市交通规划和技术发展中心（重庆市交通工程造价站）（重庆市交通工程档案馆）事业单位法人年度报告（2022年度）",
+          "url": "http://www.cq.gov.cn/zwgk/zfxxgkzt/sydwndbg_1/2022_406063/202306/t20230609_12050747.html",
+          "published_at": "2023-06-09 15:55:28",
+          "source": "重庆市人民政府网"
+        }
+      ],
+      "download_performed": false,
+      "evidence_status": "official_search_metadata_not_dataset"
+    },
+    "planetary_landsat_policy_outcome_coverage": {
+      "status": "success",
+      "endpoint_url": "https://planetarycomputer.microsoft.com/api/stac/v1",
+      "collection": "landsat-c2-l2",
+      "title": "Landsat Collection 2 Level-2",
+      "license": "proprietary",
+      "license_links": [
+        "https://www.usgs.gov/core-science-systems/hdds/data-policy"
+      ],
+      "required_assets_available": true,
+      "periods": {
+        "pre_completion": {
+          "datetime": "2020-06-01T00:00:00Z/2022-09-30T23:59:59Z",
+          "returned_count": 5,
+          "items": [
+            {
+              "id": "LC09_L2SP_127040_20220930_02_T1",
+              "datetime": "2022-09-30T03:21:47.218268Z",
+              "cloud_cover": 12.91,
+              "platform": "landsat-9",
+              "bbox": [
+                106.08845778,
+                27.79850467,
+                108.45484528,
+                29.92068533
+              ],
+              "required_assets_present": true
+            },
+            {
+              "id": "LC09_L2SP_127039_20220930_02_T1",
+              "datetime": "2022-09-30T03:21:23.318781Z",
+              "cloud_cover": 32.02,
+              "platform": "landsat-9",
+              "bbox": [
+                106.44311571,
+                29.2356447,
+                108.84935757,
+                31.3597853
+              ],
+              "required_assets_present": true
+            },
+            {
+              "id": "LC08_L2SP_128040_20220929_02_T1",
+              "datetime": "2022-09-29T03:28:14.949677Z",
+              "cloud_cover": 5.99,
+              "platform": "landsat-8",
+              "bbox": [
+                104.52848777,
+                27.80317466,
+                106.89658532,
+                29.91639534
+              ],
+              "required_assets_present": true
+            },
+            {
+              "id": "LC08_L2SP_127040_20220906_02_T1",
+              "datetime": "2022-09-06T03:21:59.224170Z",
+              "cloud_cover": 22.82,
+              "platform": "landsat-8",
+              "bbox": [
+                106.08540778,
+                27.79850467,
+                108.45494528,
+                29.92341533
+              ],
+              "required_assets_present": true
+            },
+            {
+              "id": "LC08_L2SP_127039_20220906_02_T1",
+              "datetime": "2022-09-06T03:21:35.324658Z",
+              "cloud_cover": 14.56,
+              "platform": "landsat-8",
+              "bbox": [
+                106.43998571,
+                29.2329447,
+                108.84946758,
+                31.3625253
+              ],
+              "required_assets_present": true
+            }
+          ]
+        },
+        "post_completion": {
+          "datetime": "2024-06-01T00:00:00Z/2025-09-30T23:59:59Z",
+          "returned_count": 5,
+          "items": [
+            {
+              "id": "LC08_L2SP_127039_20250914_02_T1",
+              "datetime": "2025-09-14T03:21:11.540532Z",
+              "cloud_cover": 38.47,
+              "platform": "landsat-8",
+              "bbox": [
+                106.45233571224043,
+                29.232594702991648,
+                108.86204757546716,
+                31.362385297008352
+              ],
+              "required_assets_present": true
+            },
+            {
+              "id": "LC08_L2SP_127039_20250829_02_T1",
+              "datetime": "2025-08-29T03:21:05.448432Z",
+              "cloud_cover": 25.49,
+              "platform": "landsat-8",
+              "bbox": [
+                106.46160571278186,
+                29.232334703128448,
+                108.87148757479545,
+                31.36227529687155
+              ],
+              "required_assets_present": true
+            },
+            {
+              "id": "LC09_L2SP_128040_20250828_02_T1",
+              "datetime": "2025-08-28T03:27:43.530261Z",
+              "cloud_cover": 6.08,
+              "platform": "landsat-9",
+              "bbox": [
+                104.54091776956716,
+                27.803014662995512,
+                106.90900532190011,
+                29.916445337004486
+              ],
+              "required_assets_present": true
+            },
+            {
+              "id": "LC09_L2SP_128039_20250828_02_T1",
+              "datetime": "2025-08-28T03:27:19.635010Z",
+              "cloud_cover": 6.91,
+              "platform": "landsat-9",
+              "bbox": [
+                104.903115689096,
+                29.24002469143979,
+                107.30298762534578,
+                31.35468530856021
+              ],
+              "required_assets_present": true
+            },
+            {
+              "id": "LC08_L2SP_128040_20250820_02_T1",
+              "datetime": "2025-08-20T03:27:39.654300Z",
+              "cloud_cover": 14.79,
+              "platform": "landsat-8",
+              "bbox": [
+                104.55023776970565,
+                27.80288466295743,
+                106.91832532173348,
+                29.91647533704257
+              ],
+              "required_assets_present": true
+            }
+          ]
+        }
+      },
+      "download_performed": false,
+      "evidence_status": "coverage_probed_not_admitted_data"
+    },
+    "geofabrik_chongqing_topology": {
+      "status": "success",
+      "index_url": "https://download.geofabrik.de/index-v1.json",
+      "region_id": "chongqing",
+      "region_name": "Chongqing",
+      "parent": "china",
+      "pbf_url": "https://download.geofabrik.de/asia/china/chongqing-latest.osm.pbf",
+      "http_status": 200,
+      "final_url": "https://download.geofabrik.de/asia/china/chongqing-260717.osm.pbf",
+      "content_length": 30485952,
+      "last_modified": "Fri, 17 Jul 2026 22:20:53 GMT",
+      "download_performed": false,
+      "evidence_status": "topology_candidate_not_observed_mobility"
+    },
+    "chongqing_gtfs_static": {
+      "status": "no_concrete_official_feed_found",
+      "publisher": "unresolved",
+      "download_performed": false,
+      "evidence_status": "source_prior_only_not_observed_mobility"
+    }
+  },
+  "gap_decisions": {
+    "observed_policy_outcome_panel": {
+      "status": "candidate_route_identified_gap_open",
+      "next_gate": "Freeze project geometries, intervention dates, outcome definitions, comparison units, licenses, and pre-analysis splits before sampling."
+    },
+    "observed_mobility_or_travel_time_graph": {
+      "status": "open_hard_gap",
+      "next_gate": "Obtain raw observed OD or realized travel-time records with stable spatial IDs; annual reports, GTFS schedules, and OSM topology are not substitutes."
+    }
+  },
+  "claim_boundary": {
+    "data_downloaded": false,
+    "candidate_admitted_to_uwm_manifest": false,
+    "paper_evidence_created": false,
+    "rule": "These are bounded discovery and access probes. Candidate metadata must pass UWM license, lineage, coverage, MMFE, quality, split, and claim gates before use."
+  }
+}

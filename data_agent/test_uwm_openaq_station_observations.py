@@ -2,7 +2,6 @@ import json
 
 import pytest
 
-from scripts.download_uwm_openaq_station_observations import scene_measurement_datetime_bounds
 from data_agent.uwm.openaq_station_observations import (
     OPENAQ_STATION_OBSERVATION_PROXY_SCHEMA,
     build_mmfe_state_input_from_openaq_station_proxy,
@@ -11,6 +10,7 @@ from data_agent.uwm.openaq_station_observations import (
     build_openaq_station_observation_proxy,
     write_openaq_station_snapshot,
 )
+from scripts.download_uwm_openaq_station_observations import scene_measurement_datetime_bounds
 
 
 def _locations_payload():
@@ -30,7 +30,12 @@ def _locations_payload():
                     {
                         "id": 21178,
                         "name": "pm25 sensor",
-                        "parameter": {"id": 2, "name": "pm25", "displayName": "PM2.5", "units": "µg/m³"},
+                        "parameter": {
+                            "id": 2,
+                            "name": "pm25",
+                            "displayName": "PM2.5",
+                            "units": "µg/m³",
+                        },
                     }
                 ],
             }
@@ -108,7 +113,7 @@ def test_build_openaq_station_observation_proxy_marks_station_observed_but_not_s
     assert proxy["nearest_station"]["distance_m"] == 486.4
     assert proxy["observed_time_range"] == {
         "start": "2018-10-17T00:00:00Z",
-        "end": "2021-08-09T07:00:00Z",
+        "end": "2018-10-17T01:00:00Z",
     }
     assert proxy["air_pollution_summary"]["pm25_avg_ugm3"] == 39.0
     assert proxy["scene_holdout_ready"] is False
@@ -131,14 +136,29 @@ def test_mmfe_state_input_from_openaq_station_proxy_keeps_holdout_warning():
     )
 
     assert payload["schema"] == "mmfe.uwm_state_input.v1"
-    assert payload["source_product"]["product_id"] == "mmfe-openaq-stations-2018-10-17T00:00:00Z-2021-08-09T07:00:00Z"
+    assert payload["source_product"]["product_id"] == (
+        "mmfe-openaq-stations-2018-10-17T00:00:00Z-2018-10-17T01:00:00Z"
+    )
     assert payload["urban_spatial_unit"]["unit_type"] == "station_air_quality_proxy"
     assert payload["state_components"]["air_pollution_exposure"]["source_dataset_ids"] == [
         "openaq_air_quality_station_observation_proxy"
     ]
-    assert payload["graph_summary"]["relation_type_distribution"]["station_has_air_quality_measurement"] == 2
+    assert (
+        payload["graph_summary"]["relation_type_distribution"][
+            "station_has_air_quality_measurement"
+        ]
+        == 2
+    )
+    assert payload["native_geometry_contract"]["metadata_complete"] is True
+    assert payload["native_geometry_contract"]["geometry_types"] == ["point"]
+    assert payload["native_geometry_contract"]["observation_semantics"] == ["observed"]
+    assert (
+        payload["object_role_registry"][0]["spatial_support"]["support_type"] == "sensor_footprint"
+    )
     assert payload["source_proxy"]["scene_holdout_ready"] is False
-    assert any("not aligned to the UWM scene holdout period" in warning for warning in payload["warnings"])
+    assert any(
+        "not aligned to the UWM scene holdout period" in warning for warning in payload["warnings"]
+    )
 
 
 def test_write_openaq_station_snapshot_persists_without_api_key(tmp_path):
@@ -158,6 +178,51 @@ def test_write_openaq_station_snapshot_persists_without_api_key(tmp_path):
     assert (tmp_path / "openaq_sensor_measurements_raw.json").exists()
     assert (tmp_path / "openaq_station_observation_proxy.json").exists()
     assert json.loads((tmp_path / "snapshot_manifest.json").read_text(encoding="utf-8")) == manifest
-    serialized = "\n".join(path.read_text(encoding="utf-8") for path in tmp_path.iterdir() if path.is_file())
+    serialized = "\n".join(
+        path.read_text(encoding="utf-8") for path in tmp_path.iterdir() if path.is_file()
+    )
     assert "X-API-Key" not in serialized
     assert "OPENAQ_TEST_SECRET_SHOULD_NOT_APPEAR" not in serialized
+
+
+def test_station_lifetime_does_not_substitute_for_missing_measurements():
+    proxy = build_openaq_station_observation_proxy(
+        locations_payload=_locations_payload(),
+        sensor_measurement_payloads={"21178": {"results": []}},
+        requested_location={
+            "latitude": 29.563,
+            "longitude": 106.551,
+            "label": "Chongqing central",
+        },
+        scene_time_range={"start_date": "2020-01-01", "end_date": "2020-01-02"},
+        fetched_at="2026-08-04T18:00:00Z",
+    )
+
+    assert proxy["observed_time_range"] == {"start": None, "end": None}
+    assert proxy["scene_holdout_ready"] is False
+
+
+def test_period_measurement_bounds_are_used_for_observed_coverage():
+    measurement = _measurements_payload()["results"][0]
+    measurement.pop("datetime")
+    measurement["period"] = {
+        "datetimeFrom": {"utc": "2018-10-17T00:00:00Z"},
+        "datetimeTo": {"utc": "2018-10-17T01:00:00Z"},
+    }
+    proxy = build_openaq_station_observation_proxy(
+        locations_payload=_locations_payload(),
+        sensor_measurement_payloads={"21178": {"results": [measurement]}},
+        requested_location={
+            "latitude": 29.563,
+            "longitude": 106.551,
+            "label": "Chongqing central",
+        },
+        scene_time_range={"start_date": "2018-10-17", "end_date": "2018-10-17"},
+        fetched_at="2026-08-04T18:00:00Z",
+    )
+
+    assert proxy["observed_time_range"] == {
+        "start": "2018-10-17T00:00:00Z",
+        "end": "2018-10-17T01:00:00Z",
+    }
+    assert proxy["scene_holdout_ready"] is True

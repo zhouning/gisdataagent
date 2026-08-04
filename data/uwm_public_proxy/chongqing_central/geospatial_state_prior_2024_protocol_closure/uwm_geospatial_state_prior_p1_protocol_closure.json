@@ -1,0 +1,120 @@
+{
+  "schema": "uwm.geospatial_kernel.state_prior_p1_protocol_closure.v1",
+  "version": "0.1",
+  "closure_id": "chongqing-observed-station-p1-2024-admin-provenance-closure",
+  "created_at": "2026-08-04T23:10:00Z",
+  "protocol_binding": {
+    "protocol_id": "chongqing-observed-station-next-p1-2024-07-02-07",
+    "protocol_sha256": "ee52b37d10bda4b7f64fea960254312806bcefaea8ef9220630226001df37488",
+    "source_allowlist_closed": true,
+    "frozen_admin_source_id": "chongqing_township_admin_units_local_snapshot",
+    "final_holdout_window": {
+      "start_date": "2024-07-02",
+      "end_date": "2024-07-07"
+    }
+  },
+  "input_artifact_sha256": {
+    "predictor_preflight_sha256": "65c47235e37278494adf9a7909f6dd1b2b610d9de41e6b39dd11143308e23dc7",
+    "acquisition_plan_sha256": "2a11ca59e1fd8be61ab7d5c58cc7e22cc4f8bc93f4c2b9a9c0ace0a920a8e19d",
+    "prior_attempt_manifest_sha256": "6e55ffc9d0e16ac70bac93c50f6a85bd419881df285dff53e711d97c1f4671e7",
+    "geofabrik_probe_report_sha256": "6146782e3674635431f4fefc426d4b8c2e3bdf31ca6d59e18137120eb14458ca"
+  },
+  "target_access_audit": {
+    "scope": "available_local_evidence_only",
+    "acquisition_plan_measurement_downloaded": false,
+    "prior_attempt_measurement_count": 0,
+    "prior_attempt_observed_start": null,
+    "prior_attempt_observed_end": null,
+    "preflight_target_measurements_acquired": false,
+    "target_values_inspected_by_closure_builder": false,
+    "target_unconsumed_under_available_evidence": true
+  },
+  "frozen_admin_source_audit": {
+    "source_id": "chongqing_township_admin_units_local_snapshot",
+    "source_role": "static_polygon_geometry_predictor",
+    "local_source_ref": "/Users/zhouning/Downloads/shp/xiangzhen.shp",
+    "metadata_created_date": "20210622",
+    "external_source_url_present": false,
+    "license_document_present": false,
+    "official_boundary_vintage_verified": false,
+    "source_license_verified": false,
+    "admissible_under_frozen_protocol": false
+  },
+  "replacement_candidate_audit": {
+    "geofabrik_chongqing": {
+      "candidate_id": "geofabrik_chongqing_osm_extract",
+      "probe_status": "success",
+      "region_id": "chongqing",
+      "canonical_pbf_url": "https://download.geofabrik.de/asia/china/chongqing-latest.osm.pbf",
+      "resolved_snapshot_url": "https://download.geofabrik.de/asia/china/chongqing-260717.osm.pbf",
+      "content_length": 30485952,
+      "last_modified": "Fri, 17 Jul 2026 22:20:53 GMT",
+      "snapshot_date": "2026-07-17",
+      "final_holdout_end_date": "2024-07-07",
+      "snapshot_not_after_predictor_cutoff": false,
+      "frozen_source_id_match": false,
+      "administrative_boundary_extract_present": false,
+      "administrative_geometry_sha256_present": false,
+      "geometry_validity_verified": false,
+      "official_boundary_source_verified": false,
+      "license_evidence_attached_to_probe": false,
+      "download_performed": false,
+      "evidence_status": "topology_candidate_not_observed_mobility",
+      "eligible_as_frozen_protocol_repair": false,
+      "rejection_reasons": [
+        "candidate_not_in_closed_source_allowlist",
+        "resolved_snapshot_is_after_predictor_cutoff",
+        "probe_contains_topology_metadata_not_extracted_admin_geometry",
+        "official_boundary_status_not_verified",
+        "license_evidence_not_attached_to_probe"
+      ]
+    },
+    "any_admissible_repair_for_frozen_protocol": false
+  },
+  "closure_decision": {
+    "status": "closed_fail_closed",
+    "closure_reasons": [
+      "frozen_admin_source_vintage_unverified",
+      "frozen_admin_source_license_unverified",
+      "closed_source_allowlist_prohibits_geofabrik_substitution",
+      "geofabrik_probe_is_post_holdout_topology_metadata_not_admin_snapshot"
+    ],
+    "irreversible_for_bound_protocol_digest": true,
+    "protocol_reactivation_permitted": false,
+    "in_place_source_substitution_permitted": false,
+    "replacement_protocol_required": true,
+    "target_acquisition_permitted": false,
+    "p1_execution_permitted": false,
+    "p2_admission_permitted": false
+  },
+  "v2_reentry_requirements": [
+    "new_protocol_digest_created_before_target_acquisition",
+    "external_registration_receipt_verified_before_target_acquisition",
+    "admin_source_identity_and_authority_or_proxy_status_declared",
+    "admin_snapshot_capture_or_effective_date_not_after_predictor_cutoff",
+    "admin_source_url_license_and_content_sha256_verified",
+    "administrative_geometry_extracted_and_geometry_sha256_verified",
+    "geometry_validity_crs_coverage_and_topology_verified",
+    "station_crosswalk_and_admin_graph_rebuilt_from_the_same_snapshot",
+    "all_predictor_and_minimum_support_gates_reassessed",
+    "target_access_log_still_empty_at_external_registration"
+  ],
+  "evidence_refs": [
+    "data/uwm_public_proxy/chongqing_central/geospatial_state_prior_next_p1_protocol_2024_07_02_07/uwm_geospatial_state_prior_p1_prospective_protocol.json",
+    "data/uwm_public_proxy/chongqing_central/geospatial_state_prior_2024_predictor_preflight/uwm_geospatial_state_prior_predictor_preflight.json",
+    "data/uwm_public_proxy/chongqing_central/openaq_multi_station_acquisition_plan_2024_07_02_07/uwm_openaq_multi_station_acquisition_plan.json",
+    "data/uwm_public_proxy/chongqing_central/openaq_station_observations_2024_07_attempt/snapshot_manifest.json",
+    "docs/reports/uwm_ai_urban_scientist_skill_audit_2026_07_18/live_route_probe.json"
+  ],
+  "supported_claim": "frozen_protocol_retired_without_target_acquisition",
+  "claim_boundary": {
+    "max_claim_level": "not_for_claim",
+    "scope": "frozen_protocol_fail_closed_retirement_only",
+    "observed_target_claim": false,
+    "p1_result_claim": false,
+    "p2_admission_permitted": false,
+    "scientific_result_claim": false,
+    "general_geospatial_world_model_validation_claim": false
+  },
+  "closure_sha256": "5850f62eb483944bb7cf56b8190c27de1de4d6df3f1ea118c0e18c5e223576eb"
+}

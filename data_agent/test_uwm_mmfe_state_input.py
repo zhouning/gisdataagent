@@ -101,3 +101,78 @@ def test_fitted_proxy_role_bindings_are_marked_as_synthetic_sources():
     )
 
     assert payload["production_policy"]["contains_synthetic_sources"] is True
+
+
+def test_state_input_preserves_native_geometry_and_support_metadata():
+    payload = build_uwm_state_input_from_semantic_product(
+        {
+            "product_id": "sfp-native-geometry",
+            "product_type": "semantic_fusion_product",
+            "version": "0.1",
+        },
+        input_contract={
+            "spatial_unit": {"unit_type": "grid_500m", "crs": "EPSG:4490"},
+            "role_bindings": [
+                {
+                    "role": "observed_lst",
+                    "uwm_role": "heat_exposure",
+                    "object_type": "raster",
+                    "source_dataset_id": "observed_lst_2024",
+                    "synthetic_status": "real",
+                    "geometry_type": "raster",
+                    "spatial_support": {
+                        "support_type": "grid_cell",
+                        "resolution": "500m",
+                        "crs": "EPSG:4490",
+                    },
+                    "temporal_support": {
+                        "resolution": "daily",
+                        "valid_from": "2024-07-01",
+                        "valid_to": "2024-07-31",
+                    },
+                    "aggregation_semantics": "mean",
+                    "observation_semantics": "observed",
+                }
+            ],
+        },
+    )
+
+    validation = validate_uwm_state_input(payload)
+    role = payload["object_role_registry"][0]
+
+    assert validation["valid"], validation["errors"]
+    assert role["geometry_type"] == "raster"
+    assert role["spatial_support"]["support_type"] == "grid_cell"
+    assert role["temporal_support"]["resolution"] == "daily"
+    assert role["aggregation_semantics"] == "mean"
+    assert role["observation_semantics"] == "observed"
+    assert payload["native_geometry_contract"]["metadata_complete"] is True
+    assert payload["native_geometry_contract"]["complete_role_count"] == 1
+
+
+def test_state_input_rejects_inferred_geometry_without_uncertainty_and_calibration():
+    payload = build_uwm_state_input_from_semantic_product(
+        {"product_id": "sfp-invalid-downscale"},
+        input_contract={
+            "spatial_unit": {"unit_type": "grid_500m"},
+            "role_bindings": [
+                {
+                    "role": "downscaled_population",
+                    "object_type": "raster",
+                    "geometry_type": "raster",
+                    "spatial_support": {"support_type": "grid_cell"},
+                    "observation_semantics": "downscaled",
+                    "aggregation_semantics": "density",
+                }
+            ],
+        },
+    )
+
+    validation = validate_uwm_state_input(payload)
+
+    assert not validation["valid"]
+    assert any("uncertainty is required for downscaled" in error for error in validation["errors"])
+    assert any(
+        "calibration.status is required for downscaled" in error
+        for error in validation["errors"]
+    )

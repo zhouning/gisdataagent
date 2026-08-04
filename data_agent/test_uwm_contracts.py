@@ -38,6 +38,69 @@ def test_validate_uwm_observation_rejects_missing_claim_boundary():
     assert "claim_boundary is required" in validation["errors"]
 
 
+def test_validate_uwm_observation_rejects_incomplete_native_geometry_declaration():
+    payload = {
+        "schema": UWM_OBSERVATION_SCHEMA,
+        "spatial_units": [],
+        "object_layers": [],
+        "raster_features": [
+            {
+                "feature_id": "downscaled_population",
+                "geometry_type": "raster",
+                "spatial_support": {"support_type": "grid_cell"},
+                "observation_semantics": "downscaled",
+            }
+        ],
+        "graph_edges": [],
+        "temporal_index": {},
+        "quality_flags": [],
+        "synthetic_flags": [],
+        "provenance": {},
+        "claim_boundary": {"max_claim_level": "exploratory_only"},
+        "renderer_trace": [],
+    }
+
+    validation = validate_uwm_observation(payload)
+
+    assert not validation["valid"]
+    assert any("uncertainty is required for downscaled" in error for error in validation["errors"])
+    assert any(
+        "calibration.status is required for downscaled" in error
+        for error in validation["errors"]
+    )
+
+
+def test_validate_uwm_observation_requires_calibration_evidence_when_marked_calibrated():
+    payload = {
+        "schema": UWM_OBSERVATION_SCHEMA,
+        "spatial_units": [],
+        "object_layers": [],
+        "raster_features": [
+            {
+                "feature_id": "interpolated_pm25",
+                "geometry_type": "raster",
+                "spatial_support": {"support_type": "grid_cell"},
+                "observation_semantics": "interpolated",
+                "uncertainty": {"representation": "prediction_interval"},
+                "calibration": {"status": "calibrated", "method": "split_conformal"},
+            }
+        ],
+        "graph_edges": [],
+        "temporal_index": {},
+        "quality_flags": [],
+        "synthetic_flags": [],
+        "provenance": {},
+        "claim_boundary": {"max_claim_level": "bounded_support"},
+        "renderer_trace": [],
+    }
+
+    validation = validate_uwm_observation(payload)
+
+    assert not validation["valid"]
+    assert any("confidence_level must be" in error for error in validation["errors"])
+    assert any("holdout_count must be" in error for error in validation["errors"])
+
+
 def test_validate_rollout_trace_requires_action_conditioned_outputs():
     payload = {
         "schema": UWM_ROLLOUT_TRACE_SCHEMA,

@@ -1,0 +1,161 @@
+{
+  "schema": "uwm.openaq_multi_station_acquisition_plan.v1",
+  "version": "0.1",
+  "created_at": "2026-08-04T21:45:00Z",
+  "target_parameter": "pm25",
+  "selection_strategy": "one_pm25_sensor_per_location",
+  "measurement_time_range": {
+    "datetime_from": "2024-07-02T00:00:00Z",
+    "datetime_to": "2024-07-08T00:00:00Z"
+  },
+  "measurement_page_limit": 100,
+  "max_pages": 1000,
+  "locations_source_ref": "data/uwm_public_proxy/chongqing_central/openaq_station_observations_2024_07_attempt/openaq_locations_raw.json",
+  "locations_payload_sha256": "8cdccd2ae3269dca48393ede4cea41d253bfc9a58657708ce9a2324faf8de6be",
+  "planned_bindings": [
+    {
+      "station_id": 7332,
+      "station_name": "上清寺",
+      "sensor_id": 21178,
+      "parameter": "pm25",
+      "distance_m": 486.23153014,
+      "latitude": 29.5654,
+      "longitude": 106.5468
+    },
+    {
+      "station_id": 10004,
+      "station_name": "南坪",
+      "sensor_id": 31876,
+      "parameter": "pm25",
+      "distance_m": 5035.67383831,
+      "latitude": 29.5186,
+      "longitude": 106.54
+    },
+    {
+      "station_id": 7359,
+      "station_name": "歇台子",
+      "sensor_id": 21346,
+      "parameter": "pm25",
+      "distance_m": 6207.41936122,
+      "latitude": 29.5346,
+      "longitude": 106.49580000000002
+    },
+    {
+      "station_id": 6547,
+      "station_name": "南坪",
+      "sensor_id": 18516,
+      "parameter": "pm25",
+      "distance_m": 6399.29738144,
+      "latitude": 29.5102,
+      "longitude": 106.57770000000001
+    },
+    {
+      "station_id": 6550,
+      "station_name": "礼嘉",
+      "sensor_id": 18539,
+      "parameter": "pm25",
+      "distance_m": 9180.21211848,
+      "latitude": 29.645299999999995,
+      "longitude": 106.5616
+    },
+    {
+      "station_id": 9261,
+      "station_name": "礼嘉",
+      "sensor_id": 28044,
+      "parameter": "pm25",
+      "distance_m": 9184.6265761,
+      "latitude": 29.645299999999995,
+      "longitude": 106.562
+    },
+    {
+      "station_id": 10473,
+      "station_name": "新山村",
+      "sensor_id": 34711,
+      "parameter": "pm25",
+      "distance_m": 10947.27848574,
+      "latitude": 29.4875,
+      "longitude": 106.4782
+    },
+    {
+      "station_id": 9455,
+      "station_name": "茶园",
+      "sensor_id": 28857,
+      "parameter": "pm25",
+      "distance_m": 11426.01942295,
+      "latitude": 29.4906,
+      "longitude": 106.6349
+    },
+    {
+      "station_id": 10068,
+      "station_name": "唐家沱",
+      "sensor_id": 32256,
+      "parameter": "pm25",
+      "distance_m": 12414.2797921,
+      "latitude": 29.6277,
+      "longitude": 106.6556
+    },
+    {
+      "station_id": 7329,
+      "station_name": "龙井湾",
+      "sensor_id": 21160,
+      "parameter": "pm25",
+      "distance_m": 14314.87061785,
+      "latitude": 29.5728,
+      "longitude": 106.4037
+    },
+    {
+      "station_id": 7331,
+      "station_name": "龙洲湾",
+      "sensor_id": 21172,
+      "parameter": "pm25",
+      "distance_m": 16371.66673156,
+      "latitude": 29.4153,
+      "longitude": 106.5507
+    },
+    {
+      "station_id": 9275,
+      "station_name": "空港",
+      "sensor_id": 28120,
+      "parameter": "pm25",
+      "distance_m": 18307.8160908,
+      "latitude": 29.7166,
+      "longitude": 106.62050000000002
+    },
+    {
+      "station_id": 9513,
+      "station_name": "蔡家",
+      "sensor_id": 29104,
+      "parameter": "pm25",
+      "distance_m": 18809.635965,
+      "latitude": 29.7091,
+      "longitude": 106.45219999999999
+    },
+    {
+      "station_id": 9845,
+      "station_name": "两路",
+      "sensor_id": 30910,
+      "parameter": "pm25",
+      "distance_m": 19155.22032746,
+      "latitude": 29.722800000000003,
+      "longitude": 106.6263
+    },
+    {
+      "station_id": 9202,
+      "station_name": "白市驿",
+      "sensor_id": 27680,
+      "parameter": "pm25",
+      "distance_m": 20220.34836433,
+      "latitude": 29.482200000000002,
+      "longitude": 106.36400000000002
+    }
+  ],
+  "planned_station_count": 15,
+  "measurement_downloaded": false,
+  "api_key_persisted": false,
+  "claim_boundary": {
+    "max_claim_level": "acquisition_plan_only",
+    "observed_measurement_claim": false,
+    "scientific_result_claim": false
+  },
+  "plan_sha256": "2a11ca59e1fd8be61ab7d5c58cc7e22cc4f8bc93f4c2b9a9c0ace0a920a8e19d"
+}

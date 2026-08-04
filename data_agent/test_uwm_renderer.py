@@ -169,3 +169,64 @@ def test_renderer_deduplicates_repeated_public_proxy_flags_for_same_source_datas
     assert observation["synthetic_flags"] == [
         {"dataset_id": "ghsl_admin_zonal_proxy_alignment", "status": "public_proxy"}
     ]
+
+
+def test_renderer_preserves_native_support_and_gates_uncalibrated_inferred_values():
+    state_input = build_uwm_state_input_from_semantic_product(
+        {
+            "product_id": "mmfe-native-geometry-observation",
+            "product_type": "semantic_fusion_product",
+            "version": "0.1",
+        },
+        input_contract={
+            "spatial_unit": {"unit_type": "township_grid_alignment", "crs": "EPSG:4326"},
+            "role_bindings": [
+                {
+                    "role": "township_population_total",
+                    "uwm_role": "population_vulnerability",
+                    "object_type": "admin_unit_numeric_attribute",
+                    "source_dataset_id": "township_population_2024",
+                    "synthetic_status": "real",
+                    "geometry_type": "polygon",
+                    "spatial_support": {
+                        "support_type": "admin_unit",
+                        "support_id_field": "township_code",
+                    },
+                    "aggregation_semantics": "total",
+                    "observation_semantics": "observed",
+                },
+                {
+                    "role": "population_density_downscale",
+                    "uwm_role": "population_vulnerability",
+                    "object_type": "raster",
+                    "source_dataset_id": "population_density_downscale_v1",
+                    "synthetic_status": "fitted_proxy",
+                    "geometry_type": "raster",
+                    "spatial_support": {
+                        "support_type": "grid_cell",
+                        "resolution": "500m",
+                    },
+                    "aggregation_semantics": "density",
+                    "observation_semantics": "downscaled",
+                    "uncertainty": {"representation": "prediction_interval"},
+                    "calibration": {"status": "uncalibrated"},
+                },
+            ],
+        },
+    )
+
+    observation = build_canonical_observation_from_state_input(state_input)
+    validation = validate_uwm_observation(observation)
+
+    assert validation["valid"], validation["errors"]
+    assert observation["object_layers"][0]["geometry_type"] == "polygon"
+    assert observation["raster_features"][0]["spatial_support"]["resolution"] == "500m"
+    assert observation["native_geometry_contract"]["metadata_complete"] is True
+    assert observation["native_geometry_contract"]["inferred_role_count"] == 1
+    assert observation["native_geometry_contract"]["uncalibrated_inferred_roles"] == [
+        "population_density_downscale"
+    ]
+    assert observation["claim_boundary"]["max_claim_level"] == "exploratory_only"
+    assert observation["claim_boundary"]["reason"] == (
+        "inferred spatial values are present without calibrated uncertainty"
+    )

@@ -1,0 +1,105 @@
+{
+  "schema": "uwm.geospatial_kernel.state_prior_observed_candidate_readiness.v1",
+  "version": "0.1",
+  "assessment_id": "chongqing-openaq-state-prior-observed-readiness-2026-08-04",
+  "created_at": "2026-08-04T21:10:00Z",
+  "target_parameter": "pm25",
+  "thresholds": {
+    "minimum_observation_count": 18,
+    "minimum_measured_stations": 5,
+    "minimum_spatial_bands": 5,
+    "minimum_time_groups": 5,
+    "minimum_admin_groups": 5
+  },
+  "input_artifact_sha256": {
+    "locations_payload_sha256": "df509ca61930b8495c48971e28ea5a53be4d6fc6585fa32f8a29eba89aa8db4a",
+    "sensor_measurements_sha256": "d29ef4009186c10ccff34f9254208d9e5ebc80df7d4f5547ab358f8d4ccd8ada",
+    "multi_geometry_dataset_sha256": "8a34c0fd59114a8f8f3d07756077dab99916a9f2c7d30a7d91558ea1908dbe6e",
+    "normalized_station_proxy_sha256": "9a05330a5f56ba717f97578989234258e78f208a55ceeb1a9f135d768612d12d",
+    "station_admin_crosswalk_sha256": "6bbbd53de4350a6dcb4e80d5720a9a54a3a6c0af9ab8e375ef91743c89f3c7e3"
+  },
+  "source_summary": {
+    "target_observation_count": 1314,
+    "measured_sensor_count": 13,
+    "resolved_sensor_count": 13,
+    "measured_station_count": 13,
+    "distinct_spatial_band_count": 13,
+    "distinct_observation_time_group_count": 7,
+    "target_observed_time_range": {
+      "start": "2018-10-17T11:00:00Z",
+      "end": "2018-10-24T00:00:00Z"
+    },
+    "raw_observed_time_range": {
+      "start": "2018-10-17T11:00:00Z",
+      "end": "2018-10-24T00:00:00Z"
+    },
+    "multi_geometry_time_group_count": 7,
+    "multi_geometry_time_range": {
+      "start": "2024-07-01",
+      "end": "2024-07-07"
+    },
+    "overlapping_time_groups": [],
+    "crosswalk_covered_station_count": 13,
+    "crosswalk_admin_group_count": 13,
+    "geometry_routes": [
+      "admin",
+      "graph_object",
+      "raster"
+    ],
+    "normalized_proxy_observed_time_range": {
+      "start": "2018-10-17T11:00:00Z",
+      "end": "2018-10-24T00:00:00Z"
+    },
+    "dataset_validation_errors": []
+  },
+  "gate_results": {
+    "multi_geometry_dataset_contract_valid": true,
+    "three_native_geometry_routes_present": true,
+    "raw_observation_payloads_parseable": true,
+    "target_parameter_observations_present": true,
+    "minimum_observation_count_met": true,
+    "measurement_sensor_locations_resolved": true,
+    "minimum_measured_station_support_met": true,
+    "minimum_spatial_band_support_met": true,
+    "minimum_observation_time_support_met": true,
+    "station_admin_crosswalk_complete": true,
+    "minimum_admin_group_support_met": true,
+    "observed_geometry_period_overlap": false,
+    "normalized_proxy_matches_raw_measurements": true,
+    "target_leakage_boundary_preserved": true,
+    "evidence_refs_present": true
+  },
+  "remaining_gates": [
+    "observed_geometry_period_overlap"
+  ],
+  "required_next_actions": [
+    "acquire_period_aligned_geometry_features"
+  ],
+  "evidence_refs": [
+    "data/uwm_public_proxy/chongqing_central/scene_aligned_gridded_air_quality_holdout_2026_07_06/uwm_scene_aligned_gridded_air_quality_holdout.json",
+    "data/uwm_public_proxy/chongqing_central/admin_livability_target_2024_07_2026_07_05/uwm_admin_livability_target_panel.json",
+    "data/uwm_public_proxy/chongqing_central/admin_spatial_graph_2026_07_05/uwm_admin_spatial_adjacency_graph.json",
+    "data/uwm_public_proxy/chongqing_central/openmeteo_history_2024_07_01_07/openmeteo_historical_weather_raw.json",
+    "data/uwm_public_proxy/chongqing_central/openmeteo_history_2024_07_01_07/openmeteo_historical_air_quality_raw.json",
+    "data/uwm_public_proxy/chongqing_central/openaq_station_observations_multi_station_2018_10_17_23/openaq_locations_raw.json",
+    "data/uwm_public_proxy/chongqing_central/openaq_station_observations_multi_station_2018_10_17_23/openaq_sensor_measurements_raw.json",
+    "data/uwm_public_proxy/chongqing_central/openaq_station_observations_multi_station_2018_10_17_23/openaq_station_observation_proxy.json",
+    "data/uwm_public_proxy/chongqing_central/geospatial_station_admin_crosswalk_multi_station_2018_10_17_23/uwm_geospatial_station_admin_crosswalk.json"
+  ],
+  "p1_benchmark_input_ready": false,
+  "p2_admission_permitted": false,
+  "supported_claim": "observed_state_prior_candidate_readiness_audit_only",
+  "claim_boundary": {
+    "max_claim_level": "not_for_claim",
+    "scope": "state_prior_input_readiness_only",
+    "scientific_result_claim": false,
+    "transition_skill_improvement_claim": false,
+    "policy_causal_effect_claim": false,
+    "general_geospatial_world_model_validation_claim": false
+  },
+  "policy_causal_effect_claim": false,
+  "action_conditioned_dynamics_claim": false,
+  "general_geospatial_world_model_validation_claim": false,
+  "empirical_policy_effect_claim": false,
+  "readiness_sha256": "e48843b8a7dd74eed8bb0db173cdd026844bfa71293a6061bd237144706863c3"
+}

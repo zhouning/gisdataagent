@@ -1,0 +1,816 @@
+{
+  "schema": "uwm.geospatial_kernel.state_prior_p1_failure_diagnostic.v1",
+  "version": "0.1",
+  "diagnostic_id": "chongqing-observed-station-p1-failure-2018-10-18-23",
+  "created_at": "2026-08-04T21:30:00Z",
+  "dataset_id": "chongqing-openaq-observed-station-state-prior-2018-10-18-23",
+  "benchmark_id": "chongqing-observed-station-state-prior-p1-2018-10-18-23",
+  "input_artifact_sha256": {
+    "dataset_sha256": "454e93b9ddbcf762b2f5816c71b1ec335723e5264182838d67f6fa26f572b4d9",
+    "benchmark_sha256": "9aebc8bfdce0d626c8c02d71167212679987c96e92befb230a94838e70ca2139"
+  },
+  "diagnostic_summary": {
+    "benchmark_ready": false,
+    "failed_readiness_gates": [
+      "candidate_beats_required_baselines_on_every_split",
+      "geometry_shuffle_negative_controls_passed",
+      "split_conformal_coverage_passed"
+    ],
+    "candidate_method": "multi_geometry_soft_alignment_ridge",
+    "candidate_mean_mae": 5.433187454,
+    "strongest_required_baseline": "raster_only_ridge",
+    "strongest_required_baseline_mean_mae": 4.471114337,
+    "candidate_minus_strongest_baseline_mean_mae": 0.962073117,
+    "primary_failure_modes": [
+      "required_baseline_advantage_not_stable_across_splits",
+      "geometry_negative_controls_not_consistently_worse",
+      "split_conformal_coverage_below_threshold"
+    ]
+  },
+  "feature_diagnostics": {
+    "raster": {
+      "feature_names": [
+        "lag1_tap_pm25_ugm3",
+        "tap_grid_distance_degrees"
+      ],
+      "row_count": 78,
+      "overall_centered_rank": 2,
+      "per_feature": {
+        "lag1_tap_pm25_ugm3": {
+          "variance": 274.717056213,
+          "standard_deviation": 16.57459068,
+          "minimum": 1.0,
+          "maximum": 48.6,
+          "distinct_value_count": 62,
+          "target_pearson_correlation": 0.650301106,
+          "correlation_interpretation": "descriptive_only_not_feature_evidence"
+        },
+        "tap_grid_distance_degrees": {
+          "variance": 1.066e-06,
+          "standard_deviation": 0.001032363,
+          "minimum": 0.001118034,
+          "maximum": 0.005131277,
+          "distinct_value_count": 13,
+          "target_pearson_correlation": -0.111873051,
+          "correlation_interpretation": "descriptive_only_not_feature_evidence"
+        }
+      },
+      "by_split": {
+        "spatial_block": {
+          "train": {
+            "row_count": 54,
+            "centered_rank": 2,
+            "zero_variance_features": [],
+            "per_feature_variance": {
+              "lag1_tap_pm25_ugm3": 274.741992455,
+              "tap_grid_distance_degrees": 1.318e-06
+            }
+          },
+          "calibration": {
+            "row_count": 12,
+            "centered_rank": 2,
+            "zero_variance_features": [],
+            "per_feature_variance": {
+              "lag1_tap_pm25_ugm3": 220.998055556,
+              "tap_grid_distance_degrees": 2e-08
+            }
+          },
+          "holdout": {
+            "row_count": 12,
+            "centered_rank": 2,
+            "zero_variance_features": [],
+            "per_feature_variance": {
+              "lag1_tap_pm25_ugm3": 298.803055556,
+              "tap_grid_distance_degrees": 6e-08
+            }
+          }
+        },
+        "whole_admin": {
+          "train": {
+            "row_count": 54,
+            "centered_rank": 2,
+            "zero_variance_features": [],
+            "per_feature_variance": {
+              "lag1_tap_pm25_ugm3": 264.925048011,
+              "tap_grid_distance_degrees": 5.69e-07
+            }
+          },
+          "calibration": {
+            "row_count": 12,
+            "centered_rank": 2,
+            "zero_variance_features": [],
+            "per_feature_variance": {
+              "lag1_tap_pm25_ugm3": 293.195208333,
+              "tap_grid_distance_degrees": 4.5e-08
+            }
+          },
+          "holdout": {
+            "row_count": 12,
+            "centered_rank": 2,
+            "zero_variance_features": [],
+            "per_feature_variance": {
+              "lag1_tap_pm25_ugm3": 275.043888889,
+              "tap_grid_distance_degrees": 2.792e-06
+            }
+          }
+        },
+        "future_temporal": {
+          "train": {
+            "row_count": 52,
+            "centered_rank": 2,
+            "zero_variance_features": [],
+            "per_feature_variance": {
+              "lag1_tap_pm25_ugm3": 297.63279216,
+              "tap_grid_distance_degrees": 1.066e-06
+            }
+          },
+          "calibration": {
+            "row_count": 13,
+            "centered_rank": 2,
+            "zero_variance_features": [],
+            "per_feature_variance": {
+              "lag1_tap_pm25_ugm3": 17.153017751,
+              "tap_grid_distance_degrees": 1.066e-06
+            }
+          },
+          "holdout": {
+            "row_count": 13,
+            "centered_rank": 2,
+            "zero_variance_features": [],
+            "per_feature_variance": {
+              "lag1_tap_pm25_ugm3": 51.277633136,
+              "tap_grid_distance_degrees": 1.066e-06
+            }
+          }
+        }
+      }
+    },
+    "admin": {
+      "feature_names": [
+        "polygon_area_square_degrees",
+        "polygon_perimeter_degrees"
+      ],
+      "row_count": 78,
+      "overall_centered_rank": 2,
+      "per_feature": {
+        "polygon_area_square_degrees": {
+          "variance": 2.729e-06,
+          "standard_deviation": 0.00165198,
+          "minimum": 0.000152824,
+          "maximum": 0.005242452,
+          "distinct_value_count": 13,
+          "target_pearson_correlation": -0.020361443,
+          "correlation_interpretation": "descriptive_only_not_feature_evidence"
+        },
+        "polygon_perimeter_degrees": {
+          "variance": 0.046303154,
+          "standard_deviation": 0.215181676,
+          "minimum": 0.072897802,
+          "maximum": 0.783421105,
+          "distinct_value_count": 13,
+          "target_pearson_correlation": -0.062617517,
+          "correlation_interpretation": "descriptive_only_not_feature_evidence"
+        }
+      },
+      "by_split": {
+        "spatial_block": {
+          "train": {
+            "row_count": 54,
+            "centered_rank": 2,
+            "zero_variance_features": [],
+            "per_feature_variance": {
+              "polygon_area_square_degrees": 2.807e-06,
+              "polygon_perimeter_degrees": 0.059072541
+            }
+          },
+          "calibration": {
+            "row_count": 12,
+            "centered_rank": 1,
+            "zero_variance_features": [],
+            "per_feature_variance": {
+              "polygon_area_square_degrees": 1.81e-07,
+              "polygon_perimeter_degrees": 0.000222412
+            }
+          },
+          "holdout": {
+            "row_count": 12,
+            "centered_rank": 1,
+            "zero_variance_features": [],
+            "per_feature_variance": {
+              "polygon_area_square_degrees": 1.576e-06,
+              "polygon_perimeter_degrees": 0.023393569
+            }
+          }
+        },
+        "whole_admin": {
+          "train": {
+            "row_count": 54,
+            "centered_rank": 2,
+            "zero_variance_features": [],
+            "per_feature_variance": {
+              "polygon_area_square_degrees": 3.208e-06,
+              "polygon_perimeter_degrees": 0.055828312
+            }
+          },
+          "calibration": {
+            "row_count": 12,
+            "centered_rank": 1,
+            "zero_variance_features": [],
+            "per_feature_variance": {
+              "polygon_area_square_degrees": 1.493e-06,
+              "polygon_perimeter_degrees": 0.023911985
+            }
+          },
+          "holdout": {
+            "row_count": 12,
+            "centered_rank": 1,
+            "zero_variance_features": [],
+            "per_feature_variance": {
+              "polygon_area_square_degrees": 1.47e-07,
+              "polygon_perimeter_degrees": 0.002944422
+            }
+          }
+        },
+        "future_temporal": {
+          "train": {
+            "row_count": 52,
+            "centered_rank": 2,
+            "zero_variance_features": [],
+            "per_feature_variance": {
+              "polygon_area_square_degrees": 2.729e-06,
+              "polygon_perimeter_degrees": 0.046303154
+            }
+          },
+          "calibration": {
+            "row_count": 13,
+            "centered_rank": 2,
+            "zero_variance_features": [],
+            "per_feature_variance": {
+              "polygon_area_square_degrees": 2.729e-06,
+              "polygon_perimeter_degrees": 0.046303154
+            }
+          },
+          "holdout": {
+            "row_count": 13,
+            "centered_rank": 2,
+            "zero_variance_features": [],
+            "per_feature_variance": {
+              "polygon_area_square_degrees": 2.729e-06,
+              "polygon_perimeter_degrees": 0.046303154
+            }
+          }
+        }
+      }
+    },
+    "graph_object": {
+      "feature_names": [
+        "admin_adjacency_degree"
+      ],
+      "row_count": 78,
+      "overall_centered_rank": 1,
+      "per_feature": {
+        "admin_adjacency_degree": {
+          "variance": 4.639053254,
+          "standard_deviation": 2.153846154,
+          "minimum": 4.0,
+          "maximum": 13.0,
+          "distinct_value_count": 5,
+          "target_pearson_correlation": 0.09111169,
+          "correlation_interpretation": "descriptive_only_not_feature_evidence"
+        }
+      },
+      "by_split": {
+        "spatial_block": {
+          "train": {
+            "row_count": 54,
+            "centered_rank": 1,
+            "zero_variance_features": [],
+            "per_feature_variance": {
+              "admin_adjacency_degree": 6.24691358
+            }
+          },
+          "calibration": {
+            "row_count": 12,
+            "centered_rank": 1,
+            "zero_variance_features": [],
+            "per_feature_variance": {
+              "admin_adjacency_degree": 0.25
+            }
+          },
+          "holdout": {
+            "row_count": 12,
+            "centered_rank": 1,
+            "zero_variance_features": [],
+            "per_feature_variance": {
+              "admin_adjacency_degree": 0.25
+            }
+          }
+        },
+        "whole_admin": {
+          "train": {
+            "row_count": 54,
+            "centered_rank": 1,
+            "zero_variance_features": [],
+            "per_feature_variance": {
+              "admin_adjacency_degree": 6.24691358
+            }
+          },
+          "calibration": {
+            "row_count": 12,
+            "centered_rank": 0,
+            "zero_variance_features": [
+              "admin_adjacency_degree"
+            ],
+            "per_feature_variance": {
+              "admin_adjacency_degree": 0.0
+            }
+          },
+          "holdout": {
+            "row_count": 12,
+            "centered_rank": 0,
+            "zero_variance_features": [
+              "admin_adjacency_degree"
+            ],
+            "per_feature_variance": {
+              "admin_adjacency_degree": 0.0
+            }
+          }
+        },
+        "future_temporal": {
+          "train": {
+            "row_count": 52,
+            "centered_rank": 1,
+            "zero_variance_features": [],
+            "per_feature_variance": {
+              "admin_adjacency_degree": 4.639053254
+            }
+          },
+          "calibration": {
+            "row_count": 13,
+            "centered_rank": 1,
+            "zero_variance_features": [],
+            "per_feature_variance": {
+              "admin_adjacency_degree": 4.639053254
+            }
+          },
+          "holdout": {
+            "row_count": 13,
+            "centered_rank": 1,
+            "zero_variance_features": [],
+            "per_feature_variance": {
+              "admin_adjacency_degree": 4.639053254
+            }
+          }
+        }
+      }
+    }
+  },
+  "distribution_shift": {
+    "reference_partition": "train",
+    "standardization": "train_mean_and_population_standard_deviation",
+    "zero_train_variance_shift_semantics": "null",
+    "by_split": {
+      "spatial_block": {
+        "calibration": {
+          "row_count": 12,
+          "target": {
+            "train_mean": 28.947273762,
+            "train_standard_deviation": 7.414034833,
+            "partition_mean": 27.804641362,
+            "standardized_mean_shift": -0.154117485
+          },
+          "geometry_routes": {
+            "raster": {
+              "per_feature": {
+                "lag1_tap_pm25_ugm3": {
+                  "train_mean": 22.72037037,
+                  "train_standard_deviation": 16.575342906,
+                  "partition_mean": 16.716666667,
+                  "standardized_mean_shift": -0.362206908
+                },
+                "tap_grid_distance_degrees": {
+                  "train_mean": 0.00358684,
+                  "train_standard_deviation": 0.001148002,
+                  "partition_mean": 0.004601091,
+                  "standardized_mean_shift": 0.883492255
+                }
+              },
+              "max_abs_standardized_mean_shift": 0.883492255
+            },
+            "admin": {
+              "per_feature": {
+                "polygon_area_square_degrees": {
+                  "train_mean": 0.00206176,
+                  "train_standard_deviation": 0.001675514,
+                  "partition_mean": 0.003022399,
+                  "standardized_mean_shift": 0.573339713
+                },
+                "polygon_perimeter_degrees": {
+                  "train_mean": 0.336834312,
+                  "train_standard_deviation": 0.243048434,
+                  "partition_mean": 0.397081308,
+                  "standardized_mean_shift": 0.247880619
+                }
+              },
+              "max_abs_standardized_mean_shift": 0.573339713
+            },
+            "graph_object": {
+              "per_feature": {
+                "admin_adjacency_degree": {
+                  "train_mean": 6.555555556,
+                  "train_standard_deviation": 2.49938264,
+                  "partition_mean": 5.5,
+                  "standardized_mean_shift": -0.422326513
+                }
+              },
+              "max_abs_standardized_mean_shift": 0.422326513
+            }
+          }
+        },
+        "holdout": {
+          "row_count": 12,
+          "target": {
+            "train_mean": 28.947273762,
+            "train_standard_deviation": 7.414034833,
+            "partition_mean": 29.31687035,
+            "standardized_mean_shift": 0.049850938
+          },
+          "geometry_routes": {
+            "raster": {
+              "per_feature": {
+                "lag1_tap_pm25_ugm3": {
+                  "train_mean": 22.72037037,
+                  "train_standard_deviation": 16.575342906,
+                  "partition_mean": 21.816666667,
+                  "standardized_mean_shift": -0.054520966
+                },
+                "tap_grid_distance_degrees": {
+                  "train_mean": 0.00358684,
+                  "train_standard_deviation": 0.001148002,
+                  "partition_mean": 0.003472092,
+                  "standardized_mean_shift": -0.099955208
+                }
+              },
+              "max_abs_standardized_mean_shift": 0.099955208
+            },
+            "admin": {
+              "per_feature": {
+                "polygon_area_square_degrees": {
+                  "train_mean": 0.00206176,
+                  "train_standard_deviation": 0.001675514,
+                  "partition_mean": 0.003987153,
+                  "standardized_mean_shift": 1.149135027
+                },
+                "polygon_perimeter_degrees": {
+                  "train_mean": 0.336834312,
+                  "train_standard_deviation": 0.243048434,
+                  "partition_mean": 0.448358619,
+                  "standardized_mean_shift": 0.458856309
+                }
+              },
+              "max_abs_standardized_mean_shift": 1.149135027
+            },
+            "graph_object": {
+              "per_feature": {
+                "admin_adjacency_degree": {
+                  "train_mean": 6.555555556,
+                  "train_standard_deviation": 2.49938264,
+                  "partition_mean": 5.5,
+                  "standardized_mean_shift": -0.422326513
+                }
+              },
+              "max_abs_standardized_mean_shift": 0.422326513
+            }
+          }
+        }
+      },
+      "whole_admin": {
+        "calibration": {
+          "row_count": 12,
+          "target": {
+            "train_mean": 28.901792844,
+            "train_standard_deviation": 7.306421818,
+            "partition_mean": 29.276087683,
+            "standardized_mean_shift": 0.0512282
+          },
+          "geometry_routes": {
+            "raster": {
+              "per_feature": {
+                "lag1_tap_pm25_ugm3": {
+                  "train_mean": 22.97037037,
+                  "train_standard_deviation": 16.276518301,
+                  "partition_mean": 18.875,
+                  "standardized_mean_shift": -0.251612187
+                },
+                "tap_grid_distance_degrees": {
+                  "train_mean": 0.00375435,
+                  "train_standard_deviation": 0.000754521,
+                  "partition_mean": 0.004530463,
+                  "standardized_mean_shift": 1.02861795
+                }
+              },
+              "max_abs_standardized_mean_shift": 1.02861795
+            },
+            "admin": {
+              "per_feature": {
+                "polygon_area_square_degrees": {
+                  "train_mean": 0.002632998,
+                  "train_standard_deviation": 0.001790979,
+                  "partition_mean": 0.001374685,
+                  "standardized_mean_shift": -0.702583487
+                },
+                "polygon_perimeter_degrees": {
+                  "train_mean": 0.394650943,
+                  "train_standard_deviation": 0.236280156,
+                  "partition_mean": 0.227532809,
+                  "standardized_mean_shift": -0.707288063
+                }
+              },
+              "max_abs_standardized_mean_shift": 0.707288063
+            },
+            "graph_object": {
+              "per_feature": {
+                "admin_adjacency_degree": {
+                  "train_mean": 6.555555556,
+                  "train_standard_deviation": 2.49938264,
+                  "partition_mean": 5.0,
+                  "standardized_mean_shift": -0.622375914
+                }
+              },
+              "max_abs_standardized_mean_shift": 0.622375914
+            }
+          }
+        },
+        "holdout": {
+          "row_count": 12,
+          "target": {
+            "train_mean": 28.901792844,
+            "train_standard_deviation": 7.306421818,
+            "partition_mean": 28.050088158,
+            "standardized_mean_shift": -0.116569329
+          },
+          "geometry_routes": {
+            "raster": {
+              "per_feature": {
+                "lag1_tap_pm25_ugm3": {
+                  "train_mean": 22.97037037,
+                  "train_standard_deviation": 16.276518301,
+                  "partition_mean": 18.533333333,
+                  "standardized_mean_shift": -0.272603573
+                },
+                "tap_grid_distance_degrees": {
+                  "train_mean": 0.00375435,
+                  "train_standard_deviation": 0.000754521,
+                  "partition_mean": 0.002788927,
+                  "standardized_mean_shift": -1.279517616
+                }
+              },
+              "max_abs_standardized_mean_shift": 1.279517616
+            },
+            "admin": {
+              "per_feature": {
+                "polygon_area_square_degrees": {
+                  "train_mean": 0.002632998,
+                  "train_standard_deviation": 0.001790979,
+                  "partition_mean": 0.0030643,
+                  "standardized_mean_shift": 0.240819353
+                },
+                "polygon_perimeter_degrees": {
+                  "train_mean": 0.394650943,
+                  "train_standard_deviation": 0.236280156,
+                  "partition_mean": 0.357732275,
+                  "standardized_mean_shift": -0.15624955
+                }
+              },
+              "max_abs_standardized_mean_shift": 0.240819353
+            },
+            "graph_object": {
+              "per_feature": {
+                "admin_adjacency_degree": {
+                  "train_mean": 6.555555556,
+                  "train_standard_deviation": 2.49938264,
+                  "partition_mean": 6.0,
+                  "standardized_mean_shift": -0.222277112
+                }
+              },
+              "max_abs_standardized_mean_shift": 0.222277112
+            }
+          }
+        }
+      },
+      "future_temporal": {
+        "calibration": {
+          "row_count": 13,
+          "target": {
+            "train_mean": 25.935655875,
+            "train_standard_deviation": 5.885274247,
+            "partition_mean": 34.937062937,
+            "standardized_mean_shift": 1.529479627
+          },
+          "geometry_routes": {
+            "raster": {
+              "per_feature": {
+                "lag1_tap_pm25_ugm3": {
+                  "train_mean": 15.990384615,
+                  "train_standard_deviation": 17.252037334,
+                  "partition_mean": 31.592307692,
+                  "standardized_mean_shift": 0.904352499
+                },
+                "tap_grid_distance_degrees": {
+                  "train_mean": 0.003725225,
+                  "train_standard_deviation": 0.001032363,
+                  "partition_mean": 0.003725225,
+                  "standardized_mean_shift": -0.0
+                }
+              },
+              "max_abs_standardized_mean_shift": 0.904352499
+            },
+            "admin": {
+              "per_feature": {
+                "polygon_area_square_degrees": {
+                  "train_mean": 0.002505765,
+                  "train_standard_deviation": 0.00165198,
+                  "partition_mean": 0.002505765,
+                  "standardized_mean_shift": 0.0
+                },
+                "polygon_perimeter_degrees": {
+                  "train_mean": 0.363260666,
+                  "train_standard_deviation": 0.215181676,
+                  "partition_mean": 0.363260666,
+                  "standardized_mean_shift": 0.0
+                }
+              },
+              "max_abs_standardized_mean_shift": 0.0
+            },
+            "graph_object": {
+              "per_feature": {
+                "admin_adjacency_degree": {
+                  "train_mean": 6.230769231,
+                  "train_standard_deviation": 2.153846154,
+                  "partition_mean": 6.230769231,
+                  "standardized_mean_shift": 0.0
+                }
+              },
+              "max_abs_standardized_mean_shift": 0.0
+            }
+          }
+        },
+        "holdout": {
+          "row_count": 13,
+          "target": {
+            "train_mean": 25.935655875,
+            "train_standard_deviation": 5.885274247,
+            "partition_mean": 34.290384615,
+            "standardized_mean_shift": 1.419598882
+          },
+          "geometry_routes": {
+            "raster": {
+              "per_feature": {
+                "lag1_tap_pm25_ugm3": {
+                  "train_mean": 15.990384615,
+                  "train_standard_deviation": 17.252037334,
+                  "partition_mean": 34.392307692,
+                  "standardized_mean_shift": 1.066652171
+                },
+                "tap_grid_distance_degrees": {
+                  "train_mean": 0.003725225,
+                  "train_standard_deviation": 0.001032363,
+                  "partition_mean": 0.003725225,
+                  "standardized_mean_shift": -0.0
+                }
+              },
+              "max_abs_standardized_mean_shift": 1.066652171
+            },
+            "admin": {
+              "per_feature": {
+                "polygon_area_square_degrees": {
+                  "train_mean": 0.002505765,
+                  "train_standard_deviation": 0.00165198,
+                  "partition_mean": 0.002505765,
+                  "standardized_mean_shift": 0.0
+                },
+                "polygon_perimeter_degrees": {
+                  "train_mean": 0.363260666,
+                  "train_standard_deviation": 0.215181676,
+                  "partition_mean": 0.363260666,
+                  "standardized_mean_shift": 0.0
+                }
+              },
+              "max_abs_standardized_mean_shift": 0.0
+            },
+            "graph_object": {
+              "per_feature": {
+                "admin_adjacency_degree": {
+                  "train_mean": 6.230769231,
+                  "train_standard_deviation": 2.153846154,
+                  "partition_mean": 6.230769231,
+                  "standardized_mean_shift": 0.0
+                }
+              },
+              "max_abs_standardized_mean_shift": 0.0
+            }
+          }
+        }
+      }
+    }
+  },
+  "performance_deltas": {
+    "candidate_method": "multi_geometry_soft_alignment_ridge",
+    "delta_semantics": "candidate_mae_minus_comparator_mae_negative_is_favorable",
+    "candidate_minus_required_baseline_mae_by_split": {
+      "spatial_block": {
+        "spatial_idw": 2.20385791,
+        "hard_admin_mean": 2.327470356,
+        "raster_only_ridge": 1.599045551,
+        "raster_admin_soft_alignment_ridge": -0.951791712
+      },
+      "whole_admin": {
+        "spatial_idw": 0.093176338,
+        "hard_admin_mean": 1.252151752,
+        "raster_only_ridge": 1.349559578,
+        "raster_admin_soft_alignment_ridge": -0.429863943
+      },
+      "future_temporal": {
+        "spatial_idw": -5.30187616,
+        "hard_admin_mean": -5.301886068,
+        "raster_only_ridge": -0.062385776,
+        "raster_admin_soft_alignment_ridge": -0.098428606
+      }
+    },
+    "candidate_minus_negative_control_mae_by_split": {
+      "spatial_block": {
+        "shuffled_admin_alignment_ridge": 1.961694377,
+        "shuffled_graph_alignment_ridge": -0.847371402
+      },
+      "whole_admin": {
+        "shuffled_admin_alignment_ridge": 0.364453889,
+        "shuffled_graph_alignment_ridge": -0.448555956
+      },
+      "future_temporal": {
+        "shuffled_admin_alignment_ridge": -0.254734747,
+        "shuffled_graph_alignment_ridge": -0.19947396
+      }
+    },
+    "aggregate_candidate_minus_required_baseline_mean_mae": {
+      "spatial_idw": -1.001613971,
+      "hard_admin_mean": -0.574087987,
+      "raster_only_ridge": 0.962073117,
+      "raster_admin_soft_alignment_ridge": -0.493361421
+    },
+    "aggregate_candidate_minus_negative_control_mean_mae": {
+      "shuffled_admin_alignment_ridge": 0.690471173,
+      "shuffled_graph_alignment_ridge": -0.498467106
+    }
+  },
+  "conformal_coverage_deficits": {
+    "minimum_coverage_threshold": 0.85,
+    "deficit_semantics": "max_zero_threshold_minus_empirical_coverage",
+    "aggregate": {
+      "empirical_coverage": 0.837837838,
+      "coverage_deficit": 0.012162162
+    },
+    "by_split": {
+      "spatial_block": {
+        "empirical_coverage": 0.666666667,
+        "coverage_deficit": 0.183333333
+      },
+      "whole_admin": {
+        "empirical_coverage": 0.833333333,
+        "coverage_deficit": 0.016666667
+      },
+      "future_temporal": {
+        "empirical_coverage": 1.0,
+        "coverage_deficit": 0.0
+      }
+    }
+  },
+  "analysis_boundary": {
+    "max_claim_level": "not_for_claim",
+    "scope": "posthoc_p1_failure_diagnosis_only",
+    "opened_holdout_reuse": true,
+    "feature_target_correlations_descriptive_only": true,
+    "feature_selection_authorized": false,
+    "threshold_tuning_authorized": false,
+    "p1_readiness_change_authorized": false,
+    "p2_admission_permitted": false,
+    "scientific_result_claim": false,
+    "transition_skill_improvement_claim": false,
+    "policy_causal_effect_claim": false,
+    "general_geospatial_world_model_validation_claim": false
+  },
+  "prohibited_uses": [
+    "p1_gate_override",
+    "p2_state_prior_admission",
+    "posthoc_holdout_feature_selection",
+    "posthoc_holdout_threshold_tuning",
+    "scientific_advantage_claim",
+    "transition_or_policy_claim"
+  ],
+  "p1_benchmark_ready": false,
+  "p2_admission_permitted": false,
+  "supported_claim": "posthoc_p1_failure_diagnostic_only",
+  "policy_causal_effect_claim": false,
+  "action_conditioned_dynamics_claim": false,
+  "general_geospatial_world_model_validation_claim": false,
+  "diagnostic_sha256": "1aede01d5ab421d629aa9e43af7b7614046ce446ed37395fd839cfae504d933a"
+}

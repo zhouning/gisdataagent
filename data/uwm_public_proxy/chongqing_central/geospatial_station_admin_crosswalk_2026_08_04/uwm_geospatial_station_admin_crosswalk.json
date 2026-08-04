@@ -1,0 +1,416 @@
+{
+  "schema": "uwm.geospatial_kernel.station_admin_crosswalk.v1",
+  "version": "0.1",
+  "crosswalk_id": "chongqing-openaq-station-township-crosswalk-2026-08-04",
+  "created_at": "2026-08-04T19:00:00Z",
+  "spatial_relation": "station_point_covered_by_admin_polygon",
+  "coordinate_crs": "EPSG:4326",
+  "admin_identifier_semantics": "local_province_county_township_name_composite",
+  "input_artifact_sha256": {
+    "locations_payload_sha256": "8cdccd2ae3269dca48393ede4cea41d253bfc9a58657708ce9a2324faf8de6be",
+    "admin_feature_collection_sha256": "6090ad43117438ddc0e54f43889d391f1a2a691334b2545d0e6efe953b6cfd6c"
+  },
+  "source_refs": [
+    "data/uwm_public_proxy/chongqing_central/openaq_station_observations/openaq_locations_raw.json",
+    "data/uwm_public_proxy/chongqing_central/admin_units/chongqing_township_admin_units.geojson"
+  ],
+  "assignments": [
+    {
+      "station_id": "10004",
+      "station_name": "南坪",
+      "longitude": 106.54,
+      "latitude": 29.5186,
+      "status": "matched",
+      "candidate_count": 1,
+      "assignment": {
+        "admin_id": "重庆市|南岸区|花园路街道",
+        "province": "重庆市",
+        "city": "重庆市",
+        "county": "南岸区",
+        "township": "花园路街道"
+      },
+      "candidates": [
+        {
+          "admin_id": "重庆市|南岸区|花园路街道",
+          "province": "重庆市",
+          "city": "重庆市",
+          "county": "南岸区",
+          "township": "花园路街道"
+        }
+      ]
+    },
+    {
+      "station_id": "10068",
+      "station_name": "唐家沱",
+      "longitude": 106.6556,
+      "latitude": 29.6277,
+      "status": "matched",
+      "candidate_count": 1,
+      "assignment": {
+        "admin_id": "重庆市|江北区|铁山坪街道",
+        "province": "重庆市",
+        "city": "重庆市",
+        "county": "江北区",
+        "township": "铁山坪街道"
+      },
+      "candidates": [
+        {
+          "admin_id": "重庆市|江北区|铁山坪街道",
+          "province": "重庆市",
+          "city": "重庆市",
+          "county": "江北区",
+          "township": "铁山坪街道"
+        }
+      ]
+    },
+    {
+      "station_id": "10473",
+      "station_name": "新山村",
+      "longitude": 106.4782,
+      "latitude": 29.4875,
+      "status": "matched",
+      "candidate_count": 1,
+      "assignment": {
+        "admin_id": "重庆市|大渡口区|新山村街道",
+        "province": "重庆市",
+        "city": "重庆市",
+        "county": "大渡口区",
+        "township": "新山村街道"
+      },
+      "candidates": [
+        {
+          "admin_id": "重庆市|大渡口区|新山村街道",
+          "province": "重庆市",
+          "city": "重庆市",
+          "county": "大渡口区",
+          "township": "新山村街道"
+        }
+      ]
+    },
+    {
+      "station_id": "6547",
+      "station_name": "南坪",
+      "longitude": 106.57770000000001,
+      "latitude": 29.5102,
+      "status": "matched",
+      "candidate_count": 1,
+      "assignment": {
+        "admin_id": "重庆市|南岸区|海棠溪街道",
+        "province": "重庆市",
+        "city": "重庆市",
+        "county": "南岸区",
+        "township": "海棠溪街道"
+      },
+      "candidates": [
+        {
+          "admin_id": "重庆市|南岸区|海棠溪街道",
+          "province": "重庆市",
+          "city": "重庆市",
+          "county": "南岸区",
+          "township": "海棠溪街道"
+        }
+      ]
+    },
+    {
+      "station_id": "6550",
+      "station_name": "礼嘉",
+      "longitude": 106.5616,
+      "latitude": 29.645299999999995,
+      "status": "matched",
+      "candidate_count": 1,
+      "assignment": {
+        "admin_id": "重庆市|渝北区|鸳鸯街道",
+        "province": "重庆市",
+        "city": "重庆市",
+        "county": "渝北区",
+        "township": "鸳鸯街道"
+      },
+      "candidates": [
+        {
+          "admin_id": "重庆市|渝北区|鸳鸯街道",
+          "province": "重庆市",
+          "city": "重庆市",
+          "county": "渝北区",
+          "township": "鸳鸯街道"
+        }
+      ]
+    },
+    {
+      "station_id": "7329",
+      "station_name": "龙井湾",
+      "longitude": 106.4037,
+      "latitude": 29.5728,
+      "status": "matched",
+      "candidate_count": 1,
+      "assignment": {
+        "admin_id": "重庆市|沙坪坝区|歌乐山镇",
+        "province": "重庆市",
+        "city": "重庆市",
+        "county": "沙坪坝区",
+        "township": "歌乐山镇"
+      },
+      "candidates": [
+        {
+          "admin_id": "重庆市|沙坪坝区|歌乐山镇",
+          "province": "重庆市",
+          "city": "重庆市",
+          "county": "沙坪坝区",
+          "township": "歌乐山镇"
+        }
+      ]
+    },
+    {
+      "station_id": "7331",
+      "station_name": "龙洲湾",
+      "longitude": 106.5507,
+      "latitude": 29.4153,
+      "status": "matched",
+      "candidate_count": 1,
+      "assignment": {
+        "admin_id": "重庆市|巴南区|龙洲湾街道",
+        "province": "重庆市",
+        "city": "重庆市",
+        "county": "巴南区",
+        "township": "龙洲湾街道"
+      },
+      "candidates": [
+        {
+          "admin_id": "重庆市|巴南区|龙洲湾街道",
+          "province": "重庆市",
+          "city": "重庆市",
+          "county": "巴南区",
+          "township": "龙洲湾街道"
+        }
+      ]
+    },
+    {
+      "station_id": "7332",
+      "station_name": "上清寺",
+      "longitude": 106.5468,
+      "latitude": 29.5654,
+      "status": "matched",
+      "candidate_count": 1,
+      "assignment": {
+        "admin_id": "重庆市|渝中区|上清寺街道",
+        "province": "重庆市",
+        "city": "重庆市",
+        "county": "渝中区",
+        "township": "上清寺街道"
+      },
+      "candidates": [
+        {
+          "admin_id": "重庆市|渝中区|上清寺街道",
+          "province": "重庆市",
+          "city": "重庆市",
+          "county": "渝中区",
+          "township": "上清寺街道"
+        }
+      ]
+    },
+    {
+      "station_id": "7359",
+      "station_name": "歇台子",
+      "longitude": 106.49580000000002,
+      "latitude": 29.5346,
+      "status": "matched",
+      "candidate_count": 1,
+      "assignment": {
+        "admin_id": "重庆市|九龙坡区|渝州路街道",
+        "province": "重庆市",
+        "city": "重庆市",
+        "county": "九龙坡区",
+        "township": "渝州路街道"
+      },
+      "candidates": [
+        {
+          "admin_id": "重庆市|九龙坡区|渝州路街道",
+          "province": "重庆市",
+          "city": "重庆市",
+          "county": "九龙坡区",
+          "township": "渝州路街道"
+        }
+      ]
+    },
+    {
+      "station_id": "9202",
+      "station_name": "白市驿",
+      "longitude": 106.36400000000002,
+      "latitude": 29.482200000000002,
+      "status": "matched",
+      "candidate_count": 1,
+      "assignment": {
+        "admin_id": "重庆市|九龙坡区|白市驿镇",
+        "province": "重庆市",
+        "city": "重庆市",
+        "county": "九龙坡区",
+        "township": "白市驿镇"
+      },
+      "candidates": [
+        {
+          "admin_id": "重庆市|九龙坡区|白市驿镇",
+          "province": "重庆市",
+          "city": "重庆市",
+          "county": "九龙坡区",
+          "township": "白市驿镇"
+        }
+      ]
+    },
+    {
+      "station_id": "9261",
+      "station_name": "礼嘉",
+      "longitude": 106.562,
+      "latitude": 29.645299999999995,
+      "status": "matched",
+      "candidate_count": 1,
+      "assignment": {
+        "admin_id": "重庆市|渝北区|鸳鸯街道",
+        "province": "重庆市",
+        "city": "重庆市",
+        "county": "渝北区",
+        "township": "鸳鸯街道"
+      },
+      "candidates": [
+        {
+          "admin_id": "重庆市|渝北区|鸳鸯街道",
+          "province": "重庆市",
+          "city": "重庆市",
+          "county": "渝北区",
+          "township": "鸳鸯街道"
+        }
+      ]
+    },
+    {
+      "station_id": "9275",
+      "station_name": "空港",
+      "longitude": 106.62050000000002,
+      "latitude": 29.7166,
+      "status": "matched",
+      "candidate_count": 1,
+      "assignment": {
+        "admin_id": "重庆市|渝北区|双龙湖街道",
+        "province": "重庆市",
+        "city": "重庆市",
+        "county": "渝北区",
+        "township": "双龙湖街道"
+      },
+      "candidates": [
+        {
+          "admin_id": "重庆市|渝北区|双龙湖街道",
+          "province": "重庆市",
+          "city": "重庆市",
+          "county": "渝北区",
+          "township": "双龙湖街道"
+        }
+      ]
+    },
+    {
+      "station_id": "9455",
+      "station_name": "茶园",
+      "longitude": 106.6349,
+      "latitude": 29.4906,
+      "status": "matched",
+      "candidate_count": 1,
+      "assignment": {
+        "admin_id": "重庆市|南岸区|长生桥镇",
+        "province": "重庆市",
+        "city": "重庆市",
+        "county": "南岸区",
+        "township": "长生桥镇"
+      },
+      "candidates": [
+        {
+          "admin_id": "重庆市|南岸区|长生桥镇",
+          "province": "重庆市",
+          "city": "重庆市",
+          "county": "南岸区",
+          "township": "长生桥镇"
+        }
+      ]
+    },
+    {
+      "station_id": "9513",
+      "station_name": "蔡家",
+      "longitude": 106.45219999999999,
+      "latitude": 29.7091,
+      "status": "matched",
+      "candidate_count": 1,
+      "assignment": {
+        "admin_id": "重庆市|北碚区|童家溪镇",
+        "province": "重庆市",
+        "city": "重庆市",
+        "county": "北碚区",
+        "township": "童家溪镇"
+      },
+      "candidates": [
+        {
+          "admin_id": "重庆市|北碚区|童家溪镇",
+          "province": "重庆市",
+          "city": "重庆市",
+          "county": "北碚区",
+          "township": "童家溪镇"
+        }
+      ]
+    },
+    {
+      "station_id": "9845",
+      "station_name": "两路",
+      "longitude": 106.6263,
+      "latitude": 29.722800000000003,
+      "status": "matched",
+      "candidate_count": 1,
+      "assignment": {
+        "admin_id": "重庆市|渝北区|两路街道",
+        "province": "重庆市",
+        "city": "重庆市",
+        "county": "渝北区",
+        "township": "两路街道"
+      },
+      "candidates": [
+        {
+          "admin_id": "重庆市|渝北区|两路街道",
+          "province": "重庆市",
+          "city": "重庆市",
+          "county": "渝北区",
+          "township": "两路街道"
+        }
+      ]
+    }
+  ],
+  "audit": {
+    "location_row_count": 15,
+    "station_count": 15,
+    "admin_feature_count": 1017,
+    "admin_unit_count": 1017,
+    "missing_identifier_feature_count": 0,
+    "invalid_geometry_feature_count": 0,
+    "assignment_status_counts": {
+      "matched": 15,
+      "unmatched": 0,
+      "ambiguous": 0,
+      "invalid_coordinates": 0
+    },
+    "unmatched_station_ids": [],
+    "ambiguous_station_ids": [],
+    "invalid_coordinate_station_ids": []
+  },
+  "gate_results": {
+    "locations_payload_parseable": true,
+    "admin_feature_collection_parseable": true,
+    "coordinate_crs_is_wgs84": true,
+    "station_ids_unique_and_complete": true,
+    "station_coordinates_complete": true,
+    "admin_identifiers_complete": true,
+    "admin_geometries_valid": true,
+    "all_stations_matched_exactly_once": true
+  },
+  "remaining_gates": [],
+  "crosswalk_complete": true,
+  "claim_boundary": {
+    "max_claim_level": "not_for_claim",
+    "scope": "station_admin_spatial_assignment_audit_only",
+    "official_admin_identifier_claim": false,
+    "historical_boundary_alignment_claim": false,
+    "scientific_result_claim": false
+  },
+  "crosswalk_sha256": "9371eaf4bf9bd3beaa951d1ea7979827933d0a7d4bd91fd4b5a1e8f0934eb119"
+}

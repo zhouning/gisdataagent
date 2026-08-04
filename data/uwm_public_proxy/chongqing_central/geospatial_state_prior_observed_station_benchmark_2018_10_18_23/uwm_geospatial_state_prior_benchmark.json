@@ -1,0 +1,437 @@
+{
+  "schema": "uwm.geospatial_state_prior_benchmark.v1",
+  "version": "0.1",
+  "benchmark_id": "chongqing-observed-station-state-prior-p1-2018-10-18-23",
+  "created_at": "2026-08-04T21:25:00Z",
+  "dataset_id": "chongqing-openaq-observed-station-state-prior-2018-10-18-23",
+  "source_evidence_kind": "observed_holdout",
+  "source_dataset_ids": [
+    "openaq_air_quality_station_observation_proxy",
+    "tap_pm25_observed_gridded_chongqing_2018_2024"
+  ],
+  "evidence_refs": [
+    "data/uwm_public_proxy/chongqing_central/openaq_station_observations_multi_station_2018_10_17_23/openaq_locations_raw.json",
+    "data/uwm_public_proxy/chongqing_central/openaq_station_observations_multi_station_2018_10_17_23/openaq_sensor_measurements_raw.json",
+    "data/uwm_public_proxy/chongqing_central/geospatial_station_admin_crosswalk_multi_station_2018_10_17_23/uwm_geospatial_station_admin_crosswalk.json",
+    "data/uwm_public_proxy/chongqing_central/admin_units/chongqing_township_admin_units.geojson",
+    "data/uwm_public_proxy/chongqing_central/admin_spatial_graph_2026_07_05/uwm_admin_spatial_adjacency_graph.json",
+    "/Users/zhouning/Downloads/tap_uwm/chongqing_pm25_2018_10_17_23/downloaded"
+  ],
+  "target": {
+    "name": "openaq_daily_pm25_mean_ugm3",
+    "geometry_type": "point",
+    "spatial_support": {
+      "support_type": "sensor_footprint"
+    },
+    "temporal_support": {
+      "start_date": "2018-10-18",
+      "end_date": "2018-10-23"
+    },
+    "observation_semantics": "observed",
+    "source_boundary": "daily_mean_of_actual_openaq_pm25_measurements"
+  },
+  "geometry_routes": {
+    "raster": {
+      "geometry_type": "raster",
+      "spatial_support": {
+        "support_type": "grid_cell"
+      },
+      "feature_names": [
+        "lag1_tap_pm25_ugm3",
+        "tap_grid_distance_degrees"
+      ]
+    },
+    "admin": {
+      "geometry_type": "polygon",
+      "spatial_support": {
+        "support_type": "admin_unit"
+      },
+      "feature_names": [
+        "polygon_area_square_degrees",
+        "polygon_perimeter_degrees"
+      ]
+    },
+    "graph_object": {
+      "geometry_type": "network",
+      "spatial_support": {
+        "support_type": "network_node"
+      },
+      "feature_names": [
+        "admin_adjacency_degree"
+      ]
+    }
+  },
+  "dynamic_context": null,
+  "benchmark_protocol": {
+    "split_names": [
+      "spatial_block",
+      "whole_admin",
+      "future_temporal"
+    ],
+    "candidate_method": "multi_geometry_soft_alignment_ridge",
+    "required_baselines": [
+      "spatial_idw",
+      "hard_admin_mean",
+      "raster_only_ridge",
+      "raster_admin_soft_alignment_ridge"
+    ],
+    "negative_controls": [
+      "shuffled_admin_alignment_ridge",
+      "shuffled_graph_alignment_ridge"
+    ],
+    "model_class": "deterministic_standardized_ridge",
+    "query_context_features": [
+      "x",
+      "y",
+      "ordered_time_index"
+    ],
+    "dynamic_context_shared_by_all_primary_ridge_variants": true,
+    "dynamic_context_ablation_method": "multi_geometry_no_dynamic_context_ridge",
+    "geometry_alignment": "learned linear feature fusion without hard cross-support equality",
+    "ridge": 1e-06,
+    "idw_neighbors": 8,
+    "negative_control_seed": 37,
+    "minimum_relative_improvement": 0.01,
+    "minimum_time_groups_per_dynamic_feature": 3.0
+  },
+  "split_results": {
+    "spatial_block": {
+      "split_name": "spatial_block",
+      "train_count": 54,
+      "calibration_count": 12,
+      "holdout_count": 12,
+      "leakage_audit": {
+        "group_dimension": "spatial_block",
+        "train_group_count": 9,
+        "calibration_group_count": 2,
+        "holdout_group_count": 2,
+        "cross_partition_group_overlap_count": 0,
+        "passed": true
+      },
+      "method_metrics": {
+        "train_mean": {
+          "mae": 5.360765181,
+          "rmse": 6.402625375,
+          "r2": -0.003343408
+        },
+        "spatial_idw": {
+          "mae": 5.484377627,
+          "rmse": 6.736409002,
+          "r2": -0.110683483
+        },
+        "hard_admin_mean": {
+          "mae": 5.360765181,
+          "rmse": 6.402625375,
+          "r2": -0.003343408
+        },
+        "raster_only_ridge": {
+          "mae": 6.089189986,
+          "rmse": 7.440392044,
+          "r2": -0.35495558
+        },
+        "raster_admin_soft_alignment_ridge": {
+          "mae": 8.640027249,
+          "rmse": 10.620772774,
+          "r2": -1.760868065
+        },
+        "multi_geometry_soft_alignment_ridge": {
+          "mae": 7.688235537,
+          "rmse": 9.311360226,
+          "r2": -1.122069851
+        },
+        "multi_geometry_no_dynamic_context_ridge": {
+          "mae": 7.688235537,
+          "rmse": 9.311360226,
+          "r2": -1.122069851
+        },
+        "shuffled_admin_alignment_ridge": {
+          "mae": 5.72654116,
+          "rmse": 7.060618257,
+          "r2": -0.220165893
+        },
+        "shuffled_graph_alignment_ridge": {
+          "mae": 8.535606939,
+          "rmse": 10.480505998,
+          "r2": -1.688424968
+        }
+      },
+      "uncertainty_calibration": {
+        "method": "split_conformal_absolute_residual",
+        "confidence_level": 0.9,
+        "calibration_count": 12,
+        "holdout_count": 12,
+        "interval_radius": 8.350452605,
+        "empirical_coverage": 0.666666667,
+        "mean_interval_width": 16.700905211,
+        "interval_score": 55.342077241
+      }
+    },
+    "whole_admin": {
+      "split_name": "whole_admin",
+      "train_count": 54,
+      "calibration_count": 12,
+      "holdout_count": 12,
+      "leakage_audit": {
+        "group_dimension": "whole_admin",
+        "train_group_count": 9,
+        "calibration_group_count": 2,
+        "holdout_group_count": 2,
+        "cross_partition_group_overlap_count": 0,
+        "passed": true
+      },
+      "method_metrics": {
+        "train_mean": {
+          "mae": 4.306332402,
+          "rmse": 5.266060957,
+          "r2": -0.026860733
+        },
+        "spatial_idw": {
+          "mae": 5.465307816,
+          "rmse": 5.830156195,
+          "r2": -0.258636039
+        },
+        "hard_admin_mean": {
+          "mae": 4.306332402,
+          "rmse": 5.266060957,
+          "r2": -0.026860733
+        },
+        "raster_only_ridge": {
+          "mae": 4.208924576,
+          "rmse": 5.173423309,
+          "r2": 0.008949434
+        },
+        "raster_admin_soft_alignment_ridge": {
+          "mae": 5.988348097,
+          "rmse": 7.224996989,
+          "r2": -0.932925537
+        },
+        "multi_geometry_soft_alignment_ridge": {
+          "mae": 5.558484154,
+          "rmse": 7.065228685,
+          "r2": -0.848384125
+        },
+        "multi_geometry_no_dynamic_context_ridge": {
+          "mae": 5.558484154,
+          "rmse": 7.065228685,
+          "r2": -0.848384125
+        },
+        "shuffled_admin_alignment_ridge": {
+          "mae": 5.194030265,
+          "rmse": 6.329685027,
+          "r2": -0.483556128
+        },
+        "shuffled_graph_alignment_ridge": {
+          "mae": 6.00704011,
+          "rmse": 7.254039765,
+          "r2": -0.948496575
+        }
+      },
+      "uncertainty_calibration": {
+        "method": "split_conformal_absolute_residual",
+        "confidence_level": 0.9,
+        "calibration_count": 12,
+        "holdout_count": 12,
+        "interval_radius": 10.947296281,
+        "empirical_coverage": 0.833333333,
+        "mean_interval_width": 21.894592563,
+        "interval_score": 26.54122316
+      }
+    },
+    "future_temporal": {
+      "split_name": "future_temporal",
+      "train_count": 52,
+      "calibration_count": 13,
+      "holdout_count": 13,
+      "leakage_audit": {
+        "group_dimension": "future_temporal",
+        "train_group_count": 4,
+        "calibration_group_count": 1,
+        "holdout_group_count": 1,
+        "cross_partition_group_overlap_count": 0,
+        "passed": true
+      },
+      "method_metrics": {
+        "train_mean": {
+          "mae": 8.46021426,
+          "rmse": 9.49731267,
+          "r2": -3.422068596
+        },
+        "spatial_idw": {
+          "mae": 8.354718832,
+          "rmse": 8.911266204,
+          "r2": -2.893165247
+        },
+        "hard_admin_mean": {
+          "mae": 8.35472874,
+          "rmse": 8.911281915,
+          "r2": -2.893178975
+        },
+        "raster_only_ridge": {
+          "mae": 3.115228448,
+          "rmse": 4.022986662,
+          "r2": 0.206547033
+        },
+        "raster_admin_soft_alignment_ridge": {
+          "mae": 3.151271278,
+          "rmse": 4.004551674,
+          "r2": 0.213802231
+        },
+        "multi_geometry_soft_alignment_ridge": {
+          "mae": 3.052842672,
+          "rmse": 3.701748687,
+          "r2": 0.328203302
+        },
+        "multi_geometry_no_dynamic_context_ridge": {
+          "mae": 3.052842672,
+          "rmse": 3.701748687,
+          "r2": 0.328203302
+        },
+        "shuffled_admin_alignment_ridge": {
+          "mae": 3.307577419,
+          "rmse": 4.475118249,
+          "r2": 0.018177379
+        },
+        "shuffled_graph_alignment_ridge": {
+          "mae": 3.252316632,
+          "rmse": 4.200050867,
+          "r2": 0.135165306
+        }
+      },
+      "uncertainty_calibration": {
+        "method": "split_conformal_absolute_residual",
+        "confidence_level": 0.9,
+        "calibration_count": 13,
+        "holdout_count": 13,
+        "interval_radius": 9.393972627,
+        "empirical_coverage": 1.0,
+        "mean_interval_width": 18.787945253,
+        "interval_score": 18.787945253
+      }
+    }
+  },
+  "aggregate_results": {
+    "train_mean": {
+      "mean_mae": 6.042437281,
+      "mean_rmse": 7.055333001,
+      "mean_r2": -1.150757579
+    },
+    "spatial_idw": {
+      "mean_mae": 6.434801425,
+      "mean_rmse": 7.159277134,
+      "mean_r2": -1.087494923
+    },
+    "hard_admin_mean": {
+      "mean_mae": 6.007275441,
+      "mean_rmse": 6.859989416,
+      "mean_r2": -0.974461039
+    },
+    "raster_only_ridge": {
+      "mean_mae": 4.471114337,
+      "mean_rmse": 5.545600672,
+      "mean_r2": -0.046486371
+    },
+    "raster_admin_soft_alignment_ridge": {
+      "mean_mae": 5.926548875,
+      "mean_rmse": 7.283440479,
+      "mean_r2": -0.82666379
+    },
+    "multi_geometry_soft_alignment_ridge": {
+      "mean_mae": 5.433187454,
+      "mean_rmse": 6.692779199,
+      "mean_r2": -0.547416891
+    },
+    "multi_geometry_no_dynamic_context_ridge": {
+      "mean_mae": 5.433187454,
+      "mean_rmse": 6.692779199,
+      "mean_r2": -0.547416891
+    },
+    "shuffled_admin_alignment_ridge": {
+      "mean_mae": 4.742716281,
+      "mean_rmse": 5.955140511,
+      "mean_r2": -0.228514881
+    },
+    "shuffled_graph_alignment_ridge": {
+      "mean_mae": 5.93165456,
+      "mean_rmse": 7.31153221,
+      "mean_r2": -0.833918746
+    }
+  },
+  "dynamic_context_audit": {
+    "declared": false,
+    "feature_count": 0,
+    "sample_support_gate_passed": true
+  },
+  "uncertainty_calibration": {
+    "method": "split_conformal_absolute_residual",
+    "confidence_level": 0.9,
+    "coverage_tolerance": 0.05,
+    "minimum_coverage_threshold": 0.85,
+    "calibration_count": 37,
+    "holdout_count": 37,
+    "empirical_coverage": 0.837837838,
+    "mean_interval_score": 33.15791603,
+    "by_split": {
+      "spatial_block": {
+        "method": "split_conformal_absolute_residual",
+        "confidence_level": 0.9,
+        "calibration_count": 12,
+        "holdout_count": 12,
+        "interval_radius": 8.350452605,
+        "empirical_coverage": 0.666666667,
+        "mean_interval_width": 16.700905211,
+        "interval_score": 55.342077241
+      },
+      "whole_admin": {
+        "method": "split_conformal_absolute_residual",
+        "confidence_level": 0.9,
+        "calibration_count": 12,
+        "holdout_count": 12,
+        "interval_radius": 10.947296281,
+        "empirical_coverage": 0.833333333,
+        "mean_interval_width": 21.894592563,
+        "interval_score": 26.54122316
+      },
+      "future_temporal": {
+        "method": "split_conformal_absolute_residual",
+        "confidence_level": 0.9,
+        "calibration_count": 13,
+        "holdout_count": 13,
+        "interval_radius": 9.393972627,
+        "empirical_coverage": 1.0,
+        "mean_interval_width": 18.787945253,
+        "interval_score": 18.787945253
+      }
+    },
+    "coverage_gate_passed": false
+  },
+  "readiness_gates": {
+    "three_native_geometry_routes_present": true,
+    "strict_holdout_leakage_audits_passed": true,
+    "candidate_beats_required_baselines_on_every_split": false,
+    "geometry_shuffle_negative_controls_passed": false,
+    "dynamic_context_ablation_gate_passed": true,
+    "dynamic_context_sample_support_gate_passed": true,
+    "split_conformal_coverage_passed": false,
+    "observed_holdout_evidence_present": true
+  },
+  "remaining_gates": [
+    "candidate_beats_required_baselines_on_every_split",
+    "geometry_shuffle_negative_controls_passed",
+    "split_conformal_coverage_passed"
+  ],
+  "geospatial_state_prior_benchmark_ready": false,
+  "supported_claim": "no_multi_geometry_state_reconstruction_claim_supported",
+  "claim_boundary": {
+    "max_claim_level": "not_for_claim",
+    "reason": "One or more reconstruction, negative-control or calibration gates did not pass."
+  },
+  "policy_causal_effect_claim": false,
+  "action_conditioned_dynamics_claim": false,
+  "general_geospatial_world_model_validation_claim": false,
+  "limitations": [
+    "state_reconstruction_only_not_action_conditioned_dynamics",
+    "linear_fusion_candidate_not_foundation_scale_pretraining",
+    "strict_holdout_does_not_establish_policy_causality",
+    "observed_holdout_evidence_required_for_bounded_reconstruction_claim"
+  ]
+}

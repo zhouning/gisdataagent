@@ -1,0 +1,1653 @@
+{
+  "meta": {
+    "name": "openaq-api",
+    "website": "/",
+    "page": 1,
+    "limit": 20,
+    "found": 15,
+    "found_relation": "exact",
+    "found_lower_bound_exclusive": null,
+    "fetched": 15,
+    "reported_found_consistent": true,
+    "pages_fetched": 1,
+    "acquisition_complete": true
+  },
+  "results": [
+    {
+      "id": 6547,
+      "name": "南坪",
+      "locality": null,
+      "timezone": "Asia/Shanghai",
+      "country": {
+        "id": 10,
+        "code": "CN",
+        "name": "China"
+      },
+      "owner": {
+        "id": 4,
+        "name": "Unknown Governmental Organization"
+      },
+      "provider": {
+        "id": 165,
+        "name": "ChinaAQIData"
+      },
+      "isMobile": false,
+      "isMonitor": true,
+      "instruments": [
+        {
+          "id": 2,
+          "name": "Government Monitor"
+        }
+      ],
+      "sensors": [
+        {
+          "id": 18532,
+          "name": "co µg/m³",
+          "parameter": {
+            "id": 4,
+            "name": "co",
+            "units": "µg/m³",
+            "displayName": "CO mass"
+          }
+        },
+        {
+          "id": 18518,
+          "name": "no2 µg/m³",
+          "parameter": {
+            "id": 5,
+            "name": "no2",
+            "units": "µg/m³",
+            "displayName": "NO₂ mass"
+          }
+        },
+        {
+          "id": 18520,
+          "name": "o3 µg/m³",
+          "parameter": {
+            "id": 3,
+            "name": "o3",
+            "units": "µg/m³",
+            "displayName": "O₃ mass"
+          }
+        },
+        {
+          "id": 18541,
+          "name": "pm10 µg/m³",
+          "parameter": {
+            "id": 1,
+            "name": "pm10",
+            "units": "µg/m³",
+            "displayName": "PM10"
+          }
+        },
+        {
+          "id": 18516,
+          "name": "pm25 µg/m³",
+          "parameter": {
+            "id": 2,
+            "name": "pm25",
+            "units": "µg/m³",
+            "displayName": "PM2.5"
+          }
+        },
+        {
+          "id": 18517,
+          "name": "so2 µg/m³",
+          "parameter": {
+            "id": 6,
+            "name": "so2",
+            "units": "µg/m³",
+            "displayName": "SO₂ mass"
+          }
+        }
+      ],
+      "coordinates": {
+        "latitude": 29.5102,
+        "longitude": 106.57770000000001
+      },
+      "licenses": null,
+      "bounds": [
+        106.57770000000001,
+        29.5102,
+        106.57770000000001,
+        29.5102
+      ],
+      "distance": 6399.29738144,
+      "datetimeFirst": {
+        "utc": "2019-03-04T10:00:00Z",
+        "local": "2019-03-04T18:00:00+08:00"
+      },
+      "datetimeLast": {
+        "utc": "2021-08-09T11:00:00Z",
+        "local": "2021-08-09T19:00:00+08:00"
+      }
+    },
+    {
+      "id": 6550,
+      "name": "礼嘉",
+      "locality": null,
+      "timezone": "Asia/Shanghai",
+      "country": {
+        "id": 10,
+        "code": "CN",
+        "name": "China"
+      },
+      "owner": {
+        "id": 4,
+        "name": "Unknown Governmental Organization"
+      },
+      "provider": {
+        "id": 165,
+        "name": "ChinaAQIData"
+      },
+      "isMobile": false,
+      "isMonitor": true,
+      "instruments": [
+        {
+          "id": 2,
+          "name": "Government Monitor"
+        }
+      ],
+      "sensors": [
+        {
+          "id": 18531,
+          "name": "co µg/m³",
+          "parameter": {
+            "id": 4,
+            "name": "co",
+            "units": "µg/m³",
+            "displayName": "CO mass"
+          }
+        },
+        {
+          "id": 18535,
+          "name": "no2 µg/m³",
+          "parameter": {
+            "id": 5,
+            "name": "no2",
+            "units": "µg/m³",
+            "displayName": "NO₂ mass"
+          }
+        },
+        {
+          "id": 18537,
+          "name": "o3 µg/m³",
+          "parameter": {
+            "id": 3,
+            "name": "o3",
+            "units": "µg/m³",
+            "displayName": "O₃ mass"
+          }
+        },
+        {
+          "id": 18538,
+          "name": "pm10 µg/m³",
+          "parameter": {
+            "id": 1,
+            "name": "pm10",
+            "units": "µg/m³",
+            "displayName": "PM10"
+          }
+        },
+        {
+          "id": 18539,
+          "name": "pm25 µg/m³",
+          "parameter": {
+            "id": 2,
+            "name": "pm25",
+            "units": "µg/m³",
+            "displayName": "PM2.5"
+          }
+        },
+        {
+          "id": 18540,
+          "name": "so2 µg/m³",
+          "parameter": {
+            "id": 6,
+            "name": "so2",
+            "units": "µg/m³",
+            "displayName": "SO₂ mass"
+          }
+        }
+      ],
+      "coordinates": {
+        "latitude": 29.645299999999995,
+        "longitude": 106.5616
+      },
+      "licenses": null,
+      "bounds": [
+        106.5616,
+        29.645299999999995,
+        106.5616,
+        29.645299999999995
+      ],
+      "distance": 9180.21211848,
+      "datetimeFirst": {
+        "utc": "2019-03-01T02:00:00Z",
+        "local": "2019-03-01T10:00:00+08:00"
+      },
+      "datetimeLast": {
+        "utc": "2021-08-09T11:00:00Z",
+        "local": "2021-08-09T19:00:00+08:00"
+      }
+    },
+    {
+      "id": 7329,
+      "name": "龙井湾",
+      "locality": null,
+      "timezone": "Asia/Shanghai",
+      "country": {
+        "id": 10,
+        "code": "CN",
+        "name": "China"
+      },
+      "owner": {
+        "id": 4,
+        "name": "Unknown Governmental Organization"
+      },
+      "provider": {
+        "id": 165,
+        "name": "ChinaAQIData"
+      },
+      "isMobile": false,
+      "isMonitor": true,
+      "instruments": [
+        {
+          "id": 2,
+          "name": "Government Monitor"
+        }
+      ],
+      "sensors": [
+        {
+          "id": 21156,
+          "name": "co µg/m³",
+          "parameter": {
+            "id": 4,
+            "name": "co",
+            "units": "µg/m³",
+            "displayName": "CO mass"
+          }
+        },
+        {
+          "id": 21157,
+          "name": "no2 µg/m³",
+          "parameter": {
+            "id": 5,
+            "name": "no2",
+            "units": "µg/m³",
+            "displayName": "NO₂ mass"
+          }
+        },
+        {
+          "id": 21158,
+          "name": "o3 µg/m³",
+          "parameter": {
+            "id": 3,
+            "name": "o3",
+            "units": "µg/m³",
+            "displayName": "O₃ mass"
+          }
+        },
+        {
+          "id": 21159,
+          "name": "pm10 µg/m³",
+          "parameter": {
+            "id": 1,
+            "name": "pm10",
+            "units": "µg/m³",
+            "displayName": "PM10"
+          }
+        },
+        {
+          "id": 21160,
+          "name": "pm25 µg/m³",
+          "parameter": {
+            "id": 2,
+            "name": "pm25",
+            "units": "µg/m³",
+            "displayName": "PM2.5"
+          }
+        },
+        {
+          "id": 21161,
+          "name": "so2 µg/m³",
+          "parameter": {
+            "id": 6,
+            "name": "so2",
+            "units": "µg/m³",
+            "displayName": "SO₂ mass"
+          }
+        }
+      ],
+      "coordinates": {
+        "latitude": 29.5728,
+        "longitude": 106.4037
+      },
+      "licenses": null,
+      "bounds": [
+        106.4037,
+        29.5728,
+        106.4037,
+        29.5728
+      ],
+      "distance": 14314.87061785,
+      "datetimeFirst": {
+        "utc": "2018-10-17T12:00:00Z",
+        "local": "2018-10-17T20:00:00+08:00"
+      },
+      "datetimeLast": {
+        "utc": "2021-08-09T11:00:00Z",
+        "local": "2021-08-09T19:00:00+08:00"
+      }
+    },
+    {
+      "id": 7331,
+      "name": "龙洲湾",
+      "locality": null,
+      "timezone": "Asia/Shanghai",
+      "country": {
+        "id": 10,
+        "code": "CN",
+        "name": "China"
+      },
+      "owner": {
+        "id": 4,
+        "name": "Unknown Governmental Organization"
+      },
+      "provider": {
+        "id": 165,
+        "name": "ChinaAQIData"
+      },
+      "isMobile": false,
+      "isMonitor": true,
+      "instruments": [
+        {
+          "id": 2,
+          "name": "Government Monitor"
+        }
+      ],
+      "sensors": [
+        {
+          "id": 21168,
+          "name": "co µg/m³",
+          "parameter": {
+            "id": 4,
+            "name": "co",
+            "units": "µg/m³",
+            "displayName": "CO mass"
+          }
+        },
+        {
+          "id": 21169,
+          "name": "no2 µg/m³",
+          "parameter": {
+            "id": 5,
+            "name": "no2",
+            "units": "µg/m³",
+            "displayName": "NO₂ mass"
+          }
+        },
+        {
+          "id": 21170,
+          "name": "o3 µg/m³",
+          "parameter": {
+            "id": 3,
+            "name": "o3",
+            "units": "µg/m³",
+            "displayName": "O₃ mass"
+          }
+        },
+        {
+          "id": 21171,
+          "name": "pm10 µg/m³",
+          "parameter": {
+            "id": 1,
+            "name": "pm10",
+            "units": "µg/m³",
+            "displayName": "PM10"
+          }
+        },
+        {
+          "id": 21172,
+          "name": "pm25 µg/m³",
+          "parameter": {
+            "id": 2,
+            "name": "pm25",
+            "units": "µg/m³",
+            "displayName": "PM2.5"
+          }
+        },
+        {
+          "id": 21173,
+          "name": "so2 µg/m³",
+          "parameter": {
+            "id": 6,
+            "name": "so2",
+            "units": "µg/m³",
+            "displayName": "SO₂ mass"
+          }
+        }
+      ],
+      "coordinates": {
+        "latitude": 29.4153,
+        "longitude": 106.5507
+      },
+      "licenses": null,
+      "bounds": [
+        106.5507,
+        29.4153,
+        106.5507,
+        29.4153
+      ],
+      "distance": 16371.66673156,
+      "datetimeFirst": {
+        "utc": "2018-10-17T12:00:00Z",
+        "local": "2018-10-17T20:00:00+08:00"
+      },
+      "datetimeLast": {
+        "utc": "2021-08-09T11:00:00Z",
+        "local": "2021-08-09T19:00:00+08:00"
+      }
+    },
+    {
+      "id": 7332,
+      "name": "上清寺",
+      "locality": null,
+      "timezone": "Asia/Shanghai",
+      "country": {
+        "id": 10,
+        "code": "CN",
+        "name": "China"
+      },
+      "owner": {
+        "id": 4,
+        "name": "Unknown Governmental Organization"
+      },
+      "provider": {
+        "id": 165,
+        "name": "ChinaAQIData"
+      },
+      "isMobile": false,
+      "isMonitor": true,
+      "instruments": [
+        {
+          "id": 2,
+          "name": "Government Monitor"
+        }
+      ],
+      "sensors": [
+        {
+          "id": 21174,
+          "name": "co µg/m³",
+          "parameter": {
+            "id": 4,
+            "name": "co",
+            "units": "µg/m³",
+            "displayName": "CO mass"
+          }
+        },
+        {
+          "id": 21175,
+          "name": "no2 µg/m³",
+          "parameter": {
+            "id": 5,
+            "name": "no2",
+            "units": "µg/m³",
+            "displayName": "NO₂ mass"
+          }
+        },
+        {
+          "id": 21176,
+          "name": "o3 µg/m³",
+          "parameter": {
+            "id": 3,
+            "name": "o3",
+            "units": "µg/m³",
+            "displayName": "O₃ mass"
+          }
+        },
+        {
+          "id": 21177,
+          "name": "pm10 µg/m³",
+          "parameter": {
+            "id": 1,
+            "name": "pm10",
+            "units": "µg/m³",
+            "displayName": "PM10"
+          }
+        },
+        {
+          "id": 21178,
+          "name": "pm25 µg/m³",
+          "parameter": {
+            "id": 2,
+            "name": "pm25",
+            "units": "µg/m³",
+            "displayName": "PM2.5"
+          }
+        },
+        {
+          "id": 21179,
+          "name": "so2 µg/m³",
+          "parameter": {
+            "id": 6,
+            "name": "so2",
+            "units": "µg/m³",
+            "displayName": "SO₂ mass"
+          }
+        }
+      ],
+      "coordinates": {
+        "latitude": 29.5654,
+        "longitude": 106.5468
+      },
+      "licenses": null,
+      "bounds": [
+        106.5468,
+        29.5654,
+        106.5468,
+        29.5654
+      ],
+      "distance": 486.23153014,
+      "datetimeFirst": {
+        "utc": "2018-10-17T12:00:00Z",
+        "local": "2018-10-17T20:00:00+08:00"
+      },
+      "datetimeLast": {
+        "utc": "2021-08-09T11:00:00Z",
+        "local": "2021-08-09T19:00:00+08:00"
+      }
+    },
+    {
+      "id": 7359,
+      "name": "歇台子",
+      "locality": null,
+      "timezone": "Asia/Shanghai",
+      "country": {
+        "id": 10,
+        "code": "CN",
+        "name": "China"
+      },
+      "owner": {
+        "id": 4,
+        "name": "Unknown Governmental Organization"
+      },
+      "provider": {
+        "id": 165,
+        "name": "ChinaAQIData"
+      },
+      "isMobile": false,
+      "isMonitor": true,
+      "instruments": [
+        {
+          "id": 2,
+          "name": "Government Monitor"
+        }
+      ],
+      "sensors": [
+        {
+          "id": 21342,
+          "name": "co µg/m³",
+          "parameter": {
+            "id": 4,
+            "name": "co",
+            "units": "µg/m³",
+            "displayName": "CO mass"
+          }
+        },
+        {
+          "id": 21343,
+          "name": "no2 µg/m³",
+          "parameter": {
+            "id": 5,
+            "name": "no2",
+            "units": "µg/m³",
+            "displayName": "NO₂ mass"
+          }
+        },
+        {
+          "id": 21344,
+          "name": "o3 µg/m³",
+          "parameter": {
+            "id": 3,
+            "name": "o3",
+            "units": "µg/m³",
+            "displayName": "O₃ mass"
+          }
+        },
+        {
+          "id": 21345,
+          "name": "pm10 µg/m³",
+          "parameter": {
+            "id": 1,
+            "name": "pm10",
+            "units": "µg/m³",
+            "displayName": "PM10"
+          }
+        },
+        {
+          "id": 21346,
+          "name": "pm25 µg/m³",
+          "parameter": {
+            "id": 2,
+            "name": "pm25",
+            "units": "µg/m³",
+            "displayName": "PM2.5"
+          }
+        },
+        {
+          "id": 21347,
+          "name": "so2 µg/m³",
+          "parameter": {
+            "id": 6,
+            "name": "so2",
+            "units": "µg/m³",
+            "displayName": "SO₂ mass"
+          }
+        }
+      ],
+      "coordinates": {
+        "latitude": 29.5346,
+        "longitude": 106.49580000000002
+      },
+      "licenses": null,
+      "bounds": [
+        106.49580000000002,
+        29.5346,
+        106.49580000000002,
+        29.5346
+      ],
+      "distance": 6207.41936122,
+      "datetimeFirst": {
+        "utc": "2018-10-17T12:00:00Z",
+        "local": "2018-10-17T20:00:00+08:00"
+      },
+      "datetimeLast": {
+        "utc": "2021-08-09T11:00:00Z",
+        "local": "2021-08-09T19:00:00+08:00"
+      }
+    },
+    {
+      "id": 9202,
+      "name": "白市驿",
+      "locality": null,
+      "timezone": "Asia/Shanghai",
+      "country": {
+        "id": 10,
+        "code": "CN",
+        "name": "China"
+      },
+      "owner": {
+        "id": 4,
+        "name": "Unknown Governmental Organization"
+      },
+      "provider": {
+        "id": 165,
+        "name": "ChinaAQIData"
+      },
+      "isMobile": false,
+      "isMonitor": true,
+      "instruments": [
+        {
+          "id": 2,
+          "name": "Government Monitor"
+        }
+      ],
+      "sensors": [
+        {
+          "id": 27676,
+          "name": "co µg/m³",
+          "parameter": {
+            "id": 4,
+            "name": "co",
+            "units": "µg/m³",
+            "displayName": "CO mass"
+          }
+        },
+        {
+          "id": 27677,
+          "name": "no2 µg/m³",
+          "parameter": {
+            "id": 5,
+            "name": "no2",
+            "units": "µg/m³",
+            "displayName": "NO₂ mass"
+          }
+        },
+        {
+          "id": 27678,
+          "name": "o3 µg/m³",
+          "parameter": {
+            "id": 3,
+            "name": "o3",
+            "units": "µg/m³",
+            "displayName": "O₃ mass"
+          }
+        },
+        {
+          "id": 27679,
+          "name": "pm10 µg/m³",
+          "parameter": {
+            "id": 1,
+            "name": "pm10",
+            "units": "µg/m³",
+            "displayName": "PM10"
+          }
+        },
+        {
+          "id": 27680,
+          "name": "pm25 µg/m³",
+          "parameter": {
+            "id": 2,
+            "name": "pm25",
+            "units": "µg/m³",
+            "displayName": "PM2.5"
+          }
+        },
+        {
+          "id": 27681,
+          "name": "so2 µg/m³",
+          "parameter": {
+            "id": 6,
+            "name": "so2",
+            "units": "µg/m³",
+            "displayName": "SO₂ mass"
+          }
+        }
+      ],
+      "coordinates": {
+        "latitude": 29.482200000000002,
+        "longitude": 106.36400000000002
+      },
+      "licenses": null,
+      "bounds": [
+        106.36400000000002,
+        29.482200000000002,
+        106.36400000000002,
+        29.482200000000002
+      ],
+      "distance": 20220.34836433,
+      "datetimeFirst": {
+        "utc": "2018-10-17T12:00:00Z",
+        "local": "2018-10-17T20:00:00+08:00"
+      },
+      "datetimeLast": {
+        "utc": "2020-12-31T16:00:00Z",
+        "local": "2021-01-01T00:00:00+08:00"
+      }
+    },
+    {
+      "id": 9261,
+      "name": "礼嘉",
+      "locality": null,
+      "timezone": "Asia/Shanghai",
+      "country": {
+        "id": 10,
+        "code": "CN",
+        "name": "China"
+      },
+      "owner": {
+        "id": 4,
+        "name": "Unknown Governmental Organization"
+      },
+      "provider": {
+        "id": 165,
+        "name": "ChinaAQIData"
+      },
+      "isMobile": false,
+      "isMonitor": true,
+      "instruments": [
+        {
+          "id": 2,
+          "name": "Government Monitor"
+        }
+      ],
+      "sensors": [
+        {
+          "id": 28040,
+          "name": "co µg/m³",
+          "parameter": {
+            "id": 4,
+            "name": "co",
+            "units": "µg/m³",
+            "displayName": "CO mass"
+          }
+        },
+        {
+          "id": 28041,
+          "name": "no2 µg/m³",
+          "parameter": {
+            "id": 5,
+            "name": "no2",
+            "units": "µg/m³",
+            "displayName": "NO₂ mass"
+          }
+        },
+        {
+          "id": 28042,
+          "name": "o3 µg/m³",
+          "parameter": {
+            "id": 3,
+            "name": "o3",
+            "units": "µg/m³",
+            "displayName": "O₃ mass"
+          }
+        },
+        {
+          "id": 28043,
+          "name": "pm10 µg/m³",
+          "parameter": {
+            "id": 1,
+            "name": "pm10",
+            "units": "µg/m³",
+            "displayName": "PM10"
+          }
+        },
+        {
+          "id": 28044,
+          "name": "pm25 µg/m³",
+          "parameter": {
+            "id": 2,
+            "name": "pm25",
+            "units": "µg/m³",
+            "displayName": "PM2.5"
+          }
+        },
+        {
+          "id": 28045,
+          "name": "so2 µg/m³",
+          "parameter": {
+            "id": 6,
+            "name": "so2",
+            "units": "µg/m³",
+            "displayName": "SO₂ mass"
+          }
+        }
+      ],
+      "coordinates": {
+        "latitude": 29.645299999999995,
+        "longitude": 106.562
+      },
+      "licenses": null,
+      "bounds": [
+        106.562,
+        29.645299999999995,
+        106.562,
+        29.645299999999995
+      ],
+      "distance": 9184.6265761,
+      "datetimeFirst": {
+        "utc": "2018-10-17T12:00:00Z",
+        "local": "2018-10-17T20:00:00+08:00"
+      },
+      "datetimeLast": {
+        "utc": "2020-12-31T16:00:00Z",
+        "local": "2021-01-01T00:00:00+08:00"
+      }
+    },
+    {
+      "id": 9275,
+      "name": "空港",
+      "locality": null,
+      "timezone": "Asia/Shanghai",
+      "country": {
+        "id": 10,
+        "code": "CN",
+        "name": "China"
+      },
+      "owner": {
+        "id": 4,
+        "name": "Unknown Governmental Organization"
+      },
+      "provider": {
+        "id": 165,
+        "name": "ChinaAQIData"
+      },
+      "isMobile": false,
+      "isMonitor": true,
+      "instruments": [
+        {
+          "id": 2,
+          "name": "Government Monitor"
+        }
+      ],
+      "sensors": [
+        {
+          "id": 28116,
+          "name": "co µg/m³",
+          "parameter": {
+            "id": 4,
+            "name": "co",
+            "units": "µg/m³",
+            "displayName": "CO mass"
+          }
+        },
+        {
+          "id": 28117,
+          "name": "no2 µg/m³",
+          "parameter": {
+            "id": 5,
+            "name": "no2",
+            "units": "µg/m³",
+            "displayName": "NO₂ mass"
+          }
+        },
+        {
+          "id": 28118,
+          "name": "o3 µg/m³",
+          "parameter": {
+            "id": 3,
+            "name": "o3",
+            "units": "µg/m³",
+            "displayName": "O₃ mass"
+          }
+        },
+        {
+          "id": 28119,
+          "name": "pm10 µg/m³",
+          "parameter": {
+            "id": 1,
+            "name": "pm10",
+            "units": "µg/m³",
+            "displayName": "PM10"
+          }
+        },
+        {
+          "id": 28120,
+          "name": "pm25 µg/m³",
+          "parameter": {
+            "id": 2,
+            "name": "pm25",
+            "units": "µg/m³",
+            "displayName": "PM2.5"
+          }
+        },
+        {
+          "id": 28121,
+          "name": "so2 µg/m³",
+          "parameter": {
+            "id": 6,
+            "name": "so2",
+            "units": "µg/m³",
+            "displayName": "SO₂ mass"
+          }
+        }
+      ],
+      "coordinates": {
+        "latitude": 29.7166,
+        "longitude": 106.62050000000002
+      },
+      "licenses": null,
+      "bounds": [
+        106.62050000000002,
+        29.7166,
+        106.62050000000002,
+        29.7166
+      ],
+      "distance": 18307.8160908,
+      "datetimeFirst": {
+        "utc": "2018-10-17T12:00:00Z",
+        "local": "2018-10-17T20:00:00+08:00"
+      },
+      "datetimeLast": {
+        "utc": "2021-08-09T11:00:00Z",
+        "local": "2021-08-09T19:00:00+08:00"
+      }
+    },
+    {
+      "id": 9455,
+      "name": "茶园",
+      "locality": null,
+      "timezone": "Asia/Shanghai",
+      "country": {
+        "id": 10,
+        "code": "CN",
+        "name": "China"
+      },
+      "owner": {
+        "id": 4,
+        "name": "Unknown Governmental Organization"
+      },
+      "provider": {
+        "id": 165,
+        "name": "ChinaAQIData"
+      },
+      "isMobile": false,
+      "isMonitor": true,
+      "instruments": [
+        {
+          "id": 2,
+          "name": "Government Monitor"
+        }
+      ],
+      "sensors": [
+        {
+          "id": 28848,
+          "name": "co µg/m³",
+          "parameter": {
+            "id": 4,
+            "name": "co",
+            "units": "µg/m³",
+            "displayName": "CO mass"
+          }
+        },
+        {
+          "id": 28849,
+          "name": "no2 µg/m³",
+          "parameter": {
+            "id": 5,
+            "name": "no2",
+            "units": "µg/m³",
+            "displayName": "NO₂ mass"
+          }
+        },
+        {
+          "id": 28850,
+          "name": "o3 µg/m³",
+          "parameter": {
+            "id": 3,
+            "name": "o3",
+            "units": "µg/m³",
+            "displayName": "O₃ mass"
+          }
+        },
+        {
+          "id": 28856,
+          "name": "pm10 µg/m³",
+          "parameter": {
+            "id": 1,
+            "name": "pm10",
+            "units": "µg/m³",
+            "displayName": "PM10"
+          }
+        },
+        {
+          "id": 28857,
+          "name": "pm25 µg/m³",
+          "parameter": {
+            "id": 2,
+            "name": "pm25",
+            "units": "µg/m³",
+            "displayName": "PM2.5"
+          }
+        },
+        {
+          "id": 28858,
+          "name": "so2 µg/m³",
+          "parameter": {
+            "id": 6,
+            "name": "so2",
+            "units": "µg/m³",
+            "displayName": "SO₂ mass"
+          }
+        }
+      ],
+      "coordinates": {
+        "latitude": 29.4906,
+        "longitude": 106.6349
+      },
+      "licenses": null,
+      "bounds": [
+        106.6349,
+        29.4906,
+        106.6349,
+        29.4906
+      ],
+      "distance": 11426.01942295,
+      "datetimeFirst": {
+        "utc": "2018-10-17T12:00:00Z",
+        "local": "2018-10-17T20:00:00+08:00"
+      },
+      "datetimeLast": {
+        "utc": "2021-08-09T11:00:00Z",
+        "local": "2021-08-09T19:00:00+08:00"
+      }
+    },
+    {
+      "id": 9513,
+      "name": "蔡家",
+      "locality": null,
+      "timezone": "Asia/Shanghai",
+      "country": {
+        "id": 10,
+        "code": "CN",
+        "name": "China"
+      },
+      "owner": {
+        "id": 4,
+        "name": "Unknown Governmental Organization"
+      },
+      "provider": {
+        "id": 165,
+        "name": "ChinaAQIData"
+      },
+      "isMobile": false,
+      "isMonitor": true,
+      "instruments": [
+        {
+          "id": 2,
+          "name": "Government Monitor"
+        }
+      ],
+      "sensors": [
+        {
+          "id": 29100,
+          "name": "co µg/m³",
+          "parameter": {
+            "id": 4,
+            "name": "co",
+            "units": "µg/m³",
+            "displayName": "CO mass"
+          }
+        },
+        {
+          "id": 29101,
+          "name": "no2 µg/m³",
+          "parameter": {
+            "id": 5,
+            "name": "no2",
+            "units": "µg/m³",
+            "displayName": "NO₂ mass"
+          }
+        },
+        {
+          "id": 29102,
+          "name": "o3 µg/m³",
+          "parameter": {
+            "id": 3,
+            "name": "o3",
+            "units": "µg/m³",
+            "displayName": "O₃ mass"
+          }
+        },
+        {
+          "id": 29103,
+          "name": "pm10 µg/m³",
+          "parameter": {
+            "id": 1,
+            "name": "pm10",
+            "units": "µg/m³",
+            "displayName": "PM10"
+          }
+        },
+        {
+          "id": 29104,
+          "name": "pm25 µg/m³",
+          "parameter": {
+            "id": 2,
+            "name": "pm25",
+            "units": "µg/m³",
+            "displayName": "PM2.5"
+          }
+        },
+        {
+          "id": 29105,
+          "name": "so2 µg/m³",
+          "parameter": {
+            "id": 6,
+            "name": "so2",
+            "units": "µg/m³",
+            "displayName": "SO₂ mass"
+          }
+        }
+      ],
+      "coordinates": {
+        "latitude": 29.7091,
+        "longitude": 106.45219999999999
+      },
+      "licenses": null,
+      "bounds": [
+        106.45219999999999,
+        29.7091,
+        106.45219999999999,
+        29.7091
+      ],
+      "distance": 18809.635965,
+      "datetimeFirst": {
+        "utc": "2018-10-17T12:00:00Z",
+        "local": "2018-10-17T20:00:00+08:00"
+      },
+      "datetimeLast": {
+        "utc": "2021-08-09T11:00:00Z",
+        "local": "2021-08-09T19:00:00+08:00"
+      }
+    },
+    {
+      "id": 9845,
+      "name": "两路",
+      "locality": null,
+      "timezone": "Asia/Shanghai",
+      "country": {
+        "id": 10,
+        "code": "CN",
+        "name": "China"
+      },
+      "owner": {
+        "id": 4,
+        "name": "Unknown Governmental Organization"
+      },
+      "provider": {
+        "id": 165,
+        "name": "ChinaAQIData"
+      },
+      "isMobile": false,
+      "isMonitor": true,
+      "instruments": [
+        {
+          "id": 2,
+          "name": "Government Monitor"
+        }
+      ],
+      "sensors": [
+        {
+          "id": 30906,
+          "name": "co µg/m³",
+          "parameter": {
+            "id": 4,
+            "name": "co",
+            "units": "µg/m³",
+            "displayName": "CO mass"
+          }
+        },
+        {
+          "id": 30907,
+          "name": "no2 µg/m³",
+          "parameter": {
+            "id": 5,
+            "name": "no2",
+            "units": "µg/m³",
+            "displayName": "NO₂ mass"
+          }
+        },
+        {
+          "id": 30908,
+          "name": "o3 µg/m³",
+          "parameter": {
+            "id": 3,
+            "name": "o3",
+            "units": "µg/m³",
+            "displayName": "O₃ mass"
+          }
+        },
+        {
+          "id": 30909,
+          "name": "pm10 µg/m³",
+          "parameter": {
+            "id": 1,
+            "name": "pm10",
+            "units": "µg/m³",
+            "displayName": "PM10"
+          }
+        },
+        {
+          "id": 30910,
+          "name": "pm25 µg/m³",
+          "parameter": {
+            "id": 2,
+            "name": "pm25",
+            "units": "µg/m³",
+            "displayName": "PM2.5"
+          }
+        },
+        {
+          "id": 30911,
+          "name": "so2 µg/m³",
+          "parameter": {
+            "id": 6,
+            "name": "so2",
+            "units": "µg/m³",
+            "displayName": "SO₂ mass"
+          }
+        }
+      ],
+      "coordinates": {
+        "latitude": 29.722800000000003,
+        "longitude": 106.6263
+      },
+      "licenses": null,
+      "bounds": [
+        106.6263,
+        29.722800000000003,
+        106.6263,
+        29.722800000000003
+      ],
+      "distance": 19155.22032746,
+      "datetimeFirst": {
+        "utc": "2018-10-17T12:00:00Z",
+        "local": "2018-10-17T20:00:00+08:00"
+      },
+      "datetimeLast": {
+        "utc": "2021-08-09T11:00:00Z",
+        "local": "2021-08-09T19:00:00+08:00"
+      }
+    },
+    {
+      "id": 10004,
+      "name": "南坪",
+      "locality": null,
+      "timezone": "Asia/Shanghai",
+      "country": {
+        "id": 10,
+        "code": "CN",
+        "name": "China"
+      },
+      "owner": {
+        "id": 4,
+        "name": "Unknown Governmental Organization"
+      },
+      "provider": {
+        "id": 165,
+        "name": "ChinaAQIData"
+      },
+      "isMobile": false,
+      "isMonitor": true,
+      "instruments": [
+        {
+          "id": 2,
+          "name": "Government Monitor"
+        }
+      ],
+      "sensors": [
+        {
+          "id": 31871,
+          "name": "co µg/m³",
+          "parameter": {
+            "id": 4,
+            "name": "co",
+            "units": "µg/m³",
+            "displayName": "CO mass"
+          }
+        },
+        {
+          "id": 31873,
+          "name": "no2 µg/m³",
+          "parameter": {
+            "id": 5,
+            "name": "no2",
+            "units": "µg/m³",
+            "displayName": "NO₂ mass"
+          }
+        },
+        {
+          "id": 31874,
+          "name": "o3 µg/m³",
+          "parameter": {
+            "id": 3,
+            "name": "o3",
+            "units": "µg/m³",
+            "displayName": "O₃ mass"
+          }
+        },
+        {
+          "id": 31875,
+          "name": "pm10 µg/m³",
+          "parameter": {
+            "id": 1,
+            "name": "pm10",
+            "units": "µg/m³",
+            "displayName": "PM10"
+          }
+        },
+        {
+          "id": 31876,
+          "name": "pm25 µg/m³",
+          "parameter": {
+            "id": 2,
+            "name": "pm25",
+            "units": "µg/m³",
+            "displayName": "PM2.5"
+          }
+        },
+        {
+          "id": 31877,
+          "name": "so2 µg/m³",
+          "parameter": {
+            "id": 6,
+            "name": "so2",
+            "units": "µg/m³",
+            "displayName": "SO₂ mass"
+          }
+        }
+      ],
+      "coordinates": {
+        "latitude": 29.5186,
+        "longitude": 106.54
+      },
+      "licenses": null,
+      "bounds": [
+        106.54,
+        29.5186,
+        106.54,
+        29.5186
+      ],
+      "distance": 5035.67383831,
+      "datetimeFirst": {
+        "utc": "2018-10-17T12:00:00Z",
+        "local": "2018-10-17T20:00:00+08:00"
+      },
+      "datetimeLast": {
+        "utc": "2020-12-31T16:00:00Z",
+        "local": "2021-01-01T00:00:00+08:00"
+      }
+    },
+    {
+      "id": 10068,
+      "name": "唐家沱",
+      "locality": null,
+      "timezone": "Asia/Shanghai",
+      "country": {
+        "id": 10,
+        "code": "CN",
+        "name": "China"
+      },
+      "owner": {
+        "id": 4,
+        "name": "Unknown Governmental Organization"
+      },
+      "provider": {
+        "id": 165,
+        "name": "ChinaAQIData"
+      },
+      "isMobile": false,
+      "isMonitor": true,
+      "instruments": [
+        {
+          "id": 2,
+          "name": "Government Monitor"
+        }
+      ],
+      "sensors": [
+        {
+          "id": 32252,
+          "name": "co µg/m³",
+          "parameter": {
+            "id": 4,
+            "name": "co",
+            "units": "µg/m³",
+            "displayName": "CO mass"
+          }
+        },
+        {
+          "id": 32253,
+          "name": "no2 µg/m³",
+          "parameter": {
+            "id": 5,
+            "name": "no2",
+            "units": "µg/m³",
+            "displayName": "NO₂ mass"
+          }
+        },
+        {
+          "id": 32254,
+          "name": "o3 µg/m³",
+          "parameter": {
+            "id": 3,
+            "name": "o3",
+            "units": "µg/m³",
+            "displayName": "O₃ mass"
+          }
+        },
+        {
+          "id": 32255,
+          "name": "pm10 µg/m³",
+          "parameter": {
+            "id": 1,
+            "name": "pm10",
+            "units": "µg/m³",
+            "displayName": "PM10"
+          }
+        },
+        {
+          "id": 32256,
+          "name": "pm25 µg/m³",
+          "parameter": {
+            "id": 2,
+            "name": "pm25",
+            "units": "µg/m³",
+            "displayName": "PM2.5"
+          }
+        },
+        {
+          "id": 32257,
+          "name": "so2 µg/m³",
+          "parameter": {
+            "id": 6,
+            "name": "so2",
+            "units": "µg/m³",
+            "displayName": "SO₂ mass"
+          }
+        }
+      ],
+      "coordinates": {
+        "latitude": 29.6277,
+        "longitude": 106.6556
+      },
+      "licenses": null,
+      "bounds": [
+        106.6556,
+        29.6277,
+        106.6556,
+        29.6277
+      ],
+      "distance": 12414.2797921,
+      "datetimeFirst": {
+        "utc": "2018-10-17T12:00:00Z",
+        "local": "2018-10-17T20:00:00+08:00"
+      },
+      "datetimeLast": {
+        "utc": "2021-08-09T11:00:00Z",
+        "local": "2021-08-09T19:00:00+08:00"
+      }
+    },
+    {
+      "id": 10473,
+      "name": "新山村",
+      "locality": null,
+      "timezone": "Asia/Shanghai",
+      "country": {
+        "id": 10,
+        "code": "CN",
+        "name": "China"
+      },
+      "owner": {
+        "id": 4,
+        "name": "Unknown Governmental Organization"
+      },
+      "provider": {
+        "id": 165,
+        "name": "ChinaAQIData"
+      },
+      "isMobile": false,
+      "isMonitor": true,
+      "instruments": [
+        {
+          "id": 2,
+          "name": "Government Monitor"
+        }
+      ],
+      "sensors": [
+        {
+          "id": 34707,
+          "name": "co µg/m³",
+          "parameter": {
+            "id": 4,
+            "name": "co",
+            "units": "µg/m³",
+            "displayName": "CO mass"
+          }
+        },
+        {
+          "id": 34708,
+          "name": "no2 µg/m³",
+          "parameter": {
+            "id": 5,
+            "name": "no2",
+            "units": "µg/m³",
+            "displayName": "NO₂ mass"
+          }
+        },
+        {
+          "id": 34709,
+          "name": "o3 µg/m³",
+          "parameter": {
+            "id": 3,
+            "name": "o3",
+            "units": "µg/m³",
+            "displayName": "O₃ mass"
+          }
+        },
+        {
+          "id": 34710,
+          "name": "pm10 µg/m³",
+          "parameter": {
+            "id": 1,
+            "name": "pm10",
+            "units": "µg/m³",
+            "displayName": "PM10"
+          }
+        },
+        {
+          "id": 34711,
+          "name": "pm25 µg/m³",
+          "parameter": {
+            "id": 2,
+            "name": "pm25",
+            "units": "µg/m³",
+            "displayName": "PM2.5"
+          }
+        },
+        {
+          "id": 34712,
+          "name": "so2 µg/m³",
+          "parameter": {
+            "id": 6,
+            "name": "so2",
+            "units": "µg/m³",
+            "displayName": "SO₂ mass"
+          }
+        }
+      ],
+      "coordinates": {
+        "latitude": 29.4875,
+        "longitude": 106.4782
+      },
+      "licenses": null,
+      "bounds": [
+        106.4782,
+        29.4875,
+        106.4782,
+        29.4875
+      ],
+      "distance": 10947.27848574,
+      "datetimeFirst": {
+        "utc": "2018-10-17T12:00:00Z",
+        "local": "2018-10-17T20:00:00+08:00"
+      },
+      "datetimeLast": {
+        "utc": "2021-08-09T11:00:00Z",
+        "local": "2021-08-09T19:00:00+08:00"
+      }
+    }
+  ],
+  "schema": "uwm.openaq_paginated_results.v1"
+}

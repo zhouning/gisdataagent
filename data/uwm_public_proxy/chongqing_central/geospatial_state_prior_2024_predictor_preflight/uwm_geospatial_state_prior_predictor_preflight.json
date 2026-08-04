@@ -1,0 +1,614 @@
+{
+  "schema": "uwm.geospatial_kernel.state_prior_predictor_preflight.v1",
+  "version": "0.1",
+  "assessment_id": "chongqing-observed-station-p1-2024-predictor-preflight",
+  "created_at": "2026-08-04T21:50:00Z",
+  "protocol_id": "chongqing-observed-station-next-p1-2024-07-02-07",
+  "protocol_sha256": "ee52b37d10bda4b7f64fea960254312806bcefaea8ef9220630226001df37488",
+  "input_artifact_sha256": {
+    "acquisition_plan_sha256": "2a11ca59e1fd8be61ab7d5c58cc7e22cc4f8bc93f4c2b9a9c0ace0a920a8e19d",
+    "reference_acquisition_audit_sha256": "116fee99bbc985ce9c2edad4c29fee4be8f7bb2d6beb7a152ffccaec72bfce12",
+    "prior_attempt_manifest_sha256": "6e55ffc9d0e16ac70bac93c50f6a85bd419881df285dff53e711d97c1f4671e7",
+    "station_admin_crosswalk_sha256": "cdc648f49c822a21a0e370121fbbbcd53e5400b015d932b3c76a7b39b42b7954",
+    "admin_feature_collection_sha256": "6090ad43117438ddc0e54f43889d391f1a2a691334b2545d0e6efe953b6cfd6c",
+    "admin_snapshot_manifest_sha256": "5b2050b43e64367f1fb506e4508a61ec21be699de9d09d57a91084ba7fe659cd",
+    "admin_spatial_graph_sha256": "62275f09ec3905c58b78cf6e4cab0441ad869de7240beb3fd0b7bf056df909ca",
+    "tap_file_inventory_sha256": "c70e831b7e5144f8aa3bfe141f372c1ea8f31a4c314a57c88ac514689eb7e7fd"
+  },
+  "frozen_window": {
+    "target_start_date": "2024-07-02",
+    "target_end_date": "2024-07-07",
+    "required_lag_start_date": "2024-07-01",
+    "required_lag_end_date": "2024-07-06"
+  },
+  "binding_summary": {
+    "planned_station_count": 15,
+    "planned_sensor_count": 15,
+    "bindings_match_prior_audited_catalog": true,
+    "matched_crosswalk_station_count": 15,
+    "assigned_admin_group_count": 14,
+    "planned_bindings": [
+      {
+        "station_id": 7332,
+        "station_name": "上清寺",
+        "sensor_id": 21178,
+        "parameter": "pm25",
+        "distance_m": 486.23153014,
+        "latitude": 29.5654,
+        "longitude": 106.5468
+      },
+      {
+        "station_id": 10004,
+        "station_name": "南坪",
+        "sensor_id": 31876,
+        "parameter": "pm25",
+        "distance_m": 5035.67383831,
+        "latitude": 29.5186,
+        "longitude": 106.54
+      },
+      {
+        "station_id": 7359,
+        "station_name": "歇台子",
+        "sensor_id": 21346,
+        "parameter": "pm25",
+        "distance_m": 6207.41936122,
+        "latitude": 29.5346,
+        "longitude": 106.49580000000002
+      },
+      {
+        "station_id": 6547,
+        "station_name": "南坪",
+        "sensor_id": 18516,
+        "parameter": "pm25",
+        "distance_m": 6399.29738144,
+        "latitude": 29.5102,
+        "longitude": 106.57770000000001
+      },
+      {
+        "station_id": 6550,
+        "station_name": "礼嘉",
+        "sensor_id": 18539,
+        "parameter": "pm25",
+        "distance_m": 9180.21211848,
+        "latitude": 29.645299999999995,
+        "longitude": 106.5616
+      },
+      {
+        "station_id": 9261,
+        "station_name": "礼嘉",
+        "sensor_id": 28044,
+        "parameter": "pm25",
+        "distance_m": 9184.6265761,
+        "latitude": 29.645299999999995,
+        "longitude": 106.562
+      },
+      {
+        "station_id": 10473,
+        "station_name": "新山村",
+        "sensor_id": 34711,
+        "parameter": "pm25",
+        "distance_m": 10947.27848574,
+        "latitude": 29.4875,
+        "longitude": 106.4782
+      },
+      {
+        "station_id": 9455,
+        "station_name": "茶园",
+        "sensor_id": 28857,
+        "parameter": "pm25",
+        "distance_m": 11426.01942295,
+        "latitude": 29.4906,
+        "longitude": 106.6349
+      },
+      {
+        "station_id": 10068,
+        "station_name": "唐家沱",
+        "sensor_id": 32256,
+        "parameter": "pm25",
+        "distance_m": 12414.2797921,
+        "latitude": 29.6277,
+        "longitude": 106.6556
+      },
+      {
+        "station_id": 7329,
+        "station_name": "龙井湾",
+        "sensor_id": 21160,
+        "parameter": "pm25",
+        "distance_m": 14314.87061785,
+        "latitude": 29.5728,
+        "longitude": 106.4037
+      },
+      {
+        "station_id": 7331,
+        "station_name": "龙洲湾",
+        "sensor_id": 21172,
+        "parameter": "pm25",
+        "distance_m": 16371.66673156,
+        "latitude": 29.4153,
+        "longitude": 106.5507
+      },
+      {
+        "station_id": 9275,
+        "station_name": "空港",
+        "sensor_id": 28120,
+        "parameter": "pm25",
+        "distance_m": 18307.8160908,
+        "latitude": 29.7166,
+        "longitude": 106.62050000000002
+      },
+      {
+        "station_id": 9513,
+        "station_name": "蔡家",
+        "sensor_id": 29104,
+        "parameter": "pm25",
+        "distance_m": 18809.635965,
+        "latitude": 29.7091,
+        "longitude": 106.45219999999999
+      },
+      {
+        "station_id": 9845,
+        "station_name": "两路",
+        "sensor_id": 30910,
+        "parameter": "pm25",
+        "distance_m": 19155.22032746,
+        "latitude": 29.722800000000003,
+        "longitude": 106.6263
+      },
+      {
+        "station_id": 9202,
+        "station_name": "白市驿",
+        "sensor_id": 27680,
+        "parameter": "pm25",
+        "distance_m": 20220.34836433,
+        "latitude": 29.482200000000002,
+        "longitude": 106.36400000000002
+      }
+    ]
+  },
+  "tap_support_summary": {
+    "required_station_day_count": 90,
+    "available_station_day_count": 90,
+    "missing_station_day_ids": [],
+    "station_grid_assignments": {
+      "7332": {
+        "tile_id": "075",
+        "grid_id": "62722",
+        "grid_longitude": 106.55,
+        "grid_latitude": 29.5625,
+        "distance_degrees": 0.004318564576332544
+      },
+      "10004": {
+        "tile_id": "075",
+        "grid_id": "68726",
+        "grid_longitude": 106.544,
+        "grid_latitude": 29.5208,
+        "distance_degrees": 0.004565084884198116
+      },
+      "7359": {
+        "tile_id": "075",
+        "grid_id": "66319",
+        "grid_longitude": 106.495,
+        "grid_latitude": 29.5375,
+        "distance_degrees": 0.003008321791301882
+      },
+      "6547": {
+        "tile_id": "075",
+        "grid_id": "69930",
+        "grid_longitude": 106.574,
+        "grid_latitude": 29.5125,
+        "distance_degrees": 0.004356604182165201
+      },
+      "6550": {
+        "tile_id": "075",
+        "grid_id": "50714",
+        "grid_longitude": 106.561,
+        "grid_latitude": 29.6458,
+        "distance_degrees": 0.0007810249675879354
+      },
+      "9261": {
+        "tile_id": "075",
+        "grid_id": "50714",
+        "grid_longitude": 106.561,
+        "grid_latitude": 29.6458,
+        "distance_degrees": 0.0011180339887441116
+      },
+      "10473": {
+        "tile_id": "075",
+        "grid_id": "73523",
+        "grid_longitude": 106.481,
+        "grid_latitude": 29.4875,
+        "distance_degrees": 0.0027999999999934744
+      },
+      "9455": {
+        "tile_id": "075",
+        "grid_id": "73539",
+        "grid_longitude": 106.634,
+        "grid_latitude": 29.4875,
+        "distance_degrees": 0.0032280024783140856
+      },
+      "10068": {
+        "tile_id": "075",
+        "grid_id": "53126",
+        "grid_longitude": 106.659,
+        "grid_latitude": 29.6292,
+        "distance_degrees": 0.003716180835211683
+      },
+      "7329": {
+        "tile_id": "075",
+        "grid_id": "61506",
+        "grid_longitude": 106.406,
+        "grid_latitude": 29.5708,
+        "distance_degrees": 0.003047950130831236
+      },
+      "7331": {
+        "tile_id": "075",
+        "grid_id": "84339",
+        "grid_longitude": 106.555,
+        "grid_latitude": 29.4125,
+        "distance_degrees": 0.005131276644265911
+      },
+      "9275": {
+        "tile_id": "096",
+        "grid_id": "39912",
+        "grid_longitude": 106.622,
+        "grid_latitude": 29.7208,
+        "distance_degrees": 0.00445982062418922
+      },
+      "9513": {
+        "tile_id": "096",
+        "grid_id": "41095",
+        "grid_longitude": 106.45,
+        "grid_latitude": 29.7125,
+        "distance_degrees": 0.004049691346255985
+      },
+      "9845": {
+        "tile_id": "096",
+        "grid_id": "39912",
+        "grid_longitude": 106.622,
+        "grid_latitude": 29.7208,
+        "distance_degrees": 0.004742362280553358
+      },
+      "9202": {
+        "tile_id": "075",
+        "grid_id": "74712",
+        "grid_longitude": 106.367,
+        "grid_latitude": 29.4792,
+        "distance_degrees": 0.00424264068711191
+      }
+    },
+    "maximum_grid_distance_degrees": 0.005131276644265911,
+    "file_inventory": {
+      "coordinate_tile_count": 6,
+      "tile_ids": [
+        "074",
+        "075",
+        "076",
+        "095",
+        "096",
+        "097"
+      ],
+      "available_raster_date_count": 7,
+      "available_raster_file_count": 42,
+      "required_raster_file_count": 36,
+      "missing_required_raster_files": [],
+      "required_file_inventory_complete": true,
+      "files": [
+        {
+          "name": "China_PM25_1km_2024_183_074.csv.zip",
+          "size_bytes": 376140,
+          "sha256": "6097468997d5439a110a3bd1cfe2c782d170bcec4c887329ae1f2c1949dc3e55"
+        },
+        {
+          "name": "China_PM25_1km_2024_183_075.csv.zip",
+          "size_bytes": 366781,
+          "sha256": "2ad4616b50fb3a1ee3f0d54a1a768eb76182d821a19cab4520997a1a3a7ab13c"
+        },
+        {
+          "name": "China_PM25_1km_2024_183_076.csv.zip",
+          "size_bytes": 377605,
+          "sha256": "529cc4212b179109ed62aac24ac9c98f106c037d6ea57f463868f4181e15292a"
+        },
+        {
+          "name": "China_PM25_1km_2024_183_095.csv.zip",
+          "size_bytes": 379297,
+          "sha256": "f68cb535d8dd865291c31ba8605ebe62d52362a36b751b43578eb6e47809427b"
+        },
+        {
+          "name": "China_PM25_1km_2024_183_096.csv.zip",
+          "size_bytes": 361925,
+          "sha256": "4902fc8fa302ae5eb5557b16c67aa6bd8f3d802663ac24438fdca2bb3ac514c4"
+        },
+        {
+          "name": "China_PM25_1km_2024_183_097.csv.zip",
+          "size_bytes": 363671,
+          "sha256": "0ad130985b8747196f40745e8486828430442678696d4927d6d29a5887e15f8c"
+        },
+        {
+          "name": "China_PM25_1km_2024_184_074.csv.zip",
+          "size_bytes": 376844,
+          "sha256": "38fd635d2d619442e8207b8bc43d4e290fb64d04fffb3c6c8e713cb48d0bd025"
+        },
+        {
+          "name": "China_PM25_1km_2024_184_075.csv.zip",
+          "size_bytes": 388297,
+          "sha256": "b9fcfead84f04b7366a4623573cf3d534a45c8addac92af00a048a864dc87586"
+        },
+        {
+          "name": "China_PM25_1km_2024_184_076.csv.zip",
+          "size_bytes": 353973,
+          "sha256": "6adbcd661def2caa9bf33c08afd5fd7756323d53d1358e280a4bb7df9dab7f85"
+        },
+        {
+          "name": "China_PM25_1km_2024_184_095.csv.zip",
+          "size_bytes": 367214,
+          "sha256": "a5f05dee0590b95eeb1276e489b877cf826bf5147d20f398695e268ec21c925c"
+        },
+        {
+          "name": "China_PM25_1km_2024_184_096.csv.zip",
+          "size_bytes": 376889,
+          "sha256": "398f8f30e2ed23b357686c70761f0480b8dacef1e3785598f87d0e5dab02c79d"
+        },
+        {
+          "name": "China_PM25_1km_2024_184_097.csv.zip",
+          "size_bytes": 359593,
+          "sha256": "1457061dead6ab9ea4e0e272a9de87e9078b9f0d70794d1b196c0db90b8342f5"
+        },
+        {
+          "name": "China_PM25_1km_2024_185_074.csv.zip",
+          "size_bytes": 374430,
+          "sha256": "5070b78714c8149cdbc62e89d9633555445ba1372442e6268326f4a5aec0983c"
+        },
+        {
+          "name": "China_PM25_1km_2024_185_075.csv.zip",
+          "size_bytes": 363594,
+          "sha256": "61f0751c220a87e144342b4646ffbfa63dd5bae9994576f28b12d9c9a79c8479"
+        },
+        {
+          "name": "China_PM25_1km_2024_185_076.csv.zip",
+          "size_bytes": 377470,
+          "sha256": "fc0768754d9413a1ae74729905046b16c5f44ac4c6789c64fbe9331dd271b9fd"
+        },
+        {
+          "name": "China_PM25_1km_2024_185_095.csv.zip",
+          "size_bytes": 360358,
+          "sha256": "350d5d66670641d64ffc3046e0d763c8e27bb1d9d312e40417ca1a6838e487ff"
+        },
+        {
+          "name": "China_PM25_1km_2024_185_096.csv.zip",
+          "size_bytes": 362272,
+          "sha256": "dd8804717fab821eacd5e82b353c6540440d3ad3ec61f6bb9c77193645b7bd60"
+        },
+        {
+          "name": "China_PM25_1km_2024_185_097.csv.zip",
+          "size_bytes": 370396,
+          "sha256": "9767d06d21c2a9a58317d46afbe2a3f503c49da30cef40258bd67842a3c85507"
+        },
+        {
+          "name": "China_PM25_1km_2024_186_074.csv.zip",
+          "size_bytes": 364760,
+          "sha256": "ecfffae2232ab42f06a6fe75ded7608668b206129b5c5170b6cf29f1a9bfd6b7"
+        },
+        {
+          "name": "China_PM25_1km_2024_186_075.csv.zip",
+          "size_bytes": 357369,
+          "sha256": "81eb81907e7213cc69256833ae9d25adafe3e4dcfc6a3f07991f7e4ba8b18195"
+        },
+        {
+          "name": "China_PM25_1km_2024_186_076.csv.zip",
+          "size_bytes": 371127,
+          "sha256": "98f0a620d767f38f3f6ddd924f86535657ffdf63a2238838b11b89185d9454a5"
+        },
+        {
+          "name": "China_PM25_1km_2024_186_095.csv.zip",
+          "size_bytes": 361007,
+          "sha256": "c34bbe7bd92e70162372ebab0e17b1aa660cd07fffa159669ada9bd68e60e342"
+        },
+        {
+          "name": "China_PM25_1km_2024_186_096.csv.zip",
+          "size_bytes": 364300,
+          "sha256": "01b63f192c97f23046207dd93e2c3ef5fa3079618100afebe88184ba163c1d0a"
+        },
+        {
+          "name": "China_PM25_1km_2024_186_097.csv.zip",
+          "size_bytes": 335683,
+          "sha256": "7eb489a48342a3aa37352279766ede9f983ff46a8e1b344d34aeae985998d01f"
+        },
+        {
+          "name": "China_PM25_1km_2024_187_074.csv.zip",
+          "size_bytes": 365666,
+          "sha256": "b1906efeeb9b24223d046970915c1aae92ebe74083bc54bd7eac42ee561aabd9"
+        },
+        {
+          "name": "China_PM25_1km_2024_187_075.csv.zip",
+          "size_bytes": 362077,
+          "sha256": "10ee49c46a842e986f8d28d20ba05580c0173e122365396fe9287493d05f32f7"
+        },
+        {
+          "name": "China_PM25_1km_2024_187_076.csv.zip",
+          "size_bytes": 366045,
+          "sha256": "b132fea063aca8e89255761e5cecd353df7733c922fb5226608444a390991473"
+        },
+        {
+          "name": "China_PM25_1km_2024_187_095.csv.zip",
+          "size_bytes": 379715,
+          "sha256": "a47049bd590233d1805a44411a231a5741b82c68b56cecc892d52b1e663eaeaa"
+        },
+        {
+          "name": "China_PM25_1km_2024_187_096.csv.zip",
+          "size_bytes": 352124,
+          "sha256": "36e09dbaf1d3677032a296ae56eccbaef401740d1e76fc6f1893831613a05efa"
+        },
+        {
+          "name": "China_PM25_1km_2024_187_097.csv.zip",
+          "size_bytes": 352272,
+          "sha256": "2063bd1abab16d03cdf416c0c530a1bbf1ba8024a43d8fcda54914f766ced591"
+        },
+        {
+          "name": "China_PM25_1km_2024_188_074.csv.zip",
+          "size_bytes": 373922,
+          "sha256": "16c858b8169655b2c6cc3d1e27120bec82c0200c6d6d57ee9fa339cea2f78802"
+        },
+        {
+          "name": "China_PM25_1km_2024_188_075.csv.zip",
+          "size_bytes": 364837,
+          "sha256": "49afab9960f4b985a468c9032babc74ecc8613a270ebf8143c7246ccb60e5518"
+        },
+        {
+          "name": "China_PM25_1km_2024_188_076.csv.zip",
+          "size_bytes": 368359,
+          "sha256": "662efe628ab3464d87e0794e3651afca9c4189811c74d0302069cf3da5bbb2a1"
+        },
+        {
+          "name": "China_PM25_1km_2024_188_095.csv.zip",
+          "size_bytes": 372272,
+          "sha256": "4b47405c3f512d3acd32a9d2d8ff96edb25b6a64a44d458bc99e086a767a7ba6"
+        },
+        {
+          "name": "China_PM25_1km_2024_188_096.csv.zip",
+          "size_bytes": 349716,
+          "sha256": "59752adb0edb204e5f40d0f78df2c004edfff7eac714f9fa22f0cacdba8cb12e"
+        },
+        {
+          "name": "China_PM25_1km_2024_188_097.csv.zip",
+          "size_bytes": 353578,
+          "sha256": "7a49cfb9f6a6a9e78dc691ab74e5c4ce076cdcf627a6ac321b983472dcdd72ca"
+        },
+        {
+          "name": "China_PM25_1km_2024_189_074.csv.zip",
+          "size_bytes": 371426,
+          "sha256": "d56ad95ca7445a6f2dcb063d3c3c3b1ca5781538fc2886db8172a57e840105c9"
+        },
+        {
+          "name": "China_PM25_1km_2024_189_075.csv.zip",
+          "size_bytes": 361971,
+          "sha256": "b5e8b1be56df1647b3b0915a06a0f05e2e71c805c1028ddc99b066821927cef1"
+        },
+        {
+          "name": "China_PM25_1km_2024_189_076.csv.zip",
+          "size_bytes": 369306,
+          "sha256": "465373274d4e5fa628346d383941ccfb00c3028fb0e932aa58956ef2966e1b53"
+        },
+        {
+          "name": "China_PM25_1km_2024_189_095.csv.zip",
+          "size_bytes": 369521,
+          "sha256": "dc8c5ae3d8cd9e3662fb403d945f6da8409c5da28d7bd699ee8eb7cc0bd6f17e"
+        },
+        {
+          "name": "China_PM25_1km_2024_189_096.csv.zip",
+          "size_bytes": 349768,
+          "sha256": "768a6bdbaae12d74d05bb795d1008246a639935b8d5572b47d3f00ba059a6726"
+        },
+        {
+          "name": "China_PM25_1km_2024_189_097.csv.zip",
+          "size_bytes": 356635,
+          "sha256": "008a502f59ea3276a41a78e3a5b381a3287d6c3a33ee159384cde30ab0ddae6d"
+        },
+        {
+          "name": "Tile_074_lonlat.csv.zip",
+          "size_bytes": 465232,
+          "sha256": "d13fb36edffdae5ab8506120e18ded877f0f0dcba809d075b69a2b4f15d354ca"
+        },
+        {
+          "name": "Tile_075_lonlat.csv.zip",
+          "size_bytes": 467768,
+          "sha256": "f77a473cb13f8f5975815e4e429d236a5de521fd067f93b756e1f9db434d13ca"
+        },
+        {
+          "name": "Tile_076_lonlat.csv.zip",
+          "size_bytes": 469724,
+          "sha256": "5987e437765c05d5afc1e7583e01d1f063361373e3631f968df25ac0ead19f6b"
+        },
+        {
+          "name": "Tile_095_lonlat.csv.zip",
+          "size_bytes": 434848,
+          "sha256": "4edca294198c908451fe2164e58bedb64719979e16b537a82232fcc876d8a946"
+        },
+        {
+          "name": "Tile_096_lonlat.csv.zip",
+          "size_bytes": 436203,
+          "sha256": "9eff74d3ed55dbec21cf9f3284cea8a12b6045142b34285f4ef8bb110271a87a"
+        },
+        {
+          "name": "Tile_097_lonlat.csv.zip",
+          "size_bytes": 439185,
+          "sha256": "932f6dfd933085cf3a7cb017877477dba6fefa9c10af3eec3c71b075842774d0"
+        }
+      ],
+      "file_inventory_sha256": "c70e831b7e5144f8aa3bfe141f372c1ea8f31a4c314a57c88ac514689eb7e7fd"
+    }
+  },
+  "admin_provenance_audit": {
+    "source_dataset_id": "chongqing_township_admin_units_local",
+    "local_source_ref": "/Users/zhouning/Downloads/shp/xiangzhen.shp",
+    "derived_at": "2026-07-04T14:32:36Z",
+    "metadata_xml_sha256": "8e48761297d913844dd4eb120921c6278271175dd7f6ecf1e27b1d6723c44d5d",
+    "metadata_created_date": "20210622",
+    "metadata_process_dates": [
+      "20210622"
+    ],
+    "external_source_url_present": false,
+    "license_document_present": false,
+    "official_boundary_vintage_verified": false,
+    "source_license_verified": false,
+    "historical_name_warning_present": true,
+    "limitations": [
+      "source license and official vintage are not verified",
+      "contains historical county names such as 开县/梁平县/荣昌县/潼南县/武隆县 that may require modern code crosswalks",
+      "requires topology validation before area-weighted raster aggregation",
+      "restricted local layer; not a public reproducibility substitute by itself"
+    ]
+  },
+  "gate_results": {
+    "prospective_protocol_contract_valid": true,
+    "acquisition_plan_contract_valid": true,
+    "plan_window_matches_frozen_holdout": true,
+    "one_pm25_sensor_per_station": true,
+    "bindings_match_prior_audited_catalog": true,
+    "station_crosswalk_complete": true,
+    "station_sets_aligned": true,
+    "admin_geometry_support_complete": true,
+    "graph_support_complete": true,
+    "tap_required_file_inventory_complete": true,
+    "tap_lag_station_day_support_complete": true,
+    "prior_attempt_contains_no_target_measurements": true
+  },
+  "remaining_predictor_gates": [],
+  "activation_blockers": {
+    "target_measurements_acquired": false,
+    "admin_boundary_vintage_verified": false,
+    "admin_source_license_verified": false,
+    "external_registration_receipt_verified": false
+  },
+  "remaining_activation_blockers": [
+    "target_measurements_acquired",
+    "admin_boundary_vintage_verified",
+    "admin_source_license_verified",
+    "external_registration_receipt_verified"
+  ],
+  "evidence_refs": [
+    "data/uwm_public_proxy/chongqing_central/geospatial_state_prior_next_p1_protocol_2024_07_02_07/uwm_geospatial_state_prior_p1_prospective_protocol.json",
+    "data/uwm_public_proxy/chongqing_central/openaq_multi_station_acquisition_plan_2024_07_02_07/uwm_openaq_multi_station_acquisition_plan.json",
+    "data/uwm_public_proxy/chongqing_central/openaq_station_observations_multi_station_2018_10_17_23/openaq_acquisition_audit.json",
+    "data/uwm_public_proxy/chongqing_central/openaq_station_observations_2024_07_attempt/snapshot_manifest.json",
+    "data/uwm_public_proxy/chongqing_central/geospatial_station_admin_crosswalk_2024_07_attempt_locations/uwm_geospatial_station_admin_crosswalk.json",
+    "data/uwm_public_proxy/chongqing_central/admin_units/chongqing_township_admin_units.geojson",
+    "data/uwm_public_proxy/chongqing_central/admin_units/snapshot_manifest.json",
+    "data/uwm_public_proxy/chongqing_central/admin_spatial_graph_2026_07_05/uwm_admin_spatial_adjacency_graph.json",
+    "/Users/zhouning/Downloads/shp/xiangzhen.shp.xml",
+    "/Users/zhouning/Downloads/tap_uwm/chongqing_pm25_2024_07_01_07/downloaded"
+  ],
+  "pre_acquisition_predictor_inputs_ready": true,
+  "p1_execution_permitted": false,
+  "p2_admission_permitted": false,
+  "supported_claim": "pre_acquisition_predictor_input_audit_only",
+  "claim_boundary": {
+    "max_claim_level": "not_for_claim",
+    "scope": "pre_acquisition_predictor_input_audit_only",
+    "observed_target_claim": false,
+    "p1_result_claim": false,
+    "p2_admission_permitted": false,
+    "scientific_result_claim": false,
+    "general_geospatial_world_model_validation_claim": false
+  },
+  "preflight_sha256": "65c47235e37278494adf9a7909f6dd1b2b610d9de41e6b39dd11143308e23dc7"
+}

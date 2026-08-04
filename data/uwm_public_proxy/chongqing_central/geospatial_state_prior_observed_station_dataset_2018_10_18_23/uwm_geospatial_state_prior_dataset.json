@@ -1,0 +1,1681 @@
+{
+  "schema": "uwm.geospatial_state_prior_dataset.v1",
+  "dataset_id": "chongqing-openaq-observed-station-state-prior-2018-10-18-23",
+  "created_at": "2026-08-04T21:15:00Z",
+  "source_evidence_kind": "observed_holdout",
+  "source_dataset_ids": [
+    "openaq_air_quality_station_observation_proxy",
+    "tap_pm25_observed_gridded_chongqing_2018_2024"
+  ],
+  "evidence_refs": [
+    "data/uwm_public_proxy/chongqing_central/openaq_station_observations_multi_station_2018_10_17_23/openaq_locations_raw.json",
+    "data/uwm_public_proxy/chongqing_central/openaq_station_observations_multi_station_2018_10_17_23/openaq_sensor_measurements_raw.json",
+    "data/uwm_public_proxy/chongqing_central/geospatial_station_admin_crosswalk_multi_station_2018_10_17_23/uwm_geospatial_station_admin_crosswalk.json",
+    "data/uwm_public_proxy/chongqing_central/admin_units/chongqing_township_admin_units.geojson",
+    "data/uwm_public_proxy/chongqing_central/admin_spatial_graph_2026_07_05/uwm_admin_spatial_adjacency_graph.json",
+    "/Users/zhouning/Downloads/tap_uwm/chongqing_pm25_2018_10_17_23/downloaded"
+  ],
+  "target": {
+    "name": "openaq_daily_pm25_mean_ugm3",
+    "geometry_type": "point",
+    "spatial_support": {
+      "support_type": "sensor_footprint"
+    },
+    "temporal_support": {
+      "start_date": "2018-10-18",
+      "end_date": "2018-10-23"
+    },
+    "observation_semantics": "observed",
+    "source_boundary": "daily_mean_of_actual_openaq_pm25_measurements"
+  },
+  "geometry_routes": {
+    "raster": {
+      "geometry_type": "raster",
+      "spatial_support": {
+        "support_type": "grid_cell"
+      },
+      "feature_names": [
+        "lag1_tap_pm25_ugm3",
+        "tap_grid_distance_degrees"
+      ]
+    },
+    "admin": {
+      "geometry_type": "polygon",
+      "spatial_support": {
+        "support_type": "admin_unit"
+      },
+      "feature_names": [
+        "polygon_area_square_degrees",
+        "polygon_perimeter_degrees"
+      ]
+    },
+    "graph_object": {
+      "geometry_type": "network",
+      "spatial_support": {
+        "support_type": "network_node"
+      },
+      "feature_names": [
+        "admin_adjacency_degree"
+      ]
+    }
+  },
+  "rows": [
+    {
+      "sample_id": "10004|2018-10-18",
+      "x": 106.54,
+      "y": 29.5186,
+      "time_id": "2018-10-18",
+      "admin_unit_id": "重庆市|南岸区|花园路街道",
+      "target": 32.43478260869565,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 46.6,
+        "tap_grid_distance_degrees": 0.004565084884198116
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0006323261873056826,
+        "polygon_perimeter_degrees": 0.13591009277240845
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "10004|2018-10-19",
+      "x": 106.54,
+      "y": 29.5186,
+      "time_id": "2018-10-19",
+      "admin_unit_id": "重庆市|南岸区|花园路街道",
+      "target": 27.58823529411765,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 1.0,
+        "tap_grid_distance_degrees": 0.004565084884198116
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0006323261873056826,
+        "polygon_perimeter_degrees": 0.13591009277240845
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "10004|2018-10-20",
+      "x": 106.54,
+      "y": 29.5186,
+      "time_id": "2018-10-20",
+      "admin_unit_id": "重庆市|南岸区|花园路街道",
+      "target": 21.0625,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 10.3,
+        "tap_grid_distance_degrees": 0.004565084884198116
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0006323261873056826,
+        "polygon_perimeter_degrees": 0.13591009277240845
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "10004|2018-10-21",
+      "x": 106.54,
+      "y": 29.5186,
+      "time_id": "2018-10-21",
+      "admin_unit_id": "重庆市|南岸区|花园路街道",
+      "target": 28.25,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 5.0,
+        "tap_grid_distance_degrees": 0.004565084884198116
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0006323261873056826,
+        "polygon_perimeter_degrees": 0.13591009277240845
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "10004|2018-10-22",
+      "x": 106.54,
+      "y": 29.5186,
+      "time_id": "2018-10-22",
+      "admin_unit_id": "重庆市|南岸区|花园路街道",
+      "target": 36.90909090909091,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 34.6,
+        "tap_grid_distance_degrees": 0.004565084884198116
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0006323261873056826,
+        "polygon_perimeter_degrees": 0.13591009277240845
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "10004|2018-10-23",
+      "x": 106.54,
+      "y": 29.5186,
+      "time_id": "2018-10-23",
+      "admin_unit_id": "重庆市|南岸区|花园路街道",
+      "target": 34.375,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 40.1,
+        "tap_grid_distance_degrees": 0.004565084884198116
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0006323261873056826,
+        "polygon_perimeter_degrees": 0.13591009277240845
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "10068|2018-10-18",
+      "x": 106.6556,
+      "y": 29.6277,
+      "time_id": "2018-10-18",
+      "admin_unit_id": "重庆市|江北区|铁山坪街道",
+      "target": 30.47826086956522,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 41.7,
+        "tap_grid_distance_degrees": 0.003716180835211683
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0027318530582492164,
+        "polygon_perimeter_degrees": 0.2954090553396927
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 5.0
+      }
+    },
+    {
+      "sample_id": "10068|2018-10-19",
+      "x": 106.6556,
+      "y": 29.6277,
+      "time_id": "2018-10-19",
+      "admin_unit_id": "重庆市|江北区|铁山坪街道",
+      "target": 23.941176470588236,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 1.0,
+        "tap_grid_distance_degrees": 0.003716180835211683
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0027318530582492164,
+        "polygon_perimeter_degrees": 0.2954090553396927
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 5.0
+      }
+    },
+    {
+      "sample_id": "10068|2018-10-20",
+      "x": 106.6556,
+      "y": 29.6277,
+      "time_id": "2018-10-20",
+      "admin_unit_id": "重庆市|江北区|铁山坪街道",
+      "target": 18.0,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 1.1,
+        "tap_grid_distance_degrees": 0.003716180835211683
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0027318530582492164,
+        "polygon_perimeter_degrees": 0.2954090553396927
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 5.0
+      }
+    },
+    {
+      "sample_id": "10068|2018-10-21",
+      "x": 106.6556,
+      "y": 29.6277,
+      "time_id": "2018-10-21",
+      "admin_unit_id": "重庆市|江北区|铁山坪街道",
+      "target": 25.25,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 1.0,
+        "tap_grid_distance_degrees": 0.003716180835211683
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0027318530582492164,
+        "polygon_perimeter_degrees": 0.2954090553396927
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 5.0
+      }
+    },
+    {
+      "sample_id": "10068|2018-10-22",
+      "x": 106.6556,
+      "y": 29.6277,
+      "time_id": "2018-10-22",
+      "admin_unit_id": "重庆市|江北区|铁山坪街道",
+      "target": 26.545454545454547,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 27.9,
+        "tap_grid_distance_degrees": 0.003716180835211683
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0027318530582492164,
+        "polygon_perimeter_degrees": 0.2954090553396927
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 5.0
+      }
+    },
+    {
+      "sample_id": "10068|2018-10-23",
+      "x": 106.6556,
+      "y": 29.6277,
+      "time_id": "2018-10-23",
+      "admin_unit_id": "重庆市|江北区|铁山坪街道",
+      "target": 27.1875,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 27.4,
+        "tap_grid_distance_degrees": 0.003716180835211683
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0027318530582492164,
+        "polygon_perimeter_degrees": 0.2954090553396927
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 5.0
+      }
+    },
+    {
+      "sample_id": "10473|2018-10-18",
+      "x": 106.4782,
+      "y": 29.4875,
+      "time_id": "2018-10-18",
+      "admin_unit_id": "重庆市|大渡口区|新山村街道",
+      "target": 25.130434782608695,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 42.9,
+        "tap_grid_distance_degrees": 0.0027999999999934744
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0002506951661846205,
+        "polygon_perimeter_degrees": 0.10136896925098833
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 5.0
+      }
+    },
+    {
+      "sample_id": "10473|2018-10-19",
+      "x": 106.4782,
+      "y": 29.4875,
+      "time_id": "2018-10-19",
+      "admin_unit_id": "重庆市|大渡口区|新山村街道",
+      "target": 22.058823529411764,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 1.0,
+        "tap_grid_distance_degrees": 0.0027999999999934744
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0002506951661846205,
+        "polygon_perimeter_degrees": 0.10136896925098833
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 5.0
+      }
+    },
+    {
+      "sample_id": "10473|2018-10-20",
+      "x": 106.4782,
+      "y": 29.4875,
+      "time_id": "2018-10-20",
+      "admin_unit_id": "重庆市|大渡口区|新山村街道",
+      "target": 17.6875,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 8.8,
+        "tap_grid_distance_degrees": 0.0027999999999934744
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0002506951661846205,
+        "polygon_perimeter_degrees": 0.10136896925098833
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 5.0
+      }
+    },
+    {
+      "sample_id": "10473|2018-10-21",
+      "x": 106.4782,
+      "y": 29.4875,
+      "time_id": "2018-10-21",
+      "admin_unit_id": "重庆市|大渡口区|新山村街道",
+      "target": 27.5,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 13.5,
+        "tap_grid_distance_degrees": 0.0027999999999934744
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0002506951661846205,
+        "polygon_perimeter_degrees": 0.10136896925098833
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 5.0
+      }
+    },
+    {
+      "sample_id": "10473|2018-10-22",
+      "x": 106.4782,
+      "y": 29.4875,
+      "time_id": "2018-10-22",
+      "admin_unit_id": "重庆市|大渡口区|新山村街道",
+      "target": 35.63636363636363,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 30.8,
+        "tap_grid_distance_degrees": 0.0027999999999934744
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0002506951661846205,
+        "polygon_perimeter_degrees": 0.10136896925098833
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 5.0
+      }
+    },
+    {
+      "sample_id": "10473|2018-10-23",
+      "x": 106.4782,
+      "y": 29.4875,
+      "time_id": "2018-10-23",
+      "admin_unit_id": "重庆市|大渡口区|新山村街道",
+      "target": 35.375,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 42.4,
+        "tap_grid_distance_degrees": 0.0027999999999934744
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0002506951661846205,
+        "polygon_perimeter_degrees": 0.10136896925098833
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 5.0
+      }
+    },
+    {
+      "sample_id": "7329|2018-10-18",
+      "x": 106.4037,
+      "y": 29.5728,
+      "time_id": "2018-10-18",
+      "admin_unit_id": "重庆市|沙坪坝区|歌乐山镇",
+      "target": 28.608695652173914,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 43.6,
+        "tap_grid_distance_degrees": 0.003047950130831236
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0029628702352059973,
+        "polygon_perimeter_degrees": 0.7834211053865691
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 13.0
+      }
+    },
+    {
+      "sample_id": "7329|2018-10-19",
+      "x": 106.4037,
+      "y": 29.5728,
+      "time_id": "2018-10-19",
+      "admin_unit_id": "重庆市|沙坪坝区|歌乐山镇",
+      "target": 26.58823529411765,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 1.4,
+        "tap_grid_distance_degrees": 0.003047950130831236
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0029628702352059973,
+        "polygon_perimeter_degrees": 0.7834211053865691
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 13.0
+      }
+    },
+    {
+      "sample_id": "7329|2018-10-20",
+      "x": 106.4037,
+      "y": 29.5728,
+      "time_id": "2018-10-20",
+      "admin_unit_id": "重庆市|沙坪坝区|歌乐山镇",
+      "target": 22.0,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 10.9,
+        "tap_grid_distance_degrees": 0.003047950130831236
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0029628702352059973,
+        "polygon_perimeter_degrees": 0.7834211053865691
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 13.0
+      }
+    },
+    {
+      "sample_id": "7329|2018-10-21",
+      "x": 106.4037,
+      "y": 29.5728,
+      "time_id": "2018-10-21",
+      "admin_unit_id": "重庆市|沙坪坝区|歌乐山镇",
+      "target": 27.375,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 19.9,
+        "tap_grid_distance_degrees": 0.003047950130831236
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0029628702352059973,
+        "polygon_perimeter_degrees": 0.7834211053865691
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 13.0
+      }
+    },
+    {
+      "sample_id": "7329|2018-10-22",
+      "x": 106.4037,
+      "y": 29.5728,
+      "time_id": "2018-10-22",
+      "admin_unit_id": "重庆市|沙坪坝区|歌乐山镇",
+      "target": 34.72727272727273,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 30.7,
+        "tap_grid_distance_degrees": 0.003047950130831236
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0029628702352059973,
+        "polygon_perimeter_degrees": 0.7834211053865691
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 13.0
+      }
+    },
+    {
+      "sample_id": "7329|2018-10-23",
+      "x": 106.4037,
+      "y": 29.5728,
+      "time_id": "2018-10-23",
+      "admin_unit_id": "重庆市|沙坪坝区|歌乐山镇",
+      "target": 36.0,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 29.7,
+        "tap_grid_distance_degrees": 0.003047950130831236
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0029628702352059973,
+        "polygon_perimeter_degrees": 0.7834211053865691
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 13.0
+      }
+    },
+    {
+      "sample_id": "7331|2018-10-18",
+      "x": 106.5507,
+      "y": 29.4153,
+      "time_id": "2018-10-18",
+      "admin_unit_id": "重庆市|巴南区|龙洲湾街道",
+      "target": 20.52173913043478,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 35.3,
+        "tap_grid_distance_degrees": 0.005131276644265911
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.004364834057163847,
+        "polygon_perimeter_degrees": 0.637845667466251
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "7331|2018-10-19",
+      "x": 106.5507,
+      "y": 29.4153,
+      "time_id": "2018-10-19",
+      "admin_unit_id": "重庆市|巴南区|龙洲湾街道",
+      "target": 15.823529411764707,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 1.0,
+        "tap_grid_distance_degrees": 0.005131276644265911
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.004364834057163847,
+        "polygon_perimeter_degrees": 0.637845667466251
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "7331|2018-10-20",
+      "x": 106.5507,
+      "y": 29.4153,
+      "time_id": "2018-10-20",
+      "admin_unit_id": "重庆市|巴南区|龙洲湾街道",
+      "target": 11.125,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 3.2,
+        "tap_grid_distance_degrees": 0.005131276644265911
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.004364834057163847,
+        "polygon_perimeter_degrees": 0.637845667466251
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "7331|2018-10-21",
+      "x": 106.5507,
+      "y": 29.4153,
+      "time_id": "2018-10-21",
+      "admin_unit_id": "重庆市|巴南区|龙洲湾街道",
+      "target": 16.0,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 7.4,
+        "tap_grid_distance_degrees": 0.005131276644265911
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.004364834057163847,
+        "polygon_perimeter_degrees": 0.637845667466251
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "7331|2018-10-22",
+      "x": 106.5507,
+      "y": 29.4153,
+      "time_id": "2018-10-22",
+      "admin_unit_id": "重庆市|巴南区|龙洲湾街道",
+      "target": 24.0,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 30.5,
+        "tap_grid_distance_degrees": 0.005131276644265911
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.004364834057163847,
+        "polygon_perimeter_degrees": 0.637845667466251
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "7331|2018-10-23",
+      "x": 106.5507,
+      "y": 29.4153,
+      "time_id": "2018-10-23",
+      "admin_unit_id": "重庆市|巴南区|龙洲湾街道",
+      "target": 25.25,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 42.3,
+        "tap_grid_distance_degrees": 0.005131276644265911
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.004364834057163847,
+        "polygon_perimeter_degrees": 0.637845667466251
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "7332|2018-10-18",
+      "x": 106.5468,
+      "y": 29.5654,
+      "time_id": "2018-10-18",
+      "admin_unit_id": "重庆市|渝中区|上清寺街道",
+      "target": 29.217391304347824,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 47.8,
+        "tap_grid_distance_degrees": 0.004318564576332544
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.00015282370545980498,
+        "polygon_perimeter_degrees": 0.07289780239037115
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 5.0
+      }
+    },
+    {
+      "sample_id": "7332|2018-10-19",
+      "x": 106.5468,
+      "y": 29.5654,
+      "time_id": "2018-10-19",
+      "admin_unit_id": "重庆市|渝中区|上清寺街道",
+      "target": 25.705882352941178,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 1.0,
+        "tap_grid_distance_degrees": 0.004318564576332544
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.00015282370545980498,
+        "polygon_perimeter_degrees": 0.07289780239037115
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 5.0
+      }
+    },
+    {
+      "sample_id": "7332|2018-10-20",
+      "x": 106.5468,
+      "y": 29.5654,
+      "time_id": "2018-10-20",
+      "admin_unit_id": "重庆市|渝中区|上清寺街道",
+      "target": 20.375,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 5.3,
+        "tap_grid_distance_degrees": 0.004318564576332544
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.00015282370545980498,
+        "polygon_perimeter_degrees": 0.07289780239037115
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 5.0
+      }
+    },
+    {
+      "sample_id": "7332|2018-10-21",
+      "x": 106.5468,
+      "y": 29.5654,
+      "time_id": "2018-10-21",
+      "admin_unit_id": "重庆市|渝中区|上清寺街道",
+      "target": 30.0,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 1.8,
+        "tap_grid_distance_degrees": 0.004318564576332544
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.00015282370545980498,
+        "polygon_perimeter_degrees": 0.07289780239037115
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 5.0
+      }
+    },
+    {
+      "sample_id": "7332|2018-10-22",
+      "x": 106.5468,
+      "y": 29.5654,
+      "time_id": "2018-10-22",
+      "admin_unit_id": "重庆市|渝中区|上清寺街道",
+      "target": 43.0,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 34.0,
+        "tap_grid_distance_degrees": 0.004318564576332544
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.00015282370545980498,
+        "polygon_perimeter_degrees": 0.07289780239037115
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 5.0
+      }
+    },
+    {
+      "sample_id": "7332|2018-10-23",
+      "x": 106.5468,
+      "y": 29.5654,
+      "time_id": "2018-10-23",
+      "admin_unit_id": "重庆市|渝中区|上清寺街道",
+      "target": 38.8125,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 36.3,
+        "tap_grid_distance_degrees": 0.004318564576332544
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.00015282370545980498,
+        "polygon_perimeter_degrees": 0.07289780239037115
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 5.0
+      }
+    },
+    {
+      "sample_id": "7359|2018-10-18",
+      "x": 106.49580000000002,
+      "y": 29.5346,
+      "time_id": "2018-10-18",
+      "admin_unit_id": "重庆市|九龙坡区|渝州路街道",
+      "target": 30.0,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 45.6,
+        "tap_grid_distance_degrees": 0.003008321791301882
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0005674512664613535,
+        "polygon_perimeter_degrees": 0.17897145218953137
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "7359|2018-10-19",
+      "x": 106.49580000000002,
+      "y": 29.5346,
+      "time_id": "2018-10-19",
+      "admin_unit_id": "重庆市|九龙坡区|渝州路街道",
+      "target": 26.0,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 1.0,
+        "tap_grid_distance_degrees": 0.003008321791301882
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0005674512664613535,
+        "polygon_perimeter_degrees": 0.17897145218953137
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "7359|2018-10-20",
+      "x": 106.49580000000002,
+      "y": 29.5346,
+      "time_id": "2018-10-20",
+      "admin_unit_id": "重庆市|九龙坡区|渝州路街道",
+      "target": 21.5625,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 10.0,
+        "tap_grid_distance_degrees": 0.003008321791301882
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0005674512664613535,
+        "polygon_perimeter_degrees": 0.17897145218953137
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "7359|2018-10-21",
+      "x": 106.49580000000002,
+      "y": 29.5346,
+      "time_id": "2018-10-21",
+      "admin_unit_id": "重庆市|九龙坡区|渝州路街道",
+      "target": 31.125,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 14.3,
+        "tap_grid_distance_degrees": 0.003008321791301882
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0005674512664613535,
+        "polygon_perimeter_degrees": 0.17897145218953137
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "7359|2018-10-22",
+      "x": 106.49580000000002,
+      "y": 29.5346,
+      "time_id": "2018-10-22",
+      "admin_unit_id": "重庆市|九龙坡区|渝州路街道",
+      "target": 40.36363636363637,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 33.9,
+        "tap_grid_distance_degrees": 0.003008321791301882
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0005674512664613535,
+        "polygon_perimeter_degrees": 0.17897145218953137
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "7359|2018-10-23",
+      "x": 106.49580000000002,
+      "y": 29.5346,
+      "time_id": "2018-10-23",
+      "admin_unit_id": "重庆市|九龙坡区|渝州路街道",
+      "target": 39.625,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 38.3,
+        "tap_grid_distance_degrees": 0.003008321791301882
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0005674512664613535,
+        "polygon_perimeter_degrees": 0.17897145218953137
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "9202|2018-10-18",
+      "x": 106.36400000000002,
+      "y": 29.482200000000002,
+      "time_id": "2018-10-18",
+      "admin_unit_id": "重庆市|九龙坡区|白市驿镇",
+      "target": 33.45454545454545,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 46.0,
+        "tap_grid_distance_degrees": 0.00424264068711191
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0048116788451257825,
+        "polygon_perimeter_degrees": 0.5497603277453776
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 8.0
+      }
+    },
+    {
+      "sample_id": "9202|2018-10-19",
+      "x": 106.36400000000002,
+      "y": 29.482200000000002,
+      "time_id": "2018-10-19",
+      "admin_unit_id": "重庆市|九龙坡区|白市驿镇",
+      "target": 30.294117647058822,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 5.7,
+        "tap_grid_distance_degrees": 0.00424264068711191
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0048116788451257825,
+        "polygon_perimeter_degrees": 0.5497603277453776
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 8.0
+      }
+    },
+    {
+      "sample_id": "9202|2018-10-20",
+      "x": 106.36400000000002,
+      "y": 29.482200000000002,
+      "time_id": "2018-10-20",
+      "admin_unit_id": "重庆市|九龙坡区|白市驿镇",
+      "target": 25.75,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 14.7,
+        "tap_grid_distance_degrees": 0.00424264068711191
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0048116788451257825,
+        "polygon_perimeter_degrees": 0.5497603277453776
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 8.0
+      }
+    },
+    {
+      "sample_id": "9202|2018-10-21",
+      "x": 106.36400000000002,
+      "y": 29.482200000000002,
+      "time_id": "2018-10-21",
+      "admin_unit_id": "重庆市|九龙坡区|白市驿镇",
+      "target": 34.625,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 26.3,
+        "tap_grid_distance_degrees": 0.00424264068711191
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0048116788451257825,
+        "polygon_perimeter_degrees": 0.5497603277453776
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 8.0
+      }
+    },
+    {
+      "sample_id": "9202|2018-10-22",
+      "x": 106.36400000000002,
+      "y": 29.482200000000002,
+      "time_id": "2018-10-22",
+      "admin_unit_id": "重庆市|九龙坡区|白市驿镇",
+      "target": 43.72727272727273,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 34.2,
+        "tap_grid_distance_degrees": 0.00424264068711191
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0048116788451257825,
+        "polygon_perimeter_degrees": 0.5497603277453776
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 8.0
+      }
+    },
+    {
+      "sample_id": "9202|2018-10-23",
+      "x": 106.36400000000002,
+      "y": 29.482200000000002,
+      "time_id": "2018-10-23",
+      "admin_unit_id": "重庆市|九龙坡区|白市驿镇",
+      "target": 42.375,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 44.8,
+        "tap_grid_distance_degrees": 0.00424264068711191
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0048116788451257825,
+        "polygon_perimeter_degrees": 0.5497603277453776
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 8.0
+      }
+    },
+    {
+      "sample_id": "9261|2018-10-18",
+      "x": 106.562,
+      "y": 29.645299999999995,
+      "time_id": "2018-10-18",
+      "admin_unit_id": "重庆市|渝北区|鸳鸯街道",
+      "target": 28.869565217391305,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 47.8,
+        "tap_grid_distance_degrees": 0.0011180339887441116
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0026803476173415676,
+        "polygon_perimeter_degrees": 0.3034697513345844
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "9261|2018-10-19",
+      "x": 106.562,
+      "y": 29.645299999999995,
+      "time_id": "2018-10-19",
+      "admin_unit_id": "重庆市|渝北区|鸳鸯街道",
+      "target": 21.823529411764707,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 2.3,
+        "tap_grid_distance_degrees": 0.0011180339887441116
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0026803476173415676,
+        "polygon_perimeter_degrees": 0.3034697513345844
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "9261|2018-10-20",
+      "x": 106.562,
+      "y": 29.645299999999995,
+      "time_id": "2018-10-20",
+      "admin_unit_id": "重庆市|渝北区|鸳鸯街道",
+      "target": 19.375,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 3.3,
+        "tap_grid_distance_degrees": 0.0011180339887441116
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0026803476173415676,
+        "polygon_perimeter_degrees": 0.3034697513345844
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "9261|2018-10-21",
+      "x": 106.562,
+      "y": 29.645299999999995,
+      "time_id": "2018-10-21",
+      "admin_unit_id": "重庆市|渝北区|鸳鸯街道",
+      "target": 29.125,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 3.9,
+        "tap_grid_distance_degrees": 0.0011180339887441116
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0026803476173415676,
+        "polygon_perimeter_degrees": 0.3034697513345844
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "9261|2018-10-22",
+      "x": 106.562,
+      "y": 29.645299999999995,
+      "time_id": "2018-10-22",
+      "admin_unit_id": "重庆市|渝北区|鸳鸯街道",
+      "target": 35.45454545454545,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 33.8,
+        "tap_grid_distance_degrees": 0.0011180339887441116
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0026803476173415676,
+        "polygon_perimeter_degrees": 0.3034697513345844
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "9261|2018-10-23",
+      "x": 106.562,
+      "y": 29.645299999999995,
+      "time_id": "2018-10-23",
+      "admin_unit_id": "重庆市|渝北区|鸳鸯街道",
+      "target": 32.5,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 31.0,
+        "tap_grid_distance_degrees": 0.0011180339887441116
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0026803476173415676,
+        "polygon_perimeter_degrees": 0.3034697513345844
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "9275|2018-10-18",
+      "x": 106.62050000000002,
+      "y": 29.7166,
+      "time_id": "2018-10-18",
+      "admin_unit_id": "重庆市|渝北区|双龙湖街道",
+      "target": 30.91304347826087,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 40.0,
+        "tap_grid_distance_degrees": 0.00445982062418922
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.003448252474472054,
+        "polygon_perimeter_degrees": 0.4119947991488887
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "9275|2018-10-19",
+      "x": 106.62050000000002,
+      "y": 29.7166,
+      "time_id": "2018-10-19",
+      "admin_unit_id": "重庆市|渝北区|双龙湖街道",
+      "target": 23.11764705882353,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 1.0,
+        "tap_grid_distance_degrees": 0.00445982062418922
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.003448252474472054,
+        "polygon_perimeter_degrees": 0.4119947991488887
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "9275|2018-10-20",
+      "x": 106.62050000000002,
+      "y": 29.7166,
+      "time_id": "2018-10-20",
+      "admin_unit_id": "重庆市|渝北区|双龙湖街道",
+      "target": 20.375,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 3.3,
+        "tap_grid_distance_degrees": 0.00445982062418922
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.003448252474472054,
+        "polygon_perimeter_degrees": 0.4119947991488887
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "9275|2018-10-21",
+      "x": 106.62050000000002,
+      "y": 29.7166,
+      "time_id": "2018-10-21",
+      "admin_unit_id": "重庆市|渝北区|双龙湖街道",
+      "target": 30.375,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 3.5,
+        "tap_grid_distance_degrees": 0.00445982062418922
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.003448252474472054,
+        "polygon_perimeter_degrees": 0.4119947991488887
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "9275|2018-10-22",
+      "x": 106.62050000000002,
+      "y": 29.7166,
+      "time_id": "2018-10-22",
+      "admin_unit_id": "重庆市|渝北区|双龙湖街道",
+      "target": 32.27272727272727,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 26.7,
+        "tap_grid_distance_degrees": 0.00445982062418922
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.003448252474472054,
+        "polygon_perimeter_degrees": 0.4119947991488887
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "9275|2018-10-23",
+      "x": 106.62050000000002,
+      "y": 29.7166,
+      "time_id": "2018-10-23",
+      "admin_unit_id": "重庆市|渝北区|双龙湖街道",
+      "target": 32.4,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 25.8,
+        "tap_grid_distance_degrees": 0.00445982062418922
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.003448252474472054,
+        "polygon_perimeter_degrees": 0.4119947991488887
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "9455|2018-10-18",
+      "x": 106.6349,
+      "y": 29.4906,
+      "time_id": "2018-10-18",
+      "admin_unit_id": "重庆市|南岸区|长生桥镇",
+      "target": 40.47826086956522,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 48.6,
+        "tap_grid_distance_degrees": 0.0032280024783140856
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.005242452341595114,
+        "polygon_perimeter_degrees": 0.6013081822952336
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "9455|2018-10-19",
+      "x": 106.6349,
+      "y": 29.4906,
+      "time_id": "2018-10-19",
+      "admin_unit_id": "重庆市|南岸区|长生桥镇",
+      "target": 32.705882352941174,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 5.9,
+        "tap_grid_distance_degrees": 0.0032280024783140856
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.005242452341595114,
+        "polygon_perimeter_degrees": 0.6013081822952336
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "9455|2018-10-20",
+      "x": 106.6349,
+      "y": 29.4906,
+      "time_id": "2018-10-20",
+      "admin_unit_id": "重庆市|南岸区|长生桥镇",
+      "target": 22.8125,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 11.6,
+        "tap_grid_distance_degrees": 0.0032280024783140856
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.005242452341595114,
+        "polygon_perimeter_degrees": 0.6013081822952336
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "9455|2018-10-21",
+      "x": 106.6349,
+      "y": 29.4906,
+      "time_id": "2018-10-21",
+      "admin_unit_id": "重庆市|南岸区|长生桥镇",
+      "target": 30.125,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 14.6,
+        "tap_grid_distance_degrees": 0.0032280024783140856
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.005242452341595114,
+        "polygon_perimeter_degrees": 0.6013081822952336
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "9455|2018-10-22",
+      "x": 106.6349,
+      "y": 29.4906,
+      "time_id": "2018-10-22",
+      "admin_unit_id": "重庆市|南岸区|长生桥镇",
+      "target": 38.09090909090909,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 41.2,
+        "tap_grid_distance_degrees": 0.0032280024783140856
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.005242452341595114,
+        "polygon_perimeter_degrees": 0.6013081822952336
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "9455|2018-10-23",
+      "x": 106.6349,
+      "y": 29.4906,
+      "time_id": "2018-10-23",
+      "admin_unit_id": "重庆市|南岸区|长生桥镇",
+      "target": 36.1875,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 39.8,
+        "tap_grid_distance_degrees": 0.0032280024783140856
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.005242452341595114,
+        "polygon_perimeter_degrees": 0.6013081822952336
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 6.0
+      }
+    },
+    {
+      "sample_id": "9513|2018-10-18",
+      "x": 106.45219999999999,
+      "y": 29.7091,
+      "time_id": "2018-10-18",
+      "admin_unit_id": "重庆市|北碚区|童家溪镇",
+      "target": 33.476190476190474,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 47.9,
+        "tap_grid_distance_degrees": 0.004049691346255985
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.002132816724387216,
+        "polygon_perimeter_degrees": 0.2678636369541676
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 4.0
+      }
+    },
+    {
+      "sample_id": "9513|2018-10-19",
+      "x": 106.45219999999999,
+      "y": 29.7091,
+      "time_id": "2018-10-19",
+      "admin_unit_id": "重庆市|北碚区|童家溪镇",
+      "target": 18.941176470588236,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 3.2,
+        "tap_grid_distance_degrees": 0.004049691346255985
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.002132816724387216,
+        "polygon_perimeter_degrees": 0.2678636369541676
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 4.0
+      }
+    },
+    {
+      "sample_id": "9513|2018-10-20",
+      "x": 106.45219999999999,
+      "y": 29.7091,
+      "time_id": "2018-10-20",
+      "admin_unit_id": "重庆市|北碚区|童家溪镇",
+      "target": 22.4,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 10.2,
+        "tap_grid_distance_degrees": 0.004049691346255985
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.002132816724387216,
+        "polygon_perimeter_degrees": 0.2678636369541676
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 4.0
+      }
+    },
+    {
+      "sample_id": "9513|2018-10-21",
+      "x": 106.45219999999999,
+      "y": 29.7091,
+      "time_id": "2018-10-21",
+      "admin_unit_id": "重庆市|北碚区|童家溪镇",
+      "target": 36.875,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 20.5,
+        "tap_grid_distance_degrees": 0.004049691346255985
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.002132816724387216,
+        "polygon_perimeter_degrees": 0.2678636369541676
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 4.0
+      }
+    },
+    {
+      "sample_id": "9513|2018-10-22",
+      "x": 106.45219999999999,
+      "y": 29.7091,
+      "time_id": "2018-10-22",
+      "admin_unit_id": "重庆市|北碚区|童家溪镇",
+      "target": 33.27272727272727,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 25.7,
+        "tap_grid_distance_degrees": 0.004049691346255985
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.002132816724387216,
+        "polygon_perimeter_degrees": 0.2678636369541676
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 4.0
+      }
+    },
+    {
+      "sample_id": "9513|2018-10-23",
+      "x": 106.45219999999999,
+      "y": 29.7091,
+      "time_id": "2018-10-23",
+      "admin_unit_id": "重庆市|北碚区|童家溪镇",
+      "target": 33.0,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 23.4,
+        "tap_grid_distance_degrees": 0.004049691346255985
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.002132816724387216,
+        "polygon_perimeter_degrees": 0.2678636369541676
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 4.0
+      }
+    },
+    {
+      "sample_id": "9845|2018-10-18",
+      "x": 106.6263,
+      "y": 29.722800000000003,
+      "time_id": "2018-10-18",
+      "admin_unit_id": "重庆市|渝北区|两路街道",
+      "target": 33.608695652173914,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 40.0,
+        "tap_grid_distance_degrees": 0.004742362280553358
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0025965462526728084,
+        "polygon_perimeter_degrees": 0.38216781653147824
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 5.0
+      }
+    },
+    {
+      "sample_id": "9845|2018-10-19",
+      "x": 106.6263,
+      "y": 29.722800000000003,
+      "time_id": "2018-10-19",
+      "admin_unit_id": "重庆市|渝北区|两路街道",
+      "target": 23.41176470588235,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 1.0,
+        "tap_grid_distance_degrees": 0.004742362280553358
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0025965462526728084,
+        "polygon_perimeter_degrees": 0.38216781653147824
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 5.0
+      }
+    },
+    {
+      "sample_id": "9845|2018-10-20",
+      "x": 106.6263,
+      "y": 29.722800000000003,
+      "time_id": "2018-10-20",
+      "admin_unit_id": "重庆市|渝北区|两路街道",
+      "target": 18.4375,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 3.3,
+        "tap_grid_distance_degrees": 0.004742362280553358
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0025965462526728084,
+        "polygon_perimeter_degrees": 0.38216781653147824
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 5.0
+      }
+    },
+    {
+      "sample_id": "9845|2018-10-21",
+      "x": 106.6263,
+      "y": 29.722800000000003,
+      "time_id": "2018-10-21",
+      "admin_unit_id": "重庆市|渝北区|两路街道",
+      "target": 25.875,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 3.5,
+        "tap_grid_distance_degrees": 0.004742362280553358
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0025965462526728084,
+        "polygon_perimeter_degrees": 0.38216781653147824
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 5.0
+      }
+    },
+    {
+      "sample_id": "9845|2018-10-22",
+      "x": 106.6263,
+      "y": 29.722800000000003,
+      "time_id": "2018-10-22",
+      "admin_unit_id": "重庆市|渝北区|两路街道",
+      "target": 30.181818181818183,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 26.7,
+        "tap_grid_distance_degrees": 0.004742362280553358
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0025965462526728084,
+        "polygon_perimeter_degrees": 0.38216781653147824
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 5.0
+      }
+    },
+    {
+      "sample_id": "9845|2018-10-23",
+      "x": 106.6263,
+      "y": 29.722800000000003,
+      "time_id": "2018-10-23",
+      "admin_unit_id": "重庆市|渝北区|两路街道",
+      "target": 32.6875,
+      "raster_features": {
+        "lag1_tap_pm25_ugm3": 25.8,
+        "tap_grid_distance_degrees": 0.004742362280553358
+      },
+      "admin_features": {
+        "polygon_area_square_degrees": 0.0025965462526728084,
+        "polygon_perimeter_degrees": 0.38216781653147824
+      },
+      "graph_object_features": {
+        "admin_adjacency_degree": 5.0
+      }
+    }
+  ],
+  "adapter_audit": {
+    "input_artifact_sha256": {
+      "locations_payload_sha256": "252f2e1d34b979211b280f70012d59bfa2202f4904e452acff7a1cf11b461e2d",
+      "sensor_measurements_sha256": "2f181f79401f94e2d534a45432a7f255c0e09b9333df4c2a13d1a4828bb2cb62",
+      "station_admin_crosswalk_sha256": "497398c5eb6b5a0b63a542ee15e073a186fd3dcac9d88e8ad119a0e506d8c9e9",
+      "admin_feature_collection_sha256": "6090ad43117438ddc0e54f43889d391f1a2a691334b2545d0e6efe953b6cfd6c",
+      "admin_spatial_graph_sha256": "62275f09ec3905c58b78cf6e4cab0441ad869de7240beb3fd0b7bf056df909ca"
+    },
+    "measured_station_count": 13,
+    "daily_target_count_before_lag_join": 91,
+    "dropped_missing_lag_sample_count": 13,
+    "dropped_missing_lag_sample_ids": [
+      "10004|2018-10-17",
+      "10068|2018-10-17",
+      "10473|2018-10-17",
+      "7329|2018-10-17",
+      "7331|2018-10-17",
+      "7332|2018-10-17",
+      "7359|2018-10-17",
+      "9202|2018-10-17",
+      "9261|2018-10-17",
+      "9275|2018-10-17",
+      "9455|2018-10-17",
+      "9513|2018-10-17",
+      "9845|2018-10-17"
+    ],
+    "row_count": 78,
+    "time_group_count": 6,
+    "admin_group_count": 13,
+    "tap_feature_lag_days": 1,
+    "uses_current_or_future_target_values_in_features": false,
+    "tap_station_grid_assignments": {
+      "10004": {
+        "tile_id": "075",
+        "grid_id": "68726",
+        "grid_longitude": 106.544,
+        "grid_latitude": 29.5208,
+        "distance_degrees": 0.004565084884198116
+      },
+      "10068": {
+        "tile_id": "075",
+        "grid_id": "53126",
+        "grid_longitude": 106.659,
+        "grid_latitude": 29.6292,
+        "distance_degrees": 0.003716180835211683
+      },
+      "10473": {
+        "tile_id": "075",
+        "grid_id": "73523",
+        "grid_longitude": 106.481,
+        "grid_latitude": 29.4875,
+        "distance_degrees": 0.0027999999999934744
+      },
+      "7329": {
+        "tile_id": "075",
+        "grid_id": "61506",
+        "grid_longitude": 106.406,
+        "grid_latitude": 29.5708,
+        "distance_degrees": 0.003047950130831236
+      },
+      "7331": {
+        "tile_id": "075",
+        "grid_id": "84339",
+        "grid_longitude": 106.555,
+        "grid_latitude": 29.4125,
+        "distance_degrees": 0.005131276644265911
+      },
+      "7332": {
+        "tile_id": "075",
+        "grid_id": "62722",
+        "grid_longitude": 106.55,
+        "grid_latitude": 29.5625,
+        "distance_degrees": 0.004318564576332544
+      },
+      "7359": {
+        "tile_id": "075",
+        "grid_id": "66319",
+        "grid_longitude": 106.495,
+        "grid_latitude": 29.5375,
+        "distance_degrees": 0.003008321791301882
+      },
+      "9202": {
+        "tile_id": "075",
+        "grid_id": "74712",
+        "grid_longitude": 106.367,
+        "grid_latitude": 29.4792,
+        "distance_degrees": 0.00424264068711191
+      },
+      "9261": {
+        "tile_id": "075",
+        "grid_id": "50714",
+        "grid_longitude": 106.561,
+        "grid_latitude": 29.6458,
+        "distance_degrees": 0.0011180339887441116
+      },
+      "9275": {
+        "tile_id": "096",
+        "grid_id": "39912",
+        "grid_longitude": 106.622,
+        "grid_latitude": 29.7208,
+        "distance_degrees": 0.00445982062418922
+      },
+      "9455": {
+        "tile_id": "075",
+        "grid_id": "73539",
+        "grid_longitude": 106.634,
+        "grid_latitude": 29.4875,
+        "distance_degrees": 0.0032280024783140856
+      },
+      "9513": {
+        "tile_id": "096",
+        "grid_id": "41095",
+        "grid_longitude": 106.45,
+        "grid_latitude": 29.7125,
+        "distance_degrees": 0.004049691346255985
+      },
+      "9845": {
+        "tile_id": "096",
+        "grid_id": "39912",
+        "grid_longitude": 106.622,
+        "grid_latitude": 29.7208,
+        "distance_degrees": 0.004742362280553358
+      }
+    }
+  },
+  "claim_boundary": {
+    "max_claim_level": "not_for_claim",
+    "reason": "This is an observed-target P1 candidate. TAP may share upstream monitoring sources, so only lagged TAP values are used and independent-source claims remain prohibited pending benchmark and provenance review."
+  },
+  "limitations": [
+    "tap_product_may_assimilate_related_monitoring_sources",
+    "lagged_tap_feature_not_independent_source_proof",
+    "local_admin_boundary_vintage_and_license_not_verified",
+    "state_reconstruction_only_not_action_conditioned_dynamics"
+  ]
+}

@@ -114,6 +114,14 @@ def test_build_mmfe_state_input_from_gee_environmental_proxy_preserves_proxy_bou
     ]
     assert payload["graph_summary"]["relation_type_distribution"]["point_has_era5_hourly_record"] == 2
     assert payload["graph_summary"]["relation_type_distribution"]["point_has_cams_hourly_record"] == 2
+    assert payload["native_geometry_contract"]["metadata_complete"] is True
+    assert payload["native_geometry_contract"]["complete_role_count"] == 2
+    assert payload["native_geometry_contract"]["geometry_types"] == ["point"]
+    assert payload["native_geometry_contract"]["observation_semantics"] == ["proxy"]
+    assert (
+        payload["object_role_registry"][0]["spatial_support"]["support_type"]
+        == "sensor_footprint"
+    )
     assert payload["source_proxy"]["empirical_superiority_claim"] is False
     assert any("GEE ERA5/CAMS proxy is not observed station holdout" in warning for warning in payload["warnings"])
 

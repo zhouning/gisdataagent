@@ -1,0 +1,160 @@
+{
+  "schema": "uwm.geospatial_kernel.state_prior_p1_prospective_protocol.v1",
+  "version": "0.1",
+  "protocol_id": "chongqing-observed-station-next-p1-2024-07-02-07",
+  "created_at": "2026-08-04T21:35:00Z",
+  "frozen_at": "2026-08-04T21:40:00Z",
+  "prior_failure_diagnostic_sha256": "1aede01d5ab421d629aa9e43af7b7614046ce446ed37395fd839cfae504d933a",
+  "window_design": {
+    "development_window": {
+      "start_date": "2018-10-18",
+      "end_date": "2018-10-23",
+      "role": "opened_posthoc_development_only",
+      "eligible_for_scientific_claim": false
+    },
+    "final_holdout_window": {
+      "start_date": "2024-07-02",
+      "end_date": "2024-07-07",
+      "role": "fresh_target_acquisition_and_final_evaluation",
+      "target_access_status_at_internal_freeze": "not_acquired_by_protocol_builder"
+    },
+    "windows_non_overlapping": true,
+    "development_results_cannot_satisfy_final_holdout_gates": true
+  },
+  "eligible_feature_sources": {
+    "target": {
+      "source_id": "openaq_v3_station_pm25",
+      "source_role": "observed_target_only_not_input_feature",
+      "feature_names": [
+        "openaq_daily_pm25_mean_ugm3"
+      ],
+      "temporal_rule": "aggregate only measurements inside each UTC target day",
+      "uses_target_values": false,
+      "limitations": [
+        "station_and_sensor_support_must_be_reassessed_after_acquisition",
+        "target_values_must_never_enter_candidate_features",
+        "prior_local_2024_attempt_contains_zero_measurements"
+      ]
+    },
+    "raster": {
+      "source_id": "tap_pm25_observed_gridded_chongqing_2024_07_01_07",
+      "source_role": "lagged_raster_predictor",
+      "feature_names": [
+        "lag1_tap_pm25_ugm3",
+        "tap_grid_distance_degrees"
+      ],
+      "temporal_rule": "target day t may use TAP day t-minus-1 only",
+      "uses_target_values": false,
+      "limitations": [
+        "tap_may_assimilate_related_monitoring_sources",
+        "lagged_tap_is_not_independent_source_proof"
+      ]
+    },
+    "admin": {
+      "source_id": "chongqing_township_admin_units_local_snapshot",
+      "source_role": "static_polygon_geometry_predictor",
+      "feature_names": [
+        "polygon_area_square_degrees",
+        "polygon_perimeter_degrees"
+      ],
+      "temporal_rule": "static snapshot requires boundary-vintage gate before use",
+      "uses_target_values": false,
+      "limitations": [
+        "boundary_vintage_not_verified",
+        "license_and_official_code_status_not_verified"
+      ]
+    },
+    "graph_object": {
+      "source_id": "uwm_admin_spatial_adjacency_graph_2026_07_05",
+      "source_role": "static_admin_adjacency_predictor",
+      "feature_names": [
+        "admin_adjacency_degree"
+      ],
+      "temporal_rule": "static topology requires boundary-vintage gate before use",
+      "uses_target_values": false,
+      "limitations": [
+        "inherits_admin_boundary_vintage_uncertainty",
+        "degree_only_route_has_limited_expressive_capacity"
+      ]
+    }
+  },
+  "feature_freeze": {
+    "required_geometry_routes": [
+      "raster",
+      "admin",
+      "graph_object"
+    ],
+    "source_allowlist_closed": true,
+    "undeclared_features_prohibited": true,
+    "target_derived_features_prohibited": true,
+    "same_day_target_proxy_features_prohibited": true,
+    "feature_selection_after_development_diagnostic_prohibited": true,
+    "feature_selection_after_final_holdout_access_prohibited": true
+  },
+  "minimum_support": {
+    "minimum_rows": 60,
+    "minimum_stations": 10,
+    "minimum_admin_groups": 10,
+    "minimum_time_groups": 6,
+    "minimum_spatial_bands": 10
+  },
+  "evaluation_design": {
+    "required_splits": [
+      "spatial_block",
+      "whole_admin",
+      "future_temporal"
+    ],
+    "candidate_method": "multi_geometry_soft_alignment_ridge",
+    "required_baselines": [
+      "spatial_idw",
+      "hard_admin_mean",
+      "raster_only_ridge",
+      "raster_admin_soft_alignment_ridge"
+    ],
+    "negative_controls": [
+      "shuffled_admin_alignment_ridge",
+      "shuffled_graph_alignment_ridge"
+    ],
+    "model_class": "deterministic_standardized_ridge",
+    "confidence_level": 0.9,
+    "coverage_tolerance": 0.05,
+    "minimum_coverage_threshold": 0.85,
+    "minimum_relative_improvement": 0.01,
+    "negative_control_seed": 37,
+    "candidate_must_beat_every_required_baseline_on_every_split": true,
+    "both_geometry_shuffle_controls_must_pass": true,
+    "split_conformal_coverage_must_pass": true,
+    "threshold_changes_after_freeze_prohibited": true
+  },
+  "activation_gates": {
+    "external_registration_receipt_verified": false,
+    "holdout_access_log_available": false,
+    "eligible_source_artifacts_acquired_and_hashed": false,
+    "minimum_support_verified": false,
+    "admin_boundary_vintage_verified": false,
+    "source_license_and_lineage_verified": false,
+    "p1_input_readiness_reassessed": false
+  },
+  "evidence_refs": [
+    "data/uwm_public_proxy/chongqing_central/geospatial_state_prior_p1_failure_diagnostic_2018_10_18_23/uwm_geospatial_state_prior_p1_failure_diagnostic.json",
+    "data/uwm_public_proxy/chongqing_central/geospatial_state_prior_observed_station_benchmark_2018_10_18_23/uwm_geospatial_state_prior_benchmark.json",
+    "data/uwm_public_proxy/chongqing_central/openaq_station_observations_2024_07_attempt/snapshot_manifest.json",
+    "/Users/zhouning/Downloads/tap_uwm/chongqing_pm25_2024_07_01_07/downloaded"
+  ],
+  "p1_execution_permitted": false,
+  "p2_admission_permitted": false,
+  "supported_claim": "internally_frozen_next_p1_protocol_only",
+  "claim_boundary": {
+    "max_claim_level": "not_for_claim",
+    "scope": "internal_protocol_freeze_only",
+    "external_preregistration_verified": false,
+    "holdout_blinding_independently_verified": false,
+    "p1_execution_permitted": false,
+    "p2_admission_permitted": false,
+    "scientific_result_claim": false,
+    "transition_skill_improvement_claim": false,
+    "policy_causal_effect_claim": false,
+    "general_geospatial_world_model_validation_claim": false
+  },
+  "protocol_sha256": "ee52b37d10bda4b7f64fea960254312806bcefaea8ef9220630226001df37488"
+}

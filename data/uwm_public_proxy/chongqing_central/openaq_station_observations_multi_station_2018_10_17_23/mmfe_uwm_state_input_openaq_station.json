@@ -1,0 +1,166 @@
+{
+  "schema": "mmfe.uwm_state_input.v1",
+  "version": "0.1",
+  "created_at": "2026-08-04T21:00:00Z",
+  "source_product": {
+    "product_id": "mmfe-openaq-stations-2018-10-17T11:00:00Z-2018-10-24T00:00:00Z",
+    "product_type": "semantic_fusion_product",
+    "product_version": "0.1",
+    "quality_score": 0.56
+  },
+  "urban_spatial_unit": {
+    "unit_type": "station_air_quality_proxy",
+    "crs": "EPSG:4326",
+    "location": {
+      "id": 7332,
+      "name": "上清寺",
+      "distance_m": 486.23153014,
+      "latitude": 29.5654,
+      "longitude": 106.5468,
+      "datetime_first_utc": "2018-10-17T12:00:00Z",
+      "datetime_last_utc": "2021-08-09T11:00:00Z"
+    },
+    "temporal_extent": "2018-10-17T11:00:00Z/2018-10-24T00:00:00Z"
+  },
+  "object_role_registry": [
+    {
+      "role": "openaq_station_air_quality_measurements",
+      "uwm_role": "air_pollution_exposure",
+      "object_type": "station_timeseries",
+      "source_dataset_id": "openaq_air_quality_station_observation_proxy",
+      "synthetic_status": "public_proxy",
+      "aggregation_semantics": "none",
+      "geometry_type": "point",
+      "observation_semantics": "observed",
+      "spatial_support": {
+        "support_type": "sensor_footprint",
+        "support_id_field": "station_id",
+        "crs": "EPSG:4326"
+      },
+      "temporal_support": {
+        "resolution": "sensor_native",
+        "valid_from": "2018-10-17T11:00:00Z",
+        "valid_to": "2018-10-24T00:00:00Z"
+      }
+    }
+  ],
+  "native_geometry_contract": {
+    "schema": "uwm.native_geometry_support.v1",
+    "role_count": 1,
+    "declared_role_count": 1,
+    "complete_role_count": 1,
+    "legacy_or_incomplete_roles": [],
+    "geometry_types": [
+      "point"
+    ],
+    "observation_semantics": [
+      "observed"
+    ],
+    "inferred_role_count": 0,
+    "uncalibrated_inferred_roles": [],
+    "metadata_complete": true,
+    "claim_boundary": {
+      "max_claim_level": "bounded_support",
+      "inferred_values_are_observations": false
+    }
+  },
+  "state_components": {
+    "urban_form": {
+      "role_count": 0,
+      "roles": [],
+      "source_dataset_ids": []
+    },
+    "heat_exposure": {
+      "role_count": 0,
+      "roles": [],
+      "source_dataset_ids": []
+    },
+    "air_pollution_exposure": {
+      "role_count": 1,
+      "roles": [
+        "openaq_station_air_quality_measurements"
+      ],
+      "source_dataset_ids": [
+        "openaq_air_quality_station_observation_proxy"
+      ]
+    },
+    "service_accessibility": {
+      "role_count": 0,
+      "roles": [],
+      "source_dataset_ids": []
+    },
+    "mobility_activity": {
+      "role_count": 0,
+      "roles": [],
+      "source_dataset_ids": []
+    },
+    "population_vulnerability": {
+      "role_count": 0,
+      "roles": [],
+      "source_dataset_ids": []
+    },
+    "planning_constraints": {
+      "role_count": 0,
+      "roles": [],
+      "source_dataset_ids": []
+    },
+    "remote_sensing_state": {
+      "role_count": 0,
+      "roles": [],
+      "source_dataset_ids": []
+    }
+  },
+  "graph_summary": {
+    "total_relation_count": 1404,
+    "relation_type_count": 2,
+    "relation_type_distribution": {
+      "station_has_air_quality_measurement": 1314,
+      "station_has_air_quality_sensor": 90
+    },
+    "usage_distribution": {
+      "air_pollution_exposure": 1404
+    }
+  },
+  "semantic_relation_registry": [
+    {
+      "semantic_relation_type": "station_has_air_quality_measurement",
+      "uwm_usage": "air_pollution_exposure",
+      "relation_count": 1314
+    },
+    {
+      "semantic_relation_type": "station_has_air_quality_sensor",
+      "uwm_usage": "air_pollution_exposure",
+      "relation_count": 90
+    }
+  ],
+  "production_policy": {
+    "contains_synthetic_sources": false,
+    "authoritative_data_required_for_production": true,
+    "policy": "UWM state input may use public proxies and synthetic placeholders for research progress, but production claims require authoritative urban data and evidence gates."
+  },
+  "warnings": [
+    "OpenAQ station observations are not aligned to the UWM scene holdout period unless scene_holdout_ready is true"
+  ],
+  "source_proxy": {
+    "schema": "uwm.openaq_station_observation_proxy.v1",
+    "observed_time_range": {
+      "start": "2018-10-17T11:00:00Z",
+      "end": "2018-10-24T00:00:00Z"
+    },
+    "record_counts": {
+      "locations": 15,
+      "sensors": 90,
+      "measurements": 1314
+    },
+    "scene_holdout_ready": true,
+    "claim_boundary": {
+      "max_claim_level": "bounded_support",
+      "reason": "OpenAQ station measurements are real public observations, but this snapshot must match the UWM scene period and evaluation design before it can serve as observed holdout."
+    },
+    "limitations": [
+      "openaq_station_coverage_must_be_checked_for_city_representativeness",
+      "not_policy_intervention_holdout_by_itself"
+    ],
+    "empirical_superiority_claim": false
+  }
+}
