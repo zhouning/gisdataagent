@@ -1,0 +1,272 @@
+{
+  "artifacts": {
+    "concepts": {
+      "bytes": 435268,
+      "media_type": "application/x-ndjson+gzip",
+      "path": "concepts.jsonl.gz",
+      "record_count": 5134,
+      "sha256": "3db5ca7bafd5d8fe866cfab3b179ccc92cc75112e2651bf7383632579cf19d7d"
+    },
+    "jsonld_context": {
+      "bytes": 510,
+      "media_type": "application/ld+json",
+      "path": "context.jsonld",
+      "record_count": null,
+      "sha256": "1f255216686a0f834c6eb8d6d5df1ee3a1ba62dab17f59cd76b24377106a4407"
+    },
+    "mappings": {
+      "bytes": 29843,
+      "media_type": "application/x-ndjson+gzip",
+      "path": "mappings.jsonl.gz",
+      "record_count": 422,
+      "sha256": "54ee9864ca28cf55fda35a28ea59a6d42d3a7ffd28c26c695e4b0b68170ccd5d"
+    },
+    "properties": {
+      "bytes": 4063744,
+      "media_type": "application/x-ndjson+gzip",
+      "path": "properties.jsonl.gz",
+      "record_count": 56146,
+      "sha256": "0e370acd9b4fe759734c4274b500cc8d4aa0c6e8a2d18097ddc942807ad128c6"
+    },
+    "rdf": {
+      "bytes": 4608772,
+      "media_type": "application/gzip",
+      "path": "ontology.ttl.gz",
+      "record_count": null,
+      "sha256": "16039ef8ccc843113abf317d69944ade22cad226c9bb46a6690ad28d6e985bbe"
+    },
+    "relations": {
+      "bytes": 237128,
+      "media_type": "application/x-ndjson+gzip",
+      "path": "relations.jsonl.gz",
+      "record_count": 6193,
+      "sha256": "d3cf9efcc5d7bda717836afb50675751ff774ebbfc2366e54b1ebfbe9df8474c"
+    },
+    "shacl": {
+      "bytes": 5275,
+      "media_type": "text/turtle",
+      "path": "shapes.ttl",
+      "record_count": null,
+      "sha256": "13488df66a31fdbea481aad065667180217982598f4cc7336bf849ca4e06fbb5"
+    },
+    "sources": {
+      "bytes": 1789,
+      "media_type": "application/x-ndjson+gzip",
+      "path": "sources.jsonl.gz",
+      "record_count": 13,
+      "sha256": "6b6d56366a8bde8d3fc716ef4ae48e9213fe125489a66d2dbcc9fc887d4f9caa"
+    },
+    "validation": {
+      "bytes": 939528,
+      "media_type": "application/json",
+      "path": "validation-report.json",
+      "record_count": null,
+      "sha256": "2590e900acb773f98e11a694fff608db5dfe560fec33c7099eb9211fdc4d0837"
+    }
+  },
+  "compatibility": {
+    "authority_store": "PostgreSQL gda_ontology schema",
+    "fallback": "hash-verified immutable package",
+    "minimum_runtime_contract": "gda-ontology-package-v1",
+    "rdf_projection": "Apache Jena Fuseki/TDB2",
+    "semantic_architecture": "curated-domain-plus-mapping-modules-v2"
+  },
+  "content_sha256": "18a0a1782cd3c1329497fb780fdae3f099aa917cc73c1046a04b192ebdd014b4",
+  "description": "经领域策划的自然资源实体、状态、过程、权利与规则本体；标准和 EA 结构仅作为独立的数据映射与溯源模块。",
+  "domain_stats": [
+    {
+      "concept_count": 416,
+      "confirmed_mapping_count": 10,
+      "domain_class_count": 7,
+      "domain_id": "01",
+      "ea_schema_count": 15,
+      "label": "统一地理底图",
+      "mapping_count": 17,
+      "property_count": 817,
+      "standard_feature_count": 77,
+      "strict_coverage": 0.1299,
+      "value_domain_count": 2,
+      "value_member_count": 314
+    },
+    {
+      "concept_count": 612,
+      "confirmed_mapping_count": 5,
+      "domain_class_count": 36,
+      "domain_id": "02",
+      "ea_schema_count": 156,
+      "label": "统一调查监测",
+      "mapping_count": 22,
+      "property_count": 8332,
+      "standard_feature_count": 310,
+      "strict_coverage": 0.0161,
+      "value_domain_count": 11,
+      "value_member_count": 98
+    },
+    {
+      "concept_count": 979,
+      "confirmed_mapping_count": 196,
+      "domain_class_count": 21,
+      "domain_id": "03",
+      "ea_schema_count": 196,
+      "label": "统一产权底板",
+      "mapping_count": 260,
+      "property_count": 8643,
+      "standard_feature_count": 359,
+      "strict_coverage": 0.546,
+      "value_domain_count": 6,
+      "value_member_count": 396
+    },
+    {
+      "concept_count": 562,
+      "confirmed_mapping_count": 3,
+      "domain_class_count": 11,
+      "domain_id": "04",
+      "ea_schema_count": 139,
+      "label": "统一规划",
+      "mapping_count": 4,
+      "property_count": 4034,
+      "standard_feature_count": 367,
+      "strict_coverage": 0.0082,
+      "value_domain_count": 4,
+      "value_member_count": 40
+    },
+    {
+      "concept_count": 253,
+      "confirmed_mapping_count": 32,
+      "domain_class_count": 5,
+      "domain_id": "05",
+      "ea_schema_count": 175,
+      "label": "底线安全",
+      "mapping_count": 32,
+      "property_count": 4125,
+      "standard_feature_count": 72,
+      "strict_coverage": 0.4444,
+      "value_domain_count": 0,
+      "value_member_count": 0
+    },
+    {
+      "concept_count": 219,
+      "confirmed_mapping_count": 1,
+      "domain_class_count": 9,
+      "domain_id": "06",
+      "ea_schema_count": 113,
+      "label": "用途管制",
+      "mapping_count": 58,
+      "property_count": 5644,
+      "standard_feature_count": 96,
+      "strict_coverage": 0.0104,
+      "value_domain_count": 0,
+      "value_member_count": 0
+    },
+    {
+      "concept_count": 374,
+      "confirmed_mapping_count": 23,
+      "domain_class_count": 3,
+      "domain_id": "07",
+      "ea_schema_count": 83,
+      "label": "开发利用",
+      "mapping_count": 25,
+      "property_count": 2821,
+      "standard_feature_count": 63,
+      "strict_coverage": 0.3651,
+      "value_domain_count": 6,
+      "value_member_count": 218
+    },
+    {
+      "concept_count": 33,
+      "confirmed_mapping_count": 0,
+      "domain_class_count": 3,
+      "domain_id": "08",
+      "ea_schema_count": 11,
+      "label": "执法督察",
+      "mapping_count": 0,
+      "property_count": 277,
+      "standard_feature_count": 18,
+      "strict_coverage": 0.0,
+      "value_domain_count": 0,
+      "value_member_count": 0
+    },
+    {
+      "concept_count": 642,
+      "confirmed_mapping_count": 0,
+      "domain_class_count": 0,
+      "domain_id": "09",
+      "ea_schema_count": 102,
+      "label": "社会经济人口",
+      "mapping_count": 1,
+      "property_count": 1067,
+      "standard_feature_count": 539,
+      "strict_coverage": 0.0,
+      "value_domain_count": 0,
+      "value_member_count": 0
+    },
+    {
+      "concept_count": 972,
+      "confirmed_mapping_count": 0,
+      "domain_class_count": 1,
+      "domain_id": "10",
+      "ea_schema_count": 967,
+      "label": "元数据",
+      "mapping_count": 3,
+      "property_count": 18995,
+      "standard_feature_count": 3,
+      "strict_coverage": 0.0,
+      "value_domain_count": 0,
+      "value_member_count": 0
+    }
+  ],
+  "generated_at": "2026-08-04T00:00:00Z",
+  "model_profile": "owl2-rl-bounded",
+  "namespace_uri": "https://ontology.gis-data-agent.local/natural-resource/one-map/",
+  "ontology_key": "natural-resource-one-map",
+  "ontology_version_id": "d6e2812a-b10d-5c14-880b-43624034ee08",
+  "package_format": "gda-ontology-package-v1",
+  "package_id": "natural-resource-one-map:2.0.0:18a0a1782cd3c132",
+  "semantic_version": "2.0.0",
+  "source_fingerprint": "940b8715556cd284050a7dce5faf4cd58bb8ef63e785d1ef93db3a32605acd26",
+  "stats": {
+    "candidate_mapping_count": 37,
+    "concept_count": 5134,
+    "confirmed_mapping_count": 270,
+    "conflict_mapping_count": 115,
+    "domain_class_count": 96,
+    "kind_CRSReference": 1,
+    "kind_Domain": 10,
+    "kind_DomainClass": 53,
+    "kind_InformationClass": 12,
+    "kind_ObservationClass": 3,
+    "kind_ProcessClass": 14,
+    "kind_ReferenceConcept": 1066,
+    "kind_ReferenceScheme": 29,
+    "kind_RoleClass": 5,
+    "kind_SchemaArtifact": 3932,
+    "kind_StateClass": 9,
+    "mapping_count": 422,
+    "property_count": 56146,
+    "rdf_triple_count": 528252,
+    "relation_count": 6193,
+    "schema_artifact_count": 3932,
+    "shacl_triple_count": 89,
+    "source_count": 13,
+    "validation_issue_count": 2397
+  },
+  "title": "自然资源“一张图”领域本体",
+  "validation_summary": {
+    "conforms": true,
+    "issue_count": 2397,
+    "severity_counts": {
+      "warning": 2397
+    },
+    "shacl_conforms": true
+  },
+  "vocabularies": [
+    "RDF 1.1",
+    "RDFS",
+    "OWL 2 RL bounded profile",
+    "SKOS",
+    "SHACL",
+    "PROV-O",
+    "GeoSPARQL 1.1 vocabulary",
+    "OWL-Time"
+  ]
+}

@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ontology-fuseki
+  namespace: gis-agent
+  labels:
+    app.kubernetes.io/name: ontology-fuseki
+    app.kubernetes.io/component: semantic-projection
+spec:
+  serviceName: ontology-fuseki
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ontology-fuseki
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ontology-fuseki
+        app.kubernetes.io/component: semantic-projection
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 999
+        fsGroup: 999
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: fuseki
+          image: gisdataagent-ontology-fuseki:5.5.0-nr-2.0.1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3030
+          env:
+            - name: JVM_ARGS
+              value: -Xms768m -Xmx2g -XX:+UseG1GC
+          volumeMounts:
+            - name: data
+              mountPath: /fuseki
+          resources:
+            requests:
+              cpu: 250m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 3Gi
+          startupProbe:
+            httpGet:
+              path: /$/ping
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /$/ping
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /$/ping
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 20Gi

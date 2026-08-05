@@ -1,0 +1,50 @@
+{
+  "bundle": {
+    "id": "natural-resource-ontology-customer-demo-v1",
+    "version": "1.0.0",
+    "generated_at": "2026-08-04T10:24:56.364315Z",
+    "source_title": "规划院提供数据样例及 Demo 系统功能演示建议",
+    "decision_scope": "辅助预审，不替代法定审批或行政决定"
+  },
+  "ontology": {
+    "key": "natural-resource-one-map",
+    "version": "2.0.1",
+    "package_id": "natural-resource-one-map:2.0.1:953dac97c1be4d96",
+    "sha256": "953dac97c1be4d9683247da42dea022128471b15b9c677215d913fa209bd1200",
+    "namespace": "https://gisdataagent.local/ontology/natural-resource/2.0.1/",
+    "stats": {
+      "domain_classes": 96,
+      "schema_artifacts": 3932,
+      "skos_concepts": 1066,
+      "mappings": 422,
+      "rdf_triples": 528252
+    }
+  },
+  "files": [
+    {
+      "name": "banzhu_changed_parcels.geojson",
+      "size": 1622886,
+      "sha256": "3a1768041f6ce4d0f3e087855f0e490713fdb66cc36979c9dddc071313843dc2"
+    },
+    {
+      "name": "demo.json",
+      "size": 409094,
+      "sha256": "48dc082c6deea737706dea7933cded996978e347d41f6eb68466c7cc187ef48f"
+    },
+    {
+      "name": "heping_changed_parcels.geojson",
+      "size": 1948606,
+      "sha256": "e804ec15dbcbef2ec9776dc3ca332bcdb9ae12accf4a03c5a7199c114e2194b9"
+    },
+    {
+      "name": "heping_constraints.geojson",
+      "size": 318071,
+      "sha256": "28d446e361cda5fb3d9b8c0189f738f5ab90bab4d154598d174631554d69c3a1"
+    },
+    {
+      "name": "heping_construction_zones.geojson",
+      "size": 958663,
+      "sha256": "721564ac0bc3f0b9e7b943da2d063f84fd18f733af0bd7862bcf6d9a6fdf76de"
+    }
+  ]
+}

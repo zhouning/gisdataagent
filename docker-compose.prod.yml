@@ -36,6 +36,42 @@ services:
         max-size: "100m"
         max-file: "10"
 
+  ingestion-worker:
+    restart: always
+    environment:
+      # DolphinScheduler is the production DataOps schedule authority. This
+      # worker only executes durable runs submitted through the platform API.
+      GDA_INGEST_SCHEDULE_DRIVER: external
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 8G
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+
+  ontology-rdf:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 3G
+        reservations:
+          cpus: "0.25"
+          memory: 768M
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
   # ---------------------------------------------------------------------------
   # Database Backup (daily cron)
   # ---------------------------------------------------------------------------
@@ -49,7 +85,7 @@ services:
       PGHOST: db
       PGPORT: 5432
       PGUSER: postgres
-      PGPASSWORD: ${POSTGRES_ADMIN_PASSWORD:-postgres}
+      PGPASSWORD: ${POSTGRES_ADMIN_PASSWORD:?POSTGRES_ADMIN_PASSWORD must be set}
       PGDATABASE: gis_agent
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
     volumes:
@@ -58,19 +94,23 @@ services:
     command:
       - -c
       - |
+        set -eu
         echo "[Backup] Starting daily backup cron..."
         while true; do
           TIMESTAMP=$$(date +%Y%m%d_%H%M%S)
-          FILENAME="/backups/gis_agent_$${TIMESTAMP}.sql.gz"
+          FILENAME="/backups/gis_agent_$${TIMESTAMP}.dump"
+          PARTIAL="$${FILENAME}.partial"
           echo "[Backup] Creating $$FILENAME ..."
-          pg_dump -Fc | gzip > "$$FILENAME"
-          if [ $$? -eq 0 ]; then
+          if pg_dump --format=custom --no-owner --no-acl --file "$$PARTIAL"; then
+            mv "$$PARTIAL" "$$FILENAME"
             echo "[Backup] Done: $$FILENAME ($$(du -h $$FILENAME | cut -f1))"
           else
             echo "[Backup] FAILED"
+            rm -f "$$PARTIAL"
+            exit 1
           fi
           # Cleanup old backups
-          find /backups -name "gis_agent_*.sql.gz" -mtime +$${BACKUP_RETENTION_DAYS} -delete 2>/dev/null
+          find /backups -name "gis_agent_*.dump" -mtime +$${BACKUP_RETENTION_DAYS} -delete 2>/dev/null
           echo "[Backup] Next run in 24h"
           sleep 86400
         done

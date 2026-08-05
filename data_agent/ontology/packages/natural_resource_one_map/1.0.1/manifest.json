@@ -1,0 +1,261 @@
+{
+  "artifacts": {
+    "concepts": {
+      "bytes": 523468,
+      "media_type": "application/x-ndjson+gzip",
+      "path": "concepts.jsonl.gz",
+      "record_count": 6295,
+      "sha256": "d2d0cc07337229ff2a6729b74395aab49c6b3fecc9b5e90a11b39aea2c67697a"
+    },
+    "jsonld_context": {
+      "bytes": 510,
+      "media_type": "application/ld+json",
+      "path": "context.jsonld",
+      "record_count": null,
+      "sha256": "1f255216686a0f834c6eb8d6d5df1ee3a1ba62dab17f59cd76b24377106a4407"
+    },
+    "mappings": {
+      "bytes": 25472,
+      "media_type": "application/x-ndjson+gzip",
+      "path": "mappings.jsonl.gz",
+      "record_count": 331,
+      "sha256": "493fbe5442f272a787633c18abb2edddc00832264725b1ffb4d5190c0a402481"
+    },
+    "properties": {
+      "bytes": 4657260,
+      "media_type": "application/x-ndjson+gzip",
+      "path": "properties.jsonl.gz",
+      "record_count": 57177,
+      "sha256": "80b703e5587092fd122a06d5533fe42b460c24bafb96ef4e9e0ca2b4dd4d5d97"
+    },
+    "rdf": {
+      "bytes": 5311719,
+      "media_type": "application/gzip",
+      "path": "ontology.ttl.gz",
+      "record_count": null,
+      "sha256": "031fdd71b74f24b3ac77507395425e836d65d0959beff39358c01897eaaa7049"
+    },
+    "relations": {
+      "bytes": 315195,
+      "media_type": "application/x-ndjson+gzip",
+      "path": "relations.jsonl.gz",
+      "record_count": 9226,
+      "sha256": "e3dd76f5247c8603e466750d6067c362585f580fd90f3b1c588045d18efa5e4a"
+    },
+    "shacl": {
+      "bytes": 5945925,
+      "media_type": "text/turtle",
+      "path": "shapes.ttl",
+      "record_count": null,
+      "sha256": "c0af76903eeea7e8a987a2654342e49d0119ef8054ddd57cd833b4e2a2eef547"
+    },
+    "sources": {
+      "bytes": 1725,
+      "media_type": "application/x-ndjson+gzip",
+      "path": "sources.jsonl.gz",
+      "record_count": 13,
+      "sha256": "700ad99a5667c05fab4260edcc5bfd4d291e7bd2856158bbcbe7ad696e4856f3"
+    },
+    "validation": {
+      "bytes": 220378,
+      "media_type": "application/json",
+      "path": "validation-report.json",
+      "record_count": null,
+      "sha256": "7c34bbf60ff2dbc96d5edbad5f9f10fd18ace3c95fb22fe2d357d72f89571370"
+    }
+  },
+  "compatibility": {
+    "authority_store": "PostgreSQL gda_ontology schema",
+    "fallback": "hash-verified immutable package",
+    "minimum_runtime_contract": "gda-ontology-package-v1",
+    "rdf_projection": "Apache Jena Fuseki/TDB2"
+  },
+  "content_sha256": "729f52207ef396475a21e4ab66aed48644d6a6953e40ed9212bfa2781d4efded",
+  "description": "由自然资源“一张图”标准、EA PostgreSQL 仓库和 Cognitive Runtime 核心词汇编译的受治理本体包。",
+  "domain_stats": [
+    {
+      "concept_count": 537,
+      "confirmed_mapping_count": 0,
+      "domain_id": "01",
+      "ea_schema_count": 15,
+      "label": "统一地理底图",
+      "mapping_count": 0,
+      "property_count": 817,
+      "standard_feature_count": 77,
+      "strict_coverage": 0.0,
+      "value_domain_count": 2,
+      "value_member_count": 315
+    },
+    {
+      "concept_count": 696,
+      "confirmed_mapping_count": 5,
+      "domain_id": "02",
+      "ea_schema_count": 156,
+      "label": "统一调查监测",
+      "mapping_count": 12,
+      "property_count": 8536,
+      "standard_feature_count": 310,
+      "strict_coverage": 0.0161,
+      "value_domain_count": 11,
+      "value_member_count": 98
+    },
+    {
+      "concept_count": 1186,
+      "confirmed_mapping_count": 152,
+      "domain_id": "03",
+      "ea_schema_count": 196,
+      "label": "统一产权底板",
+      "mapping_count": 201,
+      "property_count": 9166,
+      "standard_feature_count": 359,
+      "strict_coverage": 0.4234,
+      "value_domain_count": 6,
+      "value_member_count": 398
+    },
+    {
+      "concept_count": 623,
+      "confirmed_mapping_count": 3,
+      "domain_id": "04",
+      "ea_schema_count": 139,
+      "label": "统一规划",
+      "mapping_count": 3,
+      "property_count": 4218,
+      "standard_feature_count": 367,
+      "strict_coverage": 0.0082,
+      "value_domain_count": 4,
+      "value_member_count": 41
+    },
+    {
+      "concept_count": 408,
+      "confirmed_mapping_count": 32,
+      "domain_id": "05",
+      "ea_schema_count": 175,
+      "label": "底线安全",
+      "mapping_count": 32,
+      "property_count": 4165,
+      "standard_feature_count": 72,
+      "strict_coverage": 0.4444,
+      "value_domain_count": 0,
+      "value_member_count": 0
+    },
+    {
+      "concept_count": 295,
+      "confirmed_mapping_count": 1,
+      "domain_id": "06",
+      "ea_schema_count": 113,
+      "label": "用途管制",
+      "mapping_count": 58,
+      "property_count": 5694,
+      "standard_feature_count": 96,
+      "strict_coverage": 0.0104,
+      "value_domain_count": 0,
+      "value_member_count": 0
+    },
+    {
+      "concept_count": 452,
+      "confirmed_mapping_count": 23,
+      "domain_id": "07",
+      "ea_schema_count": 83,
+      "label": "开发利用",
+      "mapping_count": 25,
+      "property_count": 2849,
+      "standard_feature_count": 63,
+      "strict_coverage": 0.3651,
+      "value_domain_count": 6,
+      "value_member_count": 218
+    },
+    {
+      "concept_count": 156,
+      "confirmed_mapping_count": 0,
+      "domain_id": "08",
+      "ea_schema_count": 11,
+      "label": "执法督察",
+      "mapping_count": 0,
+      "property_count": 277,
+      "standard_feature_count": 18,
+      "strict_coverage": 0.0,
+      "value_domain_count": 0,
+      "value_member_count": 0
+    },
+    {
+      "concept_count": 674,
+      "confirmed_mapping_count": 0,
+      "domain_id": "09",
+      "ea_schema_count": 102,
+      "label": "社会经济人口",
+      "mapping_count": 0,
+      "property_count": 1067,
+      "standard_feature_count": 539,
+      "strict_coverage": 0.0,
+      "value_domain_count": 0,
+      "value_member_count": 0
+    },
+    {
+      "concept_count": 1102,
+      "confirmed_mapping_count": 0,
+      "domain_id": "10",
+      "ea_schema_count": 967,
+      "label": "元数据",
+      "mapping_count": 0,
+      "property_count": 18997,
+      "standard_feature_count": 3,
+      "strict_coverage": 0.0,
+      "value_domain_count": 0,
+      "value_member_count": 0
+    }
+  ],
+  "generated_at": "2026-08-04T04:11:37.448847Z",
+  "model_profile": "owl2-rl-bounded",
+  "namespace_uri": "https://ontology.gis-data-agent.local/natural-resource/one-map/",
+  "ontology_key": "natural-resource-one-map",
+  "ontology_version_id": "0ae24727-e591-5dd8-9d72-cc56724e886c",
+  "package_format": "gda-ontology-package-v1",
+  "package_id": "natural-resource-one-map:1.0.1:729f52207ef39647",
+  "semantic_version": "1.0.1",
+  "source_fingerprint": "9ebd979b1430dff574565b3711969e1f70fd70f10b8451b483f6634550de0f88",
+  "stats": {
+    "candidate_mapping_count": 0,
+    "concept_count": 6295,
+    "confirmed_mapping_count": 216,
+    "conflict_mapping_count": 115,
+    "kind_ActionType": 5,
+    "kind_CRS": 1,
+    "kind_DatasetSchema": 2028,
+    "kind_Domain": 10,
+    "kind_FeatureType": 1904,
+    "kind_FunctionType": 3,
+    "kind_InterfaceType": 2,
+    "kind_MetaClass": 22,
+    "kind_ObjectType": 7,
+    "kind_Package": 1204,
+    "kind_StandardDocument": 10,
+    "kind_ValueDomain": 29,
+    "kind_ValueDomainMember": 1070,
+    "mapping_count": 331,
+    "property_count": 57177,
+    "rdf_triple_count": 565422,
+    "relation_count": 9226,
+    "shacl_triple_count": 104778,
+    "source_count": 13,
+    "validation_issue_count": 1332
+  },
+  "title": "自然资源“一张图”领域与运行本体",
+  "validation_summary": {
+    "conforms": true,
+    "issue_count": 1332,
+    "severity_counts": {
+      "warning": 1332
+    },
+    "shacl_conforms": true
+  },
+  "vocabularies": [
+    "RDF 1.1",
+    "RDFS",
+    "OWL 2 RL bounded profile",
+    "SKOS",
+    "SHACL",
+    "PROV-O",
+    "GeoSPARQL 1.1 vocabulary",
+    "OWL-Time"
+  ]
+}

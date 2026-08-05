@@ -1,0 +1,25 @@
+.kind-ValueDomain {
+  background: #a16207;
+}
+
+.kind-ValueDomainMember {
+  background: #c2410c;
+}
+
+.ontology-node-ValueDomain {
+  border-color: #d2a94d;
+}
+
+.ontology-node-ValueDomain .ontology-node-head {
+  color: #854d0e;
+  background: #fef3c7;
+}
+
+.ontology-node-ValueDomainMember {
+  border-color: #e8a07a;
+}
+
+.ontology-node-ValueDomainMember .ontology-node-head {
+  color: #9a3412;
+  background: #ffedd5;
+}

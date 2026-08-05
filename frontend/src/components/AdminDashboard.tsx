@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Bell, Play, RefreshCw } from 'lucide-react';
+import { Bell, Play, RefreshCw, RotateCcw, Save, Settings2 } from 'lucide-react';
+import { usePlatformBranding } from '../platformBranding';
 
 interface MetricsSummary {
   audit_stats: {
@@ -69,7 +70,7 @@ interface AdminDashboardProps {
 }
 
 export default function AdminDashboard({ onBack }: AdminDashboardProps) {
-  const [activeSection, setActiveSection] = useState<'metrics' | 'users' | 'audit' | 'system' | 'bots' | 'a2a' | 'models' | 'costguard' | 'selfevolution'>('metrics');
+  const [activeSection, setActiveSection] = useState<'metrics' | 'users' | 'audit' | 'system' | 'settings' | 'bots' | 'a2a' | 'models' | 'costguard' | 'selfevolution'>('metrics');
 
   return (
     <div className="admin-dashboard">
@@ -81,6 +82,8 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
             onClick={() => setActiveSection('metrics')}>系统指标</button>
           <button className={activeSection === 'system' ? 'active' : ''}
             onClick={() => setActiveSection('system')}>系统状态</button>
+          <button className={activeSection === 'settings' ? 'active' : ''}
+            onClick={() => setActiveSection('settings')}>系统配置</button>
           <button className={activeSection === 'bots' ? 'active' : ''}
             onClick={() => setActiveSection('bots')}>Bot 管理</button>
           <button className={activeSection === 'a2a' ? 'active' : ''}
@@ -100,6 +103,7 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
       <div className="admin-content">
         {activeSection === 'metrics' && <MetricsSection />}
         {activeSection === 'system' && <SystemStatusSection />}
+        {activeSection === 'settings' && <PlatformSettingsSection />}
         {activeSection === 'bots' && <BotsSection />}
         {activeSection === 'a2a' && <A2ASection />}
         {activeSection === 'models' && <ModelsSection />}
@@ -110,6 +114,91 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
       </div>
     </div>
   );
+}
+
+function PlatformSettingsSection() {
+  const { branding, saveBranding } = usePlatformBranding();
+  const [platformName, setPlatformName] = useState(branding.platform_name);
+  const [platformSubtitle, setPlatformSubtitle] = useState(branding.platform_subtitle);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  useEffect(() => {
+    setPlatformName(branding.platform_name);
+    setPlatformSubtitle(branding.platform_subtitle);
+  }, [branding.platform_name, branding.platform_subtitle]);
+
+  const changed = platformName.trim() !== branding.platform_name
+    || platformSubtitle.trim() !== branding.platform_subtitle;
+
+  const reset = () => {
+    setPlatformName(branding.platform_name);
+    setPlatformSubtitle(branding.platform_subtitle);
+    setMessage(null);
+  };
+
+  const save = async () => {
+    setSaving(true);
+    setMessage(null);
+    try {
+      await saveBranding({
+        platform_name: platformName,
+        platform_subtitle: platformSubtitle,
+      });
+      setMessage({ type: 'success', text: '已保存并同步到登录页、顶部栏和浏览器标题。' });
+    } catch (error) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : '保存失败' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return <section className="platform-settings-section">
+    <div className="admin-section-heading">
+      <span><Settings2 size={18} /></span>
+      <div><h3>平台品牌配置</h3><p>配置面向用户显示的平台名称，不影响内部 API、数据库对象或部署标识。</p></div>
+    </div>
+    <div className="platform-settings-form">
+      <label>
+        <span>平台名称</span>
+        <input
+          value={platformName}
+          onChange={event => setPlatformName(event.target.value)}
+          minLength={2}
+          maxLength={80}
+          placeholder="Geospatial Data Agent"
+        />
+        <small>{platformName.trim().length}/80，将显示在登录页、顶部栏和网页标题中</small>
+      </label>
+      <label>
+        <span>平台副标题</span>
+        <input
+          value={platformSubtitle}
+          onChange={event => setPlatformSubtitle(event.target.value)}
+          maxLength={120}
+          placeholder="AI-Native Geospatial Data Platform"
+        />
+        <small>{platformSubtitle.trim().length}/120，显示在登录页的平台名称下方</small>
+      </label>
+      <div className="platform-brand-preview" aria-label="品牌预览">
+        <span>预览</span>
+        <strong>{platformName.trim() || '平台名称'}</strong>
+        <small>{platformSubtitle.trim() || '平台副标题'}</small>
+      </div>
+      <div className="platform-settings-actions">
+        <button className="btn-primary" onClick={save} disabled={!changed || saving || platformName.trim().length < 2}>
+          <Save size={15} />{saving ? '保存中' : '保存配置'}
+        </button>
+        <button className="btn-secondary" onClick={reset} disabled={!changed || saving}>
+          <RotateCcw size={15} />撤销修改
+        </button>
+        {message && <span className={`platform-settings-message ${message.type}`}>{message.text}</span>}
+      </div>
+    </div>
+    {branding.updated_at && <p className="platform-settings-audit">
+      最近更新：{new Date(branding.updated_at).toLocaleString()} · {branding.updated_by || '系统'}
+    </p>}
+  </section>;
 }
 
 function MetricsSection() {

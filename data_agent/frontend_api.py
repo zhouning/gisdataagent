@@ -23,21 +23,29 @@ from datetime import datetime, timezone
 from typing import Optional
 from zoneinfo import ZoneInfo
 
-from starlette.requests import Request
-from starlette.responses import JSONResponse
-from starlette.routing import Route
 from sqlalchemy import bindparam, text
+from starlette.requests import Request
+from starlette.responses import JSONResponse, Response
+from starlette.routing import Route
 
-from .observability import get_logger
-from .user_context import current_user_id, current_user_role
-from .db_engine import get_engine
-from .pipeline_helpers import clean_cot_leakage
 from .audit_logger import (
-    record_audit,
-    ACTION_MCP_SERVER_CREATE, ACTION_MCP_SERVER_UPDATE,
-    ACTION_MCP_SERVER_DELETE, ACTION_MCP_SERVER_TOGGLE,
+    ACTION_MCP_SERVER_CREATE,
+    ACTION_MCP_SERVER_DELETE,
     ACTION_MCP_SERVER_RECONNECT,
+    ACTION_MCP_SERVER_TOGGLE,
+    ACTION_MCP_SERVER_UPDATE,
+    ACTION_PLATFORM_BRANDING_UPDATE,
+    record_audit,
 )
+from .capability_registry import (
+    CAPABILITY_FINGERPRINT_HEADER,
+    CATALOG_ASSET_SEARCH,
+    CapabilityFingerprintMismatchError,
+)
+from .db_engine import get_engine
+from .observability import get_logger
+from .pipeline_helpers import clean_cot_leakage
+from .user_context import current_user_id, current_user_role
 
 logger = get_logger("frontend_api")
 
@@ -275,6 +283,7 @@ import threading as _threading
 pending_map_updates: dict[str, dict] = {}   # user_id -> map config
 pending_data_updates: dict[str, dict] = {}  # user_id -> data config
 pending_chart_updates: dict[str, list] = {}  # user_id -> [chart configs]
+pending_workspace_updates: dict[str, dict] = {}  # user_id -> workbench navigation
 _pending_lock = _threading.Lock()
 
 
@@ -399,6 +408,23 @@ async def _api_catalog_search(request: Request):
     if not user:
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
     _set_user_context(user)
+
+    fingerprint = request.headers.get(CAPABILITY_FINGERPRINT_HEADER)
+    if fingerprint is None:
+        fingerprint = request.headers.get(CAPABILITY_FINGERPRINT_HEADER.lower())
+    try:
+        CATALOG_ASSET_SEARCH.assert_invocation_fingerprint(fingerprint)
+    except CapabilityFingerprintMismatchError:
+        return JSONResponse(
+            {
+                "error": "CapabilitySpec fingerprint does not match the serving contract",
+                "code": "capability_contract_mismatch",
+                "capability_id": CATALOG_ASSET_SEARCH.capability_id,
+                "version": CATALOG_ASSET_SEARCH.version,
+                "fingerprint": CATALOG_ASSET_SEARCH.fingerprint,
+            },
+            status_code=409,
+        )
 
     q = request.query_params.get("q", "").strip()
     if not q:
@@ -977,7 +1003,8 @@ async def _api_admin_users_list(request: Request):
         from .database_tools import T_APP_USERS
         with engine.connect() as conn:
             rows = conn.execute(text(f"""
-                SELECT id, username, display_name, role, auth_provider, created_at
+                SELECT id, username, display_name, role, tenant_id,
+                       auth_provider, created_at
                 FROM {T_APP_USERS}
                 ORDER BY created_at DESC
             """)).fetchall()
@@ -988,8 +1015,9 @@ async def _api_admin_users_list(request: Request):
                 "username": r[1],
                 "display_name": r[2] or "",
                 "role": r[3] or "analyst",
-                "auth_provider": r[4] or "password",
-                "created_at": r[5].isoformat() if r[5] else None,
+                "tenant_id": r[4],
+                "auth_provider": r[5] or "password",
+                "created_at": r[6].isoformat() if r[6] else None,
             })
         return JSONResponse({"users": users, "count": len(users)})
     except Exception as e:
@@ -1010,7 +1038,7 @@ async def _api_admin_update_role(request: Request):
         return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
 
     new_role = body.get("role", "")
-    if new_role not in ("admin", "analyst", "viewer"):
+    if new_role not in ("admin", "analyst", "viewer", "platform_operator"):
         return JSONResponse({"error": f"Invalid role: {new_role}"}, status_code=400)
 
     engine = get_engine()
@@ -1030,6 +1058,52 @@ async def _api_admin_update_role(request: Request):
     except Exception as e:
         logger.warning("Role update failed: %s", e)
         return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def _api_admin_update_tenant(request: Request):
+    """Bind or revoke one user's platform tenant access."""
+    _, _, _, err = _require_admin(request)
+    if err:
+        return err
+
+    target_username = request.path_params.get("username", "")
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    tenant_id = body.get("tenant_id")
+    if tenant_id is not None and not re.fullmatch(
+        r"[a-z0-9][a-z0-9._-]{0,63}", str(tenant_id)
+    ):
+        return JSONResponse({"error": "Invalid tenant_id"}, status_code=400)
+
+    engine = get_engine()
+    if not engine:
+        return JSONResponse({"error": "Database not configured"}, status_code=503)
+
+    try:
+        from .database_tools import T_APP_USERS
+        with engine.begin() as conn:
+            result = conn.execute(
+                text(
+                    f"UPDATE {T_APP_USERS} SET tenant_id = :tenant_id "
+                    "WHERE username = :username"
+                ),
+                {"tenant_id": tenant_id, "username": target_username},
+            )
+            if result.rowcount == 0:
+                return JSONResponse({"error": "User not found"}, status_code=404)
+        return JSONResponse({
+            "status": "ok",
+            "username": target_username,
+            "tenant_id": tenant_id,
+        })
+    except Exception:
+        logger.exception("Tenant update failed")
+        return JSONResponse({"error": "Tenant update failed"}, status_code=500)
 
 
 async def _api_admin_delete_user(request: Request):
@@ -1090,6 +1164,53 @@ async def _api_admin_metrics_summary(request: Request):
         "audit_stats": audit_stats,
         "user_count": user_count,
     })
+
+
+# ---------------------------------------------------------------------------
+# Public platform branding and admin configuration
+# ---------------------------------------------------------------------------
+
+async def _api_platform_branding(request: Request):
+    """GET /api/platform/branding -- public, non-sensitive display settings."""
+    from .platform_branding import get_platform_branding
+
+    return JSONResponse(get_platform_branding().to_dict())
+
+
+async def _api_admin_platform_branding_put(request: Request):
+    """PUT /api/admin/platform-branding -- atomically update display settings."""
+    _user, username, _role, error = _require_admin(request)
+    if error:
+        return error
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    from .platform_branding import (
+        BrandingStoreUnavailable,
+        BrandingValidationError,
+        update_platform_branding,
+    )
+
+    try:
+        branding = update_platform_branding(body, updated_by=username)
+    except BrandingValidationError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    except BrandingStoreUnavailable as exc:
+        return JSONResponse({"error": str(exc)}, status_code=503)
+
+    client = getattr(request, "client", None)
+    record_audit(
+        username,
+        ACTION_PLATFORM_BRANDING_UPDATE,
+        ip_address=getattr(client, "host", None),
+        details={
+            "platform_name": branding.platform_name,
+            "platform_subtitle": branding.platform_subtitle,
+        },
+    )
+    return JSONResponse(branding.to_dict())
 
 
 # ---------------------------------------------------------------------------
@@ -1206,13 +1327,44 @@ async def _api_config_basemaps(request: Request):
     if not user:
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
 
-    import os
+    from .basemaps import list_dmt_basemaps
+
     tianditu_token = os.environ.get("TIANDITU_TOKEN", "")
     return JSONResponse({
         "gaode_enabled": True,
         "tianditu_enabled": bool(tianditu_token),
         "tianditu_token": tianditu_token,
+        "basemaps": list_dmt_basemaps(),
     })
+
+
+async def _api_dmt_basemap_tile(request: Request):
+    """GET /api/basemaps/dmt/{id}/tiles/{z}/{x}/{y} — proxy a governed tile."""
+    user = _get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    from .basemaps import fetch_dmt_basemap_tile
+
+    basemap_id = str(request.path_params.get("basemap_id", ""))
+    try:
+        z = int(request.path_params["z"])
+        x = int(request.path_params["x"])
+        y = int(request.path_params["y"])
+        content, content_type = await fetch_dmt_basemap_tile(basemap_id, z, x, y)
+    except KeyError:
+        return JSONResponse({"error": "Unknown DMT basemap"}, status_code=404)
+    except ValueError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    except Exception as exc:
+        logger.warning("DMT basemap tile failed for %s: %s", basemap_id, exc)
+        return JSONResponse({"error": "DMT basemap tile unavailable"}, status_code=502)
+
+    return Response(
+        content,
+        media_type=content_type,
+        headers={"Cache-Control": "public, max-age=3600, stale-if-error=86400"},
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -2097,10 +2249,13 @@ async def _api_map_pending(request: Request):
     with _pending_lock:
         map_cfg = pending_map_updates.pop(uid, None)
         data_cfg = pending_data_updates.pop(uid, None)
+        workspace_cfg = pending_workspace_updates.pop(uid, None)
     if map_cfg:
         result["map_update"] = map_cfg
     if data_cfg:
         result["data_update"] = data_cfg
+    if workspace_cfg:
+        result["workspace_update"] = workspace_cfg
     return JSONResponse(result)
 
 
@@ -4228,6 +4383,9 @@ def get_frontend_api_routes():
     from .api.uwm_livability_s2_routes import get_uwm_livability_s2_routes
     from .api.uwm_livability_demand7_routes import get_uwm_livability_demand7_routes
     from .api.uwm_environmental_kernel_routes import get_uwm_environmental_kernel_routes
+    from .api.uwm_population_housing_optimization_routes import (
+        get_uwm_population_housing_optimization_routes,
+    )
     from .api.uwm_multistage_intervention_routes import get_uwm_multistage_intervention_routes
     from .api.uwm_livability_decision_routes import get_uwm_livability_decision_routes
     from .api.uwm_ai_demand_readiness_routes import get_uwm_ai_demand_readiness_routes
@@ -4251,12 +4409,26 @@ def get_frontend_api_routes():
     from .api.intake_routes import get_intake_routes
     from .api.classification_routes import get_classification_routes
     from .api.standards_routes import get_standards_routes
+    from .api.platform_gateway_routes import get_platform_gateway_routes
+    from .api.metric_routes import get_metric_routes
+    from .api.capability_spec_routes import get_capability_spec_routes
+    from .api.data_product_routes import get_data_product_routes
+    from .api.abu_dhabi_land_use_routes import get_abu_dhabi_land_use_routes
+    from .api.catalog_lifecycle_routes import get_catalog_lifecycle_routes
+    from .api.map_publication_routes import get_map_publication_routes
+    from .api.ontology_routes import get_ontology_routes
+    from .api.ontology_demo_routes import get_ontology_demo_routes
 
     return [
+        Route("/api/platform/branding", endpoint=_api_platform_branding, methods=["GET"]),
         Route("/api/catalog", endpoint=_api_catalog_list, methods=["GET"]),
         Route("/api/catalog/search", endpoint=_api_catalog_search, methods=["GET"]),
         Route("/api/catalog/{asset_id:int}", endpoint=_api_catalog_detail, methods=["GET"]),
         Route("/api/catalog/{asset_id:int}/lineage", endpoint=_api_catalog_lineage, methods=["GET"]),
+        *get_catalog_lifecycle_routes(),
+        *get_map_publication_routes(),
+        *get_ontology_routes(),
+        *get_ontology_demo_routes(),
         Route("/api/semantic/domains", endpoint=_api_semantic_domains, methods=["GET"]),
         Route("/api/semantic/hierarchy/{domain}", endpoint=_api_semantic_hierarchy, methods=["GET"]),
         Route("/api/semantic/sources", endpoint=_api_semantic_sources_list, methods=["GET"]),
@@ -4274,13 +4446,28 @@ def get_frontend_api_routes():
         Route("/api/user/token-usage", endpoint=_api_user_token_usage, methods=["GET"]),
         Route("/api/admin/users", endpoint=_api_admin_users_list, methods=["GET"]),
         Route("/api/admin/users/{username}/role", endpoint=_api_admin_update_role, methods=["PUT"]),
+        Route(
+            "/api/admin/users/{username}/tenant",
+            endpoint=_api_admin_update_tenant,
+            methods=["PUT"],
+        ),
         Route("/api/admin/users/{username}", endpoint=_api_admin_delete_user, methods=["DELETE"]),
         Route("/api/admin/metrics/summary", endpoint=_api_admin_metrics_summary, methods=["GET"]),
+        Route(
+            "/api/admin/platform-branding",
+            endpoint=_api_admin_platform_branding_put,
+            methods=["PUT"],
+        ),
         Route("/api/annotations", endpoint=_api_annotations_list, methods=["GET"]),
         Route("/api/annotations", endpoint=_api_annotations_create, methods=["POST"]),
         Route("/api/annotations/{id:int}", endpoint=_api_annotations_update, methods=["PUT"]),
         Route("/api/annotations/{id:int}", endpoint=_api_annotations_delete, methods=["DELETE"]),
         Route("/api/config/basemaps", endpoint=_api_config_basemaps, methods=["GET"]),
+        Route(
+            "/api/basemaps/dmt/{basemap_id:str}/tiles/{z:int}/{x:int}/{y:int}",
+            endpoint=_api_dmt_basemap_tile,
+            methods=["GET"],
+        ),
         Route("/api/user/account", endpoint=_api_user_delete_account, methods=["DELETE"]),
         Route("/api/user/password", endpoint=_api_user_change_password, methods=["PUT"]),
         Route("/api/user/analysis-perspective", endpoint=_api_user_perspective_get, methods=["GET"]),
@@ -4297,6 +4484,9 @@ def get_frontend_api_routes():
         # Workflows (v5.4)
         # Workflows (S-4: delegated to api/workflow_routes.py)
         *get_workflow_routes(),
+        *get_platform_gateway_routes(),
+        *get_metric_routes(),
+        *get_capability_spec_routes(),
         # Map/Data pending updates (v7.0 — bypass Chainlit metadata limitation)
         Route("/api/map/pending", endpoint=_api_map_pending, methods=["GET"]),
         Route("/api/chart/pending", endpoint=_api_chart_pending, methods=["GET"]),
@@ -4374,6 +4564,8 @@ def get_frontend_api_routes():
         *get_virtual_source_routes(),
         # World Model (Tech Preview)
         *get_world_model_routes(),
+        # Frozen Abu Dhabi three-model land-use benchmark
+        *get_abu_dhabi_land_use_routes(),
         # World Model v1.1 (Paper58 external benchmark evidence)
         *get_world_model_v11_routes(),
         # World Model v2 (Bishan county — Dual-Layer Geospatial Dreamer)
@@ -4413,6 +4605,8 @@ def get_frontend_api_routes():
         *get_uwm_livability_demand7_routes(),
         # UWM environmental dynamics kernel
         *get_uwm_environmental_kernel_routes(),
+        # UWM aggregate population and housing optimization PoC
+        *get_uwm_population_housing_optimization_routes(),
         # UWM real-data multi-stage urban intervention planning
         *get_uwm_multistage_intervention_routes(),
         # UWM livability world-model decision package
@@ -4527,6 +4721,8 @@ def get_frontend_api_routes():
         *get_classification_routes(),
         # Standards Platform (v25.x P0)
         *get_standards_routes(),
+        # Governed Data Products (v25.x AR-2)
+        *get_data_product_routes(),
         # Annotation WebSocket (v23.0)
         *annotation_ws_routes,
     ]

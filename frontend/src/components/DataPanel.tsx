@@ -4,11 +4,11 @@ import {
   FolderOpen, Table2, Database, Tag, Link, MapPin, BarChart3,
   Zap, Wrench, BookOpen, Lightbulb, Brain, Store, Globe, FlaskConical, Network,
   History, Gauge, PieChart, Shield, ClipboardCheck, Bell, Activity, Radio, ListTodo,
-  GitBranch, FileText, Target, ThumbsUp, Tags,
-  LayoutGrid,
+  GitBranch, FileText, Target, ThumbsUp, Tags, Sparkles,
+  LayoutGrid, Home, Inbox,
 } from 'lucide-react';
 
-import CatalogTab from './datapanel/CatalogTab';
+import CatalogTab, { type MapPublicationLayer } from './datapanel/CatalogTab';
 import HistoryTab from './datapanel/HistoryTab';
 import UsageTab from './datapanel/UsageTab';
 import ToolsTab from './datapanel/ToolsTab';
@@ -32,6 +32,8 @@ import WorldModelV11Tab from './datapanel/WorldModelV11Tab';
 import WorldModelV2Tab from './datapanel/WorldModelV2Tab';
 import WorldModelV21Tab from './datapanel/WorldModelV21Tab';
 import TerritoryWorldModelTab from './datapanel/TerritoryWorldModelTab';
+import AbuDhabiLandUseComparisonTab from './datapanel/AbuDhabiLandUseComparisonTab';
+import AbuDhabiLandUseModelTab from './datapanel/AbuDhabiLandUseModelTab';
 import TraditionalLivabilityTab from './datapanel/TraditionalLivabilityTab';
 import TraditionalCulturalHeritageTab from './datapanel/TraditionalCulturalHeritageTab';
 import CrossDomainImpactTab from './datapanel/CrossDomainImpactTab';
@@ -49,6 +51,7 @@ import ParcelStateReadinessTab from './datapanel/ParcelStateReadinessTab';
 import InfrastructureNetworkReadinessTab from './datapanel/InfrastructureNetworkReadinessTab';
 import AssetLifecycleReadinessTab from './datapanel/AssetLifecycleReadinessTab';
 import PopulationDemographicReadinessTab from './datapanel/PopulationDemographicReadinessTab';
+import PopulationHousingOptimizationTab from './datapanel/PopulationHousingOptimizationTab';
 import LivabilityWorldModelTab from './datapanel/LivabilityWorldModelTab';
 import UwmMultistageInterventionTab from './datapanel/UwmMultistageInterventionTab';
 import AiDemandReadinessTab from './datapanel/AiDemandReadinessTab';
@@ -68,15 +71,20 @@ import IntakeTab from './datapanel/IntakeTab';
 import SemanticLayerTab from './datapanel/SemanticLayerTab';
 import ClassificationTab from './datapanel/ClassificationTab';
 import FusionQualityTab from './datapanel/FusionQualityTab';
+import DataModelWorkbenchTab from './datapanel/DataModelWorkbenchTab';
+import OntologyTab from './datapanel/OntologyTab';
+import NaturalResourceOntologyDemoTab from './datapanel/NaturalResourceOntologyDemoTab';
+import ApprovalInboxTab from './datapanel/ApprovalInboxTab';
 
 interface DataPanelProps {
   dataFile: string | null;
   userRole?: string;
   username?: string;
   onRequestWidth?: (width: number) => void;
+  onAddMapLayer?: (layer: MapPublicationLayer) => void;
 }
 
-type TabKey = 'files' | 'table' | 'catalog' | 'metadata' | 'history' | 'agent_logs' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'memory' | 'observability' | 'traditional_livability' | 'cultural_heritage' | 'cross_domain_impact' | 'implementation_roadmap' | 'resilience_kernel' | 'digital_readiness' | 'operations_quality' | 'business_licence' | 'development_control' | 'financial_readiness' | 'public_feedback_readiness' | 'spatial_scope_registry' | 'planning_version_registry' | 'parcel_state_readiness' | 'infrastructure_network_readiness' | 'asset_lifecycle_readiness' | 'population_demographic_readiness' | 'uwm_livability' | 'uwm_multistage' | 'ai_demand_readiness' | 'worldmodel' | 'worldmodel_v11' | 'worldmodel_v2' | 'worldmodel_v21' | 'twm' | 'causal' | 'optimization' | 'qcmonitor' | 'fusion_quality' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'std_platform' | 'semantic' | 'agents' | 'intake' | 'classification';
+type TabKey = 'files' | 'table' | 'catalog' | 'models' | 'metadata' | 'history' | 'agent_logs' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'approvals' | 'memory' | 'observability' | 'traditional_livability' | 'cultural_heritage' | 'cross_domain_impact' | 'implementation_roadmap' | 'resilience_kernel' | 'digital_readiness' | 'operations_quality' | 'business_licence' | 'development_control' | 'financial_readiness' | 'public_feedback_readiness' | 'spatial_scope_registry' | 'planning_version_registry' | 'parcel_state_readiness' | 'infrastructure_network_readiness' | 'asset_lifecycle_readiness' | 'population_demographic_readiness' | 'population_housing_optimization' | 'uwm_livability' | 'uwm_multistage' | 'ai_demand_readiness' | 'abu_land_use_compare' | 'abu_flus' | 'abu_kernel' | 'worldmodel' | 'worldmodel_v11' | 'worldmodel_v2' | 'worldmodel_v21' | 'twm' | 'causal' | 'optimization' | 'qcmonitor' | 'fusion_quality' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'std_platform' | 'semantic' | 'ontology' | 'ontology_demo' | 'agents' | 'intake' | 'classification';
 
 type GroupKey = 'data' | 'intelligence' | 'ops';
 
@@ -95,6 +103,7 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: ReactNode; tabs: TabDef[
       { key: 'files', label: '文件', icon: <FolderOpen size={ICON_SIZE} /> },
       { key: 'table', label: '表格', icon: <Table2 size={ICON_SIZE} /> },
       { key: 'catalog', label: '资产', icon: <Database size={ICON_SIZE} /> },
+      { key: 'models', label: '数据模型', icon: <LayoutGrid size={ICON_SIZE} /> },
       { key: 'vsources', label: '数据源', icon: <Link size={ICON_SIZE} /> },
       { key: 'metadata', label: '元数据', icon: <Tag size={ICON_SIZE} /> },
       { key: 'geojson', label: 'GeoJSON', icon: <MapPin size={ICON_SIZE} /> },
@@ -129,11 +138,15 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: ReactNode; tabs: TabDef[
       { key: 'infrastructure_network_readiness', label: '基础设施与市政管网', icon: <Network size={ICON_SIZE} /> },
       { key: 'asset_lifecycle_readiness', label: '资产生命周期', icon: <Wrench size={ICON_SIZE} /> },
       { key: 'population_demographic_readiness', label: '人口与人口结构', icon: <PieChart size={ICON_SIZE} /> },
+      { key: 'population_housing_optimization', label: '人口住房配置', icon: <Home size={ICON_SIZE} /> },
       { key: 'uwm_livability', label: '城市宜居性分析（UWM）', icon: <Brain size={ICON_SIZE} /> },
       { key: 'uwm_multistage', label: 'UWM多阶段城市干预规划', icon: <GitBranch size={ICON_SIZE} /> },
       { key: 'ai_demand_readiness', label: 'AI应用需求矩阵', icon: <ClipboardCheck size={ICON_SIZE} /> },
+      { key: 'abu_land_use_compare', label: '阿布扎比 · 三模型对比', icon: <BarChart3 size={ICON_SIZE} /> },
+      { key: 'abu_flus', label: '阿布扎比 · GeoSOS-FLUS', icon: <LayoutGrid size={ICON_SIZE} /> },
+      { key: 'abu_kernel', label: '阿布扎比 · Geospatial Kernel', icon: <Network size={ICON_SIZE} /> },
       { key: 'worldmodel', label: '世界模型', icon: <Globe size={ICON_SIZE} /> },
-      { key: 'worldmodel_v11', label: '世界模型v1.1', icon: <Globe size={ICON_SIZE} /> },
+      { key: 'worldmodel_v11', label: '世界模型v1.1 · Paper58（阿布扎比）', icon: <Globe size={ICON_SIZE} /> },
       { key: 'worldmodel_v2', label: '世界模型v2', icon: <Globe size={ICON_SIZE} /> },
       { key: 'worldmodel_v21', label: '世界模型v2.1', icon: <Globe size={ICON_SIZE} /> },
       { key: 'twm', label: 'TWM', icon: <Shield size={ICON_SIZE} /> },
@@ -143,6 +156,8 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: ReactNode; tabs: TabDef[
       { key: 'std_platform', label: '数据标准', icon: <FileText size={ICON_SIZE} /> },
       { key: 'agents', label: '智能体', icon: <Network size={ICON_SIZE} /> },
       { key: 'semantic', label: '语义层', icon: <Tags size={ICON_SIZE} /> },
+      { key: 'ontology', label: '本体模型', icon: <Network size={ICON_SIZE} /> },
+      { key: 'ontology_demo', label: '本体应用', icon: <Sparkles size={ICON_SIZE} /> },
     ],
   },
   {
@@ -154,6 +169,7 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: ReactNode; tabs: TabDef[
       { key: 'usage', label: '用量', icon: <Gauge size={ICON_SIZE} /> },
       { key: 'analytics', label: '分析', icon: <PieChart size={ICON_SIZE} /> },
       { key: 'governance', label: '治理', icon: <Shield size={ICON_SIZE} /> },
+      { key: 'approvals', label: '审批中心', icon: <Inbox size={ICON_SIZE} /> },
       { key: 'classification', label: '分级', icon: <Shield size={ICON_SIZE} /> },
       { key: 'qcmonitor', label: '质检', icon: <ClipboardCheck size={ICON_SIZE} /> },
       { key: 'fusion_quality', label: '融合质量', icon: <GitBranch size={ICON_SIZE} /> },
@@ -171,7 +187,13 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: ReactNode; tabs: TabDef[
 const TAB_TO_GROUP: Record<TabKey, GroupKey> = {} as any;
 TAB_GROUPS.forEach(g => g.tabs.forEach(t => { TAB_TO_GROUP[t.key] = g.key; }));
 
-export default function DataPanel({ dataFile, userRole, username, onRequestWidth }: DataPanelProps) {
+export default function DataPanel({
+  dataFile,
+  userRole,
+  username,
+  onRequestWidth,
+  onAddMapLayer,
+}: DataPanelProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('files');
   const [activeGroup, setActiveGroup] = useState<GroupKey>('data');
   const [tableData, setTableData] = useState<any[]>([]);
@@ -184,6 +206,19 @@ export default function DataPanel({ dataFile, userRole, username, onRequestWidth
     setActiveTab('table');
     setActiveGroup('data');
   }, [dataFile]);
+
+  useEffect(() => {
+    const handleWorkspaceUpdate = (rawEvent: Event) => {
+      const detail = (rawEvent as CustomEvent).detail || {};
+      const tab = detail.tab as TabKey;
+      if (tab !== 'ontology' && tab !== 'ontology_demo') return;
+      setActiveTab(tab);
+      setActiveGroup('intelligence');
+      onRequestWidth?.(tab === 'ontology' ? 980 : 760);
+    };
+    window.addEventListener('gda-workspace-update', handleWorkspaceUpdate);
+    return () => window.removeEventListener('gda-workspace-update', handleWorkspaceUpdate);
+  }, [onRequestWidth]);
 
   const loadCsvData = async (filename: string) => {
     setLoading(true);
@@ -203,7 +238,14 @@ export default function DataPanel({ dataFile, userRole, username, onRequestWidth
   const handleTabClick = (tab: TabKey) => {
     setActiveTab(tab);
     setActiveGroup(TAB_TO_GROUP[tab]);
-    if (tab === 'uwm_livability' || tab === 'uwm_multistage') onRequestWidth?.(680);
+    if (tab === 'models') onRequestWidth?.(680);
+    else if (tab === 'capabilities') onRequestWidth?.(720);
+    else if (tab === 'ontology') onRequestWidth?.(980);
+    else if (tab === 'ontology_demo') onRequestWidth?.(760);
+    else if (tab === 'approvals') onRequestWidth?.(740);
+    else if (tab === 'population_housing_optimization') onRequestWidth?.(720);
+    else if (tab === 'uwm_livability' || tab === 'uwm_multistage') onRequestWidth?.(680);
+    else if (tab === 'abu_land_use_compare' || tab === 'abu_flus' || tab === 'abu_kernel' || tab === 'worldmodel_v11') onRequestWidth?.(700);
   };
 
   const handleGroupClick = (groupKey: GroupKey) => {
@@ -255,7 +297,14 @@ export default function DataPanel({ dataFile, userRole, username, onRequestWidth
       <div className="data-panel-content">
         {activeTab === 'files' && <FileManager onFileClick={(name) => { loadCsvData(name); setActiveTab('table'); }} />}
         {activeTab === 'table' && <DataTable columns={tableColumns} data={tableData} loading={loading} />}
-        {activeTab === 'catalog' && <CatalogTab />}
+        {activeTab === 'catalog' && (
+          <CatalogTab
+            userRole={userRole}
+            username={username}
+            onAddMapLayer={onAddMapLayer}
+          />
+        )}
+        {activeTab === 'models' && <DataModelWorkbenchTab userRole={userRole} />}
         {activeTab === 'metadata' && <MetadataPanel />}
         {activeTab === 'history' && <HistoryTab />}
         {activeTab === 'agent_logs' && <AgentRunLogsTab />}
@@ -267,6 +316,7 @@ export default function DataPanel({ dataFile, userRole, username, onRequestWidth
         {activeTab === 'templates' && <TemplatesTab />}
         {activeTab === 'analytics' && <AnalyticsTab />}
         {activeTab === 'governance' && <GovernanceTab />}
+        {activeTab === 'approvals' && <ApprovalInboxTab userRole={userRole} username={username} />}
         {activeTab === 'classification' && <ClassificationTab />}
         {activeTab === 'memory' && <MemorySearchTab />}
         {activeTab === 'observability' && <ObservabilityTab />}
@@ -293,9 +343,13 @@ export default function DataPanel({ dataFile, userRole, username, onRequestWidth
         {activeTab === 'infrastructure_network_readiness' && <InfrastructureNetworkReadinessTab />}
         {activeTab === 'asset_lifecycle_readiness' && <AssetLifecycleReadinessTab />}
         {activeTab === 'population_demographic_readiness' && <PopulationDemographicReadinessTab />}
+        {activeTab === 'population_housing_optimization' && <PopulationHousingOptimizationTab />}
         {activeTab === 'uwm_livability' && <LivabilityWorldModelTab />}
         {activeTab === 'uwm_multistage' && <UwmMultistageInterventionTab />}
         {activeTab === 'ai_demand_readiness' && <AiDemandReadinessTab />}
+        {activeTab === 'abu_land_use_compare' && <AbuDhabiLandUseComparisonTab />}
+        {activeTab === 'abu_flus' && <AbuDhabiLandUseModelTab modelId="geosos_flus" />}
+        {activeTab === 'abu_kernel' && <AbuDhabiLandUseModelTab modelId="geospatial_kernel" />}
         {activeTab === 'worldmodel' && <WorldModelTab />}
         {activeTab === 'worldmodel_v11' && <WorldModelV11Tab />}
         {activeTab === 'worldmodel_v2' && <WorldModelV2Tab />}
@@ -314,6 +368,8 @@ export default function DataPanel({ dataFile, userRole, username, onRequestWidth
         {activeTab === 'standards' && <DomainStandardsTab />}
         {activeTab === 'std_platform' && <StandardsTab userRole={userRole} username={username} />}
         {activeTab === 'semantic' && <SemanticLayerTab userRole={userRole} />}
+        {activeTab === 'ontology' && <OntologyTab />}
+        {activeTab === 'ontology_demo' && <NaturalResourceOntologyDemoTab />}
       </div>
     </div>
   );

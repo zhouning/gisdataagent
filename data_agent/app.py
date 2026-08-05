@@ -18,6 +18,10 @@ from data_agent.multimodal import (
     UploadType, classify_upload, prepare_image_part,
     extract_pdf_text, prepare_pdf_part,
 )
+from data_agent.route_registration import (
+    ensure_chainlit_oauth_openapi_model,
+    insert_routes_before_frontend_fallback as _insert_routes_before_frontend_fallback,
+)
 
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -68,6 +72,7 @@ try:
         general_pipeline,
         data_pipeline,
         farmland_optimization_pipeline,
+        ontology_analysis_agent,
         planner_agent,
         _load_spatial_data,
         _generate_upload_preview,
@@ -84,13 +89,8 @@ try:
         current_user_id, current_session_id, current_user_role,
         current_trace_id, get_user_upload_dir
     )
-    from data_agent.auth import ensure_users_table
-    from data_agent.memory import ensure_memory_table
-    from data_agent.token_tracker import ensure_token_table
-    from data_agent.database_tools import ensure_table_ownership_table
-    from data_agent.sharing import ensure_share_links_table
     from data_agent.audit_logger import (
-        ensure_audit_table, record_audit,
+        record_audit,
         ACTION_SESSION_START, ACTION_FILE_UPLOAD, ACTION_PIPELINE_COMPLETE,
         ACTION_REPORT_EXPORT, ACTION_SHARE_CREATE, ACTION_RBAC_DENIED,
         ACTION_USER_REGISTER,
@@ -103,13 +103,8 @@ except ImportError:
         current_user_id, current_session_id, current_user_role,
         get_user_upload_dir
     )
-    from auth import ensure_users_table
-    from memory import ensure_memory_table
-    from token_tracker import ensure_token_table
-    from database_tools import ensure_table_ownership_table
-    from sharing import ensure_share_links_table
     from audit_logger import (
-        ensure_audit_table, record_audit,
+        record_audit,
         ACTION_SESSION_START, ACTION_FILE_UPLOAD, ACTION_PIPELINE_COMPLETE,
         ACTION_REPORT_EXPORT, ACTION_SHARE_CREATE, ACTION_RBAC_DENIED,
         ACTION_USER_REGISTER,
@@ -125,73 +120,37 @@ except ImportError:
     generate_word_report = report_generator.generate_word_report
     ARCPY_AVAILABLE = getattr(agent, 'ARCPY_AVAILABLE', False)
 
-# Initialize DB tables (resilient — if PostgreSQL is down, non-DB features still work)
+# The migration Job/CLI is the only schema writer. A configured database with
+# pending migrations or ledger drift must block application startup.
+from data_agent.migration_runner import verify_schema_state
+verify_schema_state(allow_unconfigured=_LITE_MODE)
+
+# Runtime imports and maintenance remain separate from schema ownership.
 try:
-    ensure_users_table()
-    ensure_memory_table()
-    ensure_token_table()
-    ensure_table_ownership_table()
-    ensure_share_links_table()
-    ensure_audit_table()
-    from data_agent.template_manager import ensure_templates_table
-    ensure_templates_table()
-    from data_agent.semantic_layer import ensure_semantic_tables, resolve_semantic_context, build_context_prompt
-    ensure_semantic_tables()
-    from data_agent.team_manager import ensure_teams_table
-    ensure_teams_table()
-    from data_agent.data_catalog import ensure_data_catalog_table
-    ensure_data_catalog_table()
-    from data_agent.map_annotations import ensure_annotations_table
-    ensure_annotations_table()
-    from data_agent.session_storage import ensure_chainlit_tables
-    ensure_chainlit_tables()
-    from data_agent.workflow_engine import ensure_workflow_tables
-    ensure_workflow_tables()
-    from data_agent.fusion_engine import ensure_fusion_tables
-    ensure_fusion_tables()
-    from data_agent.knowledge_graph import ensure_knowledge_graph_tables
-    ensure_knowledge_graph_tables()
-    from data_agent.failure_learning import ensure_failure_table
-    ensure_failure_table()
-    from data_agent.self_evolution import ensure_self_evolution_tables
-    ensure_self_evolution_tables()
-    from data_agent.custom_skills import ensure_custom_skills_table
-    ensure_custom_skills_table()
-    from data_agent.knowledge_base import ensure_kb_tables
-    ensure_kb_tables()
-    from data_agent.user_tools import ensure_user_tools_table
-    ensure_user_tools_table()
-    from data_agent.workflow_templates import ensure_workflow_template_tables, seed_builtin_templates
-    ensure_workflow_template_tables()
+    from data_agent.semantic_layer import resolve_semantic_context, build_context_prompt
+except Exception as _semantic_import_err:
+    logger.warning("Semantic context import failed: %s", _semantic_import_err)
+    resolve_semantic_context = None
+    build_context_prompt = None
+
+try:
+    from data_agent.workflow_templates import seed_builtin_templates
     seed_builtin_templates()
-    from data_agent.custom_skill_bundles import ensure_skill_bundles_table
-    ensure_skill_bundles_table()
-    from data_agent.virtual_sources import ensure_virtual_sources_table
-    ensure_virtual_sources_table()
-    from data_agent.agent_registry import ensure_registry_table
-    ensure_registry_table()
-    from data_agent.analysis_chains import ensure_chains_table
-    ensure_chains_table()
+except Exception as _template_seed_err:
+    logger.warning("Built-in workflow template seed failed: %s", _template_seed_err)
+
+try:
     from data_agent.workflow_engine import recover_incomplete_runs
     recover_incomplete_runs()
-    from data_agent.plugin_registry import ensure_plugins_table
-    ensure_plugins_table()
-    from data_agent.proactive_explorer import ensure_observations_table
-    ensure_observations_table()
-    # Run pending SQL migrations after all ensure_*_table() calls
-    from data_agent.migration_runner import run_pending_migrations
-    run_pending_migrations()
-    # Cleanup expired MVT tile layers from previous sessions
+except Exception as _workflow_recovery_err:
+    logger.warning("Workflow recovery failed: %s", _workflow_recovery_err)
+
+try:
+    # MVT layer tables are ephemeral runtime resources, not platform schema.
     from data_agent.tile_server import cleanup_expired_layers
     cleanup_expired_layers()
-except Exception as _startup_err:
-    logger.warning("DB initialization partially failed: %s", _startup_err)
-    # Ensure resolve_semantic_context/build_context_prompt are importable even on failure
-    try:
-        from data_agent.semantic_layer import resolve_semantic_context, build_context_prompt
-    except Exception:
-        resolve_semantic_context = None
-        build_context_prompt = None
+except Exception as _tile_cleanup_err:
+    logger.warning("Expired tile layer cleanup failed: %s", _tile_cleanup_err)
 
 from data_agent.obs_storage import ensure_obs_connection, is_obs_configured, upload_file_smart
 from data_agent.gis_processors import sync_to_obs
@@ -331,8 +290,12 @@ if HITL_ENABLED:
 from fastapi import Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from starlette.routing import Route
+from chainlit.auth import reuseable_oauth as _chainlit_oauth
 from chainlit.server import app as chainlit_app
 from data_agent.auth import register_user
+
+if ensure_chainlit_oauth_openapi_model(_chainlit_oauth):
+    logger.info("Restored Chainlit OAuth OpenAPI security model")
 
 _REGISTER_HTML = """<!DOCTYPE html>
 <html lang="zh-CN">
@@ -448,12 +411,10 @@ async def _serve_register_page(request: Request):
 
 # Insert GET /register BEFORE Chainlit's catch-all /{full_path:path}
 _register_route = Route("/register", endpoint=_serve_register_page, methods=["GET"])
-for _i, _r in enumerate(chainlit_app.router.routes):
-    if hasattr(_r, 'path') and _r.path == "/{full_path:path}":
-        chainlit_app.router.routes.insert(_i, _register_route)
-        break
-else:
-    chainlit_app.router.routes.append(_register_route)
+_insert_routes_before_frontend_fallback(
+    chainlit_app.router,
+    [_register_route],
+)
 
 logger.info("Self-registration enabled at /register")
 
@@ -521,12 +482,10 @@ _share_validate_get_route = Route(
     "/api/share/{token}/validate",
     endpoint=_api_share_validate_get, methods=["GET"]
 )
-for _i, _r in enumerate(chainlit_app.router.routes):
-    if hasattr(_r, 'path') and _r.path == "/{full_path:path}":
-        chainlit_app.router.routes.insert(_i, _share_page_route)
-        chainlit_app.router.routes.insert(_i, _share_file_route)
-        chainlit_app.router.routes.insert(_i, _share_validate_get_route)
-        break
+_insert_routes_before_frontend_fallback(
+    chainlit_app.router,
+    [_share_page_route, _share_file_route, _share_validate_get_route],
+)
 
 logger.info("Public share routes enabled at /s/{token}")
 
@@ -669,19 +628,10 @@ _file_upload_route = Route("/api/user/files", endpoint=_api_upload_user_file, me
 _file_serve_route = Route("/api/user/files/{filename:path}", endpoint=_api_serve_user_file, methods=["GET"])
 
 
-def _is_frontend_fallback_route(route) -> bool:
-    path = getattr(route, "path", None)
-    return path == "/{full_path:path}" or type(route).__name__ == "_IncludedRouter"
-
-
-for _i, _r in enumerate(chainlit_app.router.routes):
-    if _is_frontend_fallback_route(_r):
-        chainlit_app.router.routes.insert(_i, _file_list_route)
-        chainlit_app.router.routes.insert(_i + 1, _file_upload_route)
-        break
-else:
-    chainlit_app.router.routes.append(_file_list_route)
-    chainlit_app.router.routes.append(_file_upload_route)
+_insert_routes_before_frontend_fallback(
+    chainlit_app.router,
+    [_file_list_route, _file_upload_route],
+)
 
 logger.info("User file API routes enabled at /api/user/files")
 
@@ -933,16 +883,10 @@ async def _api_admin_audit_stats(request: Request):
 _audit_page_route = Route("/admin/audit", endpoint=_serve_audit_page, methods=["GET"])
 _audit_api_route = Route("/api/admin/audit", endpoint=_api_admin_audit, methods=["GET"])
 _audit_stats_route = Route("/api/admin/audit/stats", endpoint=_api_admin_audit_stats, methods=["GET"])
-for _i, _r in enumerate(chainlit_app.router.routes):
-    if hasattr(_r, 'path') and _r.path == "/{full_path:path}":
-        chainlit_app.router.routes.insert(_i, _audit_page_route)
-        chainlit_app.router.routes.insert(_i, _audit_api_route)
-        chainlit_app.router.routes.insert(_i, _audit_stats_route)
-        break
-else:
-    chainlit_app.router.routes.append(_audit_page_route)
-    chainlit_app.router.routes.append(_audit_api_route)
-    chainlit_app.router.routes.append(_audit_stats_route)
+_insert_routes_before_frontend_fallback(
+    chainlit_app.router,
+    [_audit_page_route, _audit_api_route, _audit_stats_route],
+)
 
 logger.info("Admin audit viewer enabled at /admin/audit")
 
@@ -985,18 +929,10 @@ _health_route = Route("/health", endpoint=_health_endpoint, methods=["GET"])
 _ready_route = Route("/ready", endpoint=_ready_endpoint, methods=["GET"])
 _sysinfo_route = Route("/api/admin/system-info", endpoint=_system_info_endpoint, methods=["GET"])
 _metrics_route = Route("/metrics", endpoint=_metrics_endpoint, methods=["GET"])
-for _i, _r in enumerate(chainlit_app.router.routes):
-    if hasattr(_r, 'path') and _r.path == "/{full_path:path}":
-        chainlit_app.router.routes.insert(_i, _health_route)
-        chainlit_app.router.routes.insert(_i, _ready_route)
-        chainlit_app.router.routes.insert(_i, _sysinfo_route)
-        chainlit_app.router.routes.insert(_i, _metrics_route)
-        break
-else:
-    chainlit_app.router.routes.append(_health_route)
-    chainlit_app.router.routes.append(_ready_route)
-    chainlit_app.router.routes.append(_sysinfo_route)
-    chainlit_app.router.routes.append(_metrics_route)
+_insert_routes_before_frontend_fallback(
+    chainlit_app.router,
+    [_health_route, _ready_route, _sysinfo_route, _metrics_route],
+)
 
 # --- Mount Enterprise WeChat bot routes (conditional) ---
 if is_wecom_configured():
@@ -1059,12 +995,10 @@ except Exception as _fe_err:
 
 # Register the greedy file serve route AFTER frontend_api routes to avoid
 # /api/user/files/{filename:path} swallowing /api/user/files/browse etc.
-for _i, _r in enumerate(chainlit_app.router.routes):
-    if _is_frontend_fallback_route(_r):
-        chainlit_app.router.routes.insert(_i, _file_serve_route)
-        break
-else:
-    chainlit_app.router.routes.append(_file_serve_route)
+_insert_routes_before_frontend_fallback(
+    chainlit_app.router,
+    [_file_serve_route],
+)
 
 # --- Workflow Scheduler (v5.4) ---
 _workflow_scheduler = None
@@ -1202,6 +1136,7 @@ AGENT_LABELS = {
     "GeneralProcessing": "数据处理与分析",
     "GeneralViz": "生成可视化",
     "GeneralSummary": "生成分析总结",
+    "OntologyAnalysisAgent": "本体查询与证据解释",
     "Planner": "任务规划",
     "PlannerExplorer": "数据探查",
     "PlannerProcessor": "数据处理",
@@ -1644,6 +1579,7 @@ PIPELINE_STAGES = {
     ],
     "governance": ["GovExploration", "GovProcessing", "GovernanceReporter"],
     "general": ["GeneralProcessing", "GeneralViz", "GeneralSummary"],
+    "ontology": ["OntologyAnalysisAgent"],
 }
 
 
@@ -1768,9 +1704,15 @@ async def _execute_pipeline(
     _pending_data_update = None # data update from tool responses
     _final_map_update = None    # accumulated map config (not cleared during flush, injected into final_msg)
     _final_data_update = None   # accumulated data update
+    _final_workspace_update = None  # ontology/application focus requested by a tool
+    _ontology_tool_result = None  # governed ontology result for deterministic chat output
     _final_chart_updates = []   # accumulated chart configs
     _world_model_v21_result = None
     _world_model_v21_args = None
+    _world_model_v21_status = None
+    _paper9_audit_result = None
+    _paper9_commit_result = None
+    _world_model_v21_trace = []
     _drl_optimization_result = None
     _drl_optimization_args = None
     _drl_comparison_map_seen = False
@@ -1792,13 +1734,25 @@ async def _execute_pipeline(
         "optimization",
         "farmland_optimization",
         "governance",
+        "ontology",
     }
     progress_msg = cl.Message(content=_build_progress_content(
         pipeline_name, pipeline_type, stages, stage_timings))
     await progress_msg.send()
 
     try:
-        run_config = RunConfig(max_llm_calls=50) if (DYNAMIC_PLANNER and pipeline_type == "planner") else None
+        _selected_agent_name = getattr(selected_agent, "name", "") or ""
+        if DYNAMIC_PLANNER and pipeline_type == "planner":
+            run_config = RunConfig(max_llm_calls=50)
+        elif pipeline_type == "ontology":
+            run_config = RunConfig(max_llm_calls=6)
+        elif (
+            pipeline_type == "sub_agent_direct"
+            and _selected_agent_name == "MentionWorldModelV21"
+        ):
+            run_config = RunConfig(max_llm_calls=12)
+        else:
+            run_config = None
         events = runner.run_async(user_id=user_id, session_id=session_id, new_message=content, run_config=run_config)
 
         # Token accumulation counters
@@ -1918,6 +1872,47 @@ async def _execute_pipeline(
                             )
                             _resp_val = part.function_response.response
 
+                            if current_tool_name in {
+                                "query_ontology",
+                                "run_ontology_application_scenario",
+                            }:
+                                from data_agent.ontology_presentation import (
+                                    parse_ontology_tool_response,
+                                )
+
+                                _parsed_ontology = parse_ontology_tool_response(_resp_val)
+                                if _parsed_ontology:
+                                    _ontology_tool_result = _parsed_ontology
+                                    logger.info(
+                                        "[OntologyPresentation] Captured governed result type=%s",
+                                        (_parsed_ontology.get("query_plan") or {}).get(
+                                            "query_type"
+                                        ),
+                                    )
+                                    if current_tool_name == "run_ontology_application_scenario":
+                                        from data_agent.natural_resource_ontology_demo import (
+                                            get_natural_resource_ontology_demo,
+                                        )
+
+                                        _scenario_id = str(
+                                            (_parsed_ontology.get("query_plan") or {}).get(
+                                                "scenario_id"
+                                            )
+                                            or "heping_review"
+                                        )
+                                        _scenario_map = get_natural_resource_ontology_demo().map_payload(
+                                            _scenario_id
+                                        )
+                                        _scenario_map.pop("scenario_id", None)
+                                        _pending_map_update = _scenario_map
+                                        _final_map_update = _scenario_map
+                                        logger.info(
+                                            "[OntologyPresentation] Hydrated scenario map "
+                                            "scenario=%s layers=%s",
+                                            _scenario_id,
+                                            len(_scenario_map.get("layers") or []),
+                                        )
+
                             # Layer control detection
                             _lc = check_layer_control(_resp_val)
                             if _lc:
@@ -1964,7 +1959,10 @@ async def _execute_pipeline(
                             pass
                         # Direct map_update from tool response (v14.5 — WMS layers etc.)
                         try:
-                            from data_agent.pipeline_helpers import extract_map_update_from_tool_response
+                            from data_agent.pipeline_helpers import (
+                                extract_map_update_from_tool_response,
+                                extract_workspace_update_from_tool_response,
+                            )
 
                             _direct_mu = extract_map_update_from_tool_response(_resp_val)
                             if _direct_mu:
@@ -1973,9 +1971,36 @@ async def _execute_pipeline(
                                 logger.info("[MapUpdateDirect] Injected map_update from tool: layers=%s", len(_direct_mu.get("layers", [])))
                                 if current_tool_name == "visualize_interactive_map":
                                     _drl_comparison_map_seen = True
+                            _direct_wu = extract_workspace_update_from_tool_response(_resp_val)
+                            if _direct_wu:
+                                _final_workspace_update = _direct_wu
+                                logger.info("[WorkspaceUpdate] tab=%s", _direct_wu.get("tab"))
                         except Exception:
                             pass
                         try:
+                            _paper9_trace_tools = {
+                                "world_model_v21_status",
+                                "paper9_inspect_resources",
+                                "paper9_recall_verified_episodes",
+                                "world_model_v21_prepare",
+                                "world_model_v21_sample",
+                                "world_model_v21_train",
+                                "world_model_v21_plan",
+                                "world_model_v21_pipeline",
+                                "paper9_audit_run",
+                                "paper9_commit_verified_episode",
+                            }
+                            if current_tool_name in _paper9_trace_tools:
+                                _trace_duration = None
+                                if _pending_tool_call:
+                                    _trace_duration = (
+                                        time.time() - _pending_tool_call["start_time"]
+                                    )
+                                _world_model_v21_trace.append({
+                                    "tool_name": current_tool_name,
+                                    "duration_s": _trace_duration,
+                                })
+
                             if current_tool_name in {"world_model_v21_plan", "world_model_v21_pipeline"}:
                                 from data_agent.world_model_v21_presentation import parse_world_model_v21_tool_response
 
@@ -1987,6 +2012,20 @@ async def _execute_pipeline(
                                         if _pending_tool_call else {}
                                     )
                                     logger.info("[WorldModelV21Presentation] Captured planning result for deterministic summary")
+                            elif current_tool_name in {
+                                "world_model_v21_status",
+                                "paper9_audit_run",
+                                "paper9_commit_verified_episode",
+                            }:
+                                from data_agent.world_model_v21_presentation import parse_structured_tool_response
+
+                                _parsed_paper9 = parse_structured_tool_response(_resp_val)
+                                if current_tool_name == "world_model_v21_status":
+                                    _world_model_v21_status = _parsed_paper9
+                                elif current_tool_name == "paper9_audit_run":
+                                    _paper9_audit_result = _parsed_paper9
+                                elif current_tool_name == "paper9_commit_verified_episode":
+                                    _paper9_commit_result = _parsed_paper9
                         except Exception as _wm_present_capture_err:
                             logger.debug("WorldModelV21 presentation capture skipped: %s", _wm_present_capture_err)
                         try:
@@ -2405,11 +2444,11 @@ async def _execute_pipeline(
             )
             if _is_nl2sql_direct and full_response_text:
                 from data_agent.nl2sql_presentation import (
-                    build_bridge_building_map_update,
+                    build_nl2sql_map_update,
                     describe_map_update,
                     format_nl2sql_result_for_chat,
                 )
-                _nl2sql_map_update = build_bridge_building_map_update(
+                _nl2sql_map_update = build_nl2sql_map_update(
                     full_response_text,
                     question=full_prompt,
                 )
@@ -2443,14 +2482,44 @@ async def _execute_pipeline(
                 full_response_text = format_world_model_v21_result_for_chat(
                     _world_model_v21_result,
                     tool_args=_world_model_v21_args or {},
+                    status_result=_world_model_v21_status,
+                    audit_result=_paper9_audit_result,
+                    commit_result=_paper9_commit_result,
+                    tool_trace=_world_model_v21_trace,
+                    total_duration_s=total_duration,
                 )
                 progress_msg.content = format_world_model_v21_progress_for_chat(
                     _world_model_v21_result,
                     pipeline_label=pipeline_name,
+                    audit_result=_paper9_audit_result,
+                    commit_result=_paper9_commit_result,
+                    tool_trace=_world_model_v21_trace,
+                    total_duration_s=total_duration,
                 )
                 await progress_msg.update()
         except Exception as _wm_present_err:
             logger.warning("[WorldModelV21Presentation] skipped: %s", _wm_present_err)
+
+        # --- Ontology deterministic presentation ---
+        # The ontology tool result is the evidence authority. Render it directly
+        # so an LLM wording failure cannot replace facts with a generic message.
+        try:
+            if pipeline_type == "ontology" and _ontology_tool_result:
+                from data_agent.ontology_presentation import (
+                    format_ontology_result_for_chat,
+                )
+
+                full_response_text = format_ontology_result_for_chat(
+                    _ontology_tool_result
+                )
+            elif pipeline_type == "ontology" and not full_response_text.strip():
+                full_response_text = (
+                    "本体分析未取得受治理工具结果，请重试；系统未生成猜测性答案。"
+                )
+        except Exception as _ontology_present_err:
+            logger.warning(
+                "[OntologyPresentation] skipped: %s", _ontology_present_err
+            )
 
         # --- DRL optimization presentation ---
         # The LLM sometimes overstates drl_model output (for example claiming
@@ -2471,7 +2540,7 @@ async def _execute_pipeline(
         # This ensures the main response message carries map_update, which is
         # more reliable than sending a separate empty-content metadata message.
         logger.info(f"[MapPreInject] _final_map_update={_final_map_update is not None}, _final_data_update={_final_data_update is not None}, msg_sent={msg_sent}")
-        if _final_map_update or _final_data_update:
+        if _final_map_update or _final_data_update or _final_workspace_update:
             meta = {}
             if _final_map_update:
                 meta["map_update"] = _final_map_update
@@ -2485,6 +2554,11 @@ async def _execute_pipeline(
                 from data_agent.frontend_api import pending_data_updates, _pending_lock
                 with _pending_lock:
                     pending_data_updates[user_id] = _final_data_update
+            if _final_workspace_update:
+                meta["workspace_update"] = _final_workspace_update
+                from data_agent.frontend_api import pending_workspace_updates, _pending_lock
+                with _pending_lock:
+                    pending_workspace_updates[user_id] = _final_workspace_update
             if _final_chart_updates:
                 meta["chart_updates"] = _final_chart_updates
                 from data_agent.frontend_api import pending_chart_updates, _pending_lock
@@ -2560,11 +2634,24 @@ async def _execute_pipeline(
             output_path = tool_step.get("output_path")
             if output_path and os.path.exists(output_path) and output_path not in generated_files:
                 generated_files.append(output_path)
-        cl.user_session.set("last_context", {
+        last_context_payload = {
             "pipeline": pipeline_type,
             "files": generated_files,
             "summary": report_text[:800] if report_text else "",
-        })
+        }
+        if _world_model_v21_result:
+            # Preserve the structured evidence needed to rebuild a visual,
+            # run-specific report. Public chat text intentionally omits paths.
+            last_context_payload["world_model_v21_report"] = {
+                "result": _world_model_v21_result,
+                "tool_args": _world_model_v21_args or {},
+                "status_result": _world_model_v21_status or {},
+                "audit_result": _paper9_audit_result or {},
+                "commit_result": _paper9_commit_result or {},
+                "tool_trace": _world_model_v21_trace,
+                "total_duration_s": total_duration,
+            }
+        cl.user_session.set("last_context", last_context_payload)
         cl.user_session.set("tool_execution_log", tool_execution_log)
         cl.user_session.set("last_intent", intent)
 
@@ -2736,7 +2823,8 @@ async def _execute_pipeline(
                 payload={"action": "rerun"}
             ),
         ]
-        await cl.Message(content=t("pipeline.complete"), actions=actions).send()
+        if pipeline_type != "ontology":
+            await cl.Message(content=t("pipeline.complete"), actions=actions).send()
 
         # Reset retry count on success
         cl.user_session.set("retry_count", 0)
@@ -3097,6 +3185,136 @@ async def start():
         })
     except Exception:
         pass
+
+
+async def _handle_population_housing_chat_message(user_text: str, user_id: str) -> None:
+    """Run the bounded deterministic population/housing conversation flow."""
+    from data_agent.api.uwm_population_housing_optimization_routes import (
+        _service as _population_housing_service,
+    )
+    from data_agent.uwm.population_housing_chat_flow import (
+        build_population_housing_chat_draft,
+        execute_population_housing_chat_draft,
+        format_population_housing_chat_draft,
+        format_population_housing_result,
+        population_housing_result_map_update,
+    )
+
+    draft = build_population_housing_chat_draft(user_text)
+    blockers = draft.get("blockers") or []
+    if blockers:
+        await cl.Message(
+            content=(
+                "## 人口与住房配置参数超出范围\n\n"
+                + "\n".join(f"- `{blocker}`" for blocker in blockers)
+                + "\n\n允许范围：公共预算 35%–125%，新增住房 0%–125%，"
+                "服务扩容 0%–125%，跨区上限 0%–20%。"
+            ),
+            metadata={
+                "routing_info": {
+                    "intent": "人口住房优化",
+                    "pipeline": "population_housing_deterministic",
+                }
+            },
+        ).send()
+        return
+
+    if draft.get("confirmation_required"):
+        prompt = cl.AskActionMessage(
+            content=format_population_housing_chat_draft(draft),
+            actions=[
+                cl.Action(
+                    name="population_housing_confirm",
+                    payload={"value": "confirm"},
+                    label="确认并求解",
+                ),
+                cl.Action(
+                    name="population_housing_cancel",
+                    payload={"value": "cancel"},
+                    label="取消",
+                ),
+            ],
+            timeout=180,
+        )
+        response = await prompt.send()
+        response_payload = response if isinstance(response, dict) else {}
+        nested = response_payload.get("payload")
+        if isinstance(nested, dict):
+            response_payload = nested
+        if response_payload.get("value") != "confirm":
+            prompt.content = "人口与住房配置已取消，未执行求解。"
+            await prompt.update()
+            return
+        prompt.content = "已确认受限参数，开始执行 HiGHS 混合整数规划。"
+        await prompt.update()
+
+    service = _population_housing_service()
+    progress = cl.Message(content="正在校验冻结输入并求解人口与住房聚合配置…")
+    await progress.send()
+    try:
+        run = await asyncio.to_thread(
+            execute_population_housing_chat_draft,
+            draft,
+            service=service,
+            actor_id=str(user_id),
+        )
+        map_update = await asyncio.to_thread(
+            population_housing_result_map_update,
+            run,
+            service,
+        )
+    except Exception as error:
+        progress.content = f"人口与住房配置失败：`{error}`"
+        await progress.update()
+        return
+    progress.content = "人口与住房配置计算完成。"
+    await progress.update()
+    await cl.Message(
+        content=format_population_housing_result(run),
+        metadata={
+            "routing_info": {
+                "intent": "人口住房优化",
+                "pipeline": "population_housing_deterministic",
+                "pipeline_name": "人口与住房空间配置优化",
+            },
+            "map_update": map_update,
+            "population_housing_run": {
+                "profile_id": run.get("profile_id"),
+                "resources_percent": run.get("resources_percent"),
+                "status": (run.get("result") or {}).get("status"),
+            },
+        },
+    ).send()
+    cl.user_session.set(
+        "last_context",
+        {
+            "pipeline": "POPULATION_HOUSING",
+            "files": [],
+            "summary": format_population_housing_result(run),
+            "population_housing_run": run,
+            "map_update": map_update,
+        },
+    )
+
+
+async def _handle_population_housing_followup(user_text: str) -> None:
+    from data_agent.uwm.population_housing_chat_flow import (
+        format_population_housing_infeasible_explanation,
+    )
+
+    context = cl.user_session.get("last_context") or {}
+    run = context.get("population_housing_run") or {}
+    if any(marker in user_text for marker in ("发送到地图", "发到地图", "显示在地图")):
+        map_update = context.get("map_update")
+        if map_update:
+            await cl.Message(
+                content="已将上一轮人口与住房行政区配置和跨区流向重新发送到中间地图。",
+                metadata={"map_update": map_update},
+            ).send()
+        else:
+            await cl.Message(content="上一轮没有可复用的人口与住房地图结果。").send()
+        return
+    await cl.Message(content=format_population_housing_infeasible_explanation(run)).send()
 
 
 async def _execute_s2_chat_draft(
@@ -3633,6 +3851,20 @@ async def main(message: cl.Message):
     from data_agent.uwm.multistage_intervention_planner.chat_flow import (
         is_multistage_uwm_chat_message,
     )
+    from data_agent.uwm.population_housing_chat_flow import (
+        is_population_housing_chat_message,
+        is_population_housing_followup,
+    )
+    last_context = cl.user_session.get("last_context") or {}
+    if is_population_housing_chat_message(user_text):
+        await _handle_population_housing_chat_message(user_text, user_id)
+        return
+    if (
+        is_population_housing_followup(user_text)
+        and last_context.get("pipeline") == "POPULATION_HOUSING"
+    ):
+        await _handle_population_housing_followup(user_text)
+        return
     if is_multistage_uwm_chat_message(user_text):
         await _handle_uwm_multistage_chat_message(user_text, user_id)
         return
@@ -3643,7 +3875,6 @@ async def main(message: cl.Message):
         await _handle_s2_chat_message(user_text, user_id)
         return
     s2_radius_value = s2_followup_radius(user_text)
-    last_context = cl.user_session.get("last_context") or {}
     if s2_radius_value and last_context.get("pipeline") == "S2":
         await _handle_s2_radius_followup(user_text, user_id, s2_radius_value)
         return
@@ -4071,6 +4302,10 @@ async def main(message: cl.Message):
         pipeline_name = f"Custom Skill: {_custom_skill_name}"
         intent = "CUSTOM"
         intent_reason = f"自定义技能匹配: {_custom_skill_name}"
+    elif intent == "ONTOLOGY":
+        selected_agent = ontology_analysis_agent
+        pipeline_type = "ontology"
+        pipeline_name = "Ontology Analysis Agent (自然资源本体分析)"
     elif intent == "GOVERNANCE":
         if _LITE_MODE or governance_pipeline is None:
             selected_agent = general_pipeline
@@ -4571,6 +4806,8 @@ async def on_retry_pipeline(action: cl.Action):
     # Select agent (same logic as main handler)
     if pipeline_type == "farmland_optimization":
         selected_agent = farmland_optimization_pipeline or data_pipeline
+    elif intent == "ONTOLOGY":
+        selected_agent = ontology_analysis_agent
     elif DYNAMIC_PLANNER:
         selected_agent = planner_agent
     elif intent == "GOVERNANCE":
@@ -4643,61 +4880,78 @@ async def on_export_report(action: cl.Action):
     await msg.send()
     try:
         user_dir = get_user_upload_dir()
+        last_ctx = cl.user_session.get("last_context", {}) or {}
+        world_model_report = last_ctx.get("world_model_v21_report")
 
-        # Enrich report text with recent PNG visualizations for image embedding
-        enriched_text = text
-        try:
-            import glob
-            import time as _time
-            
-            # Prefer PNGs that were explicitly generated in this session's context
-            last_ctx = cl.user_session.get("last_context", {})
-            session_files = last_ctx.get("files", [])
-            recent_pngs = [f for f in session_files if f.lower().endswith(".png") and os.path.exists(f)]
-            
-            # Fallback to scanning the directory for very recent PNGs (last 5 mins)
-            if not recent_pngs:
-                recent_pngs = sorted(
-                    glob.glob(os.path.join(user_dir, "*.png")),
-                    key=os.path.getmtime, reverse=True
+        if isinstance(world_model_report, dict) and world_model_report.get("result"):
+            from data_agent.world_model_v21_report import (
+                generate_world_model_v21_pdf_report,
+                generate_world_model_v21_word_report,
+            )
+
+            if fmt == "pdf":
+                output_path = os.path.join(user_dir, "County_Farmland_Planning_Report.pdf")
+                result_path = generate_world_model_v21_pdf_report(
+                    world_model_report, output_path, author=author
                 )
-                cutoff = _time.time() - 300
-                recent_pngs = [p for p in recent_pngs if os.path.getmtime(p) > cutoff]
+            else:
+                output_path = os.path.join(user_dir, "County_Farmland_Planning_Report.docx")
+                result_path = generate_world_model_v21_word_report(
+                    world_model_report, output_path, author=author
+                )
+        else:
+            # Enrich general reports with session PNG visualizations when available.
+            enriched_text = text
+            try:
+                import glob
+                import time as _time
 
-            if recent_pngs:
-                # Deduplicate and normalize paths
+                session_files = last_ctx.get("files", [])
+                recent_pngs = [
+                    f for f in session_files
+                    if f.lower().endswith(".png") and os.path.exists(f)
+                ]
+                if not recent_pngs:
+                    recent_pngs = sorted(
+                        glob.glob(os.path.join(user_dir, "*.png")),
+                        key=os.path.getmtime,
+                        reverse=True,
+                    )
+                    cutoff = _time.time() - 300
+                    recent_pngs = [
+                        path for path in recent_pngs
+                        if os.path.getmtime(path) > cutoff
+                    ]
+
                 unique_pngs = []
-                for p in recent_pngs:
-                    norm_p = os.path.abspath(p)
-                    if norm_p not in unique_pngs:
-                        unique_pngs.append(norm_p)
-                
-                # Only append if not already prominently featured in the text
+                for path in recent_pngs:
+                    normalized = os.path.abspath(path)
+                    if normalized not in unique_pngs:
+                        unique_pngs.append(normalized)
                 images_to_add = []
-                for p in unique_pngs:
-                    p_unix = p.replace("\\", "/")
-                    p_win = p.replace("/", "\\")
-                    if p_unix not in text and p_win not in text:
-                        images_to_add.append(p)
-                
+                for path in unique_pngs:
+                    if path.replace("\\", "/") not in text and path.replace("/", "\\") not in text:
+                        images_to_add.append(path)
                 if images_to_add:
                     enriched_text += "\n\n## 分析可视化成果\n\n"
-                    for png_path in images_to_add[:4]:  # max 4 images
+                    for png_path in images_to_add[:4]:
                         enriched_text += f"{png_path}\n\n"
-        except Exception as _enrich_err:
-            logger.warning("Report enrichment failed: %s", _enrich_err)
-        if fmt == "pdf":
-            from data_agent.report_generator import generate_pdf_report
-            output_path = os.path.join(user_dir, "Analysis_Report.pdf")
-            result_path = generate_pdf_report(
-                enriched_text, output_path, author=author, pipeline_type=pipeline_type
-            )
-        else:
-            output_path = os.path.join(user_dir, "Analysis_Report.docx")
-            generate_word_report(
-                enriched_text, output_path, author=author, pipeline_type=pipeline_type
-            )
-            result_path = output_path
+            except Exception as _enrich_err:
+                logger.warning("Report enrichment failed: %s", _enrich_err)
+
+            if fmt == "pdf":
+                from data_agent.report_generator import generate_pdf_report
+
+                output_path = os.path.join(user_dir, "Analysis_Report.pdf")
+                result_path = generate_pdf_report(
+                    enriched_text, output_path, author=author, pipeline_type=pipeline_type
+                )
+            else:
+                output_path = os.path.join(user_dir, "Analysis_Report.docx")
+                generate_word_report(
+                    enriched_text, output_path, author=author, pipeline_type=pipeline_type
+                )
+                result_path = output_path
 
         sync_to_obs(result_path)
         filename = os.path.basename(result_path)

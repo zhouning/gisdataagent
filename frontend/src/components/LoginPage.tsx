@@ -1,11 +1,14 @@
 import { useState, useContext, FormEvent } from 'react';
 import { ChainlitContext } from '@chainlit/react-client';
+import { BrainCircuit, Database, Workflow } from 'lucide-react';
+import { usePlatformBranding } from '../platformBranding';
 
 interface LoginPageProps {
   onLoginSuccess: () => void;
 }
 
 export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
+  const { branding } = usePlatformBranding();
   const apiClient = useContext(ChainlitContext);
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [username, setUsername] = useState('');
@@ -83,42 +86,42 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
       <div className="login-brand">
         <div className="login-brand-content">
           <div className="login-brand-logo">
-            <img src="/public/logo_light.png" alt="Data Agent" className="login-logo-img" />
+            <img src="/public/logo_light.png" alt={branding.platform_name} className="login-logo-img" />
           </div>
-          <h1 className="login-brand-title">GIS Data Agent</h1>
-          <p className="login-brand-subtitle">AI-Powered Geospatial Intelligence Platform</p>
+          <h1 className="login-brand-title">{branding.platform_name}</h1>
+          <p className="login-brand-subtitle">{branding.platform_subtitle}</p>
 
           <div className="login-brand-stats">
             <div className="login-stat">
-              <span className="login-stat-value">3</span>
-              <span className="login-stat-label">AI Pipelines</span>
+              <span className="login-stat-value login-stat-value--word">Unified</span>
+              <span className="login-stat-label">Metadata Fabric</span>
             </div>
             <div className="login-stat">
-              <span className="login-stat-value">40+</span>
-              <span className="login-stat-label">Toolsets</span>
+              <span className="login-stat-value login-stat-value--word">Governed</span>
+              <span className="login-stat-label">Data Lifecycle</span>
             </div>
             <div className="login-stat">
-              <span className="login-stat-value">200+</span>
-              <span className="login-stat-label">REST APIs</span>
+              <span className="login-stat-value login-stat-value--word">Agentic</span>
+              <span className="login-stat-label">Operations</span>
             </div>
           </div>
 
           <div className="login-brand-features">
             <div className="login-feature">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-              <span>Semantic Intent Routing</span>
+              <Database aria-hidden="true" />
+              <span>Unified Metadata &amp; Master Data</span>
             </div>
             <div className="login-feature">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-              <span>Multi-Agent GIS Analysis</span>
+              <Workflow aria-hidden="true" />
+              <span>Governed DataOps &amp; AgentOps</span>
             </div>
             <div className="login-feature">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-              <span>DRL Land-Use Optimization</span>
+              <BrainCircuit aria-hidden="true" />
+              <span>Geospatial World Model</span>
             </div>
           </div>
 
-          <div className="login-brand-version">v23.0 &middot; Google ADK</div>
+          <div className="login-brand-version">v23.0.0 &middot; Google ADK &middot; Metadata Fabric</div>
         </div>
 
         {/* Animated background elements */}

@@ -1,0 +1,33 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: gis-agent
+
+resources:
+  - ../../base
+  - fuseki-statefulset.yaml
+  - fuseki-service.yaml
+  - ontology-projection-job.yaml
+  - fuseki-networkpolicy.yaml
+
+patches:
+  - target:
+      kind: Deployment
+      name: gis-agent-app
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: ONTOLOGY_RUNTIME_BACKEND
+          value: auto
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: ONTOLOGY_SPARQL_ENDPOINT
+          value: http://ontology-fuseki:3030/ontology/query
+
+labels:
+  - includeSelectors: false
+    pairs:
+      app.kubernetes.io/part-of: gis-data-agent
+      app.kubernetes.io/managed-by: kustomize

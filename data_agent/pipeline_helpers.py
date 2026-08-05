@@ -132,6 +132,32 @@ def extract_map_update_from_tool_response(value):
     return None
 
 
+def extract_workspace_update_from_tool_response(value):
+    """Extract a bounded data-workbench navigation request from tool output."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            return None
+    if not isinstance(value, dict):
+        return None
+
+    update = value.get("workspace_update")
+    if isinstance(update, dict) and update.get("tab") in {"ontology", "ontology_demo"}:
+        allowed = {
+            "tab", "concept_id", "relation_path", "view", "scenario_id", "auto_run",
+        }
+        return {key: item for key, item in update.items() if key in allowed}
+    for key in ("plan_result", "result", "output", "response", "content"):
+        if key in value:
+            nested = extract_workspace_update_from_tool_response(value[key])
+            if nested:
+                return nested
+    return None
+
+
 def _extract_map_update_from_html_text(text: str):
     """Load map_update from an HTML path mentioned in a plain tool response."""
     pattern = r'(?:[a-zA-Z]:\\|/)[^<>:"|?*]+\.html'

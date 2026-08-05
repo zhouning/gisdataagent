@@ -72,7 +72,21 @@ RUN apt-get purge -y build-essential python3-dev && \
 
 # ---- Copy application code --------------------------------------------------
 COPY data_agent/ /app/data_agent/
+COPY config/deployment_profiles/ /app/config/deployment_profiles/
+COPY config/recovery_sli_baselines/ /app/config/recovery_sli_baselines/
 COPY data/uwm_public_proxy/ /app/data/uwm_public_proxy/
+# Evidence-bounded TWM demo assets. The three test-data directories and the
+# four-file Paper9 evidence bundle enter through data_agent; benchmark
+# artifacts are copied file by file to avoid unrelated local outputs.
+COPY data/benchmarks/dam_gk_2026-07-18/ /app/data/benchmarks/dam_gk_2026-07-18/
+COPY docs/reports/twm_data_foundation_validation.json /app/docs/reports/twm_data_foundation_validation.json
+COPY benchmarks/gwm_bench_v0_2/internal_dev/hydro_kernel_experiment/stability_report_10seed.json /app/benchmarks/gwm_bench_v0_2/internal_dev/hydro_kernel_experiment/stability_report_10seed.json
+COPY benchmarks/gwm_bench_v0_3_candidate/certificate_refresh_report.json /app/benchmarks/gwm_bench_v0_3_candidate/certificate_refresh_report.json
+COPY benchmarks/gwm_bench_v0_3_candidate/nwm_forcing_admission_certificate.json /app/benchmarks/gwm_bench_v0_3_candidate/nwm_forcing_admission_certificate.json
+COPY benchmarks/gwm_bench_v0_3_candidate/nwm_spatial_topology_admission_certificate.json /app/benchmarks/gwm_bench_v0_3_candidate/nwm_spatial_topology_admission_certificate.json
+COPY benchmarks/standard_mapping_chongqing_v0_1/acceptance_report.json /app/benchmarks/standard_mapping_chongqing_v0_1/acceptance_report.json
+COPY benchmarks/standard_mapping_chongqing_v0_1/source_onboarding_protocol.json /app/benchmarks/standard_mapping_chongqing_v0_1/source_onboarding_protocol.json
+COPY benchmarks/standard_mapping_chongqing_v0_1/source_onboarding_report.json /app/benchmarks/standard_mapping_chongqing_v0_1/source_onboarding_report.json
 COPY geocausal/ /app/geocausal/
 COPY --from=frontend-builder /build/dist/ /app/frontend/dist/
 COPY .chainlit/ /app/.chainlit/
@@ -80,11 +94,20 @@ COPY public/ /app/public/
 COPY scripts/ /app/scripts/
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh
+# Build the evidence-bounded demand-11 environmental product from bundled
+# local assets so a fresh container never depends on an ignored local output.
+RUN python scripts/build_uwm_environmental_kernel_chongqing.py \
+    --source-root /app \
+    --output-dir /app/data/uwm_public_proxy/chongqing_central/uwm_environmental_kernel_chongqing
 
 # ---- Create uploads directory and non-root user -----------------------------
 RUN groupadd -r agent && useradd -r -g agent -d /app -s /bin/bash agent && \
-    mkdir -p /app/data_agent/uploads && \
-    chown -R agent:agent /app
+    mkdir -p /app/data_agent/uploads /app/data_agent/data_lake/raw && \
+    chown -R root:agent /app/data_agent/ontology/packages && \
+    chmod -R u=rwX,g=rX,o= /app/data_agent/ontology/packages && \
+    chown agent:agent /app /app/data_agent \
+        /app/data_agent/uploads /app/data_agent/data_lake \
+        /app/data_agent/data_lake/raw
 
 USER agent
 
@@ -92,6 +115,6 @@ USER agent
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:${PORT:-8080}/ || exit 1
+    CMD curl -f http://localhost:${PORT:-8080}/health || exit 1
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]

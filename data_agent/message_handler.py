@@ -93,7 +93,7 @@ def select_pipeline_agent(intent: str, custom_skill_agent=None,
     """Select the appropriate pipeline agent based on intent and skill match.
 
     Args:
-        intent: Classified intent (GENERAL, GOVERNANCE, OPTIMIZATION).
+        intent: Classified intent (GENERAL, GOVERNANCE, OPTIMIZATION, ONTOLOGY).
         custom_skill_agent: Pre-built custom skill agent, if matched.
         use_dynamic_planner: Whether dynamic planner mode is enabled.
 
@@ -111,6 +111,10 @@ def select_pipeline_agent(intent: str, custom_skill_agent=None,
     if intent == "OPTIMIZATION":
         from .agent import data_pipeline
         return data_pipeline, "optimization", "Optimization Pipeline"
+
+    if intent == "ONTOLOGY":
+        from .agent import ontology_analysis_agent
+        return ontology_analysis_agent, "ontology", "Ontology Analysis Agent"
 
     if use_dynamic_planner:
         from .agent import planner_agent

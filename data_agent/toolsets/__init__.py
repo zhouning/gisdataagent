@@ -34,6 +34,7 @@ _EXPORTS = {
     "MemoryToolset": ".memory_tools",
     "NL2SQLEnhancedToolset": ".nl2sql_enhanced_tools",
     "NL2SQLToolset": ".nl2sql_tools",
+    "OntologyToolset": ".ontology_tools",
     "OperatorToolset": ".operator_tools",
     "PrecisionToolset": ".precision_tools",
     "RemoteSensingToolset": ".remote_sensing_tools",

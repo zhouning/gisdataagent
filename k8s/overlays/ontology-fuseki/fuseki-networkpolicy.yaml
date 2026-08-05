@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ontology-fuseki-access
+  namespace: gis-agent
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: ontology-fuseki
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gis-agent-app
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ontology-projection
+      ports:
+        - protocol: TCP
+          port: 3030

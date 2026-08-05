@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { RecoilRoot } from 'recoil';
 import { ChainlitAPI, ChainlitContext } from '@chainlit/react-client';
 import App from './App';
+import { PlatformBrandingProvider } from './platformBranding';
 import './styles/layout.css';
 
 const CHAINLIT_SERVER = window.location.origin;
@@ -21,7 +22,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ChainlitContext.Provider value={apiClient}>
       <RecoilRoot>
-        <App />
+        <PlatformBrandingProvider>
+          <App />
+        </PlatformBrandingProvider>
       </RecoilRoot>
     </ChainlitContext.Provider>
   </React.StrictMode>

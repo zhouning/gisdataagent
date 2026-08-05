@@ -170,6 +170,20 @@ _CAPABILITY_QUERY_REGEX = re.compile(
     "|".join(_CAPABILITY_QUERY_PATTERNS), re.IGNORECASE
 )
 
+_ONTOLOGY_QUERY_REGEX = re.compile(
+    r"(?:本体(?:模型|查询|分析|关系|层级|应用)?|ontology|"
+    r"农用地.{0,20}(?:耕地|非耕农用地).{0,20}(?:关系|层级|转换)|"
+    r"(?:农用地|耕地|非耕农用地|建设用地|未利用地).{0,30}(?:转为|转成|转换|变化|过程|规则)|"
+    r"农业结构调整.{0,30}(?:转换|状态|允许)|"
+    r"建设占用.{0,30}(?:状态|依据|审批|文件)|"
+    r"(?:BSM|JQDLMC|GHDLMC).{0,40}(?:对应|映射|概念)|"
+    r"和平村.{0,40}(?:用地转换|辅助预审|预审|地图展示|地图上展示)|"
+    r"斑竹村.{0,40}(?:农业结构调整|用地转换|转换分析|地图展示|地图上展示)|"
+    r"和平村.{0,30}(?:材料待补|空间冲突)|"
+    r"规划用途.{0,30}现状用途.{0,30}(?:冲突|地块))",
+    re.IGNORECASE,
+)
+
 
 def _is_capability_query(text: str) -> bool:
     """Detect whether the user is asking about system capabilities."""
@@ -197,7 +211,7 @@ def classify_intent(text: str, previous_pipeline: str = None,
     plus tool subcategories for dynamic tool filtering (v7.5.6).
     Supports multimodal input: images are embedded directly, PDF text is appended to prompt.
     Returns: (intent, reason, router_tokens, tool_categories, language) where intent is
-    'OPTIMIZATION', 'GOVERNANCE', 'GENERAL', 'WORKFLOW', or 'AMBIGUOUS',
+    'OPTIMIZATION', 'GOVERNANCE', 'ONTOLOGY', 'GENERAL', 'WORKFLOW', or 'AMBIGUOUS',
     and language is 'zh'/'en'/'ja'.
     """
     lang = detect_language(text)
@@ -213,6 +227,13 @@ def classify_intent(text: str, previous_pipeline: str = None,
         except Exception:
             pass
         return ("GENERAL", "capability_query_shortcut", 0, set(), lang, "agentic")
+    if text and _ONTOLOGY_QUERY_REGEX.search(text) and not image_paths:
+        try:
+            from data_agent.observability import record_intent
+            record_intent("ONTOLOGY", lang, _time.perf_counter() - _router_start)
+        except Exception:
+            pass
+        return ("ONTOLOGY", "natural_resource_ontology_query", 0, {"ontology_query"}, lang, "agentic")
     try:
         prev_hint = ""
         if previous_pipeline:
@@ -231,7 +252,8 @@ def classify_intent(text: str, previous_pipeline: str = None,
         2. **OPTIMIZATION**: Land use optimization, DRL, FFI calculation, spatial layout planning. (Keywords: 优化, 布局, 破碎化, 规划)
         3. **GENERAL**: General queries, SQL, visualization, mapping, simple analysis, clustering, heatmap, buffer, site selection, memories, preferences, world model prediction. (Keywords: 查询, 地图, 热力图, 聚类, 选址, 分析, 筛选, 数据库, 记忆, 偏好, 记住, 历史, 世界模型, world model, LULC预测, 土地利用预测, 变化预测)
         4. **WORKFLOW**: Execute a predefined multi-step workflow / quality control pipeline. The user explicitly wants to run a named workflow template (e.g. 标准质检, 快速质检, DLG质检, DOM质检, DEM质检, 三维模型质检, 完整质检). (Keywords: 执行质检流程, 运行质检, 执行工作流, 跑一下质检, 启动质检, 标准质检, 快速质检, DLG质检, DOM质检, DEM质检, 三维模型质检)
-        5. **AMBIGUOUS**: The input is too vague, unclear, or could match multiple pipelines equally. E.g. greetings, single-word inputs, or no clear GIS task.
+        5. **ONTOLOGY**: Natural-resource ontology concept, hierarchy, relation path, transition rule, schema mapping, or ontology application scenario analysis. (Keywords: 本体, 农用地和耕地关系, 农业结构调整, 建设占用, 语义证据链, BSM/JQDLMC/GHDLMC映射)
+        6. **AMBIGUOUS**: The input is too vague, unclear, or could match multiple pipelines equally. E.g. greetings, single-word inputs, or no clear GIS task.
 
         Additionally, identify which tool subcategories are needed (comma-separated, minimum list):
         - spatial_processing: buffer, clip, overlay, tessellation, clustering, zonal stats, geocoding, spatial join
@@ -244,6 +266,7 @@ def classify_intent(text: str, previous_pipeline: str = None,
         - advanced_analysis: spatial statistics (Moran/hotspot), data fusion, knowledge graph
         - world_model: world model prediction, LULC forecasting, scenario simulation, 世界模型, 土地利用预测, 干预预测, 反事实对比
         - causal_reasoning: causal DAG, counterfactual reasoning, causal mechanism, what-if scenarios, 因果推理, 因果图, 反事实
+        - ontology_query: governed ontology concept/hierarchy/path/transition/mapping/scenario query
 
         User Input: "{text}"{pdf_hint}
 
@@ -360,6 +383,7 @@ def classify_intent(text: str, previous_pipeline: str = None,
         if "OPTIMIZATION" in intent: result_intent = "OPTIMIZATION"
         elif "GOVERNANCE" in intent: result_intent = "GOVERNANCE"
         elif "WORKFLOW" in intent: result_intent = "WORKFLOW"
+        elif "ONTOLOGY" in intent: result_intent = "ONTOLOGY"
         elif "AMBIGUOUS" in intent: result_intent = "AMBIGUOUS"
         elif "GENERAL" in intent: result_intent = "GENERAL"
         else: result_intent = "GENERAL"

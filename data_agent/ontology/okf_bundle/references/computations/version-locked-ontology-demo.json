@@ -1,0 +1,19 @@
+{
+  "schema": "gda.ontology.sanctioned-computation.v1",
+  "runtime": "python",
+  "allowed_parameters": {
+    "scenario_id": ["heping_review", "banzhu_adjustment"]
+  },
+  "operations": [
+    "verify_active_ontology_package",
+    "verify_demo_manifest_artifacts",
+    "load_registered_changed_parcels",
+    "resolve_source_and_target_land_use_states",
+    "classify_registered_transition_process",
+    "aggregate_changed_count_area_and_processes",
+    "evaluate_registered_review_status",
+    "bind_result_to_map_layers"
+  ],
+  "display_gate": "deterministic_attestation_required",
+  "decision_scope": "auxiliary_precheck_not_statutory_approval"
+}

@@ -76,6 +76,12 @@ interface S2MapSelection {
   sourceLandUseName?: string;
 }
 
+function dispatchWorkspaceUpdate(update: any) {
+  if (!update || !['ontology', 'ontology_demo'].includes(update.tab)) return;
+  (window as any).__pendingGdaWorkspaceUpdate = update;
+  window.dispatchEvent(new CustomEvent('gda-workspace-update', { detail: update }));
+}
+
 export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }: ChatPanelProps) {
   const { messages, threadId: currentThreadId } = useChatMessages();
   const chatInteract = useChatInteract() as ReturnType<typeof useChatInteract> & {
@@ -159,6 +165,10 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
         onDataUpdate(meta.data_update.csv || meta.data_update.file);
         processedMetaRef.current.add(msg.id);
       }
+      if (meta.workspace_update) {
+        dispatchWorkspaceUpdate(meta.workspace_update);
+        processedMetaRef.current.add(msg.id);
+      }
       if (meta.memory_extract) {
         processedMetaRef.current.add(msg.id);
       }
@@ -207,6 +217,9 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
             }
             if (data.data_update) {
               onDataUpdate(data.data_update.csv || data.data_update.file);
+            }
+            if (data.workspace_update) {
+              dispatchWorkspaceUpdate(data.workspace_update);
             }
           })
           .catch(() => {});
@@ -313,6 +326,7 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
               .then(data => {
                 if (data.map_update) onMapUpdate(data.map_update);
                 if (data.data_update) onDataUpdate(data.data_update.csv || data.data_update.file);
+                if (data.workspace_update) dispatchWorkspaceUpdate(data.workspace_update);
               })
               .catch(() => {});
           };

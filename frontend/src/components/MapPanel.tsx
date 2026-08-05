@@ -1,14 +1,15 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import L from 'leaflet';
 import 'leaflet.heat';
 import 'leaflet-draw';
 import 'leaflet-draw/dist/leaflet.draw.css';
+import { Map as MapIcon } from 'lucide-react';
 import Map3DView from './Map3DView';
 
 interface MapLayer {
   name: string;
   type: 'geojson' | 'point' | 'polygon' | 'choropleth' | 'heatmap' | 'bubble' | 'line'
-      | 'extrusion' | 'arc' | 'column' | 'categorized' | 'wms' | 'mvt' | 'fgb';
+      | 'extrusion' | 'arc' | 'column' | 'categorized' | 'image' | 'wms' | 'mvt' | 'fgb';
   geojson?: string;       // filename to fetch from /api/user/files/
   geojsonData?: any;      // already loaded GeoJSON
   style?: Record<string, any>;
@@ -23,6 +24,9 @@ interface MapLayer {
   tooltip_fields?: string[];
   tooltip_labels?: Record<string, string>;
   visible?: boolean;                         // initial visibility (default true)
+  // Georeferenced image overlay properties
+  image_url?: string;
+  image_bounds?: [[number, number], [number, number]];
   // 3D properties
   elevation_column?: string;
   elevation_scale?: number;
@@ -70,6 +74,31 @@ const BASEMAPS: Record<string, string> = {
   'ESRI Satellite': 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
 };
 
+interface BasemapMetadata {
+  min_zoom?: number;
+  max_zoom?: number;
+  attribution?: string;
+}
+
+function createBasemapLayer(name: string, url: string, metadata?: BasemapMetadata): L.TileLayer {
+  const common: L.TileLayerOptions = { maxZoom: 20 };
+  if (name.startsWith('DMT ')) {
+    return L.tileLayer(url, {
+      ...common,
+      minNativeZoom: metadata?.min_zoom,
+      maxNativeZoom: metadata?.max_zoom,
+      attribution: metadata?.attribution || 'Abu Dhabi Department of Municipalities and Transport',
+    });
+  }
+  if (name === 'ESRI Satellite') {
+    return L.tileLayer(url, {
+      ...common,
+      attribution: 'Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+    });
+  }
+  return L.tileLayer(url, common);
+}
+
 const COLOR_RAMPS: Record<string, string[]> = {
   YlOrRd: ['#ffffb2', '#fed976', '#feb24c', '#fd8d3c', '#fc4e2a', '#e31a1c', '#b10026'],
   YlGnBu: ['#ffffcc', '#c7e9b4', '#7fcdbb', '#41b6c4', '#1d91c0', '#225ea8', '#0c2c84'],
@@ -90,6 +119,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
   const [loadedLayers, setLoadedLayers] = useState<MapLayer[]>([]);
   const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({});
   const [showLayerControl, setShowLayerControl] = useState(false);
+  const [showBasemapMenu, setShowBasemapMenu] = useState(false);
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
 
   // Annotation state
@@ -112,8 +142,9 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
   const s6PointSelectionHandlerRef = useRef<((event: L.LeafletMouseEvent) => void) | null>(null);
   const interactionModesRef = useRef({ annotationMode, measureMode, drawMode });
   const [availableBasemaps, setAvailableBasemaps] = useState<Record<string, string>>({ ...BASEMAPS });
+  const [basemapMetadata, setBasemapMetadata] = useState<Record<string, BasemapMetadata>>({});
 
-  // Fetch basemap config (Tianditu)
+  // Fetch governed DMT basemaps and optional Tianditu configuration.
   useEffect(() => {
     interactionModesRef.current = { annotationMode, measureMode, drawMode };
   }, [annotationMode, measureMode, drawMode]);
@@ -183,12 +214,27 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
     fetch('/api/config/basemaps', { credentials: 'include' })
       .then((r) => r.json())
       .then((cfg) => {
+        const dmtBasemaps: Record<string, string> = {};
+        const dmtMetadata: Record<string, BasemapMetadata> = {};
+        for (const item of cfg.basemaps || []) {
+          if (!item?.name || !item?.tile_url) continue;
+          dmtBasemaps[item.name] = item.tile_url;
+          dmtMetadata[item.name] = {
+            min_zoom: item.min_zoom,
+            max_zoom: item.max_zoom,
+            attribution: item.attribution,
+          };
+        }
+        if (Object.keys(dmtBasemaps).length > 0) {
+          setAvailableBasemaps((prev) => ({ ...prev, ...dmtBasemaps }));
+          setBasemapMetadata((prev) => ({ ...prev, ...dmtMetadata }));
+        }
         if (cfg.tianditu_enabled && cfg.tianditu_token) {
           const tk = cfg.tianditu_token;
           setAvailableBasemaps((prev) => ({
             ...prev,
-            'Tianditu Vec': `http://t0.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILECOL={x}&TILEROW={y}&TILEMATRIX={z}&tk=${tk}`,
-            'Tianditu Img': `http://t0.tianditu.gov.cn/img_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=img&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILECOL={x}&TILEROW={y}&TILEMATRIX={z}&tk=${tk}`,
+            'Tianditu Vec': `https://t0.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILECOL={x}&TILEROW={y}&TILEMATRIX={z}&tk=${tk}`,
+            'Tianditu Img': `https://t0.tianditu.gov.cn/img_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=img&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILECOL={x}&TILEROW={y}&TILEMATRIX={z}&tk=${tk}`,
           }));
         }
       })
@@ -212,10 +258,12 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
       zoomControl: true,
     });
 
-    baseTileRef.current = L.tileLayer(BASEMAPS['ESRI Satellite'], {
-      attribution: 'Esri, Maxar, Earthstar Geographics, and the GIS User Community',
-      maxZoom: 19,
-    }).addTo(map);
+    const selectedBasemap = availableBasemaps[activeBasemap]
+      ? activeBasemap
+      : 'ESRI Satellite';
+    baseTileRef.current = createBasemapLayer(
+      selectedBasemap, availableBasemaps[selectedBasemap], basemapMetadata[selectedBasemap],
+    ).addTo(map);
 
     mapRef.current = map;
 
@@ -233,13 +281,14 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
 
   // Switch basemap
   const switchBasemap = useCallback((name: string) => {
-    if (!mapRef.current || !baseTileRef.current) return;
     const url = availableBasemaps[name];
-    if (url) {
-      baseTileRef.current.setUrl(url);
-      setActiveBasemap(name);
+    if (!url) return;
+    setActiveBasemap(name);
+    if (mapRef.current && baseTileRef.current) {
+      mapRef.current.removeLayer(baseTileRef.current);
+      baseTileRef.current = createBasemapLayer(name, url, basemapMetadata[name]).addTo(mapRef.current);
     }
-  }, [availableBasemaps]);
+  }, [availableBasemaps, basemapMetadata]);
 
   // Toggle layer visibility
   const toggleLayer = useCallback((name: string) => {
@@ -508,6 +557,18 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
 
       for (const layerConfig of layers) {
         try {
+          if (layerConfig.type === 'image') {
+            const leafletLayer = createLeafletLayer(layerConfig, null);
+            if (leafletLayer) {
+              const isVisible = layerConfig.visible !== false;
+              if (isVisible) leafletLayer.addTo(mapRef.current!);
+              layerGroupsRef.current.set(layerConfig.name, leafletLayer);
+              loaded.push(layerConfig);
+              visibility[layerConfig.name] = isVisible;
+            }
+            continue;
+          }
+
           // WMS layers don't need GeoJSON — render directly as tile layers
           if (layerConfig.type === 'wms') {
             const leafletLayer = createLeafletLayer(layerConfig, null);
@@ -642,39 +703,47 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
   );
   // Find categorized layers for legend
   const categorizedLayers = loadedLayers.filter(
-    (l) => (l.type === 'categorized' || l.type === 'fgb') && (l.category_colors || l.style_map)
+    (l) => (
+      (l.type === 'categorized' || l.type === 'fgb' || l.type === 'image')
+      && (l.category_colors || l.style_map)
+      && (l.type !== 'image' || layerVisibility[l.name] !== false)
+    )
+  );
+  const directionalLineLayers = loadedLayers.filter(
+    (l) => l.type === 'line' && l.style?.arrowheads === true
   );
 
   // --- Timeline slider for temporal layers (e.g., World Model LULC predictions) ---
   // Detect layers with year pattern in name: "LULC 2023 (baseline)"
-  const yearPattern = /\b(20\d{2})\b/;
-  const temporalLayerNames: Map<number, string[]> = new Map();
-  for (const l of loadedLayers) {
-    const m = l.name.match(yearPattern);
-    if (m) {
-      const yr = parseInt(m[1]);
-      const names = temporalLayerNames.get(yr) || [];
-      names.push(l.name);
-      temporalLayerNames.set(yr, names);
+  const { temporalLayerNames, temporalYears } = useMemo(() => {
+    const yearPattern = /\b(20\d{2})\b/;
+    const namesByYear = new Map<number, string[]>();
+    for (const layer of loadedLayers) {
+      const match = layer.name.match(yearPattern);
+      if (!match) continue;
+      const year = parseInt(match[1]);
+      const names = namesByYear.get(year) || [];
+      names.push(layer.name);
+      namesByYear.set(year, names);
     }
-  }
-  const temporalYears = Array.from(temporalLayerNames.keys());
-  temporalYears.sort((a, b) => a - b);
+    return {
+      temporalLayerNames: namesByYear,
+      temporalYears: Array.from(namesByYear.keys()).sort((a, b) => a - b),
+    };
+  }, [loadedLayers]);
   const hasTimeline = temporalYears.length >= 2;
 
   const [timelineYear, setTimelineYear] = useState<number>(0);
-
-  // Initialize timeline to last year when temporal layers appear
-  useEffect(() => {
-    if (hasTimeline && temporalYears.length > 0) {
-      setTimelineYear(temporalYears[temporalYears.length - 1]);
-    }
-  }, [loadedLayers.length]);
+  const [timelinePlaying, setTimelinePlaying] = useState(false);
+  const timelineYearRef = useRef(0);
+  const playIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const handleTimelineChange = useCallback((year: number) => {
+    timelineYearRef.current = year;
     setTimelineYear(year);
     if (!mapRef.current) return;
     // Show only the selected year's layer, hide others
+    const visibility: Record<string, boolean> = {};
     for (const [yr, layerNames] of temporalLayerNames) {
       for (const layerName of layerNames) {
         const leafletLayer = layerGroupsRef.current.get(layerName);
@@ -683,31 +752,36 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
           if (!mapRef.current.hasLayer(leafletLayer)) {
             leafletLayer.addTo(mapRef.current);
           }
-          setLayerVisibility((prev) => ({ ...prev, [layerName]: true }));
+          visibility[layerName] = true;
         } else {
           if (mapRef.current.hasLayer(leafletLayer)) {
             mapRef.current.removeLayer(leafletLayer);
           }
-          setLayerVisibility((prev) => ({ ...prev, [layerName]: false }));
+          visibility[layerName] = false;
         }
       }
     }
-  }, [loadedLayers]);
+    setLayerVisibility((previous) => ({ ...previous, ...visibility }));
+  }, [temporalLayerNames]);
+
+  // Initialize a newly loaded temporal sequence to its final year.
+  useEffect(() => {
+    if (hasTimeline) {
+      handleTimelineChange(temporalYears[temporalYears.length - 1]);
+    } else {
+      timelineYearRef.current = 0;
+      setTimelineYear(0);
+      setTimelinePlaying(false);
+    }
+  }, [handleTimelineChange, hasTimeline, temporalYears]);
 
   // --- Timeline animation (play/pause) ---
-  const [timelinePlaying, setTimelinePlaying] = useState(false);
-  const playIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
   useEffect(() => {
     if (timelinePlaying && hasTimeline) {
       playIntervalRef.current = setInterval(() => {
-        setTimelineYear((prev) => {
-          const idx = temporalYears.indexOf(prev);
-          const nextIdx = (idx + 1) % temporalYears.length;
-          const nextYear = temporalYears[nextIdx];
-          handleTimelineChange(nextYear);
-          return nextYear;
-        });
+        const currentIndex = temporalYears.indexOf(timelineYearRef.current);
+        const nextIndex = (currentIndex + 1) % temporalYears.length;
+        handleTimelineChange(temporalYears[nextIndex]);
       }, 1200);
     } else if (playIntervalRef.current) {
       clearInterval(playIntervalRef.current);
@@ -721,7 +795,14 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
   return (
     <div className="map-panel">
       {viewMode === '3d' ? (
-        <Map3DView layers={layers} center={center} zoom={zoom} basemap={activeBasemap} />
+        <Map3DView
+          layers={layers}
+          center={center}
+          zoom={zoom}
+          basemap={activeBasemap}
+          basemaps={availableBasemaps}
+          basemapMetadata={basemapMetadata}
+        />
       ) : (
         <>
           <div ref={mapContainerRef} style={{ height: '100%', width: '100%' }} />
@@ -736,19 +817,6 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
           <span>上传空间数据或发送分析请求<br/>地图将在此显示</span>
         </div>
       )}
-
-      {/* Basemap switcher */}
-      <div className="basemap-switcher">
-        {Object.keys(availableBasemaps).map((name) => (
-          <button
-            key={name}
-            className={activeBasemap === name ? 'active' : ''}
-            onClick={() => switchBasemap(name)}
-          >
-            {name}
-          </button>
-        ))}
-      </div>
 
       {/* Layer control */}
       {hasLayers && (
@@ -800,8 +868,8 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
         </div>
       )}
 
-      {/* Legend for categorized layers */}
-      {categorizedLayers.length > 0 && (
+      {/* Legend for categorized and directional flow layers */}
+      {(categorizedLayers.length > 0 || directionalLineLayers.length > 0) && (
         <div className="map-legend">
           {categorizedLayers.map((layer) => {
             const labels = layer.category_labels || {};
@@ -823,6 +891,22 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
             </div>
             );
           })}
+          {directionalLineLayers.map((layer) => (
+            <div
+              key={layer.name}
+              className="map-directional-legend"
+              style={{ marginTop: categorizedLayers.length > 0 ? 8 : 0 }}
+            >
+              <div className="map-legend-title">{layer.legend_title || layer.name}</div>
+              <div className="map-legend-item">
+                <span
+                  className="map-legend-flow-arrow"
+                  style={{ borderLeftColor: layer.style?.arrowColor || layer.style?.color || '#dc2626' }}
+                />
+                <span className="map-legend-label">箭头指向目标区</span>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -837,6 +921,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
           <button
             onClick={() => setTimelinePlaying(!timelinePlaying)}
             title={timelinePlaying ? '暂停' : '播放'}
+            aria-label={timelinePlaying ? '暂停地图时间序列' : '播放地图时间序列'}
             style={{
               background: timelinePlaying ? '#ef4444' : '#2563eb', color: '#fff',
               border: 'none', borderRadius: 6, width: 28, height: 28,
@@ -855,6 +940,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
           </span>
           <input
             type="range"
+            aria-label="地图时间轴年份"
             min={0}
             max={temporalYears.length - 1}
             value={temporalYears.indexOf(timelineYear)}
@@ -870,7 +956,7 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
           <span style={{
             fontSize: 13, fontWeight: 700, color: '#2563eb', minWidth: 40, textAlign: 'center',
             background: '#eff6ff', borderRadius: 4, padding: '2px 6px'
-          }}>
+          }} data-testid="map-timeline-current-year">
             {timelineYear}
           </span>
         </div>
@@ -1007,6 +1093,39 @@ export default function MapPanel({ layers, center, zoom, layerControl }: MapPane
         </>
       )}
 
+      {/* Shared by 2D Leaflet and 3D MapLibre views. */}
+      <div className="basemap-switcher">
+        <button
+          type="button"
+          className="basemap-switcher-toggle"
+          onClick={() => setShowBasemapMenu(!showBasemapMenu)}
+          title={`切换底图（当前：${activeBasemap}）`}
+          aria-label="切换底图"
+          aria-expanded={showBasemapMenu}
+        >
+          <MapIcon size={17} />
+        </button>
+        {showBasemapMenu && (
+          <div className="basemap-switcher-menu" role="menu" aria-label="底图选项">
+            <div className="basemap-switcher-title">底图</div>
+            {Object.keys(availableBasemaps).map((name) => (
+              <button
+                type="button"
+                role="menuitem"
+                key={name}
+                className={activeBasemap === name ? 'active' : ''}
+                onClick={() => {
+                  switchBasemap(name);
+                  setShowBasemapMenu(false);
+                }}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* 2D/3D view mode toggle */}
       <button
         className={`view-mode-toggle ${viewMode === '3d' ? 'active' : ''}`}
@@ -1061,8 +1180,8 @@ function createLeafletLayer(config: MapLayer, geojsonData: any): L.Layer | null 
         onEachFeature: bindPopup,
       });
 
-    case 'line':
-      return L.geoJSON(geojsonData, {
+    case 'line': {
+      const lineLayer = L.geoJSON(geojsonData, {
         style: {
           color: style.color || '#e63946',
           weight: style.weight || 3,
@@ -1071,6 +1190,13 @@ function createLeafletLayer(config: MapLayer, geojsonData: any): L.Layer | null 
         },
         onEachFeature: bindPopup,
       });
+      if (style.arrowheads !== true) return lineLayer;
+      return createDirectionalLineLayer(lineLayer, geojsonData, {
+        color: style.arrowColor || style.color || '#e63946',
+        placement: Number(style.arrowPlacement ?? 0.78),
+        size: Number(style.arrowSize ?? 12),
+      });
+    }
 
     case 'polygon':
       return L.geoJSON(geojsonData, {
@@ -1203,6 +1329,14 @@ function createLeafletLayer(config: MapLayer, geojsonData: any): L.Layer | null 
       });
     }
 
+    case 'image':
+      if (!config.image_url || !config.image_bounds) return null;
+      return L.imageOverlay(config.image_url, config.image_bounds, {
+        opacity: Number(style.opacity ?? 0.92),
+        interactive: false,
+        crossOrigin: false,
+      });
+
     case 'wms':
       return L.tileLayer.wms(config.wms_url || '', {
         layers: config.wms_params?.layers || '',
@@ -1216,6 +1350,97 @@ function createLeafletLayer(config: MapLayer, geojsonData: any): L.Layer | null 
     default:
       return L.geoJSON(geojsonData, { onEachFeature: bindPopup });
   }
+}
+
+interface DirectionalArrowOptions {
+  color: string;
+  placement: number;
+  size: number;
+}
+
+function createDirectionalLineLayer(
+  lineLayer: L.GeoJSON,
+  geojsonData: any,
+  options: DirectionalArrowOptions,
+): L.FeatureGroup {
+  const layers: L.Layer[] = [lineLayer];
+  const placement = Math.max(0.55, Math.min(0.92, options.placement));
+  const size = Math.max(8, Math.min(20, options.size));
+
+  for (const feature of geojsonData?.features || []) {
+    const geometry = feature?.geometry;
+    const paths = geometry?.type === 'LineString'
+      ? [geometry.coordinates]
+      : geometry?.type === 'MultiLineString'
+        ? geometry.coordinates
+        : [];
+    for (const coordinates of paths) {
+      const arrowPosition = directionalArrowPosition(coordinates, placement);
+      if (!arrowPosition) continue;
+      const [lat, lon, angle] = arrowPosition;
+      const arrow = document.createElement('span');
+      arrow.className = 'directional-flow-arrow-shape';
+      arrow.setAttribute('aria-hidden', 'true');
+      arrow.dataset.flowDirection = String(Math.round(angle));
+      arrow.style.borderTopWidth = `${size * 0.52}px`;
+      arrow.style.borderBottomWidth = `${size * 0.52}px`;
+      arrow.style.borderLeftWidth = `${size}px`;
+      arrow.style.borderLeftColor = options.color;
+      arrow.style.transform = `translate(-38%, -50%) rotate(${angle}deg)`;
+
+      layers.push(L.marker([lat, lon], {
+        icon: L.divIcon({
+          className: 'directional-flow-arrow-marker',
+          html: arrow,
+          iconSize: [size * 2, size * 2],
+          iconAnchor: [size, size],
+        }),
+        interactive: false,
+        keyboard: false,
+        zIndexOffset: 700,
+      }));
+    }
+  }
+  return L.featureGroup(layers);
+}
+
+function directionalArrowPosition(
+  coordinates: unknown,
+  placement: number,
+): [number, number, number] | null {
+  if (!Array.isArray(coordinates) || coordinates.length < 2) return null;
+  const points = coordinates
+    .map((coordinate) => Array.isArray(coordinate)
+      ? [Number(coordinate[0]), Number(coordinate[1])] as [number, number]
+      : null)
+    .filter((point): point is [number, number] => Boolean(
+      point && Number.isFinite(point[0]) && Number.isFinite(point[1])
+    ));
+  if (points.length < 2) return null;
+
+  const segments = points.slice(1).map((point, index) => {
+    const previous = points[index];
+    const meanLatitude = ((previous[1] + point[1]) / 2) * Math.PI / 180;
+    const dx = (point[0] - previous[0]) * Math.cos(meanLatitude);
+    const dy = point[1] - previous[1];
+    return { previous, point, dx, dy, length: Math.hypot(dx, dy) };
+  }).filter((segment) => segment.length > 0);
+  const totalLength = segments.reduce((sum, segment) => sum + segment.length, 0);
+  if (totalLength <= 0) return null;
+
+  const target = totalLength * placement;
+  let traversed = 0;
+  for (const segment of segments) {
+    if (traversed + segment.length >= target) {
+      const ratio = (target - traversed) / segment.length;
+      const lon = segment.previous[0] + (segment.point[0] - segment.previous[0]) * ratio;
+      const lat = segment.previous[1] + (segment.point[1] - segment.previous[1]) * ratio;
+      const angle = Math.atan2(-segment.dy, segment.dx) * 180 / Math.PI;
+      return [lat, lon, angle];
+    }
+    traversed += segment.length;
+  }
+  return null;
 }
 
 function bindPopup(feature: any, layer: L.Layer) {

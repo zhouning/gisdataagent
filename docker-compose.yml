@@ -32,6 +32,31 @@ services:
       - agent-net
 
   # ---------------------------------------------------------------------------
+  # Database Migration Authority (one shot)
+  # ---------------------------------------------------------------------------
+  migrate:
+    build: .
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DATABASE: gis_agent
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:-postgres}
+      MIGRATION_RUNTIME_DB_ROLE: agent_user
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -eu
+        python -m data_agent.migration_runner migrate
+        bash /app/scripts/grant-platform-gateway-role.sh
+    networks:
+      - agent-net
+
+  # ---------------------------------------------------------------------------
   # GIS Data Agent Application
   # ---------------------------------------------------------------------------
   app:
@@ -40,9 +65,13 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       minio:
         condition: service_healthy
       minio-bucket-init:
+        condition: service_completed_successfully
+      ontology-projection:
         condition: service_completed_successfully
     ports:
       - "8000:8000"
@@ -54,9 +83,7 @@ services:
       POSTGRES_DATABASE: gis_agent
       POSTGRES_USER: agent_user
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_strong_password}
-      # Admin credentials for migrations
-      POSTGRES_ADMIN_USER: postgres
-      POSTGRES_ADMIN_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:-postgres}
+      MARTIN_URL: ${MARTIN_URL:-http://martin:3000}
       # Google AI — set in .env or pass at runtime
       GOOGLE_GENAI_USE_VERTEXAI: ${GOOGLE_GENAI_USE_VERTEXAI:-}
       GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
@@ -76,6 +103,8 @@ services:
       GAODE_API_KEY: ${GAODE_API_KEY:-}
       # Chainlit
       CHAINLIT_AUTH_SECRET: ${CHAINLIT_AUTH_SECRET:-replace_with_a_real_secret}
+      # A standalone ingestion worker owns schedule polling in Compose.
+      GDA_INGEST_EMBEDDED_WORKER: "0"
       # Dynamic Planner
       DYNAMIC_PLANNER: ${DYNAMIC_PLANNER:-true}
       # Optional services
@@ -118,14 +147,236 @@ services:
       DAILY_ANALYSIS_LIMIT: ${DAILY_ANALYSIS_LIMIT:-}
       MONTHLY_TOKEN_LIMIT: ${MONTHLY_TOKEN_LIMIT:-}
       AUDIT_LOG_RETENTION_DAYS: ${AUDIT_LOG_RETENTION_DAYS:-}
+      # Governed DataOps manual admission (non-secret server-side identity profile)
+      GDA_DATAOPS_MANUAL_WORKLOAD_SUBJECT: ${GDA_DATAOPS_MANUAL_WORKLOAD_SUBJECT:-workload:dolphinscheduler-gda-dataops}
+      GDA_DATAOPS_MANUAL_WORKLOAD_ROLES: ${GDA_DATAOPS_MANUAL_WORKLOAD_ROLES:-platform_operator}
+      GDA_DATAOPS_MANUAL_POLICY_VERSION_REF: ${GDA_DATAOPS_MANUAL_POLICY_VERSION_REF:-gda://local-dev/policy/jqdltb-manual-sandbox:v1}
+      GDA_DATAOPS_MANUAL_POLICY_EVALUATOR_SUBJECT: ${GDA_DATAOPS_MANUAL_POLICY_EVALUATOR_SUBJECT:-workload:gda-policy-evaluator}
+      GDA_DATAOPS_MANUAL_POLICY_TTL_SECONDS: ${GDA_DATAOPS_MANUAL_POLICY_TTL_SECONDS:-86400}
+      GDA_DATAOPS_MANUAL_INVOCATION_OWNER_REF: ${GDA_DATAOPS_MANUAL_INVOCATION_OWNER_REF:-team:data-platform}
+      # Governed DataOps cancellation admission
+      GDA_DATAOPS_CANCEL_WORKLOAD_SUBJECT: ${GDA_DATAOPS_CANCEL_WORKLOAD_SUBJECT:-workload:dolphinscheduler-gda-dataops}
+      GDA_DATAOPS_CANCEL_POLICY_VERSION_REF: ${GDA_DATAOPS_CANCEL_POLICY_VERSION_REF:-gda://local-dev/policy/dataops-cancel-sandbox:v1}
+      GDA_DATAOPS_CANCEL_POLICY_EVALUATOR_SUBJECT: ${GDA_DATAOPS_CANCEL_POLICY_EVALUATOR_SUBJECT:-workload:gda-policy-evaluator}
+      GDA_DATAOPS_CANCEL_POLICY_TTL_SECONDS: ${GDA_DATAOPS_CANCEL_POLICY_TTL_SECONDS:-86400}
+      # Unified ApprovalCase Resource ownership (non-secret governance identity)
+      GDA_APPROVAL_CASE_OWNER_REF: ${GDA_APPROVAL_CASE_OWNER_REF:-team:data-platform}
+      # Exact workload identity accepted by the SLO Alertmanager webhook
+      GDA_SLO_ALERT_DETECTOR_SUBJECT: ${GDA_SLO_ALERT_DETECTOR_SUBJECT:-workload:slo-alert-ingestor}
       # Redis (for real-time streams)
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       UWM_LIVABILITY_S2_RUN_STORE: /app/data_agent/uploads/uwm_livability_s2_runs
+      ONTOLOGY_RUNTIME_BACKEND: ${ONTOLOGY_RUNTIME_BACKEND:-auto}
+      ONTOLOGY_SPARQL_ENDPOINT: ${ONTOLOGY_SPARQL_ENDPOINT:-http://ontology-rdf:3030/ontology/query}
+      ONTOLOGY_SPARQL_TIMEOUT_SECONDS: ${ONTOLOGY_SPARQL_TIMEOUT_SECONDS:-5}
     volumes:
       - uploads:/app/data_agent/uploads
       - worldpop_cache:/app/data_agent/uploads/.worldpop_cache
       # Optional: mount Google service account credentials
       # - ./secrets/service-account.json:/app/secrets/service-account.json:ro
+    networks:
+      - agent-net
+
+  # ---------------------------------------------------------------------------
+  # ArcGIS ingestion staging-volume ownership initialization
+  # ---------------------------------------------------------------------------
+  ingestion-lake-init:
+    image: busybox:1.36
+    restart: "no"
+    user: "0:0"
+    network_mode: none
+    command:
+      - sh
+      - -ec
+      - |
+        mkdir -p /lake/raw
+        chown 999:999 /lake /lake/raw
+        chmod 0750 /lake /lake/raw
+    volumes:
+      - ingestion-lake:/lake
+
+  # ---------------------------------------------------------------------------
+  # ArcGIS ingestion scheduler and worker
+  # ---------------------------------------------------------------------------
+  ingestion-worker:
+    build: .
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "from pathlib import Path; assert b'data_agent.data_ingestion' in Path('/proc/1/cmdline').read_bytes()"
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      minio:
+        condition: service_healthy
+      minio-bucket-init:
+        condition: service_completed_successfully
+      ingestion-lake-init:
+        condition: service_completed_successfully
+    command: ["python", "-m", "data_agent.data_ingestion"]
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DATABASE: gis_agent
+      POSTGRES_USER: agent_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_strong_password}
+      CHAINLIT_AUTH_SECRET: ${CHAINLIT_AUTH_SECRET:-replace_with_a_real_secret}
+      CLOUD_STORAGE_PROVIDER: ${CLOUD_STORAGE_PROVIDER:-aws}
+      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL:-http://minio:9000}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-minio_admin}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-local_dev_minio_secret}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-gis-agent-uploads}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      GDA_INGEST_LAKE_BACKEND: ${GDA_INGEST_LAKE_BACKEND:-cloud}
+      # Local Compose can exercise interval schedules without the optional
+      # DolphinScheduler sandbox. The production override uses external.
+      GDA_INGEST_SCHEDULE_DRIVER: ${GDA_INGEST_SCHEDULE_DRIVER:-internal}
+      GDA_INGEST_LAKE_ROOT: /app/data_agent/data_lake/raw
+      GDA_INGEST_LAKE_BUCKET: ${GDA_INGEST_LAKE_BUCKET:-gis-agent-lakehouse}
+      GDA_INGEST_LAKE_PREFIX: ${GDA_INGEST_LAKE_PREFIX:-lakehouse/raw}
+      GDA_INGEST_PLATFORM_BRIDGE: ${GDA_INGEST_PLATFORM_BRIDGE:-1}
+    volumes:
+      - ingestion-lake:/app/data_agent/data_lake
+    networks:
+      - agent-net
+
+  # ---------------------------------------------------------------------------
+  # Governed DataIncident delivery (optional Alertmanager profile)
+  # ---------------------------------------------------------------------------
+  incident-notification-worker:
+    build: .
+    restart: unless-stopped
+    profiles:
+      - alerts
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    command: ["python", "-m", "data_agent.incident_notification_worker"]
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DATABASE: gis_agent
+      POSTGRES_USER: agent_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_strong_password}
+      GDA_INCIDENT_NOTIFICATION_TENANT_ID: ${GDA_INCIDENT_NOTIFICATION_TENANT_ID:-}
+      GDA_INCIDENT_NOTIFICATION_WORKER_ID: ${GDA_INCIDENT_NOTIFICATION_WORKER_ID:-worker:incident-alertmanager:compose}
+      GDA_ALERTMANAGER_URL: ${GDA_ALERTMANAGER_URL:-}
+      GDA_ALERTMANAGER_BEARER_TOKEN_FILE: ${GDA_ALERTMANAGER_BEARER_TOKEN_FILE:-}
+      GDA_INCIDENT_NOTIFICATION_BATCH_SIZE: ${GDA_INCIDENT_NOTIFICATION_BATCH_SIZE:-10}
+      GDA_INCIDENT_NOTIFICATION_LEASE_SECONDS: ${GDA_INCIDENT_NOTIFICATION_LEASE_SECONDS:-60}
+      GDA_INCIDENT_NOTIFICATION_RETRY_SECONDS: ${GDA_INCIDENT_NOTIFICATION_RETRY_SECONDS:-30}
+      GDA_INCIDENT_NOTIFICATION_POLL_SECONDS: ${GDA_INCIDENT_NOTIFICATION_POLL_SECONDS:-5}
+      GDA_ALERTMANAGER_TIMEOUT_SECONDS: ${GDA_ALERTMANAGER_TIMEOUT_SECONDS:-10}
+    networks:
+      - agent-net
+
+  # ---------------------------------------------------------------------------
+  # ApprovalCase lifecycle/SLA delivery (optional Alertmanager profile)
+  # ---------------------------------------------------------------------------
+  approval-notification-worker:
+    build: .
+    restart: unless-stopped
+    profiles:
+      - alerts
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    command: ["python", "-m", "data_agent.approval_case_notification_worker"]
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DATABASE: gis_agent
+      POSTGRES_USER: agent_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_strong_password}
+      GDA_APPROVAL_NOTIFICATION_TENANT_ID: ${GDA_APPROVAL_NOTIFICATION_TENANT_ID:-}
+      GDA_APPROVAL_NOTIFICATION_WORKER_ID: ${GDA_APPROVAL_NOTIFICATION_WORKER_ID:-worker:approval-alertmanager:compose}
+      GDA_APPROVAL_NOTIFICATION_ROUTE_NAMESPACE: ${GDA_APPROVAL_NOTIFICATION_ROUTE_NAMESPACE:-}
+      GDA_ALERTMANAGER_URL: ${GDA_ALERTMANAGER_URL:-}
+      GDA_ALERTMANAGER_BEARER_TOKEN_FILE: ${GDA_ALERTMANAGER_BEARER_TOKEN_FILE:-}
+      GDA_APPROVAL_NOTIFICATION_BATCH_SIZE: ${GDA_APPROVAL_NOTIFICATION_BATCH_SIZE:-10}
+      GDA_APPROVAL_NOTIFICATION_LEASE_SECONDS: ${GDA_APPROVAL_NOTIFICATION_LEASE_SECONDS:-60}
+      GDA_APPROVAL_NOTIFICATION_RETRY_SECONDS: ${GDA_APPROVAL_NOTIFICATION_RETRY_SECONDS:-30}
+      GDA_APPROVAL_NOTIFICATION_POLL_SECONDS: ${GDA_APPROVAL_NOTIFICATION_POLL_SECONDS:-5}
+      GDA_APPROVAL_NOTIFICATION_METRICS_PORT: ${GDA_APPROVAL_NOTIFICATION_METRICS_PORT:-9465}
+      GDA_ALERTMANAGER_TIMEOUT_SECONDS: ${GDA_ALERTMANAGER_TIMEOUT_SECONDS:-10}
+    networks:
+      - agent-net
+
+  # ---------------------------------------------------------------------------
+  # Metadata Fabric lineage projection (optional OpenMetadata profile)
+  # ---------------------------------------------------------------------------
+  metadata-fabric-worker:
+    build: .
+    restart: unless-stopped
+    profiles:
+      - metadata-fabric
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    command: ["python", "-m", "data_agent.openmetadata_lineage_worker"]
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DATABASE: gis_agent
+      POSTGRES_USER: agent_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_strong_password}
+      GDA_METADATA_FABRIC_TENANT_ID: ${GDA_METADATA_FABRIC_TENANT_ID:-}
+      GDA_METADATA_FABRIC_WORKER_ID: ${GDA_METADATA_FABRIC_WORKER_ID:-worker:metadata-fabric:openmetadata:compose}
+      GDA_OPENMETADATA_URL: ${GDA_OPENMETADATA_URL:-}
+      GDA_OPENMETADATA_BEARER_TOKEN_FILE: /run/secrets/openmetadata_bearer_token
+      GDA_METADATA_FABRIC_BATCH_SIZE: ${GDA_METADATA_FABRIC_BATCH_SIZE:-10}
+      GDA_METADATA_FABRIC_LEASE_SECONDS: ${GDA_METADATA_FABRIC_LEASE_SECONDS:-360}
+      GDA_METADATA_FABRIC_RETRY_SECONDS: ${GDA_METADATA_FABRIC_RETRY_SECONDS:-30}
+      GDA_METADATA_FABRIC_POLL_SECONDS: ${GDA_METADATA_FABRIC_POLL_SECONDS:-5}
+      GDA_OPENMETADATA_TIMEOUT_SECONDS: ${GDA_OPENMETADATA_TIMEOUT_SECONDS:-10}
+    secrets:
+      - openmetadata_bearer_token
+    networks:
+      - agent-net
+
+  master-metadata-worker:
+    build: .
+    restart: unless-stopped
+    profiles:
+      - metadata-fabric
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    command: ["python", "-m", "data_agent.openmetadata_master_data_worker"]
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DATABASE: gis_agent
+      POSTGRES_USER: agent_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_strong_password}
+      GDA_METADATA_FABRIC_TENANT_ID: ${GDA_METADATA_FABRIC_TENANT_ID:-}
+      GDA_MASTER_METADATA_WORKER_ID: ${GDA_MASTER_METADATA_WORKER_ID:-worker:master-metadata:openmetadata:compose}
+      GDA_OPENMETADATA_URL: ${GDA_OPENMETADATA_URL:-}
+      GDA_OPENMETADATA_BEARER_TOKEN_FILE: /run/secrets/openmetadata_bearer_token
+      GDA_MASTER_METADATA_BATCH_SIZE: ${GDA_MASTER_METADATA_BATCH_SIZE:-10}
+      GDA_MASTER_METADATA_LEASE_SECONDS: ${GDA_MASTER_METADATA_LEASE_SECONDS:-360}
+      GDA_MASTER_METADATA_RETRY_SECONDS: ${GDA_MASTER_METADATA_RETRY_SECONDS:-30}
+      GDA_MASTER_METADATA_POLL_SECONDS: ${GDA_MASTER_METADATA_POLL_SECONDS:-5}
+      GDA_OPENMETADATA_TIMEOUT_SECONDS: ${GDA_OPENMETADATA_TIMEOUT_SECONDS:-10}
+    secrets:
+      - openmetadata_bearer_token
     networks:
       - agent-net
 
@@ -173,6 +424,57 @@ services:
         mc anonymous set none local/"$$AWS_S3_BUCKET" || true
         mc anonymous set none local/"$$MMFE_LAKEHOUSE_BUCKET" || true
         echo "[bucket-init] buckets ready: $$AWS_S3_BUCKET $$MMFE_LAKEHOUSE_BUCKET"
+    networks:
+      - agent-net
+
+  # ---------------------------------------------------------------------------
+  # Natural-resource ontology RDF read projection (production runtime)
+  # Fuseki/TDB2 serves OWL hierarchy and SPARQL. PostgreSQL remains the
+  # authority for versions, mappings, provenance, publication and audit.
+  # ---------------------------------------------------------------------------
+  ontology-rdf:
+    image: "${FUSEKI_IMAGE:-gisdataagent-ontology-fuseki:5.5.0-nr-2.0.1}"
+    build:
+      context: .
+      dockerfile: docker/ontology-fuseki/Dockerfile
+    restart: unless-stopped
+    environment:
+      JVM_ARGS: ${FUSEKI_JVM_ARGS:--Xms512m -Xmx2g -XX:+UseG1GC}
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3030/$$/ping"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 12
+    ports:
+      - "127.0.0.1:3030:3030"
+    volumes:
+      - ontology-fuseki-data:/fuseki
+    networks:
+      - agent-net
+
+  ontology-projection:
+    build: .
+    restart: "no"
+    depends_on:
+      ontology-rdf:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    # Verify the immutable RDF package was loaded before the application starts.
+    command:
+      - |
+        set -eu
+        attempt=0
+        until curl -fsS http://ontology-rdf:3030/$/ping >/dev/null; do
+          attempt=$$((attempt + 1))
+          if [ "$$attempt" -ge 60 ]; then exit 1; fi
+          sleep 2
+        done
+        result="$$(curl -fsS -G \
+          --data-urlencode 'query=SELECT (COUNT(*) AS ?triples) WHERE { ?s ?p ?o }' \
+          -H 'Accept: application/sparql-results+json' \
+          http://ontology-rdf:3030/ontology/query)"
+        echo "$$result" | grep -q '528252'
     networks:
       - agent-net
 
@@ -241,18 +543,20 @@ services:
   # Martin Vector Tile Server (v17.1 — large dataset rendering)
   # ---------------------------------------------------------------------------
   martin:
-    image: ghcr.io/maplibre/martin:v0.15
+    image: ghcr.io/maplibre/martin:v0.18.0
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     environment:
       DATABASE_URL: postgresql://agent_user:${POSTGRES_PASSWORD:-change_me_strong_password}@db:5432/gis_agent
-    command: ["--auto-bounds", "calc", "--listen-addresses", "0.0.0.0:3000"]
+    command: ["--config", "/etc/martin/config.yaml"]
+    volumes:
+      - ./deploy/martin/config.yaml:/etc/martin/config.yaml:ro
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/health"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -331,6 +635,12 @@ volumes:
   minio-data:
   cv-models:
   cad-uploads:
+  ontology-fuseki-data:
+  ingestion-lake:
+
+secrets:
+  openmetadata_bearer_token:
+    file: ${GDA_OPENMETADATA_BEARER_TOKEN_SOURCE:-./secrets/openmetadata_token}
 
 networks:
   agent-net:

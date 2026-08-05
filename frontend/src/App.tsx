@@ -9,6 +9,7 @@ import MapPanel from './components/MapPanel';
 import DataPanel from './components/DataPanel';
 import AdminDashboard from './components/AdminDashboard';
 import UserSettings from './components/UserSettings';
+import { usePlatformBranding } from './platformBranding';
 import {
   MessageSquare, Map, LayoutGrid, Settings, Bell, User, LogOut, ChevronDown, Shield,
 } from 'lucide-react';
@@ -36,6 +37,7 @@ class ErrorBoundary extends Component<{ name: string; children: ReactNode }, { e
 }
 
 export default function App() {
+  const { branding } = usePlatformBranding();
   const { data: authConfig, user, isReady, isAuthenticated, setUserFromAPI, logout } = useAuth();
   const { config } = useConfig();
   const { connect, session } = useChatSession();
@@ -100,9 +102,56 @@ export default function App() {
   const [dataWidth, setDataWidth] = useState(340);
   const dragging = useRef<'chat' | 'data' | null>(null);
 
+  const handleDataWidthRequest = useCallback((requestedWidth: number) => {
+    if (window.matchMedia('(max-width: 1024px)').matches) return;
+    const fixedChromeWidth = 58;
+    const minimumMapWidth = 480;
+    const minimumChatWidth = 280;
+    const availableForSidePanels = window.innerWidth - fixedChromeWidth - minimumMapWidth;
+    const nextChatWidth = Math.max(
+      minimumChatWidth,
+      Math.min(chatWidth, availableForSidePanels - requestedWidth),
+    );
+    const maximumDataWidth = Math.max(
+      320,
+      availableForSidePanels - nextChatWidth,
+    );
+    setChatWidth(nextChatWidth);
+    setDataWidth(Math.max(320, Math.min(requestedWidth, maximumDataWidth)));
+  }, [chatWidth]);
+
   // --- Mobile adaptive layout ---
   const [activePanel, setActivePanel] = useState<'chat' | 'map' | 'data'>('chat');
   const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 1024px)').matches);
+
+  const handleAddMapLayer = useCallback((layer: any) => {
+    if (!layer || layer.type !== 'mvt' || !layer.tile_url) return;
+
+    setMapLayers((current) => {
+      const identity = layer.layer_id || layer.publication_id || layer.tile_url;
+      const existingIndex = current.findIndex((candidate) => (
+        candidate.layer_id === identity
+        || candidate.publication_id === layer.publication_id
+        || candidate.tile_url === layer.tile_url
+      ));
+      const nextLayer = { ...layer, visible: true };
+      if (existingIndex < 0) return [...current, nextLayer];
+      return current.map((candidate, index) => (
+        index === existingIndex ? { ...candidate, ...nextLayer } : candidate
+      ));
+    });
+
+    if (
+      Array.isArray(layer.center)
+      && layer.center.length === 2
+      && layer.center.every((value: unknown) => Number.isFinite(Number(value)))
+    ) {
+      setMapCenter([Number(layer.center[0]), Number(layer.center[1])]);
+    }
+    if (Number.isFinite(Number(layer.zoom))) setMapZoom(Number(layer.zoom));
+    setActivePanel('map');
+  }, []);
+
   useEffect(() => {
     const mql = window.matchMedia('(max-width: 1024px)');
     const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
@@ -146,9 +195,9 @@ export default function App() {
         <div className="login-brand">
           <div className="login-brand-content">
             <div className="login-brand-logo">
-              <img src="/public/logo_light.png" alt="Data Agent" className="login-logo-img" />
+              <img src="/public/logo_light.png" alt={branding.platform_name} className="login-logo-img" />
             </div>
-            <h1 className="login-brand-title">GIS Data Agent</h1>
+            <h1 className="login-brand-title">{branding.platform_name}</h1>
             <p className="login-brand-subtitle">Loading...</p>
           </div>
           <div className="login-bg-grid"></div>
@@ -178,8 +227,8 @@ export default function App() {
       {/* --- Top Status Bar (40px) --- */}
       <header className="app-header">
         <div className="app-logo">
-          <img src="/public/logo_light.png" alt="Data Agent" className="app-logo-img" />
-          <span className="app-logo-text">GIS Data Agent</span>
+          <img src="/public/logo_light.png" alt={branding.platform_name} className="app-logo-img" />
+          <span className="app-logo-text" title={branding.platform_name}>{branding.platform_name}</span>
         </div>
         <div className="header-spacer" />
         <div className="header-status">
@@ -260,7 +309,13 @@ export default function App() {
             )}
             {(!isMobile || activePanel === 'data') && (
               <ErrorBoundary name="数据面板">
-                <DataPanel dataFile={dataFile} userRole={userRole} username={user?.identifier || ''} onRequestWidth={setDataWidth} />
+                <DataPanel
+                  dataFile={dataFile}
+                  userRole={userRole}
+                  username={user?.identifier || ''}
+                  onRequestWidth={handleDataWidthRequest}
+                  onAddMapLayer={handleAddMapLayer}
+                />
               </ErrorBoundary>
             )}
           </div>

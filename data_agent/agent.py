@@ -71,12 +71,14 @@ from .toolsets.evolution_tools import ToolEvolutionToolset
 from .toolsets.data_cleaning_tools import DataCleaningToolset
 from .toolsets.precision_tools import PrecisionToolset
 from .toolsets.domain_standard_tools import DomainStandardToolset
+from .toolsets.ontology_tools import OntologyToolset
 from .toolsets.report_tools import ReportToolset
 from .toolsets.capability_qa_tools import CapabilityQAToolset
 from .toolsets.skill_bundles import build_all_skills_toolset
 from .toolsets.world_model_v2_tools import WorldModelV2Toolset
 from .toolsets.world_model_v21_tools import WorldModelV21Toolset
 from .toolsets.territory_world_model_tools import TerritoryWorldModelToolset
+from .paper9_agent_prompt import PAPER9_AGENT_INSTRUCTION
 
 # ArcPy conditional function lists (for governance agents needing specific subsets)
 from .toolsets.geo_processing_tools import (
@@ -290,6 +292,10 @@ data_exploration_agent = LlmAgent(
         ExplorationToolset(tool_filter=_AUDIT_TOOLS),
         DatabaseToolset(tool_filter=_DB_READ),
         DataLakeToolset(tool_filter=_DATALAKE_READ),
+        OntologyToolset(tool_filter=[
+            "discover_ontology_concepts", "resolve_ontology_concept",
+            "traverse_ontology_relationships",
+        ]),
     ],
 )
 
@@ -507,6 +513,7 @@ governance_exploration_agent = LlmAgent(
             "check_coordinate_precision", "generate_governance_plan",
         ]),
         DomainStandardToolset(tool_filter=["query_domain_modules", "query_domain_class"]),
+        OntologyToolset(),
     ] + _arcpy_gov_explore_tools,
 )
 
@@ -581,6 +588,35 @@ governance_pipeline = _sequence_workflow(
 )
 
 # ============================================================================
+# Governed Ontology Analysis
+# ============================================================================
+
+ontology_analysis_agent = LlmAgent(
+    name="OntologyAnalysisAgent",
+    instruction=(
+        "你是自然资源领域本体分析智能体，只处理概念、层级、关系路径、土地利用转换规则、"
+        "字段语义映射和已注册本体应用场景。必须调用 query_ontology 或 "
+        "run_ontology_application_scenario 获取事实，禁止凭模型记忆回答领域关系。\n"
+        "选择规则：解释是什么用 concept_explanation；上下位关系用 hierarchy；两个概念如何关联用 "
+        "relation_path；农业结构调整/建设占用，以及农用地、耕地等类别如何转换用 transition_rules；"
+        "转换问法包含明确目标（如转为建设用地）时，必须把目标概念传入 target；"
+        "BSM/JQDLMC/GHDLMC 等字段用 "
+        "schema_mapping；和平村、斑竹村或客户演示用场景工具。\n"
+        "回答必须区分实体类、状态类、过程类和数据结构制品，说明关系方向，列出本体版本、"
+        "content SHA-256 前12位、使用的 RDF/权威后端及回退告警。对预审结论必须说明其为辅助判断，"
+        "不得替代法定审批。不要输出内部推理，不要声称 OKF 是三元组库、推理引擎或 Agent 运行时。"
+        "普通查询只引用正式 OKF 0.2 知识包；只有注册场景才能使用 Attested Computation，且必须在"
+        "receipt 通过确定性 attester 后展示结果。OKF 兼容基线为 0.2+，bundle 声明精确版本 0.2。"
+    ),
+    description="自然资源本体概念、关系、转换规则、映射与应用场景分析",
+    model=_create_model_with_retry(MODEL_STANDARD),
+    output_key="ontology_analysis",
+    tools=[OntologyToolset(tool_filter=[
+        "query_ontology", "run_ontology_application_scenario",
+    ])],
+)
+
+# ============================================================================
 # General Pipeline
 # ============================================================================
 
@@ -602,6 +638,7 @@ general_processing_agent = LlmAgent(
         RemoteSensingToolset(tool_filter=intent_tool_predicate),
         SpatialStatisticsToolset(tool_filter=intent_tool_predicate),
         SemanticLayerToolset(tool_filter=intent_tool_predicate),
+        OntologyToolset(tool_filter=intent_tool_predicate),
         StreamingToolset(tool_filter=intent_tool_predicate),
         TeamToolset(tool_filter=intent_tool_predicate),
         DataLakeToolset(tool_filter=intent_tool_predicate),
@@ -986,6 +1023,7 @@ planner_agent = LlmAgent(
         VisualizationToolset(tool_filter=["visualize_interactive_map"]),  # For direct admin boundary display
         RemoteSensingToolset(tool_filter=["download_dem"]),  # For DEM download in watershed workflow
         WatershedToolset(),  # For watershed/catchment extraction (open-source)
+        OntologyToolset(),  # Version-locked domain semantics and provenance
         GeoProcessingToolset(include_arcpy=True),  # ArcPy tools including arcpy_extract_watershed (dynamic loading)
     ],
     sub_agents=[
@@ -1059,29 +1097,7 @@ def _build_mention_nl2sql_agent():
 def _build_mention_world_model_v21_agent():
     return LlmAgent(
         name="MentionWorldModelV21",
-        instruction=(
-            "你是世界模型 v2.1 演示代理，只使用可用的 world_model_v21_status、"
-            "world_model_v21_prepare、world_model_v21_sample、world_model_v21_train、"
-            "world_model_v21_plan 和 world_model_v21_pipeline 工具。必须先调用 "
-            "world_model_v21_status 检查 Paper9 仓库、默认 prepared_dir 和 ensemble_dir。"
-            "如果用户要求完整 A->B->C->D 链路，调用 world_model_v21_pipeline；"
-            "如果用户只要求规划或演示，默认调用 world_model_v21_pipeline 并设置 reuse_existing=true，"
-            "以展示 Tool 1/2/3 复用和 Tool 4 实际规划；只有用户明确要求“只运行 Tool 4”"
-            "或“只调用 plan”时，才调用 world_model_v21_plan。"
-            "必须识别数据集名称：用户提到 dongxing 或东兴时，调用工具必须设置 dataset='dongxing'；"
-            "用户提到 Bishan 或璧山时，调用工具必须设置 dataset='bishan'。"
-            "只有用户没有提到数据集时，才使用默认 dataset='bishan'。"
-            "用户未提供 prepared_dir 或 ensemble_dir 时，对应参数保持空字符串，让工具根据 dataset 选择演示路径。"
-            "默认使用 env_kind=county, "
-            "horizon=1, top_k=1, n_episodes=1, continuation=greedy, scoring=reward，"
-            "除非用户明确指定其他参数。最终用中文简要总结 status/version/mode/env_kind/"
-            "steps_run/n_blocks/n_selected/total_reward/artifacts，并明确列出工具调用轨迹："
-            "优先展示 world_model_v21_status -> world_model_v21_pipeline。不要输出英文 Plan/Step、"
-            "思考过程、参数复述或重试纠错过程；如果工具重试后成功，只报告最终成功结果。"
-            "说明 horizon 是 MPC 前瞻步长，steps_run 是环境实际执行步数，两者不是同一个指标。"
-            "如果结果包含县域优化地图图层，明确说明右侧地图按 CHG_FLAG 展示优化变化："
-            "灰色为保持不变，红色为耕地 -> 林地，绿色为林地 -> 耕地。"
-        ),
+        instruction=PAPER9_AGENT_INSTRUCTION,
         description="世界模型 v2.1 状态检查与 MPC 规划。",
         model=get_model_for_tier("standard"),
         output_key="analysis_result",

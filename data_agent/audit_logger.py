@@ -9,9 +9,9 @@ from typing import Optional
 
 from sqlalchemy import text
 
+from .database_tools import T_APP_USERS, T_AUDIT_LOG
 from .db_engine import get_engine
-from .database_tools import T_AUDIT_LOG, T_APP_USERS
-from .user_context import current_user_id, current_user_role
+from .user_context import current_user_role
 
 # --- Action constants ---
 ACTION_LOGIN_SUCCESS = "login_success"
@@ -47,6 +47,10 @@ ACTION_KB_CREATE = "kb_create"
 ACTION_KB_DELETE = "kb_delete"
 ACTION_KB_DOC_ADD = "kb_document_add"
 ACTION_KB_DOC_DELETE = "kb_document_delete"
+ACTION_DATA_ANONYMIZE = "data_anonymize"
+ACTION_ANONYMIZATION_VERIFY = "anonymization_verify"
+ACTION_SECURITY_EVENT_RECONCILE = "security_event_reconcile"
+ACTION_PLATFORM_BRANDING_UPDATE = "platform_branding_update"
 
 # Chinese labels for admin viewer
 ACTION_LABELS = {
@@ -83,6 +87,10 @@ ACTION_LABELS = {
     ACTION_KB_DELETE: "删除知识库",
     ACTION_KB_DOC_ADD: "添加知识库文档",
     ACTION_KB_DOC_DELETE: "删除知识库文档",
+    ACTION_DATA_ANONYMIZE: "空间数据脱敏",
+    ACTION_ANONYMIZATION_VERIFY: "脱敏效果验证",
+    ACTION_SECURITY_EVENT_RECONCILE: "安全事件对账",
+    ACTION_PLATFORM_BRANDING_UPDATE: "更新平台品牌配置",
 }
 
 
