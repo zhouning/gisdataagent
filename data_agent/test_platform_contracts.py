@@ -591,12 +591,10 @@ def test_control_ledger_contract_and_migration_catalog_are_valid():
     )
 
     assert report["status"] == "valid"
-    assert report["contract_count"] == 25
+    assert report["contract_count"] == 29
     assert Path(migration["path"]).resolve() == contracts.CONTROL_LEDGER_MIGRATION.resolve()
     assert len(report["migration"]["sha256"]) == 64
-    assert Path(migrations[-1]["filename"]).stem == (
-        "116_architecture_successor_data_product_release"
-    )
+    assert Path(migrations[-1]["filename"]).stem == "143_source_sync_quarantine_evidence"
 
 
 def test_sql_contract_has_tenant_fks_rls_append_only_and_no_legacy_backfill():

@@ -14,7 +14,7 @@ import re
 from datetime import datetime, timezone
 from enum import Enum, StrEnum
 from pathlib import Path
-from typing import Annotated, Any, ClassVar
+from typing import Annotated, Any, ClassVar, Literal
 from urllib.parse import urlsplit
 from uuid import UUID
 
@@ -135,6 +135,7 @@ class ArtifactRole(str, Enum):
     CHECKPOINT = "checkpoint"
     LOG = "log"
     EVIDENCE = "evidence"
+    QUARANTINE = "quarantine"
     EXECUTION_PLAN = "execution_plan"
 
 
@@ -177,6 +178,43 @@ class SourceSyncDeleteMode(StrEnum):
     IGNORE = "ignore"
     SOFT_DELETE = "soft_delete"
     HARD_DELETE = "hard_delete"
+
+
+class SourceSyncTargetLayer(StrEnum):
+    LANDING = "landing"
+    ODS = "ods"
+    SILVER = "silver"
+    GOLD = "gold"
+
+
+class SourceSyncDataKind(StrEnum):
+    TABULAR = "tabular"
+    VECTOR = "vector"
+    RASTER = "raster"
+    DOCUMENT = "document"
+    IMAGE = "image"
+    VIDEO = "video"
+    POINT_CLOUD = "point_cloud"
+    TIMESERIES = "timeseries"
+
+
+class SourceSyncCaptureKind(StrEnum):
+    BATCH = "batch"
+    MICRO_BATCH = "micro_batch"
+    CDC = "cdc"
+    EVENT_STREAM = "event_stream"
+
+
+class SourceSyncSchemaChangePolicy(StrEnum):
+    REJECT = "reject"
+    APPROVAL_REQUIRED = "approval_required"
+    ADDITIVE_COMPATIBLE = "additive_compatible"
+
+
+class SourceSyncPromotionMode(StrEnum):
+    BLOCKED = "blocked"
+    QUALITY_GATED = "quality_gated"
+    APPROVAL_GATED = "approval_gated"
 
 
 class QualityVerdict(str, Enum):
@@ -497,27 +535,30 @@ def source_sync_definition_fingerprint(
     primary_keys: tuple[str, ...],
     delete_mode: SourceSyncDeleteMode | str,
     config: dict[str, Any],
+    governance_contract: SourceSyncGovernanceContract | dict[str, Any] | None = None,
 ) -> str:
     """Fingerprint one immutable, provider-independent source sync definition."""
 
-    return _json_fingerprint(
-        {
-            "tenant_id": tenant_id,
-            "sync_definition_urn": sync_definition_urn,
-            "sync_definition_version_id": str(sync_definition_version_id),
-            "platform_definition_version_id": str(platform_definition_version_id),
-            "source_resource_urn": source_resource_urn,
-            "source_definition_fingerprint": source_definition_fingerprint,
-            "target_resource_urn": target_resource_urn,
-            "mode": SourceSyncMode(mode).value,
-            "write_disposition": SourceSyncWriteDisposition(write_disposition).value,
-            "cursor_kind": SourceSyncCursorKind(cursor_kind).value,
-            "cursor_field": cursor_field,
-            "primary_keys": list(primary_keys),
-            "delete_mode": SourceSyncDeleteMode(delete_mode).value,
-            "config": config,
-        }
-    )
+    value = {
+        "tenant_id": tenant_id,
+        "sync_definition_urn": sync_definition_urn,
+        "sync_definition_version_id": str(sync_definition_version_id),
+        "platform_definition_version_id": str(platform_definition_version_id),
+        "source_resource_urn": source_resource_urn,
+        "source_definition_fingerprint": source_definition_fingerprint,
+        "target_resource_urn": target_resource_urn,
+        "mode": SourceSyncMode(mode).value,
+        "write_disposition": SourceSyncWriteDisposition(write_disposition).value,
+        "cursor_kind": SourceSyncCursorKind(cursor_kind).value,
+        "cursor_field": cursor_field,
+        "primary_keys": list(primary_keys),
+        "delete_mode": SourceSyncDeleteMode(delete_mode).value,
+        "config": config,
+    }
+    if governance_contract is not None:
+        contract = SourceSyncGovernanceContract.model_validate(governance_contract)
+        value["governance_contract"] = contract.model_dump(mode="json", by_alias=True)
+    return _json_fingerprint(value)
 
 
 def source_sync_commit_fingerprint(
@@ -564,6 +605,58 @@ def source_sync_commit_fingerprint(
             "records_output": records_output,
             "committed_by": committed_by,
             "committed_at": committed_at.isoformat().replace("+00:00", "Z"),
+        }
+    )
+
+
+def source_sync_commit_governance_evidence_fingerprint(
+    *,
+    tenant_id: str,
+    sync_commit_id: UUID,
+    target_resource_version_id: UUID,
+    output_artifact_id: UUID,
+    quality_result_ids: tuple[UUID, ...],
+    lineage_event_id: UUID,
+    metadata_change_id: UUID,
+    approval_case_ref: str | None,
+) -> str:
+    """Fingerprint the complete governance chain authorizing one lake promotion."""
+
+    return _json_fingerprint(
+        {
+            "tenant_id": tenant_id,
+            "sync_commit_id": str(sync_commit_id),
+            "target_resource_version_id": str(target_resource_version_id),
+            "output_artifact_id": str(output_artifact_id),
+            "quality_result_ids": sorted(str(value) for value in quality_result_ids),
+            "lineage_event_id": str(lineage_event_id),
+            "metadata_change_id": str(metadata_change_id),
+            "approval_case_ref": approval_case_ref,
+        }
+    )
+
+
+def source_sync_quarantine_evidence_fingerprint(
+    *,
+    tenant_id: str,
+    sync_commit_id: UUID,
+    source_slice_sha256: str,
+    quarantine_resource_version_id: UUID,
+    quarantine_artifact_id: UUID,
+    records_rejected: int,
+    reason_counts: dict[str, int],
+) -> str:
+    """Fingerprint the physical rejected-record receipt for one source slice."""
+
+    return _json_fingerprint(
+        {
+            "tenant_id": tenant_id,
+            "sync_commit_id": str(sync_commit_id),
+            "source_slice_sha256": source_slice_sha256,
+            "quarantine_resource_version_id": str(quarantine_resource_version_id),
+            "quarantine_artifact_id": str(quarantine_artifact_id),
+            "records_rejected": records_rejected,
+            "reason_counts": reason_counts,
         }
     )
 
@@ -796,6 +889,93 @@ class ApprovalCaseEvent(FrozenContract):
         return self
 
 
+class SourceAdapterBinding(FrozenContract):
+    """Exact connector or ingestion adapter revision used by a source sync."""
+
+    schema_id = "source_adapter_binding"
+
+    adapter_id: ShortName
+    adapter_version: ShortName
+    adapter_fingerprint: Sha256
+
+
+class SourceSyncGovernanceContract(FrozenContract):
+    """Governance gates that travel with one immutable source sync definition."""
+
+    schema_id = "source_sync_governance_contract"
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+        validate_by_alias=True,
+        validate_by_name=True,
+        serialize_by_alias=True,
+    )
+
+    contract_schema: Literal["gda.source_sync_governance.v1"] = Field(alias="schema")
+    target_layer: SourceSyncTargetLayer
+    data_kind: SourceSyncDataKind
+    capture_kind: SourceSyncCaptureKind
+    source_adapter: SourceAdapterBinding
+    standard_mapping_contract_id: UUID | None = None
+    standard_version_id: UUID | None = None
+    data_model_version_id: UUID | None = None
+    quality_rule_version_refs: tuple[NonEmptyText, ...] = Field(min_length=1)
+    classification_policy_version_ref: NonEmptyText
+    retention_policy_version_ref: NonEmptyText
+    schema_change_policy: SourceSyncSchemaChangePolicy
+    promotion_mode: SourceSyncPromotionMode
+    quarantine_resource_urn: ResourceURNText | None = None
+    event_time_field: ShortName | None = None
+    watermark_delay_seconds: Annotated[int, Field(ge=0)] | None = None
+
+    @model_validator(mode="after")
+    def _consistent_governance(self) -> SourceSyncGovernanceContract:
+        if len(set(self.quality_rule_version_refs)) != len(
+            self.quality_rule_version_refs
+        ):
+            raise ValueError("source sync quality rule version refs must be unique")
+        has_mapping = self.standard_mapping_contract_id is not None
+        has_standard = self.standard_version_id is not None
+        if has_mapping != has_standard:
+            raise ValueError(
+                "source sync standard mapping and standard version must be bound together"
+            )
+
+        if self.target_layer in {
+            SourceSyncTargetLayer.LANDING,
+            SourceSyncTargetLayer.ODS,
+        }:
+            if self.promotion_mode is not SourceSyncPromotionMode.BLOCKED:
+                raise ValueError("landing and ODS sync promotion must be blocked")
+        else:
+            if not all(
+                (
+                    has_mapping,
+                    self.data_model_version_id is not None,
+                    self.quarantine_resource_urn is not None,
+                )
+            ):
+                raise ValueError(
+                    "Silver and Gold syncs require standard, model, and quarantine bindings"
+                )
+            if self.promotion_mode is SourceSyncPromotionMode.BLOCKED:
+                raise ValueError("Silver and Gold sync promotion must be governed by a gate")
+        if (
+            self.target_layer is SourceSyncTargetLayer.GOLD
+            and self.promotion_mode is not SourceSyncPromotionMode.APPROVAL_GATED
+        ):
+            raise ValueError("Gold sync promotion must be approval gated")
+
+        has_event_time = self.event_time_field is not None
+        has_watermark = self.watermark_delay_seconds is not None
+        if self.capture_kind is SourceSyncCaptureKind.EVENT_STREAM:
+            if not has_event_time or not has_watermark:
+                raise ValueError("event stream sync requires event time and watermark")
+        elif has_event_time or has_watermark:
+            raise ValueError("only event stream sync may declare event time or watermark")
+        return self
+
+
 class SourceSyncDefinitionVersion(FrozenContract):
     """Immutable source-to-target synchronization semantics."""
 
@@ -815,6 +995,7 @@ class SourceSyncDefinitionVersion(FrozenContract):
     primary_keys: tuple[ShortName, ...] = ()
     delete_mode: SourceSyncDeleteMode = SourceSyncDeleteMode.IGNORE
     config: dict[str, Any] = Field(default_factory=dict)
+    governance_contract: SourceSyncGovernanceContract | None = None
     definition_sha256: Sha256
     created_by: NonEmptyText
     created_at: datetime
@@ -860,6 +1041,42 @@ class SourceSyncDefinitionVersion(FrozenContract):
             if self.write_disposition is not SourceSyncWriteDisposition.MERGE:
                 raise ValueError("source deletes require merge disposition")
 
+        governance = self.governance_contract
+        if governance is not None:
+            if self.mode is SourceSyncMode.FULL:
+                if governance.capture_kind is not SourceSyncCaptureKind.BATCH:
+                    raise ValueError("full sync requires batch capture")
+            if (
+                governance.capture_kind is not SourceSyncCaptureKind.BATCH
+                and self.mode is not SourceSyncMode.INCREMENTAL
+            ):
+                raise ValueError("non-batch capture requires incremental sync mode")
+            if governance.capture_kind in {
+                SourceSyncCaptureKind.CDC,
+                SourceSyncCaptureKind.EVENT_STREAM,
+            } and self.cursor_kind not in {
+                SourceSyncCursorKind.PROVIDER_TOKEN,
+                SourceSyncCursorKind.OFFSET,
+            }:
+                raise ValueError("CDC and event stream sync require token or offset cursor")
+            if governance.data_kind in {
+                SourceSyncDataKind.RASTER,
+                SourceSyncDataKind.DOCUMENT,
+                SourceSyncDataKind.IMAGE,
+                SourceSyncDataKind.VIDEO,
+                SourceSyncDataKind.POINT_CLOUD,
+            }:
+                if self.write_disposition is SourceSyncWriteDisposition.MERGE:
+                    raise ValueError("object and raster data kinds cannot use merge sync")
+                if governance.capture_kind is SourceSyncCaptureKind.EVENT_STREAM:
+                    raise ValueError(
+                        "object and raster data kinds cannot use event stream capture"
+                    )
+            if governance.quarantine_resource_urn is not None:
+                quarantine = parse_resource_urn(governance.quarantine_resource_urn)
+                if quarantine["tenant_id"] != self.tenant_id:
+                    raise ValueError("sync quarantine tenant must match tenant_id")
+
         expected = source_sync_definition_fingerprint(
             tenant_id=self.tenant_id,
             sync_definition_urn=self.sync_definition_urn,
@@ -875,6 +1092,7 @@ class SourceSyncDefinitionVersion(FrozenContract):
             primary_keys=self.primary_keys,
             delete_mode=self.delete_mode,
             config=self.config,
+            governance_contract=self.governance_contract,
         )
         if self.definition_sha256 != expected:
             raise ValueError("sync definition fingerprint does not match its immutable content")
@@ -993,6 +1211,91 @@ class SourceSyncCommit(FrozenContract):
         )
         if self.commit_sha256 != expected:
             raise ValueError("sync commit fingerprint does not match immutable evidence")
+        return self
+
+
+class SourceSyncCommitGovernanceEvidence(FrozenContract):
+    """Immutable quality, approval, lineage, and metadata promotion evidence."""
+
+    schema_id = "source_sync_commit_governance_evidence"
+
+    tenant_id: TenantId
+    sync_commit_id: UUID
+    target_resource_version_id: UUID
+    output_artifact_id: UUID
+    quality_result_ids: tuple[UUID, ...] = Field(min_length=1)
+    lineage_event_id: UUID
+    metadata_change_id: UUID
+    approval_case_ref: ResourceURNText | None = None
+    evidence_sha256: Sha256
+
+    @model_validator(mode="after")
+    def _consistent_governance_evidence(
+        self,
+    ) -> SourceSyncCommitGovernanceEvidence:
+        if len(set(self.quality_result_ids)) != len(self.quality_result_ids):
+            raise ValueError("source sync quality result ids must be unique")
+        if self.quality_result_ids != tuple(
+            sorted(self.quality_result_ids, key=lambda value: str(value))
+        ):
+            raise ValueError("source sync quality result ids must be canonically sorted")
+        if self.approval_case_ref is not None:
+            approval_identity = parse_resource_urn(self.approval_case_ref)
+            if approval_identity["tenant_id"] != self.tenant_id:
+                raise ValueError("source sync approval tenant must match tenant_id")
+            if approval_identity["resource_kind"] != "approval_case":
+                raise ValueError("source sync approval must reference an ApprovalCase")
+        expected = source_sync_commit_governance_evidence_fingerprint(
+            tenant_id=self.tenant_id,
+            sync_commit_id=self.sync_commit_id,
+            target_resource_version_id=self.target_resource_version_id,
+            output_artifact_id=self.output_artifact_id,
+            quality_result_ids=self.quality_result_ids,
+            lineage_event_id=self.lineage_event_id,
+            metadata_change_id=self.metadata_change_id,
+            approval_case_ref=self.approval_case_ref,
+        )
+        if self.evidence_sha256 != expected:
+            raise ValueError("source sync governance evidence fingerprint does not match")
+        return self
+
+
+class SourceSyncQuarantineEvidence(FrozenContract):
+    """Immutable receipt for the provider's physical rejected-record artifact."""
+
+    schema_id = "source_sync_quarantine_evidence"
+
+    tenant_id: TenantId
+    sync_commit_id: UUID
+    source_slice_sha256: Sha256
+    quarantine_resource_version_id: UUID
+    quarantine_artifact_id: UUID
+    records_rejected: Annotated[int, Field(ge=0, le=9_223_372_036_854_775_807)]
+    reason_counts: dict[
+        ShortName,
+        Annotated[int, Field(ge=1, le=9_223_372_036_854_775_807)],
+    ]
+    evidence_sha256: Sha256
+
+    @model_validator(mode="after")
+    def _consistent_quarantine_evidence(self) -> SourceSyncQuarantineEvidence:
+        if (self.records_rejected == 0) != (not self.reason_counts):
+            raise ValueError(
+                "zero rejected records requires empty reasons and positive rejects require reasons"
+            )
+        if sum(self.reason_counts.values()) != self.records_rejected:
+            raise ValueError("quarantine reason counts must equal records rejected")
+        expected = source_sync_quarantine_evidence_fingerprint(
+            tenant_id=self.tenant_id,
+            sync_commit_id=self.sync_commit_id,
+            source_slice_sha256=self.source_slice_sha256,
+            quarantine_resource_version_id=self.quarantine_resource_version_id,
+            quarantine_artifact_id=self.quarantine_artifact_id,
+            records_rejected=self.records_rejected,
+            reason_counts=self.reason_counts,
+        )
+        if self.evidence_sha256 != expected:
+            raise ValueError("source sync quarantine evidence fingerprint does not match")
         return self
 
 
@@ -1530,9 +1833,13 @@ CONTRACT_MODELS = (
     ApprovalRecord,
     ApprovalCase,
     ApprovalCaseEvent,
+    SourceAdapterBinding,
+    SourceSyncGovernanceContract,
     SourceSyncDefinitionVersion,
     SourceSyncCheckpoint,
     SourceSyncCommit,
+    SourceSyncCommitGovernanceEvidence,
+    SourceSyncQuarantineEvidence,
     PlatformCommand,
     Resource,
     ResourceVersion,

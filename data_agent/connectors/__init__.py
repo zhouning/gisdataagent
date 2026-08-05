@@ -8,7 +8,7 @@ if-elif dispatch in ``virtual_sources.py``.
 
 import abc
 import logging
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,7 @@ def build_auth_headers(auth_config: dict) -> dict:
         return {"Authorization": f"Bearer {auth_config.get('token', '')}"}
     if atype == "basic":
         import base64 as b64
+
         cred = b64.b64encode(
             f"{auth_config.get('username', '')}:{auth_config.get('password', '')}".encode()
         ).decode()
@@ -42,6 +43,7 @@ def build_auth_headers(auth_config: dict) -> dict:
 # Abstract base
 # ---------------------------------------------------------------------------
 
+
 class BaseConnector(abc.ABC):
     """Abstract base class for all virtual data-source connectors."""
 
@@ -54,11 +56,11 @@ class BaseConnector(abc.ABC):
         auth_config: dict,
         query_config: dict,
         *,
-        bbox: Optional[list[float]] = None,
-        filter_expr: Optional[str] = None,
+        bbox: list[float] | None = None,
+        filter_expr: str | None = None,
         limit: int = 1000,
-        extra_params: Optional[dict] = None,
-        target_crs: Optional[str] = None,
+        extra_params: dict | None = None,
+        target_crs: str | None = None,
     ) -> Any:
         """Execute a data query against the remote service."""
         ...
@@ -69,7 +71,7 @@ class BaseConnector(abc.ABC):
         endpoint_url: str,
         auth_config: dict,
     ) -> dict:
-        """Test connectivity.  Return ``{"health": "healthy"|"timeout"|"error", "message": ...}``."""
+        """Test connectivity and return a normalized health status and message."""
         ...
 
     @abc.abstractmethod
@@ -81,10 +83,20 @@ class BaseConnector(abc.ABC):
         """Discover available layers / collections / feature types."""
         ...
 
+    async def discover(
+        self,
+        endpoint_url: str,
+        auth_config: dict,
+        query_config: dict | None = None,
+    ) -> dict:
+        """Governed discovery hook with optional source-scoped configuration."""
+        return await self.get_capabilities(endpoint_url, auth_config)
+
 
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class ConnectorRegistry:
     """Singleton registry mapping source_type → BaseConnector instance."""
@@ -97,7 +109,7 @@ class ConnectorRegistry:
         logger.debug("Registered connector: %s", connector.SOURCE_TYPE)
 
     @classmethod
-    def get(cls, source_type: str) -> Optional[BaseConnector]:
+    def get(cls, source_type: str) -> BaseConnector | None:
         return cls._connectors.get(source_type)
 
     @classmethod
@@ -113,4 +125,14 @@ class ConnectorRegistry:
 # Auto-import all built-in connectors to trigger self-registration
 # ---------------------------------------------------------------------------
 
-from . import wfs, stac, ogc_api, custom_api, wms, arcgis_rest, database, object_storage, reference_data  # noqa: E402,F401
+from . import (  # noqa: E402,F401
+    arcgis_rest,
+    custom_api,
+    database,
+    object_storage,
+    ogc_api,
+    reference_data,
+    stac,
+    wfs,
+    wms,
+)
