@@ -202,6 +202,18 @@ export default function ChatPanel({ onMapUpdate, onDataUpdate, onLayerControl }:
     return () => window.removeEventListener('s2-map-parcel-selected', handleS2ParcelSelection);
   }, []);
 
+  useEffect(() => {
+    const handleChatPrefill = (rawEvent: Event) => {
+      const detail = (rawEvent as CustomEvent<{ text?: string }>).detail;
+      const text = String(detail?.text || '').trim();
+      if (!text) return;
+      setInput(text);
+      window.setTimeout(() => textareaRef.current?.focus(), 0);
+    };
+    window.addEventListener('gda-chat-prefill', handleChatPrefill);
+    return () => window.removeEventListener('gda-chat-prefill', handleChatPrefill);
+  }, []);
+
   // Poll /api/map/pending when assistant response completes (loading: true → false)
   // This bypasses Chainlit's limitation of not delivering step-level metadata via WebSocket.
   // Fetches twice: immediately + after 2s delay (ensures pending queue is written)

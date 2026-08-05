@@ -86,6 +86,18 @@ class TestPlannerHierarchy(unittest.TestCase):
         self.assertIn("save_memory", tool_names)
         self.assertIn("recall_memories", tool_names)
 
+    def test_planner_root_has_governed_mcp_asset_bridge(self):
+        from google.adk.tools.base_toolset import BaseToolset
+        bridge_toolset = next(
+            tool for tool in self.planner.tools
+            if isinstance(tool, BaseToolset)
+            and type(tool).__name__ == "McpAssetBridgeToolset"
+        )
+        tools = self._run_async(bridge_toolset.get_tools())
+        tool_names = {item.name for item in tools}
+        self.assertIn("describe_mcp_asset_workflow", tool_names)
+        self.assertIn("run_mcp_asset_workflow", tool_names)
+
     def test_planner_model(self):
         from data_agent.agent import MODEL_STANDARD
         self.assertEqual(_model_name(self.planner.model), MODEL_STANDARD)

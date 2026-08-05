@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 
 interface McpServer {
   name: string;
@@ -10,6 +11,14 @@ interface McpServer {
   enabled: boolean;
   error_message: string;
   connected_at: number | null;
+  pipelines?: string[];
+  url?: string;
+  command?: string;
+  timeout?: number;
+  bearer_token_env_var?: string;
+  bearer_token_available?: boolean;
+  ca_cert?: string;
+  ca_cert_configured?: boolean;
 }
 
 interface McpTool {
@@ -28,6 +37,96 @@ interface ToolRule {
   fallback_server: string | null;
 }
 
+interface McpServerForm {
+  description: string;
+  transport: string;
+  url: string;
+  command: string;
+  category: string;
+  pipelines: string;
+  bearer_token_env_var: string;
+  ca_cert: string;
+  timeout: string;
+  enabled: boolean;
+}
+
+const emptyServerForm = (): McpServerForm => ({
+  description: '',
+  transport: 'streamable_http',
+  url: '',
+  command: '',
+  category: '',
+  pipelines: 'general,planner',
+  bearer_token_env_var: '',
+  ca_cert: '',
+  timeout: '15',
+  enabled: false,
+});
+
+const serverToForm = (server: McpServer): McpServerForm => ({
+  description: server.description || '',
+  transport: server.transport || 'streamable_http',
+  url: server.url || '',
+  command: server.command || '',
+  category: server.category || '',
+  pipelines: (server.pipelines || ['general', 'planner']).join(','),
+  bearer_token_env_var: server.bearer_token_env_var || '',
+  ca_cert: server.ca_cert || '',
+  timeout: String(server.timeout || 5),
+  enabled: server.enabled,
+});
+
+const formPayload = (form: McpServerForm) => ({
+  ...form,
+  timeout: Number(form.timeout),
+  pipelines: form.pipelines.split(',').map((value) => value.trim()).filter(Boolean),
+});
+
+function ServerConfigFields({
+  form,
+  onChange,
+}: {
+  form: McpServerForm;
+  onChange: (updates: Partial<McpServerForm>) => void;
+}) {
+  const isRemote = form.transport !== 'stdio';
+  return (
+    <>
+      <input placeholder="描述" value={form.description}
+        onChange={(event) => onChange({ description: event.target.value })} />
+      <select value={form.transport}
+        onChange={(event) => onChange({ transport: event.target.value })}>
+        <option value="streamable_http">Streamable HTTP</option>
+        <option value="sse">SSE</option>
+        <option value="stdio">Stdio</option>
+      </select>
+      {isRemote ? (
+        <input placeholder="URL (如 https://mcp.example.com/mcp)" value={form.url}
+          onChange={(event) => onChange({ url: event.target.value })} />
+      ) : (
+        <input placeholder="命令 (如 python -m server)" value={form.command}
+          onChange={(event) => onChange({ command: event.target.value })} />
+      )}
+      {isRemote && (
+        <>
+          <input placeholder="Token 环境变量名 (可选)" value={form.bearer_token_env_var}
+            onChange={(event) => onChange({ bearer_token_env_var: event.target.value })} />
+          <input placeholder="CA 证书路径 (可选)" value={form.ca_cert}
+            onChange={(event) => onChange({ ca_cert: event.target.value })} />
+        </>
+      )}
+      <div className="mcp-form-row">
+        <input placeholder="分类" value={form.category}
+          onChange={(event) => onChange({ category: event.target.value })} />
+        <input type="number" min="0.1" max="300" step="0.5" placeholder="超时（秒）"
+          value={form.timeout} onChange={(event) => onChange({ timeout: event.target.value })} />
+      </div>
+      <input placeholder="管线 (逗号分隔: general,planner)" value={form.pipelines}
+        onChange={(event) => onChange({ pipelines: event.target.value })} />
+    </>
+  );
+}
+
 export default function ToolsTab({ userRole }: { userRole?: string }) {
   const [servers, setServers] = useState<McpServer[]>([]);
   const [tools, setTools] = useState<McpTool[]>([]);
@@ -36,13 +135,17 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
   const [toggling, setToggling] = useState<string | null>(null);
   const [reconnecting, setReconnecting] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingServer, setEditingServer] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<McpServerForm>(emptyServerForm);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [testingEdit, setTestingEdit] = useState(false);
+  const [editError, setEditError] = useState('');
+  const [editTestResult, setEditTestResult] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
-  const [addForm, setAddForm] = useState({
-    name: '', description: '', transport: 'sse' as string,
-    url: '', command: '', enabled: false, category: '', pipelines: 'general,planner',
-  });
+  const [addName, setAddName] = useState('');
+  const [addForm, setAddForm] = useState<McpServerForm>(emptyServerForm);
   const [addError, setAddError] = useState('');
   // Tool rules state
   const [viewMode, setViewMode] = useState<'servers' | 'rules'>('servers');
@@ -103,27 +206,80 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
 
   const handleAddServer = async () => {
     setAddError('');
-    if (!addForm.name.trim()) { setAddError('名称必填'); return; }
-    const pipelinesArr = addForm.pipelines.split(',').map(s => s.trim()).filter(Boolean);
+    if (!addName.trim()) { setAddError('名称必填'); return; }
     try {
       const resp = await fetch('/api/mcp/servers', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...addForm,
-          pipelines: pipelinesArr,
-        }),
+        body: JSON.stringify({ name: addName.trim(), ...formPayload(addForm) }),
       });
       const data = await resp.json();
       if (resp.ok) {
         setShowAddForm(false);
-        setAddForm({ name: '', description: '', transport: 'sse', url: '', command: '', enabled: false, category: '', pipelines: 'general,planner' });
+        setAddName('');
+        setAddForm(emptyServerForm());
+        setTestResult(null);
         await fetchServers();
       } else {
         setAddError(data.error || data.message || '添加失败');
       }
     } catch { setAddError('网络错误'); }
+  };
+
+  const startEditing = (server: McpServer) => {
+    setShowAddForm(false);
+    setEditingServer(server.name);
+    setEditForm(serverToForm(server));
+    setEditError('');
+    setEditTestResult(null);
+  };
+
+  const handleEditTestConnection = async () => {
+    setTestingEdit(true);
+    setEditError('');
+    setEditTestResult(null);
+    try {
+      const resp = await fetch('/api/mcp/servers/test', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formPayload(editForm)),
+      });
+      const data = await resp.json();
+      setEditTestResult(data.message || (resp.ok ? '连接成功' : data.error || '连接失败'));
+    } catch {
+      setEditTestResult('网络错误');
+    } finally {
+      setTestingEdit(false);
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingServer) return;
+    setSavingEdit(true);
+    setEditError('');
+    try {
+      const resp = await fetch(`/api/mcp/servers/${encodeURIComponent(editingServer)}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formPayload(editForm)),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        setEditError(data.error || data.message || '保存失败');
+        return;
+      }
+      setEditingServer(null);
+      setEditTestResult(null);
+      await fetchServers();
+      if (selectedServer === editingServer) await fetchTools(editingServer);
+    } catch {
+      setEditError('网络错误');
+    } finally {
+      setSavingEdit(false);
+    }
   };
 
   const handleDeleteServer = async (serverName: string) => {
@@ -143,11 +299,10 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
     setTesting(true);
     setTestResult(null);
     try {
-      const pipelinesArr = addForm.pipelines.split(',').map(s => s.trim()).filter(Boolean);
       const resp = await fetch('/api/mcp/servers/test', {
         method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...addForm, pipelines: pipelinesArr }),
+        body: JSON.stringify(formPayload(addForm)),
       });
       const data = await resp.json();
       setTestResult(data.message || (resp.ok ? 'OK' : data.error || '连接失败'));
@@ -241,14 +396,21 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
             <span className="tools-summary-sep">/</span>
             <span className={connectedCount > 0 ? 'tools-connected' : ''}>{connectedCount} 已连接</span>
             {isAdmin && (
-              <button className="btn-add-server" onClick={() => setShowAddForm(!showAddForm)} title="添加 MCP 服务器">+</button>
+              <button className="btn-add-server" onClick={() => {
+                setShowAddForm(!showAddForm);
+                setEditingServer(null);
+              }} title="添加 MCP 服务器" aria-label="添加 MCP 服务器">
+                <Plus size={14} />
+              </button>
             )}
           </>
         )}
         {viewMode === 'rules' && (
           <>
             <span>{rules.length} 条规则</span>
-            <button className="btn-add-server" onClick={() => setShowRuleForm(!showRuleForm)} title="添加规则">+</button>
+            <button className="btn-add-server" onClick={() => setShowRuleForm(!showRuleForm)} title="添加规则" aria-label="添加规则">
+              <Plus size={14} />
+            </button>
           </>
         )}
       </div>
@@ -256,27 +418,10 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
       {viewMode === 'servers' && showAddForm && isAdmin && (
         <div className="mcp-add-form">
           <div className="mcp-add-form-title">添加 MCP 服务器</div>
-          <input placeholder="名称 (唯一标识)" value={addForm.name}
-            onChange={e => setAddForm({...addForm, name: e.target.value})} />
-          <input placeholder="描述" value={addForm.description}
-            onChange={e => setAddForm({...addForm, description: e.target.value})} />
-          <select value={addForm.transport}
-            onChange={e => setAddForm({...addForm, transport: e.target.value})}>
-            <option value="sse">SSE</option>
-            <option value="streamable_http">Streamable HTTP</option>
-            <option value="stdio">Stdio</option>
-          </select>
-          {addForm.transport === 'stdio' ? (
-            <input placeholder="命令 (如 python -m server)" value={addForm.command}
-              onChange={e => setAddForm({...addForm, command: e.target.value})} />
-          ) : (
-            <input placeholder="URL (如 http://localhost:8080/mcp)" value={addForm.url}
-              onChange={e => setAddForm({...addForm, url: e.target.value})} />
-          )}
-          <input placeholder="分类 (如 gis, data)" value={addForm.category}
-            onChange={e => setAddForm({...addForm, category: e.target.value})} />
-          <input placeholder="管线 (逗号分隔: general,planner)" value={addForm.pipelines}
-            onChange={e => setAddForm({...addForm, pipelines: e.target.value})} />
+          <input placeholder="名称 (唯一标识)" value={addName}
+            onChange={(event) => setAddName(event.target.value)} />
+          <ServerConfigFields form={addForm}
+            onChange={(updates) => setAddForm((current) => ({ ...current, ...updates }))} />
           <label className="mcp-add-checkbox">
             <input type="checkbox" checked={addForm.enabled}
               onChange={e => setAddForm({...addForm, enabled: e.target.checked})} />
@@ -288,6 +433,29 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
             <button className="btn-secondary btn-sm" onClick={() => setShowAddForm(false)}>取消</button>
             <button className="btn-secondary btn-sm" onClick={handleTestConnection} disabled={testing}>{testing ? '测试中...' : '测试连接'}</button>
             <button className="btn-primary btn-sm" onClick={handleAddServer}>添加</button>
+          </div>
+        </div>
+      )}
+
+      {viewMode === 'servers' && editingServer && isAdmin && (
+        <div className="mcp-add-form mcp-edit-form">
+          <div className="mcp-add-form-title">编辑 {editingServer}</div>
+          <ServerConfigFields form={editForm}
+            onChange={(updates) => setEditForm((current) => ({ ...current, ...updates }))} />
+          {editError && <div className="mcp-add-error">{editError}</div>}
+          {editTestResult && (
+            <div className={`mcp-test-result ${editTestResult.includes('成功') ? 'success' : 'error'}`}>
+              {editTestResult}
+            </div>
+          )}
+          <div className="mcp-add-actions">
+            <button className="btn-secondary btn-sm" onClick={() => setEditingServer(null)}>取消</button>
+            <button className="btn-secondary btn-sm" onClick={handleEditTestConnection} disabled={testingEdit || savingEdit}>
+              {testingEdit ? '测试中...' : '测试连接'}
+            </button>
+            <button className="btn-primary btn-sm" onClick={handleSaveEdit} disabled={savingEdit || testingEdit}>
+              {savingEdit ? '保存中...' : '保存并重连'}
+            </button>
           </div>
         </div>
       )}
@@ -324,14 +492,23 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
                   />
                   <span className="toggle-slider" />
                 </label>
+                <button
+                  className="btn-edit-server"
+                  onClick={(event) => { event.stopPropagation(); startEditing(s); }}
+                  title="编辑服务器配置"
+                  aria-label={`编辑 ${s.name}`}
+                >
+                  <Pencil size={13} />
+                </button>
                 {s.enabled && (
                   <button
                     className="btn-reconnect"
                     disabled={reconnecting === s.name}
                     onClick={(e) => { e.stopPropagation(); handleReconnect(s.name); }}
                     title="重新连接"
+                    aria-label={`重新连接 ${s.name}`}
                   >
-                    {reconnecting === s.name ? '...' : '\u21BB'}
+                    <RefreshCw size={13} className={reconnecting === s.name ? 'is-spinning' : ''} />
                   </button>
                 )}
                 <button
@@ -339,8 +516,9 @@ export default function ToolsTab({ userRole }: { userRole?: string }) {
                   disabled={deleting === s.name}
                   onClick={(e) => { e.stopPropagation(); handleDeleteServer(s.name); }}
                   title="删除"
+                  aria-label={`删除 ${s.name}`}
                 >
-                  {deleting === s.name ? '...' : '×'}
+                  <Trash2 size={13} />
                 </button>
               </div>
             )}

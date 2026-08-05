@@ -31,6 +31,7 @@ _EXPORTS = {
     "LLMCausalToolset": ".llm_causal_tools",
     "LocationToolset": ".location_tools",
     "McpHubToolset": ".mcp_hub_toolset",
+    "McpAssetBridgeToolset": ".mcp_asset_bridge_tools",
     "MemoryToolset": ".memory_tools",
     "NL2SQLEnhancedToolset": ".nl2sql_enhanced_tools",
     "NL2SQLToolset": ".nl2sql_tools",

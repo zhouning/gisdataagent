@@ -49,6 +49,7 @@ from .toolsets import (
     StreamingToolset,
     TeamToolset,
     DataLakeToolset,
+    McpAssetBridgeToolset,
     McpHubToolset,
     FusionToolset,
     KnowledgeGraphToolset,
@@ -642,7 +643,10 @@ general_processing_agent = LlmAgent(
         StreamingToolset(tool_filter=intent_tool_predicate),
         TeamToolset(tool_filter=intent_tool_predicate),
         DataLakeToolset(tool_filter=intent_tool_predicate),
-        McpHubToolset(pipeline="general"),
+        McpAssetBridgeToolset(),
+        McpHubToolset(
+            pipeline="general", exclude_servers=("arcpy-mcp", "dts-mcp")
+        ),
         FusionToolset(tool_filter=intent_tool_predicate),
         KnowledgeGraphToolset(tool_filter=intent_tool_predicate),
         KnowledgeBaseToolset(tool_filter=intent_tool_predicate),
@@ -763,7 +767,10 @@ def _make_planner_processor(name: str, **overrides) -> LlmAgent:
             RemoteSensingToolset(tool_filter=["download_lulc", "download_dem"]),
             StreamingToolset(tool_filter=intent_tool_predicate),
             DatabaseToolset(tool_filter=["import_to_postgis"]),
-            McpHubToolset(pipeline="planner"),
+            McpAssetBridgeToolset(),
+            McpHubToolset(
+                pipeline="planner", exclude_servers=("arcpy-mcp", "dts-mcp")
+            ),
             FusionToolset(tool_filter=intent_tool_predicate),
             KnowledgeGraphToolset(tool_filter=intent_tool_predicate),
             KnowledgeBaseToolset(tool_filter=["search_knowledge_base", "get_kb_context", "list_knowledge_bases"]),
@@ -1020,6 +1027,7 @@ planner_agent = LlmAgent(
         AdminToolset(),
         TeamToolset(),
         DataLakeToolset(tool_filter=_DATALAKE_READ),
+        McpAssetBridgeToolset(),
         VisualizationToolset(tool_filter=["visualize_interactive_map"]),  # For direct admin boundary display
         RemoteSensingToolset(tool_filter=["download_dem"]),  # For DEM download in watershed workflow
         WatershedToolset(),  # For watershed/catchment extraction (open-source)

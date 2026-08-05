@@ -28,6 +28,9 @@ CORE_TOOLS: frozenset[str] = frozenset({
     "filter_vector_data",
     "list_data_assets",
     "search_data_assets",
+    # Governed ArcPy/DTS asset workflows must survive intent filtering.
+    "describe_mcp_asset_workflow",
+    "run_mcp_asset_workflow",
     # Admin boundary loader — always available
     "load_admin_boundary",
     # World model tools — always available for LULC prediction

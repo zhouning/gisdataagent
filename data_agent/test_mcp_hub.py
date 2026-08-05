@@ -79,6 +79,8 @@ class TestMcpServerConfig(unittest.TestCase):
         self.assertEqual(cfg.url, "")
         self.assertEqual(cfg.headers, {})
         self.assertEqual(cfg.timeout, 5.0)
+        self.assertEqual(cfg.bearer_token_env_var, "")
+        self.assertEqual(cfg.ca_cert, "")
 
     def test_full_config(self):
         from data_agent.mcp_hub import McpServerConfig
@@ -92,12 +94,16 @@ class TestMcpServerConfig(unittest.TestCase):
             url="http://localhost:8080/sse",
             headers={"Authorization": "Bearer xxx"},
             timeout=10.0,
+            bearer_token_env_var="TEST_MCP_TOKEN",
+            ca_cert="/tmp/test-ca.crt",
         )
         self.assertEqual(cfg.transport, "sse")
         self.assertTrue(cfg.enabled)
         self.assertEqual(cfg.pipelines, ["general"])
         self.assertEqual(cfg.url, "http://localhost:8080/sse")
         self.assertEqual(cfg.timeout, 10.0)
+        self.assertEqual(cfg.bearer_token_env_var, "TEST_MCP_TOKEN")
+        self.assertEqual(cfg.ca_cert, "/tmp/test-ca.crt")
 
     def test_stdio_config(self):
         from data_agent.mcp_hub import McpServerConfig
@@ -113,6 +119,34 @@ class TestMcpServerConfig(unittest.TestCase):
         self.assertEqual(cfg.args, ["-m", "my_server"])
         self.assertEqual(cfg.env, {"KEY": "value"})
         self.assertEqual(cfg.cwd, "/tmp")
+
+    def test_bearer_token_resolved_without_mutating_config_headers(self):
+        from data_agent.mcp_hub import McpServerConfig, _resolve_http_headers
+
+        cfg = McpServerConfig(
+            name="remote",
+            transport="streamable_http",
+            headers={"X-Client": "gis-data-agent"},
+            bearer_token_env_var="TEST_MCP_TOKEN",
+        )
+        with patch.dict(os.environ, {"TEST_MCP_TOKEN": "secret-value"}, clear=False):
+            headers = _resolve_http_headers(cfg)
+
+        self.assertEqual(headers["Authorization"], "Bearer secret-value")
+        self.assertEqual(headers["X-Client"], "gis-data-agent")
+        self.assertNotIn("Authorization", cfg.headers)
+
+    def test_missing_bearer_token_fails_before_connection(self):
+        from data_agent.mcp_hub import McpServerConfig, _resolve_http_headers
+
+        cfg = McpServerConfig(
+            name="remote",
+            transport="streamable_http",
+            bearer_token_env_var="MISSING_TEST_MCP_TOKEN",
+        )
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaisesRegex(RuntimeError, "MISSING_TEST_MCP_TOKEN"):
+                _resolve_http_headers(cfg)
 
 
 # ---------------------------------------------------------------------------
@@ -196,6 +230,50 @@ class TestMcpHubManager(unittest.TestCase):
         self.assertEqual(configs[1].name, "srv2")
         self.assertFalse(configs[1].enabled)
         self.assertEqual(configs[1].transport, "sse")
+
+    def test_bundled_private_gis_servers(self):
+        from data_agent.mcp_hub import McpHubManager
+
+        configs = {config.name: config for config in McpHubManager()._load_yaml()}
+
+        arcpy = configs["arcpy-mcp"]
+        self.assertEqual(arcpy.transport, "streamable_http")
+        self.assertEqual(arcpy.url, "https://192.168.50.170:8765/mcp")
+        self.assertEqual(arcpy.bearer_token_env_var, "ARCPY_MCP_TOKEN")
+        self.assertTrue(os.path.isfile(arcpy.ca_cert))
+        self.assertTrue(arcpy.enabled)
+        self.assertEqual(arcpy.pipelines, ["general", "planner"])
+
+        dts = configs["dts-mcp"]
+        self.assertEqual(dts.transport, "streamable_http")
+        self.assertEqual(dts.url, "https://192.168.50.170:8770/mcp")
+        self.assertEqual(dts.bearer_token_env_var, "DTS_MCP_TOKEN")
+        self.assertTrue(os.path.isfile(dts.ca_cert))
+        self.assertTrue(dts.enabled)
+        self.assertEqual(dts.pipelines, ["general", "planner"])
+
+    def test_streamable_http_connection_uses_env_token_and_ca(self):
+        from data_agent.mcp_hub import McpServerConfig, _connection_params
+
+        with tempfile.TemporaryDirectory() as tmp:
+            ca_cert = os.path.join(tmp, "private-ca.crt")
+            with open(ca_cert, "w", encoding="ascii") as f:
+                f.write("test certificate placeholder")
+            cfg = McpServerConfig(
+                name="remote",
+                transport="streamable_http",
+                url="https://private.example/mcp",
+                bearer_token_env_var="TEST_MCP_TOKEN",
+                ca_cert=ca_cert,
+            )
+            with patch.dict(os.environ, {"TEST_MCP_TOKEN": "secret-value"}, clear=False):
+                params = _connection_params(cfg)
+
+            self.assertEqual(params.headers["Authorization"], "Bearer secret-value")
+            self.assertEqual(params.url, "https://private.example/mcp")
+            with patch("httpx.AsyncClient") as async_client:
+                params.httpx_client_factory(headers={}, timeout=None, auth=None)
+            self.assertEqual(async_client.call_args.kwargs["verify"], ca_cert)
 
     def test_load_config_skips_invalid_entries(self):
         from data_agent.mcp_hub import McpHubManager
@@ -283,6 +361,31 @@ class TestMcpHubManager(unittest.TestCase):
         hub = McpHubManager()
         result = _run(hub.connect_server("nonexistent"))
         self.assertFalse(result)
+
+    @patch("google.adk.tools.mcp_tool.mcp_toolset.McpToolset")
+    def test_connect_server_timeout_marks_error_and_closes(self, mock_toolset_cls):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
+
+        async def never_returns():
+            await asyncio.Event().wait()
+
+        toolset = MagicMock()
+        toolset.get_tools = AsyncMock(side_effect=never_returns)
+        toolset.close = AsyncMock()
+        mock_toolset_cls.return_value = toolset
+
+        hub = McpHubManager()
+        config = McpServerConfig(
+            name="slow", transport="stdio", command="python", timeout=0.01
+        )
+        hub._servers = {"slow": McpServerStatus(config=config)}
+
+        result = _run(hub.connect_server("slow"))
+
+        self.assertFalse(result)
+        self.assertEqual(hub._servers["slow"].status, "error")
+        self.assertIn("timed out", hub._servers["slow"].error_message)
+        toolset.close.assert_awaited_once()
 
     def test_disconnect_unknown_server(self):
         from data_agent.mcp_hub import McpHubManager
@@ -394,6 +497,51 @@ class TestMcpHubManager(unittest.TestCase):
         tools_all = _run(hub.get_all_tools())
         self.assertEqual(len(tools_all), 2)
 
+    def test_get_all_tools_applies_server_prefix(self):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
+
+        class PrefixAwareToolset:
+            async def get_tools(self):
+                raise AssertionError("Hub bypassed ADK's prefixing layer")
+
+            async def get_tools_with_prefix(self):
+                tool = MagicMock()
+                tool.name = "remote_buffer"
+                return [tool]
+
+        hub = McpHubManager()
+        status = McpServerStatus(
+            config=McpServerConfig(name="remote"),
+            status="connected",
+            toolset=PrefixAwareToolset(),
+        )
+        hub._servers = {"remote": status}
+
+        tools = _run(hub.get_all_tools())
+
+        self.assertEqual([tool.name for tool in tools], ["remote_buffer"])
+
+    def test_get_all_tools_timeout_only_marks_slow_server_error(self):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
+
+        async def never_returns():
+            await asyncio.Event().wait()
+
+        hub = McpHubManager()
+        status = McpServerStatus(
+            config=McpServerConfig(name="slow", timeout=0.01),
+            status="connected",
+        )
+        status.toolset = MagicMock()
+        status.toolset.get_tools = AsyncMock(side_effect=never_returns)
+        hub._servers = {"slow": status}
+
+        tools = _run(hub.get_all_tools())
+
+        self.assertEqual(tools, [])
+        self.assertEqual(status.status, "error")
+        self.assertIn("timed out", status.error_message)
+
     def test_get_tools_for_server_disconnected(self):
         from data_agent.mcp_hub import McpHubManager
         hub = McpHubManager()
@@ -448,6 +596,26 @@ class TestMcpHubManager(unittest.TestCase):
         mock_toolset.close.assert_called_once()
         self.assertEqual(status.status, "disconnected")
         self.assertFalse(hub._started)
+
+    @patch("data_agent.mcp_hub.MCP_CLOSE_TIMEOUT", 0.01)
+    @patch("google.adk.tools.mcp_tool.mcp_toolset.McpToolset")
+    def test_connection_test_close_timeout_preserves_success(self, mock_toolset_cls):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig
+
+        async def never_returns():
+            await asyncio.Event().wait()
+
+        toolset = MagicMock()
+        toolset.get_tools = AsyncMock(return_value=[MagicMock()])
+        toolset.close = AsyncMock(side_effect=never_returns)
+        mock_toolset_cls.return_value = toolset
+
+        result = _run(McpHubManager().test_connection(McpServerConfig(
+            name="slow-close", transport="stdio", command="python", timeout=1.0
+        )))
+
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["tool_count"], 1)
 
     def test_connect_server_unknown_transport(self):
         """Unknown transport type sets error status."""
@@ -810,6 +978,26 @@ class TestMcpHubCrud(unittest.TestCase):
         self.assertEqual(result["status"], "ok")
         self.assertEqual(hub._servers["s1"].config.description, "new")
 
+    @patch("data_agent.mcp_hub.McpHubManager._save_to_db", return_value=True)
+    @patch("data_agent.mcp_hub.McpHubManager.connect_server", new_callable=AsyncMock,
+           return_value=True)
+    def test_update_server_reconnects_enabled_disconnected_server(
+            self, mock_connect, _mock_save):
+        from data_agent.mcp_hub import McpHubManager, McpServerConfig, McpServerStatus
+        hub = McpHubManager()
+        cfg = McpServerConfig(
+            name="remote", enabled=True, transport="streamable_http",
+            url="https://192.168.1.10/mcp",
+        )
+        hub._servers["remote"] = McpServerStatus(config=cfg, status="error")
+
+        result = _run(hub.update_server(
+            "remote", {"url": "https://192.168.1.11/mcp"}))
+
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(cfg.url, "https://192.168.1.11/mcp")
+        mock_connect.assert_awaited_once_with("remote")
+
     def test_remove_server_not_found(self):
         from data_agent.mcp_hub import McpHubManager
         hub = McpHubManager()
@@ -936,6 +1124,26 @@ class TestMcpUserIsolation(unittest.TestCase):
         statuses = hub.get_server_statuses()
         self.assertEqual(len(statuses), 3)
 
+    def test_get_server_statuses_only_exposes_connection_config_when_requested(self):
+        from data_agent.mcp_hub import get_mcp_hub, McpServerConfig, McpServerStatus
+        hub = get_mcp_hub()
+        hub._servers["remote"] = McpServerStatus(config=McpServerConfig(
+            name="remote",
+            transport="streamable_http",
+            url="https://10.0.0.2/mcp",
+            timeout=15,
+            ca_cert="/certs/private-ca.crt",
+        ))
+
+        public_status = hub.get_server_statuses()[0]
+        admin_status = hub.get_server_statuses(include_config=True)[0]
+
+        self.assertNotIn("url", public_status)
+        self.assertNotIn("ca_cert", public_status)
+        self.assertEqual(admin_status["url"], "https://10.0.0.2/mcp")
+        self.assertEqual(admin_status["timeout"], 15)
+        self.assertEqual(admin_status["ca_cert"], "/certs/private-ca.crt")
+
     def test_get_server_statuses_user_filter(self):
         """With username filter, only own + shared/global visible."""
         from data_agent.mcp_hub import get_mcp_hub, McpServerConfig, McpServerStatus
@@ -1045,6 +1253,7 @@ class TestMcpUserIsolation(unittest.TestCase):
 
         self.assertIn("/api/mcp/servers/mine", paths)
         self.assertIn("/api/mcp/servers/{name:path}/share", paths)
+        self.assertIn("/api/mcp/servers/test", paths)
 
     def test_add_server_sets_owner(self):
         """add_server persists owner_username."""

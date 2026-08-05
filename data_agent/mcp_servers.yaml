@@ -24,6 +24,8 @@
 #   url         (str)            Server URL
 #   headers     (dict)           HTTP headers (e.g. auth tokens)
 #   timeout     (float)          Connection timeout in seconds (default: 5.0)
+#   bearer_token_env_var (str)   Environment variable containing a bearer token
+#   ca_cert     (str)            PEM CA certificate used to verify private TLS
 # ============================================================
 
 servers:
@@ -60,6 +62,29 @@ servers:
   #   enabled: false
   #   category: analytics
   #   pipelines: ["general", "planner"]
+
+  # --- Private Windows GIS engines verified through Codex plugins ---
+  - name: arcpy-mcp
+    description: "Private ArcGIS Pro/ArcPy processing, inspection, map export, and allowlisted CPU inference"
+    transport: streamable_http
+    url: "https://192.168.50.170:8765/mcp"
+    bearer_token_env_var: "ARCPY_MCP_TOKEN"
+    ca_cert: "/Users/zhouning/codex-arcpy-mcp-plugin/plugins/arcpy-mcp/assets/arcpy-mcp-ca.crt"
+    timeout: 15.0
+    enabled: true
+    category: gis
+    pipelines: ["general", "planner"]
+
+  - name: dts-mcp
+    description: "Private DTS Engine 6.1 publishing gateway for 3DT, road, OSGB, and digital-twin workflows"
+    transport: streamable_http
+    url: "https://192.168.50.170:8770/mcp"
+    bearer_token_env_var: "DTS_MCP_TOKEN"
+    ca_cert: "/Users/zhouning/codex-dts-mcp-plugin/plugins/dts-mcp/assets/dts-mcp-ca.crt"
+    timeout: 15.0
+    enabled: true
+    category: gis
+    pipelines: ["general", "planner"]
 
   # --- Surveying QC subsystem servers ---
   - name: cv-detection-service

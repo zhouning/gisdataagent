@@ -30,6 +30,7 @@ except Exception:
 
 T_MCP_SERVERS = "agent_mcp_servers"
 MAX_MCP_SERVERS = int(os.environ.get("MCP_MAX_SERVERS", "20"))
+MCP_CLOSE_TIMEOUT = float(os.environ.get("MCP_CLOSE_TIMEOUT", "5"))
 
 
 # ---------------------------------------------------------------------------
@@ -105,6 +106,10 @@ class McpServerConfig:
     url: str = ""
     headers: dict[str, str] = field(default_factory=dict)
     timeout: float = 5.0
+    # Remote HTTP authentication and TLS trust. Secrets are resolved from the
+    # process environment at connection time and are never persisted here.
+    bearer_token_env_var: str = ""
+    ca_cert: str = ""
     # DB tracking
     source: str = "yaml"  # yaml | db
     # Per-user isolation (v10.0.1)
@@ -122,6 +127,120 @@ class McpServerStatus:
     tool_names: list[str] = field(default_factory=list)
     error_message: str = ""
     connected_at: Optional[float] = None
+
+
+# ---------------------------------------------------------------------------
+# Remote HTTP connection helpers
+# ---------------------------------------------------------------------------
+
+def _expand_config_value(value: str) -> str:
+    """Expand user-safe environment references in a config value."""
+    return os.path.expanduser(os.path.expandvars(value or ""))
+
+
+def _resolve_http_headers(config: McpServerConfig) -> dict[str, str]:
+    """Resolve configured headers and an optional bearer-token environment variable."""
+    headers = {
+        str(key): _expand_config_value(str(value))
+        for key, value in (config.headers or {}).items()
+    }
+    if config.bearer_token_env_var:
+        env_name = config.bearer_token_env_var.strip()
+        token = os.environ.get(env_name)
+        if not token:
+            raise RuntimeError(
+                f"MCP bearer token environment variable '{env_name}' is not set"
+            )
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
+
+
+def _httpx_client_factory(ca_cert: str = ""):
+    """Build an MCP HTTPX factory with optional private CA verification."""
+    import httpx
+
+    def create_client(*, headers=None, timeout=None, auth=None):
+        # Private MCP endpoints must be reached directly.  Inherited proxy
+        # settings can route RFC1918 addresses through a corporate proxy and
+        # make an otherwise healthy server look disconnected.
+        kwargs = {"follow_redirects": True, "trust_env": False}
+        if timeout is not None:
+            kwargs["timeout"] = timeout
+        if headers is not None:
+            kwargs["headers"] = headers
+        if auth is not None:
+            kwargs["auth"] = auth
+        if ca_cert:
+            kwargs["verify"] = ca_cert
+        return httpx.AsyncClient(**kwargs)
+
+    return create_client
+
+
+def _connection_params(config: McpServerConfig, *, timeout: float | None = None):
+    """Construct ADK MCP connection parameters from a server config."""
+    from google.adk.tools.mcp_tool.mcp_session_manager import (
+        SseConnectionParams,
+        StdioConnectionParams,
+        StreamableHTTPConnectionParams,
+    )
+    from mcp import StdioServerParameters
+
+    effective_timeout = config.timeout if timeout is None else timeout
+    if config.transport == "stdio":
+        return StdioConnectionParams(
+            server_params=StdioServerParameters(
+                command=config.command,
+                args=config.args,
+                env=config.env or None,
+                cwd=config.cwd,
+            ),
+            timeout=effective_timeout,
+        )
+
+    if config.transport not in ("sse", "streamable_http"):
+        raise ValueError(f"Unknown transport: {config.transport}")
+
+    ca_cert = _expand_config_value(config.ca_cert)
+    if ca_cert and not os.path.isfile(ca_cert):
+        raise RuntimeError(f"MCP CA certificate does not exist: {ca_cert}")
+    common = {
+        "url": config.url,
+        "headers": _resolve_http_headers(config) or None,
+        "timeout": effective_timeout,
+        "httpx_client_factory": _httpx_client_factory(ca_cert),
+    }
+    if config.transport == "sse":
+        return SseConnectionParams(**common)
+    return StreamableHTTPConnectionParams(**common)
+
+
+def _operation_timeout(config: McpServerConfig, *, maximum: float | None = None) -> float:
+    """Return a positive timeout for an MCP lifecycle operation."""
+    timeout = max(float(config.timeout), 0.1)
+    if maximum is not None:
+        timeout = min(timeout, maximum)
+    return timeout
+
+
+async def _close_toolset(toolset, *, server_name: str, timeout: float) -> None:
+    """Close a toolset without allowing a slow peer to block Hub shutdown."""
+    try:
+        await asyncio.wait_for(toolset.close(), timeout=max(timeout, 0.1))
+    except TimeoutError:
+        logger.warning(
+            "Timed out closing MCP server '%s' after %.1fs", server_name, timeout
+        )
+    except Exception as e:
+        logger.warning("Error closing MCP server '%s': %s", server_name, e)
+
+
+def _get_toolset_tools(toolset):
+    """Return tools through ADK's prefixing layer when the toolset supports it."""
+    prefixed_getter = getattr(type(toolset), "get_tools_with_prefix", None)
+    if prefixed_getter is not None:
+        return prefixed_getter(toolset)
+    return toolset.get_tools()
 
 
 # ---------------------------------------------------------------------------
@@ -167,6 +286,8 @@ class McpHubManager:
                         url VARCHAR(500) DEFAULT '',
                         headers JSONB DEFAULT '{{}}',
                         timeout REAL DEFAULT 5.0,
+                        bearer_token_env_var VARCHAR(200) DEFAULT '',
+                        ca_cert VARCHAR(500) DEFAULT '',
                         owner_username VARCHAR(100),
                         is_shared BOOLEAN DEFAULT TRUE,
                         created_at TIMESTAMP DEFAULT NOW(),
@@ -181,6 +302,14 @@ class McpHubManager:
                 conn.execute(text(f"""
                     ALTER TABLE {T_MCP_SERVERS}
                     ADD COLUMN IF NOT EXISTS is_shared BOOLEAN DEFAULT TRUE
+                """))
+                conn.execute(text(f"""
+                    ALTER TABLE {T_MCP_SERVERS}
+                    ADD COLUMN IF NOT EXISTS bearer_token_env_var VARCHAR(200) DEFAULT ''
+                """))
+                conn.execute(text(f"""
+                    ALTER TABLE {T_MCP_SERVERS}
+                    ADD COLUMN IF NOT EXISTS ca_cert VARCHAR(500) DEFAULT ''
                 """))
                 conn.commit()
             return True
@@ -204,7 +333,7 @@ class McpHubManager:
             cols = (
                 "name, description, transport, enabled, category, "
                 "pipelines, command, args, env, cwd, url, headers, timeout, "
-                "owner_username, is_shared"
+                "bearer_token_env_var, ca_cert, owner_username, is_shared"
             )
             if username:
                 query = (
@@ -226,13 +355,24 @@ class McpHubManager:
                 args = r[7] if isinstance(r[7], list) else json.loads(r[7]) if r[7] else []
                 env = _decrypt_dict(r[8])
                 headers = _decrypt_dict(r[11])
+                # Older installations/tests may still return the pre-security
+                # 15-column row shape; keep those rows readable during the
+                # additive schema migration.
+                has_remote_security = len(r) >= 17
+                bearer_token_env_var = r[13] if has_remote_security else ""
+                ca_cert = r[14] if has_remote_security else ""
+                owner_index = 15 if has_remote_security else 13
+                shared_index = 16 if has_remote_security else 14
                 config = McpServerConfig(
                     name=r[0], description=r[1] or "", transport=r[2] or "stdio",
                     enabled=bool(r[3]), category=r[4] or "", pipelines=pipelines,
                     command=r[6] or "", args=args, env=env, cwd=r[9],
                     url=r[10] or "", headers=headers, timeout=float(r[12] or 5.0),
+                    bearer_token_env_var=bearer_token_env_var or "",
+                    ca_cert=ca_cert or "",
                     source="db",
-                    owner_username=r[13], is_shared=bool(r[14]) if r[14] is not None else True,
+                    owner_username=r[owner_index],
+                    is_shared=bool(r[shared_index]) if r[shared_index] is not None else True,
                 )
                 configs.append(config)
             return configs
@@ -252,10 +392,10 @@ class McpHubManager:
                     INSERT INTO {T_MCP_SERVERS}
                         (name, description, transport, enabled, category, pipelines,
                          command, args, env, cwd, url, headers, timeout,
-                         owner_username, is_shared, updated_at)
+                         bearer_token_env_var, ca_cert, owner_username, is_shared, updated_at)
                     VALUES (:name, :desc, :transport, :enabled, :category, CAST(:pipelines AS jsonb),
                             :command, CAST(:args AS jsonb), CAST(:env AS jsonb), :cwd, :url, CAST(:headers AS jsonb),
-                            :timeout, :owner_username, :is_shared, NOW())
+                            :timeout, :bearer_token_env_var, :ca_cert, :owner_username, :is_shared, NOW())
                     ON CONFLICT (name) DO UPDATE SET
                         description = EXCLUDED.description,
                         transport = EXCLUDED.transport,
@@ -269,6 +409,8 @@ class McpHubManager:
                         url = EXCLUDED.url,
                         headers = EXCLUDED.headers,
                         timeout = EXCLUDED.timeout,
+                        bearer_token_env_var = EXCLUDED.bearer_token_env_var,
+                        ca_cert = EXCLUDED.ca_cert,
                         owner_username = EXCLUDED.owner_username,
                         is_shared = EXCLUDED.is_shared,
                         updated_at = NOW()
@@ -286,6 +428,8 @@ class McpHubManager:
                     "url": config.url,
                     "headers": _encrypt_dict(config.headers),
                     "timeout": config.timeout,
+                    "bearer_token_env_var": config.bearer_token_env_var,
+                    "ca_cert": config.ca_cert,
                     "owner_username": config.owner_username,
                     "is_shared": config.is_shared,
                 })
@@ -385,6 +529,8 @@ class McpHubManager:
                 url=raw.get("url", ""),
                 headers=raw.get("headers", {}),
                 timeout=raw.get("timeout", 5.0),
+                bearer_token_env_var=raw.get("bearer_token_env_var", ""),
+                ca_cert=raw.get("ca_cert", ""),
                 source="yaml",
             )
             configs.append(config)
@@ -399,41 +545,11 @@ class McpHubManager:
             return False
         config = status.config
 
+        toolset = None
+        timeout = _operation_timeout(config)
         try:
             from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
-            from google.adk.tools.mcp_tool.mcp_session_manager import (
-                StdioConnectionParams,
-                SseConnectionParams,
-                StreamableHTTPConnectionParams,
-            )
-            from mcp import StdioServerParameters
-
-            if config.transport == "stdio":
-                conn_params = StdioConnectionParams(
-                    server_params=StdioServerParameters(
-                        command=config.command,
-                        args=config.args,
-                        env=config.env or None,
-                        cwd=config.cwd,
-                    ),
-                    timeout=config.timeout,
-                )
-            elif config.transport == "sse":
-                conn_params = SseConnectionParams(
-                    url=config.url,
-                    headers=config.headers or None,
-                    timeout=config.timeout,
-                )
-            elif config.transport == "streamable_http":
-                conn_params = StreamableHTTPConnectionParams(
-                    url=config.url,
-                    headers=config.headers or None,
-                    timeout=config.timeout,
-                )
-            else:
-                status.status = "error"
-                status.error_message = f"Unknown transport: {config.transport}"
-                return False
+            conn_params = _connection_params(config)
 
             # Create toolset with name prefix to avoid tool name collisions
             prefix = config.name.replace("-", "_")
@@ -444,7 +560,7 @@ class McpHubManager:
             )
 
             # Probe tools to verify connection
-            tools = await toolset.get_tools()
+            tools = await asyncio.wait_for(_get_toolset_tools(toolset), timeout=timeout)
 
             status.toolset = toolset
             status.status = "connected"
@@ -458,12 +574,33 @@ class McpHubManager:
             )
             return True
 
+        except TimeoutError:
+            error = f"MCP server connection timed out after {timeout:.1f}s"
+            status.status = "error"
+            status.error_message = error
+            status.toolset = None
+            status.tool_count = 0
+            status.tool_names = []
+            if toolset is not None:
+                await _close_toolset(
+                    toolset,
+                    server_name=name,
+                    timeout=min(timeout, MCP_CLOSE_TIMEOUT),
+                )
+            logger.warning(t("mcp.server_failed", name=name, error=error))
+            return False
         except Exception as e:
             status.status = "error"
             status.error_message = str(e)
             status.toolset = None
             status.tool_count = 0
             status.tool_names = []
+            if toolset is not None:
+                await _close_toolset(
+                    toolset,
+                    server_name=name,
+                    timeout=min(timeout, MCP_CLOSE_TIMEOUT),
+                )
             logger.warning(t("mcp.server_failed", name=name, error=str(e)))
             return False
 
@@ -474,10 +611,11 @@ class McpHubManager:
             return False
 
         if status.toolset is not None:
-            try:
-                await status.toolset.close()
-            except Exception as e:
-                logger.warning("Error closing MCP server '%s': %s", name, e)
+            await _close_toolset(
+                status.toolset,
+                server_name=name,
+                timeout=min(_operation_timeout(status.config), MCP_CLOSE_TIMEOUT),
+            )
 
         status.toolset = None
         status.status = "disconnected"
@@ -499,10 +637,11 @@ class McpHubManager:
         enabled = [
             name for name, s in self._servers.items() if s.config.enabled
         ]
-        connected = 0
-        for name in enabled:
-            if await self.connect_server(name):
-                connected += 1
+        results = await asyncio.gather(
+            *(self.connect_server(name) for name in enabled),
+            return_exceptions=True,
+        )
+        connected = sum(result is True for result in results)
 
         total = len(enabled)
         logger.info(
@@ -512,9 +651,14 @@ class McpHubManager:
 
     async def shutdown(self):
         """Disconnect all servers gracefully."""
-        for name in list(self._servers.keys()):
-            if self._servers[name].status == "connected":
-                await self.disconnect_server(name)
+        connected = [
+            name for name, status in self._servers.items()
+            if status.status == "connected"
+        ]
+        await asyncio.gather(
+            *(self.disconnect_server(name) for name in connected),
+            return_exceptions=True,
+        )
         self._started = False
 
     # ----- Dynamic control -----
@@ -556,39 +700,51 @@ class McpHubManager:
             "tool_count": status.tool_count,
         }
 
-    async def test_connection(self, config: McpServerConfig) -> dict:
+    async def test_connection(self, config: McpServerConfig | dict) -> dict:
         """Test connectivity to an MCP server without persisting. Returns result dict."""
+        toolset = None
+        server_name = "__test__"
+        timeout = 10.0
         try:
             from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
-            from google.adk.tools.mcp_tool.mcp_session_manager import (
-                StdioConnectionParams, SseConnectionParams, StreamableHTTPConnectionParams,
-            )
-            from mcp import StdioServerParameters
-
-            timeout = min(config.timeout, 10.0)
-            if config.transport == "stdio":
-                conn_params = StdioConnectionParams(
-                    server_params=StdioServerParameters(
-                        command=config.command, args=config.args,
-                        env=config.env or None, cwd=config.cwd),
-                    timeout=timeout)
-            elif config.transport == "sse":
-                conn_params = SseConnectionParams(
-                    url=config.url, headers=config.headers or None, timeout=timeout)
-            elif config.transport == "streamable_http":
-                conn_params = StreamableHTTPConnectionParams(
-                    url=config.url, headers=config.headers or None, timeout=timeout)
-            else:
-                return {"status": "error", "message": f"Unknown transport: {config.transport}"}
+            if isinstance(config, dict):
+                config = McpServerConfig(
+                    name="__test__",
+                    description=config.get("description", ""),
+                    transport=config.get("transport", "stdio"),
+                    command=config.get("command", ""),
+                    args=config.get("args", []),
+                    env=config.get("env", {}),
+                    cwd=config.get("cwd"),
+                    url=config.get("url", ""),
+                    headers=config.get("headers", {}),
+                    timeout=float(config.get("timeout", 5.0)),
+                    bearer_token_env_var=config.get("bearer_token_env_var", ""),
+                    ca_cert=config.get("ca_cert", ""),
+                )
+            server_name = config.name
+            timeout = _operation_timeout(config, maximum=10.0)
+            conn_params = _connection_params(config, timeout=timeout)
 
             toolset = McpToolset(connection_params=conn_params, errlog=sys.stderr)
-            tools = await toolset.get_tools()
+            tools = await asyncio.wait_for(_get_toolset_tools(toolset), timeout=timeout)
             tool_count = len(tools)
-            await toolset.close()
             return {"status": "ok", "tool_count": tool_count,
                     "message": f"连接成功，发现 {tool_count} 个工具"}
+        except TimeoutError:
+            return {
+                "status": "error",
+                "message": f"MCP server connection timed out after {timeout:.1f}s",
+            }
         except Exception as e:
             return {"status": "error", "message": str(e)[:200]}
+        finally:
+            if toolset is not None:
+                await _close_toolset(
+                    toolset,
+                    server_name=server_name,
+                    timeout=min(timeout, MCP_CLOSE_TIMEOUT),
+                )
 
     # ----- CRUD (hot-reload capable) -----
 
@@ -636,10 +792,11 @@ class McpHubManager:
 
         config = status.config
         was_connected = status.status == "connected"
+        was_enabled = config.enabled
 
         # Apply updatable fields
         for key in ("description", "transport", "category", "command", "url",
-                     "cwd", "timeout"):
+                     "cwd", "timeout", "bearer_token_env_var", "ca_cert"):
             if key in updates:
                 setattr(config, key, updates[key])
         for key in ("pipelines", "args", "env", "headers"):
@@ -651,11 +808,18 @@ class McpHubManager:
         if not self._save_to_db(config):
             return {"status": "error", "message": "Failed to save to database"}
 
-        # Reconnect if connection-relevant fields changed
+        # Reconnect if connection-relevant fields changed. A server that is
+        # enabled but currently disconnected should also get a fresh attempt
+        # after an address or certificate change.
         needs_reconnect = any(k in updates for k in ("transport", "command", "args",
-                                                       "env", "cwd", "url", "headers", "timeout"))
-        if was_connected and needs_reconnect:
+                                                       "env", "cwd", "url", "headers", "timeout",
+                                                       "bearer_token_env_var", "ca_cert"))
+        enabled_changed = "enabled" in updates and config.enabled != was_enabled
+        if was_connected and (needs_reconnect or (enabled_changed and not config.enabled)):
             await self.disconnect_server(name)
+            if config.enabled:
+                await self.connect_server(name)
+        elif config.enabled and (needs_reconnect or (enabled_changed and not was_connected)):
             await self.connect_server(name)
 
         return {"status": "ok", "server": name}
@@ -677,7 +841,9 @@ class McpHubManager:
 
     # ----- Tool access -----
 
-    def get_server_statuses(self, username: str = None) -> list[dict]:
+    def get_server_statuses(
+        self, username: str = None, *, include_config: bool = False
+    ) -> list[dict]:
         """Return status info for configured servers.
 
         If *username* is given, filters to servers owned by that user or shared/global.
@@ -690,7 +856,7 @@ class McpHubManager:
                 shared = s.config.is_shared
                 if owner is not None and owner != username and not shared:
                     continue
-            result.append({
+            payload = {
                 "name": name,
                 "description": s.config.description,
                 "transport": s.config.transport,
@@ -703,15 +869,39 @@ class McpHubManager:
                 "error_message": s.error_message,
                 "connected_at": s.connected_at,
                 "source": s.config.source,
+                "bearer_token_env_var": s.config.bearer_token_env_var,
+                "bearer_token_available": bool(
+                    s.config.bearer_token_env_var
+                    and os.environ.get(s.config.bearer_token_env_var)
+                ),
+                "ca_cert_configured": bool(s.config.ca_cert),
                 "owner_username": s.config.owner_username,
                 "is_shared": s.config.is_shared,
-            })
+            }
+            # Only the admin editor needs private connection details.
+            if include_config:
+                payload.update({
+                    "url": s.config.url,
+                    "command": s.config.command,
+                    "args": s.config.args,
+                    "cwd": s.config.cwd,
+                    "timeout": s.config.timeout,
+                    "ca_cert": s.config.ca_cert,
+                })
+            result.append(payload)
         return result
 
-    async def get_all_tools(self, pipeline: str = None, username: str = None) -> list:
+    async def get_all_tools(
+        self,
+        pipeline: str = None,
+        username: str = None,
+        exclude_servers: set[str] | None = None,
+    ) -> list:
         """Get tools from all connected servers, optionally filtered by pipeline and user visibility."""
         tools = []
         for name, s in self._servers.items():
+            if exclude_servers and name in exclude_servers:
+                continue
             if s.status != "connected" or s.toolset is None:
                 continue
             if pipeline and pipeline not in s.config.pipelines:
@@ -723,13 +913,86 @@ class McpHubManager:
                 if owner is not None and owner != username and not shared:
                     continue
             try:
-                server_tools = await s.toolset.get_tools()
+                server_tools = await asyncio.wait_for(
+                    _get_toolset_tools(s.toolset),
+                    timeout=_operation_timeout(s.config),
+                )
                 tools.extend(server_tools)
+            except TimeoutError:
+                error = (
+                    f"MCP tool discovery timed out after "
+                    f"{_operation_timeout(s.config):.1f}s"
+                )
+                logger.warning("Failed to get tools from '%s': %s", name, error)
+                s.status = "error"
+                s.error_message = error
             except Exception as e:
                 logger.warning("Failed to get tools from '%s': %s", name, e)
                 s.status = "error"
                 s.error_message = str(e)
         return tools
+
+    async def call_tool(self, server_name: str, tool_name: str, args: dict) -> dict:
+        """Call one MCP tool without exposing transport details to an LLM.
+
+        This is used by governed orchestration services that own upload URLs,
+        polling, checksums, and persistence.  It deliberately returns only the
+        tool payload and never logs arguments or responses.
+        """
+        status = self._servers.get(server_name)
+        if not status:
+            raise RuntimeError(f"MCP server '{server_name}' is not configured")
+        if status.status != "connected" or status.toolset is None:
+            raise RuntimeError(
+                f"MCP server '{server_name}' is not connected (status={status.status})"
+            )
+
+        tools = await asyncio.wait_for(
+            _get_toolset_tools(status.toolset),
+            timeout=_operation_timeout(status.config),
+        )
+        selected = None
+        for tool in tools:
+            raw_name = getattr(getattr(tool, "_mcp_tool", None), "name", "")
+            if tool.name == tool_name or raw_name == tool_name:
+                selected = tool
+                break
+        if selected is None:
+            raise RuntimeError(
+                f"MCP tool '{tool_name}' is not available on '{server_name}'"
+            )
+
+        manager = getattr(selected, "_mcp_session_manager", None)
+        raw_tool = getattr(selected, "_mcp_tool", None)
+        if manager is None or raw_tool is None:
+            raise RuntimeError(f"MCP tool '{tool_name}' cannot be invoked directly")
+        session = await manager.create_session()
+        response = await asyncio.wait_for(
+            session.call_tool(raw_tool.name, arguments=args),
+            timeout=max(_operation_timeout(status.config), 30.0),
+        )
+        payload = response.model_dump(exclude_none=True, mode="json")
+        if payload.get("isError"):
+            message = "MCP tool returned an error"
+            for item in payload.get("content", []):
+                if item.get("type") == "text" and item.get("text"):
+                    message = str(item["text"])
+                    break
+            raise RuntimeError(message)
+
+        structured = payload.get("structuredContent")
+        if isinstance(structured, dict):
+            return structured
+        for item in payload.get("content", []):
+            if item.get("type") != "text":
+                continue
+            value = item.get("text", "")
+            try:
+                parsed = json.loads(value)
+                return parsed if isinstance(parsed, dict) else {"result": parsed}
+            except (TypeError, ValueError):
+                return {"result": value}
+        return payload
 
     async def get_tools_for_server(self, name: str) -> list[dict]:
         """Get tool metadata for a specific server (for API/UI)."""
@@ -738,7 +1001,10 @@ class McpHubManager:
             return []
 
         try:
-            tools = await status.toolset.get_tools()
+            tools = await asyncio.wait_for(
+                _get_toolset_tools(status.toolset),
+                timeout=_operation_timeout(status.config),
+            )
             result = []
             for tool in tools:
                 info = {

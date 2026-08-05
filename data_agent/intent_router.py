@@ -184,6 +184,20 @@ _ONTOLOGY_QUERY_REGEX = re.compile(
     re.IGNORECASE,
 )
 
+_MCP_ASSET_SERVER_REGEX = re.compile(
+    r"(?:arcpy[-\s]?mcp|dts[-\s]?mcp|arcpy\s*的\s*mcp|dts\s*的\s*mcp)",
+    re.IGNORECASE,
+)
+_MCP_ASSET_ID_REGEX = re.compile(
+    r"(?:asset_id\s*=\s*\d+|资产\s*(?:id|编号)?\s*[:：=#]?\s*\d+)",
+    re.IGNORECASE,
+)
+_MCP_ASSET_OPERATION_REGEX = re.compile(
+    r"(?:project_features|inspect_dataset|repair_geometry|check_geometry|"
+    r"buffer_features|\broad\b|处理|运行|调用|投影|发布)",
+    re.IGNORECASE,
+)
+
 
 def _is_capability_query(text: str) -> bool:
     """Detect whether the user is asking about system capabilities."""
@@ -193,6 +207,23 @@ def _is_capability_query(text: str) -> bool:
     if not stripped:
         return False
     return bool(_CAPABILITY_QUERY_REGEX.search(stripped))
+
+
+def _is_governed_mcp_asset_query(text: str) -> bool:
+    """Route governed catalog-to-MCP workflows before semantic QC routing."""
+    if not text:
+        return False
+    lowered = text.lower()
+    if any(
+        name in lowered
+        for name in ("run_mcp_asset_workflow", "describe_mcp_asset_workflow")
+    ):
+        return True
+    return bool(
+        _MCP_ASSET_SERVER_REGEX.search(text)
+        and _MCP_ASSET_ID_REGEX.search(text)
+        and _MCP_ASSET_OPERATION_REGEX.search(text)
+    )
 
 
 def _get_router_model() -> str:
@@ -217,6 +248,20 @@ def classify_intent(text: str, previous_pipeline: str = None,
     lang = detect_language(text)
     import time as _time
     _router_start = _time.perf_counter()
+    if text and _is_governed_mcp_asset_query(text) and not image_paths:
+        try:
+            from data_agent.observability import record_intent
+            record_intent("GENERAL", lang, _time.perf_counter() - _router_start)
+        except Exception:
+            pass
+        return (
+            "GENERAL",
+            "governed_mcp_asset_workflow",
+            0,
+            {"collaboration", "spatial_processing", "database_management"},
+            lang,
+            "agentic",
+        )
     # Shortcut: meta-questions about the system itself route directly to GENERAL
     # so the agent can call query_capabilities (always in CORE_TOOLS) instead of
     # being misclassified as AMBIGUOUS.

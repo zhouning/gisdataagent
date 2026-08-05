@@ -20,9 +20,12 @@ class McpHubToolset(BaseToolset):
         tool_filter: Optional list of tool names to include.
     """
 
-    def __init__(self, *, pipeline: str = None, tool_filter=None):
+    def __init__(
+        self, *, pipeline: str = None, tool_filter=None, exclude_servers=None
+    ):
         super().__init__(tool_filter=tool_filter)
         self._pipeline = pipeline
+        self._exclude_servers = set(exclude_servers or ())
 
     async def get_tools(
         self, readonly_context=None
@@ -31,7 +34,10 @@ class McpHubToolset(BaseToolset):
 
         hub = get_mcp_hub()
         try:
-            all_tools = await hub.get_all_tools(pipeline=self._pipeline)
+            kwargs = {"pipeline": self._pipeline}
+            if self._exclude_servers:
+                kwargs["exclude_servers"] = self._exclude_servers
+            all_tools = await hub.get_all_tools(**kwargs)
         except Exception:
             return []
 

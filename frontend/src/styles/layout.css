@@ -2272,6 +2272,50 @@ body {
   min-width: 0;
 }
 
+.asset-heading-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.asset-heading-actions button {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.asset-heading-actions button:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.asset-heading-actions button svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 680px) {
+  .asset-detail-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .asset-heading-actions {
+    justify-content: flex-start;
+  }
+}
+
 .asset-detail-heading code,
 .catalog-asset-code {
   display: block;
@@ -4856,6 +4900,10 @@ body {
 .btn-reconnect { padding: 2px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); font-size: 14px; cursor: pointer; color: var(--text-secondary); transition: all 0.15s; line-height: 1; }
 .btn-reconnect:hover { border-color: var(--primary); color: var(--primary); }
 .btn-reconnect:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-edit-server { padding: 2px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); cursor: pointer; color: var(--text-secondary); transition: all 0.15s; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
+.btn-edit-server:hover { border-color: var(--primary); color: var(--primary); }
+.is-spinning { animation: mcp-spin 0.8s linear infinite; }
+@keyframes mcp-spin { to { transform: rotate(360deg); } }
 .btn-delete-server { padding: 2px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); font-size: 14px; cursor: pointer; color: #ef4444; transition: all 0.15s; line-height: 1; margin-left: auto; }
 .btn-delete-server:hover { border-color: #ef4444; background: rgba(239,68,68,0.10); }
 .btn-delete-server:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -4865,6 +4913,8 @@ body {
 .mcp-add-form-title { font-size: 12px; font-weight: 600; color: var(--text); }
 .mcp-add-form input, .mcp-add-form select { padding: 5px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; color: var(--text); background: var(--bg); }
 .mcp-add-form input:focus, .mcp-add-form select:focus { outline: none; border-color: var(--primary); }
+.mcp-form-row { display: grid; grid-template-columns: minmax(0, 1fr) 92px; gap: 6px; }
+.mcp-form-row input { min-width: 0; width: 100%; }
 .mcp-add-checkbox { font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; cursor: pointer; }
 .mcp-add-error { font-size: 11px; color: #ef4444; }
 .mcp-test-result { font-size: 11px; padding: 4px 8px; border-radius: var(--radius-sm); }

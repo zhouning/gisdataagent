@@ -1857,7 +1857,9 @@ async def _api_mcp_test_connection(request: Request):
         command=body.get("command", ""), args=body.get("args", []),
         env=body.get("env", {}), cwd=body.get("cwd"),
         url=body.get("url", ""), headers=body.get("headers", {}),
-        timeout=float(body.get("timeout", 5.0)))
+        timeout=float(body.get("timeout", 5.0)),
+        bearer_token_env_var=body.get("bearer_token_env_var", ""),
+        ca_cert=body.get("ca_cert", ""))
     hub = get_mcp_hub()
     result = await hub.test_connection(config)
     status_code = 200 if result.get("status") == "ok" else 400
@@ -1897,6 +1899,12 @@ def _validate_mcp_config(body: dict, transport: str, *, partial: bool = False) -
     if headers is not None and (not isinstance(headers, dict) or not all(
             isinstance(k, str) and isinstance(v, str) for k, v in headers.items())):
         return "headers must be a dict of string:string"
+    token_env = body.get("bearer_token_env_var")
+    if token_env is not None and not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", token_env):
+        return "bearer_token_env_var must be a valid environment variable name"
+    ca_cert = body.get("ca_cert")
+    if ca_cert is not None and not isinstance(ca_cert, str):
+        return "ca_cert must be a string path"
     return None
 
 
@@ -1947,6 +1955,8 @@ async def _api_mcp_server_create(request: Request):
         url=body.get("url", ""),
         headers=body.get("headers", {}),
         timeout=float(body.get("timeout", 5.0)),
+        bearer_token_env_var=body.get("bearer_token_env_var", ""),
+        ca_cert=body.get("ca_cert", ""),
         owner_username=username,
         is_shared=is_shared,
     )

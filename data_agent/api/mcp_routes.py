@@ -1,13 +1,16 @@
 """MCP Hub routes — extracted from frontend_api.py (S-4 refactoring v12.1)."""
 
-import os
 import logging
+import math
+import os
+import re
 from typing import Optional
+
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
-from .helpers import _get_user_from_request, _set_user_context, _require_admin
+from .helpers import _get_user_from_request, _require_admin, _set_user_context
 
 logger = logging.getLogger("data_agent.api.mcp_routes")
 
@@ -42,6 +45,20 @@ def _validate_mcp_config(body: dict, transport: str, *, partial: bool = False) -
     if headers is not None and (not isinstance(headers, dict) or not all(
             isinstance(k, str) and isinstance(v, str) for k, v in headers.items())):
         return "headers must be a dict of string:string"
+    token_env = body.get("bearer_token_env_var")
+    if token_env is not None and not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", token_env):
+        return "bearer_token_env_var must be a valid environment variable name"
+    ca_cert = body.get("ca_cert")
+    if ca_cert is not None and not isinstance(ca_cert, str):
+        return "ca_cert must be a string path"
+    timeout = body.get("timeout")
+    if timeout is not None:
+        try:
+            timeout_value = float(timeout)
+        except (TypeError, ValueError):
+            return "timeout must be a number"
+        if not math.isfinite(timeout_value) or not 0.1 <= timeout_value <= 300:
+            return "timeout must be between 0.1 and 300 seconds"
     return None
 
 
@@ -54,7 +71,10 @@ async def mcp_servers(request: Request):
     from ..mcp_hub import get_mcp_hub
     hub = get_mcp_hub()
     filter_user = None if role == "admin" else username
-    servers = hub.get_server_statuses(username=filter_user)
+    servers = hub.get_server_statuses(
+        username=filter_user,
+        include_config=(role == "admin"),
+    )
     return JSONResponse({"servers": servers, "count": len(servers)})
 
 
@@ -115,7 +135,7 @@ async def mcp_reconnect(request: Request):
 
 
 async def mcp_test_connection(request: Request):
-    """POST /api/mcp/test — test MCP server connection without saving."""
+    """POST /api/mcp/servers/test — test without saving (legacy alias: /api/mcp/test)."""
     user = _get_user_from_request(request)
     if not user:
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
@@ -154,12 +174,18 @@ async def mcp_server_create(request: Request):
     err = _validate_mcp_config(body, transport)
     if err:
         return JSONResponse({"error": err}, status_code=400)
-    from ..mcp_hub import get_mcp_hub, MCPServerConfig
-    config = MCPServerConfig(
-        name=name, transport=transport,
+    from ..mcp_hub import McpServerConfig, get_mcp_hub
+    config = McpServerConfig(
+        name=name, transport=transport, enabled=body.get("enabled", False),
+        category=body.get("category", ""),
+        pipelines=body.get("pipelines", ["general", "planner"]),
         command=body.get("command", ""), args=body.get("args", []),
         url=body.get("url", ""), headers=body.get("headers", {}),
-        env=body.get("env", {}), description=body.get("description", ""),
+        env=body.get("env", {}), cwd=body.get("cwd"),
+        description=body.get("description", ""),
+        timeout=float(body.get("timeout", 5.0)),
+        bearer_token_env_var=body.get("bearer_token_env_var", ""),
+        ca_cert=body.get("ca_cert", ""),
         owner_username=username, is_shared=body.get("is_shared", False),
     )
     hub = get_mcp_hub()
@@ -332,6 +358,8 @@ def get_mcp_routes() -> list:
         Route("/api/mcp/servers", mcp_server_create, methods=["POST"]),
         Route("/api/mcp/servers/mine", mcp_servers_mine, methods=["GET"]),
         Route("/api/mcp/tools", mcp_tools, methods=["GET"]),
+        # Keep the frontend's canonical path and the original v12 alias.
+        Route("/api/mcp/servers/test", mcp_test_connection, methods=["POST"]),
         Route("/api/mcp/test", mcp_test_connection, methods=["POST"]),
         Route("/api/mcp/rules", mcp_rules_list, methods=["GET"]),
         Route("/api/mcp/rules", mcp_rules_create, methods=["POST"]),
