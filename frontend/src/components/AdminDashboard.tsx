@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Bell, Play, RefreshCw, RotateCcw, Save, Settings2 } from 'lucide-react';
 import { usePlatformBranding } from '../platformBranding';
+import NavigationSettingsSection from './NavigationSettingsSection';
 
 interface MetricsSummary {
   audit_stats: {
@@ -70,7 +71,7 @@ interface AdminDashboardProps {
 }
 
 export default function AdminDashboard({ onBack }: AdminDashboardProps) {
-  const [activeSection, setActiveSection] = useState<'metrics' | 'users' | 'audit' | 'system' | 'settings' | 'bots' | 'a2a' | 'models' | 'costguard' | 'selfevolution'>('metrics');
+  const [activeSection, setActiveSection] = useState<'metrics' | 'users' | 'audit' | 'system' | 'settings' | 'navigation' | 'bots' | 'a2a' | 'models' | 'costguard' | 'selfevolution'>('metrics');
 
   return (
     <div className="admin-dashboard">
@@ -84,6 +85,8 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
             onClick={() => setActiveSection('system')}>系统状态</button>
           <button className={activeSection === 'settings' ? 'active' : ''}
             onClick={() => setActiveSection('settings')}>系统配置</button>
+          <button className={activeSection === 'navigation' ? 'active' : ''}
+            onClick={() => setActiveSection('navigation')}>工作台导航</button>
           <button className={activeSection === 'bots' ? 'active' : ''}
             onClick={() => setActiveSection('bots')}>Bot 管理</button>
           <button className={activeSection === 'a2a' ? 'active' : ''}
@@ -104,6 +107,7 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
         {activeSection === 'metrics' && <MetricsSection />}
         {activeSection === 'system' && <SystemStatusSection />}
         {activeSection === 'settings' && <PlatformSettingsSection />}
+        {activeSection === 'navigation' && <NavigationSettingsSection />}
         {activeSection === 'bots' && <BotsSection />}
         {activeSection === 'a2a' && <A2ASection />}
         {activeSection === 'models' && <ModelsSection />}

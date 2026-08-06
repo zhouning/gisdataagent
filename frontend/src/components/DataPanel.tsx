@@ -87,6 +87,7 @@ interface DataPanelProps {
 type TabKey = 'files' | 'table' | 'catalog' | 'models' | 'metadata' | 'history' | 'agent_logs' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'approvals' | 'memory' | 'observability' | 'traditional_livability' | 'cultural_heritage' | 'cross_domain_impact' | 'implementation_roadmap' | 'resilience_kernel' | 'digital_readiness' | 'operations_quality' | 'business_licence' | 'development_control' | 'financial_readiness' | 'public_feedback_readiness' | 'spatial_scope_registry' | 'planning_version_registry' | 'parcel_state_readiness' | 'infrastructure_network_readiness' | 'asset_lifecycle_readiness' | 'population_demographic_readiness' | 'population_housing_optimization' | 'uwm_livability' | 'uwm_multistage' | 'ai_demand_readiness' | 'abu_land_use_compare' | 'abu_flus' | 'abu_kernel' | 'worldmodel' | 'worldmodel_v11' | 'worldmodel_v2' | 'worldmodel_v21' | 'twm' | 'causal' | 'optimization' | 'qcmonitor' | 'fusion_quality' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'std_platform' | 'semantic' | 'ontology' | 'ontology_demo' | 'agents' | 'intake' | 'classification';
 
 type GroupKey = 'data' | 'intelligence' | 'ops';
+type NavigationGroupKey = 'data' | 'semantic' | 'analysis' | 'ops' | 'extensions';
 
 interface TabDef {
   key: TabKey;
@@ -183,9 +184,199 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: ReactNode; tabs: TabDef[
   },
 ];
 
-// Build a lookup: tabKey → groupKey
-const TAB_TO_GROUP: Record<TabKey, GroupKey> = {} as any;
-TAB_GROUPS.forEach(g => g.tabs.forEach(t => { TAB_TO_GROUP[t.key] = g.key; }));
+interface NavigationItem {
+  tab_key: TabKey;
+  label: string;
+  icon: ReactNode;
+  group_key: NavigationGroupKey;
+  section_key: string;
+  sort_order: number;
+  group_sort_order?: number;
+  section_sort_order?: number;
+}
+
+interface NavigationSection {
+  key: string;
+  label: string;
+  sort_order: number;
+  items: NavigationItem[];
+}
+
+interface NavigationGroup {
+  key: NavigationGroupKey;
+  label: string;
+  icon: ReactNode;
+  sort_order: number;
+  sections: NavigationSection[];
+}
+
+interface NavigationConfig {
+  groups: NavigationGroup[];
+}
+
+const NAVIGATION_GROUPS: Array<{
+  key: NavigationGroupKey;
+  label: string;
+  icon: ReactNode;
+  sort_order: number;
+  sections: Array<{ key: string; label: string; sort_order: number }>;
+}> = [
+  {
+    key: 'data', label: '数据资源', icon: <Database size={16} />, sort_order: 10,
+    sections: [
+      { key: 'browse', label: '文件与数据浏览', sort_order: 10 },
+      { key: 'assets', label: '数据资产', sort_order: 20 },
+      { key: 'ingest', label: '数据接入', sort_order: 30 },
+    ],
+  },
+  {
+    key: 'semantic', label: '标准与语义', icon: <Tags size={16} />, sort_order: 20,
+    sections: [
+      { key: 'standards', label: '标准体系', sort_order: 10 },
+      { key: 'models', label: '语义模型', sort_order: 20 },
+      { key: 'governance', label: '治理与审批', sort_order: 30 },
+    ],
+  },
+  {
+    key: 'analysis', label: '分析与模型', icon: <Brain size={16} />, sort_order: 30,
+    sections: [
+      { key: 'general', label: '通用分析', sort_order: 10 },
+      { key: 'domain', label: '领域专题', sort_order: 20 },
+      { key: 'world_models', label: '世界模型', sort_order: 30 },
+      { key: 'regional', label: '区域与实验模型', sort_order: 40 },
+    ],
+  },
+  {
+    key: 'ops', label: '运营与质量', icon: <Activity size={16} />, sort_order: 40,
+    sections: [
+      { key: 'tasks', label: '任务与流程', sort_order: 10 },
+      { key: 'monitoring', label: '运行监控', sort_order: 20 },
+      { key: 'quality', label: '质量与评估', sort_order: 30 },
+    ],
+  },
+  {
+    key: 'extensions', label: '扩展能力', icon: <LayoutGrid size={16} />, sort_order: 50,
+    sections: [
+      { key: 'agent', label: '智能体与知识', sort_order: 10 },
+      { key: 'market', label: '市场与扩展', sort_order: 20 },
+    ],
+  },
+];
+
+const DATA_TABS = new Set<TabKey>([
+  'files', 'table', 'geojson', 'topology', 'catalog', 'models', 'metadata', 'vsources', 'intake',
+]);
+const SEMANTIC_TABS = new Set<TabKey>([
+  'standards', 'std_platform', 'semantic', 'ontology', 'ontology_demo', 'classification', 'governance', 'approvals',
+]);
+const OPS_TABS = new Set<TabKey>([
+  'history', 'agent_logs', 'usage', 'analytics', 'feedback', 'qcmonitor', 'alerts',
+  'observability', 'messagebus', 'tasks', 'workflows', 'templates',
+]);
+const EXTENSION_TABS = new Set<TabKey>([
+  'kb', 'suggestions', 'memory', 'market', 'agents',
+]);
+const WORLD_MODEL_TABS = new Set<TabKey>([
+  'worldmodel', 'worldmodel_v11', 'worldmodel_v2', 'worldmodel_v21', 'twm', 'uwm_livability', 'uwm_multistage',
+]);
+const REGIONAL_TABS = new Set<TabKey>(['abu_land_use_compare', 'abu_flus', 'abu_kernel']);
+const DOMAIN_TABS = new Set<TabKey>([
+  'traditional_livability', 'cultural_heritage', 'cross_domain_impact', 'implementation_roadmap', 'resilience_kernel',
+  'digital_readiness', 'operations_quality', 'business_licence', 'development_control', 'financial_readiness',
+  'public_feedback_readiness', 'spatial_scope_registry', 'planning_version_registry', 'parcel_state_readiness',
+  'infrastructure_network_readiness', 'asset_lifecycle_readiness', 'population_demographic_readiness',
+  'population_housing_optimization', 'ai_demand_readiness',
+]);
+
+function fallbackNavigation(): NavigationConfig {
+  const flat = TAB_GROUPS.flatMap(group => group.tabs);
+  const groups = NAVIGATION_GROUPS.map(group => ({
+    ...group,
+    sections: group.sections.map(section => ({ ...section, items: [] as NavigationItem[] })),
+  }));
+  const groupFor = (tab: TabKey): NavigationGroupKey => {
+    if (DATA_TABS.has(tab)) return 'data';
+    if (SEMANTIC_TABS.has(tab)) return 'semantic';
+    if (OPS_TABS.has(tab)) return 'ops';
+    if (EXTENSION_TABS.has(tab)) return 'extensions';
+    return 'analysis';
+  };
+  const sectionFor = (tab: TabKey, group: NavigationGroupKey): string => {
+    if (group === 'data') {
+      if (['catalog', 'models', 'metadata'].includes(tab)) return 'assets';
+      if (['vsources', 'intake'].includes(tab)) return 'ingest';
+      return 'browse';
+    }
+    if (group === 'semantic') {
+      if (['standards', 'std_platform'].includes(tab)) return 'standards';
+      if (['semantic', 'ontology', 'ontology_demo'].includes(tab)) return 'models';
+      return 'governance';
+    }
+    if (group === 'ops') {
+      if (['tasks', 'workflows', 'templates'].includes(tab)) return 'tasks';
+      if (['history', 'agent_logs', 'alerts', 'observability', 'messagebus'].includes(tab)) return 'monitoring';
+      return 'quality';
+    }
+    if (group === 'extensions') return tab === 'market' ? 'market' : 'agent';
+    if (WORLD_MODEL_TABS.has(tab)) return 'world_models';
+    if (REGIONAL_TABS.has(tab)) return 'regional';
+    if (DOMAIN_TABS.has(tab)) return 'domain';
+    return 'general';
+  };
+  flat.forEach((tab) => {
+    const groupKey = groupFor(tab.key);
+    const sectionKey = sectionFor(tab.key, groupKey);
+    const group = groups.find(candidate => candidate.key === groupKey);
+    const section = group?.sections.find(candidate => candidate.key === sectionKey);
+    if (!section) return;
+    section.items.push({
+      tab_key: tab.key,
+      label: tab.label,
+      icon: tab.icon,
+      group_key: groupKey,
+      section_key: sectionKey,
+      sort_order: section.items.length,
+    });
+  });
+  return { groups };
+}
+
+const ICONS: Record<string, ReactNode> = {
+  database: <Database size={14} />, tags: <Tags size={14} />, brain: <Brain size={14} />, activity: <Activity size={14} />,
+  puzzle: <LayoutGrid size={14} />, folder: <FolderOpen size={14} />, table: <Table2 size={14} />, 'map-pin': <MapPin size={14} />,
+  network: <Network size={14} />, layout: <LayoutGrid size={14} />, tag: <Tag size={14} />, link: <Link size={14} />, inbox: <Inbox size={14} />,
+  'file-text': <FileText size={14} />, sparkles: <Sparkles size={14} />, shield: <Shield size={14} />, zap: <Zap size={14} />, wrench: <Wrench size={14} />,
+  'book-open': <BookOpen size={14} />, 'bar-chart': <BarChart3 size={14} />, flask: <FlaskConical size={14} />, target: <Target size={14} />, 'git-branch': <GitBranch size={14} />,
+  globe: <Globe size={14} />, 'list-todo': <ListTodo size={14} />, store: <Store size={14} />, 'thumbs-up': <ThumbsUp size={14} />, 'pie-chart': <PieChart size={14} />,
+  home: <Home size={14} />, history: <History size={14} />, bell: <Bell size={14} />, gauge: <Gauge size={14} />, radio: <Radio size={14} />,
+  'layout-grid': <LayoutGrid size={14} />, 'clipboard-check': <ClipboardCheck size={14} />, lightbulb: <Lightbulb size={14} />,
+};
+
+function normalizeNavigation(payload: any): NavigationConfig | null {
+  if (!payload || !Array.isArray(payload.groups)) return null;
+  const groups: NavigationGroup[] = payload.groups.map((group: any) => ({
+    key: group.key as NavigationGroupKey,
+    label: String(group.label || group.key),
+    icon: ICONS[group.icon] || <LayoutGrid size={16} />,
+    sort_order: Number(group.sort_order || 0),
+    sections: Array.isArray(group.sections) ? group.sections.map((section: any) => ({
+      key: String(section.key),
+      label: String(section.label || section.key),
+      sort_order: Number(section.sort_order || 0),
+      items: Array.isArray(section.items) ? section.items.map((item: any) => ({
+        tab_key: item.tab_key as TabKey,
+        label: String(item.label || item.tab_key),
+        icon: ICONS[item.icon] || <LayoutGrid size={14} />,
+        group_key: group.key as NavigationGroupKey,
+        section_key: String(section.key),
+        sort_order: Number(item.sort_order || 0),
+        group_sort_order: Number(item.group_sort_order || group.sort_order || 0),
+        section_sort_order: Number(item.section_sort_order || section.sort_order || 0),
+      })) : [],
+    })) : [],
+  })).filter((group: NavigationGroup) => group.sections.some(section => section.items.length));
+  return { groups };
+}
 
 export default function DataPanel({
   dataFile,
@@ -195,16 +386,57 @@ export default function DataPanel({
   onAddMapLayer,
 }: DataPanelProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('files');
-  const [activeGroup, setActiveGroup] = useState<GroupKey>('data');
+  const [navigation, setNavigation] = useState<NavigationConfig>(() => fallbackNavigation());
+  const [activeGroup, setActiveGroup] = useState<NavigationGroupKey>('data');
+  const [activeSection, setActiveSection] = useState('browse');
   const [tableData, setTableData] = useState<any[]>([]);
   const [tableColumns, setTableColumns] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+    fetch('/api/workspace/navigation', { credentials: 'include' })
+      .then(response => response.ok ? response.json() : null)
+      .then(payload => {
+        if (!cancelled) {
+          const resolved = normalizeNavigation(payload);
+          if (resolved) setNavigation(resolved);
+        }
+      })
+      .catch(() => { /* fallback registry remains active */ });
+    return () => { cancelled = true; };
+  }, [userRole, username]);
+
+  const allNavigationItems = navigation.groups.flatMap(group => group.sections.flatMap(section => section.items));
+  const findNavigationItem = (tab: TabKey) => allNavigationItems.find(item => item.tab_key === tab);
+  const firstNavigationItem = navigation.groups[0]?.sections[0]?.items[0];
+
+  const selectFirstAvailableTab = (preferred: TabKey) => {
+    const item = findNavigationItem(preferred) || firstNavigationItem;
+    if (!item) return;
+    setActiveTab(item.tab_key);
+    setActiveGroup(item.group_key);
+    setActiveSection(item.section_key);
+  };
+
+  useEffect(() => {
+    const selected = findNavigationItem(activeTab);
+    if (selected) {
+      setActiveGroup(selected.group_key);
+      setActiveSection(selected.section_key);
+      return;
+    }
+    if (firstNavigationItem) {
+      setActiveGroup(firstNavigationItem.group_key);
+      setActiveSection(firstNavigationItem.section_key);
+      setActiveTab(firstNavigationItem.tab_key);
+    }
+  }, [navigation]);
+
+  useEffect(() => {
     if (!dataFile) return;
     loadCsvData(dataFile);
-    setActiveTab('table');
-    setActiveGroup('data');
+    selectFirstAvailableTab('table');
   }, [dataFile]);
 
   useEffect(() => {
@@ -212,13 +444,16 @@ export default function DataPanel({
       const detail = (rawEvent as CustomEvent).detail || {};
       const tab = detail.tab as TabKey;
       if (tab !== 'ontology' && tab !== 'ontology_demo') return;
+      const item = findNavigationItem(tab);
+      if (!item) return;
       setActiveTab(tab);
-      setActiveGroup('intelligence');
+      setActiveGroup(item.group_key);
+      setActiveSection(item.section_key);
       onRequestWidth?.(tab === 'ontology' ? 980 : 760);
     };
     window.addEventListener('gda-workspace-update', handleWorkspaceUpdate);
     return () => window.removeEventListener('gda-workspace-update', handleWorkspaceUpdate);
-  }, [onRequestWidth]);
+  }, [navigation, onRequestWidth]);
 
   const loadCsvData = async (filename: string) => {
     setLoading(true);
@@ -236,8 +471,11 @@ export default function DataPanel({
   };
 
   const handleTabClick = (tab: TabKey) => {
+    const item = findNavigationItem(tab);
+    if (!item) return;
     setActiveTab(tab);
-    setActiveGroup(TAB_TO_GROUP[tab]);
+    setActiveGroup(item.group_key);
+    setActiveSection(item.section_key);
     if (tab === 'models') onRequestWidth?.(680);
     else if (tab === 'capabilities') onRequestWidth?.(720);
     else if (tab === 'ontology') onRequestWidth?.(980);
@@ -248,15 +486,19 @@ export default function DataPanel({
     else if (tab === 'abu_land_use_compare' || tab === 'abu_flus' || tab === 'abu_kernel' || tab === 'worldmodel_v11') onRequestWidth?.(700);
   };
 
-  const handleGroupClick = (groupKey: GroupKey) => {
+  const handleGroupClick = (groupKey: NavigationGroupKey) => {
     setActiveGroup(groupKey);
-    const group = TAB_GROUPS.find(g => g.key === groupKey);
-    if (group && !group.tabs.some(t => t.key === activeTab)) {
-      setActiveTab(group.tabs[0].key);
+    const group = navigation.groups.find(g => g.key === groupKey);
+    const section = group?.sections[0];
+    if (section) {
+      setActiveSection(section.key);
+      if (section.items[0]) setActiveTab(section.items[0].tab_key);
     }
   };
 
-  const currentGroup = TAB_GROUPS.find(g => g.key === activeGroup) || TAB_GROUPS[0];
+  const currentGroup = navigation.groups.find(g => g.key === activeGroup) || navigation.groups[0];
+  const currentSection = currentGroup?.sections.find(section => section.key === activeSection) || currentGroup?.sections[0];
+  const hasVisibleNavigation = navigation.groups.length > 0;
 
   return (
     <div className="data-panel">
@@ -265,9 +507,9 @@ export default function DataPanel({
         <span>工作台</span>
       </div>
 
-      {/* Group selector — 3 segments */}
+      {/* Primary group selector */}
       <div className="data-panel-groups">
-        {TAB_GROUPS.map(g => (
+        {navigation.groups.map(g => (
           <button
             key={g.key}
             className={`data-panel-group ${activeGroup === g.key ? 'active' : ''}`}
@@ -276,17 +518,37 @@ export default function DataPanel({
           >
             <span className="group-icon">{g.icon}</span>
             <span className="group-label">{g.label}</span>
+            <span className="group-count">{g.sections.reduce((count, section) => count + section.items.length, 0)}</span>
           </button>
         ))}
       </div>
 
-      {/* Tabs within active group */}
+      {/* Second-level section selector */}
+      {currentGroup && currentGroup.sections.length > 1 && (
+        <div className="data-panel-sections">
+          {currentGroup.sections.map(section => (
+            <button
+              key={section.key}
+              className={`data-panel-section ${activeSection === section.key ? 'active' : ''}`}
+              onClick={() => {
+                setActiveSection(section.key);
+                if (section.items[0]) setActiveTab(section.items[0].tab_key);
+              }}
+            >
+              {section.label}<span>{section.items.length}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Tabs within active section */}
       <div className="data-panel-tabs">
-        {currentGroup.tabs.map(t => (
+        {(currentSection?.items || []).map(t => (
           <button
-            key={t.key}
-            className={`data-panel-tab ${activeTab === t.key ? 'active' : ''}`}
-            onClick={() => handleTabClick(t.key)}
+            key={t.tab_key}
+            className={`data-panel-tab ${activeTab === t.tab_key ? 'active' : ''}`}
+            onClick={() => handleTabClick(t.tab_key)}
+            title={t.label}
           >
             <span className="tab-icon">{t.icon}</span>
             {t.label}
@@ -295,7 +557,9 @@ export default function DataPanel({
       </div>
 
       <div className="data-panel-content">
-        {activeTab === 'files' && <FileManager onFileClick={(name) => { loadCsvData(name); setActiveTab('table'); }} />}
+        {!hasVisibleNavigation && <div className="data-panel-empty">当前没有可见的工作台功能，请联系管理员。</div>}
+        {hasVisibleNavigation && <>
+        {activeTab === 'files' && <FileManager onFileClick={(name) => { loadCsvData(name); handleTabClick('table'); }} />}
         {activeTab === 'table' && <DataTable columns={tableColumns} data={tableData} loading={loading} />}
         {activeTab === 'catalog' && (
           <CatalogTab
@@ -370,6 +634,7 @@ export default function DataPanel({
         {activeTab === 'semantic' && <SemanticLayerTab userRole={userRole} />}
         {activeTab === 'ontology' && <OntologyTab />}
         {activeTab === 'ontology_demo' && <NaturalResourceOntologyDemoTab />}
+        </>}
       </div>
     </div>
   );

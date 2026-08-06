@@ -4406,6 +4406,7 @@ def get_frontend_api_routes():
     from .api.file_routes import get_file_routes
     from .api.topology_routes import get_topology_routes
     from .api.metadata_routes import get_metadata_routes
+    from .api.navigation_routes import get_navigation_routes
     from .api.fusion_v2_routes import get_fusion_v2_routes
     from .api.tile_routes import get_tile_routes
     from .api.context_routes import get_context_routes
@@ -4702,6 +4703,8 @@ def get_frontend_api_routes():
         *get_topology_routes(),
         # Metadata Management (v15.8)
         *get_metadata_routes(),
+        # Workspace navigation visibility and ordering (v26.0)
+        *get_navigation_routes(),
         # Fusion v2.0 (v17.0)
         *get_fusion_v2_routes(),
         # Vector Tile Serving (v17.1)
