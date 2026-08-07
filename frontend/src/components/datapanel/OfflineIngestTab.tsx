@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Download, FileUp, Info, RefreshCw, Search, ShieldAlert, Upload } from 'lucide-react';
+import { Download, FileUp, Info, MessageCircle, RefreshCw, Search, ShieldAlert, Upload } from 'lucide-react';
 
 type Row = Record<string, any>;
 
@@ -40,6 +40,9 @@ export default function OfflineIngestTab() {
   const [standardizationPlan, setStandardizationPlan] = useState<Row | null>(null);
   const [materialization, setMaterialization] = useState<Row | null>(null);
   const [binding, setBinding] = useState<Row | null>(null);
+  const [semanticProjection, setSemanticProjection] = useState<Row | null>(null);
+  const [semanticQuestion, setSemanticQuestion] = useState('各地类图斑数量和面积是多少？');
+  const [semanticAnswer, setSemanticAnswer] = useState<Row | null>(null);
   const [localPath, setLocalPath] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
@@ -66,6 +69,8 @@ export default function OfflineIngestTab() {
       setStandardizationPlan(null);
       setMaterialization(null);
       setBinding(null);
+      setSemanticProjection(null);
+      setSemanticAnswer(null);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '运行详情加载失败');
     }
@@ -173,20 +178,58 @@ export default function OfflineIngestTab() {
     }
   };
 
-  const bindOntology = async () => {
+  const bindOntology = async (bindingMode: 'rehearsal' | 'production' = 'rehearsal') => {
     if (!standardizationPlan?.plan_id) return;
     setBusy(true);
     try {
       const result = await api<Row>(`/api/offline-ingest/standardization/${standardizationPlan.plan_id}/ontology-bind`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ontology_version: '2.3.0' }),
+        body: JSON.stringify({ ontology_version: '2.3.0', binding_mode: bindingMode }),
       });
       setBinding(result);
       const bindingStatus = result.ontology_binding?.status || result.status;
-      setMessage(bindingStatus === 'accepted' || result.status === 'succeeded' ? '本体引用绑定已接受' : `本体绑定状态：${bindingStatus}`);
+      setMessage(bindingStatus === 'accepted' || result.status === 'succeeded' ? `${bindingMode === 'rehearsal' ? '演示' : '生产'}本体引用绑定已接受` : `本体绑定状态：${bindingStatus}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '本体绑定被门禁拒绝');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const buildSemanticProjection = async () => {
+    if (!standardizationPlan?.plan_id) return;
+    setBusy(true);
+    try {
+      const result = await api<Row>(`/api/offline-ingest/standardization/${standardizationPlan.plan_id}/semantic-project`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'rehearsal', preview_limit: 500 }),
+      });
+      setSemanticProjection(result.projection || null);
+      setSemanticAnswer(null);
+      setMessage('DLTB 离线语义投影已生成；当前按演示模式运行，不具备生产发布资格');
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '语义投影生成失败');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const askSemantic = async () => {
+    if (!semanticProjection?.projection_id || !semanticQuestion.trim()) return;
+    setBusy(true);
+    try {
+      const result = await api<Row>('/api/offline-ingest/semantic-query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projection_id: semanticProjection.projection_id, question: semanticQuestion.trim(), limit: 100 }),
+      });
+      setSemanticAnswer(result);
+      setMessage(`问数完成：${result.query_type || 'dataset_summary'}`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '离线语义问数失败');
     } finally {
       setBusy(false);
     }
@@ -246,10 +289,17 @@ export default function OfflineIngestTab() {
         </div>
       </section>}
 
-      {standardizationPlan && <section style={{ borderTop: '1px solid #e2e8f0', paddingTop: 12, marginBottom: 14 }}><div style={{ fontWeight: 600, marginBottom: 8 }}>标准化计划 <StatusBadge value={standardizationPlan.status} /></div><div style={{ color: '#475569', marginBottom: 8 }}>目标数：{(standardizationPlan.outputs || []).length}，版本：{standardizationPlan.standard_version}</div><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><button onClick={executePlan} disabled={busy} style={{ padding: '6px 9px', border: 0, color: '#fff', background: '#0f766e', borderRadius: 4, cursor: 'pointer' }}>执行标准化</button><button onClick={bindOntology} disabled={busy || !materialization} style={{ padding: '6px 9px', border: '1px solid #334155', color: '#334155', background: '#fff', borderRadius: 4, cursor: 'pointer' }}>申请本体绑定</button></div></section>}
+      {standardizationPlan && <section style={{ borderTop: '1px solid #e2e8f0', paddingTop: 12, marginBottom: 14 }}><div style={{ fontWeight: 600, marginBottom: 8 }}>标准化计划 <StatusBadge value={standardizationPlan.status} /></div><div style={{ color: '#475569', marginBottom: 8 }}>目标数：{(standardizationPlan.outputs || []).length}，版本：{standardizationPlan.standard_version}</div><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><button onClick={executePlan} disabled={busy} style={{ padding: '6px 9px', border: 0, color: '#fff', background: '#0f766e', borderRadius: 4, cursor: 'pointer' }}>执行标准化</button><button onClick={() => bindOntology('rehearsal')} disabled={busy || !materialization} style={{ padding: '6px 9px', border: '1px solid #334155', color: '#334155', background: '#fff', borderRadius: 4, cursor: 'pointer' }}>演示本体绑定</button><button onClick={() => bindOntology('production')} disabled={busy || !materialization} style={{ padding: '6px 9px', border: '1px solid #b91c1c', color: '#b91c1c', background: '#fff', borderRadius: 4, cursor: 'pointer' }}>申请生产绑定</button><button onClick={buildSemanticProjection} disabled={busy || !materialization} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 9px', border: '1px solid #0f766e', color: '#0f766e', background: '#fff', borderRadius: 4, cursor: 'pointer' }}><MessageCircle size={14} />生成 DLTB 语义投影</button></div></section>}
 
       {materialization && <section style={{ borderTop: '1px solid #e2e8f0', paddingTop: 12, marginBottom: 14 }}><div style={{ fontWeight: 600 }}>标准化结果 <StatusBadge value={materialization.status} /></div><div style={{ marginTop: 6, color: '#475569' }}>输出：{materialization.output_count ?? materialization.materialization?.outputs?.length ?? 0}，阻断：{materialization.materialization?.failures?.length ?? materialization.failures?.length ?? 0}</div></section>}
       {binding && <section style={{ borderTop: '1px solid #e2e8f0', paddingTop: 12, marginBottom: 14 }}><div style={{ fontWeight: 600 }}>本体绑定门禁 <StatusBadge value={binding.ontology_binding?.status || binding.status} /></div><div style={{ marginTop: 6, color: '#475569' }}>{binding.reason || binding.message || '仅保存治理数据引用，不复制原始记录'}</div></section>}
+
+      {semanticProjection && <section style={{ borderTop: '1px solid #e2e8f0', paddingTop: 12, marginBottom: 14 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}><div style={{ fontWeight: 600 }}>DLTB 语义层与离线问数</div><StatusBadge value={semanticProjection.production_eligible ? 'production_eligible' : 'rehearsal_only'} /></div>
+        <div style={{ color: '#475569', marginBottom: 8 }}>语义源：<code>land_parcel_current</code> · 本体：{semanticProjection.ontology_version} · 质量：<StatusBadge value={semanticProjection.quality_status || 'review'} /></div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><MessageCircle size={15} color="#64748b" /><input value={semanticQuestion} onChange={(event) => setSemanticQuestion(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') askSemantic(); }} placeholder="例如：某行政区的建设用地面积是多少？" style={{ minWidth: 340, flex: 1, border: '1px solid #cbd5e1', borderRadius: 4, padding: '7px 8px' }} /><button onClick={askSemantic} disabled={busy || !semanticQuestion.trim()} style={{ padding: '7px 10px', border: 0, background: '#0f766e', color: '#fff', borderRadius: 4, cursor: 'pointer' }}>问数</button></div>
+        {semanticAnswer && <div style={{ marginTop: 10, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 5, padding: 10 }}><div style={{ marginBottom: 8 }}>{semanticAnswer.answer}</div><div style={{ overflowX: 'auto' }}><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 520 }}><thead><tr style={{ textAlign: 'left', color: '#64748b', borderBottom: '1px solid #e2e8f0' }}>{Object.keys((semanticAnswer.rows || [])[0] || {}).map((key) => <th key={key} style={{ padding: 5 }}>{key}</th>)}</tr></thead><tbody>{(semanticAnswer.rows || []).slice(0, 20).map((row: Row, index: number) => <tr key={index} style={{ borderBottom: '1px solid #f1f5f9' }}>{Object.keys((semanticAnswer.rows || [])[0] || {}).map((key) => <td key={key} style={{ padding: 5 }}>{String(row[key] ?? '—')}</td>)}</tr>)}</tbody></table></div></div>}
+      </section>}
 
       <section style={{ borderTop: '1px solid #e2e8f0', paddingTop: 12 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}><div style={{ fontWeight: 600 }}>宁夏数据模型基线</div><span style={{ color: '#64748b', fontSize: 11 }}>{contracts?.authority || 'not_configured'} · {contractEntries.length} 个对象</span></div>{contracts?.status === 'not_configured' ? <div style={{ display: 'flex', gap: 6, alignItems: 'center', color: '#b91c1c', background: '#fff1f2', padding: 8, borderRadius: 4, marginBottom: 8 }}><ShieldAlert size={15} />尚未配置宁夏清单字段基线，不能进行标准匹配。</div> : <div style={{ display: 'flex', gap: 6, alignItems: 'center', color: '#166534', background: '#f0fdf4', padding: 8, borderRadius: 4, marginBottom: 8 }}><Info size={15} />两份宁夏 Excel 已作为匹配基线；真实数据按图层逐项执行字段、CRS、几何和值域质量校验。</div>}<div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{contractEntries.slice(0, 18).map((contract) => <span key={contract.code} style={{ border: '1px solid #e2e8f0', borderRadius: 4, padding: '4px 7px', background: '#fff' }}>{contract.code} <span style={{ color: '#64748b' }}>{contract.fields?.length || 0} 字段</span></span>)}</div></section>
     </div>

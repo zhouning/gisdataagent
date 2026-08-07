@@ -18,21 +18,23 @@
 
 ```powershell
 uv run python scripts\compile_nx_standard_contract.py `
-  --role-contracts .tmp\twm_standard_generation_check\standards\one_map_role_contracts.zh.json `
-  --field-aliases .tmp\twm_standard_generation_check\standards\one_map_field_aliases.zh.json `
-  --value-domains .tmp\twm_standard_generation_check\standards\one_map_value_domains.zh.json `
-  --field-catalog .tmp\twm_standard_generation_check\tables\standard_field_catalog.csv `
+  --role-contracts data_agent\test_data\twm_bishan_demo\standards\one_map_role_contracts.zh.json `
+  --field-aliases data_agent\test_data\twm_bishan_demo\standards\one_map_field_aliases.zh.json `
+  --value-domains data_agent\test_data\twm_bishan_demo\standards\one_map_value_domains.zh.json `
+  --field-catalog data_agent\test_data\twm_bishan_demo\tables\standard_field_catalog.csv `
   --ea-table-comparison D:\GDA_CONFIG\ea-standard-table-comparison.csv `
   --ea-logical-comparison D:\GDA_CONFIG\ea-standard-logical-entity-comparison.csv `
   --standard-docx-catalog data_agent\standards\compiled_docx\02_统一调查监测.yaml `
   --shp-workbook D:\GDA_CONFIG\SHP矢量数据表及字段梳理_追加更新版.xlsx `
   --inventory-workbook D:\GDA_CONFIG\提供数据内容详细梳理分析20260716.xlsx `
   --standard-version NX-2026-08-baseline `
-  --output D:\GDA_CONFIG\nx-standard-contract-catalog.v2.baseline.json `
+  --output D:\GDA_CONFIG\natural_resource_standard_baseline.json `
   --report D:\GDA_CONFIG\nx-standard-contract-compile.md
 ```
 
 这里的 JSON 是由两份宁夏 Excel、EA 对比证据和自然资源标准整理出的运行基线。真实文件到达后，系统按数据集补充并核验实际字段类型、长度、精度、必填性、主键/唯一性、值域、SRID、时间语义和质量规则。需要行政发布留痕时可以另行生成 `authority=ea_standard`、`review_status=approved` 的版本，但该版本不是 Windows 主机启动、入湖或其他合格数据问数的全局前置条件。
+
+如果 staging 机暂时没有 EA 对比 CSV，可以省略 `--ea-table-comparison` 和 `--ea-logical-comparison`；编译器会明确记录缺失的 EA 证据，不会伪造 `approved`，现场仍按真实数据逐数据集复核。
 
 ### 2. 做 Windows 主机预检
 

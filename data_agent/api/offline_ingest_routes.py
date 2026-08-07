@@ -243,6 +243,7 @@ async def ontology_bind(request: Request):
             request.path_params["plan_id"],
             actor=actor,
             ontology_version=body.get("ontology_version"),
+            binding_mode=str(body.get("binding_mode") or "production"),
         )
         return JSONResponse(result, status_code=200)
     except FileNotFoundError:
@@ -250,6 +251,98 @@ async def ontology_bind(request: Request):
             {"error": "standardization materialization not found"}, status_code=404
         )
     except ValueError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=409)
+
+
+async def semantic_project(request: Request):
+    """Build the file-backed DLTB semantic projection after materialization."""
+
+    actor, error = _auth(request)
+    if error:
+        return error
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    try:
+        from ..dltb_vertical_demo import DLTBVerticalDemo
+
+        store = _store()
+        result = DLTBVerticalDemo(store).build_projection(
+            request.path_params["plan_id"],
+            actor=actor,
+            mode=str(body.get("mode") or "rehearsal"),
+            preview_limit=int(body.get("preview_limit") or 500),
+        )
+        return JSONResponse(result, status_code=200)
+    except FileNotFoundError:
+        return JSONResponse({"error": "DLTB materialization not found"}, status_code=404)
+    except (TypeError, ValueError, RuntimeError) as exc:
+        return JSONResponse({"error": str(exc)}, status_code=409)
+
+
+def _projection_path(store, projection_id: str):
+    import re
+
+    if not re.fullmatch(r"[a-f0-9-]{16,64}", projection_id):
+        raise ValueError("invalid projection id")
+    path = store.root / "semantic_products" / projection_id / "semantic_projection.json"
+    if not path.exists():
+        raise FileNotFoundError(projection_id)
+    return path
+
+
+async def semantic_projection_detail(request: Request):
+    _, error = _auth(request)
+    if error:
+        return error
+    try:
+        from ..dltb_vertical_demo import DLTBVerticalDemo
+
+        projection = DLTBVerticalDemo.load_projection(
+            _projection_path(_store(), request.path_params["projection_id"])
+        )
+        return JSONResponse({"status": "succeeded", "projection": projection})
+    except (FileNotFoundError, ValueError) as exc:
+        return JSONResponse({"error": str(exc)}, status_code=404)
+
+
+async def semantic_catalog(request: Request):
+    _, error = _auth(request)
+    if error:
+        return error
+    store = _store()
+    path = store.root / "semantic_products" / "catalog.json"
+    if not path.exists():
+        return JSONResponse({"schema": "gda.offline-semantic-catalog.v1", "sources": []})
+    try:
+        return JSONResponse(json.loads(path.read_text(encoding="utf-8")))
+    except (OSError, ValueError, TypeError) as exc:
+        return JSONResponse({"error": str(exc)}, status_code=500)
+
+
+async def semantic_query(request: Request):
+    actor, error = _auth(request)
+    if error:
+        return error
+    try:
+        body = await request.json()
+        projection_id = str(body.get("projection_id") or "")
+        question = str(body.get("question") or "").strip()
+        if not question:
+            return JSONResponse({"error": "question is required"}, status_code=400)
+        from ..dltb_vertical_demo import DLTBVerticalDemo
+
+        result = DLTBVerticalDemo.query(
+            _projection_path(_store(), projection_id),
+            question,
+            limit=int(body.get("limit") or 100),
+        )
+        result["actor"] = actor
+        return JSONResponse(result)
+    except FileNotFoundError:
+        return JSONResponse({"error": "semantic projection not found"}, status_code=404)
+    except (TypeError, ValueError, RuntimeError) as exc:
         return JSONResponse({"error": str(exc)}, status_code=409)
 
 
@@ -292,6 +385,26 @@ def get_offline_ingest_routes() -> list[Route]:
         Route(
             "/api/offline-ingest/standardization/{plan_id}/ontology-bind",
             endpoint=ontology_bind,
+            methods=["POST"],
+        ),
+        Route(
+            "/api/offline-ingest/standardization/{plan_id}/semantic-project",
+            endpoint=semantic_project,
+            methods=["POST"],
+        ),
+        Route(
+            "/api/offline-ingest/semantic/{projection_id}",
+            endpoint=semantic_projection_detail,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/offline-ingest/semantic-catalog",
+            endpoint=semantic_catalog,
+            methods=["GET"],
+        ),
+        Route(
+            "/api/offline-ingest/semantic-query",
+            endpoint=semantic_query,
             methods=["POST"],
         ),
     ]

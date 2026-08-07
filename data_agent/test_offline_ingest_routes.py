@@ -80,3 +80,37 @@ def test_overview_and_run_list_are_available_for_operations_console(tmp_path, mo
     response = client.get("/api/offline-ingest/runs?limit=5")
     assert response.status_code == 200
     assert response.json()["runs"] == []
+
+
+def test_offline_semantic_catalog_is_available_without_database(tmp_path, monkeypatch):
+    monkeypatch.setenv("GDA_OFFLINE_INGEST_AUTH_REQUIRED", "false")
+    monkeypatch.setenv("GDA_FILE_LAKE_ROOT", str(tmp_path / "lake"))
+    app = Starlette(routes=get_offline_ingest_routes())
+    response = TestClient(app).get("/api/offline-ingest/semantic-catalog")
+    assert response.status_code == 200
+    assert response.json()["sources"] == []
+
+
+def test_semantic_project_route_returns_projection(monkeypatch):
+    monkeypatch.setenv("GDA_OFFLINE_INGEST_AUTH_REQUIRED", "false")
+    from data_agent.dltb_vertical_demo import DLTBVerticalDemo
+
+    def fake_build(self, plan_id, **kwargs):
+        return {
+            "status": "succeeded",
+            "projection": {
+                "projection_id": "a" * 32,
+                "semantic_source": "land_parcel_current",
+                "production_eligible": False,
+            },
+            "metrics": {"feature_count": 0},
+        }
+
+    monkeypatch.setattr(DLTBVerticalDemo, "build_projection", fake_build)
+    app = Starlette(routes=get_offline_ingest_routes())
+    response = TestClient(app).post(
+        "/api/offline-ingest/standardization/" + "b" * 32 + "/semantic-project",
+        json={"mode": "rehearsal"},
+    )
+    assert response.status_code == 200
+    assert response.json()["projection"]["semantic_source"] == "land_parcel_current"

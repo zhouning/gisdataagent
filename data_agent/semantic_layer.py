@@ -41,6 +41,35 @@ _catalog_cache: Optional[dict] = None
 _CATALOG_PATH = os.path.join(os.path.dirname(__file__), "semantic_catalog.yaml")
 
 
+def _load_offline_semantic_sources() -> list[dict]:
+    """Load file-backed semantic projections for air-gapped/lite mode.
+
+    PostgreSQL remains the authoritative registry when configured.  This
+    catalog is the local read-only bridge for a Windows host where the
+    standardised GeoParquet is the query source and no database service is
+    installed.  It contains metadata and paths, never feature records.
+    """
+
+    candidates = []
+    configured = os.environ.get("GDA_OFFLINE_SEMANTIC_CATALOG", "").strip()
+    if configured:
+        candidates.append(configured)
+    lake_root = os.environ.get("GDA_FILE_LAKE_ROOT", "./file_lake").strip()
+    if lake_root:
+        candidates.append(os.path.join(lake_root, "semantic_products", "catalog.json"))
+    for raw_path in candidates:
+        path = os.path.abspath(os.path.expanduser(raw_path))
+        try:
+            with open(path, encoding="utf-8") as handle:
+                payload = json.load(handle)
+            sources = payload.get("sources") if isinstance(payload, dict) else None
+            if isinstance(sources, list):
+                return [item for item in sources if isinstance(item, dict)]
+        except (OSError, ValueError, TypeError):
+            continue
+    return []
+
+
 def _load_catalog() -> dict:
     """Load and cache the static semantic catalog."""
     global _catalog_cache
@@ -558,6 +587,52 @@ def resolve_semantic_context(user_text: str) -> dict:
         except Exception:
             pass  # non-fatal, fall through to static catalog
 
+    # --- 1c. File-backed semantic projections (air-gapped/lite mode) ---
+    # These are intentionally read-only.  The query route validates the
+    # projection id and reads the governed GeoParquet; the resolver only adds
+    # metadata and field semantics to the prompt context.
+    for source in _load_offline_semantic_sources():
+        table_name = source.get("table_name") or source.get("semantic_source")
+        if not table_name:
+            continue
+        if any(item.get("table_name") == table_name for item in result["sources"]):
+            continue
+        aliases = list(source.get("synonyms") or []) + [str(table_name), str(source.get("display_name") or "")]
+        score = _match_aliases(user_text, aliases)
+        if score <= 0 and not any(
+            _match_aliases(user_text, list(field.get("aliases") or []) + [str(name)]) > 0
+            for name, field in (source.get("fields") or {}).items()
+        ):
+            continue
+        result["sources"].append({
+            "table_name": table_name,
+            "display_name": source.get("display_name") or table_name,
+            "description": source.get("description") or "",
+            "geometry_type": source.get("geometry_type"),
+            "srid": source.get("srid"),
+            "confidence": max(score, 0.55),
+            "source_kind": "offline_projection",
+            "projection_id": source.get("projection_id"),
+            "production_eligible": source.get("production_eligible", False),
+        })
+        for semantic_name, field in (source.get("fields") or {}).items():
+            physical = field.get("source_field") or semantic_name
+            aliases = list(field.get("aliases") or []) + [semantic_name, str(physical)]
+            col_score = _match_aliases(user_text, aliases)
+            if col_score <= 0 and not field.get("required"):
+                continue
+            result["matched_columns"].setdefault(table_name, []).append({
+                "column_name": physical,
+                "semantic_domain": field.get("property") or field.get("domain"),
+                "aliases": aliases,
+                "unit": field.get("unit") or "",
+                "description": field.get("label") or "",
+                "is_geometry": False,
+                "value_semantics": {},
+                "confidence": max(col_score, 0.5),
+                "offline_projection": True,
+            })
+
     # --- 3. Static catalog: match column domains for unresolved terms ---
     domains = catalog.get("domains", {})
     for domain_name, domain_info in domains.items():
@@ -1070,6 +1145,64 @@ def describe_table_semantic(table_name: str) -> dict:
     Returns:
         Dict with columns (enriched), source metadata, and formatted message.
     """
+    offline_source = next(
+        (
+            item
+            for item in _load_offline_semantic_sources()
+            if (item.get("table_name") or item.get("semantic_source")) == table_name
+        ),
+        None,
+    )
+    if offline_source:
+        fields = offline_source.get("fields") or {}
+        columns = []
+        for semantic_name, field in fields.items():
+            columns.append({
+                "column_name": field.get("source_field") or semantic_name,
+                "semantic_name": semantic_name,
+                "data_type": "file-backed",
+                "semantic_domain": field.get("property") or field.get("domain"),
+                "aliases": field.get("aliases") or [],
+                "unit": field.get("unit") or "",
+                "description": field.get("label") or "",
+                "is_geometry": False,
+                "offline_projection": True,
+            })
+        columns.append({
+            "column_name": "geometry",
+            "semantic_name": "geometry",
+            "data_type": "geometry",
+            "semantic_domain": "SpatialGeometry",
+            "aliases": ["空间", "几何", "geometry"],
+            "unit": "",
+            "description": "图斑空间几何",
+            "is_geometry": True,
+            "offline_projection": True,
+        })
+        lines = [f"表 '{table_name}' ({offline_source.get('display_name') or table_name})"]
+        if offline_source.get("description"):
+            lines.append(f"描述: {offline_source['description']}")
+        lines.append("字段列表:")
+        for entry in columns:
+            label = f"- {entry['column_name']} ({entry['data_type']})"
+            if entry.get("semantic_domain"):
+                label += f" → {entry['semantic_domain']}"
+            if entry.get("unit"):
+                label += f" ({entry['unit']})"
+            lines.append(label)
+        source_meta = {
+            "display_name": offline_source.get("display_name") or table_name,
+            "description": offline_source.get("description") or "",
+            "geometry_type": offline_source.get("geometry_type"),
+            "srid": offline_source.get("srid"),
+            "synonyms": offline_source.get("synonyms") or [],
+            "suggested_analyses": offline_source.get("suggested_analyses") or [],
+            "source_kind": "offline_projection",
+            "projection_id": offline_source.get("projection_id"),
+            "production_eligible": offline_source.get("production_eligible", False),
+        }
+        return {"status": "success", "columns": columns, "source_metadata": source_meta, "message": "\n".join(lines)}
+
     engine = get_engine()
     if not engine:
         return {"status": "error", "message": "Database not configured"}
@@ -1192,8 +1325,18 @@ def list_semantic_sources() -> dict:
     Returns:
         Dict with sources list and formatted message.
     """
+    offline_sources = _load_offline_semantic_sources()
     engine = get_engine()
     if not engine:
+        if offline_sources:
+            return {
+                "status": "success",
+                "sources": offline_sources,
+                "message": f"已注册 {len(offline_sources)} 个离线语义数据源:\n" + "\n".join(
+                    f"- {item.get('table_name') or item.get('semantic_source')} ({item.get('display_name') or ''})"
+                    for item in offline_sources
+                ),
+            }
         return {"status": "error", "message": "Database not configured"}
 
     try:
@@ -1209,6 +1352,7 @@ def list_semantic_sources() -> dict:
 
             sources = []
             lines = []
+            registered_names = set()
             for row in rows:
                 tbl, disp, desc, gt, srid, syns, analyses = row
                 syn_list = syns if isinstance(syns, list) else json.loads(syns or "[]")
@@ -1222,6 +1366,7 @@ def list_semantic_sources() -> dict:
                     "synonyms": syn_list,
                     "suggested_analyses": ana_list,
                 })
+                registered_names.add(tbl)
                 label = f"- {tbl}"
                 if disp and disp != tbl:
                     label += f" ({disp})"
@@ -1230,6 +1375,13 @@ def list_semantic_sources() -> dict:
                 if desc:
                     label += f" — {desc}"
                 lines.append(label)
+
+            for item in offline_sources:
+                tbl = item.get("table_name") or item.get("semantic_source")
+                if not tbl or tbl in registered_names:
+                    continue
+                sources.append(item)
+                lines.append(f"- {tbl} ({item.get('display_name') or tbl}) — 离线文件语义投影")
 
             return {
                 "status": "success",
