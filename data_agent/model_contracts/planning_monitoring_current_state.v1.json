@@ -1,0 +1,217 @@
+{
+  "contract_id": "gda.nr.planning-monitoring.current-state.v1",
+  "model_name": "规划实施现状监测评估子模型",
+  "version": "1.0.0",
+  "scope": "基于单期空间数据的现状强度、设施、路网、土地覆盖与地形评估",
+  "authority": "gis-data-agent-model-contract",
+  "publication_gate": "rehearsal_only_until_policy_dictionary_and_targets_are_approved",
+  "spatial_unit": {
+    "default": "building_extent_square_grid",
+    "default_cell_size_m": 5000,
+    "assignment_rule": "建筑按面内点归属单元，设施按点归属单元，道路按单元边界切分后计长",
+    "limitation": "没有权威行政区或规划评估单元时使用规则网格，不代表法定统计单元"
+  },
+  "source_roles": [
+    {"role": "building", "required": true, "geometry": "Polygon", "time_semantics": "snapshot"},
+    {"role": "poi", "required": false, "geometry": "Point", "time_semantics": "snapshot"},
+    {"role": "road", "required": false, "geometry": "LineString", "time_semantics": "snapshot"},
+    {"role": "land_cover", "required": false, "geometry": "Raster", "time_semantics": "snapshot"},
+    {"role": "dem", "required": false, "geometry": "Raster", "time_semantics": "static"}
+  ],
+  "indicators": [
+    {
+      "code": "BLD_COUNT",
+      "name_zh": "建筑数量",
+      "formula": "count(building_id assigned by representative point)",
+      "numerator": "建筑记录数",
+      "denominator": null,
+      "unit": "栋",
+      "period": "输入数据时点",
+      "spatial_granularity": "空间单元",
+      "missing_rule": "无建筑记为0",
+      "source_roles": ["building"]
+    },
+    {
+      "code": "BLD_FOOTPRINT_M2",
+      "name_zh": "建筑占地面积",
+      "formula": "sum(area(building_geometry))",
+      "numerator": "建筑投影面积",
+      "denominator": null,
+      "unit": "m2",
+      "period": "输入数据时点",
+      "spatial_granularity": "空间单元",
+      "missing_rule": "无建筑记为0",
+      "source_roles": ["building"]
+    },
+    {
+      "code": "BLD_COVERAGE_PCT",
+      "name_zh": "建筑覆盖率",
+      "formula": "BLD_FOOTPRINT_M2 / UNIT_AREA_M2 * 100",
+      "numerator": "建筑占地面积",
+      "denominator": "空间单元面积",
+      "unit": "%",
+      "period": "输入数据时点",
+      "spatial_granularity": "空间单元",
+      "missing_rule": "分母为0则为空",
+      "source_roles": ["building"]
+    },
+    {
+      "code": "AVG_FLOORS",
+      "name_zh": "建筑平均层数",
+      "formula": "mean(valid positive building floor value)",
+      "numerator": "有效建筑层数之和",
+      "denominator": "具有有效层数的建筑数",
+      "unit": "层",
+      "period": "输入数据时点",
+      "spatial_granularity": "空间单元",
+      "missing_rule": "无有效楼层字段则为空，不以0替代",
+      "source_roles": ["building"]
+    },
+    {
+      "code": "EST_FLOOR_AREA_M2",
+      "name_zh": "估算建筑面积",
+      "formula": "sum(building_footprint_m2 * valid_floor)",
+      "numerator": "逐栋占地面积乘层数之和",
+      "denominator": null,
+      "unit": "m2",
+      "period": "输入数据时点",
+      "spatial_granularity": "空间单元",
+      "missing_rule": "缺失楼层的建筑不进入估算",
+      "source_roles": ["building"]
+    },
+    {
+      "code": "EST_FAR",
+      "name_zh": "估算容积率",
+      "formula": "EST_FLOOR_AREA_M2 / UNIT_AREA_M2",
+      "numerator": "估算建筑面积",
+      "denominator": "空间单元面积",
+      "unit": "ratio",
+      "period": "输入数据时点",
+      "spatial_granularity": "空间单元",
+      "missing_rule": "无有效楼层或分母为0则为空",
+      "source_roles": ["building"]
+    },
+    {
+      "code": "POI_COUNT",
+      "name_zh": "设施点数量",
+      "formula": "count(POI point within spatial unit)",
+      "numerator": "设施点数",
+      "denominator": null,
+      "unit": "个",
+      "period": "输入数据时点",
+      "spatial_granularity": "空间单元",
+      "missing_rule": "未提供POI数据则为空；提供后无点记为0",
+      "source_roles": ["poi"]
+    },
+    {
+      "code": "POI_DENSITY_KM2",
+      "name_zh": "设施点密度",
+      "formula": "POI_COUNT / (UNIT_AREA_M2 / 1000000)",
+      "numerator": "设施点数",
+      "denominator": "空间单元面积",
+      "unit": "个/km2",
+      "period": "输入数据时点",
+      "spatial_granularity": "空间单元",
+      "missing_rule": "未提供POI数据则为空",
+      "source_roles": ["poi"]
+    },
+    {
+      "code": "ROAD_LENGTH_KM",
+      "name_zh": "道路长度",
+      "formula": "sum(length(road geometry intersected with spatial unit)) / 1000",
+      "numerator": "单元内道路投影长度",
+      "denominator": null,
+      "unit": "km",
+      "period": "输入数据时点",
+      "spatial_granularity": "空间单元",
+      "missing_rule": "未提供道路数据则为空；提供后无道路记为0",
+      "source_roles": ["road"]
+    },
+    {
+      "code": "ROAD_DENSITY_KM_KM2",
+      "name_zh": "路网密度",
+      "formula": "ROAD_LENGTH_KM / (UNIT_AREA_M2 / 1000000)",
+      "numerator": "道路长度",
+      "denominator": "空间单元面积",
+      "unit": "km/km2",
+      "period": "输入数据时点",
+      "spatial_granularity": "空间单元",
+      "missing_rule": "未提供道路数据则为空",
+      "source_roles": ["road"]
+    },
+    {
+      "code": "IMPERVIOUS_SHARE_PCT",
+      "name_zh": "不透水面占比",
+      "formula": "count(valid land-cover pixels with class 8) / count(valid land-cover pixels) * 100",
+      "numerator": "CLCD类别8有效像元数",
+      "denominator": "单元内有效土地覆盖像元数",
+      "unit": "%",
+      "period": "土地覆盖数据年份",
+      "spatial_granularity": "空间单元",
+      "missing_rule": "无土地覆盖或无有效像元则为空",
+      "source_roles": ["land_cover"]
+    },
+    {
+      "code": "WATER_SHARE_PCT",
+      "name_zh": "水体占比",
+      "formula": "count(valid land-cover pixels with class 5) / count(valid land-cover pixels) * 100",
+      "numerator": "CLCD类别5有效像元数",
+      "denominator": "单元内有效土地覆盖像元数",
+      "unit": "%",
+      "period": "土地覆盖数据年份",
+      "spatial_granularity": "空间单元",
+      "missing_rule": "无土地覆盖或无有效像元则为空",
+      "source_roles": ["land_cover"]
+    },
+    {
+      "code": "MEAN_ELEVATION_M",
+      "name_zh": "平均海拔",
+      "formula": "mean(valid DEM pixels within spatial unit)",
+      "numerator": "有效DEM像元高程之和",
+      "denominator": "有效DEM像元数",
+      "unit": "m",
+      "period": "静态地形",
+      "spatial_granularity": "空间单元",
+      "missing_rule": "无DEM或无有效像元则为空",
+      "source_roles": ["dem"]
+    },
+    {
+      "code": "MEAN_SLOPE_DEG",
+      "name_zh": "平均坡度",
+      "formula": "mean(degrees(arctan(hypot(dz/dx,dz/dy)))) on projected DEM",
+      "numerator": "有效DEM像元坡度之和",
+      "denominator": "有效坡度像元数",
+      "unit": "degree",
+      "period": "静态地形",
+      "spatial_granularity": "空间单元",
+      "missing_rule": "无DEM、投影失败或无有效像元则为空",
+      "source_roles": ["dem"]
+    }
+  ],
+  "diagnostic_rules": [
+    {
+      "code": "HIGH_BUILD_LOW_SERVICE",
+      "condition": "EST_FAR >= sample P75 and POI_DENSITY_KM2 <= sample P25",
+      "meaning": "样例内部相对高建设强度、低设施密度",
+      "authority": "exploratory_sample_relative"
+    },
+    {
+      "code": "LOW_ROAD_DENSITY",
+      "condition": "ROAD_DENSITY_KM_KM2 <= sample P25",
+      "meaning": "样例内部相对低路网密度",
+      "authority": "exploratory_sample_relative"
+    },
+    {
+      "code": "HIGH_TERRAIN_CONSTRAINT",
+      "condition": "MEAN_SLOPE_DEG >= sample P75",
+      "meaning": "样例内部相对高坡度",
+      "authority": "exploratory_sample_relative"
+    },
+    {
+      "code": "HIGH_IMPERVIOUS_PRESSURE",
+      "condition": "IMPERVIOUS_SHARE_PCT >= sample P75",
+      "meaning": "样例内部相对高不透水面占比",
+      "authority": "exploratory_sample_relative"
+    }
+  ]
+}
