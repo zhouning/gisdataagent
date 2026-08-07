@@ -4,6 +4,50 @@
 Java、对象存储或模型服务；安装器从 ZIP 内的真实 Windows x64 制品安装它们，并在启动前
 执行完整性和能力预检。
 
+## 给 Windows 机器的最短执行路径
+
+整个过程分成两个阶段：联网的 Windows x64 **staging 机**负责准备制品并生成 ZIP；物理隔离的
+**现场机**只接收 ZIP、安装和验收。现场机不需要 Git、Node.js、npm、Python 或互联网。
+
+在 staging 机执行：
+
+```powershell
+git clone -b feat/windows-standalone-offline-bundle `
+  https://github.com/zhouning/gisdataagent.git
+Set-Location gisdataagent
+git rev-parse HEAD
+
+Set-Location frontend
+npm ci
+npm run build
+Set-Location ..
+
+python -m pip download --only-binary=:all: --platform win_amd64 --python-version 311 `
+  --implementation cp --abi cp311 `
+  --dest deploy\windows-standalone\vendor\wheelhouse\core `
+  -r deploy\windows-standalone\requirements-windows-core.txt
+python -m pip download --only-binary=:all: --platform win_amd64 --python-version 311 `
+  --implementation cp --abi cp311 `
+  --dest deploy\windows-standalone\vendor\wheelhouse\production `
+  -r deploy\windows-standalone\requirements-windows-production.txt
+
+python deploy\windows-standalone\build_offline_bundle.py `
+  --profile production `
+  --vendor-root deploy\windows-standalone\vendor `
+  --output out\GIS-Data-Agent-Windows-production.zip
+
+Get-FileHash .\out\GIS-Data-Agent-Windows-production.zip -Algorithm SHA256
+```
+
+构建器会在缺少任何必需 Windows 制品时返回 `blocked`，这时应补齐 `vendor/` 后重试，不能把
+不完整 ZIP 带到现场。只需要文件湖、GIS 入湖、质检、血缘和本体结构浏览时，可把最后一条的
+`production` 换成 `core`；生产档位还需要 PostgreSQL/PostGIS/pgvector、MinIO、Jena/Fuseki、
+Ollama 模型和 Paper9 制品，详见下面的目录约定。
+
+记录 `git rev-parse HEAD` 和 ZIP 的外部 SHA-256。将 ZIP、外部 SHA-256 和供应商制品清单通过
+受控介质转入现场机；`manifest.json` 和逐文件 `SHA256SUMS` 已包含在 ZIP 内。现场机只执行
+“内网安装”章节，不要运行 `npm`、`pip download` 或尝试联网拉模型。
+
 ## 两个安装档位
 
 | 档位 | 包含 | 可提供的能力 | 生产门禁 |
@@ -55,10 +99,10 @@ npm run build
 Set-Location ..
 
 python -m pip download --only-binary=:all: --platform win_amd64 --python-version 311 `
-  --implementation cp --abi cp311 --dest vendor\wheelhouse\core `
+  --implementation cp --abi cp311 --dest deploy\windows-standalone\vendor\wheelhouse\core `
   -r deploy\windows-standalone\requirements-windows-core.txt
 python -m pip download --only-binary=:all: --platform win_amd64 --python-version 311 `
-  --implementation cp --abi cp311 --dest vendor\wheelhouse\production `
+  --implementation cp --abi cp311 --dest deploy\windows-standalone\vendor\wheelhouse\production `
   -r deploy\windows-standalone\requirements-windows-production.txt
 ```
 
@@ -89,7 +133,15 @@ ZIP。生成的 ZIP 内含 `manifest.json`、`SHA256SUMS` 和安装脚本；它�
 ```powershell
 Expand-Archive .\GIS-Data-Agent-Windows-production.zip -DestinationPath D:\GDA_STAGING
 Set-Location D:\GDA_STAGING\GIS-Data-Agent-23.0.0-windows-standalone.1-production
-.\install_offline_bundle.ps1 -Profile production -InstallRoot D:\GDA
+.\install_offline_bundle.ps1 `
+  -Profile production `
+  -InstallRoot D:\GDA `
+  -DataRoot D:\GDA_DATA `
+  -Inbox D:\NX_INCOMING `
+  -LogRoot D:\GDA_LOGS
+
+.\register_tasks.ps1 -InstallRoot D:\GDA -RunAs SYSTEM
+.\start_gda.ps1 -InstallRoot D:\GDA
 ```
 
 安装器会检查 Windows x64、管理员权限、路径长度、磁盘空间和 ZIP 内哈希，静默安装 Python，
@@ -143,9 +195,25 @@ D:\GDA\runtime\install-state.json
 .\collect_diagnostics.ps1 -InstallRoot D:\GDA -OutputDirectory D:\GDA_DIAGNOSTICS
 ```
 
-然后在 GitHub 仓库新建 Issue，填写 Windows 版本、CPU/内存/磁盘剩余空间、使用的 profile、
-分支和 commit SHA，并附上脱敏后的 `bundle-verification.json`、`windows-ingest-preflight.json`、
-安装器/启动器错误文本和诊断 ZIP 的文件名及 SHA-256。诊断 ZIP 可以通过受控介质交给项目组，
+然后在 GitHub 仓库新建 Issue，标题使用 `[Windows offline] 阶段 - 错误摘要`，正文至少填写：
+
+```text
+分支：feat/windows-standalone-offline-bundle
+Commit SHA：
+阶段：staging 构建 / 现场安装 / 启动 / 数据入湖 / 治理 / 问数 / Paper9
+Profile：core / production
+Windows 版本：
+CPU / 内存 / 数据盘剩余空间：
+执行的完整命令：
+预期结果：
+实际错误全文：
+bundle-verify.json 状态及 reasons：
+windows-ingest-preflight.json 状态及 reasons：
+诊断 ZIP 文件名和 SHA-256：
+```
+
+附上脱敏后的 `bundle-verify.json`、`windows-ingest-preflight.json`、安装器/启动器错误文本。诊断
+ZIP 可以通过受控介质交给项目组，
 但不要上传数据湖原件、FileGDB/TIFF、`.env`、密码、token、私钥或模型权重。若需要修改脚本，
 请从该分支建立修复分支并提交最小复现日志，便于在 GitHub 上追踪。
 
