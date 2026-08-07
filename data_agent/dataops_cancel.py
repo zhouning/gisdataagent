@@ -11,9 +11,11 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from .platform_authorization import build_policy_decision_artifact
 from .platform_contracts import (
     Artifact,
+    NonEmptyText,
     PlatformCommand,
     PlatformRun,
     PolicyDecision,
+    Sha256,
     TenantId,
     canonical_json_fingerprint,
 )
@@ -28,6 +30,31 @@ _DATAOPS_CANCEL_COMMAND_NAMESPACE = uuid5(
 
 class _FrozenModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
+
+
+class DataOpsCancelRequest(_FrozenModel):
+    """Canonical client-owned fields for governed DataOps cancellation."""
+
+    run_id: UUID
+    client_request_id: str = Field(
+        min_length=3,
+        max_length=128,
+        pattern=r"^[a-zA-Z0-9][a-zA-Z0-9._:-]{2,127}$",
+    )
+    expected_state_version: int = Field(ge=1)
+    reason: NonEmptyText
+
+
+class DataOpsCancelResponse(_FrozenModel):
+    """Canonical cancellation admission returned by every client surface."""
+
+    request_sha256: Sha256
+    admitted_at: datetime
+    run: PlatformRun
+    policy_artifact: Artifact
+    command: PlatformCommand
+    policy_artifact_created: bool
+    command_created: bool
 
 
 class DataOpsCancelSpec(_FrozenModel):

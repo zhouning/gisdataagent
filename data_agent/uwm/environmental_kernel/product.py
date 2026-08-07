@@ -10,7 +10,7 @@ from .evidence_gate import build_environmental_evidence_gate
 from .state import build_environmental_state
 
 
-def assemble_chongqing_product(*, evidence: Mapping[str, Any], scene: Mapping[str, Any], graph: Mapping[str, Any], tap: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
+def assemble_chongqing_product(*, evidence: Mapping[str, Any], scene: Mapping[str, Any], graph: Mapping[str, Any], tap: Mapping[str, Any], tap_replay: Mapping[str, Any] | None = None) -> dict[str, dict[str, Any]]:
     graph_nodes = {str(row["unit_id"]): row for row in graph.get("nodes") or []}
     spatial_nodes = []
     for row in scene.get("admin_unit_states") or []:
@@ -82,7 +82,60 @@ def assemble_chongqing_product(*, evidence: Mapping[str, Any], scene: Mapping[st
         "fabricated_value_count": 0,
     }
     map_product = {"schema": "map_update.v1", "bundle_id": bundle_id, "summary": {"title": "重庆环境动态 Kernel 观测状态"}, "layers": [{"name": "环境状态节点", "type": "geojson", "geojsonData": {"type": "FeatureCollection", "features": [_feature(row) for row in spatial_nodes if (row.get("geometry_ref") or {}).get("centroid")]}}]}
-    return {"scene.json": scene_product, "evidence_gate.json": gate_product, "current_rollout.json": rollout, "map.json": map_product}
+    payloads = {"scene.json": scene_product, "evidence_gate.json": gate_product, "current_rollout.json": rollout, "map.json": map_product}
+    if tap_replay:
+        payloads["temporal_replay.json"] = _temporal_replay_product(bundle_id, tap_replay, known)
+    return payloads
+
+
+def _temporal_replay_product(bundle_id: str, tap_replay: Mapping[str, Any], known_nodes: set[str]) -> dict[str, Any]:
+    series_by_node: dict[str, list[dict[str, Any]]] = {}
+    for record in tap_replay.get("records") or []:
+        unit_id = str(record.get("admin_unit_id") or "")
+        pm25 = record.get("pm25_ugm3")
+        timestamp = record.get("timestamp")
+        if unit_id not in known_nodes or pm25 is None or not timestamp:
+            continue
+        interval = record.get("uncertainty_interval_ugm3") or {}
+        series_by_node.setdefault(unit_id, []).append(
+            {
+                "timestamp": str(timestamp),
+                "pm25_ugm3": float(pm25),
+                "uncertainty_low_ugm3": interval.get("low"),
+                "uncertainty_high_ugm3": interval.get("high"),
+            }
+        )
+    nodes = []
+    for unit_id, values in sorted(series_by_node.items()):
+        values.sort(key=lambda row: row["timestamp"])
+        pm25_values = [row["pm25_ugm3"] for row in values]
+        nodes.append(
+            {
+                "node_id": unit_id,
+                "record_count": len(values),
+                "start_timestamp": values[0]["timestamp"],
+                "end_timestamp": values[-1]["timestamp"],
+                "pm25_min_ugm3": round(min(pm25_values), 6),
+                "pm25_max_ugm3": round(max(pm25_values), 6),
+                "pm25_mean_ugm3": round(sum(pm25_values) / len(pm25_values), 6),
+                "pm25_last_minus_first_ugm3": round(pm25_values[-1] - pm25_values[0], 6),
+                "series": values,
+            }
+        )
+    return {
+        "schema": "uwm.environmental_temporal_state_replay.v1",
+        "bundle_id": bundle_id,
+        "replay_kind": "historical_proxy_state_replay",
+        "source_dataset_ids": list(tap_replay.get("source_dataset_ids") or []),
+        "source_quality": {
+            "synthetic_status": "semi_synthetic",
+            "quality_status": "tap_like_pm25_scene_not_observed_holdout",
+            "support_level": "bounded_proxy",
+            "not_calendar_forecast": True,
+            "not_policy_effect": True,
+        },
+        "node_series": nodes,
+    }
 
 
 def _feature(row: Mapping[str, Any]) -> dict[str, Any]:

@@ -113,7 +113,17 @@ DEMAND_OVERLAYS = {
         "observed_population_evidence_catalog_demographic_contract_and_uwm_population_dynamics_readiness",
         ["docs/reports/population_demographic_readiness_chongqing_verification_2026-07-13.md", "data/uwm_public_proxy/chongqing_central/population_demographic_readiness_chongqing/overview.json"],
     ),
-    "7": _bounded("existing_livability_world_model_decision_package", ["24_month_and_five_year_customer_calibration_missing"], "bounded_model_based_livability_decision_support"),
+    "7": _bounded(
+        "demand7_target_gap_and_intervention_planning_product",
+        [
+            "24_month_customer_calibration_missing",
+            "five_year_customer_calibration_missing",
+            "community_voice_input_missing",
+            "observed_intervention_outcome_missing",
+        ],
+        "observed_proxy_state_target_gap_and_bounded_simulator_intervention_planning",
+        ["docs/reports/uwm_livability_demand7_real_e2e_verification_2026-07-15.md"],
+    ),
     "8": _bounded(
         "traditional_mobility_accessibility_product",
         [
@@ -140,7 +150,17 @@ DEMAND_OVERLAYS = {
         "mobility_environment_context_and_safety_comfort_evidence_readiness",
         ["docs/reports/traditional_safety_comfort_chongqing_verification_2026-07-12.md", "data/uwm_public_proxy/chongqing_central/traditional_safety_comfort_chongqing/overview.json"],
     ),
-    "11": _bounded("environmental_kernel_scene_evidence_gate_and_api", ["environmental_action_response_closed", "temperature_and_vegetation_dynamics_unavailable"], "observed_environmental_state_and_calibrated_pm25_temporal_dynamics", ["docs/reports/uwm_environmental_kernel_chongqing_verification_2026-07-11.md"]),
+    "11": _bounded(
+        "environmental_kernel_state_and_temporal_proxy_replay_product",
+        [
+            "environmental_action_response_closed",
+            "pm25_spatial_action_propagation_unavailable",
+            "temperature_and_vegetation_dynamics_unavailable",
+            "observed_station_or_policy_outcome_validation_missing",
+        ],
+        "environmental_state_and_bounded_pm25_temporal_proxy_replay_without_action_effect_claim",
+        ["docs/reports/uwm_environmental_kernel_real_e2e_verification_2026-07-15.md"],
+    ),
     "12": _bounded(
         "traditional_social_public_service_product",
         ["authoritative_capacity_missing", "authoritative_lifecycle_and_activity_status_missing", "population_capacity_match_missing", "authoritative_service_area_standard_missing", "future_demand_evidence_missing", "township_accessibility_not_joined_to_county_facilities"],
@@ -184,10 +204,10 @@ DEMAND_OVERLAYS = {
         ["docs/reports/operations_quality_chongqing_verification_2026-07-12.md", "data/uwm_public_proxy/chongqing_central/operations_quality_chongqing/overview.json"],
     ),
     "19": _bounded(
-        "resilience_kernel_foundation",
+        "resilience_state_query_spatial_location_and_scenario_admissibility_product",
         ["authoritative_hazard_event_timeseries_missing", "population_and_asset_exposure_missing", "emergency_response_time_missing", "hazard_spatial_propagation_calibration_missing", "recovery_state_timeseries_missing", "intervention_outcome_evidence_missing", "held_out_event_evaluation_missing"],
-        "observed_resilience_context_spatial_graph_and_fail_closed_kernel_readiness",
-        ["docs/reports/resilience_kernel_chongqing_verification_2026-07-12.md", "data/uwm_public_proxy/chongqing_central/resilience_kernel_chongqing/overview.json"],
+        "observed_resilience_context_and_structured_fail_closed_scenario_admissibility_without_hazard_or_recovery_claim",
+        ["docs/reports/resilience_kernel_real_e2e_verification_2026-07-15.md"],
     ),
     "20": _bounded(
         "business_licence_activity_readiness_product",

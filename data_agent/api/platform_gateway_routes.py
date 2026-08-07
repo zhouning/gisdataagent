@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 from fastapi.routing import APIRoute
 from pydantic import (
@@ -28,16 +29,68 @@ from ..approval_case_authority import (
     ApprovalCaseConflictError,
     ApprovalCaseForbiddenError,
     ApprovalCaseNotFoundError,
+    ApprovalCasePage,
     ApprovalCaseValidationError,
 )
-from ..dataops_cancel import DataOpsCancelSpec
-from ..dataops_invocation import DataOpsInvocation
-from ..dataops_manual import DataOpsManualTriggerSpec
+from ..architecture_change_approval import (
+    ArchitectureChangeApprovalError,
+    ArchitectureChangeApprovalService,
+    ArchitectureChangeReview,
+)
+from ..capability_registry import (
+    CAPABILITY_FINGERPRINT_HEADER,
+    DATAOPS_MANUAL_RUN_SUBMIT,
+    DATAOPS_RUN_CANCEL,
+    CapabilityFingerprintMismatchError,
+    CapabilitySpec,
+)
+from ..data_architecture_ledger import ResourceVersionArchitectureReconciliation
+from ..dataops_cancel import (
+    DataOpsCancelRequest,
+    DataOpsCancelResponse,
+    DataOpsCancelSpec,
+)
+from ..dataops_manual import (
+    DataOpsManualTriggerSpec,
+    ManualDataOpsRunRequest,
+    ManualDataOpsRunResponse,
+)
+from ..master_data_authority import (
+    MASTER_DATA_ACTIVATION_ACTION,
+    MasterDataAuthority,
+    MasterDataAuthorityError,
+    MasterDataConfigurationError,
+    MasterDataConflictError,
+    MasterDataDomain,
+    MasterDataEvent,
+    MasterDataForbiddenError,
+    MasterDataNotFoundError,
+    MasterDataValidationError,
+    MasterEntityActivation,
+    MasterEntityVersion,
+    MasterEntityVersionDraft,
+    MasterEntityVersionPage,
+    MasterMatchResult,
+    MasterResourceProjection,
+    MasterResourceProjectionPage,
+    MasterSourceRecordDraft,
+)
 from ..metadata_fabric import MetadataFabricBinding, MetadataFabricSystem
 from ..platform_contracts import (
+    ApprovalAssignmentActorAccess,
+    ApprovalAvailabilityStatus,
     ApprovalCase,
+    ApprovalCaseAssignment,
+    ApprovalCaseAssignmentEvent,
+    ApprovalCaseAssignmentOperation,
     ApprovalCaseEvent,
+    ApprovalCaseNotification,
+    ApprovalCaseNotificationRecoveryEvent,
     ApprovalCaseStatus,
+    ApprovalPrincipal,
+    ApprovalPrincipalStatus,
+    ApprovalPrincipalType,
+    ApprovalTeamMembership,
     Artifact,
     DataIncident,
     FrameworkAttemptObservation,
@@ -50,6 +103,7 @@ from ..platform_contracts import (
     QualityResult,
     Resource,
     ResourceBinding,
+    ResourceURNText,
     ResourceVersion,
     RunPolicyReferences,
     RunStatus,
@@ -82,9 +136,35 @@ from ..platform_openlineage import (
     OpenLineageRunEvent,
     openlineage_to_lineage_events,
 )
+from ..slo_authority import (
+    SLO_ACTIVATION_ACTION,
+    SLOAuthorityError,
+    SLOBurnRateWindow,
+    SLOCompilationError,
+    SLOConfigurationError,
+    SLOConflictError,
+    SLODefinitionActivation,
+    SLODefinitionAuthority,
+    SLODefinitionDraft,
+    SLODefinitionEvent,
+    SLODefinitionVersion,
+    SLODefinitionVersionPage,
+    SLOEventRatioIndicator,
+    SLOForbiddenError,
+    SLONotFoundError,
+    SLOValidationError,
+    compile_slo_prometheus_rules,
+)
+from ..slo_incident import (
+    AlertmanagerSLOWebhook,
+    SLOAlertReconciliationResult,
+    SLOIncidentReconciler,
+    SLOIncidentValidationError,
+)
 from .helpers import _get_user_from_request
 
 _TENANT_ADAPTER = TypeAdapter(TenantId)
+_APPROVAL_ACTION_ADAPTER = TypeAdapter(ShortName)
 _PLATFORM_ROLES = frozenset({"admin", "platform_operator"})
 
 
@@ -104,21 +184,6 @@ class RunSubmissionRequest(StrictRequest):
     purpose: NonEmptyText
     trace_id: ShortName | None = None
     submitted_at: datetime
-
-
-class ManualDataOpsRunRequest(StrictRequest):
-    client_request_id: str = Field(
-        min_length=3,
-        max_length=128,
-        pattern=r"^[a-zA-Z0-9][a-zA-Z0-9._:-]{2,127}$",
-    )
-    definition_version_id: UUID
-    logical_start: datetime
-    logical_end: datetime
-    input_bindings: tuple[ResourceBinding, ...] = ()
-    execution_plan_artifact_id: UUID
-    purpose: NonEmptyText
-    config_fingerprint: Sha256 | None = None
 
 
 class ManualDataOpsRuntimeProfile(StrictRequest):
@@ -144,20 +209,7 @@ class ManualDataOpsRuntimeProfile(StrictRequest):
         return self
 
 
-class ManualDataOpsRunResponse(StrictRequest):
-    request_sha256: Sha256
-    admitted_at: datetime
-    invocation: DataOpsInvocation
-    run: PlatformRun
-    command: PlatformCommand
-    invocation_resource_created: bool
-    invocation_version_created: bool
-    policy_artifact_created: bool
-    run_created: bool
-    command_created: bool
-
-
-class DataOpsCancelRequest(StrictRequest):
+class DataOpsCancelHttpBody(StrictRequest):
     client_request_id: str = Field(
         min_length=3,
         max_length=128,
@@ -188,16 +240,6 @@ class DataOpsCancelRuntimeProfile(StrictRequest):
         return self
 
 
-class DataOpsCancelResponse(StrictRequest):
-    request_sha256: Sha256
-    admitted_at: datetime
-    run: PlatformRun
-    policy_artifact: Artifact
-    command: PlatformCommand
-    policy_artifact_created: bool
-    command_created: bool
-
-
 class DolphinSchedulerCallbackResponse(StrictRequest):
     observation: FrameworkAttemptObservation
     command: PlatformCommand | None
@@ -209,6 +251,176 @@ class DolphinSchedulerCallbackResponse(StrictRequest):
 class DataIncidentListResponse(StrictRequest):
     items: tuple[DataIncident, ...]
     count: int = Field(ge=0)
+
+
+class ResourceVersionListResponse(StrictRequest):
+    items: tuple[ResourceVersion, ...]
+    count: int = Field(ge=0)
+    offset: int = Field(ge=0)
+    limit: int = Field(ge=1, le=100)
+    has_more: bool
+
+
+class ArchitectureChangeReviewRequest(StrictRequest):
+    request_reason: NonEmptyText
+    expires_in_hours: int = Field(default=72, ge=1, le=168)
+
+
+class ArchitectureChangeReviewResponse(StrictRequest):
+    reconciliation: ResourceVersionArchitectureReconciliation
+    review: ArchitectureChangeReview
+    approval_case: ApprovalCase
+
+
+class SLODefinitionStageRequest(StrictRequest):
+    version: int = Field(ge=1, le=1_000_000)
+    service_resource_urn: ResourceURNText
+    indicator: SLOEventRatioIndicator
+    objective_basis_points: int = Field(ge=1, le=9999)
+    objective_window_seconds: int = Field(
+        ge=3600,
+        le=366 * 24 * 60 * 60,
+    )
+    owner_subject: str
+    oncall_ref: str
+    burn_rate_windows: tuple[SLOBurnRateWindow, ...]
+    creation_reason: NonEmptyText
+
+
+class SLODefinitionVersionListResponse(StrictRequest):
+    items: tuple[SLODefinitionVersion, ...]
+    count: int = Field(ge=0)
+    offset: int = Field(ge=0)
+    limit: int = Field(ge=1, le=100)
+    has_more: bool
+
+
+class SLOActivationApprovalRequest(StrictRequest):
+    case_id: str = Field(
+        min_length=1,
+        max_length=128,
+        pattern=r"^[a-z0-9][a-z0-9._-]{0,127}$",
+    )
+    request_reason: NonEmptyText
+    expires_in_hours: int = Field(default=72, ge=1, le=168)
+
+
+class SLODefinitionActivateRequest(StrictRequest):
+    approval_case_id: str = Field(
+        min_length=1,
+        max_length=128,
+        pattern=r"^[a-z0-9][a-z0-9._-]{0,127}$",
+    )
+    expected_activation_version: int = Field(ge=0)
+    reason: NonEmptyText
+
+
+class SLOActiveDefinitionResponse(StrictRequest):
+    definition: SLODefinitionVersion
+    activation: SLODefinitionActivation
+
+
+class SLOPrometheusRulePreviewResponse(SLOActiveDefinitionResponse):
+    prometheus_rules: dict[str, Any]
+
+
+class SLODefinitionEventListResponse(StrictRequest):
+    items: tuple[SLODefinitionEvent, ...]
+    count: int = Field(ge=0)
+
+
+class MasterSourceObservationRequest(StrictRequest):
+    domain: MasterDataDomain
+    source_system_ref: ResourceURNText
+    source_record_id: str = Field(min_length=1, max_length=256)
+    source_revision: str = Field(
+        min_length=1,
+        max_length=128,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+    )
+    business_key: str = Field(
+        min_length=1,
+        max_length=128,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+    )
+    display_name: str = Field(min_length=1, max_length=256)
+    parent_business_key: str | None = Field(default=None, max_length=128)
+    attributes: dict[str, Any] = Field(default_factory=dict)
+
+
+class MasterMatchRequest(StrictRequest):
+    limit: int = Field(default=5, ge=1, le=20)
+
+
+class MasterEntityVersionStageRequest(StrictRequest):
+    version: int = Field(ge=1, le=1_000_000)
+    domain: MasterDataDomain
+    business_key: str = Field(
+        min_length=1,
+        max_length=128,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+    )
+    canonical_name: str = Field(min_length=1, max_length=256)
+    parent_entity_ref: ResourceURNText | None = None
+    attributes: dict[str, Any] = Field(default_factory=dict)
+    source_record_refs: tuple[ResourceURNText, ...] = Field(
+        min_length=1,
+        max_length=100,
+    )
+    match_candidate_refs: tuple[ResourceURNText, ...] = Field(
+        default=(),
+        max_length=100,
+    )
+    valid_from: date
+    valid_to: date | None = None
+    owner_subject: str
+    creation_reason: NonEmptyText
+
+
+class MasterEntityVersionListResponse(StrictRequest):
+    items: tuple[MasterEntityVersion, ...]
+    count: int = Field(ge=0)
+    offset: int = Field(ge=0)
+    limit: int = Field(ge=1, le=100)
+    has_more: bool
+
+
+class MasterActivationApprovalRequest(StrictRequest):
+    case_id: str = Field(
+        min_length=1,
+        max_length=128,
+        pattern=r"^[a-z0-9][a-z0-9._-]{0,127}$",
+    )
+    request_reason: NonEmptyText
+    expires_in_hours: int = Field(default=72, ge=1, le=168)
+
+
+class MasterEntityActivateRequest(StrictRequest):
+    approval_case_id: str = Field(
+        min_length=1,
+        max_length=128,
+        pattern=r"^[a-z0-9][a-z0-9._-]{0,127}$",
+    )
+    expected_activation_version: int = Field(ge=0)
+    reason: NonEmptyText
+
+
+class MasterActiveEntityResponse(StrictRequest):
+    entity: MasterEntityVersion
+    activation: MasterEntityActivation
+
+
+class MasterDataEventListResponse(StrictRequest):
+    items: tuple[MasterDataEvent, ...]
+    count: int = Field(ge=0)
+
+
+class MasterResourceProjectionListResponse(StrictRequest):
+    items: tuple[MasterResourceProjection, ...]
+    count: int = Field(ge=0)
+    offset: int = Field(ge=0)
+    limit: int = Field(ge=1, le=100)
+    has_more: bool
 
 
 class DataIncidentTransitionRequest(StrictRequest):
@@ -243,6 +455,126 @@ class ApprovalCaseDecisionRequest(StrictRequest):
 class ApprovalCaseEventListResponse(StrictRequest):
     items: tuple[ApprovalCaseEvent, ...]
     count: int = Field(ge=0)
+
+
+class ApprovalCaseListResponse(StrictRequest):
+    items: tuple[ApprovalCase, ...]
+    count: int = Field(ge=0)
+    offset: int = Field(ge=0)
+    limit: int = Field(ge=1, le=100)
+    has_more: bool
+
+
+class ApprovalCaseNotificationListResponse(StrictRequest):
+    items: tuple[ApprovalCaseNotification, ...]
+    count: int = Field(ge=0)
+    recoveries: tuple[ApprovalCaseNotificationRecoveryEvent, ...] = ()
+    recovery_count: int = Field(default=0, ge=0)
+
+
+class ApprovalCaseNotificationRetryRequest(StrictRequest):
+    expected_attempt_count: int = Field(ge=1)
+    reason: NonEmptyText
+
+
+class ApprovalCaseAssignmentRequest(StrictRequest):
+    expected_assignment_version: int = Field(ge=0)
+    operation: ApprovalCaseAssignmentOperation
+    assignee_id: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=128,
+        pattern=r"^[^\s:][^\s]{0,127}$",
+    )
+    assignee_subject: str | None = Field(
+        default=None,
+        min_length=7,
+        max_length=133,
+        pattern=r"^(human|team):[a-z0-9][a-z0-9._-]{0,127}$",
+    )
+    reason: NonEmptyText
+
+    @model_validator(mode="after")
+    def _consistent_assignment_request(self) -> ApprovalCaseAssignmentRequest:
+        if self.operation is ApprovalCaseAssignmentOperation.RELEASE:
+            if self.assignee_id is not None or self.assignee_subject is not None:
+                raise ValueError("release must not specify an assignee")
+        elif (self.assignee_id is None) == (self.assignee_subject is None):
+            raise ValueError(
+                "assignment operation requires exactly one typed assignee"
+            )
+        return self
+
+    @property
+    def resolved_assignee_subject(self) -> str | None:
+        if self.assignee_subject is not None:
+            return self.assignee_subject
+        return f"human:{self.assignee_id}" if self.assignee_id is not None else None
+
+
+class ApprovalCaseAssignmentResponse(StrictRequest):
+    current: ApprovalCaseAssignment | None = None
+    events: tuple[ApprovalCaseAssignmentEvent, ...] = ()
+    event_count: int = Field(default=0, ge=0)
+    actor_access: ApprovalAssignmentActorAccess | None = None
+
+
+class ApprovalPrincipalListResponse(StrictRequest):
+    items: tuple[ApprovalPrincipal, ...]
+    count: int = Field(ge=0)
+
+
+class ApprovalTeamMembershipListResponse(StrictRequest):
+    items: tuple[ApprovalTeamMembership, ...]
+    count: int = Field(ge=0)
+
+
+class ApprovalPrincipalUpsertRequest(StrictRequest):
+    expected_directory_version: int = Field(ge=0)
+    display_name: str = Field(min_length=1, max_length=200)
+    status: ApprovalPrincipalStatus = ApprovalPrincipalStatus.ACTIVE
+    approval_eligible: bool = True
+    availability_status: ApprovalAvailabilityStatus = (
+        ApprovalAvailabilityStatus.AVAILABLE
+    )
+    valid_from: datetime | None = None
+    valid_until: datetime | None = None
+    reason: NonEmptyText
+
+    @model_validator(mode="after")
+    def _consistent_validity(self) -> ApprovalPrincipalUpsertRequest:
+        for value in (self.valid_from, self.valid_until):
+            if value is not None and value.utcoffset() is None:
+                raise ValueError("approval principal validity must include timezone")
+        if (
+            self.valid_from is not None
+            and self.valid_until is not None
+            and self.valid_until <= self.valid_from
+        ):
+            raise ValueError("approval principal validity must have positive duration")
+        return self
+
+
+class ApprovalTeamMembershipUpsertRequest(StrictRequest):
+    expected_membership_version: int = Field(ge=0)
+    status: ApprovalPrincipalStatus = ApprovalPrincipalStatus.ACTIVE
+    can_delegate: bool = False
+    valid_from: datetime | None = None
+    valid_until: datetime | None = None
+    reason: NonEmptyText
+
+    @model_validator(mode="after")
+    def _consistent_validity(self) -> ApprovalTeamMembershipUpsertRequest:
+        for value in (self.valid_from, self.valid_until):
+            if value is not None and value.utcoffset() is None:
+                raise ValueError("approval membership validity must include timezone")
+        if (
+            self.valid_from is not None
+            and self.valid_until is not None
+            and self.valid_until <= self.valid_from
+        ):
+            raise ValueError("approval membership validity must have positive duration")
+        return self
 
 
 class RunTransitionRequest(StrictRequest):
@@ -329,13 +661,39 @@ def _success(
     created: bool | None = None,
 ) -> JSONResponse:
     body: dict[str, Any] = {
-        "data": value.model_dump(mode="json"),
+        "data": value.model_dump(mode="json", by_alias=True),
         "error": None,
         "request_id": _request_id(request),
     }
     if created is not None:
         body["created"] = created
     return JSONResponse(body, status_code=status_code)
+
+
+def _capability_contract_guard(
+    request: Request,
+    spec: CapabilitySpec,
+) -> JSONResponse | None:
+    fingerprint = request.headers.get(CAPABILITY_FINGERPRINT_HEADER)
+    if fingerprint is None:
+        fingerprint = request.headers.get(CAPABILITY_FINGERPRINT_HEADER.lower())
+    try:
+        spec.assert_invocation_fingerprint(fingerprint)
+    except CapabilityFingerprintMismatchError:
+        return _error(
+            request,
+            409,
+            "capability_contract_mismatch",
+            "Client CapabilitySpec fingerprint does not match the serving contract",
+            [
+                {
+                    "capability_id": spec.capability_id,
+                    "version": spec.version,
+                    "fingerprint": spec.fingerprint,
+                }
+            ],
+        )
+    return None
 
 
 def _metadata(user: Any) -> dict[str, Any]:
@@ -418,6 +776,38 @@ def _gateway() -> PlatformGateway:
 
 def _approval_case_authority() -> ApprovalCaseAuthority:
     return ApprovalCaseAuthority()
+
+
+def _slo_authority() -> SLODefinitionAuthority:
+    return SLODefinitionAuthority()
+
+
+def _master_data_authority() -> MasterDataAuthority:
+    return MasterDataAuthority()
+
+
+def _slo_incident_reconciler() -> SLOIncidentReconciler:
+    return SLOIncidentReconciler(_slo_authority(), _gateway())
+
+
+def _slo_alert_detector_subject() -> str:
+    subject = os.environ.get("GDA_SLO_ALERT_DETECTOR_SUBJECT", "")
+    if re.fullmatch(r"workload:[^\s]{1,128}", subject) is None:
+        raise GatewayConfigurationError(
+            "SLO alert detector workload identity is not configured"
+        )
+    return subject
+
+
+def _architecture_change_approval_service() -> ArchitectureChangeApprovalService:
+    return ArchitectureChangeApprovalService(
+        _gateway(),
+        _approval_case_authority(),
+    )
+
+
+def _utc_now() -> datetime:
+    return datetime.now(UTC)
 
 
 def _manual_runtime_profile() -> ManualDataOpsRuntimeProfile:
@@ -503,6 +893,41 @@ def _approval_case_error(
     return _error(request, status, error.code, str(error))
 
 
+def _slo_error(request: Request, error: SLOAuthorityError) -> JSONResponse:
+    if isinstance(error, SLOConflictError):
+        status = 409
+    elif isinstance(error, SLONotFoundError):
+        status = 404
+    elif isinstance(error, SLOForbiddenError):
+        status = 403
+    elif isinstance(error, SLOValidationError):
+        status = 422
+    elif isinstance(error, SLOConfigurationError):
+        status = 503
+    else:
+        status = 500
+    return _error(request, status, error.code, str(error))
+
+
+def _master_data_error(
+    request: Request,
+    error: MasterDataAuthorityError,
+) -> JSONResponse:
+    if isinstance(error, MasterDataConflictError):
+        status = 409
+    elif isinstance(error, MasterDataNotFoundError):
+        status = 404
+    elif isinstance(error, MasterDataForbiddenError):
+        status = 403
+    elif isinstance(error, MasterDataValidationError):
+        status = 422
+    elif isinstance(error, MasterDataConfigurationError):
+        status = 503
+    else:
+        status = 500
+    return _error(request, status, error.code, str(error))
+
+
 def _approval_case_ref(request: Request, principal: GatewayPrincipal) -> str | JSONResponse:
     case_id = request.path_params.get("case_id", "")
     try:
@@ -514,6 +939,112 @@ def _approval_case_ref(request: Request, principal: GatewayPrincipal) -> str | J
             "invalid_approval_case_id",
             "case_id must be a canonical lowercase resource identifier",
         )
+
+
+def _slo_definition_ref(
+    request: Request,
+    principal: GatewayPrincipal,
+) -> str | JSONResponse:
+    definition_id = request.path_params.get("slo_definition_id", "")
+    try:
+        return build_resource_urn(
+            principal.tenant_id,
+            "slo_definition",
+            definition_id,
+        )
+    except ValueError:
+        return _error(
+            request,
+            400,
+            "invalid_slo_definition_id",
+            "slo_definition_id must be a canonical lowercase resource identifier",
+        )
+
+
+def _slo_version_refs(
+    request: Request,
+    principal: GatewayPrincipal,
+) -> tuple[str, str] | JSONResponse:
+    definition_ref = _slo_definition_ref(request, principal)
+    if isinstance(definition_ref, JSONResponse):
+        return definition_ref
+    try:
+        version = int(request.path_params.get("version", ""))
+    except (TypeError, ValueError):
+        version = 0
+    if not 1 <= version <= 1_000_000:
+        return _error(
+            request,
+            400,
+            "invalid_slo_version",
+            "version must be an integer between 1 and 1000000",
+        )
+    return definition_ref, f"{definition_ref}.v{version}"
+
+
+def _master_entity_ref(
+    request: Request,
+    principal: GatewayPrincipal,
+) -> str | JSONResponse:
+    entity_id = request.path_params.get("entity_id", "")
+    try:
+        return build_resource_urn(principal.tenant_id, "master_entity", entity_id)
+    except ValueError:
+        return _error(
+            request,
+            400,
+            "invalid_master_entity_id",
+            "entity_id must be a canonical lowercase resource identifier",
+        )
+
+
+def _master_entity_version_refs(
+    request: Request,
+    principal: GatewayPrincipal,
+) -> tuple[str, str] | JSONResponse:
+    entity_ref = _master_entity_ref(request, principal)
+    if isinstance(entity_ref, JSONResponse):
+        return entity_ref
+    try:
+        version = int(request.path_params.get("version", ""))
+    except (TypeError, ValueError):
+        version = 0
+    if not 1 <= version <= 1_000_000:
+        return _error(
+            request,
+            400,
+            "invalid_master_entity_version",
+            "version must be an integer between 1 and 1000000",
+        )
+    return entity_ref, f"{entity_ref}.v{version}"
+
+
+def _master_source_record_ref(
+    request: Request,
+    principal: GatewayPrincipal,
+) -> str | JSONResponse:
+    source_record_key = request.path_params.get("source_record_key", "")
+    try:
+        return build_resource_urn(
+            principal.tenant_id,
+            "master_source_record",
+            source_record_key,
+        )
+    except ValueError:
+        return _error(
+            request,
+            400,
+            "invalid_master_source_record_key",
+            "source_record_key must be a canonical lowercase resource identifier",
+        )
+
+
+def _approval_subject(subject_type: str, subject_id: str) -> str:
+    if subject_type not in {"human", "team"} or re.fullmatch(
+        r"[a-z0-9][a-z0-9._-]{0,127}", subject_id
+    ) is None:
+        raise ValueError("approval subject must be a canonical human or team identity")
+    return f"{subject_type}:{subject_id}"
 
 
 def _tenant_matches(
@@ -619,6 +1150,58 @@ async def get_approval_case(request: Request) -> JSONResponse:
         return _approval_case_error(request, exc)
 
 
+async def list_approval_cases(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    raw_status = request.query_params.get("status")
+    raw_action = request.query_params.get("action")
+    try:
+        limit = int(request.query_params.get("limit", "50"))
+        offset = int(request.query_params.get("offset", "0"))
+        status = ApprovalCaseStatus(raw_status) if raw_status else None
+        action = (
+            _APPROVAL_ACTION_ADAPTER.validate_python(raw_action)
+            if raw_action
+            else None
+        )
+    except (TypeError, ValueError, ValidationError):
+        return _error(
+            request,
+            400,
+            "invalid_approval_case_query",
+            "status, limit, or offset is invalid",
+        )
+    if not 1 <= limit <= 100 or not 0 <= offset <= 10_000:
+        return _error(
+            request,
+            400,
+            "invalid_approval_case_query",
+            "approval case query is outside the supported range",
+        )
+    try:
+        page: ApprovalCasePage = await asyncio.to_thread(
+            _approval_case_authority().list,
+            principal.tenant_id,
+            status=status,
+            action=action,
+            limit=limit,
+            offset=offset,
+        )
+        return _success(
+            request,
+            ApprovalCaseListResponse(
+                items=page.items,
+                count=len(page.items),
+                offset=page.offset,
+                limit=page.limit,
+                has_more=page.has_more,
+            ),
+        )
+    except ApprovalCaseAuthorityError as exc:
+        return _approval_case_error(request, exc)
+
+
 async def list_approval_case_events(request: Request) -> JSONResponse:
     principal = _principal(request)
     if isinstance(principal, JSONResponse):
@@ -635,6 +1218,346 @@ async def list_approval_case_events(request: Request) -> JSONResponse:
         return _success(
             request,
             ApprovalCaseEventListResponse(items=events, count=len(events)),
+        )
+    except ApprovalCaseAuthorityError as exc:
+        return _approval_case_error(request, exc)
+
+
+async def list_approval_case_notifications(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    approval_case_ref = _approval_case_ref(request, principal)
+    if isinstance(approval_case_ref, JSONResponse):
+        return approval_case_ref
+    try:
+        notifications = await asyncio.to_thread(
+            _approval_case_authority().notifications,
+            principal.tenant_id,
+            approval_case_ref,
+        )
+        recoveries = await asyncio.to_thread(
+            _approval_case_authority().notification_recoveries,
+            principal.tenant_id,
+            approval_case_ref,
+        )
+        return _success(
+            request,
+            ApprovalCaseNotificationListResponse(
+                items=notifications,
+                count=len(notifications),
+                recoveries=recoveries,
+                recovery_count=len(recoveries),
+            ),
+        )
+    except ApprovalCaseAuthorityError as exc:
+        return _approval_case_error(request, exc)
+
+
+async def get_approval_case_assignment(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    approval_case_ref = _approval_case_ref(request, principal)
+    if isinstance(approval_case_ref, JSONResponse):
+        return approval_case_ref
+    try:
+        authority = _approval_case_authority()
+        current = await asyncio.to_thread(
+            authority.assignment,
+            principal.tenant_id,
+            approval_case_ref,
+        )
+        events = await asyncio.to_thread(
+            authority.assignment_events,
+            principal.tenant_id,
+            approval_case_ref,
+        )
+        actor_access = None
+        if principal.subject_type is SubjectType.HUMAN:
+            actor_access = await asyncio.to_thread(
+                authority.assignment_actor_access,
+                tenant_id=principal.tenant_id,
+                approval_case_ref=approval_case_ref,
+                actor_subject=principal.actor_ref,
+            )
+        return _success(
+            request,
+            ApprovalCaseAssignmentResponse(
+                current=current,
+                events=events,
+                event_count=len(events),
+                actor_access=actor_access,
+            ),
+        )
+    except ApprovalCaseAuthorityError as exc:
+        return _approval_case_error(request, exc)
+
+
+async def transition_approval_case_assignment(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.subject_type is not SubjectType.HUMAN:
+        return _error(
+            request,
+            403,
+            "human_identity_required",
+            "ApprovalCase assignment requires a human identity",
+        )
+    transition = await _parse(request, ApprovalCaseAssignmentRequest)
+    if isinstance(transition, JSONResponse):
+        return transition
+    if (
+        transition.operation is not ApprovalCaseAssignmentOperation.DELEGATE
+        and principal.role != "admin"
+    ):
+        return _error(
+            request,
+            403,
+            "approval_assignment_admin_required",
+            "ApprovalCase assign, reassign, and release require an administrator",
+        )
+    approval_case_ref = _approval_case_ref(request, principal)
+    if isinstance(approval_case_ref, JSONResponse):
+        return approval_case_ref
+    assignee_subject = transition.resolved_assignee_subject
+    try:
+        assignment = await asyncio.to_thread(
+            _approval_case_authority().transition_assignment,
+            tenant_id=principal.tenant_id,
+            approval_case_ref=approval_case_ref,
+            expected_assignment_version=transition.expected_assignment_version,
+            operation=transition.operation,
+            actor_subject=principal.actor_ref,
+            assignee_subject=assignee_subject,
+            reason=transition.reason,
+        )
+        return _success(request, assignment)
+    except (ValidationError, ValueError) as exc:
+        details = _validation_details(exc) if isinstance(exc, ValidationError) else None
+        return _error(
+            request,
+            422,
+            "contract_validation_failed",
+            "ApprovalCase assignment does not satisfy the platform contract",
+            details,
+        )
+    except ApprovalCaseAuthorityError as exc:
+        return _approval_case_error(request, exc)
+
+
+async def list_approval_principals(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    raw_eligible_only = request.query_params.get("eligible_only", "true").lower()
+    if raw_eligible_only not in {"true", "false"}:
+        return _error(
+            request,
+            400,
+            "invalid_eligible_only",
+            "eligible_only must be true or false",
+        )
+    try:
+        items = await asyncio.to_thread(
+            _approval_case_authority().list_principals,
+            principal.tenant_id,
+            eligible_only=raw_eligible_only == "true",
+        )
+        return _success(
+            request,
+            ApprovalPrincipalListResponse(items=items, count=len(items)),
+        )
+    except ApprovalCaseAuthorityError as exc:
+        return _approval_case_error(request, exc)
+
+
+async def upsert_approval_principal(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.role != "admin" or principal.subject_type is not SubjectType.HUMAN:
+        return _error(
+            request,
+            403,
+            "approval_directory_admin_required",
+            "Approval directory changes require a human administrator",
+        )
+    update = await _parse(request, ApprovalPrincipalUpsertRequest)
+    if isinstance(update, JSONResponse):
+        return update
+    try:
+        principal_type = ApprovalPrincipalType(request.path_params.get("principal_type"))
+        principal_subject = _approval_subject(
+            principal_type.value,
+            request.path_params.get("principal_id", ""),
+        )
+        stored = await asyncio.to_thread(
+            _approval_case_authority().upsert_principal,
+            tenant_id=principal.tenant_id,
+            principal_subject=principal_subject,
+            expected_directory_version=update.expected_directory_version,
+            principal_type=principal_type,
+            display_name=update.display_name,
+            status=update.status,
+            approval_eligible=update.approval_eligible,
+            availability_status=update.availability_status,
+            valid_from=update.valid_from or _utc_now(),
+            valid_until=update.valid_until,
+            actor_subject=principal.actor_ref,
+            reason=update.reason,
+        )
+        return _success(
+            request,
+            stored,
+            created=update.expected_directory_version == 0,
+        )
+    except (ValidationError, ValueError) as exc:
+        details = _validation_details(exc) if isinstance(exc, ValidationError) else None
+        return _error(
+            request,
+            422,
+            "contract_validation_failed",
+            "Approval principal does not satisfy the platform contract",
+            details,
+        )
+    except ApprovalCaseAuthorityError as exc:
+        return _approval_case_error(request, exc)
+
+
+async def upsert_approval_team_membership(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.role != "admin" or principal.subject_type is not SubjectType.HUMAN:
+        return _error(
+            request,
+            403,
+            "approval_directory_admin_required",
+            "Approval directory changes require a human administrator",
+        )
+    update = await _parse(request, ApprovalTeamMembershipUpsertRequest)
+    if isinstance(update, JSONResponse):
+        return update
+    try:
+        team_subject = _approval_subject(
+            "team", request.path_params.get("team_id", "")
+        )
+        member_subject = _approval_subject(
+            "human", request.path_params.get("member_id", "")
+        )
+        stored = await asyncio.to_thread(
+            _approval_case_authority().upsert_team_membership,
+            tenant_id=principal.tenant_id,
+            team_subject=team_subject,
+            member_subject=member_subject,
+            expected_membership_version=update.expected_membership_version,
+            status=update.status,
+            can_delegate=update.can_delegate,
+            valid_from=update.valid_from or _utc_now(),
+            valid_until=update.valid_until,
+            actor_subject=principal.actor_ref,
+            reason=update.reason,
+        )
+        return _success(
+            request,
+            stored,
+            created=update.expected_membership_version == 0,
+        )
+    except (ValidationError, ValueError) as exc:
+        details = _validation_details(exc) if isinstance(exc, ValidationError) else None
+        return _error(
+            request,
+            422,
+            "contract_validation_failed",
+            "Approval team membership does not satisfy the platform contract",
+            details,
+        )
+    except ApprovalCaseAuthorityError as exc:
+        return _approval_case_error(request, exc)
+
+
+async def list_approval_team_memberships(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    try:
+        team_subject = _approval_subject(
+            "team", request.path_params.get("team_id", "")
+        )
+        items = await asyncio.to_thread(
+            _approval_case_authority().list_team_memberships,
+            principal.tenant_id,
+            team_subject,
+        )
+        return _success(
+            request,
+            ApprovalTeamMembershipListResponse(items=items, count=len(items)),
+        )
+    except ValueError as exc:
+        return _error(
+            request,
+            422,
+            "contract_validation_failed",
+            str(exc),
+        )
+    except ApprovalCaseAuthorityError as exc:
+        return _approval_case_error(request, exc)
+
+
+async def retry_approval_case_notification(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.subject_type is not SubjectType.HUMAN:
+        return _error(
+            request,
+            403,
+            "human_identity_required",
+            "ApprovalCase notification recovery requires a human identity",
+        )
+    if principal.role != "admin":
+        return _error(
+            request,
+            403,
+            "approval_notification_recovery_admin_required",
+            "ApprovalCase notification recovery requires an administrator",
+        )
+    recovery = await _parse(request, ApprovalCaseNotificationRetryRequest)
+    if isinstance(recovery, JSONResponse):
+        return recovery
+    approval_case_ref = _approval_case_ref(request, principal)
+    if isinstance(approval_case_ref, JSONResponse):
+        return approval_case_ref
+    try:
+        notification_id = UUID(request.path_params.get("notification_id", ""))
+    except ValueError:
+        return _error(
+            request,
+            400,
+            "invalid_approval_notification_id",
+            "notification_id must be a UUID",
+        )
+    try:
+        notification = await asyncio.to_thread(
+            _approval_case_authority().retry_notification,
+            tenant_id=principal.tenant_id,
+            approval_case_ref=approval_case_ref,
+            notification_id=notification_id,
+            expected_attempt_count=recovery.expected_attempt_count,
+            actor_subject=principal.actor_ref,
+            reason=recovery.reason,
+        )
+        return _success(request, notification)
+    except (ValidationError, ValueError) as exc:
+        details = _validation_details(exc) if isinstance(exc, ValidationError) else None
+        return _error(
+            request,
+            422,
+            "contract_validation_failed",
+            "Notification recovery does not satisfy the platform contract",
+            details,
         )
     except ApprovalCaseAuthorityError as exc:
         return _approval_case_error(request, exc)
@@ -689,6 +1612,698 @@ async def decide_approval_case(request: Request) -> JSONResponse:
         return _approval_case_error(request, exc)
 
 
+async def stage_slo_definition_version(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    submission = await _parse(request, SLODefinitionStageRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    definition_ref = _slo_definition_ref(request, principal)
+    if isinstance(definition_ref, JSONResponse):
+        return definition_ref
+    try:
+        draft = SLODefinitionDraft(
+            tenant_id=principal.tenant_id,
+            slo_definition_ref=definition_ref,
+            slo_version_ref=f"{definition_ref}.v{submission.version}",
+            version=submission.version,
+            service_resource_urn=submission.service_resource_urn,
+            indicator=submission.indicator,
+            objective_basis_points=submission.objective_basis_points,
+            objective_window_seconds=submission.objective_window_seconds,
+            owner_subject=submission.owner_subject,
+            oncall_ref=submission.oncall_ref,
+            burn_rate_windows=submission.burn_rate_windows,
+            created_by=principal.actor_ref,
+            creation_reason=submission.creation_reason,
+            created_at=_utc_now(),
+        )
+        definition = await asyncio.to_thread(_slo_authority().stage, draft)
+        return _success(request, definition)
+    except ValidationError as exc:
+        return _error(
+            request,
+            422,
+            "contract_validation_failed",
+            "SLO definition does not satisfy the platform contract",
+            _validation_details(exc),
+        )
+    except SLOAuthorityError as exc:
+        return _slo_error(request, exc)
+
+
+async def list_slo_definition_versions(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    definition_ref = _slo_definition_ref(request, principal)
+    if isinstance(definition_ref, JSONResponse):
+        return definition_ref
+    try:
+        limit = int(request.query_params.get("limit", "50"))
+        offset = int(request.query_params.get("offset", "0"))
+    except (TypeError, ValueError):
+        limit, offset = 0, -1
+    if not 1 <= limit <= 100 or not 0 <= offset <= 10_000:
+        return _error(
+            request,
+            400,
+            "invalid_slo_version_query",
+            "SLO version query is outside the supported range",
+        )
+    try:
+        page: SLODefinitionVersionPage = await asyncio.to_thread(
+            _slo_authority().list_versions,
+            principal.tenant_id,
+            definition_ref,
+            limit=limit,
+            offset=offset,
+        )
+        return _success(
+            request,
+            SLODefinitionVersionListResponse(
+                items=page.items,
+                count=len(page.items),
+                offset=page.offset,
+                limit=page.limit,
+                has_more=page.has_more,
+            ),
+        )
+    except SLOAuthorityError as exc:
+        return _slo_error(request, exc)
+
+
+async def create_slo_activation_approval_case(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    submission = await _parse(request, SLOActivationApprovalRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    refs = _slo_version_refs(request, principal)
+    if isinstance(refs, JSONResponse):
+        return refs
+    definition_ref, version_ref = refs
+    try:
+        definition = await asyncio.to_thread(
+            _slo_authority().get,
+            principal.tenant_id,
+            version_ref,
+        )
+        requested_at = _utc_now()
+        approval_case = ApprovalCase(
+            tenant_id=principal.tenant_id,
+            approval_case_ref=build_resource_urn(
+                principal.tenant_id,
+                "approval_case",
+                submission.case_id,
+            ),
+            target_resource_urn=definition.slo_version_ref,
+            target_fingerprint=definition.definition_fingerprint,
+            action=SLO_ACTIVATION_ACTION,
+            requester_subject=principal.actor_ref,
+            request_reason=submission.request_reason,
+            request_context={
+                "schema": "gda.slo_activation_approval.v1",
+                "slo_definition_ref": definition_ref,
+                "slo_version_ref": definition.slo_version_ref,
+                "definition_fingerprint": definition.definition_fingerprint,
+                "service_resource_urn": definition.service_resource_urn,
+            },
+            requested_at=requested_at,
+            expires_at=requested_at + timedelta(hours=submission.expires_in_hours),
+        )
+        result = await asyncio.to_thread(
+            _approval_case_authority().create,
+            approval_case,
+            owner_ref=os.environ.get(
+                "GDA_APPROVAL_CASE_OWNER_REF",
+                "team:data-platform",
+            ),
+        )
+        return _success(
+            request,
+            result.approval_case,
+            status_code=201 if result.created else 200,
+            created=result.created,
+        )
+    except ValidationError as exc:
+        return _error(
+            request,
+            422,
+            "contract_validation_failed",
+            "SLO activation approval does not satisfy the platform contract",
+            _validation_details(exc),
+        )
+    except SLOAuthorityError as exc:
+        return _slo_error(request, exc)
+    except ApprovalCaseAuthorityError as exc:
+        return _approval_case_error(request, exc)
+
+
+async def activate_slo_definition_version(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.role != "admin":
+        return _error(
+            request,
+            403,
+            "slo_activation_admin_required",
+            "SLO activation requires an administrator",
+        )
+    submission = await _parse(request, SLODefinitionActivateRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    refs = _slo_version_refs(request, principal)
+    if isinstance(refs, JSONResponse):
+        return refs
+    _, version_ref = refs
+    try:
+        authority = _slo_authority()
+        definition = await asyncio.to_thread(
+            authority.get,
+            principal.tenant_id,
+            version_ref,
+        )
+        approval_case_ref = build_resource_urn(
+            principal.tenant_id,
+            "approval_case",
+            submission.approval_case_id,
+        )
+        activation = await asyncio.to_thread(
+            authority.activate,
+            tenant_id=principal.tenant_id,
+            slo_version_ref=definition.slo_version_ref,
+            definition_fingerprint=definition.definition_fingerprint,
+            approval_case_ref=approval_case_ref,
+            expected_activation_version=submission.expected_activation_version,
+            actor_subject=principal.actor_ref,
+            reason=submission.reason,
+        )
+        return _success(request, activation)
+    except SLOAuthorityError as exc:
+        return _slo_error(request, exc)
+
+
+async def get_active_slo_definition(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    definition_ref = _slo_definition_ref(request, principal)
+    if isinstance(definition_ref, JSONResponse):
+        return definition_ref
+    try:
+        definition, activation = await asyncio.to_thread(
+            _slo_authority().active,
+            principal.tenant_id,
+            definition_ref,
+        )
+        return _success(
+            request,
+            SLOActiveDefinitionResponse(
+                definition=definition,
+                activation=activation,
+            ),
+        )
+    except SLOAuthorityError as exc:
+        return _slo_error(request, exc)
+
+
+async def preview_slo_prometheus_rules(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    refs = _slo_version_refs(request, principal)
+    if isinstance(refs, JSONResponse):
+        return refs
+    definition_ref, version_ref = refs
+    try:
+        authority = _slo_authority()
+        definition = await asyncio.to_thread(
+            authority.get,
+            principal.tenant_id,
+            version_ref,
+        )
+        _, activation = await asyncio.to_thread(
+            authority.active,
+            principal.tenant_id,
+            definition_ref,
+        )
+        prometheus_rules = compile_slo_prometheus_rules(definition, activation)
+        return _success(
+            request,
+            SLOPrometheusRulePreviewResponse(
+                definition=definition,
+                activation=activation,
+                prometheus_rules=prometheus_rules,
+            ),
+        )
+    except SLOCompilationError as exc:
+        return _error(
+            request,
+            409,
+            "slo_version_not_active",
+            str(exc),
+        )
+    except SLOAuthorityError as exc:
+        return _slo_error(request, exc)
+
+
+async def list_slo_definition_events(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    definition_ref = _slo_definition_ref(request, principal)
+    if isinstance(definition_ref, JSONResponse):
+        return definition_ref
+    try:
+        events = await asyncio.to_thread(
+            _slo_authority().events,
+            principal.tenant_id,
+            definition_ref,
+        )
+        return _success(
+            request,
+            SLODefinitionEventListResponse(items=events, count=len(events)),
+        )
+    except SLOAuthorityError as exc:
+        return _slo_error(request, exc)
+
+
+async def observe_master_source_record(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    submission = await _parse(request, MasterSourceObservationRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    source_record_key = uuid5(
+        NAMESPACE_URL,
+        "|".join(
+            (
+                principal.tenant_id,
+                submission.source_system_ref,
+                submission.source_record_id,
+                submission.source_revision,
+            )
+        ),
+    ).hex
+    try:
+        draft = MasterSourceRecordDraft(
+            tenant_id=principal.tenant_id,
+            source_record_ref=build_resource_urn(
+                principal.tenant_id,
+                "master_source_record",
+                source_record_key,
+            ),
+            domain=submission.domain,
+            source_system_ref=submission.source_system_ref,
+            source_record_id=submission.source_record_id,
+            source_revision=submission.source_revision,
+            business_key=submission.business_key,
+            display_name=submission.display_name,
+            parent_business_key=submission.parent_business_key,
+            attributes=submission.attributes,
+            observed_by=principal.actor_ref,
+            observed_at=_utc_now(),
+        )
+        record = await asyncio.to_thread(_master_data_authority().observe, draft)
+        return _success(request, record)
+    except ValidationError as exc:
+        return _error(
+            request,
+            422,
+            "contract_validation_failed",
+            "Master source observation does not satisfy the platform contract",
+            _validation_details(exc),
+        )
+    except MasterDataAuthorityError as exc:
+        return _master_data_error(request, exc)
+
+
+async def propose_master_source_matches(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.subject_type not in {SubjectType.WORKLOAD, SubjectType.AGENT}:
+        return _error(
+            request,
+            403,
+            "master_match_machine_identity_required",
+            "Master match proposals require a workload or agent identity",
+        )
+    submission = await _parse(request, MasterMatchRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    source_record_ref = _master_source_record_ref(request, principal)
+    if isinstance(source_record_ref, JSONResponse):
+        return source_record_ref
+    try:
+        result: MasterMatchResult = await asyncio.to_thread(
+            _master_data_authority().match,
+            principal.tenant_id,
+            source_record_ref,
+            proposed_by=principal.actor_ref,
+            proposed_at=_utc_now(),
+            limit=submission.limit,
+        )
+        return _success(request, result)
+    except (ValidationError, ValueError) as exc:
+        details = _validation_details(exc) if isinstance(exc, ValidationError) else None
+        return _error(
+            request,
+            422,
+            "contract_validation_failed",
+            "Master match request does not satisfy the platform contract",
+            details,
+        )
+    except MasterDataAuthorityError as exc:
+        return _master_data_error(request, exc)
+
+
+async def stage_master_entity_version(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    submission = await _parse(request, MasterEntityVersionStageRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    entity_ref = _master_entity_ref(request, principal)
+    if isinstance(entity_ref, JSONResponse):
+        return entity_ref
+    try:
+        draft = MasterEntityVersionDraft(
+            tenant_id=principal.tenant_id,
+            entity_ref=entity_ref,
+            entity_version_ref=f"{entity_ref}.v{submission.version}",
+            version=submission.version,
+            domain=submission.domain,
+            business_key=submission.business_key,
+            canonical_name=submission.canonical_name,
+            parent_entity_ref=submission.parent_entity_ref,
+            attributes=submission.attributes,
+            source_record_refs=submission.source_record_refs,
+            match_candidate_refs=submission.match_candidate_refs,
+            valid_from=submission.valid_from,
+            valid_to=submission.valid_to,
+            owner_subject=submission.owner_subject,
+            created_by=principal.actor_ref,
+            creation_reason=submission.creation_reason,
+            created_at=_utc_now(),
+        )
+        version = await asyncio.to_thread(_master_data_authority().stage, draft)
+        return _success(request, version)
+    except ValidationError as exc:
+        return _error(
+            request,
+            422,
+            "contract_validation_failed",
+            "Master entity version does not satisfy the platform contract",
+            _validation_details(exc),
+        )
+    except MasterDataAuthorityError as exc:
+        return _master_data_error(request, exc)
+
+
+async def list_master_entity_versions(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    entity_ref = _master_entity_ref(request, principal)
+    if isinstance(entity_ref, JSONResponse):
+        return entity_ref
+    try:
+        limit = int(request.query_params.get("limit", "50"))
+        offset = int(request.query_params.get("offset", "0"))
+    except (TypeError, ValueError):
+        limit, offset = 0, -1
+    if not 1 <= limit <= 100 or not 0 <= offset <= 10_000:
+        return _error(
+            request,
+            400,
+            "invalid_master_version_query",
+            "Master version query is outside the supported range",
+        )
+    try:
+        page: MasterEntityVersionPage = await asyncio.to_thread(
+            _master_data_authority().list_versions,
+            principal.tenant_id,
+            entity_ref,
+            limit=limit,
+            offset=offset,
+        )
+        return _success(
+            request,
+            MasterEntityVersionListResponse(
+                items=page.items,
+                count=len(page.items),
+                offset=page.offset,
+                limit=page.limit,
+                has_more=page.has_more,
+            ),
+        )
+    except MasterDataAuthorityError as exc:
+        return _master_data_error(request, exc)
+
+
+async def create_master_activation_approval_case(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    submission = await _parse(request, MasterActivationApprovalRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    refs = _master_entity_version_refs(request, principal)
+    if isinstance(refs, JSONResponse):
+        return refs
+    entity_ref, version_ref = refs
+    try:
+        version = await asyncio.to_thread(
+            _master_data_authority().get,
+            principal.tenant_id,
+            version_ref,
+        )
+        requested_at = _utc_now()
+        approval_case = ApprovalCase(
+            tenant_id=principal.tenant_id,
+            approval_case_ref=build_resource_urn(
+                principal.tenant_id,
+                "approval_case",
+                submission.case_id,
+            ),
+            target_resource_urn=version.entity_version_ref,
+            target_fingerprint=version.entity_fingerprint,
+            action=MASTER_DATA_ACTIVATION_ACTION,
+            requester_subject=principal.actor_ref,
+            request_reason=submission.request_reason,
+            request_context={
+                "schema": "gda.master_entity_activation_approval.v1",
+                "entity_ref": entity_ref,
+                "entity_version_ref": version.entity_version_ref,
+                "entity_fingerprint": version.entity_fingerprint,
+                "domain": version.domain.value,
+                "business_key": version.business_key,
+                "source_record_refs": list(version.source_record_refs),
+                "match_candidate_refs": list(version.match_candidate_refs),
+            },
+            requested_at=requested_at,
+            expires_at=requested_at + timedelta(hours=submission.expires_in_hours),
+        )
+        result = await asyncio.to_thread(
+            _approval_case_authority().create,
+            approval_case,
+            owner_ref=os.environ.get(
+                "GDA_APPROVAL_CASE_OWNER_REF",
+                "team:data-platform",
+            ),
+        )
+        return _success(
+            request,
+            result.approval_case,
+            status_code=201 if result.created else 200,
+            created=result.created,
+        )
+    except ValidationError as exc:
+        return _error(
+            request,
+            422,
+            "contract_validation_failed",
+            "Master activation approval does not satisfy the platform contract",
+            _validation_details(exc),
+        )
+    except MasterDataAuthorityError as exc:
+        return _master_data_error(request, exc)
+    except ApprovalCaseAuthorityError as exc:
+        return _approval_case_error(request, exc)
+
+
+async def activate_master_entity_version(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.role != "admin":
+        return _error(
+            request,
+            403,
+            "master_activation_admin_required",
+            "Master entity activation requires an administrator",
+        )
+    submission = await _parse(request, MasterEntityActivateRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    refs = _master_entity_version_refs(request, principal)
+    if isinstance(refs, JSONResponse):
+        return refs
+    _, version_ref = refs
+    try:
+        authority = _master_data_authority()
+        version = await asyncio.to_thread(
+            authority.get,
+            principal.tenant_id,
+            version_ref,
+        )
+        activation = await asyncio.to_thread(
+            authority.activate,
+            tenant_id=principal.tenant_id,
+            entity_version_ref=version.entity_version_ref,
+            entity_fingerprint=version.entity_fingerprint,
+            approval_case_ref=build_resource_urn(
+                principal.tenant_id,
+                "approval_case",
+                submission.approval_case_id,
+            ),
+            expected_activation_version=submission.expected_activation_version,
+            actor_subject=principal.actor_ref,
+            reason=submission.reason,
+        )
+        return _success(request, activation)
+    except MasterDataAuthorityError as exc:
+        return _master_data_error(request, exc)
+
+
+async def get_active_master_entity(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    entity_ref = _master_entity_ref(request, principal)
+    if isinstance(entity_ref, JSONResponse):
+        return entity_ref
+    try:
+        entity, activation = await asyncio.to_thread(
+            _master_data_authority().active,
+            principal.tenant_id,
+            entity_ref,
+        )
+        return _success(
+            request,
+            MasterActiveEntityResponse(entity=entity, activation=activation),
+        )
+    except MasterDataAuthorityError as exc:
+        return _master_data_error(request, exc)
+
+
+async def list_master_data_events(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    entity_ref = _master_entity_ref(request, principal)
+    if isinstance(entity_ref, JSONResponse):
+        return entity_ref
+    try:
+        events = await asyncio.to_thread(
+            _master_data_authority().events,
+            principal.tenant_id,
+            entity_ref,
+        )
+        return _success(
+            request,
+            MasterDataEventListResponse(items=events, count=len(events)),
+        )
+    except MasterDataAuthorityError as exc:
+        return _master_data_error(request, exc)
+
+
+async def list_master_resource_projections(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    entity_ref = _master_entity_ref(request, principal)
+    if isinstance(entity_ref, JSONResponse):
+        return entity_ref
+    try:
+        limit = int(request.query_params.get("limit", "50"))
+        offset = int(request.query_params.get("offset", "0"))
+    except (TypeError, ValueError):
+        limit, offset = 0, -1
+    if not 1 <= limit <= 100 or not 0 <= offset <= 10_000:
+        return _error(
+            request,
+            400,
+            "invalid_master_resource_projection_query",
+            "Master resource projection query is outside the supported range",
+        )
+    try:
+        page: MasterResourceProjectionPage = await asyncio.to_thread(
+            _master_data_authority().resource_projections,
+            principal.tenant_id,
+            entity_ref,
+            limit=limit,
+            offset=offset,
+        )
+        return _success(
+            request,
+            MasterResourceProjectionListResponse(
+                items=page.items,
+                count=len(page.items),
+                offset=page.offset,
+                limit=page.limit,
+                has_more=page.has_more,
+            ),
+        )
+    except MasterDataAuthorityError as exc:
+        return _master_data_error(request, exc)
+
+
+async def reconcile_slo_alertmanager_webhook(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    if principal.subject_type is not SubjectType.WORKLOAD:
+        return _error(
+            request,
+            403,
+            "slo_alert_workload_required",
+            "SLO alert reconciliation requires a workload identity",
+        )
+    webhook = await _parse(request, AlertmanagerSLOWebhook)
+    if isinstance(webhook, JSONResponse):
+        return webhook
+    try:
+        detector_subject = _slo_alert_detector_subject()
+        if principal.actor_ref != detector_subject:
+            return _error(
+                request,
+                403,
+                "slo_alert_detector_mismatch",
+                "Authenticated workload is not the configured SLO alert detector",
+            )
+        result: SLOAlertReconciliationResult = await asyncio.to_thread(
+            _slo_incident_reconciler().reconcile,
+            principal.tenant_id,
+            webhook,
+            detector_subject=detector_subject,
+        )
+        return _success(request, result)
+    except SLOIncidentValidationError as exc:
+        return _error(request, 422, exc.code, str(exc))
+    except SLOAuthorityError as exc:
+        return _slo_error(request, exc)
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
 async def create_resource_version(request: Request) -> JSONResponse:
     principal = _principal(request)
     if isinstance(principal, JSONResponse):
@@ -707,6 +2322,48 @@ async def create_resource_version(request: Request) -> JSONResponse:
             result.value,
             status_code=201 if result.created else 200,
             created=result.created,
+        )
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
+async def list_resource_versions(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    try:
+        limit = int(request.query_params.get("limit", "50"))
+        offset = int(request.query_params.get("offset", "0"))
+    except (TypeError, ValueError):
+        return _error(
+            request,
+            400,
+            "invalid_resource_version_query",
+            "limit or offset is invalid",
+        )
+    if not 1 <= limit <= 100 or not 0 <= offset <= 10_000:
+        return _error(
+            request,
+            400,
+            "invalid_resource_version_query",
+            "limit or offset is outside the supported range",
+        )
+    try:
+        page = await asyncio.to_thread(
+            _gateway().list_resource_versions,
+            principal.tenant_id,
+            limit=limit,
+            offset=offset,
+        )
+        return _success(
+            request,
+            ResourceVersionListResponse(
+                items=page.items,
+                count=len(page.items),
+                offset=page.offset,
+                limit=page.limit,
+                has_more=page.has_more,
+            ),
         )
     except PlatformGatewayError as exc:
         return _gateway_error(request, exc)
@@ -796,6 +2453,12 @@ async def create_manual_dataops_run(request: Request) -> JSONResponse:
             "human_identity_required",
             "Manual DataOps admission requires a human identity",
         )
+    contract_error = _capability_contract_guard(
+        request,
+        DATAOPS_MANUAL_RUN_SUBMIT,
+    )
+    if contract_error is not None:
+        return contract_error
     submission = await _parse(request, ManualDataOpsRunRequest)
     if isinstance(submission, JSONResponse):
         return submission
@@ -876,18 +2539,25 @@ async def create_dataops_cancel(request: Request) -> JSONResponse:
             "human_identity_required",
             "DataOps cancellation requires a human identity",
         )
-    cancellation = await _parse(request, DataOpsCancelRequest)
-    if isinstance(cancellation, JSONResponse):
-        return cancellation
+    contract_error = _capability_contract_guard(request, DATAOPS_RUN_CANCEL)
+    if contract_error is not None:
+        return contract_error
     try:
         run_id = UUID(request.path_params["run_id"])
     except (KeyError, ValueError):
         return _error(request, 400, "invalid_run_id", "run_id must be a UUID")
+    body = await _parse(request, DataOpsCancelHttpBody)
+    if isinstance(body, JSONResponse):
+        return body
     try:
+        cancellation = DataOpsCancelRequest(
+            run_id=run_id,
+            **body.model_dump(mode="python"),
+        )
         profile = _cancel_runtime_profile()
         spec = DataOpsCancelSpec(
             tenant_id=principal.tenant_id,
-            run_id=run_id,
+            run_id=cancellation.run_id,
             client_request_id=cancellation.client_request_id,
             expected_state_version=cancellation.expected_state_version,
             requester_subject=principal.actor_ref,
@@ -1394,6 +3064,119 @@ async def create_openlineage_event(request: Request) -> JSONResponse:
         return _gateway_error(request, exc)
 
 
+async def get_resource_version_architecture(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    try:
+        resource_version_id = UUID(request.path_params["resource_version_id"])
+    except (KeyError, ValueError):
+        return _error(
+            request,
+            400,
+            "invalid_resource_version_id",
+            "resource_version_id must be a UUID",
+        )
+    try:
+        architecture = await asyncio.to_thread(
+            _gateway().get_resource_version_architecture,
+            principal.tenant_id,
+            resource_version_id,
+        )
+        return _success(request, architecture)
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
+async def get_resource_version_architecture_reconciliation(
+    request: Request,
+) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    try:
+        resource_version_id = UUID(request.path_params["resource_version_id"])
+    except (KeyError, ValueError):
+        return _error(
+            request,
+            400,
+            "invalid_resource_version_id",
+            "resource_version_id must be a UUID",
+        )
+    try:
+        reconciliation = await asyncio.to_thread(
+            _gateway().reconcile_resource_version_architecture,
+            principal.tenant_id,
+            resource_version_id,
+        )
+        return _success(request, reconciliation)
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
+async def create_resource_version_architecture_review(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    submission = await _parse(request, ArchitectureChangeReviewRequest)
+    if isinstance(submission, JSONResponse):
+        return submission
+    try:
+        resource_version_id = UUID(request.path_params["resource_version_id"])
+    except (KeyError, ValueError):
+        return _error(
+            request,
+            400,
+            "invalid_resource_version_id",
+            "resource_version_id must be a UUID",
+        )
+    requested_at = _utc_now()
+    try:
+        result = await asyncio.to_thread(
+            _architecture_change_approval_service().request_review,
+            tenant_id=principal.tenant_id,
+            resource_version_id=resource_version_id,
+            requester_subject=principal.actor_ref,
+            request_reason=submission.request_reason,
+            owner_ref=os.environ.get(
+                "GDA_APPROVAL_CASE_OWNER_REF",
+                "team:data-platform",
+            ),
+            requested_at=requested_at,
+            expires_at=requested_at + timedelta(hours=submission.expires_in_hours),
+        )
+        return _success(
+            request,
+            ArchitectureChangeReviewResponse(
+                reconciliation=result.reconciliation,
+                review=result.review,
+                approval_case=result.approval_case,
+            ),
+            status_code=201 if result.created else 200,
+            created=result.created,
+        )
+    except ArchitectureChangeApprovalError as exc:
+        return _error(
+            request,
+            422,
+            "architecture_change_not_reviewable",
+            str(exc),
+        )
+    except ApprovalCaseAuthorityError as exc:
+        return _approval_case_error(request, exc)
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+    except (ValidationError, ValueError) as exc:
+        details = _validation_details(exc) if isinstance(exc, ValidationError) else None
+        return _error(
+            request,
+            422,
+            "architecture_change_review_invalid",
+            "Architecture change review does not satisfy the platform contract",
+            details,
+        )
+
+
 async def get_resource_version_lineage(request: Request) -> JSONResponse:
     principal = _principal(request)
     if isinstance(principal, JSONResponse):
@@ -1509,10 +3292,40 @@ def get_platform_gateway_routes() -> list[APIRoute]:
             operation_id="platform_create_resource",
         ),
         _platform_route(
+            f"{base}/approval-principals",
+            list_approval_principals,
+            method="GET",
+            operation_id="platform_list_approval_principals",
+        ),
+        _platform_route(
+            f"{base}/approval-principals/{{principal_type}}/{{principal_id}}",
+            upsert_approval_principal,
+            method="PUT",
+            operation_id="platform_upsert_approval_principal",
+        ),
+        _platform_route(
+            f"{base}/approval-teams/{{team_id}}/members/{{member_id}}",
+            upsert_approval_team_membership,
+            method="PUT",
+            operation_id="platform_upsert_approval_team_membership",
+        ),
+        _platform_route(
+            f"{base}/approval-teams/{{team_id}}/members",
+            list_approval_team_memberships,
+            method="GET",
+            operation_id="platform_list_approval_team_memberships",
+        ),
+        _platform_route(
             f"{base}/approval-cases",
             create_approval_case,
             method="POST",
             operation_id="platform_create_approval_case",
+        ),
+        _platform_route(
+            f"{base}/approval-cases",
+            list_approval_cases,
+            method="GET",
+            operation_id="platform_list_approval_cases",
         ),
         _platform_route(
             f"{base}/approval-cases/{{case_id}}",
@@ -1527,16 +3340,148 @@ def get_platform_gateway_routes() -> list[APIRoute]:
             operation_id="platform_list_approval_case_events",
         ),
         _platform_route(
+            f"{base}/approval-cases/{{case_id}}/notifications",
+            list_approval_case_notifications,
+            method="GET",
+            operation_id="platform_list_approval_case_notifications",
+        ),
+        _platform_route(
+            f"{base}/approval-cases/{{case_id}}/assignment",
+            get_approval_case_assignment,
+            method="GET",
+            operation_id="platform_get_approval_case_assignment",
+        ),
+        _platform_route(
+            f"{base}/approval-cases/{{case_id}}/assignment",
+            transition_approval_case_assignment,
+            method="POST",
+            operation_id="platform_transition_approval_case_assignment",
+        ),
+        _platform_route(
+            f"{base}/approval-cases/{{case_id}}/notifications/{{notification_id}}/retry",
+            retry_approval_case_notification,
+            method="POST",
+            operation_id="platform_retry_approval_case_notification",
+        ),
+        _platform_route(
             f"{base}/approval-cases/{{case_id}}/decision",
             decide_approval_case,
             method="POST",
             operation_id="platform_decide_approval_case",
         ),
         _platform_route(
+            f"{base}/slo-definitions/{{slo_definition_id}}/versions",
+            stage_slo_definition_version,
+            method="POST",
+            operation_id="platform_stage_slo_definition_version",
+        ),
+        _platform_route(
+            f"{base}/slo-definitions/{{slo_definition_id}}/versions",
+            list_slo_definition_versions,
+            method="GET",
+            operation_id="platform_list_slo_definition_versions",
+        ),
+        _platform_route(
+            f"{base}/slo-definitions/{{slo_definition_id}}/versions/{{version}}/approval-cases",
+            create_slo_activation_approval_case,
+            method="POST",
+            operation_id="platform_create_slo_activation_approval_case",
+        ),
+        _platform_route(
+            f"{base}/slo-definitions/{{slo_definition_id}}/versions/{{version}}/activation",
+            activate_slo_definition_version,
+            method="POST",
+            operation_id="platform_activate_slo_definition_version",
+        ),
+        _platform_route(
+            f"{base}/slo-definitions/{{slo_definition_id}}/active",
+            get_active_slo_definition,
+            method="GET",
+            operation_id="platform_get_active_slo_definition",
+        ),
+        _platform_route(
+            f"{base}/slo-definitions/{{slo_definition_id}}/versions/{{version}}/prometheus-rules",
+            preview_slo_prometheus_rules,
+            method="GET",
+            operation_id="platform_preview_slo_prometheus_rules",
+        ),
+        _platform_route(
+            f"{base}/slo-definitions/{{slo_definition_id}}/events",
+            list_slo_definition_events,
+            method="GET",
+            operation_id="platform_list_slo_definition_events",
+        ),
+        _platform_route(
+            f"{base}/slo-alerts/alertmanager",
+            reconcile_slo_alertmanager_webhook,
+            method="POST",
+            operation_id="platform_reconcile_slo_alertmanager_webhook",
+        ),
+        _platform_route(
+            f"{base}/master-data/source-records",
+            observe_master_source_record,
+            method="POST",
+            operation_id="platform_observe_master_source_record",
+        ),
+        _platform_route(
+            f"{base}/master-data/source-records/{{source_record_key}}/match-candidates",
+            propose_master_source_matches,
+            method="POST",
+            operation_id="platform_propose_master_source_matches",
+        ),
+        _platform_route(
+            f"{base}/master-data/entities/{{entity_id}}/versions",
+            stage_master_entity_version,
+            method="POST",
+            operation_id="platform_stage_master_entity_version",
+        ),
+        _platform_route(
+            f"{base}/master-data/entities/{{entity_id}}/versions",
+            list_master_entity_versions,
+            method="GET",
+            operation_id="platform_list_master_entity_versions",
+        ),
+        _platform_route(
+            f"{base}/master-data/entities/{{entity_id}}/versions/{{version}}/approval-cases",
+            create_master_activation_approval_case,
+            method="POST",
+            operation_id="platform_create_master_activation_approval_case",
+        ),
+        _platform_route(
+            f"{base}/master-data/entities/{{entity_id}}/versions/{{version}}/activation",
+            activate_master_entity_version,
+            method="POST",
+            operation_id="platform_activate_master_entity_version",
+        ),
+        _platform_route(
+            f"{base}/master-data/entities/{{entity_id}}/active",
+            get_active_master_entity,
+            method="GET",
+            operation_id="platform_get_active_master_entity",
+        ),
+        _platform_route(
+            f"{base}/master-data/entities/{{entity_id}}/events",
+            list_master_data_events,
+            method="GET",
+            operation_id="platform_list_master_data_events",
+        ),
+        _platform_route(
+            f"{base}/master-data/entities/{{entity_id}}/resource-projections",
+            list_master_resource_projections,
+            method="GET",
+            operation_id="platform_list_master_resource_projections",
+        ),
+        _platform_route(
             f"{base}/resource-versions",
             create_resource_version,
             method="POST",
             operation_id="platform_create_resource_version",
+        ),
+        _platform_route(
+            f"{base}/resource-versions",
+            list_resource_versions,
+            method="GET",
+            operation_id="platform_list_resource_versions",
         ),
         _platform_route(
             f"{base}/definitions",
@@ -1645,6 +3590,24 @@ def get_platform_gateway_routes() -> list[APIRoute]:
             create_openlineage_event,
             method="POST",
             operation_id="platform_create_openlineage_event",
+        ),
+        _platform_route(
+            f"{base}/resource-versions/{{resource_version_id}}/architecture",
+            get_resource_version_architecture,
+            method="GET",
+            operation_id="platform_get_resource_version_architecture",
+        ),
+        _platform_route(
+            f"{base}/resource-versions/{{resource_version_id}}/architecture/reconciliation",
+            get_resource_version_architecture_reconciliation,
+            method="GET",
+            operation_id="platform_get_resource_version_architecture_reconciliation",
+        ),
+        _platform_route(
+            f"{base}/resource-versions/{{resource_version_id}}/architecture/reconciliation/approval-cases",
+            create_resource_version_architecture_review,
+            method="POST",
+            operation_id="platform_create_resource_version_architecture_review",
         ),
         _platform_route(
             f"{base}/resource-versions/{{resource_version_id}}/lineage",

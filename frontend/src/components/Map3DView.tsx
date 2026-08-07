@@ -31,8 +31,14 @@ interface MapLayer {
   // MVT tile properties
   tile_url?: string;
   metadata_url?: string;
+  feature_url_template?: string;
   source_layer?: string;
   layer_id?: string;
+  min_zoom?: number;
+  max_zoom?: number;
+  bounds?: [number, number, number, number] | null;
+  center?: [number, number] | null;
+  zoom?: number;
   // FlatGeobuf properties
   fgb?: string;
   geom_type?: string;
@@ -43,6 +49,8 @@ interface Map3DViewProps {
   center: [number, number];
   zoom: number;
   basemap?: string;
+  basemaps?: Record<string, string>;
+  basemapMetadata?: Record<string, { min_zoom?: number; max_zoom?: number }>;
 }
 
 interface TooltipInfo {
@@ -56,6 +64,20 @@ const BASEMAP_STYLES: Record<string, any> = {
     version: 8, name: 'Esri',
     sources: { esri: { type: 'raster', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], tileSize: 256 } },
     layers: [{ id: 'esri', type: 'raster', source: 'esri' }],
+  },
+  'DMT Abu Dhabi': {
+    version: 8, name: 'DMT Abu Dhabi',
+    sources: {
+      dmt: {
+        type: 'raster',
+        tiles: ['https://geosmart.dmt.gov.ae/arcgis/rest/services/BaseMaps/DMT_Basemap_WM/MapServer/tile/{z}/{y}/{x}'],
+        tileSize: 256,
+        minzoom: 7,
+        maxzoom: 19,
+        attribution: 'Abu Dhabi Department of Municipalities and Transport',
+      },
+    },
+    layers: [{ id: 'dmt', type: 'raster', source: 'dmt' }],
   },
   'CartoDB Positron': 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
   'CartoDB Dark': 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
@@ -90,7 +112,34 @@ function isChoroplethLegendLayer(layer: MapLayer) {
     && Boolean(layer.breaks && layer.color_scheme);
 }
 
-export default function Map3DView({ layers, center, zoom, basemap }: Map3DViewProps) {
+function rasterBasemapStyle(
+  name: string,
+  tileUrl: string,
+  metadata?: { min_zoom?: number; max_zoom?: number },
+) {
+  const normalizedUrl = tileUrl.replace('{s}', 'a').replace('{r}', '');
+  return {
+    version: 8 as const,
+    name,
+    sources: {
+      basemap: {
+        type: 'raster' as const,
+        tiles: [normalizedUrl],
+        tileSize: 256,
+        minzoom: metadata?.min_zoom,
+        maxzoom: metadata?.max_zoom,
+      },
+    },
+    layers: [
+      { id: 'background', type: 'background' as const, paint: { 'background-color': '#eef0ed' } },
+      { id: 'basemap', type: 'raster' as const, source: 'basemap' },
+    ],
+  };
+}
+
+export default function Map3DView({
+  layers, center, zoom, basemap, basemaps, basemapMetadata,
+}: Map3DViewProps) {
   const [layerData, setLayerData] = useState<Record<string, any>>({});
   const [tooltip, setTooltip] = useState<TooltipInfo | null>(null);
   const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({});
@@ -134,6 +183,13 @@ export default function Map3DView({ layers, center, zoom, basemap }: Map3DViewPr
     minZoom: 2,
     maxZoom: 20,
   }), [center, zoom, pitch, bearing]);
+
+  const mapStyle = useMemo(() => {
+    const selected = basemap || 'ESRI Satellite';
+    const configuredUrl = basemaps?.[selected];
+    if (configuredUrl) return rasterBasemapStyle(selected, configuredUrl, basemapMetadata?.[selected]);
+    return BASEMAP_STYLES[selected] || BASEMAP_STYLES['ESRI Satellite'];
+  }, [basemap, basemapMetadata, basemaps]);
 
   // Fetch GeoJSON / FlatGeobuf data for layers that need it
   useEffect(() => {
@@ -237,8 +293,13 @@ export default function Map3DView({ layers, center, zoom, basemap }: Map3DViewPr
           getFillColor: fillColor,
           getLineColor: lineColor,
           lineWidthMinPixels: 1,
+          minZoom: layer.min_zoom,
+          maxZoom: layer.max_zoom,
+          loadOptions: {
+            fetch: { credentials: 'include' },
+          },
           pickable: true,
-          onHover,
+          onHover: (info: any) => onLayerHover(info, layer),
         });
       }
 
@@ -462,7 +523,7 @@ export default function Map3DView({ layers, center, zoom, basemap }: Map3DViewPr
         style={{ position: 'absolute', top: '0', left: '0', width: '100%', height: '100%' }}
       >
         <Map
-          mapStyle={BASEMAP_STYLES[basemap || 'ESRI Satellite'] || BASEMAP_STYLES['ESRI Satellite']}
+          mapStyle={mapStyle}
           style={{ width: '100%', height: '100%' }}
         />
       </DeckGL>
@@ -479,7 +540,7 @@ export default function Map3DView({ layers, center, zoom, basemap }: Map3DViewPr
 
       {/* 3D Layer Control Panel (v14.0) */}
       {layers.length > 0 && (
-        <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 1000 }}>
+        <div style={{ position: 'absolute', top: 54, right: 12, zIndex: 1000 }}>
           <button onClick={() => setShowLayerPanel(!showLayerPanel)}
             style={{
               background: showLayerPanel ? '#1e3a5f' : 'rgba(0,0,0,0.6)',

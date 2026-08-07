@@ -5,7 +5,7 @@ import {
   Zap, Wrench, BookOpen, Lightbulb, Brain, Store, Globe, FlaskConical, Network,
   History, Gauge, PieChart, Shield, ClipboardCheck, Bell, Activity, Radio, ListTodo,
   GitBranch, FileText, Target, ThumbsUp, Tags, Sparkles,
-  LayoutGrid, Home, Inbox,
+  LayoutGrid, Home, Inbox, Upload,
 } from 'lucide-react';
 
 import CatalogTab, { type MapPublicationLayer } from './datapanel/CatalogTab';
@@ -68,6 +68,7 @@ import FeedbackTab from './datapanel/FeedbackTab';
 import DomainStandardsTab from './datapanel/DomainStandardsTab';
 import StandardsTab from './datapanel/StandardsTab';
 import IntakeTab from './datapanel/IntakeTab';
+import OfflineIngestTab from './datapanel/OfflineIngestTab';
 import SemanticLayerTab from './datapanel/SemanticLayerTab';
 import ClassificationTab from './datapanel/ClassificationTab';
 import FusionQualityTab from './datapanel/FusionQualityTab';
@@ -84,7 +85,7 @@ interface DataPanelProps {
   onAddMapLayer?: (layer: MapPublicationLayer) => void;
 }
 
-type TabKey = 'files' | 'table' | 'catalog' | 'models' | 'metadata' | 'history' | 'agent_logs' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'approvals' | 'memory' | 'observability' | 'traditional_livability' | 'cultural_heritage' | 'cross_domain_impact' | 'implementation_roadmap' | 'resilience_kernel' | 'digital_readiness' | 'operations_quality' | 'business_licence' | 'development_control' | 'financial_readiness' | 'public_feedback_readiness' | 'spatial_scope_registry' | 'planning_version_registry' | 'parcel_state_readiness' | 'infrastructure_network_readiness' | 'asset_lifecycle_readiness' | 'population_demographic_readiness' | 'population_housing_optimization' | 'uwm_livability' | 'uwm_multistage' | 'ai_demand_readiness' | 'abu_land_use_compare' | 'abu_flus' | 'abu_kernel' | 'worldmodel' | 'worldmodel_v11' | 'worldmodel_v2' | 'worldmodel_v21' | 'twm' | 'causal' | 'optimization' | 'qcmonitor' | 'fusion_quality' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'std_platform' | 'semantic' | 'ontology' | 'ontology_demo' | 'agents' | 'intake' | 'classification';
+type TabKey = 'files' | 'table' | 'catalog' | 'models' | 'metadata' | 'history' | 'agent_logs' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'approvals' | 'memory' | 'observability' | 'traditional_livability' | 'cultural_heritage' | 'cross_domain_impact' | 'implementation_roadmap' | 'resilience_kernel' | 'digital_readiness' | 'operations_quality' | 'business_licence' | 'development_control' | 'financial_readiness' | 'public_feedback_readiness' | 'spatial_scope_registry' | 'planning_version_registry' | 'parcel_state_readiness' | 'infrastructure_network_readiness' | 'asset_lifecycle_readiness' | 'population_demographic_readiness' | 'population_housing_optimization' | 'uwm_livability' | 'uwm_multistage' | 'ai_demand_readiness' | 'abu_land_use_compare' | 'abu_flus' | 'abu_kernel' | 'worldmodel' | 'worldmodel_v11' | 'worldmodel_v2' | 'worldmodel_v21' | 'twm' | 'causal' | 'optimization' | 'qcmonitor' | 'fusion_quality' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'std_platform' | 'semantic' | 'ontology' | 'ontology_demo' | 'agents' | 'intake' | 'offline_ingest' | 'classification';
 
 type GroupKey = 'data' | 'intelligence' | 'ops';
 type NavigationGroupKey = 'data' | 'semantic' | 'analysis' | 'ops' | 'extensions';
@@ -111,6 +112,7 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: ReactNode; tabs: TabDef[
       { key: 'charts', label: '图表', icon: <BarChart3 size={ICON_SIZE} /> },
       { key: 'topology', label: '拓扑', icon: <Network size={ICON_SIZE} /> },
       { key: 'intake', label: '接入', icon: <LayoutGrid size={ICON_SIZE} /> },
+      { key: 'offline_ingest', label: '离线入湖', icon: <Upload size={ICON_SIZE} /> },
     ],
   },
   {
@@ -264,7 +266,7 @@ const NAVIGATION_GROUPS: Array<{
 ];
 
 const DATA_TABS = new Set<TabKey>([
-  'files', 'table', 'geojson', 'topology', 'catalog', 'models', 'metadata', 'vsources', 'intake',
+  'files', 'table', 'geojson', 'topology', 'catalog', 'models', 'metadata', 'vsources', 'intake', 'offline_ingest',
 ]);
 const SEMANTIC_TABS = new Set<TabKey>([
   'standards', 'std_platform', 'semantic', 'ontology', 'ontology_demo', 'classification', 'governance', 'approvals',
@@ -304,7 +306,7 @@ function fallbackNavigation(): NavigationConfig {
   const sectionFor = (tab: TabKey, group: NavigationGroupKey): string => {
     if (group === 'data') {
       if (['catalog', 'models', 'metadata'].includes(tab)) return 'assets';
-      if (['vsources', 'intake'].includes(tab)) return 'ingest';
+      if (['vsources', 'intake', 'offline_ingest'].includes(tab)) return 'ingest';
       return 'browse';
     }
     if (group === 'semantic') {
@@ -349,7 +351,7 @@ const ICONS: Record<string, ReactNode> = {
   'book-open': <BookOpen size={14} />, 'bar-chart': <BarChart3 size={14} />, flask: <FlaskConical size={14} />, target: <Target size={14} />, 'git-branch': <GitBranch size={14} />,
   globe: <Globe size={14} />, 'list-todo': <ListTodo size={14} />, store: <Store size={14} />, 'thumbs-up': <ThumbsUp size={14} />, 'pie-chart': <PieChart size={14} />,
   home: <Home size={14} />, history: <History size={14} />, bell: <Bell size={14} />, gauge: <Gauge size={14} />, radio: <Radio size={14} />,
-  'layout-grid': <LayoutGrid size={14} />, 'clipboard-check': <ClipboardCheck size={14} />, lightbulb: <Lightbulb size={14} />,
+  'layout-grid': <LayoutGrid size={14} />, 'clipboard-check': <ClipboardCheck size={14} />, lightbulb: <Lightbulb size={14} />, upload: <Upload size={14} />,
 };
 
 function normalizeNavigation(payload: any): NavigationConfig | null {
@@ -629,6 +631,7 @@ export default function DataPanel({
         {activeTab === 'topology' && <TopologyTab />}
         {activeTab === 'agents' && <AgentsTab />}
         {activeTab === 'intake' && <IntakeTab />}
+        {activeTab === 'offline_ingest' && <OfflineIngestTab />}
         {activeTab === 'standards' && <DomainStandardsTab />}
         {activeTab === 'std_platform' && <StandardsTab userRole={userRole} username={username} />}
         {activeTab === 'semantic' && <SemanticLayerTab userRole={userRole} />}

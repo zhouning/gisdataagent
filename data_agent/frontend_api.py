@@ -4429,6 +4429,7 @@ def get_frontend_api_routes():
     from .api.map_publication_routes import get_map_publication_routes
     from .api.ontology_routes import get_ontology_routes
     from .api.ontology_demo_routes import get_ontology_demo_routes
+    from .api.offline_ingest_routes import get_offline_ingest_routes
 
     return [
         Route("/api/platform/branding", endpoint=_api_platform_branding, methods=["GET"]),
@@ -4440,6 +4441,9 @@ def get_frontend_api_routes():
         *get_map_publication_routes(),
         *get_ontology_routes(),
         *get_ontology_demo_routes(),
+        # Windows/isolated-network file ingest (resumable chunks, local scans,
+        # durable run manifests and diagnostic bundles).
+        *get_offline_ingest_routes(),
         Route("/api/semantic/domains", endpoint=_api_semantic_domains, methods=["GET"]),
         Route("/api/semantic/hierarchy/{domain}", endpoint=_api_semantic_hierarchy, methods=["GET"]),
         Route("/api/semantic/sources", endpoint=_api_semantic_sources_list, methods=["GET"]),

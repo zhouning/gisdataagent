@@ -6,6 +6,7 @@ action-conditioned rollout tests, not an empirical predictive superiority claim.
 """
 
 from .contracts import (
+    UWM_NATIVE_GEOMETRY_SCHEMA,
     UWM_OBSERVATION_SCHEMA,
     UWM_PLAN_PACKAGE_SCHEMA,
     UWM_ROLLOUT_TRACE_SCHEMA,
@@ -25,6 +26,7 @@ from .data_calibrated_mechanism_table import (
     validate_uwm_data_calibrated_mechanism_table,
 )
 from .data_acquisition import build_uwm_public_data_acquisition_plan, summarize_acquisition_blockers
+from .ai_urban_scientist_adapter import build_uwm_ai_urban_scientist_gap_matrix
 from .data_foundation import audit_uwm_data_foundation_manifest, audit_uwm_data_foundation_roles
 from .evaluation import UWM_DYNAMIC_ADVANTAGE_EVALUATION_SCHEMA, UWM_PLANNER_ADVANTAGE_EVALUATION_SCHEMA
 from .external_observed_holdout import (
@@ -41,6 +43,20 @@ from .ghsl_alignment import (
     align_ghsl_tiles_to_admin_units,
     build_mmfe_state_input_from_ghsl_admin_alignment,
     validate_ghsl_admin_alignment,
+)
+from .historical_school_evidence_gate import (
+    UWM_HISTORICAL_SCHOOL_EVIDENCE_GATE_SCHEMA,
+    UWM_HISTORICAL_SCHOOL_QUERY_RECEIPT_SCHEMA,
+    build_uwm_historical_school_evidence_gate,
+    evaluate_uwm_historical_school_query,
+    validate_uwm_historical_school_evidence_gate,
+)
+from .accountability_evidence_update_gate import (
+    UWM_ACCOUNTABILITY_EVIDENCE_UPDATE_GATE_SCHEMA,
+    UWM_ACCOUNTABILITY_EVIDENCE_UPDATE_RECEIPT_SCHEMA,
+    build_uwm_accountability_evidence_update_gate,
+    evaluate_uwm_accountability_evidence_update_query,
+    validate_uwm_accountability_evidence_update_gate,
 )
 from .mmfe_state_input import MMFE_UWM_STATE_INPUT_SCHEMA
 from .multisource_livability_scene import (
@@ -163,6 +179,10 @@ __all__ = [
     "DEFAULT_PLANNER_BACKEND",
     "DEFAULT_SIMULATOR_BACKEND",
     "GHSL_ADMIN_ALIGNMENT_SCHEMA",
+    "UWM_ACCOUNTABILITY_EVIDENCE_UPDATE_GATE_SCHEMA",
+    "UWM_ACCOUNTABILITY_EVIDENCE_UPDATE_RECEIPT_SCHEMA",
+    "UWM_HISTORICAL_SCHOOL_EVIDENCE_GATE_SCHEMA",
+    "UWM_HISTORICAL_SCHOOL_QUERY_RECEIPT_SCHEMA",
     "MMFE_UWM_STATE_INPUT_SCHEMA",
     "OPENMETEO_ENVIRONMENTAL_PROXY_SCHEMA",
     "OPENMETEO_HISTORICAL_PROXY_SCHEMA",
@@ -185,6 +205,7 @@ __all__ = [
     "LIVABILITY_GRAPH_MDP_ENV_SCHEMA",
     "UWM_LIVABILITY_RL_TRAINING_REPORT_SCHEMA",
     "UWM_MULTISOURCE_LIVABILITY_SCENE_SCHEMA",
+    "UWM_NATIVE_GEOMETRY_SCHEMA",
     "UWM_OBSERVATION_SCHEMA",
     "UWM_OSM_ADMIN_MOBILITY_CROSSWALK_SCHEMA",
     "UWM_PLAN_PACKAGE_SCHEMA",
@@ -206,6 +227,7 @@ __all__ = [
     "build_mmfe_state_input_from_ghsl_admin_alignment",
     "build_track2_readiness_matrix",
     "build_uwm_building_floor_morphology",
+    "build_uwm_accountability_evidence_update_gate",
     "build_uwm_causal_policy_evidence_gate",
     "build_uwm_data_calibrated_mechanism_table",
     "build_uwm_endpoint_aligned_planner_evaluator",
@@ -214,6 +236,7 @@ __all__ = [
     "build_livability_requirement_registry",
     "build_uwm_livability_decision_package",
     "build_uwm_full_admin_livability_decision_package",
+    "build_uwm_historical_school_evidence_gate",
     "build_full_admin_mobility_graph",
     "build_full_admin_action_inventory",
     "build_uwm_production_state_action_space_assessment",
@@ -248,7 +271,11 @@ __all__ = [
     "build_world_model_evidence_readiness",
     "summarize_acquisition_blockers",
     "derive_simulator_scenario_from_scene_state",
+    "evaluate_uwm_historical_school_query",
+    "evaluate_uwm_accountability_evidence_update_query",
     "validate_ghsl_admin_alignment",
+    "validate_uwm_historical_school_evidence_gate",
+    "validate_uwm_accountability_evidence_update_gate",
     "validate_scene_state",
     "validate_uwm_causal_policy_evidence_gate",
     "validate_uwm_data_calibrated_mechanism_table",

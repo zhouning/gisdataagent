@@ -211,10 +211,121 @@ class OntologyPackageReader:
             mapping_count=len(mappings),
         )
 
-    def properties(self, concept_id: str, *, offset: int = 0, limit: int = 100) -> dict[str, Any]:
+    @staticmethod
+    def _property_origin(concept: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "concept_id": concept.get("concept_id"),
+            "pref_label": concept.get("pref_label"),
+            "code": concept.get("code"),
+            "kind": concept.get("kind"),
+            "source_system": concept.get("source_system"),
+        }
+
+    def properties(
+        self,
+        concept_id: str,
+        *,
+        offset: int = 0,
+        limit: int = 100,
+        include_effective: bool = False,
+    ) -> dict[str, Any]:
         self._ensure_loaded()
         rows = self._properties.get(concept_id, [])
-        return {"items": rows[offset:offset + limit], "total": len(rows), "offset": offset, "limit": limit}
+        if not include_effective:
+            return {
+                "items": rows[offset:offset + limit],
+                "total": len(rows),
+                "offset": offset,
+                "limit": limit,
+            }
+
+        lineage: dict[str, int] = {concept_id: 0}
+        queue = deque([concept_id])
+        while queue:
+            current = queue.popleft()
+            depth = lineage[current]
+            for relation in self._relations_out.get(current, []):
+                if relation.get("relation_type") != "subClassOf":
+                    continue
+                ancestor_id = relation["target_concept_id"]
+                if ancestor_id in lineage or ancestor_id not in self._concepts:
+                    continue
+                lineage[ancestor_id] = depth + 1
+                queue.append(ancestor_id)
+
+        effective: list[dict[str, Any]] = []
+        group_counts = {"direct": 0, "inherited": 0, "mapped": 0}
+        seen_property_ids: set[str] = set()
+        lineage_rows = sorted(lineage.items(), key=lambda item: (item[1], item[0]))
+
+        for owner_id, depth in lineage_rows:
+            origin = self._property_origin(self._concepts[owner_id])
+            origin_type = "direct" if depth == 0 else "inherited"
+            for prop in self._properties.get(owner_id, []):
+                property_id = prop["property_id"]
+                if property_id in seen_property_ids:
+                    continue
+                seen_property_ids.add(property_id)
+                effective.append(dict(
+                    prop,
+                    origin_type=origin_type,
+                    origin_depth=depth,
+                    origin_concept=origin,
+                ))
+                group_counts[origin_type] += 1
+
+        seen_mappings: set[str] = set()
+        for anchor_id, depth in lineage_rows:
+            anchor = self._property_origin(self._concepts[anchor_id])
+            mappings = (
+                self._mappings_out.get(anchor_id, [])
+                + self._mappings_in.get(anchor_id, [])
+            )
+            for mapping in sorted(mappings, key=lambda item: item["mapping_id"]):
+                if mapping.get("mapping_status") != "confirmed":
+                    continue
+                mapping_id = mapping["mapping_id"]
+                if mapping_id in seen_mappings:
+                    continue
+                seen_mappings.add(mapping_id)
+                mapped_id = (
+                    mapping["target_concept_id"]
+                    if mapping["source_concept_id"] == anchor_id
+                    else mapping["source_concept_id"]
+                )
+                if mapped_id in lineage or mapped_id not in self._concepts:
+                    continue
+                origin = self._property_origin(self._concepts[mapped_id])
+                mapping_summary = {
+                    key: mapping.get(key)
+                    for key in (
+                        "mapping_id", "mapping_type", "mapping_status", "confidence",
+                        "source_concept_id", "target_concept_id", "evidence",
+                    )
+                }
+                for prop in self._properties.get(mapped_id, []):
+                    property_id = prop["property_id"]
+                    if property_id in seen_property_ids:
+                        continue
+                    seen_property_ids.add(property_id)
+                    effective.append(dict(
+                        prop,
+                        origin_type="mapped",
+                        origin_depth=depth,
+                        origin_concept=origin,
+                        mapped_from_concept=anchor,
+                        mapping=mapping_summary,
+                    ))
+                    group_counts["mapped"] += 1
+
+        return {
+            "items": effective[offset:offset + limit],
+            "total": len(effective),
+            "offset": offset,
+            "limit": limit,
+            "effective": True,
+            "group_counts": group_counts,
+        }
 
     def property_candidates(
         self,

@@ -73,6 +73,28 @@ async def environmental_kernel_map(request: Request):
         return JSONResponse({"error": str(error), "ready": False}, status_code=503)
 
 
+async def environmental_kernel_nodes(request: Request):
+    _, unauthorized = _authorized(request)
+    if unauthorized:
+        return unauthorized
+    try:
+        return JSONResponse(await asyncio.to_thread(_service().list_nodes, request.query_params.get("search", "")))
+    except Exception as error:
+        return JSONResponse({"error": str(error), "ready": False}, status_code=503)
+
+
+async def environmental_kernel_temporal_replay(request: Request):
+    _, unauthorized = _authorized(request)
+    if unauthorized:
+        return unauthorized
+    try:
+        return JSONResponse(await asyncio.to_thread(_service().temporal_replay, str(request.path_params.get("node_id") or "")))
+    except ValueError as error:
+        return JSONResponse({"error": str(error)}, status_code=404)
+    except Exception as error:
+        return JSONResponse({"error": str(error), "ready": False}, status_code=503)
+
+
 async def environmental_kernel_rollout(request: Request):
     actor, unauthorized = _authorized(request)
     if unauthorized:
@@ -99,4 +121,6 @@ def get_uwm_environmental_kernel_routes() -> list:
         Route("/api/uwm/livability/environmental-kernel/evidence-gate", environmental_kernel_evidence_gate, methods=["GET"]),
         Route("/api/uwm/livability/environmental-kernel/rollout", environmental_kernel_rollout, methods=["POST"]),
         Route("/api/uwm/livability/environmental-kernel/map", environmental_kernel_map, methods=["GET"]),
+        Route("/api/uwm/livability/environmental-kernel/nodes", environmental_kernel_nodes, methods=["GET"]),
+        Route("/api/uwm/livability/environmental-kernel/temporal-replay/{node_id}", environmental_kernel_temporal_replay, methods=["GET"]),
     ]

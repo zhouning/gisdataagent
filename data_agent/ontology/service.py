@@ -131,12 +131,18 @@ class OntologyService:
         return self.reader.concept(concept_id)
 
     def get_properties(
-        self, concept_id: str, *, offset: int = 0, limit: int = 100
+        self,
+        concept_id: str,
+        *,
+        offset: int = 0,
+        limit: int = 100,
+        include_effective: bool = False,
     ) -> dict[str, Any]:
         return self.reader.properties(
             concept_id,
             offset=max(offset, 0),
             limit=min(max(limit, 1), self.MAX_PROPERTY_LIMIT),
+            include_effective=include_effective,
         )
 
     def get_relations(

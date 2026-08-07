@@ -15,13 +15,17 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 from .semantic_ontology import build_semantic_ontology_package
 from .semantic_product_diagnostics import diagnose_semantic_product_readiness
 from .twm_state_input import build_twm_state_input_from_semantic_product
 
 
-OKF_EXPORT_SCHEMA = "mmfe.okf_export.v1"
-OKF_VERSION = "0.1"
+OKF_EXPORT_SCHEMA = "mmfe.okf_export.v2"
+OKF_VERSION = "0.2"
+OKF_PRODUCER_ACTOR = "gda-mmfe-okf-exporter/2.0"
+OKF_LIFECYCLE_STATUSES = {"draft", "stable", "deprecated"}
 
 
 def build_okf_bundle_from_semantic_product(
@@ -233,21 +237,65 @@ def load_semantic_product_okf_inputs(mmfe_dir: str | Path) -> dict:
 
 
 def validate_okf_bundle(out_dir: str | Path) -> dict:
-    """Validate the small OKF v0.1 conformance surface used by this exporter."""
+    """Validate OKF v0.2 conformance and report optional-family warnings."""
     root = Path(out_dir)
     errors = []
+    warnings = []
     concept_count = 0
     for path in sorted(root.rglob("*.md")):
         rel = path.relative_to(root).as_posix()
-        if path.name in {"index.md", "log.md"}:
+        text = path.read_text(encoding="utf-8")
+        if path.name == "index.md":
+            meta = _parse_frontmatter(text)
+            if path == root / "index.md":
+                if meta.get("okf_version") != OKF_VERSION:
+                    errors.append(f"{rel}: root index must declare okf_version {OKF_VERSION}")
+                unexpected = set(meta) - {"okf_version"}
+                if unexpected:
+                    errors.append(f"{rel}: root index frontmatter only permits okf_version")
+            elif meta:
+                errors.append(f"{rel}: directory index must not contain frontmatter")
+            continue
+        if path.name == "log.md":
+            for heading in re.findall(r"^##\s+(.+)$", text, flags=re.MULTILINE):
+                if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", heading.strip()):
+                    errors.append(f"{rel}: log date heading must use YYYY-MM-DD")
             continue
         concept_count += 1
-        meta = _parse_frontmatter(path.read_text(encoding="utf-8"))
+        meta = _parse_frontmatter(text)
         if not meta:
             errors.append(f"{rel}: missing frontmatter")
         elif not meta.get("type"):
             errors.append(f"{rel}: missing required type")
-    return {"valid": not errors, "concept_count": concept_count, "errors": errors}
+            continue
+        if "timestamp" in meta:
+            warnings.append(f"{rel}: legacy timestamp should be migrated to generated.at")
+        generated = meta.get("generated")
+        if generated is not None and (
+            not isinstance(generated, dict) or not generated.get("by")
+        ):
+            warnings.append(f"{rel}: generated must contain an actor in generated.by")
+        status = meta.get("status")
+        if status is not None and status not in OKF_LIFECYCLE_STATUSES:
+            warnings.append(f"{rel}: status should be draft, stable, or deprecated")
+        sources = meta.get("sources")
+        if sources is not None:
+            if not isinstance(sources, list):
+                warnings.append(f"{rel}: sources should be a list")
+            else:
+                for index, source in enumerate(sources):
+                    if not isinstance(source, dict) or not source.get("resource"):
+                        warnings.append(f"{rel}: sources[{index}] must contain resource")
+        if meta.get("type") == "Attested Computation":
+            if not meta.get("runtime"):
+                warnings.append(f"{rel}: Attested Computation should declare runtime")
+    return {
+        "valid": not errors,
+        "okf_version": OKF_VERSION,
+        "concept_count": concept_count,
+        "errors": errors,
+        "warnings": warnings,
+    }
 
 
 def _render_root_index(
@@ -276,11 +324,6 @@ def _render_root_index(
         diagnostic_summary = f"* [Readiness diagnostic](/diagnostics/semantic_product_readiness.md) - `{status}`.\n"
     return f"""---
 okf_version: "{OKF_VERSION}"
-type: OKF Bundle Index
-title: MMFE OKF Bundle
-description: Human- and agent-readable OKF sidecar for an MMFE semantic fusion product.
-tags: [okf, mmfe, semantic-fusion]
-timestamp: {manifest.get('created_at') or datetime.now(timezone.utc).isoformat()}
 ---
 
 # MMFE OKF Bundle
@@ -316,6 +359,15 @@ def _render_dataset_doc(
     relation_count: int,
 ) -> str:
     ontology_summary = ontology.get("summary") or {}
+    sources = [
+        {
+            "id": _slug(source.get("semantic_domain") or Path(str(source.get("path") or "source")).stem),
+            "resource": source.get("path"),
+            "title": source.get("semantic_domain") or Path(str(source.get("path") or "source")).stem,
+        }
+        for source in manifest.get("sources") or []
+        if source.get("path")
+    ]
     return _frontmatter(
         {
             "type": "MMFE Semantic Product",
@@ -324,6 +376,7 @@ def _render_dataset_doc(
             "resource": (manifest.get("business_output") or {}).get("path"),
             "tags": ["mmfe", "semantic-product"],
             "timestamp": timestamp,
+            "sources": sources,
             "product_id": manifest.get("product_id"),
         }
     ) + f"""
@@ -764,6 +817,18 @@ def _render_value_domain_audit_doc(rows: list[dict], timestamp: str) -> str:
 
 
 def _render_standard_source_doc(rows: list[dict], timestamp: str) -> str:
+    sources = []
+    for row in rows:
+        resource = row.get("official_url") or row.get("local_path") or row.get("search_url")
+        if not resource:
+            continue
+        sources.append({
+            "id": _slug(row.get("standard_identifier") or row.get("source_name") or "standard"),
+            "resource": resource,
+            "title": row.get("title_zh") or row.get("source_name"),
+            "author": row.get("authority") or row.get("department"),
+            "last_modified": row.get("publication_date"),
+        })
     return _frontmatter(
         {
             "type": "Standard Source Registry",
@@ -771,6 +836,7 @@ def _render_standard_source_doc(rows: list[dict], timestamp: str) -> str:
             "description": "Auditable source registry for standards used by MMFE semantic fusion.",
             "tags": ["standard", "source-registry", "mmfe"],
             "timestamp": timestamp,
+            "sources": sources,
             "source_count": len(rows),
         }
     ) + f"""
@@ -925,7 +991,8 @@ def _render_semantic_diagnostic_doc(diagnostic: dict, timestamp: str) -> str:
             "timestamp": timestamp,
             "schema": diagnostic.get("schema"),
             "product_id": diagnostic.get("product_id"),
-            "status": summary.get("status"),
+            "status": "stable" if summary.get("validation_ready") else "draft",
+            "diagnostic_status": summary.get("status"),
             "validation_ready": summary.get("validation_ready"),
             "production_ready": summary.get("production_ready"),
         }
@@ -1037,6 +1104,11 @@ def _directories(bundle: dict[str, str]) -> list[str]:
 
 
 def _frontmatter(data: dict) -> str:
+    data = dict(data)
+    timestamp = data.pop("timestamp", None)
+    if timestamp and not data.get("generated"):
+        data["generated"] = {"by": OKF_PRODUCER_ACTOR, "at": timestamp}
+    data.setdefault("status", "stable")
     lines = ["---"]
     for key, value in data.items():
         if value is None or value == "":
@@ -1051,8 +1123,8 @@ def _yaml_value(value: Any) -> str:
         return "true" if value else "false"
     if isinstance(value, (int, float)):
         return str(value)
-    if isinstance(value, list):
-        return "[" + ", ".join(_yaml_scalar(item) for item in value if item) + "]"
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, ensure_ascii=False, separators=(", ", ": "))
     return _yaml_scalar(value)
 
 
@@ -1067,13 +1139,11 @@ def _parse_frontmatter(text: str) -> dict:
     end = text.find("\n---", 4)
     if end == -1:
         return {}
-    meta = {}
-    for line in text[4:end].splitlines():
-        if ":" not in line:
-            continue
-        key, value = line.split(":", 1)
-        meta[key.strip()] = value.strip().strip('"')
-    return meta
+    try:
+        meta = yaml.safe_load(text[4:end]) or {}
+    except yaml.YAMLError:
+        return {}
+    return meta if isinstance(meta, dict) else {}
 
 
 def _read_json(path: Path) -> Any:

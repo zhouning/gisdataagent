@@ -206,22 +206,196 @@ class PostgresOntologyReader:
             ), self._version_params({"concept_id": concept_id})).mappings().first()
         return _json_ready(dict(row)) if row else None
 
-    def properties(self, concept_id: str, *, offset: int = 0, limit: int = 100) -> dict[str, Any]:
+    @staticmethod
+    def _property_origin(concept: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "concept_id": concept.get("concept_id"),
+            "pref_label": concept.get("pref_label"),
+            "code": concept.get("code"),
+            "kind": concept.get("kind"),
+            "source_system": concept.get("source_system"),
+        }
+
+    def properties(
+        self,
+        concept_id: str,
+        *,
+        offset: int = 0,
+        limit: int = 100,
+        include_effective: bool = False,
+    ) -> dict[str, Any]:
         params = self._version_params({"concept_id": concept_id, "offset": offset, "limit": limit})
+        if not include_effective:
+            with self.engine.connect() as connection:
+                total = int(connection.execute(text(
+                    "SELECT count(*) FROM gda_ontology.property WHERE ontology_version_id = CAST(:version_id AS uuid) "
+                    "AND owner_concept_id = :concept_id"
+                ), params).scalar_one())
+                rows = self._rows(connection.execute(text(
+                    "SELECT property_id, owner_concept_id, uri, code, pref_label, datatype, length, "
+                    "precision_value, scale_value, min_count, max_count, ordinal, value_domain, "
+                    "default_value, lifecycle_status, source_id, source_object_id, ea_guid, provenance "
+                    "FROM gda_ontology.property WHERE ontology_version_id = CAST(:version_id AS uuid) "
+                    "AND owner_concept_id = :concept_id ORDER BY ordinal, code, property_id "
+                    "OFFSET :offset LIMIT :limit"
+                ), params))
+            return {"items": rows, "total": total, "offset": offset, "limit": limit}
+
+        lineage_sql = text(
+            "WITH RECURSIVE lineage(concept_id, depth, path) AS ("
+            "  SELECT c.concept_id, 0, ARRAY[c.concept_id]::text[] "
+            "  FROM gda_ontology.concept c "
+            "  WHERE c.ontology_version_id = CAST(:version_id AS uuid) AND c.concept_id = :concept_id "
+            "  UNION ALL "
+            "  SELECT r.target_concept_id, lineage.depth + 1, lineage.path || r.target_concept_id "
+            "  FROM lineage JOIN gda_ontology.relation r "
+            "    ON r.ontology_version_id = CAST(:version_id AS uuid) "
+            "   AND r.source_concept_id = lineage.concept_id "
+            "   AND r.relation_type = 'subClassOf' "
+            "  WHERE lineage.depth < 32 AND NOT r.target_concept_id = ANY(lineage.path)"
+            "), nearest AS ("
+            "  SELECT concept_id, min(depth) AS depth FROM lineage GROUP BY concept_id"
+            ") "
+            "SELECT c.concept_id, c.pref_label, c.code, c.kind, c.source_system, nearest.depth "
+            "FROM nearest JOIN gda_ontology.concept c "
+            "  ON c.ontology_version_id = CAST(:version_id AS uuid) AND c.concept_id = nearest.concept_id "
+            "ORDER BY nearest.depth, c.concept_id"
+        )
         with self.engine.connect() as connection:
-            total = int(connection.execute(text(
-                "SELECT count(*) FROM gda_ontology.property WHERE ontology_version_id = CAST(:version_id AS uuid) "
-                "AND owner_concept_id = :concept_id"
-            ), params).scalar_one())
-            rows = self._rows(connection.execute(text(
+            lineage_rows = self._rows(connection.execute(lineage_sql, params))
+            if not lineage_rows:
+                return {
+                    "items": [], "total": 0, "offset": offset, "limit": limit,
+                    "effective": True,
+                    "group_counts": {"direct": 0, "inherited": 0, "mapped": 0},
+                }
+
+            lineage_ids = [row["concept_id"] for row in lineage_rows]
+            property_sql = text(
                 "SELECT property_id, owner_concept_id, uri, code, pref_label, datatype, length, "
                 "precision_value, scale_value, min_count, max_count, ordinal, value_domain, "
                 "default_value, lifecycle_status, source_id, source_object_id, ea_guid, provenance "
                 "FROM gda_ontology.property WHERE ontology_version_id = CAST(:version_id AS uuid) "
-                "AND owner_concept_id = :concept_id ORDER BY ordinal, code, property_id "
-                "OFFSET :offset LIMIT :limit"
-            ), params))
-        return {"items": rows, "total": total, "offset": offset, "limit": limit}
+                "AND owner_concept_id IN :owner_ids ORDER BY owner_concept_id, ordinal, code, property_id"
+            ).bindparams(bindparam("owner_ids", expanding=True))
+            lineage_properties = self._rows(connection.execute(
+                property_sql,
+                self._version_params({"owner_ids": lineage_ids}),
+            ))
+
+            mapping_sql = text(
+                "SELECT mapping_id, source_concept_id, target_concept_id, mapping_type, "
+                "mapping_status, confidence, evidence "
+                "FROM gda_ontology.mapping WHERE ontology_version_id = CAST(:version_id AS uuid) "
+                "AND mapping_status = 'confirmed' "
+                "AND (source_concept_id IN :source_lineage_ids "
+                "OR target_concept_id IN :target_lineage_ids) ORDER BY mapping_id"
+            ).bindparams(
+                bindparam("source_lineage_ids", expanding=True),
+                bindparam("target_lineage_ids", expanding=True),
+            )
+            mappings = self._rows(connection.execute(
+                mapping_sql,
+                self._version_params({
+                    "source_lineage_ids": lineage_ids,
+                    "target_lineage_ids": lineage_ids,
+                }),
+            ))
+            lineage_set = set(lineage_ids)
+            mapped_ids = sorted({
+                mapping["target_concept_id"]
+                if mapping["source_concept_id"] in lineage_set
+                else mapping["source_concept_id"]
+                for mapping in mappings
+            } - lineage_set)
+            mapped_concepts: list[dict[str, Any]] = []
+            mapped_properties: list[dict[str, Any]] = []
+            if mapped_ids:
+                concept_sql = text(
+                    "SELECT concept_id, pref_label, code, kind, source_system "
+                    "FROM gda_ontology.concept WHERE ontology_version_id = CAST(:version_id AS uuid) "
+                    "AND concept_id IN :mapped_ids"
+                ).bindparams(bindparam("mapped_ids", expanding=True))
+                mapped_concepts = self._rows(connection.execute(
+                    concept_sql,
+                    self._version_params({"mapped_ids": mapped_ids}),
+                ))
+                mapped_properties = self._rows(connection.execute(
+                    property_sql,
+                    self._version_params({"owner_ids": mapped_ids}),
+                ))
+
+        lineage_by_id = {row["concept_id"]: row for row in lineage_rows}
+        mapped_by_id = {row["concept_id"]: row for row in mapped_concepts}
+        props_by_owner: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for prop in lineage_properties + mapped_properties:
+            props_by_owner[prop["owner_concept_id"]].append(prop)
+
+        effective: list[dict[str, Any]] = []
+        group_counts = {"direct": 0, "inherited": 0, "mapped": 0}
+        seen_property_ids: set[str] = set()
+        for owner_id in lineage_ids:
+            owner = lineage_by_id[owner_id]
+            depth = int(owner["depth"])
+            origin_type = "direct" if depth == 0 else "inherited"
+            for prop in props_by_owner.get(owner_id, []):
+                property_id = prop["property_id"]
+                if property_id in seen_property_ids:
+                    continue
+                seen_property_ids.add(property_id)
+                effective.append(dict(
+                    prop,
+                    origin_type=origin_type,
+                    origin_depth=depth,
+                    origin_concept=self._property_origin(owner),
+                ))
+                group_counts[origin_type] += 1
+
+        seen_mappings: set[str] = set()
+        mappings_by_anchor: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for mapping in mappings:
+            if mapping["source_concept_id"] in lineage_set:
+                mappings_by_anchor[mapping["source_concept_id"]].append(mapping)
+            if mapping["target_concept_id"] in lineage_set:
+                mappings_by_anchor[mapping["target_concept_id"]].append(mapping)
+        for anchor_id in lineage_ids:
+            anchor = lineage_by_id[anchor_id]
+            for mapping in mappings_by_anchor.get(anchor_id, []):
+                mapping_id = mapping["mapping_id"]
+                if mapping_id in seen_mappings:
+                    continue
+                seen_mappings.add(mapping_id)
+                mapped_id = (
+                    mapping["target_concept_id"]
+                    if mapping["source_concept_id"] == anchor_id
+                    else mapping["source_concept_id"]
+                )
+                mapped = mapped_by_id.get(mapped_id)
+                if mapped is None:
+                    continue
+                for prop in props_by_owner.get(mapped_id, []):
+                    property_id = prop["property_id"]
+                    if property_id in seen_property_ids:
+                        continue
+                    seen_property_ids.add(property_id)
+                    effective.append(dict(
+                        prop,
+                        origin_type="mapped",
+                        origin_depth=int(anchor["depth"]),
+                        origin_concept=self._property_origin(mapped),
+                        mapped_from_concept=self._property_origin(anchor),
+                        mapping=mapping,
+                    ))
+                    group_counts["mapped"] += 1
+
+        return {
+            "items": effective[offset:offset + limit],
+            "total": len(effective),
+            "offset": offset,
+            "limit": limit,
+            "effective": True,
+            "group_counts": group_counts,
+        }
 
     def property_candidates(
         self,
@@ -648,4 +822,9 @@ class PostgresOntologyReader:
                 "WHERE ontology_version_id = CAST(:version_id AS uuid) "
                 "ORDER BY validated_at DESC LIMIT 1"
             ), self._version_params()).scalar()
-        return _json_ready(report or {"conforms": False, "issue_count": 0})
+        normalized = _json_ready(report or {})
+        # Release reports keep the gate report under ``validation`` alongside
+        # competency and semantic-quality evidence artifacts.
+        if isinstance(normalized, dict) and isinstance(normalized.get("validation"), dict):
+            return normalized["validation"]
+        return normalized or {"conforms": False, "issue_count": 0}

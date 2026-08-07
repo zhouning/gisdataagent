@@ -1,6 +1,6 @@
 {
-  "content_sha256": "953dac97c1be4d9683247da42dea022128471b15b9c677215d913fa209bd1200",
+  "content_sha256": "587915868b1221af2315508ede7bf7babced063cba8b261de2f10afa23841019",
   "ontology_key": "natural-resource-one-map",
-  "package_id": "natural-resource-one-map:2.0.1:953dac97c1be4d96",
-  "semantic_version": "2.0.1"
+  "package_id": "natural-resource-one-map:2.3.0:587915868b1221af",
+  "semantic_version": "2.3.0"
 }

@@ -409,11 +409,12 @@ def format_confirmation_summary(draft: dict[str, Any], radius_value: str) -> str
     return (
         "### 请确认S2业务动作\n\n"
         f"- 地块：`{draft['parcel_id']}`\n"
-        f"- 用途：{_label_with_code(properties.get('current_land_use_class'), LAND_USE_LABELS)} → "
+        f"- 拟议用途背景：{_label_with_code(properties.get('current_land_use_class'), LAND_USE_LABELS)} → "
         f"{_label_with_code(draft['target_land_use_class'], LAND_USE_LABELS)}\n"
         f"- 设施：{_label_with_code(draft['facility_class'], FACILITY_LABELS)}\n"
         f"- 规划项目来源：{project.get('project_name') or '未关联'}\n"
         f"- 服务半径：{radius_value}米（用户情景假设）\n"
+        "- 执行边界：本次写回设施Action；土地用途变更需要独立Action，不会被静默合并。\n"
         "- 设施清单当前不完整，结果不会构成规划许可。"
     )
 
@@ -431,6 +432,12 @@ def format_result_summary(run: dict[str, Any]) -> str:
         "evidence_insufficient": "证据不足",
     }.get(assessment.get("recommendation"), str(assessment.get("recommendation")))
     rules = assessment.get("triggered_rules") or []
+    action_type = str((assessment.get("action") or {}).get("action_type") or "")
+    transition_boundary = (
+        "- 本次写回的是设施Action；土地用途变更未在同一Action中执行，需单独验证和推演。\n"
+        if action_type in {"add_facility", "remove_facility"}
+        else "- 用途转换仍需规划专业复核。\n"
+    )
     rule_lines = "\n".join(
         f"- {RULE_LABELS.get(str(rule), str(rule))}（`{rule}`）" for rule in rules
     ) or "- 未触发附加业务规则。"
@@ -457,7 +464,7 @@ def format_result_summary(run: dict[str, Any]) -> str:
         "### 证据边界\n\n"
         "- 设施清单当前不完整。\n"
         "- 服务半径属于用户情景假设，不是法定服务标准。\n"
-        "- 用途转换仍需规划专业复核。\n"
+        f"{transition_boundary}"
         "- 本结果不是正式规划许可。\n\n"
         f"- **运行ID**：`{run.get('run_id')}`\n"
         "- **地图状态**：完整覆盖结果图层已经发送到中间地图。"

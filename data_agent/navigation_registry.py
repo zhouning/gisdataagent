@@ -100,6 +100,7 @@ _ITEMS = (
     ])
     + _items("data", "ingest", [
         ("vsources", "数据源", "link"), ("intake", "接入", "inbox"),
+        ("offline_ingest", "离线入湖", "upload"),
     ])
     + _items("semantic", "standards", [
         ("standards", "领域标准", "database"), ("std_platform", "数据标准", "file-text"),

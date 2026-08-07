@@ -597,7 +597,11 @@ def _table_can_replace_referenced_table(sql: str, current: TableInfo, candidate:
         if not col.is_geometry
         for token in col.ref_tokens
     }
-    return bool(current_cols & candidate_tokens)
+    # Unqualified columns cannot be assigned to a table safely with a regex.
+    # Only replace when the candidate covers the current relation's complete
+    # non-spatial schema; a loose overlap can corrupt a valid CTE before the
+    # unknown-column guard runs (for example roads -> POI on "高德POI").
+    return bool(current_cols and current_cols.issubset(candidate_tokens))
 
 
 def _qualifiers_for_referenced_table(sql: str, table: TableInfo) -> list[str]:

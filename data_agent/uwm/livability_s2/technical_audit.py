@@ -15,6 +15,7 @@ def build_s2_technical_audit(
     bundle: Mapping[str, Any],
     rollout: Mapping[str, Any],
     business_assessment: Mapping[str, Any],
+    map_evidence: Mapping[str, Any],
     execution_scope: Mapping[str, Any],
 ) -> dict[str, Any]:
     """Create a customer-auditable attribution ledger for one S2 run.
@@ -37,6 +38,8 @@ def build_s2_technical_audit(
     support_counts = _counts(messages, "support_level")
     priority_counts = _counts(messages, "review_priority")
     assessment_method = str(business_assessment.get("assessment_method") or "unavailable")
+    direct_action_type = str(direct_delta.get("action_type") or "change_land_use_class")
+    facility_action = direct_action_type in {"add_facility", "remove_facility"}
 
     return {
         "schema": SCHEMA,
@@ -66,7 +69,11 @@ def build_s2_technical_audit(
             },
             {
                 "stage": "action_validation",
-                "mechanism": "server_bound_action_plus_dictionary_and_transition_matrix_validation",
+                "mechanism": (
+                    "server_bound_facility_action_snapshot_area_permission_and_evidence_validation"
+                    if facility_action
+                    else "server_bound_action_plus_dictionary_and_transition_matrix_validation"
+                ),
                 "evidence": {
                     "transition_status": transition.get("status"),
                     "human_review_required": bool(transition.get("human_review_required")),
@@ -76,11 +83,20 @@ def build_s2_technical_audit(
             },
             {
                 "stage": "t1_scenario_transition",
-                "mechanism": "direct_target_parcel_state_mutation_and_relation_compatibility_recalculation",
+                "mechanism": (
+                    "direct_facility_node_mutation_and_dynamic_relation_recalculation"
+                    if facility_action
+                    else "direct_target_parcel_state_mutation_and_relation_compatibility_recalculation"
+                ),
                 "evidence": {
+                    "action_type": direct_action_type,
                     "target_parcel_id": direct_delta.get("target_parcel_id"),
                     "from_land_use_class": direct_delta.get("from_land_use_class"),
                     "to_land_use_class": direct_delta.get("to_land_use_class"),
+                    "facility_id": direct_delta.get("facility_id"),
+                    "facility_class": direct_delta.get("facility_class"),
+                    "added_node_ids": direct_delta.get("added_node_ids") or [],
+                    "removed_node_ids": direct_delta.get("removed_node_ids") or [],
                     "changed_edge_count": len(direct_delta.get("changed_edge_ids") or []),
                     "state_semantics": direct_delta.get("state_semantics"),
                     "observed_outcome": bool(direct_delta.get("observed_outcome")),
@@ -109,6 +125,22 @@ def build_s2_technical_audit(
                     "triggered_rules": list(business_assessment.get("triggered_rules") or []),
                 },
                 "claim": "equal_weight_parcel_coverage_proxy_not_population_or_network_accessibility",
+            },
+            {
+                "stage": "map_evidence",
+                "mechanism": "state_delta_spatial_message_and_business_evidence_projection",
+                "evidence": {
+                    "map_evidence_digest": map_evidence.get("evidence_digest"),
+                    "target_parcel_feature_count": len(
+                        _mapping(map_evidence.get("target_parcel")).get("features")
+                        or []
+                    ),
+                    "affected_parcel_feature_count": len(
+                        _mapping(map_evidence.get("affected_parcels")).get("features")
+                        or []
+                    ),
+                },
+                "claim": "auditable_map_projection_not_independent_analysis",
             },
         ],
         "result_attribution": {
@@ -139,6 +171,7 @@ def build_s2_technical_audit(
             "snapshot_digest": rollout.get("t0_snapshot_digest"),
             "rollout_digest": rollout.get("rollout_digest"),
             "assessment_digest": business_assessment.get("assessment_digest"),
+            "map_evidence_digest": map_evidence.get("evidence_digest"),
             "kernel_version": rollout.get("kernel_version"),
             "execution_scope": deepcopy(dict(execution_scope)),
             "snapshot_content_digests_verified_on_load": True,

@@ -2,6 +2,7 @@
 import asyncio
 import json
 import os
+import re
 
 import yaml
 from google.adk.tools import FunctionTool
@@ -27,6 +28,7 @@ _STANDARDS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "stand
 _DEFAULT_STAC_ENDPOINT = "https://earth-search.aws.element84.com/v1"
 _STAC_TIMEOUT_ENV = "GIS_AGENT_STAC_TIMEOUT_SECONDS"
 _STAC_PROXY_ENV = "GIS_AGENT_STAC_PROXY_URL"
+_DATE_ONLY_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 # ---------------------------------------------------------------------------
@@ -97,6 +99,26 @@ def _build_stac_client_config(timeout_seconds: float = 0.0, proxy_url: str = "")
     if proxy:
         config["proxy_url"] = proxy
     return config
+
+
+def _normalize_stac_datetime(value: str) -> str:
+    """Expand date-only STAC intervals to RFC3339 timestamps."""
+
+    normalized = (value or "").strip()
+    if not normalized:
+        return ""
+    if "/" not in normalized:
+        return (
+            f"{normalized}T00:00:00Z"
+            if _DATE_ONLY_PATTERN.fullmatch(normalized)
+            else normalized
+        )
+    start, end = normalized.split("/", 1)
+    if _DATE_ONLY_PATTERN.fullmatch(start):
+        start = f"{start}T00:00:00Z"
+    if _DATE_ONLY_PATTERN.fullmatch(end):
+        end = f"{end}T23:59:59Z"
+    return f"{start}/{end}"
 
 
 def search_rs_experience(query: str) -> str:
@@ -201,17 +223,24 @@ def stac_search(
 
         max_items = max(1, min(int(limit or 20), 100))
         bbox_list = _parse_bbox(bbox)
+        max_cloud = None
+        if cloud_cover is not None and float(cloud_cover) >= 0:
+            max_cloud = float(cloud_cover)
         items = _run_async(StacConnector().query(
             endpoint,
             _build_stac_client_config(timeout_seconds, proxy_url),
             query_config,
             bbox=bbox_list,
-            filter_expr=datetime or None,
+            filter_expr=_normalize_stac_datetime(datetime) or None,
             limit=max_items,
+            extra_params=(
+                {"query": {"eo:cloud_cover": {"lte": max_cloud}}}
+                if max_cloud is not None
+                else None
+            ),
         ))
 
-        if cloud_cover is not None and float(cloud_cover) >= 0:
-            max_cloud = float(cloud_cover)
+        if max_cloud is not None:
             items = [
                 item for item in items
                 if item.get("cloud_cover") is None or float(item["cloud_cover"]) <= max_cloud

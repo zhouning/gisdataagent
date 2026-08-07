@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 from datetime import datetime, timezone
 from typing import Any
 
-from .contracts import UWM_OBSERVATION_SCHEMA
+from .contracts import (
+    UWM_OBSERVATION_SCHEMA,
+    build_native_geometry_contract,
+)
 from .mmfe_state_input import validate_uwm_state_input
 
 
@@ -30,15 +34,25 @@ def build_canonical_observation_from_state_input(
 
     role_bindings = [row for row in state_input.get("object_role_registry", []) if isinstance(row, dict)]
     manifest_audit = manifest_audit or {}
-    claim_level = _derive_claim_boundary(role_bindings, manifest_audit)
+    object_layers = [_role_to_layer(row) for row in role_bindings if _is_object_layer(row)]
+    raster_features = [_role_to_feature(row) for row in role_bindings if not _is_object_layer(row)]
+    native_geometry_contract = build_native_geometry_contract(
+        [*object_layers, *raster_features]
+    )
+    claim_level = _derive_claim_boundary(
+        role_bindings,
+        manifest_audit,
+        native_geometry_contract,
+    )
     observation = {
         "schema": UWM_OBSERVATION_SCHEMA,
         "observation_id": observation_id or f"uwm-observation-{created_at}",
         "created_at": created_at,
         "spatial_units": [_build_spatial_unit(state_input.get("urban_spatial_unit") or {})],
-        "object_layers": [_role_to_layer(row) for row in role_bindings if _is_object_layer(row)],
-        "raster_features": [_role_to_feature(row) for row in role_bindings if not _is_object_layer(row)],
+        "object_layers": object_layers,
+        "raster_features": raster_features,
         "graph_edges": _build_graph_edges(state_input.get("semantic_relation_registry") or []),
+        "native_geometry_contract": native_geometry_contract,
         "temporal_index": {
             "source_created_at": state_input.get("created_at"),
             "observation_created_at": created_at,
@@ -54,7 +68,12 @@ def build_canonical_observation_from_state_input(
         },
         "claim_boundary": {
             "max_claim_level": claim_level,
-            "reason": _claim_reason(claim_level, role_bindings, manifest_audit),
+            "reason": _claim_reason(
+                claim_level,
+                role_bindings,
+                manifest_audit,
+                native_geometry_contract,
+            ),
         },
         "renderer_trace": [
             {
@@ -63,8 +82,11 @@ def build_canonical_observation_from_state_input(
             },
             {
                 "step": "derive_canonical_observation",
-                "object_layer_count": len([row for row in role_bindings if _is_object_layer(row)]),
-                "raster_feature_count": len([row for row in role_bindings if not _is_object_layer(row)]),
+                "object_layer_count": len(object_layers),
+                "raster_feature_count": len(raster_features),
+                "native_geometry_complete_role_count": native_geometry_contract[
+                    "complete_role_count"
+                ],
             },
         ],
     }
@@ -85,6 +107,7 @@ def _invalid_observation(
         "object_layers": [],
         "raster_features": [],
         "graph_edges": [],
+        "native_geometry_contract": build_native_geometry_contract([]),
         "temporal_index": {"observation_created_at": created_at},
         "quality_flags": [{"level": "error", "message": error} for error in errors],
         "synthetic_flags": [],
@@ -120,20 +143,40 @@ def _is_object_layer(row: dict[str, Any]) -> bool:
 
 
 def _role_to_layer(row: dict[str, Any]) -> dict[str, Any]:
-    return {
+    layer = {
         "role": row.get("role"),
         "uwm_role": row.get("uwm_role"),
         "object_type": row.get("object_type"),
         "source_dataset_id": row.get("source_dataset_id"),
     }
+    layer.update(_native_geometry_metadata(row))
+    return layer
 
 
 def _role_to_feature(row: dict[str, Any]) -> dict[str, Any]:
-    return {
+    feature = {
         "feature_id": row.get("role"),
         "role": row.get("role"),
         "uwm_role": row.get("uwm_role"),
         "source_dataset_id": row.get("source_dataset_id"),
+    }
+    feature.update(_native_geometry_metadata(row))
+    return feature
+
+
+def _native_geometry_metadata(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        key: deepcopy(row[key])
+        for key in (
+            "aggregation_semantics",
+            "calibration",
+            "geometry_type",
+            "observation_semantics",
+            "spatial_support",
+            "temporal_support",
+            "uncertainty",
+        )
+        if key in row
     }
 
 
@@ -174,21 +217,34 @@ def _build_synthetic_flags(role_bindings: list[dict[str, Any]]) -> list[dict[str
     return flags
 
 
-def _derive_claim_boundary(role_bindings: list[dict[str, Any]], manifest_audit: dict[str, Any]) -> str:
+def _derive_claim_boundary(
+    role_bindings: list[dict[str, Any]],
+    manifest_audit: dict[str, Any],
+    native_geometry_contract: dict[str, Any],
+) -> str:
     if manifest_audit and manifest_audit.get("valid") is False:
         return "not_for_claim"
     statuses = {str(row.get("synthetic_status") or "") for row in role_bindings}
     if statuses.intersection({"synthetic", "semi_synthetic", "smoke_only"}):
+        return "exploratory_only"
+    if native_geometry_contract.get("uncalibrated_inferred_roles"):
         return "exploratory_only"
     if statuses.intersection({"public_proxy", "restricted_expected"}):
         return "bounded_support"
     return "bounded_support"
 
 
-def _claim_reason(claim_level: str, role_bindings: list[dict[str, Any]], manifest_audit: dict[str, Any]) -> str:
+def _claim_reason(
+    claim_level: str,
+    role_bindings: list[dict[str, Any]],
+    manifest_audit: dict[str, Any],
+    native_geometry_contract: dict[str, Any],
+) -> str:
     if claim_level == "not_for_claim":
         return "invalid or failed data foundation audit"
     statuses = {str(row.get("synthetic_status") or "") for row in role_bindings}
     if statuses.intersection({"synthetic", "semi_synthetic", "smoke_only"}):
         return "synthetic or semi-synthetic sources are present"
+    if native_geometry_contract.get("uncalibrated_inferred_roles"):
+        return "inferred spatial values are present without calibrated uncertainty"
     return "observation can support bounded UWM research claims after evidence gates"

@@ -10,6 +10,7 @@ from contextvars import ContextVar
 current_user_id: ContextVar[str] = ContextVar('current_user_id', default='anonymous')
 current_session_id: ContextVar[str] = ContextVar('current_session_id', default='default')
 current_user_role: ContextVar[str] = ContextVar('current_user_role', default='anonymous')
+current_tenant_id: ContextVar[str] = ContextVar('current_tenant_id', default='')
 current_trace_id: ContextVar[str] = ContextVar('current_trace_id', default='')
 current_tool_categories: ContextVar[set] = ContextVar('current_tool_categories', default=set())
 current_model_tier: ContextVar[str] = ContextVar('current_model_tier', default='standard')

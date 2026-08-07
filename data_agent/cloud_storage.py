@@ -243,7 +243,7 @@ class AWSS3Adapter(CloudStorageAdapter):
       bucket subdomains — required for in-cluster MinIO.
     """
 
-    def __init__(self):
+    def __init__(self, bucket: str | None = None):
         import boto3
         from botocore.config import Config as BotoConfig
         endpoint_url = os.environ.get("AWS_ENDPOINT_URL") or None
@@ -257,7 +257,7 @@ class AWSS3Adapter(CloudStorageAdapter):
             boto_kwargs["endpoint_url"] = endpoint_url
             boto_kwargs["config"] = BotoConfig(s3={"addressing_style": "path"})
         self._client = boto3.client('s3', **boto_kwargs)
-        self._bucket = os.environ.get("AWS_S3_BUCKET", "")
+        self._bucket = bucket or os.environ.get("AWS_S3_BUCKET", "")
 
     def upload(self, local_path: str, key: str) -> bool:
         try:

@@ -12,6 +12,11 @@ except Exception:
     list_custom_skills = None  # type: ignore[assignment]
 
 _PIPELINE_TARGETS = [
+    {"handle": "人口住房", "label": "人口住房", "type": "pipeline",
+     "description": "受限参数的人口与住房空间配置、约束审计和地图联动",
+     "allowed_roles": ["admin", "analyst"], "required_state_keys": [],
+     "pipeline": "POPULATION_HOUSING",
+     "aliases": ["人口住房配置", "人口与住房", "住房配置"]},
     {"handle": "S2", "label": "S2", "type": "pipeline",
      "description": "城市宜居性S2用地性质变更与设施覆盖评估", "allowed_roles": ["admin", "analyst"],
      "required_state_keys": [], "pipeline": "S2", "aliases": ["宜居性S2", "LivabilityS2"]},

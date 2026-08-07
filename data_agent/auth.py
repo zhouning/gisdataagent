@@ -48,7 +48,7 @@ _login_failures_lock = threading.Lock()
 # Recognized RBAC roles. Storage is VARCHAR (no enum migration needed).
 # ---------------------------------------------------------------------------
 _VALID_ROLES = {"viewer", "analyst", "admin",
-                "standard_editor", "standard_reviewer"}
+                "platform_operator", "standard_editor", "standard_reviewer"}
 
 
 def _check_lockout(username: str) -> Optional[str]:
@@ -124,6 +124,7 @@ def ensure_users_table():
                     display_name VARCHAR(200),
                     email VARCHAR(255) DEFAULT '',
                     role VARCHAR(20) DEFAULT 'analyst',
+                    tenant_id VARCHAR(64),
                     auth_provider VARCHAR(20) DEFAULT 'password',
                     created_at TIMESTAMP DEFAULT NOW()
                 )
@@ -164,7 +165,8 @@ def authenticate_user(username: str, password: str) -> Optional[dict]:
     try:
         with engine.connect() as conn:
             result = conn.execute(text(
-                f"SELECT username, password_hash, display_name, role FROM {T_APP_USERS} WHERE username = :u"
+                f"SELECT username, password_hash, display_name, role, tenant_id "
+                f"FROM {T_APP_USERS} WHERE username = :u"
             ), {"u": username})
             row = result.fetchone()
             if row and _verify_password(password, row[1]):
@@ -172,7 +174,8 @@ def authenticate_user(username: str, password: str) -> Optional[dict]:
                 return {
                     "username": row[0],
                     "display_name": row[2] or row[0],
-                    "role": row[3] or "analyst"
+                    "role": row[3] or "analyst",
+                    "tenant_id": row[4],
                 }
     except Exception as e:
         print(f"[Auth] Error during authentication: {e}")
@@ -294,7 +297,7 @@ def delete_user_account(username: str, confirm_password: str) -> dict:
         return {"status": "error", "message": t("auth.delete_admin_blocked")}
 
     try:
-        with engine.connect() as conn:
+        with engine.begin() as conn:
             # Cascade delete related data
             cascade_tables = [
                 ("agent_token_usage", "username"),
@@ -307,7 +310,12 @@ def delete_user_account(username: str, confirm_password: str) -> dict:
             ]
             for table, col in cascade_tables:
                 try:
-                    conn.execute(text(f"DELETE FROM {table} WHERE {col} = :u"), {"u": username})
+                    # Keep an absent optional table from aborting the outer transaction.
+                    with conn.begin_nested():
+                        conn.execute(
+                            text(f"DELETE FROM {table} WHERE {col} = :u"),
+                            {"u": username},
+                        )
                 except Exception:
                     pass  # Table may not exist
 
@@ -315,7 +323,6 @@ def delete_user_account(username: str, confirm_password: str) -> dict:
             result = conn.execute(text(
                 f"DELETE FROM {T_APP_USERS} WHERE username = :u"
             ), {"u": username})
-            conn.commit()
 
             if result.rowcount == 0:
                 return {"status": "error", "message": t("auth.delete_user_not_found")}
@@ -476,7 +483,11 @@ async def password_auth_callback(username: str, password: str) -> Optional[cl.Us
         return cl.User(
             identifier=user["username"],
             display_name=user["display_name"],
-            metadata={"role": user["role"], "provider": "password"}
+            metadata={
+                "role": user["role"],
+                "tenant_id": user.get("tenant_id"),
+                "provider": "password",
+            }
         )
     try:
         from .audit_logger import record_audit, ACTION_LOGIN_FAILURE

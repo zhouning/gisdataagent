@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import UTC, datetime
 from typing import Any
@@ -55,6 +56,15 @@ def publish_package(
     relations = _records(reader, "relations.jsonl.gz")
     mappings = _records(reader, "mappings.jsonl.gz")
     validation = reader.validation()
+    quality_reports = {
+        name: json.loads(reader.artifact_path(name).read_text(encoding="utf-8"))
+        for name in (
+            "competency_report",
+            "semantic_quality_report",
+            "completeness_report",
+        )
+        if name in manifest.artifacts
+    }
     version_id = manifest.ontology_version_id
     published_at = datetime.now(UTC)
 
@@ -105,6 +115,16 @@ def publish_package(
                 "domain_stats": manifest.domain_stats,
                 "vocabularies": manifest.vocabularies,
                 "compatibility": manifest.compatibility,
+                "quality_artifacts": {
+                    name: artifact.model_dump(mode="json")
+                    for name, artifact in manifest.artifacts.items()
+                    if name in {
+                        "review_dispositions",
+                        "competency_report",
+                        "semantic_quality_report",
+                        "completeness_report",
+                    }
+                },
             }),
             "actor": actor,
         })
@@ -214,7 +234,9 @@ def publish_package(
         for batch in _batched(mapping_rows):
             connection.execute(mapping_sql, batch)
 
-        report_sha = manifest.artifacts["validation"].sha256
+        release_report = {"validation": validation, **quality_reports}
+        release_report_json = _json(release_report)
+        report_sha = hashlib.sha256(release_report_json.encode("utf-8")).hexdigest()
         connection.execute(text(
             "INSERT INTO gda_ontology.validation_result ("
             "ontology_version_id, validator_id, validation_kind, conforms, severity, issue_count, "
@@ -223,11 +245,11 @@ def publish_package(
         ), {
             "version_id": version_id,
             "validator_id": "ontology-package-release-gate-v1",
-            "validation_kind": "structural+shacl+provenance",
+            "validation_kind": "structural+shacl+competency+owlrl+provenance",
             "conforms": bool(validation.get("conforms")),
             "severity": "warning" if validation.get("issue_count") else "info",
             "issue_count": int(validation.get("issue_count", 0)),
-            "report": _json(validation),
+            "report": release_report_json,
             "report_sha256": report_sha,
         })
         connection.execute(text(

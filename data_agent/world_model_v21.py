@@ -18,6 +18,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from .paper9_agent_governance import (
+    EXPECTED_ALGORITHM_VERSION,
+    EXPECTED_PACKAGE_VERSION,
+    Paper9AuditPolicy,
+    Paper9EpisodeStore,
+    audit_paper9_run,
+)
+
 VERSION = "2.1.0"
 DEFAULT_REPO = Path(r"D:\test\_publish\arcgis-farmland-mpc")
 
@@ -77,6 +85,12 @@ class WorldModelV21Service:
             onnx_count = len(self.find_onnx_members(defaults["ensemble_dir"]))
 
         ready = repo_exists and import_info["importable"]
+        version_compatible = bool(
+            ready
+            and import_info.get("package_version") == EXPECTED_PACKAGE_VERSION
+            and import_info.get("algorithm_version") == EXPECTED_ALGORITHM_VERSION
+            and import_info.get("source_matches_repo", True)
+        )
         return {
             "status": "ready" if ready else "unavailable",
             "version": VERSION,
@@ -101,6 +115,15 @@ class WorldModelV21Service:
                 "restoration_env": True,
                 "cultivated_area_floor": True,
                 "baimu_area_floor": True,
+                "hard_gate_audit": True,
+                "bounded_replan": True,
+                "verified_episode_memory": True,
+            },
+            "finals": {
+                "expected_package_version": EXPECTED_PACKAGE_VERSION,
+                "expected_algorithm_version": EXPECTED_ALGORITHM_VERSION,
+                "version_compatible": version_compatible,
+                "ready": version_compatible,
             },
             "runtime": {
                 "proj_data_dir": proj_data_dir,
@@ -108,11 +131,142 @@ class WorldModelV21Service:
             "onnx_member_count": onnx_count,
         }
 
+    def inspect_resources(
+        self,
+        *,
+        dataset: str,
+        prepared_dir: str,
+        ensemble_dir: str,
+    ) -> dict[str, Any]:
+        """Inspect version binding and reusable artifacts without executing MPC."""
+
+        status = self.status()
+        prepared = Path(prepared_dir).expanduser() if prepared_dir else None
+        ensemble = Path(ensemble_dir).expanduser() if ensemble_dir else None
+        stages = {
+            "prepare": {
+                "ready": bool(prepared and self._prepared_ready(prepared)),
+                "path": str(prepared) if prepared else None,
+            },
+            "sample": {
+                "ready": bool(prepared and self._sample_ready(prepared)),
+                "path": str(prepared / "tool2") if prepared else None,
+            },
+            "train": {
+                "ready": bool(ensemble and self.find_onnx_members(ensemble)),
+                "path": str(ensemble) if ensemble else None,
+                "onnx_member_count": len(self.find_onnx_members(ensemble))
+                if ensemble
+                else 0,
+            },
+        }
+        reusable = [name for name, detail in stages.items() if detail["ready"]]
+        required = [name for name, detail in stages.items() if not detail["ready"]]
+        planning_ready = bool(
+            status.get("finals", {}).get("version_compatible")
+            and stages["prepare"]["ready"]
+            and stages["train"]["ready"]
+        )
+        land_use_contract = None
+        if prepared:
+            input_dltb = (
+                prepared / "dem_slope_analysis" / "output" / "DLTB_with_slope.shp"
+            )
+            if input_dltb.is_file():
+                try:
+                    land_use_contract = self._detect_land_use_code_contract(input_dltb)
+                except Exception as exc:
+                    land_use_contract = {"compatible": False, "error": str(exc)}
+                    planning_ready = False
+        return {
+            "status": "ready" if planning_ready else "needs_action",
+            "dataset": dataset or None,
+            "version": status.get("version"),
+            "paper9": status.get("paper9"),
+            "finals": status.get("finals"),
+            "stages": stages,
+            "reusable_stages": reusable,
+            "required_stages": required,
+            "land_use_code_contract": land_use_contract,
+            "planning_ready": planning_ready,
+            "recommended_next_action": "run_plan"
+            if planning_ready
+            else "repair_version_or_missing_stages",
+        }
+
+    def audit_run(
+        self,
+        *,
+        out_dir: str,
+        attempt: int = 0,
+        cultivated_area_floor_delta_ha: float = 0.0,
+    ) -> dict[str, Any]:
+        """Apply deterministic hard gates and return a bounded recovery branch."""
+
+        return audit_paper9_run(
+            out_dir,
+            policy=Paper9AuditPolicy(
+                cultivated_area_floor_delta_ha=cultivated_area_floor_delta_ha,
+                max_replans=1,
+            ),
+            attempt=attempt,
+        )
+
+    def recall_verified_episodes(
+        self, *, dataset: str = "", limit: int = 3
+    ) -> dict[str, Any]:
+        """Recall only episodes that previously passed all deterministic gates."""
+
+        episodes = Paper9EpisodeStore().recall(dataset=dataset, limit=limit)
+        return {
+            "status": "ok",
+            "dataset": dataset or None,
+            "count": len(episodes),
+            "episodes": episodes,
+        }
+
+    def commit_verified_episode(
+        self,
+        *,
+        out_dir: str,
+        dataset: str,
+        goal: str,
+        plan_args: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Commit an audited run; failed or incomplete runs are rejected."""
+
+        root = Path(out_dir).expanduser().resolve()
+        audit_path = root / "paper9_agent_audit.json"
+        if not audit_path.is_file():
+            raise WorldModelV21ValidationError(
+                f"paper9_agent_audit.json not found under {root}; audit the run first"
+            )
+        audit = json.loads(audit_path.read_text(encoding="utf-8"))
+        status = self.status()
+        paper9 = status.get("paper9") or {}
+        record = Paper9EpisodeStore().commit(
+            audit=audit,
+            dataset=dataset,
+            goal=goal,
+            plan_args=plan_args,
+            provenance={
+                "adapter_version": VERSION,
+                "package_version": paper9.get("package_version"),
+                "algorithm_name": paper9.get("algorithm_name"),
+                "algorithm_version": paper9.get("algorithm_version"),
+                "paper9_commit": paper9.get("commit"),
+            },
+        )
+        return {"status": "committed", "episode": record}
+
     def run_prepare(self, payload: dict[str, Any], user_id: str) -> dict[str, Any]:
         """Run Paper9 Tool 1 data preparation and return normalized JSON."""
         self._ensure_proj_data_dir()
         prepare_run = self._load_paper9_prepare_run()
-        dltb_path = self._required_existing_file(payload, "dltb_path")
+        # FileGDB is a directory dataset.  The open-source Paper9 preparation
+        # path reads it through GeoPandas/pyogrio, so a plain Windows install
+        # does not need ArcPy or an intermediate export before Tool 1.
+        dltb_path = self._required_existing_dataset(payload, "dltb_path")
         dem_path = self._required_existing_file(payload, "dem_path")
         prepared_dir = self._optional_output_dir(
             payload,
@@ -284,10 +438,20 @@ class WorldModelV21Service:
         run_plan = bool(payload.get("run_plan", True))
         steps: list[dict[str, Any]] = []
 
-        prepared_dir = Path(str(payload.get("prepared_dir") or "").strip()) if payload.get("prepared_dir") else None
+        prepared_dir = (
+            Path(str(payload.get("prepared_dir") or "").strip())
+            if payload.get("prepared_dir")
+            else None
+        )
         if run_prepare:
             if reuse_existing and prepared_dir and self._prepared_ready(prepared_dir):
-                steps.append({"step": "prepare", "status": "skipped_reused", "prepared_dir": str(prepared_dir)})
+                steps.append(
+                    {
+                        "step": "prepare",
+                        "status": "skipped_reused",
+                        "prepared_dir": str(prepared_dir),
+                    }
+                )
             else:
                 prepare_payload = dict(payload)
                 prepare_result = self.run_prepare(prepare_payload, user_id=user_id)
@@ -299,16 +463,32 @@ class WorldModelV21Service:
         assert prepared_dir is not None
         if run_sample:
             if reuse_existing and self._sample_ready(prepared_dir):
-                steps.append({"step": "sample", "status": "skipped_reused", "prepared_dir": str(prepared_dir)})
+                steps.append(
+                    {
+                        "step": "sample",
+                        "status": "skipped_reused",
+                        "prepared_dir": str(prepared_dir),
+                    }
+                )
             else:
                 sample_payload = dict(payload)
                 sample_payload["prepared_dir"] = str(prepared_dir)
                 steps.append({"step": "sample", **self.run_sample(sample_payload, user_id=user_id)})
 
-        ensemble_dir = Path(str(payload.get("ensemble_dir") or "").strip()) if payload.get("ensemble_dir") else None
+        ensemble_dir = (
+            Path(str(payload.get("ensemble_dir") or "").strip())
+            if payload.get("ensemble_dir")
+            else None
+        )
         if run_train:
             if reuse_existing and ensemble_dir and self.find_onnx_members(ensemble_dir):
-                steps.append({"step": "train", "status": "skipped_reused", "ensemble_dir": str(ensemble_dir)})
+                steps.append(
+                    {
+                        "step": "train",
+                        "status": "skipped_reused",
+                        "ensemble_dir": str(ensemble_dir),
+                    }
+                )
             else:
                 train_payload = dict(payload)
                 train_payload["prepared_dir"] = str(prepared_dir)
@@ -418,6 +598,11 @@ class WorldModelV21Service:
             if cfg["env_kind"] == "county" and input_dltb_fc.exists()
             else None
         )
+        land_use_contract = (
+            self._detect_land_use_code_contract(input_dltb_fc)
+            if output_fc_arg
+            else None
+        )
 
         try:
             summary = plan_run(
@@ -435,6 +620,8 @@ class WorldModelV21Service:
                 env_kind=cfg["env_kind"],
                 output_fc=output_fc_arg,
                 input_dltb_fc=str(input_dltb_fc) if output_fc_arg else None,
+                farm_dlbm=(land_use_contract or {}).get("farm_dlbm", "0101"),
+                forest_dlbm=(land_use_contract or {}).get("forest_dlbm", "0301"),
                 cultivated_area_floor_delta_ha=cfg[
                     "cultivated_area_floor_delta_ha"
                 ],
@@ -480,23 +667,113 @@ class WorldModelV21Service:
             "map_config": self._build_map_config(map_layer) if map_layer else None,
             "map_update_queued": False,
             "warnings": warnings,
+            "land_use_code_contract": land_use_contract,
+        }
+
+    def _detect_land_use_code_contract(self, input_dltb_fc: Path) -> dict[str, Any]:
+        """Choose output codes that match the input scheme before MPC execution."""
+
+        info = self._import_paper9()
+        if not info["importable"]:
+            raise WorldModelV21UnavailableError(info["error"] or "Paper9 import failed")
+        try:
+            import geopandas as gpd
+
+            dltb = gpd.read_file(input_dltb_fc, columns=["DLBM"])
+            values = dltb["DLBM"].astype("string").str.strip().fillna("")
+            code_counts = {
+                str(key): int(value) for key, value in values.value_counts().items()
+            }
+            try:
+                from farmland_mpc.landuse import (
+                    CURRENT_LAND_USE_SCHEME,
+                    LEGACY_LAND_USE_SCHEME,
+                    analyse_land_use_codes,
+                )
+
+                report = analyse_land_use_codes(
+                    values, require_farmland=True, require_forest=True
+                )
+                scheme = str(report.scheme)
+                code_counts = report.code_counts
+                if scheme == CURRENT_LAND_USE_SCHEME:
+                    farm_dlbm, forest_dlbm = "0101", "0301"
+                elif scheme == LEGACY_LAND_USE_SCHEME:
+                    farm_dlbm, forest_dlbm = "011", "031"
+                else:
+                    raise ValueError(f"unsupported Paper9 land-use scheme: {scheme}")
+            except ImportError:
+                # Paper9 0.2.x predates the shared landuse helper. Keep the
+                # adapter usable by validating the same prefixes locally.
+                has_current = (
+                    values.str.startswith(("0101", "0102", "0103")).any()
+                    and values.str.startswith(("0301", "0302", "0303")).any()
+                )
+                has_legacy = (
+                    values.str.startswith(("011", "012", "013")).any()
+                    and values.str.startswith(("031", "032", "033")).any()
+                )
+                if has_current:
+                    scheme, farm_dlbm, forest_dlbm = "current", "0101", "0301"
+                elif has_legacy:
+                    scheme, farm_dlbm, forest_dlbm = "legacy", "011", "031"
+                else:
+                    raise ValueError(
+                        "no supported farmland and forest DLBM prefixes"
+                    ) from None
+        except Exception as exc:
+            raise WorldModelV21ValidationError(
+                f"Unable to validate DLBM code scheme for {input_dltb_fc}: {exc}"
+            ) from exc
+        return {
+            "compatible": True,
+            "scheme": scheme,
+            "farm_dlbm": farm_dlbm,
+            "forest_dlbm": forest_dlbm,
+            "code_counts": code_counts,
         }
 
     def _import_paper9(self) -> dict[str, Any]:
-        repo = str(self.repo_path)
+        source_root = (
+            self.repo_path / "src"
+            if (self.repo_path / "src").is_dir()
+            else self.repo_path
+        )
+        repo = str(source_root)
         if repo not in sys.path:
             sys.path.insert(0, repo)
         try:
             package = importlib.import_module("farmland_mpc")
+            module_path = Path(getattr(package, "__file__", "") or "").resolve()
+            try:
+                source_matches_repo = module_path.is_relative_to(source_root.resolve())
+            except ValueError:
+                source_matches_repo = False
+            algorithm_name = None
+            algorithm_version = None
+            try:
+                version_module = importlib.import_module("paper9_mnr.version")
+                algorithm_name = getattr(version_module, "ALGORITHM_NAME", None)
+                algorithm_version = getattr(version_module, "ALGORITHM_VERSION", None)
+            except Exception:
+                pass
             return {
                 "importable": True,
                 "package_version": getattr(package, "__version__", None),
+                "algorithm_name": algorithm_name,
+                "algorithm_version": algorithm_version,
+                "module_path": str(module_path),
+                "source_matches_repo": source_matches_repo,
                 "error": None,
             }
         except Exception as exc:
             return {
                 "importable": False,
                 "package_version": None,
+                "algorithm_name": None,
+                "algorithm_version": None,
+                "module_path": None,
+                "source_matches_repo": False,
                 "error": str(exc),
             }
 
@@ -617,6 +894,8 @@ class WorldModelV21Service:
             "baimu_area_change_ha": first.get(
                 "baimu_area_change_ha", aggregate.get("baimu_ha_mean")
             ),
+            "baimu_count_change": first.get("baimu_count_change"),
+            "cultivated_area_change_ha": first.get("cultivated_area_change_ha"),
             "n_episodes": config.get("n_episodes"),
             "n_blocks": config.get("n_blocks"),
             "n_parcels": config.get("n_parcels"),
@@ -910,6 +1189,15 @@ class WorldModelV21Service:
             raise WorldModelV21ValidationError(f"{key} is required")
         path = Path(raw)
         if not path.is_file():
+            raise WorldModelV21ValidationError(f"{key} not found: {path}")
+        return path
+
+    def _required_existing_dataset(self, payload: dict[str, Any], key: str) -> Path:
+        raw = str(payload.get(key, "")).strip()
+        if not raw:
+            raise WorldModelV21ValidationError(f"{key} is required")
+        path = Path(raw)
+        if not path.exists() or (not path.is_file() and not path.is_dir()):
             raise WorldModelV21ValidationError(f"{key} not found: {path}")
         return path
 

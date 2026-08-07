@@ -6,7 +6,7 @@ Used by all domain route modules. Extracted from frontend_api.py (S-4).
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from ..user_context import current_user_id, current_user_role
+from ..user_context import current_tenant_id, current_user_id, current_user_role
 
 
 def _get_user_from_request(request: Request):
@@ -29,10 +29,13 @@ def _set_user_context(user):
     """Set ContextVars from a decoded JWT user object."""
     username = user.identifier if hasattr(user, "identifier") else str(user)
     role = "analyst"
+    tenant_id = ""
     if hasattr(user, "metadata") and isinstance(user.metadata, dict):
         role = user.metadata.get("role", "analyst")
+        tenant_id = str(user.metadata.get("tenant_id") or "").strip()
     current_user_id.set(username)
     current_user_role.set(role)
+    current_tenant_id.set(tenant_id)
     return username, role
 
 

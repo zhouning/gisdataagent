@@ -47,6 +47,13 @@ vendor/paper9/models/*
 staging 机应为 Windows x64，并使用与现场相同的 Python 3.11 小版本。先准备 wheelhouse：
 
 ```powershell
+# 前端构建只发生在联网 staging 机；现场 ZIP 不需要 Node.js。
+# Node.js 20 LTS（或更高的受支持 LTS）和 npm 必须可用。
+Set-Location frontend
+npm ci
+npm run build
+Set-Location ..
+
 python -m pip download --only-binary=:all: --platform win_amd64 --python-version 311 `
   --implementation cp --abi cp311 --dest vendor\wheelhouse\core `
   -r deploy\windows-standalone\requirements-windows-core.txt
@@ -55,7 +62,8 @@ python -m pip download --only-binary=:all: --platform win_amd64 --python-version
   -r deploy\windows-standalone\requirements-windows-production.txt
 ```
 
-上面的命令只准备 Python 包，PostgreSQL/PostGIS、pgvector、MinIO、JRE、Fuseki、Ollama、
+`npm run build` 必须生成 `frontend\dist`，否则构建器会阻断。上面的 pip 命令只准备 Python 包，
+PostgreSQL/PostGIS、pgvector、MinIO、JRE、Fuseki、Ollama、
 模型和 Paper9 必须从批准的离线制品库放入 `vendor/`。随后构建：
 
 ```powershell

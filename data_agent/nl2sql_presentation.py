@@ -204,10 +204,188 @@ def build_bridge_building_map_update(
         return None
 
 
+def build_longest_bridge_poi_map_update(
+    raw: str | dict[str, Any],
+    *,
+    question: str = "",
+    upload_dir: str | None = None,
+) -> dict[str, Any] | None:
+    """Build map layers for the locked longest-bridge/100m/AMap-POI query."""
+    payload = parse_nl2sql_payload(raw)
+    if not payload or payload.get("status") != "ok":
+        return None
+    sql = payload.get("sql") or ""
+    if not _is_longest_bridge_poi_query(question, sql):
+        return None
+
+    count_info = _extract_count_value(payload.get("execution") or {})
+    if not count_info or not isinstance(count_info[1], (int, float)):
+        return None
+    scalar_poi_count = int(count_info[1])
+
+    try:
+        from data_agent.database_tools import _inject_user_context
+        from data_agent.db_engine import get_engine
+        from data_agent.user_context import get_user_upload_dir
+
+        target_dir = upload_dir or get_user_upload_dir()
+        os.makedirs(target_dir, exist_ok=True)
+        engine = get_engine(readonly=True)
+        if engine is None:
+            return None
+
+        # One SQL statement gives every layer a single, consistent PostGIS snapshot.
+        with engine.connect() as conn:
+            _inject_user_context(conn)
+            rows = conn.execute(text(_LONGEST_BRIDGE_POI_MAP_SQL)).mappings().all()
+
+        poi_rows = [row for row in rows if row.get("feature_group") == "poi"]
+        bridge_rows = [row for row in rows if row.get("feature_group") == "bridge"]
+        buffer_rows = [row for row in rows if row.get("feature_group") == "buffer"]
+        if (
+            len(poi_rows) != scalar_poi_count
+            or len(bridge_rows) != 1
+            or len(buffer_rows) != 1
+        ):
+            logger.warning(
+                "Skipping longest-bridge map because scalar/features disagree: "
+                "scalar=%s poi=%s bridge=%s buffer=%s",
+                scalar_poi_count,
+                len(poi_rows),
+                len(bridge_rows),
+                len(buffer_rows),
+            )
+            return None
+
+        suffix = uuid.uuid4().hex[:8]
+        poi_name = f"nl2sql_longest_bridge_pois_{suffix}.geojson"
+        bridge_name = f"nl2sql_longest_bridge_{suffix}.geojson"
+        buffer_name = f"nl2sql_longest_bridge_100m_{suffix}.geojson"
+        _write_geojson(
+            os.path.join(target_dir, poi_name),
+            _rows_to_feature_collection(
+                poi_rows,
+                property_keys=(
+                    "poi_id", "poi_name", "address", "poi_type",
+                    "distance_m", "result_type",
+                ),
+            ),
+        )
+        _write_geojson(
+            os.path.join(target_dir, bridge_name),
+            _rows_to_feature_collection(
+                bridge_rows,
+                property_keys=(
+                    "osm_id", "bridge_name", "fclass", "bridge",
+                    "length_m", "result_type",
+                ),
+            ),
+        )
+        _write_geojson(
+            os.path.join(target_dir, buffer_name),
+            _rows_to_feature_collection(
+                buffer_rows,
+                property_keys=(
+                    "osm_id", "bridge_name", "length_m", "radius_m", "result_type",
+                ),
+            ),
+        )
+
+        view_row = rows[0]
+        center = [float(view_row["center_lat"]), float(view_row["center_lng"])]
+        zoom = _estimate_zoom_from_extent(view_row)
+        bridge_row = bridge_rows[0]
+        return {
+            "schema": "map_update.v1",
+            "layers": [
+                {
+                    "name": "最长桥梁 100 米范围",
+                    "type": "polygon",
+                    "geojson": buffer_name,
+                    "style": {
+                        "color": "#f59e0b",
+                        "weight": 2,
+                        "opacity": 0.9,
+                        "fillColor": "#fbbf24",
+                        "fillOpacity": 0.2,
+                    },
+                },
+                {
+                    "name": "道路网络中最长桥梁",
+                    "type": "line",
+                    "geojson": bridge_name,
+                    "style": {
+                        "color": "#dc2626",
+                        "weight": 6,
+                        "opacity": 1.0,
+                    },
+                },
+                {
+                    "name": f"100 米范围内高德 POI ({len(poi_rows)} 个)",
+                    "type": "point",
+                    "geojson": poi_name,
+                    "style": {
+                        "color": "#ffffff",
+                        "weight": 2,
+                        "opacity": 1.0,
+                        "fillColor": "#2563eb",
+                        "fillOpacity": 0.9,
+                        "radius": 6,
+                    },
+                },
+            ],
+            "center": center,
+            "zoom": zoom,
+            "summary": {
+                "query_type": "longest_bridge_poi_100m",
+                "scalar_poi_count": scalar_poi_count,
+                "poi_feature_count": len(poi_rows),
+                "bridge_feature_count": len(bridge_rows),
+                "buffer_feature_count": len(buffer_rows),
+                "distance_m": 100,
+                "bridge_osm_id": bridge_row.get("osm_id"),
+                "bridge_name": bridge_row.get("bridge_name"),
+                "bridge_length_m": _jsonable(bridge_row.get("length_m")),
+                "source_tables": ["cq_osm_roads_2021", "cq_amap_poi_2024"],
+                "geometry_snapshot": "single_postgis_statement",
+            },
+        }
+    except Exception as exc:
+        logger.warning("Failed to build longest-bridge POI map update: %s", exc)
+        return None
+
+
+def build_nl2sql_map_update(
+    raw: str | dict[str, Any],
+    *,
+    question: str = "",
+    upload_dir: str | None = None,
+) -> dict[str, Any] | None:
+    """Dispatch supported NL2SQL scalar results to companion map layers."""
+    map_update = build_longest_bridge_poi_map_update(
+        raw,
+        question=question,
+        upload_dir=upload_dir,
+    )
+    if map_update:
+        return map_update
+    return build_bridge_building_map_update(
+        raw,
+        question=question,
+        upload_dir=upload_dir,
+    )
+
+
 def describe_map_update(map_update: dict[str, Any] | None) -> str:
     if not map_update:
         return ""
     summary = map_update.get("summary") or {}
+    if summary.get("query_type") == "longest_bridge_poi_100m":
+        return (
+            f"已默认加载地图：高德 POI {summary.get('poi_feature_count')} 个、"
+            f"最长桥梁 1 条及其 {summary.get('distance_m')} 米范围；"
+            "三个图层来自同一 PostGIS 查询快照。"
+        )
     golden_count = summary.get("golden_building_count")
     feature_count = summary.get("building_feature_count")
     road_count = summary.get("bridge_road_count")
@@ -258,8 +436,11 @@ def _friendly_count_label(label: str, *, question: str, sql: str) -> str:
     ):
         return "建筑物轮廓数量"
     if _is_length_metric_result(label, joined, count_metric=is_count):
-        if any(token in joined for token in ("公里", "千米", "kilometer", "kilometre", "_km", " km")):
-            return "道路总长度（公里）" if "道路" in question or "road" in joined else "总长度（公里）"
+        length_unit_tokens = ("公里", "千米", "kilometer", "kilometre", "_km", " km")
+        if any(token in joined for token in length_unit_tokens):
+            if "道路" in question or "road" in joined:
+                return "道路总长度（公里）"
+            return "总长度（公里）"
         return "道路总长度" if "道路" in question or "road" in joined else "总长度"
     if "road" in label.lower() or "道路" in question:
         return "道路数量"
@@ -295,7 +476,34 @@ def _is_bridge_building_intersection_query(question: str, sql: str) -> bool:
     return has_building and has_bridge and has_intersection and has_cq_roads
 
 
-def _rows_to_feature_collection(rows: list[Any], *, property_keys: tuple[str, ...]) -> dict[str, Any]:
+def _is_longest_bridge_poi_query(question: str, sql: str) -> bool:
+    normalized_question = re.sub(r"[\s。！？?!，,；;：:]+", "", question or "").lower()
+    normalized_question = re.sub(r"^@nl2sql", "", normalized_question)
+    if normalized_question != "统计距离道路网络中最长桥梁100米范围内的高德poi数量":
+        return False
+
+    sql_low = re.sub(r"\s+", " ", sql or "").lower()
+    required_sql_clues = (
+        "cq_osm_roads_2021",
+        "cq_amap_poi_2024",
+        "bridge",
+        "st_length",
+        "geography",
+        "order by",
+        "desc",
+        "limit 1",
+        "st_dwithin",
+        "100",
+        "count",
+    )
+    return all(clue in sql_low for clue in required_sql_clues)
+
+
+def _rows_to_feature_collection(
+    rows: list[Any],
+    *,
+    property_keys: tuple[str, ...],
+) -> dict[str, Any]:
     features = []
     for row in rows:
         geom = row.get("geometry_json")
@@ -431,4 +639,87 @@ SELECT
     ST_XMax(Box3D(ST_Collect(geometry))) AS max_lng,
     ST_YMax(Box3D(ST_Collect(geometry))) AS max_lat
 FROM extent
+"""
+
+
+_LONGEST_BRIDGE_POI_MAP_SQL = """
+WITH longest_bridge AS (
+    SELECT osm_id, name, fclass, bridge, geometry,
+           ST_Length(geometry::geography) AS length_m
+    FROM cq_osm_roads_2021
+    WHERE bridge = 'T'
+    ORDER BY ST_Length(geometry::geography) DESC, osm_id
+    LIMIT 1
+),
+matched_pois AS (
+    SELECT DISTINCT ON (p."ID")
+           p."ID" AS poi_id,
+           p."名称" AS poi_name,
+           p."地址" AS address,
+           p."类型" AS poi_type,
+           ST_Distance(p.geometry::geography, lb.geometry::geography) AS distance_m,
+           p.geometry
+    FROM cq_amap_poi_2024 AS p
+    CROSS JOIN longest_bridge AS lb
+    WHERE ST_DWithin(p.geometry::geography, lb.geometry::geography, 100)
+    ORDER BY p."ID"
+),
+bridge_buffer AS (
+    SELECT osm_id, name, length_m,
+           ST_Buffer(geometry::geography, 100)::geometry AS geometry
+    FROM longest_bridge
+),
+map_view AS (
+    SELECT
+        ST_Y(ST_Centroid(geometry)) AS center_lat,
+        ST_X(ST_Centroid(geometry)) AS center_lng,
+        ST_XMin(Box3D(geometry)) AS min_lng,
+        ST_YMin(Box3D(geometry)) AS min_lat,
+        ST_XMax(Box3D(geometry)) AS max_lng,
+        ST_YMax(Box3D(geometry)) AS max_lat
+    FROM bridge_buffer
+),
+features AS (
+    SELECT
+        'poi'::text AS feature_group,
+        p.poi_id,
+        p.poi_name,
+        p.address,
+        p.poi_type,
+        ROUND(p.distance_m::numeric, 2) AS distance_m,
+        NULL::text AS osm_id,
+        NULL::text AS bridge_name,
+        NULL::text AS fclass,
+        NULL::text AS bridge,
+        NULL::numeric AS length_m,
+        NULL::integer AS radius_m,
+        'matched_poi'::text AS result_type,
+        p.geometry
+    FROM matched_pois AS p
+    UNION ALL
+    SELECT
+        'bridge', NULL::bigint, NULL, NULL, NULL, NULL,
+        lb.osm_id, lb.name, lb.fclass, lb.bridge,
+        ROUND(lb.length_m::numeric, 2), NULL,
+        'longest_bridge', lb.geometry
+    FROM longest_bridge AS lb
+    UNION ALL
+    SELECT
+        'buffer', NULL::bigint, NULL, NULL, NULL, NULL,
+        bb.osm_id, bb.name, NULL, NULL,
+        ROUND(bb.length_m::numeric, 2), 100,
+        'search_buffer', bb.geometry
+    FROM bridge_buffer AS bb
+)
+SELECT
+    f.feature_group, f.poi_id, f.poi_name, f.address, f.poi_type,
+    f.distance_m, f.osm_id, f.bridge_name, f.fclass, f.bridge,
+    f.length_m, f.radius_m, f.result_type,
+    ST_AsGeoJSON(f.geometry)::text AS geometry_json,
+    v.center_lat, v.center_lng,
+    v.min_lng, v.min_lat, v.max_lng, v.max_lat
+FROM features AS f
+CROSS JOIN map_view AS v
+ORDER BY CASE f.feature_group WHEN 'buffer' THEN 1 WHEN 'bridge' THEN 2 ELSE 3 END,
+         f.poi_id NULLS FIRST
 """

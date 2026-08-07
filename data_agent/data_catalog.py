@@ -703,9 +703,17 @@ def search_data_assets(query: str) -> dict:
     Returns:
         Dict with ranked list of matching assets.
     """
+    from .capability_registry import CapabilityOutputError, get_capability_registry
+
+    capability = get_capability_registry().get("catalog.asset.search")
+    capability.validate_input({"query": query})
+
     engine = get_engine()
     if not engine:
-        return {"status": "error", "message": "Database not configured"}
+        return capability.validate_output({
+            "status": "error",
+            "message": "Database not configured",
+        })
 
     try:
         with engine.connect() as conn:
@@ -816,14 +824,16 @@ def search_data_assets(query: str) -> dict:
 
             results = [s[1] for s in scored[:20]]
 
-            return {
+            return capability.validate_output({
                 "status": "success",
                 "count": len(results),
                 "assets": results,
                 "message": f"Found {len(results)} assets matching '{query}'",
-            }
+            })
+    except CapabilityOutputError:
+        raise
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return capability.validate_output({"status": "error", "message": str(e)})
 
 
 def register_data_asset(asset_name: str, asset_type: str,

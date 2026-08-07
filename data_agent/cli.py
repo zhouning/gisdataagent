@@ -15,17 +15,19 @@ Usage:
 import asyncio
 import getpass
 import importlib
+import json
 import os
-import sys
 import uuid
 import webbrowser
-from typing import Optional
+from pathlib import Path
 
 import typer
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.table import Table
+
+from data_agent.capability_client import CapabilityClientError
 
 app = typer.Typer(
     name="gis-agent",
@@ -34,8 +36,10 @@ app = typer.Typer(
 )
 catalog_app = typer.Typer(help="Data catalog operations")
 skills_app = typer.Typer(help="Custom skill management")
+capability_app = typer.Typer(help="Governed platform capability operations")
 app.add_typer(catalog_app, name="catalog")
 app.add_typer(skills_app, name="skills")
+app.add_typer(capability_app, name="capability")
 
 console = Console()
 
@@ -61,7 +65,9 @@ def _load_env():
 def _set_user_context(user: str, role: str) -> str:
     """Set ContextVars for the current user. Returns session_id."""
     from data_agent.user_context import (
-        current_user_id, current_session_id, current_user_role,
+        current_session_id,
+        current_user_id,
+        current_user_role,
     )
     session_id = f"cli_{user}_{uuid.uuid4().hex[:8]}"
     current_user_id.set(user)
@@ -79,6 +85,33 @@ def _get_session_service():
 def _get_app_module():
     """Lazy-import data_agent.app to avoid loading Chainlit at CLI parse time."""
     return importlib.import_module("data_agent.app")
+
+
+def _new_capability_client(
+    base_url: str | None,
+    token_file: Path | None,
+):
+    """Create the SDK client without exposing a session token on the command line."""
+    from data_agent.capability_client import (
+        CapabilityClient,
+        CapabilityClientConfigurationError,
+    )
+
+    token = None
+    if token_file is not None:
+        token = token_file.read_text(encoding="utf-8").strip()
+        if not token:
+            raise CapabilityClientConfigurationError("access token file is empty")
+    return CapabilityClient(base_url=base_url, access_token=token)
+
+
+def _print_capability_json(payload: dict) -> None:
+    console.print_json(json.dumps(payload, ensure_ascii=False, default=str))
+
+
+def _capability_command_error(exc: Exception) -> None:
+    console.print(f"[red]Capability error:[/red] {exc}")
+    raise typer.Exit(1) from exc
 
 
 def _select_agent(app_mod, intent: str):
@@ -425,6 +458,141 @@ def catalog_search(
     console.print(table)
 
 
+@capability_app.command("list")
+def capability_list(
+    surface: str = typer.Option(None, "--surface", help="Filter by runtime surface"),
+    llm_mode: str = typer.Option(
+        "optional",
+        "--llm-mode",
+        help="disabled/optional/required_for_agent_feature",
+    ),
+    base_url: str = typer.Option(
+        None,
+        "--base-url",
+        envvar="GDA_PLATFORM_URL",
+        help="Root URL of the Geospatial Data Agent platform",
+    ),
+    token_file: Path | None = typer.Option(  # noqa: B008
+        None,
+        "--token-file",
+        envvar="GDA_ACCESS_TOKEN_FILE",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        resolve_path=True,
+        help="File containing the authenticated access_token cookie value",
+    ),
+):
+    """List server capabilities available on a governed runtime surface."""
+    try:
+        with _new_capability_client(base_url, token_file) as client:
+            payload = client.list_capabilities(
+                surface=surface,
+                llm_mode=llm_mode,
+            )
+        _print_capability_json(payload)
+    except (CapabilityClientError, OSError, ValueError) as exc:
+        _capability_command_error(exc)
+
+
+@capability_app.command("show")
+def capability_show(
+    capability_id: str = typer.Argument(..., help="Canonical capability identifier"),
+    version: str = typer.Option(None, "--version", help="Semantic version"),
+    base_url: str = typer.Option(
+        None,
+        "--base-url",
+        envvar="GDA_PLATFORM_URL",
+        help="Root URL of the Geospatial Data Agent platform",
+    ),
+    token_file: Path | None = typer.Option(  # noqa: B008
+        None,
+        "--token-file",
+        envvar="GDA_ACCESS_TOKEN_FILE",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        resolve_path=True,
+        help="File containing the authenticated access_token cookie value",
+    ),
+):
+    """Show one canonical CapabilitySpec and generated projections."""
+    try:
+        with _new_capability_client(base_url, token_file) as client:
+            payload = client.get_capability(capability_id, version=version)
+        _print_capability_json(payload)
+    except (CapabilityClientError, OSError, ValueError) as exc:
+        _capability_command_error(exc)
+
+
+@capability_app.command("invoke")
+def capability_invoke(
+    capability_id: str = typer.Argument(..., help="Canonical capability identifier"),
+    input_json: str = typer.Option(
+        None,
+        "--input-json",
+        help="Canonical input as one JSON object",
+    ),
+    input_file: Path | None = typer.Option(  # noqa: B008
+        None,
+        "--input-file",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        resolve_path=True,
+        help="File containing canonical input JSON",
+    ),
+    version: str = typer.Option(None, "--version", help="Semantic version"),
+    base_url: str = typer.Option(
+        None,
+        "--base-url",
+        envvar="GDA_PLATFORM_URL",
+        help="Root URL of the Geospatial Data Agent platform",
+    ),
+    token_file: Path | None = typer.Option(  # noqa: B008
+        None,
+        "--token-file",
+        envvar="GDA_ACCESS_TOKEN_FILE",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        resolve_path=True,
+        help="File containing the authenticated access_token cookie value",
+    ),
+):
+    """Invoke a capability through its authenticated HTTP gateway projection."""
+    try:
+        if input_json is not None and input_file is not None:
+            raise ValueError("use only one of --input-json or --input-file")
+        raw_input = (
+            input_file.read_text(encoding="utf-8")
+            if input_file is not None
+            else input_json or "{}"
+        )
+        payload = json.loads(raw_input)
+        if not isinstance(payload, dict):
+            raise ValueError("capability input must be one JSON object")
+
+        with _new_capability_client(base_url, token_file) as client:
+            result = client.invoke(
+                capability_id,
+                payload,
+                version=version,
+            )
+        _print_capability_json(result.model_dump(mode="json"))
+    except (
+        CapabilityClientError,
+        json.JSONDecodeError,
+        OSError,
+        ValueError,
+    ) as exc:
+        _capability_command_error(exc)
+
+
 @skills_app.command("list")
 def skills_list(
     user: str = typer.Option(None, "--user", "-u"),
@@ -522,7 +690,7 @@ def sql(
             for _, row in df.iterrows():
                 table.add_row(*[str(v)[:30] for v in row])
             console.print(table)
-        except Exception as e:
+        except Exception:
             console.print(f"[dim]Output saved to: {output_path}[/dim]")
     elif output_path:
         console.print(f"[dim]Output saved to: {output_path}[/dim]")
@@ -598,7 +766,11 @@ def tui(
 
 @app.command()
 def init(
-    db_path: str = typer.Option(None, "--db", help="DuckDB database path (default: data_agent/local.duckdb)"),
+    db_path: str = typer.Option(
+        None,
+        "--db",
+        help="DuckDB database path (default: data_agent/local.duckdb)",
+    ),
     force: bool = typer.Option(False, "--force", "-f", help="Reinitialize even if DB exists"),
 ):
     """Initialize a local Lite database (DuckDB) for offline/demo use.
@@ -606,8 +778,7 @@ def init(
     Creates core tables, seeds default admin user and sample data.
     Use with DB_BACKEND=duckdb to run without PostgreSQL.
     """
-    from data_agent.lite_mode import init_lite_database, get_lite_status
-    import os
+    from data_agent.lite_mode import get_lite_status, init_lite_database
 
     if db_path is None:
         db_path = os.path.join(os.path.dirname(__file__), "local.duckdb")
@@ -622,7 +793,7 @@ def init(
 
     result = init_lite_database(db_path)
     if result["status"] == "ok":
-        console.print(f"[green]✓ Lite 数据库初始化完成[/green]")
+        console.print("[green]✓ Lite 数据库初始化完成[/green]")
         console.print(f"  路径: {result['db_path']}")
         console.print(f"  表: {', '.join(result['tables_created'])}")
         console.print()

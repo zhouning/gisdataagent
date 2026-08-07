@@ -12,6 +12,7 @@ Provides:
 """
 import json
 import logging
+import logging.handlers
 import os
 import re
 import time
@@ -74,7 +75,8 @@ def setup_logging() -> logging.Logger:
     root_logger = logging.getLogger(_ROOT_LOGGER_NAME)
     root_logger.setLevel(level)
 
-    # Avoid duplicate handlers on re-import
+    # Avoid duplicate handlers on re-import.  A local rotating file is useful
+    # in an isolated Windows installation where there is no central collector.
     if not root_logger.handlers:
         handler = logging.StreamHandler()
         handler.setLevel(level)
@@ -86,6 +88,34 @@ def setup_logging() -> logging.Logger:
                 datefmt="%Y-%m-%d %H:%M:%S",
             ))
         root_logger.addHandler(handler)
+
+        log_file = os.environ.get("GDA_LOG_FILE", "").strip()
+        log_dir = os.environ.get("GDA_LOG_DIR", "").strip()
+        if log_file or log_dir:
+            if not log_file:
+                os.makedirs(log_dir, exist_ok=True)
+                log_file = os.path.join(log_dir, "gis-data-agent.log")
+            else:
+                os.makedirs(os.path.dirname(os.path.abspath(log_file)), exist_ok=True)
+            try:
+                max_bytes = max(1, int(os.environ.get("GDA_LOG_ROTATION_MB", "50"))) * 1024 * 1024
+                backup_count = max(1, int(os.environ.get("GDA_LOG_BACKUP_COUNT", "14")))
+                file_handler = logging.handlers.RotatingFileHandler(
+                    log_file, maxBytes=max_bytes, backupCount=backup_count,
+                    encoding="utf-8", delay=True,
+                )
+                if log_format == "json":
+                    file_handler.setFormatter(JsonFormatter())
+                else:
+                    file_handler.setFormatter(logging.Formatter(
+                        "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+                        datefmt="%Y-%m-%d %H:%M:%S",
+                    ))
+                file_handler.setLevel(level)
+                root_logger.addHandler(file_handler)
+            except (OSError, ValueError) as exc:
+                # Logging must never prevent the application from starting.
+                root_logger.warning("Unable to configure local log file %s: %s", log_file, exc)
 
     _CONFIGURED = True
     return root_logger
@@ -156,6 +186,23 @@ pipeline_duration = _safe_histogram(
     "agent_pipeline_duration_seconds",
     "Pipeline execution latency",
     ["pipeline"],
+)
+
+approval_notification_operations = _safe_counter(
+    "gda_approval_notification_operations_total",
+    "ApprovalCase notification worker operations by outcome",
+    ["outcome"],
+)
+approval_notification_cycle_duration = _safe_histogram(
+    "gda_approval_notification_cycle_duration_seconds",
+    "ApprovalCase notification worker cycle latency",
+    [],
+    buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 30),
+)
+approval_notification_last_success_timestamp = _safe_gauge(
+    "gda_approval_notification_last_success_timestamp_seconds",
+    "Unix timestamp of the last successful ApprovalCase notification cycle",
+    [],
 )
 
 # =====================================================================

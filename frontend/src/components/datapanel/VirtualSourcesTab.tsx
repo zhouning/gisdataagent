@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
+import { Database } from 'lucide-react';
 import FieldMappingEditor from './FieldMappingEditor';
+import IngestionDialog from './IngestionDialog';
 
 interface VSource {
   id: number;
@@ -13,6 +15,7 @@ interface VSource {
   default_crs: string;
   refresh_policy: string;
   created_at: string | null;
+  query_config?: Record<string, any>;
 }
 
 const EMPTY_VS_FORM = {
@@ -30,6 +33,7 @@ export default function VirtualSourcesTab() {
   const [editId, setEditId] = useState<number | null>(null);
   const [form, setForm] = useState({ ...EMPTY_VS_FORM });
   const [mappingSource, setMappingSource] = useState<VSource | null>(null);
+  const [ingestionSource, setIngestionSource] = useState<VSource | null>(null);
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState<number | null>(null);
@@ -46,6 +50,8 @@ export default function VirtualSourcesTab() {
   const [arcLayerId, setArcLayerId] = useState('0');
   const [arcWhere, setArcWhere] = useState('1=1');
   const [arcOutFields, setArcOutFields] = useState('*');
+  const [arcMaxRecords, setArcMaxRecords] = useState('5000');
+  const [arcPageSize, setArcPageSize] = useState('2000');
 
   const fetchSources = async () => {
     setLoading(true);
@@ -64,6 +70,11 @@ export default function VirtualSourcesTab() {
     setFormError('');
     setWizardStep(1);
     setDiscoveredLayers([]);
+    setArcLayerId('0');
+    setArcWhere('1=1');
+    setArcOutFields('*');
+    setArcMaxRecords('5000');
+    setArcPageSize('2000');
     setShowForm(true);
   };
 
@@ -80,6 +91,12 @@ export default function VirtualSourcesTab() {
     });
     setEditId(s.id);
     setFormError('');
+    const arcConfig = s.query_config || {};
+    setArcLayerId(String(arcConfig.layer_id ?? 0));
+    setArcWhere(String(arcConfig.where ?? '1=1'));
+    setArcOutFields(String(arcConfig.out_fields ?? '*'));
+    setArcMaxRecords(String(arcConfig.max_records ?? 5000));
+    setArcPageSize(String(arcConfig.page_size ?? 2000));
     setShowForm(true);
   };
 
@@ -96,8 +113,14 @@ export default function VirtualSourcesTab() {
       if (r.ok) {
         const d = await r.json();
         setDiscoveredLayers(d.layers || []);
+        if (d.partial && Array.isArray(d.warnings) && d.warnings.length > 0) {
+          setFormError(`部分服务发现失败：${d.warnings[0]}`);
+        }
+      } else {
+        const d = await r.json();
+        setFormError(d.error || '图层发现失败');
       }
-    } catch { /* ignore */ }
+    } catch { setFormError('图层发现失败'); }
     finally { setDiscovering(false); }
   };
 
@@ -106,7 +129,13 @@ export default function VirtualSourcesTab() {
       return { layers: wmsLayers, styles: wmsStyles, format: wmsFormat, transparent: wmsTransparent, version: wmsVersion };
     }
     if (form.source_type === 'arcgis_rest') {
-      return { layer_id: parseInt(arcLayerId) || 0, where: arcWhere, out_fields: arcOutFields };
+      return {
+        layer_id: parseInt(arcLayerId) || 0,
+        where: arcWhere,
+        out_fields: arcOutFields,
+        max_records: Math.max(1, Math.min(parseInt(arcMaxRecords) || 5000, 1000000)),
+        page_size: Math.max(1, Math.min(parseInt(arcPageSize) || 2000, 5000)),
+      };
     }
     try { return JSON.parse(form.query_config); } catch { return {}; }
   };
@@ -307,6 +336,14 @@ export default function VirtualSourcesTab() {
                 <input placeholder="WHERE 条件 (默认: 1=1)" value={arcWhere}
                   onChange={e => setArcWhere(e.target.value)}
                   style={{ background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '4px 8px', color: '#e0e0e0', fontFamily: 'monospace', fontSize: 12 }} />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input placeholder="最大记录数" value={arcMaxRecords}
+                    onChange={e => setArcMaxRecords(e.target.value)} type="number" min="1" max="1000000"
+                    style={{ flex: 1, background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '4px 8px', color: '#e0e0e0' }} />
+                  <input placeholder="分页大小" value={arcPageSize}
+                    onChange={e => setArcPageSize(e.target.value)} type="number" min="1" max="5000"
+                    style={{ flex: 1, background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '4px 8px', color: '#e0e0e0' }} />
+                </div>
                 {form.endpoint_url && (
                   <button onClick={handleDiscover} disabled={discovering}
                     style={{ fontSize: 11, color: '#7dd3fc', background: '#0d1117', border: '1px solid #444', borderRadius: 4, padding: '3px 10px', cursor: 'pointer' }}>
@@ -317,8 +354,15 @@ export default function VirtualSourcesTab() {
                   <div style={{ fontSize: 11, color: '#aaa', maxHeight: 80, overflow: 'auto', background: '#0d1117', borderRadius: 4, padding: 6 }}>
                     {discoveredLayers.map((l: any, i: number) => (
                       <div key={i} style={{ cursor: 'pointer', padding: '2px 0' }}
-                        onClick={() => setArcLayerId(String(l.id ?? 0))}>
-                        <span style={{ color: '#7dd3fc' }}>{l.id}: {l.name}</span>
+                        onClick={() => {
+                          setArcLayerId(String(l.id ?? 0));
+                          if (l.endpoint_url) {
+                            setForm(previous => ({ ...previous, endpoint_url: l.endpoint_url }));
+                          }
+                        }}>
+                        <span style={{ color: '#7dd3fc' }}>
+                          {l.service_name ? `${l.service_name} / ` : ''}{l.id}: {l.name}
+                        </span>
                         {l.geometryType && <span style={{ marginLeft: 6, color: '#666' }}>{l.geometryType}</span>}
                       </div>
                     ))}
@@ -402,6 +446,13 @@ export default function VirtualSourcesTab() {
                 disabled={testing === s.id}>{testing === s.id ? '测试中...' : '测试'}</button>
               <button onClick={(e) => { e.stopPropagation(); handleEdit(s); }}
                 style={{ fontSize: 11, color: '#aaa', background: 'none', border: 'none', cursor: 'pointer' }}>编辑</button>
+              {s.source_type === 'arcgis_rest' && (
+                <button onClick={(e) => { e.stopPropagation(); setIngestionSource(s); }}
+                  title="Data ingest" style={{
+                    display: 'flex', alignItems: 'center', gap: 3, fontSize: 11,
+                    color: '#34d399', background: 'none', border: 'none', cursor: 'pointer',
+                  }}><Database size={12} />Ingest</button>
+              )}
               <button onClick={(e) => { e.stopPropagation(); setMappingSource(s); }}
                 style={{ fontSize: 11, color: '#a78bfa', background: 'none', border: 'none', cursor: 'pointer' }}>映射</button>
               <button onClick={(e) => { e.stopPropagation(); handleDelete(s.id); }}
@@ -421,7 +472,13 @@ export default function VirtualSourcesTab() {
         sourceName={mappingSource.source_name}
         existingMapping={{}}
         onClose={() => setMappingSource(null)}
-        onSave={() => { setMappingSource(null); fetchSources(); }}
+        onSave={() => { fetchSources(); }}
+      />
+    )}
+    {ingestionSource && (
+      <IngestionDialog
+        source={ingestionSource}
+        onClose={() => setIngestionSource(null)}
       />
     )}
     </div>

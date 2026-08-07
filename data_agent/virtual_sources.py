@@ -387,6 +387,7 @@ async def query_virtual_source(
     filter_expr: str | None = None,
     limit: int = 1000,
     extra_params: dict | None = None,
+    register_result: bool = True,
 ):
     """Query a virtual source by its config dict. Returns GeoDataFrame or list/dict."""
     from .connectors import ConnectorRegistry
@@ -408,7 +409,8 @@ async def query_virtual_source(
     )
 
     # Auto-register successful query results into the data catalog
-    _auto_register_virtual_result(source, result)
+    if register_result:
+        _auto_register_virtual_result(source, result)
 
     return result
 

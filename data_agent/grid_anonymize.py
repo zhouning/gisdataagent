@@ -13,13 +13,20 @@ Compliance references:
 
 from __future__ import annotations
 
-import json
 import logging
 import math
+import re
 from typing import Optional
 
 import numpy as np
 from sqlalchemy import text
+
+from .security_event_ledger import SecurityEventLedger
+from .spatial_anonymization_receipt import (
+    SpatialAnonymizationReceipt,
+    SpatialAnonymizationReceiptError,
+    normalize_security_receipt_context,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +70,23 @@ METRIC_CRS_LOOKUP = {
     4326: 32649,  # WGS84 → UTM 49N (重庆中心约 106.5°E)
     4214: 4523,
 }
+
+_POSTGRES_IDENTIFIER_RE = re.compile(r"^[^\W\d]\w*$", re.UNICODE)
+_AGGREGATION_STRATEGIES = frozenset({"mode", "area_weighted", "topk"})
+
+
+def _is_safe_postgres_identifier(value: object) -> bool:
+    """Allow one simple quoted identifier, including existing Chinese columns."""
+    return (
+        isinstance(value, str)
+        and bool(value)
+        and len(value.encode("utf-8")) <= 63
+        and _POSTGRES_IDENTIFIER_RE.fullmatch(value) is not None
+    )
+
+
+def _identifier_error(field: str) -> dict:
+    return {"status": "error", "message": f"Invalid PostgreSQL identifier: {field}"}
 
 
 # ---------------------------------------------------------------------------
@@ -117,6 +141,8 @@ def grid_anonymize_pg(
     random_seed: int = 42,
     register_lineage: bool = True,
     dry_run: bool = False,
+    security_tenant_id: str | None = None,
+    security_attempt_id: str | None = None,
 ) -> dict:
     """[生产级] PostGIS 直连格网脱密：将源表按规则格网聚合并剥离敏感字段。
 
@@ -145,6 +171,38 @@ def grid_anonymize_pg(
     """
     from .db_engine import get_engine
 
+    identifier_fields = {
+        "source_schema": source_schema,
+        "source_table": source_table,
+        "output_schema": output_schema,
+        "output_table": output_table,
+    }
+    for field, value in identifier_fields.items():
+        if not _is_safe_postgres_identifier(value):
+            return _identifier_error(field)
+    try:
+        security_context = normalize_security_receipt_context(
+            security_tenant_id,
+            security_attempt_id,
+        )
+    except SpatialAnonymizationReceiptError as error:
+        return {"status": "error", "message": str(error)}
+    for field, values in (
+        ("keep_attrs", keep_attrs or []),
+        ("dp_numeric_fields", dp_numeric_fields or []),
+    ):
+        if not isinstance(values, list):
+            return {"status": "error", "message": f"{field} must be a list"}
+        if any(not _is_safe_postgres_identifier(value) for value in values):
+            return _identifier_error(field)
+    if agg_strategy not in _AGGREGATION_STRATEGIES:
+        return {
+            "status": "error",
+            "message": f"Unknown aggregation strategy: {agg_strategy}",
+        }
+    if isinstance(k_anonymity, bool) or not isinstance(k_anonymity, int) or k_anonymity < 2:
+        return {"status": "error", "message": "k_anonymity must be an integer >= 2"}
+
     if level not in LEVEL_CONFIG:
         return {"status": "error", "message": f"Unknown level: {level}. Valid: {list(LEVEL_CONFIG)}"}
 
@@ -159,7 +217,7 @@ def grid_anonymize_pg(
     dp_numeric_fields = [a.lower() for a in (dp_numeric_fields or [])]
 
     try:
-        with engine.connect() as conn:
+        with engine.begin() as conn:
             # --- 1. Inspect source table schema ---
             geom_row = conn.execute(text("""
                 SELECT f_geometry_column, srid FROM geometry_columns
@@ -258,7 +316,6 @@ def grid_anonymize_pg(
             source_fq = f'"{source_schema}"."{source_table}"'
 
             create_sql = f"""
-            DROP TABLE IF EXISTS {output_fq};
             CREATE TABLE {output_fq} AS
             WITH grid_metric AS (
                 SELECT (ST_SquareGrid(
@@ -334,7 +391,6 @@ def grid_anonymize_pg(
                 "maxx": eff_maxx, "maxy": eff_maxy,
                 "kmin": k_anonymity,
             })
-            conn.commit()
 
             # --- 7. Apply differential privacy noise if requested ---
             if dp_epsilon is not None and dp_numeric_fields:
@@ -361,7 +417,6 @@ def grid_anonymize_pg(
                             ln(GREATEST(1 - 2 * abs(random() - 0.5), 1e-10))
                         )::numeric
                     """), {"scale": scale})
-                conn.commit()
 
             # --- 8. Compute output stats ---
             out_count = conn.execute(text(f'SELECT COUNT(*) FROM {output_fq}')).scalar()
@@ -372,7 +427,6 @@ def grid_anonymize_pg(
                 CREATE INDEX IF NOT EXISTS "{output_table}_geom_gist"
                 ON {output_fq} USING GIST (geom);
             """))
-            conn.commit()
 
             result = {
                 "status": "ok",
@@ -396,35 +450,67 @@ def grid_anonymize_pg(
                 "note": f"脱密等级 {level}：定位精度 ~{cfg['accuracy_m']}m，{cfg['description']}",
             }
 
-            # --- 10. Register lineage + sensitivity ---
-            if register_lineage:
-                try:
-                    from .data_catalog import register_postgis_asset
-                    asset_id = register_postgis_asset(
-                        output_table,
-                        description=(f"Grid-anonymized from {source_table} "
-                                     f"(level={level}, size={actual_grid_size}m)"),
+            if security_context is not None:
+                tenant_id, attempt_id = security_context
+                receipt = SpatialAnonymizationReceipt.succeeded(
+                    tenant_id=tenant_id,
+                    attempt_id=attempt_id,
+                    source_schema=source_schema,
+                    source_table=source_table,
+                    output_schema=output_schema,
+                    output_table=output_table,
+                    data_type="polygon",
+                    level=level,
+                    output_row_count=int(out_count),
+                )
+                receipt_record = SecurityEventLedger(
+                    engine
+                ).record_operation_receipt_in_transaction(
+                    conn,
+                    tenant_id=tenant_id,
+                    attempt_id=attempt_id,
+                    action="data_anonymize",
+                    resource_ref=(
+                        f"postgis://{source_schema}/{source_table}"
+                        f"->postgis://{output_schema}/{output_table}"
+                    ),
+                    receipt_type=receipt.schema,
+                    evidence=receipt.as_dict(),
+                    recorded_by="workload:spatial-anonymization",
+                )
+                result["security_receipt_sha256"] = (
+                    receipt_record.receipt_sha256
+                )
+
+        # Catalog projection is best-effort and starts only after output + receipt commit.
+        if register_lineage:
+            try:
+                from .data_catalog import register_postgis_asset
+                asset_id = register_postgis_asset(
+                    output_table,
+                    description=(f"Grid-anonymized from {source_table} "
+                                 f"(level={level}, size={actual_grid_size}m)"),
+                )
+                result["catalog_asset_id"] = asset_id
+            except Exception as e:
+                logger.warning("Lineage registration failed: %s", e)
+                result["catalog_asset_id"] = None
+
+            try:
+                from .data_classification import set_asset_sensitivity
+                if result.get("catalog_asset_id"):
+                    from .user_context import current_user_id
+                    uname = current_user_id.get() or "system"
+                    sens_result = set_asset_sensitivity(
+                        result["catalog_asset_id"],
+                        cfg["target_sensitivity"],
+                        uname,
                     )
-                    result["catalog_asset_id"] = asset_id
-                except Exception as e:
-                    logger.warning("Lineage registration failed: %s", e)
-                    result["catalog_asset_id"] = None
+                    result["sensitivity_assignment"] = sens_result
+            except Exception as e:
+                logger.warning("Sensitivity assignment failed: %s", e)
 
-                try:
-                    from .data_classification import set_asset_sensitivity
-                    if result.get("catalog_asset_id"):
-                        from .user_context import current_user_id
-                        uname = current_user_id.get() or "system"
-                        sens_result = set_asset_sensitivity(
-                            result["catalog_asset_id"],
-                            cfg["target_sensitivity"],
-                            uname,
-                        )
-                        result["sensitivity_assignment"] = sens_result
-                except Exception as e:
-                    logger.warning("Sensitivity assignment failed: %s", e)
-
-            return result
+        return result
 
     except Exception as e:
         logger.exception("grid_anonymize_pg failed")
@@ -451,6 +537,8 @@ def poi_grid_aggregate_pg(
     geom_column: Optional[str] = None,
     register_lineage: bool = True,
     dry_run: bool = False,
+    security_tenant_id: str | None = None,
+    security_attempt_id: str | None = None,
 ) -> dict:
     """[脱密工具-POI专用] 对点数据（POI/AOI）做格网聚合，彻底丢弃个体记录。
 
@@ -473,6 +561,34 @@ def poi_grid_aggregate_pg(
     """
     from .db_engine import get_engine
 
+    identifier_fields = {
+        "source_schema": source_schema,
+        "source_table": source_table,
+        "output_schema": output_schema,
+        "output_table": output_table,
+        "category_column": category_column,
+    }
+    if geom_column is not None:
+        identifier_fields["geom_column"] = geom_column
+    for field, value in identifier_fields.items():
+        if not _is_safe_postgres_identifier(value):
+            return _identifier_error(field)
+    try:
+        security_context = normalize_security_receipt_context(
+            security_tenant_id,
+            security_attempt_id,
+        )
+    except SpatialAnonymizationReceiptError as error:
+        return {"status": "error", "message": str(error)}
+    if isinstance(k_anonymity, bool) or not isinstance(k_anonymity, int) or k_anonymity < 2:
+        return {"status": "error", "message": "k_anonymity must be an integer >= 2"}
+    if (
+        isinstance(top_k_categories, bool)
+        or not isinstance(top_k_categories, int)
+        or not 1 <= top_k_categories <= 100
+    ):
+        return {"status": "error", "message": "top_k_categories must be between 1 and 100"}
+
     if level not in LEVEL_CONFIG:
         return {"status": "error", "message": f"Unknown level: {level}"}
     cfg = LEVEL_CONFIG[level]
@@ -483,7 +599,7 @@ def poi_grid_aggregate_pg(
         return {"status": "error", "message": "Database unavailable"}
 
     try:
-        with engine.connect() as conn:
+        with engine.begin() as conn:
             # --- Detect geometry column + SRID ---
             if geom_column is None:
                 geom_row = conn.execute(text("""
@@ -551,7 +667,6 @@ def poi_grid_aggregate_pg(
 
             # Create output table: grid_id, geom, total_count, category_breakdown (jsonb)
             create_sql = f"""
-            DROP TABLE IF EXISTS {output_fq};
             CREATE TABLE {output_fq} AS
             WITH grid_metric AS (
                 SELECT (ST_SquareGrid(
@@ -608,13 +723,11 @@ def poi_grid_aggregate_pg(
                 "maxx": maxx + actual_grid_size, "maxy": maxy + actual_grid_size,
                 "topk": top_k_categories, "kmin": k_anonymity,
             })
-            conn.commit()
 
             conn.execute(text(f"""
                 CREATE INDEX IF NOT EXISTS "{output_table}_geom_gist"
                 ON {output_fq} USING GIST (geom);
             """))
-            conn.commit()
 
             out_count = conn.execute(text(f'SELECT COUNT(*) FROM {output_fq}')).scalar()
             total_pois_in = conn.execute(text(f'SELECT COUNT(*) FROM {source_fq}')).scalar()
@@ -638,25 +751,57 @@ def poi_grid_aggregate_pg(
                          f"仅保留格网级类别计数。"),
             }
 
-            if register_lineage:
-                try:
-                    from .data_catalog import register_postgis_asset
-                    from .data_classification import set_asset_sensitivity
-                    from .user_context import current_user_id
-                    uname = current_user_id.get() or "system"
-                    aid = register_postgis_asset(
-                        output_table,
-                        description=(f"POI grid-aggregated from {source_table} "
-                                     f"(level={level}, k>={k_anonymity}, "
-                                     f"top_{top_k_categories} categories only)"),
-                    )
-                    result["catalog_asset_id"] = aid
-                    if aid:
-                        set_asset_sensitivity(aid, cfg["target_sensitivity"], uname)
-                except Exception as e:
-                    logger.warning("POI lineage registration failed: %s", e)
+            if security_context is not None:
+                tenant_id, attempt_id = security_context
+                receipt = SpatialAnonymizationReceipt.succeeded(
+                    tenant_id=tenant_id,
+                    attempt_id=attempt_id,
+                    source_schema=source_schema,
+                    source_table=source_table,
+                    output_schema=output_schema,
+                    output_table=output_table,
+                    data_type="point",
+                    level=level,
+                    output_row_count=int(out_count),
+                )
+                receipt_record = SecurityEventLedger(
+                    engine
+                ).record_operation_receipt_in_transaction(
+                    conn,
+                    tenant_id=tenant_id,
+                    attempt_id=attempt_id,
+                    action="data_anonymize",
+                    resource_ref=(
+                        f"postgis://{source_schema}/{source_table}"
+                        f"->postgis://{output_schema}/{output_table}"
+                    ),
+                    receipt_type=receipt.schema,
+                    evidence=receipt.as_dict(),
+                    recorded_by="workload:spatial-anonymization",
+                )
+                result["security_receipt_sha256"] = (
+                    receipt_record.receipt_sha256
+                )
 
-            return result
+        if register_lineage:
+            try:
+                from .data_catalog import register_postgis_asset
+                from .data_classification import set_asset_sensitivity
+                from .user_context import current_user_id
+                uname = current_user_id.get() or "system"
+                aid = register_postgis_asset(
+                    output_table,
+                    description=(f"POI grid-aggregated from {source_table} "
+                                 f"(level={level}, k>={k_anonymity}, "
+                                 f"top_{top_k_categories} categories only)"),
+                )
+                result["catalog_asset_id"] = aid
+                if aid:
+                    set_asset_sensitivity(aid, cfg["target_sensitivity"], uname)
+            except Exception as e:
+                logger.warning("POI lineage registration failed: %s", e)
+
+        return result
 
     except Exception as e:
         logger.exception("poi_grid_aggregate_pg failed")
@@ -692,6 +837,17 @@ def verify_anonymization(
         JSON: 各维度风险评分 (0-100, 越低越好) + 综合 re-identification risk
     """
     from .db_engine import get_engine
+
+    for field, value in {
+        "source_schema": source_schema,
+        "source_table": source_table,
+        "output_schema": output_schema,
+        "output_table": output_table,
+    }.items():
+        if not _is_safe_postgres_identifier(value):
+            return _identifier_error(field)
+    if isinstance(sample_size, bool) or not isinstance(sample_size, int) or sample_size < 1:
+        return {"status": "error", "message": "sample_size must be a positive integer"}
 
     engine = get_engine()
     if engine is None:

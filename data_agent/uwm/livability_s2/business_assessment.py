@@ -35,8 +35,10 @@ def assess_s2_business_impact(
     critical_facility: bool,
     facility_inventory_complete: bool,
     transition_status: str,
+    baseline_graph: dict[str, Any] | None = None,
+    intervention_graph: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Compare baseline/intervention parcel coverage using reproducible GIS geometry."""
+    """Compare coverage from baseline and action-written future graph states."""
     parcel_features = deepcopy(parcels.get("features") or [])
     facility_features = deepcopy(facilities.get("features") or [])
     target = next(
@@ -56,6 +58,11 @@ def assess_s2_business_impact(
         radius_evidence_source=radius_evidence_source,
         distance_crs=distance_crs,
     )
+    if action_type in {"add_facility", "remove_facility"} and (
+        not isinstance(baseline_graph, dict)
+        or not isinstance(intervention_graph, dict)
+    ):
+        blockers.append("baseline_and_intervention_state_graphs_required")
     if blockers:
         return _unresolved(
             action_type=action_type,
@@ -96,36 +103,29 @@ def assess_s2_business_impact(
     effective_critical, criticality_source = facility_criticality(
         selected_facility_class, critical_facility
     )
-    baseline_facilities = _select_facilities(
+    baseline_facilities = _select_graph_facilities(
         facility_features,
+        graph=baseline_graph or {},
         planning_area_id=planning_area_id,
         facility_class=selected_facility_class,
         distance_crs=str(distance_crs),
         transformer=transformer_to_metric,
     )
-    intervention_facilities = list(baseline_facilities)
+    intervention_facilities = _select_graph_facilities(
+        facility_features,
+        graph=intervention_graph or {},
+        planning_area_id=planning_area_id,
+        facility_class=selected_facility_class,
+        distance_crs=str(distance_crs),
+        transformer=transformer_to_metric,
+    )
     action_evidence: dict[str, Any]
     if action_type == "add_facility":
-        target_metric = transform(transformer_to_metric.transform, shape(target["geometry"]))
-        scenario_id = f"scenario_facility:{parcel_id}:{selected_facility_class}"
-        intervention_facilities.append(
-            {
-                "facility_id": scenario_id,
-                "name": "情景新增设施",
-                "canonical_class": selected_facility_class,
-                "metric_geometry": target_metric.representative_point(),
-                "source": "scenario_action_at_target_parcel",
-            }
+        added_ids = sorted(
+            {row["facility_id"] for row in intervention_facilities}
+            - {row["facility_id"] for row in baseline_facilities}
         )
-        action_evidence = {
-            "scenario_facility_id": scenario_id,
-            "placement_method": "target_parcel_representative_point",
-        }
-    else:
-        intervention_facilities, removed = _remove_facility(
-            intervention_facilities, str(facility_id or "")
-        )
-        if removed is None:
+        if len(added_ids) != 1:
             return _unresolved(
                 action_type=action_type,
                 parcel_id=parcel_id,
@@ -133,10 +133,30 @@ def assess_s2_business_impact(
                 facility_class=selected_facility_class,
                 service_radius_m=service_radius_m,
                 radius_evidence_source=radius_evidence_source,
-                blockers=["facility_id_not_found_in_selected_scope"],
+                blockers=["facility_add_write_back_not_exactly_one"],
                 facility_inventory_complete=facility_inventory_complete,
             )
-        action_evidence = {"removed_facility_id": removed["facility_id"]}
+        action_evidence = {
+            "scenario_facility_id": added_ids[0],
+            "placement_method": "target_parcel_representative_point",
+        }
+    else:
+        removed_ids = sorted(
+            {row["facility_id"] for row in baseline_facilities}
+            - {row["facility_id"] for row in intervention_facilities}
+        )
+        if removed_ids != [str(facility_id or "")]:
+            return _unresolved(
+                action_type=action_type,
+                parcel_id=parcel_id,
+                planning_area_id=planning_area_id,
+                facility_class=selected_facility_class,
+                service_radius_m=service_radius_m,
+                radius_evidence_source=radius_evidence_source,
+                blockers=["facility_remove_write_back_mismatch"],
+                facility_inventory_complete=facility_inventory_complete,
+            )
+        action_evidence = {"removed_facility_id": removed_ids[0]}
 
     baseline = _coverage_snapshot(
         facilities=baseline_facilities,
@@ -268,42 +288,55 @@ def _demand_units(
     return demand_units
 
 
-def _select_facilities(
+def _select_graph_facilities(
     facilities: list[dict[str, Any]],
     *,
+    graph: dict[str, Any],
     planning_area_id: str,
     facility_class: str,
     distance_crs: str,
     transformer: Transformer,
 ) -> list[dict[str, Any]]:
+    features_by_id = {str(feature.get("id")): feature for feature in facilities}
     selected = []
-    for feature in facilities:
+    for node in graph.get("nodes") or []:
+        if node.get("node_type") != "facility":
+            continue
+        facility_id = str(node.get("node_id") or "")
+        feature = features_by_id.get(facility_id) or {}
         properties = feature.get("properties") or {}
         matching_areas = {str(value) for value in properties.get("matching_planning_area_ids") or []}
-        belongs = str(properties.get("planning_area_id") or "") == planning_area_id or planning_area_id in matching_areas
-        if not belongs or str(properties.get("canonical_class") or "") != facility_class:
+        node_area = str(node.get("planning_area_id") or "")
+        belongs = (
+            node_area == planning_area_id
+            or str(properties.get("planning_area_id") or "") == planning_area_id
+            or planning_area_id in matching_areas
+        )
+        canonical_class = str(
+            node.get("canonical_class") or properties.get("canonical_class") or ""
+        )
+        if not belongs or canonical_class != facility_class:
             continue
-        if str(properties.get("distance_crs") or "") != distance_crs:
+        node_distance_crs = str(
+            node.get("distance_crs") or properties.get("distance_crs") or ""
+        )
+        if node_distance_crs != distance_crs:
+            continue
+        geometry = node.get("display_geometry_wgs84") or feature.get("geometry")
+        if not isinstance(geometry, dict):
             continue
         selected.append(
             {
-                "facility_id": str(feature.get("id")),
-                "name": properties.get("name"),
-                "canonical_class": facility_class,
-                "metric_geometry": transform(transformer.transform, shape(feature["geometry"])),
-                "source": properties.get("source_dataset_id"),
+                "facility_id": facility_id,
+                "name": node.get("name") or properties.get("name") or "情景新增设施",
+                "canonical_class": canonical_class,
+                "metric_geometry": transform(transformer.transform, shape(geometry)),
+                "source": node.get("scenario_source")
+                or properties.get("source_dataset_id")
+                or "scenario_action_state_graph",
             }
         )
-    return selected
-
-
-def _remove_facility(
-    facilities: list[dict[str, Any]], facility_id: str
-) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
-    removed = next((row for row in facilities if row["facility_id"] == facility_id), None)
-    if removed is None:
-        return facilities, None
-    return [row for row in facilities if row["facility_id"] != facility_id], removed
+    return sorted(selected, key=lambda row: row["facility_id"])
 
 
 def _coverage_snapshot(

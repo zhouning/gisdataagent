@@ -123,6 +123,8 @@ async def ontology_properties(request: Request):
             concept_id,
             offset=_int_param(request, "offset", 0),
             limit=_int_param(request, "limit", 100),
+            include_effective=request.query_params.get("include_effective", "false").lower()
+            in {"1", "true", "yes"},
         ))
     except ValueError as exc:
         return JSONResponse({"error": str(exc)}, status_code=400)

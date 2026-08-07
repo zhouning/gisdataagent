@@ -16,6 +16,7 @@ from .dataops_invocation import (
 from .platform_authorization import build_policy_decision_artifact
 from .platform_contracts import (
     Artifact,
+    NonEmptyText,
     PlatformCommand,
     PlatformRun,
     PolicyDecision,
@@ -23,6 +24,7 @@ from .platform_contracts import (
     ResourceBinding,
     ResourceVersion,
     RunPolicyReferences,
+    Sha256,
     SubjectContext,
     TenantId,
     canonical_json_fingerprint,
@@ -44,6 +46,38 @@ def _aware_utc(value: datetime, field_name: str) -> datetime:
     if value.tzinfo is None or value.utcoffset() is None:
         raise ValueError(f"{field_name} must include a timezone")
     return value.astimezone(UTC)
+
+
+class ManualDataOpsRunRequest(_FrozenModel):
+    """Canonical client-owned fields for governed manual Run admission."""
+
+    client_request_id: str = Field(
+        min_length=3,
+        max_length=128,
+        pattern=r"^[a-zA-Z0-9][a-zA-Z0-9._:-]{2,127}$",
+    )
+    definition_version_id: UUID
+    logical_start: datetime
+    logical_end: datetime
+    input_bindings: tuple[ResourceBinding, ...] = ()
+    execution_plan_artifact_id: UUID
+    purpose: NonEmptyText
+    config_fingerprint: Sha256 | None = None
+
+
+class ManualDataOpsRunResponse(_FrozenModel):
+    """Canonical admission result returned by every future client surface."""
+
+    request_sha256: Sha256
+    admitted_at: datetime
+    invocation: DataOpsInvocation
+    run: PlatformRun
+    command: PlatformCommand
+    invocation_resource_created: bool
+    invocation_version_created: bool
+    policy_artifact_created: bool
+    run_created: bool
+    command_created: bool
 
 
 class DataOpsManualTriggerSpec(_FrozenModel):

@@ -17,6 +17,7 @@ from pydantic import (
     model_validator,
 )
 
+from .master_data_authority import MasterEntityVersion
 from .platform_contracts import (
     LineageEvent,
     NonEmptyText,
@@ -241,4 +242,109 @@ class MetadataLineageProjectionEnvelope(_FrozenModel):
                 raise ValueError("lineage projection requires OpenMetadata bindings")
             if binding.resource_urn != version.resource_urn:
                 raise ValueError("OpenMetadata binding must match the resource URN")
+        return self
+
+
+class MasterMetadataProjectionChange(_FrozenModel):
+    """One leased delivery of an activated master version to metadata fabric."""
+
+    tenant_id: TenantId
+    projection_change_id: UUID
+    entity_ref: ResourceURNText
+    activation_version: int = Field(ge=1)
+    resource_version_id: UUID
+    entity_fingerprint: Sha256
+    destination_ref: Literal["openmetadata:default"]
+    payload_sha256: Sha256
+    status: MetadataChangeStatus = MetadataChangeStatus.PENDING
+    attempt_count: int = Field(default=0, ge=0)
+    max_attempts: int = Field(default=10, ge=1, le=100)
+    available_at: datetime
+    claimed_by: NonEmptyText | None = None
+    claimed_until: datetime | None = None
+    last_error: NonEmptyText | None = None
+    created_at: datetime
+    completed_at: datetime | None = None
+
+    @field_validator("available_at", "claimed_until", "created_at", "completed_at")
+    @classmethod
+    def _utc_time(cls, value: datetime | None) -> datetime | None:
+        if value is None:
+            return None
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("master metadata projection timestamps require a timezone")
+        return value.astimezone(UTC)
+
+    @model_validator(mode="after")
+    def _consistent_delivery(self) -> MasterMetadataProjectionChange:
+        identity = parse_resource_urn(self.entity_ref)
+        if (
+            identity["tenant_id"] != self.tenant_id
+            or identity["resource_kind"] != "master_entity"
+        ):
+            raise ValueError("master metadata projection identity is invalid")
+        if self.payload_sha256 != self.entity_fingerprint:
+            raise ValueError("master metadata payload must bind the entity fingerprint")
+        claimed = self.claimed_by is not None and self.claimed_until is not None
+        if (self.claimed_by is None) != (self.claimed_until is None):
+            raise ValueError("projection claim owner and expiry must be set together")
+        if self.status == MetadataChangeStatus.PENDING:
+            if claimed or self.completed_at is not None:
+                raise ValueError("pending projection cannot be claimed or completed")
+        elif self.status == MetadataChangeStatus.IN_FLIGHT:
+            if not claimed or self.completed_at is not None:
+                raise ValueError("in-flight projection requires an active claim")
+        elif claimed or self.completed_at is None:
+            raise ValueError("completed projection must release its claim")
+        return self
+
+
+class MasterMetadataProjectionEnvelope(_FrozenModel):
+    """Exact activated master version plus its optional provider crosswalk."""
+
+    schema_version: Literal["gda.master_metadata_projection.v1"] = (
+        "gda.master_metadata_projection.v1"
+    )
+    change: MasterMetadataProjectionChange
+    master_version: MasterEntityVersion
+    resource_version: ResourceVersion
+    openmetadata_binding: MetadataFabricBinding | None = None
+
+    @model_validator(mode="after")
+    def _consistent_projection(self) -> MasterMetadataProjectionEnvelope:
+        if len(
+            {
+                self.change.tenant_id,
+                self.master_version.tenant_id,
+                self.resource_version.tenant_id,
+            }
+        ) != 1:
+            raise ValueError("master metadata projection tenants must match")
+        if (
+            self.change.entity_ref != self.master_version.entity_ref
+            or self.change.entity_fingerprint
+            != self.master_version.entity_fingerprint
+            or self.change.resource_version_id
+            != self.resource_version.resource_version_id
+            or self.resource_version.resource_urn != self.change.entity_ref
+            or self.resource_version.content_sha256
+            != self.change.entity_fingerprint
+        ):
+            raise ValueError("master metadata projection must bind the exact version")
+        authority = self.resource_version.authority_version_ref
+        if (
+            authority.get("authority_system") != "gda_control.master_data"
+            or authority.get("entity_version_ref")
+            != self.master_version.entity_version_ref
+            or authority.get("entity_fingerprint")
+            != self.master_version.entity_fingerprint
+        ):
+            raise ValueError("master metadata authority evidence is inconsistent")
+        binding = self.openmetadata_binding
+        if binding is not None and (
+            binding.tenant_id != self.change.tenant_id
+            or binding.resource_urn != self.change.entity_ref
+            or binding.system != MetadataFabricSystem.OPENMETADATA
+        ):
+            raise ValueError("master metadata projection requires an OpenMetadata binding")
         return self

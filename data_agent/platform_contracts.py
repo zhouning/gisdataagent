@@ -156,6 +156,56 @@ class ApprovalCaseStatus(StrEnum):
     CANCELLED = "cancelled"
 
 
+class ApprovalCaseNotificationKind(StrEnum):
+    REQUESTED = "requested"
+    EXPIRED = "expired"
+    DECIDED = "decided"
+
+
+class ApprovalCaseNotificationStatus(StrEnum):
+    PENDING = "pending"
+    IN_FLIGHT = "in_flight"
+    DONE = "done"
+    FAILED = "failed"
+    SUPPRESSED = "suppressed"
+
+
+class ApprovalCaseAssignmentStatus(StrEnum):
+    ASSIGNED = "assigned"
+    RELEASED = "released"
+    CLOSED = "closed"
+
+
+class ApprovalCaseAssignmentAction(StrEnum):
+    ASSIGNED = "assigned"
+    REASSIGNED = "reassigned"
+    DELEGATED = "delegated"
+    RELEASED = "released"
+    CLOSED = "closed"
+
+
+class ApprovalCaseAssignmentOperation(StrEnum):
+    ASSIGN = "assign"
+    REASSIGN = "reassign"
+    DELEGATE = "delegate"
+    RELEASE = "release"
+
+
+class ApprovalPrincipalType(StrEnum):
+    HUMAN = "human"
+    TEAM = "team"
+
+
+class ApprovalPrincipalStatus(StrEnum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+
+
+class ApprovalAvailabilityStatus(StrEnum):
+    AVAILABLE = "available"
+    UNAVAILABLE = "unavailable"
+
+
 class SourceSyncMode(StrEnum):
     FULL = "full"
     INCREMENTAL = "incremental"
@@ -226,6 +276,7 @@ class PlatformCommandType(str, Enum):
     DOLPHINSCHEDULER_DISPATCH = "dolphinscheduler.dispatch"
     DOLPHINSCHEDULER_RECONCILE = "dolphinscheduler.reconcile"
     DOLPHINSCHEDULER_CANCEL = "dolphinscheduler.cancel"
+    METRIC_QUERY_EXECUTE = "metric_query.execute"
 
 
 class PlatformCommandStatus(str, Enum):
@@ -489,7 +540,7 @@ def run_success_evidence_fingerprint(
 def data_incident_fingerprint(
     *,
     tenant_id: str,
-    run_id: UUID,
+    run_id: UUID | None,
     dedupe_key: str,
     incident_type: str,
     severity: IncidentSeverity | str,
@@ -498,25 +549,27 @@ def data_incident_fingerprint(
     details: dict[str, Any],
     detected_by: str,
     opened_at: datetime,
+    subject_resource_urn: str | None = None,
 ) -> str:
     """Fingerprint the immutable cause and evidence binding of a DataIncident."""
     opened_at = _aware_utc(opened_at)
-    return _json_fingerprint(
-        {
-            "tenant_id": tenant_id,
-            "run_id": str(run_id),
-            "dedupe_key": dedupe_key,
-            "incident_type": incident_type,
-            "severity": IncidentSeverity(severity).value,
-            "summary": summary,
-            "trigger_observation_id": (
-                str(trigger_observation_id) if trigger_observation_id is not None else None
-            ),
-            "details": details,
-            "detected_by": detected_by,
-            "opened_at": opened_at.isoformat().replace("+00:00", "Z"),
-        }
-    )
+    value = {
+        "tenant_id": tenant_id,
+        "run_id": str(run_id) if run_id is not None else None,
+        "dedupe_key": dedupe_key,
+        "incident_type": incident_type,
+        "severity": IncidentSeverity(severity).value,
+        "summary": summary,
+        "trigger_observation_id": (
+            str(trigger_observation_id) if trigger_observation_id is not None else None
+        ),
+        "details": details,
+        "detected_by": detected_by,
+        "opened_at": opened_at.isoformat().replace("+00:00", "Z"),
+    }
+    if subject_resource_urn is not None:
+        value["subject_resource_urn"] = subject_resource_urn
+    return _json_fingerprint(value)
 
 
 def source_sync_definition_fingerprint(
@@ -657,6 +710,71 @@ def source_sync_quarantine_evidence_fingerprint(
             "quarantine_artifact_id": str(quarantine_artifact_id),
             "records_rejected": records_rejected,
             "reason_counts": reason_counts,
+        }
+    )
+
+
+def postgresql_cdc_failover_recovery_plan_fingerprint(
+    *,
+    tenant_id: str,
+    sync_definition_urn: str,
+    sync_definition_version_id: UUID,
+    source_resource_urn: str,
+    target_resource_urn: str,
+    checkpoint_state_version: int,
+    checkpoint_cursor: dict[str, Any],
+    admission_reason_codes: tuple[str, ...],
+    admission_evidence_sha256: str,
+    created_by: str,
+    created_at: datetime,
+) -> str:
+    """Fingerprint a failover rejection and the only safe recovery boundary."""
+
+    created_at = _aware_utc(created_at)
+    return _json_fingerprint(
+        {
+            "tenant_id": tenant_id,
+            "sync_definition_urn": sync_definition_urn,
+            "sync_definition_version_id": str(sync_definition_version_id),
+            "source_resource_urn": source_resource_urn,
+            "target_resource_urn": target_resource_urn,
+            "checkpoint_state_version": checkpoint_state_version,
+            "checkpoint_cursor": checkpoint_cursor,
+            "admission_reason_codes": list(admission_reason_codes),
+            "admission_evidence_sha256": admission_evidence_sha256,
+            "recovery_mode": "resnapshot_and_reconcile",
+            "cursor_disposition": "do_not_advance",
+            "requires_new_run": True,
+            "created_by": created_by,
+            "created_at": created_at.isoformat().replace("+00:00", "Z"),
+        }
+    )
+
+
+def postgresql_cdc_failover_resnapshot_admission_fingerprint(
+    *,
+    recovery_plan_sha256: str,
+    previous_sync_definition_version_id: UUID,
+    new_sync_definition: SourceSyncDefinitionVersion,
+    new_run_id: UUID,
+    admitted_by: str,
+    admitted_at: datetime,
+) -> str:
+    """Fingerprint a new full-sync admission without advancing the old cursor."""
+
+    admitted_at = _aware_utc(admitted_at)
+    return _json_fingerprint(
+        {
+            "recovery_plan_sha256": recovery_plan_sha256,
+            "previous_sync_definition_version_id": str(
+                previous_sync_definition_version_id
+            ),
+            "new_sync_definition": new_sync_definition.model_dump(mode="json"),
+            "new_run_id": str(new_run_id),
+            "admission_mode": "resnapshot_and_reconcile",
+            "cursor_disposition": "old_checkpoint_unchanged",
+            "admitted_by": admitted_by,
+            "admitted_at": admitted_at.isoformat().replace("+00:00", "Z"),
         }
     )
 
@@ -889,6 +1007,373 @@ class ApprovalCaseEvent(FrozenContract):
         return self
 
 
+class ApprovalCaseAssignment(FrozenContract):
+    """Current operational routing projection for an ApprovalCase."""
+
+    schema_id = "approval_case_assignment"
+
+    tenant_id: TenantId
+    approval_case_ref: ResourceURNText
+    assignment_version: Annotated[int, Field(ge=1)]
+    status: ApprovalCaseAssignmentStatus
+    assignee_subject: NonEmptyText | None = None
+    last_actor_subject: NonEmptyText
+    last_reason: NonEmptyText
+    delegation_depth: Annotated[int, Field(ge=0, le=5)] = 0
+    assigned_at: datetime
+    updated_at: datetime
+    closed_at: datetime | None = None
+
+    @field_validator("assigned_at", "updated_at", "closed_at")
+    @classmethod
+    def _utc_assignment_time(cls, value: datetime | None) -> datetime | None:
+        return _aware_utc(value) if value is not None else None
+
+    @model_validator(mode="after")
+    def _consistent_assignment(self) -> ApprovalCaseAssignment:
+        identity = parse_resource_urn(self.approval_case_ref)
+        if identity["tenant_id"] != self.tenant_id:
+            raise ValueError("approval assignment tenant must match case tenant")
+        if identity["resource_kind"] != "approval_case":
+            raise ValueError("approval assignment must reference an ApprovalCase")
+        if not self.last_actor_subject.startswith(("human:", "workload:", "agent:")):
+            raise ValueError("approval assignment actor must use a typed identity")
+        if self.updated_at < self.assigned_at:
+            raise ValueError("approval assignment update cannot predate assignment")
+        if self.status is ApprovalCaseAssignmentStatus.ASSIGNED:
+            if self.assignee_subject is None or not self.assignee_subject.startswith(
+                ("human:", "team:")
+            ):
+                raise ValueError(
+                    "active approval assignment requires a human or team assignee"
+                )
+            if self.closed_at is not None:
+                raise ValueError("active approval assignment cannot be closed")
+        elif self.status is ApprovalCaseAssignmentStatus.RELEASED:
+            if self.assignee_subject is not None or self.closed_at is not None:
+                raise ValueError("released approval assignment must be unassigned and open")
+        elif self.closed_at is None:
+            raise ValueError("closed approval assignment requires closed_at")
+        return self
+
+
+class ApprovalCaseAssignmentEvent(FrozenContract):
+    """Immutable audit evidence for one ApprovalCase routing transition."""
+
+    schema_id = "approval_case_assignment_event"
+
+    tenant_id: TenantId
+    assignment_event_id: UUID
+    approval_case_ref: ResourceURNText
+    assignment_version: Annotated[int, Field(ge=1)]
+    action: ApprovalCaseAssignmentAction
+    from_assignee_subject: NonEmptyText | None = None
+    to_assignee_subject: NonEmptyText | None = None
+    actor_subject: NonEmptyText
+    reason: NonEmptyText
+    delegation_depth: Annotated[int, Field(ge=0, le=5)] = 0
+    occurred_at: datetime
+
+    @field_validator("occurred_at")
+    @classmethod
+    def _utc_assignment_event_time(cls, value: datetime) -> datetime:
+        return _aware_utc(value)
+
+    @model_validator(mode="after")
+    def _consistent_assignment_event(self) -> ApprovalCaseAssignmentEvent:
+        identity = parse_resource_urn(self.approval_case_ref)
+        if identity["tenant_id"] != self.tenant_id:
+            raise ValueError("approval assignment event tenant must match case tenant")
+        if identity["resource_kind"] != "approval_case":
+            raise ValueError("approval assignment event must reference an ApprovalCase")
+        if not self.actor_subject.startswith(("human:", "workload:", "agent:")):
+            raise ValueError("approval assignment event actor must use a typed identity")
+        for assignee in (self.from_assignee_subject, self.to_assignee_subject):
+            if assignee is not None and not assignee.startswith(("human:", "team:")):
+                raise ValueError(
+                    "approval assignment event assignees must be human or team subjects"
+                )
+        if self.action is ApprovalCaseAssignmentAction.ASSIGNED:
+            valid = self.from_assignee_subject is None and self.to_assignee_subject is not None
+        elif self.action in {
+            ApprovalCaseAssignmentAction.REASSIGNED,
+            ApprovalCaseAssignmentAction.DELEGATED,
+        }:
+            valid = (
+                self.from_assignee_subject is not None
+                and self.to_assignee_subject is not None
+                and self.from_assignee_subject != self.to_assignee_subject
+            )
+        elif self.action is ApprovalCaseAssignmentAction.RELEASED:
+            valid = self.from_assignee_subject is not None and self.to_assignee_subject is None
+        else:
+            valid = self.from_assignee_subject == self.to_assignee_subject
+        if not valid:
+            raise ValueError("approval assignment event action does not match assignee transition")
+        if self.action is ApprovalCaseAssignmentAction.DELEGATED:
+            if self.delegation_depth < 1:
+                raise ValueError("delegation event requires positive delegation depth")
+        elif (
+            self.action is not ApprovalCaseAssignmentAction.CLOSED
+            and self.delegation_depth != 0
+        ):
+            raise ValueError("non-delegation routing event must reset delegation depth")
+        if (
+            self.action is not ApprovalCaseAssignmentAction.CLOSED
+            and not self.actor_subject.startswith("human:")
+        ):
+            raise ValueError("approval routing transition requires a human actor")
+        return self
+
+
+class ApprovalPrincipal(FrozenContract):
+    """Versioned tenant directory entry used for approval eligibility."""
+
+    schema_id = "approval_principal"
+
+    tenant_id: TenantId
+    principal_subject: NonEmptyText
+    principal_type: ApprovalPrincipalType
+    display_name: Annotated[str, Field(min_length=1, max_length=200)]
+    directory_version: Annotated[int, Field(ge=1)]
+    status: ApprovalPrincipalStatus
+    approval_eligible: bool
+    availability_status: ApprovalAvailabilityStatus
+    valid_from: datetime
+    valid_until: datetime | None = None
+    last_actor_subject: NonEmptyText
+    last_reason: NonEmptyText
+    updated_at: datetime
+    eligible_now: bool
+    eligibility_reason: NonEmptyText
+
+    @field_validator("valid_from", "valid_until", "updated_at")
+    @classmethod
+    def _utc_directory_time(cls, value: datetime | None) -> datetime | None:
+        return _aware_utc(value) if value is not None else None
+
+    @model_validator(mode="after")
+    def _consistent_principal(self) -> ApprovalPrincipal:
+        if not self.principal_subject.startswith(f"{self.principal_type.value}:"):
+            raise ValueError("approval principal type must match its typed subject")
+        if self.valid_until is not None and self.valid_until <= self.valid_from:
+            raise ValueError("approval principal validity must have positive duration")
+        if not self.last_actor_subject.startswith("human:"):
+            raise ValueError("approval principal changes require a human actor")
+        if self.eligible_now != (self.eligibility_reason == "eligible"):
+            raise ValueError("approval principal eligibility result is inconsistent")
+        return self
+
+
+class ApprovalTeamMembership(FrozenContract):
+    """Versioned effective-time membership in an approval team."""
+
+    schema_id = "approval_team_membership"
+
+    tenant_id: TenantId
+    team_subject: NonEmptyText
+    member_subject: NonEmptyText
+    membership_version: Annotated[int, Field(ge=1)]
+    status: ApprovalPrincipalStatus
+    can_delegate: bool
+    valid_from: datetime
+    valid_until: datetime | None = None
+    last_actor_subject: NonEmptyText
+    last_reason: NonEmptyText
+    updated_at: datetime
+
+    @field_validator("valid_from", "valid_until", "updated_at")
+    @classmethod
+    def _utc_membership_time(cls, value: datetime | None) -> datetime | None:
+        return _aware_utc(value) if value is not None else None
+
+    @model_validator(mode="after")
+    def _consistent_membership(self) -> ApprovalTeamMembership:
+        if not self.team_subject.startswith("team:"):
+            raise ValueError("approval membership requires a team subject")
+        if not self.member_subject.startswith("human:"):
+            raise ValueError("approval membership requires a human member")
+        if self.valid_until is not None and self.valid_until <= self.valid_from:
+            raise ValueError("approval membership validity must have positive duration")
+        if not self.last_actor_subject.startswith("human:"):
+            raise ValueError("approval membership changes require a human actor")
+        return self
+
+
+class ApprovalAssignmentActorAccess(FrozenContract):
+    """Current resolved access for one human and one ApprovalCase assignment."""
+
+    schema_id = "approval_assignment_actor_access"
+
+    actor_subject: NonEmptyText
+    can_decide: bool
+    can_delegate: bool
+    access_reason: NonEmptyText
+
+    @model_validator(mode="after")
+    def _consistent_access(self) -> ApprovalAssignmentActorAccess:
+        if not self.actor_subject.startswith("human:"):
+            raise ValueError("approval assignment access requires a human actor")
+        if self.can_delegate and not self.can_decide:
+            raise ValueError("approval delegation access requires decision access")
+        return self
+
+
+class ApprovalCaseNotification(FrozenContract):
+    """Durable delivery projection for ApprovalCase lifecycle and SLA facts."""
+
+    schema_id = "approval_case_notification"
+
+    tenant_id: TenantId
+    notification_id: UUID
+    approval_case_ref: ResourceURNText
+    approval_event_sequence_no: Annotated[int, Field(ge=0)] | None = None
+    notification_kind: ApprovalCaseNotificationKind
+    channel: IncidentNotificationChannel
+    destination_ref: ShortName
+    delivery_order: Annotated[int, Field(ge=0, le=1)]
+    status: ApprovalCaseNotificationStatus = ApprovalCaseNotificationStatus.PENDING
+    attempt_count: Annotated[int, Field(ge=0)] = 0
+    max_attempts: Annotated[int, Field(ge=1, le=100)] = 10
+    available_at: datetime
+    claimed_by: NonEmptyText | None = None
+    claimed_until: datetime | None = None
+    last_error: NonEmptyText | None = None
+    created_at: datetime
+    completed_at: datetime | None = None
+    recovery_count: Annotated[int, Field(ge=0, le=10)] = 0
+    last_recovered_by: NonEmptyText | None = None
+    last_recovery_reason: NonEmptyText | None = None
+    last_recovered_at: datetime | None = None
+
+    @field_validator(
+        "available_at",
+        "claimed_until",
+        "created_at",
+        "completed_at",
+        "last_recovered_at",
+    )
+    @classmethod
+    def _utc_notification_time(cls, value: datetime | None) -> datetime | None:
+        return _aware_utc(value) if value is not None else None
+
+    @model_validator(mode="after")
+    def _consistent_notification(self) -> ApprovalCaseNotification:
+        identity = parse_resource_urn(self.approval_case_ref)
+        if identity["tenant_id"] != self.tenant_id:
+            raise ValueError("approval notification tenant must match case tenant")
+        if identity["resource_kind"] != "approval_case":
+            raise ValueError("approval notification must reference an ApprovalCase")
+        if not self.destination_ref.startswith(f"{self.channel.value}:"):
+            raise ValueError("approval notification destination must match its channel")
+        expected_sequence = {
+            ApprovalCaseNotificationKind.REQUESTED: 0,
+            ApprovalCaseNotificationKind.EXPIRED: None,
+            ApprovalCaseNotificationKind.DECIDED: 1,
+        }[self.notification_kind]
+        if self.approval_event_sequence_no != expected_sequence:
+            raise ValueError("approval notification event binding does not match its kind")
+        claimed = self.claimed_by is not None and self.claimed_until is not None
+        if (self.claimed_by is None) != (self.claimed_until is None):
+            raise ValueError("notification claim owner and expiry must be set together")
+        if self.status is ApprovalCaseNotificationStatus.PENDING:
+            if claimed or self.completed_at is not None:
+                raise ValueError("pending notification cannot be claimed or completed")
+        elif self.status is ApprovalCaseNotificationStatus.IN_FLIGHT:
+            if not claimed or self.completed_at is not None:
+                raise ValueError("in-flight notification requires an active claim")
+        elif claimed or self.completed_at is None:
+            raise ValueError("terminal notification must release its claim")
+        if (
+            self.status is ApprovalCaseNotificationStatus.SUPPRESSED
+            and self.notification_kind is not ApprovalCaseNotificationKind.EXPIRED
+        ):
+            raise ValueError("only an expiry notification may be suppressed")
+        recovery_values = (
+            self.last_recovered_by,
+            self.last_recovery_reason,
+            self.last_recovered_at,
+        )
+        if self.recovery_count == 0 and any(value is not None for value in recovery_values):
+            raise ValueError("unrecovered notification cannot have recovery evidence")
+        if self.recovery_count > 0:
+            if not all(value is not None for value in recovery_values):
+                raise ValueError("recovered notification requires complete recovery evidence")
+            if not self.last_recovered_by.startswith("human:"):
+                raise ValueError("notification recovery must use human identity")
+        return self
+
+
+class ApprovalCaseNotificationRecoveryEvent(FrozenContract):
+    """Immutable audit evidence for one governed dead-letter recovery."""
+
+    schema_id = "approval_case_notification_recovery_event"
+
+    tenant_id: TenantId
+    recovery_event_id: UUID
+    notification_id: UUID
+    approval_case_ref: ResourceURNText
+    recovery_no: Annotated[int, Field(ge=1, le=10)]
+    actor_subject: NonEmptyText
+    reason: NonEmptyText
+    previous_attempt_count: Annotated[int, Field(ge=1)]
+    previous_last_error: NonEmptyText | None = None
+    occurred_at: datetime
+
+    @field_validator("occurred_at")
+    @classmethod
+    def _utc_recovery_time(cls, value: datetime) -> datetime:
+        return _aware_utc(value)
+
+    @model_validator(mode="after")
+    def _consistent_recovery(self) -> ApprovalCaseNotificationRecoveryEvent:
+        identity = parse_resource_urn(self.approval_case_ref)
+        if identity["tenant_id"] != self.tenant_id:
+            raise ValueError("notification recovery tenant must match case tenant")
+        if identity["resource_kind"] != "approval_case":
+            raise ValueError("notification recovery must reference an ApprovalCase")
+        if not self.actor_subject.startswith("human:"):
+            raise ValueError("notification recovery must use human identity")
+        return self
+
+
+class ApprovalCaseNotificationEnvelope(FrozenContract):
+    schema_id = "approval_case_notification_envelope"
+
+    notification: ApprovalCaseNotification
+    approval_case: ApprovalCase
+    event: ApprovalCaseEvent | None = None
+
+    @model_validator(mode="after")
+    def _consistent_notification_binding(self) -> ApprovalCaseNotificationEnvelope:
+        notification = self.notification
+        approval_case = self.approval_case
+        if notification.tenant_id != approval_case.tenant_id:
+            raise ValueError("approval notification envelope tenants must match")
+        if notification.approval_case_ref != approval_case.approval_case_ref:
+            raise ValueError("approval notification must bind its ApprovalCase")
+        if notification.notification_kind is ApprovalCaseNotificationKind.EXPIRED:
+            if self.event is not None:
+                raise ValueError("approval expiry notification must not bind a decision event")
+            if approval_case.status is not ApprovalCaseStatus.PENDING:
+                raise ValueError("approval expiry notification requires a pending case")
+            if notification.available_at != approval_case.expires_at:
+                raise ValueError("approval expiry notification must use the case expiry")
+            return self
+        if self.event is None:
+            raise ValueError("approval lifecycle notification requires its immutable event")
+        if self.event.tenant_id != approval_case.tenant_id:
+            raise ValueError("approval notification event tenant must match")
+        if self.event.approval_case_ref != approval_case.approval_case_ref:
+            raise ValueError("approval notification event must belong to the case")
+        if self.event.sequence_no != notification.approval_event_sequence_no:
+            raise ValueError("approval notification sequence must match its event")
+        if notification.notification_kind is ApprovalCaseNotificationKind.DECIDED:
+            if approval_case.status is not self.event.to_status:
+                raise ValueError("approval decision notification must match current case state")
+        return self
+
+
 class SourceAdapterBinding(FrozenContract):
     """Exact connector or ingestion adapter revision used by a source sync."""
 
@@ -1096,6 +1581,171 @@ class SourceSyncDefinitionVersion(FrozenContract):
         )
         if self.definition_sha256 != expected:
             raise ValueError("sync definition fingerprint does not match its immutable content")
+        return self
+
+
+class PostgresqlCdcFailoverRecoveryPlan(FrozenContract):
+    """Governed recovery boundary after a rejected PostgreSQL CDC failover."""
+
+    schema_id = "postgresql_cdc_failover_recovery_plan"
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+        validate_by_alias=True,
+        validate_by_name=True,
+        serialize_by_alias=True,
+    )
+
+    contract_schema: Literal[
+        "gda.postgresql_cdc_failover_recovery_plan.v1"
+    ] = Field(alias="schema")
+    tenant_id: TenantId
+    sync_definition_urn: ResourceURNText
+    sync_definition_version_id: UUID
+    source_resource_urn: ResourceURNText
+    target_resource_urn: ResourceURNText
+    checkpoint_state_version: Annotated[int, Field(ge=0)]
+    checkpoint_cursor: dict[str, Any]
+    checkpoint_cursor_sha256: Sha256
+    admission_schema: Literal["gda.postgres_cdc_failover_continuity_admission.v1"]
+    admission_reason_codes: tuple[ShortName, ...] = Field(min_length=1)
+    admission_evidence_sha256: Sha256
+    recovery_mode: Literal["resnapshot_and_reconcile"]
+    cursor_disposition: Literal["do_not_advance"]
+    requires_new_run: Literal[True]
+    created_by: NonEmptyText
+    created_at: datetime
+    plan_sha256: Sha256
+
+    @field_validator("created_at")
+    @classmethod
+    def _utc_created_at(cls, value: datetime) -> datetime:
+        return _aware_utc(value)
+
+    @field_validator("admission_reason_codes")
+    @classmethod
+    def _canonical_reason_codes(
+        cls, value: tuple[str, ...]
+    ) -> tuple[str, ...]:
+        if len(value) != len(set(value)):
+            raise ValueError("failover recovery reason codes must be unique")
+        ordered = tuple(sorted(value))
+        if value != ordered:
+            raise ValueError("failover recovery reason codes must be canonically sorted")
+        return value
+
+    @model_validator(mode="after")
+    def _consistent_recovery_plan(self) -> PostgresqlCdcFailoverRecoveryPlan:
+        sync_identity = parse_resource_urn(self.sync_definition_urn)
+        source_identity = parse_resource_urn(self.source_resource_urn)
+        target_identity = parse_resource_urn(self.target_resource_urn)
+        if sync_identity["tenant_id"] != self.tenant_id:
+            raise ValueError("failover recovery sync tenant must match tenant_id")
+        if sync_identity["resource_kind"] != "sync_definition":
+            raise ValueError("failover recovery must reference a sync_definition")
+        if source_identity["tenant_id"] != self.tenant_id:
+            raise ValueError("failover recovery source tenant must match tenant_id")
+        if target_identity["tenant_id"] != self.tenant_id:
+            raise ValueError("failover recovery target tenant must match tenant_id")
+        if self.checkpoint_cursor_sha256 != canonical_json_fingerprint(
+            self.checkpoint_cursor
+        ):
+            raise ValueError("failover recovery cursor fingerprint does not match cursor")
+        if not self.created_by.startswith(("human:", "workload:", "agent:")):
+            raise ValueError("failover recovery creator must use a typed subject identity")
+        expected = postgresql_cdc_failover_recovery_plan_fingerprint(
+            tenant_id=self.tenant_id,
+            sync_definition_urn=self.sync_definition_urn,
+            sync_definition_version_id=self.sync_definition_version_id,
+            source_resource_urn=self.source_resource_urn,
+            target_resource_urn=self.target_resource_urn,
+            checkpoint_state_version=self.checkpoint_state_version,
+            checkpoint_cursor=self.checkpoint_cursor,
+            admission_reason_codes=self.admission_reason_codes,
+            admission_evidence_sha256=self.admission_evidence_sha256,
+            created_by=self.created_by,
+            created_at=self.created_at,
+        )
+        if self.plan_sha256 != expected:
+            raise ValueError("failover recovery plan fingerprint does not match content")
+        return self
+
+
+class PostgresqlCdcFailoverResnapshotAdmission(FrozenContract):
+    """Admission for a new full-sync Run after a fail-closed CDC failover."""
+
+    schema_id = "postgresql_cdc_failover_resnapshot_admission"
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+        validate_by_alias=True,
+        validate_by_name=True,
+        serialize_by_alias=True,
+    )
+
+    contract_schema: Literal[
+        "gda.postgresql_cdc_failover_resnapshot_admission.v1"
+    ] = Field(alias="schema")
+    tenant_id: TenantId
+    recovery_plan: PostgresqlCdcFailoverRecoveryPlan
+    previous_sync_definition_version_id: UUID
+    new_sync_definition: SourceSyncDefinitionVersion
+    new_run_id: UUID
+    admission_mode: Literal["resnapshot_and_reconcile"]
+    cursor_disposition: Literal["old_checkpoint_unchanged"]
+    admitted_by: NonEmptyText
+    admitted_at: datetime
+    admission_sha256: Sha256
+
+    @field_validator("admitted_at")
+    @classmethod
+    def _utc_admitted_at(cls, value: datetime) -> datetime:
+        return _aware_utc(value)
+
+    @model_validator(mode="after")
+    def _consistent_admission(
+        self,
+    ) -> PostgresqlCdcFailoverResnapshotAdmission:
+        plan = self.recovery_plan
+        definition = self.new_sync_definition
+        if plan.tenant_id != self.tenant_id or definition.tenant_id != self.tenant_id:
+            raise ValueError("resnapshot admission tenants must match")
+        if self.previous_sync_definition_version_id != plan.sync_definition_version_id:
+            raise ValueError("resnapshot admission must reference the rejected definition")
+        if definition.sync_definition_version_id == self.previous_sync_definition_version_id:
+            raise ValueError("resnapshot admission requires a new definition version")
+        if definition.sync_definition_urn == plan.sync_definition_urn:
+            raise ValueError("resnapshot admission requires a new definition identity")
+        if definition.source_resource_urn != plan.source_resource_urn:
+            raise ValueError("resnapshot source must match the recovery plan")
+        if definition.target_resource_urn != plan.target_resource_urn:
+            raise ValueError("resnapshot target must match the recovery plan")
+        if definition.mode is not SourceSyncMode.FULL:
+            raise ValueError("resnapshot admission requires a full sync definition")
+        if definition.write_disposition is not SourceSyncWriteDisposition.OVERWRITE:
+            raise ValueError("resnapshot admission requires overwrite disposition")
+        if definition.cursor_kind is not SourceSyncCursorKind.NONE:
+            raise ValueError("resnapshot admission must not create a new cursor")
+        if definition.delete_mode is not SourceSyncDeleteMode.IGNORE:
+            raise ValueError("resnapshot admission must not apply source deletes")
+        if (
+            definition.governance_contract is None
+            or definition.governance_contract.capture_kind
+            is not SourceSyncCaptureKind.BATCH
+        ):
+            raise ValueError("resnapshot admission requires batch governance")
+        if not self.admitted_by.startswith(("human:", "workload:", "agent:")):
+            raise ValueError("resnapshot admission actor must use a typed subject identity")
+        expected = postgresql_cdc_failover_resnapshot_admission_fingerprint(
+            recovery_plan_sha256=plan.plan_sha256,
+            previous_sync_definition_version_id=self.previous_sync_definition_version_id,
+            new_sync_definition=definition,
+            new_run_id=self.new_run_id,
+            admitted_by=self.admitted_by,
+            admitted_at=self.admitted_at,
+        )
+        if self.admission_sha256 != expected:
+            raise ValueError("resnapshot admission fingerprint does not match content")
         return self
 
 
@@ -1344,6 +1994,27 @@ class PlatformCommand(FrozenContract):
         if self.command_type == PlatformCommandType.DOLPHINSCHEDULER_DISPATCH:
             if self.trigger_observation_id is not None:
                 raise ValueError("dispatch command cannot reference a callback observation")
+        if self.command_type == PlatformCommandType.METRIC_QUERY_EXECUTE:
+            payload = self.payload
+            engine = payload.get("engine")
+            expected_mode = {
+                "postgis": "synchronous",
+                "duckdb": "synchronous",
+                "iceberg_spark": "asynchronous",
+            }.get(engine)
+            if (
+                self.trigger_observation_id is not None
+                or payload.get("schema") != "gda.metric_query_execute_command.v1"
+                or payload.get("run_id") != str(self.run_id)
+                or payload.get("plan_artifact_id")
+                != str(self.execution_plan_artifact_id)
+                or re.fullmatch(r"[0-9a-f]{64}", str(payload.get("plan_fingerprint")))
+                is None
+                or re.fullmatch(r"[0-9a-f]{64}", str(payload.get("cache_key")))
+                is None
+                or payload.get("execution_mode") != expected_mode
+            ):
+                raise ValueError("metric query command must bind an exact executable plan")
         return self
 
 
@@ -1519,7 +2190,8 @@ class DataIncident(FrozenContract):
 
     tenant_id: TenantId
     incident_id: UUID
-    run_id: UUID
+    run_id: UUID | None
+    subject_resource_urn: ResourceURNText | None = None
     dedupe_key: ShortName
     incident_type: ShortName
     severity: IncidentSeverity
@@ -1542,6 +2214,14 @@ class DataIncident(FrozenContract):
     def _consistent_incident(self) -> "DataIncident":
         if not self.detected_by.startswith("workload:"):
             raise ValueError("incident detector must use workload identity")
+        if (self.run_id is None) == (self.subject_resource_urn is None):
+            raise ValueError("incident must bind exactly one Run or governed resource")
+        if self.subject_resource_urn is not None:
+            subject = parse_resource_urn(self.subject_resource_urn)
+            if subject["tenant_id"] != self.tenant_id:
+                raise ValueError("incident subject tenant must match incident tenant")
+        if self.trigger_observation_id is not None and self.run_id is None:
+            raise ValueError("attempt observation incidents must bind a Run")
         if (self.state_version == 0) != (self.status == IncidentStatus.OPEN):
             raise ValueError("open incident status is only valid at state version zero")
         if self.updated_at < self.opened_at:
@@ -1557,6 +2237,7 @@ class DataIncident(FrozenContract):
             details=self.details,
             detected_by=self.detected_by,
             opened_at=self.opened_at,
+            subject_resource_urn=self.subject_resource_urn,
         )
         if self.incident_sha256 != expected:
             raise ValueError("incident_sha256 does not match immutable incident binding")
@@ -1836,6 +2517,8 @@ CONTRACT_MODELS = (
     SourceAdapterBinding,
     SourceSyncGovernanceContract,
     SourceSyncDefinitionVersion,
+    PostgresqlCdcFailoverRecoveryPlan,
+    PostgresqlCdcFailoverResnapshotAdmission,
     SourceSyncCheckpoint,
     SourceSyncCommit,
     SourceSyncCommitGovernanceEvidence,

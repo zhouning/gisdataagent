@@ -93,7 +93,7 @@ def export_protege_bundle(
         mappings=[],
         issues=[],
     )
-    core_graph, core_shapes = build_rdf(core)
+    core_graph, core_shapes = build_rdf(core, semantic_version=version)
     _strip_metamodel_support_classes(core_graph)
     core_path = output / f"natural-resource-domain-core-{version}.ttl"
     core_graph.serialize(destination=str(core_path), format="turtle")
@@ -130,7 +130,7 @@ def export_protege_bundle(
     readme = (
         f"# 自然资源“一张图”本体 Protege 审查包 v{version}\n\n"
         "## 建议打开顺序\n\n"
-        f"1. `natural-resource-domain-core-{version}.ttl`：严格只含 96 个经策划的"
+        f"1. `natural-resource-domain-core-{version}.ttl`：严格只含 {len(core_ids)} 个经策划的"
         "实体、状态、过程、角色、权利、规则和观测类。优先用它审查类层次和对象关系。\n"
         f"2. `natural-resource-one-map-complete-{version}.ttl`：完整模型，增加标准代码、"
         "标准表、EA 数据结构、字段、关联和映射。数据表与字段是个体，不会进入领域类层次。\n"

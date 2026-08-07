@@ -52,8 +52,11 @@ from .dataops_schedule import (
     dataops_schedule_lock_keys,
 )
 from .db_engine import get_engine
+from .master_data_authority import MasterEntityVersion
 from .metadata_fabric import (
     METADATA_FABRIC_MIGRATION,
+    MasterMetadataProjectionChange,
+    MasterMetadataProjectionEnvelope,
     MetadataChange,
     MetadataFabricBinding,
     MetadataFabricSystem,
@@ -82,6 +85,7 @@ from .platform_contracts import (
     PlatformCommandType,
     PlatformDefinitionVersion,
     PlatformRun,
+    PlatformRunEvent,
     PolicyDecision,
     QualityResult,
     Resource,
@@ -91,6 +95,7 @@ from .platform_contracts import (
     SubjectType,
     TenantId,
     data_incident_fingerprint,
+    parse_resource_urn,
 )
 from .platform_lineage import (
     ImpactChangeType,
@@ -108,6 +113,10 @@ from .platform_lineage import (
     lineage_impact_fingerprint,
 )
 from .platform_openlineage import MAX_GENERATED_EDGES
+from .platform_run_events import (
+    PlatformRunEventDelivery,
+    PlatformRunEventEnvelope,
+)
 from .spatial_anonymization_run import (
     SPATIAL_ANONYMIZATION_SEMANTIC_TYPE,
     SpatialAnonymizationRunSpec,
@@ -142,6 +151,31 @@ INCIDENT_NOTIFICATION_MIGRATION = (
     / "migrations"
     / "099_platform_incident_notification_outbox.sql"
 )
+RUN_EVENT_DELIVERY_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "129_platform_run_event_delivery_outbox.sql"
+)
+INCIDENT_SUBJECT_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "123_resource_bound_data_incident.sql"
+)
+MASTER_DATA_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "124_reference_master_data_authority.sql"
+)
+MASTER_RESOURCE_PROJECTION_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "125_master_data_resource_projection.sql"
+)
+MASTER_METADATA_PROJECTION_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "126_master_metadata_projection_outbox.sql"
+)
 USER_TENANT_MIGRATION = (
     Path(__file__).resolve().parent / "migrations" / "093_app_user_tenant_context.sql"
 )
@@ -150,6 +184,12 @@ COMMAND_CONSUMER_SOURCE = Path(__file__).resolve().parent / "dolphinscheduler_co
 COMMAND_WORKER_SOURCE = Path(__file__).resolve().parent / "dolphinscheduler_command_worker.py"
 INCIDENT_NOTIFICATION_WORKER_SOURCE = (
     Path(__file__).resolve().parent / "incident_notification_worker.py"
+)
+RUN_EVENT_DELIVERY_WORKER_SOURCE = (
+    Path(__file__).resolve().parent / "platform_run_event_worker.py"
+)
+MASTER_METADATA_WORKER_SOURCE = (
+    Path(__file__).resolve().parent / "openmetadata_master_data_worker.py"
 )
 SCHEDULE_CONTROLLER_SOURCE = Path(__file__).resolve().parent / "dataops_schedule.py"
 MANUAL_CONTROLLER_SOURCE = Path(__file__).resolve().parent / "dataops_manual.py"
@@ -193,6 +233,14 @@ class GatewayUnavailableError(PlatformGatewayError):
 class GatewayWriteResult:
     value: BaseModel
     created: bool
+
+
+@dataclass(frozen=True)
+class GatewayResourceVersionPage:
+    items: tuple[ResourceVersion, ...]
+    offset: int
+    limit: int
+    has_more: bool
 
 
 @dataclass(frozen=True)
@@ -646,6 +694,58 @@ class PlatformGateway:
             if version is None:
                 raise GatewayNotFoundError("ResourceVersion was not found")
             return version
+
+    def list_resource_versions(
+        self,
+        tenant_id: str,
+        *,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> GatewayResourceVersionPage:
+        """Return one bounded, tenant-scoped page ordered newest first."""
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        if not 1 <= limit <= 100:
+            raise GatewayValidationError(
+                "resource version query limit must be between 1 and 100"
+            )
+        if not 0 <= offset <= 10_000:
+            raise GatewayValidationError(
+                "resource version query offset must be between 0 and 10000"
+            )
+        with self._transaction(tenant) as connection:
+            rows = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT tenant_id, resource_urn, resource_version_id,
+                               version_key, predecessor_version_id, content_sha256,
+                               authority_version_ref, created_by, created_at
+                        FROM gda_control.resource_version
+                        WHERE tenant_id = :tenant_id
+                        ORDER BY created_at DESC, resource_version_id DESC
+                        LIMIT :row_limit OFFSET :offset
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant,
+                        "row_limit": limit + 1,
+                        "offset": offset,
+                    },
+                )
+                .mappings()
+                .all()
+            )
+        values = []
+        for row in rows[:limit]:
+            value = dict(row)
+            value["authority_version_ref"] = _as_json(value["authority_version_ref"])
+            values.append(ResourceVersion.model_validate(value))
+        return GatewayResourceVersionPage(
+            items=tuple(values),
+            offset=offset,
+            limit=limit,
+            has_more=len(rows) > limit,
+        )
 
     @staticmethod
     def _load_schema_version(
@@ -1580,6 +1680,49 @@ class PlatformGateway:
         value["input_bindings"] = [dict(binding) for binding in bindings]
         return PlatformRun.model_validate(value)
 
+    @staticmethod
+    def _run_event_from_row(row) -> PlatformRunEvent:
+        value = dict(row)
+        value["details"] = _as_json(value["details"])
+        return PlatformRunEvent.model_validate(value)
+
+    @classmethod
+    def _load_platform_run_event(
+        cls, connection, tenant_id: str, event_id: UUID
+    ) -> PlatformRunEvent | None:
+        row = (
+            connection.execute(
+                text(
+                    """
+                    SELECT tenant_id, event_id, run_id, sequence_no,
+                           from_status, to_status, actor_subject, reason,
+                           details, occurred_at
+                    FROM gda_control.platform_run_event
+                    WHERE tenant_id = :tenant_id AND event_id = :event_id
+                    """
+                ),
+                {"tenant_id": tenant_id, "event_id": event_id},
+            )
+            .mappings()
+            .one_or_none()
+        )
+        return cls._run_event_from_row(row) if row is not None else None
+
+    @staticmethod
+    def _run_event_delivery_from_row(row) -> PlatformRunEventDelivery:
+        return PlatformRunEventDelivery.model_validate(dict(row))
+
+    @classmethod
+    def _run_event_envelope(
+        cls, connection, delivery: PlatformRunEventDelivery
+    ) -> PlatformRunEventEnvelope:
+        event = cls._load_platform_run_event(
+            connection, delivery.tenant_id, delivery.run_event_id
+        )
+        if event is None:
+            raise GatewayNotFoundError("PlatformRun event delivery binding was not found")
+        return PlatformRunEventEnvelope(delivery=delivery, event=event)
+
     @classmethod
     def _load_run_by_idempotency(
         cls,
@@ -2491,6 +2634,101 @@ class PlatformGateway:
                 raise GatewayNotFoundError("PlatformRun was not found")
             return run
 
+    def claim_platform_run_event_deliveries(
+        self,
+        tenant_id: str,
+        worker_id: str,
+        *,
+        limit: int = 10,
+        lease_seconds: int = 60,
+    ) -> tuple[PlatformRunEventEnvelope, ...]:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            rows = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT * FROM gda_control.claim_platform_run_event_deliveries(
+                            :tenant_id, :worker_id, :limit, :lease_seconds
+                        )
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant,
+                        "worker_id": worker_id,
+                        "limit": limit,
+                        "lease_seconds": lease_seconds,
+                    },
+                )
+                .mappings()
+                .all()
+            )
+            return tuple(
+                self._run_event_envelope(
+                    connection, self._run_event_delivery_from_row(row)
+                )
+                for row in rows
+            )
+
+    def complete_platform_run_event_delivery(
+        self, tenant_id: str, delivery_id: UUID, *, worker_id: str
+    ) -> PlatformRunEventDelivery:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            row = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT * FROM gda_control.complete_platform_run_event_delivery(
+                            :tenant_id, :delivery_id, :worker_id
+                        )
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant,
+                        "delivery_id": delivery_id,
+                        "worker_id": worker_id,
+                    },
+                )
+                .mappings()
+                .one()
+            )
+            return self._run_event_delivery_from_row(row)
+
+    def fail_platform_run_event_delivery(
+        self,
+        tenant_id: str,
+        delivery_id: UUID,
+        *,
+        worker_id: str,
+        error: str,
+        retry_delay_seconds: int = 30,
+    ) -> PlatformRunEventDelivery:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            row = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT * FROM gda_control.fail_platform_run_event_delivery(
+                            :tenant_id, :delivery_id, :worker_id,
+                            :error, :retry_delay_seconds
+                        )
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant,
+                        "delivery_id": delivery_id,
+                        "worker_id": worker_id,
+                        "error": error,
+                        "retry_delay_seconds": retry_delay_seconds,
+                    },
+                )
+                .mappings()
+                .one()
+            )
+            return self._run_event_delivery_from_row(row)
+
     @staticmethod
     def _load_observation(
         connection, tenant_id: str, observation_id: UUID
@@ -2592,7 +2830,7 @@ class PlatformGateway:
             connection.execute(
                 text(
                     """
-                SELECT tenant_id, incident_id, run_id, dedupe_key,
+                SELECT tenant_id, incident_id, run_id, subject_resource_urn, dedupe_key,
                        incident_type, severity, summary,
                        trigger_observation_id, details, incident_sha256,
                        detected_by, status, state_version, opened_at, updated_at
@@ -2613,12 +2851,12 @@ class PlatformGateway:
             text(
                 """
                 INSERT INTO gda_control.data_incident (
-                    tenant_id, incident_id, run_id, dedupe_key,
+                    tenant_id, incident_id, run_id, subject_resource_urn, dedupe_key,
                     incident_type, severity, summary,
                     trigger_observation_id, details, incident_sha256,
                     detected_by, status, state_version, opened_at, updated_at
                 ) VALUES (
-                    :tenant_id, :incident_id, :run_id, :dedupe_key,
+                    :tenant_id, :incident_id, :run_id, :subject_resource_urn, :dedupe_key,
                     :incident_type, :severity, :summary,
                     :trigger_observation_id, CAST(:details AS jsonb), :incident_sha256,
                     :detected_by, :status, :state_version, :opened_at, :updated_at
@@ -2645,7 +2883,8 @@ class PlatformGateway:
         connection,
         *,
         tenant_id: str,
-        run_id: UUID,
+        run_id: UUID | None,
+        subject_resource_urn: str | None,
         incident_id: UUID,
         dedupe_key: str,
         incident_type: str,
@@ -2659,6 +2898,7 @@ class PlatformGateway:
         if existing is not None:
             binding = (
                 existing.run_id,
+                existing.subject_resource_urn,
                 existing.dedupe_key,
                 existing.incident_type,
                 existing.severity,
@@ -2669,6 +2909,7 @@ class PlatformGateway:
             )
             expected = (
                 run_id,
+                subject_resource_urn,
                 dedupe_key,
                 incident_type,
                 severity,
@@ -2688,6 +2929,7 @@ class PlatformGateway:
             tenant_id=tenant_id,
             incident_id=incident_id,
             run_id=run_id,
+            subject_resource_urn=subject_resource_urn,
             dedupe_key=dedupe_key,
             incident_type=incident_type,
             severity=severity,
@@ -2705,12 +2947,48 @@ class PlatformGateway:
                 details=details,
                 detected_by=detected_by,
                 opened_at=opened_at,
+                subject_resource_urn=subject_resource_urn,
             ),
             detected_by=detected_by,
             opened_at=opened_at,
             updated_at=opened_at,
         )
         return cls._put_incident(connection, incident)
+
+    def open_resource_incident(
+        self,
+        *,
+        tenant_id: str,
+        subject_resource_urn: str,
+        incident_id: UUID,
+        dedupe_key: str,
+        incident_type: str,
+        severity: IncidentSeverity,
+        summary: str,
+        details: dict[str, Any],
+        detected_by: str,
+    ) -> GatewayWriteResult:
+        """Open one idempotent incident bound to a governed non-Run resource."""
+
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        subject = parse_resource_urn(subject_resource_urn)
+        if subject["tenant_id"] != tenant:
+            raise GatewayForbiddenError("incident subject tenant does not match tenant context")
+        with self._transaction(tenant) as connection:
+            return self._open_incident(
+                connection,
+                tenant_id=tenant,
+                run_id=None,
+                subject_resource_urn=subject_resource_urn,
+                incident_id=incident_id,
+                dedupe_key=dedupe_key,
+                incident_type=incident_type,
+                severity=severity,
+                summary=summary,
+                trigger_observation_id=None,
+                details=details,
+                detected_by=detected_by,
+            )
 
     @classmethod
     def _load_delivered_cancel(
@@ -2850,6 +3128,7 @@ class PlatformGateway:
                 connection,
                 tenant_id=run.tenant_id,
                 run_id=run.run_id,
+                subject_resource_urn=None,
                 incident_id=incident_id,
                 dedupe_key=dedupe_key,
                 incident_type="provider_cancel_terminal_mismatch",
@@ -2891,6 +3170,7 @@ class PlatformGateway:
         *,
         status: IncidentStatus | str | None = None,
         run_id: UUID | None = None,
+        subject_resource_urn: str | None = None,
         limit: int = 100,
     ) -> tuple[DataIncident, ...]:
         tenant = _TENANT_ADAPTER.validate_python(tenant_id)
@@ -2902,7 +3182,7 @@ class PlatformGateway:
                 connection.execute(
                     text(
                         """
-                        SELECT tenant_id, incident_id, run_id, dedupe_key,
+                        SELECT tenant_id, incident_id, run_id, subject_resource_urn, dedupe_key,
                                incident_type, severity, summary,
                                trigger_observation_id, details, incident_sha256,
                                detected_by, status, state_version, opened_at, updated_at
@@ -2910,6 +3190,10 @@ class PlatformGateway:
                         WHERE tenant_id = :tenant_id
                           AND (CAST(:status AS TEXT) IS NULL OR status = CAST(:status AS TEXT))
                           AND (CAST(:run_id AS UUID) IS NULL OR run_id = CAST(:run_id AS UUID))
+                          AND (
+                              CAST(:subject_resource_urn AS TEXT) IS NULL
+                              OR subject_resource_urn = CAST(:subject_resource_urn AS TEXT)
+                          )
                         ORDER BY
                             CASE severity
                                 WHEN 'critical' THEN 0
@@ -2926,6 +3210,7 @@ class PlatformGateway:
                         "tenant_id": tenant,
                         "status": normalized_status,
                         "run_id": run_id,
+                        "subject_resource_urn": subject_resource_urn,
                         "limit": limit,
                     },
                 )
@@ -3416,6 +3701,7 @@ class PlatformGateway:
                         connection,
                         tenant_id=tenant_id,
                         run_id=run.run_id,
+                        subject_resource_urn=None,
                         incident_id=uuid5(run.run_id, dedupe_key),
                         dedupe_key=dedupe_key,
                         incident_type="cancellation_convergence_timeout",
@@ -3909,6 +4195,193 @@ class PlatformGateway:
             return self._metadata_change_from_row(row)
 
     @staticmethod
+    def _master_metadata_change_from_row(row) -> MasterMetadataProjectionChange:
+        return MasterMetadataProjectionChange.model_validate(dict(row))
+
+    @staticmethod
+    def _load_master_entity_version(
+        connection,
+        tenant_id: str,
+        entity_version_ref: str,
+    ) -> MasterEntityVersion | None:
+        row = (
+            connection.execute(
+                text(
+                    """
+                    SELECT tenant_id, entity_ref, entity_version_ref,
+                           entity_version AS version, domain, business_key,
+                           canonical_name, parent_entity_ref, attributes,
+                           source_record_refs, match_candidate_refs,
+                           valid_from, valid_to, owner_subject, created_by,
+                           creation_reason, created_at, entity_fingerprint
+                    FROM gda_control.master_entity_version
+                    WHERE tenant_id = :tenant_id
+                      AND entity_version_ref = :entity_version_ref
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "entity_version_ref": entity_version_ref,
+                },
+            )
+            .mappings()
+            .one_or_none()
+        )
+        if row is None:
+            return None
+        value = dict(row)
+        value["attributes"] = _as_json(value["attributes"])
+        value["source_record_refs"] = tuple(_as_json(value["source_record_refs"]))
+        value["match_candidate_refs"] = tuple(
+            _as_json(value["match_candidate_refs"])
+        )
+        return MasterEntityVersion.model_validate(value)
+
+    @classmethod
+    def _master_metadata_projection_envelope(
+        cls,
+        connection,
+        change: MasterMetadataProjectionChange,
+    ) -> MasterMetadataProjectionEnvelope:
+        resource_version = cls._load_resource_version(
+            connection,
+            change.tenant_id,
+            change.resource_version_id,
+        )
+        if resource_version is None:
+            raise GatewayNotFoundError(
+                "Master metadata projection ResourceVersion was not found"
+            )
+        entity_version_ref = resource_version.authority_version_ref.get(
+            "entity_version_ref"
+        )
+        if not isinstance(entity_version_ref, str):
+            raise GatewayValidationError(
+                "Master ResourceVersion has no entity version authority"
+            )
+        master_version = cls._load_master_entity_version(
+            connection,
+            change.tenant_id,
+            entity_version_ref,
+        )
+        if master_version is None:
+            raise GatewayNotFoundError(
+                "Master metadata projection entity version was not found"
+            )
+        return MasterMetadataProjectionEnvelope(
+            change=change,
+            master_version=master_version,
+            resource_version=resource_version,
+            openmetadata_binding=cls._load_openmetadata_binding(
+                connection,
+                change.tenant_id,
+                change.entity_ref,
+            ),
+        )
+
+    def claim_master_metadata_projections(
+        self,
+        tenant_id: str,
+        worker_id: str,
+        *,
+        limit: int = 10,
+        lease_seconds: int = 60,
+    ) -> tuple[MasterMetadataProjectionEnvelope, ...]:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            rows = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT * FROM gda_control.claim_master_metadata_projections(
+                            :tenant_id, :worker_id, :limit, :lease_seconds
+                        )
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant,
+                        "worker_id": worker_id,
+                        "limit": limit,
+                        "lease_seconds": lease_seconds,
+                    },
+                )
+                .mappings()
+                .all()
+            )
+            return tuple(
+                self._master_metadata_projection_envelope(
+                    connection,
+                    self._master_metadata_change_from_row(row),
+                )
+                for row in rows
+            )
+
+    def complete_master_metadata_projection(
+        self,
+        tenant_id: str,
+        projection_change_id: UUID,
+        *,
+        worker_id: str,
+    ) -> MasterMetadataProjectionChange:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            row = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT *
+                        FROM gda_control.complete_master_metadata_projection(
+                            :tenant_id, :projection_change_id, :worker_id
+                        )
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant,
+                        "projection_change_id": projection_change_id,
+                        "worker_id": worker_id,
+                    },
+                )
+                .mappings()
+                .one()
+            )
+            return self._master_metadata_change_from_row(row)
+
+    def fail_master_metadata_projection(
+        self,
+        tenant_id: str,
+        projection_change_id: UUID,
+        *,
+        worker_id: str,
+        error: str,
+        retry_delay_seconds: int = 30,
+    ) -> MasterMetadataProjectionChange:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            row = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT *
+                        FROM gda_control.fail_master_metadata_projection(
+                            :tenant_id, :projection_change_id, :worker_id,
+                            :error, :retry_delay_seconds
+                        )
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant,
+                        "projection_change_id": projection_change_id,
+                        "worker_id": worker_id,
+                        "error": error,
+                        "retry_delay_seconds": retry_delay_seconds,
+                    },
+                )
+                .mappings()
+                .one()
+            )
+            return self._master_metadata_change_from_row(row)
+
+    @staticmethod
     def _lineage_version_from_row(row: dict[str, Any], prefix: str) -> ResourceVersion:
         value = {
             "tenant_id": row[f"{prefix}_tenant_id"],
@@ -4344,13 +4817,20 @@ def build_gateway_report(
     success_migration: Path | None = None,
     cancel_migration: Path | None = None,
     incident_migration: Path | None = None,
+    incident_subject_migration: Path | None = None,
+    master_data_migration: Path | None = None,
+    master_resource_projection_migration: Path | None = None,
+    master_metadata_projection_migration: Path | None = None,
     notification_migration: Path | None = None,
+    run_event_delivery_migration: Path | None = None,
     metadata_fabric_migration: Path | None = None,
     gateway_source: Path | None = None,
     routes_source: Path | None = None,
     command_consumer_source: Path | None = None,
     command_worker_source: Path | None = None,
     notification_worker_source: Path | None = None,
+    run_event_delivery_worker_source: Path | None = None,
+    master_metadata_worker_source: Path | None = None,
     schedule_controller_source: Path | None = None,
     manual_controller_source: Path | None = None,
     cancel_controller_source: Path | None = None,
@@ -4363,8 +4843,25 @@ def build_gateway_report(
         "success_migration": (success_migration or SUCCESS_VERDICT_MIGRATION).resolve(),
         "cancel_migration": (cancel_migration or CANCEL_COMMAND_MIGRATION).resolve(),
         "incident_migration": (incident_migration or DATA_INCIDENT_MIGRATION).resolve(),
+        "incident_subject_migration": (
+            incident_subject_migration or INCIDENT_SUBJECT_MIGRATION
+        ).resolve(),
+        "master_data_migration": (
+            master_data_migration or MASTER_DATA_MIGRATION
+        ).resolve(),
+        "master_resource_projection_migration": (
+            master_resource_projection_migration
+            or MASTER_RESOURCE_PROJECTION_MIGRATION
+        ).resolve(),
+        "master_metadata_projection_migration": (
+            master_metadata_projection_migration
+            or MASTER_METADATA_PROJECTION_MIGRATION
+        ).resolve(),
         "notification_migration": (
             notification_migration or INCIDENT_NOTIFICATION_MIGRATION
+        ).resolve(),
+        "run_event_delivery_migration": (
+            run_event_delivery_migration or RUN_EVENT_DELIVERY_MIGRATION
         ).resolve(),
         "metadata_fabric_migration": (
             metadata_fabric_migration or METADATA_FABRIC_MIGRATION
@@ -4375,6 +4872,12 @@ def build_gateway_report(
         "command_worker_source": (command_worker_source or COMMAND_WORKER_SOURCE).resolve(),
         "notification_worker_source": (
             notification_worker_source or INCIDENT_NOTIFICATION_WORKER_SOURCE
+        ).resolve(),
+        "run_event_delivery_worker_source": (
+            run_event_delivery_worker_source or RUN_EVENT_DELIVERY_WORKER_SOURCE
+        ).resolve(),
+        "master_metadata_worker_source": (
+            master_metadata_worker_source or MASTER_METADATA_WORKER_SOURCE
         ).resolve(),
         "schedule_controller_source": (
             schedule_controller_source or SCHEDULE_CONTROLLER_SOURCE
@@ -4447,6 +4950,40 @@ def build_gateway_report(
             "FORCE ROW LEVEL SECURITY",
             "GRANT SELECT, INSERT ON gda_control.data_incident",
         ),
+        "incident_subject_migration": (
+            "ADD COLUMN IF NOT EXISTS subject_resource_urn",
+            "num_nonnulls(run_id, subject_resource_urn) = 1",
+            "idx_gda_data_incident_subject",
+            "NEW.subject_resource_urn IS DISTINCT FROM OLD.subject_resource_urn",
+        ),
+        "master_data_migration": (
+            "master_source_record",
+            "master_match_candidate",
+            "master_entity_version",
+            "activate_master_entity_version",
+            "master_data.entity.activate",
+            "FORCE ROW LEVEL SECURITY",
+        ),
+        "master_resource_projection_migration": (
+            "CREATE TABLE IF NOT EXISTS gda_control.master_resource_projection",
+            "master_resource_version_id",
+            "project_master_activation_to_resource",
+            "trg_gda_master_activation_resource_projection",
+            "master Resource identity already has different evidence",
+            "master ResourceVersion identity already has different evidence",
+            "FORCE ROW LEVEL SECURITY",
+            "GRANT SELECT ON TABLE gda_control.master_resource_projection",
+        ),
+        "master_metadata_projection_migration": (
+            "CREATE TABLE IF NOT EXISTS gda_control.master_metadata_projection_outbox",
+            "enqueue_master_metadata_projection",
+            "FOR UPDATE SKIP LOCKED",
+            "claim_master_metadata_projections",
+            "complete_master_metadata_projection",
+            "fail_master_metadata_projection",
+            "FORCE ROW LEVEL SECURITY",
+            "GRANT SELECT ON TABLE gda_control.master_metadata_projection_outbox",
+        ),
         "notification_migration": (
             "CREATE TABLE IF NOT EXISTS gda_control.data_incident_notification_outbox",
             "enqueue_data_incident_notification",
@@ -4455,6 +4992,17 @@ def build_gateway_report(
             "complete_data_incident_notification",
             "fail_data_incident_notification",
             "GRANT SELECT ON TABLE gda_control.data_incident_notification_outbox",
+        ),
+        "run_event_delivery_migration": (
+            "CREATE TABLE IF NOT EXISTS gda_control.platform_run_event_delivery_outbox",
+            "enqueue_platform_run_event_delivery",
+            "AFTER INSERT ON gda_control.platform_run_event",
+            "FOR UPDATE SKIP LOCKED",
+            "claim_platform_run_event_deliveries",
+            "complete_platform_run_event_delivery",
+            "fail_platform_run_event_delivery",
+            "FORCE ROW LEVEL SECURITY",
+            "GRANT SELECT ON TABLE gda_control.platform_run_event_delivery_outbox",
         ),
         "metadata_fabric_migration": (
             "CREATE TABLE IF NOT EXISTS gda_control.metadata_fabric_binding",
@@ -4480,13 +5028,20 @@ def build_gateway_report(
             "def record_attempt_and_enqueue_reconcile(",
             "def record_cancellation_terminal_mismatch(",
             "def transition_incident(",
+            "def open_resource_incident(",
             "def claim_incident_notifications(",
             "def complete_incident_notification(",
             "def fail_incident_notification(",
+            "def claim_platform_run_event_deliveries(",
+            "def complete_platform_run_event_delivery(",
+            "def fail_platform_run_event_delivery(",
             "def register_metadata_fabric_binding(",
             "def claim_metadata_changes(",
             "def complete_metadata_change(",
             "def fail_metadata_change(",
+            "def claim_master_metadata_projections(",
+            "def complete_master_metadata_projection(",
+            "def fail_master_metadata_projection(",
             "def claim_commands(",
             "def record_quality_result(",
             "def finalize_run_success(",
@@ -4499,6 +5054,8 @@ def build_gateway_report(
             'frozenset({"admin", "platform_operator"})',
             '"tenant_context_required"',
             '"actor_mismatch"',
+            '"capability_contract_mismatch"',
+            "_capability_contract_guard",
             "create_dolphinscheduler_callback",
             "create_quality_result",
             "finalize_run_success",
@@ -4506,6 +5063,7 @@ def build_gateway_report(
             "create_dataops_cancel",
             "list_data_incidents",
             "transition_data_incident",
+            "reconcile_slo_alertmanager_webhook",
             "create_approval_case",
             "list_approval_case_events",
             "decide_approval_case",
@@ -4514,6 +5072,20 @@ def build_gateway_report(
             "list_metadata_fabric_bindings",
             "get_resource_version_lineage",
             "get_resource_version_impact",
+            "observe_master_source_record",
+            "propose_master_source_matches",
+            "stage_master_entity_version",
+            "activate_master_entity_version",
+            "get_active_master_entity",
+            "list_master_data_events",
+            "list_master_resource_projections",
+            "platform_observe_master_source_record",
+            "platform_propose_master_source_matches",
+            "platform_stage_master_entity_version",
+            "platform_activate_master_entity_version",
+            "platform_get_active_master_entity",
+            "platform_list_master_data_events",
+            "platform_list_master_resource_projections",
         ),
         "command_consumer_source": (
             "class DolphinSchedulerCommandConsumer",
@@ -4538,6 +5110,25 @@ def build_gateway_report(
             "self.gateway.claim_incident_notifications(",
             "self.gateway.complete_incident_notification(",
             "self.gateway.fail_incident_notification(",
+        ),
+        "run_event_delivery_worker_source": (
+            "class PlatformRunEventWorker",
+            "self.gateway.claim_platform_run_event_deliveries(",
+            "self.gateway.complete_platform_run_event_delivery(",
+            "self.gateway.fail_platform_run_event_delivery(",
+            '"Content-Type": "application/cloudevents+json"',
+            "bearer_token_file",
+            "follow_redirects=False",
+        ),
+        "master_metadata_worker_source": (
+            "class OpenMetadataMasterDataWorker",
+            "external_object_type != \"glossaryTerm\"",
+            '"Content-Type": "application/json-patch+json"',
+            "self._get_term(envelope)",
+            "self.gateway.complete_master_metadata_projection(",
+            "self.gateway.fail_master_metadata_projection(",
+            "follow_redirects=False",
+            "GDA_OPENMETADATA_BEARER_TOKEN_FILE",
         ),
         "schedule_controller_source": (
             "class DataOpsScheduleWindowSpec",
@@ -4583,6 +5174,12 @@ def build_gateway_report(
             or forbidden in texts.get("success_migration", "")
             or forbidden in texts.get("cancel_migration", "")
             or forbidden in texts.get("incident_migration", "")
+            or forbidden in texts.get("incident_subject_migration", "")
+            or forbidden in texts.get("master_data_migration", "")
+            or forbidden
+            in texts.get("master_resource_projection_migration", "")
+            or forbidden
+            in texts.get("master_metadata_projection_migration", "")
             or forbidden in texts.get("notification_migration", "")
             or forbidden in texts.get("metadata_fabric_migration", "")
         ):

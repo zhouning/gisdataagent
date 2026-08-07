@@ -3,8 +3,14 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+from copy import deepcopy
 from datetime import datetime, timezone
 from typing import Any
+
+from .contracts import (
+    build_native_geometry_contract,
+    validate_native_geometry_metadata,
+)
 
 
 MMFE_UWM_STATE_INPUT_SCHEMA = "mmfe.uwm_state_input.v1"
@@ -49,6 +55,7 @@ def build_uwm_state_input_from_semantic_product(
         },
         "urban_spatial_unit": dict(contract.get("spatial_unit") or {}),
         "object_role_registry": role_bindings,
+        "native_geometry_contract": build_native_geometry_contract(role_bindings),
         "state_components": _build_state_components(component_roles),
         "graph_summary": _build_graph_summary(relations),
         "semantic_relation_registry": relations,
@@ -80,8 +87,17 @@ def validate_uwm_state_input(payload: dict[str, Any]) -> dict[str, Any]:
         spatial_unit = {}
     if not spatial_unit.get("unit_type"):
         errors.append("urban_spatial_unit.unit_type is required")
-    if not isinstance(payload.get("object_role_registry"), list):
+    role_bindings = payload.get("object_role_registry")
+    if not isinstance(role_bindings, list):
         errors.append("object_role_registry must be a list")
+    else:
+        for index, row in enumerate(role_bindings):
+            errors.extend(
+                validate_native_geometry_metadata(
+                    row,
+                    prefix=f"object_role_registry[{index}]",
+                )
+            )
     if not isinstance(payload.get("state_components"), dict):
         errors.append("state_components must be an object")
     if not isinstance(payload.get("graph_summary"), dict):
@@ -100,16 +116,37 @@ def _normalise_role_bindings(rows: list[dict[str, Any]]) -> list[dict[str, Any]]
         role = str(row.get("role") or "").strip()
         if not role:
             continue
-        bindings.append(
-            {
-                "role": role,
-                "uwm_role": str(row.get("uwm_role") or "unassigned").strip(),
-                "object_type": str(row.get("object_type") or "unknown").strip(),
-                "source_dataset_id": str(row.get("source_dataset_id") or "").strip(),
-                "synthetic_status": str(row.get("synthetic_status") or "unknown").strip(),
-            }
-        )
+        binding = {
+            "role": role,
+            "uwm_role": str(row.get("uwm_role") or "unassigned").strip(),
+            "object_type": str(row.get("object_type") or "unknown").strip(),
+            "source_dataset_id": str(row.get("source_dataset_id") or "").strip(),
+            "synthetic_status": str(row.get("synthetic_status") or "unknown").strip(),
+        }
+        binding.update(_normalise_native_geometry_metadata(row))
+        bindings.append(binding)
     return bindings
+
+
+def _normalise_native_geometry_metadata(row: dict[str, Any]) -> dict[str, Any]:
+    metadata: dict[str, Any] = {}
+    for key in (
+        "aggregation_semantics",
+        "geometry_type",
+        "observation_semantics",
+    ):
+        if key in row:
+            value = row.get(key)
+            metadata[key] = str(value).strip() if value is not None else None
+    for key in (
+        "calibration",
+        "spatial_support",
+        "temporal_support",
+        "uncertainty",
+    ):
+        if key in row:
+            metadata[key] = deepcopy(row.get(key))
+    return metadata
 
 
 def _build_component_roles(role_bindings: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:

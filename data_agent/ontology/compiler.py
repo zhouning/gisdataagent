@@ -187,6 +187,7 @@ class CompiledOntology:
     relations: list[RelationRecord]
     mappings: list[MappingRecord]
     issues: list[dict[str, Any]]
+    review_dispositions: list[dict[str, Any]] = field(default_factory=list)
 
 
 def _clean(value: Any) -> str:
@@ -1514,7 +1515,11 @@ def _datatype_uri(datatype: str | None) -> Any:
     return mapping.get(datatype or "", XSD.string)
 
 
-def build_rdf(compiled: CompiledOntology) -> tuple[Any, Any]:
+def build_rdf(
+    compiled: CompiledOntology,
+    *,
+    semantic_version: str | None = None,
+) -> tuple[Any, Any]:
     from rdflib import BNode, Graph, Literal, Namespace, RDF, RDFS, URIRef
     from rdflib.namespace import DCTERMS, OWL, PROV, SH, SKOS, XSD
 
@@ -1532,9 +1537,19 @@ def build_rdf(compiled: CompiledOntology) -> tuple[Any, Any]:
         target.bind("dcterms", DCTERMS)
 
     ontology_uri = URIRef(BASE_URI.rstrip("/"))
+    resolved_version = semantic_version or next(
+        (
+            source.source_version
+            for source in compiled.sources
+            if source.source_kind == "curated_domain_ontology" and source.source_version
+        ),
+        "compiled-package",
+    )
+    version_uri = URIRef(_uri("version", resolved_version))
     graph.add((ontology_uri, RDF.type, OWL.Ontology))
     graph.add((ontology_uri, DCTERMS.title, Literal("自然资源“一张图”领域本体", lang="zh")))
-    graph.add((ontology_uri, OWL.versionInfo, Literal("compiled-package")))
+    graph.add((ontology_uri, OWL.versionIRI, version_uri))
+    graph.add((ontology_uri, OWL.versionInfo, Literal(resolved_version)))
 
     source_uri_by_id: dict[str, URIRef] = {}
     for source in compiled.sources:
@@ -1544,6 +1559,8 @@ def build_rdf(compiled: CompiledOntology) -> tuple[Any, Any]:
         graph.add((source_uri, DCTERMS.title, Literal(source.title)))
         graph.add((source_uri, GDA.sha256, Literal(source.sha256)))
         graph.add((source_uri, DCTERMS.identifier, Literal(source.source_id)))
+        if source.source_version:
+            graph.add((source_uri, DCTERMS.hasVersion, Literal(source.source_version)))
 
     class_kinds = {
         "DomainClass", "ProcessClass", "StateClass", "RoleClass",
@@ -1595,6 +1612,20 @@ def build_rdf(compiled: CompiledOntology) -> tuple[Any, Any]:
         graph.add((subject, SKOS.prefLabel, Literal(record.pref_label, lang="zh")))
         graph.add((subject, DCTERMS.identifier, Literal(record.concept_id)))
         graph.add((subject, PROV.wasDerivedFrom, source_uri_by_id[record.source_id]))
+        for key, predicate in (
+            ("review_status", GDA.reviewStatus),
+            ("review_disposition", GDA.reviewDisposition),
+            ("evidence_status", GDA.evidenceStatus),
+        ):
+            value = record.provenance.get(key)
+            if value:
+                graph.add((subject, predicate, Literal(str(value))))
+        for evidence in record.provenance.get("source_evidence", []):
+            evidence_id = evidence.get("source_concept_id") if isinstance(evidence, dict) else None
+            if evidence_id in concept_uri_by_id:
+                graph.add((subject, PROV.wasDerivedFrom, concept_uri_by_id[evidence_id]))
+            elif isinstance(evidence, dict) and evidence.get("source_uri"):
+                graph.add((subject, PROV.wasDerivedFrom, URIRef(str(evidence["source_uri"]))))
         if record.code:
             graph.add((subject, GDA.code, Literal(record.code)))
         if record.definition:
@@ -1625,6 +1656,33 @@ def build_rdf(compiled: CompiledOntology) -> tuple[Any, Any]:
             graph.add((subject, RDF.type, GDA.SchemaField))
             graph.add((subject, GDA.fieldOf, owner))
             graph.add((subject, GDA.datatype, _datatype_uri(record.datatype)))
+            disposition = record.provenance.get("semantic_disposition")
+            if disposition:
+                graph.add((subject, GDA.semanticDisposition, Literal(str(disposition))))
+            target_property_uri = record.provenance.get("semantic_target_property_uri")
+            if target_property_uri:
+                graph.add((subject, GDA.mapsToProperty, URIRef(str(target_property_uri))))
+            target_relation = record.provenance.get("semantic_target_relation")
+            if target_relation:
+                graph.add((
+                    subject,
+                    GDA.mapsToRelation,
+                    URIRef(_uri("property", str(target_relation))),
+                ))
+            for target_class_id in record.provenance.get(
+                "semantic_target_class_ids",
+                [],
+            ):
+                target_class_uri = concept_uri_by_id.get(str(target_class_id))
+                if target_class_uri:
+                    graph.add((subject, GDA.semanticTargetClass, target_class_uri))
+            target_class_id = record.provenance.get("semantic_target_class_id")
+            target_class_uri = concept_uri_by_id.get(str(target_class_id))
+            if target_class_uri:
+                graph.add((subject, GDA.semanticTargetClass, target_class_uri))
+            exclusion_reason = record.provenance.get("semantic_exclusion_reason")
+            if exclusion_reason:
+                graph.add((subject, GDA.semanticExclusionReason, Literal(str(exclusion_reason))))
         graph.add((subject, SKOS.prefLabel, Literal(record.pref_label, lang="zh")))
         graph.add((subject, GDA.code, Literal(record.code)))
         graph.add((subject, DCTERMS.identifier, Literal(record.property_id)))
@@ -1649,12 +1707,49 @@ def build_rdf(compiled: CompiledOntology) -> tuple[Any, Any]:
             graph.add((predicate, RDFS.label, Literal(record.pref_label, lang="zh")))
             graph.add((predicate, RDFS.domain, source))
             graph.add((predicate, RDFS.range, target))
+            graph.add((predicate, PROV.wasDerivedFrom, source_uri_by_id[record.source_id]))
+            if record.provenance.get("functional"):
+                graph.add((predicate, RDF.type, OWL.FunctionalProperty))
+            inverse_name = record.provenance.get("inverse_property")
+            if inverse_name:
+                graph.add((predicate, OWL.inverseOf, URIRef(_uri("property", str(inverse_name)))))
             if record.provenance.get("restriction") == "some":
-                restriction = BNode()
+                restriction = URIRef(_uri("axiom", stable_token(record.relation_id, "some")))
                 graph.add((restriction, RDF.type, OWL.Restriction))
                 graph.add((restriction, OWL.onProperty, predicate))
                 graph.add((restriction, OWL.someValuesFrom, target))
+                graph.add((restriction, PROV.wasDerivedFrom, source_uri_by_id[record.source_id]))
                 graph.add((source, RDFS.subClassOf, restriction))
+            statement = URIRef(_uri("statement", stable_token(record.relation_id)))
+            graph.add((statement, RDF.type, RDF.Statement))
+            graph.add((statement, RDF.subject, predicate))
+            graph.add((statement, RDF.predicate, RDFS.domain))
+            graph.add((statement, RDF.object, source))
+            graph.add((statement, PROV.wasDerivedFrom, source_uri_by_id[record.source_id]))
+            graph.add((statement, DCTERMS.identifier, Literal(record.relation_id)))
+            continue
+        if record.relation_type == "classRestriction":
+            property_name = str(record.provenance["property_name"])
+            cardinality = str(record.provenance["cardinality"])
+            count = int(record.provenance["count"])
+            predicate = URIRef(_uri("property", property_name))
+            restriction = URIRef(_uri("axiom", stable_token(record.relation_id)))
+            cardinality_predicate = {
+                "exact": OWL.qualifiedCardinality,
+                "min": OWL.minQualifiedCardinality,
+                "max": OWL.maxQualifiedCardinality,
+            }[cardinality]
+            graph.add((restriction, RDF.type, OWL.Restriction))
+            graph.add((restriction, OWL.onProperty, predicate))
+            graph.add((restriction, OWL.onClass, target))
+            graph.add((
+                restriction,
+                cardinality_predicate,
+                Literal(count, datatype=XSD.nonNegativeInteger),
+            ))
+            graph.add((restriction, PROV.wasDerivedFrom, source_uri_by_id[record.source_id]))
+            graph.add((restriction, DCTERMS.identifier, Literal(record.relation_id)))
+            graph.add((source, RDFS.subClassOf, restriction))
             continue
         if record.relation_type in {"allowedSource", "allowedTarget"}:
             predicate = URIRef(_uri("annotation", record.relation_type))
@@ -1855,6 +1950,333 @@ def build_rdf(compiled: CompiledOntology) -> tuple[Any, Any]:
     return graph, shapes
 
 
+def _run_competency_questions(graph: Any, compiled: CompiledOntology) -> dict[str, Any]:
+    curated_ids = {
+        record.concept_id
+        for record in compiled.concepts
+        if record.source_system == "curated_domain"
+    }
+    if "gda:nr:class:Land" not in curated_ids:
+        return {
+            "status": "not_applicable",
+            "conforms": True,
+            "question_count": 0,
+            "passed_count": 0,
+            "questions": [],
+        }
+
+    def class_ref(name: str) -> str:
+        return f"<{BASE_URI}class/{name}>"
+
+    def property_ref(name: str) -> str:
+        return f"<{BASE_URI}property/{name}>"
+    prefixes = "\n".join((
+        "PREFIX owl: <http://www.w3.org/2002/07/owl#>",
+        "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>",
+        "PREFIX skos: <http://www.w3.org/2004/02/skos/core#>",
+        "PREFIX prov: <http://www.w3.org/ns/prov#>",
+        "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>",
+    ))
+    questions = (
+        (
+            "CQ-01-land-direct-classification",
+            "土地仅以农用地、建设用地和未利用地作为直接分类子类。",
+            f"""ASK WHERE {{
+              {class_ref('AgriculturalLand')} rdfs:subClassOf {class_ref('Land')} .
+              {class_ref('ConstructionLand')} rdfs:subClassOf {class_ref('Land')} .
+              {class_ref('UnusedLand')} rdfs:subClassOf {class_ref('Land')} .
+              FILTER NOT EXISTS {{
+                ?other rdfs:subClassOf {class_ref('Land')} .
+                FILTER(isIRI(?other) && ?other NOT IN (
+                  {class_ref('AgriculturalLand')},
+                  {class_ref('ConstructionLand')},
+                  {class_ref('UnusedLand')}
+                ))
+              }}
+            }}""",
+        ),
+        (
+            "CQ-02-spatial-unit-versus-land",
+            "地块是与土地互斥的空间单元，并通过可逆函数属性表征土地。",
+            f"""ASK WHERE {{
+              {class_ref('LandParcel')} rdfs:subClassOf {class_ref('SpatialUnit')} .
+              {class_ref('Land')} owl:disjointWith {class_ref('SpatialUnit')} .
+              {property_ref('spatiallyRepresents')} a owl:FunctionalProperty ;
+                rdfs:domain {class_ref('LandParcel')} ;
+                rdfs:range {class_ref('Land')} ;
+                owl:inverseOf {property_ref('representedBySpatialUnit')} .
+            }}""",
+        ),
+        (
+            "CQ-03-observed-and-planned-state",
+            "现状和规划状态是土地利用状态的不同且互斥语义轴。",
+            f"""ASK WHERE {{
+              {class_ref('ObservedLandUseState')} rdfs:subClassOf {class_ref('LandUseState')}, {class_ref('ObservedState')} .
+              {class_ref('PlannedLandUseState')} rdfs:subClassOf {class_ref('LandUseState')}, {class_ref('PlannedState')} .
+              {class_ref('ObservedState')} owl:disjointWith {class_ref('PlannedState')} .
+            }}""",
+        ),
+        (
+            "CQ-04-transition-qualified-cardinality",
+            "每次土地利用转换恰有一个地块、源状态和目标状态。",
+            f"""ASK WHERE {{
+              {class_ref('LandUseTransition')} rdfs:subClassOf ?parcelRestriction, ?sourceRestriction, ?targetRestriction .
+              ?parcelRestriction a owl:Restriction ; owl:onProperty {property_ref('affectsParcel')} ;
+                owl:onClass {class_ref('LandParcel')} ; owl:qualifiedCardinality \"1\"^^xsd:nonNegativeInteger .
+              ?sourceRestriction a owl:Restriction ; owl:onProperty {property_ref('hasSourceState')} ;
+                owl:onClass {class_ref('LandUseState')} ; owl:qualifiedCardinality \"1\"^^xsd:nonNegativeInteger .
+              ?targetRestriction a owl:Restriction ; owl:onProperty {property_ref('hasTargetState')} ;
+                owl:onClass {class_ref('LandUseState')} ; owl:qualifiedCardinality \"1\"^^xsd:nonNegativeInteger .
+            }}""",
+        ),
+        (
+            "CQ-05-actor-role-separation",
+            "主体和角色互斥，权利由主体持有，主体通过可逆关系承担角色。",
+            f"""ASK WHERE {{
+              {class_ref('NaturalResourceActor')} owl:disjointWith {class_ref('NaturalResourceRole')} .
+              {property_ref('heldBy')} rdfs:range {class_ref('NaturalResourceActor')} .
+              {property_ref('playsRole')} owl:inverseOf {property_ref('roleOf')} .
+            }}""",
+        ),
+        (
+            "CQ-06-rule-restriction-evidence",
+            "用途管制、限制和证据分别进入规则、限制与证据层级。",
+            f"""ASK WHERE {{
+              {class_ref('UseControlRule')} rdfs:subClassOf {class_ref('NaturalResourceRule')} .
+              {class_ref('UseRestriction')} rdfs:subClassOf {class_ref('NaturalResourceRestriction')} .
+              {class_ref('ObservationEvidence')} rdfs:subClassOf {class_ref('EvidenceArtifact')} .
+              {property_ref('governedBy')} rdfs:range {class_ref('NaturalResourceRule')} .
+              {property_ref('subjectToRestriction')} rdfs:range {class_ref('NaturalResourceRestriction')} .
+            }}""",
+        ),
+        (
+            "CQ-07-per-concept-provenance",
+            "每个策划领域类都具有审定处置和来源匹配或显式证据缺口。",
+            f"""ASK WHERE {{
+              FILTER NOT EXISTS {{
+                ?class a owl:Class .
+                FILTER(STRSTARTS(STR(?class), \"{BASE_URI}class/\"))
+                FILTER NOT EXISTS {{ ?class <{BASE_URI}reviewDisposition> ?disposition }}
+              }}
+              FILTER NOT EXISTS {{
+                ?class a owl:Class .
+                FILTER(STRSTARTS(STR(?class), \"{BASE_URI}class/\"))
+                FILTER NOT EXISTS {{ ?class <{BASE_URI}evidenceStatus> ?status }}
+              }}
+            }}""",
+        ),
+        (
+            "CQ-08-application-artifacts-excluded",
+            "应用功能和 EA 包不进入自然资源领域 OWL 类层次。",
+            """ASK WHERE {
+              FILTER NOT EXISTS {
+                ?class a owl:Class ; skos:prefLabel ?label .
+                FILTER(STRSTARTS(STR(?class), "https://ontology.gis-data-agent.local/natural-resource/one-map/class/"))
+                FILTER(STR(?label) IN ("智能问数", "GIS Data Agent", "模型包"))
+              }
+            }""",
+        ),
+    )
+    results: list[dict[str, Any]] = []
+    for question_id, description, query_body in questions:
+        query = f"{prefixes}\n{query_body}"
+        try:
+            query_result = graph.query(query)
+            passed = bool(getattr(query_result, "askAnswer", False))
+            error = None
+        except Exception as exc:  # pragma: no cover - preserved in the package report
+            passed = False
+            error = f"{type(exc).__name__}: {exc}"
+        results.append({
+            "question_id": question_id,
+            "description": description,
+            "query_language": "SPARQL 1.1 ASK",
+            "query": query,
+            "expected": True,
+            "observed": passed,
+            "passed": passed,
+            "error": error,
+        })
+    passed_count = sum(item["passed"] for item in results)
+    return {
+        "status": "passed" if passed_count == len(results) else "failed",
+        "conforms": passed_count == len(results),
+        "question_count": len(results),
+        "passed_count": passed_count,
+        "questions": results,
+    }
+
+
+def _semantic_quality_report(
+    graph: Any,
+    compiled: CompiledOntology,
+    competency_report: dict[str, Any],
+) -> dict[str, Any]:
+    from rdflib import Graph, RDFS, URIRef
+    from rdflib.namespace import OWL
+    from owlrl import DeductiveClosure, OWLRL_Semantics
+
+    named_classes = {
+        URIRef(record.uri)
+        for record in compiled.concepts
+        if record.source_system == "curated_domain"
+    }
+    if not named_classes:
+        return {
+            "status": "not_applicable",
+            "conforms": True,
+            "reasoner_profile": "OWL 2 RL bounded curated core",
+            "named_class_count": 0,
+            "unsatisfiable_named_class_count": 0,
+            "unsatisfiable_named_classes": [],
+            "disjoint_ancestor_conflicts": [],
+            "competency_questions_conform": competency_report["conforms"],
+        }
+
+    core = Graph()
+    allowed_subject_prefixes = (
+        f"{BASE_URI}class/",
+        f"{BASE_URI}property/",
+        f"{BASE_URI}axiom/",
+        f"{BASE_URI}annotation/",
+    )
+    ontology_uri = URIRef(BASE_URI.rstrip("/"))
+    for triple in graph:
+        subject = triple[0]
+        if subject == ontology_uri or (
+            isinstance(subject, URIRef)
+            and str(subject).startswith(allowed_subject_prefixes)
+        ):
+            core.add(triple)
+
+    parents: dict[URIRef, set[URIRef]] = defaultdict(set)
+    disjoint_pairs: set[frozenset[URIRef]] = set()
+    for child, parent in core.subject_objects(RDFS.subClassOf):
+        if child in named_classes and parent in named_classes:
+            parents[child].add(parent)
+    for left, right in core.subject_objects(OWL.disjointWith):
+        if left in named_classes and right in named_classes:
+            disjoint_pairs.add(frozenset((left, right)))
+
+    ancestor_cache: dict[URIRef, set[URIRef]] = {}
+
+    def ancestors(node: URIRef) -> set[URIRef]:
+        if node in ancestor_cache:
+            return ancestor_cache[node]
+        found = {node}
+        frontier = list(parents.get(node, ()))
+        while frontier:
+            parent = frontier.pop()
+            if parent in found:
+                continue
+            found.add(parent)
+            frontier.extend(parents.get(parent, ()))
+        ancestor_cache[node] = found
+        return found
+
+    conflicts: list[dict[str, str]] = []
+    for named_class in sorted(named_classes, key=str):
+        supers = ancestors(named_class)
+        for pair in disjoint_pairs:
+            if pair.issubset(supers):
+                left, right = sorted(pair, key=str)
+                conflicts.append({
+                    "class": str(named_class),
+                    "disjoint_superclass_left": str(left),
+                    "disjoint_superclass_right": str(right),
+                })
+
+    asserted_triple_count = len(core)
+    DeductiveClosure(
+        OWLRL_Semantics,
+        axiomatic_triples=False,
+        datatype_axioms=False,
+    ).expand(core)
+    inferred_unsatisfiable = sorted({
+        str(named_class)
+        for named_class in named_classes
+        if (
+            (named_class, RDFS.subClassOf, OWL.Nothing) in core
+            or (named_class, OWL.equivalentClass, OWL.Nothing) in core
+        )
+    })
+    conflict_classes = {item["class"] for item in conflicts}
+    unsatisfiable = sorted(set(inferred_unsatisfiable).union(conflict_classes))
+    conforms = not unsatisfiable and competency_report["conforms"]
+    return {
+        "status": "passed" if conforms else "failed",
+        "conforms": conforms,
+        "reasoner_profile": "OWL 2 RL closure plus disjoint-superclass consistency",
+        "asserted_core_triple_count": asserted_triple_count,
+        "closure_core_triple_count": len(core),
+        "named_class_count": len(named_classes),
+        "unsatisfiable_named_class_count": len(unsatisfiable),
+        "unsatisfiable_named_classes": unsatisfiable,
+        "disjoint_ancestor_conflicts": conflicts,
+        "competency_questions_conform": competency_report["conforms"],
+    }
+
+
+def _completeness_report(
+    compiled: CompiledOntology,
+    competency_report: dict[str, Any],
+    semantic_quality: dict[str, Any],
+    *,
+    semantic_version: str,
+) -> dict[str, Any]:
+    curated = [
+        record for record in compiled.concepts
+        if record.source_system == "curated_domain"
+    ]
+    evidence_counts = Counter(
+        record.provenance.get("evidence_status", "unclassified") for record in curated
+    )
+    disposition_counts = Counter(
+        str(record.get("disposition") or "unclassified")
+        for record in compiled.review_dispositions
+    )
+    return {
+        "ontology_key": ONTOLOGY_KEY,
+        "semantic_version": semantic_version,
+        "backlog_reference": "GitHub issue #54",
+        "status": "open_pending_expert_review" if curated else "not_applicable",
+        "modeled_coverage": {
+            "curated_class_count": len(curated),
+            "object_property_count": sum(
+                relation.relation_type == "objectProperty" for relation in compiled.relations
+            ),
+            "qualified_cardinality_count": sum(
+                relation.relation_type == "classRestriction" for relation in compiled.relations
+            ),
+            "evidence_status_counts": dict(evidence_counts),
+            "review_disposition_counts": dict(disposition_counts),
+        },
+        "quality_gates": {
+            "competency_questions": {
+                "conforms": competency_report["conforms"],
+                "passed": competency_report["passed_count"],
+                "total": competency_report["question_count"],
+            },
+            "semantic_quality": {
+                "conforms": semantic_quality["conforms"],
+                "unsatisfiable_named_class_count": semantic_quality["unsatisfiable_named_class_count"],
+            },
+        },
+        "known_gaps": [
+            "Domain-owner review and sign-off remain pending for curated concepts and mappings.",
+            "Source standards marked draft_or_unconfirmed are evidence, not final normative authority.",
+            "The packaged reasoner gate is bounded OWL 2 RL; an external OWL 2 DL reasoner review remains pending.",
+            "Spatial business rules requiring geometry computation remain executable rules outside OWL.",
+        ] if curated else [],
+        "expert_review": {
+            "status": "pending" if curated else "not_applicable",
+            "accepted_decisions": [],
+            "rejected_decisions": [],
+            "closure_allowed": False if curated else None,
+        },
+    }
+
+
 def _serialize_gzip(graph: Any, path: Path) -> None:
     turtle = graph.serialize(format="turtle")
     payload = turtle.encode("utf-8") if isinstance(turtle, str) else turtle
@@ -1892,8 +2314,12 @@ def write_package(
         property_count = _write_jsonl_gzip(staging / "properties.jsonl.gz", compiled.properties)
         relation_count = _write_jsonl_gzip(staging / "relations.jsonl.gz", compiled.relations)
         mapping_count = _write_jsonl_gzip(staging / "mappings.jsonl.gz", compiled.mappings)
+        review_disposition_count = _write_jsonl_gzip(
+            staging / "review-dispositions.jsonl.gz",
+            compiled.review_dispositions,
+        )
 
-        graph, shapes = build_rdf(compiled)
+        graph, shapes = build_rdf(compiled, semantic_version=semantic_version)
         rdf_path = staging / "ontology.ttl.gz"
         shapes_path = staging / "shapes.ttl"
         _serialize_gzip(graph, rdf_path)
@@ -1907,11 +2333,33 @@ def write_package(
             meta_shacl=True,
             advanced=True,
         )
+        competency_report = _run_competency_questions(graph, compiled)
+        semantic_quality = _semantic_quality_report(graph, compiled, competency_report)
+        completeness_report = _completeness_report(
+            compiled,
+            competency_report,
+            semantic_quality,
+            semantic_version=semantic_version,
+        )
+        competency_path = staging / "competency-report.json"
+        semantic_quality_path = staging / "semantic-quality-report.json"
+        completeness_path = staging / "completeness-report.json"
+        competency_path.write_bytes(canonical_json(competency_report))
+        semantic_quality_path.write_bytes(canonical_json(semantic_quality))
+        completeness_path.write_bytes(canonical_json(completeness_report))
         severity_counts = Counter(issue.get("severity", "warning") for issue in compiled.issues)
         structural_error_count = severity_counts.get("error", 0)
         validation_report = {
-            "conforms": bool(conforms) and structural_error_count == 0,
+            "conforms": (
+                bool(conforms)
+                and structural_error_count == 0
+                and competency_report["conforms"]
+                and semantic_quality["conforms"]
+            ),
             "shacl_conforms": bool(conforms),
+            "competency_questions_conform": competency_report["conforms"],
+            "semantic_quality_conforms": semantic_quality["conforms"],
+            "unsatisfiable_named_class_count": semantic_quality["unsatisfiable_named_class_count"],
             "structural_error_count": structural_error_count,
             "issue_count": len(compiled.issues),
             "severity_counts": dict(severity_counts),
@@ -1920,10 +2368,12 @@ def write_package(
             "validators": [
                 "stable-id-and-reference-validator-v2",
                 "modeling-role-boundary-validator-v2",
-                "curated-domain-competency-validator-v2",
+                "curated-domain-competency-validator-v3",
                 "land-transition-shacl-validator-v2",
                 "source-quality-observation-validator-v2",
                 "pyshacl-meta-and-ontology-validator",
+                "owlrl-curated-core-reasoner-v1",
+                "review-disposition-completeness-validator-v1",
             ],
         }
         validation_path = staging / "validation-report.json"
@@ -1956,10 +2406,23 @@ def write_package(
             "properties": _artifact(staging / "properties.jsonl.gz", staging, "application/x-ndjson+gzip", property_count),
             "relations": _artifact(staging / "relations.jsonl.gz", staging, "application/x-ndjson+gzip", relation_count),
             "mappings": _artifact(staging / "mappings.jsonl.gz", staging, "application/x-ndjson+gzip", mapping_count),
+            "review_dispositions": _artifact(
+                staging / "review-dispositions.jsonl.gz",
+                staging,
+                "application/x-ndjson+gzip",
+                review_disposition_count,
+            ),
             "rdf": _artifact(rdf_path, staging, "application/gzip"),
             "shacl": _artifact(shapes_path, staging, "text/turtle"),
             "jsonld_context": _artifact(context_path, staging, "application/ld+json"),
             "validation": _artifact(validation_path, staging, "application/json"),
+            "competency_report": _artifact(competency_path, staging, "application/json"),
+            "semantic_quality_report": _artifact(
+                semantic_quality_path,
+                staging,
+                "application/json",
+            ),
+            "completeness_report": _artifact(completeness_path, staging, "application/json"),
         }
         source_fingerprint = sha256_json([source.model_dump(mode="json") for source in compiled.sources])
         content_sha256 = sha256_json({key: value.sha256 for key, value in sorted(artifacts.items())})
@@ -2050,6 +2513,22 @@ def write_package(
                 "confirmed_mapping_count": sum(record.mapping_status == MappingStatus.CONFIRMED for record in compiled.mappings),
                 "candidate_mapping_count": sum(record.mapping_status == MappingStatus.CANDIDATE for record in compiled.mappings),
                 "conflict_mapping_count": sum(record.mapping_status == MappingStatus.CONFLICT for record in compiled.mappings),
+                "review_disposition_count": review_disposition_count,
+                "review_accepted_count": sum(
+                    record.get("disposition") == "accepted" for record in compiled.review_dispositions
+                ),
+                "review_mapped_count": sum(
+                    record.get("disposition") == "mapped" for record in compiled.review_dispositions
+                ),
+                "review_deprecated_count": sum(
+                    record.get("disposition") == "deprecated" for record in compiled.review_dispositions
+                ),
+                "review_rejected_count": sum(
+                    record.get("disposition") == "rejected" for record in compiled.review_dispositions
+                ),
+                "competency_question_count": competency_report["question_count"],
+                "competency_question_passed_count": competency_report["passed_count"],
+                "unsatisfiable_named_class_count": semantic_quality["unsatisfiable_named_class_count"],
                 "rdf_triple_count": len(graph),
                 "shacl_triple_count": len(shapes),
                 "validation_issue_count": len(compiled.issues),
@@ -2074,6 +2553,9 @@ def write_package(
             validation_summary={
                 "conforms": validation_report["conforms"],
                 "shacl_conforms": validation_report["shacl_conforms"],
+                "competency_questions_conform": validation_report["competency_questions_conform"],
+                "semantic_quality_conforms": validation_report["semantic_quality_conforms"],
+                "unsatisfiable_named_class_count": validation_report["unsatisfiable_named_class_count"],
                 "issue_count": validation_report["issue_count"],
                 "severity_counts": validation_report["severity_counts"],
             },

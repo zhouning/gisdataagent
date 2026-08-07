@@ -12,20 +12,43 @@ Usage:
 
 import asyncio
 import getpass
+import hmac
+import json
 import os
-from typing import Optional
+import time
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
 
-from textual.app import App, ComposeResult
-from textual.binding import Binding
-from textual.containers import Horizontal, Vertical
-from textual.widgets import Header, Footer, Input, RichLog, Static
-from textual.worker import Worker, WorkerState
-from textual import work
-
+from rich.json import JSON
 from rich.markdown import Markdown
+from rich.markup import escape
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
+from textual import work
+from textual.app import App, ComposeResult
+from textual.binding import Binding
+from textual.containers import Horizontal, Vertical
+from textual.widgets import Footer, Header, Input, RichLog, Static
+from textual.worker import Worker, WorkerState
+
+_CAPABILITY_CONFIRMATION_TTL_SECONDS = 300.0
+
+
+@dataclass(frozen=True)
+class PendingCapabilityInvocation:
+    """One locally previewed invocation awaiting explicit operator consent."""
+
+    capability_id: str
+    version: str
+    fingerprint: str
+    operation: str
+    risk: str
+    side_effect: str
+    payload: dict[str, Any]
+    confirmation_code: str | None
+    expires_at_monotonic: float
 
 
 # ---------------------------------------------------------------------------
@@ -50,10 +73,11 @@ class GISAgentApp(App):
         self.user = user or getpass.getuser()
         self.role = role
         self.verbose = verbose
-        self._previous_pipeline: Optional[str] = None
+        self._previous_pipeline: str | None = None
         self._pipeline_running = False
         self._command_history: list[str] = []
         self._history_index = -1
+        self._pending_capability: PendingCapabilityInvocation | None = None
 
     # ------------------------------------------------------------------
     # Layout
@@ -179,6 +203,8 @@ class GISAgentApp(App):
                 self._write_chat("[yellow]Usage: /sql SELECT ...[/yellow]")
             else:
                 self._run_sql(args)
+        elif cmd == "/capability":
+            self._handle_capability_command(args)
         elif cmd == "/cancel":
             if self._pipeline_running:
                 # Cancel all workers
@@ -208,6 +234,7 @@ class GISAgentApp(App):
             "  /catalog    List data catalog assets\n"
             "  /catalog <q> Search catalog\n"
             "  /sql <SQL>  Execute SQL query\n"
+            "  /capability list|show|invoke|confirm|discard\n"
             "  /verbose    Toggle verbose mode\n"
             "  /cancel     Cancel running pipeline\n"
             "  /clear      Clear all panels\n"
@@ -219,6 +246,267 @@ class GISAgentApp(App):
             "  F1      Help\n"
             "  Up/Down Command history"
         )
+
+    # ------------------------------------------------------------------
+    # Governed capability commands
+    # ------------------------------------------------------------------
+
+    def _handle_capability_command(self, args: str) -> None:
+        action, _, remainder = args.strip().partition(" ")
+        action = action.lower()
+        if action == "list" and not remainder.strip():
+            self._start_capability_discovery(None)
+            return
+        if action == "show" and remainder.strip():
+            capability_id, separator, extra = remainder.strip().partition(" ")
+            if separator and extra.strip():
+                self._write_chat("[yellow]Usage: /capability show <capability-id>[/yellow]")
+                return
+            self._start_capability_discovery(capability_id)
+            return
+        if action == "invoke" and remainder.strip():
+            capability_id, separator, raw_payload = remainder.strip().partition(" ")
+            if not separator or not raw_payload.strip():
+                self._write_chat(
+                    "[yellow]Usage: /capability invoke <capability-id> <json-object>[/yellow]"
+                )
+                return
+            self._stage_capability_invocation(capability_id, raw_payload)
+            return
+        if action == "confirm" and remainder.strip():
+            confirmation_code, separator, extra = remainder.strip().partition(" ")
+            if separator and extra.strip():
+                self._write_chat("[yellow]Usage: /capability confirm <code>[/yellow]")
+                return
+            self._confirm_capability_invocation(confirmation_code)
+            return
+        if action == "discard" and not remainder.strip():
+            if self._pending_capability is None:
+                self._write_chat("[dim]No pending capability invocation.[/dim]")
+            else:
+                self._pending_capability = None
+                self._write_chat("[yellow]Pending capability invocation discarded.[/yellow]")
+            return
+        self._write_chat(
+            "[yellow]Usage: /capability list|show <id>|invoke <id> <json>|"
+            "confirm <code>|discard[/yellow]"
+        )
+
+    def _stage_capability_invocation(
+        self,
+        capability_id: str,
+        raw_payload: str,
+    ) -> None:
+        if self._pending_capability is not None:
+            self._write_chat(
+                "[yellow]Discard or confirm the pending capability invocation first.[/yellow]"
+            )
+            return
+        try:
+            payload = json.loads(raw_payload)
+            if not isinstance(payload, dict):
+                raise ValueError("capability input must be one JSON object")
+
+            from data_agent.capability_registry import (
+                LlmMode,
+                RiskClass,
+                SideEffect,
+                Surface,
+                get_capability_registry,
+            )
+            from data_agent.platform_contracts import canonical_json_fingerprint
+
+            spec = get_capability_registry().get(capability_id)
+            if Surface.TUI not in spec.available_surfaces(LlmMode.DISABLED):
+                raise ValueError(
+                    f"{spec.capability_id}@{spec.version} is not implemented for TUI"
+                )
+            canonical_input = spec.validate_input(payload)
+            requires_confirmation = (
+                spec.side_effect is not SideEffect.NONE
+                or spec.risk in {RiskClass.HIGH, RiskClass.CRITICAL}
+            )
+            preview = {
+                "capability_id": spec.capability_id,
+                "version": spec.version,
+                "fingerprint": spec.fingerprint,
+                "operation": spec.operation.value,
+                "risk": spec.risk.value,
+                "side_effect": spec.side_effect.value,
+                "input": canonical_input,
+            }
+            confirmation_code = (
+                canonical_json_fingerprint(preview)[:12].upper()
+                if requires_confirmation
+                else None
+            )
+            pending = PendingCapabilityInvocation(
+                capability_id=spec.capability_id,
+                version=spec.version,
+                fingerprint=spec.fingerprint,
+                operation=spec.operation.value,
+                risk=spec.risk.value,
+                side_effect=spec.side_effect.value,
+                payload=dict(canonical_input),
+                confirmation_code=confirmation_code,
+                expires_at_monotonic=(
+                    time.monotonic() + _CAPABILITY_CONFIRMATION_TTL_SECONDS
+                ),
+            )
+        except (json.JSONDecodeError, ValueError) as exc:
+            self._write_chat(f"[red]Capability input rejected: {escape(str(exc))}[/red]")
+            return
+
+        if confirmation_code is None:
+            self._start_capability_invocation(pending)
+            return
+
+        self._pending_capability = pending
+        self._clear_report()
+        self._write_report(Panel(
+            JSON.from_data({**preview, "confirmation_code": confirmation_code}),
+            title="Capability Invocation Preview",
+            border_style="yellow",
+        ))
+        self._write_status(
+            f"[yellow]Pending {escape(spec.capability_id)}@{escape(spec.version)}; "
+            f"confirmation expires in {int(_CAPABILITY_CONFIRMATION_TTL_SECONDS)}s[/yellow]"
+        )
+        self._write_chat(
+            "[yellow]High-risk or state-changing invocation is not sent. "
+            f"Confirm the bound preview with /capability confirm {confirmation_code}[/yellow]"
+        )
+
+    def _confirm_capability_invocation(self, confirmation_code: str) -> None:
+        pending = self._pending_capability
+        if pending is None:
+            self._write_chat("[dim]No pending capability invocation.[/dim]")
+            return
+        if time.monotonic() > pending.expires_at_monotonic:
+            self._pending_capability = None
+            self._write_chat("[red]Capability confirmation expired; preview again.[/red]")
+            return
+        expected = pending.confirmation_code or ""
+        if not hmac.compare_digest(confirmation_code.strip().upper(), expected):
+            self._write_chat("[red]Confirmation code does not match the preview.[/red]")
+            return
+        self._start_capability_invocation(pending)
+
+    def _new_tui_capability_client(self):
+        from data_agent.cli import _new_capability_client
+
+        token_file_value = os.environ.get("GDA_ACCESS_TOKEN_FILE", "").strip()
+        token_file = (
+            Path(token_file_value).expanduser()
+            if token_file_value
+            else None
+        )
+        return _new_capability_client(
+            os.environ.get("GDA_PLATFORM_URL"),
+            token_file,
+        )
+
+    def _start_capability_discovery(self, capability_id: str | None) -> None:
+        self._pipeline_running = True
+        self._run_capability_discovery(capability_id)
+
+    @work(exclusive=True, thread=True)
+    def _run_capability_discovery(self, capability_id: str | None) -> None:
+        from data_agent.capability_client import CapabilityClientError
+
+        try:
+            with self._new_tui_capability_client() as client:
+                if capability_id is None:
+                    document = client.list_capabilities(
+                        surface="tui",
+                        llm_mode="disabled",
+                    )
+                    title = "TUI Capability Manifest"
+                else:
+                    document = client.get_capability(capability_id)
+                    title = f"Capability {capability_id}"
+            self.call_from_thread(
+                self._render_capability_document,
+                title,
+                document,
+            )
+        except (CapabilityClientError, OSError, ValueError) as exc:
+            self.call_from_thread(
+                self._write_chat,
+                f"[red]Capability discovery failed: {escape(str(exc))}[/red]",
+            )
+        finally:
+            self._pipeline_running = False
+
+    def _render_capability_document(
+        self,
+        title: str,
+        document: dict[str, Any],
+    ) -> None:
+        self._clear_report()
+        self._write_report(Panel(
+            JSON.from_data(document),
+            title=title,
+            border_style="cyan",
+        ))
+
+    def _start_capability_invocation(
+        self,
+        pending: PendingCapabilityInvocation,
+    ) -> None:
+        self._pipeline_running = True
+        self._run_capability_invocation(pending)
+
+    def _invoke_capability_sync(
+        self,
+        pending: PendingCapabilityInvocation,
+    ):
+        with self._new_tui_capability_client() as client:
+            return client.invoke(
+                pending.capability_id,
+                pending.payload,
+                version=pending.version,
+            )
+
+    @work(exclusive=True, thread=True)
+    def _run_capability_invocation(
+        self,
+        pending: PendingCapabilityInvocation,
+    ) -> None:
+        from data_agent.capability_client import CapabilityClientError
+
+        try:
+            result = self._invoke_capability_sync(pending)
+            self.call_from_thread(
+                self._render_capability_invocation_result,
+                pending,
+                result.model_dump(mode="json"),
+            )
+        except (CapabilityClientError, OSError, ValueError) as exc:
+            self.call_from_thread(
+                self._write_chat,
+                f"[red]Capability invocation failed: {escape(str(exc))}[/red]",
+            )
+        finally:
+            self._pipeline_running = False
+
+    def _render_capability_invocation_result(
+        self,
+        pending: PendingCapabilityInvocation,
+        receipt: dict[str, Any],
+    ) -> None:
+        if self._pending_capability == pending:
+            self._pending_capability = None
+        self._clear_report()
+        self._write_report(Panel(
+            JSON.from_data(receipt),
+            title="Capability Invocation Receipt",
+            border_style="green",
+        ))
+        self._write_status(
+            f"[green]{escape(pending.capability_id)} accepted through CapabilityClient[/green]"
+        )
+        self._write_chat("[green]Capability invocation completed.[/green]")
 
     # ------------------------------------------------------------------
     # Panel helpers
@@ -269,8 +557,11 @@ class GISAgentApp(App):
         """Inner pipeline logic (runs in worker thread)."""
         # Lazy imports (same pattern as cli.py)
         from data_agent.cli import (
-            _load_env, _set_user_context, _select_agent,
-            _get_app_module, _get_session_service,
+            _get_app_module,
+            _get_session_service,
+            _load_env,
+            _select_agent,
+            _set_user_context,
         )
         from data_agent.pipeline_runner import run_pipeline_headless
         from data_agent.user_context import current_tool_categories
@@ -444,7 +735,9 @@ class GISAgentApp(App):
             _set_user_context(self.user, self.role)
 
             from data_agent.token_tracker import (
-                get_daily_usage, get_monthly_usage, get_pipeline_breakdown,
+                get_daily_usage,
+                get_monthly_usage,
+                get_pipeline_breakdown,
             )
 
             daily = get_daily_usage(self.user)

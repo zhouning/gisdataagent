@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "test": "vitest run",
     "build": "tsc -b && vite build",
     "preview": "vite preview"
   },
@@ -27,6 +28,8 @@
     "@tiptap/react": "^2.27.2",
     "@tiptap/starter-kit": "^2.27.2",
     "@xyflow/react": "^12.10.1",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
     "echarts": "^6.0.0",
     "echarts-for-react": "^3.0.6",
     "flatgeobuf": "^3.35.0",
@@ -54,6 +57,7 @@
     "@types/turndown": "^5.0.6",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "~5.7.2",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "vitest": "^3.2.4"
   }
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import PlatformCapabilitiesPanel from './PlatformCapabilitiesPanel';
 
 interface CapabilityItem {
   name: string;
@@ -52,6 +53,7 @@ const EMPTY_SKILL_FORM = {
 };
 
 export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
+  const [capabilityView, setCapabilityView] = useState<'platform' | 'skills'>('platform');
   const [items, setItems] = useState<CapabilityItem[]>([]);
   const [filter, setFilter] = useState<CapFilter>('all');
   const [search, setSearch] = useState('');
@@ -143,7 +145,9 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchCapabilities(); }, []);
+  useEffect(() => {
+    if (capabilityView === 'skills') void fetchCapabilities();
+  }, [capabilityView]);
 
   const handleDeleteSkill = async (id: number) => {
     if (!confirm('确定删除此自定义技能？')) return;
@@ -417,6 +421,26 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
 
   return (
     <div className="capabilities-view">
+      <div className="capability-view-switch" role="tablist" aria-label="能力视图">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={capabilityView === 'platform'}
+          className={capabilityView === 'platform' ? 'active' : ''}
+          onClick={() => setCapabilityView('platform')}
+        >平台能力</button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={capabilityView === 'skills'}
+          className={capabilityView === 'skills' ? 'active' : ''}
+          onClick={() => setCapabilityView('skills')}
+        >技能工具</button>
+      </div>
+      {capabilityView === 'platform' ? (
+        <PlatformCapabilitiesPanel userRole={userRole} />
+      ) : (
+        <>
       <div className="capabilities-summary">
         <span>{(counts as any).builtin} 内置技能</span>
         <span className="cap-sep">/</span>
@@ -744,6 +768,8 @@ export default function CapabilitiesTab({ userRole }: { userRole?: string }) {
             </div>
           )}
         </div>
+      )}
+        </>
       )}
     </div>
   );
