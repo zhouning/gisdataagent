@@ -54,9 +54,14 @@ try:
 except ImportError:
     _CACHE_SUPPORT = False
 
-# Configure Google GenAI client for Routing (outside ADK agents)
-# Uses google.genai (new unified SDK) — auto-reads GOOGLE_API_KEY / Vertex AI env vars
-_genai_router_client = genai_client.Client()
+# Configure Google GenAI client for Routing (outside ADK agents).  A physical
+# isolation installation may deliberately have no cloud credentials; the
+# deterministic/offline routes must still import and start in that case.
+try:
+    _genai_router_client = genai_client.Client()
+except Exception as _genai_client_err:
+    _genai_router_client = None
+    logger.warning("Google GenAI router is unavailable in offline mode: %s", _genai_client_err)
 
 # Import agent and report generator
 try:

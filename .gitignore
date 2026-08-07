@@ -7,6 +7,12 @@ __pycache__/
 # Virtual environment
 .venv/
 
+# Windows offline release media are large licensed binaries/models. Keep only
+# the staging instructions in Git; final ZIPs belong in the release artifact store.
+deploy/windows-standalone/vendor/**
+!deploy/windows-standalone/vendor/README.md
+deploy/windows-standalone/out/
+
 # Environment variables (sensitive) �?NEVER commit .env files
 **/.env
 .env

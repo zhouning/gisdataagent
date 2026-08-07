@@ -1,0 +1,28 @@
+{
+  "schema_version": "gda.windows-install-config.v1",
+  "profile": "core",
+  "install_root": "C:\\GDA",
+  "data_root": "D:\\GDA_DATA",
+  "inbox": "D:\\NX_INCOMING",
+  "log_root": "D:\\GDA_LOGS",
+  "min_free_gb": 20,
+  "ports": {
+    "chainlit": 8000,
+    "postgres": 5432,
+    "minio_api": 9000,
+    "minio_console": 9001,
+    "fuseki": 3030,
+    "ollama": 11434,
+    "prometheus": 9090,
+    "grafana": 3000
+  },
+  "service_accounts": {
+    "application": "LocalSystem",
+    "worker": "LocalSystem"
+  },
+  "notes": [
+    "把 data_root 放在有足够容量且有备份的本地数据盘；不要放在系统盘。",
+    "生产环境必须把 candidate 合同替换成已签署的 EA/标准合同。",
+    "安装器不会覆盖已有 install_root；升级应使用新的版本目录并保留旧目录用于回滚。"
+  ]
+}

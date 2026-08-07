@@ -10,10 +10,7 @@ Usage:
 """
 from __future__ import annotations
 
-import json
 import os
-import sys
-from pathlib import Path
 
 from .observability import get_logger
 
@@ -34,9 +31,19 @@ def init_lite_database(db_path: str = None) -> dict:
     try:
         from .duckdb_adapter import DuckDBAdapter
     except ImportError:
-        return {"status": "error", "message": "duckdb package not installed. Run: pip install duckdb"}
+        return {
+            "status": "error",
+            "message": "duckdb package not installed. Run: pip install duckdb",
+        }
 
-    db_path = db_path or os.path.join(os.path.dirname(__file__), "local.duckdb")
+    # A standalone Windows installation keeps mutable control data outside
+    # the versioned application directory so an upgrade can be rolled back
+    # without copying or locking the DuckDB file.  The repository fallback is
+    # retained for local development and existing callers.
+    db_path = db_path or os.environ.get("GDA_DUCKDB_PATH") or os.path.join(
+        os.path.dirname(__file__), "local.duckdb"
+    )
+    os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
 
     adapter = DuckDBAdapter(db_path)
 
@@ -140,7 +147,9 @@ def get_lite_status() -> dict:
     if not is_lite_mode():
         return {"lite_mode": False, "message": "运行在 PostgreSQL 模式"}
 
-    db_path = os.path.join(os.path.dirname(__file__), "local.duckdb")
+    db_path = os.environ.get("GDA_DUCKDB_PATH") or os.path.join(
+        os.path.dirname(__file__), "local.duckdb"
+    )
     exists = os.path.exists(db_path)
 
     info = {
@@ -195,7 +204,9 @@ def _cli_main():
     elif cmd == "run":
         os.environ.setdefault("DB_BACKEND", "duckdb")
         # Auto-init if DB doesn't exist
-        db_path = os.path.join(os.path.dirname(__file__), "local.duckdb")
+        db_path = os.environ.get("GDA_DUCKDB_PATH") or os.path.join(
+            os.path.dirname(__file__), "local.duckdb"
+        )
         if not os.path.exists(db_path):
             print("[gis-agent] First run — initializing database...")
             init_lite_database(db_path)

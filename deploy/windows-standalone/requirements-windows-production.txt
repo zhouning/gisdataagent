@@ -1,0 +1,27 @@
+# Production profile extends the deterministic core with PostGIS adapters,
+# knowledge-graph validation, Paper9 and local semantic model clients.
+-r requirements-windows-core.txt
+
+asyncpg==0.31.0
+psycopg2-binary==2.9.11
+networkx==3.6.1
+rdflib==7.1.4
+pyshacl==0.30.1
+owlrl==7.1.0
+rasterstats==0.20.0
+pysal==25.7
+esda==2.8.1
+libpysal==4.14.0
+mapclassify==2.10.0
+boto3==1.42.55
+aiofiles==24.1.0
+litellm>=1.75.5,<2.0
+
+# Paper9 (farmland-mpc) runtime. Model files and ONNX assets are separate
+# immutable artifacts in the bundle manifest.
+torch==2.7.1
+onnx==1.18.0
+onnxruntime==1.22.0
+gymnasium==1.2.3
+typer==0.16.1
+tqdm==4.67.1

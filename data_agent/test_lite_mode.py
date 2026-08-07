@@ -70,6 +70,21 @@ def test_init_lite_database_idempotent():
     adapter.close()
 
 
+def test_duckdb_path_can_live_outside_application_directory():
+    try:
+        import duckdb
+    except ImportError:
+        pytest.skip("duckdb not installed")
+
+    d = tempfile.mkdtemp()
+    db_path = os.path.join(d, "control", "site.duckdb")
+    with patch.dict("os.environ", {"GDA_DUCKDB_PATH": db_path}):
+        result = init_lite_database()
+        assert result["status"] == "ok"
+        assert result["db_path"] == db_path
+        assert os.path.exists(db_path)
+
+
 def test_get_lite_status_postgres():
     with patch.dict("os.environ", {"DB_BACKEND": "postgres"}):
         status = get_lite_status()
