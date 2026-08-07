@@ -23,6 +23,14 @@ def _write_report(catalog: dict, path: Path) -> None:
         bool(contract.get("ea_evidence"))
         for contract in (catalog.get("contracts") or {}).values()
     )
+    direct_field_evidence_count = sum(
+        coverage.get(key, 0)
+        for key in (
+            "workbook_field_count",
+            "inventory_field_count",
+            "standard_document_field_count",
+        )
+    )
     lines = [
         "# 宁夏自然资源数据接入基线编译报告",
         "",
@@ -36,8 +44,10 @@ def _write_report(catalog: dict, path: Path) -> None:
         f"{coverage.get('workbook_contract_dataset_count', 0)} 个图层",
         f"- 清单专题页字段：{coverage.get('inventory_field_count', 0)} 条 / "
         f"{coverage.get('inventory_field_contract_dataset_count', 0)} 个数据集",
+        f"- 自然资源标准补齐字段：{coverage.get('standard_document_field_count', 0)} 条 / "
+        f"{coverage.get('standard_document_contract_dataset_count', 0)} 个数据集",
         "- 字段证据总数（重合来源并列保留）："
-        f"{coverage.get('workbook_field_count', 0) + coverage.get('inventory_field_count', 0)} 条",
+        f"{direct_field_evidence_count} 条",
         f"- 尚未自动对齐清单项：{coverage.get('unmapped_inventory_count', 0)}",
         f"- 含 EA/标准对比证据的合同：{ea_contract_count}",
         f"- 仅代码前缀相似、需要消歧：{resolution_counts.get('ambiguous_candidate', 0)}",
@@ -87,6 +97,7 @@ def main() -> int:
     parser.add_argument("--field-catalog", type=Path)
     parser.add_argument("--ea-table-comparison", type=Path)
     parser.add_argument("--ea-logical-comparison", type=Path)
+    parser.add_argument("--standard-docx-catalog", type=Path)
     parser.add_argument("--shp-workbook", type=Path)
     parser.add_argument("--inventory-workbook", type=Path)
     parser.add_argument("--standard-version")
@@ -100,6 +111,7 @@ def main() -> int:
         field_catalog_path=args.field_catalog,
         ea_table_comparison_path=args.ea_table_comparison,
         ea_logical_comparison_path=args.ea_logical_comparison,
+        standard_docx_catalog_path=args.standard_docx_catalog,
         shp_workbook=args.shp_workbook,
         inventory_workbook=args.inventory_workbook,
         standard_version=args.standard_version,

@@ -245,3 +245,83 @@ def test_inventory_workbook_field_sheets_are_compiled(tmp_path):
     }.issubset(baseline["contracts"])
     assert baseline["contracts"]["FWJZ"]["fields"][0]["name"] == "建筑编码"
     assert baseline["contracts"]["SQCPG"]["fields"][2]["name"] == "建筑密度"
+
+
+def test_standard_document_fills_exact_inventory_contracts(tmp_path):
+    roles = _write_json(tmp_path / "roles.json", {"roles": {}})
+    standard = _write_json(
+        tmp_path / "02-standard.yaml",
+        {
+            "module": "02_统一调查监测",
+            "source_file": "统一调查监测.docx",
+            "field_tables": [
+                {
+                    "module": "02_统一调查监测",
+                    "table_name_cn": "行政区界线属性结构描述表",
+                    "table_code": "XZQJX",
+                    "fields": [
+                        {
+                            "seq": "1",
+                            "name_cn": "标识码",
+                            "code": "BSM",
+                            "dtype": "Char",
+                            "length": "18",
+                            "constraint": "M",
+                        },
+                        {
+                            "seq": "2",
+                            "name_cn": "界线类型",
+                            "code": "JXLX",
+                            "dtype": "Char",
+                            "length": "6",
+                            "constraint": "M",
+                        },
+                    ],
+                },
+                {
+                    "module": "02_统一调查监测",
+                    "table_name_cn": "应急避难场所面层属性结构描述表",
+                    "table_code": "YJBNA",
+                    "fields": [
+                        {
+                            "seq": "1",
+                            "name_cn": "名称",
+                            "code": "NAME",
+                            "dtype": "Text",
+                            "length": "255",
+                            "constraint": "O",
+                        },
+                        {
+                            "seq": "2",
+                            "name_cn": "要素唯一标识码",
+                            "code": "FEATID",
+                            "dtype": "Text",
+                            "length": "16",
+                            "constraint": "M",
+                        },
+                    ],
+                },
+            ],
+        },
+    )
+    workbook_path = tmp_path / "inventory.xlsx"
+    workbook = Workbook()
+    inventory = workbook.active
+    inventory.title = "客户提供数据清单梳理"
+    inventory.append(["序号", "数据大类", "数据小类", "数据名称"])
+    inventory.append([1, "矢量", "行政区", "2024省市县乡村变更调查行政区划界线数据"])
+    inventory.append([2, "矢量", "公共服务", "应急避难场所数据"])
+    workbook.save(workbook_path)
+
+    catalog = compile_standard_contract_catalog(
+        role_contracts_path=roles,
+        standard_docx_catalog_path=standard,
+        inventory_workbook=workbook_path,
+    )
+
+    assert catalog["contracts"]["XZQJX"]["primary_key"] == "BSM"
+    assert catalog["contracts"]["XZQJX"]["fields"][0]["length"] == 18
+    assert catalog["contracts"]["YJBNA"]["geometry_type"] == "Polygon"
+    assert catalog["contracts"]["YJBNA"]["fields"][1]["primary_key"] is True
+    assert catalog["inventory_resolution"]["counts"]["baseline_contract"] == 2
+    assert catalog["coverage"]["unmapped_inventory_count"] == 0

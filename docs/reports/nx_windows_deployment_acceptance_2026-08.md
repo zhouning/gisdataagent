@@ -24,6 +24,7 @@ uv run python scripts\compile_nx_standard_contract.py `
   --field-catalog .tmp\twm_standard_generation_check\tables\standard_field_catalog.csv `
   --ea-table-comparison D:\GDA_CONFIG\ea-standard-table-comparison.csv `
   --ea-logical-comparison D:\GDA_CONFIG\ea-standard-logical-entity-comparison.csv `
+  --standard-docx-catalog data_agent\standards\compiled_docx\02_统一调查监测.yaml `
   --shp-workbook D:\GDA_CONFIG\SHP矢量数据表及字段梳理_追加更新版.xlsx `
   --inventory-workbook D:\GDA_CONFIG\提供数据内容详细梳理分析20260716.xlsx `
   --standard-version NX-2026-08-baseline `

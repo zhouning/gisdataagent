@@ -1,7 +1,7 @@
 {
   "schema_version": "gda.standard-contract-catalog.v2",
   "contract_id": "nx-natural-resource-standard-baseline",
-  "generated_at": "2026-08-07T05:20:01.351041Z",
+  "generated_at": "2026-08-07T05:28:15.022008Z",
   "standard_version": "NX-2026-08-baseline",
   "authority": "nx_workbook_baseline",
   "review_status": "runtime_validation",
@@ -38,6 +38,11 @@
       {
         "name": "ea-standard-logical-entity-comparison.csv",
         "sha256": "2ee2255b1482908ed1ba0c1bc31fd47e4b8270a99cc19428d856144d782fe3c2",
+        "portable_locator": "deployment_config_source"
+      },
+      {
+        "name": "02_统一调查监测.yaml",
+        "sha256": "365cff7520b7f640a2eefeef93fdefbb7079b6fb23340f4f9de6ce639568c9c3",
         "portable_locator": "deployment_config_source"
       },
       {
@@ -9226,6 +9231,428 @@
         "missing_length_count": 23,
         "missing_precision_count": 23,
         "missing_domain_count": 22
+      }
+    },
+    "XZQJX": {
+      "code": "XZQJX",
+      "name": "行政区界线",
+      "module": "02_统一调查监测",
+      "geometry_type": "LineString",
+      "primary_key": "BSM",
+      "required_fields": [
+        "BSM",
+        "YSDM",
+        "JXLX",
+        "JXXZ"
+      ],
+      "recommended_fields": [
+        "JXSM",
+        "BZ"
+      ],
+      "fields": [
+        {
+          "ordinal": 1,
+          "code": "BSM",
+          "name": "标识码",
+          "aliases": [
+            "BSM",
+            "标识码"
+          ],
+          "data_type": "string",
+          "type_source": "natural_resource_standard_document",
+          "length": 18,
+          "precision": null,
+          "required": true,
+          "nullable": false,
+          "primary_key": true,
+          "unique": true,
+          "unit": null,
+          "value_domain": null,
+          "quality_rules": {
+            "constraint": "M",
+            "note": null
+          },
+          "authority": "nx_project_baseline"
+        },
+        {
+          "ordinal": 2,
+          "code": "YSDM",
+          "name": "要素代码",
+          "aliases": [
+            "YSDM",
+            "要素代码"
+          ],
+          "data_type": "string",
+          "type_source": "natural_resource_standard_document",
+          "length": 10,
+          "precision": null,
+          "required": true,
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "unit": null,
+          "value_domain": null,
+          "quality_rules": {
+            "constraint": "M",
+            "note": null
+          },
+          "authority": "nx_project_baseline"
+        },
+        {
+          "ordinal": 3,
+          "code": "JXLX",
+          "name": "界线类型",
+          "aliases": [
+            "JXLX",
+            "界线类型"
+          ],
+          "data_type": "string",
+          "type_source": "natural_resource_standard_document",
+          "length": 6,
+          "precision": null,
+          "required": true,
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "unit": null,
+          "value_domain": {
+            "name": "见表5-31",
+            "values": []
+          },
+          "quality_rules": {
+            "constraint": "M",
+            "note": null
+          },
+          "authority": "nx_project_baseline"
+        },
+        {
+          "ordinal": 4,
+          "code": "JXXZ",
+          "name": "界线性质",
+          "aliases": [
+            "JXXZ",
+            "界线性质"
+          ],
+          "data_type": "string",
+          "type_source": "natural_resource_standard_document",
+          "length": 6,
+          "precision": null,
+          "required": true,
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "unit": null,
+          "value_domain": {
+            "name": "见表5-32",
+            "values": []
+          },
+          "quality_rules": {
+            "constraint": "M",
+            "note": null
+          },
+          "authority": "nx_project_baseline"
+        },
+        {
+          "ordinal": 5,
+          "code": "JXSM",
+          "name": "界线说明",
+          "aliases": [
+            "JXSM",
+            "界线说明"
+          ],
+          "data_type": "string",
+          "type_source": "natural_resource_standard_document",
+          "length": 100,
+          "precision": null,
+          "required": false,
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "unit": null,
+          "value_domain": null,
+          "quality_rules": {
+            "constraint": "O",
+            "note": null
+          },
+          "authority": "nx_project_baseline"
+        },
+        {
+          "ordinal": 6,
+          "code": "BZ",
+          "name": "备注",
+          "aliases": [
+            "BZ",
+            "备注"
+          ],
+          "data_type": "string",
+          "type_source": "natural_resource_standard_document",
+          "length": null,
+          "precision": null,
+          "required": false,
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "unit": null,
+          "value_domain": null,
+          "quality_rules": {
+            "constraint": "O",
+            "note": null
+          },
+          "authority": "nx_project_baseline"
+        }
+      ],
+      "standard_document_evidence": [
+        {
+          "module": "02_统一调查监测",
+          "table_name_cn": "行政区界线属性结构描述表",
+          "caption_raw": "表5-5行政区界线属性结构描述表(属性表名：XZQJX)",
+          "section_path": [
+            "国土调查数据库结构定义",
+            "空间要素属性结构",
+            "行政区界线属性结构"
+          ],
+          "field_count": 6
+        },
+        {
+          "module": "02_统一调查监测",
+          "table_name_cn": "行政区界线属性结构描述表",
+          "caption_raw": "表7-3行政区界线属性结构描述表(属性表名：XZQJX)",
+          "section_path": [
+            "耕地资源分区分类评价数据库结构定义",
+            "空间要素属性表结构",
+            "行政区层属性表结构"
+          ],
+          "field_count": 6
+        }
+      ],
+      "sources": {
+        "standard_documents": [
+          "自然资源“一张图”数据库体系结构（2）统一调查监测1126.docx"
+        ],
+        "compiled_standard_catalog": "02_统一调查监测.yaml"
+      },
+      "authority": "nx_project_baseline",
+      "review_status": "runtime_validation",
+      "publication_gate": "per_dataset_runtime_validation",
+      "requires_source_schema_verification": true,
+      "runtime_baseline_ready": true,
+      "auto_publish": false,
+      "field_completeness": {
+        "field_count": 6,
+        "required_count": 4,
+        "recommended_count": 2,
+        "missing_type_count": 0,
+        "missing_length_count": 1,
+        "missing_precision_count": 6,
+        "missing_domain_count": 4
+      }
+    },
+    "YJBNA": {
+      "code": "YJBNA",
+      "name": "应急避难场所面层",
+      "module": "02_统一调查监测",
+      "geometry_type": "Polygon",
+      "primary_key": "FEATID",
+      "required_fields": [
+        "FEATID",
+        "PRCTAG",
+        "TYPE"
+      ],
+      "recommended_fields": [
+        "NAME",
+        "GXSJ",
+        "ChangeType"
+      ],
+      "fields": [
+        {
+          "ordinal": 1,
+          "code": "NAME",
+          "name": "名称",
+          "aliases": [
+            "NAME",
+            "名称"
+          ],
+          "data_type": "string",
+          "type_source": "natural_resource_standard_document",
+          "length": 255,
+          "precision": null,
+          "required": false,
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "unit": null,
+          "value_domain": null,
+          "quality_rules": {
+            "constraint": "O",
+            "note": null
+          },
+          "authority": "nx_project_baseline"
+        },
+        {
+          "ordinal": 2,
+          "code": "FEATID",
+          "name": "要素唯一标识码",
+          "aliases": [
+            "FEATID",
+            "要素唯一标识码"
+          ],
+          "data_type": "string",
+          "type_source": "natural_resource_standard_document",
+          "length": 16,
+          "precision": null,
+          "required": true,
+          "nullable": false,
+          "primary_key": true,
+          "unique": true,
+          "unit": null,
+          "value_domain": null,
+          "quality_rules": {
+            "constraint": "M",
+            "note": "见表11-3注1"
+          },
+          "authority": "nx_project_baseline"
+        },
+        {
+          "ordinal": 3,
+          "code": "PRCTAG",
+          "name": "界线范围或位置准确程度",
+          "aliases": [
+            "PRCTAG",
+            "界线范围或位置准确程度"
+          ],
+          "data_type": "string",
+          "type_source": "natural_resource_standard_document",
+          "length": 4,
+          "precision": null,
+          "required": true,
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "unit": null,
+          "value_domain": null,
+          "quality_rules": {
+            "constraint": "M",
+            "note": "准确/概略"
+          },
+          "authority": "nx_project_baseline"
+        },
+        {
+          "ordinal": 4,
+          "code": "TYPE",
+          "name": "类型",
+          "aliases": [
+            "TYPE",
+            "类型"
+          ],
+          "data_type": "string",
+          "type_source": "natural_resource_standard_document",
+          "length": 32,
+          "precision": null,
+          "required": true,
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "unit": null,
+          "value_domain": null,
+          "quality_rules": {
+            "constraint": "M",
+            "note": "户外/室内"
+          },
+          "authority": "nx_project_baseline"
+        },
+        {
+          "ordinal": 5,
+          "code": "GXSJ",
+          "name": "更新时间",
+          "aliases": [
+            "GXSJ",
+            "更新时间"
+          ],
+          "data_type": "string",
+          "type_source": "natural_resource_standard_document",
+          "length": 10,
+          "precision": null,
+          "required": false,
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "unit": null,
+          "value_domain": null,
+          "quality_rules": {
+            "constraint": "O",
+            "note": "见表11-4注1"
+          },
+          "authority": "nx_project_baseline"
+        },
+        {
+          "ordinal": 6,
+          "code": "ChangeType",
+          "name": "变化类型",
+          "aliases": [
+            "ChangeType",
+            "变化类型"
+          ],
+          "data_type": "string",
+          "type_source": "natural_resource_standard_document",
+          "length": 1,
+          "precision": null,
+          "required": false,
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "unit": null,
+          "value_domain": null,
+          "quality_rules": {
+            "constraint": "C",
+            "note": "本年度新增要素必填；该要素原先存在、仅扩大范围的，填写缺省值缺省值；见表11-4注2"
+          },
+          "authority": "nx_project_baseline"
+        }
+      ],
+      "standard_document_evidence": [
+        {
+          "module": "02_统一调查监测",
+          "table_name_cn": "应急避难场所面层属性结构描述表",
+          "caption_raw": "表12-21应急避难场所面层属性结构描述表(属性表名：YJBNA)",
+          "section_path": [
+            "城市国土空间监测（2025）数据库结构定义",
+            "空间要素属性结构",
+            "补充数据集属性结构"
+          ],
+          "field_count": 6
+        },
+        {
+          "module": "02_统一调查监测",
+          "table_name_cn": "应急避难场所面层属性结构描述表",
+          "caption_raw": "表13-20应急避难场所面层属性结构描述表(属性表名：YJBNA)",
+          "section_path": [
+            "城市国土空间监测（2024）数据库结构定义",
+            "空间要素属性结构",
+            "补充数据集属性结构"
+          ],
+          "field_count": 5
+        }
+      ],
+      "sources": {
+        "standard_documents": [
+          "自然资源“一张图”数据库体系结构（2）统一调查监测1126.docx"
+        ],
+        "compiled_standard_catalog": "02_统一调查监测.yaml"
+      },
+      "authority": "nx_project_baseline",
+      "review_status": "runtime_validation",
+      "publication_gate": "per_dataset_runtime_validation",
+      "requires_source_schema_verification": true,
+      "runtime_baseline_ready": true,
+      "auto_publish": false,
+      "field_completeness": {
+        "field_count": 6,
+        "required_count": 3,
+        "recommended_count": 3,
+        "missing_type_count": 0,
+        "missing_length_count": 0,
+        "missing_precision_count": 6,
+        "missing_domain_count": 6
       }
     },
     "XXA": {
@@ -36801,11 +37228,15 @@
         "format": "",
         "note": "",
         "source": "customer data inventory workbook",
-        "status": "unresolved",
-        "candidate_codes": [],
-        "contract_codes": [],
+        "status": "baseline_contract",
+        "candidate_codes": [
+          "XZQJX"
+        ],
+        "contract_codes": [
+          "XZQJX"
+        ],
         "ea_evidence": [],
-        "required_action": "根据真实文件画像和标准正文人工确认标准对象"
+        "required_action": "接入真实文件时核验字段类型、长度、坐标系和质量"
       },
       {
         "category": "",
@@ -38583,11 +39014,15 @@
         "format": "",
         "note": "",
         "source": "customer data inventory workbook",
-        "status": "unresolved",
-        "candidate_codes": [],
-        "contract_codes": [],
+        "status": "baseline_contract",
+        "candidate_codes": [
+          "YJBNA"
+        ],
+        "contract_codes": [
+          "YJBNA"
+        ],
         "ea_evidence": [],
-        "required_action": "根据真实文件画像和标准正文人工确认标准对象"
+        "required_action": "接入真实文件时核验字段类型、长度、坐标系和质量"
       },
       {
         "category": "",
@@ -38673,50 +39108,25 @@
       }
     ],
     "counts": {
-      "baseline_contract": 16,
+      "baseline_contract": 18,
       "ea_aligned_baseline": 0,
       "ambiguous_candidate": 0,
-      "unresolved": 5
+      "unresolved": 3
     }
   },
   "coverage": {
     "inventory_items": 21,
-    "contract_dataset_count": 47,
+    "contract_dataset_count": 49,
     "workbook_contract_dataset_count": 30,
     "workbook_field_count": 765,
     "workbook_overlap_count": 0,
     "inventory_field_contract_dataset_count": 8,
     "inventory_field_count": 116,
     "inventory_field_overlap_count": 3,
+    "standard_document_contract_dataset_count": 2,
+    "standard_document_field_count": 12,
+    "standard_document_overlap_count": 0,
     "unmapped_inventory": [
-      {
-        "category": "",
-        "subcategory": "",
-        "name": "2024省市县乡村变更调查行政区划界线数据",
-        "use_case": "作为基础底图",
-        "format": "",
-        "note": "",
-        "source": "customer data inventory workbook",
-        "status": "unresolved",
-        "candidate_codes": [],
-        "contract_codes": [],
-        "ea_evidence": [],
-        "required_action": "根据真实文件画像和标准正文人工确认标准对象"
-      },
-      {
-        "category": "",
-        "subcategory": "社会经济类数据",
-        "name": "应急避难场所数据",
-        "use_case": "都是一些POI点数据，可以丰富场景",
-        "format": "",
-        "note": "",
-        "source": "customer data inventory workbook",
-        "status": "unresolved",
-        "candidate_codes": [],
-        "contract_codes": [],
-        "ea_evidence": [],
-        "required_action": "根据真实文件画像和标准正文人工确认标准对象"
-      },
       {
         "category": "",
         "subcategory": "",
@@ -38760,6 +39170,6 @@
         "required_action": "根据真实文件画像和标准正文人工确认标准对象"
       }
     ],
-    "unmapped_inventory_count": 5
+    "unmapped_inventory_count": 3
   }
 }

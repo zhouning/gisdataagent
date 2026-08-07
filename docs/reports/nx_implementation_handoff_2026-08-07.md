@@ -30,7 +30,7 @@
 | SHP | `.shp/.dbf/.shx/.prj` 等 sidecar 作为一个 bundle 计算 hash 并保存 | SHP 资产 manifest |
 | TIFF/DEM | 读取尺寸、波段、类型、CRS、范围、nodata；可转 COG 和 STAC | `execute_standardization_plan()` |
 | 质量与日志 | 每个 run 生成 `run.json`、`events.jsonl`、`quality_report.json`、lineage | 诊断包下载接口 |
-| 数据模型基线 | 解析两份 Excel，形成 47 个运行时合同：30 个 SHP 图层/765 条字段，加上第一份 Excel 8 个字段页/116 条字段和 21 项清单证据 | `nx-standard-contract-catalog.v2.candidate.json`（历史文件名） |
+| 数据模型基线 | 解析两份 Excel 并对齐自然资源标准，形成 49 个运行时合同：30 个 SHP 图层/765 条字段，第一份 Excel 8 个字段页/116 条字段，标准补齐 XZQJX/YJBNA 12 条字段，以及 21 项清单证据 | `nx-standard-contract-catalog.v2.candidate.json`（历史文件名） |
 | 发布门禁 | 字段匹配、CRS、几何和值域质量按数据集判定；通过即可 `accepted`，失败项单独复核 | `_map_layer()` 和 ontology binding gate |
 | 标准化 | GeoParquet/GPKG/PostGIS、TIFF→COG/STAC、三维索引；工具缺失时 fail-closed | materialization manifest |
 | 本体边界 | 只生成对治理产物的引用绑定，不复制原始业务记录 | `create_ontology_binding()` |
@@ -69,6 +69,7 @@ python scripts\\windows_ingest_worker.py --inbox D:\\NX_INCOMING --lake D:\\GDA_
 
 - `提供数据内容详细梳理分析20260716.xlsx` 的主表提供 21 项范围、格式和业务用途；其中 8 个专题页同时提供 DLTB、ZRZ、三类适宜性评价、ZXCQ、FWJZ、SQCPG 的 116 条字段记录。
 - `SHP矢量数据表及字段梳理_追加更新版.xlsx` 提供 30 个图层、765 条字段记录。两份工作簿的字段证据会并列保存，重合代码不互相覆盖；`czzz`、`CQPG` 等被工作簿明确标注不完整的少数图层单独复核。
+- 行政区划界线和应急避难场所已从自然资源标准补齐为 `XZQJX`、`YJBNA` 合同。`重大危险源数据`、`社会经济数据`、`医疗养老数据` 是清单中的集合名称，两个工作簿未给出唯一物理表代码；系统完整保留这 3 项，但不伪造字段，待真实文件画像后再绑定具体标准表。
 - EA 仓库和自然资源数据标准用于补充字段类型、长度、代码域、SRID、主键/唯一性、业务定义和质量规则；真实文件到达后核验物理实现。`authority=ea_standard` 可用于行政发布留痕，但不是系统启动或全部问数的前置条件。
 
 ## 当前明确的未完成项
@@ -80,7 +81,7 @@ python scripts\\windows_ingest_worker.py --inbox D:\\NX_INCOMING --lake D:\\GDA_
 
 ## 本轮新增的交付物
 
-- [数据模型运行基线](/Users/zhouning/gisdataagent/docs/architecture/nx-standard-contract-catalog.v2.candidate.json)：把 21 项清单、两份工作簿的 47 个合同、881 条字段证据、EA 对比证据、字段注册表和值域放在一个可校验版本中；文件名保留历史 `candidate` 后缀，但运行时不再把它作为全局阻断条件。
+- [数据模型运行基线](/Users/zhouning/gisdataagent/docs/architecture/nx-standard-contract-catalog.v2.candidate.json)：把 21 项清单、49 个运行时合同、893 条直接字段证据、EA 对比证据、字段注册表和值域放在一个可校验版本中；文件名保留历史 `candidate` 后缀，但运行时不再把它作为全局阻断条件。
 - [合同编译报告](/Users/zhouning/gisdataagent/docs/reports/nx-standard-contract-compile-2026-08.md)：逐字段列出类型、长度、精度和值域缺口，明确不允许把候选字段当作生产标准。
 - [Windows 部署验收手册](/Users/zhouning/gisdataagent/docs/reports/nx_windows_deployment_acceptance_2026-08.md)：包含预检、无真实数据演练、真实文件到达流程、Paper9 门禁和现场验收判据。
 - `scripts/preflight_windows_ingest.py`：生产模式检查宁夏字段基线、工具、目录权限和本体包；基线可用即可启动，数据质量在接入时逐项判定。

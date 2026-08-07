@@ -31,6 +31,24 @@ RUNTIME_BASELINE_AUTHORITIES = frozenset(
     }
 )
 
+# These are exact business-name mappings backed by the compiled natural-resource
+# standard, not fuzzy guesses. Broad items such as "社会经济数据" intentionally
+# remain unresolved until their concrete table or file schema is known.
+INVENTORY_STANDARD_CONTRACT_HINTS = {
+    "行政区划界线": ("XZQJX",),
+    "应急避难场所": ("YJBNA",),
+}
+
+STANDARD_GEOMETRY_TYPES = {
+    "XZQJX": "LineString",
+    "YJBNA": "Polygon",
+}
+
+STANDARD_PRIMARY_KEYS = {
+    "XZQJX": "BSM",
+    "YJBNA": "FEATID",
+}
+
 
 def _now() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
@@ -381,6 +399,128 @@ def load_inventory_field_baseline(path: str | Path) -> dict[str, Any]:
     }
 
 
+def _standard_data_type(value: Any) -> str | None:
+    normalized = _text(value).lower()
+    if normalized in {"char", "varchar", "text", "string"}:
+        return "string"
+    if normalized in {"int", "integer", "long", "short"}:
+        return "integer"
+    if normalized in {"float", "double", "number", "numeric", "decimal"}:
+        return "number"
+    if normalized in {"date", "datetime", "timestamp"}:
+        return normalized
+    if normalized in {"bool", "boolean"}:
+        return "boolean"
+    return normalized or None
+
+
+def load_standard_document_contracts(
+    path: str | Path, codes: set[str]
+) -> dict[str, dict[str, Any]]:
+    """Load selected complete field tables from the compiled standard document."""
+    import yaml
+
+    source = Path(path).expanduser().resolve()
+    payload = yaml.safe_load(source.read_text(encoding="utf-8")) or {}
+    selected: dict[str, dict[str, Any]] = {}
+    evidence: dict[str, list[dict[str, Any]]] = {}
+    for table in payload.get("field_tables") or []:
+        code = _text(table.get("table_code")).upper()
+        source_fields = [
+            field
+            for field in table.get("fields") or []
+            if _text(field.get("code"))
+        ]
+        if code not in codes or not source_fields:
+            continue
+        evidence.setdefault(code, []).append(
+            {
+                "module": table.get("module"),
+                "table_name_cn": table.get("table_name_cn"),
+                "caption_raw": table.get("caption_raw"),
+                "section_path": table.get("section_path") or [],
+                "field_count": len(source_fields),
+            }
+        )
+        current = selected.get(code)
+        if current and len(current.get("fields") or []) >= len(source_fields):
+            continue
+        fields = []
+        for ordinal, field in enumerate(source_fields, 1):
+            field_code = _text(field.get("code"))
+            field_name = _text(field.get("name_cn"))
+            constraint = _text(field.get("constraint")).upper()
+            length_text = _text(field.get("length"))
+            precision_text = _text(field.get("decimal"))
+            fields.append(
+                {
+                    "ordinal": int(field.get("seq") or ordinal),
+                    "code": field_code,
+                    "name": field_name or field_code,
+                    "aliases": list(dict.fromkeys([field_code, field_name]))
+                    if field_name
+                    else [field_code],
+                    "data_type": _standard_data_type(field.get("dtype")),
+                    "type_source": "natural_resource_standard_document",
+                    "length": int(length_text) if length_text.isdigit() else None,
+                    "precision": int(precision_text) if precision_text.isdigit() else None,
+                    "required": constraint == "M",
+                    "nullable": constraint != "M",
+                    "primary_key": field_code == STANDARD_PRIMARY_KEYS.get(code),
+                    "unique": field_code == STANDARD_PRIMARY_KEYS.get(code),
+                    "unit": None,
+                    "value_domain": {
+                        "name": _text(field.get("domain")),
+                        "values": [],
+                    }
+                    if _text(field.get("domain"))
+                    else None,
+                    "quality_rules": {
+                        "constraint": constraint or None,
+                        "note": _text(field.get("note")) or None,
+                    },
+                    "authority": "nx_project_baseline",
+                }
+            )
+        required = [field["code"] for field in fields if field["required"]]
+        recommended = [field["code"] for field in fields if not field["required"]]
+        selected[code] = {
+            "code": code,
+            "name": _text(table.get("table_name_cn")).replace("属性结构描述表", ""),
+            "module": _text(table.get("module")),
+            "geometry_type": STANDARD_GEOMETRY_TYPES.get(code),
+            "primary_key": STANDARD_PRIMARY_KEYS.get(code),
+            "required_fields": required,
+            "recommended_fields": recommended,
+            "fields": fields,
+            "standard_document_evidence": evidence[code],
+            "sources": {
+                "standard_documents": [payload.get("source_file") or source.name],
+                "compiled_standard_catalog": source.name,
+            },
+            "authority": "nx_project_baseline",
+            "review_status": "runtime_validation",
+            "publication_gate": "per_dataset_runtime_validation",
+            "requires_source_schema_verification": True,
+            "runtime_baseline_ready": True,
+            "auto_publish": False,
+            "field_completeness": {
+                "field_count": len(fields),
+                "required_count": len(required),
+                "recommended_count": len(recommended),
+                "missing_type_count": sum(not field["data_type"] for field in fields),
+                "missing_length_count": sum(field["length"] is None for field in fields),
+                "missing_precision_count": sum(
+                    field["precision"] is None for field in fields
+                ),
+                "missing_domain_count": sum(
+                    field["value_domain"] is None for field in fields
+                ),
+            },
+        }
+    return selected
+
+
 def build_catalog(
     shp_workbook: str | Path,
     inventory_workbook: str | Path | None = None,
@@ -549,6 +689,7 @@ def compile_standard_contract_catalog(
     field_catalog_path: str | Path | None = None,
     ea_table_comparison_path: str | Path | None = None,
     ea_logical_comparison_path: str | Path | None = None,
+    standard_docx_catalog_path: str | Path | None = None,
     shp_workbook: str | Path | None = None,
     inventory_workbook: str | Path | None = None,
     standard_version: str | None = None,
@@ -581,6 +722,7 @@ def compile_standard_contract_catalog(
         field_catalog_path,
         ea_table_comparison_path,
         ea_logical_comparison_path,
+        standard_docx_catalog_path,
         shp_workbook,
         inventory_workbook,
     ]
@@ -714,6 +856,29 @@ def compile_standard_contract_catalog(
                     "missing_domain_count": sum(item["value_domain"] is None for item in fields),
                 },
             }
+    standard_document_contracts = (
+        load_standard_document_contracts(
+            standard_docx_catalog_path,
+            {
+                code
+                for codes in INVENTORY_STANDARD_CONTRACT_HINTS.values()
+                for code in codes
+            },
+        )
+        if standard_docx_catalog_path
+        else {}
+    )
+    standard_document_overlap_count = 0
+    for code, source_contract in standard_document_contracts.items():
+        if code not in contracts:
+            contracts[code] = source_contract
+            continue
+        standard_document_overlap_count += 1
+        contracts[code]["standard_document_field_baseline"] = source_contract["fields"]
+        contracts[code]["standard_document_evidence"] = source_contract[
+            "standard_document_evidence"
+        ]
+        contracts[code]["runtime_baseline_ready"] = True
     workbook_coverage = merge_workbook_baseline(
         contracts, shp_workbook, inventory_workbook
     )
@@ -730,6 +895,13 @@ def compile_standard_contract_catalog(
                 if token in contract_code_lookup
             )
         )
+        hinted_contract_codes = [
+            code
+            for marker, hinted_codes in INVENTORY_STANDARD_CONTRACT_HINTS.items()
+            if marker in item_name
+            for code in hinted_codes
+            if code in contracts
+        ]
         item_core = normalize_identifier(item_name)
         for generic in ("数据", "全区", "银川市", "自治区", "记录"):
             item_core = item_core.replace(generic, "")
@@ -744,7 +916,9 @@ def compile_standard_contract_catalog(
                 ):
                     name_contract_codes.append(contract_code)
         direct_contract_codes = list(
-            dict.fromkeys(direct_contract_codes + name_contract_codes)
+            dict.fromkeys(
+                direct_contract_codes + hinted_contract_codes + name_contract_codes
+            )
         )
         evidence = [
             row
@@ -873,6 +1047,14 @@ def compile_standard_contract_catalog(
             "inventory_field_overlap_count": workbook_coverage[
                 "inventory_overlap_count"
             ],
+            "standard_document_contract_dataset_count": len(
+                standard_document_contracts
+            ),
+            "standard_document_field_count": sum(
+                len(contract.get("fields") or [])
+                for contract in standard_document_contracts.values()
+            ),
+            "standard_document_overlap_count": standard_document_overlap_count,
             "unmapped_inventory": [
                 item for item in inventory_resolution if item["status"] == "unresolved"
             ],
