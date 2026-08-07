@@ -34,12 +34,9 @@ HASH_BLOCK_SIZE = 8 * 1024 * 1024
 _SAFE_NAME = re.compile(r'[\x00-\x1f<>:"/\\|?*]+')
 _SHP_SIDECARS = (".dbf", ".shx", ".prj", ".cpg", ".sbn", ".sbx", ".qpj", ".qmd")
 
-# The workbook is a discovery list, not a complete schema.  These aliases are
-# intentionally small, auditable defaults; a project can replace/extend them
-# with GDA_STANDARD_CONTRACTS (JSON) or GDA_STANDARD_CONTRACT_XLSX after the
-# EA and standard documents are reconciled.  Workbook/screenshot contracts are
-# candidate evidence only; a mapping is never silently promoted when required
-# fields are missing.
+# These are fallback aliases for datasets that have not yet been associated
+# with the Ningxia workbook/EA baseline. Once a baseline is configured, its
+# field list drives matching and the real source schema is checked per layer.
 DEFAULT_FIELD_ALIASES: dict[str, dict[str, set[str]]] = {
     "DLTB": {
         "标识码": {"标识码", "bsm", "objectid", "fid"},
@@ -915,8 +912,8 @@ class OfflineIngestStore:
         normalized = normalize_identifier(name)
         contract = None
         contract_source = None
-        # The reviewed/versioned JSON contract is the runtime source of truth.
-        # The workbook is discovery evidence and only a fallback for bootstrap.
+        # The versioned Ningxia baseline is the runtime source of truth for
+        # matching. The physical source schema remains the per-layer check.
         configured = os.environ.get("GDA_STANDARD_CONTRACTS", "").strip()
         if not configured:
             configured = os.environ.get("GDA_STANDARD_CONTRACT_XLSX", "").strip()
@@ -980,19 +977,37 @@ class OfflineIngestStore:
         else:
             required = set(aliases.get(canonical or "", {}))
             field_aliases = aliases.get(canonical or "", {})
+        def source_names(value: dict[str, Any]) -> set[str]:
+            return {
+                str(value.get(key)).lower()
+                for key in ("name", "alias", "alternativeName", "field_name")
+                if value.get(key)
+            }
+
+        def source_name(value: dict[str, Any]) -> str | None:
+            for key in ("name", "field_name", "alias", "alternativeName"):
+                if value.get(key):
+                    return str(value[key])
+            return None
+
         field_mappings = []
         matched = []
         for canonical_field in sorted(required):
             accepted_names = {str(value).lower() for value in field_aliases[canonical_field]}
-            source_field = next(
+            matched_value = next(
                 (
-                    value.get("name")
+                    value
                     for value in fields
-                    if str(value.get("name", "")).lower() in accepted_names
-                    or normalize_identifier(value.get("name")) in accepted_names
+                    if source_names(value) & accepted_names
+                    or any(
+                        normalize_identifier(value.get(key)) in accepted_names
+                        for key in ("name", "alias", "alternativeName", "field_name")
+                        if value.get(key)
+                    )
                 ),
                 None,
             )
+            source_field = source_name(matched_value) if matched_value else None
             if source_field:
                 matched.append(canonical_field)
                 field_mappings.append(
@@ -1003,7 +1018,7 @@ class OfflineIngestStore:
                             (
                                 value.get("type")
                                 for value in fields
-                                if str(value.get("name", "")).lower() == str(source_field).lower()
+                                if source_name(value) == source_field
                             ),
                             None,
                         )
@@ -1013,7 +1028,7 @@ class OfflineIngestStore:
                             (
                                 value.get("length")
                                 for value in fields
-                                if str(value.get("name", "")).lower() == str(source_field).lower()
+                                if source_name(value) == source_field
                             ),
                             None,
                         )
@@ -1033,21 +1048,29 @@ class OfflineIngestStore:
         for optional_field in sorted(optional_fields if contract else set()):
             accepted_names = {str(value).lower() for value in field_aliases[optional_field]}
             if any(
-                str(value.get("name", "")).lower() in accepted_names
-                or normalize_identifier(value.get("name")) in accepted_names
+                source_names(value) & accepted_names
+                or any(
+                    normalize_identifier(value.get(key)) in accepted_names
+                    for key in ("name", "alias", "alternativeName", "field_name")
+                    if value.get(key)
+                )
                 for value in fields
             ):
                 optional_matched.append(optional_field)
         confidence = (
             0.0 if canonical is None else (1.0 if not required else len(matched) / len(required))
         )
-        candidate_only = bool(
-            (contract and contract.get("authority") != "ea_standard")
-            or (not contract and canonical in {"PDT", "STBHHX", "YJJBNT"})
+        from .standard_contracts import is_runtime_baseline_authority
+
+        contract_outside_runtime_baseline = bool(
+            contract and not is_runtime_baseline_authority(contract.get("authority"))
+        )
+        sensitive_default_alias = bool(
+            not contract and canonical in {"PDT", "STBHHX", "YJJBNT"}
         )
         mapping_status = (
             "manual_review"
-            if candidate_only and canonical
+            if (contract_outside_runtime_baseline or sensitive_default_alias) and canonical
             else "accepted"
             if confidence == 1.0
             else "manual_review"
@@ -1086,6 +1109,9 @@ class OfflineIngestStore:
                 if canonical in {"PDT", "STBHHX", "YJJBNT"}
                 else "default_alias",
                 "auto_publish": mapping_status == "accepted",
+                "schema_validation_required": bool(
+                    contract and contract.get("requires_source_schema_verification", False)
+                ),
                 "standard_version": os.environ.get(
                     "GDA_NATURAL_RESOURCE_STANDARD_VERSION", "pending-confirmation"
                 ),
@@ -1837,9 +1863,10 @@ class OfflineIngestStore:
     ) -> dict[str, Any]:
         """Bind materialized products to ontology references.
 
-        Production mode remains fail-closed.  Rehearsal mode writes to an
-        explicitly non-production binding and is used to prove the semantic
-        path with supplied sample data without claiming it is authoritative.
+        Production mode remains fail-closed per output: the output must have
+        an accepted mapping from the Ningxia workbook/EA baseline and must
+        come from a successful quality-gated materialization. Rehearsal mode
+        writes an explicitly non-production reference for exploratory data.
         """
         if not re.fullmatch(r"[a-f0-9-]{16,64}", plan_id):
             raise ValueError("invalid plan id")
@@ -1855,6 +1882,8 @@ class OfflineIngestStore:
         rejected = []
         bindings = []
         skipped = []
+        from .standard_contracts import is_runtime_baseline_authority
+
         for output in materialization.get("outputs") or []:
             mapping = output.get("mapping") or {}
             authority = mapping.get("contract_authority")
@@ -1897,14 +1926,16 @@ class OfflineIngestStore:
                     }
                 )
                 continue
-            if mapping.get("status") != "accepted" or authority != "ea_standard":
+            if mapping.get("status") != "accepted" or not is_runtime_baseline_authority(
+                authority
+            ):
                 rejected.append(
                     {
                         "target_id": output.get("target_id"),
                         "canonical_dataset": canonical,
                         "mapping_status": mapping.get("status"),
                         "contract_authority": authority,
-                        "reason": "authoritative_contract_required",
+                        "reason": "accepted_dataset_baseline_required",
                     }
                 )
                 continue
@@ -1915,11 +1946,14 @@ class OfflineIngestStore:
                     "target_path": output.get("target_path"),
                     "source_asset_id": output.get("source_asset_id"),
                     "binding_mode": "reference_only",
+                    "mapping_status": mapping.get("status"),
+                    "mapping_authority": authority,
+                    "production_eligible": True,
                 }
             )
         if rejected or not bindings:
             reason = (
-                "authoritative contracts required"
+                "accepted dataset baseline and quality evidence required"
                 if binding_mode == "production"
                 else "no ontology schema candidate available for rehearsal"
             )

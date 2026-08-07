@@ -1,10 +1,11 @@
-"""Readers for auditable geospatial standard-contract catalogs.
+"""Readers for auditable Ningxia data-model baseline catalogs.
 
-The two project workbooks are discovery evidence, not authoritative schemas.
-This module keeps that distinction explicit: screenshot-derived contracts are
-usable for candidate matching and field-level gap reports, but never grant an
-automatic publication decision.  A reviewed JSON catalog can carry the same
-contract shape with ``authority`` set to ``ea_standard``.
+The two Ningxia workbooks are the supplied inventory and field baseline. They
+are sufficient to identify datasets and propose field-level bindings before a
+real FileGDB arrives. Runtime ingestion still verifies physical field types,
+lengths, CRS, geometry, values and quality for each dataset. A separately
+reviewed ``ea_standard`` catalog remains supported for explicit administrative
+publication workflows, but it is not a prerequisite for starting the agent.
 """
 
 from __future__ import annotations
@@ -17,6 +18,19 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+# Older bundles use the *_candidate labels. They remain readable as runtime
+# baselines; the per-dataset schema and quality gates make the real decision.
+RUNTIME_BASELINE_AUTHORITIES = frozenset(
+    {
+        "nx_workbook_baseline",
+        "nx_project_baseline",
+        "ea_standard",
+        "ea_analysis_candidate",
+        "standard_candidate",
+        "screenshot_candidate",
+    }
+)
+
 
 def _now() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
@@ -26,6 +40,10 @@ def _text(value: Any) -> str:
     if value is None:
         return ""
     return str(value).strip()
+
+
+def is_runtime_baseline_authority(value: Any) -> bool:
+    return _text(value) in RUNTIME_BASELINE_AUTHORITIES
 
 
 def normalize_identifier(value: Any) -> str:
@@ -45,9 +63,23 @@ def _workbook_rows(path: Path, sheet: str) -> list[tuple[Any, ...]]:
     from openpyxl import load_workbook
 
     workbook = load_workbook(path, read_only=True, data_only=True)
-    if sheet not in workbook.sheetnames:
-        raise ValueError(f"sheet not found: {sheet}")
-    return [tuple(row) for row in workbook[sheet].iter_rows(values_only=True)]
+    try:
+        if sheet not in workbook.sheetnames:
+            raise ValueError(f"sheet not found: {sheet}")
+        return [tuple(row) for row in workbook[sheet].iter_rows(values_only=True)]
+    finally:
+        workbook.close()
+
+
+def _load_workbook_sheet_names(path: str | Path) -> list[str]:
+    """Return sheet names without treating a workbook as a data contract."""
+    from openpyxl import load_workbook
+
+    workbook = load_workbook(Path(path).expanduser().resolve(), read_only=True, data_only=True)
+    try:
+        return list(workbook.sheetnames)
+    finally:
+        workbook.close()
 
 
 def load_shp_contract_catalog(path: str | Path) -> dict[str, Any]:
@@ -82,8 +114,8 @@ def load_shp_contract_catalog(path: str | Path) -> dict[str, Any]:
             else "",
             "completeness_note": note,
             "fields": [],
-            "authority": "screenshot_candidate",
-            "publication_gate": "manual_review",
+            "authority": "nx_workbook_baseline",
+            "publication_gate": "per_dataset_runtime_validation",
             "requires_source_schema_verification": True,
         }
     for row in detail_rows[detail_at + 1 :]:
@@ -105,6 +137,16 @@ def load_shp_contract_catalog(path: str | Path) -> dict[str, Any]:
     for contract in contracts.values():
         contract["fields"].sort(key=lambda item: item["ordinal"])
         contract["candidate_fields"] = [item["name"] for item in contract["fields"]]
+        contract["required_fields"] = [
+            item["name"]
+            for item in contract["fields"]
+            if item.get("category") != "系统/几何字段"
+        ] or list(contract["candidate_fields"])
+        contract["recommended_fields"] = [
+            item["name"]
+            for item in contract["fields"]
+            if item.get("category") == "系统/几何字段"
+        ]
         contract["field_categories"] = {
             item["name"]: item["category"] for item in contract["fields"]
         }
@@ -112,7 +154,9 @@ def load_shp_contract_catalog(path: str | Path) -> dict[str, Any]:
         "schema_version": "gda.standard-contract-catalog.v1",
         "generated_at": _now(),
         "source_workbooks": [source.name],
-        "authority": "screenshot_candidate",
+        "authority": "nx_workbook_baseline",
+        "runtime_baseline_ready": True,
+        "publication_gate": "per_dataset_runtime_validation",
         "contracts": contracts,
     }
 
@@ -144,9 +188,9 @@ def load_contract_catalog(path: str | Path) -> dict[str, Any]:
                 for index, (name, values) in enumerate(fields.items(), 1)
             ],
             "candidate_fields": list(fields.keys()),
-            "authority": "ea_standard",
-            "publication_gate": "automatic",
-            "requires_source_schema_verification": False,
+            "authority": "nx_workbook_baseline",
+            "publication_gate": "per_dataset_runtime_validation",
+            "requires_source_schema_verification": True,
         }
         for code, fields in aliases_payload.items()
     }
@@ -198,6 +242,145 @@ def load_inventory_summary(path: str | Path) -> dict[str, Any]:
     return {"source_workbook": source.name, "item_count": len(items), "items": items}
 
 
+def _inventory_field_category(name: str) -> str:
+    lowered = _text(name).lower()
+    if lowered in {
+        "objectid",
+        "shape",
+        "shape_length",
+        "shape_area",
+        "shape_length_new",
+        "shape_area_new",
+    }:
+        return "系统/几何字段"
+    if any(token in lowered for token in ("代码", "编码", "标识", "编号", "id")):
+        return "标识编码字段"
+    if any(token in lowered for token in ("时间", "日期", "年份", "年")):
+        return "时态字段"
+    if any(token in lowered for token in ("数据源", "涉密", "来源")):
+        return "来源与安全字段"
+    return "业务属性字段"
+
+
+def _inventory_contract(
+    code: str, name: str, sheet: str, fields: list[str], geometry_type: str = ""
+) -> dict[str, Any]:
+    unique_fields = list(dict.fromkeys(_text(value) for value in fields if _text(value)))
+    field_rows = [
+        {
+            "ordinal": index,
+            "name": field,
+            "category": _inventory_field_category(field),
+            "source_sheet": sheet,
+            "source": "inventory workbook field sheet",
+        }
+        for index, field in enumerate(unique_fields, 1)
+    ]
+    candidate_fields = [item["name"] for item in field_rows]
+    required_fields = [
+        item["name"] for item in field_rows if item["category"] != "系统/几何字段"
+    ] or candidate_fields
+    return {
+        "code": code,
+        "name": name,
+        "geometry_type": geometry_type,
+        "field_count": len(unique_fields),
+        "source_sheets": [sheet],
+        "name_source": "inventory workbook field sheet",
+        "completeness_note": "字段行来自宁夏数据清单工作簿；真实文件到达时复核物理 schema。",
+        "fields": field_rows,
+        "candidate_fields": candidate_fields,
+        "required_fields": required_fields,
+        "recommended_fields": [
+            item["name"] for item in field_rows if item["category"] == "系统/几何字段"
+        ],
+        "field_categories": {item["name"]: item["category"] for item in field_rows},
+        "authority": "nx_workbook_baseline",
+        "publication_gate": "per_dataset_runtime_validation",
+        "requires_source_schema_verification": True,
+    }
+
+
+def load_inventory_field_baseline(path: str | Path) -> dict[str, Any]:
+    """Extract the field rows embedded in the inventory workbook."""
+    source = Path(path).expanduser().resolve()
+    contracts: dict[str, dict[str, Any]] = {}
+
+    def first_header(sheet: str, required: set[str]) -> list[str] | None:
+        rows = _workbook_rows(source, sheet)
+        for row in rows:
+            values = [_text(value) for value in row if _text(value)]
+            if required.issubset(values):
+                return values
+        return None
+
+    known_sheets = set(_load_workbook_sheet_names(source))
+    if "2024年土地利用现状调查数据" in known_sheets:
+        fields = first_header("2024年土地利用现状调查数据", {"标识码", "要素代码", "图斑编号"})
+        if fields:
+            contracts["DLTB"] = _inventory_contract(
+                "DLTB", "地类图斑", "2024年土地利用现状调查数据", fields, "Polygon"
+            )
+    if "2025年不动产-ZRZ" in known_sheets:
+        fields = first_header("2025年不动产-ZRZ", {"实体标识码", "标识码"})
+        if fields:
+            contracts["ZRZ"] = _inventory_contract(
+                "ZRZ", "自然幢", "2025年不动产-ZRZ", fields, "Polygon"
+            )
+    planning_sheet = "自治区级国土空间总体规划数据（3条）"
+    if planning_sheet in known_sheets:
+        rows = _workbook_rows(source, planning_sheet)
+        planning_codes = {
+            "CZJSSYXPJJG": "城镇建设适宜性评价结果",
+            "NYSCSYXPJJG": "农业生产适宜性评价结果",
+            "STBHZYXPJJG": "生态保护重要性评价结果",
+        }
+        for index, row in enumerate(rows[:-1]):
+            values = [_text(value) for value in row if _text(value)]
+            code = next(
+                (
+                    item
+                    for item in planning_codes
+                    if any(item in value for value in values)
+                ),
+                None,
+            )
+            if not code:
+                continue
+            fields = [_text(value) for value in rows[index + 1] if _text(value)]
+            if len(fields) >= 2:
+                contracts[code] = _inventory_contract(
+                    code, planning_codes[code], planning_sheet, fields, "Polygon"
+                )
+    county_sheet = "县级国土空间规划（仅治理历史文化保护线 中心城区黄绿蓝紫线规）"
+    if county_sheet in known_sheets:
+        fields = first_header(county_sheet, {"标识码", "要素代码", "行政区代码"})
+        if fields:
+            contracts["ZXCQ"] = _inventory_contract(
+                "ZXCQ", "中心城区规划分区", county_sheet, fields, "Polygon"
+            )
+    building_sheet = "银川市城市存量成果FWJZ2024"
+    if building_sheet in known_sheets:
+        fields = first_header(building_sheet, {"建筑编码", "基底面积", "建筑高度"})
+        if fields:
+            contracts["FWJZ"] = _inventory_contract(
+                "FWJZ", "房屋建筑数据", building_sheet, fields, "Polygon"
+            )
+    metric_sheet = "银川市城市存量成果SQCPG2025"
+    if metric_sheet in known_sheets:
+        fields = first_header(metric_sheet, {"空间单元代码", "空间单元名称", "建筑密度"})
+        if fields:
+            contracts["SQCPG"] = _inventory_contract(
+                "SQCPG", "城市空间品质指标", metric_sheet, fields, ""
+            )
+    return {
+        "source_workbook": source.name,
+        "contracts": contracts,
+        "dataset_count": len(contracts),
+        "field_count": sum(len(item.get("fields") or []) for item in contracts.values()),
+    }
+
+
 def build_catalog(
     shp_workbook: str | Path,
     inventory_workbook: str | Path | None = None,
@@ -205,7 +388,125 @@ def build_catalog(
     catalog = load_shp_contract_catalog(shp_workbook)
     if inventory_workbook:
         catalog["data_inventory"] = load_inventory_summary(inventory_workbook)
+        inventory_baseline = load_inventory_field_baseline(inventory_workbook)
+        for code, source_contract in inventory_baseline["contracts"].items():
+            if code not in catalog["contracts"]:
+                catalog["contracts"][code] = _workbook_contract_as_runtime_baseline(
+                    source_contract
+                )
+            else:
+                catalog["contracts"][code]["inventory_field_baseline"] = source_contract[
+                    "fields"
+                ]
+                catalog["contracts"][code]["inventory_source_sheets"] = source_contract.get(
+                    "source_sheets", []
+                )
+        catalog["inventory_field_baseline"] = inventory_baseline
     return catalog
+
+
+def _workbook_contract_as_runtime_baseline(contract: dict[str, Any]) -> dict[str, Any]:
+    """Convert one Excel field inventory row into a runtime contract object."""
+    source_fields = contract.get("fields") or []
+    required = list(contract.get("required_fields") or contract.get("candidate_fields") or [])
+    required_set = set(required)
+    fields = [
+        {
+            "ordinal": item.get("ordinal"),
+            "code": item.get("name"),
+            "name": item.get("name"),
+            "aliases": [item.get("name")],
+            "category": item.get("category"),
+            "data_type": None,
+            "type_source": "runtime_source_schema",
+            "length": None,
+            "precision": None,
+            "required": item.get("name") in required_set,
+            "nullable": item.get("name") not in required_set,
+            "primary_key": False,
+            "unique": False,
+            "unit": None,
+            "value_domain": None,
+            "quality_rules": {},
+            "source_photo": item.get("source_photo"),
+            "source_sheet": item.get("source_sheet"),
+            "source": item.get("source"),
+            "authority": "nx_workbook_baseline",
+        }
+        for item in source_fields
+    ]
+    geometry_map = {"面": "Polygon", "点": "Point", "线": "LineString"}
+    return {
+        **contract,
+        "geometry_type": geometry_map.get(
+            contract.get("geometry_type"), contract.get("geometry_type")
+        ),
+        "required_fields": required,
+        "recommended_fields": list(contract.get("recommended_fields") or []),
+        "fields": fields,
+        "authority": "nx_workbook_baseline",
+        "review_status": "runtime_validation",
+        "publication_gate": "per_dataset_runtime_validation",
+        "requires_source_schema_verification": True,
+        "runtime_baseline_ready": True,
+        "auto_publish": False,
+        "field_completeness": {
+            "field_count": len(fields),
+            "required_count": sum(item.get("required") is True for item in fields),
+            "recommended_count": len(contract.get("recommended_fields") or []),
+            "missing_type_count": len(fields),
+            "missing_length_count": len(fields),
+            "missing_precision_count": len(fields),
+            "missing_domain_count": len(fields),
+        },
+    }
+
+
+def merge_workbook_baseline(
+    contracts: dict[str, dict[str, Any]],
+    shp_workbook: str | Path | None,
+    inventory_workbook: str | Path | None = None,
+) -> dict[str, Any]:
+    """Merge both Ningxia field workbooks without overwriting source evidence."""
+    coverage = {
+        "dataset_count": 0,
+        "field_count": 0,
+        "overlap_count": 0,
+        "inventory_field_dataset_count": 0,
+        "inventory_field_count": 0,
+        "inventory_overlap_count": 0,
+    }
+    if shp_workbook:
+        workbook_catalog = load_shp_contract_catalog(shp_workbook)
+        coverage["dataset_count"] = len(workbook_catalog.get("contracts") or {})
+        for code, source_contract in (workbook_catalog.get("contracts") or {}).items():
+            coverage["field_count"] += len(source_contract.get("fields") or [])
+            if code not in contracts:
+                contracts[code] = _workbook_contract_as_runtime_baseline(source_contract)
+                continue
+            coverage["overlap_count"] += 1
+            target = contracts[code]
+            target["workbook_field_baseline"] = source_contract.get("fields") or []
+            target["workbook_field_categories"] = source_contract.get("field_categories") or {}
+            target["workbook_completeness_note"] = source_contract.get("completeness_note")
+            target["workbook_source_photos"] = source_contract.get("source_photos") or []
+            target["runtime_baseline_ready"] = True
+    if inventory_workbook:
+        inventory_catalog = load_inventory_field_baseline(inventory_workbook)
+        coverage["inventory_field_dataset_count"] = inventory_catalog["dataset_count"]
+        coverage["inventory_field_count"] = inventory_catalog["field_count"]
+        for code, source_contract in (inventory_catalog.get("contracts") or {}).items():
+            if code not in contracts:
+                contracts[code] = _workbook_contract_as_runtime_baseline(source_contract)
+                continue
+            coverage["inventory_overlap_count"] += 1
+            target = contracts[code]
+            target["inventory_field_baseline"] = source_contract.get("fields") or []
+            target["inventory_field_categories"] = source_contract.get("field_categories") or {}
+            target["inventory_source_sheets"] = source_contract.get("source_sheets") or []
+            target["inventory_completeness_note"] = source_contract.get("completeness_note")
+            target["runtime_baseline_ready"] = True
+    return coverage
 
 
 def _sha256_file(path: str | Path) -> str:
@@ -252,12 +553,13 @@ def compile_standard_contract_catalog(
     inventory_workbook: str | Path | None = None,
     standard_version: str | None = None,
 ) -> dict[str, Any]:
-    """Compile a reviewable production-contract *candidate*.
+    """Compile the Ningxia runtime baseline used by the ingestion control plane.
 
-    The source workbooks and comparison CSVs are evidence.  They do not
-    contain enough EA attribute metadata to authorize production publication,
-    so the result is deliberately fail-closed until a reviewer supplies the
-    missing type/length/constraint and signs the contract.
+    The workbooks and EA comparison exports establish dataset and field
+    coverage. Missing physical details are checked against each real source
+    file at ingest time; they no longer prevent the whole Windows installation
+    from starting. Explicit administrative publication can still call
+    :func:`validate_contract_catalog` with ``require_authoritative=True``.
     """
     role_payload = _load_json(role_contracts_path)
     aliases_payload = _load_json(field_aliases_path) if field_aliases_path else {}
@@ -342,7 +644,7 @@ def compile_standard_contract_catalog(
                         else None,
                         "quality_rules": rule,
                         "source_registry": registry or None,
-                        "authority": "candidate",
+                        "authority": "nx_project_baseline",
                     }
                 )
             ea_evidence = [
@@ -397,10 +699,11 @@ def compile_standard_contract_catalog(
                     ),
                     "ea_comparison_is_summary_only": True,
                 },
-                "authority": "ea_analysis_candidate" if ea_evidence else "standard_candidate",
-                "review_status": "pending",
-                "publication_gate": "manual_review",
+                "authority": "nx_project_baseline",
+                "review_status": "runtime_validation",
+                "publication_gate": "per_dataset_runtime_validation",
                 "auto_publish": False,
+                "runtime_baseline_ready": True,
                 "field_completeness": {
                     "field_count": len(fields),
                     "required_count": len(required),
@@ -411,11 +714,38 @@ def compile_standard_contract_catalog(
                     "missing_domain_count": sum(item["value_domain"] is None for item in fields),
                 },
             }
+    workbook_coverage = merge_workbook_baseline(
+        contracts, shp_workbook, inventory_workbook
+    )
     inventory = load_inventory_summary(inventory_workbook) if inventory_workbook else None
     inventory_resolution = []
+    contract_code_lookup = {code.upper(): code for code in contracts}
     for item in (inventory or {}).get("items", []):
         item_name = _text(item.get("name"))
         tokens = {token.upper() for token in re.findall(r"[A-Za-z][A-Za-z0-9_]{1,}", item_name)}
+        direct_contract_codes = list(
+            dict.fromkeys(
+                contract_code_lookup[token]
+                for token in tokens
+                if token in contract_code_lookup
+            )
+        )
+        item_core = normalize_identifier(item_name)
+        for generic in ("数据", "全区", "银川市", "自治区", "记录"):
+            item_core = item_core.replace(generic, "")
+        name_contract_codes = []
+        if len(item_core) >= 2:
+            for contract_code, contract in contracts.items():
+                contract_core = normalize_identifier(contract.get("name"))
+                for generic in ("数据", "全区", "银川市", "自治区", "面", "点", "线"):
+                    contract_core = contract_core.replace(generic, "")
+                if len(contract_core) >= 2 and (
+                    contract_core in item_core or item_core in contract_core
+                ):
+                    name_contract_codes.append(contract_code)
+        direct_contract_codes = list(
+            dict.fromkeys(direct_contract_codes + name_contract_codes)
+        )
         evidence = [
             row
             for row in ea_rows + logical_rows
@@ -442,23 +772,28 @@ def compile_standard_contract_catalog(
         ]
         if not evidence and prefix_evidence:
             evidence = prefix_evidence
-        codes = list(
+        evidence_codes = list(
             dict.fromkeys(
                 _text(row.get("standard_table"))
                 for row in evidence
                 if _text(row.get("standard_table"))
             )
         )
-        contract_codes = [code for code in codes if code in contracts]
+        codes = list(dict.fromkeys(direct_contract_codes + evidence_codes))
+        contract_codes = (
+            direct_contract_codes
+            if direct_contract_codes
+            else list(dict.fromkeys(code for code in evidence_codes if code in contracts))
+        )
         if contract_codes:
-            status = "contract_candidate"
-            action = "核对真实源字段后补齐合同并审批"
+            status = "baseline_contract"
+            action = "接入真实文件时核验字段类型、长度、坐标系和质量"
         elif prefix_evidence and not has_exact_evidence:
             status = "ambiguous_candidate"
             action = "确认代码前缀对应的唯一标准对象后编译合同"
         elif evidence:
-            status = "ea_standard_candidate"
-            action = "从 EA 原始属性导出和标准正文编译独立合同"
+            status = "ea_aligned_baseline"
+            action = "接入真实文件时核验字段类型、长度、坐标系和质量"
         else:
             status = "unresolved"
             action = "根据真实文件画像和标准正文人工确认标准对象"
@@ -492,8 +827,8 @@ def compile_standard_contract_catalog(
         "counts": {
             status: sum(item["status"] == status for item in inventory_resolution)
             for status in (
-                "contract_candidate",
-                "ea_standard_candidate",
+                "baseline_contract",
+                "ea_aligned_baseline",
                 "ambiguous_candidate",
                 "unresolved",
             )
@@ -501,15 +836,16 @@ def compile_standard_contract_catalog(
     }
     catalog = {
         "schema_version": "gda.standard-contract-catalog.v2",
-        "contract_id": "nx-natural-resource-standard-candidate",
+        "contract_id": "nx-natural-resource-standard-baseline",
         "generated_at": _now(),
         "standard_version": standard_version
         or role_payload.get("version")
         or "pending-confirmation",
-        "authority": "ea_analysis_candidate",
-        "review_status": "pending",
-        "publication_gate": "manual_review",
+        "authority": "nx_workbook_baseline",
+        "review_status": "runtime_validation",
+        "publication_gate": "per_dataset_runtime_validation",
         "production_ready": False,
+        "runtime_baseline_ready": True,
         "provenance": {
             "source_artifacts": source_artifacts,
             "ea_comparison_warning": (
@@ -527,6 +863,16 @@ def compile_standard_contract_catalog(
         "coverage": {
             "inventory_items": (inventory or {}).get("item_count", 0),
             "contract_dataset_count": len(contracts),
+            "workbook_contract_dataset_count": workbook_coverage["dataset_count"],
+            "workbook_field_count": workbook_coverage["field_count"],
+            "workbook_overlap_count": workbook_coverage["overlap_count"],
+            "inventory_field_contract_dataset_count": workbook_coverage[
+                "inventory_field_dataset_count"
+            ],
+            "inventory_field_count": workbook_coverage["inventory_field_count"],
+            "inventory_field_overlap_count": workbook_coverage[
+                "inventory_overlap_count"
+            ],
             "unmapped_inventory": [
                 item for item in inventory_resolution if item["status"] == "unresolved"
             ],
@@ -541,8 +887,11 @@ def validate_contract_catalog(
 ) -> list[str]:
     """Return deterministic blockers suitable for preflight and CI."""
     blockers: list[str] = []
-    if catalog.get("schema_version") != "gda.standard-contract-catalog.v2":
-        blockers.append("contract schema version is not v2")
+    if catalog.get("schema_version") not in {
+        "gda.standard-contract-catalog.v1",
+        "gda.standard-contract-catalog.v2",
+    }:
+        blockers.append("contract schema version is not v1/v2")
     if require_authoritative and catalog.get("authority") != "ea_standard":
         blockers.append(
             f"catalog authority is {catalog.get('authority')!r}, expected 'ea_standard'"

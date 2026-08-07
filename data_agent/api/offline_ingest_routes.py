@@ -187,7 +187,8 @@ async def contract_catalog(request: Request):
     _, error = _auth(request)
     if error:
         return error
-    # Prefer the versioned JSON contract; the workbook is candidate evidence.
+    # Prefer the versioned Ningxia baseline; a supplied workbook is also a
+    # valid runtime baseline and is checked per dataset at ingest time.
     configured = os.environ.get("GDA_STANDARD_CONTRACTS", "").strip()
     if not configured:
         configured = os.environ.get("GDA_STANDARD_CONTRACT_XLSX", "").strip()

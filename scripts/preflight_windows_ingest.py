@@ -4,8 +4,9 @@
 The command validates the GIS Data Agent's bundled Python GIS runtime first.
 ArcGIS Pro, ArcPy MCP and external GDAL commands are optional and are never a
 production prerequisite. It emits machine-readable evidence and a human report.
-Production mode fails when the contract is still a candidate; this prevents a
-host from silently publishing guessed fields as authoritative data.
+Production mode validates that a Ningxia workbook/EA baseline is installed.
+It does not block the host merely because the baseline still requires
+per-dataset physical schema checks; those checks run when each asset arrives.
 """
 
 from __future__ import annotations
@@ -112,7 +113,11 @@ def run_preflight(args: argparse.Namespace) -> dict[str, Any]:
         .expanduser()
         .resolve()
     )
-    contract_path = args.contracts or os.environ.get("GDA_STANDARD_CONTRACTS", "")
+    contract_path = (
+        args.contracts
+        or os.environ.get("GDA_STANDARD_CONTRACTS", "")
+        or os.environ.get("GDA_STANDARD_CONTRACT_XLSX", "")
+    )
     ontology_path = (
         Path(args.ontology or "data_agent/ontology/packages/natural_resource_one_map/active.json")
         .expanduser()
@@ -268,7 +273,10 @@ def run_preflight(args: argparse.Namespace) -> dict[str, Any]:
                 "critical",
                 "fail",
                 f"missing: {path}",
-                "Copy the reviewed contract to the protected configuration directory.",
+                (
+                    "Copy the Ningxia workbook baseline or compiled JSON catalog "
+                    "to the protected configuration directory."
+                ),
             )
         else:
             try:
@@ -278,9 +286,9 @@ def run_preflight(args: argparse.Namespace) -> dict[str, Any]:
                 )
 
                 contract = load_contract_catalog(path)
-                blockers = validate_contract_catalog(
-                    contract, require_authoritative=args.mode == "production"
-                )
+                # Authority review is a per-dataset publication concern. The
+                # host must be able to start with the supplied Ningxia baseline.
+                blockers = validate_contract_catalog(contract, require_authoritative=False)
                 _check(
                     checks,
                     "standard_contract",
@@ -291,8 +299,7 @@ def run_preflight(args: argparse.Namespace) -> dict[str, Any]:
                         f"{len(blockers)} blocker(s)"
                     ),
                     (
-                        "Complete EA field export/review and set authority=ea_standard "
-                        "before production."
+                        "Repair the Ningxia workbook/EA baseline JSON before starting ingestion."
                         if blockers
                         else ""
                     ),
@@ -356,6 +363,10 @@ def run_preflight(args: argparse.Namespace) -> dict[str, Any]:
             "path": str(Path(contract_path).expanduser().resolve()) if contract_path else None,
             "authority": contract.get("authority") if contract else None,
             "production_ready": contract.get("production_ready") if contract else False,
+            "runtime_baseline_ready": contract.get("runtime_baseline_ready", True)
+            if contract
+            else False,
+            "validation_policy": "per_dataset_schema_quality_gate",
         },
         "checks": checks,
         "status": "blocked" if failures else "ready_with_warnings" if warnings else "ready",

@@ -297,8 +297,12 @@ def verify_ontology_and_contract(root: Path, profile: str, checks: list[dict[str
         contract_path = (
             candidate
             if candidate.is_file()
-            else root / "config" / "natural_resource_standard_contracts.candidate.json"
+            else root / "config" / "natural_resource_standard_baseline.json"
         )
+    if not contract_path.is_file():
+        # Backward compatibility for bundles produced before the baseline
+        # naming correction.
+        contract_path = root / "config" / "natural_resource_standard_contracts.candidate.json"
     if not contract_path.is_file():
         check(
             checks,
@@ -311,13 +315,13 @@ def verify_ontology_and_contract(root: Path, profile: str, checks: list[dict[str
         return
     try:
         contract = json.loads(contract_path.read_text(encoding="utf-8"))
-        approved = (
-            contract.get("authority") == "ea_standard"
-            and contract.get("review_status") == "approved"
-            and contract.get("production_ready") is True
+        valid_baseline = (
+            contract.get("schema_version")
+            in {"gda.standard-contract-catalog.v1", "gda.standard-contract-catalog.v2"}
+            and isinstance(contract.get("contracts"), dict)
         )
-        status = "pass" if (approved or profile == "core") else "fail"
-        severity = "info" if profile == "core" and not approved else "critical"
+        status = "pass" if valid_baseline else "fail"
+        severity = "info" if valid_baseline else "critical"
         check(
             checks,
             "standard_contract",
@@ -325,9 +329,13 @@ def verify_ontology_and_contract(root: Path, profile: str, checks: list[dict[str
             status,
             (
                 f"{contract_path}; authority={contract.get('authority')}; "
-                f"review_status={contract.get('review_status')}"
+                f"review_status={contract.get('review_status')}; "
+                "policy=per_dataset_schema_quality_gate"
             ),
-            "用已签署 EA/标准合同替换候选合同后再启用生产问数。",
+            (
+                "修复宁夏清单/字段基线 JSON；真实数据集将在入湖时单独执行字段、CRS、"
+                "几何和值域质量门禁。"
+            ),
         )
     except (OSError, ValueError) as exc:
         check(checks, "standard_contract", "critical", "fail", str(exc), "修复合同 JSON。")

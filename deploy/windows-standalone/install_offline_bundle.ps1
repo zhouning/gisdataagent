@@ -456,7 +456,7 @@ function Write-Environment([string]$Python) {
     foreach ($key in $values.Keys) { $template = $template.Replace($key, $values[$key]) }
     $envPath = Join-Path $InstallRoot 'config\gda.env'
     Set-Content -LiteralPath $envPath -Value $template -Encoding UTF8
-    Copy-Item -LiteralPath (Join-Path $InstallRoot 'config\natural_resource_standard_contracts.candidate.json') -Destination (Join-Path $InstallRoot 'config\natural_resource_standard_contracts.json') -Force
+    Copy-Item -LiteralPath (Join-Path $InstallRoot 'config\natural_resource_standard_baseline.json') -Destination (Join-Path $InstallRoot 'config\natural_resource_standard_contracts.json') -Force
     return $envPath
 }
 

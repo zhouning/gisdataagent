@@ -17,7 +17,7 @@
         "frontend_dist",
         "ontology_2_3",
         "ontology_active",
-        "candidate_standard_contract",
+        "nx_standard_baseline",
         "core_requirements",
         "core_wheelhouse"
       ]
@@ -30,7 +30,7 @@
         "frontend_dist",
         "ontology_2_3",
         "ontology_active",
-        "candidate_standard_contract",
+        "nx_standard_baseline",
         "core_requirements",
         "production_requirements",
         "core_wheelhouse",
@@ -134,15 +134,15 @@
       "size_bytes": null
     },
     {
-      "id": "candidate_standard_contract",
+      "id": "nx_standard_baseline",
       "role": "governance",
       "source_url": "repository/docs/architecture/nx-standard-contract-catalog.v2.candidate.json",
       "license": "project artifact",
       "source": "docs/architecture/nx-standard-contract-catalog.v2.candidate.json",
       "source_type": "repo_file",
-      "target": "config/natural_resource_standard_contracts.candidate.json",
+      "target": "config/natural_resource_standard_baseline.json",
       "kind": "file",
-      "note": "候选合同只能用于 development/review；正式生产必须替换为 authority=ea_standard 且 approved 的合同。",
+      "note": "宁夏两份工作簿和 EA 对齐产物是运行基线；真实数据集入湖时逐项执行字段、CRS、几何、值域和质量门禁。",
       "sha256": null,
       "size_bytes": null
     },

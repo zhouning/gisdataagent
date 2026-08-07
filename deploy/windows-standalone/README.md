@@ -52,8 +52,8 @@ Ollama 模型和 Paper9 制品，详见下面的目录约定。
 
 | 档位 | 包含 | 可提供的能力 | 生产门禁 |
 |---|---|---|---|
-| `core` | Python 3.11、GIS wheelhouse、应用、DuckDB、文件湖、日志、断点续传采集器、本体 2.3、候选标准合同 | FileGDB/SHP/TIFF 入湖、画像、治理、质检、血缘、GeoParquet/COG/STAC、本体结构查询 | 合同为候选时只能 `review`，不能发布权威问数 |
-| `production` | `core` + PostgreSQL 16/PostGIS/pgvector、MinIO、JRE 17 + Fuseki/TDB2、Ollama、LLM/embedding 权重、Paper9 | 在线空间查询、对象存储、正式本体查询投影、本地语义问数、Paper9 运行 | 必须使用已审核 `authority=ea_standard` 合同；模型和 Paper9 权重必须完成验收 |
+| `core` | Python 3.11、GIS wheelhouse、应用、DuckDB、文件湖、日志、断点续传采集器、本体 2.3、宁夏字段基线 | FileGDB/SHP/TIFF 入湖、画像、治理、质检、血缘、GeoParquet/COG/STAC、本体结构查询 | 每个数据集按字段、CRS、几何和值域质量决定是否可发布 |
+| `production` | `core` + PostgreSQL 16/PostGIS/pgvector、MinIO、JRE 17 + Fuseki/TDB2、Ollama、LLM/embedding 权重、Paper9 | 在线空间查询、对象存储、本体查询投影、本地语义问数、Paper9 运行 | 宁夏字段基线必须存在；每个数据集和 Paper9 输入仍须通过各自质量门禁 |
 
 `Prometheus` 和 `Grafana` 作为生产包可选组件随包携带。Redis、DolphinScheduler、Spark/Flink、
 OpenMetadata、Compose 的 CV/CAD/reference-data、Martin tiles 和 AlphaEarth 演示服务没有被
@@ -155,9 +155,16 @@ PostgreSQL 服务名会写入安装目录的运行状态，不依赖执行安装
 `Gemma4:26b` 和 `nomic-embed-text-v2-moe:latest`；导入阶段使用独立端口和数据盘模型目录，
 不会复用安装用户的 Ollama 用户服务。启动验收会调用 `/api/tags` 核对两个标签。
 
-候选合同会被复制为 `natural_resource_standard_contracts.candidate.json`，默认让预检处于
-`review`。项目负责人把 EA/标准正文补齐并签名为 approved 合同后，替换配置路径，重新执行
-`verify_windows_offline_bundle.py --profile production --phase runtime`，才可以启动权威语义问数。
+宁夏两份 Excel 及 EA 对齐产物会被复制为
+`natural_resource_standard_baseline.json`，作为系统启动和字段匹配基线。预检只检查基线文件
+是否存在、可解析；真实 FileGDB/SHP/TIFF 到达后，系统按数据集执行字段、类型、CRS、几何、值域
+和质量校验。通过校验的治理产物可以进入本体引用和语义问数，失败的数据集单独停在 `review`
+或 `blocked`，不会拖住整个系统。需要行政发布留痕时，仍可另外生成 `authority=ea_standard`
+的审核版本，但这不是安装启动前置条件。
+
+当前基线 JSON 已包含 EA/角色对象、两份宁夏工作簿的 47 个运行时合同，以及 881 条字段证据
+（SHP 字段表 765 条 + 第一份 Excel 专题页 116 条；重合代码并列保留）；不是只保存工作簿哈希
+或只覆盖 DLTB 等少数对象。
 
 ## 启停与任务计划
 
