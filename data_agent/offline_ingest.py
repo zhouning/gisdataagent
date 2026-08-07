@@ -1901,7 +1901,14 @@ class OfflineIngestStore:
                     token in target_name for token in ("gdem", "dem", "高程")
                 ):
                     canonical = "SZGCMX"
-                elif output.get("target_kind") == "cog_stac":
+                elif output.get("target_kind") == "cog_stac" and any(
+                    token in target_name
+                    for token in ("clcd", "landcover", "land_cover", "土地覆盖")
+                ):
+                    canonical = "CLCD"
+                elif output.get("target_kind") == "cog_stac" and any(
+                    token in target_name for token in ("dom", "正射", "orthophoto")
+                ):
                     canonical = "SZZSYX"
             if binding_mode == "rehearsal":
                 if not canonical:
@@ -1917,6 +1924,7 @@ class OfflineIngestStore:
                         "target_id": output.get("target_id"),
                         "canonical_dataset": canonical,
                         "target_path": output.get("target_path"),
+                        "target_sha256": output.get("target_sha256"),
                         "source_asset_id": output.get("source_asset_id"),
                         "binding_mode": "reference_only_rehearsal",
                         "mapping_status": mapping.get("status")
@@ -1944,6 +1952,7 @@ class OfflineIngestStore:
                     "target_id": output.get("target_id"),
                     "canonical_dataset": canonical,
                     "target_path": output.get("target_path"),
+                    "target_sha256": output.get("target_sha256"),
                     "source_asset_id": output.get("source_asset_id"),
                     "binding_mode": "reference_only",
                     "mapping_status": mapping.get("status"),
@@ -1966,6 +1975,7 @@ class OfflineIngestStore:
             "plan_id": plan_id,
             "ontology_version": ontology_version
             or os.environ.get("GDA_ONTOLOGY_VERSION", "natural-resource-ontology-pending"),
+            "ontology_content_sha256": os.environ.get("GDA_ONTOLOGY_CONTENT_SHA256") or None,
             "status": "accepted"
             if binding_mode == "production"
             else "accepted_for_rehearsal",

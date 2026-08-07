@@ -27,7 +27,32 @@ def main() -> int:
     parser.add_argument("--analysis-crs")
     parser.add_argument("--dem-resolution-m", type=int, default=250)
     parser.add_argument("--sample-scope", default="chongqing_demo")
-    parser.add_argument("--authority-mode", default="rehearsal")
+    parser.add_argument(
+        "--authority-mode",
+        choices=("rehearsal", "production"),
+        default="rehearsal",
+        help="rehearsal permits explicit alias fallback; production requires ontology bindings",
+    )
+    parser.add_argument(
+        "--ontology-binding",
+        type=Path,
+        help="binding.json emitted by offline ingest ontology binding",
+    )
+    parser.add_argument(
+        "--semantic-mapping",
+        type=Path,
+        help="optional replacement for the bundled semantic input mapping contract",
+    )
+    parser.add_argument(
+        "--ontology-package",
+        type=Path,
+        help="immutable ontology package directory; defaults to the active bundled package",
+    )
+    parser.add_argument(
+        "--skip-ontology-validation",
+        action="store_true",
+        help="rehearsal-only escape hatch for diagnostics when the package is not installed",
+    )
     args = parser.parse_args()
     if not args.materialization.is_file():
         parser.error(f"materialization file does not exist: {args.materialization}")
@@ -42,16 +67,21 @@ def main() -> int:
             dem_resolution_m=args.dem_resolution_m,
             sample_scope=args.sample_scope,
             authority_mode=args.authority_mode,
+            ontology_binding_path=str(args.ontology_binding) if args.ontology_binding else None,
+            semantic_mapping_path=str(args.semantic_mapping) if args.semantic_mapping else None,
+            ontology_package_dir=str(args.ontology_package) if args.ontology_package else None,
+            validate_ontology=not args.skip_ontology_validation,
         ),
     )
     print(json.dumps({
         "report": str(args.output.resolve() / "monitoring_evaluation_report.json"),
         "status": result["status"],
         "units": result["unit_count"],
-        "diagnostic_counts": result["diagnostic_counts"],
+        "diagnostic_counts": result.get("diagnostic_counts", {}),
         "production_eligible": result["production_eligible"],
+        "semantic_gate": (result.get("semantic_gate") or {}).get("status"),
     }, ensure_ascii=False))
-    return 0
+    return 2 if result["status"] == "blocked" else 0
 
 
 if __name__ == "__main__":

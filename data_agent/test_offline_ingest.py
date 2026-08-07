@@ -146,6 +146,7 @@ def test_ontology_binding_accepts_quality_gated_nx_baseline(tmp_path):
                         "target_id": f"standardized:{plan_id}:DLTB",
                         "target_kind": "postgis_or_geoparquet",
                         "target_path": "D:/GDA_DATA/governed/DLTB.parquet",
+                        "target_sha256": "1" * 64,
                         "source_asset_id": "asset-dltb",
                         "canonical_dataset": "DLTB",
                         "execution_status": "succeeded",
@@ -166,6 +167,47 @@ def test_ontology_binding_accepts_quality_gated_nx_baseline(tmp_path):
     binding = result["ontology_binding"]
     assert binding["production_eligible"] is True
     assert binding["bindings"][0]["mapping_authority"] == "nx_workbook_baseline"
+    assert binding["bindings"][0]["target_sha256"] == "1" * 64
+
+
+def test_rehearsal_raster_binding_does_not_treat_every_raster_as_orthophoto(tmp_path):
+    store = OfflineIngestStore(tmp_path / "lake")
+    plan_id = "b" * 32
+    plan_root = store.root / "standardized" / plan_id
+    materialized_root = store.root / "materialized" / plan_id
+    plan_root.mkdir(parents=True)
+    materialized_root.mkdir(parents=True)
+    (plan_root / "standardization_plan.json").write_text(
+        json.dumps({"plan_id": plan_id, "status": "planned"}), encoding="utf-8"
+    )
+    outputs = []
+    for name in ("CLCD_2020.tif", "city_DOM.tif", "region_DEM.tif", "unknown.tif"):
+        outputs.append(
+            {
+                "target_id": f"derived:{plan_id}:{name}",
+                "target_kind": "cog_stac",
+                "target_name": name,
+                "target_path": f"D:/GDA_DATA/governed/{name}",
+                "target_sha256": "2" * 64,
+                "source_asset_id": f"asset:{name}",
+                "execution_status": "succeeded",
+                "mapping": {},
+            }
+        )
+    (materialized_root / "materialization.json").write_text(
+        json.dumps({"status": "succeeded", "outputs": outputs}), encoding="utf-8"
+    )
+
+    result = store.create_ontology_binding(
+        plan_id, actor="tester", binding_mode="rehearsal"
+    )
+
+    binding = result["ontology_binding"]
+    canonical = {item["canonical_dataset"] for item in binding["bindings"]}
+    assert canonical == {"CLCD", "SZZSYX", "SZGCMX"}
+    assert binding["skipped"] == [
+        {"target_id": f"derived:{plan_id}:unknown.tif", "reason": "no_ontology_schema_candidate"}
+    ]
 
 
 def test_same_named_assets_cannot_overwrite_each_other_in_raw_zone(tmp_path, monkeypatch):

@@ -71,11 +71,11 @@
       "sha256": "9168261ce3a48f423df6dcea9156eaca55576cec92eb7ed961b570a45524e689"
     },
     "shacl": {
-      "bytes": 5449,
+      "bytes": 5448,
       "media_type": "text/turtle",
       "path": "shapes.ttl",
       "record_count": null,
-      "sha256": "d2f318dc960f17333a838663e44c69a64e475c2e7e34945cab5db94c6c6a9cef"
+      "sha256": "38ac06991c63651bb12d14e6ffbf1c7d89dff1c72c4325305b9415e55f7b813f"
     },
     "sources": {
       "bytes": 2031,

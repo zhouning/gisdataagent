@@ -1,0 +1,87 @@
+{
+  "contract_id": "gda.nr.planning-monitoring.semantic-input.v1",
+  "contract_version": "1.0.0",
+  "ontology_key": "natural-resource-one-map",
+  "ontology_version": "2.3.0",
+  "publication_gate": "production_requires_accepted_ontology_binding_and_hash_verified_materialization",
+  "description": "规划实施现状监测评估输入角色到自然资源本体概念、标准制品及属性的机器可执行映射。指标和计算过程属于模型合同，不作为本体类。",
+  "roles": {
+    "building": {
+      "label_zh": "房屋建筑",
+      "ontology_concept_id": "gda:nr:class:Building",
+      "accepted_schema_codes": ["CQNFWJZA", "r_bld_a", "Building", "自然幢", "建筑"],
+      "geometry": ["Polygon", "MultiPolygon"],
+      "required": true,
+      "rehearsal_alias_fallback": true,
+      "properties": {
+        "floor_count": {
+          "semantic_property_id": "gda:nr:property:totalFloorCount",
+          "required": false,
+          "source_aliases": ["totalFloorCount", "TotalFloorCount", "Floor", "floor", "层数", "总层数"],
+          "model_field": "floor_count",
+          "used_by_indicators": ["AVG_FLOORS", "EST_FLOOR_AREA_M2", "EST_FAR"]
+        }
+      }
+    },
+    "poi": {
+      "label_zh": "公共服务设施点",
+      "ontology_concept_id": "gda:nr:class:PublicFacility",
+      "accepted_schema_codes": ["SSGGFWSSD", "SSGGFWSSM", "DYGGFWSSD", "DYGGFWSSM", "PublicFacility", "POI"],
+      "geometry": ["Point", "MultiPoint"],
+      "required": false,
+      "rehearsal_alias_fallback": true,
+      "properties": {}
+    },
+    "road": {
+      "label_zh": "道路",
+      "ontology_concept_id": "gda:nr:class:Road",
+      "accepted_schema_codes": ["t_cir_l", "t_cor_l", "LCTL", "LVLL", "Road", "道路"],
+      "geometry": ["LineString", "MultiLineString"],
+      "required": false,
+      "rehearsal_alias_fallback": true,
+      "properties": {}
+    },
+    "land_cover": {
+      "label_zh": "土地利用/覆盖栅格",
+      "ontology_concept_id": "gda:nr:class:SpatialUnit",
+      "semantic_property_id": "gda:nr:property:currentLandUseCode",
+      "accepted_schema_codes": ["S_SJ_TDLYXZ", "TDLYXZ", "CLCD", "land_cover"],
+      "geometry": ["Raster"],
+      "required": false,
+      "rehearsal_alias_fallback": true,
+      "properties": {
+        "class_code": {
+          "semantic_property_id": "gda:nr:property:currentLandUseCode",
+          "required": false,
+          "source_aliases": ["class_code", "DLBM", "dlbm", "land_use_code"],
+          "model_field": "land_cover_class_code",
+          "used_by_indicators": ["IMPERVIOUS_SHARE_PCT", "WATER_SHARE_PCT"]
+        }
+      },
+      "value_domain": {
+        "impervious_class": 8,
+        "water_class": 5,
+        "authority": "model_contract_sample_class_domain",
+        "requires_deployment_confirmation": true
+      }
+    },
+    "dem": {
+      "label_zh": "数字高程模型",
+      "ontology_concept_id": "gda:nr:standard:feature:02:9489a4e2cc7493ed00eb2865",
+      "semantic_property_id": "gda:nr:standard:property:c6d730775d3e8ebde1e4ab7d",
+      "accepted_schema_codes": ["SZGCMX", "SZGCMXGX", "DEM", "GDEM", "elevation"],
+      "geometry": ["Raster"],
+      "required": false,
+      "rehearsal_alias_fallback": true,
+      "properties": {
+        "elevation_value": {
+          "semantic_property_id": "gda:nr:standard:property:c6d730775d3e8ebde1e4ab7d",
+          "required": true,
+          "source_aliases": ["elevation", "elevation_value", "高程", "DEM band 1"],
+          "model_field": "elevation_value",
+          "used_by_indicators": ["MEAN_ELEVATION_M", "MEAN_SLOPE_DEG"]
+        }
+      }
+    }
+  }
+}

@@ -25,6 +25,7 @@ import pandas as pd
 MODEL_ID = "gda.nr.planning-monitoring.current-state"
 MODEL_VERSION = "1.0.0"
 CONTRACT_RESOURCE = "model_contracts/planning_monitoring_current_state.v1.json"
+SEMANTIC_MAPPING_RESOURCE = "model_contracts/planning_monitoring_semantic_mapping.v1.json"
 
 
 def _now() -> str:
@@ -82,6 +83,10 @@ class MonitoringConfig:
     dem_resolution_m: int = 250
     sample_scope: str = "chongqing_demo"
     authority_mode: str = "rehearsal"
+    ontology_binding_path: str | None = None
+    semantic_mapping_path: str | None = None
+    ontology_package_dir: str | None = None
+    validate_ontology: bool = True
 
 
 def discover_materialized_inputs(materialization_path: str | Path) -> dict[str, Any]:
@@ -138,7 +143,303 @@ def discover_materialized_inputs(materialization_path: str | Path) -> dict[str, 
             else int(item.get("target_size") or 0),
             default=None,
         )
-    return {"materialization": str(Path(materialization_path).resolve()), "roles": selected}
+    return {
+        "materialization": str(Path(materialization_path).resolve()),
+        "targets": targets,
+        "roles": selected,
+    }
+
+
+def load_semantic_mapping_contract(path: str | Path | None = None) -> dict[str, Any]:
+    """Load the model's role-to-ontology mapping contract from the bundle."""
+
+    if path:
+        return json.loads(Path(path).expanduser().read_text(encoding="utf-8"))
+    resource = files("data_agent").joinpath(SEMANTIC_MAPPING_RESOURCE)
+    return json.loads(resource.read_text(encoding="utf-8"))
+
+
+def _semantic_contract_hash(contract: dict[str, Any]) -> str:
+    payload = json.dumps(contract, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _fold(value: Any) -> str:
+    return str(value or "").strip().casefold()
+
+
+def _binding_status_accepted(value: Any) -> bool:
+    return _fold(value) in {
+        "accepted",
+        "accepted_for_rehearsal",
+        "succeeded",
+        "published",
+    }
+
+
+def _binding_matches_target(binding: dict[str, Any], target: dict[str, Any]) -> bool:
+    """Match a binding entry to a materialization target without filename guessing."""
+
+    target_id = str(target.get("target_id") or "")
+    target_path = str(target.get("target_path") or "")
+    source_asset_id = str(target.get("source_asset_id") or "")
+    binding_target_id = str(binding.get("target_id") or "")
+    binding_target_path = str(binding.get("target_path") or "")
+    binding_source_asset_id = str(binding.get("source_asset_id") or "")
+    # Prefer the immutable target identity.  A FileGDB bundle can contain many
+    # layers with one source_asset_id, so source-only matching is a last resort.
+    if binding_target_id:
+        return bool(target_id and target_id == binding_target_id)
+    if binding_target_path:
+        return bool(
+            target_path
+            and Path(target_path).resolve() == Path(binding_target_path).resolve()
+        )
+    return bool(source_asset_id and source_asset_id == binding_source_asset_id)
+
+
+def _load_ontology_runtime(
+    semantic_mapping: dict[str, Any], config: MonitoringConfig
+) -> tuple[dict[str, Any], list[str], list[str]]:
+    """Validate referenced concepts/properties against the pinned ontology package.
+
+    This is deliberately best-effort in rehearsal because a customer may first
+    install the model bundle and then install the authority package. Production
+    treats an unavailable or hash-invalid package as a hard semantic gate.
+    """
+
+    runtime: dict[str, Any] = {
+        "status": "not_checked",
+        "backend": None,
+        "ontology_version": None,
+        "content_sha256": None,
+        "package_dir": config.ontology_package_dir,
+    }
+    errors: list[str] = []
+    warnings: list[str] = []
+    if not config.validate_ontology:
+        runtime["status"] = "validation_disabled"
+        warnings.append("ontology_runtime_validation_disabled")
+        return runtime, errors, warnings
+    try:
+        from .ontology.service import OntologyService
+
+        service = OntologyService(config.ontology_package_dir)
+        status = service.status()
+        runtime.update(
+            {
+                "status": "available",
+                "backend": status.get("backend"),
+                "ontology_version": status.get("semantic_version"),
+                "ontology_version_id": status.get("ontology_version_id"),
+                "content_sha256": status.get("content_sha256"),
+                "authority_state": status.get("authority_state"),
+            }
+        )
+        expected_version = str(semantic_mapping.get("ontology_version") or "")
+        if expected_version and runtime["ontology_version"] != expected_version:
+            errors.append(
+                f"ontology_version_mismatch:expected={expected_version}:actual={runtime['ontology_version']}"
+            )
+        for role, role_spec in (semantic_mapping.get("roles") or {}).items():
+            concept_id = role_spec.get("ontology_concept_id")
+            if concept_id and service.get_concept(concept_id) is None:
+                errors.append(f"ontology_concept_missing:{role}:{concept_id}")
+            for property_spec in (role_spec.get("properties") or {}).values():
+                property_id = property_spec.get("semantic_property_id")
+                if not property_id or not concept_id:
+                    continue
+                properties = service.get_properties(
+                    concept_id, include_effective=True
+                ).get("items", [])
+                if not any(item.get("property_id") == property_id for item in properties):
+                    errors.append(f"ontology_property_missing:{role}:{property_id}")
+            property_id = role_spec.get("semantic_property_id")
+            if property_id and concept_id:
+                properties = service.get_properties(
+                    concept_id, include_effective=True
+                ).get("items", [])
+                if not any(item.get("property_id") == property_id for item in properties):
+                    errors.append(f"ontology_property_missing:{role}:{property_id}")
+    except Exception as exc:  # package hash/dependency/authority errors are evidence
+        runtime.update({"status": "unavailable", "error": str(exc)})
+        errors.append(f"ontology_runtime_unavailable:{exc}")
+    if errors and config.authority_mode != "production":
+        warnings.extend(errors)
+        errors = []
+        runtime["status"] = (
+            "available_with_review"
+            if runtime.get("status") == "available"
+            else runtime["status"]
+        )
+    return runtime, errors, warnings
+
+
+def validate_semantic_inputs(
+    materialization_path: str | Path,
+    inputs: dict[str, Any],
+    config: MonitoringConfig,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Resolve model roles through an ontology binding and enforce its gate.
+
+    Rehearsal may use explicit name aliases for inputs that have no accepted
+    ontology binding, but the report records that fact and remains non-production.
+    Production requires a binding for every selected input, including a hash of
+    the exact materialized target, so a deployment cannot silently use a stale file.
+    """
+
+    semantic_mapping = load_semantic_mapping_contract(config.semantic_mapping_path)
+    runtime, runtime_errors, runtime_warnings = _load_ontology_runtime(semantic_mapping, config)
+    gate: dict[str, Any] = {
+        "status": "pass",
+        "authority_mode": config.authority_mode,
+        "mapping_contract_id": semantic_mapping.get("contract_id"),
+        "mapping_contract_hash": _semantic_contract_hash(semantic_mapping),
+        "ontology": runtime,
+        "roles": {},
+        "errors": list(runtime_errors),
+        "warnings": list(runtime_warnings),
+        "binding_path": None,
+        "binding_id": None,
+        "binding_status": None,
+    }
+    binding: dict[str, Any] | None = None
+    binding_path = config.ontology_binding_path
+    if binding_path:
+        path = Path(binding_path).expanduser().resolve()
+        gate["binding_path"] = str(path)
+        if not path.is_file():
+            gate["errors"].append(f"ontology_binding_missing:{path}")
+        else:
+            try:
+                binding = json.loads(path.read_text(encoding="utf-8"))
+                gate["binding_id"] = binding.get("binding_id")
+                gate["binding_status"] = binding.get("status")
+                if not _binding_status_accepted(binding.get("status")):
+                    gate["errors"].append(f"ontology_binding_status_not_accepted:{binding.get('status')}")
+                if config.authority_mode == "production":
+                    if (
+                        binding.get("binding_mode") != "production"
+                        or binding.get("production_eligible") is not True
+                    ):
+                        gate["errors"].append("ontology_binding_not_production_eligible")
+                    if _fold(binding.get("ontology_version")) in {
+                        "",
+                        "natural-resource-ontology-pending",
+                    }:
+                        gate["errors"].append("ontology_binding_version_not_pinned")
+                    expected_version = str(semantic_mapping.get("ontology_version") or "")
+                    if expected_version and _fold(binding.get("ontology_version")) != _fold(
+                        expected_version
+                    ):
+                        gate["errors"].append("ontology_binding_version_mismatch")
+                    binding_content_hash = str(
+                        binding.get("ontology_content_sha256") or ""
+                    )
+                    runtime_content_hash = str(runtime.get("content_sha256") or "")
+                    if not binding_content_hash:
+                        gate["errors"].append("ontology_binding_content_hash_required")
+                    elif (
+                        runtime_content_hash
+                        and binding_content_hash != runtime_content_hash
+                    ):
+                        gate["errors"].append("ontology_binding_content_hash_mismatch")
+            except (OSError, json.JSONDecodeError) as exc:
+                gate["errors"].append(f"ontology_binding_invalid:{exc}")
+    elif config.authority_mode == "production":
+        gate["errors"].append("ontology_binding_required_in_production")
+    else:
+        gate["warnings"].append("ontology_binding_not_supplied_rehearsal_only")
+
+    binding_entries = (binding or {}).get("bindings") or []
+    skipped_ids = {
+        str(item.get("target_id") or "") for item in ((binding or {}).get("skipped") or [])
+    }
+    targets = [
+        target for target in (inputs.get("targets") or [])
+        if target.get("execution_status") in {None, "succeeded"}
+        and target.get("target_path")
+        and Path(str(target["target_path"])).is_file()
+    ]
+    resolved_roles: dict[str, dict[str, Any] | None] = {}
+    for role, role_spec in (semantic_mapping.get("roles") or {}).items():
+        alias_target = (inputs.get("roles") or {}).get(role)
+        accepted_codes = {_fold(code) for code in (role_spec.get("accepted_schema_codes") or [])}
+        direct_candidates = []
+        for target in targets:
+            for entry in binding_entries:
+                if not _binding_matches_target(entry, target):
+                    continue
+                canonical = _fold(entry.get("canonical_dataset"))
+                concept_id = str(entry.get("ontology_concept_id") or "")
+                if canonical in accepted_codes or concept_id == role_spec.get(
+                    "ontology_concept_id"
+                ):
+                    direct_candidates.append((target, entry))
+                    break
+        chosen: dict[str, Any] | None = None
+        role_resolution = "unresolved"
+        if direct_candidates:
+            target, entry = direct_candidates[0]
+            chosen = dict(target)
+            chosen["semantic_binding"] = dict(entry)
+            chosen["role_resolution"] = "ontology_binding"
+            role_resolution = "ontology_binding"
+            declared_target_hash = target.get("target_sha256")
+            binding_hash = entry.get("target_sha256")
+            if binding_hash and declared_target_hash and binding_hash != declared_target_hash:
+                gate["errors"].append(f"target_hash_mismatch:{role}:{target.get('target_id')}")
+            if config.authority_mode == "production" and not binding_hash:
+                gate["errors"].append(f"binding_target_hash_required:{role}:{target.get('target_id')}")
+        elif (
+            alias_target
+            and config.authority_mode != "production"
+            and role_spec.get("rehearsal_alias_fallback")
+        ):
+            chosen = dict(alias_target)
+            chosen["role_resolution"] = "name_alias_rehearsal"
+            role_resolution = "name_alias_rehearsal"
+            gate["warnings"].append(f"role_resolved_by_alias_only:{role}")
+        elif alias_target and config.authority_mode == "production":
+            gate["errors"].append(f"role_target_not_bound:{role}:{alias_target.get('target_id')}")
+        if alias_target and str(alias_target.get("target_id") or "") in skipped_ids:
+            message = f"role_target_explicitly_skipped:{role}:{alias_target.get('target_id')}"
+            if config.authority_mode == "production":
+                gate["errors"].append(message)
+            else:
+                gate["warnings"].append(message)
+        if role_spec.get("required") and chosen is None:
+            gate["errors"].append(f"required_role_unresolved:{role}")
+        resolved_roles[role] = chosen
+        gate["roles"][role] = {
+            "role": role,
+            "required": bool(role_spec.get("required")),
+            "ontology_concept_id": role_spec.get("ontology_concept_id"),
+            "semantic_property_id": role_spec.get("semantic_property_id"),
+            "target_id": chosen.get("target_id") if chosen else None,
+            "target_path": chosen.get("target_path") if chosen else None,
+            "canonical_dataset": (
+                (chosen.get("semantic_binding") or {}).get("canonical_dataset")
+                if chosen
+                else None
+            ),
+            "role_resolution": role_resolution,
+            "binding_hash_verified": bool(
+                chosen
+                and chosen.get("semantic_binding", {}).get("target_sha256")
+                and chosen.get("target_sha256")
+                == chosen.get("semantic_binding", {}).get("target_sha256")
+            ),
+        }
+    if gate["errors"]:
+        gate["status"] = "blocked"
+    elif gate["warnings"]:
+        gate["status"] = "review"
+    inputs = dict(inputs)
+    inputs["roles"] = resolved_roles
+    inputs["semantic_mapping"] = semantic_mapping
+    inputs["semantic_gate"] = gate
+    return inputs, gate
 
 
 def _read_vector(path: Path, *, columns: list[str] | None = None):
@@ -525,6 +826,103 @@ def _relative_diagnostics(frame: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, 
     return frame, thresholds
 
 
+def _blocked_summary(
+    output: Path,
+    run_id: str,
+    contract: dict[str, Any],
+    config: MonitoringConfig,
+    gate: dict[str, Any],
+) -> dict[str, Any]:
+    """Persist a deterministic blocked result so operators have actionable evidence."""
+
+    quality_path = output / "quality_report.json"
+    quality = {
+        "run_id": run_id,
+        "status": "blocked",
+        "checks": {"semantic_gate": gate},
+        "limitations": ["模型计算未执行；请先修复语义绑定闸门"],
+    }
+    _write_json(quality_path, quality)
+    _write_json(output / "semantic_gate_report.json", gate)
+    summary = {
+        "run_id": run_id,
+        "model_id": MODEL_ID,
+        "model_version": MODEL_VERSION,
+        "contract_id": contract.get("contract_id"),
+        "contract_hash": _contract_hash(contract),
+        "sample_scope": config.sample_scope,
+        "authority_mode": config.authority_mode,
+        "production_eligible": False,
+        "status": "blocked",
+        "unit_count": 0,
+        "semantic_gate": gate,
+        "semantic_mapping_contract_hash": gate.get("mapping_contract_hash"),
+        "quality_report": str(quality_path),
+        "started_at": _now(),
+    }
+    _write_json(output / "monitoring_evaluation_report.json", summary)
+    (output / "monitoring_evaluation_report.md").write_text(
+        "# 规划实施智能监测评估模型：执行阻断\n\n"
+        f"- 运行：`{run_id}`；状态：`blocked`\n"
+        f"- 原因：`{'; '.join(gate.get('errors') or ['semantic_gate_blocked'])}`\n"
+        "- 未生成指标结果；修复语义绑定、本体版本或目标哈希后重新执行。\n",
+        encoding="utf-8",
+    )
+    return summary
+
+
+def _record_source_property_mappings(
+    gate: dict[str, Any], role: str, frame: Any, semantic_mapping: dict[str, Any]
+) -> None:
+    """Record source column -> ontology property -> model field mappings."""
+
+    role_spec = (semantic_mapping.get("roles") or {}).get(role) or {}
+    role_gate = (gate.get("roles") or {}).get(role)
+    if role_gate is None:
+        return
+    columns = {str(column).casefold(): str(column) for column in getattr(frame, "columns", [])}
+    mappings = []
+    for model_field, property_spec in (role_spec.get("properties") or {}).items():
+        aliases = property_spec.get("source_aliases") or []
+        source_column = next(
+            (columns[_fold(alias)] for alias in aliases if _fold(alias) in columns),
+            None,
+        )
+        mappings.append(
+            {
+                "model_field": property_spec.get("model_field") or model_field,
+                "semantic_property_id": property_spec.get("semantic_property_id"),
+                "source_column": source_column,
+                "status": "resolved" if source_column else "unresolved",
+                "required": bool(property_spec.get("required")),
+                "used_by_indicators": property_spec.get("used_by_indicators") or [],
+            }
+        )
+        if property_spec.get("required") and source_column is None:
+            gate.setdefault("errors", []).append(
+                f"required_source_property_missing:{role}:{property_spec.get('semantic_property_id')}"
+            )
+    role_gate["property_mappings"] = mappings
+
+
+def _record_raster_property_mappings(gate: dict[str, Any], role: str, dataset: Any) -> None:
+    role_gate = (gate.get("roles") or {}).get(role)
+    if role_gate is None:
+        return
+    role_gate["property_mappings"] = [
+        {
+            "model_field": "raster_band_1",
+            "semantic_property_id": role_gate.get("semantic_property_id"),
+            "source_column": None,
+            "source_band": 1,
+            "status": "resolved" if getattr(dataset, "count", 0) >= 1 else "unresolved",
+            "required": role == "dem",
+            "crs": str(getattr(dataset, "crs", None) or ""),
+            "nodata": getattr(dataset, "nodata", None),
+        }
+    ]
+
+
 def run_monitoring_evaluation(
     materialization_path: str | Path,
     output_dir: str | Path,
@@ -539,6 +937,11 @@ def run_monitoring_evaluation(
     contract = load_model_contract()
     inputs = discover_materialized_inputs(materialization_path)
     run_id = f"monitor-{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
+    if config.authority_mode not in {"rehearsal", "production"}:
+        raise ValueError("authority_mode must be rehearsal or production")
+    inputs, semantic_gate = validate_semantic_inputs(materialization_path, inputs, config)
+    if semantic_gate["status"] == "blocked":
+        return _blocked_summary(output, run_id, contract, config, semantic_gate)
     input_evidence: dict[str, Any] = {}
     for role, target in (inputs.get("roles") or {}).items():
         if not target:
@@ -555,7 +958,25 @@ def run_monitoring_evaluation(
             "actual_sha256": actual_hash,
             "sha256_verified": not declared_hash or declared_hash == actual_hash,
             "target_name": target.get("target_name"),
+            "canonical_dataset": (target.get("semantic_binding") or {}).get(
+                "canonical_dataset"
+            ),
+            "ontology_concept_id": semantic_gate["roles"][role].get(
+                "ontology_concept_id"
+            ),
+            "role_resolution": target.get("role_resolution"),
+            "binding_id": semantic_gate.get("binding_id"),
         }
+    if config.authority_mode == "production":
+        hash_failures = [
+            role for role, evidence in input_evidence.items() if not evidence["sha256_verified"]
+        ]
+        if hash_failures:
+            semantic_gate["errors"].extend(
+                f"materialized_target_hash_mismatch:{role}" for role in hash_failures
+            )
+            semantic_gate["status"] = "blocked"
+            return _blocked_summary(output, run_id, contract, config, semantic_gate)
     building_path, _ = _role_target(inputs, "building")
     if not building_path:
         raise ValueError("no building target found; model requires a polygon building source")
@@ -563,6 +984,21 @@ def run_monitoring_evaluation(
     raw_buildings = _read_vector(building_path)
     if raw_buildings.empty:
         raise ValueError("building source is empty")
+    semantic_mapping = inputs["semantic_mapping"]
+    _record_source_property_mappings(
+        semantic_gate, "building", raw_buildings, semantic_mapping
+    )
+    if semantic_gate.get("errors"):
+        semantic_gate["status"] = "blocked"
+        return _blocked_summary(output, run_id, contract, config, semantic_gate)
+    for raster_role in ("land_cover", "dem"):
+        raster_path, _ = _role_target(inputs, raster_role)
+        if not raster_path:
+            continue
+        import rasterio
+
+        with rasterio.open(raster_path) as dataset:
+            _record_raster_property_mappings(semantic_gate, raster_role, dataset)
     analysis_crs = _select_analysis_crs(raw_buildings, config.analysis_crs)
     grid, _, grid_meta = _make_grid(raw_buildings, analysis_crs, config.cell_size_m)
     units, building_quality = _aggregate_buildings(
@@ -640,6 +1076,10 @@ def run_monitoring_evaluation(
     hash_verified = all(item["sha256_verified"] for item in input_evidence.values())
     if not hash_verified:
         quality_status = "blocked"
+    if semantic_gate.get("status") == "review" and quality_status == "pass":
+        quality_status = "review"
+    if semantic_gate.get("status") == "blocked":
+        quality_status = "blocked"
 
     outputs = []
     for path, kind in (
@@ -661,6 +1101,9 @@ def run_monitoring_evaluation(
         "model_id": MODEL_ID,
         "model_version": MODEL_VERSION,
         "contract_hash": _contract_hash(contract),
+        "semantic_mapping_contract_hash": semantic_gate.get("mapping_contract_hash"),
+        "ontology": semantic_gate.get("ontology"),
+        "binding_id": semantic_gate.get("binding_id"),
         "edges": [
             {
                 "source": evidence["target_id"] or evidence["actual_sha256"],
@@ -670,6 +1113,17 @@ def run_monitoring_evaluation(
                 "relation": "consumed_by_model",
             }
             for role, evidence in input_evidence.items()
+        ]
+        + [
+            {
+                "source": role_evidence.get("target_id") or role,
+                "target": role_evidence.get("ontology_concept_id"),
+                "relation": "semantically_bound_to",
+                "role": role,
+                "resolution": role_evidence.get("role_resolution"),
+            }
+            for role, role_evidence in (semantic_gate.get("roles") or {}).items()
+            if role_evidence.get("target_id") and role_evidence.get("ontology_concept_id")
         ]
         + [
             {"source": f"model-run:{run_id}", "target": item["path"], "relation": "materialized"}
@@ -701,6 +1155,7 @@ def run_monitoring_evaluation(
             ),
         },
         "role_quality": role_quality,
+        "semantic_gate": semantic_gate,
         "limitations": [
             "重庆样例不是宁夏权威数据",
             "空间单元为建筑范围规则网格，不是法定行政区或规划评估单元",
@@ -709,11 +1164,25 @@ def run_monitoring_evaluation(
         ],
     }
     _write_json(output / "quality_report.json", quality)
+    _write_json(output / "semantic_gate_report.json", semantic_gate)
 
     diagnostic_counts = (
         pd.Series([code for codes in units["diagnostic_codes"] for code in codes])
         .value_counts()
         .to_dict()
+    )
+    semantic_roles = semantic_gate.get("roles") or {}
+    production_eligible = bool(
+        config.authority_mode == "production"
+        and quality_status == "pass"
+        and semantic_gate.get("status") == "pass"
+        and semantic_gate.get("ontology", {}).get("status") == "available"
+        and all(
+            evidence.get("role_resolution") == "ontology_binding"
+            and evidence.get("binding_hash_verified")
+            for evidence in semantic_roles.values()
+            if evidence.get("target_id")
+        )
     )
     summary = {
         "run_id": run_id,
@@ -723,12 +1192,32 @@ def run_monitoring_evaluation(
         "contract_hash": _contract_hash(contract),
         "sample_scope": config.sample_scope,
         "authority_mode": config.authority_mode,
-        "production_eligible": False,
+        "production_eligible": production_eligible,
         "status": "succeeded_with_review" if quality_status == "review" else quality_status,
         "analysis_crs": analysis_crs,
         "cell_size_m": config.cell_size_m,
         "unit_count": int(len(units)),
         "input_evidence": input_evidence,
+        "semantic_gate": semantic_gate,
+        "semantic_mapping_contract_hash": semantic_gate.get("mapping_contract_hash"),
+        "ontology": semantic_gate.get("ontology"),
+        "ontology_binding_id": semantic_gate.get("binding_id"),
+        "metric_semantics": [
+            {
+                "metric_code": indicator.get("code"),
+                "source_roles": indicator.get("source_roles") or [],
+                "source_concepts": [
+                    semantic_roles.get(role, {}).get("ontology_concept_id")
+                    for role in (indicator.get("source_roles") or [])
+                    if semantic_roles.get(role, {}).get("ontology_concept_id")
+                ],
+                "spatial_unit_concept_id": "gda:nr:class:SpatialUnit",
+                "formula_contract": indicator.get("formula"),
+                "unit": indicator.get("unit"),
+                "period": indicator.get("period"),
+            }
+            for indicator in (contract.get("indicators") or [])
+        ],
         "role_quality": role_quality,
         "relative_thresholds": thresholds,
         "diagnostic_counts": {str(key): int(value) for key, value in diagnostic_counts.items()},
@@ -751,6 +1240,8 @@ def _write_markdown(path: Path, summary: dict[str, Any], units) -> None:
         f"- 模型：`{summary['model_id']}@{summary['model_version']}`",
         f"- 运行：`{summary['run_id']}`；状态：`{summary['status']}`",
         f"- 样例范围：{summary['sample_scope']}；生产发布：`{summary['production_eligible']}`",
+        f"- 语义闸门：`{(summary.get('semantic_gate') or {}).get('status', 'not_recorded')}`；"
+        f"本体：`{(summary.get('ontology') or {}).get('ontology_version') or 'unavailable'}`",
         f"- 空间单元：{summary['unit_count']} 个规则网格，边长 "
         f"{summary['cell_size_m']} m，投影 `{summary['analysis_crs']}`",
         "",
@@ -791,6 +1282,8 @@ def _write_markdown(path: Path, summary: dict[str, Any], units) -> None:
             "不将全部记录复制进本体库。",
             "",
             "完整机器报告位于输出目录的 `monitoring_evaluation_report.json`。",
+            "语义绑定和角色解析证据位于 `semantic_gate_report.json`；生产运行不得使用 "
+            "`name_alias_rehearsal`。",
         ]
     )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
