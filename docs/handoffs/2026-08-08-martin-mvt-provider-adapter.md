@@ -4,7 +4,8 @@
 
 - Continuation branch: `feat/gis-data-platform-mvt-gateway-20260808`
 - Repository: `zhouning/gisdataagent`
-- New-window resume: `git fetch origin && git switch feat/gis-data-platform-mvt-gateway-20260808`
+- New-window resume (existing local clone): `git fetch origin && git switch feat/gis-data-platform-mvt-gateway-20260808`
+- New-window resume (fresh local branch): `git fetch origin && git switch --track origin/feat/gis-data-platform-mvt-gateway-20260808`
 - Read this handoff and [roadmap.md](../roadmap.md) before changing code. Do not reset or clean unrelated
   worktree changes from other vertical slices.
 
