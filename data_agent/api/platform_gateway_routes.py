@@ -7,7 +7,7 @@ import os
 import re
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
-from typing import Any
+from typing import Any, Literal
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 from fastapi.routing import APIRoute
@@ -20,7 +20,7 @@ from pydantic import (
     model_validator,
 )
 from starlette.requests import Request
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 
 from ..approval_case_authority import (
     ApprovalCaseAuthority,
@@ -55,6 +55,14 @@ from ..dataops_manual import (
     ManualDataOpsRunRequest,
     ManualDataOpsRunResponse,
 )
+from ..gis_provider_runtime import (
+    GISProviderContractError,
+    GISProviderUnavailable,
+    MartinVectorTileProvider,
+    MVTProviderReleaseContext,
+    martin_provider_manifest,
+)
+from ..gis_service_control_plane import EndpointProtocol, GISServiceType
 from ..master_data_authority import (
     MASTER_DATA_ACTIVATION_ACTION,
     MasterDataAuthority,
@@ -170,6 +178,33 @@ _PLATFORM_ROLES = frozenset({"admin", "platform_operator"})
 
 class StrictRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
+
+
+class MVTGatewayEndpointContract(StrictRequest):
+    """Provider placement contract consumed by the operator-only tile route."""
+
+    contract_schema: Literal["gda.mvt_endpoint.v1"] = Field(alias="schema")
+    provider_layer_ref: str = Field(
+        pattern=r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$"
+    )
+    provider_query: dict[str, str] = Field(default_factory=dict)
+
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+        populate_by_name=True,
+    )
+
+    @model_validator(mode="after")
+    def _governed_publication_query(self) -> MVTGatewayEndpointContract:
+        publication_id = self.provider_query.get("publication_id")
+        if publication_id is None:
+            raise ValueError("MVT provider_query must bind publication_id")
+        try:
+            UUID(publication_id)
+        except ValueError as exc:
+            raise ValueError("MVT publication_id must be a UUID") from exc
+        return self
 
 
 class RunSubmissionRequest(StrictRequest):
@@ -1058,6 +1093,168 @@ def _tenant_matches(
             "Payload tenant does not match authenticated tenant",
         )
     return None
+
+
+async def get_gis_mvt_tile(request: Request) -> Response:
+    """Serve an active, release-versioned MVT tile through the control gateway.
+
+    This first route is deliberately operator-only. Consumer policy, cache
+    namespace and service-level ConsumerBinding are separate gates and must
+    be added before exposing the route as a general data-plane endpoint.
+    """
+
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+
+    service_urn = request.query_params.get("service_urn")
+    if not service_urn:
+        return _error(
+            request,
+            400,
+            "service_urn_required",
+            "service_urn query parameter is required",
+        )
+    try:
+        parsed_service = parse_resource_urn(service_urn)
+    except ValueError:
+        return _error(request, 400, "invalid_service_urn", "service_urn is invalid")
+    if (
+        parsed_service["tenant_id"] != principal.tenant_id
+        or parsed_service["resource_kind"] != "gis_service"
+    ):
+        return _error(
+            request,
+            403,
+            "service_tenant_mismatch",
+            "service_urn does not belong to the authenticated tenant",
+        )
+
+    release_key = request.path_params.get("release_key", "")
+    if re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", release_key) is None:
+        return _error(request, 400, "invalid_release_key", "release_key is invalid")
+    try:
+        z = int(request.path_params["z"])
+        x = int(request.path_params["x"])
+        y = int(request.path_params["y"])
+    except (KeyError, ValueError):
+        return _error(request, 400, "invalid_tile_coordinate", "tile coordinate is invalid")
+
+    try:
+        projection = await asyncio.to_thread(
+            _gateway().get_gis_service_control_projection,
+            principal.tenant_id,
+            service_urn,
+        )
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+    endpoint = projection.active_endpoint_revision
+    deployment = projection.active_deployment_revision
+    definition = projection.active_service_definition_version
+    release = projection.active_release_binding
+    tile_matrix_set = projection.active_tile_matrix_set_definition_version
+    if any(value is None for value in (endpoint, deployment, definition, release, tile_matrix_set)):
+        return _error(
+            request,
+            409,
+            "gis_service_not_tile_ready",
+            "active GIS service projection is incomplete for MVT",
+        )
+    if release.release_key != release_key:
+        return _error(
+            request,
+            409,
+            "active_release_mismatch",
+            "requested release_key is not the active release",
+        )
+    if (
+        z < tile_matrix_set.min_zoom
+        or z > tile_matrix_set.max_zoom
+        or z < 0
+        or x < 0
+        or y < 0
+        or x >= 2**z
+        or y >= 2**z
+    ):
+        return _error(
+            request,
+            400,
+            "invalid_tile_coordinate",
+            "tile coordinate is outside the active tile matrix set",
+        )
+    if endpoint.endpoint_protocol is not EndpointProtocol.MVT:
+        return _error(
+            request,
+            409,
+            "endpoint_protocol_mismatch",
+            "active endpoint is not an MVT endpoint",
+        )
+    if definition.service_type is not GISServiceType.VECTOR_TILE:
+        return _error(
+            request,
+            409,
+            "service_type_mismatch",
+            "active GIS service is not a vector-tile service",
+        )
+    if deployment.state.value != "ready":
+        return _error(
+            request,
+            409,
+            "deployment_not_ready",
+            "active GIS deployment is not ready",
+        )
+    if deployment.provider_system != "martin":
+        return _error(
+            request,
+            409,
+            "provider_not_supported",
+            "the governed MVT route currently supports Martin only",
+        )
+
+    try:
+        endpoint_contract = MVTGatewayEndpointContract.model_validate(
+            endpoint.endpoint_contract
+        )
+        context = MVTProviderReleaseContext.from_release(
+            release,
+            tile_matrix_set,
+            service_type=definition.service_type,
+            provider_layer_ref=endpoint_contract.provider_layer_ref,
+            provider_query=endpoint_contract.provider_query,
+        )
+        tile = await MartinVectorTileProvider(
+            endpoint.endpoint_uri,
+            manifest=martin_provider_manifest(),
+        ).fetch_tile(context, z, x, y)
+    except ValidationError as exc:
+        return _error(
+            request,
+            409,
+            "invalid_mvt_endpoint_contract",
+            "active endpoint contract is not admissible",
+            _validation_details(exc),
+        )
+    except GISProviderContractError as exc:
+        return _error(request, 502, "provider_contract_error", str(exc))
+    except GISProviderUnavailable as exc:
+        return _error(request, 503, "provider_unavailable", str(exc))
+
+    headers = {
+        "Cache-Control": "private, no-store",
+        "Vary": "Authorization, Accept-Encoding",
+        "X-Content-Type-Options": "nosniff",
+        "X-GDA-Service-Release": release.release_key,
+        "X-GDA-Endpoint-State-Version": str(projection.endpoint_state_version),
+    }
+    if tile.etag is not None:
+        headers["ETag"] = tile.etag
+    return Response(
+        tile.content,
+        status_code=tile.status_code,
+        media_type=tile.media_type,
+        headers=headers,
+    )
 
 
 async def create_resource(request: Request) -> JSONResponse:
@@ -2840,6 +3037,30 @@ async def create_artifact(request: Request) -> JSONResponse:
         return _gateway_error(request, exc)
 
 
+async def get_postgresql_cdc_recovery_observation(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    try:
+        artifact_id = UUID(request.path_params["artifact_id"])
+    except (KeyError, ValueError):
+        return _error(
+            request,
+            400,
+            "invalid_artifact_id",
+            "artifact_id must be a UUID",
+        )
+    try:
+        observation = await asyncio.to_thread(
+            _gateway().get_postgresql_cdc_recovery_observation,
+            principal.tenant_id,
+            artifact_id,
+        )
+        return _success(request, observation)
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
 async def create_quality_result(request: Request) -> JSONResponse:
     principal = _principal(request)
     if isinstance(principal, JSONResponse):
@@ -3556,6 +3777,12 @@ def get_platform_gateway_routes() -> list[APIRoute]:
             operation_id="platform_create_artifact",
         ),
         _platform_route(
+            f"{base}/recovery-observations/{{artifact_id}}",
+            get_postgresql_cdc_recovery_observation,
+            method="GET",
+            operation_id="platform_get_postgresql_cdc_recovery_observation",
+        ),
+        _platform_route(
             f"{base}/quality-results",
             create_quality_result,
             method="POST",
@@ -3620,5 +3847,11 @@ def get_platform_gateway_routes() -> list[APIRoute]:
             get_resource_version_impact,
             method="GET",
             operation_id="platform_get_resource_version_impact",
+        ),
+        _platform_route(
+            f"{base}/gis/tiles/{{release_key}}/{{z:int}}/{{x:int}}/{{y:int}}.pbf",
+            get_gis_mvt_tile,
+            method="GET",
+            operation_id="platform_get_gis_mvt_tile",
         ),
     ]

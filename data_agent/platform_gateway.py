@@ -18,6 +18,15 @@ from pydantic import BaseModel, ConfigDict, TypeAdapter, model_validator
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 
+from .consumer_binding import (
+    ConsumerBinding,
+    ConsumerBindingMigrationNotification,
+    ConsumerBindingMigrationNotificationEnvelope,
+    ConsumerBindingMigrationNotificationSettlement,
+    ConsumerBindingMigrationState,
+    ConsumerMigrationNotificationDeliveryStatus,
+    build_consumer_binding_notification_terminal_state,
+)
 from .data_architecture_ledger import (
     ArchitectureProviderObservation,
     ArchitectureReconciliationStatus,
@@ -52,6 +61,17 @@ from .dataops_schedule import (
     dataops_schedule_lock_keys,
 )
 from .db_engine import get_engine
+from .gis_service_control_plane import (
+    EndpointRevision,
+    GISServiceControlProjection,
+    GISServiceDefinitionVersion,
+    LayerDefinitionVersion,
+    ServiceDeploymentRevision,
+    ServiceDeploymentState,
+    ServiceReleaseBinding,
+    StyleDefinitionVersion,
+    TileMatrixSetDefinitionVersion,
+)
 from .master_data_authority import MasterEntityVersion
 from .metadata_fabric import (
     METADATA_FABRIC_MIGRATION,
@@ -128,6 +148,9 @@ from .spatial_anonymization_run import (
 
 if TYPE_CHECKING:
     from .architecture_successor_adoption import ArchitectureSuccessorPlan
+    from .postgresql_cdc_recovery_controller import (
+        PostgresqlCdcRecoveryObservationRecord,
+    )
 
 GATEWAY_DATABASE_ROLE = "gda_control_gateway"
 GATEWAY_SCHEMA_VERSION = "gda.platform_gateway.v1"
@@ -150,6 +173,16 @@ INCIDENT_NOTIFICATION_MIGRATION = (
     Path(__file__).resolve().parent
     / "migrations"
     / "099_platform_incident_notification_outbox.sql"
+)
+CONSUMER_BINDING_NOTIFICATION_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "152_consumer_binding_migration_notification_outbox.sql"
+)
+GIS_SERVICE_CONTROL_PLANE_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "153_gis_service_control_plane.sql"
 )
 RUN_EVENT_DELIVERY_MIGRATION = (
     Path(__file__).resolve().parent
@@ -184,6 +217,9 @@ COMMAND_CONSUMER_SOURCE = Path(__file__).resolve().parent / "dolphinscheduler_co
 COMMAND_WORKER_SOURCE = Path(__file__).resolve().parent / "dolphinscheduler_command_worker.py"
 INCIDENT_NOTIFICATION_WORKER_SOURCE = (
     Path(__file__).resolve().parent / "incident_notification_worker.py"
+)
+CONSUMER_BINDING_NOTIFICATION_WORKER_SOURCE = (
+    Path(__file__).resolve().parent / "consumer_binding_notification_worker.py"
 )
 RUN_EVENT_DELIVERY_WORKER_SOURCE = (
     Path(__file__).resolve().parent / "platform_run_event_worker.py"
@@ -233,6 +269,13 @@ class GatewayUnavailableError(PlatformGatewayError):
 class GatewayWriteResult:
     value: BaseModel
     created: bool
+
+
+@dataclass(frozen=True)
+class PostgresqlCdcRecoveryWriteResult:
+    artifact: Artifact
+    artifact_created: bool
+    ledger_created: bool
 
 
 @dataclass(frozen=True)
@@ -561,6 +604,607 @@ class PlatformGateway:
             )
             return tuple(
                 MetadataFabricBinding.model_validate(dict(row)) for row in rows
+            )
+
+    @staticmethod
+    def _load_consumer_binding(
+        connection,
+        tenant_id: str,
+        binding_id: UUID,
+    ) -> ConsumerBinding | None:
+        row = (
+            connection.execute(
+                text(
+                    """
+                    SELECT tenant_id, binding_id, product_urn, consumer_ref,
+                           purpose, scope, min_product_version,
+                           max_product_version, credential_ref, quota,
+                           expires_at, compatibility_fingerprint,
+                           compatibility_evidence, binding_sha256,
+                           created_by, created_at
+                      FROM gda_control.consumer_binding
+                     WHERE tenant_id = :tenant_id AND binding_id = :binding_id
+                    """
+                ),
+                {"tenant_id": tenant_id, "binding_id": binding_id},
+            )
+            .mappings()
+            .one_or_none()
+        )
+        if row is None:
+            return None
+        value = dict(row)
+        for key in ("scope", "quota", "compatibility_evidence"):
+            value[key] = _as_json(value[key])
+        return ConsumerBinding.model_validate(value)
+
+    def register_consumer_binding(
+        self,
+        binding: ConsumerBinding,
+    ) -> GatewayWriteResult:
+        """Record one immutable binding through the SECURITY DEFINER recorder."""
+        with self._transaction(binding.tenant_id) as connection:
+            product_exists = connection.execute(
+                text(
+                    """
+                    SELECT EXISTS(
+                        SELECT 1
+                          FROM gda_control.data_product
+                         WHERE tenant_id = :tenant_id
+                           AND product_urn = :product_urn
+                    )
+                    """
+                ),
+                {
+                    "tenant_id": binding.tenant_id,
+                    "product_urn": binding.product_urn,
+                },
+            ).scalar_one()
+            if not product_exists:
+                raise GatewayNotFoundError("DataProduct was not found")
+            result = connection.execute(
+                text(
+                    """
+                    SELECT binding_id, created
+                      FROM gda_control.record_consumer_binding(
+                          :tenant_id,
+                          CAST(:binding_id AS uuid),
+                          :product_urn,
+                          :consumer_ref,
+                          :purpose,
+                          CAST(:scope AS jsonb),
+                          :min_product_version,
+                          :max_product_version,
+                          :credential_ref,
+                          CAST(:quota AS jsonb),
+                          :expires_at,
+                          CAST(:compatibility_fingerprint AS char(64)),
+                          CAST(:compatibility_evidence AS jsonb),
+                          CAST(:binding_sha256 AS char(64)),
+                          :created_by,
+                          :created_at
+                      )
+                    """
+                ),
+                {
+                    **binding.model_dump(
+                        mode="python",
+                        exclude={
+                            "scope",
+                            "quota",
+                            "compatibility_evidence",
+                        },
+                    ),
+                    "scope": _json(binding.scope),
+                    "quota": _json(binding.quota),
+                    "compatibility_evidence": _json(binding.compatibility_evidence),
+                    "compatibility_fingerprint": binding.compatibility_fingerprint,
+                    "binding_sha256": binding.binding_sha256,
+                },
+            ).mappings().one()
+            stored = self._load_consumer_binding(
+                connection, binding.tenant_id, binding.binding_id
+            )
+            if stored is None or stored != binding:
+                raise GatewayConflictError(
+                    "ConsumerBinding identity already has a different payload"
+                )
+            return GatewayWriteResult(stored, bool(result["created"]))
+
+    def list_consumer_bindings(
+        self,
+        tenant_id: str,
+        product_urn: str,
+        *,
+        include_expired: bool = False,
+    ) -> tuple[ConsumerBinding, ...]:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            rows = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT tenant_id, binding_id, product_urn, consumer_ref,
+                               purpose, scope, min_product_version,
+                               max_product_version, credential_ref, quota,
+                               expires_at, compatibility_fingerprint,
+                               compatibility_evidence, binding_sha256,
+                               created_by, created_at
+                          FROM gda_control.consumer_binding
+                         WHERE tenant_id = :tenant_id
+                           AND product_urn = :product_urn
+                           AND (
+                               :include_expired
+                               OR expires_at > clock_timestamp()
+                           )
+                         ORDER BY consumer_ref, binding_id
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant,
+                        "product_urn": product_urn,
+                        "include_expired": include_expired,
+                    },
+                )
+                .mappings()
+                .all()
+            )
+            values = []
+            for row in rows:
+                value = dict(row)
+                for key in ("scope", "quota", "compatibility_evidence"):
+                    value[key] = _as_json(value[key])
+                values.append(ConsumerBinding.model_validate(value))
+            return tuple(values)
+
+    @staticmethod
+    def _load_consumer_binding_migration_state(
+        connection,
+        tenant_id: str,
+        migration_state_id: UUID,
+    ) -> ConsumerBindingMigrationState | None:
+        row = (
+            connection.execute(
+                text(
+                    """
+                    SELECT tenant_id, migration_state_id, binding_id,
+                           product_urn, from_product_version_id,
+                           to_product_version_id, state_version,
+                           compatibility_conclusion, compatibility_evidence,
+                           notification_status, notification_evidence,
+                           migration_deadline, consumer_acknowledgement,
+                           previous_state_sha256, recorded_by, recorded_at,
+                           state_sha256
+                      FROM gda_control.consumer_binding_migration_state
+                     WHERE tenant_id = :tenant_id
+                       AND migration_state_id = :migration_state_id
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "migration_state_id": migration_state_id,
+                },
+            )
+            .mappings()
+            .one_or_none()
+        )
+        if row is None:
+            return None
+        value = dict(row)
+        for key in (
+            "compatibility_evidence",
+            "notification_evidence",
+            "consumer_acknowledgement",
+        ):
+            if value[key] is not None:
+                value[key] = _as_json(value[key])
+        return ConsumerBindingMigrationState.model_validate(value)
+
+    def record_consumer_binding_migration_state(
+        self,
+        state: ConsumerBindingMigrationState,
+    ) -> GatewayWriteResult:
+        """Append a CAS-linked migration state through its guarded recorder."""
+        with self._transaction(state.tenant_id) as connection:
+            return self._record_consumer_binding_migration_state(connection, state)
+
+    @classmethod
+    def _record_consumer_binding_migration_state(
+        cls,
+        connection,
+        state: ConsumerBindingMigrationState,
+    ) -> GatewayWriteResult:
+        acknowledgement = (
+            state.consumer_acknowledgement.model_dump(mode="json")
+            if state.consumer_acknowledgement is not None
+            else None
+        )
+        result = connection.execute(
+            text(
+                """
+                SELECT migration_state_id, created
+                  FROM gda_control.record_consumer_binding_migration_state(
+                      :tenant_id,
+                      CAST(:migration_state_id AS uuid),
+                      CAST(:binding_id AS uuid),
+                      :product_urn,
+                      CAST(:from_product_version_id AS uuid),
+                      CAST(:to_product_version_id AS uuid),
+                      :state_version,
+                      :compatibility_conclusion,
+                      CAST(:compatibility_evidence AS jsonb),
+                      :notification_status,
+                      CAST(:notification_evidence AS jsonb),
+                      :migration_deadline,
+                      CAST(:consumer_acknowledgement AS jsonb),
+                      CAST(:previous_state_sha256 AS char(64)),
+                      :recorded_by,
+                      :recorded_at,
+                      CAST(:state_sha256 AS char(64))
+                  )
+                """
+            ),
+            {
+                **state.model_dump(
+                    mode="python",
+                    exclude={
+                        "compatibility_evidence",
+                        "notification_evidence",
+                        "consumer_acknowledgement",
+                    },
+                ),
+                "compatibility_conclusion": state.compatibility_conclusion.value,
+                "compatibility_evidence": _json(state.compatibility_evidence),
+                "notification_status": state.notification_status.value,
+                "notification_evidence": _json(state.notification_evidence),
+                "consumer_acknowledgement": (
+                    _json(acknowledgement) if acknowledgement is not None else None
+                ),
+            },
+        ).mappings().one()
+        stored = cls._load_consumer_binding_migration_state(
+            connection,
+            state.tenant_id,
+            state.migration_state_id,
+        )
+        if stored is None or stored != state:
+            raise GatewayConflictError(
+                "ConsumerBinding migration state has a different payload"
+            )
+        return GatewayWriteResult(stored, bool(result["created"]))
+
+    def list_consumer_binding_migration_states(
+        self,
+        tenant_id: str,
+        product_urn: str,
+        *,
+        binding_id: UUID | None = None,
+    ) -> tuple[ConsumerBindingMigrationState, ...]:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            rows = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT tenant_id, migration_state_id, binding_id,
+                               product_urn, from_product_version_id,
+                               to_product_version_id, state_version,
+                               compatibility_conclusion,
+                               compatibility_evidence, notification_status,
+                               notification_evidence, migration_deadline,
+                               consumer_acknowledgement, previous_state_sha256,
+                               recorded_by, recorded_at, state_sha256
+                          FROM gda_control.consumer_binding_migration_state
+                         WHERE tenant_id = :tenant_id
+                           AND product_urn = :product_urn
+                           AND (
+                               CAST(:binding_id AS uuid) IS NULL
+                               OR binding_id = CAST(:binding_id AS uuid)
+                           )
+                         ORDER BY binding_id, from_product_version_id,
+                                  to_product_version_id, state_version
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant,
+                        "product_urn": product_urn,
+                        "binding_id": binding_id,
+                    },
+                )
+                .mappings()
+                .all()
+            )
+            values: list[ConsumerBindingMigrationState] = []
+            for row in rows:
+                value = dict(row)
+                for key in (
+                    "compatibility_evidence",
+                    "notification_evidence",
+                    "consumer_acknowledgement",
+                ):
+                    if value[key] is not None:
+                        value[key] = _as_json(value[key])
+                values.append(ConsumerBindingMigrationState.model_validate(value))
+            return tuple(values)
+
+    @staticmethod
+    def _consumer_binding_notification_from_row(
+        row,
+    ) -> ConsumerBindingMigrationNotification:
+        value = dict(row)
+        value["provider_receipt"] = _as_json(value["provider_receipt"])
+        return ConsumerBindingMigrationNotification.model_validate(value)
+
+    @classmethod
+    def _consumer_binding_notification_envelope(
+        cls,
+        connection,
+        notification: ConsumerBindingMigrationNotification,
+    ) -> ConsumerBindingMigrationNotificationEnvelope:
+        binding = cls._load_consumer_binding(
+            connection,
+            notification.tenant_id,
+            notification.binding_id,
+        )
+        migration_state = cls._load_consumer_binding_migration_state(
+            connection,
+            notification.tenant_id,
+            notification.migration_state_id,
+        )
+        if binding is None or migration_state is None:
+            raise GatewayNotFoundError(
+                "ConsumerBinding notification source was not found"
+            )
+        return ConsumerBindingMigrationNotificationEnvelope(
+            notification=notification,
+            binding=binding,
+            migration_state=migration_state,
+        )
+
+    @classmethod
+    def _settle_consumer_binding_notification(
+        cls,
+        connection,
+        notification: ConsumerBindingMigrationNotification,
+        *,
+        recorded_by: str,
+    ) -> ConsumerBindingMigrationNotificationSettlement:
+        if notification.status not in {
+            ConsumerMigrationNotificationDeliveryStatus.DONE,
+            ConsumerMigrationNotificationDeliveryStatus.FAILED,
+        }:
+            return ConsumerBindingMigrationNotificationSettlement(
+                notification=notification,
+                migration_state=None,
+            )
+        source_state = cls._load_consumer_binding_migration_state(
+            connection,
+            notification.tenant_id,
+            notification.migration_state_id,
+        )
+        if source_state is None:
+            raise GatewayNotFoundError(
+                "ConsumerBinding notification source state was not found"
+            )
+        terminal_state = build_consumer_binding_notification_terminal_state(
+            notification,
+            source_state,
+            recorded_by=recorded_by,
+        )
+        cls._record_consumer_binding_migration_state(connection, terminal_state)
+        return ConsumerBindingMigrationNotificationSettlement(
+            notification=notification,
+            migration_state=terminal_state,
+        )
+
+    def claim_consumer_binding_migration_notifications(
+        self,
+        tenant_id: str,
+        worker_id: str,
+        *,
+        recorded_by: str,
+        limit: int = 10,
+        lease_seconds: int = 60,
+    ) -> tuple[ConsumerBindingMigrationNotificationEnvelope, ...]:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            rows = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT *
+                          FROM gda_control.claim_consumer_binding_migration_notifications(
+                              :tenant_id, :worker_id, :limit, :lease_seconds
+                          )
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant,
+                        "worker_id": worker_id,
+                        "limit": limit,
+                        "lease_seconds": lease_seconds,
+                    },
+                )
+                .mappings()
+                .all()
+            )
+            terminal_rows = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT notification.*
+                          FROM gda_control.consumer_binding_migration_notification_outbox
+                               AS notification
+                          JOIN gda_control.consumer_binding_migration_state AS source
+                            ON source.tenant_id = notification.tenant_id
+                           AND source.migration_state_id = notification.migration_state_id
+                         WHERE notification.tenant_id = :tenant_id
+                           AND notification.status IN ('done', 'failed')
+                           AND NOT EXISTS (
+                               SELECT 1
+                                 FROM gda_control.consumer_binding_migration_state AS state
+                                WHERE state.tenant_id = notification.tenant_id
+                                  AND state.notification_evidence->>'notification_id'
+                                      = notification.notification_id::text
+                                  AND state.notification_evidence->>'receipt_sha256'
+                                      = notification.receipt_sha256
+                           )
+                           AND NOT EXISTS (
+                               SELECT 1
+                                 FROM gda_control.consumer_binding_migration_state AS newer
+                                WHERE newer.tenant_id = source.tenant_id
+                                  AND newer.binding_id = source.binding_id
+                                  AND newer.from_product_version_id
+                                      = source.from_product_version_id
+                                  AND newer.to_product_version_id
+                                      = source.to_product_version_id
+                                  AND newer.state_version > source.state_version
+                           )
+                         ORDER BY notification.completed_at, notification.notification_id
+                        """
+                    ),
+                    {"tenant_id": tenant},
+                )
+                .mappings()
+                .all()
+            )
+            for row in terminal_rows:
+                self._settle_consumer_binding_notification(
+                    connection,
+                    self._consumer_binding_notification_from_row(row),
+                    recorded_by=recorded_by,
+                )
+            return tuple(
+                self._consumer_binding_notification_envelope(
+                    connection,
+                    self._consumer_binding_notification_from_row(row),
+                )
+                for row in rows
+            )
+
+    def complete_consumer_binding_migration_notification(
+        self,
+        tenant_id: str,
+        notification_id: UUID,
+        *,
+        worker_id: str,
+        recorded_by: str,
+        provider_receipt: dict[str, Any],
+    ) -> ConsumerBindingMigrationNotificationSettlement:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            row = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT *
+                          FROM gda_control.complete_consumer_binding_migration_notification(
+                              :tenant_id, CAST(:notification_id AS uuid),
+                              :worker_id, CAST(:provider_receipt AS jsonb)
+                          )
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant,
+                        "notification_id": notification_id,
+                        "worker_id": worker_id,
+                        "provider_receipt": _json(provider_receipt),
+                    },
+                )
+                .mappings()
+                .one()
+            )
+            notification = self._consumer_binding_notification_from_row(row)
+            return self._settle_consumer_binding_notification(
+                connection,
+                notification,
+                recorded_by=recorded_by,
+            )
+
+    def fail_consumer_binding_migration_notification(
+        self,
+        tenant_id: str,
+        notification_id: UUID,
+        *,
+        worker_id: str,
+        recorded_by: str,
+        error: str,
+        retry_delay_seconds: int = 30,
+    ) -> ConsumerBindingMigrationNotificationSettlement:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            row = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT *
+                          FROM gda_control.fail_consumer_binding_migration_notification(
+                              :tenant_id, CAST(:notification_id AS uuid),
+                              :worker_id, :error, :retry_delay_seconds
+                          )
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant,
+                        "notification_id": notification_id,
+                        "worker_id": worker_id,
+                        "error": error,
+                        "retry_delay_seconds": retry_delay_seconds,
+                    },
+                )
+                .mappings()
+                .one()
+            )
+            notification = self._consumer_binding_notification_from_row(row)
+            return self._settle_consumer_binding_notification(
+                connection,
+                notification,
+                recorded_by=recorded_by,
+            )
+
+    def list_consumer_binding_migration_notifications(
+        self,
+        tenant_id: str,
+        product_urn: str,
+        *,
+        binding_id: UUID | None = None,
+        status: ConsumerMigrationNotificationDeliveryStatus | str | None = None,
+    ) -> tuple[ConsumerBindingMigrationNotification, ...]:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        resolved_status = (
+            ConsumerMigrationNotificationDeliveryStatus(status).value
+            if status is not None
+            else None
+        )
+        with self._transaction(tenant) as connection:
+            rows = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT *
+                          FROM gda_control.consumer_binding_migration_notification_outbox
+                         WHERE tenant_id = :tenant_id
+                           AND product_urn = :product_urn
+                           AND (
+                               CAST(:binding_id AS uuid) IS NULL
+                               OR binding_id = CAST(:binding_id AS uuid)
+                           )
+                           AND (:status IS NULL OR status = :status)
+                         ORDER BY created_at, notification_id
+                        """
+                    ),
+                    {
+                        "tenant_id": tenant,
+                        "product_urn": product_urn,
+                        "binding_id": binding_id,
+                        "status": resolved_status,
+                    },
+                )
+                .mappings()
+                .all()
+            )
+            return tuple(
+                self._consumer_binding_notification_from_row(row) for row in rows
             )
 
     @staticmethod
@@ -3894,6 +4538,91 @@ class PlatformGateway:
         with self._transaction(artifact.tenant_id) as connection:
             return self._put_artifact(connection, artifact)
 
+    def record_postgresql_cdc_recovery_observation(
+        self,
+        artifact: Artifact,
+        *,
+        recovery_plan_sha256: str,
+        observation: Any,
+        decision: Any,
+    ) -> PostgresqlCdcRecoveryWriteResult:
+        """Atomically project controller evidence into Artifact and its ledger."""
+
+        observation_document = observation.model_dump(mode="json", by_alias=True)
+        decision_document = decision.model_dump(mode="json", by_alias=True)
+        with self._transaction(artifact.tenant_id) as connection:
+            artifact_write = self._put_artifact(connection, artifact)
+            row = connection.execute(
+                text(
+                    """
+                    SELECT result_artifact_id, result_created
+                    FROM gda_control.record_postgresql_cdc_recovery_observation(
+                        :tenant_id, :artifact_id, :recovery_plan_sha256,
+                        CAST(:observation AS jsonb), CAST(:decision AS jsonb)
+                    )
+                    """
+                ),
+                {
+                    "tenant_id": artifact.tenant_id,
+                    "artifact_id": artifact.artifact_id,
+                    "recovery_plan_sha256": recovery_plan_sha256,
+                    "observation": _json(observation_document),
+                    "decision": _json(decision_document),
+                },
+            ).mappings().one()
+            if row["result_artifact_id"] != artifact.artifact_id:
+                raise GatewayConflictError(
+                    "recovery controller ledger returned a different Artifact"
+                )
+            stored = self._load_artifact(
+                connection, artifact.tenant_id, artifact.artifact_id
+            )
+            if stored is None:
+                raise GatewayNotFoundError(
+                    "recovery controller Artifact was not persisted"
+                )
+            return PostgresqlCdcRecoveryWriteResult(
+                artifact=stored,
+                artifact_created=artifact_write.created,
+                ledger_created=bool(row["result_created"]),
+            )
+
+    def get_postgresql_cdc_recovery_observation(
+        self, tenant_id: str, artifact_id: UUID
+    ) -> PostgresqlCdcRecoveryObservationRecord:
+        """Load one tenant-scoped durable controller observation projection."""
+
+        from .postgresql_cdc_recovery_controller import (
+            PostgresqlCdcRecoveryObservationRecord,
+        )
+
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            row = connection.execute(
+                text(
+                    """
+                    SELECT tenant_id, artifact_id, sync_definition_version_id,
+                           run_id, sync_definition_urn, checkpoint_state_version,
+                           checkpoint_cursor, observation_sha256, decision_sha256,
+                           disposition, reason_codes, recovery_plan_sha256,
+                           observation, decision, observed_at, decided_at,
+                           recorded_by, recorded_at
+                    FROM gda_control.postgresql_cdc_recovery_observation
+                    WHERE tenant_id = :tenant_id AND artifact_id = :artifact_id
+                    """
+                ),
+                {"tenant_id": tenant, "artifact_id": artifact_id},
+            ).mappings().one_or_none()
+            if row is None:
+                raise GatewayNotFoundError(
+                    "PostgreSQL CDC recovery observation was not found"
+                )
+            value = dict(row)
+            value["checkpoint_cursor"] = _as_json(value["checkpoint_cursor"])
+            value["observation"] = _as_json(value["observation"])
+            value["decision"] = _as_json(value["decision"])
+            return PostgresqlCdcRecoveryObservationRecord.model_validate(value)
+
     @staticmethod
     def _load_lineage(connection, tenant_id: str, lineage_event_id: UUID) -> LineageEvent | None:
         row = (
@@ -4808,6 +5537,900 @@ class PlatformGateway:
             assessment_sha256=assessment_sha256,
         )
 
+    @staticmethod
+    def _gis_service_definition_from_row(row) -> GISServiceDefinitionVersion:
+        value = dict(row)
+        value["service_contract"] = _as_json(value["service_contract"])
+        return GISServiceDefinitionVersion.model_validate(value)
+
+    @classmethod
+    def _load_gis_service_definition_version(
+        cls,
+        connection,
+        tenant_id: str,
+        service_definition_version_id: UUID,
+    ) -> GISServiceDefinitionVersion | None:
+        row = (
+            connection.execute(
+                text(
+                    """
+                    SELECT tenant_id, service_definition_version_id,
+                           service_urn, version_key, predecessor_version_id,
+                           platform_definition_version_id, source_product_urn,
+                           source_data_product_version_id,
+                           source_manifest_sha256, service_type,
+                           service_contract, definition_sha256,
+                           created_by, created_at
+                      FROM gda_control.gis_service_definition_version
+                     WHERE tenant_id = :tenant_id
+                       AND service_definition_version_id =
+                            :service_definition_version_id
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "service_definition_version_id": service_definition_version_id,
+                },
+            )
+            .mappings()
+            .one_or_none()
+        )
+        return cls._gis_service_definition_from_row(row) if row is not None else None
+
+    def register_gis_service_definition_version(
+        self,
+        definition: GISServiceDefinitionVersion,
+    ) -> GatewayWriteResult:
+        with self._transaction(definition.tenant_id) as connection:
+            existing = self._load_gis_service_definition_version(
+                connection,
+                definition.tenant_id,
+                definition.service_definition_version_id,
+            )
+            connection.execute(
+                text(
+                    """
+                    SELECT gda_control.record_gis_service_definition_version(
+                        :tenant_id, :service_definition_version_id,
+                        :service_urn, :version_key, :predecessor_version_id,
+                        :platform_definition_version_id, :source_product_urn,
+                        :source_data_product_version_id,
+                        :source_manifest_sha256, :service_type,
+                        CAST(:service_contract AS jsonb), :definition_sha256,
+                        :created_by, :created_at
+                    )
+                    """
+                ),
+                {
+                    **definition.model_dump(
+                        mode="json",
+                        exclude={"service_contract", "service_type"},
+                    ),
+                    "service_type": definition.service_type.value,
+                    "service_contract": _json(definition.service_contract),
+                },
+            ).scalar_one()
+            stored = self._load_gis_service_definition_version(
+                connection,
+                definition.tenant_id,
+                definition.service_definition_version_id,
+            )
+            if stored is None or stored != definition:
+                raise GatewayConflictError(
+                    "GISServiceDefinitionVersion identity has different content"
+                )
+            return GatewayWriteResult(stored, existing is None)
+
+    def get_gis_service_definition_version(
+        self,
+        tenant_id: str,
+        service_definition_version_id: UUID,
+    ) -> GISServiceDefinitionVersion:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            stored = self._load_gis_service_definition_version(
+                connection, tenant, service_definition_version_id
+            )
+            if stored is None:
+                raise GatewayNotFoundError("GISServiceDefinitionVersion was not found")
+            return stored
+
+    @staticmethod
+    def _layer_definition_from_row(row) -> LayerDefinitionVersion:
+        value = dict(row)
+        value["schema_contract"] = _as_json(value["schema_contract"])
+        return LayerDefinitionVersion.model_validate(value)
+
+    @classmethod
+    def _load_layer_definition_version(
+        cls,
+        connection,
+        tenant_id: str,
+        layer_definition_version_id: UUID,
+    ) -> LayerDefinitionVersion | None:
+        row = (
+            connection.execute(
+                text(
+                    """
+                    SELECT tenant_id, layer_definition_version_id,
+                           service_definition_version_id, layer_key,
+                           version_key, predecessor_version_id,
+                           source_output_resource_version_id, geometry_type,
+                           geometry_column, schema_contract, crs_uri,
+                           spatial_extent, definition_sha256,
+                           created_by, created_at
+                      FROM gda_control.layer_definition_version
+                     WHERE tenant_id = :tenant_id
+                       AND layer_definition_version_id =
+                            :layer_definition_version_id
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "layer_definition_version_id": layer_definition_version_id,
+                },
+            )
+            .mappings()
+            .one_or_none()
+        )
+        return cls._layer_definition_from_row(row) if row is not None else None
+
+    def register_layer_definition_version(
+        self,
+        definition: LayerDefinitionVersion,
+    ) -> GatewayWriteResult:
+        with self._transaction(definition.tenant_id) as connection:
+            existing = self._load_layer_definition_version(
+                connection,
+                definition.tenant_id,
+                definition.layer_definition_version_id,
+            )
+            connection.execute(
+                text(
+                    """
+                    SELECT gda_control.record_layer_definition_version(
+                        :tenant_id, :layer_definition_version_id,
+                        :service_definition_version_id, :layer_key,
+                        :version_key, :predecessor_version_id,
+                        :source_output_resource_version_id, :geometry_type,
+                        :geometry_column, CAST(:schema_contract AS jsonb),
+                        :crs_uri,
+                        CAST(:spatial_extent AS double precision[]),
+                        :definition_sha256, :created_by, :created_at
+                    )
+                    """
+                ),
+                {
+                    **definition.model_dump(
+                        mode="json",
+                        exclude={
+                            "geometry_type",
+                            "schema_contract",
+                            "spatial_extent",
+                        },
+                    ),
+                    "geometry_type": definition.geometry_type.value,
+                    "schema_contract": _json(definition.schema_contract),
+                    "spatial_extent": list(definition.spatial_extent),
+                },
+            ).scalar_one()
+            stored = self._load_layer_definition_version(
+                connection,
+                definition.tenant_id,
+                definition.layer_definition_version_id,
+            )
+            if stored is None or stored != definition:
+                raise GatewayConflictError(
+                    "LayerDefinitionVersion identity has different content"
+                )
+            return GatewayWriteResult(stored, existing is None)
+
+    def get_layer_definition_version(
+        self,
+        tenant_id: str,
+        layer_definition_version_id: UUID,
+    ) -> LayerDefinitionVersion:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            stored = self._load_layer_definition_version(
+                connection, tenant, layer_definition_version_id
+            )
+            if stored is None:
+                raise GatewayNotFoundError("LayerDefinitionVersion was not found")
+            return stored
+
+    @staticmethod
+    def _style_definition_from_row(row) -> StyleDefinitionVersion:
+        value = dict(row)
+        value["style_document"] = _as_json(value["style_document"])
+        return StyleDefinitionVersion.model_validate(value)
+
+    @classmethod
+    def _load_style_definition_version(
+        cls,
+        connection,
+        tenant_id: str,
+        style_definition_version_id: UUID,
+    ) -> StyleDefinitionVersion | None:
+        row = (
+            connection.execute(
+                text(
+                    """
+                    SELECT tenant_id, style_definition_version_id,
+                           service_definition_version_id,
+                           layer_definition_version_id, style_key,
+                           version_key, predecessor_version_id, style_format,
+                           style_document, style_sha256, created_by, created_at
+                      FROM gda_control.style_definition_version
+                     WHERE tenant_id = :tenant_id
+                       AND style_definition_version_id =
+                            :style_definition_version_id
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "style_definition_version_id": style_definition_version_id,
+                },
+            )
+            .mappings()
+            .one_or_none()
+        )
+        return cls._style_definition_from_row(row) if row is not None else None
+
+    def register_style_definition_version(
+        self,
+        definition: StyleDefinitionVersion,
+    ) -> GatewayWriteResult:
+        with self._transaction(definition.tenant_id) as connection:
+            existing = self._load_style_definition_version(
+                connection,
+                definition.tenant_id,
+                definition.style_definition_version_id,
+            )
+            connection.execute(
+                text(
+                    """
+                    SELECT gda_control.record_style_definition_version(
+                        :tenant_id, :style_definition_version_id,
+                        :service_definition_version_id,
+                        :layer_definition_version_id, :style_key,
+                        :version_key, :predecessor_version_id, :style_format,
+                        CAST(:style_document AS jsonb), :style_sha256,
+                        :created_by, :created_at
+                    )
+                    """
+                ),
+                {
+                    **definition.model_dump(
+                        mode="json",
+                        exclude={"style_format", "style_document"},
+                    ),
+                    "style_format": definition.style_format.value,
+                    "style_document": _json(definition.style_document),
+                },
+            ).scalar_one()
+            stored = self._load_style_definition_version(
+                connection,
+                definition.tenant_id,
+                definition.style_definition_version_id,
+            )
+            if stored is None or stored != definition:
+                raise GatewayConflictError(
+                    "StyleDefinitionVersion identity has different content"
+                )
+            return GatewayWriteResult(stored, existing is None)
+
+    def get_style_definition_version(
+        self,
+        tenant_id: str,
+        style_definition_version_id: UUID,
+    ) -> StyleDefinitionVersion:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            stored = self._load_style_definition_version(
+                connection, tenant, style_definition_version_id
+            )
+            if stored is None:
+                raise GatewayNotFoundError("StyleDefinitionVersion was not found")
+            return stored
+
+    @staticmethod
+    def _tile_matrix_set_definition_from_row(
+        row,
+    ) -> TileMatrixSetDefinitionVersion:
+        return TileMatrixSetDefinitionVersion.model_validate(dict(row))
+
+    @classmethod
+    def _load_tile_matrix_set_definition_version(
+        cls,
+        connection,
+        tenant_id: str,
+        tile_matrix_set_definition_version_id: UUID,
+    ) -> TileMatrixSetDefinitionVersion | None:
+        row = (
+            connection.execute(
+                text(
+                    """
+                    SELECT tenant_id, tile_matrix_set_definition_version_id,
+                           service_definition_version_id,
+                           layer_definition_version_id, tile_matrix_set_key,
+                           version_key, predecessor_version_id, crs_uri,
+                           tile_width, tile_height, min_zoom, max_zoom,
+                           scale_denominators, spatial_extent,
+                           definition_sha256, created_by, created_at
+                      FROM gda_control.tile_matrix_set_definition_version
+                     WHERE tenant_id = :tenant_id
+                       AND tile_matrix_set_definition_version_id =
+                            :tile_matrix_set_definition_version_id
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "tile_matrix_set_definition_version_id": (
+                        tile_matrix_set_definition_version_id
+                    ),
+                },
+            )
+            .mappings()
+            .one_or_none()
+        )
+        return (
+            cls._tile_matrix_set_definition_from_row(row)
+            if row is not None
+            else None
+        )
+
+    def register_tile_matrix_set_definition_version(
+        self,
+        definition: TileMatrixSetDefinitionVersion,
+    ) -> GatewayWriteResult:
+        with self._transaction(definition.tenant_id) as connection:
+            existing = self._load_tile_matrix_set_definition_version(
+                connection,
+                definition.tenant_id,
+                definition.tile_matrix_set_definition_version_id,
+            )
+            connection.execute(
+                text(
+                    """
+                    SELECT gda_control.record_tile_matrix_set_definition_version(
+                        :tenant_id, :tile_matrix_set_definition_version_id,
+                        :service_definition_version_id,
+                        :layer_definition_version_id, :tile_matrix_set_key,
+                        :version_key, :predecessor_version_id, :crs_uri,
+                        :tile_width, :tile_height, :min_zoom, :max_zoom,
+                        CAST(:scale_denominators AS double precision[]),
+                        CAST(:spatial_extent AS double precision[]),
+                        :definition_sha256, :created_by, :created_at
+                    )
+                    """
+                ),
+                {
+                    **definition.model_dump(
+                        mode="json",
+                        exclude={"scale_denominators", "spatial_extent"},
+                    ),
+                    "scale_denominators": list(definition.scale_denominators),
+                    "spatial_extent": list(definition.spatial_extent),
+                },
+            ).scalar_one()
+            stored = self._load_tile_matrix_set_definition_version(
+                connection,
+                definition.tenant_id,
+                definition.tile_matrix_set_definition_version_id,
+            )
+            if stored is None or stored != definition:
+                raise GatewayConflictError(
+                    "TileMatrixSetDefinitionVersion identity has different content"
+                )
+            return GatewayWriteResult(stored, existing is None)
+
+    def get_tile_matrix_set_definition_version(
+        self,
+        tenant_id: str,
+        tile_matrix_set_definition_version_id: UUID,
+    ) -> TileMatrixSetDefinitionVersion:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            stored = self._load_tile_matrix_set_definition_version(
+                connection, tenant, tile_matrix_set_definition_version_id
+            )
+            if stored is None:
+                raise GatewayNotFoundError(
+                    "TileMatrixSetDefinitionVersion was not found"
+                )
+            return stored
+
+    @staticmethod
+    def _service_release_binding_from_row(row) -> ServiceReleaseBinding:
+        return ServiceReleaseBinding.model_validate(dict(row))
+
+    @classmethod
+    def _load_service_release_binding(
+        cls,
+        connection,
+        tenant_id: str,
+        service_release_binding_id: UUID,
+    ) -> ServiceReleaseBinding | None:
+        row = (
+            connection.execute(
+                text(
+                    """
+                    SELECT tenant_id, service_release_binding_id,
+                           service_definition_version_id,
+                           layer_definition_version_id,
+                           style_definition_version_id,
+                           tile_matrix_set_definition_version_id,
+                           release_key, binding_sha256, created_by, created_at
+                      FROM gda_control.service_release_binding
+                     WHERE tenant_id = :tenant_id
+                       AND service_release_binding_id =
+                            :service_release_binding_id
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "service_release_binding_id": service_release_binding_id,
+                },
+            )
+            .mappings()
+            .one_or_none()
+        )
+        return cls._service_release_binding_from_row(row) if row is not None else None
+
+    def register_service_release_binding(
+        self,
+        release: ServiceReleaseBinding,
+    ) -> GatewayWriteResult:
+        with self._transaction(release.tenant_id) as connection:
+            existing = self._load_service_release_binding(
+                connection,
+                release.tenant_id,
+                release.service_release_binding_id,
+            )
+            connection.execute(
+                text(
+                    """
+                    SELECT gda_control.record_service_release_binding(
+                        :tenant_id, :service_release_binding_id,
+                        :service_definition_version_id,
+                        :layer_definition_version_id,
+                        :style_definition_version_id,
+                        :tile_matrix_set_definition_version_id,
+                        :release_key, :binding_sha256, :created_by, :created_at
+                    )
+                    """
+                ),
+                release.model_dump(mode="json"),
+            ).scalar_one()
+            stored = self._load_service_release_binding(
+                connection,
+                release.tenant_id,
+                release.service_release_binding_id,
+            )
+            if stored is None or stored != release:
+                raise GatewayConflictError(
+                    "ServiceReleaseBinding identity has different content"
+                )
+            return GatewayWriteResult(stored, existing is None)
+
+    def get_service_release_binding(
+        self,
+        tenant_id: str,
+        service_release_binding_id: UUID,
+    ) -> ServiceReleaseBinding:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            stored = self._load_service_release_binding(
+                connection, tenant, service_release_binding_id
+            )
+            if stored is None:
+                raise GatewayNotFoundError("ServiceReleaseBinding was not found")
+            return stored
+
+    @staticmethod
+    def _service_deployment_from_row(row) -> ServiceDeploymentRevision:
+        return ServiceDeploymentRevision.model_validate(dict(row))
+
+    @classmethod
+    def _load_service_deployment_revision(
+        cls,
+        connection,
+        tenant_id: str,
+        deployment_revision_id: UUID,
+    ) -> ServiceDeploymentRevision | None:
+        row = (
+            connection.execute(
+                text(
+                    """
+                    SELECT tenant_id, deployment_revision_id,
+                           service_definition_version_id,
+                           service_release_binding_id, run_id, revision_key,
+                           provider_system, provider_namespace,
+                           provider_deployment_id, provider_revision_ref,
+                           config_sha256, deployment_sha256, state,
+                           state_version, terminal_observation_id,
+                           created_by, created_at, updated_at, terminal_at
+                      FROM gda_control.service_deployment_revision
+                     WHERE tenant_id = :tenant_id
+                       AND deployment_revision_id = :deployment_revision_id
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "deployment_revision_id": deployment_revision_id,
+                },
+            )
+            .mappings()
+            .one_or_none()
+        )
+        return cls._service_deployment_from_row(row) if row is not None else None
+
+    def register_service_deployment_revision(
+        self,
+        deployment: ServiceDeploymentRevision,
+    ) -> GatewayWriteResult:
+        if (
+            deployment.service_release_binding_id is None
+            or deployment.state != ServiceDeploymentState.PLANNED
+            or deployment.state_version != 0
+            or deployment.terminal_observation_id is not None
+            or deployment.terminal_at is not None
+            or deployment.updated_at != deployment.created_at
+        ):
+            raise GatewayValidationError(
+                "new ServiceDeploymentRevision must bind a release and start planned"
+            )
+        with self._transaction(deployment.tenant_id) as connection:
+            existing = self._load_service_deployment_revision(
+                connection,
+                deployment.tenant_id,
+                deployment.deployment_revision_id,
+            )
+            connection.execute(
+                text(
+                    """
+                    SELECT gda_control.record_service_deployment_revision(
+                        :tenant_id, :deployment_revision_id,
+                        :service_definition_version_id,
+                        :service_release_binding_id, :run_id,
+                        :revision_key, :provider_system, :provider_namespace,
+                        :provider_deployment_id, :provider_revision_ref,
+                        :config_sha256, :deployment_sha256,
+                        :created_by, :created_at
+                    )
+                    """
+                ),
+                deployment.model_dump(
+                    mode="json",
+                    exclude={
+                        "state",
+                        "state_version",
+                        "terminal_observation_id",
+                        "updated_at",
+                        "terminal_at",
+                    },
+                ),
+            ).scalar_one()
+            stored = self._load_service_deployment_revision(
+                connection,
+                deployment.tenant_id,
+                deployment.deployment_revision_id,
+            )
+            if stored is None or stored != deployment:
+                raise GatewayConflictError(
+                    "ServiceDeploymentRevision identity has different content"
+                )
+            return GatewayWriteResult(stored, existing is None)
+
+    def get_service_deployment_revision(
+        self,
+        tenant_id: str,
+        deployment_revision_id: UUID,
+    ) -> ServiceDeploymentRevision:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            stored = self._load_service_deployment_revision(
+                connection, tenant, deployment_revision_id
+            )
+            if stored is None:
+                raise GatewayNotFoundError("ServiceDeploymentRevision was not found")
+            return stored
+
+    def transition_service_deployment_revision(
+        self,
+        tenant_id: str,
+        deployment_revision_id: UUID,
+        *,
+        expected_state_version: int,
+        to_state: ServiceDeploymentState | str,
+        provider_observation_id: UUID | None,
+        actor_subject: str,
+        reason: str,
+        idempotency_key: str,
+        occurred_at: datetime,
+    ) -> ServiceDeploymentRevision:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        state = ServiceDeploymentState(to_state)
+        if occurred_at.tzinfo is None or occurred_at.utcoffset() is None:
+            raise GatewayValidationError("deployment transition time requires a timezone")
+        with self._transaction(tenant) as connection:
+            connection.execute(
+                text(
+                    """
+                    SELECT gda_control.transition_service_deployment_revision(
+                        :tenant_id, :deployment_revision_id,
+                        :expected_state_version, :to_state,
+                        :provider_observation_id, :actor_subject, :reason,
+                        :idempotency_key, :occurred_at
+                    )
+                    """
+                ),
+                {
+                    "tenant_id": tenant,
+                    "deployment_revision_id": deployment_revision_id,
+                    "expected_state_version": expected_state_version,
+                    "to_state": state.value,
+                    "provider_observation_id": provider_observation_id,
+                    "actor_subject": actor_subject,
+                    "reason": reason,
+                    "idempotency_key": idempotency_key,
+                    "occurred_at": occurred_at.astimezone(UTC),
+                },
+            ).scalar_one()
+            stored = self._load_service_deployment_revision(
+                connection, tenant, deployment_revision_id
+            )
+            if stored is None:
+                raise GatewayNotFoundError("ServiceDeploymentRevision was not found")
+            return stored
+
+    @staticmethod
+    def _endpoint_revision_from_row(row) -> EndpointRevision:
+        value = dict(row)
+        value["endpoint_contract"] = _as_json(value["endpoint_contract"])
+        return EndpointRevision.model_validate(value)
+
+    @classmethod
+    def _load_endpoint_revision(
+        cls,
+        connection,
+        tenant_id: str,
+        endpoint_revision_id: UUID,
+    ) -> EndpointRevision | None:
+        row = (
+            connection.execute(
+                text(
+                    """
+                    SELECT tenant_id, endpoint_revision_id, service_urn,
+                           deployment_revision_id, endpoint_protocol,
+                           endpoint_uri, endpoint_contract, endpoint_sha256,
+                           created_by, created_at
+                      FROM gda_control.endpoint_revision
+                     WHERE tenant_id = :tenant_id
+                       AND endpoint_revision_id = :endpoint_revision_id
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "endpoint_revision_id": endpoint_revision_id,
+                },
+            )
+            .mappings()
+            .one_or_none()
+        )
+        return cls._endpoint_revision_from_row(row) if row is not None else None
+
+    def register_endpoint_revision(
+        self,
+        endpoint: EndpointRevision,
+    ) -> GatewayWriteResult:
+        with self._transaction(endpoint.tenant_id) as connection:
+            existing = self._load_endpoint_revision(
+                connection, endpoint.tenant_id, endpoint.endpoint_revision_id
+            )
+            connection.execute(
+                text(
+                    """
+                    SELECT gda_control.record_endpoint_revision(
+                        :tenant_id, :endpoint_revision_id, :service_urn,
+                        :deployment_revision_id, :endpoint_protocol,
+                        :endpoint_uri, CAST(:endpoint_contract AS jsonb),
+                        :endpoint_sha256, :created_by, :created_at
+                    )
+                    """
+                ),
+                {
+                    **endpoint.model_dump(
+                        mode="json",
+                        exclude={"endpoint_protocol", "endpoint_contract"},
+                    ),
+                    "endpoint_protocol": endpoint.endpoint_protocol.value,
+                    "endpoint_contract": _json(endpoint.endpoint_contract),
+                },
+            ).scalar_one()
+            stored = self._load_endpoint_revision(
+                connection, endpoint.tenant_id, endpoint.endpoint_revision_id
+            )
+            if stored is None or stored != endpoint:
+                raise GatewayConflictError("EndpointRevision identity has different content")
+            return GatewayWriteResult(stored, existing is None)
+
+    def get_endpoint_revision(
+        self,
+        tenant_id: str,
+        endpoint_revision_id: UUID,
+    ) -> EndpointRevision:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            stored = self._load_endpoint_revision(
+                connection, tenant, endpoint_revision_id
+            )
+            if stored is None:
+                raise GatewayNotFoundError("EndpointRevision was not found")
+            return stored
+
+    @classmethod
+    def _load_gis_service_control_projection(
+        cls,
+        connection,
+        tenant_id: str,
+        service_urn: str,
+    ) -> GISServiceControlProjection | None:
+        root = (
+            connection.execute(
+                text(
+                    """
+                    SELECT tenant_id, service_urn,
+                           active_endpoint_revision_id,
+                           endpoint_state_version, created_at, updated_at
+                      FROM gda_control.gis_service
+                     WHERE tenant_id = :tenant_id AND service_urn = :service_urn
+                    """
+                ),
+                {"tenant_id": tenant_id, "service_urn": service_urn},
+            )
+            .mappings()
+            .one_or_none()
+        )
+        if root is None:
+            return None
+        active_endpoint = None
+        active_deployment = None
+        active_definition = None
+        active_release = None
+        active_layer = None
+        active_style = None
+        active_tile_matrix_set = None
+        if root["active_endpoint_revision_id"] is not None:
+            active_endpoint = cls._load_endpoint_revision(
+                connection,
+                tenant_id,
+                root["active_endpoint_revision_id"],
+            )
+            if active_endpoint is None:
+                raise GatewayConflictError("active EndpointRevision is missing")
+            active_deployment = cls._load_service_deployment_revision(
+                connection,
+                tenant_id,
+                active_endpoint.deployment_revision_id,
+            )
+            if active_deployment is None:
+                raise GatewayConflictError("active ServiceDeploymentRevision is missing")
+            active_definition = cls._load_gis_service_definition_version(
+                connection,
+                tenant_id,
+                active_deployment.service_definition_version_id,
+            )
+            if active_definition is None:
+                raise GatewayConflictError("active GISServiceDefinitionVersion is missing")
+            if active_deployment.service_release_binding_id is not None:
+                active_release = cls._load_service_release_binding(
+                    connection,
+                    tenant_id,
+                    active_deployment.service_release_binding_id,
+                )
+                if active_release is None:
+                    raise GatewayConflictError("active ServiceReleaseBinding is missing")
+                active_layer = cls._load_layer_definition_version(
+                    connection,
+                    tenant_id,
+                    active_release.layer_definition_version_id,
+                )
+                if active_layer is None:
+                    raise GatewayConflictError("active LayerDefinitionVersion is missing")
+                active_style = cls._load_style_definition_version(
+                    connection,
+                    tenant_id,
+                    active_release.style_definition_version_id,
+                )
+                if active_style is None:
+                    raise GatewayConflictError("active StyleDefinitionVersion is missing")
+                if active_release.tile_matrix_set_definition_version_id is not None:
+                    active_tile_matrix_set = (
+                        cls._load_tile_matrix_set_definition_version(
+                            connection,
+                            tenant_id,
+                            active_release.tile_matrix_set_definition_version_id,
+                        )
+                    )
+                    if active_tile_matrix_set is None:
+                        raise GatewayConflictError(
+                            "active TileMatrixSetDefinitionVersion is missing"
+                        )
+        return GISServiceControlProjection(
+            tenant_id=root["tenant_id"],
+            service_urn=root["service_urn"],
+            endpoint_state_version=root["endpoint_state_version"],
+            active_endpoint_revision=active_endpoint,
+            active_deployment_revision=active_deployment,
+            active_service_definition_version=active_definition,
+            active_release_binding=active_release,
+            active_layer_definition_version=active_layer,
+            active_style_definition_version=active_style,
+            active_tile_matrix_set_definition_version=active_tile_matrix_set,
+            created_at=root["created_at"],
+            updated_at=root["updated_at"],
+        )
+
+    def get_gis_service_control_projection(
+        self,
+        tenant_id: str,
+        service_urn: str,
+    ) -> GISServiceControlProjection:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            projection = self._load_gis_service_control_projection(
+                connection, tenant, service_urn
+            )
+            if projection is None:
+                raise GatewayNotFoundError("GIS service was not found")
+            return projection
+
+    def activate_gis_service_endpoint(
+        self,
+        tenant_id: str,
+        service_urn: str,
+        endpoint_revision_id: UUID,
+        *,
+        expected_state_version: int,
+        actor_subject: str,
+        reason: str,
+        idempotency_key: str,
+        occurred_at: datetime,
+    ) -> GISServiceControlProjection:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        if occurred_at.tzinfo is None or occurred_at.utcoffset() is None:
+            raise GatewayValidationError("endpoint activation time requires a timezone")
+        with self._transaction(tenant) as connection:
+            connection.execute(
+                text(
+                    """
+                    SELECT gda_control.activate_gis_service_endpoint(
+                        :tenant_id, :service_urn, :endpoint_revision_id,
+                        :expected_state_version, :actor_subject, :reason,
+                        :idempotency_key, :occurred_at
+                    )
+                    """
+                ),
+                {
+                    "tenant_id": tenant,
+                    "service_urn": service_urn,
+                    "endpoint_revision_id": endpoint_revision_id,
+                    "expected_state_version": expected_state_version,
+                    "actor_subject": actor_subject,
+                    "reason": reason,
+                    "idempotency_key": idempotency_key,
+                    "occurred_at": occurred_at.astimezone(UTC),
+                },
+            ).scalar_one()
+            projection = self._load_gis_service_control_projection(
+                connection, tenant, service_urn
+            )
+            if projection is None:
+                raise GatewayNotFoundError("GIS service was not found")
+            return projection
+
 
 def build_gateway_report(
     *,
@@ -4822,6 +6445,7 @@ def build_gateway_report(
     master_resource_projection_migration: Path | None = None,
     master_metadata_projection_migration: Path | None = None,
     notification_migration: Path | None = None,
+    consumer_binding_notification_migration: Path | None = None,
     run_event_delivery_migration: Path | None = None,
     metadata_fabric_migration: Path | None = None,
     gateway_source: Path | None = None,
@@ -4829,6 +6453,7 @@ def build_gateway_report(
     command_consumer_source: Path | None = None,
     command_worker_source: Path | None = None,
     notification_worker_source: Path | None = None,
+    consumer_binding_notification_worker_source: Path | None = None,
     run_event_delivery_worker_source: Path | None = None,
     master_metadata_worker_source: Path | None = None,
     schedule_controller_source: Path | None = None,
@@ -4860,6 +6485,10 @@ def build_gateway_report(
         "notification_migration": (
             notification_migration or INCIDENT_NOTIFICATION_MIGRATION
         ).resolve(),
+        "consumer_binding_notification_migration": (
+            consumer_binding_notification_migration
+            or CONSUMER_BINDING_NOTIFICATION_MIGRATION
+        ).resolve(),
         "run_event_delivery_migration": (
             run_event_delivery_migration or RUN_EVENT_DELIVERY_MIGRATION
         ).resolve(),
@@ -4872,6 +6501,10 @@ def build_gateway_report(
         "command_worker_source": (command_worker_source or COMMAND_WORKER_SOURCE).resolve(),
         "notification_worker_source": (
             notification_worker_source or INCIDENT_NOTIFICATION_WORKER_SOURCE
+        ).resolve(),
+        "consumer_binding_notification_worker_source": (
+            consumer_binding_notification_worker_source
+            or CONSUMER_BINDING_NOTIFICATION_WORKER_SOURCE
         ).resolve(),
         "run_event_delivery_worker_source": (
             run_event_delivery_worker_source or RUN_EVENT_DELIVERY_WORKER_SOURCE
@@ -4993,6 +6626,17 @@ def build_gateway_report(
             "fail_data_incident_notification",
             "GRANT SELECT ON TABLE gda_control.data_incident_notification_outbox",
         ),
+        "consumer_binding_notification_migration": (
+            "consumer_binding_migration_notification_outbox",
+            "enqueue_consumer_binding_migration_notification",
+            "FOR UPDATE SKIP LOCKED",
+            "claim_consumer_binding_migration_notifications",
+            "complete_consumer_binding_migration_notification",
+            "fail_consumer_binding_migration_notification",
+            "consumer_binding_notification_receipt_fingerprint",
+            "terminal notification evidence is not backed by a valid outbox receipt",
+            "FORCE ROW LEVEL SECURITY",
+        ),
         "run_event_delivery_migration": (
             "CREATE TABLE IF NOT EXISTS gda_control.platform_run_event_delivery_outbox",
             "enqueue_platform_run_event_delivery",
@@ -5039,6 +6683,14 @@ def build_gateway_report(
             "def claim_metadata_changes(",
             "def complete_metadata_change(",
             "def fail_metadata_change(",
+            "def register_consumer_binding(",
+            "def list_consumer_bindings(",
+            "def record_consumer_binding_migration_state(",
+            "def list_consumer_binding_migration_states(",
+            "def claim_consumer_binding_migration_notifications(",
+            "def complete_consumer_binding_migration_notification(",
+            "def fail_consumer_binding_migration_notification(",
+            "def list_consumer_binding_migration_notifications(",
             "def claim_master_metadata_projections(",
             "def complete_master_metadata_projection(",
             "def fail_master_metadata_projection(",
@@ -5110,6 +6762,14 @@ def build_gateway_report(
             "self.gateway.claim_incident_notifications(",
             "self.gateway.complete_incident_notification(",
             "self.gateway.fail_incident_notification(",
+        ),
+        "consumer_binding_notification_worker_source": (
+            "class ConsumerBindingNotificationWorker",
+            "self.gateway.claim_consumer_binding_migration_notifications(",
+            "self.gateway.complete_consumer_binding_migration_notification(",
+            "self.gateway.fail_consumer_binding_migration_notification(",
+            "alertmanager:consumer-binding-default",
+            "GDA_CONSUMER_BINDING_NOTIFICATION_RECORDED_BY",
         ),
         "run_event_delivery_worker_source": (
             "class PlatformRunEventWorker",
