@@ -27,6 +27,7 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_DIR = Path(__file__).resolve().parent
 MANIFEST_TEMPLATE = SCRIPT_DIR / "bundle-manifest.json"
+PRE_INSTALL_GUIDE = SCRIPT_DIR / "PRE_INSTALL_GUIDE.txt"
 _REQ = re.compile(r"^([A-Za-z0-9][A-Za-z0-9_.-]*)(?:\[[^]]+\])?\s*(?:==|~=|>=|<=|>|<|;|$)")
 
 
@@ -309,6 +310,64 @@ def _zip_directory(stage: Path, output: Path) -> None:
             archive.write(path, path.relative_to(stage.parent).as_posix())
 
 
+def _write_pre_install_guide(
+    destination: Path, output: Path, bundle_version: str, bundle_directory: str
+) -> Path:
+    guide_path = output.with_name(f"{output.stem}-PRE-INSTALL.txt")
+    replacements = {
+        "__BUNDLE_VERSION__": bundle_version,
+        "__BUNDLE_DIRECTORY__": bundle_directory,
+        "__ZIP_NAME__": output.name,
+        "__SHA256_NAME__": f"{output.name}.sha256",
+        "__GUIDE_NAME__": guide_path.name,
+    }
+    text = PRE_INSTALL_GUIDE.read_text(encoding="utf-8-sig")
+    for placeholder, value in replacements.items():
+        text = text.replace(placeholder, value)
+    unresolved = re.findall(r"__[A-Z0-9_]+__", text)
+    if unresolved:
+        raise ValueError(f"unresolved pre-install guide placeholders: {sorted(set(unresolved))}")
+    destination.write_text(text, encoding="utf-8-sig")
+    return destination
+
+
+def _reserve_staged_file(output: Path, suffix: str) -> Path:
+    with tempfile.NamedTemporaryFile(
+        prefix=f".{output.stem}-", suffix=suffix, dir=output.parent, delete=False
+    ) as handle:
+        return Path(handle.name)
+
+
+def _publish_native_lite_bundle(
+    staged_zip: Path, staged_guide: Path, output: Path, backup_dir: Path
+) -> Path:
+    guide_path = output.with_name(f"{output.stem}-PRE-INSTALL.txt")
+    backup_dir.mkdir()
+    backups: dict[Path, Path] = {}
+    published: list[Path] = []
+    try:
+        for final_path in (output, guide_path):
+            if final_path.exists():
+                backup_path = backup_dir / final_path.name
+                final_path.replace(backup_path)
+                backups[final_path] = backup_path
+        staged_zip.replace(output)
+        published.append(output)
+        staged_guide.replace(guide_path)
+        published.append(guide_path)
+    except Exception:
+        for final_path in reversed(published):
+            if final_path.exists():
+                final_path.unlink()
+        for final_path, backup_path in backups.items():
+            if backup_path.exists():
+                backup_path.replace(final_path)
+        raise
+    finally:
+        shutil.rmtree(backup_dir, ignore_errors=True)
+    return guide_path
+
+
 def build(profile: str, vendor_root: Path, output: Path, force: bool = False) -> dict[str, Any]:
     if profile not in {"core", "native-lite", "production"}:
         raise ValueError(f"unsupported profile: {profile}")
@@ -316,6 +375,8 @@ def build(profile: str, vendor_root: Path, output: Path, force: bool = False) ->
         raise FileNotFoundError(f"vendor root does not exist: {vendor_root}")
     if output.exists() and not force:
         raise FileExistsError(f"output already exists (use --force): {output}")
+    if profile == "native-lite" and not PRE_INSTALL_GUIDE.is_file():
+        raise FileNotFoundError(f"missing pre-install guide: {PRE_INSTALL_GUIDE}")
 
     template = json.loads(MANIFEST_TEMPLATE.read_text(encoding="utf-8"))
     required = set(template["profiles"][profile]["required_artifacts"])
@@ -334,6 +395,7 @@ def build(profile: str, vendor_root: Path, output: Path, force: bool = False) ->
     stage.mkdir(parents=True)
     records: list[dict[str, Any]] = []
     missing_optional: list[str] = []
+    staged_outputs: list[Path] = []
     try:
         for spec in selected:
             try:
@@ -387,19 +449,37 @@ def build(profile: str, vendor_root: Path, output: Path, force: bool = False) ->
             json.dumps(final_manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
         )
         _write_checksums(stage)
-        zip_path = output
-        if zip_path.exists() and force:
-            zip_path.unlink()
-        _zip_directory(stage, zip_path)
-        return {
+        staged_zip = _reserve_staged_file(output, ".zip")
+        staged_outputs.append(staged_zip)
+        _zip_directory(stage, staged_zip)
+        if profile == "native-lite":
+            staged_guide = _reserve_staged_file(output, ".txt")
+            staged_outputs.append(staged_guide)
+            _write_pre_install_guide(
+                staged_guide, output, template["bundle_version"], stage.name
+            )
+            guide_path = _publish_native_lite_bundle(
+                staged_zip, staged_guide, output, temporary / "publish-backup"
+            )
+        else:
+            if output.exists() and force:
+                output.unlink()
+            staged_zip.replace(output)
+            guide_path = None
+        result = {
             "status": "ready",
             "profile": profile,
-            "bundle": str(zip_path.resolve()),
+            "bundle": str(output.resolve()),
             "manifest_member": f"{stage.name}/manifest.json",
             "artifacts": len(records),
             "optional_missing": missing_optional,
         }
+        if guide_path is not None:
+            result["pre_install_guide"] = str(guide_path.resolve())
+        return result
     finally:
+        for staged_output in staged_outputs:
+            staged_output.unlink(missing_ok=True)
         shutil.rmtree(temporary, ignore_errors=True)
 
 

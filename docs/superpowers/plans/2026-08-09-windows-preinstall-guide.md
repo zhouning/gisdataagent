@@ -4,7 +4,7 @@
 
 **Goal:** Generate a Chinese plain-text native-lite deployment guide beside the ZIP so an operator can verify and prepare the deployment before extracting anything.
 
-**Architecture:** Keep one version-controlled UTF-8 source document under `deploy/windows-standalone`. After a successful `native-lite` build, the Python bundle builder writes that text beside the output ZIP using UTF-8 with BOM and returns the generated path in its result. The ZIP payload remains unchanged except for the already-versioned root README update describing the three-file handoff.
+**Architecture:** Keep one version-controlled UTF-8 source template under `deploy/windows-standalone`. After a successful `native-lite` build, the Python bundle builder renders the manifest version, actual ZIP/sidecar/TXT names, and extracted directory into that template, writes ZIP and TXT staging files under the output directory, and publishes both only after each is complete. The generated TXT uses UTF-8 with BOM and its path is returned in the result. The ZIP payload remains unchanged except for the already-versioned root README update describing the three-file handoff.
 
 **Tech Stack:** Python 3.11 `pathlib`, pytest, UTF-8 with BOM, Windows PowerShell 5.1, existing offline bundle builder and artifact verifier.
 
@@ -83,7 +83,16 @@ the external source document does not exist.
 - [ ] **Step 1: Add the source guide**
 
 Create `PRE_INSTALL_GUIDE.txt` in Chinese with this complete operational
-structure and concrete values:
+structure. Keep these builder placeholders in the source template so future
+bundle versions and custom output names render correctly:
+
+```text
+__BUNDLE_VERSION__  __ZIP_NAME__  __SHA256_NAME__  __GUIDE_NAME__  __BUNDLE_DIRECTORY__
+```
+
+The generated native-lite document replaces them with the manifest version,
+the actual ZIP filename, the sidecar filename, the generated guide filename,
+and the actual extracted directory name:
 
 ```text
 GIS Data Agent Windows native-lite 解压前部署操作说明
@@ -159,28 +168,81 @@ Get-Content .\README.md -TotalCount 80
 
 - [ ] **Step 2: Add the builder output helper**
 
-Add the source constant and a focused writer:
+Add the source constant, a focused renderer, and a paired publisher:
 
 ```python
 PRE_INSTALL_GUIDE = SCRIPT_DIR / "PRE_INSTALL_GUIDE.txt"
 
 
-def _write_pre_install_guide(output: Path) -> Path:
+def _write_pre_install_guide(
+    destination: Path, output: Path, bundle_version: str, bundle_directory: str
+) -> Path:
     guide_path = output.with_name(f"{output.stem}-PRE-INSTALL.txt")
-    text = PRE_INSTALL_GUIDE.read_text(encoding="utf-8")
-    guide_path.write_text(text, encoding="utf-8-sig")
+    text = PRE_INSTALL_GUIDE.read_text(encoding="utf-8-sig")
+    for placeholder, value in {
+        "__BUNDLE_VERSION__": bundle_version,
+        "__BUNDLE_DIRECTORY__": bundle_directory,
+        "__ZIP_NAME__": output.name,
+        "__SHA256_NAME__": f"{output.name}.sha256",
+        "__GUIDE_NAME__": guide_path.name,
+    }.items():
+        text = text.replace(placeholder, value)
+    if re.search(r"__[A-Z0-9_]+__", text):
+        raise ValueError("unresolved pre-install guide placeholders")
+    destination.write_text(text, encoding="utf-8-sig")
+    return destination
+
+
+def _publish_native_lite_bundle(staged_zip, staged_guide, output, backup_dir):
+    # Stage both files under output.parent so Windows ACL inheritance remains
+    # valid after replace; restore backups if either final move fails.
+    guide_path = output.with_name(f"{output.stem}-PRE-INSTALL.txt")
+    backup_dir.mkdir()
+    backups = {}
+    published = []
+    try:
+        for final_path in (output, guide_path):
+            if final_path.exists():
+                backup_path = backup_dir / final_path.name
+                final_path.replace(backup_path)
+                backups[final_path] = backup_path
+        staged_zip.replace(output)
+        published.append(output)
+        staged_guide.replace(guide_path)
+        published.append(guide_path)
+    except Exception:
+        for final_path in reversed(published):
+            if final_path.exists():
+                final_path.unlink()
+        for final_path, backup_path in backups.items():
+            if backup_path.exists():
+                backup_path.replace(final_path)
+        raise
+    finally:
+        shutil.rmtree(backup_dir, ignore_errors=True)
     return guide_path
 ```
 
-Before artifact collection, fail if `PRE_INSTALL_GUIDE` is missing. After
-`_zip_directory(stage, zip_path)` succeeds, generate the external guide only
-for `profile == "native-lite"` and add its absolute path to the result:
+Before artifact collection, fail if `PRE_INSTALL_GUIDE` is missing for
+`native-lite`. Stage the ZIP and rendered guide first, then publish the pair
+only for a successful `profile == "native-lite"` build and add its absolute
+path to the result:
 
 ```python
 if not PRE_INSTALL_GUIDE.is_file():
     raise FileNotFoundError(f"missing pre-install guide: {PRE_INSTALL_GUIDE}")
 
-guide_path = _write_pre_install_guide(zip_path) if profile == "native-lite" else None
+staged_zip = _reserve_staged_file(output, ".zip")
+_zip_directory(stage, staged_zip)
+if profile == "native-lite":
+    staged_guide = _reserve_staged_file(output, ".txt")
+    _write_pre_install_guide(staged_guide, output, template["bundle_version"], stage.name)
+    guide_path = _publish_native_lite_bundle(
+        staged_zip, staged_guide, output, temporary / "publish-backup"
+    )
+else:
+    staged_zip.replace(output)
+    guide_path = None
 result = {
     "status": "ready",
     "profile": profile,

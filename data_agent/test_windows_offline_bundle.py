@@ -65,6 +65,92 @@ def test_builder_accepts_native_lite_profile(tmp_path):
         _BUILDER.build("native-lite", vendor_root, tmp_path / "bundle.zip")
 
 
+def test_native_lite_build_emits_external_preinstall_guide(tmp_path, monkeypatch):
+    manifest = {
+        "bundle_version": "test",
+        "profiles": {"native-lite": {"required_artifacts": []}},
+        "artifacts": [],
+    }
+    manifest_path = tmp_path / "bundle-manifest.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    monkeypatch.setattr(_BUILDER, "MANIFEST_TEMPLATE", manifest_path)
+
+    vendor_root = tmp_path / "vendor"
+    vendor_root.mkdir()
+    output = tmp_path / "GIS-Data-Agent-Windows-native-lite.zip"
+    result = _BUILDER.build("native-lite", vendor_root, output)
+
+    guide = tmp_path / "GIS-Data-Agent-Windows-native-lite-PRE-INSTALL.txt"
+    assert Path(result["pre_install_guide"]) == guide.resolve()
+    assert guide.read_bytes().startswith(b"\xef\xbb\xbf")
+    text = guide.read_text(encoding="utf-8-sig")
+    assert "版本：test" in text
+    assert "GIS-Data-Agent-test-native-lite" in text
+    for required in (
+        "解压前部署操作说明",
+        "GIS-Data-Agent-Windows-native-lite.zip.sha256",
+        "LM_STUDIO_BASE_URL",
+        "768",
+        "Get-FileHash",
+        "Expand-Archive",
+        "install_offline_bundle.ps1",
+        "postgres-superpassword.txt",
+        "natural_resource_standard_contracts.json",
+    ):
+        assert required in text
+
+    readme = (DEPLOY_DIR / "README.md").read_text(encoding="utf-8")
+    assert "PRE-INSTALL.txt" in readme
+    assert "三个文件" in readme
+
+
+def test_native_lite_guide_tracks_custom_output_names(tmp_path, monkeypatch):
+    manifest = {
+        "bundle_version": "test-version",
+        "profiles": {"native-lite": {"required_artifacts": []}},
+        "artifacts": [],
+    }
+    manifest_path = tmp_path / "bundle-manifest.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    monkeypatch.setattr(_BUILDER, "MANIFEST_TEMPLATE", manifest_path)
+
+    vendor_root = tmp_path / "vendor"
+    vendor_root.mkdir()
+    output = tmp_path / "custom-native-lite.zip"
+    _BUILDER.build("native-lite", vendor_root, output)
+
+    text = (tmp_path / "custom-native-lite-PRE-INSTALL.txt").read_text(encoding="utf-8-sig")
+    assert "custom-native-lite.zip" in text
+    assert "custom-native-lite.zip.sha256" in text
+    assert "custom-native-lite-PRE-INSTALL.txt" in text
+    assert "GIS-Data-Agent-test-version-native-lite" in text
+
+
+def test_native_lite_guide_write_failure_does_not_leave_zip(tmp_path, monkeypatch):
+    manifest = {
+        "bundle_version": "test",
+        "profiles": {"native-lite": {"required_artifacts": []}},
+        "artifacts": [],
+    }
+    manifest_path = tmp_path / "bundle-manifest.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    monkeypatch.setattr(_BUILDER, "MANIFEST_TEMPLATE", manifest_path)
+
+    vendor_root = tmp_path / "vendor"
+    vendor_root.mkdir()
+    output = tmp_path / "GIS-Data-Agent-Windows-native-lite.zip"
+
+    def fail_writer(*_args):
+        raise OSError("simulated guide write failure")
+
+    monkeypatch.setattr(_BUILDER, "_write_pre_install_guide", fail_writer)
+    with pytest.raises(OSError, match="simulated guide write failure"):
+        _BUILDER.build("native-lite", vendor_root, output)
+
+    assert not output.exists()
+    assert not (tmp_path / "GIS-Data-Agent-Windows-native-lite-PRE-INSTALL.txt").exists()
+
+
 def test_manifest_native_lite_matches_enhanced_single_host_stack():
     manifest = json.loads((DEPLOY_DIR / "bundle-manifest.json").read_text(encoding="utf-8"))
 

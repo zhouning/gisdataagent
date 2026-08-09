@@ -46,9 +46,10 @@ $sha256 = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvaria
 `native-lite` 换成 `core`；native-lite 档位还需要 PostgreSQL/PostGIS/pgvector、MinIO、Jena/Fuseki 和
 Paper9 制品，并在安装时配置可访问的内网 LM Studio，详见下面的目录约定。
 
-记录 `git rev-parse HEAD` 和 ZIP 的外部 SHA-256。移动硬盘只需复制最终 ZIP 和同名 `.sha256`；
-`README.md`、`manifest.json`、供应商制品记录和逐文件 `SHA256SUMS` 已包含在 ZIP 内。现场机只执行
-“内网安装”章节，不要运行 `npm`、`pip download` 或尝试联网拉模型。
+记录 `git rev-parse HEAD` 和 ZIP 的外部 SHA-256。移动硬盘必须复制三个文件：最终 ZIP、同名
+`.sha256` 和构建器生成的 `GIS-Data-Agent-Windows-native-lite-PRE-INSTALL.txt`。现场人员先阅读
+外置 TXT，完成哈希和 LM Studio 前置检查后再解压；ZIP 内的 `README.md` 继续作为解压后的详细
+安装与运维文档。现场机不要运行 `npm`、`pip download` 或尝试联网拉模型。
 
 ## 两个安装档位
 
@@ -251,8 +252,9 @@ hash 形成新版本，Raw 原件不覆盖。字段合同不完整、CRS/几何/
 
 ## 明确的交付边界
 
-交付物必须是实际构建并通过哈希和解压验收的 `GIS-Data-Agent-Windows-native-lite.zip` 与同名
-`.sha256`，不能只交构建器或安装脚本。ZIP 包含 Windows x64 wheel、PostgreSQL/PostGIS/pgvector、
-MinIO、JRE/Jena/Fuseki 和 Paper9 制品；不包含 Ollama、Gemma4 或文本 embedding 权重。构建器缺少任一
-required artifact 时会阻断，不会生成可误带入现场的不完整包。该包不包含容器平台和分布式数据平台组件；
-内网 LM Studio 是明确的外部运行依赖。
+交付物必须是实际构建并通过哈希和解压验收的 `GIS-Data-Agent-Windows-native-lite.zip`、同名
+`.sha256` 和外置 `GIS-Data-Agent-Windows-native-lite-PRE-INSTALL.txt` 三个文件，不能只交构建器或
+安装脚本。ZIP 包含 Windows x64 wheel、PostgreSQL/PostGIS/pgvector、MinIO、JRE/Jena/Fuseki 和
+Paper9 制品；不包含 Ollama、Gemma4 或文本 embedding 权重。构建器缺少任一 required artifact 时会
+阻断，不会生成可误带入现场的不完整包。该包不包含容器平台和分布式数据平台组件；内网 LM Studio
+是明确的外部运行依赖。

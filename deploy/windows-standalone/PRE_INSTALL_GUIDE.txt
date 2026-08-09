@@ -1,0 +1,131 @@
+GIS Data Agent Windows native-lite 解压前部署操作说明
+版本：__BUNDLE_VERSION__
+
+重要：把文件复制到内网部署机后，第一步不是解压 ZIP，而是先校验外部 SHA-256，并确认内网 LM Studio 可访问、模型 ID 正确且 embedding 输出为 768 维。任何一项不通过都停止，不要开始安装。
+
+一、移动硬盘必须包含且只需交付这三个文件
+
+1. __ZIP_NAME__
+2. __SHA256_NAME__
+3. __GUIDE_NAME__
+
+不要另外准备 natural_resource_standard_contracts.json、Ollama、Gemma4、文本 embedding 权重或 Docker Desktop。natural_resource_standard_contracts.json 会由安装器从 ZIP 内置基线生成；Qwen 和 embedding 由内网 LM Studio 提供。
+
+二、解压前准备和停止条件
+
+1. 使用本机管理员账户打开“Windows PowerShell”，后续安装脚本必须以管理员权限运行。
+2. 构建清单标定的目标系统为 Windows 10/11 x64。不是 x64、低于 Windows 10，或者使用尚未完成兼容性验收的 Windows Server 版本时，先停止并完成现场兼容性确认。
+3. 示例使用 D:\GDA_STAGING、D:\GDA、D:\GDA_DATA、D:\NX_INCOMING 和 D:\GDA_LOGS。现场没有 D 盘时，统一替换为有足够空间的本地固定磁盘路径。
+4. 数据盘可用空间至少为 20 GiB，这是安装器的默认硬门槛。还要为约 2 GiB 的 ZIP、解压目录、程序和后续数据预留额外空间；不要只按 ZIP 文件大小估算。
+5. 安装目录和解压目录必须是新的空目录。不要把新包解压到旧版本目录。升级或复用已有 PostgreSQL 数据目录时，必须走批准的升级流程并取得原 PostgreSQL 密码。
+6. 以下任一情况必须停止：三个交付文件缺失；SHA-256 不一致；没有管理员权限；磁盘空间不足；内网 LM Studio 不可达；Qwen 或 embedding 的精确 model ID 不存在；embedding 不是 768 维；主机系统不在已确认范围内。
+
+可先查看本机系统和磁盘：
+
+[Environment]::OSVersion.VersionString
+[Environment]::Is64BitOperatingSystem
+Get-PSDrive -PSProvider FileSystem | Select-Object Name, @{Name='FreeGiB';Expression={[math]::Round($_.Free / 1GB, 1)}}
+
+三、先向 LM Studio 管理员取得四项参数
+
+1. LM_STUDIO_BASE_URL，例如 http://10.0.0.8:1234/v1，必须包含并以 /v1 结束。
+2. Qwen 的精确 model ID，不能填写显示名称的简称。
+3. embedding 的精确 model ID，且该模型实际输出必须为 768 维。
+4. LM Studio 启用认证时所需的 API key。不要把真实 API key 写入本文档或移动硬盘。
+
+在当前管理员 PowerShell 会话设置参数。以下占位符必须替换为内网实际值：
+
+$env:LM_STUDIO_BASE_URL = 'http://LM-STUDIO-SERVER:1234/v1'
+$env:LM_STUDIO_MODEL = '<QWEN_MODEL_ID>'
+$env:LM_STUDIO_EMBEDDING_MODEL = '<EMBEDDING_MODEL_ID>'
+
+# LM Studio 未启用认证时使用占位值 lm-studio；启用认证时只在当前会话设置真实 key。
+$env:LM_STUDIO_API_KEY = 'lm-studio'
+# $env:LM_STUDIO_API_KEY = '<API_KEY>'
+
+四、验证 LM Studio 网络、模型 ID 和 768 维 embedding
+
+$base = $env:LM_STUDIO_BASE_URL.TrimEnd('/')
+$lmUri = [Uri]$base
+$lmPort = if ($lmUri.IsDefaultPort) { if ($lmUri.Scheme -eq 'https') { 443 } else { 80 } } else { $lmUri.Port }
+$network = Test-NetConnection -ComputerName $lmUri.Host -Port $lmPort -WarningAction SilentlyContinue
+if (-not $network.TcpTestSucceeded) { throw "LM Studio 不可达：$($lmUri.Host):$lmPort，停止部署。" }
+
+$headers = @{ Authorization = "Bearer $env:LM_STUDIO_API_KEY" }
+$models = Invoke-RestMethod -Method Get -Uri "$base/models" -Headers $headers
+if ($models.data.id -notcontains $env:LM_STUDIO_MODEL) { throw "找不到 Qwen model ID：$env:LM_STUDIO_MODEL，停止部署。" }
+if ($models.data.id -notcontains $env:LM_STUDIO_EMBEDDING_MODEL) { throw "找不到 embedding model ID：$env:LM_STUDIO_EMBEDDING_MODEL，停止部署。" }
+
+$embeddingBody = @{ model = $env:LM_STUDIO_EMBEDDING_MODEL; input = @('GIS') } | ConvertTo-Json -Compress
+$embeddingResult = Invoke-RestMethod -Method Post -Uri "$base/embeddings" -Headers $headers -ContentType 'application/json; charset=utf-8' -Body $embeddingBody
+$dimension = @($embeddingResult.data[0].embedding).Count
+if ($dimension -ne 768) { throw "embedding 维度为 $dimension，不是要求的 768，停止部署。" }
+Write-Host "LM Studio 前置检查通过：Qwen=$env:LM_STUDIO_MODEL embedding=$env:LM_STUDIO_EMBEDDING_MODEL dimension=$dimension"
+
+五、复制到部署机后先校验 ZIP，不要先解压
+
+在三个交付文件所在目录打开 PowerShell，执行：
+
+$zip = Resolve-Path -LiteralPath '.\__ZIP_NAME__'
+$expected = ((Get-Content -Raw -LiteralPath '.\__SHA256_NAME__') -split '\s+')[0].ToLowerInvariant()
+if ($expected -notmatch '^[0-9a-f]{64}$') { throw "外部 .sha256 文件格式错误，停止解压。" }
+$actual = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($actual -ne $expected) { throw "ZIP SHA-256 校验失败，停止解压。expected=$expected actual=$actual" }
+Write-Host "ZIP SHA-256 校验通过：$actual"
+
+哈希不一致时，不要解压，也不要继续使用其中任一文件；从批准的介质源重新复制 ZIP 和同名 .sha256 后再次校验。
+
+六、全部前置检查通过后再解压
+
+if (Test-Path -LiteralPath D:\GDA_STAGING) { throw 'D:\GDA_STAGING 已存在。请使用新的空解压目录，停止本次操作。' }
+Expand-Archive -LiteralPath '.\__ZIP_NAME__' -DestinationPath D:\GDA_STAGING
+Set-Location -LiteralPath 'D:\GDA_STAGING\__BUNDLE_DIRECTORY__'
+Get-Content .\README.md -TotalCount 80 -Encoding UTF8
+
+七、以管理员 PowerShell 安装
+
+.\install_offline_bundle.ps1 `
+  -Profile native-lite `
+  -InstallRoot D:\GDA `
+  -DataRoot D:\GDA_DATA `
+  -Inbox D:\NX_INCOMING `
+  -LogRoot D:\GDA_LOGS `
+  -LmStudioBaseUrl $env:LM_STUDIO_BASE_URL `
+  -LmStudioChatModel $env:LM_STUDIO_MODEL `
+  -LmStudioEmbeddingModel $env:LM_STUDIO_EMBEDDING_MODEL `
+  -LmStudioApiKey $env:LM_STUDIO_API_KEY
+
+安装器返回 0 后再注册任务并启动：
+
+.\register_tasks.ps1 -InstallRoot D:\GDA -RunAs SYSTEM
+.\start_gda.ps1 -InstallRoot D:\GDA
+
+如果安装器返回退出码 2，表示安装后的预检或验收仍为 blocked。不要强行启动；先查看：
+
+D:\GDA_DATA\file_lake\diagnostics\windows-ingest-preflight.json
+D:\GDA_DATA\file_lake\diagnostics\bundle-verify.json
+D:\GDA\runtime\install-state.json
+
+八、安装后的入口、密码和配置位置
+
+- Web：http://127.0.0.1:8000
+- PostgreSQL 超级用户随机密码：D:\GDA\runtime\postgres-superpassword.txt
+- 应用数据库连接、MinIO 密码和 LM Studio 配置：D:\GDA\config\gda.env
+- 安装状态：D:\GDA\runtime\install-state.json
+- 运行验收：D:\GDA_LOGS\bundle-runtime-verify.json
+- 安装日志和进程日志：D:\GDA_LOGS
+
+PostgreSQL 和 PostGIS 安装过程不会要求人工再次输入随机密码。以后需要以 postgres 超级用户连接数据库时，由本机管理员读取 postgres-superpassword.txt。若安全制度要求预设密码，在首次安装前设置 GDA_POSTGRES_PASSWORD；不要把密码写进脚本或移动硬盘。
+
+九、失败时收集诊断
+
+Set-Location D:\GDA
+.\collect_diagnostics.ps1 -InstallRoot D:\GDA -OutputDirectory D:\GDA_DIAGNOSTICS
+
+诊断包可以按内网受控流程带出，但不要带出 D:\GDA\config\gda.env、postgres-superpassword.txt、真实 API key、原始业务数据或模型权重。
+
+十、再次确认不需要的外部材料
+
+- 不需要外部 natural_resource_standard_contracts.json；安装器从包内 natural_resource_standard_baseline.json 生成运行时文件。
+- 不需要 Ollama、Gemma4 或文本 embedding 权重；Qwen 和 embedding 由内网另一台服务器上的 LM Studio 提供。
+- 不需要 Docker Desktop；本包走 Windows native-lite 非容器化部署。
