@@ -232,7 +232,7 @@ def verify_python_modules(
     env = os.environ.copy()
     env["PYTHONPATH"] = str(root / "payload" / "app")
     modules = ["duckdb", "geopandas", "pyogrio", "rasterio", "pyarrow", "data_agent.offline_ingest"]
-    if profile == "production":
+    if profile in {"native-lite", "production"}:
         modules.extend(["litellm", "psycopg2", "rdflib", "pyshacl", "torch", "onnxruntime"])
     for module in modules:
         code = (
@@ -347,24 +347,36 @@ def _tcp_open(port: int) -> bool:
         return sock.connect_ex(("127.0.0.1", port)) == 0
 
 
-def _ollama_tags() -> list[str]:
-    try:
-        with urllib.request.urlopen("http://127.0.0.1:11434/api/tags", timeout=3) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-        return [str(item.get("name")) for item in payload.get("models", []) if item.get("name")]
-    except (OSError, ValueError, urllib.error.URLError):
-        return []
+def _request_lm_studio(path: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+    base_url = os.environ.get("LM_STUDIO_BASE_URL", "").rstrip("/")
+    if not base_url:
+        raise ValueError("LM_STUDIO_BASE_URL is not configured")
+    api_key = os.environ.get("LM_STUDIO_API_KEY") or os.environ.get("OPENAI_API_KEY") or "lm-studio"
+    data = json.dumps(payload).encode("utf-8") if payload is not None else None
+    request = urllib.request.Request(
+        f"{base_url}/{path.lstrip('/')}",
+        data=data,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST" if payload is not None else "GET",
+    )
+    with urllib.request.urlopen(request, timeout=60) as response:
+        return json.loads(response.read().decode("utf-8"))
 
 
-def verify_production_services(
-    root: Path, require_running: bool, checks: list[dict[str, Any]]
+def verify_native_services(
+    root: Path,
+    phase: str,
+    require_running: bool,
+    checks: list[dict[str, Any]],
 ) -> None:
     checks_spec = {
         "gis_data_agent": 8000,
         "postgres": 5432,
         "minio": 9000,
         "fuseki": 3030,
-        "ollama": 11434,
     }
     for name, port in checks_spec.items():
         if require_running:
@@ -385,33 +397,133 @@ def verify_production_services(
                 "pass",
                 f"port contract {port}; runtime check deferred",
             )
-    for name, relative in {
-        "paper9_models": "payload/models/paper9",
-        "llm_model": "payload/models/ollama/gemma4-26b",
-        "embedding_model": "payload/models/embedding/nomic-embed-text-v2-moe",
-    }.items():
-        path = root / relative
-        files = list(path.rglob("*")) if path.is_dir() else []
+    paper9_path = root / "payload" / "models" / "paper9"
+    paper9_files = list(paper9_path.rglob("*")) if paper9_path.is_dir() else []
+    check(
+        checks,
+        "paper9_models",
+        "critical",
+        "pass" if paper9_files else "fail",
+        f"{len(paper9_files)} file(s) under {paper9_path}",
+        "把批准版本的 Paper9 离线权重放入 bundle vendor。",
+    )
+
+    if phase == "artifact":
         check(
             checks,
-            name,
-            "critical",
-            "pass" if files else "fail",
-            f"{len(files)} file(s) under {path}",
-            "把批准版本的离线权重放入 bundle vendor。",
+            "lm_studio_external_dependency",
+            "info",
+            "pass",
+            "LM Studio is verified after installation, not bundled as local media.",
         )
-    if require_running:
-        tags = _ollama_tags()
-        required_tags = {"Gemma4:26b", "nomic-embed-text-v2-moe:latest"}
-        missing = sorted(required_tags - set(tags))
+        return
+
+    base_url = os.environ.get("LM_STUDIO_BASE_URL", "").strip()
+    chat_model = os.environ.get("LM_STUDIO_MODEL", "").strip()
+    embedding_model = os.environ.get("LM_STUDIO_EMBEDDING_MODEL", "").strip()
+    try:
+        embedding_dimension = int(os.environ.get("LM_STUDIO_EMBEDDING_DIMENSION", "768"))
+    except ValueError:
+        embedding_dimension = 0
+    configured = bool(
+        base_url
+        and chat_model
+        and embedding_model
+        and embedding_dimension == 768
+    )
+    check(
+        checks,
+        "lm_studio_configuration",
+        "critical",
+        "pass" if configured else "fail",
+        (
+            f"base_url={base_url or '<missing>'}; chat_model={chat_model or '<missing>'}; "
+            f"embedding_model={embedding_model or '<missing>'}; dimension={embedding_dimension}"
+        ),
+        "安装 native-lite 时设置 LM Studio 地址和两个模型 ID；embedding 必须是 768 维。",
+    )
+    if not configured:
+        return
+
+    try:
+        model_response = _request_lm_studio("models")
+        available = {
+            str(item.get("id")) for item in model_response.get("data", []) if item.get("id")
+        }
+        missing = sorted({chat_model, embedding_model} - available)
         check(
             checks,
-            "ollama_model_registry",
+            "lm_studio_models",
             "critical",
             "pass" if not missing else "fail",
-            f"available={sorted(tags)}; missing={missing}",
-            "重新导入 ZIP 内的 Modelfile 和本地模型权重。",
+            f"available={sorted(available)}; missing={missing}",
+            "在 LM Studio 中加载配置的 Qwen 和 embedding 模型。",
         )
+    except (OSError, ValueError, urllib.error.URLError) as exc:
+        check(
+            checks,
+            "lm_studio_models",
+            "critical",
+            "fail",
+            str(exc),
+            "检查内网路由、API 地址、防火墙和 API key。",
+        )
+        return
+
+    try:
+        embedding_response = _request_lm_studio(
+            "embeddings", {"model": embedding_model, "input": ["GIS"]}
+        )
+        data = embedding_response.get("data", [])
+        vector = data[0].get("embedding") if data else None
+        actual_dimension = len(vector) if isinstance(vector, list) else 0
+        check(
+            checks,
+            "lm_studio_embedding",
+            "critical",
+            "pass" if actual_dimension == 768 else "fail",
+            f"model={embedding_model}; expected=768; actual={actual_dimension}",
+            "使用与包内 pgvector schema 兼容的 768 维 embedding 模型。",
+        )
+    except (OSError, ValueError, urllib.error.URLError) as exc:
+        check(
+            checks,
+            "lm_studio_embedding",
+            "critical",
+            "fail",
+            str(exc),
+            "在 LM Studio 中启用 OpenAI-compatible embeddings endpoint。",
+        )
+
+    if require_running:
+        try:
+            chat_response = _request_lm_studio(
+                "chat/completions",
+                {
+                    "model": chat_model,
+                    "messages": [{"role": "user", "content": "Reply OK"}],
+                    "max_tokens": 2,
+                    "temperature": 0,
+                },
+            )
+            choices = chat_response.get("choices", [])
+            check(
+                checks,
+                "lm_studio_chat",
+                "critical",
+                "pass" if choices else "fail",
+                f"model={chat_model}; choices={len(choices)}",
+                "在 LM Studio 中启用 OpenAI-compatible chat completions endpoint。",
+            )
+        except (OSError, ValueError, urllib.error.URLError) as exc:
+            check(
+                checks,
+                "lm_studio_chat",
+                "critical",
+                "fail",
+                str(exc),
+                "检查 LM Studio chat 模型加载状态和内网连通性。",
+            )
 
 
 def markdown(report: dict[str, Any]) -> str:
@@ -439,7 +551,9 @@ def markdown(report: dict[str, Any]) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Verify GDA Windows offline bundle")
     parser.add_argument("--bundle-root", type=Path, default=Path("."))
-    parser.add_argument("--profile", choices=("core", "production"), required=True)
+    parser.add_argument(
+        "--profile", choices=("core", "native-lite", "production"), required=True
+    )
     parser.add_argument("--phase", choices=("artifact", "install", "runtime"), default="runtime")
     parser.add_argument("--require-running", action="store_true")
     parser.add_argument("--output", type=Path, default=Path("bundle-verification.json"))
@@ -467,8 +581,8 @@ def main() -> int:
     verify_python_modules(root, python, args.profile, checks)
     if args.phase != "artifact":
         verify_ontology_and_contract(root, args.profile, checks)
-    if args.profile == "production":
-        verify_production_services(root, args.require_running, checks)
+    if args.profile in {"native-lite", "production"}:
+        verify_native_services(root, args.phase, args.require_running, checks)
     failures = [
         item for item in checks if item["status"] == "fail" and item["severity"] == "critical"
     ]

@@ -1,6 +1,6 @@
 # GIS Data Agent 完整中间件清单
 
-更新时间：2026-08-08
+更新时间：2026-08-09
 
 ## 1. 文档范围
 
@@ -8,7 +8,7 @@
 
 本文区分以下状态：
 
-- **当前包已有**：当前 `GIS-Data-Agent-Windows-production.zip` 已携带对应介质。
+- **当前包已有**：当前 `GIS-Data-Agent-Windows-native-lite.zip` 已携带对应介质。
 - **当前包缺失**：完整生产架构需要或仓库已有相关实现，但当前 Windows ZIP 未携带。
 - **条件组件**：仅在相应 workload、协议、许可或专项能力启用时部署。
 - **版本待冻结**：仓库已选择该组件或能力，但还没有经过认证的精确离线 BOM。
@@ -20,7 +20,7 @@
 | 中间件 | 版本基线 | 作用 | 当前 Windows ZIP |
 |---|---|---|---|
 | PostgreSQL | 16.x；当前介质 16.4-1 | 控制面、业务库、运行记录和 serving 数据 | 当前包已有 |
-| PostGIS | 当前介质 3.6.2-1 | 空间类型、索引和空间 SQL | 当前包已有，但安装脚本静默参数存在缺陷 |
+| PostGIS | 当前介质 3.6.2-1 | 空间类型、索引和空间 SQL | 当前包已有；NSIS 安装器使用 `/S` 静默安装 |
 | pgvector | 0.8.6 for PostgreSQL 16 | embedding/vector 检索 | 当前包已有 |
 | MinIO Server | Compose 固定 `RELEASE.2025-04-22T22-12-26Z` | Raw、COG、模型、artifact 和湖仓对象存储 | 当前包已有；Windows 二进制版本未登记 |
 | MinIO Client (`mc`) | Compose 固定 `RELEASE.2025-04-16T18-13-26Z` | bucket 初始化和对象存储运维 | 当前包已有 |
@@ -81,14 +81,14 @@ Windows Task Scheduler 只能承担单机进程拉起，不能等价替代 Dolph
 | OpenJDK/JRE | Temurin 17.0.20+8 | Java 服务运行时 | 当前包已有 |
 | Apache Jena/TDB2 | 6.2.0 | RDF 本体加载和存储 | 当前包已有 |
 | Apache Fuseki | 6.2.0 | SPARQL/本体查询服务 | 当前包已有 |
-| Ollama | 当前 Windows 介质版本未登记 | 本地 LLM 和 embedding 服务 | 当前包已有 |
+| LM Studio（内网既有服务） | 现场实际版本 | 通过 OpenAI-compatible API 提供 Qwen 和 embedding | 外部依赖；不进入 ZIP，由安装/启动验收检查 |
 
-下列是模型制品，不是中间件程序，但离线模型服务必须携带：
+下列是模型制品，不是 Windows native-lite ZIP 内的中间件程序：
 
 | 模型制品 | 作用 | 当前 Windows ZIP |
 |---|---|---|
-| Gemma4 26B GGUF | 主问数模型 | 当前包已有 |
-| Nomic Embed Text v2 MoE GGUF | embedding 模型 | 当前包已有 |
+| 内网 Qwen 模型 | 主问数模型 | LM Studio 服务器已有；当前包不携带 |
+| 内网文本 embedding 模型（768 维） | embedding 模型 | LM Studio 服务器已有；当前包不携带 |
 | Paper9 ONNX ensemble | 农田优化运行模型 | 当前包已有 |
 
 ## 7. GIS 发布与访问服务
@@ -153,8 +153,8 @@ Windows Task Scheduler 只能承担单机进程拉起，不能等价替代 Dolph
 - MinIO 和 `mc`
 - DuckDB（嵌入式）
 - JRE/Jena/Fuseki
-- Ollama
-- Gemma4、Nomic embedding 和 Paper9 模型制品
+- Paper9 模型制品
+- LM Studio 的客户端配置与连通性验收（服务和模型权重不在 ZIP 内）
 
 当前 ZIP 未覆盖完整生产架构中的：
 
@@ -171,4 +171,4 @@ Windows Task Scheduler 只能承担单机进程拉起，不能等价替代 Dolph
 - Prometheus/Grafana/OpenTelemetry
 - 生产入口、OIDC 和 Gateway
 
-因此，当前 `production` profile 更准确的名称应是 Windows 单机轻量测试/运行 profile，不能声称与仓库完整私有化生产架构等价。
+因此，当前主 profile 命名为 `native-lite`；`production` 仅保留为兼容别名。它是 Windows 单机轻量测试/运行 profile，不能声称与仓库完整私有化生产架构等价。

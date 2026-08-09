@@ -4,6 +4,7 @@ Backends:
 - gemini: Google Vertex AI text-embedding-004 (default, online)
 - local: sentence-transformers (offline, e.g. bge-m3, gte-multilingual)
 - ollama: Ollama REST API (offline, e.g. nomic-embed-text)
+- lm_studio: OpenAI-compatible LM Studio embeddings endpoint on the intranet
 
 Configuration priority: DB agent_model_config > env EMBEDDING_MODEL > default text-embedding-004
 """
@@ -94,6 +95,22 @@ class EmbeddingRegistry:
         if cls._initialized:
             return
         cls.models = dict(cls._builtin_models)
+        lm_model = os.environ.get("LM_STUDIO_EMBEDDING_MODEL", "").strip()
+        if lm_model:
+            try:
+                dimension = int(os.environ.get("LM_STUDIO_EMBEDDING_DIMENSION", "768"))
+            except ValueError:
+                dimension = 768
+            cls.models[lm_model] = {
+                "backend": "lm_studio",
+                "dimension": dimension,
+                "online": False,
+                "model_id": lm_model,
+                "api_base": os.environ.get(
+                    "LM_STUDIO_BASE_URL", "http://localhost:1234/v1"
+                ),
+                "description": "Intranet LM Studio OpenAI-compatible embedding model",
+            }
         cls._initialized = True
 
     @classmethod
@@ -109,6 +126,14 @@ class EmbeddingRegistry:
     @classmethod
     def get_active_model(cls) -> str:
         cls._ensure_initialized()
+        env_val = os.environ.get("EMBEDDING_MODEL", "") or os.environ.get(
+            "LM_STUDIO_EMBEDDING_MODEL", ""
+        )
+        force_env = os.environ.get("MODEL_CONFIG_FORCE_ENV", "").strip().lower() in {
+            "1", "true", "yes", "on",
+        }
+        if force_env and env_val in cls.models:
+            return env_val
         try:
             from .model_config import get_config_manager
             mgr = get_config_manager()
@@ -117,7 +142,6 @@ class EmbeddingRegistry:
                 return db_val
         except Exception:
             pass
-        env_val = os.environ.get("EMBEDDING_MODEL", "")
         if env_val and env_val in cls.models:
             return env_val
         return "text-embedding-004"
@@ -192,10 +216,62 @@ def _embed_ollama(texts: list[str], info: dict) -> list[list[float]]:
     return all_embeddings
 
 
+def _embed_lm_studio(texts: list[str], info: dict) -> list[list[float]]:
+    import httpx
+
+    base_url = (
+        info.get("api_base")
+        or os.environ.get("LM_STUDIO_BASE_URL")
+        or "http://localhost:1234/v1"
+    ).rstrip("/")
+    model_name = info.get("model_id") or os.environ.get("LM_STUDIO_EMBEDDING_MODEL")
+    if not model_name:
+        raise ValueError("LM_STUDIO_EMBEDDING_MODEL is not configured")
+    api_key = (
+        os.environ.get("LM_STUDIO_API_KEY")
+        or os.environ.get("OPENAI_API_KEY")
+        or "lm-studio"
+    )
+    expected_dimension = int(info.get("dimension", 768))
+    configured_model = os.environ.get("LM_STUDIO_EMBEDDING_MODEL", "").strip()
+    if configured_model and configured_model == (info.get("model_id") or model_name):
+        try:
+            configured_dimension = int(
+                os.environ.get("LM_STUDIO_EMBEDDING_DIMENSION", "768")
+            )
+        except ValueError as exc:
+            raise ValueError("LM Studio embedding dimension must be exactly 768") from exc
+        if configured_dimension != 768:
+            raise ValueError("LM Studio embedding dimension must be exactly 768")
+    all_embeddings: list[list[float]] = []
+    for i in range(0, len(texts), _BATCH_SIZE):
+        batch = texts[i:i + _BATCH_SIZE]
+        response = httpx.post(
+            f"{base_url}/embeddings",
+            json={"model": model_name, "input": batch},
+            headers={"Authorization": f"Bearer {api_key}"},
+            timeout=60.0,
+        )
+        response.raise_for_status()
+        items = sorted(response.json().get("data", []), key=lambda item: item.get("index", 0))
+        if len(items) != len(batch):
+            raise ValueError(
+                f"LM Studio returned {len(items)} embedding(s) for {len(batch)} input(s)"
+            )
+        vectors = [item.get("embedding") for item in items]
+        if any(not isinstance(vector, list) or len(vector) != expected_dimension for vector in vectors):
+            raise ValueError(
+                f"LM Studio embedding dimension does not match {expected_dimension}"
+            )
+        all_embeddings.extend(vectors)
+    return all_embeddings
+
+
 _BACKENDS = {
     "gemini": _embed_gemini,
     "local": _embed_local,
     "ollama": _embed_ollama,
+    "lm_studio": _embed_lm_studio,
 }
 
 

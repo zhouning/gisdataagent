@@ -1,12 +1,12 @@
 {
   "schema_version": "gda.windows-standalone-bundle.v1",
-  "bundle_version": "23.0.0-windows-standalone.1",
+  "bundle_version": "23.0.0-windows-standalone.2",
   "generated_at": null,
   "target": {
     "os": "Windows 10/11 x64",
     "architecture": "AMD64",
-    "python": "3.11.11",
-    "network": "physically isolated"
+    "python": "3.11.9",
+    "network": "internet-isolated; approved intranet LM Studio"
   },
   "profiles": {
     "core": {
@@ -23,7 +23,7 @@
       ]
     },
     "production": {
-      "description": "core 加现场生产增强：PostGIS/pgvector、MinIO、Fuseki/JRE、Ollama/模型、Paper9。",
+      "description": "native-lite 的兼容别名：PostGIS/pgvector、MinIO、Fuseki/JRE、内网 LM Studio、Paper9。",
       "required_artifacts": [
         "python_runtime",
         "application_source",
@@ -45,10 +45,34 @@
         "minio_client",
         "java_runtime",
         "jena_distribution",
-        "fuseki_distribution",
-        "ollama_installer",
-        "ollama_llm_model",
-        "embedding_model"
+        "fuseki_distribution"
+      ],
+      "optional_artifacts": ["prometheus_distribution", "grafana_distribution"]
+    },
+    "native-lite": {
+      "description": "Windows 单机 native-lite 增强栈：PostgreSQL/PostGIS/pgvector、MinIO、JRE/Jena/Fuseki 和 Paper9；Qwen 与文本向量通过内网 LM Studio 调用，不包含本地模型和分布式数据平台组件。",
+      "required_artifacts": [
+        "python_runtime",
+        "application_source",
+        "frontend_dist",
+        "ontology_2_3",
+        "ontology_active",
+        "nx_standard_baseline",
+        "core_requirements",
+        "production_requirements",
+        "core_wheelhouse",
+        "production_wheelhouse",
+        "paper9_source",
+        "paper9_wheelhouse",
+        "paper9_models",
+        "postgresql_installer",
+        "postgis_installer",
+        "pgvector_extension",
+        "minio_binary",
+        "minio_client",
+        "java_runtime",
+        "jena_distribution",
+        "fuseki_distribution"
       ],
       "optional_artifacts": ["prometheus_distribution", "grafana_distribution"]
     }
@@ -259,7 +283,7 @@
       "role": "middleware",
       "source_url": "https://postgis.net/install/",
       "license": "GPL-2.0-or-later",
-      "source": "vendor/middleware/postgis/postgis-bundle-pg16-3.*-x64.exe",
+      "source": "vendor/middleware/postgis/postgis-bundle-pg16x64-setup-3.*.exe",
       "source_type": "vendor_glob",
       "target": "payload/middleware/postgis-installer.exe",
       "kind": "file",
@@ -272,7 +296,7 @@
     {
       "id": "pgvector_extension",
       "role": "middleware",
-      "source_url": "https://github.com/pgvector/pgvector/releases",
+      "source_url": "https://github.com/andreiramani/pgvector_pgsql_windows/releases/tag/0.8.6_16",
       "license": "PostgreSQL License",
       "source": "vendor/middleware/pgvector",
       "source_type": "vendor_tree",
@@ -341,7 +365,7 @@
       "kind": "file",
       "min_size_bytes": 20000000,
       "install": "jena_tdb2_tools",
-      "required_archive_members": ["tdb2.tdbloader.bat"],
+      "required_archive_members": ["tdb2_tdbloader.bat"],
       "healthcheck": "tdb2.tdbloader --version",
       "sha256": null,
       "size_bytes": null
@@ -359,53 +383,6 @@
       "install": "fuseki",
       "required_archive_members": ["fuseki-server*.jar"],
       "healthcheck": "tcp:3030",
-      "sha256": null,
-      "size_bytes": null
-    },
-    {
-      "id": "ollama_installer",
-      "role": "middleware",
-      "source_url": "https://ollama.com/download/windows",
-      "license": "MIT; confirm bundled model license separately",
-      "source": "vendor/middleware/ollama/OllamaSetup.exe",
-      "source_type": "vendor_file",
-      "target": "payload/middleware/OllamaSetup.exe",
-      "kind": "file",
-      "min_size_bytes": 50000000,
-      "install": "ollama",
-      "healthcheck": "tcp:11434",
-      "sha256": null,
-      "size_bytes": null
-    },
-    {
-      "id": "ollama_llm_model",
-      "role": "model",
-      "source_url": "approved local model export; no network pull at site",
-      "license": "model-specific; record license and approval",
-      "source": "vendor/models/ollama/gemma4-26b",
-      "source_type": "vendor_tree",
-      "target": "payload/models/ollama/gemma4-26b",
-      "kind": "tree",
-      "install": "ollama_model",
-      "required_relative_paths": ["Modelfile"],
-      "min_files": 1,
-      "min_size_bytes": 5000000000,
-      "sha256": null,
-      "size_bytes": null
-    },
-    {
-      "id": "embedding_model",
-      "role": "model",
-      "source_url": "approved local embedding model export; no network pull at site",
-      "license": "model-specific; record license and approval",
-      "source": "vendor/models/embedding/nomic-embed-text-v2-moe",
-      "source_type": "vendor_tree",
-      "target": "payload/models/embedding/nomic-embed-text-v2-moe",
-      "kind": "tree",
-      "install": "embedding_model",
-      "required_relative_paths": ["Modelfile"],
-      "min_files": 1,
-      "min_size_bytes": 100000000,
       "sha256": null,
       "size_bytes": null
     },
@@ -442,7 +419,7 @@
     {
       "name": "Docker/Compose",
       "status": "excluded",
-      "reason": "现场没有容器环境；core/production 使用原生 Windows 安装方式。"
+      "reason": "现场没有容器环境；core、native-lite 和兼容别名 production 使用原生 Windows 安装方式。"
     },
     {
       "name": "Redis",
@@ -457,7 +434,7 @@
     {
       "name": "cv-service/cad-parser/reference-data",
       "status": "excluded_optional",
-      "reason": "Compose 的 qc profile 是独立服务；cv-service 当前依赖 CUDA/Linux 镜像，CAD 和 reference-data 需要单独 API 进程。core/production 的内置 GIS 质检不依赖它们；启用测绘专项质检时应单独验收 Windows CPU 适配包。"
+      "reason": "Compose 的 qc profile 是独立服务；cv-service 当前依赖 CUDA/Linux 镜像，CAD 和 reference-data 需要单独 API 进程。core/native-lite 的内置 GIS 质检不依赖它们；启用测绘专项质检时应单独验收 Windows CPU 适配包。"
     },
     {
       "name": "Martin vector tile server",

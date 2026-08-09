@@ -254,8 +254,21 @@ def _validate_windows_wheels(artifact_id: str, wheels: list[Path]) -> None:
             continue
         python_tag, abi_tag, platform_tag = tags[-3:]
         platform_ok = platform_tag == "any" or "win_amd64" in platform_tag.split(".")
-        python_ok = any(tag.startswith(("py3", "cp311")) for tag in python_tag.split("."))
-        abi_ok = abi_tag in {"none", "abi3", "cp311"} or "abi3" in abi_tag.split(".")
+        python_tags = python_tag.split(".")
+        abi_tags = abi_tag.split(".")
+        abi3_compatible = "abi3" in abi_tags
+        python_ok = any(
+            tag.startswith("py3")
+            or tag == "cp311"
+            or (
+                tag.startswith("cp3")
+                and tag[2:].isdigit()
+                and int(tag[2:]) <= 311
+                and abi3_compatible
+            )
+            for tag in python_tags
+        )
+        abi_ok = any(tag in {"none", "abi3", "cp311"} for tag in abi_tags)
         if not (platform_ok and python_ok and abi_ok):
             incompatible.append(wheel.name)
     if incompatible:
@@ -297,7 +310,7 @@ def _zip_directory(stage: Path, output: Path) -> None:
 
 
 def build(profile: str, vendor_root: Path, output: Path, force: bool = False) -> dict[str, Any]:
-    if profile not in {"core", "production"}:
+    if profile not in {"core", "native-lite", "production"}:
         raise ValueError(f"unsupported profile: {profile}")
     if not vendor_root.is_dir():
         raise FileNotFoundError(f"vendor root does not exist: {vendor_root}")
@@ -392,7 +405,7 @@ def build(profile: str, vendor_root: Path, output: Path, force: bool = False) ->
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Build GIS Data Agent Windows offline bundle")
-    parser.add_argument("--profile", choices=("core", "production"), default="core")
+    parser.add_argument("--profile", choices=("core", "native-lite", "production"), default="core")
     parser.add_argument("--vendor-root", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True, help="final ZIP path")
     parser.add_argument("--force", action="store_true")

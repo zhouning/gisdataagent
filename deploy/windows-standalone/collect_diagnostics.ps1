@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [string]$InstallRoot = 'C:\GDA',
     [string]$OutputDirectory = 'D:\GDA_DIAGNOSTICS'
@@ -21,7 +21,7 @@ try {
     $envFile = Join-Path $InstallRoot 'config\gda.env'
     if (Test-Path -LiteralPath $envFile) {
         Get-Content -LiteralPath $envFile -Encoding UTF8 | ForEach-Object {
-            if ($_ -match '(PASSWORD|SECRET|TOKEN|KEY)=') { ($_ -split '=', 2)[0] + '=<redacted>' } else { $_ }
+            if ($_ -match '(?i)(PASSWORD|SECRET|TOKEN|KEY|DSN|URI)=') { ($_ -split '=', 2)[0] + '=<redacted>' } else { $_ }
         } | Set-Content -LiteralPath (Join-Path $stage 'gda.env.redacted') -Encoding UTF8
     }
     Get-CimInstance Win32_OperatingSystem | Select-Object Caption, Version, OSArchitecture, LastBootUpTime | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $stage 'host.json') -Encoding UTF8

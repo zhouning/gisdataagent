@@ -32,20 +32,22 @@ python -m pip download --only-binary=:all: --platform win_amd64 --python-version
   -r deploy\windows-standalone\requirements-windows-production.txt
 
 python deploy\windows-standalone\build_offline_bundle.py `
-  --profile production `
+  --profile native-lite `
   --vendor-root deploy\windows-standalone\vendor `
-  --output out\GIS-Data-Agent-Windows-production.zip
+  --output deploy\windows-standalone\out\GIS-Data-Agent-Windows-native-lite.zip
 
-Get-FileHash .\out\GIS-Data-Agent-Windows-production.zip -Algorithm SHA256
+$zip = Resolve-Path .\deploy\windows-standalone\out\GIS-Data-Agent-Windows-native-lite.zip
+$sha256 = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+"$sha256  $([IO.Path]::GetFileName($zip))" | Set-Content -LiteralPath "$zip.sha256" -Encoding ASCII
 ```
 
 构建器会在缺少任何必需 Windows 制品时返回 `blocked`，这时应补齐 `vendor/` 后重试，不能把
 不完整 ZIP 带到现场。只需要文件湖、GIS 入湖、质检、血缘和本体结构浏览时，可把最后一条的
-`production` 换成 `core`；生产档位还需要 PostgreSQL/PostGIS/pgvector、MinIO、Jena/Fuseki、
-Ollama 模型和 Paper9 制品，详见下面的目录约定。
+`native-lite` 换成 `core`；native-lite 档位还需要 PostgreSQL/PostGIS/pgvector、MinIO、Jena/Fuseki 和
+Paper9 制品，并在安装时配置可访问的内网 LM Studio，详见下面的目录约定。
 
-记录 `git rev-parse HEAD` 和 ZIP 的外部 SHA-256。将 ZIP、外部 SHA-256 和供应商制品清单通过
-受控介质转入现场机；`manifest.json` 和逐文件 `SHA256SUMS` 已包含在 ZIP 内。现场机只执行
+记录 `git rev-parse HEAD` 和 ZIP 的外部 SHA-256。移动硬盘只需复制最终 ZIP 和同名 `.sha256`；
+`README.md`、`manifest.json`、供应商制品记录和逐文件 `SHA256SUMS` 已包含在 ZIP 内。现场机只执行
 “内网安装”章节，不要运行 `npm`、`pip download` 或尝试联网拉模型。
 
 ## 两个安装档位
@@ -53,9 +55,12 @@ Ollama 模型和 Paper9 制品，详见下面的目录约定。
 | 档位 | 包含 | 可提供的能力 | 生产门禁 |
 |---|---|---|---|
 | `core` | Python 3.11、GIS wheelhouse、应用、DuckDB、文件湖、日志、断点续传采集器、本体 2.3、宁夏字段基线 | FileGDB/SHP/TIFF 入湖、画像、治理、质检、血缘、GeoParquet/COG/STAC、本体结构查询 | 每个数据集按字段、CRS、几何和值域质量决定是否可发布 |
-| `production` | `core` + PostgreSQL 16/PostGIS/pgvector、MinIO、JRE 17 + Fuseki/TDB2、Ollama、LLM/embedding 权重、Paper9 | 在线空间查询、对象存储、本体查询投影、本地语义问数、Paper9 运行 | 宁夏字段基线必须存在；每个数据集和 Paper9 输入仍须通过各自质量门禁 |
+| `native-lite` | `core` + PostgreSQL 16/PostGIS/pgvector、MinIO、JRE 17 + Jena/Fuseki/TDB2、Paper9；外部依赖内网 LM Studio 的 Qwen 与 768 维 embedding 模型 | 单机在线空间查询、对象存储、本体查询投影、内网模型语义问数、Paper9 运行 | LM Studio 两个模型必须可调用；包内字段基线必须存在；每个数据集和 Paper9 输入仍须通过各自质量门禁 |
 
-`Prometheus` 和 `Grafana` 作为生产包可选组件随包携带。Redis、DolphinScheduler、Spark/Flink、
+`production` 仅作为旧命令的兼容别名保留，能力和制品集合与 `native-lite` 相同。`native-lite` 是单机原生部署，不等同于包含 Spark、Flink、DolphinScheduler、Temporal、OpenMetadata 或 Gravitino 的完整分布式生产平台。
+
+`Prometheus` 和 `Grafana` 是可选组件；本次 native-lite ZIP 未携带它们，构建和验收会明确记录
+warning，但不会把它们计入 required artifact。Redis、DolphinScheduler、Spark/Flink、
 OpenMetadata、Compose 的 CV/CAD/reference-data、Martin tiles 和 AlphaEarth 演示服务没有被
 伪装成 Windows 原生必需件：它们在仓库中对应的是可选容器/Linux 或独立演示形态。
 裸机核心用 DuckDB、文件日志和 Windows Task Scheduler；如现场必须启用这些系统，需要另配
@@ -67,20 +72,17 @@ OpenMetadata、Compose 的 CV/CAD/reference-data、Martin tiles 和 AlphaEarth �
 任何文件，只会复制并计算 SHA-256。推荐先从官方来源取得介质，再由安全人员登记供应商哈希。
 
 ```text
-vendor/python/python-3.11.11-amd64.exe
+vendor/python/python-3.11.9-amd64.exe
 vendor/wheelhouse/core/*.whl
 vendor/wheelhouse/production/*.whl
 vendor/middleware/postgresql/postgresql-16.*-windows-x64.exe
-vendor/middleware/postgis/postgis-bundle-pg16-3.*-x64.exe
+vendor/middleware/postgis/postgis-bundle-pg16x64-setup-3.*.exe
 vendor/middleware/pgvector/*
 vendor/middleware/minio/minio.exe
 vendor/middleware/minio/mc.exe
 vendor/middleware/java/OpenJDK17U-jre_x64_windows_hotspot_*.msi
 vendor/middleware/jena/apache-jena-*.zip
 vendor/middleware/fuseki/apache-jena-fuseki-*.zip
-vendor/middleware/ollama/OllamaSetup.exe
-vendor/models/ollama/gemma4-26b/Modelfile + model weights
-vendor/models/embedding/nomic-embed-text-v2-moe/Modelfile + model weights
 vendor/paper9/source/*
 vendor/paper9/wheelhouse/*.whl
 vendor/paper9/models/*
@@ -107,53 +109,61 @@ python -m pip download --only-binary=:all: --platform win_amd64 --python-version
 ```
 
 `npm run build` 必须生成 `frontend\dist`，否则构建器会阻断。上面的 pip 命令只准备 Python 包，
-PostgreSQL/PostGIS、pgvector、MinIO、JRE、Fuseki、Ollama、
-模型和 Paper9 必须从批准的离线制品库放入 `vendor/`。随后构建：
+PostgreSQL/PostGIS、pgvector、MinIO、JRE、Fuseki 和 Paper9 必须从批准的离线制品库放入 `vendor/`。
+Qwen 和 embedding 模型由内网 LM Studio 提供，不进入 `vendor/`。随后构建：
 
 ```powershell
 python deploy\windows-standalone\build_offline_bundle.py `
   --profile core `
   --vendor-root deploy\windows-standalone\vendor `
-  --output out\GIS-Data-Agent-Windows-core.zip
+  --output deploy\windows-standalone\out\GIS-Data-Agent-Windows-core.zip
 
 python deploy\windows-standalone\build_offline_bundle.py `
-  --profile production `
+  --profile native-lite `
   --vendor-root deploy\windows-standalone\vendor `
-  --output out\GIS-Data-Agent-Windows-production.zip
+  --output deploy\windows-standalone\out\GIS-Data-Agent-Windows-native-lite.zip
 ```
 
 构建器缺少任意 required artifact、wheelhouse 直接依赖或最小文件数时返回 `blocked`，不产生
 ZIP。生成的 ZIP 内含 `manifest.json`、`SHA256SUMS` 和安装脚本；它们应与介质一起登记到交付单。
-生产 wheelhouse 还必须包含 `litellm`，否则本地 Ollama 路由虽然能启动，真正问数时会在模型适配层失败。
+生产 wheelhouse 还必须包含 `litellm`，否则 LM Studio 的 OpenAI-compatible 路由无法工作。
 
 ## 内网安装
 
 把 ZIP 复制到现场临时目录后，使用管理员 PowerShell 解压并执行：
 
 ```powershell
-Expand-Archive .\GIS-Data-Agent-Windows-production.zip -DestinationPath D:\GDA_STAGING
-Set-Location D:\GDA_STAGING\GIS-Data-Agent-23.0.0-windows-standalone.1-production
+Expand-Archive .\GIS-Data-Agent-Windows-native-lite.zip -DestinationPath D:\GDA_STAGING
+Set-Location D:\GDA_STAGING\GIS-Data-Agent-23.0.0-windows-standalone.2-native-lite
 .\install_offline_bundle.ps1 `
-  -Profile production `
+  -Profile native-lite `
   -InstallRoot D:\GDA `
   -DataRoot D:\GDA_DATA `
   -Inbox D:\NX_INCOMING `
-  -LogRoot D:\GDA_LOGS
+  -LogRoot D:\GDA_LOGS `
+  -LmStudioBaseUrl 'http://LM-STUDIO-SERVER:1234/v1' `
+  -LmStudioChatModel '<QWEN_MODEL_ID>' `
+  -LmStudioEmbeddingModel '<EMBEDDING_MODEL_ID>' `
+  -LmStudioApiKey $env:LM_STUDIO_API_KEY
 
 .\register_tasks.ps1 -InstallRoot D:\GDA -RunAs SYSTEM
 .\start_gda.ps1 -InstallRoot D:\GDA
 ```
 
 安装器会检查 Windows x64、管理员权限、路径长度、磁盘空间和 ZIP 内哈希，静默安装 Python，
-使用 `pip --no-index --find-links` 安装 wheel，创建 `D:\GDA_FILE_LAKE`、`D:\NX_INCOMING`、
+使用 `pip --no-index --find-links` 安装 wheel，创建 `D:\GDA_DATA\file_lake`、`D:\NX_INCOMING`、
 `D:\GDA_LOGS` 和诊断目录，复制本体/合同模板，生成随机 Chainlit 密钥，并把安装状态写入
-`D:\GDA\runtime\install-state.json`。生产档位还会安装并初始化 PostgreSQL/PostGIS/pgvector、
-创建 `gis_agent` 数据库和 `agent_user`，执行项目 migration；随后安装 MinIO、Java/Fuseki 和
-Ollama。生成的数据库、MinIO 和 Chainlit 密钥目录只授予 SYSTEM 和本机 Administrators；
-大模型不会联网拉取，而是从 ZIP 导入并核验哈希。OpenJDK 的 `JAVA_HOME`、Ollama 可执行文件路径和
-PostgreSQL 服务名会写入安装目录的运行状态，不依赖执行安装的管理员用户 `PATH`。Ollama 会导入
-`Gemma4:26b` 和 `nomic-embed-text-v2-moe:latest`；导入阶段使用独立端口和数据盘模型目录，
-不会复用安装用户的 Ollama 用户服务。启动验收会调用 `/api/tags` 核对两个标签。
+`D:\GDA\runtime\install-state.json`。native-lite 档位还会安装并初始化 PostgreSQL/PostGIS/pgvector、
+创建 `gis_agent` 数据库和 `agent_user`，执行项目 migration；随后安装 MinIO 和 Java/Fuseki。
+它不会安装 Ollama，也不会复制 Gemma4 或 embedding 权重。安装器把 LM Studio 地址、Qwen model ID、
+embedding model ID 和可选 API key 写入受保护的 `gda.env`，调用 `/v1/models` 与 `/v1/embeddings`
+验收两个模型，并要求 embedding 返回 768 维；应用启动后还会执行一次最小 `/v1/chat/completions` 验收。
+请把示例中的 `LM-STUDIO-SERVER` 和两个 model ID 替换为内网 LM Studio 实际值。
+
+PostgreSQL 安装与 PostGIS 扩展安装全程不需要人工输入密码。默认随机生成的 PostgreSQL 超级用户密码保存在
+`D:\GDA\runtime\postgres-superpassword.txt`，应用连接密码和 MinIO 密码保存在 `D:\GDA\config\gda.env`；
+这两个位置安装后只允许 SYSTEM 和本机 Administrators 读取。需要预设 PostgreSQL 密码时，在安装前设置
+`GDA_POSTGRES_PASSWORD`，不要修改脚本或把密码写入移动硬盘。
 
 宁夏两份 Excel 及 EA 对齐产物会被复制为
 `natural_resource_standard_baseline.json`，作为系统启动和字段匹配基线。预检只检查基线文件
@@ -165,6 +175,9 @@ PostgreSQL 服务名会写入安装目录的运行状态，不依赖执行安装
 当前基线 JSON 已包含 EA/角色对象、两份宁夏工作簿和自然资源标准共同形成的 49 个运行时合同，
 以及至少 893 条直接字段证据（SHP 字段表 765 条 + 第一份 Excel 专题页 116 条 + 标准补齐 12 条；
 重合代码并列保留）；不是只保存工作簿哈希或只覆盖 DLTB 等少数对象。
+
+现场不需要另外提供 `natural_resource_standard_contracts.json`。安装器会把 ZIP 内置的
+`natural_resource_standard_baseline.json` 复制成运行时文件；后续真实数据仍按数据集执行字段、CRS、几何、值域和质量校验。
 
 ## 启停与任务计划
 
@@ -208,7 +221,7 @@ D:\GDA\runtime\install-state.json
 分支：feat/windows-standalone-offline-bundle
 Commit SHA：
 阶段：staging 构建 / 现场安装 / 启动 / 数据入湖 / 治理 / 问数 / Paper9
-Profile：core / production
+Profile：core / native-lite（production 仅为兼容别名）
 Windows 版本：
 CPU / 内存 / 数据盘剩余空间：
 执行的完整命令：
@@ -238,7 +251,8 @@ hash 形成新版本，Raw 原件不覆盖。字段合同不完整、CRS/几何/
 
 ## 明确的交付边界
 
-本机是 macOS，当前仓库不能生成 Windows native wheel、PostGIS DLL、Ollama 模型或 Paper9
-权重。因此本次代码交付的是**可验证的构建器和安装器**，不是凭空生成的最终 ZIP。最终 ZIP
-必须在联网 Windows x64 staging 机收集真实制品后生成；构建器的 fail-closed 行为保证现场
-不会收到缺组件的“假离线包”。
+交付物必须是实际构建并通过哈希和解压验收的 `GIS-Data-Agent-Windows-native-lite.zip` 与同名
+`.sha256`，不能只交构建器或安装脚本。ZIP 包含 Windows x64 wheel、PostgreSQL/PostGIS/pgvector、
+MinIO、JRE/Jena/Fuseki 和 Paper9 制品；不包含 Ollama、Gemma4 或文本 embedding 权重。构建器缺少任一
+required artifact 时会阻断，不会生成可误带入现场的不完整包。该包不包含容器平台和分布式数据平台组件；
+内网 LM Studio 是明确的外部运行依赖。

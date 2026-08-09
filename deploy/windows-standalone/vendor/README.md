@@ -7,19 +7,16 @@
 
 ```text
 vendor/
-  python/python-3.11.11-amd64.exe
+  python/python-3.11.9-amd64.exe
   wheelhouse/core/*.whl
   wheelhouse/production/*.whl
   middleware/postgresql/postgresql-16.*-windows-x64.exe
-  middleware/postgis/postgis-bundle-pg16-3.*-x64.exe
-  middleware/pgvector/pgvector-pg16-windows-x64.zip or extracted vector.dll/vector.control/vector--*.sql
+  middleware/postgis/postgis-bundle-pg16x64-setup-3.*.exe
+  middleware/pgvector/vector.v0.8.6-pg16.zip or extracted vector.dll/vector.control/vector--*.sql
   middleware/minio/minio.exe + mc.exe
   middleware/java/OpenJDK17U-jre_x64_windows_hotspot_*.msi
   middleware/jena/apache-jena-*.zip
   middleware/fuseki/apache-jena-fuseki-*.zip
-  middleware/ollama/OllamaSetup.exe
-  models/ollama/gemma4-26b/Modelfile + model weights
-  models/embedding/nomic-embed-text-v2-moe/Modelfile + model weights
   paper9/source/* or paper9/farmland_mpc-*.whl
   paper9/wheelhouse/*.whl
   paper9/models/...
@@ -34,4 +31,5 @@ pgvector ZIP 必须在压缩包内包含 `vector.dll`、`vector.control` 和至�
 最终 ZIP 中的 `manifest.json` 和 `SHA256SUMS` 是安装时唯一的完整性依据。
 
 构建器不会替你下载软件，也不会把 macOS wheel 当成 Windows wheel。没有真实的 Windows
-x64 wheel、PostGIS 扩展、模型权重或 Paper9 制品时，构建会失败并列出缺口。
+x64 wheel、PostGIS 扩展或 Paper9 制品时，构建会失败并列出缺口。Qwen 和 embedding 权重保留在
+内网 LM Studio 服务器，不复制到本目录或最终 ZIP。

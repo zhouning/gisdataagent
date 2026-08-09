@@ -550,6 +550,11 @@ def _get_lm_studio_base_url() -> str:
     return os.environ.get("LM_STUDIO_BASE_URL", "http://localhost:1234/v1")
 
 
+def _normalize_openai_compatible_model_name(model_name: str) -> str:
+    """Force OpenAI-compatible model IDs through LiteLLM's OpenAI provider."""
+    return model_name if model_name.startswith("openai/") else f"openai/{model_name}"
+
+
 def create_model(model_name: str):
     """Create an ADK-compatible model instance for the given model name.
 
@@ -740,7 +745,7 @@ def _create_lm_studio_model(model_name: str, info: dict):
     api_base = info.get("api_base", _get_lm_studio_base_url())
 
     # LiteLLM uses "openai/" prefix for OpenAI-compatible endpoints
-    litellm_name = f"openai/{model_name}" if "/" not in model_name else model_name
+    litellm_name = _normalize_openai_compatible_model_name(model_name)
 
     # Set env vars that litellm needs
     os.environ.setdefault("OPENAI_API_KEY", "lm-studio")

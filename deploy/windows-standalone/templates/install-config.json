@@ -12,9 +12,15 @@
     "minio_api": 9000,
     "minio_console": 9001,
     "fuseki": 3030,
-    "ollama": 11434,
     "prometheus": 9090,
     "grafana": 3000
+  },
+  "lm_studio": {
+    "base_url": "http://LM-STUDIO-SERVER:1234/v1",
+    "chat_model": "<QWEN_MODEL_ID>",
+    "embedding_model": "<EMBEDDING_MODEL_ID>",
+    "embedding_dimension": 768,
+    "deployment": "external_intranet"
   },
   "service_accounts": {
     "application": "LocalSystem",

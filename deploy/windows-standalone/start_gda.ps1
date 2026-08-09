@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [string]$InstallRoot = 'C:\GDA',
     [int]$Port = 8000,
@@ -10,6 +10,7 @@ $InstallRoot = (Resolve-Path $InstallRoot).Path
 $statePath = Join-Path $InstallRoot 'runtime\install-state.json'
 if (-not (Test-Path -LiteralPath $statePath)) { throw "未找到安装状态：$statePath" }
 $state = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8 | ConvertFrom-Json
+$script:IsNativeStack = $state.profile -in @('native-lite', 'production')
 $shutdownMarker = Join-Path $InstallRoot 'runtime\shutdown.request'
 if (Test-Path -LiteralPath $shutdownMarker) { Remove-Item -LiteralPath $shutdownMarker -Force -ErrorAction SilentlyContinue }
 
@@ -71,7 +72,7 @@ $python = [string]$state.python
 if (-not (Test-Path -LiteralPath $python)) { throw "Python 不存在：$python" }
 
 $preflight = Join-Path $InstallRoot 'scripts\preflight_windows_ingest.py'
-$preflightMode = if ($state.profile -eq 'production') { 'production' } else { 'development' }
+$preflightMode = if ($script:IsNativeStack) { 'production' } else { 'development' }
 & $python $preflight --mode $preflightMode --lake (Join-Path $state.data_root 'file_lake') `
     --inbox $state.inbox --contracts $env:GDA_STANDARD_CONTRACTS `
     --ontology $env:GDA_ONTOLOGY_ACTIVE --create-directories `
@@ -83,7 +84,7 @@ $verify = Join-Path $InstallRoot 'scripts\verify_windows_offline_bundle.py'
     --output (Join-Path $env:GDA_LOG_DIR 'bundle-runtime-verify.json')
 if ($LASTEXITCODE -ne 0) { throw '离线包运行前预检阻断，未启动任何 GIS Data Agent 进程。' }
 
-if ($state.profile -eq 'production') {
+if ($script:IsNativeStack) {
     Start-ExistingServices
     $minio = Join-Path $InstallRoot 'payload\middleware\minio\minio.exe'
     if ((Test-Path -LiteralPath $minio) -and -not (Wait-Tcp '127.0.0.1' 9000 1)) {
@@ -95,17 +96,6 @@ if ($state.profile -eq 'production') {
     $fusekiJar = Get-ChildItem -LiteralPath (Join-Path $InstallRoot 'middleware\fuseki') -Filter 'fuseki-server*.jar' -Recurse -File -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($java -and $fusekiJar -and -not (Wait-Tcp '127.0.0.1' 3030 1)) {
         Start-LoggedProcess 'fuseki' $java @('-jar', $fusekiJar.FullName, '--localhost', '127.0.0.1', '--port', '3030', '--loc', (Join-Path $state.data_root 'ontology\tdb2'), '/ontology') | Out-Null
-    }
-    $ollama = if ($env:OLLAMA_EXE -and (Test-Path -LiteralPath $env:OLLAMA_EXE)) {
-        $env:OLLAMA_EXE
-    } else { (Get-Command ollama.exe -ErrorAction SilentlyContinue).Source }
-    if (-not $ollama) {
-        $candidate = Join-Path ${env:ProgramFiles} 'Ollama\ollama.exe'
-        if (Test-Path -LiteralPath $candidate) { $ollama = $candidate }
-    }
-    if ($ollama) {
-        Get-Process -Name 'ollama' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-        if (-not (Wait-Tcp '127.0.0.1' 11434 1)) { Start-LoggedProcess 'ollama' $ollama @('serve') | Out-Null }
     }
     $prometheus = Get-ChildItem -LiteralPath (Join-Path $InstallRoot 'middleware\prometheus') -Filter 'prometheus.exe' -Recurse -File -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($prometheus) {
@@ -129,14 +119,14 @@ Start-LoggedProcess 'windows-ingest-worker' $python @($worker, '--inbox', $state
 if (-not (Wait-Tcp '127.0.0.1' $Port 60)) {
     throw "Chainlit 未在 $Port 端口监听；请查看 $env:GDA_LOG_DIR\gis-data-agent.stderr.log"
 }
-if ($state.profile -eq 'production') {
-    foreach ($servicePort in @(5432, 9000, 3030, 11434)) {
+if ($script:IsNativeStack) {
+    foreach ($servicePort in @(5432, 9000, 3030)) {
         if (-not (Wait-Tcp '127.0.0.1' $servicePort 60)) {
             & (Join-Path $InstallRoot 'stop_gda.ps1') -InstallRoot $InstallRoot
             throw "生产中间件未在端口 $servicePort 监听。"
         }
     }
-    & $python $verify --bundle-root $InstallRoot --profile production --phase runtime --require-running `
+    & $python $verify --bundle-root $InstallRoot --profile $state.profile --phase runtime --require-running `
         --output (Join-Path $env:GDA_LOG_DIR 'bundle-running-verify.json')
     if ($LASTEXITCODE -ne 0) {
         & (Join-Path $InstallRoot 'stop_gda.ps1') -InstallRoot $InstallRoot

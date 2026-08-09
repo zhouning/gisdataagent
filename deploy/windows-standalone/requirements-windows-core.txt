@@ -32,7 +32,7 @@ textual==8.1.1
 # Built-in GIS runtime. pyogrio ships GDAL/OpenFileGDB; no ArcPy or
 # external GDAL executable is a prerequisite.
 pyogrio==0.12.1
-rasterio==1.5.0
+rasterio==1.4.4
 pyarrow==20.0.0
 pyproj==3.7.2
 

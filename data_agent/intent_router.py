@@ -76,8 +76,19 @@ def _route_via_litellm(prompt: str, model_name: str, image_paths=None) -> tuple[
     try:
         from data_agent.model_gateway import ModelRegistry
         info = ModelRegistry.get_model_info(model_name) or {}
+        backend = info.get("backend", "")
         effective_id = info.get("model_id", model_name)
-        api_base = info.get("api_base") or os.environ.get("OLLAMA_API_BASE")
+        if backend == "lm_studio":
+            from data_agent.model_gateway import _normalize_openai_compatible_model_name
+
+            effective_id = _normalize_openai_compatible_model_name(effective_id)
+            api_base = (
+                info.get("api_base")
+                or os.environ.get("LM_STUDIO_BASE_URL")
+                or os.environ.get("OPENAI_API_BASE")
+            )
+        else:
+            api_base = info.get("api_base") or os.environ.get("OLLAMA_API_BASE")
     except Exception:
         api_base = os.environ.get("OLLAMA_API_BASE")
 

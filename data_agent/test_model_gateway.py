@@ -183,6 +183,17 @@ class TestCreateModel(unittest.TestCase):
         create_model("gemma-3-4b")
         mock_create.assert_called_once()
 
+    @patch("google.adk.models.lite_llm.LiteLlm")
+    def test_lm_studio_model_normalizes_slash_id_to_openai_provider(self, mock_litellm):
+        from data_agent.model_gateway import _create_lm_studio_model
+
+        _create_lm_studio_model(
+            "qwen/qwen3-32b",
+            {"api_base": "http://10.0.0.8:1234/v1"},
+        )
+
+        mock_litellm.assert_called_once_with(model="openai/qwen/qwen3-32b")
+
     @patch("data_agent.model_gateway._create_deepseek_model")
     def test_deepseek_model_uses_deepseek_backend(self, mock_create):
         from data_agent.model_gateway import create_model

@@ -1,11 +1,15 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
-    [ValidateSet('core', 'production')]
+    [ValidateSet('core', 'native-lite', 'production')]
     [string]$Profile = 'core',
     [string]$InstallRoot = 'C:\GDA',
     [string]$DataRoot = 'D:\GDA_DATA',
     [string]$Inbox = 'D:\NX_INCOMING',
     [string]$LogRoot = 'D:\GDA_LOGS',
+    [string]$LmStudioBaseUrl = $env:LM_STUDIO_BASE_URL,
+    [string]$LmStudioChatModel = $env:LM_STUDIO_MODEL,
+    [string]$LmStudioEmbeddingModel = $env:LM_STUDIO_EMBEDDING_MODEL,
+    [string]$LmStudioApiKey = $env:LM_STUDIO_API_KEY,
     [double]$MinFreeGb = 20,
     [switch]$AllowExisting
 )
@@ -13,8 +17,9 @@ param(
 $ErrorActionPreference = 'Stop'
 $script:GdaPostgresPassword = ''
 $script:GdaMinioPassword = [guid]::NewGuid().ToString('N') + 'Mm1!'
+$script:IsNativeStack = $Profile -in @('native-lite', 'production')
 $script:JavaHome = ''
-$script:OllamaExe = ''
+if (-not $LmStudioApiKey) { $LmStudioApiKey = 'lm-studio' }
 $BundleRoot = (Resolve-Path $PSScriptRoot).Path
 $InstallRoot = [IO.Path]::GetFullPath($InstallRoot)
 $DataRoot = [IO.Path]::GetFullPath($DataRoot)
@@ -43,6 +48,26 @@ function Assert-Host {
     }
     foreach ($path in @($InstallRoot, $DataRoot, $Inbox, $LogRoot)) {
         if ($path.Length -gt 220) { Fail "路径过长（Windows MAX_PATH 风险）：$path" }
+    }
+}
+
+function Assert-LmStudioConfiguration {
+    if (-not $script:IsNativeStack) { return }
+    foreach ($item in @{
+        LmStudioBaseUrl = $LmStudioBaseUrl
+        LmStudioChatModel = $LmStudioChatModel
+        LmStudioEmbeddingModel = $LmStudioEmbeddingModel
+        LmStudioApiKey = $LmStudioApiKey
+    }.GetEnumerator()) {
+        if ([string]::IsNullOrWhiteSpace([string]$item.Value)) { Fail "$($item.Key) 不能为空。" }
+        if ([string]$item.Value -match '[\r\n]') { Fail "$($item.Key) 不能包含换行。" }
+    }
+    $uri = $null
+    if (-not [Uri]::TryCreate($LmStudioBaseUrl, [UriKind]::Absolute, [ref]$uri) -or $uri.Scheme -notin @('http', 'https')) {
+        Fail 'LmStudioBaseUrl 必须是 http/https 绝对地址，例如 http://10.0.0.8:1234/v1。'
+    }
+    if ($uri.AbsolutePath.TrimEnd('/') -notmatch '/v1$') {
+        Fail 'LmStudioBaseUrl 必须包含 LM Studio OpenAI 兼容 API 的 /v1 路径。'
     }
 }
 
@@ -156,11 +181,11 @@ function Install-Python {
 }
 
 function Install-Wheels([string]$Python) {
-    $requirements = if ($Profile -eq 'production') { 'requirements-windows-production.txt' } else { 'requirements-windows-core.txt' }
+    $requirements = if ($script:IsNativeStack) { 'requirements-windows-production.txt' } else { 'requirements-windows-core.txt' }
     $requirementPath = Join-Path $InstallRoot "payload\$requirements"
     $wheelArgs = @('-m', 'pip', 'install', '--no-index', '--disable-pip-version-check', '--no-warn-script-location')
     $wheelArgs += @('--find-links', (Join-Path $InstallRoot 'payload\wheelhouse\core'))
-    if ($Profile -eq 'production') {
+    if ($script:IsNativeStack) {
         $wheelArgs += @('--find-links', (Join-Path $InstallRoot 'payload\wheelhouse\production'))
         $wheelArgs += @('--find-links', (Join-Path $InstallRoot 'payload\wheelhouse\paper9'))
     }
@@ -172,13 +197,22 @@ function Install-Wheels([string]$Python) {
 function Install-Postgres {
     $installer = Join-Path $InstallRoot 'payload\middleware\postgresql-installer.exe'
     if (-not (Test-Path -LiteralPath $installer)) { Fail "缺少 PostgreSQL 安装介质。" }
-    $password = if ($env:GDA_POSTGRES_PASSWORD) { $env:GDA_POSTGRES_PASSWORD } else { [guid]::NewGuid().ToString('N') + 'Aa1!' }
+    $prefix = Join-Path $InstallRoot 'middleware\postgresql'
+    $data = Join-Path $DataRoot 'postgresql'
+    $passwordPath = Join-Path $InstallRoot 'runtime\postgres-superpassword.txt'
+    $password = if ($env:GDA_POSTGRES_PASSWORD) {
+        $env:GDA_POSTGRES_PASSWORD
+    } elseif (Test-Path -LiteralPath $passwordPath -PathType Leaf) {
+        (Get-Content -LiteralPath $passwordPath -Raw -Encoding UTF8).Trim()
+    } elseif (Test-Path -LiteralPath (Join-Path $data 'PG_VERSION') -PathType Leaf) {
+        Fail '检测到已有 PostgreSQL 数据目录，但找不到 postgres-superpassword.txt；请设置 GDA_POSTGRES_PASSWORD 后重试。'
+    } else {
+        [guid]::NewGuid().ToString('N') + 'Aa1!'
+    }
     if ($password -notmatch '^[A-Za-z0-9!._~-]{16,128}$') {
         Fail 'GDA_POSTGRES_PASSWORD 只能包含字母、数字和 ! . _ ~ -，长度 16-128。'
     }
     $script:GdaPostgresPassword = $password
-    $prefix = Join-Path $InstallRoot 'middleware\postgresql'
-    $data = Join-Path $DataRoot 'postgresql'
     New-Item -ItemType Directory -Path $prefix, $data -Force | Out-Null
     $installerArgs = if ($env:GDA_POSTGRES_INSTALL_ARGS) { $env:GDA_POSTGRES_INSTALL_ARGS } else {
         "--mode unattended --unattendedmodeui none --superpassword `"$password`" --serverport 5432 --prefix `"$prefix`" --datadir `"$data`""
@@ -278,7 +312,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT USAGE, SELECT,
 function Install-PostgisAndPgvector {
     $postgis = Join-Path $InstallRoot 'payload\middleware\postgis-installer.exe'
     if (Test-Path -LiteralPath $postgis) {
-        $postgisArgs = if ($env:GDA_POSTGIS_INSTALL_ARGS) { $env:GDA_POSTGIS_INSTALL_ARGS } else { '/SILENT /NORESTART' }
+        $postgisArgs = if ($env:GDA_POSTGIS_INSTALL_ARGS) { $env:GDA_POSTGIS_INSTALL_ARGS } else { '/S' }
         $process = Start-Process -FilePath $postgis -ArgumentList $postgisArgs -Wait -PassThru
         if ($process.ExitCode -ne 0) { Fail "PostGIS 安装失败，exit=$($process.ExitCode)。可用 GDA_POSTGIS_INSTALL_ARGS 覆盖供应商参数。" }
     }
@@ -357,66 +391,6 @@ function Initialize-Fuseki([string]$Python) {
     if ($LASTEXITCODE -ne 0) { Fail 'Fuseki TDB2 本体投影初始化失败。' }
 }
 
-function Install-Ollama {
-    $installer = Join-Path $InstallRoot 'payload\middleware\OllamaSetup.exe'
-    if (-not (Test-Path -LiteralPath $installer)) { Fail '缺少 Ollama 安装介质。' }
-    $ollamaRoot = Join-Path $InstallRoot 'middleware\ollama'
-    New-Item -ItemType Directory -Path $ollamaRoot -Force | Out-Null
-    $ollamaArgs = if ($env:GDA_OLLAMA_INSTALL_ARGS) {
-        $env:GDA_OLLAMA_INSTALL_ARGS
-    } else {
-        "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=`"$ollamaRoot`""
-    }
-    $process = Start-Process -FilePath $installer -ArgumentList $ollamaArgs -Wait -PassThru
-    if ($process.ExitCode -ne 0) { Fail "Ollama 安装失败，exit=$($process.ExitCode)" }
-    $modelRoot = Join-Path $InstallRoot 'payload\models\ollama\gemma4-26b'
-    if (-not (Test-Path -LiteralPath $modelRoot)) { Fail '缺少 Ollama LLM 权重。' }
-    $embeddingRoot = Join-Path $InstallRoot 'payload\models\embedding\nomic-embed-text-v2-moe'
-    if (-not (Test-Path -LiteralPath $embeddingRoot)) { Fail '缺少 embedding 模型权重。' }
-    $ollama = Join-Path $ollamaRoot 'ollama.exe'
-    if (-not (Test-Path -LiteralPath $ollama)) { $ollama = (Get-Command ollama.exe -ErrorAction SilentlyContinue).Source }
-    if (-not $ollama) {
-        $candidate = Join-Path ${env:LOCALAPPDATA} 'Programs\Ollama\ollama.exe'
-        if (Test-Path -LiteralPath $candidate) { $ollama = $candidate }
-    }
-    if (-not $ollama) {
-        $candidate = Join-Path ${env:ProgramFiles} 'Ollama\ollama.exe'
-        if (Test-Path -LiteralPath $candidate) { $ollama = $candidate }
-    }
-    if (-not $ollama) { Fail 'Ollama 安装后找不到 ollama.exe。' }
-    $script:OllamaExe = (Resolve-Path -LiteralPath $ollama).Path
-    $llmModelfile = Get-ChildItem -LiteralPath $modelRoot -Filter 'Modelfile' -Recurse -File -ErrorAction SilentlyContinue | Select-Object -First 1
-    $embeddingModelfile = Get-ChildItem -LiteralPath $embeddingRoot -Filter 'Modelfile' -Recurse -File -ErrorAction SilentlyContinue | Select-Object -First 1
-    if (-not $llmModelfile -or -not $embeddingModelfile) {
-        Fail 'Ollama LLM 或 embedding Modelfile 不完整；离线包必须包含可导入的本地模型定义。'
-    }
-    $env:OLLAMA_MODELS = Join-Path $DataRoot 'ollama-models'
-    New-Item -ItemType Directory -Path $env:OLLAMA_MODELS -Force | Out-Null
-    # The Windows installer can leave a per-user Ollama server running on
-    # 11434. Stop that process so model import and the SYSTEM task use the
-    # same data-disk model root.
-    Get-Process -Name 'ollama' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-    $previousHost = $env:OLLAMA_HOST
-    $env:OLLAMA_HOST = '127.0.0.1:11435'
-    $process = Start-Process -FilePath $script:OllamaExe -ArgumentList @('serve') -PassThru -WindowStyle Hidden
-    try {
-        Wait-LocalPort 11435
-        Push-Location $llmModelfile.Directory.FullName
-        try {
-            & $script:OllamaExe create 'Gemma4:26b' -f 'Modelfile'
-            if ($LASTEXITCODE -ne 0) { Fail 'Gemma4:26b 模型离线导入失败。' }
-        } finally { Pop-Location }
-        Push-Location $embeddingModelfile.Directory.FullName
-        try {
-            & $script:OllamaExe create 'nomic-embed-text-v2-moe:latest' -f 'Modelfile'
-            if ($LASTEXITCODE -ne 0) { Fail 'nomic embedding 模型离线导入失败。' }
-        } finally { Pop-Location }
-    } finally {
-        if ($process) { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue }
-        $env:OLLAMA_HOST = $previousHost
-    }
-}
-
 function Install-OptionalMonitoring {
     foreach ($name in @('prometheus', 'grafana')) {
         $archive = Join-Path $InstallRoot "payload\monitoring\$name.zip"
@@ -436,20 +410,24 @@ function Write-Environment([string]$Python) {
     if (-not (Test-Path -LiteralPath $projData)) { $projData = '' }
     if (-not (Test-Path -LiteralPath $gdalData)) { $gdalData = '' }
     $values = @{
-        '__DB_BACKEND__' = if ($Profile -eq 'production') { 'postgres' } else { 'duckdb' }
-        '__POSTGRES_PASSWORD__' = if ($Profile -eq 'production') { $script:GdaPostgresPassword } else { '' }
-        '__MINIO_PASSWORD__' = if ($Profile -eq 'production') { $script:GdaMinioPassword } else { '' }
+        '__DB_BACKEND__' = if ($script:IsNativeStack) { 'postgres' } else { 'duckdb' }
+        '__POSTGRES_PASSWORD__' = if ($script:IsNativeStack) { $script:GdaPostgresPassword } else { '' }
+        '__MINIO_PASSWORD__' = if ($script:IsNativeStack) { $script:GdaMinioPassword } else { '' }
         '__INSTALL_ROOT__' = $InstallRoot
         '__DATA_ROOT__' = $DataRoot
         '__INBOX_ROOT__' = $Inbox
         '__CONFIG_ROOT__' = (Join-Path $InstallRoot 'config')
         '__LOG_ROOT__' = $LogRoot
         '__CHAINLIT_AUTH_SECRET__' = $secret
-        '__ROUTER_MODEL__' = if ($Profile -eq 'production') { 'gemma4-26b-ollama' } else { 'gemini-2.0-flash' }
-        '__STANDARDIZED_VECTOR_FORMAT__' = if ($Profile -eq 'production') { 'PostgreSQL' } else { 'Parquet' }
-        '__POSTGIS_DSN__' = if ($Profile -eq 'production') { "postgresql://agent_user:$script:GdaPostgresPassword@127.0.0.1:5432/gis_agent" } else { '' }
+        '__ROUTER_MODEL__' = if ($script:IsNativeStack) { $LmStudioChatModel } else { 'gemini-2.0-flash' }
+        '__LM_STUDIO_BASE_URL__' = if ($script:IsNativeStack) { $LmStudioBaseUrl.TrimEnd('/') } else { '' }
+        '__LM_STUDIO_CHAT_MODEL__' = if ($script:IsNativeStack) { $LmStudioChatModel } else { '' }
+        '__LM_STUDIO_EMBEDDING_MODEL__' = if ($script:IsNativeStack) { $LmStudioEmbeddingModel } else { '' }
+        '__LM_STUDIO_EMBEDDING_DIMENSION__' = if ($script:IsNativeStack) { '768' } else { '' }
+        '__LM_STUDIO_API_KEY__' = if ($script:IsNativeStack) { $LmStudioApiKey } else { '' }
+        '__STANDARDIZED_VECTOR_FORMAT__' = if ($script:IsNativeStack) { 'PostgreSQL' } else { 'Parquet' }
+        '__POSTGIS_DSN__' = if ($script:IsNativeStack) { "postgresql://agent_user:$script:GdaPostgresPassword@127.0.0.1:5432/gis_agent" } else { '' }
         '__JAVA_HOME__' = $script:JavaHome
-        '__OLLAMA_EXE__' = $script:OllamaExe
         '__PROJ_DATA__' = $projData
         '__GDAL_DATA__' = $gdalData
     }
@@ -462,6 +440,7 @@ function Write-Environment([string]$Python) {
 
 Assert-Administrator
 Assert-Host
+Assert-LmStudioConfiguration
 $manifest = Read-Manifest
 Assert-Checksums
 Assert-RequiredArtifacts $manifest
@@ -470,12 +449,11 @@ New-Directories
 Configure-Firewall
 $python = Install-Python
 Install-Wheels $python
-if ($Profile -eq 'production') {
+if ($script:IsNativeStack) {
     Install-Postgres
     Install-PostgisAndPgvector
     Install-JavaAndFuseki
     Initialize-Fuseki $python
-    Install-Ollama
     Install-OptionalMonitoring
 }
 $envPath = Write-Environment $python
@@ -486,12 +464,24 @@ $env:GDA_STANDARD_CONTRACTS = Join-Path $InstallRoot 'config\natural_resource_st
 $env:GDA_ONTOLOGY_ACTIVE = Join-Path $InstallRoot 'config\ontology\natural_resource_one_map\active.json'
 $env:GDA_LOG_DIR = $LogRoot
 $env:MIGRATION_RUNTIME_DB_ROLE = 'agent_user'
+if ($script:IsNativeStack) {
+    $env:LM_STUDIO_BASE_URL = $LmStudioBaseUrl.TrimEnd('/')
+    $env:LM_STUDIO_MODEL = $LmStudioChatModel
+    $env:LM_STUDIO_EMBEDDING_MODEL = $LmStudioEmbeddingModel
+    $env:LM_STUDIO_EMBEDDING_DIMENSION = '768'
+    $env:LM_STUDIO_API_KEY = $LmStudioApiKey
+    $env:OPENAI_API_BASE = $env:LM_STUDIO_BASE_URL
+    $env:OPENAI_API_KEY = $LmStudioApiKey
+    $env:EMBEDDING_MODEL = $LmStudioEmbeddingModel
+    $env:ROUTER_MODEL = $LmStudioChatModel
+    $env:MODEL_CONFIG_FORCE_ENV = 'true'
+}
 $sitePackages = Join-Path (Split-Path $python -Parent) 'Lib\site-packages'
 $env:GDA_PROJ_DATA = Join-Path $sitePackages 'pyproj\proj_dir\share\proj'
 $env:GDA_GDAL_DATA = Join-Path $sitePackages 'rasterio\gdal_data'
 if (-not (Test-Path -LiteralPath $env:GDA_PROJ_DATA)) { $env:GDA_PROJ_DATA = '' }
 if (-not (Test-Path -LiteralPath $env:GDA_GDAL_DATA)) { $env:GDA_GDAL_DATA = '' }
-if ($Profile -eq 'production') {
+if ($script:IsNativeStack) {
     $env:DB_BACKEND = 'postgres'
     $env:POSTGRES_HOST = '127.0.0.1'
     $env:POSTGRES_PORT = '5432'
@@ -511,7 +501,7 @@ if ($Profile -eq 'production') {
 }
 
 $preflight = Join-Path $InstallRoot 'scripts\preflight_windows_ingest.py'
-$preflightMode = if ($Profile -eq 'production') { 'production' } else { 'development' }
+$preflightMode = if ($script:IsNativeStack) { 'production' } else { 'development' }
 & $python $preflight --mode $preflightMode --lake (Join-Path $DataRoot 'file_lake') `
     --inbox $Inbox --contracts (Join-Path $InstallRoot 'config\natural_resource_standard_contracts.json') `
     --ontology (Join-Path $InstallRoot 'config\ontology\natural_resource_one_map\active.json') `
