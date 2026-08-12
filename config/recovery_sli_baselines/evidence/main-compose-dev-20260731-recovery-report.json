@@ -1,0 +1,122 @@
+{
+  "database": {
+    "backup_artifact_retained": false,
+    "backup_duration_seconds": 258.598,
+    "dump_bytes": 3028622216,
+    "dump_sha256": "10f041c6465e69c9a966f685743bc57f9e930f892f64cd4c7fda8c7023b1617b",
+    "image": "gis-postgis-pgvector:16-3.4",
+    "restore_duration_seconds": 187.532,
+    "restored": {
+      "database_bytes": 6639664151,
+      "extensions": {
+        "ltree": "1.2",
+        "postgis": "3.4.3",
+        "vector": "0.8.2"
+      },
+      "geometry_column_count": 4,
+      "migration_count": 93,
+      "migration_fingerprint": "53ddf178936f4b6ce909bf553e66f33270d9cf815a87458e60de332f69af9ee4",
+      "representative_table_counts": {
+        "twm_evidence_item": 29556,
+        "twm_state_object": 777332,
+        "twm_state_relation": 1433322
+      },
+      "standard": {
+        "doc_code": "NR_ONE_MAP_TWM_CORE_2026",
+        "element_count": 174,
+        "elements_sha256": "a9b58ea766e1f7fd0f203b07bb23e3848e1db7dad560ebf04843b83a5b713630",
+        "status": "released",
+        "version_label": "2026-06-16-draft"
+      }
+    },
+    "service": "db",
+    "source": {
+      "database_bytes": 6655269911,
+      "extensions": {
+        "ltree": "1.2",
+        "postgis": "3.4.3",
+        "vector": "0.8.2"
+      },
+      "geometry_column_count": 4,
+      "migration_count": 93,
+      "migration_fingerprint": "53ddf178936f4b6ce909bf553e66f33270d9cf815a87458e60de332f69af9ee4",
+      "representative_table_counts": {
+        "twm_evidence_item": 29556,
+        "twm_state_object": 777332,
+        "twm_state_relation": 1433322
+      },
+      "standard": {
+        "doc_code": "NR_ONE_MAP_TWM_CORE_2026",
+        "element_count": 174,
+        "elements_sha256": "a9b58ea766e1f7fd0f203b07bb23e3848e1db7dad560ebf04843b83a5b713630",
+        "status": "released",
+        "version_label": "2026-06-16-draft"
+      }
+    }
+  },
+  "deployment": {
+    "capability_status": {
+      "gda_mvt": "runtime",
+      "liveness": "runtime",
+      "martin": "optional_not_enabled",
+      "object_storage": "runtime",
+      "postgis": "runtime",
+      "readiness": "runtime",
+      "redis": "runtime"
+    },
+    "profile_contamination": false,
+    "technical_pass": true
+  },
+  "environment": "dev",
+  "generated_at": "2026-07-31T12:08:14.730932+00:00",
+  "object_storage": {
+    "backup_artifact_retained": false,
+    "buckets": [
+      {
+        "bucket": "gis-agent-uploads",
+        "restored": {
+          "bytes": 0,
+          "inventory_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "object_count": 0
+        },
+        "source": {
+          "bytes": 0,
+          "inventory_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "object_count": 0
+        }
+      },
+      {
+        "bucket": "gis-agent-lakehouse",
+        "restored": {
+          "bytes": 2288430300,
+          "inventory_sha256": "9ca34e97812d8190428351e5f550a7288829b8924c0fe1deabf06beaadb2a5a9",
+          "object_count": 213
+        },
+        "source": {
+          "bytes": 2288430300,
+          "inventory_sha256": "9ca34e97812d8190428351e5f550a7288829b8924c0fe1deabf06beaadb2a5a9",
+          "object_count": 213
+        }
+      }
+    ],
+    "rehearsal_duration_seconds": 7.364
+  },
+  "observed_total_seconds": 459.499,
+  "profile_id": "main-compose-dev",
+  "promotion_blockers": [
+    "business_steward",
+    "license_status",
+    "slo",
+    "backup_restore",
+    "rpo_not_defined",
+    "rto_not_approved",
+    "offsite_copy_not_verified",
+    "backup_encryption_not_verified",
+    "cross_system_point_in_time_not_proven"
+  ],
+  "promotion_ready": false,
+  "schema": "gis-data-agent.recovery-rehearsal.v1",
+  "scope": "compose_isolated_logical_recovery",
+  "slo_status": "observed_not_approved",
+  "technical_pass": true
+}

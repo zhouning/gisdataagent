@@ -1,0 +1,175 @@
+{
+  "schema": "gis-data-agent.deployment-profile.v1",
+  "profile_id": "main-compose-dev",
+  "environment": "dev",
+  "deployment_type": "compose",
+  "llm_mode": "optional",
+  "base_url": "http://127.0.0.1:8000",
+  "compose": {
+    "project_name": "gisdataagent",
+    "files": [
+      "docker-compose.yml"
+    ],
+    "model_profiles": [
+      "tiles"
+    ],
+    "network": "agent-net",
+    "baseline_probe_service": "app",
+    "config_sha256": "76dffa0747271f4ae587faf5c851922d5044305b964bc269742182c3a67546ec",
+    "services": [
+      {
+        "name": "db",
+        "source_file": "docker-compose.yml",
+        "runtime": "required",
+        "health_required": true
+      },
+      {
+        "name": "migrate",
+        "source_file": "docker-compose.yml",
+        "runtime": "one_shot"
+      },
+      {
+        "name": "app",
+        "source_file": "docker-compose.yml",
+        "runtime": "required",
+        "health_required": true
+      },
+      {
+        "name": "minio",
+        "source_file": "docker-compose.yml",
+        "runtime": "required",
+        "health_required": true
+      },
+      {
+        "name": "minio-bucket-init",
+        "source_file": "docker-compose.yml",
+        "runtime": "one_shot"
+      },
+      {
+        "name": "redis",
+        "source_file": "docker-compose.yml",
+        "runtime": "required",
+        "health_required": true
+      },
+      {
+        "name": "martin",
+        "source_file": "docker-compose.yml",
+        "runtime": "optional",
+        "health_required": true
+      }
+    ],
+    "volumes": [
+      {
+        "service": "db",
+        "target": "/var/lib/postgresql/data",
+        "logical_name": "pgdata-arm64"
+      },
+      {
+        "service": "app",
+        "target": "/app/data_agent/uploads",
+        "logical_name": "uploads"
+      },
+      {
+        "service": "app",
+        "target": "/app/data_agent/uploads/.worldpop_cache",
+        "logical_name": "worldpop_cache"
+      },
+      {
+        "service": "minio",
+        "target": "/data",
+        "logical_name": "minio-data"
+      },
+      {
+        "service": "redis",
+        "target": "/data",
+        "logical_name": "redis-data"
+      }
+    ]
+  },
+  "migrations": {
+    "count": 156,
+    "fingerprint": "85c33b9811a5e4bdd17689ccf54d1ee24cf90aa7bea3da665c6cfd06b7e3b64b"
+  },
+  "released_standard": {
+    "doc_code": "NR_ONE_MAP_TWM_CORE_2026",
+    "version_label": "2026-06-16-draft",
+    "element_count": 174,
+    "elements_sha256": "a9b58ea766e1f7fd0f203b07bb23e3848e1db7dad560ebf04843b83a5b713630"
+  },
+  "capabilities": [
+    {
+      "capability": "postgis",
+      "configured_service": "db",
+      "runtime": "required"
+    },
+    {
+      "capability": "object_storage",
+      "configured_service": "minio",
+      "runtime": "required"
+    },
+    {
+      "capability": "redis",
+      "configured_service": "redis",
+      "internal_fact": "redis",
+      "runtime": "required"
+    },
+    {
+      "capability": "gda_mvt",
+      "configured_route": "/api/tiles/{layer_id}/{z:int}/{x:int}/{y:int}.pbf",
+      "runtime": "http_probe"
+    },
+    {
+      "capability": "liveness",
+      "configured_route": "/health",
+      "runtime": "http_probe"
+    },
+    {
+      "capability": "readiness",
+      "configured_route": "/ready",
+      "runtime": "http_probe"
+    },
+    {
+      "capability": "martin",
+      "configured_service": "martin",
+      "runtime": "optional_not_enabled"
+    }
+  ],
+  "http_probes": [
+    {
+      "capability": "gda_mvt",
+      "path": "/api/tiles/runtime-probe/0/0/0.pbf",
+      "expected_status": [
+        401
+      ],
+      "content_type_prefix": "application/json"
+    },
+    {
+      "capability": "liveness",
+      "path": "/health",
+      "expected_status": [
+        200
+      ],
+      "expected_json_status": "ok",
+      "content_type_prefix": "application/json"
+    },
+    {
+      "capability": "readiness",
+      "path": "/ready",
+      "expected_status": [
+        200
+      ],
+      "expected_json_status": "ok",
+      "content_type_prefix": "application/json"
+    }
+  ],
+  "governance": {
+    "platform_owner": "data-platform",
+    "status": "in_progress",
+    "promotion_blockers": [
+      "business_steward",
+      "license_status",
+      "slo",
+      "backup_restore"
+    ]
+  }
+}

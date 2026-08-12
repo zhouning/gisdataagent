@@ -1,0 +1,72 @@
+{
+  "environment": "dev",
+  "governance": {
+    "interpretation": "bounded_streamed_wal_observation_not_continuous_pitr_slo",
+    "promotion_blockers": [
+      "business_steward",
+      "license_status",
+      "slo",
+      "backup_restore",
+      "rpo_not_defined",
+      "rto_not_approved",
+      "offsite_copy_not_verified",
+      "backup_encryption_not_verified",
+      "cross_system_point_in_time_not_proven",
+      "continuous_wal_archiving_not_configured",
+      "replication_slot_monitoring_not_configured",
+      "restore_failover_not_proven",
+      "object_storage_pitr_not_proven"
+    ],
+    "promotion_ready": false,
+    "rpo_status": "not_defined",
+    "rto_status": "not_approved"
+  },
+  "observation": {
+    "compose_config_sha256": "76dffa0747271f4ae587faf5c851922d5044305b964bc269742182c3a67546ec",
+    "database_logical_identity_sha256": "be4f86216d251b81523ff2d93770061247237f9ab09924086687015d6be9ac30",
+    "end_to_end_seconds": 24.994,
+    "observed_at": "2026-07-31T12:46:06.361438Z",
+    "physical_backup": {
+      "bytes": 6723246396,
+      "duration_seconds": 12.982,
+      "manifest_sha256": "4205b2c59755dcc62ba97d9dd827e0c2a939bd7e4e1cc9e37c47e2f78abc72a2",
+      "manifest_verification_seconds": 4.7
+    },
+    "report_evidence_sha256": "624f161b6e1d678545ef720cb23d1df6b08b9a6ce28ac2c3800985e8a0300dd2",
+    "report_schema": "gis-data-agent.pitr-rehearsal.v1",
+    "sample_count": 1,
+    "source_archive_mode": "off",
+    "source_database_bytes": 6655269911,
+    "source_wal_level": "replica",
+    "target_recovery_seconds": 1.901,
+    "wal_stream": {
+      "bytes": 33554432,
+      "complete_segment_count": 2,
+      "duration_seconds": 1.995,
+      "inventory_sha256": "60b80e36af18b3557d98ad5c129da0b2c5a5173876da94f1c8665e6b1a9e5abb",
+      "partial_segment_count": 0,
+      "target_to_later_seconds": 1.188492
+    }
+  },
+  "profile_id": "main-compose-dev",
+  "proof": {
+    "continuous_archive_configured": false,
+    "database_logical_identity_equal": true,
+    "later_lsn_observed": true,
+    "later_state_excluded": true,
+    "manifest_verified": true,
+    "network_isolated": true,
+    "probe_database_removed": true,
+    "promoted": true,
+    "replication_slot_removed": true,
+    "restored_target_state_observed": true,
+    "source_later_state_observed": true,
+    "target_after_base_backup": true,
+    "target_lsn_observed": true,
+    "temporary_containers_removed": true,
+    "temporary_media_retained": false
+  },
+  "schema": "gis-data-agent.pitr-evidence-seal.v1",
+  "scope": "compose_isolated_streamed_wal_pitr",
+  "seal_id": "main-compose-dev-20260731-pitr"
+}

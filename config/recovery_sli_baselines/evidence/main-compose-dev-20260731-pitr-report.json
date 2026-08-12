@@ -1,0 +1,123 @@
+{
+  "cleanup": {
+    "probe_database_removed": true,
+    "replication_slot_removed": true,
+    "temporary_containers_removed": true,
+    "temporary_media_retained": false
+  },
+  "database": {
+    "restored": {
+      "database_bytes": 6655269911,
+      "extensions": {
+        "ltree": "1.2",
+        "postgis": "3.4.3",
+        "vector": "0.8.2"
+      },
+      "geometry_column_count": 4,
+      "migration_count": 93,
+      "migration_fingerprint": "53ddf178936f4b6ce909bf553e66f33270d9cf815a87458e60de332f69af9ee4",
+      "representative_table_counts": {
+        "twm_evidence_item": 29556,
+        "twm_state_object": 777332,
+        "twm_state_relation": 1433322
+      },
+      "standard": {
+        "doc_code": "NR_ONE_MAP_TWM_CORE_2026",
+        "element_count": 174,
+        "elements_sha256": "a9b58ea766e1f7fd0f203b07bb23e3848e1db7dad560ebf04843b83a5b713630",
+        "status": "released",
+        "version_label": "2026-06-16-draft"
+      }
+    },
+    "source": {
+      "database_bytes": 6655269911,
+      "extensions": {
+        "ltree": "1.2",
+        "postgis": "3.4.3",
+        "vector": "0.8.2"
+      },
+      "geometry_column_count": 4,
+      "migration_count": 93,
+      "migration_fingerprint": "53ddf178936f4b6ce909bf553e66f33270d9cf815a87458e60de332f69af9ee4",
+      "representative_table_counts": {
+        "twm_evidence_item": 29556,
+        "twm_state_object": 777332,
+        "twm_state_relation": 1433322
+      },
+      "standard": {
+        "doc_code": "NR_ONE_MAP_TWM_CORE_2026",
+        "element_count": 174,
+        "elements_sha256": "a9b58ea766e1f7fd0f203b07bb23e3848e1db7dad560ebf04843b83a5b713630",
+        "status": "released",
+        "version_label": "2026-06-16-draft"
+      }
+    }
+  },
+  "deployment": {
+    "profile_contamination": false,
+    "technical_pass": true
+  },
+  "environment": "dev",
+  "generated_at": "2026-07-31T12:46:06.361438+00:00",
+  "observed_total_seconds": 24.994,
+  "physical_backup": {
+    "artifact_retained": false,
+    "bytes": 6723246396,
+    "duration_seconds": 12.982,
+    "manifest_sha256": "4205b2c59755dcc62ba97d9dd827e0c2a939bd7e4e1cc9e37c47e2f78abc72a2",
+    "manifest_verification_seconds": 4.7,
+    "manifest_verified": true
+  },
+  "profile_id": "main-compose-dev",
+  "promotion_blockers": [
+    "business_steward",
+    "license_status",
+    "slo",
+    "backup_restore",
+    "rpo_not_defined",
+    "rto_not_approved",
+    "offsite_copy_not_verified",
+    "backup_encryption_not_verified",
+    "cross_system_point_in_time_not_proven",
+    "continuous_wal_archiving_not_configured",
+    "replication_slot_monitoring_not_configured",
+    "restore_failover_not_proven",
+    "object_storage_pitr_not_proven"
+  ],
+  "promotion_ready": false,
+  "rpo_status": "not_defined",
+  "rto_status": "not_approved",
+  "schema": "gis-data-agent.pitr-rehearsal.v1",
+  "scope": "compose_isolated_streamed_wal_pitr",
+  "source_capability": {
+    "archive_mode": "off",
+    "in_recovery": false,
+    "max_replication_slots": 10,
+    "max_wal_senders": 10,
+    "server_version": "16.14 (Debian 16.14-1.pgdg12+1)",
+    "server_version_num": 160014,
+    "wal_level": "replica"
+  },
+  "target_recovery": {
+    "duration_seconds": 1.901,
+    "later_state_excluded": true,
+    "network_isolated": true,
+    "promoted": true,
+    "restored_target_state_observed": true
+  },
+  "technical_pass": true,
+  "wal_stream": {
+    "bytes": 33554432,
+    "complete_segment_count": 2,
+    "continuous_archive_configured": false,
+    "duration_seconds": 1.995,
+    "inventory_sha256": "60b80e36af18b3557d98ad5c129da0b2c5a5173876da94f1c8665e6b1a9e5abb",
+    "later_lsn_observed": true,
+    "later_timestamp": "2026-07-31T12:46:03.106852+00:00",
+    "partial_segment_count": 0,
+    "source_later_state_observed": true,
+    "target_after_base_backup": true,
+    "target_lsn_observed": true,
+    "target_timestamp": "2026-07-31T12:46:01.918360+00:00"
+  }
+}

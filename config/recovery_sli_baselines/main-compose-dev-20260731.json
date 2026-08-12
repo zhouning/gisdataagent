@@ -1,0 +1,50 @@
+{
+  "baseline_id": "main-compose-dev-20260731",
+  "environment": "dev",
+  "governance": {
+    "interpretation": "single_observation_not_objective",
+    "promotion_blockers": [
+      "business_steward",
+      "license_status",
+      "slo",
+      "backup_restore",
+      "rpo_not_defined",
+      "rto_not_approved",
+      "offsite_copy_not_verified",
+      "backup_encryption_not_verified",
+      "cross_system_point_in_time_not_proven"
+    ],
+    "promotion_ready": false,
+    "rpo_status": "not_defined",
+    "rto_status": "not_approved",
+    "sli_status": "observed_not_approved",
+    "slo_status": "not_approved"
+  },
+  "observation": {
+    "compose_config_sha256": "76dffa0747271f4ae587faf5c851922d5044305b964bc269742182c3a67546ec",
+    "database": {
+      "dump_bytes": 3028622216,
+      "logical_identity_sha256": "be4f86216d251b81523ff2d93770061247237f9ab09924086687015d6be9ac30",
+      "source_database_bytes": 6655269911
+    },
+    "object_storage": {
+      "bucket_count": 2,
+      "bytes": 2288430300,
+      "logical_identity_sha256": "94d4e4d295ecdaa80cee3301e8e3293425579605a8804e5e2d80b77b0d5de63f",
+      "object_count": 213
+    },
+    "observed_at": "2026-07-31T12:08:14.730932Z",
+    "report_evidence_sha256": "346fa678654a44c024dd9d69f39a4d6ffad4c32755203726e18aadf5517561e3",
+    "report_schema": "gis-data-agent.recovery-rehearsal.v1",
+    "sample_count": 1,
+    "scope": "compose_isolated_logical_recovery",
+    "timings": {
+      "database_backup_seconds": 258.598,
+      "database_restore_seconds": 187.532,
+      "end_to_end_seconds": 459.499,
+      "object_rehearsal_seconds": 7.364
+    }
+  },
+  "profile_id": "main-compose-dev",
+  "schema": "gis-data-agent.recovery-sli-baseline.v1"
+}
