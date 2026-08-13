@@ -207,6 +207,9 @@ def test_staging_workflow_is_candidate_validation_not_fake_deployment():
     path = ROOT / ".github/workflows/cd-staging.yml"
     text = path.read_text(encoding="utf-8")
     workflow = yaml.safe_load(text)
+    ci_workflow = yaml.safe_load(
+        (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    )
     jobs = workflow["jobs"]
     triggers = workflow.get("on", workflow.get(True))
 
@@ -225,7 +228,9 @@ def test_staging_workflow_is_candidate_validation_not_fake_deployment():
         for step in jobs["validate-candidate"]["steps"]
         if step.get("uses") == "actions/setup-python@v5"
     )
-    assert setup_python["with"]["python-version"] == "3.11"
+    assert setup_python["with"]["python-version"] == ci_workflow["env"][
+        "PYTHON_VERSION"
+    ]
 
     validation_commands = "\n".join(
         step.get("run", "") for step in jobs["validate-candidate"]["steps"]
