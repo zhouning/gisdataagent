@@ -76,8 +76,14 @@ jobs:
             --publish 5432:5432 \
             gis-postgis-pgvector:candidate
           for _ in $(seq 1 60); do
-            if docker exec gda-staging-candidate-postgres \
-                 pg_isready -U postgres -d gis_agent_staging; then
+            if docker exec \
+                 --env PGPASSWORD="$CANDIDATE_ADMIN_PASSWORD" \
+                 gda-staging-candidate-postgres \
+                 pg_isready \
+                   --host 127.0.0.1 \
+                   --port 5432 \
+                   --username postgres \
+                   --dbname gis_agent_staging; then
               exit 0
             fi
             sleep 2
@@ -86,10 +92,14 @@ jobs:
           exit 1
       - name: Bootstrap database roles and extensions
         run: |
-          docker exec -i gda-staging-candidate-postgres \
+          docker exec -i \
+            --env PGPASSWORD="$CANDIDATE_ADMIN_PASSWORD" \
+            gda-staging-candidate-postgres \
             psql -v ON_ERROR_STOP=1 \
-              -U postgres \
-              -d gis_agent_staging \
+              --host 127.0.0.1 \
+              --port 5432 \
+              --username postgres \
+              --dbname gis_agent_staging \
               -v app_password="$CANDIDATE_APP_PASSWORD" <<'SQL'
           CREATE EXTENSION IF NOT EXISTS postgis;
           CREATE EXTENSION IF NOT EXISTS vector;
@@ -115,8 +125,14 @@ jobs:
           export POSTGRES_PASSWORD="$CANDIDATE_ADMIN_PASSWORD"
           python -m data_agent.migration_runner migrate \
             --output staging-candidate-evidence/schema-admin.json
-          docker exec -i gda-staging-candidate-postgres \
-            psql -v ON_ERROR_STOP=1 -U postgres -d gis_agent_staging \
+          docker exec -i \
+            --env PGPASSWORD="$CANDIDATE_ADMIN_PASSWORD" \
+            gda-staging-candidate-postgres \
+            psql -v ON_ERROR_STOP=1 \
+              --host 127.0.0.1 \
+              --port 5432 \
+              --username postgres \
+              --dbname gis_agent_staging \
               -c "GRANT gda_control_gateway TO agent_user"
 
       - name: Verify the ledger through the application role
