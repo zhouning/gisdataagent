@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 
 import yaml
@@ -235,6 +236,19 @@ def test_staging_workflow_is_candidate_validation_not_fake_deployment():
     validation_commands = "\n".join(
         step.get("run", "") for step in jobs["validate-candidate"]["steps"]
     )
+    candidate_test_step = next(
+        step
+        for step in jobs["validate-candidate"]["steps"]
+        if step.get("name") == "Run required platform release tests"
+    )
+    ci_test_commands = "\n".join(
+        step.get("run", "") for step in ci_workflow["jobs"]["test"]["steps"]
+    )
+    test_path_pattern = r"(?:data_agent|tests)/test_[a-z0-9_]+\.py"
+    assert set(re.findall(test_path_pattern, candidate_test_step["run"])) == set(
+        re.findall(test_path_pattern, ci_test_commands)
+    )
+    assert "python -m pytest data_agent/" not in candidate_test_step["run"]
     assert "data_agent.migration_runner migrate" in validation_commands
     assert "data_agent.migration_runner status" in validation_commands
     assert validation_commands.count("--host 127.0.0.1") == 3
