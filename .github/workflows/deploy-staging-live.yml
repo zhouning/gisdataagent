@@ -190,11 +190,11 @@ jobs:
             grep -Fx yes
           kubectl auth can-i watch deployments.apps \
             -n "$GDA_STAGING_NAMESPACE" | grep -Fx yes
-          kubectl auth can-i get pods/log -n "$GDA_STAGING_NAMESPACE" | \
+          kubectl auth can-i get pods --subresource=log -n "$GDA_STAGING_NAMESPACE" | \
             grep -Fx yes
-          kubectl auth can-i create pods/exec -n "$GDA_STAGING_NAMESPACE" | \
+          kubectl auth can-i create pods --subresource=exec -n "$GDA_STAGING_NAMESPACE" | \
             grep -Fx yes
-          kubectl auth can-i get services/proxy -n "$GDA_STAGING_NAMESPACE" | \
+          kubectl auth can-i get services --subresource=proxy -n "$GDA_STAGING_NAMESPACE" | \
             grep -Fx yes
           for verb in get list create patch delete; do
             for resource in secrets configmaps; do
