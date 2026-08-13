@@ -78,7 +78,10 @@ def test_live_staging_workflow_is_protected_staged_and_fail_closed():
     assert "get pods --subresource=log" in identity
     assert "list endpointslices.discovery.k8s.io" in identity
     assert "for resource in secrets configmaps" in identity
-    assert "grep -Fx no" in identity
+    assert "require_denied()" in identity
+    assert '[[ "$exit_code" -ne 1 || "$output" != "no" ]]' in identity
+    assert "| grep -Fx no" not in identity
+    assert "require_denied \"$verb\" \"$resource\"" in identity
     assert "kubectl get secret" not in text
     assert "GDA_STAGING_IMAGE_PULL_SECRET" in text
     assert "--image-pull-secret-name" in text
