@@ -27,7 +27,7 @@ def _schema_report() -> dict:
 
 
 def _platform_snapshot(secret: str = "must-not-appear") -> dict:
-    return {
+    snapshot = {
         "schema": "gda.platform_truth.v1",
         "config": {
             "profile": "staging",
@@ -36,6 +36,11 @@ def _platform_snapshot(secret: str = "must-not-appear") -> dict:
             "startup_allowed": True,
             "config_fingerprint": FINGERPRINT,
             "entries": {"DATABASE_URL": {"value": secret}},
+        },
+        "environment_access": {
+            "fingerprint": FINGERPRINT,
+            "matches_baseline": True,
+            "parse_errors": [],
         },
         "runtime": {
             "status": "valid",
@@ -46,6 +51,14 @@ def _platform_snapshot(secret: str = "must-not-appear") -> dict:
             "production_blockers": ["legacy-runtime"],
         },
     }
+    snapshot["platform_fingerprint"] = staging_candidate_evidence._canonical_sha256(
+        {
+            "config": FINGERPRINT,
+            "environment_access": FINGERPRINT,
+            "runtime": FINGERPRINT,
+        }
+    )
+    return snapshot
 
 
 def _write_inputs(tmp_path: Path) -> tuple[Path, Path, Path]:
@@ -90,6 +103,7 @@ def test_candidate_gate_collects_schema_config_runtime_test_and_image_errors():
     platform = _platform_snapshot()
     platform["config"]["profile"] = "test"
     platform["config"]["valid"] = False
+    platform["environment_access"]["matches_baseline"] = False
     platform["runtime"]["status"] = "invalid"
     platform["runtime"]["matches_primitive_baseline"] = False
 
@@ -105,6 +119,39 @@ def test_candidate_gate_collects_schema_config_runtime_test_and_image_errors():
     assert report["candidate_validated"] is False
     assert report["production_promotion_allowed"] is False
     assert len(report["errors"]) >= 10
+
+
+def test_candidate_gate_rejects_environment_access_drift():
+    platform = _platform_snapshot()
+    platform["environment_access"]["fingerprint"] = "d" * 64
+    platform["environment_access"]["matches_baseline"] = False
+
+    report = staging_candidate_evidence.build_candidate_evidence(
+        _schema_report(),
+        platform,
+        {"tests": 12, "failures": 0, "errors": 0, "skipped": 0},
+        source_revision=SHA,
+        image_id=IMAGE_ID,
+    )
+
+    assert report["candidate_validated"] is False
+    assert "environment accesses must match" in "\n".join(report["errors"])
+
+
+def test_candidate_gate_rejects_platform_fingerprint_drift():
+    platform = _platform_snapshot()
+    platform["platform_fingerprint"] = "d" * 64
+
+    report = staging_candidate_evidence.build_candidate_evidence(
+        _schema_report(),
+        platform,
+        {"tests": 12, "failures": 0, "errors": 0, "skipped": 0},
+        source_revision=SHA,
+        image_id=IMAGE_ID,
+    )
+
+    assert report["candidate_validated"] is False
+    assert "platform fingerprint does not match" in "\n".join(report["errors"])
 
 
 def test_junit_loader_aggregates_suites_without_copying_testcase_content(tmp_path):
@@ -173,12 +220,23 @@ def test_staging_workflow_is_candidate_validation_not_fake_deployment():
         "github.event_name == 'workflow_dispatch' && "
         "github.ref == 'refs/heads/main'"
     )
+    setup_python = next(
+        step
+        for step in jobs["validate-candidate"]["steps"]
+        if step.get("uses") == "actions/setup-python@v5"
+    )
+    assert setup_python["with"]["python-version"] == "3.11"
 
     validation_commands = "\n".join(
         step.get("run", "") for step in jobs["validate-candidate"]["steps"]
     )
     assert "data_agent.migration_runner migrate" in validation_commands
     assert "data_agent.migration_runner status" in validation_commands
+    assert "export POSTGRES_DATABASE=gis_agent_staging" in validation_commands
+    assert "export POSTGRES_USER=postgres" in validation_commands
+    assert 'export POSTGRES_PASSWORD="$CANDIDATE_ADMIN_PASSWORD"' in (
+        validation_commands
+    )
     assert "data_agent.platform_truth snapshot" in validation_commands
     assert "data_agent.staging_candidate_evidence validate" in validation_commands
     assert "docker build" in validation_commands

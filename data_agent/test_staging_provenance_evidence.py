@@ -285,21 +285,47 @@ def test_protected_workflow_verifies_and_attests_without_deploying():
 
     named = {step.get("name"): index for index, step in enumerate(steps)}
     download = steps[named["Download registry binding evidence"]]
+    candidate_download = steps[named["Download candidate evidence"]]
     verify = steps[named["Independently verify OCI provenance"]]
+    build_release = steps[named["Build protected staging release bundle"]]
     attest = steps[named["Attest protected provenance evidence"]]
+    attest_release = steps[named["Attest protected staging release admission"]]
     upload = steps[named["Upload protected provenance evidence"]]
+    upload_release = steps[named["Upload protected staging release bundle"]]
     assert download["uses"] == "actions/download-artifact@v4"
     assert download["with"]["run-id"] == (
+        "${{ github.event.workflow_run.id }}"
+    )
+    assert candidate_download["uses"] == "actions/download-artifact@v4"
+    assert candidate_download["with"]["run-id"] == (
         "${{ github.event.workflow_run.id }}"
     )
     assert verify["env"]["GH_TOKEN"] == "${{ secrets.GITHUB_TOKEN }}"
     assert "data_agent.staging_provenance_evidence verify" in verify["run"]
     assert '--verifier-revision "$GITHUB_SHA"' in verify["run"]
+    assert "data_agent.staging_release_evidence build" in build_release["run"]
+    assert "staging-candidate-input/candidate.json" in build_release["run"]
+    assert "staging-provenance-input/registry.json" in build_release["run"]
+    assert "staging-provenance-evidence/provenance.json" in build_release["run"]
     assert attest["uses"] == "actions/attest-build-provenance@v3"
     assert attest["with"]["subject-path"] == (
         "staging-provenance-evidence/provenance.json"
     )
+    assert attest_release["uses"] == "actions/attest-build-provenance@v3"
+    assert attest_release["with"]["subject-path"] == (
+        "staging-release-evidence/release.json"
+    )
     assert upload["uses"] == "actions/upload-artifact@v4"
-    assert named["Independently verify OCI provenance"] < named[
-        "Attest protected provenance evidence"
-    ] < named["Upload protected provenance evidence"]
+    assert upload_release["uses"] == "actions/upload-artifact@v4"
+    assert upload_release["with"]["name"] == "staging-release-evidence"
+    release_paths = upload_release["with"]["path"]
+    assert "staging-candidate-input/candidate.json" in release_paths
+    assert "staging-provenance-input/registry.json" in release_paths
+    assert "staging-provenance-evidence/provenance.json" in release_paths
+    assert "staging-release-evidence/release.json" in release_paths
+    assert (
+        named["Independently verify OCI provenance"]
+        < named["Build protected staging release bundle"]
+        < named["Attest protected staging release admission"]
+        < named["Upload protected staging release bundle"]
+    )

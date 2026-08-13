@@ -32,7 +32,9 @@ CANDIDATE_STABLE_FIELDS = (
     "source_revision",
     "image_id",
     "schema_fingerprint",
+    "platform_fingerprint",
     "config_fingerprint",
+    "environment_access_fingerprint",
     "runtime_fingerprint",
     "tests",
     "candidate_validated",
@@ -87,7 +89,8 @@ def _positive_int(value: Any) -> bool:
     return isinstance(value, int) and not isinstance(value, bool) and value > 0
 
 
-def _candidate_errors(candidate: Mapping[str, Any]) -> list[str]:
+def candidate_evidence_errors(candidate: Mapping[str, Any]) -> list[str]:
+    """Return fail-closed validation errors for candidate evidence."""
     errors: list[str] = []
     if candidate.get("schema") != CANDIDATE_SCHEMA:
         errors.append("candidate evidence schema is unsupported")
@@ -103,7 +106,9 @@ def _candidate_errors(candidate: Mapping[str, Any]) -> list[str]:
         errors.append("candidate image ID must be an immutable local sha256 ID")
     for field in (
         "schema_fingerprint",
+        "platform_fingerprint",
         "config_fingerprint",
+        "environment_access_fingerprint",
         "runtime_fingerprint",
         "evidence_fingerprint",
     ):
@@ -151,7 +156,7 @@ def build_registry_evidence(
     expected_repository: str,
 ) -> dict[str, Any]:
     """Build a non-authoritative candidate-to-registry binding report."""
-    errors = _candidate_errors(candidate)
+    errors = candidate_evidence_errors(candidate)
     if source_revision != candidate.get("source_revision"):
         errors.append("registry source revision does not match the candidate")
     if not SOURCE_REVISION_PATTERN.fullmatch(source_revision):
