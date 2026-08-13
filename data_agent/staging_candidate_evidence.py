@@ -146,12 +146,16 @@ def build_candidate_evidence(
             errors.append(f"candidate migration report contains {field}")
 
     config = platform_snapshot.get("config")
+    environment_access = platform_snapshot.get("environment_access")
     runtime = platform_snapshot.get("runtime")
     if platform_snapshot.get("schema") != PLATFORM_TRUTH_SCHEMA:
         errors.append("candidate platform snapshot schema is unsupported")
     if not isinstance(config, dict):
         errors.append("candidate platform config snapshot is missing")
         config = {}
+    if not isinstance(environment_access, dict):
+        errors.append("candidate environment access snapshot is missing")
+        environment_access = {}
     if not isinstance(runtime, dict):
         errors.append("candidate runtime snapshot is missing")
         runtime = {}
@@ -163,12 +167,30 @@ def build_candidate_evidence(
         errors.append("candidate staging config must be valid and startable")
     if not _valid_sha256(config.get("config_fingerprint")):
         errors.append("candidate config fingerprint must be sha256")
+    if environment_access.get("matches_baseline") is not True:
+        errors.append("candidate environment accesses must match the reviewed baseline")
+    if environment_access.get("parse_errors"):
+        errors.append("candidate environment access scan contains parse errors")
+    if not _valid_sha256(environment_access.get("fingerprint")):
+        errors.append("candidate environment access fingerprint must be sha256")
     if runtime.get("status") != "valid" or runtime.get("errors"):
         errors.append("candidate runtime contract must be valid")
     if runtime.get("matches_primitive_baseline") is not True:
         errors.append("candidate runtime primitives must match the reviewed baseline")
     if not _valid_sha256(runtime.get("inventory_fingerprint")):
         errors.append("candidate runtime fingerprint must be sha256")
+    platform_fingerprint = platform_snapshot.get("platform_fingerprint")
+    expected_platform_fingerprint = _canonical_sha256(
+        {
+            "config": config.get("config_fingerprint"),
+            "environment_access": environment_access.get("fingerprint"),
+            "runtime": runtime.get("inventory_fingerprint"),
+        }
+    )
+    if not _valid_sha256(platform_fingerprint):
+        errors.append("candidate platform fingerprint must be sha256")
+    elif platform_fingerprint != expected_platform_fingerprint:
+        errors.append("candidate platform fingerprint does not match its components")
 
     tests = test_summary.get("tests")
     if not _valid_positive_count(tests):
@@ -184,7 +206,9 @@ def build_candidate_evidence(
         "source_revision": source_revision,
         "image_id": image_id,
         "schema_fingerprint": database_fingerprint,
+        "platform_fingerprint": platform_fingerprint,
         "config_fingerprint": config.get("config_fingerprint"),
+        "environment_access_fingerprint": environment_access.get("fingerprint"),
         "runtime_fingerprint": runtime.get("inventory_fingerprint"),
         "tests": test_summary,
         "candidate_validated": candidate_validated,

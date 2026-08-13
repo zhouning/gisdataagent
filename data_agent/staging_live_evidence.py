@@ -21,12 +21,17 @@ from pathlib import Path
 from typing import Any
 
 from .staging_candidate_evidence import CANDIDATE_SCHEMA
+from .staging_release_evidence import (
+    RELEASE_EVIDENCE_SCHEMA,
+    release_evidence_fingerprint,
+)
 
 COLLECTION_SCHEMA = "gda.staging_live_collection.v1"
 LIVE_EVIDENCE_SCHEMA = "gda.staging_live_evidence.v1"
 GOLDEN_SLICE_SCHEMA = "gda.staging_live_golden_slice.v1"
 PLATFORM_TRUTH_SCHEMA = "gda.platform_truth.v1"
-NAMESPACE = "gis-agent"
+NAMESPACE = "gis-agent-staging"
+DEVELOPMENT_NAMESPACE = "gis-agent"
 DEPLOYMENT_NAME = "gis-agent-app"
 APP_CONTAINER = "app"
 SOURCE_REVISION_ANNOTATION = "org.opencontainers.image.revision"
@@ -35,6 +40,12 @@ CANDIDATE_FINGERPRINT_ANNOTATION = (
 )
 ENVIRONMENT_ANNOTATION = "gisdataagent.io/environment"
 PLATFORM_FINGERPRINT_ANNOTATION = "gisdataagent.io/platform-fingerprint"
+RELEASE_FINGERPRINT_ANNOTATION = "gisdataagent.io/release-evidence-fingerprint"
+SCHEMA_FINGERPRINT_ANNOTATION = "gisdataagent.io/schema-fingerprint"
+ENVIRONMENT_ACCESS_FINGERPRINT_ANNOTATION = (
+    "gisdataagent.io/environment-access-fingerprint"
+)
+RUNTIME_FINGERPRINT_ANNOTATION = "gisdataagent.io/runtime-fingerprint"
 SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 SOURCE_REVISION_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 LOCAL_IMAGE_ID_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
@@ -56,7 +67,9 @@ CANDIDATE_STABLE_FIELDS = (
     "source_revision",
     "image_id",
     "schema_fingerprint",
+    "platform_fingerprint",
     "config_fingerprint",
+    "environment_access_fingerprint",
     "runtime_fingerprint",
     "tests",
     "candidate_validated",
@@ -79,7 +92,14 @@ GOLDEN_SLICE_FIELDS = {
     "image_digest",
     "schema_fingerprint",
     "config_fingerprint",
+    "environment_access_fingerprint",
     "runtime_fingerprint",
+    "tenant_id",
+    "capability_id",
+    "definition_version_id",
+    "definition_sha256",
+    "input_resource_version_id",
+    "output_resource_version_id",
     "run_id",
     "output_artifact_sha256",
     "quality_result_id",
@@ -212,6 +232,7 @@ def _project_schema_report(report: Mapping[str, Any]) -> dict[str, Any]:
 
 def _project_platform_snapshot(snapshot: Mapping[str, Any]) -> dict[str, Any]:
     config = _mapping(snapshot.get("config"))
+    environment_access = _mapping(snapshot.get("environment_access"))
     runtime = _mapping(snapshot.get("runtime"))
     return {
         "schema": snapshot.get("schema"),
@@ -227,6 +248,14 @@ def _project_platform_snapshot(snapshot: Mapping[str, Any]) -> dict[str, Any]:
                 "valid",
                 "startup_allowed",
                 "config_fingerprint",
+            )
+        },
+        "environment_access": {
+            field: environment_access.get(field)
+            for field in (
+                "fingerprint",
+                "matches_baseline",
+                "parse_errors",
             )
         },
         "runtime": {
@@ -281,6 +310,7 @@ def _project_kubernetes(
             {
                 "name": metadata.get("name"),
                 "uid": metadata.get("uid"),
+                "created_at": metadata.get("creationTimestamp"),
                 "phase": status.get("phase"),
                 "service_account_name": spec.get("serviceAccountName"),
                 "image": container.get("image"),
@@ -333,6 +363,18 @@ def _project_kubernetes(
             "environment": annotations.get(ENVIRONMENT_ANNOTATION),
             "platform_fingerprint": annotations.get(
                 PLATFORM_FINGERPRINT_ANNOTATION
+            ),
+            "release_evidence_fingerprint": annotations.get(
+                RELEASE_FINGERPRINT_ANNOTATION
+            ),
+            "schema_fingerprint": annotations.get(
+                SCHEMA_FINGERPRINT_ANNOTATION
+            ),
+            "environment_access_fingerprint": annotations.get(
+                ENVIRONMENT_ACCESS_FINGERPRINT_ANNOTATION
+            ),
+            "runtime_fingerprint": annotations.get(
+                RUNTIME_FINGERPRINT_ANNOTATION
             ),
             "image": app.get("image"),
             "service_account_name": pod_spec.get("serviceAccountName"),
@@ -575,7 +617,9 @@ def _validate_candidate(candidate: Mapping[str, Any], errors: list[str]) -> None
         errors.append("candidate image ID must be an immutable local sha256 ID")
     for field in (
         "schema_fingerprint",
+        "platform_fingerprint",
         "config_fingerprint",
+        "environment_access_fingerprint",
         "runtime_fingerprint",
         "evidence_fingerprint",
     ):
@@ -609,10 +653,72 @@ def _validate_candidate(candidate: Mapping[str, Any], errors: list[str]) -> None
             errors.append(f"candidate {field} must remain false")
 
 
+def _validate_release(
+    release: Mapping[str, Any],
+    candidate: Mapping[str, Any],
+    errors: list[str],
+) -> tuple[str | None, str | None]:
+    if release.get("schema") != RELEASE_EVIDENCE_SCHEMA:
+        errors.append("release evidence schema is unsupported")
+    if release.get("status") != "staging_release_admitted":
+        errors.append("release status must be staging_release_admitted")
+    if release.get("staging_apply_allowed") is not True:
+        errors.append("release does not allow staging apply")
+    if release.get("errors") != []:
+        errors.append("release evidence contains errors")
+    for field in (
+        "staging_deployed",
+        "live_cluster_verified",
+        "golden_slice_verified",
+        "promotion_authority_verified",
+        "production_promotion_allowed",
+    ):
+        if release.get(field) is not False:
+            errors.append(f"release {field} must remain false")
+    if release.get("source_revision") != candidate.get("source_revision"):
+        errors.append("release source revision does not match the candidate")
+    if release.get("candidate_evidence_fingerprint") != candidate.get(
+        "evidence_fingerprint"
+    ):
+        errors.append("release candidate fingerprint does not match the candidate")
+    for field in (
+        "schema_fingerprint",
+        "environment_access_fingerprint",
+        "runtime_fingerprint",
+    ):
+        if release.get(field) != candidate.get(field):
+            errors.append(f"release {field} does not match the candidate")
+    release_fingerprint = release.get("evidence_fingerprint")
+    if not _is_sha256(release_fingerprint):
+        errors.append("release evidence fingerprint must be sha256")
+        release_fingerprint = None
+    elif release_fingerprint != release_evidence_fingerprint(release):
+        errors.append("release evidence fingerprint does not match its content")
+        release_fingerprint = None
+    repository = release.get("repository")
+    digest = release.get("digest")
+    image = release.get("image")
+    if not isinstance(digest, str) or not LOCAL_IMAGE_ID_PATTERN.fullmatch(digest):
+        errors.append("release digest must be sha256")
+        digest = None
+    if (
+        not isinstance(repository, str)
+        or not isinstance(image, str)
+        or not IMMUTABLE_IMAGE_PATTERN.fullmatch(image)
+        or image != f"{repository}@{digest}"
+    ):
+        errors.append("release image does not match its immutable repository digest")
+        image = None
+    return release_fingerprint, image
+
+
 def _validate_kubernetes(
     kubernetes: Mapping[str, Any],
     candidate: Mapping[str, Any],
     *,
+    expected_release_fingerprint: str | None,
+    expected_image: str | None,
+    expected_namespace_name: str,
     expected_cluster_uid: str,
     expected_namespace_uid: str,
     errors: list[str],
@@ -622,8 +728,14 @@ def _validate_kubernetes(
     if kubernetes.get("cluster_uid") != expected_cluster_uid:
         errors.append("observed cluster UID does not match the protected target")
     namespace = _mapping(kubernetes.get("namespace"))
-    if namespace.get("name") != NAMESPACE:
-        errors.append(f"live namespace must be {NAMESPACE}")
+    if not DNS_LABEL_PATTERN.fullmatch(expected_namespace_name):
+        errors.append("protected expected namespace name is invalid")
+    if expected_namespace_name == DEVELOPMENT_NAMESPACE:
+        errors.append("protected staging cannot target the development namespace")
+    if namespace.get("name") != expected_namespace_name:
+        errors.append(
+            "observed namespace name does not match the protected target"
+        )
     if namespace.get("uid") != expected_namespace_uid:
         errors.append("observed namespace UID does not match the protected target")
 
@@ -659,6 +771,17 @@ def _validate_kubernetes(
         "evidence_fingerprint"
     ):
         errors.append("live Deployment is not bound to the candidate fingerprint")
+    if deployment.get("release_evidence_fingerprint") != (
+        expected_release_fingerprint
+    ):
+        errors.append("live Deployment is not bound to the release fingerprint")
+    for field in (
+        "schema_fingerprint",
+        "environment_access_fingerprint",
+        "runtime_fingerprint",
+    ):
+        if deployment.get(field) != candidate.get(field):
+            errors.append(f"live Deployment {field} annotation drifted")
     expected_platform_fingerprint = deployment.get("platform_fingerprint")
     if not _is_sha256(expected_platform_fingerprint):
         errors.append("live Deployment platform fingerprint annotation is invalid")
@@ -668,6 +791,9 @@ def _validate_kubernetes(
     image_digest = _image_digest(image)
     if not isinstance(image, str) or not IMMUTABLE_IMAGE_PATTERN.fullmatch(image):
         errors.append("live Deployment image must use an immutable registry digest")
+        image_digest = None
+    elif image != expected_image:
+        errors.append("live Deployment image does not match the attested release")
         image_digest = None
     if deployment.get("service_account_name") != "gis-agent-app":
         errors.append("live Deployment must use the gis-agent-app service account")
@@ -764,7 +890,7 @@ def _validate_platform(
     now: datetime,
     max_age_seconds: float,
     errors: list[str],
-) -> tuple[str | None, str | None]:
+) -> tuple[str | None, str | None, str | None]:
     _validate_fresh_timestamp(
         platform.get("generated_at"),
         label="live platform observation",
@@ -775,6 +901,7 @@ def _validate_platform(
     if platform.get("schema") != PLATFORM_TRUTH_SCHEMA:
         errors.append("live platform snapshot schema is unsupported")
     config = _mapping(platform.get("config"))
+    environment_access = _mapping(platform.get("environment_access"))
     runtime = _mapping(platform.get("runtime"))
     if config.get("profile") != "staging" or config.get("strict") is not True:
         errors.append("live platform config must be strict staging")
@@ -784,6 +911,22 @@ def _validate_platform(
     if not _is_sha256(config_fingerprint):
         errors.append("live config fingerprint must be sha256")
         config_fingerprint = None
+    if environment_access.get("matches_baseline") is not True:
+        errors.append(
+            "live environment accesses drifted from the reviewed baseline"
+        )
+    if environment_access.get("parse_errors") != []:
+        errors.append("live environment access scan contains parse errors")
+    environment_access_fingerprint = environment_access.get("fingerprint")
+    if environment_access_fingerprint != candidate.get(
+        "environment_access_fingerprint"
+    ):
+        errors.append(
+            "live environment access fingerprint does not match the candidate"
+        )
+    if not _is_sha256(environment_access_fingerprint):
+        errors.append("live environment access fingerprint must be sha256")
+        environment_access_fingerprint = None
     if runtime.get("status") != "valid":
         errors.append("live runtime inventory is invalid")
     if runtime.get("matches_primitive_baseline") is not True:
@@ -796,16 +939,28 @@ def _validate_platform(
         runtime_fingerprint = None
     computed_platform_fingerprint = (
         _canonical_sha256(
-            {"config": config_fingerprint, "runtime": runtime_fingerprint}
+            {
+                "config": config_fingerprint,
+                "environment_access": environment_access_fingerprint,
+                "runtime": runtime_fingerprint,
+            }
         )
-        if config_fingerprint and runtime_fingerprint
+        if (
+            config_fingerprint
+            and environment_access_fingerprint
+            and runtime_fingerprint
+        )
         else None
     )
     if platform.get("platform_fingerprint") != computed_platform_fingerprint:
         errors.append("live platform fingerprint does not match config and runtime")
     if expected_platform_fingerprint != computed_platform_fingerprint:
         errors.append("live platform fingerprint does not match the Deployment")
-    return config_fingerprint, runtime_fingerprint
+    return (
+        config_fingerprint,
+        environment_access_fingerprint,
+        runtime_fingerprint,
+    )
 
 
 def _validate_health(health: Mapping[str, Any], errors: list[str]) -> None:
@@ -836,7 +991,12 @@ def _validate_golden_slice(
     image_digest: str | None,
     schema_fingerprint: str | None,
     config_fingerprint: str | None,
+    environment_access_fingerprint: str | None,
     runtime_fingerprint: str | None,
+    expected_tenant_id: str | None,
+    expected_capability_id: str | None,
+    expected_definition_version_id: str | None,
+    expected_input_resource_version_id: str | None,
     now: datetime,
     max_age_seconds: float,
     errors: list[str],
@@ -862,19 +1022,47 @@ def _validate_golden_slice(
         "image_digest": image_digest,
         "schema_fingerprint": schema_fingerprint,
         "config_fingerprint": config_fingerprint,
+        "environment_access_fingerprint": environment_access_fingerprint,
         "runtime_fingerprint": runtime_fingerprint,
     }
     for field, expected in bindings.items():
         if golden_slice.get(field) != expected:
             errors.append(f"golden-slice {field} does not match live staging")
+    protected_identities = {
+        "tenant_id": expected_tenant_id,
+        "capability_id": expected_capability_id,
+        "definition_version_id": expected_definition_version_id,
+        "input_resource_version_id": expected_input_resource_version_id,
+    }
+    for field, expected in protected_identities.items():
+        if expected is None:
+            errors.append(f"protected golden {field} is missing")
+        elif golden_slice.get(field) != expected:
+            errors.append(
+                f"golden-slice {field} does not match the protected identity"
+            )
     for field in (
+        "definition_version_id",
+        "input_resource_version_id",
+        "output_resource_version_id",
         "run_id",
         "quality_result_id",
         "lineage_event_id",
     ):
         if not _is_uid(golden_slice.get(field)):
             errors.append(f"golden-slice {field} is invalid")
+    tenant_id = golden_slice.get("tenant_id")
+    if not isinstance(tenant_id, str) or not re.fullmatch(
+        r"[a-z0-9][a-z0-9._-]{0,63}", tenant_id
+    ):
+        errors.append("golden-slice tenant_id is invalid")
+    capability_id = golden_slice.get("capability_id")
+    if not isinstance(capability_id, str) or not re.fullmatch(
+        r"[a-z0-9][a-z0-9._-]{2,127}", capability_id
+    ):
+        errors.append("golden-slice capability_id is invalid")
     for field in (
+        "definition_sha256",
         "output_artifact_sha256",
         "quality_evidence_fingerprint",
         "run_success_evidence_fingerprint",
@@ -890,11 +1078,17 @@ def _validate_golden_slice(
 
 def build_live_staging_evidence(
     candidate: Mapping[str, Any],
+    release: Mapping[str, Any],
     collection: Mapping[str, Any],
     golden_slice: Mapping[str, Any] | None,
     *,
+    expected_namespace_name: str = NAMESPACE,
     expected_cluster_uid: str,
     expected_namespace_uid: str,
+    expected_golden_tenant_id: str | None = None,
+    expected_golden_capability_id: str | None = None,
+    expected_golden_definition_version_id: str | None = None,
+    expected_golden_input_resource_version_id: str | None = None,
     max_age_seconds: float = 900,
     now: datetime | None = None,
 ) -> dict[str, Any]:
@@ -911,6 +1105,7 @@ def build_live_staging_evidence(
 
     section_errors: dict[str, list[str]] = {
         "candidate": [],
+        "release": [],
         "collection": list(timing_errors),
         "kubernetes": [],
         "schema": [],
@@ -919,6 +1114,11 @@ def build_live_staging_evidence(
         "golden_slice": [],
     }
     _validate_candidate(candidate, section_errors["candidate"])
+    release_fingerprint, expected_image = _validate_release(
+        release,
+        candidate,
+        section_errors["release"],
+    )
     if collection.get("schema") != COLLECTION_SCHEMA:
         section_errors["collection"].append(
             "live collection schema is unsupported"
@@ -943,11 +1143,15 @@ def build_live_staging_evidence(
     ) = _validate_kubernetes(
         kubernetes,
         candidate,
+        expected_release_fingerprint=release_fingerprint,
+        expected_image=expected_image,
+        expected_namespace_name=expected_namespace_name,
         expected_cluster_uid=expected_cluster_uid,
         expected_namespace_uid=expected_namespace_uid,
         errors=section_errors["kubernetes"],
     )
     live_config_fingerprint: str | None = None
+    live_environment_access_fingerprint: str | None = None
     live_runtime_fingerprint: str | None = None
     if timing_errors:
         for section in ("schema", "platform"):
@@ -964,6 +1168,7 @@ def build_live_staging_evidence(
         )
         (
             live_config_fingerprint,
+            live_environment_access_fingerprint,
             live_runtime_fingerprint,
         ) = _validate_platform(
             _mapping(collection.get("platform_snapshot")),
@@ -992,7 +1197,18 @@ def build_live_staging_evidence(
             image_digest=image_digest,
             schema_fingerprint=candidate.get("schema_fingerprint"),
             config_fingerprint=live_config_fingerprint,
+            environment_access_fingerprint=(
+                live_environment_access_fingerprint
+            ),
             runtime_fingerprint=live_runtime_fingerprint,
+            expected_tenant_id=expected_golden_tenant_id,
+            expected_capability_id=expected_golden_capability_id,
+            expected_definition_version_id=(
+                expected_golden_definition_version_id
+            ),
+            expected_input_resource_version_id=(
+                expected_golden_input_resource_version_id
+            ),
             now=current,
             max_age_seconds=max_age_seconds,
             errors=section_errors["golden_slice"],
@@ -1010,12 +1226,13 @@ def build_live_staging_evidence(
     live_verified = not errors
     deployment_verified = all(
         checks[section] == "passed"
-        for section in ("candidate", "collection", "kubernetes")
+        for section in ("candidate", "release", "collection", "kubernetes")
     )
     golden_verified = all(
         checks[section] == "passed"
         for section in (
             "candidate",
+            "release",
             "collection",
             "kubernetes",
             "schema",
@@ -1027,6 +1244,7 @@ def build_live_staging_evidence(
         "schema": LIVE_EVIDENCE_SCHEMA,
         "source_revision": candidate.get("source_revision"),
         "candidate_evidence_fingerprint": candidate.get("evidence_fingerprint"),
+        "release_evidence_fingerprint": release_fingerprint,
         "cluster_uid": kubernetes.get("cluster_uid"),
         "namespace_uid": _mapping(kubernetes.get("namespace")).get("uid"),
         "deployment_uid": deployment_uid,
@@ -1034,6 +1252,9 @@ def build_live_staging_evidence(
         "schema_fingerprint": candidate.get("schema_fingerprint"),
         "candidate_config_fingerprint": candidate.get("config_fingerprint"),
         "config_fingerprint": live_config_fingerprint,
+        "environment_access_fingerprint": (
+            live_environment_access_fingerprint
+        ),
         "runtime_fingerprint": live_runtime_fingerprint,
         "golden_slice_evidence_fingerprint": (
             golden_slice.get("evidence_fingerprint")
@@ -1082,10 +1303,16 @@ def main(argv: list[str] | None = None) -> int:
 
     validate = subparsers.add_parser("validate")
     validate.add_argument("--candidate-evidence", type=Path, required=True)
+    validate.add_argument("--release-evidence", type=Path, required=True)
     validate.add_argument("--live-collection", type=Path, required=True)
     validate.add_argument("--golden-slice", type=Path)
+    validate.add_argument("--expected-namespace-name", default=NAMESPACE)
     validate.add_argument("--expected-cluster-uid", required=True)
     validate.add_argument("--expected-namespace-uid", required=True)
+    validate.add_argument("--expected-golden-tenant-id")
+    validate.add_argument("--expected-golden-capability-id")
+    validate.add_argument("--expected-golden-definition-version-id")
+    validate.add_argument("--expected-golden-input-resource-version-id")
     validate.add_argument("--max-age-seconds", type=float, default=900)
     validate.add_argument("--output", type=Path)
     args = parser.parse_args(argv)
@@ -1106,10 +1333,20 @@ def main(argv: list[str] | None = None) -> int:
         )
         report = build_live_staging_evidence(
             _load_json_object(args.candidate_evidence),
+            _load_json_object(args.release_evidence),
             _load_json_object(args.live_collection),
             golden_slice,
+            expected_namespace_name=args.expected_namespace_name,
             expected_cluster_uid=args.expected_cluster_uid,
             expected_namespace_uid=args.expected_namespace_uid,
+            expected_golden_tenant_id=args.expected_golden_tenant_id,
+            expected_golden_capability_id=args.expected_golden_capability_id,
+            expected_golden_definition_version_id=(
+                args.expected_golden_definition_version_id
+            ),
+            expected_golden_input_resource_version_id=(
+                args.expected_golden_input_resource_version_id
+            ),
             max_age_seconds=args.max_age_seconds,
         )
     except (OSError, json.JSONDecodeError, StagingLiveEvidenceError) as exc:

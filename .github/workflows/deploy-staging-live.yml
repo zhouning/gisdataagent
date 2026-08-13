@@ -1,0 +1,313 @@
+# Applies only the attested GIS Data Agent workload to a pre-provisioned
+# staging environment. Infrastructure and production promotion stay out of scope.
+name: Deploy - Protected Live Staging
+
+on:
+  workflow_run:
+    workflows: ["Verify - Staging Image Provenance"]
+    types: [completed]
+
+permissions:
+  actions: read
+  attestations: write
+  contents: read
+  id-token: write
+
+concurrency:
+  group: protected-live-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy-live-staging:
+    name: Apply attested workload and collect blocked live evidence
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'workflow_run' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: [self-hosted, linux, gda-staging]
+    environment: staging-live
+    timeout-minutes: 45
+
+    env:
+      GDA_STAGING_NAMESPACE: ${{ vars.GDA_STAGING_NAMESPACE }}
+      GDA_STAGING_CLUSTER_UID: ${{ vars.GDA_STAGING_CLUSTER_UID }}
+      GDA_STAGING_NAMESPACE_UID: ${{ vars.GDA_STAGING_NAMESPACE_UID }}
+      GDA_STAGING_CONFIG_MAP: ${{ vars.GDA_STAGING_CONFIG_MAP }}
+      GDA_STAGING_SECRET: ${{ vars.GDA_STAGING_SECRET }}
+      GDA_STAGING_IMAGE_PULL_SECRET: ${{ vars.GDA_STAGING_IMAGE_PULL_SECRET }}
+
+    steps:
+      - name: Download the exact protected release bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: staging-release-evidence
+          path: staging-release-input
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Verify release attestation and resolve protected revisions
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p staging-live
+          RELEASE=staging-release-input/staging-release-evidence/release.json
+          gh attestation verify "$RELEASE" \
+            --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/verify-staging-provenance.yml" \
+            --source-ref refs/heads/main \
+            --deny-self-hosted-runners \
+            --format json > staging-release-input/release-attestation.json
+          VERIFIER_REVISION=$(python -c \
+            'import json,re,sys; v=json.load(open(sys.argv[1]))["verifier_revision"]; assert re.fullmatch(r"[0-9a-f]{40}",v); print(v)' \
+            "$RELEASE")
+          SOURCE_REVISION=$(python -c \
+            'import json,re,sys; v=json.load(open(sys.argv[1]))["source_revision"]; assert re.fullmatch(r"[0-9a-f]{40}",v); print(v)' \
+            "$RELEASE")
+          python - "$RELEASE" <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          release = json.loads(pathlib.Path(sys.argv[1]).read_text())
+          if release.get("status") != "staging_release_admitted":
+              raise SystemExit("release was not admitted for staging")
+          if release.get("staging_apply_allowed") is not True:
+              raise SystemExit("release does not allow staging apply")
+          if release.get("production_promotion_allowed") is not False:
+              raise SystemExit("release unexpectedly grants production promotion")
+          PY
+          gh attestation verify "$RELEASE" \
+            --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/verify-staging-provenance.yml" \
+            --source-ref refs/heads/main \
+            --source-digest "$VERIFIER_REVISION" \
+            --signer-digest "$VERIFIER_REVISION" \
+            --deny-self-hosted-runners \
+            --format json > staging-release-input/release-attestation-strict.json
+          echo "verifier_revision=$VERIFIER_REVISION" >> "$GITHUB_OUTPUT"
+          echo "source_revision=$SOURCE_REVISION" >> "$GITHUB_OUTPUT"
+
+      - name: Check out the exact protected verifier revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.release.outputs.verifier_revision }}
+          path: protected-source
+          persist-credentials: false
+
+      - name: Install the manifest rendering dependency
+        run: python -m pip install "PyYAML>=6,<7"
+
+      - name: Require protected environment configuration
+        env:
+          GDA_STAGING_LIVE_PROTECTED: ${{ vars.GDA_STAGING_LIVE_PROTECTED }}
+          GDA_STAGING_KUBECONFIG_B64: ${{ secrets.GDA_STAGING_KUBECONFIG_B64 }}
+        run: |
+          set -euo pipefail
+          if [[ "$GDA_STAGING_LIVE_PROTECTED" != "true" ]]; then
+            echo "staging-live environment is not explicitly enabled" >&2
+            exit 1
+          fi
+          if [[ "$GDA_STAGING_NAMESPACE" != "gis-agent-staging" ]]; then
+            echo "protected staging namespace must be gis-agent-staging" >&2
+            exit 1
+          fi
+          for value in \
+            "$GDA_STAGING_CLUSTER_UID" \
+            "$GDA_STAGING_NAMESPACE_UID" \
+            "$GDA_STAGING_CONFIG_MAP" \
+            "$GDA_STAGING_SECRET" \
+            "$GDA_STAGING_IMAGE_PULL_SECRET" \
+            "$GDA_STAGING_KUBECONFIG_B64"; do
+            if [[ -z "$value" ]]; then
+              echo "protected staging configuration is incomplete" >&2
+              exit 1
+            fi
+          done
+          KUBECONFIG_FILE="$RUNNER_TEMP/gda-staging-kubeconfig"
+          printf '%s' "$GDA_STAGING_KUBECONFIG_B64" | base64 --decode > "$KUBECONFIG_FILE"
+          chmod 600 "$KUBECONFIG_FILE"
+          echo "KUBECONFIG=$KUBECONFIG_FILE" >> "$GITHUB_ENV"
+
+      - name: Verify immutable cluster and namespace identity
+        run: |
+          set -euo pipefail
+          OBSERVED_CLUSTER_UID=$(kubectl get namespace kube-system \
+            -o jsonpath='{.metadata.uid}')
+          OBSERVED_NAMESPACE_UID=$(kubectl get namespace "$GDA_STAGING_NAMESPACE" \
+            -o jsonpath='{.metadata.uid}')
+          [[ "$OBSERVED_CLUSTER_UID" == "$GDA_STAGING_CLUSTER_UID" ]]
+          [[ "$OBSERVED_NAMESPACE_UID" == "$GDA_STAGING_NAMESPACE_UID" ]]
+          for verb in create patch; do
+            for resource in jobs.batch deployments.apps serviceaccounts services; do
+              kubectl auth can-i "$verb" "$resource" \
+                -n "$GDA_STAGING_NAMESPACE" | grep -Fx yes
+            done
+          done
+          for resource in jobs.batch deployments.apps pods serviceaccounts services endpointslices.discovery.k8s.io; do
+            kubectl auth can-i get "$resource" -n "$GDA_STAGING_NAMESPACE" | \
+              grep -Fx yes
+          done
+          kubectl auth can-i list pods -n "$GDA_STAGING_NAMESPACE" | grep -Fx yes
+          kubectl auth can-i list endpointslices.discovery.k8s.io \
+            -n "$GDA_STAGING_NAMESPACE" | grep -Fx yes
+          kubectl auth can-i get namespaces | grep -Fx yes
+          kubectl auth can-i get jobs.batch -n "$GDA_STAGING_NAMESPACE" | \
+            grep -Fx yes
+          kubectl auth can-i watch jobs.batch -n "$GDA_STAGING_NAMESPACE" | \
+            grep -Fx yes
+          kubectl auth can-i watch deployments.apps \
+            -n "$GDA_STAGING_NAMESPACE" | grep -Fx yes
+          kubectl auth can-i get pods/log -n "$GDA_STAGING_NAMESPACE" | \
+            grep -Fx yes
+          kubectl auth can-i create pods/exec -n "$GDA_STAGING_NAMESPACE" | \
+            grep -Fx yes
+          kubectl auth can-i get services/proxy -n "$GDA_STAGING_NAMESPACE" | \
+            grep -Fx yes
+          for verb in get list create patch delete; do
+            for resource in secrets configmaps; do
+              kubectl auth can-i "$verb" "$resource" \
+                -n "$GDA_STAGING_NAMESPACE" | grep -Fx no
+            done
+          done
+          for verb in create patch delete; do
+            kubectl auth can-i "$verb" namespaces | grep -Fx no
+          done
+
+      - name: Render and run the strict platform preflight
+        id: preflight
+        env:
+          OBSERVATION_ID: ${{ github.run_id }}
+          PYTHONPATH: ${{ github.workspace }}/protected-source
+        run: |
+          set -euo pipefail
+          BUNDLE=staging-release-input
+          CANDIDATE="$BUNDLE/staging-candidate-input/candidate.json"
+          REGISTRY="$BUNDLE/staging-provenance-input/registry.json"
+          PROVENANCE="$BUNDLE/staging-provenance-evidence/provenance.json"
+          RELEASE="$BUNDLE/staging-release-evidence/release.json"
+          SOURCE_REVISION="${{ steps.release.outputs.source_revision }}"
+          VERIFIER_REVISION="${{ steps.release.outputs.verifier_revision }}"
+          python -m data_agent.staging_platform_preflight \
+            --candidate-evidence "$CANDIDATE" \
+            --registry-evidence "$REGISTRY" \
+            --provenance-evidence "$PROVENANCE" \
+            --release-evidence "$RELEASE" \
+            --source-repository "$GITHUB_REPOSITORY" \
+            --source-revision "$SOURCE_REVISION" \
+            --verifier-revision "$VERIFIER_REVISION" \
+            --observation-id "$OBSERVATION_ID" \
+            --namespace "$GDA_STAGING_NAMESPACE" \
+            --config-map-name "$GDA_STAGING_CONFIG_MAP" \
+            --secret-name "$GDA_STAGING_SECRET" \
+            --image-pull-secret-name "$GDA_STAGING_IMAGE_PULL_SECRET" \
+            --output staging-live/preflight.yaml \
+            > staging-live/preflight-render.json
+          kubectl apply --dry-run=server -f staging-live/preflight.yaml >/dev/null
+          PREFLIGHT_REF=$(kubectl apply -f staging-live/preflight.yaml -o name)
+          kubectl -n "$GDA_STAGING_NAMESPACE" wait \
+            --for=condition=complete --timeout=5m "$PREFLIGHT_REF"
+          kubectl -n "$GDA_STAGING_NAMESPACE" logs "$PREFLIGHT_REF" \
+            > staging-live/platform.json
+          echo "source_revision=$SOURCE_REVISION" >> "$GITHUB_OUTPUT"
+          echo "verifier_revision=$VERIFIER_REVISION" >> "$GITHUB_OUTPUT"
+
+      - name: Render migration and application phases
+        env:
+          PYTHONPATH: ${{ github.workspace }}/protected-source
+        run: |
+          set -euo pipefail
+          BUNDLE=staging-release-input
+          python -m data_agent.staging_workload_manifest \
+            --candidate-evidence "$BUNDLE/staging-candidate-input/candidate.json" \
+            --registry-evidence "$BUNDLE/staging-provenance-input/registry.json" \
+            --provenance-evidence "$BUNDLE/staging-provenance-evidence/provenance.json" \
+            --release-evidence "$BUNDLE/staging-release-evidence/release.json" \
+            --platform-snapshot staging-live/platform.json \
+            --source-repository "$GITHUB_REPOSITORY" \
+            --source-revision "${{ steps.preflight.outputs.source_revision }}" \
+            --verifier-revision "${{ steps.preflight.outputs.verifier_revision }}" \
+            --namespace "$GDA_STAGING_NAMESPACE" \
+            --config-map-name "$GDA_STAGING_CONFIG_MAP" \
+            --secret-name "$GDA_STAGING_SECRET" \
+            --image-pull-secret-name "$GDA_STAGING_IMAGE_PULL_SECRET" \
+            --output staging-live/workload.yaml \
+            --migration-output staging-live/migration.yaml \
+            --application-output staging-live/application.yaml \
+            > staging-live/workload-render.json
+          kubectl apply --dry-run=server -f staging-live/migration.yaml >/dev/null
+          kubectl apply --dry-run=server -f staging-live/application.yaml >/dev/null
+
+      - name: Apply the sole migration authority and wait for completion
+        run: |
+          set -euo pipefail
+          MIGRATION_REF=$(kubectl apply -f staging-live/migration.yaml -o name | \
+            grep '^job.batch/')
+          kubectl -n "$GDA_STAGING_NAMESPACE" wait \
+            --for=condition=complete --timeout=15m "$MIGRATION_REF"
+
+      - name: Apply immutable application workload and wait for rollout
+        run: |
+          set -euo pipefail
+          kubectl apply -f staging-live/application.yaml
+          kubectl -n "$GDA_STAGING_NAMESPACE" rollout status \
+            deployment/gis-agent-app --timeout=10m
+
+      - name: Collect allowlisted live observation
+        env:
+          PYTHONPATH: ${{ github.workspace }}/protected-source
+        run: |
+          python -m data_agent.staging_live_evidence collect \
+            --namespace "$GDA_STAGING_NAMESPACE" \
+            --output staging-live/collection.json
+          cp staging-release-input/staging-candidate-input/candidate.json \
+            staging-live/candidate.json
+          cp staging-release-input/staging-release-evidence/release.json \
+            staging-live/release.json
+
+      - name: Validate live evidence without claiming a golden slice
+        id: live_evidence
+        continue-on-error: true
+        env:
+          PYTHONPATH: ${{ github.workspace }}/protected-source
+        run: |
+          python -m data_agent.staging_live_evidence validate \
+            --candidate-evidence staging-release-input/staging-candidate-input/candidate.json \
+            --release-evidence staging-release-input/staging-release-evidence/release.json \
+            --live-collection staging-live/collection.json \
+            --expected-namespace-name "$GDA_STAGING_NAMESPACE" \
+            --expected-cluster-uid "$GDA_STAGING_CLUSTER_UID" \
+            --expected-namespace-uid "$GDA_STAGING_NAMESPACE_UID" \
+            --output staging-live/live-evidence.json
+
+      - name: Attest live collection and fail-closed verdict
+        if: always() && hashFiles('staging-live/collection.json') != ''
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: |
+            staging-live/collection.json
+            staging-live/live-evidence.json
+
+      - name: Upload protected staging observations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-live-observation-${{ github.run_id }}
+          path: staging-live/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Preserve the golden-slice promotion boundary
+        if: always()
+        run: |
+          echo "Workload apply does not authorize production promotion." >&2
+          echo "A real, attested golden slice is still required." >&2
+          exit 1

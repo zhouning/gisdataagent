@@ -2,82 +2,67 @@ import hashlib
 import json
 from pathlib import Path
 
-import yaml
-
 from data_agent import (
     staging_provenance_evidence,
+    staging_registry_evidence,
     staging_release_evidence,
-)
-from data_agent import (
-    test_staging_deployment_bundle as bundle_fixtures,
 )
 
 SOURCE_REPOSITORY = "zhouning/gisdataagent"
-SOURCE_REVISION = bundle_fixtures.SOURCE_REVISION
+SOURCE_REVISION = "a" * 40
 VERIFIER_REVISION = "9" * 40
-IMAGE = bundle_fixtures.IMAGE
+LOCAL_IMAGE_ID = "sha256:" + "b" * 64
+REPOSITORY = f"ghcr.io/{SOURCE_REPOSITORY}"
+DIGEST = "sha256:" + "c" * 64
 
 
-def _provenance() -> dict:
-    policy = {
-        "source_repository": SOURCE_REPOSITORY,
-        "source_ref": staging_provenance_evidence.PROTECTED_SOURCE_REF,
-        "source_digest": SOURCE_REVISION,
-        "signer_workflow": (
-            f"{SOURCE_REPOSITORY}/"
-            f"{staging_provenance_evidence.PUBLISH_WORKFLOW_PATH}"
-        ),
-        "signer_digest": SOURCE_REVISION,
-        "oidc_issuer": staging_provenance_evidence.GITHUB_OIDC_ISSUER,
-        "deny_self_hosted_runners": True,
-        "predicate_type": staging_provenance_evidence.PREDICATE_TYPE,
-    }
+def _fingerprint(value: object) -> str:
+    rendered = json.dumps(
+        value,
+        ensure_ascii=True,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    return hashlib.sha256(rendered).hexdigest()
+
+
+def _candidate() -> dict:
     stable = {
-        "schema": staging_provenance_evidence.PROVENANCE_EVIDENCE_SCHEMA,
+        "schema": "gda.staging_candidate_evidence.v1",
         "source_revision": SOURCE_REVISION,
-        "verifier_revision": VERIFIER_REVISION,
-        "candidate_evidence_fingerprint": bundle_fixtures._candidate()[
-            "evidence_fingerprint"
-        ],
-        "registry_evidence_fingerprint": "8" * 64,
-        "repository": "ghcr.io/zhouning/gisdataagent",
-        "digest": "sha256:" + "b" * 64,
-        "image": IMAGE,
-        "verification_policy": policy,
-        "verified_attestation_count": 1,
-        "provenance_attestation_verified": True,
-        "registry_digest_verified": True,
+        "image_id": LOCAL_IMAGE_ID,
+        "schema_fingerprint": "d" * 64,
+        "platform_fingerprint": "2" * 64,
+        "config_fingerprint": "e" * 64,
+        "environment_access_fingerprint": "1" * 64,
+        "runtime_fingerprint": "f" * 64,
+        "tests": {"tests": 20, "failures": 0, "errors": 0, "skipped": 1},
+        "candidate_validated": True,
         "errors": [],
     }
     return {
         **stable,
-        "generated_at": "2026-07-26T09:00:00+00:00",
-        "status": "provenance_verified",
-        "repository_identity_verified": True,
-        "signer_workflow_identity_verified": True,
-        "source_revision_verified": True,
-        "github_oidc_issuer_verified": True,
-        "hosted_runner_verified": True,
+        "status": "candidate_validated",
         "staging_deployed": False,
         "live_cluster_verified": False,
+        "registry_digest_verified": False,
         "production_promotion_allowed": False,
-        "required_staging_evidence": list(
-            staging_provenance_evidence.REQUIRED_STAGING_EVIDENCE
-        ),
-        "evidence_fingerprint": (
-            staging_provenance_evidence.provenance_evidence_fingerprint(stable)
-        ),
+        "evidence_fingerprint": _fingerprint(stable),
     }
 
 
-def _write_provenance(path: Path, provenance: dict | None = None) -> dict:
-    value = provenance or _provenance()
-    path.write_text(json.dumps(value, sort_keys=True), encoding="utf-8")
-    return value
+def _registry(candidate: dict) -> dict:
+    return staging_registry_evidence.build_registry_evidence(
+        candidate,
+        source_revision=SOURCE_REVISION,
+        local_image_id=LOCAL_IMAGE_ID,
+        repository=REPOSITORY,
+        digest=DIGEST,
+        expected_repository=REPOSITORY,
+    )
 
 
-def _artifact_attestation(path: Path, *, digest: str | None = None) -> str:
-    artifact_digest = digest or hashlib.sha256(path.read_bytes()).hexdigest()
+def _attestation() -> str:
     return json.dumps(
         [
             {
@@ -88,8 +73,10 @@ def _artifact_attestation(path: Path, *, digest: str | None = None) -> str:
                         ),
                         "subject": [
                             {
-                                "name": path.name,
-                                "digest": {"sha256": artifact_digest},
+                                "name": REPOSITORY,
+                                "digest": {
+                                    "sha256": DIGEST.removeprefix("sha256:")
+                                },
                             }
                         ],
                     }
@@ -99,238 +86,137 @@ def _artifact_attestation(path: Path, *, digest: str | None = None) -> str:
     )
 
 
-def test_verified_release_binds_artifact_identity_and_never_claims_deployment(
-    tmp_path: Path,
-):
-    path = tmp_path / "provenance.json"
-    provenance = _write_provenance(path)
-    commands: list[list[str]] = []
-
-    def run(command: list[str]) -> str:
-        commands.append(command)
-        return _artifact_attestation(path)
-
-    documents, report = staging_release_evidence.build_verified_staging_release(
-        bundle_fixtures._template(),
-        bundle_fixtures._candidate(),
-        bundle_fixtures._platform(),
-        provenance_path=path,
+def _provenance(registry: dict) -> dict:
+    return staging_provenance_evidence.verify_registry_provenance(
+        registry,
         source_repository=SOURCE_REPOSITORY,
         source_revision=SOURCE_REVISION,
         verifier_revision=VERIFIER_REVISION,
-        run=run,
+        run=lambda _: _attestation(),
     )
 
-    assert report["status"] == "verified_for_staging_apply"
-    assert report["bundle_ready"] is True
-    assert report["provenance_evidence_artifact_verified"] is True
-    assert report["provenance_attestation_verified"] is True
-    assert report["registry_digest_verified"] is True
-    assert report["staging_deployed"] is False
-    assert report["live_cluster_verified"] is False
-    assert report["production_promotion_allowed"] is False
+
+def _release(candidate: dict, registry: dict, provenance: dict) -> dict:
+    return staging_release_evidence.build_staging_release_evidence(
+        candidate,
+        registry,
+        provenance,
+        source_repository=SOURCE_REPOSITORY,
+        source_revision=SOURCE_REVISION,
+        verifier_revision=VERIFIER_REVISION,
+    )
+
+
+def test_bound_release_allows_only_staging_apply():
+    candidate = _candidate()
+    registry = _registry(candidate)
+    provenance = _provenance(registry)
+
+    report = _release(candidate, registry, provenance)
+
+    assert report["status"] == "staging_release_admitted"
+    assert report["staging_apply_allowed"] is True
+    assert report["image"] == f"{REPOSITORY}@{DIGEST}"
+    assert report["candidate_evidence_fingerprint"] == candidate[
+        "evidence_fingerprint"
+    ]
+    assert report["registry_evidence_fingerprint"] == registry[
+        "evidence_fingerprint"
+    ]
     assert report["provenance_evidence_fingerprint"] == provenance[
         "evidence_fingerprint"
     ]
-    assert report["manifest_fingerprint"]
-    assert documents
+    assert report["staging_deployed"] is False
+    assert report["live_cluster_verified"] is False
+    assert report["golden_slice_verified"] is False
+    assert report["production_promotion_allowed"] is False
 
-    command = commands[0]
-    assert command[:4] == ["gh", "attestation", "verify", str(path)]
-    assert command[command.index("--repo") + 1] == SOURCE_REPOSITORY
-    assert command[command.index("--signer-workflow") + 1] == (
-        f"{SOURCE_REPOSITORY}/.github/workflows/verify-staging-provenance.yml"
+
+def test_candidate_content_drift_blocks_release():
+    candidate = _candidate()
+    registry = _registry(candidate)
+    provenance = _provenance(registry)
+    candidate["runtime_fingerprint"] = "8" * 64
+
+    report = _release(candidate, registry, provenance)
+
+    assert report["status"] == "blocked"
+    assert report["staging_apply_allowed"] is False
+    assert report["production_promotion_allowed"] is False
+    assert "candidate evidence fingerprint does not match" in "\n".join(
+        report["errors"]
     )
-    assert command[command.index("--signer-digest") + 1] == VERIFIER_REVISION
-    assert command[command.index("--source-digest") + 1] == VERIFIER_REVISION
-    assert command[command.index("--source-ref") + 1] == "refs/heads/main"
-    assert "--deny-self-hosted-runners" in command
 
 
-def test_provenance_or_candidate_drift_blocks_before_artifact_verification(
-    tmp_path: Path,
-):
-    path = tmp_path / "provenance.json"
-    provenance = _provenance()
-    provenance["candidate_evidence_fingerprint"] = "7" * 64
-    _write_provenance(path, provenance)
+def test_registry_digest_drift_blocks_release():
+    candidate = _candidate()
+    registry = _registry(candidate)
+    provenance = _provenance(registry)
+    registry["digest"] = "sha256:" + "8" * 64
+    registry["image"] = f"{REPOSITORY}@{registry['digest']}"
 
-    def forbidden(_: list[str]) -> str:
-        raise AssertionError("artifact verifier must not run for drifted evidence")
-
-    documents, report = staging_release_evidence.build_verified_staging_release(
-        bundle_fixtures._template(),
-        bundle_fixtures._candidate(),
-        bundle_fixtures._platform(),
-        provenance_path=path,
-        source_repository=SOURCE_REPOSITORY,
-        source_revision=SOURCE_REVISION,
-        verifier_revision=VERIFIER_REVISION,
-        run=forbidden,
-    )
+    report = _release(candidate, registry, provenance)
 
     rendered = "\n".join(report["errors"])
-    assert documents == []
-    assert report["status"] == "blocked"
-    assert report["bundle_ready"] is False
-    assert report["provenance_evidence_artifact_verified"] is False
-    assert "does not bind the candidate" in rendered
-    assert "fingerprint does not match" in rendered
+    assert report["staging_apply_allowed"] is False
+    assert "registry evidence fingerprint does not match" in rendered
+    assert "provenance digest does not match registry" in rendered
+    assert "provenance image does not match registry" in rendered
 
 
-def test_mismatched_artifact_subject_digest_blocks_manifest(
-    tmp_path: Path,
-):
-    path = tmp_path / "provenance.json"
-    _write_provenance(path)
-
-    documents, report = staging_release_evidence.build_verified_staging_release(
-        bundle_fixtures._template(),
-        bundle_fixtures._candidate(),
-        bundle_fixtures._platform(),
-        provenance_path=path,
-        source_repository=SOURCE_REPOSITORY,
-        source_revision=SOURCE_REVISION,
-        verifier_revision=VERIFIER_REVISION,
-        run=lambda _: _artifact_attestation(path, digest="0" * 64),
+def test_provenance_policy_drift_blocks_even_with_recomputed_fingerprint():
+    candidate = _candidate()
+    registry = _registry(candidate)
+    provenance = _provenance(registry)
+    provenance["verification_policy"]["source_ref"] = "refs/heads/feature"
+    provenance["evidence_fingerprint"] = (
+        staging_provenance_evidence.provenance_evidence_fingerprint(provenance)
     )
 
-    assert documents == []
-    assert report["status"] == "blocked"
-    assert report["registry_digest_verified"] is False
-    assert "subject digest does not match" in "\n".join(report["errors"])
+    report = _release(candidate, registry, provenance)
+
+    assert report["staging_apply_allowed"] is False
+    assert "verification policy does not match" in "\n".join(report["errors"])
+    assert report["production_promotion_allowed"] is False
 
 
-def test_provenance_file_change_during_verification_blocks_manifest(
-    tmp_path: Path,
-):
-    path = tmp_path / "provenance.json"
-    _write_provenance(path)
-    original_digest = hashlib.sha256(path.read_bytes()).hexdigest()
-
-    def mutate(_: list[str]) -> str:
-        path.write_text("{}", encoding="utf-8")
-        return _artifact_attestation(path, digest=original_digest)
-
-    documents, report = staging_release_evidence.build_verified_staging_release(
-        bundle_fixtures._template(),
-        bundle_fixtures._candidate(),
-        bundle_fixtures._platform(),
-        provenance_path=path,
-        source_repository=SOURCE_REPOSITORY,
-        source_revision=SOURCE_REVISION,
-        verifier_revision=VERIFIER_REVISION,
-        run=mutate,
-    )
-
-    assert documents == []
-    assert report["status"] == "blocked"
-    assert "changed during verification" in "\n".join(report["errors"])
-
-
-def test_cli_writes_manifest_only_after_artifact_verification(
-    tmp_path: Path, capsys, monkeypatch
-):
-    template = tmp_path / "template.yaml"
-    candidate = tmp_path / "candidate.json"
-    platform = tmp_path / "platform.json"
-    provenance = tmp_path / "provenance.json"
-    manifest = tmp_path / "release.yaml"
-    report_path = tmp_path / "release.json"
-    template.write_text(
-        yaml.safe_dump_all(bundle_fixtures._template(), sort_keys=False),
-        encoding="utf-8",
-    )
-    candidate.write_text(
-        json.dumps(bundle_fixtures._candidate()), encoding="utf-8"
-    )
-    platform.write_text(json.dumps(bundle_fixtures._platform()), encoding="utf-8")
-    _write_provenance(provenance)
-    monkeypatch.setattr(
-        staging_release_evidence,
-        "_run_command",
-        lambda _: _artifact_attestation(provenance),
-    )
+def test_cli_writes_machine_readable_release_bundle(tmp_path: Path, capsys):
+    candidate = _candidate()
+    registry = _registry(candidate)
+    provenance = _provenance(registry)
+    inputs = {
+        "candidate": candidate,
+        "registry": registry,
+        "provenance": provenance,
+    }
+    paths = {}
+    for name, value in inputs.items():
+        path = tmp_path / f"{name}.json"
+        path.write_text(json.dumps(value), encoding="utf-8")
+        paths[name] = path
+    output = tmp_path / "release.json"
 
     result = staging_release_evidence.main(
         [
             "build",
-            "--template-manifest",
-            str(template),
             "--candidate-evidence",
-            str(candidate),
-            "--platform-snapshot",
-            str(platform),
+            str(paths["candidate"]),
+            "--registry-evidence",
+            str(paths["registry"]),
             "--provenance-evidence",
-            str(provenance),
+            str(paths["provenance"]),
             "--source-repository",
             SOURCE_REPOSITORY,
             "--source-revision",
             SOURCE_REVISION,
             "--verifier-revision",
             VERIFIER_REVISION,
-            "--manifest-output",
-            str(manifest),
-            "--report-output",
-            str(report_path),
+            "--output",
+            str(output),
         ]
     )
 
-    report = json.loads(report_path.read_text(encoding="utf-8"))
+    report = json.loads(output.read_text(encoding="utf-8"))
     assert result == 0
-    assert manifest.exists()
-    assert report["status"] == "verified_for_staging_apply"
+    assert report["staging_apply_allowed"] is True
     assert json.loads(capsys.readouterr().out) == report
-
-
-def test_cli_hides_artifact_verifier_failure(tmp_path: Path, capsys, monkeypatch):
-    template = tmp_path / "template.yaml"
-    candidate = tmp_path / "candidate.json"
-    platform = tmp_path / "platform.json"
-    provenance = tmp_path / "provenance.json"
-    manifest = tmp_path / "release.yaml"
-    report_path = tmp_path / "release.json"
-    template.write_text(
-        yaml.safe_dump_all(bundle_fixtures._template(), sort_keys=False),
-        encoding="utf-8",
-    )
-    candidate.write_text(
-        json.dumps(bundle_fixtures._candidate()), encoding="utf-8"
-    )
-    platform.write_text(json.dumps(bundle_fixtures._platform()), encoding="utf-8")
-    _write_provenance(provenance)
-
-    def fail(_: list[str]) -> str:
-        raise staging_release_evidence.StagingReleaseEvidenceError(
-            "sensitive verifier output"
-        )
-
-    monkeypatch.setattr(staging_release_evidence, "_run_command", fail)
-    result = staging_release_evidence.main(
-        [
-            "build",
-            "--template-manifest",
-            str(template),
-            "--candidate-evidence",
-            str(candidate),
-            "--platform-snapshot",
-            str(platform),
-            "--provenance-evidence",
-            str(provenance),
-            "--source-repository",
-            SOURCE_REPOSITORY,
-            "--source-revision",
-            SOURCE_REVISION,
-            "--verifier-revision",
-            VERIFIER_REVISION,
-            "--manifest-output",
-            str(manifest),
-            "--report-output",
-            str(report_path),
-        ]
-    )
-
-    rendered = report_path.read_text(encoding="utf-8") + capsys.readouterr().out
-    assert result == 2
-    assert not manifest.exists()
-    assert "sensitive verifier output" not in rendered

@@ -120,12 +120,13 @@ def _items(value: Any) -> list[Mapping[str, Any]]:
     return [item for item in value if isinstance(item, Mapping)]
 
 
-def _registry_errors(
+def registry_evidence_errors(
     registry: Mapping[str, Any],
     *,
     source_repository: str,
     source_revision: str,
 ) -> list[str]:
+    """Return fail-closed validation errors for registry binding evidence."""
     errors: list[str] = []
     expected_repository = f"ghcr.io/{source_repository.lower()}"
     digest = str(registry.get("digest") or "")
@@ -259,7 +260,7 @@ def verify_registry_provenance(
     run: CommandRunner | None = None,
 ) -> dict[str, Any]:
     """Verify the bound OCI subject with a fixed GitHub identity policy."""
-    errors = _registry_errors(
+    errors = registry_evidence_errors(
         registry,
         source_repository=source_repository,
         source_revision=source_revision,

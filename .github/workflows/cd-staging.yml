@@ -26,10 +26,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python 3.13
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: "3.11"
 
       - name: Install system dependencies
         run: |
@@ -84,7 +84,6 @@ jobs:
           done
           echo "candidate PostgreSQL did not become ready" >&2
           exit 1
-
       - name: Bootstrap database roles and extensions
         run: |
           docker exec -i gda-staging-candidate-postgres \
@@ -109,7 +108,11 @@ jobs:
       - name: Run the migration authority as database administrator
         run: |
           mkdir -p staging-candidate-evidence
-          export DATABASE_URL="postgresql://postgres:${CANDIDATE_ADMIN_PASSWORD}@localhost:5432/gis_agent_staging"
+          export POSTGRES_HOST=localhost
+          export POSTGRES_PORT=5432
+          export POSTGRES_DATABASE=gis_agent_staging
+          export POSTGRES_USER=postgres
+          export POSTGRES_PASSWORD="$CANDIDATE_ADMIN_PASSWORD"
           python -m data_agent.migration_runner migrate \
             --output staging-candidate-evidence/schema-admin.json
           docker exec -i gda-staging-candidate-postgres \
@@ -118,7 +121,11 @@ jobs:
 
       - name: Verify the ledger through the application role
         run: |
-          export DATABASE_URL="postgresql://agent_user:${CANDIDATE_APP_PASSWORD}@localhost:5432/gis_agent_staging"
+          export POSTGRES_HOST=localhost
+          export POSTGRES_PORT=5432
+          export POSTGRES_DATABASE=gis_agent_staging
+          export POSTGRES_USER=agent_user
+          export POSTGRES_PASSWORD="$CANDIDATE_APP_PASSWORD"
           python -m data_agent.migration_runner status \
             --output staging-candidate-evidence/schema-app.json
           python -m data_agent.migration_runner compare \
@@ -128,6 +135,11 @@ jobs:
       - name: Run repository tests in the integration environment
         run: |
           export DATABASE_URL="postgresql://postgres:${CANDIDATE_ADMIN_PASSWORD}@localhost:5432/gis_agent_staging"
+          export POSTGRES_HOST=localhost
+          export POSTGRES_PORT=5432
+          export POSTGRES_DATABASE=gis_agent_staging
+          export POSTGRES_USER=postgres
+          export POSTGRES_PASSWORD="$CANDIDATE_ADMIN_PASSWORD"
           export GDA_DEPLOYMENT_PROFILE=test
           export CHAINLIT_AUTH_SECRET="$CANDIDATE_AUTH_SECRET"
           python -m pytest data_agent/ \
@@ -137,7 +149,11 @@ jobs:
 
       - name: Re-verify the application ledger after tests
         run: |
-          export DATABASE_URL="postgresql://agent_user:${CANDIDATE_APP_PASSWORD}@localhost:5432/gis_agent_staging"
+          export POSTGRES_HOST=localhost
+          export POSTGRES_PORT=5432
+          export POSTGRES_DATABASE=gis_agent_staging
+          export POSTGRES_USER=agent_user
+          export POSTGRES_PASSWORD="$CANDIDATE_APP_PASSWORD"
           python -m data_agent.migration_runner status \
             --output staging-candidate-evidence/schema-app.json
           python -m data_agent.migration_runner compare \
@@ -147,6 +163,11 @@ jobs:
       - name: Export strict redacted staging platform snapshot
         run: |
           export DATABASE_URL="postgresql://agent_user:${CANDIDATE_APP_PASSWORD}@localhost:5432/gis_agent_staging"
+          export POSTGRES_HOST=localhost
+          export POSTGRES_PORT=5432
+          export POSTGRES_DATABASE=gis_agent_staging
+          export POSTGRES_USER=agent_user
+          export POSTGRES_PASSWORD="$CANDIDATE_APP_PASSWORD"
           export CHAINLIT_AUTH_SECRET="$CANDIDATE_AUTH_SECRET"
           export CLOUD_STORAGE_PROVIDER=aws
           export AWS_ACCESS_KEY_ID="$CANDIDATE_AWS_ACCESS_KEY"
