@@ -223,3 +223,17 @@ def test_snapshot_comparison_reports_config_and_platform_drift():
         "platform_fingerprint",
         "config_fingerprint",
     }
+
+
+def test_platform_snapshot_contains_all_fingerprint_components():
+    snapshot = platform_truth.build_platform_snapshot(profile="development")
+
+    assert snapshot["environment_access"]["fingerprint"]
+    assert snapshot["environment_access"]["matches_baseline"] is True
+    assert snapshot["platform_fingerprint"] == platform_truth._json_fingerprint(
+        {
+            "config": snapshot["config"]["config_fingerprint"],
+            "environment_access": snapshot["environment_access"]["fingerprint"],
+            "runtime": snapshot["runtime"]["inventory_fingerprint"],
+        }
+    )

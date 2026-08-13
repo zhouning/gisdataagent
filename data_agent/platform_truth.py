@@ -1166,15 +1166,18 @@ def build_platform_snapshot(
     source_root: Path | None = None,
 ) -> dict[str, Any]:
     config = build_config_report(values, profile=profile)
+    environment_access = environment_access_report(source_root)
     runtime = build_runtime_report(source_root)
     return {
         "schema": REPORT_SCHEMA,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "config": config,
+        "environment_access": environment_access,
         "runtime": runtime,
         "platform_fingerprint": _json_fingerprint(
             {
                 "config": config["config_fingerprint"],
+                "environment_access": environment_access["fingerprint"],
                 "runtime": runtime["inventory_fingerprint"],
             }
         ),
