@@ -237,6 +237,15 @@ def test_staging_workflow_is_candidate_validation_not_fake_deployment():
     )
     assert "data_agent.migration_runner migrate" in validation_commands
     assert "data_agent.migration_runner status" in validation_commands
+    assert validation_commands.count("--host 127.0.0.1") == 3
+    assert validation_commands.count("--port 5432") == 3
+    assert validation_commands.count(
+        '--env PGPASSWORD="$CANDIDATE_ADMIN_PASSWORD"'
+    ) == 3
+    assert "pg_isready" in validation_commands
+    assert "psql -v ON_ERROR_STOP=1" in validation_commands
+    assert "pg_isready -U postgres" not in validation_commands
+    assert "psql -v ON_ERROR_STOP=1 -U postgres" not in validation_commands
     assert "export POSTGRES_DATABASE=gis_agent_staging" in validation_commands
     assert "export POSTGRES_USER=postgres" in validation_commands
     assert 'export POSTGRES_PASSWORD="$CANDIDATE_ADMIN_PASSWORD"' in (
