@@ -124,6 +124,18 @@ jobs:
       - name: Prove observer identity and immutable environment
         run: |
           set -euo pipefail
+          require_denied() {
+            local output exit_code
+            set +e
+            output=$(kubectl auth can-i "$@")
+            exit_code=$?
+            set -e
+            if [[ "$exit_code" -ne 1 || "$output" != "no" ]]; then
+              echo "expected Kubernetes authorization denial for: $*" >&2
+              echo "observed status=$exit_code output=$output" >&2
+              return 1
+            fi
+          }
           [[ "$(kubectl get namespace kube-system -o jsonpath='{.metadata.uid}')" \
             == "$GDA_STAGING_CLUSTER_UID" ]]
           [[ "$(kubectl get namespace "$GDA_STAGING_NAMESPACE" -o jsonpath='{.metadata.uid}')" \
@@ -142,14 +154,14 @@ jobs:
             grep -Fx yes
           for verb in create patch delete; do
             for resource in jobs.batch deployments.apps serviceaccounts services; do
-              kubectl auth can-i "$verb" "$resource" \
-                -n "$GDA_STAGING_NAMESPACE" | grep -Fx no
+              require_denied "$verb" "$resource" \
+                -n "$GDA_STAGING_NAMESPACE"
             done
           done
           for verb in get list create patch delete; do
             for resource in secrets configmaps; do
-              kubectl auth can-i "$verb" "$resource" \
-                -n "$GDA_STAGING_NAMESPACE" | grep -Fx no
+              require_denied "$verb" "$resource" \
+                -n "$GDA_STAGING_NAMESPACE"
             done
           done
 

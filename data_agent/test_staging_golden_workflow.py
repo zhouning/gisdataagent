@@ -75,7 +75,13 @@ def test_golden_workflow_is_explicit_read_only_and_fail_closed():
     assert "--expected-golden-input-resource-version-id" in rendered
     assert "selected Run" not in rendered
     assert "for resource in secrets configmaps" in rendered
-    assert "grep -Fx no" in rendered
+    observer_identity = steps[
+        named["Prove observer identity and immutable environment"]
+    ]["run"]
+    assert "require_denied()" in observer_identity
+    assert '[[ "$exit_code" -ne 1 || "$output" != "no" ]]' in observer_identity
+    assert "| grep -Fx no" not in observer_identity
+    assert "require_denied \"$verb\" \"$resource\"" in observer_identity
     assert "kubectl apply" not in rendered
     assert "kubectl create" not in rendered
     assert "kubectl patch" not in rendered
