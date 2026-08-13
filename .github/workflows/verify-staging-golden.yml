@@ -136,9 +136,9 @@ jobs:
           kubectl auth can-i list endpointslices.discovery.k8s.io \
             -n "$GDA_STAGING_NAMESPACE" | grep -Fx yes
           kubectl auth can-i get namespaces | grep -Fx yes
-          kubectl auth can-i create pods/exec -n "$GDA_STAGING_NAMESPACE" | \
+          kubectl auth can-i create pods --subresource=exec -n "$GDA_STAGING_NAMESPACE" | \
             grep -Fx yes
-          kubectl auth can-i get services/proxy -n "$GDA_STAGING_NAMESPACE" | \
+          kubectl auth can-i get services --subresource=proxy -n "$GDA_STAGING_NAMESPACE" | \
             grep -Fx yes
           for verb in create patch delete; do
             for resource in jobs.batch deployments.apps serviceaccounts services; do

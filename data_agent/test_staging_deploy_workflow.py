@@ -73,9 +73,9 @@ def test_live_staging_workflow_is_protected_staged_and_fail_closed():
     assert "namespace kube-system" in identity
     assert "GDA_STAGING_CLUSTER_UID" in identity
     assert "GDA_STAGING_NAMESPACE_UID" in identity
-    assert "create pods/exec" in identity
-    assert "get services/proxy" in identity
-    assert "get pods/log" in identity
+    assert "create pods --subresource=exec" in identity
+    assert "get services --subresource=proxy" in identity
+    assert "get pods --subresource=log" in identity
     assert "list endpointslices.discovery.k8s.io" in identity
     assert "for resource in secrets configmaps" in identity
     assert "grep -Fx no" in identity
