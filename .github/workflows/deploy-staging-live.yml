@@ -18,9 +18,33 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  activate-live-staging:
+    name: Require explicit protected live staging activation
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'workflow_run' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    environment: staging-live
+    permissions: {}
+    timeout-minutes: 5
+
+    steps:
+      - name: Reject an unconfigured live staging environment
+        env:
+          GDA_STAGING_LIVE_PROTECTED: ${{ vars.GDA_STAGING_LIVE_PROTECTED }}
+        run: |
+          if [[ "$GDA_STAGING_LIVE_PROTECTED" != "true" ]]; then
+            echo "staging-live environment is not explicitly enabled" >&2
+            exit 1
+          fi
+
   deploy-live-staging:
     name: Apply attested workload and collect blocked live evidence
+    needs: activate-live-staging
     if: >-
+      needs.activate-live-staging.result == 'success' &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'workflow_run' &&
       github.event.workflow_run.head_branch == 'main' &&
