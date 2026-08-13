@@ -9,6 +9,7 @@ def test_live_staging_workflow_is_protected_staged_and_fail_closed():
     path = ROOT / ".github/workflows/deploy-staging-live.yml"
     text = path.read_text(encoding="utf-8")
     workflow = yaml.safe_load(text)
+    activation = workflow["jobs"]["activate-live-staging"]
     job = workflow["jobs"]["deploy-live-staging"]
     steps = job["steps"]
     named = {step.get("name"): index for index, step in enumerate(steps)}
@@ -21,6 +22,21 @@ def test_live_staging_workflow_is_protected_staged_and_fail_closed():
         "contents": "read",
         "id-token": "write",
     }
+    assert activation["runs-on"] == "ubuntu-latest"
+    assert activation["environment"] == "staging-live"
+    assert activation["permissions"] == {}
+    assert "head_repository.full_name == github.repository" in activation["if"]
+    activation_step = activation["steps"][0]
+    assert activation_step["name"] == (
+        "Reject an unconfigured live staging environment"
+    )
+    assert activation_step["env"]["GDA_STAGING_LIVE_PROTECTED"] == (
+        "${{ vars.GDA_STAGING_LIVE_PROTECTED }}"
+    )
+    assert '!= "true"' in activation_step["run"]
+    assert "exit 1" in activation_step["run"]
+    assert job["needs"] == "activate-live-staging"
+    assert "needs.activate-live-staging.result == 'success'" in job["if"]
     assert job["runs-on"] == ["self-hosted", "linux", "gda-staging"]
     assert job["environment"] == "staging-live"
     assert "head_repository.full_name == github.repository" in job["if"]
