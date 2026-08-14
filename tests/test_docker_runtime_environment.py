@@ -25,3 +25,18 @@ def test_runtime_user_is_numeric_for_kubernetes_run_as_non_root() -> None:
     assert "groupadd --gid 10001 agent" in dockerfile
     assert "useradd --uid 10001 --gid agent" in dockerfile
     assert "USER 10001:10001" in dockerfile
+
+
+def test_non_root_runtime_precreates_writable_env_and_matplotlib_cache() -> None:
+    dockerfile = (REPO_ROOT / "Dockerfile").read_text(encoding="utf-8")
+
+    copy_sources = dockerfile.index(
+        "COPY --chown=agent:agent data_agent/ /app/data_agent/"
+    )
+    runtime_dirs = dockerfile.index(
+        "install -o agent -g agent -m 0600 /dev/null /app/data_agent/.env"
+    )
+
+    assert runtime_dirs > copy_sources
+    assert "install -d -o agent -g agent /app/.cache/matplotlib" in dockerfile
+    assert "ENV MPLCONFIGDIR=/app/.cache/matplotlib" in dockerfile
