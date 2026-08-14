@@ -193,6 +193,10 @@ jobs:
               grep -Fx yes
           done
           kubectl auth can-i list pods -n "$GDA_STAGING_NAMESPACE" | grep -Fx yes
+          kubectl auth can-i list jobs.batch -n "$GDA_STAGING_NAMESPACE" | \
+            grep -Fx yes
+          kubectl auth can-i get events -n "$GDA_STAGING_NAMESPACE" | grep -Fx yes
+          kubectl auth can-i list events -n "$GDA_STAGING_NAMESPACE" | grep -Fx yes
           kubectl auth can-i list endpointslices.discovery.k8s.io \
             -n "$GDA_STAGING_NAMESPACE" | grep -Fx yes
           kubectl auth can-i get namespaces | grep -Fx yes
@@ -329,11 +333,14 @@ jobs:
         continue-on-error: true
         run: |
           mkdir -p staging-live/diagnostics
-          kubectl -n "$GDA_STAGING_NAMESPACE" get jobs,pods -o wide \
+          kubectl -n "$GDA_STAGING_NAMESPACE" get jobs,pods \
+            -l app.kubernetes.io/part-of=gis-data-agent -o wide \
             > staging-live/diagnostics/workloads.txt 2>&1 || true
           kubectl -n "$GDA_STAGING_NAMESPACE" describe jobs \
+            -l app.kubernetes.io/part-of=gis-data-agent \
             > staging-live/diagnostics/jobs.describe.txt 2>&1 || true
           kubectl -n "$GDA_STAGING_NAMESPACE" describe pods \
+            -l app.kubernetes.io/part-of=gis-data-agent \
             > staging-live/diagnostics/pods.describe.txt 2>&1 || true
           kubectl -n "$GDA_STAGING_NAMESPACE" get events \
             --sort-by='.metadata.creationTimestamp' \

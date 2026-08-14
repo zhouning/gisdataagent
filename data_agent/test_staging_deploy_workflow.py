@@ -77,6 +77,9 @@ def test_live_staging_workflow_is_protected_staged_and_fail_closed():
     assert "create pods --subresource=exec" in identity
     assert "get services --subresource=proxy" in identity
     assert "get pods --subresource=log" in identity
+    assert "list jobs.batch" in identity
+    assert "get events" in identity
+    assert "list events" in identity
     assert "list endpointslices.discovery.k8s.io" in identity
     assert "for resource in secrets configmaps" in identity
     assert "require_denied()" in identity
@@ -115,6 +118,9 @@ def test_live_staging_workflow_is_protected_staged_and_fail_closed():
     assert "describe pods" in diagnostic_commands
     assert "get events" in diagnostic_commands
     assert "logs" in diagnostic_commands
+    assert diagnostic_commands.count(
+        "-l app.kubernetes.io/part-of=gis-data-agent"
+    ) >= 5
     assert "--dry-run=server" in text
     assert "--release-evidence" in text
     assert "--expected-namespace-name" in text
