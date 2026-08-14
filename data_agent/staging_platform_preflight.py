@@ -163,6 +163,10 @@ def build_staging_platform_preflight(
                             ],
                             "env": [
                                 {
+                                    "name": "PYTHONWARNINGS",
+                                    "value": "ignore::SyntaxWarning",
+                                },
+                                {
                                     "name": "GDA_DEPLOYMENT_PROFILE",
                                     "value": "staging",
                                 },
