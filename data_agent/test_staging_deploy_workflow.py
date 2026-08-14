@@ -39,6 +39,7 @@ def test_live_staging_workflow_is_protected_staged_and_fail_closed():
     assert "needs.activate-live-staging.result == 'success'" in job["if"]
     assert job["runs-on"] == ["self-hosted", "linux", "gda-staging"]
     assert job["environment"] == "staging-live"
+    assert job["timeout-minutes"] == 60
     assert "head_repository.full_name == github.repository" in job["if"]
     assert "github.event.workflow_run.head_branch == 'main'" in job["if"]
 
@@ -94,6 +95,26 @@ def test_live_staging_workflow_is_protected_staged_and_fail_closed():
         < named["Collect allowlisted live observation"]
         < named["Validate live evidence without claiming a golden slice"]
     )
+    preflight = steps[named["Render and run the strict platform preflight"]][
+        "run"
+    ]
+    assert "--for=condition=complete --timeout=20m" in preflight
+    assert "--timeout=5m" not in preflight
+
+    diagnostics = steps[named["Collect Kubernetes failure diagnostics"]]
+    assert (
+        named["Validate live evidence without claiming a golden slice"]
+        < named["Collect Kubernetes failure diagnostics"]
+        < named["Upload protected staging observations"]
+    )
+    assert diagnostics["if"] == "failure()"
+    assert diagnostics["continue-on-error"] is True
+    diagnostic_commands = diagnostics["run"]
+    assert "staging-live/diagnostics" in diagnostic_commands
+    assert "describe jobs" in diagnostic_commands
+    assert "describe pods" in diagnostic_commands
+    assert "get events" in diagnostic_commands
+    assert "logs" in diagnostic_commands
     assert "--dry-run=server" in text
     assert "--release-evidence" in text
     assert "--expected-namespace-name" in text

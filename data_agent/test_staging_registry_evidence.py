@@ -208,6 +208,10 @@ def test_staging_workflow_publishes_attested_subject_without_deploying():
     assert "sha256sum" in commands
     assert "docker push \"$TAGGED_IMAGE\"" in commands
     assert "docker push \"$TAGGED_IMAGE\" |" not in commands
+    assert "for attempt in 1 2 3; do" in commands
+    assert "if docker push \"$TAGGED_IMAGE\"; then" in commands
+    assert "if [[ \"$attempt\" -eq 3 ]]" in commands
+    assert "sleep \"$((attempt * 15))\"" in commands
     assert "data_agent.staging_registry_evidence validate" in commands
     assert "org.opencontainers.image.revision" in commands
 

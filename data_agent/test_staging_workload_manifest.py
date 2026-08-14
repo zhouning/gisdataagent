@@ -228,6 +228,7 @@ def test_preflight_uses_release_image_without_api_token_or_schema_authority():
 
     assert document["kind"] == "Job"
     assert document["metadata"]["namespace"] == "gis-agent-staging"
+    assert document["spec"]["activeDeadlineSeconds"] == 1200
     pod = document["spec"]["template"]["spec"]
     assert pod["automountServiceAccountToken"] is False
     assert pod["imagePullSecrets"] == [

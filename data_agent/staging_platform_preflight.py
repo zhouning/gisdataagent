@@ -139,7 +139,7 @@ def build_staging_platform_preflight(
             "annotations": annotations,
         },
         "spec": {
-            "activeDeadlineSeconds": 300,
+            "activeDeadlineSeconds": 1200,
             "backoffLimit": 0,
             "ttlSecondsAfterFinished": 86400,
             "template": {

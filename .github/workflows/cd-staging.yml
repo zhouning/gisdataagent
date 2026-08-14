@@ -262,7 +262,17 @@ jobs:
           REPOSITORY="ghcr.io/${GITHUB_REPOSITORY,,}"
           TAGGED_IMAGE="${REPOSITORY}:${GITHUB_SHA}"
           docker tag "gis-data-agent:${GITHUB_SHA}" "$TAGGED_IMAGE"
-          docker push "$TAGGED_IMAGE"
+          for attempt in 1 2 3; do
+            if docker push "$TAGGED_IMAGE"; then
+              break
+            fi
+            if [[ "$attempt" -eq 3 ]]; then
+              echo "candidate image push failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "candidate image push failed; retrying after backoff" >&2
+            sleep "$((attempt * 15))"
+          done
 
           MANIFEST_FILE=$(mktemp)
           docker buildx imagetools inspect \
