@@ -78,7 +78,7 @@ RUN apt-get purge -y build-essential python3-dev && \
     rm -rf /var/lib/apt/lists/*
 
 # ---- Create the non-root runtime identity and writable directories -----------
-RUN groupadd -r agent && useradd -r -g agent -d /app -s /bin/bash agent && \
+RUN groupadd --gid 10001 agent && useradd --uid 10001 --gid agent -d /app -s /bin/bash agent && \
     install -d -o agent -g agent \
         /app/.cache \
         /app/.local \
@@ -97,7 +97,7 @@ COPY --chown=agent:agent --chmod=0755 docker-entrypoint.sh /app/docker-entrypoin
 COPY --chown=agent:agent data_agent/ /app/data_agent/
 
 ENV HOME=/app
-USER agent
+USER 10001:10001
 
 # ---- Runtime configuration --------------------------------------------------
 EXPOSE 8080
