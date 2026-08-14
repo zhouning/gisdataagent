@@ -312,3 +312,37 @@ def test_app_startup_only_verifies_migrations_and_has_no_ensure_table_calls():
         for name in calls
         if name.startswith("ensure_") and "connection" not in name
     }
+
+
+def test_app_startup_does_not_require_a_google_api_key_for_local_or_remote_models():
+    """The app must not construct a Google client while importing the module.
+
+    Routing and model gateways initialize their provider clients lazily.  A
+    staging deployment may intentionally use a non-Google backend and omit
+    GOOGLE_API_KEY; an import-time ``genai.Client()`` would crash before the
+    configured backend can be selected.
+    """
+
+    app_path = Path(__file__).with_name("app.py")
+    tree = ast.parse(app_path.read_text(encoding="utf-8"))
+
+    class _ModuleLevelClientCallVisitor(ast.NodeVisitor):
+        def __init__(self):
+            self.function_depth = 0
+            self.client_calls = []
+
+        def visit_FunctionDef(self, node):  # noqa: N802 - AST visitor API
+            self.function_depth += 1
+            self.generic_visit(node)
+            self.function_depth -= 1
+
+        visit_AsyncFunctionDef = visit_FunctionDef
+
+        def visit_Call(self, node):  # noqa: N802 - AST visitor API
+            if self.function_depth == 0 and getattr(node.func, "attr", None) == "Client":
+                self.client_calls.append(node.lineno)
+            self.generic_visit(node)
+
+    visitor = _ModuleLevelClientCallVisitor()
+    visitor.visit(tree)
+    assert visitor.client_calls == []

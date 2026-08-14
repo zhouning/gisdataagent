@@ -12,7 +12,6 @@ import shutil
 from pathlib import Path
 from typing import Any, List, Dict, Optional
 from dotenv import load_dotenv
-from google import genai as genai_client
 
 from data_agent.i18n import t, set_language, get_language
 from data_agent.multimodal import (
@@ -70,10 +69,6 @@ try:
     _CACHE_SUPPORT = True
 except ImportError:
     _CACHE_SUPPORT = False
-
-# Configure Google GenAI client for Routing (outside ADK agents)
-# Uses google.genai (new unified SDK) — auto-reads GOOGLE_API_KEY / Vertex AI env vars
-_genai_router_client = genai_client.Client()
 
 # Import agent and report generator
 try:
