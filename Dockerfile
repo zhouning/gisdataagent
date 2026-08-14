@@ -91,6 +91,7 @@ COPY --chown=agent:agent data/uwm_public_proxy/ /app/data/uwm_public_proxy/
 COPY --chown=agent:agent geocausal/ /app/geocausal/
 COPY --chown=agent:agent --from=frontend-builder /build/dist/ /app/frontend/dist/
 COPY --chown=agent:agent .chainlit/ /app/.chainlit/
+COPY --chown=agent:agent --chmod=0644 chainlit.md /app/chainlit.md
 COPY --chown=agent:agent public/ /app/public/
 COPY --chown=agent:agent scripts/ /app/scripts/
 COPY --chown=agent:agent --chmod=0755 docker-entrypoint.sh /app/docker-entrypoint.sh
