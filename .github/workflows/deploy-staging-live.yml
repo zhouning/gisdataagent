@@ -51,7 +51,7 @@ jobs:
       github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: [self-hosted, linux, gda-staging]
     environment: staging-live
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     env:
       GDA_STAGING_NAMESPACE: ${{ vars.GDA_STAGING_NAMESPACE }}
@@ -250,7 +250,7 @@ jobs:
           kubectl apply --dry-run=server -f staging-live/preflight.yaml >/dev/null
           PREFLIGHT_REF=$(kubectl apply -f staging-live/preflight.yaml -o name)
           kubectl -n "$GDA_STAGING_NAMESPACE" wait \
-            --for=condition=complete --timeout=5m "$PREFLIGHT_REF"
+            --for=condition=complete --timeout=20m "$PREFLIGHT_REF"
           kubectl -n "$GDA_STAGING_NAMESPACE" logs "$PREFLIGHT_REF" \
             > staging-live/platform.json
           echo "source_revision=$SOURCE_REVISION" >> "$GITHUB_OUTPUT"
@@ -323,6 +323,29 @@ jobs:
             --expected-cluster-uid "$GDA_STAGING_CLUSTER_UID" \
             --expected-namespace-uid "$GDA_STAGING_NAMESPACE_UID" \
             --output staging-live/live-evidence.json
+
+      - name: Collect Kubernetes failure diagnostics
+        if: failure()
+        continue-on-error: true
+        run: |
+          mkdir -p staging-live/diagnostics
+          kubectl -n "$GDA_STAGING_NAMESPACE" get jobs,pods -o wide \
+            > staging-live/diagnostics/workloads.txt 2>&1 || true
+          kubectl -n "$GDA_STAGING_NAMESPACE" describe jobs \
+            > staging-live/diagnostics/jobs.describe.txt 2>&1 || true
+          kubectl -n "$GDA_STAGING_NAMESPACE" describe pods \
+            > staging-live/diagnostics/pods.describe.txt 2>&1 || true
+          kubectl -n "$GDA_STAGING_NAMESPACE" get events \
+            --sort-by='.metadata.creationTimestamp' \
+            > staging-live/diagnostics/events.txt 2>&1 || true
+          kubectl -n "$GDA_STAGING_NAMESPACE" logs \
+            --all-containers=true --prefix=true --ignore-errors=true \
+            -l app.kubernetes.io/part-of=gis-data-agent \
+            > staging-live/diagnostics/workloads.log.txt 2>&1 || true
+          kubectl -n "$GDA_STAGING_NAMESPACE" logs \
+            --all-containers=true --prefix=true --ignore-errors=true --previous \
+            -l app.kubernetes.io/part-of=gis-data-agent \
+            > staging-live/diagnostics/workloads.previous.log.txt 2>&1 || true
 
       - name: Attest live collection and fail-closed verdict
         if: always() && hashFiles('staging-live/collection.json') != ''
