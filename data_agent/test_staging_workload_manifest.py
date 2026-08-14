@@ -193,6 +193,20 @@ def test_renderer_emits_only_immutable_workload_resources():
     assert deployment["spec"]["template"]["spec"]["imagePullSecrets"] == [
         {"name": "gis-agent-staging-registry"}
     ]
+    migration_container = parsed[2]["spec"]["template"]["spec"]["containers"][0]
+    migration_command = migration_container["args"][0]
+    gateway_grant = (
+        Path(__file__).resolve().parents[1]
+        / "scripts"
+        / "grant-platform-gateway-role.sh"
+    )
+    assert "bash /app/scripts/grant-platform-gateway-role.sh" in migration_command
+    assert gateway_grant.is_file()
+    grant_contract = gateway_grant.read_text(encoding="utf-8")
+    assert "WITH INHERIT FALSE, SET TRUE" in grant_contract
+    assert "runtime_role_is_safe" in grant_contract
+    assert "gateway_role_is_safe" in grant_contract
+    assert "gateway_membership_is_safe" in grant_contract
     init = deployment["spec"]["template"]["spec"]["initContainers"][0]
     assert "data_agent.migration_runner status" in init["args"][0]
     assert init["env"] == [
