@@ -43,7 +43,6 @@ WORKDIR /app
 RUN python3 -m venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 ENV VIRTUAL_ENV="/app/.venv"
-ENV HOME=/app
 
 # ---- Install Python dependencies -------------------------------------------
 # PIP_INDEX_URL build-arg lets local builds (especially in mainland China)
@@ -97,6 +96,7 @@ COPY --chown=agent:agent scripts/ /app/scripts/
 COPY --chown=agent:agent --chmod=0755 docker-entrypoint.sh /app/docker-entrypoint.sh
 COPY --chown=agent:agent data_agent/ /app/data_agent/
 
+ENV HOME=/app
 USER agent
 
 # ---- Runtime configuration --------------------------------------------------
