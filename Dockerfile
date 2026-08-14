@@ -99,7 +99,8 @@ COPY --chown=agent:agent data_agent/ /app/data_agent/
 # The entrypoint refreshes this file from the pod environment. Pre-create it
 # with the runtime identity so the non-root container can update it safely.
 RUN install -o agent -g agent -m 0600 /dev/null /app/data_agent/.env && \
-    install -d -o agent -g agent /app/.cache/matplotlib
+    install -d -o agent -g agent /app/.cache/matplotlib \
+        /app/.files
 
 ENV HOME=/app
 ENV MPLCONFIGDIR=/app/.cache/matplotlib
