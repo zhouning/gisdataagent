@@ -185,9 +185,12 @@ def test_staging_workflow_publishes_attested_subject_without_deploying():
         if step.get("run")
     }
     candidate_index = run_steps["Generate non-promotion candidate evidence"]
+    build_index = run_steps["Build the application candidate image"]
     push_index = run_steps["Push exact candidate image and resolve registry digest"]
     registry_index = run_steps["Bind candidate evidence to registry subject"]
     attest_index = action_steps["actions/attest-build-provenance@v3"]
+    buildx_index = action_steps["docker/setup-buildx-action@v3"]
+    assert buildx_index < build_index < candidate_index
     assert candidate_index < push_index < registry_index < attest_index
     assert "docker/login-action@v3" in action_steps
     assert "docker/setup-buildx-action@v3" in action_steps
@@ -199,9 +202,15 @@ def test_staging_workflow_publishes_attested_subject_without_deploying():
         "push-to-registry": True,
     }
     application_build = steps[
-        run_steps["Build the application candidate image"]
+        build_index
     ]["run"]
-    assert application_build.count("docker build ") == 1
+    assert application_build.count("docker buildx build ") == 1
+    assert "--load" in application_build
+    assert "--cache-from type=gha,scope=gda-staging-candidate" in application_build
+    assert (
+        "--cache-to type=gha,mode=max,scope=gda-staging-candidate"
+        in application_build
+    )
     commands = "\n".join(step.get("run", "") for step in steps)
     assert "docker buildx imagetools inspect" in commands
     assert '--raw > "$MANIFEST_FILE"' in commands

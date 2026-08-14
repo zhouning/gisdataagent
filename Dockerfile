@@ -43,6 +43,7 @@ WORKDIR /app
 RUN python3 -m venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 ENV VIRTUAL_ENV="/app/.venv"
+ENV HOME=/app
 
 # ---- Install Python dependencies -------------------------------------------
 # PIP_INDEX_URL build-arg lets local builds (especially in mainland China)
@@ -77,21 +78,24 @@ RUN apt-get purge -y build-essential python3-dev && \
     apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists/*
 
-# ---- Copy application code --------------------------------------------------
-COPY data_agent/ /app/data_agent/
-COPY data/uwm_public_proxy/ /app/data/uwm_public_proxy/
-COPY geocausal/ /app/geocausal/
-COPY --from=frontend-builder /build/dist/ /app/frontend/dist/
-COPY .chainlit/ /app/.chainlit/
-COPY public/ /app/public/
-COPY scripts/ /app/scripts/
-COPY docker-entrypoint.sh /app/docker-entrypoint.sh
-RUN chmod +x /app/docker-entrypoint.sh
-
-# ---- Create uploads directory and non-root user -----------------------------
+# ---- Create the non-root runtime identity and writable directories -----------
 RUN groupadd -r agent && useradd -r -g agent -d /app -s /bin/bash agent && \
-    mkdir -p /app/data_agent/uploads && \
-    chown -R agent:agent /app
+    install -d -o agent -g agent \
+        /app/.cache \
+        /app/.local \
+        /app/data_agent/uploads
+
+# ---- Copy application code --------------------------------------------------
+# Keep frequently changing Python sources last so cached dependency and static
+# layers remain reusable across release revisions.
+COPY --chown=agent:agent data/uwm_public_proxy/ /app/data/uwm_public_proxy/
+COPY --chown=agent:agent geocausal/ /app/geocausal/
+COPY --chown=agent:agent --from=frontend-builder /build/dist/ /app/frontend/dist/
+COPY --chown=agent:agent .chainlit/ /app/.chainlit/
+COPY --chown=agent:agent public/ /app/public/
+COPY --chown=agent:agent scripts/ /app/scripts/
+COPY --chown=agent:agent --chmod=0755 docker-entrypoint.sh /app/docker-entrypoint.sh
+COPY --chown=agent:agent data_agent/ /app/data_agent/
 
 USER agent
 

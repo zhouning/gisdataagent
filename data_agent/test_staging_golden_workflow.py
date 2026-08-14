@@ -104,6 +104,16 @@ def test_candidate_runtime_keeps_the_system_postgresql_client():
 
     assert "postgresql-client" in dockerfile
     assert "apt-get autoremove" in dockerfile
+    assert "ENV HOME=/app" in dockerfile
+    assert "chown -R agent:agent /app" not in dockerfile
+    assert "COPY --chown=agent:agent data_agent/ /app/data_agent/" in dockerfile
+    assert (
+        "COPY --chown=agent:agent --chmod=0755 docker-entrypoint.sh "
+        "/app/docker-entrypoint.sh"
+    ) in dockerfile
+    assert dockerfile.index("COPY --chown=agent:agent scripts/") < dockerfile.index(
+        "COPY --chown=agent:agent data_agent/"
+    )
     assert "/usr/bin/psql" in (
         ROOT / ".github/workflows/verify-staging-golden.yml"
     ).read_text(encoding="utf-8")
