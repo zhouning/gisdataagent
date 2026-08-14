@@ -1,0 +1,11 @@
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://ontology.gis-data-agent.local/water/irrigation/CandidateConceptShape> a sh:NodeShape ;
+    sh:property <https://ontology.gis-data-agent.local/water/irrigation/CandidateConceptLabelShape> ;
+    sh:targetClass owl:Class .
+
+<https://ontology.gis-data-agent.local/water/irrigation/CandidateConceptLabelShape> sh:minCount 1 ;
+    sh:path skos:prefLabel .

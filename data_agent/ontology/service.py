@@ -10,7 +10,9 @@ from typing import Any
 
 from ..db_engine import get_engine
 from .authority_reader import OntologyAuthorityUnavailable, PostgresOntologyReader
+from .contracts import ONTOLOGY_KEY
 from .package_reader import OntologyPackageReader
+from .registry import OntologyProfile, get_ontology_profile
 
 logger = logging.getLogger("data_agent.ontology.service")
 
@@ -24,7 +26,14 @@ class OntologyService:
     MAX_GRAPH_NODES = 500
     MAX_GRAPH_DEPTH = 3
 
-    def __init__(self, package_dir: str | Path | None = None):
+    def __init__(
+        self,
+        package_dir: str | Path | None = None,
+        *,
+        ontology_key: str = ONTOLOGY_KEY,
+    ):
+        self.profile: OntologyProfile = get_ontology_profile(ontology_key)
+        self.ontology_key = self.profile.ontology_key
         backend = os.environ.get("ONTOLOGY_RUNTIME_BACKEND", "auto").strip().casefold()
         if backend not in {"auto", "postgresql", "package"}:
             raise ValueError("ONTOLOGY_RUNTIME_BACKEND must be auto, postgresql, or package")
@@ -32,7 +41,10 @@ class OntologyService:
         self.package_reader: OntologyPackageReader | None = None
         package_error: Exception | None = None
         try:
-            self.package_reader = OntologyPackageReader(package_dir)
+            self.package_reader = OntologyPackageReader(
+                package_dir,
+                ontology_key=self.ontology_key,
+            )
         except Exception as exc:
             package_error = exc
 
@@ -45,7 +57,10 @@ class OntologyService:
                     raise OntologyAuthorityUnavailable(
                         "GIS Data Agent PostgreSQL is not configured"
                     )
-                self.reader = PostgresOntologyReader(engine)
+                self.reader = PostgresOntologyReader(
+                    engine,
+                    ontology_key=self.ontology_key,
+                )
             except Exception as exc:
                 authority_error = exc
                 if backend == "postgresql":
@@ -70,6 +85,7 @@ class OntologyService:
 
     def status(self) -> dict[str, Any]:
         payload = self.reader.status()
+        payload.update(self.profile.public_dict())
         sparql_endpoint = bool(os.environ.get("ONTOLOGY_SPARQL_ENDPOINT"))
         projection = payload.setdefault("projection", {})
         checkpoint_status = projection.get("status")
@@ -171,8 +187,8 @@ class OntologyService:
 
     def export_path(self, export_format: str) -> tuple[Path, str, str]:
         mapping = {
-            "turtle": ("rdf", "text/turtle", "natural-resource-one-map.ttl.gz"),
-            "shacl": ("shacl", "text/turtle", "natural-resource-one-map-shapes.ttl"),
+            "turtle": ("rdf", "text/turtle", f"{self.ontology_key}.ttl.gz"),
+            "shacl": ("shacl", "text/turtle", f"{self.ontology_key}-shapes.ttl"),
             "jsonld-context": ("jsonld_context", "application/ld+json", "context.jsonld"),
             "manifest": ("manifest", "application/json", "manifest.json"),
         }
@@ -227,14 +243,31 @@ class OntologyService:
         }
 
 
-_service: OntologyService | None = None
+_services: dict[str, OntologyService] = {}
 _service_lock = threading.Lock()
 
 
-def get_ontology_service(*, refresh: bool = False) -> OntologyService:
-    global _service
-    if _service is None or refresh:
+def get_ontology_service(
+    ontology_key: str = ONTOLOGY_KEY,
+    *,
+    refresh: bool = False,
+) -> OntologyService:
+    profile = get_ontology_profile(ontology_key)
+    key = profile.ontology_key
+    if key not in _services or refresh:
         with _service_lock:
-            if _service is None or refresh:
-                _service = OntologyService(os.environ.get("ONTOLOGY_PACKAGE_DIR") or None)
-    return _service
+            if key not in _services or refresh:
+                package_dir = (
+                    os.environ.get("ONTOLOGY_PACKAGE_DIR")
+                    if key == ONTOLOGY_KEY
+                    else (
+                        os.environ.get("DMT_ONTOLOGY_PACKAGE_DIR")
+                        if key == "abu-dhabi-dmt-gis"
+                        else os.environ.get("IRRIGATION_ONTOLOGY_PACKAGE_DIR")
+                    )
+                )
+                _services[key] = OntologyService(
+                    package_dir or None,
+                    ontology_key=key,
+                )
+    return _services[key]

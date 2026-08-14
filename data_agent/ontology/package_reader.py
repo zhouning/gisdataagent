@@ -11,14 +11,11 @@ from collections import defaultdict, deque
 from pathlib import Path
 from typing import Any, Iterable
 
-from .contracts import PackageManifest
+from .contracts import ONTOLOGY_KEY, PackageManifest
+from .registry import get_ontology_profile
 
 
-DEFAULT_PACKAGE_ROOT = (
-    Path(__file__).resolve().parent
-    / "packages"
-    / "natural_resource_one_map"
-)
+DEFAULT_PACKAGE_ROOT = get_ontology_profile().package_root
 
 DOMAIN_MODEL_KINDS = {
     "DomainClass",
@@ -30,28 +27,48 @@ DOMAIN_MODEL_KINDS = {
 }
 
 
-def resolve_package_dir(package_dir: str | Path | None = None) -> Path:
-    explicit = package_dir or os.environ.get("ONTOLOGY_PACKAGE_DIR")
+def resolve_package_dir(
+    package_dir: str | Path | None = None,
+    *,
+    ontology_key: str = ONTOLOGY_KEY,
+) -> Path:
+    # The legacy environment variable is intentionally scoped to the natural
+    # resource profile.  Reading it for another profile could silently load a
+    # valid but unrelated package and break ontology isolation.
+    env_name = "ONTOLOGY_PACKAGE_DIR" if ontology_key == ONTOLOGY_KEY else None
+    explicit = package_dir or (os.environ.get(env_name) if env_name else None)
     if explicit:
         return Path(explicit).expanduser().resolve()
-    active_path = DEFAULT_PACKAGE_ROOT / "active.json"
+    package_root = get_ontology_profile(ontology_key).package_root
+    active_path = package_root / "active.json"
     if not active_path.is_file():
         raise FileNotFoundError(f"ontology active package pointer not found: {active_path}")
     active = json.loads(active_path.read_text(encoding="utf-8"))
     version = str(active.get("semantic_version") or "").strip()
     if not version or "/" in version or ".." in version:
         raise ValueError("invalid ontology active package pointer")
-    return (DEFAULT_PACKAGE_ROOT / version).resolve()
+    return (package_root / version).resolve()
 
 
 class OntologyPackageReader:
     """Read a fixed package and expose bounded search/traversal operations."""
 
-    def __init__(self, package_dir: str | Path | None = None, *, verify: bool = True):
-        self.package_dir = resolve_package_dir(package_dir)
+    def __init__(
+        self,
+        package_dir: str | Path | None = None,
+        *,
+        verify: bool = True,
+        ontology_key: str = ONTOLOGY_KEY,
+    ):
+        self.package_dir = resolve_package_dir(package_dir, ontology_key=ontology_key)
         self.manifest = PackageManifest.model_validate_json(
             (self.package_dir / "manifest.json").read_text(encoding="utf-8")
         )
+        if self.manifest.ontology_key != ontology_key:
+            raise ValueError(
+                "ontology package key mismatch: "
+                f"expected {ontology_key}, found {self.manifest.ontology_key}"
+            )
         if verify:
             self.verify_artifacts()
         self._lock = threading.RLock()

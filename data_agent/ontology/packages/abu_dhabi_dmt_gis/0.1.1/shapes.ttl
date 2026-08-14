@@ -1,0 +1,3 @@
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix gda: <https://ontology.gis-data-agent.local/dmt/urban-municipal/> .
+gda:DmtCandidateShape a sh:NodeShape ; sh:targetClass <https://ontology.gis-data-agent.local/dmt/urban-municipal/class/> .

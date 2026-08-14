@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy import text
@@ -40,7 +41,10 @@ def publish_package(
     engine: Any | None = None,
 ) -> dict[str, Any]:
     """Publish one validated package atomically; published content is immutable."""
-    reader = OntologyPackageReader(package_dir, verify=True)
+    package_path = Path(package_dir)
+    manifest_hint = json.loads((package_path / "manifest.json").read_text(encoding="utf-8"))
+    ontology_key = str(manifest_hint.get("ontology_key") or "natural-resource-one-map")
+    reader = OntologyPackageReader(package_dir, verify=True, ontology_key=ontology_key)
     manifest = reader.manifest
     if not manifest.validation_summary.get("conforms"):
         raise ValueError("only conforming ontology packages can be published")

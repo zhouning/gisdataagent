@@ -5,7 +5,7 @@ import {
   Zap, Wrench, BookOpen, Lightbulb, Brain, Store, Globe, FlaskConical, Network,
   History, Gauge, PieChart, Shield, ClipboardCheck, Bell, Activity, Radio, ListTodo,
   GitBranch, FileText, Target, ThumbsUp, Tags, Sparkles,
-  LayoutGrid, Home, Inbox, Upload,
+  LayoutGrid, Home, Inbox, Upload, Droplets,
 } from 'lucide-react';
 
 import CatalogTab, { type MapPublicationLayer } from './datapanel/CatalogTab';
@@ -31,6 +31,7 @@ import WorldModelTab from './datapanel/WorldModelTab';
 import WorldModelV11Tab from './datapanel/WorldModelV11Tab';
 import WorldModelV2Tab from './datapanel/WorldModelV2Tab';
 import WorldModelV21Tab from './datapanel/WorldModelV21Tab';
+import IrrigationWorldModelDemoTab from './datapanel/IrrigationWorldModelDemoTab';
 import TerritoryWorldModelTab from './datapanel/TerritoryWorldModelTab';
 import AbuDhabiLandUseComparisonTab from './datapanel/AbuDhabiLandUseComparisonTab';
 import AbuDhabiLandUseModelTab from './datapanel/AbuDhabiLandUseModelTab';
@@ -85,7 +86,7 @@ interface DataPanelProps {
   onAddMapLayer?: (layer: MapPublicationLayer) => void;
 }
 
-type TabKey = 'files' | 'table' | 'catalog' | 'models' | 'metadata' | 'history' | 'agent_logs' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'approvals' | 'memory' | 'observability' | 'traditional_livability' | 'cultural_heritage' | 'cross_domain_impact' | 'implementation_roadmap' | 'resilience_kernel' | 'digital_readiness' | 'operations_quality' | 'business_licence' | 'development_control' | 'financial_readiness' | 'public_feedback_readiness' | 'spatial_scope_registry' | 'planning_version_registry' | 'parcel_state_readiness' | 'infrastructure_network_readiness' | 'asset_lifecycle_readiness' | 'population_demographic_readiness' | 'population_housing_optimization' | 'uwm_livability' | 'uwm_multistage' | 'ai_demand_readiness' | 'abu_land_use_compare' | 'abu_flus' | 'abu_kernel' | 'worldmodel' | 'worldmodel_v11' | 'worldmodel_v2' | 'worldmodel_v21' | 'twm' | 'causal' | 'optimization' | 'qcmonitor' | 'fusion_quality' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'std_platform' | 'semantic' | 'ontology' | 'ontology_demo' | 'agents' | 'intake' | 'offline_ingest' | 'classification';
+type TabKey = 'files' | 'table' | 'catalog' | 'models' | 'metadata' | 'history' | 'agent_logs' | 'usage' | 'tools' | 'workflows' | 'suggestions' | 'tasks' | 'templates' | 'analytics' | 'capabilities' | 'kb' | 'vsources' | 'market' | 'geojson' | 'charts' | 'governance' | 'approvals' | 'memory' | 'observability' | 'traditional_livability' | 'cultural_heritage' | 'cross_domain_impact' | 'implementation_roadmap' | 'resilience_kernel' | 'digital_readiness' | 'operations_quality' | 'business_licence' | 'development_control' | 'financial_readiness' | 'public_feedback_readiness' | 'spatial_scope_registry' | 'planning_version_registry' | 'parcel_state_readiness' | 'infrastructure_network_readiness' | 'asset_lifecycle_readiness' | 'population_demographic_readiness' | 'population_housing_optimization' | 'uwm_livability' | 'uwm_multistage' | 'ai_demand_readiness' | 'abu_land_use_compare' | 'abu_flus' | 'abu_kernel' | 'worldmodel' | 'worldmodel_v11' | 'worldmodel_v2' | 'worldmodel_v21' | 'irrigation_demo' | 'twm' | 'causal' | 'optimization' | 'qcmonitor' | 'fusion_quality' | 'alerts' | 'topology' | 'messagebus' | 'feedback' | 'standards' | 'std_platform' | 'semantic' | 'ontology' | 'ontology_demo' | 'agents' | 'intake' | 'offline_ingest' | 'classification';
 
 type GroupKey = 'data' | 'intelligence' | 'ops';
 type NavigationGroupKey = 'data' | 'semantic' | 'analysis' | 'ops' | 'extensions';
@@ -152,6 +153,7 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: ReactNode; tabs: TabDef[
       { key: 'worldmodel_v11', label: '世界模型v1.1 · Paper58（阿布扎比）', icon: <Globe size={ICON_SIZE} /> },
       { key: 'worldmodel_v2', label: '世界模型v2', icon: <Globe size={ICON_SIZE} /> },
       { key: 'worldmodel_v21', label: '世界模型v2.1', icon: <Globe size={ICON_SIZE} /> },
+      { key: 'irrigation_demo', label: '灌区世界模型', icon: <Droplets size={ICON_SIZE} /> },
       { key: 'twm', label: 'TWM', icon: <Shield size={ICON_SIZE} /> },
       { key: 'causal', label: '因果推理', icon: <FlaskConical size={ICON_SIZE} /> },
       { key: 'optimization', label: '优化', icon: <Target size={ICON_SIZE} /> },
@@ -279,7 +281,7 @@ const EXTENSION_TABS = new Set<TabKey>([
   'kb', 'suggestions', 'memory', 'market', 'agents',
 ]);
 const WORLD_MODEL_TABS = new Set<TabKey>([
-  'worldmodel', 'worldmodel_v11', 'worldmodel_v2', 'worldmodel_v21', 'twm', 'uwm_livability', 'uwm_multistage',
+  'worldmodel', 'worldmodel_v11', 'worldmodel_v2', 'worldmodel_v21', 'irrigation_demo', 'twm', 'uwm_livability', 'uwm_multistage',
 ]);
 const REGIONAL_TABS = new Set<TabKey>(['abu_land_use_compare', 'abu_flus', 'abu_kernel']);
 const DOMAIN_TABS = new Set<TabKey>([
@@ -349,7 +351,7 @@ const ICONS: Record<string, ReactNode> = {
   network: <Network size={14} />, layout: <LayoutGrid size={14} />, tag: <Tag size={14} />, link: <Link size={14} />, inbox: <Inbox size={14} />,
   'file-text': <FileText size={14} />, sparkles: <Sparkles size={14} />, shield: <Shield size={14} />, zap: <Zap size={14} />, wrench: <Wrench size={14} />,
   'book-open': <BookOpen size={14} />, 'bar-chart': <BarChart3 size={14} />, flask: <FlaskConical size={14} />, target: <Target size={14} />, 'git-branch': <GitBranch size={14} />,
-  globe: <Globe size={14} />, 'list-todo': <ListTodo size={14} />, store: <Store size={14} />, 'thumbs-up': <ThumbsUp size={14} />, 'pie-chart': <PieChart size={14} />,
+  globe: <Globe size={14} />, droplets: <Droplets size={14} />, 'list-todo': <ListTodo size={14} />, store: <Store size={14} />, 'thumbs-up': <ThumbsUp size={14} />, 'pie-chart': <PieChart size={14} />,
   home: <Home size={14} />, history: <History size={14} />, bell: <Bell size={14} />, gauge: <Gauge size={14} />, radio: <Radio size={14} />,
   'layout-grid': <LayoutGrid size={14} />, 'clipboard-check': <ClipboardCheck size={14} />, lightbulb: <Lightbulb size={14} />, upload: <Upload size={14} />,
 };
@@ -486,6 +488,7 @@ export default function DataPanel({
     else if (tab === 'population_housing_optimization') onRequestWidth?.(720);
     else if (tab === 'uwm_livability' || tab === 'uwm_multistage') onRequestWidth?.(680);
     else if (tab === 'abu_land_use_compare' || tab === 'abu_flus' || tab === 'abu_kernel' || tab === 'worldmodel_v11') onRequestWidth?.(700);
+    else if (tab === 'irrigation_demo') onRequestWidth?.(1180);
   };
 
   const handleGroupClick = (groupKey: NavigationGroupKey) => {
@@ -620,6 +623,7 @@ export default function DataPanel({
         {activeTab === 'worldmodel_v11' && <WorldModelV11Tab />}
         {activeTab === 'worldmodel_v2' && <WorldModelV2Tab />}
         {activeTab === 'worldmodel_v21' && <WorldModelV21Tab />}
+        {activeTab === 'irrigation_demo' && <IrrigationWorldModelDemoTab />}
         {activeTab === 'twm' && <TerritoryWorldModelTab />}
         {activeTab === 'causal' && <CausalReasoningTab />}
         {activeTab === 'optimization' && <OptimizationTab />}
@@ -635,7 +639,7 @@ export default function DataPanel({
         {activeTab === 'standards' && <DomainStandardsTab />}
         {activeTab === 'std_platform' && <StandardsTab userRole={userRole} username={username} />}
         {activeTab === 'semantic' && <SemanticLayerTab userRole={userRole} />}
-        {activeTab === 'ontology' && <OntologyTab />}
+        {activeTab === 'ontology' && <OntologyTab userRole={userRole} />}
         {activeTab === 'ontology_demo' && <NaturalResourceOntologyDemoTab />}
         </>}
       </div>

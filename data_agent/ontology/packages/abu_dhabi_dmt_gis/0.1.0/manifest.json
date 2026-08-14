@@ -1,0 +1,357 @@
+{
+  "artifacts": {
+    "competency_report": {
+      "bytes": 58,
+      "media_type": "application/json",
+      "path": "competency-report.json",
+      "record_count": null,
+      "sha256": "110dbb2006143a0b7d1162fa97542b269779225e6194ddb578fa38a73909a8e1"
+    },
+    "completeness_report": {
+      "bytes": 58,
+      "media_type": "application/json",
+      "path": "completeness-report.json",
+      "record_count": null,
+      "sha256": "110dbb2006143a0b7d1162fa97542b269779225e6194ddb578fa38a73909a8e1"
+    },
+    "concepts": {
+      "bytes": 92091,
+      "media_type": "application/x-ndjson+gzip",
+      "path": "concepts.jsonl.gz",
+      "record_count": 1066,
+      "sha256": "8fcfdbcecaec9df87553e57f336b39195faca5d08bca468d39e7b149a44f76c9"
+    },
+    "jsonld_context": {
+      "bytes": 84,
+      "media_type": "application/ld+json",
+      "path": "context.jsonld",
+      "record_count": null,
+      "sha256": "a471546e6bb9d9982c4df168e9b69e20efece068da1680268bf87991a9f4759a"
+    },
+    "mappings": {
+      "bytes": 36321,
+      "media_type": "application/x-ndjson+gzip",
+      "path": "mappings.jsonl.gz",
+      "record_count": 972,
+      "sha256": "7390f919bb53b211eaf5bbcb26995de18eb67b71ab9c509ed9b1f977b481b7d9"
+    },
+    "properties": {
+      "bytes": 33069,
+      "media_type": "application/x-ndjson+gzip",
+      "path": "properties.jsonl.gz",
+      "record_count": 1339,
+      "sha256": "7087e549a825c7025f465bdf6f4f9641381bd8e2d021beab3e58806c1b69c8be"
+    },
+    "rdf": {
+      "bytes": 27528,
+      "media_type": "application/gzip",
+      "path": "ontology.ttl.gz",
+      "record_count": null,
+      "sha256": "4e20022abec3a0be61253be7444c9fd50863060b67aa8a244a04e7d3c14c4add"
+    },
+    "relations": {
+      "bytes": 7726,
+      "media_type": "application/x-ndjson+gzip",
+      "path": "relations.jsonl.gz",
+      "record_count": 223,
+      "sha256": "2912671bb0e56ce909e2f2a1263d049991c74c88b64836e7995b29ce7b310108"
+    },
+    "review_dispositions": {
+      "bytes": 20,
+      "media_type": "application/x-ndjson+gzip",
+      "path": "review-dispositions.jsonl.gz",
+      "record_count": 0,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+    },
+    "semantic_quality_report": {
+      "bytes": 58,
+      "media_type": "application/json",
+      "path": "semantic-quality-report.json",
+      "record_count": null,
+      "sha256": "110dbb2006143a0b7d1162fa97542b269779225e6194ddb578fa38a73909a8e1"
+    },
+    "shacl": {
+      "bytes": 243,
+      "media_type": "text/turtle",
+      "path": "shapes.ttl",
+      "record_count": null,
+      "sha256": "da051f5d062d7ae769c605165082a0a6eb0490a2703156443f84e2f608d34339"
+    },
+    "sources": {
+      "bytes": 264,
+      "media_type": "application/x-ndjson+gzip",
+      "path": "sources.jsonl.gz",
+      "record_count": 1,
+      "sha256": "4c02a6e220881d1e3d38f512bc3cb38d87e6a53de584ca5e4d53945bd706c206"
+    },
+    "validation": {
+      "bytes": 144,
+      "media_type": "application/json",
+      "path": "validation-report.json",
+      "record_count": null,
+      "sha256": "c548db60a49fd2bde5f12f8020fccfd62d122ad58d097183810609035b339c31"
+    }
+  },
+  "compatibility": {
+    "authority_store": "PostgreSQL gda_ontology schema",
+    "fallback": "hash-verified immutable package",
+    "minimum_runtime_contract": "gda-ontology-package-v1",
+    "semantic_architecture": "dmt-cdm-ldm-pdm-candidate-v1"
+  },
+  "content_sha256": "a141ac0c88b0e2362bf5b5113f985682fa37787272a14f481194752bc6c988d7",
+  "description": "基于 DMT CDM/LDM/PDM v1 转换的候选行业本体；源权威、业务键和映射仍需领域审核。",
+  "domain_stats": [
+    {
+      "concept_count": 335,
+      "confirmed_mapping_count": 0,
+      "domain_class_count": 3,
+      "domain_id": "gda_meta",
+      "ea_schema_count": 0,
+      "label": "元数据与血缘",
+      "mapping_count": 331,
+      "property_count": 29,
+      "standard_feature_count": 0,
+      "strict_coverage": 0.0,
+      "value_domain_count": 0,
+      "value_member_count": 0
+    },
+    {
+      "concept_count": 70,
+      "confirmed_mapping_count": 0,
+      "domain_class_count": 6,
+      "domain_id": "dmt_geo",
+      "ea_schema_count": 0,
+      "label": "行政与空间骨架",
+      "mapping_count": 63,
+      "property_count": 108,
+      "standard_feature_count": 0,
+      "strict_coverage": 0.0,
+      "value_domain_count": 0,
+      "value_member_count": 0
+    },
+    {
+      "concept_count": 83,
+      "confirmed_mapping_count": 0,
+      "domain_class_count": 5,
+      "domain_id": "dmt_land",
+      "ea_schema_count": 0,
+      "label": "地块、土地与规划",
+      "mapping_count": 77,
+      "property_count": 92,
+      "standard_feature_count": 0,
+      "strict_coverage": 0.0,
+      "value_domain_count": 0,
+      "value_member_count": 0
+    },
+    {
+      "concept_count": 46,
+      "confirmed_mapping_count": 0,
+      "domain_class_count": 5,
+      "domain_id": "dmt_built",
+      "ea_schema_count": 0,
+      "label": "建筑与室内单元",
+      "mapping_count": 40,
+      "property_count": 94,
+      "standard_feature_count": 0,
+      "strict_coverage": 0.0,
+      "value_domain_count": 0,
+      "value_member_count": 0
+    },
+    {
+      "concept_count": 22,
+      "confirmed_mapping_count": 0,
+      "domain_class_count": 4,
+      "domain_id": "dmt_project",
+      "ea_schema_count": 0,
+      "label": "项目与建设交付",
+      "mapping_count": 17,
+      "property_count": 73,
+      "standard_feature_count": 0,
+      "strict_coverage": 0.0,
+      "value_domain_count": 0,
+      "value_member_count": 0
+    },
+    {
+      "concept_count": 52,
+      "confirmed_mapping_count": 0,
+      "domain_class_count": 6,
+      "domain_id": "dmt_asset",
+      "ea_schema_count": 0,
+      "label": "城市资产与运维",
+      "mapping_count": 45,
+      "property_count": 102,
+      "standard_feature_count": 0,
+      "strict_coverage": 0.0,
+      "value_domain_count": 0,
+      "value_member_count": 0
+    },
+    {
+      "concept_count": 179,
+      "confirmed_mapping_count": 0,
+      "domain_class_count": 6,
+      "domain_id": "dmt_utility",
+      "ea_schema_count": 0,
+      "label": "公用设施网络",
+      "mapping_count": 172,
+      "property_count": 103,
+      "standard_feature_count": 0,
+      "strict_coverage": 0.0,
+      "value_domain_count": 0,
+      "value_member_count": 0
+    },
+    {
+      "concept_count": 58,
+      "confirmed_mapping_count": 0,
+      "domain_class_count": 4,
+      "domain_id": "dmt_facility",
+      "ea_schema_count": 0,
+      "label": "公共设施与服务供给",
+      "mapping_count": 53,
+      "property_count": 71,
+      "standard_feature_count": 0,
+      "strict_coverage": 0.0,
+      "value_domain_count": 0,
+      "value_member_count": 0
+    },
+    {
+      "concept_count": 97,
+      "confirmed_mapping_count": 0,
+      "domain_class_count": 10,
+      "domain_id": "dmt_mobility",
+      "ea_schema_count": 0,
+      "label": "交通、道路与移动性",
+      "mapping_count": 86,
+      "property_count": 170,
+      "standard_feature_count": 0,
+      "strict_coverage": 0.0,
+      "value_domain_count": 0,
+      "value_member_count": 0
+    },
+    {
+      "concept_count": 25,
+      "confirmed_mapping_count": 0,
+      "domain_class_count": 7,
+      "domain_id": "dmt_inspection",
+      "ea_schema_count": 0,
+      "label": "调查、检查与缺陷",
+      "mapping_count": 17,
+      "property_count": 117,
+      "standard_feature_count": 0,
+      "strict_coverage": 0.0,
+      "value_domain_count": 0,
+      "value_member_count": 0
+    },
+    {
+      "concept_count": 16,
+      "confirmed_mapping_count": 0,
+      "domain_class_count": 7,
+      "domain_id": "dmt_iot",
+      "ea_schema_count": 0,
+      "label": "物联网与实时观测",
+      "mapping_count": 8,
+      "property_count": 113,
+      "standard_feature_count": 0,
+      "strict_coverage": 0.0,
+      "value_domain_count": 0,
+      "value_member_count": 0
+    },
+    {
+      "concept_count": 40,
+      "confirmed_mapping_count": 0,
+      "domain_class_count": 7,
+      "domain_id": "dmt_liveability",
+      "ea_schema_count": 0,
+      "label": "宜居、指标与情景",
+      "mapping_count": 32,
+      "property_count": 117,
+      "standard_feature_count": 0,
+      "strict_coverage": 0.0,
+      "value_domain_count": 0,
+      "value_member_count": 0
+    },
+    {
+      "concept_count": 18,
+      "confirmed_mapping_count": 0,
+      "domain_class_count": 5,
+      "domain_id": "dmt_realestate",
+      "ea_schema_count": 0,
+      "label": "地产、租赁与权属",
+      "mapping_count": 12,
+      "property_count": 84,
+      "standard_feature_count": 0,
+      "strict_coverage": 0.0,
+      "value_domain_count": 0,
+      "value_member_count": 0
+    },
+    {
+      "concept_count": 2,
+      "confirmed_mapping_count": 0,
+      "domain_class_count": 1,
+      "domain_id": "dmt_party",
+      "ea_schema_count": 0,
+      "label": "主体与责任边界",
+      "mapping_count": 0,
+      "property_count": 17,
+      "standard_feature_count": 0,
+      "strict_coverage": 0.0,
+      "value_domain_count": 0,
+      "value_member_count": 0
+    },
+    {
+      "concept_count": 23,
+      "confirmed_mapping_count": 0,
+      "domain_class_count": 3,
+      "domain_id": "dmt_service",
+      "ea_schema_count": 0,
+      "label": "服务、案件与公众参与",
+      "mapping_count": 19,
+      "property_count": 49,
+      "standard_feature_count": 0,
+      "strict_coverage": 0.0,
+      "value_domain_count": 0,
+      "value_member_count": 0
+    }
+  ],
+  "generated_at": "2026-08-11T12:15:06.266945+00:00",
+  "model_profile": "owl2-rl-bounded-candidate",
+  "namespace_uri": "https://ontology.gis-data-agent.local/dmt/urban-municipal/",
+  "ontology_key": "abu-dhabi-dmt-gis",
+  "ontology_version_id": "f7fd7b67-0175-5402-a2d9-80e2980f29fe",
+  "package_format": "gda-ontology-package-v1",
+  "package_id": "abu-dhabi-dmt-gis:0.1.0:a141ac0c88b0e236",
+  "semantic_version": "0.1.0",
+  "source_fingerprint": "c1d703e45ea6e1dc1a3de9fde8ee8eb4c542b12b80cb64bec571974b47d6e103",
+  "stats": {
+    "candidate_mapping_count": 969,
+    "concept_count": 1066,
+    "domain_class_count": 79,
+    "mapping_count": 972,
+    "property_count": 1339,
+    "rdf_triple_count": 1294,
+    "rejected_mapping_count": 3,
+    "relation_count": 223,
+    "schema_artifact_count": 972,
+    "source_count": 1,
+    "source_field_count": 24307,
+    "source_object_count": 972,
+    "validation_issue_count": 0
+  },
+  "title": "Abu Dhabi DMT 城市与市政 GIS 本体",
+  "validation_summary": {
+    "conforms": true,
+    "issue_count": 0,
+    "issues": [],
+    "severity_counts": {},
+    "shacl_conforms": true,
+    "validators": [
+      "dmt-structure-validator-v1"
+    ]
+  },
+  "vocabularies": [
+    "RDF 1.1",
+    "RDFS",
+    "OWL 2 RL bounded profile",
+    "SHACL",
+    "GeoSPARQL vocabulary"
+  ]
+}

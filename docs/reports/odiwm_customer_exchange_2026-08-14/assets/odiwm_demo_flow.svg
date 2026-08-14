@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1400" viewBox="0 0 1400 1400">
+  <defs>
+    <style>
+      .title { font: 700 27px "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #172033; }
+      .num { font: 700 15px "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #ffffff; }
+      .label { font: 700 18px "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #172033; }
+      .body { font: 14px "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #526176; }
+      .arrow { stroke: #76869a; stroke-width: 3; fill: none; marker-end: url(#arrow); }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#76869a"/>
+    </marker>
+  </defs>
+  <g transform="translate(0 465)">
+  <rect width="1400" height="470" fill="#f6f8fa"/>
+  <text x="700" y="48" text-anchor="middle" class="title">客户交流Demo：从问题到可审查Proposal</text>
+
+  <g transform="translate(45,100)">
+    <rect width="190" height="230" rx="8" fill="#ffffff" stroke="#9aa8b8" stroke-width="2"/>
+    <circle cx="28" cy="30" r="17" fill="#315f75"/><text x="28" y="36" text-anchor="middle" class="num">1</text>
+    <text x="95" y="67" text-anchor="middle" class="label">提出问题</text>
+    <text x="95" y="105" text-anchor="middle" class="body">上游供水下降20%</text>
+    <text x="95" y="130" text-anchor="middle" class="body">哪些田块缺水？</text>
+    <text x="95" y="170" text-anchor="middle" class="body">合成演示情景</text>
+  </g>
+  <path d="M235 215 L265 215" class="arrow"/>
+
+  <g transform="translate(270,100)">
+    <rect width="190" height="230" rx="8" fill="#e9f4f1" stroke="#2d7f70" stroke-width="2"/>
+    <circle cx="28" cy="30" r="17" fill="#2d7f70"/><text x="28" y="36" text-anchor="middle" class="num">2</text>
+    <text x="95" y="67" text-anchor="middle" class="label">本体Grounding</text>
+    <text x="95" y="105" text-anchor="middle" class="body">水源、渠段、闸门</text>
+    <text x="95" y="130" text-anchor="middle" class="body">田块、动作、约束</text>
+    <text x="95" y="170" text-anchor="middle" class="body">确定对象与关系</text>
+  </g>
+  <path d="M460 215 L490 215" class="arrow"/>
+
+  <g transform="translate(495,100)">
+    <rect width="190" height="230" rx="8" fill="#eaf0f7" stroke="#5077a5" stroke-width="2"/>
+    <circle cx="28" cy="30" r="17" fill="#5077a5"/><text x="28" y="36" text-anchor="middle" class="num">3</text>
+    <text x="95" y="67" text-anchor="middle" class="label">冻结情景</text>
+    <text x="95" y="105" text-anchor="middle" class="body">当前状态与预报版本</text>
+    <text x="95" y="130" text-anchor="middle" class="body">基准及候选动作</text>
+    <text x="95" y="170" text-anchor="middle" class="body">保证公平比较</text>
+  </g>
+  <path d="M685 215 L715 215" class="arrow"/>
+
+  <g transform="translate(720,100)">
+    <rect width="190" height="230" rx="8" fill="#eef1e6" stroke="#6e8538" stroke-width="2"/>
+    <circle cx="28" cy="30" r="17" fill="#6e8538"/><text x="28" y="36" text-anchor="middle" class="num">4</text>
+    <text x="95" y="67" text-anchor="middle" class="label">守恒推演</text>
+    <text x="95" y="105" text-anchor="middle" class="body">输水、分水、损失</text>
+    <text x="95" y="130" text-anchor="middle" class="body">容量、时延、水量账</text>
+    <text x="95" y="170" text-anchor="middle" class="body">确定性Demo内核</text>
+  </g>
+  <path d="M910 215 L940 215" class="arrow"/>
+
+  <g transform="translate(945,100)">
+    <rect width="190" height="230" rx="8" fill="#fff4df" stroke="#b77a1f" stroke-width="2"/>
+    <circle cx="28" cy="30" r="17" fill="#b77a1f"/><text x="28" y="36" text-anchor="middle" class="num">5</text>
+    <text x="95" y="67" text-anchor="middle" class="label">比较候选</text>
+    <text x="95" y="105" text-anchor="middle" class="body">到田水量与缺口</text>
+    <text x="95" y="130" text-anchor="middle" class="body">公平、能耗、违规</text>
+    <text x="95" y="170" text-anchor="middle" class="body">不宣称全局最优</text>
+  </g>
+  <path d="M1135 215 L1165 215" class="arrow"/>
+
+  <g transform="translate(1170,100)">
+    <rect width="190" height="230" rx="8" fill="#f7ecec" stroke="#9c5151" stroke-width="2"/>
+    <circle cx="28" cy="30" r="17" fill="#9c5151"/><text x="28" y="36" text-anchor="middle" class="num">6</text>
+    <text x="95" y="67" text-anchor="middle" class="label">人工审查</text>
+    <text x="95" y="105" text-anchor="middle" class="body">Proposal与证据</text>
+    <text x="95" y="130" text-anchor="middle" class="body">适用范围和风险</text>
+    <text x="95" y="170" text-anchor="middle" class="body">不触发真实设备</text>
+  </g>
+
+  <rect x="265" y="375" width="870" height="54" rx="6" fill="#ffffff" stroke="#aab5c2"/>
+  <text x="700" y="408" text-anchor="middle" class="label">演示目标：说明架构与治理闭环，不证明真实灌区预测精度或控制收益</text>
+  </g>
+</svg>

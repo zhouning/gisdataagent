@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ReactFlow, Background, Controls, MiniMap, MarkerType,
+  ReactFlow, Background, Controls, MarkerType,
   type Edge, type Node, type ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import {
   AlertTriangle, ArrowLeft, ArrowRight, Braces, CheckCircle2, ChevronLeft, ChevronRight,
   Database, Download, FileJson, Filter, GitCompareArrows,
-  Home, Layers3, LocateFixed, Maximize2, Minimize2, Network, RefreshCw, Search,
+  Home, Layers3, LocateFixed, Maximize2, Minimize2, Network, Pencil, RefreshCw, Search,
   ShieldCheck, X,
 } from 'lucide-react';
 import OntologyConceptNode from './ontology/OntologyConceptNode';
+import OntologyModelingPanel from './ontology/OntologyModelingPanel';
 import './ontology/ontology.css';
 import './ontology/value-domains.css';
 
@@ -18,6 +19,12 @@ type Row = Record<string, any>;
 
 interface OntologyStatus {
   available: boolean;
+  ontology_key: string;
+  title: string;
+  short_title: string;
+  description: string;
+  industry: string;
+  namespace_uri: string;
   backend: string;
   package_id: string;
   semantic_version: string;
@@ -27,6 +34,16 @@ interface OntologyStatus {
   stats: Record<string, number>;
   validation: { conforms: boolean; issue_count: number; severity_counts?: Record<string, number> };
   projection: { rdf: boolean; shacl: boolean; sparql_endpoint: boolean };
+}
+
+interface OntologyProfileSummary {
+  ontology_key: string;
+  title: string;
+  short_title: string;
+  description: string;
+  industry: string;
+  namespace_uri: string;
+  domain_count: number;
 }
 
 interface DomainSummary {
@@ -42,7 +59,7 @@ interface DomainSummary {
   strict_coverage: number;
 }
 
-type ViewMode = 'graph' | 'mappings' | 'validation';
+type ViewMode = 'graph' | 'mappings' | 'validation' | 'modeling';
 type DetailMode = 'overview' | 'fields' | 'relations' | 'provenance';
 type GraphDepth = 1 | 2 | 3;
 type NavigationEntry = { concept_id: string; pref_label: string; code?: string };
@@ -72,6 +89,98 @@ const RELATION_LABELS: Record<string, string> = {
   exactMatch: '精确映射', closeMatch: '近似映射', broadMatch: '宽泛映射',
 };
 
+interface OntologyMiniMapProps {
+  nodes: Node[];
+  edges: Edge[];
+  selectedNodeId?: string;
+  onNodeClick?: (node: Node) => void;
+}
+
+/**
+ * A small, deterministic overview of the current graph. React Flow's
+ * built-in minimap relies on measured custom-node dimensions; those can be
+ * unavailable while a graph is being loaded or when it is embedded in the
+ * standalone CIM page. Rendering from the graph positions keeps the overview
+ * useful in both cases.
+ */
+function OntologyMiniMap({ nodes, edges, selectedNodeId, onNodeClick }: OntologyMiniMapProps) {
+  const width = 184;
+  const height = 116;
+  const padding = 10;
+  const layout = useMemo(() => {
+    const visibleNodes = nodes.filter(node => !node.hidden && Number.isFinite(node.position?.x) && Number.isFinite(node.position?.y));
+    if (!visibleNodes.length) return { nodes: [], edges: [], bounds: null as null | { minX: number; minY: number; maxX: number; maxY: number } };
+
+    const nodeWidth = (node: Node) => node.measured?.width || node.width || 184;
+    const nodeHeight = (node: Node) => node.measured?.height || node.height || 82;
+    const minX = Math.min(...visibleNodes.map(node => node.position.x));
+    const minY = Math.min(...visibleNodes.map(node => node.position.y));
+    const maxX = Math.max(...visibleNodes.map(node => node.position.x + nodeWidth(node)));
+    const maxY = Math.max(...visibleNodes.map(node => node.position.y + nodeHeight(node)));
+    const rangeX = Math.max(1, maxX - minX);
+    const rangeY = Math.max(1, maxY - minY);
+    const scale = Math.min((width - padding * 2) / rangeX, (height - padding * 2) / rangeY);
+    const point = (node: Node) => ({
+      x: padding + (node.position.x - minX) * scale,
+      y: padding + (node.position.y - minY) * scale,
+      width: Math.max(5, Math.min(25, nodeWidth(node) * scale)),
+      height: Math.max(4, Math.min(15, nodeHeight(node) * scale)),
+    });
+    const points = new Map(visibleNodes.map(node => [node.id, point(node)]));
+    const miniEdges = edges.map(edge => {
+      const source = points.get(edge.source);
+      const target = points.get(edge.target);
+      if (!source || !target) return null;
+      return {
+        id: edge.id,
+        x1: source.x + source.width / 2,
+        y1: source.y + source.height / 2,
+        x2: target.x + target.width / 2,
+        y2: target.y + target.height / 2,
+      };
+    }).filter(Boolean);
+    return {
+      bounds: { minX, minY, maxX, maxY },
+      nodes: visibleNodes.map(node => ({ node, ...point(node) })),
+      edges: miniEdges as Array<{ id: string; x1: number; y1: number; x2: number; y2: number }>,
+    };
+  }, [edges, nodes]);
+
+  const colorFor = (node: Node) => {
+    if ((node.data as Row)?.isFocus) return '#dc2626';
+    switch ((node.data as Row)?.kind) {
+      case 'DomainClass': case 'FeatureType': return '#0f766e';
+      case 'ProcessClass': return '#b45309';
+      case 'StateClass': case 'DatasetSchema': return '#2563eb';
+      case 'InformationClass': case 'Domain': return '#7c3aed';
+      case 'RoleClass': return '#be185d';
+      default: return '#64748b';
+    }
+  };
+
+  return (
+    <div className="ontology-custom-minimap" role="img" aria-label="本体关系鹰眼图">
+      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+        <rect className="ontology-minimap-surface" x="0" y="0" width={width} height={height} rx="4" />
+        {layout.edges.map(edge => <line key={edge.id} className="ontology-minimap-edge" x1={edge.x1} y1={edge.y1} x2={edge.x2} y2={edge.y2} />)}
+        {layout.nodes.map(item => (
+          <rect
+            key={item.node.id}
+            className={`ontology-minimap-node${item.node.id === selectedNodeId ? ' selected' : ''}`}
+            x={item.x}
+            y={item.y}
+            width={item.width}
+            height={item.height}
+            rx="1.5"
+            fill={colorFor(item.node)}
+            onClick={() => onNodeClick?.(item.node)}
+          />
+        ))}
+      </svg>
+    </div>
+  );
+}
+
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, { credentials: 'include', ...init });
   const contentType = response.headers.get('content-type') || '';
@@ -100,8 +209,8 @@ function valueDomainLabel(value: unknown): string {
   return '';
 }
 
-function buildDomainOverview(domains: DomainSummary[]) {
-  const columns = 2;
+function buildDomainOverview(domains: DomainSummary[], compact = false) {
+  const columns = compact ? 1 : 2;
   const nodes: Node[] = domains.map((domain, index) => ({
     id: `domain-entry:${domain.domain_id}`,
     type: 'ontologyConcept',
@@ -185,12 +294,40 @@ function layoutFocusedNodes(nodes: Node[], edges: Edge[], rootId: string): Node[
 function sourceLabel(source?: string) {
   if (source === 'standard') return '自然资源标准';
   if (source === 'enterprise_architect') return 'Enterprise Architect';
+  if (source === 'dmt_source_catalog') return 'DMT 源结构目录';
   if (source === 'gda_core') return 'Cognitive Runtime';
   if (source === 'curated_domain') return '策划领域模型';
   return source || '-';
 }
 
-export default function OntologyTab() {
+export interface OntologyTabProps {
+  /** API root used by the viewer. Public CIM pages use the bounded read-only root. */
+  apiBase?: string;
+  /** Export is intentionally disabled for the public, unauthenticated viewer. */
+  allowExport?: boolean;
+  /** Optional deep link used by the CIM host to open a specific object. */
+  initialConceptId?: string;
+  /** Operational package details are useful internally but not on customer-facing pages. */
+  showTechnicalStatus?: boolean;
+  className?: string;
+  /** Internal role used to expose governed draft editing. Public viewers omit it. */
+  userRole?: string;
+}
+
+export default function OntologyTab({
+  apiBase = '/api/ontology',
+  allowExport = true,
+  initialConceptId = '',
+  showTechnicalStatus = true,
+  className = '',
+  userRole = '',
+}: OntologyTabProps) {
+  const legacyApi = apiBase.replace(/\/$/, '');
+  const supportsOntologyRegistry = legacyApi === '/api/ontology';
+  const [ontologyKey, setOntologyKey] = useState('natural-resource-one-map');
+  const [ontologyProfiles, setOntologyProfiles] = useState<OntologyProfileSummary[]>([]);
+  const ontologyApi = supportsOntologyRegistry ? `/api/ontologies/${ontologyKey}` : legacyApi;
+  const canModel = ['admin', 'standard_editor'].includes(userRole);
   const [status, setStatus] = useState<OntologyStatus | null>(null);
   const [domains, setDomains] = useState<DomainSummary[]>([]);
   const [selectedDomain, setSelectedDomain] = useState('');
@@ -223,23 +360,62 @@ export default function OntologyTab() {
   const [message, setMessage] = useState('');
   const [fullscreen, setFullscreen] = useState(false);
   const [graphDepth, setGraphDepth] = useState<GraphDepth>(1);
+  const [compactLayout, setCompactLayout] = useState(() => window.matchMedia('(max-width: 680px)').matches);
   const [navigation, setNavigation] = useState<NavigationState>({ entries: [], index: -1 });
   const searchTimer = useRef<number | undefined>();
   const flowInstance = useRef<ReactFlowInstance<Node, Edge> | null>(null);
   const conceptRequest = useRef(0);
   const graphRequest = useRef(0);
+  const initialConceptOpened = useRef('');
+
+  useEffect(() => {
+    if (!supportsOntologyRegistry) return;
+    void api<{ items: OntologyProfileSummary[] }>('/api/ontologies')
+      .then(data => setOntologyProfiles(data.items || []))
+      .catch(() => setOntologyProfiles([]));
+  }, [supportsOntologyRegistry]);
+
+  useEffect(() => {
+    setStatus(null);
+    setDomains([]);
+    setSelectedDomain('');
+    setFocusedConceptId('');
+    setSelectedConceptId('');
+    setConcept(null);
+    setProperties([]);
+    setRelations([]);
+    setNavigation({ entries: [], index: -1 });
+    setQuery('');
+    setSearchResults([]);
+    setMappings([]);
+    setMappingStatus('');
+    setMappingOffset(0);
+    setValidation(null);
+    setKindFilter('');
+    setSourceFilter('');
+    setViewMode('graph');
+    setLoading(true);
+    initialConceptOpened.current = '';
+  }, [ontologyKey]);
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 680px)');
+    const handleChange = (event: MediaQueryListEvent) => setCompactLayout(event.matches);
+    media.addEventListener('change', handleChange);
+    return () => media.removeEventListener('change', handleChange);
+  }, []);
 
   const loadBootstrap = useCallback(async () => {
     setLoading(true); setMessage('');
     try {
       const [statusData, domainData] = await Promise.all([
-        api<OntologyStatus>('/api/ontology/status'),
-        api<{ items: DomainSummary[] }>('/api/ontology/domains'),
+        api<OntologyStatus>(`${ontologyApi}/status`),
+        api<{ items: DomainSummary[] }>(`${ontologyApi}/domains`),
       ]);
       setStatus(statusData); setDomains(domainData.items || []);
     } catch (error) { setMessage(error instanceof Error ? error.message : '本体服务不可用'); }
     finally { setLoading(false); }
-  }, []);
+  }, [ontologyApi]);
 
   const loadGraph = useCallback(async (rootId = '', depth: GraphDepth = 1) => {
     const requestId = ++graphRequest.current;
@@ -250,7 +426,7 @@ export default function OntologyTab() {
         limit: String(rootId ? GRAPH_LIMITS[depth] : 250),
       });
       if (rootId) params.set('root_id', rootId); else if (selectedDomain) params.set('domain_id', selectedDomain);
-      const data = await api<Row>(`/api/ontology/graph?${params}`);
+      const data = await api<Row>(`${ontologyApi}/graph?${params}`);
       if (requestId !== graphRequest.current) return;
       const edges = (data.edges || []).map((edge: Edge & { data?: Row }) => ({
         ...edge,
@@ -282,7 +458,7 @@ export default function OntologyTab() {
       setGraphMeta(data);
     } catch (error) { setMessage(error instanceof Error ? error.message : '图谱加载失败'); }
     finally { if (requestId === graphRequest.current) setLoading(false); }
-  }, [selectedDomain]);
+  }, [ontologyApi, selectedDomain]);
 
   const loadConcept = useCallback(async (conceptId: string) => {
     if (!conceptId) return null;
@@ -291,9 +467,9 @@ export default function OntologyTab() {
     try {
       const encoded = encodeURIComponent(conceptId);
       const [detail, fields, relationData] = await Promise.all([
-        api<Row>(`/api/ontology/concept?concept_id=${encoded}`),
-        api<Row>(`/api/ontology/properties?concept_id=${encoded}&include_effective=true&limit=500`),
-        api<Row>(`/api/ontology/relations?concept_id=${encoded}&limit=200`),
+        api<Row>(`${ontologyApi}/concept?concept_id=${encoded}`),
+        api<Row>(`${ontologyApi}/properties?concept_id=${encoded}&include_effective=true&limit=500`),
+        api<Row>(`${ontologyApi}/relations?concept_id=${encoded}&limit=200`),
       ]);
       if (requestId !== conceptRequest.current) return null;
       setConcept(detail); setProperties(fields.items || []); setPropertyTotal(fields.total || 0);
@@ -306,7 +482,7 @@ export default function OntologyTab() {
       return detail;
     } catch (error) { setMessage(error instanceof Error ? error.message : '概念加载失败'); }
     return null;
-  }, []);
+  }, [ontologyApi]);
 
   const selectConcept = useCallback((
     conceptId: string,
@@ -380,11 +556,23 @@ export default function OntologyTab() {
     const handleWorkspaceUpdate = (rawEvent: Event) => {
       const detail = (rawEvent as CustomEvent).detail || {};
       if (detail.tab !== 'ontology') return;
+      const requestedOntologyKey = String(detail.ontology_key || '').trim();
+      if (supportsOntologyRegistry && requestedOntologyKey) {
+        setOntologyKey(requestedOntologyKey);
+      }
       if ((window as any).__pendingGdaWorkspaceUpdate === detail) {
         delete (window as any).__pendingGdaWorkspaceUpdate;
       }
       if (detail.view === 'mappings') {
         setViewMode('mappings');
+        return;
+      }
+      if (detail.view === 'validation') {
+        setViewMode('validation');
+        return;
+      }
+      if (detail.view === 'graph') {
+        showDomainOverview();
         return;
       }
       const conceptId = String(detail.concept_id || '').trim();
@@ -400,27 +588,32 @@ export default function OntologyTab() {
       handleWorkspaceUpdate(new CustomEvent('gda-workspace-update', { detail: pending }));
     }
     return () => window.removeEventListener('gda-workspace-update', handleWorkspaceUpdate);
-  }, [focusConcept]);
+  }, [focusConcept, showDomainOverview]);
 
   const loadMappings = useCallback(async () => {
     setLoading(true); setMessage('');
     try {
       const params = new URLSearchParams({ offset: String(mappingOffset), limit: '80' });
       if (selectedDomain) params.set('domain_id', selectedDomain); if (mappingStatus) params.set('status', mappingStatus);
-      const data = await api<Row>(`/api/ontology/mappings?${params}`);
+      const data = await api<Row>(`${ontologyApi}/mappings?${params}`);
       setMappings(data.items || []); setMappingTotal(data.total || 0);
     } catch (error) { setMessage(error instanceof Error ? error.message : '映射加载失败'); }
     finally { setLoading(false); }
-  }, [mappingOffset, mappingStatus, selectedDomain]);
+  }, [mappingOffset, mappingStatus, ontologyApi, selectedDomain]);
 
   const loadValidation = useCallback(async () => {
     setLoading(true); setMessage('');
-    try { setValidation(await api<Row>('/api/ontology/validation')); }
+    try { setValidation(await api<Row>(`${ontologyApi}/validation`)); }
     catch (error) { setMessage(error instanceof Error ? error.message : '校验报告加载失败'); }
     finally { setLoading(false); }
-  }, []);
+  }, [ontologyApi]);
 
   useEffect(() => { loadBootstrap(); }, [loadBootstrap]);
+  useEffect(() => {
+    if (!status || !initialConceptId || initialConceptOpened.current === initialConceptId) return;
+    initialConceptOpened.current = initialConceptId;
+    focusConcept(initialConceptId, { pref_label: initialConceptId });
+  }, [focusConcept, initialConceptId, status]);
   useEffect(() => {
     if (!status) return;
     if (viewMode === 'graph') {
@@ -430,7 +623,7 @@ export default function OntologyTab() {
         void loadGraph('', 1);
       } else {
         graphRequest.current += 1;
-        const overview = buildDomainOverview(domains);
+        const overview = buildDomainOverview(domains, compactLayout);
         setGraph(overview);
         setGraphMeta({
           node_count: overview.nodes.length,
@@ -443,10 +636,10 @@ export default function OntologyTab() {
       }
     } else if (viewMode === 'mappings') {
       void loadMappings();
-    } else {
+    } else if (viewMode === 'validation') {
       void loadValidation();
     }
-  }, [status, domains, selectedDomain, focusedConceptId, graphDepth, viewMode, loadGraph, loadMappings, loadValidation]);
+  }, [status, domains, selectedDomain, focusedConceptId, graphDepth, viewMode, compactLayout, loadGraph, loadMappings, loadValidation]);
 
   useEffect(() => {
     window.clearTimeout(searchTimer.current);
@@ -456,12 +649,12 @@ export default function OntologyTab() {
         const params = new URLSearchParams({ q: query.trim(), limit: '40' });
         if (selectedDomain) params.set('domain_id', selectedDomain); if (kindFilter) params.set('kinds', kindFilter);
         if (sourceFilter) params.set('source_system', sourceFilter);
-        const data = await api<Row>(`/api/ontology/concepts?${params}`);
+        const data = await api<Row>(`${ontologyApi}/concepts?${params}`);
         setSearchResults(data.items || []); setSearchTotal(data.total || 0); setSearchOpen(true);
       } catch (error) { setMessage(error instanceof Error ? error.message : '检索失败'); }
     }, 240);
     return () => window.clearTimeout(searchTimer.current);
-  }, [query, selectedDomain, kindFilter, sourceFilter]);
+  }, [kindFilter, ontologyApi, query, selectedDomain, sourceFilter]);
 
   useEffect(() => {
     if (!fullscreen) return;
@@ -483,14 +676,25 @@ export default function OntologyTab() {
   useEffect(() => {
     if (viewMode !== 'graph' || graph.nodes.length === 0) return;
     let secondFrame = 0;
+    let settleTimer = 0;
+    const fitGraph = (duration: number) => {
+      void flowInstance.current?.fitView({
+        padding: fullscreen ? 0.12 : 0.22,
+        duration,
+      });
+    };
     const firstFrame = window.requestAnimationFrame(() => {
       secondFrame = window.requestAnimationFrame(() => {
-        void flowInstance.current?.fitView({ padding: fullscreen ? 0.12 : 0.22, duration: 240 });
+        fitGraph(240);
       });
     });
+    // The production shell can finish sizing after fonts and the CIM sidebar
+    // settle. A delayed pass keeps deep-linked relation nodes inside view.
+    settleTimer = window.setTimeout(() => fitGraph(180), 320);
     return () => {
       window.cancelAnimationFrame(firstFrame);
       if (secondFrame) window.cancelAnimationFrame(secondFrame);
+      window.clearTimeout(settleTimer);
     };
   }, [fullscreen, graph.nodes.length, focusedConceptId, graphDepth, viewMode]);
 
@@ -498,14 +702,7 @@ export default function OntologyTab() {
   const visibleIssues = (validation?.issues || []).slice(0, 500);
   const currentNavigationEntry = navigation.entries[navigation.index];
   const graphTitle = focusedConceptId ? currentNavigationEntry?.pref_label || focusedConceptId
-    : selectedDomainData ? `${selectedDomainData.domain_id} ${selectedDomainData.label}` : '自然资源领域概览';
-  const minimapColor = useCallback((node: Node) => {
-    if ((node.data as Row)?.isFocus) return '#dc2626';
-    const kind = (node.data as Row)?.kind;
-    return kind === 'DomainClass' ? '#0f766e' : kind === 'ProcessClass' ? '#b45309'
-      : kind === 'StateClass' ? '#2563eb' : kind === 'InformationClass' ? '#7c3aed'
-        : kind === 'RoleClass' ? '#be185d' : '#64748b';
-  }, []);
+    : selectedDomainData ? `${selectedDomainData.domain_id} ${selectedDomainData.label}` : `${status?.short_title || '行业本体'}领域概览`;
   const graphStats = useMemo(() => graphMeta.overview === 'domains'
     ? `${count(graphMeta.node_count)} 个领域入口`
     : `${count(graphMeta.node_count)} 节点 · ${count(graphMeta.edge_count)} 关系`, [graphMeta]);
@@ -528,12 +725,13 @@ export default function OntologyTab() {
 
   if (loading && !status) return <div className="ontology-state"><RefreshCw className="spin" size={18} />正在加载本体</div>;
 
-  return <div className={`ontology-workbench${fullscreen ? ' is-fullscreen' : ''}`}>
+  return <div className={`ontology-workbench${fullscreen ? ' is-fullscreen' : ''}${className ? ` ${className}` : ''}`}>
     <header className="ontology-header">
-      <div className="ontology-title"><Network size={18} /><div><strong>自然资源“一张图”本体</strong><span>v{status?.semantic_version || '-'}</span></div></div>
+      <div className="ontology-title"><Network size={18} /><div><strong>{status?.title || '行业本体模型'}</strong><span>v{status?.semantic_version || '-'}</span></div></div>
+      {supportsOntologyRegistry && ontologyProfiles.length > 0 && <label className="ontology-profile-select"><span>行业本体</span><select value={ontologyKey} onChange={event => setOntologyKey(event.target.value)}>{ontologyProfiles.map(profile => <option key={profile.ontology_key} value={profile.ontology_key}>{profile.short_title}</option>)}</select></label>}
       <div className="ontology-kpis"><span><b>{count(status?.stats?.domain_class_count)}</b>领域类</span><span><b>{count(status?.stats?.relation_count)}</b>语义关系</span><span><b>{count(status?.stats?.schema_artifact_count)}</b>数据制品</span><span><b>{count(status?.stats?.confirmed_mapping_count)}</b>确认映射</span></div>
       <div className="ontology-header-actions">
-        <span className={`ontology-conformance ${status?.validation?.conforms ? 'ok' : 'error'}`}>{status?.validation?.conforms ? <CheckCircle2 size={13} /> : <AlertTriangle size={13} />}{status?.validation?.conforms ? '发布门通过' : '发布门失败'}</span>
+        <span className={`ontology-conformance ${status?.validation?.conforms ? 'ok' : 'error'}`}>{status?.validation?.conforms ? <CheckCircle2 size={13} /> : <AlertTriangle size={13} />}{status?.validation?.conforms ? '模型校验正常' : '模型存在问题'}</span>
         <button
           className="ontology-fullscreen-toggle"
           title={fullscreen ? '退出最大化（Esc）' : '最大化本体模型'}
@@ -544,31 +742,32 @@ export default function OntologyTab() {
           {fullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
         </button>
         <button title="刷新" onClick={loadBootstrap}><RefreshCw size={15} /></button>
-        <div className="ontology-export-menu"><button title="导出本体"><Download size={15} /></button><div>
-          <a href="/api/ontology/export/turtle"><Network size={13} />Turtle</a><a href="/api/ontology/export/shacl"><ShieldCheck size={13} />SHACL</a>
-          <a href="/api/ontology/export/jsonld-context"><FileJson size={13} />JSON-LD</a><a href="/api/ontology/export/manifest"><Braces size={13} />Manifest</a>
-        </div></div>
+        {allowExport && <div className="ontology-export-menu"><button title="导出本体"><Download size={15} /></button><div>
+          <a href={`${ontologyApi}/export/turtle`}><Network size={13} />Turtle</a><a href={`${ontologyApi}/export/shacl`}><ShieldCheck size={13} />SHACL</a>
+          <a href={`${ontologyApi}/export/jsonld-context`}><FileJson size={13} />JSON-LD</a><a href={`${ontologyApi}/export/manifest`}><Braces size={13} />Manifest</a>
+        </div></div>}
       </div>
     </header>
 
     <div className="ontology-toolbar">
-      <div className="ontology-segments"><button className={viewMode === 'graph' ? 'active' : ''} onClick={() => setViewMode('graph')}><Network size={14} />图谱</button><button className={viewMode === 'mappings' ? 'active' : ''} onClick={() => setViewMode('mappings')}><GitCompareArrows size={14} />映射</button><button className={viewMode === 'validation' ? 'active' : ''} onClick={() => setViewMode('validation')}><ShieldCheck size={14} />校验</button></div>
-      <div className="ontology-search-wrap"><Search size={15} /><input value={query} onChange={event => setQuery(event.target.value)} onFocus={() => query && setSearchOpen(true)} placeholder="代码、名称、EA GUID" />{query && <button title="清除" onClick={() => setQuery('')}><X size={14} /></button>}
+      <div className="ontology-segments"><button className={viewMode === 'graph' ? 'active' : ''} onClick={() => setViewMode('graph')}><Network size={14} />图谱</button><button className={viewMode === 'mappings' ? 'active' : ''} onClick={() => setViewMode('mappings')}><GitCompareArrows size={14} />映射</button><button className={viewMode === 'validation' ? 'active' : ''} onClick={() => setViewMode('validation')}><ShieldCheck size={14} />校验</button>{canModel && <button className={viewMode === 'modeling' ? 'active' : ''} onClick={() => { setViewMode('modeling'); setFullscreen(true); }}><Pencil size={14} />草稿编辑</button>}</div>
+      {viewMode !== 'modeling' && <><div className="ontology-search-wrap"><Search size={15} /><input value={query} onChange={event => setQuery(event.target.value)} onFocus={() => query && setSearchOpen(true)} placeholder="代码、名称、EA GUID" />{query && <button title="清除" onClick={() => setQuery('')}><X size={14} /></button>}
         {searchOpen && <div className="ontology-search-results"><div className="ontology-search-count">{count(searchTotal)} 个结果</div>{searchResults.map(item => <button key={item.concept_id} onClick={() => focusConcept(item.concept_id, item)}><span className={`ontology-kind-dot kind-${item.kind}`} /><span><strong>{item.pref_label}</strong><small>{item.code || item.concept_id}</small></span><em>{KIND_LABELS[item.kind] || item.kind}</em></button>)}</div>}
       </div>
       <label className="ontology-select"><Filter size={13} /><select value={kindFilter} onChange={event => setKindFilter(event.target.value)}><option value="">全部本体对象</option><option value={DOMAIN_MODEL_KINDS}>领域模型</option><option value="DomainClass">实体类</option><option value="ProcessClass">过程类</option><option value="StateClass">状态类</option><option value="InformationClass">信息类</option><option value="RoleClass">角色类</option><option value="ObservationClass">观测类</option><option value="ReferenceScheme,ReferenceConcept">参考分类</option><option value="SchemaArtifact">数据结构制品</option></select></label>
-      <label className="ontology-select"><Database size={13} /><select value={sourceFilter} onChange={event => setSourceFilter(event.target.value)}><option value="">全部来源</option><option value="curated_domain">策划领域模型</option><option value="standard">自然资源标准</option><option value="enterprise_architect">Enterprise Architect</option></select></label>
+      <label className="ontology-select"><Database size={13} /><select value={sourceFilter} onChange={event => setSourceFilter(event.target.value)}><option value="">全部来源</option><option value="curated_domain">策划领域模型</option>{ontologyKey === 'abu-dhabi-dmt-gis' ? <option value="dmt_source_catalog">DMT 源结构目录</option> : <><option value="standard">自然资源标准</option><option value="enterprise_architect">Enterprise Architect</option></>}</select></label></>}
     </div>
     {message && <div className="ontology-message"><AlertTriangle size={14} />{message}<button onClick={() => setMessage('')}><X size={13} /></button></div>}
 
-    <div className="ontology-body">
-      <aside className="ontology-domain-pane"><div className="ontology-pane-title"><Layers3 size={14} /><strong>领域</strong><span>{domains.length}</span></div>
+    <div className={`ontology-body${viewMode === 'modeling' ? ' is-modeling' : ''}`}>
+      {viewMode !== 'modeling' && <aside className="ontology-domain-pane"><div className="ontology-pane-title"><Layers3 size={14} /><strong>领域</strong><span>{domains.length}</span></div>
         <button className={`ontology-domain-row ${!selectedDomain ? 'active' : ''}`} onClick={() => { showDomainOverview(''); setMappingOffset(0); }}><div><b>ALL</b><span>领域概览</span></div><small>{count(status?.stats?.domain_class_count)}</small></button>
-        <div className="ontology-domain-scroll">{domains.map(domain => <button key={domain.domain_id} className={`ontology-domain-row ${selectedDomain === domain.domain_id ? 'active' : ''}`} onClick={() => { showDomainOverview(domain.domain_id); setMappingOffset(0); }}><div><b>{domain.domain_id}</b><span>{domain.label}</span></div><small>{count(domain.domain_class_count)}</small><div className="ontology-coverage" title={`严格映射覆盖 ${(domain.strict_coverage * 100).toFixed(1)}%`}><i style={{ width: `${Math.min(domain.strict_coverage * 100, 100)}%` }} /></div></button>)}</div>
+        <div className="ontology-domain-scroll">{domains.map(domain => <button key={domain.domain_id} title={`${domain.domain_id} · ${domain.label}`} className={`ontology-domain-row ${selectedDomain === domain.domain_id ? 'active' : ''}`} onClick={() => { showDomainOverview(domain.domain_id); setMappingOffset(0); }}><div><b>{domain.domain_id}</b><span>{domain.label}</span></div><small>{count(domain.domain_class_count)}</small><div className="ontology-coverage" title={`严格映射覆盖 ${(domain.strict_coverage * 100).toFixed(1)}%`}><i style={{ width: `${Math.min(domain.strict_coverage * 100, 100)}%` }} /></div></button>)}</div>
         {selectedDomainData && <div className="ontology-domain-summary"><div><span>标准要素</span><b>{count(selectedDomainData.standard_feature_count)}</b></div><div><span>EA 结构</span><b>{count(selectedDomainData.ea_schema_count)}</b></div><div><span>字段</span><b>{count(selectedDomainData.property_count)}</b></div><div><span>严格覆盖</span><b>{(selectedDomainData.strict_coverage * 100).toFixed(1)}%</b></div></div>}
-      </aside>
+      </aside>}
 
       <main className="ontology-main-pane">
+        {viewMode === 'modeling' && <OntologyModelingPanel apiBase={ontologyApi} userRole={userRole} selectedConcept={concept} domainOptions={domains.map(domain => ({ domain_id: domain.domain_id, label: domain.label }))} ontologyTitle={status?.short_title} onDraftChanged={() => { void loadBootstrap(); if (selectedConceptId) void loadConcept(selectedConceptId); }} />}
         {viewMode === 'graph' && <>
           <div className="ontology-view-title ontology-graph-title">
             <div className="ontology-graph-heading">
@@ -632,7 +831,21 @@ export default function OntologyTab() {
             >
               <Background color="#263244" gap={22} size={1} />
               <Controls showInteractive={false} />
-              <MiniMap nodeColor={minimapColor} bgColor="#111827" maskColor="rgba(11, 15, 25, .68)" pannable zoomable />
+              <OntologyMiniMap
+                nodes={visibleGraphNodes}
+                edges={graph.edges}
+                selectedNodeId={selectedConceptId}
+                onNodeClick={node => {
+                  const width = node.measured?.width || node.width || 184;
+                  const height = node.measured?.height || node.height || 82;
+                  void flowInstance.current?.setCenter(
+                    node.position.x + width / 2,
+                    node.position.y + height / 2,
+                    { duration: 240, zoom: 1 },
+                  );
+                  void selectConcept(node.id);
+                }}
+              />
             </ReactFlow>
             {graph.edges.length > 0 && <div className="ontology-graph-legend" aria-label="关系图例">
               <span><i className="inheritance" />继承</span>
@@ -648,12 +861,12 @@ export default function OntologyTab() {
           <div className="ontology-table-scroll"><table><thead><tr><th>来源对象</th><th>映射语义</th><th>目标对象</th><th>证据</th></tr></thead><tbody>{mappings.map(row => <tr key={row.mapping_id} onClick={() => focusConcept(row.source_concept_id, row.source_concept)}><td><strong>{row.source_concept?.pref_label}</strong><small>{row.source_concept?.code}</small></td><td><span className={`ontology-status status-${row.mapping_status}`}>{row.mapping_status}</span><small>{row.mapping_type}</small></td><td><strong>{row.target_concept?.pref_label}</strong><small>{row.target_concept?.code}</small></td><td><span>{row.confidence == null ? '-' : `${(row.confidence * 100).toFixed(0)}%`}</span><small>{(row.evidence?.match_basis || []).join(' + ')}</small></td></tr>)}</tbody></table></div>
           <div className="ontology-pagination"><button disabled={mappingOffset === 0} onClick={() => setMappingOffset(Math.max(0, mappingOffset - 80))}><ChevronLeft size={14} /></button><span>{mappingTotal ? mappingOffset + 1 : 0}-{Math.min(mappingOffset + 80, mappingTotal)} / {mappingTotal}</span><button disabled={mappingOffset + 80 >= mappingTotal} onClick={() => setMappingOffset(mappingOffset + 80)}><ChevronRight size={14} /></button></div></div>}
 
-        {viewMode === 'validation' && <div className="ontology-validation-view"><div className="ontology-view-title"><div><strong>发布校验</strong><span>{validation?.validators?.join(' · ')}</span></div><span className={`ontology-conformance ${validation?.conforms ? 'ok' : 'error'}`}>{validation?.conforms ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}{validation?.conforms ? 'Conforms' : 'Failed'}</span></div>
-          <div className="ontology-validation-summary"><div><span>SHACL</span><b>{validation?.shacl_conforms ? '通过' : '失败'}</b></div><div><span>错误</span><b>{count(validation?.severity_counts?.error)}</b></div><div><span>警告</span><b>{count(validation?.severity_counts?.warning)}</b></div><div><span>观察项</span><b>{count(validation?.issue_count)}</b></div></div>
+        {viewMode === 'validation' && <div className="ontology-validation-view"><div className="ontology-view-title"><div><strong>模型校验结果</strong><span>{count(validation?.issue_count)} 个待检查项</span></div><span className={`ontology-conformance ${validation?.conforms ? 'ok' : 'error'}`}>{validation?.conforms ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}{validation?.conforms ? '校验通过' : '存在问题'}</span></div>
+          <div className="ontology-validation-summary"><div><span>结构与规则</span><b>{validation?.shacl_conforms ? '通过' : '失败'}</b></div><div><span>错误</span><b>{count(validation?.severity_counts?.error)}</b></div><div><span>警告</span><b>{count(validation?.severity_counts?.warning)}</b></div><div><span>待检查项</span><b>{count(validation?.issue_count)}</b></div></div>
           <div className="ontology-issue-list">{visibleIssues.map((issue: Row, index: number) => <div key={`${issue.code}-${index}`}><span className={`ontology-issue-severity ${issue.severity}`}>{issue.severity}</span><strong>{issue.code}</strong><code>{issue.table || issue.source || issue.relation_id || issue.ea_object_id || ''}</code><span>{issue.field || issue.heading || issue.raw_datatype || (issue.count ? `${issue.count} 条` : '')}</span></div>)}</div></div>}
       </main>
 
-      <aside className={`ontology-detail-pane${concept ? ' has-selection' : ''}`}>
+      {viewMode !== 'modeling' && <aside className={`ontology-detail-pane${concept ? ' has-selection' : ''}`}>
         {concept ? <>
           <div className="ontology-detail-head">
             <div className="ontology-detail-identity"><span>{KIND_LABELS[concept.kind] || concept.kind}</span><strong>{concept.pref_label}</strong><code>{concept.code || 'no-code'}</code></div>
@@ -725,7 +938,7 @@ export default function OntologyTab() {
             })}
               {properties.length === 0 && <div className="ontology-detail-empty">无有效属性定义</div>}
               {properties.length < propertyTotal && <button onClick={async () => {
-                const data = await api<Row>(`/api/ontology/properties?concept_id=${encodeURIComponent(concept.concept_id)}&include_effective=true&offset=${properties.length}&limit=500`);
+                const data = await api<Row>(`${ontologyApi}/properties?concept_id=${encodeURIComponent(concept.concept_id)}&include_effective=true&offset=${properties.length}&limit=500`);
                 setProperties(current => [...current, ...(data.items || [])]);
               }}>加载更多属性</button>}
             </div>}
@@ -749,23 +962,23 @@ export default function OntologyTab() {
           </div>
         </> : <>
           <div className="ontology-detail-head ontology-detail-placeholder-head">
-            <div className="ontology-detail-identity"><span>Ontology Inspector</span><strong>本体对象检查器</strong><code>v{status?.semantic_version || '-'}</code></div>
+            <div className="ontology-detail-identity"><span>当前选择</span><strong>对象详情</strong><code>模型版本 v{status?.semantic_version || '-'}</code></div>
           </div>
           <div className="ontology-detail-scroll">
             <div className="ontology-model-overview">
-              <h4>{selectedDomainData?.label || '自然资源全域模型'}</h4>
+              <h4>{selectedDomainData?.label || `${status?.short_title || '行业本体'}全域模型`}</h4>
               <div><span>领域类</span><b>{count(selectedDomainData?.domain_class_count || status?.stats?.domain_class_count)}</b></div>
               <div><span>语义关系</span><b>{count(status?.stats?.relation_count)}</b></div>
               <div><span>数据结构制品</span><b>{count(selectedDomainData?.standard_feature_count || status?.stats?.schema_artifact_count)}</b></div>
               <div><span>字段定义</span><b>{count(selectedDomainData?.property_count || status?.stats?.property_count)}</b></div>
               <section><span>语义层</span><strong>策划领域模型</strong></section>
-              <section><span>标准层</span><strong>自然资源数据标准</strong></section>
-              <section><span>实现层</span><strong>Enterprise Architect</strong></section>
+              <section><span>标准层</span><strong>{ontologyKey === 'abu-dhabi-dmt-gis' ? 'DMT CDM / LDM' : '自然资源数据标准'}</strong></section>
+              <section><span>实现层</span><strong>{ontologyKey === 'abu-dhabi-dmt-gis' ? 'DMT PDM / 源结构目录' : 'Enterprise Architect'}</strong></section>
             </div>
           </div>
         </>}
-      </aside>
+      </aside>}
     </div>
-    <footer className="ontology-footer"><span>{status?.model_profile}</span><span title={status?.content_sha256}>Package {status?.content_sha256?.slice(0, 12)}</span><span>{status?.backend === 'immutable_package' ? '固定包运行' : status?.backend}</span><span>{status?.projection?.sparql_endpoint ? 'SPARQL ready' : 'RDF package ready'}</span></footer>
+    {showTechnicalStatus && <footer className="ontology-footer"><span>{status?.model_profile}</span><span title={status?.content_sha256}>Package {status?.content_sha256?.slice(0, 12)}</span><span>{status?.backend === 'immutable_package' ? '固定包运行' : status?.backend}</span><span>{status?.projection?.sparql_endpoint ? 'SPARQL ready' : 'RDF package ready'}</span></footer>}
   </div>;
 }

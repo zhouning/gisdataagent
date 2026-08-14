@@ -142,6 +142,7 @@ _ITEMS = (
     + _items("analysis", "world_models", [
         ("worldmodel", "世界模型", "globe"), ("worldmodel_v11", "世界模型v1.1 · Paper58（阿布扎比）", "globe"),
         ("worldmodel_v2", "世界模型v2", "globe"), ("worldmodel_v21", "世界模型v2.1", "globe"),
+        ("irrigation_demo", "灌区世界模型", "droplets"),
         ("twm", "TWM", "shield"), ("uwm_livability", "城市宜居性分析（UWM）", "brain"),
         ("uwm_multistage", "UWM多阶段城市干预规划", "git-branch"),
     ])

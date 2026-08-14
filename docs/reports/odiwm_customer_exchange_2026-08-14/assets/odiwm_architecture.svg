@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1400" viewBox="0 0 1400 1400">
+  <defs>
+    <style>
+      .title { font: 700 28px "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #172033; }
+      .label { font: 700 20px "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #172033; }
+      .body { font: 16px "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #405064; }
+      .small { font: 14px "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #5d6b7c; }
+      .arrow { stroke: #66788f; stroke-width: 3; fill: none; marker-end: url(#arrow); }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#66788f"/>
+    </marker>
+  </defs>
+  <g transform="translate(0 290)">
+  <rect width="1400" height="820" fill="#f6f8fa"/>
+  <text x="700" y="50" text-anchor="middle" class="title">本体驱动的灌区世界模型：主线架构</text>
+
+  <rect x="70" y="90" width="1260" height="92" rx="8" fill="#ffffff" stroke="#9aa8b8" stroke-width="2"/>
+  <text x="105" y="128" class="label">多源事实与业务约束</text>
+  <text x="105" y="158" class="body">GIS拓扑 · 工程台账 · 水位流量 · 闸泵状态 · 田块土壤作物 · 气象供水预报 · 水权配额与调度规程</text>
+
+  <path d="M700 182 L700 214" class="arrow"/>
+  <rect x="70" y="215" width="1260" height="104" rx="8" fill="#e9f4f1" stroke="#2d7f70" stroke-width="2"/>
+  <text x="105" y="252" class="label">语义与地理计算边界</text>
+  <text x="105" y="282" class="body">版本化灌区本体 · 稳定对象ID · 权威Object+Link · State / Observation / Action / Forcing / Evidence合同</text>
+  <text x="105" y="307" class="small">本体确定“是什么、连到哪里、允许做什么”；不替代水动力计算，也不消除不确定性</text>
+
+  <path d="M700 319 L700 351" class="arrow"/>
+  <rect x="70" y="352" width="1260" height="128" rx="8" fill="#eaf0f7" stroke="#5077a5" stroke-width="2"/>
+  <text x="105" y="389" class="label">可信推演主线</text>
+  <text x="105" y="420" class="body">状态估计 → 守恒水量账 → 渠系水动力 / 土壤水分 / 作物需水模型 → 动作条件多情景推演</text>
+  <text x="105" y="451" class="small">先使用经校准的专业模型和透明基线；学习型代理只在精度、守恒、稳定性和速度门通过后晋级</text>
+
+  <path d="M700 480 L700 512" class="arrow"/>
+  <rect x="70" y="513" width="1260" height="112" rx="8" fill="#fff4df" stroke="#b77a1f" stroke-width="2"/>
+  <text x="105" y="550" class="label">规划与Proposal</text>
+  <text x="105" y="581" class="body">规则 / 网络流 / MILP / MPC / 适用的搜索方法 → 可行候选集、结果向量、风险、不确定性与证据</text>
+  <text x="105" y="607" class="small">连续滚动控制优先比较MPC；离散组合调度优先比较MILP或约束搜索；不预设MCTS最优</text>
+
+  <path d="M700 625 L700 657" class="arrow"/>
+  <rect x="70" y="658" width="1260" height="102" rx="8" fill="#f7ecec" stroke="#9c5151" stroke-width="2"/>
+  <text x="105" y="695" class="label">证据门与人工责任</text>
+  <text x="105" y="726" class="body">语义校验 · 物理账 · 预测与适用性 · 硬约束 · 人工审批 · 有效期 · 回执对账 · 全链路审计</text>
+  <text x="105" y="750" class="small">首期只生成Proposal，不直接连接生产控制设备</text>
+
+  <rect x="1030" y="371" width="270" height="86" rx="6" fill="#ffffff" stroke="#6e82a0" stroke-dasharray="8 6" stroke-width="2"/>
+  <text x="1165" y="401" text-anchor="middle" class="label">可选研究支线</text>
+  <text x="1165" y="430" text-anchor="middle" class="small">降阶 / 图时空 / 神经算子</text>
+  <text x="1165" y="450" text-anchor="middle" class="small">JEPA仅按数据条件触发</text>
+  </g>
+</svg>

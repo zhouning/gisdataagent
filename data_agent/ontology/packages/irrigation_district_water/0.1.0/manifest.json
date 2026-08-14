@@ -1,0 +1,219 @@
+{
+  "artifacts": {
+    "competency_report": {
+      "bytes": 144,
+      "media_type": "application/json",
+      "path": "competency-report.json",
+      "record_count": null,
+      "sha256": "b8ec94ed518bbc260b1f0fe1f96e80a8946f6bd18a3c0df7e80e506901ed3a25"
+    },
+    "completeness_report": {
+      "bytes": 144,
+      "media_type": "application/json",
+      "path": "completeness-report.json",
+      "record_count": null,
+      "sha256": "b8ec94ed518bbc260b1f0fe1f96e80a8946f6bd18a3c0df7e80e506901ed3a25"
+    },
+    "concepts": {
+      "bytes": 3358,
+      "media_type": "application/x-ndjson+gzip",
+      "path": "concepts.jsonl.gz",
+      "record_count": 44,
+      "sha256": "84ebdf8121f74447afb7296f9dcb526d79217c36cb54102151956181c315cec1"
+    },
+    "jsonld_context": {
+      "bytes": 218,
+      "media_type": "application/ld+json",
+      "path": "context.jsonld",
+      "record_count": null,
+      "sha256": "404901ebbf9c717c0847ac58ee54ca90f1055b17ebb977100a316ed8e19dbb88"
+    },
+    "mappings": {
+      "bytes": 20,
+      "media_type": "application/x-ndjson+gzip",
+      "path": "mappings.jsonl.gz",
+      "record_count": 0,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+    },
+    "properties": {
+      "bytes": 1680,
+      "media_type": "application/x-ndjson+gzip",
+      "path": "properties.jsonl.gz",
+      "record_count": 30,
+      "sha256": "4f82e883f38226807ff73ce193207b8b01596f058d0f9fd23fd5d8a7e0c41116"
+    },
+    "rdf": {
+      "bytes": 4178,
+      "media_type": "application/gzip",
+      "path": "ontology.ttl.gz",
+      "record_count": null,
+      "sha256": "666f587ad3f9384c9e8fa194d4c3028a50ee1927f520c03724aa5c66b7ff3392"
+    },
+    "relations": {
+      "bytes": 2078,
+      "media_type": "application/x-ndjson+gzip",
+      "path": "relations.jsonl.gz",
+      "record_count": 75,
+      "sha256": "01d3ad75103a720094f60552c749e16bdc27d9c0e80310d03911c704d3958a31"
+    },
+    "review_dispositions": {
+      "bytes": 20,
+      "media_type": "application/x-ndjson+gzip",
+      "path": "review-dispositions.jsonl.gz",
+      "record_count": 0,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+    },
+    "semantic_quality_report": {
+      "bytes": 144,
+      "media_type": "application/json",
+      "path": "semantic-quality-report.json",
+      "record_count": null,
+      "sha256": "b8ec94ed518bbc260b1f0fe1f96e80a8946f6bd18a3c0df7e80e506901ed3a25"
+    },
+    "shacl": {
+      "bytes": 558,
+      "media_type": "text/turtle",
+      "path": "shapes.ttl",
+      "record_count": null,
+      "sha256": "b967fc17a60cbb967dbcfc289014856b5676d44a33112c03fc8312b37d61c821"
+    },
+    "sources": {
+      "bytes": 340,
+      "media_type": "application/x-ndjson+gzip",
+      "path": "sources.jsonl.gz",
+      "record_count": 1,
+      "sha256": "0e16c0b733840c44f70e3e90375ae937a49141b25d44120d106a44f52694c656"
+    },
+    "validation": {
+      "bytes": 275,
+      "media_type": "application/json",
+      "path": "validation-report.json",
+      "record_count": null,
+      "sha256": "cf7e2fac40aaba088b4ccf38a0404245ee667b0484fbc2d21ed2ba3c161288b6"
+    }
+  },
+  "compatibility": {
+    "authority_store": "PostgreSQL gda_ontology schema",
+    "fallback": "hash-verified immutable package",
+    "lifecycle_status": "draft_pending_domain_review",
+    "minimum_runtime_contract": "gda-ontology-package-v1"
+  },
+  "content_sha256": "3c23177ceac81ad736e9db46bf7379ab6e39e2497015e94efc2bf7d38c2d2a24",
+  "description": "灌区水源、渠系、观测、过程、行动、约束与证据的候选领域本体；待水利领域专家和项目数据审定。",
+  "domain_stats": [
+    {
+      "concept_count": 5,
+      "confirmed_mapping_count": 0,
+      "domain_class_count": 4,
+      "domain_id": "irr_system",
+      "ea_schema_count": 0,
+      "label": "灌区系统与管理单元",
+      "mapping_count": 0,
+      "property_count": 4,
+      "standard_feature_count": 0,
+      "strict_coverage": 0.0
+    },
+    {
+      "concept_count": 9,
+      "confirmed_mapping_count": 0,
+      "domain_class_count": 8,
+      "domain_id": "irr_network",
+      "ea_schema_count": 0,
+      "label": "水源与输配水网络",
+      "mapping_count": 0,
+      "property_count": 9,
+      "standard_feature_count": 0,
+      "strict_coverage": 0.0
+    },
+    {
+      "concept_count": 9,
+      "confirmed_mapping_count": 0,
+      "domain_class_count": 8,
+      "domain_id": "irr_observation",
+      "ea_schema_count": 0,
+      "label": "监测、状态与需水",
+      "mapping_count": 0,
+      "property_count": 6,
+      "standard_feature_count": 0,
+      "strict_coverage": 0.0
+    },
+    {
+      "concept_count": 6,
+      "confirmed_mapping_count": 0,
+      "domain_class_count": 5,
+      "domain_id": "irr_process",
+      "ea_schema_count": 0,
+      "label": "水文水力与农业过程",
+      "mapping_count": 0,
+      "property_count": 0,
+      "standard_feature_count": 0,
+      "strict_coverage": 0.0
+    },
+    {
+      "concept_count": 7,
+      "confirmed_mapping_count": 0,
+      "domain_class_count": 6,
+      "domain_id": "irr_operation",
+      "ea_schema_count": 0,
+      "label": "调度行动与方案",
+      "mapping_count": 0,
+      "property_count": 3,
+      "standard_feature_count": 0,
+      "strict_coverage": 0.0
+    },
+    {
+      "concept_count": 8,
+      "confirmed_mapping_count": 0,
+      "domain_class_count": 7,
+      "domain_id": "irr_governance",
+      "ea_schema_count": 0,
+      "label": "约束、证据与审计",
+      "mapping_count": 0,
+      "property_count": 8,
+      "standard_feature_count": 0,
+      "strict_coverage": 0.0
+    }
+  ],
+  "generated_at": "2026-08-14T08:30:00Z",
+  "model_profile": "owl2-rl-bounded-candidate",
+  "namespace_uri": "https://ontology.gis-data-agent.local/water/irrigation/",
+  "ontology_key": "irrigation-district-water",
+  "ontology_version_id": "530cd9cb-1520-5fea-be51-64c90a8aa3f7",
+  "package_format": "gda-ontology-package-v1",
+  "package_id": "irrigation-district-water:0.1.0:3c23177ceac81ad7",
+  "semantic_version": "0.1.0",
+  "source_fingerprint": "aca9813339ba33b982285248f13cca3fa3984a0d03d5329ef12e47818bc23f63",
+  "stats": {
+    "concept_count": 44,
+    "domain_class_count": 38,
+    "mapping_count": 0,
+    "property_count": 30,
+    "rdf_triple_count": 416,
+    "relation_count": 75,
+    "schema_artifact_count": 0,
+    "source_count": 1,
+    "validation_issue_count": 0
+  },
+  "title": "灌区与水利工程本体",
+  "validation_summary": {
+    "conforms": true,
+    "issue_count": 0,
+    "issues": [],
+    "lifecycle_status": "draft_pending_domain_review",
+    "report_text": "Validation Report\nConforms: True\n",
+    "severity_counts": {},
+    "shacl_conforms": true,
+    "validators": [
+      "irrigation-candidate-structure-validator-v1",
+      "pyshacl-meta-validator"
+    ]
+  },
+  "vocabularies": [
+    "RDF 1.1",
+    "RDFS",
+    "OWL 2 RL bounded profile",
+    "SKOS",
+    "SHACL",
+    "GeoSPARQL vocabulary"
+  ]
+}

@@ -4366,6 +4366,7 @@ def get_frontend_api_routes():
     from .api.world_model_v11_routes import get_world_model_v11_routes
     from .api.world_model_v2_routes import get_world_model_v2_routes
     from .api.world_model_v21_routes import get_world_model_v21_routes
+    from .api.irrigation_world_model_routes import get_irrigation_world_model_routes
     from .api.territory_world_model_routes import get_territory_world_model_routes
     from .api.uwm_traditional_livability_routes import get_uwm_traditional_livability_routes
     from .api.uwm_traditional_mobility_routes import get_uwm_traditional_mobility_routes
@@ -4428,6 +4429,7 @@ def get_frontend_api_routes():
     from .api.catalog_lifecycle_routes import get_catalog_lifecycle_routes
     from .api.map_publication_routes import get_map_publication_routes
     from .api.ontology_routes import get_ontology_routes
+    from .api.ontology_draft_routes import get_ontology_draft_routes
     from .api.ontology_demo_routes import get_ontology_demo_routes
     from .api.offline_ingest_routes import get_offline_ingest_routes
 
@@ -4440,6 +4442,7 @@ def get_frontend_api_routes():
         *get_catalog_lifecycle_routes(),
         *get_map_publication_routes(),
         *get_ontology_routes(),
+        *get_ontology_draft_routes(),
         *get_ontology_demo_routes(),
         # Windows/isolated-network file ingest (resumable chunks, local scans,
         # durable run manifests and diagnostic bundles).
@@ -4587,6 +4590,8 @@ def get_frontend_api_routes():
         *get_world_model_v2_routes(),
         # World Model v2.1 (Paper9 arcgis-farmland-mpc Tool 4)
         *get_world_model_v21_routes(),
+        # Ontology-grounded irrigation scenario and Proposal workflow
+        *get_irrigation_world_model_routes(),
         # Territory World Model (TWM)
         *get_territory_world_model_routes(),
         # UWM traditional static livability analysis
