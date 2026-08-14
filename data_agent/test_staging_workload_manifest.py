@@ -243,6 +243,10 @@ def test_preflight_uses_release_image_without_api_token_or_schema_authority():
         "--profile",
         "staging",
     ]
+    assert container["env"][0] == {
+        "name": "PYTHONWARNINGS",
+        "value": "ignore::SyntaxWarning",
+    }
     rendered = yaml.safe_dump(document)
     assert "migration_runner" not in rendered
     assert "POSTGRES_ADMIN_PASSWORD" in rendered
