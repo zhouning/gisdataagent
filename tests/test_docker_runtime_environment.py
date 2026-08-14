@@ -41,3 +41,12 @@ def test_non_root_runtime_precreates_writable_env_and_matplotlib_cache() -> None
     assert "install -d -o agent -g agent /app/.cache/matplotlib" in dockerfile
     assert "/app/.files" in dockerfile
     assert "ENV MPLCONFIGDIR=/app/.cache/matplotlib" in dockerfile
+
+
+def test_non_root_runtime_precreates_chainlit_markdown_file() -> None:
+    dockerfile = (REPO_ROOT / "Dockerfile").read_text(encoding="utf-8")
+
+    assert (
+        "COPY --chown=agent:agent --chmod=0644 chainlit.md /app/chainlit.md"
+        in dockerfile
+    )
