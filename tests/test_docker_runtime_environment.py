@@ -39,4 +39,5 @@ def test_non_root_runtime_precreates_writable_env_and_matplotlib_cache() -> None
 
     assert runtime_dirs > copy_sources
     assert "install -d -o agent -g agent /app/.cache/matplotlib" in dockerfile
+    assert "/app/.files" in dockerfile
     assert "ENV MPLCONFIGDIR=/app/.cache/matplotlib" in dockerfile
