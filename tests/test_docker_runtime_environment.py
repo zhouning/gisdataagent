@@ -17,3 +17,11 @@ def test_runtime_home_does_not_redirect_the_pip_build_cache_into_app() -> None:
     assert dockerfile.index("ENV HOME=/app") > dockerfile.index(
         "pip install -r requirements.txt"
     )
+
+
+def test_runtime_user_is_numeric_for_kubernetes_run_as_non_root() -> None:
+    dockerfile = (REPO_ROOT / "Dockerfile").read_text(encoding="utf-8")
+
+    assert "groupadd --gid 10001 agent" in dockerfile
+    assert "useradd --uid 10001 --gid agent" in dockerfile
+    assert "USER 10001:10001" in dockerfile
