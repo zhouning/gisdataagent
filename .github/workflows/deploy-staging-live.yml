@@ -62,6 +62,17 @@ jobs:
       GDA_STAGING_IMAGE_PULL_SECRET: ${{ vars.GDA_STAGING_IMAGE_PULL_SECRET }}
 
     steps:
+      - name: Initialize isolated live evidence workspace
+        run: |
+          set -euo pipefail
+          EVIDENCE_ROOT="${GITHUB_WORKSPACE:?}/staging-live"
+          if [[ "$EVIDENCE_ROOT" != "$(pwd -P)/staging-live" ]]; then
+            echo "refusing to reset an unexpected evidence path" >&2
+            exit 1
+          fi
+          rm -rf -- "$EVIDENCE_ROOT"
+          mkdir -p -- "$EVIDENCE_ROOT"
+
       - name: Download the exact protected release bundle
         uses: actions/download-artifact@v4
         with:
@@ -82,7 +93,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          mkdir -p staging-live
           RELEASE=staging-release-input/staging-release-evidence/release.json
           gh attestation verify "$RELEASE" \
             --repo "$GITHUB_REPOSITORY" \
@@ -300,6 +310,29 @@ jobs:
           kubectl apply -f staging-live/application.yaml
           kubectl -n "$GDA_STAGING_NAMESPACE" rollout status \
             deployment/gis-agent-app --timeout=10m
+
+      - name: Wait for replica digest and EndpointSlice convergence
+        env:
+          PYTHONPATH: ${{ github.workspace }}/protected-source
+        run: |
+          set -euo pipefail
+          CONVERGED=false
+          for attempt in {1..120}; do
+            if python -m data_agent.staging_live_evidence check-rollout \
+              --release-evidence staging-release-input/staging-release-evidence/release.json \
+              --namespace "$GDA_STAGING_NAMESPACE" \
+              --output staging-live/rollout-convergence.json; then
+              CONVERGED=true
+              break
+            fi
+            if [[ "$attempt" -lt 120 ]]; then
+              sleep 5
+            fi
+          done
+          if [[ "$CONVERGED" != "true" ]]; then
+            echo "rollout replicas, image digest, and EndpointSlices did not converge" >&2
+            exit 1
+          fi
 
       - name: Collect allowlisted live observation
         env:

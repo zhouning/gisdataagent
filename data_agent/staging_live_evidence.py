@@ -29,6 +29,7 @@ from .staging_release_evidence import (
 COLLECTION_SCHEMA = "gda.staging_live_collection.v1"
 LIVE_EVIDENCE_SCHEMA = "gda.staging_live_evidence.v1"
 GOLDEN_SLICE_SCHEMA = "gda.staging_live_golden_slice.v1"
+ROLLOUT_CONVERGENCE_SCHEMA = "gda.staging_rollout_convergence.v1"
 PLATFORM_TRUTH_SCHEMA = "gda.platform_truth.v1"
 NAMESPACE = "gis-agent-staging"
 DEVELOPMENT_NAMESPACE = "gis-agent"
@@ -600,6 +601,206 @@ def _image_digest(value: Any) -> str | None:
         return None
     match = IMAGE_DIGEST_PATTERN.search(value)
     return f"sha256:{match.group(1)}" if match else None
+
+
+def build_rollout_convergence_observation(
+    deployment: Mapping[str, Any],
+    pods: Mapping[str, Any],
+    endpoint_slices: Mapping[str, Any],
+    *,
+    expected_image: str,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """Build an allowlisted, fail-closed rollout convergence observation."""
+    expected_digest = _image_digest(expected_image)
+    if (
+        not IMMUTABLE_IMAGE_PATTERN.fullmatch(expected_image)
+        or expected_digest is None
+    ):
+        raise StagingLiveEvidenceError(
+            "expected rollout image must use an immutable registry digest"
+        )
+
+    errors: list[str] = []
+    metadata = _metadata(deployment)
+    spec = _mapping(deployment.get("spec"))
+    status = _mapping(deployment.get("status"))
+    template = _mapping(spec.get("template"))
+    template_spec = _mapping(template.get("spec"))
+    app = _named(template_spec.get("containers"), APP_CONTAINER)
+    replicas = spec.get("replicas")
+
+    if replicas != 1 or isinstance(replicas, bool):
+        errors.append("rollout convergence requires exactly one replica")
+    if metadata.get("generation") != status.get("observedGeneration"):
+        errors.append(
+            "Deployment controller has not observed the current generation"
+        )
+    for field in (
+        "replicas",
+        "updatedReplicas",
+        "readyReplicas",
+        "availableReplicas",
+    ):
+        if status.get(field) != replicas:
+            errors.append(f"Deployment status {field} has not converged")
+    if status.get("unavailableReplicas") not in (None, 0):
+        errors.append("Deployment still has unavailable replicas")
+    if app.get("image") != expected_image:
+        errors.append(
+            "Deployment template image does not match the attested release"
+        )
+
+    pod_items = _items(pods.get("items"))
+    if replicas != 1 or isinstance(replicas, bool) or len(pod_items) != replicas:
+        errors.append(
+            "selected Pod count has not converged to the requested replicas"
+        )
+
+    ready_pod_uids: set[str] = set()
+    pod_uids: list[str] = []
+    for pod in pod_items:
+        pod_metadata = _metadata(pod)
+        pod_spec = _mapping(pod.get("spec"))
+        pod_status = _mapping(pod.get("status"))
+        pod_container = _named(pod_spec.get("containers"), APP_CONTAINER)
+        container_status = _named(
+            pod_status.get("containerStatuses"), APP_CONTAINER
+        )
+        name = str(pod_metadata.get("name") or "<unknown>")
+        uid = pod_metadata.get("uid")
+        if isinstance(uid, str):
+            pod_uids.append(uid)
+        else:
+            errors.append(f"Pod {name} has no UID")
+        if pod_metadata.get("deletionTimestamp") is not None:
+            errors.append(f"Pod {name} is still terminating")
+        if pod_status.get("phase") != "Running" or container_status.get(
+            "ready"
+        ) is not True:
+            errors.append(f"Pod {name} is not Running and ready")
+        elif isinstance(uid, str):
+            ready_pod_uids.add(uid)
+        if pod_container.get("image") != expected_image:
+            errors.append(
+                f"Pod {name} image does not match the attested release"
+            )
+        if _image_digest(container_status.get("imageID")) != expected_digest:
+            errors.append(f"Pod {name} runtime image ID has not converged")
+
+    ready_endpoint_uids: set[str] = set()
+    invalid_ready_endpoints = 0
+    for endpoint_slice in _items(endpoint_slices.get("items")):
+        for endpoint in _items(endpoint_slice.get("endpoints")):
+            conditions = _mapping(endpoint.get("conditions"))
+            if conditions.get("ready") is not True:
+                continue
+            target = _mapping(endpoint.get("targetRef"))
+            uid = target.get("uid")
+            if target.get("kind") == "Pod" and isinstance(uid, str):
+                ready_endpoint_uids.add(uid)
+            else:
+                invalid_ready_endpoints += 1
+    if invalid_ready_endpoints:
+        errors.append("ready EndpointSlice targets must identify Pods")
+    if ready_endpoint_uids != ready_pod_uids:
+        errors.append("ready EndpointSlice Pod UIDs have not converged")
+
+    current = now or datetime.now(UTC)
+    if current.tzinfo is None or current.utcoffset() is None:
+        raise StagingLiveEvidenceError(
+            "rollout convergence time must be timezone-aware"
+        )
+    return {
+        "schema": ROLLOUT_CONVERGENCE_SCHEMA,
+        "observed_at": current.isoformat(),
+        "status": "converged" if not errors else "waiting",
+        "deployment_uid": metadata.get("uid"),
+        "generation": metadata.get("generation"),
+        "observed_generation": status.get("observedGeneration"),
+        "requested_replicas": replicas,
+        "status_replicas": status.get("replicas"),
+        "updated_replicas": status.get("updatedReplicas"),
+        "ready_replicas": status.get("readyReplicas"),
+        "available_replicas": status.get("availableReplicas"),
+        "expected_image": expected_image,
+        "expected_image_digest": expected_digest,
+        "pod_uids": sorted(pod_uids),
+        "ready_endpoint_pod_uids": sorted(ready_endpoint_uids),
+        "errors": errors,
+    }
+
+
+def collect_rollout_convergence(
+    *,
+    expected_image: str,
+    namespace: str = NAMESPACE,
+    deployment_name: str = DEPLOYMENT_NAME,
+    service_name: str = DEPLOYMENT_NAME,
+    kubectl: str = "kubectl",
+    now: datetime | None = None,
+    run: CommandRunner = _run_command,
+) -> dict[str, Any]:
+    """Observe whether rollout replicas, digests, and endpoints agree."""
+    for label, value in (
+        ("namespace", namespace),
+        ("deployment", deployment_name),
+        ("service", service_name),
+    ):
+        if not DNS_LABEL_PATTERN.fullmatch(value):
+            raise StagingLiveEvidenceError(f"invalid Kubernetes {label} name")
+
+    deployment = _kubectl_json(
+        kubectl,
+        [
+            "-n",
+            namespace,
+            "get",
+            "deployment",
+            deployment_name,
+            "-o",
+            "json",
+        ],
+        label="application Deployment",
+        run=run,
+    )
+    pods = _kubectl_json(
+        kubectl,
+        [
+            "-n",
+            namespace,
+            "get",
+            "pods",
+            "-l",
+            f"app.kubernetes.io/name={deployment_name}",
+            "-o",
+            "json",
+        ],
+        label="application Pods",
+        run=run,
+    )
+    endpoint_slices = _kubectl_json(
+        kubectl,
+        [
+            "-n",
+            namespace,
+            "get",
+            "endpointslices",
+            "-l",
+            f"kubernetes.io/service-name={service_name}",
+            "-o",
+            "json",
+        ],
+        label="application EndpointSlices",
+        run=run,
+    )
+    return build_rollout_convergence_observation(
+        deployment,
+        pods,
+        endpoint_slices,
+        expected_image=expected_image,
+        now=now,
+    )
 
 
 def _validate_candidate(candidate: Mapping[str, Any], errors: list[str]) -> None:
@@ -1301,6 +1502,14 @@ def main(argv: list[str] | None = None) -> int:
     collect.add_argument("--kubectl", default="kubectl")
     collect.add_argument("--output", type=Path)
 
+    convergence = subparsers.add_parser("check-rollout")
+    convergence.add_argument("--release-evidence", type=Path, required=True)
+    convergence.add_argument("--namespace", default=NAMESPACE)
+    convergence.add_argument("--deployment", default=DEPLOYMENT_NAME)
+    convergence.add_argument("--service", default=DEPLOYMENT_NAME)
+    convergence.add_argument("--kubectl", default="kubectl")
+    convergence.add_argument("--output", type=Path)
+
     validate = subparsers.add_parser("validate")
     validate.add_argument("--candidate-evidence", type=Path, required=True)
     validate.add_argument("--release-evidence", type=Path, required=True)
@@ -1327,6 +1536,18 @@ def main(argv: list[str] | None = None) -> int:
             )
             _write_report(report, args.output)
             return 0
+
+        if args.command == "check-rollout":
+            release = _load_json_object(args.release_evidence)
+            report = collect_rollout_convergence(
+                expected_image=str(release.get("image") or ""),
+                namespace=args.namespace,
+                deployment_name=args.deployment,
+                service_name=args.service,
+                kubectl=args.kubectl,
+            )
+            _write_report(report, args.output)
+            return 0 if report["status"] == "converged" else 1
 
         golden_slice = (
             _load_json_object(args.golden_slice) if args.golden_slice else None
@@ -1356,7 +1577,11 @@ def main(argv: list[str] | None = None) -> int:
             else type(exc).__name__
         )
         report = {
-            "schema": LIVE_EVIDENCE_SCHEMA,
+            "schema": (
+                ROLLOUT_CONVERGENCE_SCHEMA
+                if args.command == "check-rollout"
+                else LIVE_EVIDENCE_SCHEMA
+            ),
             "status": "error",
             "live_staging_verified": False,
             "promotion_authority_verified": False,

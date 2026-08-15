@@ -43,6 +43,15 @@ def test_live_staging_workflow_is_protected_staged_and_fail_closed():
     assert "head_repository.full_name == github.repository" in job["if"]
     assert "github.event.workflow_run.head_branch == 'main'" in job["if"]
 
+    initialize = steps[named["Initialize isolated live evidence workspace"]]
+    assert named["Initialize isolated live evidence workspace"] < named[
+        "Download the exact protected release bundle"
+    ]
+    assert '${GITHUB_WORKSPACE:?}/staging-live' in initialize["run"]
+    assert '"$(pwd -P)/staging-live"' in initialize["run"]
+    assert 'rm -rf -- "$EVIDENCE_ROOT"' in initialize["run"]
+    assert 'mkdir -p -- "$EVIDENCE_ROOT"' in initialize["run"]
+
     download = steps[named["Download the exact protected release bundle"]]
     assert download["uses"] == "actions/download-artifact@v4"
     assert download["with"]["name"] == "staging-release-evidence"
@@ -95,6 +104,7 @@ def test_live_staging_workflow_is_protected_staged_and_fail_closed():
         < named["Render migration and application phases"]
         < named["Apply the sole migration authority and wait for completion"]
         < named["Apply immutable application workload and wait for rollout"]
+        < named["Wait for replica digest and EndpointSlice convergence"]
         < named["Collect allowlisted live observation"]
         < named["Validate live evidence without claiming a golden slice"]
     )
@@ -103,6 +113,17 @@ def test_live_staging_workflow_is_protected_staged_and_fail_closed():
     ]
     assert "--for=condition=complete --timeout=20m" in preflight
     assert "--timeout=5m" not in preflight
+
+    convergence = steps[
+        named["Wait for replica digest and EndpointSlice convergence"]
+    ]["run"]
+    assert "data_agent.staging_live_evidence check-rollout" in convergence
+    assert "--release-evidence" in convergence
+    assert "--namespace \"$GDA_STAGING_NAMESPACE\"" in convergence
+    assert "--output staging-live/rollout-convergence.json" in convergence
+    assert "for attempt in {1..120}" in convergence
+    assert "sleep 5" in convergence
+    assert "did not converge" in convergence
 
     diagnostics = steps[named["Collect Kubernetes failure diagnostics"]]
     assert (
