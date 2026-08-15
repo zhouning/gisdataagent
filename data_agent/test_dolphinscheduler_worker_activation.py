@@ -39,7 +39,12 @@ def _resource(documents: list[dict], kind: str, name: str) -> dict:
     )
 
 
-def _write_activation_inputs(tmp_path, *, observed_at=NOW):
+def _write_activation_inputs(
+    tmp_path,
+    *,
+    observed_at=NOW,
+    namespace="gis-agent",
+):
     documents = _documents(DEFAULT_MANIFEST)
     documents.extend(_documents(DEFAULT_NETWORK_POLICY))
     deployment = _resource(documents, "Deployment", DEPLOYMENT_NAME)
@@ -47,6 +52,10 @@ def _write_activation_inputs(tmp_path, *, observed_at=NOW):
     pod = deployment["spec"]["template"]["spec"]
     for container in [*pod["containers"], *pod["initContainers"]]:
         container["image"] = IMAGE
+    for document in documents:
+        metadata = document.get("metadata") or {}
+        if "namespace" in metadata:
+            metadata["namespace"] = namespace
     manifest = tmp_path / "rendered-staging.yaml"
     manifest.write_text(
         yaml.safe_dump_all(documents, sort_keys=False),
@@ -58,7 +67,7 @@ def _write_activation_inputs(tmp_path, *, observed_at=NOW):
         "kind": "ConfigMap",
         "metadata": {
             "name": CONFIG_NAME,
-            "namespace": "gis-agent",
+            "namespace": namespace,
             "uid": "00000000-0000-4000-8000-000000000101",
             "resourceVersion": "18421",
         },
@@ -81,7 +90,7 @@ def _write_activation_inputs(tmp_path, *, observed_at=NOW):
     attestation = {
         "schema": SECRET_ATTESTATION_SCHEMA,
         "environment": "staging",
-        "namespace": "gis-agent",
+        "namespace": namespace,
         "secret_name": SECRET_NAME,
         "keys": ["access-token", "database-url"],
         "resource_uid": "00000000-0000-4000-8000-000000000102",
@@ -113,6 +122,8 @@ def test_staging_activation_preflight_is_redacted_and_does_not_claim_deployment(
     assert report["activation_ready"] is True
     assert report["deployed"] is False
     assert report["live_cluster_verified"] is False
+    assert report["promotion_authority_verified"] is False
+    assert report["production_promotion_allowed"] is False
     assert report["requested_replicas"] == 1
     assert report["image_digest"] == IMAGE
     assert len(report["config_fingerprint"]) == 64
@@ -261,3 +272,69 @@ def test_activation_requires_integer_single_replica(tmp_path, replicas):
 
     assert report["activation_ready"] is False
     assert any("exactly 1 replica" in error for error in report["errors"])
+
+
+def test_activation_binds_real_staging_namespace_and_exact_config_keys(tmp_path):
+    namespace = "gis-agent-staging"
+    manifest, config_snapshot, attestation = _write_activation_inputs(
+        tmp_path,
+        namespace=namespace,
+    )
+
+    report = build_activation_report(
+        manifest,
+        config_snapshot,
+        attestation,
+        environment="staging",
+        expected_namespace=namespace,
+        now=NOW,
+    )
+
+    assert report["activation_ready"] is True
+    assert report["namespace"] == namespace
+
+    config_map = _resource(_documents(config_snapshot), "ConfigMap", CONFIG_NAME)
+    config_map["data"]["unexpected-token-hint"] = "not-a-secret"
+    config_snapshot.write_text(
+        yaml.safe_dump(config_map, sort_keys=False),
+        encoding="utf-8",
+    )
+    blocked = build_activation_report(
+        manifest,
+        config_snapshot,
+        attestation,
+        environment="staging",
+        expected_namespace=namespace,
+        now=NOW,
+    )
+
+    assert blocked["activation_ready"] is False
+    assert (
+        "staging ConfigMap must contain exactly the required non-secret keys"
+        in blocked["errors"]
+    )
+
+
+def test_activation_rejects_cross_namespace_external_attestation(tmp_path):
+    manifest, config_snapshot, attestation_path = _write_activation_inputs(
+        tmp_path,
+        namespace="gis-agent-staging",
+    )
+    attestation = json.loads(attestation_path.read_text(encoding="utf-8"))
+    attestation["namespace"] = "gis-agent"
+    attestation_path.write_text(json.dumps(attestation), encoding="utf-8")
+
+    report = build_activation_report(
+        manifest,
+        config_snapshot,
+        attestation_path,
+        environment="staging",
+        expected_namespace="gis-agent-staging",
+        now=NOW,
+    )
+
+    assert report["activation_ready"] is False
+    assert (
+        "secret attestation namespace must be gis-agent-staging"
+        in report["errors"]
+    )

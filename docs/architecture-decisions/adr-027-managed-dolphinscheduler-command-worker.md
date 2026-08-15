@@ -37,7 +37,8 @@ staging 激活还比较了三种证据路径：提交带占位配置/Secret 的 
 7. Kustomize base 登记默认 `replicas: 0` 的 Deployment。只有环境 overlay 配置外部 ConfigMap/Secret、固定镜像版本并显式扩容后才运行；Pod UID 生成唯一 worker ID，探针读取 status，PostgreSQL NetworkPolicy 只增加该 Pod selector，ServiceAccount 不挂载 Kubernetes API token，也没有 RBAC。
 8. Worker 不等待可能被 TTL 清理的 migration Job；数据库/schema 暂不可用时由既有 degraded/retry 语义恢复。基础 startup probe 为该恢复保留十分钟窗口。
 9. staging 首次扩容前必须通过离线 activation preflight：渲染清单只能请求一个副本，主容器/init container 使用同一不可变 image digest，ConfigMap 使用 HTTPS provider 和不同 workload/evaluator identity，并绑定 Kubernetes uid/resourceVersion；Secret 只以固定 key 名、uid、resourceVersion 和新鲜观测时间的脱敏 attestation 出现。preflight 不读取或输出 Secret 值，并固定返回 `deployed=false`、`live_cluster_verified=false`。
-10. 本 ADR 完成代码、默认关闭的部署模板和本地 preflight，不宣称 staging/production 部署、真实 IAM/OIDC、provider callback、独立 DolphinScheduler metadata PostgreSQL 或故障恢复 SLO 已完成。
+10. `.github/workflows/verify-staging-dolphinscheduler-worker.yml` 是独立的受保护 activation/readiness boundary：它只接收外部脱敏 ConfigMap/Secret attestation，验证 release-bound immutable image、namespace/cluster identity、live selector/ServiceAccount/Secret references 和 worker health；它不读取 Secret data，也不执行 apply、patch、scale 或 production promotion。缺失输入必须先产出 attested `blocked` evidence。
+11. 本 ADR 完成代码、默认关闭的部署模板、本地 preflight 和 workflow contract，不宣称 staging/production 部署、真实 IAM/OIDC、provider callback、独立 DolphinScheduler metadata PostgreSQL 或故障恢复 SLO 已完成。
 
 ## Consequences
 
@@ -62,6 +63,7 @@ staging 激活还比较了三种证据路径：提交带占位配置/Secret 的 
 - `platform_truth` runtime inventory 登记 worker 的 owner、耐久性、状态权威和代码证据，环境访问指纹显式更新；
 - deployment validator 结构化解析 Deployment、Kustomization 和 NetworkPolicy，固定零副本默认值、独立 Secret、0600 token 收敛、Pod UID、探针、无 API token/RBAC 和数据库网络入口；Kustomize base 已完成本地渲染；
 - activation preflight 复用 deployment validator，并以单副本、immutable digest、脱敏 ConfigMap fingerprint、新鲜 Secret key attestation 和无内嵌 Secret 作为 staging 扩容前 fail-closed 门；
+- protected staging worker workflow contract 已验证只读 observer、外部 attestation、release-bound manifest、selector/identity/health readiness 和 no-scale/promotion boundary；真实 ConfigMap、Secret、provider identity 和 worker rollout 仍待环境 provisioning；
 - staging/production 仍需补充真实 IAM/OIDC、唯一 worker ID、部署 status、lease 接管、重启 drain、callback 和告警 SLO 证据。
 
 ## Revisit Triggers
