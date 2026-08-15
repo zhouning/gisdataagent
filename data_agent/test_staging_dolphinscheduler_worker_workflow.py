@@ -29,7 +29,7 @@ def test_staging_worker_workflow_is_protected_read_only_and_fail_closed():
     assert (
         named["Download the exact protected deployment observation"]
         < named["Verify the protected deployment observation"]
-        < named["Check out the exact protected verifier revision"]
+        < named["Check out the protected worker verifier revision"]
         < named["Require protected read-only environment configuration"]
         < named["Prove observer identity and deny mutation or secret reads"]
         < named["Materialize external redacted activation inputs"]
@@ -50,6 +50,16 @@ def test_staging_worker_workflow_is_protected_read_only_and_fail_closed():
     assert "--expected-cluster-uid" in rendered
     assert "--expected-namespace-uid" in rendered
     assert "automatic_scale_allowed" in rendered
+
+    checkout = steps[named["Check out the protected worker verifier revision"]]
+    assert checkout["with"]["ref"] == "${{ github.sha }}"
+    assert checkout["with"]["path"] == "worker-verifier-source"
+    assert job["env"]["PYTHONPATH"] == (
+        "${{ github.workspace }}/worker-verifier-source"
+    )
+    assert checkout["with"]["ref"] != (
+        "${{ steps.release.outputs.verifier_revision }}"
+    )
 
     observer = steps[
         named["Prove observer identity and deny mutation or secret reads"]
