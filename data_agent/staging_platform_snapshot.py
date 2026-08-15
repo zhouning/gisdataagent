@@ -83,7 +83,7 @@ def staging_platform_snapshot_valid(snapshot: Mapping[str, Any]) -> bool:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--profile", choices=("staging",), default="staging")
+    parser.add_argument("--profile", choices=("staging",))
     parser.add_argument("--output", type=Path)
     args = parser.parse_args(argv)
     snapshot = project_staging_platform_snapshot(
