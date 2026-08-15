@@ -73,6 +73,7 @@ requirements-curated.txt
 docs/
 *.md
 !CLAUDE.md
+!chainlit.md
 *.zip
 generate_realistic_dirty_data.py
 import_shp_to_pg.py
