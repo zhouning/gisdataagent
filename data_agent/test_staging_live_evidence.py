@@ -262,6 +262,76 @@ def _collection(candidate: dict) -> dict:
     }
 
 
+def _raw_rollout_resources() -> tuple[dict, dict, dict]:
+    deployment = {
+        "metadata": {
+            "name": "gis-agent-app",
+            "uid": DEPLOYMENT_UID,
+            "generation": 3,
+            "annotations": {"internal.example/token": "must-never-appear"},
+        },
+        "spec": {
+            "replicas": 1,
+            "template": {
+                "spec": {
+                    "containers": [{"name": "app", "image": IMAGE}]
+                }
+            },
+        },
+        "status": {
+            "observedGeneration": 3,
+            "replicas": 1,
+            "updatedReplicas": 1,
+            "readyReplicas": 1,
+            "availableReplicas": 1,
+        },
+    }
+    pods = {
+        "items": [
+            {
+                "metadata": {"name": "gis-agent-app-new", "uid": POD_UID},
+                "spec": {
+                    "containers": [
+                        {
+                            "name": "app",
+                            "image": IMAGE,
+                            "env": [
+                                {
+                                    "name": "SECRET",
+                                    "value": "must-never-appear",
+                                }
+                            ],
+                        }
+                    ]
+                },
+                "status": {
+                    "phase": "Running",
+                    "containerStatuses": [
+                        {
+                            "name": "app",
+                            "imageID": "docker-pullable://" + IMAGE,
+                            "ready": True,
+                        }
+                    ],
+                },
+            }
+        ]
+    }
+    endpoint_slices = {
+        "items": [
+            {
+                "endpoints": [
+                    {
+                        "conditions": {"ready": True},
+                        "targetRef": {"kind": "Pod", "uid": POD_UID},
+                    }
+                ]
+            }
+        ]
+    }
+    return deployment, pods, endpoint_slices
+
+
 def _golden_slice() -> dict:
     golden = {
         "schema": staging_live_evidence.GOLDEN_SLICE_SCHEMA,
@@ -534,6 +604,106 @@ def test_live_image_must_match_the_attested_release_digest():
         for error in report["errors"]
     )
     assert report["production_promotion_allowed"] is False
+
+
+def test_rollout_convergence_waits_for_old_pod_and_endpoint_removal():
+    deployment, pods, endpoint_slices = _raw_rollout_resources()
+    old_pod_uid = "00000000-0000-4000-8000-000000000106"
+    pods["items"].append(
+        {
+            "metadata": {
+                "name": "gis-agent-app-old",
+                "uid": old_pod_uid,
+                "deletionTimestamp": NOW.isoformat(),
+            },
+            "spec": {
+                "containers": [
+                    {
+                        "name": "app",
+                        "image": (
+                            "registry.example.com/platform/"
+                            "gis-data-agent@sha256:" + "8" * 64
+                        ),
+                    }
+                ]
+            },
+            "status": {
+                "phase": "Running",
+                "containerStatuses": [
+                    {
+                        "name": "app",
+                        "imageID": "docker-pullable://sha256:" + "8" * 64,
+                        "ready": False,
+                    }
+                ],
+            },
+        }
+    )
+
+    report = staging_live_evidence.build_rollout_convergence_observation(
+        deployment,
+        pods,
+        endpoint_slices,
+        expected_image=IMAGE,
+        now=NOW,
+    )
+
+    assert report["status"] == "waiting"
+    rendered = "\n".join(report["errors"])
+    assert "Pod count has not converged" in rendered
+    assert "still terminating" in rendered
+    assert "runtime image ID has not converged" in rendered
+
+    pods["items"] = pods["items"][:1]
+    endpoint_slices["items"][0]["endpoints"][0]["targetRef"]["uid"] = (
+        old_pod_uid
+    )
+    report = staging_live_evidence.build_rollout_convergence_observation(
+        deployment,
+        pods,
+        endpoint_slices,
+        expected_image=IMAGE,
+        now=NOW,
+    )
+    assert report["status"] == "waiting"
+    assert "ready EndpointSlice Pod UIDs have not converged" in report[
+        "errors"
+    ]
+
+    endpoint_slices["items"][0]["endpoints"][0]["targetRef"]["uid"] = POD_UID
+    report = staging_live_evidence.build_rollout_convergence_observation(
+        deployment,
+        pods,
+        endpoint_slices,
+        expected_image=IMAGE,
+        now=NOW,
+    )
+    assert report["status"] == "converged"
+    assert report["errors"] == []
+
+
+def test_rollout_convergence_collector_projects_only_allowlisted_fields():
+    responses = list(_raw_rollout_resources())
+    commands: list[list[str]] = []
+
+    def run(arguments: list[str]) -> str:
+        commands.append(arguments)
+        return json.dumps(responses.pop(0))
+
+    report = staging_live_evidence.collect_rollout_convergence(
+        expected_image=IMAGE,
+        now=NOW,
+        run=run,
+    )
+
+    assert report["schema"] == (
+        staging_live_evidence.ROLLOUT_CONVERGENCE_SCHEMA
+    )
+    assert report["status"] == "converged"
+    assert responses == []
+    assert len(commands) == 3
+    assert any("endpointslices" in command for command in commands)
+    assert "must-never-appear" not in json.dumps(report)
 
 
 def test_collector_projects_allowlisted_fields_and_never_reads_secrets():
