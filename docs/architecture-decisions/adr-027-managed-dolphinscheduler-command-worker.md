@@ -65,6 +65,7 @@ staging 激活还比较了三种证据路径：提交带占位配置/Secret 的 
 - activation preflight 复用 deployment validator，并以单副本、immutable digest、脱敏 ConfigMap fingerprint、新鲜 Secret key attestation 和无内嵌 Secret 作为 staging 扩容前 fail-closed 门；
 - protected staging worker workflow contract 已验证只读 observer、外部 attestation、release-bound manifest、selector/identity/health readiness 和 no-scale/promotion boundary；真实 ConfigMap、Secret、provider identity 和 worker rollout 仍待环境 provisioning；
 - workflow 回归测试固定区分历史 release verifier revision 与当前受保护 worker verifier revision；readiness 代码只从本次 `main@github.sha` checkout 执行；
+- live Deployment、Pod 与 health snapshot 先写临时文件，只有 `kubectl` 成功时才原子替换预置的合法空 JSON；资源不存在或 health 失败必须形成结构化 blocked evidence，不能因 shell 重定向截断而退化为不可解析文件；
 - staging/production 仍需补充真实 IAM/OIDC、唯一 worker ID、部署 status、lease 接管、重启 drain、callback 和告警 SLO 证据。
 
 ## Revisit Triggers
