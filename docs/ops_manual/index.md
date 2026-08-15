@@ -275,6 +275,8 @@ python -m data_agent.dolphinscheduler_worker_activation validate \
 
 两项输入缺失或不合法时，workflow 仍先上传并 attested `blocked` evidence，再在最终边界失败。workflow 永远不执行 `kubectl apply`、`patch`、`scale` 或自动扩容；readiness 状态为 `ready_for_activation`、`waiting_for_readiness` 或 `live_ready`，且所有报告固定 `automatic_scale_allowed=false`、`production_promotion_allowed=false`。只有真实 provider identity、ConfigMap/Secret attestation、单副本 rollout、Pod UID 生成的唯一 worker ID、health/lease/drain 证据都齐备后，才能由单独的受控变更执行扩容。
 
+2026-08-15 受保护 run `31872815368` 已对 deployment run `31863077257` 完成上述只读验证并上传 attested artifact。当前 `status=blocked`：环境尚未提供两项外部 evidence，worker Deployment 也不存在；`automatic_scale_allowed=false`、`promotion_authority_verified=false`、`production_promotion_allowed=false`。readiness evidence fingerprint 为 `1babf26cadfe39da364a1505d39cddf44d7e04abd38b32babbc0eadbece1ebce`。
+
 ### 10.3 Staging candidate registry publication
 
 #### Remote mainline prerequisite
