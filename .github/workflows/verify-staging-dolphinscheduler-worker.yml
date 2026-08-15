@@ -245,23 +245,31 @@ jobs:
           printf '{}\n' > "$INPUT_ROOT/deployment.json"
           printf '{"items":[]}\n' > "$INPUT_ROOT/pods.json"
           printf '{}\n' > "$INPUT_ROOT/health.json"
+          DEPLOYMENT_OBSERVED="$INPUT_ROOT/deployment-observed.json"
+          PODS_OBSERVED="$INPUT_ROOT/pods-observed.json"
+          HEALTH_OBSERVED="$INPUT_ROOT/health-observed.json"
           if kubectl -n "$GDA_STAGING_NAMESPACE" get deployment \
             gis-agent-dolphinscheduler-command-worker \
-            -o json > "$INPUT_ROOT/deployment.json" 2>/dev/null; then
-            kubectl -n "$GDA_STAGING_NAMESPACE" get pods \
+            -o json > "$DEPLOYMENT_OBSERVED" 2>/dev/null; then
+            mv -- "$DEPLOYMENT_OBSERVED" "$INPUT_ROOT/deployment.json"
+            if kubectl -n "$GDA_STAGING_NAMESPACE" get pods \
               -l app.kubernetes.io/name=gis-agent-dolphinscheduler-command-worker \
-              -o json > "$INPUT_ROOT/pods.json"
+              -o json > "$PODS_OBSERVED" 2>/dev/null; then
+              mv -- "$PODS_OBSERVED" "$INPUT_ROOT/pods.json"
+            fi
             READY_REPLICAS=$(python -c \
               'import json,sys; print((json.load(open(sys.argv[1])).get("status") or {}).get("readyReplicas",0))' \
               "$INPUT_ROOT/deployment.json")
             if [[ "$READY_REPLICAS" == "1" ]]; then
-              kubectl -n "$GDA_STAGING_NAMESPACE" exec \
+              if kubectl -n "$GDA_STAGING_NAMESPACE" exec \
                 deployment/gis-agent-dolphinscheduler-command-worker \
                 -c worker -- \
                 python -m data_agent.dolphinscheduler_command_worker health \
                   --status-file /var/run/gis-agent/worker/status.json \
                   --max-age-seconds 30 \
-                > "$INPUT_ROOT/health.json" || true
+                > "$HEALTH_OBSERVED" 2>/dev/null; then
+                mv -- "$HEALTH_OBSERVED" "$INPUT_ROOT/health.json"
+              fi
             fi
           fi
 

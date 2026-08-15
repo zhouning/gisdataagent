@@ -81,6 +81,17 @@ def test_staging_worker_workflow_is_protected_read_only_and_fail_closed():
     assert "--environment staging" in activation["run"]
     assert "--namespace \"$GDA_STAGING_NAMESPACE\"" in activation["run"]
 
+    live = steps[named["Collect allowlisted live worker snapshots"]]["run"]
+    assert "deployment-observed.json" in live
+    assert "pods-observed.json" in live
+    assert "health-observed.json" in live
+    assert 'mv -- "$DEPLOYMENT_OBSERVED" "$INPUT_ROOT/deployment.json"' in live
+    assert 'mv -- "$PODS_OBSERVED" "$INPUT_ROOT/pods.json"' in live
+    assert 'mv -- "$HEALTH_OBSERVED" "$INPUT_ROOT/health.json"' in live
+    assert '-o json > "$INPUT_ROOT/deployment.json"' not in live
+    assert '-o json > "$INPUT_ROOT/pods.json"' not in live
+    assert '> "$INPUT_ROOT/health.json" || true' not in live
+
     readiness = steps[
         named["Build fail-closed staging worker readiness evidence"]
     ]
