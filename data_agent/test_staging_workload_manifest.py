@@ -254,18 +254,39 @@ def test_preflight_uses_release_image_without_api_token_or_schema_authority():
     assert container["args"] == [
         "-m",
         "data_agent.staging_platform_snapshot",
-        "--profile",
-        "staging",
     ]
     assert container["env"][0] == {
         "name": "PYTHONWARNINGS",
         "value": "ignore::SyntaxWarning",
+    }
+    assert container["env"][1] == {
+        "name": "GDA_DEPLOYMENT_PROFILE",
+        "value": "staging",
     }
     rendered = yaml.safe_dump(document)
     assert "migration_runner" not in rendered
     assert "POSTGRES_ADMIN_PASSWORD" in rendered
     assert "gis-agent-staging-secret" in rendered
     assert "value: ''" in rendered
+
+
+def test_platform_snapshot_defaults_to_environment_profile(monkeypatch, capsys):
+    platform = _evidence()[-1]
+    captured = {}
+
+    def build_platform_snapshot(*, profile=None):
+        captured["profile"] = profile
+        return platform
+
+    monkeypatch.setattr(
+        staging_platform_snapshot,
+        "build_platform_snapshot",
+        build_platform_snapshot,
+    )
+
+    assert staging_platform_snapshot.main([]) == 0
+    assert captured == {"profile": None}
+    assert json.loads(capsys.readouterr().out)["config"]["profile"] == "staging"
 
 
 def test_preflight_rejects_development_namespace():

@@ -180,8 +180,6 @@ def build_staging_platform_preflight(
                             "args": [
                                 "-m",
                                 "data_agent.staging_platform_snapshot",
-                                "--profile",
-                                "staging",
                             ],
                             "securityContext": _security_context(),
                             "resources": {
