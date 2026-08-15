@@ -27,7 +27,9 @@ ACTIVATION_SCHEMA = "gda.dolphinscheduler_worker_activation.v1"
 SECRET_ATTESTATION_SCHEMA = (
     "gda.dolphinscheduler_worker_secret_attestation.v1"
 )
-NAMESPACE = "gis-agent"
+DEFAULT_NAMESPACE = "gis-agent"
+# Backwards-compatible name for callers that used the development default.
+NAMESPACE = DEFAULT_NAMESPACE
 REQUIRED_CONFIG_KEYS = tuple(REQUIRED_CONFIG_ENV.values())
 REQUIRED_SECRET_KEYS = ("access-token", "database-url")
 ATTESTATION_FIELDS = {
@@ -52,6 +54,9 @@ RESOURCE_UID_PATTERN = re.compile(
 )
 SUBJECT_PATTERN = re.compile(r"^workload:[A-Za-z0-9][A-Za-z0-9._:-]{0,246}$")
 TENANT_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
+NAMESPACE_PATTERN = re.compile(
+    r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"
+)
 PLACEHOLDER_VALUES = {"changeme", "placeholder", "replace-me", "todo"}
 
 
@@ -141,6 +146,8 @@ def _validate_image_contract(
 
 def _validate_config_map(
     config_map: dict[str, Any] | None,
+    *,
+    expected_namespace: str,
     errors: list[str],
 ) -> tuple[str | None, str | None, str | None]:
     if config_map is None:
@@ -149,8 +156,11 @@ def _validate_config_map(
     if config_map.get("apiVersion") != "v1":
         errors.append("staging ConfigMap snapshot must use apiVersion v1")
     metadata = config_map.get("metadata") or {}
-    if metadata.get("namespace") != NAMESPACE:
-        errors.append(f"staging ConfigMap must belong to namespace {NAMESPACE}")
+    if metadata.get("namespace") != expected_namespace:
+        errors.append(
+            "staging ConfigMap must belong to namespace "
+            f"{expected_namespace}"
+        )
     resource_uid = metadata.get("uid")
     if not isinstance(resource_uid, str) or not RESOURCE_UID_PATTERN.fullmatch(
         resource_uid
@@ -167,6 +177,10 @@ def _validate_config_map(
     if not isinstance(data, dict):
         errors.append("staging ConfigMap data must be an object")
         return resource_uid, resource_version, None
+    if set(data) != set(REQUIRED_CONFIG_KEYS):
+        errors.append(
+            "staging ConfigMap must contain exactly the required non-secret keys"
+        )
     values: dict[str, str] = {}
     for key in REQUIRED_CONFIG_KEYS:
         value = data.get(key)
@@ -231,6 +245,7 @@ def _validate_secret_attestation(
     attestation: dict[str, Any],
     *,
     environment: str,
+    expected_namespace: str,
     max_age_seconds: float,
     now: datetime,
     errors: list[str],
@@ -244,8 +259,10 @@ def _validate_secret_attestation(
         errors.append("secret attestation schema is unsupported")
     if attestation.get("environment") != environment:
         errors.append("secret attestation environment does not match activation")
-    if attestation.get("namespace") != NAMESPACE:
-        errors.append(f"secret attestation namespace must be {NAMESPACE}")
+    if attestation.get("namespace") != expected_namespace:
+        errors.append(
+            f"secret attestation namespace must be {expected_namespace}"
+        )
     if attestation.get("secret_name") != SECRET_NAME:
         errors.append("secret attestation must reference the dedicated worker Secret")
     keys = attestation.get("keys")
@@ -282,6 +299,7 @@ def build_activation_report(
     secret_attestation_path: Path,
     *,
     environment: str,
+    expected_namespace: str = DEFAULT_NAMESPACE,
     max_attestation_age_seconds: float = 900,
     now: datetime | None = None,
 ) -> dict[str, Any]:
@@ -294,6 +312,8 @@ def build_activation_report(
 
     if environment != "staging":
         errors.append("activation contract v1 only permits the staging environment")
+    if not NAMESPACE_PATTERN.fullmatch(expected_namespace):
+        errors.append("activation namespace must be a valid Kubernetes DNS label")
     time_window_valid = not (
         current.tzinfo is None
         or current.utcoffset() is None
@@ -327,12 +347,26 @@ def build_activation_report(
         errors.append(f"secret attestation is unavailable or invalid: {type(exc).__name__}")
 
     deployment = _resource(documents, "Deployment", DEPLOYMENT_NAME)
+    for kind, name in (
+        ("Deployment", DEPLOYMENT_NAME),
+        ("ServiceAccount", DEPLOYMENT_NAME),
+        ("NetworkPolicy", "postgres-access"),
+    ):
+        resource = _resource(documents, kind, name)
+        if resource is not None and (resource.get("metadata") or {}).get(
+            "namespace"
+        ) != expected_namespace:
+            errors.append(
+                f"activation {kind}/{name} must belong to namespace "
+                f"{expected_namespace}"
+            )
     if _resource(documents, "Secret", SECRET_NAME) is not None:
         errors.append("activation manifest must not embed the dedicated worker Secret")
     image_digest = _validate_image_contract(deployment, errors)
     config_uid, config_version, config_fingerprint = _validate_config_map(
         _resource(config_documents, "ConfigMap", CONFIG_NAME),
-        errors,
+        expected_namespace=expected_namespace,
+        errors=errors,
     )
 
     secret_uid: str | None = None
@@ -346,6 +380,7 @@ def build_activation_report(
         ) = _validate_secret_attestation(
             attestation,
             environment=environment,
+            expected_namespace=expected_namespace,
             max_age_seconds=max_attestation_age_seconds,
             now=current,
             errors=errors,
@@ -370,7 +405,10 @@ def build_activation_report(
         "activation_ready": ready,
         "deployed": False,
         "live_cluster_verified": False,
+        "promotion_authority_verified": False,
+        "production_promotion_allowed": False,
         "environment": environment,
+        "namespace": expected_namespace,
         "deployment_name": DEPLOYMENT_NAME,
         "requested_replicas": requested_replicas,
         "image_digest": image_digest,
@@ -394,6 +432,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--config-map", type=Path, required=True)
     parser.add_argument("--secret-attestation", type=Path, required=True)
     parser.add_argument("--environment", required=True)
+    parser.add_argument("--namespace", default=DEFAULT_NAMESPACE)
     parser.add_argument("--max-attestation-age-seconds", type=float, default=900)
     args = parser.parse_args(argv)
     report = build_activation_report(
@@ -401,6 +440,7 @@ def main(argv: list[str] | None = None) -> int:
         args.config_map,
         args.secret_attestation,
         environment=args.environment,
+        expected_namespace=args.namespace,
         max_attestation_age_seconds=args.max_attestation_age_seconds,
     )
     print(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True))

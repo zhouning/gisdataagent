@@ -193,9 +193,9 @@ GitHub Actions (`.github/workflows/ci.yml`)：
 | OAuth 登录不可用 | 未配置 OAuth 环境变量 | 设置 `OAUTH_GOOGLE_CLIENT_ID` |
 | 标注不显示 | 数据库迁移未执行 | 执行 `016_create_map_annotations.sql` |
 
-## 10. DolphinScheduler 命令 Worker（当前未部署）
+## 10. DolphinScheduler 命令 Worker（当前未扩容）
 
-该进程只负责从 PostgreSQL `platform_command_outbox` 领取并投递命令；outbox、PlatformRun 和 provider instance 仍是各自领域的事实源。当前代码已具备本地运行、健康检查和默认关闭的 Kubernetes 模板，但尚未形成 staging/production 运行证据。
+该进程只负责从 PostgreSQL `platform_command_outbox` 领取并投递命令；outbox、PlatformRun 和 provider instance 仍是各自领域的事实源。当前代码已具备本地运行、健康检查、默认关闭的 Kubernetes 模板和受保护的 staging activation/readiness workflow，但真实 staging worker 尚未扩容，因而没有 staging/production 运行证据。
 
 部署前必须满足：
 
@@ -265,6 +265,15 @@ python -m data_agent.dolphinscheduler_worker_activation validate \
 ```
 
 只有 `status=ready_for_activation` 才能进入扩容步骤。该结果仍固定包含 `deployed=false` 和 `live_cluster_verified=false`；随后必须另行采集 Deployment rollout、Pod readiness/liveness、worker status、唯一 Pod UID、lease 接管和重启 drain 证据。
+
+### 10.2.1 Protected staging activation/readiness workflow
+
+`.github/workflows/verify-staging-dolphinscheduler-worker.yml` 只能从 `main` 手工触发，并要求绑定一个已完成的 protected staging deployment observation。它使用 `staging-live` 环境的只读 observer identity，明确拒绝 ConfigMap/Secret 读取以及 Deployment/Job/ServiceAccount 的 create、patch、delete；provider ConfigMap snapshot 与 Secret attestation 必须由受保护环境外部提供：
+
+- `GDA_STAGING_DOLPHINSCHEDULER_CONFIG_MAP_B64`：只含七个非敏感 ConfigMap key，并带 namespace、uid、resourceVersion；
+- `GDA_STAGING_DOLPHINSCHEDULER_SECRET_ATTESTATION_B64`：只含固定 Secret key 名称、uid、resourceVersion 和新鲜 `observed_at`，不得包含 Secret data。
+
+两项输入缺失或不合法时，workflow 仍先上传并 attested `blocked` evidence，再在最终边界失败。workflow 永远不执行 `kubectl apply`、`patch`、`scale` 或自动扩容；readiness 状态为 `ready_for_activation`、`waiting_for_readiness` 或 `live_ready`，且所有报告固定 `automatic_scale_allowed=false`、`production_promotion_allowed=false`。只有真实 provider identity、ConfigMap/Secret attestation、单副本 rollout、Pod UID 生成的唯一 worker ID、health/lease/drain 证据都齐备后，才能由单独的受控变更执行扩容。
 
 ### 10.3 Staging candidate registry publication
 
