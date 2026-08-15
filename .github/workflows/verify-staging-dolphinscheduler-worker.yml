@@ -34,7 +34,7 @@ jobs:
       GDA_STAGING_CLUSTER_UID: ${{ vars.GDA_STAGING_CLUSTER_UID }}
       GDA_STAGING_NAMESPACE_UID: ${{ vars.GDA_STAGING_NAMESPACE_UID }}
       GDA_STAGING_IMAGE_PULL_SECRET: ${{ vars.GDA_STAGING_IMAGE_PULL_SECRET }}
-      PYTHONPATH: ${{ github.workspace }}/protected-source
+      PYTHONPATH: ${{ github.workspace }}/worker-verifier-source
 
     steps:
       - name: Initialize isolated worker evidence workspace
@@ -103,11 +103,11 @@ jobs:
           PY
           echo "verifier_revision=$VERIFIER_REVISION" >> "$GITHUB_OUTPUT"
 
-      - name: Check out the exact protected verifier revision
+      - name: Check out the protected worker verifier revision
         uses: actions/checkout@v4
         with:
-          ref: ${{ steps.release.outputs.verifier_revision }}
-          path: protected-source
+          ref: ${{ github.sha }}
+          path: worker-verifier-source
           persist-credentials: false
 
       - name: Install the manifest parsing dependency
