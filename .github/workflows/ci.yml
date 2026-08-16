@@ -109,6 +109,9 @@ jobs:
       - name: Validate metadata fabric local ingestion replay evidence
         run: python -m data_agent.metadata_fabric_ingestion_replay validate
 
+      - name: Validate metadata fabric binding ledger evidence
+        run: python -m data_agent.metadata_fabric_binding_ledger validate
+
       - name: Validate DolphinScheduler adapter boundary
         run: python -m data_agent.dolphinscheduler_adapter validate
 
@@ -124,6 +127,11 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gis_agent_test
         run: python -m pytest data_agent/test_platform_gateway_postgres.py -q
+
+      - name: Verify metadata fabric binding ledger on PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gis_agent_test
+        run: python -m pytest data_agent/test_metadata_fabric_binding_ledger_postgres.py -q
 
       - name: Run required platform tests
         env:
@@ -154,6 +162,7 @@ jobs:
             data_agent/test_metadata_fabric_network_policy_gate.py \
             data_agent/test_metadata_fabric_ingestion.py \
             data_agent/test_metadata_fabric_ingestion_replay.py \
+            data_agent/test_metadata_fabric_binding_contract.py \
             data_agent/test_metadata_fabric_otel_failure_rehearsal.py \
             data_agent/test_metadata_fabric_otel_metrics.py \
             data_agent/test_metadata_fabric_provider_metrics.py \

@@ -6,11 +6,12 @@ import argparse
 import hashlib
 import json
 import re
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 from uuid import UUID, uuid5
 
 from pydantic import BaseModel, ConfigDict, TypeAdapter, model_validator
@@ -18,8 +19,20 @@ from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 
 from .db_engine import get_engine
+from .metadata_fabric_binding_contract import (
+    MetadataFabricApplyPlan,
+    MetadataFabricBindingContractError,
+    MetadataFabricBindingRecord,
+    parse_metadata_fabric_execution_plan_artifact,
+    parse_metadata_fabric_provider_evidence_artifact,
+)
+from .metadata_fabric_bridge import (
+    MetadataFabricConfigurationError,
+    build_metadata_fabric_binding,
+)
 from .platform_authorization import (
     AuthorizationEvidenceError,
+    parse_approval_artifact,
     parse_policy_decision_artifact,
     validate_run_authorization_evidence,
 )
@@ -36,11 +49,10 @@ from .platform_contracts import (
     QualityResult,
     Resource,
     ResourceVersion,
-    RunSuccessEvidence,
     RunStatus,
+    RunSuccessEvidence,
     TenantId,
 )
-
 
 GATEWAY_DATABASE_ROLE = "gda_control_gateway"
 GATEWAY_SCHEMA_VERSION = "gda.platform_gateway.v1"
@@ -59,6 +71,11 @@ SUCCESS_VERDICT_MIGRATION = (
     / "migrations"
     / "096_platform_success_verdict.sql"
 )
+METADATA_FABRIC_BINDING_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "097_metadata_fabric_binding_ledger.sql"
+)
 USER_TENANT_MIGRATION = (
     Path(__file__).resolve().parent
     / "migrations"
@@ -74,6 +91,7 @@ COMMAND_WORKER_SOURCE = (
     Path(__file__).resolve().parent / "dolphinscheduler_command_worker.py"
 )
 _TENANT_ADAPTER = TypeAdapter(TenantId)
+METADATA_FABRIC_APPLY_ACTION = "metadata_fabric.apply"
 
 
 class PlatformGatewayError(RuntimeError):
@@ -120,7 +138,7 @@ class DefinitionRegistration(BaseModel):
     definition: PlatformDefinitionVersion
 
     @model_validator(mode="after")
-    def _consistent_definition_identity(self) -> "DefinitionRegistration":
+    def _consistent_definition_identity(self) -> DefinitionRegistration:
         resource = self.resource
         version = self.resource_version
         definition = self.definition
@@ -1238,6 +1256,258 @@ class PlatformGateway:
             return GatewayWriteResult(stored, inserted is not None)
 
     @staticmethod
+    def _metadata_fabric_binding_from_row(row) -> MetadataFabricBindingRecord:
+        value = dict(row)
+        value["binding"] = _as_json(value.pop("binding_document"))
+        return MetadataFabricBindingRecord.model_validate(value)
+
+    @classmethod
+    def _load_metadata_fabric_binding(
+        cls, connection, tenant_id: str, resource_version_id: UUID
+    ) -> MetadataFabricBindingRecord | None:
+        row = connection.execute(
+            text(
+                """
+                SELECT tenant_id, binding_id, binding_document,
+                       execution_plan_artifact_id,
+                       policy_decision_artifact_id, approval_artifact_id,
+                       provider_evidence_artifact_id, recorded_by, recorded_at,
+                       record_sha256
+                FROM gda_control.metadata_fabric_binding
+                WHERE tenant_id = :tenant_id
+                  AND resource_version_id = :resource_version_id
+                """
+            ),
+            {
+                "tenant_id": tenant_id,
+                "resource_version_id": resource_version_id,
+            },
+        ).mappings().one_or_none()
+        if row is None:
+            return None
+        return cls._metadata_fabric_binding_from_row(row)
+
+    def get_metadata_fabric_binding(
+        self, tenant_id: str, resource_version_id: UUID
+    ) -> MetadataFabricBindingRecord:
+        tenant = _TENANT_ADAPTER.validate_python(tenant_id)
+        with self._transaction(tenant) as connection:
+            record = self._load_metadata_fabric_binding(
+                connection, tenant, resource_version_id
+            )
+            if record is None:
+                raise GatewayNotFoundError("Metadata Fabric binding was not found")
+            return record
+
+    @staticmethod
+    def _parse_metadata_fabric_execution_plan(
+        artifact: Artifact,
+    ) -> MetadataFabricApplyPlan:
+        try:
+            return parse_metadata_fabric_execution_plan_artifact(artifact)
+        except MetadataFabricBindingContractError as exc:
+            raise GatewayValidationError(str(exc)) from exc
+
+    def _validate_metadata_fabric_binding_record(
+        self, connection, record: MetadataFabricBindingRecord
+    ) -> None:
+        binding = record.binding
+        resource = self._load_resource(
+            connection, record.tenant_id, binding.resource_urn
+        )
+        version = self._load_resource_version(
+            connection, record.tenant_id, binding.resource_version_id
+        )
+        if resource is None or version is None:
+            raise GatewayValidationError(
+                "Metadata Fabric binding ResourceVersion was not found"
+            )
+        try:
+            expected_binding = build_metadata_fabric_binding(
+                resource,
+                version,
+                openmetadata=binding.openmetadata,
+                gravitino=binding.gravitino,
+            )
+        except MetadataFabricConfigurationError as exc:
+            raise GatewayValidationError(str(exc)) from exc
+        if binding != expected_binding:
+            raise GatewayValidationError(
+                "Metadata Fabric binding does not match immutable platform identity"
+            )
+
+        artifact_ids = {
+            "execution plan": record.execution_plan_artifact_id,
+            "policy decision": record.policy_decision_artifact_id,
+            "approval": record.approval_artifact_id,
+            "provider evidence": record.provider_evidence_artifact_id,
+        }
+        artifacts: dict[str, Artifact] = {}
+        for name, artifact_id in artifact_ids.items():
+            artifact = self._load_artifact(
+                connection, record.tenant_id, artifact_id
+            )
+            if artifact is None:
+                raise GatewayValidationError(
+                    f"Metadata Fabric {name} Artifact was not found"
+                )
+            artifacts[name] = artifact
+
+        plan = self._parse_metadata_fabric_execution_plan(
+            artifacts["execution plan"]
+        )
+        definition = self._load_definition(
+            connection, record.tenant_id, plan.definition_version_id
+        )
+        source_version = self._load_resource_version(
+            connection, record.tenant_id, plan.source_resource_version_id
+        )
+        if definition is None or source_version is None:
+            raise GatewayValidationError(
+                "Metadata Fabric authorization scope contains unknown platform versions"
+            )
+        try:
+            decision = parse_policy_decision_artifact(
+                artifacts["policy decision"]
+            )
+            approval = parse_approval_artifact(artifacts["approval"])
+            provider_evidence = parse_metadata_fabric_provider_evidence_artifact(
+                artifacts["provider evidence"]
+            )
+        except (AuthorizationEvidenceError, MetadataFabricBindingContractError) as exc:
+            raise GatewayValidationError(str(exc)) from exc
+
+        executor = (
+            f"{decision.subject_context.subject_type.value}:"
+            f"{decision.subject_context.subject_id}"
+        )
+        expected_scope = tuple(
+            sorted(
+                {
+                    plan.definition_version_id,
+                    plan.source_resource_version_id,
+                    plan.resource_version_id,
+                },
+                key=str,
+            )
+        )
+        exact_scope = (
+            plan.tenant_id == record.tenant_id == decision.tenant_id
+            and plan.run_id == decision.run_id == approval.run_id
+            and plan.resource_urn == binding.resource_urn
+            and plan.resource_version_id == binding.resource_version_id
+            and plan.content_sha256 == binding.content_sha256
+            and decision.action == METADATA_FABRIC_APPLY_ACTION
+            and decision.definition_version_id == plan.definition_version_id
+            and decision.resource_version_ids == expected_scope
+            and decision.execution_plan_artifact_id
+            == record.execution_plan_artifact_id
+            and decision.subject_context.tenant_id == record.tenant_id
+            and artifacts["execution plan"].created_by == executor
+            and record.recorded_by == executor
+        )
+        if not exact_scope:
+            raise GatewayValidationError(
+                "Metadata Fabric authorization does not match the exact binding scope"
+            )
+        if decision.effect.value != "allow" or decision.obligations:
+            raise GatewayValidationError(
+                "Metadata Fabric policy decision does not allow binding"
+            )
+        if not decision.requires_approval:
+            raise GatewayValidationError(
+                "Metadata Fabric binding requires independent approval"
+            )
+        if decision.evaluator_subject == executor:
+            raise GatewayValidationError(
+                "Metadata Fabric policy evaluator is not independent"
+            )
+
+        observed_at = provider_evidence.observed_at
+        approval_matches = (
+            approval.tenant_id == record.tenant_id
+            and approval.definition_version_id == plan.definition_version_id
+            and approval.policy_decision_artifact_id
+            == record.policy_decision_artifact_id
+            and approval.policy_decision_sha256
+            == artifacts["policy decision"].content_sha256
+            and approval.verdict.value == "approved"
+            and approval.approver_subject
+            not in {executor, decision.evaluator_subject}
+            and decision.decided_at <= approval.decided_at <= observed_at
+            and observed_at < approval.expires_at <= decision.expires_at
+        )
+        if not approval_matches:
+            raise GatewayValidationError(
+                "Metadata Fabric approval does not authorize provider apply"
+            )
+        if not (decision.decided_at <= observed_at < decision.expires_at):
+            raise GatewayValidationError(
+                "Metadata Fabric policy was not active at provider observation"
+            )
+        evidence_matches = (
+            provider_evidence.binding == binding
+            and artifacts["provider evidence"].created_by == executor
+            and record.recorded_at >= observed_at
+        )
+        if not evidence_matches:
+            raise GatewayValidationError(
+                "Metadata Fabric provider evidence does not match the binding"
+            )
+
+    def commit_metadata_fabric_binding(
+        self, record: MetadataFabricBindingRecord
+    ) -> GatewayWriteResult:
+        with self._transaction(record.tenant_id) as connection:
+            self._validate_metadata_fabric_binding_record(connection, record)
+            binding = record.binding
+            inserted = connection.execute(
+                text(
+                    """
+                    INSERT INTO gda_control.metadata_fabric_binding (
+                        tenant_id, binding_id, resource_urn,
+                        resource_version_id, content_sha256, binding_document,
+                        binding_sha256, execution_plan_artifact_id,
+                        policy_decision_artifact_id, approval_artifact_id,
+                        provider_evidence_artifact_id, record_sha256,
+                        recorded_by, recorded_at
+                    ) VALUES (
+                        :tenant_id, :binding_id, :resource_urn,
+                        :resource_version_id, :content_sha256,
+                        CAST(:binding_document AS jsonb), :binding_sha256,
+                        :execution_plan_artifact_id,
+                        :policy_decision_artifact_id, :approval_artifact_id,
+                        :provider_evidence_artifact_id, :record_sha256,
+                        :recorded_by, :recorded_at
+                    )
+                    ON CONFLICT DO NOTHING
+                    RETURNING binding_id
+                    """
+                ),
+                {
+                    **record.model_dump(
+                        mode="python",
+                        exclude={"record_schema", "binding"},
+                    ),
+                    "resource_urn": binding.resource_urn,
+                    "resource_version_id": binding.resource_version_id,
+                    "content_sha256": binding.content_sha256,
+                    "binding_document": _json(
+                        binding.model_dump(mode="json", by_alias=True)
+                    ),
+                    "binding_sha256": binding.binding_sha256,
+                },
+            ).first()
+            stored = self._load_metadata_fabric_binding(
+                connection, record.tenant_id, binding.resource_version_id
+            )
+            if stored is None or stored != record:
+                raise GatewayConflictError(
+                    "Metadata Fabric ResourceVersion already has a different binding"
+                )
+            return GatewayWriteResult(stored, inserted is not None)
+
+    @staticmethod
     def _load_lineage(
         connection, tenant_id: str, lineage_event_id: UUID
     ) -> LineageEvent | None:
@@ -1303,6 +1573,7 @@ def build_gateway_report(
     role_migration: Path | None = None,
     command_migration: Path | None = None,
     success_migration: Path | None = None,
+    binding_migration: Path | None = None,
     gateway_source: Path | None = None,
     routes_source: Path | None = None,
     command_consumer_source: Path | None = None,
@@ -1317,6 +1588,9 @@ def build_gateway_report(
         ).resolve(),
         "success_migration": (
             success_migration or SUCCESS_VERDICT_MIGRATION
+        ).resolve(),
+        "binding_migration": (
+            binding_migration or METADATA_FABRIC_BINDING_MIGRATION
         ).resolve(),
         "gateway_source": (gateway_source or Path(__file__)).resolve(),
         "routes_source": (routes_source or GATEWAY_ROUTES_SOURCE).resolve(),
@@ -1352,7 +1626,10 @@ def build_gateway_report(
             "NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS",
             "REVOKE ALL ON ALL TABLES IN SCHEMA gda_control",
             "GRANT EXECUTE ON FUNCTION gda_control.transition_platform_run(",
-            "ALTER FUNCTION gda_control.initialize_platform_run_event() SECURITY DEFINER",
+            (
+                "ALTER FUNCTION gda_control.initialize_platform_run_event() "
+                "SECURITY DEFINER"
+            ),
         ),
         "command_migration": (
             "CREATE TABLE IF NOT EXISTS gda_control.platform_command_outbox",
@@ -1376,6 +1653,13 @@ def build_gateway_report(
             "GRANT SELECT, INSERT ON gda_control.quality_result",
             "finalize_platform_run_success",
         ),
+        "binding_migration": (
+            "CREATE TABLE IF NOT EXISTS gda_control.metadata_fabric_binding",
+            "FOREIGN KEY (tenant_id, execution_plan_artifact_id)",
+            "FOREIGN KEY (tenant_id, provider_evidence_artifact_id)",
+            "ALTER TABLE gda_control.metadata_fabric_binding FORCE ROW LEVEL SECURITY",
+            "GRANT SELECT, INSERT ON gda_control.metadata_fabric_binding",
+        ),
         "gateway_source": (
             'SET LOCAL ROLE "{GATEWAY_DATABASE_ROLE}"',
             "SELECT set_config('app.current_tenant', :tenant, true)",
@@ -1386,6 +1670,8 @@ def build_gateway_report(
             "def claim_commands(",
             "def record_quality_result(",
             "def finalize_run_success(",
+            "def commit_metadata_fabric_binding(",
+            "def get_metadata_fabric_binding(",
         ),
         "routes_source": (
             'base = "/api/platform/v1"',
@@ -1436,6 +1722,7 @@ def build_gateway_report(
             forbidden in role_sql
             or forbidden in texts.get("command_migration", "")
             or forbidden in texts.get("success_migration", "")
+            or forbidden in texts.get("binding_migration", "")
         ):
             errors.append(f"gateway role contains forbidden privilege: {forbidden}")
     consumer_source = texts.get("command_consumer_source", "")
