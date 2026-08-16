@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: metadata-backup-default-deny
+  namespace: gda-metadata-backup-repository
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: metadata-backup-api-access
+  namespace: gda-metadata-backup-repository
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: metadata-backup-minio
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              gda.openai.com/backup-client: "true"
+      ports:
+        - protocol: TCP
+          port: 9000

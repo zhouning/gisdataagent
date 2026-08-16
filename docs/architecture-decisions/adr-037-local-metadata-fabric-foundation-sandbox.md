@@ -104,3 +104,5 @@ Pod 重建后 PVC/schema/index 连续只证明本地持久卷被重新挂载和�
 **Next gate**：M2b 完成 OIDC/workload identity、NetworkPolicy enforcement、backup/restore、upgrade/rollback、metrics/OTel、registry provenance 和 owner/runbook；M3 在同一地类图斑 ResourceVersion 上完成受控 ingestion/replay、OpenLineage、无双写和 Gravitino Spark/Sedona/Flink catalog conformance。
 
 2026-07-27 更新： [ADR-038](adr-038-local-metadata-fabric-recovery-rehearsal.md) 已完成 M2b-1 本地同集群新 namespace/PVC 的三存储恢复演练；生产 backup target/retention、PITR、RPO/RTO 与跨集群恢复仍属于上述 next gate。
+
+2026-07-27 后续更新： [ADR-039](adr-039-local-locked-metadata-backup-repository.md) 已完成 M2b-2 本地隔离 S3-compatible repository 的 versioning/Object Lock、删除本地 artifact、按 version 下载并恢复；外部生产 bucket、COMPLIANCE retention、TLS/KMS、独立 workload identity 与跨集群恢复仍属于 next gate。

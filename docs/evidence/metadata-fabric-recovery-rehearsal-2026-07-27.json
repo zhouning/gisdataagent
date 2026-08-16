@@ -14,8 +14,8 @@
   "cross_region_recovery_verified": false,
   "environment": "local_isolated_recovery_rehearsal",
   "errors": [],
-  "evidence_fingerprint": "ebb0db3646010d427601c5d06760f984c742a7a4b6fa143fd2d6c7833246ab30",
-  "generated_at": "2026-07-27T06:42:54.995405+00:00",
+  "evidence_fingerprint": "3cf46cc83a8feaa4142893a06f84e9008a7d805a64fb6708d176ca976a4dbd62",
+  "generated_at": "2026-07-27T07:37:28.806368+00:00",
   "local_backup_restore_verified": true,
   "network_policy_enforcement_verified": false,
   "observation": {
@@ -23,24 +23,24 @@
       "gravitino_postgresql": {
         "bytes": 188109,
         "format": "postgresql_custom_dump_v1",
-        "sha256": "6832f3dd8853e4014e473e260288e3e5c31e3a92811263bd1d04ea72dd238f3b"
+        "sha256": "b56fae7ba17166690df1ac52814734d10aaab6d036e467141601aa13913493fa"
       },
       "openmetadata_postgresql": {
-        "bytes": 1179744,
+        "bytes": 1209521,
         "format": "postgresql_custom_dump_v1",
-        "sha256": "11a42c76d420eaa51694ed1c28f6834a3c689d3c240784eca0f19cdacfd779b6"
+        "sha256": "2f6de329c6ebff68227a27958040c29d41396c9f1a61421eaf0630ac344a7e26"
       },
       "opensearch": {
-        "bytes": 400544,
+        "bytes": 387684,
         "format": "opensearch_fs_snapshot_tar_gzip_v1",
-        "sha256": "dd55f58e8e3e5516eeab37674868ce1632fef3d445030e2317c96b9e9c8fee24"
+        "sha256": "7732ffc33827b9ffc4ed5e3f3744e4f54b1a73a2d9e0444fe7b34e16c8f37da3"
       }
     },
     "cluster": {
       "context": "docker-desktop",
       "recovery_namespace": {
         "name": "gda-metadata-recovery-rehearsal",
-        "uid": "896cad79-ae47-4319-ad63-8102e49cc1d8"
+        "uid": "d9236d7c-8c9c-45af-a46b-7148b47b4db0"
       },
       "source_namespace": {
         "name": "gda-metadata-sandbox",
@@ -49,11 +49,11 @@
       "uid": "c3c9bbab-2b36-4359-a7ac-e3de194445ab"
     },
     "contract": {
-      "contract_fingerprint": "64701810d4d4403febd78cf7c8802de03b31e47d6a3f625739ba7910c16179b5",
+      "contract_fingerprint": "83e3f86542076987b36cb8b99fb01c2db7e92c15624164f9766ff0a6fe26640a",
       "static_contract_verified": true
     },
-    "duration_seconds": 113.926,
-    "observed_at": "2026-07-27T06:42:54.995146+00:00",
+    "duration_seconds": 115.137,
+    "observed_at": "2026-07-27T07:37:28.805987+00:00",
     "recovered_markers": {
       "gravitino_postgresql": {
         "extension_fingerprint": "6a0a92045f06baabcf22b103007285ec0bcb00cdbf6f6f30b34b0a41a73c6c2f",
@@ -67,14 +67,14 @@
       "openmetadata_postgresql": {
         "extension_fingerprint": "5425606415e192199fdbef130acb53a732064cb692916f5278b9e8eebc5b2f59",
         "image_version": "16.10-bookworm",
-        "row_count_fingerprint": "891abe3f510e11dd6b0141a86b871514a29a8185281f10ad09269201ab775228",
-        "sequence_state_fingerprint": "3580db7847de59d2d7f71ced3ad5526dd62f37f82c3830a6465decaea4b0a8cc",
+        "row_count_fingerprint": "dbb8f15b9df8780d3be128ef2a9ddad7b292980e811a81a65349e831e64b40f9",
+        "sequence_state_fingerprint": "769c215213fe71957ea945bd85ad0db889cda410f47443173f19457a17af5ac4",
         "server_version": "16.10 (Debian 16.10-1.pgdg12+1)",
         "table_count": 176,
         "table_name_fingerprint": "9b56cb8952f4680c1972aeafb461b0ef8c204326432ed8bab6226e2eedbb1167"
       },
       "opensearch": {
-        "cluster_uuid": "Wp7d96iaQa6C4PjCq2xS0A",
+        "cluster_uuid": "9o2bzn8fS5mfJ0nEHkGQlQ",
         "document_count_fingerprint": "b9a9da89701697d1778735a3cd1196422f624049847009a593c56e5fdfe7f109",
         "index_count": 79,
         "index_name_fingerprint": "5dd3252013d217ea4e014951fbd687ef912dac847ee8d385adf6bd561070f00a",
@@ -86,21 +86,66 @@
       "recovery-gravitino-data-recovery-gravitino-postgresql-0": {
         "capacity": "2Gi",
         "phase": "Bound",
-        "uid": "58b01aa7-20e6-479d-8df6-81c256faad2b",
-        "volume_name": "pvc-58b01aa7-20e6-479d-8df6-81c256faad2b"
+        "uid": "9ba5f905-6f4d-4763-b9ba-6092207036d0",
+        "volume_name": "pvc-9ba5f905-6f4d-4763-b9ba-6092207036d0"
       },
       "recovery-openmetadata-data-recovery-openmetadata-postgresql-0": {
         "capacity": "2Gi",
         "phase": "Bound",
-        "uid": "7a2d3e27-5e7b-4c71-aeb6-6cf8c1890f0f",
-        "volume_name": "pvc-7a2d3e27-5e7b-4c71-aeb6-6cf8c1890f0f"
+        "uid": "6d1b0cae-869e-4923-bd66-315b29abf887",
+        "volume_name": "pvc-6d1b0cae-869e-4923-bd66-315b29abf887"
       },
       "recovery-opensearch-data-recovery-opensearch-0": {
         "capacity": "8Gi",
         "phase": "Bound",
-        "uid": "65db4f7d-db0a-4031-a354-029c55e0d106",
-        "volume_name": "pvc-65db4f7d-db0a-4031-a354-029c55e0d106"
+        "uid": "c3d5585e-89f6-45ee-b43f-f2a155204916",
+        "volume_name": "pvc-c3d5585e-89f6-45ee-b43f-f2a155204916"
       }
+    },
+    "repository_round_trip": {
+      "artifact_objects": {
+        "gravitino_postgresql": {
+          "bytes": 188109,
+          "format": "postgresql_custom_dump_v1",
+          "object_path": "metadata-fabric/rp-20260727073521z/gravitino_postgresql.dump",
+          "retained_until": "2026-07-28T07:36:07.228000+00:00",
+          "retained_version_delete_blocked": true,
+          "retention_mode": "GOVERNANCE",
+          "sha256": "b56fae7ba17166690df1ac52814734d10aaab6d036e467141601aa13913493fa",
+          "version_id": "ea0d2e75-185d-4f44-8ed9-74655b0423db"
+        },
+        "openmetadata_postgresql": {
+          "bytes": 1209521,
+          "format": "postgresql_custom_dump_v1",
+          "object_path": "metadata-fabric/rp-20260727073521z/openmetadata_postgresql.dump",
+          "retained_until": "2026-07-28T07:36:07.241000+00:00",
+          "retained_version_delete_blocked": true,
+          "retention_mode": "GOVERNANCE",
+          "sha256": "2f6de329c6ebff68227a27958040c29d41396c9f1a61421eaf0630ac344a7e26",
+          "version_id": "b6ce20d7-6e95-4612-9740-d0bd5682ff81"
+        },
+        "opensearch": {
+          "bytes": 387684,
+          "format": "opensearch_fs_snapshot_tar_gzip_v1",
+          "object_path": "metadata-fabric/rp-20260727073521z/opensearch.tar.gz",
+          "retained_until": "2026-07-28T07:36:07.256000+00:00",
+          "retained_version_delete_blocked": true,
+          "retention_mode": "GOVERNANCE",
+          "sha256": "7732ffc33827b9ffc4ed5e3f3744e4f54b1a73a2d9e0444fe7b34e16c8f37da3",
+          "version_id": "a9591f1d-c984-4323-925d-0c4ff0b0de04"
+        }
+      },
+      "bucket": "gda-metadata-fabric-backups",
+      "default_retention_days": 1,
+      "default_retention_mode": "GOVERNANCE",
+      "kms_encryption_verified": false,
+      "local_artifacts_removed_before_download": true,
+      "object_lock_enabled": true,
+      "production_durability_verified": false,
+      "provider": "minio_s3_compatible",
+      "round_trip_verified": true,
+      "transport_tls_verified": false,
+      "versioning_status": "Enabled"
     },
     "runtime_checks": {
       "local_artifacts_removed": true,
@@ -125,8 +170,8 @@
       "openmetadata_postgresql": {
         "extension_fingerprint": "5425606415e192199fdbef130acb53a732064cb692916f5278b9e8eebc5b2f59",
         "image_version": "16.10-bookworm",
-        "row_count_fingerprint": "891abe3f510e11dd6b0141a86b871514a29a8185281f10ad09269201ab775228",
-        "sequence_state_fingerprint": "3580db7847de59d2d7f71ced3ad5526dd62f37f82c3830a6465decaea4b0a8cc",
+        "row_count_fingerprint": "dbb8f15b9df8780d3be128ef2a9ddad7b292980e811a81a65349e831e64b40f9",
+        "sequence_state_fingerprint": "769c215213fe71957ea945bd85ad0db889cda410f47443173f19457a17af5ac4",
         "server_version": "16.10 (Debian 16.10-1.pgdg12+1)",
         "table_count": 176,
         "table_name_fingerprint": "9b56cb8952f4680c1972aeafb461b0ef8c204326432ed8bab6226e2eedbb1167"
@@ -140,9 +185,9 @@
         "version": "3.3.2"
       }
     },
-    "started_at": "2026-07-27T06:41:01.068734+00:00"
+    "started_at": "2026-07-27T07:35:33.668759+00:00"
   },
-  "observation_fingerprint": "18d1777f686ef0349a958d6ada287fb27b6861f1d4f35daa13bc62b9b814dc5f",
+  "observation_fingerprint": "938c0f9842cf0c6218ad4ade675b4e773b538270a605ca33d9215859a0e5f6a1",
   "oidc_verified": false,
   "production_backup_restore_verified": false,
   "production_ready": false,

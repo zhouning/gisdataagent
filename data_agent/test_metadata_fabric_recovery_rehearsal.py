@@ -206,6 +206,9 @@ def test_committed_recovery_evidence_is_integral():
     assert evidence_path.exists()
     report = json.loads(evidence_path.read_text(encoding="utf-8"))
     assert recovery.verify_evidence_integrity(report) == []
+    assert report["observation"]["contract"]["contract_fingerprint"] == (
+        recovery.build_recovery_contract_report()["contract_fingerprint"]
+    )
     assert report["local_backup_restore_verified"] is True
     assert report["production_backup_restore_verified"] is False
     assert report["production_ready"] is False
