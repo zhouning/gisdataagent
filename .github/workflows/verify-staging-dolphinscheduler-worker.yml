@@ -291,14 +291,24 @@ jobs:
             --output staging-worker-readiness/readiness.json \
             > /dev/null
 
+      - name: Bind exact release evidence for controlled activation
+        if: always() && hashFiles('staging-worker-release-input/release.json') != ''
+        run: |
+          set -euo pipefail
+          cp -- \
+            staging-worker-release-input/release.json \
+            staging-worker-readiness/release.json
+
       - name: Attest staging worker readiness evidence
         if: always() && hashFiles('staging-worker-readiness/readiness.json') != ''
         uses: actions/attest-build-provenance@v3
         with:
           subject-path: |
+            staging-worker-readiness/activation-manifest.yaml
             staging-worker-readiness/manifest-report.json
             staging-worker-readiness/activation.json
             staging-worker-readiness/readiness.json
+            staging-worker-readiness/release.json
 
       - name: Upload staging worker readiness evidence
         if: always()

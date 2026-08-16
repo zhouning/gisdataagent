@@ -40,6 +40,24 @@ from .staging_release_evidence import (
 
 MANIFEST_REPORT_SCHEMA = "gda.dolphinscheduler_worker_staging_manifest.v1"
 READINESS_SCHEMA = "gda.dolphinscheduler_worker_staging_readiness.v1"
+READINESS_STABLE_FIELDS = (
+    "schema",
+    "status",
+    "environment",
+    "namespace",
+    "cluster_uid",
+    "namespace_uid",
+    "release_evidence_fingerprint",
+    "activation_config_fingerprint",
+    "secret_attestation_fingerprint",
+    "activation_ready",
+    "deployed",
+    "live_cluster_verified",
+    "live_worker_verified",
+    "observation",
+    "errors",
+    "live_errors",
+)
 DEFAULT_STAGING_NAMESPACE = "gis-agent-staging"
 RELEASE_FINGERPRINT_ANNOTATION = "gisdataagent.io/release-evidence-fingerprint"
 SOURCE_REVISION_ANNOTATION = "org.opencontainers.image.revision"
@@ -134,7 +152,7 @@ def _image_digest(value: Any) -> str | None:
     return f"sha256:{match.group(1)}" if match else None
 
 
-def _release_errors(release: Mapping[str, Any]) -> list[str]:
+def release_evidence_errors(release: Mapping[str, Any]) -> list[str]:
     errors: list[str] = []
     if release.get("schema") != RELEASE_EVIDENCE_SCHEMA:
         errors.append("release evidence schema is unsupported")
@@ -165,6 +183,12 @@ def _release_errors(release: Mapping[str, Any]) -> list[str]:
     return errors
 
 
+def readiness_evidence_fingerprint(value: Mapping[str, Any]) -> str:
+    """Return the canonical fingerprint of stable readiness fields."""
+    stable = {field: value.get(field) for field in READINESS_STABLE_FIELDS}
+    return _canonical_sha256(stable)
+
+
 def render_activation_manifest(
     release: Mapping[str, Any],
     *,
@@ -174,7 +198,7 @@ def render_activation_manifest(
     network_policy_path: Path = DEFAULT_NETWORK_POLICY,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Render a Secret-free, single-replica candidate without applying it."""
-    errors = _release_errors(release)
+    errors = release_evidence_errors(release)
     if not isinstance(namespace, str) or not NAMESPACE_PATTERN.fullmatch(namespace):
         errors.append("staging namespace must be a valid Kubernetes DNS label")
     if not isinstance(
@@ -410,7 +434,7 @@ def build_readiness_report(
     now: datetime | None = None,
 ) -> dict[str, Any]:
     """Bind activation evidence to an allowlisted, read-only live observation."""
-    errors = _release_errors(release)
+    errors = release_evidence_errors(release)
     if activation.get("schema") != ACTIVATION_SCHEMA:
         errors.append("activation evidence schema is unsupported")
     if activation.get("status") != "ready_for_activation":
@@ -504,7 +528,7 @@ def build_readiness_report(
         "automatic_scale_allowed": False,
         "promotion_authority_verified": False,
         "production_promotion_allowed": False,
-        "evidence_fingerprint": _canonical_sha256(stable),
+        "evidence_fingerprint": readiness_evidence_fingerprint(stable),
     }
 
 

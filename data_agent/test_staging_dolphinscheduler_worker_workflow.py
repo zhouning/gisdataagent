@@ -37,6 +37,7 @@ def test_staging_worker_workflow_is_protected_read_only_and_fail_closed():
         < named["Validate external activation evidence without scaling"]
         < named["Collect allowlisted live worker snapshots"]
         < named["Build fail-closed staging worker readiness evidence"]
+        < named["Bind exact release evidence for controlled activation"]
         < named["Upload staging worker readiness evidence"]
         < named["Preserve no-scale and production promotion boundaries"]
     )
@@ -100,6 +101,14 @@ def test_staging_worker_workflow_is_protected_read_only_and_fail_closed():
 
     attestation = steps[named["Attest staging worker readiness evidence"]]
     assert attestation["if"].startswith("always()")
+    attested_paths = attestation["with"]["subject-path"]
+    assert "activation-manifest.yaml" in attested_paths
+    assert "release.json" in attested_paths
+    release_binding = steps[
+        named["Bind exact release evidence for controlled activation"]
+    ]
+    assert "staging-worker-release-input/release.json" in release_binding["run"]
+    assert "staging-worker-readiness/release.json" in release_binding["run"]
     upload = steps[named["Upload staging worker readiness evidence"]]
     assert upload["if"] == "always()"
 

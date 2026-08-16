@@ -277,6 +277,23 @@ python -m data_agent.dolphinscheduler_worker_activation validate \
 
 2026-08-15 受保护 run `31872815368` 已对 deployment run `31863077257` 完成上述只读验证并上传 attested artifact。当前 `status=blocked`：环境尚未提供两项外部 evidence，worker Deployment 也不存在；`automatic_scale_allowed=false`、`promotion_authority_verified=false`、`production_promotion_allowed=false`。readiness evidence fingerprint 为 `1babf26cadfe39da364a1505d39cddf44d7e04abd38b32babbc0eadbece1ebce`。
 
+### 10.2.2 Protected single-replica activation
+
+`.github/workflows/activate-staging-dolphinscheduler-worker.yml` 是 readiness 通过后的独立 mutation boundary，只能在 `main` 上手工输入 successful readiness run ID，并由 `staging-live` environment reviewer 批准。不要下载 readiness manifest 后手工 apply，也不要把 observer kubeconfig 复用为 mutation identity。
+
+workflow 按以下顺序 fail closed：
+
+1. 从 GitHub API 验证 readiness run 的 repository、workflow path、event、branch、revision 和 successful conclusion；
+2. 选择 run-ID 命名的唯一未过期 artifact，下载 archive 并比对 API `sha256` digest；
+3. 验证 `activation-manifest.yaml`、`manifest-report.json`、`activation.json`、`readiness.json`、`release.json` 的 readiness attestation，并再次验证 `release.json` 的原始 provenance verifier attestation；
+4. 在加载 mutation kubeconfig 前运行 admission，绑定内部 fingerprint、immutable image、exactly-one replica、资源白名单与 protected cluster/namespace UID；
+5. 用环境专用 kubeconfig 确认目标 UID 和最小 RBAC，仅对 admitted manifest 执行一次 `kubectl apply --server-side`；
+6. 采集 Deployment、Pod 与 worker health，要求 `live_ready`、一个 ready replica、零首次重启、Pod UID 生成的 worker ID 和 healthy status，再 attested/upload activation evidence。
+
+admitted manifest 只能包含 `Deployment/gis-agent-dolphinscheduler-command-worker`、同名 `ServiceAccount` 和 `NetworkPolicy/postgres-access`。入口禁止 `kubectl scale`、`kubectl patch`、ConfigMap/Secret 读取与 production 权限。任何阶段失败都保留 blocked evidence；不要用手工重跑 mutation 命令绕过最终边界。
+
+本入口截至 2026-08-16 只完成代码、静态合同与合成 admission 验证，尚未触发真实 staging apply。先决条件仍是有效的 ConfigMap snapshot、Secret key attestation、真实 provider identity、`GDA_STAGING_KUBECONFIG_B64`、固定 cluster/namespace UID 和 environment reviewer approval。即使首次激活成功，`automatic_scale_allowed=false` 和 `production_promotion_allowed=false` 仍保持不变；lease takeover、restart drain、callback、credential rotation 和 live golden slice 必须另行验收。
+
 ### 10.3 Staging candidate registry publication
 
 #### Remote mainline prerequisite
