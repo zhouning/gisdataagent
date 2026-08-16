@@ -1,0 +1,65 @@
+schema: gda.metadata_fabric_local_ingestion_profile.v1
+environment: local_docker_desktop
+
+cluster:
+  context: docker-desktop
+  namespace: gda-metadata-sandbox
+
+providers:
+  openmetadata:
+    version: 1.13.1
+    service: openmetadata
+    service_port: 8585
+    auth_mode: local_basic_bootstrap
+    username_env: GDA_OPENMETADATA_USERNAME
+    password_env: GDA_OPENMETADATA_PASSWORD
+  gravitino:
+    version: 1.3.0
+    service: metadata-gravitino
+    service_port: 8090
+    auth_mode: disabled
+
+targets:
+  openmetadata:
+    service: gda_lakehouse
+    service_type: CustomDatabase
+    database: land_use
+    schema: published
+    table: land_use_parcels
+    owner_team: data-platform
+    domain: natural-resources
+    classification: Sensitivity
+    classification_tag: Internal
+    glossary: LandUse
+    glossary_term: DLTB
+  gravitino:
+    metalake: gda_lakehouse
+    catalog: iceberg
+    schema: land_use
+    table: land_use_parcels
+    catalog_type: RELATIONAL
+    catalog_provider: lakehouse-iceberg
+    catalog_backend: memory
+    uri: file:///tmp/gda-m3-local
+    warehouse: file:///tmp/gda-m3-local
+
+authorization:
+  action: metadata_fabric.apply
+  policy_version_ref: gda://ar0-golden/policy/metadata-fabric-local-apply:v1
+  evaluator_subject: workload:metadata-policy-evaluator
+  approver_subject: human:metadata-platform-approver
+  approval_reason: Approved bounded local Metadata Fabric ingestion rehearsal
+  decided_at: 2026-07-28T04:00:00Z
+  approval_decided_at: 2026-07-28T04:05:00Z
+  authorized_at: 2026-07-28T05:00:00Z
+  approval_expires_at: 2026-07-29T04:00:00Z
+  expires_at: 2026-07-30T04:00:00Z
+
+claims:
+  provider_minimum_privilege_verified: false
+  oidc_verified: false
+  gravitino_authentication_verified: false
+  binding_persisted_to_gda_control: false
+  live_openlineage_emission_verified: false
+  production_ingestion_verified: false
+  production_ready: false
