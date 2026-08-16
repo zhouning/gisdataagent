@@ -1,0 +1,212 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gda-metadata-network-policy-rehearsal
+  labels:
+    app.kubernetes.io/part-of: gda-metadata-network-policy-rehearsal
+    gda.openai.com/environment: local-network-policy-evidence
+    gda.openai.com/ephemeral-owner: metadata-network-policy-rehearsal
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: v1.35
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: v1.35
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: v1.35
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: metadata-network-policy-rehearsal
+  namespace: gda-metadata-network-policy-rehearsal
+  labels:
+    app.kubernetes.io/part-of: gda-metadata-network-policy-rehearsal
+spec:
+  hard:
+    pods: "3"
+    services: "1"
+    services.loadbalancers: "0"
+    services.nodeports: "0"
+    count/networkpolicies.networking.k8s.io: "4"
+    requests.cpu: 15m
+    requests.memory: 24Mi
+    limits.cpu: 150m
+    limits.memory: 96Mi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: probe
+  namespace: gda-metadata-network-policy-rehearsal
+  labels:
+    app.kubernetes.io/part-of: gda-metadata-network-policy-rehearsal
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: probe-server
+  namespace: gda-metadata-network-policy-rehearsal
+  labels:
+    app.kubernetes.io/part-of: gda-metadata-network-policy-rehearsal
+spec:
+  type: ClusterIP
+  selector:
+    role: server
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: probe-server
+  namespace: gda-metadata-network-policy-rehearsal
+  labels:
+    app.kubernetes.io/part-of: gda-metadata-network-policy-rehearsal
+    role: server
+spec:
+  automountServiceAccountToken: false
+  serviceAccountName: probe
+  nodeSelector:
+    kubernetes.io/hostname: desktop-control-plane
+  tolerations:
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+  containers:
+    - name: server
+      image: docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
+      imagePullPolicy: IfNotPresent
+      command:
+        - /bin/sh
+        - -c
+        - printf 'gda-network-policy-ok\n' > /www/index.html && exec httpd -f -p 8080 -h /www
+      ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+      readinessProbe:
+        httpGet:
+          path: /
+          port: http
+        initialDelaySeconds: 1
+        periodSeconds: 1
+        timeoutSeconds: 1
+        failureThreshold: 30
+      resources:
+        requests:
+          cpu: 5m
+          memory: 8Mi
+        limits:
+          cpu: 50m
+          memory: 32Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: [ALL]
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      volumeMounts:
+        - name: www
+          mountPath: /www
+  terminationGracePeriodSeconds: 1
+  volumes:
+    - name: www
+      emptyDir:
+        sizeLimit: 1Mi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: probe-allowed
+  namespace: gda-metadata-network-policy-rehearsal
+  labels:
+    app.kubernetes.io/part-of: gda-metadata-network-policy-rehearsal
+    role: client
+    access: allowed
+spec:
+  automountServiceAccountToken: false
+  serviceAccountName: probe
+  nodeSelector:
+    kubernetes.io/hostname: desktop-worker
+  containers:
+    - name: client
+      image: docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
+      imagePullPolicy: IfNotPresent
+      command: [/bin/sh, -c, "exec sleep 3600"]
+      readinessProbe:
+        exec:
+          command: [/bin/sh, -c, "test -r /etc/resolv.conf"]
+        initialDelaySeconds: 1
+        periodSeconds: 1
+        timeoutSeconds: 1
+        failureThreshold: 30
+      resources:
+        requests:
+          cpu: 5m
+          memory: 8Mi
+        limits:
+          cpu: 50m
+          memory: 32Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: [ALL]
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+  terminationGracePeriodSeconds: 1
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: probe-denied
+  namespace: gda-metadata-network-policy-rehearsal
+  labels:
+    app.kubernetes.io/part-of: gda-metadata-network-policy-rehearsal
+    role: client
+    access: denied
+spec:
+  automountServiceAccountToken: false
+  serviceAccountName: probe
+  nodeSelector:
+    kubernetes.io/hostname: desktop-worker
+  containers:
+    - name: client
+      image: docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
+      imagePullPolicy: IfNotPresent
+      command: [/bin/sh, -c, "exec sleep 3600"]
+      readinessProbe:
+        exec:
+          command: [/bin/sh, -c, "test -r /etc/resolv.conf"]
+        initialDelaySeconds: 1
+        periodSeconds: 1
+        timeoutSeconds: 1
+        failureThreshold: 30
+      resources:
+        requests:
+          cpu: 5m
+          memory: 8Mi
+        limits:
+          cpu: 50m
+          memory: 32Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: [ALL]
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+  terminationGracePeriodSeconds: 1

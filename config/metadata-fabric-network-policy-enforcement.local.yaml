@@ -1,0 +1,62 @@
+schema: gda.metadata_fabric_network_policy_enforcement_profile.v1
+environment: local_docker_desktop
+cluster:
+  context: docker-desktop
+  namespace: gda-metadata-network-policy-rehearsal
+  server_version: v1.35.5
+  nodes:
+    server: desktop-control-plane
+    clients: desktop-worker
+  cni:
+    namespace: kube-system
+    daemonset: kindnet
+    image: docker.io/kindest/kindnetd:v20260528-9350166c
+probe:
+  image: docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
+  service: probe-server
+  port: 8080
+  success_body: gda-network-policy-ok
+  request_timeout_seconds: 2
+  stage_timeout_seconds: 30
+stages:
+  - name: baseline
+    policies: []
+    expected:
+      allowed: connected
+      denied: connected
+  - name: ingress_default_deny
+    policies: [probe-server-default-deny]
+    expected:
+      allowed: blocked
+      denied: blocked
+  - name: ingress_authorized
+    policies: [probe-server-default-deny, probe-server-allow-authorized]
+    expected:
+      allowed: connected
+      denied: blocked
+  - name: egress_default_deny
+    policies:
+      - probe-server-default-deny
+      - probe-server-allow-authorized
+      - probe-authorized-default-deny
+    expected:
+      allowed: blocked
+      denied: blocked
+  - name: egress_authorized
+    policies:
+      - probe-server-default-deny
+      - probe-server-allow-authorized
+      - probe-authorized-default-deny
+      - probe-authorized-allow-dns-and-server
+    expected:
+      allowed: connected
+      denied: blocked
+claims:
+  local_network_policy_enforcement_verified: false
+  production_network_policy_enforcement_verified: false
+  metadata_provider_network_policy_verified: false
+  tenant_isolation_verified: false
+  oidc_verified: false
+  upgrade_verified: false
+  writes_to_gda_enabled: false
+  production_ready: false
