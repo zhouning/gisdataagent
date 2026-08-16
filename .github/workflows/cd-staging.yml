@@ -169,6 +169,7 @@ jobs:
             data_agent/test_dolphinscheduler_command_consumer.py \
             data_agent/test_dolphinscheduler_command_worker.py \
             data_agent/test_dolphinscheduler_worker_activation.py \
+            data_agent/test_dolphinscheduler_worker_activation_admission.py \
             data_agent/test_dolphinscheduler_worker_deployment.py \
             data_agent/test_dolphinscheduler_worker_staging.py \
             data_agent/test_frontend_api.py \
@@ -188,6 +189,7 @@ jobs:
             data_agent/test_s3_obs.py \
             data_agent/test_staging_candidate_evidence.py \
             data_agent/test_staging_deployment_bundle.py \
+            data_agent/test_staging_dolphinscheduler_worker_activation_workflow.py \
             data_agent/test_staging_dolphinscheduler_worker_workflow.py \
             data_agent/test_staging_live_evidence.py \
             data_agent/test_staging_provenance_evidence.py \

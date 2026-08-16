@@ -1,0 +1,420 @@
+# Applies one attested worker activation candidate after protected admission.
+# It never creates ConfigMaps or Secrets, scales beyond one replica, or grants
+# production promotion.
+name: Activate - Protected Staging DolphinScheduler Worker
+
+on:
+  workflow_dispatch:
+    inputs:
+      readiness_run_id:
+        description: Successful protected worker readiness workflow run ID
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  attestations: write
+  contents: read
+  id-token: write
+
+concurrency:
+  group: protected-staging-dolphinscheduler-worker-activation
+  cancel-in-progress: false
+
+jobs:
+  activate-staging-dolphinscheduler-worker:
+    name: Apply admitted worker and collect live evidence
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, linux, gda-staging]
+    environment: staging-live
+    timeout-minutes: 20
+
+    env:
+      GDA_STAGING_NAMESPACE: ${{ vars.GDA_STAGING_NAMESPACE }}
+      GDA_STAGING_CLUSTER_UID: ${{ vars.GDA_STAGING_CLUSTER_UID }}
+      GDA_STAGING_NAMESPACE_UID: ${{ vars.GDA_STAGING_NAMESPACE_UID }}
+      PYTHONPATH: ${{ github.workspace }}/worker-activation-source
+
+    steps:
+      - name: Initialize isolated activation evidence workspace
+        run: |
+          set -euo pipefail
+          EVIDENCE_ROOT="${GITHUB_WORKSPACE:?}/staging-worker-activation"
+          if [[ "$EVIDENCE_ROOT" != "$(pwd -P)/staging-worker-activation" ]]; then
+            echo "refusing to reset an unexpected activation evidence path" >&2
+            exit 1
+          fi
+          rm -rf -- "$EVIDENCE_ROOT"
+          mkdir -p -- "$EVIDENCE_ROOT"
+          python - "$EVIDENCE_ROOT" <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          root = pathlib.Path(sys.argv[1])
+          boundary = {
+              "status": "blocked",
+              "deployed": False,
+              "automatic_scale_allowed": False,
+              "promotion_authority_verified": False,
+              "production_promotion_allowed": False,
+              "errors": ["activation workflow did not reach this evidence boundary"],
+          }
+          (root / "admission.json").write_text(
+              json.dumps({
+                  "schema": "gda.dolphinscheduler_worker_activation_admission.v1",
+                  "single_replica_apply_allowed": False,
+                  **boundary,
+              }, indent=2, sort_keys=True) + "\n"
+          )
+          (root / "apply.json").write_text(
+              json.dumps({
+                  "schema": "gda.dolphinscheduler_worker_activation_apply.v1",
+                  "single_replica_apply_attempted": False,
+                  **boundary,
+              }, indent=2, sort_keys=True) + "\n"
+          )
+          (root / "live-readiness.json").write_text(
+              json.dumps({
+                  "schema": "gda.dolphinscheduler_worker_staging_readiness.v1",
+                  "activation_ready": False,
+                  "live_cluster_verified": False,
+                  "live_worker_verified": False,
+                  **boundary,
+              }, indent=2, sort_keys=True) + "\n"
+          )
+          PY
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Check out the protected activation verifier revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: worker-activation-source
+          persist-credentials: false
+
+      - name: Install the manifest parsing dependency
+        run: python -m pip install "PyYAML>=6,<7"
+
+      - name: Resolve protected readiness run and artifact identity
+        id: readiness
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          READINESS_RUN_ID: ${{ inputs.readiness_run_id }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$READINESS_RUN_ID" =~ ^[1-9][0-9]*$ ]]; then
+            echo "readiness run ID must be a positive integer" >&2
+            exit 1
+          fi
+          gh api \
+            "repos/$GITHUB_REPOSITORY/actions/runs/$READINESS_RUN_ID" \
+            > staging-worker-activation/readiness-run.json
+          python -m data_agent.dolphinscheduler_worker_activation_admission \
+            validate-run \
+            --run-metadata staging-worker-activation/readiness-run.json \
+            --expected-run-id "$READINESS_RUN_ID" \
+            --source-repository "$GITHUB_REPOSITORY" \
+            --output staging-worker-activation/readiness-run-report.json \
+            > /dev/null
+          gh api \
+            "repos/$GITHUB_REPOSITORY/actions/runs/$READINESS_RUN_ID/artifacts" \
+            > staging-worker-activation/readiness-artifacts.json
+          python -m data_agent.dolphinscheduler_worker_activation_admission \
+            validate-artifact \
+            --artifacts-metadata staging-worker-activation/readiness-artifacts.json \
+            --run-report staging-worker-activation/readiness-run-report.json \
+            --output staging-worker-activation/readiness-artifact-report.json \
+            > /dev/null
+          python - \
+            staging-worker-activation/readiness-run-report.json \
+            staging-worker-activation/readiness-artifact-report.json \
+            "$GITHUB_OUTPUT" <<'PY'
+          import json
+          import sys
+
+          run = json.load(open(sys.argv[1]))
+          artifact = json.load(open(sys.argv[2]))
+          assert run["status"] == "valid"
+          assert artifact["status"] == "valid"
+          with open(sys.argv[3], "a") as output:
+              output.write(f"source_revision={run['source_revision']}\n")
+              output.write(f"artifact_id={artifact['artifact_id']}\n")
+              output.write(f"artifact_digest={artifact['artifact_digest']}\n")
+          PY
+
+      - name: Download exact readiness archive and verify digest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ARTIFACT_ID: ${{ steps.readiness.outputs.artifact_id }}
+          EXPECTED_ARTIFACT_DIGEST: ${{ steps.readiness.outputs.artifact_digest }}
+        run: |
+          set -euo pipefail
+          INPUT_ROOT="${RUNNER_TEMP:?}/gda-staging-worker-activation-input"
+          if [[ "$INPUT_ROOT" != "$RUNNER_TEMP/gda-staging-worker-activation-input" ]]; then
+            echo "refusing to reset an unexpected activation input path" >&2
+            exit 1
+          fi
+          rm -rf -- "$INPUT_ROOT"
+          mkdir -p -- "$INPUT_ROOT"
+          ARCHIVE_OBSERVED="$RUNNER_TEMP/gda-staging-worker-readiness.zip.observed"
+          ARCHIVE="$RUNNER_TEMP/gda-staging-worker-readiness.zip"
+          gh api \
+            "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip" \
+            > "$ARCHIVE_OBSERVED"
+          OBSERVED_ARTIFACT_DIGEST=$(python -c \
+            'import hashlib,sys; print("sha256:" + hashlib.sha256(open(sys.argv[1], "rb").read()).hexdigest())' \
+            "$ARCHIVE_OBSERVED")
+          [[ "$OBSERVED_ARTIFACT_DIGEST" == "$EXPECTED_ARTIFACT_DIGEST" ]]
+          mv -- "$ARCHIVE_OBSERVED" "$ARCHIVE"
+          unzip -q "$ARCHIVE" -d "$INPUT_ROOT"
+          echo "GDA_STAGING_WORKER_ACTIVATION_INPUT_ROOT=$INPUT_ROOT" >> "$GITHUB_ENV"
+
+      - name: Verify readiness artifact and release attestations
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          READINESS_REVISION: ${{ steps.readiness.outputs.source_revision }}
+        run: |
+          set -euo pipefail
+          INPUT_ROOT="$GDA_STAGING_WORKER_ACTIVATION_INPUT_ROOT"
+          for subject in \
+            activation-manifest.yaml \
+            manifest-report.json \
+            activation.json \
+            readiness.json \
+            release.json; do
+            gh attestation verify "$INPUT_ROOT/$subject" \
+              --repo "$GITHUB_REPOSITORY" \
+              --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/verify-staging-dolphinscheduler-worker.yml" \
+              --source-ref refs/heads/main \
+              --source-digest "$READINESS_REVISION" \
+              --signer-digest "$READINESS_REVISION" \
+              --format json \
+              > "staging-worker-activation/$subject.attestation.json"
+          done
+          VERIFIER_REVISION=$(python -c \
+            'import json,re,sys; v=json.load(open(sys.argv[1]))["verifier_revision"]; assert re.fullmatch(r"[0-9a-f]{40}",v); print(v)' \
+            "$INPUT_ROOT/release.json")
+          gh attestation verify "$INPUT_ROOT/release.json" \
+            --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/verify-staging-provenance.yml" \
+            --source-ref refs/heads/main \
+            --source-digest "$VERIFIER_REVISION" \
+            --signer-digest "$VERIFIER_REVISION" \
+            --deny-self-hosted-runners \
+            --format json \
+            > staging-worker-activation/release-origin-attestation.json
+
+      - name: Admit exact single-replica activation evidence
+        id: admission
+        env:
+          READINESS_RUN_ID: ${{ inputs.readiness_run_id }}
+        run: |
+          python -m data_agent.dolphinscheduler_worker_activation_admission \
+            admit \
+            --run-metadata staging-worker-activation/readiness-run.json \
+            --artifacts-metadata staging-worker-activation/readiness-artifacts.json \
+            --activation-evidence "$GDA_STAGING_WORKER_ACTIVATION_INPUT_ROOT/activation.json" \
+            --readiness-evidence "$GDA_STAGING_WORKER_ACTIVATION_INPUT_ROOT/readiness.json" \
+            --release-evidence "$GDA_STAGING_WORKER_ACTIVATION_INPUT_ROOT/release.json" \
+            --manifest-report "$GDA_STAGING_WORKER_ACTIVATION_INPUT_ROOT/manifest-report.json" \
+            --manifest "$GDA_STAGING_WORKER_ACTIVATION_INPUT_ROOT/activation-manifest.yaml" \
+            --expected-run-id "$READINESS_RUN_ID" \
+            --source-repository "$GITHUB_REPOSITORY" \
+            --expected-namespace "$GDA_STAGING_NAMESPACE" \
+            --expected-cluster-uid "$GDA_STAGING_CLUSTER_UID" \
+            --expected-namespace-uid "$GDA_STAGING_NAMESPACE_UID" \
+            --output staging-worker-activation/admission.json \
+            > /dev/null
+
+      - name: Require protected mutation identity and exact cluster
+        id: environment
+        env:
+          GDA_STAGING_LIVE_PROTECTED: ${{ vars.GDA_STAGING_LIVE_PROTECTED }}
+          GDA_STAGING_KUBECONFIG_B64: ${{ secrets.GDA_STAGING_KUBECONFIG_B64 }}
+        run: |
+          set -euo pipefail
+          [[ "$GDA_STAGING_LIVE_PROTECTED" == "true" ]]
+          [[ "$GDA_STAGING_NAMESPACE" == "gis-agent-staging" ]]
+          for value in \
+            "$GDA_STAGING_CLUSTER_UID" \
+            "$GDA_STAGING_NAMESPACE_UID" \
+            "$GDA_STAGING_KUBECONFIG_B64"; do
+            [[ -n "$value" ]]
+          done
+          KUBECONFIG_FILE="$RUNNER_TEMP/gda-staging-worker-activation-kubeconfig"
+          printf '%s' "$GDA_STAGING_KUBECONFIG_B64" | \
+            base64 --decode > "$KUBECONFIG_FILE"
+          chmod 600 "$KUBECONFIG_FILE"
+          echo "KUBECONFIG=$KUBECONFIG_FILE" >> "$GITHUB_ENV"
+          OBSERVED_CLUSTER_UID=$(kubectl get namespace kube-system \
+            -o jsonpath='{.metadata.uid}')
+          OBSERVED_NAMESPACE_UID=$(kubectl get namespace "$GDA_STAGING_NAMESPACE" \
+            -o jsonpath='{.metadata.uid}')
+          [[ "$OBSERVED_CLUSTER_UID" == "$GDA_STAGING_CLUSTER_UID" ]]
+          [[ "$OBSERVED_NAMESPACE_UID" == "$GDA_STAGING_NAMESPACE_UID" ]]
+          for verb in get create patch; do
+            for resource in \
+              deployments.apps \
+              serviceaccounts \
+              networkpolicies.networking.k8s.io; do
+              kubectl auth can-i "$verb" "$resource" \
+                -n "$GDA_STAGING_NAMESPACE" | grep -Fx yes
+            done
+          done
+          kubectl auth can-i get pods \
+            -n "$GDA_STAGING_NAMESPACE" | grep -Fx yes
+          kubectl auth can-i list pods \
+            -n "$GDA_STAGING_NAMESPACE" | grep -Fx yes
+          kubectl auth can-i create pods --subresource=exec \
+            -n "$GDA_STAGING_NAMESPACE" | grep -Fx yes
+          echo "GDA_OBSERVED_STAGING_CLUSTER_UID=$OBSERVED_CLUSTER_UID" >> "$GITHUB_ENV"
+          echo "GDA_OBSERVED_STAGING_NAMESPACE_UID=$OBSERVED_NAMESPACE_UID" >> "$GITHUB_ENV"
+
+      - name: Apply admitted worker manifest and wait for rollout
+        id: apply
+        run: |
+          set -euo pipefail
+          APPLY_LOG="$RUNNER_TEMP/gda-staging-worker-activation-apply.log"
+          set +e
+          kubectl apply \
+            --server-side \
+            --field-manager=gda-staging-worker-activation \
+            -f "$GDA_STAGING_WORKER_ACTIVATION_INPUT_ROOT/activation-manifest.yaml" \
+            > "$APPLY_LOG" 2>&1
+          APPLY_EXIT_CODE=$?
+          ROLLOUT_EXIT_CODE=125
+          if [[ "$APPLY_EXIT_CODE" == "0" ]]; then
+            kubectl -n "$GDA_STAGING_NAMESPACE" rollout status \
+              deployment/gis-agent-dolphinscheduler-command-worker \
+              --timeout=10m >> "$APPLY_LOG" 2>&1
+            ROLLOUT_EXIT_CODE=$?
+          fi
+          set -e
+          python - \
+            "$APPLY_EXIT_CODE" \
+            "$ROLLOUT_EXIT_CODE" \
+            staging-worker-activation/apply.json <<'PY'
+          import json
+          import sys
+
+          apply_exit = int(sys.argv[1])
+          rollout_exit = int(sys.argv[2])
+          ready = apply_exit == 0 and rollout_exit == 0
+          report = {
+              "schema": "gda.dolphinscheduler_worker_activation_apply.v1",
+              "status": "rollout_succeeded" if ready else "blocked",
+              "single_replica_apply_attempted": True,
+              "apply_exit_code": apply_exit,
+              "rollout_exit_code": rollout_exit,
+              "deployed": ready,
+              "automatic_scale_allowed": False,
+              "promotion_authority_verified": False,
+              "production_promotion_allowed": False,
+              "errors": [] if ready else ["single-replica apply or rollout failed"],
+          }
+          with open(sys.argv[3], "w") as output:
+              json.dump(report, output, indent=2, sort_keys=True)
+              output.write("\n")
+          PY
+
+      - name: Collect allowlisted live worker state after activation
+        if: always() && steps.admission.outcome == 'success' && steps.environment.outcome == 'success'
+        run: |
+          set -euo pipefail
+          EVIDENCE_ROOT=staging-worker-activation
+          printf '{}\n' > "$EVIDENCE_ROOT/deployment.json"
+          printf '{"items":[]}\n' > "$EVIDENCE_ROOT/pods.json"
+          printf '{}\n' > "$EVIDENCE_ROOT/health.json"
+          DEPLOYMENT_OBSERVED="$EVIDENCE_ROOT/deployment-observed.json"
+          PODS_OBSERVED="$EVIDENCE_ROOT/pods-observed.json"
+          HEALTH_OBSERVED="$EVIDENCE_ROOT/health-observed.json"
+          if kubectl -n "$GDA_STAGING_NAMESPACE" get deployment \
+            gis-agent-dolphinscheduler-command-worker \
+            -o json > "$DEPLOYMENT_OBSERVED" 2>/dev/null; then
+            mv -- "$DEPLOYMENT_OBSERVED" "$EVIDENCE_ROOT/deployment.json"
+            if kubectl -n "$GDA_STAGING_NAMESPACE" get pods \
+              -l app.kubernetes.io/name=gis-agent-dolphinscheduler-command-worker \
+              -o json > "$PODS_OBSERVED" 2>/dev/null; then
+              mv -- "$PODS_OBSERVED" "$EVIDENCE_ROOT/pods.json"
+            fi
+            READY_REPLICAS=$(python -c \
+              'import json,sys; print((json.load(open(sys.argv[1])).get("status") or {}).get("readyReplicas",0))' \
+              "$EVIDENCE_ROOT/deployment.json")
+            if [[ "$READY_REPLICAS" == "1" ]]; then
+              if kubectl -n "$GDA_STAGING_NAMESPACE" exec \
+                deployment/gis-agent-dolphinscheduler-command-worker \
+                -c worker -- \
+                python -m data_agent.dolphinscheduler_command_worker health \
+                  --status-file /var/run/gis-agent/worker/status.json \
+                  --max-age-seconds 30 \
+                > "$HEALTH_OBSERVED" 2>/dev/null; then
+                mv -- "$HEALTH_OBSERVED" "$EVIDENCE_ROOT/health.json"
+              fi
+            fi
+          fi
+
+      - name: Build post-activation live readiness evidence
+        if: always() && steps.admission.outcome == 'success' && steps.environment.outcome == 'success'
+        continue-on-error: true
+        run: |
+          python -m data_agent.dolphinscheduler_worker_staging \
+            validate-readiness \
+            --activation-evidence "$GDA_STAGING_WORKER_ACTIVATION_INPUT_ROOT/activation.json" \
+            --release-evidence "$GDA_STAGING_WORKER_ACTIVATION_INPUT_ROOT/release.json" \
+            --deployment-snapshot staging-worker-activation/deployment.json \
+            --pods-snapshot staging-worker-activation/pods.json \
+            --health-snapshot staging-worker-activation/health.json \
+            --expected-namespace "$GDA_STAGING_NAMESPACE" \
+            --expected-cluster-uid "$GDA_STAGING_CLUSTER_UID" \
+            --expected-namespace-uid "$GDA_STAGING_NAMESPACE_UID" \
+            --observed-cluster-uid "$GDA_OBSERVED_STAGING_CLUSTER_UID" \
+            --observed-namespace-uid "$GDA_OBSERVED_STAGING_NAMESPACE_UID" \
+            --output staging-worker-activation/live-readiness.json \
+            > /dev/null
+
+      - name: Attest controlled activation and live evidence
+        if: always()
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: |
+            staging-worker-activation/admission.json
+            staging-worker-activation/apply.json
+            staging-worker-activation/live-readiness.json
+
+      - name: Upload controlled activation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-dolphinscheduler-worker-activation-${{ github.run_id }}
+          path: staging-worker-activation/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Preserve single-replica and production promotion boundaries
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+
+          admission = json.load(open("staging-worker-activation/admission.json"))
+          applied = json.load(open("staging-worker-activation/apply.json"))
+          live = json.load(open("staging-worker-activation/live-readiness.json"))
+          assert admission["status"] == "authorized_for_single_replica_apply"
+          assert admission["single_replica_apply_allowed"] is True
+          assert admission["requested_replicas"] == 1
+          assert applied["status"] == "rollout_succeeded"
+          assert live["status"] == "live_ready"
+          assert live["deployed"] is True
+          assert live["live_worker_verified"] is True
+          assert live["observation"]["ready_replicas"] == 1
+          assert live["observation"]["restart_counts"] == [0]
+          for report in (admission, applied, live):
+              assert report["automatic_scale_allowed"] is False
+              assert report["production_promotion_allowed"] is False
+          assert live["promotion_authority_verified"] is False
+          PY
