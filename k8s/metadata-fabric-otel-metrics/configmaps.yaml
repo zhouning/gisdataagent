@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: metadata-json-exporter-config
+  namespace: gda-metadata-sandbox
+data:
+  config.yaml: |
+    modules:
+      gravitino:
+        metrics:
+          - name: gda_gravitino_datasource_active_connections
+            path: '{ .gauges.gravitino-relational-store\.datasource\.active-connections.value }'
+            help: Gravitino relational store active connections
+          - name: gda_gravitino_datasource_max_connections
+            path: '{ .gauges.gravitino-relational-store\.datasource\.max-connections.value }'
+            help: Gravitino relational store maximum connections
+          - name: gda_gravitino_http_threads
+            path: '{ .gauges.gravitino-server\.http-server\.total-thread\.num.value }'
+            help: Gravitino HTTP server total threads
+          - name: gda_gravitino_jvm_heap_used_bytes
+            path: '{ .gauges.jvm\.heap\.used.value }'
+            help: Gravitino JVM heap bytes used
+          - name: gda_gravitino_jvm_heap_max_bytes
+            path: '{ .gauges.jvm\.heap\.max.value }'
+            help: Gravitino JVM maximum heap bytes
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: metadata-otel-collector-config
+  namespace: gda-metadata-sandbox
+data:
+  config.yaml: |
+    extensions:
+      health_check:
+        endpoint: 0.0.0.0:13133
+    receivers:
+      prometheus/provider_metrics:
+        report_extra_scrape_metrics: true
+        config:
+          global:
+            scrape_interval: 5s
+            scrape_timeout: 4s
+          scrape_configs:
+            - job_name: openmetadata
+              metrics_path: /prometheus
+              scheme: http
+              static_configs:
+                - targets: [openmetadata:8586]
+                  labels:
+                    gda_provider: openmetadata
+            - job_name: gravitino
+              metrics_path: /probe
+              params:
+                module: [gravitino]
+              static_configs:
+                - targets: [http://metadata-gravitino:8090/metrics]
+                  labels:
+                    gda_provider: gravitino
+              relabel_configs:
+                - source_labels: [__address__]
+                  target_label: __param_target
+                - source_labels: [__param_target]
+                  target_label: instance
+                - target_label: __address__
+                  replacement: metadata-json-exporter:7979
+    processors:
+      batch:
+        timeout: 1s
+    exporters:
+      prometheus:
+        endpoint: 0.0.0.0:8889
+        translation_strategy: UnderscoreEscapingWithoutSuffixes
+        metric_expiration: 1m
+        const_labels:
+          gda_pipeline: metadata_fabric_local
+    service:
+      extensions: [health_check]
+      pipelines:
+        metrics:
+          receivers: [prometheus/provider_metrics]
+          processors: [batch]
+          exporters: [prometheus]
+      telemetry:
+        logs:
+          level: info

@@ -1,0 +1,63 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: metadata-otel-collector-egress
+  namespace: gda-metadata-sandbox
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: metadata-otel-collector
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: openmetadata
+      ports:
+        - protocol: TCP
+          port: 8586
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: metadata-json-exporter
+      ports:
+        - protocol: TCP
+          port: 7979
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: metadata-json-exporter-ingress
+  namespace: gda-metadata-sandbox
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: metadata-json-exporter
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: metadata-otel-collector
+      ports:
+        - protocol: TCP
+          port: 7979
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: metadata-json-exporter-egress
+  namespace: gda-metadata-sandbox
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: metadata-json-exporter
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: metadata-gravitino
+      ports:
+        - protocol: TCP
+          port: 8090

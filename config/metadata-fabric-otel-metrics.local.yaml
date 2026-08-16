@@ -1,0 +1,39 @@
+schema: gda.metadata_fabric_otel_metrics_profile.v1
+environment: local_docker_desktop
+cluster:
+  context: docker-desktop
+  namespace: gda-metadata-sandbox
+components:
+  otel_collector:
+    version: "0.135.0"
+    image: otel/opentelemetry-collector-contrib@sha256:330e0c7e4f4f60dc94f9657e5fb96ce9cfcf333b9aaa41a5c06b4ce4532de92d
+    workload: deployment/metadata-otel-collector
+    service: metadata-otel-collector
+    prometheus_port: 8889
+  json_exporter:
+    version: "0.7.0"
+    image: prometheuscommunity/json-exporter@sha256:62370e6e39818966ae1ddfbb69ebf480c697a313cc05ddd76c910b9fbe6934ec
+    workload: deployment/metadata-json-exporter
+    service: metadata-json-exporter
+    port: 7979
+pipeline:
+  scrape_interval_seconds: 5
+  repeated_observations: 2
+  openmetadata_target: http://openmetadata:8586/prometheus
+  gravitino_target: http://metadata-gravitino:8090/metrics
+  exported_endpoint: http://metadata-otel-collector:8889/metrics
+claims:
+  local_otel_metrics_pipeline_verified: false
+  local_repeated_scrape_verified: false
+  otel_pipeline_verified: false
+  production_metrics_verified: false
+  persistent_metrics_storage_verified: false
+  alert_delivery_verified: false
+  slo_verified: false
+  metrics_tls_verified: false
+  tenant_isolation_verified: false
+  oidc_verified: false
+  network_policy_enforcement_verified: false
+  upgrade_verified: false
+  writes_to_gda_enabled: false
+  production_ready: false
