@@ -103,6 +103,9 @@ jobs:
       - name: Validate metadata fabric production NetworkPolicy gate
         run: python -m data_agent.metadata_fabric_network_policy_gate validate
 
+      - name: Validate metadata fabric ingestion projection contract
+        run: python -m data_agent.metadata_fabric_ingestion validate
+
       - name: Validate DolphinScheduler adapter boundary
         run: python -m data_agent.dolphinscheduler_adapter validate
 
@@ -146,6 +149,7 @@ jobs:
             data_agent/test_metadata_fabric_observability_gate.py \
             data_agent/test_metadata_fabric_network_policy_enforcement.py \
             data_agent/test_metadata_fabric_network_policy_gate.py \
+            data_agent/test_metadata_fabric_ingestion.py \
             data_agent/test_metadata_fabric_otel_failure_rehearsal.py \
             data_agent/test_metadata_fabric_otel_metrics.py \
             data_agent/test_metadata_fabric_provider_metrics.py \
