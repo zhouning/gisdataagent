@@ -124,6 +124,18 @@ def test_static_recovery_contract_is_valid_and_portable():
     )
 
 
+def test_command_runner_binds_every_kubectl_call_to_its_context():
+    runner = recovery._CommandRunner("/usr/local/bin/kubectl", "kind-recovery")
+
+    assert runner.kubectl_args(["get", "nodes"]) == [
+        "/usr/local/bin/kubectl",
+        "--context",
+        "kind-recovery",
+        "get",
+        "nodes",
+    ]
+
+
 def test_static_contract_rejects_api_token_mount(tmp_path):
     target = tmp_path / "recovery"
     shutil.copytree(recovery.DEFAULT_RECOVERY_MANIFEST_DIR, target)
@@ -156,6 +168,37 @@ def test_valid_observation_proves_only_local_recovery():
     assert report["writes_to_gda_enabled"] is False
     assert report["production_ready"] is False
     assert recovery.verify_evidence_integrity(report) == []
+
+
+def test_distinct_cluster_observation_proves_only_local_cross_cluster_recovery():
+    observation = _observation()
+    observation["cluster"]["recovery_context"] = "kind-gda-metadata-recovery"
+    observation["cluster"]["recovery_uid"] = (
+        "00000000-0000-4000-8000-000000000004"
+    )
+
+    report = recovery.build_recovery_evidence(observation, now=NOW)
+
+    assert report["status"] == "local_cross_cluster_backup_restore_verified"
+    assert report["backup_restore_scope"] == (
+        "local_distinct_kubernetes_clusters_new_namespace_and_pvcs"
+    )
+    assert report["local_cross_cluster_recovery_verified"] is True
+    assert report["cross_cluster_recovery_verified"] is False
+    assert report["production_cross_cluster_recovery_verified"] is False
+    assert report["production_ready"] is False
+    assert recovery.verify_evidence_integrity(report) == []
+
+
+def test_recovery_verifier_blocks_context_uid_isolation_disagreement():
+    observation = _observation()
+    observation["cluster"]["recovery_context"] = "kind-gda-metadata-recovery"
+    observation["cluster"]["recovery_uid"] = observation["cluster"]["uid"]
+
+    report = recovery.build_recovery_evidence(observation, now=NOW)
+
+    assert report["status"] == "blocked"
+    assert any("context/identity isolation disagrees" in item for item in report["errors"])
 
 
 def test_recovery_verifier_blocks_database_drift_and_shared_search_identity():
