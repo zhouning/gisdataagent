@@ -1,0 +1,35 @@
+schema: gda.metadata_fabric_cross_cluster_recovery_profile.v1
+environment: local_docker_desktop
+source_cluster:
+  context: docker-desktop
+recovery_cluster:
+  context: kind-gda-metadata-recovery
+  node_image: kindest/node:v1.35.5
+repository:
+  runtime: docker_host_container
+  failure_domain: outside_source_and_recovery_kubernetes_clusters
+  minio_image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+  mc_image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+  bucket: gda-metadata-fabric-cross-cluster-backups
+  versioning: Enabled
+  object_lock:
+    enabled: true
+    mode: COMPLIANCE
+    retention_days: 1
+  identities:
+    writer_delete_denied: true
+    reader_write_denied: true
+claims:
+  local_cross_cluster_recovery_verified: false
+  production_backup_target_verified: false
+  production_retention_verified: false
+  production_kms_verified: false
+  production_tls_verified: false
+  production_cross_cluster_recovery_verified: false
+  source_cluster_loss_verified: false
+  rpo_slo_verified: false
+  rto_slo_verified: false
+  oidc_verified: false
+  network_policy_enforcement_verified: false
+  writes_to_gda_enabled: false
+  production_ready: false

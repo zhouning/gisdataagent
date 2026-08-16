@@ -6,7 +6,7 @@
 
 **Decision owners**: Metadata Platform, SRE, Security, Platform Architecture
 
-**Related decisions**: [ADR-006](adr-006-openmetadata-governance-and-active-metadata-platform.md) · [ADR-037](adr-037-local-metadata-fabric-foundation-sandbox.md) · [ADR-039](adr-039-local-locked-metadata-backup-repository.md)
+**Related decisions**: [ADR-006](adr-006-openmetadata-governance-and-active-metadata-platform.md) · [ADR-037](adr-037-local-metadata-fabric-foundation-sandbox.md) · [ADR-039](adr-039-local-locked-metadata-backup-repository.md) · [ADR-040](adr-040-local-cross-cluster-metadata-recovery.md)
 
 **Evidence**: [metadata-fabric-recovery-rehearsal-2026-07-27.json](../evidence/metadata-fabric-recovery-rehearsal-2026-07-27.json)
 
@@ -74,15 +74,15 @@ OpenSearch source/recovered 必须完全匹配 version、索引总数/名称和 
 
 2026-07-27 在 ADR-039 repository round-trip 接入后的复测结果：
 
-- 恢复子流程耗时 `115.137` 秒；该观测值不是 RTO SLO；
-- OpenMetadata PostgreSQL backup `1,209,521` bytes，恢复 176 张表；
+- 恢复子流程耗时 `111.123` 秒；该观测值不是 RTO SLO；
+- OpenMetadata PostgreSQL backup `1,298,657` bytes，恢复 176 张表；
 - Gravitino PostgreSQL backup `188,109` bytes，恢复 39 张表；
-- OpenSearch snapshot archive `387,684` bytes，恢复 79 个索引；
+- OpenSearch snapshot archive `396,797` bytes，恢复 79 个索引；
 - 两个 PostgreSQL 的 table/row/sequence/extension fingerprints 全部一致；
 - OpenSearch index/document fingerprints 一致，source/recovery cluster UUID 不同；
 - 恢复 PVC 为 2 Gi、2 Gi、8 Gi，均为新的 Bound identity；
 - source provider 恢复 Ready，恢复 namespace、本地 artifact 与 source snapshot staging 全部清理；
-- evidence fingerprint 为 `3cf46cc83a8feaa4142893a06f84e9008a7d805a64fb6708d176ca976a4dbd62`。
+- evidence fingerprint 为 `da1214294045f8b0abe2e2775b81ef33967eac9ab0e97055ae80212ac0c08a4b`。
 
 Evidence 不包含 Secret，且由 required CI 的静态 validator、单元负例和 evidence integrity test 约束。
 
@@ -90,6 +90,6 @@ Evidence 不包含 Secret，且由 required CI 的静态 validator、单元负�
 
 **Positive**：M2b 第一次拥有覆盖 OpenMetadata PostgreSQL、Gravitino PostgreSQL 和 OpenSearch 的真实逻辑备份、隔离恢复、内容一致性和 cleanup 闭环；升级演练不再建立在“原 PVC 还能挂载”的假设上。
 
-**Negative**：演练会短暂停止两个 provider；默认 runner 仍允许仅使用本机临时 artifact。ADR-039 增加的 repository callback 只验证同集群本地 MinIO round-trip，仍没有验证云端 durability、TLS/KMS、生产 retention、PITR、跨集群调度和 RPO/RTO。
+**Negative**：演练会短暂停止两个 provider；默认 runner 仍允许仅使用本机临时 artifact。ADR-039 增加的 repository callback 只验证同集群本地 MinIO round-trip；ADR-040 虽复用该 runner 完成本机双集群恢复，仍没有验证云端 durability、TLS/KMS、生产 retention、PITR、source-host loss 和 RPO/RTO。
 
-**Next gate**：M2b 继续完成真实外部 backup account/bucket、COMPLIANCE retention、TLS/KMS、独立 writer/reader identity 与跨集群恢复，再完成 OIDC/workload identity、NetworkPolicy enforcement、upgrade/rollback、metrics/OTel、registry provenance 和 owner/runbook；之后才进入 M3。
+**Next gate**：M2b 继续完成 source host/cluster 外的生产 backup account/bucket、COMPLIANCE retention、TLS/KMS、workload identity、source-loss recovery 与 RPO/RTO，再完成 OIDC、NetworkPolicy enforcement、upgrade/rollback、metrics/OTel、registry provenance 和 owner/runbook；之后才进入 M3。

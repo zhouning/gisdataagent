@@ -495,6 +495,23 @@ RUNTIME_INVENTORY = (
         "Production backup controller and independent recovery reader",
     ),
     RuntimeSpec(
+        "metadata_cross_cluster_recovery_rehearsal",
+        "recovery_rehearsal",
+        "governed",
+        "evidence_durable",
+        "host-external versioned S3 observation + committed cross-cluster evidence",
+        "sre",
+        "local_verification_only",
+        ("data_agent/metadata_fabric_cross_cluster_recovery.py",),
+        (
+            (
+                "data_agent/metadata_fabric_cross_cluster_recovery.py",
+                "class _ExternalRepositoryRuntime",
+            ),
+        ),
+        "Production backup controller and failure-domain-isolated recovery reader",
+    ),
+    RuntimeSpec(
         "datalake_monitor",
         "monitor_loop",
         "legacy",

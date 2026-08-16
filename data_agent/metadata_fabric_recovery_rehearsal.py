@@ -458,8 +458,18 @@ def _observation_errors(
         errors.append("static recovery contract fingerprint is invalid")
 
     cluster = _mapping(observation.get("cluster"))
-    if cluster.get("context") != "docker-desktop" or not cluster.get("uid"):
+    source_context = cluster.get("context")
+    source_cluster_uid = cluster.get("uid")
+    recovery_context = cluster.get("recovery_context", source_context)
+    recovery_cluster_uid = cluster.get("recovery_uid", source_cluster_uid)
+    if source_context != "docker-desktop" or not source_cluster_uid:
         errors.append("rehearsal did not run on the bounded Docker Desktop cluster")
+    if not recovery_context or not recovery_cluster_uid:
+        errors.append("recovery cluster identity is unavailable")
+    if (source_context == recovery_context) != (
+        source_cluster_uid == recovery_cluster_uid
+    ):
+        errors.append("source and recovery cluster context/identity isolation disagrees")
     source_ns = _mapping(cluster.get("source_namespace"))
     recovery_ns = _mapping(cluster.get("recovery_namespace"))
     if source_ns.get("name") != SOURCE_NAMESPACE or not source_ns.get("uid"):
@@ -537,9 +547,27 @@ def build_recovery_evidence(
         observation, now=current, max_age_seconds=max_age_seconds
     )
     verified = not errors
+    cluster = _mapping(observation.get("cluster"))
+    source_context = cluster.get("context")
+    source_cluster_uid = cluster.get("uid")
+    recovery_context = cluster.get("recovery_context", source_context)
+    recovery_cluster_uid = cluster.get("recovery_uid", source_cluster_uid)
+    cross_cluster = (
+        source_context != recovery_context
+        and source_cluster_uid != recovery_cluster_uid
+    )
+    scope = (
+        "local_distinct_kubernetes_clusters_new_namespace_and_pvcs"
+        if cross_cluster
+        else "local_same_cluster_new_namespace_and_pvcs"
+    )
     stable = {
         "schema": EVIDENCE_SCHEMA,
-        "environment": "local_isolated_recovery_rehearsal",
+        "environment": (
+            "local_cross_cluster_recovery_rehearsal"
+            if cross_cluster
+            else "local_isolated_recovery_rehearsal"
+        ),
         "source_namespace": SOURCE_NAMESPACE,
         "recovery_namespace": RECOVERY_NAMESPACE,
         "observation_fingerprint": _canonical_sha256(observation),
@@ -553,10 +581,12 @@ def build_recovery_evidence(
             "production_boundaries": "passed",
         },
         "errors": errors,
-        "backup_restore_scope": "local_same_cluster_new_namespace_and_pvcs",
+        "backup_restore_scope": scope,
         "backup_restore_verified": verified,
         "local_backup_restore_verified": verified,
+        "local_cross_cluster_recovery_verified": verified and cross_cluster,
         "production_backup_restore_verified": False,
+        "production_cross_cluster_recovery_verified": False,
         "rpo_slo_verified": False,
         "rto_slo_verified": False,
         "cross_cluster_recovery_verified": False,
@@ -571,7 +601,13 @@ def build_recovery_evidence(
     return {
         **stable,
         "generated_at": current.isoformat(),
-        "status": "local_backup_restore_verified" if verified else "blocked",
+        "status": (
+            "local_cross_cluster_backup_restore_verified"
+            if verified and cross_cluster
+            else "local_backup_restore_verified"
+            if verified
+            else "blocked"
+        ),
         "evidence_fingerprint": _canonical_sha256(stable),
     }
 
@@ -591,14 +627,23 @@ def verify_evidence_integrity(report: Mapping[str, Any]) -> list[str]:
         errors.append("evidence fingerprint does not match its stable content")
     if report.get("production_backup_restore_verified") is not False:
         errors.append("evidence may not claim production backup/restore")
+    if report.get("production_cross_cluster_recovery_verified") is not False:
+        errors.append("evidence may not claim production cross-cluster recovery")
     if report.get("production_ready") is not False:
         errors.append("evidence may not claim production readiness")
     return errors
 
 
 class _CommandRunner:
-    def __init__(self, kubectl: str = "kubectl") -> None:
+    def __init__(self, kubectl: str = "kubectl", context: str | None = None) -> None:
         self.kubectl = kubectl
+        self.context = context
+
+    def kubectl_args(self, args: list[str]) -> list[str]:
+        command = [self.kubectl]
+        if self.context is not None:
+            command.extend(["--context", self.context])
+        return [*command, *args]
 
     def run(
         self,
@@ -633,7 +678,7 @@ class _CommandRunner:
         label: str,
     ) -> bytes:
         return self.run(
-            [self.kubectl, *args],
+            self.kubectl_args(args),
             input_bytes=input_bytes,
             timeout=timeout,
             label=label,
@@ -651,7 +696,9 @@ class _CommandRunner:
     def namespace_exists(self, namespace: str) -> bool:
         try:
             completed = subprocess.run(
-                [self.kubectl, "get", "namespace", namespace, "-o", "name"],
+                self.kubectl_args(
+                    ["get", "namespace", namespace, "-o", "name"]
+                ),
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 check=False,
@@ -1103,10 +1150,18 @@ def _restore_source_services(
 def run_live_recovery_rehearsal(
     *,
     kubectl: str = "kubectl",
+    source_context: str = "docker-desktop",
+    recovery_context: str | None = None,
     artifact_round_trip: ArtifactRoundTrip | None = None,
 ) -> dict[str, Any]:
     """Execute the bounded local rehearsal and return an allowlisted observation."""
-    runner = _CommandRunner(kubectl)
+    target_context = recovery_context or source_context
+    source_runner = _CommandRunner(kubectl, source_context)
+    recovery_runner = (
+        source_runner
+        if target_context == source_context
+        else _CommandRunner(kubectl, target_context)
+    )
     started = datetime.now(UTC)
     contract = build_recovery_contract_report()
     if contract["static_contract_verified"] is not True:
@@ -1114,13 +1169,9 @@ def run_live_recovery_rehearsal(
     sandbox = build_sandbox_report()
     if sandbox["static_contract_verified"] is not True:
         raise MetadataFabricRecoveryError("source sandbox contract is invalid")
-    context = _decode(
-        runner.kubectl_run(["config", "current-context"], label="read cluster context"),
-        "cluster context",
-    ).strip()
-    if context != "docker-desktop":
+    if source_context != "docker-desktop":
         raise MetadataFabricRecoveryError("recovery rehearsal requires docker-desktop")
-    if runner.namespace_exists(RECOVERY_NAMESPACE):
+    if recovery_runner.namespace_exists(RECOVERY_NAMESPACE):
         raise MetadataFabricRecoveryError("recovery Namespace already exists; refusing cleanup ambiguity")
 
     temp_root = Path(tempfile.mkdtemp(prefix="gda-metadata-recovery-"))
@@ -1130,8 +1181,15 @@ def run_live_recovery_rehearsal(
     recovered_markers: dict[str, dict[str, Any]] = {}
     recovery_pvcs: dict[str, Any] = {}
     recovery_identity: dict[str, Any] = {}
-    source_identity = _namespace_identity(runner, SOURCE_NAMESPACE)
-    cluster_uid = _cluster_uid(runner)
+    source_identity = _namespace_identity(source_runner, SOURCE_NAMESPACE)
+    source_cluster_uid = _cluster_uid(source_runner)
+    recovery_cluster_uid = _cluster_uid(recovery_runner)
+    if not source_cluster_uid or not recovery_cluster_uid:
+        raise MetadataFabricRecoveryError("source or recovery cluster identity is unavailable")
+    if (source_context == target_context) != (
+        source_cluster_uid == recovery_cluster_uid
+    ):
+        raise MetadataFabricRecoveryError("cluster context and identity isolation disagree")
     original_replicas: dict[str, int] = {}
     source_quiesced = False
     source_snapshot_staging_initially_empty = False
@@ -1147,17 +1205,17 @@ def run_live_recovery_rehearsal(
     repository_round_trip: dict[str, Any] | None = None
 
     try:
-        runner.kubectl_run(
+        source_runner.kubectl_run(
             ["apply", "--dry-run=server", "-k", str(REPO_ROOT / "k8s/metadata-fabric-sandbox")],
             timeout=180,
             label="server validate source snapshot configuration",
         )
-        runner.kubectl_run(
+        source_runner.kubectl_run(
             ["apply", "-k", str(REPO_ROOT / "k8s/metadata-fabric-sandbox")],
             timeout=180,
             label="apply source snapshot configuration",
         )
-        runner.kubectl_run(
+        source_runner.kubectl_run(
             [
                 "-n",
                 SOURCE_NAMESPACE,
@@ -1175,7 +1233,7 @@ def run_live_recovery_rehearsal(
             ("metadata-gravitino", "statefulset"),
         ):
             value = _decode(
-                runner.kubectl_run(
+                source_runner.kubectl_run(
                     [
                         "-n",
                         SOURCE_NAMESPACE,
@@ -1192,11 +1250,11 @@ def run_live_recovery_rehearsal(
             if original_replicas[name] != 1:
                 raise MetadataFabricRecoveryError(f"{name} must have exactly one source replica")
 
-        runner.kubectl_run(
+        source_runner.kubectl_run(
             ["-n", SOURCE_NAMESPACE, "scale", "deployment/openmetadata", "--replicas=0"],
             label="quiesce OpenMetadata",
         )
-        runner.kubectl_run(
+        source_runner.kubectl_run(
             [
                 "-n",
                 SOURCE_NAMESPACE,
@@ -1207,13 +1265,13 @@ def run_live_recovery_rehearsal(
             label="quiesce Gravitino",
         )
         _wait_for_no_pods(
-            runner,
+            source_runner,
             SOURCE_NAMESPACE,
             "app.kubernetes.io/name=openmetadata",
             label="wait for OpenMetadata quiescence",
         )
         _wait_for_no_pods(
-            runner,
+            source_runner,
             SOURCE_NAMESPACE,
             "app.kubernetes.io/name=metadata-gravitino",
             label="wait for Gravitino quiescence",
@@ -1223,13 +1281,13 @@ def run_live_recovery_rehearsal(
         for name, target in POSTGRES_TARGETS.items():
             source_pod = str(target["source_pod"])
             source_markers[name] = _postgres_marker(
-                runner, SOURCE_NAMESPACE, source_pod, label=f"source {name}"
+                source_runner, SOURCE_NAMESPACE, source_pod, label=f"source {name}"
             )
             backup_path = temp_root / f"{name}.dump"
             _write_private(
                 backup_path,
                 _postgres_dump(
-                    runner,
+                    source_runner,
                     SOURCE_NAMESPACE,
                     source_pod,
                     label=f"backup {name}",
@@ -1238,13 +1296,13 @@ def run_live_recovery_rehearsal(
             artifacts[name] = _artifact(backup_path, str(target["format"]))
 
         source_os_marker, source_index_names = _opensearch_marker(
-            runner,
+            source_runner,
             SOURCE_NAMESPACE,
             "metadata-opensearch-0",
             label="source opensearch",
         )
         source_markers["opensearch"] = source_os_marker
-        initial_staging = runner.kubectl_run(
+        initial_staging = source_runner.kubectl_run(
             [
                 "-n",
                 SOURCE_NAMESPACE,
@@ -1264,7 +1322,7 @@ def run_live_recovery_rehearsal(
             raise MetadataFabricRecoveryError("source snapshot staging is not empty")
         snapshot_name = "gda-" + started.strftime("%Y%m%d%H%M%SZ").lower()
         repository = _opensearch_request(
-            runner,
+            source_runner,
             SOURCE_NAMESPACE,
             "metadata-opensearch-0",
             "PUT",
@@ -1276,7 +1334,7 @@ def run_live_recovery_rehearsal(
             raise MetadataFabricRecoveryError("source snapshot repository was not acknowledged")
         source_repository_created = True
         snapshot = _opensearch_request(
-            runner,
+            source_runner,
             SOURCE_NAMESPACE,
             "metadata-opensearch-0",
             "PUT",
@@ -1297,7 +1355,7 @@ def run_live_recovery_rehearsal(
         os_backup_path = temp_root / "opensearch-snapshot.tar.gz"
         _write_private(
             os_backup_path,
-            runner.kubectl_run(
+            source_runner.kubectl_run(
                 [
                     "-n",
                     SOURCE_NAMESPACE,
@@ -1342,29 +1400,35 @@ def run_live_recovery_rehearsal(
                         f"repository round-trip changed {name} content"
                     )
 
-        runner.kubectl_run(
+        recovery_runner.kubectl_run(
             ["apply", "-f", str(DEFAULT_RECOVERY_MANIFEST_DIR / "namespace.yaml")],
             label="create recovery Namespace",
         )
         recovery_created = True
         _create_runtime_credential(
-            runner, RECOVERY_NAMESPACE, "recovery-openmetadata-postgresql", temp_root
+            recovery_runner,
+            RECOVERY_NAMESPACE,
+            "recovery-openmetadata-postgresql",
+            temp_root,
         )
         _create_runtime_credential(
-            runner, RECOVERY_NAMESPACE, "recovery-gravitino-postgresql", temp_root
+            recovery_runner,
+            RECOVERY_NAMESPACE,
+            "recovery-gravitino-postgresql",
+            temp_root,
         )
-        runner.kubectl_run(
+        recovery_runner.kubectl_run(
             ["apply", "--dry-run=server", "-k", str(DEFAULT_RECOVERY_MANIFEST_DIR)],
             timeout=180,
             label="server validate recovery workloads",
         )
-        runner.kubectl_run(
+        recovery_runner.kubectl_run(
             ["apply", "-k", str(DEFAULT_RECOVERY_MANIFEST_DIR)],
             timeout=180,
             label="apply recovery workloads",
         )
         for statefulset in RECOVERY_STATEFULSETS:
-            runner.kubectl_run(
+            recovery_runner.kubectl_run(
                 [
                     "-n",
                     RECOVERY_NAMESPACE,
@@ -1376,26 +1440,26 @@ def run_live_recovery_rehearsal(
                 timeout=930,
                 label=f"wait for {statefulset}",
             )
-        recovery_identity = _namespace_identity(runner, RECOVERY_NAMESPACE)
-        recovery_pvcs = _pvc_identities(runner)
+        recovery_identity = _namespace_identity(recovery_runner, RECOVERY_NAMESPACE)
+        recovery_pvcs = _pvc_identities(recovery_runner)
 
         for name, target in POSTGRES_TARGETS.items():
             backup_path = temp_root / f"{name}.dump"
             _postgres_restore(
-                runner,
+                recovery_runner,
                 RECOVERY_NAMESPACE,
                 str(target["recovery_pod"]),
                 backup_path.read_bytes(),
                 label=f"restore {name}",
             )
             recovered_markers[name] = _postgres_marker(
-                runner,
+                recovery_runner,
                 RECOVERY_NAMESPACE,
                 str(target["recovery_pod"]),
                 label=f"recovered {name}",
             )
 
-        runner.kubectl_run(
+        recovery_runner.kubectl_run(
             [
                 "-n",
                 RECOVERY_NAMESPACE,
@@ -1419,7 +1483,7 @@ def run_live_recovery_rehearsal(
             label="import OpenSearch snapshot artifact",
         )
         recovery_repository = _opensearch_request(
-            runner,
+            recovery_runner,
             RECOVERY_NAMESPACE,
             "recovery-opensearch-0",
             "PUT",
@@ -1430,7 +1494,7 @@ def run_live_recovery_rehearsal(
         if recovery_repository.get("acknowledged") is not True:
             raise MetadataFabricRecoveryError("recovery snapshot repository was not acknowledged")
         _, recovery_initial_names = _opensearch_marker(
-            runner,
+            recovery_runner,
             RECOVERY_NAMESPACE,
             "recovery-opensearch-0",
             label="initial recovery opensearch",
@@ -1438,7 +1502,7 @@ def run_live_recovery_rehearsal(
         if recovery_initial_names:
             encoded_indices = quote(",".join(recovery_initial_names), safe=",.-_")
             cleared = _opensearch_request(
-                runner,
+                recovery_runner,
                 RECOVERY_NAMESPACE,
                 "recovery-opensearch-0",
                 "DELETE",
@@ -1450,7 +1514,7 @@ def run_live_recovery_rehearsal(
                     "recovery search target cleanup was not acknowledged"
                 )
         _, remaining_initial_names = _opensearch_marker(
-            runner,
+            recovery_runner,
             RECOVERY_NAMESPACE,
             "recovery-opensearch-0",
             label="cleared recovery opensearch",
@@ -1459,7 +1523,7 @@ def run_live_recovery_rehearsal(
         if not recovery_search_target_cleared:
             raise MetadataFabricRecoveryError("recovery search target is not empty")
         restored = _opensearch_request(
-            runner,
+            recovery_runner,
             RECOVERY_NAMESPACE,
             "recovery-opensearch-0",
             "POST",
@@ -1472,7 +1536,7 @@ def run_live_recovery_rehearsal(
         if _mapping(restored_result.get("shards")).get("failed") != 0:
             raise MetadataFabricRecoveryError("OpenSearch restore reported failed shards")
         _opensearch_request(
-            runner,
+            recovery_runner,
             RECOVERY_NAMESPACE,
             "recovery-opensearch-0",
             "GET",
@@ -1481,7 +1545,7 @@ def run_live_recovery_rehearsal(
             label="wait for recovered OpenSearch health",
         )
         recovered_os_marker, _ = _opensearch_marker(
-            runner,
+            recovery_runner,
             RECOVERY_NAMESPACE,
             "recovery-opensearch-0",
             expected_names=source_index_names,
@@ -1495,7 +1559,7 @@ def run_live_recovery_rehearsal(
             if source_repository_created:
                 if snapshot_name is not None:
                     _opensearch_request(
-                        runner,
+                        source_runner,
                         SOURCE_NAMESPACE,
                         "metadata-opensearch-0",
                         "DELETE",
@@ -1503,7 +1567,7 @@ def run_live_recovery_rehearsal(
                         label="remove source rehearsal snapshot",
                     )
                 deleted_repository = _opensearch_request(
-                    runner,
+                    source_runner,
                     SOURCE_NAMESPACE,
                     "metadata-opensearch-0",
                     "DELETE",
@@ -1514,7 +1578,7 @@ def run_live_recovery_rehearsal(
                     raise MetadataFabricRecoveryError(
                         "source snapshot repository cleanup was not acknowledged"
                     )
-                runner.kubectl_run(
+                source_runner.kubectl_run(
                     [
                         "-n",
                         SOURCE_NAMESPACE,
@@ -1538,13 +1602,13 @@ def run_live_recovery_rehearsal(
         try:
             if original_replicas:
                 source_services_restored = _restore_source_services(
-                    runner, original_replicas
+                    source_runner, original_replicas
                 )
         except Exception as exc:
             failure = failure or exc
         try:
             if recovery_created:
-                runner.kubectl_run(
+                recovery_runner.kubectl_run(
                     [
                         "delete",
                         "namespace",
@@ -1555,7 +1619,7 @@ def run_live_recovery_rehearsal(
                     timeout=630,
                     label="remove recovery Namespace",
                 )
-                recovery_namespace_removed = not runner.namespace_exists(
+                recovery_namespace_removed = not recovery_runner.namespace_exists(
                     RECOVERY_NAMESPACE
                 )
         except Exception as exc:
@@ -1579,9 +1643,11 @@ def run_live_recovery_rehearsal(
             "contract_fingerprint": contract["contract_fingerprint"],
         },
         "cluster": {
-            "context": context,
-            "uid": cluster_uid,
+            "context": source_context,
+            "uid": source_cluster_uid,
             "source_namespace": source_identity,
+            "recovery_context": target_context,
+            "recovery_uid": recovery_cluster_uid,
             "recovery_namespace": recovery_identity,
         },
         "recovery_pvcs": recovery_pvcs,
@@ -1626,6 +1692,8 @@ def main(argv: list[str] | None = None) -> int:
     subparsers.add_parser("validate")
     run_parser = subparsers.add_parser("run")
     run_parser.add_argument("--kubectl", default="kubectl")
+    run_parser.add_argument("--source-context", default="docker-desktop")
+    run_parser.add_argument("--recovery-context")
     run_parser.add_argument("--output", type=Path)
     verify_parser = subparsers.add_parser("verify")
     verify_parser.add_argument("--input", type=Path, required=True)
@@ -1637,7 +1705,11 @@ def main(argv: list[str] | None = None) -> int:
             _write_report(report, None)
             return 0 if report["static_contract_verified"] else 1
         if args.command == "run":
-            observation = run_live_recovery_rehearsal(kubectl=args.kubectl)
+            observation = run_live_recovery_rehearsal(
+                kubectl=args.kubectl,
+                source_context=args.source_context,
+                recovery_context=args.recovery_context,
+            )
             report = build_recovery_evidence(observation)
             _write_report(report, args.output)
             return 0 if report["local_backup_restore_verified"] else 1
