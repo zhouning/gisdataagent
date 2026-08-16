@@ -1,0 +1,13 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: probe-server-default-deny
+  namespace: gda-metadata-network-policy-rehearsal
+  labels:
+    app.kubernetes.io/part-of: gda-metadata-network-policy-rehearsal
+spec:
+  podSelector:
+    matchLabels:
+      role: server
+  policyTypes: [Ingress]
+  ingress: []

@@ -569,6 +569,26 @@ RUNTIME_INVENTORY = (
         "Protected-environment failure injection tied to alert and SLO runbooks",
     ),
     RuntimeSpec(
+        "metadata_network_policy_enforcement_rehearsal",
+        "network_policy_enforcement_rehearsal",
+        "governed",
+        "evidence_durable",
+        "committed local cross-node NetworkPolicy enforcement evidence",
+        "sre",
+        "local_verification_only",
+        (
+            "data_agent/metadata_fabric_network_policy_enforcement.py",
+            "scripts/metadata-fabric-network-policy-enforcement.sh",
+        ),
+        (
+            (
+                "data_agent/metadata_fabric_network_policy_enforcement.py",
+                "def collect_live_network_policy_enforcement",
+            ),
+        ),
+        "Protected-environment NetworkPolicy enforcement and tenant isolation gate",
+    ),
+    RuntimeSpec(
         "datalake_monitor",
         "monitor_loop",
         "legacy",
