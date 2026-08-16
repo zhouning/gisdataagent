@@ -1,0 +1,40 @@
+schema: gda.metadata_fabric_backup_policy.v1
+environment: production
+repository:
+  provider: s3
+  endpoint_reference: GDA_METADATA_BACKUP_ENDPOINT
+  region_reference: GDA_METADATA_BACKUP_REGION
+  bucket: gda-metadata-fabric-backups
+  prefix_template: metadata-fabric/{environment}/{recovery_point}/{store}
+  failure_domain: external_to_source_cluster
+  ownership: dedicated_backup_account_or_project
+  credential_mode: workload_identity
+  versioning: Enabled
+  object_lock:
+    enabled: true
+    mode: COMPLIANCE
+    minimum_retention_days: 30
+  transport:
+    tls_required: true
+    minimum_tls_version: TLSv1.2
+  encryption:
+    mode: SSE-KMS
+    key_reference: GDA_METADATA_BACKUP_KMS_KEY
+  lifecycle:
+    abort_incomplete_multipart_upload_days: 7
+    expire_noncurrent_versions_after_days: 90
+  integrity:
+    algorithm: SHA256
+    independent_read_after_write_required: true
+  access:
+    public_access_blocked: true
+    source_writer_delete_denied: true
+    recovery_reader_write_denied: true
+claims:
+  production_backup_target_verified: false
+  production_retention_verified: false
+  production_kms_verified: false
+  cross_cluster_recovery_verified: false
+  rpo_slo_verified: false
+  rto_slo_verified: false
+  production_ready: false

@@ -417,7 +417,7 @@ AR-0 Architecture / Schema / Runtime Truth
 - Web、DolphinScheduler、OpenMetadata、Gravitino、worker 和 bridge 重启后不丢版本、产品、血缘、PlatformRun correlation 或审批状态。
 - DataOps 状态可从 DolphinScheduler/OpenMetadata/Gravitino/GDA evidence 恢复；任何 release/deployment 都能从事件、Artifact、评测、策略、incident 和 rollback pointer 重放。Temporal durable recovery 在 AR-5/AR-7 单独验收。
 
-当前 Metadata Fabric 证据边界：M1 只读 bridge 合同已验证；ADR-037 的 M2a 本地 foundation 已在两节点 ARM64 Docker Desktop Kubernetes 运行 OpenMetadata `1.13.1`、Gravitino `1.3.0`、两个独立 PostgreSQL 和 OpenSearch，并通过五个 Pod 受控重启与 PVC/schema/index 连续性验证；ADR-038 的 M2b-1 已将两份 PostgreSQL logical dump 和 OpenSearch native snapshot 恢复到独立临时 namespace/PVC，并验证 table/row/sequence/extension/index/document fingerprints 与 cleanup 终局。它仍是 basic auth、local-path、Gravitino local release image 的本地单副本 profile；`backup_restore_verified=true` 只适用于本地同集群新 namespace/PVC，不证明生产 backup target/retention、PITR、RPO/RTO、跨集群恢复、OIDC、upgrade、NetworkPolicy enforcement、registry provenance、production provider/TableCatalogProvider 或真实 GDA ingestion。
+当前 Metadata Fabric 证据边界：M1 只读 bridge 合同已验证；ADR-037 的 M2a 本地 foundation 已验证五个 Pod/PVC 连续性；ADR-038 的 M2b-1 已验证两份 PostgreSQL dump 和 OpenSearch snapshot 到新 namespace/PVC 的内容恢复；ADR-039 的 M2b-2 又在独立 MinIO/PVC 启用 versioning/Object Lock，将三份真实 artifact 上传、锁定、删除本地副本、按 version 下载并完成恢复。`backup_restore_verified=true` 只适用于本地同集群新 namespace/PVC，`backup_repository_verified=true` 只适用于本地同集群隔离 S3-compatible repository；二者都不证明外部生产 bucket、COMPLIANCE retention、TLS/KMS、独立 workload identity、PITR、RPO/RTO、跨集群恢复、OIDC、upgrade、NetworkPolicy enforcement 或 production ready。
 
 ### AR-2 — Source, Ingestion and Geospatial Lakehouse Vertical Slice（P0）
 
@@ -684,7 +684,7 @@ Golden checks 至少覆盖：
 1. 导出所有目标环境 schema/config fingerprint，修复重复 migration ID、checksum 和 fail-open runner。
 2. 完成部署、存储、bucket、registry、scheduler/job、API/GIS endpoint、图层/样式/缓存、provider/Gateway、数据资产、消费者和权限事实盘点；部署 OpenMetadata/Gravitino/DolphinScheduler/Temporal sandbox，冻结 owner、version、OIDC、backup/restore 和升级责任。
 3. 冻结 ResourceURN、ResourceVersion、PlatformDefinition/PlatformRun/FrameworkAttemptObservation/Artifact/LineageEvent、SubjectContext 与 storage/table/compute provider 最小合同。
-4. 分阶段实现 `gda-metadata-fabric-bridge`：M1 只读 ResourceURN/OpenMetadata table/Gravitino table mapping、版本与 authority reconciliation 已进入 required CI；M2a 本地 live foundation/重启连续性与 M2b-1 本地三存储恢复演练已验证。下一步完成 M2b 生产 backup target/retention 与跨集群恢复、OIDC、upgrade/rollback、NetworkPolicy enforcement、registry provenance、metrics/OTel 和 owner/runbook，再实现空间/时间/证据 extension、PostGIS/DuckDB/Iceberg/STAC/object storage harvester、OpenLineage emitter 和旧目录 crosswalk，并完成 M3 Gravitino Spark/Sedona/Flink conformance。
+4. 分阶段实现 `gda-metadata-fabric-bridge`：M1 只读 mapping/reconciliation、M2a 本地 foundation/重启连续性、M2b-1 本地三存储恢复及 M2b-2 隔离 versioned/Object-Locked repository round-trip 已验证。下一步完成 M2b 外部生产 bucket、COMPLIANCE retention、TLS/KMS、独立 writer/reader identity 与跨集群恢复，再推进 OIDC、upgrade/rollback、NetworkPolicy enforcement、registry provenance、metrics/OTel 和 owner/runbook；之后才进入 M3 ingestion/OpenLineage/conformance。
 5. 实现 `gda-orchestration-gateway`、DolphinScheduler process/task/schedule/complement/worker-group、Spark/Flink provider task adapter 和故障注入；不再开发新的 lease/queue/scheduler。
 6. 冻结首条地类图斑数据、标准版本、敏感级别、owner、SLO 和 golden result。
 7. 冻结 Default Lakehouse、Cloud Managed、Lightweight Integrated profiles；以统一 Run 完成默认 MinIO/Iceberg/Spark/Flink、轻量 PostGIS/DuckDB 和 Azure 代表 adapter 的 conformance smoke。
@@ -726,7 +726,7 @@ AR-4 parity/control gate 退出前暂停以下主线扩张：
 | 阶段 | 状态 | 下一证据 |
 |---|---|---|
 | AR-0 Architecture/Schema/Runtime Truth Freeze | `in_progress` | 全环境 schema/config fingerprint、迁移 fail-closed、事实清单、storage/compute/GIS serving provider profile/capability、ADR-017 benchmark、owner/SLO 和首条数据/服务验收集冻结 |
-| AR-1 Unified Metadata + Orchestration Control Planes | `in_progress` | controlled gateway、DolphinScheduler adapter、Metadata Fabric M1、M2a 本地 foundation/重启连续性及 M2b-1 本地三存储恢复已验证；下一证据是生产 backup target/跨集群恢复、OIDC、NetworkPolicy enforcement、升级回滚/registry provenance，以及受控 ingestion/replay、资源级 policy/workload identity、故障恢复与无双写验收 |
+| AR-1 Unified Metadata + Orchestration Control Planes | `in_progress` | controlled gateway、DolphinScheduler adapter、Metadata Fabric M1/M2a、M2b-1 本地恢复及 M2b-2 versioned/Object-Locked repository round-trip 已验证；下一证据是外部生产 bucket/COMPLIANCE retention/TLS/KMS/跨集群恢复、OIDC、NetworkPolicy enforcement、升级回滚/registry provenance，以及受控 ingestion/replay 与无双写验收 |
 | AR-2 Source/Ingestion + Geospatial Lakehouse Vertical Slice | `planned` | 三类代表源、`DriveTransfer` 云盘客户端和大文件恢复通过统一控制面；默认湖仓、轻量存算一体及 Azure 代表 adapter 通过 provider conformance 与 Raw -> ADS 验收 |
 | AR-3 Data Product Engineering + Governance Workbench | `planned` | Blueprint、模型、Visual/SQL/Notebook、DataOps CI/CD、质量/安全/审批共用 definition 和产品生命周期 |
 | AR-4 Asset/GIS Service/Spatial Experience Operations | `planned` | Service Control Plane、Features/Tiles/MVT/COG/STAC/export 及条件 legacy OGC/3D/EDR provider、Gateway/权限/缓存、原子切换/回滚、Discover/Operate/Govern 和无 LLM 多入口通过 conformance/parity/control gate |

@@ -1,0 +1,318 @@
+{
+  "backup_repository_scope": "local_same_cluster_isolated_s3_compatible_repository",
+  "backup_repository_verified": true,
+  "checks": {
+    "artifact_round_trip": "passed",
+    "ephemeral_cleanup": "passed",
+    "object_lock_retention": "passed",
+    "production_boundaries": "passed",
+    "repository_backed_restore": "passed",
+    "repository_isolation": "passed",
+    "static_contract": "passed",
+    "versioning": "passed"
+  },
+  "cross_cluster_recovery_verified": false,
+  "cross_region_recovery_verified": false,
+  "environment": "local_isolated_s3_backup_repository_rehearsal",
+  "errors": [],
+  "evidence_fingerprint": "07834430fb140e147624f4ab3c93e6d7907648e91a149cb19db178ea6085d1ed",
+  "generated_at": "2026-07-27T07:37:44.190592+00:00",
+  "local_repository_round_trip_verified": true,
+  "network_policy_enforcement_verified": false,
+  "observation": {
+    "cluster": {
+      "context": "docker-desktop",
+      "repository_namespace": {
+        "name": "gda-metadata-backup-repository",
+        "uid": "b3f62f00-871f-43ee-bde6-e37c4c17cc71"
+      },
+      "source_namespace": {
+        "name": "gda-metadata-sandbox",
+        "uid": "812c9c5c-9ce2-409e-a6a8-a3f24785aa0c"
+      },
+      "uid": "c3c9bbab-2b36-4359-a7ac-e3de194445ab"
+    },
+    "contract": {
+      "contract_fingerprint": "fc7578b2c71aacfeb0e78f4ccc1858fc7e020631e5436068f26ae0501888d928",
+      "local_static_contract_verified": true
+    },
+    "duration_seconds": 143.107,
+    "observed_at": "2026-07-27T07:37:44.190592+00:00",
+    "recovery_evidence": {
+      "backup_restore_scope": "local_same_cluster_new_namespace_and_pvcs",
+      "backup_restore_verified": true,
+      "checks": {
+        "artifact_integrity": "passed",
+        "ephemeral_cleanup": "passed",
+        "opensearch_restore": "passed",
+        "postgresql_restore": "passed",
+        "production_boundaries": "passed",
+        "source_availability_restored": "passed",
+        "static_contract": "passed"
+      },
+      "cross_cluster_recovery_verified": false,
+      "cross_region_recovery_verified": false,
+      "environment": "local_isolated_recovery_rehearsal",
+      "errors": [],
+      "evidence_fingerprint": "3cf46cc83a8feaa4142893a06f84e9008a7d805a64fb6708d176ca976a4dbd62",
+      "generated_at": "2026-07-27T07:37:28.806368+00:00",
+      "local_backup_restore_verified": true,
+      "network_policy_enforcement_verified": false,
+      "observation": {
+        "artifacts": {
+          "gravitino_postgresql": {
+            "bytes": 188109,
+            "format": "postgresql_custom_dump_v1",
+            "sha256": "b56fae7ba17166690df1ac52814734d10aaab6d036e467141601aa13913493fa"
+          },
+          "openmetadata_postgresql": {
+            "bytes": 1209521,
+            "format": "postgresql_custom_dump_v1",
+            "sha256": "2f6de329c6ebff68227a27958040c29d41396c9f1a61421eaf0630ac344a7e26"
+          },
+          "opensearch": {
+            "bytes": 387684,
+            "format": "opensearch_fs_snapshot_tar_gzip_v1",
+            "sha256": "7732ffc33827b9ffc4ed5e3f3744e4f54b1a73a2d9e0444fe7b34e16c8f37da3"
+          }
+        },
+        "cluster": {
+          "context": "docker-desktop",
+          "recovery_namespace": {
+            "name": "gda-metadata-recovery-rehearsal",
+            "uid": "d9236d7c-8c9c-45af-a46b-7148b47b4db0"
+          },
+          "source_namespace": {
+            "name": "gda-metadata-sandbox",
+            "uid": "812c9c5c-9ce2-409e-a6a8-a3f24785aa0c"
+          },
+          "uid": "c3c9bbab-2b36-4359-a7ac-e3de194445ab"
+        },
+        "contract": {
+          "contract_fingerprint": "83e3f86542076987b36cb8b99fb01c2db7e92c15624164f9766ff0a6fe26640a",
+          "static_contract_verified": true
+        },
+        "duration_seconds": 115.137,
+        "observed_at": "2026-07-27T07:37:28.805987+00:00",
+        "recovered_markers": {
+          "gravitino_postgresql": {
+            "extension_fingerprint": "6a0a92045f06baabcf22b103007285ec0bcb00cdbf6f6f30b34b0a41a73c6c2f",
+            "image_version": "16.10-bookworm",
+            "row_count_fingerprint": "9af129a1e57abefe0e5ada16bd7d93d7d6f614def8814e8c853b87c539e6e9a6",
+            "sequence_state_fingerprint": "51fe857234adbc1e7462e24022f0b3ba383ff0b87b4b833d2c99f1674b60c9a4",
+            "server_version": "16.10 (Debian 16.10-1.pgdg12+1)",
+            "table_count": 39,
+            "table_name_fingerprint": "7db0d765156ca83f8cfab3c48b0acd40eefb04c8bad3170c2d7cf6079cbfe9fe"
+          },
+          "openmetadata_postgresql": {
+            "extension_fingerprint": "5425606415e192199fdbef130acb53a732064cb692916f5278b9e8eebc5b2f59",
+            "image_version": "16.10-bookworm",
+            "row_count_fingerprint": "dbb8f15b9df8780d3be128ef2a9ddad7b292980e811a81a65349e831e64b40f9",
+            "sequence_state_fingerprint": "769c215213fe71957ea945bd85ad0db889cda410f47443173f19457a17af5ac4",
+            "server_version": "16.10 (Debian 16.10-1.pgdg12+1)",
+            "table_count": 176,
+            "table_name_fingerprint": "9b56cb8952f4680c1972aeafb461b0ef8c204326432ed8bab6226e2eedbb1167"
+          },
+          "opensearch": {
+            "cluster_uuid": "9o2bzn8fS5mfJ0nEHkGQlQ",
+            "document_count_fingerprint": "b9a9da89701697d1778735a3cd1196422f624049847009a593c56e5fdfe7f109",
+            "index_count": 79,
+            "index_name_fingerprint": "5dd3252013d217ea4e014951fbd687ef912dac847ee8d385adf6bd561070f00a",
+            "total_index_count": 79,
+            "version": "3.3.2"
+          }
+        },
+        "recovery_pvcs": {
+          "recovery-gravitino-data-recovery-gravitino-postgresql-0": {
+            "capacity": "2Gi",
+            "phase": "Bound",
+            "uid": "9ba5f905-6f4d-4763-b9ba-6092207036d0",
+            "volume_name": "pvc-9ba5f905-6f4d-4763-b9ba-6092207036d0"
+          },
+          "recovery-openmetadata-data-recovery-openmetadata-postgresql-0": {
+            "capacity": "2Gi",
+            "phase": "Bound",
+            "uid": "6d1b0cae-869e-4923-bd66-315b29abf887",
+            "volume_name": "pvc-6d1b0cae-869e-4923-bd66-315b29abf887"
+          },
+          "recovery-opensearch-data-recovery-opensearch-0": {
+            "capacity": "8Gi",
+            "phase": "Bound",
+            "uid": "c3d5585e-89f6-45ee-b43f-f2a155204916",
+            "volume_name": "pvc-c3d5585e-89f6-45ee-b43f-f2a155204916"
+          }
+        },
+        "repository_round_trip": {
+          "artifact_objects": {
+            "gravitino_postgresql": {
+              "bytes": 188109,
+              "format": "postgresql_custom_dump_v1",
+              "object_path": "metadata-fabric/rp-20260727073521z/gravitino_postgresql.dump",
+              "retained_until": "2026-07-28T07:36:07.228000+00:00",
+              "retained_version_delete_blocked": true,
+              "retention_mode": "GOVERNANCE",
+              "sha256": "b56fae7ba17166690df1ac52814734d10aaab6d036e467141601aa13913493fa",
+              "version_id": "ea0d2e75-185d-4f44-8ed9-74655b0423db"
+            },
+            "openmetadata_postgresql": {
+              "bytes": 1209521,
+              "format": "postgresql_custom_dump_v1",
+              "object_path": "metadata-fabric/rp-20260727073521z/openmetadata_postgresql.dump",
+              "retained_until": "2026-07-28T07:36:07.241000+00:00",
+              "retained_version_delete_blocked": true,
+              "retention_mode": "GOVERNANCE",
+              "sha256": "2f6de329c6ebff68227a27958040c29d41396c9f1a61421eaf0630ac344a7e26",
+              "version_id": "b6ce20d7-6e95-4612-9740-d0bd5682ff81"
+            },
+            "opensearch": {
+              "bytes": 387684,
+              "format": "opensearch_fs_snapshot_tar_gzip_v1",
+              "object_path": "metadata-fabric/rp-20260727073521z/opensearch.tar.gz",
+              "retained_until": "2026-07-28T07:36:07.256000+00:00",
+              "retained_version_delete_blocked": true,
+              "retention_mode": "GOVERNANCE",
+              "sha256": "7732ffc33827b9ffc4ed5e3f3744e4f54b1a73a2d9e0444fe7b34e16c8f37da3",
+              "version_id": "a9591f1d-c984-4323-925d-0c4ff0b0de04"
+            }
+          },
+          "bucket": "gda-metadata-fabric-backups",
+          "default_retention_days": 1,
+          "default_retention_mode": "GOVERNANCE",
+          "kms_encryption_verified": false,
+          "local_artifacts_removed_before_download": true,
+          "object_lock_enabled": true,
+          "production_durability_verified": false,
+          "provider": "minio_s3_compatible",
+          "round_trip_verified": true,
+          "transport_tls_verified": false,
+          "versioning_status": "Enabled"
+        },
+        "runtime_checks": {
+          "local_artifacts_removed": true,
+          "recovery_namespace_removed": true,
+          "recovery_search_target_cleared": true,
+          "source_quiesced": true,
+          "source_services_restored": true,
+          "source_snapshot_staging_cleaned": true,
+          "source_snapshot_staging_initially_empty": true
+        },
+        "schema": "gda.metadata_fabric_recovery_observation.v1",
+        "source_markers": {
+          "gravitino_postgresql": {
+            "extension_fingerprint": "6a0a92045f06baabcf22b103007285ec0bcb00cdbf6f6f30b34b0a41a73c6c2f",
+            "image_version": "16.10-bookworm",
+            "row_count_fingerprint": "9af129a1e57abefe0e5ada16bd7d93d7d6f614def8814e8c853b87c539e6e9a6",
+            "sequence_state_fingerprint": "51fe857234adbc1e7462e24022f0b3ba383ff0b87b4b833d2c99f1674b60c9a4",
+            "server_version": "16.10 (Debian 16.10-1.pgdg12+1)",
+            "table_count": 39,
+            "table_name_fingerprint": "7db0d765156ca83f8cfab3c48b0acd40eefb04c8bad3170c2d7cf6079cbfe9fe"
+          },
+          "openmetadata_postgresql": {
+            "extension_fingerprint": "5425606415e192199fdbef130acb53a732064cb692916f5278b9e8eebc5b2f59",
+            "image_version": "16.10-bookworm",
+            "row_count_fingerprint": "dbb8f15b9df8780d3be128ef2a9ddad7b292980e811a81a65349e831e64b40f9",
+            "sequence_state_fingerprint": "769c215213fe71957ea945bd85ad0db889cda410f47443173f19457a17af5ac4",
+            "server_version": "16.10 (Debian 16.10-1.pgdg12+1)",
+            "table_count": 176,
+            "table_name_fingerprint": "9b56cb8952f4680c1972aeafb461b0ef8c204326432ed8bab6226e2eedbb1167"
+          },
+          "opensearch": {
+            "cluster_uuid": "_h-TPGNqQq65KEOkhWpTyg",
+            "document_count_fingerprint": "b9a9da89701697d1778735a3cd1196422f624049847009a593c56e5fdfe7f109",
+            "index_count": 79,
+            "index_name_fingerprint": "5dd3252013d217ea4e014951fbd687ef912dac847ee8d385adf6bd561070f00a",
+            "total_index_count": 79,
+            "version": "3.3.2"
+          }
+        },
+        "started_at": "2026-07-27T07:35:33.668759+00:00"
+      },
+      "observation_fingerprint": "938c0f9842cf0c6218ad4ade675b4e773b538270a605ca33d9215859a0e5f6a1",
+      "oidc_verified": false,
+      "production_backup_restore_verified": false,
+      "production_ready": false,
+      "recovery_namespace": "gda-metadata-recovery-rehearsal",
+      "rpo_slo_verified": false,
+      "rto_slo_verified": false,
+      "schema": "gda.metadata_fabric_recovery_evidence.v1",
+      "source_namespace": "gda-metadata-sandbox",
+      "status": "local_backup_restore_verified",
+      "upgrade_verified": false,
+      "writes_to_gda_enabled": false
+    },
+    "repository_pvc": {
+      "capacity": "8Gi",
+      "name": "repository-data-metadata-backup-minio-0",
+      "phase": "Bound",
+      "uid": "bd4056b1-0782-4c2f-99ca-4c06ee8021f9",
+      "volume_name": "pvc-bd4056b1-0782-4c2f-99ca-4c06ee8021f9"
+    },
+    "repository_round_trip": {
+      "artifact_objects": {
+        "gravitino_postgresql": {
+          "bytes": 188109,
+          "format": "postgresql_custom_dump_v1",
+          "object_path": "metadata-fabric/rp-20260727073521z/gravitino_postgresql.dump",
+          "retained_until": "2026-07-28T07:36:07.228000+00:00",
+          "retained_version_delete_blocked": true,
+          "retention_mode": "GOVERNANCE",
+          "sha256": "b56fae7ba17166690df1ac52814734d10aaab6d036e467141601aa13913493fa",
+          "version_id": "ea0d2e75-185d-4f44-8ed9-74655b0423db"
+        },
+        "openmetadata_postgresql": {
+          "bytes": 1209521,
+          "format": "postgresql_custom_dump_v1",
+          "object_path": "metadata-fabric/rp-20260727073521z/openmetadata_postgresql.dump",
+          "retained_until": "2026-07-28T07:36:07.241000+00:00",
+          "retained_version_delete_blocked": true,
+          "retention_mode": "GOVERNANCE",
+          "sha256": "2f6de329c6ebff68227a27958040c29d41396c9f1a61421eaf0630ac344a7e26",
+          "version_id": "b6ce20d7-6e95-4612-9740-d0bd5682ff81"
+        },
+        "opensearch": {
+          "bytes": 387684,
+          "format": "opensearch_fs_snapshot_tar_gzip_v1",
+          "object_path": "metadata-fabric/rp-20260727073521z/opensearch.tar.gz",
+          "retained_until": "2026-07-28T07:36:07.256000+00:00",
+          "retained_version_delete_blocked": true,
+          "retention_mode": "GOVERNANCE",
+          "sha256": "7732ffc33827b9ffc4ed5e3f3744e4f54b1a73a2d9e0444fe7b34e16c8f37da3",
+          "version_id": "a9591f1d-c984-4323-925d-0c4ff0b0de04"
+        }
+      },
+      "bucket": "gda-metadata-fabric-backups",
+      "default_retention_days": 1,
+      "default_retention_mode": "GOVERNANCE",
+      "kms_encryption_verified": false,
+      "local_artifacts_removed_before_download": true,
+      "object_lock_enabled": true,
+      "production_durability_verified": false,
+      "provider": "minio_s3_compatible",
+      "round_trip_verified": true,
+      "transport_tls_verified": false,
+      "versioning_status": "Enabled"
+    },
+    "runtime_checks": {
+      "port_forward_stopped": true,
+      "repository_namespace_removed": true,
+      "runtime_credentials_removed": true
+    },
+    "schema": "gda.metadata_fabric_backup_repository_observation.v1",
+    "started_at": "2026-07-27T07:35:21.083519+00:00"
+  },
+  "observation_fingerprint": "afe2a882c83d774bcf4f19ffa8eace946de3e3c54a7a2b3416cc66c6aecbd1d9",
+  "oidc_verified": false,
+  "production_backup_target_verified": false,
+  "production_kms_verified": false,
+  "production_ready": false,
+  "production_retention_verified": false,
+  "production_tls_verified": false,
+  "repository_backed_restore_verified": true,
+  "repository_namespace": "gda-metadata-backup-repository",
+  "rpo_slo_verified": false,
+  "rto_slo_verified": false,
+  "schema": "gda.metadata_fabric_backup_repository_evidence.v1",
+  "source_namespace": "gda-metadata-sandbox",
+  "status": "local_backup_repository_verified",
+  "writes_to_gda_enabled": false
+}
