@@ -1,0 +1,34 @@
+schema: gda.metadata_fabric_otel_failure_rehearsal_profile.v1
+environment: local_docker_desktop
+cluster:
+  context: docker-desktop
+  namespace: gda-metadata-sandbox
+pipeline:
+  base_contract: gda.metadata_fabric_otel_metrics_contract.v1
+  collector_deployment: metadata-otel-collector
+  collector_configmap: metadata-otel-collector-config
+  scrape_job: gravitino
+fault:
+  type: collector_scrape_endpoint_replacement
+  original_endpoint: metadata-json-exporter:7979
+  replacement_endpoint: metadata-json-exporter:1
+  expected_openmetadata_up: 1
+  expected_gravitino_up: 0
+recovery:
+  source: k8s/metadata-fabric-otel-metrics
+  expected_openmetadata_up: 1
+  expected_gravitino_up: 1
+claims:
+  local_otel_scrape_failure_recovery_verified: false
+  otel_pipeline_verified: false
+  production_metrics_verified: false
+  persistent_metrics_storage_verified: false
+  alert_delivery_verified: false
+  slo_verified: false
+  metrics_tls_verified: false
+  tenant_isolation_verified: false
+  oidc_verified: false
+  network_policy_enforcement_verified: false
+  upgrade_verified: false
+  writes_to_gda_enabled: false
+  production_ready: false
