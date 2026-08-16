@@ -529,6 +529,26 @@ RUNTIME_INVENTORY = (
         "Production metrics pipeline with TLS, alert delivery, and SLO ownership",
     ),
     RuntimeSpec(
+        "metadata_otel_metrics_pipeline",
+        "metrics_pipeline",
+        "governed",
+        "evidence_durable",
+        "committed local OTel metrics pipeline evidence",
+        "sre",
+        "local_verification_only",
+        (
+            "data_agent/metadata_fabric_otel_metrics.py",
+            "scripts/metadata-fabric-otel-metrics.sh",
+        ),
+        (
+            (
+                "data_agent/metadata_fabric_otel_metrics.py",
+                "class _OtelPortForward",
+            ),
+        ),
+        "Durable production metrics backend with TLS, alerting, and SLO ownership",
+    ),
+    RuntimeSpec(
         "datalake_monitor",
         "monitor_loop",
         "legacy",
@@ -592,7 +612,7 @@ ENV_ACCESS_BASELINE_FINGERPRINT = (
     "e092d287c0db895fe0c8b2f1bd04354ad6e59377efef25516b5c3c64ad3fce9a"
 )
 RUNTIME_PRIMITIVE_BASELINE_FINGERPRINT = (
-    "12f30b2662216c7adc4011496cc9b98e609543bd8de7f20f47763578860e6229"
+    "03da85670462b4f77cf37714a9af3dc675c24b578d795efe0e2627075eb7d265"
 )
 
 _IGNORED_SOURCE_PARTS = frozenset(

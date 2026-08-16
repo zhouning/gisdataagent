@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: gda-metadata-sandbox
+resources:
+  - serviceaccounts.yaml
+  - configmaps.yaml
+  - workloads.yaml
+  - networkpolicy.yaml
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: gda-metadata-fabric-otel-metrics
+      gda.openai.com/environment: local-observability-evidence
+    includeSelectors: false
