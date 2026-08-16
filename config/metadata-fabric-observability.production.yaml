@@ -1,0 +1,49 @@
+schema: gda.metadata_fabric_observability_production_profile.v1
+environment: production
+scope:
+  providers:
+    openmetadata:
+      version: 1.13.1
+      environment_binding: null
+    gravitino:
+      version: 1.3.0
+      environment_binding: null
+backend:
+  decision_status: pending
+  type: null
+  write_endpoint: null
+  query_endpoint: null
+  durable_storage: false
+  retention_days: null
+security:
+  tls_required: true
+  minimum_tls_version: TLSv1.2
+  workload_identity_reference: null
+tenancy:
+  isolation_mode: null
+  tenant_label: null
+  required_labels:
+    - gda_environment
+    - gda_provider
+    - gda_tenant_id
+operations:
+  dashboard_owner: null
+  alert_owner: null
+  slo_owner: null
+  notification_channel_reference: null
+  slos: []
+  runbook:
+    uri: null
+    version: null
+claims:
+  backend_decision_frozen: false
+  persistent_metrics_backend_verified: false
+  metrics_tls_verified: false
+  workload_identity_verified: false
+  tenant_isolation_verified: false
+  dashboard_ownership_verified: false
+  alert_delivery_verified: false
+  slo_verified: false
+  runbook_verified: false
+  production_observability_gate_passed: false
+  production_ready: false
