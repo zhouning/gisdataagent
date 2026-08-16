@@ -85,6 +85,9 @@ jobs:
       - name: Validate metadata fabric cross-cluster recovery
         run: python -m data_agent.metadata_fabric_cross_cluster_recovery validate
 
+      - name: Validate metadata fabric provider metrics
+        run: python -m data_agent.metadata_fabric_provider_metrics validate
+
       - name: Validate DolphinScheduler adapter boundary
         run: python -m data_agent.dolphinscheduler_adapter validate
 
@@ -125,6 +128,7 @@ jobs:
             data_agent/test_metadata_fabric_live_evidence.py \
             data_agent/test_metadata_fabric_backup_repository.py \
             data_agent/test_metadata_fabric_cross_cluster_recovery.py \
+            data_agent/test_metadata_fabric_provider_metrics.py \
             data_agent/test_metadata_fabric_recovery_rehearsal.py \
             data_agent/test_metadata_fabric_sandbox.py \
             data_agent/test_platform_authorization.py \

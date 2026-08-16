@@ -1,0 +1,189 @@
+{
+  "alert_delivery_verified": false,
+  "checks": {
+    "credential_free_projection": "passed",
+    "ephemeral_cleanup": "passed",
+    "gravitino_dropwizard": "passed",
+    "openmetadata_dropwizard": "passed",
+    "openmetadata_prometheus": "passed",
+    "production_boundaries": "passed",
+    "provider_identity": "passed",
+    "static_contract": "passed"
+  },
+  "context": "docker-desktop",
+  "environment": "local_docker_desktop_provider_native_metrics",
+  "errors": [],
+  "evidence_fingerprint": "ba1ad18deedb4bcc134aa5b413e3e0c03c0b5bf931bae736adc425a8dbceeefc",
+  "generated_at": "2026-07-27T10:44:26.951265+00:00",
+  "local_provider_metrics_verified": true,
+  "metrics_scope": "local_provider_native_endpoints_via_loopback_port_forward",
+  "metrics_tls_verified": false,
+  "namespace": "gda-metadata-sandbox",
+  "network_policy_enforcement_verified": false,
+  "observation": {
+    "cluster": {
+      "context": "docker-desktop",
+      "namespace": {
+        "name": "gda-metadata-sandbox",
+        "uid": "812c9c5c-9ce2-409e-a6a8-a3f24785aa0c"
+      },
+      "uid": "c3c9bbab-2b36-4359-a7ac-e3de194445ab"
+    },
+    "contract": {
+      "contract_fingerprint": "55961f899a66fb22934ecda924e4f41e228a562c00314737bdf0f9eee1210b05",
+      "local_static_contract_verified": true
+    },
+    "duration_seconds": 3.772,
+    "observed_at": "2026-07-27T10:44:26.951171+00:00",
+    "providers": {
+      "gravitino": {
+        "dropwizard": {
+          "format": "dropwizard_json",
+          "metric_name_fingerprint": "419abf0e607b45df9fe671fde4dbcf8c67f159eb18b6e850f866f42d205f09d2",
+          "missing_required_metrics": [],
+          "required_gauge_values": {
+            "gravitino-relational-store.datasource.active-connections": 0,
+            "gravitino-relational-store.datasource.max-connections": 100,
+            "gravitino-server.http-server.total-thread.num": 8,
+            "jvm.heap.max": 1610612736,
+            "jvm.heap.used": 126327640
+          },
+          "required_metric_names": [
+            "gravitino-relational-store.datasource.active-connections",
+            "gravitino-relational-store.datasource.max-connections",
+            "gravitino-server.http-server.total-thread.num",
+            "jvm.heap.max",
+            "jvm.heap.used"
+          ],
+          "section_counts": {
+            "counters": 0,
+            "gauges": 76,
+            "histograms": 0,
+            "meters": 680,
+            "timers": 152
+          },
+          "version": "4.0.0"
+        },
+        "identity": {
+          "service": {
+            "name": "metadata-gravitino",
+            "ports": [
+              8090
+            ],
+            "type": "ClusterIP",
+            "uid": "b2fda004-0e59-40dd-b08e-45481593d179"
+          },
+          "workload": {
+            "image": "gda/gravitino:1.3.0-local-arm64",
+            "kind": "StatefulSet",
+            "name": "metadata-gravitino",
+            "ready_replicas": 1,
+            "uid": "57a914fb-eca6-49f8-9c24-67c6d520a172"
+          }
+        },
+        "transport": {
+          "dropwizard_content_type": "application/json",
+          "dropwizard_path": "/metrics",
+          "scheme": "http",
+          "service_port": 8090
+        }
+      },
+      "openmetadata": {
+        "dropwizard": {
+          "format": "dropwizard_json",
+          "metric_name_fingerprint": "3faa993003e88872ffd6a671472e41f850d1800ade30885592839f1ded4f6d65",
+          "missing_required_metrics": [],
+          "required_gauge_values": {
+            "database.pool.MaxConnections": 20,
+            "database.pool.TotalConnections": 20,
+            "health.aggregate.healthy": 1,
+            "health.aggregate.unhealthy": 0
+          },
+          "required_metric_names": [
+            "database.pool.MaxConnections",
+            "database.pool.TotalConnections",
+            "health.aggregate.healthy",
+            "health.aggregate.unhealthy"
+          ],
+          "section_counts": {
+            "counters": 10,
+            "gauges": 111,
+            "histograms": 3,
+            "meters": 24,
+            "timers": 16
+          },
+          "version": "4.0.0"
+        },
+        "identity": {
+          "service": {
+            "name": "openmetadata",
+            "ports": [
+              8585,
+              8586
+            ],
+            "type": "ClusterIP",
+            "uid": "c903a96c-9aa9-420c-93d1-d2224df0cc85"
+          },
+          "workload": {
+            "image": "docker.getcollate.io/openmetadata/server:1.13.1",
+            "kind": "Deployment",
+            "name": "openmetadata",
+            "ready_replicas": 1,
+            "uid": "39bba7aa-b48e-4f5c-a9a8-c9cc9ca4ec1f"
+          }
+        },
+        "prometheus": {
+          "format": "prometheus_text_0.0.4",
+          "label_name_count": 23,
+          "label_name_fingerprint": "27bf5e1fca7eb1cf899c519da6c2aff228bd47b571c705839f0bb68297244fff",
+          "metric_family_count": 160,
+          "metric_family_name_fingerprint": "6b6bda07be9986aed9cd608d8ae6cf1cfd17ebab2f05801d8350c212c5a410ba",
+          "metric_family_type_fingerprint": "8e11f3407493a134c84b896d166fce248d709de1b947b0503e460396fb68a9b1",
+          "metric_type_counts": {
+            "counter": 36,
+            "gauge": 100,
+            "histogram": 9,
+            "summary": 15
+          },
+          "missing_required_metrics": [],
+          "required_metric_names": [
+            "auth_attempts",
+            "db_connections",
+            "http_server_requests_sec_seconds",
+            "jvm_memory_used_bytes"
+          ],
+          "sample_count": 417
+        },
+        "transport": {
+          "dropwizard_content_type": "application/json",
+          "dropwizard_path": "/metrics",
+          "prometheus_content_type": "text/plain",
+          "prometheus_path": "/prometheus",
+          "scheme": "http",
+          "service_port": 8586
+        }
+      }
+    },
+    "runtime_checks": {
+      "all_port_forwards_stopped": true,
+      "kubernetes_credential_resources_requested": false,
+      "port_forwards": {
+        "gravitino": true,
+        "openmetadata": true
+      },
+      "provider_resources_mutated": false
+    },
+    "schema": "gda.metadata_fabric_provider_metrics_observation.v1",
+    "started_at": "2026-07-27T10:44:23.178972+00:00"
+  },
+  "observation_fingerprint": "81a13da69f8fb7e1cc141e72fff14f1a8ed1aa5bf43c52e1ebdef7c14a845b46",
+  "oidc_verified": false,
+  "otel_pipeline_verified": false,
+  "production_metrics_verified": false,
+  "production_ready": false,
+  "schema": "gda.metadata_fabric_provider_metrics_evidence.v1",
+  "slo_verified": false,
+  "status": "local_provider_metrics_verified",
+  "upgrade_verified": false,
+  "writes_to_gda_enabled": false
+}

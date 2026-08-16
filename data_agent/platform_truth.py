@@ -512,6 +512,23 @@ RUNTIME_INVENTORY = (
         "Production backup controller and failure-domain-isolated recovery reader",
     ),
     RuntimeSpec(
+        "metadata_provider_metrics_collector",
+        "metrics_probe",
+        "governed",
+        "evidence_durable",
+        "committed provider metrics evidence",
+        "sre",
+        "local_verification_only",
+        ("data_agent/metadata_fabric_provider_metrics.py",),
+        (
+            (
+                "data_agent/metadata_fabric_provider_metrics.py",
+                "class _PortForward",
+            ),
+        ),
+        "Production metrics pipeline with TLS, alert delivery, and SLO ownership",
+    ),
+    RuntimeSpec(
         "datalake_monitor",
         "monitor_loop",
         "legacy",
@@ -575,7 +592,7 @@ ENV_ACCESS_BASELINE_FINGERPRINT = (
     "e092d287c0db895fe0c8b2f1bd04354ad6e59377efef25516b5c3c64ad3fce9a"
 )
 RUNTIME_PRIMITIVE_BASELINE_FINGERPRINT = (
-    "959d2c54745fc082e529a84b3cf55f6b7adbb260bb540775b12f5184ed514ed8"
+    "12f30b2662216c7adc4011496cc9b98e609543bd8de7f20f47763578860e6229"
 )
 
 _IGNORED_SOURCE_PARTS = frozenset(
