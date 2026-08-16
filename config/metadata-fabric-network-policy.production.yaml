@@ -1,0 +1,106 @@
+schema: gda.metadata_fabric_network_policy_production_profile.v1
+environment: production
+scope:
+  providers:
+    openmetadata:
+      version: 1.13.1
+    gravitino:
+      version: 1.3.0
+cluster:
+  decision_status: pending
+  cluster_reference: null
+  kubernetes_version: null
+  cni:
+    provider: null
+    version: null
+    policy_api: networking.k8s.io/v1
+    ingress_enforcement_required: true
+    egress_enforcement_required: true
+  dns:
+    provider: null
+    namespace_selector: {}
+    pod_selector: {}
+    ports:
+      - protocol: UDP
+        port: 53
+      - protocol: TCP
+        port: 53
+policy:
+  default_deny_ingress: true
+  default_deny_egress: true
+  selector_identity_mode: admission_bound_workload_labels
+  required_identity_labels:
+    - app.kubernetes.io/name
+    - gda.openai.com/environment
+    - gda.openai.com/workload-identity
+  label_admission_policy_reference: null
+  policy_bundle_reference: null
+  policy_owner: null
+workloads:
+  gda_control:
+    namespace_template: null
+    service_account: null
+    identity_reference: null
+    selector_labels: {}
+  metadata_observability:
+    namespace_template: null
+    service_account: null
+    identity_reference: null
+    selector_labels: {}
+  metadata_backup:
+    namespace_template: null
+    service_account: null
+    identity_reference: null
+    selector_labels: {}
+  openmetadata:
+    namespace_template: null
+    service_account: null
+    identity_reference: null
+    selector_labels: {}
+  gravitino:
+    namespace_template: null
+    service_account: null
+    identity_reference: null
+    selector_labels: {}
+  openmetadata_postgresql:
+    namespace_template: null
+    service_account: null
+    identity_reference: null
+    selector_labels: {}
+  gravitino_postgresql:
+    namespace_template: null
+    service_account: null
+    identity_reference: null
+    selector_labels: {}
+  opensearch:
+    namespace_template: null
+    service_account: null
+    identity_reference: null
+    selector_labels: {}
+tenancy:
+  isolation_mode: null
+  namespace_tenant_label: gda.openai.com/tenant-id
+  namespace_label_admission_policy_reference: null
+  cross_tenant_default_deny_required: true
+traffic_matrix:
+  decision_status: pending
+  entries: []
+operations:
+  policy_log_reference: null
+  incident_owner: null
+  runbook:
+    uri: null
+    version: null
+  rollback_runbook:
+    uri: null
+    version: null
+claims:
+  cluster_decision_frozen: false
+  workload_identity_matrix_verified: false
+  provider_traffic_matrix_verified: false
+  network_policy_logging_verified: false
+  production_network_policy_gate_passed: false
+  production_network_policy_enforcement_verified: false
+  metadata_provider_network_policy_verified: false
+  tenant_isolation_verified: false
+  production_ready: false
