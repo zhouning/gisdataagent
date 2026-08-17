@@ -471,9 +471,7 @@ def test_control_ledger_contract_and_migration_catalog_are_valid():
     assert report["status"] == "valid"
     assert report["contract_count"] == 16
     assert report["migration"]["sha256"] == migration["checksum"]
-    assert migrations[-1]["migration_id"] == (
-        "098_metadata_fabric_openlineage_delivery"
-    )
+    assert migrations[-1]["migration_id"] == "099_synchronous_success_profile"
 
 
 def test_sql_contract_has_tenant_fks_rls_append_only_and_no_legacy_backfill():

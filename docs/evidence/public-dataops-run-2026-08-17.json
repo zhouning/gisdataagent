@@ -1,0 +1,97 @@
+{
+  "schema": "gda.public_dataops_run.evidence.v1",
+  "evidence_date": "2026-08-17",
+  "profile": "public_open_lightweight",
+  "source": {
+    "label": "natural-earth-admin0-countries",
+    "uri": "https://naturalearth.s3.amazonaws.com/110m_cultural/ne_110m_admin_0_countries.zip",
+    "license_id": "public-domain",
+    "media_type": "application/zip",
+    "size_bytes": 214976,
+    "content_sha256": "0f243aeac8ac6cf26f0417285b0bd33ac47f1b5bdb719fd3e0df37d03ea37110",
+    "resource_urn": "gda://public-demo/dataset/natural-earth-admin0-countries",
+    "resource_version_id": "905bc019-71ef-5207-8392-cd2c46b7b5b7"
+  },
+  "definition": {
+    "definition_urn": "gda://public-demo/definition/public-geojson-materialize",
+    "definition_version_id": "d92e3e09-b4ba-5aa7-b6cd-dba5d2e3c12d",
+    "definition_sha256": "c14d55805c00986fbdf737fc231715ca8c4dbce7512b19a9f7b17fff0d16d8f1",
+    "orchestration_class": "synchronous",
+    "capability_id": "public.geojson.materialize"
+  },
+  "run": {
+    "run_id": "f3ae1ea2-1603-566c-809f-95a8401e295e",
+    "status": "succeeded",
+    "state_version": 3,
+    "attempt_observation_id": "1330a187-658c-5fdc-b186-de6b19602867",
+    "attempt_framework_kind": "legacy",
+    "attempt_schema": "gda.public_dataops_attempt.v1",
+    "execution_mode": "local_inline"
+  },
+  "output": {
+    "resource_urn": "gda://public-demo/dataset/natural-earth-countries-serving",
+    "resource_version_id": "9431cf7c-c01b-5f26-a4cb-e05a2c56a6b8",
+    "artifact_id": "1a9099ce-08dc-5dab-ab62-5a6e218d87c2",
+    "media_type": "application/geo+json",
+    "crs": "EPSG:4326",
+    "content_sha256": "d81aeae51ab6759a692b21702cf159f1b94d0aec8e1bbe60828f47c65cf90f68",
+    "size_bytes": 1065275,
+    "feature_count": 177,
+    "geometry_types": {
+      "MultiPolygon": 29,
+      "Polygon": 148
+    },
+    "bbox_epsg4326": [
+      -180.0,
+      -90.0,
+      180.00000000000006,
+      83.64513000000001
+    ]
+  },
+  "quality": {
+    "verdict": "passed",
+    "quality_result_id": "4badc6ad-4081-5fd6-b05e-13900970e230",
+    "evidence_artifact_id": "3762ba75-55fd-5c98-a149-e719926dbc18",
+    "evidence_content_sha256": "ce075670c559de543c97007d5e5cb3aed449d21bde82cab60135c6cf3225423f",
+    "evaluated_by": "workload:public-quality",
+    "independent_evaluator_verified": true,
+    "null_geometry_count": 0,
+    "empty_geometry_count": 0,
+    "invalid_geometry_count": 0
+  },
+  "lineage": {
+    "lineage_event_id": "e705fa4c-57c3-54a4-8c1e-a8bb5f18cf95",
+    "source_resource_version_id": "905bc019-71ef-5207-8392-cd2c46b7b5b7",
+    "target_resource_version_id": "9431cf7c-c01b-5f26-a4cb-e05a2c56a6b8",
+    "output_artifact_id": "1a9099ce-08dc-5dab-ab62-5a6e218d87c2"
+  },
+  "replay": {
+    "output_created": false,
+    "quality_created": false,
+    "ledger_completed": true,
+    "platform_run_count": 1,
+    "platform_run_event_count": 4,
+    "run_artifact_count": 2,
+    "attempt_observation_count": 1,
+    "quality_result_count": 1,
+    "lineage_event_count": 1
+  },
+  "verification": {
+    "result_bundle_valid": true,
+    "output_file_sha256_valid": true,
+    "quality_file_sha256_valid": true,
+    "focused_unit_tests_passed": 13,
+    "postgres_integration_tests_passed": 7,
+    "local_inline_execution_verified": true,
+    "geojson_serving_projection_verified": true,
+    "postgres_ledger_verified": true,
+    "dolphinscheduler_execution_verified": false,
+    "postgis_serving_verified": false,
+    "stac_serving_verified": false,
+    "active_service_revision_verified": false,
+    "rollback_verified": false
+  },
+  "production_ready": false,
+  "protected_chongqing_admission_unchanged": true,
+  "protected_chongqing_source_content_admitted": false
+}
