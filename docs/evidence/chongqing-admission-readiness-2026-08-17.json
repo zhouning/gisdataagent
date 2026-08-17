@@ -1,0 +1,145 @@
+{
+  "schema": "gda.chongqing_admission_readiness.v1",
+  "status": "blocked_pending_protected_admission_attestation",
+  "captured_at": "2026-08-17T11:00:00Z",
+  "source_binding": {
+    "source_id": "chongqing-planning-institute-sample",
+    "source_group_id": "bishan-planning-materials",
+    "asset_id": "bishan_land_use_dltb_local",
+    "source_ref": "source://chongqing-planning-institute-sample/assets/bishan_land_use_dltb_local",
+    "upstream_admission_evidence_sha256": "a2196495d845d61be939c7fc36a7f05c3567e365599d2d04be0aab9c568459c1",
+    "upstream_admission_evidence_file_sha256": "9b5c20369c235f7e0a2f2cb0a21cee77f86981aa273bac196605a4803b05ce83",
+    "upstream_provenance_evidence_sha256": "b56ce0c036827d4338ab2cfae8f3fb4c9e1e78ec18aac243272f1f77801300ef",
+    "upstream_provenance_evidence_file_sha256": "cfae0478c76452a155e8af42ec8499e4e7876a49c1dbb98648526025cb154360",
+    "upstream_governance_evidence_sha256": "97cf11ab8938c048dce9db903d1a4f30758f208dec6dad1a08b740a4a8fe7b6f",
+    "upstream_governance_evidence_file_sha256": "25bc5e2dfc5528f5556e7174f8c99fed7abaf30b9312528f5164c16bdf7cca9a",
+    "archive_sha256": "2043b60c2f4f7f32a31388a634fae4ac28534990e205aa86b8df0e4b64dcbbca",
+    "extracted_payload_sha256": "e7e81e4f53f9f174792f500fbfdfde6bee30ec03beac8cbd91771fe09f548ea6",
+    "source_payload_in_evidence": false,
+    "absolute_source_paths_in_evidence": false
+  },
+  "required_evidence": {
+    "operator_identity": {
+      "source": "derivation",
+      "status": "missing",
+      "attestation_sha256": null
+    },
+    "tool_version": {
+      "source": "derivation",
+      "status": "missing",
+      "attestation_sha256": null
+    },
+    "command_digest": {
+      "source": "derivation",
+      "status": "missing",
+      "attestation_sha256": null
+    },
+    "modified_entry_manifest": {
+      "source": "derivation",
+      "status": "missing",
+      "attestation_sha256": null
+    },
+    "additional_entry_manifest": {
+      "source": "derivation",
+      "status": "missing",
+      "attestation_sha256": null
+    },
+    "archive_to_working_set_attestation": {
+      "source": "derivation",
+      "status": "missing",
+      "attestation_sha256": null
+    },
+    "owner_decision": {
+      "source": "governance",
+      "status": "missing",
+      "attestation_sha256": null
+    },
+    "license_decision": {
+      "source": "governance",
+      "status": "missing",
+      "attestation_sha256": null
+    },
+    "retention_decision": {
+      "source": "governance",
+      "status": "missing",
+      "attestation_sha256": null
+    },
+    "access_decision": {
+      "source": "governance",
+      "status": "missing",
+      "attestation_sha256": null
+    },
+    "privacy_sensitivity_decision": {
+      "source": "governance",
+      "status": "missing",
+      "attestation_sha256": null
+    },
+    "standard_version_decision": {
+      "source": "governance",
+      "status": "missing",
+      "attestation_sha256": null
+    },
+    "data_slo_decision": {
+      "source": "governance",
+      "status": "missing",
+      "attestation_sha256": null
+    },
+    "golden_result_decision": {
+      "source": "governance",
+      "status": "missing",
+      "attestation_sha256": null
+    },
+    "fresh_protected_attestation": {
+      "source": "protected",
+      "status": "missing",
+      "attestation_sha256": null
+    }
+  },
+  "blockers": [
+    "admission:operator_identity_missing",
+    "admission:tool_version_missing",
+    "admission:command_digest_missing",
+    "admission:modified_entry_manifest_missing",
+    "admission:additional_entry_manifest_missing",
+    "admission:archive_to_working_set_attestation_missing",
+    "admission:owner_decision_missing",
+    "admission:license_decision_missing",
+    "admission:retention_decision_missing",
+    "admission:access_decision_missing",
+    "admission:privacy_sensitivity_decision_missing",
+    "admission:standard_version_decision_missing",
+    "admission:data_slo_decision_missing",
+    "admission:golden_result_decision_missing",
+    "admission:fresh_protected_attestation_missing"
+  ],
+  "admission_policy": {
+    "metadata_readiness_record_allowed": true,
+    "admission_requires_complete_derivation": true,
+    "admission_requires_complete_governance": true,
+    "admission_requires_fresh_protected_attestation": true,
+    "source_payload_copy_to_repository_forbidden": true,
+    "local_profile_is_not_production_admission": true,
+    "content_admission_authorized": false,
+    "landing_authority_creation_allowed": false,
+    "resource_version_creation_allowed": false,
+    "platform_run_creation_allowed": false,
+    "scheduler_submission_allowed": false,
+    "provider_mutation_allowed": false
+  },
+  "claims": {
+    "upstream_evidence_bound": true,
+    "derivation_attestation_complete": false,
+    "governance_decisions_complete": false,
+    "fresh_protected_attestation_valid": false,
+    "admission_eligible": false,
+    "source_content_admitted": false,
+    "landing_authority_created": false,
+    "resource_version_created": false,
+    "platform_run_created": false,
+    "scheduler_submission_authorized": false,
+    "provider_mutation_authorized": false,
+    "production_ingestion_verified": false,
+    "production_ready": false
+  },
+  "evidence_sha256": "2f5ae24ab904af0eed18ee7c517ab5c4638cbdf0923c9345b0041af185d25591"
+}
