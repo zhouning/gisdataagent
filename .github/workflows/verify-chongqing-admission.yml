@@ -1,0 +1,128 @@
+# Evaluates a metadata-only external attestation bundle against the immutable
+# M3-31 readiness record. This workflow is read-only and grants no ingestion
+# or provider authority.
+name: Verify - Chongqing Protected Admission
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  attestations: write
+  contents: read
+  id-token: write
+
+concurrency:
+  group: chongqing-protected-admission
+  cancel-in-progress: false
+
+jobs:
+  verify-chongqing-admission:
+    name: Evaluate the external admission attestation bundle
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, linux, gda-admission]
+    environment: chongqing-admission
+    timeout-minutes: 20
+
+    env:
+      GDA_CHONGQING_READINESS_SHA256: 2f5ae24ab904af0eed18ee7c517ab5c4638cbdf0923c9345b0041af185d25591
+      GDA_CHONGQING_READINESS_FILE_SHA256: c595065e152988529ff12e2301d59caebb31d2889658a676c9d1f8239e6f8372
+      PYTHONPATH: ${{ github.workspace }}/protected-source
+
+    steps:
+      - name: Check out the exact protected verifier revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: protected-source
+          persist-credentials: false
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install verifier dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r protected-source/requirements.txt
+
+      - name: Require protected metadata-only attestation input
+        env:
+          GDA_CHONGQING_ADMISSION_PROTECTED: ${{ vars.GDA_CHONGQING_ADMISSION_PROTECTED }}
+          GDA_CHONGQING_ATTESTATION_BUNDLE_B64: ${{ secrets.GDA_CHONGQING_ATTESTATION_BUNDLE_B64 }}
+        run: |
+          set -euo pipefail
+          if [[ "$GDA_CHONGQING_ADMISSION_PROTECTED" != "true" ]]; then
+            echo "chongqing-admission environment is not explicitly enabled" >&2
+            exit 1
+          fi
+          if [[ -z "$GDA_CHONGQING_ATTESTATION_BUNDLE_B64" ]]; then
+            echo "protected admission attestation bundle is missing" >&2
+            exit 1
+          fi
+          input_root="$RUNNER_TEMP/chongqing-admission-input"
+          mkdir -p "$input_root"
+          umask 077
+          printf '%s' "$GDA_CHONGQING_ATTESTATION_BUNDLE_B64" | \
+            base64 --decode > "$input_root/attestation.json"
+          python -m json.tool "$input_root/attestation.json" >/dev/null
+          echo "GDA_CHONGQING_ATTESTATION_PATH=$input_root/attestation.json" >> "$GITHUB_ENV"
+
+      - name: Evaluate the protected admission contract
+        run: |
+          set -euo pipefail
+          mkdir -p chongqing-protected-admission
+          python -m data_agent.chongqing_protected_admission evaluate \
+            --readiness protected-source/docs/evidence/chongqing-admission-readiness-2026-08-17.json \
+            --attestation "$GDA_CHONGQING_ATTESTATION_PATH" \
+            --output chongqing-protected-admission/report.json
+
+      - name: Verify the report and preserve the no-authority boundary
+        run: |
+          set -euo pipefail
+          python -m data_agent.chongqing_protected_admission verify \
+            --input chongqing-protected-admission/report.json
+          python - <<'PY'
+          import json
+          import os
+
+          report = json.load(open("chongqing-protected-admission/report.json"))
+          assert report["readiness_evidence_sha256"] == os.environ[
+              "GDA_CHONGQING_READINESS_SHA256"
+          ]
+          assert report["readiness_evidence_file_sha256"] == os.environ[
+              "GDA_CHONGQING_READINESS_FILE_SHA256"
+          ]
+          assert report["attestation_valid"] is True
+          assert report["admission_eligible"] is True
+          assert report["content_admission_authorized"] is False
+          assert report["source_content_admitted"] is False
+          assert report["landing_authority_created"] is False
+          assert report["resource_version_created"] is False
+          assert report["platform_run_created"] is False
+          assert report["scheduler_submission_authorized"] is False
+          assert report["provider_mutation_authorized"] is False
+          assert report["production_ready"] is False
+          PY
+
+      - name: Stage the metadata-only attestation bundle
+        run: |
+          install -m 0600 \
+            "$GDA_CHONGQING_ATTESTATION_PATH" \
+            chongqing-protected-admission/attestation.json
+
+      - name: Attest the protected admission evidence
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: |
+            chongqing-protected-admission/attestation.json
+            chongqing-protected-admission/report.json
+
+      - name: Upload the protected admission evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: chongqing-protected-admission-${{ github.run_id }}
+          path: chongqing-protected-admission/
+          if-no-files-found: error
+          retention-days: 90
