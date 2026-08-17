@@ -190,6 +190,8 @@ jobs:
             data_agent/test_metadata_fabric_lineage_delivery.py \
             data_agent/test_metadata_fabric_lineage_delivery_postgres.py \
             data_agent/test_metadata_fabric_provider_identity.py \
+            data_agent/test_metadata_fabric_gravitino_identity.py \
+            data_agent/test_metadata_fabric_identity_gate.py \
             data_agent/test_metadata_fabric_otel_failure_rehearsal.py \
             data_agent/test_metadata_fabric_otel_metrics.py \
             data_agent/test_metadata_fabric_provider_metrics.py \
