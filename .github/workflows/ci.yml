@@ -130,6 +130,9 @@ jobs:
       - name: Validate Chongqing extraction provenance evidence
         run: python -m data_agent.chongqing_extraction_provenance
 
+      - name: Validate Chongqing source governance evidence
+        run: python -m data_agent.chongqing_source_governance
+
       - name: Validate DolphinScheduler adapter boundary
         run: python -m data_agent.dolphinscheduler_adapter validate
 
@@ -167,6 +170,7 @@ jobs:
             data_agent/test_auth.py \
             data_agent/test_chongqing_real_source_admission.py \
             data_agent/test_chongqing_extraction_provenance.py \
+            data_agent/test_chongqing_source_governance.py \
             data_agent/test_dolphinscheduler_adapter.py \
             data_agent/test_dolphinscheduler_command_consumer.py \
             data_agent/test_dolphinscheduler_command_worker.py \
