@@ -1,0 +1,132 @@
+schema: gda.metadata_fabric_identity_production_profile.v1
+environment: production
+
+scope:
+  providers:
+    openmetadata:
+      version: 1.13.1
+    gravitino:
+      version: 1.3.0
+  local_evidence:
+    openmetadata:
+      path: docs/evidence/metadata-fabric-provider-identity-2026-07-28.json
+      evidence_fingerprint: 61b6a3429ae948f563bfc2bd012d8b586be581704cec646fd5e74b991243f03f
+    gravitino:
+      path: docs/evidence/metadata-fabric-gravitino-identity-2026-07-28.json
+      evidence_fingerprint: f0b0de1f80f079d43318937e0a0cc151a8546e9e307bef204738b1367f9b29fd
+
+federation:
+  decision_status: pending
+  issuer: null
+  discovery_uri: null
+  jwks_uri: null
+  audience: null
+  token_exchange_mode: null
+  trust_policy_reference: null
+  workload_subject_claim: sub
+  tenant_claim: gda_tenant_id
+  maximum_token_ttl_seconds: 900
+
+providers:
+  openmetadata:
+    integration_mode: null
+    authentication_component_reference: null
+    environment_binding: null
+    workload_identity_reference: null
+    kubernetes_service_account: null
+    namespace_template: null
+    direct_access_policy: deny_except_attested_identity_path
+    credential_delivery: short_lived_token_exchange
+    static_credentials_forbidden: true
+    rotation_mode: automatic_before_expiry
+    revocation_mode: idp_subject_disable
+  gravitino:
+    integration_mode: null
+    authentication_component_reference: null
+    environment_binding: null
+    workload_identity_reference: null
+    kubernetes_service_account: null
+    namespace_template: null
+    direct_access_policy: deny_except_attested_identity_path
+    credential_delivery: short_lived_token_exchange
+    static_credentials_forbidden: true
+    rotation_mode: automatic_before_expiry
+    revocation_mode: idp_subject_disable
+
+authorization:
+  openmetadata:
+    mandatory_roles:
+      - DefaultBotRole
+    project_role: GdaMetadataTableProjectionRole
+    project_permissions:
+      - resource: table
+        operations:
+          - Create
+    denied_probe:
+      resource: policy
+      operation: Create
+  gravitino:
+    role: gda-table-projection
+    securable_objects:
+      - full_name: lakehouse
+        type: CATALOG
+        privileges:
+          - USE_CATALOG
+      - full_name: lakehouse.published
+        type: SCHEMA
+        privileges:
+          - CREATE_TABLE
+          - USE_SCHEMA
+    denied_probe:
+      resource: METALAKE
+      operation: CREATE_CATALOG
+
+tls:
+  required: true
+  minimum_version: TLSv1.2
+  openmetadata_endpoint: null
+  gravitino_endpoint: null
+  trust_bundle_reference: null
+  certificate_policy_reference: null
+  mtls_for_internal_hops: true
+
+catalog:
+  decision_status: pending
+  gravitino_backend: null
+  catalog_reference: null
+  persistence_reference: null
+  backup_policy_reference: null
+  persistent_required: true
+
+tenancy:
+  isolation_mode: null
+  policy_reference: null
+  tenant_claim: gda_tenant_id
+  cross_tenant_denial_required: true
+
+operations:
+  identity_owner: null
+  security_owner: null
+  incident_owner: null
+  audit_log_reference: null
+  rotation_slo_minutes: null
+  revocation_slo_minutes: null
+  runbook:
+    uri: null
+    version: null
+  rollback_runbook:
+    uri: null
+    version: null
+
+claims:
+  identity_decision_frozen: false
+  provider_minimum_privilege_verified: false
+  protected_workload_identity_verified: false
+  oidc_verified: false
+  tls_verified: false
+  credential_rotation_verified: false
+  credential_revocation_verified: false
+  persistent_catalog_identity_binding_verified: false
+  production_identity_verified: false
+  production_identity_gate_passed: false
+  production_ready: false
