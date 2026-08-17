@@ -1,0 +1,59 @@
+schema: gda.metadata_fabric_provider_identity_profile.v1
+environment: local_docker_desktop
+
+cluster:
+  context: docker-desktop
+  namespace: gda-metadata-sandbox
+
+providers:
+  openmetadata:
+    version: 1.13.1
+    workload: deployment/openmetadata
+    service: openmetadata
+    service_port: 8585
+    service_account: openmetadata
+    auth_mode: local_basic_bootstrap_provisioner
+    bootstrap_username_env: GDA_OPENMETADATA_USERNAME
+    bootstrap_password_env: GDA_OPENMETADATA_PASSWORD
+  gravitino:
+    version: 1.3.0
+    workload: statefulset/metadata-gravitino
+    service: metadata-gravitino
+    service_port: 8090
+    authenticator: simple
+    access_control_enabled: false
+
+identity:
+  policy: GdaMetadataTableProjectionPolicy
+  role: GdaMetadataTableProjectionRole
+  user: gda-metadata-table-projection
+  email: gda-metadata-table-projection@open-metadata.org
+  bot: gda-metadata-table-projection-bot
+  mandatory_default_role: DefaultBotRole
+  jwt_expiry: OneHour
+  allowed_rule:
+    name: GdaMetadataTableCreate
+    effect: allow
+    operations: [Create]
+    resources: [table]
+
+probes:
+  allowed_table_create:
+    database_schema: gda_lakehouse.land_use.published
+    table: gda_provider_identity_probe
+  denied_policy_create:
+    collection: policies
+    operation: Create
+    name: GdaUnauthorizedPolicyProbe
+
+claims:
+  local_openmetadata_bounded_identity_verified: false
+  local_openmetadata_minimum_privilege_verified: false
+  local_openmetadata_jwt_rotation_verified: false
+  local_openmetadata_jwt_revocation_verified: false
+  provider_minimum_privilege_verified: false
+  protected_workload_identity_verified: false
+  oidc_verified: false
+  gravitino_authentication_verified: false
+  production_identity_verified: false
+  production_ready: false

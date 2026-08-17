@@ -115,6 +115,9 @@ jobs:
       - name: Validate metadata fabric OpenLineage delivery evidence
         run: python -m data_agent.metadata_fabric_lineage_delivery validate
 
+      - name: Validate metadata fabric provider identity evidence
+        run: python -m data_agent.metadata_fabric_provider_identity validate
+
       - name: Validate DolphinScheduler adapter boundary
         run: python -m data_agent.dolphinscheduler_adapter validate
 
@@ -172,6 +175,7 @@ jobs:
             data_agent/test_metadata_fabric_ingestion_replay.py \
             data_agent/test_metadata_fabric_binding_contract.py \
             data_agent/test_metadata_fabric_lineage_delivery.py \
+            data_agent/test_metadata_fabric_provider_identity.py \
             data_agent/test_metadata_fabric_otel_failure_rehearsal.py \
             data_agent/test_metadata_fabric_otel_metrics.py \
             data_agent/test_metadata_fabric_provider_metrics.py \

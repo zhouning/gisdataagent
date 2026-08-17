@@ -417,7 +417,7 @@ AR-0 Architecture / Schema / Runtime Truth
 - Web、DolphinScheduler、OpenMetadata、Gravitino、worker 和 bridge 重启后不丢版本、产品、血缘、PlatformRun correlation 或审批状态。
 - DataOps 状态可从 DolphinScheduler/OpenMetadata/Gravitino/GDA evidence 恢复；任何 release/deployment 都能从事件、Artifact、评测、策略、incident 和 rollback pointer 重放。Temporal durable recovery 在 AR-5/AR-7 单独验收。
 
-当前 Metadata Fabric 证据边界：M1 只读 bridge 合同已验证；ADR-037 至 ADR-046 分别覆盖本地 foundation/recovery/metrics/network-policy 演练与 production readiness contracts；ADR-047 的 M3-1 已建立 deterministic projection plan；ADR-048 的 M3-2 已用 exact local PolicyDecision/Approval 对本地 OpenMetadata/Gravitino 执行 natural-key create/read-back，并证明第二次 replay 为 `no_op/0 mutations`。M3-2 使用 OpenMetadata bootstrap admin、未认证 Gravitino 与 memory catalog，binding candidate 不写 GDA Control，OpenLineage 不发送；因此只允许 `local_live_provider_ingestion_verified=true`，不证明 provider 最小权限、OIDC、持久 catalog、生产 ingestion/conformance、live lineage 或 `production_ready`。
+当前 Metadata Fabric 证据边界：M1 只读 bridge 合同已验证；ADR-037 至 ADR-046 分别覆盖本地 foundation/recovery/metrics/network-policy 演练与 production readiness contracts；ADR-047 至 ADR-050 已依次建立 deterministic projection plan、本地双 provider replay、tenant-scoped binding ledger 与本地 OpenLineage 幂等 wire delivery；ADR-051 又以临时非管理员 OpenMetadata bot 证明项目专用 grant 只有 `table/Create`、`policy/Create` 被 403 拒绝，且 JWT 轮换/吊销后旧值/当前值均返回 401。这个 `local_openmetadata_minimum_privilege_verified=true` 明确限定在 provider 强制 `DefaultBotRole` 之上的项目新增 grant；M3-2 ingestion 仍使用 bootstrap admin，Gravitino 仍未认证且使用 memory catalog。因此 `provider_minimum_privilege_verified`、protected workload identity、OIDC、持久 catalog、生产 ingestion/conformance、生产 lineage receiver 与 `production_ready` 仍为 false。
 
 ### AR-2 — Source, Ingestion and Geospatial Lakehouse Vertical Slice（P0）
 

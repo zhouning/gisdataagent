@@ -609,6 +609,26 @@ RUNTIME_INVENTORY = (
         "Managed outbox worker and protected authenticated OpenLineage receiver",
     ),
     RuntimeSpec(
+        "metadata_provider_identity_rehearsal",
+        "provider_identity_rehearsal",
+        "governed",
+        "evidence_durable",
+        "committed local OpenMetadata bounded identity evidence",
+        "metadata-platform",
+        "local_verification_only",
+        (
+            "data_agent/metadata_fabric_provider_identity.py",
+            "scripts/metadata-fabric-provider-identity.sh",
+        ),
+        (
+            (
+                "data_agent/metadata_fabric_provider_identity.py",
+                "subprocess.run",
+            ),
+        ),
+        "Protected OIDC workload identity and authenticated Gravitino access control",
+    ),
+    RuntimeSpec(
         "datalake_monitor",
         "monitor_loop",
         "legacy",
