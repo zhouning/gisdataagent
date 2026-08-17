@@ -187,6 +187,8 @@ jobs:
             data_agent/test_metadata_fabric_ingestion_replay.py \
             data_agent/test_metadata_fabric_binding_contract.py \
             data_agent/test_metadata_fabric_binding_ledger_postgres.py \
+            data_agent/test_metadata_fabric_lineage_delivery.py \
+            data_agent/test_metadata_fabric_lineage_delivery_postgres.py \
             data_agent/test_metadata_fabric_otel_failure_rehearsal.py \
             data_agent/test_metadata_fabric_otel_metrics.py \
             data_agent/test_metadata_fabric_provider_metrics.py \
