@@ -167,6 +167,7 @@ jobs:
             data_agent/test_auth.py \
             data_agent/test_chongqing_real_source_admission.py \
             data_agent/test_chongqing_extraction_provenance.py \
+            data_agent/test_chongqing_source_governance.py \
             data_agent/test_dolphinscheduler_adapter.py \
             data_agent/test_dolphinscheduler_command_consumer.py \
             data_agent/test_dolphinscheduler_command_worker.py \

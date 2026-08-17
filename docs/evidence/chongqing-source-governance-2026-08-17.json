@@ -1,0 +1,98 @@
+{
+  "schema": "gda.chongqing_source_governance.v1",
+  "status": "blocked_pending_governance_decisions",
+  "captured_at": "2026-08-17T10:00:00Z",
+  "source_binding": {
+    "source_id": "chongqing-planning-institute-sample",
+    "source_group_id": "bishan-planning-materials",
+    "asset_id": "bishan_land_use_dltb_local",
+    "source_ref": "source://chongqing-planning-institute-sample/assets/bishan_land_use_dltb_local",
+    "upstream_admission_evidence_sha256": "a2196495d845d61be939c7fc36a7f05c3567e365599d2d04be0aab9c568459c1",
+    "upstream_admission_evidence_file_sha256": "9b5c20369c235f7e0a2f2cb0a21cee77f86981aa273bac196605a4803b05ce83",
+    "upstream_provenance_evidence_sha256": "b56ce0c036827d4338ab2cfae8f3fb4c9e1e78ec18aac243272f1f77801300ef",
+    "upstream_provenance_evidence_file_sha256": "cfae0478c76452a155e8af42ec8499e4e7876a49c1dbb98648526025cb154360",
+    "archive_sha256": "2043b60c2f4f7f32a31388a634fae4ac28534990e205aa86b8df0e4b64dcbbca",
+    "extracted_payload_sha256": "e7e81e4f53f9f174792f500fbfdfde6bee30ec03beac8cbd91771fe09f548ea6",
+    "source_payload_in_evidence": false,
+    "absolute_source_paths_in_evidence": false
+  },
+  "governance_decisions": {
+    "owner": {
+      "status": "pending",
+      "decision_ref": null,
+      "attestation_sha256": null
+    },
+    "license": {
+      "status": "pending",
+      "decision_ref": null,
+      "attestation_sha256": null
+    },
+    "retention": {
+      "status": "pending",
+      "decision_ref": null,
+      "attestation_sha256": null
+    },
+    "access": {
+      "status": "pending",
+      "decision_ref": null,
+      "attestation_sha256": null
+    },
+    "privacy_sensitivity": {
+      "status": "pending",
+      "decision_ref": null,
+      "attestation_sha256": null
+    },
+    "standard_version": {
+      "status": "pending",
+      "decision_ref": null,
+      "attestation_sha256": null
+    },
+    "data_slo": {
+      "status": "pending",
+      "decision_ref": null,
+      "attestation_sha256": null
+    },
+    "golden_result": {
+      "status": "pending",
+      "decision_ref": null,
+      "attestation_sha256": null
+    }
+  },
+  "blockers": [
+    "governance:owner_decision_pending",
+    "governance:license_decision_pending",
+    "governance:retention_decision_pending",
+    "governance:access_decision_pending",
+    "governance:privacy_sensitivity_decision_pending",
+    "governance:standard_version_decision_pending",
+    "governance:data_slo_decision_pending",
+    "governance:golden_result_decision_pending",
+    "derivation:provenance_attestation_pending",
+    "source-governance:fresh_protected_attestation_pending"
+  ],
+  "admission_policy": {
+    "metadata_governance_record_allowed": true,
+    "content_admission_requires_all_decisions": true,
+    "content_admission_requires_derivation_provenance": true,
+    "content_admission_requires_fresh_protected_attestation": true,
+    "source_payload_copy_to_repository_forbidden": true,
+    "local_profile_is_not_production_admission": true,
+    "landing_authority_creation_allowed": false,
+    "scheduler_submission_allowed": false,
+    "provider_mutation_allowed": false
+  },
+  "claims": {
+    "candidate_scope_selected": true,
+    "governance_decisions_complete": false,
+    "source_governance_approved": false,
+    "source_content_admitted": false,
+    "landing_authority_created": false,
+    "resource_version_created": false,
+    "platform_run_created": false,
+    "scheduler_submission_authorized": false,
+    "provider_mutation_authorized": false,
+    "production_ingestion_verified": false,
+    "production_ready": false
+  },
+  "evidence_sha256": "97cf11ab8938c048dce9db903d1a4f30758f208dec6dad1a08b740a4a8fe7b6f"
+}
