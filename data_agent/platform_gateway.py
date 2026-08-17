@@ -170,6 +170,47 @@ class DefinitionRegistration(BaseModel):
         return self
 
 
+class LandingRegistration(BaseModel):
+    """Atomic immutable Landing Resource + Version + input Artifact registration."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    resource: Resource
+    resource_version: ResourceVersion
+    artifact: Artifact
+
+    @model_validator(mode="after")
+    def _consistent_landing_identity(self) -> LandingRegistration:
+        resource = self.resource
+        version = self.resource_version
+        artifact = self.artifact
+        if resource.resource_kind != "dataset":
+            raise ValueError("landing resource must use kind 'dataset'")
+        if resource.authority_system != "gda_landing":
+            raise ValueError("landing resource authority must be 'gda_landing'")
+        if len({resource.tenant_id, version.tenant_id, artifact.tenant_id}) != 1:
+            raise ValueError("landing registration tenants must match")
+        if resource.resource_urn != version.resource_urn:
+            raise ValueError("landing ResourceVersion must bind the Resource")
+        if artifact.resource_version_id != version.resource_version_id:
+            raise ValueError("landing Artifact must bind the ResourceVersion")
+        if artifact.content_sha256 != version.content_sha256:
+            raise ValueError("landing Artifact and ResourceVersion hashes must match")
+        if artifact.artifact_role.value != "input":
+            raise ValueError("landing Artifact must use the input role")
+        if artifact.run_id is not None:
+            raise ValueError("landing Artifact cannot bind a PlatformRun")
+        if artifact.manifest.get("schema") != "gda.public_source_landing.v1":
+            raise ValueError("landing Artifact must contain the public-source manifest")
+        if artifact.manifest.get("admission_class") != "public_open":
+            raise ValueError("landing Artifact must use public_open admission")
+        if artifact.manifest.get("resource_urn") != resource.resource_urn:
+            raise ValueError("landing manifest must bind the Resource URN")
+        if artifact.manifest.get("authority_locator") != resource.authority_locator:
+            raise ValueError("landing manifest must bind the authority locator")
+        return self
+
+
 def _json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
 
@@ -1234,39 +1275,64 @@ class PlatformGateway:
                 raise GatewayNotFoundError("Artifact was not found")
             return artifact
 
+    def _put_artifact(self, connection, artifact: Artifact) -> GatewayWriteResult:
+        inserted = connection.execute(
+            text(
+                """
+                INSERT INTO gda_control.artifact (
+                    tenant_id, artifact_id, artifact_key, artifact_role,
+                    storage_uri, media_type, content_sha256, size_bytes,
+                    run_id, resource_version_id, manifest, created_by, created_at
+                ) VALUES (
+                    :tenant_id, :artifact_id, :artifact_key, :artifact_role,
+                    :storage_uri, :media_type, :content_sha256, :size_bytes,
+                    :run_id, :resource_version_id,
+                    CAST(:manifest AS jsonb), :created_by, :created_at
+                )
+                ON CONFLICT DO NOTHING
+                RETURNING artifact_id
+                """
+            ),
+            {
+                **artifact.model_dump(mode="python", exclude={"manifest"}),
+                "artifact_role": artifact.artifact_role.value,
+                "manifest": _json(artifact.manifest),
+            },
+        ).first()
+        stored = self._load_artifact(
+            connection, artifact.tenant_id, artifact.artifact_id
+        )
+        if stored is None or stored != artifact:
+            raise GatewayConflictError(
+                "Artifact identity already has a different payload"
+            )
+        return GatewayWriteResult(stored, inserted is not None)
+
     def record_artifact(self, artifact: Artifact) -> GatewayWriteResult:
         with self._transaction(artifact.tenant_id) as connection:
-            inserted = connection.execute(
-                text(
-                    """
-                    INSERT INTO gda_control.artifact (
-                        tenant_id, artifact_id, artifact_key, artifact_role,
-                        storage_uri, media_type, content_sha256, size_bytes,
-                        run_id, resource_version_id, manifest, created_by, created_at
-                    ) VALUES (
-                        :tenant_id, :artifact_id, :artifact_key, :artifact_role,
-                        :storage_uri, :media_type, :content_sha256, :size_bytes,
-                        :run_id, :resource_version_id,
-                        CAST(:manifest AS jsonb), :created_by, :created_at
-                    )
-                    ON CONFLICT DO NOTHING
-                    RETURNING artifact_id
-                    """
-                ),
-                {
-                    **artifact.model_dump(mode="python", exclude={"manifest"}),
-                    "artifact_role": artifact.artifact_role.value,
-                    "manifest": _json(artifact.manifest),
-                },
-            ).first()
-            stored = self._load_artifact(
-                connection, artifact.tenant_id, artifact.artifact_id
+            return self._put_artifact(connection, artifact)
+
+    def register_landing(
+        self, registration: LandingRegistration
+    ) -> GatewayWriteResult:
+        """Register a staged Landing object and its ledger identity atomically."""
+        with self._transaction(registration.resource.tenant_id) as connection:
+            resource_result = self._put_resource(connection, registration.resource)
+            version_result = self._put_resource_version(
+                connection, registration.resource_version
             )
-            if stored is None or stored != artifact:
-                raise GatewayConflictError(
-                    "Artifact identity already has a different payload"
-                )
-            return GatewayWriteResult(stored, inserted is not None)
+            artifact_result = self._put_artifact(connection, registration.artifact)
+            return GatewayWriteResult(
+                registration,
+                any(
+                    result.created
+                    for result in (
+                        resource_result,
+                        version_result,
+                        artifact_result,
+                    )
+                ),
+            )
 
     @staticmethod
     def _metadata_fabric_binding_from_row(row) -> MetadataFabricBindingRecord:
@@ -1993,6 +2059,8 @@ def build_gateway_report(
             'SET LOCAL ROLE "{GATEWAY_DATABASE_ROLE}"',
             "SELECT set_config('app.current_tenant', :tenant, true)",
             "ON CONFLICT DO NOTHING",
+            "class LandingRegistration",
+            "def register_landing(",
             "def get_artifact(",
             "def _validate_run_policy_references(",
             "def record_attempt_and_enqueue_reconcile(",
@@ -2011,6 +2079,7 @@ def build_gateway_report(
             'frozenset({"admin", "platform_operator"})',
             '"tenant_context_required"',
             '"actor_mismatch"',
+            "create_landing",
             "create_dolphinscheduler_callback",
             "create_quality_result",
             "finalize_run_success",
@@ -2080,7 +2149,7 @@ def build_gateway_report(
         "schema": GATEWAY_SCHEMA_VERSION,
         "status": "valid" if not errors else "invalid",
         "database_role": GATEWAY_DATABASE_ROLE,
-        "route_count": 12,
+        "route_count": 13,
         "files": files,
         "missing_markers": missing_markers,
         "errors": errors,

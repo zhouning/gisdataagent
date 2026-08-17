@@ -1,6 +1,6 @@
 import asyncio
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import UUID
@@ -22,8 +22,8 @@ from data_agent.platform_contracts import (
 )
 from data_agent.platform_gateway import (
     COMMAND_OUTBOX_MIGRATION,
-    DefinitionRegistration,
     GATEWAY_ROLE_MIGRATION,
+    DefinitionRegistration,
     GatewayConflictError,
     GatewayValidationError,
     GatewayWriteResult,
@@ -31,13 +31,12 @@ from data_agent.platform_gateway import (
     build_gateway_report,
 )
 
-
 TENANT = "tenant-a"
 ACTOR = "human:operator-1"
 DEFINITION_ID = UUID("00000000-0000-4000-8000-000000000010")
 RUN_ID = UUID("00000000-0000-4000-8000-000000000020")
 SOURCE_ID = UUID("00000000-0000-4000-8000-000000000030")
-NOW = datetime(2026, 7, 24, 12, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 7, 24, 12, 0, tzinfo=UTC)
 
 
 def _request(*, body=None, path=None, headers=None):
@@ -513,8 +512,9 @@ def test_run_transition_rejects_negative_state_version_at_http_boundary():
 
 def test_platform_gateway_routes_are_versioned_and_registered():
     registered = routes.get_platform_gateway_routes()
-    assert len(registered) == 12
+    assert len(registered) == 13
     assert all(route.path.startswith("/api/platform/v1/") for route in registered)
+    assert "/api/platform/v1/landings" in {route.path for route in registered}
 
     from data_agent.frontend_api import get_frontend_api_routes
 
@@ -526,7 +526,7 @@ def test_platform_gateway_static_contract_and_fail_closed_role(tmp_path):
     report = build_gateway_report()
     assert report["status"] == "valid"
     assert report["database_role"] == "gda_control_gateway"
-    assert report["route_count"] == 12
+    assert report["route_count"] == 13
 
     unsafe = tmp_path / "unsafe_gateway.sql"
     unsafe.write_text(

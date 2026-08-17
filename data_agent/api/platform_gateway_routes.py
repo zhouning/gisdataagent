@@ -13,7 +13,6 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
-from .helpers import _get_user_from_request
 from ..platform_contracts import (
     Artifact,
     FrameworkAttemptObservation,
@@ -44,10 +43,11 @@ from ..platform_gateway import (
     GatewayNotFoundError,
     GatewayUnavailableError,
     GatewayValidationError,
+    LandingRegistration,
     PlatformGateway,
     PlatformGatewayError,
 )
-
+from .helpers import _get_user_from_request
 
 _TENANT_ADAPTER = TypeAdapter(TenantId)
 _PLATFORM_ROLES = frozenset({"admin", "platform_operator"})
@@ -544,6 +544,42 @@ async def create_artifact(request: Request) -> JSONResponse:
         return _gateway_error(request, exc)
 
 
+async def create_landing(request: Request) -> JSONResponse:
+    principal = _principal(request)
+    if isinstance(principal, JSONResponse):
+        return principal
+    registration = await _parse(request, LandingRegistration)
+    if isinstance(registration, JSONResponse):
+        return registration
+    if mismatch := _tenant_matches(
+        request, principal, registration.resource.tenant_id
+    ):
+        return mismatch
+    actors = {
+        registration.resource_version.created_by,
+        registration.artifact.created_by,
+    }
+    if actors != {principal.actor_ref}:
+        return _error(
+            request,
+            403,
+            "actor_mismatch",
+            "Landing version and artifact actors must match authenticated actor",
+        )
+    try:
+        result = await asyncio.to_thread(
+            _gateway().register_landing, registration
+        )
+        return _success(
+            request,
+            result.value,
+            status_code=201 if result.created else 200,
+            created=result.created,
+        )
+    except PlatformGatewayError as exc:
+        return _gateway_error(request, exc)
+
+
 async def create_quality_result(request: Request) -> JSONResponse:
     principal = _principal(request)
     if isinstance(principal, JSONResponse):
@@ -681,6 +717,7 @@ def get_platform_gateway_routes() -> list[Route]:
             create_dolphinscheduler_callback,
             methods=["POST"],
         ),
+        Route(f"{base}/landings", create_landing, methods=["POST"]),
         Route(f"{base}/artifacts", create_artifact, methods=["POST"]),
         Route(f"{base}/quality-results", create_quality_result, methods=["POST"]),
         Route(
