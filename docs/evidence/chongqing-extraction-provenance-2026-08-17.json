@@ -1,0 +1,57 @@
+{
+  "captured_at": "2026-08-17T08:30:00Z",
+  "claims": {
+    "comparison_observed": true,
+    "derivation_provenance_complete": false,
+    "landing_authority_created": false,
+    "platform_run_created": false,
+    "production_ingestion_verified": false,
+    "production_ready": false,
+    "provider_mutation_authorized": false,
+    "resource_version_created": false,
+    "scheduler_submission_authorized": false,
+    "source_content_admitted": false
+  },
+  "comparison": {
+    "additional_extracted_file_count": 52,
+    "archive_extracted_entry_multiset_verified": false,
+    "exact_match_count": 526,
+    "missing_entry_count": 0,
+    "modified_entry_count": 6
+  },
+  "derivation": {
+    "absolute_source_paths_in_evidence": false,
+    "additional_entry_manifest_recorded": false,
+    "archive_to_working_set_attestation": false,
+    "command_digest_recorded": false,
+    "comparison_algorithm": "relative-path-plus-zip-size-crc32",
+    "comparison_scope": "archive-01-sample-scope-vs-extracted-working-set",
+    "derivation_status": "comparison_only",
+    "modified_entry_manifest_recorded": false,
+    "operator_identity_recorded": false,
+    "source_payload_in_evidence": false,
+    "tool_version_recorded": false
+  },
+  "evidence_sha256": "b56ce0c036827d4338ab2cfae8f3fb4c9e1e78ec18aac243272f1f77801300ef",
+  "missing_evidence": [
+    "derivation:operator_identity_missing",
+    "derivation:tool_version_missing",
+    "derivation:command_digest_missing",
+    "derivation:modified_entry_manifest_missing",
+    "derivation:additional_entry_manifest_missing",
+    "derivation:archive_to_working_set_attestation_missing"
+  ],
+  "schema": "gda.chongqing_extraction_provenance.v1",
+  "source_binding": {
+    "archive_scope_entry_count": 532,
+    "archive_scope_size_bytes": 694147946,
+    "archive_sha256": "2043b60c2f4f7f32a31388a634fae4ac28534990e205aa86b8df0e4b64dcbbca",
+    "extracted_file_count": 584,
+    "extracted_payload_sha256": "e7e81e4f53f9f174792f500fbfdfde6bee30ec03beac8cbd91771fe09f548ea6",
+    "extracted_size_bytes": 700610744,
+    "source_id": "chongqing-planning-institute-sample",
+    "upstream_admission_evidence_file_sha256": "9b5c20369c235f7e0a2f2cb0a21cee77f86981aa273bac196605a4803b05ce83",
+    "upstream_admission_evidence_sha256": "a2196495d845d61be939c7fc36a7f05c3567e365599d2d04be0aab9c568459c1"
+  },
+  "status": "blocked_pending_derivation_attestation"
+}
