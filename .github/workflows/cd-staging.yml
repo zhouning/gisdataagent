@@ -165,6 +165,7 @@ jobs:
             data_agent/test_adk_compat.py \
             data_agent/test_arcpy_mcp_configuration.py \
             data_agent/test_auth.py \
+            data_agent/test_chongqing_real_source_admission.py \
             data_agent/test_dolphinscheduler_adapter.py \
             data_agent/test_dolphinscheduler_command_consumer.py \
             data_agent/test_dolphinscheduler_command_worker.py \
