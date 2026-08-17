@@ -124,6 +124,9 @@ jobs:
       - name: Validate metadata fabric production identity gate
         run: python -m data_agent.metadata_fabric_identity_gate validate
 
+      - name: Validate Chongqing real-source admission evidence
+        run: python -m data_agent.chongqing_real_source_admission validate
+
       - name: Validate DolphinScheduler adapter boundary
         run: python -m data_agent.dolphinscheduler_adapter validate
 
@@ -159,6 +162,7 @@ jobs:
             data_agent/test_adk_compat.py \
             data_agent/test_arcpy_mcp_configuration.py \
             data_agent/test_auth.py \
+            data_agent/test_chongqing_real_source_admission.py \
             data_agent/test_dolphinscheduler_adapter.py \
             data_agent/test_dolphinscheduler_command_consumer.py \
             data_agent/test_dolphinscheduler_command_worker.py \
