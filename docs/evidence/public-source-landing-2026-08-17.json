@@ -1,0 +1,21 @@
+{
+  "schema": "gda.public_source_landing.evidence.v1",
+  "evidence_date": "2026-08-17",
+  "source_label": "natural-earth-admin0-countries",
+  "source_uri": "https://naturalearth.s3.amazonaws.com/110m_cultural/ne_110m_admin_0_countries.zip",
+  "license_id": "public-domain",
+  "media_type": "application/zip",
+  "content_sha256": "0f243aeac8ac6cf26f0417285b0bd33ac47f1b5bdb719fd3e0df37d03ea37110",
+  "size_bytes": 214976,
+  "resource_urn": "gda://public-demo/dataset/natural-earth-admin0-countries",
+  "resource_version_id": "905bc019-71ef-5207-8392-cd2c46b7b5b7",
+  "artifact_id": "464cfb4a-cb1a-5ca5-8993-905ba22443a9",
+  "manifest_sha256": "bd884360f4138048fff1caba84821b93aa57b9d21f1266a36cccd6d8115d8ac9",
+  "payload_created": true,
+  "replay_payload_created": false,
+  "replay_manifest_created": false,
+  "verify_valid": true,
+  "ledger_registered": false,
+  "production_ready": false,
+  "protected_chongqing_admission_unchanged": true
+}
