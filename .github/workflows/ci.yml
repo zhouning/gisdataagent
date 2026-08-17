@@ -179,6 +179,7 @@ jobs:
             data_agent/test_chongqing_source_governance.py \
             data_agent/test_chongqing_admission_readiness.py \
             data_agent/test_chongqing_protected_admission.py \
+            data_agent/test_chongqing_protected_admission_workflow.py \
             data_agent/test_dolphinscheduler_adapter.py \
             data_agent/test_dolphinscheduler_command_consumer.py \
             data_agent/test_dolphinscheduler_command_worker.py \
