@@ -79,6 +79,11 @@ SUCCESS_VERDICT_MIGRATION = (
     / "migrations"
     / "096_platform_success_verdict.sql"
 )
+SYNCHRONOUS_SUCCESS_MIGRATION = (
+    Path(__file__).resolve().parent
+    / "migrations"
+    / "099_synchronous_success_profile.sql"
+)
 METADATA_FABRIC_BINDING_MIGRATION = (
     Path(__file__).resolve().parent
     / "migrations"
@@ -1002,10 +1007,20 @@ class PlatformGateway:
             **evidence.model_dump(mode="json"),
         }
         with self._transaction(evidence.tenant_id) as connection:
+            run = self._load_run(
+                connection, evidence.tenant_id, evidence.run_id
+            )
+            if run is None:
+                raise GatewayNotFoundError("PlatformRun was not found")
+            finalizer = (
+                "gda_control.finalize_synchronous_platform_run_success"
+                if run.orchestration_class.value == "synchronous"
+                else "gda_control.finalize_platform_run_success"
+            )
             connection.execute(
                 text(
-                    """
-                    SELECT gda_control.finalize_platform_run_success(
+                    f"""
+                    SELECT {finalizer}(
                         :tenant_id, :run_id, :expected_state_version,
                         :actor_subject, :reason, CAST(:details AS jsonb)
                     )
@@ -1020,12 +1035,12 @@ class PlatformGateway:
                     "details": _json(details),
                 },
             ).scalar_one()
-            run = self._load_run(
+            finalized = self._load_run(
                 connection, evidence.tenant_id, evidence.run_id
             )
-            if run is None:
+            if finalized is None:
                 raise GatewayNotFoundError("PlatformRun was not found")
-            return run
+            return finalized
 
     @classmethod
     def _reconcile_command(
@@ -1953,6 +1968,7 @@ def build_gateway_report(
     role_migration: Path | None = None,
     command_migration: Path | None = None,
     success_migration: Path | None = None,
+    synchronous_success_migration: Path | None = None,
     binding_migration: Path | None = None,
     lineage_migration: Path | None = None,
     gateway_source: Path | None = None,
@@ -1969,6 +1985,9 @@ def build_gateway_report(
         ).resolve(),
         "success_migration": (
             success_migration or SUCCESS_VERDICT_MIGRATION
+        ).resolve(),
+        "synchronous_success_migration": (
+            synchronous_success_migration or SYNCHRONOUS_SUCCESS_MIGRATION
         ).resolve(),
         "binding_migration": (
             binding_migration or METADATA_FABRIC_BINDING_MIGRATION
@@ -2036,6 +2055,17 @@ def build_gateway_report(
             "input-to-output LineageEvent was not found",
             "GRANT SELECT, INSERT ON gda_control.quality_result",
             "finalize_platform_run_success",
+        ),
+        "synchronous_success_migration": (
+            "finalize_synchronous_platform_run_success",
+            "synchronous success profile requires synchronous Run",
+            "framework_kind = 'legacy'",
+            "gda.public_dataops_attempt.v1",
+            "evidence->>'execution_mode' = 'local_inline'",
+            "content-bound output Artifact was not found",
+            "independent passed QualityResult was not found",
+            "input-to-output LineageEvent was not found",
+            "TO gda_control_gateway",
         ),
         "binding_migration": (
             "CREATE TABLE IF NOT EXISTS gda_control.metadata_fabric_binding",
@@ -2124,6 +2154,7 @@ def build_gateway_report(
             forbidden in role_sql
             or forbidden in texts.get("command_migration", "")
             or forbidden in texts.get("success_migration", "")
+            or forbidden in texts.get("synchronous_success_migration", "")
             or forbidden in texts.get("binding_migration", "")
             or forbidden in texts.get("lineage_migration", "")
         ):
