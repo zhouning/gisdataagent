@@ -1,6 +1,6 @@
 # ArcPy 与 DTS 私有 MCP Server 接入说明
 
-**日期：** 2026-08-05
+**日期：** 2026-08-18（首次接入：2026-08-05）
 **目标应用：** GIS Data Agent
 **接入源：** `codex-arcpy-mcp-plugin`、`codex-dts-mcp-plugin`
 
@@ -52,6 +52,13 @@ mcp_servers.yaml / agent_mcp_servers
 - 管道：`general`、`planner`
 - 连接超时：15 秒
 
+当前私有网关地址：
+
+| Server | MCP URL | Engine 兼容性 |
+|---|---|---|
+| ArcPy MCP | `https://192.168.50.170:8765/mcp` | ArcGIS Pro/ArcPy |
+| DTS MCP | `https://192.168.8.117:8770/mcp` | DTS Engine 6.1/7.0 |
+
 环境变量名：
 
 ```text
@@ -59,7 +66,7 @@ ARCPY_MCP_TOKEN
 DTS_MCP_TOKEN
 ```
 
-令牌必须由启动 GIS Data Agent 的进程继承。可放入未跟踪的 `data_agent/.env`，也可由 launchd、容器 Secret 或其他部署 Secret 机制注入。不要把真实值写入仓库。
+令牌必须由启动 GIS Data Agent 的进程继承。本机通过 macOS Keychain 与 LaunchAgent 注入；容器环境应使用容器 Secret 或其他部署 Secret 机制。不要把真实值写入仓库或环境文件。
 
 私有 CA 当前从两个本机插件 checkout 读取：
 
@@ -203,18 +210,16 @@ Server 状态响应只增加以下脱敏信息：
 
 ### 8.3 Agent 侧真实验收
 
-验收过程只加载两个目标配置，然后：
+2026-08-05 的首次接入验收同时连接 ArcPy 和 DTS，确认 `general` 管道可获得 48 个带命名空间的工具。2026-08-18 的 DTS 网关迁移复验只加载当前 `dts-mcp` 配置，然后：
 
-1. 启动 `McpHubManager`。
-2. 建立两个带认证、带私有 CA 的 Streamable HTTP 会话。
-3. 发现 ArcPy 34 个工具和 DTS 14 个工具。
-4. 通过 `McpHubToolset(pipeline="general")` 聚合工具。
-5. 确认 Agent 最终获得 48 个带命名空间的工具。
-6. 通过已连接的 Agent 工具执行 `arcpy_mcp_health_check`，返回 `status=healthy`。
-7. 通过已连接的 Agent 工具执行 `dts_mcp_dts_ping`，返回 `ok=true`，Engine 版本为 `6.1.0525.497`。
-8. 关闭两个会话，并验证关闭超时不会阻塞进程。
+1. 启动 `McpHubManager` 并读取数据库中的活动配置。
+2. 使用环境令牌和私有 CA 建立 Streamable HTTP 会话。
+3. 确认 Server 状态为 `connected`，发现 14 个工具。
+4. 确认 Agent 工具包含 `dts_mcp_dts_ping` 等 DTS 命名空间。
+5. 执行 `dts_mcp_dts_ping`，返回 `ok=true`，Engine 版本为 `7.0.0814.5654`。
+6. 关闭会话，并验证关闭超时不会阻塞进程。
 
-ADK 启动时输出了 Google ADC/mTLS 自动配置警告。该警告来自 ADK 的可选 Google 认证探测，与这两个使用自有 Bearer token 和私有 CA 的 MCP 连接无关；最终两个 Server 均为 `connected`。
+ADK 启动时可能输出 Google ADC/mTLS 自动配置警告。该警告来自 ADK 的可选 Google 认证探测，与使用自有 Bearer token 和私有 CA 的 MCP 连接无关。
 
 ## 9. DTS road 已验证流程
 

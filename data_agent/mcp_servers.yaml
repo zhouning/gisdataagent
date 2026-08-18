@@ -76,9 +76,9 @@ servers:
     pipelines: ["general", "planner"]
 
   - name: dts-mcp
-    description: "Private DTS Engine 6.1 publishing gateway for 3DT, road, OSGB, and digital-twin workflows"
+    description: "Private DTS Engine 6.1/7.0 publishing gateway for 3DT, road, OSGB, and digital-twin workflows"
     transport: streamable_http
-    url: "https://192.168.50.170:8770/mcp"
+    url: "https://192.168.8.117:8770/mcp"
     bearer_token_env_var: "DTS_MCP_TOKEN"
     ca_cert: "/Users/zhouning/codex-dts-mcp-plugin/plugins/dts-mcp/assets/dts-mcp-ca.crt"
     timeout: 15.0

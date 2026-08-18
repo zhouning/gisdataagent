@@ -246,7 +246,8 @@ class TestMcpHubManager(unittest.TestCase):
 
         dts = configs["dts-mcp"]
         self.assertEqual(dts.transport, "streamable_http")
-        self.assertEqual(dts.url, "https://192.168.50.170:8770/mcp")
+        self.assertEqual(dts.url, "https://192.168.8.117:8770/mcp")
+        self.assertIn("DTS Engine 6.1/7.0", dts.description)
         self.assertEqual(dts.bearer_token_env_var, "DTS_MCP_TOKEN")
         self.assertTrue(os.path.isfile(dts.ca_cert))
         self.assertTrue(dts.enabled)
