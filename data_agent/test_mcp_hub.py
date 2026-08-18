@@ -238,7 +238,7 @@ class TestMcpHubManager(unittest.TestCase):
 
         arcpy = configs["arcpy-mcp"]
         self.assertEqual(arcpy.transport, "streamable_http")
-        self.assertEqual(arcpy.url, "https://192.168.50.170:8765/mcp")
+        self.assertEqual(arcpy.url, "https://192.168.8.113:8765/mcp")
         self.assertEqual(arcpy.bearer_token_env_var, "ARCPY_MCP_TOKEN")
         self.assertTrue(os.path.isfile(arcpy.ca_cert))
         self.assertTrue(arcpy.enabled)

@@ -56,7 +56,7 @@ mcp_servers.yaml / agent_mcp_servers
 
 | Server | MCP URL | Engine 兼容性 |
 |---|---|---|
-| ArcPy MCP | `https://192.168.50.170:8765/mcp` | ArcGIS Pro/ArcPy |
+| ArcPy MCP | `https://192.168.8.113:8765/mcp` | ArcGIS Pro/ArcPy |
 | DTS MCP | `https://192.168.8.117:8770/mcp` | DTS Engine 6.1/7.0 |
 
 环境变量名：
